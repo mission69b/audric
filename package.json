@@ -13,5 +13,14 @@
     "turbo": "^2",
     "typescript": "^5"
   },
-  "packageManager": "pnpm@10.6.2"
+  "packageManager": "pnpm@10.6.2",
+  "pnpm": {
+    "overrides": {
+      "@mppsui/mpp": "npm:@suimpp/mpp@0.3.1",
+      "@mysten/sui": "2.11.0"
+    },
+    "patchedDependencies": {
+      "@naviprotocol/lending@1.4.0": "patches/@naviprotocol__lending@1.4.0.patch"
+    }
+  }
 }

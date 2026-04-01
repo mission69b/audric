@@ -1,202 +1,83 @@
 @import "tailwindcss";
 
-/* ============================================================
-   Agentic Design System — Design Tokens
-   Source: BRAND.md + spec/AGENTIC DESIGN SYSTEM BETA/ exports
-   ============================================================ */
+:root {
+  /* Neutral palette (N100–N900) */
+  --background: #FFFFFF;
+  --surface: #F7F7F7;
+  --panel: #FFFFFF;
+  --border: #E5E5E5;
+  --border-bright: #CCCCCC;
+  --foreground: #191919;
+  --muted: #707070;
+  --dim: #9F9F9F;
+  --accent: #191919;
+  --accent-dim: #F7F7F7;
 
-@theme {
-  /* ----------------------------------------------------------
-     Colors: Neutrals (N100–N900)
-     ---------------------------------------------------------- */
-  --color-n-100: #ffffff;
-  --color-n-200: #f7f7f7;
-  --color-n-300: #e5e5e5;
-  --color-n-400: #cccccc;
-  --color-n-500: #9f9f9f;
-  --color-n-600: #707070;
-  --color-n-700: #363636;
-  --color-n-800: #191919;
-  --color-n-900: #000000;
+  /* Semantic colors */
+  --success: #3CC14E;
+  --error: #F0201D;
+  --warning: #FFB014;
+  --info: #0966F6;
 
-  /* ----------------------------------------------------------
-     Colors: Semantic — Red (errors, destructive)
-     ---------------------------------------------------------- */
-  --color-red-100: #fff5f5;
-  --color-red-200: #ffeded;
-  --color-red-300: #ff8a88;
-  --color-red-400: #ff5c5c;
-  --color-red-500: #f0201d;
-  --color-red-600: #d50008;
-  --color-red-700: #7a0a0a;
-  --color-red-800: #240303;
-
-  /* ----------------------------------------------------------
-     Colors: Semantic — Green (success, positive)
-     ---------------------------------------------------------- */
-  --color-green-100: #f0fef5;
-  --color-green-200: #e0f4e8;
-  --color-green-300: #86f0a5;
-  --color-green-400: #4ce160;
-  --color-green-500: #3cc14e;
-  --color-green-600: #289034;
-  --color-green-700: #185614;
-  --color-green-800: #0c318d;
-
-  /* ----------------------------------------------------------
-     Colors: Semantic — Blue (links, info, active)
-     ---------------------------------------------------------- */
-  --color-blue-100: #f5f9ff;
-  --color-blue-200: #d4e5fe;
-  --color-blue-300: #84b4fb;
-  --color-blue-400: #4d93fc;
-  --color-blue-500: #0966f6;
-  --color-blue-600: #004988;
-  --color-blue-700: #002469;
-  --color-blue-800: #19133a;
-
-  /* ----------------------------------------------------------
-     Colors: Semantic — Yellow (warnings, caution)
-     ---------------------------------------------------------- */
-  --color-yellow-100: #fffff5;
-  --color-yellow-200: #fff0d5;
-  --color-yellow-300: #ffe58a;
-  --color-yellow-400: #ffb014;
-  --color-yellow-500: #eeb804;
-  --color-yellow-600: #a57f00;
-  --color-yellow-700: #553808;
-  --color-yellow-800: #312102;
-
-  /* ----------------------------------------------------------
-     Colors: Semantic — Orange (accents, rare)
-     ---------------------------------------------------------- */
-  --color-orange-100: #fff9f5;
-  --color-orange-200: #ffead3;
-  --color-orange-300: #ffc382;
-  --color-orange-400: #ff9066;
-  --color-orange-500: #ec7383;
-  --color-orange-600: #c15180;
-  --color-orange-700: #7a2f4d;
-  --color-orange-800: #2f1604;
-
-  /* ----------------------------------------------------------
-     Colors: Semantic — Pink (accents, rare)
-     ---------------------------------------------------------- */
-  --color-pink-100: #fef0fa;
-  --color-pink-200: #fcc0ec;
-  --color-pink-300: #f79cc8;
-  --color-pink-400: #f355a8;
-  --color-pink-500: #de459e;
-  --color-pink-600: #a51359;
-  --color-pink-700: #4b112d;
-  --color-pink-800: #360006;
-
-  /* ----------------------------------------------------------
-     Colors: Semantic — Teal (accents, rare)
-     ---------------------------------------------------------- */
-  --color-teal-100: #f7fdfd;
-  --color-teal-200: #d7f4f6;
-  --color-teal-300: #8edfe5;
-  --color-teal-400: #44ecd5;
-  --color-teal-500: #1bbfca;
-  --color-teal-600: #00ab88;
-  --color-teal-700: #07485a;
-  --color-teal-800: #04252f;
-
-  /* ----------------------------------------------------------
-     Colors: Semantic — Purple (accents, rare)
-     ---------------------------------------------------------- */
-  --color-purple-100: #f6f5fe;
-  --color-purple-200: #e2d0fd;
-  --color-purple-300: #c4abf6;
-  --color-purple-400: #9b7bee;
-  --color-purple-500: #5898ee;
-  --color-purple-600: #381fc6;
-  --color-purple-700: #275a68;
-  --color-purple-800: #20092b;
-
-  /* ----------------------------------------------------------
-     Typography: Font families
-     Display: Instrument Serif (web) / New York (Apple)
-     Body: Geist Sans
-     Labels: Departure Mono
-     ---------------------------------------------------------- */
-  --font-display: var(--font-instrument-serif), "New York", "Iowan Old Style", ui-serif, Georgia, serif;
-  --font-sans: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
-  --font-mono: var(--font-geist-mono), "Departure Mono", ui-monospace, "SFMono-Regular", monospace;
-
-  /* ----------------------------------------------------------
-     Shadows: 4 elevation levels
-     Card (subtle) → Dropdown → Drawer → Modal (highest)
-     ---------------------------------------------------------- */
-  --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.04), 0 1px 2px -1px rgb(0 0 0 / 0.03);
-  --shadow-dropdown: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.05);
-  --shadow-drawer: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.04);
-  --shadow-modal: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.06);
-
-  /* ----------------------------------------------------------
-     Breakpoints (from Agentic Design System grid spec)
-     ---------------------------------------------------------- */
-  --breakpoint-sm: 640px;
-  --breakpoint-md: 768px;
-  --breakpoint-lg: 1024px;
-  --breakpoint-xl: 1440px;
-  --breakpoint-2xl: 1920px;
+  /* Elevation shadows */
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-dropdown: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-drawer: -4px 0 24px rgba(0, 0, 0, 0.08);
+  --shadow-modal: 0 20px 60px rgba(0, 0, 0, 0.15);
 }
 
-/* ============================================================
-   Base styles
-   ============================================================ */
-
-@layer base {
-  *,
-  *::before,
-  *::after {
-    border-color: var(--color-n-300);
-  }
-
-  html {
-    color: var(--color-n-800);
-    background: var(--color-n-100);
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-  }
-
-  body {
-    font-family: var(--font-sans);
-    line-height: 1.6;
-  }
-
-  h1,
-  h2,
-  h3 {
-    font-family: var(--font-display);
-    font-weight: 400;
-    line-height: 1.2;
-    color: var(--color-n-900);
-  }
-
-  ::selection {
-    background: var(--color-n-900);
-    color: var(--color-n-100);
-  }
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-panel: var(--panel);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-dim: var(--dim);
+  --color-accent: var(--accent);
+  --color-accent-dim: var(--accent-dim);
+  --color-border: var(--border);
+  --color-border-bright: var(--border-bright);
+  --color-success: var(--success);
+  --color-error: var(--error);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-instrument-serif), ui-serif, Georgia, serif;
 }
 
-/* ============================================================
-   Animations
-   ============================================================ */
-
-@keyframes message-in {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+body {
+  background: var(--background);
+  color: var(--foreground);
 }
 
-@utility animate-message-in {
-  animation: message-in 0.25s ease-out both;
+@keyframes feed-slide-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.feed-row {
+  animation: feed-slide-in 0.3s ease-out both;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.animate-shimmer {
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.scrollbar-none::-webkit-scrollbar { display: none; }
+.scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
+
+.safe-bottom {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
+input,
+textarea,
+select {
+  font-size: 16px;
 }
