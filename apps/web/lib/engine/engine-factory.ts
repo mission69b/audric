@@ -11,6 +11,8 @@ import { UpstashSessionStore } from './upstash-session-store';
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const MODEL = process.env.AGENT_MODEL ?? 'claude-sonnet-4-20250514';
+const SUI_NETWORK = (process.env.NEXT_PUBLIC_SUI_NETWORK ?? 'mainnet') as 'mainnet' | 'testnet';
+const SUI_RPC_URL = `https://fullnode.${SUI_NETWORK}.sui.io:443`;
 
 let sessionStore: SessionStore | null = null;
 let mcpManager: McpClientManager | null = null;
@@ -70,6 +72,7 @@ export async function createEngine(
     provider: new AnthropicProvider({ apiKey: ANTHROPIC_API_KEY }),
     mcpManager: mgr,
     walletAddress: address,
+    suiRpcUrl: SUI_RPC_URL,
     tools: READ_TOOLS,
     model: MODEL,
     maxTurns: 10,
