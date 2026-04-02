@@ -4,6 +4,7 @@ import type { EngineChatMessage, PendingAction, ToolExecution } from '@/lib/engi
 import { AgentStep, getStepIcon, getStepLabel } from './AgentStep';
 import { ThinkingState } from './ThinkingState';
 import { PermissionCard } from './PermissionCard';
+import { AgentMarkdown } from '@/components/dashboard/AgentMarkdown';
 
 interface ChatMessageProps {
   message: EngineChatMessage;
@@ -95,14 +96,18 @@ export function ChatMessage({ message, onActionResolve }: ChatMessageProps) {
           aria-atomic="false"
         >
           <span className="text-dim font-mono text-[11px] mr-1.5 float-left leading-relaxed uppercase tracking-wider" aria-hidden="true">au</span>
-          <span className="text-foreground leading-relaxed whitespace-pre-wrap">
-            {message.content}
-            {message.isStreaming && (
-              <span className="inline-flex items-center ml-1.5 align-text-bottom">
-                <ThinkingState status="delivering" intensity="transitioning" />
+          <div className="text-foreground leading-relaxed">
+            {message.isStreaming ? (
+              <span className="whitespace-pre-wrap">
+                {message.content}
+                <span className="inline-flex items-center ml-1.5 align-text-bottom">
+                  <ThinkingState status="delivering" intensity="transitioning" />
+                </span>
               </span>
+            ) : (
+              <AgentMarkdown text={message.content} />
             )}
-          </span>
+          </div>
           {message.isStreaming && (
             <span className="sr-only">Audric is typing</span>
           )}

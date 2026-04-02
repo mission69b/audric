@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { ProductNav } from '@/components/layout/ProductNav';
 import { ThinkingState } from '@/components/engine/ThinkingState';
 import { ChatDivider } from '@/components/engine/ChatDivider';
+import { AgentMarkdown } from '@/components/dashboard/AgentMarkdown';
 import { useZkLogin } from '@/components/auth/useZkLogin';
 import { useDemoChat } from '@/hooks/useDemoChat';
 
@@ -270,14 +271,18 @@ function LandingContent() {
                 {msg.content && (
                   <div className="pl-1 text-sm">
                     <span className="text-dim font-mono text-[11px] mr-1.5 float-left leading-relaxed uppercase tracking-wider" aria-hidden="true">au</span>
-                    <span className="text-foreground leading-relaxed whitespace-pre-wrap">
-                      {msg.content}
-                      {msg.isStreaming && (
-                        <span className="inline-flex items-center ml-1.5 align-text-bottom">
-                          <ThinkingState status="delivering" intensity="transitioning" />
+                    <div className="text-foreground leading-relaxed">
+                      {msg.isStreaming ? (
+                        <span className="whitespace-pre-wrap">
+                          {msg.content}
+                          <span className="inline-flex items-center ml-1.5 align-text-bottom">
+                            <ThinkingState status="delivering" intensity="transitioning" />
+                          </span>
                         </span>
+                      ) : (
+                        <AgentMarkdown text={msg.content} />
                       )}
-                    </span>
+                    </div>
                   </div>
                 )}
                 {msg.cta && (

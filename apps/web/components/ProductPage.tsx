@@ -37,7 +37,7 @@ export function ProductPage({
       <div className="mx-auto max-w-2xl">
         <Link
           href="/"
-          className="inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-foreground"
+          className="inline-flex items-center gap-1.5 min-h-[44px] text-sm text-muted transition-colors hover:text-foreground -ml-1 pl-1"
         >
           <span aria-hidden="true">&larr;</span>
           Back to chat
@@ -54,19 +54,19 @@ export function ProductPage({
               </span>
             )}
           </div>
-          <h1 className="text-4xl tracking-tight text-foreground sm:text-5xl">{title}</h1>
-          <p className="text-lg text-muted">{subtitle}</p>
+          <h1 className="text-3xl tracking-tight text-foreground sm:text-4xl md:text-5xl">{title}</h1>
+          <p className="text-base text-muted sm:text-lg">{subtitle}</p>
         </header>
 
         {stats.length > 0 && (
-          <div className="mt-12 grid grid-cols-2 gap-4 sm:grid-cols-3">
+          <div className="mt-12 grid grid-cols-3 gap-3 sm:gap-4">
             {stats.map((stat) => (
               <div
                 key={stat.label}
-                className="rounded-xl border border-border p-4 shadow-[var(--shadow-card)]"
+                className="rounded-xl border border-border p-3 sm:p-4 shadow-[var(--shadow-card)] min-w-0"
               >
-                <p className="text-2xl font-medium text-foreground">{stat.value}</p>
-                <p className="mt-1 font-mono text-[11px] tracking-wider text-muted uppercase">
+                <p className="text-xl font-medium text-foreground sm:text-2xl break-words">{stat.value}</p>
+                <p className="mt-1 font-mono text-[10px] tracking-wider text-muted uppercase sm:text-[11px]">
                   {stat.label}
                 </p>
               </div>
@@ -82,7 +82,7 @@ export function ProductPage({
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border font-mono text-xs text-muted">
                   {step.number}
                 </div>
-                <div>
+                <div className="min-w-0">
                   <p className="font-medium text-foreground">{step.title}</p>
                   <p className="mt-1 text-sm text-muted">{step.description}</p>
                 </div>
@@ -94,7 +94,7 @@ export function ProductPage({
         <div className="mt-16">
           <Link
             href={`/?prompt=${encodeURIComponent(ctaPrompt)}`}
-            className="inline-flex items-center gap-2 rounded-xl bg-foreground px-6 py-3 font-mono text-xs tracking-wider text-background uppercase transition-opacity hover:opacity-80"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-foreground min-h-[44px] px-6 py-3 font-mono text-xs tracking-wider text-background uppercase transition-opacity hover:opacity-80"
           >
             {cta}
             <span aria-hidden="true">&rarr;</span>
