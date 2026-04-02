@@ -188,6 +188,10 @@ export function useDemoChat(initialMessage?: string) {
     }
   }
 
+  const cancel = useCallback(() => {
+    abortRef.current?.abort();
+  }, []);
+
   const addCtaMessage = useCallback((content: string) => {
     setMessages((prev) => [
       ...prev,
@@ -195,5 +199,5 @@ export function useDemoChat(initialMessage?: string) {
     ]);
   }, []);
 
-  return { messages, isStreaming, error, sendMessage, addCtaMessage };
+  return { messages, isStreaming, error, sendMessage, cancel, addCtaMessage };
 }

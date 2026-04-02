@@ -3,6 +3,10 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { ChatMessage } from './ChatMessage';
 import { QuickActions } from './QuickActions';
+import { ThinkingState } from './ThinkingState';
+import { ChatDivider } from './ChatDivider';
+import { SuggestedActions } from './SuggestedAction';
+import { deriveSuggestedActions } from '@/lib/suggested-actions';
 import type { useEngine } from '@/hooks/useEngine';
 
 type EngineInstance = ReturnType<typeof useEngine>;
@@ -10,25 +14,18 @@ type EngineInstance = ReturnType<typeof useEngine>;
 interface EngineChatProps {
   engine: EngineInstance;
   email: string | null;
+  onSendMessage?: (text: string) => void;
 }
 
 function ConnectingSkeleton() {
   return (
-    <div className="space-y-2 animate-pulse" role="status" aria-label="Connecting to Audric">
-      <div className="flex flex-wrap gap-x-3 gap-y-1.5">
-        <span className="inline-flex items-center gap-1.5 text-xs text-muted">
-          <span className="h-3 w-3 shrink-0 animate-spin rounded-full border border-border-bright border-t-foreground" />
-          <span>Thinking...</span>
-        </span>
-      </div>
-      <div className="rounded-2xl rounded-bl-md border border-border bg-surface px-4 py-3">
-        <div className="h-3 w-2/3 rounded bg-border" />
-      </div>
+    <div className="pl-1" role="status" aria-label="Connecting to Audric">
+      <ThinkingState status="awakening" intensity="active" />
     </div>
   );
 }
 
-export function EngineChat({ engine, email }: EngineChatProps) {
+export function EngineChat({ engine, email, onSendMessage }: EngineChatProps) {
   const feedEndRef = useRef<HTMLDivElement>(null);
   const lastMsgCount = useRef(0);
 
@@ -61,11 +58,33 @@ export function EngineChat({ engine, email }: EngineChatProps) {
     [engine.resolveAction],
   );
 
+  const handleSuggestedAction = useCallback(
+    (prompt: string) => {
+      if (onSendMessage) {
+        onSendMessage(prompt);
+      } else {
+        engine.sendMessage(prompt);
+      }
+    },
+    [engine.sendMessage, onSendMessage],
+  );
+
   const isEmpty = engine.messages.length === 0;
   const greeting = getGreeting(email);
   const isConnecting = engine.status === 'connecting';
   const lastMsg = engine.messages[engine.messages.length - 1];
   const showSkeleton = isConnecting && lastMsg?.role === 'assistant' && !lastMsg.content;
+
+  const showSuggestions =
+    !engine.isStreaming &&
+    lastMsg?.role === 'assistant' &&
+    !lastMsg.isStreaming &&
+    !lastMsg.pendingAction &&
+    lastMsg.content.length > 0;
+
+  const suggestedActions = showSuggestions
+    ? deriveSuggestedActions(lastMsg?.tools)
+    : [];
 
   return (
     <div className="space-y-3">
@@ -74,6 +93,10 @@ export function EngineChat({ engine, email }: EngineChatProps) {
           <p className="text-sm text-muted">{greeting}</p>
           <QuickActions onSelect={handleQuickAction} disabled={engine.isStreaming} />
         </div>
+      )}
+
+      {!isEmpty && engine.messages[0]?.role === 'user' && (
+        <ChatDivider label="TASK INITIATED" />
       )}
 
       {engine.messages.map((msg) => {
@@ -88,6 +111,16 @@ export function EngineChat({ engine, email }: EngineChatProps) {
           />
         );
       })}
+
+      {suggestedActions.length > 0 && (
+        <div className="pl-1">
+          <SuggestedActions
+            actions={suggestedActions}
+            onSelect={handleSuggestedAction}
+            disabled={engine.isStreaming}
+          />
+        </div>
+      )}
 
       {engine.error && !engine.isStreaming && (
         <div

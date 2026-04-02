@@ -3,7 +3,11 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { ChatMessage } from '@/components/engine/ChatMessage';
 import { QuickActions } from '@/components/engine/QuickActions';
+import { ThinkingState } from '@/components/engine/ThinkingState';
+import { ChatDivider } from '@/components/engine/ChatDivider';
+import { SuggestedActions } from '@/components/engine/SuggestedAction';
 import { FeedItemCard } from '@/components/dashboard/FeedRenderer';
+import { deriveSuggestedActions } from '@/lib/suggested-actions';
 import type { useEngine } from '@/hooks/useEngine';
 import type { useFeed } from '@/hooks/useFeed';
 import type { FeedItem } from '@/lib/feed-types';
@@ -34,16 +38,8 @@ interface UnifiedTimelineProps {
 
 function ConnectingSkeleton() {
   return (
-    <div className="space-y-2 animate-pulse" role="status" aria-label="Connecting to Audric">
-      <div className="flex flex-wrap gap-x-3 gap-y-1.5">
-        <span className="inline-flex items-center gap-1.5 text-xs text-muted">
-          <span className="h-3 w-3 shrink-0 animate-spin rounded-full border border-border-bright border-t-foreground" />
-          <span>Thinking...</span>
-        </span>
-      </div>
-      <div className="rounded-2xl rounded-bl-md border border-border bg-surface px-4 py-3">
-        <div className="h-3 w-2/3 rounded bg-border" />
-      </div>
+    <div className="pl-1" role="status" aria-label="Connecting to Audric">
+      <ThinkingState status="awakening" intensity="active" />
     </div>
   );
 }
@@ -130,6 +126,18 @@ export function UnifiedTimeline({
   const lastEngineMsg = engine.messages[engine.messages.length - 1];
   const showSkeleton = isConnecting && lastEngineMsg?.role === 'assistant' && !lastEngineMsg.content;
 
+  const hasMessages = engine.messages.length > 0;
+  const showSuggestions =
+    !engine.isStreaming &&
+    lastEngineMsg?.role === 'assistant' &&
+    !lastEngineMsg.isStreaming &&
+    !lastEngineMsg.pendingAction &&
+    lastEngineMsg.content.length > 0;
+
+  const suggestedActions = showSuggestions
+    ? deriveSuggestedActions(lastEngineMsg?.tools)
+    : [];
+
   return (
     <div className="space-y-3">
       {isEmpty && !engine.isStreaming && (
@@ -137,6 +145,10 @@ export function UnifiedTimeline({
           <p className="text-sm text-muted">{getGreeting(email)}</p>
           <QuickActions onSelect={handleQuickAction} disabled={engine.isStreaming} />
         </div>
+      )}
+
+      {hasMessages && timeline.length > 0 && timeline[0].kind === 'engine' && timeline[0].msg.role === 'user' && (
+        <ChatDivider label="TASK INITIATED" />
       )}
 
       {timeline.map((entry) => {
@@ -163,6 +175,16 @@ export function UnifiedTimeline({
           />
         );
       })}
+
+      {suggestedActions.length > 0 && (
+        <div className="pl-1">
+          <SuggestedActions
+            actions={suggestedActions}
+            onSelect={handleQuickAction}
+            disabled={engine.isStreaming}
+          />
+        </div>
+      )}
 
       {engine.error && !engine.isStreaming && (
         <div

@@ -1025,6 +1025,7 @@ function DashboardContent() {
             onSubmit={handleInputSubmit}
             onCancel={engine.isStreaming ? engine.cancel : undefined}
             disabled={chipFlow.state.phase === 'executing' || engine.isStreaming}
+            placeholder={engine.messages.length > 0 ? 'Ask a follow up...' : 'Ask anything...'}
           />
           {engine.isStreaming ? (
             <div className="flex items-center justify-between">

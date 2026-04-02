@@ -1,12 +1,54 @@
 'use client';
 
-import type { EngineChatMessage, PendingAction } from '@/lib/engine-types';
-import { ToolCard } from './ToolCard';
+import type { EngineChatMessage, PendingAction, ToolExecution } from '@/lib/engine-types';
+import { AgentStep, getStepIcon, getStepLabel } from './AgentStep';
+import { ThinkingState } from './ThinkingState';
 import { PermissionCard } from './PermissionCard';
 
 interface ChatMessageProps {
   message: EngineChatMessage;
   onActionResolve?: (action: PendingAction, approved: boolean) => void;
+}
+
+function ToolSteps({ tools }: { tools: ToolExecution[] }) {
+  const runningCount = tools.filter((t) => t.status === 'running').length;
+  const isParallel = runningCount >= 2;
+
+  if (isParallel && tools.length >= 2) {
+    return (
+      <AgentStep
+        icon="⊞"
+        label="RUNNING TASKS IN PARALLEL"
+        status={tools.some((t) => t.status === 'running') ? 'running' : 'done'}
+        collapsible
+        defaultExpanded
+      >
+        <div className="space-y-0.5">
+          {tools.map((tool) => (
+            <AgentStep
+              key={tool.toolUseId}
+              icon={getStepIcon(tool.toolName)}
+              label={getStepLabel(tool.toolName)}
+              status={tool.status}
+            />
+          ))}
+        </div>
+      </AgentStep>
+    );
+  }
+
+  return (
+    <div className="space-y-0.5">
+      {tools.map((tool) => (
+        <AgentStep
+          key={tool.toolUseId}
+          icon={getStepIcon(tool.toolName)}
+          label={getStepLabel(tool.toolName)}
+          status={tool.status}
+        />
+      ))}
+    </div>
+  );
 }
 
 export function ChatMessage({ message, onActionResolve }: ChatMessageProps) {
@@ -23,14 +65,13 @@ export function ChatMessage({ message, onActionResolve }: ChatMessageProps) {
   const hasTools = message.tools && message.tools.length > 0;
   const hasPendingAction = !!message.pendingAction;
   const hasContent = message.content.length > 0;
+  const isOnlyStreaming = message.isStreaming && !hasContent && !hasTools;
 
   return (
     <div className="space-y-2" role="log" aria-label="Audric response">
       {hasTools && (
-        <div className="flex flex-wrap gap-x-3 gap-y-1.5" role="status" aria-label="Tool activity">
-          {message.tools!.map((tool) => (
-            <ToolCard key={tool.toolUseId} tool={tool} />
-          ))}
+        <div className="pl-1" role="status" aria-label="Agent activity">
+          <ToolSteps tools={message.tools!} />
         </div>
       )}
 
@@ -41,20 +82,25 @@ export function ChatMessage({ message, onActionResolve }: ChatMessageProps) {
         />
       )}
 
-      {(hasContent || message.isStreaming) && (
+      {isOnlyStreaming && (
+        <div className="pl-1">
+          <ThinkingState status="thinking" intensity="active" />
+        </div>
+      )}
+
+      {hasContent && (
         <div
-          className="rounded-2xl rounded-bl-md border border-border bg-surface px-4 py-3 text-sm overflow-hidden shadow-[var(--shadow-card)]"
+          className="pl-1 text-sm"
           aria-live={message.isStreaming ? 'polite' : 'off'}
           aria-atomic="false"
         >
-          <span className="text-dim font-mono text-xs mr-1.5 float-left leading-relaxed uppercase" aria-hidden="true">au</span>
+          <span className="text-dim font-mono text-[11px] mr-1.5 float-left leading-relaxed uppercase tracking-wider" aria-hidden="true">au</span>
           <span className="text-foreground leading-relaxed whitespace-pre-wrap">
             {message.content}
             {message.isStreaming && (
-              <span
-                className="inline-block w-1.5 h-4 bg-foreground/40 animate-pulse ml-0.5 align-text-bottom"
-                aria-hidden="true"
-              />
+              <span className="inline-flex items-center ml-1.5 align-text-bottom">
+                <ThinkingState status="delivering" intensity="transitioning" />
+              </span>
             )}
           </span>
           {message.isStreaming && (
@@ -64,7 +110,7 @@ export function ChatMessage({ message, onActionResolve }: ChatMessageProps) {
       )}
 
       {message.usage && !message.isStreaming && (
-        <div className="flex justify-end">
+        <div className="flex justify-start pl-1">
           <span className="text-[10px] text-dim font-mono" aria-label={`${message.usage.inputTokens + message.usage.outputTokens} tokens used`}>
             {message.usage.inputTokens + message.usage.outputTokens} tokens
           </span>
