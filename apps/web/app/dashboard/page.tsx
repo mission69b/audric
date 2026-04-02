@@ -704,7 +704,10 @@ function DashboardContent() {
         case 'pay_api': {
           const serviceResult = await sdk.payService({
             url: inp.url as string,
+            method: (inp.method as string) ?? 'POST',
             rawBody: inp.body ? JSON.parse(String(inp.body)) : undefined,
+            headers: inp.headers as Record<string, string> | undefined,
+            maxPrice: inp.maxPrice as number | undefined,
           });
           return { success: true, data: serviceResult };
         }

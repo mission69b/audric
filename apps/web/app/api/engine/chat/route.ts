@@ -11,7 +11,7 @@ import { UpstashSessionStore } from '@/lib/engine/upstash-session-store';
 import { getBridge, cleanupBridge } from '@/lib/engine/bridge-registry';
 
 export const runtime = 'nodejs';
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 interface ChatRequestBody {
   message: string;
@@ -111,7 +111,9 @@ export async function POST(request: NextRequest) {
       },
 
       cancel() {
-        cleanupBridge(sessionId);
+        // Don't destroy the bridge on stream cancel — permission resolution
+        // may still be in flight (e.g. transaction executing client-side).
+        // Bridges expire naturally after 10 minutes via evictExpired().
       },
     });
 
