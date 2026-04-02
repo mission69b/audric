@@ -9,6 +9,7 @@ interface PermissionRequestBody {
   sessionId: string;
   permissionId: string;
   approved: boolean;
+  executionResult?: unknown;
 }
 
 export async function POST(request: NextRequest) {
@@ -23,7 +24,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const { sessionId, permissionId, approved } = body;
+  const { sessionId, permissionId, approved, executionResult } = body;
 
   if (!sessionId || !permissionId || typeof approved !== 'boolean') {
     return NextResponse.json(
@@ -37,7 +38,7 @@ export async function POST(request: NextRequest) {
   const rl = rateLimit(`engine-perm:${ip}`, 30, 60_000);
   if (!rl.success) return rateLimitResponse(rl.retryAfterMs!);
 
-  const resolved = resolveBridge(sessionId, permissionId, approved);
+  const resolved = resolveBridge(sessionId, permissionId, approved, executionResult);
 
   if (!resolved) {
     return NextResponse.json(

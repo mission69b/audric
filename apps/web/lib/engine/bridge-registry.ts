@@ -32,10 +32,11 @@ export function resolveBridge(
   sessionId: string,
   permissionId: string,
   approved: boolean,
+  executionResult?: unknown,
 ): boolean {
   const bridge = bridges.get(sessionId);
   if (!bridge) return false;
-  return bridge.resolve(permissionId, approved);
+  return bridge.resolve(permissionId, approved, executionResult);
 }
 
 export function cleanupBridge(sessionId: string): void {

@@ -16,6 +16,11 @@ type TimelineEntry =
   | { kind: 'engine'; msg: EngineChatMessage }
   | { kind: 'feed'; item: FeedItem };
 
+export type ExecuteActionFn = (
+  toolName: string,
+  input: unknown,
+) => Promise<{ success: boolean; data: unknown }>;
+
 interface UnifiedTimelineProps {
   engine: EngineInstance;
   feed: FeedInstance;
@@ -24,6 +29,7 @@ interface UnifiedTimelineProps {
   onCopy?: (text: string) => void;
   onSaveContact?: (name: string, address: string) => void;
   onConfirmResolve?: (approved: boolean) => void;
+  onExecuteAction?: ExecuteActionFn;
 }
 
 function ConnectingSkeleton() {
@@ -59,6 +65,7 @@ export function UnifiedTimeline({
   onCopy,
   onSaveContact,
   onConfirmResolve,
+  onExecuteAction,
 }: UnifiedTimelineProps) {
   const endRef = useRef<HTMLDivElement>(null);
   const lastCount = useRef(0);
@@ -100,9 +107,28 @@ export function UnifiedTimeline({
   );
 
   const handlePermissionResolve = useCallback(
-    (permissionId: string, approved: boolean) => engine.resolvePermission(permissionId, approved),
+    async (permissionId: string, approved: boolean) => {
+      if (!approved || !onExecuteAction) {
+        engine.resolvePermission(permissionId, approved);
+        return;
+      }
+
+      const msg = engine.messages.find((m) => m.permission?.permissionId === permissionId);
+      if (!msg?.permission) {
+        engine.resolvePermission(permissionId, approved);
+        return;
+      }
+
+      try {
+        const result = await onExecuteAction(msg.permission.toolName, msg.permission.input);
+        engine.resolvePermission(permissionId, true, result.data);
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : 'Execution failed';
+        engine.resolvePermission(permissionId, true, { success: false, error: errorMsg });
+      }
+    },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [engine.resolvePermission],
+    [engine.resolvePermission, engine.messages, onExecuteAction],
   );
 
   const isEmpty = engine.messages.length === 0 && feed.items.length === 0;

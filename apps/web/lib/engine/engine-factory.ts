@@ -4,6 +4,7 @@ import {
   McpClientManager,
   NAVI_MCP_CONFIG,
   READ_TOOLS,
+  WRITE_TOOLS,
   adaptAllServerTools,
   type SessionData,
   type SessionStore,
@@ -129,7 +130,7 @@ export async function createEngine(
     fetchServerPositions(address),
   ]);
 
-  const builtInNames = new Set(READ_TOOLS.map((t) => t.name));
+  const builtInNames = new Set([...READ_TOOLS, ...WRITE_TOOLS].map((t) => t.name));
   const mcpTools = adaptAllServerTools(mgr).filter(
     (t) => !builtInNames.has(t.name),
   ) as Tool[];
@@ -140,7 +141,7 @@ export async function createEngine(
     walletAddress: address,
     suiRpcUrl: SUI_RPC_URL,
     serverPositions: positions,
-    tools: [...READ_TOOLS, ...mcpTools],
+    tools: [...READ_TOOLS, ...WRITE_TOOLS, ...mcpTools],
     model: MODEL,
     maxTurns: 10,
     maxTokens: 4096,

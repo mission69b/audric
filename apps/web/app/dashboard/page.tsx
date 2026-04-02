@@ -672,6 +672,57 @@ function DashboardContent() {
     navigator.clipboard.writeText(text);
   }, []);
 
+  const handleExecuteAction = useCallback(
+    async (toolName: string, input: unknown): Promise<{ success: boolean; data: unknown }> => {
+      if (!agent) throw new Error('Not authenticated');
+      const sdk = await agent.getInstance();
+      const inp = (input ?? {}) as Record<string, unknown>;
+
+      switch (toolName) {
+        case 'save_deposit': {
+          const res = await sdk.save({ amount: Number(inp.amount), protocol: inp.protocol as string | undefined });
+          balanceQuery.refetch();
+          return { success: true, data: { success: true, tx: res.tx, amount: inp.amount } };
+        }
+        case 'withdraw': {
+          const res = await sdk.withdraw({ amount: Number(inp.amount), protocol: inp.protocol as string | undefined });
+          balanceQuery.refetch();
+          return { success: true, data: { success: true, tx: res.tx, amount: inp.amount } };
+        }
+        case 'send_transfer': {
+          const res = await sdk.send({ to: String(inp.to), amount: Number(inp.amount), asset: inp.asset as string | undefined });
+          balanceQuery.refetch();
+          return { success: true, data: { success: true, tx: res.tx, amount: inp.amount, to: inp.to } };
+        }
+        case 'borrow': {
+          const res = await sdk.borrow({ amount: Number(inp.amount), protocol: inp.protocol as string | undefined });
+          balanceQuery.refetch();
+          return { success: true, data: { success: true, tx: res.tx, amount: inp.amount } };
+        }
+        case 'repay_debt': {
+          const res = await sdk.repay({ amount: Number(inp.amount), protocol: inp.protocol as string | undefined });
+          balanceQuery.refetch();
+          return { success: true, data: { success: true, tx: res.tx, amount: inp.amount } };
+        }
+        case 'claim_rewards': {
+          const res = await sdk.claimRewards();
+          balanceQuery.refetch();
+          return { success: true, data: { success: true, tx: res.tx } };
+        }
+        case 'pay_api': {
+          const serviceResult = await sdk.payService({
+            url: inp.url as string,
+            rawBody: inp.body ? JSON.parse(String(inp.body)) : undefined,
+          });
+          return { success: true, data: serviceResult };
+        }
+        default:
+          throw new Error(`Unknown tool: ${toolName}`);
+      }
+    },
+    [agent, balanceQuery],
+  );
+
   const handleSaveContact = useCallback(
     async (name: string, addr: string) => {
       await contactsHook.addContact(name, addr);
@@ -950,6 +1001,7 @@ function DashboardContent() {
             onChipClick={handleFeedChipClick}
             onCopy={handleCopy}
             onSaveContact={handleSaveContact}
+            onExecuteAction={handleExecuteAction}
             onConfirmResolve={(approved) => {
               const resolver = confirmResolverRef.current;
               if (resolver) {

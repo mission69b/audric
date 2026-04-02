@@ -342,7 +342,7 @@ export function useEngine({ address, jwt }: UseEngineOptions) {
   }
 
   const resolvePermission = useCallback(
-    async (permissionId: string, approved: boolean) => {
+    async (permissionId: string, approved: boolean, executionResult?: unknown) => {
       if (!sessionId || !jwt) return;
 
       try {
@@ -352,7 +352,7 @@ export function useEngine({ address, jwt }: UseEngineOptions) {
             'Content-Type': 'application/json',
             'x-zklogin-jwt': jwt,
           },
-          body: JSON.stringify({ sessionId, permissionId, approved }),
+          body: JSON.stringify({ sessionId, permissionId, approved, executionResult }),
         });
 
         if (!res.ok) {
