@@ -15,6 +15,18 @@ const instrumentSerif = Instrument_Serif({
 export const metadata: Metadata = {
   title: 'Audric — Your money, handled.',
   description: 'Earn yield on USDC. Pay for APIs. Send instantly. All by conversation.',
+  metadataBase: new URL('https://audric.ai'),
+  openGraph: {
+    title: 'Audric',
+    description: 'Your money, handled. Earn yield, pay for APIs, send instantly — all by conversation.',
+    siteName: 'Audric',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Audric',
+    description: 'Your money, handled.',
+  },
 };
 
 export const viewport: Viewport = {
