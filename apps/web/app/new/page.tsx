@@ -41,6 +41,15 @@ function decodeJwtEmail(jwt: string | undefined): string | null {
   }
 }
 
+function getGreeting(email: string | null): string {
+  const hour = new Date().getHours();
+  const name = email?.split('@')[0] ?? '';
+  const nameStr = name ? `, ${name}` : '';
+  if (hour < 12) return `Good morning${nameStr}`;
+  if (hour < 18) return `Good afternoon${nameStr}`;
+  return `Good evening${nameStr}`;
+}
+
 function fmtDollar(n: number): string {
   if (n >= 1) return `${Math.floor(n)}`;
   if (n > 0) return n.toFixed(2);
@@ -894,9 +903,77 @@ function DashboardContent() {
   if (!address || !session) return null;
 
   const isInFlow = chipFlow.state.phase !== 'idle';
+  const isEmpty = engine.messages.length === 0 && feed.items.length === 0 && !isInFlow;
+  const email = decodeJwtEmail(session?.jwt);
+  const greeting = getGreeting(email);
+
+  const settingsPanel = (
+    <SettingsPanel
+      open={settingsOpen}
+      onClose={() => setSettingsOpen(false)}
+      address={address}
+      email={email}
+      network={SUI_NETWORK}
+      sessionExpiresAt={session.expiresAt}
+      contacts={contactsHook.contacts}
+      onRemoveContact={contactsHook.removeContact}
+      onSignOut={logout}
+      onRefreshSession={refresh}
+      jwt={session.jwt}
+      activeSessionId={engine.sessionId}
+      onLoadSession={engine.loadSession}
+      onNewConversation={handleNewConversation}
+    />
+  );
+
+  if (isEmpty && !engine.isStreaming) {
+    return (
+      <main className="flex flex-1 flex-col min-h-dvh">
+        <div className="mx-auto w-full max-w-xl px-4 pt-6 pb-4">
+          <BalanceHeader
+            address={address}
+            balance={balance}
+            compact={false}
+            onSettingsClick={() => setSettingsOpen(true)}
+          />
+        </div>
+
+        <div className="flex-1 flex flex-col items-center justify-center px-4 -mt-8">
+          <p className="text-sm text-muted mb-6">{greeting}</p>
+
+          <div className="w-full max-w-xl mb-6">
+            <InputBar
+              onSubmit={handleInputSubmit}
+              placeholder="Ask anything..."
+            />
+          </div>
+
+          {contextualChips.length > 0 && (
+            <div className="w-full max-w-xl mb-6">
+              <ContextualChips
+                chips={contextualChips}
+                onChipFlow={handleChipClick}
+                onAgentPrompt={(prompt) => handleInputSubmit(prompt)}
+                onDismiss={handleDismissChip}
+              />
+            </div>
+          )}
+
+          <div className="flex flex-wrap justify-center gap-2">
+            <ChipBar
+              onChipClick={handleChipClick}
+              activeFlow={chipFlow.state.flow}
+            />
+          </div>
+        </div>
+
+        {settingsPanel}
+      </main>
+    );
+  }
 
   return (
-    <main className="flex flex-1 flex-col pb-36">
+    <main className="flex flex-1 flex-col pb-32">
       <div className={`sticky top-0 z-20 bg-background/95 backdrop-blur-sm transition-[border-color] duration-200 border-b ${scrolled ? 'border-border/50' : 'border-transparent'}`}>
         <div className="mx-auto w-full max-w-xl px-4 pt-6 pb-4">
           <BalanceHeader
@@ -909,7 +986,6 @@ function DashboardContent() {
       </div>
       <div className="mx-auto w-full max-w-xl px-4 py-4 space-y-5">
 
-        {/* Result card (after transaction) */}
         {chipFlow.state.phase === 'result' && chipFlow.state.result && (
           <ResultCard
             success={chipFlow.state.result.success}
@@ -920,7 +996,6 @@ function DashboardContent() {
           />
         )}
 
-        {/* Confirmation card */}
         {chipFlow.state.phase === 'confirming' && (
           <ConfirmationCard
             {...getConfirmationDetails()}
@@ -929,7 +1004,6 @@ function DashboardContent() {
           />
         )}
 
-        {/* Executing state */}
         {chipFlow.state.phase === 'executing' && (
           <ConfirmationCard
             {...getConfirmationDetails()}
@@ -939,7 +1013,6 @@ function DashboardContent() {
           />
         )}
 
-        {/* Amount sub-chips */}
         {chipFlow.state.phase === 'l2-chips' && chipFlow.state.flow && chipFlow.state.flow !== 'send' && (() => {
           const f = chipFlow.state.flow!;
           return (
@@ -958,7 +1031,6 @@ function DashboardContent() {
           );
         })()}
 
-        {/* Send flow — recipient selection */}
         {chipFlow.state.phase === 'l2-chips' && chipFlow.state.flow === 'send' && !chipFlow.state.recipient && (
           <SendRecipientInput
             contacts={contactsHook.contacts}
@@ -974,7 +1046,6 @@ function DashboardContent() {
           />
         )}
 
-        {/* Send flow — amount selection after recipient */}
         {chipFlow.state.phase === 'l2-chips' && chipFlow.state.flow === 'send' && chipFlow.state.recipient && (
           <AmountChips
             amounts={getAmountPresets('send', balance)}
@@ -984,12 +1055,10 @@ function DashboardContent() {
           />
         )}
 
-        {/* Unified timeline: engine messages + feed items interleaved by timestamp */}
         {!isInFlow && (
           <UnifiedTimeline
             engine={engine}
             feed={feed}
-            email={decodeJwtEmail(session?.jwt)}
             onChipClick={handleFeedChipClick}
             onCopy={handleCopy}
             onSaveContact={handleSaveContact}
@@ -1010,17 +1079,8 @@ function DashboardContent() {
 
       </div>
 
-      {/* Bottom bar — fixed */}
       <div className="fixed bottom-0 left-0 right-0 border-t border-border bg-background/95 backdrop-blur-sm safe-bottom p-4 z-30">
-        <div className="mx-auto max-w-xl space-y-3">
-          {!isInFlow && !engine.isStreaming && contextualChips.length > 0 && (
-            <ContextualChips
-              chips={contextualChips}
-              onChipFlow={handleChipClick}
-              onAgentPrompt={(prompt) => handleInputSubmit(prompt)}
-              onDismiss={handleDismissChip}
-            />
-          )}
+        <div className="mx-auto max-w-xl space-y-2">
           <InputBar
             onSubmit={handleInputSubmit}
             onCancel={engine.isStreaming ? engine.cancel : undefined}
@@ -1031,69 +1091,47 @@ function DashboardContent() {
             <div className="flex items-center justify-between">
               <button
                 onClick={engine.cancel}
-                className="flex items-center gap-2 rounded-lg border border-border bg-surface px-4 py-2 text-sm text-muted hover:text-foreground hover:border-border-bright transition active:scale-[0.97]"
+                className="flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-mono uppercase tracking-wider text-muted hover:text-foreground hover:border-foreground transition active:scale-[0.97]"
               >
-                <span className="text-base">&#9632;</span> Stop
+                <span className="text-sm leading-none">&#9632;</span> Stop
               </button>
               {engine.usage && (
-                <span className="text-xs text-muted">
+                <span className="text-[10px] text-dim font-mono">
                   {engine.usage.inputTokens + engine.usage.outputTokens} tokens
                 </span>
               )}
             </div>
           ) : (
-            <>
-              <ChipBar
-                onChipClick={handleChipClick}
-                activeFlow={chipFlow.state.flow}
-                disabled={chipFlow.state.phase === 'executing'}
-              />
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex gap-1.5 overflow-x-auto scrollbar-none flex-1">
+                <ChipBar
+                  onChipClick={handleChipClick}
+                  activeFlow={chipFlow.state.flow}
+                  disabled={chipFlow.state.phase === 'executing'}
+                />
+              </div>
               {isInFlow && chipFlow.state.phase !== 'result' && (
                 <button
                   onClick={chipFlow.reset}
-                  className="w-full text-center text-xs text-muted hover:text-foreground transition py-1"
+                  className="text-xs text-muted hover:text-foreground transition shrink-0"
                 >
                   Cancel
                 </button>
               )}
               {!isInFlow && engine.messages.length > 0 && (
-                <div className="flex items-center justify-between pt-1">
-                  <button
-                    onClick={handleNewConversation}
-                    className="text-xs text-muted hover:text-foreground transition"
-                  >
-                    New conversation
-                  </button>
-                  {engine.usage && (
-                    <span className="text-[10px] text-dim font-mono">
-                      {engine.usage.inputTokens + engine.usage.outputTokens} tokens
-                    </span>
-                  )}
-                </div>
+                <button
+                  onClick={handleNewConversation}
+                  className="text-xs text-muted hover:text-foreground transition shrink-0"
+                >
+                  New
+                </button>
               )}
-            </>
+            </div>
           )}
         </div>
       </div>
 
-      {/* Panels */}
-      <SettingsPanel
-        open={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
-        address={address}
-        email={decodeJwtEmail(session.jwt)}
-        network={SUI_NETWORK}
-        sessionExpiresAt={session.expiresAt}
-        contacts={contactsHook.contacts}
-        onRemoveContact={contactsHook.removeContact}
-        onSignOut={logout}
-        onRefreshSession={refresh}
-        jwt={session.jwt}
-        activeSessionId={engine.sessionId}
-        onLoadSession={engine.loadSession}
-        onNewConversation={handleNewConversation}
-      />
-
+      {settingsPanel}
     </main>
   );
 }

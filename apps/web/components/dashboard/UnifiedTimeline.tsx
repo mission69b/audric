@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { ChatMessage } from '@/components/engine/ChatMessage';
-import { QuickActions } from '@/components/engine/QuickActions';
 import { ThinkingState } from '@/components/engine/ThinkingState';
 import { ChatDivider } from '@/components/engine/ChatDivider';
 import { SuggestedActions } from '@/components/engine/SuggestedAction';
@@ -28,7 +27,6 @@ export type ExecuteActionFn = (
 interface UnifiedTimelineProps {
   engine: EngineInstance;
   feed: FeedInstance;
-  email: string | null;
   onChipClick: (flow: string) => void;
   onCopy?: (text: string) => void;
   onSaveContact?: (name: string, address: string) => void;
@@ -44,19 +42,9 @@ function ConnectingSkeleton() {
   );
 }
 
-function getGreeting(email: string | null): string {
-  const hour = new Date().getHours();
-  const name = email?.split('@')[0] ?? '';
-  const nameStr = name ? `, ${name}` : '';
-  if (hour < 12) return `Good morning${nameStr}`;
-  if (hour < 18) return `Good afternoon${nameStr}`;
-  return `Good evening${nameStr}`;
-}
-
 export function UnifiedTimeline({
   engine,
   feed,
-  email,
   onChipClick,
   onCopy,
   onSaveContact,
@@ -121,7 +109,6 @@ export function UnifiedTimeline({
     [engine.resolveAction, onExecuteAction],
   );
 
-  const isEmpty = engine.messages.length === 0 && feed.items.length === 0;
   const isConnecting = engine.status === 'connecting';
   const lastEngineMsg = engine.messages[engine.messages.length - 1];
   const showSkeleton = isConnecting && lastEngineMsg?.role === 'assistant' && !lastEngineMsg.content;
@@ -140,13 +127,6 @@ export function UnifiedTimeline({
 
   return (
     <div className="space-y-3">
-      {isEmpty && !engine.isStreaming && (
-        <div className="flex flex-col items-center py-8 space-y-4">
-          <p className="text-sm text-muted">{getGreeting(email)}</p>
-          <QuickActions onSelect={handleQuickAction} disabled={engine.isStreaming} />
-        </div>
-      )}
-
       {hasMessages && timeline.length > 0 && timeline[0].kind === 'engine' && timeline[0].msg.role === 'user' && (
         <ChatDivider label="TASK INITIATED" />
       )}
