@@ -120,6 +120,7 @@ export async function fetchServerPositions(address: string): Promise<ServerPosit
 export async function createEngine(
   address: string,
   session?: SessionData | null,
+  opts?: { skipSanitize?: boolean },
 ): Promise<QueryEngine> {
   if (!ANTHROPIC_API_KEY) {
     throw new Error('ANTHROPIC_API_KEY not configured');
@@ -151,7 +152,7 @@ export async function createEngine(
   });
 
   if (session?.messages?.length) {
-    engine.loadMessages(session.messages);
+    engine.loadMessages(session.messages, { skipSanitize: opts?.skipSanitize });
   }
 
   return engine;

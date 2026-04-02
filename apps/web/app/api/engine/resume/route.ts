@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const engine = await createEngine(address, session);
+    const engine = await createEngine(address, session, { skipSanitize: true });
 
     const stream = new ReadableStream({
       async start(controller) {
