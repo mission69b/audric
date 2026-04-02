@@ -8,6 +8,7 @@ import { ChatDivider } from '@/components/engine/ChatDivider';
 import { AgentMarkdown } from '@/components/dashboard/AgentMarkdown';
 import { useZkLogin } from '@/components/auth/useZkLogin';
 import { useDemoChat } from '@/hooks/useDemoChat';
+import { AudricMark } from '@/components/ui/AudricMark';
 
 const MAX_FREE_TURNS = 5;
 
@@ -200,9 +201,10 @@ function LandingContent() {
         <ProductNav />
 
         <div className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 -mt-16">
-          <h1 className="font-mono text-4xl sm:text-5xl font-semibold tracking-tight text-foreground uppercase mb-8">
-            Audric
-          </h1>
+          <div className="mb-8 flex flex-col items-center gap-3">
+            <AudricMark size={48} className="text-foreground" />
+            <p className="font-mono text-xs tracking-widest text-dim uppercase">Your money, handled.</p>
+          </div>
 
           <div className="w-full max-w-xl mb-6">
             {inputBar}
@@ -270,7 +272,7 @@ function LandingContent() {
                 )}
                 {msg.content && (
                   <div className="pl-1 text-sm">
-                    <span className="text-dim font-mono text-[11px] mr-1.5 float-left leading-relaxed uppercase tracking-wider" aria-hidden="true">au</span>
+                    <span className="text-dim mr-1.5 float-left mt-0.5" aria-hidden="true"><AudricMark size={14} /></span>
                     <div className="text-foreground leading-relaxed">
                       {msg.isStreaming ? (
                         <span className="whitespace-pre-wrap">

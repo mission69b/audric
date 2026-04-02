@@ -5,6 +5,7 @@ import { AgentStep, getStepIcon, getStepLabel } from './AgentStep';
 import { ThinkingState } from './ThinkingState';
 import { PermissionCard } from './PermissionCard';
 import { AgentMarkdown } from '@/components/dashboard/AgentMarkdown';
+import { AudricMark } from '@/components/ui/AudricMark';
 
 interface ChatMessageProps {
   message: EngineChatMessage;
@@ -95,7 +96,7 @@ export function ChatMessage({ message, onActionResolve }: ChatMessageProps) {
           aria-live={message.isStreaming ? 'polite' : 'off'}
           aria-atomic="false"
         >
-          <span className="text-dim font-mono text-[11px] mr-1.5 float-left leading-relaxed uppercase tracking-wider" aria-hidden="true">au</span>
+          <span className="text-dim mr-1.5 float-left mt-0.5" aria-hidden="true"><AudricMark size={14} /></span>
           <div className="text-foreground leading-relaxed">
             {message.isStreaming ? (
               <span className="whitespace-pre-wrap">

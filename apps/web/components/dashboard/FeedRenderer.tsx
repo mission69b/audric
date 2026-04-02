@@ -6,6 +6,7 @@ import { QrCode } from './QrCode';
 import { ContactToast } from './ContactToast';
 import { AgentMarkdown } from './AgentMarkdown';
 import { Spinner } from '@/components/ui/Spinner';
+import { AudricMark } from '@/components/ui/AudricMark';
 
 function ImageCard({ url, alt, cost }: { url: string; alt: string; cost?: string }) {
   const [copied, setCopied] = useState(false);
@@ -185,7 +186,7 @@ export function FeedItemCard({
       return (
         <div className="space-y-2 feed-row">
           <div className="rounded-2xl rounded-bl-md border border-border bg-surface px-4 py-3 text-sm shadow-[var(--shadow-card)]">
-            <span className="text-dim font-mono text-xs mr-1.5 float-left leading-relaxed uppercase">au</span>
+            <span className="text-dim mr-1.5 float-left mt-0.5"><AudricMark size={14} /></span>
             <AgentMarkdown text={data.text} onAction={onChipClick} />
           </div>
           {data.chips && data.chips.length > 0 && (
@@ -217,7 +218,7 @@ export function FeedItemCard({
               <div className="relative p-3 rounded-lg border border-border bg-background">
                 <QrCode value={data.code} size={160} />
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <span className="text-[10px] font-mono font-bold text-foreground bg-background px-1.5 py-0.5 rounded uppercase">au</span>
+                  <span className="text-foreground bg-background p-1 rounded"><AudricMark size={12} /></span>
                 </div>
               </div>
             </div>
@@ -362,7 +363,7 @@ export function FeedItemCard({
       return (
         <div className="space-y-2 feed-row">
           <div className="rounded-lg bg-error/5 border border-error/20 px-4 py-3 text-sm">
-            <span className="text-dim font-mono text-xs mr-1.5 uppercase">au</span>
+            <span className="text-dim mr-1.5 inline-block align-text-bottom"><AudricMark size={14} /></span>
             <span className="text-error">{data.message}</span>
           </div>
           {data.chips && data.chips.length > 0 && (
@@ -505,7 +506,7 @@ function AgentResponseCard({ data, onAction, onConfirmResolve }: { data: Extract
 
       {data.text && (
         <div className="min-w-0">
-          <span className="text-dim font-mono text-xs mr-1.5 float-left leading-relaxed uppercase">au</span>
+          <span className="text-dim mr-1.5 float-left mt-0.5"><AudricMark size={14} /></span>
           <AgentMarkdown text={data.text} onAction={onAction} />
         </div>
       )}
