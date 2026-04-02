@@ -635,18 +635,10 @@ function DashboardContent() {
 
   const handleInputSubmit = useCallback(
     async (text: string) => {
-      const intent = parseIntent(text);
-      if (intent) {
-        feed.addItem({ type: 'user-message', text });
-        executeIntent(intent);
-        return;
-      }
-
       if (!address) return;
-
       engine.sendMessage(text);
     },
-    [feed, executeIntent, address, engine],
+    [address, engine],
   );
 
   const handleFeedChipClick = useCallback(
