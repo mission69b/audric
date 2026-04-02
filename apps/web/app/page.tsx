@@ -11,7 +11,7 @@ export default function LandingPage() {
 
   useEffect(() => {
     if (status === 'authenticated') {
-      router.replace('/dashboard');
+      router.replace('/new');
     }
   }, [status, router]);
 

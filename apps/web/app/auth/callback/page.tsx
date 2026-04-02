@@ -18,7 +18,7 @@ export default function AuthCallbackPage() {
 
   useEffect(() => {
     if (status === 'authenticated') {
-      const timer = setTimeout(() => router.replace('/dashboard'), 1200);
+      const timer = setTimeout(() => router.replace('/new'), 1200);
       return () => clearTimeout(timer);
     }
   }, [status, router]);
