@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const engine = await createEngine(address, session, { pendingAction: action });
+    const engine = await createEngine(address, session);
 
     const stream = new ReadableStream({
       async start(controller) {
@@ -83,16 +83,6 @@ export async function POST(request: NextRequest) {
               } catch { /* best effort */ }
             }
           }
-
-          const updatedSession = {
-            ...session,
-            messages: [...engine.getMessages()],
-            usage: engine.getUsage(),
-            updatedAt: Date.now(),
-            pendingAction,
-          };
-
-          await store.set(updatedSession);
         } catch (err) {
           const errorMsg =
             err instanceof Error ? err.message : 'Engine error';
@@ -103,6 +93,19 @@ export async function POST(request: NextRequest) {
             ),
           );
         } finally {
+          try {
+            const updatedSession = {
+              ...session,
+              messages: [...engine.getMessages()],
+              usage: engine.getUsage(),
+              updatedAt: Date.now(),
+              pendingAction,
+            };
+            await store.set(updatedSession);
+          } catch (saveErr) {
+            console.error('[engine/resume] session save failed:', saveErr);
+          }
+
           controller.close();
         }
       },

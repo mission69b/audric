@@ -9,7 +9,6 @@ import {
   type SessionData,
   type SessionStore,
   type ServerPositionData,
-  type PendingAction,
   type Tool,
 } from '@t2000/engine';
 import { UpstashSessionStore } from './upstash-session-store';
@@ -121,7 +120,6 @@ export async function fetchServerPositions(address: string): Promise<ServerPosit
 export async function createEngine(
   address: string,
   session?: SessionData | null,
-  opts?: { pendingAction?: PendingAction },
 ): Promise<QueryEngine> {
   if (!ANTHROPIC_API_KEY) {
     throw new Error('ANTHROPIC_API_KEY not configured');
@@ -153,7 +151,7 @@ export async function createEngine(
   });
 
   if (session?.messages?.length) {
-    engine.loadMessages(session.messages, { pendingAction: opts?.pendingAction });
+    engine.loadMessages(session.messages);
   }
 
   return engine;

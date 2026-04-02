@@ -80,7 +80,6 @@ export async function POST(request: NextRequest) {
           )) {
             controller.enqueue(encoder.encode(chunk));
 
-            // Detect pending_action in the SSE output
             if (chunk.includes('"type":"pending_action"')) {
               try {
                 const match = chunk.match(/data: (.+)/);
@@ -93,22 +92,6 @@ export async function POST(request: NextRequest) {
               } catch { /* best effort */ }
             }
           }
-
-          const updatedSession = {
-            id: sessionId,
-            messages: [...engine.getMessages()],
-            usage: engine.getUsage(),
-            createdAt: session?.createdAt ?? Date.now(),
-            updatedAt: Date.now(),
-            pendingAction,
-            metadata: { address },
-          };
-
-          await store.set(updatedSession);
-
-          if (!requestedSessionId && store instanceof UpstashSessionStore) {
-            await store.addToUserIndex(address, sessionId);
-          }
         } catch (err) {
           const errorMsg =
             err instanceof Error ? err.message : 'Engine error';
@@ -119,6 +102,27 @@ export async function POST(request: NextRequest) {
             ),
           );
         } finally {
+          // Always save — even after errors — so corrupt sessions don't persist.
+          // validateHistory in the engine ensures the saved messages are clean.
+          try {
+            const updatedSession = {
+              id: sessionId,
+              messages: [...engine.getMessages()],
+              usage: engine.getUsage(),
+              createdAt: session?.createdAt ?? Date.now(),
+              updatedAt: Date.now(),
+              pendingAction,
+              metadata: { address },
+            };
+            await store.set(updatedSession);
+
+            if (!requestedSessionId && store instanceof UpstashSessionStore) {
+              await store.addToUserIndex(address, sessionId);
+            }
+          } catch (saveErr) {
+            console.error('[engine/chat] session save failed:', saveErr);
+          }
+
           controller.close();
         }
       },
