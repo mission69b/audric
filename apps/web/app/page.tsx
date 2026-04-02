@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback, type KeyboardEvent } from 'react';
+import { Suspense, useEffect, useRef, useState, useCallback, type KeyboardEvent } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ProductNav } from '@/components/layout/ProductNav';
 import { ThinkingState } from '@/components/engine/ThinkingState';
@@ -59,6 +59,14 @@ const CHAT_QUICK_ACTIONS = [
 ];
 
 export default function LandingPage() {
+  return (
+    <Suspense>
+      <LandingContent />
+    </Suspense>
+  );
+}
+
+function LandingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { status, login } = useZkLogin();
