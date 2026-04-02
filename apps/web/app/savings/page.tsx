@@ -1,19 +1,22 @@
 import type { Metadata } from 'next';
 import { ProductPage } from '@/components/ProductPage';
+import { getUsdcRates, formatRate } from '@/lib/product-stats';
 
 export const metadata: Metadata = {
   title: 'Savings — Audric',
   description: 'Earn yield on USDC. Auto-compounding via NAVI Protocol.',
 };
 
-export default function SavingsPage() {
+export default async function SavingsPage() {
+  const rates = await getUsdcRates();
+
   return (
     <ProductPage
       badge="Savings"
       title="Earn yield on USDC."
       subtitle="Deposit USDC and start earning immediately. Routed to NAVI Protocol for the best rates, compounding automatically."
       stats={[
-        { label: 'Current APY', value: '4.86%' },
+        { label: 'Current APY', value: rates ? formatRate(rates.saveApy) : '—' },
         { label: 'Min deposit', value: '$1' },
         { label: 'Compounds', value: 'Auto' },
       ]}

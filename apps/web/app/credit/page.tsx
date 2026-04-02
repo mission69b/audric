@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { ProductPage } from '@/components/ProductPage';
+import { getUsdcRates, formatRate } from '@/lib/product-stats';
 
 export const metadata: Metadata = {
   title: 'Credit — Audric',
@@ -7,14 +8,16 @@ export const metadata: Metadata = {
     'Borrow against your USDC savings. Collateralized lending via NAVI Protocol.',
 };
 
-export default function CreditPage() {
+export default async function CreditPage() {
+  const rates = await getUsdcRates();
+
   return (
     <ProductPage
       badge="Credit"
       title="Borrow against your balance."
       subtitle="Need liquidity without selling? Borrow against your USDC savings. Collateralized lending via NAVI Protocol, managed by conversation."
       stats={[
-        { label: 'Borrow APR', value: '8.12%' },
+        { label: 'Borrow APR', value: rates ? formatRate(rates.borrowApr) : '—' },
         { label: 'Collateral', value: 'USDC' },
         { label: 'Liquidation', value: 'Monitored' },
       ]}

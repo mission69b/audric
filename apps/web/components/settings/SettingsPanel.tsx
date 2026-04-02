@@ -112,9 +112,27 @@ export function SettingsPanel({
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const saveLimit = (key: keyof typeof limits, parser: (v: string) => number, validator: (n: number) => boolean) => {
+    const val = parser(editValue);
+    if (validator(val)) {
+      const next = { ...limits, [key]: val };
+      setLimits(next);
+      fetch('/api/user/preferences', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address, limits: next }),
+      }).catch(() => {});
+    }
+    setEditingLimit(null);
+  };
+
   return (
     <>
-      <div className="fixed inset-0 bg-black/20 z-40" onClick={onClose} aria-hidden="true" />
+      <div
+        className="fixed inset-0 bg-black/20 backdrop-blur-[2px] z-40 transition-opacity"
+        onClick={onClose}
+        aria-hidden="true"
+      />
 
       <div
         ref={panelRef}
@@ -124,78 +142,89 @@ export function SettingsPanel({
         tabIndex={-1}
         className="fixed inset-y-0 right-0 w-full max-w-sm bg-background border-l border-border z-50 flex flex-col outline-none shadow-[var(--shadow-drawer)]"
       >
-        <div className="flex items-center justify-between p-5 border-b border-border">
-          <h2 id="settings-title" className="text-lg font-semibold text-foreground">Settings</h2>
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <h2 id="settings-title" className="font-mono text-xs tracking-[0.12em] text-foreground uppercase">
+            Settings
+          </h2>
           <button
             onClick={onClose}
             aria-label="Close settings"
-            className="rounded-lg p-2 text-muted hover:text-foreground hover:bg-surface transition"
+            className="flex items-center justify-center h-8 w-8 rounded-md text-muted hover:text-foreground hover:bg-surface transition"
           >
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-5 space-y-6">
+        <div className="flex-1 overflow-y-auto px-5 py-5 space-y-7">
           {/* Account */}
           <section className="space-y-3">
-            <SectionHeader>Account</SectionHeader>
-            <div className="space-y-2">
+            <SectionLabel>Account</SectionLabel>
+            <div className="rounded-lg border border-border bg-surface/50 p-3 space-y-2.5">
               {email && (
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="text-muted">&#9993;</span>
-                  <span className="text-foreground">{email}</span>
+                <div className="flex items-center gap-2 text-sm text-foreground">
+                  <svg className="h-3.5 w-3.5 text-muted shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+                  </svg>
+                  <span>{email}</span>
                 </div>
               )}
-              <SettingRow label="Address" value={truncateAddress(address)} mono />
-              <SettingRow label="Network" value={network} />
-              <button
-                onClick={handleCopy}
-                className="text-sm text-foreground underline underline-offset-2 hover:opacity-70 transition font-mono"
-              >
-                {copied ? '\u2713 Copied' : 'Copy full address'}
-              </button>
+              <InfoRow label="Address" value={truncateAddress(address)} mono />
+              <InfoRow label="Network" value={network} />
             </div>
+            <button
+              onClick={handleCopy}
+              className="min-h-[36px] rounded-md border border-border px-3 py-1.5 font-mono text-[10px] tracking-[0.1em] text-muted uppercase hover:text-foreground hover:border-foreground/20 transition"
+            >
+              {copied ? '\u2713 Copied' : 'Copy Address'}
+            </button>
           </section>
 
           {/* Session */}
           <section className="space-y-3">
-            <SectionHeader>Session</SectionHeader>
-            <div className="space-y-2">
-              <SettingRow label="Expires" value={`${expiryDate.toLocaleDateString()} (${daysLeft}d left)`} />
+            <SectionLabel>Sign-in Session</SectionLabel>
+            <div className="rounded-lg border border-border bg-surface/50 p-3 space-y-2.5">
+              <InfoRow
+                label="Expires"
+                value={`${expiryDate.toLocaleDateString()} (${daysLeft}d)`}
+              />
               {daysLeft <= 1 && (
-                <p className="text-xs text-warning">\u26A0 Session expiring soon</p>
+                <div className="flex items-center gap-1.5 text-xs text-warning">
+                  <span className="h-1.5 w-1.5 rounded-full bg-warning" />
+                  Session expiring soon
+                </div>
               )}
-              <button
-                onClick={onRefreshSession}
-                className="text-sm text-foreground underline underline-offset-2 hover:opacity-70 transition"
-              >
-                Refresh session
-              </button>
             </div>
+            <button
+              onClick={onRefreshSession}
+              className="min-h-[36px] rounded-md border border-border px-3 py-1.5 font-mono text-[10px] tracking-[0.1em] text-muted uppercase hover:text-foreground hover:border-foreground/20 transition"
+            >
+              Refresh Session
+            </button>
           </section>
 
           {/* Chat History */}
           {onLoadSession && (
             <section className="space-y-3">
-              <SectionHeader>Chat History</SectionHeader>
+              <SectionLabel>Conversations</SectionLabel>
               {onNewConversation && (
                 <button
                   onClick={() => { onNewConversation(); onClose(); }}
-                  className="w-full rounded-lg border border-border bg-background py-2 text-xs font-medium text-muted hover:text-foreground hover:border-border-bright transition"
+                  className="w-full min-h-[40px] rounded-md bg-foreground text-background font-mono text-[10px] tracking-[0.1em] uppercase hover:opacity-80 transition"
                 >
-                  + New conversation
+                  + New Conversation
                 </button>
               )}
               {sessionsLoading ? (
                 <div className="space-y-2 animate-pulse">
                   {[1, 2, 3].map((i) => (
-                    <div key={i} className="h-10 rounded-lg bg-surface" />
+                    <div key={i} className="h-12 rounded-lg bg-surface" />
                   ))}
                 </div>
               ) : chatSessions.length === 0 ? (
-                <p className="text-sm text-muted">No previous conversations.</p>
+                <p className="text-sm text-muted py-2">No previous conversations.</p>
               ) : (
                 <div className="space-y-1">
                   {chatSessions.map((s) => {
@@ -204,18 +233,20 @@ export function SettingsPanel({
                     return (
                       <div
                         key={s.id}
-                        className={`flex items-center rounded-lg px-2 py-2 -mx-2 transition group ${
+                        className={`flex items-center rounded-lg px-3 py-2.5 -mx-1 transition group ${
                           isActive
-                            ? 'bg-surface border border-border'
+                            ? 'bg-foreground/[0.04] border border-border'
                             : 'hover:bg-surface'
                         }`}
                       >
                         <button
                           onClick={() => { onLoadSession(s.id); onClose(); }}
-                          className="flex-1 text-left min-w-0"
+                          className="flex-1 text-left min-w-0 min-h-[36px]"
                         >
-                          <p className="text-sm text-foreground truncate">{s.preview}</p>
-                          <p className="text-xs text-muted">
+                          <p className="text-sm text-foreground truncate leading-snug">
+                            {s.preview}
+                          </p>
+                          <p className="font-mono text-[10px] tracking-wider text-muted uppercase mt-0.5">
                             {s.messageCount} msgs &middot; {timeAgo}
                           </p>
                         </button>
@@ -229,7 +260,7 @@ export function SettingsPanel({
                               headers: { 'x-zklogin-jwt': jwt },
                             }).catch(() => {});
                           }}
-                          className="text-dim hover:text-error opacity-0 group-hover:opacity-100 transition p-1 shrink-0 ml-1"
+                          className="flex items-center justify-center h-7 w-7 rounded text-dim hover:text-error hover:bg-error/10 opacity-0 group-hover:opacity-100 transition shrink-0 ml-1"
                           title="Delete conversation"
                         >
                           <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
@@ -246,26 +277,30 @@ export function SettingsPanel({
 
           {/* Contacts */}
           <section className="space-y-3">
-            <SectionHeader>Contacts</SectionHeader>
+            <SectionLabel>Contacts</SectionLabel>
             {contacts.length === 0 ? (
-              <p className="text-sm text-muted">No saved contacts yet. Send to an address and you&apos;ll be prompted to save it.</p>
+              <p className="text-sm text-muted">
+                No saved contacts yet. Send to an address and you&apos;ll be prompted to save it.
+              </p>
             ) : (
               <div className="space-y-1">
                 {contacts.map((c) => (
                   <div
                     key={c.address}
-                    className="flex items-center justify-between py-2 px-2 -mx-2 rounded-lg hover:bg-surface transition group"
+                    className="flex items-center justify-between py-2.5 px-3 -mx-1 rounded-lg hover:bg-surface transition group"
                   >
                     <div className="min-w-0">
-                      <p className="text-sm text-foreground font-medium">{c.name}</p>
-                      <p className="text-xs text-muted font-mono truncate">{truncateAddress(c.address)}</p>
+                      <p className="text-sm text-foreground">{c.name}</p>
+                      <p className="font-mono text-[10px] tracking-wider text-muted truncate mt-0.5">
+                        {truncateAddress(c.address)}
+                      </p>
                     </div>
                     <button
                       onClick={() => onRemoveContact(c.address)}
-                      className="text-dim hover:text-error opacity-0 group-hover:opacity-100 transition p-1"
+                      className="flex items-center justify-center h-7 w-7 rounded text-dim hover:text-error hover:bg-error/10 opacity-0 group-hover:opacity-100 transition shrink-0"
                       title="Remove contact"
                     >
-                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                      <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                       </svg>
                     </button>
@@ -277,30 +312,19 @@ export function SettingsPanel({
 
           {/* Safety Limits */}
           <section className="space-y-3">
-            <SectionHeader>Safety Limits</SectionHeader>
-            <div className="space-y-2">
+            <SectionLabel>Safety Limits</SectionLabel>
+            <div className="rounded-lg border border-border bg-surface/50 p-3 space-y-2">
               <EditableLimit
-                label="Max per transaction"
+                label="Max per tx"
                 value={limits.maxTx}
                 editing={editingLimit === 'maxTx'}
                 editValue={editValue}
                 onEdit={() => { setEditingLimit('maxTx'); setEditValue(String(limits.maxTx)); }}
                 onEditChange={setEditValue}
-                onSave={() => {
-                  const val = parseInt(editValue);
-                  if (val > 0) {
-                    const next = { ...limits, maxTx: val };
-                    setLimits(next);
-                    fetch('/api/user/preferences', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ address, limits: next }),
-                    }).catch(() => {});
-                  }
-                  setEditingLimit(null);
-                }}
+                onSave={() => saveLimit('maxTx', parseInt, (n) => n > 0)}
                 onCancel={() => setEditingLimit(null)}
               />
+              <div className="border-t border-border" />
               <EditableLimit
                 label="Max daily send"
                 value={limits.maxDaily}
@@ -308,74 +332,56 @@ export function SettingsPanel({
                 editValue={editValue}
                 onEdit={() => { setEditingLimit('maxDaily'); setEditValue(String(limits.maxDaily)); }}
                 onEditChange={setEditValue}
-                onSave={() => {
-                  const val = parseInt(editValue);
-                  if (val > 0) {
-                    const next = { ...limits, maxDaily: val };
-                    setLimits(next);
-                    fetch('/api/user/preferences', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ address, limits: next }),
-                    }).catch(() => {});
-                  }
-                  setEditingLimit(null);
-                }}
+                onSave={() => saveLimit('maxDaily', parseInt, (n) => n > 0)}
                 onCancel={() => setEditingLimit(null)}
               />
+              <div className="border-t border-border" />
               <EditableLimit
-                label="Agent session budget"
+                label="Agent budget"
                 value={limits.agentBudget}
                 editing={editingLimit === 'agentBudget'}
                 editValue={editValue}
                 onEdit={() => { setEditingLimit('agentBudget'); setEditValue(String(limits.agentBudget)); }}
                 onEditChange={setEditValue}
-                onSave={() => {
-                  const val = parseFloat(editValue);
-                  if (val >= 0) {
-                    const next = { ...limits, agentBudget: val };
-                    setLimits(next);
-                    fetch('/api/user/preferences', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ address, limits: next }),
-                    }).catch(() => {});
-                  }
-                  setEditingLimit(null);
-                }}
+                onSave={() => saveLimit('agentBudget', parseFloat, (n) => n >= 0)}
                 onCancel={() => setEditingLimit(null)}
               />
-              <p className="text-xs text-muted">Tap a limit to customize. Agent budget is the max auto-approved spend per session.</p>
             </div>
+            <p className="font-mono text-[10px] tracking-wider text-dim uppercase leading-relaxed">
+              Tap a limit to customize. Agent budget is the max auto-approved spend per session.
+            </p>
           </section>
 
           {/* Links */}
           <section className="space-y-3">
-            <SectionHeader>Links</SectionHeader>
+            <SectionLabel>Links</SectionLabel>
             <a
               href={`https://suiscan.xyz/${network}/account/${address}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="block text-sm text-info hover:underline transition"
+              className="inline-flex items-center gap-1 min-h-[36px] font-mono text-[10px] tracking-[0.1em] text-muted uppercase hover:text-foreground transition"
             >
-              View on Suiscan &#8599;
+              View on Suiscan
+              <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25" />
+              </svg>
             </a>
           </section>
 
-          {/* Emergency Lock */}
+          {/* Security */}
           <section className="space-y-3">
-            <SectionHeader>Security</SectionHeader>
+            <SectionLabel>Security</SectionLabel>
             {!showEmergencyConfirm ? (
               <button
                 onClick={() => setShowEmergencyConfirm(true)}
-                className="w-full rounded-lg border border-error/20 bg-error/5 py-2.5 text-sm font-medium text-error hover:bg-error/10 transition flex items-center justify-center gap-2"
+                className="w-full min-h-[40px] rounded-md border border-error/30 bg-error/5 font-mono text-[10px] tracking-[0.1em] text-error uppercase hover:bg-error/10 transition flex items-center justify-center gap-2"
               >
-                <span className="w-2 h-2 bg-error rounded-full" />
+                <span className="h-1.5 w-1.5 bg-error rounded-full" />
                 Emergency Lock
               </button>
             ) : (
-              <div className="rounded-lg border border-error/30 bg-error/5 p-3 space-y-3">
-                <p className="text-sm text-error">
+              <div className="rounded-lg border border-error/30 bg-error/5 p-4 space-y-3">
+                <p className="text-sm text-error leading-relaxed">
                   This will sign you out and clear all local data. You can sign back in anytime with Google.
                 </p>
                 <div className="flex gap-2">
@@ -384,13 +390,13 @@ export function SettingsPanel({
                       setShowEmergencyConfirm(false);
                       onSignOut();
                     }}
-                    className="flex-1 rounded-lg bg-error/10 border border-error/30 py-2 text-sm font-medium text-error hover:bg-error/20 transition"
+                    className="flex-1 min-h-[36px] rounded-md bg-error text-white font-mono text-[10px] tracking-[0.1em] uppercase hover:opacity-90 transition"
                   >
                     Confirm Lock
                   </button>
                   <button
                     onClick={() => setShowEmergencyConfirm(false)}
-                    className="flex-1 rounded-lg border border-border py-2 text-sm text-muted hover:text-foreground transition"
+                    className="flex-1 min-h-[36px] rounded-md border border-border font-mono text-[10px] tracking-[0.1em] text-muted uppercase hover:text-foreground hover:border-foreground/20 transition"
                   >
                     Cancel
                   </button>
@@ -400,12 +406,13 @@ export function SettingsPanel({
           </section>
         </div>
 
-        <div className="p-5 border-t border-border">
+        {/* Footer */}
+        <div className="px-5 py-4 border-t border-border">
           <button
             onClick={onSignOut}
-            className="w-full rounded-lg bg-surface border border-border py-3 text-sm font-medium text-muted hover:text-foreground hover:border-border-bright transition"
+            className="w-full min-h-[40px] rounded-md border border-border font-mono text-[10px] tracking-[0.1em] text-muted uppercase hover:text-foreground hover:border-foreground/20 transition"
           >
-            Sign out
+            Sign Out
           </button>
         </div>
       </div>
@@ -425,17 +432,19 @@ function formatTimeAgo(timestamp: number): string {
   return new Date(timestamp).toLocaleDateString();
 }
 
-function SectionHeader({ children }: { children: React.ReactNode }) {
+function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <h3 className="text-xs font-semibold text-muted uppercase tracking-wider">{children}</h3>
+    <h3 className="font-mono text-[10px] tracking-[0.12em] text-muted uppercase">
+      {children}
+    </h3>
   );
 }
 
-function SettingRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+function InfoRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
-    <div className="flex justify-between text-sm">
+    <div className="flex justify-between items-center text-sm">
       <span className="text-muted">{label}</span>
-      <span className={`text-foreground ${mono ? 'font-mono' : ''}`}>{value}</span>
+      <span className={`text-foreground ${mono ? 'font-mono text-xs' : ''}`}>{value}</span>
     </div>
   );
 }
@@ -461,31 +470,30 @@ function EditableLimit({
 }) {
   if (editing) {
     return (
-      <div className="flex items-center justify-between text-sm gap-2">
-        <span className="text-muted">{label}</span>
-        <div className="flex items-center gap-1">
-          <span className="text-muted">$</span>
+      <div className="flex items-center justify-between gap-2 py-1">
+        <span className="font-mono text-[10px] tracking-[0.1em] text-muted uppercase">{label}</span>
+        <div className="flex items-center gap-1.5">
+          <span className="text-muted text-sm">$</span>
           <input
             type="number"
             value={editValue}
             onChange={(e) => onEditChange(e.target.value)}
             autoFocus
-            className="w-20 rounded-lg border border-border bg-surface px-2 py-1 text-sm text-foreground font-mono outline-none focus:border-border-bright"
+            className="w-20 rounded-md border border-foreground bg-background px-2 py-1.5 text-sm text-foreground font-mono outline-none"
             onKeyDown={(e) => { if (e.key === 'Enter') onSave(); if (e.key === 'Escape') onCancel(); }}
           />
-          <button onClick={onSave} className="text-foreground text-xs font-medium px-1">Save</button>
-          <button onClick={onCancel} className="text-dim text-xs px-1">&times;</button>
+          <button onClick={onSave} className="font-mono text-[10px] tracking-wider text-foreground uppercase px-1.5 py-1 hover:opacity-70 transition">Save</button>
+          <button onClick={onCancel} className="text-dim text-sm px-1 hover:text-foreground transition">&times;</button>
         </div>
       </div>
     );
   }
 
   return (
-    <button onClick={onEdit} className="flex justify-between text-sm w-full group">
-      <span className="text-muted">{label}</span>
-      <span className="text-foreground font-mono group-hover:opacity-70 transition">
+    <button onClick={onEdit} className="flex justify-between items-center w-full group py-1">
+      <span className="font-mono text-[10px] tracking-[0.1em] text-muted uppercase">{label}</span>
+      <span className="text-sm text-foreground font-mono group-hover:opacity-60 transition">
         ${value.toLocaleString()}
-        <span className="text-dim text-xs ml-1 opacity-0 group-hover:opacity-100 transition">&#9998;</span>
       </span>
     </button>
   );

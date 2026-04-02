@@ -1,20 +1,25 @@
 import type { Metadata } from 'next';
 import { ProductPage } from '@/components/ProductPage';
+import { getGatewayStats } from '@/lib/product-stats';
 
 export const metadata: Metadata = {
   title: 'Pay — Audric',
   description:
-    'Access 88+ APIs with USDC micropayments. No API keys, no subscriptions.',
+    'Access APIs with USDC micropayments. No API keys, no subscriptions.',
 };
 
-export default function PayPage() {
+export default async function PayPage() {
+  const stats = await getGatewayStats();
+  const endpointLabel = stats ? `${stats.endpointCount}+` : '90+';
+  const serviceLabel = stats ? `${stats.serviceCount}` : '40+';
+
   return (
     <ProductPage
       badge="Pay"
       title="Pay for any API. No keys."
-      subtitle="Access 88+ APIs across AI, search, and commerce with USDC micropayments. Pay per request, not per month."
+      subtitle={`Access ${endpointLabel} endpoints across ${serviceLabel} services with USDC micropayments. Pay per request, not per month.`}
       stats={[
-        { label: 'APIs available', value: '88+' },
+        { label: 'Endpoints', value: endpointLabel },
         { label: 'Cost per call', value: '~$0.001' },
         { label: 'Subscriptions', value: 'Zero' },
       ]}
