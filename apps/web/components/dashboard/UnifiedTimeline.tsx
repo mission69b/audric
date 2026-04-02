@@ -7,7 +7,7 @@ import { FeedItemCard } from '@/components/dashboard/FeedRenderer';
 import type { useEngine } from '@/hooks/useEngine';
 import type { useFeed } from '@/hooks/useFeed';
 import type { FeedItem } from '@/lib/feed-types';
-import type { EngineChatMessage } from '@/lib/engine-types';
+import type { EngineChatMessage, PendingAction } from '@/lib/engine-types';
 
 type EngineInstance = ReturnType<typeof useEngine>;
 type FeedInstance = ReturnType<typeof useFeed>;
@@ -106,29 +106,23 @@ export function UnifiedTimeline({
     [engine.sendMessage],
   );
 
-  const handlePermissionResolve = useCallback(
-    async (permissionId: string, approved: boolean) => {
+  const handleActionResolve = useCallback(
+    async (action: PendingAction, approved: boolean) => {
       if (!approved || !onExecuteAction) {
-        engine.resolvePermission(permissionId, approved);
-        return;
-      }
-
-      const msg = engine.messages.find((m) => m.permission?.permissionId === permissionId);
-      if (!msg?.permission) {
-        engine.resolvePermission(permissionId, approved);
+        engine.resolveAction(action, approved);
         return;
       }
 
       try {
-        const result = await onExecuteAction(msg.permission.toolName, msg.permission.input);
-        engine.resolvePermission(permissionId, true, result.data);
+        const result = await onExecuteAction(action.toolName, action.input);
+        engine.resolveAction(action, true, result.data);
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : 'Execution failed';
-        engine.resolvePermission(permissionId, true, { success: false, error: errorMsg });
+        engine.resolveAction(action, true, { success: false, error: errorMsg });
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [engine.resolvePermission, engine.messages, onExecuteAction],
+    [engine.resolveAction, onExecuteAction],
   );
 
   const isEmpty = engine.messages.length === 0 && feed.items.length === 0;
@@ -154,7 +148,7 @@ export function UnifiedTimeline({
             <ChatMessage
               key={entry.msg.id}
               message={entry.msg}
-              onPermissionResolve={handlePermissionResolve}
+              onActionResolve={handleActionResolve}
             />
           );
         }

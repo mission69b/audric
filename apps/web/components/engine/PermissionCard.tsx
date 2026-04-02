@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import type { PendingPermission } from '@/lib/engine-types';
+import type { PendingAction } from '@/lib/engine-types';
 
 const TOOL_LABELS: Record<string, string> = {
   save_deposit: 'Save deposit',
@@ -27,28 +27,28 @@ function formatInput(input: unknown): string | null {
 }
 
 interface PermissionCardProps {
-  permission: PendingPermission;
-  onResolve: (permissionId: string, approved: boolean) => void;
+  action: PendingAction;
+  onResolve: (action: PendingAction, approved: boolean) => void;
 }
 
-export function PermissionCard({ permission, onResolve }: PermissionCardProps) {
+export function PermissionCard({ action, onResolve }: PermissionCardProps) {
   const [resolved, setResolved] = useState(false);
   const resolvedRef = useRef(false);
   const [secondsLeft, setSecondsLeft] = useState(TIMEOUT_SEC);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const label = TOOL_LABELS[permission.toolName] ?? permission.toolName.replace(/_/g, ' ');
-  const inputSummary = formatInput(permission.input);
+  const label = TOOL_LABELS[action.toolName] ?? action.toolName.replace(/_/g, ' ');
+  const inputSummary = formatInput(action.input);
 
   const handle = (approved: boolean) => {
     if (resolvedRef.current) return;
     resolvedRef.current = true;
     setResolved(true);
     if (timerRef.current) clearInterval(timerRef.current);
-    onResolve(permission.permissionId, approved);
+    onResolve(action, approved);
   };
 
   useEffect(() => {
-    if (permission.status !== 'pending' || resolved) return;
+    if (resolved) return;
 
     timerRef.current = setInterval(() => {
       setSecondsLeft((prev) => {
@@ -64,15 +64,7 @@ export function PermissionCard({ permission, onResolve }: PermissionCardProps) {
       if (timerRef.current) clearInterval(timerRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [permission.status, resolved]);
-
-  if (permission.status !== 'pending') {
-    return (
-      <div className="rounded-xl border border-border bg-surface p-3 text-xs text-muted text-center" role="status">
-        {permission.status === 'approved' ? 'Approved' : 'Denied'} — {label}
-      </div>
-    );
-  }
+  }, [resolved]);
 
   const progress = secondsLeft / TIMEOUT_SEC;
 
@@ -81,7 +73,7 @@ export function PermissionCard({ permission, onResolve }: PermissionCardProps) {
       className="rounded-xl border border-border bg-surface p-3 space-y-2.5 shadow-[var(--shadow-card)]"
       role="alertdialog"
       aria-label={`Confirm ${label}`}
-      aria-describedby={`perm-desc-${permission.permissionId}`}
+      aria-describedby={`perm-desc-${action.toolUseId}`}
     >
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium text-foreground">{label}</span>
@@ -104,8 +96,8 @@ export function PermissionCard({ permission, onResolve }: PermissionCardProps) {
         </div>
       )}
 
-      {permission.description && (
-        <p className="text-xs text-muted" id={`perm-desc-${permission.permissionId}`}>{permission.description}</p>
+      {action.description && (
+        <p className="text-xs text-muted" id={`perm-desc-${action.toolUseId}`}>{action.description}</p>
       )}
 
       {inputSummary && (

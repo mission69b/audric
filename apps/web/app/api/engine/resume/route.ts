@@ -3,20 +3,17 @@ import { engineToSSE } from '@t2000/engine';
 import type { PendingAction } from '@t2000/engine';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { validateJwt, isValidSuiAddress } from '@/lib/auth';
-import {
-  createEngine,
-  getSessionStore,
-  generateSessionId,
-} from '@/lib/engine/engine-factory';
-import { UpstashSessionStore } from '@/lib/engine/upstash-session-store';
+import { createEngine, getSessionStore } from '@/lib/engine/engine-factory';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
-interface ChatRequestBody {
-  message: string;
+interface ResumeRequestBody {
   address: string;
-  sessionId?: string;
+  sessionId: string;
+  action: PendingAction;
+  approved: boolean;
+  executionResult?: unknown;
 }
 
 function jsonError(message: string, status: number): Response {
@@ -27,17 +24,17 @@ function jsonError(message: string, status: number): Response {
 }
 
 export async function POST(request: NextRequest) {
-  let body: ChatRequestBody;
+  let body: ResumeRequestBody;
   try {
     body = await request.json();
   } catch {
     return jsonError('Invalid JSON body', 400);
   }
 
-  const { message, address, sessionId: requestedSessionId } = body;
+  const { address, sessionId, action, approved, executionResult } = body;
 
-  if (!message?.trim() || !address) {
-    return jsonError('message and address are required', 400);
+  if (!address || !sessionId || !action?.toolUseId) {
+    return jsonError('address, sessionId, and action are required', 400);
   }
 
   if (!isValidSuiAddress(address)) {
@@ -50,15 +47,15 @@ export async function POST(request: NextRequest) {
 
   const ip =
     request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
-  const rl = rateLimit(`engine:${ip}`, 20, 60_000);
+  const rl = rateLimit(`engine-resume:${ip}`, 20, 60_000);
   if (!rl.success) return rateLimitResponse(rl.retryAfterMs!);
 
   const store = getSessionStore();
-  const sessionId = requestedSessionId || generateSessionId();
+  const session = await store.get(sessionId);
 
-  const session = requestedSessionId
-    ? await store.get(requestedSessionId)
-    : null;
+  if (!session) {
+    return jsonError('Session not found', 404);
+  }
 
   try {
     const engine = await createEngine(address, session);
@@ -69,18 +66,11 @@ export async function POST(request: NextRequest) {
         let pendingAction: PendingAction | null = null;
 
         try {
-          controller.enqueue(
-            encoder.encode(
-              `event: session\ndata: ${JSON.stringify({ sessionId })}\n\n`,
-            ),
-          );
-
           for await (const chunk of engineToSSE(
-            engine.submitMessage(message.trim()),
+            engine.resumeWithToolResult(action, { approved, executionResult }),
           )) {
             controller.enqueue(encoder.encode(chunk));
 
-            // Detect pending_action in the SSE output
             if (chunk.includes('"type":"pending_action"')) {
               try {
                 const match = chunk.match(/data: (.+)/);
@@ -95,24 +85,18 @@ export async function POST(request: NextRequest) {
           }
 
           const updatedSession = {
-            id: sessionId,
+            ...session,
             messages: [...engine.getMessages()],
             usage: engine.getUsage(),
-            createdAt: session?.createdAt ?? Date.now(),
             updatedAt: Date.now(),
             pendingAction,
-            metadata: { address },
           };
 
           await store.set(updatedSession);
-
-          if (!requestedSessionId && store instanceof UpstashSessionStore) {
-            await store.addToUserIndex(address, sessionId);
-          }
         } catch (err) {
           const errorMsg =
             err instanceof Error ? err.message : 'Engine error';
-          console.error('[engine/chat] stream error:', errorMsg);
+          console.error('[engine/resume] stream error:', errorMsg);
           controller.enqueue(
             encoder.encode(
               `event: error\ndata: ${JSON.stringify({ type: 'error', message: errorMsg })}\n\n`,
@@ -129,12 +113,11 @@ export async function POST(request: NextRequest) {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache, no-transform',
         Connection: 'keep-alive',
-        'X-Session-Id': sessionId,
       },
     });
   } catch (err) {
-    const errorMsg = err instanceof Error ? err.message : 'Engine initialization failed';
-    console.error('[engine/chat] init error:', errorMsg);
+    const errorMsg = err instanceof Error ? err.message : 'Engine resume failed';
+    console.error('[engine/resume] init error:', errorMsg);
     return jsonError(errorMsg, 500);
   }
 }

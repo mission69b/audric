@@ -1,6 +1,6 @@
-import type { SSEEvent } from '@t2000/engine';
+import type { SSEEvent, PendingAction } from '@t2000/engine';
 
-export type { SSEEvent };
+export type { SSEEvent, PendingAction };
 
 export interface EngineChatMessage {
   id: string;
@@ -8,7 +8,7 @@ export interface EngineChatMessage {
   content: string;
   timestamp: number;
   tools?: ToolExecution[];
-  permission?: PendingPermission;
+  pendingAction?: PendingAction;
   usage?: UsageData;
   isStreaming?: boolean;
 }
@@ -22,15 +22,6 @@ export interface ToolExecution {
   isError?: boolean;
 }
 
-export interface PendingPermission {
-  permissionId: string;
-  toolName: string;
-  toolUseId: string;
-  input: unknown;
-  description: string;
-  status: 'pending' | 'approved' | 'denied';
-}
-
 export interface UsageData {
   inputTokens: number;
   outputTokens: number;
@@ -38,4 +29,4 @@ export interface UsageData {
   cacheWriteTokens?: number;
 }
 
-export type EngineStatus = 'idle' | 'connecting' | 'streaming' | 'error';
+export type EngineStatus = 'idle' | 'connecting' | 'streaming' | 'executing' | 'error';

@@ -4,7 +4,7 @@ import { useCallback, useRef, useState } from 'react';
 import type {
   EngineChatMessage,
   ToolExecution,
-  PendingPermission,
+  PendingAction,
   UsageData,
   EngineStatus,
   SSEEvent,
@@ -41,13 +41,12 @@ export function useEngine({ address, jwt }: UseEngineOptions) {
   const streamingMsgRef = useRef<string | null>(null);
   const lastFailedMessage = useRef<string | null>(null);
   const hasReceivedContent = useRef(false);
-
   const retryCountRef = useRef(0);
 
   const sendMessage = useCallback(
     async (text: string) => {
       if (!address || !jwt) return;
-      if (status === 'streaming' || status === 'connecting') return;
+      if (status === 'streaming' || status === 'connecting' || status === 'executing') return;
 
       setError(null);
       lastFailedMessage.current = null;
@@ -73,30 +72,80 @@ export function useEngine({ address, jwt }: UseEngineOptions) {
       streamingMsgRef.current = assistantMsg.id;
       setMessages((prev) => [...prev, userMsg, assistantMsg]);
 
-      await attemptStream(text);
+      await attemptStream('/api/engine/chat', {
+        message: text,
+        address,
+        sessionId: sessionId ?? undefined,
+      });
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [address, jwt, sessionId, status],
   );
 
-  async function attemptStream(text: string) {
+  /**
+   * Resume the engine after a pending action is resolved.
+   * Opens a new SSE stream to /api/engine/resume with the tool result.
+   */
+  const resolveAction = useCallback(
+    async (action: PendingAction, approved: boolean, executionResult?: unknown) => {
+      if (!sessionId || !jwt || !address) return;
+
+      setMessages((prev) =>
+        prev.map((m) => {
+          if (!m.pendingAction || m.pendingAction.toolUseId !== action.toolUseId) return m;
+          return { ...m, pendingAction: undefined };
+        }),
+      );
+
+      if (!approved) {
+        const denialMsg: EngineChatMessage = {
+          id: nextMsgId(),
+          role: 'assistant',
+          content: 'Action cancelled.',
+          timestamp: Date.now(),
+        };
+        setMessages((prev) => [...prev, denialMsg]);
+        return;
+      }
+
+      const resumeMsg: EngineChatMessage = {
+        id: nextMsgId(),
+        role: 'assistant',
+        content: '',
+        timestamp: Date.now(),
+        tools: [],
+        isStreaming: true,
+      };
+
+      streamingMsgRef.current = resumeMsg.id;
+      setMessages((prev) => [...prev, resumeMsg]);
+
+      await attemptStream('/api/engine/resume', {
+        address,
+        sessionId,
+        action,
+        approved,
+        executionResult,
+      });
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [address, jwt, sessionId],
+  );
+
+  async function attemptStream(url: string, body: Record<string, unknown>) {
     setStatus('connecting');
 
     const controller = new AbortController();
     abortRef.current = controller;
 
     try {
-      const res = await fetch('/api/engine/chat', {
+      const res = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'x-zklogin-jwt': jwt!,
         },
-        body: JSON.stringify({
-          message: text,
-          address,
-          sessionId: sessionId ?? undefined,
-        }),
+        body: JSON.stringify(body),
         signal: controller.signal,
       });
 
@@ -183,13 +232,13 @@ export function useEngine({ address, jwt }: UseEngineOptions) {
         const delay = BASE_DELAY_MS * Math.pow(2, retryCountRef.current - 1);
         await new Promise((r) => setTimeout(r, delay));
         if (abortRef.current?.signal.aborted) return;
-        await attemptStream(text);
+        await attemptStream(url, body);
         return;
       }
 
       const errorMsg = err instanceof Error ? err.message : 'Connection failed';
       setError(errorMsg);
-      lastFailedMessage.current = text;
+      if (body.message) lastFailedMessage.current = body.message as string;
       setMessages((prev) =>
         prev.map((m) =>
           m.id === streamingMsgRef.current
@@ -279,18 +328,14 @@ export function useEngine({ address, jwt }: UseEngineOptions) {
         );
         break;
 
-      case 'permission_request': {
-        const permission: PendingPermission = {
-          permissionId: event.permissionId,
-          toolName: event.toolName,
-          toolUseId: event.toolUseId,
-          input: event.input,
-          description: event.description,
-          status: 'pending',
-        };
+      case 'pending_action': {
+        hasReceivedContent.current = true;
+        setStatus('executing');
         setMessages((prev) =>
           prev.map((m) =>
-            m.id === msgId ? { ...m, permission } : m,
+            m.id === msgId
+              ? { ...m, pendingAction: event.action, isStreaming: false }
+              : m,
           ),
         );
         break;
@@ -340,43 +385,6 @@ export function useEngine({ address, jwt }: UseEngineOptions) {
         break;
     }
   }
-
-  const resolvePermission = useCallback(
-    async (permissionId: string, approved: boolean, executionResult?: unknown) => {
-      if (!sessionId || !jwt) return;
-
-      try {
-        const res = await fetch('/api/engine/permission', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-zklogin-jwt': jwt,
-          },
-          body: JSON.stringify({ sessionId, permissionId, approved, executionResult }),
-        });
-
-        if (!res.ok) {
-          console.error('[useEngine] permission resolve failed:', res.status);
-        }
-
-        setMessages((prev) =>
-          prev.map((m) => {
-            if (!m.permission || m.permission.permissionId !== permissionId) return m;
-            return {
-              ...m,
-              permission: {
-                ...m.permission,
-                status: approved ? 'approved' : 'denied',
-              },
-            };
-          }),
-        );
-      } catch (err) {
-        console.error('[useEngine] permission resolve error:', err);
-      }
-    },
-    [sessionId, jwt],
-  );
 
   const cancel = useCallback(() => {
     abortRef.current?.abort();
@@ -430,7 +438,7 @@ export function useEngine({ address, jwt }: UseEngineOptions) {
           setMessages(data.messages as EngineChatMessage[]);
         }
       } catch {
-        // session loads silently — user can still send new messages
+        // session loads silently
       }
     },
     [jwt],
@@ -447,13 +455,13 @@ export function useEngine({ address, jwt }: UseEngineOptions) {
     usage,
     error,
     sendMessage,
-    resolvePermission,
+    resolveAction,
     cancel,
     retry,
     clearMessages,
     loadSession,
     injectMessage,
     canRetry: !!lastFailedMessage.current,
-    isStreaming: status === 'streaming' || status === 'connecting',
+    isStreaming: status === 'streaming' || status === 'connecting' || status === 'executing',
   };
 }

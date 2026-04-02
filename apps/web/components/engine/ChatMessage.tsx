@@ -1,15 +1,15 @@
 'use client';
 
-import type { EngineChatMessage } from '@/lib/engine-types';
+import type { EngineChatMessage, PendingAction } from '@/lib/engine-types';
 import { ToolCard } from './ToolCard';
 import { PermissionCard } from './PermissionCard';
 
 interface ChatMessageProps {
   message: EngineChatMessage;
-  onPermissionResolve?: (permissionId: string, approved: boolean) => void;
+  onActionResolve?: (action: PendingAction, approved: boolean) => void;
 }
 
-export function ChatMessage({ message, onPermissionResolve }: ChatMessageProps) {
+export function ChatMessage({ message, onActionResolve }: ChatMessageProps) {
   if (message.role === 'user') {
     return (
       <div className="flex justify-end" role="log" aria-label="Your message">
@@ -21,7 +21,7 @@ export function ChatMessage({ message, onPermissionResolve }: ChatMessageProps) 
   }
 
   const hasTools = message.tools && message.tools.length > 0;
-  const hasPermission = message.permission && message.permission.status === 'pending';
+  const hasPendingAction = !!message.pendingAction;
   const hasContent = message.content.length > 0;
 
   return (
@@ -34,10 +34,10 @@ export function ChatMessage({ message, onPermissionResolve }: ChatMessageProps) 
         </div>
       )}
 
-      {hasPermission && onPermissionResolve && (
+      {hasPendingAction && onActionResolve && (
         <PermissionCard
-          permission={message.permission!}
-          onResolve={onPermissionResolve}
+          action={message.pendingAction!}
+          onResolve={onActionResolve}
         />
       )}
 

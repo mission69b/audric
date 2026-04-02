@@ -54,11 +54,11 @@ export function EngineChat({ engine, email }: EngineChatProps) {
     [engine.sendMessage],
   );
 
-  const handlePermissionResolve = useCallback(
-    (permissionId: string, approved: boolean) => {
-      engine.resolvePermission(permissionId, approved);
+  const handleActionResolve = useCallback(
+    (action: Parameters<typeof engine.resolveAction>[0], approved: boolean) => {
+      engine.resolveAction(action, approved);
     },
-    [engine.resolvePermission],
+    [engine.resolveAction],
   );
 
   const isEmpty = engine.messages.length === 0;
@@ -84,7 +84,7 @@ export function EngineChat({ engine, email }: EngineChatProps) {
           <ChatMessage
             key={msg.id}
             message={msg}
-            onPermissionResolve={handlePermissionResolve}
+            onActionResolve={handleActionResolve}
           />
         );
       })}
