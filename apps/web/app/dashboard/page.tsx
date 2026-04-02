@@ -11,12 +11,11 @@ import { InputBar } from '@/components/dashboard/InputBar';
 import { ConfirmationCard } from '@/components/dashboard/ConfirmationCard';
 import { ResultCard } from '@/components/dashboard/ResultCard';
 import { AmountChips } from '@/components/dashboard/AmountChips';
-import { FeedRenderer } from '@/components/dashboard/FeedRenderer';
 import { resolveFlow } from '@/components/dashboard/AgentMarkdown';
+import { UnifiedTimeline } from '@/components/dashboard/UnifiedTimeline';
 import { SettingsPanel } from '@/components/settings/SettingsPanel';
 import { useChipFlow, type ChipFlowResult, type FlowContext } from '@/hooks/useChipFlow';
 import { useFeed } from '@/hooks/useFeed';
-import { EngineChat } from '@/components/engine/EngineChat';
 import { useEngine } from '@/hooks/useEngine';
 import { useBalance } from '@/hooks/useBalance';
 import { parseIntent, type ParsedIntent } from '@/lib/intent-parser';
@@ -211,8 +210,6 @@ function DashboardContent() {
   const [agentBudget, setAgentBudget] = useState(0.50);
   const [dismissedCards, setDismissedCards] = useState<Set<string>>(new Set());
   const [scrolled, setScrolled] = useState(false);
-  const feedEndRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
     window.addEventListener('scroll', onScroll, { passive: true });
@@ -241,21 +238,6 @@ function DashboardContent() {
     error: balanceQuery.isError,
   };
 
-  const prevInFlow = useRef(false);
-  useEffect(() => {
-    const currentlyInFlow = chipFlow.state.phase !== 'idle';
-    const flowJustEnded = prevInFlow.current && !currentlyInFlow;
-    prevInFlow.current = currentlyInFlow;
-
-    if (feed.items.length === 0) return;
-    if (currentlyInFlow) return;
-
-    if (flowJustEnded || feed.items.length > 0) {
-      requestAnimationFrame(() => {
-        feedEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-      });
-    }
-  }, [feed.items.length, chipFlow.state.phase]);
 
   useEffect(() => {
     if (!address) return;
@@ -869,7 +851,6 @@ function DashboardContent() {
   if (!address || !session) return null;
 
   const isInFlow = chipFlow.state.phase !== 'idle';
-  const hasFeedItems = feed.items.length > 0;
 
   return (
     <main className="flex flex-1 flex-col pb-36">
@@ -960,18 +941,12 @@ function DashboardContent() {
           />
         )}
 
-        {/* Engine streaming chat (freeform AI conversations) */}
+        {/* Unified timeline: engine messages + feed items interleaved by timestamp */}
         {!isInFlow && (
-          <EngineChat
+          <UnifiedTimeline
             engine={engine}
+            feed={feed}
             email={decodeJwtEmail(session?.jwt)}
-          />
-        )}
-
-        {/* Conversational Feed (intent-driven items like balance, rates, receipts) */}
-        {hasFeedItems && !isInFlow && (
-          <FeedRenderer
-            items={feed.items}
             onChipClick={handleFeedChipClick}
             onCopy={handleCopy}
             onSaveContact={handleSaveContact}
@@ -989,7 +964,6 @@ function DashboardContent() {
           />
         )}
 
-        <div ref={feedEndRef} />
       </div>
 
       {/* Bottom bar — fixed */}

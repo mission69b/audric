@@ -155,7 +155,7 @@ function CopyableCode({ code, onCopy }: { code: string; onCopy?: (text: string) 
   );
 }
 
-function FeedItemCard({
+export function FeedItemCard({
   item,
   onChipClick,
   onCopy,

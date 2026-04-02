@@ -436,6 +436,10 @@ export function useEngine({ address, jwt }: UseEngineOptions) {
     [jwt],
   );
 
+  const injectMessage = useCallback((msg: EngineChatMessage) => {
+    setMessages((prev) => [...prev, msg]);
+  }, []);
+
   return {
     messages,
     status,
@@ -448,6 +452,7 @@ export function useEngine({ address, jwt }: UseEngineOptions) {
     retry,
     clearMessages,
     loadSession,
+    injectMessage,
     canRetry: !!lastFailedMessage.current,
     isStreaming: status === 'streaming' || status === 'connecting',
   };

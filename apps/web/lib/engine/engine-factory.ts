@@ -4,9 +4,11 @@ import {
   McpClientManager,
   NAVI_MCP_CONFIG,
   READ_TOOLS,
+  adaptAllServerTools,
   type SessionData,
   type SessionStore,
   type ServerPositionData,
+  type Tool,
 } from '@t2000/engine';
 import { UpstashSessionStore } from './upstash-session-store';
 
@@ -127,13 +129,18 @@ export async function createEngine(
     fetchServerPositions(address),
   ]);
 
+  const builtInNames = new Set(READ_TOOLS.map((t) => t.name));
+  const mcpTools = adaptAllServerTools(mgr).filter(
+    (t) => !builtInNames.has(t.name),
+  ) as Tool[];
+
   const engine = new QueryEngine({
     provider: new AnthropicProvider({ apiKey: ANTHROPIC_API_KEY }),
     mcpManager: mgr,
     walletAddress: address,
     suiRpcUrl: SUI_RPC_URL,
     serverPositions: positions,
-    tools: READ_TOOLS,
+    tools: [...READ_TOOLS, ...mcpTools],
     model: MODEL,
     maxTurns: 10,
     maxTokens: 4096,
