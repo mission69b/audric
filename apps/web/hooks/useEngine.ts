@@ -411,13 +411,30 @@ export function useEngine({ address, jwt }: UseEngineOptions) {
     lastFailedMessage.current = null;
   }, []);
 
-  const loadSession = useCallback((id: string) => {
-    setMessages([]);
-    setSessionId(id);
-    setUsage(null);
-    setError(null);
-    lastFailedMessage.current = null;
-  }, []);
+  const loadSession = useCallback(
+    async (id: string) => {
+      setMessages([]);
+      setSessionId(id);
+      setUsage(null);
+      setError(null);
+      lastFailedMessage.current = null;
+
+      if (!jwt) return;
+      try {
+        const res = await fetch(`/api/engine/sessions/${encodeURIComponent(id)}`, {
+          headers: { 'x-zklogin-jwt': jwt },
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.messages?.length) {
+          setMessages(data.messages as EngineChatMessage[]);
+        }
+      } catch {
+        // session loads silently — user can still send new messages
+      }
+    },
+    [jwt],
+  );
 
   return {
     messages,

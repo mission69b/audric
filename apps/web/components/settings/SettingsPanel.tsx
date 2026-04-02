@@ -213,7 +213,7 @@ export function SettingsPanel({
                       >
                         <p className="text-sm text-foreground truncate">{s.preview}</p>
                         <p className="text-xs text-muted">
-                          {s.messageCount} msgs \u00B7 {timeAgo}
+                          {s.messageCount} msgs &middot; {timeAgo}
                         </p>
                       </button>
                     );
@@ -453,7 +453,7 @@ function EditableLimit({
             onKeyDown={(e) => { if (e.key === 'Enter') onSave(); if (e.key === 'Escape') onCancel(); }}
           />
           <button onClick={onSave} className="text-foreground text-xs font-medium px-1">Save</button>
-          <button onClick={onCancel} className="text-dim text-xs px-1">\u00D7</button>
+          <button onClick={onCancel} className="text-dim text-xs px-1">&times;</button>
         </div>
       </div>
     );
@@ -464,7 +464,7 @@ function EditableLimit({
       <span className="text-muted">{label}</span>
       <span className="text-foreground font-mono group-hover:opacity-70 transition">
         ${value.toLocaleString()}
-        <span className="text-dim text-xs ml-1 opacity-0 group-hover:opacity-100 transition">\u270E</span>
+        <span className="text-dim text-xs ml-1 opacity-0 group-hover:opacity-100 transition">&#9998;</span>
       </span>
     </button>
   );
