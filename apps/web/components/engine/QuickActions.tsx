@@ -25,7 +25,7 @@ export function QuickActions({ onSelect, disabled }: QuickActionsProps) {
           key={action.label}
           onClick={() => onSelect(action.prompt)}
           disabled={disabled}
-          className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium text-muted hover:border-border-bright hover:text-foreground transition disabled:opacity-50 disabled:pointer-events-none"
+          className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-mono uppercase tracking-wider font-medium text-muted hover:border-border-bright hover:text-foreground transition disabled:opacity-50 disabled:pointer-events-none"
         >
           {action.label}
         </button>

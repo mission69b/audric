@@ -13,7 +13,7 @@ export function ChatMessage({ message, onActionResolve }: ChatMessageProps) {
   if (message.role === 'user') {
     return (
       <div className="flex justify-end" role="log" aria-label="Your message">
-        <div className="max-w-[80%] rounded-2xl rounded-br-md bg-foreground px-4 py-2.5 text-sm text-background break-words overflow-hidden">
+        <div className="max-w-[80%] rounded-2xl rounded-br-md bg-surface border border-border px-4 py-2.5 text-sm text-foreground break-words overflow-hidden">
           {message.content}
         </div>
       </div>

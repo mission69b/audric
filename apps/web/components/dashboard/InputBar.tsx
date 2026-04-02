@@ -54,8 +54,20 @@ export function InputBar({
     [handleSubmit, value, onCancel],
   );
 
+  const hasContent = value.trim().length > 0;
+
   return (
-    <div className="flex items-end gap-2">
+    <div className="flex items-end gap-2 rounded-xl border border-border bg-surface p-2 focus-within:border-foreground transition-colors">
+      <button
+        className="shrink-0 p-2 text-dim hover:text-muted transition"
+        aria-label="Attach"
+        onClick={() => textareaRef.current?.focus()}
+      >
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
+      </button>
+
       <textarea
         ref={textareaRef}
         value={value}
@@ -65,20 +77,24 @@ export function InputBar({
         disabled={disabled}
         rows={1}
         aria-label="Message Audric"
-        className="flex-1 resize-none rounded-lg border border-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-dim outline-none focus:border-border-bright disabled:opacity-50 max-h-40 leading-relaxed"
+        className="flex-1 resize-none bg-transparent text-sm text-foreground placeholder:text-dim outline-none max-h-40 leading-relaxed disabled:opacity-50"
       />
-      {value.trim() && (
-        <button
-          onClick={handleSubmit}
-          disabled={disabled}
-          className="shrink-0 bg-foreground rounded-lg p-3 text-background transition hover:opacity-80 disabled:opacity-50 active:scale-[0.97]"
-          aria-label="Send message"
-        >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12h15m0 0l-6.75-6.75M19.5 12l-6.75 6.75" />
-          </svg>
-        </button>
-      )}
+
+      <button
+        onClick={handleSubmit}
+        disabled={disabled || !hasContent}
+        className={[
+          'shrink-0 rounded-full p-2 transition',
+          hasContent
+            ? 'bg-foreground text-background hover:opacity-80 active:scale-[0.95]'
+            : 'bg-transparent text-dim cursor-default',
+        ].join(' ')}
+        aria-label="Send message"
+      >
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <path d="M8 13V3M8 3L3.5 7.5M8 3l4.5 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
     </div>
   );
 }

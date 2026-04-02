@@ -137,7 +137,7 @@ export function BalanceHeader({ address, balance, compact, onSettingsClick }: Ba
           aria-label={`Balance $${fmtUsd(balance.total)}, ${expanded ? 'collapse' : 'expand'} details`}
           className="w-full text-center focus:outline-none focus-visible:ring-2 focus-visible:ring-foreground/20 focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg group"
         >
-          <p className="text-4xl font-bold tracking-tight font-mono text-foreground">
+          <p className="text-4xl font-bold tracking-tight font-sans text-foreground">
             ${fmtUsd(balance.total)}
           </p>
           <p className="text-xs font-mono text-muted tracking-wide">
