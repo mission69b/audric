@@ -241,9 +241,21 @@ function DashboardContent() {
     error: balanceQuery.isError,
   };
 
+  const prevInFlow = useRef(false);
   useEffect(() => {
-    feedEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [feed.items.length]);
+    const currentlyInFlow = chipFlow.state.phase !== 'idle';
+    const flowJustEnded = prevInFlow.current && !currentlyInFlow;
+    prevInFlow.current = currentlyInFlow;
+
+    if (feed.items.length === 0) return;
+    if (currentlyInFlow) return;
+
+    if (flowJustEnded || feed.items.length > 0) {
+      requestAnimationFrame(() => {
+        feedEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      });
+    }
+  }, [feed.items.length, chipFlow.state.phase]);
 
   useEffect(() => {
     if (!address) return;

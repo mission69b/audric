@@ -34,14 +34,16 @@ export function EngineChat({ engine, email }: EngineChatProps) {
 
   useEffect(() => {
     if (engine.messages.length > lastMsgCount.current) {
-      feedEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      requestAnimationFrame(() => {
+        feedEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      });
       lastMsgCount.current = engine.messages.length;
     }
   }, [engine.messages.length]);
 
   useEffect(() => {
     if (engine.isStreaming) {
-      feedEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      feedEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
     }
   }, [engine.isStreaming, engine.messages[engine.messages.length - 1]?.content.length]);
 
