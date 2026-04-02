@@ -668,6 +668,12 @@ function DashboardContent() {
     [handleChipClick, executeIntent],
   );
 
+  const handleNewConversation = useCallback(() => {
+    engine.clearMessages();
+    feed.clear();
+    chipFlow.reset();
+  }, [engine, feed, chipFlow]);
+
   const handleCopy = useCallback((text: string) => {
     navigator.clipboard.writeText(text);
   }, []);
@@ -1022,7 +1028,7 @@ function DashboardContent() {
               {!isInFlow && engine.messages.length > 0 && (
                 <div className="flex items-center justify-between pt-1">
                   <button
-                    onClick={engine.clearMessages}
+                    onClick={handleNewConversation}
                     className="text-xs text-muted hover:text-foreground transition"
                   >
                     New conversation
@@ -1054,7 +1060,7 @@ function DashboardContent() {
         jwt={session.jwt}
         activeSessionId={engine.sessionId}
         onLoadSession={engine.loadSession}
-        onNewConversation={engine.clearMessages}
+        onNewConversation={handleNewConversation}
       />
 
     </main>

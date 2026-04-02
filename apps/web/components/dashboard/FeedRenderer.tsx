@@ -317,7 +317,7 @@ function FeedItemCard({
       return (
         <div className={`rounded-lg p-4 text-sm feed-row ${data.success ? 'bg-success/5 border border-success/20' : 'bg-error/5 border border-error/20'}`}>
           <p className="font-medium">
-            <span className="mr-1.5">{data.success ? '&#10003;' : '&#10007;'}</span>
+            <span className="mr-1.5">{data.success ? '\u2713' : '\u2717'}</span>
             <span className={data.success ? 'text-success' : 'text-error'}>{data.title}</span>
           </p>
           {data.details && (

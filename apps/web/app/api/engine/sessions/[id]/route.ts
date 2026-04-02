@@ -140,3 +140,27 @@ export async function GET(
     updatedAt: data.updatedAt,
   });
 }
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const jwt = request.headers.get('x-zklogin-jwt');
+  const jwtResult = validateJwt(jwt);
+  if ('error' in jwtResult) return jwtResult.error;
+
+  const ip =
+    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
+  const rl = rateLimit(`engine-session-del:${ip}`, 10, 60_000);
+  if (!rl.success) return rateLimitResponse(rl.retryAfterMs!);
+
+  const store = getSessionStore();
+  if (!(store instanceof UpstashSessionStore)) {
+    return NextResponse.json({ error: 'Session store not available' }, { status: 501 });
+  }
+
+  const { id } = await params;
+  await store.delete(id);
+
+  return NextResponse.json({ deleted: true });
+}

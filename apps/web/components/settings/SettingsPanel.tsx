@@ -202,20 +202,41 @@ export function SettingsPanel({
                     const isActive = s.id === activeSessionId;
                     const timeAgo = formatTimeAgo(s.updatedAt);
                     return (
-                      <button
+                      <div
                         key={s.id}
-                        onClick={() => { onLoadSession(s.id); onClose(); }}
-                        className={`w-full text-left rounded-lg px-2 py-2 -mx-2 transition group ${
+                        className={`flex items-center rounded-lg px-2 py-2 -mx-2 transition group ${
                           isActive
                             ? 'bg-surface border border-border'
                             : 'hover:bg-surface'
                         }`}
                       >
-                        <p className="text-sm text-foreground truncate">{s.preview}</p>
-                        <p className="text-xs text-muted">
-                          {s.messageCount} msgs &middot; {timeAgo}
-                        </p>
-                      </button>
+                        <button
+                          onClick={() => { onLoadSession(s.id); onClose(); }}
+                          className="flex-1 text-left min-w-0"
+                        >
+                          <p className="text-sm text-foreground truncate">{s.preview}</p>
+                          <p className="text-xs text-muted">
+                            {s.messageCount} msgs &middot; {timeAgo}
+                          </p>
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (!jwt) return;
+                            setChatSessions((prev) => prev.filter((cs) => cs.id !== s.id));
+                            fetch(`/api/engine/sessions/${encodeURIComponent(s.id)}`, {
+                              method: 'DELETE',
+                              headers: { 'x-zklogin-jwt': jwt },
+                            }).catch(() => {});
+                          }}
+                          className="text-dim hover:text-error opacity-0 group-hover:opacity-100 transition p-1 shrink-0 ml-1"
+                          title="Delete conversation"
+                        >
+                          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
                     );
                   })}
                 </div>

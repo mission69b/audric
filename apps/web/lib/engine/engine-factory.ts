@@ -6,6 +6,7 @@ import {
   READ_TOOLS,
   type SessionData,
   type SessionStore,
+  type ServerPositionData,
 } from '@t2000/engine';
 import { UpstashSessionStore } from './upstash-session-store';
 
@@ -58,6 +59,65 @@ async function ensureMcpConnected(): Promise<McpClientManager> {
   return mcpManager!;
 }
 
+export async function fetchServerPositions(address: string): Promise<ServerPositionData | undefined> {
+  try {
+    const { getRegistry } = await import('@/lib/protocol-registry');
+    const registry = getRegistry();
+    const lendingAdapters = registry.listLending();
+
+    const [allPositions, healthResults, rewardResults] = await Promise.all([
+      registry.allPositions(address),
+      Promise.allSettled(lendingAdapters.map((a: { getHealth: (addr: string) => Promise<{ healthFactor: number; maxBorrow?: number }> }) => a.getHealth(address))),
+      Promise.allSettled(
+        lendingAdapters
+          .filter((a: { getPendingRewards?: unknown }) => !!a.getPendingRewards)
+          .map((a: { getPendingRewards: (addr: string) => Promise<Array<{ estimatedValueUsd?: number }>> }) => a.getPendingRewards(address)),
+      ),
+    ]);
+
+    let savings = 0;
+    let borrows = 0;
+    let weightedRateSum = 0;
+    const supplies: ServerPositionData['supplies'] = [];
+    const borrows_detail: ServerPositionData['borrows_detail'] = [];
+
+    for (const pos of allPositions) {
+      for (const s of pos.positions.supplies) {
+        const usd = s.amountUsd ?? s.amount;
+        savings += usd;
+        weightedRateSum += usd * s.apy;
+        supplies.push({ asset: s.asset, amount: s.amount, amountUsd: usd, apy: s.apy, protocol: pos.protocol });
+      }
+      for (const b of pos.positions.borrows) {
+        const usd = b.amountUsd ?? b.amount;
+        borrows += usd;
+        borrows_detail.push({ asset: b.asset, amount: b.amount, amountUsd: usd, apy: b.apy, protocol: pos.protocol });
+      }
+    }
+
+    const savingsRate = savings > 0 ? weightedRateSum / savings : 0;
+
+    type HealthResult = { healthFactor: number; maxBorrow?: number };
+    const validHealths = healthResults
+      .filter((h): h is PromiseFulfilledResult<HealthResult> => h.status === 'fulfilled')
+      .map((h) => h.value);
+    const finiteHFs = validHealths.filter((h) => h.healthFactor !== Infinity && isFinite(h.healthFactor));
+    const healthFactor = finiteHFs.length > 0 ? Math.min(...finiteHFs.map((h) => h.healthFactor)) : null;
+    const maxBorrow = validHealths.reduce((sum, h) => sum + (h.maxBorrow ?? 0), 0);
+
+    type RewardResult = Array<{ estimatedValueUsd?: number }>;
+    const pendingRewards = rewardResults
+      .filter((r): r is PromiseFulfilledResult<RewardResult> => r.status === 'fulfilled')
+      .flatMap((r) => r.value)
+      .reduce((sum, r) => sum + (r.estimatedValueUsd ?? 0), 0);
+
+    return { savings, borrows, savingsRate, healthFactor, maxBorrow, pendingRewards, supplies, borrows_detail };
+  } catch (err) {
+    console.warn('[engine] Failed to pre-fetch positions:', err);
+    return undefined;
+  }
+}
+
 export async function createEngine(
   address: string,
   session?: SessionData | null,
@@ -66,13 +126,17 @@ export async function createEngine(
     throw new Error('ANTHROPIC_API_KEY not configured');
   }
 
-  const mgr = await ensureMcpConnected();
+  const [mgr, positions] = await Promise.all([
+    ensureMcpConnected(),
+    fetchServerPositions(address),
+  ]);
 
   const engine = new QueryEngine({
     provider: new AnthropicProvider({ apiKey: ANTHROPIC_API_KEY }),
     mcpManager: mgr,
     walletAddress: address,
     suiRpcUrl: SUI_RPC_URL,
+    serverPositions: positions,
     tools: READ_TOOLS,
     model: MODEL,
     maxTurns: 10,
