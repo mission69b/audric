@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { truncateAddress } from '@/lib/format';
+import { Skeleton } from '@/components/ui/Skeleton';
 
 export interface SavingsBreakdownEntry {
   protocol: string;
@@ -116,9 +117,9 @@ export function BalanceHeader({ address, balance, compact, onSettingsClick }: Ba
       </div>
 
       {balance.loading ? (
-        <div className="py-4 space-y-2">
-          <div className="h-10 w-32 mx-auto rounded-lg bg-surface animate-pulse" />
-          <div className="h-4 w-48 mx-auto rounded-lg bg-surface animate-pulse" />
+        <div className="py-4 space-y-2 flex flex-col items-center">
+          <Skeleton variant="block" width={128} height={40} />
+          <Skeleton variant="text" width="192px" />
         </div>
       ) : balance.error ? (
         <div className="py-4 text-center">

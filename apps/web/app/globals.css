@@ -76,6 +76,10 @@ body {
   padding-bottom: max(1rem, env(safe-area-inset-bottom));
 }
 
+@keyframes spin-arc {
+  to { transform: rotate(360deg); }
+}
+
 input,
 textarea,
 select {

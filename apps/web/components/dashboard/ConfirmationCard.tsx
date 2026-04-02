@@ -1,5 +1,7 @@
 'use client';
 
+import { Spinner } from '@/components/ui/Spinner';
+
 interface ConfirmationCardProps {
   title: string;
   details: { label: string; value: string }[];
@@ -38,7 +40,7 @@ export function ConfirmationCard({
         >
           {loading ? (
             <>
-              <span className="h-4 w-4 animate-spin rounded-full border-2 border-background/40 border-t-background" />
+              <Spinner size="sm" className="border-background/40 border-t-background" />
               Processing...
             </>
           ) : (

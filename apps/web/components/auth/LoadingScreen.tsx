@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import type { ZkLoginStep } from '@/lib/zklogin';
+import { Spinner } from '@/components/ui/Spinner';
 
 interface LoadingScreenProps {
   step: ZkLoginStep | null;
@@ -98,7 +99,7 @@ export function LoadingScreen({ step, error, onRetry }: LoadingScreenProps) {
                   </div>
                 ) : isActive ? (
                   <div className="h-6 w-6 flex items-center justify-center">
-                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-border-bright border-t-foreground" />
+                    <Spinner size="md" />
                   </div>
                 ) : (
                   <div className="flex h-6 w-6 items-center justify-center">

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
+import { Skeleton } from '@/components/ui/Skeleton';
 
 interface QrCodeProps {
   value: string;
@@ -27,12 +28,7 @@ export function QrCode({ value, size = 200 }: QrCodeProps) {
   }, [value, size]);
 
   if (!dataUrl) {
-    return (
-      <div
-        className="animate-pulse rounded-lg bg-surface"
-        style={{ width: size, height: size }}
-      />
-    );
+    return <Skeleton variant="block" width={size} height={size} />;
   }
 
   return (

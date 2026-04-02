@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { truncateAddress } from '@/lib/format';
 import type { Contact } from '@/hooks/useContacts';
+import { Skeleton } from '@/components/ui/Skeleton';
 
 interface SessionSummary {
   id: string;
@@ -218,9 +219,9 @@ export function SettingsPanel({
                 </button>
               )}
               {sessionsLoading ? (
-                <div className="space-y-2 animate-pulse">
+                <div className="space-y-2">
                   {[1, 2, 3].map((i) => (
-                    <div key={i} className="h-12 rounded-lg bg-surface" />
+                    <Skeleton key={i} variant="block" height={48} width="100%" />
                   ))}
                 </div>
               ) : chatSessions.length === 0 ? (

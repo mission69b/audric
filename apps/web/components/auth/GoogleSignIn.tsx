@@ -1,5 +1,7 @@
 'use client';
 
+import { Spinner } from '@/components/ui/Spinner';
+
 interface GoogleSignInProps {
   onClick: () => void;
   loading?: boolean;
@@ -23,7 +25,7 @@ export function GoogleSignIn({ onClick, loading, className }: GoogleSignInProps)
     >
       {loading ? (
         <>
-          <span className="h-5 w-5 animate-spin rounded-full border-2 border-background/40 border-t-background" />
+          <Spinner size="md" className="border-background/40 border-t-background" />
           Connecting...
         </>
       ) : (

@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useZkLogin } from './useZkLogin';
+import { Spinner } from '@/components/ui/Spinner';
 
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -21,7 +22,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
   if (status === 'loading') {
     return (
       <main className="flex flex-1 flex-col items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-border-bright border-t-foreground" />
+        <Spinner size="lg" />
       </main>
     );
   }

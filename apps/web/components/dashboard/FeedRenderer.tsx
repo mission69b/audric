@@ -5,6 +5,7 @@ import type { FeedItem } from '@/lib/feed-types';
 import { QrCode } from './QrCode';
 import { ContactToast } from './ContactToast';
 import { AgentMarkdown } from './AgentMarkdown';
+import { Spinner } from '@/components/ui/Spinner';
 
 function ImageCard({ url, alt, cost }: { url: string; alt: string; cost?: string }) {
   const [copied, setCopied] = useState(false);
@@ -487,7 +488,7 @@ function AgentResponseCard({ data, onAction, onConfirmResolve }: { data: Extract
             <span key={i} className="flex items-center gap-1 min-w-0">
               {step.status === 'done' && <span className="text-success shrink-0">&#10003;</span>}
               {step.status === 'running' && (
-                <span className="h-3 w-3 shrink-0 animate-spin rounded-full border border-border-bright border-t-foreground" />
+                <Spinner size="sm" />
               )}
               {step.status === 'error' && <span className="text-error shrink-0">&#10007;</span>}
               <span className="truncate">{TOOL_LABELS[step.tool] ?? step.tool.replace(/_/g, ' ')}</span>

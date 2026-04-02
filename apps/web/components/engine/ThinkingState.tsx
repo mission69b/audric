@@ -1,5 +1,8 @@
 'use client';
 
+import { AudricMark } from '@/components/ui/AudricMark';
+import { Spinner } from '@/components/ui/Spinner';
+
 export type ThinkingStatus =
   | 'awakening'
   | 'thinking'
@@ -34,11 +37,12 @@ const INTENSITY_OPACITY: Record<ThinkingIntensity, string> = {
   idle: 'opacity-30',
 };
 
+const ANIMATED_STATES = new Set<ThinkingStatus>(['thinking', 'priming', 'delivering', 'awakening']);
+
 export function ThinkingState({ status, intensity = 'active' }: ThinkingStateProps) {
   const config = STATE_CONFIG[status];
   const opacityClass = INTENSITY_OPACITY[intensity];
-
-  const isAnimated = status === 'thinking' || status === 'priming' || status === 'delivering';
+  const isAnimated = ANIMATED_STATES.has(status);
 
   return (
     <div
@@ -46,9 +50,17 @@ export function ThinkingState({ status, intensity = 'active' }: ThinkingStatePro
       role="status"
       aria-label={config.label}
     >
-      <span className={`text-sm leading-none ${isAnimated ? 'animate-pulse' : ''}`} aria-hidden="true">
-        {config.icon}
-      </span>
+      {isAnimated ? (
+        status === 'awakening' || status === 'priming' ? (
+          <Spinner size="sm" />
+        ) : (
+          <AudricMark size={16} animate className="text-foreground" />
+        )
+      ) : (
+        <span className="text-sm leading-none" aria-hidden="true">
+          {config.icon}
+        </span>
+      )}
       <span className="font-mono text-xs tracking-wider uppercase text-dim">
         {config.label}
       </span>
