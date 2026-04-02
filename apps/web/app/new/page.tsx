@@ -929,7 +929,7 @@ function DashboardContent() {
   if (isEmpty && !engine.isStreaming) {
     return (
       <main className="flex flex-1 flex-col min-h-dvh">
-        <div className="mx-auto w-full max-w-xl px-4 pt-6 pb-4">
+        <div className="mx-auto w-full max-w-2xl px-4 sm:px-6 pt-6 pb-4">
           <BalanceHeader
             address={address}
             balance={balance}
@@ -938,10 +938,10 @@ function DashboardContent() {
           />
         </div>
 
-        <div className="flex-1 flex flex-col items-center justify-center px-4 -mt-8">
+        <div className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 -mt-8">
           <p className="text-sm text-muted mb-6">{greeting}</p>
 
-          <div className="w-full max-w-xl mb-6">
+          <div className="w-full max-w-2xl mb-6">
             <InputBar
               onSubmit={handleInputSubmit}
               placeholder="Ask anything..."
@@ -949,7 +949,7 @@ function DashboardContent() {
           </div>
 
           {contextualChips.length > 0 && (
-            <div className="w-full max-w-xl mb-6">
+            <div className="w-full max-w-2xl mb-6">
               <ContextualChips
                 chips={contextualChips}
                 onChipFlow={handleChipClick}
@@ -975,7 +975,7 @@ function DashboardContent() {
   return (
     <main className="flex flex-1 flex-col pb-32">
       <div className={`sticky top-0 z-20 bg-background/95 backdrop-blur-sm transition-[border-color] duration-200 border-b ${scrolled ? 'border-border/50' : 'border-transparent'}`}>
-        <div className="mx-auto w-full max-w-xl px-4 pt-6 pb-4">
+        <div className="mx-auto w-full max-w-2xl px-4 sm:px-6 pt-6 pb-4">
           <BalanceHeader
             address={address}
             balance={balance}
@@ -984,7 +984,7 @@ function DashboardContent() {
           />
         </div>
       </div>
-      <div className="mx-auto w-full max-w-xl px-4 py-4 space-y-5">
+      <div className="mx-auto w-full max-w-2xl px-4 sm:px-6 py-6 space-y-3">
 
         {chipFlow.state.phase === 'result' && chipFlow.state.result && (
           <ResultCard
@@ -1079,54 +1079,63 @@ function DashboardContent() {
 
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 border-t border-border bg-background/95 backdrop-blur-sm safe-bottom p-4 z-30">
-        <div className="mx-auto max-w-xl space-y-2">
-          <InputBar
-            onSubmit={handleInputSubmit}
-            onCancel={engine.isStreaming ? engine.cancel : undefined}
-            disabled={chipFlow.state.phase === 'executing' || engine.isStreaming}
-            placeholder={engine.messages.length > 0 ? 'Ask a follow up...' : 'Ask anything...'}
-          />
+      <div className="fixed bottom-0 left-0 right-0 border-t border-border bg-background/95 backdrop-blur-sm safe-bottom z-30">
+        <div className="mx-auto max-w-2xl px-4 sm:px-6 py-3 space-y-3">
           {engine.isStreaming ? (
-            <div className="flex items-center justify-between">
-              <button
-                onClick={engine.cancel}
-                className="flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-mono uppercase tracking-wider text-muted hover:text-foreground hover:border-foreground transition active:scale-[0.97]"
-              >
-                <span className="text-sm leading-none">&#9632;</span> Stop
-              </button>
-              {engine.usage && (
-                <span className="text-[10px] text-dim font-mono">
-                  {engine.usage.inputTokens + engine.usage.outputTokens} tokens
-                </span>
-              )}
-            </div>
-          ) : (
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex gap-1.5 overflow-x-auto scrollbar-none flex-1">
-                <ChipBar
-                  onChipClick={handleChipClick}
-                  activeFlow={chipFlow.state.flow}
-                  disabled={chipFlow.state.phase === 'executing'}
-                />
+            <>
+              <InputBar
+                onSubmit={handleInputSubmit}
+                onCancel={engine.cancel}
+                disabled
+                placeholder="Ask a follow up..."
+              />
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={engine.cancel}
+                  className="flex items-center gap-2 rounded-lg border border-border bg-surface px-4 py-2 text-xs font-mono uppercase tracking-wider text-muted hover:text-foreground hover:border-foreground transition active:scale-[0.97]"
+                >
+                  <span className="text-base leading-none">&#9632;</span> Stop
+                </button>
+                {engine.usage && (
+                  <span className="text-[10px] text-dim font-mono">
+                    {engine.usage.inputTokens + engine.usage.outputTokens} tokens
+                  </span>
+                )}
               </div>
-              {isInFlow && chipFlow.state.phase !== 'result' && (
-                <button
-                  onClick={chipFlow.reset}
-                  className="text-xs text-muted hover:text-foreground transition shrink-0"
-                >
-                  Cancel
-                </button>
-              )}
-              {!isInFlow && engine.messages.length > 0 && (
-                <button
-                  onClick={handleNewConversation}
-                  className="text-xs text-muted hover:text-foreground transition shrink-0"
-                >
-                  New
-                </button>
-              )}
-            </div>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex gap-2 overflow-x-auto scrollbar-none flex-1">
+                  <ChipBar
+                    onChipClick={handleChipClick}
+                    activeFlow={chipFlow.state.flow}
+                    disabled={chipFlow.state.phase === 'executing'}
+                  />
+                </div>
+                {isInFlow && chipFlow.state.phase !== 'result' && (
+                  <button
+                    onClick={chipFlow.reset}
+                    className="text-xs text-muted hover:text-foreground transition shrink-0"
+                  >
+                    Cancel
+                  </button>
+                )}
+                {!isInFlow && engine.messages.length > 0 && (
+                  <button
+                    onClick={handleNewConversation}
+                    className="text-xs text-muted hover:text-foreground transition shrink-0"
+                  >
+                    New
+                  </button>
+                )}
+              </div>
+              <InputBar
+                onSubmit={handleInputSubmit}
+                disabled={chipFlow.state.phase === 'executing'}
+                placeholder={engine.messages.length > 0 ? 'Ask a follow up...' : 'Ask anything...'}
+              />
+            </>
           )}
         </div>
       </div>
