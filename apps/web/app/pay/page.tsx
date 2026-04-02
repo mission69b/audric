@@ -1,66 +1,45 @@
-'use client';
+import type { Metadata } from 'next';
+import { ProductPage } from '@/components/ProductPage';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { ProductNav } from '@/components/layout/ProductNav';
-import { useZkLogin } from '@/components/auth/useZkLogin';
+export const metadata: Metadata = {
+  title: 'Pay — Audric',
+  description:
+    'Access 88+ APIs with USDC micropayments. No API keys, no subscriptions.',
+};
 
 export default function PayPage() {
-  const router = useRouter();
-  const { status, login } = useZkLogin();
-  const isLoading = status === 'redirecting' || status === 'loading';
-
-  useEffect(() => {
-    if (status === 'authenticated') router.replace('/new');
-  }, [status, router]);
-
   return (
-    <main className="flex flex-1 flex-col">
-      <ProductNav />
-
-      <div className="flex flex-1 flex-col items-center justify-center px-6 text-center max-w-2xl mx-auto">
-        <div className="space-y-6">
-          <h1 className="font-display text-4xl tracking-tight text-foreground">
-            Pay for APIs with USDC
-          </h1>
-          <p className="font-mono text-5xl tracking-tight text-foreground">
-            88+ endpoints
-          </p>
-          <p className="text-muted text-base leading-relaxed max-w-md mx-auto">
-            Access OpenAI, Anthropic, Brave Search, and 37 more services. Pay per request with USDC.
-          </p>
-        </div>
-
-        <div className="mt-16 space-y-12 w-full max-w-sm">
-          <div className="space-y-6 text-left">
-            <h2 className="text-xs font-mono uppercase tracking-widest text-dim">How it works</h2>
-            <ol className="space-y-4">
-              {[
-                'Ask Audric to use a service',
-                'Audric pays automatically from your balance',
-                'Get the result instantly',
-              ].map((step, i) => (
-                <li key={i} className="flex items-start gap-4">
-                  <span className="font-mono text-sm text-dim w-5 shrink-0">{i + 1}.</span>
-                  <span className="text-sm text-foreground">{step}</span>
-                </li>
-              ))}
-            </ol>
-          </div>
-
-          <button
-            onClick={login}
-            disabled={isLoading}
-            className="w-full bg-foreground text-background rounded-lg px-6 py-4 text-sm font-semibold uppercase tracking-wide transition hover:opacity-80 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isLoading ? 'Connecting...' : 'Get started'}
-          </button>
-
-          <p className="text-xs text-dim font-mono text-center">
-            No API keys needed. No subscriptions. Pay only for what you use.
-          </p>
-        </div>
-      </div>
-    </main>
+    <ProductPage
+      badge="Pay"
+      title="Pay for any API. No keys."
+      subtitle="Access 88+ APIs across AI, search, and commerce with USDC micropayments. Pay per request, not per month."
+      stats={[
+        { label: 'APIs available', value: '88+' },
+        { label: 'Cost per call', value: '~$0.001' },
+        { label: 'Subscriptions', value: 'Zero' },
+      ]}
+      steps={[
+        {
+          number: '1',
+          title: 'Ask for what you need',
+          description:
+            '"Search for flights to Tokyo" or "Generate an image of a sunset." Audric finds the right API.',
+        },
+        {
+          number: '2',
+          title: 'Pay per request',
+          description:
+            'Each API call costs a fraction of a cent in USDC. No subscriptions, no API keys to manage.',
+        },
+        {
+          number: '3',
+          title: 'Get your result',
+          description:
+            'Results come back right in the conversation. Payment settles instantly via the MPP gateway.',
+        },
+      ]}
+      cta="Try an API"
+      ctaPrompt="What APIs can I use?"
+    />
   );
 }

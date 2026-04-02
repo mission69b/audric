@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback, type KeyboardEvent } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ProductNav } from '@/components/layout/ProductNav';
 import { useZkLogin } from '@/components/auth/useZkLogin';
 import { useDemoChat } from '@/hooks/useDemoChat';
@@ -21,11 +21,14 @@ const QUICK_ACTIONS = [
 
 export default function LandingPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { status, login } = useZkLogin();
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [input, setInput] = useState('');
+  const promptParam = searchParams.get('prompt');
+  const [input, setInput] = useState(promptParam ?? '');
   const [turnCount, setTurnCount] = useState(0);
+  const promptHandled = useRef(false);
 
   const greeting =
     "Hi, I'm Audric — your financial agent on Sui. I can help you save, pay, send, and borrow. All by conversation, all in USDC. Ask me anything.";
@@ -35,6 +38,13 @@ export default function LandingPage() {
   useEffect(() => {
     if (status === 'authenticated') router.replace('/new');
   }, [status, router]);
+
+  useEffect(() => {
+    if (promptParam && !promptHandled.current) {
+      promptHandled.current = true;
+      textareaRef.current?.focus();
+    }
+  }, [promptParam]);
 
   useEffect(() => {
     requestAnimationFrame(() => {
