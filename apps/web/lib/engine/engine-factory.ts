@@ -65,14 +65,12 @@ export async function fetchServerPositions(address: string): Promise<ServerPosit
     const registry = getRegistry();
     const lendingAdapters = registry.listLending();
 
+    const rewardAdapters = lendingAdapters.filter((a) => !!a.getPendingRewards);
+
     const [allPositions, healthResults, rewardResults] = await Promise.all([
       registry.allPositions(address),
-      Promise.allSettled(lendingAdapters.map((a: { getHealth: (addr: string) => Promise<{ healthFactor: number; maxBorrow?: number }> }) => a.getHealth(address))),
-      Promise.allSettled(
-        lendingAdapters
-          .filter((a: { getPendingRewards?: unknown }) => !!a.getPendingRewards)
-          .map((a: { getPendingRewards: (addr: string) => Promise<Array<{ estimatedValueUsd?: number }>> }) => a.getPendingRewards(address)),
-      ),
+      Promise.allSettled(lendingAdapters.map((a) => a.getHealth(address))),
+      Promise.allSettled(rewardAdapters.map((a) => a.getPendingRewards!(address))),
     ]);
 
     let savings = 0;
