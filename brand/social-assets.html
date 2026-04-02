@@ -97,7 +97,7 @@
       <canvas id="animCanvas" width="1080" height="1080"></canvas>
       <div class="controls">
         <button class="dl-btn" onclick="downloadAnim()">Download Frame (PNG)</button>
-        <button class="dl-btn" id="recBtn" onclick="toggleRecord()">Record GIF (3s)</button>
+        <button class="dl-btn" id="recBtn" onclick="toggleRecord()">Record Video (3s)</button>
       </div>
     </div>
     <div style="max-width:320px;">
@@ -337,18 +337,18 @@ function renderOg(fontKey) {
   ctx.fillStyle = grd;
   ctx.fillRect(0, 0, w, h);
 
-  // Mark
-  drawDiamond(ctx, w / 2, h / 2 - 60, 42, 11, '#ffffff', 1, 'rgba(255,255,255,0.15)');
+  // Mark (pushed up to clear text)
+  drawDiamond(ctx, w / 2, h / 2 - 110, 38, 10, '#ffffff', 1, 'rgba(255,255,255,0.15)');
 
   // Text
   const font = `${fontSizes[fontKey]} ${fonts[fontKey]}`;
-  drawText(ctx, 'Audr\\c', w / 2, h / 2 + 80, font, '#ffffff', '#555555');
+  drawText(ctx, 'Audr\\c', w / 2, h / 2 + 110, font, '#ffffff', '#555555');
 
   // Tagline
   ctx.font = "15px 'Geist Mono', monospace";
   ctx.fillStyle = '#707070';
   ctx.textAlign = 'center';
-  ctx.fillText('Your money, handled.', w / 2, h / 2 + 120);
+  ctx.fillText('Your money, handled.', w / 2, h / 2 + 155);
 
   // URL
   ctx.font = "12px 'Geist Mono', monospace";
@@ -470,9 +470,39 @@ requestAnimationFrame(renderAnimFrame);
 
 function downloadAnim() {
   const link = document.createElement('a');
-  link.download = 'audric-mark-animated-frame.png';
+  link.download = 'audric-mark-frame.png';
   link.href = animCanvas.toDataURL('image/png');
   link.click();
+}
+
+let recording = false;
+function toggleRecord() {
+  if (recording) return;
+  recording = true;
+  const btn = document.getElementById('recBtn');
+  btn.textContent = 'Recording... 3s';
+  btn.style.borderColor = '#f55';
+  btn.style.color = '#f55';
+
+  const stream = animCanvas.captureStream(30);
+  const recorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9' });
+  const chunks = [];
+  recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+  recorder.onstop = () => {
+    const blob = new Blob(chunks, { type: 'video/webm' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.download = 'audric-mark-animated.webm';
+    link.href = url;
+    link.click();
+    URL.revokeObjectURL(url);
+    btn.textContent = 'Record Video (3s)';
+    btn.style.borderColor = '';
+    btn.style.color = '';
+    recording = false;
+  };
+  recorder.start();
+  setTimeout(() => recorder.stop(), 3000);
 }
 
 // ─── Download helper ───

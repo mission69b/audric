@@ -18,11 +18,11 @@ export default async function Image() {
     new URL('https://fonts.gstatic.com/s/instrumentserif/v4/jizBRFtNs2ka5fCjOQ3.woff2')
   ).then((res) => res.arrayBuffer()).catch(() => null);
 
-  const cellSize = 36;
-  const gap = 10;
+  const cellSize = 32;
+  const gap = 9;
   const gridTotal = 5 * cellSize + 4 * gap;
   const markX = (1200 - gridTotal) / 2;
-  const markY = 140;
+  const markY = 100;
 
   return new ImageResponse(
     (
@@ -53,7 +53,7 @@ export default async function Image() {
         />
 
         {/* Diamond mark */}
-        <div style={{ position: 'relative', width: gridTotal, height: gridTotal, display: 'flex', flexWrap: 'wrap', marginTop: -40 }}>
+        <div style={{ position: 'relative', width: gridTotal, height: gridTotal, display: 'flex', flexWrap: 'wrap', marginTop: -80 }}>
           {DIAMOND.map(([row, col]) => (
             <div
               key={`${row}-${col}`}
