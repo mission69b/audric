@@ -95,18 +95,16 @@ export async function fetchServerPositions(address: string): Promise<ServerPosit
 
     const savingsRate = savings > 0 ? weightedRateSum / savings : 0;
 
-    type HealthResult = { healthFactor: number; maxBorrow?: number };
     const validHealths = healthResults
-      .filter((h): h is PromiseFulfilledResult<HealthResult> => h.status === 'fulfilled')
-      .map((h) => h.value);
+      .filter((h) => h.status === 'fulfilled')
+      .map((h) => (h as PromiseFulfilledResult<Awaited<ReturnType<typeof lendingAdapters[0]['getHealth']>>>).value);
     const finiteHFs = validHealths.filter((h) => h.healthFactor !== Infinity && isFinite(h.healthFactor));
     const healthFactor = finiteHFs.length > 0 ? Math.min(...finiteHFs.map((h) => h.healthFactor)) : null;
     const maxBorrow = validHealths.reduce((sum, h) => sum + (h.maxBorrow ?? 0), 0);
 
-    type RewardResult = Array<{ estimatedValueUsd?: number }>;
     const pendingRewards = rewardResults
-      .filter((r): r is PromiseFulfilledResult<RewardResult> => r.status === 'fulfilled')
-      .flatMap((r) => r.value)
+      .filter((h) => h.status === 'fulfilled')
+      .flatMap((r) => (r as PromiseFulfilledResult<Awaited<ReturnType<NonNullable<typeof lendingAdapters[0]['getPendingRewards']>>>>).value)
       .reduce((sum, r) => sum + (r.estimatedValueUsd ?? 0), 0);
 
     return { savings, borrows, savingsRate, healthFactor, maxBorrow, pendingRewards, supplies, borrows_detail };
