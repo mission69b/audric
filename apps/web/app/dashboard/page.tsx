@@ -960,6 +960,14 @@ function DashboardContent() {
           />
         )}
 
+        {/* Engine streaming chat (freeform AI conversations) */}
+        {!isInFlow && (
+          <EngineChat
+            engine={engine}
+            email={decodeJwtEmail(session?.jwt)}
+          />
+        )}
+
         {/* Conversational Feed (intent-driven items like balance, rates, receipts) */}
         {hasFeedItems && !isInFlow && (
           <FeedRenderer
@@ -978,14 +986,6 @@ function DashboardContent() {
                 resolver(approved);
               }
             }}
-          />
-        )}
-
-        {/* Engine streaming chat (freeform AI conversations) */}
-        {!isInFlow && (
-          <EngineChat
-            engine={engine}
-            email={decodeJwtEmail(session?.jwt)}
           />
         )}
 
