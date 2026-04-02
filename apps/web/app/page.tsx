@@ -4,57 +4,12 @@ import { useEffect, useRef, useState, useCallback, type KeyboardEvent } from 're
 import { useRouter } from 'next/navigation';
 import { ProductNav } from '@/components/layout/ProductNav';
 import { useZkLogin } from '@/components/auth/useZkLogin';
+import { useDemoChat } from '@/hooks/useDemoChat';
 
-type Message = { role: 'assistant' | 'user'; content: string; cta?: boolean };
-
-const SCRIPTED_RESPONSES: { keywords: string[]; response: string }[] = [
-  {
-    keywords: ['save', 'yield', 'earn', 'apy', 'interest', 'deposit'],
-    response:
-      'Your USDC gets deposited into NAVI Protocol, currently earning 4.86% APY. It compounds automatically — no lock-ups, withdraw anytime.\n\nWant to try it? Just say "save $100" once you\'re signed in.',
-  },
-  {
-    keywords: ['send', 'transfer', 'pay someone'],
-    response:
-      'I can send USDC to any Sui address in ~400ms. Zero fees beyond gas (which is sponsored). You can save contacts by name so next time you just say "send $50 to Alex."',
-  },
-  {
-    keywords: ['pay', 'api', 'service', 'gateway', 'mpp'],
-    response:
-      'Audric Pay gives your AI access to 88+ API services — OpenAI, Anthropic, Brave Search, and more. Your agent pays per request with USDC. No API keys needed.',
-  },
-  {
-    keywords: ['borrow', 'credit', 'loan', 'collateral'],
-    response:
-      'You can borrow USDC against your savings. No credit checks — your deposit is the collateral. 0.05% origination fee, repay anytime with no penalties. I monitor your health factor to keep you safe.',
-  },
-  {
-    keywords: ['balance', 'how much', 'portfolio', 'account'],
-    response: 'Sign in to see your real balance. I\'ll show you cash, savings, debt, yield, and assets — all in one view.',
-  },
-  {
-    keywords: ['how', 'work', 'what is', 'explain', 'about'],
-    response:
-      'Three steps:\n\n1. Sign in with Google — no seed phrase, no extension\n2. Fund your wallet with USDC\n3. Talk to me — tell me what you need\n\nYour money lives in a non-custodial wallet on Sui. I build the transactions, but you approve every one.',
-  },
-  {
-    keywords: ['receive', 'qr', 'address', 'fund'],
-    response: 'Once you sign in, I\'ll give you a deposit address and QR code. You can fund from Binance, Coinbase, or any Sui wallet — just send USDC to your address.',
-  },
-  {
-    keywords: ['safe', 'secure', 'trust', 'custod'],
-    response:
-      'Your wallet is non-custodial — only you control the keys (via zkLogin). I can\'t move funds without your approval. All transactions are on-chain and verifiable. Built on t2000 open-source infrastructure.',
-  },
-];
+const MAX_FREE_TURNS = 5;
 
 const SIGN_IN_PROMPT =
   'Ready to try for real? Sign in with Google — no seed phrase, no crypto jargon. It takes 10 seconds.';
-
-const FALLBACK_RESPONSE =
-  'I can help with saving, sending, borrowing, and paying for APIs — all in USDC on Sui. Try asking about one of those, or sign in to get started.';
-
-const MAX_FREE_TURNS = 5;
 
 const QUICK_ACTIONS = [
   { label: 'SAVE $100', text: 'Save $100' },
@@ -64,31 +19,18 @@ const QUICK_ACTIONS = [
   { label: 'HOW IT WORKS', text: 'What is Audric?' },
 ];
 
-function matchResponse(input: string): string {
-  const lower = input.toLowerCase();
-  for (const entry of SCRIPTED_RESPONSES) {
-    if (entry.keywords.some((kw) => lower.includes(kw))) {
-      return entry.response;
-    }
-  }
-  return FALLBACK_RESPONSE;
-}
-
 export default function LandingPage() {
   const router = useRouter();
   const { status, login } = useZkLogin();
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [input, setInput] = useState('');
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: 'assistant',
-      content:
-        'Hi, I\'m Audric — your financial agent on Sui.\n\nI can help you save, pay, send, and borrow. All by conversation, all in USDC. Ask me anything.',
-    },
-  ]);
   const [turnCount, setTurnCount] = useState(0);
-  const [isTyping, setIsTyping] = useState(false);
+
+  const greeting =
+    "Hi, I'm Audric — your financial agent on Sui. I can help you save, pay, send, and borrow. All by conversation, all in USDC. Ask me anything.";
+
+  const { messages, isStreaming, sendMessage, addCtaMessage } = useDemoChat(greeting);
 
   useEffect(() => {
     if (status === 'authenticated') router.replace('/new');
@@ -98,7 +40,7 @@ export default function LandingPage() {
     requestAnimationFrame(() => {
       scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
     });
-  }, [messages, isTyping]);
+  }, [messages, isStreaming]);
 
   const resize = useCallback(() => {
     const el = textareaRef.current;
@@ -111,30 +53,20 @@ export default function LandingPage() {
 
   const handleSubmit = useCallback(() => {
     const text = input.trim();
-    if (!text || isTyping) return;
+    if (!text || isStreaming) return;
 
     setInput('');
-    setMessages((prev) => [...prev, { role: 'user', content: text }]);
-    setIsTyping(true);
 
     const newTurn = turnCount + 1;
     setTurnCount(newTurn);
 
-    setTimeout(() => {
-      if (newTurn >= MAX_FREE_TURNS) {
-        setMessages((prev) => [
-          ...prev,
-          { role: 'assistant', content: SIGN_IN_PROMPT, cta: true },
-        ]);
-      } else {
-        setMessages((prev) => [
-          ...prev,
-          { role: 'assistant', content: matchResponse(text) },
-        ]);
-      }
-      setIsTyping(false);
-    }, 600 + Math.random() * 400);
-  }, [input, isTyping, turnCount]);
+    if (newTurn > MAX_FREE_TURNS) {
+      addCtaMessage(SIGN_IN_PROMPT);
+      return;
+    }
+
+    sendMessage(text);
+  }, [input, isStreaming, turnCount, sendMessage, addCtaMessage]);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -162,9 +94,9 @@ export default function LandingPage() {
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto scrollbar-none">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8 space-y-4">
-          {messages.map((msg, i) => (
+          {messages.map((msg) => (
             <div
-              key={i}
+              key={msg.id}
               className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               <div
@@ -176,6 +108,19 @@ export default function LandingPage() {
                 ].join(' ')}
               >
                 {msg.content}
+                {msg.isStreaming && !msg.content && (
+                  <span className="inline-flex gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-dim animate-pulse" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-dim animate-pulse [animation-delay:150ms]" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-dim animate-pulse [animation-delay:300ms]" />
+                  </span>
+                )}
+                {msg.isStreaming && msg.content && (
+                  <span
+                    className="inline-block w-1.5 h-4 bg-foreground/40 animate-pulse ml-0.5 align-text-bottom"
+                    aria-hidden="true"
+                  />
+                )}
                 {msg.cta && (
                   <button
                     onClick={login}
@@ -187,18 +132,6 @@ export default function LandingPage() {
               </div>
             </div>
           ))}
-
-          {isTyping && (
-            <div className="flex justify-start">
-              <div className="bg-surface text-foreground border border-border rounded-2xl rounded-bl-md px-4 py-3 text-sm">
-                <span className="inline-flex gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-dim animate-pulse" />
-                  <span className="w-1.5 h-1.5 rounded-full bg-dim animate-pulse [animation-delay:150ms]" />
-                  <span className="w-1.5 h-1.5 rounded-full bg-dim animate-pulse [animation-delay:300ms]" />
-                </span>
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
@@ -234,13 +167,13 @@ export default function LandingPage() {
               onKeyDown={handleKeyDown}
               placeholder="Ask anything..."
               rows={1}
-              disabled={isTyping}
+              disabled={isStreaming}
               className="flex-1 resize-none bg-transparent text-sm text-foreground placeholder:text-dim outline-none max-h-[120px] leading-relaxed disabled:opacity-50"
             />
 
             <button
               onClick={handleSubmit}
-              disabled={!hasContent || isTyping}
+              disabled={!hasContent || isStreaming}
               className={[
                 'shrink-0 rounded-full p-2 transition',
                 hasContent
