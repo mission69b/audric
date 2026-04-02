@@ -18,7 +18,7 @@ const GRID: [number, number][] = [
 
 export function AudricMark({ size = 24, animate = false, className = '' }: AudricMarkProps) {
   const rectsRef = useRef<(SVGRectElement | null)[]>([]);
-  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+  const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const runPulse = useCallback(() => {
     const rects = rectsRef.current.filter(Boolean) as SVGRectElement[];
