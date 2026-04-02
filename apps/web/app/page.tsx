@@ -54,13 +54,14 @@ const SIGN_IN_PROMPT =
 const FALLBACK_RESPONSE =
   'I can help with saving, sending, borrowing, and paying for APIs — all in USDC on Sui. Try asking about one of those, or sign in to get started.';
 
-const MAX_FREE_TURNS = 3;
+const MAX_FREE_TURNS = 5;
 
 const QUICK_ACTIONS = [
-  { label: 'SAVE $100', text: 'How does saving work?' },
-  { label: 'CHECK RATES', text: 'What rates can I earn?' },
-  { label: 'SEND USDC', text: 'How do I send USDC?' },
-  { label: 'HOW IT WORKS', text: 'How does Audric work?' },
+  { label: 'SAVE $100', text: 'Save $100' },
+  { label: 'BORROW', text: 'Borrow USDC against my savings' },
+  { label: 'PAY FOR API', text: 'Pay for an API call' },
+  { label: 'SEND USDC', text: 'Send $50 to a friend' },
+  { label: 'HOW IT WORKS', text: 'What is Audric?' },
 ];
 
 function matchResponse(input: string): string {
