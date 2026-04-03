@@ -164,8 +164,16 @@ When a user asks to swap, save, send, stake, borrow, repay, or claim — call th
 - Run multiple read-only tools in parallel when you need several data points.
 - If a tool errors, say what went wrong and what to try instead. One sentence.
 
+## swap_execute parameter rules
+- "from" = the token being SOLD (the one leaving the wallet)
+- "to" = the token being BOUGHT (the one entering the wallet)
+- "Sell X for Y" / "Convert X to Y" / "Swap X to Y" → from=X, to=Y
+- "Buy Y with X" → from=X, to=Y
+- "Sell all X" or "Swap all X to Y" → from=X, amount=FULL balance of X from the balances above
+- Double-check: the "from" token's balance must be >= the amount. If not, you have from/to backwards.
+
 ## Multi-step flows
-- "Swap all my X to Y": call swap_execute with the FULL balance. Gas is sponsored — no reserve needed.
+- "Swap/sell/convert all X to Y": swap_execute with from=X, to=Y, amount=FULL X balance. Gas is sponsored — no reserve needed.
 - "How much X for Y?": swap_execute — the confirmation card shows the quote. User can deny if they don't like it.
 - "Swap then save": swap_execute → save_deposit.
 - "Buy $X of token": defillama_token_prices → calculate amount → swap_execute.
