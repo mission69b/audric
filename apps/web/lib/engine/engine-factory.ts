@@ -221,9 +221,11 @@ export async function createEngine(
     (t) => MCP_ALLOWLIST.has(t.name),
   ) as Tool[];
 
-  // swap_quote causes the LLM to call the read tool instead of swap_execute.
-  // swap_execute's confirmation card already shows the quote (amount, route, slippage).
-  const EXCLUDED_TOOLS = new Set(['swap_quote']);
+  // Exclude read tools that cause the LLM to stall instead of calling write tools:
+  // - swap_quote: redundant with swap_execute's confirmation card
+  // - balance_check: balances are pre-fetched into the system prompt; having this
+  //   tool causes the LLM to call it first (safe read) then refuse write actions
+  const EXCLUDED_TOOLS = new Set(['swap_quote', 'balance_check']);
   const filteredReads = READ_TOOLS.filter((t) => !EXCLUDED_TOOLS.has(t.name));
   const allTools = [...filteredReads, ...WRITE_TOOLS, ...mcpTools];
 

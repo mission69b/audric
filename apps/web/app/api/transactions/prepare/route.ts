@@ -308,18 +308,14 @@ async function buildTransaction(params: BuildRequest): Promise<Transaction> {
       const swapTx = new Transaction();
       swapTx.setSender(address);
 
-      let inputCoin;
-      if (fromType === '0x2::sui::SUI') {
-        [inputCoin] = swapTx.splitCoins(swapTx.gas, [rawAmount]);
-      } else {
-        const coins = await fetchCoinsForSwap(client, address, fromType);
-        if (coins.length === 0) throw new Error(`No ${fromToken} coins found`);
-        const primary = swapTx.object(coins[0]);
-        if (coins.length > 1) {
-          swapTx.mergeCoins(primary, coins.slice(1).map(id => swapTx.object(id)));
-        }
-        [inputCoin] = swapTx.splitCoins(primary, [rawAmount]);
+      // For Enoki-sponsored txs, always fetch actual coins (tx.gas belongs to the sponsor)
+      const swapCoins = await fetchCoinsForSwap(client, address, fromType);
+      if (swapCoins.length === 0) throw new Error(`No ${fromToken} coins found`);
+      const swapPrimary = swapTx.object(swapCoins[0]);
+      if (swapCoins.length > 1) {
+        swapTx.mergeCoins(swapPrimary, swapCoins.slice(1).map(id => swapTx.object(id)));
       }
+      const [inputCoin] = swapTx.splitCoins(swapPrimary, [rawAmount]);
 
       const outputCoin = await aggClient.routerSwap({
         router: routerData,
@@ -343,7 +339,14 @@ async function buildTransaction(params: BuildRequest): Promise<Transaction> {
 
       const stakeTx = new Transaction();
       stakeTx.setSender(address);
-      const [suiCoin] = stakeTx.splitCoins(stakeTx.gas, [amountMist]);
+      // For Enoki-sponsored txs, fetch actual SUI coins (tx.gas belongs to the sponsor)
+      const stakeCoins = await fetchCoinsForSwap(client, address, SUI_TYPE);
+      if (stakeCoins.length === 0) throw new Error('No SUI coins found');
+      const stakePrimary = stakeTx.object(stakeCoins[0]);
+      if (stakeCoins.length > 1) {
+        stakeTx.mergeCoins(stakePrimary, stakeCoins.slice(1).map(id => stakeTx.object(id)));
+      }
+      const [suiCoin] = stakeTx.splitCoins(stakePrimary, [amountMist]);
       const [vSuiCoin] = stakeTx.moveCall({
         target: `${VOLO_PKG}::stake_pool::stake`,
         arguments: [
