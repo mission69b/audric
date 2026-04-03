@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Transaction } from '@mysten/sui/transactions';
 import { toBase64 } from '@mysten/sui/utils';
+import { AggregatorClient, Env } from '@cetusprotocol/aggregator-sdk';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { validateJwt, isValidSuiAddress, validateAmount } from '@/lib/auth';
 import { getRegistry, getClient } from '@/lib/protocol-registry';
@@ -11,7 +12,7 @@ const ENOKI_SECRET_KEY = process.env.ENOKI_SECRET_KEY;
 const ENOKI_BASE = 'https://api.enoki.mystenlabs.com/v1';
 const SUI_NETWORK = (process.env.NEXT_PUBLIC_SUI_NETWORK ?? 'mainnet') as 'mainnet' | 'testnet';
 
-type TxType = 'send' | 'save' | 'withdraw' | 'borrow' | 'repay' | 'claim-rewards';
+type TxType = 'send' | 'save' | 'withdraw' | 'borrow' | 'repay' | 'claim-rewards' | 'swap' | 'volo-stake' | 'volo-unstake';
 
 interface BuildRequest {
   type: TxType;
@@ -22,6 +23,10 @@ interface BuildRequest {
   fromAsset?: string;
   toAsset?: string;
   protocol?: string;
+  from?: string;
+  to?: string;
+  slippage?: number;
+  byAmountIn?: boolean;
 }
 
 const USDC_TYPE = '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC';
@@ -78,14 +83,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid address' }, { status: 400 });
   }
 
-  // 10 transactions per minute per address
   const rl = rateLimit(`tx:${address}`, 10, 60_000);
   if (!rl.success) return rateLimitResponse(rl.retryAfterMs!);
 
-  if (type !== 'claim-rewards' && (!amount || amount <= 0)) {
+  const skipAmountCheck = type === 'claim-rewards' || type === 'volo-unstake';
+  if (!skipAmountCheck && (!amount || amount <= 0)) {
     return NextResponse.json({ error: 'Invalid amount' }, { status: 400 });
   }
-  if (type !== 'claim-rewards') {
+  if (!skipAmountCheck && type !== 'swap' && type !== 'volo-stake') {
     const amountCheck = validateAmount(type, amount);
     if (!amountCheck.valid) {
       return NextResponse.json({ error: amountCheck.reason }, { status: 400 });
@@ -100,6 +105,8 @@ export async function POST(request: NextRequest) {
       type, address, amount, recipient, asset,
       fromAsset: body.fromAsset, toAsset: body.toAsset,
       protocol: body.protocol,
+      from: body.from, to: body.to,
+      slippage: body.slippage, byAmountIn: body.byAmountIn,
     };
     const result = await buildAndSponsor(params, jwt);
 
@@ -273,9 +280,163 @@ async function buildTransaction(params: BuildRequest): Promise<Transaction> {
       break;
     }
 
+    case 'swap': {
+      const fromToken = params.from;
+      const toToken = params.to;
+      if (!fromToken || !toToken) throw new Error('from and to tokens are required');
+
+      const fromType = resolveSwapToken(fromToken);
+      const toType = resolveSwapToken(toToken);
+      if (!fromType) throw new Error(`Unknown token: ${fromToken}`);
+      if (!toType) throw new Error(`Unknown token: ${toToken}`);
+
+      const fromDecimals = fromType === '0x2::sui::SUI' ? 9 : 6;
+      const rawAmount = BigInt(Math.floor(amount * 10 ** fromDecimals));
+      const slippage = Math.max(0.001, Math.min(params.slippage ?? 0.01, 0.05));
+
+      const aggClient = getCetusAggregator(address);
+      const routerData = await aggClient.findRouters({
+        from: fromType,
+        target: toType,
+        amount: rawAmount.toString(),
+        byAmountIn: params.byAmountIn ?? true,
+      });
+
+      if (!routerData) throw new Error(`No swap route found for ${fromToken} → ${toToken}`);
+      if (routerData.insufficientLiquidity) throw new Error(`Insufficient liquidity for ${fromToken} → ${toToken}`);
+
+      const swapTx = new Transaction();
+      swapTx.setSender(address);
+
+      let inputCoin;
+      if (fromType === '0x2::sui::SUI') {
+        [inputCoin] = swapTx.splitCoins(swapTx.gas, [rawAmount]);
+      } else {
+        const coins = await fetchCoinsForSwap(client, address, fromType);
+        if (coins.length === 0) throw new Error(`No ${fromToken} coins found`);
+        const primary = swapTx.object(coins[0]);
+        if (coins.length > 1) {
+          swapTx.mergeCoins(primary, coins.slice(1).map(id => swapTx.object(id)));
+        }
+        [inputCoin] = swapTx.splitCoins(primary, [rawAmount]);
+      }
+
+      const outputCoin = await aggClient.routerSwap({
+        router: routerData,
+        inputCoin,
+        slippage,
+        txb: swapTx,
+      });
+
+      swapTx.transferObjects([outputCoin], address);
+      return swapTx;
+    }
+
+    case 'volo-stake': {
+      const VOLO_PKG = '0x68d22cf8bdbcd11ecba1e094922873e4080d4d11133e2443fddda0bfd11dae20';
+      const VOLO_POOL = '0x2d914e23d82fedef1b5f56a32d5c64bdcc3087ccfea2b4d6ea51a71f587840e5';
+      const VOLO_METADATA = '0x680cd26af32b2bde8d3361e804c53ec1d1cfe24c7f039eb7f549e8dfde389a60';
+      const SUI_SYS = '0x05';
+
+      const amountMist = BigInt(Math.floor(amount * 1e9));
+      if (amountMist < BigInt(1_000_000_000)) throw new Error('Minimum stake is 1 SUI');
+
+      const stakeTx = new Transaction();
+      stakeTx.setSender(address);
+      const [suiCoin] = stakeTx.splitCoins(stakeTx.gas, [amountMist]);
+      const [vSuiCoin] = stakeTx.moveCall({
+        target: `${VOLO_PKG}::stake_pool::stake`,
+        arguments: [
+          stakeTx.object(VOLO_POOL),
+          stakeTx.object(VOLO_METADATA),
+          stakeTx.object(SUI_SYS),
+          suiCoin,
+        ],
+      });
+      stakeTx.transferObjects([vSuiCoin], address);
+      return stakeTx;
+    }
+
+    case 'volo-unstake': {
+      const VOLO_PKG = '0x68d22cf8bdbcd11ecba1e094922873e4080d4d11133e2443fddda0bfd11dae20';
+      const VOLO_POOL = '0x2d914e23d82fedef1b5f56a32d5c64bdcc3087ccfea2b4d6ea51a71f587840e5';
+      const VOLO_METADATA = '0x680cd26af32b2bde8d3361e804c53ec1d1cfe24c7f039eb7f549e8dfde389a60';
+      const SUI_SYS = '0x05';
+      const VSUI_TYPE = '0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT';
+
+      const vSuiCoins = await fetchCoinsForSwap(client, address, VSUI_TYPE);
+      if (vSuiCoins.length === 0) throw new Error('No vSUI found in wallet');
+
+      const unstakeTx = new Transaction();
+      unstakeTx.setSender(address);
+      const primary = unstakeTx.object(vSuiCoins[0]);
+      if (vSuiCoins.length > 1) {
+        unstakeTx.mergeCoins(primary, vSuiCoins.slice(1).map(id => unstakeTx.object(id)));
+      }
+
+      let vSuiCoin;
+      if (amount <= 0) {
+        vSuiCoin = primary;
+      } else {
+        const amountMist = BigInt(Math.floor(amount * 1e9));
+        [vSuiCoin] = unstakeTx.splitCoins(primary, [amountMist]);
+      }
+
+      const [suiCoin] = unstakeTx.moveCall({
+        target: `${VOLO_PKG}::stake_pool::unstake`,
+        arguments: [
+          unstakeTx.object(VOLO_POOL),
+          unstakeTx.object(VOLO_METADATA),
+          unstakeTx.object(SUI_SYS),
+          vSuiCoin,
+        ],
+      });
+      unstakeTx.transferObjects([suiCoin], address);
+      return unstakeTx;
+    }
+
     default:
       throw new Error(`Unknown transaction type: ${type}`);
   }
 
   return tx;
+}
+
+const SWAP_TOKEN_MAP: Record<string, string> = {
+  SUI: '0x2::sui::SUI',
+  USDC: '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC',
+  USDT: '0x375f70cf2ae4c00bf37117d0c85a2c71545e6ee05c4a5c7d282cd66a4504b068::usdt::USDT',
+  CETUS: '0x06864a6f921804860930db6ddbe2e16acdf8504495ea7481637a1c8b9a8fe54b::cetus::CETUS',
+  DEEP: '0xdeeb7a4662eec9f2f3def03fb937a663dddaa2e215b8078a284d026b7946c270::deep::DEEP',
+  NAVX: '0xa99b8952d4f7d947ea77fe0ecdcc9e5fc0bcab2841d6e2a5aa00c3044e5544b5::navx::NAVX',
+  vSUI: '0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT',
+  WAL: '0x356a26eb9e012a68958082340d4c4116e7f55615cf27affcff209cf0ae544f59::wal::WAL',
+  ETH: '0xd0e89b2af5e4910726fbcd8b8dd37bb79b29e5f83f7491bca830e94f7f226d29::eth::ETH',
+};
+
+function resolveSwapToken(nameOrType: string): string | null {
+  if (nameOrType.includes('::')) return nameOrType;
+  return SWAP_TOKEN_MAP[nameOrType.toUpperCase()] ?? null;
+}
+
+let cetusClient: AggregatorClient | null = null;
+function getCetusAggregator(signer: string): AggregatorClient {
+  if (cetusClient) return cetusClient;
+  cetusClient = new AggregatorClient({ signer, env: Env.Mainnet });
+  return cetusClient;
+}
+
+async function fetchCoinsForSwap(
+  client: ReturnType<typeof getClient>,
+  owner: string,
+  coinType: string,
+): Promise<string[]> {
+  const ids: string[] = [];
+  let cursor: string | null | undefined;
+  do {
+    const page = await client.getCoins({ owner, coinType, cursor: cursor ?? undefined });
+    ids.push(...page.data.map(c => c.coinObjectId));
+    cursor = page.hasNextPage ? page.nextCursor : null;
+  } while (cursor);
+  return ids;
 }

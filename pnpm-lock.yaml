@@ -32,6 +32,9 @@ importers:
       '@anthropic-ai/sdk':
         specifier: ^0.80.0
         version: 0.80.0(zod@4.3.6)
+      '@cetusprotocol/aggregator-sdk':
+        specifier: ^1.4.8
+        version: 1.4.8(axios@1.14.0)(typescript@5.9.3)
       '@mysten/dapp-kit':
         specifier: ^1.0.4
         version: 1.0.4(@mysten/sui@2.11.0(typescript@5.9.3))(@tanstack/react-query@5.96.1(react@19.2.4))(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)

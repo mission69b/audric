@@ -38,6 +38,9 @@ export interface AgentActions {
   borrow(params: { amount: number; protocol?: string }): Promise<{ tx: string }>;
   repay(params: { amount: number; protocol?: string }): Promise<{ tx: string }>;
   claimRewards(): Promise<{ tx: string }>;
+  swap(params: { from: string; to: string; amount: number; slippage?: number; byAmountIn?: boolean }): Promise<{ tx: string }>;
+  stakeVSui(params: { amount: number }): Promise<{ tx: string }>;
+  unstakeVSui(params: { amount: number }): Promise<{ tx: string }>;
   payService(params: { serviceId?: string; fields?: Record<string, string>; url?: string; rawBody?: Record<string, unknown> }): Promise<ServiceResult>;
   retryServiceDelivery(paymentDigest: string, meta: ServiceRetryMeta): Promise<ServiceResult>;
 }
@@ -137,6 +140,18 @@ export function useAgent() {
 
           async claimRewards() {
             return sponsoredTransaction('claim-rewards', { amount: 0 });
+          },
+
+          async swap({ from, to, amount, slippage, byAmountIn }) {
+            return sponsoredTransaction('swap', { amount, from, to, slippage, byAmountIn });
+          },
+
+          async stakeVSui({ amount }) {
+            return sponsoredTransaction('volo-stake', { amount });
+          },
+
+          async unstakeVSui({ amount }) {
+            return sponsoredTransaction('volo-unstake', { amount });
           },
 
           async payService({ serviceId, fields, url, rawBody }) {

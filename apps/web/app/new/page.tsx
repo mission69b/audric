@@ -710,6 +710,27 @@ function DashboardContent() {
           balanceQuery.refetch();
           return { success: true, data: { success: true, tx: res.tx } };
         }
+        case 'swap_execute': {
+          const res = await sdk.swap({
+            from: String(inp.from),
+            to: String(inp.to),
+            amount: Number(inp.amount),
+            slippage: inp.slippage ? Number(inp.slippage) : undefined,
+            byAmountIn: inp.byAmountIn as boolean | undefined,
+          });
+          balanceQuery.refetch();
+          return { success: true, data: { success: true, tx: res.tx, from: inp.from, to: inp.to, amount: inp.amount } };
+        }
+        case 'volo_stake': {
+          const res = await sdk.stakeVSui({ amount: Number(inp.amount) });
+          balanceQuery.refetch();
+          return { success: true, data: { success: true, tx: res.tx, amount: inp.amount } };
+        }
+        case 'volo_unstake': {
+          const res = await sdk.unstakeVSui({ amount: Number(inp.amount ?? 0) });
+          balanceQuery.refetch();
+          return { success: true, data: { success: true, tx: res.tx, amount: inp.amount } };
+        }
         case 'pay_api': {
           const serviceResult = await sdk.payService({
             url: inp.url as string,
