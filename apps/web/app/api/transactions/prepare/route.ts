@@ -435,7 +435,7 @@ async function getSwapDecimals(coinType: string): Promise<number> {
       return meta.decimals;
     }
   } catch (err) {
-    console.warn(`[swap] getCoinMetadata failed for ${coinType}:`, err);
+    console.warn('[swap] getCoinMetadata failed for %s:', coinType, err);
   }
   return 9;
 }

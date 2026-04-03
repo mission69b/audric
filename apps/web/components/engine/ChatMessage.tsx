@@ -98,7 +98,7 @@ export function ChatMessage({ message, onActionResolve, autoApproveTools }: Chat
           aria-atomic="false"
         >
           <span className="text-dim mr-1.5 float-left mt-0.5" aria-hidden="true"><AudricMark size={14} /></span>
-          <div className="text-foreground leading-relaxed">
+          <div className="text-foreground leading-relaxed overflow-hidden">
             {message.isStreaming ? (
               <span className="whitespace-pre-wrap">
                 {message.content}

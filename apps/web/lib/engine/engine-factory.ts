@@ -312,7 +312,7 @@ export async function createEngine(
 }
 
 export function generateSessionId(): string {
-  return `s_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+  return `s_${Date.now()}_${crypto.randomUUID().replace(/-/g, '').slice(0, 12)}`;
 }
 
 const DEMO_SYSTEM_PROMPT = `You are Audric, a financial agent on Sui. This is a demo — the user is not signed in.

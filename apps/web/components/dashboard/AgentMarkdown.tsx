@@ -175,7 +175,7 @@ function InlineSegments({
             );
           case 'code':
             return (
-              <code key={i} className="bg-surface border border-border rounded px-1.5 py-0.5 text-xs font-mono text-foreground">
+              <code key={i} className="bg-surface border border-border rounded px-1.5 py-0.5 text-xs font-mono text-foreground break-all">
                 {seg.content}
               </code>
             );
@@ -347,7 +347,7 @@ export function AgentMarkdown({ text, onAction }: AgentMarkdownProps) {
   }
 
   return (
-    <div className="space-y-1 text-foreground/85 leading-relaxed">
+    <div className="space-y-1 text-foreground/85 leading-relaxed break-words">
       {elements}
     </div>
   );

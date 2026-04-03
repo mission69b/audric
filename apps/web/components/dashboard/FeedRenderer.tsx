@@ -185,7 +185,7 @@ export function FeedItemCard({
     case 'ai-text':
       return (
         <div className="space-y-2 feed-row">
-          <div className="rounded-2xl rounded-bl-md border border-border bg-surface px-4 py-3 text-sm shadow-[var(--shadow-card)]">
+          <div className="rounded-2xl rounded-bl-md border border-border bg-surface px-4 py-3 text-sm overflow-hidden shadow-[var(--shadow-card)]">
             <span className="text-dim mr-1.5 float-left mt-0.5"><AudricMark size={14} /></span>
             <AgentMarkdown text={data.text} onAction={onChipClick} />
           </div>

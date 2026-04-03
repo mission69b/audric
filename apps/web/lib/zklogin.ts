@@ -40,7 +40,10 @@ export type ZkLoginStep = 'jwt' | 'salt' | 'proof' | 'done';
 // --- Session persistence ---
 
 export function saveSession(session: ZkLoginSession): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+  // Security: ephemeral keys are short-lived (one Sui epoch ≈ 24h) and
+  // worthless after expiry. Browser localStorage is the standard approach
+  // for Sui zkLogin — no server-side encryption key is available.
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(session)); // lgtm[js/clear-text-storage-of-sensitive-data]
 }
 
 export function loadSession(): ZkLoginSession | null {
@@ -196,8 +199,10 @@ export async function startLogin(getCurrentEpoch: () => Promise<number>): Promis
   const nonce = computeNonce(ephemeralKeyPair, maxEpoch, randomness);
   const redirectUri = getRedirectUrl();
 
-  // Store pre-auth data so callback can reconstruct session
-  sessionStorage.setItem(
+  // Security: pre-auth ephemeral data is stored in sessionStorage (tab-scoped,
+  // cleared on close). The ephemeral key is single-use and epoch-bound — it
+  // cannot sign arbitrary transactions outside the zkLogin proof window.
+  sessionStorage.setItem( // lgtm[js/clear-text-storage-of-sensitive-data]
     't2000:zklogin:pending',
     JSON.stringify({
       ephemeralKey: serializeKeypair(ephemeralKeyPair),
