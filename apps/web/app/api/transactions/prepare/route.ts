@@ -287,11 +287,19 @@ async function buildTransaction(params: BuildRequest): Promise<Transaction> {
 
       const fromType = resolveSwapToken(fromToken);
       const toType = resolveSwapToken(toToken);
-      if (!fromType) throw new Error(`Unknown token: ${fromToken}`);
-      if (!toType) throw new Error(`Unknown token: ${toToken}`);
+      if (!fromType) {
+        throw new Error(
+          `Unknown token "${fromToken}". Use a common name (SUI, USDC, CETUS, DEEP, etc.) or the full Sui coin type (e.g. 0x...::module::TOKEN).`,
+        );
+      }
+      if (!toType) {
+        throw new Error(
+          `Unknown token "${toToken}". Use a common name (SUI, USDC, CETUS, DEEP, etc.) or the full Sui coin type (e.g. 0x...::module::TOKEN).`,
+        );
+      }
       if (fromType === toType) throw new Error('Cannot swap a token to itself');
 
-      const fromDecimals = getSwapDecimals(fromType);
+      const fromDecimals = await getSwapDecimals(fromType);
       const rawAmount = BigInt(Math.floor(amount * 10 ** fromDecimals));
 
       const rawSlippage = Number(params.slippage);
@@ -404,11 +412,28 @@ const SWAP_TYPE_TO_DECIMALS = new Map(
 
 function resolveSwapToken(nameOrType: string): string | null {
   if (nameOrType.includes('::')) return nameOrType;
-  return SWAP_TOKENS[nameOrType.toUpperCase()]?.type ?? null;
+  const known = SWAP_TOKENS[nameOrType.toUpperCase()]?.type;
+  if (known) return known;
+  return null;
 }
 
-function getSwapDecimals(coinType: string): number {
-  return SWAP_TYPE_TO_DECIMALS.get(coinType) ?? 9;
+function getSwapDecimalsSync(coinType: string): number | null {
+  return SWAP_TYPE_TO_DECIMALS.get(coinType) ?? null;
+}
+
+async function getSwapDecimals(coinType: string): Promise<number> {
+  const known = getSwapDecimalsSync(coinType);
+  if (known !== null) return known;
+  try {
+    const meta = await getClient().getCoinMetadata({ coinType });
+    if (meta && typeof meta.decimals === 'number') {
+      SWAP_TYPE_TO_DECIMALS.set(coinType, meta.decimals);
+      return meta.decimals;
+    }
+  } catch (err) {
+    console.warn(`[swap] getCoinMetadata failed for ${coinType}:`, err);
+  }
+  return 9;
 }
 
 const CETUS_ENV = SUI_NETWORK === 'mainnet' ? Env.Mainnet : Env.Testnet;

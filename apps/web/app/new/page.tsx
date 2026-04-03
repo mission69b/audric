@@ -676,7 +676,7 @@ function DashboardContent() {
   const extractReceivedAmount = useCallback((balanceChanges: Array<{ coinType: string; amount: string }> | undefined, toToken: string): string | null => {
     if (!balanceChanges?.length) return null;
 
-    const TOKENS: Record<string, { type: string; decimals: number }> = {
+    const KNOWN_TOKENS: Record<string, { type: string; decimals: number }> = {
       SUI:   { type: '0x2::sui::SUI', decimals: 9 },
       USDC:  { type: '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC', decimals: 6 },
       USDT:  { type: '0x375f70cf2ae4c00bf37117d0c85a2c71545e6ee05c4a5c7d282cd66a4504b068::usdt::USDT', decimals: 6 },
@@ -688,16 +688,33 @@ function DashboardContent() {
       ETH:   { type: '0xd0e89b2af5e4910726fbcd8b8dd37bb79b29e5f83f7491bca830e94f7f226d29::eth::ETH', decimals: 8 },
     };
 
-    const entry = TOKENS[toToken.toUpperCase()];
+    const entry = KNOWN_TOKENS[toToken.toUpperCase()];
     const targetType = entry?.type ?? toToken;
-    const decimals = entry?.decimals ?? 9;
+    const knownDecimals = entry?.decimals;
 
-    const match = balanceChanges.find(
-      (bc) => bc.coinType === targetType && Number(bc.amount) > 0,
-    );
-    if (!match) return null;
-    const precision = decimals >= 8 ? 4 : 2;
-    return (Number(match.amount) / 10 ** decimals).toFixed(precision);
+    // For known tokens, match by resolved type
+    if (knownDecimals != null) {
+      const match = balanceChanges.find(
+        (bc) => bc.coinType === targetType && Number(bc.amount) > 0,
+      );
+      if (!match) return null;
+      const precision = knownDecimals >= 8 ? 4 : 2;
+      return (Number(match.amount) / 10 ** knownDecimals).toFixed(precision);
+    }
+
+    // For arbitrary tokens, find the positive balance change matching the target coin type
+    // If toToken is a full coin type (contains ::), match directly
+    // Otherwise try to find any positive change that isn't the gas coin
+    if (targetType.includes('::')) {
+      const match = balanceChanges.find(
+        (bc) => bc.coinType === targetType && Number(bc.amount) > 0,
+      );
+      if (!match) return null;
+      // Default to 9 decimals for unknown tokens (most Sui tokens use 9)
+      return (Number(match.amount) / 10 ** 9).toFixed(4);
+    }
+
+    return null;
   }, []);
 
   const handleExecuteAction = useCallback(
