@@ -208,6 +208,7 @@ export async function createEngine(
     model: MODEL,
     maxTurns: 10,
     maxTokens: 2048,
+    temperature: 0,
     costTracker: {
       budgetLimitUsd: 0.50,
     },
