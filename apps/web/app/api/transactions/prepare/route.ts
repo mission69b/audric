@@ -140,15 +140,19 @@ async function buildAndSponsor(
   params: BuildRequest,
   jwt: string | null,
 ): Promise<SponsorResult> {
+  console.log(`[prepare] building ${params.type}...`);
   const tx = await buildTransaction(params);
+  console.log(`[prepare] buildTransaction OK`);
 
   const moveCallTargets = extractMoveCallTargets(tx);
   if (moveCallTargets.length > 0) {
     console.log('[prepare]', String(params.type), 'targets:', moveCallTargets);
   }
 
+  console.log(`[prepare] building tx kind bytes...`);
   const txKindBytes = await tx.build({ client: getClient(), onlyTransactionKind: true });
   const txKindBase64 = toBase64(txKindBytes);
+  console.log(`[prepare] tx kind built OK, ${txKindBytes.length} bytes`);
 
   const sponsorHeaders: Record<string, string> = {
     Authorization: `Bearer ${ENOKI_SECRET_KEY!}`,
@@ -498,6 +502,7 @@ async function buildSwapTx(
     try {
       const aggClient = getCetusAggregator(address);
 
+      console.log(`[swap] attempt ${attempt}: findRouters ${fromToken}→${toToken} amount=${effectiveAmount}`);
       const routerData = await withTimeout(
         aggClient.findRouters({
           from: fromType,
@@ -511,6 +516,7 @@ async function buildSwapTx(
 
       if (!routerData) throw new Error(`No swap route found for ${fromToken} → ${toToken}`);
       if (routerData.insufficientLiquidity) throw new Error(`Insufficient liquidity for ${fromToken} → ${toToken}`);
+      console.log(`[swap] route found: paths=${routerData.paths?.length}, amountOut=${routerData.amountOut}`);
 
       const swapTx = new Transaction();
       swapTx.setSender(address);
@@ -522,6 +528,7 @@ async function buildSwapTx(
 
       const inputCoin = swapAll ? swapPrimary : swapTx.splitCoins(swapPrimary, [effectiveAmount])[0];
 
+      console.log(`[swap] calling routerSwap...`);
       const outputCoin = await withTimeout(
         aggClient.routerSwap({
           router: routerData,
@@ -534,10 +541,11 @@ async function buildSwapTx(
       );
 
       swapTx.transferObjects([outputCoin], address);
+      console.log(`[swap] tx built OK, commands=${swapTx.getData().commands.length}`);
       return swapTx;
     } catch (err) {
       lastError = err instanceof Error ? err : new Error(String(err));
-      console.warn(`[swap] attempt ${attempt}/${MAX_ATTEMPTS} failed:`, lastError.message);
+      console.error(`[swap] attempt ${attempt}/${MAX_ATTEMPTS} failed:`, lastError.message, lastError.stack?.split('\n').slice(0,3).join('\n'));
       if (attempt < MAX_ATTEMPTS) continue;
     }
   }

@@ -755,17 +755,23 @@ function DashboardContent() {
           return { success: true, data: { success: true, tx: res.tx } };
         }
         case 'swap_execute': {
-          const res = await sdk.swap({
-            from: String(inp.from),
-            to: String(inp.to),
-            amount: Number(inp.amount),
-            slippage: inp.slippage ? Number(inp.slippage) : undefined,
-            byAmountIn: inp.byAmountIn as boolean | undefined,
-          });
-          balanceQuery.refetch();
-          setTimeout(() => balanceQuery.refetch(), 3000);
-          const received = extractReceivedAmount(res.balanceChanges, String(inp.to));
-          return { success: true, data: { success: true, tx: res.tx, from: inp.from, to: inp.to, amount: inp.amount, ...(received != null && { received }) } };
+          try {
+            const res = await sdk.swap({
+              from: String(inp.from),
+              to: String(inp.to),
+              amount: Number(inp.amount),
+              slippage: inp.slippage ? Number(inp.slippage) : undefined,
+              byAmountIn: inp.byAmountIn as boolean | undefined,
+            });
+            balanceQuery.refetch();
+            setTimeout(() => balanceQuery.refetch(), 3000);
+            const received = extractReceivedAmount(res.balanceChanges, String(inp.to));
+            return { success: true, data: { success: true, tx: res.tx, from: inp.from, to: inp.to, amount: inp.amount, ...(received != null && { received }) } };
+          } catch (swapErr) {
+            const msg = swapErr instanceof Error ? swapErr.message : String(swapErr);
+            console.error('[swap_execute] failed:', msg);
+            return { success: false, data: { success: false, error: msg, from: inp.from, to: inp.to, amount: inp.amount } };
+          }
         }
         case 'volo_stake': {
           const res = await sdk.stakeVSui({ amount: Number(inp.amount) });
