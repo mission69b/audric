@@ -85,7 +85,7 @@ export function BalanceHeader({ address, balance, compact, onSettingsClick }: Ba
           className="flex items-center gap-1.5 hover:opacity-70 transition cursor-pointer"
           aria-label="Refresh page"
         >
-          <span className="font-mono text-sm font-semibold tracking-widest text-foreground uppercase">Audric</span>
+          <span className="font-mono text-base font-bold tracking-wide text-foreground uppercase">Audric</span>
           <span className="text-[9px] uppercase tracking-widest font-medium text-muted border border-border rounded px-1.5 py-0.5 leading-none">
             beta
           </span>
