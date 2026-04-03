@@ -265,6 +265,73 @@ function drawText(ctx, text, x, y, font, color, bsColor) {
   }
 }
 
+// ─── Textured diamond for PFPs ───
+function drawDiamondTextured(ctx, cx, cy, cellSize, gap, fg, bg, isDark) {
+  const totalSize = 5 * cellSize + 4 * gap;
+  const startX = cx - totalSize / 2;
+  const startY = cy - totalSize / 2;
+  const r = cellSize * 0.18;
+
+  DIAMOND.forEach(([row, col]) => {
+    const x = startX + col * (cellSize + gap);
+    const y = startY + row * (cellSize + gap);
+
+    ctx.save();
+
+    // Drop shadow
+    ctx.shadowColor = isDark ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.15)';
+    ctx.shadowBlur = cellSize * 0.25;
+    ctx.shadowOffsetY = cellSize * 0.06;
+
+    // Base fill with subtle gradient
+    const grad = ctx.createLinearGradient(x, y, x + cellSize, y + cellSize);
+    if (isDark) {
+      grad.addColorStop(0, '#ffffff');
+      grad.addColorStop(0.5, '#e8e8e8');
+      grad.addColorStop(1, '#d0d0d0');
+    } else {
+      grad.addColorStop(0, '#1a1a1a');
+      grad.addColorStop(0.5, '#2a2a2a');
+      grad.addColorStop(1, '#333333');
+    }
+    ctx.beginPath();
+    ctx.roundRect(x, y, cellSize, cellSize, r);
+    ctx.fillStyle = grad;
+    ctx.fill();
+    ctx.restore();
+
+    // Noise/grain overlay
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect(x, y, cellSize, cellSize, r);
+    ctx.clip();
+    const noiseAlpha = isDark ? 0.08 : 0.12;
+    for (let ny = 0; ny < cellSize; ny += 2) {
+      for (let nx = 0; nx < cellSize; nx += 2) {
+        if (Math.random() < 0.3) {
+          ctx.fillStyle = isDark
+            ? `rgba(0,0,0,${Math.random() * noiseAlpha})`
+            : `rgba(255,255,255,${Math.random() * noiseAlpha})`;
+          ctx.fillRect(x + nx, y + ny, 2, 2);
+        }
+      }
+    }
+    ctx.restore();
+
+    // Top highlight edge
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect(x + 1, y + 1, cellSize - 2, cellSize * 0.4, [r, r, 0, 0]);
+    ctx.clip();
+    const hl = ctx.createLinearGradient(x, y, x, y + cellSize * 0.4);
+    hl.addColorStop(0, isDark ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.08)');
+    hl.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = hl;
+    ctx.fillRect(x, y, cellSize, cellSize * 0.4);
+    ctx.restore();
+  });
+}
+
 // ─── Profile Picture ───
 function renderPfp(variant) {
   const size = 400;
@@ -273,18 +340,27 @@ function renderPfp(variant) {
   canvas.height = size;
   const ctx = canvas.getContext('2d');
 
+  // cellSize=34, gap=10 → total diamond span = 5*34+4*10 = 210px → 52.5% of 400px
+  const cell = 34, gap = 10;
+
   if (variant === 'dark') {
     ctx.fillStyle = '#191919';
     ctx.fillRect(0, 0, size, size);
-    drawDiamond(ctx, size/2, size/2, 52, 14, '#ffffff', 1);
+    drawDiamondTextured(ctx, size/2, size/2, cell, gap, '#ffffff', '#191919', true);
   } else if (variant === 'light') {
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, size, size);
-    drawDiamond(ctx, size/2, size/2, 52, 14, '#191919', 1);
+    drawDiamondTextured(ctx, size/2, size/2, cell, gap, '#191919', '#ffffff', false);
   } else if (variant === 'glow') {
     ctx.fillStyle = '#0a0a0a';
     ctx.fillRect(0, 0, size, size);
-    drawDiamond(ctx, size/2, size/2, 52, 14, '#ffffff', 1, 'rgba(255,255,255,0.4)');
+    // Soft ambient glow behind
+    const grd = ctx.createRadialGradient(size/2, size/2, 0, size/2, size/2, 140);
+    grd.addColorStop(0, 'rgba(255,255,255,0.06)');
+    grd.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, 0, size, size);
+    drawDiamondTextured(ctx, size/2, size/2, cell, gap, '#ffffff', '#0a0a0a', true);
   }
 
   return canvas;
