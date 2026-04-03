@@ -16,49 +16,49 @@ const MAX_FREE_TURNS = 5;
 const SIGN_IN_PROMPT =
   'Ready to try for real? Sign in with Google — no seed phrase, no crypto jargon. It takes 10 seconds.';
 
-type Category = 'savings' | 'payments' | 'send' | 'credit' | 'apis';
+type Category = 'earn' | 'swap' | 'send' | 'borrow' | 'services';
 
 const CATEGORIES: { id: Category; label: string }[] = [
-  { id: 'savings', label: 'Savings' },
-  { id: 'payments', label: 'Payments' },
+  { id: 'earn', label: 'Earn' },
+  { id: 'swap', label: 'Swap' },
   { id: 'send', label: 'Send' },
-  { id: 'credit', label: 'Credit' },
-  { id: 'apis', label: 'APIs' },
+  { id: 'borrow', label: 'Borrow' },
+  { id: 'services', label: 'Services' },
 ];
 
 const CATEGORY_PROMPTS: Record<Category, string[]> = {
-  savings: [
-    'Save $100 in USDC',
-    "What's my current yield?",
-    'Withdraw all savings',
+  earn: [
+    'Save $100 and earn yield',
+    "What's the best rate for USDC right now?",
+    'How much have I earned this month?',
   ],
-  payments: [
-    'Pay for a web search',
-    'How much does an API call cost?',
-    'Search for flights to Tokyo',
+  swap: [
+    'Swap $50 USDC to SUI',
+    'Buy $20 of Walrus',
+    'Sell all my SUI for USDC',
   ],
   send: [
     'Send $50 to Alex',
-    'Send USDC to 0x1a2b...',
-    'Who did I send to last?',
+    'Save Mom as a contact',
+    "What's my transaction history?",
   ],
-  credit: [
+  borrow: [
     'Borrow $500 against my savings',
     "What's my health factor?",
     'Repay all my debt',
   ],
-  apis: [
-    'What APIs can I use?',
-    'Search the web for Bitcoin price',
-    'Generate an image of a sunset',
+  services: [
+    'Send a birthday postcard to Mom',
+    'Translate this to Japanese',
+    'Generate a logo for my startup',
   ],
 };
 
 const CHAT_QUICK_ACTIONS = [
-  { label: 'SAVE $100', text: 'Save $100' },
-  { label: 'BORROW', text: 'Borrow USDC against my savings' },
-  { label: 'SEND USDC', text: 'Send $50 to a friend' },
-  { label: 'PAY FOR API', text: 'Pay for an API call' },
+  { label: 'SAVE $100', text: 'Save $100 and earn yield' },
+  { label: 'SWAP', text: 'Swap $20 USDC to SUI' },
+  { label: 'SEND', text: 'Send $50 to a friend' },
+  { label: 'POSTCARD', text: 'Send a postcard to Mom' },
 ];
 
 export default function LandingPage() {
@@ -80,7 +80,7 @@ function LandingContent() {
   const [input, setInput] = useState(promptParam ?? '');
   const [turnCount, setTurnCount] = useState(0);
   const [mode, setMode] = useState<'hero' | 'chat'>('hero');
-  const [activeCategory, setActiveCategory] = useState<Category>('savings');
+  const [activeCategory, setActiveCategory] = useState<Category>('earn');
   const promptHandled = useRef(false);
 
   const { messages, isStreaming, sendMessage, cancel, addCtaMessage } = useDemoChat();
