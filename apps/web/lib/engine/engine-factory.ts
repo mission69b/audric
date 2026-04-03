@@ -240,6 +240,7 @@ export async function createEngine(
     model: MODEL,
     maxTurns: 10,
     maxTokens: 2048,
+    toolChoice: 'any',
     costTracker: {
       budgetLimitUsd: 0.50,
     },
