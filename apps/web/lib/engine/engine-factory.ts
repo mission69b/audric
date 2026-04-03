@@ -7,6 +7,7 @@ import {
   WRITE_TOOLS,
   adaptAllServerTools,
   fetchWalletCoins,
+  fetchTokenPrices,
   type SessionData,
   type SessionStore,
   type ServerPositionData,
@@ -120,7 +121,8 @@ export async function fetchServerPositions(address: string): Promise<ServerPosit
 }
 
 interface WalletBalanceSummary {
-  coins: { symbol: string; amount: number }[];
+  coins: { symbol: string; amount: number; usdValue?: number }[];
+  prices?: Record<string, number>;
 }
 
 function buildSystemPrompt(walletAddress: string, tools: Tool[], balances?: WalletBalanceSummary): string {
@@ -128,7 +130,10 @@ function buildSystemPrompt(walletAddress: string, tools: Tool[], balances?: Wall
   const writeToolList = writeTools.map((t) => `- ${t.name}`).join('\n');
 
   const balanceLines = balances?.coins.length
-    ? balances.coins.map((c) => `${c.symbol}: ${c.amount}`).join(', ')
+    ? balances.coins.map((c) => {
+        const usd = c.usdValue != null ? ` ($${c.usdValue.toFixed(2)})` : '';
+        return `${c.symbol}: ${c.amount}${usd}`;
+      }).join(', ')
     : 'unknown';
 
   return `You are Audric, a financial agent on Sui. You manage money and access paid APIs via MPP micropayments.
@@ -171,6 +176,8 @@ When a user asks to swap, save, send, stake, borrow, repay, or claim — call th
 - "Buy Y with X" → from=X, to=Y
 - "Sell all X" or "Swap all X to Y" → from=X, amount=FULL balance of X from the balances above
 - Double-check: the "from" token's balance must be >= the amount. If not, you have from/to backwards.
+- Before calling swap_execute, briefly state the expected output using the prices above (e.g., "5 USDC → ~5.7 SUI at $0.87/SUI"). This helps the user decide before the confirmation card.
+- After swap completes, report the EXACT received amount from the tool result. Never estimate or reuse numbers from previous messages.
 
 ## Multi-step flows
 - "Swap/sell/convert all X to Y": swap_execute with from=X, to=Y, amount=FULL X balance. Gas is sponsored — no reserve needed.
@@ -206,13 +213,20 @@ export async function createEngine(
     }),
   ]);
 
+  const nonZeroCoins = walletCoins.filter((c) => Number(c.totalBalance) > 0);
+  const prices = await fetchTokenPrices(nonZeroCoins.map((c) => c.coinType)).catch(() => ({} as Record<string, number>));
+
   const balanceSummary: WalletBalanceSummary = {
-    coins: walletCoins
-      .filter((c) => Number(c.totalBalance) > 0)
-      .map((c) => ({
+    coins: nonZeroCoins.map((c) => {
+      const amount = Number(c.totalBalance) / 10 ** c.decimals;
+      const price = prices[c.coinType];
+      return {
         symbol: c.symbol,
-        amount: Number(c.totalBalance) / 10 ** c.decimals,
-      })),
+        amount,
+        usdValue: price ? amount * price : undefined,
+      };
+    }),
+    prices,
   };
 
   // Only expose MCP tools that add genuinely new capabilities.
