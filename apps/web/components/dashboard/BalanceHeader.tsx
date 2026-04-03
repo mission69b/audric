@@ -3,8 +3,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { truncateAddress } from '@/lib/format';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { AudricMark } from '@/components/ui/AudricMark';
-
 export interface SavingsBreakdownEntry {
   protocol: string;
   protocolId: string;
@@ -84,10 +82,10 @@ export function BalanceHeader({ address, balance, compact, onSettingsClick }: Ba
       <div className="flex items-center justify-between px-1">
         <button
           onClick={() => window.location.reload()}
-          className="flex items-center gap-2 hover:opacity-70 transition cursor-pointer"
+          className="flex items-center gap-1.5 hover:opacity-70 transition cursor-pointer"
           aria-label="Refresh page"
         >
-          <AudricMark size={20} className="text-foreground" />
+          <span className="font-mono text-sm font-semibold tracking-tight text-foreground">Audric</span>
           <span className="text-[9px] uppercase tracking-widest font-medium text-muted border border-border rounded px-1.5 py-0.5 leading-none">
             beta
           </span>
