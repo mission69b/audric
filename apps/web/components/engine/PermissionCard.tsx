@@ -23,12 +23,16 @@ function formatInput(input: unknown): string | null {
   if (obj.asset) parts.push(String(obj.asset));
   if (obj.to) parts.push(`To: ${String(obj.to).slice(0, 8)}...`);
   if (obj.recipient) parts.push(`To: ${String(obj.recipient).slice(0, 8)}...`);
+  if (obj.url) parts.push(String(obj.url).replace('https://mpp.t2000.ai/', ''));
+  if (obj.maxPrice) parts.push(`max $${obj.maxPrice}`);
   return parts.length > 0 ? parts.join(' · ') : null;
 }
 
+export type DenyReason = 'timeout' | 'denied';
+
 interface PermissionCardProps {
   action: PendingAction;
-  onResolve: (action: PendingAction, approved: boolean) => void;
+  onResolve: (action: PendingAction, approved: boolean, reason?: DenyReason) => void;
 }
 
 export function PermissionCard({ action, onResolve }: PermissionCardProps) {
@@ -39,12 +43,12 @@ export function PermissionCard({ action, onResolve }: PermissionCardProps) {
   const label = TOOL_LABELS[action.toolName] ?? action.toolName.replace(/_/g, ' ');
   const inputSummary = formatInput(action.input);
 
-  const handle = (approved: boolean) => {
+  const handle = (approved: boolean, reason?: DenyReason) => {
     if (resolvedRef.current) return;
     resolvedRef.current = true;
     setResolved(true);
     if (timerRef.current) clearInterval(timerRef.current);
-    onResolve(action, approved);
+    onResolve(action, approved, reason);
   };
 
   useEffect(() => {
@@ -53,7 +57,7 @@ export function PermissionCard({ action, onResolve }: PermissionCardProps) {
     timerRef.current = setInterval(() => {
       setSecondsLeft((prev) => {
         if (prev <= 1) {
-          handle(false);
+          handle(false, 'timeout');
           return 0;
         }
         return prev - 1;
@@ -107,7 +111,7 @@ export function PermissionCard({ action, onResolve }: PermissionCardProps) {
       {!resolved ? (
         <div className="flex gap-2">
           <button
-            onClick={() => handle(false)}
+            onClick={() => handle(false, 'denied')}
             className="flex-1 rounded-lg border border-border bg-background py-2 text-xs font-medium text-muted hover:text-foreground hover:border-border-bright transition active:scale-[0.97]"
           >
             Deny

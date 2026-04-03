@@ -87,7 +87,7 @@ export function useEngine({ address, jwt }: UseEngineOptions) {
    * Opens a new SSE stream to /api/engine/resume with the tool result.
    */
   const resolveAction = useCallback(
-    async (action: PendingAction, approved: boolean, executionResult?: unknown) => {
+    async (action: PendingAction, approved: boolean, executionResult?: unknown, denyReason?: 'timeout' | 'denied') => {
       if (!sessionId || !jwt || !address) return;
 
       setMessages((prev) =>
@@ -98,10 +98,13 @@ export function useEngine({ address, jwt }: UseEngineOptions) {
       );
 
       if (!approved) {
+        const content = denyReason === 'timeout'
+          ? 'Action timed out (60s). Ask me to try again.'
+          : 'Action denied.';
         const denialMsg: EngineChatMessage = {
           id: nextMsgId(),
           role: 'assistant',
-          content: 'Action cancelled.',
+          content,
           timestamp: Date.now(),
         };
         setMessages((prev) => [...prev, denialMsg]);

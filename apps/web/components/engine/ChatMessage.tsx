@@ -3,13 +3,13 @@
 import type { EngineChatMessage, PendingAction, ToolExecution } from '@/lib/engine-types';
 import { AgentStep, getStepIcon, getStepLabel } from './AgentStep';
 import { ThinkingState } from './ThinkingState';
-import { PermissionCard } from './PermissionCard';
+import { PermissionCard, type DenyReason } from './PermissionCard';
 import { AgentMarkdown } from '@/components/dashboard/AgentMarkdown';
 import { AudricMark } from '@/components/ui/AudricMark';
 
 interface ChatMessageProps {
   message: EngineChatMessage;
-  onActionResolve?: (action: PendingAction, approved: boolean) => void;
+  onActionResolve?: (action: PendingAction, approved: boolean, reason?: DenyReason) => void;
 }
 
 function ToolSteps({ tools }: { tools: ToolExecution[] }) {

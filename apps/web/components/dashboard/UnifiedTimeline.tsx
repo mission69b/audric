@@ -11,6 +11,7 @@ import type { useEngine } from '@/hooks/useEngine';
 import type { useFeed } from '@/hooks/useFeed';
 import type { FeedItem } from '@/lib/feed-types';
 import type { EngineChatMessage, PendingAction } from '@/lib/engine-types';
+import type { DenyReason } from '@/components/engine/PermissionCard';
 
 type EngineInstance = ReturnType<typeof useEngine>;
 type FeedInstance = ReturnType<typeof useFeed>;
@@ -91,9 +92,9 @@ export function UnifiedTimeline({
   );
 
   const handleActionResolve = useCallback(
-    async (action: PendingAction, approved: boolean) => {
+    async (action: PendingAction, approved: boolean, reason?: DenyReason) => {
       if (!approved || !onExecuteAction) {
-        engine.resolveAction(action, approved);
+        engine.resolveAction(action, approved, undefined, reason);
         return;
       }
 
