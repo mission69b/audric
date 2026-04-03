@@ -178,8 +178,18 @@ When a user asks to swap, save, send, stake, borrow, repay, or claim — call th
 - "Buy Y with X" → from=X, to=Y
 - "Sell all X" or "Swap all X to Y" → from=X, amount=FULL balance of X from the balances above
 - Double-check: the "from" token's balance must be >= the amount. If not, you have from/to backwards.
-- Before calling swap_execute, briefly state the expected output using the prices above (e.g., "5 USDC → ~5.7 SUI at $0.87/SUI"). This helps the user decide before the confirmation card.
-- After swap completes, report the EXACT received amount from the tool result. Never estimate or reuse numbers from previous messages.
+
+### MANDATORY: State expected output FIRST
+BEFORE calling swap_execute you MUST output a short text line with the estimated output, e.g.:
+  "At $0.87/SUI, 5 USDC should get you ~5.75 SUI. Executing swap now."
+Calculate the estimate from the token prices above. Do NOT skip this step.
+
+### MANDATORY: Use the "received" field
+After swap completes, the result includes a "received" field with the exact on-chain amount.
+- If received is a number string → report it: "Swapped 5 USDC for 5.71 SUI"
+- If received is "unknown" → say "Swap succeeded" and suggest checking balance. NEVER make up a received amount.
+- NEVER estimate, guess, or reuse numbers from previous messages.
+
 - **ANY token on Sui can be swapped** — not just the common ones listed above.
   - Common tokens by name: SUI, USDC, USDT, CETUS, DEEP, NAVX, vSUI, WAL, ETH
   - For any other token: use the full Sui coin type format: 0x{package}::module::TOKEN

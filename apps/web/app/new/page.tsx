@@ -692,32 +692,39 @@ function DashboardContent() {
       ETH:   { type: '0xd0e89b2af5e4910726fbcd8b8dd37bb79b29e5f83f7491bca830e94f7f226d29::eth::ETH', decimals: 8 },
     };
 
-    const isUserChange = (bc: { owner?: unknown }): boolean => {
+    const norm = (addr: string) => addr.toLowerCase().replace(/^0x0*/, '0x');
+
+    const isUserOwned = (bc: { owner?: unknown }): boolean => {
       if (!userAddress) return true;
-      const o = bc.owner as Record<string, string> | undefined;
-      return o?.AddressOwner === userAddress;
+      const o = bc.owner as Record<string, string> | null | undefined;
+      if (!o || typeof o !== 'object') return false;
+      const addr = o.AddressOwner ?? o.ObjectOwner;
+      if (!addr) return false;
+      return norm(addr) === norm(userAddress);
+    };
+
+    const findBest = (type: string, decimals: number): string | null => {
+      const positives = balanceChanges!
+        .filter((bc) => bc.coinType === type && Number(bc.amount) > 0);
+
+      if (positives.length === 0) return null;
+
+      const userMatch = positives.find(isUserOwned);
+      const best = userMatch ?? positives.reduce((a, b) =>
+        Number(a.amount) > Number(b.amount) ? a : b,
+      );
+
+      const precision = decimals >= 8 ? 4 : 2;
+      return (Number(best.amount) / 10 ** decimals).toFixed(precision);
     };
 
     const entry = KNOWN_TOKENS[toToken.toUpperCase()];
     const targetType = entry?.type ?? toToken;
     const knownDecimals = entry?.decimals;
 
-    if (knownDecimals != null) {
-      const match = balanceChanges.find(
-        (bc) => bc.coinType === targetType && Number(bc.amount) > 0 && isUserChange(bc),
-      );
-      if (!match) return null;
-      const precision = knownDecimals >= 8 ? 4 : 2;
-      return (Number(match.amount) / 10 ** knownDecimals).toFixed(precision);
-    }
+    if (knownDecimals != null) return findBest(targetType, knownDecimals);
 
-    if (targetType.includes('::')) {
-      const match = balanceChanges.find(
-        (bc) => bc.coinType === targetType && Number(bc.amount) > 0 && isUserChange(bc),
-      );
-      if (!match) return null;
-      return (Number(match.amount) / 10 ** 9).toFixed(4);
-    }
+    if (targetType.includes('::')) return findBest(targetType, 9);
 
     return null;
   }, []);
@@ -771,7 +778,7 @@ function DashboardContent() {
             balanceQuery.refetch();
             setTimeout(() => balanceQuery.refetch(), 3000);
             const received = extractReceivedAmount(res.balanceChanges, String(inp.to), agent.address);
-            return { success: true, data: { success: true, tx: res.tx, from: inp.from, to: inp.to, amount: inp.amount, ...(received != null && { received }) } };
+            return { success: true, data: { success: true, tx: res.tx, from: inp.from, to: inp.to, amount: inp.amount, received: received ?? 'unknown' } };
           } catch (swapErr) {
             const msg = swapErr instanceof Error ? swapErr.message : String(swapErr);
             console.error('[swap_execute] failed:', msg);
