@@ -294,11 +294,18 @@ async function buildTransaction(params: BuildRequest): Promise<Transaction> {
       const rawAmount = BigInt(Math.floor(amount * 10 ** fromDecimals));
       const slippage = Math.max(0.001, Math.min(params.slippage ?? 0.01, 0.05));
 
+      // Fetch coins first to detect "swap all" and get exact on-chain total
+      const { ids: swapCoinIds, totalBalance: swapTotal } = await fetchCoinsForSwap(client, address, fromType);
+      if (swapCoinIds.length === 0) throw new Error(`No ${fromToken} coins found`);
+
+      const swapAll = rawAmount >= swapTotal;
+      const effectiveAmount = swapAll ? swapTotal : rawAmount;
+
       const aggClient = getCetusAggregator(address);
       const routerData = await aggClient.findRouters({
         from: fromType,
         target: toType,
-        amount: rawAmount.toString(),
+        amount: effectiveAmount.toString(),
         byAmountIn: params.byAmountIn ?? true,
       });
 
@@ -308,14 +315,13 @@ async function buildTransaction(params: BuildRequest): Promise<Transaction> {
       const swapTx = new Transaction();
       swapTx.setSender(address);
 
-      // For Enoki-sponsored txs, always fetch actual coins (tx.gas belongs to the sponsor)
-      const swapCoins = await fetchCoinsForSwap(client, address, fromType);
-      if (swapCoins.length === 0) throw new Error(`No ${fromToken} coins found`);
-      const swapPrimary = swapTx.object(swapCoins[0]);
-      if (swapCoins.length > 1) {
-        swapTx.mergeCoins(swapPrimary, swapCoins.slice(1).map(id => swapTx.object(id)));
+      const swapPrimary = swapTx.object(swapCoinIds[0]);
+      if (swapCoinIds.length > 1) {
+        swapTx.mergeCoins(swapPrimary, swapCoinIds.slice(1).map(id => swapTx.object(id)));
       }
-      const [inputCoin] = swapTx.splitCoins(swapPrimary, [rawAmount]);
+
+      // When swapping the full balance, use merged coin directly (no split = no precision issues)
+      const inputCoin = swapAll ? swapPrimary : swapTx.splitCoins(swapPrimary, [effectiveAmount])[0];
 
       const outputCoin = await aggClient.routerSwap({
         router: routerData,
@@ -340,11 +346,11 @@ async function buildTransaction(params: BuildRequest): Promise<Transaction> {
       const stakeTx = new Transaction();
       stakeTx.setSender(address);
       // For Enoki-sponsored txs, fetch actual SUI coins (tx.gas belongs to the sponsor)
-      const stakeCoins = await fetchCoinsForSwap(client, address, SUI_TYPE);
-      if (stakeCoins.length === 0) throw new Error('No SUI coins found');
-      const stakePrimary = stakeTx.object(stakeCoins[0]);
-      if (stakeCoins.length > 1) {
-        stakeTx.mergeCoins(stakePrimary, stakeCoins.slice(1).map(id => stakeTx.object(id)));
+      const { ids: stakeCoinIds } = await fetchCoinsForSwap(client, address, SUI_TYPE);
+      if (stakeCoinIds.length === 0) throw new Error('No SUI coins found');
+      const stakePrimary = stakeTx.object(stakeCoinIds[0]);
+      if (stakeCoinIds.length > 1) {
+        stakeTx.mergeCoins(stakePrimary, stakeCoinIds.slice(1).map(id => stakeTx.object(id)));
       }
       const [suiCoin] = stakeTx.splitCoins(stakePrimary, [amountMist]);
       const [vSuiCoin] = stakeTx.moveCall({
@@ -367,14 +373,14 @@ async function buildTransaction(params: BuildRequest): Promise<Transaction> {
       const SUI_SYS = '0x05';
       const VSUI_TYPE = '0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT';
 
-      const vSuiCoins = await fetchCoinsForSwap(client, address, VSUI_TYPE);
-      if (vSuiCoins.length === 0) throw new Error('No vSUI found in wallet');
+      const { ids: vSuiCoinIds } = await fetchCoinsForSwap(client, address, VSUI_TYPE);
+      if (vSuiCoinIds.length === 0) throw new Error('No vSUI found in wallet');
 
       const unstakeTx = new Transaction();
       unstakeTx.setSender(address);
-      const primary = unstakeTx.object(vSuiCoins[0]);
-      if (vSuiCoins.length > 1) {
-        unstakeTx.mergeCoins(primary, vSuiCoins.slice(1).map(id => unstakeTx.object(id)));
+      const primary = unstakeTx.object(vSuiCoinIds[0]);
+      if (vSuiCoinIds.length > 1) {
+        unstakeTx.mergeCoins(primary, vSuiCoinIds.slice(1).map(id => unstakeTx.object(id)));
       }
 
       let vSuiCoin;
@@ -433,13 +439,17 @@ async function fetchCoinsForSwap(
   client: ReturnType<typeof getClient>,
   owner: string,
   coinType: string,
-): Promise<string[]> {
+): Promise<{ ids: string[]; totalBalance: bigint }> {
   const ids: string[] = [];
+  let totalBalance = BigInt(0);
   let cursor: string | null | undefined;
   do {
     const page = await client.getCoins({ owner, coinType, cursor: cursor ?? undefined });
-    ids.push(...page.data.map(c => c.coinObjectId));
+    for (const c of page.data) {
+      ids.push(c.coinObjectId);
+      totalBalance += BigInt(c.balance);
+    }
     cursor = page.hasNextPage ? page.nextCursor : null;
   } while (cursor);
-  return ids;
+  return { ids, totalBalance };
 }
