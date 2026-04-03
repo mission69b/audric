@@ -11,6 +11,7 @@ jobs:
   devlog:
     name: Post to Dev Log
     runs-on: ubuntu-latest
+    if: ${{ !startsWith(github.ref, 'refs/tags/') }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -57,7 +58,6 @@ jobs:
           fi
 
       - name: Post to Discord
-        if: ${{ secrets.DISCORD_DEVLOG_WEBHOOK != '' }}
         env:
           WEBHOOK_URL: ${{ secrets.DISCORD_DEVLOG_WEBHOOK }}
           COMMIT_MSG: ${{ steps.info.outputs.message }}
