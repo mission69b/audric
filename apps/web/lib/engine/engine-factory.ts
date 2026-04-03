@@ -6,6 +6,7 @@ import {
   READ_TOOLS,
   WRITE_TOOLS,
   adaptAllServerTools,
+  fetchWalletCoins,
   type SessionData,
   type SessionStore,
   type ServerPositionData,
@@ -118,13 +119,22 @@ export async function fetchServerPositions(address: string): Promise<ServerPosit
   }
 }
 
-function buildSystemPrompt(walletAddress: string, tools: Tool[]): string {
+interface WalletBalanceSummary {
+  coins: { symbol: string; amount: number }[];
+}
+
+function buildSystemPrompt(walletAddress: string, tools: Tool[], balances?: WalletBalanceSummary): string {
   const writeTools = tools.filter((t) => !t.isReadOnly);
   const writeToolList = writeTools.map((t) => `- ${t.name}`).join('\n');
+
+  const balanceLines = balances?.coins.length
+    ? balances.coins.map((c) => `${c.symbol}: ${c.amount}`).join(', ')
+    : 'unknown';
 
   return `You are Audric, a financial agent on Sui. You manage money and access paid APIs via MPP micropayments.
 
 The user's wallet address is ${walletAddress}. Never ask for it.
+Current wallet balances: ${balanceLines}
 
 ## Response rules
 - 1-2 sentences max. No bullet lists unless asked. No preambles.
@@ -139,9 +149,9 @@ ${writeToolList}
 When a user asks to swap, save, send, stake, borrow, repay, or claim — call the write tool directly. NEVER say "you'll need to do this manually" or "go to a DEX" for actions listed above. You have the tools. Use them.
 
 ## Before acting
-- ALWAYS call a read tool first before any write tool — balance_check before save/send/borrow/swap, savings_info before withdraw.
+- You already know the wallet balances above. For swap/send/save with a known amount, call the write tool directly — no need to call balance_check first.
+- Only call balance_check if you need fresh or detailed data (holdings breakdown, USD values).
 - Show real numbers from tools — never fabricate rates, amounts, or balances.
-- When user says "all" or an imprecise amount, call the read tool first to get the exact number.
 
 ## Tool usage
 - Use tools proactively — don't refuse requests you can handle.
@@ -176,10 +186,23 @@ export async function createEngine(
     throw new Error('ANTHROPIC_API_KEY not configured');
   }
 
-  const [mgr, positions] = await Promise.all([
+  const [mgr, positions, walletCoins] = await Promise.all([
     ensureMcpConnected(),
     fetchServerPositions(address),
+    fetchWalletCoins(address, SUI_RPC_URL).catch((err) => {
+      console.warn('[engine] wallet coin fetch failed:', err);
+      return [];
+    }),
   ]);
+
+  const balanceSummary: WalletBalanceSummary = {
+    coins: walletCoins
+      .filter((c) => Number(c.totalBalance) > 0)
+      .map((c) => ({
+        symbol: c.symbol,
+        amount: Number(c.totalBalance) / 10 ** c.decimals,
+      })),
+  };
 
   // Only expose MCP tools that add genuinely new capabilities.
   // Built-in tools already wrap NAVI MCP for balance, rates, health, positions,
@@ -210,7 +233,7 @@ export async function createEngine(
     suiRpcUrl: SUI_RPC_URL,
     serverPositions: positions,
     tools: allTools,
-    systemPrompt: buildSystemPrompt(address, allTools),
+    systemPrompt: buildSystemPrompt(address, allTools, balanceSummary),
     model: MODEL,
     maxTurns: 10,
     maxTokens: 2048,
