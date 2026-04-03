@@ -719,16 +719,19 @@ function DashboardContent() {
             byAmountIn: inp.byAmountIn as boolean | undefined,
           });
           balanceQuery.refetch();
+          setTimeout(() => balanceQuery.refetch(), 3000);
           return { success: true, data: { success: true, tx: res.tx, from: inp.from, to: inp.to, amount: inp.amount } };
         }
         case 'volo_stake': {
           const res = await sdk.stakeVSui({ amount: Number(inp.amount) });
           balanceQuery.refetch();
+          setTimeout(() => balanceQuery.refetch(), 3000);
           return { success: true, data: { success: true, tx: res.tx, amount: inp.amount } };
         }
         case 'volo_unstake': {
           const res = await sdk.unstakeVSui({ amount: Number(inp.amount ?? 0) });
           balanceQuery.refetch();
+          setTimeout(() => balanceQuery.refetch(), 3000);
           return { success: true, data: { success: true, tx: res.tx, amount: inp.amount } };
         }
         case 'pay_api': {
