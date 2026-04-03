@@ -201,6 +201,8 @@ export async function createEngine(
   const filteredReads = READ_TOOLS.filter((t) => !EXCLUDED_TOOLS.has(t.name));
   const allTools = [...filteredReads, ...WRITE_TOOLS, ...mcpTools];
 
+  console.log(`[engine-factory] tools=${allTools.length}: ${allTools.map(t => t.name).join(', ')}`);
+
   const engine = new QueryEngine({
     provider: new AnthropicProvider({ apiKey: ANTHROPIC_API_KEY }),
     mcpManager: mgr,
@@ -212,7 +214,6 @@ export async function createEngine(
     model: MODEL,
     maxTurns: 10,
     maxTokens: 2048,
-    temperature: 0,
     costTracker: {
       budgetLimitUsd: 0.50,
     },
