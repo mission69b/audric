@@ -3,8 +3,6 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useZkLogin } from '@/components/auth/useZkLogin';
-import { AudricMark } from '@/components/ui/AudricMark';
-
 const products = [
   { label: 'Savings', href: '/savings' },
   { label: 'Pay', href: '/pay' },
@@ -20,8 +18,8 @@ export function ProductNav() {
 
   return (
     <nav className="relative z-10 flex items-center justify-between px-4 sm:px-6 py-2 w-full max-w-5xl mx-auto">
-      <Link href="/" className="inline-flex items-center min-h-[44px] text-foreground hover:opacity-70 transition">
-        <AudricMark size={24} />
+      <Link href="/" className="inline-flex items-center min-h-[44px] font-mono text-sm font-semibold tracking-tight text-foreground hover:opacity-70 transition">
+        Audric
       </Link>
 
       <div className="hidden sm:flex items-center gap-4 overflow-x-auto scrollbar-none min-w-0">
