@@ -4,6 +4,7 @@ import type { PendingAction } from '@t2000/engine';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { validateJwt, isValidSuiAddress } from '@/lib/auth';
 import { createEngine, getSessionStore } from '@/lib/engine/engine-factory';
+import { prisma } from '@/lib/prisma';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -57,8 +58,12 @@ export async function POST(request: NextRequest) {
     return jsonError('Session not found', 404);
   }
 
+  const contacts = await prisma.userPreferences.findUnique({ where: { address }, select: { contacts: true } })
+    .then((p) => (Array.isArray(p?.contacts) ? p.contacts as Array<{ name: string; address: string }> : []))
+    .catch(() => []);
+
   try {
-    const engine = await createEngine(address, session);
+    const engine = await createEngine(address, session, contacts);
 
     const stream = new ReadableStream({
       async start(controller) {

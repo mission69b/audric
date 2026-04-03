@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useZkLogin } from '@/components/auth/useZkLogin';
+import { AudricMark } from '@/components/ui/AudricMark';
 
 const products = [
   { label: 'Savings', href: '/savings' },
@@ -19,16 +20,16 @@ export function ProductNav() {
 
   return (
     <nav className="relative z-10 flex items-center justify-between px-4 sm:px-6 py-2 w-full max-w-5xl mx-auto">
-      <Link href="/" className="inline-flex items-center min-h-[44px] font-mono font-semibold text-foreground tracking-tight text-lg uppercase">
-        Audric
+      <Link href="/" className="inline-flex items-center min-h-[44px] text-foreground hover:opacity-70 transition">
+        <AudricMark size={24} />
       </Link>
 
-      <div className="flex items-center gap-1 sm:gap-4 overflow-x-auto scrollbar-none min-w-0">
+      <div className="hidden sm:flex items-center gap-4 overflow-x-auto scrollbar-none min-w-0">
         {products.map(({ label, href }) => (
           <Link
             key={href}
             href={href}
-            className={`inline-flex items-center min-h-[44px] px-2 sm:px-1 text-xs sm:text-sm whitespace-nowrap transition ${
+            className={`inline-flex items-center min-h-[44px] px-1 text-sm whitespace-nowrap transition ${
               pathname === href ? 'text-foreground' : 'text-muted hover:text-foreground'
             }`}
           >

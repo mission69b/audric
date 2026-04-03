@@ -804,11 +804,15 @@ function DashboardContent() {
           });
           return { success: true, data: serviceResult };
         }
+        case 'save_contact': {
+          await contactsHook.addContact(String(inp.name), String(inp.address));
+          return { success: true, data: { saved: true, name: inp.name, address: inp.address } };
+        }
         default:
           throw new Error(`Unknown tool: ${toolName}`);
       }
     },
-    [agent, balanceQuery],
+    [agent, balanceQuery, contactsHook],
   );
 
   const handleSaveContact = useCallback(
@@ -1026,6 +1030,7 @@ function DashboardContent() {
         </div>
 
         <div className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 -mt-8">
+          <p className="font-mono font-semibold text-foreground tracking-tight text-lg uppercase mb-1">Audric</p>
           <p className="text-sm text-muted mb-6">{greeting}</p>
 
           <div className="w-full max-w-2xl mb-6">
@@ -1046,7 +1051,7 @@ function DashboardContent() {
             </div>
           )}
 
-          <div className="flex flex-wrap justify-center gap-2">
+          <div className="w-full max-w-2xl overflow-x-auto scrollbar-none">
             <ChipBar
               onChipClick={handleChipClick}
               activeFlow={chipFlow.state.flow}

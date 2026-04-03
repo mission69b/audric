@@ -125,7 +125,12 @@ interface WalletBalanceSummary {
   prices?: Record<string, number>;
 }
 
-function buildSystemPrompt(walletAddress: string, tools: Tool[], balances?: WalletBalanceSummary): string {
+interface Contact {
+  name: string;
+  address: string;
+}
+
+function buildSystemPrompt(walletAddress: string, tools: Tool[], balances?: WalletBalanceSummary, contacts?: Contact[]): string {
   const writeTools = tools.filter((t) => !t.isReadOnly);
   const writeToolList = writeTools.map((t) => `- ${t.name}`).join('\n');
 
@@ -199,8 +204,9 @@ After swap completes, the result includes a "received" field with the exact on-c
 - **ANY token on Sui can be swapped** — not just the common ones listed above.
   - Common tokens by name: SUI, USDC, USDT, CETUS, DEEP, NAVX, vSUI, WAL, ETH
   - For any other token: use the full Sui coin type format: 0x{package}::module::TOKEN
-  - If the user asks for a token not in the common list (e.g., "MANIFEST", "FUD", "BUCK"), ask them for the full coin type, or look it up via web search / coingecko tools if available.
+  - If the user asks for a token not in the common list (e.g., "MANIFEST", "FUD", "BUCK"), use navi_navi_search_tokens to find the coin type, then swap_execute with it directly. Do NOT ask for the coin type if you can look it up.
   - Decimals are fetched on-chain automatically — no hardcoded limits.
+  - Low-liquidity tokens may have no route. If swap fails with "no route", tell the user the token may lack liquidity. Do NOT suggest alternative DEXes.
 
 ## Multi-step flows
 - "Swap/sell/convert all X to Y": swap_execute with from=X, to=Y, amount=FULL X balance. Gas is sponsored — no reserve needed.
@@ -213,6 +219,13 @@ After swap completes, the result includes a "received" field with the exact on-c
 ## MPP services (via pay_api)
 Weather (OpenWeather), web search (Brave, Serper, Perplexity), news (NewsAPI), crypto (CoinGecko), stocks (Alpha Vantage), maps (Google Maps), translation (DeepL), FX rates, scraping (Firecrawl, Jina), flights (SerpAPI), image gen (Flux, DALL-E), email (Resend).
 
+## Contacts
+${contacts && contacts.length > 0
+    ? `Saved contacts: ${contacts.map((c) => `${c.name} → ${c.address}`).join(', ')}\n- When user says "send to <name>", resolve from contacts above and use send_transfer with the address.`
+    : 'No saved contacts yet.'}
+- To save a new contact, use the save_contact tool. Do NOT web-search for contacts.
+- If user says "save a contact" or "add a contact", ask for the name and Sui address, then call save_contact.
+
 ## Safety
 - Never encourage risky financial behavior.
 - Warn when health factor < 1.5.
@@ -222,6 +235,7 @@ Weather (OpenWeather), web search (Brave, Serper, Perplexity), news (NewsAPI), c
 export async function createEngine(
   address: string,
   session?: SessionData | null,
+  contacts?: Contact[],
 ): Promise<QueryEngine> {
   if (!ANTHROPIC_API_KEY) {
     throw new Error('ANTHROPIC_API_KEY not configured');
@@ -280,7 +294,7 @@ export async function createEngine(
     suiRpcUrl: SUI_RPC_URL,
     serverPositions: positions,
     tools: allTools,
-    systemPrompt: buildSystemPrompt(address, allTools, balanceSummary),
+    systemPrompt: buildSystemPrompt(address, allTools, balanceSummary, contacts),
     model: MODEL,
     maxTurns: 10,
     maxTokens: 2048,

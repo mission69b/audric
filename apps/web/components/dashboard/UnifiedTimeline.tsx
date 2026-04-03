@@ -20,6 +20,11 @@ type TimelineEntry =
   | { kind: 'engine'; msg: EngineChatMessage }
   | { kind: 'feed'; item: FeedItem };
 
+const AUTO_APPROVE_TOOLS = new Set([
+  'save_deposit', 'withdraw', 'repay_debt', 'claim_rewards',
+  'volo_stake', 'volo_unstake', 'pay_api', 'save_contact',
+]);
+
 export type ExecuteActionFn = (
   toolName: string,
   input: unknown,
@@ -54,6 +59,7 @@ export function UnifiedTimeline({
 }: UnifiedTimelineProps) {
   const endRef = useRef<HTMLDivElement>(null);
   const lastCount = useRef(0);
+  const autoApprovedRef = useRef(new Set<string>());
 
   const timeline = useMemo<TimelineEntry[]>(() => {
     const entries: (TimelineEntry & { ts: number })[] = [];
@@ -110,6 +116,17 @@ export function UnifiedTimeline({
     [engine.resolveAction, onExecuteAction],
   );
 
+  useEffect(() => {
+    const lastMsg = engine.messages[engine.messages.length - 1];
+    const action = lastMsg?.pendingAction;
+    if (!action || !onExecuteAction) return;
+    if (!AUTO_APPROVE_TOOLS.has(action.toolName)) return;
+    if (autoApprovedRef.current.has(action.toolUseId)) return;
+
+    autoApprovedRef.current.add(action.toolUseId);
+    handleActionResolve(action, true);
+  }, [engine.messages, onExecuteAction, handleActionResolve]);
+
   const isConnecting = engine.status === 'connecting';
   const lastEngineMsg = engine.messages[engine.messages.length - 1];
   const showSkeleton = isConnecting && lastEngineMsg?.role === 'assistant' && !lastEngineMsg.content;
@@ -142,6 +159,7 @@ export function UnifiedTimeline({
               key={entry.msg.id}
               message={entry.msg}
               onActionResolve={handleActionResolve}
+              autoApproveTools={AUTO_APPROVE_TOOLS}
             />
           );
         }

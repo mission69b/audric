@@ -10,6 +10,7 @@ import { AudricMark } from '@/components/ui/AudricMark';
 interface ChatMessageProps {
   message: EngineChatMessage;
   onActionResolve?: (action: PendingAction, approved: boolean, reason?: DenyReason) => void;
+  autoApproveTools?: Set<string>;
 }
 
 function ToolSteps({ tools }: { tools: ToolExecution[] }) {
@@ -53,7 +54,7 @@ function ToolSteps({ tools }: { tools: ToolExecution[] }) {
   );
 }
 
-export function ChatMessage({ message, onActionResolve }: ChatMessageProps) {
+export function ChatMessage({ message, onActionResolve, autoApproveTools }: ChatMessageProps) {
   if (message.role === 'user') {
     return (
       <div className="flex justify-end" role="log" aria-label="Your message">
@@ -77,7 +78,7 @@ export function ChatMessage({ message, onActionResolve }: ChatMessageProps) {
         </div>
       )}
 
-      {hasPendingAction && onActionResolve && (
+      {hasPendingAction && onActionResolve && !(autoApproveTools?.has(message.pendingAction!.toolName)) && (
         <PermissionCard
           action={message.pendingAction!}
           onResolve={onActionResolve}

@@ -9,6 +9,7 @@ import {
   generateSessionId,
 } from '@/lib/engine/engine-factory';
 import { UpstashSessionStore } from '@/lib/engine/upstash-session-store';
+import { prisma } from '@/lib/prisma';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -60,8 +61,12 @@ export async function POST(request: NextRequest) {
     ? await store.get(requestedSessionId)
     : null;
 
+  const contacts = await prisma.userPreferences.findUnique({ where: { address }, select: { contacts: true } })
+    .then((p) => (Array.isArray(p?.contacts) ? p.contacts as Array<{ name: string; address: string }> : []))
+    .catch(() => []);
+
   try {
-    const engine = await createEngine(address, session);
+    const engine = await createEngine(address, session, contacts);
 
     const stream = new ReadableStream({
       async start(controller) {
