@@ -18,9 +18,12 @@ export function ProductNav() {
 
   return (
     <nav className="relative z-10 flex items-center justify-between px-4 sm:px-6 py-2 w-full max-w-5xl mx-auto">
-      <Link href="/" className="inline-flex items-center min-h-[44px] font-mono text-base font-bold tracking-wide text-foreground uppercase hover:opacity-70 transition">
+      <button
+        onClick={() => { window.location.href = '/'; }}
+        className="inline-flex items-center min-h-[44px] font-mono text-base font-bold tracking-wide text-foreground uppercase hover:opacity-70 transition cursor-pointer"
+      >
         Audric
-      </Link>
+      </button>
 
       <div className="hidden sm:flex items-center gap-4 overflow-x-auto scrollbar-none min-w-0">
         {products.map(({ label, href }) => (
