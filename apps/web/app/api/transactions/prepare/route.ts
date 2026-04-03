@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Transaction } from '@mysten/sui/transactions';
 import { toBase64 } from '@mysten/sui/utils';
-import { AggregatorClient, Env } from '@cetusprotocol/aggregator-sdk';
+import { AggregatorClient, Env, getProvidersExcluding } from '@cetusprotocol/aggregator-sdk';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { validateJwt, isValidSuiAddress, validateAmount } from '@/lib/auth';
 import { getRegistry, getClient } from '@/lib/protocol-registry';
@@ -314,15 +314,8 @@ async function buildTransaction(params: BuildRequest): Promise<Transaction> {
       const { ids: swapCoinIds, totalBalance: swapTotal } = await fetchCoinsForSwap(client, address, fromType);
       if (swapCoinIds.length === 0) throw new Error(`No ${fromToken} coins found`);
 
-      // When swapping ALL SUI, keep a tiny reserve for future Pyth oracle fees.
-      // 0.01 SUI is worth <$0.01 but prevents "no SUI for oracle fees" failures.
-      const ORACLE_FEE_RESERVE = BigInt(10_000_000); // 0.01 SUI
-      let swapAll = rawAmount >= swapTotal;
-      let effectiveAmount = swapAll ? swapTotal : rawAmount;
-      if (swapAll && fromType === SUI_TYPE && swapTotal > ORACLE_FEE_RESERVE * BigInt(2)) {
-        effectiveAmount = swapTotal - ORACLE_FEE_RESERVE;
-        swapAll = false;
-      }
+      const swapAll = rawAmount >= swapTotal;
+      const effectiveAmount = swapAll ? swapTotal : rawAmount;
 
       return buildSwapTx(address, fromType, toType, fromToken, toToken, effectiveAmount, swapAll, slippage, swapCoinIds, params.byAmountIn);
     }
@@ -449,16 +442,18 @@ async function getSwapDecimals(coinType: string): Promise<number> {
 
 const CETUS_ENV = SUI_NETWORK === 'mainnet' ? Env.Mainnet : Env.Testnet;
 
-const PYTH_HERMES_URLS = [
-  'https://hermes.pyth.network',
-  'https://hermes-beta.pyth.network',
-];
+// Pyth-dependent providers use tx.gas for oracle fee payments which Enoki
+// rejects in sponsored transactions. Excluding them ensures zero GasCoin
+// references — true gasless operation. 23 DEXes remain for routing.
+const SPONSORED_TX_PROVIDERS = getProvidersExcluding([
+  'HAEDALPMM', 'METASTABLE', 'OBRIC',
+  'STEAMM_OMM', 'STEAMM_OMM_V2', 'SEVENK', 'HAEDALHMMV2',
+]);
 
 function getCetusAggregator(signer: string): AggregatorClient {
   return new AggregatorClient({
     signer,
     env: CETUS_ENV,
-    pythUrls: PYTH_HERMES_URLS,
   });
 }
 
@@ -490,38 +485,6 @@ async function fetchCoinsForSwap(
   return { ids, totalBalance };
 }
 
-/**
- * Recursively replace { $kind: 'GasCoin' } references in transaction commands
- * with a user-owned SUI coin. Needed because Enoki sponsored transactions
- * reject GasCoin references, but the Cetus aggregator uses tx.gas for Pyth
- * oracle fee payments on certain routes (Turbos, Haedal, etc.).
- */
-function replaceGasCoins(obj: unknown, replacement: unknown): unknown {
-  if (!obj || typeof obj !== 'object') return obj;
-  if (Array.isArray(obj)) return obj.map(item => replaceGasCoins(item, replacement));
-  const record = obj as Record<string, unknown>;
-  if (record.$kind === 'GasCoin') return replacement;
-  const result: Record<string, unknown> = {};
-  for (const [key, val] of Object.entries(record)) {
-    result[key] = replaceGasCoins(val, replacement);
-  }
-  return result;
-}
-
-function patchGasCoinRefs(tx: Transaction, suiCoinArg: unknown): number {
-  const data = tx.getData();
-  let count = 0;
-  for (let i = 0; i < data.commands.length; i++) {
-    const before = JSON.stringify(data.commands[i]);
-    if (!before.includes('"GasCoin"')) continue;
-    const patched = replaceGasCoins(data.commands[i], suiCoinArg);
-    data.commands[i] = patched as (typeof data.commands)[number];
-    count++;
-  }
-  console.log(`[swap] patched ${count} commands with GasCoin references`);
-  return count;
-}
-
 async function buildSwapTx(
   address: string,
   fromType: string,
@@ -534,7 +497,6 @@ async function buildSwapTx(
   swapCoinIds: string[],
   byAmountIn?: boolean,
 ): Promise<Transaction> {
-  const client = getClient();
   const MAX_ATTEMPTS = 2;
   let lastError: Error | null = null;
 
@@ -549,6 +511,7 @@ async function buildSwapTx(
           target: toType,
           amount: effectiveAmount.toString(),
           byAmountIn: byAmountIn ?? true,
+          providers: SPONSORED_TX_PROVIDERS,
         }),
         15_000,
         'Swap route lookup',
@@ -561,28 +524,11 @@ async function buildSwapTx(
       const swapTx = new Transaction();
       swapTx.setSender(address);
 
-      // Set up input coin (the "from" token)
       const swapPrimary = swapTx.object(swapCoinIds[0]);
       if (swapCoinIds.length > 1) {
         swapTx.mergeCoins(swapPrimary, swapCoinIds.slice(1).map(id => swapTx.object(id)));
       }
       const inputCoin = swapAll ? swapPrimary : swapTx.splitCoins(swapPrimary, [effectiveAmount])[0];
-
-      // Pre-load user's SUI coins for GasCoin replacement.
-      // Some Cetus routes use tx.gas for Pyth oracle fees; Enoki rejects GasCoin
-      // in sponsored tx kind bytes. We provide the user's SUI as a substitute.
-      let suiFeeCoinArg: unknown = null;
-      if (fromType !== SUI_TYPE) {
-        const suiCoins = await fetchCoinsForSwap(client, address, SUI_TYPE);
-        if (suiCoins.ids.length > 0) {
-          const suiPrimary = swapTx.object(suiCoins.ids[0]);
-          if (suiCoins.ids.length > 1) {
-            swapTx.mergeCoins(suiPrimary, suiCoins.ids.slice(1).map(id => swapTx.object(id)));
-          }
-          suiFeeCoinArg = suiPrimary;
-          console.log(`[swap] loaded ${suiCoins.ids.length} SUI coin(s) for potential GasCoin replacement`);
-        }
-      }
 
       console.log(`[swap] calling routerSwap...`);
       const outputCoin = await withTimeout(
@@ -596,23 +542,7 @@ async function buildSwapTx(
         'Swap transaction build',
       );
 
-      // Patch GasCoin references with user's SUI coin
-      const hasGasCoin = JSON.stringify(swapTx.getData().commands).includes('"GasCoin"');
-      if (hasGasCoin) {
-        if (!suiFeeCoinArg) {
-          throw new Error(
-            'This swap route requires a small SUI balance for oracle fees. Add some SUI to your wallet first.',
-          );
-        }
-        patchGasCoinRefs(swapTx, suiFeeCoinArg);
-      }
-
       swapTx.transferObjects([outputCoin], address);
-      // Return remaining SUI from fee coin back to user
-      if (hasGasCoin && suiFeeCoinArg) {
-        swapTx.transferObjects([suiFeeCoinArg as Parameters<Transaction['transferObjects']>[0][0]], address);
-      }
-
       console.log(`[swap] tx built OK, commands=${swapTx.getData().commands.length}`);
       return swapTx;
     } catch (err) {
