@@ -202,7 +202,7 @@ function LandingContent() {
 
         <div className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 -mt-16">
           <div className="mb-8 flex flex-col items-center gap-3">
-            <AudricMark size={48} className="text-foreground" />
+            <h1 className="font-mono text-4xl sm:text-5xl font-semibold tracking-tight text-foreground lowercase">audric</h1>
             <p className="font-mono text-xs tracking-widest text-dim uppercase">Your money, handled.</p>
           </div>
 
