@@ -181,9 +181,18 @@ export async function createEngine(
     fetchServerPositions(address),
   ]);
 
-  const builtInNames = new Set([...READ_TOOLS, ...WRITE_TOOLS].map((t) => t.name));
+  // Only expose MCP tools that add genuinely new capabilities.
+  // Built-in tools already wrap NAVI MCP for balance, rates, health, positions,
+  // rewards, and swap quotes (via Cetus with better multi-DEX routing).
+  // Exposing redundant MCP tools causes the LLM to pick the wrong tool.
+  const MCP_ALLOWLIST = new Set([
+    'navi_sui_get_transaction',
+    'navi_sui_explain_transaction',
+    'navi_navi_search_tokens',
+  ]);
+
   const mcpTools = adaptAllServerTools(mgr).filter(
-    (t) => !builtInNames.has(t.name),
+    (t) => MCP_ALLOWLIST.has(t.name),
   ) as Tool[];
 
   const allTools = [...READ_TOOLS, ...WRITE_TOOLS, ...mcpTools];
