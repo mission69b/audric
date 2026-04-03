@@ -30,17 +30,25 @@ export class ServiceDeliveryError extends Error {
   }
 }
 
+export interface BalanceChange {
+  coinType: string;
+  amount: string;
+  owner?: unknown;
+}
+
+export type TxResult = { tx: string; balanceChanges?: BalanceChange[] };
+
 export interface AgentActions {
   address: string;
-  send(params: { to: string; amount: number; asset?: string }): Promise<{ tx: string }>;
-  save(params: { amount: number; protocol?: string }): Promise<{ tx: string }>;
-  withdraw(params: { amount: number; protocol?: string; fromAsset?: string; toAsset?: string }): Promise<{ tx: string }>;
-  borrow(params: { amount: number; protocol?: string }): Promise<{ tx: string }>;
-  repay(params: { amount: number; protocol?: string }): Promise<{ tx: string }>;
-  claimRewards(): Promise<{ tx: string }>;
-  swap(params: { from: string; to: string; amount: number; slippage?: number; byAmountIn?: boolean }): Promise<{ tx: string }>;
-  stakeVSui(params: { amount: number }): Promise<{ tx: string }>;
-  unstakeVSui(params: { amount: number }): Promise<{ tx: string }>;
+  send(params: { to: string; amount: number; asset?: string }): Promise<TxResult>;
+  save(params: { amount: number; protocol?: string }): Promise<TxResult>;
+  withdraw(params: { amount: number; protocol?: string; fromAsset?: string; toAsset?: string }): Promise<TxResult>;
+  borrow(params: { amount: number; protocol?: string }): Promise<TxResult>;
+  repay(params: { amount: number; protocol?: string }): Promise<TxResult>;
+  claimRewards(): Promise<TxResult>;
+  swap(params: { from: string; to: string; amount: number; slippage?: number; byAmountIn?: boolean }): Promise<TxResult>;
+  stakeVSui(params: { amount: number }): Promise<TxResult>;
+  unstakeVSui(params: { amount: number }): Promise<TxResult>;
   payService(params: { serviceId?: string; fields?: Record<string, string>; url?: string; rawBody?: Record<string, unknown> }): Promise<ServiceResult>;
   retryServiceDelivery(paymentDigest: string, meta: ServiceRetryMeta): Promise<ServiceResult>;
 }
@@ -76,7 +84,7 @@ export function useAgent() {
         async function sponsoredTransaction(
           txType: string,
           params: Record<string, unknown>,
-        ): Promise<{ tx: string }> {
+        ): Promise<{ tx: string; balanceChanges?: Array<{ coinType: string; amount: string; owner?: unknown }> }> {
           const prepareHeaders: Record<string, string> = {
             'Content-Type': 'application/json',
           };
@@ -112,7 +120,7 @@ export function useAgent() {
           }
 
           const result = await executeRes.json();
-          return { tx: result.digest };
+          return { tx: result.digest, balanceChanges: result.balanceChanges };
         }
 
         return {

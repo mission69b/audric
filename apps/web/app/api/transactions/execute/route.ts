@@ -77,12 +77,15 @@ export async function POST(request: NextRequest) {
     const { data } = await res.json();
     const confirmedDigest = data.digest;
 
-    await suiClient.waitForTransaction({
+    const txResult = await suiClient.waitForTransaction({
       digest: confirmedDigest,
-      options: { showEffects: true },
+      options: { showEffects: true, showBalanceChanges: true },
     });
 
-    return NextResponse.json({ digest: confirmedDigest });
+    return NextResponse.json({
+      digest: confirmedDigest,
+      balanceChanges: txResult.balanceChanges ?? [],
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Transaction execution failed';
     console.error('[execute] Error:', message);

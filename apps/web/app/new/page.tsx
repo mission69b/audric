@@ -673,6 +673,22 @@ function DashboardContent() {
     navigator.clipboard.writeText(text);
   }, []);
 
+  const extractReceivedAmount = useCallback((balanceChanges: Array<{ coinType: string; amount: string }> | undefined, toToken: string): string | null => {
+    if (!balanceChanges?.length) return null;
+    const TOKEN_TYPES: Record<string, string> = {
+      SUI: '0x2::sui::SUI',
+      USDC: '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC',
+      USDT: '0x375f70cf2ae4c00bf37117d0c85a2c71545e6ee05c4a5c7d282cd66a4504b068::usdt::USDT',
+    };
+    const targetType = TOKEN_TYPES[toToken.toUpperCase()] ?? toToken;
+    const match = balanceChanges.find(
+      (bc) => bc.coinType === targetType && Number(bc.amount) > 0,
+    );
+    if (!match) return null;
+    const decimals = targetType === '0x2::sui::SUI' ? 9 : 6;
+    return (Number(match.amount) / 10 ** decimals).toFixed(decimals === 9 ? 4 : 2);
+  }, []);
+
   const handleExecuteAction = useCallback(
     async (toolName: string, input: unknown): Promise<{ success: boolean; data: unknown }> => {
       if (!agent) throw new Error('Not authenticated');
@@ -720,7 +736,8 @@ function DashboardContent() {
           });
           balanceQuery.refetch();
           setTimeout(() => balanceQuery.refetch(), 3000);
-          return { success: true, data: { success: true, tx: res.tx, from: inp.from, to: inp.to, amount: inp.amount } };
+          const received = extractReceivedAmount(res.balanceChanges, String(inp.to));
+          return { success: true, data: { success: true, tx: res.tx, from: inp.from, to: inp.to, amount: inp.amount, ...(received != null && { received }) } };
         }
         case 'volo_stake': {
           const res = await sdk.stakeVSui({ amount: Number(inp.amount) });
