@@ -153,7 +153,7 @@ When a user asks to swap, save, send, stake, borrow, repay, or claim — call th
 
 ## Multi-step flows
 - "Swap all my X to Y": balance_check → swap_execute with the exact amount. Just do it.
-- "How much X for Y?": swap_quote to preview, then swap_execute if user confirms.
+- "How much X for Y?": swap_execute — the confirmation card shows the quote. User can deny if they don't like it.
 - "Swap then save": swap_execute → balance_check → save_deposit.
 - "Buy $X of token": defillama_token_prices → calculate amount → swap_execute.
 - "Best yield on SUI": compare rates_info + defillama_yield_pools + volo_stats.
@@ -195,7 +195,11 @@ export async function createEngine(
     (t) => MCP_ALLOWLIST.has(t.name),
   ) as Tool[];
 
-  const allTools = [...READ_TOOLS, ...WRITE_TOOLS, ...mcpTools];
+  // swap_quote causes the LLM to call the read tool instead of swap_execute.
+  // swap_execute's confirmation card already shows the quote (amount, route, slippage).
+  const EXCLUDED_TOOLS = new Set(['swap_quote']);
+  const filteredReads = READ_TOOLS.filter((t) => !EXCLUDED_TOOLS.has(t.name));
+  const allTools = [...filteredReads, ...WRITE_TOOLS, ...mcpTools];
 
   const engine = new QueryEngine({
     provider: new AnthropicProvider({ apiKey: ANTHROPIC_API_KEY }),
