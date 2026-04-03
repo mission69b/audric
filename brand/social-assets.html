@@ -319,7 +319,7 @@ function renderBanner(fontKey) {
 
   // Text treatment
   const font = `${fontSizes[fontKey]} ${fonts[fontKey]}`;
-  drawText(ctx, 'Audr\\c', w / 2 - 100, h / 2 + 12, font, '#191919', '#9f9f9f');
+  drawText(ctx, 'audr\\c', w / 2 - 100, h / 2 + 12, font, '#191919', '#9f9f9f');
 
   // Terminal line
   ctx.font = "14px 'Geist Mono', monospace";
@@ -360,7 +360,7 @@ function renderOg(fontKey) {
 
   // Text
   const font = `${fontSizes[fontKey]} ${fonts[fontKey]}`;
-  drawText(ctx, 'Audr\\c', w / 2, h / 2 + 110, font, '#ffffff', '#555555');
+  drawText(ctx, 'audr\\c', w / 2, h / 2 + 110, font, '#ffffff', '#555555');
 
   // Tagline
   ctx.font = "15px 'Geist Mono', monospace";
@@ -467,7 +467,7 @@ function renderOneAnim(ctx, t, isDark, fontSize) {
   const textY = h/2 + 350;
   ctx.font = `${fontSize}px 'Instrument Serif', Georgia, serif`;
   ctx.textBaseline = 'alphabetic';
-  const pre = 'Audr', bs = '\\', post = 'c';
+  const pre = 'audr', bs = '\\', post = 'c';
   const preW = ctx.measureText(pre).width;
   const bsW = ctx.measureText(bs).width;
   const postW = ctx.measureText(post).width;
