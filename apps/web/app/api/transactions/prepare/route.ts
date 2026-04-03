@@ -483,6 +483,38 @@ async function fetchCoinsForSwap(
   return { ids, totalBalance };
 }
 
+/**
+ * Recursively replace { $kind: 'GasCoin' } references in transaction commands
+ * with a user-owned SUI coin. Needed because Enoki sponsored transactions
+ * reject GasCoin references, but the Cetus aggregator uses tx.gas for Pyth
+ * oracle fee payments on certain routes (Turbos, Haedal, etc.).
+ */
+function replaceGasCoins(obj: unknown, replacement: unknown): unknown {
+  if (!obj || typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) return obj.map(item => replaceGasCoins(item, replacement));
+  const record = obj as Record<string, unknown>;
+  if (record.$kind === 'GasCoin') return replacement;
+  const result: Record<string, unknown> = {};
+  for (const [key, val] of Object.entries(record)) {
+    result[key] = replaceGasCoins(val, replacement);
+  }
+  return result;
+}
+
+function patchGasCoinRefs(tx: Transaction, suiCoinArg: unknown): number {
+  const data = tx.getData();
+  let count = 0;
+  for (let i = 0; i < data.commands.length; i++) {
+    const before = JSON.stringify(data.commands[i]);
+    if (!before.includes('"GasCoin"')) continue;
+    const patched = replaceGasCoins(data.commands[i], suiCoinArg);
+    data.commands[i] = patched as (typeof data.commands)[number];
+    count++;
+  }
+  console.log(`[swap] patched ${count} commands with GasCoin references`);
+  return count;
+}
+
 async function buildSwapTx(
   address: string,
   fromType: string,
@@ -495,6 +527,7 @@ async function buildSwapTx(
   swapCoinIds: string[],
   byAmountIn?: boolean,
 ): Promise<Transaction> {
+  const client = getClient();
   const MAX_ATTEMPTS = 2;
   let lastError: Error | null = null;
 
@@ -521,12 +554,28 @@ async function buildSwapTx(
       const swapTx = new Transaction();
       swapTx.setSender(address);
 
+      // Set up input coin (the "from" token)
       const swapPrimary = swapTx.object(swapCoinIds[0]);
       if (swapCoinIds.length > 1) {
         swapTx.mergeCoins(swapPrimary, swapCoinIds.slice(1).map(id => swapTx.object(id)));
       }
-
       const inputCoin = swapAll ? swapPrimary : swapTx.splitCoins(swapPrimary, [effectiveAmount])[0];
+
+      // Pre-load user's SUI coins for GasCoin replacement.
+      // Some Cetus routes use tx.gas for Pyth oracle fees; Enoki rejects GasCoin
+      // in sponsored tx kind bytes. We provide the user's SUI as a substitute.
+      let suiFeeCoinArg: unknown = null;
+      if (fromType !== SUI_TYPE) {
+        const suiCoins = await fetchCoinsForSwap(client, address, SUI_TYPE);
+        if (suiCoins.ids.length > 0) {
+          const suiPrimary = swapTx.object(suiCoins.ids[0]);
+          if (suiCoins.ids.length > 1) {
+            swapTx.mergeCoins(suiPrimary, suiCoins.ids.slice(1).map(id => swapTx.object(id)));
+          }
+          suiFeeCoinArg = suiPrimary;
+          console.log(`[swap] loaded ${suiCoins.ids.length} SUI coin(s) for potential GasCoin replacement`);
+        }
+      }
 
       console.log(`[swap] calling routerSwap...`);
       const outputCoin = await withTimeout(
@@ -540,7 +589,23 @@ async function buildSwapTx(
         'Swap transaction build',
       );
 
+      // Patch GasCoin references with user's SUI coin
+      const hasGasCoin = JSON.stringify(swapTx.getData().commands).includes('"GasCoin"');
+      if (hasGasCoin) {
+        if (!suiFeeCoinArg) {
+          throw new Error(
+            'This swap route requires a small SUI balance for oracle fees. Add some SUI to your wallet first.',
+          );
+        }
+        patchGasCoinRefs(swapTx, suiFeeCoinArg);
+      }
+
       swapTx.transferObjects([outputCoin], address);
+      // Return remaining SUI from fee coin back to user
+      if (hasGasCoin && suiFeeCoinArg) {
+        swapTx.transferObjects([suiFeeCoinArg as Parameters<Transaction['transferObjects']>[0][0]], address);
+      }
+
       console.log(`[swap] tx built OK, commands=${swapTx.getData().commands.length}`);
       return swapTx;
     } catch (err) {

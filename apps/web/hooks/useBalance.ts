@@ -8,10 +8,18 @@ const USDC_TYPE = '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f
 const USDC_DECIMALS = 6;
 const CETUS_USDC_SUI_POOL = '0xb8d7d9e66a60c239e7a60110efcf8571655daa67b55b7534e1bc855fcff644d9';
 
-const TRADEABLE_COINS: Record<string, { type: string; decimals: number }> = {
-  BTC: { type: '0x0041f9f9344cac094454cd574e333c4fdb132d7bcc9379bcd4aab485b2a63942::wbtc::WBTC', decimals: 8 },
-  ETH: { type: '0xd0e89b2af5e4910726fbcd8b8dd37bb79b29e5f83f7491bca830e94f7f226d29::eth::ETH', decimals: 8 },
-  GOLD: { type: '0x9d297676e7a4b771ab023291377b2adfaa4938fb9080b8d12430e4b108b836a9::xaum::XAUM', decimals: 9 },
+const KNOWN_COINS: Record<string, { symbol: string; decimals: number }> = {
+  '0x2::sui::SUI': { symbol: 'SUI', decimals: 9 },
+  [USDC_TYPE]: { symbol: 'USDC', decimals: 6 },
+  '0x375f70cf2ae4c00bf37117d0c85a2c71545e6ee05c4a5c7d282cd66a4504b068::usdt::USDT': { symbol: 'USDT', decimals: 6 },
+  '0x06864a6f921804860930db6ddbe2e16acdf8504495ea7481637a1c8b9a8fe54b::cetus::CETUS': { symbol: 'CETUS', decimals: 9 },
+  '0xdeeb7a4662eec9f2f3def03fb937a663dddaa2e215b8078a284d026b7946c270::deep::DEEP': { symbol: 'DEEP', decimals: 6 },
+  '0xa99b8952d4f7d947ea77fe0ecdcc9e5fc0bcab2841d6e2a5aa00c3044e5544b5::navx::NAVX': { symbol: 'NAVX', decimals: 9 },
+  '0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT': { symbol: 'vSUI', decimals: 9 },
+  '0x356a26eb9e012a68958082340d4c4116e7f55615cf27affcff209cf0ae544f59::wal::WAL': { symbol: 'WAL', decimals: 9 },
+  '0xd0e89b2af5e4910726fbcd8b8dd37bb79b29e5f83f7491bca830e94f7f226d29::eth::ETH': { symbol: 'ETH', decimals: 8 },
+  '0x0041f9f9344cac094454cd574e333c4fdb132d7bcc9379bcd4aab485b2a63942::wbtc::WBTC': { symbol: 'BTC', decimals: 8 },
+  '0x9d297676e7a4b771ab023291377b2adfaa4938fb9080b8d12430e4b108b836a9::xaum::XAUM': { symbol: 'GOLD', decimals: 9 },
 };
 
 export interface SavingsBreakdownEntry {
@@ -87,10 +95,8 @@ export function useBalance(address: string | null) {
     queryFn: async (): Promise<BalanceData> => {
       if (!address) throw new Error('No address');
 
-      const tradeableEntries = Object.entries(TRADEABLE_COINS);
-      const [suiBal, usdcBal, suiPrice, posData, ratesData, pricesData, ...tradeableBals] = await Promise.all([
-        client.getBalance({ owner: address, coinType: '0x2::sui::SUI' }),
-        client.getBalance({ owner: address, coinType: USDC_TYPE }).catch(() => ({ totalBalance: '0' })),
+      const [allBalances, suiPrice, posData, ratesData, pricesData] = await Promise.all([
+        client.getAllBalances({ owner: address }),
         fetchSuiPrice(client),
         fetch(`/api/positions?address=${address}`)
           .then(r => r.json())
@@ -101,33 +107,36 @@ export function useBalance(address: string | null) {
         fetch('/api/prices')
           .then(r => r.json())
           .catch(() => ({} as Record<string, number>)),
-        ...tradeableEntries.map(([, info]) =>
-          client.getBalance({ owner: address, coinType: info.type })
-            .catch(() => ({ totalBalance: '0' })),
-        ),
       ]);
 
       const r2 = (n: number) => Math.round(n * 100) / 100;
       const prices = pricesData as Record<string, number>;
 
-      const sui = r2(Number(suiBal.totalBalance) / MIST_PER_SUI);
-      const usdc = r2(Number(usdcBal.totalBalance) / (10 ** USDC_DECIMALS));
+      const balByType = new Map<string, string>();
+      for (const b of allBalances) {
+        balByType.set(b.coinType, b.totalBalance);
+      }
+
+      const sui = r2(Number(balByType.get('0x2::sui::SUI') ?? '0') / MIST_PER_SUI);
+      const usdc = r2(Number(balByType.get(USDC_TYPE) ?? '0') / (10 ** USDC_DECIMALS));
       const suiUsd = r2(sui * suiPrice);
 
       const assetBalances: Record<string, number> = {};
       const assetUsdValues: Record<string, number> = {};
       let tradeableUsd = 0;
 
-      tradeableEntries.forEach(([symbol, info], idx) => {
-        const raw = Number(tradeableBals[idx].totalBalance);
-        const amount = raw / 10 ** info.decimals;
-        assetBalances[symbol] = amount;
-
-        const price = prices[symbol] ?? 0;
+      for (const [coinType, raw] of balByType) {
+        if (coinType === '0x2::sui::SUI' || coinType === USDC_TYPE) continue;
+        const known = KNOWN_COINS[coinType];
+        if (!known) continue;
+        const amount = Number(raw) / 10 ** known.decimals;
+        if (amount < 0.000001) continue;
+        assetBalances[known.symbol] = amount;
+        const price = prices[known.symbol] ?? 0;
         const usdVal = r2(amount * price);
-        assetUsdValues[symbol] = usdVal;
+        assetUsdValues[known.symbol] = usdVal;
         tradeableUsd += usdVal;
-      });
+      }
 
       const cash = r2(usdc + suiUsd);
       const otherAssetsUsd = r2(tradeableUsd);
