@@ -305,44 +305,7 @@ async function buildTransaction(params: BuildRequest): Promise<Transaction> {
       const swapAll = rawAmount >= swapTotal;
       const effectiveAmount = swapAll ? swapTotal : rawAmount;
 
-      const aggClient = getCetusAggregator(address);
-      const routerData = await withTimeout(
-        aggClient.findRouters({
-          from: fromType,
-          target: toType,
-          amount: effectiveAmount.toString(),
-          byAmountIn: params.byAmountIn ?? true,
-        }),
-        15_000,
-        'Swap route lookup',
-      );
-
-      if (!routerData) throw new Error(`No swap route found for ${fromToken} → ${toToken}`);
-      if (routerData.insufficientLiquidity) throw new Error(`Insufficient liquidity for ${fromToken} → ${toToken}`);
-
-      const swapTx = new Transaction();
-      swapTx.setSender(address);
-
-      const swapPrimary = swapTx.object(swapCoinIds[0]);
-      if (swapCoinIds.length > 1) {
-        swapTx.mergeCoins(swapPrimary, swapCoinIds.slice(1).map(id => swapTx.object(id)));
-      }
-
-      const inputCoin = swapAll ? swapPrimary : swapTx.splitCoins(swapPrimary, [effectiveAmount])[0];
-
-      const outputCoin = await withTimeout(
-        aggClient.routerSwap({
-          router: routerData,
-          inputCoin,
-          slippage,
-          txb: swapTx,
-        }),
-        15_000,
-        'Swap transaction build',
-      );
-
-      swapTx.transferObjects([outputCoin], address);
-      return swapTx;
+      return buildSwapTx(address, fromType, toType, fromToken, toToken, effectiveAmount, swapAll, slippage, swapCoinIds, params.byAmountIn);
     }
 
     case 'volo-stake': {
@@ -450,8 +413,17 @@ function getSwapDecimals(coinType: string): number {
 
 const CETUS_ENV = SUI_NETWORK === 'mainnet' ? Env.Mainnet : Env.Testnet;
 
+const PYTH_HERMES_URLS = [
+  'https://hermes.pyth.network',
+  'https://hermes-beta.pyth.network',
+];
+
 function getCetusAggregator(signer: string): AggregatorClient {
-  return new AggregatorClient({ signer, env: CETUS_ENV });
+  return new AggregatorClient({
+    signer,
+    env: CETUS_ENV,
+    pythUrls: PYTH_HERMES_URLS,
+  });
 }
 
 function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
@@ -480,4 +452,70 @@ async function fetchCoinsForSwap(
     cursor = page.hasNextPage ? page.nextCursor : null;
   } while (cursor);
   return { ids, totalBalance };
+}
+
+async function buildSwapTx(
+  address: string,
+  fromType: string,
+  toType: string,
+  fromToken: string,
+  toToken: string,
+  effectiveAmount: bigint,
+  swapAll: boolean,
+  slippage: number,
+  swapCoinIds: string[],
+  byAmountIn?: boolean,
+): Promise<Transaction> {
+  const MAX_ATTEMPTS = 2;
+  let lastError: Error | null = null;
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      const aggClient = getCetusAggregator(address);
+
+      const routerData = await withTimeout(
+        aggClient.findRouters({
+          from: fromType,
+          target: toType,
+          amount: effectiveAmount.toString(),
+          byAmountIn: byAmountIn ?? true,
+        }),
+        15_000,
+        'Swap route lookup',
+      );
+
+      if (!routerData) throw new Error(`No swap route found for ${fromToken} → ${toToken}`);
+      if (routerData.insufficientLiquidity) throw new Error(`Insufficient liquidity for ${fromToken} → ${toToken}`);
+
+      const swapTx = new Transaction();
+      swapTx.setSender(address);
+
+      const swapPrimary = swapTx.object(swapCoinIds[0]);
+      if (swapCoinIds.length > 1) {
+        swapTx.mergeCoins(swapPrimary, swapCoinIds.slice(1).map(id => swapTx.object(id)));
+      }
+
+      const inputCoin = swapAll ? swapPrimary : swapTx.splitCoins(swapPrimary, [effectiveAmount])[0];
+
+      const outputCoin = await withTimeout(
+        aggClient.routerSwap({
+          router: routerData,
+          inputCoin,
+          slippage,
+          txb: swapTx,
+        }),
+        15_000,
+        'Swap transaction build',
+      );
+
+      swapTx.transferObjects([outputCoin], address);
+      return swapTx;
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+      console.warn(`[swap] attempt ${attempt}/${MAX_ATTEMPTS} failed:`, lastError.message);
+      if (attempt < MAX_ATTEMPTS) continue;
+    }
+  }
+
+  throw new Error(`Swap ${fromToken} → ${toToken} failed: ${lastError?.message ?? 'unknown error'}`);
 }

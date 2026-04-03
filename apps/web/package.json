@@ -17,7 +17,7 @@
     "@anthropic-ai/sdk": "^0.80.0",
     "@cetusprotocol/aggregator-sdk": "^1.4.8",
     "@mysten/dapp-kit": "^1.0.4",
-    "@mysten/sui": "^2.11.0",
+    "@mysten/sui": "2.11.0",
     "@mysten/zklogin": "^0.8.1",
     "@prisma/adapter-pg": "^7.5.0",
     "@prisma/client": "^7.5.0",
