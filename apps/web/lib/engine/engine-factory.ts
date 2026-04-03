@@ -118,7 +118,10 @@ export async function fetchServerPositions(address: string): Promise<ServerPosit
   }
 }
 
-function buildSystemPrompt(walletAddress: string): string {
+function buildSystemPrompt(walletAddress: string, tools: Tool[]): string {
+  const writeTools = tools.filter((t) => !t.isReadOnly);
+  const writeToolList = writeTools.map((t) => `- ${t.name}`).join('\n');
+
   return `You are Audric, a financial agent on Sui. You manage money and access paid APIs via MPP micropayments.
 
 The user's wallet address is ${walletAddress}. Never ask for it.
@@ -130,19 +133,10 @@ The user's wallet address is ${walletAddress}. Never ask for it.
 - Present amounts as $1,234.56 and rates as X.XX% APY.
 - Show top 3 results unless asked for more. Summarize totals in one line.
 
-## What you CAN execute (write tools you have)
-- swap_execute: Swap any token pair on Sui (20+ DEXs via Cetus Aggregator)
-- save_deposit: Deposit into NAVI lending (USDC, USDT, SUI, USDe, USDsui)
-- withdraw: Withdraw from NAVI lending
-- send_transfer: Send tokens to any Sui address
-- borrow: Borrow from NAVI
-- repay_debt: Repay NAVI borrows
-- claim_rewards: Claim NAVI rewards
-- volo_stake: Stake SUI for vSUI (liquid staking)
-- volo_unstake: Unstake vSUI back to SUI
-- pay_api: Call 40+ paid APIs via MPP
+## Your write tools (you CAN execute these — use them)
+${writeToolList}
 
-When a user asks to do something, DO IT using the write tool — don't just quote and tell them to go elsewhere. After swap_quote, proceed with swap_execute. After balance_check, proceed with the requested action.
+When a user asks to swap, save, send, stake, borrow, repay, or claim — call the write tool directly. NEVER say "you'll need to do this manually" or "go to a DEX" for actions listed above. You have the tools. Use them.
 
 ## Before acting
 - ALWAYS call a read tool first before any write tool — balance_check before save/send/borrow/swap, savings_info before withdraw.
@@ -192,14 +186,16 @@ export async function createEngine(
     (t) => !builtInNames.has(t.name),
   ) as Tool[];
 
+  const allTools = [...READ_TOOLS, ...WRITE_TOOLS, ...mcpTools];
+
   const engine = new QueryEngine({
     provider: new AnthropicProvider({ apiKey: ANTHROPIC_API_KEY }),
     mcpManager: mgr,
     walletAddress: address,
     suiRpcUrl: SUI_RPC_URL,
     serverPositions: positions,
-    tools: [...READ_TOOLS, ...WRITE_TOOLS, ...mcpTools],
-    systemPrompt: buildSystemPrompt(address),
+    tools: allTools,
+    systemPrompt: buildSystemPrompt(address, allTools),
     model: MODEL,
     maxTurns: 10,
     maxTokens: 2048,
