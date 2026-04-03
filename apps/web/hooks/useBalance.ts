@@ -95,7 +95,7 @@ export function useBalance(address: string | null) {
     queryFn: async (): Promise<BalanceData> => {
       if (!address) throw new Error('No address');
 
-      const [allBalances, suiPrice, posData, ratesData, pricesData] = await Promise.all([
+      const [allBalances, suiPrice, posData, ratesData] = await Promise.all([
         client.getAllBalances({ owner: address }),
         fetchSuiPrice(client),
         fetch(`/api/positions?address=${address}`)
@@ -104,13 +104,35 @@ export function useBalance(address: string | null) {
         fetch('/api/rates')
           .then(r => r.json())
           .catch(() => ({ rates: [], bestSaveRate: null })),
-        fetch('/api/prices')
-          .then(r => r.json())
-          .catch(() => ({} as Record<string, number>)),
       ]);
 
+      const heldCoinTypes = allBalances
+        .filter((b) => Number(b.totalBalance) > 0)
+        .map((b) => b.coinType);
+      const pricesResp = await fetch(`/api/prices?coins=${encodeURIComponent(heldCoinTypes.join(','))}`)
+        .then(r => r.json())
+        .catch(() => ({ prices: {}, decimals: {} }));
+
       const r2 = (n: number) => Math.round(n * 100) / 100;
-      const prices = pricesData as Record<string, number>;
+      const prices = (pricesResp.prices ?? pricesResp) as Record<string, number>;
+      const remoteDecs = (pricesResp.decimals ?? {}) as Record<string, number>;
+
+      const unknownCoinTypes = heldCoinTypes.filter(
+        (ct) => !KNOWN_COINS[ct] && ct !== '0x2::sui::SUI' && ct !== USDC_TYPE && !(ct in remoteDecs),
+      );
+      const metadataMap: Record<string, { symbol: string; decimals: number }> = {};
+      if (unknownCoinTypes.length > 0) {
+        const metas = await Promise.all(
+          unknownCoinTypes.map((ct) =>
+            client.getCoinMetadata({ coinType: ct })
+              .then((m) => m ? { coinType: ct, symbol: m.symbol, decimals: m.decimals } : null)
+              .catch(() => null),
+          ),
+        );
+        for (const m of metas) {
+          if (m) metadataMap[m.coinType] = { symbol: m.symbol, decimals: m.decimals };
+        }
+      }
 
       const balByType = new Map<string, string>();
       for (const b of allBalances) {
@@ -119,7 +141,7 @@ export function useBalance(address: string | null) {
 
       const sui = r2(Number(balByType.get('0x2::sui::SUI') ?? '0') / MIST_PER_SUI);
       const usdc = r2(Number(balByType.get(USDC_TYPE) ?? '0') / (10 ** USDC_DECIMALS));
-      const suiUsd = r2(sui * suiPrice);
+      const suiUsd = r2(sui * (prices['0x2::sui::SUI'] ?? prices['SUI'] ?? suiPrice));
 
       const assetBalances: Record<string, number> = {};
       const assetUsdValues: Record<string, number> = {};
@@ -128,13 +150,15 @@ export function useBalance(address: string | null) {
       for (const [coinType, raw] of balByType) {
         if (coinType === '0x2::sui::SUI' || coinType === USDC_TYPE) continue;
         const known = KNOWN_COINS[coinType];
-        if (!known) continue;
-        const amount = Number(raw) / 10 ** known.decimals;
+        const meta = metadataMap[coinType];
+        const symbol = known?.symbol ?? meta?.symbol ?? coinType.split('::').pop() ?? coinType;
+        const decimals = known?.decimals ?? meta?.decimals ?? remoteDecs[coinType] ?? 9;
+        const amount = Number(raw) / 10 ** decimals;
         if (amount < 0.000001) continue;
-        assetBalances[known.symbol] = amount;
-        const price = prices[known.symbol] ?? 0;
+        assetBalances[symbol] = amount;
+        const price = prices[coinType] ?? prices[symbol] ?? 0;
         const usdVal = r2(amount * price);
-        assetUsdValues[known.symbol] = usdVal;
+        assetUsdValues[symbol] = usdVal;
         tradeableUsd += usdVal;
       }
 
