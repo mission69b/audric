@@ -101,12 +101,18 @@ export function ProductPage({
           </Link>
         </div>
 
-        <footer className="mt-24 border-t border-border pt-6 text-xs text-dim">
+        <footer className="mt-24 border-t border-border pt-6 text-xs text-dim space-y-3">
           <p>
             Built with{' '}
             <span className="font-mono tracking-wider uppercase">t2000</span>{' '}
             infrastructure. Non-custodial. You approve every transaction.
           </p>
+          <div className="flex gap-6 font-mono">
+            <Link href="/terms" className="hover:text-muted transition-colors">Terms</Link>
+            <Link href="/privacy" className="hover:text-muted transition-colors">Privacy</Link>
+            <Link href="/disclaimer" className="hover:text-muted transition-colors">Disclaimer</Link>
+            <Link href="/security" className="hover:text-muted transition-colors">Security</Link>
+          </div>
         </footer>
       </div>
     </main>

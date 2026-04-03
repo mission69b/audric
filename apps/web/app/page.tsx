@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, useEffect, useRef, useState, useCallback, type KeyboardEvent } from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ProductNav } from '@/components/layout/ProductNav';
 import { ThinkingState } from '@/components/engine/ThinkingState';
@@ -240,6 +241,13 @@ function LandingContent() {
             ))}
           </div>
         </div>
+
+        <footer className="shrink-0 py-4 flex justify-center gap-6 text-[10px] font-mono text-dim">
+          <Link href="/terms" className="hover:text-muted transition-colors">Terms</Link>
+          <Link href="/privacy" className="hover:text-muted transition-colors">Privacy</Link>
+          <Link href="/disclaimer" className="hover:text-muted transition-colors">Disclaimer</Link>
+          <Link href="/security" className="hover:text-muted transition-colors">Security</Link>
+        </footer>
       </div>
     );
   }
