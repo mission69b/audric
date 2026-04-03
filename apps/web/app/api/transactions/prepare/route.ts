@@ -314,8 +314,15 @@ async function buildTransaction(params: BuildRequest): Promise<Transaction> {
       const { ids: swapCoinIds, totalBalance: swapTotal } = await fetchCoinsForSwap(client, address, fromType);
       if (swapCoinIds.length === 0) throw new Error(`No ${fromToken} coins found`);
 
-      const swapAll = rawAmount >= swapTotal;
-      const effectiveAmount = swapAll ? swapTotal : rawAmount;
+      // When swapping ALL SUI, keep a tiny reserve for future Pyth oracle fees.
+      // 0.01 SUI is worth <$0.01 but prevents "no SUI for oracle fees" failures.
+      const ORACLE_FEE_RESERVE = BigInt(10_000_000); // 0.01 SUI
+      let swapAll = rawAmount >= swapTotal;
+      let effectiveAmount = swapAll ? swapTotal : rawAmount;
+      if (swapAll && fromType === SUI_TYPE && swapTotal > ORACLE_FEE_RESERVE * BigInt(2)) {
+        effectiveAmount = swapTotal - ORACLE_FEE_RESERVE;
+        swapAll = false;
+      }
 
       return buildSwapTx(address, fromType, toType, fromToken, toToken, effectiveAmount, swapAll, slippage, swapCoinIds, params.byAmountIn);
     }
