@@ -57,6 +57,7 @@ jobs:
           fi
 
       - name: Post to Discord
+        if: ${{ secrets.DISCORD_DEVLOG_WEBHOOK != '' }}
         env:
           WEBHOOK_URL: ${{ secrets.DISCORD_DEVLOG_WEBHOOK }}
           COMMIT_MSG: ${{ steps.info.outputs.message }}
