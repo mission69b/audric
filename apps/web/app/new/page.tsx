@@ -675,18 +675,29 @@ function DashboardContent() {
 
   const extractReceivedAmount = useCallback((balanceChanges: Array<{ coinType: string; amount: string }> | undefined, toToken: string): string | null => {
     if (!balanceChanges?.length) return null;
-    const TOKEN_TYPES: Record<string, string> = {
-      SUI: '0x2::sui::SUI',
-      USDC: '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC',
-      USDT: '0x375f70cf2ae4c00bf37117d0c85a2c71545e6ee05c4a5c7d282cd66a4504b068::usdt::USDT',
+
+    const TOKENS: Record<string, { type: string; decimals: number }> = {
+      SUI:   { type: '0x2::sui::SUI', decimals: 9 },
+      USDC:  { type: '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC', decimals: 6 },
+      USDT:  { type: '0x375f70cf2ae4c00bf37117d0c85a2c71545e6ee05c4a5c7d282cd66a4504b068::usdt::USDT', decimals: 6 },
+      CETUS: { type: '0x06864a6f921804860930db6ddbe2e16acdf8504495ea7481637a1c8b9a8fe54b::cetus::CETUS', decimals: 9 },
+      DEEP:  { type: '0xdeeb7a4662eec9f2f3def03fb937a663dddaa2e215b8078a284d026b7946c270::deep::DEEP', decimals: 6 },
+      NAVX:  { type: '0xa99b8952d4f7d947ea77fe0ecdcc9e5fc0bcab2841d6e2a5aa00c3044e5544b5::navx::NAVX', decimals: 9 },
+      vSUI:  { type: '0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT', decimals: 9 },
+      WAL:   { type: '0x356a26eb9e012a68958082340d4c4116e7f55615cf27affcff209cf0ae544f59::wal::WAL', decimals: 9 },
+      ETH:   { type: '0xd0e89b2af5e4910726fbcd8b8dd37bb79b29e5f83f7491bca830e94f7f226d29::eth::ETH', decimals: 8 },
     };
-    const targetType = TOKEN_TYPES[toToken.toUpperCase()] ?? toToken;
+
+    const entry = TOKENS[toToken.toUpperCase()];
+    const targetType = entry?.type ?? toToken;
+    const decimals = entry?.decimals ?? 9;
+
     const match = balanceChanges.find(
       (bc) => bc.coinType === targetType && Number(bc.amount) > 0,
     );
     if (!match) return null;
-    const decimals = targetType === '0x2::sui::SUI' ? 9 : 6;
-    return (Number(match.amount) / 10 ** decimals).toFixed(decimals === 9 ? 4 : 2);
+    const precision = decimals >= 8 ? 4 : 2;
+    return (Number(match.amount) / 10 ** decimals).toFixed(precision);
   }, []);
 
   const handleExecuteAction = useCallback(

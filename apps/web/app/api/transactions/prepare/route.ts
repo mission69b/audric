@@ -289,12 +289,16 @@ async function buildTransaction(params: BuildRequest): Promise<Transaction> {
       const toType = resolveSwapToken(toToken);
       if (!fromType) throw new Error(`Unknown token: ${fromToken}`);
       if (!toType) throw new Error(`Unknown token: ${toToken}`);
+      if (fromType === toType) throw new Error('Cannot swap a token to itself');
 
-      const fromDecimals = fromType === '0x2::sui::SUI' ? 9 : 6;
+      const fromDecimals = getSwapDecimals(fromType);
       const rawAmount = BigInt(Math.floor(amount * 10 ** fromDecimals));
-      const slippage = Math.max(0.001, Math.min(params.slippage ?? 0.01, 0.05));
 
-      // Fetch coins first to detect "swap all" and get exact on-chain total
+      const rawSlippage = Number(params.slippage);
+      const slippage = Number.isFinite(rawSlippage)
+        ? Math.max(0.001, Math.min(rawSlippage, 0.05))
+        : 0.01;
+
       const { ids: swapCoinIds, totalBalance: swapTotal } = await fetchCoinsForSwap(client, address, fromType);
       if (swapCoinIds.length === 0) throw new Error(`No ${fromToken} coins found`);
 
@@ -302,12 +306,16 @@ async function buildTransaction(params: BuildRequest): Promise<Transaction> {
       const effectiveAmount = swapAll ? swapTotal : rawAmount;
 
       const aggClient = getCetusAggregator(address);
-      const routerData = await aggClient.findRouters({
-        from: fromType,
-        target: toType,
-        amount: effectiveAmount.toString(),
-        byAmountIn: params.byAmountIn ?? true,
-      });
+      const routerData = await withTimeout(
+        aggClient.findRouters({
+          from: fromType,
+          target: toType,
+          amount: effectiveAmount.toString(),
+          byAmountIn: params.byAmountIn ?? true,
+        }),
+        15_000,
+        'Swap route lookup',
+      );
 
       if (!routerData) throw new Error(`No swap route found for ${fromToken} → ${toToken}`);
       if (routerData.insufficientLiquidity) throw new Error(`Insufficient liquidity for ${fromToken} → ${toToken}`);
@@ -320,15 +328,18 @@ async function buildTransaction(params: BuildRequest): Promise<Transaction> {
         swapTx.mergeCoins(swapPrimary, swapCoinIds.slice(1).map(id => swapTx.object(id)));
       }
 
-      // When swapping the full balance, use merged coin directly (no split = no precision issues)
       const inputCoin = swapAll ? swapPrimary : swapTx.splitCoins(swapPrimary, [effectiveAmount])[0];
 
-      const outputCoin = await aggClient.routerSwap({
-        router: routerData,
-        inputCoin,
-        slippage,
-        txb: swapTx,
-      });
+      const outputCoin = await withTimeout(
+        aggClient.routerSwap({
+          router: routerData,
+          inputCoin,
+          slippage,
+          txb: swapTx,
+        }),
+        15_000,
+        'Swap transaction build',
+      );
 
       swapTx.transferObjects([outputCoin], address);
       return swapTx;
@@ -411,28 +422,45 @@ async function buildTransaction(params: BuildRequest): Promise<Transaction> {
   return tx;
 }
 
-const SWAP_TOKEN_MAP: Record<string, string> = {
-  SUI: '0x2::sui::SUI',
-  USDC: '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC',
-  USDT: '0x375f70cf2ae4c00bf37117d0c85a2c71545e6ee05c4a5c7d282cd66a4504b068::usdt::USDT',
-  CETUS: '0x06864a6f921804860930db6ddbe2e16acdf8504495ea7481637a1c8b9a8fe54b::cetus::CETUS',
-  DEEP: '0xdeeb7a4662eec9f2f3def03fb937a663dddaa2e215b8078a284d026b7946c270::deep::DEEP',
-  NAVX: '0xa99b8952d4f7d947ea77fe0ecdcc9e5fc0bcab2841d6e2a5aa00c3044e5544b5::navx::NAVX',
-  vSUI: '0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT',
-  WAL: '0x356a26eb9e012a68958082340d4c4116e7f55615cf27affcff209cf0ae544f59::wal::WAL',
-  ETH: '0xd0e89b2af5e4910726fbcd8b8dd37bb79b29e5f83f7491bca830e94f7f226d29::eth::ETH',
+// Unified token config — single source of truth for type resolution and decimal scaling.
+const SWAP_TOKENS: Record<string, { type: string; decimals: number }> = {
+  SUI:   { type: '0x2::sui::SUI', decimals: 9 },
+  USDC:  { type: '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC', decimals: 6 },
+  USDT:  { type: '0x375f70cf2ae4c00bf37117d0c85a2c71545e6ee05c4a5c7d282cd66a4504b068::usdt::USDT', decimals: 6 },
+  CETUS: { type: '0x06864a6f921804860930db6ddbe2e16acdf8504495ea7481637a1c8b9a8fe54b::cetus::CETUS', decimals: 9 },
+  DEEP:  { type: '0xdeeb7a4662eec9f2f3def03fb937a663dddaa2e215b8078a284d026b7946c270::deep::DEEP', decimals: 6 },
+  NAVX:  { type: '0xa99b8952d4f7d947ea77fe0ecdcc9e5fc0bcab2841d6e2a5aa00c3044e5544b5::navx::NAVX', decimals: 9 },
+  vSUI:  { type: '0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT', decimals: 9 },
+  WAL:   { type: '0x356a26eb9e012a68958082340d4c4116e7f55615cf27affcff209cf0ae544f59::wal::WAL', decimals: 9 },
+  ETH:   { type: '0xd0e89b2af5e4910726fbcd8b8dd37bb79b29e5f83f7491bca830e94f7f226d29::eth::ETH', decimals: 8 },
 };
+
+const SWAP_TYPE_TO_DECIMALS = new Map(
+  Object.values(SWAP_TOKENS).map((t) => [t.type, t.decimals]),
+);
 
 function resolveSwapToken(nameOrType: string): string | null {
   if (nameOrType.includes('::')) return nameOrType;
-  return SWAP_TOKEN_MAP[nameOrType.toUpperCase()] ?? null;
+  return SWAP_TOKENS[nameOrType.toUpperCase()]?.type ?? null;
 }
 
-let cetusClient: AggregatorClient | null = null;
+function getSwapDecimals(coinType: string): number {
+  return SWAP_TYPE_TO_DECIMALS.get(coinType) ?? 9;
+}
+
+const CETUS_ENV = SUI_NETWORK === 'mainnet' ? Env.Mainnet : Env.Testnet;
+
 function getCetusAggregator(signer: string): AggregatorClient {
-  if (cetusClient) return cetusClient;
-  cetusClient = new AggregatorClient({ signer, env: Env.Mainnet });
-  return cetusClient;
+  return new AggregatorClient({ signer, env: CETUS_ENV });
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`${label} timed out after ${ms / 1000}s`)), ms),
+    ),
+  ]);
 }
 
 async function fetchCoinsForSwap(
