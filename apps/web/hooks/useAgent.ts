@@ -92,31 +92,47 @@ export function useAgent() {
             prepareHeaders['x-zklogin-jwt'] = jwt;
           }
 
-          const prepareRes = await fetch('/api/transactions/prepare', {
-            method: 'POST',
-            headers: prepareHeaders,
-            body: JSON.stringify({ type: txType, address, ...params }),
-          });
+          let prepareRes: Response;
+          try {
+            prepareRes = await fetch('/api/transactions/prepare', {
+              method: 'POST',
+              headers: prepareHeaders,
+              body: JSON.stringify({ type: txType, address, ...params }),
+            });
+          } catch (fetchErr) {
+            throw new Error(`[PREPARE_NETWORK] ${fetchErr instanceof Error ? fetchErr.message : String(fetchErr)}`);
+          }
 
           if (!prepareRes.ok) {
-            const err = await prepareRes.json();
-            throw new Error(err.error ?? 'Failed to prepare transaction');
+            const err = await prepareRes.json().catch(() => ({}));
+            throw new Error(`[PREPARE_${prepareRes.status}] ${(err as Record<string, string>).error ?? 'Unknown prepare error'}`);
           }
 
           const { bytes, digest } = await prepareRes.json();
 
-          const txBytes = Uint8Array.from(atob(bytes), c => c.charCodeAt(0));
-          const { signature } = await signer.signTransaction(txBytes);
+          let signature: string;
+          try {
+            const txBytes = Uint8Array.from(atob(bytes), c => c.charCodeAt(0));
+            const signResult = await signer.signTransaction(txBytes);
+            signature = signResult.signature;
+          } catch (signErr) {
+            throw new Error(`[SIGN] ${signErr instanceof Error ? signErr.message : String(signErr)}`);
+          }
 
-          const executeRes = await fetch('/api/transactions/execute', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ digest, signature }),
-          });
+          let executeRes: Response;
+          try {
+            executeRes = await fetch('/api/transactions/execute', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ digest, signature }),
+            });
+          } catch (fetchErr) {
+            throw new Error(`[EXECUTE_NETWORK] ${fetchErr instanceof Error ? fetchErr.message : String(fetchErr)}`);
+          }
 
           if (!executeRes.ok) {
-            const err = await executeRes.json();
-            throw new Error(err.error ?? 'Failed to execute transaction');
+            const err = await executeRes.json().catch(() => ({}));
+            throw new Error(`[EXECUTE_${executeRes.status}] ${(err as Record<string, string>).error ?? 'Unknown execute error'}`);
           }
 
           const result = await executeRes.json();
