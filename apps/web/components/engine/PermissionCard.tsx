@@ -11,13 +11,30 @@ const TOOL_LABELS: Record<string, string> = {
   repay_debt: 'Repay debt',
   claim_rewards: 'Claim rewards',
   pay_api: 'Pay for API',
+  swap_execute: 'Swap',
+  volo_stake: 'Stake',
+  volo_unstake: 'Unstake',
 };
 
 const TIMEOUT_SEC = 60;
 
-function formatInput(input: unknown): string | null {
+function formatInput(input: unknown, toolName?: string): string | null {
   if (!input || typeof input !== 'object') return null;
   const obj = input as Record<string, unknown>;
+
+  if (toolName === 'swap_execute') {
+    const from = obj.from ?? '?';
+    const to = obj.to ?? '?';
+    const amt = obj.amount ?? '?';
+    return `${amt} ${from} → ${to}`;
+  }
+  if (toolName === 'volo_stake') {
+    return `${obj.amount ?? '?'} SUI → vSUI`;
+  }
+  if (toolName === 'volo_unstake') {
+    return obj.amount === 'all' ? 'All vSUI → SUI' : `${obj.amount ?? '?'} vSUI → SUI`;
+  }
+
   const parts: string[] = [];
   if (obj.amount) parts.push(`$${obj.amount}`);
   if (obj.asset) parts.push(String(obj.asset));
@@ -41,7 +58,7 @@ export function PermissionCard({ action, onResolve }: PermissionCardProps) {
   const [secondsLeft, setSecondsLeft] = useState(TIMEOUT_SEC);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const label = TOOL_LABELS[action.toolName] ?? action.toolName.replace(/_/g, ' ');
-  const inputSummary = formatInput(action.input);
+  const inputSummary = formatInput(action.input, action.toolName);
 
   const handle = (approved: boolean, reason?: DenyReason) => {
     if (resolvedRef.current) return;

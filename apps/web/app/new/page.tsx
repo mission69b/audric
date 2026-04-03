@@ -673,7 +673,11 @@ function DashboardContent() {
     navigator.clipboard.writeText(text);
   }, []);
 
-  const extractReceivedAmount = useCallback((balanceChanges: Array<{ coinType: string; amount: string }> | undefined, toToken: string): string | null => {
+  const extractReceivedAmount = useCallback((
+    balanceChanges: Array<{ coinType: string; amount: string; owner?: unknown }> | undefined,
+    toToken: string,
+    userAddress?: string,
+  ): string | null => {
     if (!balanceChanges?.length) return null;
 
     const KNOWN_TOKENS: Record<string, { type: string; decimals: number }> = {
@@ -688,29 +692,30 @@ function DashboardContent() {
       ETH:   { type: '0xd0e89b2af5e4910726fbcd8b8dd37bb79b29e5f83f7491bca830e94f7f226d29::eth::ETH', decimals: 8 },
     };
 
+    const isUserChange = (bc: { owner?: unknown }): boolean => {
+      if (!userAddress) return true;
+      const o = bc.owner as Record<string, string> | undefined;
+      return o?.AddressOwner === userAddress;
+    };
+
     const entry = KNOWN_TOKENS[toToken.toUpperCase()];
     const targetType = entry?.type ?? toToken;
     const knownDecimals = entry?.decimals;
 
-    // For known tokens, match by resolved type
     if (knownDecimals != null) {
       const match = balanceChanges.find(
-        (bc) => bc.coinType === targetType && Number(bc.amount) > 0,
+        (bc) => bc.coinType === targetType && Number(bc.amount) > 0 && isUserChange(bc),
       );
       if (!match) return null;
       const precision = knownDecimals >= 8 ? 4 : 2;
       return (Number(match.amount) / 10 ** knownDecimals).toFixed(precision);
     }
 
-    // For arbitrary tokens, find the positive balance change matching the target coin type
-    // If toToken is a full coin type (contains ::), match directly
-    // Otherwise try to find any positive change that isn't the gas coin
     if (targetType.includes('::')) {
       const match = balanceChanges.find(
-        (bc) => bc.coinType === targetType && Number(bc.amount) > 0,
+        (bc) => bc.coinType === targetType && Number(bc.amount) > 0 && isUserChange(bc),
       );
       if (!match) return null;
-      // Default to 9 decimals for unknown tokens (most Sui tokens use 9)
       return (Number(match.amount) / 10 ** 9).toFixed(4);
     }
 
@@ -765,7 +770,7 @@ function DashboardContent() {
             });
             balanceQuery.refetch();
             setTimeout(() => balanceQuery.refetch(), 3000);
-            const received = extractReceivedAmount(res.balanceChanges, String(inp.to));
+            const received = extractReceivedAmount(res.balanceChanges, String(inp.to), agent.address);
             return { success: true, data: { success: true, tx: res.tx, from: inp.from, to: inp.to, amount: inp.amount, ...(received != null && { received }) } };
           } catch (swapErr) {
             const msg = swapErr instanceof Error ? swapErr.message : String(swapErr);
