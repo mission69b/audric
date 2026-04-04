@@ -361,6 +361,8 @@ export function createUnauthEngine(history: HistoryMessage[]): QueryEngine {
     'health_check',
     'transaction_history',
     'portfolio_analysis',
+    'rates_info',
+    'explain_tx',
   ]);
   const readTools = READ_TOOLS.filter((t) => !EXCLUDED_TOOLS.has(t.name)) as Tool[];
 
@@ -409,11 +411,15 @@ ${toolList}
 ## Response rules
 - 1-2 sentences max. No bullet lists unless asked. No preambles.
 - Lead with data. No "Let me check", "Great question!", or "Sure!".
-- Present data as structured lists with bold labels.
-- Show top 3-5 results unless asked for more.
 - Present amounts as $1,234.56 and rates as X.XX% APY.
 - Never fabricate rates, prices, or balances — use tool results.
-- Do NOT narrate your tool usage. Just present results.
+- Do NOT narrate your tool usage.
+- CRITICAL: When a tool returns structured data (yields, prices, protocol info), write ONE short takeaway sentence. Do NOT list individual results — they are rendered as visual cards automatically. Example: "Here are the top Sui yields sorted by APY." NOT a bullet list of each pool.
+
+## Rate & yield questions
+- For "best rates", "lending rates", "DeFi yields" → use defillama_yield_pools with chain "Sui".
+- For protocol-specific questions (e.g. "Is NAVI safe?") → use protocol_deep_dive.
+- These are liquidity pool yields, not savings rates. Add a brief note if relevant.
 
 ## Handling action requests
 When the user asks to execute something (swap, save, send, buy, stake):

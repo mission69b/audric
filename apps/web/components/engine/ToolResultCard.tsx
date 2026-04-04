@@ -202,6 +202,13 @@ function SavingsCard({ data }: { data: SavingsData }) {
   );
 }
 
+function fmtTvl(tvl: number): string {
+  if (tvl >= 1e9) return `$${(tvl / 1e9).toFixed(1)}B`;
+  if (tvl >= 1e6) return `$${(tvl / 1e6).toFixed(1)}M`;
+  if (tvl >= 1e3) return `$${(tvl / 1e3).toFixed(0)}K`;
+  return `$${tvl.toFixed(0)}`;
+}
+
 function YieldCard({ data }: { data: YieldPool[] }) {
   const pools = data.slice(0, 8);
   if (!pools.length) return null;
@@ -223,7 +230,7 @@ function YieldCard({ data }: { data: YieldPool[] }) {
               <td className="py-1 text-foreground font-medium truncate max-w-[100px]">{p.pool}</td>
               <td className="py-1 text-dim">{p.protocol}</td>
               <td className="py-1 text-right text-emerald-400">{p.apy.toFixed(2)}%</td>
-              <td className="py-1 text-right text-dim">${(p.tvl / 1e6).toFixed(1)}M</td>
+              <td className="py-1 text-right text-dim">{fmtTvl(p.tvl)}</td>
             </tr>
           ))}
         </tbody>

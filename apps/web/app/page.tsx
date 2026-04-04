@@ -26,13 +26,13 @@ const CATEGORIES: { id: Category; label: string }[] = [
 
 const CATEGORY_PROMPTS: Record<Category, string[]> = {
   savings: [
-    'What are the best rates on Sui?',
-    'Search the safest DeFi lending rates',
+    'What are the top DeFi yields on Sui?',
+    'Is NAVI Protocol safe? How much TVL does it have?',
     'Save $50 USDC in NAVI',
   ],
   swap: [
-    'Swap $50 USDC to SUI',
     "What's SUI trading at right now?",
+    'Swap $50 USDC to SUI',
     'What tokens can I trade?',
   ],
   send: [
@@ -48,13 +48,13 @@ const CATEGORY_PROMPTS: Record<Category, string[]> = {
   pay: [
     'What services can I pay for?',
     "What's the weather in Tokyo?",
-    'Send a birthday postcard to Mom',
+    'Search latest Sui ecosystem news',
   ],
 };
 
 const CHAT_QUICK_ACTIONS = [
-  { label: 'BEST RATES', text: 'What are the best rates on Sui?' },
-  { label: 'SWAP TO SUI', text: 'Swap $50 USDC to SUI' },
+  { label: 'TOP YIELDS', text: 'What are the top DeFi yields on Sui?' },
+  { label: 'SUI PRICE', text: "What's SUI trading at right now?" },
   { label: 'SERVICES', text: 'What services can I pay for?' },
   { label: 'WHAT CAN YOU DO?', text: 'What can you do?' },
 ];
