@@ -28,14 +28,14 @@ const CATEGORIES: { id: Category; label: string }[] = [
 
 const CATEGORY_PROMPTS: Record<Category, string[]> = {
   savings: [
+    'Buy $5 of WAL and deposit into NAVI lending',
+    'Search the best DeFi lending rates that are safe',
     'How much would $1,000 earn in a year?',
-    "What's the best way to earn yield on USDC?",
-    'Save $100 and start earning',
   ],
   swap: [
     'Swap $50 USDC to SUI',
-    'How does swapping work with no gas fees?',
     'What tokens can I trade?',
+    'Buy $20 of WAL',
   ],
   send: [
     'Send $50 to a friend',
@@ -48,16 +48,16 @@ const CATEGORY_PROMPTS: Record<Category, string[]> = {
     "What's a health factor?",
   ],
   pay: [
-    'What services can I access?',
-    'Can you search the web for me?',
+    'What services can I pay for?',
+    "What's the weather in Tokyo?",
     'Send a birthday postcard to Mom',
   ],
 };
 
 const CHAT_QUICK_ACTIONS = [
-  { label: 'SWAP USDC', text: 'Swap $50 USDC to SUI' },
-  { label: 'EARN YIELD', text: 'How do I start earning yield?' },
-  { label: 'SEND $50', text: 'Send $50 to a friend' },
+  { label: 'BEST RATES', text: 'Search the best DeFi rates across all protocols' },
+  { label: 'SWAP & EARN', text: 'Buy $5 of WAL and deposit into NAVI lending' },
+  { label: 'SWAP TO SUI', text: 'Swap $50 USDC to SUI' },
   { label: 'WHAT CAN YOU DO?', text: 'What can you do?' },
 ];
 
