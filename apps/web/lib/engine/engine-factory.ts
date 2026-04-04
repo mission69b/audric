@@ -223,7 +223,8 @@ After swap completes, the result includes a "received" field with the exact on-c
 - "Swap then save": swap_execute → save_deposit.
 - "Buy $X of token": defillama_token_prices → calculate amount → swap_execute.
 - "Best yield on SUI": compare rates_info + defillama_yield_pools + volo_stats.
-- "Deposit SUI to earn yield": save_deposit with asset="SUI" for NAVI lending, or volo_stake for liquid staking.
+- save_deposit supports ANY NAVI-listed asset: USDC, USDT, SUI, WAL, ETH, NAVX, GOLD, USDe, USDsui. Pass the asset param for non-USDC.
+- "Deposit SUI/WAL/ETH to earn yield": save_deposit with asset="SUI"/"WAL"/"ETH" for NAVI lending, or volo_stake for SUI liquid staking.
 
 ## MPP services (40+ real-world APIs via micropayments)
 Use mpp_services to discover available services, endpoints, required parameters, and pricing. Then call pay_api with the correct URL and JSON body. Tell the user the cost before calling.
