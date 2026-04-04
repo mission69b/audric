@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
 
   const ip =
     request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
-  const rl = rateLimit(`demo:${ip}`, 10, 600_000);
+  const rl = rateLimit(`demo:${ip}`, 30, 600_000);
   if (!rl.success) return rateLimitResponse(rl.retryAfterMs!);
 
   try {
