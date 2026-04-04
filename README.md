@@ -13,7 +13,8 @@ Conversational finance on [Sui](https://sui.io). Save, pay, send, borrow — all
 | Product | Description |
 |---------|-------------|
 | **Savings** | Earn yield on USDC via NAVI Protocol |
-| **Pay** | Access 88+ API endpoints with USDC micropayments |
+| **Swap** | Trade any Sui token via Cetus multi-DEX aggregation |
+| **Pay** | Access 40+ services (88 endpoints) with USDC micropayments |
 | **Send** | Transfer USDC instantly to any Sui address |
 | **Credit** | Borrow USDC against your savings |
 | **Receive** | Accept payments anywhere *(planned)* |
@@ -73,8 +74,6 @@ Copy `.env.example` to `.env.local` and fill in the required values. See `CLAUDE
 - **Audric** is the consumer product — what users see
 - **t2000** is the infrastructure — what developers build with
 - **suimpp** is the protocol — the open payment standard
-
-See [BRAND.md](https://github.com/mission69b/t2000/blob/main/BRAND.md) in the t2000 repo for full brand guidelines.
 
 ## License
 
