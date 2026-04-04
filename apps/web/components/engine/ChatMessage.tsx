@@ -2,6 +2,7 @@
 
 import type { EngineChatMessage, PendingAction, ToolExecution } from '@/lib/engine-types';
 import { AgentStep, getStepIcon, getStepLabel } from './AgentStep';
+import { ToolResultCard } from './ToolResultCard';
 import { ThinkingState } from './ThinkingState';
 import { PermissionCard, type DenyReason } from './PermissionCard';
 import { AgentMarkdown } from '@/components/dashboard/AgentMarkdown';
@@ -75,6 +76,9 @@ export function ChatMessage({ message, onActionResolve, autoApproveTools }: Chat
       {hasTools && (
         <div className="pl-1" role="status" aria-label="Agent activity">
           <ToolSteps tools={message.tools!} />
+          {!message.isStreaming && message.tools!.map((tool) => (
+            <ToolResultCard key={`card-${tool.toolUseId}`} tool={tool} />
+          ))}
         </div>
       )}
 
