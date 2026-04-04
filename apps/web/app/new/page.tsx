@@ -737,14 +737,14 @@ function DashboardContent() {
 
       switch (toolName) {
         case 'save_deposit': {
-          const res = await sdk.save({ amount: Number(inp.amount), protocol: inp.protocol as string | undefined });
+          const res = await sdk.save({ amount: Number(inp.amount), asset: inp.asset as string | undefined, protocol: inp.protocol as string | undefined });
           balanceQuery.refetch();
-          return { success: true, data: { success: true, tx: res.tx, amount: inp.amount } };
+          return { success: true, data: { success: true, tx: res.tx, amount: inp.amount, asset: inp.asset } };
         }
         case 'withdraw': {
-          const res = await sdk.withdraw({ amount: Number(inp.amount), protocol: inp.protocol as string | undefined });
+          const res = await sdk.withdraw({ amount: Number(inp.amount), asset: inp.asset as string | undefined, protocol: inp.protocol as string | undefined });
           balanceQuery.refetch();
-          return { success: true, data: { success: true, tx: res.tx, amount: inp.amount } };
+          return { success: true, data: { success: true, tx: res.tx, amount: inp.amount, asset: inp.asset } };
         }
         case 'send_transfer': {
           const res = await sdk.send({ to: String(inp.to), amount: Number(inp.amount), asset: inp.asset as string | undefined });
