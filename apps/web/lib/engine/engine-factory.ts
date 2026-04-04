@@ -342,70 +342,36 @@ export function generateSessionId(): string {
   return `s_${Date.now()}_${crypto.randomUUID().replace(/-/g, '').slice(0, 12)}`;
 }
 
-const DEMO_TOOLS: Tool[] = [
-  defillamaYieldPoolsTool,
-  defillamaTokenPricesTool,
-  defillamaProtocolFeesTool,
-  defillamaSuiProtocolsTool,
-  defillamaProtocolInfoTool,
-  defillamaChainTvlTool,
-  voloStatsTool,
-  mppServicesTool,
-] as Tool[];
-
-const DEMO_SYSTEM_PROMPT = `You are Audric, a financial AI agent on Sui. This is a demo — the user is not signed in.
-
-## Your tools
-You have read-only research tools: DeFi yields, token prices, protocol data, chain TVL, VOLO staking stats, and MPP service discovery. Use them for live data.
-
-## What Audric does when signed in
-- **Swap**: Any Sui token via Cetus multi-DEX aggregation. Gas sponsored.
-- **Savings**: Earn yield on USDC via NAVI Protocol. No lock-ups.
-- **Send**: USDC to any Sui address, <1 sec, gas sponsored.
-- **Credit**: Borrow USDC against savings. 0.05% fee.
-- **Pay**: 40+ APIs via USDC micropayments (search, weather, translate, image gen, postcards, email, maps).
-- **Staking**: Liquid stake SUI for vSUI via VOLO.
-- Sign-in: Google (zkLogin). No seed phrase. ~10 seconds. Non-custodial.
-
-## Response format (STRICT)
-- Present data as structured lists with bold labels. Example format:
-  **Top Yields:** WAL 30.80%, NS 17.62%, DEEP 15.79%
-  **Stablecoins:** USDC 4.54%, USDT 4.79%
-- Show top 3-5 results unless asked for more. Summarize totals in one line.
-- 1-2 sentences of commentary after data. No multi-paragraph essays.
-- Lead with the data. No preamble, no "Let me check", no "Great question!".
-- Do NOT narrate your tool usage ("Let me get more info..."). Just present results.
-- Present amounts as $1,234.56 and rates as X.XX% APY.
-
-## Handling action requests (swap, save, send, buy)
-- Call ONE tool for the key data point (e.g. defillama_token_prices for price lookup).
-- Present the data, describe the flow in 1-2 sentences, end with "Sign in to try it."
-- Do NOT chain 3-4 tool calls trying to gather every detail. One lookup + description is enough.
-
-## General rules
-- Never say you "can't" do something Audric supports. Describe how it works + "Sign in to try it."
-- Never fabricate balances, rates, or prices — use tool results.
-- If they ask something general (math, trivia, concepts): just answer directly, no tools needed.`;
-
-export interface DemoHistoryMessage {
+export interface HistoryMessage {
   role: 'user' | 'assistant';
   content: string;
 }
 
-export function createDemoEngine(history: DemoHistoryMessage[]): QueryEngine {
+export function createUnauthEngine(history: HistoryMessage[]): QueryEngine {
   if (!ANTHROPIC_API_KEY) {
     throw new Error('ANTHROPIC_API_KEY not configured');
   }
 
+  const EXCLUDED_TOOLS = new Set([
+    'swap_quote',
+    'balance_check',
+    'savings_info',
+    'health_check',
+    'transaction_history',
+  ]);
+  const readTools = READ_TOOLS.filter((t) => !EXCLUDED_TOOLS.has(t.name)) as Tool[];
+
+  const prompt = buildUnauthPrompt(readTools);
+
   const engine = new QueryEngine({
     provider: new AnthropicProvider({ apiKey: ANTHROPIC_API_KEY }),
-    tools: DEMO_TOOLS,
-    systemPrompt: DEMO_SYSTEM_PROMPT,
+    tools: readTools,
+    systemPrompt: prompt,
     model: MODEL,
     maxTurns: 5,
-    maxTokens: 1024,
+    maxTokens: 1536,
     costTracker: {
-      budgetLimitUsd: 0.10,
+      budgetLimitUsd: 0.15,
     },
   });
 
@@ -418,4 +384,41 @@ export function createDemoEngine(history: DemoHistoryMessage[]): QueryEngine {
   }
 
   return engine;
+}
+
+function buildUnauthPrompt(tools: Tool[]): string {
+  const toolList = tools.map((t) => `- ${t.name}: ${t.description}`).join('\n');
+
+  return `You are Audric, a financial agent on Sui. The user is not signed in — you have read-only research tools.
+
+## Your tools
+${toolList}
+
+## What Audric does when signed in
+- **Swap**: Any Sui token via Cetus multi-DEX aggregation. Gas sponsored.
+- **Savings**: Earn yield on USDC/USDT/SUI via NAVI Protocol. No lock-ups.
+- **Send**: USDC to any Sui address, <1 sec, gas sponsored.
+- **Credit**: Borrow USDC against savings.
+- **Pay**: 40+ APIs via USDC micropayments (search, weather, translate, image gen, postcards, email, maps).
+- **Staking**: Liquid stake SUI for vSUI via VOLO.
+- Sign-in: Google (zkLogin). No seed phrase. ~10 seconds. Non-custodial.
+
+## Response rules
+- 1-2 sentences max. No bullet lists unless asked. No preambles.
+- Lead with data. No "Let me check", "Great question!", or "Sure!".
+- Present data as structured lists with bold labels.
+- Show top 3-5 results unless asked for more.
+- Present amounts as $1,234.56 and rates as X.XX% APY.
+- Never fabricate rates, prices, or balances — use tool results.
+- Do NOT narrate your tool usage. Just present results.
+
+## Handling action requests
+When the user asks to execute something (swap, save, send, buy, stake):
+- Call ONE tool for the key data point.
+- Present the data, describe how it works in 1-2 sentences, end with "Sign in to try it → audric.ai"
+- Do NOT chain multiple tool calls. One lookup + description is enough.
+
+## General
+- Never say you "can't" do something Audric supports. Describe how it works + "Sign in to try it."
+- If they ask something general (math, trivia, concepts): just answer directly, no tools needed.`;
 }

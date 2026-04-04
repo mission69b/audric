@@ -7,7 +7,7 @@ import { ProductNav } from '@/components/layout/ProductNav';
 import { ChatDivider } from '@/components/engine/ChatDivider';
 import { ChatMessage } from '@/components/engine/ChatMessage';
 import { useZkLogin } from '@/components/auth/useZkLogin';
-import { useDemoChat } from '@/hooks/useDemoChat';
+import { useEngine } from '@/hooks/useEngine';
 
 const MAX_FREE_TURNS = 5;
 
@@ -81,7 +81,20 @@ function LandingContent() {
   const [activeCategory, setActiveCategory] = useState<Category>('savings');
   const promptHandled = useRef(false);
 
-  const { messages, isStreaming, sendMessage, cancel, addCtaMessage } = useDemoChat();
+  const engine = useEngine({ address: null, jwt: undefined });
+  const { messages, isStreaming, sendMessage, cancel } = engine;
+  const ctaIds = useRef(new Set<string>());
+
+  const addCtaMessage = useCallback((content: string) => {
+    const id = `cta_${Date.now()}`;
+    ctaIds.current.add(id);
+    engine.injectMessage({
+      id,
+      role: 'assistant',
+      content,
+      timestamp: Date.now(),
+    });
+  }, [engine]);
 
   useEffect(() => {
     if (status === 'authenticated') router.replace('/new');
@@ -261,7 +274,7 @@ function LandingContent() {
           {messages.map((msg) => (
             <div key={msg.id}>
               <ChatMessage message={msg} />
-              {msg.cta && (
+              {ctaIds.current.has(msg.id) && (
                 <div className="pl-1 mt-2">
                   <button
                     onClick={login}

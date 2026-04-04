@@ -30,7 +30,14 @@ interface UseEngineOptions {
   jwt: string | undefined;
 }
 
+function buildHistory(messages: EngineChatMessage[]): { role: 'user' | 'assistant'; content: string }[] {
+  return messages
+    .filter((m) => m.content)
+    .map((m) => ({ role: m.role, content: m.content }));
+}
+
 export function useEngine({ address, jwt }: UseEngineOptions) {
+  const isAuth = !!address && !!jwt;
   const [messages, setMessages] = useState<EngineChatMessage[]>([]);
   const [status, setStatus] = useState<EngineStatus>('idle');
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -43,9 +50,12 @@ export function useEngine({ address, jwt }: UseEngineOptions) {
   const hasReceivedContent = useRef(false);
   const retryCountRef = useRef(0);
 
+  const messagesRef = useRef<EngineChatMessage[]>([]);
+  messagesRef.current = messages;
+
   const sendMessage = useCallback(
     async (text: string) => {
-      if (!address || !jwt) return;
+      if (isAuth && (!address || !jwt)) return;
       if (status === 'streaming' || status === 'connecting' || status === 'executing') return;
 
       setError(null);
@@ -72,14 +82,19 @@ export function useEngine({ address, jwt }: UseEngineOptions) {
       streamingMsgRef.current = assistantMsg.id;
       setMessages((prev) => [...prev, userMsg, assistantMsg]);
 
-      await attemptStream('/api/engine/chat', {
-        message: text,
-        address,
-        sessionId: sessionId ?? undefined,
-      });
+      if (isAuth) {
+        await attemptStream('/api/engine/chat', {
+          message: text,
+          address,
+          sessionId: sessionId ?? undefined,
+        });
+      } else {
+        const history = buildHistory([...messagesRef.current, userMsg]);
+        await attemptStream('/api/engine/chat', { message: text, history });
+      }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [address, jwt, sessionId, status],
+    [address, jwt, sessionId, status, isAuth],
   );
 
   /**
@@ -142,12 +157,12 @@ export function useEngine({ address, jwt }: UseEngineOptions) {
     abortRef.current = controller;
 
     try {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (jwt) headers['x-zklogin-jwt'] = jwt;
+
       const res = await fetch(url, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-zklogin-jwt': jwt!,
-        },
+        headers,
         body: JSON.stringify(body),
         signal: controller.signal,
       });
