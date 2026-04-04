@@ -316,6 +316,10 @@ export async function createEngine(
     walletAddress: address,
     suiRpcUrl: SUI_RPC_URL,
     serverPositions: positions,
+    positionFetcher: (addr: string) => fetchServerPositions(addr).then((sp) => sp ?? {
+      savings: 0, borrows: 0, savingsRate: 0, healthFactor: null, maxBorrow: 0,
+      pendingRewards: 0, supplies: [], borrows_detail: [],
+    }),
     tools: allTools,
     systemPrompt: buildSystemPrompt(address, allTools, balanceSummary, contacts),
     model: MODEL,
