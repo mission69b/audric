@@ -49,7 +49,7 @@ const CATEGORY_PROMPTS: Record<Category, string[]> = {
   ],
   pay: [
     'Search the web for Sui ecosystem news',
-    "What's the price of Bitcoin?",
+    "What's the weather in Tokyo?",
     'What services can I pay for?',
   ],
 };

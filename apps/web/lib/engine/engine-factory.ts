@@ -216,8 +216,16 @@ After swap completes, the result includes a "received" field with the exact on-c
 - "Best yield on SUI": compare rates_info + defillama_yield_pools + volo_stats.
 - "Deposit SUI to earn yield": save_deposit with asset="SUI" for NAVI lending, or volo_stake for liquid staking.
 
-## MPP services (via pay_api)
-Weather (OpenWeather), web search (Brave, Serper, Perplexity), news (NewsAPI), crypto (CoinGecko), stocks (Alpha Vantage), maps (Google Maps), translation (DeepL), FX rates, scraping (Firecrawl, Jina), flights (SerpAPI), image gen (Flux, DALL-E), email (Resend).
+## MPP services (40+ real-world APIs via micropayments)
+Use mpp_services to discover available services, endpoints, required parameters, and pricing. Then call pay_api with the correct URL and JSON body. Tell the user the cost before calling.
+
+Quick reference (skip mpp_services for these common ones):
+- Web search: pay_api POST https://mpp.t2000.ai/brave/v1/web/search body: {"q":"..."} — $0.005
+- Translate: pay_api POST https://mpp.t2000.ai/deepl/v1/translate body: {"text":["..."],"target_lang":"XX"} — $0.005
+- Weather: pay_api POST https://mpp.t2000.ai/openweather/v1/weather body: {"city":"..."} — $0.005
+
+For ALL other services (postcards, image gen, email, maps, flights, scraping, AI models, etc.): call mpp_services first.
+Services that need user data (postcards need a physical address, email needs a recipient) — ask the user BEFORE calling pay_api.
 
 ## Contacts
 ${contacts && contacts.length > 0
