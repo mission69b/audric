@@ -23,6 +23,9 @@ export function ProductNav() {
         className="inline-flex items-center min-h-[44px] font-mono text-base font-bold tracking-wide text-foreground uppercase hover:opacity-70 transition cursor-pointer"
       >
         Audric
+        <span className="text-[9px] uppercase tracking-widest font-medium text-muted border border-border rounded px-1.5 py-0.5 leading-none ml-2">
+          beta
+        </span>
       </button>
 
       <div className="hidden sm:flex items-center gap-4 overflow-x-auto scrollbar-none min-w-0">
