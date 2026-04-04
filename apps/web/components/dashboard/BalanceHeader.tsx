@@ -72,7 +72,7 @@ export function BalanceHeader({ address, balance, compact, onSettingsClick }: Ba
       holdings.push({
         symbol,
         amount: fmtToken(amt),
-        usd: `$${fmtUsd(usdVal)}`,
+        usd: usdVal > 0 ? `$${fmtUsd(usdVal)}` : '',
       });
     }
   }
