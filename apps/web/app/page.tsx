@@ -16,21 +16,21 @@ const MAX_FREE_TURNS = 5;
 const SIGN_IN_PROMPT =
   'Ready to try for real? Sign in with Google — no seed phrase, no crypto jargon. It takes 10 seconds.';
 
-type Category = 'earn' | 'swap' | 'send' | 'borrow' | 'services';
+type Category = 'savings' | 'swap' | 'send' | 'credit' | 'pay';
 
 const CATEGORIES: { id: Category; label: string }[] = [
-  { id: 'earn', label: 'Earn' },
+  { id: 'savings', label: 'Savings' },
   { id: 'swap', label: 'Swap' },
   { id: 'send', label: 'Send' },
-  { id: 'borrow', label: 'Borrow' },
-  { id: 'services', label: 'Services' },
+  { id: 'credit', label: 'Credit' },
+  { id: 'pay', label: 'Pay' },
 ];
 
 const CATEGORY_PROMPTS: Record<Category, string[]> = {
-  earn: [
+  savings: [
     'Save $100 and earn yield',
-    "What's the best rate for USDC right now?",
-    'How much have I earned this month?',
+    "What's the best rate for USDC?",
+    'Give me my full financial report',
   ],
   swap: [
     'Swap $50 USDC to SUI',
@@ -42,23 +42,23 @@ const CATEGORY_PROMPTS: Record<Category, string[]> = {
     'Save Mom as a contact',
     "What's my transaction history?",
   ],
-  borrow: [
+  credit: [
     'Borrow $500 against my savings',
     "What's my health factor?",
     'Repay all my debt',
   ],
-  services: [
-    'Send a birthday postcard to Mom',
-    'Translate this to Japanese',
-    'Generate a logo for my startup',
+  pay: [
+    'Search the web for Sui ecosystem news',
+    "What's the price of Bitcoin?",
+    'What services can I pay for?',
   ],
 };
 
 const CHAT_QUICK_ACTIONS = [
   { label: 'SAVE $100', text: 'Save $100 and earn yield' },
-  { label: 'SWAP', text: 'Swap $20 USDC to SUI' },
-  { label: 'SEND', text: 'Send $50 to a friend' },
-  { label: 'POSTCARD', text: 'Send a postcard to Mom' },
+  { label: 'SWAP TO SUI', text: 'Swap $20 USDC to SUI' },
+  { label: 'SEND $50', text: 'Send $50 to a friend' },
+  { label: 'MY REPORT', text: 'Give me my full financial report' },
 ];
 
 export default function LandingPage() {
@@ -80,7 +80,7 @@ function LandingContent() {
   const [input, setInput] = useState(promptParam ?? '');
   const [turnCount, setTurnCount] = useState(0);
   const [mode, setMode] = useState<'hero' | 'chat'>('hero');
-  const [activeCategory, setActiveCategory] = useState<Category>('earn');
+  const [activeCategory, setActiveCategory] = useState<Category>('savings');
   const promptHandled = useRef(false);
 
   const { messages, isStreaming, sendMessage, cancel, addCtaMessage } = useDemoChat();
