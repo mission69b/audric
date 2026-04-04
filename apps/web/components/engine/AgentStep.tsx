@@ -38,6 +38,11 @@ const STEP_ICONS: Record<string, string> = {
   defillama_chain_tvl: '📊',
   defillama_sui_protocols: '🔷',
   defillama_price_change: '📉',
+  web_search: '🔍',
+  explain_tx: '🔎',
+  portfolio_analysis: '📊',
+  protocol_deep_dive: '🛡️',
+  save_contact: '📇',
 };
 
 const STEP_LABELS: Record<string, string> = {
@@ -65,6 +70,11 @@ const STEP_LABELS: Record<string, string> = {
   defillama_chain_tvl: 'CHAIN TVL',
   defillama_sui_protocols: 'SUI PROTOCOLS',
   defillama_price_change: 'PRICE CHANGE',
+  web_search: 'WEB SEARCH',
+  explain_tx: 'EXPLAIN TRANSACTION',
+  portfolio_analysis: 'PORTFOLIO ANALYSIS',
+  protocol_deep_dive: 'PROTOCOL DEEP DIVE',
+  save_contact: 'SAVE CONTACT',
 };
 
 export function getStepIcon(toolName: string): string {

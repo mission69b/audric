@@ -232,6 +232,114 @@ function YieldCard({ data }: { data: YieldPool[] }) {
   );
 }
 
+interface PortfolioData {
+  totalValue: number;
+  walletValue: number;
+  savingsValue: number;
+  debtValue: number;
+  healthFactor: number | null;
+  allocations: { symbol: string; amount: number; usdValue: number; percentage: number }[];
+  stablePercentage: number;
+  insights: { type: string; message: string }[];
+}
+
+function PortfolioCard({ data }: { data: PortfolioData }) {
+  return (
+    <CardShell title="Portfolio Analysis">
+      <div className="flex gap-4 mb-2 font-mono">
+        <div>
+          <span className="text-dim text-[10px] block">Total</span>
+          <span className="text-foreground font-medium">${fmtUsd(data.totalValue)}</span>
+        </div>
+        <div>
+          <span className="text-dim text-[10px] block">Wallet</span>
+          <span className="text-foreground">${fmtUsd(data.walletValue)}</span>
+        </div>
+        {data.savingsValue > 0 && (
+          <div>
+            <span className="text-dim text-[10px] block">Savings</span>
+            <span className="text-emerald-400">${fmtUsd(data.savingsValue)}</span>
+          </div>
+        )}
+        {data.debtValue > 0 && (
+          <div>
+            <span className="text-dim text-[10px] block">Debt</span>
+            <span className="text-amber-400">${fmtUsd(data.debtValue)}</span>
+          </div>
+        )}
+      </div>
+      {data.allocations.length > 0 && (
+        <div className="space-y-1 mb-2">
+          {data.allocations.slice(0, 6).map((a) => (
+            <div key={a.symbol} className="flex items-center gap-2 text-[11px] font-mono">
+              <span className="text-foreground w-12">{a.symbol}</span>
+              <div className="flex-1 bg-border/30 rounded-full h-1.5 overflow-hidden">
+                <div className="bg-foreground/60 h-full rounded-full" style={{ width: `${Math.min(a.percentage, 100)}%` }} />
+              </div>
+              <span className="text-dim w-10 text-right">{a.percentage.toFixed(0)}%</span>
+            </div>
+          ))}
+        </div>
+      )}
+      {data.insights.length > 0 && (
+        <div className="space-y-1 pt-2 border-t border-border/50 text-[11px]">
+          {data.insights.map((i, idx) => (
+            <div key={idx} className={i.type === 'warning' ? 'text-amber-400' : 'text-dim'}>
+              {i.type === 'warning' ? '⚠ ' : '→ '}{i.message}
+            </div>
+          ))}
+        </div>
+      )}
+    </CardShell>
+  );
+}
+
+interface TxExplanation {
+  digest: string;
+  sender: string;
+  status: string;
+  gasUsed: string;
+  timestamp?: string;
+  effects: { type: string; description: string }[];
+  summary: string;
+}
+
+function ExplainTxCard({ data }: { data: TxExplanation }) {
+  return (
+    <CardShell title="Transaction">
+      <div className="space-y-1 font-mono text-[11px]">
+        <div className="flex justify-between">
+          <span className="text-dim">Digest</span>
+          <span className="text-foreground">{data.digest.slice(0, 12)}...{data.digest.slice(-6)}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-dim">Status</span>
+          <span className={data.status === 'success' ? 'text-emerald-400' : 'text-amber-400'}>{data.status}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-dim">Gas</span>
+          <span className="text-foreground">{data.gasUsed}</span>
+        </div>
+        {data.timestamp && (
+          <div className="flex justify-between">
+            <span className="text-dim">Time</span>
+            <span className="text-foreground">{new Date(data.timestamp).toLocaleString()}</span>
+          </div>
+        )}
+      </div>
+      {data.effects.length > 0 && (
+        <div className="mt-2 pt-2 border-t border-border/50 space-y-0.5 text-[11px]">
+          {data.effects.filter((e) => e.type !== 'event').map((e, i) => (
+            <div key={i} className="text-foreground font-mono">
+              {e.type === 'send' ? '↑' : '↓'} {e.description}
+            </div>
+          ))}
+        </div>
+      )}
+    </CardShell>
+  );
+}
+
 const CARD_RENDERERS: Record<string, (result: unknown) => React.ReactNode | null> = {
   rates_info: (result) => {
     const data = extractData(result);
@@ -252,6 +360,16 @@ const CARD_RENDERERS: Record<string, (result: unknown) => React.ReactNode | null
     const data = extractData(result);
     if (!Array.isArray(data)) return null;
     return <YieldCard data={data as YieldPool[]} />;
+  },
+  portfolio_analysis: (result) => {
+    const data = extractData(result);
+    if (!data || typeof data !== 'object') return null;
+    return <PortfolioCard data={data as PortfolioData} />;
+  },
+  explain_tx: (result) => {
+    const data = extractData(result);
+    if (!data || typeof data !== 'object') return null;
+    return <ExplainTxCard data={data as TxExplanation} />;
   },
 };
 
