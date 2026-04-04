@@ -41,8 +41,8 @@ export type TxResult = { tx: string; balanceChanges?: BalanceChange[] };
 export interface AgentActions {
   address: string;
   send(params: { to: string; amount: number; asset?: string }): Promise<TxResult>;
-  save(params: { amount: number; protocol?: string }): Promise<TxResult>;
-  withdraw(params: { amount: number; protocol?: string; fromAsset?: string; toAsset?: string }): Promise<TxResult>;
+  save(params: { amount: number; asset?: string; protocol?: string }): Promise<TxResult>;
+  withdraw(params: { amount: number; asset?: string; protocol?: string; fromAsset?: string; toAsset?: string }): Promise<TxResult>;
   borrow(params: { amount: number; protocol?: string }): Promise<TxResult>;
   repay(params: { amount: number; protocol?: string }): Promise<TxResult>;
   claimRewards(): Promise<TxResult>;
@@ -146,12 +146,12 @@ export function useAgent() {
             return sponsoredTransaction('send', { amount, recipient: to, asset });
           },
 
-          async save({ amount, protocol }) {
-            return sponsoredTransaction('save', { amount, protocol });
+          async save({ amount, asset, protocol }) {
+            return sponsoredTransaction('save', { amount, asset, protocol });
           },
 
-          async withdraw({ amount, protocol, fromAsset, toAsset }) {
-            return sponsoredTransaction('withdraw', { amount, protocol, fromAsset, toAsset });
+          async withdraw({ amount, asset, protocol, fromAsset, toAsset }) {
+            return sponsoredTransaction('withdraw', { amount, asset, protocol, fromAsset, toAsset });
           },
 
           async borrow({ amount, protocol }) {
