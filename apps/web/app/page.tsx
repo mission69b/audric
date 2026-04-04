@@ -26,14 +26,14 @@ const CATEGORIES: { id: Category; label: string }[] = [
 
 const CATEGORY_PROMPTS: Record<Category, string[]> = {
   savings: [
-    'Buy $5 of WAL and deposit into NAVI lending',
-    'Search the best DeFi lending rates that are safe',
+    'What are the best rates on Sui?',
+    'Search the safest DeFi lending rates',
     'How much would $1,000 earn in a year?',
   ],
   swap: [
     'Swap $50 USDC to SUI',
+    'Buy $5 of WAL and deposit into NAVI',
     'What tokens can I trade?',
-    'Buy $20 of WAL',
   ],
   send: [
     'Send $50 to a friend',
@@ -53,9 +53,9 @@ const CATEGORY_PROMPTS: Record<Category, string[]> = {
 };
 
 const CHAT_QUICK_ACTIONS = [
-  { label: 'BEST RATES', text: 'Search the best DeFi rates across all protocols' },
-  { label: 'SWAP & EARN', text: 'Buy $5 of WAL and deposit into NAVI lending' },
+  { label: 'BEST RATES', text: 'What are the best rates on Sui?' },
   { label: 'SWAP TO SUI', text: 'Swap $50 USDC to SUI' },
+  { label: 'SERVICES', text: 'What services can I pay for?' },
   { label: 'WHAT CAN YOU DO?', text: 'What can you do?' },
 ];
 
