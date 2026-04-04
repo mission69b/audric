@@ -16,39 +16,48 @@ export function ProductNav() {
   const { login, status } = useZkLogin();
   const isLoading = status === 'redirecting' || status === 'loading';
 
-  return (
-    <nav className="relative z-10 flex items-center justify-between px-4 sm:px-6 py-2 w-full max-w-5xl mx-auto">
-      <button
-        onClick={() => { window.location.href = '/'; }}
-        className="inline-flex items-center min-h-[44px] font-mono text-base font-bold tracking-wide text-foreground uppercase hover:opacity-70 transition cursor-pointer"
-      >
-        Audric
-        <span className="text-[9px] uppercase tracking-widest font-medium text-muted border border-border rounded px-1.5 py-0.5 leading-none ml-2">
-          beta
-        </span>
-      </button>
+  const linkClasses = (href: string) =>
+    `inline-flex items-center min-h-[44px] px-1 text-sm whitespace-nowrap transition ${
+      pathname === href ? 'text-foreground' : 'text-muted hover:text-foreground'
+    }`;
 
-      <div className="flex items-center gap-3 sm:gap-4 overflow-x-auto scrollbar-none min-w-0">
+  return (
+    <nav className="relative z-10 w-full max-w-5xl mx-auto px-4 sm:px-6">
+      <div className="flex items-center justify-between py-2">
+        <button
+          onClick={() => { window.location.href = '/'; }}
+          className="inline-flex items-center min-h-[44px] font-mono text-base font-bold tracking-wide text-foreground uppercase hover:opacity-70 transition cursor-pointer"
+        >
+          Audric
+          <span className="text-[9px] uppercase tracking-widest font-medium text-muted border border-border rounded px-1.5 py-0.5 leading-none ml-2">
+            beta
+          </span>
+        </button>
+
+        <div className="hidden sm:flex items-center gap-4">
+          {products.map(({ label, href }) => (
+            <Link key={href} href={href} className={linkClasses(href)}>
+              {label}
+            </Link>
+          ))}
+        </div>
+
+        <button
+          onClick={login}
+          disabled={isLoading}
+          className="shrink-0 inline-flex items-center justify-center min-h-[44px] bg-foreground text-background rounded-lg px-4 text-xs font-mono uppercase tracking-wide transition hover:opacity-80 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isLoading ? 'Connecting...' : 'Sign in'}
+        </button>
+      </div>
+
+      <div className="flex sm:hidden items-center justify-center gap-4 pb-2 -mt-1">
         {products.map(({ label, href }) => (
-          <Link
-            key={href}
-            href={href}
-            className={`inline-flex items-center min-h-[44px] px-1 text-xs sm:text-sm whitespace-nowrap transition ${
-              pathname === href ? 'text-foreground' : 'text-muted hover:text-foreground'
-            }`}
-          >
+          <Link key={href} href={href} className={linkClasses(href)}>
             {label}
           </Link>
         ))}
       </div>
-
-      <button
-        onClick={login}
-        disabled={isLoading}
-        className="shrink-0 inline-flex items-center justify-center min-h-[44px] bg-foreground text-background rounded-lg px-4 text-xs font-mono uppercase tracking-wide transition hover:opacity-80 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        {isLoading ? 'Connecting...' : 'Sign in'}
-      </button>
     </nav>
   );
 }
