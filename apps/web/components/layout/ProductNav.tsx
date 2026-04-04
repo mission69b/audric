@@ -28,12 +28,12 @@ export function ProductNav() {
         </span>
       </button>
 
-      <div className="hidden sm:flex items-center gap-4 overflow-x-auto scrollbar-none min-w-0">
+      <div className="flex items-center gap-3 sm:gap-4 overflow-x-auto scrollbar-none min-w-0">
         {products.map(({ label, href }) => (
           <Link
             key={href}
             href={href}
-            className={`inline-flex items-center min-h-[44px] px-1 text-sm whitespace-nowrap transition ${
+            className={`inline-flex items-center min-h-[44px] px-1 text-xs sm:text-sm whitespace-nowrap transition ${
               pathname === href ? 'text-foreground' : 'text-muted hover:text-foreground'
             }`}
           >
