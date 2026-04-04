@@ -28,7 +28,7 @@ const CATEGORY_PROMPTS: Record<Category, string[]> = {
   savings: [
     'What are the best rates on Sui?',
     'Search the safest DeFi lending rates',
-    'Deposit $50 into the best yield',
+    'Save $50 in NAVI USDC',
   ],
   swap: [
     'Swap $50 USDC to SUI',
