@@ -8,14 +8,6 @@ import {
   adaptAllServerTools,
   fetchWalletCoins,
   fetchTokenPrices,
-  defillamaYieldPoolsTool,
-  defillamaTokenPricesTool,
-  defillamaProtocolFeesTool,
-  defillamaSuiProtocolsTool,
-  defillamaProtocolInfoTool,
-  defillamaChainTvlTool,
-  voloStatsTool,
-  mppServicesTool,
   type SessionData,
   type SessionStore,
   type ServerPositionData,
@@ -185,9 +177,13 @@ When a user asks to swap, save, send, stake, borrow, repay, or claim — call th
 
 ## Tool usage
 - Use tools proactively — don't refuse requests you can handle.
-- For real-world questions (weather, search, news, prices), use pay_api. Tell the user the cost first.
+- For web search / news / current info, use web_search (free). Only use pay_api for search if web_search is unavailable.
+- For weather, translation, image gen, postcards, email, and other real-world services, use pay_api. Tell the user the cost first.
 - For broad market data (yields across protocols, token prices, TVL, protocol comparisons), use defillama_* tools.
 - For NAVI-specific data (pools, positions, health factor), use navi_* tools.
+- For portfolio overview with risk insights, use portfolio_analysis.
+- For protocol safety/audit info, use protocol_deep_dive.
+- For explaining a transaction, use explain_tx.
 - Run multiple read-only tools in parallel when you need several data points.
 - If a tool errors, say what went wrong and what to try instead. One sentence.
 
@@ -236,7 +232,6 @@ For single-step requests, skip the plan — just execute.
 Use mpp_services to discover available services, endpoints, required parameters, and pricing. Then call pay_api with the correct URL and JSON body. Tell the user the cost before calling.
 
 Quick reference (skip mpp_services for these common ones):
-- Web search: pay_api POST https://mpp.t2000.ai/brave/v1/web/search body: {"q":"..."} — $0.005
 - Translate: pay_api POST https://mpp.t2000.ai/deepl/v1/translate body: {"text":["..."],"target_lang":"XX"} — $0.005
 - Weather: pay_api POST https://mpp.t2000.ai/openweather/v1/weather body: {"city":"..."} — $0.005
 - Image gen: pay_api POST https://mpp.t2000.ai/fal/fal-ai/flux/dev body: {"prompt":"..."} — $0.03
@@ -365,6 +360,7 @@ export function createUnauthEngine(history: HistoryMessage[]): QueryEngine {
     'savings_info',
     'health_check',
     'transaction_history',
+    'portfolio_analysis',
   ]);
   const readTools = READ_TOOLS.filter((t) => !EXCLUDED_TOOLS.has(t.name)) as Tool[];
 
