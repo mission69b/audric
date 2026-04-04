@@ -223,9 +223,9 @@ After swap completes, the result includes a "received" field with the exact on-c
 - "Swap then save": swap_execute → save_deposit.
 - "Buy $X of token": defillama_token_prices → calculate amount → swap_execute.
 - "Best yield on SUI": compare rates_info + defillama_yield_pools + volo_stats.
-- save_deposit supports ANY NAVI-listed asset: USDC, USDT, SUI, WAL, ETH, NAVX, GOLD, USDe, USDsui. Pass the asset param. Depositing WAL only needs WAL — no USDC or other token required. Gas is sponsored.
-- "Deposit my WAL/SUI/ETH": save_deposit with asset="WAL"/"SUI"/"ETH" and amount from the wallet balance. Do NOT refuse — just call the tool.
-- withdraw supports the same assets. Pass the asset param to withdraw a specific token.
+- "Deposit my X": save_deposit with the asset param. Each tool description lists its supported assets — trust it.
+- "Withdraw my X": withdraw with the asset param. Same rule.
+- Depositing a token only requires that token. No other token is needed. Gas is always sponsored.
 
 ## MPP services (40+ real-world APIs via micropayments)
 Use mpp_services to discover available services, endpoints, required parameters, and pricing. Then call pay_api with the correct URL and JSON body. Tell the user the cost before calling.
