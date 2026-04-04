@@ -30,11 +30,12 @@ type Segment =
   | { type: 'bold'; content: string }
   | { type: 'code'; content: string }
   | { type: 'link'; text: string; url: string }
+  | { type: 'image'; alt: string; url: string }
   | { type: 'action'; label: string };
 
 function parseInline(text: string): Segment[] {
   const segments: Segment[] = [];
-  const regex = /(\*\*([^*]+)\*\*|`([^`]+)`|\[([^\]]+)\]\(([^)]+)\)|\[([A-Za-z][^\]]*)\])/g;
+  const regex = /(!\[([^\]]*)\]\(([^)]+)\)|\*\*([^*]+)\*\*|`([^`]+)`|\[([^\]]+)\]\(([^)]+)\)|\[([A-Za-z][^\]]*)\])/g;
   let lastIndex = 0;
   let match: RegExpExecArray | null;
 
@@ -42,14 +43,16 @@ function parseInline(text: string): Segment[] {
     if (match.index > lastIndex) {
       segments.push({ type: 'text', content: text.slice(lastIndex, match.index) });
     }
-    if (match[2]) {
-      segments.push({ type: 'bold', content: match[2] });
-    } else if (match[3]) {
-      segments.push({ type: 'code', content: match[3] });
-    } else if (match[4] && match[5]) {
-      segments.push({ type: 'link', text: match[4], url: match[5] });
-    } else if (match[6]) {
-      segments.push({ type: 'action', label: match[6] });
+    if (match[2] !== undefined && match[3]) {
+      segments.push({ type: 'image', alt: match[2], url: match[3] });
+    } else if (match[4]) {
+      segments.push({ type: 'bold', content: match[4] });
+    } else if (match[5]) {
+      segments.push({ type: 'code', content: match[5] });
+    } else if (match[6] && match[7]) {
+      segments.push({ type: 'link', text: match[6], url: match[7] });
+    } else if (match[8]) {
+      segments.push({ type: 'action', label: match[8] });
     }
     lastIndex = regex.lastIndex;
   }
@@ -178,6 +181,17 @@ function InlineSegments({
               <code key={i} className="bg-surface border border-border rounded px-1.5 py-0.5 text-xs font-mono text-foreground break-all">
                 {seg.content}
               </code>
+            );
+          case 'image':
+            return (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={i}
+                src={seg.url}
+                alt={seg.alt || 'Generated image'}
+                className="rounded-lg border border-border max-w-full mt-2 mb-1"
+                loading="lazy"
+              />
             );
           case 'link':
             return (

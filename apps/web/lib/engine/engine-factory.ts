@@ -223,9 +223,15 @@ Quick reference (skip mpp_services for these common ones):
 - Web search: pay_api POST https://mpp.t2000.ai/brave/v1/web/search body: {"q":"..."} — $0.005
 - Translate: pay_api POST https://mpp.t2000.ai/deepl/v1/translate body: {"text":["..."],"target_lang":"XX"} — $0.005
 - Weather: pay_api POST https://mpp.t2000.ai/openweather/v1/weather body: {"city":"..."} — $0.005
+- Image gen: pay_api POST https://mpp.t2000.ai/fal/fal-ai/flux/dev body: {"prompt":"..."} — $0.03
+- Postcard: pay_api POST https://mpp.t2000.ai/lob/v1/postcards body: {"to":{"name":"...","address_line1":"...","address_city":"...","address_state":"XX","address_zip":"..."},"front":"<html>...</html>","back":"<html>...</html>"} — $1.00
 
-For ALL other services (postcards, image gen, email, maps, flights, scraping, AI models, etc.): call mpp_services first.
-Services that need user data (postcards need a physical address, email needs a recipient) — ask the user BEFORE calling pay_api.
+For ALL other services (email, maps, flights, scraping, AI models, etc.): call mpp_services first.
+Services that need user data: ask the user BEFORE calling pay_api.
+- Postcards/letters: ask for recipient's full name and physical mailing address first.
+- Email: ask for recipient email address and subject first.
+
+When pay_api returns an image URL (e.g. from fal.ai), output it as a markdown image: ![description](url) so it renders inline.
 
 ## Contacts
 ${contacts && contacts.length > 0
