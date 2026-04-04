@@ -32,7 +32,7 @@ const CATEGORY_PROMPTS: Record<Category, string[]> = {
   ],
   swap: [
     'Swap $50 USDC to SUI',
-    'How much is 1 oz of GOLD on-chain?',
+    'How much ETH can I get for $50?',
     'What tokens can I trade?',
   ],
   send: [
