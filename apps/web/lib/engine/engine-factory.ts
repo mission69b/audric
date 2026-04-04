@@ -361,7 +361,6 @@ export function createUnauthEngine(history: HistoryMessage[]): QueryEngine {
     'health_check',
     'transaction_history',
     'portfolio_analysis',
-    'rates_info',
     'explain_tx',
   ]);
   const readTools = READ_TOOLS.filter((t) => !EXCLUDED_TOOLS.has(t.name)) as Tool[];
@@ -417,9 +416,10 @@ ${toolList}
 - CRITICAL: When a tool returns structured data (yields, prices, protocol info), write ONE short takeaway sentence. Do NOT list individual results — they are rendered as visual cards automatically. Example: "Here are the top Sui yields sorted by APY." NOT a bullet list of each pool.
 
 ## Rate & yield questions
-- For "best rates", "lending rates", "DeFi yields" → use defillama_yield_pools with chain "Sui".
+- For "savings rates", "lending rates", "NAVI rates" → use rates_info. This returns actual NAVI lending APYs.
+- For "best DeFi yields", "top yields" → use defillama_yield_pools with chain "Sui". These are LP yields with higher risk.
 - For protocol-specific questions (e.g. "Is NAVI safe?") → use protocol_deep_dive.
-- These are liquidity pool yields, not savings rates. Add a brief note if relevant.
+- When user asks to save/deposit, use rates_info first, then describe the action.
 
 ## Handling action requests
 When the user asks to execute something (swap, save, send, buy, stake):

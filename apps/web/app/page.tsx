@@ -26,8 +26,8 @@ const CATEGORIES: { id: Category; label: string }[] = [
 
 const CATEGORY_PROMPTS: Record<Category, string[]> = {
   savings: [
-    'What are the top DeFi yields on Sui?',
-    'Is NAVI Protocol safe? How much TVL does it have?',
+    'What are the current NAVI savings rates?',
+    'How much would $1,000 earn in a year on NAVI?',
     'Save $50 USDC in NAVI',
   ],
   swap: [
@@ -53,7 +53,7 @@ const CATEGORY_PROMPTS: Record<Category, string[]> = {
 };
 
 const CHAT_QUICK_ACTIONS = [
-  { label: 'TOP YIELDS', text: 'What are the top DeFi yields on Sui?' },
+  { label: 'NAVI RATES', text: 'What are the current NAVI savings rates?' },
   { label: 'SUI PRICE', text: "What's SUI trading at right now?" },
   { label: 'SERVICES', text: 'What services can I pay for?' },
   { label: 'WHAT CAN YOU DO?', text: 'What can you do?' },
