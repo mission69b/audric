@@ -7,7 +7,7 @@ import {
 } from '@/lib/engine/engine-factory';
 
 export const runtime = 'nodejs';
-export const maxDuration = 30;
+export const maxDuration = 45;
 
 const MAX_MESSAGE_LENGTH = 500;
 const MAX_HISTORY_LENGTH = 12;

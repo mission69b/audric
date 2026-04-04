@@ -26,6 +26,18 @@ const STEP_ICONS: Record<string, string> = {
   repay_debt: '✅',
   claim_rewards: '🎁',
   pay_api: '⚡',
+  swap_execute: '🔄',
+  volo_stake: '🥩',
+  volo_unstake: '🥩',
+  volo_stats: '📊',
+  mpp_services: '🔍',
+  defillama_yield_pools: '📈',
+  defillama_token_prices: '💲',
+  defillama_protocol_fees: '📊',
+  defillama_protocol_info: '📋',
+  defillama_chain_tvl: '📊',
+  defillama_sui_protocols: '🔷',
+  defillama_price_change: '📉',
 };
 
 const STEP_LABELS: Record<string, string> = {
@@ -41,6 +53,18 @@ const STEP_LABELS: Record<string, string> = {
   repay_debt: 'REPAY',
   claim_rewards: 'CLAIM REWARDS',
   pay_api: 'API CALL',
+  swap_execute: 'SWAP',
+  volo_stake: 'STAKE SUI',
+  volo_unstake: 'UNSTAKE VSUI',
+  volo_stats: 'VOLO STATS',
+  mpp_services: 'DISCOVER SERVICES',
+  defillama_yield_pools: 'DEFI YIELDS',
+  defillama_token_prices: 'TOKEN PRICES',
+  defillama_protocol_fees: 'PROTOCOL FEES',
+  defillama_protocol_info: 'PROTOCOL INFO',
+  defillama_chain_tvl: 'CHAIN TVL',
+  defillama_sui_protocols: 'SUI PROTOCOLS',
+  defillama_price_change: 'PRICE CHANGE',
 };
 
 export function getStepIcon(toolName: string): string {

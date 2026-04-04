@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useRef, useState } from 'react';
+import type { ToolExecution, UsageData } from '@/lib/engine-types';
 
 export interface DemoChatMessage {
   id: string;
@@ -9,6 +10,8 @@ export interface DemoChatMessage {
   timestamp: number;
   isStreaming?: boolean;
   cta?: boolean;
+  tools?: ToolExecution[];
+  usage?: UsageData;
 }
 
 let idCounter = 0;
@@ -20,6 +23,13 @@ interface SSEEvent {
   type: string;
   text?: string;
   message?: string;
+  toolName?: string;
+  toolUseId?: string;
+  input?: unknown;
+  result?: unknown;
+  isError?: boolean;
+  inputTokens?: number;
+  outputTokens?: number;
 }
 
 export function useDemoChat(initialMessage?: string) {
@@ -170,21 +180,83 @@ export function useDemoChat(initialMessage?: string) {
       return;
     }
 
-    if (event.type === 'text_delta' && event.text) {
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === msgId ? { ...m, content: m.content + event.text } : m,
-        ),
-      );
-    } else if (event.type === 'error' && event.message) {
-      setError(event.message);
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === msgId
-            ? { ...m, isStreaming: false, content: m.content || event.message || 'Error' }
-            : m,
-        ),
-      );
+    switch (event.type) {
+      case 'text_delta':
+        if (event.text) {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === msgId ? { ...m, content: m.content + event.text } : m,
+            ),
+          );
+        }
+        break;
+
+      case 'tool_start':
+        if (event.toolName && event.toolUseId) {
+          const tool: ToolExecution = {
+            toolName: event.toolName,
+            toolUseId: event.toolUseId,
+            input: event.input,
+            status: 'running',
+          };
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === msgId
+                ? { ...m, tools: [...(m.tools ?? []), tool] }
+                : m,
+            ),
+          );
+        }
+        break;
+
+      case 'tool_result':
+        if (event.toolUseId) {
+          setMessages((prev) =>
+            prev.map((m) => {
+              if (m.id !== msgId) return m;
+              const tools = (m.tools ?? []).map((t) =>
+                t.toolUseId === event.toolUseId
+                  ? { ...t, status: event.isError ? 'error' as const : 'done' as const, result: event.result, isError: event.isError }
+                  : t,
+              );
+              return { ...m, tools };
+            }),
+          );
+        }
+        break;
+
+      case 'usage':
+        if (event.inputTokens != null) {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === msgId
+                ? { ...m, usage: { inputTokens: event.inputTokens!, outputTokens: event.outputTokens ?? 0 } }
+                : m,
+            ),
+          );
+        }
+        break;
+
+      case 'turn_complete':
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === msgId ? { ...m, isStreaming: false } : m,
+          ),
+        );
+        break;
+
+      case 'error':
+        if (event.message) {
+          setError(event.message);
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === msgId
+                ? { ...m, isStreaming: false, content: m.content || event.message || 'Error' }
+                : m,
+            ),
+          );
+        }
+        break;
     }
   }
 

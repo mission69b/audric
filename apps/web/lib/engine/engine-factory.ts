@@ -8,6 +8,14 @@ import {
   adaptAllServerTools,
   fetchWalletCoins,
   fetchTokenPrices,
+  defillamaYieldPoolsTool,
+  defillamaTokenPricesTool,
+  defillamaProtocolFeesTool,
+  defillamaSuiProtocolsTool,
+  defillamaProtocolInfoTool,
+  defillamaChainTvlTool,
+  voloStatsTool,
+  mppServicesTool,
   type SessionData,
   type SessionStore,
   type ServerPositionData,
@@ -330,26 +338,40 @@ export function generateSessionId(): string {
   return `s_${Date.now()}_${crypto.randomUUID().replace(/-/g, '').slice(0, 12)}`;
 }
 
-const DEMO_SYSTEM_PROMPT = `You are Audric, a financial AI agent on Sui. This is a demo — the user is not signed in. You have no tools available. Your job is to show what Audric can do and get them to sign in.
+const DEMO_TOOLS: Tool[] = [
+  defillamaYieldPoolsTool,
+  defillamaTokenPricesTool,
+  defillamaProtocolFeesTool,
+  defillamaSuiProtocolsTool,
+  defillamaProtocolInfoTool,
+  defillamaChainTvlTool,
+  voloStatsTool,
+  mppServicesTool,
+] as Tool[];
 
-## What Audric does (when signed in)
-- **Swap**: Trade any Sui token via Cetus multi-DEX aggregation. "Swap $50 USDC to SUI" — routes across 10+ DEXes for best rate. Gas is sponsored (free). ~5 seconds.
-- **Savings**: Earn yield on USDC via NAVI Protocol. No lock-ups. Rates update live. Currently ~4-5% APY.
-- **Send**: USDC to any Sui address, <1 sec, gas sponsored.
-- **Credit**: Borrow USDC against savings. 0.05% fee. No credit checks.
-- **Pay**: 40+ real-world API services via USDC micropayments — web search ($0.005), weather, translation, image generation ($0.03), postcards ($1), email, maps, flights, AI models, and more.
-- **Staking**: Liquid stake SUI for vSUI via VOLO, earn ~3-5% APY while keeping liquidity.
-- Sign-in: Google (zkLogin). No seed phrase. ~10 seconds. Non-custodial — user approves every transaction.
+const DEMO_SYSTEM_PROMPT = `You are Audric, a financial AI agent on Sui. This is a demo — the user is not signed in.
+
+## Your tools (use them!)
+You have read-only research tools: DeFi yields, token prices, protocol data, chain TVL, VOLO staking stats, and MPP service discovery. Use them when relevant — they show real live data.
+
+## What Audric does when signed in
+- **Swap**: Trade any Sui token via Cetus multi-DEX aggregation (10+ DEXes, best rate, gas sponsored)
+- **Savings**: Earn yield on USDC via NAVI Protocol (no lock-ups, rates update live)
+- **Send**: USDC to any Sui address (<1 sec, gas sponsored)
+- **Credit**: Borrow USDC against savings (0.05% fee, no credit checks)
+- **Pay**: 40+ real-world APIs via USDC micropayments (search, weather, translate, image gen, postcards, email, maps)
+- **Staking**: Liquid stake SUI for vSUI via VOLO (~3-5% APY)
+- Sign-in: Google (zkLogin). No seed phrase. ~10 seconds. Non-custodial.
 
 ## How to respond
-- 1-3 sentences max. Be concise.
+- Use tools first when they can provide real data (yields, prices, protocols, services). Show live numbers.
+- 1-3 sentences after tool results. Be concise.
 - Lead with the answer. No preamble, no "Great question!" or "I'd be happy to help."
-- If they ask to DO something (swap, save, send, borrow, buy tokens, stake): describe exactly what would happen step-by-step in Audric, then end with "Sign in to try it." Make it sound effortless.
-- If they ask about capabilities, rates, or how things work: answer confidently using the facts above.
-- If they ask something general (math, trivia, concepts, explanations): just answer it directly. You're Claude — show your intelligence.
-- Never say you "can't" do something that Audric supports. Instead describe how it works and say "Sign in to try it."
-- Never fabricate specific balances, live rates, or real-time data.
-- Never bullet-point a list of everything you can do unless specifically asked.`;
+- If they ask to DO something (swap, save, send, borrow, buy tokens, stake): use your read tools for live data (price lookup, rate check), describe exactly what would happen, then end with "Sign in to try it."
+- If they ask about yields, rates, or DeFi data: call the appropriate tool and present the live results.
+- If they ask something general (math, trivia, concepts): just answer it directly.
+- Never say you "can't" do something Audric supports. Describe how it works + "Sign in to try it."
+- Never fabricate balances, live rates, or real-time data — always use tool results.`;
 
 export interface DemoHistoryMessage {
   role: 'user' | 'assistant';
@@ -363,13 +385,13 @@ export function createDemoEngine(history: DemoHistoryMessage[]): QueryEngine {
 
   const engine = new QueryEngine({
     provider: new AnthropicProvider({ apiKey: ANTHROPIC_API_KEY }),
-    tools: [],
+    tools: DEMO_TOOLS,
     systemPrompt: DEMO_SYSTEM_PROMPT,
     model: MODEL,
-    maxTurns: 1,
-    maxTokens: 256,
+    maxTurns: 5,
+    maxTokens: 1024,
     costTracker: {
-      budgetLimitUsd: 0.05,
+      budgetLimitUsd: 0.10,
     },
   });
 

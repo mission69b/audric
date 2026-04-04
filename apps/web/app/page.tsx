@@ -4,12 +4,10 @@ import { Suspense, useEffect, useRef, useState, useCallback, type KeyboardEvent 
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ProductNav } from '@/components/layout/ProductNav';
-import { ThinkingState } from '@/components/engine/ThinkingState';
 import { ChatDivider } from '@/components/engine/ChatDivider';
-import { AgentMarkdown } from '@/components/dashboard/AgentMarkdown';
+import { ChatMessage } from '@/components/engine/ChatMessage';
 import { useZkLogin } from '@/components/auth/useZkLogin';
 import { useDemoChat } from '@/hooks/useDemoChat';
-import { AudricMark } from '@/components/ui/AudricMark';
 
 const MAX_FREE_TURNS = 5;
 
@@ -260,54 +258,21 @@ function LandingContent() {
         <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 space-y-3">
           <ChatDivider label="TASK INITIATED" />
 
-          {messages.map((msg) => {
-            if (msg.role === 'user') {
-              return (
-                <div key={msg.id} className="flex justify-end">
-                  <div className="max-w-[80%] rounded-2xl rounded-br-md bg-surface border border-border px-4 py-2.5 text-sm text-foreground break-words">
-                    {msg.content}
-                  </div>
+          {messages.map((msg) => (
+            <div key={msg.id}>
+              <ChatMessage message={msg} />
+              {msg.cta && (
+                <div className="pl-1 mt-2">
+                  <button
+                    onClick={login}
+                    className="w-full bg-foreground text-background rounded-lg px-4 py-3 text-xs font-mono uppercase tracking-wider font-medium hover:opacity-80 active:scale-[0.98] transition"
+                  >
+                    Sign in with Google
+                  </button>
                 </div>
-              );
-            }
-
-            return (
-              <div key={msg.id} className="space-y-2">
-                {msg.isStreaming && !msg.content && (
-                  <div className="pl-1">
-                    <ThinkingState status="thinking" intensity="active" />
-                  </div>
-                )}
-                {msg.content && (
-                  <div className="pl-1 text-sm">
-                    <span className="text-dim mr-1.5 float-left mt-0.5" aria-hidden="true"><AudricMark size={14} /></span>
-                    <div className="text-foreground leading-relaxed">
-                      {msg.isStreaming ? (
-                        <span className="whitespace-pre-wrap">
-                          {msg.content}
-                          <span className="inline-flex items-center ml-1.5 align-text-bottom">
-                            <ThinkingState status="delivering" intensity="transitioning" />
-                          </span>
-                        </span>
-                      ) : (
-                        <AgentMarkdown text={msg.content} />
-                      )}
-                    </div>
-                  </div>
-                )}
-                {msg.cta && (
-                  <div className="pl-1">
-                    <button
-                      onClick={login}
-                      className="w-full bg-foreground text-background rounded-lg px-4 py-3 text-xs font-mono uppercase tracking-wider font-medium hover:opacity-80 active:scale-[0.98] transition"
-                    >
-                      Sign in with Google
-                    </button>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+              )}
+            </div>
+          ))}
         </div>
       </div>
 
