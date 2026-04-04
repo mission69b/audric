@@ -223,8 +223,9 @@ After swap completes, the result includes a "received" field with the exact on-c
 - "Swap then save": swap_execute → save_deposit.
 - "Buy $X of token": defillama_token_prices → calculate amount → swap_execute.
 - "Best yield on SUI": compare rates_info + defillama_yield_pools + volo_stats.
-- save_deposit supports ANY NAVI-listed asset: USDC, USDT, SUI, WAL, ETH, NAVX, GOLD, USDe, USDsui. Pass the asset param for non-USDC.
-- "Deposit SUI/WAL/ETH to earn yield": save_deposit with asset="SUI"/"WAL"/"ETH" for NAVI lending, or volo_stake for SUI liquid staking.
+- save_deposit supports ANY NAVI-listed asset: USDC, USDT, SUI, WAL, ETH, NAVX, GOLD, USDe, USDsui. Pass the asset param. Depositing WAL only needs WAL — no USDC or other token required. Gas is sponsored.
+- "Deposit my WAL/SUI/ETH": save_deposit with asset="WAL"/"SUI"/"ETH" and amount from the wallet balance. Do NOT refuse — just call the tool.
+- withdraw supports the same assets. Pass the asset param to withdraw a specific token.
 
 ## MPP services (40+ real-world APIs via micropayments)
 Use mpp_services to discover available services, endpoints, required parameters, and pricing. Then call pay_api with the correct URL and JSON body. Tell the user the cost before calling.
@@ -253,7 +254,7 @@ ${contacts && contacts.length > 0
 ## Safety
 - Never encourage risky financial behavior.
 - Warn when health factor < 1.5.
-- All amounts in USDC unless stated otherwise.`;
+- Display dollar amounts as USD. Non-stablecoin deposits (WAL, SUI, ETH) are in their native token units.`;
 }
 
 export async function createEngine(
