@@ -28,37 +28,37 @@ const CATEGORIES: { id: Category; label: string }[] = [
 
 const CATEGORY_PROMPTS: Record<Category, string[]> = {
   savings: [
-    'Save $100 and earn yield',
-    "What's the best rate for USDC?",
-    'Give me my full financial report',
+    'How much would $1,000 earn in a year?',
+    "What's the best way to earn yield on USDC?",
+    'Save $100 and start earning',
   ],
   swap: [
     'Swap $50 USDC to SUI',
-    'Buy $20 of Walrus',
-    'Sell all my SUI for USDC',
+    'How does swapping work with no gas fees?',
+    'What tokens can I trade?',
   ],
   send: [
-    'Send $50 to Alex',
-    'Save Mom as a contact',
-    "What's my transaction history?",
+    'Send $50 to a friend',
+    'How fast are transfers on Sui?',
+    'Is there a fee to send USDC?',
   ],
   credit: [
+    'How does DeFi borrowing work?',
     'Borrow $500 against my savings',
-    "What's my health factor?",
-    'Repay all my debt',
+    "What's a health factor?",
   ],
   pay: [
-    'Search the web for Sui ecosystem news',
-    "What's the weather in Tokyo?",
-    'What services can I pay for?',
+    'What services can I access?',
+    'Can you search the web for me?',
+    'Send a birthday postcard to Mom',
   ],
 };
 
 const CHAT_QUICK_ACTIONS = [
-  { label: 'SAVE $100', text: 'Save $100 and earn yield' },
-  { label: 'SWAP TO SUI', text: 'Swap $20 USDC to SUI' },
+  { label: 'SWAP USDC', text: 'Swap $50 USDC to SUI' },
+  { label: 'EARN YIELD', text: 'How do I start earning yield?' },
   { label: 'SEND $50', text: 'Send $50 to a friend' },
-  { label: 'MY REPORT', text: 'Give me my full financial report' },
+  { label: 'WHAT CAN YOU DO?', text: 'What can you do?' },
 ];
 
 export default function LandingPage() {
