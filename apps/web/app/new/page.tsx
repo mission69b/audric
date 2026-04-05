@@ -683,23 +683,46 @@ function DashboardContent() {
       const sdk = await agent.getInstance();
       const inp = (input ?? {}) as Record<string, unknown>;
 
+      const TOKEN_DECIMALS: Record<string, number> = { SUI: 9, USDC: 6, USDT: 6, USDSUI: 6, USDE: 6, SUI_USDE: 6, ETH: 8, WBTC: 8, CETUS: 9, DEEP: 6, NAVX: 9, WAL: 9, NS: 6, MANIFEST: 9, HAEDAL: 9, IKA: 9, USDY: 6 };
+
+      const parseActualAmount = (
+        changes: Array<{ coinType: string; amount: string; owner?: unknown }> | undefined,
+        assetHint: string | undefined,
+        direction: 'positive' | 'negative',
+      ): number | null => {
+        if (!changes?.length) return null;
+        const hint = (assetHint ?? 'USDC').toUpperCase();
+        const match = changes.find((c) => {
+          const sym = c.coinType.split('::').pop()?.toUpperCase() ?? '';
+          const amtOk = direction === 'positive' ? Number(c.amount) > 0 : Number(c.amount) < 0;
+          return amtOk && (sym === hint || sym.includes(hint));
+        });
+        if (!match) return null;
+        const sym = match.coinType.split('::').pop()?.toUpperCase() ?? '';
+        const dec = TOKEN_DECIMALS[sym] ?? 6;
+        return Math.abs(Number(BigInt(match.amount))) / 10 ** dec;
+      };
+
       switch (toolName) {
         case 'save_deposit': {
           const res = await sdk.save({ amount: Number(inp.amount), asset: inp.asset as string | undefined, protocol: inp.protocol as string | undefined });
           balanceQuery.refetch();
-          return { success: true, data: { success: true, tx: res.tx, amount: inp.amount, asset: inp.asset } };
+          const actual = parseActualAmount(res.balanceChanges, inp.asset as string, 'negative');
+          return { success: true, data: { success: true, tx: res.tx, amount: actual ?? inp.amount, asset: inp.asset } };
         }
         case 'withdraw': {
           const res = await sdk.withdraw({ amount: Number(inp.amount), asset: inp.asset as string | undefined, protocol: inp.protocol as string | undefined });
           balanceQuery.refetch();
-          return { success: true, data: { success: true, tx: res.tx, amount: inp.amount, asset: inp.asset } };
+          const actual = parseActualAmount(res.balanceChanges, inp.asset as string, 'positive');
+          return { success: true, data: { success: true, tx: res.tx, amount: actual ?? inp.amount, asset: inp.asset } };
         }
         case 'send_transfer': {
           const rawTo = String(inp.to);
           const resolvedTo = contactsHook.resolveContact(rawTo) ?? rawTo;
           const res = await sdk.send({ to: resolvedTo, amount: Number(inp.amount), asset: inp.asset as string | undefined });
           balanceQuery.refetch();
-          return { success: true, data: { success: true, tx: res.tx, amount: inp.amount, to: rawTo } };
+          const actual = parseActualAmount(res.balanceChanges, inp.asset as string, 'negative');
+          return { success: true, data: { success: true, tx: res.tx, amount: actual ?? inp.amount, to: rawTo } };
         }
         case 'borrow': {
           const res = await sdk.borrow({ amount: Number(inp.amount), protocol: inp.protocol as string | undefined });
