@@ -141,9 +141,10 @@ export function BalanceHeader({ address, balance, compact, onSettingsClick }: Ba
             ${fmtUsd(balance.total)}
           </p>
           <p className="text-xs font-mono text-muted tracking-wide">
-            <span className="uppercase text-[10px] tracking-[0.1em]">cash</span> ${Math.floor(balance.cash)}
-            {' · '}
-            <span className="uppercase text-[10px] tracking-[0.1em]">sav</span> ${Math.floor(balance.savings)}
+            available ${Math.floor(balance.cash)}
+            {balance.savings > 0 && (
+              <>{' · '}earning ${Math.floor(balance.savings)}</>
+            )}
             {balance.borrows > 0 && (
               <>
                 {' · '}
@@ -163,8 +164,8 @@ export function BalanceHeader({ address, balance, compact, onSettingsClick }: Ba
       {expanded && !balance.loading && (
         <div className="mt-2 rounded-lg border border-border bg-surface text-left text-xs font-mono divide-y divide-border overflow-hidden shadow-[var(--shadow-card)] transition-all">
           <div className="px-4 py-3 space-y-1.5">
-            <Row label="Cash" value={`$${fmtUsd(balance.cash)}`} />
-            <Row label="Savings" value={`$${fmtUsd(balance.savings)}`} />
+            <Row label="Available" value={`$${fmtUsd(balance.cash)}`} />
+            <Row label="Earning" value={`$${fmtUsd(balance.savings)}`} />
             {balance.savingsBreakdown && balance.savingsBreakdown.length > 1 && (
               balance.savingsBreakdown.map((s) => (
                 <Row
