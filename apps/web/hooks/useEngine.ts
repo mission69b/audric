@@ -336,12 +336,28 @@ export function useEngine({ address, jwt }: UseEngineOptions) {
         setMessages((prev) =>
           prev.map((m) => {
             if (m.id !== msgId) return m;
-            const tools = (m.tools ?? []).map((t) =>
-              t.toolUseId === event.toolUseId
-                ? { ...t, status: event.isError ? 'error' as const : 'done' as const, result: event.result, isError: event.isError }
-                : t,
-            );
-            return { ...m, tools };
+            const existing = (m.tools ?? []);
+            const found = existing.some((t) => t.toolUseId === event.toolUseId);
+            if (found) {
+              const tools = existing.map((t) =>
+                t.toolUseId === event.toolUseId
+                  ? { ...t, status: event.isError ? 'error' as const : 'done' as const, result: event.result, isError: event.isError }
+                  : t,
+              );
+              return { ...m, tools };
+            }
+            // Confirm-gated writes resume without tool_start; append the completed tool
+            return {
+              ...m,
+              tools: [...existing, {
+                toolName: event.toolName,
+                toolUseId: event.toolUseId,
+                input: {},
+                status: event.isError ? 'error' as const : 'done' as const,
+                result: event.result,
+                isError: event.isError,
+              }],
+            };
           }),
         );
         break;

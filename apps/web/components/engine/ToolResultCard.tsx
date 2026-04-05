@@ -352,33 +352,30 @@ const SUISCAN_TX_URL = 'https://suiscan.xyz/mainnet/tx';
 interface TxReceiptData {
   tx: string;
   gasCost?: number;
-  // save_deposit
   amount?: number;
   asset?: string;
   apy?: number;
   savingsBalance?: number;
-  // send_transfer
   to?: string;
   contactName?: string;
-  // swap_execute
+  // swap: engine uses fromToken/toToken, client uses from/to/received
   fromToken?: string;
   toToken?: string;
   fromAmount?: number;
   toAmount?: number;
+  from?: string;
+  received?: number | string;
   priceImpact?: number;
   route?: string;
-  // volo_stake
+  // volo_stake: engine uses amountSui, client uses amount
   amountSui?: number;
   vSuiReceived?: number;
-  // volo_unstake
+  // volo_unstake: engine uses vSuiAmount, client uses amount
   vSuiAmount?: number;
   suiReceived?: number;
-  // borrow
   fee?: number;
   healthFactor?: number;
-  // repay_debt
   remainingDebt?: number;
-  // claim_rewards
   rewards?: { asset: string; amount: number; estimatedValueUsd?: number }[];
   totalValueUsd?: number;
 }
@@ -403,17 +400,28 @@ function TransactionReceiptCard({ data, toolName }: { data: TxReceiptData; toolN
   const txUrl = `${SUISCAN_TX_URL}/${data.tx}`;
   const shortTx = `${data.tx.slice(0, 8)}...${data.tx.slice(-6)}`;
 
+  // Normalize: client-side execution uses `from/to/received`, engine uses `fromToken/toToken/toAmount`
+  const swapFrom = data.fromToken ?? data.from;
+  const swapTo = data.toToken ?? (toolName === 'swap_execute' ? data.to : undefined);
+  const swapFromAmt = data.fromAmount ?? data.amount ?? 0;
+  const receivedRaw = data.toAmount ?? data.received;
+  const swapToAmt = typeof receivedRaw === 'number' ? receivedRaw : (typeof receivedRaw === 'string' && receivedRaw !== 'unknown' ? parseFloat(receivedRaw) : undefined);
+  const stakeAmt = data.amountSui ?? data.amount ?? 0;
+  const unstakeAmt = data.vSuiAmount ?? data.amount ?? 0;
+
   return (
     <CardShell title="Transaction">
       <div className="space-y-1 font-mono text-[11px]">
-        {toolName === 'swap_execute' && data.fromToken && data.toToken && (
+        {toolName === 'swap_execute' && swapFrom && swapTo && (
           <>
             <TxReceiptRow label="Sold">
-              {fmtAmt(data.fromAmount ?? 0)} {data.fromToken}
+              {fmtAmt(swapFromAmt)} {String(swapFrom)}
             </TxReceiptRow>
-            <TxReceiptRow label="Received">
-              {fmtAmt(data.toAmount ?? 0, 4)} {data.toToken}
-            </TxReceiptRow>
+            {swapToAmt != null && !isNaN(swapToAmt) && (
+              <TxReceiptRow label="Received">
+                {fmtAmt(swapToAmt, 4)} {String(swapTo)}
+              </TxReceiptRow>
+            )}
             {data.priceImpact != null && data.priceImpact > 0.01 && (
               <TxReceiptRow label="Impact">
                 <span className={data.priceImpact > 1 ? 'text-amber-400' : ''}>{data.priceImpact.toFixed(2)}%</span>
@@ -425,7 +433,7 @@ function TransactionReceiptCard({ data, toolName }: { data: TxReceiptData; toolN
         {toolName === 'send_transfer' && (
           <>
             <TxReceiptRow label="Amount">${fmtAmt(data.amount ?? 0)}</TxReceiptRow>
-            <TxReceiptRow label="To">{data.contactName ?? `${(data.to ?? '').slice(0, 10)}...`}</TxReceiptRow>
+            <TxReceiptRow label="To">{data.contactName ?? `${String(data.to ?? '').slice(0, 10)}...`}</TxReceiptRow>
           </>
         )}
 
@@ -472,8 +480,10 @@ function TransactionReceiptCard({ data, toolName }: { data: TxReceiptData; toolN
 
         {toolName === 'volo_stake' && (
           <>
-            <TxReceiptRow label="Staked">{fmtAmt(data.amountSui ?? 0)} SUI</TxReceiptRow>
-            <TxReceiptRow label="Received">{fmtAmt(data.vSuiReceived ?? 0, 4)} vSUI</TxReceiptRow>
+            <TxReceiptRow label="Staked">{fmtAmt(stakeAmt)} SUI</TxReceiptRow>
+            {data.vSuiReceived != null && (
+              <TxReceiptRow label="Received">{fmtAmt(data.vSuiReceived, 4)} vSUI</TxReceiptRow>
+            )}
             {data.apy != null && (
               <TxReceiptRow label="APY">
                 <span className="text-emerald-400">{(data.apy * 100).toFixed(2)}%</span>
@@ -484,8 +494,10 @@ function TransactionReceiptCard({ data, toolName }: { data: TxReceiptData; toolN
 
         {toolName === 'volo_unstake' && (
           <>
-            <TxReceiptRow label="Unstaked">{fmtAmt(data.vSuiAmount ?? 0, 4)} vSUI</TxReceiptRow>
-            <TxReceiptRow label="Received">{fmtAmt(data.suiReceived ?? 0, 4)} SUI</TxReceiptRow>
+            <TxReceiptRow label="Unstaked">{fmtAmt(unstakeAmt, 4)} vSUI</TxReceiptRow>
+            {data.suiReceived != null && (
+              <TxReceiptRow label="Received">{fmtAmt(data.suiReceived, 4)} SUI</TxReceiptRow>
+            )}
           </>
         )}
 
