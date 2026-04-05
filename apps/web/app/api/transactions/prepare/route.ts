@@ -5,6 +5,7 @@ import { AggregatorClient, Env, getProvidersExcluding } from '@cetusprotocol/agg
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { validateJwt, isValidSuiAddress, validateAmount } from '@/lib/auth';
 import { getRegistry, getClient } from '@/lib/protocol-registry';
+import { resolveTokenType, getDecimalsForCoinType, USDC_TYPE, SUI_TYPE } from '@t2000/sdk';
 
 export const runtime = 'nodejs';
 
@@ -29,9 +30,6 @@ interface BuildRequest {
   byAmountIn?: boolean;
 }
 
-const USDC_TYPE = '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC';
-const SUI_TYPE = '0x2::sui::SUI';
-
 function getLendingAdapter(protocolId?: string) {
   const registry = getRegistry();
   const adapters = registry.listLending();
@@ -52,6 +50,43 @@ function extractMoveCallTargets(tx: Transaction): string[] {
     }
   }
   return [...targets];
+}
+
+/**
+ * Server-side balance validation — prevents building transactions that will fail on-chain.
+ * Returns an error message string if validation fails, or null if OK.
+ */
+async function validateBalance(
+  type: TxType,
+  address: string,
+  amount: number,
+  body: BuildRequest,
+): Promise<string | null> {
+  const client = getClient();
+  try {
+    if (type === 'send' || type === 'save') {
+      const coinType = resolveTokenType(body.asset ?? 'USDC') ?? USDC_TYPE;
+      const bal = await client.getBalance({ owner: address, coinType });
+      const decimals = getDecimalsForCoinType(coinType);
+      const available = Number(bal.totalBalance) / 10 ** decimals;
+      if (amount > available + 0.001) {
+        const sym = body.asset ?? 'USDC';
+        return `Insufficient ${sym} balance: you have ${available.toFixed(4)} but requested ${amount}`;
+      }
+    } else if (type === 'swap') {
+      const fromToken = body.from ?? body.fromAsset ?? 'USDC';
+      const coinType = resolveTokenType(fromToken) ?? fromToken;
+      const bal = await client.getBalance({ owner: address, coinType });
+      const decimals = getDecimalsForCoinType(coinType);
+      const available = Number(bal.totalBalance) / 10 ** decimals;
+      if (amount > available + 0.001) {
+        return `Insufficient ${fromToken} balance: you have ${available.toFixed(4)} but requested ${amount}`;
+      }
+    }
+  } catch {
+    // Balance check failed (e.g., coin not held) — let the transaction attempt proceed
+  }
+  return null;
 }
 
 /**
@@ -98,6 +133,14 @@ export async function POST(request: NextRequest) {
   }
   if (recipient && !isValidSuiAddress(recipient)) {
     return NextResponse.json({ error: 'Invalid recipient address' }, { status: 400 });
+  }
+
+  // Server-side balance validation for write operations
+  if (!skipAmountCheck && amount > 0) {
+    const balanceError = await validateBalance(type, address, amount, body);
+    if (balanceError) {
+      return NextResponse.json({ error: balanceError }, { status: 400 });
+    }
   }
 
   try {
@@ -213,8 +256,8 @@ async function buildTransaction(params: BuildRequest): Promise<Transaction> {
       }
 
       const assetKey = asset ?? 'USDC';
-      const coinType = assetKey === 'SUI' ? '0x2::sui::SUI' : USDC_TYPE;
-      const decimals = assetKey === 'SUI' ? 9 : 6;
+      const coinType = resolveTokenType(assetKey) ?? USDC_TYPE;
+      const decimals = getDecimalsForCoinType(coinType);
       let sendRawAmount = BigInt(Math.round(amount * 10 ** decimals));
 
       const sendCoins = [];
@@ -289,8 +332,8 @@ async function buildTransaction(params: BuildRequest): Promise<Transaction> {
       const toToken = params.to;
       if (!fromToken || !toToken) throw new Error('from and to tokens are required');
 
-      const fromType = resolveSwapToken(fromToken);
-      const toType = resolveSwapToken(toToken);
+      const fromType = resolveTokenType(fromToken);
+      const toType = resolveTokenType(toToken);
       if (!fromType) {
         throw new Error(
           `Unknown token "${fromToken}". Use a common name (SUI, USDC, CETUS, DEEP, etc.) or the full Sui coin type (e.g. 0x...::module::TOKEN).`,
@@ -397,41 +440,17 @@ async function buildTransaction(params: BuildRequest): Promise<Transaction> {
   return tx;
 }
 
-// Unified token config — single source of truth for type resolution and decimal scaling.
-const SWAP_TOKENS: Record<string, { type: string; decimals: number }> = {
-  SUI:   { type: '0x2::sui::SUI', decimals: 9 },
-  USDC:  { type: '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC', decimals: 6 },
-  USDT:  { type: '0x375f70cf2ae4c00bf37117d0c85a2c71545e6ee05c4a5c7d282cd66a4504b068::usdt::USDT', decimals: 6 },
-  CETUS: { type: '0x06864a6f921804860930db6ddbe2e16acdf8504495ea7481637a1c8b9a8fe54b::cetus::CETUS', decimals: 9 },
-  DEEP:  { type: '0xdeeb7a4662eec9f2f3def03fb937a663dddaa2e215b8078a284d026b7946c270::deep::DEEP', decimals: 6 },
-  NAVX:  { type: '0xa99b8952d4f7d947ea77fe0ecdcc9e5fc0bcab2841d6e2a5aa00c3044e5544b5::navx::NAVX', decimals: 9 },
-  vSUI:  { type: '0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT', decimals: 9 },
-  WAL:   { type: '0x356a26eb9e012a68958082340d4c4116e7f55615cf27affcff209cf0ae544f59::wal::WAL', decimals: 9 },
-  ETH:   { type: '0xd0e89b2af5e4910726fbcd8b8dd37bb79b29e5f83f7491bca830e94f7f226d29::eth::ETH', decimals: 8 },
-};
-
-const SWAP_TYPE_TO_DECIMALS = new Map(
-  Object.values(SWAP_TOKENS).map((t) => [t.type, t.decimals]),
-);
-
-function resolveSwapToken(nameOrType: string): string | null {
-  if (nameOrType.includes('::')) return nameOrType;
-  const known = SWAP_TOKENS[nameOrType.toUpperCase()]?.type;
-  if (known) return known;
-  return null;
-}
-
-function getSwapDecimalsSync(coinType: string): number | null {
-  return SWAP_TYPE_TO_DECIMALS.get(coinType) ?? null;
-}
+const swapDecimalsCache = new Map<string, number>();
 
 async function getSwapDecimals(coinType: string): Promise<number> {
-  const known = getSwapDecimalsSync(coinType);
-  if (known !== null) return known;
+  const cached = swapDecimalsCache.get(coinType);
+  if (cached !== undefined) return cached;
+  const known = getDecimalsForCoinType(coinType);
+  if (known !== 9) { swapDecimalsCache.set(coinType, known); return known; }
   try {
     const meta = await getClient().getCoinMetadata({ coinType });
     if (meta && typeof meta.decimals === 'number') {
-      SWAP_TYPE_TO_DECIMALS.set(coinType, meta.decimals);
+      swapDecimalsCache.set(coinType, meta.decimals);
       return meta.decimals;
     }
   } catch (err) {

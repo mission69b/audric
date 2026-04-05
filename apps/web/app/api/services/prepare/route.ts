@@ -8,6 +8,7 @@ import type { GatewayMapping } from '@/lib/service-gateway';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { validateJwt, isValidSuiAddress } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { getDecimalsForCoinType, USDC_TYPE } from '@t2000/sdk';
 
 export const runtime = 'nodejs';
 
@@ -96,7 +97,6 @@ export async function POST(request: NextRequest) {
   }
 }
 
-const USDC_TYPE = '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC';
 const USDC_DECIMALS = 6;
 
 const DAILY_PURCHASE_LIMIT_USD = 50;
@@ -188,7 +188,7 @@ async function handleDeliverFirst(
   // Record purchase for audit trail and spending limit tracking
   recordPurchase(address, serviceId, parseFloat(chargeAmount), String(serviceBody.productId ?? '')).catch(() => {});
 
-  const decimals = currency.includes('::usdc::') ? 6 : 9;
+  const decimals = getDecimalsForCoinType(currency);
   const rawAmount = BigInt(Math.round(parseFloat(chargeAmount) * 10 ** decimals));
 
   const tx = new Transaction();
@@ -312,7 +312,7 @@ async function handleStandardMpp(
     );
   }
 
-  const decimals = currency.includes('::usdc::') ? 6 : 9;
+  const decimals = getDecimalsForCoinType(currency);
   const rawAmount = BigInt(Math.round(parseFloat(chargeAmount) * 10 ** decimals));
 
   const tx = new Transaction();

@@ -21,11 +21,11 @@ import { useBalance } from '@/hooks/useBalance';
 import { parseIntent, type ParsedIntent } from '@/lib/intent-parser';
 import { mapError } from '@/lib/errors';
 import { deriveContextualChips, type AccountState } from '@/lib/contextual-chips';
-import { truncateAddress } from '@/lib/format';
 import { SUI_NETWORK } from '@/lib/constants';
 import { useContacts } from '@/hooks/useContacts';
 import { useAgent } from '@/hooks/useAgent';
 import { useUsdcSponsor } from '@/hooks/useUsdcSponsor';
+import { getDecimalsForCoinType, resolveSymbol } from '@t2000/sdk';
 
 const LS_LAST_SAVINGS = 't2000_last_savings';
 const LS_LAST_OPEN = 't2000_last_open_date';
@@ -683,8 +683,6 @@ function DashboardContent() {
       const sdk = await agent.getInstance();
       const inp = (input ?? {}) as Record<string, unknown>;
 
-      const TOKEN_DECIMALS: Record<string, number> = { SUI: 9, USDC: 6, USDT: 6, USDSUI: 6, USDE: 6, SUI_USDE: 6, ETH: 8, WBTC: 8, CETUS: 9, DEEP: 6, NAVX: 9, WAL: 9, NS: 6, MANIFEST: 9, HAEDAL: 9, IKA: 9, USDY: 6 };
-
       const parseActualAmount = (
         changes: Array<{ coinType: string; amount: string; owner?: unknown }> | undefined,
         assetHint: string | undefined,
@@ -698,8 +696,7 @@ function DashboardContent() {
           return amtOk && (sym === hint || sym.includes(hint));
         });
         if (!match) return null;
-        const sym = match.coinType.split('::').pop()?.toUpperCase() ?? '';
-        const dec = TOKEN_DECIMALS[sym] ?? 6;
+        const dec = getDecimalsForCoinType(match.coinType);
         return Math.abs(Number(BigInt(match.amount))) / 10 ** dec;
       };
 
@@ -750,11 +747,7 @@ function DashboardContent() {
             });
             balanceQuery.refetch();
             setTimeout(() => balanceQuery.refetch(), 3000);
-            const friendly = (name: string) => {
-              if (!name.includes('::')) return name;
-              return name.split('::').pop() ?? name;
-            };
-            const toName = friendly(String(inp.to));
+            const toName = resolveSymbol(String(inp.to));
             let received: number | string = 'unknown';
             if (res.balanceChanges?.length) {
               const toSuffix = String(inp.to).split('::').slice(-2).join('::');
@@ -764,9 +757,7 @@ function DashboardContent() {
                 return c.coinType.endsWith(toSuffix);
               });
               if (match) {
-                const DEC_MAP: Record<string, number> = { SUI: 9, USDC: 6, USDT: 6, USDSUI: 6, USDE: 6, SUI_USDE: 6, ETH: 8, WBTC: 8, CETUS: 9, DEEP: 6, NAVX: 9, WAL: 9, NS: 6 };
-                const sym = match.coinType.split('::').pop()?.toUpperCase() ?? '';
-                const dec = DEC_MAP[sym] ?? 9;
+                const dec = getDecimalsForCoinType(match.coinType);
                 received = Number(BigInt(match.amount)) / 10 ** dec;
               }
             }
@@ -775,7 +766,7 @@ function DashboardContent() {
               data: {
                 success: true,
                 tx: res.tx,
-                from: friendly(String(inp.from)),
+                from: resolveSymbol(String(inp.from)),
                 to: toName,
                 amount: inp.amount,
                 received,

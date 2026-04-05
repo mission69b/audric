@@ -1,20 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
+import { COIN_REGISTRY, USDC_TYPE } from '@t2000/sdk';
 
 export const runtime = 'nodejs';
 
 const SUI_NETWORK = (process.env.NEXT_PUBLIC_SUI_NETWORK ?? 'mainnet') as 'mainnet' | 'testnet';
 const client = new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl(SUI_NETWORK), network: SUI_NETWORK });
 
-const USDC_TYPE = '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC';
 const USDC_DECIMALS = 6;
 const MIST_PER_SUI = 1_000_000_000;
 
 const TRADEABLE_COINS: Record<string, { type: string; decimals: number }> = {
-  USDT: { type: '0x375f70cf2ae4c00bf37117d0c85a2c71545e6ee05c4a5c7d282cd66a4504b068::usdt::USDT', decimals: 6 },
-  BTC: { type: '0x0041f9f9344cac094454cd574e333c4fdb132d7bcc9379bcd4aab485b2a63942::wbtc::WBTC', decimals: 8 },
-  ETH: { type: '0xd0e89b2af5e4910726fbcd8b8dd37bb79b29e5f83f7491bca830e94f7f226d29::eth::ETH', decimals: 8 },
-  GOLD: { type: '0x9d297676e7a4b771ab023291377b2adfaa4938fb9080b8d12430e4b108b836a9::xaum::XAUM', decimals: 9 },
+  USDT: { type: COIN_REGISTRY.USDT.type, decimals: COIN_REGISTRY.USDT.decimals },
+  BTC: { type: COIN_REGISTRY.wBTC.type, decimals: COIN_REGISTRY.wBTC.decimals },
+  ETH: { type: COIN_REGISTRY.ETH.type, decimals: COIN_REGISTRY.ETH.decimals },
+  GOLD: { type: COIN_REGISTRY.GOLD.type, decimals: COIN_REGISTRY.GOLD.decimals },
 };
 
 /**

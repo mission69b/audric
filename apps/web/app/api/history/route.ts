@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
+import { getDecimalsForCoinType, resolveSymbol, SUI_TYPE } from '@t2000/sdk';
 
 export const runtime = 'nodejs';
 
 const SUI_NETWORK = (process.env.NEXT_PUBLIC_SUI_NETWORK ?? 'mainnet') as 'mainnet' | 'testnet';
 const client = new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl(SUI_NETWORK), network: SUI_NETWORK });
-
-const SUI_TYPE = '0x2::sui::SUI';
 
 const KNOWN_TARGETS: [RegExp, string][] = [
   [/::suilend|::obligation/, 'lending'],
@@ -148,9 +147,9 @@ function parseTx(tx: TxBlock, address: string): TxHistoryItem {
   if (userOutflows.length > 0 && userInflows.length === 0) {
     direction = 'out';
     const primary = userOutflows.sort((a, b) => Number(BigInt(a.amount) - BigInt(b.amount)))[0];
-    const decimals = primary.coinType.includes('::usdc::') ? 6 : 9;
+    const decimals = getDecimalsForCoinType(primary.coinType);
     amount = Math.round(Math.abs(Number(BigInt(primary.amount))) / 10 ** decimals * 100) / 100;
-    asset = formatAsset(primary.coinType);
+    asset = resolveSymbol(primary.coinType);
     const recipientChange = changes.find(
       (c) => resolveOwner(c.owner) !== address && c.coinType === primary.coinType && BigInt(c.amount) > BigInt(0),
     );
@@ -158,17 +157,17 @@ function parseTx(tx: TxBlock, address: string): TxHistoryItem {
   } else if (userInflows.length > 0 && userOutflows.length === 0) {
     direction = 'in';
     const primary = userInflows.sort((a, b) => Number(BigInt(b.amount) - BigInt(a.amount)))[0];
-    const decimals = primary.coinType.includes('::usdc::') ? 6 : 9;
+    const decimals = getDecimalsForCoinType(primary.coinType);
     amount = Math.round(Math.abs(Number(BigInt(primary.amount))) / 10 ** decimals * 100) / 100;
-    asset = formatAsset(primary.coinType);
+    asset = resolveSymbol(primary.coinType);
     if (!isUserTx && sender) counterparty = sender;
   } else if (userOutflows.length > 0 && userInflows.length > 0) {
     // Both in and out (e.g., swap) — show the outflow
     direction = 'out';
     const primary = userOutflows.sort((a, b) => Number(BigInt(a.amount) - BigInt(b.amount)))[0];
-    const decimals = primary.coinType.includes('::usdc::') ? 6 : 9;
+    const decimals = getDecimalsForCoinType(primary.coinType);
     amount = Math.round(Math.abs(Number(BigInt(primary.amount))) / 10 ** decimals * 100) / 100;
-    asset = formatAsset(primary.coinType);
+    asset = resolveSymbol(primary.coinType);
   } else {
     // No non-SUI balance changes — check SUI changes
     const suiChanges = changes.filter(
@@ -213,11 +212,6 @@ function parseTx(tx: TxBlock, address: string): TxHistoryItem {
   };
 }
 
-function formatAsset(coinType: string): string {
-  if (coinType === SUI_TYPE) return 'SUI';
-  if (coinType.includes('::usdc::')) return 'USDC';
-  return coinType.split('::').pop() ?? 'unknown';
-}
 
 function extractSender(txBlock: unknown): string | null {
   try {
