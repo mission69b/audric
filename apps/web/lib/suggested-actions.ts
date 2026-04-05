@@ -6,7 +6,24 @@ export interface SuggestedActionItem {
   prompt: string;
 }
 
-const TOOL_FOLLOWUPS: Record<string, SuggestedActionItem[]> = {
+interface ToolResultData {
+  tx?: string;
+  asset?: string;
+  toToken?: string;
+  fromToken?: string;
+  amount?: number;
+  toAmount?: number;
+}
+
+function extractResultData(tool: ToolExecution): ToolResultData {
+  const result = tool.result;
+  if (!result || typeof result !== 'object') return {};
+  const raw = 'data' in result ? (result as { data: unknown }).data : result;
+  if (!raw || typeof raw !== 'object') return {};
+  return raw as ToolResultData;
+}
+
+const STATIC_FOLLOWUPS: Record<string, SuggestedActionItem[]> = {
   balance_check: [
     { icon: '🏦', label: 'SAVE IDLE USDC', prompt: 'Save my idle USDC' },
     { icon: '📈', label: 'CHECK RATES', prompt: 'What are the current rates?' },
@@ -23,30 +40,6 @@ const TOOL_FOLLOWUPS: Record<string, SuggestedActionItem[]> = {
     { icon: '💳', label: 'REPAY DEBT', prompt: 'Repay my debt' },
     { icon: '📊', label: 'FULL REPORT', prompt: 'Give me a full account report' },
   ],
-  save_deposit: [
-    { icon: '💰', label: 'CHECK BALANCE', prompt: 'What is my balance now?' },
-    { icon: '📈', label: 'VIEW RATES', prompt: 'What rate am I earning?' },
-  ],
-  withdraw: [
-    { icon: '💰', label: 'CHECK BALANCE', prompt: 'What is my balance now?' },
-    { icon: '🔄', label: 'SEND USDC', prompt: 'Send USDC to a friend' },
-  ],
-  send_transfer: [
-    { icon: '💰', label: 'CHECK BALANCE', prompt: 'What is my balance now?' },
-    { icon: '🏦', label: 'SAVE REMAINDER', prompt: 'Save my remaining USDC' },
-  ],
-  borrow: [
-    { icon: '🛡️', label: 'HEALTH CHECK', prompt: 'Check my account health' },
-    { icon: '💳', label: 'REPAY DEBT', prompt: 'Repay my debt' },
-  ],
-  repay_debt: [
-    { icon: '🛡️', label: 'HEALTH CHECK', prompt: 'Check my account health' },
-    { icon: '💰', label: 'CHECK BALANCE', prompt: 'What is my balance?' },
-  ],
-  claim_rewards: [
-    { icon: '💰', label: 'CHECK BALANCE', prompt: 'What is my balance now?' },
-    { icon: '🏦', label: 'SAVE REWARDS', prompt: 'Save my claimed rewards' },
-  ],
   transaction_history: [
     { icon: '📊', label: 'FULL REPORT', prompt: 'Give me a full account report' },
     { icon: '💰', label: 'CHECK BALANCE', prompt: 'What is my balance?' },
@@ -57,17 +50,77 @@ const TOOL_FOLLOWUPS: Record<string, SuggestedActionItem[]> = {
   ],
 };
 
+function deriveWriteToolChips(toolName: string, data: ToolResultData): SuggestedActionItem[] {
+  switch (toolName) {
+    case 'save_deposit':
+      return [
+        { icon: '💰', label: 'CHECK BALANCE', prompt: 'What is my balance now?' },
+        { icon: '📈', label: 'VIEW RATES', prompt: 'What rate am I earning?' },
+      ];
+    case 'withdraw':
+      return [
+        { icon: '💰', label: 'CHECK BALANCE', prompt: 'What is my balance now?' },
+        { icon: '🏦', label: 'SAVE USDC', prompt: 'Save my USDC' },
+      ];
+    case 'send_transfer':
+      return [
+        { icon: '💰', label: 'CHECK BALANCE', prompt: 'What is my balance now?' },
+        { icon: '🏦', label: 'SAVE REMAINDER', prompt: 'Save my remaining USDC' },
+      ];
+    case 'swap_execute': {
+      const token = data.toToken ?? 'tokens';
+      return [
+        { icon: '💰', label: 'CHECK BALANCE', prompt: 'What is my balance now?' },
+        { icon: '🏦', label: `DEPOSIT ${token.toUpperCase()}`, prompt: `Deposit my ${token} into NAVI lending` },
+      ];
+    }
+    case 'volo_stake':
+      return [
+        { icon: '💰', label: 'CHECK BALANCE', prompt: 'What is my balance now?' },
+        { icon: '📊', label: 'MY SAVINGS', prompt: 'Show my savings positions' },
+      ];
+    case 'volo_unstake':
+      return [
+        { icon: '💰', label: 'CHECK BALANCE', prompt: 'What is my balance now?' },
+        { icon: '🏦', label: 'SAVE SUI', prompt: 'Deposit my SUI into NAVI lending' },
+      ];
+    case 'borrow':
+      return [
+        { icon: '🛡️', label: 'HEALTH CHECK', prompt: 'Check my account health' },
+        { icon: '💳', label: 'REPAY DEBT', prompt: 'Repay my debt' },
+      ];
+    case 'repay_debt':
+      return [
+        { icon: '🛡️', label: 'HEALTH CHECK', prompt: 'Check my account health' },
+        { icon: '💰', label: 'CHECK BALANCE', prompt: 'What is my balance?' },
+      ];
+    case 'claim_rewards':
+      return [
+        { icon: '💰', label: 'CHECK BALANCE', prompt: 'What is my balance now?' },
+        { icon: '🏦', label: 'SAVE REWARDS', prompt: 'Save my claimed rewards' },
+      ];
+    default:
+      return [];
+  }
+}
+
 const DEFAULT_ACTIONS: SuggestedActionItem[] = [
   { icon: '💰', label: 'CHECK BALANCE', prompt: 'What is my balance?' },
   { icon: '🏦', label: 'SAVE USDC', prompt: 'Save $100' },
-  { icon: '🔄', label: 'SEND USDC', prompt: 'Send $50 to a friend' },
 ];
 
 export function deriveSuggestedActions(tools?: ToolExecution[]): SuggestedActionItem[] {
-  if (!tools || tools.length === 0) return DEFAULT_ACTIONS.slice(0, 2);
+  if (!tools || tools.length === 0) return DEFAULT_ACTIONS;
 
   const lastDoneTool = [...tools].reverse().find((t) => t.status === 'done');
-  if (!lastDoneTool) return DEFAULT_ACTIONS.slice(0, 2);
+  if (!lastDoneTool) return DEFAULT_ACTIONS;
 
-  return TOOL_FOLLOWUPS[lastDoneTool.toolName] ?? DEFAULT_ACTIONS.slice(0, 2);
+  const staticChips = STATIC_FOLLOWUPS[lastDoneTool.toolName];
+  if (staticChips) return staticChips;
+
+  const data = extractResultData(lastDoneTool);
+  const writeChips = deriveWriteToolChips(lastDoneTool.toolName, data);
+  if (writeChips.length > 0) return writeChips;
+
+  return DEFAULT_ACTIONS;
 }

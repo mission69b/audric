@@ -347,6 +347,177 @@ function ExplainTxCard({ data }: { data: TxExplanation }) {
   );
 }
 
+const SUISCAN_TX_URL = 'https://suiscan.xyz/mainnet/tx';
+
+interface TxReceiptData {
+  tx: string;
+  gasCost?: number;
+  // save_deposit
+  amount?: number;
+  asset?: string;
+  apy?: number;
+  savingsBalance?: number;
+  // send_transfer
+  to?: string;
+  contactName?: string;
+  // swap_execute
+  fromToken?: string;
+  toToken?: string;
+  fromAmount?: number;
+  toAmount?: number;
+  priceImpact?: number;
+  route?: string;
+  // volo_stake
+  amountSui?: number;
+  vSuiReceived?: number;
+  // volo_unstake
+  vSuiAmount?: number;
+  suiReceived?: number;
+  // borrow
+  fee?: number;
+  healthFactor?: number;
+  // repay_debt
+  remainingDebt?: number;
+  // claim_rewards
+  rewards?: { asset: string; amount: number; estimatedValueUsd?: number }[];
+  totalValueUsd?: number;
+}
+
+function fmtAmt(n: number, decimals = 2): string {
+  if (n < 1 && n > 0) return n.toFixed(6);
+  return n.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+}
+
+function TxReceiptRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex justify-between items-baseline">
+      <span className="text-dim">{label}</span>
+      <span className="text-foreground text-right">{children}</span>
+    </div>
+  );
+}
+
+function TransactionReceiptCard({ data, toolName }: { data: TxReceiptData; toolName: string }) {
+  if (!data.tx) return null;
+
+  const txUrl = `${SUISCAN_TX_URL}/${data.tx}`;
+  const shortTx = `${data.tx.slice(0, 8)}...${data.tx.slice(-6)}`;
+
+  return (
+    <CardShell title="Transaction">
+      <div className="space-y-1 font-mono text-[11px]">
+        {toolName === 'swap_execute' && data.fromToken && data.toToken && (
+          <>
+            <TxReceiptRow label="Sold">
+              {fmtAmt(data.fromAmount ?? 0)} {data.fromToken}
+            </TxReceiptRow>
+            <TxReceiptRow label="Received">
+              {fmtAmt(data.toAmount ?? 0, 4)} {data.toToken}
+            </TxReceiptRow>
+            {data.priceImpact != null && data.priceImpact > 0.01 && (
+              <TxReceiptRow label="Impact">
+                <span className={data.priceImpact > 1 ? 'text-amber-400' : ''}>{data.priceImpact.toFixed(2)}%</span>
+              </TxReceiptRow>
+            )}
+          </>
+        )}
+
+        {toolName === 'send_transfer' && (
+          <>
+            <TxReceiptRow label="Amount">${fmtAmt(data.amount ?? 0)}</TxReceiptRow>
+            <TxReceiptRow label="To">{data.contactName ?? `${(data.to ?? '').slice(0, 10)}...`}</TxReceiptRow>
+          </>
+        )}
+
+        {toolName === 'save_deposit' && (
+          <>
+            <TxReceiptRow label="Deposited">{fmtAmt(data.amount ?? 0)} {data.asset ?? 'USDC'}</TxReceiptRow>
+            {data.apy != null && (
+              <TxReceiptRow label="APY">
+                <span className="text-emerald-400">{(data.apy * 100).toFixed(2)}%</span>
+              </TxReceiptRow>
+            )}
+          </>
+        )}
+
+        {toolName === 'withdraw' && (
+          <TxReceiptRow label="Withdrawn">{fmtAmt(data.amount ?? 0)} {data.asset ?? 'USDC'}</TxReceiptRow>
+        )}
+
+        {toolName === 'borrow' && (
+          <>
+            <TxReceiptRow label="Borrowed">${fmtAmt(data.amount ?? 0)}</TxReceiptRow>
+            {data.healthFactor != null && (
+              <TxReceiptRow label="Health">
+                <span className={data.healthFactor < 1.5 ? 'text-amber-400' : 'text-emerald-400'}>
+                  {data.healthFactor.toFixed(2)}
+                </span>
+              </TxReceiptRow>
+            )}
+          </>
+        )}
+
+        {toolName === 'repay_debt' && (
+          <>
+            <TxReceiptRow label="Repaid">${fmtAmt(data.amount ?? 0)}</TxReceiptRow>
+            {data.remainingDebt != null && (
+              <TxReceiptRow label="Remaining">${fmtAmt(data.remainingDebt)}</TxReceiptRow>
+            )}
+          </>
+        )}
+
+        {toolName === 'claim_rewards' && data.totalValueUsd != null && (
+          <TxReceiptRow label="Claimed">${fmtAmt(data.totalValueUsd)}</TxReceiptRow>
+        )}
+
+        {toolName === 'volo_stake' && (
+          <>
+            <TxReceiptRow label="Staked">{fmtAmt(data.amountSui ?? 0)} SUI</TxReceiptRow>
+            <TxReceiptRow label="Received">{fmtAmt(data.vSuiReceived ?? 0, 4)} vSUI</TxReceiptRow>
+            {data.apy != null && (
+              <TxReceiptRow label="APY">
+                <span className="text-emerald-400">{(data.apy * 100).toFixed(2)}%</span>
+              </TxReceiptRow>
+            )}
+          </>
+        )}
+
+        {toolName === 'volo_unstake' && (
+          <>
+            <TxReceiptRow label="Unstaked">{fmtAmt(data.vSuiAmount ?? 0, 4)} vSUI</TxReceiptRow>
+            <TxReceiptRow label="Received">{fmtAmt(data.suiReceived ?? 0, 4)} SUI</TxReceiptRow>
+          </>
+        )}
+
+        {data.gasCost != null && data.gasCost > 0 && (
+          <TxReceiptRow label="Gas">{data.gasCost.toFixed(4)} SUI</TxReceiptRow>
+        )}
+
+        <div className="pt-1.5 mt-1.5 border-t border-border/50 flex justify-between items-center">
+          <span className="text-dim">{shortTx}</span>
+          <a
+            href={txUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-info hover:opacity-70 transition text-[10px] flex items-center gap-1"
+          >
+            View on Suiscan
+            <svg width="10" height="10" viewBox="0 0 12 12" fill="none" className="inline-block">
+              <path d="M3.5 1.5H10.5V8.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M10.5 1.5L1.5 10.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </a>
+        </div>
+      </div>
+    </CardShell>
+  );
+}
+
+const WRITE_TOOL_NAMES = new Set([
+  'save_deposit', 'withdraw', 'send_transfer', 'swap_execute',
+  'volo_stake', 'volo_unstake', 'borrow', 'repay_debt', 'claim_rewards',
+]);
+
 const CARD_RENDERERS: Record<string, (result: unknown) => React.ReactNode | null> = {
   rates_info: (result) => {
     const data = extractData(result);
@@ -391,11 +562,24 @@ export function ToolResultCard({ tool }: { tool: ToolExecution }) {
   if (tool.status !== 'done' || !tool.result || tool.isError) return null;
 
   const renderer = CARD_RENDERERS[tool.toolName];
-  if (!renderer) return null;
-
-  try {
-    return <>{renderer(tool.result)}</>;
-  } catch {
-    return null;
+  if (renderer) {
+    try {
+      return <>{renderer(tool.result)}</>;
+    } catch {
+      return null;
+    }
   }
+
+  if (WRITE_TOOL_NAMES.has(tool.toolName)) {
+    try {
+      const data = extractData(tool.result);
+      if (data && typeof data === 'object' && 'tx' in data) {
+        return <TransactionReceiptCard data={data as TxReceiptData} toolName={tool.toolName} />;
+      }
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
 }
