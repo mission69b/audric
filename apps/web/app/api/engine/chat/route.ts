@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
 
       engine = await createEngine(address, session, contacts);
     } else {
-      engine = createUnauthEngine(history);
+      engine = await createUnauthEngine(history);
     }
 
     const stream = new ReadableStream({

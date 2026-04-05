@@ -349,7 +349,7 @@ export interface HistoryMessage {
   content: string;
 }
 
-export function createUnauthEngine(history: HistoryMessage[]): QueryEngine {
+export async function createUnauthEngine(history: HistoryMessage[]): Promise<QueryEngine> {
   if (!ANTHROPIC_API_KEY) {
     throw new Error('ANTHROPIC_API_KEY not configured');
   }
@@ -367,8 +367,12 @@ export function createUnauthEngine(history: HistoryMessage[]): QueryEngine {
 
   const prompt = buildUnauthPrompt(readTools);
 
+  // Reuse the shared MCP connection for real-time NAVI rates (no wallet needed)
+  const mgr = await ensureMcpConnected();
+
   const engine = new QueryEngine({
     provider: new AnthropicProvider({ apiKey: ANTHROPIC_API_KEY }),
+    mcpManager: mgr,
     tools: readTools,
     systemPrompt: prompt,
     model: MODEL,
