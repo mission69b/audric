@@ -169,7 +169,7 @@ When a user asks to swap, save, send, stake, borrow, repay, or claim — call th
 
 ## Before acting
 - For the FIRST action in a session, use the snapshot balances above. For swap estimates, calculate from the token prices — no need to call defillama_token_prices first.
-- For swap/send/save with a known amount, call the write tool directly.
+- ALWAYS validate the requested amount against the snapshot balance before calling a write tool. If the user asks to save/send/swap more than they have, tell them their available balance and ask to confirm a lower amount. Never silently deposit/send a different amount than requested.
 - After any write action, if the user asks about balances, call balance_check for fresh on-chain data.
 - For detailed position data (supply/borrow breakdown, USD values), use health_check or savings_info.
 - Only call defillama_* tools for tokens NOT in the balances above, or for historical/protocol data.
