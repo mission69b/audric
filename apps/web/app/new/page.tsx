@@ -319,6 +319,7 @@ function DashboardContent() {
     savings: balance.savings,
     borrows: balance.borrows,
     savingsRate: balance.savingsRate,
+    bestRate: balance.bestSaveRate?.rate,
     maxBorrow: balance.maxBorrow,
   };
 
@@ -975,10 +976,13 @@ function DashboardContent() {
       details.push({ label: 'To', value: chipFlow.state.subFlow ?? chipFlow.state.recipient });
     }
 
-    if (flow === 'save' && balance.savingsRate > 0) {
-      details.push({ label: 'APY', value: `${balance.savingsRate.toFixed(1)}%` });
-      const monthly = (amount * (balance.savingsRate / 100)) / 12;
-      if (monthly >= 0.01) details.push({ label: 'Est. monthly', value: `+$${monthly.toFixed(2)}` });
+    if (flow === 'save') {
+      const apy = balance.bestSaveRate?.rate ?? balance.savingsRate;
+      if (apy > 0.5) {
+        details.push({ label: 'APY', value: `${apy.toFixed(1)}%` });
+        const monthly = (amount * (apy / 100)) / 12;
+        if (monthly >= 0.01) details.push({ label: 'Est. monthly', value: `+$${monthly.toFixed(2)}` });
+      }
     }
 
     if (flow === 'borrow' && balance.savingsRate > 0) {

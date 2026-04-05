@@ -108,7 +108,14 @@ export function useEngine({ address, jwt }: UseEngineOptions) {
       setMessages((prev) =>
         prev.map((m) => {
           if (!m.pendingAction || m.pendingAction.toolUseId !== action.toolUseId) return m;
-          return { ...m, pendingAction: undefined };
+          const tools = approved && executionResult !== undefined
+            ? (m.tools ?? []).map((t) =>
+                t.toolUseId === action.toolUseId
+                  ? { ...t, status: 'done' as const, result: executionResult, isError: false }
+                  : t,
+              )
+            : m.tools;
+          return { ...m, pendingAction: undefined, tools };
         }),
       );
 
@@ -333,8 +340,13 @@ export function useEngine({ address, jwt }: UseEngineOptions) {
       }
 
       case 'tool_result':
-        setMessages((prev) =>
-          prev.map((m) => {
+        setMessages((prev) => {
+          const alreadyResolved = prev.some((m) =>
+            m.id !== msgId && (m.tools ?? []).some((t) => t.toolUseId === event.toolUseId && t.status === 'done'),
+          );
+          if (alreadyResolved) return prev;
+
+          return prev.map((m) => {
             if (m.id !== msgId) return m;
             const existing = (m.tools ?? []);
             const found = existing.some((t) => t.toolUseId === event.toolUseId);
@@ -346,7 +358,6 @@ export function useEngine({ address, jwt }: UseEngineOptions) {
               );
               return { ...m, tools };
             }
-            // Confirm-gated writes resume without tool_start; append the completed tool
             return {
               ...m,
               tools: [...existing, {
@@ -358,8 +369,8 @@ export function useEngine({ address, jwt }: UseEngineOptions) {
                 isError: event.isError,
               }],
             };
-          }),
-        );
+          });
+        });
         break;
 
       case 'pending_action': {

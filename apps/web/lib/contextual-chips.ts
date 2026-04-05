@@ -70,8 +70,10 @@ export function deriveContextualChips(
     }
   }
 
-  const displayRate = state.bestRate ?? (state.savingsRate > 0.5 ? state.savingsRate : 0);
-  if (state.cash > 5 && displayRate > 0) {
+  const displayRate = state.bestRate && state.bestRate > 0.5
+    ? state.bestRate
+    : state.savingsRate > 0.5 ? state.savingsRate : 0;
+  if (state.cash > 5 && displayRate > 0.5) {
     chips.push({
       id: 'idle',
       icon: '💰',

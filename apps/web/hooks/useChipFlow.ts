@@ -52,6 +52,7 @@ export interface FlowContext {
   savings?: number;
   borrows?: number;
   savingsRate?: number;
+  bestRate?: number;
   maxBorrow?: number;
   protocol?: string;
   asset?: string;
@@ -131,9 +132,14 @@ function fmtAmount(n: number): string {
 function getFlowMessage(flow: string, ctx?: FlowContext): string {
   switch (flow) {
     case 'save': {
-      const rate = ctx?.savingsRate ? ` ${ctx.savingsRate.toFixed(1)}%` : '';
+      const rate = ctx?.bestRate && ctx.bestRate > 0.5
+        ? ctx.bestRate
+        : ctx?.savingsRate && ctx.savingsRate > 0.5
+          ? ctx.savingsRate
+          : null;
+      const rateStr = rate ? ` ${rate.toFixed(1)}%` : '';
       const avail = ctx?.cash ? ` You have ${fmtAmount(ctx.cash)} available.` : '';
-      return `Save to earn${rate}.${avail}\nChoose an amount:`;
+      return `Save to earn${rateStr}.${avail}\nChoose an amount:`;
     }
     case 'send': return 'Who do you want to send to?';
     case 'withdraw': {
