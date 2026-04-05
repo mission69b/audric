@@ -12,12 +12,13 @@ Conversational finance on [Sui](https://sui.io). Save, pay, send, borrow — all
 
 | Product | Description |
 |---------|-------------|
-| **Savings** | Earn yield on USDC via NAVI Protocol |
-| **Swap** | Trade any Sui token via Cetus multi-DEX aggregation |
+| **Savings** | Earn yield on USDC, SUI, USDsui, WAL, ETH via NAVI Protocol |
 | **Pay** | Access 40+ services (88 endpoints) with USDC micropayments |
-| **Send** | Transfer USDC instantly to any Sui address |
+| **Send** | Transfer any supported token to any Sui address |
 | **Credit** | Borrow USDC against your savings |
 | **Receive** | Accept payments anywhere *(planned)* |
+
+Swap is available as a utility within flows (any token pair via Cetus Aggregator), not a standalone product.
 
 ## How it works
 
