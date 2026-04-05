@@ -132,12 +132,24 @@ export function UnifiedTimeline({
     const lastMsg = engine.messages[engine.messages.length - 1];
     const action = lastMsg?.pendingAction;
     if (!action || !onExecuteAction) return;
-    if (!AUTO_APPROVE_TOOLS.has(action.toolName)) return;
     if (autoApprovedRef.current.has(action.toolUseId)) return;
 
-    autoApprovedRef.current.add(action.toolUseId);
-    handleActionResolve(action, true);
-  }, [engine.messages, onExecuteAction, handleActionResolve]);
+    // Auto-approve tools: validate then execute immediately
+    if (AUTO_APPROVE_TOOLS.has(action.toolName)) {
+      autoApprovedRef.current.add(action.toolUseId);
+      handleActionResolve(action, true);
+      return;
+    }
+
+    // Manual-approve tools: pre-flight balance check — auto-deny if insufficient
+    if (onValidateAction) {
+      const validationError = onValidateAction(action.toolName, action.input);
+      if (validationError) {
+        autoApprovedRef.current.add(action.toolUseId);
+        engine.resolveAction(action, true, { success: false, error: validationError });
+      }
+    }
+  }, [engine.messages, onExecuteAction, handleActionResolve, onValidateAction, engine]);
 
   const isConnecting = engine.status === 'connecting';
   const lastEngineMsg = engine.messages[engine.messages.length - 1];
