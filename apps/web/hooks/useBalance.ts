@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { useSuiClient } from '@mysten/dapp-kit';
-import { getDecimalsForCoinType, resolveSymbol, COIN_REGISTRY, USDC_TYPE } from '@t2000/sdk';
+import { getDecimalsForCoinType, resolveSymbol, COIN_REGISTRY, USDC_TYPE } from '@t2000/sdk/browser';
 
 const MIST_PER_SUI = 1_000_000_000;
 const USDC_DECIMALS = 6;
