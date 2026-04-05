@@ -306,6 +306,7 @@ function DashboardContent() {
     savingsRate: balance.savingsRate,
     pendingRewards: balance.pendingRewards,
     currentRate: balance.currentRate > 0 ? balance.currentRate : undefined,
+    bestRate: balance.bestSaveRate?.rate ?? undefined,
     healthFactor: balance.healthFactor ?? undefined,
     overnightEarnings: overnightData.earnings,
     isFirstOpenToday: overnightData.isFirstOpenToday,

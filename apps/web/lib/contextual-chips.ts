@@ -70,11 +70,12 @@ export function deriveContextualChips(
     }
   }
 
-  if (state.cash > 5 && state.savingsRate > 0) {
+  const displayRate = state.bestRate ?? (state.savingsRate > 0.5 ? state.savingsRate : 0);
+  if (state.cash > 5 && displayRate > 0) {
     chips.push({
       id: 'idle',
       icon: '💰',
-      label: `Save $${Math.floor(state.cash)} idle — ${state.savingsRate.toFixed(1)}%`,
+      label: `Save $${Math.floor(state.cash)} idle — ${displayRate.toFixed(1)}%`,
       chipFlow: 'save-all',
       priority: 70,
     });
@@ -248,14 +249,17 @@ export function deriveContextualChips(
       chipFlow: 'receive',
       priority: 10,
     });
-  } else if (state.savingsRate > 0 && state.savings > 0) {
-    chips.push({
-      id: 'good',
-      icon: '✅',
-      label: `Earning ${state.savingsRate.toFixed(1)}% on $${Math.floor(state.savings)}`,
-      chipFlow: 'report',
-      priority: 20,
-    });
+  } else if (state.savings > 0) {
+    const earnRate = state.currentRate ?? state.bestRate ?? state.savingsRate;
+    if (earnRate > 0.5) {
+      chips.push({
+        id: 'good',
+        icon: '✅',
+        label: `Earning ${earnRate.toFixed(1)}% on $${Math.floor(state.savings)}`,
+        chipFlow: 'report',
+        priority: 20,
+      });
+    }
   }
 
   chips.push({
