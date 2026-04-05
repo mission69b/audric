@@ -12,6 +12,8 @@ const KNOWN_COINS: Record<string, { symbol: string; decimals: number }> = {
   '0x2::sui::SUI': { symbol: 'SUI', decimals: 9 },
   [USDC_TYPE]: { symbol: 'USDC', decimals: 6 },
   '0x375f70cf2ae4c00bf37117d0c85a2c71545e6ee05c4a5c7d282cd66a4504b068::usdt::USDT': { symbol: 'USDT', decimals: 6 },
+  '0x44f838219cf67b058f3b37907b655f226153c18e33dfcd0da559a844fea9b1c1::usdsui::USDSUI': { symbol: 'USDsui', decimals: 6 },
+  '0x41d587e5336f1c86cad50d38a7136db99333bb9bda91cea4ba69115defeb1402::sui_usde::SUI_USDE': { symbol: 'USDe', decimals: 6 },
   '0x06864a6f921804860930db6ddbe2e16acdf8504495ea7481637a1c8b9a8fe54b::cetus::CETUS': { symbol: 'CETUS', decimals: 9 },
   '0xdeeb7a4662eec9f2f3def03fb937a663dddaa2e215b8078a284d026b7946c270::deep::DEEP': { symbol: 'DEEP', decimals: 6 },
   '0xa99b8952d4f7d947ea77fe0ecdcc9e5fc0bcab2841d6e2a5aa00c3044e5544b5::navx::NAVX': { symbol: 'NAVX', decimals: 9 },
@@ -20,6 +22,7 @@ const KNOWN_COINS: Record<string, { symbol: string; decimals: number }> = {
   '0xd0e89b2af5e4910726fbcd8b8dd37bb79b29e5f83f7491bca830e94f7f226d29::eth::ETH': { symbol: 'ETH', decimals: 8 },
   '0x0041f9f9344cac094454cd574e333c4fdb132d7bcc9379bcd4aab485b2a63942::wbtc::WBTC': { symbol: 'BTC', decimals: 8 },
   '0x9d297676e7a4b771ab023291377b2adfaa4938fb9080b8d12430e4b108b836a9::xaum::XAUM': { symbol: 'GOLD', decimals: 9 },
+  '0xc466c28d87b3d5cd34f3d5c088751532d71a38d93a8aae4551dd56272cfb4355::manifest::MANIFEST': { symbol: 'MANIFEST', decimals: 9 },
 };
 
 export interface SavingsBreakdownEntry {
@@ -162,7 +165,7 @@ export function useBalance(address: string | null) {
         tradeableUsd += usdVal;
       }
 
-      const cash = r2(usdc + suiUsd);
+      const cash = r2(usdc + suiUsd + tradeableUsd);
       const otherAssetsUsd = r2(tradeableUsd);
       const savings = r2(posData.savings ?? 0);
       const borrows = posData.borrows ?? 0;
