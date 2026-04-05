@@ -338,9 +338,6 @@ function ExplainTxCard({ data }: { data: TxExplanation }) {
 
   return (
     <CardShell title="Transaction">
-      {data.summary && (
-        <p className="text-foreground text-[11px] font-medium mb-2">{data.summary}</p>
-      )}
       <div className="space-y-1 font-mono text-[11px]">
         <div className="flex justify-between">
           <span className="text-dim">Status</span>
