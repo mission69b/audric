@@ -598,6 +598,8 @@ function DashboardContent() {
     (flow: string) => {
       if (flow === 'refresh-session') { refresh(); return; }
 
+      if (flow === 'pay') { chipFlow.reset(); engine.sendMessage('Show me what services I can pay for with examples and pricing.'); return; }
+
       if (flow === 'claim-rewards') { chipFlow.reset(); executeIntent({ action: 'claim-rewards' }); return; }
       if (flow === 'help') { chipFlow.reset(); executeIntent({ action: 'help' }); return; }
       if (flow === 'report') { chipFlow.reset(); executeIntent({ action: 'report' }); return; }
@@ -640,7 +642,7 @@ function DashboardContent() {
       }
       chipFlow.startFlow(flow, flowContext);
     },
-    [chipFlow, feed, executeIntent, balance, flowContext, refresh],
+    [chipFlow, feed, executeIntent, balance, flowContext, refresh, engine],
   );
 
   const handleInputSubmit = useCallback(

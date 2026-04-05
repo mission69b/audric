@@ -1,35 +1,23 @@
 'use client';
 
-import { useState } from 'react';
-
 interface ChipBarProps {
   onChipClick: (flow: string) => void;
   activeFlow: string | null;
   disabled?: boolean;
 }
 
-const CORE_CHIPS = [
+const CHIPS = [
   { id: 'save', label: 'Save' },
   { id: 'send', label: 'Send' },
-  { id: 'borrow', label: 'Borrow' },
+  { id: 'borrow', label: 'Credit' },
+  { id: 'pay', label: 'Pay' },
   { id: 'receive', label: 'Receive' },
 ];
 
-const MORE_CHIPS = [
-  { id: 'withdraw', label: 'Withdraw' },
-  { id: 'repay', label: 'Repay' },
-  { id: 'report', label: 'Report' },
-  { id: 'history', label: 'History' },
-  { id: 'help', label: 'Help' },
-];
-
 export function ChipBar({ onChipClick, activeFlow, disabled }: ChipBarProps) {
-  const [expanded, setExpanded] = useState(false);
-  const chips = expanded ? [...CORE_CHIPS, ...MORE_CHIPS] : CORE_CHIPS;
-
   return (
     <div className="flex gap-1.5 overflow-x-auto scrollbar-none" role="toolbar" aria-label="Quick actions">
-      {chips.map((chip) => (
+      {CHIPS.map((chip) => (
         <button
           key={chip.id}
           onClick={() => onChipClick(chip.id)}
@@ -47,15 +35,6 @@ export function ChipBar({ onChipClick, activeFlow, disabled }: ChipBarProps) {
           {chip.label}
         </button>
       ))}
-      <button
-        onClick={() => setExpanded(!expanded)}
-        disabled={disabled}
-        className="shrink-0 rounded-full px-3 py-1.5 text-xs font-mono uppercase tracking-wider font-medium transition active:scale-[0.95] border bg-background border-border text-muted hover:border-border-bright hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed"
-        aria-expanded={expanded}
-        aria-label={expanded ? 'Show fewer actions' : 'Show more actions'}
-      >
-        {expanded ? 'Less' : 'More'}
-      </button>
     </div>
   );
 }
