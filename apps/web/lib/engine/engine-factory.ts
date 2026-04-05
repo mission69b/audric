@@ -361,7 +361,6 @@ export async function createUnauthEngine(history: HistoryMessage[]): Promise<Que
     'health_check',
     'transaction_history',
     'portfolio_analysis',
-    'explain_tx',
   ]);
   const readTools = READ_TOOLS.filter((t) => !EXCLUDED_TOOLS.has(t.name)) as Tool[];
 
