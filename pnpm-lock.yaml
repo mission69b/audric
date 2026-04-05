@@ -52,13 +52,13 @@ importers:
         version: 7.6.0(prisma@7.6.0(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3))(typescript@5.9.3)
       '@suimpp/mpp':
         specifier: ^0.3.1
-        version: 0.3.1(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@4.3.6))
+        version: 0.3.1(@modelcontextprotocol/sdk@1.29.0(zod@4.3.6))(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@4.3.6))
       '@t2000/engine':
-        specifier: ^0.6.4
-        version: 0.6.4(axios@1.14.0)(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@4.3.6))
+        specifier: ^0.6.7
+        version: 0.6.7(axios@1.14.0)(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@4.3.6))
       '@t2000/sdk':
-        specifier: ^0.21.1
-        version: 0.21.1(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(axios@1.14.0)(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@4.3.6))
+        specifier: ^0.21.7
+        version: 0.21.7(@modelcontextprotocol/sdk@1.29.0(zod@4.3.6))(axios@1.14.0)(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@4.3.6))
       '@tanstack/react-query':
         specifier: ^5.95.2
         version: 5.96.1(react@19.2.4)
@@ -79,7 +79,7 @@ importers:
         version: 6.2.2
       mppx:
         specifier: ^0.4.9
-        version: 0.4.12(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@4.3.6))
+        version: 0.4.12(@modelcontextprotocol/sdk@1.29.0(zod@4.3.6))(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@4.3.6))
       next:
         specifier: ^15
         version: 15.5.14(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -1440,14 +1440,11 @@ packages:
   '@swc/helpers@0.5.15':
     resolution: {integrity: sha512-JQ5TuMi45Owi4/BIMAJBoSQoOJu12oOk/gADqlcUL9JEdHB8vyjUSsxqeNXnmXHjYKMi2WcYtezGEEhqUI/E2g==}
 
-  '@t2000/engine@0.6.4':
-    resolution: {integrity: sha512-AxSfFh8LL1/wEc6rM0XpqPTRciKF5/QxqtIm7yBbVZw1G1UrpN7PIe7rhnKKFv04OnvVDSsCCqUIxLRb21Zi4Q==}
+  '@t2000/engine@0.6.7':
+    resolution: {integrity: sha512-TD+EuZXN5tA9sUjqo1sK6JgYq/4EQLsAz8SwSeghpWEUXAZ8abQeO6RYmwo70Sv9gosSjby9oYPzRFyj3SgNsA==}
 
-  '@t2000/sdk@0.21.1':
-    resolution: {integrity: sha512-3KrJ/Ir7q6qR2qdk3gFqB9MeO60udqyfM1H0SkT0dKXAwHtD1hwKM6tubdRcRWPPhNwdb19b5VF+PmM9hS6MLA==}
-
-  '@t2000/sdk@0.21.4':
-    resolution: {integrity: sha512-ncXsgCRvwkN6vYfTiqNQ7TySPhkqOdP2wKanz4dJRoE/w8AYcnmAoZYjl1HZFsMloZeuK/J+jHeRS4O0+j84pw==}
+  '@t2000/sdk@0.21.7':
+    resolution: {integrity: sha512-BQ9sEjgzkqG8f384s36xqRHVujBN2CRB9DEj9s3Zu5wG1hGBIijAVvP7Ec0ecOALJAJjqvzJUSvZhv3ybkRjrQ==}
 
   '@tailwindcss/node@4.2.2':
     resolution: {integrity: sha512-pXS+wJ2gZpVXqFaUEjojq7jzMpTGf8rU6ipJz5ovJV6PUGmlJ+jvIwGrzdHdQ80Sg+wmQxUFuoW1UAAwHNEdFA==}
@@ -4808,6 +4805,28 @@ snapshots:
 
   '@kurkle/color@0.3.4': {}
 
+  '@modelcontextprotocol/sdk@1.29.0(zod@3.25.76)':
+    dependencies:
+      '@hono/node-server': 1.19.12(hono@4.12.9)
+      ajv: 8.18.0
+      ajv-formats: 3.0.1(ajv@8.18.0)
+      content-type: 1.0.5
+      cors: 2.8.6
+      cross-spawn: 7.0.6
+      eventsource: 3.0.7
+      eventsource-parser: 3.0.6
+      express: 5.2.1
+      express-rate-limit: 8.3.2(express@5.2.1)
+      hono: 4.12.9
+      jose: 6.2.2
+      json-schema-typed: 8.0.2
+      pkce-challenge: 5.0.1
+      raw-body: 3.0.2
+      zod: 3.25.76
+      zod-to-json-schema: 3.25.2(zod@3.25.76)
+    transitivePeerDependencies:
+      - supports-color
+
   '@modelcontextprotocol/sdk@1.29.0(zod@4.3.6)':
     dependencies:
       '@hono/node-server': 1.19.12(hono@4.12.9)
@@ -4826,7 +4845,7 @@ snapshots:
       pkce-challenge: 5.0.1
       raw-body: 3.0.2
       zod: 4.3.6
-      zod-to-json-schema: 3.25.2(zod@3.25.76)
+      zod-to-json-schema: 3.25.2(zod@4.3.6)
     transitivePeerDependencies:
       - supports-color
 
@@ -5562,10 +5581,10 @@ snapshots:
 
   '@standard-schema/spec@1.1.0': {}
 
-  '@suimpp/mpp@0.3.1(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@4.3.6))':
+  '@suimpp/mpp@0.3.1(@modelcontextprotocol/sdk@1.29.0(zod@4.3.6))(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@4.3.6))':
     dependencies:
       '@mysten/sui': 2.14.1(typescript@5.9.3)
-      mppx: 0.4.12(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@4.3.6))
+      mppx: 0.4.12(@modelcontextprotocol/sdk@1.29.0(zod@4.3.6))(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@4.3.6))
       zod: 4.3.6
     transitivePeerDependencies:
       - '@cfworker/json-schema'
@@ -5584,11 +5603,11 @@ snapshots:
     dependencies:
       tslib: 2.8.1
 
-  '@t2000/engine@0.6.4(axios@1.14.0)(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@4.3.6))':
+  '@t2000/engine@0.6.7(axios@1.14.0)(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@4.3.6))':
     dependencies:
       '@anthropic-ai/sdk': 0.39.0
-      '@modelcontextprotocol/sdk': 1.29.0(zod@4.3.6)
-      '@t2000/sdk': 0.21.4(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(axios@1.14.0)(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@4.3.6))
+      '@modelcontextprotocol/sdk': 1.29.0(zod@3.25.76)
+      '@t2000/sdk': 0.21.7(@modelcontextprotocol/sdk@1.29.0(zod@4.3.6))(axios@1.14.0)(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@4.3.6))
       zod: 3.25.76
     transitivePeerDependencies:
       - '@cfworker/json-schema'
@@ -5604,40 +5623,16 @@ snapshots:
       - typescript
       - viem
 
-  '@t2000/sdk@0.21.1(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(axios@1.14.0)(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@4.3.6))':
+  '@t2000/sdk@0.21.7(@modelcontextprotocol/sdk@1.29.0(zod@4.3.6))(axios@1.14.0)(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@4.3.6))':
     dependencies:
       '@cetusprotocol/aggregator-sdk': 1.4.8(axios@1.14.0)(typescript@5.9.3)
       '@mysten/sui': 2.14.1(typescript@5.9.3)
       '@mysten/zklogin': 0.8.1(typescript@5.9.3)
       '@naviprotocol/lending': 1.4.0(patch_hash=f5361914099eac610a549dc571b1248d29f6a1f4195ed0179d9a1065b3af2400)(@mysten/sui@2.14.1(typescript@5.9.3))(axios@1.14.0)(typescript@5.9.3)
       '@pythnetwork/pyth-sui-js': 2.4.0(axios@1.14.0)(typescript@5.9.3)
-      '@suimpp/mpp': 0.3.1(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@4.3.6))
+      '@suimpp/mpp': 0.3.1(@modelcontextprotocol/sdk@1.29.0(zod@4.3.6))(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@4.3.6))
       eventemitter3: 5.0.4
-      mppx: 0.4.12(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@4.3.6))
-    transitivePeerDependencies:
-      - '@cfworker/json-schema'
-      - '@gql.tada/svelte-support'
-      - '@gql.tada/vue-support'
-      - '@modelcontextprotocol/sdk'
-      - axios
-      - elysia
-      - express
-      - hono
-      - openapi-types
-      - supports-color
-      - typescript
-      - viem
-
-  '@t2000/sdk@0.21.4(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(axios@1.14.0)(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@4.3.6))':
-    dependencies:
-      '@cetusprotocol/aggregator-sdk': 1.4.8(axios@1.14.0)(typescript@5.9.3)
-      '@mysten/sui': 2.14.1(typescript@5.9.3)
-      '@mysten/zklogin': 0.8.1(typescript@5.9.3)
-      '@naviprotocol/lending': 1.4.0(patch_hash=f5361914099eac610a549dc571b1248d29f6a1f4195ed0179d9a1065b3af2400)(@mysten/sui@2.14.1(typescript@5.9.3))(axios@1.14.0)(typescript@5.9.3)
-      '@pythnetwork/pyth-sui-js': 2.4.0(axios@1.14.0)(typescript@5.9.3)
-      '@suimpp/mpp': 0.3.1(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@4.3.6))
-      eventemitter3: 5.0.4
-      mppx: 0.4.12(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@4.3.6))
+      mppx: 0.4.12(@modelcontextprotocol/sdk@1.29.0(zod@4.3.6))(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@4.3.6))
     transitivePeerDependencies:
       - '@cfworker/json-schema'
       - '@gql.tada/svelte-support'
@@ -7582,7 +7577,7 @@ snapshots:
 
   modern-ahocorasick@1.1.0: {}
 
-  mppx@0.4.12(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@4.3.6)):
+  mppx@0.4.12(@modelcontextprotocol/sdk@1.29.0(zod@4.3.6))(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@4.3.6)):
     dependencies:
       '@remix-run/fetch-proxy': 0.7.1
       '@remix-run/node-fetch-server': 0.13.0
@@ -8779,6 +8774,10 @@ snapshots:
   zod-to-json-schema@3.25.2(zod@3.25.76):
     dependencies:
       zod: 3.25.76
+
+  zod-to-json-schema@3.25.2(zod@4.3.6):
+    dependencies:
+      zod: 4.3.6
 
   zod@3.25.76: {}
 
