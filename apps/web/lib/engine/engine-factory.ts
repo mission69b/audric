@@ -130,7 +130,7 @@ interface Contact {
   address: string;
 }
 
-function buildSystemPrompt(walletAddress: string, tools: Tool[], balances?: WalletBalanceSummary, contacts?: Contact[]): string {
+function buildSystemPrompt(walletAddress: string, tools: Tool[], balances?: WalletBalanceSummary, contacts?: Contact[], swapTokenNames?: string[]): string {
   const writeTools = tools.filter((t) => !t.isReadOnly);
   const writeToolList = writeTools.map((t) => `- ${t.name}`).join('\n');
 
@@ -211,7 +211,7 @@ After swap completes, the result includes a "received" field with the exact on-c
 - NEVER estimate, guess, or reuse numbers from previous messages.
 
 - **ANY token on Sui can be swapped** — not just the common ones listed above.
-  - Supported tokens (swap_execute resolves these automatically): SUI, USDC, USDT, USDSUI, USDe, USDY, CETUS, DEEP, NAVX, vSUI, WAL, ETH, NS, HAEDAL, IKA, MANIFEST
+  - Supported tokens (swap_execute resolves these by name — NO search needed): ${swapTokenNames?.join(', ') ?? 'SUI, USDC, USDT'}
   - For tokens NOT in this list, use navi_navi_search_tokens to find the coin type FIRST, then pass it to swap_execute. Do NOT call swap_execute until you have the coin type.
   - NEVER call both navi_navi_search_tokens and swap_execute in the same turn. Search first → get result → then swap.
   - For tokens in the supported list above, call swap_execute DIRECTLY. No search needed.
@@ -271,13 +271,14 @@ export async function createEngine(
     throw new Error('ANTHROPIC_API_KEY not configured');
   }
 
-  const [mgr, positions, walletCoins] = await Promise.all([
+  const [mgr, positions, walletCoins, swapTokenNames] = await Promise.all([
     ensureMcpConnected(),
     fetchServerPositions(address),
     fetchWalletCoins(address, SUI_RPC_URL).catch((err) => {
       console.warn('[engine] wallet coin fetch failed:', err);
       return [];
     }),
+    import('@t2000/sdk').then((m) => Object.keys(m.TOKEN_MAP)).catch(() => [] as string[]),
   ]);
 
   const nonZeroCoins = walletCoins.filter((c) => Number(c.totalBalance) > 0);
@@ -328,7 +329,7 @@ export async function createEngine(
       pendingRewards: 0, supplies: [], borrows_detail: [],
     }),
     tools: allTools,
-    systemPrompt: buildSystemPrompt(address, allTools, balanceSummary, contacts),
+    systemPrompt: buildSystemPrompt(address, allTools, balanceSummary, contacts, swapTokenNames),
     model: MODEL,
     maxTurns: 10,
     maxTokens: 2048,
