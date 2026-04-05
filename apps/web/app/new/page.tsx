@@ -751,9 +751,11 @@ function DashboardContent() {
           return { success: true, data: { success: true, tx: res.tx, amount: inp.amount, asset: inp.asset } };
         }
         case 'send_transfer': {
-          const res = await sdk.send({ to: String(inp.to), amount: Number(inp.amount), asset: inp.asset as string | undefined });
+          const rawTo = String(inp.to);
+          const resolvedTo = contactsHook.resolveContact(rawTo) ?? rawTo;
+          const res = await sdk.send({ to: resolvedTo, amount: Number(inp.amount), asset: inp.asset as string | undefined });
           balanceQuery.refetch();
-          return { success: true, data: { success: true, tx: res.tx, amount: inp.amount, to: inp.to } };
+          return { success: true, data: { success: true, tx: res.tx, amount: inp.amount, to: rawTo } };
         }
         case 'borrow': {
           const res = await sdk.borrow({ amount: Number(inp.amount), protocol: inp.protocol as string | undefined });
