@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { useSuiClient } from '@mysten/dapp-kit';
-import { getDecimalsForCoinType, resolveSymbol, COIN_REGISTRY, USDC_TYPE } from '@t2000/sdk/browser';
+import { getDecimalsForCoinType, resolveSymbol, COIN_REGISTRY, USDC_TYPE } from '@/lib/token-registry';
 
 const MIST_PER_SUI = 1_000_000_000;
 const USDC_DECIMALS = 6;
@@ -103,7 +103,7 @@ export function useBalance(address: string | null) {
       const prices = (pricesResp.prices ?? pricesResp) as Record<string, number>;
       const remoteDecs = (pricesResp.decimals ?? {}) as Record<string, number>;
 
-      const knownTypes = new Set(Object.values(COIN_REGISTRY).map((m: { type: string }) => m.type));
+      const knownTypes = new Set(Object.values(COIN_REGISTRY).map((m) => m.type));
       const unknownCoinTypes = heldCoinTypes.filter(
         (ct) => !knownTypes.has(ct) && ct !== '0x2::sui::SUI' && ct !== USDC_TYPE && !(ct in remoteDecs),
       );

@@ -25,7 +25,7 @@ import { SUI_NETWORK } from '@/lib/constants';
 import { useContacts } from '@/hooks/useContacts';
 import { useAgent } from '@/hooks/useAgent';
 import { useUsdcSponsor } from '@/hooks/useUsdcSponsor';
-import { getDecimalsForCoinType, resolveSymbol } from '@t2000/sdk/browser';
+import { getDecimalsForCoinType, resolveSymbol } from '@/lib/token-registry';
 
 const LS_LAST_SAVINGS = 't2000_last_savings';
 const LS_LAST_OPEN = 't2000_last_open_date';
