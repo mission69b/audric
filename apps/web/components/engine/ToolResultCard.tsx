@@ -355,12 +355,21 @@ function ExplainTxCard({ data }: { data: TxExplanation }) {
         )}
       </div>
       {data.effects.length > 0 && (
-        <div className="mt-2 pt-2 border-t border-border/50 space-y-0.5 text-[11px]">
-          {data.effects.filter((e) => e.type !== 'event').map((e, i) => (
-            <div key={i} className={`font-mono ${e.type === 'send' ? 'text-amber-400' : 'text-emerald-400'}`}>
-              {e.type === 'send' ? '↑' : '↓'} {e.description}
-            </div>
-          ))}
+        <div className="mt-2 pt-2 border-t border-border/50 space-y-1 text-[11px]">
+          {data.effects.filter((e) => e.type !== 'event').map((e, i) => {
+            const match = e.description.match(/^(0x\S+)\s+(?:sent|received)\s+(.+)$/);
+            const amount = match ? match[2] : e.description;
+            const addr = match ? match[1] : null;
+            const prefix = e.type === 'send' ? '↑ −' : '↓ +';
+            return (
+              <div key={i} className="flex justify-between items-baseline font-mono">
+                <span className={e.type === 'send' ? 'text-amber-400' : 'text-emerald-400'}>
+                  {prefix}{amount}
+                </span>
+                {addr && <span className="text-dim text-[10px]">{addr}</span>}
+              </div>
+            );
+          })}
         </div>
       )}
       <div className="pt-1.5 mt-1.5 border-t border-border/50 flex justify-between items-center font-mono text-[11px]">
