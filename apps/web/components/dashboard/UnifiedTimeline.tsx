@@ -38,6 +38,8 @@ interface UnifiedTimelineProps {
   onSaveContact?: (name: string, address: string) => void;
   onConfirmResolve?: (approved: boolean) => void;
   onExecuteAction?: ExecuteActionFn;
+  /** Pre-flight balance check. Returns error string if insufficient, null if OK. */
+  onValidateAction?: (toolName: string, input: unknown) => string | null;
 }
 
 function ConnectingSkeleton() {
@@ -56,6 +58,7 @@ export function UnifiedTimeline({
   onSaveContact,
   onConfirmResolve,
   onExecuteAction,
+  onValidateAction,
 }: UnifiedTimelineProps) {
   const endRef = useRef<HTMLDivElement>(null);
   const lastCount = useRef(0);
@@ -104,6 +107,15 @@ export function UnifiedTimeline({
         return;
       }
 
+      // Pre-flight balance validation — reject before executing
+      if (onValidateAction) {
+        const validationError = onValidateAction(action.toolName, action.input);
+        if (validationError) {
+          engine.resolveAction(action, true, { success: false, error: validationError });
+          return;
+        }
+      }
+
       try {
         const result = await onExecuteAction(action.toolName, action.input);
         engine.resolveAction(action, true, result.data);
@@ -113,7 +125,7 @@ export function UnifiedTimeline({
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [engine.resolveAction, onExecuteAction],
+    [engine.resolveAction, onExecuteAction, onValidateAction],
   );
 
   useEffect(() => {

@@ -677,6 +677,29 @@ function DashboardContent() {
     navigator.clipboard.writeText(text);
   }, []);
 
+  const validateAction = useCallback(
+    (toolName: string, input: unknown): string | null => {
+      if (!['send_transfer', 'save_deposit', 'swap_execute'].includes(toolName)) return null;
+      const inp = (input ?? {}) as Record<string, unknown>;
+      const reqAmount = Number(inp.amount ?? 0);
+      if (reqAmount <= 0) return null;
+      const assetKey = (toolName === 'swap_execute'
+        ? (inp.from ?? inp.fromAsset ?? 'USDC')
+        : (inp.asset ?? 'USDC')) as string;
+      const sym = assetKey.toUpperCase();
+      const bd = balanceQuery.data;
+      let available = 0;
+      if (sym === 'USDC') available = bd?.usdc ?? 0;
+      else if (sym === 'SUI') available = bd?.sui ?? 0;
+      else available = bd?.assetBalances?.[sym] ?? bd?.assetBalances?.[assetKey] ?? 0;
+      if (reqAmount > available + 0.01) {
+        return `Insufficient ${assetKey}: you have ${available.toFixed(2)} but requested ${reqAmount}`;
+      }
+      return null;
+    },
+    [balanceQuery.data],
+  );
+
   const handleExecuteAction = useCallback(
     async (toolName: string, input: unknown): Promise<{ success: boolean; data: unknown }> => {
       if (!agent) throw new Error('Not authenticated');
@@ -1150,6 +1173,7 @@ function DashboardContent() {
             onCopy={handleCopy}
             onSaveContact={handleSaveContact}
             onExecuteAction={handleExecuteAction}
+            onValidateAction={validateAction}
             onConfirmResolve={(approved) => {
               const resolver = confirmResolverRef.current;
               if (resolver) {
