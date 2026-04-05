@@ -135,8 +135,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid recipient address' }, { status: 400 });
   }
 
-  // Server-side balance validation for write operations
+  // Server-side balance validation for write operations (after basic param checks)
   if (!skipAmountCheck && amount > 0) {
+    if (type === 'send' && (!recipient || !recipient.startsWith('0x'))) {
+      return NextResponse.json({ error: 'Invalid or missing recipient address' }, { status: 400 });
+    }
     const balanceError = await validateBalance(type, address, amount, body);
     if (balanceError) {
       return NextResponse.json({ error: balanceError }, { status: 400 });
