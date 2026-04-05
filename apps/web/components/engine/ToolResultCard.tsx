@@ -301,6 +301,27 @@ function PortfolioCard({ data }: { data: PortfolioData }) {
   );
 }
 
+const SUISCAN_TX_URL = 'https://suiscan.xyz/mainnet/tx';
+
+const SUISCAN_ICON = (
+  <svg width="10" height="10" viewBox="0 0 12 12" fill="none" className="inline-block">
+    <path d="M3.5 1.5H10.5V8.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M10.5 1.5L1.5 10.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+function fmtRelativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60_000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
+
 interface TxExplanation {
   digest: string;
   sender: string;
@@ -312,13 +333,15 @@ interface TxExplanation {
 }
 
 function ExplainTxCard({ data }: { data: TxExplanation }) {
+  const txUrl = `${SUISCAN_TX_URL}/${data.digest}`;
+  const shortDigest = `${data.digest.slice(0, 8)}...${data.digest.slice(-6)}`;
+
   return (
     <CardShell title="Transaction">
+      {data.summary && (
+        <p className="text-foreground text-[11px] font-medium mb-2">{data.summary}</p>
+      )}
       <div className="space-y-1 font-mono text-[11px]">
-        <div className="flex justify-between">
-          <span className="text-dim">Digest</span>
-          <span className="text-foreground">{data.digest.slice(0, 12)}...{data.digest.slice(-6)}</span>
-        </div>
         <div className="flex justify-between">
           <span className="text-dim">Status</span>
           <span className={data.status === 'success' ? 'text-emerald-400' : 'text-amber-400'}>{data.status}</span>
@@ -330,24 +353,34 @@ function ExplainTxCard({ data }: { data: TxExplanation }) {
         {data.timestamp && (
           <div className="flex justify-between">
             <span className="text-dim">Time</span>
-            <span className="text-foreground">{new Date(data.timestamp).toLocaleString()}</span>
+            <span className="text-foreground">{fmtRelativeTime(data.timestamp)}</span>
           </div>
         )}
       </div>
       {data.effects.length > 0 && (
         <div className="mt-2 pt-2 border-t border-border/50 space-y-0.5 text-[11px]">
           {data.effects.filter((e) => e.type !== 'event').map((e, i) => (
-            <div key={i} className="text-foreground font-mono">
+            <div key={i} className={`font-mono ${e.type === 'send' ? 'text-amber-400' : 'text-emerald-400'}`}>
               {e.type === 'send' ? '↑' : '↓'} {e.description}
             </div>
           ))}
         </div>
       )}
+      <div className="pt-1.5 mt-1.5 border-t border-border/50 flex justify-between items-center font-mono text-[11px]">
+        <span className="text-dim">{shortDigest}</span>
+        <a
+          href={txUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-info hover:opacity-70 transition text-[10px] flex items-center gap-1"
+        >
+          View on Suiscan
+          {SUISCAN_ICON}
+        </a>
+      </div>
     </CardShell>
   );
 }
-
-const SUISCAN_TX_URL = 'https://suiscan.xyz/mainnet/tx';
 
 interface TxReceiptData {
   tx: string;
@@ -514,10 +547,7 @@ function TransactionReceiptCard({ data, toolName }: { data: TxReceiptData; toolN
             className="text-info hover:opacity-70 transition text-[10px] flex items-center gap-1"
           >
             View on Suiscan
-            <svg width="10" height="10" viewBox="0 0 12 12" fill="none" className="inline-block">
-              <path d="M3.5 1.5H10.5V8.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M10.5 1.5L1.5 10.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+            {SUISCAN_ICON}
           </a>
         </div>
       </div>
