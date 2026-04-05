@@ -677,62 +677,6 @@ function DashboardContent() {
     navigator.clipboard.writeText(text);
   }, []);
 
-  const extractReceivedAmount = useCallback((
-    balanceChanges: Array<{ coinType: string; amount: string; owner?: unknown }> | undefined,
-    toToken: string,
-    userAddress?: string,
-  ): string | null => {
-    if (!balanceChanges?.length) return null;
-
-    const KNOWN_TOKENS: Record<string, { type: string; decimals: number }> = {
-      SUI:   { type: '0x2::sui::SUI', decimals: 9 },
-      USDC:  { type: '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC', decimals: 6 },
-      USDT:  { type: '0x375f70cf2ae4c00bf37117d0c85a2c71545e6ee05c4a5c7d282cd66a4504b068::usdt::USDT', decimals: 6 },
-      CETUS: { type: '0x06864a6f921804860930db6ddbe2e16acdf8504495ea7481637a1c8b9a8fe54b::cetus::CETUS', decimals: 9 },
-      DEEP:  { type: '0xdeeb7a4662eec9f2f3def03fb937a663dddaa2e215b8078a284d026b7946c270::deep::DEEP', decimals: 6 },
-      NAVX:  { type: '0xa99b8952d4f7d947ea77fe0ecdcc9e5fc0bcab2841d6e2a5aa00c3044e5544b5::navx::NAVX', decimals: 9 },
-      vSUI:  { type: '0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT', decimals: 9 },
-      WAL:   { type: '0x356a26eb9e012a68958082340d4c4116e7f55615cf27affcff209cf0ae544f59::wal::WAL', decimals: 9 },
-      ETH:   { type: '0xd0e89b2af5e4910726fbcd8b8dd37bb79b29e5f83f7491bca830e94f7f226d29::eth::ETH', decimals: 8 },
-    };
-
-    const norm = (addr: string) => addr.toLowerCase().replace(/^0x0*/, '0x');
-
-    const isUserOwned = (bc: { owner?: unknown }): boolean => {
-      if (!userAddress) return true;
-      const o = bc.owner as Record<string, string> | null | undefined;
-      if (!o || typeof o !== 'object') return false;
-      const addr = o.AddressOwner ?? o.ObjectOwner;
-      if (!addr) return false;
-      return norm(addr) === norm(userAddress);
-    };
-
-    const findBest = (type: string, decimals: number): string | null => {
-      const positives = balanceChanges!
-        .filter((bc) => bc.coinType === type && Number(bc.amount) > 0);
-
-      if (positives.length === 0) return null;
-
-      const userMatch = positives.find(isUserOwned);
-      const best = userMatch ?? positives.reduce((a, b) =>
-        Number(a.amount) > Number(b.amount) ? a : b,
-      );
-
-      const precision = decimals >= 8 ? 4 : 2;
-      return (Number(best.amount) / 10 ** decimals).toFixed(precision);
-    };
-
-    const entry = KNOWN_TOKENS[toToken.toUpperCase()];
-    const targetType = entry?.type ?? toToken;
-    const knownDecimals = entry?.decimals;
-
-    if (knownDecimals != null) return findBest(targetType, knownDecimals);
-
-    if (targetType.includes('::')) return findBest(targetType, 9);
-
-    return null;
-  }, []);
-
   const handleExecuteAction = useCallback(
     async (toolName: string, input: unknown): Promise<{ success: boolean; data: unknown }> => {
       if (!agent) throw new Error('Not authenticated');
@@ -783,8 +727,17 @@ function DashboardContent() {
             });
             balanceQuery.refetch();
             setTimeout(() => balanceQuery.refetch(), 3000);
-            const received = extractReceivedAmount(res.balanceChanges, String(inp.to), agent.address);
-            return { success: true, data: { success: true, tx: res.tx, from: inp.from, to: inp.to, amount: inp.amount, received: received ?? 'unknown' } };
+            return {
+              success: true,
+              data: {
+                success: true,
+                tx: res.tx,
+                from: res.fromToken,
+                to: res.toToken,
+                amount: res.fromAmount,
+                received: res.toAmount,
+              },
+            };
           } catch (swapErr) {
             const msg = swapErr instanceof Error ? swapErr.message : String(swapErr);
             console.error('[swap_execute] failed:', msg);
