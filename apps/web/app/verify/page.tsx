@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { AudricMark } from '@/components/ui/AudricMark';
@@ -8,6 +8,21 @@ import { AudricMark } from '@/components/ui/AudricMark';
 type VerifyState = 'loading' | 'success' | 'already' | 'expired' | 'error';
 
 export default function VerifyEmailPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="flex flex-1 flex-col items-center justify-center px-6 text-center">
+          <AudricMark size={32} animate className="mx-auto" />
+          <p className="mt-4 text-sm text-muted animate-pulse">Verifying your email...</p>
+        </main>
+      }
+    >
+      <VerifyContent />
+    </Suspense>
+  );
+}
+
+function VerifyContent() {
   const params = useSearchParams();
   const token = params.get('token');
   const [state, setState] = useState<VerifyState>('loading');

@@ -33,7 +33,7 @@ export function EmailCaptureModal({ open, onClose, address, jwt }: EmailCaptureM
 
     pollRef.current = setInterval(async () => {
       try {
-        const res = await fetch(`/api/user/email-status?address=${address}`, {
+        const res = await fetch(`/api/user/email?address=${address}`, {
           headers: { 'x-zklogin-jwt': jwt },
         });
         if (res.ok) {

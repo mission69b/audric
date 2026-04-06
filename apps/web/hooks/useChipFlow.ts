@@ -132,12 +132,12 @@ function fmtAmount(n: number): string {
 function getFlowMessage(flow: string, ctx?: FlowContext): string {
   switch (flow) {
     case 'save': {
-      const rate = ctx?.bestRate && ctx.bestRate > 0.5
+      const rate = ctx?.bestRate && ctx.bestRate > 0.005
         ? ctx.bestRate
-        : ctx?.savingsRate && ctx.savingsRate > 0.5
+        : ctx?.savingsRate && ctx.savingsRate > 0.005
           ? ctx.savingsRate
           : null;
-      const rateStr = rate ? ` ${rate.toFixed(1)}%` : '';
+      const rateStr = rate ? ` ${(rate * 100).toFixed(1)}%` : '';
       const avail = ctx?.cash ? ` You have ${fmtAmount(ctx.cash)} available.` : '';
       return `Save to earn${rateStr}.${avail}\nChoose an amount:`;
     }

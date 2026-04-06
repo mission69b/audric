@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect } from 'react';
+
 export default function GlobalError({
   error,
   reset,
@@ -7,6 +9,10 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  useEffect(() => {
+    console.error('[global error boundary]', error);
+  }, [error]);
+
   return (
     <html lang="en">
       <body className="min-h-screen flex flex-col bg-white text-black font-sans">
@@ -23,6 +29,7 @@ export default function GlobalError({
               >
                 Try again
               </button>
+              {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- global error boundary has no router context */}
               <a
                 href="/"
                 className="rounded-lg border border-gray-200 px-6 py-3 font-semibold text-black transition hover:bg-gray-50"

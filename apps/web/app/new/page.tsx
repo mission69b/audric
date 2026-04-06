@@ -279,7 +279,7 @@ function DashboardContent() {
         reportLines.push(`Health Factor: ${balance.healthFactor.toFixed(1)}`);
       }
     }
-    if (balance.savingsRate > 0) reportLines.push(`Savings APY: ${balance.savingsRate.toFixed(1)}%`);
+    if (balance.savingsRate > 0) reportLines.push(`Savings APY: ${(balance.savingsRate * 100).toFixed(1)}%`);
     const assetLines: string[] = [];
     const bd = balanceQuery.data;
     if (bd) {
@@ -539,7 +539,7 @@ function DashboardContent() {
             rStats.push(`<<stat label="Debt" value="$0.00" status="safe">>`);
           }
           if (balance.savingsRate > 0) {
-            rStats.push(`<<stat label="Yield" value="${balance.savingsRate.toFixed(1)}% APY" status="safe">>`);
+            rStats.push(`<<stat label="Yield" value="${(balance.savingsRate * 100).toFixed(1)}% APY" status="safe">>`);
           }
           if (balance.healthFactor && balance.healthFactor !== Infinity && balance.borrows > 0) {
             rStats.push(`<<stat label="Health" value="${balance.healthFactor.toFixed(0)}" status="${balance.healthFactor > 2 ? 'safe' : 'danger'}">>`)
@@ -560,15 +560,15 @@ function DashboardContent() {
         case 'rates': {
           const rtStats: string[] = [];
           if (balance.savingsRate > 0) {
-            rtStats.push(`<<stat label="Your Rate" value="${balance.savingsRate.toFixed(1)}% APY" status="safe">>`);
+            rtStats.push(`<<stat label="Your Rate" value="${(balance.savingsRate * 100).toFixed(1)}% APY" status="safe">>`);
           }
           if (balance.bestSaveRate) {
-            const isBetter = balance.bestSaveRate.rate > balance.savingsRate + 0.3;
-            rtStats.push(`<<stat label="Best Available" value="${balance.bestSaveRate.rate.toFixed(1)}% APY" status="${isBetter ? 'safe' : 'neutral'}">>`)
+            const isBetter = balance.bestSaveRate.rate > balance.savingsRate + 0.003;
+            rtStats.push(`<<stat label="Best Available" value="${(balance.bestSaveRate.rate * 100).toFixed(1)}% APY" status="${isBetter ? 'safe' : 'neutral'}">>`)
             rtStats.push(`<<stat label="Protocol" value="${balance.bestSaveRate.protocol}" status="neutral">>`)
           }
           if (balance.savings > 0 && balance.savingsRate > 0) {
-            const monthly = (balance.savings * (balance.savingsRate / 100)) / 12;
+            const monthly = (balance.savings * balance.savingsRate) / 12;
             rtStats.push(`<<stat label="Monthly Earnings" value="~$${monthly.toFixed(2)}" status="neutral">>`);
           }
           if (rtStats.length === 0) {

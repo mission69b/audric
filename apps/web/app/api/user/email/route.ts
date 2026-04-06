@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * GET /api/user/email-status?address=0x...
+ * GET /api/user/email?address=0x...
  * Returns { email, emailVerified } for polling during verification.
  */
 export async function GET(request: NextRequest) {

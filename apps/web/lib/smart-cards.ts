@@ -94,13 +94,13 @@ export function deriveSmartCards(state: AccountState): SmartCardData[] {
   }
 
   if (state.cash > 5) {
-    const rate = state.bestRate ?? (state.savingsRate > 0.5 ? state.savingsRate : 0);
+    const rate = state.bestRate ?? (state.savingsRate > 0.005 ? state.savingsRate : 0);
     if (rate > 0) {
-      const monthlyEarnings = (state.cash * (rate / 100)) / 12;
+      const monthlyEarnings = (state.cash * rate) / 12;
       cards.push({
         type: 'idle-funds',
         icon: '💰',
-        title: `$${Math.floor(state.cash)} idle — could earn $${monthlyEarnings.toFixed(2)}/mo at ${rate.toFixed(1)}%`,
+        title: `$${Math.floor(state.cash)} idle — could earn $${monthlyEarnings.toFixed(2)}/mo at ${(rate * 100).toFixed(1)}%`,
         body: '',
         actions: [{ label: 'Move to savings', variant: 'primary', chipFlow: 'save-all' }],
       });
@@ -148,7 +148,7 @@ export function deriveSmartCards(state: AccountState): SmartCardData[] {
     } else {
       const parts: string[] = [];
       const earnRate = state.currentRate ?? state.bestRate ?? state.savingsRate;
-      if (earnRate > 0.5 && state.savings > 0) parts.push(`Earning ${earnRate.toFixed(1)}% on $${Math.floor(state.savings)}`);
+      if (earnRate > 0.005 && state.savings > 0) parts.push(`Earning ${(earnRate * 100).toFixed(1)}% on $${Math.floor(state.savings)}`);
       cards.push({
         type: 'all-good',
         icon: '✅',

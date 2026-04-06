@@ -184,11 +184,28 @@ export async function POST(request: NextRequest) {
 interface MessageLike {
   role: string;
   content?: unknown;
-  tool_use?: unknown;
 }
 
 const COST_PER_INPUT_TOKEN = 3 / 1_000_000;
 const COST_PER_OUTPUT_TOKEN = 15 / 1_000_000;
+
+function extractToolCalls(content: unknown): Record<string, unknown>[] | undefined {
+  if (!Array.isArray(content)) return undefined;
+  const calls = content.filter(
+    (b: unknown): b is Record<string, unknown> =>
+      typeof b === 'object' && b !== null && (b as Record<string, unknown>).type === 'tool_use',
+  );
+  return calls.length > 0 ? calls : undefined;
+}
+
+function extractText(content: unknown): string {
+  if (typeof content === 'string') return content;
+  if (!Array.isArray(content)) return JSON.stringify(content ?? '');
+  const texts = content
+    .filter((b: unknown) => typeof b === 'object' && b !== null && (b as Record<string, unknown>).type === 'text')
+    .map((b: unknown) => (b as Record<string, unknown>).text ?? '');
+  return texts.join('\n') || JSON.stringify(content);
+}
 
 async function logConversationTurn(
   address: string,
@@ -208,15 +225,18 @@ async function logConversationTurn(
   const outputTokens = usage.outputTokens ?? 0;
   const costUsd = inputTokens * COST_PER_INPUT_TOKEN + outputTokens * COST_PER_OUTPUT_TOKEN;
 
-  const rows = lastTwo.map((m) => ({
-    userId: user.id,
-    sessionId,
-    role: m.role,
-    content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content ?? ''),
-    toolCalls: m.tool_use ? m.tool_use : undefined,
-    tokensUsed: m.role === 'assistant' ? outputTokens : inputTokens,
-    costUsd: m.role === 'assistant' ? costUsd : 0,
-  }));
+  const rows = lastTwo.map((m) => {
+    const tc = extractToolCalls(m.content);
+    return {
+      userId: user.id,
+      sessionId,
+      role: m.role,
+      content: extractText(m.content),
+      toolCalls: tc ? (JSON.parse(JSON.stringify(tc)) as object) : undefined,
+      tokensUsed: m.role === 'assistant' ? outputTokens : inputTokens,
+      costUsd: m.role === 'assistant' ? costUsd : 0,
+    };
+  });
 
   await prisma.conversationLog.createMany({ data: rows });
 }

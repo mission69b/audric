@@ -301,8 +301,11 @@ async function buildTransaction(params: BuildRequest): Promise<Transaction> {
     }
 
     case 'borrow': {
+      if (asset && asset !== 'USDC') {
+        throw new Error('Only USDC borrows are supported.');
+      }
       const adapter = getLendingAdapter(params.protocol);
-      const result = await adapter.buildBorrowTx(address, amount, asset ?? 'USDC', { sponsored: true });
+      const result = await adapter.buildBorrowTx(address, amount, 'USDC', { sponsored: true });
       return result.tx;
     }
 
