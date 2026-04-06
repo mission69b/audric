@@ -1,0 +1,32 @@
+---
+description: Save operations are USDC-only — every save path must use balance.usdc, not balance.cash
+alwaysApply: true
+---
+
+# Saves = USDC Only
+
+`balance.cash` is total liquid value (USDC + SUI + GOLD + everything in USD). Saving only accepts USDC. Every save-related code path must use `balance.usdc`.
+
+## Where to use `balance.usdc` (save-specific)
+
+- `FlowContext.usdc` → passed to `getFlowMessage('save')`
+- `capForFlow('save')` → returns `bal.usdc`
+- Save "All" label → `fmtDollar(balance.usdc)`
+- `save-all` chip click → `chipFlow.selectAmount(balance.usdc)`
+- Rates chip gate → `balance.usdc > 5`
+- Contextual chips idle/what-if → `state.usdc ?? state.cash`
+- Smart cards idle-funds → `state.usdc ?? state.cash`
+
+## Where `balance.cash` is correct (NOT save-specific)
+
+- Display labels: "Cash: $X", "Available: $X" (total liquid balance)
+- Send flow (send supports any asset)
+- General onboarding checks: `state.cash === 0 && state.savings === 0`
+- Seasonal gift/spend chips (buying, not saving)
+
+## Engine side (`@t2000/engine`)
+
+- `balance_check` returns `saveableUsdc` field — only USDC can be saved
+- `displayText` labels "Wallet holdings (NOT savings)" vs "NAVI savings deposits"
+- System prompt has "Savings = USDC only (critical)" section
+- LLM must never say non-USDC tokens are "in savings" or "earning APY in savings"

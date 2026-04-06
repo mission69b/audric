@@ -1,0 +1,49 @@
+---
+description: Financial amount safety — floor display amounts, never round up, unified lookups
+alwaysApply: true
+---
+
+# Financial Amount Safety
+
+## Always floor, never round
+
+Display amounts must be **<=** on-chain amounts. `Math.round` can round UP, causing "Insufficient balance" when user clicks "All".
+
+```typescript
+// ❌ BAD — rounds 1.1286 to 1.13, user tries to spend 1.13 but only has 1.1286
+const sui = Math.round(raw / 1e9 * 100) / 100;
+
+// ✅ GOOD — floors to 1.12, always safe
+const sui = Math.floor(raw / 1e9 * 10000) / 10000;
+```
+
+For ALL assets in `useBalance.ts`, floor to the token's on-chain decimal precision (capped at 8dp).
+
+## Dynamic precision for small amounts
+
+Preset calculations must scale with amount magnitude. `Math.floor(0.000434 * 0.25 * 100) / 100` = 0 (useless).
+
+```typescript
+// ❌ BAD — hardcoded 2dp, zeros out tiny amounts
+const q25 = Math.floor(held * 0.25 * 100) / 100;
+
+// ✅ GOOD — dynamic precision based on magnitude
+const dp = held >= 1 ? 100 : held >= 0.01 ? 10000 : 100000000;
+const q25 = Math.floor(held * 0.25 * dp) / dp;
+```
+
+## Unified balance lookups — no per-asset special casing
+
+Use `heldAmount(symbol)` and `heldUsd(symbol)` from `page.tsx`. Never duplicate `if SUI... else if USDC... else...` logic across multiple functions.
+
+```typescript
+// ❌ BAD — duplicated in 4 places, each slightly different
+if (sym === 'USDC') held = balance.usdc;
+else if (sym === 'SUI') held = balance.sui;
+else held = balance.assetBalances[from];
+
+// ✅ GOOD — single utility, used everywhere
+const held = heldAmount(symbol);
+```
+
+When adding new swap/balance features, use `heldAmount()` and `heldUsd()` — never add per-asset branches.
