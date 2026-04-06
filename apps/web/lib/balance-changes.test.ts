@@ -66,6 +66,24 @@ describe('parseActualAmount', () => {
     const result = parseActualAmount(changes, 'USDC', 'positive');
     expect(result).toBe(50000);
   });
+
+  it('picks the largest match when multiple entries exist (overlay fee vs user amount)', () => {
+    const changes: BalanceChange[] = [
+      { coinType: USDT_TYPE, amount: '1000' },    // 0.001 USDT — overlay fee to treasury
+      { coinType: USDT_TYPE, amount: '999000' },   // 0.999 USDT — actual received by user
+    ];
+    const result = parseActualAmount(changes, 'USDT', 'positive');
+    expect(result).toBe(0.999);
+  });
+
+  it('picks the largest negative match for sold amounts', () => {
+    const changes: BalanceChange[] = [
+      { coinType: USDC_TYPE, amount: '-1000' },     // small deduction
+      { coinType: USDC_TYPE, amount: '-1000000' },   // 1 USDC sold
+    ];
+    const result = parseActualAmount(changes, 'USDC', 'negative');
+    expect(result).toBe(1);
+  });
 });
 
 describe('buildSwapDisplayData', () => {

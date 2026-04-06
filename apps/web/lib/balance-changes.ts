@@ -17,14 +17,19 @@ export function parseActualAmount(
 ): number | null {
   if (!changes?.length) return null;
   const hint = (assetHint ?? 'USDC').toUpperCase();
-  const match = changes.find((c) => {
+  const matches = changes.filter((c) => {
     const sym = c.coinType.split('::').pop()?.toUpperCase() ?? '';
     const amtOk = direction === 'positive' ? Number(c.amount) > 0 : Number(c.amount) < 0;
     return amtOk && (sym === hint || sym.includes(hint));
   });
-  if (!match) return null;
-  const dec = getDecimalsForCoinType(match.coinType);
-  return Math.abs(Number(BigInt(match.amount))) / 10 ** dec;
+  if (!matches.length) return null;
+  // Pick the largest absolute amount — avoids selecting overlay fee entries
+  // (e.g. 0.1% fee to treasury) instead of the actual user amount.
+  const best = matches.reduce((a, b) =>
+    Math.abs(Number(a.amount)) >= Math.abs(Number(b.amount)) ? a : b,
+  );
+  const dec = getDecimalsForCoinType(best.coinType);
+  return Math.abs(Number(BigInt(best.amount))) / 10 ** dec;
 }
 
 /**
