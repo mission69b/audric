@@ -786,29 +786,19 @@ function DashboardContent() {
             });
             balanceQuery.refetch();
             setTimeout(() => balanceQuery.refetch(), 3000);
-            const toName = resolveSymbol(String(inp.to));
-            let received: number | string = 'unknown';
-            if (res.balanceChanges?.length) {
-              const toSuffix = String(inp.to).split('::').slice(-2).join('::');
-              const match = res.balanceChanges.find((c: { coinType: string; amount: string; owner?: unknown }) => {
-                if (Number(c.amount) <= 0) return false;
-                if (c.coinType === String(inp.to)) return true;
-                return c.coinType.endsWith(toSuffix);
-              });
-              if (match) {
-                const dec = getDecimalsForCoinType(match.coinType);
-                received = Number(BigInt(match.amount)) / 10 ** dec;
-              }
-            }
             return {
               success: true,
               data: {
                 success: true,
                 tx: res.tx,
+                fromToken: res.fromToken,
+                toToken: res.toToken,
+                fromAmount: res.fromAmount,
+                toAmount: res.toAmount,
                 from: resolveSymbol(String(inp.from)),
-                to: toName,
+                to: resolveSymbol(String(inp.to)),
                 amount: inp.amount,
-                received,
+                received: res.toAmount,
               },
             };
           } catch (swapErr) {
@@ -1059,6 +1049,7 @@ function DashboardContent() {
       onClose={() => setEmailModalOpen(false)}
       address={address}
       jwt={session.jwt}
+      initialEmail={email}
     />
   );
 

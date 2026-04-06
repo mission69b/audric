@@ -9,13 +9,14 @@ interface EmailCaptureModalProps {
   onClose: () => void;
   address: string;
   jwt: string;
+  initialEmail?: string | null;
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export function EmailCaptureModal({ open, onClose, address, jwt }: EmailCaptureModalProps) {
+export function EmailCaptureModal({ open, onClose, address, jwt, initialEmail }: EmailCaptureModalProps) {
   const [step, setStep] = useState<ModalStep>('input');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(initialEmail ?? '');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
