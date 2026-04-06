@@ -1175,6 +1175,7 @@ function DashboardContent() {
             onSaveContact={handleSaveContact}
             onExecuteAction={handleExecuteAction}
             onValidateAction={validateAction}
+            agentBudget={agentBudget}
             onConfirmResolve={(approved) => {
               const resolver = confirmResolverRef.current;
               if (resolver) {

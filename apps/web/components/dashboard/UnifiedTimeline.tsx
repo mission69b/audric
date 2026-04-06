@@ -40,6 +40,8 @@ interface UnifiedTimelineProps {
   onExecuteAction?: ExecuteActionFn;
   /** Pre-flight balance check. Returns error string if insufficient, null if OK. */
   onValidateAction?: (toolName: string, input: unknown) => string | null;
+  /** Max USD amount to auto-approve without user confirmation (0 = always confirm). */
+  agentBudget?: number;
 }
 
 function ConnectingSkeleton() {
@@ -48,6 +50,14 @@ function ConnectingSkeleton() {
       <ThinkingState status="awakening" intensity="active" />
     </div>
   );
+}
+
+function extractAmount(input: unknown): number {
+  if (!input || typeof input !== 'object') return Infinity;
+  const inp = input as Record<string, unknown>;
+  if (typeof inp.amount === 'number') return inp.amount;
+  if (typeof inp.maxPrice === 'number') return inp.maxPrice;
+  return Infinity;
 }
 
 export function UnifiedTimeline({
@@ -59,6 +69,7 @@ export function UnifiedTimeline({
   onConfirmResolve,
   onExecuteAction,
   onValidateAction,
+  agentBudget = 0,
 }: UnifiedTimelineProps) {
   const endRef = useRef<HTMLDivElement>(null);
   const lastCount = useRef(0);
@@ -141,6 +152,13 @@ export function UnifiedTimeline({
       return;
     }
 
+    // Budget-based auto-approve: if amount <= agentBudget, approve without confirmation
+    if (agentBudget > 0 && extractAmount(action.input) <= agentBudget) {
+      autoApprovedRef.current.add(action.toolUseId);
+      handleActionResolve(action, true);
+      return;
+    }
+
     // Manual-approve tools: pre-flight balance check — auto-deny if insufficient
     if (onValidateAction) {
       const validationError = onValidateAction(action.toolName, action.input);
@@ -149,7 +167,7 @@ export function UnifiedTimeline({
         engine.resolveAction(action, true, { success: false, error: validationError });
       }
     }
-  }, [engine.messages, onExecuteAction, handleActionResolve, onValidateAction, engine]);
+  }, [engine.messages, onExecuteAction, handleActionResolve, onValidateAction, engine, agentBudget]);
 
   const isConnecting = engine.status === 'connecting';
   const lastEngineMsg = engine.messages[engine.messages.length - 1];
@@ -184,6 +202,7 @@ export function UnifiedTimeline({
               message={entry.msg}
               onActionResolve={handleActionResolve}
               autoApproveTools={AUTO_APPROVE_TOOLS}
+              agentBudget={agentBudget}
             />
           );
         }

@@ -12,6 +12,7 @@ interface ChatMessageProps {
   message: EngineChatMessage;
   onActionResolve?: (action: PendingAction, approved: boolean, reason?: DenyReason) => void;
   autoApproveTools?: Set<string>;
+  agentBudget?: number;
 }
 
 function ToolSteps({ tools }: { tools: ToolExecution[] }) {
@@ -55,7 +56,15 @@ function ToolSteps({ tools }: { tools: ToolExecution[] }) {
   );
 }
 
-export function ChatMessage({ message, onActionResolve, autoApproveTools }: ChatMessageProps) {
+function getInputAmount(input: unknown): number {
+  if (!input || typeof input !== 'object') return Infinity;
+  const inp = input as Record<string, unknown>;
+  if (typeof inp.amount === 'number') return inp.amount;
+  if (typeof inp.maxPrice === 'number') return inp.maxPrice;
+  return Infinity;
+}
+
+export function ChatMessage({ message, onActionResolve, autoApproveTools, agentBudget = 0 }: ChatMessageProps) {
   if (message.role === 'user') {
     return (
       <div className="flex justify-end" role="log" aria-label="Your message">
@@ -82,7 +91,7 @@ export function ChatMessage({ message, onActionResolve, autoApproveTools }: Chat
         </div>
       )}
 
-      {hasPendingAction && onActionResolve && !(autoApproveTools?.has(message.pendingAction!.toolName)) && (
+      {hasPendingAction && onActionResolve && !(autoApproveTools?.has(message.pendingAction!.toolName)) && !(agentBudget > 0 && getInputAmount(message.pendingAction!.input) <= agentBudget) && (
         <PermissionCard
           action={message.pendingAction!}
           onResolve={onActionResolve}
