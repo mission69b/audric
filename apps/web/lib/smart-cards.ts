@@ -24,6 +24,7 @@ export interface SmartCardAction {
 
 export interface AccountState {
   cash: number;
+  usdc: number;
   savings: number;
   borrows: number;
   savingsRate: number;
@@ -93,14 +94,15 @@ export function deriveSmartCards(state: AccountState): SmartCardData[] {
     });
   }
 
-  if (state.cash > 5) {
+  const saveableUsdc = state.usdc ?? state.cash;
+  if (saveableUsdc > 5) {
     const rate = state.bestRate ?? (state.savingsRate > 0.005 ? state.savingsRate : 0);
     if (rate > 0) {
-      const monthlyEarnings = (state.cash * rate) / 12;
+      const monthlyEarnings = (saveableUsdc * rate) / 12;
       cards.push({
         type: 'idle-funds',
         icon: '💰',
-        title: `$${Math.floor(state.cash)} idle — could earn $${monthlyEarnings.toFixed(2)}/mo at ${(rate * 100).toFixed(1)}%`,
+        title: `$${Math.floor(saveableUsdc)} idle — could earn $${monthlyEarnings.toFixed(2)}/mo at ${(rate * 100).toFixed(1)}%`,
         body: '',
         actions: [{ label: 'Move to savings', variant: 'primary', chipFlow: 'save-all' }],
       });

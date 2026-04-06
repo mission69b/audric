@@ -319,6 +319,7 @@ function DashboardContent() {
 
   const accountState: AccountState = {
     cash: balance.cash,
+    usdc: balance.usdc,
     savings: balance.savings,
     borrows: balance.borrows,
     savingsRate: balance.savingsRate,

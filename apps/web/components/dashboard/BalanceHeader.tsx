@@ -67,8 +67,8 @@ export function BalanceHeader({ address, balance, compact, onSettingsClick }: Ba
     holdings.push({ symbol: 'USDC', amount: fmtUsd(balance.usdc), usd: `$${fmtUsd(balance.usdc)}` });
   }
   for (const [symbol, amt] of Object.entries(balance.assetBalances)) {
-    if (amt > 0) {
-      const usdVal = balance.assetUsdValues[symbol] ?? 0;
+    const usdVal = balance.assetUsdValues[symbol] ?? 0;
+    if (amt > 0 && (usdVal >= 0.01 || amt >= 0.01)) {
       holdings.push({
         symbol,
         amount: fmtToken(amt),

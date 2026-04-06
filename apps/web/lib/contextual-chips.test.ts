@@ -3,6 +3,7 @@ import { deriveContextualChips, type AccountState } from './contextual-chips';
 
 const BASE_STATE: AccountState = {
   cash: 0,
+  usdc: 0,
   savings: 0,
   borrows: 0,
   savingsRate: 0,
@@ -68,15 +69,15 @@ describe('deriveContextualChips', () => {
     expect(chip!.label).toContain('$12.40');
   });
 
-  it('shows idle funds chip when cash > 5 and rate > 0', () => {
-    const chips = deriveContextualChips({ ...BASE_STATE, cash: 105, savingsRate: 0.068 });
+  it('shows idle funds chip when usdc > 5 and rate > 0', () => {
+    const chips = deriveContextualChips({ ...BASE_STATE, cash: 105, usdc: 105, savingsRate: 0.068 });
     const chip = chips.find((c) => c.id === 'idle');
     expect(chip).toBeDefined();
     expect(chip!.chipFlow).toBe('save-all');
   });
 
   it('does not show idle funds when savings rate is 0', () => {
-    const chips = deriveContextualChips({ ...BASE_STATE, cash: 105, savingsRate: 0 });
+    const chips = deriveContextualChips({ ...BASE_STATE, cash: 105, usdc: 105, savingsRate: 0 });
     expect(chips.find((c) => c.id === 'idle')).toBeUndefined();
   });
 

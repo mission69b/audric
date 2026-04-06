@@ -140,10 +140,11 @@ export function useBalance(address: string | null) {
         const symbol = meta?.symbol ?? resolveSymbol(coinType);
         const decimals = meta?.decimals ?? getDecimalsForCoinType(coinType);
         const amount = Number(raw) / 10 ** decimals;
-        if (amount < 0.000001) continue;
-        assetBalances[symbol] = amount;
+        if (amount <= 0.000001) continue;
         const price = prices[coinType] ?? prices[symbol] ?? 0;
         const usdVal = r2(amount * price);
+        if (usdVal < 0.01 && amount < 0.01) continue;
+        assetBalances[symbol] = amount;
         assetUsdValues[symbol] = usdVal;
         tradeableUsd += usdVal;
       }

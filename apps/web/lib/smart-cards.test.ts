@@ -3,6 +3,7 @@ import { deriveSmartCards, type AccountState } from './smart-cards';
 
 const BASE_STATE: AccountState = {
   cash: 0,
+  usdc: 0,
   savings: 0,
   borrows: 0,
   savingsRate: 0,
@@ -45,23 +46,23 @@ describe('deriveSmartCards', () => {
     expect(cards.find((c) => c.type === 'rewards')).toBeUndefined();
   });
 
-  it('surfaces idle-funds card when cash > $5', () => {
-    const cards = deriveSmartCards({ ...BASE_STATE, cash: 105, savingsRate: 0.068 });
+  it('surfaces idle-funds card when usdc > $5', () => {
+    const cards = deriveSmartCards({ ...BASE_STATE, cash: 105, usdc: 105, savingsRate: 0.068 });
     const idleCard = cards.find((c) => c.type === 'idle-funds');
     expect(idleCard).toBeDefined();
     expect(idleCard!.title).toContain('$105');
     expect(idleCard!.actions[0].chipFlow).toBe('save-all');
   });
 
-  it('surfaces idle-funds card when cash is $8', () => {
-    const cards = deriveSmartCards({ ...BASE_STATE, cash: 8, savingsRate: 0.049 });
+  it('surfaces idle-funds card when usdc is $8', () => {
+    const cards = deriveSmartCards({ ...BASE_STATE, cash: 8, usdc: 8, savingsRate: 0.049 });
     const idleCard = cards.find((c) => c.type === 'idle-funds');
     expect(idleCard).toBeDefined();
     expect(idleCard!.title).toContain('$8');
   });
 
-  it('does not surface idle-funds card when cash <= $5', () => {
-    const cards = deriveSmartCards({ ...BASE_STATE, cash: 5 });
+  it('does not surface idle-funds card when usdc <= $5', () => {
+    const cards = deriveSmartCards({ ...BASE_STATE, cash: 5, usdc: 5 });
     expect(cards.find((c) => c.type === 'idle-funds')).toBeUndefined();
   });
 
@@ -103,6 +104,7 @@ describe('deriveSmartCards', () => {
       sessionExpiringSoon: true,
       pendingRewards: 5,
       cash: 500,
+      usdc: 500,
       savingsRate: 0.06,
     });
     expect(cards.length).toBeGreaterThanOrEqual(3);

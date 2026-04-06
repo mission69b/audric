@@ -73,11 +73,12 @@ export function deriveContextualChips(
   const displayRate = state.bestRate && state.bestRate > 0.005
     ? state.bestRate
     : state.savingsRate > 0.005 ? state.savingsRate : 0;
-  if (state.cash > 5 && displayRate > 0.005) {
+  const saveable = state.usdc ?? state.cash;
+  if (saveable > 5 && displayRate > 0.005) {
     chips.push({
       id: 'idle',
       icon: '💰',
-      label: `Save $${Math.floor(state.cash)} idle — ${(displayRate * 100).toFixed(1)}%`,
+      label: `Save $${Math.floor(saveable)} idle — ${(displayRate * 100).toFixed(1)}%`,
       chipFlow: 'save-all',
       priority: 70,
     });
