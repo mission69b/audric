@@ -786,20 +786,23 @@ function DashboardContent() {
             });
             balanceQuery.refetch();
             setTimeout(() => balanceQuery.refetch(), 3000);
-            const swapRes = res as typeof res & { fromToken?: string; toToken?: string; fromAmount?: number; toAmount?: number };
+            const fromSym = resolveSymbol(String(inp.from));
+            const toSym = resolveSymbol(String(inp.to));
+            const soldAmt = parseActualAmount(res.balanceChanges, String(inp.from), 'negative') ?? Number(inp.amount);
+            const receivedAmt = parseActualAmount(res.balanceChanges, String(inp.to), 'positive');
             return {
               success: true,
               data: {
                 success: true,
                 tx: res.tx,
-                fromToken: swapRes.fromToken,
-                toToken: swapRes.toToken,
-                fromAmount: swapRes.fromAmount,
-                toAmount: swapRes.toAmount,
-                from: resolveSymbol(String(inp.from)),
-                to: resolveSymbol(String(inp.to)),
+                fromToken: fromSym,
+                toToken: toSym,
+                fromAmount: soldAmt,
+                toAmount: receivedAmt,
+                from: fromSym,
+                to: toSym,
                 amount: inp.amount,
-                received: swapRes.toAmount,
+                received: receivedAmt,
               },
             };
           } catch (swapErr) {
