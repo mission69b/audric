@@ -66,5 +66,5 @@ export async function getGatewayStats(): Promise<GatewayStats | null> {
 }
 
 export function formatRate(rate: number): string {
-  return `${rate.toFixed(2)}%`;
+  return `${(rate * 100).toFixed(2)}%`;
 }

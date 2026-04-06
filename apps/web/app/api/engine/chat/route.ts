@@ -136,10 +136,12 @@ export async function POST(request: NextRequest) {
           if (saveSession && sessionId && address) {
             try {
               const store = getSessionStore();
+              const messages = [...engine.getMessages()];
+              const usage = engine.getUsage();
               const updatedSession = {
                 id: sessionId,
-                messages: [...engine.getMessages()],
-                usage: engine.getUsage(),
+                messages,
+                usage,
                 createdAt: session?.createdAt ?? Date.now(),
                 updatedAt: Date.now(),
                 pendingAction,
@@ -150,6 +152,10 @@ export async function POST(request: NextRequest) {
               if (!requestedSessionId && store instanceof UpstashSessionStore) {
                 await store.addToUserIndex(address, sessionId);
               }
+
+              logConversationTurn(address, sessionId, messages, usage).catch((err) =>
+                console.error('[engine/chat] conversation log failed:', err),
+              );
             } catch (saveErr) {
               console.error('[engine/chat] session save failed:', saveErr);
             }
@@ -173,4 +179,44 @@ export async function POST(request: NextRequest) {
     console.error('[engine/chat] init error:', errorMsg);
     return jsonError(errorMsg, 500);
   }
+}
+
+interface MessageLike {
+  role: string;
+  content?: unknown;
+  tool_use?: unknown;
+}
+
+const COST_PER_INPUT_TOKEN = 3 / 1_000_000;
+const COST_PER_OUTPUT_TOKEN = 15 / 1_000_000;
+
+async function logConversationTurn(
+  address: string,
+  sessionId: string,
+  messages: MessageLike[],
+  usage: { inputTokens?: number; outputTokens?: number },
+) {
+  const user = await prisma.user.upsert({
+    where: { suiAddress: address },
+    create: { suiAddress: address },
+    update: {},
+    select: { id: true },
+  });
+
+  const lastTwo = messages.slice(-2);
+  const inputTokens = usage.inputTokens ?? 0;
+  const outputTokens = usage.outputTokens ?? 0;
+  const costUsd = inputTokens * COST_PER_INPUT_TOKEN + outputTokens * COST_PER_OUTPUT_TOKEN;
+
+  const rows = lastTwo.map((m) => ({
+    userId: user.id,
+    sessionId,
+    role: m.role,
+    content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content ?? ''),
+    toolCalls: m.tool_use ? m.tool_use : undefined,
+    tokensUsed: m.role === 'assistant' ? outputTokens : inputTokens,
+    costUsd: m.role === 'assistant' ? costUsd : 0,
+  }));
+
+  await prisma.conversationLog.createMany({ data: rows });
 }

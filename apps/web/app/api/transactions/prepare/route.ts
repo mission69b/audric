@@ -285,8 +285,11 @@ async function buildTransaction(params: BuildRequest): Promise<Transaction> {
     }
 
     case 'save': {
+      if (asset && asset !== 'USDC') {
+        throw new Error('Only USDC deposits are supported. Swap to USDC first.');
+      }
       const adapter = getLendingAdapter(params.protocol);
-      const result = await adapter.buildSaveTx(address, amount, asset ?? 'USDC', { sponsored: true });
+      const result = await adapter.buildSaveTx(address, amount, 'USDC', { sponsored: true });
       return result.tx;
     }
 

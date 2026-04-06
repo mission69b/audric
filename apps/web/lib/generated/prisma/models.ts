@@ -8,7 +8,9 @@
  *
  * 🟢 You can import this file directly.
  */
+export type * from './models/User'
 export type * from './models/UserPreferences'
+export type * from './models/ConversationLog'
 export type * from './models/LlmUsage'
 export type * from './models/ServicePurchase'
 export type * from './commonInputTypes'

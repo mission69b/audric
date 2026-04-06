@@ -172,12 +172,12 @@ export function BalanceHeader({ address, balance, compact, onSettingsClick }: Ba
                   key={`${s.protocolId}:${s.asset}`}
                   label={`\u00A0\u00A0${s.protocol}${s.asset !== 'USDC' ? ` (${s.asset})` : ''}`}
                   value={`$${fmtUsd(s.amount)}`}
-                  sublabel={`${s.apy.toFixed(1)}%`}
+                  sublabel={`${(s.apy * 100).toFixed(1)}%`}
                 />
               ))
             )}
             {balance.savingsRate > 0 && (!balance.savingsBreakdown || balance.savingsBreakdown.length <= 1) && (
-              <Row label="Savings APY" value={`${balance.savingsRate.toFixed(1)}%`} accent />
+              <Row label="Savings APY" value={`${(balance.savingsRate * 100).toFixed(1)}%`} accent />
             )}
             {balance.borrows > 0 && (
               <>

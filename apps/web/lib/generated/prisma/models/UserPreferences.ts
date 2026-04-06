@@ -28,12 +28,14 @@ export type UserPreferencesMinAggregateOutputType = {
   address: string | null
   createdAt: Date | null
   updatedAt: Date | null
+  userId: string | null
 }
 
 export type UserPreferencesMaxAggregateOutputType = {
   address: string | null
   createdAt: Date | null
   updatedAt: Date | null
+  userId: string | null
 }
 
 export type UserPreferencesCountAggregateOutputType = {
@@ -43,6 +45,7 @@ export type UserPreferencesCountAggregateOutputType = {
   dcaSchedules: number
   createdAt: number
   updatedAt: number
+  userId: number
   _all: number
 }
 
@@ -51,12 +54,14 @@ export type UserPreferencesMinAggregateInputType = {
   address?: true
   createdAt?: true
   updatedAt?: true
+  userId?: true
 }
 
 export type UserPreferencesMaxAggregateInputType = {
   address?: true
   createdAt?: true
   updatedAt?: true
+  userId?: true
 }
 
 export type UserPreferencesCountAggregateInputType = {
@@ -66,6 +71,7 @@ export type UserPreferencesCountAggregateInputType = {
   dcaSchedules?: true
   createdAt?: true
   updatedAt?: true
+  userId?: true
   _all?: true
 }
 
@@ -148,6 +154,7 @@ export type UserPreferencesGroupByOutputType = {
   dcaSchedules: runtime.JsonValue
   createdAt: Date
   updatedAt: Date
+  userId: string | null
   _count: UserPreferencesCountAggregateOutputType | null
   _min: UserPreferencesMinAggregateOutputType | null
   _max: UserPreferencesMaxAggregateOutputType | null
@@ -178,6 +185,8 @@ export type UserPreferencesWhereInput = {
   dcaSchedules?: Prisma.JsonFilter<"UserPreferences">
   createdAt?: Prisma.DateTimeFilter<"UserPreferences"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"UserPreferences"> | Date | string
+  userId?: Prisma.StringNullableFilter<"UserPreferences"> | string | null
+  user?: Prisma.XOR<Prisma.UserNullableScalarRelationFilter, Prisma.UserWhereInput> | null
 }
 
 export type UserPreferencesOrderByWithRelationInput = {
@@ -187,10 +196,13 @@ export type UserPreferencesOrderByWithRelationInput = {
   dcaSchedules?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  userId?: Prisma.SortOrderInput | Prisma.SortOrder
+  user?: Prisma.UserOrderByWithRelationInput
 }
 
 export type UserPreferencesWhereUniqueInput = Prisma.AtLeast<{
   address?: string
+  userId?: string
   AND?: Prisma.UserPreferencesWhereInput | Prisma.UserPreferencesWhereInput[]
   OR?: Prisma.UserPreferencesWhereInput[]
   NOT?: Prisma.UserPreferencesWhereInput | Prisma.UserPreferencesWhereInput[]
@@ -199,7 +211,8 @@ export type UserPreferencesWhereUniqueInput = Prisma.AtLeast<{
   dcaSchedules?: Prisma.JsonFilter<"UserPreferences">
   createdAt?: Prisma.DateTimeFilter<"UserPreferences"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"UserPreferences"> | Date | string
-}, "address">
+  user?: Prisma.XOR<Prisma.UserNullableScalarRelationFilter, Prisma.UserWhereInput> | null
+}, "address" | "userId">
 
 export type UserPreferencesOrderByWithAggregationInput = {
   address?: Prisma.SortOrder
@@ -208,6 +221,7 @@ export type UserPreferencesOrderByWithAggregationInput = {
   dcaSchedules?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  userId?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.UserPreferencesCountOrderByAggregateInput
   _max?: Prisma.UserPreferencesMaxOrderByAggregateInput
   _min?: Prisma.UserPreferencesMinOrderByAggregateInput
@@ -223,6 +237,7 @@ export type UserPreferencesScalarWhereWithAggregatesInput = {
   dcaSchedules?: Prisma.JsonWithAggregatesFilter<"UserPreferences">
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"UserPreferences"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"UserPreferences"> | Date | string
+  userId?: Prisma.StringNullableWithAggregatesFilter<"UserPreferences"> | string | null
 }
 
 export type UserPreferencesCreateInput = {
@@ -232,6 +247,7 @@ export type UserPreferencesCreateInput = {
   dcaSchedules?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
+  user?: Prisma.UserCreateNestedOneWithoutPreferencesInput
 }
 
 export type UserPreferencesUncheckedCreateInput = {
@@ -241,6 +257,7 @@ export type UserPreferencesUncheckedCreateInput = {
   dcaSchedules?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
+  userId?: string | null
 }
 
 export type UserPreferencesUpdateInput = {
@@ -250,6 +267,7 @@ export type UserPreferencesUpdateInput = {
   dcaSchedules?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  user?: Prisma.UserUpdateOneWithoutPreferencesNestedInput
 }
 
 export type UserPreferencesUncheckedUpdateInput = {
@@ -259,6 +277,7 @@ export type UserPreferencesUncheckedUpdateInput = {
   dcaSchedules?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  userId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type UserPreferencesCreateManyInput = {
@@ -268,6 +287,7 @@ export type UserPreferencesCreateManyInput = {
   dcaSchedules?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
+  userId?: string | null
 }
 
 export type UserPreferencesUpdateManyMutationInput = {
@@ -286,6 +306,12 @@ export type UserPreferencesUncheckedUpdateManyInput = {
   dcaSchedules?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  userId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+}
+
+export type UserPreferencesNullableScalarRelationFilter = {
+  is?: Prisma.UserPreferencesWhereInput | null
+  isNot?: Prisma.UserPreferencesWhereInput | null
 }
 
 export type UserPreferencesCountOrderByAggregateInput = {
@@ -295,26 +321,105 @@ export type UserPreferencesCountOrderByAggregateInput = {
   dcaSchedules?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  userId?: Prisma.SortOrder
 }
 
 export type UserPreferencesMaxOrderByAggregateInput = {
   address?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  userId?: Prisma.SortOrder
 }
 
 export type UserPreferencesMinOrderByAggregateInput = {
   address?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  userId?: Prisma.SortOrder
 }
 
-export type StringFieldUpdateOperationsInput = {
-  set?: string
+export type UserPreferencesCreateNestedOneWithoutUserInput = {
+  create?: Prisma.XOR<Prisma.UserPreferencesCreateWithoutUserInput, Prisma.UserPreferencesUncheckedCreateWithoutUserInput>
+  connectOrCreate?: Prisma.UserPreferencesCreateOrConnectWithoutUserInput
+  connect?: Prisma.UserPreferencesWhereUniqueInput
 }
 
-export type DateTimeFieldUpdateOperationsInput = {
-  set?: Date | string
+export type UserPreferencesUncheckedCreateNestedOneWithoutUserInput = {
+  create?: Prisma.XOR<Prisma.UserPreferencesCreateWithoutUserInput, Prisma.UserPreferencesUncheckedCreateWithoutUserInput>
+  connectOrCreate?: Prisma.UserPreferencesCreateOrConnectWithoutUserInput
+  connect?: Prisma.UserPreferencesWhereUniqueInput
+}
+
+export type UserPreferencesUpdateOneWithoutUserNestedInput = {
+  create?: Prisma.XOR<Prisma.UserPreferencesCreateWithoutUserInput, Prisma.UserPreferencesUncheckedCreateWithoutUserInput>
+  connectOrCreate?: Prisma.UserPreferencesCreateOrConnectWithoutUserInput
+  upsert?: Prisma.UserPreferencesUpsertWithoutUserInput
+  disconnect?: Prisma.UserPreferencesWhereInput | boolean
+  delete?: Prisma.UserPreferencesWhereInput | boolean
+  connect?: Prisma.UserPreferencesWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserPreferencesUpdateToOneWithWhereWithoutUserInput, Prisma.UserPreferencesUpdateWithoutUserInput>, Prisma.UserPreferencesUncheckedUpdateWithoutUserInput>
+}
+
+export type UserPreferencesUncheckedUpdateOneWithoutUserNestedInput = {
+  create?: Prisma.XOR<Prisma.UserPreferencesCreateWithoutUserInput, Prisma.UserPreferencesUncheckedCreateWithoutUserInput>
+  connectOrCreate?: Prisma.UserPreferencesCreateOrConnectWithoutUserInput
+  upsert?: Prisma.UserPreferencesUpsertWithoutUserInput
+  disconnect?: Prisma.UserPreferencesWhereInput | boolean
+  delete?: Prisma.UserPreferencesWhereInput | boolean
+  connect?: Prisma.UserPreferencesWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserPreferencesUpdateToOneWithWhereWithoutUserInput, Prisma.UserPreferencesUpdateWithoutUserInput>, Prisma.UserPreferencesUncheckedUpdateWithoutUserInput>
+}
+
+export type UserPreferencesCreateWithoutUserInput = {
+  address: string
+  contacts?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  limits?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  dcaSchedules?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Date | string
+  updatedAt?: Date | string
+}
+
+export type UserPreferencesUncheckedCreateWithoutUserInput = {
+  address: string
+  contacts?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  limits?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  dcaSchedules?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Date | string
+  updatedAt?: Date | string
+}
+
+export type UserPreferencesCreateOrConnectWithoutUserInput = {
+  where: Prisma.UserPreferencesWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserPreferencesCreateWithoutUserInput, Prisma.UserPreferencesUncheckedCreateWithoutUserInput>
+}
+
+export type UserPreferencesUpsertWithoutUserInput = {
+  update: Prisma.XOR<Prisma.UserPreferencesUpdateWithoutUserInput, Prisma.UserPreferencesUncheckedUpdateWithoutUserInput>
+  create: Prisma.XOR<Prisma.UserPreferencesCreateWithoutUserInput, Prisma.UserPreferencesUncheckedCreateWithoutUserInput>
+  where?: Prisma.UserPreferencesWhereInput
+}
+
+export type UserPreferencesUpdateToOneWithWhereWithoutUserInput = {
+  where?: Prisma.UserPreferencesWhereInput
+  data: Prisma.XOR<Prisma.UserPreferencesUpdateWithoutUserInput, Prisma.UserPreferencesUncheckedUpdateWithoutUserInput>
+}
+
+export type UserPreferencesUpdateWithoutUserInput = {
+  address?: Prisma.StringFieldUpdateOperationsInput | string
+  contacts?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  limits?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  dcaSchedules?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
+export type UserPreferencesUncheckedUpdateWithoutUserInput = {
+  address?: Prisma.StringFieldUpdateOperationsInput | string
+  contacts?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  limits?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  dcaSchedules?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
 
@@ -326,6 +431,8 @@ export type UserPreferencesSelect<ExtArgs extends runtime.Types.Extensions.Inter
   dcaSchedules?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  userId?: boolean
+  user?: boolean | Prisma.UserPreferences$userArgs<ExtArgs>
 }, ExtArgs["result"]["userPreferences"]>
 
 export type UserPreferencesSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -335,6 +442,8 @@ export type UserPreferencesSelectCreateManyAndReturn<ExtArgs extends runtime.Typ
   dcaSchedules?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  userId?: boolean
+  user?: boolean | Prisma.UserPreferences$userArgs<ExtArgs>
 }, ExtArgs["result"]["userPreferences"]>
 
 export type UserPreferencesSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -344,6 +453,8 @@ export type UserPreferencesSelectUpdateManyAndReturn<ExtArgs extends runtime.Typ
   dcaSchedules?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  userId?: boolean
+  user?: boolean | Prisma.UserPreferences$userArgs<ExtArgs>
 }, ExtArgs["result"]["userPreferences"]>
 
 export type UserPreferencesSelectScalar = {
@@ -353,13 +464,25 @@ export type UserPreferencesSelectScalar = {
   dcaSchedules?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  userId?: boolean
 }
 
-export type UserPreferencesOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"address" | "contacts" | "limits" | "dcaSchedules" | "createdAt" | "updatedAt", ExtArgs["result"]["userPreferences"]>
+export type UserPreferencesOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"address" | "contacts" | "limits" | "dcaSchedules" | "createdAt" | "updatedAt" | "userId", ExtArgs["result"]["userPreferences"]>
+export type UserPreferencesInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  user?: boolean | Prisma.UserPreferences$userArgs<ExtArgs>
+}
+export type UserPreferencesIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  user?: boolean | Prisma.UserPreferences$userArgs<ExtArgs>
+}
+export type UserPreferencesIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  user?: boolean | Prisma.UserPreferences$userArgs<ExtArgs>
+}
 
 export type $UserPreferencesPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "UserPreferences"
-  objects: {}
+  objects: {
+    user: Prisma.$UserPayload<ExtArgs> | null
+  }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     address: string
     contacts: runtime.JsonValue
@@ -367,6 +490,7 @@ export type $UserPreferencesPayload<ExtArgs extends runtime.Types.Extensions.Int
     dcaSchedules: runtime.JsonValue
     createdAt: Date
     updatedAt: Date
+    userId: string | null
   }, ExtArgs["result"]["userPreferences"]>
   composites: {}
 }
@@ -761,6 +885,7 @@ readonly fields: UserPreferencesFieldRefs;
  */
 export interface Prisma__UserPreferencesClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
+  user<T extends Prisma.UserPreferences$userArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.UserPreferences$userArgs<ExtArgs>>): Prisma.Prisma__UserClient<runtime.Types.Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -796,6 +921,7 @@ export interface UserPreferencesFieldRefs {
   readonly dcaSchedules: Prisma.FieldRef<"UserPreferences", 'Json'>
   readonly createdAt: Prisma.FieldRef<"UserPreferences", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"UserPreferences", 'DateTime'>
+  readonly userId: Prisma.FieldRef<"UserPreferences", 'String'>
 }
     
 
@@ -812,6 +938,10 @@ export type UserPreferencesFindUniqueArgs<ExtArgs extends runtime.Types.Extensio
    * Omit specific fields from the UserPreferences
    */
   omit?: Prisma.UserPreferencesOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UserPreferencesInclude<ExtArgs> | null
   /**
    * Filter, which UserPreferences to fetch.
    */
@@ -831,6 +961,10 @@ export type UserPreferencesFindUniqueOrThrowArgs<ExtArgs extends runtime.Types.E
    */
   omit?: Prisma.UserPreferencesOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UserPreferencesInclude<ExtArgs> | null
+  /**
    * Filter, which UserPreferences to fetch.
    */
   where: Prisma.UserPreferencesWhereUniqueInput
@@ -848,6 +982,10 @@ export type UserPreferencesFindFirstArgs<ExtArgs extends runtime.Types.Extension
    * Omit specific fields from the UserPreferences
    */
   omit?: Prisma.UserPreferencesOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UserPreferencesInclude<ExtArgs> | null
   /**
    * Filter, which UserPreferences to fetch.
    */
@@ -897,6 +1035,10 @@ export type UserPreferencesFindFirstOrThrowArgs<ExtArgs extends runtime.Types.Ex
    */
   omit?: Prisma.UserPreferencesOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UserPreferencesInclude<ExtArgs> | null
+  /**
    * Filter, which UserPreferences to fetch.
    */
   where?: Prisma.UserPreferencesWhereInput
@@ -944,6 +1086,10 @@ export type UserPreferencesFindManyArgs<ExtArgs extends runtime.Types.Extensions
    * Omit specific fields from the UserPreferences
    */
   omit?: Prisma.UserPreferencesOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UserPreferencesInclude<ExtArgs> | null
   /**
    * Filter, which UserPreferences to fetch.
    */
@@ -993,6 +1139,10 @@ export type UserPreferencesCreateArgs<ExtArgs extends runtime.Types.Extensions.I
    */
   omit?: Prisma.UserPreferencesOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UserPreferencesInclude<ExtArgs> | null
+  /**
    * The data needed to create a UserPreferences.
    */
   data: Prisma.XOR<Prisma.UserPreferencesCreateInput, Prisma.UserPreferencesUncheckedCreateInput>
@@ -1026,6 +1176,10 @@ export type UserPreferencesCreateManyAndReturnArgs<ExtArgs extends runtime.Types
    */
   data: Prisma.UserPreferencesCreateManyInput | Prisma.UserPreferencesCreateManyInput[]
   skipDuplicates?: boolean
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UserPreferencesIncludeCreateManyAndReturn<ExtArgs> | null
 }
 
 /**
@@ -1040,6 +1194,10 @@ export type UserPreferencesUpdateArgs<ExtArgs extends runtime.Types.Extensions.I
    * Omit specific fields from the UserPreferences
    */
   omit?: Prisma.UserPreferencesOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UserPreferencesInclude<ExtArgs> | null
   /**
    * The data needed to update a UserPreferences.
    */
@@ -1092,6 +1250,10 @@ export type UserPreferencesUpdateManyAndReturnArgs<ExtArgs extends runtime.Types
    * Limit how many UserPreferences to update.
    */
   limit?: number
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UserPreferencesIncludeUpdateManyAndReturn<ExtArgs> | null
 }
 
 /**
@@ -1106,6 +1268,10 @@ export type UserPreferencesUpsertArgs<ExtArgs extends runtime.Types.Extensions.I
    * Omit specific fields from the UserPreferences
    */
   omit?: Prisma.UserPreferencesOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UserPreferencesInclude<ExtArgs> | null
   /**
    * The filter to search for the UserPreferences to update in case it exists.
    */
@@ -1133,6 +1299,10 @@ export type UserPreferencesDeleteArgs<ExtArgs extends runtime.Types.Extensions.I
    */
   omit?: Prisma.UserPreferencesOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UserPreferencesInclude<ExtArgs> | null
+  /**
    * Filter which UserPreferences to delete.
    */
   where: Prisma.UserPreferencesWhereUniqueInput
@@ -1153,6 +1323,25 @@ export type UserPreferencesDeleteManyArgs<ExtArgs extends runtime.Types.Extensio
 }
 
 /**
+ * UserPreferences.user
+ */
+export type UserPreferences$userArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the User
+   */
+  select?: Prisma.UserSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the User
+   */
+  omit?: Prisma.UserOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UserInclude<ExtArgs> | null
+  where?: Prisma.UserWhereInput
+}
+
+/**
  * UserPreferences without action
  */
 export type UserPreferencesDefaultArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1164,4 +1353,8 @@ export type UserPreferencesDefaultArgs<ExtArgs extends runtime.Types.Extensions.
    * Omit specific fields from the UserPreferences
    */
   omit?: Prisma.UserPreferencesOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UserPreferencesInclude<ExtArgs> | null
 }

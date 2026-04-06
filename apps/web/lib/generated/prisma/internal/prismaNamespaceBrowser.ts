@@ -51,7 +51,9 @@ export const AnyNull = runtime.AnyNull
 
 
 export const ModelName = {
+  User: 'User',
   UserPreferences: 'UserPreferences',
+  ConversationLog: 'ConversationLog',
   LlmUsage: 'LlmUsage',
   ServicePurchase: 'ServicePurchase'
 } as const
@@ -72,16 +74,49 @@ export const TransactionIsolationLevel = runtime.makeStrictEnum({
 export type TransactionIsolationLevel = (typeof TransactionIsolationLevel)[keyof typeof TransactionIsolationLevel]
 
 
+export const UserScalarFieldEnum = {
+  id: 'id',
+  suiAddress: 'suiAddress',
+  email: 'email',
+  emailVerified: 'emailVerified',
+  emailVerifyToken: 'emailVerifyToken',
+  emailVerifyExpiry: 'emailVerifyExpiry',
+  displayName: 'displayName',
+  timezoneOffset: 'timezoneOffset',
+  onboardedAt: 'onboardedAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof UserScalarFieldEnum]
+
+
 export const UserPreferencesScalarFieldEnum = {
   address: 'address',
   contacts: 'contacts',
   limits: 'limits',
   dcaSchedules: 'dcaSchedules',
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
+  updatedAt: 'updatedAt',
+  userId: 'userId'
 } as const
 
 export type UserPreferencesScalarFieldEnum = (typeof UserPreferencesScalarFieldEnum)[keyof typeof UserPreferencesScalarFieldEnum]
+
+
+export const ConversationLogScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  sessionId: 'sessionId',
+  role: 'role',
+  content: 'content',
+  toolCalls: 'toolCalls',
+  tokensUsed: 'tokensUsed',
+  costUsd: 'costUsd',
+  createdAt: 'createdAt'
+} as const
+
+export type ConversationLogScalarFieldEnum = (typeof ConversationLogScalarFieldEnum)[keyof typeof ConversationLogScalarFieldEnum]
 
 
 export const LlmUsageScalarFieldEnum = {
@@ -137,6 +172,14 @@ export const QueryMode = {
 export type QueryMode = (typeof QueryMode)[keyof typeof QueryMode]
 
 
+export const NullsOrder = {
+  first: 'first',
+  last: 'last'
+} as const
+
+export type NullsOrder = (typeof NullsOrder)[keyof typeof NullsOrder]
+
+
 export const JsonNullValueFilter = {
   DbNull: DbNull,
   JsonNull: JsonNull,
@@ -144,12 +187,4 @@ export const JsonNullValueFilter = {
 } as const
 
 export type JsonNullValueFilter = (typeof JsonNullValueFilter)[keyof typeof JsonNullValueFilter]
-
-
-export const NullsOrder = {
-  first: 'first',
-  last: 'last'
-} as const
-
-export type NullsOrder = (typeof NullsOrder)[keyof typeof NullsOrder]
 

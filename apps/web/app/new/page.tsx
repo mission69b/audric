@@ -989,10 +989,11 @@ function DashboardContent() {
     }
 
     if (flow === 'save') {
-      const apy = balance.bestSaveRate?.rate ?? balance.savingsRate;
-      if (apy > 0.5) {
-        details.push({ label: 'APY', value: `${apy.toFixed(1)}%` });
-        const monthly = (amount * (apy / 100)) / 12;
+      const apyDecimal = balance.bestSaveRate?.rate ?? balance.savingsRate;
+      if (apyDecimal > 0.005) {
+        const apyPct = apyDecimal * 100;
+        details.push({ label: 'APY', value: `${apyPct.toFixed(1)}%` });
+        const monthly = (amount * apyDecimal) / 12;
         if (monthly >= 0.01) details.push({ label: 'Est. monthly', value: `+$${monthly.toFixed(2)}` });
       }
     }

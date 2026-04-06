@@ -408,7 +408,13 @@ export function SettingsPanel({
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-4 border-t border-border">
+        <div className="px-5 py-4 border-t border-border space-y-2">
+          <a
+            href="/settings"
+            className="block w-full min-h-[40px] rounded-md bg-foreground text-background font-mono text-[10px] tracking-[0.1em] uppercase hover:opacity-80 transition text-center leading-[40px]"
+          >
+            All Settings
+          </a>
           <button
             onClick={onSignOut}
             className="w-full min-h-[40px] rounded-md border border-border font-mono text-[10px] tracking-[0.1em] text-muted uppercase hover:text-foreground hover:border-foreground/20 transition"
