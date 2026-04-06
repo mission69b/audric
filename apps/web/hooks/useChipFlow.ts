@@ -59,6 +59,7 @@ const INITIAL_STATE: ChipFlowState = {
 
 export interface FlowContext {
   cash?: number;
+  usdc?: number;
   savings?: number;
   borrows?: number;
   savingsRate?: number;
@@ -183,7 +184,8 @@ function getFlowMessage(flow: string, ctx?: FlowContext): string {
           ? ctx.savingsRate
           : null;
       const rateStr = rate ? ` ${(rate * 100).toFixed(1)}%` : '';
-      const avail = ctx?.cash ? ` You have ${fmtAmount(ctx.cash)} available.` : '';
+      const saveableUsdc = ctx?.usdc ?? ctx?.cash;
+      const avail = saveableUsdc ? ` You have ${fmtAmount(saveableUsdc)} USDC available.` : '';
       return `Save to earn${rateStr}.${avail}\nChoose an amount:`;
     }
     case 'send': return 'Who do you want to send to?';

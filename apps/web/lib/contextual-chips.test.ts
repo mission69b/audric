@@ -211,10 +211,16 @@ describe('discovery chips', () => {
     expect(chip!.agentPrompt).toContain('USDC');
   });
 
-  it('shows what-if chip when cash > $10', () => {
-    const chips = deriveContextualChips({ ...BASE_STATE, cash: 50, savingsRate: 0.04 });
+  it('shows what-if chip when usdc > $10', () => {
+    const chips = deriveContextualChips({ ...BASE_STATE, cash: 50, usdc: 50, savingsRate: 0.04 });
     const chip = chips.find((c) => c.id === 'what-if');
     expect(chip).toBeDefined();
     expect(chip!.agentPrompt).toContain('$50');
+    expect(chip!.agentPrompt).toContain('USDC');
+  });
+
+  it('does not show what-if chip when usdc is 0 even if cash is high', () => {
+    const chips = deriveContextualChips({ ...BASE_STATE, cash: 500, usdc: 0, savingsRate: 0.04 });
+    expect(chips.find((c) => c.id === 'what-if')).toBeUndefined();
   });
 });

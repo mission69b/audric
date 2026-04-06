@@ -139,12 +139,13 @@ export function deriveContextualChips(
     });
   }
 
-  if (state.cash > 10) {
+  const saveableForWhatIf = state.usdc ?? state.cash;
+  if (saveableForWhatIf > 10) {
     chips.push({
       id: 'what-if',
       icon: '🤔',
       label: 'What if I save it all?',
-      agentPrompt: `What would happen if I saved my $${Math.floor(state.cash)} idle cash? Show me projected earnings at the best available rate over 1 month, 6 months, and 1 year.`,
+      agentPrompt: `What would happen if I saved my $${Math.floor(saveableForWhatIf)} idle USDC? Show me projected earnings at the best available USDC rate over 1 month, 6 months, and 1 year.`,
       priority: 18,
       dismissible: true,
     });
@@ -156,8 +157,9 @@ export function deriveContextualChips(
   const month = now.getMonth(); // 0-indexed
   const day = now.getDate();
   const hasFunds = state.cash > 0 || state.savings > 0;
+  const hasSpendableCash = state.cash >= 10;
 
-  if (hasFunds && state.cash >= 10) {
+  if (hasFunds && hasSpendableCash) {
     if (month === 11 && day >= 1 && day <= 25) {
       chips.push({
         id: 'christmas',
@@ -292,7 +294,7 @@ function getPostAgentSuggestion(lastAction: string): ContextualChip | null {
     case 'get_news':
       return { id: 'post-search', icon: '🔍', label: 'Search again', agentPrompt: '', priority: 40 };
     case 'get_balance':
-      return { id: 'post-balance', icon: '🤔', label: 'What if I save it all?', agentPrompt: 'What would happen if I saved all my idle cash? Project my earnings over 1 month, 6 months, and 1 year.', priority: 40 };
+      return { id: 'post-balance', icon: '🤔', label: 'What if I save it all?', agentPrompt: 'What would happen if I saved all my idle USDC? Project my USDC savings earnings over 1 month, 6 months, and 1 year.', priority: 40 };
     case 'get_positions':
       return { id: 'post-positions', icon: '📊', label: 'Full report', agentPrompt: 'Give me a full financial report covering my balances, savings positions, yields, and action items.', priority: 40 };
     case 'get_rates':

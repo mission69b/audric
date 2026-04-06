@@ -335,6 +335,7 @@ function DashboardContent() {
 
   const flowContext: FlowContext = {
     cash: balance.cash,
+    usdc: balance.usdc,
     savings: balance.savings,
     borrows: balance.borrows,
     savingsRate: balance.savingsRate,
@@ -596,7 +597,7 @@ function DashboardContent() {
             feed.addItem({
               type: 'ai-text',
               text: rtStats.join('\n'),
-              chips: balance.cash > 5
+              chips: balance.usdc > 5
                 ? [{ label: 'Save', flow: 'save' }]
                 : [],
             });
@@ -628,7 +629,7 @@ function DashboardContent() {
 
       if (flow === 'save-all') {
         chipFlow.startFlow('save', flowContext);
-        chipFlow.selectAmount(balance.cash);
+        chipFlow.selectAmount(balance.usdc);
         return;
       }
       if (flow === 'risk-explain') {
@@ -1316,7 +1317,7 @@ function DashboardContent() {
               amounts={getAmountPresets(f, balance)}
               allLabel={
                 f === 'withdraw' ? `All $${fmtDollar(balance.savings)}` :
-                f === 'save' ? `All $${fmtDollar(balance.cash)}` :
+                f === 'save' ? `All $${fmtDollar(balance.usdc)}` :
                 f === 'repay' ? `All $${fmtDollar(balance.borrows)}` :
                 f === 'borrow' && balance.maxBorrow > 0 ? `Max $${fmtDollar(balance.maxBorrow)}` :
                 undefined
