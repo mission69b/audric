@@ -27,6 +27,7 @@ import { useContacts } from '@/hooks/useContacts';
 import { useAgent } from '@/hooks/useAgent';
 import { useUsdcSponsor } from '@/hooks/useUsdcSponsor';
 import { getDecimalsForCoinType, resolveSymbol } from '@/lib/token-registry';
+import { parseActualAmount, buildSwapDisplayData } from '@/lib/balance-changes';
 
 const LS_LAST_SAVINGS = 't2000_last_savings';
 const LS_LAST_OPEN = 't2000_last_open_date';
@@ -722,23 +723,6 @@ function DashboardContent() {
       const sdk = await agent.getInstance();
       const inp = (input ?? {}) as Record<string, unknown>;
 
-      const parseActualAmount = (
-        changes: Array<{ coinType: string; amount: string; owner?: unknown }> | undefined,
-        assetHint: string | undefined,
-        direction: 'positive' | 'negative',
-      ): number | null => {
-        if (!changes?.length) return null;
-        const hint = (assetHint ?? 'USDC').toUpperCase();
-        const match = changes.find((c) => {
-          const sym = c.coinType.split('::').pop()?.toUpperCase() ?? '';
-          const amtOk = direction === 'positive' ? Number(c.amount) > 0 : Number(c.amount) < 0;
-          return amtOk && (sym === hint || sym.includes(hint));
-        });
-        if (!match) return null;
-        const dec = getDecimalsForCoinType(match.coinType);
-        return Math.abs(Number(BigInt(match.amount))) / 10 ** dec;
-      };
-
       switch (toolName) {
         case 'save_deposit': {
           const res = await sdk.save({ amount: Number(inp.amount), asset: inp.asset as string | undefined, protocol: inp.protocol as string | undefined });
@@ -786,23 +770,16 @@ function DashboardContent() {
             });
             balanceQuery.refetch();
             setTimeout(() => balanceQuery.refetch(), 3000);
-            const fromSym = resolveSymbol(String(inp.from));
-            const toSym = resolveSymbol(String(inp.to));
-            const soldAmt = parseActualAmount(res.balanceChanges, String(inp.from), 'negative') ?? Number(inp.amount);
-            const receivedAmt = parseActualAmount(res.balanceChanges, String(inp.to), 'positive');
+            const swap = buildSwapDisplayData(res.balanceChanges, String(inp.from), String(inp.to), Number(inp.amount));
             return {
               success: true,
               data: {
                 success: true,
                 tx: res.tx,
-                fromToken: fromSym,
-                toToken: toSym,
-                fromAmount: soldAmt,
-                toAmount: receivedAmt,
-                from: fromSym,
-                to: toSym,
+                ...swap,
+                from: swap.fromToken,
+                to: swap.toToken,
                 amount: inp.amount,
-                received: receivedAmt,
               },
             };
           } catch (swapErr) {
