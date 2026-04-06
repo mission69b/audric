@@ -14,6 +14,7 @@ import { AmountChips } from '@/components/dashboard/AmountChips';
 import { resolveFlow } from '@/components/dashboard/AgentMarkdown';
 import { UnifiedTimeline } from '@/components/dashboard/UnifiedTimeline';
 import { SettingsPanel } from '@/components/settings/SettingsPanel';
+import { EmailCaptureModal } from '@/components/auth/EmailCaptureModal';
 import { useChipFlow, type ChipFlowResult, type FlowContext } from '@/hooks/useChipFlow';
 import { useFeed } from '@/hooks/useFeed';
 import { useEngine } from '@/hooks/useEngine';
@@ -219,11 +220,26 @@ function DashboardContent() {
   const [agentBudget, setAgentBudget] = useState(0.50);
   const [dismissedCards, setDismissedCards] = useState<Set<string>>(new Set());
   const [scrolled, setScrolled] = useState(false);
+  const [emailModalOpen, setEmailModalOpen] = useState(false);
+  const emailCheckedRef = useRef(false);
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
+
+  useEffect(() => {
+    if (!address || !session?.jwt || emailCheckedRef.current) return;
+    emailCheckedRef.current = true;
+    fetch(`/api/user/email?address=${address}`, {
+      headers: { 'x-zklogin-jwt': session.jwt },
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data.emailVerified) setEmailModalOpen(true);
+      })
+      .catch(() => {});
+  }, [address, session?.jwt]);
 
   const balance = {
     total: balanceQuery.data?.total ?? 0,
@@ -1037,6 +1053,15 @@ function DashboardContent() {
     />
   );
 
+  const emailModal = (
+    <EmailCaptureModal
+      open={emailModalOpen}
+      onClose={() => setEmailModalOpen(false)}
+      address={address}
+      jwt={session.jwt}
+    />
+  );
+
   if (isEmpty && !engine.isStreaming) {
     return (
       <main className="flex flex-1 flex-col min-h-dvh">
@@ -1079,6 +1104,7 @@ function DashboardContent() {
         </div>
 
         {settingsPanel}
+        {emailModal}
       </main>
     );
   }
@@ -1254,6 +1280,7 @@ function DashboardContent() {
       </div>
 
       {settingsPanel}
+      {emailModal}
     </main>
   );
 }

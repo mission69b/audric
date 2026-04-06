@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { Resend } from 'resend';
 import { validateJwt, isValidSuiAddress } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
+
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 export const runtime = 'nodejs';
 
@@ -72,10 +75,36 @@ export async function POST(request: NextRequest) {
     },
   });
 
-  // TODO: Send verification email via Resend when configured
-  // For now, log the verification link for development
   const verifyUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://audric.ai'}/verify?token=${token}`;
-  console.log(`[email] Verification link for ${email}: ${verifyUrl}`);
+
+  if (resend) {
+    try {
+      await resend.emails.send({
+        from: 'Audric <noreply@audric.ai>',
+        to: email,
+        subject: 'Verify your email — Audric',
+        html: `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 480px; margin: 0 auto; padding: 40px 20px;">
+            <h2 style="font-size: 20px; font-weight: 600; margin-bottom: 8px;">Verify your email</h2>
+            <p style="color: #666; font-size: 14px; line-height: 1.6; margin-bottom: 24px;">
+              Click the button below to verify your email and start receiving daily briefings from Audric.
+            </p>
+            <a href="${verifyUrl}" style="display: inline-block; background: #000; color: #fff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px;">
+              Verify email
+            </a>
+            <p style="color: #999; font-size: 12px; margin-top: 32px; line-height: 1.5;">
+              This link expires in 24 hours. If you didn't request this, you can safely ignore it.
+            </p>
+          </div>
+        `,
+      });
+    } catch (err) {
+      console.error('[email] Resend send failed:', err);
+      return NextResponse.json({ error: 'Failed to send verification email' }, { status: 500 });
+    }
+  } else {
+    console.log(`[email] RESEND_API_KEY not set. Verification link: ${verifyUrl}`);
+  }
 
   return NextResponse.json({ ok: true });
 }

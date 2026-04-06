@@ -474,10 +474,15 @@ const SPONSORED_TX_PROVIDERS = getProvidersExcluding([
   'STEAMM_OMM', 'STEAMM_OMM_V2', 'SEVENK', 'HAEDALHMMV2',
 ]);
 
+const OVERLAY_FEE_RATE = 0.001; // 0.1% swap fee
+const OVERLAY_FEE_RECEIVER = '0x3bb501b8300125dca59019247941a42af6b292a150ce3cfcce9449456be2ec91';
+
 function getCetusAggregator(signer: string): AggregatorClient {
   return new AggregatorClient({
     signer,
     env: CETUS_ENV,
+    overlayFeeRate: OVERLAY_FEE_RATE,
+    overlayFeeReceiver: OVERLAY_FEE_RECEIVER,
   });
 }
 
