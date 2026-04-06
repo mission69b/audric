@@ -786,7 +786,7 @@ function DashboardContent() {
             });
             balanceQuery.refetch();
             setTimeout(() => balanceQuery.refetch(), 3000);
-            const swapRes = res as TxResult & { fromToken?: string; toToken?: string; fromAmount?: number; toAmount?: number };
+            const swapRes = res as typeof res & { fromToken?: string; toToken?: string; fromAmount?: number; toAmount?: number };
             return {
               success: true,
               data: {
