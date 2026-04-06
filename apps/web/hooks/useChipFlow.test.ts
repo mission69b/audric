@@ -119,4 +119,83 @@ describe.skipIf(!renderHook)('useChipFlow', () => {
     expect(result.current.state.protocol).toBeNull();
   });
 
+  it('swap flow starts in l2-chips with swap message', () => {
+    const { result } = renderHook(() => useChipFlow());
+    act(() => result.current.startFlow('swap'));
+    expect(result.current.state.phase).toBe('l2-chips');
+    expect(result.current.state.flow).toBe('swap');
+    expect(result.current.state.message).toContain('swap');
+    expect(result.current.state.asset).toBeNull();
+    expect(result.current.state.toAsset).toBeNull();
+  });
+
+  it('selectFromAsset sets asset and auto-target', () => {
+    const { result } = renderHook(() => useChipFlow());
+    act(() => result.current.startFlow('swap'));
+    act(() => result.current.selectFromAsset('SUI', 'USDC'));
+    expect(result.current.state.asset).toBe('SUI');
+    expect(result.current.state.toAsset).toBe('USDC');
+    expect(result.current.state.message).toContain('SUI');
+    expect(result.current.state.message).toContain('USDC');
+  });
+
+  it('selectFromAsset without auto-target leaves toAsset null', () => {
+    const { result } = renderHook(() => useChipFlow());
+    act(() => result.current.startFlow('swap'));
+    act(() => result.current.selectFromAsset('USDC'));
+    expect(result.current.state.asset).toBe('USDC');
+    expect(result.current.state.toAsset).toBeNull();
+    expect(result.current.state.message).toContain('USDC');
+  });
+
+  it('selectToAsset sets target and updates message', () => {
+    const { result } = renderHook(() => useChipFlow());
+    act(() => result.current.startFlow('swap'));
+    act(() => result.current.selectFromAsset('USDC'));
+    act(() => result.current.selectToAsset('ETH'));
+    expect(result.current.state.toAsset).toBe('ETH');
+    expect(result.current.state.message).toContain('ETH');
+  });
+
+  it('clearToAsset resets target and updates message', () => {
+    const { result } = renderHook(() => useChipFlow());
+    act(() => result.current.startFlow('swap'));
+    act(() => result.current.selectFromAsset('SUI', 'USDC'));
+    expect(result.current.state.toAsset).toBe('USDC');
+    act(() => result.current.clearToAsset());
+    expect(result.current.state.toAsset).toBeNull();
+    expect(result.current.state.message).toContain('SUI');
+  });
+
+  it('swap full flow: from -> to -> amount -> quote -> confirm -> result', () => {
+    const { result } = renderHook(() => useChipFlow());
+    act(() => result.current.startFlow('swap'));
+    act(() => result.current.selectFromAsset('USDT', 'USDC'));
+    act(() => result.current.selectAmount(100));
+    expect(result.current.state.phase).toBe('confirming');
+    expect(result.current.state.amount).toBe(100);
+    act(() => result.current.setQuote({ toAmount: 99.95, priceImpact: 0.0001, rate: '1 USDT = 0.9995 USDC' }));
+    expect(result.current.state.quote).toBeTruthy();
+    expect(result.current.state.quote!.toAmount).toBe(99.95);
+    act(() => result.current.confirm());
+    expect(result.current.state.phase).toBe('executing');
+    act(() => result.current.setResult({ success: true, title: 'Swapped 100 USDT for 99.95 USDC', details: 'Done' }));
+    expect(result.current.state.phase).toBe('result');
+    expect(result.current.state.result?.success).toBe(true);
+  });
+
+  it('swap state resets fully on reset', () => {
+    const { result } = renderHook(() => useChipFlow());
+    act(() => result.current.startFlow('swap'));
+    act(() => result.current.selectFromAsset('ETH', 'USDC'));
+    act(() => result.current.selectAmount(0.5));
+    act(() => result.current.setQuote({ toAmount: 1700, priceImpact: 0.002, rate: '1 ETH = 3400 USDC' }));
+    act(() => result.current.reset());
+    expect(result.current.state.phase).toBe('idle');
+    expect(result.current.state.asset).toBeNull();
+    expect(result.current.state.toAsset).toBeNull();
+    expect(result.current.state.quote).toBeNull();
+    expect(result.current.state.amount).toBeNull();
+  });
+
 });

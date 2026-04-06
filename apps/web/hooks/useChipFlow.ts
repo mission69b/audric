@@ -9,6 +9,12 @@ export type ChipFlowPhase =
   | 'executing'
   | 'result';
 
+export interface SwapQuote {
+  toAmount: number;
+  priceImpact: number;
+  rate: string;
+}
+
 export interface ChipFlowState {
   phase: ChipFlowPhase;
   flow: string | null;
@@ -16,10 +22,12 @@ export interface ChipFlowState {
   amount: number | null;
   recipient: string | null;
   asset: string | null;
+  toAsset: string | null;
   protocol: string | null;
   message: string | null;
   result: ChipFlowResult | null;
   error: string | null;
+  quote: SwapQuote | null;
 }
 
 export interface ChipFlowResult {
@@ -41,10 +49,12 @@ const INITIAL_STATE: ChipFlowState = {
   amount: null,
   recipient: null,
   asset: null,
+  toAsset: null,
   protocol: null,
   message: null,
   result: null,
   error: null,
+  quote: null,
 };
 
 export interface FlowContext {
@@ -86,6 +96,37 @@ export function useChipFlow() {
     }));
   }, []);
 
+  const selectFromAsset = useCallback((asset: string, autoTarget?: string) => {
+    setState((prev) => ({
+      ...prev,
+      asset,
+      toAsset: autoTarget ?? null,
+      message: autoTarget
+        ? `How much ${asset} to swap for ${autoTarget}?`
+        : `What do you want to swap ${asset} for?`,
+    }));
+  }, []);
+
+  const selectToAsset = useCallback((toAsset: string) => {
+    setState((prev) => ({
+      ...prev,
+      toAsset,
+      message: `How much ${prev.asset} to swap for ${toAsset}?`,
+    }));
+  }, []);
+
+  const setQuote = useCallback((quote: SwapQuote) => {
+    setState((prev) => ({ ...prev, quote }));
+  }, []);
+
+  const clearToAsset = useCallback(() => {
+    setState((prev) => ({
+      ...prev,
+      toAsset: null,
+      message: `What do you want to swap ${prev.asset} for?`,
+    }));
+  }, []);
+
   const confirm = useCallback(() => {
     setState((prev) => ({ ...prev, phase: 'executing' }));
   }, []);
@@ -112,6 +153,10 @@ export function useChipFlow() {
     startFlow,
     selectAmount,
     selectRecipient,
+    selectFromAsset,
+    selectToAsset,
+    setQuote,
+    clearToAsset,
     confirm,
     setResult,
     setError,
@@ -154,6 +199,8 @@ function getFlowMessage(flow: string, ctx?: FlowContext): string {
       const debt = ctx?.borrows ? ` Outstanding debt: ${fmtAmount(ctx.borrows)}.` : '';
       return `Repay your loan.${debt}\nChoose an amount:`;
     }
+    case 'swap':
+      return 'What do you want to swap?\nSelect an asset:';
     default: return 'Choose an option:';
   }
 }

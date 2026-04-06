@@ -11,6 +11,7 @@ import { InputBar } from '@/components/dashboard/InputBar';
 import { ConfirmationCard } from '@/components/dashboard/ConfirmationCard';
 import { ResultCard } from '@/components/dashboard/ResultCard';
 import { AmountChips } from '@/components/dashboard/AmountChips';
+import { SwapAssetPicker, type SwapAsset } from '@/components/dashboard/SwapAssetPicker';
 import { resolveFlow } from '@/components/dashboard/AgentMarkdown';
 import { UnifiedTimeline } from '@/components/dashboard/UnifiedTimeline';
 import { SettingsPanel } from '@/components/settings/SettingsPanel';
@@ -26,7 +27,7 @@ import { SUI_NETWORK } from '@/lib/constants';
 import { useContacts } from '@/hooks/useContacts';
 import { useAgent } from '@/hooks/useAgent';
 import { useUsdcSponsor } from '@/hooks/useUsdcSponsor';
-import { getDecimalsForCoinType, resolveSymbol } from '@/lib/token-registry';
+import { COIN_REGISTRY, getDecimalsForCoinType, resolveSymbol } from '@/lib/token-registry';
 import { parseActualAmount, buildSwapDisplayData } from '@/lib/balance-changes';
 
 const LS_LAST_SAVINGS = 't2000_last_savings';
@@ -616,8 +617,6 @@ function DashboardContent() {
     (flow: string) => {
       if (flow === 'refresh-session') { refresh(); return; }
 
-      if (flow === 'pay') { chipFlow.reset(); engine.sendMessage('Show me what services I can pay for with examples and pricing.'); return; }
-
       if (flow === 'claim-rewards') { chipFlow.reset(); executeIntent({ action: 'claim-rewards' }); return; }
       if (flow === 'help') { chipFlow.reset(); executeIntent({ action: 'help' }); return; }
       if (flow === 'report') { chipFlow.reset(); executeIntent({ action: 'report' }); return; }
@@ -843,6 +842,103 @@ function DashboardContent() {
     [chipFlow, balance],
   );
 
+  const handleSwapAmountSelect = useCallback(
+    (amount: number) => {
+      const from = chipFlow.state.asset ?? '';
+      const sym = from.toUpperCase();
+      let held = 0;
+      if (sym === 'USDC') held = balance.usdc;
+      else if (sym === 'SUI') held = balance.sui;
+      else held = balance.assetBalances[from] ?? balance.assetBalances[sym] ?? 0;
+
+      const actual = amount === -1 ? held : Math.min(amount, held);
+      chipFlow.selectAmount(actual);
+
+      const toAsset = chipFlow.state.toAsset;
+      if (!toAsset || !address) return;
+      if (actual <= 0) return;
+      fetch(`/api/swap/quote?from=${encodeURIComponent(from)}&to=${encodeURIComponent(toAsset)}&amount=${actual}&address=${address}`)
+        .then((r) => r.json())
+        .then((q) => {
+          if (q.error) throw new Error(q.error);
+          const perUnit = actual > 0 ? (q.toAmount / actual).toFixed(6) : '?';
+          chipFlow.setQuote({
+            toAmount: q.toAmount,
+            priceImpact: Number(q.priceImpact),
+            rate: `1 ${from} = ${perUnit} ${toAsset}`,
+          });
+        })
+        .catch(() => {
+          chipFlow.setQuote({ toAmount: 0, priceImpact: 0, rate: 'Quote unavailable' });
+        });
+    },
+    [chipFlow, balance, address],
+  );
+
+  const getSwapFromAssets = useCallback((): SwapAsset[] => {
+    const assets: SwapAsset[] = [];
+    const seen = new Set<string>();
+    if (balance.usdc > 0.01) { assets.push({ symbol: 'USDC', amount: balance.usdc, usdValue: balance.usdc }); seen.add('USDC'); }
+    if (balance.sui > 0.01) { assets.push({ symbol: 'SUI', amount: balance.sui, usdValue: balance.suiUsd }); seen.add('SUI'); }
+    for (const [sym, amt] of Object.entries(balance.assetBalances)) {
+      if (seen.has(sym) || seen.has(sym.toUpperCase())) continue;
+      if (amt > 0.000001) {
+        const usd = balance.assetUsdValues[sym] ?? 0;
+        if (usd < 0.01) continue;
+        assets.push({ symbol: sym, amount: amt, usdValue: usd });
+        seen.add(sym);
+      }
+    }
+    assets.sort((a, b) => (b.usdValue ?? 0) - (a.usdValue ?? 0));
+    return assets;
+  }, [balance]);
+
+  const getSwapToAssets = useCallback((): SwapAsset[] => {
+    const from = chipFlow.state.asset ?? '';
+    const assets: SwapAsset[] = [];
+    const pinned = ['USDC', 'SUI'];
+    for (const sym of pinned) {
+      if (sym === from) continue;
+      const meta = COIN_REGISTRY[sym];
+      if (meta?.tier) assets.push({ symbol: sym });
+    }
+    for (const [sym, meta] of Object.entries(COIN_REGISTRY)) {
+      if (!meta.tier || sym === from || pinned.includes(sym)) continue;
+      assets.push({ symbol: sym });
+    }
+    return assets;
+  }, [chipFlow.state.asset]);
+
+  const getSwapAmountPresets = useCallback((): number[] => {
+    const from = chipFlow.state.asset ?? '';
+    const sym = from.toUpperCase();
+    let held = 0;
+    if (sym === 'USDC') held = balance.usdc;
+    else if (sym === 'SUI') held = balance.sui;
+    else held = balance.assetBalances[from] ?? balance.assetBalances[sym] ?? 0;
+    if (held <= 0) return [];
+    const q25 = Math.floor(held * 0.25 * 100) / 100;
+    const q50 = Math.floor(held * 0.5 * 100) / 100;
+    const q75 = Math.floor(held * 0.75 * 100) / 100;
+    return [q25, q50, q75].filter((v) => v > 0);
+  }, [chipFlow.state.asset, balance]);
+
+  const getSwapHeldAmount = useCallback((): number => {
+    const from = chipFlow.state.asset ?? '';
+    const sym = from.toUpperCase();
+    if (sym === 'USDC') return balance.usdc;
+    if (sym === 'SUI') return balance.sui;
+    return balance.assetBalances[from] ?? balance.assetBalances[sym] ?? 0;
+  }, [chipFlow.state.asset, balance]);
+
+  const handleSwapFromSelect = useCallback(
+    (symbol: string) => {
+      const autoTarget = symbol.toUpperCase() !== 'USDC' ? 'USDC' : undefined;
+      chipFlow.selectFromAsset(symbol, autoTarget);
+    },
+    [chipFlow],
+  );
+
   const handleConfirm = useCallback(async () => {
     chipFlow.confirm();
 
@@ -909,6 +1005,38 @@ function DashboardContent() {
           flowLabel = 'Repaid';
           break;
         }
+        case 'swap': {
+          const fromAsset = chipFlow.state.asset;
+          const toAsset = chipFlow.state.toAsset;
+          if (!fromAsset || !toAsset) throw new Error('Swap assets not selected');
+          const swapAmount = chipFlow.state.amount ?? 0;
+          const res = await sdk.swap({ from: fromAsset, to: toAsset, amount: swapAmount });
+          const swapData = buildSwapDisplayData(res.balanceChanges, fromAsset, toAsset, swapAmount);
+          const explorerBase = SUI_NETWORK === 'testnet'
+            ? 'https://suiscan.xyz/testnet/tx'
+            : 'https://suiscan.xyz/mainnet/tx';
+          const swapTxUrl = res.tx ? `${explorerBase}/${res.tx}` : undefined;
+          const receivedStr = swapData.toAmount != null ? swapData.toAmount.toFixed(2) : '~';
+          const swapResult: ChipFlowResult = {
+            success: true,
+            title: `Swapped ${swapData.fromAmount.toFixed(2)} ${swapData.fromToken} for ${receivedStr} ${swapData.toToken}`,
+            details: res.tx
+              ? `Tx: ${res.tx.slice(0, 8)}...${res.tx.slice(-6)}`
+              : 'Swap confirmed on-chain.',
+            txUrl: swapTxUrl,
+          };
+          chipFlow.setResult(swapResult);
+          feed.addItem({
+            type: 'result',
+            success: true,
+            title: swapResult.title,
+            details: swapResult.details,
+            txUrl: swapTxUrl,
+          });
+          balanceQuery.refetch();
+          setTimeout(() => balanceQuery.refetch(), 3000);
+          return;
+        }
         default:
           throw new Error(`Unknown flow: ${flow}`);
       }
@@ -959,6 +1087,27 @@ function DashboardContent() {
     const flow = chipFlow.state.flow;
     const amount = chipFlow.state.amount ?? 0;
     const details: { label: string; value: string }[] = [];
+
+    if (flow === 'swap') {
+      const from = chipFlow.state.asset ?? '?';
+      const to = chipFlow.state.toAsset ?? '?';
+      const q = chipFlow.state.quote;
+      details.push({ label: 'Sell', value: `${amount} ${from}` });
+      details.push({ label: 'Receive', value: q ? `~${q.toAmount.toFixed(4)} ${to}` : `Loading...` });
+      if (q) {
+        details.push({ label: 'Rate', value: q.rate });
+        if (q.priceImpact > 0.001) {
+          details.push({ label: 'Price impact', value: `${(q.priceImpact * 100).toFixed(2)}%` });
+        }
+      }
+      details.push({ label: 'Fee', value: '0.1%' });
+      details.push({ label: 'Gas', value: 'Sponsored' });
+      return {
+        title: `Swap ${amount} ${from} → ${to}`,
+        confirmLabel: q ? `Swap ${amount} ${from}` : 'Fetching quote...',
+        details,
+      };
+    }
 
     details.push({ label: 'Amount', value: `$${amount.toFixed(2)}` });
 
@@ -1110,6 +1259,7 @@ function DashboardContent() {
             {...getConfirmationDetails()}
             onConfirm={handleConfirm}
             onCancel={chipFlow.reset}
+            loading={chipFlow.state.flow === 'swap' && !chipFlow.state.quote}
           />
         )}
 
@@ -1122,7 +1272,43 @@ function DashboardContent() {
           />
         )}
 
-        {chipFlow.state.phase === 'l2-chips' && chipFlow.state.flow && chipFlow.state.flow !== 'send' && (() => {
+        {chipFlow.state.phase === 'l2-chips' && chipFlow.state.flow === 'swap' && !chipFlow.state.asset && (
+          <SwapAssetPicker
+            assets={getSwapFromAssets()}
+            onSelect={handleSwapFromSelect}
+            message={chipFlow.state.message ?? undefined}
+          />
+        )}
+
+        {chipFlow.state.phase === 'l2-chips' && chipFlow.state.flow === 'swap' && chipFlow.state.asset && !chipFlow.state.toAsset && (
+          <SwapAssetPicker
+            assets={getSwapToAssets()}
+            onSelect={(sym) => chipFlow.selectToAsset(sym)}
+            message={chipFlow.state.message ?? undefined}
+          />
+        )}
+
+        {chipFlow.state.phase === 'l2-chips' && chipFlow.state.flow === 'swap' && chipFlow.state.asset && chipFlow.state.toAsset && (
+          <div className="space-y-2">
+            <AmountChips
+              amounts={getSwapAmountPresets()}
+              allLabel={`All ${getSwapHeldAmount().toFixed(2)} ${chipFlow.state.asset}`}
+              onSelect={handleSwapAmountSelect}
+              message={chipFlow.state.message ?? undefined}
+              assetLabel={chipFlow.state.asset}
+            />
+            <div className="flex justify-end px-1">
+              <button
+                onClick={() => chipFlow.clearToAsset()}
+                className="text-xs text-muted hover:text-foreground transition underline underline-offset-2"
+              >
+                Change target ({chipFlow.state.toAsset})
+              </button>
+            </div>
+          </div>
+        )}
+
+        {chipFlow.state.phase === 'l2-chips' && chipFlow.state.flow && chipFlow.state.flow !== 'send' && chipFlow.state.flow !== 'swap' && (() => {
           const f = chipFlow.state.flow!;
           return (
             <AmountChips

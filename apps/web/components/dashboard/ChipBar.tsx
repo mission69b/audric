@@ -9,8 +9,8 @@ interface ChipBarProps {
 const CHIPS = [
   { id: 'save', label: 'Save' },
   { id: 'send', label: 'Send' },
+  { id: 'swap', label: 'Swap' },
   { id: 'borrow', label: 'Credit' },
-  { id: 'pay', label: 'Pay' },
   { id: 'receive', label: 'Receive' },
 ];
 
