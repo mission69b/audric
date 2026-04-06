@@ -118,9 +118,9 @@ function BalanceCard({ data }: { data: BalanceData }) {
           </div>
         )}
       </div>
-      {data.holdings && data.holdings.length > 0 && (
+      {data.holdings && data.holdings.filter((h) => h.usdValue >= 0.01).length > 0 && (
         <div className="space-y-0.5 font-mono text-[11px]">
-          {data.holdings.slice(0, 6).map((h) => (
+          {data.holdings.filter((h) => h.usdValue >= 0.01).slice(0, 6).map((h) => (
             <div key={h.symbol} className="flex justify-between">
               <span className="text-foreground">{h.symbol}</span>
               <span className="text-dim">
@@ -136,8 +136,8 @@ function BalanceCard({ data }: { data: BalanceData }) {
 }
 
 function SavingsCard({ data }: { data: SavingsData }) {
-  const supplies = data.positions?.filter((p) => p.type === 'supply') ?? [];
-  const borrows = data.positions?.filter((p) => p.type === 'borrow') ?? [];
+  const supplies = data.positions?.filter((p) => p.type === 'supply' && p.valueUsd >= 0.01) ?? [];
+  const borrows = data.positions?.filter((p) => p.type === 'borrow' && p.valueUsd >= 0.01) ?? [];
 
   if (!supplies.length && !borrows.length) return null;
 

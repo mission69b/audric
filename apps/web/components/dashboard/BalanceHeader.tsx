@@ -142,7 +142,7 @@ export function BalanceHeader({ address, balance, compact, onSettingsClick }: Ba
           </p>
           <p className="text-xs font-mono text-muted tracking-wide">
             available ${Math.floor(balance.cash)}
-            {balance.savings > 0 && (
+            {balance.savings >= 0.01 && (
               <>{' · '}earning ${Math.floor(balance.savings)}</>
             )}
             {balance.borrows > 0 && (
@@ -165,19 +165,23 @@ export function BalanceHeader({ address, balance, compact, onSettingsClick }: Ba
         <div className="mt-2 rounded-lg border border-border bg-surface text-left text-xs font-mono divide-y divide-border overflow-hidden shadow-[var(--shadow-card)] transition-all">
           <div className="px-4 py-3 space-y-1.5">
             <Row label="Available" value={`$${fmtUsd(balance.cash)}`} />
-            <Row label="Earning" value={`$${fmtUsd(balance.savings)}`} />
-            {balance.savingsBreakdown && balance.savingsBreakdown.length > 1 && (
-              balance.savingsBreakdown.map((s) => (
-                <Row
-                  key={`${s.protocolId}:${s.asset}`}
-                  label={`\u00A0\u00A0${s.protocol}${s.asset !== 'USDC' ? ` (${s.asset})` : ''}`}
-                  value={`$${fmtUsd(s.amount)}`}
-                  sublabel={`${(s.apy * 100).toFixed(1)}%`}
-                />
-              ))
-            )}
-            {balance.savingsRate > 0 && (!balance.savingsBreakdown || balance.savingsBreakdown.length <= 1) && (
-              <Row label="Savings APY" value={`${(balance.savingsRate * 100).toFixed(1)}%`} accent />
+            {balance.savings >= 0.01 && (
+              <>
+                <Row label="Earning" value={`$${fmtUsd(balance.savings)}`} />
+                {balance.savingsBreakdown && balance.savingsBreakdown.filter((s) => s.amount >= 0.01).length > 1 && (
+                  balance.savingsBreakdown.filter((s) => s.amount >= 0.01).map((s) => (
+                    <Row
+                      key={`${s.protocolId}:${s.asset}`}
+                      label={`\u00A0\u00A0${s.protocol}${s.asset !== 'USDC' ? ` (${s.asset})` : ''}`}
+                      value={`$${fmtUsd(s.amount)}`}
+                      sublabel={`${(s.apy * 100).toFixed(1)}%`}
+                    />
+                  ))
+                )}
+                {balance.savingsRate > 0 && (!balance.savingsBreakdown || balance.savingsBreakdown.filter((s) => s.amount >= 0.01).length <= 1) && (
+                  <Row label="Savings APY" value={`${(balance.savingsRate * 100).toFixed(1)}%`} accent />
+                )}
+              </>
             )}
             {balance.borrows > 0 && (
               <>
