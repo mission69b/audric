@@ -126,8 +126,10 @@ export function useBalance(address: string | null) {
         balByType.set(b.coinType, b.totalBalance);
       }
 
-      const sui = r2(Number(balByType.get('0x2::sui::SUI') ?? '0') / MIST_PER_SUI);
-      const usdc = r2(Number(balByType.get(USDC_TYPE) ?? '0') / (10 ** USDC_DECIMALS));
+      const suiRaw = Number(balByType.get('0x2::sui::SUI') ?? '0') / MIST_PER_SUI;
+      const sui = Math.floor(suiRaw * 10000) / 10000;
+      const usdcRaw = Number(balByType.get(USDC_TYPE) ?? '0') / (10 ** USDC_DECIMALS);
+      const usdc = Math.floor(usdcRaw * 100) / 100;
       const suiUsd = r2(sui * (prices['0x2::sui::SUI'] ?? prices['SUI'] ?? suiPrice));
 
       const assetBalances: Record<string, number> = {};

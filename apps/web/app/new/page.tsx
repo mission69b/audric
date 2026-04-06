@@ -919,9 +919,10 @@ function DashboardContent() {
     else if (sym === 'SUI') held = balance.sui;
     else held = balance.assetBalances[from] ?? balance.assetBalances[sym] ?? 0;
     if (held <= 0) return [];
-    const q25 = Math.floor(held * 0.25 * 100) / 100;
-    const q50 = Math.floor(held * 0.5 * 100) / 100;
-    const q75 = Math.floor(held * 0.75 * 100) / 100;
+    const dp = held >= 1 ? 100 : held >= 0.01 ? 10000 : 100000000;
+    const q25 = Math.floor(held * 0.25 * dp) / dp;
+    const q50 = Math.floor(held * 0.5 * dp) / dp;
+    const q75 = Math.floor(held * 0.75 * dp) / dp;
     return [q25, q50, q75].filter((v) => v > 0);
   }, [chipFlow.state.asset, balance]);
 
@@ -1294,7 +1295,7 @@ function DashboardContent() {
           <div className="space-y-2">
             <AmountChips
               amounts={getSwapAmountPresets()}
-              allLabel={`All ${getSwapHeldAmount().toFixed(2)} ${chipFlow.state.asset}`}
+              allLabel={`All ${getSwapHeldAmount() >= 0.01 ? getSwapHeldAmount().toFixed(2) : getSwapHeldAmount().toPrecision(3)} ${chipFlow.state.asset}`}
               onSelect={handleSwapAmountSelect}
               message={chipFlow.state.message ?? undefined}
               assetLabel={chipFlow.state.asset}
