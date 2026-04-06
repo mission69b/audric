@@ -141,7 +141,8 @@ export function useBalance(address: string | null) {
         const meta = metadataMap[coinType];
         const symbol = meta?.symbol ?? resolveSymbol(coinType);
         const decimals = meta?.decimals ?? getDecimalsForCoinType(coinType);
-        const amount = Number(raw) / 10 ** decimals;
+        const rawAmount = Number(raw) / 10 ** decimals;
+        const amount = Math.floor(rawAmount * 10 ** Math.min(decimals, 8)) / 10 ** Math.min(decimals, 8);
         if (amount <= 0.000001) continue;
         const price = prices[coinType] ?? prices[symbol] ?? 0;
         const usdVal = r2(amount * price);

@@ -844,15 +844,30 @@ function DashboardContent() {
     [chipFlow, balance],
   );
 
+  const heldAmount = useCallback(
+    (symbol: string): number => {
+      const sym = symbol.toUpperCase();
+      if (sym === 'USDC') return balance.usdc;
+      if (sym === 'SUI') return balance.sui;
+      return balance.assetBalances[symbol] ?? balance.assetBalances[sym] ?? 0;
+    },
+    [balance],
+  );
+
+  const heldUsd = useCallback(
+    (symbol: string): number => {
+      const sym = symbol.toUpperCase();
+      if (sym === 'USDC') return balance.usdc;
+      if (sym === 'SUI') return balance.suiUsd;
+      return balance.assetUsdValues[symbol] ?? balance.assetUsdValues[sym] ?? 0;
+    },
+    [balance],
+  );
+
   const handleSwapAmountSelect = useCallback(
     (amount: number) => {
       const from = chipFlow.state.asset ?? '';
-      const sym = from.toUpperCase();
-      let held = 0;
-      if (sym === 'USDC') held = balance.usdc;
-      else if (sym === 'SUI') held = balance.sui;
-      else held = balance.assetBalances[from] ?? balance.assetBalances[sym] ?? 0;
-
+      const held = heldAmount(from);
       const actual = amount === -1 ? held : Math.min(amount, held);
       chipFlow.selectAmount(actual);
 
@@ -874,26 +889,25 @@ function DashboardContent() {
           chipFlow.setQuote({ toAmount: 0, priceImpact: 0, rate: 'Quote unavailable' });
         });
     },
-    [chipFlow, balance, address],
+    [chipFlow, heldAmount, address],
   );
 
   const getSwapFromAssets = useCallback((): SwapAsset[] => {
     const assets: SwapAsset[] = [];
     const seen = new Set<string>();
-    if (balance.usdc > 0.01) { assets.push({ symbol: 'USDC', amount: balance.usdc, usdValue: balance.usdc }); seen.add('USDC'); }
-    if (balance.sui > 0.01) { assets.push({ symbol: 'SUI', amount: balance.sui, usdValue: balance.suiUsd }); seen.add('SUI'); }
-    for (const [sym, amt] of Object.entries(balance.assetBalances)) {
-      if (seen.has(sym) || seen.has(sym.toUpperCase())) continue;
-      if (amt > 0.000001) {
-        const usd = balance.assetUsdValues[sym] ?? 0;
-        if (usd < 0.01) continue;
-        assets.push({ symbol: sym, amount: amt, usdValue: usd });
-        seen.add(sym);
-      }
+    const allSymbols = ['USDC', 'SUI', ...Object.keys(balance.assetBalances)];
+    for (const sym of allSymbols) {
+      const key = sym.toUpperCase();
+      if (seen.has(key)) continue;
+      const amt = heldAmount(sym);
+      const usd = heldUsd(sym);
+      if (amt <= 0.000001 || usd < 0.01) continue;
+      assets.push({ symbol: key === 'USDC' || key === 'SUI' ? key : sym, amount: amt, usdValue: usd });
+      seen.add(key);
     }
     assets.sort((a, b) => (b.usdValue ?? 0) - (a.usdValue ?? 0));
     return assets;
-  }, [balance]);
+  }, [balance, heldAmount, heldUsd]);
 
   const getSwapToAssets = useCallback((): SwapAsset[] => {
     const from = chipFlow.state.asset ?? '';
@@ -913,26 +927,18 @@ function DashboardContent() {
 
   const getSwapAmountPresets = useCallback((): number[] => {
     const from = chipFlow.state.asset ?? '';
-    const sym = from.toUpperCase();
-    let held = 0;
-    if (sym === 'USDC') held = balance.usdc;
-    else if (sym === 'SUI') held = balance.sui;
-    else held = balance.assetBalances[from] ?? balance.assetBalances[sym] ?? 0;
+    const held = heldAmount(from);
     if (held <= 0) return [];
     const dp = held >= 1 ? 100 : held >= 0.01 ? 10000 : 100000000;
     const q25 = Math.floor(held * 0.25 * dp) / dp;
     const q50 = Math.floor(held * 0.5 * dp) / dp;
     const q75 = Math.floor(held * 0.75 * dp) / dp;
     return [q25, q50, q75].filter((v) => v > 0);
-  }, [chipFlow.state.asset, balance]);
+  }, [chipFlow.state.asset, heldAmount]);
 
   const getSwapHeldAmount = useCallback((): number => {
-    const from = chipFlow.state.asset ?? '';
-    const sym = from.toUpperCase();
-    if (sym === 'USDC') return balance.usdc;
-    if (sym === 'SUI') return balance.sui;
-    return balance.assetBalances[from] ?? balance.assetBalances[sym] ?? 0;
-  }, [chipFlow.state.asset, balance]);
+    return heldAmount(chipFlow.state.asset ?? '');
+  }, [chipFlow.state.asset, heldAmount]);
 
   const handleSwapFromSelect = useCallback(
     (symbol: string) => {
