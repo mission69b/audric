@@ -5,7 +5,7 @@ import { AggregatorClient, Env, getProvidersExcluding } from '@cetusprotocol/agg
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { validateJwt, isValidSuiAddress, validateAmount } from '@/lib/auth';
 import { getRegistry, getClient } from '@/lib/protocol-registry';
-import { resolveTokenType, getDecimalsForCoinType, USDC_TYPE, SUI_TYPE } from '@t2000/sdk';
+import { resolveTokenType, getDecimalsForCoinType, USDC_TYPE, SUI_TYPE, assertAllowedAsset } from '@t2000/sdk';
 
 export const runtime = 'nodejs';
 
@@ -285,9 +285,7 @@ async function buildTransaction(params: BuildRequest): Promise<Transaction> {
     }
 
     case 'save': {
-      if (asset && asset !== 'USDC') {
-        throw new Error('Only USDC deposits are supported. Swap to USDC first.');
-      }
+      assertAllowedAsset('save', asset);
       const adapter = getLendingAdapter(params.protocol);
       const result = await adapter.buildSaveTx(address, amount, 'USDC', { sponsored: true });
       return result.tx;
@@ -301,9 +299,7 @@ async function buildTransaction(params: BuildRequest): Promise<Transaction> {
     }
 
     case 'borrow': {
-      if (asset && asset !== 'USDC') {
-        throw new Error('Only USDC borrows are supported.');
-      }
+      assertAllowedAsset('borrow', asset);
       const adapter = getLendingAdapter(params.protocol);
       const result = await adapter.buildBorrowTx(address, amount, 'USDC', { sponsored: true });
       return result.tx;
