@@ -786,19 +786,20 @@ function DashboardContent() {
             });
             balanceQuery.refetch();
             setTimeout(() => balanceQuery.refetch(), 3000);
+            const swapRes = res as TxResult & { fromToken?: string; toToken?: string; fromAmount?: number; toAmount?: number };
             return {
               success: true,
               data: {
                 success: true,
                 tx: res.tx,
-                fromToken: res.fromToken,
-                toToken: res.toToken,
-                fromAmount: res.fromAmount,
-                toAmount: res.toAmount,
+                fromToken: swapRes.fromToken,
+                toToken: swapRes.toToken,
+                fromAmount: swapRes.fromAmount,
+                toAmount: swapRes.toAmount,
                 from: resolveSymbol(String(inp.from)),
                 to: resolveSymbol(String(inp.to)),
                 amount: inp.amount,
-                received: res.toAmount,
+                received: swapRes.toAmount,
               },
             };
           } catch (swapErr) {
