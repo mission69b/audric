@@ -17,7 +17,7 @@ describe('deriveContextualChips', () => {
       healthFactor: 1.2,
       pendingRewards: 5,
       cash: 200,
-      savingsRate: 6.0,
+      savingsRate: 0.06,
     });
     expect(chips.length).toBeLessThanOrEqual(3);
   });
@@ -28,7 +28,7 @@ describe('deriveContextualChips', () => {
       sessionExpiringSoon: true,
       pendingRewards: 5,
       cash: 200,
-      savingsRate: 6.0,
+      savingsRate: 0.06,
     });
     for (let i = 1; i < chips.length; i++) {
       expect(chips[i - 1].priority).toBeGreaterThanOrEqual(chips[i].priority);
@@ -69,7 +69,7 @@ describe('deriveContextualChips', () => {
   });
 
   it('shows idle funds chip when cash > 5 and rate > 0', () => {
-    const chips = deriveContextualChips({ ...BASE_STATE, cash: 105, savingsRate: 6.8 });
+    const chips = deriveContextualChips({ ...BASE_STATE, cash: 105, savingsRate: 0.068 });
     const chip = chips.find((c) => c.id === 'idle');
     expect(chip).toBeDefined();
     expect(chip!.chipFlow).toBe('save-all');
@@ -84,7 +84,7 @@ describe('deriveContextualChips', () => {
     const chips = deriveContextualChips({
       ...BASE_STATE,
       savings: 1000,
-      currentRate: 5.0,
+      currentRate: 0.05,
     });
     expect(chips.find((c) => c.id === 'rate')).toBeUndefined();
   });
@@ -133,7 +133,7 @@ describe('deriveContextualChips', () => {
   });
 
   it('shows "all good" chip when funded with no issues', () => {
-    const chips = deriveContextualChips({ ...BASE_STATE, cash: 0, savings: 100, savingsRate: 4.5 });
+    const chips = deriveContextualChips({ ...BASE_STATE, cash: 0, savings: 100, savingsRate: 0.045 });
     const good = chips.find((c) => c.id === 'good');
     expect(good).toBeDefined();
     expect(good!.label).toContain('4.5%');
@@ -146,7 +146,7 @@ describe('deriveContextualChips', () => {
       healthFactor: 1.2,
       pendingRewards: 5,
       cash: 200,
-      savingsRate: 6.0,
+      savingsRate: 0.06,
     });
     expect(chips.length).toBe(3);
     expect(chips[0].id).toBe('session');
@@ -204,14 +204,14 @@ describe('discovery chips', () => {
   });
 
   it('shows yield check when savings > $10', () => {
-    const chips = deriveContextualChips({ ...BASE_STATE, savings: 50, savingsRate: 4.0 });
+    const chips = deriveContextualChips({ ...BASE_STATE, savings: 50, savingsRate: 0.04 });
     const chip = chips.find((c) => c.id === 'yield-check');
     expect(chip).toBeDefined();
     expect(chip!.agentPrompt).toContain('USDC');
   });
 
   it('shows what-if chip when cash > $10', () => {
-    const chips = deriveContextualChips({ ...BASE_STATE, cash: 50, savingsRate: 4.0 });
+    const chips = deriveContextualChips({ ...BASE_STATE, cash: 50, savingsRate: 0.04 });
     const chip = chips.find((c) => c.id === 'what-if');
     expect(chip).toBeDefined();
     expect(chip!.agentPrompt).toContain('$50');

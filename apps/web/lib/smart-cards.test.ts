@@ -46,7 +46,7 @@ describe('deriveSmartCards', () => {
   });
 
   it('surfaces idle-funds card when cash > $5', () => {
-    const cards = deriveSmartCards({ ...BASE_STATE, cash: 105, savingsRate: 6.8 });
+    const cards = deriveSmartCards({ ...BASE_STATE, cash: 105, savingsRate: 0.068 });
     const idleCard = cards.find((c) => c.type === 'idle-funds');
     expect(idleCard).toBeDefined();
     expect(idleCard!.title).toContain('$105');
@@ -54,7 +54,7 @@ describe('deriveSmartCards', () => {
   });
 
   it('surfaces idle-funds card when cash is $8', () => {
-    const cards = deriveSmartCards({ ...BASE_STATE, cash: 8, savingsRate: 4.9 });
+    const cards = deriveSmartCards({ ...BASE_STATE, cash: 8, savingsRate: 0.049 });
     const idleCard = cards.find((c) => c.type === 'idle-funds');
     expect(idleCard).toBeDefined();
     expect(idleCard!.title).toContain('$8');
@@ -103,7 +103,7 @@ describe('deriveSmartCards', () => {
       sessionExpiringSoon: true,
       pendingRewards: 5,
       cash: 500,
-      savingsRate: 6.0,
+      savingsRate: 0.06,
     });
     expect(cards.length).toBeGreaterThanOrEqual(3);
     expect(cards[0].type).toBe('session-expiry');
