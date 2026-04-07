@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
-import { getAllowance } from '@t2000/sdk';
 import { SUI_NETWORK } from '@/lib/constants';
 
 const LS_KEY_PREFIX = 'audric:allowanceId:';
@@ -17,6 +16,27 @@ function getClient() {
     _client = new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl(SUI_NETWORK), network: SUI_NETWORK });
   }
   return _client;
+}
+
+interface AllowanceFields {
+  balance: unknown;
+}
+
+function parseU64(raw: unknown): bigint {
+  if (typeof raw === 'string' || typeof raw === 'number') return BigInt(raw);
+  if (typeof raw === 'object' && raw !== null && 'value' in raw) {
+    return BigInt((raw as { value: string }).value);
+  }
+  return BigInt(0);
+}
+
+async function fetchAllowanceBalance(client: SuiJsonRpcClient, id: string): Promise<bigint> {
+  const obj = await client.getObject({ id, options: { showContent: true } });
+  if (!obj.data?.content || obj.data.content.dataType !== 'moveObject') {
+    throw new Error(`Allowance ${id} not found`);
+  }
+  const fields = obj.data.content.fields as unknown as AllowanceFields;
+  return parseU64(fields.balance);
 }
 
 export interface AllowanceStatus {
@@ -68,9 +88,9 @@ export function useAllowanceStatus(address: string | null): AllowanceStatus {
       if (id) {
         setAllowanceIdState(id);
         try {
-          const info = await getAllowance(getClient(), id);
+          const raw = await fetchAllowanceBalance(getClient(), id);
           const USDC_DECIMALS = 6;
-          setBalance(Number(info.balance) / 10 ** USDC_DECIMALS);
+          setBalance(Number(raw) / 10 ** USDC_DECIMALS);
         } catch {
           setBalance(null);
         }
