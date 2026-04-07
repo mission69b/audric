@@ -58,6 +58,7 @@ export const ModelName = {
   ServicePurchase: 'ServicePurchase',
   NotificationPrefs: 'NotificationPrefs',
   NotificationLog: 'NotificationLog',
+  DailyBriefing: 'DailyBriefing',
   AppEvent: 'AppEvent'
 } as const
 
@@ -173,6 +174,20 @@ export const NotificationLogScalarFieldEnum = {
 } as const
 
 export type NotificationLogScalarFieldEnum = (typeof NotificationLogScalarFieldEnum)[keyof typeof NotificationLogScalarFieldEnum]
+
+
+export const DailyBriefingScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  date: 'date',
+  content: 'content',
+  emailSentAt: 'emailSentAt',
+  dismissedAt: 'dismissedAt',
+  chargeDigest: 'chargeDigest',
+  createdAt: 'createdAt'
+} as const
+
+export type DailyBriefingScalarFieldEnum = (typeof DailyBriefingScalarFieldEnum)[keyof typeof DailyBriefingScalarFieldEnum]
 
 
 export const AppEventScalarFieldEnum = {

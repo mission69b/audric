@@ -49,6 +49,9 @@ export async function GET(request: NextRequest) {
       notificationPrefs: {
         select: { feature: true, enabled: true },
       },
+      preferences: {
+        select: { limits: true },
+      },
     },
   });
 
@@ -60,11 +63,14 @@ export async function GET(request: NextRequest) {
         prefs[p.feature] = p.enabled;
       }
 
+      const limits = u.preferences?.limits as Record<string, unknown> | null;
+      const allowanceId = (limits?.allowanceId as string) ?? null;
+
       return {
         userId: u.id,
         email: u.email!,
         walletAddress: u.suiAddress,
-        allowanceId: null,
+        allowanceId,
         timezoneOffset: u.timezoneOffset,
         prefs,
       };

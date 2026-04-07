@@ -267,6 +267,7 @@ export type UserWhereInput = {
   preferences?: Prisma.XOR<Prisma.UserPreferencesNullableScalarRelationFilter, Prisma.UserPreferencesWhereInput> | null
   conversationLogs?: Prisma.ConversationLogListRelationFilter
   notificationPrefs?: Prisma.NotificationPrefsListRelationFilter
+  dailyBriefings?: Prisma.DailyBriefingListRelationFilter
 }
 
 export type UserOrderByWithRelationInput = {
@@ -284,6 +285,7 @@ export type UserOrderByWithRelationInput = {
   preferences?: Prisma.UserPreferencesOrderByWithRelationInput
   conversationLogs?: Prisma.ConversationLogOrderByRelationAggregateInput
   notificationPrefs?: Prisma.NotificationPrefsOrderByRelationAggregateInput
+  dailyBriefings?: Prisma.DailyBriefingOrderByRelationAggregateInput
 }
 
 export type UserWhereUniqueInput = Prisma.AtLeast<{
@@ -304,6 +306,7 @@ export type UserWhereUniqueInput = Prisma.AtLeast<{
   preferences?: Prisma.XOR<Prisma.UserPreferencesNullableScalarRelationFilter, Prisma.UserPreferencesWhereInput> | null
   conversationLogs?: Prisma.ConversationLogListRelationFilter
   notificationPrefs?: Prisma.NotificationPrefsListRelationFilter
+  dailyBriefings?: Prisma.DailyBriefingListRelationFilter
 }, "id" | "suiAddress" | "email">
 
 export type UserOrderByWithAggregationInput = {
@@ -357,6 +360,7 @@ export type UserCreateInput = {
   preferences?: Prisma.UserPreferencesCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsCreateNestedManyWithoutUserInput
+  dailyBriefings?: Prisma.DailyBriefingCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateInput = {
@@ -374,6 +378,7 @@ export type UserUncheckedCreateInput = {
   preferences?: Prisma.UserPreferencesUncheckedCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogUncheckedCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedCreateNestedManyWithoutUserInput
+  dailyBriefings?: Prisma.DailyBriefingUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserUpdateInput = {
@@ -391,6 +396,7 @@ export type UserUpdateInput = {
   preferences?: Prisma.UserPreferencesUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUpdateManyWithoutUserNestedInput
+  dailyBriefings?: Prisma.DailyBriefingUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateInput = {
@@ -408,6 +414,7 @@ export type UserUncheckedUpdateInput = {
   preferences?: Prisma.UserPreferencesUncheckedUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUncheckedUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedUpdateManyWithoutUserNestedInput
+  dailyBriefings?: Prisma.DailyBriefingUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateManyInput = {
@@ -584,6 +591,20 @@ export type UserUpdateOneRequiredWithoutNotificationPrefsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutNotificationPrefsInput, Prisma.UserUpdateWithoutNotificationPrefsInput>, Prisma.UserUncheckedUpdateWithoutNotificationPrefsInput>
 }
 
+export type UserCreateNestedOneWithoutDailyBriefingsInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutDailyBriefingsInput, Prisma.UserUncheckedCreateWithoutDailyBriefingsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutDailyBriefingsInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserUpdateOneRequiredWithoutDailyBriefingsNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutDailyBriefingsInput, Prisma.UserUncheckedCreateWithoutDailyBriefingsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutDailyBriefingsInput
+  upsert?: Prisma.UserUpsertWithoutDailyBriefingsInput
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutDailyBriefingsInput, Prisma.UserUpdateWithoutDailyBriefingsInput>, Prisma.UserUncheckedUpdateWithoutDailyBriefingsInput>
+}
+
 export type UserCreateWithoutPreferencesInput = {
   id?: string
   suiAddress: string
@@ -598,6 +619,7 @@ export type UserCreateWithoutPreferencesInput = {
   updatedAt?: Date | string
   conversationLogs?: Prisma.ConversationLogCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsCreateNestedManyWithoutUserInput
+  dailyBriefings?: Prisma.DailyBriefingCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutPreferencesInput = {
@@ -614,6 +636,7 @@ export type UserUncheckedCreateWithoutPreferencesInput = {
   updatedAt?: Date | string
   conversationLogs?: Prisma.ConversationLogUncheckedCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedCreateNestedManyWithoutUserInput
+  dailyBriefings?: Prisma.DailyBriefingUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutPreferencesInput = {
@@ -646,6 +669,7 @@ export type UserUpdateWithoutPreferencesInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   conversationLogs?: Prisma.ConversationLogUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUpdateManyWithoutUserNestedInput
+  dailyBriefings?: Prisma.DailyBriefingUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutPreferencesInput = {
@@ -662,6 +686,7 @@ export type UserUncheckedUpdateWithoutPreferencesInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   conversationLogs?: Prisma.ConversationLogUncheckedUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedUpdateManyWithoutUserNestedInput
+  dailyBriefings?: Prisma.DailyBriefingUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutConversationLogsInput = {
@@ -678,6 +703,7 @@ export type UserCreateWithoutConversationLogsInput = {
   updatedAt?: Date | string
   preferences?: Prisma.UserPreferencesCreateNestedOneWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsCreateNestedManyWithoutUserInput
+  dailyBriefings?: Prisma.DailyBriefingCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutConversationLogsInput = {
@@ -694,6 +720,7 @@ export type UserUncheckedCreateWithoutConversationLogsInput = {
   updatedAt?: Date | string
   preferences?: Prisma.UserPreferencesUncheckedCreateNestedOneWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedCreateNestedManyWithoutUserInput
+  dailyBriefings?: Prisma.DailyBriefingUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutConversationLogsInput = {
@@ -726,6 +753,7 @@ export type UserUpdateWithoutConversationLogsInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   preferences?: Prisma.UserPreferencesUpdateOneWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUpdateManyWithoutUserNestedInput
+  dailyBriefings?: Prisma.DailyBriefingUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutConversationLogsInput = {
@@ -742,6 +770,7 @@ export type UserUncheckedUpdateWithoutConversationLogsInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   preferences?: Prisma.UserPreferencesUncheckedUpdateOneWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedUpdateManyWithoutUserNestedInput
+  dailyBriefings?: Prisma.DailyBriefingUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutNotificationPrefsInput = {
@@ -758,6 +787,7 @@ export type UserCreateWithoutNotificationPrefsInput = {
   updatedAt?: Date | string
   preferences?: Prisma.UserPreferencesCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogCreateNestedManyWithoutUserInput
+  dailyBriefings?: Prisma.DailyBriefingCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutNotificationPrefsInput = {
@@ -774,6 +804,7 @@ export type UserUncheckedCreateWithoutNotificationPrefsInput = {
   updatedAt?: Date | string
   preferences?: Prisma.UserPreferencesUncheckedCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogUncheckedCreateNestedManyWithoutUserInput
+  dailyBriefings?: Prisma.DailyBriefingUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutNotificationPrefsInput = {
@@ -806,6 +837,7 @@ export type UserUpdateWithoutNotificationPrefsInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   preferences?: Prisma.UserPreferencesUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUpdateManyWithoutUserNestedInput
+  dailyBriefings?: Prisma.DailyBriefingUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutNotificationPrefsInput = {
@@ -822,6 +854,91 @@ export type UserUncheckedUpdateWithoutNotificationPrefsInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   preferences?: Prisma.UserPreferencesUncheckedUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUncheckedUpdateManyWithoutUserNestedInput
+  dailyBriefings?: Prisma.DailyBriefingUncheckedUpdateManyWithoutUserNestedInput
+}
+
+export type UserCreateWithoutDailyBriefingsInput = {
+  id?: string
+  suiAddress: string
+  email?: string | null
+  emailVerified?: boolean
+  emailVerifyToken?: string | null
+  emailVerifyExpiry?: Date | string | null
+  displayName?: string | null
+  timezoneOffset?: number
+  onboardedAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  preferences?: Prisma.UserPreferencesCreateNestedOneWithoutUserInput
+  conversationLogs?: Prisma.ConversationLogCreateNestedManyWithoutUserInput
+  notificationPrefs?: Prisma.NotificationPrefsCreateNestedManyWithoutUserInput
+}
+
+export type UserUncheckedCreateWithoutDailyBriefingsInput = {
+  id?: string
+  suiAddress: string
+  email?: string | null
+  emailVerified?: boolean
+  emailVerifyToken?: string | null
+  emailVerifyExpiry?: Date | string | null
+  displayName?: string | null
+  timezoneOffset?: number
+  onboardedAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  preferences?: Prisma.UserPreferencesUncheckedCreateNestedOneWithoutUserInput
+  conversationLogs?: Prisma.ConversationLogUncheckedCreateNestedManyWithoutUserInput
+  notificationPrefs?: Prisma.NotificationPrefsUncheckedCreateNestedManyWithoutUserInput
+}
+
+export type UserCreateOrConnectWithoutDailyBriefingsInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutDailyBriefingsInput, Prisma.UserUncheckedCreateWithoutDailyBriefingsInput>
+}
+
+export type UserUpsertWithoutDailyBriefingsInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutDailyBriefingsInput, Prisma.UserUncheckedUpdateWithoutDailyBriefingsInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutDailyBriefingsInput, Prisma.UserUncheckedCreateWithoutDailyBriefingsInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutDailyBriefingsInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutDailyBriefingsInput, Prisma.UserUncheckedUpdateWithoutDailyBriefingsInput>
+}
+
+export type UserUpdateWithoutDailyBriefingsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  suiAddress?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  emailVerifyToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  emailVerifyExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  timezoneOffset?: Prisma.IntFieldUpdateOperationsInput | number
+  onboardedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  preferences?: Prisma.UserPreferencesUpdateOneWithoutUserNestedInput
+  conversationLogs?: Prisma.ConversationLogUpdateManyWithoutUserNestedInput
+  notificationPrefs?: Prisma.NotificationPrefsUpdateManyWithoutUserNestedInput
+}
+
+export type UserUncheckedUpdateWithoutDailyBriefingsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  suiAddress?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  emailVerifyToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  emailVerifyExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  timezoneOffset?: Prisma.IntFieldUpdateOperationsInput | number
+  onboardedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  preferences?: Prisma.UserPreferencesUncheckedUpdateOneWithoutUserNestedInput
+  conversationLogs?: Prisma.ConversationLogUncheckedUpdateManyWithoutUserNestedInput
+  notificationPrefs?: Prisma.NotificationPrefsUncheckedUpdateManyWithoutUserNestedInput
 }
 
 
@@ -832,11 +949,13 @@ export type UserUncheckedUpdateWithoutNotificationPrefsInput = {
 export type UserCountOutputType = {
   conversationLogs: number
   notificationPrefs: number
+  dailyBriefings: number
 }
 
 export type UserCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   conversationLogs?: boolean | UserCountOutputTypeCountConversationLogsArgs
   notificationPrefs?: boolean | UserCountOutputTypeCountNotificationPrefsArgs
+  dailyBriefings?: boolean | UserCountOutputTypeCountDailyBriefingsArgs
 }
 
 /**
@@ -863,6 +982,13 @@ export type UserCountOutputTypeCountNotificationPrefsArgs<ExtArgs extends runtim
   where?: Prisma.NotificationPrefsWhereInput
 }
 
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountDailyBriefingsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.DailyBriefingWhereInput
+}
+
 
 export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -879,6 +1005,7 @@ export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   preferences?: boolean | Prisma.User$preferencesArgs<ExtArgs>
   conversationLogs?: boolean | Prisma.User$conversationLogsArgs<ExtArgs>
   notificationPrefs?: boolean | Prisma.User$notificationPrefsArgs<ExtArgs>
+  dailyBriefings?: boolean | Prisma.User$dailyBriefingsArgs<ExtArgs>
   _count?: boolean | Prisma.UserCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["user"]>
 
@@ -929,6 +1056,7 @@ export type UserInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   preferences?: boolean | Prisma.User$preferencesArgs<ExtArgs>
   conversationLogs?: boolean | Prisma.User$conversationLogsArgs<ExtArgs>
   notificationPrefs?: boolean | Prisma.User$notificationPrefsArgs<ExtArgs>
+  dailyBriefings?: boolean | Prisma.User$dailyBriefingsArgs<ExtArgs>
   _count?: boolean | Prisma.UserCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type UserIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
@@ -940,6 +1068,7 @@ export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     preferences: Prisma.$UserPreferencesPayload<ExtArgs> | null
     conversationLogs: Prisma.$ConversationLogPayload<ExtArgs>[]
     notificationPrefs: Prisma.$NotificationPrefsPayload<ExtArgs>[]
+    dailyBriefings: Prisma.$DailyBriefingPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -1350,6 +1479,7 @@ export interface Prisma__UserClient<T, Null = never, ExtArgs extends runtime.Typ
   preferences<T extends Prisma.User$preferencesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$preferencesArgs<ExtArgs>>): Prisma.Prisma__UserPreferencesClient<runtime.Types.Result.GetResult<Prisma.$UserPreferencesPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   conversationLogs<T extends Prisma.User$conversationLogsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$conversationLogsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ConversationLogPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   notificationPrefs<T extends Prisma.User$notificationPrefsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$notificationPrefsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$NotificationPrefsPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  dailyBriefings<T extends Prisma.User$dailyBriefingsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$dailyBriefingsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$DailyBriefingPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1847,6 +1977,30 @@ export type User$notificationPrefsArgs<ExtArgs extends runtime.Types.Extensions.
   take?: number
   skip?: number
   distinct?: Prisma.NotificationPrefsScalarFieldEnum | Prisma.NotificationPrefsScalarFieldEnum[]
+}
+
+/**
+ * User.dailyBriefings
+ */
+export type User$dailyBriefingsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the DailyBriefing
+   */
+  select?: Prisma.DailyBriefingSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the DailyBriefing
+   */
+  omit?: Prisma.DailyBriefingOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.DailyBriefingInclude<ExtArgs> | null
+  where?: Prisma.DailyBriefingWhereInput
+  orderBy?: Prisma.DailyBriefingOrderByWithRelationInput | Prisma.DailyBriefingOrderByWithRelationInput[]
+  cursor?: Prisma.DailyBriefingWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.DailyBriefingScalarFieldEnum | Prisma.DailyBriefingScalarFieldEnum[]
 }
 
 /**

@@ -53,6 +53,11 @@ export type NotificationPrefs = Prisma.NotificationPrefsModel
  */
 export type NotificationLog = Prisma.NotificationLogModel
 /**
+ * Model DailyBriefing
+ * 
+ */
+export type DailyBriefing = Prisma.DailyBriefingModel
+/**
  * Model AppEvent
  * 
  */

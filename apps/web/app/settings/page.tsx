@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { AuthGuard } from '@/components/auth/AuthGuard';
 import { useZkLogin } from '@/components/auth/useZkLogin';
@@ -46,8 +47,21 @@ function SettingsContent() {
   const jwt = session?.jwt ?? null;
   const { prefs, loading: prefsLoading, toggling, toggle } = useNotificationPrefs(address, jwt);
   const allowance = useAllowanceStatus(address);
-  const [activeSection, setActiveSection] = useState<Section>('account');
+  const searchParams = useSearchParams();
+  const [activeSection, setActiveSection] = useState<Section>(() => {
+    const section = typeof window !== 'undefined'
+      ? new URLSearchParams(window.location.search).get('section')
+      : null;
+    return (section && SECTIONS.some((s) => s.id === section)) ? section as Section : 'account';
+  });
   const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    const section = searchParams.get('section');
+    if (section && SECTIONS.some((s) => s.id === section)) {
+      setActiveSection(section as Section);
+    }
+  }, [searchParams]);
 
   const handleCopy = () => {
     if (!address) return;
@@ -297,7 +311,9 @@ function SettingsRow({ label, children }: { label: string; children: React.React
 export default function SettingsPage() {
   return (
     <AuthGuard>
-      <SettingsContent />
+      <Suspense>
+        <SettingsContent />
+      </Suspense>
     </AuthGuard>
   );
 }

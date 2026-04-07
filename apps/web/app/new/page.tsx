@@ -1,7 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { AuthGuard } from '@/components/auth/AuthGuard';
 import { useZkLogin } from '@/components/auth/useZkLogin';
@@ -34,6 +34,8 @@ import { useAllowanceStatus } from '@/hooks/useAllowanceStatus';
 import { DashboardTabs, type DashboardTab } from '@/components/dashboard/DashboardTabs';
 import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
 import { useActivityFeed } from '@/hooks/useActivityFeed';
+import { BriefingCard } from '@/components/dashboard/BriefingCard';
+import { useOvernightBriefing } from '@/hooks/useOvernightBriefing';
 
 const LS_LAST_SAVINGS = 't2000_last_savings';
 const LS_LAST_OPEN = 't2000_last_open_date';
@@ -234,6 +236,7 @@ function DashboardContent() {
   });
   const [activeTab, setActiveTab] = useState<DashboardTab>('chat');
   const activityFeed = useActivityFeed(address);
+  const briefing = useOvernightBriefing(address, session?.jwt ?? null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [agentBudget, setAgentBudget] = useState(0.50);
   const [dismissedCards, setDismissedCards] = useState<Set<string>>(new Set());
@@ -716,6 +719,31 @@ function DashboardContent() {
     setActiveTab('chat');
     handleChipClick(flow);
   }, [handleChipClick]);
+
+  const handleBriefingCtaClick = useCallback((type: string, amount?: number) => {
+    if (type === 'save' && amount) {
+      handleInputSubmit(`Save $${amount} USDC`);
+    } else if (type === 'repay') {
+      handleInputSubmit('Repay my debt');
+    }
+  }, [handleInputSubmit]);
+
+  const handleBriefingViewReport = useCallback(() => {
+    handleInputSubmit('Give me my daily briefing');
+  }, [handleInputSubmit]);
+
+  // Deep link: ?prefill=... auto-sends a message on load
+  const searchParams = useSearchParams();
+  const prefillHandled = useRef(false);
+  useEffect(() => {
+    if (prefillHandled.current) return;
+    const prefill = searchParams.get('prefill');
+    if (prefill && address) {
+      prefillHandled.current = true;
+      handleInputSubmit(decodeURIComponent(prefill));
+      window.history.replaceState({}, '', '/new');
+    }
+  }, [searchParams, address, handleInputSubmit]);
 
   const handleCopy = useCallback((text: string) => {
     navigator.clipboard.writeText(text);
@@ -1234,6 +1262,17 @@ function DashboardContent() {
         </div>
 
         <div className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 -mt-8">
+          {briefing.briefing && (
+            <div className="w-full max-w-2xl mb-6">
+              <BriefingCard
+                briefing={briefing.briefing}
+                onDismiss={briefing.dismiss}
+                onViewReport={handleBriefingViewReport}
+                onCtaClick={handleBriefingCtaClick}
+              />
+            </div>
+          )}
+
           <p className="text-sm text-muted mb-6">{greeting}</p>
 
           <div className="w-full max-w-2xl mb-6">
@@ -1285,6 +1324,16 @@ function DashboardContent() {
           </div>
         </div>
         <div className="mx-auto w-full max-w-2xl px-4 sm:px-6 py-4">
+          {briefing.briefing && (
+            <div className="mb-4">
+              <BriefingCard
+                briefing={briefing.briefing}
+                onDismiss={briefing.dismiss}
+                onViewReport={handleBriefingViewReport}
+                onCtaClick={handleBriefingCtaClick}
+              />
+            </div>
+          )}
           <ActivityFeed feed={activityFeed} onAction={handleActivityAction} />
         </div>
 
@@ -1513,7 +1562,9 @@ function DashboardContent() {
 export default function DashboardPage() {
   return (
     <AuthGuard>
-      <DashboardContent />
+      <Suspense>
+        <DashboardContent />
+      </Suspense>
     </AuthGuard>
   );
 }

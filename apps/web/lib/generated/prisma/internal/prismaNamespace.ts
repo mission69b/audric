@@ -391,6 +391,7 @@ export const ModelName = {
   ServicePurchase: 'ServicePurchase',
   NotificationPrefs: 'NotificationPrefs',
   NotificationLog: 'NotificationLog',
+  DailyBriefing: 'DailyBriefing',
   AppEvent: 'AppEvent'
 } as const
 
@@ -407,7 +408,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "userPreferences" | "conversationLog" | "sessionUsage" | "servicePurchase" | "notificationPrefs" | "notificationLog" | "appEvent"
+    modelProps: "user" | "userPreferences" | "conversationLog" | "sessionUsage" | "servicePurchase" | "notificationPrefs" | "notificationLog" | "dailyBriefing" | "appEvent"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -929,6 +930,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    DailyBriefing: {
+      payload: Prisma.$DailyBriefingPayload<ExtArgs>
+      fields: Prisma.DailyBriefingFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.DailyBriefingFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DailyBriefingPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.DailyBriefingFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DailyBriefingPayload>
+        }
+        findFirst: {
+          args: Prisma.DailyBriefingFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DailyBriefingPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.DailyBriefingFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DailyBriefingPayload>
+        }
+        findMany: {
+          args: Prisma.DailyBriefingFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DailyBriefingPayload>[]
+        }
+        create: {
+          args: Prisma.DailyBriefingCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DailyBriefingPayload>
+        }
+        createMany: {
+          args: Prisma.DailyBriefingCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.DailyBriefingCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DailyBriefingPayload>[]
+        }
+        delete: {
+          args: Prisma.DailyBriefingDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DailyBriefingPayload>
+        }
+        update: {
+          args: Prisma.DailyBriefingUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DailyBriefingPayload>
+        }
+        deleteMany: {
+          args: Prisma.DailyBriefingDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.DailyBriefingUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.DailyBriefingUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DailyBriefingPayload>[]
+        }
+        upsert: {
+          args: Prisma.DailyBriefingUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DailyBriefingPayload>
+        }
+        aggregate: {
+          args: Prisma.DailyBriefingAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateDailyBriefing>
+        }
+        groupBy: {
+          args: Prisma.DailyBriefingGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.DailyBriefingGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.DailyBriefingCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.DailyBriefingCountAggregateOutputType> | number
+        }
+      }
+    }
     AppEvent: {
       payload: Prisma.$AppEventPayload<ExtArgs>
       fields: Prisma.AppEventFieldRefs
@@ -1138,6 +1213,20 @@ export const NotificationLogScalarFieldEnum = {
 } as const
 
 export type NotificationLogScalarFieldEnum = (typeof NotificationLogScalarFieldEnum)[keyof typeof NotificationLogScalarFieldEnum]
+
+
+export const DailyBriefingScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  date: 'date',
+  content: 'content',
+  emailSentAt: 'emailSentAt',
+  dismissedAt: 'dismissedAt',
+  chargeDigest: 'chargeDigest',
+  createdAt: 'createdAt'
+} as const
+
+export type DailyBriefingScalarFieldEnum = (typeof DailyBriefingScalarFieldEnum)[keyof typeof DailyBriefingScalarFieldEnum]
 
 
 export const AppEventScalarFieldEnum = {
@@ -1385,6 +1474,7 @@ export type GlobalOmitConfig = {
   servicePurchase?: Prisma.ServicePurchaseOmit
   notificationPrefs?: Prisma.NotificationPrefsOmit
   notificationLog?: Prisma.NotificationLogOmit
+  dailyBriefing?: Prisma.DailyBriefingOmit
   appEvent?: Prisma.AppEventOmit
 }
 
