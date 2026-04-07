@@ -56,10 +56,7 @@ export function useAllowanceStatus(address: string | null): AllowanceStatus {
   const [skipped, setSkipped] = useState(false);
 
   const fetchStatus = useCallback(async () => {
-    if (!address) {
-      setLoading(false);
-      return;
-    }
+    if (!address) return;
 
     setLoading(true);
 
