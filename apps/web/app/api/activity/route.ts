@@ -12,9 +12,9 @@ const suiClient = new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl(SUI_NETWORK)
 const ALLOWANCE_PACKAGE_PREFIX = '0xd775fcc66eae26797654d435d751dea56b82eeb999de51fd285348e573b968ad';
 
 const KNOWN_TARGETS: [RegExp, string][] = [
-  [/::suilend|::obligation/, 'lending'],
-  [/::navi|::incentive_v\d+|::oracle_pro/, 'lending'],
-  [/::cetus|::pool/, 'swap'],
+  [/::suilend|::obligation|::reserve/, 'lending'],
+  [/::incentive_v\d+|::oracle_pro|::flash_loan|::lending|::storage/, 'lending'],
+  [/::cetus/, 'swap'],
   [/::deepbook/, 'swap'],
   [/::transfer::public_transfer/, 'send'],
 ];
@@ -86,17 +86,22 @@ async function fetchChainActivity(
 ): Promise<ActivityItem[]> {
   if (filterType === 'pay') return [];
 
+  const skipOutgoing = filterType === 'receive';
+  const incomingLimit = filterType === 'receive' ? Math.min(limit, 50) : Math.min(limit, 15);
+
   const [outgoing, incoming] = await Promise.all([
-    suiClient.queryTransactionBlocks({
-      filter: { FromAddress: address },
-      options: { showEffects: true, showInput: true, showBalanceChanges: true },
-      limit: Math.min(limit, 50),
-      order: 'descending',
-    }).catch(() => ({ data: [] })),
+    skipOutgoing
+      ? { data: [] }
+      : suiClient.queryTransactionBlocks({
+          filter: { FromAddress: address },
+          options: { showEffects: true, showInput: true, showBalanceChanges: true },
+          limit: Math.min(limit, 50),
+          order: 'descending',
+        }).catch(() => ({ data: [] })),
     suiClient.queryTransactionBlocks({
       filter: { ToAddress: address },
       options: { showEffects: true, showInput: true, showBalanceChanges: true },
-      limit: Math.min(limit, 10),
+      limit: incomingLimit,
       order: 'descending',
     }).catch(() => ({ data: [] })),
   ]);
@@ -152,13 +157,18 @@ async function fetchAppEvents(
     where.type = { in: types };
   }
 
-  const events = await prisma.appEvent.findMany({
-    where,
-    orderBy: { createdAt: 'desc' },
-    take: limit,
-  });
+  const [events, purchases] = await Promise.all([
+    prisma.appEvent.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    }),
+    (filterType === 'all' || filterType === 'pay')
+      ? fetchServicePurchases(address, limit, cursorMs)
+      : Promise.resolve([]),
+  ]);
 
-  return events.map((e) => {
+  const appItems: ActivityItem[] = events.map((e) => {
     const details = (e.details ?? {}) as Record<string, unknown>;
     return {
       id: e.id,
@@ -171,6 +181,43 @@ async function fetchAppEvents(
       direction: details.direction as 'in' | 'out' | 'self' | undefined,
       digest: e.digest ?? undefined,
       timestamp: e.createdAt.getTime(),
+    };
+  });
+
+  // Deduplicate: AppEvents for pay already cover recent purchases
+  const eventTimestamps = new Set(appItems.filter((i) => i.type === 'pay').map((i) => i.timestamp));
+  const uniquePurchases = purchases.filter((p) => !eventTimestamps.has(p.timestamp));
+
+  return [...appItems, ...uniquePurchases];
+}
+
+async function fetchServicePurchases(
+  address: string,
+  limit: number,
+  cursorMs: number | null,
+): Promise<ActivityItem[]> {
+  const where: Record<string, unknown> = { address };
+  if (cursorMs) {
+    where.createdAt = { lt: new Date(cursorMs) };
+  }
+
+  const purchases = await prisma.servicePurchase.findMany({
+    where,
+    orderBy: { createdAt: 'desc' },
+    take: limit,
+  }).catch(() => []);
+
+  return purchases.map((p) => {
+    const label = p.serviceId.replace(/[-_]/g, ' ');
+    return {
+      id: `sp-${p.id}`,
+      source: 'app' as const,
+      type: 'pay',
+      title: `Paid $${p.amountUsd.toFixed(3)} for ${label}`,
+      subtitle: p.serviceId,
+      amount: p.amountUsd,
+      direction: 'out' as const,
+      timestamp: p.createdAt.getTime(),
     };
   });
 }
@@ -345,7 +392,7 @@ function parseTx(tx: TxBlock, address: string): ActivityItem | null {
     [...userInflows, ...userOutflows].map((c) => c.coinType),
   ).size > 1;
 
-  if (hasMultipleAssetTypes && userInflows.length > 0 && userOutflows.length > 0) {
+  if (hasMultipleAssetTypes && userInflows.length > 0 && userOutflows.length > 0 && action !== 'lending') {
     resolvedAction = 'swap';
   } else if (direction === 'in' && !isUserTx) {
     resolvedAction = 'receive';
