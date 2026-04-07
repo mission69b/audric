@@ -49,21 +49,29 @@ export async function GET(request: NextRequest) {
       notificationPrefs: {
         select: { feature: true, enabled: true },
       },
-      preferences: {
-        select: { limits: true },
-      },
     },
   });
 
-  const eligible = users
-    .filter((u) => isLocal8am(utcHour, u.timezoneOffset))
-    .map((u) => {
+  const filtered = users.filter((u) => isLocal8am(utcHour, u.timezoneOffset));
+
+  // Look up preferences by address (not via relation, since userId may be null)
+  const addresses = filtered.map((u) => u.suiAddress);
+  const prefsRows = addresses.length > 0
+    ? await prisma.userPreferences.findMany({
+        where: { address: { in: addresses } },
+        select: { address: true, limits: true },
+      })
+    : [];
+  const prefsByAddress = new Map(prefsRows.map((p) => [p.address, p]));
+
+  const eligible = filtered.map((u) => {
       const prefs = { ...DEFAULT_PREFS };
       for (const p of u.notificationPrefs) {
         prefs[p.feature] = p.enabled;
       }
 
-      const limits = u.preferences?.limits as Record<string, unknown> | null;
+      const userPrefs = prefsByAddress.get(u.suiAddress);
+      const limits = userPrefs?.limits as Record<string, unknown> | null;
       const allowanceId = (limits?.allowanceId as string) ?? null;
 
       return {
