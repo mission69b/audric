@@ -11,9 +11,14 @@ const suiClient = new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl(SUI_NETWORK)
 
 const ALLOWANCE_PACKAGE_PREFIX = '0xd775fcc66eae26797654d435d751dea56b82eeb999de51fd285348e573b968ad';
 
+// Layer 1: Protocol-specific module names (high confidence, verified against SDK sources)
+// NAVI: incentive_v\d+, lending, navi_adaptor, oracle_pro, flash_loan
+// Suilend: suilend, obligation, reserve
+// Cetus: cetus (package/module namespace)
+// DeepBook: deepbook
 const KNOWN_TARGETS: [RegExp, string][] = [
   [/::suilend|::obligation|::reserve/, 'lending'],
-  [/::incentive_v\d+|::oracle_pro|::flash_loan|::lending|::storage/, 'lending'],
+  [/::incentive_v\d+|::oracle_pro|::flash_loan|::lending|::navi_adaptor/, 'lending'],
   [/::cetus/, 'swap'],
   [/::deepbook/, 'swap'],
   [/::transfer::public_transfer/, 'send'],
@@ -157,18 +162,13 @@ async function fetchAppEvents(
     where.type = { in: types };
   }
 
-  const [events, purchases] = await Promise.all([
-    prisma.appEvent.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-      take: limit,
-    }),
-    (filterType === 'all' || filterType === 'pay')
-      ? fetchServicePurchases(address, limit, cursorMs)
-      : Promise.resolve([]),
-  ]);
+  const events = await prisma.appEvent.findMany({
+    where,
+    orderBy: { createdAt: 'desc' },
+    take: limit,
+  });
 
-  const appItems: ActivityItem[] = events.map((e) => {
+  return events.map((e) => {
     const details = (e.details ?? {}) as Record<string, unknown>;
     return {
       id: e.id,
@@ -181,43 +181,6 @@ async function fetchAppEvents(
       direction: details.direction as 'in' | 'out' | 'self' | undefined,
       digest: e.digest ?? undefined,
       timestamp: e.createdAt.getTime(),
-    };
-  });
-
-  // Deduplicate: AppEvents for pay already cover recent purchases
-  const eventTimestamps = new Set(appItems.filter((i) => i.type === 'pay').map((i) => i.timestamp));
-  const uniquePurchases = purchases.filter((p) => !eventTimestamps.has(p.timestamp));
-
-  return [...appItems, ...uniquePurchases];
-}
-
-async function fetchServicePurchases(
-  address: string,
-  limit: number,
-  cursorMs: number | null,
-): Promise<ActivityItem[]> {
-  const where: Record<string, unknown> = { address };
-  if (cursorMs) {
-    where.createdAt = { lt: new Date(cursorMs) };
-  }
-
-  const purchases = await prisma.servicePurchase.findMany({
-    where,
-    orderBy: { createdAt: 'desc' },
-    take: limit,
-  }).catch(() => []);
-
-  return purchases.map((p) => {
-    const label = p.serviceId.replace(/[-_]/g, ' ');
-    return {
-      id: `sp-${p.id}`,
-      source: 'app' as const,
-      type: 'pay',
-      title: `Paid $${p.amountUsd.toFixed(3)} for ${label}`,
-      subtitle: p.serviceId,
-      amount: p.amountUsd,
-      direction: 'out' as const,
-      timestamp: p.createdAt.getTime(),
     };
   });
 }
