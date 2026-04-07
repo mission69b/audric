@@ -232,7 +232,9 @@ function extractCommands(txBlock: unknown): { moveCallTargets: string[]; command
     if (!inner || typeof inner !== 'object') return result;
     const commands = 'commands' in (inner as Record<string, unknown>)
       ? (inner as Record<string, unknown>).commands
-      : undefined;
+      : 'transactions' in (inner as Record<string, unknown>)
+        ? (inner as Record<string, unknown>).transactions
+        : undefined;
     if (!Array.isArray(commands)) return result;
     for (const cmd of commands as Record<string, unknown>[]) {
       if (cmd.MoveCall) {
