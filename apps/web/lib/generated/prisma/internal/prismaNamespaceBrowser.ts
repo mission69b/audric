@@ -55,7 +55,9 @@ export const ModelName = {
   UserPreferences: 'UserPreferences',
   ConversationLog: 'ConversationLog',
   LlmUsage: 'LlmUsage',
-  ServicePurchase: 'ServicePurchase'
+  ServicePurchase: 'ServicePurchase',
+  NotificationPrefs: 'NotificationPrefs',
+  NotificationLog: 'NotificationLog'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -139,6 +141,29 @@ export const ServicePurchaseScalarFieldEnum = {
 } as const
 
 export type ServicePurchaseScalarFieldEnum = (typeof ServicePurchaseScalarFieldEnum)[keyof typeof ServicePurchaseScalarFieldEnum]
+
+
+export const NotificationPrefsScalarFieldEnum = {
+  userId: 'userId',
+  feature: 'feature',
+  enabled: 'enabled',
+  lastSentAt: 'lastSentAt'
+} as const
+
+export type NotificationPrefsScalarFieldEnum = (typeof NotificationPrefsScalarFieldEnum)[keyof typeof NotificationPrefsScalarFieldEnum]
+
+
+export const NotificationLogScalarFieldEnum = {
+  id: 'id',
+  job: 'job',
+  processed: 'processed',
+  sent: 'sent',
+  errors: 'errors',
+  reportedAt: 'reportedAt',
+  createdAt: 'createdAt'
+} as const
+
+export type NotificationLogScalarFieldEnum = (typeof NotificationLogScalarFieldEnum)[keyof typeof NotificationLogScalarFieldEnum]
 
 
 export const SortOrder = {

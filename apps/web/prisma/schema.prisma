@@ -20,10 +20,12 @@ model User {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
-  preferences      UserPreferences?
-  conversationLogs ConversationLog[]
+  preferences        UserPreferences?
+  conversationLogs   ConversationLog[]
+  notificationPrefs  NotificationPrefs[]
 
   @@index([email])
+  @@index([emailVerified, timezoneOffset])
 }
 
 model UserPreferences {
@@ -73,4 +75,28 @@ model ServicePurchase {
   createdAt DateTime @default(now())
 
   @@index([address, createdAt])
+}
+
+model NotificationPrefs {
+  userId     String
+  feature    String
+  enabled    Boolean   @default(true)
+  lastSentAt DateTime?
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@id([userId, feature])
+  @@index([userId])
+}
+
+model NotificationLog {
+  id         String   @id @default(cuid())
+  job        String
+  processed  Int
+  sent       Int
+  errors     Int
+  reportedAt DateTime
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
 }

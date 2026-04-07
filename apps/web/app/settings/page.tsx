@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { AuthGuard } from '@/components/auth/AuthGuard';
 import { useZkLogin } from '@/components/auth/useZkLogin';
+import { useNotificationPrefs } from '@/hooks/useNotificationPrefs';
 import { truncateAddress } from '@/lib/format';
 import { SUI_NETWORK } from '@/lib/constants';
 
@@ -17,8 +18,32 @@ const SECTIONS: { id: Section; label: string }[] = [
   { id: 'sessions', label: 'Sessions' },
 ];
 
+const NOTIFICATION_FEATURES = [
+  {
+    key: 'hf_alert' as const,
+    label: 'Health factor alerts',
+    description: 'Get notified when your credit position is at risk of liquidation',
+    free: true,
+  },
+  {
+    key: 'briefing' as const,
+    label: 'Morning briefing',
+    description: 'Daily summary of your earnings, rates, and suggested actions',
+    free: false,
+    cost: '$0.005/day',
+  },
+  {
+    key: 'rate_alert' as const,
+    label: 'Rate change alerts',
+    description: 'Get notified when USDC savings or borrow rates change significantly',
+    free: true,
+  },
+];
+
 function SettingsContent() {
   const { address, session, logout, refresh, expiringSoon } = useZkLogin();
+  const jwt = session?.jwt ?? null;
+  const { prefs, loading: prefsLoading, toggling, toggle } = useNotificationPrefs(address, jwt);
   const [activeSection, setActiveSection] = useState<Section>('account');
   const [copied, setCopied] = useState(false);
 
@@ -127,9 +152,52 @@ function SettingsContent() {
             {activeSection === 'features' && (
               <section className="space-y-5">
                 <SectionTitle>Features</SectionTitle>
-                <p className="text-sm text-muted leading-relaxed">
-                  Feature toggles, allowance budget, and auto-compound settings will appear here when the allowance model ships.
+                <p className="text-sm text-muted leading-relaxed mb-2">
+                  Control which notifications Audric sends you. Health factor alerts are always free.
                 </p>
+                {prefsLoading ? (
+                  <p className="text-sm text-muted">Loading preferences...</p>
+                ) : (
+                  <div className="space-y-1">
+                    {NOTIFICATION_FEATURES.map((f) => (
+                      <div key={f.key} className="flex items-start justify-between py-3 border-b border-border last:border-0">
+                        <div className="flex-1 mr-4">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-foreground font-medium">{f.label}</span>
+                            {f.free && (
+                              <span className="font-mono text-[9px] tracking-wider text-success uppercase bg-success/10 px-1.5 py-0.5 rounded">
+                                Free
+                              </span>
+                            )}
+                            {f.cost && (
+                              <span className="font-mono text-[9px] tracking-wider text-muted uppercase bg-surface px-1.5 py-0.5 rounded">
+                                {f.cost}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted mt-0.5 leading-relaxed">{f.description}</p>
+                        </div>
+                        <button
+                          onClick={() => toggle(f.key)}
+                          disabled={toggling === f.key}
+                          className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors mt-0.5 ${
+                            prefs[f.key]
+                              ? 'bg-foreground'
+                              : 'bg-foreground/20'
+                          } ${toggling === f.key ? 'opacity-50' : ''}`}
+                          role="switch"
+                          aria-checked={prefs[f.key]}
+                        >
+                          <span
+                            className={`pointer-events-none inline-block h-3.5 w-3.5 rounded-full bg-background transition-transform ${
+                              prefs[f.key] ? 'translate-x-[18px]' : 'translate-x-[3px]'
+                            }`}
+                          />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </section>
             )}
 

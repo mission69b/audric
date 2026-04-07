@@ -66,3 +66,13 @@ export type LlmUsage = Prisma.LlmUsageModel
  * 
  */
 export type ServicePurchase = Prisma.ServicePurchaseModel
+/**
+ * Model NotificationPrefs
+ * 
+ */
+export type NotificationPrefs = Prisma.NotificationPrefsModel
+/**
+ * Model NotificationLog
+ * 
+ */
+export type NotificationLog = Prisma.NotificationLogModel
