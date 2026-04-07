@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { AuthGuard } from '@/components/auth/AuthGuard';
 import { useZkLogin } from '@/components/auth/useZkLogin';
@@ -29,6 +30,7 @@ import { useAgent } from '@/hooks/useAgent';
 import { useUsdcSponsor } from '@/hooks/useUsdcSponsor';
 import { COIN_REGISTRY, getDecimalsForCoinType, resolveSymbol } from '@/lib/token-registry';
 import { parseActualAmount, buildSwapDisplayData } from '@/lib/balance-changes';
+import { useAllowanceStatus } from '@/hooks/useAllowanceStatus';
 
 const LS_LAST_SAVINGS = 't2000_last_savings';
 const LS_LAST_OPEN = 't2000_last_open_date';
@@ -188,8 +190,17 @@ function useOvernightEarnings(savings: number, loading: boolean) {
 }
 
 function DashboardContent() {
+  const router = useRouter();
   const { address, session, expiringSoon, logout, refresh } = useZkLogin();
   useUsdcSponsor(address);
+  const allowance = useAllowanceStatus(address);
+
+  useEffect(() => {
+    if (!allowance.loading && !allowance.allowanceId && !allowance.skipped && address) {
+      router.replace('/setup');
+    }
+  }, [allowance.loading, allowance.allowanceId, allowance.skipped, address, router]);
+
   const chipFlow = useChipFlow();
   const feed = useFeed();
   const contactsHook = useContacts(address);

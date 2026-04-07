@@ -79,12 +79,13 @@ export async function POST(request: NextRequest) {
 
     const txResult = await suiClient.waitForTransaction({
       digest: confirmedDigest,
-      options: { showEffects: true, showBalanceChanges: true },
+      options: { showEffects: true, showBalanceChanges: true, showObjectChanges: true },
     });
 
     return NextResponse.json({
       digest: confirmedDigest,
       balanceChanges: txResult.balanceChanges ?? [],
+      objectChanges: txResult.objectChanges ?? [],
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Transaction execution failed';

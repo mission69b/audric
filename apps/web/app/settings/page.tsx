@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { AuthGuard } from '@/components/auth/AuthGuard';
 import { useZkLogin } from '@/components/auth/useZkLogin';
 import { useNotificationPrefs } from '@/hooks/useNotificationPrefs';
+import { useAllowanceStatus } from '@/hooks/useAllowanceStatus';
 import { truncateAddress } from '@/lib/format';
 import { SUI_NETWORK } from '@/lib/constants';
 
@@ -44,6 +45,7 @@ function SettingsContent() {
   const { address, session, logout, refresh, expiringSoon } = useZkLogin();
   const jwt = session?.jwt ?? null;
   const { prefs, loading: prefsLoading, toggling, toggle } = useNotificationPrefs(address, jwt);
+  const allowance = useAllowanceStatus(address);
   const [activeSection, setActiveSection] = useState<Section>('account');
   const [copied, setCopied] = useState(false);
 
@@ -152,7 +154,48 @@ function SettingsContent() {
             {activeSection === 'features' && (
               <section className="space-y-5">
                 <SectionTitle>Features</SectionTitle>
-                <p className="text-sm text-muted leading-relaxed mb-2">
+
+                {/* Allowance budget card */}
+                {allowance.loading ? (
+                  <p className="text-sm text-muted">Loading budget...</p>
+                ) : allowance.allowanceId ? (
+                  <div className="rounded-lg border border-border bg-surface p-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted">Features budget</span>
+                      <span className="text-sm text-foreground font-medium">
+                        ${allowance.balance !== null ? allowance.balance.toFixed(2) : '—'}
+                      </span>
+                    </div>
+                    {allowance.balance !== null && allowance.balance < 0.05 && (
+                      <p className="text-xs text-warning">
+                        Budget running low. Top up to keep features active.
+                      </p>
+                    )}
+                    <div className="flex gap-2 pt-1">
+                      <Link
+                        href="/setup"
+                        className="rounded-md border border-border px-3 py-1.5 font-mono text-[10px] tracking-[0.1em] text-muted uppercase hover:text-foreground hover:border-foreground/20 transition"
+                      >
+                        Top Up
+                      </Link>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-border bg-surface p-4 space-y-3">
+                    <p className="text-sm text-muted leading-relaxed">
+                      Set up a features budget to enable paid notifications like morning briefings and rate alerts.
+                    </p>
+                    <Link
+                      href="/setup"
+                      className="inline-block rounded-md bg-foreground px-4 py-2 font-mono text-[10px] tracking-[0.1em] text-background uppercase hover:opacity-90 transition"
+                    >
+                      Set Up Budget
+                    </Link>
+                  </div>
+                )}
+
+                {/* Feature toggles */}
+                <p className="text-sm text-muted leading-relaxed">
                   Control which notifications Audric sends you. Health factor alerts are always free.
                 </p>
                 {prefsLoading ? (
