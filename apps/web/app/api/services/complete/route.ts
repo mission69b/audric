@@ -4,6 +4,7 @@ import { Credential, Method } from 'mppx';
 import { suiCharge } from '@suimpp/mpp/client';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { GATEWAY_BASE } from '@/lib/service-gateway';
+import { prisma } from '@/lib/prisma';
 
 export const runtime = 'nodejs';
 
@@ -35,6 +36,7 @@ export async function POST(request: NextRequest) {
       gatewayUrl: string;
       serviceBody: string;
       price: string;
+      address?: string;
       preDeliveredResult?: unknown;
     };
   };
@@ -96,6 +98,12 @@ export async function POST(request: NextRequest) {
 
       logToGateway(meta.serviceId, meta.price, confirmedPaymentDigest!).catch(() => {});
 
+      if (meta.address) {
+        backfillDigest(meta.address, confirmedPaymentDigest!).catch((err) =>
+          console.error('[services/complete] backfillDigest failed:', err),
+        );
+      }
+
       return NextResponse.json({
         success: true,
         paymentDigest: confirmedPaymentDigest,
@@ -107,7 +115,15 @@ export async function POST(request: NextRequest) {
 
     console.log(`[services/complete] Payment confirmed on-chain, calling gateway...`);
 
-    return await callGateway(confirmedPaymentDigest!, meta);
+    const gatewayResult = await callGateway(confirmedPaymentDigest!, meta);
+
+    if (gatewayResult.status === 200 && meta.address) {
+      recordPurchase(meta.address, meta.serviceId, parseFloat(meta.price), confirmedPaymentDigest!).catch((err) =>
+        console.error('[services/complete] recordPurchase failed:', err),
+      );
+    }
+
+    return gatewayResult;
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Service execution failed';
     console.error('[services/complete] Error:', message);
@@ -194,6 +210,39 @@ async function callGateway(
     serviceId: meta.serviceId,
     result,
   });
+}
+
+async function backfillDigest(address: string, digest: string): Promise<void> {
+  const recent = await prisma.appEvent.findFirst({
+    where: { address, type: 'pay', digest: null },
+    orderBy: { createdAt: 'desc' },
+  });
+  if (recent) {
+    await prisma.appEvent.update({ where: { id: recent.id }, data: { digest } });
+  }
+}
+
+async function recordPurchase(
+  address: string,
+  serviceId: string,
+  amountUsd: number,
+  paymentDigest: string,
+): Promise<void> {
+  const label = serviceId.replace(/[-_]/g, ' ');
+  await prisma.$transaction([
+    prisma.servicePurchase.create({
+      data: { address, serviceId, amountUsd },
+    }),
+    prisma.appEvent.create({
+      data: {
+        address,
+        type: 'pay',
+        title: `Paid $${amountUsd.toFixed(3)} for ${label}`,
+        details: { service: serviceId, amount: amountUsd },
+        digest: paymentDigest,
+      },
+    }),
+  ]);
 }
 
 async function logToGateway(serviceId: string, amount: string, digest: string): Promise<void> {

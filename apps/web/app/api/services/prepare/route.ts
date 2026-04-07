@@ -245,6 +245,7 @@ async function handleDeliverFirst(
       gatewayUrl: mapping.url,
       serviceBody: JSON.stringify(serviceBody),
       price: chargeAmount,
+      address,
       preDeliveredResult: deliverData.result,
     },
   });
@@ -381,6 +382,7 @@ async function handleStandardMpp(
       gatewayUrl: mapping.url,
       serviceBody: JSON.stringify(serviceBody),
       price: chargeAmount,
+      address,
     },
   });
 }
