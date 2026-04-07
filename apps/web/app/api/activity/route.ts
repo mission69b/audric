@@ -10,6 +10,7 @@ const SUI_NETWORK = (process.env.NEXT_PUBLIC_SUI_NETWORK ?? 'mainnet') as 'mainn
 const suiClient = new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl(SUI_NETWORK), network: SUI_NETWORK });
 
 const ALLOWANCE_PACKAGE_PREFIX = '0xd775fcc66eae26797654d435d751dea56b82eeb999de51fd285348e573b968ad';
+const MPP_TREASURY = '0x76d70cf9d3ab7f714a35adf8766a2cb25929cae92ab4de54ff4dea0482b05012';
 
 // Layer 1: Protocol-specific module names (high confidence, verified against SDK sources)
 // NAVI: incentive_v\d+, lending, navi_adaptor, oracle_pro, flash_loan
@@ -89,8 +90,6 @@ async function fetchChainActivity(
   _cursorMs: number | null,
   filterType: string,
 ): Promise<ActivityItem[]> {
-  if (filterType === 'pay') return [];
-
   const skipOutgoing = filterType === 'receive';
   const incomingLimit = filterType === 'receive' ? Math.min(limit, 50) : Math.min(limit, 15);
 
@@ -269,6 +268,8 @@ function buildTitle(action: string, direction: 'in' | 'out' | 'self', amount?: n
   const assetStr = asset ?? '';
 
   switch (action) {
+    case 'pay':
+      return `Paid ${amtStr} for service`.trim();
     case 'send':
       return counterparty
         ? `Sent ${amtStr} ${assetStr} to ${truncAddr(counterparty)}`.trim()
@@ -365,6 +366,10 @@ function parseTx(tx: TxBlock, address: string): ActivityItem | null {
     resolvedAction = direction === 'self' && !amount ? 'contract' : 'lending';
   } else if (direction === 'out' && !hasMoveCall) {
     resolvedAction = 'send';
+  }
+
+  if (counterparty === MPP_TREASURY) {
+    resolvedAction = 'pay';
   }
 
   const title = buildTitle(resolvedAction, direction, amount, asset, counterparty);
