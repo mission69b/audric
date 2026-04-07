@@ -95,15 +95,20 @@ function SetupContent() {
   const balanceQuery = useBalance(address);
   const allowanceStatus = useAllowanceStatus(address);
 
-  const isTopUp = !!allowanceStatus.allowanceId;
+  const [flowType, setFlowType] = useState<'setup' | 'topup' | null>(null);
+  const isTopUp = flowType === 'topup';
 
   const [step, setStep] = useState(1);
 
   useEffect(() => {
-    if (!allowanceStatus.loading && isTopUp && step === 1) {
+    if (allowanceStatus.loading || flowType !== null) return;
+    if (allowanceStatus.allowanceId) {
+      setFlowType('topup');
       setStep(3);
+    } else {
+      setFlowType('setup');
     }
-  }, [allowanceStatus.loading, isTopUp, step]);
+  }, [allowanceStatus.loading, allowanceStatus.allowanceId, flowType]);
 
   const [budget, setBudget] = useState(DEFAULT_BUDGET);
   const [customInput, setCustomInput] = useState('');
@@ -111,10 +116,12 @@ function SetupContent() {
   const [executing, setExecuting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const walletUsdc = balanceQuery.data?.usdc ?? 0;
   const savings = balanceQuery.data?.savings ?? 0;
   const savingsRate = balanceQuery.data?.savingsRate ?? 0;
   const coverage = yieldCoverageMultiple(savings, savingsRate);
   const duration = estimateDuration(budget);
+  const insufficientBalance = walletUsdc < budget;
 
   const handleSkip = useCallback(() => {
     allowanceStatus.markSkipped();
@@ -269,12 +276,23 @@ function SetupContent() {
               Skip
             </button>
           )}
-          {(step === 2 || step === 3) && !executing && (
+          {step === 2 && !executing && (
             <button
-              onClick={() => { setStep(step - 1); setError(null); }}
+              onClick={() => { setStep(1); setError(null); }}
               className="font-mono text-[10px] tracking-[0.12em] text-muted uppercase hover:text-foreground transition"
             >
               Back
+            </button>
+          )}
+          {step === 3 && !executing && (
+            <button
+              onClick={() => {
+                if (isTopUp) { router.replace('/settings'); }
+                else { setStep(2); setError(null); }
+              }}
+              className="font-mono text-[10px] tracking-[0.12em] text-muted uppercase hover:text-foreground transition"
+            >
+              {isTopUp ? 'Cancel' : 'Back'}
             </button>
           )}
         </div>
@@ -436,6 +454,31 @@ function SetupContent() {
                 )}
               </div>
 
+              {/* Insufficient balance warning */}
+              {insufficientBalance && (
+                <div className="rounded-lg border border-warning/30 bg-warning/5 p-4 space-y-3">
+                  <p className="text-sm text-foreground leading-relaxed">
+                    Your wallet has <span className="font-medium">${walletUsdc.toFixed(2)} USDC</span>.
+                    {walletUsdc < MIN_BUDGET
+                      ? ' Send at least $0.10 USDC to get started.'
+                      : ` Choose a smaller budget or add more USDC.`}
+                  </p>
+                  {address && (
+                    <div className="flex items-center gap-2">
+                      <code className="text-[10px] text-muted font-mono bg-surface-bright rounded px-2 py-1 truncate flex-1">
+                        {address}
+                      </code>
+                      <button
+                        onClick={() => { navigator.clipboard.writeText(address); }}
+                        className="text-[10px] text-muted hover:text-foreground font-mono uppercase tracking-wider shrink-0"
+                      >
+                        Copy
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Error message */}
               {error && (
                 <p className="text-sm text-error text-center">{error}</p>
@@ -445,7 +488,7 @@ function SetupContent() {
               <div className="space-y-3">
                 <button
                   onClick={handleApprove}
-                  disabled={executing || budget < MIN_BUDGET}
+                  disabled={executing || budget < MIN_BUDGET || insufficientBalance}
                   className="w-full rounded-lg bg-foreground py-3.5 text-sm font-medium text-background tracking-[0.05em] uppercase transition hover:opacity-90 active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {executing ? (
@@ -458,9 +501,18 @@ function SetupContent() {
                   )}
                 </button>
                 <p className="text-xs text-muted text-center leading-relaxed">
-                  This approves a one-time transfer from your wallet.
-                  You can withdraw the remaining balance at any time.
+                  {insufficientBalance
+                    ? 'Send USDC to your wallet address above, then refresh.'
+                    : 'This approves a one-time transfer from your wallet. You can withdraw the remaining balance at any time.'}
                 </p>
+                {insufficientBalance && !isTopUp && (
+                  <button
+                    onClick={handleSkip}
+                    className="w-full text-center font-mono text-[10px] tracking-[0.12em] text-muted uppercase hover:text-foreground transition py-2"
+                  >
+                    Skip for now
+                  </button>
+                )}
               </div>
             </div>
           )}
