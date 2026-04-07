@@ -33,6 +33,10 @@ function extractToolNames(messages: MessageLike[]): string[] {
 /**
  * Log a single engine invocation (chat or resume) to SessionUsage.
  * Fire-and-forget — callers should `.catch()` errors.
+ *
+ * @param priorMessageCount - Number of messages in the engine before this
+ *   invocation ran. Used to extract tool names only from new messages,
+ *   avoiding inflated counts from prior turns in multi-turn sessions.
  */
 export async function logSessionUsage(
   address: string,
@@ -40,8 +44,10 @@ export async function logSessionUsage(
   usage: UsageSnapshot,
   messages: MessageLike[],
   model?: string,
+  priorMessageCount = 0,
 ): Promise<void> {
-  const toolNames = extractToolNames(messages);
+  const newMessages = priorMessageCount > 0 ? messages.slice(priorMessageCount) : messages;
+  const toolNames = extractToolNames(newMessages);
 
   await prisma.sessionUsage.create({
     data: {

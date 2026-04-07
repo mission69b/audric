@@ -95,6 +95,8 @@ export async function POST(request: NextRequest) {
       engine = await createUnauthEngine(history);
     }
 
+    const priorMsgCount = engine.getMessages().length;
+
     const stream = new ReadableStream({
       async start(controller) {
         const encoder = new TextEncoder();
@@ -171,6 +173,7 @@ export async function POST(request: NextRequest) {
             usage,
             messages,
             AGENT_MODEL,
+            priorMsgCount,
           ).catch((err) => console.error('[engine/chat] session usage log failed:', err));
 
           controller.close();

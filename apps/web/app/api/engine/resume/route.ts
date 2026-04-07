@@ -67,6 +67,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const engine = await createEngine(address, session, contacts);
+    const priorMsgCount = engine.getMessages().length;
 
     const stream = new ReadableStream({
       async start(controller) {
@@ -117,7 +118,7 @@ export async function POST(request: NextRequest) {
             console.error('[engine/resume] session save failed:', saveErr);
           }
 
-          logSessionUsage(address, sessionId, usage, messages, AGENT_MODEL).catch((err) =>
+          logSessionUsage(address, sessionId, usage, messages, AGENT_MODEL, priorMsgCount).catch((err) =>
             console.error('[engine/resume] session usage log failed:', err),
           );
 

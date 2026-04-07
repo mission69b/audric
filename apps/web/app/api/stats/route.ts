@@ -24,10 +24,9 @@ export async function GET() {
         _count: true,
       }),
 
-      prisma.sessionUsage.findMany({
-        select: { sessionId: true },
-        distinct: ['sessionId'],
-      }).then((rows) => rows.length),
+      prisma.$queryRaw<[{ count: bigint }]>`
+        SELECT COUNT(DISTINCT "sessionId") AS count FROM "SessionUsage"
+      `.then(([row]) => Number(row.count)),
 
       prisma.appEvent.count(),
     ]);
