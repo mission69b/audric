@@ -100,3 +100,16 @@ model NotificationLog {
 
   @@index([createdAt])
 }
+
+model AppEvent {
+  id        String   @id @default(cuid())
+  address   String
+  type      String
+  title     String
+  details   Json?
+  digest    String?
+  createdAt DateTime @default(now())
+
+  @@index([address, createdAt])
+  @@index([address, type, createdAt])
+}

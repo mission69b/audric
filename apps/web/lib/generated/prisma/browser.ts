@@ -52,3 +52,8 @@ export type NotificationPrefs = Prisma.NotificationPrefsModel
  * 
  */
 export type NotificationLog = Prisma.NotificationLogModel
+/**
+ * Model AppEvent
+ * 
+ */
+export type AppEvent = Prisma.AppEventModel

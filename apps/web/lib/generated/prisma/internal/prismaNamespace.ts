@@ -390,7 +390,8 @@ export const ModelName = {
   LlmUsage: 'LlmUsage',
   ServicePurchase: 'ServicePurchase',
   NotificationPrefs: 'NotificationPrefs',
-  NotificationLog: 'NotificationLog'
+  NotificationLog: 'NotificationLog',
+  AppEvent: 'AppEvent'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -406,7 +407,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "userPreferences" | "conversationLog" | "llmUsage" | "servicePurchase" | "notificationPrefs" | "notificationLog"
+    modelProps: "user" | "userPreferences" | "conversationLog" | "llmUsage" | "servicePurchase" | "notificationPrefs" | "notificationLog" | "appEvent"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -928,6 +929,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    AppEvent: {
+      payload: Prisma.$AppEventPayload<ExtArgs>
+      fields: Prisma.AppEventFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.AppEventFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AppEventPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.AppEventFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AppEventPayload>
+        }
+        findFirst: {
+          args: Prisma.AppEventFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AppEventPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.AppEventFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AppEventPayload>
+        }
+        findMany: {
+          args: Prisma.AppEventFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AppEventPayload>[]
+        }
+        create: {
+          args: Prisma.AppEventCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AppEventPayload>
+        }
+        createMany: {
+          args: Prisma.AppEventCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.AppEventCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AppEventPayload>[]
+        }
+        delete: {
+          args: Prisma.AppEventDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AppEventPayload>
+        }
+        update: {
+          args: Prisma.AppEventUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AppEventPayload>
+        }
+        deleteMany: {
+          args: Prisma.AppEventDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.AppEventUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.AppEventUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AppEventPayload>[]
+        }
+        upsert: {
+          args: Prisma.AppEventUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AppEventPayload>
+        }
+        aggregate: {
+          args: Prisma.AppEventAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateAppEvent>
+        }
+        groupBy: {
+          args: Prisma.AppEventGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AppEventGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.AppEventCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AppEventCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -1055,6 +1130,19 @@ export const NotificationLogScalarFieldEnum = {
 } as const
 
 export type NotificationLogScalarFieldEnum = (typeof NotificationLogScalarFieldEnum)[keyof typeof NotificationLogScalarFieldEnum]
+
+
+export const AppEventScalarFieldEnum = {
+  id: 'id',
+  address: 'address',
+  type: 'type',
+  title: 'title',
+  details: 'details',
+  digest: 'digest',
+  createdAt: 'createdAt'
+} as const
+
+export type AppEventScalarFieldEnum = (typeof AppEventScalarFieldEnum)[keyof typeof AppEventScalarFieldEnum]
 
 
 export const SortOrder = {
@@ -1289,6 +1377,7 @@ export type GlobalOmitConfig = {
   servicePurchase?: Prisma.ServicePurchaseOmit
   notificationPrefs?: Prisma.NotificationPrefsOmit
   notificationLog?: Prisma.NotificationLogOmit
+  appEvent?: Prisma.AppEventOmit
 }
 
 /* Types for Logging */

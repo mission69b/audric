@@ -31,6 +31,9 @@ import { useUsdcSponsor } from '@/hooks/useUsdcSponsor';
 import { COIN_REGISTRY, getDecimalsForCoinType, resolveSymbol } from '@/lib/token-registry';
 import { parseActualAmount, buildSwapDisplayData } from '@/lib/balance-changes';
 import { useAllowanceStatus } from '@/hooks/useAllowanceStatus';
+import { DashboardTabs, type DashboardTab } from '@/components/dashboard/DashboardTabs';
+import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
+import { useActivityFeed } from '@/hooks/useActivityFeed';
 
 const LS_LAST_SAVINGS = 't2000_last_savings';
 const LS_LAST_OPEN = 't2000_last_open_date';
@@ -229,6 +232,8 @@ function DashboardContent() {
         }));
     },
   });
+  const [activeTab, setActiveTab] = useState<DashboardTab>('chat');
+  const activityFeed = useActivityFeed(address);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [agentBudget, setAgentBudget] = useState(0.50);
   const [dismissedCards, setDismissedCards] = useState<Set<string>>(new Set());
@@ -701,6 +706,16 @@ function DashboardContent() {
     feed.clear();
     chipFlow.reset();
   }, [engine, feed, chipFlow]);
+
+  const handleTabChange = useCallback((tab: DashboardTab) => {
+    setActiveTab(tab);
+    if (tab === 'activity') activityFeed.markSeen();
+  }, [activityFeed.markSeen]);
+
+  const handleActivityAction = useCallback((flow: string) => {
+    setActiveTab('chat');
+    handleChipClick(flow);
+  }, [handleChipClick]);
 
   const handleCopy = useCallback((text: string) => {
     navigator.clipboard.writeText(text);
@@ -1203,7 +1218,7 @@ function DashboardContent() {
     />
   );
 
-  if (isEmpty && !engine.isStreaming) {
+  if (isEmpty && !engine.isStreaming && activeTab === 'chat') {
     return (
       <main className="flex flex-1 flex-col min-h-dvh">
         <div className="mx-auto w-full max-w-2xl px-4 sm:px-6 pt-6 pb-4">
@@ -1213,6 +1228,9 @@ function DashboardContent() {
             compact={false}
             onSettingsClick={() => setSettingsOpen(true)}
           />
+          <div className="mt-4">
+            <DashboardTabs activeTab={activeTab} onTabChange={handleTabChange} hasUnread={activityFeed.hasUnread} />
+          </div>
         </div>
 
         <div className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 -mt-8">
@@ -1250,16 +1268,45 @@ function DashboardContent() {
     );
   }
 
+  if (activeTab === 'activity') {
+    return (
+      <main className="flex flex-1 flex-col min-h-dvh">
+        <div className={`sticky top-0 z-20 bg-background/95 backdrop-blur-sm transition-[border-color] duration-200 border-b ${scrolled ? 'border-border/50' : 'border-transparent'}`}>
+          <div className="mx-auto w-full max-w-2xl px-4 sm:px-6 pt-6 pb-0">
+            <BalanceHeader
+              address={address}
+              balance={balance}
+              compact={scrolled}
+              onSettingsClick={() => setSettingsOpen(true)}
+            />
+            <div className="mt-4">
+              <DashboardTabs activeTab={activeTab} onTabChange={handleTabChange} hasUnread={activityFeed.hasUnread} />
+            </div>
+          </div>
+        </div>
+        <div className="mx-auto w-full max-w-2xl px-4 sm:px-6 py-4">
+          <ActivityFeed feed={activityFeed} onAction={handleActivityAction} />
+        </div>
+
+        {settingsPanel}
+        {emailModal}
+      </main>
+    );
+  }
+
   return (
     <main className="flex flex-1 flex-col pb-32">
       <div className={`sticky top-0 z-20 bg-background/95 backdrop-blur-sm transition-[border-color] duration-200 border-b ${scrolled ? 'border-border/50' : 'border-transparent'}`}>
-        <div className="mx-auto w-full max-w-2xl px-4 sm:px-6 pt-6 pb-4">
+        <div className="mx-auto w-full max-w-2xl px-4 sm:px-6 pt-6 pb-0">
           <BalanceHeader
             address={address}
             balance={balance}
             compact={scrolled}
             onSettingsClick={() => setSettingsOpen(true)}
           />
+          <div className="mt-4">
+            <DashboardTabs activeTab={activeTab} onTabChange={handleTabChange} hasUnread={activityFeed.hasUnread} />
+          </div>
         </div>
       </div>
       <div className="mx-auto w-full max-w-2xl px-4 sm:px-6 py-6 space-y-3">

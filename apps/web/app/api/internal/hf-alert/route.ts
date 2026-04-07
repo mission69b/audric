@@ -115,6 +115,15 @@ export async function POST(request: NextRequest) {
       create: { userId: user.id, feature: 'hf_alert', enabled: true, lastSentAt: new Date() },
     });
 
+    await prisma.appEvent.create({
+      data: {
+        address: walletAddress,
+        type: 'alert',
+        title: `Health factor dropped to ${healthFactor.toFixed(2)}`,
+        details: { healthFactor, debtBalance, level },
+      },
+    }).catch((err) => console.error('[hf-alert] AppEvent write failed:', err));
+
     return NextResponse.json({ ok: true, sent: true });
   } catch (err) {
     console.error('[hf-alert] Email send failed:', err);

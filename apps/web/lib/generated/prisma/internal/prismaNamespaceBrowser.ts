@@ -57,7 +57,8 @@ export const ModelName = {
   LlmUsage: 'LlmUsage',
   ServicePurchase: 'ServicePurchase',
   NotificationPrefs: 'NotificationPrefs',
-  NotificationLog: 'NotificationLog'
+  NotificationLog: 'NotificationLog',
+  AppEvent: 'AppEvent'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -164,6 +165,19 @@ export const NotificationLogScalarFieldEnum = {
 } as const
 
 export type NotificationLogScalarFieldEnum = (typeof NotificationLogScalarFieldEnum)[keyof typeof NotificationLogScalarFieldEnum]
+
+
+export const AppEventScalarFieldEnum = {
+  id: 'id',
+  address: 'address',
+  type: 'type',
+  title: 'title',
+  details: 'details',
+  digest: 'digest',
+  createdAt: 'createdAt'
+} as const
+
+export type AppEventScalarFieldEnum = (typeof AppEventScalarFieldEnum)[keyof typeof AppEventScalarFieldEnum]
 
 
 export const SortOrder = {

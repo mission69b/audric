@@ -430,7 +430,18 @@ async function recordPurchase(
   amountUsd: number,
   productId?: string,
 ): Promise<void> {
-  await prisma.servicePurchase.create({
-    data: { address, serviceId, amountUsd, productId: productId || null },
-  });
+  const label = serviceId.replace(/[-_]/g, ' ');
+  await prisma.$transaction([
+    prisma.servicePurchase.create({
+      data: { address, serviceId, amountUsd, productId: productId || null },
+    }),
+    prisma.appEvent.create({
+      data: {
+        address,
+        type: 'pay',
+        title: `Paid $${amountUsd.toFixed(3)} for ${label}`,
+        details: { service: serviceId, amount: amountUsd, productId: productId || undefined },
+      },
+    }),
+  ]);
 }
