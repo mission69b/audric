@@ -57,12 +57,22 @@ model ConversationLog {
   @@index([sessionId])
 }
 
-model LlmUsage {
-  address String
-  date    DateTime @db.Date
-  count   Int      @default(0)
+model SessionUsage {
+  id               String   @id @default(cuid())
+  address          String
+  sessionId        String
+  inputTokens      Int      @default(0)
+  outputTokens     Int      @default(0)
+  cacheReadTokens  Int      @default(0)
+  cacheWriteTokens Int      @default(0)
+  costUsd          Float    @default(0)
+  toolNames        String[] @default([])
+  model            String?
+  createdAt        DateTime @default(now())
 
-  @@id([address, date])
+  @@index([address, createdAt])
+  @@index([sessionId])
+  @@index([createdAt])
 }
 
 model ServicePurchase {

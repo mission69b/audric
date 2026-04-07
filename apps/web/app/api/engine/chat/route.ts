@@ -11,7 +11,10 @@ import {
   type HistoryMessage,
 } from '@/lib/engine/engine-factory';
 import { UpstashSessionStore } from '@/lib/engine/upstash-session-store';
+import { logSessionUsage } from '@/lib/engine/log-session-usage';
 import { prisma } from '@/lib/prisma';
+
+const AGENT_MODEL = process.env.AGENT_MODEL ?? 'claude-sonnet-4-20250514';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -133,11 +136,12 @@ export async function POST(request: NextRequest) {
             ),
           );
         } finally {
+          const messages = [...engine.getMessages()];
+          const usage = engine.getUsage();
+
           if (saveSession && sessionId && address) {
             try {
               const store = getSessionStore();
-              const messages = [...engine.getMessages()];
-              const usage = engine.getUsage();
               const updatedSession = {
                 id: sessionId,
                 messages,
@@ -160,6 +164,14 @@ export async function POST(request: NextRequest) {
               console.error('[engine/chat] session save failed:', saveErr);
             }
           }
+
+          logSessionUsage(
+            address ?? 'anonymous',
+            sessionId ?? 'demo',
+            usage,
+            messages,
+            AGENT_MODEL,
+          ).catch((err) => console.error('[engine/chat] session usage log failed:', err));
 
           controller.close();
         }

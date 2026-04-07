@@ -57,10 +57,10 @@ export type UserPreferences = Prisma.UserPreferencesModel
  */
 export type ConversationLog = Prisma.ConversationLogModel
 /**
- * Model LlmUsage
+ * Model SessionUsage
  * 
  */
-export type LlmUsage = Prisma.LlmUsageModel
+export type SessionUsage = Prisma.SessionUsageModel
 /**
  * Model ServicePurchase
  * 

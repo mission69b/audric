@@ -4,7 +4,10 @@ import type { PendingAction } from '@t2000/engine';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { validateJwt, isValidSuiAddress } from '@/lib/auth';
 import { createEngine, getSessionStore } from '@/lib/engine/engine-factory';
+import { logSessionUsage } from '@/lib/engine/log-session-usage';
 import { prisma } from '@/lib/prisma';
+
+const AGENT_MODEL = process.env.AGENT_MODEL ?? 'claude-sonnet-4-20250514';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -98,11 +101,14 @@ export async function POST(request: NextRequest) {
             ),
           );
         } finally {
+          const messages = [...engine.getMessages()];
+          const usage = engine.getUsage();
+
           try {
             const updatedSession = {
               ...session,
-              messages: [...engine.getMessages()],
-              usage: engine.getUsage(),
+              messages,
+              usage,
               updatedAt: Date.now(),
               pendingAction,
             };
@@ -110,6 +116,10 @@ export async function POST(request: NextRequest) {
           } catch (saveErr) {
             console.error('[engine/resume] session save failed:', saveErr);
           }
+
+          logSessionUsage(address, sessionId, usage, messages, AGENT_MODEL).catch((err) =>
+            console.error('[engine/resume] session usage log failed:', err),
+          );
 
           controller.close();
         }

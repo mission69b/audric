@@ -54,7 +54,7 @@ export const ModelName = {
   User: 'User',
   UserPreferences: 'UserPreferences',
   ConversationLog: 'ConversationLog',
-  LlmUsage: 'LlmUsage',
+  SessionUsage: 'SessionUsage',
   ServicePurchase: 'ServicePurchase',
   NotificationPrefs: 'NotificationPrefs',
   NotificationLog: 'NotificationLog',
@@ -122,13 +122,21 @@ export const ConversationLogScalarFieldEnum = {
 export type ConversationLogScalarFieldEnum = (typeof ConversationLogScalarFieldEnum)[keyof typeof ConversationLogScalarFieldEnum]
 
 
-export const LlmUsageScalarFieldEnum = {
+export const SessionUsageScalarFieldEnum = {
+  id: 'id',
   address: 'address',
-  date: 'date',
-  count: 'count'
+  sessionId: 'sessionId',
+  inputTokens: 'inputTokens',
+  outputTokens: 'outputTokens',
+  cacheReadTokens: 'cacheReadTokens',
+  cacheWriteTokens: 'cacheWriteTokens',
+  costUsd: 'costUsd',
+  toolNames: 'toolNames',
+  model: 'model',
+  createdAt: 'createdAt'
 } as const
 
-export type LlmUsageScalarFieldEnum = (typeof LlmUsageScalarFieldEnum)[keyof typeof LlmUsageScalarFieldEnum]
+export type SessionUsageScalarFieldEnum = (typeof SessionUsageScalarFieldEnum)[keyof typeof SessionUsageScalarFieldEnum]
 
 
 export const ServicePurchaseScalarFieldEnum = {

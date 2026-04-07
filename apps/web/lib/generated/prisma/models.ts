@@ -11,7 +11,7 @@
 export type * from './models/User'
 export type * from './models/UserPreferences'
 export type * from './models/ConversationLog'
-export type * from './models/LlmUsage'
+export type * from './models/SessionUsage'
 export type * from './models/ServicePurchase'
 export type * from './models/NotificationPrefs'
 export type * from './models/NotificationLog'

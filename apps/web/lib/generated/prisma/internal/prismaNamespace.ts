@@ -387,7 +387,7 @@ export const ModelName = {
   User: 'User',
   UserPreferences: 'UserPreferences',
   ConversationLog: 'ConversationLog',
-  LlmUsage: 'LlmUsage',
+  SessionUsage: 'SessionUsage',
   ServicePurchase: 'ServicePurchase',
   NotificationPrefs: 'NotificationPrefs',
   NotificationLog: 'NotificationLog',
@@ -407,7 +407,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "userPreferences" | "conversationLog" | "llmUsage" | "servicePurchase" | "notificationPrefs" | "notificationLog" | "appEvent"
+    modelProps: "user" | "userPreferences" | "conversationLog" | "sessionUsage" | "servicePurchase" | "notificationPrefs" | "notificationLog" | "appEvent"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -633,77 +633,77 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
-    LlmUsage: {
-      payload: Prisma.$LlmUsagePayload<ExtArgs>
-      fields: Prisma.LlmUsageFieldRefs
+    SessionUsage: {
+      payload: Prisma.$SessionUsagePayload<ExtArgs>
+      fields: Prisma.SessionUsageFieldRefs
       operations: {
         findUnique: {
-          args: Prisma.LlmUsageFindUniqueArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$LlmUsagePayload> | null
+          args: Prisma.SessionUsageFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SessionUsagePayload> | null
         }
         findUniqueOrThrow: {
-          args: Prisma.LlmUsageFindUniqueOrThrowArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$LlmUsagePayload>
+          args: Prisma.SessionUsageFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SessionUsagePayload>
         }
         findFirst: {
-          args: Prisma.LlmUsageFindFirstArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$LlmUsagePayload> | null
+          args: Prisma.SessionUsageFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SessionUsagePayload> | null
         }
         findFirstOrThrow: {
-          args: Prisma.LlmUsageFindFirstOrThrowArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$LlmUsagePayload>
+          args: Prisma.SessionUsageFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SessionUsagePayload>
         }
         findMany: {
-          args: Prisma.LlmUsageFindManyArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$LlmUsagePayload>[]
+          args: Prisma.SessionUsageFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SessionUsagePayload>[]
         }
         create: {
-          args: Prisma.LlmUsageCreateArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$LlmUsagePayload>
+          args: Prisma.SessionUsageCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SessionUsagePayload>
         }
         createMany: {
-          args: Prisma.LlmUsageCreateManyArgs<ExtArgs>
+          args: Prisma.SessionUsageCreateManyArgs<ExtArgs>
           result: BatchPayload
         }
         createManyAndReturn: {
-          args: Prisma.LlmUsageCreateManyAndReturnArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$LlmUsagePayload>[]
+          args: Prisma.SessionUsageCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SessionUsagePayload>[]
         }
         delete: {
-          args: Prisma.LlmUsageDeleteArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$LlmUsagePayload>
+          args: Prisma.SessionUsageDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SessionUsagePayload>
         }
         update: {
-          args: Prisma.LlmUsageUpdateArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$LlmUsagePayload>
+          args: Prisma.SessionUsageUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SessionUsagePayload>
         }
         deleteMany: {
-          args: Prisma.LlmUsageDeleteManyArgs<ExtArgs>
+          args: Prisma.SessionUsageDeleteManyArgs<ExtArgs>
           result: BatchPayload
         }
         updateMany: {
-          args: Prisma.LlmUsageUpdateManyArgs<ExtArgs>
+          args: Prisma.SessionUsageUpdateManyArgs<ExtArgs>
           result: BatchPayload
         }
         updateManyAndReturn: {
-          args: Prisma.LlmUsageUpdateManyAndReturnArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$LlmUsagePayload>[]
+          args: Prisma.SessionUsageUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SessionUsagePayload>[]
         }
         upsert: {
-          args: Prisma.LlmUsageUpsertArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$LlmUsagePayload>
+          args: Prisma.SessionUsageUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SessionUsagePayload>
         }
         aggregate: {
-          args: Prisma.LlmUsageAggregateArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.AggregateLlmUsage>
+          args: Prisma.SessionUsageAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateSessionUsage>
         }
         groupBy: {
-          args: Prisma.LlmUsageGroupByArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.LlmUsageGroupByOutputType>[]
+          args: Prisma.SessionUsageGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.SessionUsageGroupByOutputType>[]
         }
         count: {
-          args: Prisma.LlmUsageCountArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.LlmUsageCountAggregateOutputType> | number
+          args: Prisma.SessionUsageCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.SessionUsageCountAggregateOutputType> | number
         }
       }
     }
@@ -1087,13 +1087,21 @@ export const ConversationLogScalarFieldEnum = {
 export type ConversationLogScalarFieldEnum = (typeof ConversationLogScalarFieldEnum)[keyof typeof ConversationLogScalarFieldEnum]
 
 
-export const LlmUsageScalarFieldEnum = {
+export const SessionUsageScalarFieldEnum = {
+  id: 'id',
   address: 'address',
-  date: 'date',
-  count: 'count'
+  sessionId: 'sessionId',
+  inputTokens: 'inputTokens',
+  outputTokens: 'outputTokens',
+  cacheReadTokens: 'cacheReadTokens',
+  cacheWriteTokens: 'cacheWriteTokens',
+  costUsd: 'costUsd',
+  toolNames: 'toolNames',
+  model: 'model',
+  createdAt: 'createdAt'
 } as const
 
-export type LlmUsageScalarFieldEnum = (typeof LlmUsageScalarFieldEnum)[keyof typeof LlmUsageScalarFieldEnum]
+export type SessionUsageScalarFieldEnum = (typeof SessionUsageScalarFieldEnum)[keyof typeof SessionUsageScalarFieldEnum]
 
 
 export const ServicePurchaseScalarFieldEnum = {
@@ -1373,7 +1381,7 @@ export type GlobalOmitConfig = {
   user?: Prisma.UserOmit
   userPreferences?: Prisma.UserPreferencesOmit
   conversationLog?: Prisma.ConversationLogOmit
-  llmUsage?: Prisma.LlmUsageOmit
+  sessionUsage?: Prisma.SessionUsageOmit
   servicePurchase?: Prisma.ServicePurchaseOmit
   notificationPrefs?: Prisma.NotificationPrefsOmit
   notificationLog?: Prisma.NotificationLogOmit
