@@ -251,7 +251,25 @@ async function logToGateway(serviceId: string, amount: string, digest: string): 
     'lob-letter': { service: 'lob', endpoint: '/v1/letters' },
     'printful-order': { service: 'printful', endpoint: '/v1/order' },
   };
-  const info = serviceMap[serviceId];
+
+  let info = serviceMap[serviceId];
+
+  if (!info) {
+    try {
+      const url = new URL(serviceId);
+      const parts = url.pathname.split('/').filter(Boolean);
+      if (parts.length >= 2) {
+        info = { service: parts[0], endpoint: '/' + parts.slice(1).join('/') };
+      }
+    } catch {
+      const stripped = serviceId.replace(/^\/+/, '');
+      const parts = stripped.split('/');
+      if (parts.length >= 2) {
+        info = { service: parts[0], endpoint: '/' + parts.slice(1).join('/') };
+      }
+    }
+  }
+
   if (!info) return;
 
   await fetch(`${GATEWAY_BASE}/api/internal/log-payment`, {
