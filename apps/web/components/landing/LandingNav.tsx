@@ -19,16 +19,14 @@ export function LandingNav() {
         <a href="#passport" className="hidden sm:block font-mono text-[10px] tracking-[0.1em] uppercase text-muted hover:text-foreground transition">
           Passport
         </a>
+        <a href="#copilot" className="hidden sm:block font-mono text-[10px] tracking-[0.1em] uppercase text-muted hover:text-foreground transition">
+          Copilot
+        </a>
         <a href="#store" className="hidden sm:block font-mono text-[10px] tracking-[0.1em] uppercase text-muted hover:text-foreground transition">
           Store
         </a>
-        <a
-          href="https://t2000.ai"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="hidden sm:block font-mono text-[10px] tracking-[0.1em] uppercase text-muted hover:text-foreground transition"
-        >
-          t2000.ai
+        <a href="#pay" className="hidden sm:block font-mono text-[10px] tracking-[0.1em] uppercase text-muted hover:text-foreground transition">
+          Pay
         </a>
         <button
           onClick={login}

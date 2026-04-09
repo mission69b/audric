@@ -211,7 +211,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── S5: Copilot ── */}
-      <section className="px-5 sm:px-10 lg:px-16 py-14 sm:py-20 border-t border-border">
+      <section id="copilot" className="px-5 sm:px-10 lg:px-16 py-14 sm:py-20 border-t border-border">
         <div className="max-w-6xl mx-auto">
           <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-muted mb-3">
             Audric Copilot
@@ -291,7 +291,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── S7: Audric Pay ── */}
-      <section className="px-5 sm:px-10 lg:px-16 py-14 sm:py-20 border-t border-border">
+      <section id="pay" className="px-5 sm:px-10 lg:px-16 py-14 sm:py-20 border-t border-border">
         <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-start">
           <div>
             <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-muted mb-3">
