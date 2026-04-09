@@ -7,7 +7,8 @@ export const runtime = 'nodejs';
 /**
  * GET /api/user/briefing?address=0x...
  * Returns today's briefing for the user (if not dismissed).
- * Uses the user's timezoneOffset to determine "today".
+ * Uses UTC date to match the cron's dedup key.
+ * Auto-syncs timezoneOffset from X-Timezone-Offset header if present.
  */
 export async function GET(request: NextRequest) {
   const jwt = request.headers.get('x-zklogin-jwt');
@@ -19,6 +20,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid address' }, { status: 400 });
   }
 
+  // Auto-sync timezone offset if client sends it (handles travelers).
+  const clientOffset = request.headers.get('x-timezone-offset');
+  const parsedOffset = clientOffset !== null ? parseInt(clientOffset, 10) : null;
+  const shouldSyncOffset = parsedOffset !== null && Number.isFinite(parsedOffset)
+    && parsedOffset >= -720 && parsedOffset <= 840;
+
   const user = await prisma.user.findUnique({
     where: { suiAddress: address },
     select: { id: true, timezoneOffset: true },
@@ -28,10 +35,17 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ briefing: null });
   }
 
-  const localDate = getUserLocalDate(user.timezoneOffset);
+  if (shouldSyncOffset && parsedOffset !== user.timezoneOffset) {
+    await prisma.user.update({
+      where: { suiAddress: address },
+      data: { timezoneOffset: parsedOffset! },
+    });
+  }
+
+  const todayUtc = new Date().toISOString().slice(0, 10);
 
   const briefing = await prisma.dailyBriefing.findUnique({
-    where: { userId_date: { userId: user.id, date: localDate } },
+    where: { userId_date: { userId: user.id, date: todayUtc } },
     select: {
       date: true,
       content: true,
@@ -51,10 +65,4 @@ export async function GET(request: NextRequest) {
       createdAt: briefing.createdAt.toISOString(),
     },
   });
-}
-
-function getUserLocalDate(timezoneOffset: number): string {
-  const now = new Date();
-  const localMs = now.getTime() - timezoneOffset * 60 * 1000;
-  return new Date(localMs).toISOString().slice(0, 10);
 }

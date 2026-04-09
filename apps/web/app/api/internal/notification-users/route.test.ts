@@ -4,6 +4,7 @@ import { NextRequest } from 'next/server';
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     user: { findMany: vi.fn() },
+    userPreferences: { findMany: vi.fn() },
   },
 }));
 
@@ -12,46 +13,44 @@ vi.stubEnv('T2000_INTERNAL_KEY', 'test-secret');
 import { prisma } from '@/lib/prisma';
 import { GET } from './route';
 
-function makeRequest(hour: number): NextRequest {
-  return new NextRequest(`http://localhost/api/internal/notification-users?hour=${hour}`, {
+function makeRequest(): NextRequest {
+  return new NextRequest('http://localhost/api/internal/notification-users', {
     headers: { 'x-internal-key': 'test-secret' },
   });
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(prisma.userPreferences.findMany).mockResolvedValue([]);
 });
 
 describe('GET /api/internal/notification-users', () => {
-  it('returns users whose local time is 8am', async () => {
+  it('returns all eligible users regardless of timezone', async () => {
     vi.mocked(prisma.user.findMany).mockResolvedValue([
       {
         id: 'u1',
         email: 'alice@example.com',
         suiAddress: '0x' + 'a'.repeat(64),
-        timezoneOffset: -480, // UTC+8 → 8am when UTC=0
+        timezoneOffset: -480,
         notificationPrefs: [],
       },
       {
         id: 'u2',
         email: 'bob@example.com',
         suiAddress: '0x' + 'b'.repeat(64),
-        timezoneOffset: 300, // UTC-5 → 8am when UTC=13
+        timezoneOffset: 300,
         notificationPrefs: [],
       },
     ] as never);
 
-    const res = await GET(makeRequest(0));
+    const res = await GET(makeRequest());
     const data = await res.json();
 
-    expect(data.users).toHaveLength(1);
-    expect(data.users[0].userId).toBe('u1');
-    expect(data.users[0].email).toBe('alice@example.com');
-    expect(data.users[0].prefs).toEqual({
-      hf_alert: true,
-      briefing: true,
-      rate_alert: true,
-    });
+    expect(data.users).toHaveLength(2);
+    expect(data.users.map((u: { email: string }) => u.email)).toEqual([
+      'alice@example.com',
+      'bob@example.com',
+    ]);
   });
 
   it('merges stored prefs with defaults', async () => {
@@ -67,7 +66,7 @@ describe('GET /api/internal/notification-users', () => {
       },
     ] as never);
 
-    const res = await GET(makeRequest(0));
+    const res = await GET(makeRequest());
     const data = await res.json();
 
     expect(data.users[0].prefs).toEqual({
@@ -78,23 +77,15 @@ describe('GET /api/internal/notification-users', () => {
   });
 
   it('rejects missing internal key', async () => {
-    const req = new NextRequest('http://localhost/api/internal/notification-users?hour=0');
+    const req = new NextRequest('http://localhost/api/internal/notification-users');
     const res = await GET(req);
     expect(res.status).toBe(401);
   });
 
-  it('rejects invalid hour', async () => {
-    const req = new NextRequest('http://localhost/api/internal/notification-users?hour=25', {
-      headers: { 'x-internal-key': 'test-secret' },
-    });
-    const res = await GET(req);
-    expect(res.status).toBe(400);
-  });
-
-  it('returns empty array when no users match', async () => {
+  it('returns empty array when no users exist', async () => {
     vi.mocked(prisma.user.findMany).mockResolvedValue([]);
 
-    const res = await GET(makeRequest(0));
+    const res = await GET(makeRequest());
     const data = await res.json();
 
     expect(data.users).toEqual([]);

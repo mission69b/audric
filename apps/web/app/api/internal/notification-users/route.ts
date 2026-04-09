@@ -12,29 +12,15 @@ const DEFAULT_PREFS: Record<string, boolean> = {
 };
 
 /**
- * Checks whether the given UTC hour corresponds to 8am local time
- * for a user with the given timezoneOffset (JS getTimezoneOffset() convention).
- */
-function isLocal8am(utcHour: number, timezoneOffset: number): boolean {
-  const localMinutes = ((utcHour * 60 - timezoneOffset) % 1440 + 1440) % 1440;
-  return Math.floor(localMinutes / 60) === 8;
-}
-
-/**
- * GET /api/internal/notification-users?hour=<utcHour>
+ * GET /api/internal/notification-users
  * Called by the t2000 ECS cron every hour.
- * Returns users whose local time is 8am at the given UTC hour.
+ * Returns all eligible users — no timezone filtering. Briefings are sent
+ * once daily at a fixed UTC hour (UTC 13:00); HF/rate alerts run every hour.
+ * Idempotency is handled by the cron jobs themselves (DailyBriefing dedup etc).
  */
 export async function GET(request: NextRequest) {
   const auth = validateInternalKey(request.headers.get('x-internal-key'));
   if ('error' in auth) return auth.error;
-
-  const hourParam = request.nextUrl.searchParams.get('hour');
-  const utcHour = hourParam !== null ? parseInt(hourParam, 10) : new Date().getUTCHours();
-
-  if (!Number.isFinite(utcHour) || utcHour < 0 || utcHour > 23) {
-    return NextResponse.json({ error: 'Invalid hour parameter' }, { status: 400 });
-  }
 
   const users = await prisma.user.findMany({
     where: {
@@ -52,7 +38,7 @@ export async function GET(request: NextRequest) {
     },
   });
 
-  const filtered = users.filter((u) => isLocal8am(utcHour, u.timezoneOffset));
+  const filtered = users;
 
   // Look up preferences by address (not via relation, since userId may be null)
   const addresses = filtered.map((u) => u.suiAddress);

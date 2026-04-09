@@ -39,7 +39,10 @@ export function useOvernightBriefing(
       if (!address || !jwt) return null;
 
       const res = await fetch(`/api/user/briefing?address=${address}`, {
-        headers: { 'x-zklogin-jwt': jwt },
+        headers: {
+          'x-zklogin-jwt': jwt,
+          'x-timezone-offset': String(new Date().getTimezoneOffset()),
+        },
       });
 
       if (!res.ok) return null;
