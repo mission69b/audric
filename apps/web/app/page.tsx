@@ -8,11 +8,11 @@ import { MockChatDemo } from '@/components/landing/MockChatDemo';
 import { useZkLogin } from '@/components/auth/useZkLogin';
 
 const PRODUCTS = [
-  { icon: '◎', name: 'Save', desc: 'Earn 3–8% APY on USDC. Auto-compound rewards.' },
-  { icon: '→', name: 'Send', desc: 'Instant transfers. Sub-second. No gas fees for you.' },
-  { icon: '⊞', name: 'Credit', desc: 'Borrow against savings. Health factor alerts protect you.' },
-  { icon: '⇌', name: 'Swap', desc: 'Convert tokens. Best-route via Cetus. 0.1% fee.' },
-  { icon: '↙', name: 'Receive', desc: 'Payment links, QR codes, invoices. Accept USDC from anyone.', coming: true },
+  { icon: '◎', name: 'Save', desc: 'Earn 3–8% APY on USDC. Auto-compound rewards.', href: '/savings' },
+  { icon: '→', name: 'Send', desc: 'Instant transfers. Sub-second. No gas fees for you.', href: '/send' },
+  { icon: '⊞', name: 'Credit', desc: 'Borrow against savings. Health factor alerts protect you.', href: '/credit' },
+  { icon: '⇌', name: 'Swap', desc: 'Convert tokens. Best-route via Cetus. 0.1% fee.', href: '/new' },
+  { icon: '↙', name: 'Receive', desc: 'Payment links, QR codes, invoices. Accept USDC from anyone.', href: '/receive', coming: true },
 ];
 
 const PASSPORT_PILLARS = [
@@ -160,9 +160,10 @@ export default function LandingPage() {
 
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-px bg-border border border-border">
             {PRODUCTS.map((p) => (
-              <div
+              <Link
                 key={p.name}
-                className={`bg-surface p-5 text-center ${p.coming ? 'opacity-50' : ''}`}
+                href={p.href}
+                className={`bg-surface p-5 text-center transition hover:bg-background ${p.coming ? 'opacity-50' : ''}`}
               >
                 <div className="text-[20px] mb-2">{p.icon}</div>
                 <div className="font-sans text-[13px] font-semibold text-foreground mb-1">{p.name}</div>
@@ -172,7 +173,7 @@ export default function LandingPage() {
                     Coming · Phase 2
                   </span>
                 )}
-              </div>
+              </Link>
             ))}
           </div>
         </div>
@@ -345,10 +346,7 @@ export default function LandingPage() {
               Built on Sui
             </span>
             <span className="font-mono text-[9px] tracking-[0.1em] uppercase px-2.5 py-1 border border-border text-muted">
-              Powered by NAVI Protocol
-            </span>
-            <span className="font-mono text-[9px] tracking-[0.1em] uppercase px-2.5 py-1 border border-success text-success bg-success/5">
-              MIT Open Source
+              Non-custodial
             </span>
           </div>
         </div>
@@ -356,27 +354,36 @@ export default function LandingPage() {
 
       {/* ── Footer ── */}
       <footer className="px-5 sm:px-10 lg:px-16 py-8 border-t border-border">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center sm:items-start justify-between gap-6">
-          <div className="text-center sm:text-left">
-            <div className="font-mono text-sm font-bold tracking-wide text-foreground uppercase mb-1">Audric</div>
-            <div className="font-mono text-[10px] text-muted">Start managing your money.</div>
-          </div>
+        <div className="max-w-6xl mx-auto">
+          {/* Trust statement */}
+          <p className="font-mono text-[10px] text-muted text-center mb-6">
+            Built with t2000 infrastructure. Non-custodial. You approve every transaction.
+          </p>
 
-          <button
-            onClick={login}
-            className="bg-foreground text-background px-5 py-2.5 font-mono text-[10px] tracking-[0.1em] uppercase transition hover:opacity-80 active:scale-[0.98] cursor-pointer"
-          >
-            Sign in with Google →
-          </button>
+          <div className="flex flex-col sm:flex-row items-center sm:items-start justify-between gap-6">
+            <div className="text-center sm:text-left">
+              <div className="font-mono text-sm font-bold tracking-wide text-foreground uppercase mb-1">Audric</div>
+              <div className="font-mono text-[10px] text-muted">Start managing your money.</div>
+            </div>
 
-          <div className="flex gap-4 flex-wrap justify-center">
-            <a href="https://t2000.ai" target="_blank" rel="noopener noreferrer" className="font-mono text-[10px] text-dim hover:text-muted transition">t2000.ai</a>
-            <a href="https://suimpp.dev" target="_blank" rel="noopener noreferrer" className="font-mono text-[10px] text-dim hover:text-muted transition">suimpp.dev</a>
-            <a href="https://github.com/mission69b/t2000" target="_blank" rel="noopener noreferrer" className="font-mono text-[10px] text-dim hover:text-muted transition">GitHub</a>
-            <a href="https://x.com/AudricAI" target="_blank" rel="noopener noreferrer" className="font-mono text-[10px] text-dim hover:text-muted transition">X</a>
-            <a href="https://discord.gg/qE95FPt6Z5" target="_blank" rel="noopener noreferrer" className="font-mono text-[10px] text-dim hover:text-muted transition">Discord</a>
-            <Link href="/terms" className="font-mono text-[10px] text-dim hover:text-muted transition">Terms</Link>
-            <Link href="/privacy" className="font-mono text-[10px] text-dim hover:text-muted transition">Privacy</Link>
+            <button
+              onClick={login}
+              className="bg-foreground text-background px-5 py-2.5 font-mono text-[10px] tracking-[0.1em] uppercase transition hover:opacity-80 active:scale-[0.98] cursor-pointer"
+            >
+              Sign in with Google →
+            </button>
+
+            <div className="flex gap-4 flex-wrap justify-center">
+              <a href="https://t2000.ai" target="_blank" rel="noopener noreferrer" className="font-mono text-[10px] text-dim hover:text-muted transition">t2000.ai</a>
+              <a href="https://suimpp.dev" target="_blank" rel="noopener noreferrer" className="font-mono text-[10px] text-dim hover:text-muted transition">suimpp.dev</a>
+              <a href="https://github.com/mission69b/t2000" target="_blank" rel="noopener noreferrer" className="font-mono text-[10px] text-dim hover:text-muted transition">GitHub</a>
+              <a href="https://x.com/AudricAI" target="_blank" rel="noopener noreferrer" className="font-mono text-[10px] text-dim hover:text-muted transition">X</a>
+              <a href="https://discord.gg/qE95FPt6Z5" target="_blank" rel="noopener noreferrer" className="font-mono text-[10px] text-dim hover:text-muted transition">Discord</a>
+              <Link href="/terms" className="font-mono text-[10px] text-dim hover:text-muted transition">Terms</Link>
+              <Link href="/privacy" className="font-mono text-[10px] text-dim hover:text-muted transition">Privacy</Link>
+              <Link href="/disclaimer" className="font-mono text-[10px] text-dim hover:text-muted transition">Disclaimer</Link>
+              <Link href="/security" className="font-mono text-[10px] text-dim hover:text-muted transition">Security</Link>
+            </div>
           </div>
         </div>
       </footer>
