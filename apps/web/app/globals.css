@@ -44,6 +44,7 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --font-display: var(--font-instrument-serif), ui-serif, Georgia, serif;
+  --font-heading: var(--font-inter), 'Inter', system-ui, sans-serif;
 }
 
 body {

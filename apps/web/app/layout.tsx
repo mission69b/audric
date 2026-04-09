@@ -1,10 +1,15 @@
 import type { Metadata, Viewport } from 'next';
-import { Instrument_Serif } from 'next/font/google';
+import { Inter, Instrument_Serif } from 'next/font/google';
 import { GeistSans } from 'geist/font/sans';
 import { GeistMono } from 'geist/font/mono';
 import { Analytics } from '@vercel/analytics/next';
 import { AppProviders } from '@/components/providers/AppProviders';
 import './globals.css';
+
+const inter = Inter({
+  variable: '--font-inter',
+  subsets: ['latin'],
+});
 
 const instrumentSerif = Instrument_Serif({
   variable: '--font-instrument-serif',
@@ -43,7 +48,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable} ${instrumentSerif.variable} h-full antialiased`}>
+    <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable} ${instrumentSerif.variable} ${inter.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-background text-foreground font-sans">
         <AppProviders>{children}</AppProviders>
         <Analytics />

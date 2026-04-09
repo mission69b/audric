@@ -94,7 +94,7 @@ export function MockChatDemo() {
           <button
             key={chip}
             onClick={() => playDemo(chip)}
-            className={`shrink-0 font-mono text-[9px] px-2.5 py-1 border rounded-full transition cursor-pointer ${
+            className={`shrink-0 font-mono text-[10px] px-2.5 py-1 border rounded-full transition cursor-pointer ${
               chip === activeDemo
                 ? 'border-foreground text-foreground'
                 : 'border-border text-muted hover:text-foreground hover:border-foreground'

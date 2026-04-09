@@ -10,7 +10,7 @@ export function LandingNav() {
     <nav className="sticky top-0 z-50 flex items-center justify-between px-5 sm:px-10 lg:px-16 py-3 border-b border-border bg-background/95 backdrop-blur-sm">
       <button
         onClick={() => { window.location.href = '/'; }}
-        className="font-mono text-sm font-bold tracking-wide text-foreground uppercase cursor-pointer hover:opacity-70 transition"
+        className="font-mono text-[13px] font-medium text-foreground cursor-pointer hover:opacity-70 transition"
       >
         Audric
       </button>

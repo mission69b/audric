@@ -83,7 +83,7 @@ export default function LandingPage() {
   }, [status, router]);
 
   return (
-    <div className="min-h-dvh bg-background font-sans">
+    <div className="min-h-dvh bg-background font-heading">
       <LandingNav />
 
       {/* ── S1: Hero ── */}
@@ -93,9 +93,9 @@ export default function LandingPage() {
             <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-muted mb-5">
               Conversational finance
             </p>
-            <h1 className="font-sans text-[40px] sm:text-[52px] font-normal leading-[1.05] tracking-[-2px] text-foreground mb-5">
+            <h1 className="text-[40px] sm:text-[52px] font-normal leading-[1.05] tracking-[-2px] text-foreground mb-5">
               Your money,<br />
-              <em className="font-display not-italic" style={{ fontStyle: 'italic', fontWeight: 300, letterSpacing: '-1.5px' }}>handled.</em>
+              <em className="italic font-light tracking-[-1.5px]">handled.</em>
             </h1>
             <p className="text-[13px] text-muted leading-[1.7] max-w-[400px] mb-7">
               Sign in with Google. Chat with your money. Earn yield, send USDC, borrow — all by conversation. No seed phrase.
@@ -128,7 +128,7 @@ export default function LandingPage() {
           <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-muted mb-3">
             How it works
           </p>
-          <h2 className="font-sans text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground mb-10">
+          <h2 className="text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground mb-10">
             Three steps to your money.
           </h2>
 
@@ -140,7 +140,7 @@ export default function LandingPage() {
             ].map((step) => (
               <div key={step.num} className="bg-background p-6 sm:p-7">
                 <div className="font-mono text-[32px] font-medium text-border-bright mb-3">{step.num}</div>
-                <div className="font-sans text-[15px] font-semibold text-foreground mb-2">{step.title}</div>
+                <div className="text-[15px] font-semibold text-foreground mb-2">{step.title}</div>
                 <p className="text-[13px] text-muted leading-[1.7]">{step.desc}</p>
               </div>
             ))}
@@ -154,7 +154,7 @@ export default function LandingPage() {
           <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-muted mb-3">
             Products
           </p>
-          <h2 className="font-sans text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground mb-10">
+          <h2 className="text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground mb-10">
             Everything you need.
           </h2>
 
@@ -166,8 +166,8 @@ export default function LandingPage() {
                 className={`bg-surface p-5 text-center transition hover:bg-background ${p.coming ? 'opacity-50' : ''}`}
               >
                 <div className="text-[20px] mb-2">{p.icon}</div>
-                <div className="font-sans text-[13px] font-semibold text-foreground mb-1">{p.name}</div>
-                <p className="text-[11px] text-muted leading-[1.6]">{p.desc}</p>
+                <div className="text-[13px] font-semibold text-foreground mb-1">{p.name}</div>
+                <p className="text-[13px] text-muted leading-[1.7]">{p.desc}</p>
                 {p.coming && (
                   <span className="inline-block mt-2 font-mono text-[8px] tracking-[0.1em] uppercase text-dim border border-border rounded px-1.5 py-0.5">
                     Coming · Phase 2
@@ -185,7 +185,7 @@ export default function LandingPage() {
           <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-muted mb-3">
             Audric Passport
           </p>
-          <h2 className="font-sans text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground mb-10">
+          <h2 className="text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground mb-10">
             Your passport to a new kind of finance.
           </h2>
 
@@ -193,8 +193,8 @@ export default function LandingPage() {
             {PASSPORT_PILLARS.map((p) => (
               <div key={p.title} className="bg-background p-6">
                 <div className="text-[20px] mb-2.5">{p.icon}</div>
-                <div className="font-sans text-[13px] font-semibold text-foreground mb-2">{p.title}</div>
-                <p className="text-[12px] text-muted leading-[1.7]">{p.desc}</p>
+                <div className="text-[13px] font-semibold text-foreground mb-2">{p.title}</div>
+                <p className="text-[13px] text-muted leading-[1.7]">{p.desc}</p>
               </div>
             ))}
           </div>
@@ -216,7 +216,7 @@ export default function LandingPage() {
           <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-muted mb-3">
             Audric Copilot
           </p>
-          <h2 className="font-sans text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground mb-2 max-w-[600px]">
+          <h2 className="text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground mb-2 max-w-[600px]">
             Audric doesn&apos;t wait<br />to be asked.
           </h2>
           <p className="text-[13px] text-muted leading-[1.7] max-w-[540px] mb-10">
@@ -227,7 +227,7 @@ export default function LandingPage() {
             {COPILOT_FEATURES.map((f) => (
               <div key={f.title} className="bg-background p-5 sm:p-6">
                 <div className="text-[18px] mb-2">{f.icon}</div>
-                <div className="font-sans text-[16px] font-semibold text-foreground mb-2">{f.title}</div>
+                <div className="text-[16px] font-semibold text-foreground mb-2">{f.title}</div>
                 <p className="text-[13px] text-muted leading-[1.7]">{f.desc}</p>
               </div>
             ))}
@@ -242,7 +242,7 @@ export default function LandingPage() {
             <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-muted mb-3">
               Audric Store
             </p>
-            <h2 className="font-sans text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground mb-3">
+            <h2 className="text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground mb-3">
               The new app store.
             </h2>
             <p className="text-[13px] text-muted leading-[1.7] mb-5">
@@ -273,8 +273,8 @@ export default function LandingPage() {
                   <div className="font-mono text-[11px] text-muted mb-1.5">
                     {step.num} {step.label}
                   </div>
-                  <div className="font-sans text-[14px] font-semibold text-foreground mb-1">{step.title}</div>
-                  <p className="text-[12px] text-muted leading-[1.6]">{step.desc}</p>
+                  <div className="text-[14px] font-semibold text-foreground mb-1">{step.title}</div>
+                  <p className="text-[13px] text-muted leading-[1.7]">{step.desc}</p>
                 </div>
               ))}
             </div>
@@ -282,7 +282,7 @@ export default function LandingPage() {
               {STORE_TRUST.map((t) => (
                 <div key={t.title} className="bg-background px-3 py-3">
                   <div className="text-[10px] font-semibold text-foreground mb-1">{t.title}</div>
-                  <p className="font-mono text-[9px] text-muted leading-[1.5]">{t.desc}</p>
+                  <p className="font-mono text-[10px] text-muted leading-[1.5]">{t.desc}</p>
                 </div>
               ))}
             </div>
@@ -297,7 +297,7 @@ export default function LandingPage() {
             <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-muted mb-3">
               Audric Pay
             </p>
-            <h2 className="font-sans text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground mb-3">
+            <h2 className="text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground mb-3">
               Your agent pays so you don&apos;t have to.
             </h2>
             <p className="text-[13px] text-muted leading-[1.7]">
@@ -313,13 +313,13 @@ export default function LandingPage() {
                 { value: '$0.001', label: 'From' },
               ].map((stat) => (
                 <div key={stat.label} className="bg-surface px-5 py-4 text-center min-w-[90px]">
-                  <div className="font-sans text-[20px] font-semibold text-foreground leading-none mb-1">{stat.value}</div>
-                  <div className="font-mono text-[9px] text-muted">{stat.label}</div>
+                  <div className="text-[20px] font-semibold text-foreground leading-none mb-1">{stat.value}</div>
+                  <div className="font-mono text-[10px] text-muted">{stat.label}</div>
                 </div>
               ))}
             </div>
             <div className="text-right mt-2">
-              <span className="font-mono text-[9px] text-dim">Powered by suimpp · On Sui</span>
+              <span className="font-mono text-[10px] text-dim">Powered by suimpp · On Sui</span>
             </div>
           </div>
         </div>
@@ -336,8 +336,8 @@ export default function LandingPage() {
               { value: '99.9%', label: 'Uptime' },
             ].map((stat) => (
               <div key={stat.label} className="bg-background px-4 py-5 text-center">
-                <div className="font-sans text-[28px] font-semibold text-foreground leading-none mb-1 tracking-[-1px]">{stat.value}</div>
-                <div className="font-mono text-[9px] text-muted">{stat.label}</div>
+                <div className="text-[28px] font-semibold text-foreground leading-none mb-1 tracking-[-1px]">{stat.value}</div>
+                <div className="font-mono text-[10px] text-muted">{stat.label}</div>
               </div>
             ))}
           </div>
@@ -362,7 +362,7 @@ export default function LandingPage() {
 
           <div className="flex flex-col sm:flex-row items-center sm:items-start justify-between gap-6">
             <div className="text-center sm:text-left">
-              <div className="font-mono text-sm font-bold tracking-wide text-foreground uppercase mb-1">Audric</div>
+              <div className="font-mono text-[13px] font-medium text-foreground mb-1">Audric</div>
               <div className="font-mono text-[10px] text-muted">Start managing your money.</div>
             </div>
 
