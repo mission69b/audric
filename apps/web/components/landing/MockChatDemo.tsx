@@ -23,16 +23,22 @@ const DEMOS: Record<string, DemoMessage[]> = {
     { role: 'assistant', text: 'Your total savings are now <strong>$300 USDC</strong> earning 5.2% APY — that\'s <strong>$0.043/day</strong> or about <strong>$15.60/year</strong>.', delay: 4400 },
   ],
   'Send money': [
-    { role: 'user', text: 'Send $50 USDC to alice.sui', delay: 600 },
-    { role: 'assistant', text: 'Sending <strong>$50 USDC</strong> to <strong>alice.sui</strong>. Transaction fee: <strong>$0.001</strong>. Confirm?', delay: 1600 },
+    { role: 'user', text: 'Send $50 USDC to 0x7f20...f6dc', delay: 600 },
+    { role: 'assistant', text: 'Sending <strong>$50 USDC</strong> to <strong>0x7f20...f6dc</strong>. Fee: <strong>$0.001</strong>. Confirm?', delay: 1600 },
     { role: 'user', text: 'Confirm', delay: 3000 },
-    { role: 'assistant', text: 'Sent! <strong>$50 USDC → alice.sui</strong>. Transaction confirmed in 0.4s. Your remaining balance: <strong>$194.18 USDC</strong>.', delay: 4000 },
+    { role: 'assistant', text: 'Sent! <strong>$50 USDC</strong> confirmed in 0.4s. Your remaining balance: <strong>$194.18 USDC</strong>.', delay: 4000 },
   ],
-  'My APY': [
-    { role: 'user', text: 'What\'s my current savings rate?', delay: 600 },
-    { role: 'assistant', text: 'Your USDC is earning <strong>5.2% APY</strong> on NAVI Protocol. That\'s <strong>$0.028/day</strong> on your $200 savings.', delay: 1600 },
-    { role: 'user', text: 'Is there a better rate?', delay: 3200 },
-    { role: 'assistant', text: 'USDC on NAVI is the best right now at <strong>5.2%</strong>. suiUSDT is at 4.8%, USDY at 6.3% but requires a swap. Want me to move some into USDY?', delay: 4400 },
+  'Savings goal': [
+    { role: 'user', text: 'Create a goal to save $1,000 by December', delay: 600 },
+    { role: 'assistant', text: 'Created your savings goal: <strong>$1,000 by Dec 2026</strong>. You currently have <strong>$244</strong> saved — that\'s 24.4% progress. You\'d need about <strong>$94/month</strong> to hit it.', delay: 1800 },
+    { role: 'user', text: 'Save $94 now', delay: 3400 },
+    { role: 'assistant', text: 'Depositing <strong>$94 USDC</strong> into savings at 5.2% APY. Goal progress: <strong>33.8%</strong>. On track for December.', delay: 4600 },
+  ],
+  'Pay for API': [
+    { role: 'user', text: 'Generate an image of a sunset over Sui', delay: 600 },
+    { role: 'assistant', text: 'Using <strong>DALL-E 3</strong> via Audric Pay. Cost: <strong>$0.04</strong> from your budget. Generating...', delay: 1600 },
+    { role: 'user', text: 'How much budget do I have left?', delay: 3200 },
+    { role: 'assistant', text: 'Your Audric Pay budget: <strong>$2.71 remaining</strong> of $2.75. You\'ve used <strong>$0.04</strong> across 1 request today.', delay: 4400 },
   ],
 };
 
@@ -70,7 +76,7 @@ export function MockChatDemo() {
       <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
         <span className="w-1.5 h-1.5 rounded-full bg-success" />
         <span className="text-xs font-medium text-foreground">Audric</span>
-        <span className="ml-auto font-mono text-[9px] text-dim">5 free turns</span>
+        <span className="ml-auto font-mono text-[9px] text-dim">Online</span>
       </div>
 
       {/* Messages */}
@@ -107,7 +113,7 @@ export function MockChatDemo() {
 
       {/* Sign-in badge */}
       <div className="px-4 py-1.5 text-center bg-surface border-t border-border">
-        <span className="font-mono text-[9px] text-dim">5 free turns · Sign in with Google to continue</span>
+        <span className="font-mono text-[9px] text-dim">Sign in with Google to start</span>
       </div>
 
       {/* Input bar */}
