@@ -16,12 +16,6 @@ const DEMOS: Record<string, DemoMessage[]> = {
     { role: 'user', text: 'Save the idle USDC', delay: 3200 },
     { role: 'assistant', text: 'Depositing <strong>$44.18 USDC</strong> into NAVI savings at 5.2% APY.<br/><br/>At this rate you\'d earn about <strong>$0.006 more per day</strong>.', delay: 4400 },
   ],
-  'Save USDC': [
-    { role: 'user', text: 'Save $100 USDC', delay: 600 },
-    { role: 'assistant', text: 'Depositing <strong>$100 USDC</strong> into NAVI savings at <strong>5.2% APY</strong>. That earns about <strong>$0.014/day</strong>.', delay: 1600 },
-    { role: 'user', text: 'How much am I earning total now?', delay: 3200 },
-    { role: 'assistant', text: 'Your total savings are now <strong>$300 USDC</strong> earning 5.2% APY — that\'s <strong>$0.043/day</strong> or about <strong>$15.60/year</strong>.', delay: 4400 },
-  ],
   'Send money': [
     { role: 'user', text: 'Send $50 USDC to 0x7f20...f6dc', delay: 600 },
     { role: 'assistant', text: 'Sending <strong>$50 USDC</strong> to <strong>0x7f20...f6dc</strong>. Fee: <strong>$0.001</strong>. Confirm?', delay: 1600 },
@@ -34,11 +28,11 @@ const DEMOS: Record<string, DemoMessage[]> = {
     { role: 'user', text: 'Save $94 now', delay: 3400 },
     { role: 'assistant', text: 'Depositing <strong>$94 USDC</strong> into savings at 5.2% APY. Goal progress: <strong>33.8%</strong>. On track for December.', delay: 4600 },
   ],
-  'Pay for API': [
-    { role: 'user', text: 'Generate an image of a sunset over Sui', delay: 600 },
-    { role: 'assistant', text: 'Using <strong>DALL-E 3</strong> via Audric Pay. Cost: <strong>$0.04</strong> from your budget. Generating...', delay: 1600 },
-    { role: 'user', text: 'How much budget do I have left?', delay: 3200 },
-    { role: 'assistant', text: 'Your Audric Pay budget: <strong>$2.71 remaining</strong> of $2.75. You\'ve used <strong>$0.04</strong> across 1 request today.', delay: 4400 },
+  'Send postcard': [
+    { role: 'user', text: 'Send a postcard to my mum for her birthday', delay: 600 },
+    { role: 'assistant', text: 'I\'ll create a birthday postcard for your mum. Generating design + personal message via <strong>Audric Pay</strong>...<br/><br/>🎨 <em>Watercolour flowers with "Happy Birthday Mum"</em><br/><br/>Cost: <strong>$0.08</strong>. Print &amp; mail for <strong>$1.99</strong>. Send it?', delay: 1800 },
+    { role: 'user', text: 'Send it', delay: 3600 },
+    { role: 'assistant', text: 'Done! Postcard on its way. Paid <strong>$2.07</strong> from your budget. Delivery in 3–5 days. 💌', delay: 4800 },
   ],
 };
 
