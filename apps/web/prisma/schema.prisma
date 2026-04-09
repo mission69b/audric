@@ -21,11 +21,13 @@ model User {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
-  preferences        UserPreferences?
-  conversationLogs   ConversationLog[]
-  notificationPrefs  NotificationPrefs[]
-  dailyBriefings     DailyBriefing[]
-  savingsGoals       SavingsGoal[]
+  preferences          UserPreferences?
+  conversationLogs     ConversationLog[]
+  notificationPrefs    NotificationPrefs[]
+  dailyBriefings       DailyBriefing[]
+  savingsGoals         SavingsGoal[]
+  adviceLogs           AdviceLog[]
+  savingsGoalDeposits  SavingsGoalDeposit[]
 
   @@index([email])
   @@index([emailVerified, timezoneOffset])
@@ -142,20 +144,68 @@ model SavingsGoal {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
-  user User @relation(fields: [userId], references: [id])
+  user     User              @relation(fields: [userId], references: [id])
+  adviceLogs AdviceLog[]
+  deposits   SavingsGoalDeposit[]
 
   @@index([userId, status])
 }
 
 model AppEvent {
-  id        String   @id @default(cuid())
-  address   String
-  type      String
-  title     String
-  details   Json?
-  digest    String?
-  createdAt DateTime @default(now())
+  id             String   @id @default(cuid())
+  address        String
+  type           String
+  title          String
+  details        Json?
+  digest         String?
+  adviceLogId    String?
+  goalId         String?
+  suiTxVerified  Boolean  @default(false)
+  source         String   @default("chat")
+  createdAt      DateTime @default(now())
 
   @@index([address, createdAt])
   @@index([address, type, createdAt])
+  @@index([adviceLogId])
+  @@index([goalId])
+}
+
+model AdviceLog {
+  id            String       @id @default(cuid())
+  userId        String
+  sessionId     String
+  adviceText    String
+  adviceType    String
+  targetAmount  Float?
+  goalId        String?
+  actionTaken   Boolean      @default(false)
+  appEventId    String?
+  followUpDue   DateTime?
+  followUpSent  Boolean      @default(false)
+  outcomeStatus String       @default("pending")
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  user User         @relation(fields: [userId], references: [id])
+  goal SavingsGoal? @relation(fields: [goalId], references: [id])
+
+  @@index([userId])
+  @@index([outcomeStatus])
+  @@index([followUpDue])
+  @@index([createdAt])
+}
+
+model SavingsGoalDeposit {
+  id         String   @id @default(cuid())
+  goalId     String
+  userId     String
+  amountUsdc Float
+  appEventId String?
+  createdAt  DateTime @default(now())
+
+  goal SavingsGoal @relation(fields: [goalId], references: [id])
+  user User        @relation(fields: [userId], references: [id])
+
+  @@index([goalId])
+  @@index([userId])
 }

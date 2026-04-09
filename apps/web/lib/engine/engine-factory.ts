@@ -16,6 +16,7 @@ import {
 } from '@t2000/engine';
 import { UpstashSessionStore } from './upstash-session-store';
 import { GOAL_TOOLS } from './goal-tools';
+import { ADVICE_TOOLS } from './advice-tool';
 import { prisma } from '@/lib/prisma';
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
@@ -141,7 +142,40 @@ interface GoalSummary {
   status: string;
 }
 
-function buildSystemPrompt(walletAddress: string, tools: Tool[], balances?: WalletBalanceSummary, contacts?: Contact[], swapTokenNames?: string[], goals?: GoalSummary[]): string {
+async function buildAdviceContext(userId: string): Promise<string> {
+  try {
+    const recentAdvice = await prisma.adviceLog.findMany({
+      where: {
+        userId,
+        outcomeStatus: { in: ['pending', 'on_track', 'off_track'] },
+        createdAt: { gte: new Date(Date.now() - 30 * 86_400_000) },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 5,
+      include: { goal: true },
+    });
+
+    if (recentAdvice.length === 0) return '';
+
+    const lines = recentAdvice.map((a) => {
+      const daysAgo = Math.round((Date.now() - a.createdAt.getTime()) / 86_400_000);
+      const acted = a.actionTaken ? 'acted on' : 'not yet acted on';
+      const goalNote = a.goal ? ` (toward ${a.goal.name})` : '';
+      return `- ${daysAgo}d ago: ${a.adviceText}${goalNote} — ${acted}`;
+    });
+
+    return [
+      'Your recent advice to this user:',
+      ...lines,
+      'Reference this context naturally when relevant. If the user asks what you suggested, draw from this list.',
+    ].join('\n');
+  } catch (err) {
+    console.warn('[engine] buildAdviceContext failed:', err);
+    return '';
+  }
+}
+
+function buildSystemPrompt(walletAddress: string, tools: Tool[], balances?: WalletBalanceSummary, contacts?: Contact[], swapTokenNames?: string[], goals?: GoalSummary[], adviceContext?: string): string {
   const writeTools = tools.filter((t) => !t.isReadOnly);
   const writeToolList = writeTools.map((t) => `- ${t.name}`).join('\n');
 
@@ -275,6 +309,9 @@ ${goals && goals.length > 0
 - Goals track aspirational targets against the total savings balance — they are NOT separate allocated sub-accounts.
 - When a user deposits or withdraws, mention how it affects their goal progress if relevant.
 
+## Advice memory
+${adviceContext || 'No prior advice on record.'}
+
 ## Safety
 - Never encourage risky financial behavior.
 - Warn when health factor < 1.5.
@@ -290,7 +327,14 @@ export async function createEngine(
     throw new Error('ANTHROPIC_API_KEY not configured');
   }
 
-  const [mgr, positions, walletCoins, swapTokenNames, goals] = await Promise.all([
+  const userRecord = await prisma.user.findUnique({
+    where: { suiAddress: address },
+    select: { id: true },
+  }).catch(() => null);
+
+  const userId = userRecord?.id;
+
+  const [mgr, positions, walletCoins, swapTokenNames, goals, adviceContext] = await Promise.all([
     ensureMcpConnected(),
     fetchServerPositions(address),
     fetchWalletCoins(address, SUI_RPC_URL).catch((err) => {
@@ -309,6 +353,7 @@ export async function createEngine(
       ...g,
       deadline: g.deadline?.toISOString().slice(0, 10) ?? null,
     }))).catch(() => [] as GoalSummary[]),
+    userId ? buildAdviceContext(userId) : Promise.resolve(''),
   ]);
 
   const nonZeroCoins = walletCoins.filter((c) => Number(c.totalBalance) > 0);
@@ -344,7 +389,7 @@ export async function createEngine(
   // swap_quote is redundant with swap_execute's confirmation card
   const EXCLUDED_TOOLS = new Set(['swap_quote']);
   const filteredReads = READ_TOOLS.filter((t) => !EXCLUDED_TOOLS.has(t.name));
-  const allTools = [...filteredReads, ...WRITE_TOOLS, ...GOAL_TOOLS, ...mcpTools];
+  const allTools = [...filteredReads, ...WRITE_TOOLS, ...GOAL_TOOLS, ...ADVICE_TOOLS, ...mcpTools];
 
   console.log(`[engine-factory] tools=${allTools.length}: ${allTools.map(t => t.name).join(', ')}`);
 
@@ -359,7 +404,7 @@ export async function createEngine(
       pendingRewards: 0, supplies: [], borrows_detail: [],
     }),
     tools: allTools,
-    systemPrompt: buildSystemPrompt(address, allTools, balanceSummary, contacts, swapTokenNames, goals),
+    systemPrompt: buildSystemPrompt(address, allTools, balanceSummary, contacts, swapTokenNames, goals, adviceContext || undefined),
     model: MODEL,
     maxTurns: 10,
     maxTokens: 2048,

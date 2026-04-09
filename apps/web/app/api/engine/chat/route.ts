@@ -15,6 +15,10 @@ import { logSessionUsage } from '@/lib/engine/log-session-usage';
 import { prisma } from '@/lib/prisma';
 
 const AGENT_MODEL = process.env.AGENT_MODEL ?? 'claude-sonnet-4-20250514';
+const SERVER_URL = process.env.SERVER_URL ?? 'https://api.t2000.ai';
+const SPONSOR_INTERNAL_KEY = process.env.SPONSOR_INTERNAL_KEY ?? '';
+const SESSION_CHARGE_AMOUNT = 10_000; // $0.01 USDC (6 decimals)
+const SESSION_FEATURE = 4; // ALLOWANCE_FEATURES.SESSION
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -89,6 +93,12 @@ export async function POST(request: NextRequest) {
       const contacts = await prisma.userPreferences.findUnique({ where: { address }, select: { contacts: true } })
         .then((p) => (Array.isArray(p?.contacts) ? p.contacts as Array<{ name: string; address: string }> : []))
         .catch(() => []);
+
+      if (!requestedSessionId) {
+        chargeSession(address).catch((err) =>
+          console.warn('[engine/chat] session charge fire-and-forget error:', err),
+        );
+      }
 
       engine = await createEngine(address, session, contacts);
     } else {
@@ -167,6 +177,12 @@ export async function POST(request: NextRequest) {
             }
           }
 
+          if (saveSession && sessionId && address) {
+            handleAdviceResults(address, sessionId, messages).catch((err) =>
+              console.error('[engine/chat] advice log failed:', err),
+            );
+          }
+
           logSessionUsage(
             address ?? 'anonymous',
             sessionId ?? 'demo',
@@ -220,6 +236,102 @@ function extractText(content: unknown): string {
     .filter((b: unknown) => typeof b === 'object' && b !== null && (b as Record<string, unknown>).type === 'text')
     .map((b: unknown) => (b as Record<string, unknown>).text ?? '');
   return texts.join('\n') || JSON.stringify(content);
+}
+
+function defaultFollowUpDays(type: string): number {
+  const map: Record<string, number> = {
+    save: 2, repay: 1, borrow: 7, swap: 7, goal: 7, rate: 7, general: 14,
+  };
+  return map[type] ?? 7;
+}
+
+interface AdviceItem {
+  adviceType: string;
+  adviceText: string;
+  targetAmount?: number;
+  goalId?: string;
+  followUpDays?: number;
+}
+
+async function handleAdviceResults(
+  address: string,
+  sessionId: string,
+  messages: MessageLike[],
+): Promise<void> {
+  const user = await prisma.user.findUnique({
+    where: { suiAddress: address },
+    select: { id: true },
+  });
+  if (!user) return;
+
+  const adviceItems: AdviceItem[] = [];
+
+  for (const msg of messages) {
+    if (msg.role !== 'assistant' || !Array.isArray(msg.content)) continue;
+    for (const block of msg.content) {
+      const b = block as Record<string, unknown>;
+      if (b.type !== 'tool_use' || b.name !== 'record_advice') continue;
+      const input = b.input as { advice?: AdviceItem[] } | undefined;
+      if (input?.advice) {
+        adviceItems.push(...input.advice);
+      }
+    }
+  }
+
+  if (adviceItems.length === 0) return;
+
+  for (const advice of adviceItems) {
+    const followUpDays = advice.followUpDays ?? defaultFollowUpDays(advice.adviceType);
+    await prisma.adviceLog.create({
+      data: {
+        userId: user.id,
+        sessionId,
+        adviceText: advice.adviceText.slice(0, 500),
+        adviceType: advice.adviceType,
+        targetAmount: advice.targetAmount ?? null,
+        goalId: advice.goalId ?? null,
+        followUpDue: new Date(Date.now() + followUpDays * 86_400_000),
+      },
+    });
+  }
+}
+
+async function chargeSession(address: string): Promise<string | null> {
+  try {
+    const prefs = await prisma.userPreferences.findUnique({
+      where: { address },
+      select: { limits: true },
+    });
+
+    const limits = prefs?.limits as Record<string, unknown> | null;
+    const allowanceId = (limits?.allowanceId as string) ?? null;
+    if (!allowanceId) return null;
+
+    const res = await fetch(`${SERVER_URL}/api/internal/charge`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-internal-key': SPONSOR_INTERNAL_KEY,
+      },
+      body: JSON.stringify({
+        allowanceId,
+        amount: SESSION_CHARGE_AMOUNT,
+        feature: SESSION_FEATURE,
+      }),
+    });
+
+    if (!res.ok) {
+      const err = await res.text().catch(() => 'unknown');
+      console.warn(`[engine/chat] session charge failed (${res.status}):`, err);
+      return null;
+    }
+
+    const data = (await res.json()) as { digest?: string };
+    return data.digest ?? null;
+  } catch (err) {
+    console.warn('[engine/chat] session charge error:', err instanceof Error ? err.message : err);
+    return null;
+  }
 }
 
 async function logConversationTurn(
