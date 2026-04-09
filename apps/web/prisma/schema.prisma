@@ -17,6 +17,7 @@ model User {
   displayName      String?
   timezoneOffset   Int       @default(0)
   onboardedAt      DateTime?
+  tosAcceptedAt    DateTime?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 

@@ -113,6 +113,7 @@ function SetupContent() {
   const [budget, setBudget] = useState(DEFAULT_BUDGET);
   const [customInput, setCustomInput] = useState('');
   const [isCustom, setIsCustom] = useState(false);
+  const [tosAccepted, setTosAccepted] = useState(false);
   const [executing, setExecuting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -246,6 +247,18 @@ function SetupContent() {
           limits: { allowanceId: targetAllowanceId, agentBudget: budget },
         }),
       }).catch(() => {});
+
+      // Stamp ToS acceptance (first-time setup only, fire-and-forget)
+      if (!isTopUp && tosAccepted) {
+        fetch('/api/user/tos-accept', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(session.jwt ? { 'x-zklogin-jwt': session.jwt } : {}),
+          },
+          body: JSON.stringify({ address }),
+        }).catch(() => {});
+      }
 
       setStep(4);
     } catch (err) {
@@ -484,11 +497,36 @@ function SetupContent() {
                 <p className="text-sm text-error text-center">{error}</p>
               )}
 
+              {/* ToS consent (first-time setup only) */}
+              {!isTopUp && (
+                <label className="flex items-start gap-3 cursor-pointer group">
+                  <input
+                    type="checkbox"
+                    checked={tosAccepted}
+                    onChange={(e) => setTosAccepted(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 rounded border-border accent-foreground cursor-pointer"
+                  />
+                  <span className="text-xs text-muted leading-relaxed group-hover:text-foreground transition">
+                    I agree to the{' '}
+                    <a
+                      href="/terms"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-foreground underline underline-offset-2 hover:opacity-70"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      Terms of Service
+                    </a>
+                    , including fees and the allowance model.
+                  </span>
+                </label>
+              )}
+
               {/* Approve button */}
               <div className="space-y-3">
                 <button
                   onClick={handleApprove}
-                  disabled={executing || budget < MIN_BUDGET || insufficientBalance}
+                  disabled={executing || budget < MIN_BUDGET || insufficientBalance || (!isTopUp && !tosAccepted)}
                   className="w-full rounded-lg bg-foreground py-3.5 text-sm font-medium text-background tracking-[0.05em] uppercase transition hover:opacity-90 active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {executing ? (

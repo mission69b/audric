@@ -133,7 +133,60 @@ export default function TermsPage() {
 
         <section>
           <h2 className="text-foreground text-base font-mono font-semibold mb-3">
-            7. Gas Sponsorship
+            7. Fees and Charges
+          </h2>
+          <p>Audric charges the following fees:</p>
+          <ul className="list-disc pl-5 space-y-1.5 mt-2">
+            <li>
+              <strong className="text-foreground">Swap overlay fee</strong>{' '}
+              &mdash; 0.1% on every token swap, collected as part of the
+              transaction
+            </li>
+            <li>
+              <strong className="text-foreground">Morning briefing</strong>{' '}
+              &mdash; $0.005 USDC per day, deducted from your features budget
+            </li>
+            <li>
+              <strong className="text-foreground">AI session charge</strong>{' '}
+              &mdash; $0.01 USDC per AI conversation, deducted from your
+              features budget
+            </li>
+            <li>
+              <strong className="text-foreground">Yield spread</strong> &mdash;
+              Audric displays net APY after a small spread on savings yield.
+              The exact spread varies by market conditions
+            </li>
+          </ul>
+          <p className="mt-2">
+            Health factor alerts and rate change alerts are free. All paid
+            feature charges are deducted from your on-chain features budget
+            (see Section 8). Fees may change with notice.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="text-foreground text-base font-mono font-semibold mb-3">
+            8. Features Budget (Allowance)
+          </h2>
+          <p>
+            Audric uses an on-chain spending cap called the features budget.
+            You deposit USDC into a smart contract you control. Audric
+            deducts small amounts only for features you enable. You can
+            withdraw the remaining balance at any time from Settings &gt;
+            Features. The features budget is not a subscription &mdash; there
+            are no recurring charges. You are only charged for features you
+            actively use.
+          </p>
+          <p className="mt-2">
+            The smart contract is non-custodial: Audric can only deduct up to
+            the approved amount for permitted features. It cannot access your
+            wallet balance or savings.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="text-foreground text-base font-mono font-semibold mb-3">
+            9. Gas Sponsorship
           </h2>
           <p>
             Audric sponsors gas fees for all transactions via Mysten Labs
@@ -144,7 +197,7 @@ export default function TermsPage() {
 
         <section>
           <h2 className="text-foreground text-base font-mono font-semibold mb-3">
-            8. AI Assistant
+            10. AI Assistant
           </h2>
           <p>
             The AI assistant is powered by large language models. It can make
@@ -155,7 +208,7 @@ export default function TermsPage() {
 
         <section>
           <h2 className="text-foreground text-base font-mono font-semibold mb-3">
-            9. Tax Responsibility
+            11. Tax Responsibility
           </h2>
           <p>
             Cryptocurrency transactions (including stablecoin swaps) may be
@@ -168,7 +221,7 @@ export default function TermsPage() {
 
         <section>
           <h2 className="text-foreground text-base font-mono font-semibold mb-3">
-            10. Beta Software
+            12. Beta Software
           </h2>
           <p>
             Audric is currently in beta. The software may contain bugs, errors,
@@ -180,7 +233,7 @@ export default function TermsPage() {
 
         <section>
           <h2 className="text-foreground text-base font-mono font-semibold mb-3">
-            11. Limitation of Liability
+            13. Limitation of Liability
           </h2>
           <p className="uppercase text-xs leading-relaxed">
             To the maximum extent permitted by law, Audric and its contributors
@@ -195,7 +248,7 @@ export default function TermsPage() {
 
         <section>
           <h2 className="text-foreground text-base font-mono font-semibold mb-3">
-            12. Open Source
+            14. Open Source
           </h2>
           <p>
             Audric is open-source software. The source code is available at{' '}
@@ -222,7 +275,7 @@ export default function TermsPage() {
 
         <section>
           <h2 className="text-foreground text-base font-mono font-semibold mb-3">
-            13. Changes
+            15. Changes
           </h2>
           <p>
             We may update these Terms at any time. Continued use of the Service

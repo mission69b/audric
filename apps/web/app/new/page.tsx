@@ -35,7 +35,10 @@ import { DashboardTabs, type DashboardTab } from '@/components/dashboard/Dashboa
 import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
 import { useActivityFeed } from '@/hooks/useActivityFeed';
 import { BriefingCard } from '@/components/dashboard/BriefingCard';
+import { WelcomeCard } from '@/components/dashboard/WelcomeCard';
+import { TosBanner } from '@/components/dashboard/TosBanner';
 import { useOvernightBriefing } from '@/hooks/useOvernightBriefing';
+import { useUserStatus } from '@/hooks/useUserStatus';
 
 const LS_LAST_SAVINGS = 't2000_last_savings';
 const LS_LAST_OPEN = 't2000_last_open_date';
@@ -237,6 +240,7 @@ function DashboardContent() {
   const [activeTab, setActiveTab] = useState<DashboardTab>('chat');
   const activityFeed = useActivityFeed(address);
   const briefing = useOvernightBriefing(address, session?.jwt ?? null);
+  const userStatus = useUserStatus(address, session?.jwt);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [agentBudget, setAgentBudget] = useState(0.50);
   const [dismissedCards, setDismissedCards] = useState<Set<string>>(new Set());
@@ -731,6 +735,22 @@ function DashboardContent() {
   const handleBriefingViewReport = useCallback(() => {
     handleInputSubmit('Give me my daily briefing');
   }, [handleInputSubmit]);
+
+  const handleWelcomeSave = useCallback(() => {
+    const usdc = balanceQuery.data?.usdc ?? 0;
+    const amount = usdc < 1 ? usdc.toFixed(2) : Math.floor(usdc).toString();
+    handleInputSubmit(`Save $${amount} USDC`);
+    userStatus.markOnboarded();
+  }, [handleInputSubmit, balanceQuery.data?.usdc, userStatus.markOnboarded]);
+
+  const handleWelcomeAsk = useCallback(() => {
+    handleInputSubmit('What can you do?');
+    userStatus.markOnboarded();
+  }, [handleInputSubmit, userStatus.markOnboarded]);
+
+  const handleWelcomeDismiss = useCallback(() => {
+    userStatus.markOnboarded();
+  }, [userStatus.markOnboarded]);
 
   // Deep link: ?prefill=... auto-sends a message on load
   const searchParams = useSearchParams();
@@ -1246,6 +1266,10 @@ function DashboardContent() {
     />
   );
 
+  const tosBanner = !userStatus.loading && !userStatus.tosAccepted ? (
+    <TosBanner onAccept={userStatus.acceptTos} />
+  ) : null;
+
   if (isEmpty && !engine.isStreaming && activeTab === 'chat') {
     return (
       <main className="flex flex-1 flex-col min-h-dvh">
@@ -1262,6 +1286,17 @@ function DashboardContent() {
         </div>
 
         <div className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 -mt-8">
+          {!userStatus.loading && !userStatus.onboarded && !briefing.briefing && (
+            <div className="w-full max-w-2xl mb-6">
+              <WelcomeCard
+                usdcBalance={balanceQuery.data?.usdc ?? 0}
+                hasSavings={(balanceQuery.data?.savings ?? 0) > 0}
+                onSave={handleWelcomeSave}
+                onAsk={handleWelcomeAsk}
+                onDismiss={handleWelcomeDismiss}
+              />
+            </div>
+          )}
           {briefing.briefing && (
             <div className="w-full max-w-2xl mb-6">
               <BriefingCard
@@ -1303,6 +1338,7 @@ function DashboardContent() {
 
         {settingsPanel}
         {emailModal}
+        {tosBanner}
       </main>
     );
   }
@@ -1339,6 +1375,7 @@ function DashboardContent() {
 
         {settingsPanel}
         {emailModal}
+        {tosBanner}
       </main>
     );
   }
@@ -1555,6 +1592,7 @@ function DashboardContent() {
 
       {settingsPanel}
       {emailModal}
+      {tosBanner}
     </main>
   );
 }
