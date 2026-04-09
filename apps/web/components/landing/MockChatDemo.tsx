@@ -30,9 +30,9 @@ const DEMOS: Record<string, DemoMessage[]> = {
   ],
   'Send postcard': [
     { role: 'user', text: 'Send a postcard to my mum for her birthday', delay: 600 },
-    { role: 'assistant', text: 'I\'ll create a birthday postcard for your mum. Generating design + personal message via <strong>Audric Pay</strong>...<br/><br/>🎨 <em>Watercolour flowers with "Happy Birthday Mum"</em><br/><br/>Cost: <strong>$0.08</strong>. Print &amp; mail for <strong>$1.99</strong>. Send it?', delay: 1800 },
+    { role: 'assistant', text: 'I\'ll create a birthday postcard for your mum. Generating design + personal message via <strong>Audric Pay</strong>...<br/><br/>🎨 <em>Watercolour flowers with "Happy Birthday Mum"</em><br/><br/>Print &amp; mail: <strong>$1.05</strong>. Send it?', delay: 1800 },
     { role: 'user', text: 'Send it', delay: 3600 },
-    { role: 'assistant', text: 'Done! Postcard on its way. Paid <strong>$2.07</strong> from your budget. Delivery in 3–5 days. 💌', delay: 4800 },
+    { role: 'assistant', text: 'Done! Postcard on its way. Paid <strong>$1.05</strong> from your budget. Delivery in 3–5 days. 💌', delay: 4800 },
   ],
 };
 
