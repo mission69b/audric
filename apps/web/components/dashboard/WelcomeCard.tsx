@@ -32,7 +32,7 @@ export function WelcomeCard({ usdcBalance, hasSavings, onSave, onAsk, onDismiss 
         </p>
         <button
           onClick={onDismiss}
-          className="text-dim hover:text-muted transition p-1 -m-1 rounded"
+          className="text-dim hover:text-foreground transition p-1 -m-1 rounded"
           aria-label="Dismiss"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -87,7 +87,7 @@ export function WelcomeCard({ usdcBalance, hasSavings, onSave, onAsk, onDismiss 
         ) : null}
         <button
           onClick={onAsk}
-          className={`${hasBalance && !hasSavings ? 'flex-1' : 'w-full'} py-2.5 px-4 border border-border text-foreground rounded-lg text-sm font-medium hover:bg-surface-bright transition`}
+          className={`${hasBalance && !hasSavings ? 'flex-1' : 'w-full'} py-2.5 px-4 border border-border text-foreground rounded-lg text-sm font-medium hover:border-foreground/40 hover:bg-surface-bright active:scale-[0.98] transition`}
         >
           Ask Audric →
         </button>

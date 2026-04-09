@@ -1285,7 +1285,7 @@ function DashboardContent() {
           </div>
         </div>
 
-        <div className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 -mt-8">
+        <div className={`flex-1 flex flex-col items-center justify-center px-4 sm:px-6 ${!userStatus.loading && !userStatus.onboarded && !briefing.briefing ? 'mt-0' : '-mt-8'}`}>
           {!userStatus.loading && !userStatus.onboarded && !briefing.briefing && (
             <div className="w-full max-w-2xl mb-6">
               <WelcomeCard
