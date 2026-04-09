@@ -26,7 +26,7 @@ import { mapError } from '@/lib/errors';
 import { deriveContextualChips, type AccountState } from '@/lib/contextual-chips';
 import { SUI_NETWORK } from '@/lib/constants';
 import { useContacts } from '@/hooks/useContacts';
-import { useAgent } from '@/hooks/useAgent';
+import { useAgent, ServiceDeliveryError } from '@/hooks/useAgent';
 import { useUsdcSponsor } from '@/hooks/useUsdcSponsor';
 import { COIN_REGISTRY, getDecimalsForCoinType, resolveSymbol } from '@/lib/token-registry';
 import { parseActualAmount, buildSwapDisplayData } from '@/lib/balance-changes';
@@ -876,11 +876,28 @@ function DashboardContent() {
           return { success: true, data: { success: true, tx: res.tx, amount: inp.amount } };
         }
         case 'pay_api': {
-          const serviceResult = await sdk.payService({
-            url: inp.url as string,
-            rawBody: inp.body ? JSON.parse(String(inp.body)) : undefined,
-          });
-          return { success: true, data: serviceResult };
+          try {
+            const serviceResult = await sdk.payService({
+              url: inp.url as string,
+              rawBody: inp.body ? JSON.parse(String(inp.body)) : undefined,
+            });
+            return { success: true, data: serviceResult };
+          } catch (payErr) {
+            if (payErr instanceof ServiceDeliveryError) {
+              return {
+                success: false,
+                data: {
+                  error: payErr.message,
+                  paymentConfirmed: true,
+                  paymentDigest: payErr.paymentDigest,
+                  doNotRetry: true,
+                  warning: 'Payment was already charged on-chain. DO NOT call pay_api again for this request. Tell the user the service failed and their payment of $' + (payErr.meta?.price ?? '?') + ' was charged. They can contact support for a refund.',
+                },
+              };
+            }
+            const msg = payErr instanceof Error ? payErr.message : String(payErr);
+            return { success: false, data: { error: msg } };
+          }
         }
         case 'save_contact': {
           await contactsHook.addContact(String(inp.name), String(inp.address));

@@ -401,6 +401,71 @@ export function getServicePrice(serviceId: string): string {
 
 const ALLOWED_SEGMENT_RE = /^[a-z0-9\-]+$/i;
 
+const AUDRIC_RETURN_ADDRESS = {
+  name: 'Audric',
+  address_line1: '185 Berry St',
+  address_city: 'San Francisco',
+  address_state: 'CA',
+  address_zip: '94107',
+  address_country: 'US',
+};
+
+const COUNTRY_ALIASES: Record<string, string> = {
+  UK: 'GB', 'UNITED KINGDOM': 'GB', ENGLAND: 'GB', 'GREAT BRITAIN': 'GB',
+  USA: 'US', 'UNITED STATES': 'US', 'UNITED STATES OF AMERICA': 'US',
+};
+
+function normalizeCountry(addr: Record<string, unknown>): Record<string, unknown> {
+  const country = String(addr.address_country ?? addr.country ?? '').toUpperCase();
+  const resolved = COUNTRY_ALIASES[country] ?? country;
+  return { ...addr, address_country: resolved };
+}
+
+function wrapLobPayload(
+  type: 'postcard' | 'letter',
+  price: string,
+  body: Record<string, unknown>,
+): Record<string, unknown> {
+  const payload = { ...body };
+  if (!payload.from) {
+    payload.from = AUDRIC_RETURN_ADDRESS;
+  } else if (typeof payload.from === 'object' && payload.from !== null) {
+    payload.from = normalizeCountry(payload.from as Record<string, unknown>);
+  }
+  if (typeof payload.to === 'object' && payload.to !== null) {
+    payload.to = normalizeCountry(payload.to as Record<string, unknown>);
+  }
+  if (!payload.use_type) {
+    payload.use_type = 'operational';
+  }
+  return { type, price, payload };
+}
+
+/**
+ * Match raw URLs against known expensive/deliver-first services.
+ * Returns the proper mapping with deliverFirst so payment only happens
+ * AFTER the upstream succeeds — preventing lost money on 4xx errors.
+ */
+function matchKnownService(stripped: string, body: Record<string, unknown>): GatewayMapping | null {
+  if (stripped === 'lob/v1/postcards') {
+    return {
+      url: `${GATEWAY_BASE}/lob/v1/postcards`,
+      price: '1.00',
+      transformBody: () => wrapLobPayload('postcard', '1.00', body),
+      deliverFirst: { internalUrl: `${GATEWAY_BASE}/lob/v1/mail-internal` },
+    };
+  }
+  if (stripped === 'lob/v1/letters') {
+    return {
+      url: `${GATEWAY_BASE}/lob/v1/letters`,
+      price: '1.50',
+      transformBody: () => wrapLobPayload('letter', '1.50', body),
+      deliverFirst: { internalUrl: `${GATEWAY_BASE}/lob/v1/mail-internal` },
+    };
+  }
+  return null;
+}
+
 export function createRawGatewayMapping(
   path: string,
   body: Record<string, unknown>,
@@ -410,6 +475,10 @@ export function createRawGatewayMapping(
     path = parsed.pathname;
   } catch { /* not a full URL — treat as path */ }
   const stripped = path.replace(/^\/+/, '');
+
+  const known = matchKnownService(stripped, body);
+  if (known) return known;
+
   const segments = stripped.split('/');
   if (segments.length < 2 || segments.some((s) => !ALLOWED_SEGMENT_RE.test(s))) return null;
   const safePath = '/' + segments.join('/');
