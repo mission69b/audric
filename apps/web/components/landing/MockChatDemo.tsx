@@ -65,7 +65,7 @@ export function MockChatDemo() {
   const messages = DEMOS[activeDemo] ?? [];
 
   return (
-    <div className="w-full max-w-md border border-border rounded-xl overflow-hidden bg-background shadow-[0_8px_40px_rgba(0,0,0,0.08)]">
+    <div className="w-full max-w-md border border-border rounded-xl overflow-hidden bg-background shadow-[0_8px_40px_rgba(0,0,0,0.3)]">
       {/* Header */}
       <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
         <span className="w-1.5 h-1.5 rounded-full bg-success" />

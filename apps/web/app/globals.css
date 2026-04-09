@@ -1,17 +1,17 @@
 @import "tailwindcss";
 
 :root {
-  /* Neutral palette (N100–N900) */
-  --background: #FFFFFF;
-  --surface: #F7F7F7;
-  --panel: #FFFFFF;
-  --border: #E5E5E5;
-  --border-bright: #CCCCCC;
-  --foreground: #191919;
-  --muted: #707070;
-  --dim: #9F9F9F;
-  --accent: #191919;
-  --accent-dim: #F7F7F7;
+  /* Neutral palette — dark mode (inverted N-scale) */
+  --background: #0A0A0A;
+  --surface: #141414;
+  --panel: #1A1A1A;
+  --border: #2A2A2A;
+  --border-bright: #404040;
+  --foreground: #EDEDED;
+  --muted: #A0A0A0;
+  --dim: #666666;
+  --accent: #EDEDED;
+  --accent-dim: #1A1A1A;
 
   /* Semantic colors */
   --success: #3CC14E;
@@ -19,11 +19,11 @@
   --warning: #FFB014;
   --info: #0966F6;
 
-  /* Elevation shadows */
-  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
-  --shadow-dropdown: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
-  --shadow-drawer: -4px 0 24px rgba(0, 0, 0, 0.08);
-  --shadow-modal: 0 20px 60px rgba(0, 0, 0, 0.15);
+  /* Elevation shadows (heavier for dark surfaces) */
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-dropdown: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
+  --shadow-drawer: -4px 0 24px rgba(0, 0, 0, 0.4);
+  --shadow-modal: 0 20px 60px rgba(0, 0, 0, 0.5);
 }
 
 @theme inline {

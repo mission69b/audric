@@ -130,10 +130,10 @@ export default function SecurityPage() {
             contracts) which has undergone a full-stack security review.
           </p>
           <div className="flex items-center gap-3">
-            <span className="px-2.5 py-1 text-[11px] font-mono font-semibold border rounded text-emerald-600 bg-emerald-50 border-emerald-200">
+            <span className="px-2.5 py-1 text-[11px] font-mono font-semibold border rounded text-emerald-400 bg-emerald-400/10 border-emerald-400/20">
               20 / 22 REMEDIATED
             </span>
-            <span className="px-2.5 py-1 text-[11px] font-mono font-semibold border rounded text-amber-600 bg-amber-50 border-amber-200">
+            <span className="px-2.5 py-1 text-[11px] font-mono font-semibold border rounded text-amber-400 bg-amber-400/10 border-amber-400/20">
               2 DEFERRED
             </span>
           </div>
