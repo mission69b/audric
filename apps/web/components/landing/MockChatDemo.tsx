@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useZkLogin } from '@/components/auth/useZkLogin';
 
 interface DemoMessage {
@@ -9,42 +9,60 @@ interface DemoMessage {
   delay: number;
 }
 
-const DEMO_MESSAGES: DemoMessage[] = [
-  {
-    role: 'user',
-    text: 'How much USDC do I have?',
-    delay: 800,
-  },
-  {
-    role: 'assistant',
-    text: 'You have <strong>$244.18 USDC</strong> in your wallet — $200 earning <strong>5.2% APY</strong> in NAVI savings, and $44.18 idle. Want me to save the idle amount too?',
-    delay: 1800,
-  },
-  {
-    role: 'user',
-    text: 'Save the idle USDC',
-    delay: 3500,
-  },
-  {
-    role: 'assistant',
-    text: 'Depositing <strong>$44.18 USDC</strong> into NAVI savings at 5.2% APY.<br/><br/>At this rate you\'d earn about <strong>$0.006 more per day</strong>.',
-    delay: 4800,
-  },
-];
+const DEMOS: Record<string, DemoMessage[]> = {
+  'Check balance': [
+    { role: 'user', text: 'How much USDC do I have?', delay: 600 },
+    { role: 'assistant', text: 'You have <strong>$244.18 USDC</strong> in your wallet — $200 earning <strong>5.2% APY</strong> in NAVI savings, and $44.18 idle. Want me to save the idle amount too?', delay: 1600 },
+    { role: 'user', text: 'Save the idle USDC', delay: 3200 },
+    { role: 'assistant', text: 'Depositing <strong>$44.18 USDC</strong> into NAVI savings at 5.2% APY.<br/><br/>At this rate you\'d earn about <strong>$0.006 more per day</strong>.', delay: 4400 },
+  ],
+  'Save USDC': [
+    { role: 'user', text: 'Save $100 USDC', delay: 600 },
+    { role: 'assistant', text: 'Depositing <strong>$100 USDC</strong> into NAVI savings at <strong>5.2% APY</strong>. That earns about <strong>$0.014/day</strong>.', delay: 1600 },
+    { role: 'user', text: 'How much am I earning total now?', delay: 3200 },
+    { role: 'assistant', text: 'Your total savings are now <strong>$300 USDC</strong> earning 5.2% APY — that\'s <strong>$0.043/day</strong> or about <strong>$15.60/year</strong>.', delay: 4400 },
+  ],
+  'Send money': [
+    { role: 'user', text: 'Send $50 USDC to alice.sui', delay: 600 },
+    { role: 'assistant', text: 'Sending <strong>$50 USDC</strong> to <strong>alice.sui</strong>. Transaction fee: <strong>$0.001</strong>. Confirm?', delay: 1600 },
+    { role: 'user', text: 'Confirm', delay: 3000 },
+    { role: 'assistant', text: 'Sent! <strong>$50 USDC → alice.sui</strong>. Transaction confirmed in 0.4s. Your remaining balance: <strong>$194.18 USDC</strong>.', delay: 4000 },
+  ],
+  'My APY': [
+    { role: 'user', text: 'What\'s my current savings rate?', delay: 600 },
+    { role: 'assistant', text: 'Your USDC is earning <strong>5.2% APY</strong> on NAVI Protocol. That\'s <strong>$0.028/day</strong> on your $200 savings.', delay: 1600 },
+    { role: 'user', text: 'Is there a better rate?', delay: 3200 },
+    { role: 'assistant', text: 'USDC on NAVI is the best right now at <strong>5.2%</strong>. suiUSDT is at 4.8%, USDY at 6.3% but requires a swap. Want me to move some into USDY?', delay: 4400 },
+  ],
+};
 
-const CHIPS = ['Check balance', 'Save USDC', 'Send money', 'My APY'];
+const CHIPS = Object.keys(DEMOS);
 
 export function MockChatDemo() {
   const { login } = useZkLogin();
+  const [activeDemo, setActiveDemo] = useState('Check balance');
   const [visible, setVisible] = useState(0);
+  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  const playDemo = useCallback((name: string) => {
+    timersRef.current.forEach(clearTimeout);
+    timersRef.current = [];
+    setVisible(0);
+    setActiveDemo(name);
+
+    const messages = DEMOS[name];
+    if (!messages) return;
+    messages.forEach((msg, i) => {
+      timersRef.current.push(setTimeout(() => setVisible(i + 1), msg.delay));
+    });
+  }, []);
 
   useEffect(() => {
-    const timers: ReturnType<typeof setTimeout>[] = [];
-    DEMO_MESSAGES.forEach((msg, i) => {
-      timers.push(setTimeout(() => setVisible(i + 1), msg.delay));
-    });
-    return () => timers.forEach(clearTimeout);
-  }, []);
+    playDemo('Check balance');
+    return () => timersRef.current.forEach(clearTimeout);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const messages = DEMOS[activeDemo] ?? [];
 
   return (
     <div className="w-full max-w-md border border-border rounded-xl overflow-hidden bg-background shadow-[0_8px_40px_rgba(0,0,0,0.08)]">
@@ -57,9 +75,9 @@ export function MockChatDemo() {
 
       {/* Messages */}
       <div className="h-[300px] sm:h-[320px] overflow-hidden px-4 py-4 flex flex-col gap-2.5">
-        {DEMO_MESSAGES.slice(0, visible).map((msg, i) => (
+        {messages.slice(0, visible).map((msg, i) => (
           <div
-            key={i}
+            key={`${activeDemo}-${i}`}
             className={`max-w-[85%] px-3.5 py-2.5 text-[12px] leading-[1.5] animate-[fadeSlideIn_0.3s_ease-out_both] ${
               msg.role === 'user'
                 ? 'self-end bg-foreground text-background rounded-2xl rounded-br-sm'
@@ -75,8 +93,12 @@ export function MockChatDemo() {
         {CHIPS.map((chip) => (
           <button
             key={chip}
-            onClick={login}
-            className="shrink-0 font-mono text-[9px] px-2.5 py-1 border border-border rounded-full text-muted hover:text-foreground hover:border-foreground transition cursor-pointer"
+            onClick={() => playDemo(chip)}
+            className={`shrink-0 font-mono text-[9px] px-2.5 py-1 border rounded-full transition cursor-pointer ${
+              chip === activeDemo
+                ? 'border-foreground text-foreground'
+                : 'border-border text-muted hover:text-foreground hover:border-foreground'
+            }`}
           >
             {chip}
           </button>

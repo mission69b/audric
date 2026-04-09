@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { LandingNav } from '@/components/landing/LandingNav';
@@ -45,16 +45,45 @@ const STORE_TRUST = [
 
 const STORE_CHIPS = ['Music', 'Art', 'Ebooks', 'Templates', 'Courses', 'Merch'];
 
+interface Stats {
+  totalUsers: number;
+  totalSessions: number;
+  totalTransactions: number;
+}
+
+function useStats() {
+  const [stats, setStats] = useState<Stats | null>(null);
+
+  useEffect(() => {
+    fetch('/api/stats')
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (data) setStats(data);
+      })
+      .catch(() => {});
+  }, []);
+
+  return stats;
+}
+
+function fmtStat(n: number | undefined): string {
+  if (n === undefined) return '—';
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return String(n);
+}
+
 export default function LandingPage() {
   const router = useRouter();
   const { status, login } = useZkLogin();
+  const stats = useStats();
 
   useEffect(() => {
     if (status === 'authenticated') router.replace('/new');
   }, [status, router]);
 
   return (
-    <div className="min-h-dvh bg-background">
+    <div className="min-h-dvh bg-background font-sans">
       <LandingNav />
 
       {/* ── S1: Hero ── */}
@@ -64,11 +93,11 @@ export default function LandingPage() {
             <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-muted mb-5">
               Your money, handled.
             </p>
-            <h1 className="text-[40px] sm:text-[52px] font-normal leading-[1.05] tracking-[-2px] text-foreground mb-5">
+            <h1 className="font-sans text-[40px] sm:text-[52px] font-normal leading-[1.05] tracking-[-2px] text-foreground mb-5">
               Your money,<br />
-              <em className="font-display italic font-normal">handled.</em>
+              <em className="font-display not-italic" style={{ fontStyle: 'italic', fontWeight: 300, letterSpacing: '-1.5px' }}>handled.</em>
             </h1>
-            <p className="text-[13px] sm:text-[14px] text-muted leading-[1.7] max-w-[400px] mb-7">
+            <p className="text-[13px] text-muted leading-[1.7] max-w-[400px] mb-7">
               Sign in with Google. Chat with your money. Earn yield, send USDC, borrow — all by conversation. No seed phrase.
             </p>
             <div className="flex items-center gap-3 flex-wrap">
@@ -99,7 +128,7 @@ export default function LandingPage() {
           <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-muted mb-3">
             How it works
           </p>
-          <h2 className="text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground mb-10">
+          <h2 className="font-sans text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground mb-10">
             Three steps to your money.
           </h2>
 
@@ -111,7 +140,7 @@ export default function LandingPage() {
             ].map((step) => (
               <div key={step.num} className="bg-background p-6 sm:p-7">
                 <div className="font-mono text-[32px] font-medium text-border-bright mb-3">{step.num}</div>
-                <div className="text-[15px] font-semibold text-foreground mb-2">{step.title}</div>
+                <div className="font-sans text-[15px] font-semibold text-foreground mb-2">{step.title}</div>
                 <p className="text-[13px] text-muted leading-[1.7]">{step.desc}</p>
               </div>
             ))}
@@ -125,7 +154,7 @@ export default function LandingPage() {
           <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-muted mb-3">
             Products
           </p>
-          <h2 className="text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground mb-10">
+          <h2 className="font-sans text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground mb-10">
             Everything you need.
           </h2>
 
@@ -136,7 +165,7 @@ export default function LandingPage() {
                 className={`bg-surface p-5 text-center ${p.coming ? 'opacity-50' : ''}`}
               >
                 <div className="text-[20px] mb-2">{p.icon}</div>
-                <div className="text-[13px] font-semibold text-foreground mb-1">{p.name}</div>
+                <div className="font-sans text-[13px] font-semibold text-foreground mb-1">{p.name}</div>
                 <p className="text-[11px] text-muted leading-[1.6]">{p.desc}</p>
                 {p.coming && (
                   <span className="inline-block mt-2 font-mono text-[8px] tracking-[0.1em] uppercase text-dim border border-border rounded px-1.5 py-0.5">
@@ -155,7 +184,7 @@ export default function LandingPage() {
           <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-muted mb-3">
             Audric Passport
           </p>
-          <h2 className="text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground mb-10">
+          <h2 className="font-sans text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground mb-10">
             Your passport to a new kind of finance.
           </h2>
 
@@ -163,7 +192,7 @@ export default function LandingPage() {
             {PASSPORT_PILLARS.map((p) => (
               <div key={p.title} className="bg-background p-6">
                 <div className="text-[20px] mb-2.5">{p.icon}</div>
-                <div className="text-[13px] font-semibold text-foreground mb-2">{p.title}</div>
+                <div className="font-sans text-[13px] font-semibold text-foreground mb-2">{p.title}</div>
                 <p className="text-[12px] text-muted leading-[1.7]">{p.desc}</p>
               </div>
             ))}
@@ -186,7 +215,7 @@ export default function LandingPage() {
           <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-muted mb-3">
             Audric Copilot
           </p>
-          <h2 className="text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground mb-2 max-w-[600px]">
+          <h2 className="font-sans text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground mb-2 max-w-[600px]">
             Audric doesn&apos;t wait<br />to be asked.
           </h2>
           <p className="text-[13px] text-muted leading-[1.7] max-w-[540px] mb-10">
@@ -197,8 +226,8 @@ export default function LandingPage() {
             {COPILOT_FEATURES.map((f) => (
               <div key={f.title} className="bg-background p-5 sm:p-6">
                 <div className="text-[18px] mb-2">{f.icon}</div>
-                <div className="text-[13px] font-semibold text-foreground mb-2">{f.title}</div>
-                <p className="text-[12px] text-muted leading-[1.7]">{f.desc}</p>
+                <div className="font-sans text-[16px] font-semibold text-foreground mb-2">{f.title}</div>
+                <p className="text-[13px] text-muted leading-[1.7]">{f.desc}</p>
               </div>
             ))}
           </div>
@@ -212,7 +241,7 @@ export default function LandingPage() {
             <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-muted mb-3">
               Audric Store
             </p>
-            <h2 className="text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground mb-3">
+            <h2 className="font-sans text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground mb-3">
               The new app store.
             </h2>
             <p className="text-[13px] text-muted leading-[1.7] mb-5">
@@ -225,8 +254,11 @@ export default function LandingPage() {
                 </span>
               ))}
             </div>
-            <button className="bg-foreground text-background px-5 py-2.5 font-mono text-[10px] tracking-[0.1em] uppercase transition hover:opacity-80 active:scale-[0.98] cursor-pointer">
-              Join the waitlist →
+            <button
+              onClick={login}
+              className="bg-foreground text-background px-5 py-2.5 font-mono text-[10px] tracking-[0.1em] uppercase transition hover:opacity-80 active:scale-[0.98] cursor-pointer"
+            >
+              Sign up — join the waitlist →
             </button>
           </div>
 
@@ -240,7 +272,7 @@ export default function LandingPage() {
                   <div className="font-mono text-[11px] text-muted mb-1.5">
                     {step.num} {step.label}
                   </div>
-                  <div className="text-[14px] font-semibold text-foreground mb-1">{step.title}</div>
+                  <div className="font-sans text-[14px] font-semibold text-foreground mb-1">{step.title}</div>
                   <p className="text-[12px] text-muted leading-[1.6]">{step.desc}</p>
                 </div>
               ))}
@@ -264,7 +296,7 @@ export default function LandingPage() {
             <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-muted mb-3">
               Audric Pay
             </p>
-            <h2 className="text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground mb-3">
+            <h2 className="font-sans text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground mb-3">
               Your agent pays so you don&apos;t have to.
             </h2>
             <p className="text-[13px] text-muted leading-[1.7]">
@@ -280,7 +312,7 @@ export default function LandingPage() {
                 { value: '$0.001', label: 'From' },
               ].map((stat) => (
                 <div key={stat.label} className="bg-surface px-5 py-4 text-center min-w-[90px]">
-                  <div className="text-[20px] font-semibold text-foreground leading-none mb-1">{stat.value}</div>
+                  <div className="font-sans text-[20px] font-semibold text-foreground leading-none mb-1">{stat.value}</div>
                   <div className="font-mono text-[9px] text-muted">{stat.label}</div>
                 </div>
               ))}
@@ -297,13 +329,13 @@ export default function LandingPage() {
         <div className="max-w-[700px] mx-auto">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-border border border-border">
             {[
-              { value: '—', label: 'Users' },
-              { value: '—', label: 'Yield earned' },
-              { value: '—', label: 'Transactions' },
+              { value: fmtStat(stats?.totalUsers), label: 'Users' },
+              { value: fmtStat(stats?.totalSessions), label: 'Sessions' },
+              { value: fmtStat(stats?.totalTransactions), label: 'Transactions' },
               { value: '99.9%', label: 'Uptime' },
             ].map((stat) => (
               <div key={stat.label} className="bg-background px-4 py-5 text-center">
-                <div className="text-[28px] font-semibold text-foreground leading-none mb-1 tracking-[-1px]">{stat.value}</div>
+                <div className="font-sans text-[28px] font-semibold text-foreground leading-none mb-1 tracking-[-1px]">{stat.value}</div>
                 <div className="font-mono text-[9px] text-muted">{stat.label}</div>
               </div>
             ))}
