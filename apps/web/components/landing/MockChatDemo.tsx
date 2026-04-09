@@ -65,12 +65,25 @@ export function MockChatDemo() {
   const messages = DEMOS[activeDemo] ?? [];
 
   return (
-    <div className="w-full max-w-md border border-border rounded-xl overflow-hidden bg-background shadow-[0_8px_40px_rgba(0,0,0,0.3)]">
+    <div
+      className="w-full max-w-md border rounded-xl overflow-hidden shadow-[0_8px_40px_rgba(0,0,0,0.3)]"
+      style={{
+        '--demo-bg': '#FFFFFF',
+        '--demo-surface': '#F7F7F7',
+        '--demo-border': '#E5E5E5',
+        '--demo-fg': '#191919',
+        '--demo-muted': '#707070',
+        '--demo-dim': '#9F9F9F',
+        background: 'var(--demo-bg)',
+        color: 'var(--demo-fg)',
+        borderColor: 'var(--demo-border)',
+      } as React.CSSProperties}
+    >
       {/* Header */}
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
+      <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: '1px solid var(--demo-border)' }}>
         <span className="w-1.5 h-1.5 rounded-full bg-success" />
-        <span className="text-xs font-medium text-foreground">Audric</span>
-        <span className="ml-auto font-mono text-[9px] text-dim">Online</span>
+        <span className="text-xs font-medium" style={{ color: 'var(--demo-fg)' }}>Audric</span>
+        <span className="ml-auto font-mono text-[9px]" style={{ color: 'var(--demo-dim)' }}>Online</span>
       </div>
 
       {/* Messages */}
@@ -78,27 +91,28 @@ export function MockChatDemo() {
         {messages.slice(0, visible).map((msg, i) => (
           <div
             key={`${activeDemo}-${i}`}
-            className={`max-w-[85%] px-3.5 py-2.5 text-[12px] leading-[1.5] animate-[fadeSlideIn_0.3s_ease-out_both] ${
+            className="max-w-[85%] px-3.5 py-2.5 text-[12px] leading-[1.5] animate-[fadeSlideIn_0.3s_ease-out_both]"
+            style={
               msg.role === 'user'
-                ? 'self-end bg-foreground text-background rounded-2xl rounded-br-sm'
-                : 'self-start bg-surface text-foreground rounded-2xl rounded-bl-sm'
-            }`}
+                ? { alignSelf: 'flex-end', background: 'var(--demo-fg)', color: 'var(--demo-bg)', borderRadius: '1rem 1rem 0.25rem 1rem' }
+                : { alignSelf: 'flex-start', background: 'var(--demo-surface)', color: 'var(--demo-fg)', borderRadius: '1rem 1rem 1rem 0.25rem' }
+            }
             dangerouslySetInnerHTML={{ __html: msg.text }}
           />
         ))}
       </div>
 
       {/* Chips */}
-      <div className="px-4 py-2 border-t border-border flex gap-1.5 overflow-x-auto scrollbar-none">
+      <div className="px-4 py-2 flex gap-1.5 overflow-x-auto scrollbar-none" style={{ borderTop: '1px solid var(--demo-border)' }}>
         {CHIPS.map((chip) => (
           <button
             key={chip}
             onClick={() => playDemo(chip)}
-            className={`shrink-0 font-mono text-[10px] px-2.5 py-1 border rounded-full transition cursor-pointer ${
-              chip === activeDemo
-                ? 'border-foreground text-foreground'
-                : 'border-border text-muted hover:text-foreground hover:border-foreground'
-            }`}
+            className="shrink-0 font-mono text-[10px] px-2.5 py-1 border rounded-full transition cursor-pointer"
+            style={{
+              borderColor: chip === activeDemo ? 'var(--demo-fg)' : 'var(--demo-border)',
+              color: chip === activeDemo ? 'var(--demo-fg)' : 'var(--demo-muted)',
+            }}
           >
             {chip}
           </button>
@@ -106,21 +120,23 @@ export function MockChatDemo() {
       </div>
 
       {/* Sign-in badge */}
-      <div className="px-4 py-1.5 text-center bg-surface border-t border-border">
-        <span className="font-mono text-[9px] text-dim">Sign in with Google to start</span>
+      <div className="px-4 py-1.5 text-center" style={{ background: 'var(--demo-surface)', borderTop: '1px solid var(--demo-border)' }}>
+        <span className="font-mono text-[9px]" style={{ color: 'var(--demo-dim)' }}>Sign in with Google to start</span>
       </div>
 
       {/* Input bar */}
-      <div className="flex items-center gap-2 px-4 py-2.5 border-t border-border">
+      <div className="flex items-center gap-2 px-4 py-2.5" style={{ borderTop: '1px solid var(--demo-border)' }}>
         <button
           onClick={login}
-          className="flex-1 text-left bg-surface border border-border rounded-lg px-3 py-2 text-[12px] text-dim cursor-pointer hover:border-foreground transition"
+          className="flex-1 text-left rounded-lg px-3 py-2 text-[12px] cursor-pointer transition"
+          style={{ background: 'var(--demo-surface)', border: '1px solid var(--demo-border)', color: 'var(--demo-dim)' }}
         >
           Ask anything about your money...
         </button>
         <button
           onClick={login}
-          className="shrink-0 w-8 h-8 rounded-lg bg-foreground text-background flex items-center justify-center cursor-pointer hover:opacity-80 transition"
+          className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer hover:opacity-80 transition"
+          style={{ background: 'var(--demo-fg)', color: 'var(--demo-bg)' }}
         >
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
             <path d="M8 13V3M8 3L3.5 7.5M8 3l4.5 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
