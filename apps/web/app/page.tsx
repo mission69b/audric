@@ -330,7 +330,7 @@ export default function LandingPage() {
           {/* Right: compact agent chain example */}
           <div>
             <p className="font-mono text-[10px] tracking-[0.1em] uppercase text-muted mb-3">
-              One prompt. Five services. Done.
+              One prompt. Three services. Done.
             </p>
             <div className="border border-border overflow-hidden mb-3">
               <div className="bg-surface px-4 py-2.5 border-b border-border">
