@@ -25,6 +25,7 @@ model User {
   conversationLogs   ConversationLog[]
   notificationPrefs  NotificationPrefs[]
   dailyBriefings     DailyBriefing[]
+  savingsGoals       SavingsGoal[]
 
   @@index([email])
   @@index([emailVerified, timezoneOffset])
@@ -127,6 +128,23 @@ model DailyBriefing {
 
   @@unique([userId, date])
   @@index([userId, dismissedAt])
+}
+
+model SavingsGoal {
+  id               String    @id @default(cuid())
+  userId           String
+  name             String
+  emoji            String    @default("🎯")
+  targetAmount     Float
+  deadline         DateTime?
+  currentMilestone Int       @default(0)
+  status           String    @default("active")
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, status])
 }
 
 model AppEvent {

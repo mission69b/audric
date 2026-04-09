@@ -89,6 +89,35 @@ export function BriefingCard({ briefing, onDismiss, onViewReport, onCtaClick }: 
         <p className="text-sm text-muted leading-relaxed">{summary}</p>
       </div>
 
+      {/* Goals progress */}
+      {content.goals && content.goals.length > 0 && (
+        <div className="px-4 pb-3 space-y-2">
+          <p className="text-xs text-muted font-medium">Goals</p>
+          {content.goals.map((g) => (
+            <div key={g.id} className="space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-foreground">
+                  {g.emoji} {g.name}
+                </span>
+                <span className="font-mono text-[10px] text-muted">
+                  {g.progress >= 100 ? (
+                    <span className="text-success">Done</span>
+                  ) : (
+                    <>{g.progress}%</>
+                  )}
+                </span>
+              </div>
+              <div className="h-1 rounded-full bg-foreground/10 overflow-hidden">
+                <div
+                  className={`h-full rounded-full ${g.progress >= 100 ? 'bg-success' : 'bg-foreground'}`}
+                  style={{ width: `${g.progress}%` }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* CTA button */}
       {content.cta && (
         <div className="px-4 pb-3">

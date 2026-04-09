@@ -7,14 +7,19 @@ import { AuthGuard } from '@/components/auth/AuthGuard';
 import { useZkLogin } from '@/components/auth/useZkLogin';
 import { useNotificationPrefs } from '@/hooks/useNotificationPrefs';
 import { useAllowanceStatus } from '@/hooks/useAllowanceStatus';
+import { useGoals, type SavingsGoal } from '@/hooks/useGoals';
+import { useBalance } from '@/hooks/useBalance';
+import { GoalCard } from '@/components/settings/GoalCard';
+import { GoalEditor } from '@/components/settings/GoalEditor';
 import { truncateAddress } from '@/lib/format';
 import { SUI_NETWORK } from '@/lib/constants';
 
-type Section = 'account' | 'features' | 'safety' | 'contacts' | 'sessions';
+type Section = 'account' | 'features' | 'goals' | 'safety' | 'contacts' | 'sessions';
 
 const SECTIONS: { id: Section; label: string }[] = [
   { id: 'account', label: 'Account' },
   { id: 'features', label: 'Features' },
+  { id: 'goals', label: 'Goals' },
   { id: 'safety', label: 'Safety' },
   { id: 'contacts', label: 'Contacts' },
   { id: 'sessions', label: 'Sessions' },
@@ -47,6 +52,11 @@ function SettingsContent() {
   const jwt = session?.jwt ?? null;
   const { prefs, loading: prefsLoading, toggling, toggle } = useNotificationPrefs(address, jwt);
   const allowance = useAllowanceStatus(address);
+  const goalsHook = useGoals(address, jwt ?? undefined);
+  const balanceQuery = useBalance(address);
+  const savingsBalance = balanceQuery.data?.savings ?? 0;
+  const [editingGoal, setEditingGoal] = useState<SavingsGoal | null>(null);
+  const [showGoalEditor, setShowGoalEditor] = useState(false);
   const searchParams = useSearchParams();
   const [activeSection, setActiveSection] = useState<Section>(() => {
     const section = typeof window !== 'undefined'
@@ -254,6 +264,77 @@ function SettingsContent() {
                       </div>
                     ))}
                   </div>
+                )}
+              </section>
+            )}
+
+            {activeSection === 'goals' && (
+              <section className="space-y-5">
+                <SectionTitle>Savings Goals</SectionTitle>
+
+                {showGoalEditor || editingGoal ? (
+                  <GoalEditor
+                    goal={editingGoal ?? undefined}
+                    saving={goalsHook.creating || goalsHook.updating}
+                    onSave={async (data) => {
+                      if (editingGoal) {
+                        await goalsHook.updateGoal(editingGoal.id, data);
+                      } else {
+                        await goalsHook.createGoal({
+                          name: data.name,
+                          emoji: data.emoji,
+                          targetAmount: data.targetAmount,
+                          deadline: data.deadline ?? undefined,
+                        });
+                      }
+                      setEditingGoal(null);
+                      setShowGoalEditor(false);
+                    }}
+                    onCancel={() => {
+                      setEditingGoal(null);
+                      setShowGoalEditor(false);
+                    }}
+                  />
+                ) : (
+                  <>
+                    <button
+                      onClick={() => setShowGoalEditor(true)}
+                      className="w-full min-h-[40px] rounded-md bg-foreground text-background font-mono text-[10px] tracking-[0.1em] uppercase hover:opacity-80 transition"
+                    >
+                      + New Goal
+                    </button>
+
+                    {goalsHook.loading ? (
+                      <p className="text-sm text-muted">Loading goals...</p>
+                    ) : goalsHook.goals.length === 0 ? (
+                      <div className="text-center py-8 space-y-2">
+                        <p className="text-2xl">🎯</p>
+                        <p className="text-sm text-muted">No savings goals yet.</p>
+                        <p className="text-xs text-dim leading-relaxed">
+                          Set a goal and track your progress as you save. You can also ask Audric to create one.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {goalsHook.goals.map((goal) => (
+                          <GoalCard
+                            key={goal.id}
+                            goal={goal}
+                            savingsBalance={savingsBalance}
+                            onEdit={() => setEditingGoal(goal)}
+                            onDelete={() => goalsHook.deleteGoal(goal.id)}
+                            deleting={goalsHook.deleting}
+                          />
+                        ))}
+                      </div>
+                    )}
+
+                    {goalsHook.goals.length > 0 && (
+                      <p className="font-mono text-[10px] tracking-wider text-dim uppercase leading-relaxed">
+                        Goals track your total savings balance (${savingsBalance.toFixed(2)}) — not individual deposits.
+                      </p>
+                    )}
+                  </>
                 )}
               </section>
             )}

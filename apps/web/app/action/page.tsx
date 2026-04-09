@@ -35,7 +35,6 @@ function ActionResolver() {
         router.replace('/settings?section=features');
         break;
       case 'goal': {
-        const id = searchParams.get('id');
         const deposit = searchParams.get('deposit');
         const msg = deposit ? `Save $${deposit} toward my goal` : 'Show my savings goals';
         router.replace(`/new?prefill=${encodeURIComponent(msg)}`);

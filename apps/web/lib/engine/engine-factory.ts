@@ -15,6 +15,8 @@ import {
   type Tool,
 } from '@t2000/engine';
 import { UpstashSessionStore } from './upstash-session-store';
+import { GOAL_TOOLS } from './goal-tools';
+import { prisma } from '@/lib/prisma';
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const MODEL = process.env.AGENT_MODEL ?? 'claude-sonnet-4-20250514';
@@ -130,7 +132,16 @@ interface Contact {
   address: string;
 }
 
-function buildSystemPrompt(walletAddress: string, tools: Tool[], balances?: WalletBalanceSummary, contacts?: Contact[], swapTokenNames?: string[]): string {
+interface GoalSummary {
+  id: string;
+  name: string;
+  emoji: string;
+  targetAmount: number;
+  deadline: string | null;
+  status: string;
+}
+
+function buildSystemPrompt(walletAddress: string, tools: Tool[], balances?: WalletBalanceSummary, contacts?: Contact[], swapTokenNames?: string[], goals?: GoalSummary[]): string {
   const writeTools = tools.filter((t) => !t.isReadOnly);
   const writeToolList = writeTools.map((t) => `- ${t.name}`).join('\n');
 
@@ -256,6 +267,14 @@ ${contacts && contacts.length > 0
 - To save a new contact, use the save_contact tool. Do NOT web-search for contacts.
 - If user says "save a contact" or "add a contact", ask for the name and Sui address, then call save_contact.
 
+## Savings goals
+${goals && goals.length > 0
+    ? `Active goals:\n${goals.map((g) => `- ${g.emoji} ${g.name}: $${g.targetAmount.toFixed(2)}${g.deadline ? ` by ${g.deadline}` : ''} (ID: ${g.id})`).join('\n')}\n- When mentioning progress, compare the total savings balance (from snapshot or savings_info) against each goal's target.`
+    : 'No savings goals set.'}
+- Users can create, list, update, and delete goals via savings_goal_* tools.
+- Goals track aspirational targets against the total savings balance — they are NOT separate allocated sub-accounts.
+- When a user deposits or withdraws, mention how it affects their goal progress if relevant.
+
 ## Safety
 - Never encourage risky financial behavior.
 - Warn when health factor < 1.5.
@@ -271,7 +290,7 @@ export async function createEngine(
     throw new Error('ANTHROPIC_API_KEY not configured');
   }
 
-  const [mgr, positions, walletCoins, swapTokenNames] = await Promise.all([
+  const [mgr, positions, walletCoins, swapTokenNames, goals] = await Promise.all([
     ensureMcpConnected(),
     fetchServerPositions(address),
     fetchWalletCoins(address, SUI_RPC_URL).catch((err) => {
@@ -279,6 +298,17 @@ export async function createEngine(
       return [];
     }),
     import('@t2000/sdk').then((m) => Object.keys(m.TOKEN_MAP)).catch(() => [] as string[]),
+    prisma.savingsGoal.findMany({
+      where: {
+        user: { suiAddress: address },
+        status: 'active',
+      },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true, name: true, emoji: true, targetAmount: true, deadline: true, status: true },
+    }).then((gs) => gs.map((g) => ({
+      ...g,
+      deadline: g.deadline?.toISOString().slice(0, 10) ?? null,
+    }))).catch(() => [] as GoalSummary[]),
   ]);
 
   const nonZeroCoins = walletCoins.filter((c) => Number(c.totalBalance) > 0);
@@ -314,7 +344,7 @@ export async function createEngine(
   // swap_quote is redundant with swap_execute's confirmation card
   const EXCLUDED_TOOLS = new Set(['swap_quote']);
   const filteredReads = READ_TOOLS.filter((t) => !EXCLUDED_TOOLS.has(t.name));
-  const allTools = [...filteredReads, ...WRITE_TOOLS, ...mcpTools];
+  const allTools = [...filteredReads, ...WRITE_TOOLS, ...GOAL_TOOLS, ...mcpTools];
 
   console.log(`[engine-factory] tools=${allTools.length}: ${allTools.map(t => t.name).join(', ')}`);
 
@@ -329,7 +359,7 @@ export async function createEngine(
       pendingRewards: 0, supplies: [], borrows_detail: [],
     }),
     tools: allTools,
-    systemPrompt: buildSystemPrompt(address, allTools, balanceSummary, contacts, swapTokenNames),
+    systemPrompt: buildSystemPrompt(address, allTools, balanceSummary, contacts, swapTokenNames, goals),
     model: MODEL,
     maxTurns: 10,
     maxTokens: 2048,

@@ -3,6 +3,15 @@
 import { useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
+export interface GoalProgress {
+  id: string;
+  name: string;
+  emoji: string;
+  targetAmount: number;
+  progress: number;
+  remaining: number;
+}
+
 export interface BriefingContent {
   earned: number;
   savingsBalance: number;
@@ -13,6 +22,7 @@ export interface BriefingContent {
   debtBalance: number;
   cta: { type: string; label: string; amount?: number } | null;
   variant: 'savings' | 'idle' | 'debt_warning';
+  goals?: GoalProgress[];
 }
 
 export interface BriefingData {
