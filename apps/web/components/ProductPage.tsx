@@ -35,7 +35,7 @@ export function ProductPage({
   children,
 }: ProductPageProps) {
   return (
-    <main className="flex-1 px-4 py-16 sm:px-6 sm:py-24">
+    <main className="light-theme flex-1 px-4 py-16 sm:px-6 sm:py-24 bg-background text-foreground">
       <div className="mx-auto max-w-2xl">
         <Link
           href="/"

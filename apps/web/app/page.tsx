@@ -83,7 +83,7 @@ export default function LandingPage() {
   }, [status, router]);
 
   return (
-    <div className="min-h-dvh bg-background font-heading">
+    <div className="light-theme min-h-dvh bg-background font-heading">
       <LandingNav />
 
       {/* ── S1: Hero ── */}
