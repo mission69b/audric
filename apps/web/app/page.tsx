@@ -67,7 +67,7 @@ function useStats() {
 }
 
 function fmtStat(n: number | undefined): string {
-  if (n === undefined) return '—';
+  if (n === undefined || n === 0) return '—';
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
   return String(n);
@@ -348,6 +348,9 @@ export default function LandingPage() {
             <span className="font-mono text-[9px] tracking-[0.1em] uppercase px-2.5 py-1 border border-border text-muted">
               Non-custodial
             </span>
+            <span className="font-mono text-[9px] tracking-[0.1em] uppercase px-2.5 py-1 border border-border text-muted">
+              Open Source
+            </span>
           </div>
         </div>
       </section>
@@ -355,11 +358,6 @@ export default function LandingPage() {
       {/* ── Footer ── */}
       <footer className="px-5 sm:px-10 lg:px-16 py-8 border-t border-border">
         <div className="max-w-6xl mx-auto">
-          {/* Trust statement */}
-          <p className="font-mono text-[10px] text-muted text-center mb-6">
-            Built with t2000 infrastructure. Non-custodial. You approve every transaction.
-          </p>
-
           <div className="flex flex-col sm:flex-row items-center sm:items-start justify-between gap-6">
             <div className="text-center sm:text-left">
               <div className="font-mono text-[13px] font-medium text-foreground mb-1">Audric</div>
