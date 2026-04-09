@@ -47,7 +47,7 @@ function requireInt(value: string | undefined, name: string): number {
   return n;
 }
 
-const SERVICE_MAP: Record<string, GatewayMapping> = {
+export const SERVICE_MAP: Record<string, GatewayMapping> = {
   'openai-chat': {
     url: `${GATEWAY_BASE}/openai/v1/chat/completions`,
     price: '0.01',
@@ -399,6 +399,18 @@ export function getServicePrice(serviceId: string): string {
   return SERVICE_MAP[serviceId]?.price ?? '0.01';
 }
 
+/**
+ * Paths that MUST use deliver-first (service called BEFORE payment).
+ * Any new expensive or non-idempotent gateway endpoint goes here.
+ * Tests enforce: every entry is handled by matchKnownService,
+ * and every SERVICE_MAP entry with price >= $0.20 is in this set.
+ */
+export const DELIVER_FIRST_PATHS = new Set([
+  'lob/v1/postcards',
+  'lob/v1/letters',
+  'printful/v1/order',
+]);
+
 const ALLOWED_SEGMENT_RE = /^[a-z0-9\-]+$/i;
 
 const AUDRIC_RETURN_ADDRESS = {
@@ -461,6 +473,14 @@ function matchKnownService(stripped: string, body: Record<string, unknown>): Gat
       price: '1.50',
       transformBody: () => wrapLobPayload('letter', '1.50', body),
       deliverFirst: { internalUrl: `${GATEWAY_BASE}/lob/v1/mail-internal` },
+    };
+  }
+  if (stripped === 'printful/v1/order') {
+    return {
+      url: `${GATEWAY_BASE}/printful/v1/order`,
+      price: 'dynamic',
+      transformBody: () => body,
+      deliverFirst: { internalUrl: `${GATEWAY_BASE}/printful/v1/order-internal` },
     };
   }
   return null;
