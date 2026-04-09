@@ -20,6 +20,7 @@ interface ProductPageProps {
   cta: string;
   ctaPrompt: string;
   status?: 'live' | 'coming-soon';
+  children?: React.ReactNode;
 }
 
 export function ProductPage({
@@ -31,6 +32,7 @@ export function ProductPage({
   cta,
   ctaPrompt,
   status = 'live',
+  children,
 }: ProductPageProps) {
   return (
     <main className="flex-1 px-4 py-16 sm:px-6 sm:py-24">
@@ -73,6 +75,8 @@ export function ProductPage({
             ))}
           </div>
         )}
+
+        {children}
 
         <section className="mt-16">
           <h2 className="text-2xl text-foreground">How it works</h2>
