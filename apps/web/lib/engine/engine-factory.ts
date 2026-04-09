@@ -285,11 +285,18 @@ Quick reference (skip mpp_services for these common ones):
 - Translate: pay_api POST https://mpp.t2000.ai/deepl/v1/translate body: {"text":["..."],"target_lang":"XX"} — $0.005
 - Weather: pay_api POST https://mpp.t2000.ai/openweather/v1/weather body: {"city":"..."} — $0.005
 - Image gen: pay_api POST https://mpp.t2000.ai/fal/fal-ai/flux/dev body: {"prompt":"..."} — $0.03
-- Postcard: pay_api POST https://mpp.t2000.ai/lob/v1/postcards body: {"to":{"name":"...","address_line1":"...","address_city":"...","address_state":"XX","address_zip":"..."},"front":"<html>...</html>","back":"<html>...</html>"} — $1.00
+- Web search: pay_api POST https://mpp.t2000.ai/brave/v1/web/search body: {"q":"..."} — $0.005
+
+### Postcards/letters — ALWAYS follow this multi-step flow:
+1. Ask for recipient's full name and mailing address if not provided.
+2. Generate the card design FIRST: pay_api POST https://mpp.t2000.ai/fal/fal-ai/flux/dev body: {"prompt":"postcard design: [user's request]"} — $0.03
+3. Show the generated image to the user as ![Postcard design](url) and say: "Here's the design. Shall I print and mail it for $1.00?"
+4. ONLY if the user confirms: pay_api POST https://mpp.t2000.ai/lob/v1/postcards body: {"to":{"name":"...","address_line1":"...","address_city":"...","address_state":"XX","address_zip":"...","address_country":"XX"},"front":"<html><body style='margin:0'><img src='IMAGE_URL' style='width:100%;height:100%;object-fit:cover'/></body></html>","back":"<html><body style='padding:40px;font-family:Georgia,serif'><p style='font-size:14px'>MESSAGE</p><div style='margin-top:20px;font-family:monospace;font-size:10px;color:#707070'>sent with Audric</div></body></html>"} — $1.00
+NEVER skip the preview step. NEVER send a physical postcard without showing the design first.
+Use ISO-3166 country codes (GB not UK, US not USA). A return address is added automatically.
 
 For ALL other services (email, maps, flights, scraping, AI models, etc.): call mpp_services first.
 Services that need user data: ask the user BEFORE calling pay_api.
-- Postcards/letters: ask for recipient's full name and physical mailing address first.
 - Email: ask for recipient email address and subject first.
 
 When pay_api returns an image URL (e.g. from fal.ai), output it as a markdown image: ![description](url) so it renders inline.
