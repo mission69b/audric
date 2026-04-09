@@ -292,35 +292,53 @@ export default function LandingPage() {
 
       {/* ── S7: Audric Pay ── */}
       <section className="px-5 sm:px-10 lg:px-16 py-14 sm:py-20 border-t border-border">
-        <div className="max-w-6xl mx-auto flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8">
-          <div className="max-w-[480px]">
+        <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-start">
+          <div>
             <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-muted mb-3">
               Audric Pay
             </p>
             <h2 className="text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground mb-3">
               Your agent pays so you don&apos;t have to.
             </h2>
-            <p className="text-[13px] text-muted leading-[1.7]">
-              Give Audric a budget. It accesses 40+ AI services on your behalf — music, images, research, data — paying only what you approve, only for what you&apos;ve enabled. No subscriptions. No API keys. Just results.
+            <p className="text-[13px] text-muted leading-[1.7] mb-5">
+              Give Audric a budget. It accesses 40+ services on your behalf — paying only what you approve. No subscriptions. No API keys. Just results.
             </p>
-          </div>
-
-          <div>
-            <div className="grid grid-cols-3 gap-px bg-border border border-border">
-              {[
-                { value: '41', label: 'Services' },
-                { value: '90+', label: 'Tasks' },
-                { value: '$0.001', label: 'From' },
-              ].map((stat) => (
-                <div key={stat.label} className="bg-surface px-5 py-4 text-center min-w-[90px]">
-                  <div className="text-[20px] font-semibold text-foreground leading-none mb-1">{stat.value}</div>
-                  <div className="font-mono text-[10px] text-muted">{stat.label}</div>
-                </div>
+            <div className="flex flex-wrap gap-1.5 mb-5">
+              {['AI Images', 'Web Search', 'Postcards', 'Music', 'Research', 'Translation'].map((cat) => (
+                <span key={cat} className="font-mono text-[10px] px-2.5 py-1 border border-border rounded-full text-muted">
+                  {cat}
+                </span>
               ))}
             </div>
-            <div className="text-right mt-2">
-              <span className="font-mono text-[10px] text-dim">Powered by suimpp · On Sui</span>
+            <div className="font-mono text-[10px] text-dim">
+              Powered by suimpp · 40+ services · On Sui
             </div>
+          </div>
+
+          <div className="border border-border overflow-hidden">
+            <div className="bg-surface px-4 py-2.5 border-b border-border flex items-center justify-between">
+              <span className="font-mono text-[10px] text-muted uppercase tracking-[0.1em]">Example tasks</span>
+              <span className="font-mono text-[10px] text-muted">Cost</span>
+            </div>
+            {[
+              { task: 'Search the web', detail: 'Brave Search', cost: '$0.001' },
+              { task: 'Generate an image', detail: 'DALL-E 3', cost: '$0.04' },
+              { task: 'Translate a document', detail: 'DeepL', cost: '$0.02' },
+              { task: 'Send a postcard', detail: 'Print & mail', cost: '$1.05' },
+              { task: 'Generate a song', detail: 'Suno', cost: '$0.10' },
+              { task: 'Research a topic', detail: 'Perplexity', cost: '$0.005' },
+            ].map((row, i, arr) => (
+              <div
+                key={row.task}
+                className={`bg-background px-4 py-3 flex items-center justify-between ${i < arr.length - 1 ? 'border-b border-border' : ''}`}
+              >
+                <div>
+                  <div className="text-[13px] text-foreground">{row.task}</div>
+                  <div className="font-mono text-[10px] text-dim">{row.detail}</div>
+                </div>
+                <div className="font-mono text-[13px] font-medium text-foreground">{row.cost}</div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
