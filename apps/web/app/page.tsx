@@ -292,79 +292,72 @@ export default function LandingPage() {
 
       {/* ── S7: Audric Pay ── */}
       <section className="px-5 sm:px-10 lg:px-16 py-14 sm:py-20 border-t border-border">
-        <div className="max-w-6xl mx-auto">
-          <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-muted mb-3">
-            Audric Pay
-          </p>
-          <h2 className="text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground mb-3">
-            My AI agent just mailed 100 postcards to the top crypto and AI VCs.
-          </h2>
-          <p className="text-[13px] text-muted leading-[1.7] max-w-[600px] mb-8">
-            a16z. Sequoia. Paradigm. Founders Fund. 96 more.<br />
-            $100 USDC. Settled on Sui. No API keys. No human in the loop.
-          </p>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-start">
-            {/* Left: the chain */}
-            <div>
-              <p className="font-mono text-[10px] tracking-[0.1em] uppercase text-muted mb-4">
-                How it worked — 5 services, 1 prompt
-              </p>
-              <div className="border border-border overflow-hidden">
-                {[
-                  { num: '1', service: 'Brave Search', action: 'Found the top 100 VC firms', cost: '$0.001' },
-                  { num: '2', service: 'Firecrawl', action: 'Scraped websites for mailing addresses', cost: '$0.02' },
-                  { num: '3', service: 'OpenAI', action: 'Structured data into mailing format', cost: '$0.01' },
-                  { num: '4', service: 'DALL-E 3', action: 'Generated custom postcard design', cost: '$0.04' },
-                  { num: '5', service: 'Lob', action: 'Printed and mailed 100 postcards', cost: '$99.00' },
-                ].map((step, i, arr) => (
-                  <div
-                    key={step.num}
-                    className={`bg-background px-4 py-3 flex items-start gap-3 ${i < arr.length - 1 ? 'border-b border-border' : ''}`}
-                  >
-                    <span className="font-mono text-[11px] text-dim mt-0.5">{step.num}</span>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-[13px] text-foreground">{step.action}</div>
-                      <div className="font-mono text-[10px] text-dim">{step.service}</div>
-                    </div>
-                    <span className="font-mono text-[12px] text-muted shrink-0">{step.cost}</span>
-                  </div>
-                ))}
-                <div className="bg-surface px-4 py-3 flex items-center justify-between border-t border-border">
-                  <span className="text-[13px] font-semibold text-foreground">Total</span>
-                  <span className="font-mono text-[13px] font-semibold text-foreground">$99.07</span>
+        <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-start">
+          <div>
+            <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-muted mb-3">
+              Audric Pay
+            </p>
+            <h2 className="text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground mb-3">
+              Your agent pays so you don&apos;t have to.
+            </h2>
+            <p className="text-[13px] text-muted leading-[1.7] mb-5">
+              Give Audric a budget. It chains services together autonomously — search, generate, mail, translate — paying per request in USDC. No subscriptions. No API keys. Just results.
+            </p>
+            <div className="flex flex-wrap gap-1.5 mb-5">
+              {['AI Images', 'Web Search', 'Postcards', 'Music', 'Research', 'Translation'].map((cat) => (
+                <span key={cat} className="font-mono text-[10px] px-2.5 py-1 border border-border rounded-full text-muted">
+                  {cat}
+                </span>
+              ))}
+            </div>
+            <div className="grid grid-cols-3 gap-px bg-border border border-border mb-4">
+              {[
+                { value: '40+', label: 'Services' },
+                { value: '$0.001', label: 'From' },
+                { value: '0', label: 'API keys' },
+              ].map((s) => (
+                <div key={s.label} className="bg-background px-3 py-3 text-center">
+                  <div className="text-[16px] font-semibold text-foreground leading-none mb-1">{s.value}</div>
+                  <div className="font-mono text-[10px] text-muted">{s.label}</div>
                 </div>
+              ))}
+            </div>
+            <div className="font-mono text-[10px] text-dim">
+              Powered by suimpp · On Sui
+            </div>
+          </div>
+
+          {/* Right: compact agent chain example */}
+          <div>
+            <p className="font-mono text-[10px] tracking-[0.1em] uppercase text-muted mb-3">
+              One prompt. Five services. Done.
+            </p>
+            <div className="border border-border overflow-hidden mb-3">
+              <div className="bg-surface px-4 py-2.5 border-b border-border">
+                <span className="text-[13px] text-foreground">&ldquo;Send a birthday postcard to my mum&rdquo;</span>
+              </div>
+              {[
+                { service: 'OpenAI', action: 'Wrote a personal message' },
+                { service: 'DALL-E 3', action: 'Designed the card' },
+                { service: 'Lob', action: 'Printed and mailed it' },
+              ].map((step, i, arr) => (
+                <div
+                  key={step.service}
+                  className={`bg-background px-4 py-2.5 flex items-center gap-3 ${i < arr.length - 1 ? 'border-b border-border' : ''}`}
+                >
+                  <span className="text-[11px] text-dim">→</span>
+                  <span className="text-[13px] text-foreground flex-1">{step.action}</span>
+                  <span className="font-mono text-[10px] text-dim">{step.service}</span>
+                </div>
+              ))}
+              <div className="bg-surface px-4 py-2.5 border-t border-border flex items-center justify-between">
+                <span className="text-[13px] text-foreground">Postcard on its way 💌</span>
+                <span className="font-mono text-[13px] font-semibold text-foreground">$1.05</span>
               </div>
             </div>
-
-            {/* Right: the postcard */}
-            <div className="flex flex-col gap-5">
-              <div className="border border-border bg-surface p-6 sm:p-8">
-                <p className="text-[16px] leading-[1.6] text-foreground italic mb-4">
-                  &ldquo;This postcard was sent by our AI agent. It found your firm, designed this card, and mailed it — all autonomously, paid in USDC on Sui.&rdquo;
-                </p>
-                <p className="font-mono text-[10px] text-dim">
-                  — Printed on 4×6 cardstock. Delivered in 3–5 business days.
-                </p>
-              </div>
-              <div className="grid grid-cols-3 gap-px bg-border border border-border">
-                <div className="bg-background px-3 py-3 text-center">
-                  <div className="text-[20px] font-semibold text-foreground leading-none mb-1">100</div>
-                  <div className="font-mono text-[10px] text-muted">Postcards</div>
-                </div>
-                <div className="bg-background px-3 py-3 text-center">
-                  <div className="text-[20px] font-semibold text-foreground leading-none mb-1">5</div>
-                  <div className="font-mono text-[10px] text-muted">Services chained</div>
-                </div>
-                <div className="bg-background px-3 py-3 text-center">
-                  <div className="text-[20px] font-semibold text-foreground leading-none mb-1">$0.07</div>
-                  <div className="font-mono text-[10px] text-muted">API costs</div>
-                </div>
-              </div>
-              <div className="font-mono text-[10px] text-dim">
-                Powered by suimpp · 40+ services · On Sui
-              </div>
-            </div>
+            <p className="text-[13px] text-muted leading-[1.7]">
+              Audric figured out the steps, picked the services, paid for each one, and mailed a physical postcard — from a single sentence. Scale that to 100 postcards and it still works.
+            </p>
           </div>
         </div>
       </section>
