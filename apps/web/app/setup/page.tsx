@@ -267,7 +267,7 @@ function SetupContent() {
     } finally {
       setExecuting(false);
     }
-  }, [address, session, budget, allowanceStatus]);
+  }, [address, session, budget, allowanceStatus, isTopUp, tosAccepted]);
 
   const handleFinish = useCallback(() => {
     router.replace('/new');

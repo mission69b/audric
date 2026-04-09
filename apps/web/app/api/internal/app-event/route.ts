@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import type { InputJsonValue } from '@/lib/generated/prisma/internal/prismaNamespace';
 import { prisma } from '@/lib/prisma';
 import { validateInternalKey } from '@/lib/internal-auth';
 
@@ -30,7 +31,7 @@ export async function POST(request: NextRequest) {
       address,
       type,
       title,
-      details: (details as Record<string, unknown>) ?? undefined,
+      details: details !== undefined ? (details as InputJsonValue) : undefined,
       digest: digest ?? undefined,
     },
   });
