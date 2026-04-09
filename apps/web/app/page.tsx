@@ -11,7 +11,7 @@ const PRODUCTS = [
   { icon: '◎', name: 'Save', desc: 'Earn 3–8% APY on USDC. Auto-compound rewards.', href: '/savings' },
   { icon: '→', name: 'Send', desc: 'Instant transfers. Sub-second. No gas fees for you.', href: '/send' },
   { icon: '⊞', name: 'Credit', desc: 'Borrow against savings. Health factor alerts protect you.', href: '/credit' },
-  { icon: '⇌', name: 'Swap', desc: 'Convert tokens. Best-route via Cetus. 0.1% fee.', href: '/new' },
+  { icon: '⇌', name: 'Swap', desc: 'Convert tokens. Best-route via Cetus. 0.1% fee.', href: '/swap' },
   { icon: '↙', name: 'Receive', desc: 'Payment links, QR codes, invoices. Accept USDC from anyone.', href: '/receive', coming: true },
 ];
 
