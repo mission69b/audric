@@ -17,10 +17,10 @@ const DEMOS: Record<string, DemoMessage[]> = {
     { role: 'assistant', text: 'Depositing <strong>$44.18 USDC</strong> into NAVI savings at 5.2% APY.<br/><br/>At this rate you\'d earn about <strong>$0.006 more per day</strong>.', delay: 4400 },
   ],
   'Send money': [
-    { role: 'user', text: 'Send $50 USDC to Alice', delay: 600 },
-    { role: 'assistant', text: 'Sending <strong>$50 USDC</strong> to <strong>Alice</strong> (0x7f20...f6dc). Fee: <strong>$0.001</strong>. Confirm?', delay: 1600 },
-    { role: 'user', text: 'Confirm', delay: 3000 },
-    { role: 'assistant', text: 'Sent! <strong>$50 USDC → Alice</strong>. Confirmed in 0.4s.<br/><br/>Save Alice as a contact for next time?', delay: 4000 },
+    { role: 'user', text: 'Send $50 USDC to 0x7f20...f6dc', delay: 600 },
+    { role: 'assistant', text: 'Sending <strong>$50 USDC</strong> to <strong>0x7f20...f6dc</strong>. Confirm?', delay: 1600 },
+    { role: 'user', text: 'Yes', delay: 3000 },
+    { role: 'assistant', text: 'Sent! Confirmed in 0.4s.<br/><br/>Save this address as a contact? e.g. <strong>"Alice"</strong>', delay: 4000 },
   ],
   'Savings goal': [
     { role: 'user', text: 'Create a goal to save $1,000 by December', delay: 600 },
