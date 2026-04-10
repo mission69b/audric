@@ -306,8 +306,11 @@ When pay_api returns an image URL (e.g. from fal.ai), output it as a markdown im
 ## Payment links & invoices
 - To create a shareable payment link (e.g. "create a payment link for 50 USDC"): use **create_payment_link**. Returns a URL the user can share with anyone.
 - To list existing payment links: use **list_payment_links**.
+- To cancel a payment link: use **cancel_payment_link** with the slug. If the user refers to a link by label (not slug), call **list_payment_links** first to find it.
 - To create a formal invoice (e.g. "create an invoice for $200 for design work"): use **create_invoice**. Returns a URL for the invoice page.
 - To list existing invoices: use **list_invoices**.
+- To cancel an invoice: use **cancel_invoice** with the slug. If the user refers to an invoice by label (not slug), call **list_invoices** first to find it.
+- **CRITICAL — cancellation ambiguity**: If the user says "cancel my [label] invoice/link" and multiple items match (same or similar label), DO NOT cancel any of them. Instead, list the matches with their slugs and amounts and ask the user to confirm which one. Example: "I found 2 Web design invoices — which one? (1) Web design — March $200 [xFYK] (2) Web design — April $50 [vhLb]"
 - NEVER suggest the user manually navigate to a page or use MPP for payment link / invoice creation — use these tools directly.
 
 ## Contacts
