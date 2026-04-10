@@ -68,15 +68,18 @@ export function InvoiceCard({ data }: { data: unknown }) {
       <CardShell title="Invoices">
         <div className="space-y-2">
           {d.invoices.map((inv) => (
-            <div key={inv.slug} className="flex items-center justify-between gap-3 py-2 border-b border-zinc-800 last:border-0">
-              <div className="min-w-0">
-                <p className="text-sm text-white truncate">{inv.label}</p>
-                <span className="font-mono text-[11px] text-zinc-500">
-                  {fmtUsd(inv.amount)} {inv.currency}
-                  {inv.dueDate ? ` · Due ${new Date(inv.dueDate).toLocaleDateString()}` : ''}
-                </span>
+            <div key={inv.slug} className="py-2 border-b border-zinc-800 last:border-0">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm text-white truncate">{inv.label}</p>
+                  <span className="font-mono text-[11px] text-zinc-500">
+                    {fmtUsd(inv.amount)} {inv.currency}
+                    {inv.dueDate ? ` · Due ${new Date(inv.dueDate).toLocaleDateString()}` : ''}
+                  </span>
+                </div>
+                <StatusPill status={inv.status} />
               </div>
-              <StatusPill status={inv.status} />
+              <span className="font-mono text-[10px] text-zinc-600 mt-0.5 block">{inv.slug}</span>
             </div>
           ))}
         </div>

@@ -80,17 +80,20 @@ export function PaymentLinkCard({ data }: { data: unknown }) {
       <CardShell title="Payment Links">
         <div className="space-y-2">
           {d.links.map((l) => (
-            <div key={l.slug} className="flex items-center justify-between gap-3 py-2 border-b border-zinc-800 last:border-0">
-              <div className="min-w-0">
-                <p className="text-sm text-white truncate">{l.label ?? `Link ${l.slug.slice(0, 6)}`}</p>
-                <span className="font-mono text-[11px] text-zinc-500">
-                  {l.amount != null ? fmtUsd(l.amount) : 'Open amount'} · {new Date(l.createdAt).toLocaleDateString()}
-                </span>
+            <div key={l.slug} className="py-2 border-b border-zinc-800 last:border-0">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm text-white truncate">{l.label ?? `Link ${l.slug.slice(0, 6)}`}</p>
+                  <span className="font-mono text-[11px] text-zinc-500">
+                    {l.amount != null ? fmtUsd(l.amount) : 'Open amount'} · {new Date(l.createdAt).toLocaleDateString()}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <StatusPill status={l.status} />
+                  {l.status === 'active' && <CopyButton text={l.url} />}
+                </div>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <StatusPill status={l.status} />
-                {l.status === 'active' && <CopyButton text={l.url} />}
-              </div>
+              <span className="font-mono text-[10px] text-zinc-600 mt-0.5 block">{l.slug}</span>
             </div>
           ))}
         </div>
