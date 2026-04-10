@@ -23,6 +23,8 @@ const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const MODEL = process.env.AGENT_MODEL ?? 'claude-sonnet-4-20250514';
 const SUI_NETWORK = (process.env.NEXT_PUBLIC_SUI_NETWORK ?? 'mainnet') as 'mainnet' | 'testnet';
 const SUI_RPC_URL = `https://fullnode.${SUI_NETWORK}.sui.io:443`;
+const ALLOWANCE_API_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://audric.ai';
+const AUDRIC_INTERNAL_KEY = process.env.AUDRIC_INTERNAL_KEY ?? '';
 
 let sessionStore: SessionStore | null = null;
 let mcpManager: McpClientManager | null = null;
@@ -420,6 +422,10 @@ export async function createEngine(
     tools: allTools,
     systemPrompt: buildSystemPrompt(address, allTools, balanceSummary, contacts, swapTokenNames, goals, adviceContext || undefined),
     model: MODEL,
+    env: {
+      ALLOWANCE_API_URL,
+      AUDRIC_INTERNAL_KEY,
+    },
     maxTurns: 10,
     maxTokens: 2048,
     toolChoice: 'any',
