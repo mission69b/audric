@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import type { Prisma } from '@/lib/generated/prisma/client';
 import { prisma } from '@/lib/prisma';
 
 export const runtime = 'nodejs';
@@ -103,8 +104,10 @@ export async function POST(request: NextRequest) {
     });
 
     if (existing) {
-      const limits = (existing.limits ?? {}) as Record<string, unknown>;
-      limits.lastNotifiedRate = lastNotifiedRate;
+      const prev = (existing.limits && typeof existing.limits === 'object' && !Array.isArray(existing.limits))
+        ? existing.limits as Record<string, unknown>
+        : {};
+      const limits = { ...prev, lastNotifiedRate } as Prisma.InputJsonValue;
       await prisma.userPreferences.update({
         where: { address: existing.address },
         data: { limits },
