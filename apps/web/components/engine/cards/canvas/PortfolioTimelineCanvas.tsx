@@ -50,7 +50,7 @@ function buildStackedPaths(
 
   const maxVal = Math.max(...snapshots.map((s) => s.netWorthUsd + s.debtValueUsd), 1);
 
-  const lines = SERIES.filter((s) => s.key !== 'debtValueUsd').map((series) => {
+  const lines: { key: string; color: string; points: string }[] = SERIES.filter((s) => s.key !== 'debtValueUsd').map((series) => {
     const points = snapshots
       .map((s, i) => {
         const x = (i / Math.max(snapshots.length - 1, 1)) * W;
