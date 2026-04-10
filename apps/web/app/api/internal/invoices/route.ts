@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
       dueDate,
       items: JSON.parse(JSON.stringify(body.items ?? [])),
     },
-    select: { slug: true, amount: true, currency: true, label: true, dueDate: true, createdAt: true },
+    select: { slug: true, amount: true, currency: true, label: true, memo: true, dueDate: true, createdAt: true },
   });
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://audric.ai';
@@ -78,6 +78,7 @@ export async function POST(request: NextRequest) {
     amount: invoice.amount,
     currency: invoice.currency,
     label: invoice.label,
+    memo: invoice.memo,
     dueDate: invoice.dueDate?.toISOString() ?? null,
   }, { status: 201 });
 }

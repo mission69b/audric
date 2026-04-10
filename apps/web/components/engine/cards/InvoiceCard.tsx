@@ -8,6 +8,7 @@ interface Invoice {
   amount: number;
   currency: string;
   label: string;
+  memo: string | null;
   dueDate: string | null;
 }
 
@@ -94,6 +95,12 @@ export function InvoiceCard({ data }: { data: unknown }) {
           <MonoLabel className="text-zinc-400">Total</MonoLabel>
           <span className="text-sm font-semibold text-white">{fmtUsd(inv.amount)} {inv.currency}</span>
         </div>
+        {inv.memo && (
+          <div className="flex items-center justify-between">
+            <MonoLabel className="text-zinc-400">Memo</MonoLabel>
+            <span className="text-sm text-zinc-300">{inv.memo}</span>
+          </div>
+        )}
         {inv.dueDate && (
           <div className="flex items-center justify-between">
             <MonoLabel className="text-zinc-400">Due date</MonoLabel>
