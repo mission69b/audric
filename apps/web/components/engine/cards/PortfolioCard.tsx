@@ -1,6 +1,6 @@
 'use client';
 
-import { CardShell, fmtUsd } from './primitives';
+import { CardShell, DetailRow, Gauge, MiniBar, StatusBadge, TrendIndicator, fmtUsd } from './primitives';
 
 interface PortfolioData {
   totalValue: number;
@@ -11,48 +11,95 @@ interface PortfolioData {
   allocations: { symbol: string; amount: number; usdValue: number; percentage: number }[];
   stablePercentage: number;
   insights: { type: string; message: string }[];
+  savingsApy?: number;
+  dailyEarning?: number;
+  weekChange?: { absoluteUsd: number; percentChange: number };
+}
+
+function hfStatus(hf: number): 'healthy' | 'warning' | 'danger' | 'critical' {
+  if (hf < 1.2) return 'critical';
+  if (hf < 1.5) return 'danger';
+  if (hf < 2.0) return 'warning';
+  return 'healthy';
+}
+
+function fmtApy(rate: number | undefined): string {
+  if (rate == null || rate <= 0) return '';
+  const pct = rate < 1 ? rate * 100 : rate;
+  return `${pct.toFixed(2)}% APY`;
 }
 
 export function PortfolioCard({ data }: { data: PortfolioData }) {
+  const topAllocations = data.allocations.slice(0, 4);
+  const segments = topAllocations.map((a) => ({
+    label: a.symbol,
+    value: a.usdValue,
+    percentage: a.percentage,
+  }));
+
   return (
-    <CardShell title="Portfolio Analysis">
-      <div className="flex gap-4 mb-2 font-mono">
-        <div>
-          <span className="text-dim text-[10px] block">Total</span>
-          <span className="text-foreground font-medium">${fmtUsd(data.totalValue)}</span>
-        </div>
-        <div>
-          <span className="text-dim text-[10px] block">Wallet</span>
-          <span className="text-foreground">${fmtUsd(data.walletValue)}</span>
-        </div>
-        {data.savingsValue > 0 && (
-          <div>
-            <span className="text-dim text-[10px] block">Savings</span>
-            <span className="text-emerald-400">${fmtUsd(data.savingsValue)}</span>
-          </div>
-        )}
-        {data.debtValue > 0 && (
-          <div>
-            <span className="text-dim text-[10px] block">Debt</span>
-            <span className="text-amber-400">${fmtUsd(data.debtValue)}</span>
+    <CardShell title="Your Portfolio">
+      {/* Hero: Total value + trend */}
+      <div className="text-center mb-2">
+        <span className="text-2xl font-semibold font-mono text-foreground">
+          ${fmtUsd(data.totalValue)}
+        </span>
+        {data.weekChange && data.weekChange.absoluteUsd !== 0 && (
+          <div className="mt-0.5">
+            <TrendIndicator value={data.weekChange.percentChange} />
+            <span className="text-dim text-[10px] ml-1">this week</span>
           </div>
         )}
       </div>
-      {data.allocations.length > 0 && (
-        <div className="space-y-1 mb-2">
-          {data.allocations.slice(0, 6).map((a) => (
-            <div key={a.symbol} className="flex items-center gap-2 text-[11px] font-mono">
-              <span className="text-foreground w-12">{a.symbol}</span>
-              <div className="flex-1 bg-border/30 rounded-full h-1.5 overflow-hidden">
-                <div className="bg-foreground/60 h-full rounded-full" style={{ width: `${Math.min(a.percentage, 100)}%` }} />
-              </div>
-              <span className="text-dim w-10 text-right">{a.percentage.toFixed(0)}%</span>
-            </div>
-          ))}
+
+      {/* Allocation bar */}
+      {segments.length > 0 && (
+        <div className="mb-3">
+          <MiniBar segments={segments} />
         </div>
       )}
+
+      {/* Breakdown rows */}
+      <div className="space-y-1.5 font-mono text-[11px]">
+        <DetailRow label="Wallet">${fmtUsd(data.walletValue)}</DetailRow>
+
+        <DetailRow label="Savings">
+          <span>${fmtUsd(data.savingsValue)}</span>
+          {data.savingsApy ? (
+            <span className="text-dim ml-1 text-[10px]">
+              {fmtApy(data.savingsApy)}
+              {data.dailyEarning ? ` · $${data.dailyEarning.toFixed(4)}/day` : ''}
+            </span>
+          ) : null}
+        </DetailRow>
+
+        {data.debtValue > 0 && (
+          <>
+            <DetailRow label="Debt">
+              <span className="text-amber-400">-${fmtUsd(data.debtValue)}</span>
+            </DetailRow>
+            {data.healthFactor != null && Number.isFinite(data.healthFactor) && (
+              <div className="pl-2">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-dim">HF {data.healthFactor.toFixed(2)}</span>
+                  <StatusBadge status={hfStatus(data.healthFactor)} />
+                </div>
+                <Gauge value={data.healthFactor} min={0} max={5} />
+              </div>
+            )}
+          </>
+        )}
+
+        <div className="pt-1 border-t border-border/50">
+          <DetailRow label="Net Worth">
+            <span className="font-medium">${fmtUsd(data.totalValue)}</span>
+          </DetailRow>
+        </div>
+      </div>
+
+      {/* Insights callout */}
       {data.insights.length > 0 && (
-        <div className="space-y-1 pt-2 border-t border-border/50 text-[11px]">
+        <div className="space-y-1 pt-2 mt-2 border-t border-border/50 text-[11px]">
           {data.insights.map((i, idx) => (
             <div key={idx} className={i.type === 'warning' ? 'text-amber-400' : 'text-dim'}>
               {i.type === 'warning' ? '⚠ ' : '→ '}{i.message}

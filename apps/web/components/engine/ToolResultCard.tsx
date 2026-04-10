@@ -17,6 +17,8 @@ import { PaymentLinkCard } from './cards/PaymentLinkCard';
 import { InvoiceCard } from './cards/InvoiceCard';
 import { ServiceCatalogCard } from './cards/ServiceCatalogCard';
 import { SearchResultsCard } from './cards/SearchResultsCard';
+import { YieldEarningsCard } from './cards/YieldEarningsCard';
+import { ActivitySummaryCard } from './cards/ActivitySummaryCard';
 
 const WRITE_TOOL_NAMES = new Set([
   'save_deposit', 'withdraw', 'send_transfer', 'swap_execute',
@@ -98,6 +100,16 @@ const CARD_RENDERERS: Record<string, (result: unknown) => React.ReactNode | null
     const data = extractData(result);
     if (!data || typeof data !== 'object') return null;
     return <AllowanceCard data={data as Parameters<typeof AllowanceCard>[0]['data']} />;
+  },
+  yield_summary: (result) => {
+    const data = extractData(result);
+    if (!data || typeof data !== 'object') return null;
+    return <YieldEarningsCard data={data as Parameters<typeof YieldEarningsCard>[0]['data']} />;
+  },
+  activity_summary: (result) => {
+    const data = extractData(result);
+    if (!data || typeof data !== 'object') return null;
+    return <ActivitySummaryCard data={data as Parameters<typeof ActivitySummaryCard>[0]['data']} />;
   },
   create_payment_link: (result) => {
     const data = extractData(result);

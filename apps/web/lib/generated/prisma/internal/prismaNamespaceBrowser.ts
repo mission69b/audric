@@ -64,7 +64,9 @@ export const ModelName = {
   AdviceLog: 'AdviceLog',
   PaymentLink: 'PaymentLink',
   Invoice: 'Invoice',
-  SavingsGoalDeposit: 'SavingsGoalDeposit'
+  SavingsGoalDeposit: 'SavingsGoalDeposit',
+  WatchAddress: 'WatchAddress',
+  PortfolioSnapshot: 'PortfolioSnapshot'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -306,6 +308,33 @@ export const SavingsGoalDepositScalarFieldEnum = {
 } as const
 
 export type SavingsGoalDepositScalarFieldEnum = (typeof SavingsGoalDepositScalarFieldEnum)[keyof typeof SavingsGoalDepositScalarFieldEnum]
+
+
+export const WatchAddressScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  address: 'address',
+  label: 'label',
+  createdAt: 'createdAt'
+} as const
+
+export type WatchAddressScalarFieldEnum = (typeof WatchAddressScalarFieldEnum)[keyof typeof WatchAddressScalarFieldEnum]
+
+
+export const PortfolioSnapshotScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  date: 'date',
+  walletValueUsd: 'walletValueUsd',
+  savingsValueUsd: 'savingsValueUsd',
+  debtValueUsd: 'debtValueUsd',
+  netWorthUsd: 'netWorthUsd',
+  yieldEarnedUsd: 'yieldEarnedUsd',
+  healthFactor: 'healthFactor',
+  allocations: 'allocations'
+} as const
+
+export type PortfolioSnapshotScalarFieldEnum = (typeof PortfolioSnapshotScalarFieldEnum)[keyof typeof PortfolioSnapshotScalarFieldEnum]
 
 
 export const SortOrder = {

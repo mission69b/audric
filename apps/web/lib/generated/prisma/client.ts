@@ -111,3 +111,13 @@ export type Invoice = Prisma.InvoiceModel
  * 
  */
 export type SavingsGoalDeposit = Prisma.SavingsGoalDepositModel
+/**
+ * Model WatchAddress
+ * 
+ */
+export type WatchAddress = Prisma.WatchAddressModel
+/**
+ * Model PortfolioSnapshot
+ * 
+ */
+export type PortfolioSnapshot = Prisma.PortfolioSnapshotModel

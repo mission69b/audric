@@ -397,7 +397,9 @@ export const ModelName = {
   AdviceLog: 'AdviceLog',
   PaymentLink: 'PaymentLink',
   Invoice: 'Invoice',
-  SavingsGoalDeposit: 'SavingsGoalDeposit'
+  SavingsGoalDeposit: 'SavingsGoalDeposit',
+  WatchAddress: 'WatchAddress',
+  PortfolioSnapshot: 'PortfolioSnapshot'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -413,7 +415,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "userPreferences" | "conversationLog" | "sessionUsage" | "servicePurchase" | "notificationPrefs" | "notificationLog" | "dailyBriefing" | "savingsGoal" | "appEvent" | "adviceLog" | "paymentLink" | "invoice" | "savingsGoalDeposit"
+    modelProps: "user" | "userPreferences" | "conversationLog" | "sessionUsage" | "servicePurchase" | "notificationPrefs" | "notificationLog" | "dailyBriefing" | "savingsGoal" | "appEvent" | "adviceLog" | "paymentLink" | "invoice" | "savingsGoalDeposit" | "watchAddress" | "portfolioSnapshot"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1453,6 +1455,154 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    WatchAddress: {
+      payload: Prisma.$WatchAddressPayload<ExtArgs>
+      fields: Prisma.WatchAddressFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.WatchAddressFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WatchAddressPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.WatchAddressFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WatchAddressPayload>
+        }
+        findFirst: {
+          args: Prisma.WatchAddressFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WatchAddressPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.WatchAddressFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WatchAddressPayload>
+        }
+        findMany: {
+          args: Prisma.WatchAddressFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WatchAddressPayload>[]
+        }
+        create: {
+          args: Prisma.WatchAddressCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WatchAddressPayload>
+        }
+        createMany: {
+          args: Prisma.WatchAddressCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.WatchAddressCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WatchAddressPayload>[]
+        }
+        delete: {
+          args: Prisma.WatchAddressDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WatchAddressPayload>
+        }
+        update: {
+          args: Prisma.WatchAddressUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WatchAddressPayload>
+        }
+        deleteMany: {
+          args: Prisma.WatchAddressDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.WatchAddressUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.WatchAddressUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WatchAddressPayload>[]
+        }
+        upsert: {
+          args: Prisma.WatchAddressUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WatchAddressPayload>
+        }
+        aggregate: {
+          args: Prisma.WatchAddressAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateWatchAddress>
+        }
+        groupBy: {
+          args: Prisma.WatchAddressGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.WatchAddressGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.WatchAddressCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.WatchAddressCountAggregateOutputType> | number
+        }
+      }
+    }
+    PortfolioSnapshot: {
+      payload: Prisma.$PortfolioSnapshotPayload<ExtArgs>
+      fields: Prisma.PortfolioSnapshotFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.PortfolioSnapshotFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioSnapshotPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.PortfolioSnapshotFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioSnapshotPayload>
+        }
+        findFirst: {
+          args: Prisma.PortfolioSnapshotFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioSnapshotPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.PortfolioSnapshotFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioSnapshotPayload>
+        }
+        findMany: {
+          args: Prisma.PortfolioSnapshotFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioSnapshotPayload>[]
+        }
+        create: {
+          args: Prisma.PortfolioSnapshotCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioSnapshotPayload>
+        }
+        createMany: {
+          args: Prisma.PortfolioSnapshotCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.PortfolioSnapshotCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioSnapshotPayload>[]
+        }
+        delete: {
+          args: Prisma.PortfolioSnapshotDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioSnapshotPayload>
+        }
+        update: {
+          args: Prisma.PortfolioSnapshotUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioSnapshotPayload>
+        }
+        deleteMany: {
+          args: Prisma.PortfolioSnapshotDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.PortfolioSnapshotUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.PortfolioSnapshotUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioSnapshotPayload>[]
+        }
+        upsert: {
+          args: Prisma.PortfolioSnapshotUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioSnapshotPayload>
+        }
+        aggregate: {
+          args: Prisma.PortfolioSnapshotAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregatePortfolioSnapshot>
+        }
+        groupBy: {
+          args: Prisma.PortfolioSnapshotGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PortfolioSnapshotGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.PortfolioSnapshotCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PortfolioSnapshotCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -1717,6 +1867,33 @@ export const SavingsGoalDepositScalarFieldEnum = {
 export type SavingsGoalDepositScalarFieldEnum = (typeof SavingsGoalDepositScalarFieldEnum)[keyof typeof SavingsGoalDepositScalarFieldEnum]
 
 
+export const WatchAddressScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  address: 'address',
+  label: 'label',
+  createdAt: 'createdAt'
+} as const
+
+export type WatchAddressScalarFieldEnum = (typeof WatchAddressScalarFieldEnum)[keyof typeof WatchAddressScalarFieldEnum]
+
+
+export const PortfolioSnapshotScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  date: 'date',
+  walletValueUsd: 'walletValueUsd',
+  savingsValueUsd: 'savingsValueUsd',
+  debtValueUsd: 'debtValueUsd',
+  netWorthUsd: 'netWorthUsd',
+  yieldEarnedUsd: 'yieldEarnedUsd',
+  healthFactor: 'healthFactor',
+  allocations: 'allocations'
+} as const
+
+export type PortfolioSnapshotScalarFieldEnum = (typeof PortfolioSnapshotScalarFieldEnum)[keyof typeof PortfolioSnapshotScalarFieldEnum]
+
+
 export const SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -1956,6 +2133,8 @@ export type GlobalOmitConfig = {
   paymentLink?: Prisma.PaymentLinkOmit
   invoice?: Prisma.InvoiceOmit
   savingsGoalDeposit?: Prisma.SavingsGoalDepositOmit
+  watchAddress?: Prisma.WatchAddressOmit
+  portfolioSnapshot?: Prisma.PortfolioSnapshotOmit
 }
 
 /* Types for Logging */
