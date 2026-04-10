@@ -43,10 +43,10 @@ export async function POST(_request: NextRequest, { params }: Params) {
         params: [
           {
             filter: { ToAddress: link.suiAddress },
-            options: { showEffects: false, showInput: true, showBalanceChanges: true },
+            options: { showEffects: false, showInput: true, showBalanceChanges: true, showTimestampMs: true },
           },
           null,  // cursor
-          10,    // limit — check last 10 inbound txs
+          20,    // limit — check last 20 inbound txs
           true,  // descending
         ],
       }),
@@ -58,6 +58,7 @@ export async function POST(_request: NextRequest, { params }: Params) {
       result?: {
         data: Array<{
           digest: string;
+          timestampMs?: string;
           transaction?: { data?: { sender?: string } };
           balanceChanges?: Array<{
             owner: { AddressOwner?: string };
@@ -69,8 +70,13 @@ export async function POST(_request: NextRequest, { params }: Params) {
     };
 
     const txs = json.result?.data ?? [];
+    const linkCreatedAt = link.createdAt.getTime();
 
     for (const tx of txs) {
+      // Skip transactions that predate the link creation
+      const txTime = tx.timestampMs ? Number(tx.timestampMs) : null;
+      if (txTime !== null && txTime < linkCreatedAt) continue;
+
       const changes = tx.balanceChanges ?? [];
       for (const change of changes) {
         const isUSDC = change.coinType === USDC_TYPE;
