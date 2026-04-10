@@ -19,6 +19,17 @@
   --warning: #FFB014;
   --info: #0966F6;
 
+  /* Chart monochrome segments */
+  --chart-1: #D9D9D9;
+  --chart-2: #999999;
+  --chart-3: #666666;
+  --chart-4: #404040;
+
+  /* Status colors (used for health factor, alerts) */
+  --status-healthy: #3CC14E;
+  --status-warning: #FFB014;
+  --status-danger: #F0201D;
+
   /* Elevation shadows (heavier for dark surfaces) */
   --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
   --shadow-dropdown: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
@@ -37,6 +48,17 @@
   --dim: #9F9F9F;
   --accent: #191919;
   --accent-dim: #F7F7F7;
+  --chart-1: #333333;
+  --chart-2: #666666;
+  --chart-3: #999999;
+  --chart-4: #CCCCCC;
+  --status-healthy: #16A34A;
+  --status-warning: #D97706;
+  --status-danger: #DC2626;
+  --success: #16A34A;
+  --error: #DC2626;
+  --warning: #D97706;
+  --info: #2563EB;
   --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
   --shadow-dropdown: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
   --shadow-drawer: -4px 0 24px rgba(0, 0, 0, 0.08);
@@ -58,6 +80,13 @@
   --color-error: var(--error);
   --color-warning: var(--warning);
   --color-info: var(--info);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-status-healthy: var(--status-healthy);
+  --color-status-warning: var(--status-warning);
+  --color-status-danger: var(--status-danger);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --font-display: var(--font-instrument-serif), ui-serif, Georgia, serif;

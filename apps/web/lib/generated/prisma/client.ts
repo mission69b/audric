@@ -82,7 +82,32 @@ export type NotificationLog = Prisma.NotificationLogModel
  */
 export type DailyBriefing = Prisma.DailyBriefingModel
 /**
+ * Model SavingsGoal
+ * 
+ */
+export type SavingsGoal = Prisma.SavingsGoalModel
+/**
  * Model AppEvent
  * 
  */
 export type AppEvent = Prisma.AppEventModel
+/**
+ * Model AdviceLog
+ * 
+ */
+export type AdviceLog = Prisma.AdviceLogModel
+/**
+ * Model PaymentLink
+ * 
+ */
+export type PaymentLink = Prisma.PaymentLinkModel
+/**
+ * Model Invoice
+ * 
+ */
+export type Invoice = Prisma.InvoiceModel
+/**
+ * Model SavingsGoalDeposit
+ * 
+ */
+export type SavingsGoalDeposit = Prisma.SavingsGoalDepositModel

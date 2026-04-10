@@ -64,6 +64,7 @@ function formatInput(input: unknown, toolName?: string): string | null {
   if (obj.recipient) parts.push(`To: ${String(obj.recipient).slice(0, 8)}...`);
   if (obj.url) parts.push(String(obj.url).replace('https://mpp.t2000.ai/', ''));
   if (obj.maxPrice) parts.push(`max $${obj.maxPrice}`);
+  if (obj.memo) parts.push(`"${String(obj.memo)}"`);
   return parts.length > 0 ? parts.join(' · ') : null;
 }
 

@@ -28,6 +28,8 @@ model User {
   savingsGoals         SavingsGoal[]
   adviceLogs           AdviceLog[]
   savingsGoalDeposits  SavingsGoalDeposit[]
+  paymentLinks         PaymentLink[]
+  invoices             Invoice[]
 
   @@index([email])
   @@index([emailVerified, timezoneOffset])
@@ -193,6 +195,57 @@ model AdviceLog {
   @@index([outcomeStatus])
   @@index([followUpDue])
   @@index([createdAt])
+}
+
+model PaymentLink {
+  id          String    @id @default(cuid())
+  slug        String    @unique
+  userId      String
+  suiAddress  String
+  amount      Float?
+  label       String?
+  memo        String?
+  currency    String    @default("USDC")
+  status      String    @default("active")
+  expiresAt   DateTime?
+  paidAt      DateTime?
+  paidBy      String?
+  txDigest    String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, status])
+  @@index([suiAddress])
+}
+
+model Invoice {
+  id              String    @id @default(cuid())
+  slug            String    @unique
+  userId          String
+  suiAddress      String
+  recipientEmail  String?
+  recipientName   String?
+  amount          Float
+  currency        String    @default("USDC")
+  label           String
+  items           Json      @default("[]")
+  memo            String?
+  dueDate         DateTime?
+  status          String    @default("pending")
+  paidAt          DateTime?
+  paidBy          String?
+  txDigest        String?
+  sentAt          DateTime?
+  reminderSentAt  DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, status])
+  @@index([dueDate, status])
 }
 
 model SavingsGoalDeposit {

@@ -59,7 +59,12 @@ export const ModelName = {
   NotificationPrefs: 'NotificationPrefs',
   NotificationLog: 'NotificationLog',
   DailyBriefing: 'DailyBriefing',
-  AppEvent: 'AppEvent'
+  SavingsGoal: 'SavingsGoal',
+  AppEvent: 'AppEvent',
+  AdviceLog: 'AdviceLog',
+  PaymentLink: 'PaymentLink',
+  Invoice: 'Invoice',
+  SavingsGoalDeposit: 'SavingsGoalDeposit'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -88,6 +93,7 @@ export const UserScalarFieldEnum = {
   displayName: 'displayName',
   timezoneOffset: 'timezoneOffset',
   onboardedAt: 'onboardedAt',
+  tosAcceptedAt: 'tosAcceptedAt',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -190,6 +196,22 @@ export const DailyBriefingScalarFieldEnum = {
 export type DailyBriefingScalarFieldEnum = (typeof DailyBriefingScalarFieldEnum)[keyof typeof DailyBriefingScalarFieldEnum]
 
 
+export const SavingsGoalScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  name: 'name',
+  emoji: 'emoji',
+  targetAmount: 'targetAmount',
+  deadline: 'deadline',
+  currentMilestone: 'currentMilestone',
+  status: 'status',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type SavingsGoalScalarFieldEnum = (typeof SavingsGoalScalarFieldEnum)[keyof typeof SavingsGoalScalarFieldEnum]
+
+
 export const AppEventScalarFieldEnum = {
   id: 'id',
   address: 'address',
@@ -197,10 +219,93 @@ export const AppEventScalarFieldEnum = {
   title: 'title',
   details: 'details',
   digest: 'digest',
+  adviceLogId: 'adviceLogId',
+  goalId: 'goalId',
+  suiTxVerified: 'suiTxVerified',
+  source: 'source',
   createdAt: 'createdAt'
 } as const
 
 export type AppEventScalarFieldEnum = (typeof AppEventScalarFieldEnum)[keyof typeof AppEventScalarFieldEnum]
+
+
+export const AdviceLogScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  sessionId: 'sessionId',
+  adviceText: 'adviceText',
+  adviceType: 'adviceType',
+  targetAmount: 'targetAmount',
+  goalId: 'goalId',
+  actionTaken: 'actionTaken',
+  appEventId: 'appEventId',
+  followUpDue: 'followUpDue',
+  followUpSent: 'followUpSent',
+  outcomeStatus: 'outcomeStatus',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type AdviceLogScalarFieldEnum = (typeof AdviceLogScalarFieldEnum)[keyof typeof AdviceLogScalarFieldEnum]
+
+
+export const PaymentLinkScalarFieldEnum = {
+  id: 'id',
+  slug: 'slug',
+  userId: 'userId',
+  suiAddress: 'suiAddress',
+  amount: 'amount',
+  label: 'label',
+  memo: 'memo',
+  currency: 'currency',
+  status: 'status',
+  expiresAt: 'expiresAt',
+  paidAt: 'paidAt',
+  paidBy: 'paidBy',
+  txDigest: 'txDigest',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type PaymentLinkScalarFieldEnum = (typeof PaymentLinkScalarFieldEnum)[keyof typeof PaymentLinkScalarFieldEnum]
+
+
+export const InvoiceScalarFieldEnum = {
+  id: 'id',
+  slug: 'slug',
+  userId: 'userId',
+  suiAddress: 'suiAddress',
+  recipientEmail: 'recipientEmail',
+  recipientName: 'recipientName',
+  amount: 'amount',
+  currency: 'currency',
+  label: 'label',
+  items: 'items',
+  memo: 'memo',
+  dueDate: 'dueDate',
+  status: 'status',
+  paidAt: 'paidAt',
+  paidBy: 'paidBy',
+  txDigest: 'txDigest',
+  sentAt: 'sentAt',
+  reminderSentAt: 'reminderSentAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type InvoiceScalarFieldEnum = (typeof InvoiceScalarFieldEnum)[keyof typeof InvoiceScalarFieldEnum]
+
+
+export const SavingsGoalDepositScalarFieldEnum = {
+  id: 'id',
+  goalId: 'goalId',
+  userId: 'userId',
+  amountUsdc: 'amountUsdc',
+  appEventId: 'appEventId',
+  createdAt: 'createdAt'
+} as const
+
+export type SavingsGoalDepositScalarFieldEnum = (typeof SavingsGoalDepositScalarFieldEnum)[keyof typeof SavingsGoalDepositScalarFieldEnum]
 
 
 export const SortOrder = {
