@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 
 interface HeatmapData {
   available: true;
@@ -84,6 +84,7 @@ export function ActivityHeatmapCanvas({ data, onAction }: Props) {
   const [response, setResponse] = useState<HeatmapResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [hoveredCell, setHoveredCell] = useState<{ date: string; count: number; x: number; y: number } | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const address = 'available' in data && data.available ? data.address : null;
 
@@ -103,6 +104,12 @@ export function ActivityHeatmapCanvas({ data, onAction }: Props) {
   );
 
   const maxCount = response?.summary.maxCount ?? 1;
+
+  useEffect(() => {
+    if (scrollRef.current && response) {
+      scrollRef.current.scrollLeft = scrollRef.current.scrollWidth;
+    }
+  }, [response]);
 
   const handleCellClick = useCallback(
     (date: string) => {
@@ -159,7 +166,7 @@ export function ActivityHeatmapCanvas({ data, onAction }: Props) {
       </div>
 
       {/* Heatmap grid */}
-      <div className="relative overflow-x-auto scrollbar-none">
+      <div ref={scrollRef} className="relative overflow-x-auto scrollbar-none">
         {/* Month labels */}
         <div className="flex mb-1" style={{ paddingLeft: 24 }}>
           {monthLabels.map((m, i) => (
