@@ -63,6 +63,8 @@ export function WatchAddressCanvas({ data, onAction }: Props) {
     );
   }
 
+  const addr = address ?? '';
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-10">
@@ -80,12 +82,12 @@ export function WatchAddressCanvas({ data, onAction }: Props) {
             {label ?? 'Watched Address'}
           </span>
           <a
-            href={`https://suiscan.xyz/mainnet/account/${address}`}
+            href={`https://suiscan.xyz/mainnet/account/${addr}`}
             target="_blank"
             rel="noopener noreferrer"
             className="font-mono text-[10px] text-dim hover:text-foreground transition"
           >
-            {truncAddr(address)}↗
+            {truncAddr(addr)}↗
           </a>
         </div>
         <div className="font-mono text-lg text-foreground font-medium">
@@ -118,13 +120,13 @@ export function WatchAddressCanvas({ data, onAction }: Props) {
       {onAction && (
         <div className="flex gap-2">
           <button
-            onClick={() => onAction(`Show me the activity heatmap for ${address}`)}
+            onClick={() => onAction(`Show me the activity heatmap for ${addr}`)}
             className="flex-1 rounded-md border border-border py-1.5 font-mono text-[10px] tracking-wider uppercase text-muted hover:text-foreground hover:border-foreground/30 transition"
           >
             Activity →
           </button>
           <button
-            onClick={() => onAction(`Send USDC to ${address}`)}
+            onClick={() => onAction(`Send USDC to ${addr}`)}
             className="flex-1 rounded-md bg-foreground py-1.5 font-mono text-[10px] tracking-wider text-background uppercase hover:opacity-90 transition"
           >
             Send →
