@@ -28,7 +28,7 @@ async function buildAllowanceResponse(address: string) {
   }
 
   const dailyLimitUsdc = limits.dailyLimitUsdc ?? 50;
-  const permissions = limits.permissions ?? ['savings', 'send', 'pay'];
+  const permissions = limits.permissions ?? ['savings', 'send', 'pay', 'credit', 'swap', 'stake'];
 
   const since = new Date(Date.now() - 86_400_000);
   const TX_TYPES = new Set(['send', 'deposit', 'withdraw', 'borrow', 'repay', 'swap', 'pay']);

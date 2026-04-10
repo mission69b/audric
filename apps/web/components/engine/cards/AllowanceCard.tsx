@@ -11,6 +11,20 @@ interface AllowanceData {
   resetsAt?: string;
 }
 
+function fmtResetTime(iso: string): string {
+  try {
+    const date = new Date(iso);
+    const now = new Date();
+    const diffMs = date.getTime() - now.getTime();
+    const diffH = Math.round(diffMs / 3_600_000);
+    if (diffH <= 1) return 'in < 1 hour';
+    if (diffH < 24) return `in ${diffH}h`;
+    return 'tomorrow midnight';
+  } catch {
+    return iso;
+  }
+}
+
 export function AllowanceCard({ data }: { data: AllowanceData }) {
   const usagePct = data.dailyLimit > 0 ? (data.spent / data.dailyLimit) : 0;
 
@@ -30,21 +44,13 @@ export function AllowanceCard({ data }: { data: AllowanceData }) {
               <span className="text-dim">Daily Budget</span>
               <span className="text-foreground">${fmtUsd(data.spent)} / ${fmtUsd(data.dailyLimit)}</span>
             </div>
-            <Gauge
-              value={usagePct}
-              min={0}
-              max={1}
-              colorMode="usage"
-              thresholds={[
-                { value: 0.8, label: '80%' },
-              ]}
-            />
+            <Gauge value={usagePct} min={0} max={1} colorMode="usage" />
           </div>
 
           <div className="space-y-1 font-mono text-[11px]">
             <DetailRow label="Remaining">${fmtUsd(data.remaining)}</DetailRow>
             {data.resetsAt && (
-              <DetailRow label="Resets">{data.resetsAt}</DetailRow>
+              <DetailRow label="Resets">{fmtResetTime(data.resetsAt)}</DetailRow>
             )}
           </div>
 
