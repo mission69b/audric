@@ -1,12 +1,6 @@
-import type { SSEEvent as BaseSSEEvent, PendingAction } from '@t2000/engine';
+import type { SSEEvent, PendingAction } from '@t2000/engine';
 
-// Extend SSEEvent locally until @t2000/engine@0.28.8 is published.
-// The canvas variant is emitted by the render_canvas tool.
-export type SSEEvent =
-  | BaseSSEEvent
-  | { type: 'canvas'; template: string; data: unknown; title: string; toolUseId: string };
-
-export type { PendingAction };
+export type { SSEEvent, PendingAction };
 
 export interface CanvasData {
   template: string;
