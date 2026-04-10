@@ -40,7 +40,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
     amount: invoice.amount,
     currency: invoice.currency,
     label: invoice.label,
-    items: invoice.items as InvoiceItem[],
+    items: invoice.items as unknown as InvoiceItem[],
     memo: invoice.memo,
     status: effectiveStatus,
     paidAt: invoice.paidAt?.toISOString() ?? null,
