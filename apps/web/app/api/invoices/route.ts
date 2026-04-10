@@ -67,8 +67,7 @@ export async function POST(request: NextRequest) {
       suiAddress: address,
       amount: body.amount,
       label: body.label.trim(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      items: (body.items ?? []) as any,
+      items: JSON.parse(JSON.stringify(body.items ?? [])),
       memo: body.memo ?? null,
       recipientEmail: body.recipientEmail ?? null,
       recipientName: body.recipientName ?? null,
