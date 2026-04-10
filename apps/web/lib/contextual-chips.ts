@@ -112,7 +112,7 @@ export function deriveContextualChips(
       icon: '📈',
       label: 'Yield projector',
       agentPrompt: 'Show me the yield projector canvas so I can simulate my savings growth.',
-      priority: 30,
+      priority: 15,
       dismissible: true,
     });
   }
@@ -123,7 +123,7 @@ export function deriveContextualChips(
       icon: '🛡',
       label: 'Simulate health',
       agentPrompt: 'Open the health factor simulator so I can see what happens if prices drop.',
-      priority: 27,
+      priority: 14,
       dismissible: true,
     });
   }
