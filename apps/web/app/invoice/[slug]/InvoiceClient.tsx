@@ -37,6 +37,15 @@ export function InvoiceClient({ slug }: { slug: string }) {
   const [state, setState] = useState<PageState>('loading');
   const [data, setData] = useState<InvoiceData | null>(null);
   const [copied, setCopied] = useState(false);
+  const [detecting, setDetecting] = useState(false);
+
+  const applyStatus = useCallback((inv: InvoiceData) => {
+    if (inv.status === 'paid') setState('paid');
+    else if (inv.status === 'overdue') setState('overdue');
+    else if (inv.status === 'cancelled') setState('cancelled');
+    else setState('pending');
+    setData(inv);
+  }, []);
 
   useEffect(() => {
     async function load() {
@@ -44,17 +53,39 @@ export function InvoiceClient({ slug }: { slug: string }) {
         const res = await fetch(`/api/invoices/${slug}`);
         if (!res.ok) { setState('not_found'); return; }
         const inv: InvoiceData = await res.json();
-        if (inv.status === 'paid') setState('paid');
-        else if (inv.status === 'overdue') setState('overdue');
-        else if (inv.status === 'cancelled') setState('cancelled');
-        else setState('pending');
-        setData(inv);
+        applyStatus(inv);
       } catch {
         setState('not_found');
       }
     }
     load();
-  }, [slug]);
+  }, [slug, applyStatus]);
+
+  // Poll every 8s while pending/overdue — checks Sui on-chain for matching USDC transfer
+  useEffect(() => {
+    if (state !== 'pending' && state !== 'overdue') return;
+    let stopped = false;
+
+    const poll = async () => {
+      if (stopped) return;
+      setDetecting(true);
+      try {
+        const res = await fetch(`/api/invoices/${slug}/verify`, { method: 'POST' });
+        if (!res.ok) return;
+        const result = await res.json() as { status: string; paidAt: string | null; txDigest?: string };
+        if (result.status === 'paid' && data) {
+          setData((prev) => prev ? { ...prev, status: 'paid', paidAt: result.paidAt, txDigest: result.txDigest ?? null } : prev);
+          setState('paid');
+          stopped = true;
+        }
+      } catch { /* silent */ } finally {
+        setDetecting(false);
+      }
+    };
+
+    const interval = setInterval(poll, 8_000);
+    return () => { stopped = true; clearInterval(interval); };
+  }, [state, slug, data]);
 
   const copyAddress = useCallback(() => {
     if (!data) return;
@@ -73,7 +104,7 @@ export function InvoiceClient({ slug }: { slug: string }) {
 
         {state === 'loading' && <LoadingState />}
         {(state === 'pending' || state === 'overdue') && data && (
-          <PendingInvoice data={data} overdue={state === 'overdue'} copied={copied} onCopy={copyAddress} />
+          <PendingInvoice data={data} overdue={state === 'overdue'} copied={copied} onCopy={copyAddress} detecting={detecting} />
         )}
         {state === 'paid' && data && <PaidInvoice data={data} />}
         {state === 'cancelled' && <CancelledState />}
@@ -96,11 +127,12 @@ function LoadingState() {
   );
 }
 
-function PendingInvoice({ data, overdue, copied, onCopy }: {
+function PendingInvoice({ data, overdue, copied, onCopy, detecting }: {
   data: InvoiceData;
   overdue: boolean;
   copied: boolean;
   onCopy: () => void;
+  detecting: boolean;
 }) {
   const shortAddr = `${data.senderAddress.slice(0, 8)}...${data.senderAddress.slice(-6)}`;
 
@@ -183,6 +215,12 @@ function PendingInvoice({ data, overdue, copied, onCopy }: {
         >
           {copied ? 'Copied!' : 'Copy Payment Address'}
         </button>
+        <div className="flex items-center justify-center gap-1.5 pt-1">
+          <span className={`w-1.5 h-1.5 rounded-full ${detecting ? 'bg-emerald-400 animate-pulse' : 'bg-border'}`} />
+          <span className="text-[10px] font-mono text-dim">
+            {detecting ? 'Checking for payment...' : 'Waiting for payment'}
+          </span>
+        </div>
       </div>
     </div>
   );
