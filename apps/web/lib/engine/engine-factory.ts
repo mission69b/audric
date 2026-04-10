@@ -431,8 +431,8 @@ export async function createEngine(
       AUDRIC_INTERNAL_KEY,
     },
     maxTurns: 10,
-    maxTokens: 2048,
-    toolChoice: 'any',
+    maxTokens: 8192,
+    toolChoice: 'auto',
     costTracker: {
       budgetLimitUsd: 0.50,
     },
