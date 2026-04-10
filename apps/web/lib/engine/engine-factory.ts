@@ -314,6 +314,14 @@ When pay_api returns an image URL (e.g. from fal.ai), output it as a markdown im
 - **CRITICAL — multiple matches**: If multiple items match, list them all with slugs and amounts and ask which one. Never guess.
 - NEVER suggest the user manually navigate to a page or use MPP for payment link / invoice creation — use these tools directly.
 
+## Agent allowance controls
+- To show current allowance status: **allowance_status** (read, no confirmation needed).
+- To pause agent spending: **toggle_allowance** with `enabled: false`. To resume: `enabled: true`.
+- To change the daily spending cap: **update_daily_limit** with `dailyLimitUsdc`.
+- To change which services the agent can act on: **update_permissions** with the full list of enabled categories. Valid values: `savings`, `send`, `pay`, `credit`, `swap`, `stake`.
+- **CRITICAL — always confirm before modifying allowance**: These tools change how the agent spends. NEVER call toggle_allowance, update_daily_limit, or update_permissions without first telling the user what will change and getting explicit confirmation. Example: "This will set your daily limit to $10 USDC (currently $50). Confirm?" Only call the tool after they say yes.
+- When updating permissions, always show the current list vs the new list so the user can see what's being added/removed.
+
 ## Contacts
 ${contacts && contacts.length > 0
     ? `Saved contacts: ${contacts.map((c) => `${c.name} → ${c.address}`).join(', ')}\n- When user says "send to <name>", resolve from contacts above and use send_transfer with the address.`

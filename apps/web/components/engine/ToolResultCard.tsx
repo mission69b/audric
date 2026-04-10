@@ -15,6 +15,8 @@ import { SwapQuoteCard } from './cards/SwapQuoteCard';
 import { AllowanceCard } from './cards/AllowanceCard';
 import { PaymentLinkCard } from './cards/PaymentLinkCard';
 import { InvoiceCard } from './cards/InvoiceCard';
+import { ServiceCatalogCard } from './cards/ServiceCatalogCard';
+import { SearchResultsCard } from './cards/SearchResultsCard';
 
 const WRITE_TOOL_NAMES = new Set([
   'save_deposit', 'withdraw', 'send_transfer', 'swap_execute',
@@ -67,7 +69,32 @@ const CARD_RENDERERS: Record<string, (result: unknown) => React.ReactNode | null
     if (!data || typeof data !== 'object') return null;
     return <SwapQuoteCard data={data as Parameters<typeof SwapQuoteCard>[0]['data']} />;
   },
+  mpp_services: (result) => {
+    const data = extractData(result);
+    if (!data || typeof data !== 'object') return null;
+    return <ServiceCatalogCard data={data as Parameters<typeof ServiceCatalogCard>[0]['data']} />;
+  },
+  web_search: (result) => {
+    const data = extractData(result);
+    if (!data || typeof data !== 'object') return null;
+    return <SearchResultsCard data={data as Parameters<typeof SearchResultsCard>[0]['data']} />;
+  },
   allowance_status: (result) => {
+    const data = extractData(result);
+    if (!data || typeof data !== 'object') return null;
+    return <AllowanceCard data={data as Parameters<typeof AllowanceCard>[0]['data']} />;
+  },
+  toggle_allowance: (result) => {
+    const data = extractData(result);
+    if (!data || typeof data !== 'object') return null;
+    return <AllowanceCard data={data as Parameters<typeof AllowanceCard>[0]['data']} />;
+  },
+  update_daily_limit: (result) => {
+    const data = extractData(result);
+    if (!data || typeof data !== 'object') return null;
+    return <AllowanceCard data={data as Parameters<typeof AllowanceCard>[0]['data']} />;
+  },
+  update_permissions: (result) => {
     const data = extractData(result);
     if (!data || typeof data !== 'object') return null;
     return <AllowanceCard data={data as Parameters<typeof AllowanceCard>[0]['data']} />;
