@@ -29,27 +29,56 @@ export function PaymentLinkClient({ slug }: { slug: string }) {
   const [state, setState] = useState<PageState>('loading');
   const [data, setData] = useState<LinkData | null>(null);
   const [copied, setCopied] = useState(false);
+  const [detecting, setDetecting] = useState(false);
 
+  const applyStatus = useCallback((link: LinkData) => {
+    if (link.status === 'paid') setState('paid');
+    else if (link.status === 'expired') setState('expired');
+    else if (link.status === 'cancelled') setState('cancelled');
+    else setState('active');
+    setData(link);
+  }, []);
+
+  // Initial load
   useEffect(() => {
     async function load() {
       try {
         const res = await fetch(`/api/payment-links/${slug}`);
-        if (!res.ok) {
-          setState('not_found');
-          return;
-        }
+        if (!res.ok) { setState('not_found'); return; }
         const link: LinkData = await res.json();
-        if (link.status === 'paid') setState('paid');
-        else if (link.status === 'expired') setState('expired');
-        else if (link.status === 'cancelled') setState('cancelled');
-        else setState('active');
-        setData(link);
+        applyStatus(link);
       } catch {
         setState('not_found');
       }
     }
     load();
-  }, [slug]);
+  }, [slug, applyStatus]);
+
+  // Poll every 8s while active — calls /verify which checks Sui on-chain
+  useEffect(() => {
+    if (state !== 'active') return;
+    let stopped = false;
+
+    const poll = async () => {
+      if (stopped) return;
+      setDetecting(true);
+      try {
+        const res = await fetch(`/api/payment-links/${slug}/verify`, { method: 'POST' });
+        if (!res.ok) return;
+        const result = await res.json() as { status: string; paidAt: string | null; txDigest?: string };
+        if (result.status === 'paid' && data) {
+          setData((prev) => prev ? { ...prev, status: 'paid', paidAt: result.paidAt, txDigest: result.txDigest ?? null } : prev);
+          setState('paid');
+          stopped = true;
+        }
+      } catch { /* silent */ } finally {
+        setDetecting(false);
+      }
+    };
+
+    const interval = setInterval(poll, 8_000);
+    return () => { stopped = true; clearInterval(interval); };
+  }, [state, slug, data]);
 
   const copyAddress = useCallback(() => {
     if (!data) return;
@@ -70,7 +99,7 @@ export function PaymentLinkClient({ slug }: { slug: string }) {
 
         {state === 'loading' && <LoadingState />}
         {state === 'active' && data && (
-          <ActiveState data={data} payUrl={payUrl} copied={copied} onCopy={copyAddress} />
+          <ActiveState data={data} payUrl={payUrl} copied={copied} onCopy={copyAddress} detecting={detecting} />
         )}
         {state === 'paid' && data && <PaidState data={data} />}
         {state === 'expired' && <ExpiredState />}
@@ -93,11 +122,12 @@ function LoadingState() {
   );
 }
 
-function ActiveState({ data, payUrl, copied, onCopy }: {
+function ActiveState({ data, payUrl, copied, onCopy, detecting }: {
   data: LinkData;
   payUrl: string;
   copied: boolean;
   onCopy: () => void;
+  detecting: boolean;
 }) {
   const shortAddr = `${data.recipientAddress.slice(0, 8)}...${data.recipientAddress.slice(-6)}`;
 
@@ -171,6 +201,12 @@ function ActiveState({ data, payUrl, copied, onCopy }: {
         >
           {copied ? 'Copied!' : 'Copy Address'}
         </button>
+        <div className="flex items-center justify-center gap-1.5 pt-1">
+          <span className={`w-1.5 h-1.5 rounded-full ${detecting ? 'bg-emerald-400 animate-pulse' : 'bg-border'}`} />
+          <span className="text-[10px] font-mono text-dim">
+            {detecting ? 'Checking for payment...' : 'Waiting for payment'}
+          </span>
+        </div>
       </div>
     </div>
   );

@@ -77,6 +77,43 @@ export async function POST(request: NextRequest) {
 }
 
 /**
+ * PATCH /api/internal/payment-links
+ * Cancel a payment link by slug (owner only, via internal key).
+ */
+export async function PATCH(request: NextRequest) {
+  const auth = validateInternalKey(request.headers.get('x-internal-key'));
+  if ('error' in auth) return auth.error;
+
+  const suiAddress = request.headers.get('x-sui-address');
+  if (!suiAddress || !isValidSuiAddress(suiAddress)) {
+    return NextResponse.json({ error: 'Missing or invalid x-sui-address' }, { status: 400 });
+  }
+
+  let body: { slug: string; action: 'cancel' };
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+  }
+
+  if (!body.slug || body.action !== 'cancel') {
+    return NextResponse.json({ error: 'slug and action=cancel required' }, { status: 400 });
+  }
+
+  const link = await prisma.paymentLink.findUnique({ where: { slug: body.slug } });
+  if (!link) return NextResponse.json({ error: 'Payment link not found' }, { status: 404 });
+  if (link.suiAddress !== suiAddress) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+  if (link.status !== 'active') return NextResponse.json({ error: `Cannot cancel a ${link.status} link` }, { status: 409 });
+
+  const updated = await prisma.paymentLink.update({
+    where: { slug: body.slug },
+    data: { status: 'cancelled' },
+  });
+
+  return NextResponse.json({ slug: updated.slug, status: updated.status });
+}
+
+/**
  * GET /api/internal/payment-links
  * Returns the user's payment links (most recent 20).
  */
