@@ -84,6 +84,44 @@ export async function POST(request: NextRequest) {
 }
 
 /**
+ * PATCH /api/internal/invoices
+ * Cancel an invoice by slug (owner only, via internal key).
+ */
+export async function PATCH(request: NextRequest) {
+  const auth = validateInternalKey(request.headers.get('x-internal-key'));
+  if ('error' in auth) return auth.error;
+
+  const suiAddress = request.headers.get('x-sui-address');
+  if (!suiAddress || !isValidSuiAddress(suiAddress)) {
+    return NextResponse.json({ error: 'Missing or invalid x-sui-address' }, { status: 400 });
+  }
+
+  let body: { slug: string; action: 'cancel' };
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+  }
+
+  if (!body.slug || body.action !== 'cancel') {
+    return NextResponse.json({ error: 'slug and action=cancel required' }, { status: 400 });
+  }
+
+  const invoice = await prisma.invoice.findUnique({ where: { slug: body.slug } });
+  if (!invoice) return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
+  if (invoice.suiAddress !== suiAddress) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+  if (invoice.status === 'paid') return NextResponse.json({ error: 'Cannot cancel a paid invoice' }, { status: 409 });
+  if (invoice.status === 'cancelled') return NextResponse.json({ error: 'Invoice already cancelled' }, { status: 409 });
+
+  const updated = await prisma.invoice.update({
+    where: { slug: body.slug },
+    data: { status: 'cancelled' },
+  });
+
+  return NextResponse.json({ slug: updated.slug, status: updated.status });
+}
+
+/**
  * GET /api/internal/invoices
  * Returns the user's invoices (most recent 20).
  */
