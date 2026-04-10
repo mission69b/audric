@@ -54,6 +54,7 @@ const STEP_ICONS: Record<string, string> = {
   create_invoice: '📄',
   list_invoices: '📄',
   cancel_invoice: '📄',
+  spending_analytics: '💸',
 };
 
 const STEP_LABELS: Record<string, string> = {
@@ -97,6 +98,7 @@ const STEP_LABELS: Record<string, string> = {
   create_invoice: 'CREATE INVOICE',
   list_invoices: 'LIST INVOICES',
   cancel_invoice: 'CANCEL INVOICE',
+  spending_analytics: 'SPENDING ANALYTICS',
 };
 
 export function getStepIcon(toolName: string): string {

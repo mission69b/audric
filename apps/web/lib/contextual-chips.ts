@@ -104,6 +104,30 @@ export function deriveContextualChips(
     if (suggestion) chips.push(suggestion);
   }
 
+  // --- Canvas visualizations ---
+
+  if (state.savings > 0 || state.borrows > 0) {
+    chips.push({
+      id: 'yield-chart',
+      icon: '📈',
+      label: 'Yield projector',
+      agentPrompt: 'Show me the yield projector canvas so I can simulate my savings growth.',
+      priority: 30,
+      dismissible: true,
+    });
+  }
+
+  if (state.borrows > 0 && state.healthFactor !== undefined && state.healthFactor >= 1.5) {
+    chips.push({
+      id: 'health-sim',
+      icon: '🛡',
+      label: 'Simulate health',
+      agentPrompt: 'Open the health factor simulator so I can see what happens if prices drop.',
+      priority: 27,
+      dismissible: true,
+    });
+  }
+
   // --- Discovery: AI-powered insights ---
 
   if (state.savings > 0) {
@@ -318,6 +342,8 @@ function getPostAgentSuggestion(lastAction: string): ContextualChip | null {
       return { id: 'post-translate', icon: '🌐', label: 'Translate more', agentPrompt: '', priority: 40 };
     case 'convert_currency':
       return { id: 'post-convert', icon: '💱', label: 'Convert another', agentPrompt: '', priority: 40 };
+    case 'render_canvas':
+      return { id: 'post-canvas', icon: '📊', label: 'Try another chart', agentPrompt: 'What other charts and simulators do you have?', priority: 40 };
     default:
       return null;
   }

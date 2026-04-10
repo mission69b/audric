@@ -30,6 +30,8 @@ model User {
   savingsGoalDeposits  SavingsGoalDeposit[]
   paymentLinks         PaymentLink[]
   invoices             Invoice[]
+  watchAddresses       WatchAddress[]
+  portfolioSnapshots   PortfolioSnapshot[]
 
   @@index([email])
   @@index([emailVerified, timezoneOffset])
@@ -261,4 +263,36 @@ model SavingsGoalDeposit {
 
   @@index([goalId])
   @@index([userId])
+}
+
+model WatchAddress {
+  id        String   @id @default(cuid())
+  userId    String
+  address   String
+  label     String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, address])
+  @@index([userId])
+}
+
+model PortfolioSnapshot {
+  id              String   @id @default(cuid())
+  userId          String
+  date            DateTime @db.Date
+
+  walletValueUsd  Float
+  savingsValueUsd Float
+  debtValueUsd    Float
+  netWorthUsd     Float
+  yieldEarnedUsd  Float
+  healthFactor    Float?
+  allocations     Json
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, date])
+  @@index([userId, date])
 }

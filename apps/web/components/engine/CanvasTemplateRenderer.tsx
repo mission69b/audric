@@ -7,6 +7,8 @@ import {
   ActivityHeatmapCanvas,
   PortfolioTimelineCanvas,
   SpendingBreakdownCanvas,
+  WatchAddressCanvas,
+  FullPortfolioCanvas,
 } from './cards/canvas';
 
 interface Props {
@@ -42,18 +44,35 @@ export function CanvasTemplateRenderer({ template, data, onAction }: Props) {
       return (
         <ActivityHeatmapCanvas
           data={data as Parameters<typeof ActivityHeatmapCanvas>[0]['data']}
+          onAction={onAction}
         />
       );
     case 'portfolio_timeline':
       return (
         <PortfolioTimelineCanvas
           data={data as Parameters<typeof PortfolioTimelineCanvas>[0]['data']}
+          onAction={onAction}
         />
       );
     case 'spending_breakdown':
       return (
         <SpendingBreakdownCanvas
           data={data as Parameters<typeof SpendingBreakdownCanvas>[0]['data']}
+          onAction={onAction}
+        />
+      );
+    case 'watch_address':
+      return (
+        <WatchAddressCanvas
+          data={data as Parameters<typeof WatchAddressCanvas>[0]['data']}
+          onAction={onAction}
+        />
+      );
+    case 'full_portfolio':
+      return (
+        <FullPortfolioCanvas
+          data={data as Parameters<typeof FullPortfolioCanvas>[0]['data']}
+          onAction={onAction}
         />
       );
     default:

@@ -12,6 +12,7 @@ const CHIPS = [
   { id: 'swap', label: 'Swap' },
   { id: 'borrow', label: 'Credit' },
   { id: 'receive', label: 'Receive' },
+  { id: 'charts', label: 'Charts' },
 ];
 
 export function ChipBar({ onChipClick, activeFlow, disabled }: ChipBarProps) {

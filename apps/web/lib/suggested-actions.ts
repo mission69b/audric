@@ -48,6 +48,15 @@ const STATIC_FOLLOWUPS: Record<string, SuggestedActionItem[]> = {
     { icon: '💰', label: 'CHECK BALANCE', prompt: 'What is my balance now?' },
     { icon: '⚡', label: 'USE ANOTHER API', prompt: 'What APIs can I use?' },
   ],
+  render_canvas: [
+    { icon: '📊', label: 'ACTIVITY HEATMAP', prompt: 'Show my activity heatmap' },
+    { icon: '📈', label: 'YIELD PROJECTOR', prompt: 'Show me the yield projector' },
+    { icon: '🛡️', label: 'HEALTH SIMULATOR', prompt: 'Open the health factor simulator' },
+  ],
+  spending_analytics: [
+    { icon: '📊', label: 'SPENDING BREAKDOWN', prompt: 'Show my spending breakdown as a chart' },
+    { icon: '💰', label: 'CHECK BALANCE', prompt: 'What is my balance?' },
+  ],
 };
 
 function deriveWriteToolChips(toolName: string, data: ToolResultData): SuggestedActionItem[] {

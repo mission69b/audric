@@ -649,6 +649,7 @@ function DashboardContent() {
       if (flow === 'receive') { chipFlow.reset(); executeIntent({ action: 'address' }); return; }
       if (flow === 'balance') { chipFlow.reset(); executeIntent({ action: 'balance' }); return; }
       if (flow === 'rates') { chipFlow.reset(); executeIntent({ action: 'rates' }); return; }
+      if (flow === 'charts') { chipFlow.reset(); engine.sendMessage('Show me my activity heatmap and a yield projector'); return; }
 
       if (flow === 'save-all') {
         chipFlow.startFlow('save', flowContext);
