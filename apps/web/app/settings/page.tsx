@@ -14,7 +14,7 @@ import { GoalEditor } from '@/components/settings/GoalEditor';
 import { truncateAddress } from '@/lib/format';
 import { SUI_NETWORK } from '@/lib/constants';
 
-type Section = 'account' | 'features' | 'goals' | 'safety' | 'contacts' | 'sessions';
+type Section = 'account' | 'features' | 'goals' | 'safety' | 'contacts' | 'sessions' | 'memory';
 
 const SECTIONS: { id: Section; label: string }[] = [
   { id: 'account', label: 'Account' },
@@ -23,6 +23,7 @@ const SECTIONS: { id: Section; label: string }[] = [
   { id: 'safety', label: 'Safety' },
   { id: 'contacts', label: 'Contacts' },
   { id: 'sessions', label: 'Sessions' },
+  { id: 'memory', label: 'Memory' },
 ];
 
 const NOTIFICATION_FEATURES = [
@@ -65,6 +66,11 @@ function SettingsContent() {
     return (section && SECTIONS.some((s) => s.id === section)) ? section as Section : 'account';
   });
   const [copied, setCopied] = useState(false);
+  const [financialProfile, setFinancialProfile] = useState<{
+    style: string;
+    notes: string;
+  } | null>(null);
+  const [profileLoading, setProfileLoading] = useState(false);
 
   useEffect(() => {
     const section = searchParams.get('section');
@@ -72,6 +78,19 @@ function SettingsContent() {
       setActiveSection(section as Section);
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    if (activeSection !== 'memory' || !address) return;
+    setProfileLoading(true);
+    fetch(`/api/user/preferences?address=${address}`)
+      .then((r) => r.json())
+      .then((data: { limits?: Record<string, unknown> | null }) => {
+        const fp = data.limits?.financialProfile as { style: string; notes: string } | null;
+        setFinancialProfile(fp ?? null);
+      })
+      .catch(() => {})
+      .finally(() => setProfileLoading(false));
+  }, [activeSection, address]);
 
   const handleCopy = () => {
     if (!address) return;
@@ -363,6 +382,82 @@ function SettingsContent() {
                 <p className="text-sm text-muted leading-relaxed">
                   Chat history and session management will appear here.
                 </p>
+              </section>
+            )}
+
+            {activeSection === 'memory' && (
+              <section className="space-y-6">
+                <SectionTitle>Memory</SectionTitle>
+
+                <p className="text-sm text-muted leading-relaxed">
+                  Audric builds a picture of your financial style as you chat — personalising advice,
+                  response length, and proactive suggestions over time.
+                </p>
+
+                {/* Financial profile */}
+                <div className="space-y-2">
+                  <h3 className="font-mono text-[10px] tracking-[0.12em] text-dim uppercase">
+                    Financial Profile
+                  </h3>
+                  {profileLoading ? (
+                    <p className="text-sm text-muted">Loading...</p>
+                  ) : financialProfile?.style ? (
+                    <div className="rounded-lg border border-border bg-surface p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-foreground font-medium capitalize">
+                            {financialProfile.style}
+                          </span>
+                          <span className="font-mono text-[9px] tracking-wider text-muted uppercase bg-background px-1.5 py-0.5 rounded">
+                            Self-reported
+                          </span>
+                        </div>
+                      </div>
+                      {financialProfile.notes && (
+                        <p className="text-xs text-muted leading-relaxed">{financialProfile.notes}</p>
+                      )}
+                      <p className="text-xs text-dim leading-relaxed">
+                        Set during onboarding. Agent inferences will appear below as you use Audric.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border border-border bg-surface p-4 space-y-2">
+                      <p className="text-sm text-foreground">Building profile&hellip;</p>
+                      <p className="text-xs text-muted leading-relaxed">
+                        After a few sessions you&apos;ll see inferences here — things like
+                        &ldquo;prefers brief responses&rdquo; or &ldquo;intermediate DeFi literacy.&rdquo;
+                        You can correct any that are wrong.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Episodic memories (F3 scaffold) */}
+                <div className="space-y-2">
+                  <h3 className="font-mono text-[10px] tracking-[0.12em] text-dim uppercase">
+                    Remembered Context
+                  </h3>
+                  <div className="rounded-lg border border-border bg-surface p-6 flex flex-col items-center text-center space-y-2">
+                    <span className="text-2xl">🧠</span>
+                    <p className="text-sm text-muted">No memories yet.</p>
+                    <p className="text-xs text-dim leading-relaxed max-w-xs">
+                      Audric will remember things you tell it — contacts, preferences, recurring
+                      goals — and surface them automatically across sessions.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Data controls */}
+                <div className="pt-1 space-y-2">
+                  <button
+                    disabled
+                    title="Memory clearing will be available in a future update"
+                    className="rounded-md border border-border px-4 py-2 font-mono text-[10px] tracking-[0.1em] text-dim uppercase opacity-50 cursor-not-allowed"
+                  >
+                    Clear All Memory
+                  </button>
+                  <p className="text-xs text-dim">Memory clearing coming in a future update.</p>
+                </div>
               </section>
             )}
           </div>

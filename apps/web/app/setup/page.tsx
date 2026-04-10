@@ -77,8 +77,8 @@ function extractAllowanceId(objectChanges: ObjectChange[]): string | null {
   return created?.objectId ?? null;
 }
 
-function ProgressBar({ step }: { step: number }) {
-  const progress = ((step) / 4) * 100;
+function ProgressBar({ step, totalSteps = 4 }: { step: number; totalSteps?: number }) {
+  const progress = (step / totalSteps) * 100;
   return (
     <div className="h-1 w-full bg-border rounded-full overflow-hidden">
       <div
@@ -116,6 +116,10 @@ function SetupContent() {
   const [tosAccepted, setTosAccepted] = useState(false);
   const [executing, setExecuting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [profileStyle, setProfileStyle] = useState<'conservative' | 'balanced' | 'growth' | null>(null);
+  const [profileNotes, setProfileNotes] = useState('');
+  const [savingProfile, setSavingProfile] = useState(false);
 
   const walletUsdc = balanceQuery.data?.usdc ?? 0;
   const savings = balanceQuery.data?.savings ?? 0;
@@ -260,7 +264,9 @@ function SetupContent() {
         }).catch(() => {});
       }
 
-      setStep(4);
+      // Topup goes straight to success (step 4). First-time setup shows
+      // the optional profile prompt (step 4) before success (step 5).
+      setStep(isTopUp ? 5 : 4);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Something went wrong';
       setError(msg);
@@ -273,13 +279,27 @@ function SetupContent() {
     router.replace('/new');
   }, [router]);
 
+  const handleSaveProfile = useCallback(async () => {
+    if (!address || !profileStyle) { setStep(5); return; }
+    setSavingProfile(true);
+    await fetch('/api/user/financial-profile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ address, style: profileStyle, notes: profileNotes }),
+    }).catch(() => {});
+    setSavingProfile(false);
+    setStep(5);
+  }, [address, profileStyle, profileNotes]);
+
+  const totalSteps = isTopUp ? 4 : 5;
+
   return (
     <main className="flex flex-col min-h-dvh bg-background">
       <div className="mx-auto w-full max-w-lg px-6 pt-8 pb-12 flex flex-col flex-1">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <span className="font-mono text-[10px] tracking-[0.12em] text-muted uppercase">
-            Step {step} of 4
+            Step {step} of {totalSteps}
           </span>
           {step === 1 && (
             <button
@@ -308,9 +328,17 @@ function SetupContent() {
               {isTopUp ? 'Cancel' : 'Back'}
             </button>
           )}
+          {step === 4 && !isTopUp && !savingProfile && (
+            <button
+              onClick={() => setStep(5)}
+              className="font-mono text-[10px] tracking-[0.12em] text-muted uppercase hover:text-foreground transition"
+            >
+              Skip
+            </button>
+          )}
         </div>
 
-        <ProgressBar step={step} />
+        <ProgressBar step={step} totalSteps={totalSteps} />
 
         <div className="flex-1 flex flex-col justify-center mt-8">
           {/* Step 1 — Value prop */}
@@ -555,8 +583,99 @@ function SetupContent() {
             </div>
           )}
 
-          {/* Step 4 — Success */}
-          {step === 4 && (
+          {/* Step 4 — Optional financial profile (first-time setup only) */}
+          {step === 4 && !isTopUp && (
+            <div className="space-y-8">
+              <div>
+                <h1 className="font-display text-2xl text-foreground leading-tight">
+                  How do you think about money?
+                </h1>
+                <p className="text-sm text-muted mt-2 leading-relaxed">
+                  Helps Audric tailor advice from day one. You can skip and update this later in Settings.
+                </p>
+              </div>
+
+              {/* Style picker */}
+              <div className="space-y-2">
+                {(
+                  [
+                    {
+                      value: 'conservative' as const,
+                      label: 'Conservative',
+                      description: 'Stability first — low risk, steady yield, no surprises.',
+                    },
+                    {
+                      value: 'balanced' as const,
+                      label: 'Balanced',
+                      description: 'Mix of yield optimisation and measured risk.',
+                    },
+                    {
+                      value: 'growth' as const,
+                      label: 'Growth',
+                      description: 'Maximise returns — comfortable with DeFi volatility.',
+                    },
+                  ] as const
+                ).map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setProfileStyle(opt.value)}
+                    className={`w-full rounded-lg border p-4 text-left transition ${
+                      profileStyle === opt.value
+                        ? 'border-foreground bg-surface'
+                        : 'border-border bg-surface hover:border-foreground/30'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span
+                        className={`h-3.5 w-3.5 rounded-full border-2 shrink-0 transition ${
+                          profileStyle === opt.value
+                            ? 'border-foreground bg-foreground'
+                            : 'border-muted bg-transparent'
+                        }`}
+                      />
+                      <div>
+                        <span className="text-sm font-medium text-foreground">{opt.label}</span>
+                        <p className="text-xs text-muted mt-0.5 leading-relaxed">{opt.description}</p>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              {/* Notes field */}
+              <div className="space-y-2">
+                <label className="font-mono text-[10px] tracking-[0.12em] text-muted uppercase">
+                  Anything else? <span className="text-dim normal-case tracking-normal font-sans">(optional)</span>
+                </label>
+                <textarea
+                  rows={3}
+                  placeholder="e.g. saving for a house, building a 6-month emergency fund, exploring DeFi for the first time..."
+                  value={profileNotes}
+                  onChange={(e) => setProfileNotes(e.target.value)}
+                  className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-foreground placeholder:text-dim resize-none outline-none focus:border-foreground/30 transition leading-relaxed"
+                />
+              </div>
+
+              <div className="space-y-3">
+                <button
+                  onClick={handleSaveProfile}
+                  disabled={savingProfile || !profileStyle}
+                  className="w-full rounded-lg bg-foreground py-3.5 text-sm font-medium text-background tracking-[0.05em] uppercase transition hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
+                >
+                  {savingProfile ? 'Saving...' : 'Save & Continue'}
+                </button>
+                <button
+                  onClick={() => setStep(5)}
+                  className="w-full text-center font-mono text-[10px] tracking-[0.12em] text-muted uppercase hover:text-foreground transition py-2"
+                >
+                  Skip for now
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 5 — Success (non-topup) / Step 4 — Success (topup) */}
+          {((step === 5 && !isTopUp) || (step === 4 && isTopUp)) && (
             <div className="space-y-8">
               <div>
                 <h1 className="font-display text-2xl text-foreground leading-tight">
