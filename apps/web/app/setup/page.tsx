@@ -264,9 +264,11 @@ function SetupContent() {
         }).catch(() => {});
       }
 
-      // Topup goes straight to success (step 4). First-time setup shows
-      // the optional profile prompt (step 4) before success (step 5).
-      setStep(isTopUp ? 5 : 4);
+      // Both flows land on step 4 after approve.
+      // Topup:    step 4 renders success  (condition: step === 4 && isTopUp)
+      // Setup:    step 4 renders profile  (condition: step === 4 && !isTopUp)
+      //           step 5 renders success  (condition: step === 5 && !isTopUp)
+      setStep(4);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Something went wrong';
       setError(msg);
