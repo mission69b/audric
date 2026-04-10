@@ -163,16 +163,11 @@ export default function LandingPage() {
               <Link
                 key={p.name}
                 href={p.href}
-                className={`bg-surface p-5 text-center transition hover:bg-background ${p.coming ? 'opacity-50' : ''}`}
+                className="bg-surface p-5 text-center transition hover:bg-background"
               >
                 <div className="text-[20px] mb-2">{p.icon}</div>
                 <div className="text-[13px] font-semibold text-foreground mb-1">{p.name}</div>
                 <p className="text-[13px] text-muted leading-[1.7]">{p.desc}</p>
-                {p.coming && (
-                  <span className="inline-block mt-2 font-mono text-[8px] tracking-[0.1em] uppercase text-dim border border-border rounded px-1.5 py-0.5">
-                    Coming · Phase 2
-                  </span>
-                )}
               </Link>
             ))}
           </div>
