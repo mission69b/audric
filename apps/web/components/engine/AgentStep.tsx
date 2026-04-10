@@ -43,6 +43,17 @@ const STEP_ICONS: Record<string, string> = {
   portfolio_analysis: '📊',
   protocol_deep_dive: '🛡️',
   save_contact: '📇',
+  render_canvas: '🖼️',
+  allowance_status: '⚙️',
+  toggle_allowance: '⚙️',
+  update_daily_limit: '⚙️',
+  update_permissions: '⚙️',
+  create_payment_link: '🔗',
+  list_payment_links: '🔗',
+  cancel_payment_link: '🔗',
+  create_invoice: '📄',
+  list_invoices: '📄',
+  cancel_invoice: '📄',
 };
 
 const STEP_LABELS: Record<string, string> = {
@@ -75,6 +86,17 @@ const STEP_LABELS: Record<string, string> = {
   portfolio_analysis: 'PORTFOLIO ANALYSIS',
   protocol_deep_dive: 'PROTOCOL DEEP DIVE',
   save_contact: 'SAVE CONTACT',
+  render_canvas: 'DRAW CANVAS',
+  allowance_status: 'ALLOWANCE STATUS',
+  toggle_allowance: 'TOGGLE ALLOWANCE',
+  update_daily_limit: 'UPDATE DAILY LIMIT',
+  update_permissions: 'UPDATE PERMISSIONS',
+  create_payment_link: 'CREATE PAYMENT LINK',
+  list_payment_links: 'LIST PAYMENT LINKS',
+  cancel_payment_link: 'CANCEL PAYMENT LINK',
+  create_invoice: 'CREATE INVOICE',
+  list_invoices: 'LIST INVOICES',
+  cancel_invoice: 'CANCEL INVOICE',
 };
 
 export function getStepIcon(toolName: string): string {

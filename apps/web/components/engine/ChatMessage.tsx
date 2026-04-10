@@ -5,6 +5,7 @@ import { AgentStep, getStepIcon, getStepLabel } from './AgentStep';
 import { ToolResultCard } from './ToolResultCard';
 import { ThinkingState } from './ThinkingState';
 import { PermissionCard, type DenyReason } from './PermissionCard';
+import { CanvasCard } from './CanvasCard';
 import { AgentMarkdown } from '@/components/dashboard/AgentMarkdown';
 import { AudricMark } from '@/components/ui/AudricMark';
 
@@ -13,6 +14,7 @@ interface ChatMessageProps {
   onActionResolve?: (action: PendingAction, approved: boolean, reason?: DenyReason) => void;
   autoApproveTools?: Set<string>;
   agentBudget?: number;
+  onSendMessage?: (text: string) => void;
 }
 
 function ToolSteps({ tools }: { tools: ToolExecution[] }) {
@@ -85,7 +87,7 @@ function getInputAmount(input: unknown): number {
   return Infinity;
 }
 
-export function ChatMessage({ message, onActionResolve, autoApproveTools, agentBudget = 0 }: ChatMessageProps) {
+export function ChatMessage({ message, onActionResolve, autoApproveTools, agentBudget = 0, onSendMessage }: ChatMessageProps) {
   if (message.role === 'user') {
     return (
       <div className="flex justify-end" role="log" aria-label="Your message">
@@ -97,6 +99,7 @@ export function ChatMessage({ message, onActionResolve, autoApproveTools, agentB
   }
 
   const hasTools = message.tools && message.tools.length > 0;
+  const hasCanvases = message.canvases && message.canvases.length > 0;
   const hasPendingAction = !!message.pendingAction;
   const hasContent = message.content.length > 0;
   const isOnlyStreaming = message.isStreaming && !hasContent && !hasTools;
@@ -108,6 +111,18 @@ export function ChatMessage({ message, onActionResolve, autoApproveTools, agentB
           <ToolSteps tools={message.tools!} />
           {!message.isStreaming && dedupeToolCards(message.tools!).map((tool) => (
             <ToolResultCard key={`card-${tool.toolUseId}`} tool={tool} />
+          ))}
+        </div>
+      )}
+
+      {hasCanvases && !message.isStreaming && (
+        <div className="pl-1 space-y-2">
+          {message.canvases!.map((canvas) => (
+            <CanvasCard
+              key={canvas.toolUseId}
+              canvas={canvas}
+              onSendMessage={onSendMessage}
+            />
           ))}
         </div>
       )}

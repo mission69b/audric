@@ -1530,6 +1530,7 @@ function DashboardContent() {
             onExecuteAction={handleExecuteAction}
             onValidateAction={validateAction}
             agentBudget={agentBudget}
+            onSendMessage={engine.sendMessage}
             onConfirmResolve={(approved) => {
               const resolver = confirmResolverRef.current;
               if (resolver) {

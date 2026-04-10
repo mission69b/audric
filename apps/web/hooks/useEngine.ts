@@ -8,6 +8,7 @@ import type {
   UsageData,
   EngineStatus,
   SSEEvent,
+  CanvasData,
 } from '@/lib/engine-types';
 
 let msgIdCounter = 0;
@@ -428,6 +429,23 @@ export function useEngine({ address, jwt }: UseEngineOptions) {
           ),
         );
         break;
+
+      case 'canvas': {
+        const canvas: CanvasData = {
+          template: event.template,
+          title: event.title,
+          data: event.data,
+          toolUseId: event.toolUseId,
+        };
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === msgId
+              ? { ...m, canvases: [...(m.canvases ?? []), canvas] }
+              : m,
+          ),
+        );
+        break;
+      }
     }
   }
 

@@ -42,6 +42,8 @@ interface UnifiedTimelineProps {
   onValidateAction?: (toolName: string, input: unknown) => string | null;
   /** Max USD amount to auto-approve without user confirmation (0 = always confirm). */
   agentBudget?: number;
+  /** Send a message on behalf of the user from canvas in-canvas actions. */
+  onSendMessage?: (text: string) => void;
 }
 
 function ConnectingSkeleton() {
@@ -70,6 +72,7 @@ export function UnifiedTimeline({
   onExecuteAction,
   onValidateAction,
   agentBudget = 0,
+  onSendMessage,
 }: UnifiedTimelineProps) {
   const endRef = useRef<HTMLDivElement>(null);
   const lastCount = useRef(0);
@@ -203,6 +206,7 @@ export function UnifiedTimeline({
               onActionResolve={handleActionResolve}
               autoApproveTools={AUTO_APPROVE_TOOLS}
               agentBudget={agentBudget}
+              onSendMessage={onSendMessage ?? engine.sendMessage}
             />
           );
         }
