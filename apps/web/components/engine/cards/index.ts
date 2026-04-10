@@ -12,3 +12,5 @@ export { HealthCard } from './HealthCard';
 export { TransactionHistoryCard } from './TransactionHistoryCard';
 export { SwapQuoteCard } from './SwapQuoteCard';
 export { AllowanceCard } from './AllowanceCard';
+export { PaymentLinkCard } from './PaymentLinkCard';
+export { InvoiceCard } from './InvoiceCard';

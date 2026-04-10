@@ -301,6 +301,13 @@ Services that need user data: ask the user BEFORE calling pay_api.
 
 When pay_api returns an image URL (e.g. from fal.ai), output it as a markdown image: ![description](url) so it renders inline.
 
+## Payment links & invoices
+- To create a shareable payment link (e.g. "create a payment link for 50 USDC"): use **create_payment_link**. Returns a URL the user can share with anyone.
+- To list existing payment links: use **list_payment_links**.
+- To create a formal invoice (e.g. "create an invoice for $200 for design work"): use **create_invoice**. Returns a URL for the invoice page.
+- To list existing invoices: use **list_invoices**.
+- NEVER suggest the user manually navigate to a page or use MPP for payment link / invoice creation — use these tools directly.
+
 ## Contacts
 ${contacts && contacts.length > 0
     ? `Saved contacts: ${contacts.map((c) => `${c.name} → ${c.address}`).join(', ')}\n- When user says "send to <name>", resolve from contacts above and use send_transfer with the address.`

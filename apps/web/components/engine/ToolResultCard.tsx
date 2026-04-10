@@ -13,6 +13,8 @@ import { HealthCard } from './cards/HealthCard';
 import { TransactionHistoryCard } from './cards/TransactionHistoryCard';
 import { SwapQuoteCard } from './cards/SwapQuoteCard';
 import { AllowanceCard } from './cards/AllowanceCard';
+import { PaymentLinkCard } from './cards/PaymentLinkCard';
+import { InvoiceCard } from './cards/InvoiceCard';
 
 const WRITE_TOOL_NAMES = new Set([
   'save_deposit', 'withdraw', 'send_transfer', 'swap_execute',
@@ -69,6 +71,26 @@ const CARD_RENDERERS: Record<string, (result: unknown) => React.ReactNode | null
     const data = extractData(result);
     if (!data || typeof data !== 'object') return null;
     return <AllowanceCard data={data as Parameters<typeof AllowanceCard>[0]['data']} />;
+  },
+  create_payment_link: (result) => {
+    const data = extractData(result);
+    if (!data) return null;
+    return <PaymentLinkCard data={data} />;
+  },
+  list_payment_links: (result) => {
+    const data = extractData(result);
+    if (!data) return null;
+    return <PaymentLinkCard data={data} />;
+  },
+  create_invoice: (result) => {
+    const data = extractData(result);
+    if (!data) return null;
+    return <InvoiceCard data={data} />;
+  },
+  list_invoices: (result) => {
+    const data = extractData(result);
+    if (!data) return null;
+    return <InvoiceCard data={data} />;
   },
 };
 
