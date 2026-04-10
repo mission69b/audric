@@ -24,7 +24,7 @@ const MODEL = process.env.AGENT_MODEL ?? 'claude-sonnet-4-20250514';
 const SUI_NETWORK = (process.env.NEXT_PUBLIC_SUI_NETWORK ?? 'mainnet') as 'mainnet' | 'testnet';
 const SUI_RPC_URL = `https://fullnode.${SUI_NETWORK}.sui.io:443`;
 const ALLOWANCE_API_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://audric.ai';
-const AUDRIC_INTERNAL_KEY = process.env.AUDRIC_INTERNAL_KEY ?? '';
+const AUDRIC_INTERNAL_KEY = process.env.T2000_INTERNAL_KEY ?? '';
 
 let sessionStore: SessionStore | null = null;
 let mcpManager: McpClientManager | null = null;
