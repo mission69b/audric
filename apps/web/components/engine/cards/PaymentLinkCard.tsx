@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { CardShell, MonoLabel, fmtUsd } from './primitives';
 
 interface PaymentLink {
@@ -41,12 +42,24 @@ function StatusPill({ status }: { status: string }) {
 }
 
 function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
     <button
-      onClick={() => navigator.clipboard.writeText(text)}
-      className="text-[11px] font-mono text-zinc-400 hover:text-white transition-colors border border-zinc-700 hover:border-zinc-500 rounded px-2 py-0.5"
+      onClick={handleCopy}
+      className={`text-[11px] font-mono transition-colors border rounded px-2 py-0.5 ${
+        copied
+          ? 'text-emerald-400 border-emerald-400/40'
+          : 'text-zinc-400 hover:text-white border-zinc-700 hover:border-zinc-500'
+      }`}
     >
-      Copy link
+      {copied ? 'Copied!' : 'Copy link'}
     </button>
   );
 }
