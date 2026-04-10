@@ -23,8 +23,8 @@ export function DetailRow({ label, children }: { label: string; children: React.
   );
 }
 
-export function MonoLabel({ children }: { children: React.ReactNode }) {
-  return <span className="text-[10px] font-mono uppercase tracking-widest text-dim">{children}</span>;
+export function MonoLabel({ children, className }: { children: React.ReactNode; className?: string }) {
+  return <span className={`text-[10px] font-mono uppercase tracking-widest text-dim${className ? ` ${className}` : ''}`}>{children}</span>;
 }
 
 export function TrendIndicator({ value, suffix = '%' }: { value: number; suffix?: string }) {
