@@ -34,6 +34,12 @@ const DEMOS: Record<string, DemoMessage[]> = {
     { role: 'user', text: 'Send it', delay: 3600 },
     { role: 'assistant', text: 'Done! Postcard on its way. Paid <strong>$1.05</strong> from your budget. Delivery in 3–5 days. 💌', delay: 4800 },
   ],
+  'Payment link': [
+    { role: 'user', text: 'Create a payment link for $50 USDC, label "Consulting fee"', delay: 600 },
+    { role: 'assistant', text: 'Payment link created!<br/><br/><strong>Consulting fee · $50 USDC</strong><br/><span style="font-family:monospace;font-size:11px">audric.ai/pay/xFYKBWy5</span><br/><br/>Share it anywhere — they pay USDC directly to you. I\'ll notify you the moment it\'s settled.', delay: 1800 },
+    { role: 'user', text: 'Also create an invoice for $200 due in 7 days', delay: 3400 },
+    { role: 'assistant', text: 'Invoice created for <strong>$200 USDC</strong>, due in 7 days.<br/><br/><span style="font-family:monospace;font-size:11px">audric.ai/invoice/vhLb8MHs</span><br/><br/>It\'ll show as paid the moment the transfer hits on-chain — no manual checking needed.', delay: 4800 },
+  ],
 };
 
 const CHIPS = Object.keys(DEMOS);

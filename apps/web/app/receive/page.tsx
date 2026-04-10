@@ -12,31 +12,41 @@ export default function ReceivePage() {
     <ProductPage
       badge="Receive"
       title="Accept payments anywhere."
-      subtitle="QR codes, payment links, and invoices. Let anyone send you USDC — no app required on their end."
-      stats={[]}
+      subtitle="Payment links, invoices, and QR codes. Anyone can pay you in USDC — no app, no wallet, no friction on their end."
+      stats={[
+        { label: 'Fee', value: 'Free' },
+        { label: 'Settlement', value: '<1s' },
+        { label: 'Network', value: 'Sui' },
+      ]}
       steps={[
         {
           number: '1',
-          title: 'Generate QR codes and payment links',
+          title: 'Ask Audric to create a payment link or invoice',
           description:
-            'Create a shareable link or QR code for any amount. Custom labels for invoicing.',
+            'Just say it — "Create a payment link for $50 USDC" or "Invoice $200 due in 7 days." Audric generates a shareable link instantly.',
         },
         {
           number: '2',
           title: 'Share via any messaging app',
           description:
-            'Send the link over WhatsApp, email, Telegram — wherever. No app install needed for the sender.',
+            'Send the link over WhatsApp, email, Telegram — anywhere. The sender opens it in their browser and pays with any Sui wallet. No Audric account needed on their end.',
         },
         {
           number: '3',
-          title: 'Funds arrive in your balance',
+          title: 'Auto-detected and confirmed',
           description:
-            'USDC settles instantly on Sui. You get a notification the moment it arrives.',
+            'Audric watches the chain. The moment USDC lands in your wallet, the link shows as paid — no manual checking, no webhooks to configure.',
+        },
+        {
+          number: '4',
+          title: 'Manage everything by conversation',
+          description:
+            'List, cancel, or check the status of any payment link or invoice just by asking. Audric handles the rest.',
         },
       ]}
-      cta="Get notified"
-      ctaPrompt="Tell me about receiving payments"
-      status="coming-soon"
+      cta="Create a payment link"
+      ctaPrompt="Create a payment link for 50 USDC with the label Consulting fee"
+      status="live"
     />
   );
 }
