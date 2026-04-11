@@ -71,6 +71,7 @@ export function useAllowanceStatus(address: string | null): AllowanceStatus {
         id = localStorage.getItem(lsKey(address));
       }
 
+      // Step 1: check DB
       if (!id) {
         try {
           const res = await fetch(`/api/user/preferences?address=${address}`);
@@ -78,6 +79,28 @@ export function useAllowanceStatus(address: string | null): AllowanceStatus {
           id = data.limits?.allowanceId ?? null;
           if (id && typeof window !== 'undefined') {
             localStorage.setItem(lsKey(address), id);
+          }
+        } catch {}
+      }
+
+      // Step 2: if still missing, discover from on-chain tx history
+      if (!id) {
+        try {
+          const res = await fetch(`/api/user/allowance-discovery?address=${address}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.allowanceId) {
+              id = data.allowanceId;
+              // Persist back to DB and localStorage so we don't re-discover next time
+              if (typeof window !== 'undefined') {
+                localStorage.setItem(lsKey(address), id!);
+              }
+              fetch('/api/user/preferences', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ address, limits: { allowanceId: id } }),
+              }).catch(() => {});
+            }
           }
         } catch {}
       }

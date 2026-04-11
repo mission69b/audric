@@ -41,7 +41,11 @@ export async function GET(request: NextRequest) {
  * POST /api/user/preferences
  *
  * Upserts user preferences for a Sui address.
- * Body: { address: string, contacts?: Contact[], limits?: object }
+ * Body: { address: string, contacts?: Contact[], limits?: object, dcaSchedules?: unknown }
+ *
+ * IMPORTANT: `limits` is shallow-merged with existing limits so that callers
+ * can update individual keys (e.g. `allowanceId`) without wiping others
+ * (e.g. `agent`, `financialProfile`).
  */
 export async function POST(request: NextRequest) {
   let body: { address?: string; contacts?: unknown; limits?: unknown; dcaSchedules?: unknown };
@@ -57,9 +61,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Missing or invalid address' }, { status: 400 });
   }
 
+  // Merge incoming limits with existing so callers don't accidentally wipe keys.
+  let mergedLimits: Prisma.InputJsonValue | undefined;
+  if (limits !== undefined) {
+    const existing = await prisma.userPreferences.findUnique({
+      where: { address },
+      select: { limits: true },
+    });
+    const prev = (existing?.limits && typeof existing.limits === 'object' && !Array.isArray(existing.limits))
+      ? existing.limits as Record<string, unknown>
+      : {};
+    mergedLimits = { ...prev, ...(limits as Record<string, unknown>) } as Prisma.InputJsonValue;
+  }
+
   const update: Prisma.UserPreferencesUpdateInput = {};
   if (contacts !== undefined) update.contacts = contacts as Prisma.InputJsonValue;
-  if (limits !== undefined) update.limits = limits as Prisma.InputJsonValue;
+  if (mergedLimits !== undefined) update.limits = mergedLimits;
   if (dcaSchedules !== undefined) update.dcaSchedules = dcaSchedules as Prisma.InputJsonValue;
 
   const prefs = await prisma.userPreferences.upsert({
@@ -67,7 +84,7 @@ export async function POST(request: NextRequest) {
     create: {
       address,
       contacts: (contacts ?? []) as Prisma.InputJsonValue,
-      limits: limits as Prisma.InputJsonValue | undefined,
+      limits: (mergedLimits ?? limits) as Prisma.InputJsonValue | undefined,
       dcaSchedules: (dcaSchedules ?? []) as Prisma.InputJsonValue,
     },
     update,
