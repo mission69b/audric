@@ -26,6 +26,7 @@ export type AggregateUserPreferences = {
 
 export type UserPreferencesMinAggregateOutputType = {
   address: string | null
+  allowanceId: string | null
   createdAt: Date | null
   updatedAt: Date | null
   userId: string | null
@@ -33,6 +34,7 @@ export type UserPreferencesMinAggregateOutputType = {
 
 export type UserPreferencesMaxAggregateOutputType = {
   address: string | null
+  allowanceId: string | null
   createdAt: Date | null
   updatedAt: Date | null
   userId: string | null
@@ -40,6 +42,7 @@ export type UserPreferencesMaxAggregateOutputType = {
 
 export type UserPreferencesCountAggregateOutputType = {
   address: number
+  allowanceId: number
   contacts: number
   limits: number
   dcaSchedules: number
@@ -52,6 +55,7 @@ export type UserPreferencesCountAggregateOutputType = {
 
 export type UserPreferencesMinAggregateInputType = {
   address?: true
+  allowanceId?: true
   createdAt?: true
   updatedAt?: true
   userId?: true
@@ -59,6 +63,7 @@ export type UserPreferencesMinAggregateInputType = {
 
 export type UserPreferencesMaxAggregateInputType = {
   address?: true
+  allowanceId?: true
   createdAt?: true
   updatedAt?: true
   userId?: true
@@ -66,6 +71,7 @@ export type UserPreferencesMaxAggregateInputType = {
 
 export type UserPreferencesCountAggregateInputType = {
   address?: true
+  allowanceId?: true
   contacts?: true
   limits?: true
   dcaSchedules?: true
@@ -149,6 +155,7 @@ export type UserPreferencesGroupByArgs<ExtArgs extends runtime.Types.Extensions.
 
 export type UserPreferencesGroupByOutputType = {
   address: string
+  allowanceId: string | null
   contacts: runtime.JsonValue
   limits: runtime.JsonValue | null
   dcaSchedules: runtime.JsonValue
@@ -180,6 +187,7 @@ export type UserPreferencesWhereInput = {
   OR?: Prisma.UserPreferencesWhereInput[]
   NOT?: Prisma.UserPreferencesWhereInput | Prisma.UserPreferencesWhereInput[]
   address?: Prisma.StringFilter<"UserPreferences"> | string
+  allowanceId?: Prisma.StringNullableFilter<"UserPreferences"> | string | null
   contacts?: Prisma.JsonFilter<"UserPreferences">
   limits?: Prisma.JsonNullableFilter<"UserPreferences">
   dcaSchedules?: Prisma.JsonFilter<"UserPreferences">
@@ -191,6 +199,7 @@ export type UserPreferencesWhereInput = {
 
 export type UserPreferencesOrderByWithRelationInput = {
   address?: Prisma.SortOrder
+  allowanceId?: Prisma.SortOrderInput | Prisma.SortOrder
   contacts?: Prisma.SortOrder
   limits?: Prisma.SortOrderInput | Prisma.SortOrder
   dcaSchedules?: Prisma.SortOrder
@@ -206,6 +215,7 @@ export type UserPreferencesWhereUniqueInput = Prisma.AtLeast<{
   AND?: Prisma.UserPreferencesWhereInput | Prisma.UserPreferencesWhereInput[]
   OR?: Prisma.UserPreferencesWhereInput[]
   NOT?: Prisma.UserPreferencesWhereInput | Prisma.UserPreferencesWhereInput[]
+  allowanceId?: Prisma.StringNullableFilter<"UserPreferences"> | string | null
   contacts?: Prisma.JsonFilter<"UserPreferences">
   limits?: Prisma.JsonNullableFilter<"UserPreferences">
   dcaSchedules?: Prisma.JsonFilter<"UserPreferences">
@@ -216,6 +226,7 @@ export type UserPreferencesWhereUniqueInput = Prisma.AtLeast<{
 
 export type UserPreferencesOrderByWithAggregationInput = {
   address?: Prisma.SortOrder
+  allowanceId?: Prisma.SortOrderInput | Prisma.SortOrder
   contacts?: Prisma.SortOrder
   limits?: Prisma.SortOrderInput | Prisma.SortOrder
   dcaSchedules?: Prisma.SortOrder
@@ -232,6 +243,7 @@ export type UserPreferencesScalarWhereWithAggregatesInput = {
   OR?: Prisma.UserPreferencesScalarWhereWithAggregatesInput[]
   NOT?: Prisma.UserPreferencesScalarWhereWithAggregatesInput | Prisma.UserPreferencesScalarWhereWithAggregatesInput[]
   address?: Prisma.StringWithAggregatesFilter<"UserPreferences"> | string
+  allowanceId?: Prisma.StringNullableWithAggregatesFilter<"UserPreferences"> | string | null
   contacts?: Prisma.JsonWithAggregatesFilter<"UserPreferences">
   limits?: Prisma.JsonNullableWithAggregatesFilter<"UserPreferences">
   dcaSchedules?: Prisma.JsonWithAggregatesFilter<"UserPreferences">
@@ -242,6 +254,7 @@ export type UserPreferencesScalarWhereWithAggregatesInput = {
 
 export type UserPreferencesCreateInput = {
   address: string
+  allowanceId?: string | null
   contacts?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   limits?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   dcaSchedules?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -252,6 +265,7 @@ export type UserPreferencesCreateInput = {
 
 export type UserPreferencesUncheckedCreateInput = {
   address: string
+  allowanceId?: string | null
   contacts?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   limits?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   dcaSchedules?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -262,6 +276,7 @@ export type UserPreferencesUncheckedCreateInput = {
 
 export type UserPreferencesUpdateInput = {
   address?: Prisma.StringFieldUpdateOperationsInput | string
+  allowanceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contacts?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   limits?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   dcaSchedules?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -272,6 +287,7 @@ export type UserPreferencesUpdateInput = {
 
 export type UserPreferencesUncheckedUpdateInput = {
   address?: Prisma.StringFieldUpdateOperationsInput | string
+  allowanceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contacts?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   limits?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   dcaSchedules?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -282,6 +298,7 @@ export type UserPreferencesUncheckedUpdateInput = {
 
 export type UserPreferencesCreateManyInput = {
   address: string
+  allowanceId?: string | null
   contacts?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   limits?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   dcaSchedules?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -292,6 +309,7 @@ export type UserPreferencesCreateManyInput = {
 
 export type UserPreferencesUpdateManyMutationInput = {
   address?: Prisma.StringFieldUpdateOperationsInput | string
+  allowanceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contacts?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   limits?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   dcaSchedules?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -301,6 +319,7 @@ export type UserPreferencesUpdateManyMutationInput = {
 
 export type UserPreferencesUncheckedUpdateManyInput = {
   address?: Prisma.StringFieldUpdateOperationsInput | string
+  allowanceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contacts?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   limits?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   dcaSchedules?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -316,6 +335,7 @@ export type UserPreferencesNullableScalarRelationFilter = {
 
 export type UserPreferencesCountOrderByAggregateInput = {
   address?: Prisma.SortOrder
+  allowanceId?: Prisma.SortOrder
   contacts?: Prisma.SortOrder
   limits?: Prisma.SortOrder
   dcaSchedules?: Prisma.SortOrder
@@ -326,6 +346,7 @@ export type UserPreferencesCountOrderByAggregateInput = {
 
 export type UserPreferencesMaxOrderByAggregateInput = {
   address?: Prisma.SortOrder
+  allowanceId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   userId?: Prisma.SortOrder
@@ -333,6 +354,7 @@ export type UserPreferencesMaxOrderByAggregateInput = {
 
 export type UserPreferencesMinOrderByAggregateInput = {
   address?: Prisma.SortOrder
+  allowanceId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   userId?: Prisma.SortOrder
@@ -372,6 +394,7 @@ export type UserPreferencesUncheckedUpdateOneWithoutUserNestedInput = {
 
 export type UserPreferencesCreateWithoutUserInput = {
   address: string
+  allowanceId?: string | null
   contacts?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   limits?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   dcaSchedules?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -381,6 +404,7 @@ export type UserPreferencesCreateWithoutUserInput = {
 
 export type UserPreferencesUncheckedCreateWithoutUserInput = {
   address: string
+  allowanceId?: string | null
   contacts?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   limits?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   dcaSchedules?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -406,6 +430,7 @@ export type UserPreferencesUpdateToOneWithWhereWithoutUserInput = {
 
 export type UserPreferencesUpdateWithoutUserInput = {
   address?: Prisma.StringFieldUpdateOperationsInput | string
+  allowanceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contacts?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   limits?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   dcaSchedules?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -415,6 +440,7 @@ export type UserPreferencesUpdateWithoutUserInput = {
 
 export type UserPreferencesUncheckedUpdateWithoutUserInput = {
   address?: Prisma.StringFieldUpdateOperationsInput | string
+  allowanceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contacts?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   limits?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   dcaSchedules?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -426,6 +452,7 @@ export type UserPreferencesUncheckedUpdateWithoutUserInput = {
 
 export type UserPreferencesSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   address?: boolean
+  allowanceId?: boolean
   contacts?: boolean
   limits?: boolean
   dcaSchedules?: boolean
@@ -437,6 +464,7 @@ export type UserPreferencesSelect<ExtArgs extends runtime.Types.Extensions.Inter
 
 export type UserPreferencesSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   address?: boolean
+  allowanceId?: boolean
   contacts?: boolean
   limits?: boolean
   dcaSchedules?: boolean
@@ -448,6 +476,7 @@ export type UserPreferencesSelectCreateManyAndReturn<ExtArgs extends runtime.Typ
 
 export type UserPreferencesSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   address?: boolean
+  allowanceId?: boolean
   contacts?: boolean
   limits?: boolean
   dcaSchedules?: boolean
@@ -459,6 +488,7 @@ export type UserPreferencesSelectUpdateManyAndReturn<ExtArgs extends runtime.Typ
 
 export type UserPreferencesSelectScalar = {
   address?: boolean
+  allowanceId?: boolean
   contacts?: boolean
   limits?: boolean
   dcaSchedules?: boolean
@@ -467,7 +497,7 @@ export type UserPreferencesSelectScalar = {
   userId?: boolean
 }
 
-export type UserPreferencesOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"address" | "contacts" | "limits" | "dcaSchedules" | "createdAt" | "updatedAt" | "userId", ExtArgs["result"]["userPreferences"]>
+export type UserPreferencesOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"address" | "allowanceId" | "contacts" | "limits" | "dcaSchedules" | "createdAt" | "updatedAt" | "userId", ExtArgs["result"]["userPreferences"]>
 export type UserPreferencesInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.UserPreferences$userArgs<ExtArgs>
 }
@@ -485,6 +515,7 @@ export type $UserPreferencesPayload<ExtArgs extends runtime.Types.Extensions.Int
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     address: string
+    allowanceId: string | null
     contacts: runtime.JsonValue
     limits: runtime.JsonValue | null
     dcaSchedules: runtime.JsonValue
@@ -916,6 +947,7 @@ export interface Prisma__UserPreferencesClient<T, Null = never, ExtArgs extends 
  */
 export interface UserPreferencesFieldRefs {
   readonly address: Prisma.FieldRef<"UserPreferences", 'String'>
+  readonly allowanceId: Prisma.FieldRef<"UserPreferences", 'String'>
   readonly contacts: Prisma.FieldRef<"UserPreferences", 'Json'>
   readonly limits: Prisma.FieldRef<"UserPreferences", 'Json'>
   readonly dcaSchedules: Prisma.FieldRef<"UserPreferences", 'Json'>

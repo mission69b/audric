@@ -39,6 +39,7 @@ model User {
 
 model UserPreferences {
   address      String   @id
+  allowanceId  String?
   contacts     Json     @default("[]")
   limits       Json?
   dcaSchedules Json     @default("[]")

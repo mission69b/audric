@@ -27,10 +27,11 @@ export async function GET(request: NextRequest) {
   });
 
   if (!prefs) {
-    return NextResponse.json({ contacts: [], limits: null, dcaSchedules: [] });
+    return NextResponse.json({ allowanceId: null, contacts: [], limits: null, dcaSchedules: [] });
   }
 
   return NextResponse.json({
+    allowanceId: prefs.allowanceId,
     contacts: prefs.contacts,
     limits: prefs.limits,
     dcaSchedules: prefs.dcaSchedules,
@@ -48,14 +49,20 @@ export async function GET(request: NextRequest) {
  * (e.g. `agent`, `financialProfile`).
  */
 export async function POST(request: NextRequest) {
-  let body: { address?: string; contacts?: unknown; limits?: unknown; dcaSchedules?: unknown };
+  let body: {
+    address?: string;
+    allowanceId?: string;
+    contacts?: unknown;
+    limits?: unknown;
+    dcaSchedules?: unknown;
+  };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const { address, contacts, limits, dcaSchedules } = body;
+  const { address, allowanceId, contacts, limits, dcaSchedules } = body;
 
   if (!address || typeof address !== 'string' || !address.startsWith('0x')) {
     return NextResponse.json({ error: 'Missing or invalid address' }, { status: 400 });
@@ -75,6 +82,7 @@ export async function POST(request: NextRequest) {
   }
 
   const update: Prisma.UserPreferencesUpdateInput = {};
+  if (allowanceId !== undefined) update.allowanceId = allowanceId;
   if (contacts !== undefined) update.contacts = contacts as Prisma.InputJsonValue;
   if (mergedLimits !== undefined) update.limits = mergedLimits;
   if (dcaSchedules !== undefined) update.dcaSchedules = dcaSchedules as Prisma.InputJsonValue;
@@ -83,6 +91,7 @@ export async function POST(request: NextRequest) {
     where: { address },
     create: {
       address,
+      allowanceId: allowanceId ?? undefined,
       contacts: (contacts ?? []) as Prisma.InputJsonValue,
       limits: (mergedLimits ?? limits) as Prisma.InputJsonValue | undefined,
       dcaSchedules: (dcaSchedules ?? []) as Prisma.InputJsonValue,
@@ -91,6 +100,7 @@ export async function POST(request: NextRequest) {
   });
 
   return NextResponse.json({
+    allowanceId: prefs.allowanceId,
     contacts: prefs.contacts,
     limits: prefs.limits,
     dcaSchedules: prefs.dcaSchedules,

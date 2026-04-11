@@ -300,11 +300,10 @@ async function chargeSession(address: string): Promise<string | null> {
   try {
     const prefs = await prisma.userPreferences.findUnique({
       where: { address },
-      select: { limits: true },
+      select: { allowanceId: true },
     });
 
-    const limits = prefs?.limits as Record<string, unknown> | null;
-    const allowanceId = (limits?.allowanceId as string) ?? null;
+    const allowanceId = prefs?.allowanceId ?? null;
     if (!allowanceId) return null;
 
     const res = await fetch(`${SERVER_URL}/api/internal/charge`, {

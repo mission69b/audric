@@ -1662,6 +1662,7 @@ export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof User
 
 export const UserPreferencesScalarFieldEnum = {
   address: 'address',
+  allowanceId: 'allowanceId',
   contacts: 'contacts',
   limits: 'limits',
   dcaSchedules: 'dcaSchedules',

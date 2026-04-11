@@ -106,7 +106,15 @@ function SetupContent() {
       setFlowType('topup');
       setStep(3);
     } else {
-      setFlowType('setup');
+      // Try on-chain discovery before showing "setup" flow — recovers lost DB references
+      allowanceStatus.discover().then((found) => {
+        if (found) {
+          setFlowType('topup');
+          setStep(3);
+        } else {
+          setFlowType('setup');
+        }
+      });
     }
   }, [allowanceStatus.loading, allowanceStatus.allowanceId, flowType]);
 
@@ -241,14 +249,15 @@ function SetupContent() {
         throw new Error((err as Record<string, string>).error ?? 'Deposit failed');
       }
 
-      // Save allowance ID to preferences
+      // Save allowance ID to dedicated column + budget in limits
       allowanceStatus.setAllowanceId(targetAllowanceId);
       await fetch('/api/user/preferences', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           address,
-          limits: { allowanceId: targetAllowanceId, agentBudget: budget },
+          allowanceId: targetAllowanceId,
+          limits: { agentBudget: budget },
         }),
       }).catch(() => {});
 

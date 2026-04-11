@@ -140,10 +140,20 @@ export async function PATCH(
     return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
   }
 
+  // Merge agent config into existing limits (don't wipe other keys)
+  const existingRow = await prisma.userPreferences.findUnique({
+    where: { address },
+    select: { limits: true },
+  });
+  const prevLimits = (existingRow?.limits && typeof existingRow.limits === 'object' && !Array.isArray(existingRow.limits))
+    ? existingRow.limits as Record<string, unknown>
+    : {};
+  const mergedLimits = { ...prevLimits, agent: patch };
+
   await prisma.userPreferences.upsert({
     where: { address },
-    update: { limits: { agent: patch } },
-    create: { address, limits: { agent: patch } },
+    update: { limits: mergedLimits },
+    create: { address, limits: mergedLimits },
   });
 
   return NextResponse.json(await buildAllowanceResponse(address));

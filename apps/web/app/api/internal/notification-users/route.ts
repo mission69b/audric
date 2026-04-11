@@ -40,12 +40,11 @@ export async function GET(request: NextRequest) {
 
   const filtered = users;
 
-  // Look up preferences by address (not via relation, since userId may be null)
   const addresses = filtered.map((u) => u.suiAddress);
   const prefsRows = addresses.length > 0
     ? await prisma.userPreferences.findMany({
         where: { address: { in: addresses } },
-        select: { address: true, limits: true },
+        select: { address: true, allowanceId: true },
       })
     : [];
   const prefsByAddress = new Map(prefsRows.map((p) => [p.address, p]));
@@ -56,15 +55,11 @@ export async function GET(request: NextRequest) {
         prefs[p.feature] = p.enabled;
       }
 
-      const userPrefs = prefsByAddress.get(u.suiAddress);
-      const limits = userPrefs?.limits as Record<string, unknown> | null;
-      const allowanceId = (limits?.allowanceId as string) ?? null;
-
       return {
         userId: u.id,
         email: u.email!,
         walletAddress: u.suiAddress,
-        allowanceId,
+        allowanceId: prefsByAddress.get(u.suiAddress)?.allowanceId ?? null,
         timezoneOffset: u.timezoneOffset,
         prefs,
       };

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
 import { isValidSuiAddress } from '@mysten/sui/utils';
+import { prisma } from '@/lib/prisma';
 
 export const runtime = 'nodejs';
 
@@ -68,6 +69,13 @@ export async function GET(request: NextRequest) {
 
         const rawBalance = fields.balance;
         const balance = typeof rawBalance === 'string' ? Number(BigInt(rawBalance)) / 1e6 : 0;
+
+        // Auto-persist to dedicated column so future lookups are instant
+        await prisma.userPreferences.upsert({
+          where: { address },
+          update: { allowanceId: id },
+          create: { address, allowanceId: id },
+        }).catch(() => {});
 
         return NextResponse.json({ allowanceId: id, balance });
       } catch {
