@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { validateInternalKey } from '@/lib/internal-auth';
 import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
 
 export const runtime = 'nodejs';
-
-const INTERNAL_KEY = process.env.AUDRIC_INTERNAL_KEY ?? '';
 const SUI_NETWORK = (process.env.NEXT_PUBLIC_SUI_NETWORK ?? 'mainnet') as 'mainnet' | 'testnet';
 const suiClient = new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl(SUI_NETWORK), network: SUI_NETWORK });
 
@@ -20,9 +19,8 @@ const SELF_URL = process.env.VERCEL_URL
  * Headers: x-internal-key
  */
 export async function POST(request: NextRequest) {
-  if (request.headers.get('x-internal-key') !== INTERNAL_KEY || !INTERNAL_KEY) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const auth = validateInternalKey(request.headers.get('x-internal-key'));
+  if ('error' in auth) return auth.error;
 
   const today = new Date();
   today.setUTCHours(0, 0, 0, 0);
@@ -119,7 +117,7 @@ async function fetchPositions(address: string): Promise<{
 }> {
   try {
     const res = await fetch(`${SELF_URL}/api/positions?address=${address}`, {
-      headers: { 'x-internal-key': INTERNAL_KEY },
+      headers: { 'x-internal-key': process.env.T2000_INTERNAL_KEY ?? '' },
     });
 
     if (!res.ok) return { savings: 0, borrows: 0, healthFactor: null };

@@ -1,15 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type { Prisma } from '@/lib/generated/prisma/client';
 import { prisma } from '@/lib/prisma';
+import { validateInternalKey } from '@/lib/internal-auth';
 
 export const runtime = 'nodejs';
-
-const INTERNAL_KEY = process.env.AUDRIC_INTERNAL_KEY ?? '';
-
-function verifyInternal(request: NextRequest): boolean {
-  const key = request.headers.get('x-internal-key');
-  return !!key && key === INTERNAL_KEY;
-}
 
 /**
  * GET /api/internal/rate-alert-state?address=0x...
@@ -18,9 +12,8 @@ function verifyInternal(request: NextRequest): boolean {
  * Uses NotificationPrefs with feature='rate_alert'.
  */
 export async function GET(request: NextRequest) {
-  if (!verifyInternal(request)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const auth = validateInternalKey(request.headers.get('x-internal-key'));
+  if ('error' in auth) return auth.error;
 
   const address = request.nextUrl.searchParams.get('address');
   if (!address) {
@@ -70,9 +63,8 @@ export async function GET(request: NextRequest) {
  * Updates the last notified rate for a user.
  */
 export async function POST(request: NextRequest) {
-  if (!verifyInternal(request)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const auth = validateInternalKey(request.headers.get('x-internal-key'));
+  if ('error' in auth) return auth.error;
 
   try {
     const body = (await request.json()) as { address: string; lastNotifiedRate: number };
