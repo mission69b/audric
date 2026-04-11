@@ -121,17 +121,31 @@ function periodToDate(period: string): Date {
 }
 
 function extractServiceName(serviceId: string): string {
+  if (serviceId.startsWith('http')) {
+    try {
+      const url = new URL(serviceId);
+      const pathSegments = url.pathname.split('/').filter(Boolean);
+      return pathSegments[0] || url.hostname;
+    } catch {
+      return serviceId;
+    }
+  }
   const parts = serviceId.split('/');
   return parts[0] || serviceId;
 }
 
 function categorizeService(serviceId: string): string {
-  const id = serviceId.toLowerCase();
-  if (id.includes('fal') || id.includes('flux') || id.includes('image') || id.includes('runway')) return 'AI Images';
-  if (id.includes('eleven') || id.includes('suno') || id.includes('audio') || id.includes('music')) return 'Audio';
+  let id = serviceId.toLowerCase();
+  if (id.startsWith('http')) {
+    try { id = new URL(id).pathname.toLowerCase(); } catch { /* use raw */ }
+  }
+  if (id.includes('fal') || id.includes('flux') || id.includes('image') || id.includes('runway') || id.includes('stability')) return 'AI Images';
+  if (id.includes('eleven') || id.includes('suno') || id.includes('audio') || id.includes('music') || id.includes('tts')) return 'Audio';
   if (id.includes('lob') || id.includes('postcard') || id.includes('letter')) return 'Mail';
-  if (id.includes('brave') || id.includes('search') || id.includes('firecrawl')) return 'Search';
+  if (id.includes('brave') || id.includes('search') || id.includes('firecrawl') || id.includes('serp')) return 'Search';
   if (id.includes('weather') || id.includes('openweather')) return 'Utilities';
   if (id.includes('heygen') || id.includes('video')) return 'Video';
+  if (id.includes('openai') || id.includes('anthropic') || id.includes('gemini') || id.includes('groq') || id.includes('deepseek') || id.includes('mistral')) return 'AI Chat';
+  if (id.includes('deepl') || id.includes('translate')) return 'Translation';
   return 'Other';
 }

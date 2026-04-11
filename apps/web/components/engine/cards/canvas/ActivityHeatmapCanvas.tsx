@@ -112,14 +112,14 @@ export function ActivityHeatmapCanvas({ data, onAction }: Props) {
   }, [response]);
 
   const handleCellClick = useCallback(
-    (date: string) => {
+    (date: string, count: number) => {
       if (!date || !onAction) return;
       const formatted = new Date(date + 'T00:00:00').toLocaleDateString('en-US', {
         month: 'long',
         day: 'numeric',
         year: 'numeric',
       });
-      onAction(`Show me what happened on ${formatted}`);
+      onAction(`Pull my recent transaction history — I had ${count} transaction${count !== 1 ? 's' : ''} around ${formatted}`);
     },
     [onAction],
   );
@@ -209,7 +209,7 @@ export function ActivityHeatmapCanvas({ data, onAction }: Props) {
                       setHoveredCell({ date: cell.date, count: cell.count, x: rect.left, y: rect.top });
                     }}
                     onMouseLeave={() => setHoveredCell(null)}
-                    onClick={() => cell.date && handleCellClick(cell.date)}
+                    onClick={() => cell.date && handleCellClick(cell.date, cell.count)}
                   />
                 ))}
               </div>
