@@ -8,8 +8,19 @@ interface TxRecord {
   amount?: number;
   asset?: string;
   recipient?: string;
-  timestamp: string;
+  timestamp: string | number;
   gasCost?: number;
+}
+
+function toDate(ts: string | number): Date {
+  if (typeof ts === 'number') return new Date(ts);
+  const n = Number(ts);
+  if (!isNaN(n) && n > 1e12) return new Date(n);
+  return new Date(ts);
+}
+
+function toIso(ts: string | number): string {
+  return toDate(ts).toISOString();
 }
 
 interface HistoryData {
@@ -54,8 +65,9 @@ function groupByDate(txs: TxRecord[]): Map<string, TxRecord[]> {
   const yesterday = new Date(now.getTime() - 86_400_000).toDateString();
 
   for (const tx of txs) {
-    const d = new Date(tx.timestamp).toDateString();
-    const label = d === today ? 'Today' : d === yesterday ? 'Yesterday' : new Date(tx.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const date = toDate(tx.timestamp);
+    const d = date.toDateString();
+    const label = d === today ? 'Today' : d === yesterday ? 'Yesterday' : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     if (!groups.has(label)) groups.set(label, []);
     groups.get(label)!.push(tx);
   }
@@ -95,7 +107,7 @@ export function TransactionHistoryCard({ data }: { data: HistoryData }) {
                           {outflow ? '−' : '+'}{fmtAmt(tx.amount)} {tx.asset ?? 'USDC'}
                         </span>
                       )}
-                      <span className="text-dim text-[9px]">{fmtRelativeTime(tx.timestamp)}</span>
+                      <span className="text-dim text-[9px]">{fmtRelativeTime(toIso(tx.timestamp))}</span>
                       <a
                         href={`${SUISCAN_TX_URL}/${tx.digest}`}
                         target="_blank"
