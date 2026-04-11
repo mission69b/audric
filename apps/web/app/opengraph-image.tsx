@@ -15,7 +15,7 @@ const DIAMOND: [number, number][] = [
 
 export default async function Image() {
   const instrumentSerif = await fetch(
-    new URL('https://fonts.gstatic.com/s/instrumentserif/v4/jizBRFtNs2ka5fCjOQ3.woff2')
+    new URL('https://fonts.gstatic.com/s/instrumentserif/v5/jizBRFtNs2ka5fXjeivQ4LroWlx-6zUTjg.woff2')
   ).then((res) => res.arrayBuffer()).catch(() => null);
 
   const cellSize = 32;
