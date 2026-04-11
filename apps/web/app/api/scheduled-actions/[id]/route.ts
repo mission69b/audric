@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateJwt, isValidSuiAddress } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { parseExpression } from 'cron-parser';
+import { CronExpressionParser } from 'cron-parser';
 
 export const runtime = 'nodejs';
 
@@ -83,7 +83,7 @@ export async function PATCH(
     update.lastExecutedAt = new Date();
 
     try {
-      const interval = parseExpression(existing.cronExpr, { utc: true });
+      const interval = CronExpressionParser.parse(existing.cronExpr, { utc: true });
       update.nextRunAt = interval.next().toDate();
     } catch { /* keep existing */ }
   }
@@ -92,7 +92,7 @@ export async function PATCH(
   if (body.action === 'skip') {
     update.lastSkippedAt = new Date();
     try {
-      const interval = parseExpression(existing.cronExpr, { utc: true });
+      const interval = CronExpressionParser.parse(existing.cronExpr, { utc: true });
       update.nextRunAt = interval.next().toDate();
     } catch { /* keep existing */ }
   }

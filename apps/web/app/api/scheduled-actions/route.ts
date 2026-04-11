@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateJwt, isValidSuiAddress } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { parseExpression } from 'cron-parser';
+import { CronExpressionParser } from 'cron-parser';
 
 export const runtime = 'nodejs';
 
@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
 
   let nextRunAt: Date;
   try {
-    const interval = parseExpression(cronExpr, { utc: true });
+    const interval = CronExpressionParser.parse(cronExpr, { utc: true });
     nextRunAt = interval.next().toDate();
   } catch {
     return NextResponse.json({ error: 'Invalid cron expression' }, { status: 400 });
