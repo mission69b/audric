@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
 
   let nextRunAt: Date;
   try {
-    const interval = CronExpressionParser.parse(cronExpr, { utc: true });
+    const interval = CronExpressionParser.parse(cronExpr, { tz: 'UTC' });
     nextRunAt = interval.next().toDate();
   } catch {
     return NextResponse.json({ error: 'Invalid cron expression' }, { status: 400 });

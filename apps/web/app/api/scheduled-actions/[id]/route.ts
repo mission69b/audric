@@ -83,7 +83,7 @@ export async function PATCH(
     update.lastExecutedAt = new Date();
 
     try {
-      const interval = CronExpressionParser.parse(existing.cronExpr, { utc: true });
+      const interval = CronExpressionParser.parse(existing.cronExpr, { tz: 'UTC' });
       update.nextRunAt = interval.next().toDate();
     } catch { /* keep existing */ }
   }
@@ -92,7 +92,7 @@ export async function PATCH(
   if (body.action === 'skip') {
     update.lastSkippedAt = new Date();
     try {
-      const interval = CronExpressionParser.parse(existing.cronExpr, { utc: true });
+      const interval = CronExpressionParser.parse(existing.cronExpr, { tz: 'UTC' });
       update.nextRunAt = interval.next().toDate();
     } catch { /* keep existing */ }
   }
