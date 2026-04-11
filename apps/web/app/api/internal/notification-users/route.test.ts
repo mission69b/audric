@@ -73,6 +73,7 @@ describe('GET /api/internal/notification-users', () => {
       hf_alert: true,
       briefing: false,
       rate_alert: true,
+      auto_compound: true,
     });
   });
 
