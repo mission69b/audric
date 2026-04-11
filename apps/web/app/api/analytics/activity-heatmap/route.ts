@@ -76,38 +76,52 @@ async function fetchAppEventBuckets(address: string, since: Date): Promise<Map<s
 
 async function fetchChainBuckets(address: string, days: number): Promise<Map<string, DayBucket>> {
   const map = new Map<string, DayBucket>();
+  const since = new Date();
+  since.setDate(since.getDate() - days);
+  const sinceMs = since.getTime();
+  const seen = new Set<string>();
+  const MAX_PAGES = 10;
+  const PAGE_SIZE = 50;
+
+  async function paginateQuery(filter: Record<string, string>) {
+    let cursor: string | undefined;
+    for (let page = 0; page < MAX_PAGES; page++) {
+      try {
+        const res = await suiClient.queryTransactionBlocks({
+          filter,
+          options: { showInput: true, showEffects: false },
+          limit: PAGE_SIZE,
+          order: 'descending',
+          cursor,
+        });
+
+        let reachedOldTxns = false;
+        for (const tx of res.data ?? []) {
+          if (seen.has(tx.digest)) continue;
+          seen.add(tx.digest);
+          const ts = Number(tx.timestampMs ?? 0);
+          if (ts === 0) continue;
+          if (ts < sinceMs) { reachedOldTxns = true; break; }
+          const date = new Date(ts).toISOString().slice(0, 10);
+          const bucket = map.get(date) ?? { date, count: 0, types: {} };
+          bucket.count++;
+          bucket.types['chain'] = (bucket.types['chain'] ?? 0) + 1;
+          map.set(date, bucket);
+        }
+
+        if (reachedOldTxns || !res.hasNextPage || !res.nextCursor) break;
+        cursor = res.nextCursor;
+      } catch {
+        break;
+      }
+    }
+  }
 
   try {
-    const limit = Math.min(days * 3, 50);
-    const [outgoing, incoming] = await Promise.all([
-      suiClient.queryTransactionBlocks({
-        filter: { FromAddress: address },
-        options: { showEffects: false, showInput: false },
-        limit,
-        order: 'descending',
-      }).catch(() => ({ data: [] })),
-      suiClient.queryTransactionBlocks({
-        filter: { ToAddress: address },
-        options: { showEffects: false, showInput: false },
-        limit: Math.min(limit, 30),
-        order: 'descending',
-      }).catch(() => ({ data: [] })),
+    await Promise.all([
+      paginateQuery({ FromAddress: address }),
+      paginateQuery({ ToAddress: address }),
     ]);
-
-    const seen = new Set<string>();
-    const allTxns = [...(outgoing.data ?? []), ...(incoming.data ?? [])];
-
-    for (const tx of allTxns) {
-      if (seen.has(tx.digest)) continue;
-      seen.add(tx.digest);
-      const ts = Number(tx.timestampMs ?? 0);
-      if (ts === 0) continue;
-      const date = new Date(ts).toISOString().slice(0, 10);
-      const bucket = map.get(date) ?? { date, count: 0, types: {} };
-      bucket.count++;
-      bucket.types['chain'] = (bucket.types['chain'] ?? 0) + 1;
-      map.set(date, bucket);
-    }
   } catch {
     // chain data is best-effort
   }
