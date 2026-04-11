@@ -42,10 +42,19 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  const todayUtc = new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  const todayUtc = now.toISOString().slice(0, 10);
+  const yesterday = new Date(now.getTime() - 86_400_000).toISOString().slice(0, 10);
 
-  const briefing = await prisma.dailyBriefing.findUnique({
-    where: { userId_date: { userId: user.id, date: todayUtc } },
+  // Check today first, then yesterday — covers the gap between midnight UTC
+  // and when the cron creates today's briefing at 13:00 UTC.
+  const briefing = await prisma.dailyBriefing.findFirst({
+    where: {
+      userId: user.id,
+      date: { in: [todayUtc, yesterday] },
+      dismissedAt: null,
+    },
+    orderBy: { date: 'desc' },
     select: {
       date: true,
       content: true,
@@ -54,7 +63,7 @@ export async function GET(request: NextRequest) {
     },
   });
 
-  if (!briefing || briefing.dismissedAt) {
+  if (!briefing) {
     return NextResponse.json({ briefing: null });
   }
 
