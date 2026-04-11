@@ -119,7 +119,7 @@ export function ActivityHeatmapCanvas({ data, onAction }: Props) {
         day: 'numeric',
         year: 'numeric',
       });
-      onAction(`Pull my recent transaction history — I had ${count} transaction${count !== 1 ? 's' : ''} around ${formatted}`);
+      onAction(`Show my transactions from ${formatted} (${date}) — I had ${count} transaction${count !== 1 ? 's' : ''} that day`);
     },
     [onAction],
   );
