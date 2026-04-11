@@ -32,6 +32,9 @@ model User {
   invoices             Invoice[]
   watchAddresses       WatchAddress[]
   portfolioSnapshots   PortfolioSnapshot[]
+  scheduledActions     ScheduledAction[]
+  outcomeChecks        OutcomeCheck[]
+  followUpQueue        FollowUpQueue[]
 
   @@index([email])
   @@index([emailVerified, timezoneOffset])
@@ -191,8 +194,9 @@ model AdviceLog {
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 
-  user User         @relation(fields: [userId], references: [id])
-  goal SavingsGoal? @relation(fields: [goalId], references: [id])
+  user           User           @relation(fields: [userId], references: [id])
+  goal           SavingsGoal?   @relation(fields: [goalId], references: [id])
+  outcomeChecks  OutcomeCheck[]
 
   @@index([userId])
   @@index([outcomeStatus])
@@ -296,4 +300,70 @@ model PortfolioSnapshot {
 
   @@unique([userId, date])
   @@index([userId, date])
+}
+
+model ScheduledAction {
+  id                     String    @id @default(cuid())
+  userId                 String
+  actionType             String    // save | swap | repay
+  amount                 Float
+  asset                  String    @default("USDC")
+  targetAsset            String?
+  cronExpr               String    // e.g. "0 9 * * 5" (Fridays 9am)
+  nextRunAt              DateTime
+  enabled                Boolean   @default(true)
+  confirmationsRequired  Int       @default(5)
+  confirmationsCompleted Int       @default(0)
+  totalExecutions        Int       @default(0)
+  totalAmountUsdc        Float     @default(0)
+  lastExecutedAt         DateTime?
+  lastSkippedAt          DateTime?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, enabled])
+  @@index([nextRunAt, enabled])
+}
+
+model OutcomeCheck {
+  id            String   @id @default(cuid())
+  userId        String
+  adviceLogId   String
+  checkType     String   // savings_delta | goal_progress | debt_change | rate_change
+  expectedValue Float?
+  actualValue   Float?
+  deltaUsdc     Float?
+  onTrack       Boolean?
+  suiQueryAt    DateTime
+  createdAt     DateTime @default(now())
+
+  user      User      @relation(fields: [userId], references: [id])
+  adviceLog AdviceLog @relation(fields: [adviceLogId], references: [id])
+
+  @@index([userId])
+  @@index([adviceLogId])
+}
+
+model FollowUpQueue {
+  id              String    @id @default(cuid())
+  userId          String
+  triggerType     String    // scheduled | anomaly | goal_milestone | off_track
+  adviceLogId     String?
+  outcomeCheckId  String?
+  message         String
+  ctaType         String?
+  ctaAmount       Float?
+  priority        String    @default("normal") // urgent | normal | low
+  scheduledFor    DateTime
+  sentAt          DateTime?
+  deliveryMethod  String    @default("in_app") // in_app | email | both
+  createdAt       DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, sentAt])
+  @@index([scheduledFor, sentAt])
+  @@index([triggerType])
 }

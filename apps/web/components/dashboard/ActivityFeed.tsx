@@ -20,6 +20,8 @@ const EMPTY_STATES: Record<ActivityFilter, { message: string; cta: string; flow:
   receive: { message: 'No incoming transfers yet.', cta: 'Share your address', flow: 'receive' },
   swap: { message: 'No swaps yet.', cta: 'Swap tokens', flow: 'swap' },
   pay: { message: 'No API calls yet.', cta: 'Ask Audric anything', flow: 'help' },
+  follow_up: { message: 'No follow-ups yet.', cta: 'Set a savings goal', flow: 'save' },
+  schedule: { message: 'No scheduled actions yet.', cta: 'Create a schedule', flow: 'save' },
 };
 
 export function ActivityFeed({ feed, onAction }: ActivityFeedProps) {

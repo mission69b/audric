@@ -29,6 +29,7 @@
     "@upstash/redis": "^1.37.0",
     "@vercel/analytics": "^1.6.1",
     "clsx": "^2",
+    "cron-parser": "^5.5.0",
     "geist": "^1.7.0",
     "jose": "^6.2.2",
     "mppx": "^0.4.9",

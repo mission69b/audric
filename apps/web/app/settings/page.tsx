@@ -9,16 +9,18 @@ import { useNotificationPrefs } from '@/hooks/useNotificationPrefs';
 import { useAllowanceStatus } from '@/hooks/useAllowanceStatus';
 import { useGoals, type SavingsGoal } from '@/hooks/useGoals';
 import { useBalance } from '@/hooks/useBalance';
+import { useScheduledActions } from '@/hooks/useScheduledActions';
 import { GoalCard } from '@/components/settings/GoalCard';
 import { GoalEditor } from '@/components/settings/GoalEditor';
 import { truncateAddress } from '@/lib/format';
 import { SUI_NETWORK } from '@/lib/constants';
 
-type Section = 'account' | 'features' | 'goals' | 'safety' | 'contacts' | 'sessions' | 'memory';
+type Section = 'account' | 'features' | 'goals' | 'safety' | 'contacts' | 'sessions' | 'memory' | 'schedules';
 
 const SECTIONS: { id: Section; label: string }[] = [
   { id: 'account', label: 'Account' },
   { id: 'features', label: 'Features' },
+  { id: 'schedules', label: 'Schedules' },
   { id: 'goals', label: 'Goals' },
   { id: 'safety', label: 'Safety' },
   { id: 'contacts', label: 'Contacts' },
@@ -46,6 +48,13 @@ const NOTIFICATION_FEATURES = [
     description: 'Get notified when USDC savings or borrow rates change significantly',
     free: true,
   },
+  {
+    key: 'auto_compound' as const,
+    label: 'Auto-compound rewards',
+    description: 'Automatically claim and re-deposit NAVX rewards into your savings',
+    free: false,
+    cost: '$0.005/day',
+  },
 ];
 
 function SettingsContent() {
@@ -55,6 +64,7 @@ function SettingsContent() {
   const allowance = useAllowanceStatus(address);
   const goalsHook = useGoals(address, jwt ?? undefined);
   const balanceQuery = useBalance(address);
+  const schedules = useScheduledActions(address, jwt);
   const savingsBalance = balanceQuery.data?.savings ?? 0;
   const [editingGoal, setEditingGoal] = useState<SavingsGoal | null>(null);
   const [showGoalEditor, setShowGoalEditor] = useState(false);
@@ -287,6 +297,98 @@ function SettingsContent() {
               </section>
             )}
 
+            {activeSection === 'schedules' && (
+              <section className="space-y-5">
+                <SectionTitle>Scheduled Actions</SectionTitle>
+                <p className="text-sm text-muted leading-relaxed">
+                  Recurring saves, swaps, and repayments created through chat. First 5 executions require your confirmation (trust ladder), then they run autonomously.
+                </p>
+                {schedules.loading ? (
+                  <p className="text-sm text-muted">Loading schedules...</p>
+                ) : schedules.actions.length === 0 ? (
+                  <div className="rounded-xl border border-border bg-surface/50 p-6 text-center">
+                    <p className="text-sm text-muted">No scheduled actions yet.</p>
+                    <p className="text-xs text-dim mt-1">Try asking Audric to &ldquo;save $50 every Friday&rdquo;</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {schedules.actions.map((action) => {
+                      const isAutonomous = action.confirmationsCompleted >= action.confirmationsRequired;
+                      const statusLabel = !action.enabled ? 'Paused'
+                        : isAutonomous ? 'Autonomous'
+                        : `${action.confirmationsCompleted}/${action.confirmationsRequired} confirmed`;
+                      const nextRun = new Date(action.nextRunAt).toLocaleDateString('en-US', {
+                        weekday: 'short', month: 'short', day: 'numeric',
+                      });
+                      const verb = action.actionType === 'save' ? 'Save' : action.actionType === 'swap' ? 'Swap' : 'Repay';
+
+                      return (
+                        <div key={action.id} className="rounded-xl border border-border bg-surface/50 p-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <div>
+                              <p className="text-sm font-medium text-foreground">
+                                {verb} ${action.amount.toFixed(2)} {action.asset}
+                              </p>
+                              <p className="text-xs text-muted mt-0.5">Next: {nextRun}</p>
+                            </div>
+                            <span className={`text-xs px-2 py-0.5 rounded-full ${
+                              !action.enabled ? 'bg-border text-muted'
+                              : isAutonomous ? 'bg-success/10 text-success'
+                              : 'bg-accent/10 text-accent'
+                            }`}>
+                              {statusLabel}
+                            </span>
+                          </div>
+
+                          {/* Trust ladder progress */}
+                          {action.enabled && !isAutonomous && (
+                            <div className="mb-3">
+                              <div className="h-1.5 bg-border rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-accent rounded-full transition-all"
+                                  style={{ width: `${(action.confirmationsCompleted / action.confirmationsRequired) * 100}%` }}
+                                />
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="flex items-center justify-between text-xs text-muted">
+                            <span>{action.totalExecutions} executions · ${action.totalAmountUsdc.toFixed(2)} total</span>
+                            <div className="flex gap-2">
+                              {action.enabled ? (
+                                <button
+                                  onClick={() => schedules.pauseAction(action.id)}
+                                  disabled={schedules.updating === action.id}
+                                  className="text-muted hover:text-foreground transition"
+                                >
+                                  Pause
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => schedules.resumeAction(action.id)}
+                                  disabled={schedules.updating === action.id}
+                                  className="text-accent hover:text-accent/80 transition"
+                                >
+                                  Resume
+                                </button>
+                              )}
+                              <button
+                                onClick={() => schedules.deleteAction(action.id)}
+                                disabled={schedules.updating === action.id}
+                                className="text-error hover:text-error/80 transition"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </section>
+            )}
+
             {activeSection === 'goals' && (
               <section className="space-y-5">
                 <SectionTitle>Savings Goals</SectionTitle>
@@ -362,8 +464,41 @@ function SettingsContent() {
               <section className="space-y-5">
                 <SectionTitle>Safety</SectionTitle>
                 <p className="text-sm text-muted leading-relaxed">
-                  Transaction limits and daily budget controls will appear here.
+                  Control spending limits and transaction safety settings.
                 </p>
+
+                {/* Daily API budget */}
+                <div className="rounded-xl border border-border bg-surface/50 p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Daily API budget</p>
+                      <p className="text-xs text-muted mt-0.5">Maximum daily spend on MPP services (image gen, web search, etc.)</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 mt-3">
+                    <span className="text-sm text-muted">$</span>
+                    <input
+                      type="number"
+                      min={0}
+                      step={0.1}
+                      defaultValue={1.00}
+                      className="w-24 bg-background border border-border rounded-lg px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
+                      onBlur={async (e) => {
+                        if (!address) return;
+                        const val = parseFloat(e.target.value);
+                        if (isNaN(val) || val < 0) return;
+                        try {
+                          await fetch('/api/user/preferences', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ address, limits: { dailyApiBudget: val } }),
+                          });
+                        } catch { /* ignore */ }
+                      }}
+                    />
+                    <span className="text-xs text-muted">per day</span>
+                  </div>
+                </div>
               </section>
             )}
 

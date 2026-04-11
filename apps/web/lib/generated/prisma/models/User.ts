@@ -283,6 +283,9 @@ export type UserWhereInput = {
   invoices?: Prisma.InvoiceListRelationFilter
   watchAddresses?: Prisma.WatchAddressListRelationFilter
   portfolioSnapshots?: Prisma.PortfolioSnapshotListRelationFilter
+  scheduledActions?: Prisma.ScheduledActionListRelationFilter
+  outcomeChecks?: Prisma.OutcomeCheckListRelationFilter
+  followUpQueue?: Prisma.FollowUpQueueListRelationFilter
 }
 
 export type UserOrderByWithRelationInput = {
@@ -309,6 +312,9 @@ export type UserOrderByWithRelationInput = {
   invoices?: Prisma.InvoiceOrderByRelationAggregateInput
   watchAddresses?: Prisma.WatchAddressOrderByRelationAggregateInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotOrderByRelationAggregateInput
+  scheduledActions?: Prisma.ScheduledActionOrderByRelationAggregateInput
+  outcomeChecks?: Prisma.OutcomeCheckOrderByRelationAggregateInput
+  followUpQueue?: Prisma.FollowUpQueueOrderByRelationAggregateInput
 }
 
 export type UserWhereUniqueInput = Prisma.AtLeast<{
@@ -338,6 +344,9 @@ export type UserWhereUniqueInput = Prisma.AtLeast<{
   invoices?: Prisma.InvoiceListRelationFilter
   watchAddresses?: Prisma.WatchAddressListRelationFilter
   portfolioSnapshots?: Prisma.PortfolioSnapshotListRelationFilter
+  scheduledActions?: Prisma.ScheduledActionListRelationFilter
+  outcomeChecks?: Prisma.OutcomeCheckListRelationFilter
+  followUpQueue?: Prisma.FollowUpQueueListRelationFilter
 }, "id" | "suiAddress" | "email">
 
 export type UserOrderByWithAggregationInput = {
@@ -402,6 +411,9 @@ export type UserCreateInput = {
   invoices?: Prisma.InvoiceCreateNestedManyWithoutUserInput
   watchAddresses?: Prisma.WatchAddressCreateNestedManyWithoutUserInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotCreateNestedManyWithoutUserInput
+  scheduledActions?: Prisma.ScheduledActionCreateNestedManyWithoutUserInput
+  outcomeChecks?: Prisma.OutcomeCheckCreateNestedManyWithoutUserInput
+  followUpQueue?: Prisma.FollowUpQueueCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateInput = {
@@ -428,6 +440,9 @@ export type UserUncheckedCreateInput = {
   invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutUserInput
   watchAddresses?: Prisma.WatchAddressUncheckedCreateNestedManyWithoutUserInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotUncheckedCreateNestedManyWithoutUserInput
+  scheduledActions?: Prisma.ScheduledActionUncheckedCreateNestedManyWithoutUserInput
+  outcomeChecks?: Prisma.OutcomeCheckUncheckedCreateNestedManyWithoutUserInput
+  followUpQueue?: Prisma.FollowUpQueueUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserUpdateInput = {
@@ -454,6 +469,9 @@ export type UserUpdateInput = {
   invoices?: Prisma.InvoiceUpdateManyWithoutUserNestedInput
   watchAddresses?: Prisma.WatchAddressUpdateManyWithoutUserNestedInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotUpdateManyWithoutUserNestedInput
+  scheduledActions?: Prisma.ScheduledActionUpdateManyWithoutUserNestedInput
+  outcomeChecks?: Prisma.OutcomeCheckUpdateManyWithoutUserNestedInput
+  followUpQueue?: Prisma.FollowUpQueueUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateInput = {
@@ -480,6 +498,9 @@ export type UserUncheckedUpdateInput = {
   invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutUserNestedInput
   watchAddresses?: Prisma.WatchAddressUncheckedUpdateManyWithoutUserNestedInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotUncheckedUpdateManyWithoutUserNestedInput
+  scheduledActions?: Prisma.ScheduledActionUncheckedUpdateManyWithoutUserNestedInput
+  outcomeChecks?: Prisma.OutcomeCheckUncheckedUpdateManyWithoutUserNestedInput
+  followUpQueue?: Prisma.FollowUpQueueUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateManyInput = {
@@ -774,6 +795,48 @@ export type UserUpdateOneRequiredWithoutPortfolioSnapshotsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutPortfolioSnapshotsInput, Prisma.UserUpdateWithoutPortfolioSnapshotsInput>, Prisma.UserUncheckedUpdateWithoutPortfolioSnapshotsInput>
 }
 
+export type UserCreateNestedOneWithoutScheduledActionsInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutScheduledActionsInput, Prisma.UserUncheckedCreateWithoutScheduledActionsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutScheduledActionsInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserUpdateOneRequiredWithoutScheduledActionsNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutScheduledActionsInput, Prisma.UserUncheckedCreateWithoutScheduledActionsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutScheduledActionsInput
+  upsert?: Prisma.UserUpsertWithoutScheduledActionsInput
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutScheduledActionsInput, Prisma.UserUpdateWithoutScheduledActionsInput>, Prisma.UserUncheckedUpdateWithoutScheduledActionsInput>
+}
+
+export type UserCreateNestedOneWithoutOutcomeChecksInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutOutcomeChecksInput, Prisma.UserUncheckedCreateWithoutOutcomeChecksInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutOutcomeChecksInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserUpdateOneRequiredWithoutOutcomeChecksNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutOutcomeChecksInput, Prisma.UserUncheckedCreateWithoutOutcomeChecksInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutOutcomeChecksInput
+  upsert?: Prisma.UserUpsertWithoutOutcomeChecksInput
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutOutcomeChecksInput, Prisma.UserUpdateWithoutOutcomeChecksInput>, Prisma.UserUncheckedUpdateWithoutOutcomeChecksInput>
+}
+
+export type UserCreateNestedOneWithoutFollowUpQueueInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutFollowUpQueueInput, Prisma.UserUncheckedCreateWithoutFollowUpQueueInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutFollowUpQueueInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserUpdateOneRequiredWithoutFollowUpQueueNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutFollowUpQueueInput, Prisma.UserUncheckedCreateWithoutFollowUpQueueInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutFollowUpQueueInput
+  upsert?: Prisma.UserUpsertWithoutFollowUpQueueInput
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutFollowUpQueueInput, Prisma.UserUpdateWithoutFollowUpQueueInput>, Prisma.UserUncheckedUpdateWithoutFollowUpQueueInput>
+}
+
 export type UserCreateWithoutPreferencesInput = {
   id?: string
   suiAddress: string
@@ -797,6 +860,9 @@ export type UserCreateWithoutPreferencesInput = {
   invoices?: Prisma.InvoiceCreateNestedManyWithoutUserInput
   watchAddresses?: Prisma.WatchAddressCreateNestedManyWithoutUserInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotCreateNestedManyWithoutUserInput
+  scheduledActions?: Prisma.ScheduledActionCreateNestedManyWithoutUserInput
+  outcomeChecks?: Prisma.OutcomeCheckCreateNestedManyWithoutUserInput
+  followUpQueue?: Prisma.FollowUpQueueCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutPreferencesInput = {
@@ -822,6 +888,9 @@ export type UserUncheckedCreateWithoutPreferencesInput = {
   invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutUserInput
   watchAddresses?: Prisma.WatchAddressUncheckedCreateNestedManyWithoutUserInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotUncheckedCreateNestedManyWithoutUserInput
+  scheduledActions?: Prisma.ScheduledActionUncheckedCreateNestedManyWithoutUserInput
+  outcomeChecks?: Prisma.OutcomeCheckUncheckedCreateNestedManyWithoutUserInput
+  followUpQueue?: Prisma.FollowUpQueueUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutPreferencesInput = {
@@ -863,6 +932,9 @@ export type UserUpdateWithoutPreferencesInput = {
   invoices?: Prisma.InvoiceUpdateManyWithoutUserNestedInput
   watchAddresses?: Prisma.WatchAddressUpdateManyWithoutUserNestedInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotUpdateManyWithoutUserNestedInput
+  scheduledActions?: Prisma.ScheduledActionUpdateManyWithoutUserNestedInput
+  outcomeChecks?: Prisma.OutcomeCheckUpdateManyWithoutUserNestedInput
+  followUpQueue?: Prisma.FollowUpQueueUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutPreferencesInput = {
@@ -888,6 +960,9 @@ export type UserUncheckedUpdateWithoutPreferencesInput = {
   invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutUserNestedInput
   watchAddresses?: Prisma.WatchAddressUncheckedUpdateManyWithoutUserNestedInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotUncheckedUpdateManyWithoutUserNestedInput
+  scheduledActions?: Prisma.ScheduledActionUncheckedUpdateManyWithoutUserNestedInput
+  outcomeChecks?: Prisma.OutcomeCheckUncheckedUpdateManyWithoutUserNestedInput
+  followUpQueue?: Prisma.FollowUpQueueUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutConversationLogsInput = {
@@ -913,6 +988,9 @@ export type UserCreateWithoutConversationLogsInput = {
   invoices?: Prisma.InvoiceCreateNestedManyWithoutUserInput
   watchAddresses?: Prisma.WatchAddressCreateNestedManyWithoutUserInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotCreateNestedManyWithoutUserInput
+  scheduledActions?: Prisma.ScheduledActionCreateNestedManyWithoutUserInput
+  outcomeChecks?: Prisma.OutcomeCheckCreateNestedManyWithoutUserInput
+  followUpQueue?: Prisma.FollowUpQueueCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutConversationLogsInput = {
@@ -938,6 +1016,9 @@ export type UserUncheckedCreateWithoutConversationLogsInput = {
   invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutUserInput
   watchAddresses?: Prisma.WatchAddressUncheckedCreateNestedManyWithoutUserInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotUncheckedCreateNestedManyWithoutUserInput
+  scheduledActions?: Prisma.ScheduledActionUncheckedCreateNestedManyWithoutUserInput
+  outcomeChecks?: Prisma.OutcomeCheckUncheckedCreateNestedManyWithoutUserInput
+  followUpQueue?: Prisma.FollowUpQueueUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutConversationLogsInput = {
@@ -979,6 +1060,9 @@ export type UserUpdateWithoutConversationLogsInput = {
   invoices?: Prisma.InvoiceUpdateManyWithoutUserNestedInput
   watchAddresses?: Prisma.WatchAddressUpdateManyWithoutUserNestedInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotUpdateManyWithoutUserNestedInput
+  scheduledActions?: Prisma.ScheduledActionUpdateManyWithoutUserNestedInput
+  outcomeChecks?: Prisma.OutcomeCheckUpdateManyWithoutUserNestedInput
+  followUpQueue?: Prisma.FollowUpQueueUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutConversationLogsInput = {
@@ -1004,6 +1088,9 @@ export type UserUncheckedUpdateWithoutConversationLogsInput = {
   invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutUserNestedInput
   watchAddresses?: Prisma.WatchAddressUncheckedUpdateManyWithoutUserNestedInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotUncheckedUpdateManyWithoutUserNestedInput
+  scheduledActions?: Prisma.ScheduledActionUncheckedUpdateManyWithoutUserNestedInput
+  outcomeChecks?: Prisma.OutcomeCheckUncheckedUpdateManyWithoutUserNestedInput
+  followUpQueue?: Prisma.FollowUpQueueUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutNotificationPrefsInput = {
@@ -1029,6 +1116,9 @@ export type UserCreateWithoutNotificationPrefsInput = {
   invoices?: Prisma.InvoiceCreateNestedManyWithoutUserInput
   watchAddresses?: Prisma.WatchAddressCreateNestedManyWithoutUserInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotCreateNestedManyWithoutUserInput
+  scheduledActions?: Prisma.ScheduledActionCreateNestedManyWithoutUserInput
+  outcomeChecks?: Prisma.OutcomeCheckCreateNestedManyWithoutUserInput
+  followUpQueue?: Prisma.FollowUpQueueCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutNotificationPrefsInput = {
@@ -1054,6 +1144,9 @@ export type UserUncheckedCreateWithoutNotificationPrefsInput = {
   invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutUserInput
   watchAddresses?: Prisma.WatchAddressUncheckedCreateNestedManyWithoutUserInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotUncheckedCreateNestedManyWithoutUserInput
+  scheduledActions?: Prisma.ScheduledActionUncheckedCreateNestedManyWithoutUserInput
+  outcomeChecks?: Prisma.OutcomeCheckUncheckedCreateNestedManyWithoutUserInput
+  followUpQueue?: Prisma.FollowUpQueueUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutNotificationPrefsInput = {
@@ -1095,6 +1188,9 @@ export type UserUpdateWithoutNotificationPrefsInput = {
   invoices?: Prisma.InvoiceUpdateManyWithoutUserNestedInput
   watchAddresses?: Prisma.WatchAddressUpdateManyWithoutUserNestedInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotUpdateManyWithoutUserNestedInput
+  scheduledActions?: Prisma.ScheduledActionUpdateManyWithoutUserNestedInput
+  outcomeChecks?: Prisma.OutcomeCheckUpdateManyWithoutUserNestedInput
+  followUpQueue?: Prisma.FollowUpQueueUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutNotificationPrefsInput = {
@@ -1120,6 +1216,9 @@ export type UserUncheckedUpdateWithoutNotificationPrefsInput = {
   invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutUserNestedInput
   watchAddresses?: Prisma.WatchAddressUncheckedUpdateManyWithoutUserNestedInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotUncheckedUpdateManyWithoutUserNestedInput
+  scheduledActions?: Prisma.ScheduledActionUncheckedUpdateManyWithoutUserNestedInput
+  outcomeChecks?: Prisma.OutcomeCheckUncheckedUpdateManyWithoutUserNestedInput
+  followUpQueue?: Prisma.FollowUpQueueUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutDailyBriefingsInput = {
@@ -1145,6 +1244,9 @@ export type UserCreateWithoutDailyBriefingsInput = {
   invoices?: Prisma.InvoiceCreateNestedManyWithoutUserInput
   watchAddresses?: Prisma.WatchAddressCreateNestedManyWithoutUserInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotCreateNestedManyWithoutUserInput
+  scheduledActions?: Prisma.ScheduledActionCreateNestedManyWithoutUserInput
+  outcomeChecks?: Prisma.OutcomeCheckCreateNestedManyWithoutUserInput
+  followUpQueue?: Prisma.FollowUpQueueCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutDailyBriefingsInput = {
@@ -1170,6 +1272,9 @@ export type UserUncheckedCreateWithoutDailyBriefingsInput = {
   invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutUserInput
   watchAddresses?: Prisma.WatchAddressUncheckedCreateNestedManyWithoutUserInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotUncheckedCreateNestedManyWithoutUserInput
+  scheduledActions?: Prisma.ScheduledActionUncheckedCreateNestedManyWithoutUserInput
+  outcomeChecks?: Prisma.OutcomeCheckUncheckedCreateNestedManyWithoutUserInput
+  followUpQueue?: Prisma.FollowUpQueueUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutDailyBriefingsInput = {
@@ -1211,6 +1316,9 @@ export type UserUpdateWithoutDailyBriefingsInput = {
   invoices?: Prisma.InvoiceUpdateManyWithoutUserNestedInput
   watchAddresses?: Prisma.WatchAddressUpdateManyWithoutUserNestedInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotUpdateManyWithoutUserNestedInput
+  scheduledActions?: Prisma.ScheduledActionUpdateManyWithoutUserNestedInput
+  outcomeChecks?: Prisma.OutcomeCheckUpdateManyWithoutUserNestedInput
+  followUpQueue?: Prisma.FollowUpQueueUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutDailyBriefingsInput = {
@@ -1236,6 +1344,9 @@ export type UserUncheckedUpdateWithoutDailyBriefingsInput = {
   invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutUserNestedInput
   watchAddresses?: Prisma.WatchAddressUncheckedUpdateManyWithoutUserNestedInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotUncheckedUpdateManyWithoutUserNestedInput
+  scheduledActions?: Prisma.ScheduledActionUncheckedUpdateManyWithoutUserNestedInput
+  outcomeChecks?: Prisma.OutcomeCheckUncheckedUpdateManyWithoutUserNestedInput
+  followUpQueue?: Prisma.FollowUpQueueUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutSavingsGoalsInput = {
@@ -1261,6 +1372,9 @@ export type UserCreateWithoutSavingsGoalsInput = {
   invoices?: Prisma.InvoiceCreateNestedManyWithoutUserInput
   watchAddresses?: Prisma.WatchAddressCreateNestedManyWithoutUserInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotCreateNestedManyWithoutUserInput
+  scheduledActions?: Prisma.ScheduledActionCreateNestedManyWithoutUserInput
+  outcomeChecks?: Prisma.OutcomeCheckCreateNestedManyWithoutUserInput
+  followUpQueue?: Prisma.FollowUpQueueCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutSavingsGoalsInput = {
@@ -1286,6 +1400,9 @@ export type UserUncheckedCreateWithoutSavingsGoalsInput = {
   invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutUserInput
   watchAddresses?: Prisma.WatchAddressUncheckedCreateNestedManyWithoutUserInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotUncheckedCreateNestedManyWithoutUserInput
+  scheduledActions?: Prisma.ScheduledActionUncheckedCreateNestedManyWithoutUserInput
+  outcomeChecks?: Prisma.OutcomeCheckUncheckedCreateNestedManyWithoutUserInput
+  followUpQueue?: Prisma.FollowUpQueueUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutSavingsGoalsInput = {
@@ -1327,6 +1444,9 @@ export type UserUpdateWithoutSavingsGoalsInput = {
   invoices?: Prisma.InvoiceUpdateManyWithoutUserNestedInput
   watchAddresses?: Prisma.WatchAddressUpdateManyWithoutUserNestedInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotUpdateManyWithoutUserNestedInput
+  scheduledActions?: Prisma.ScheduledActionUpdateManyWithoutUserNestedInput
+  outcomeChecks?: Prisma.OutcomeCheckUpdateManyWithoutUserNestedInput
+  followUpQueue?: Prisma.FollowUpQueueUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutSavingsGoalsInput = {
@@ -1352,6 +1472,9 @@ export type UserUncheckedUpdateWithoutSavingsGoalsInput = {
   invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutUserNestedInput
   watchAddresses?: Prisma.WatchAddressUncheckedUpdateManyWithoutUserNestedInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotUncheckedUpdateManyWithoutUserNestedInput
+  scheduledActions?: Prisma.ScheduledActionUncheckedUpdateManyWithoutUserNestedInput
+  outcomeChecks?: Prisma.OutcomeCheckUncheckedUpdateManyWithoutUserNestedInput
+  followUpQueue?: Prisma.FollowUpQueueUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutAdviceLogsInput = {
@@ -1377,6 +1500,9 @@ export type UserCreateWithoutAdviceLogsInput = {
   invoices?: Prisma.InvoiceCreateNestedManyWithoutUserInput
   watchAddresses?: Prisma.WatchAddressCreateNestedManyWithoutUserInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotCreateNestedManyWithoutUserInput
+  scheduledActions?: Prisma.ScheduledActionCreateNestedManyWithoutUserInput
+  outcomeChecks?: Prisma.OutcomeCheckCreateNestedManyWithoutUserInput
+  followUpQueue?: Prisma.FollowUpQueueCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutAdviceLogsInput = {
@@ -1402,6 +1528,9 @@ export type UserUncheckedCreateWithoutAdviceLogsInput = {
   invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutUserInput
   watchAddresses?: Prisma.WatchAddressUncheckedCreateNestedManyWithoutUserInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotUncheckedCreateNestedManyWithoutUserInput
+  scheduledActions?: Prisma.ScheduledActionUncheckedCreateNestedManyWithoutUserInput
+  outcomeChecks?: Prisma.OutcomeCheckUncheckedCreateNestedManyWithoutUserInput
+  followUpQueue?: Prisma.FollowUpQueueUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutAdviceLogsInput = {
@@ -1443,6 +1572,9 @@ export type UserUpdateWithoutAdviceLogsInput = {
   invoices?: Prisma.InvoiceUpdateManyWithoutUserNestedInput
   watchAddresses?: Prisma.WatchAddressUpdateManyWithoutUserNestedInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotUpdateManyWithoutUserNestedInput
+  scheduledActions?: Prisma.ScheduledActionUpdateManyWithoutUserNestedInput
+  outcomeChecks?: Prisma.OutcomeCheckUpdateManyWithoutUserNestedInput
+  followUpQueue?: Prisma.FollowUpQueueUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutAdviceLogsInput = {
@@ -1468,6 +1600,9 @@ export type UserUncheckedUpdateWithoutAdviceLogsInput = {
   invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutUserNestedInput
   watchAddresses?: Prisma.WatchAddressUncheckedUpdateManyWithoutUserNestedInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotUncheckedUpdateManyWithoutUserNestedInput
+  scheduledActions?: Prisma.ScheduledActionUncheckedUpdateManyWithoutUserNestedInput
+  outcomeChecks?: Prisma.OutcomeCheckUncheckedUpdateManyWithoutUserNestedInput
+  followUpQueue?: Prisma.FollowUpQueueUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutPaymentLinksInput = {
@@ -1493,6 +1628,9 @@ export type UserCreateWithoutPaymentLinksInput = {
   invoices?: Prisma.InvoiceCreateNestedManyWithoutUserInput
   watchAddresses?: Prisma.WatchAddressCreateNestedManyWithoutUserInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotCreateNestedManyWithoutUserInput
+  scheduledActions?: Prisma.ScheduledActionCreateNestedManyWithoutUserInput
+  outcomeChecks?: Prisma.OutcomeCheckCreateNestedManyWithoutUserInput
+  followUpQueue?: Prisma.FollowUpQueueCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutPaymentLinksInput = {
@@ -1518,6 +1656,9 @@ export type UserUncheckedCreateWithoutPaymentLinksInput = {
   invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutUserInput
   watchAddresses?: Prisma.WatchAddressUncheckedCreateNestedManyWithoutUserInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotUncheckedCreateNestedManyWithoutUserInput
+  scheduledActions?: Prisma.ScheduledActionUncheckedCreateNestedManyWithoutUserInput
+  outcomeChecks?: Prisma.OutcomeCheckUncheckedCreateNestedManyWithoutUserInput
+  followUpQueue?: Prisma.FollowUpQueueUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutPaymentLinksInput = {
@@ -1559,6 +1700,9 @@ export type UserUpdateWithoutPaymentLinksInput = {
   invoices?: Prisma.InvoiceUpdateManyWithoutUserNestedInput
   watchAddresses?: Prisma.WatchAddressUpdateManyWithoutUserNestedInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotUpdateManyWithoutUserNestedInput
+  scheduledActions?: Prisma.ScheduledActionUpdateManyWithoutUserNestedInput
+  outcomeChecks?: Prisma.OutcomeCheckUpdateManyWithoutUserNestedInput
+  followUpQueue?: Prisma.FollowUpQueueUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutPaymentLinksInput = {
@@ -1584,6 +1728,9 @@ export type UserUncheckedUpdateWithoutPaymentLinksInput = {
   invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutUserNestedInput
   watchAddresses?: Prisma.WatchAddressUncheckedUpdateManyWithoutUserNestedInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotUncheckedUpdateManyWithoutUserNestedInput
+  scheduledActions?: Prisma.ScheduledActionUncheckedUpdateManyWithoutUserNestedInput
+  outcomeChecks?: Prisma.OutcomeCheckUncheckedUpdateManyWithoutUserNestedInput
+  followUpQueue?: Prisma.FollowUpQueueUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutInvoicesInput = {
@@ -1609,6 +1756,9 @@ export type UserCreateWithoutInvoicesInput = {
   paymentLinks?: Prisma.PaymentLinkCreateNestedManyWithoutUserInput
   watchAddresses?: Prisma.WatchAddressCreateNestedManyWithoutUserInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotCreateNestedManyWithoutUserInput
+  scheduledActions?: Prisma.ScheduledActionCreateNestedManyWithoutUserInput
+  outcomeChecks?: Prisma.OutcomeCheckCreateNestedManyWithoutUserInput
+  followUpQueue?: Prisma.FollowUpQueueCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutInvoicesInput = {
@@ -1634,6 +1784,9 @@ export type UserUncheckedCreateWithoutInvoicesInput = {
   paymentLinks?: Prisma.PaymentLinkUncheckedCreateNestedManyWithoutUserInput
   watchAddresses?: Prisma.WatchAddressUncheckedCreateNestedManyWithoutUserInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotUncheckedCreateNestedManyWithoutUserInput
+  scheduledActions?: Prisma.ScheduledActionUncheckedCreateNestedManyWithoutUserInput
+  outcomeChecks?: Prisma.OutcomeCheckUncheckedCreateNestedManyWithoutUserInput
+  followUpQueue?: Prisma.FollowUpQueueUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutInvoicesInput = {
@@ -1675,6 +1828,9 @@ export type UserUpdateWithoutInvoicesInput = {
   paymentLinks?: Prisma.PaymentLinkUpdateManyWithoutUserNestedInput
   watchAddresses?: Prisma.WatchAddressUpdateManyWithoutUserNestedInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotUpdateManyWithoutUserNestedInput
+  scheduledActions?: Prisma.ScheduledActionUpdateManyWithoutUserNestedInput
+  outcomeChecks?: Prisma.OutcomeCheckUpdateManyWithoutUserNestedInput
+  followUpQueue?: Prisma.FollowUpQueueUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutInvoicesInput = {
@@ -1700,6 +1856,9 @@ export type UserUncheckedUpdateWithoutInvoicesInput = {
   paymentLinks?: Prisma.PaymentLinkUncheckedUpdateManyWithoutUserNestedInput
   watchAddresses?: Prisma.WatchAddressUncheckedUpdateManyWithoutUserNestedInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotUncheckedUpdateManyWithoutUserNestedInput
+  scheduledActions?: Prisma.ScheduledActionUncheckedUpdateManyWithoutUserNestedInput
+  outcomeChecks?: Prisma.OutcomeCheckUncheckedUpdateManyWithoutUserNestedInput
+  followUpQueue?: Prisma.FollowUpQueueUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutSavingsGoalDepositsInput = {
@@ -1725,6 +1884,9 @@ export type UserCreateWithoutSavingsGoalDepositsInput = {
   invoices?: Prisma.InvoiceCreateNestedManyWithoutUserInput
   watchAddresses?: Prisma.WatchAddressCreateNestedManyWithoutUserInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotCreateNestedManyWithoutUserInput
+  scheduledActions?: Prisma.ScheduledActionCreateNestedManyWithoutUserInput
+  outcomeChecks?: Prisma.OutcomeCheckCreateNestedManyWithoutUserInput
+  followUpQueue?: Prisma.FollowUpQueueCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutSavingsGoalDepositsInput = {
@@ -1750,6 +1912,9 @@ export type UserUncheckedCreateWithoutSavingsGoalDepositsInput = {
   invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutUserInput
   watchAddresses?: Prisma.WatchAddressUncheckedCreateNestedManyWithoutUserInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotUncheckedCreateNestedManyWithoutUserInput
+  scheduledActions?: Prisma.ScheduledActionUncheckedCreateNestedManyWithoutUserInput
+  outcomeChecks?: Prisma.OutcomeCheckUncheckedCreateNestedManyWithoutUserInput
+  followUpQueue?: Prisma.FollowUpQueueUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutSavingsGoalDepositsInput = {
@@ -1791,6 +1956,9 @@ export type UserUpdateWithoutSavingsGoalDepositsInput = {
   invoices?: Prisma.InvoiceUpdateManyWithoutUserNestedInput
   watchAddresses?: Prisma.WatchAddressUpdateManyWithoutUserNestedInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotUpdateManyWithoutUserNestedInput
+  scheduledActions?: Prisma.ScheduledActionUpdateManyWithoutUserNestedInput
+  outcomeChecks?: Prisma.OutcomeCheckUpdateManyWithoutUserNestedInput
+  followUpQueue?: Prisma.FollowUpQueueUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutSavingsGoalDepositsInput = {
@@ -1816,6 +1984,9 @@ export type UserUncheckedUpdateWithoutSavingsGoalDepositsInput = {
   invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutUserNestedInput
   watchAddresses?: Prisma.WatchAddressUncheckedUpdateManyWithoutUserNestedInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotUncheckedUpdateManyWithoutUserNestedInput
+  scheduledActions?: Prisma.ScheduledActionUncheckedUpdateManyWithoutUserNestedInput
+  outcomeChecks?: Prisma.OutcomeCheckUncheckedUpdateManyWithoutUserNestedInput
+  followUpQueue?: Prisma.FollowUpQueueUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutWatchAddressesInput = {
@@ -1841,6 +2012,9 @@ export type UserCreateWithoutWatchAddressesInput = {
   paymentLinks?: Prisma.PaymentLinkCreateNestedManyWithoutUserInput
   invoices?: Prisma.InvoiceCreateNestedManyWithoutUserInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotCreateNestedManyWithoutUserInput
+  scheduledActions?: Prisma.ScheduledActionCreateNestedManyWithoutUserInput
+  outcomeChecks?: Prisma.OutcomeCheckCreateNestedManyWithoutUserInput
+  followUpQueue?: Prisma.FollowUpQueueCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutWatchAddressesInput = {
@@ -1866,6 +2040,9 @@ export type UserUncheckedCreateWithoutWatchAddressesInput = {
   paymentLinks?: Prisma.PaymentLinkUncheckedCreateNestedManyWithoutUserInput
   invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutUserInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotUncheckedCreateNestedManyWithoutUserInput
+  scheduledActions?: Prisma.ScheduledActionUncheckedCreateNestedManyWithoutUserInput
+  outcomeChecks?: Prisma.OutcomeCheckUncheckedCreateNestedManyWithoutUserInput
+  followUpQueue?: Prisma.FollowUpQueueUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutWatchAddressesInput = {
@@ -1907,6 +2084,9 @@ export type UserUpdateWithoutWatchAddressesInput = {
   paymentLinks?: Prisma.PaymentLinkUpdateManyWithoutUserNestedInput
   invoices?: Prisma.InvoiceUpdateManyWithoutUserNestedInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotUpdateManyWithoutUserNestedInput
+  scheduledActions?: Prisma.ScheduledActionUpdateManyWithoutUserNestedInput
+  outcomeChecks?: Prisma.OutcomeCheckUpdateManyWithoutUserNestedInput
+  followUpQueue?: Prisma.FollowUpQueueUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutWatchAddressesInput = {
@@ -1932,6 +2112,9 @@ export type UserUncheckedUpdateWithoutWatchAddressesInput = {
   paymentLinks?: Prisma.PaymentLinkUncheckedUpdateManyWithoutUserNestedInput
   invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutUserNestedInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotUncheckedUpdateManyWithoutUserNestedInput
+  scheduledActions?: Prisma.ScheduledActionUncheckedUpdateManyWithoutUserNestedInput
+  outcomeChecks?: Prisma.OutcomeCheckUncheckedUpdateManyWithoutUserNestedInput
+  followUpQueue?: Prisma.FollowUpQueueUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutPortfolioSnapshotsInput = {
@@ -1957,6 +2140,9 @@ export type UserCreateWithoutPortfolioSnapshotsInput = {
   paymentLinks?: Prisma.PaymentLinkCreateNestedManyWithoutUserInput
   invoices?: Prisma.InvoiceCreateNestedManyWithoutUserInput
   watchAddresses?: Prisma.WatchAddressCreateNestedManyWithoutUserInput
+  scheduledActions?: Prisma.ScheduledActionCreateNestedManyWithoutUserInput
+  outcomeChecks?: Prisma.OutcomeCheckCreateNestedManyWithoutUserInput
+  followUpQueue?: Prisma.FollowUpQueueCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutPortfolioSnapshotsInput = {
@@ -1982,6 +2168,9 @@ export type UserUncheckedCreateWithoutPortfolioSnapshotsInput = {
   paymentLinks?: Prisma.PaymentLinkUncheckedCreateNestedManyWithoutUserInput
   invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutUserInput
   watchAddresses?: Prisma.WatchAddressUncheckedCreateNestedManyWithoutUserInput
+  scheduledActions?: Prisma.ScheduledActionUncheckedCreateNestedManyWithoutUserInput
+  outcomeChecks?: Prisma.OutcomeCheckUncheckedCreateNestedManyWithoutUserInput
+  followUpQueue?: Prisma.FollowUpQueueUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutPortfolioSnapshotsInput = {
@@ -2023,6 +2212,9 @@ export type UserUpdateWithoutPortfolioSnapshotsInput = {
   paymentLinks?: Prisma.PaymentLinkUpdateManyWithoutUserNestedInput
   invoices?: Prisma.InvoiceUpdateManyWithoutUserNestedInput
   watchAddresses?: Prisma.WatchAddressUpdateManyWithoutUserNestedInput
+  scheduledActions?: Prisma.ScheduledActionUpdateManyWithoutUserNestedInput
+  outcomeChecks?: Prisma.OutcomeCheckUpdateManyWithoutUserNestedInput
+  followUpQueue?: Prisma.FollowUpQueueUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutPortfolioSnapshotsInput = {
@@ -2048,6 +2240,393 @@ export type UserUncheckedUpdateWithoutPortfolioSnapshotsInput = {
   paymentLinks?: Prisma.PaymentLinkUncheckedUpdateManyWithoutUserNestedInput
   invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutUserNestedInput
   watchAddresses?: Prisma.WatchAddressUncheckedUpdateManyWithoutUserNestedInput
+  scheduledActions?: Prisma.ScheduledActionUncheckedUpdateManyWithoutUserNestedInput
+  outcomeChecks?: Prisma.OutcomeCheckUncheckedUpdateManyWithoutUserNestedInput
+  followUpQueue?: Prisma.FollowUpQueueUncheckedUpdateManyWithoutUserNestedInput
+}
+
+export type UserCreateWithoutScheduledActionsInput = {
+  id?: string
+  suiAddress: string
+  email?: string | null
+  emailVerified?: boolean
+  emailVerifyToken?: string | null
+  emailVerifyExpiry?: Date | string | null
+  displayName?: string | null
+  timezoneOffset?: number
+  onboardedAt?: Date | string | null
+  tosAcceptedAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  preferences?: Prisma.UserPreferencesCreateNestedOneWithoutUserInput
+  conversationLogs?: Prisma.ConversationLogCreateNestedManyWithoutUserInput
+  notificationPrefs?: Prisma.NotificationPrefsCreateNestedManyWithoutUserInput
+  dailyBriefings?: Prisma.DailyBriefingCreateNestedManyWithoutUserInput
+  savingsGoals?: Prisma.SavingsGoalCreateNestedManyWithoutUserInput
+  adviceLogs?: Prisma.AdviceLogCreateNestedManyWithoutUserInput
+  savingsGoalDeposits?: Prisma.SavingsGoalDepositCreateNestedManyWithoutUserInput
+  paymentLinks?: Prisma.PaymentLinkCreateNestedManyWithoutUserInput
+  invoices?: Prisma.InvoiceCreateNestedManyWithoutUserInput
+  watchAddresses?: Prisma.WatchAddressCreateNestedManyWithoutUserInput
+  portfolioSnapshots?: Prisma.PortfolioSnapshotCreateNestedManyWithoutUserInput
+  outcomeChecks?: Prisma.OutcomeCheckCreateNestedManyWithoutUserInput
+  followUpQueue?: Prisma.FollowUpQueueCreateNestedManyWithoutUserInput
+}
+
+export type UserUncheckedCreateWithoutScheduledActionsInput = {
+  id?: string
+  suiAddress: string
+  email?: string | null
+  emailVerified?: boolean
+  emailVerifyToken?: string | null
+  emailVerifyExpiry?: Date | string | null
+  displayName?: string | null
+  timezoneOffset?: number
+  onboardedAt?: Date | string | null
+  tosAcceptedAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  preferences?: Prisma.UserPreferencesUncheckedCreateNestedOneWithoutUserInput
+  conversationLogs?: Prisma.ConversationLogUncheckedCreateNestedManyWithoutUserInput
+  notificationPrefs?: Prisma.NotificationPrefsUncheckedCreateNestedManyWithoutUserInput
+  dailyBriefings?: Prisma.DailyBriefingUncheckedCreateNestedManyWithoutUserInput
+  savingsGoals?: Prisma.SavingsGoalUncheckedCreateNestedManyWithoutUserInput
+  adviceLogs?: Prisma.AdviceLogUncheckedCreateNestedManyWithoutUserInput
+  savingsGoalDeposits?: Prisma.SavingsGoalDepositUncheckedCreateNestedManyWithoutUserInput
+  paymentLinks?: Prisma.PaymentLinkUncheckedCreateNestedManyWithoutUserInput
+  invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutUserInput
+  watchAddresses?: Prisma.WatchAddressUncheckedCreateNestedManyWithoutUserInput
+  portfolioSnapshots?: Prisma.PortfolioSnapshotUncheckedCreateNestedManyWithoutUserInput
+  outcomeChecks?: Prisma.OutcomeCheckUncheckedCreateNestedManyWithoutUserInput
+  followUpQueue?: Prisma.FollowUpQueueUncheckedCreateNestedManyWithoutUserInput
+}
+
+export type UserCreateOrConnectWithoutScheduledActionsInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutScheduledActionsInput, Prisma.UserUncheckedCreateWithoutScheduledActionsInput>
+}
+
+export type UserUpsertWithoutScheduledActionsInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutScheduledActionsInput, Prisma.UserUncheckedUpdateWithoutScheduledActionsInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutScheduledActionsInput, Prisma.UserUncheckedCreateWithoutScheduledActionsInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutScheduledActionsInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutScheduledActionsInput, Prisma.UserUncheckedUpdateWithoutScheduledActionsInput>
+}
+
+export type UserUpdateWithoutScheduledActionsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  suiAddress?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  emailVerifyToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  emailVerifyExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  timezoneOffset?: Prisma.IntFieldUpdateOperationsInput | number
+  onboardedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  preferences?: Prisma.UserPreferencesUpdateOneWithoutUserNestedInput
+  conversationLogs?: Prisma.ConversationLogUpdateManyWithoutUserNestedInput
+  notificationPrefs?: Prisma.NotificationPrefsUpdateManyWithoutUserNestedInput
+  dailyBriefings?: Prisma.DailyBriefingUpdateManyWithoutUserNestedInput
+  savingsGoals?: Prisma.SavingsGoalUpdateManyWithoutUserNestedInput
+  adviceLogs?: Prisma.AdviceLogUpdateManyWithoutUserNestedInput
+  savingsGoalDeposits?: Prisma.SavingsGoalDepositUpdateManyWithoutUserNestedInput
+  paymentLinks?: Prisma.PaymentLinkUpdateManyWithoutUserNestedInput
+  invoices?: Prisma.InvoiceUpdateManyWithoutUserNestedInput
+  watchAddresses?: Prisma.WatchAddressUpdateManyWithoutUserNestedInput
+  portfolioSnapshots?: Prisma.PortfolioSnapshotUpdateManyWithoutUserNestedInput
+  outcomeChecks?: Prisma.OutcomeCheckUpdateManyWithoutUserNestedInput
+  followUpQueue?: Prisma.FollowUpQueueUpdateManyWithoutUserNestedInput
+}
+
+export type UserUncheckedUpdateWithoutScheduledActionsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  suiAddress?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  emailVerifyToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  emailVerifyExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  timezoneOffset?: Prisma.IntFieldUpdateOperationsInput | number
+  onboardedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  preferences?: Prisma.UserPreferencesUncheckedUpdateOneWithoutUserNestedInput
+  conversationLogs?: Prisma.ConversationLogUncheckedUpdateManyWithoutUserNestedInput
+  notificationPrefs?: Prisma.NotificationPrefsUncheckedUpdateManyWithoutUserNestedInput
+  dailyBriefings?: Prisma.DailyBriefingUncheckedUpdateManyWithoutUserNestedInput
+  savingsGoals?: Prisma.SavingsGoalUncheckedUpdateManyWithoutUserNestedInput
+  adviceLogs?: Prisma.AdviceLogUncheckedUpdateManyWithoutUserNestedInput
+  savingsGoalDeposits?: Prisma.SavingsGoalDepositUncheckedUpdateManyWithoutUserNestedInput
+  paymentLinks?: Prisma.PaymentLinkUncheckedUpdateManyWithoutUserNestedInput
+  invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutUserNestedInput
+  watchAddresses?: Prisma.WatchAddressUncheckedUpdateManyWithoutUserNestedInput
+  portfolioSnapshots?: Prisma.PortfolioSnapshotUncheckedUpdateManyWithoutUserNestedInput
+  outcomeChecks?: Prisma.OutcomeCheckUncheckedUpdateManyWithoutUserNestedInput
+  followUpQueue?: Prisma.FollowUpQueueUncheckedUpdateManyWithoutUserNestedInput
+}
+
+export type UserCreateWithoutOutcomeChecksInput = {
+  id?: string
+  suiAddress: string
+  email?: string | null
+  emailVerified?: boolean
+  emailVerifyToken?: string | null
+  emailVerifyExpiry?: Date | string | null
+  displayName?: string | null
+  timezoneOffset?: number
+  onboardedAt?: Date | string | null
+  tosAcceptedAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  preferences?: Prisma.UserPreferencesCreateNestedOneWithoutUserInput
+  conversationLogs?: Prisma.ConversationLogCreateNestedManyWithoutUserInput
+  notificationPrefs?: Prisma.NotificationPrefsCreateNestedManyWithoutUserInput
+  dailyBriefings?: Prisma.DailyBriefingCreateNestedManyWithoutUserInput
+  savingsGoals?: Prisma.SavingsGoalCreateNestedManyWithoutUserInput
+  adviceLogs?: Prisma.AdviceLogCreateNestedManyWithoutUserInput
+  savingsGoalDeposits?: Prisma.SavingsGoalDepositCreateNestedManyWithoutUserInput
+  paymentLinks?: Prisma.PaymentLinkCreateNestedManyWithoutUserInput
+  invoices?: Prisma.InvoiceCreateNestedManyWithoutUserInput
+  watchAddresses?: Prisma.WatchAddressCreateNestedManyWithoutUserInput
+  portfolioSnapshots?: Prisma.PortfolioSnapshotCreateNestedManyWithoutUserInput
+  scheduledActions?: Prisma.ScheduledActionCreateNestedManyWithoutUserInput
+  followUpQueue?: Prisma.FollowUpQueueCreateNestedManyWithoutUserInput
+}
+
+export type UserUncheckedCreateWithoutOutcomeChecksInput = {
+  id?: string
+  suiAddress: string
+  email?: string | null
+  emailVerified?: boolean
+  emailVerifyToken?: string | null
+  emailVerifyExpiry?: Date | string | null
+  displayName?: string | null
+  timezoneOffset?: number
+  onboardedAt?: Date | string | null
+  tosAcceptedAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  preferences?: Prisma.UserPreferencesUncheckedCreateNestedOneWithoutUserInput
+  conversationLogs?: Prisma.ConversationLogUncheckedCreateNestedManyWithoutUserInput
+  notificationPrefs?: Prisma.NotificationPrefsUncheckedCreateNestedManyWithoutUserInput
+  dailyBriefings?: Prisma.DailyBriefingUncheckedCreateNestedManyWithoutUserInput
+  savingsGoals?: Prisma.SavingsGoalUncheckedCreateNestedManyWithoutUserInput
+  adviceLogs?: Prisma.AdviceLogUncheckedCreateNestedManyWithoutUserInput
+  savingsGoalDeposits?: Prisma.SavingsGoalDepositUncheckedCreateNestedManyWithoutUserInput
+  paymentLinks?: Prisma.PaymentLinkUncheckedCreateNestedManyWithoutUserInput
+  invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutUserInput
+  watchAddresses?: Prisma.WatchAddressUncheckedCreateNestedManyWithoutUserInput
+  portfolioSnapshots?: Prisma.PortfolioSnapshotUncheckedCreateNestedManyWithoutUserInput
+  scheduledActions?: Prisma.ScheduledActionUncheckedCreateNestedManyWithoutUserInput
+  followUpQueue?: Prisma.FollowUpQueueUncheckedCreateNestedManyWithoutUserInput
+}
+
+export type UserCreateOrConnectWithoutOutcomeChecksInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutOutcomeChecksInput, Prisma.UserUncheckedCreateWithoutOutcomeChecksInput>
+}
+
+export type UserUpsertWithoutOutcomeChecksInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutOutcomeChecksInput, Prisma.UserUncheckedUpdateWithoutOutcomeChecksInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutOutcomeChecksInput, Prisma.UserUncheckedCreateWithoutOutcomeChecksInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutOutcomeChecksInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutOutcomeChecksInput, Prisma.UserUncheckedUpdateWithoutOutcomeChecksInput>
+}
+
+export type UserUpdateWithoutOutcomeChecksInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  suiAddress?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  emailVerifyToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  emailVerifyExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  timezoneOffset?: Prisma.IntFieldUpdateOperationsInput | number
+  onboardedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  preferences?: Prisma.UserPreferencesUpdateOneWithoutUserNestedInput
+  conversationLogs?: Prisma.ConversationLogUpdateManyWithoutUserNestedInput
+  notificationPrefs?: Prisma.NotificationPrefsUpdateManyWithoutUserNestedInput
+  dailyBriefings?: Prisma.DailyBriefingUpdateManyWithoutUserNestedInput
+  savingsGoals?: Prisma.SavingsGoalUpdateManyWithoutUserNestedInput
+  adviceLogs?: Prisma.AdviceLogUpdateManyWithoutUserNestedInput
+  savingsGoalDeposits?: Prisma.SavingsGoalDepositUpdateManyWithoutUserNestedInput
+  paymentLinks?: Prisma.PaymentLinkUpdateManyWithoutUserNestedInput
+  invoices?: Prisma.InvoiceUpdateManyWithoutUserNestedInput
+  watchAddresses?: Prisma.WatchAddressUpdateManyWithoutUserNestedInput
+  portfolioSnapshots?: Prisma.PortfolioSnapshotUpdateManyWithoutUserNestedInput
+  scheduledActions?: Prisma.ScheduledActionUpdateManyWithoutUserNestedInput
+  followUpQueue?: Prisma.FollowUpQueueUpdateManyWithoutUserNestedInput
+}
+
+export type UserUncheckedUpdateWithoutOutcomeChecksInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  suiAddress?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  emailVerifyToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  emailVerifyExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  timezoneOffset?: Prisma.IntFieldUpdateOperationsInput | number
+  onboardedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  preferences?: Prisma.UserPreferencesUncheckedUpdateOneWithoutUserNestedInput
+  conversationLogs?: Prisma.ConversationLogUncheckedUpdateManyWithoutUserNestedInput
+  notificationPrefs?: Prisma.NotificationPrefsUncheckedUpdateManyWithoutUserNestedInput
+  dailyBriefings?: Prisma.DailyBriefingUncheckedUpdateManyWithoutUserNestedInput
+  savingsGoals?: Prisma.SavingsGoalUncheckedUpdateManyWithoutUserNestedInput
+  adviceLogs?: Prisma.AdviceLogUncheckedUpdateManyWithoutUserNestedInput
+  savingsGoalDeposits?: Prisma.SavingsGoalDepositUncheckedUpdateManyWithoutUserNestedInput
+  paymentLinks?: Prisma.PaymentLinkUncheckedUpdateManyWithoutUserNestedInput
+  invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutUserNestedInput
+  watchAddresses?: Prisma.WatchAddressUncheckedUpdateManyWithoutUserNestedInput
+  portfolioSnapshots?: Prisma.PortfolioSnapshotUncheckedUpdateManyWithoutUserNestedInput
+  scheduledActions?: Prisma.ScheduledActionUncheckedUpdateManyWithoutUserNestedInput
+  followUpQueue?: Prisma.FollowUpQueueUncheckedUpdateManyWithoutUserNestedInput
+}
+
+export type UserCreateWithoutFollowUpQueueInput = {
+  id?: string
+  suiAddress: string
+  email?: string | null
+  emailVerified?: boolean
+  emailVerifyToken?: string | null
+  emailVerifyExpiry?: Date | string | null
+  displayName?: string | null
+  timezoneOffset?: number
+  onboardedAt?: Date | string | null
+  tosAcceptedAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  preferences?: Prisma.UserPreferencesCreateNestedOneWithoutUserInput
+  conversationLogs?: Prisma.ConversationLogCreateNestedManyWithoutUserInput
+  notificationPrefs?: Prisma.NotificationPrefsCreateNestedManyWithoutUserInput
+  dailyBriefings?: Prisma.DailyBriefingCreateNestedManyWithoutUserInput
+  savingsGoals?: Prisma.SavingsGoalCreateNestedManyWithoutUserInput
+  adviceLogs?: Prisma.AdviceLogCreateNestedManyWithoutUserInput
+  savingsGoalDeposits?: Prisma.SavingsGoalDepositCreateNestedManyWithoutUserInput
+  paymentLinks?: Prisma.PaymentLinkCreateNestedManyWithoutUserInput
+  invoices?: Prisma.InvoiceCreateNestedManyWithoutUserInput
+  watchAddresses?: Prisma.WatchAddressCreateNestedManyWithoutUserInput
+  portfolioSnapshots?: Prisma.PortfolioSnapshotCreateNestedManyWithoutUserInput
+  scheduledActions?: Prisma.ScheduledActionCreateNestedManyWithoutUserInput
+  outcomeChecks?: Prisma.OutcomeCheckCreateNestedManyWithoutUserInput
+}
+
+export type UserUncheckedCreateWithoutFollowUpQueueInput = {
+  id?: string
+  suiAddress: string
+  email?: string | null
+  emailVerified?: boolean
+  emailVerifyToken?: string | null
+  emailVerifyExpiry?: Date | string | null
+  displayName?: string | null
+  timezoneOffset?: number
+  onboardedAt?: Date | string | null
+  tosAcceptedAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  preferences?: Prisma.UserPreferencesUncheckedCreateNestedOneWithoutUserInput
+  conversationLogs?: Prisma.ConversationLogUncheckedCreateNestedManyWithoutUserInput
+  notificationPrefs?: Prisma.NotificationPrefsUncheckedCreateNestedManyWithoutUserInput
+  dailyBriefings?: Prisma.DailyBriefingUncheckedCreateNestedManyWithoutUserInput
+  savingsGoals?: Prisma.SavingsGoalUncheckedCreateNestedManyWithoutUserInput
+  adviceLogs?: Prisma.AdviceLogUncheckedCreateNestedManyWithoutUserInput
+  savingsGoalDeposits?: Prisma.SavingsGoalDepositUncheckedCreateNestedManyWithoutUserInput
+  paymentLinks?: Prisma.PaymentLinkUncheckedCreateNestedManyWithoutUserInput
+  invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutUserInput
+  watchAddresses?: Prisma.WatchAddressUncheckedCreateNestedManyWithoutUserInput
+  portfolioSnapshots?: Prisma.PortfolioSnapshotUncheckedCreateNestedManyWithoutUserInput
+  scheduledActions?: Prisma.ScheduledActionUncheckedCreateNestedManyWithoutUserInput
+  outcomeChecks?: Prisma.OutcomeCheckUncheckedCreateNestedManyWithoutUserInput
+}
+
+export type UserCreateOrConnectWithoutFollowUpQueueInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutFollowUpQueueInput, Prisma.UserUncheckedCreateWithoutFollowUpQueueInput>
+}
+
+export type UserUpsertWithoutFollowUpQueueInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutFollowUpQueueInput, Prisma.UserUncheckedUpdateWithoutFollowUpQueueInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutFollowUpQueueInput, Prisma.UserUncheckedCreateWithoutFollowUpQueueInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutFollowUpQueueInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutFollowUpQueueInput, Prisma.UserUncheckedUpdateWithoutFollowUpQueueInput>
+}
+
+export type UserUpdateWithoutFollowUpQueueInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  suiAddress?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  emailVerifyToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  emailVerifyExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  timezoneOffset?: Prisma.IntFieldUpdateOperationsInput | number
+  onboardedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  preferences?: Prisma.UserPreferencesUpdateOneWithoutUserNestedInput
+  conversationLogs?: Prisma.ConversationLogUpdateManyWithoutUserNestedInput
+  notificationPrefs?: Prisma.NotificationPrefsUpdateManyWithoutUserNestedInput
+  dailyBriefings?: Prisma.DailyBriefingUpdateManyWithoutUserNestedInput
+  savingsGoals?: Prisma.SavingsGoalUpdateManyWithoutUserNestedInput
+  adviceLogs?: Prisma.AdviceLogUpdateManyWithoutUserNestedInput
+  savingsGoalDeposits?: Prisma.SavingsGoalDepositUpdateManyWithoutUserNestedInput
+  paymentLinks?: Prisma.PaymentLinkUpdateManyWithoutUserNestedInput
+  invoices?: Prisma.InvoiceUpdateManyWithoutUserNestedInput
+  watchAddresses?: Prisma.WatchAddressUpdateManyWithoutUserNestedInput
+  portfolioSnapshots?: Prisma.PortfolioSnapshotUpdateManyWithoutUserNestedInput
+  scheduledActions?: Prisma.ScheduledActionUpdateManyWithoutUserNestedInput
+  outcomeChecks?: Prisma.OutcomeCheckUpdateManyWithoutUserNestedInput
+}
+
+export type UserUncheckedUpdateWithoutFollowUpQueueInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  suiAddress?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  emailVerifyToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  emailVerifyExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  timezoneOffset?: Prisma.IntFieldUpdateOperationsInput | number
+  onboardedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  preferences?: Prisma.UserPreferencesUncheckedUpdateOneWithoutUserNestedInput
+  conversationLogs?: Prisma.ConversationLogUncheckedUpdateManyWithoutUserNestedInput
+  notificationPrefs?: Prisma.NotificationPrefsUncheckedUpdateManyWithoutUserNestedInput
+  dailyBriefings?: Prisma.DailyBriefingUncheckedUpdateManyWithoutUserNestedInput
+  savingsGoals?: Prisma.SavingsGoalUncheckedUpdateManyWithoutUserNestedInput
+  adviceLogs?: Prisma.AdviceLogUncheckedUpdateManyWithoutUserNestedInput
+  savingsGoalDeposits?: Prisma.SavingsGoalDepositUncheckedUpdateManyWithoutUserNestedInput
+  paymentLinks?: Prisma.PaymentLinkUncheckedUpdateManyWithoutUserNestedInput
+  invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutUserNestedInput
+  watchAddresses?: Prisma.WatchAddressUncheckedUpdateManyWithoutUserNestedInput
+  portfolioSnapshots?: Prisma.PortfolioSnapshotUncheckedUpdateManyWithoutUserNestedInput
+  scheduledActions?: Prisma.ScheduledActionUncheckedUpdateManyWithoutUserNestedInput
+  outcomeChecks?: Prisma.OutcomeCheckUncheckedUpdateManyWithoutUserNestedInput
 }
 
 
@@ -2066,6 +2645,9 @@ export type UserCountOutputType = {
   invoices: number
   watchAddresses: number
   portfolioSnapshots: number
+  scheduledActions: number
+  outcomeChecks: number
+  followUpQueue: number
 }
 
 export type UserCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -2079,6 +2661,9 @@ export type UserCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.I
   invoices?: boolean | UserCountOutputTypeCountInvoicesArgs
   watchAddresses?: boolean | UserCountOutputTypeCountWatchAddressesArgs
   portfolioSnapshots?: boolean | UserCountOutputTypeCountPortfolioSnapshotsArgs
+  scheduledActions?: boolean | UserCountOutputTypeCountScheduledActionsArgs
+  outcomeChecks?: boolean | UserCountOutputTypeCountOutcomeChecksArgs
+  followUpQueue?: boolean | UserCountOutputTypeCountFollowUpQueueArgs
 }
 
 /**
@@ -2161,6 +2746,27 @@ export type UserCountOutputTypeCountPortfolioSnapshotsArgs<ExtArgs extends runti
   where?: Prisma.PortfolioSnapshotWhereInput
 }
 
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountScheduledActionsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.ScheduledActionWhereInput
+}
+
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountOutcomeChecksArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.OutcomeCheckWhereInput
+}
+
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountFollowUpQueueArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.FollowUpQueueWhereInput
+}
+
 
 export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -2186,6 +2792,9 @@ export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   invoices?: boolean | Prisma.User$invoicesArgs<ExtArgs>
   watchAddresses?: boolean | Prisma.User$watchAddressesArgs<ExtArgs>
   portfolioSnapshots?: boolean | Prisma.User$portfolioSnapshotsArgs<ExtArgs>
+  scheduledActions?: boolean | Prisma.User$scheduledActionsArgs<ExtArgs>
+  outcomeChecks?: boolean | Prisma.User$outcomeChecksArgs<ExtArgs>
+  followUpQueue?: boolean | Prisma.User$followUpQueueArgs<ExtArgs>
   _count?: boolean | Prisma.UserCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["user"]>
 
@@ -2247,6 +2856,9 @@ export type UserInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   invoices?: boolean | Prisma.User$invoicesArgs<ExtArgs>
   watchAddresses?: boolean | Prisma.User$watchAddressesArgs<ExtArgs>
   portfolioSnapshots?: boolean | Prisma.User$portfolioSnapshotsArgs<ExtArgs>
+  scheduledActions?: boolean | Prisma.User$scheduledActionsArgs<ExtArgs>
+  outcomeChecks?: boolean | Prisma.User$outcomeChecksArgs<ExtArgs>
+  followUpQueue?: boolean | Prisma.User$followUpQueueArgs<ExtArgs>
   _count?: boolean | Prisma.UserCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type UserIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
@@ -2266,6 +2878,9 @@ export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     invoices: Prisma.$InvoicePayload<ExtArgs>[]
     watchAddresses: Prisma.$WatchAddressPayload<ExtArgs>[]
     portfolioSnapshots: Prisma.$PortfolioSnapshotPayload<ExtArgs>[]
+    scheduledActions: Prisma.$ScheduledActionPayload<ExtArgs>[]
+    outcomeChecks: Prisma.$OutcomeCheckPayload<ExtArgs>[]
+    followUpQueue: Prisma.$FollowUpQueuePayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -2685,6 +3300,9 @@ export interface Prisma__UserClient<T, Null = never, ExtArgs extends runtime.Typ
   invoices<T extends Prisma.User$invoicesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$invoicesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$InvoicePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   watchAddresses<T extends Prisma.User$watchAddressesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$watchAddressesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$WatchAddressPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   portfolioSnapshots<T extends Prisma.User$portfolioSnapshotsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$portfolioSnapshotsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$PortfolioSnapshotPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  scheduledActions<T extends Prisma.User$scheduledActionsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$scheduledActionsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ScheduledActionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  outcomeChecks<T extends Prisma.User$outcomeChecksArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$outcomeChecksArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$OutcomeCheckPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  followUpQueue<T extends Prisma.User$followUpQueueArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$followUpQueueArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$FollowUpQueuePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -3375,6 +3993,78 @@ export type User$portfolioSnapshotsArgs<ExtArgs extends runtime.Types.Extensions
   take?: number
   skip?: number
   distinct?: Prisma.PortfolioSnapshotScalarFieldEnum | Prisma.PortfolioSnapshotScalarFieldEnum[]
+}
+
+/**
+ * User.scheduledActions
+ */
+export type User$scheduledActionsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the ScheduledAction
+   */
+  select?: Prisma.ScheduledActionSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the ScheduledAction
+   */
+  omit?: Prisma.ScheduledActionOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ScheduledActionInclude<ExtArgs> | null
+  where?: Prisma.ScheduledActionWhereInput
+  orderBy?: Prisma.ScheduledActionOrderByWithRelationInput | Prisma.ScheduledActionOrderByWithRelationInput[]
+  cursor?: Prisma.ScheduledActionWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.ScheduledActionScalarFieldEnum | Prisma.ScheduledActionScalarFieldEnum[]
+}
+
+/**
+ * User.outcomeChecks
+ */
+export type User$outcomeChecksArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the OutcomeCheck
+   */
+  select?: Prisma.OutcomeCheckSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the OutcomeCheck
+   */
+  omit?: Prisma.OutcomeCheckOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.OutcomeCheckInclude<ExtArgs> | null
+  where?: Prisma.OutcomeCheckWhereInput
+  orderBy?: Prisma.OutcomeCheckOrderByWithRelationInput | Prisma.OutcomeCheckOrderByWithRelationInput[]
+  cursor?: Prisma.OutcomeCheckWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.OutcomeCheckScalarFieldEnum | Prisma.OutcomeCheckScalarFieldEnum[]
+}
+
+/**
+ * User.followUpQueue
+ */
+export type User$followUpQueueArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the FollowUpQueue
+   */
+  select?: Prisma.FollowUpQueueSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the FollowUpQueue
+   */
+  omit?: Prisma.FollowUpQueueOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.FollowUpQueueInclude<ExtArgs> | null
+  where?: Prisma.FollowUpQueueWhereInput
+  orderBy?: Prisma.FollowUpQueueOrderByWithRelationInput | Prisma.FollowUpQueueOrderByWithRelationInput[]
+  cursor?: Prisma.FollowUpQueueWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.FollowUpQueueScalarFieldEnum | Prisma.FollowUpQueueScalarFieldEnum[]
 }
 
 /**

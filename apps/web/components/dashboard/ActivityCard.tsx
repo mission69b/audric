@@ -11,6 +11,12 @@ const TYPE_ICONS: Record<string, string> = {
   alert: '\uD83D\uDEA8',
   contract: '\uD83D\uDCC4',
   transaction: '\uD83D\uDCC4',
+  follow_up: '\uD83D\uDCAC',
+  schedule_confirm: '\u2705',
+  schedule_execute: '\uD83D\uDD04',
+  schedule_reminder: '\uD83D\uDD14',
+  compound_available: '\uD83C\uDF31',
+  auto_compound: '\uD83C\uDF31',
 };
 
 function relativeTime(ts: number): string {

@@ -12,7 +12,7 @@ export interface ActivityItem {
   timestamp: number;
 }
 
-export type ActivityFilter = 'all' | 'savings' | 'send' | 'receive' | 'swap' | 'pay';
+export type ActivityFilter = 'all' | 'savings' | 'send' | 'receive' | 'swap' | 'pay' | 'follow_up' | 'schedule';
 
 export const ACTIVITY_FILTERS: { id: ActivityFilter; label: string }[] = [
   { id: 'all', label: 'All' },
@@ -21,6 +21,8 @@ export const ACTIVITY_FILTERS: { id: ActivityFilter; label: string }[] = [
   { id: 'receive', label: 'Receive' },
   { id: 'swap', label: 'Swap' },
   { id: 'pay', label: 'Pay' },
+  { id: 'follow_up', label: 'Follow-ups' },
+  { id: 'schedule', label: 'Schedules' },
 ];
 
 export interface ActivityPage {

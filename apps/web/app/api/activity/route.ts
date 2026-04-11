@@ -39,6 +39,8 @@ const APP_EVENT_TYPE_MAP: Record<string, string[]> = {
   receive: [],
   swap: [],
   pay: ['pay', 'alert'],
+  follow_up: ['follow_up'],
+  schedule: ['schedule_confirm', 'schedule_execute', 'schedule_reminder', 'compound_available'],
 };
 
 /**

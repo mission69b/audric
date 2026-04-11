@@ -9,6 +9,7 @@ const DEFAULT_PREFS: Record<string, boolean> = {
   hf_alert: true,
   briefing: true,
   rate_alert: true,
+  auto_compound: true,
 };
 
 /**
