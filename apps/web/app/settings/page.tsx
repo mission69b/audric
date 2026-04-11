@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { AuthGuard } from '@/components/auth/AuthGuard';
@@ -14,6 +14,14 @@ import { GoalCard } from '@/components/settings/GoalCard';
 import { GoalEditor } from '@/components/settings/GoalEditor';
 import { truncateAddress } from '@/lib/format';
 import { SUI_NETWORK } from '@/lib/constants';
+
+interface SpendingSummary {
+  totalSpent: number;
+  requestCount: number;
+  serviceCount: number;
+  period: string;
+  byService: Array<{ service: string; totalSpent: number; requestCount: number }>;
+}
 
 type Section = 'account' | 'features' | 'goals' | 'safety' | 'contacts' | 'sessions' | 'memory' | 'schedules';
 
@@ -68,6 +76,20 @@ function SettingsContent() {
   const savingsBalance = balanceQuery.data?.savings ?? 0;
   const [editingGoal, setEditingGoal] = useState<SavingsGoal | null>(null);
   const [showGoalEditor, setShowGoalEditor] = useState(false);
+  const [spending, setSpending] = useState<SpendingSummary | null>(null);
+
+  const fetchSpending = useCallback(async () => {
+    if (!address) return;
+    try {
+      const res = await fetch(`/api/analytics/spending?address=${address}&period=month`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && typeof data.totalSpent === 'number') setSpending(data);
+      }
+    } catch { /* ignore */ }
+  }, [address]);
+
+  useEffect(() => { fetchSpending(); }, [fetchSpending]);
   const searchParams = useSearchParams();
   const [activeSection, setActiveSection] = useState<Section>(() => {
     const section = typeof window !== 'undefined'
@@ -466,6 +488,29 @@ function SettingsContent() {
                 <p className="text-sm text-muted leading-relaxed">
                   Control spending limits and transaction safety settings.
                 </p>
+
+                {spending && spending.requestCount > 0 && (
+                  <div className="rounded-xl border border-border bg-surface/50 p-4">
+                    <p className="text-xs text-muted uppercase tracking-wider mb-2">API usage — {spending.period}</p>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-lg font-semibold text-foreground">${spending.totalSpent.toFixed(2)}</span>
+                      <span className="text-xs text-muted">across {spending.requestCount} calls to {spending.serviceCount} service{spending.serviceCount !== 1 ? 's' : ''}</span>
+                    </div>
+                    {spending.byService.length > 0 && (
+                      <div className="mt-3 pt-3 border-t border-border space-y-1.5">
+                        {spending.byService.slice(0, 5).map((s) => (
+                          <div key={s.service} className="flex items-center justify-between text-xs">
+                            <span className="text-muted">{s.service}</span>
+                            <span className="text-foreground font-mono">${s.totalSpent.toFixed(2)} <span className="text-dim">({s.requestCount})</span></span>
+                          </div>
+                        ))}
+                        {spending.byService.length > 5 && (
+                          <p className="text-[10px] text-dim">+ {spending.byService.length - 5} more</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Daily API budget */}
                 <div className="rounded-xl border border-border bg-surface/50 p-4">

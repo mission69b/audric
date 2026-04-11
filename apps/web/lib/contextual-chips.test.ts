@@ -130,7 +130,8 @@ describe('deriveContextualChips', () => {
     const chips = deriveContextualChips(BASE_STATE);
     const discover = chips.find((c) => c.id === 'discover');
     expect(discover).toBeDefined();
-    expect(discover!.agentPrompt).toBeTruthy();
+    expect(discover!.label).toBe('What can you help me with?');
+    expect(discover!.agentPrompt).toContain('overview');
   });
 
   it('shows "all good" chip when funded with no issues', () => {

@@ -294,8 +294,8 @@ export function deriveContextualChips(
   chips.push({
     id: 'discover',
     icon: '✨',
-    label: 'What can I do?',
-    agentPrompt: 'What services and features do you have?',
+    label: 'What can you help me with?',
+    agentPrompt: 'What can you help me with? Give me a quick overview of what you can do.',
     priority: 5,
   });
 
