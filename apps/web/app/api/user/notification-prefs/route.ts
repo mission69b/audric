@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma';
 
 export const runtime = 'nodejs';
 
-const VALID_FEATURES = ['hf_alert', 'briefing', 'rate_alert'] as const;
+const VALID_FEATURES = ['hf_alert', 'briefing', 'rate_alert', 'auto_compound'] as const;
 
 /**
  * GET /api/user/notification-prefs?address=0x...

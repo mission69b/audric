@@ -2,12 +2,13 @@
 
 import { useState, useEffect, useCallback } from 'react';
 
-type Feature = 'hf_alert' | 'briefing' | 'rate_alert';
+type Feature = 'hf_alert' | 'briefing' | 'rate_alert' | 'auto_compound';
 
 const DEFAULT_PREFS: Record<Feature, boolean> = {
   hf_alert: true,
   briefing: true,
   rate_alert: true,
+  auto_compound: false,
 };
 
 interface UseNotificationPrefsResult {

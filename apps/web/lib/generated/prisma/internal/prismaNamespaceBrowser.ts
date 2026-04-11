@@ -66,7 +66,10 @@ export const ModelName = {
   Invoice: 'Invoice',
   SavingsGoalDeposit: 'SavingsGoalDeposit',
   WatchAddress: 'WatchAddress',
-  PortfolioSnapshot: 'PortfolioSnapshot'
+  PortfolioSnapshot: 'PortfolioSnapshot',
+  ScheduledAction: 'ScheduledAction',
+  OutcomeCheck: 'OutcomeCheck',
+  FollowUpQueue: 'FollowUpQueue'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -336,6 +339,64 @@ export const PortfolioSnapshotScalarFieldEnum = {
 } as const
 
 export type PortfolioSnapshotScalarFieldEnum = (typeof PortfolioSnapshotScalarFieldEnum)[keyof typeof PortfolioSnapshotScalarFieldEnum]
+
+
+export const ScheduledActionScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  actionType: 'actionType',
+  amount: 'amount',
+  asset: 'asset',
+  targetAsset: 'targetAsset',
+  cronExpr: 'cronExpr',
+  nextRunAt: 'nextRunAt',
+  enabled: 'enabled',
+  confirmationsRequired: 'confirmationsRequired',
+  confirmationsCompleted: 'confirmationsCompleted',
+  totalExecutions: 'totalExecutions',
+  totalAmountUsdc: 'totalAmountUsdc',
+  lastExecutedAt: 'lastExecutedAt',
+  lastSkippedAt: 'lastSkippedAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ScheduledActionScalarFieldEnum = (typeof ScheduledActionScalarFieldEnum)[keyof typeof ScheduledActionScalarFieldEnum]
+
+
+export const OutcomeCheckScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  adviceLogId: 'adviceLogId',
+  checkType: 'checkType',
+  expectedValue: 'expectedValue',
+  actualValue: 'actualValue',
+  deltaUsdc: 'deltaUsdc',
+  onTrack: 'onTrack',
+  suiQueryAt: 'suiQueryAt',
+  createdAt: 'createdAt'
+} as const
+
+export type OutcomeCheckScalarFieldEnum = (typeof OutcomeCheckScalarFieldEnum)[keyof typeof OutcomeCheckScalarFieldEnum]
+
+
+export const FollowUpQueueScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  triggerType: 'triggerType',
+  adviceLogId: 'adviceLogId',
+  outcomeCheckId: 'outcomeCheckId',
+  message: 'message',
+  ctaType: 'ctaType',
+  ctaAmount: 'ctaAmount',
+  priority: 'priority',
+  scheduledFor: 'scheduledFor',
+  sentAt: 'sentAt',
+  deliveryMethod: 'deliveryMethod',
+  createdAt: 'createdAt'
+} as const
+
+export type FollowUpQueueScalarFieldEnum = (typeof FollowUpQueueScalarFieldEnum)[keyof typeof FollowUpQueueScalarFieldEnum]
 
 
 export const SortOrder = {

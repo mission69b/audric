@@ -399,7 +399,10 @@ export const ModelName = {
   Invoice: 'Invoice',
   SavingsGoalDeposit: 'SavingsGoalDeposit',
   WatchAddress: 'WatchAddress',
-  PortfolioSnapshot: 'PortfolioSnapshot'
+  PortfolioSnapshot: 'PortfolioSnapshot',
+  ScheduledAction: 'ScheduledAction',
+  OutcomeCheck: 'OutcomeCheck',
+  FollowUpQueue: 'FollowUpQueue'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -415,7 +418,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "userPreferences" | "conversationLog" | "sessionUsage" | "servicePurchase" | "notificationPrefs" | "notificationLog" | "dailyBriefing" | "savingsGoal" | "appEvent" | "adviceLog" | "paymentLink" | "invoice" | "savingsGoalDeposit" | "watchAddress" | "portfolioSnapshot"
+    modelProps: "user" | "userPreferences" | "conversationLog" | "sessionUsage" | "servicePurchase" | "notificationPrefs" | "notificationLog" | "dailyBriefing" | "savingsGoal" | "appEvent" | "adviceLog" | "paymentLink" | "invoice" | "savingsGoalDeposit" | "watchAddress" | "portfolioSnapshot" | "scheduledAction" | "outcomeCheck" | "followUpQueue"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1603,6 +1606,228 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    ScheduledAction: {
+      payload: Prisma.$ScheduledActionPayload<ExtArgs>
+      fields: Prisma.ScheduledActionFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.ScheduledActionFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ScheduledActionPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.ScheduledActionFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ScheduledActionPayload>
+        }
+        findFirst: {
+          args: Prisma.ScheduledActionFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ScheduledActionPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.ScheduledActionFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ScheduledActionPayload>
+        }
+        findMany: {
+          args: Prisma.ScheduledActionFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ScheduledActionPayload>[]
+        }
+        create: {
+          args: Prisma.ScheduledActionCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ScheduledActionPayload>
+        }
+        createMany: {
+          args: Prisma.ScheduledActionCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.ScheduledActionCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ScheduledActionPayload>[]
+        }
+        delete: {
+          args: Prisma.ScheduledActionDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ScheduledActionPayload>
+        }
+        update: {
+          args: Prisma.ScheduledActionUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ScheduledActionPayload>
+        }
+        deleteMany: {
+          args: Prisma.ScheduledActionDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.ScheduledActionUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.ScheduledActionUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ScheduledActionPayload>[]
+        }
+        upsert: {
+          args: Prisma.ScheduledActionUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ScheduledActionPayload>
+        }
+        aggregate: {
+          args: Prisma.ScheduledActionAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateScheduledAction>
+        }
+        groupBy: {
+          args: Prisma.ScheduledActionGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ScheduledActionGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.ScheduledActionCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ScheduledActionCountAggregateOutputType> | number
+        }
+      }
+    }
+    OutcomeCheck: {
+      payload: Prisma.$OutcomeCheckPayload<ExtArgs>
+      fields: Prisma.OutcomeCheckFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.OutcomeCheckFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$OutcomeCheckPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.OutcomeCheckFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$OutcomeCheckPayload>
+        }
+        findFirst: {
+          args: Prisma.OutcomeCheckFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$OutcomeCheckPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.OutcomeCheckFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$OutcomeCheckPayload>
+        }
+        findMany: {
+          args: Prisma.OutcomeCheckFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$OutcomeCheckPayload>[]
+        }
+        create: {
+          args: Prisma.OutcomeCheckCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$OutcomeCheckPayload>
+        }
+        createMany: {
+          args: Prisma.OutcomeCheckCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.OutcomeCheckCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$OutcomeCheckPayload>[]
+        }
+        delete: {
+          args: Prisma.OutcomeCheckDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$OutcomeCheckPayload>
+        }
+        update: {
+          args: Prisma.OutcomeCheckUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$OutcomeCheckPayload>
+        }
+        deleteMany: {
+          args: Prisma.OutcomeCheckDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.OutcomeCheckUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.OutcomeCheckUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$OutcomeCheckPayload>[]
+        }
+        upsert: {
+          args: Prisma.OutcomeCheckUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$OutcomeCheckPayload>
+        }
+        aggregate: {
+          args: Prisma.OutcomeCheckAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateOutcomeCheck>
+        }
+        groupBy: {
+          args: Prisma.OutcomeCheckGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.OutcomeCheckGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.OutcomeCheckCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.OutcomeCheckCountAggregateOutputType> | number
+        }
+      }
+    }
+    FollowUpQueue: {
+      payload: Prisma.$FollowUpQueuePayload<ExtArgs>
+      fields: Prisma.FollowUpQueueFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.FollowUpQueueFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FollowUpQueuePayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.FollowUpQueueFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FollowUpQueuePayload>
+        }
+        findFirst: {
+          args: Prisma.FollowUpQueueFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FollowUpQueuePayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.FollowUpQueueFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FollowUpQueuePayload>
+        }
+        findMany: {
+          args: Prisma.FollowUpQueueFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FollowUpQueuePayload>[]
+        }
+        create: {
+          args: Prisma.FollowUpQueueCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FollowUpQueuePayload>
+        }
+        createMany: {
+          args: Prisma.FollowUpQueueCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.FollowUpQueueCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FollowUpQueuePayload>[]
+        }
+        delete: {
+          args: Prisma.FollowUpQueueDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FollowUpQueuePayload>
+        }
+        update: {
+          args: Prisma.FollowUpQueueUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FollowUpQueuePayload>
+        }
+        deleteMany: {
+          args: Prisma.FollowUpQueueDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.FollowUpQueueUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.FollowUpQueueUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FollowUpQueuePayload>[]
+        }
+        upsert: {
+          args: Prisma.FollowUpQueueUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FollowUpQueuePayload>
+        }
+        aggregate: {
+          args: Prisma.FollowUpQueueAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateFollowUpQueue>
+        }
+        groupBy: {
+          args: Prisma.FollowUpQueueGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.FollowUpQueueGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.FollowUpQueueCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.FollowUpQueueCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -1895,6 +2120,64 @@ export const PortfolioSnapshotScalarFieldEnum = {
 export type PortfolioSnapshotScalarFieldEnum = (typeof PortfolioSnapshotScalarFieldEnum)[keyof typeof PortfolioSnapshotScalarFieldEnum]
 
 
+export const ScheduledActionScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  actionType: 'actionType',
+  amount: 'amount',
+  asset: 'asset',
+  targetAsset: 'targetAsset',
+  cronExpr: 'cronExpr',
+  nextRunAt: 'nextRunAt',
+  enabled: 'enabled',
+  confirmationsRequired: 'confirmationsRequired',
+  confirmationsCompleted: 'confirmationsCompleted',
+  totalExecutions: 'totalExecutions',
+  totalAmountUsdc: 'totalAmountUsdc',
+  lastExecutedAt: 'lastExecutedAt',
+  lastSkippedAt: 'lastSkippedAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ScheduledActionScalarFieldEnum = (typeof ScheduledActionScalarFieldEnum)[keyof typeof ScheduledActionScalarFieldEnum]
+
+
+export const OutcomeCheckScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  adviceLogId: 'adviceLogId',
+  checkType: 'checkType',
+  expectedValue: 'expectedValue',
+  actualValue: 'actualValue',
+  deltaUsdc: 'deltaUsdc',
+  onTrack: 'onTrack',
+  suiQueryAt: 'suiQueryAt',
+  createdAt: 'createdAt'
+} as const
+
+export type OutcomeCheckScalarFieldEnum = (typeof OutcomeCheckScalarFieldEnum)[keyof typeof OutcomeCheckScalarFieldEnum]
+
+
+export const FollowUpQueueScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  triggerType: 'triggerType',
+  adviceLogId: 'adviceLogId',
+  outcomeCheckId: 'outcomeCheckId',
+  message: 'message',
+  ctaType: 'ctaType',
+  ctaAmount: 'ctaAmount',
+  priority: 'priority',
+  scheduledFor: 'scheduledFor',
+  sentAt: 'sentAt',
+  deliveryMethod: 'deliveryMethod',
+  createdAt: 'createdAt'
+} as const
+
+export type FollowUpQueueScalarFieldEnum = (typeof FollowUpQueueScalarFieldEnum)[keyof typeof FollowUpQueueScalarFieldEnum]
+
+
 export const SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -2136,6 +2419,9 @@ export type GlobalOmitConfig = {
   savingsGoalDeposit?: Prisma.SavingsGoalDepositOmit
   watchAddress?: Prisma.WatchAddressOmit
   portfolioSnapshot?: Prisma.PortfolioSnapshotOmit
+  scheduledAction?: Prisma.ScheduledActionOmit
+  outcomeCheck?: Prisma.OutcomeCheckOmit
+  followUpQueue?: Prisma.FollowUpQueueOmit
 }
 
 /* Types for Logging */

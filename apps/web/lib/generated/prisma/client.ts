@@ -121,3 +121,18 @@ export type WatchAddress = Prisma.WatchAddressModel
  * 
  */
 export type PortfolioSnapshot = Prisma.PortfolioSnapshotModel
+/**
+ * Model ScheduledAction
+ * 
+ */
+export type ScheduledAction = Prisma.ScheduledActionModel
+/**
+ * Model OutcomeCheck
+ * 
+ */
+export type OutcomeCheck = Prisma.OutcomeCheckModel
+/**
+ * Model FollowUpQueue
+ * 
+ */
+export type FollowUpQueue = Prisma.FollowUpQueueModel
