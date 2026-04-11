@@ -87,7 +87,7 @@ function DiscoverContent() {
   function handleServiceClick(service: GatewayService) {
     const firstEndpoint = service.endpoints?.[0];
     const prompt = service.examplePrompt ?? (firstEndpoint ? `Use ${service.name} to ${firstEndpoint.description.toLowerCase()}` : `Use ${service.name}`);
-    router.push(`/new?message=${encodeURIComponent(prompt)}`);
+    router.push(`/new?prefill=${encodeURIComponent(prompt)}`);
   }
 
   return (
