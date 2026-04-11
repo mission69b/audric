@@ -83,7 +83,7 @@ async function fetchChainBuckets(address: string, days: number): Promise<Map<str
   const MAX_PAGES = 10;
   const PAGE_SIZE = 50;
 
-  async function paginateQuery(filter: Record<string, string>) {
+  async function paginateQuery(filter: { FromAddress: string } | { ToAddress: string }) {
     let cursor: string | undefined;
     for (let page = 0; page < MAX_PAGES; page++) {
       try {
