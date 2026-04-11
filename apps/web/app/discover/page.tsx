@@ -62,7 +62,9 @@ function DiscoverContent() {
 
       if (spendingRes?.ok) {
         const data = await spendingRes.json();
-        setSpending(data);
+        if (data && typeof data.totalUsdc === 'number') {
+          setSpending(data);
+        }
       }
     } catch { /* ignore */ }
     setLoading(false);
