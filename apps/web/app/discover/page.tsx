@@ -5,13 +5,21 @@ import { useRouter } from 'next/navigation';
 import { AuthGuard } from '@/components/auth/AuthGuard';
 import { useZkLogin } from '@/components/auth/useZkLogin';
 
+interface GatewayEndpoint {
+  method: string;
+  path: string;
+  description: string;
+  price: string;
+}
+
 interface GatewayService {
   id: string;
   name: string;
   description: string;
-  category: string;
-  pricePerRequest: number;
-  endpoints?: number;
+  categories: string[];
+  endpoints: GatewayEndpoint[];
+  serviceUrl?: string;
+  logo?: string;
   examplePrompt?: string;
 }
 
@@ -74,10 +82,11 @@ function DiscoverContent() {
     fetchData();
   }, [fetchData]);
 
-  const categories = [...new Set(services.map((s) => s.category))].filter(Boolean);
+  const categories = [...new Set(services.flatMap((s) => s.categories ?? []))].filter(Boolean);
 
   function handleServiceClick(service: GatewayService) {
-    const prompt = service.examplePrompt ?? `Use ${service.name}`;
+    const firstEndpoint = service.endpoints?.[0];
+    const prompt = service.examplePrompt ?? (firstEndpoint ? `Use ${service.name} to ${firstEndpoint.description.toLowerCase()}` : `Use ${service.name}`);
     router.push(`/new?message=${encodeURIComponent(prompt)}`);
   }
 
@@ -128,7 +137,7 @@ function DiscoverContent() {
         ) : (
           <div className="space-y-8">
             {categories.map((category) => {
-              const categoryServices = services.filter((s) => s.category === category);
+              const categoryServices = services.filter((s) => s.categories?.includes(category));
               const icon = CATEGORY_ICONS[category.toLowerCase()] ?? '\u2699\uFE0F';
 
               return (
@@ -150,9 +159,12 @@ function DiscoverContent() {
                             {service.name}
                           </p>
                           <p className="text-xs text-muted mt-1 line-clamp-2">{service.description}</p>
+                          {service.endpoints?.length > 1 && (
+                            <p className="text-[10px] text-dim mt-1.5">{service.endpoints.length} endpoints</p>
+                          )}
                           <div className="flex items-center justify-between mt-3 pt-2 border-t border-border">
                             <span className="text-xs font-mono text-dim">
-                              ${service.pricePerRequest.toFixed(4)}/req
+                              from ${Math.min(...(service.endpoints ?? []).map((e) => parseFloat(e.price) || 0)).toFixed(4)}/req
                             </span>
                             {serviceSpend && (
                               <span className="text-xs text-muted">
