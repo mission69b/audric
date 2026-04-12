@@ -1,22 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateJwt, isValidSuiAddress } from '@/lib/auth';
+import { validateInternalKey } from '@/lib/internal-auth';
 import { prisma } from '@/lib/prisma';
 import { CronExpressionParser } from 'cron-parser';
 
 export const runtime = 'nodejs';
 
+function authenticateRequest(request: NextRequest): { error: NextResponse } | { valid: true } {
+  const internalKey = request.headers.get('x-internal-key');
+  if (internalKey) return validateInternalKey(internalKey);
+
+  const jwt = request.headers.get('x-zklogin-jwt');
+  return validateJwt(jwt);
+}
+
 /**
  * PATCH /api/scheduled-actions/[id]
  * Body: { address, ...fields }
+ * Auth: x-zklogin-jwt (client) OR x-internal-key (engine tool)
  * Supports: pause/resume (enabled), edit amount, confirm, skip, delete (soft).
  */
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const jwt = request.headers.get('x-zklogin-jwt');
-  const jwtResult = validateJwt(jwt);
-  if ('error' in jwtResult) return jwtResult.error;
+  const authResult = authenticateRequest(request);
+  if ('error' in authResult) return authResult.error;
 
   const { id } = await params;
 

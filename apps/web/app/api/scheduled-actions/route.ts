@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateJwt, isValidSuiAddress } from '@/lib/auth';
+import { validateInternalKey } from '@/lib/internal-auth';
 import { prisma } from '@/lib/prisma';
 import { CronExpressionParser } from 'cron-parser';
 
@@ -7,14 +8,21 @@ export const runtime = 'nodejs';
 
 const VALID_ACTION_TYPES = ['save', 'swap', 'repay'] as const;
 
+function authenticateRequest(request: NextRequest): { error: NextResponse } | { valid: true } {
+  const internalKey = request.headers.get('x-internal-key');
+  if (internalKey) return validateInternalKey(internalKey);
+
+  const jwt = request.headers.get('x-zklogin-jwt');
+  return validateJwt(jwt);
+}
+
 /**
  * GET /api/scheduled-actions?address=0x...
- * Returns all scheduled actions for the user.
+ * Auth: x-zklogin-jwt (client) OR x-internal-key (engine tool)
  */
 export async function GET(request: NextRequest) {
-  const jwt = request.headers.get('x-zklogin-jwt');
-  const jwtResult = validateJwt(jwt);
-  if ('error' in jwtResult) return jwtResult.error;
+  const authResult = authenticateRequest(request);
+  if ('error' in authResult) return authResult.error;
 
   const address = request.nextUrl.searchParams.get('address');
   if (!address || !isValidSuiAddress(address)) {
@@ -41,11 +49,11 @@ export async function GET(request: NextRequest) {
 /**
  * POST /api/scheduled-actions
  * Body: { address, actionType, amount, asset?, targetAsset?, cronExpr }
+ * Auth: x-zklogin-jwt (client) OR x-internal-key (engine tool)
  */
 export async function POST(request: NextRequest) {
-  const jwt = request.headers.get('x-zklogin-jwt');
-  const jwtResult = validateJwt(jwt);
-  if ('error' in jwtResult) return jwtResult.error;
+  const authResult = authenticateRequest(request);
+  if ('error' in authResult) return authResult.error;
 
   let body: Record<string, unknown>;
   try {
