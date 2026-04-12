@@ -19,6 +19,9 @@ import { ServiceCatalogCard } from './cards/ServiceCatalogCard';
 import { SearchResultsCard } from './cards/SearchResultsCard';
 import { YieldEarningsCard } from './cards/YieldEarningsCard';
 import { ActivitySummaryCard } from './cards/ActivitySummaryCard';
+import { StakingCard } from './cards/StakingCard';
+import { ProtocolCard } from './cards/ProtocolCard';
+import { PriceCard } from './cards/PriceCard';
 
 const WRITE_TOOL_NAMES = new Set([
   'save_deposit', 'withdraw', 'send_transfer', 'swap_execute',
@@ -130,6 +133,26 @@ const CARD_RENDERERS: Record<string, (result: unknown) => React.ReactNode | null
     const data = extractData(result);
     if (!data) return null;
     return <InvoiceCard data={data} />;
+  },
+  volo_stats: (result) => {
+    const data = extractData(result);
+    if (!data || typeof data !== 'object') return null;
+    return <StakingCard data={data as Parameters<typeof StakingCard>[0]['data']} />;
+  },
+  protocol_deep_dive: (result) => {
+    const data = extractData(result);
+    if (!data || typeof data !== 'object') return null;
+    return <ProtocolCard data={data as Parameters<typeof ProtocolCard>[0]['data']} />;
+  },
+  defillama_token_prices: (result) => {
+    const data = extractData(result);
+    if (!Array.isArray(data)) return null;
+    return <PriceCard data={data as Parameters<typeof PriceCard>[0]['data']} />;
+  },
+  defillama_price_change: (result) => {
+    const data = extractData(result);
+    if (!data || typeof data !== 'object') return null;
+    return <PriceCard data={data as Parameters<typeof PriceCard>[0]['data']} />;
   },
 };
 
