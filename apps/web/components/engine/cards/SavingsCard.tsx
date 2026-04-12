@@ -19,8 +19,9 @@ interface SavingsData {
 export function SavingsCard({ data }: { data: SavingsData }) {
   const supplies = data.positions?.filter((p) => p.type === 'supply' && p.valueUsd >= 0.01) ?? [];
   const borrows = data.positions?.filter((p) => p.type === 'borrow' && p.valueUsd >= 0.01) ?? [];
+  const hasEarnings = data.earnings && data.earnings.supplied > 0;
 
-  if (!supplies.length && !borrows.length) return null;
+  if (!supplies.length && !borrows.length && !hasEarnings) return null;
 
   return (
     <CardShell title="Savings Positions">
@@ -46,6 +47,11 @@ export function SavingsCard({ data }: { data: SavingsData }) {
             ))}
           </tbody>
         </table>
+      )}
+      {!supplies.length && hasEarnings && (
+        <div className="text-center py-2 text-dim text-[11px]">
+          <span className="font-mono">${fmtUsd(data.earnings!.supplied)}</span> deposited
+        </div>
       )}
       {borrows.length > 0 && (
         <table className="w-full">
