@@ -11,7 +11,9 @@ function authenticateRequest(request: NextRequest): { error: NextResponse } | { 
   if (internalKey) return validateInternalKey(internalKey);
 
   const jwt = request.headers.get('x-zklogin-jwt');
-  return validateJwt(jwt);
+  const jwtResult = validateJwt(jwt);
+  if ('error' in jwtResult) return jwtResult;
+  return { valid: true };
 }
 
 /**
