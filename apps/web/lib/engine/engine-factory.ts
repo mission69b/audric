@@ -12,14 +12,17 @@ import {
   classifyEffort,
   applyToolFlags,
   DEFAULT_GUARD_CONFIG,
+  RecipeRegistry,
   type SessionData,
   type SessionStore,
   type ServerPositionData,
   type Message,
   type Tool,
   type ConversationState,
+  type UserFinancialProfile,
 } from '@t2000/engine';
 import { UpstashSessionStore } from './upstash-session-store';
+import { getRecipeRegistry } from './recipes';
 import { UpstashConversationStateStore } from './upstash-conversation-state-store';
 import { GOAL_TOOLS } from './goal-tools';
 import { ADVICE_TOOLS } from './advice-tool';
@@ -181,7 +184,7 @@ export async function createEngine(
 
   const userId = userRecord?.id;
 
-  const [mgr, positions, walletCoins, swapTokenNames, goals, adviceContext] = await Promise.all([
+  const [mgr, positions, walletCoins, swapTokenNames, goals, adviceContext, profileRecord, memoryRecords] = await Promise.all([
     ensureMcpConnected(),
     fetchServerPositions(address),
     fetchWalletCoins(address, SUI_RPC_URL).catch((err) => {
@@ -201,6 +204,19 @@ export async function createEngine(
       deadline: g.deadline?.toISOString().slice(0, 10) ?? null,
     }))).catch(() => [] as GoalSummary[]),
     userId ? buildAdviceContext(userId) : Promise.resolve(''),
+    userId ? prisma.userFinancialProfile.findUnique({
+      where: { userId },
+    }).catch(() => null) : Promise.resolve(null),
+    userId ? prisma.userMemory.findMany({
+      where: {
+        userId,
+        active: true,
+        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+      },
+      orderBy: { extractedAt: 'desc' },
+      take: 8,
+      select: { id: true, memoryType: true, content: true, extractedAt: true },
+    }).catch(() => []) : Promise.resolve([]),
   ]);
 
   const nonZeroCoins = walletCoins.filter((c) => Number(c.totalBalance) > 0);
@@ -235,6 +251,23 @@ export async function createEngine(
 
   console.log(`[engine-factory] tools=${allTools.length}: ${allTools.map(t => t.name).join(', ')}`);
 
+  // Map Prisma profile record to engine type
+  const profile: UserFinancialProfile | null = profileRecord
+    ? {
+        userId: profileRecord.userId,
+        riskAppetite: profileRecord.riskAppetite as UserFinancialProfile['riskAppetite'],
+        financialLiteracy: profileRecord.financialLiteracy as UserFinancialProfile['financialLiteracy'],
+        prefersBriefResponses: profileRecord.prefersBriefResponses,
+        prefersExplainers: profileRecord.prefersExplainers,
+        currencyFraming: profileRecord.currencyFraming as UserFinancialProfile['currencyFraming'],
+        primaryGoals: profileRecord.primaryGoals,
+        knownPatterns: profileRecord.knownPatterns,
+        riskConfidence: profileRecord.riskConfidence,
+        literacyConfidence: profileRecord.literacyConfidence,
+        lastInferredAt: profileRecord.lastInferredAt,
+      }
+    : null;
+
   // RE-1.3: Build system prompt using cache-optimized blocks
   const dynamicBlock = buildFullDynamicContext(address, allTools, {
     balances: balanceSummary,
@@ -243,7 +276,9 @@ export async function createEngine(
     goals,
     adviceContext: adviceContext || undefined,
     intelligence: {
+      profile,
       conversationState: opts.conversationState,
+      memories: memoryRecords.length > 0 ? memoryRecords : undefined,
     },
   });
 
@@ -251,14 +286,17 @@ export async function createEngine(
     ? buildCachedSystemPrompt([STATIC_SYSTEM_PROMPT], dynamicBlock)
     : `${STATIC_SYSTEM_PROMPT}\n\n---\n\n${dynamicBlock}`;
 
-  // RE-1.2: Classify effort level based on message content
+  // RE-1.2: Classify effort level based on message content + matched recipe
+  const recipeRegistry = getRecipeRegistry();
+  const matchedRecipe = opts.message ? recipeRegistry.match(opts.message) : null;
+
   const sessionWriteCount = opts.session?.messages?.filter(
     (m) => m.role === 'assistant' && Array.isArray(m.content) &&
       m.content.some((b: { type: string }) => b.type === 'tool_use'),
   ).length ?? 0;
 
   const effort = opts.message
-    ? classifyEffort(MODEL, opts.message, null, sessionWriteCount)
+    ? classifyEffort(MODEL, opts.message, matchedRecipe, sessionWriteCount)
     : 'medium';
 
   const engine = new QueryEngine({
@@ -285,6 +323,7 @@ export async function createEngine(
       budgetLimitUsd: 0.50,
     },
     guards: DEFAULT_GUARD_CONFIG,
+    recipes: recipeRegistry,
     ...(ENABLE_THINKING && {
       thinking: { type: 'adaptive' as const },
       outputConfig: { effort },

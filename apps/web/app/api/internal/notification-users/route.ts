@@ -18,10 +18,24 @@ const DEFAULT_PREFS: Record<string, boolean> = {
  * Returns all eligible users — no timezone filtering. Briefings are sent
  * once daily at a fixed UTC hour (UTC 13:00); HF/rate alerts run every hour.
  * Idempotency is handled by the cron jobs themselves (DailyBriefing dedup etc).
+ *
+ * Query params:
+ *   source=profile-inference — users with >=5 turns in 30d, no profile or stale (>24h)
+ *   source=memory-extraction — users with conversation turns since last extraction
  */
 export async function GET(request: NextRequest) {
   const auth = validateInternalKey(request.headers.get('x-internal-key'));
   if ('error' in auth) return auth.error;
+
+  const source = request.nextUrl.searchParams.get('source');
+
+  if (source === 'profile-inference') {
+    return handleProfileInferenceSource();
+  }
+
+  if (source === 'memory-extraction') {
+    return handleMemoryExtractionSource();
+  }
 
   const users = await prisma.user.findMany({
     where: {
@@ -67,4 +81,91 @@ export async function GET(request: NextRequest) {
     });
 
   return NextResponse.json({ users: eligible });
+}
+
+async function handleProfileInferenceSource() {
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000);
+  const oneDayAgo = new Date(Date.now() - 86_400_000);
+
+  const usersWithTurns = await prisma.conversationLog.groupBy({
+    by: ['userId'],
+    where: {
+      role: 'user',
+      createdAt: { gte: thirtyDaysAgo },
+    },
+    _count: { id: true },
+    having: {
+      id: { _count: { gte: 5 } },
+    },
+  });
+
+  if (usersWithTurns.length === 0) {
+    return NextResponse.json({ users: [] });
+  }
+
+  const userIds = usersWithTurns.map((u) => u.userId);
+
+  const existingProfiles = await prisma.userFinancialProfile.findMany({
+    where: {
+      userId: { in: userIds },
+      lastInferredAt: { gte: oneDayAgo },
+    },
+    select: { userId: true },
+  });
+
+  const recentlyInferred = new Set(existingProfiles.map((p) => p.userId));
+  const eligibleIds = userIds.filter((id) => !recentlyInferred.has(id));
+
+  const users = eligibleIds.map((userId) => ({
+    userId,
+    email: '',
+    walletAddress: '',
+    allowanceId: null,
+    timezoneOffset: 0,
+    prefs: {},
+  }));
+
+  return NextResponse.json({ users });
+}
+
+async function handleMemoryExtractionSource() {
+  const users = await prisma.user.findMany({
+    where: {
+      conversationLogs: {
+        some: { role: 'user' },
+      },
+    },
+    select: {
+      id: true,
+      memories: {
+        orderBy: { extractedAt: 'desc' },
+        take: 1,
+        select: { extractedAt: true },
+      },
+      conversationLogs: {
+        where: { role: 'user' },
+        orderBy: { createdAt: 'desc' },
+        take: 1,
+        select: { createdAt: true },
+      },
+    },
+  });
+
+  const eligible = users.filter((u) => {
+    const lastLog = u.conversationLogs[0]?.createdAt;
+    if (!lastLog) return false;
+    const lastExtraction = u.memories[0]?.extractedAt;
+    return !lastExtraction || lastLog > lastExtraction;
+  });
+
+  const result = eligible.map((u) => ({
+    userId: u.id,
+    email: '',
+    walletAddress: '',
+    allowanceId: null,
+    timezoneOffset: 0,
+    prefs: {},
+  }));
+
+  return NextResponse.json({ users: result });
 }

@@ -69,7 +69,9 @@ export const ModelName = {
   PortfolioSnapshot: 'PortfolioSnapshot',
   ScheduledAction: 'ScheduledAction',
   OutcomeCheck: 'OutcomeCheck',
-  FollowUpQueue: 'FollowUpQueue'
+  FollowUpQueue: 'FollowUpQueue',
+  UserFinancialProfile: 'UserFinancialProfile',
+  UserMemory: 'UserMemory'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -397,6 +399,44 @@ export const FollowUpQueueScalarFieldEnum = {
 } as const
 
 export type FollowUpQueueScalarFieldEnum = (typeof FollowUpQueueScalarFieldEnum)[keyof typeof FollowUpQueueScalarFieldEnum]
+
+
+export const UserFinancialProfileScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  riskAppetite: 'riskAppetite',
+  financialLiteracy: 'financialLiteracy',
+  prefersBriefResponses: 'prefersBriefResponses',
+  prefersExplainers: 'prefersExplainers',
+  currencyFraming: 'currencyFraming',
+  primaryGoals: 'primaryGoals',
+  knownPatterns: 'knownPatterns',
+  riskConfidence: 'riskConfidence',
+  literacyConfidence: 'literacyConfidence',
+  inferenceVersion: 'inferenceVersion',
+  lastInferredAt: 'lastInferredAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type UserFinancialProfileScalarFieldEnum = (typeof UserFinancialProfileScalarFieldEnum)[keyof typeof UserFinancialProfileScalarFieldEnum]
+
+
+export const UserMemoryScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  memoryType: 'memoryType',
+  content: 'content',
+  originalQuote: 'originalQuote',
+  confidence: 'confidence',
+  expiresAt: 'expiresAt',
+  active: 'active',
+  sourceSessionId: 'sourceSessionId',
+  extractedAt: 'extractedAt',
+  createdAt: 'createdAt'
+} as const
+
+export type UserMemoryScalarFieldEnum = (typeof UserMemoryScalarFieldEnum)[keyof typeof UserMemoryScalarFieldEnum]
 
 
 export const SortOrder = {

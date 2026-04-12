@@ -23,6 +23,14 @@ interface SpendingSummary {
   byService: Array<{ service: string; totalSpent: number; requestCount: number }>;
 }
 
+function formatMemoryAge(extractedAt: string): string {
+  const hoursAgo = (Date.now() - new Date(extractedAt).getTime()) / 3_600_000;
+  if (hoursAgo < 24) return 'today';
+  if (hoursAgo < 48) return 'yesterday';
+  const daysAgo = Math.floor(hoursAgo / 24);
+  return `${daysAgo}d ago`;
+}
+
 type Section = 'account' | 'features' | 'goals' | 'safety' | 'contacts' | 'sessions' | 'memory' | 'schedules';
 
 const SECTIONS: { id: Section; label: string }[] = [
@@ -103,6 +111,16 @@ function SettingsContent() {
     notes: string;
   } | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
+  const [memories, setMemories] = useState<Array<{
+    id: string;
+    memoryType: string;
+    content: string;
+    confidence: number;
+    extractedAt: string;
+  }>>([]);
+  const [memoriesLoading, setMemoriesLoading] = useState(false);
+  const [deletingMemory, setDeletingMemory] = useState<string | null>(null);
+  const [clearingMemories, setClearingMemories] = useState(false);
 
   useEffect(() => {
     const section = searchParams.get('section');
@@ -110,6 +128,19 @@ function SettingsContent() {
       setActiveSection(section as Section);
     }
   }, [searchParams]);
+
+  const fetchMemories = useCallback(async () => {
+    if (!address) return;
+    setMemoriesLoading(true);
+    try {
+      const res = await fetch(`/api/user/memories?address=${address}`);
+      if (res.ok) {
+        const data = await res.json();
+        setMemories(data.memories ?? []);
+      }
+    } catch { /* ignore */ }
+    finally { setMemoriesLoading(false); }
+  }, [address]);
 
   useEffect(() => {
     if (activeSection !== 'memory' || !address) return;
@@ -122,7 +153,32 @@ function SettingsContent() {
       })
       .catch(() => {})
       .finally(() => setProfileLoading(false));
-  }, [activeSection, address]);
+    fetchMemories();
+  }, [activeSection, address, fetchMemories]);
+
+  const handleDeleteMemory = async (id: string) => {
+    if (!address) return;
+    setDeletingMemory(id);
+    try {
+      const res = await fetch(`/api/user/memories/${id}?address=${address}`, { method: 'DELETE' });
+      if (res.ok) {
+        setMemories((prev) => prev.filter((m) => m.id !== id));
+      }
+    } catch { /* ignore */ }
+    finally { setDeletingMemory(null); }
+  };
+
+  const handleClearAllMemories = async () => {
+    if (!address) return;
+    setClearingMemories(true);
+    try {
+      const res = await fetch(`/api/user/memories?address=${address}`, { method: 'DELETE' });
+      if (res.ok) {
+        setMemories([]);
+      }
+    } catch { /* ignore */ }
+    finally { setClearingMemories(false); }
+  };
 
   const handleCopy = () => {
     if (!address) return;
@@ -612,31 +668,71 @@ function SettingsContent() {
                   )}
                 </div>
 
-                {/* Episodic memories (F3 scaffold) */}
+                {/* Episodic memories (F3) */}
                 <div className="space-y-2">
                   <h3 className="font-mono text-[10px] tracking-[0.12em] text-dim uppercase">
                     Remembered Context
                   </h3>
-                  <div className="rounded-lg border border-border bg-surface p-6 flex flex-col items-center text-center space-y-2">
-                    <span className="text-2xl">🧠</span>
-                    <p className="text-sm text-muted">No memories yet.</p>
-                    <p className="text-xs text-dim leading-relaxed max-w-xs">
-                      Audric will remember things you tell it — contacts, preferences, recurring
-                      goals — and surface them automatically across sessions.
-                    </p>
-                  </div>
+                  {memoriesLoading ? (
+                    <p className="text-sm text-muted">Loading memories...</p>
+                  ) : memories.length === 0 ? (
+                    <div className="rounded-lg border border-border bg-surface p-6 flex flex-col items-center text-center space-y-2">
+                      <span className="text-2xl">🧠</span>
+                      <p className="text-sm text-muted">No memories yet.</p>
+                      <p className="text-xs text-dim leading-relaxed max-w-xs">
+                        Audric will remember things you tell it — preferences, facts, goals — and
+                        surface them automatically across sessions.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {memories.map((m) => {
+                        const age = formatMemoryAge(m.extractedAt);
+                        return (
+                          <div
+                            key={m.id}
+                            className="flex items-start gap-3 rounded-lg border border-border bg-surface p-3 group"
+                          >
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-0.5">
+                                <span className="font-mono text-[9px] tracking-wider text-muted uppercase bg-background px-1.5 py-0.5 rounded">
+                                  {m.memoryType}
+                                </span>
+                                <span className="text-[10px] text-dim">{age}</span>
+                              </div>
+                              <p className="text-sm text-foreground leading-relaxed">{m.content}</p>
+                            </div>
+                            <button
+                              onClick={() => handleDeleteMemory(m.id)}
+                              disabled={deletingMemory === m.id}
+                              className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted hover:text-error text-xs p-1"
+                              title="Remove memory"
+                            >
+                              {deletingMemory === m.id ? '...' : '✕'}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
 
                 {/* Data controls */}
                 <div className="pt-1 space-y-2">
                   <button
-                    disabled
-                    title="Memory clearing will be available in a future update"
-                    className="rounded-md border border-border px-4 py-2 font-mono text-[10px] tracking-[0.1em] text-dim uppercase opacity-50 cursor-not-allowed"
+                    onClick={handleClearAllMemories}
+                    disabled={clearingMemories || memories.length === 0}
+                    className={`rounded-md border border-border px-4 py-2 font-mono text-[10px] tracking-[0.1em] uppercase transition ${
+                      clearingMemories || memories.length === 0
+                        ? 'text-dim opacity-50 cursor-not-allowed'
+                        : 'text-muted hover:text-error hover:border-error/20'
+                    }`}
                   >
-                    Clear All Memory
+                    {clearingMemories ? 'Clearing...' : 'Clear All Memory'}
                   </button>
-                  <p className="text-xs text-dim">Memory clearing coming in a future update.</p>
+                  <p className="text-xs text-dim">
+                    Removes all remembered context. Audric will rebuild memories from future conversations.
+                  </p>
                 </div>
               </section>
             )}

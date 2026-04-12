@@ -35,6 +35,8 @@ model User {
   scheduledActions     ScheduledAction[]
   outcomeChecks        OutcomeCheck[]
   followUpQueue        FollowUpQueue[]
+  financialProfile     UserFinancialProfile?
+  memories             UserMemory[]
 
   @@index([email])
   @@index([emailVerified, timezoneOffset])
@@ -366,4 +368,46 @@ model FollowUpQueue {
   @@index([userId, sentAt])
   @@index([scheduledFor, sentAt])
   @@index([triggerType])
+}
+
+model UserFinancialProfile {
+  id                   String   @id @default(cuid())
+  userId               String   @unique
+  riskAppetite         String   @default("moderate")  // conservative | moderate | aggressive
+  financialLiteracy    String   @default("intermediate") // novice | intermediate | advanced
+  prefersBriefResponses Boolean @default(false)
+  prefersExplainers    Boolean @default(true)
+  currencyFraming      String  @default("usdc") // usdc | fiat
+  primaryGoals         String[] @default([])
+  knownPatterns        String[] @default([])
+  riskConfidence       Float   @default(0)
+  literacyConfidence   Float   @default(0)
+  inferenceVersion     Int     @default(1)
+  lastInferredAt       DateTime?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+model UserMemory {
+  id              String    @id @default(cuid())
+  userId          String
+  memoryType      String    // preference | fact | pattern | goal | concern
+  content         String
+  originalQuote   String?
+  confidence      Float     @default(0.8)
+  expiresAt       DateTime?
+  active          Boolean   @default(true)
+  sourceSessionId String?
+  extractedAt     DateTime  @default(now())
+  createdAt       DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([userId, active])
+  @@index([expiresAt])
 }

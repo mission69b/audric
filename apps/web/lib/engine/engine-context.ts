@@ -311,9 +311,40 @@ ${adviceContext || 'No prior advice on record.'}`;
 // F1 (profile) and F3 (memory) are wired in later phases.
 // ---------------------------------------------------------------------------
 
+export interface MemoryEntry {
+  id: string;
+  memoryType: string;
+  content: string;
+  extractedAt: Date;
+}
+
 export interface IntelligenceContext {
   profile?: UserFinancialProfile | null;
   conversationState?: ConversationState;
+  memories?: MemoryEntry[];
+}
+
+function formatMemoryAge(extractedAt: Date): string {
+  const hoursAgo = (Date.now() - extractedAt.getTime()) / 3_600_000;
+  if (hoursAgo < 24) return 'today';
+  if (hoursAgo < 48) return 'yesterday';
+  const daysAgo = Math.floor(hoursAgo / 24);
+  return `${daysAgo}d ago`;
+}
+
+/**
+ * Build system prompt context from episodic user memories.
+ * Returns empty string if no memories are available.
+ */
+export function buildMemoryContext(memories: MemoryEntry[]): string {
+  if (!memories.length) return '';
+
+  const lines: string[] = ['What this user has told you (remembered across sessions):'];
+  for (const m of memories.slice(0, 8)) {
+    const age = formatMemoryAge(m.extractedAt);
+    lines.push(`- [${m.memoryType}] ${m.content} (${age})`);
+  }
+  return lines.join('\n');
 }
 
 export function buildFullDynamicContext(
@@ -344,6 +375,12 @@ export function buildFullDynamicContext(
   if (opts.intelligence?.profile) {
     const profileCtx = buildProfileContext(opts.intelligence.profile);
     if (profileCtx) sections.push(`## User Profile\n${profileCtx}`);
+  }
+
+  // F3 — episodic memory context
+  if (opts.intelligence?.memories?.length) {
+    const memoryCtx = buildMemoryContext(opts.intelligence.memories);
+    if (memoryCtx) sections.push(`## Remembered Context\n${memoryCtx}`);
   }
 
   // F4 — conversation state context

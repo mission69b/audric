@@ -112,3 +112,13 @@ export type OutcomeCheck = Prisma.OutcomeCheckModel
  * 
  */
 export type FollowUpQueue = Prisma.FollowUpQueueModel
+/**
+ * Model UserFinancialProfile
+ * 
+ */
+export type UserFinancialProfile = Prisma.UserFinancialProfileModel
+/**
+ * Model UserMemory
+ * 
+ */
+export type UserMemory = Prisma.UserMemoryModel
