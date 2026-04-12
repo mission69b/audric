@@ -10,11 +10,11 @@
  *                               with intelligence layer (F2/F4/F5)
  *
  * Intelligence layer status:
+ *   F1 (profile)                — wired via buildProfileContext from engine + Prisma UserFinancialProfile
  *   F2 (proactive awareness)    — wired via buildProactivenessInstructions from engine
+ *   F3 (episodic memory)        — wired via buildMemoryContext + Prisma UserMemory
  *   F4 (conversation state)     — wired via buildStateContext from engine
  *   F5 (self-evaluation)        — wired via buildSelfEvaluationInstruction from engine
- *   F1 (profile)                — pending (needs Prisma model + cron)
- *   F3 (episodic memory)        — pending (needs Prisma model + cron)
  */
 
 import { prisma } from '@/lib/prisma';
@@ -306,9 +306,8 @@ ${adviceContext || 'No prior advice on record.'}`;
 
 // ---------------------------------------------------------------------------
 // Phase 3.5 — intelligence layer context assembly
-// F2 (proactive awareness), F4 (state machine), F5 (self-evaluation) are
-// implemented in @t2000/engine as pure functions. We compose them here.
-// F1 (profile) and F3 (memory) are wired in later phases.
+// All five intelligence features are wired:
+//   F1 (profile), F2 (proactive), F3 (memory), F4 (state), F5 (self-eval)
 // ---------------------------------------------------------------------------
 
 export interface MemoryEntry {

@@ -125,16 +125,18 @@ export async function POST(request: NextRequest) {
 
   const since = lastMemory?.extractedAt ?? new Date(0);
 
-  const logs = await prisma.conversationLog.findMany({
+  // Fetch most recent messages first, then reverse for chronological order
+  const logsDesc = await prisma.conversationLog.findMany({
     where: {
       userId,
       role: 'user',
       createdAt: { gt: since },
     },
-    orderBy: { createdAt: 'asc' },
+    orderBy: { createdAt: 'desc' },
     take: 200,
     select: { content: true },
   });
+  const logs = logsDesc.reverse();
 
   if (logs.length < 3) {
     return NextResponse.json({ skipped: true, reason: 'insufficient_data' });

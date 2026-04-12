@@ -1,4 +1,4 @@
-import { RecipeRegistry, parseRecipe } from '@t2000/engine';
+import { RecipeRegistry } from '@t2000/engine';
 
 /**
  * Embedded recipe YAML strings — bundled at build time so they work in
@@ -73,7 +73,7 @@ steps:
     tool: borrow
     purpose: Execute the borrow
     requires:
-      - step: check_health
+      - step: evaluate_risk
       - confirmation: true
     on_error:
       action: abort
@@ -86,6 +86,8 @@ description: Send tokens to a saved contact or new address
 triggers:
   - "send to"
   - "transfer to"
+  - "send USDC to"
+  - "pay to"
 steps:
   - name: resolve_recipient
     purpose: Resolve the recipient from contacts or validate raw address
