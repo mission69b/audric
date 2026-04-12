@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getClient, getRegistry } from '@/lib/protocol-registry';
+import { USDC_TYPE } from '@t2000/sdk';
 
 export const runtime = 'nodejs';
-
-const SELF_URL = process.env.VERCEL_URL
-  ? `https://${process.env.VERCEL_URL}`
-  : process.env.AUDRIC_INTERNAL_URL ?? 'http://localhost:3000';
 
 /**
  * GET /api/analytics/portfolio-history?days=30
@@ -65,26 +63,43 @@ export async function GET(request: NextRequest) {
 
     if (needsLivePoint) {
       try {
-        const [balRes, posRes] = await Promise.all([
-          fetch(`${SELF_URL}/api/balances?address=${address}`),
-          fetch(`${SELF_URL}/api/positions?address=${address}`),
+        const client = getClient();
+        const registry = getRegistry();
+
+        const [usdcBal, positions] = await Promise.all([
+          client.getBalance({ owner: address, coinType: USDC_TYPE }).catch(() => null),
+          registry.allPositions(address).catch(() => []),
         ]);
-        if (balRes.ok && posRes.ok) {
-          const bal = (await balRes.json()) as { USDC?: number };
-          const pos = (await posRes.json()) as { savings?: number; borrows?: number; healthFactor?: number | null };
-          const walletUsd = bal.USDC ?? 0;
-          const savingsUsd = pos.savings ?? 0;
-          const debtUsd = pos.borrows ?? 0;
-          mapped.push({
-            date: todayStr,
-            netWorthUsd: walletUsd + savingsUsd - debtUsd,
-            walletValueUsd: walletUsd,
-            savingsValueUsd: savingsUsd,
-            debtValueUsd: debtUsd,
-            yieldEarnedUsd: 0,
-            healthFactor: pos.healthFactor ?? null,
-          });
+
+        const walletUsd = usdcBal ? Number(BigInt(usdcBal.totalBalance)) / 1e6 : 0;
+        let savingsUsd = 0;
+        let debtUsd = 0;
+        let healthFactor: number | null = null;
+
+        for (const pos of positions) {
+          for (const s of pos.positions.supplies) savingsUsd += s.amountUsd ?? s.amount;
+          for (const b of pos.positions.borrows) debtUsd += b.amountUsd ?? b.amount;
         }
+
+        try {
+          const healths = await Promise.all(
+            registry.listLending().map((a) => a.getHealth(address).catch(() => null)),
+          );
+          const finite = healths.filter((h): h is NonNullable<typeof h> =>
+            h != null && isFinite(h.healthFactor) && h.healthFactor !== Infinity,
+          );
+          if (finite.length > 0) healthFactor = Math.min(...finite.map((h) => h.healthFactor));
+        } catch { /* health is supplementary */ }
+
+        mapped.push({
+          date: todayStr,
+          netWorthUsd: walletUsd + savingsUsd - debtUsd,
+          walletValueUsd: walletUsd,
+          savingsValueUsd: savingsUsd,
+          debtValueUsd: debtUsd,
+          yieldEarnedUsd: 0,
+          healthFactor,
+        });
       } catch { /* fall through -- stale data is better than crash */ }
     }
 

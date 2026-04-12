@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getRegistry } from '@/lib/protocol-registry';
 
 export const runtime = 'nodejs';
-
-const SELF_URL = process.env.VERCEL_URL
-  ? `https://${process.env.VERCEL_URL}`
-  : process.env.AUDRIC_INTERNAL_URL ?? 'http://localhost:3000';
 
 /**
  * GET /api/analytics/yield-summary?address=0x...
@@ -70,16 +67,22 @@ export async function GET(request: NextRequest) {
       currentSavings = latest.savingsValueUsd ?? 0;
     }
 
-    // Fetch live position data for accurate current values
     let liveSavings = currentSavings;
     let liveRate = 0;
     try {
-      const posRes = await fetch(`${SELF_URL}/api/positions?address=${address}`);
-      if (posRes.ok) {
-        const posData = (await posRes.json()) as { savings?: number; savingsRate?: number };
-        if (posData.savings != null) liveSavings = posData.savings;
-        if (posData.savingsRate != null) liveRate = posData.savingsRate;
+      const registry = getRegistry();
+      const allPos = await registry.allPositions(address);
+      let totalSavings = 0;
+      let weightedRateSum = 0;
+      for (const pos of allPos) {
+        for (const s of pos.positions.supplies) {
+          const usd = s.amountUsd ?? s.amount;
+          totalSavings += usd;
+          weightedRateSum += usd * s.apy;
+        }
       }
+      liveSavings = totalSavings;
+      liveRate = totalSavings > 0 ? weightedRateSum / totalSavings : 0;
     } catch { /* fall through to snapshot-based values */ }
 
     if (liveSavings > currentSavings || currentSavings === 0) {
