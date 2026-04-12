@@ -3,6 +3,10 @@ import { prisma } from '@/lib/prisma';
 
 export const runtime = 'nodejs';
 
+const SELF_URL = process.env.VERCEL_URL
+  ? `https://${process.env.VERCEL_URL}`
+  : process.env.AUDRIC_INTERNAL_URL ?? 'http://localhost:3000';
+
 /**
  * GET /api/analytics/yield-summary?address=0x...
  *
@@ -66,16 +70,33 @@ export async function GET(request: NextRequest) {
       currentSavings = latest.savingsValueUsd ?? 0;
     }
 
-    // Derive APY from recent yield if we have enough snapshots
-    if (currentSavings > 0 && snapshots.length >= 7) {
+    // Fetch live position data for accurate current values
+    let liveSavings = currentSavings;
+    let liveRate = 0;
+    try {
+      const posRes = await fetch(`${SELF_URL}/api/positions?address=${address}`);
+      if (posRes.ok) {
+        const posData = (await posRes.json()) as { savings?: number; savingsRate?: number };
+        if (posData.savings != null) liveSavings = posData.savings;
+        if (posData.savingsRate != null) liveRate = posData.savingsRate;
+      }
+    } catch { /* fall through to snapshot-based values */ }
+
+    if (liveSavings > currentSavings || currentSavings === 0) {
+      currentSavings = liveSavings;
+    }
+
+    // Derive APY from recent yield if we have enough snapshots with real yield data
+    const hasRealYieldData = snapshots.some((s) => (s.yieldEarnedUsd ?? 0) > 0);
+    if (hasRealYieldData && currentSavings > 0 && snapshots.length >= 7) {
       const recentWeekYield = yieldWeek;
       const dailyAvg = recentWeekYield / Math.min(snapshots.length, 7);
       currentApy = currentSavings > 0 ? (dailyAvg / currentSavings) * 365 : 0;
     }
 
-    // If no yield history, estimate from a reasonable default
+    // Use live rate from protocol if available, otherwise default
     if (currentApy <= 0 && currentSavings > 0) {
-      currentApy = 0.045; // 4.5% default
+      currentApy = liveRate > 0 ? liveRate : 0.045;
       yieldToday = currentSavings * currentApy / 365;
     }
 

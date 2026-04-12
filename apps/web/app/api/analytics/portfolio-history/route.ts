@@ -3,6 +3,10 @@ import { prisma } from '@/lib/prisma';
 
 export const runtime = 'nodejs';
 
+const SELF_URL = process.env.VERCEL_URL
+  ? `https://${process.env.VERCEL_URL}`
+  : process.env.AUDRIC_INTERNAL_URL ?? 'http://localhost:3000';
+
 /**
  * GET /api/analytics/portfolio-history?days=30
  *
@@ -54,6 +58,35 @@ export async function GET(request: NextRequest) {
       yieldEarnedUsd: s.yieldEarnedUsd,
       healthFactor: s.healthFactor,
     }));
+
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const lastSnapshot = mapped[mapped.length - 1];
+    const needsLivePoint = !lastSnapshot || lastSnapshot.date !== todayStr;
+
+    if (needsLivePoint) {
+      try {
+        const [balRes, posRes] = await Promise.all([
+          fetch(`${SELF_URL}/api/balances?address=${address}`),
+          fetch(`${SELF_URL}/api/positions?address=${address}`),
+        ]);
+        if (balRes.ok && posRes.ok) {
+          const bal = (await balRes.json()) as { USDC?: number };
+          const pos = (await posRes.json()) as { savings?: number; borrows?: number; healthFactor?: number | null };
+          const walletUsd = bal.USDC ?? 0;
+          const savingsUsd = pos.savings ?? 0;
+          const debtUsd = pos.borrows ?? 0;
+          mapped.push({
+            date: todayStr,
+            netWorthUsd: walletUsd + savingsUsd - debtUsd,
+            walletValueUsd: walletUsd,
+            savingsValueUsd: savingsUsd,
+            debtValueUsd: debtUsd,
+            yieldEarnedUsd: 0,
+            healthFactor: pos.healthFactor ?? null,
+          });
+        }
+      } catch { /* fall through -- stale data is better than crash */ }
+    }
 
     const change = computeChange(mapped, days);
 

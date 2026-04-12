@@ -70,12 +70,16 @@ async function buildSnapshot(address: string) {
   const debtValueUsd = positions.borrows;
   const netWorthUsd = walletValueUsd + savingsValueUsd - debtValueUsd;
 
+  const dailyYield = savingsValueUsd > 0 && positions.savingsRate > 0
+    ? (savingsValueUsd * positions.savingsRate) / 365
+    : 0;
+
   return {
     walletValueUsd,
     savingsValueUsd,
     debtValueUsd,
     netWorthUsd,
-    yieldEarnedUsd: 0,
+    yieldEarnedUsd: Math.round(dailyYield * 10000) / 10000,
     healthFactor: positions.healthFactor,
     allocations: balances.allocations,
   };
@@ -114,26 +118,29 @@ async function fetchPositions(address: string): Promise<{
   savings: number;
   borrows: number;
   healthFactor: number | null;
+  savingsRate: number;
 }> {
   try {
     const res = await fetch(`${SELF_URL}/api/positions?address=${address}`, {
       headers: { 'x-internal-key': process.env.T2000_INTERNAL_KEY ?? '' },
     });
 
-    if (!res.ok) return { savings: 0, borrows: 0, healthFactor: null };
+    if (!res.ok) return { savings: 0, borrows: 0, healthFactor: null, savingsRate: 0 };
 
     const data = (await res.json()) as {
       savings?: number;
       borrows?: number;
       healthFactor?: number | null;
+      savingsRate?: number;
     };
 
     return {
       savings: data.savings ?? 0,
       borrows: data.borrows ?? 0,
       healthFactor: data.healthFactor ?? null,
+      savingsRate: data.savingsRate ?? 0,
     };
   } catch {
-    return { savings: 0, borrows: 0, healthFactor: null };
+    return { savings: 0, borrows: 0, healthFactor: null, savingsRate: 0 };
   }
 }
