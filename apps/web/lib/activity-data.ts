@@ -80,11 +80,9 @@ async function fetchAppEventBuckets(address: string, since: Date): Promise<Map<s
   return map;
 }
 
-async function fetchChainBuckets(address: string, days: number): Promise<Map<string, DayBucket>> {
+async function fetchChainBuckets(address: string, since: Date): Promise<Map<string, DayBucket>> {
   const client = getClient();
   const map = new Map<string, DayBucket>();
-  const since = new Date();
-  since.setDate(since.getDate() - days);
   const sinceMs = since.getTime();
   const seen = new Set<string>();
   const MAX_PAGES = 10;
@@ -155,6 +153,12 @@ function mergeBuckets(a: Map<string, DayBucket>, b: Map<string, DayBucket>): Day
 /**
  * Returns merged daily activity buckets from AppEvent + on-chain transactions.
  * Used by both the heatmap canvas and the activity summary.
+ *
+ * NOTE: AppEvent and chain data can overlap — a single on-chain tx that also
+ * has an AppEvent will be counted in both sources. This is acceptable because
+ * AppEvent provides categorization (save, send, etc.) while chain provides
+ * coverage for txs not tracked by the app. Full dedup would require storing
+ * digests on AppEvent and cross-referencing, which is a future optimization.
  */
 export async function fetchActivityBuckets(address: string, days: number): Promise<DayBucket[]> {
   const since = new Date();
@@ -163,7 +167,7 @@ export async function fetchActivityBuckets(address: string, days: number): Promi
 
   const [appBuckets, chainBuckets] = await Promise.all([
     fetchAppEventBuckets(address, since),
-    fetchChainBuckets(address, days),
+    fetchChainBuckets(address, since),
   ]);
 
   return mergeBuckets(appBuckets, chainBuckets);
@@ -175,14 +179,13 @@ export async function fetchActivityBuckets(address: string, days: number): Promi
  */
 export async function fetchActivitySummary(address: string, period: string): Promise<ActivitySummary> {
   const since = periodToDate(period);
-  const periodDays = Math.max(1, Math.round((Date.now() - since.getTime()) / 86_400_000));
 
   const [events, buckets] = await Promise.all([
     prisma.appEvent.findMany({
       where: { address, createdAt: { gte: since } },
       select: { type: true, details: true },
     }),
-    fetchChainBuckets(address, periodDays),
+    fetchChainBuckets(address, since),
   ]);
 
   const actionMap = new Map<string, { count: number; totalAmountUsd: number }>();

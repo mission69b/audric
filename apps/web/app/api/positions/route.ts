@@ -14,16 +14,21 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid address' }, { status: 400 });
   }
 
-  const pos = await fetchPositions(address);
+  try {
+    const pos = await fetchPositions(address);
 
-  return NextResponse.json({
-    savings: pos.savings,
-    borrows: pos.borrows,
-    savingsRate: pos.savingsRate,
-    healthFactor: pos.healthFactor,
-    maxBorrow: pos.maxBorrow,
-    pendingRewards: pos.pendingRewards,
-    supplies: pos.supplies,
-    borrows_detail: pos.borrowsDetail,
-  });
+    return NextResponse.json({
+      savings: pos.savings,
+      borrows: pos.borrows,
+      savingsRate: pos.savingsRate,
+      healthFactor: pos.healthFactor,
+      maxBorrow: pos.maxBorrow,
+      pendingRewards: pos.pendingRewards,
+      supplies: pos.supplies,
+      borrows_detail: pos.borrowsDetail,
+    });
+  } catch (err) {
+    console.error('[positions] Error:', err instanceof Error ? err.message : err);
+    return NextResponse.json({ error: 'Failed to fetch positions' }, { status: 500 });
+  }
 }
