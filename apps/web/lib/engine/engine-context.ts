@@ -3,24 +3,30 @@
  *
  * All context-building functions for the Audric agent system prompt.
  *
- * Split into two halves:
- *   STATIC_SYSTEM_PROMPT  — stable rules, never changes between sessions.
- *                           Tagged with cache_control in RE-1.3.
- *   buildDynamicBlock()   — per-session data (balances, tools, contacts,
- *                           goals, advice). Never cached.
+ * Three layers:
+ *   STATIC_SYSTEM_PROMPT  — stable rules, tagged with cache_control in RE-1.3
+ *   buildDynamicBlock()   — per-session data (balances, tools, contacts, goals, advice)
+ *   buildFullDynamicContext() — unified context assembly combining dynamic block
+ *                               with intelligence layer (F2/F4/F5)
  *
- * Future intelligence-layer functions (Phase 3.5) live here too:
- *   buildProfileContext()          — F1
- *   buildProactivenessInstructions() — F2
- *   buildMemoryContext()           — F3
- *   buildStateContext()            — F4
- *   buildSelfEvaluationInstruction() — F5
- *   buildFullDynamicContext()      — unified context assembly (replaces
- *                                    inline building in engine-factory.ts)
+ * Intelligence layer status:
+ *   F2 (proactive awareness)    — wired via buildProactivenessInstructions from engine
+ *   F4 (conversation state)     — wired via buildStateContext from engine
+ *   F5 (self-evaluation)        — wired via buildSelfEvaluationInstruction from engine
+ *   F1 (profile)                — pending (needs Prisma model + cron)
+ *   F3 (episodic memory)        — pending (needs Prisma model + cron)
  */
 
 import { prisma } from '@/lib/prisma';
 import type { Tool } from '@t2000/engine';
+import {
+  buildProactivenessInstructions,
+  buildProfileContext,
+  buildSelfEvaluationInstruction,
+  buildStateContext,
+  type UserFinancialProfile,
+  type ConversationState,
+} from '@t2000/engine';
 
 // ---------------------------------------------------------------------------
 // Shared types (re-exported so engine-factory.ts doesn't duplicate them)
@@ -299,33 +305,61 @@ ${adviceContext || 'No prior advice on record.'}`;
 }
 
 // ---------------------------------------------------------------------------
-// Phase 3.5 stubs — intelligence layer (not yet implemented)
-// Each will be wired into buildFullDynamicContext() when its phase ships.
+// Phase 3.5 — intelligence layer context assembly
+// F2 (proactive awareness), F4 (state machine), F5 (self-evaluation) are
+// implemented in @t2000/engine as pure functions. We compose them here.
+// F1 (profile) and F3 (memory) are wired in later phases.
 // ---------------------------------------------------------------------------
 
-// TODO: F1 — User Financial Profile
-// export function buildProfileContext(profile: UserFinancialProfile): string { ... }
+export interface IntelligenceContext {
+  profile?: UserFinancialProfile | null;
+  conversationState?: ConversationState;
+}
 
-// TODO: F2 — Proactive Awareness
-// export function buildProactivenessInstructions(profile: UserFinancialProfile): string { ... }
+export function buildFullDynamicContext(
+  walletAddress: string,
+  tools: Tool[],
+  opts: {
+    balances?: WalletBalanceSummary;
+    contacts?: Contact[];
+    swapTokenNames?: string[];
+    goals?: GoalSummary[];
+    adviceContext?: string;
+    intelligence?: IntelligenceContext;
+  },
+): string {
+  const base = buildDynamicBlock(
+    walletAddress,
+    tools,
+    opts.balances,
+    opts.contacts,
+    opts.swapTokenNames,
+    opts.goals,
+    opts.adviceContext,
+  );
 
-// TODO: F3 — Episodic Memory
-// export async function buildMemoryContext(userId: string): Promise<string> { ... }
+  const sections: string[] = [base];
 
-// TODO: F4 — Conversation State Machine
-// export function buildStateContext(state: ConversationState): string { ... }
+  // F1 — user financial profile context
+  if (opts.intelligence?.profile) {
+    const profileCtx = buildProfileContext(opts.intelligence.profile);
+    if (profileCtx) sections.push(`## User Profile\n${profileCtx}`);
+  }
 
-// TODO: F5 — Post-Action Self-Evaluation
-// export function buildSelfEvaluationInstruction(): string { ... }
+  // F4 — conversation state context
+  if (opts.intelligence?.conversationState) {
+    const stateCtx = buildStateContext(opts.intelligence.conversationState);
+    if (stateCtx) sections.push(`## Conversation State\n${stateCtx}`);
+  }
 
-// TODO: unified — replaces inline context building in engine-factory.ts
-// export async function buildFullDynamicContext(
-//   model: string,
-//   walletAddress: string,
-//   userId: string,
-//   tools: Tool[],
-//   balances?: WalletBalanceSummary,
-//   contacts?: Contact[],
-//   swapTokenNames?: string[],
-//   goals?: GoalSummary[],
-// ): Promise<string> { ... }
+  // F2 — proactive awareness instructions
+  const proactiveCtx = buildProactivenessInstructions(
+    opts.intelligence?.profile ?? null,
+  );
+  sections.push(`## Proactive Awareness\n${proactiveCtx}`);
+
+  // F5 — post-action self-evaluation
+  sections.push(`## Self-Evaluation\n${buildSelfEvaluationInstruction()}`);
+
+  return sections.join('\n\n---\n\n');
+}

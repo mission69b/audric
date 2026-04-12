@@ -3,7 +3,7 @@ import { engineToSSE } from '@t2000/engine';
 import type { PendingAction } from '@t2000/engine';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { validateJwt, isValidSuiAddress } from '@/lib/auth';
-import { createEngine, getSessionStore } from '@/lib/engine/engine-factory';
+import { createEngine, getSessionStore, setConversationState } from '@/lib/engine/engine-factory';
 import { logSessionUsage } from '@/lib/engine/log-session-usage';
 import { prisma } from '@/lib/prisma';
 
@@ -66,7 +66,11 @@ export async function POST(request: NextRequest) {
     .catch(() => []);
 
   try {
-    const engine = await createEngine(address, session, contacts);
+    const engine = await createEngine({
+      address,
+      session,
+      contacts,
+    });
     const priorMsgCount = engine.getMessages().length;
 
     const stream = new ReadableStream({
@@ -116,6 +120,27 @@ export async function POST(request: NextRequest) {
             await store.set(updatedSession);
           } catch (saveErr) {
             console.error('[engine/resume] session save failed:', saveErr);
+          }
+
+          // F4: Update conversation state — if resume produced a new
+          // pending action (chained write), transition to awaiting_confirmation;
+          // otherwise reset to idle.
+          if (pendingAction) {
+            setConversationState(sessionId, {
+              type: 'awaiting_confirmation',
+              action: pendingAction.toolName,
+              amount: typeof (pendingAction.input as Record<string, unknown>)?.amount === 'number'
+                ? (pendingAction.input as Record<string, unknown>).amount as number
+                : undefined,
+              proposedAt: Date.now(),
+              expiresAt: Date.now() + 5 * 60_000,
+            }).catch((err) =>
+              console.error('[engine/resume] state transition failed:', err),
+            );
+          } else {
+            setConversationState(sessionId, { type: 'idle' }).catch((err) =>
+              console.error('[engine/resume] state transition failed:', err),
+            );
           }
 
           logSessionUsage(address, sessionId, usage, messages, AGENT_MODEL, priorMsgCount).catch((err) =>

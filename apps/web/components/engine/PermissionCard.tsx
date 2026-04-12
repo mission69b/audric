@@ -148,6 +148,19 @@ export function PermissionCard({ action, onResolve }: PermissionCardProps) {
         <p className="text-sm font-mono text-foreground">{inputSummary}</p>
       )}
 
+      {action.guardInjections && action.guardInjections.length > 0 && (
+        <div className="space-y-1">
+          {action.guardInjections.map((g, i) => (
+            <p
+              key={i}
+              className={`text-[11px] leading-tight ${g._warning ? 'text-warning' : 'text-muted'}`}
+            >
+              {g._warning ?? g._hint}
+            </p>
+          ))}
+        </div>
+      )}
+
       {!resolved ? (
         <div className="flex gap-2">
           <button

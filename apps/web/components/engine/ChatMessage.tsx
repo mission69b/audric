@@ -4,6 +4,7 @@ import type { EngineChatMessage, PendingAction, ToolExecution } from '@/lib/engi
 import { AgentStep, getStepIcon, getStepLabel } from './AgentStep';
 import { ToolResultCard } from './ToolResultCard';
 import { ThinkingState } from './ThinkingState';
+import { ReasoningAccordion } from './ReasoningAccordion';
 import { PermissionCard, type DenyReason } from './PermissionCard';
 import { CanvasCard } from './CanvasCard';
 import { AgentMarkdown } from '@/components/dashboard/AgentMarkdown';
@@ -134,10 +135,20 @@ export function ChatMessage({ message, onActionResolve, autoApproveTools, agentB
         />
       )}
 
-      {isOnlyStreaming && (
+      {message.isThinking && !message.content && !hasTools && (
         <div className="pl-1">
           <ThinkingState status="thinking" intensity="active" />
         </div>
+      )}
+
+      {isOnlyStreaming && !message.isThinking && !message.thinking && (
+        <div className="pl-1">
+          <ThinkingState status="thinking" intensity="active" />
+        </div>
+      )}
+
+      {message.thinking && !message.isThinking && (
+        <ReasoningAccordion thinking={message.thinking} isStreaming={message.isStreaming} />
       )}
 
       {hasContent && (

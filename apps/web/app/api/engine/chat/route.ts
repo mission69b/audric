@@ -8,6 +8,8 @@ import {
   createUnauthEngine,
   getSessionStore,
   generateSessionId,
+  getConversationState,
+  setConversationState,
   type HistoryMessage,
 } from '@/lib/engine/engine-factory';
 import { UpstashSessionStore } from '@/lib/engine/upstash-session-store';
@@ -100,7 +102,15 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      engine = await createEngine(address, session, contacts);
+      const conversationState = sessionId ? await getConversationState(sessionId).catch(() => undefined) : undefined;
+
+      engine = await createEngine({
+        address,
+        session,
+        contacts,
+        message: message.trim(),
+        conversationState,
+      });
     } else {
       engine = await createUnauthEngine(history);
     }
@@ -180,6 +190,13 @@ export async function POST(request: NextRequest) {
           if (saveSession && sessionId && address) {
             handleAdviceResults(address, sessionId, messages).catch((err) =>
               console.error('[engine/chat] advice log failed:', err),
+            );
+          }
+
+          // F4: Update conversation state based on turn outcome
+          if (saveSession && sessionId) {
+            updateConversationState(sessionId, pendingAction, messages).catch((err) =>
+              console.error('[engine/chat] state transition failed:', err),
             );
           }
 
@@ -365,4 +382,58 @@ async function logConversationTurn(
   });
 
   await prisma.conversationLog.createMany({ data: rows });
+}
+
+async function updateConversationState(
+  sessionId: string,
+  pendingAction: PendingAction | null,
+  messages: MessageLike[],
+): Promise<void> {
+  if (pendingAction) {
+    await setConversationState(sessionId, {
+      type: 'awaiting_confirmation',
+      action: pendingAction.toolName,
+      amount: typeof (pendingAction.input as Record<string, unknown>)?.amount === 'number'
+        ? (pendingAction.input as Record<string, unknown>).amount as number
+        : undefined,
+      recipient: typeof (pendingAction.input as Record<string, unknown>)?.recipient === 'string'
+        ? (pendingAction.input as Record<string, unknown>).recipient as string
+        : undefined,
+      proposedAt: Date.now(),
+      expiresAt: Date.now() + 5 * 60_000,
+    });
+    return;
+  }
+
+  // tool_result blocks live in USER messages (the engine auto-creates them),
+  // so scan user messages — not assistant messages — for errors.
+  const userMessages = messages.filter((m) => m.role === 'user' && Array.isArray(m.content));
+  const lastUserWithResults = [...userMessages].reverse().find((m) =>
+    (m.content as Record<string, unknown>[]).some((b) => b.type === 'tool_result'),
+  );
+
+  if (lastUserWithResults && Array.isArray(lastUserWithResults.content)) {
+    const blocks = lastUserWithResults.content as Record<string, unknown>[];
+    const errorBlock = blocks.find((b) => b.type === 'tool_result' && b.isError === true);
+
+    if (errorBlock) {
+      // Find the corresponding tool_use in the preceding assistant message
+      const userIdx = messages.indexOf(lastUserWithResults);
+      const precedingAssistant = userIdx > 0 ? messages[userIdx - 1] : null;
+      const failedTool = Array.isArray(precedingAssistant?.content)
+        ? (precedingAssistant!.content as Record<string, unknown>[]).find((b) => b.type === 'tool_use')
+        : undefined;
+
+      await setConversationState(sessionId, {
+        type: 'post_error',
+        failedAction: (failedTool?.name as string) ?? 'unknown',
+        errorMessage: typeof errorBlock.content === 'string' ? errorBlock.content.slice(0, 200) : 'Unknown error',
+        occurredAt: Date.now(),
+      });
+      return;
+    }
+  }
+
+  // Successful turn — reset to idle
+  await setConversationState(sessionId, { type: 'idle' });
 }

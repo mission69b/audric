@@ -312,12 +312,30 @@ export function useEngine({ address, jwt }: UseEngineOptions) {
     if (!msgId) return;
 
     switch (event.type) {
+      case 'thinking_delta':
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === msgId
+              ? { ...m, thinking: (m.thinking ?? '') + event.text, isThinking: true }
+              : m,
+          ),
+        );
+        break;
+
+      case 'thinking_done':
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === msgId ? { ...m, isThinking: false } : m,
+          ),
+        );
+        break;
+
       case 'text_delta':
         hasReceivedContent.current = true;
         setMessages((prev) =>
           prev.map((m) =>
             m.id === msgId
-              ? { ...m, content: m.content + event.text }
+              ? { ...m, content: m.content + event.text, isThinking: false }
               : m,
           ),
         );

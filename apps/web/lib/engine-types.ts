@@ -19,6 +19,8 @@ export interface EngineChatMessage {
   pendingAction?: PendingAction;
   usage?: UsageData;
   isStreaming?: boolean;
+  thinking?: string;
+  isThinking?: boolean;
 }
 
 export interface ToolExecution {

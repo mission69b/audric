@@ -8,19 +8,25 @@ import {
   adaptAllServerTools,
   fetchWalletCoins,
   fetchTokenPrices,
+  buildCachedSystemPrompt,
+  classifyEffort,
+  applyToolFlags,
+  DEFAULT_GUARD_CONFIG,
   type SessionData,
   type SessionStore,
   type ServerPositionData,
   type Message,
   type Tool,
+  type ConversationState,
 } from '@t2000/engine';
 import { UpstashSessionStore } from './upstash-session-store';
+import { UpstashConversationStateStore } from './upstash-conversation-state-store';
 import { GOAL_TOOLS } from './goal-tools';
 import { ADVICE_TOOLS } from './advice-tool';
 import { prisma } from '@/lib/prisma';
 import {
   buildAdviceContext,
-  buildDynamicBlock,
+  buildFullDynamicContext,
   STATIC_SYSTEM_PROMPT,
   type WalletBalanceSummary,
   type Contact,
@@ -33,6 +39,7 @@ const SUI_NETWORK = (process.env.NEXT_PUBLIC_SUI_NETWORK ?? 'mainnet') as 'mainn
 const SUI_RPC_URL = `https://fullnode.${SUI_NETWORK}.sui.io:443`;
 const ALLOWANCE_API_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://audric.ai';
 const AUDRIC_INTERNAL_KEY = process.env.T2000_INTERNAL_KEY ?? '';
+const ENABLE_THINKING = process.env.ENABLE_THINKING === 'true';
 
 let sessionStore: SessionStore | null = null;
 let mcpManager: McpClientManager | null = null;
@@ -133,24 +140,36 @@ export async function fetchServerPositions(address: string): Promise<ServerPosit
   }
 }
 
-function buildSystemPrompt(
-  walletAddress: string,
-  tools: Tool[],
-  balances?: WalletBalanceSummary,
-  contacts?: Contact[],
-  swapTokenNames?: string[],
-  goals?: GoalSummary[],
-  adviceContext?: string,
-): string {
-  const dynamic = buildDynamicBlock(walletAddress, tools, balances, contacts, swapTokenNames, goals, adviceContext);
-  return `${STATIC_SYSTEM_PROMPT}\n\n---\n\n${dynamic}`;
+export async function getConversationState(sessionId: string): Promise<ConversationState> {
+  const store = new UpstashConversationStateStore(sessionId);
+  return store.get();
+}
+
+export async function setConversationState(sessionId: string, state: ConversationState): Promise<void> {
+  const store = new UpstashConversationStateStore(sessionId);
+  await store.transition(state);
+}
+
+export interface CreateEngineOpts {
+  address: string;
+  session?: SessionData | null;
+  contacts?: Contact[];
+  message?: string;
+  conversationState?: ConversationState;
 }
 
 export async function createEngine(
-  address: string,
+  addressOrOpts: string | CreateEngineOpts,
   session?: SessionData | null,
   contacts?: Contact[],
 ): Promise<QueryEngine> {
+  // Support both the old (address, session, contacts) signature and the new opts object
+  const opts: CreateEngineOpts = typeof addressOrOpts === 'string'
+    ? { address: addressOrOpts, session, contacts }
+    : addressOrOpts;
+
+  const { address } = opts;
+
   if (!ANTHROPIC_API_KEY) {
     throw new Error('ANTHROPIC_API_KEY not configured');
   }
@@ -200,10 +219,6 @@ export async function createEngine(
     prices,
   };
 
-  // Only expose MCP tools that add genuinely new capabilities.
-  // Built-in tools already wrap NAVI MCP for balance, rates, health, positions,
-  // rewards, and swap quotes (via Cetus with better multi-DEX routing).
-  // Exposing redundant MCP tools causes the LLM to pick the wrong tool.
   const MCP_ALLOWLIST = new Set([
     'navi_sui_get_transaction',
     'navi_sui_explain_transaction',
@@ -214,12 +229,37 @@ export async function createEngine(
     (t) => MCP_ALLOWLIST.has(t.name),
   ) as Tool[];
 
-  // swap_quote is redundant with swap_execute's confirmation card
   const EXCLUDED_TOOLS = new Set(['swap_quote']);
   const filteredReads = READ_TOOLS.filter((t) => !EXCLUDED_TOOLS.has(t.name));
-  const allTools = [...filteredReads, ...WRITE_TOOLS, ...GOAL_TOOLS, ...ADVICE_TOOLS, ...mcpTools];
+  const allTools = applyToolFlags([...filteredReads, ...WRITE_TOOLS, ...GOAL_TOOLS, ...ADVICE_TOOLS, ...mcpTools]);
 
   console.log(`[engine-factory] tools=${allTools.length}: ${allTools.map(t => t.name).join(', ')}`);
+
+  // RE-1.3: Build system prompt using cache-optimized blocks
+  const dynamicBlock = buildFullDynamicContext(address, allTools, {
+    balances: balanceSummary,
+    contacts: opts.contacts,
+    swapTokenNames,
+    goals,
+    adviceContext: adviceContext || undefined,
+    intelligence: {
+      conversationState: opts.conversationState,
+    },
+  });
+
+  const systemPrompt = ENABLE_THINKING
+    ? buildCachedSystemPrompt([STATIC_SYSTEM_PROMPT], dynamicBlock)
+    : `${STATIC_SYSTEM_PROMPT}\n\n---\n\n${dynamicBlock}`;
+
+  // RE-1.2: Classify effort level based on message content
+  const sessionWriteCount = opts.session?.messages?.filter(
+    (m) => m.role === 'assistant' && Array.isArray(m.content) &&
+      m.content.some((b: { type: string }) => b.type === 'tool_use'),
+  ).length ?? 0;
+
+  const effort = opts.message
+    ? classifyEffort(MODEL, opts.message, null, sessionWriteCount)
+    : 'medium';
 
   const engine = new QueryEngine({
     provider: new AnthropicProvider({ apiKey: ANTHROPIC_API_KEY }),
@@ -232,22 +272,27 @@ export async function createEngine(
       pendingRewards: 0, supplies: [], borrows_detail: [],
     }),
     tools: allTools,
-    systemPrompt: buildSystemPrompt(address, allTools, balanceSummary, contacts, swapTokenNames, goals, adviceContext || undefined),
+    systemPrompt,
     model: MODEL,
     env: {
       ALLOWANCE_API_URL,
       AUDRIC_INTERNAL_KEY,
     },
     maxTurns: 10,
-    maxTokens: 8192,
+    maxTokens: effort === 'high' || effort === 'max' ? 16384 : 8192,
     toolChoice: 'auto',
     costTracker: {
       budgetLimitUsd: 0.50,
     },
+    guards: DEFAULT_GUARD_CONFIG,
+    ...(ENABLE_THINKING && {
+      thinking: { type: 'adaptive' as const },
+      outputConfig: { effort },
+    }),
   });
 
-  if (session?.messages?.length) {
-    engine.loadMessages(session.messages);
+  if (opts.session?.messages?.length) {
+    engine.loadMessages(opts.session.messages);
   }
 
   return engine;

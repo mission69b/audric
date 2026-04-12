@@ -59,6 +59,11 @@ function convertSessionMessages(messages: SessionMessage[], createdAt: number): 
         .filter((b) => b.type === 'text')
         .map((b) => b.text ?? '');
 
+      const thinkingParts = msg.content
+        .filter((b) => b.type === 'thinking')
+        .map((b) => (b as unknown as { thinking: string }).thinking ?? '');
+      const thinking = thinkingParts.length > 0 ? thinkingParts.join('\n') : undefined;
+
       const toolUses = msg.content.filter((b) => b.type === 'tool_use');
       const nextMsg = messages[i + 1];
       const toolResultMap = new Map<string, ContentBlock>();
@@ -89,6 +94,7 @@ function convertSessionMessages(messages: SessionMessage[], createdAt: number): 
         content: textParts.join('\n'),
         timestamp: createdAt + i * 1000,
         ...(tools.length > 0 ? { tools } : {}),
+        ...(thinking ? { thinking } : {}),
       });
     }
   }
