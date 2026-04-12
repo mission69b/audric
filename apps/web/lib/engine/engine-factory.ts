@@ -34,7 +34,7 @@ import {
 } from './engine-context';
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
-const MODEL = process.env.AGENT_MODEL ?? 'claude-sonnet-4-20250514';
+const MODEL = process.env.AGENT_MODEL ?? 'claude-sonnet-4-6';
 const SUI_NETWORK = (process.env.NEXT_PUBLIC_SUI_NETWORK ?? 'mainnet') as 'mainnet' | 'testnet';
 const SUI_RPC_URL = `https://fullnode.${SUI_NETWORK}.sui.io:443`;
 const ALLOWANCE_API_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://audric.ai';
