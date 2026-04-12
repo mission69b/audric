@@ -33,12 +33,13 @@ export function FullPortfolioCanvas({ data, onAction }: Props) {
     if (!address) return;
     setLoading(true);
 
+    const hdrs = { 'x-sui-address': address };
     Promise.all([
-      fetch(`/api/analytics/activity-heatmap?address=${address}&days=30`)
+      fetch(`/api/analytics/activity-heatmap?days=30`, { headers: hdrs })
         .then((r) => r.json())
         .then((d) => d.summary ?? null)
         .catch(() => null),
-      fetch(`/api/analytics/spending?address=${address}&period=month`)
+      fetch(`/api/analytics/spending?period=month`, { headers: hdrs })
         .then((r) => r.json())
         .catch(() => null),
       fetch(`/api/balances?address=${address}`)

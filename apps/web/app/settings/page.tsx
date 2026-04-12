@@ -89,7 +89,7 @@ function SettingsContent() {
   const fetchSpending = useCallback(async () => {
     if (!address) return;
     try {
-      const res = await fetch(`/api/analytics/spending?address=${address}&period=month`);
+      const res = await fetch(`/api/analytics/spending?period=month`, { headers: { 'x-sui-address': address } });
       if (res.ok) {
         const data = await res.json();
         if (data && typeof data.totalSpent === 'number') setSpending(data);

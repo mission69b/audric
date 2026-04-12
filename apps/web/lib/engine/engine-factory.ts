@@ -27,6 +27,7 @@ import { UpstashConversationStateStore } from './upstash-conversation-state-stor
 import { GOAL_TOOLS } from './goal-tools';
 import { ADVICE_TOOLS } from './advice-tool';
 import { prisma } from '@/lib/prisma';
+import { fetchPositions as fetchPortfolioPositions } from '@/lib/portfolio-data';
 import {
   buildAdviceContext,
   buildFullDynamicContext,
@@ -90,53 +91,17 @@ async function ensureMcpConnected(): Promise<McpClientManager> {
 
 export async function fetchServerPositions(address: string): Promise<ServerPositionData | undefined> {
   try {
-    const { getRegistry } = await import('@/lib/protocol-registry');
-    const registry = getRegistry();
-    const lendingAdapters = registry.listLending();
-
-    const rewardAdapters = lendingAdapters.filter((a) => !!a.getPendingRewards);
-
-    const [allPositions, healthResults, rewardResults] = await Promise.all([
-      registry.allPositions(address),
-      Promise.allSettled(lendingAdapters.map((a) => a.getHealth(address))),
-      Promise.allSettled(rewardAdapters.map((a) => a.getPendingRewards!(address))),
-    ]);
-
-    let savings = 0;
-    let borrows = 0;
-    let weightedRateSum = 0;
-    const supplies: ServerPositionData['supplies'] = [];
-    const borrows_detail: ServerPositionData['borrows_detail'] = [];
-
-    for (const pos of allPositions) {
-      for (const s of pos.positions.supplies) {
-        const usd = s.amountUsd ?? s.amount;
-        savings += usd;
-        weightedRateSum += usd * s.apy;
-        supplies.push({ asset: s.asset, amount: s.amount, amountUsd: usd, apy: s.apy, protocol: pos.protocol });
-      }
-      for (const b of pos.positions.borrows) {
-        const usd = b.amountUsd ?? b.amount;
-        borrows += usd;
-        borrows_detail.push({ asset: b.asset, amount: b.amount, amountUsd: usd, apy: b.apy, protocol: pos.protocol });
-      }
-    }
-
-    const savingsRate = savings > 0 ? weightedRateSum / savings : 0;
-
-    const validHealths = healthResults
-      .filter((h) => h.status === 'fulfilled')
-      .map((h) => (h as PromiseFulfilledResult<Awaited<ReturnType<typeof lendingAdapters[0]['getHealth']>>>).value);
-    const finiteHFs = validHealths.filter((h) => h.healthFactor !== Infinity && isFinite(h.healthFactor));
-    const healthFactor = finiteHFs.length > 0 ? Math.min(...finiteHFs.map((h) => h.healthFactor)) : null;
-    const maxBorrow = validHealths.reduce((sum, h) => sum + (h.maxBorrow ?? 0), 0);
-
-    const pendingRewards = rewardResults
-      .filter((h) => h.status === 'fulfilled')
-      .flatMap((r) => (r as PromiseFulfilledResult<Awaited<ReturnType<NonNullable<typeof lendingAdapters[0]['getPendingRewards']>>>>).value)
-      .reduce((sum, r) => sum + (r.estimatedValueUsd ?? 0), 0);
-
-    return { savings, borrows, savingsRate, healthFactor, maxBorrow, pendingRewards, supplies, borrows_detail };
+    const pos = await fetchPortfolioPositions(address);
+    return {
+      savings: pos.savings,
+      borrows: pos.borrows,
+      savingsRate: pos.savingsRate,
+      healthFactor: pos.healthFactor,
+      maxBorrow: pos.maxBorrow,
+      pendingRewards: pos.pendingRewards,
+      supplies: pos.supplies.map((s) => ({ asset: s.asset, amount: s.amount, amountUsd: s.amountUsd, apy: s.apy, protocol: s.protocol })),
+      borrows_detail: pos.borrowsDetail.map((b) => ({ asset: b.asset, amount: b.amount, amountUsd: b.amountUsd, apy: b.apy, protocol: b.protocol })),
+    };
   } catch (err) {
     console.warn('[engine] Failed to pre-fetch positions:', err);
     return undefined;

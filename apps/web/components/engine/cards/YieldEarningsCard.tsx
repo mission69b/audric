@@ -37,12 +37,17 @@ function fmtApy(rate: number): string {
   return `${pct.toFixed(2)}%`;
 }
 
+function fmtYield(val: number, raw: number): string {
+  if (raw > 0 && val === 0) return '< $0.01';
+  return `$${fmtUsd(val)}`;
+}
+
 export function YieldEarningsCard({ data }: { data: YieldData }) {
   return (
     <CardShell title="Yield Earnings">
       <div className="text-center mb-1">
         <span className="text-2xl font-semibold font-mono text-foreground">
-          ${fmtUsd(data.allTime)}
+          {fmtYield(data.allTime, data.deposited > 0 ? 1 : 0)}
         </span>
         <p className="text-[10px] font-mono uppercase tracking-widest text-dim mt-0.5">
           All-time earnings
@@ -54,16 +59,16 @@ export function YieldEarningsCard({ data }: { data: YieldData }) {
       )}
 
       <div className="space-y-1 font-mono text-[11px]">
-        <DetailRow label="Today">${fmtUsd(data.today)}</DetailRow>
-        <DetailRow label="This Week">${fmtUsd(data.thisWeek)}</DetailRow>
-        <DetailRow label="This Month">${fmtUsd(data.thisMonth)}</DetailRow>
-        <DetailRow label="All Time">${fmtUsd(data.allTime)}</DetailRow>
+        <DetailRow label="Today">{fmtYield(data.today, data.today)}</DetailRow>
+        <DetailRow label="This Week">{fmtYield(data.thisWeek, data.thisWeek)}</DetailRow>
+        <DetailRow label="This Month">{fmtYield(data.thisMonth, data.thisMonth)}</DetailRow>
+        <DetailRow label="All Time">{fmtYield(data.allTime, data.allTime)}</DetailRow>
       </div>
 
       <div className="mt-2 pt-2 border-t border-border/50 space-y-1 font-mono text-[11px]">
         <DetailRow label="Current APY">{fmtApy(data.currentApy)}</DetailRow>
-        <DetailRow label="Deposited">${fmtUsd(data.deposited)}</DetailRow>
-        <DetailRow label="Projected / Year">${fmtUsd(data.projectedYear)}</DetailRow>
+        <DetailRow label="Deposited">{data.deposited > 0 && data.deposited < 0.01 ? '< $0.01' : `$${fmtUsd(data.deposited)}`}</DetailRow>
+        <DetailRow label="Projected / Year">{data.projectedYear > 0 && data.projectedYear < 0.01 ? '< $0.01' : `$${fmtUsd(data.projectedYear)}`}</DetailRow>
       </div>
     </CardShell>
   );

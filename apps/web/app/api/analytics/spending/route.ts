@@ -4,14 +4,16 @@ import { prisma } from '@/lib/prisma';
 export const runtime = 'nodejs';
 
 /**
- * GET /api/analytics/spending?address=0x...&period=month
+ * GET /api/analytics/spending?period=month
+ * Header: x-sui-address (also accepts ?address= for backward compatibility)
  *
  * Aggregates AppEvent + ServicePurchase data to show spending by service/category.
  * Period: "week" | "month" | "year" | "all"
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
-  const address = searchParams.get('address');
+  const address = request.headers.get('x-sui-address')
+    ?? searchParams.get('address');
   const period = searchParams.get('period') ?? 'month';
 
   if (!address || !address.startsWith('0x')) {

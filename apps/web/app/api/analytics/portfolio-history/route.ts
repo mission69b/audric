@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getClient, getRegistry } from '@/lib/protocol-registry';
-import { USDC_TYPE } from '@t2000/sdk';
+import { fetchPortfolio } from '@/lib/portfolio-data';
 
 export const runtime = 'nodejs';
 
@@ -9,7 +8,8 @@ export const runtime = 'nodejs';
  * GET /api/analytics/portfolio-history?days=30
  *
  * Returns daily portfolio snapshots for the authenticated user (via x-sui-address header),
- * plus period change calculations.
+ * plus period change calculations. Appends a live data point for today if the cron
+ * snapshot hasn't run yet.
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
@@ -63,44 +63,17 @@ export async function GET(request: NextRequest) {
 
     if (needsLivePoint) {
       try {
-        const client = getClient();
-        const registry = getRegistry();
-
-        const [usdcBal, positions] = await Promise.all([
-          client.getBalance({ owner: address, coinType: USDC_TYPE }).catch(() => null),
-          registry.allPositions(address).catch(() => []),
-        ]);
-
-        const walletUsd = usdcBal ? Number(BigInt(usdcBal.totalBalance)) / 1e6 : 0;
-        let savingsUsd = 0;
-        let debtUsd = 0;
-        let healthFactor: number | null = null;
-
-        for (const pos of positions) {
-          for (const s of pos.positions.supplies) savingsUsd += s.amountUsd ?? s.amount;
-          for (const b of pos.positions.borrows) debtUsd += b.amountUsd ?? b.amount;
-        }
-
-        try {
-          const healths = await Promise.all(
-            registry.listLending().map((a) => a.getHealth(address).catch(() => null)),
-          );
-          const finite = healths.filter((h): h is NonNullable<typeof h> =>
-            h != null && isFinite(h.healthFactor) && h.healthFactor !== Infinity,
-          );
-          if (finite.length > 0) healthFactor = Math.min(...finite.map((h) => h.healthFactor));
-        } catch { /* health is supplementary */ }
-
+        const portfolio = await fetchPortfolio(address);
         mapped.push({
           date: todayStr,
-          netWorthUsd: walletUsd + savingsUsd - debtUsd,
-          walletValueUsd: walletUsd,
-          savingsValueUsd: savingsUsd,
-          debtValueUsd: debtUsd,
+          netWorthUsd: portfolio.netWorthUsd,
+          walletValueUsd: portfolio.wallet.totalUsd,
+          savingsValueUsd: portfolio.positions.savings,
+          debtValueUsd: portfolio.positions.borrows,
           yieldEarnedUsd: 0,
-          healthFactor,
+          healthFactor: portfolio.positions.healthFactor,
         });
-      } catch { /* fall through -- stale data is better than crash */ }
+      } catch { /* stale data is better than crash */ }
     }
 
     const change = computeChange(mapped, days);

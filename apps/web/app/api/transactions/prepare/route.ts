@@ -5,6 +5,7 @@ import { AggregatorClient, Env, getProvidersExcluding } from '@cetusprotocol/agg
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { validateJwt, isValidSuiAddress, validateAmount } from '@/lib/auth';
 import { getRegistry, getClient } from '@/lib/protocol-registry';
+import { fetchWalletBalances } from '@/lib/portfolio-data';
 import { resolveTokenType, getDecimalsForCoinType, USDC_TYPE, SUI_TYPE, assertAllowedAsset, buildCreateAllowanceTx, addDepositAllowanceTx } from '@t2000/sdk';
 
 export const runtime = 'nodejs';
@@ -55,6 +56,7 @@ function extractMoveCallTargets(tx: Transaction): string[] {
 
 /**
  * Server-side balance validation — prevents building transactions that will fail on-chain.
+ * Uses the shared fetchWalletBalances for USDC/SUI, falls back to direct getBalance for other coins.
  * Returns an error message string if validation fails, or null if OK.
  */
 async function validateBalance(
@@ -63,29 +65,46 @@ async function validateBalance(
   amount: number,
   body: BuildRequest,
 ): Promise<string | null> {
-  const client = getClient();
   try {
     if (type === 'send' || type === 'save') {
-      const coinType = resolveTokenType(body.asset ?? 'USDC') ?? USDC_TYPE;
-      const bal = await client.getBalance({ owner: address, coinType });
-      const decimals = getDecimalsForCoinType(coinType);
-      const available = Number(bal.totalBalance) / 10 ** decimals;
-      if (amount > available + 0.001) {
-        const sym = body.asset ?? 'USDC';
-        return `Insufficient ${sym} balance: you have ${available.toFixed(4)} but requested ${amount}`;
+      const sym = body.asset ?? 'USDC';
+      const coinType = resolveTokenType(sym) ?? USDC_TYPE;
+
+      if (coinType === USDC_TYPE || sym === 'USDC') {
+        const wallet = await fetchWalletBalances(address);
+        if (amount > wallet.USDC + 0.001) {
+          return `Insufficient USDC balance: you have ${wallet.USDC.toFixed(4)} but requested ${amount}`;
+        }
+      } else {
+        const client = getClient();
+        const bal = await client.getBalance({ owner: address, coinType });
+        const decimals = getDecimalsForCoinType(coinType);
+        const available = Number(bal.totalBalance) / 10 ** decimals;
+        if (amount > available + 0.001) {
+          return `Insufficient ${sym} balance: you have ${available.toFixed(4)} but requested ${amount}`;
+        }
       }
     } else if (type === 'swap') {
       const fromToken = body.from ?? body.fromAsset ?? 'USDC';
       const coinType = resolveTokenType(fromToken) ?? fromToken;
-      const bal = await client.getBalance({ owner: address, coinType });
-      const decimals = getDecimalsForCoinType(coinType);
-      const available = Number(bal.totalBalance) / 10 ** decimals;
-      if (amount > available + 0.001) {
-        return `Insufficient ${fromToken} balance: you have ${available.toFixed(4)} but requested ${amount}`;
+
+      if (coinType === USDC_TYPE || fromToken === 'USDC') {
+        const wallet = await fetchWalletBalances(address);
+        if (amount > wallet.USDC + 0.001) {
+          return `Insufficient USDC balance: you have ${wallet.USDC.toFixed(4)} but requested ${amount}`;
+        }
+      } else {
+        const client = getClient();
+        const bal = await client.getBalance({ owner: address, coinType });
+        const decimals = getDecimalsForCoinType(coinType);
+        const available = Number(bal.totalBalance) / 10 ** decimals;
+        if (amount > available + 0.001) {
+          return `Insufficient ${fromToken} balance: you have ${available.toFixed(4)} but requested ${amount}`;
+        }
       }
     }
   } catch {
-    // Balance check failed (e.g., coin not held) — let the transaction attempt proceed
+    // Balance check failed — let the transaction attempt proceed
   }
   return null;
 }

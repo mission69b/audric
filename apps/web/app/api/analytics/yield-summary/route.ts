@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getRegistry } from '@/lib/protocol-registry';
+import { fetchPositions } from '@/lib/portfolio-data';
 
 export const runtime = 'nodejs';
 
@@ -10,8 +10,8 @@ export const runtime = 'nodejs';
  * Returns yield earnings breakdown: today, week, month, all-time,
  * current APY, deposited amount, projected yearly, and monthly sparkline.
  *
- * Uses PortfolioSnapshot for historical data and derives daily yield
- * from savings balance * APY / 365.
+ * Uses PortfolioSnapshot for historical data and live position data
+ * from the protocol registry for current state.
  */
 export async function GET(request: NextRequest) {
   const address = request.headers.get('x-sui-address');
@@ -67,29 +67,14 @@ export async function GET(request: NextRequest) {
       currentSavings = latest.savingsValueUsd ?? 0;
     }
 
-    let liveSavings = currentSavings;
-    let liveRate = 0;
-    try {
-      const registry = getRegistry();
-      const allPos = await registry.allPositions(address);
-      let totalSavings = 0;
-      let weightedRateSum = 0;
-      for (const pos of allPos) {
-        for (const s of pos.positions.supplies) {
-          const usd = s.amountUsd ?? s.amount;
-          totalSavings += usd;
-          weightedRateSum += usd * s.apy;
-        }
-      }
-      liveSavings = totalSavings;
-      liveRate = totalSavings > 0 ? weightedRateSum / totalSavings : 0;
-    } catch { /* fall through to snapshot-based values */ }
+    const livePositions = await fetchPositions(address);
+    const liveSavings = livePositions.savings;
+    const liveRate = livePositions.savingsRate;
 
     if (liveSavings > currentSavings || currentSavings === 0) {
       currentSavings = liveSavings;
     }
 
-    // Derive APY from recent yield if we have enough snapshots with real yield data
     const hasRealYieldData = snapshots.some((s) => (s.yieldEarnedUsd ?? 0) > 0);
     if (hasRealYieldData && currentSavings > 0 && snapshots.length >= 7) {
       const recentWeekYield = yieldWeek;
@@ -97,7 +82,6 @@ export async function GET(request: NextRequest) {
       currentApy = currentSavings > 0 ? (dailyAvg / currentSavings) * 365 : 0;
     }
 
-    // Use live rate from protocol if available, otherwise default
     if (currentApy <= 0 && currentSavings > 0) {
       currentApy = liveRate > 0 ? liveRate : 0.045;
       yieldToday = currentSavings * currentApy / 365;
@@ -105,7 +89,6 @@ export async function GET(request: NextRequest) {
 
     const projectedYear = currentSavings * (currentApy > 0 ? currentApy : 0.045);
 
-    // Build monthly sparkline (last 12 months of cumulative yield)
     const sparkline: number[] = [];
     const monthBuckets = new Map<string, number>();
     for (const s of snapshots) {

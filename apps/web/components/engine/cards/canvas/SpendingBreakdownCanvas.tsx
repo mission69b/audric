@@ -98,7 +98,7 @@ export function SpendingBreakdownCanvas({ data, onAction }: Props) {
   useEffect(() => {
     if (!address) return;
     setLoading(true);
-    fetch(`/api/analytics/spending?address=${address}&period=${periodValue}`)
+    fetch(`/api/analytics/spending?period=${periodValue}`, { headers: { 'x-sui-address': address } })
       .then((r) => r.json())
       .then((d) => setResponse(d))
       .catch(() => setResponse({ period: periodValue, totalSpent: 0, requestCount: 0, serviceCount: 0, byService: [] }))
