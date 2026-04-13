@@ -2,7 +2,7 @@
 
 import { Suspense, use } from 'react';
 import { AuthGuard } from '@/components/auth/AuthGuard';
-import { DashboardContent } from '@/app/new/page';
+import { DashboardContent } from '@/app/new/dashboard-content';
 
 interface ChatSessionPageProps {
   params: Promise<{ sessionId: string }>;
