@@ -21,7 +21,7 @@ const SERVER_URL = process.env.SERVER_URL ?? 'https://api.t2000.ai';
 const SPONSOR_INTERNAL_KEY = process.env.SPONSOR_INTERNAL_KEY ?? '';
 const SESSION_CHARGE_AMOUNT = 10_000; // $0.01 USDC (6 decimals)
 const SESSION_FEATURE = 4; // ALLOWANCE_FEATURES.SESSION
-const FREE_SESSION_LIMIT = 5;
+const FREE_SESSION_LIMIT = 20;
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;

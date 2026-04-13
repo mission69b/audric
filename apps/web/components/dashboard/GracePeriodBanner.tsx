@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 
-const FREE_SESSION_LIMIT = 5;
+const FREE_SESSION_LIMIT = 20;
 
 interface GracePeriodBannerProps {
   sessionsUsed: number;
