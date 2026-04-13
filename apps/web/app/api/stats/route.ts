@@ -10,6 +10,7 @@ export async function GET() {
       usageAgg,
       sessionCount,
       transactionCount,
+      toolExecutions,
     ] = await Promise.all([
       prisma.user.count(),
 
@@ -29,6 +30,10 @@ export async function GET() {
       `.then(([row]) => Number(row.count)),
 
       prisma.appEvent.count(),
+
+      prisma.$queryRaw<[{ count: bigint }]>`
+        SELECT COALESCE(SUM(array_length("toolNames", 1)), 0) AS count FROM "SessionUsage"
+      `.then(([row]) => Number(row.count)),
     ]);
 
     const sum = usageAgg._sum;
@@ -57,6 +62,7 @@ export async function GET() {
         : 0,
       cacheSavingsPercent,
       totalTransactions: transactionCount,
+      totalToolExecutions: toolExecutions,
       topTools,
     };
 

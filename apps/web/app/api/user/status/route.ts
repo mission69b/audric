@@ -18,10 +18,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid address' }, { status: 400 });
   }
 
-  const user = await prisma.user.findUnique({
-    where: { suiAddress: address },
-    select: { onboardedAt: true, tosAcceptedAt: true },
-  });
+  const [user, sessionCount] = await Promise.all([
+    prisma.user.findUnique({
+      where: { suiAddress: address },
+      select: { onboardedAt: true, tosAcceptedAt: true },
+    }),
+    prisma.sessionUsage.groupBy({
+      by: ['sessionId'],
+      where: { address },
+    }).then((rows) => rows.length).catch(() => 0),
+  ]);
 
   if (!user) {
     return NextResponse.json({ error: 'User not found' }, { status: 404 });
@@ -30,5 +36,6 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     onboarded: user.onboardedAt !== null,
     tosAccepted: user.tosAcceptedAt !== null,
+    sessionsUsed: sessionCount,
   });
 }

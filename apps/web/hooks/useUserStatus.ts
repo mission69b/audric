@@ -4,6 +4,7 @@ import { useCallback } from 'react';
 interface UserStatus {
   onboarded: boolean;
   tosAccepted: boolean;
+  sessionsUsed: number;
 }
 
 export function useUserStatus(address: string | null, jwt: string | undefined) {
@@ -56,6 +57,7 @@ export function useUserStatus(address: string | null, jwt: string | undefined) {
     loading: query.isLoading,
     onboarded: query.data?.onboarded ?? true,
     tosAccepted: query.data?.tosAccepted ?? true,
+    sessionsUsed: query.data?.sessionsUsed ?? 0,
     acceptTos,
     markOnboarded,
   };

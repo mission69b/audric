@@ -49,6 +49,8 @@ interface Stats {
   totalUsers: number;
   totalSessions: number;
   totalTransactions: number;
+  totalToolExecutions: number;
+  totalTokens: number;
 }
 
 function useStats() {
@@ -363,9 +365,9 @@ export default function LandingPage() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-border border border-border">
             {[
               { value: fmtStat(stats?.totalUsers), label: 'Users' },
-              { value: fmtStat(stats?.totalSessions), label: 'Sessions' },
-              { value: fmtStat(stats?.totalTransactions), label: 'Transactions' },
-              { value: '99.9%', label: 'Uptime' },
+              { value: fmtStat(stats?.totalTransactions), label: 'On-chain txs' },
+              { value: fmtStat(stats?.totalToolExecutions), label: 'Tool calls' },
+              { value: fmtStat(stats?.totalTokens), label: 'Tokens processed' },
             ].map((stat) => (
               <div key={stat.label} className="bg-background px-4 py-5 text-center">
                 <div className="text-[28px] font-semibold text-foreground leading-none mb-1 tracking-[-1px]">{stat.value}</div>

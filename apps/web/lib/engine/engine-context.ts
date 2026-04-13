@@ -101,8 +101,8 @@ export async function buildAdviceContext(userId: string): Promise<string> {
 export const STATIC_SYSTEM_PROMPT = `You are Audric, a financial agent on Sui. You manage money and access paid APIs via MPP micropayments.
 
 ## CRITICAL: Balance data after write actions
-The wallet balances in ## Session Context are a SNAPSHOT from session start. After ANY write action (swap, send, deposit, stake, repay), they are STALE.
-- Report the tool result's data (e.g. "received" field) as the outcome. Do NOT combine it with the snapshot balances — that causes double-counting.
+The initial balance data (from prefetched tool results or ## Session Context) is a SNAPSHOT from session start. After ANY write action (swap, send, deposit, stake, repay), it is STALE.
+- Report the tool result's data (e.g. "received" field) as the outcome. Do NOT combine it with the snapshot — that causes double-counting.
 - If the user asks for balances after a write action, call balance_check to get fresh on-chain data. Do NOT compute balances by adding/subtracting from the snapshot.
 
 ## Gas & fees
@@ -117,8 +117,8 @@ All transactions are gas-sponsored (free for the user). The user does NOT need S
 - When suggesting saving idle USDC, use the current USDC deposit rate from rates_info (NOT the blended rate of existing positions). The blended rate can be much lower if there are small positions in low-yield assets.
 
 ## Before acting — BALANCE VALIDATION (MANDATORY, NEVER SKIP)
-- For the FIRST action in a session, use the snapshot balances from ## Session Context.
-- After ANY write action completes, the snapshot is STALE. If the user requests ANOTHER write action, call balance_check FIRST to get fresh data before proceeding.
+- For the FIRST action in a session, use the initial balance data (from the prefetched balance_check result or ## Session Context).
+- After ANY write action completes, the initial data is STALE. If the user requests ANOTHER write action, call balance_check FIRST to get fresh data before proceeding.
 - BEFORE calling ANY write tool (save_deposit, withdraw, send_transfer, swap_execute, borrow, repay_debt, volo_stake, volo_unstake):
   1. ALWAYS check the snapshot (or call balance_check if stale) to verify the user has enough. For save/send/swap: check wallet balance of that token. For withdraw: check savings positions. For repay: check wallet USDC.
   2. If the requested amount EXCEEDS the available balance, REFUSE immediately — do NOT call the write tool. State the exact available balance and ask the user to confirm a lower amount. Example: "You only have 0.97 USDC. Want me to send all 0.97?"
@@ -254,18 +254,32 @@ When running balance_check or health_check, include proactive suggestions:
 export function buildDynamicBlock(
   walletAddress: string,
   tools: Tool[],
-  balances?: WalletBalanceSummary,
-  contacts?: Contact[],
-  swapTokenNames?: string[],
-  goals?: GoalSummary[],
-  adviceContext?: string,
+  opts?: {
+    balances?: WalletBalanceSummary;
+    contacts?: Contact[];
+    swapTokenNames?: string[];
+    goals?: GoalSummary[];
+    adviceContext?: string;
+    useSyntheticPrefetch?: boolean;
+  },
 ): string {
-  const balanceLines = balances?.coins.length
-    ? balances.coins.map((c) => {
-        const usd = c.usdValue != null ? ` ($${c.usdValue.toFixed(2)})` : '';
-        return `${c.symbol}: ${c.amount}${usd}`;
-      }).join(', ')
-    : 'unknown';
+  const balances = opts?.balances;
+  const contacts = opts?.contacts;
+  const swapTokenNames = opts?.swapTokenNames;
+  const goals = opts?.goals;
+  const adviceContext = opts?.adviceContext;
+
+  const balanceSection = opts?.useSyntheticPrefetch
+    ? 'Wallet balances and savings positions were prefetched as balance_check and savings_info tool results at the start of this conversation. Reference those results for current data. After ANY write action, call balance_check for fresh data.'
+    : (() => {
+        const balanceLines = balances?.coins.length
+          ? balances.coins.map((c) => {
+              const usd = c.usdValue != null ? ` ($${c.usdValue.toFixed(2)})` : '';
+              return `${c.symbol}: ${c.amount}${usd}`;
+            }).join(', ')
+          : 'unknown';
+        return `Current wallet balances (snapshot at session start): ${balanceLines}`;
+      })();
 
   const writeTools = tools.filter((t) => !t.isReadOnly);
   const writeToolList = writeTools.map((t) => `- ${t.name}`).join('\n');
@@ -275,12 +289,12 @@ export function buildDynamicBlock(
     : 'No saved contacts yet.';
 
   const goalsBlock = goals && goals.length > 0
-    ? `Active goals:\n${goals.map((g) => `- ${g.emoji} ${g.name}: $${g.targetAmount.toFixed(2)}${g.deadline ? ` by ${g.deadline}` : ''} (ID: ${g.id})`).join('\n')}\n- When mentioning progress, compare the total savings balance (from snapshot or savings_info) against each goal's target.`
+    ? `Active goals:\n${goals.map((g) => `- ${g.emoji} ${g.name}: $${g.targetAmount.toFixed(2)}${g.deadline ? ` by ${g.deadline}` : ''} (ID: ${g.id})`).join('\n')}\n- When mentioning progress, compare the total savings balance (from prefetched data or savings_info) against each goal's target.`
     : 'No savings goals set.';
 
   return `## Session Context
 Wallet address: ${walletAddress}. Never ask for it.
-Current wallet balances (snapshot at session start): ${balanceLines}
+${balanceSection}
 
 ## Your write tools (you CAN execute these — use them)
 ${writeToolList}
@@ -356,17 +370,17 @@ export function buildFullDynamicContext(
     goals?: GoalSummary[];
     adviceContext?: string;
     intelligence?: IntelligenceContext;
+    useSyntheticPrefetch?: boolean;
   },
 ): string {
-  const base = buildDynamicBlock(
-    walletAddress,
-    tools,
-    opts.balances,
-    opts.contacts,
-    opts.swapTokenNames,
-    opts.goals,
-    opts.adviceContext,
-  );
+  const base = buildDynamicBlock(walletAddress, tools, {
+    balances: opts.balances,
+    contacts: opts.contacts,
+    swapTokenNames: opts.swapTokenNames,
+    goals: opts.goals,
+    adviceContext: opts.adviceContext,
+    useSyntheticPrefetch: opts.useSyntheticPrefetch,
+  });
 
   const sections: string[] = [base];
 

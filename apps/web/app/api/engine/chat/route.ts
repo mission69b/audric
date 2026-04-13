@@ -16,11 +16,12 @@ import { UpstashSessionStore } from '@/lib/engine/upstash-session-store';
 import { logSessionUsage } from '@/lib/engine/log-session-usage';
 import { prisma } from '@/lib/prisma';
 
-const AGENT_MODEL = process.env.AGENT_MODEL ?? 'claude-sonnet-4-20250514';
+const AGENT_MODEL = process.env.AGENT_MODEL ?? 'claude-sonnet-4-6';
 const SERVER_URL = process.env.SERVER_URL ?? 'https://api.t2000.ai';
 const SPONSOR_INTERNAL_KEY = process.env.SPONSOR_INTERNAL_KEY ?? '';
 const SESSION_CHARGE_AMOUNT = 10_000; // $0.01 USDC (6 decimals)
 const SESSION_FEATURE = 4; // ALLOWANCE_FEATURES.SESSION
+const FREE_SESSION_LIMIT = 5;
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -92,14 +93,32 @@ export async function POST(request: NextRequest) {
       session = requestedSessionId ? await store.get(requestedSessionId) : null;
       saveSession = true;
 
-      const contacts = await prisma.userPreferences.findUnique({ where: { address }, select: { contacts: true } })
-        .then((p) => (Array.isArray(p?.contacts) ? p.contacts as Array<{ name: string; address: string }> : []))
-        .catch(() => []);
+      const prefs = await prisma.userPreferences.findUnique({
+        where: { address },
+        select: { contacts: true, allowanceId: true },
+      }).catch(() => null);
+
+      const contacts = Array.isArray(prefs?.contacts) ? prefs.contacts as Array<{ name: string; address: string }> : [];
+      const hasAllowance = !!prefs?.allowanceId;
 
       if (!requestedSessionId) {
-        chargeSession(address).catch((err) =>
-          console.warn('[engine/chat] session charge fire-and-forget error:', err),
-        );
+        if (hasAllowance) {
+          chargeSession(address).catch((err) =>
+            console.warn('[engine/chat] session charge fire-and-forget error:', err),
+          );
+        } else {
+          const sessionCount = await prisma.sessionUsage.groupBy({
+            by: ['sessionId'],
+            where: { address },
+          }).then((rows) => rows.length).catch(() => 0);
+
+          if (sessionCount >= FREE_SESSION_LIMIT) {
+            return jsonError(
+              'Free sessions used up. Set up your allowance to continue — it takes 30 seconds.',
+              402,
+            );
+          }
+        }
       }
 
       const conversationState = sessionId ? await getConversationState(sessionId).catch(() => undefined) : undefined;

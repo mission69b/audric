@@ -37,6 +37,7 @@ import { useActivityFeed } from '@/hooks/useActivityFeed';
 import { BriefingCard } from '@/components/dashboard/BriefingCard';
 import { WelcomeCard } from '@/components/dashboard/WelcomeCard';
 import { TosBanner } from '@/components/dashboard/TosBanner';
+import { GracePeriodBanner } from '@/components/dashboard/GracePeriodBanner';
 import { useOvernightBriefing } from '@/hooks/useOvernightBriefing';
 import { useUserStatus } from '@/hooks/useUserStatus';
 
@@ -197,23 +198,39 @@ function useOvernightEarnings(savings: number, loading: boolean) {
   }, [savings, loading]);
 }
 
-function DashboardContent() {
+export interface DashboardContentProps {
+  initialSessionId?: string;
+}
+
+export function DashboardContent({ initialSessionId }: DashboardContentProps = {}) {
   const router = useRouter();
   const { address, session, expiringSoon, logout, refresh } = useZkLogin();
   useUsdcSponsor(address);
   const allowance = useAllowanceStatus(address);
 
-  useEffect(() => {
-    if (!allowance.loading && !allowance.allowanceId && !allowance.skipped && address) {
-      router.replace('/setup');
-    }
-  }, [allowance.loading, allowance.allowanceId, allowance.skipped, address, router]);
+  const needsAllowance = !allowance.loading && !allowance.allowanceId && !allowance.skipped && !!address;
 
   const chipFlow = useChipFlow();
   const feed = useFeed();
   const contactsHook = useContacts(address);
   const { agent } = useAgent();
   const engine = useEngine({ address, jwt: session?.jwt });
+
+  const initialSessionLoaded = useRef(false);
+  useEffect(() => {
+    if (initialSessionLoaded.current || !initialSessionId || !session?.jwt) return;
+    initialSessionLoaded.current = true;
+    engine.loadSession(initialSessionId);
+  }, [initialSessionId, session?.jwt, engine.loadSession]);
+
+  useEffect(() => {
+    if (!engine.sessionId) return;
+    const target = `/chat/${engine.sessionId}`;
+    if (window.location.pathname !== target) {
+      window.history.replaceState(window.history.state, '', target);
+    }
+  }, [engine.sessionId]);
+
   const balanceQuery = useBalance(address);
   const incomingQuery = useQuery({
     queryKey: ['incoming-tx', address],
@@ -713,6 +730,7 @@ function DashboardContent() {
     engine.clearMessages();
     feed.clear();
     chipFlow.reset();
+    window.history.replaceState(window.history.state, '', '/new');
   }, [engine, feed, chipFlow]);
 
   const handleTabChange = useCallback((tab: DashboardTab) => {
@@ -1288,6 +1306,12 @@ function DashboardContent() {
     <TosBanner onAccept={userStatus.acceptTos} />
   ) : null;
 
+  const graceBanner = needsAllowance ? (
+    <div className="mx-auto w-full max-w-2xl px-4 sm:px-6 py-2">
+      <GracePeriodBanner sessionsUsed={userStatus.sessionsUsed} />
+    </div>
+  ) : null;
+
   if (isEmpty && !engine.isStreaming && activeTab === 'chat') {
     return (
       <main className="flex flex-1 flex-col min-h-dvh">
@@ -1357,6 +1381,7 @@ function DashboardContent() {
         {settingsPanel}
         {emailModal}
         {tosBanner}
+        {graceBanner}
       </main>
     );
   }
@@ -1394,6 +1419,7 @@ function DashboardContent() {
         {settingsPanel}
         {emailModal}
         {tosBanner}
+        {graceBanner}
       </main>
     );
   }
@@ -1612,6 +1638,7 @@ function DashboardContent() {
       {settingsPanel}
       {emailModal}
       {tosBanner}
+      {graceBanner}
     </main>
   );
 }

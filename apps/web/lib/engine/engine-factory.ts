@@ -38,12 +38,13 @@ import {
 } from './engine-context';
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
-const MODEL = process.env.AGENT_MODEL ?? 'claude-sonnet-4-6';
+const SONNET_MODEL = 'claude-sonnet-4-6';
+const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
+const MODEL_OVERRIDE = process.env.AGENT_MODEL;
 const SUI_NETWORK = (process.env.NEXT_PUBLIC_SUI_NETWORK ?? 'mainnet') as 'mainnet' | 'testnet';
 const SUI_RPC_URL = `https://fullnode.${SUI_NETWORK}.sui.io:443`;
 const ALLOWANCE_API_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://audric.ai';
 const AUDRIC_INTERNAL_KEY = process.env.T2000_INTERNAL_KEY ?? '';
-const ENABLE_THINKING = process.env.ENABLE_THINKING === 'true';
 
 let sessionStore: SessionStore | null = null;
 let mcpManager: McpClientManager | null = null;
@@ -233,6 +234,8 @@ export async function createEngine(
       }
     : null;
 
+  const isNewSession = !opts.session?.messages?.length;
+
   // RE-1.3: Build system prompt using cache-optimized blocks
   const dynamicBlock = buildFullDynamicContext(address, allTools, {
     balances: balanceSummary,
@@ -245,11 +248,10 @@ export async function createEngine(
       conversationState: opts.conversationState,
       memories: memoryRecords.length > 0 ? memoryRecords : undefined,
     },
+    useSyntheticPrefetch: isNewSession,
   });
 
-  const systemPrompt = ENABLE_THINKING
-    ? buildCachedSystemPrompt([STATIC_SYSTEM_PROMPT], dynamicBlock)
-    : `${STATIC_SYSTEM_PROMPT}\n\n---\n\n${dynamicBlock}`;
+  const systemPrompt = buildCachedSystemPrompt([STATIC_SYSTEM_PROMPT], dynamicBlock);
 
   // RE-1.2: Classify effort level based on message content + matched recipe
   const recipeRegistry = getRecipeRegistry();
@@ -260,9 +262,12 @@ export async function createEngine(
       m.content.some((b: { type: string }) => b.type === 'tool_use'),
   ).length ?? 0;
 
+  const model = MODEL_OVERRIDE ?? SONNET_MODEL;
   const effort = opts.message
-    ? classifyEffort(MODEL, opts.message, matchedRecipe, sessionWriteCount)
+    ? classifyEffort(model, opts.message, matchedRecipe, sessionWriteCount)
     : 'medium';
+  const routedModel = MODEL_OVERRIDE ?? (effort === 'low' ? HAIKU_MODEL : SONNET_MODEL);
+  console.log(`[engine-factory] model=${routedModel} effort=${effort} thinking=${!routedModel.includes('haiku')}`);
 
   const engine = new QueryEngine({
     provider: new AnthropicProvider({ apiKey: ANTHROPIC_API_KEY }),
@@ -276,7 +281,7 @@ export async function createEngine(
     }),
     tools: allTools,
     systemPrompt,
-    model: MODEL,
+    model: routedModel,
     env: {
       ALLOWANCE_API_URL,
       AUDRIC_INTERNAL_KEY,
@@ -289,17 +294,93 @@ export async function createEngine(
     },
     guards: DEFAULT_GUARD_CONFIG,
     recipes: recipeRegistry,
-    ...(ENABLE_THINKING && {
+    ...(!routedModel.includes('haiku') && {
       thinking: { type: 'adaptive' as const },
       outputConfig: { effort },
     }),
   });
 
-  if (opts.session?.messages?.length) {
+  if (isNewSession) {
+    const prefetch = buildSyntheticPrefetch(balanceSummary, positions);
+    if (prefetch.length > 0) {
+      engine.loadMessages(prefetch);
+    }
+  } else if (opts.session?.messages?.length) {
     engine.loadMessages(opts.session.messages);
   }
 
   return engine;
+}
+
+function buildSyntheticPrefetch(
+  balances: WalletBalanceSummary,
+  positions: ServerPositionData | undefined,
+): Message[] {
+  if (!balances.coins.length && !positions) return [];
+
+  const messages: Message[] = [];
+  const toolUses: { type: 'tool_use'; id: string; name: string; input: unknown }[] = [];
+  const toolResults: { type: 'tool_result'; toolUseId: string; content: string; isError?: boolean }[] = [];
+
+  if (balances.coins.length > 0) {
+    const holdingsData = balances.coins.map((c) => ({
+      symbol: c.symbol,
+      balance: c.amount,
+      usdValue: c.usdValue ?? 0,
+    }));
+    const totalUsd = holdingsData.reduce((sum, h) => sum + h.usdValue, 0);
+    const usdcHolding = holdingsData.find((h) => h.symbol === 'USDC');
+
+    toolUses.push({
+      type: 'tool_use',
+      id: 'prefetch_bal',
+      name: 'balance_check',
+      input: {},
+    });
+    toolResults.push({
+      type: 'tool_result',
+      toolUseId: 'prefetch_bal',
+      content: JSON.stringify({
+        holdings: holdingsData.filter((h) => h.usdValue >= 0.01),
+        savings: positions?.savings ?? 0,
+        debt: positions?.borrows ?? 0,
+        pendingRewards: positions?.pendingRewards ?? 0,
+        total: totalUsd + (positions?.savings ?? 0) - (positions?.borrows ?? 0) + (positions?.pendingRewards ?? 0),
+        saveableUsdc: usdcHolding?.balance ?? 0,
+      }),
+    });
+  }
+
+  if (positions && (positions.savings > 0 || positions.borrows > 0)) {
+    toolUses.push({
+      type: 'tool_use',
+      id: 'prefetch_sav',
+      name: 'savings_info',
+      input: {},
+    });
+    toolResults.push({
+      type: 'tool_result',
+      toolUseId: 'prefetch_sav',
+      content: JSON.stringify({
+        totalSavings: positions.savings,
+        totalBorrows: positions.borrows,
+        savingsRate: positions.savingsRate,
+        healthFactor: positions.healthFactor,
+        maxBorrow: positions.maxBorrow,
+        pendingRewards: positions.pendingRewards,
+        supplies: positions.supplies,
+        borrows: positions.borrows_detail,
+      }),
+    });
+  }
+
+  if (toolUses.length > 0) {
+    messages.push({ role: 'assistant', content: toolUses });
+    messages.push({ role: 'user', content: toolResults });
+    messages.push({ role: 'assistant', content: [{ type: 'text', text: 'Session data loaded.' }] });
+  }
+
+  return messages;
 }
 
 export function generateSessionId(): string {
@@ -336,7 +417,7 @@ export async function createUnauthEngine(history: HistoryMessage[]): Promise<Que
     mcpManager: mgr,
     tools: readTools,
     systemPrompt: prompt,
-    model: MODEL,
+    model: HAIKU_MODEL,
     maxTurns: 5,
     maxTokens: 1536,
     costTracker: {
