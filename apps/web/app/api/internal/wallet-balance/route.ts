@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateInternalKey } from '@/lib/internal-auth';
 import { isValidSuiAddress } from '@/lib/auth';
-import { fetchWalletCoins } from '@/lib/sui-rpc';
-import { fetchTokenPrices } from '@/lib/portfolio-data';
+import { fetchWalletCoins, fetchTokenPrices } from '@t2000/engine';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';

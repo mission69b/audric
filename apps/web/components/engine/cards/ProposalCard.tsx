@@ -122,7 +122,7 @@ export function ProposalCard({ data, onAccept, onDecline }: ProposalCardProps) {
             {choice === 'accepted' ? (
               <span className="text-emerald-400">Enabled — will run on schedule with confirmation notifications.</span>
             ) : (
-              <span className="text-dim">Declined — won't suggest this again for 30 days.</span>
+              <span className="text-dim">Declined — won&apos;t suggest this again for 30 days.</span>
             )}
           </div>
         )}
