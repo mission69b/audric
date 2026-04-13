@@ -177,10 +177,15 @@ async function handleMemoryExtractionSource() {
 async function handleChainMemorySource() {
   const oneDayAgo = new Date(Date.now() - 86_400_000);
 
+  // Only include users who have snapshot or session data (proxy for activity).
+  // AppEvent is keyed by address (no User FK), so we filter on portfolioSnapshots
+  // or conversationLogs. Users with zero data get skipped by the route's 'no_data' guard.
   const users = await prisma.user.findMany({
     where: {
+      suiAddress: { not: '' },
       OR: [
-        { suiAddress: { not: '' } },
+        { portfolioSnapshots: { some: {} } },
+        { conversationLogs: { some: {} } },
       ],
     },
     select: {
@@ -196,7 +201,6 @@ async function handleChainMemorySource() {
   });
 
   const eligible = users.filter((u) => {
-    if (!u.suiAddress) return false;
     const lastChainExtraction = u.memories[0]?.extractedAt;
     return !lastChainExtraction || lastChainExtraction < oneDayAgo;
   });
