@@ -68,6 +68,7 @@ export const ModelName = {
   WatchAddress: 'WatchAddress',
   PortfolioSnapshot: 'PortfolioSnapshot',
   ScheduledAction: 'ScheduledAction',
+  ScheduledExecution: 'ScheduledExecution',
   OutcomeCheck: 'OutcomeCheck',
   FollowUpQueue: 'FollowUpQueue',
   UserFinancialProfile: 'UserFinancialProfile',
@@ -360,10 +361,32 @@ export const ScheduledActionScalarFieldEnum = {
   lastExecutedAt: 'lastExecutedAt',
   lastSkippedAt: 'lastSkippedAt',
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
+  updatedAt: 'updatedAt',
+  source: 'source',
+  patternType: 'patternType',
+  detectedAt: 'detectedAt',
+  confidence: 'confidence',
+  stage: 'stage',
+  declinedAt: 'declinedAt',
+  pausedAt: 'pausedAt'
 } as const
 
 export type ScheduledActionScalarFieldEnum = (typeof ScheduledActionScalarFieldEnum)[keyof typeof ScheduledActionScalarFieldEnum]
+
+
+export const ScheduledExecutionScalarFieldEnum = {
+  id: 'id',
+  scheduledActionId: 'scheduledActionId',
+  txDigest: 'txDigest',
+  amountUsd: 'amountUsd',
+  status: 'status',
+  skipReason: 'skipReason',
+  idempotencyKey: 'idempotencyKey',
+  notified: 'notified',
+  executedAt: 'executedAt'
+} as const
+
+export type ScheduledExecutionScalarFieldEnum = (typeof ScheduledExecutionScalarFieldEnum)[keyof typeof ScheduledExecutionScalarFieldEnum]
 
 
 export const OutcomeCheckScalarFieldEnum = {

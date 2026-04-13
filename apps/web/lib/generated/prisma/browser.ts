@@ -103,6 +103,11 @@ export type PortfolioSnapshot = Prisma.PortfolioSnapshotModel
  */
 export type ScheduledAction = Prisma.ScheduledActionModel
 /**
+ * Model ScheduledExecution
+ * 
+ */
+export type ScheduledExecution = Prisma.ScheduledExecutionModel
+/**
  * Model OutcomeCheck
  * 
  */

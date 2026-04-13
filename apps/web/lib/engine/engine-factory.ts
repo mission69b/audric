@@ -187,6 +187,23 @@ export async function createEngine(
     }).catch(() => []) : Promise.resolve([]),
   ]);
 
+  // Phase D — fetch at most 1 pending Stage 0 proposal for this user
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000);
+  const pendingProposals = userId
+    ? await prisma.scheduledAction.findMany({
+        where: {
+          userId,
+          source: 'behavior_detected',
+          stage: 0,
+          confidence: { gte: 0.8 },
+          OR: [{ declinedAt: null }, { declinedAt: { lt: thirtyDaysAgo } }],
+        },
+        orderBy: { confidence: 'desc' },
+        take: 1,
+        select: { id: true, patternType: true, actionType: true, amount: true, asset: true, confidence: true },
+      }).catch(() => [])
+    : [];
+
   const nonZeroCoins = walletCoins.filter((c) => Number(c.totalBalance) > 0);
   const prices = await fetchTokenPrices(nonZeroCoins.map((c) => c.coinType)).catch(() => ({} as Record<string, number>));
 
@@ -214,7 +231,7 @@ export async function createEngine(
 
   // B.4: Load per-user permission config (fall back to defaults)
   const userPrefs = await prisma.userPreferences.findUnique({
-    where: { userId: address },
+    where: { address },
     select: { limits: true },
   }).catch(() => null);
   const permissionConfig: UserPermissionConfig =
@@ -266,6 +283,16 @@ export async function createEngine(
       profile,
       conversationState: opts.conversationState,
       memories: memoryRecords.length > 0 ? memoryRecords : undefined,
+      pendingProposals: pendingProposals.length > 0
+        ? pendingProposals.map((p) => ({
+            id: p.id,
+            patternType: p.patternType ?? '',
+            actionType: p.actionType,
+            amount: p.amount,
+            asset: p.asset,
+            confidence: p.confidence ?? 0,
+          }))
+        : undefined,
     },
     useSyntheticPrefetch: isNewSession,
   });

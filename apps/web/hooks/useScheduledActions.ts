@@ -17,6 +17,12 @@ export interface ScheduledAction {
   totalAmountUsdc: number;
   lastExecutedAt: string | null;
   createdAt: string;
+  source: string;
+  patternType: string | null;
+  stage: number;
+  confidence: number | null;
+  pausedAt: string | null;
+  declinedAt: string | null;
 }
 
 export function useScheduledActions(address: string | null, jwt: string | null) {
@@ -67,6 +73,15 @@ export function useScheduledActions(address: string | null, jwt: string | null) 
   const pauseAction = useCallback((id: string) => updateAction(id, { enabled: false }), [updateAction]);
   const resumeAction = useCallback((id: string) => updateAction(id, { enabled: true }), [updateAction]);
   const deleteAction = useCallback((id: string) => updateAction(id, { action: 'delete' }), [updateAction]);
+  const acceptProposal = useCallback((id: string) => updateAction(id, { action: 'accept_proposal' }), [updateAction]);
+  const declineProposal = useCallback((id: string) => updateAction(id, { action: 'decline_proposal' }), [updateAction]);
+  const pausePattern = useCallback((id: string) => updateAction(id, { action: 'pause_pattern' }), [updateAction]);
+  const resumePattern = useCallback((id: string) => updateAction(id, { action: 'resume_pattern' }), [updateAction]);
 
-  return { actions, loading, updating, pauseAction, resumeAction, deleteAction, refresh: fetchActions };
+  return {
+    actions, loading, updating,
+    pauseAction, resumeAction, deleteAction,
+    acceptProposal, declineProposal, pausePattern, resumePattern,
+    refresh: fetchActions,
+  };
 }

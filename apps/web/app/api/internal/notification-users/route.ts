@@ -41,6 +41,10 @@ export async function GET(request: NextRequest) {
     return handleChainMemorySource();
   }
 
+  if (source === 'pattern-detection') {
+    return handlePatternDetectionSource();
+  }
+
   const users = await prisma.user.findMany({
     where: {
       emailVerified: true,
@@ -166,6 +170,46 @@ async function handleMemoryExtractionSource() {
     userId: u.id,
     email: '',
     walletAddress: '',
+    allowanceId: null,
+    timezoneOffset: 0,
+    prefs: {},
+  }));
+
+  return NextResponse.json({ users: result });
+}
+
+async function handlePatternDetectionSource() {
+  const oneDayAgo = new Date(Date.now() - 86_400_000);
+
+  const users = await prisma.user.findMany({
+    where: {
+      suiAddress: { not: '' },
+      OR: [
+        { portfolioSnapshots: { some: {} } },
+        { conversationLogs: { some: {} } },
+      ],
+    },
+    select: {
+      id: true,
+      suiAddress: true,
+      scheduledActions: {
+        where: { source: 'behavior_detected' },
+        orderBy: { detectedAt: 'desc' },
+        take: 1,
+        select: { detectedAt: true },
+      },
+    },
+  });
+
+  const eligible = users.filter((u) => {
+    const lastDetection = u.scheduledActions[0]?.detectedAt;
+    return !lastDetection || lastDetection < oneDayAgo;
+  });
+
+  const result = eligible.map((u) => ({
+    userId: u.id,
+    email: '',
+    walletAddress: u.suiAddress,
     allowanceId: null,
     timezoneOffset: 0,
     prefs: {},

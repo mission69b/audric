@@ -32,6 +32,8 @@ export type ScheduledActionAvgAggregateOutputType = {
   confirmationsCompleted: number | null
   totalExecutions: number | null
   totalAmountUsdc: number | null
+  confidence: number | null
+  stage: number | null
 }
 
 export type ScheduledActionSumAggregateOutputType = {
@@ -40,6 +42,8 @@ export type ScheduledActionSumAggregateOutputType = {
   confirmationsCompleted: number | null
   totalExecutions: number | null
   totalAmountUsdc: number | null
+  confidence: number | null
+  stage: number | null
 }
 
 export type ScheduledActionMinAggregateOutputType = {
@@ -60,6 +64,13 @@ export type ScheduledActionMinAggregateOutputType = {
   lastSkippedAt: Date | null
   createdAt: Date | null
   updatedAt: Date | null
+  source: string | null
+  patternType: string | null
+  detectedAt: Date | null
+  confidence: number | null
+  stage: number | null
+  declinedAt: Date | null
+  pausedAt: Date | null
 }
 
 export type ScheduledActionMaxAggregateOutputType = {
@@ -80,6 +91,13 @@ export type ScheduledActionMaxAggregateOutputType = {
   lastSkippedAt: Date | null
   createdAt: Date | null
   updatedAt: Date | null
+  source: string | null
+  patternType: string | null
+  detectedAt: Date | null
+  confidence: number | null
+  stage: number | null
+  declinedAt: Date | null
+  pausedAt: Date | null
 }
 
 export type ScheduledActionCountAggregateOutputType = {
@@ -100,6 +118,13 @@ export type ScheduledActionCountAggregateOutputType = {
   lastSkippedAt: number
   createdAt: number
   updatedAt: number
+  source: number
+  patternType: number
+  detectedAt: number
+  confidence: number
+  stage: number
+  declinedAt: number
+  pausedAt: number
   _all: number
 }
 
@@ -110,6 +135,8 @@ export type ScheduledActionAvgAggregateInputType = {
   confirmationsCompleted?: true
   totalExecutions?: true
   totalAmountUsdc?: true
+  confidence?: true
+  stage?: true
 }
 
 export type ScheduledActionSumAggregateInputType = {
@@ -118,6 +145,8 @@ export type ScheduledActionSumAggregateInputType = {
   confirmationsCompleted?: true
   totalExecutions?: true
   totalAmountUsdc?: true
+  confidence?: true
+  stage?: true
 }
 
 export type ScheduledActionMinAggregateInputType = {
@@ -138,6 +167,13 @@ export type ScheduledActionMinAggregateInputType = {
   lastSkippedAt?: true
   createdAt?: true
   updatedAt?: true
+  source?: true
+  patternType?: true
+  detectedAt?: true
+  confidence?: true
+  stage?: true
+  declinedAt?: true
+  pausedAt?: true
 }
 
 export type ScheduledActionMaxAggregateInputType = {
@@ -158,6 +194,13 @@ export type ScheduledActionMaxAggregateInputType = {
   lastSkippedAt?: true
   createdAt?: true
   updatedAt?: true
+  source?: true
+  patternType?: true
+  detectedAt?: true
+  confidence?: true
+  stage?: true
+  declinedAt?: true
+  pausedAt?: true
 }
 
 export type ScheduledActionCountAggregateInputType = {
@@ -178,6 +221,13 @@ export type ScheduledActionCountAggregateInputType = {
   lastSkippedAt?: true
   createdAt?: true
   updatedAt?: true
+  source?: true
+  patternType?: true
+  detectedAt?: true
+  confidence?: true
+  stage?: true
+  declinedAt?: true
+  pausedAt?: true
   _all?: true
 }
 
@@ -285,6 +335,13 @@ export type ScheduledActionGroupByOutputType = {
   lastSkippedAt: Date | null
   createdAt: Date
   updatedAt: Date
+  source: string
+  patternType: string | null
+  detectedAt: Date | null
+  confidence: number | null
+  stage: number
+  declinedAt: Date | null
+  pausedAt: Date | null
   _count: ScheduledActionCountAggregateOutputType | null
   _avg: ScheduledActionAvgAggregateOutputType | null
   _sum: ScheduledActionSumAggregateOutputType | null
@@ -328,7 +385,15 @@ export type ScheduledActionWhereInput = {
   lastSkippedAt?: Prisma.DateTimeNullableFilter<"ScheduledAction"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"ScheduledAction"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"ScheduledAction"> | Date | string
+  source?: Prisma.StringFilter<"ScheduledAction"> | string
+  patternType?: Prisma.StringNullableFilter<"ScheduledAction"> | string | null
+  detectedAt?: Prisma.DateTimeNullableFilter<"ScheduledAction"> | Date | string | null
+  confidence?: Prisma.FloatNullableFilter<"ScheduledAction"> | number | null
+  stage?: Prisma.IntFilter<"ScheduledAction"> | number
+  declinedAt?: Prisma.DateTimeNullableFilter<"ScheduledAction"> | Date | string | null
+  pausedAt?: Prisma.DateTimeNullableFilter<"ScheduledAction"> | Date | string | null
   user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
+  executions?: Prisma.ScheduledExecutionListRelationFilter
 }
 
 export type ScheduledActionOrderByWithRelationInput = {
@@ -349,7 +414,15 @@ export type ScheduledActionOrderByWithRelationInput = {
   lastSkippedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  source?: Prisma.SortOrder
+  patternType?: Prisma.SortOrderInput | Prisma.SortOrder
+  detectedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  confidence?: Prisma.SortOrderInput | Prisma.SortOrder
+  stage?: Prisma.SortOrder
+  declinedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  pausedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   user?: Prisma.UserOrderByWithRelationInput
+  executions?: Prisma.ScheduledExecutionOrderByRelationAggregateInput
 }
 
 export type ScheduledActionWhereUniqueInput = Prisma.AtLeast<{
@@ -373,7 +446,15 @@ export type ScheduledActionWhereUniqueInput = Prisma.AtLeast<{
   lastSkippedAt?: Prisma.DateTimeNullableFilter<"ScheduledAction"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"ScheduledAction"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"ScheduledAction"> | Date | string
+  source?: Prisma.StringFilter<"ScheduledAction"> | string
+  patternType?: Prisma.StringNullableFilter<"ScheduledAction"> | string | null
+  detectedAt?: Prisma.DateTimeNullableFilter<"ScheduledAction"> | Date | string | null
+  confidence?: Prisma.FloatNullableFilter<"ScheduledAction"> | number | null
+  stage?: Prisma.IntFilter<"ScheduledAction"> | number
+  declinedAt?: Prisma.DateTimeNullableFilter<"ScheduledAction"> | Date | string | null
+  pausedAt?: Prisma.DateTimeNullableFilter<"ScheduledAction"> | Date | string | null
   user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
+  executions?: Prisma.ScheduledExecutionListRelationFilter
 }, "id">
 
 export type ScheduledActionOrderByWithAggregationInput = {
@@ -394,6 +475,13 @@ export type ScheduledActionOrderByWithAggregationInput = {
   lastSkippedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  source?: Prisma.SortOrder
+  patternType?: Prisma.SortOrderInput | Prisma.SortOrder
+  detectedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  confidence?: Prisma.SortOrderInput | Prisma.SortOrder
+  stage?: Prisma.SortOrder
+  declinedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  pausedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.ScheduledActionCountOrderByAggregateInput
   _avg?: Prisma.ScheduledActionAvgOrderByAggregateInput
   _max?: Prisma.ScheduledActionMaxOrderByAggregateInput
@@ -422,6 +510,13 @@ export type ScheduledActionScalarWhereWithAggregatesInput = {
   lastSkippedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"ScheduledAction"> | Date | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"ScheduledAction"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"ScheduledAction"> | Date | string
+  source?: Prisma.StringWithAggregatesFilter<"ScheduledAction"> | string
+  patternType?: Prisma.StringNullableWithAggregatesFilter<"ScheduledAction"> | string | null
+  detectedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"ScheduledAction"> | Date | string | null
+  confidence?: Prisma.FloatNullableWithAggregatesFilter<"ScheduledAction"> | number | null
+  stage?: Prisma.IntWithAggregatesFilter<"ScheduledAction"> | number
+  declinedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"ScheduledAction"> | Date | string | null
+  pausedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"ScheduledAction"> | Date | string | null
 }
 
 export type ScheduledActionCreateInput = {
@@ -441,7 +536,15 @@ export type ScheduledActionCreateInput = {
   lastSkippedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  source?: string
+  patternType?: string | null
+  detectedAt?: Date | string | null
+  confidence?: number | null
+  stage?: number
+  declinedAt?: Date | string | null
+  pausedAt?: Date | string | null
   user: Prisma.UserCreateNestedOneWithoutScheduledActionsInput
+  executions?: Prisma.ScheduledExecutionCreateNestedManyWithoutScheduledActionInput
 }
 
 export type ScheduledActionUncheckedCreateInput = {
@@ -462,6 +565,14 @@ export type ScheduledActionUncheckedCreateInput = {
   lastSkippedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  source?: string
+  patternType?: string | null
+  detectedAt?: Date | string | null
+  confidence?: number | null
+  stage?: number
+  declinedAt?: Date | string | null
+  pausedAt?: Date | string | null
+  executions?: Prisma.ScheduledExecutionUncheckedCreateNestedManyWithoutScheduledActionInput
 }
 
 export type ScheduledActionUpdateInput = {
@@ -481,7 +592,15 @@ export type ScheduledActionUpdateInput = {
   lastSkippedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  source?: Prisma.StringFieldUpdateOperationsInput | string
+  patternType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  detectedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  confidence?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  stage?: Prisma.IntFieldUpdateOperationsInput | number
+  declinedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  pausedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   user?: Prisma.UserUpdateOneRequiredWithoutScheduledActionsNestedInput
+  executions?: Prisma.ScheduledExecutionUpdateManyWithoutScheduledActionNestedInput
 }
 
 export type ScheduledActionUncheckedUpdateInput = {
@@ -502,6 +621,14 @@ export type ScheduledActionUncheckedUpdateInput = {
   lastSkippedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  source?: Prisma.StringFieldUpdateOperationsInput | string
+  patternType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  detectedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  confidence?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  stage?: Prisma.IntFieldUpdateOperationsInput | number
+  declinedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  pausedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  executions?: Prisma.ScheduledExecutionUncheckedUpdateManyWithoutScheduledActionNestedInput
 }
 
 export type ScheduledActionCreateManyInput = {
@@ -522,6 +649,13 @@ export type ScheduledActionCreateManyInput = {
   lastSkippedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  source?: string
+  patternType?: string | null
+  detectedAt?: Date | string | null
+  confidence?: number | null
+  stage?: number
+  declinedAt?: Date | string | null
+  pausedAt?: Date | string | null
 }
 
 export type ScheduledActionUpdateManyMutationInput = {
@@ -541,6 +675,13 @@ export type ScheduledActionUpdateManyMutationInput = {
   lastSkippedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  source?: Prisma.StringFieldUpdateOperationsInput | string
+  patternType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  detectedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  confidence?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  stage?: Prisma.IntFieldUpdateOperationsInput | number
+  declinedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  pausedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 export type ScheduledActionUncheckedUpdateManyInput = {
@@ -561,6 +702,13 @@ export type ScheduledActionUncheckedUpdateManyInput = {
   lastSkippedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  source?: Prisma.StringFieldUpdateOperationsInput | string
+  patternType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  detectedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  confidence?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  stage?: Prisma.IntFieldUpdateOperationsInput | number
+  declinedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  pausedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 export type ScheduledActionListRelationFilter = {
@@ -591,6 +739,13 @@ export type ScheduledActionCountOrderByAggregateInput = {
   lastSkippedAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  source?: Prisma.SortOrder
+  patternType?: Prisma.SortOrder
+  detectedAt?: Prisma.SortOrder
+  confidence?: Prisma.SortOrder
+  stage?: Prisma.SortOrder
+  declinedAt?: Prisma.SortOrder
+  pausedAt?: Prisma.SortOrder
 }
 
 export type ScheduledActionAvgOrderByAggregateInput = {
@@ -599,6 +754,8 @@ export type ScheduledActionAvgOrderByAggregateInput = {
   confirmationsCompleted?: Prisma.SortOrder
   totalExecutions?: Prisma.SortOrder
   totalAmountUsdc?: Prisma.SortOrder
+  confidence?: Prisma.SortOrder
+  stage?: Prisma.SortOrder
 }
 
 export type ScheduledActionMaxOrderByAggregateInput = {
@@ -619,6 +776,13 @@ export type ScheduledActionMaxOrderByAggregateInput = {
   lastSkippedAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  source?: Prisma.SortOrder
+  patternType?: Prisma.SortOrder
+  detectedAt?: Prisma.SortOrder
+  confidence?: Prisma.SortOrder
+  stage?: Prisma.SortOrder
+  declinedAt?: Prisma.SortOrder
+  pausedAt?: Prisma.SortOrder
 }
 
 export type ScheduledActionMinOrderByAggregateInput = {
@@ -639,6 +803,13 @@ export type ScheduledActionMinOrderByAggregateInput = {
   lastSkippedAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  source?: Prisma.SortOrder
+  patternType?: Prisma.SortOrder
+  detectedAt?: Prisma.SortOrder
+  confidence?: Prisma.SortOrder
+  stage?: Prisma.SortOrder
+  declinedAt?: Prisma.SortOrder
+  pausedAt?: Prisma.SortOrder
 }
 
 export type ScheduledActionSumOrderByAggregateInput = {
@@ -647,6 +818,13 @@ export type ScheduledActionSumOrderByAggregateInput = {
   confirmationsCompleted?: Prisma.SortOrder
   totalExecutions?: Prisma.SortOrder
   totalAmountUsdc?: Prisma.SortOrder
+  confidence?: Prisma.SortOrder
+  stage?: Prisma.SortOrder
+}
+
+export type ScheduledActionScalarRelationFilter = {
+  is?: Prisma.ScheduledActionWhereInput
+  isNot?: Prisma.ScheduledActionWhereInput
 }
 
 export type ScheduledActionCreateNestedManyWithoutUserInput = {
@@ -691,6 +869,20 @@ export type ScheduledActionUncheckedUpdateManyWithoutUserNestedInput = {
   deleteMany?: Prisma.ScheduledActionScalarWhereInput | Prisma.ScheduledActionScalarWhereInput[]
 }
 
+export type ScheduledActionCreateNestedOneWithoutExecutionsInput = {
+  create?: Prisma.XOR<Prisma.ScheduledActionCreateWithoutExecutionsInput, Prisma.ScheduledActionUncheckedCreateWithoutExecutionsInput>
+  connectOrCreate?: Prisma.ScheduledActionCreateOrConnectWithoutExecutionsInput
+  connect?: Prisma.ScheduledActionWhereUniqueInput
+}
+
+export type ScheduledActionUpdateOneRequiredWithoutExecutionsNestedInput = {
+  create?: Prisma.XOR<Prisma.ScheduledActionCreateWithoutExecutionsInput, Prisma.ScheduledActionUncheckedCreateWithoutExecutionsInput>
+  connectOrCreate?: Prisma.ScheduledActionCreateOrConnectWithoutExecutionsInput
+  upsert?: Prisma.ScheduledActionUpsertWithoutExecutionsInput
+  connect?: Prisma.ScheduledActionWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.ScheduledActionUpdateToOneWithWhereWithoutExecutionsInput, Prisma.ScheduledActionUpdateWithoutExecutionsInput>, Prisma.ScheduledActionUncheckedUpdateWithoutExecutionsInput>
+}
+
 export type ScheduledActionCreateWithoutUserInput = {
   id?: string
   actionType: string
@@ -708,6 +900,14 @@ export type ScheduledActionCreateWithoutUserInput = {
   lastSkippedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  source?: string
+  patternType?: string | null
+  detectedAt?: Date | string | null
+  confidence?: number | null
+  stage?: number
+  declinedAt?: Date | string | null
+  pausedAt?: Date | string | null
+  executions?: Prisma.ScheduledExecutionCreateNestedManyWithoutScheduledActionInput
 }
 
 export type ScheduledActionUncheckedCreateWithoutUserInput = {
@@ -727,6 +927,14 @@ export type ScheduledActionUncheckedCreateWithoutUserInput = {
   lastSkippedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  source?: string
+  patternType?: string | null
+  detectedAt?: Date | string | null
+  confidence?: number | null
+  stage?: number
+  declinedAt?: Date | string | null
+  pausedAt?: Date | string | null
+  executions?: Prisma.ScheduledExecutionUncheckedCreateNestedManyWithoutScheduledActionInput
 }
 
 export type ScheduledActionCreateOrConnectWithoutUserInput = {
@@ -776,6 +984,137 @@ export type ScheduledActionScalarWhereInput = {
   lastSkippedAt?: Prisma.DateTimeNullableFilter<"ScheduledAction"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"ScheduledAction"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"ScheduledAction"> | Date | string
+  source?: Prisma.StringFilter<"ScheduledAction"> | string
+  patternType?: Prisma.StringNullableFilter<"ScheduledAction"> | string | null
+  detectedAt?: Prisma.DateTimeNullableFilter<"ScheduledAction"> | Date | string | null
+  confidence?: Prisma.FloatNullableFilter<"ScheduledAction"> | number | null
+  stage?: Prisma.IntFilter<"ScheduledAction"> | number
+  declinedAt?: Prisma.DateTimeNullableFilter<"ScheduledAction"> | Date | string | null
+  pausedAt?: Prisma.DateTimeNullableFilter<"ScheduledAction"> | Date | string | null
+}
+
+export type ScheduledActionCreateWithoutExecutionsInput = {
+  id?: string
+  actionType: string
+  amount: number
+  asset?: string
+  targetAsset?: string | null
+  cronExpr: string
+  nextRunAt: Date | string
+  enabled?: boolean
+  confirmationsRequired?: number
+  confirmationsCompleted?: number
+  totalExecutions?: number
+  totalAmountUsdc?: number
+  lastExecutedAt?: Date | string | null
+  lastSkippedAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  source?: string
+  patternType?: string | null
+  detectedAt?: Date | string | null
+  confidence?: number | null
+  stage?: number
+  declinedAt?: Date | string | null
+  pausedAt?: Date | string | null
+  user: Prisma.UserCreateNestedOneWithoutScheduledActionsInput
+}
+
+export type ScheduledActionUncheckedCreateWithoutExecutionsInput = {
+  id?: string
+  userId: string
+  actionType: string
+  amount: number
+  asset?: string
+  targetAsset?: string | null
+  cronExpr: string
+  nextRunAt: Date | string
+  enabled?: boolean
+  confirmationsRequired?: number
+  confirmationsCompleted?: number
+  totalExecutions?: number
+  totalAmountUsdc?: number
+  lastExecutedAt?: Date | string | null
+  lastSkippedAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  source?: string
+  patternType?: string | null
+  detectedAt?: Date | string | null
+  confidence?: number | null
+  stage?: number
+  declinedAt?: Date | string | null
+  pausedAt?: Date | string | null
+}
+
+export type ScheduledActionCreateOrConnectWithoutExecutionsInput = {
+  where: Prisma.ScheduledActionWhereUniqueInput
+  create: Prisma.XOR<Prisma.ScheduledActionCreateWithoutExecutionsInput, Prisma.ScheduledActionUncheckedCreateWithoutExecutionsInput>
+}
+
+export type ScheduledActionUpsertWithoutExecutionsInput = {
+  update: Prisma.XOR<Prisma.ScheduledActionUpdateWithoutExecutionsInput, Prisma.ScheduledActionUncheckedUpdateWithoutExecutionsInput>
+  create: Prisma.XOR<Prisma.ScheduledActionCreateWithoutExecutionsInput, Prisma.ScheduledActionUncheckedCreateWithoutExecutionsInput>
+  where?: Prisma.ScheduledActionWhereInput
+}
+
+export type ScheduledActionUpdateToOneWithWhereWithoutExecutionsInput = {
+  where?: Prisma.ScheduledActionWhereInput
+  data: Prisma.XOR<Prisma.ScheduledActionUpdateWithoutExecutionsInput, Prisma.ScheduledActionUncheckedUpdateWithoutExecutionsInput>
+}
+
+export type ScheduledActionUpdateWithoutExecutionsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  actionType?: Prisma.StringFieldUpdateOperationsInput | string
+  amount?: Prisma.FloatFieldUpdateOperationsInput | number
+  asset?: Prisma.StringFieldUpdateOperationsInput | string
+  targetAsset?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  cronExpr?: Prisma.StringFieldUpdateOperationsInput | string
+  nextRunAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  enabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  confirmationsRequired?: Prisma.IntFieldUpdateOperationsInput | number
+  confirmationsCompleted?: Prisma.IntFieldUpdateOperationsInput | number
+  totalExecutions?: Prisma.IntFieldUpdateOperationsInput | number
+  totalAmountUsdc?: Prisma.FloatFieldUpdateOperationsInput | number
+  lastExecutedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastSkippedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  source?: Prisma.StringFieldUpdateOperationsInput | string
+  patternType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  detectedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  confidence?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  stage?: Prisma.IntFieldUpdateOperationsInput | number
+  declinedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  pausedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  user?: Prisma.UserUpdateOneRequiredWithoutScheduledActionsNestedInput
+}
+
+export type ScheduledActionUncheckedUpdateWithoutExecutionsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  userId?: Prisma.StringFieldUpdateOperationsInput | string
+  actionType?: Prisma.StringFieldUpdateOperationsInput | string
+  amount?: Prisma.FloatFieldUpdateOperationsInput | number
+  asset?: Prisma.StringFieldUpdateOperationsInput | string
+  targetAsset?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  cronExpr?: Prisma.StringFieldUpdateOperationsInput | string
+  nextRunAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  enabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  confirmationsRequired?: Prisma.IntFieldUpdateOperationsInput | number
+  confirmationsCompleted?: Prisma.IntFieldUpdateOperationsInput | number
+  totalExecutions?: Prisma.IntFieldUpdateOperationsInput | number
+  totalAmountUsdc?: Prisma.FloatFieldUpdateOperationsInput | number
+  lastExecutedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastSkippedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  source?: Prisma.StringFieldUpdateOperationsInput | string
+  patternType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  detectedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  confidence?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  stage?: Prisma.IntFieldUpdateOperationsInput | number
+  declinedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  pausedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 export type ScheduledActionCreateManyUserInput = {
@@ -795,6 +1134,13 @@ export type ScheduledActionCreateManyUserInput = {
   lastSkippedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  source?: string
+  patternType?: string | null
+  detectedAt?: Date | string | null
+  confidence?: number | null
+  stage?: number
+  declinedAt?: Date | string | null
+  pausedAt?: Date | string | null
 }
 
 export type ScheduledActionUpdateWithoutUserInput = {
@@ -814,6 +1160,14 @@ export type ScheduledActionUpdateWithoutUserInput = {
   lastSkippedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  source?: Prisma.StringFieldUpdateOperationsInput | string
+  patternType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  detectedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  confidence?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  stage?: Prisma.IntFieldUpdateOperationsInput | number
+  declinedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  pausedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  executions?: Prisma.ScheduledExecutionUpdateManyWithoutScheduledActionNestedInput
 }
 
 export type ScheduledActionUncheckedUpdateWithoutUserInput = {
@@ -833,6 +1187,14 @@ export type ScheduledActionUncheckedUpdateWithoutUserInput = {
   lastSkippedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  source?: Prisma.StringFieldUpdateOperationsInput | string
+  patternType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  detectedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  confidence?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  stage?: Prisma.IntFieldUpdateOperationsInput | number
+  declinedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  pausedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  executions?: Prisma.ScheduledExecutionUncheckedUpdateManyWithoutScheduledActionNestedInput
 }
 
 export type ScheduledActionUncheckedUpdateManyWithoutUserInput = {
@@ -852,8 +1214,44 @@ export type ScheduledActionUncheckedUpdateManyWithoutUserInput = {
   lastSkippedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  source?: Prisma.StringFieldUpdateOperationsInput | string
+  patternType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  detectedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  confidence?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  stage?: Prisma.IntFieldUpdateOperationsInput | number
+  declinedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  pausedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
+
+/**
+ * Count Type ScheduledActionCountOutputType
+ */
+
+export type ScheduledActionCountOutputType = {
+  executions: number
+}
+
+export type ScheduledActionCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  executions?: boolean | ScheduledActionCountOutputTypeCountExecutionsArgs
+}
+
+/**
+ * ScheduledActionCountOutputType without action
+ */
+export type ScheduledActionCountOutputTypeDefaultArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the ScheduledActionCountOutputType
+   */
+  select?: Prisma.ScheduledActionCountOutputTypeSelect<ExtArgs> | null
+}
+
+/**
+ * ScheduledActionCountOutputType without action
+ */
+export type ScheduledActionCountOutputTypeCountExecutionsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.ScheduledExecutionWhereInput
+}
 
 
 export type ScheduledActionSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -874,7 +1272,16 @@ export type ScheduledActionSelect<ExtArgs extends runtime.Types.Extensions.Inter
   lastSkippedAt?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  source?: boolean
+  patternType?: boolean
+  detectedAt?: boolean
+  confidence?: boolean
+  stage?: boolean
+  declinedAt?: boolean
+  pausedAt?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
+  executions?: boolean | Prisma.ScheduledAction$executionsArgs<ExtArgs>
+  _count?: boolean | Prisma.ScheduledActionCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["scheduledAction"]>
 
 export type ScheduledActionSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -895,6 +1302,13 @@ export type ScheduledActionSelectCreateManyAndReturn<ExtArgs extends runtime.Typ
   lastSkippedAt?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  source?: boolean
+  patternType?: boolean
+  detectedAt?: boolean
+  confidence?: boolean
+  stage?: boolean
+  declinedAt?: boolean
+  pausedAt?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["scheduledAction"]>
 
@@ -916,6 +1330,13 @@ export type ScheduledActionSelectUpdateManyAndReturn<ExtArgs extends runtime.Typ
   lastSkippedAt?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  source?: boolean
+  patternType?: boolean
+  detectedAt?: boolean
+  confidence?: boolean
+  stage?: boolean
+  declinedAt?: boolean
+  pausedAt?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["scheduledAction"]>
 
@@ -937,11 +1358,20 @@ export type ScheduledActionSelectScalar = {
   lastSkippedAt?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  source?: boolean
+  patternType?: boolean
+  detectedAt?: boolean
+  confidence?: boolean
+  stage?: boolean
+  declinedAt?: boolean
+  pausedAt?: boolean
 }
 
-export type ScheduledActionOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "actionType" | "amount" | "asset" | "targetAsset" | "cronExpr" | "nextRunAt" | "enabled" | "confirmationsRequired" | "confirmationsCompleted" | "totalExecutions" | "totalAmountUsdc" | "lastExecutedAt" | "lastSkippedAt" | "createdAt" | "updatedAt", ExtArgs["result"]["scheduledAction"]>
+export type ScheduledActionOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "actionType" | "amount" | "asset" | "targetAsset" | "cronExpr" | "nextRunAt" | "enabled" | "confirmationsRequired" | "confirmationsCompleted" | "totalExecutions" | "totalAmountUsdc" | "lastExecutedAt" | "lastSkippedAt" | "createdAt" | "updatedAt" | "source" | "patternType" | "detectedAt" | "confidence" | "stage" | "declinedAt" | "pausedAt", ExtArgs["result"]["scheduledAction"]>
 export type ScheduledActionInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
+  executions?: boolean | Prisma.ScheduledAction$executionsArgs<ExtArgs>
+  _count?: boolean | Prisma.ScheduledActionCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type ScheduledActionIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
@@ -954,6 +1384,7 @@ export type $ScheduledActionPayload<ExtArgs extends runtime.Types.Extensions.Int
   name: "ScheduledAction"
   objects: {
     user: Prisma.$UserPayload<ExtArgs>
+    executions: Prisma.$ScheduledExecutionPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -973,6 +1404,13 @@ export type $ScheduledActionPayload<ExtArgs extends runtime.Types.Extensions.Int
     lastSkippedAt: Date | null
     createdAt: Date
     updatedAt: Date
+    source: string
+    patternType: string | null
+    detectedAt: Date | null
+    confidence: number | null
+    stage: number
+    declinedAt: Date | null
+    pausedAt: Date | null
   }, ExtArgs["result"]["scheduledAction"]>
   composites: {}
 }
@@ -1368,6 +1806,7 @@ readonly fields: ScheduledActionFieldRefs;
 export interface Prisma__ScheduledActionClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
   user<T extends Prisma.UserDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.UserDefaultArgs<ExtArgs>>): Prisma.Prisma__UserClient<runtime.Types.Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+  executions<T extends Prisma.ScheduledAction$executionsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ScheduledAction$executionsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ScheduledExecutionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1414,6 +1853,13 @@ export interface ScheduledActionFieldRefs {
   readonly lastSkippedAt: Prisma.FieldRef<"ScheduledAction", 'DateTime'>
   readonly createdAt: Prisma.FieldRef<"ScheduledAction", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"ScheduledAction", 'DateTime'>
+  readonly source: Prisma.FieldRef<"ScheduledAction", 'String'>
+  readonly patternType: Prisma.FieldRef<"ScheduledAction", 'String'>
+  readonly detectedAt: Prisma.FieldRef<"ScheduledAction", 'DateTime'>
+  readonly confidence: Prisma.FieldRef<"ScheduledAction", 'Float'>
+  readonly stage: Prisma.FieldRef<"ScheduledAction", 'Int'>
+  readonly declinedAt: Prisma.FieldRef<"ScheduledAction", 'DateTime'>
+  readonly pausedAt: Prisma.FieldRef<"ScheduledAction", 'DateTime'>
 }
     
 
@@ -1812,6 +2258,30 @@ export type ScheduledActionDeleteManyArgs<ExtArgs extends runtime.Types.Extensio
    * Limit how many ScheduledActions to delete.
    */
   limit?: number
+}
+
+/**
+ * ScheduledAction.executions
+ */
+export type ScheduledAction$executionsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the ScheduledExecution
+   */
+  select?: Prisma.ScheduledExecutionSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the ScheduledExecution
+   */
+  omit?: Prisma.ScheduledExecutionOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ScheduledExecutionInclude<ExtArgs> | null
+  where?: Prisma.ScheduledExecutionWhereInput
+  orderBy?: Prisma.ScheduledExecutionOrderByWithRelationInput | Prisma.ScheduledExecutionOrderByWithRelationInput[]
+  cursor?: Prisma.ScheduledExecutionWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.ScheduledExecutionScalarFieldEnum | Prisma.ScheduledExecutionScalarFieldEnum[]
 }
 
 /**

@@ -323,10 +323,37 @@ model ScheduledAction {
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
 
-  user User @relation(fields: [userId], references: [id])
+  // Phase D: autonomous action loop
+  source      String    @default("user_created") // user_created | behavior_detected
+  patternType String?   // recurring_save | yield_reinvestment | debt_discipline | idle_usdc_tolerance | swap_pattern
+  detectedAt  DateTime?
+  confidence  Float?
+  stage       Int       @default(2) // 0=detected, 1=surfaced, 2=confirmed, 3=autonomous
+  declinedAt  DateTime?
+  pausedAt    DateTime?
+
+  user       User                 @relation(fields: [userId], references: [id])
+  executions ScheduledExecution[]
 
   @@index([userId, enabled])
   @@index([nextRunAt, enabled])
+  @@index([userId, source, stage])
+}
+
+model ScheduledExecution {
+  id                String   @id @default(cuid())
+  scheduledActionId String
+  txDigest          String?
+  amountUsd         Float
+  status            String   // success | skipped | failed
+  skipReason        String?
+  idempotencyKey    String   @unique
+  notified          Boolean  @default(false)
+  executedAt        DateTime @default(now())
+
+  scheduledAction ScheduledAction @relation(fields: [scheduledActionId], references: [id])
+
+  @@index([scheduledActionId, executedAt])
 }
 
 model OutcomeCheck {

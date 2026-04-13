@@ -86,31 +86,59 @@ export async function PATCH(
     update.confirmationsCompleted = 0;
   }
 
-  // Confirm execution (increment trust ladder)
   if (body.action === 'confirm') {
-    update.confirmationsCompleted = existing.confirmationsCompleted + 1;
+    const newConfirmations = existing.confirmationsCompleted + 1;
+    update.confirmationsCompleted = newConfirmations;
     update.totalExecutions = existing.totalExecutions + 1;
     update.totalAmountUsdc = existing.totalAmountUsdc + existing.amount;
     update.lastExecutedAt = new Date();
+
+    if (existing.source === 'behavior_detected' && existing.stage === 2
+        && newConfirmations >= existing.confirmationsRequired) {
+      update.stage = 3;
+    }
 
     try {
       const interval = CronExpressionParser.parse(existing.cronExpr, { tz: 'UTC' });
       update.nextRunAt = interval.next().toDate();
     } catch { /* keep existing */ }
-  }
-
-  // Skip execution
-  if (body.action === 'skip') {
+  } else if (body.action === 'skip') {
     update.lastSkippedAt = new Date();
     try {
       const interval = CronExpressionParser.parse(existing.cronExpr, { tz: 'UTC' });
       update.nextRunAt = interval.next().toDate();
     } catch { /* keep existing */ }
-  }
-
-  // Delete (soft — disable)
-  if (body.action === 'delete') {
+  } else if (body.action === 'delete') {
     update.enabled = false;
+  } else if (body.action === 'accept_proposal') {
+    if (existing.source !== 'behavior_detected') {
+      return NextResponse.json({ error: 'Only behavior-detected actions can be accepted' }, { status: 400 });
+    }
+    update.stage = 2;
+    update.enabled = true;
+    update.declinedAt = null;
+    update.confirmationsCompleted = 0;
+    update.confirmationsRequired = 3;
+    try {
+      const interval = CronExpressionParser.parse(existing.cronExpr, { tz: 'UTC' });
+      update.nextRunAt = interval.next().toDate();
+    } catch { /* keep existing */ }
+  } else if (body.action === 'decline_proposal') {
+    if (existing.source !== 'behavior_detected') {
+      return NextResponse.json({ error: 'Only behavior-detected actions can be declined' }, { status: 400 });
+    }
+    update.declinedAt = new Date();
+    update.enabled = false;
+  } else if (body.action === 'pause_pattern') {
+    update.pausedAt = new Date();
+    update.enabled = false;
+  } else if (body.action === 'resume_pattern') {
+    update.pausedAt = null;
+    update.enabled = true;
+    try {
+      const interval = CronExpressionParser.parse(existing.cronExpr, { tz: 'UTC' });
+      update.nextRunAt = interval.next().toDate();
+    } catch { /* keep existing */ }
   }
 
   const action = await prisma.scheduledAction.update({

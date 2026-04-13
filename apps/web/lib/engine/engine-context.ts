@@ -332,10 +332,20 @@ export interface MemoryEntry {
   source?: string;
 }
 
+export interface PendingProposal {
+  id: string;
+  patternType: string;
+  actionType: string;
+  amount: number;
+  asset: string;
+  confidence: number;
+}
+
 export interface IntelligenceContext {
   profile?: UserFinancialProfile | null;
   conversationState?: ConversationState;
   memories?: MemoryEntry[];
+  pendingProposals?: PendingProposal[];
 }
 
 function formatMemoryAge(extractedAt: Date): string {
@@ -404,6 +414,14 @@ export function buildFullDynamicContext(
   if (opts.intelligence?.conversationState) {
     const stateCtx = buildStateContext(opts.intelligence.conversationState);
     if (stateCtx) sections.push(`## Conversation State\n${stateCtx}`);
+  }
+
+  // Phase D — pending autonomous proposals (at most 1)
+  const proposals = opts.intelligence?.pendingProposals;
+  if (proposals?.length) {
+    const p = proposals[0];
+    const label = p.patternType.replace(/_/g, ' ');
+    sections.push(`## Pending Proposal\n<pending-proposals>\nYou detected a "${label}" pattern (confidence ${Math.round(p.confidence * 100)}%). Proposed: auto-${p.actionType} $${p.amount} ${p.asset}.\nMention this naturally when contextually relevant — e.g. when the user checks balances, saves, or asks about automation. Describe the pattern and ask if they'd like to enable it. The user can accept or decline via the UI card that accompanies this proposal. Do not fabricate tool calls. Never dump a list of proposals.\nProposal ID: ${p.id}\n</pending-proposals>`);
   }
 
   // F2 — proactive awareness instructions

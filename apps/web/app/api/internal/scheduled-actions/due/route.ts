@@ -26,6 +26,8 @@ export async function GET(request: NextRequest) {
   const actions = await prisma.scheduledAction.findMany({
     where: {
       enabled: true,
+      pausedAt: null,
+      stage: { gte: 2 },
       nextRunAt: nextRunFilter,
     },
     include: {
@@ -60,6 +62,10 @@ export async function GET(request: NextRequest) {
     walletAddress: a.user.suiAddress,
     email: a.user.email,
     allowanceId: a.user.preferences?.allowanceId ?? null,
+    source: a.source,
+    stage: a.stage,
+    patternType: a.patternType,
+    pausedAt: a.pausedAt?.toISOString() ?? null,
   }));
 
   return NextResponse.json({ actions: result });

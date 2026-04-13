@@ -401,6 +401,7 @@ export const ModelName = {
   WatchAddress: 'WatchAddress',
   PortfolioSnapshot: 'PortfolioSnapshot',
   ScheduledAction: 'ScheduledAction',
+  ScheduledExecution: 'ScheduledExecution',
   OutcomeCheck: 'OutcomeCheck',
   FollowUpQueue: 'FollowUpQueue',
   UserFinancialProfile: 'UserFinancialProfile',
@@ -420,7 +421,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "userPreferences" | "conversationLog" | "sessionUsage" | "servicePurchase" | "notificationPrefs" | "notificationLog" | "dailyBriefing" | "savingsGoal" | "appEvent" | "adviceLog" | "paymentLink" | "invoice" | "savingsGoalDeposit" | "watchAddress" | "portfolioSnapshot" | "scheduledAction" | "outcomeCheck" | "followUpQueue" | "userFinancialProfile" | "userMemory"
+    modelProps: "user" | "userPreferences" | "conversationLog" | "sessionUsage" | "servicePurchase" | "notificationPrefs" | "notificationLog" | "dailyBriefing" | "savingsGoal" | "appEvent" | "adviceLog" | "paymentLink" | "invoice" | "savingsGoalDeposit" | "watchAddress" | "portfolioSnapshot" | "scheduledAction" | "scheduledExecution" | "outcomeCheck" | "followUpQueue" | "userFinancialProfile" | "userMemory"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1682,6 +1683,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    ScheduledExecution: {
+      payload: Prisma.$ScheduledExecutionPayload<ExtArgs>
+      fields: Prisma.ScheduledExecutionFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.ScheduledExecutionFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ScheduledExecutionPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.ScheduledExecutionFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ScheduledExecutionPayload>
+        }
+        findFirst: {
+          args: Prisma.ScheduledExecutionFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ScheduledExecutionPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.ScheduledExecutionFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ScheduledExecutionPayload>
+        }
+        findMany: {
+          args: Prisma.ScheduledExecutionFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ScheduledExecutionPayload>[]
+        }
+        create: {
+          args: Prisma.ScheduledExecutionCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ScheduledExecutionPayload>
+        }
+        createMany: {
+          args: Prisma.ScheduledExecutionCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.ScheduledExecutionCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ScheduledExecutionPayload>[]
+        }
+        delete: {
+          args: Prisma.ScheduledExecutionDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ScheduledExecutionPayload>
+        }
+        update: {
+          args: Prisma.ScheduledExecutionUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ScheduledExecutionPayload>
+        }
+        deleteMany: {
+          args: Prisma.ScheduledExecutionDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.ScheduledExecutionUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.ScheduledExecutionUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ScheduledExecutionPayload>[]
+        }
+        upsert: {
+          args: Prisma.ScheduledExecutionUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ScheduledExecutionPayload>
+        }
+        aggregate: {
+          args: Prisma.ScheduledExecutionAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateScheduledExecution>
+        }
+        groupBy: {
+          args: Prisma.ScheduledExecutionGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ScheduledExecutionGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.ScheduledExecutionCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ScheduledExecutionCountAggregateOutputType> | number
+        }
+      }
+    }
     OutcomeCheck: {
       payload: Prisma.$OutcomeCheckPayload<ExtArgs>
       fields: Prisma.OutcomeCheckFieldRefs
@@ -2287,10 +2362,32 @@ export const ScheduledActionScalarFieldEnum = {
   lastExecutedAt: 'lastExecutedAt',
   lastSkippedAt: 'lastSkippedAt',
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
+  updatedAt: 'updatedAt',
+  source: 'source',
+  patternType: 'patternType',
+  detectedAt: 'detectedAt',
+  confidence: 'confidence',
+  stage: 'stage',
+  declinedAt: 'declinedAt',
+  pausedAt: 'pausedAt'
 } as const
 
 export type ScheduledActionScalarFieldEnum = (typeof ScheduledActionScalarFieldEnum)[keyof typeof ScheduledActionScalarFieldEnum]
+
+
+export const ScheduledExecutionScalarFieldEnum = {
+  id: 'id',
+  scheduledActionId: 'scheduledActionId',
+  txDigest: 'txDigest',
+  amountUsd: 'amountUsd',
+  status: 'status',
+  skipReason: 'skipReason',
+  idempotencyKey: 'idempotencyKey',
+  notified: 'notified',
+  executedAt: 'executedAt'
+} as const
+
+export type ScheduledExecutionScalarFieldEnum = (typeof ScheduledExecutionScalarFieldEnum)[keyof typeof ScheduledExecutionScalarFieldEnum]
 
 
 export const OutcomeCheckScalarFieldEnum = {
@@ -2609,6 +2706,7 @@ export type GlobalOmitConfig = {
   watchAddress?: Prisma.WatchAddressOmit
   portfolioSnapshot?: Prisma.PortfolioSnapshotOmit
   scheduledAction?: Prisma.ScheduledActionOmit
+  scheduledExecution?: Prisma.ScheduledExecutionOmit
   outcomeCheck?: Prisma.OutcomeCheckOmit
   followUpQueue?: Prisma.FollowUpQueueOmit
   userFinancialProfile?: Prisma.UserFinancialProfileOmit
