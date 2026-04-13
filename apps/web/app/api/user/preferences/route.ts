@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import type { Prisma } from '@/lib/generated/prisma/client';
+import { PERMISSION_PRESETS, type UserPermissionConfig } from '@t2000/engine';
 
 /**
  * GET /api/user/preferences?address=0x...
@@ -30,11 +31,17 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ allowanceId: null, contacts: [], limits: null, dcaSchedules: [] });
   }
 
+  const limitsObj = (prefs?.limits && typeof prefs.limits === 'object' && !Array.isArray(prefs.limits))
+    ? prefs.limits as Record<string, unknown>
+    : null;
+  const permissionPreset = limitsObj?.permissionPreset ?? 'balanced';
+
   return NextResponse.json({
     allowanceId: prefs.allowanceId,
     contacts: prefs.contacts,
     limits: prefs.limits,
     dcaSchedules: prefs.dcaSchedules,
+    permissionPreset,
   });
 }
 
@@ -55,6 +62,7 @@ export async function POST(request: NextRequest) {
     contacts?: unknown;
     limits?: unknown;
     dcaSchedules?: unknown;
+    permissionPreset?: 'conservative' | 'balanced' | 'aggressive';
   };
   try {
     body = await request.json();
@@ -62,7 +70,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const { address, allowanceId, contacts, limits, dcaSchedules } = body;
+  const { address, allowanceId, contacts, dcaSchedules, permissionPreset } = body;
+  let { limits } = body;
+
+  if (permissionPreset && permissionPreset in PERMISSION_PRESETS) {
+    const config: UserPermissionConfig = PERMISSION_PRESETS[permissionPreset];
+    limits = { ...(typeof limits === 'object' && limits ? limits as Record<string, unknown> : {}), ...config, permissionPreset };
+  }
 
   if (!address || typeof address !== 'string' || !address.startsWith('0x')) {
     return NextResponse.json({ error: 'Missing or invalid address' }, { status: 400 });

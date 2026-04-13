@@ -32,6 +32,30 @@ interface SettingsPanelProps {
 
 const DEFAULT_LIMITS = { maxTx: 1000, maxDaily: 5000, agentBudget: 0.50 };
 
+const PRESET_DISPLAY: Record<string, Array<{ op: string; auto: number; confirm: number }>> = {
+  conservative: [
+    { op: 'save', auto: 5, confirm: 100 },
+    { op: 'send', auto: 5, confirm: 100 },
+    { op: 'borrow', auto: 0, confirm: 100 },
+    { op: 'withdraw', auto: 5, confirm: 100 },
+    { op: 'pay', auto: 1, confirm: 25 },
+  ],
+  balanced: [
+    { op: 'save', auto: 50, confirm: 1000 },
+    { op: 'send', auto: 10, confirm: 200 },
+    { op: 'borrow', auto: 0, confirm: 500 },
+    { op: 'withdraw', auto: 25, confirm: 500 },
+    { op: 'pay', auto: 1, confirm: 50 },
+  ],
+  aggressive: [
+    { op: 'save', auto: 100, confirm: 2000 },
+    { op: 'send', auto: 25, confirm: 500 },
+    { op: 'borrow', auto: 10, confirm: 1000 },
+    { op: 'withdraw', auto: 50, confirm: 1000 },
+    { op: 'pay', auto: 5, confirm: 100 },
+  ],
+};
+
 export function SettingsPanel({
   open,
   onClose,
@@ -52,6 +76,7 @@ export function SettingsPanel({
   const [showEmergencyConfirm, setShowEmergencyConfirm] = useState(false);
   const [limits, setLimits] = useState(DEFAULT_LIMITS);
   const [editingLimit, setEditingLimit] = useState<'maxTx' | 'maxDaily' | 'agentBudget' | null>(null);
+  const [permissionPreset, setPermissionPreset] = useState<'conservative' | 'balanced' | 'aggressive'>('balanced');
   const [editValue, setEditValue] = useState('');
   const [now] = useState(() => Date.now());
   const [chatSessions, setChatSessions] = useState<SessionSummary[]>([]);
@@ -86,6 +111,9 @@ export function SettingsPanel({
       .then((data) => {
         if (data.limits && typeof data.limits === 'object') {
           setLimits({ ...DEFAULT_LIMITS, ...data.limits });
+        }
+        if (data.permissionPreset) {
+          setPermissionPreset(data.permissionPreset);
         }
       })
       .catch(() => {});
@@ -350,6 +378,50 @@ export function SettingsPanel({
             </div>
             <p className="font-mono text-[10px] tracking-wider text-dim uppercase leading-relaxed">
               Tap a limit to customize. Agent budget is the max auto-approved spend per session.
+            </p>
+          </section>
+
+          {/* Permission Presets */}
+          <section className="space-y-3">
+            <SectionLabel>Auto-approve Permissions</SectionLabel>
+            <div className="flex gap-2">
+              {(['conservative', 'balanced', 'aggressive'] as const).map((preset) => (
+                <button
+                  key={preset}
+                  onClick={() => {
+                    setPermissionPreset(preset);
+                    fetch('/api/user/preferences', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ address, permissionPreset: preset }),
+                    }).catch(() => {});
+                  }}
+                  className={`flex-1 rounded-lg border px-3 py-2 text-xs font-mono uppercase tracking-wider transition ${
+                    permissionPreset === preset
+                      ? 'border-foreground bg-foreground text-background'
+                      : 'border-border bg-surface/50 text-muted hover:border-border-bright hover:text-foreground'
+                  }`}
+                >
+                  {preset}
+                </button>
+              ))}
+            </div>
+            <div className="rounded-lg border border-border bg-surface/50 p-3">
+              <div className="grid grid-cols-3 gap-y-1 text-[10px] font-mono text-muted">
+                <span className="text-dim">Operation</span>
+                <span className="text-dim text-center">Auto</span>
+                <span className="text-dim text-center">Confirm</span>
+                {PRESET_DISPLAY[permissionPreset].map(({ op, auto, confirm }) => (
+                  <div key={op} className="contents">
+                    <span className="text-foreground/80 capitalize">{op}</span>
+                    <span className="text-center">&lt;${auto}</span>
+                    <span className="text-center">&lt;${confirm}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <p className="font-mono text-[10px] tracking-wider text-dim uppercase leading-relaxed">
+              Controls how much Audric can auto-execute without asking. Conservative asks more, aggressive trusts more.
             </p>
           </section>
 

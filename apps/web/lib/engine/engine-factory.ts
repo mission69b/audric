@@ -12,6 +12,7 @@ import {
   classifyEffort,
   applyToolFlags,
   DEFAULT_GUARD_CONFIG,
+  DEFAULT_PERMISSION_CONFIG,
   RecipeRegistry,
   type SessionData,
   type SessionStore,
@@ -20,6 +21,7 @@ import {
   type Tool,
   type ConversationState,
   type UserFinancialProfile,
+  type UserPermissionConfig,
 } from '@t2000/engine';
 import { UpstashSessionStore } from './upstash-session-store';
 import { getRecipeRegistry } from './recipes';
@@ -201,6 +203,23 @@ export async function createEngine(
     prices,
   };
 
+  // B.4: Build symbol → USD price map for permission resolution
+  const priceCache = new Map<string, number>();
+  for (const coin of nonZeroCoins) {
+    const p = prices[coin.coinType];
+    if (p) priceCache.set(coin.symbol.toUpperCase(), p);
+  }
+  if (!priceCache.has('USDC')) priceCache.set('USDC', 1);
+  if (!priceCache.has('USDT')) priceCache.set('USDT', 1);
+
+  // B.4: Load per-user permission config (fall back to defaults)
+  const userPrefs = await prisma.userPreferences.findUnique({
+    where: { userId: address },
+    select: { limits: true },
+  }).catch(() => null);
+  const permissionConfig: UserPermissionConfig =
+    (userPrefs?.limits as UserPermissionConfig | null) ?? DEFAULT_PERMISSION_CONFIG;
+
   const MCP_ALLOWLIST = new Set([
     'navi_sui_get_transaction',
     'navi_sui_explain_transaction',
@@ -294,6 +313,8 @@ export async function createEngine(
     },
     guards: DEFAULT_GUARD_CONFIG,
     recipes: recipeRegistry,
+    priceCache,
+    permissionConfig,
     ...(!routedModel.includes('haiku') && {
       thinking: { type: 'adaptive' as const },
       outputConfig: { effort },
