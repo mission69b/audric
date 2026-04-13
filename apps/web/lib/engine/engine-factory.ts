@@ -183,7 +183,7 @@ export async function createEngine(
       },
       orderBy: { extractedAt: 'desc' },
       take: 8,
-      select: { id: true, memoryType: true, content: true, extractedAt: true },
+      select: { id: true, memoryType: true, content: true, extractedAt: true, source: true },
     }).catch(() => []) : Promise.resolve([]),
   ]);
 

@@ -402,6 +402,7 @@ model UserMemory {
   expiresAt       DateTime?
   active          Boolean   @default(true)
   sourceSessionId String?
+  source          String    @default("conversation") // 'conversation' | 'chain'
   extractedAt     DateTime  @default(now())
   createdAt       DateTime  @default(now())
 

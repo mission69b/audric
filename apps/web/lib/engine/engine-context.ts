@@ -329,6 +329,7 @@ export interface MemoryEntry {
   memoryType: string;
   content: string;
   extractedAt: Date;
+  source?: string;
 }
 
 export interface IntelligenceContext {
@@ -352,10 +353,13 @@ function formatMemoryAge(extractedAt: Date): string {
 export function buildMemoryContext(memories: MemoryEntry[]): string {
   if (!memories.length) return '';
 
-  const lines: string[] = ['What this user has told you (remembered across sessions):'];
+  const lines: string[] = ['What you know about this user (remembered across sessions):'];
   for (const m of memories.slice(0, 8)) {
     const age = formatMemoryAge(m.extractedAt);
-    lines.push(`- [${m.memoryType}] ${m.content} (${age})`);
+    const prefix = m.source === 'chain'
+      ? '[on-chain observation]'
+      : `[${m.memoryType}]`;
+    lines.push(`- ${prefix} ${m.content} (${age})`);
   }
   return lines.join('\n');
 }

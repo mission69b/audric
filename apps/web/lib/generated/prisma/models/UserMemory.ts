@@ -44,6 +44,7 @@ export type UserMemoryMinAggregateOutputType = {
   expiresAt: Date | null
   active: boolean | null
   sourceSessionId: string | null
+  source: string | null
   extractedAt: Date | null
   createdAt: Date | null
 }
@@ -58,6 +59,7 @@ export type UserMemoryMaxAggregateOutputType = {
   expiresAt: Date | null
   active: boolean | null
   sourceSessionId: string | null
+  source: string | null
   extractedAt: Date | null
   createdAt: Date | null
 }
@@ -72,6 +74,7 @@ export type UserMemoryCountAggregateOutputType = {
   expiresAt: number
   active: number
   sourceSessionId: number
+  source: number
   extractedAt: number
   createdAt: number
   _all: number
@@ -96,6 +99,7 @@ export type UserMemoryMinAggregateInputType = {
   expiresAt?: true
   active?: true
   sourceSessionId?: true
+  source?: true
   extractedAt?: true
   createdAt?: true
 }
@@ -110,6 +114,7 @@ export type UserMemoryMaxAggregateInputType = {
   expiresAt?: true
   active?: true
   sourceSessionId?: true
+  source?: true
   extractedAt?: true
   createdAt?: true
 }
@@ -124,6 +129,7 @@ export type UserMemoryCountAggregateInputType = {
   expiresAt?: true
   active?: true
   sourceSessionId?: true
+  source?: true
   extractedAt?: true
   createdAt?: true
   _all?: true
@@ -225,6 +231,7 @@ export type UserMemoryGroupByOutputType = {
   expiresAt: Date | null
   active: boolean
   sourceSessionId: string | null
+  source: string
   extractedAt: Date
   createdAt: Date
   _count: UserMemoryCountAggregateOutputType | null
@@ -262,6 +269,7 @@ export type UserMemoryWhereInput = {
   expiresAt?: Prisma.DateTimeNullableFilter<"UserMemory"> | Date | string | null
   active?: Prisma.BoolFilter<"UserMemory"> | boolean
   sourceSessionId?: Prisma.StringNullableFilter<"UserMemory"> | string | null
+  source?: Prisma.StringFilter<"UserMemory"> | string
   extractedAt?: Prisma.DateTimeFilter<"UserMemory"> | Date | string
   createdAt?: Prisma.DateTimeFilter<"UserMemory"> | Date | string
   user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
@@ -277,6 +285,7 @@ export type UserMemoryOrderByWithRelationInput = {
   expiresAt?: Prisma.SortOrderInput | Prisma.SortOrder
   active?: Prisma.SortOrder
   sourceSessionId?: Prisma.SortOrderInput | Prisma.SortOrder
+  source?: Prisma.SortOrder
   extractedAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   user?: Prisma.UserOrderByWithRelationInput
@@ -295,6 +304,7 @@ export type UserMemoryWhereUniqueInput = Prisma.AtLeast<{
   expiresAt?: Prisma.DateTimeNullableFilter<"UserMemory"> | Date | string | null
   active?: Prisma.BoolFilter<"UserMemory"> | boolean
   sourceSessionId?: Prisma.StringNullableFilter<"UserMemory"> | string | null
+  source?: Prisma.StringFilter<"UserMemory"> | string
   extractedAt?: Prisma.DateTimeFilter<"UserMemory"> | Date | string
   createdAt?: Prisma.DateTimeFilter<"UserMemory"> | Date | string
   user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
@@ -310,6 +320,7 @@ export type UserMemoryOrderByWithAggregationInput = {
   expiresAt?: Prisma.SortOrderInput | Prisma.SortOrder
   active?: Prisma.SortOrder
   sourceSessionId?: Prisma.SortOrderInput | Prisma.SortOrder
+  source?: Prisma.SortOrder
   extractedAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   _count?: Prisma.UserMemoryCountOrderByAggregateInput
@@ -332,6 +343,7 @@ export type UserMemoryScalarWhereWithAggregatesInput = {
   expiresAt?: Prisma.DateTimeNullableWithAggregatesFilter<"UserMemory"> | Date | string | null
   active?: Prisma.BoolWithAggregatesFilter<"UserMemory"> | boolean
   sourceSessionId?: Prisma.StringNullableWithAggregatesFilter<"UserMemory"> | string | null
+  source?: Prisma.StringWithAggregatesFilter<"UserMemory"> | string
   extractedAt?: Prisma.DateTimeWithAggregatesFilter<"UserMemory"> | Date | string
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"UserMemory"> | Date | string
 }
@@ -345,6 +357,7 @@ export type UserMemoryCreateInput = {
   expiresAt?: Date | string | null
   active?: boolean
   sourceSessionId?: string | null
+  source?: string
   extractedAt?: Date | string
   createdAt?: Date | string
   user: Prisma.UserCreateNestedOneWithoutMemoriesInput
@@ -360,6 +373,7 @@ export type UserMemoryUncheckedCreateInput = {
   expiresAt?: Date | string | null
   active?: boolean
   sourceSessionId?: string | null
+  source?: string
   extractedAt?: Date | string
   createdAt?: Date | string
 }
@@ -373,6 +387,7 @@ export type UserMemoryUpdateInput = {
   expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   sourceSessionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  source?: Prisma.StringFieldUpdateOperationsInput | string
   extractedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneRequiredWithoutMemoriesNestedInput
@@ -388,6 +403,7 @@ export type UserMemoryUncheckedUpdateInput = {
   expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   sourceSessionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  source?: Prisma.StringFieldUpdateOperationsInput | string
   extractedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -402,6 +418,7 @@ export type UserMemoryCreateManyInput = {
   expiresAt?: Date | string | null
   active?: boolean
   sourceSessionId?: string | null
+  source?: string
   extractedAt?: Date | string
   createdAt?: Date | string
 }
@@ -415,6 +432,7 @@ export type UserMemoryUpdateManyMutationInput = {
   expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   sourceSessionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  source?: Prisma.StringFieldUpdateOperationsInput | string
   extractedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -429,6 +447,7 @@ export type UserMemoryUncheckedUpdateManyInput = {
   expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   sourceSessionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  source?: Prisma.StringFieldUpdateOperationsInput | string
   extractedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -453,6 +472,7 @@ export type UserMemoryCountOrderByAggregateInput = {
   expiresAt?: Prisma.SortOrder
   active?: Prisma.SortOrder
   sourceSessionId?: Prisma.SortOrder
+  source?: Prisma.SortOrder
   extractedAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
@@ -471,6 +491,7 @@ export type UserMemoryMaxOrderByAggregateInput = {
   expiresAt?: Prisma.SortOrder
   active?: Prisma.SortOrder
   sourceSessionId?: Prisma.SortOrder
+  source?: Prisma.SortOrder
   extractedAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
@@ -485,6 +506,7 @@ export type UserMemoryMinOrderByAggregateInput = {
   expiresAt?: Prisma.SortOrder
   active?: Prisma.SortOrder
   sourceSessionId?: Prisma.SortOrder
+  source?: Prisma.SortOrder
   extractedAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
@@ -544,6 +566,7 @@ export type UserMemoryCreateWithoutUserInput = {
   expiresAt?: Date | string | null
   active?: boolean
   sourceSessionId?: string | null
+  source?: string
   extractedAt?: Date | string
   createdAt?: Date | string
 }
@@ -557,6 +580,7 @@ export type UserMemoryUncheckedCreateWithoutUserInput = {
   expiresAt?: Date | string | null
   active?: boolean
   sourceSessionId?: string | null
+  source?: string
   extractedAt?: Date | string
   createdAt?: Date | string
 }
@@ -600,6 +624,7 @@ export type UserMemoryScalarWhereInput = {
   expiresAt?: Prisma.DateTimeNullableFilter<"UserMemory"> | Date | string | null
   active?: Prisma.BoolFilter<"UserMemory"> | boolean
   sourceSessionId?: Prisma.StringNullableFilter<"UserMemory"> | string | null
+  source?: Prisma.StringFilter<"UserMemory"> | string
   extractedAt?: Prisma.DateTimeFilter<"UserMemory"> | Date | string
   createdAt?: Prisma.DateTimeFilter<"UserMemory"> | Date | string
 }
@@ -613,6 +638,7 @@ export type UserMemoryCreateManyUserInput = {
   expiresAt?: Date | string | null
   active?: boolean
   sourceSessionId?: string | null
+  source?: string
   extractedAt?: Date | string
   createdAt?: Date | string
 }
@@ -626,6 +652,7 @@ export type UserMemoryUpdateWithoutUserInput = {
   expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   sourceSessionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  source?: Prisma.StringFieldUpdateOperationsInput | string
   extractedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -639,6 +666,7 @@ export type UserMemoryUncheckedUpdateWithoutUserInput = {
   expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   sourceSessionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  source?: Prisma.StringFieldUpdateOperationsInput | string
   extractedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -652,6 +680,7 @@ export type UserMemoryUncheckedUpdateManyWithoutUserInput = {
   expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   sourceSessionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  source?: Prisma.StringFieldUpdateOperationsInput | string
   extractedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -668,6 +697,7 @@ export type UserMemorySelect<ExtArgs extends runtime.Types.Extensions.InternalAr
   expiresAt?: boolean
   active?: boolean
   sourceSessionId?: boolean
+  source?: boolean
   extractedAt?: boolean
   createdAt?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
@@ -683,6 +713,7 @@ export type UserMemorySelectCreateManyAndReturn<ExtArgs extends runtime.Types.Ex
   expiresAt?: boolean
   active?: boolean
   sourceSessionId?: boolean
+  source?: boolean
   extractedAt?: boolean
   createdAt?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
@@ -698,6 +729,7 @@ export type UserMemorySelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Ex
   expiresAt?: boolean
   active?: boolean
   sourceSessionId?: boolean
+  source?: boolean
   extractedAt?: boolean
   createdAt?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
@@ -713,11 +745,12 @@ export type UserMemorySelectScalar = {
   expiresAt?: boolean
   active?: boolean
   sourceSessionId?: boolean
+  source?: boolean
   extractedAt?: boolean
   createdAt?: boolean
 }
 
-export type UserMemoryOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "memoryType" | "content" | "originalQuote" | "confidence" | "expiresAt" | "active" | "sourceSessionId" | "extractedAt" | "createdAt", ExtArgs["result"]["userMemory"]>
+export type UserMemoryOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "memoryType" | "content" | "originalQuote" | "confidence" | "expiresAt" | "active" | "sourceSessionId" | "source" | "extractedAt" | "createdAt", ExtArgs["result"]["userMemory"]>
 export type UserMemoryInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
 }
@@ -743,6 +776,7 @@ export type $UserMemoryPayload<ExtArgs extends runtime.Types.Extensions.Internal
     expiresAt: Date | null
     active: boolean
     sourceSessionId: string | null
+    source: string
     extractedAt: Date
     createdAt: Date
   }, ExtArgs["result"]["userMemory"]>
@@ -1178,6 +1212,7 @@ export interface UserMemoryFieldRefs {
   readonly expiresAt: Prisma.FieldRef<"UserMemory", 'DateTime'>
   readonly active: Prisma.FieldRef<"UserMemory", 'Boolean'>
   readonly sourceSessionId: Prisma.FieldRef<"UserMemory", 'String'>
+  readonly source: Prisma.FieldRef<"UserMemory", 'String'>
   readonly extractedAt: Prisma.FieldRef<"UserMemory", 'DateTime'>
   readonly createdAt: Prisma.FieldRef<"UserMemory", 'DateTime'>
 }

@@ -37,6 +37,10 @@ export async function GET(request: NextRequest) {
     return handleMemoryExtractionSource();
   }
 
+  if (source === 'chain-memory') {
+    return handleChainMemorySource();
+  }
+
   const users = await prisma.user.findMany({
     where: {
       emailVerified: true,
@@ -162,6 +166,45 @@ async function handleMemoryExtractionSource() {
     userId: u.id,
     email: '',
     walletAddress: '',
+    allowanceId: null,
+    timezoneOffset: 0,
+    prefs: {},
+  }));
+
+  return NextResponse.json({ users: result });
+}
+
+async function handleChainMemorySource() {
+  const oneDayAgo = new Date(Date.now() - 86_400_000);
+
+  const users = await prisma.user.findMany({
+    where: {
+      OR: [
+        { suiAddress: { not: '' } },
+      ],
+    },
+    select: {
+      id: true,
+      suiAddress: true,
+      memories: {
+        where: { source: 'chain' },
+        orderBy: { extractedAt: 'desc' },
+        take: 1,
+        select: { extractedAt: true },
+      },
+    },
+  });
+
+  const eligible = users.filter((u) => {
+    if (!u.suiAddress) return false;
+    const lastChainExtraction = u.memories[0]?.extractedAt;
+    return !lastChainExtraction || lastChainExtraction < oneDayAgo;
+  });
+
+  const result = eligible.map((u) => ({
+    userId: u.id,
+    email: '',
+    walletAddress: u.suiAddress,
     allowanceId: null,
     timezoneOffset: 0,
     prefs: {},

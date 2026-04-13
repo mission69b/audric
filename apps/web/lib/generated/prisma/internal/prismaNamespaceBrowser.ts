@@ -432,6 +432,7 @@ export const UserMemoryScalarFieldEnum = {
   expiresAt: 'expiresAt',
   active: 'active',
   sourceSessionId: 'sourceSessionId',
+  source: 'source',
   extractedAt: 'extractedAt',
   createdAt: 'createdAt'
 } as const
