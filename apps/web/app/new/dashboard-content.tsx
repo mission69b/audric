@@ -1549,6 +1549,14 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
             </>
           ) : (
             <>
+              {!isInFlow && contextualChips.length > 0 && (
+                <ContextualChips
+                  chips={contextualChips}
+                  onChipFlow={handleChipClick}
+                  onAgentPrompt={(prompt) => handleInputSubmit(prompt)}
+                  onDismiss={handleDismissChip}
+                />
+              )}
               <div className="flex items-center justify-between gap-2">
                 <div className="flex gap-2 overflow-x-auto scrollbar-none flex-1">
                   <ChipBar
