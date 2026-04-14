@@ -73,7 +73,10 @@ export function NewConversationView({
   if (automationCount > 0) stats.push(`${automationCount} automation${automationCount > 1 ? 's' : ''} running`);
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 -mt-8">
+    <div className="flex-1 flex flex-col items-center overflow-y-auto px-4 sm:px-6">
+      {/* Spacer — pushes content to center when it fits, collapses when it overflows */}
+      <div className="flex-1 min-h-8" />
+
       {briefing && (
         <div className="w-full max-w-2xl mb-6">
           <BriefingCard
@@ -120,7 +123,7 @@ export function NewConversationView({
         />
       </div>
 
-      <div ref={chipExpand.containerRef} className="w-full max-w-2xl relative">
+      <div ref={chipExpand.containerRef} className="w-full max-w-2xl">
         <div className="overflow-x-auto scrollbar-none flex justify-center">
           <ChipBar
             onChipClick={onChipClick}
@@ -142,6 +145,9 @@ export function NewConversationView({
           />
         )}
       </div>
+
+      {/* Spacer — matches top spacer for centering */}
+      <div className="flex-1 min-h-8" />
     </div>
   );
 }

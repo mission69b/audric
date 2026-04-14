@@ -1543,7 +1543,7 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
       </div>
       </div>
 
-      <div className="shrink-0 bg-background safe-bottom z-30">
+      <div className="shrink-0 max-h-[55vh] overflow-y-auto bg-background safe-bottom z-30">
         <div className="mx-auto max-w-2xl px-4 sm:px-6 py-3 space-y-3">
           {engine.isStreaming ? (
             <>
@@ -1577,7 +1577,7 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
                   onDismiss={handleDismissChip}
                 />
               )}
-              <div ref={chipExpand.containerRef} className="relative">
+              <div ref={chipExpand.containerRef}>
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex gap-2 overflow-x-auto scrollbar-none flex-1">
                     <ChipBar
