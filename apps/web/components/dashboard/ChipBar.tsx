@@ -73,7 +73,7 @@ export function ChipBar({ onChipClick, onPrompt, activeFlow, disabled, prefetch 
                 fill="currentColor"
                 className={`transition-transform ${expandedChip === chip.id ? 'rotate-180' : ''}`}
               >
-                <path d="M1 5.5L4 2.5L7 5.5" stroke="currentColor" strokeWidth="1.2" fill="none" />
+                <path d="M1 2.5L4 5.5L7 2.5" stroke="currentColor" strokeWidth="1.2" fill="none" />
               </svg>
             )}
           </button>

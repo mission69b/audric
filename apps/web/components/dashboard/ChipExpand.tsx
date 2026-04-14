@@ -19,7 +19,7 @@ export function ChipExpand({ actions, onSelect, onClose, anchorRef }: ChipExpand
     if (!anchorRef?.current) return;
     const rect = anchorRef.current.getBoundingClientRect();
     setPos({
-      top: rect.top - 8,
+      top: rect.bottom + 8,
       left: rect.left,
     });
   }, [anchorRef]);
@@ -47,11 +47,11 @@ export function ChipExpand({ actions, onSelect, onClose, anchorRef }: ChipExpand
   const content = (
     <div
       ref={ref}
-      className="w-72 rounded-lg border border-border bg-surface shadow-dropdown overflow-hidden z-[9999]"
+      className="w-72 rounded-xl border border-border bg-surface shadow-dropdown overflow-hidden z-[9999]"
       style={
         pos
-          ? { position: 'fixed', bottom: `${window.innerHeight - pos.top}px`, left: `${pos.left}px` }
-          : { position: 'absolute', bottom: '100%', left: 0, marginBottom: 8 }
+          ? { position: 'fixed', top: `${pos.top}px`, left: `${pos.left}px` }
+          : { position: 'absolute', top: '100%', left: 0, marginTop: 8 }
       }
     >
       {actions.map((action, i) => (
@@ -61,10 +61,12 @@ export function ChipExpand({ actions, onSelect, onClose, anchorRef }: ChipExpand
             onSelect(action.prompt);
             onClose();
           }}
-          className="w-full text-left px-3.5 py-2.5 hover:bg-[var(--n700)] transition-colors flex flex-col gap-0.5"
+          className="w-full text-left px-4 py-3 hover:bg-[var(--n700)] transition-colors border-b border-border/50 last:border-b-0"
         >
           <span className="text-[13px] text-foreground">{action.label}</span>
-          <span className="text-[11px] text-dim leading-tight">{action.sublabel}</span>
+          {action.sublabel && (
+            <span className="text-[11px] text-dim leading-tight block mt-0.5">{action.sublabel}</span>
+          )}
         </button>
       ))}
     </div>
