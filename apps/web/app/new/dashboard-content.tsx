@@ -1517,7 +1517,7 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
 
       </div>
 
-      <div className="sticky bottom-0 border-t border-border bg-background/95 backdrop-blur-sm safe-bottom z-30">
+      <div className="sticky bottom-0 bg-background safe-bottom z-30">
         <div className="mx-auto max-w-2xl px-4 sm:px-6 py-3 space-y-3">
           {engine.isStreaming ? (
             <>
