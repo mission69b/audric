@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useSyncExternalStore } from 'react';
+import { usePathname } from 'next/navigation';
 
 export type PanelId =
   | 'chat'
@@ -65,7 +66,16 @@ function getServerSnapshot() {
 }
 
 export function usePanel() {
+  const pathname = usePathname();
   const panel = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+
+  useEffect(() => {
+    const urlPanel = panelFromUrl();
+    if (urlPanel !== currentPanel) {
+      currentPanel = urlPanel;
+      emitChange();
+    }
+  }, [pathname]);
 
   const setPanel = useCallback((id: PanelId) => {
     if (id === currentPanel) return;

@@ -129,7 +129,7 @@ export function AppSidebar({
   return (
     <aside
       className={`
-        flex flex-col h-full bg-background border-r border-border
+        flex flex-col h-full bg-surface border-r border-border
         ${collapsed ? 'w-[var(--sidebar-icon-width)]' : 'w-[var(--sidebar-width)]'}
         transition-[width] duration-200
       `}
@@ -137,17 +137,17 @@ export function AppSidebar({
       aria-label="Main navigation"
     >
       {/* Logo */}
-      <div className={`flex items-center gap-1.5 px-3 py-4 ${collapsed ? 'justify-center' : ''}`}>
+      <div className={`flex items-center gap-2 px-4 py-3 border-b border-border ${collapsed ? 'justify-center' : ''}`}>
         {!collapsed && (
           <>
-            <span className="font-mono text-base font-bold tracking-wide text-foreground uppercase">Audric</span>
-            <span className="text-[9px] uppercase tracking-widest font-medium text-muted border border-border rounded px-1.5 py-0.5 leading-none">
+            <span className="font-mono text-[13px] tracking-[0.12em] text-foreground uppercase">Audric</span>
+            <span className="font-mono text-[9px] tracking-[0.08em] uppercase text-muted bg-[var(--n700)] px-1.5 py-0.5 rounded-sm leading-none">
               beta
             </span>
           </>
         )}
         {collapsed && (
-          <span className="font-mono text-base font-bold text-foreground uppercase">A</span>
+          <span className="font-mono text-[13px] text-foreground uppercase">A</span>
         )}
       </div>
 

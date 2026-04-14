@@ -27,7 +27,7 @@ export function Topbar({
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   return (
-    <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-border bg-background/95 backdrop-blur-sm">
+    <div className="flex items-center justify-between px-4 sm:px-6 py-2 bg-background">
       {/* Left zone — hamburger on mobile only */}
       <div className="w-12 flex items-center md:invisible">
         {showHamburger && (
