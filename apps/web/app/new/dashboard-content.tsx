@@ -39,6 +39,7 @@ import { FirstLoginView } from '@/components/dashboard/FirstLoginView';
 import { TosBanner } from '@/components/dashboard/TosBanner';
 import { GracePeriodBanner } from '@/components/dashboard/GracePeriodBanner';
 import { useOvernightBriefing } from '@/hooks/useOvernightBriefing';
+import { useDashboardInsights } from '@/hooks/useDashboardInsights';
 import { useUserStatus } from '@/hooks/useUserStatus';
 import { usePanel } from '@/hooks/usePanel';
 import { PortfolioPanel } from '@/components/panels/PortfolioPanel';
@@ -314,6 +315,15 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
     error: balanceQuery.isError,
   };
 
+  const dashInsights = useDashboardInsights({
+    address,
+    jwt: session?.jwt ?? null,
+    idleUsdc: balance.usdc,
+    savings: balance.savings,
+    savingsRate: balance.savingsRate,
+    debt: balance.borrows,
+    healthFactor: balance.healthFactor ?? null,
+  });
 
   useEffect(() => {
     if (!address) return;
@@ -1358,6 +1368,13 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
           onViewReport: handleBriefingViewReport,
           onCtaClick: handleBriefingCtaClick,
         } : null}
+        handledActions={dashInsights.handledActions}
+        onViewHandled={() => { setActiveTab('activity'); }}
+        proactive={dashInsights.proactive ? {
+          ...dashInsights.proactive,
+          onCtaClick: () => engine.sendMessage(dashInsights.proactive!.action),
+        } : null}
+        onDismissProactive={dashInsights.dismissProactive}
       />
     );
   };

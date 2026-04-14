@@ -120,6 +120,7 @@ export function NewConversationView({
       <div className="w-full max-w-2xl overflow-x-auto scrollbar-none flex justify-center">
         <ChipBar
           onChipClick={onChipClick}
+          onPrompt={onSend}
           activeFlow={activeFlow}
         />
       </div>
