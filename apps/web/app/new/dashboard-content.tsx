@@ -43,6 +43,11 @@ import { TosBanner } from '@/components/dashboard/TosBanner';
 import { GracePeriodBanner } from '@/components/dashboard/GracePeriodBanner';
 import { useOvernightBriefing } from '@/hooks/useOvernightBriefing';
 import { useUserStatus } from '@/hooks/useUserStatus';
+import { usePanel } from '@/hooks/usePanel';
+import { PortfolioPanel } from '@/components/panels/PortfolioPanel';
+import { ActivityPanel } from '@/components/panels/ActivityPanel';
+import { PayPanel } from '@/components/panels/PayPanel';
+import { PlaceholderPanel } from '@/components/panels/PlaceholderPanel';
 
 const LS_LAST_SAVINGS = 't2000_last_savings';
 const LS_LAST_OPEN = 't2000_last_open_date';
@@ -208,6 +213,7 @@ export interface DashboardContentProps {
 export function DashboardContent({ initialSessionId }: DashboardContentProps = {}) {
   const router = useRouter();
   const { address, session, expiringSoon, logout, refresh } = useZkLogin();
+  const { panel } = usePanel();
   useUsdcSponsor(address);
   const allowance = useAllowanceStatus(address);
 
@@ -1583,9 +1589,94 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
   );
 
   const panelContent = (() => {
-    if (activeTab === 'activity') return renderActivityTab();
-    if (isEmpty && !engine.isStreaming) return renderEmptyState();
-    return renderChatView();
+    switch (panel) {
+      case 'portfolio':
+        return (
+          <PortfolioPanel
+            address={address}
+            balance={balance}
+            onSendMessage={(text) => {
+              handleInputSubmit(text);
+            }}
+          />
+        );
+      case 'activity':
+        return (
+          <ActivityPanel
+            feed={activityFeed}
+            onAction={handleActivityAction}
+            briefing={briefing.briefing}
+            onBriefingDismiss={briefing.dismiss}
+            onBriefingViewReport={handleBriefingViewReport}
+            onBriefingCtaClick={handleBriefingCtaClick}
+          />
+        );
+      case 'pay':
+        return (
+          <PayPanel
+            address={address}
+            jwt={session.jwt}
+            onSendMessage={handleInputSubmit}
+          />
+        );
+      case 'automations':
+        return (
+          <PlaceholderPanel
+            title="Automations"
+            description="Set up autonomous patterns — DCA, auto-save, yield optimization. Audric watches your wallet and acts within your trust boundaries."
+            icon="⚡"
+            cta="Ask Audric"
+            onCtaClick={() => handleInputSubmit('What automations can you set up for me?')}
+          />
+        );
+      case 'goals':
+        return (
+          <PlaceholderPanel
+            title="Goals"
+            description="Set savings targets and track progress. Audric will help you hit your milestones."
+            icon="🎯"
+            cta="Set a goal"
+            onCtaClick={() => handleInputSubmit('Help me set a savings goal')}
+          />
+        );
+      case 'reports':
+        return (
+          <PlaceholderPanel
+            title="Reports"
+            description="Weekly income summaries, wallet intelligence reports, and morning briefings."
+            icon="📊"
+            cta="View briefing"
+            onCtaClick={() => handleInputSubmit('Give me my daily briefing')}
+          />
+        );
+      case 'contacts':
+        return (
+          <PlaceholderPanel
+            title="Contacts"
+            description="Manage your saved contacts for quick transfers."
+            icon="👥"
+            cta="View contacts"
+            onCtaClick={() => setSettingsOpen(true)}
+          />
+        );
+      case 'store':
+        return (
+          <PlaceholderPanel
+            title="Store"
+            description="Digital products, prompts, art, and more — all payable with USDC on Sui."
+            icon="🏪"
+            soon
+          />
+        );
+      case 'settings':
+        return null;
+      case 'chat':
+      default: {
+        if (activeTab === 'activity') return renderActivityTab();
+        if (isEmpty && !engine.isStreaming) return renderEmptyState();
+        return renderChatView();
+      }
+    }
   })();
 
   return (
