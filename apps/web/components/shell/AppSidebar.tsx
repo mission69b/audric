@@ -60,11 +60,36 @@ const StoreIcon = () => (
   </svg>
 );
 
+const GoalsIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="8" cy="8" r="6.5" />
+    <circle cx="8" cy="8" r="3.5" />
+    <circle cx="8" cy="8" r="1" />
+  </svg>
+);
+
+const ReportsIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="2" y="1" width="12" height="14" rx="1.5" />
+    <line x1="5" y1="5" x2="11" y2="5" />
+    <line x1="5" y1="8" x2="11" y2="8" />
+    <line x1="5" y1="11" x2="9" y2="11" />
+  </svg>
+);
+
+const ContactsIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="8" cy="5" r="3" />
+    <path d="M2.5 14c0-3 2.5-5 5.5-5s5.5 2 5.5 5" />
+  </svg>
+);
+
 interface NavEntry {
   id: PanelId;
   label: string;
   icon: React.ReactNode;
   badge?: BadgeVariant;
+  separator?: boolean;
 }
 
 const NAV_ITEMS: NavEntry[] = [
@@ -72,7 +97,10 @@ const NAV_ITEMS: NavEntry[] = [
   { id: 'portfolio', label: 'Portfolio', icon: <PortfolioIcon /> },
   { id: 'activity', label: 'Activity', icon: <ActivityIcon />, badge: 'dot' },
   { id: 'pay', label: 'Pay', icon: <PayIcon /> },
-  { id: 'automations', label: 'Automations', icon: <AutoIcon /> },
+  { id: 'automations', label: 'Automations', icon: <AutoIcon />, separator: true },
+  { id: 'goals', label: 'Goals', icon: <GoalsIcon /> },
+  { id: 'reports', label: 'Reports', icon: <ReportsIcon /> },
+  { id: 'contacts', label: 'Contacts', icon: <ContactsIcon /> },
   { id: 'store', label: 'Store', icon: <StoreIcon />, badge: 'soon' },
 ];
 
@@ -124,15 +152,17 @@ export function AppSidebar({
       {/* Navigation */}
       <nav className="flex-1 px-2 space-y-0.5 overflow-y-auto">
         {NAV_ITEMS.map((item) => (
-          <NavItem
-            key={item.id}
-            icon={item.icon}
-            label={item.label}
-            active={activePanel === item.id}
-            badge={item.badge}
-            collapsed={collapsed}
-            onClick={() => handleNav(item.id)}
-          />
+          <div key={item.id}>
+            {item.separator && <div className="h-px bg-border my-2 mx-1" />}
+            <NavItem
+              icon={item.icon}
+              label={item.label}
+              active={activePanel === item.id}
+              badge={item.badge}
+              collapsed={collapsed}
+              onClick={() => handleNav(item.id)}
+            />
+          </div>
         ))}
       </nav>
 

@@ -3,7 +3,23 @@
 import { InputBar } from './InputBar';
 import { ChipBar } from './ChipBar';
 import { BriefingCard } from './BriefingCard';
+import { ProactiveBanner } from './ProactiveBanner';
+import { HandledForYou } from './HandledForYou';
 import type { BriefingData } from '@/hooks/useOvernightBriefing';
+
+interface HandledAction {
+  icon: string;
+  label: string;
+  detail: string;
+}
+
+interface ProactiveSuggestion {
+  title: string;
+  description: string;
+  cta: string;
+  onCtaClick: () => void;
+  variant?: 'default' | 'success' | 'warning';
+}
 
 interface NewConversationViewProps {
   greeting: string;
@@ -20,6 +36,10 @@ interface NewConversationViewProps {
     onViewReport: () => void;
     onCtaClick: (type: string, amount?: number) => void;
   } | null;
+  proactive?: ProactiveSuggestion | null;
+  onDismissProactive?: () => void;
+  handledActions?: HandledAction[];
+  onViewHandled?: () => void;
 }
 
 function fmtCompact(n: number): string {
@@ -38,6 +58,10 @@ export function NewConversationView({
   onChipClick,
   activeFlow,
   briefing,
+  proactive,
+  onDismissProactive,
+  handledActions,
+  onViewHandled,
 }: NewConversationViewProps) {
   const stats: string[] = [];
   if (netWorth > 0) stats.push(fmtCompact(netWorth));
@@ -54,6 +78,25 @@ export function NewConversationView({
             onDismiss={briefing.dismiss}
             onViewReport={briefing.onViewReport}
             onCtaClick={briefing.onCtaClick}
+          />
+        </div>
+      )}
+
+      {handledActions && handledActions.length > 0 && onViewHandled && (
+        <div className="w-full max-w-2xl mb-4">
+          <HandledForYou actions={handledActions} onViewAll={onViewHandled} />
+        </div>
+      )}
+
+      {proactive && onDismissProactive && (
+        <div className="w-full max-w-2xl mb-4">
+          <ProactiveBanner
+            title={proactive.title}
+            description={proactive.description}
+            cta={proactive.cta}
+            onCtaClick={proactive.onCtaClick}
+            onDismiss={onDismissProactive}
+            variant={proactive.variant}
           />
         </div>
       )}

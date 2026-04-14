@@ -1,10 +1,9 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
-import { truncateAddress } from '@/lib/format';
+import { useState, useCallback } from 'react';
 import { Skeleton } from '@/components/ui/Skeleton';
 import type { BalanceHeaderData } from '@/components/dashboard/BalanceHeader';
-import type { PanelId } from '@/hooks/usePanel';
+import { BalanceDrawer } from './BalanceDrawer';
 
 interface TopbarProps {
   address: string;
@@ -25,13 +24,7 @@ export function Topbar({
   showHamburger,
   onHamburgerClick,
 }: TopbarProps) {
-  const [copied, setCopied] = useState(false);
-
-  const copyAddress = useCallback(() => {
-    navigator.clipboard.writeText(address);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  }, [address]);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   return (
     <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-border bg-background/95 backdrop-blur-sm">
@@ -53,13 +46,16 @@ export function Topbar({
       </div>
 
       {/* Center — hero balance */}
-      <div className="flex-1 text-center">
+      <div className="flex-1 text-center relative">
         {balance.loading ? (
           <div className="flex flex-col items-center gap-1">
             <Skeleton variant="block" width={120} height={32} />
           </div>
         ) : (
-          <div>
+          <button
+            onClick={() => setDrawerOpen(!drawerOpen)}
+            className="inline-block cursor-pointer"
+          >
             <p className="text-[32px] font-light tracking-tight font-heading text-foreground leading-none">
               ${fmtUsd(balance.total)}
             </p>
@@ -82,8 +78,9 @@ export function Topbar({
                 </>
               )}
             </p>
-          </div>
+          </button>
         )}
+        <BalanceDrawer balance={balance} open={drawerOpen} onClose={() => setDrawerOpen(false)} />
       </div>
 
       {/* Right zone */}

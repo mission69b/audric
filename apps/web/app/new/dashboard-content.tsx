@@ -47,7 +47,11 @@ import { usePanel } from '@/hooks/usePanel';
 import { PortfolioPanel } from '@/components/panels/PortfolioPanel';
 import { ActivityPanel } from '@/components/panels/ActivityPanel';
 import { PayPanel } from '@/components/panels/PayPanel';
-import { PlaceholderPanel } from '@/components/panels/PlaceholderPanel';
+import { GoalsPanel } from '@/components/panels/GoalsPanel';
+import { ReportsPanel } from '@/components/panels/ReportsPanel';
+import { ContactsPanel } from '@/components/panels/ContactsPanel';
+import { AutomationsPanel } from '@/components/panels/AutomationsPanel';
+import { StorePanel } from '@/components/panels/StorePanel';
 
 const LS_LAST_SAVINGS = 't2000_last_savings';
 const LS_LAST_OPEN = 't2000_last_open_date';
@@ -1621,53 +1625,36 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
         );
       case 'automations':
         return (
-          <PlaceholderPanel
-            title="Automations"
-            description="Set up autonomous patterns — DCA, auto-save, yield optimization. Audric watches your wallet and acts within your trust boundaries."
-            icon="⚡"
-            cta="Ask Audric"
-            onCtaClick={() => handleInputSubmit('What automations can you set up for me?')}
+          <AutomationsPanel
+            address={address}
+            jwt={session?.jwt ?? null}
+            onSendMessage={handleInputSubmit}
           />
         );
       case 'goals':
-        return (
-          <PlaceholderPanel
-            title="Goals"
-            description="Set savings targets and track progress. Audric will help you hit your milestones."
-            icon="🎯"
-            cta="Set a goal"
-            onCtaClick={() => handleInputSubmit('Help me set a savings goal')}
-          />
-        );
+        return session?.jwt ? (
+          <GoalsPanel address={address} jwt={session.jwt} />
+        ) : null;
       case 'reports':
         return (
-          <PlaceholderPanel
-            title="Reports"
-            description="Weekly income summaries, wallet intelligence reports, and morning briefings."
-            icon="📊"
-            cta="View briefing"
-            onCtaClick={() => handleInputSubmit('Give me my daily briefing')}
+          <ReportsPanel
+            address={address}
+            briefing={briefing.briefing}
+            onBriefingDismiss={briefing.dismiss}
+            onBriefingViewReport={() => window.open(`/report/${address}`, '_blank')}
+            onBriefingCtaClick={handleBriefingCtaClick}
+            onSendMessage={handleInputSubmit}
           />
         );
       case 'contacts':
         return (
-          <PlaceholderPanel
-            title="Contacts"
-            description="Manage your saved contacts for quick transfers."
-            icon="👥"
-            cta="View contacts"
-            onCtaClick={() => setSettingsOpen(true)}
+          <ContactsPanel
+            address={address}
+            onSendMessage={handleInputSubmit}
           />
         );
       case 'store':
-        return (
-          <PlaceholderPanel
-            title="Store"
-            description="Digital products, prompts, art, and more — all payable with USDC on Sui."
-            icon="🏪"
-            soon
-          />
-        );
+        return <StorePanel />;
       case 'settings':
         return null;
       case 'chat':
