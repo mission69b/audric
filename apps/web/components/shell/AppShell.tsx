@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { AppSidebar } from './AppSidebar';
 import { Topbar } from './Topbar';
+import { AllowanceLowBanner } from './AllowanceLowBanner';
 import { usePanel } from '@/hooks/usePanel';
 import type { BalanceHeaderData } from '@/components/dashboard/BalanceHeader';
 
@@ -12,6 +13,7 @@ interface AppShellProps {
   onSettingsClick: () => void;
   allowancePercent?: number;
   allowanceLabel?: string;
+  allowanceBalance?: number | null;
   jwt?: string;
   activeSessionId?: string;
   onLoadSession?: (sessionId: string) => void;
@@ -27,6 +29,7 @@ export function AppShell({
   onSettingsClick,
   allowancePercent,
   allowanceLabel,
+  allowanceBalance,
   jwt,
   activeSessionId,
   onLoadSession,
@@ -119,6 +122,7 @@ export function AppShell({
 
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <AllowanceLowBanner balance={allowanceBalance ?? null} />
         <Topbar
           address={address}
           balance={balance}
