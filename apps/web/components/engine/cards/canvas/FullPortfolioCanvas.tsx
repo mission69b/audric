@@ -23,11 +23,34 @@ interface PanelData {
   walletUsd: number;
 }
 
+interface MultiWalletData {
+  aggregated: {
+    netWorthUsd: number;
+    walletUsd: number;
+    savingsUsd: number;
+    debtUsd: number;
+    estimatedDailyYield: number;
+  };
+  wallets: Array<{
+    address: string;
+    label: string | null;
+    isPrimary: boolean;
+    netWorth: number;
+    wallet: { totalUsd: number };
+    positions: { savings: number; borrows: number; savingsRate: number; healthFactor: number | null };
+  }>;
+}
+
+type WalletTab = 'all' | string;
+
 export function FullPortfolioCanvas({ data, onAction }: Props) {
   const [panelData, setPanelData] = useState<PanelData>({ heatmap: null, spending: null, walletUsd: 0 });
   const [loading, setLoading] = useState(false);
+  const [multiData, setMultiData] = useState<MultiWalletData | null>(null);
+  const [activeTab, setActiveTab] = useState<WalletTab>('primary');
 
   const address = 'available' in data && data.available ? data.address : null;
+  const hasMultiWallet = multiData && multiData.wallets.length > 1;
 
   useEffect(() => {
     if (!address) return;
@@ -50,9 +73,13 @@ export function FullPortfolioCanvas({ data, onAction }: Props) {
           return usdc + sui;
         })
         .catch(() => 0),
+      fetch(`/api/analytics/portfolio-multi`, { headers: hdrs })
+        .then((r) => r.ok ? r.json() : null)
+        .catch(() => null),
     ])
-      .then(([heatmap, spending, walletUsd]) => {
+      .then(([heatmap, spending, walletUsd, multi]) => {
         setPanelData({ heatmap, spending, walletUsd: walletUsd as number });
+        if (multi?.wallets?.length > 1) setMultiData(multi);
       })
       .finally(() => setLoading(false));
   }, [address]);
@@ -69,18 +96,56 @@ export function FullPortfolioCanvas({ data, onAction }: Props) {
     );
   }
 
-  const savings = data.currentSavings ?? 0;
-  const debt = data.currentDebt ?? 0;
-  const walletUsd = panelData.walletUsd;
-  const netWorth = walletUsd + savings - debt;
-  const hf = data.healthFactor;
-  const apy = data.savingsRate ?? 0;
+  const isAllTab = activeTab === 'all' && hasMultiWallet;
+  const selectedWallet = hasMultiWallet && activeTab !== 'all' && activeTab !== 'primary'
+    ? multiData.wallets.find((w) => w.address === activeTab)
+    : null;
+
+  const savings = isAllTab ? multiData!.aggregated.savingsUsd
+    : selectedWallet ? selectedWallet.positions.savings
+    : data.currentSavings ?? 0;
+  const debt = isAllTab ? multiData!.aggregated.debtUsd
+    : selectedWallet ? selectedWallet.positions.borrows
+    : data.currentDebt ?? 0;
+  const walletUsd = isAllTab ? multiData!.aggregated.walletUsd
+    : selectedWallet ? selectedWallet.wallet.totalUsd
+    : panelData.walletUsd;
+  const netWorth = isAllTab ? multiData!.aggregated.netWorthUsd
+    : selectedWallet ? selectedWallet.netWorth
+    : walletUsd + savings - debt;
+  const hf = isAllTab ? null
+    : selectedWallet ? selectedWallet.positions.healthFactor
+    : data.healthFactor;
+  const apy = isAllTab ? 0
+    : selectedWallet ? selectedWallet.positions.savingsRate
+    : data.savingsRate ?? 0;
 
   return (
     <div className="space-y-4">
+      {/* Multi-wallet tab bar */}
+      {hasMultiWallet && (
+        <div className="flex gap-1 overflow-x-auto pb-1">
+          <TabButton
+            active={activeTab === 'all'}
+            onClick={() => setActiveTab('all')}
+            label="All Wallets"
+          />
+          {multiData.wallets.map((w) => (
+            <TabButton
+              key={w.address}
+              active={activeTab === (w.isPrimary ? 'primary' : w.address)}
+              onClick={() => setActiveTab(w.isPrimary ? 'primary' : w.address)}
+              label={w.label ?? `${w.address.slice(0, 6)}...`}
+            />
+          ))}
+        </div>
+      )}
+
       {/* Net worth header */}
       <div className="space-y-0.5">
-        <span className="font-mono text-[10px] tracking-wider text-dim uppercase">Net Worth</span>
+        <span className="font-mono text-[10px] tracking-wider text-dim uppercase">
+          {isAllTab ? 'Total Net Worth' : 'Net Worth'}
+        </span>
         <div className="font-mono text-xl text-foreground font-medium">
           ${fmtUsd(netWorth)}
         </div>
@@ -88,7 +153,6 @@ export function FullPortfolioCanvas({ data, onAction }: Props) {
 
       {/* 4-panel grid */}
       <div className="grid grid-cols-2 gap-2">
-        {/* Panel 1: Savings + Yield */}
         <PanelCard
           title="Savings"
           onClick={() => onAction?.('Show me the yield projector')}
@@ -99,7 +163,6 @@ export function FullPortfolioCanvas({ data, onAction }: Props) {
           )}
         </PanelCard>
 
-        {/* Panel 2: Health Factor */}
         <PanelCard
           title="Health"
           onClick={() => onAction?.('Open the health factor simulator')}
@@ -121,7 +184,6 @@ export function FullPortfolioCanvas({ data, onAction }: Props) {
           )}
         </PanelCard>
 
-        {/* Panel 3: Activity */}
         <PanelCard
           title="Activity (30d)"
           onClick={() => onAction?.('Show my activity heatmap')}
@@ -138,7 +200,6 @@ export function FullPortfolioCanvas({ data, onAction }: Props) {
           )}
         </PanelCard>
 
-        {/* Panel 4: Spending */}
         <PanelCard
           title="Spending"
           onClick={() => onAction?.('Show my spending breakdown')}
@@ -158,10 +219,10 @@ export function FullPortfolioCanvas({ data, onAction }: Props) {
 
       {/* Quick breakdown */}
       <div className="space-y-1 font-mono text-xs">
-          <div className="flex justify-between">
-            <span className="text-dim">Wallet</span>
-            <span className="text-foreground">${fmtUsd(walletUsd)}</span>
-          </div>
+        <div className="flex justify-between">
+          <span className="text-dim">Wallet</span>
+          <span className="text-foreground">${fmtUsd(walletUsd)}</span>
+        </div>
         <div className="flex justify-between">
           <span className="text-dim">Savings</span>
           <span className="text-success">${fmtUsd(savings)}</span>
@@ -173,6 +234,23 @@ export function FullPortfolioCanvas({ data, onAction }: Props) {
           </div>
         )}
       </div>
+
+      {/* Per-wallet breakdown when "All" tab is active */}
+      {isAllTab && (
+        <div className="space-y-1.5 pt-2 border-t border-border">
+          <span className="font-mono text-[9px] tracking-wider text-dim uppercase">Per Wallet</span>
+          {multiData.wallets.map((w) => (
+            <button
+              key={w.address}
+              onClick={() => setActiveTab(w.isPrimary ? 'primary' : w.address)}
+              className="flex items-center justify-between w-full text-left font-mono text-xs py-1 hover:bg-surface rounded px-1 transition"
+            >
+              <span className="text-muted truncate">{w.label ?? `${w.address.slice(0, 6)}...${w.address.slice(-4)}`}</span>
+              <span className="text-foreground">${fmtUsd(w.netWorth)}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Actions */}
       {onAction && (
@@ -192,6 +270,21 @@ export function FullPortfolioCanvas({ data, onAction }: Props) {
         </div>
       )}
     </div>
+  );
+}
+
+function TabButton({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`shrink-0 rounded-md px-2.5 py-1 font-mono text-[10px] tracking-wider uppercase transition ${
+        active
+          ? 'bg-foreground/10 text-foreground'
+          : 'text-dim hover:text-muted'
+      }`}
+    >
+      {label}
+    </button>
   );
 }
 

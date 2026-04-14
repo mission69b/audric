@@ -405,7 +405,9 @@ export const ModelName = {
   OutcomeCheck: 'OutcomeCheck',
   FollowUpQueue: 'FollowUpQueue',
   UserFinancialProfile: 'UserFinancialProfile',
-  UserMemory: 'UserMemory'
+  UserMemory: 'UserMemory',
+  LinkedWallet: 'LinkedWallet',
+  PublicReport: 'PublicReport'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -421,7 +423,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "userPreferences" | "conversationLog" | "sessionUsage" | "servicePurchase" | "notificationPrefs" | "notificationLog" | "dailyBriefing" | "savingsGoal" | "appEvent" | "adviceLog" | "paymentLink" | "invoice" | "savingsGoalDeposit" | "watchAddress" | "portfolioSnapshot" | "scheduledAction" | "scheduledExecution" | "outcomeCheck" | "followUpQueue" | "userFinancialProfile" | "userMemory"
+    modelProps: "user" | "userPreferences" | "conversationLog" | "sessionUsage" | "servicePurchase" | "notificationPrefs" | "notificationLog" | "dailyBriefing" | "savingsGoal" | "appEvent" | "adviceLog" | "paymentLink" | "invoice" | "savingsGoalDeposit" | "watchAddress" | "portfolioSnapshot" | "scheduledAction" | "scheduledExecution" | "outcomeCheck" | "followUpQueue" | "userFinancialProfile" | "userMemory" | "linkedWallet" | "publicReport"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -2053,6 +2055,154 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    LinkedWallet: {
+      payload: Prisma.$LinkedWalletPayload<ExtArgs>
+      fields: Prisma.LinkedWalletFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.LinkedWalletFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LinkedWalletPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.LinkedWalletFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LinkedWalletPayload>
+        }
+        findFirst: {
+          args: Prisma.LinkedWalletFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LinkedWalletPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.LinkedWalletFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LinkedWalletPayload>
+        }
+        findMany: {
+          args: Prisma.LinkedWalletFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LinkedWalletPayload>[]
+        }
+        create: {
+          args: Prisma.LinkedWalletCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LinkedWalletPayload>
+        }
+        createMany: {
+          args: Prisma.LinkedWalletCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.LinkedWalletCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LinkedWalletPayload>[]
+        }
+        delete: {
+          args: Prisma.LinkedWalletDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LinkedWalletPayload>
+        }
+        update: {
+          args: Prisma.LinkedWalletUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LinkedWalletPayload>
+        }
+        deleteMany: {
+          args: Prisma.LinkedWalletDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.LinkedWalletUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.LinkedWalletUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LinkedWalletPayload>[]
+        }
+        upsert: {
+          args: Prisma.LinkedWalletUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LinkedWalletPayload>
+        }
+        aggregate: {
+          args: Prisma.LinkedWalletAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateLinkedWallet>
+        }
+        groupBy: {
+          args: Prisma.LinkedWalletGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.LinkedWalletGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.LinkedWalletCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.LinkedWalletCountAggregateOutputType> | number
+        }
+      }
+    }
+    PublicReport: {
+      payload: Prisma.$PublicReportPayload<ExtArgs>
+      fields: Prisma.PublicReportFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.PublicReportFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PublicReportPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.PublicReportFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PublicReportPayload>
+        }
+        findFirst: {
+          args: Prisma.PublicReportFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PublicReportPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.PublicReportFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PublicReportPayload>
+        }
+        findMany: {
+          args: Prisma.PublicReportFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PublicReportPayload>[]
+        }
+        create: {
+          args: Prisma.PublicReportCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PublicReportPayload>
+        }
+        createMany: {
+          args: Prisma.PublicReportCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.PublicReportCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PublicReportPayload>[]
+        }
+        delete: {
+          args: Prisma.PublicReportDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PublicReportPayload>
+        }
+        update: {
+          args: Prisma.PublicReportUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PublicReportPayload>
+        }
+        deleteMany: {
+          args: Prisma.PublicReportDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.PublicReportUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.PublicReportUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PublicReportPayload>[]
+        }
+        upsert: {
+          args: Prisma.PublicReportUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PublicReportPayload>
+        }
+        aggregate: {
+          args: Prisma.PublicReportAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregatePublicReport>
+        }
+        groupBy: {
+          args: Prisma.PublicReportGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PublicReportGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.PublicReportCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PublicReportCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -2464,6 +2614,31 @@ export const UserMemoryScalarFieldEnum = {
 export type UserMemoryScalarFieldEnum = (typeof UserMemoryScalarFieldEnum)[keyof typeof UserMemoryScalarFieldEnum]
 
 
+export const LinkedWalletScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  suiAddress: 'suiAddress',
+  label: 'label',
+  isPrimary: 'isPrimary',
+  verifiedAt: 'verifiedAt',
+  addedAt: 'addedAt'
+} as const
+
+export type LinkedWalletScalarFieldEnum = (typeof LinkedWalletScalarFieldEnum)[keyof typeof LinkedWalletScalarFieldEnum]
+
+
+export const PublicReportScalarFieldEnum = {
+  id: 'id',
+  suiAddress: 'suiAddress',
+  reportData: 'reportData',
+  viewCount: 'viewCount',
+  generatedAt: 'generatedAt',
+  expiresAt: 'expiresAt'
+} as const
+
+export type PublicReportScalarFieldEnum = (typeof PublicReportScalarFieldEnum)[keyof typeof PublicReportScalarFieldEnum]
+
+
 export const SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -2711,6 +2886,8 @@ export type GlobalOmitConfig = {
   followUpQueue?: Prisma.FollowUpQueueOmit
   userFinancialProfile?: Prisma.UserFinancialProfileOmit
   userMemory?: Prisma.UserMemoryOmit
+  linkedWallet?: Prisma.LinkedWalletOmit
+  publicReport?: Prisma.PublicReportOmit
 }
 
 /* Types for Logging */

@@ -37,6 +37,7 @@ model User {
   followUpQueue        FollowUpQueue[]
   financialProfile     UserFinancialProfile?
   memories             UserMemory[]
+  linkedWallets        LinkedWallet[]
 
   @@index([email])
   @@index([emailVerified, timezoneOffset])
@@ -438,4 +439,30 @@ model UserMemory {
   @@index([userId])
   @@index([userId, active])
   @@index([expiresAt])
+}
+
+model LinkedWallet {
+  id         String    @id @default(cuid())
+  userId     String
+  suiAddress String
+  label      String?
+  isPrimary  Boolean   @default(false)
+  verifiedAt DateTime?
+  addedAt    DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, suiAddress])
+  @@index([userId])
+}
+
+model PublicReport {
+  id          String   @id @default(cuid())
+  suiAddress  String
+  reportData  Json
+  viewCount   Int      @default(0)
+  generatedAt DateTime @default(now())
+  expiresAt   DateTime
+
+  @@index([suiAddress, generatedAt])
 }

@@ -72,7 +72,9 @@ export const ModelName = {
   OutcomeCheck: 'OutcomeCheck',
   FollowUpQueue: 'FollowUpQueue',
   UserFinancialProfile: 'UserFinancialProfile',
-  UserMemory: 'UserMemory'
+  UserMemory: 'UserMemory',
+  LinkedWallet: 'LinkedWallet',
+  PublicReport: 'PublicReport'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -461,6 +463,31 @@ export const UserMemoryScalarFieldEnum = {
 } as const
 
 export type UserMemoryScalarFieldEnum = (typeof UserMemoryScalarFieldEnum)[keyof typeof UserMemoryScalarFieldEnum]
+
+
+export const LinkedWalletScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  suiAddress: 'suiAddress',
+  label: 'label',
+  isPrimary: 'isPrimary',
+  verifiedAt: 'verifiedAt',
+  addedAt: 'addedAt'
+} as const
+
+export type LinkedWalletScalarFieldEnum = (typeof LinkedWalletScalarFieldEnum)[keyof typeof LinkedWalletScalarFieldEnum]
+
+
+export const PublicReportScalarFieldEnum = {
+  id: 'id',
+  suiAddress: 'suiAddress',
+  reportData: 'reportData',
+  viewCount: 'viewCount',
+  generatedAt: 'generatedAt',
+  expiresAt: 'expiresAt'
+} as const
+
+export type PublicReportScalarFieldEnum = (typeof PublicReportScalarFieldEnum)[keyof typeof PublicReportScalarFieldEnum]
 
 
 export const SortOrder = {

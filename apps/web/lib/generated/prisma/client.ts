@@ -151,3 +151,13 @@ export type UserFinancialProfile = Prisma.UserFinancialProfileModel
  * 
  */
 export type UserMemory = Prisma.UserMemoryModel
+/**
+ * Model LinkedWallet
+ * 
+ */
+export type LinkedWallet = Prisma.LinkedWalletModel
+/**
+ * Model PublicReport
+ * 
+ */
+export type PublicReport = Prisma.PublicReportModel
