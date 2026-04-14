@@ -74,5 +74,3 @@ export function ChipBar({
     </div>
   );
 }
-
-export { buildChipConfigs };

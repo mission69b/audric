@@ -5,9 +5,10 @@ import { useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { useZkLogin } from '@/components/auth/useZkLogin';
 import { ContextualChips } from '@/components/dashboard/ContextualChips';
-import { ChipBar, buildChipConfigs } from '@/components/dashboard/ChipBar';
+import { ChipBar } from '@/components/dashboard/ChipBar';
 import { ChipExpand } from '@/components/dashboard/ChipExpand';
 import { InputBar } from '@/components/dashboard/InputBar';
+import { useChipExpand } from '@/hooks/useChipExpand';
 import { ConfirmationCard } from '@/components/dashboard/ConfirmationCard';
 import { ResultCard } from '@/components/dashboard/ResultCard';
 import { AmountChips } from '@/components/dashboard/AmountChips';
@@ -274,7 +275,6 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
   const [dismissedCards, setDismissedCards] = useState<Set<string>>(new Set());
   const [scrolled, setScrolled] = useState(false);
   const [emailModalOpen, setEmailModalOpen] = useState(false);
-  const [expandedChip, setExpandedChip] = useState<string | null>(null);
   const emailCheckedRef = useRef(false);
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
@@ -316,6 +316,8 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
     loading: balanceQuery.isLoading,
     error: balanceQuery.isError,
   };
+
+  const chipExpand = useChipExpand({ idleUsdc: balance.usdc, currentApy: balance.savingsRate });
 
   const dashInsights = useDashboardInsights({
     address,
@@ -1575,51 +1577,48 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
                   onDismiss={handleDismissChip}
                 />
               )}
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex gap-2 overflow-x-auto scrollbar-none flex-1">
-                  <ChipBar
-                    onChipClick={handleChipClick}
-                    onPrompt={(prompt) => engine.sendMessage(prompt)}
-                    activeFlow={chipFlow.state.flow}
-                    disabled={chipFlow.state.phase === 'executing'}
-                    prefetch={{ idleUsdc: balance.usdc, currentApy: balance.savingsRate }}
-                    expandedChip={expandedChip}
-                    onExpandedChange={setExpandedChip}
-                  />
+              <div ref={chipExpand.containerRef} className="relative">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex gap-2 overflow-x-auto scrollbar-none flex-1">
+                    <ChipBar
+                      onChipClick={handleChipClick}
+                      onPrompt={(prompt) => engine.sendMessage(prompt)}
+                      activeFlow={chipFlow.state.flow}
+                      disabled={chipFlow.state.phase === 'executing'}
+                      prefetch={{ idleUsdc: balance.usdc, currentApy: balance.savingsRate }}
+                      expandedChip={chipExpand.expandedChip}
+                      onExpandedChange={chipExpand.setExpandedChip}
+                    />
+                  </div>
+                  {isInFlow && chipFlow.state.phase !== 'result' && (
+                    <button
+                      onClick={chipFlow.reset}
+                      className="text-xs text-muted hover:text-foreground transition shrink-0"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                  {!isInFlow && engine.messages.length > 0 && (
+                    <button
+                      onClick={handleNewConversation}
+                      className="text-xs text-muted hover:text-foreground transition shrink-0"
+                    >
+                      New
+                    </button>
+                  )}
                 </div>
-                {isInFlow && chipFlow.state.phase !== 'result' && (
-                  <button
-                    onClick={chipFlow.reset}
-                    className="text-xs text-muted hover:text-foreground transition shrink-0"
-                  >
-                    Cancel
-                  </button>
-                )}
-                {!isInFlow && engine.messages.length > 0 && (
-                  <button
-                    onClick={handleNewConversation}
-                    className="text-xs text-muted hover:text-foreground transition shrink-0"
-                  >
-                    New
-                  </button>
-                )}
-              </div>
-              {expandedChip && (() => {
-                const configs = buildChipConfigs({ idleUsdc: balance.usdc, currentApy: balance.savingsRate });
-                const chip = configs.find(c => c.id === expandedChip);
-                if (!chip) return null;
-                return (
+                {chipExpand.activeConfig && (
                   <ChipExpand
-                    actions={chip.actions}
-                    chipLabel={chip.label}
+                    actions={chipExpand.activeConfig.actions}
+                    chipLabel={chipExpand.activeConfig.label}
                     onSelect={(prompt) => {
-                      setExpandedChip(null);
+                      chipExpand.close();
                       engine.sendMessage(prompt);
                     }}
-                    onClose={() => setExpandedChip(null)}
+                    onClose={chipExpand.close}
                   />
-                );
-              })()}
+                )}
+              </div>
               <InputBar
                 onSubmit={handleInputSubmit}
                 disabled={chipFlow.state.phase === 'executing'}

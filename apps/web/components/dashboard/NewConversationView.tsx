@@ -1,12 +1,12 @@
 'use client';
 
-import { useState } from 'react';
 import { InputBar } from './InputBar';
-import { ChipBar, buildChipConfigs } from './ChipBar';
+import { ChipBar } from './ChipBar';
 import { ChipExpand } from './ChipExpand';
 import { BriefingCard } from './BriefingCard';
 import { ProactiveBanner } from './ProactiveBanner';
 import { HandledForYou } from './HandledForYou';
+import { useChipExpand } from '@/hooks/useChipExpand';
 import type { BriefingData } from '@/hooks/useOvernightBriefing';
 
 interface HandledAction {
@@ -65,7 +65,7 @@ export function NewConversationView({
   handledActions,
   onViewHandled,
 }: NewConversationViewProps) {
-  const [expandedChip, setExpandedChip] = useState<string | null>(null);
+  const chipExpand = useChipExpand();
   const stats: string[] = [];
   if (netWorth > 0) stats.push(fmtCompact(netWorth));
   if (dailyYield > 0) stats.push(`earning ${fmtCompact(dailyYield)}/day`);
@@ -120,33 +120,28 @@ export function NewConversationView({
         />
       </div>
 
-      <div className="w-full max-w-2xl overflow-x-auto scrollbar-none flex justify-center">
-        <ChipBar
-          onChipClick={onChipClick}
-          onPrompt={onSend}
-          activeFlow={activeFlow}
-          expandedChip={expandedChip}
-          onExpandedChange={setExpandedChip}
-        />
+      <div ref={chipExpand.containerRef} className="w-full max-w-2xl relative">
+        <div className="overflow-x-auto scrollbar-none flex justify-center">
+          <ChipBar
+            onChipClick={onChipClick}
+            onPrompt={onSend}
+            activeFlow={activeFlow}
+            expandedChip={chipExpand.expandedChip}
+            onExpandedChange={chipExpand.setExpandedChip}
+          />
+        </div>
+        {chipExpand.activeConfig && (
+          <ChipExpand
+            actions={chipExpand.activeConfig.actions}
+            chipLabel={chipExpand.activeConfig.label}
+            onSelect={(prompt) => {
+              chipExpand.close();
+              onSend(prompt);
+            }}
+            onClose={chipExpand.close}
+          />
+        )}
       </div>
-      {expandedChip && (() => {
-        const configs = buildChipConfigs();
-        const chip = configs.find(c => c.id === expandedChip);
-        if (!chip) return null;
-        return (
-          <div className="w-full max-w-2xl mt-2">
-            <ChipExpand
-              actions={chip.actions}
-              chipLabel={chip.label}
-              onSelect={(prompt) => {
-                setExpandedChip(null);
-                onSend(prompt);
-              }}
-              onClose={() => setExpandedChip(null)}
-            />
-          </div>
-        );
-      })()}
     </div>
   );
 }
