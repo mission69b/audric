@@ -66,7 +66,7 @@ export function AppShell({
             className="fixed inset-0 z-[99] bg-black/60 md:hidden"
             onClick={() => setMobileOpen(false)}
           />
-          <div className="fixed inset-y-0 left-0 z-[100] w-[80vw] max-w-[320px] md:hidden">
+          <div className="fixed inset-y-0 left-0 z-[100] w-[80vw] max-w-[320px] md:hidden animate-slide-from-left">
             <AppSidebar
               activePanel={panel}
               onPanelChange={setPanel}
@@ -88,7 +88,7 @@ export function AppShell({
           address={address}
           balance={balance}
           onSettingsClick={handleSettingsClick}
-          showHamburger={true}
+          showHamburger
           onHamburgerClick={() => setMobileOpen(true)}
         />
         <main className="flex-1 overflow-y-auto">

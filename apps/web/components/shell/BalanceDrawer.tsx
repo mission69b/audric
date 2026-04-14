@@ -30,7 +30,7 @@ export function BalanceDrawer({ balance, open, onClose }: BalanceDrawerProps) {
         className="fixed inset-0 z-40"
         onClick={onClose}
       />
-      <div className="absolute top-full left-1/2 -translate-x-1/2 z-50 w-72 mt-1 rounded-lg border border-border bg-surface shadow-lg p-4 space-y-3 animate-in fade-in slide-in-from-top-2 duration-150">
+      <div className="absolute top-full left-1/2 -translate-x-1/2 z-50 w-72 mt-1 rounded-lg border border-border bg-surface shadow-lg p-4 space-y-3 animate-fade-drop-in">
         <div className="flex items-center justify-between">
           <p className="font-mono text-[9px] tracking-[0.1em] uppercase text-muted">Balance Breakdown</p>
           <button onClick={onClose} className="text-dim hover:text-muted text-xs">&times;</button>

@@ -28,8 +28,8 @@ export function Topbar({
 
   return (
     <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-border bg-background/95 backdrop-blur-sm">
-      {/* Left zone */}
-      <div className="w-12 flex items-center">
+      {/* Left zone — hamburger on mobile only */}
+      <div className="w-12 flex items-center md:invisible">
         {showHamburger && (
           <button
             onClick={onHamburgerClick}

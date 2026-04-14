@@ -176,6 +176,24 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes slideFromLeft {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes fadeDropIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-slide-from-left {
+  animation: slideFromLeft 0.2s ease-out;
+}
+
+.animate-fade-drop-in {
+  animation: fadeDropIn 0.15s ease-out;
+}
+
 input,
 textarea,
 select {
