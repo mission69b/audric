@@ -19,21 +19,24 @@ suimpp (separate)    → Protocol: suimpp.dev, @suimpp/mpp, @suimpp/discovery
 ```
 audric/
 ├── apps/web/                   ← audric.ai (Next.js, Vercel)
-│   ├── app/                    ← App Router pages + API routes (71 routes, 20 internal)
+│   ├── app/                    ← App Router pages + API routes (75+ routes, 20 internal)
+│   │   └── report/             ← Public wallet intelligence report (/report, /report/[address])
 │   ├── components/             ← UI components (auth, dashboard, engine, settings, ui)
 │   │   └── engine/cards/       ← 21 rich card components + 8 canvas components
 │   ├── hooks/                  ← React hooks (useEngine, useBalance, useChipFlow, etc.)
 │   ├── lib/                    ← Utilities, types, constants
 │   │   ├── engine/             ← engine-factory.ts, engine-context.ts (F1-F5 assembly)
+│   │   ├── report/             ← Report generator, analyzers, types (public wallet reports)
+│   │   ├── chain-memory/       ← Chain classifiers, pattern detectors (autonomous actions)
 │   │   ├── portfolio-data.ts   ← Unified portfolio data (wallet + positions + snapshots)
 │   │   └── activity-data.ts    ← Unified activity data (app events + chain txs)
-│   ├── prisma/                 ← 15+ models (profiles, memories, schedules, analytics, ...)
+│   ├── prisma/                 ← 17+ models (profiles, memories, schedules, analytics, reports, ...)
 │   └── types/                  ← TypeScript type definitions
 ├── patches/                    ← pnpm patches (@naviprotocol/lending)
 └── pnpm-workspace.yaml
 ```
 
-### Product catalog (5 products)
+### Product catalog (6 products + 1 public tool)
 
 | Product | Integration | Status |
 |---------|-------------|--------|
@@ -42,6 +45,17 @@ audric/
 | **Send** | Direct Sui transactions | Live |
 | **Credit** | NAVI MCP + thin tx builders | Live |
 | **Receive** | Payment links, invoices, QR | Live |
+| **Wallet Report** | Public at `audric.ai/report/[address]` — no sign-up | Live |
+
+### Autonomous features
+
+| Feature | Description | Status |
+|---------|-------------|--------|
+| **Behavioral patterns** | 5 detectors (recurring_save, yield_reinvestment, debt_discipline, idle_usdc, swap_pattern) | Live |
+| **Trust ladder** | Stage 0→3 (proposal→confirm→auto) with circuit breaker | Live |
+| **Chain memory** | 7 on-chain classifiers (AppEvent + PortfolioSnapshot → UserMemory) | Live |
+| **DCA / Schedules** | Recurring saves, swaps, repayments with trust progression | Live |
+| **Morning briefings** | Daily digest with portfolio changes, alerts, follow-ups | Live |
 
 ---
 
@@ -137,6 +151,50 @@ type EngineEvent =
   | { type: 'usage'; inputTokens: number; outputTokens: number; cacheReadTokens?: number; cacheWriteTokens?: number }
   | { type: 'error'; error: Error };
 ```
+
+---
+
+## Public Wallet Report (`/report`)
+
+Public acquisition funnel — analyze any Sui wallet with no sign-up required.
+
+### Routes
+
+| Route | Runtime | Auth | Description |
+|-------|---------|------|-------------|
+| `/report` | Client | None | Landing page with address input + example addresses |
+| `/report/[address]` | Server + Client | None | Report page (SSR metadata + client-side fetch) |
+| `/report/[address]/opengraph-image` | Edge | None | Dynamic OG image (1200×630) |
+| `/api/report/[address]` | Node.js | Rate limited (5/hr/IP) | Report generation + 24h Prisma cache |
+| `/api/analytics/portfolio-multi` | Node.js | x-sui-address | Aggregated multi-wallet portfolio data |
+| `/api/user/wallets` | Node.js | x-zklogin-jwt | Link/unlink wallets (max 10 per user) |
+
+### Report data flow
+
+```
+GET /api/report/[address]
+  → Rate limit check (Upstash, bypass via x-internal-secret for OG images)
+  → Cache lookup (PublicReport, 24h TTL)
+  → On miss: generateWalletReport(address)
+    → Promise.all: fetchWalletBalances + fetchPositions + fetchActivityBuckets
+    → buildPortfolioSection → buildYieldEfficiency → buildActivitySection
+    → detectPatterns (5) + detectRiskSignals (3) + generateSuggestions (4)
+  → Cache store + return WalletReportData
+```
+
+### Key files
+
+| File | Purpose |
+|------|---------|
+| `lib/report/types.ts` | `WalletReportData` interface (portfolio, yield, activity, patterns, risks, suggestions) |
+| `lib/report/generator.ts` | Orchestrates parallel data fetching + report assembly |
+| `lib/report/analyzers.ts` | Pure heuristic functions — no LLM calls |
+| `app/report/[address]/ReportPageClient.tsx` | Full report UI with 8 sections + share mechanics |
+
+### Prisma models
+
+- `LinkedWallet` — userId, suiAddress, label, isPrimary, verifiedAt
+- `PublicReport` — suiAddress, reportData (Json), viewCount, expiresAt
 
 ---
 

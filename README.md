@@ -17,6 +17,7 @@ Conversational finance on [Sui](https://sui.io). Save, pay, send, borrow — all
 | **Send** | Transfer any supported token to any Sui address |
 | **Credit** | Borrow USDC against your savings |
 | **Receive** | Payment links, invoices, QR codes — accept payments anywhere |
+| **Wallet Report** | Public wallet intelligence at `audric.ai/report/[address]` — no sign-up |
 
 Swap is available as a utility within flows (any token pair via Cetus Aggregator), not a standalone product.
 
@@ -49,7 +50,11 @@ Your money lives in a non-custodial wallet. Audric executes transactions, but yo
 - **Canvas visualizations** — 8 interactive canvases (portfolio timeline, activity heatmap, spending breakdown, net worth)
 - **Intelligence layer** — financial profile (F1), proactive awareness (F2), episodic memory (F3), conversation state (F4), self-evaluation (F5)
 - **DCA / scheduled actions** — recurring deposits, buys, and transfers with trust ladder
+- **Autonomous actions** — behavioral pattern detection, trust ladder (Stage 0→3), circuit breaker safety
+- **Chain memory** — 7 on-chain classifiers extract financial patterns from transaction history
 - **Morning briefings** — daily digest of portfolio changes, follow-ups, and alerts
+- **Public wallet report** — analyze any Sui wallet at `audric.ai/report/[address]` with share mechanics
+- **Multi-wallet** — link up to 10 wallets, aggregated portfolio view
 - **Unified data layer** — centralized portfolio and activity data consumed by API routes, canvases, and engine
 
 ## Architecture
