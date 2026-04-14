@@ -221,7 +221,7 @@ export function AppSidebar({
       </nav>
 
       {/* Conversation history */}
-      {!collapsed && onLoadSession && onNewConversation && (
+      {!collapsed && onLoadSession && (
         <div className="shrink-0 border-t border-border">
           <p className="font-mono text-[9px] tracking-[0.12em] uppercase text-dim px-4 pt-2 pb-1">Conversations</p>
           <ConvoHistoryList
@@ -231,11 +231,6 @@ export function AppSidebar({
             onLoadSession={(id) => {
               onPanelChange('chat');
               onLoadSession(id);
-              onClose?.();
-            }}
-            onNewConversation={() => {
-              onPanelChange('chat');
-              onNewConversation();
               onClose?.();
             }}
             collapsed={collapsed}
