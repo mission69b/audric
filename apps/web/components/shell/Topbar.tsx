@@ -27,9 +27,9 @@ export function Topbar({
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   return (
-    <div className="flex items-center justify-between px-4 sm:px-6 py-2 bg-background">
+    <div className="flex items-center justify-between px-5 py-3 border-b border-border shrink-0">
       {/* Left zone — hamburger on mobile only */}
-      <div className="w-12 flex items-center md:invisible">
+      <div className="w-[60px] flex items-center md:invisible">
         {showHamburger && (
           <button
             onClick={onHamburgerClick}
@@ -49,48 +49,67 @@ export function Topbar({
       <div className="flex-1 text-center relative">
         {balance.loading ? (
           <div className="flex flex-col items-center gap-1">
-            <Skeleton variant="block" width={120} height={32} />
+            <Skeleton variant="block" width={160} height={40} />
           </div>
         ) : (
           <button
             onClick={() => setDrawerOpen(!drawerOpen)}
             className="inline-block cursor-pointer"
           >
-            <p className="text-4xl font-bold tracking-tight font-sans text-foreground leading-none">
+            <p className="text-[40px] font-light tracking-[-0.03em] font-sans text-foreground leading-none">
               ${fmtUsd(balance.total)}
             </p>
-            <p className="text-xs font-mono text-muted tracking-wide mt-0.5">
-              available ${Math.floor(balance.cash)}
+            <p className="flex items-center justify-center gap-3 text-[12px] font-sans text-muted mt-1">
+              <span>available ${Math.floor(balance.cash)}</span>
               {balance.savings >= 0.01 && (
-                <>{' · '}earning ${Math.floor(balance.savings)}</>
+                <>
+                  <span className="text-border-bright">&middot;</span>
+                  <span>earning ${Math.floor(balance.savings)}</span>
+                </>
               )}
               {balance.borrows > 0 && (
                 <>
-                  {' · '}
-                  <span className="text-warning">
-                    <span className="uppercase text-[10px] tracking-[0.1em]">debt</span> ${Math.floor(balance.borrows)}
+                  <span className="text-border-bright">&middot;</span>
+                  <span className="font-mono text-[10px] tracking-[0.06em] uppercase text-warning border border-warning/30 rounded-full px-1.5 py-px">
+                    debt ${Math.floor(balance.borrows)} ▼
                   </span>
                 </>
-              )}{' '}
-              <span className={`inline-block transition-transform duration-200 text-dim ${drawerOpen ? 'rotate-180' : ''}`}>
-                &#9662;
-              </span>
+              )}
+              {balance.borrows === 0 && (
+                <>
+                  <span className="text-border-bright">&middot;</span>
+                  <span
+                    className="font-mono text-[10px] tracking-[0.06em] uppercase text-warning border border-warning/30 rounded-full px-1.5 py-px cursor-pointer"
+                  >
+                    debt $0 ▼
+                  </span>
+                </>
+              )}
             </p>
           </button>
         )}
         <BalanceDrawer balance={balance} open={drawerOpen} onClose={() => setDrawerOpen(false)} />
       </div>
 
-      {/* Right zone */}
-      <div className="w-12 flex items-center justify-end gap-1">
+      {/* Right zone — bell + settings icon buttons */}
+      <div className="flex items-center gap-2">
+        <button
+          className="w-8 h-8 flex items-center justify-center rounded-lg bg-[var(--n800)] border border-border hover:border-border-bright transition"
+          aria-label="Notifications"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--n600)" strokeWidth="1.5">
+            <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" />
+            <path d="M13.73 21a2 2 0 01-3.46 0" />
+          </svg>
+        </button>
         <button
           onClick={onSettingsClick}
-          className="w-8 h-8 flex items-center justify-center text-muted hover:text-foreground transition rounded-md"
+          className="w-8 h-8 flex items-center justify-center rounded-lg bg-[var(--n800)] border border-border hover:border-border-bright transition"
           aria-label="Settings"
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 010 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 010-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28z" />
-            <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--n600)" strokeWidth="1.5">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
           </svg>
         </button>
       </div>

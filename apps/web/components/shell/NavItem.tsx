@@ -31,10 +31,10 @@ export function NavItem({ icon, label, active, badge, collapsed, onClick }: NavI
             {label}{active && <span className="text-[6px] ml-1 align-middle">■</span>}
           </span>
           {badge === 'dot' && (
-            <span className="w-1.5 h-1.5 rounded-full bg-success shrink-0" />
+            <span className="w-[5px] h-[5px] rounded-full bg-info shrink-0" />
           )}
           {badge === 'soon' && (
-            <span className="font-mono text-[8px] tracking-[0.1em] uppercase text-dim bg-[var(--n700)] px-1.5 py-0.5 rounded-full shrink-0">
+            <span className="font-mono text-[8px] tracking-[0.06em] uppercase text-border-bright shrink-0">
               Soon
             </span>
           )}
