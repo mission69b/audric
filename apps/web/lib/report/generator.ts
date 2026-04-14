@@ -70,6 +70,7 @@ function buildPortfolioSection(
         pct: totalUsd > 0 ? (usd / totalUsd) * 100 : 0,
       };
     })
+    .filter((t) => t.usd >= 0.01)
     .sort((a, b) => b.usd - a.usd);
 
   const savings = positions?.savings ?? 0;

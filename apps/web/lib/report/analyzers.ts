@@ -46,7 +46,7 @@ export function detectPatterns(
     });
   }
 
-  if (portfolio.savings > 0 && yieldEff.weightedApy > 0) {
+  if (portfolio.savings >= 0.01 && yieldEff.weightedApy > 0) {
     patterns.push({
       id: 'yield_optimizer',
       label: 'Yield optimizer',
@@ -55,7 +55,7 @@ export function detectPatterns(
     });
   }
 
-  if (portfolio.debt > 0) {
+  if (portfolio.debt >= 0.01) {
     patterns.push({
       id: 'borrower',
       label: 'Active borrower',
@@ -99,7 +99,7 @@ export function detectRiskSignals(
     });
   }
 
-  if (portfolio.debt > 0 && portfolio.savings > 0) {
+  if (portfolio.debt >= 0.01 && portfolio.savings >= 0.01) {
     const ratio = portfolio.debt / portfolio.savings;
     if (ratio > 0.8) {
       signals.push({
@@ -138,7 +138,7 @@ export function generateSuggestions(
     });
   }
 
-  if (portfolio.healthFactor != null && portfolio.healthFactor < 2.5 && portfolio.debt > 0) {
+  if (portfolio.healthFactor != null && portfolio.healthFactor < 2.5 && portfolio.debt >= 0.01) {
     suggestions.push({
       id: 'monitor_hf',
       headline: `Monitor your health factor (currently ${portfolio.healthFactor.toFixed(2)}) 24/7`,
@@ -158,7 +158,7 @@ export function generateSuggestions(
     });
   }
 
-  if (portfolio.savings > 0) {
+  if (portfolio.savings >= 0.01) {
     suggestions.push({
       id: 'savings_goals',
       headline: 'Set savings goals and track progress automatically',

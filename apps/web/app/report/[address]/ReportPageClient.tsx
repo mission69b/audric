@@ -97,7 +97,7 @@ export function ReportPageClient({ address }: Props) {
               <div className="grid grid-cols-3 gap-3">
                 <Stat label="Wallet" value={`$${fmtUsd(report.portfolio.totalUsd)}`} />
                 <Stat label="Savings" value={`$${fmtUsd(report.portfolio.savings)}`} className="text-success" />
-                {report.portfolio.debt > 0 && (
+                {report.portfolio.debt >= 0.01 && (
                   <Stat label="Debt" value={`-$${fmtUsd(report.portfolio.debt)}`} className="text-error" />
                 )}
               </div>
