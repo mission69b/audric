@@ -30,7 +30,7 @@ interface SettingsPanelProps {
   onNewConversation?: () => void;
 }
 
-const DEFAULT_LIMITS = { maxTx: 1000, maxDaily: 5000, agentBudget: 0.50 };
+const DEFAULT_LIMITS = { maxTx: 1000, maxDaily: 5000, agentBudget: 0.50, dailyAuto: 200 };
 
 const PRESET_DISPLAY: Record<string, Array<{ op: string; auto: number; confirm: number }>> = {
   conservative: [
@@ -75,7 +75,7 @@ export function SettingsPanel({
   const [copied, setCopied] = useState(false);
   const [showEmergencyConfirm, setShowEmergencyConfirm] = useState(false);
   const [limits, setLimits] = useState(DEFAULT_LIMITS);
-  const [editingLimit, setEditingLimit] = useState<'maxTx' | 'maxDaily' | 'agentBudget' | null>(null);
+  const [editingLimit, setEditingLimit] = useState<'maxTx' | 'maxDaily' | 'agentBudget' | 'dailyAuto' | null>(null);
   const [permissionPreset, setPermissionPreset] = useState<'conservative' | 'balanced' | 'aggressive'>('balanced');
   const [editValue, setEditValue] = useState('');
   const [now] = useState(() => Date.now());
@@ -373,6 +373,17 @@ export function SettingsPanel({
                 onEdit={() => { setEditingLimit('agentBudget'); setEditValue(String(limits.agentBudget)); }}
                 onEditChange={setEditValue}
                 onSave={() => saveLimit('agentBudget', parseFloat, (n) => n >= 0)}
+                onCancel={() => setEditingLimit(null)}
+              />
+              <div className="border-t border-border" />
+              <EditableLimit
+                label="Daily autonomous"
+                value={limits.dailyAuto}
+                editing={editingLimit === 'dailyAuto'}
+                editValue={editValue}
+                onEdit={() => { setEditingLimit('dailyAuto'); setEditValue(String(limits.dailyAuto)); }}
+                onEditChange={setEditValue}
+                onSave={() => saveLimit('dailyAuto', parseInt, (n) => n >= 0)}
                 onCancel={() => setEditingLimit(null)}
               />
             </div>

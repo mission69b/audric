@@ -1380,7 +1380,7 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
   };
 
   const renderActivityTab = () => (
-    <div className="flex-1 flex flex-col">
+    <div className="flex-1 flex flex-col overflow-y-auto">
       <div className="mx-auto w-full max-w-2xl px-4 sm:px-6 py-4">
         {briefing.briefing && (
           <div className="mb-4">
@@ -1398,8 +1398,9 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
   );
 
   const renderChatView = () => (
-    <div className="flex-1 flex flex-col pb-52">
-      <div className="mx-auto w-full max-w-2xl px-4 sm:px-6 py-6 space-y-3">
+    <div className="flex-1 flex flex-col min-h-0">
+      <div className="flex-1 overflow-y-auto">
+      <div className="mx-auto w-full max-w-2xl px-4 sm:px-6 py-6 pb-4 space-y-3">
 
         {chipFlow.state.phase === 'result' && chipFlow.state.result && (
           <ResultCard
@@ -1533,8 +1534,9 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
         )}
 
       </div>
+      </div>
 
-      <div className="sticky bottom-0 bg-background safe-bottom z-30">
+      <div className="shrink-0 bg-background safe-bottom z-30">
         <div className="mx-auto max-w-2xl px-4 sm:px-6 py-3 space-y-3">
           {engine.isStreaming ? (
             <>
@@ -1681,6 +1683,8 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
     }
   })();
 
+  const isChatLayout = panel === 'chat' || panel === undefined;
+
   return (
     <AppShell
       address={address}
@@ -1694,7 +1698,9 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
       onLoadSession={engine.loadSession}
       onNewConversation={handleNewConversation}
     >
-      {panelContent}
+      {isChatLayout ? panelContent : (
+        <div className="flex-1 overflow-y-auto">{panelContent}</div>
+      )}
       {settingsPanel}
       {emailModal}
       {tosBanner}

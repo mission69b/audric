@@ -18,6 +18,7 @@ interface SidebarProps {
   activeSessionId?: string;
   onLoadSession?: (sessionId: string) => void;
   onNewConversation?: () => void;
+  onSettingsClick?: () => void;
 }
 
 const ChatIcon = () => (
@@ -112,17 +113,19 @@ export function AppSidebar({
   activeSessionId,
   onLoadSession,
   onNewConversation,
+  onSettingsClick,
 }: SidebarProps) {
   const handleNav = useCallback(
     (id: PanelId) => {
       if (id === 'settings') {
-        window.location.href = '/settings';
+        onSettingsClick?.();
+        onClose?.();
         return;
       }
       onPanelChange(id);
       onClose?.();
     },
-    [onPanelChange, onClose],
+    [onPanelChange, onClose, onSettingsClick],
   );
 
   const email = emailProp ?? decodeEmail(jwt);

@@ -56,8 +56,8 @@ export function AppShell({
   }, []);
 
   const handleSettingsClick = useCallback(() => {
-    window.location.href = '/settings';
-  }, []);
+    onSettingsClick();
+  }, [onSettingsClick]);
 
   return (
     <div className="flex h-dvh overflow-hidden bg-background">
@@ -74,6 +74,7 @@ export function AppShell({
           activeSessionId={activeSessionId}
           onLoadSession={onLoadSession}
           onNewConversation={onNewConversation}
+          onSettingsClick={handleSettingsClick}
         />
         {/* Collapse toggle */}
         <button
@@ -115,6 +116,7 @@ export function AppShell({
               activeSessionId={activeSessionId}
               onLoadSession={onLoadSession}
               onNewConversation={onNewConversation}
+              onSettingsClick={handleSettingsClick}
             />
           </div>
         </>
@@ -130,7 +132,7 @@ export function AppShell({
           showHamburger
           onHamburgerClick={() => setMobileOpen(true)}
         />
-        <main className="flex-1 overflow-y-auto flex flex-col">
+        <main className="flex-1 overflow-hidden flex flex-col">
           {children}
         </main>
       </div>
