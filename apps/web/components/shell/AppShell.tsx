@@ -12,6 +12,10 @@ interface AppShellProps {
   onSettingsClick: () => void;
   allowancePercent?: number;
   allowanceLabel?: string;
+  jwt?: string;
+  activeSessionId?: string;
+  onLoadSession?: (sessionId: string) => void;
+  onNewConversation?: () => void;
   children: React.ReactNode;
 }
 
@@ -21,6 +25,10 @@ export function AppShell({
   onSettingsClick,
   allowancePercent,
   allowanceLabel,
+  jwt,
+  activeSessionId,
+  onLoadSession,
+  onNewConversation,
   children,
 }: AppShellProps) {
   const { panel, setPanel } = usePanel();
@@ -44,11 +52,12 @@ export function AppShell({
           onPanelChange={setPanel}
           allowancePercent={allowancePercent}
           allowanceLabel={allowanceLabel}
+          jwt={jwt}
+          activeSessionId={activeSessionId}
+          onLoadSession={onLoadSession}
+          onNewConversation={onNewConversation}
         />
       </div>
-
-      {/* Tablet sidebar (768–1024) — icon-only */}
-      {/* Handled by collapsed prop via media query in a future pass */}
 
       {/* Mobile sidebar overlay */}
       {mobileOpen && (
@@ -64,6 +73,10 @@ export function AppShell({
               onClose={() => setMobileOpen(false)}
               allowancePercent={allowancePercent}
               allowanceLabel={allowanceLabel}
+              jwt={jwt}
+              activeSessionId={activeSessionId}
+              onLoadSession={onLoadSession}
+              onNewConversation={onNewConversation}
             />
           </div>
         </>

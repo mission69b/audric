@@ -1684,6 +1684,10 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
       address={address}
       balance={balance}
       onSettingsClick={() => setSettingsOpen(true)}
+      jwt={session.jwt}
+      activeSessionId={engine.sessionId ?? undefined}
+      onLoadSession={engine.loadSession}
+      onNewConversation={handleNewConversation}
     >
       {panelContent}
       {settingsPanel}

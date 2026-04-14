@@ -2,6 +2,7 @@
 
 import { useCallback } from 'react';
 import { NavItem, type BadgeVariant } from './NavItem';
+import { ConvoHistoryList } from './ConvoHistoryList';
 import type { PanelId } from '@/hooks/usePanel';
 
 interface SidebarProps {
@@ -11,6 +12,10 @@ interface SidebarProps {
   onClose?: () => void;
   allowancePercent?: number;
   allowanceLabel?: string;
+  jwt?: string;
+  activeSessionId?: string;
+  onLoadSession?: (sessionId: string) => void;
+  onNewConversation?: () => void;
 }
 
 const ChatIcon = () => (
@@ -78,6 +83,10 @@ export function AppSidebar({
   onClose,
   allowancePercent,
   allowanceLabel,
+  jwt,
+  activeSessionId,
+  onLoadSession,
+  onNewConversation,
 }: SidebarProps) {
   const handleNav = useCallback(
     (id: PanelId) => {
@@ -126,6 +135,28 @@ export function AppSidebar({
           />
         ))}
       </nav>
+
+      {/* Conversation history */}
+      {!collapsed && onLoadSession && onNewConversation && (
+        <div className="px-0 py-2 border-t border-border mt-2">
+          <p className="font-mono text-[9px] tracking-[0.1em] uppercase text-dim px-4 mb-1.5">History</p>
+          <ConvoHistoryList
+            jwt={jwt}
+            activeSessionId={activeSessionId}
+            onLoadSession={(id) => {
+              onPanelChange('chat');
+              onLoadSession(id);
+              onClose?.();
+            }}
+            onNewConversation={() => {
+              onPanelChange('chat');
+              onNewConversation();
+              onClose?.();
+            }}
+            collapsed={collapsed}
+          />
+        </div>
+      )}
 
       {/* Allowance bar (sidebar footer) */}
       {!collapsed && allowancePercent != null && (
