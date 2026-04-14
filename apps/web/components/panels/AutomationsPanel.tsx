@@ -2,13 +2,6 @@
 
 import { useScheduledActions, type ScheduledAction } from '@/hooks/useScheduledActions';
 
-const STAGE_LABELS: Record<number, string> = {
-  0: 'Detected',
-  1: 'Proposed',
-  2: 'Confirmed',
-  3: 'Autonomous',
-};
-
 const PATTERN_LABELS: Record<string, string> = {
   recurring_save: 'Recurring Save',
   yield_reinvestment: 'Yield Reinvest',
@@ -27,11 +20,21 @@ export function AutomationsPanel({ address, jwt, onSendMessage }: AutomationsPan
   const schedules = useScheduledActions(address, jwt);
 
   const proposals = schedules.actions.filter(a => a.source === 'behavior_detected' && a.stage < 2 && !a.declinedAt);
-  const active = schedules.actions.filter(a => a.enabled && !a.pausedAt && !(a.source === 'behavior_detected' && a.stage < 2));
+  const confirming = schedules.actions.filter(a => a.enabled && !a.pausedAt && a.source === 'behavior_detected' && a.stage >= 2 && a.stage < (a.confirmationsRequired || 5));
+  const autonomous = schedules.actions.filter(a => {
+    if (a.pausedAt || !a.enabled) return false;
+    if (a.source === 'behavior_detected') return a.stage >= (a.confirmationsRequired || 5);
+    return a.confirmationsCompleted >= a.confirmationsRequired;
+  });
   const paused = schedules.actions.filter(a => a.pausedAt || (!a.enabled && !proposals.includes(a)));
 
+  const todaySpent = schedules.actions
+    .filter(a => a.enabled && !a.pausedAt)
+    .reduce((sum, a) => sum + (a.lastExecutedAt && new Date(a.lastExecutedAt).toDateString() === new Date().toDateString() ? a.amount : 0), 0);
+  const dailyLimit = 200;
+
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 sm:px-6 py-6 space-y-6">
+    <div className="mx-auto w-full max-w-3xl px-4 sm:px-6 py-6 space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="font-heading text-lg text-foreground">Automations</h2>
         <button
@@ -40,20 +43,6 @@ export function AutomationsPanel({ address, jwt, onSendMessage }: AutomationsPan
         >
           + New Automation
         </button>
-      </div>
-
-      {/* Trust ladder explanation */}
-      <div className="rounded-lg border border-border bg-surface px-4 py-3">
-        <p className="font-mono text-[10px] tracking-[0.1em] uppercase text-muted mb-2">Trust Ladder</p>
-        <div className="flex items-center gap-2 text-xs text-dim">
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400" /> Detected</span>
-          <span className="text-border">→</span>
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-accent" /> Proposed</span>
-          <span className="text-border">→</span>
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-foreground" /> Confirmed</span>
-          <span className="text-border">→</span>
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-success" /> Autonomous</span>
-        </div>
       </div>
 
       {schedules.loading ? (
@@ -79,172 +68,226 @@ export function AutomationsPanel({ address, jwt, onSendMessage }: AutomationsPan
         </div>
       ) : (
         <>
-          {/* Proposals */}
-          {proposals.length > 0 && (
-            <div className="space-y-2">
-              <h3 className="font-mono text-[10px] tracking-[0.1em] uppercase text-amber-400">Proposals ({proposals.length})</h3>
-              {proposals.map(a => (
-                <AutomationCard
-                  key={a.id}
-                  action={a}
-                  schedules={schedules}
-                />
-              ))}
-            </div>
-          )}
+          {/* Proposals — pending pattern detections */}
+          {proposals.map(a => (
+            <ProposalCard key={a.id} action={a} schedules={schedules} onSendMessage={onSendMessage} />
+          ))}
 
-          {/* Active */}
-          {active.length > 0 && (
-            <div className="space-y-2">
-              <h3 className="font-mono text-[10px] tracking-[0.1em] uppercase text-success">Active ({active.length})</h3>
-              {active.map(a => (
-                <AutomationCard
-                  key={a.id}
-                  action={a}
-                  schedules={schedules}
-                />
-              ))}
-            </div>
-          )}
+          {/* Confirming — trust ladder in progress */}
+          {confirming.map(a => (
+            <ConfirmingCard key={a.id} action={a} schedules={schedules} onSendMessage={onSendMessage} />
+          ))}
+
+          {/* Autonomous — graduated */}
+          {autonomous.map(a => (
+            <AutonomousCard key={a.id} action={a} schedules={schedules} onSendMessage={onSendMessage} />
+          ))}
 
           {/* Paused / Disabled */}
           {paused.length > 0 && (
-            <div className="space-y-2">
-              <h3 className="font-mono text-[10px] tracking-[0.1em] uppercase text-dim">Paused ({paused.length})</h3>
+            <div className="space-y-2 pt-2">
+              <h3 className="font-mono text-[10px] tracking-[0.1em] uppercase text-dim">Paused</h3>
               {paused.map(a => (
-                <AutomationCard
-                  key={a.id}
-                  action={a}
-                  schedules={schedules}
-                />
+                <PausedCard key={a.id} action={a} schedules={schedules} />
               ))}
             </div>
           )}
+
+          {/* Daily autonomous spend gauge */}
+          <div className="space-y-2 pt-2">
+            <p className="font-mono text-[9px] tracking-[0.1em] uppercase text-dim">Daily autonomous spend</p>
+            <div className="rounded-lg border border-border bg-surface p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] text-muted">Today · ${todaySpent.toFixed(0)} of ${dailyLimit} limit</span>
+                <button
+                  onClick={() => onSendMessage('Change my daily autonomous spend limit')}
+                  className="font-mono text-[9px] tracking-[0.06em] uppercase text-foreground border border-border px-2 py-0.5 rounded-full hover:bg-surface transition"
+                >
+                  Edit limit
+                </button>
+              </div>
+              <div className="h-1 bg-border rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-success/70 rounded-full transition-all"
+                  style={{ width: `${Math.min((todaySpent / dailyLimit) * 100, 100)}%` }}
+                />
+              </div>
+              <p className="text-[11px] text-dim mt-1.5">${Math.max(dailyLimit - todaySpent, 0)} remaining today</p>
+            </div>
+          </div>
+
+          {/* Placeholder for new automation */}
+          <button
+            onClick={() => onSendMessage('What can Audric automate for me?')}
+            className="w-full rounded-lg border border-dashed border-border bg-transparent px-4 py-3 hover:border-border-bright transition"
+          >
+            <p className="text-[11px] text-dim text-center py-1">As I learn your patterns I will propose automations here →</p>
+          </button>
         </>
       )}
     </div>
   );
 }
 
-function AutomationCard({ action, schedules }: {
-  action: ScheduledAction;
-  schedules: ReturnType<typeof useScheduledActions>;
-}) {
-  const isBehavior = action.source === 'behavior_detected';
-  const isAutonomous = isBehavior
-    ? action.stage >= 3
-    : action.confirmationsCompleted >= action.confirmationsRequired;
-  const isPaused = !!action.pausedAt;
-  const isProposal = isBehavior && action.stage < 2 && !action.declinedAt;
+function getVerb(action: ScheduledAction): string {
+  return action.actionType === 'save' ? 'Save' : action.actionType === 'swap' ? 'Swap' : 'Repay';
+}
 
-  let statusLabel: string;
-  let statusClass: string;
-  if (isPaused) {
-    statusLabel = 'Paused';
-    statusClass = 'bg-border text-muted';
-  } else if (!action.enabled) {
-    statusLabel = isProposal ? 'Proposal' : 'Disabled';
-    statusClass = isProposal ? 'bg-amber-500/10 text-amber-400' : 'bg-border text-muted';
-  } else if (isAutonomous) {
-    statusLabel = 'Autonomous';
-    statusClass = 'bg-success/10 text-success';
-  } else if (isBehavior) {
-    statusLabel = STAGE_LABELS[action.stage] ?? `Stage ${action.stage}`;
-    statusClass = 'bg-accent/10 text-accent';
-  } else {
-    statusLabel = `${action.confirmationsCompleted}/${action.confirmationsRequired}`;
-    statusClass = 'bg-accent/10 text-accent';
-  }
+function getNextRun(action: ScheduledAction): string | null {
+  if (!action.enabled || action.pausedAt) return null;
+  return new Date(action.nextRunAt).toLocaleDateString('en-US', { weekday: 'short', hour: 'numeric', minute: undefined });
+}
 
-  const verb = action.actionType === 'save' ? 'Save' : action.actionType === 'swap' ? 'Swap' : 'Repay';
-  const nextRun = action.enabled && !isPaused
-    ? new Date(action.nextRunAt).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
-    : null;
+function ProposalCard({ action, schedules, onSendMessage }: { action: ScheduledAction; schedules: ReturnType<typeof useScheduledActions>; onSendMessage: (t: string) => void }) {
+  const verb = getVerb(action);
+  const confidence = Math.round((action.confidence ?? 0) * 100);
+  return (
+    <div className="rounded-lg border border-border bg-surface p-4 space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="font-mono text-[9px] tracking-wider uppercase px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400">Pattern detected</span>
+        <span className="font-mono text-[10px] text-dim">{action.totalExecutions > 0 ? `${action.totalExecutions} weeks in a row` : `${confidence}% confidence`}</span>
+      </div>
+      <p className="text-sm font-medium text-foreground">Automate {verb.toLowerCase()} — ${action.amount.toFixed(2)} {action.asset}</p>
+      <p className="text-[11px] text-dim leading-relaxed">
+        {PATTERN_LABELS[action.patternType ?? ''] ?? 'Detected pattern'} · confidence {confidence}% · one confirmation then fully autonomous
+      </p>
+      <div className="flex gap-2 pt-1">
+        <button
+          onClick={() => schedules.acceptProposal(action.id)}
+          disabled={schedules.updating === action.id}
+          className="font-mono text-[10px] tracking-[0.06em] uppercase text-background bg-foreground px-3 py-1.5 rounded-full hover:opacity-90 transition disabled:opacity-50"
+        >
+          Yes, automate it
+        </button>
+        <button
+          onClick={() => schedules.declineProposal(action.id)}
+          disabled={schedules.updating === action.id}
+          className="font-mono text-[10px] tracking-[0.06em] uppercase text-foreground border border-border px-3 py-1.5 rounded-full hover:bg-surface transition disabled:opacity-50"
+        >
+          Not now
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ConfirmingCard({ action, schedules, onSendMessage }: { action: ScheduledAction; schedules: ReturnType<typeof useScheduledActions>; onSendMessage: (t: string) => void }) {
+  const verb = getVerb(action);
+  const nextRun = getNextRun(action);
+  const required = action.confirmationsRequired || 5;
+  const completed = action.confirmationsCompleted;
+  const remaining = required - completed;
 
   return (
-    <div className="rounded-lg border border-border bg-surface p-4">
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <p className="text-sm font-medium text-foreground">
-            {verb} ${action.amount.toFixed(2)} {action.asset}
-          </p>
-          {isBehavior && (
-            <span className="font-mono text-[9px] tracking-wider text-amber-400 uppercase bg-amber-500/10 px-1.5 py-0.5 rounded">
-              {PATTERN_LABELS[action.patternType ?? ''] ?? 'Auto'}
-            </span>
-          )}
-        </div>
-        <span className={`font-mono text-[9px] tracking-wider uppercase px-2 py-0.5 rounded-full ${statusClass}`}>
-          {statusLabel}
+    <div className="rounded-lg border border-border bg-surface p-4 space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="font-mono text-[9px] tracking-wider uppercase px-2 py-0.5 rounded-full bg-accent/10 text-accent">
+          Stage {completed} / {required}
+        </span>
+        {nextRun && <span className="font-mono text-[10px] text-dim">next: {nextRun}</span>}
+      </div>
+      <p className="text-sm font-medium text-foreground">{verb} ${action.amount.toFixed(2)} {action.asset}</p>
+      <p className="text-[11px] text-dim leading-relaxed">
+        {remaining} more confirmation{remaining !== 1 ? 's' : ''} until fully autonomous · ${action.totalAmountUsdc.toFixed(2)} total executed
+      </p>
+      {/* Trust ladder dots */}
+      <div className="flex items-center gap-[5px] py-1">
+        {Array.from({ length: required }).map((_, i) => (
+          <span key={i} className={`text-[10px] ${i < completed ? 'text-success' : 'text-border-bright'}`}>
+            {i < completed ? '●' : '○'}
+          </span>
+        ))}
+        <span className="text-[10px] text-dim ml-1">
+          {completed} of {required} · {remaining} more until autonomous
         </span>
       </div>
+      <div className="h-1 bg-border rounded-full overflow-hidden">
+        <div
+          className="h-full bg-accent rounded-full transition-all"
+          style={{ width: `${(completed / required) * 100}%` }}
+        />
+      </div>
+      <div className="flex gap-2 pt-1">
+        <button
+          onClick={() => action.source === 'behavior_detected' ? schedules.pausePattern(action.id) : schedules.pauseAction(action.id)}
+          disabled={schedules.updating === action.id}
+          className="font-mono text-[10px] tracking-[0.06em] uppercase text-foreground border border-border px-3 py-1.5 rounded-full hover:bg-surface transition disabled:opacity-50"
+        >
+          Pause
+        </button>
+        <button
+          onClick={() => onSendMessage(`Edit my ${verb.toLowerCase()} automation for ${action.amount} ${action.asset}`)}
+          className="font-mono text-[10px] tracking-[0.06em] uppercase text-foreground border border-border px-3 py-1.5 rounded-full hover:bg-surface transition"
+        >
+          Edit
+        </button>
+        <button
+          onClick={() => onSendMessage(`Explain my ${verb} automation and when it goes fully autonomous`)}
+          className="font-mono text-[10px] tracking-[0.06em] uppercase text-info border border-info/30 px-3 py-1.5 rounded-full hover:bg-info/10 transition"
+        >
+          Explain →
+        </button>
+      </div>
+    </div>
+  );
+}
 
-      {/* Trust progress */}
-      {action.enabled && !isAutonomous && !isProposal && (
-        <div className="mb-2">
-          <div className="h-1 bg-border rounded-full overflow-hidden">
-            <div
-              className="h-full bg-accent rounded-full transition-all"
-              style={{ width: `${action.confirmationsRequired > 0 ? (action.confirmationsCompleted / action.confirmationsRequired) * 100 : 0}%` }}
-            />
-          </div>
-        </div>
-      )}
+function AutonomousCard({ action, schedules, onSendMessage }: { action: ScheduledAction; schedules: ReturnType<typeof useScheduledActions>; onSendMessage: (t: string) => void }) {
+  const verb = getVerb(action);
+  const nextRun = getNextRun(action);
 
-      <div className="flex items-center justify-between text-xs text-muted">
-        <span>
-          {nextRun && <span>Next: {nextRun} · </span>}
-          {action.totalExecutions > 0
-            ? `${action.totalExecutions} runs · $${action.totalAmountUsdc.toFixed(2)} total`
-            : isProposal ? `${Math.round((action.confidence ?? 0) * 100)}% confidence` : 'No executions'}
+  return (
+    <div className="rounded-lg border border-success/20 bg-surface p-4 space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="font-mono text-[9px] tracking-wider uppercase px-2 py-0.5 rounded-full bg-success/10 text-success">
+          Autonomous ✓
         </span>
+        {nextRun && <span className="font-mono text-[10px] text-dim">next: {nextRun}</span>}
+      </div>
+      <p className="text-sm font-medium text-foreground">{verb} ${action.amount.toFixed(2)} {action.asset}</p>
+      <p className="text-[11px] text-dim leading-relaxed">
+        Confirmed {action.confirmationsCompleted} times. Running silently. Audric executes and notifies you after each one.
+      </p>
+      <div className="flex gap-2 pt-1">
+        <button
+          onClick={() => action.source === 'behavior_detected' ? schedules.pausePattern(action.id) : schedules.pauseAction(action.id)}
+          disabled={schedules.updating === action.id}
+          className="font-mono text-[10px] tracking-[0.06em] uppercase text-foreground border border-border px-3 py-1.5 rounded-full hover:bg-surface transition disabled:opacity-50"
+        >
+          Pause
+        </button>
+        <button
+          onClick={() => onSendMessage(`Require my approval for the ${verb.toLowerCase()} ${action.amount} ${action.asset} automation going forward`)}
+          className="font-mono text-[10px] tracking-[0.06em] uppercase text-foreground border border-border px-3 py-1.5 rounded-full hover:bg-surface transition"
+        >
+          Require approval
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function PausedCard({ action, schedules }: { action: ScheduledAction; schedules: ReturnType<typeof useScheduledActions> }) {
+  const verb = getVerb(action);
+  return (
+    <div className="rounded-lg border border-border bg-surface p-4 opacity-60">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted">{verb} ${action.amount.toFixed(2)} {action.asset}</p>
         <div className="flex gap-2">
-          {isProposal && (
-            <>
-              <button
-                onClick={() => schedules.acceptProposal(action.id)}
-                disabled={schedules.updating === action.id}
-                className="font-mono text-[10px] tracking-[0.08em] uppercase text-foreground bg-foreground/10 px-2.5 py-1 rounded-full hover:bg-foreground/20 transition"
-              >
-                Enable
-              </button>
-              <button
-                onClick={() => schedules.declineProposal(action.id)}
-                disabled={schedules.updating === action.id}
-                className="text-muted hover:text-foreground transition"
-              >
-                Decline
-              </button>
-            </>
-          )}
-          {!isProposal && (
-            <>
-              {action.enabled && !isPaused ? (
-                <button
-                  onClick={() => isBehavior ? schedules.pausePattern(action.id) : schedules.pauseAction(action.id)}
-                  disabled={schedules.updating === action.id}
-                  className="text-muted hover:text-foreground transition text-xs"
-                >
-                  Pause
-                </button>
-              ) : (
-                <button
-                  onClick={() => isBehavior ? schedules.resumePattern(action.id) : schedules.resumeAction(action.id)}
-                  disabled={schedules.updating === action.id}
-                  className="text-accent hover:text-accent/80 transition text-xs"
-                >
-                  Resume
-                </button>
-              )}
-              <button
-                onClick={() => schedules.deleteAction(action.id)}
-                disabled={schedules.updating === action.id}
-                className="text-error hover:text-error/80 transition text-xs"
-              >
-                Delete
-              </button>
-            </>
-          )}
+          <button
+            onClick={() => action.source === 'behavior_detected' ? schedules.resumePattern(action.id) : schedules.resumeAction(action.id)}
+            disabled={schedules.updating === action.id}
+            className="font-mono text-[10px] tracking-[0.06em] uppercase text-accent hover:text-accent/80 transition disabled:opacity-50"
+          >
+            Resume
+          </button>
+          <button
+            onClick={() => schedules.deleteAction(action.id)}
+            disabled={schedules.updating === action.id}
+            className="font-mono text-[10px] tracking-[0.06em] uppercase text-error hover:text-error/80 transition disabled:opacity-50"
+          >
+            Delete
+          </button>
         </div>
       </div>
     </div>

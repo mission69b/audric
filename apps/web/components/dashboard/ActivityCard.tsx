@@ -2,22 +2,27 @@
 
 import type { ActivityItem } from '@/lib/activity-types';
 
-const TYPE_ICONS: Record<string, string> = {
-  send: '\u2191',
-  receive: '\u2193',
-  lending: '\uD83C\uDFE6',
-  swap: '\u21C4',
-  pay: '\u26A1',
-  alert: '\uD83D\uDEA8',
-  contract: '\uD83D\uDCC4',
-  transaction: '\uD83D\uDCC4',
-  follow_up: '\uD83D\uDCAC',
-  schedule_confirm: '\u2705',
-  schedule_execute: '\uD83D\uDD04',
-  schedule_reminder: '\uD83D\uDD14',
-  compound_available: '\uD83C\uDF31',
-  auto_compound: '\uD83C\uDF31',
+const TYPE_ICONS: Record<string, { icon: string; bg: string; color: string }> = {
+  send: { icon: '↗', bg: 'rgba(13,157,252,.1)', color: 'var(--color-info)' },
+  receive: { icon: '↓', bg: 'rgba(60,193,78,.12)', color: 'var(--color-success)' },
+  lending: { icon: '↑', bg: 'rgba(60,193,78,.12)', color: 'var(--color-success)' },
+  swap: { icon: '⇄', bg: 'rgba(155,127,232,.1)', color: 'var(--color-purple)' },
+  pay: { icon: '🤖', bg: 'rgba(13,157,252,.1)', color: 'var(--color-info)' },
+  store_sale: { icon: '🎨', bg: 'rgba(155,127,232,.1)', color: 'var(--color-purple)' },
+  pay_received: { icon: '🔗', bg: 'rgba(60,193,78,.12)', color: 'var(--color-success)' },
+  autonomous: { icon: '✦', bg: 'rgba(60,193,78,.12)', color: 'var(--color-success)' },
+  alert: { icon: '🚨', bg: 'rgba(227,175,37,.1)', color: 'var(--color-warning)' },
+  contract: { icon: '📄', bg: 'var(--n700)', color: 'var(--muted)' },
+  transaction: { icon: '📄', bg: 'var(--n700)', color: 'var(--muted)' },
+  follow_up: { icon: '💬', bg: 'var(--n700)', color: 'var(--muted)' },
+  schedule_confirm: { icon: '✅', bg: 'rgba(60,193,78,.12)', color: 'var(--color-success)' },
+  schedule_execute: { icon: '🔄', bg: 'rgba(13,157,252,.1)', color: 'var(--color-info)' },
+  schedule_reminder: { icon: '🔔', bg: 'rgba(155,127,232,.1)', color: 'var(--color-purple)' },
+  compound_available: { icon: '🌱', bg: 'rgba(60,193,78,.12)', color: 'var(--color-success)' },
+  auto_compound: { icon: '🌱', bg: 'rgba(60,193,78,.12)', color: 'var(--color-success)' },
 };
+
+const DEFAULT_ICON = { icon: '📄', bg: 'var(--n700)', color: 'var(--muted)' };
 
 function relativeTime(ts: number): string {
   const diff = Date.now() - ts;
@@ -31,80 +36,113 @@ function relativeTime(ts: number): string {
   return new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
+function truncDigest(digest: string): string {
+  if (digest.length <= 16) return digest;
+  return `${digest.slice(0, 6)}...${digest.slice(-6)}`;
+}
+
 interface ActivityCardProps {
   item: ActivityItem;
   network: string;
 }
 
 export function ActivityCard({ item, network }: ActivityCardProps) {
-  const icon = TYPE_ICONS[item.type] ?? '\uD83D\uDCC4';
+  const iconData = TYPE_ICONS[item.type] ?? DEFAULT_ICON;
   const isIn = item.direction === 'in';
   const sign = isIn ? '+' : item.direction === 'self' ? '' : '-';
   const amountStr = item.amount != null ? `${sign}$${item.amount.toFixed(2)}` : null;
+  const amountColor = isIn ? 'text-success' : item.type === 'pay' ? 'text-info' : 'text-foreground';
 
   const explorerBase = network === 'testnet'
     ? 'https://suiscan.xyz/testnet/tx'
     : 'https://suiscan.xyz/mainnet/tx';
   const txUrl = item.digest ? `${explorerBase}/${item.digest}` : null;
 
-  const Wrapper = txUrl ? 'a' : 'div';
-  const linkProps = txUrl
-    ? { href: txUrl, target: '_blank', rel: 'noopener noreferrer' }
-    : {};
+  const isSaveable = isIn && (item.amount ?? 0) > 0 && item.type !== 'lending';
+  const isReversible = item.type === 'autonomous' || item.type === 'schedule_execute';
 
   return (
-    <Wrapper
-      {...linkProps}
-      className="flex items-center justify-between py-3 px-1 -mx-1 rounded-lg hover:bg-surface/50 transition group"
-    >
-      <div className="flex items-center gap-3 min-w-0">
-        <span className="text-base w-7 text-center shrink-0">{icon}</span>
-        <div className="min-w-0">
-          <p className="text-sm text-foreground font-medium truncate">{item.title}</p>
-          <p className="text-xs text-muted font-mono">
-            {relativeTime(item.timestamp)}
-            {item.subtitle && <span className="ml-2">{item.subtitle}</span>}
-          </p>
+    <div className="rounded-lg border border-border bg-surface hover:border-border-bright transition">
+      {/* Main row */}
+      <div className="flex items-center justify-between px-4 py-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div
+            className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-sm"
+            style={{ background: iconData.bg, color: iconData.color }}
+          >
+            {iconData.icon}
+          </div>
+          <div className="min-w-0">
+            <p className="text-[12px] text-foreground font-medium truncate">{item.title}</p>
+            <p className="text-[10px] text-dim font-mono">
+              {item.subtitle && <span>{item.subtitle} · </span>}
+              {relativeTime(item.timestamp)}
+            </p>
+          </div>
+        </div>
+        <div className="text-right shrink-0 ml-3">
+          {amountStr && (
+            <p className={`text-sm font-mono font-medium ${amountColor}`}>
+              {amountStr}
+            </p>
+          )}
+          {item.digest && (
+            <p className="font-mono text-[9px] text-dim">{truncDigest(item.digest)}</p>
+          )}
         </div>
       </div>
-      <div className="text-right shrink-0 ml-3 flex items-center gap-2">
-        {amountStr && (
-          <p className={`text-sm font-mono font-medium ${isIn ? 'text-success' : 'text-foreground'}`}>
-            {amountStr}
-          </p>
+
+      {/* Tx actions row */}
+      <div className="flex items-center gap-4 px-4 pb-2.5 pt-0">
+        <button
+          onClick={() => {/* fires prompt via parent in future */}}
+          className="font-mono text-[10px] tracking-[0.06em] uppercase text-muted hover:text-foreground transition"
+        >
+          Explain →
+        </button>
+        {isSaveable && (
+          <button
+            onClick={() => {}}
+            className="font-mono text-[10px] tracking-[0.06em] uppercase text-success hover:text-success/80 transition"
+          >
+            Save it →
+          </button>
+        )}
+        {isReversible && (
+          <button
+            onClick={() => {}}
+            className="font-mono text-[10px] tracking-[0.06em] uppercase text-warning hover:text-warning/80 transition"
+          >
+            Reverse →
+          </button>
         )}
         {txUrl && (
-          <svg
-            className="w-3.5 h-3.5 text-dim group-hover:text-muted transition shrink-0"
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+          <a
+            href={txUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-mono text-[10px] tracking-[0.06em] uppercase text-info hover:text-info/80 transition"
+            onClick={e => e.stopPropagation()}
           >
-            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-            <polyline points="15 3 21 3 21 9" />
-            <line x1="10" y1="14" x2="21" y2="3" />
-          </svg>
+            Suiscan ↗
+          </a>
         )}
       </div>
-    </Wrapper>
+    </div>
   );
 }
 
 export function ActivityCardSkeleton() {
   return (
-    <div className="flex items-center justify-between py-3 px-1 animate-pulse">
+    <div className="rounded-lg border border-border bg-surface px-4 py-3 animate-pulse">
       <div className="flex items-center gap-3">
-        <div className="w-7 h-7 rounded-full bg-border" />
-        <div className="space-y-1.5">
+        <div className="w-8 h-8 rounded-full bg-border" />
+        <div className="space-y-1.5 flex-1">
           <div className="h-3.5 w-36 bg-border rounded" />
           <div className="h-3 w-20 bg-border rounded" />
         </div>
+        <div className="h-3.5 w-14 bg-border rounded" />
       </div>
-      <div className="h-3.5 w-14 bg-border rounded" />
     </div>
   );
 }

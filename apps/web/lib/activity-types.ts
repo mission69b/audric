@@ -12,17 +12,16 @@ export interface ActivityItem {
   timestamp: number;
 }
 
-export type ActivityFilter = 'all' | 'savings' | 'send' | 'receive' | 'swap' | 'pay' | 'follow_up' | 'schedule';
+export type ActivityFilter = 'all' | 'savings' | 'send' | 'receive' | 'swap' | 'pay' | 'store' | 'autonomous' | 'follow_up' | 'schedule';
 
 export const ACTIVITY_FILTERS: { id: ActivityFilter; label: string }[] = [
   { id: 'all', label: 'All' },
   { id: 'savings', label: 'Savings' },
   { id: 'send', label: 'Send' },
-  { id: 'receive', label: 'Receive' },
   { id: 'swap', label: 'Swap' },
   { id: 'pay', label: 'Pay' },
-  { id: 'follow_up', label: 'Follow-ups' },
-  { id: 'schedule', label: 'Schedules' },
+  { id: 'store', label: 'Store' },
+  { id: 'autonomous', label: 'Autonomous' },
 ];
 
 export interface ActivityPage {

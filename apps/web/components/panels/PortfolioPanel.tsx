@@ -30,16 +30,19 @@ const TABS: { id: PortfolioTab; label: string }[] = [
   { id: 'simulate', label: 'Simulate' },
 ];
 
-const ANALYTICS_CANVASES = [
-  { title: 'Net worth timeline', desc: 'Wallet / savings / debt over time', action: '7D 30D 90D 1Y', prompt: 'Show my portfolio timeline for the last 90 days' },
-  { title: 'Activity heatmap', desc: 'GitHub-style transaction grid', action: 'Full year view', prompt: 'Show my on-chain activity heatmap' },
-  { title: 'Spending breakdown', desc: 'MPP API spend by service', action: 'Week/Month/Year', prompt: 'Show my spending breakdown by category' },
+const TOOL_GRID: { category: string; title: string; desc: string; action: string; prompt: string }[] = [
+  { category: 'Analytics', title: 'Net worth timeline', desc: 'Wallet / savings / debt over time', action: '7D 30D 90D 1Y', prompt: 'Show my portfolio timeline for the last 90 days' },
+  { category: 'Simulator', title: 'Yield projector', desc: 'Simulate compound returns', action: 'Adjust amount + APY', prompt: 'Show the yield projector' },
+  { category: 'Analytics', title: 'Activity heatmap', desc: 'GitHub-style transaction grid', action: 'Full year view', prompt: 'Show my on-chain activity heatmap' },
+  { category: 'Simulator', title: 'Health simulator', desc: 'Model borrow scenarios', action: 'Collateral + debt sliders', prompt: 'Open the health factor simulator' },
+  { category: 'Analytics', title: 'Spending breakdown', desc: 'MPP API spend by service', action: 'Week / Month / Year', prompt: 'Show my spending breakdown by category' },
+  { category: 'Simulator', title: 'DCA planner', desc: 'Recurring savings projection', action: 'Set amount + cadence', prompt: 'Show me a DCA savings plan: $200 per month for 2 years' },
 ];
 
-const SIMULATOR_CANVASES = [
-  { title: 'Yield projector', desc: 'Simulate compound returns with sliders', action: 'Adjust amount + APY', prompt: 'Show the yield projector' },
-  { title: 'Health simulator', desc: 'Model borrow scenarios before executing', action: 'Collateral + debt sliders', prompt: 'Open the health factor simulator' },
-  { title: 'DCA planner', desc: 'Recurring savings projection', action: 'Set amount + cadence', prompt: 'Show me a DCA savings plan: $200 per month for 2 years' },
+const SIMULATE_TOOLS: { icon: string; title: string; desc: string; prompt: string }[] = [
+  { icon: '⚡', title: 'Yield projector', desc: 'Sliders for principal, APY, time period · compound returns', prompt: 'Show the yield projector — how much would I earn if I saved $5000 for a year?' },
+  { icon: '🩺', title: 'Health factor simulator', desc: 'Collateral + debt sliders · liquidation scenario modelling', prompt: 'Open the health factor simulator' },
+  { icon: '📅', title: 'DCA planner', desc: 'Set amount + cadence · project savings curve over time', prompt: 'Show me a DCA savings plan: $200 per month for 2 years' },
 ];
 
 export function PortfolioPanel({ balance, onSendMessage, goals }: PortfolioPanelProps) {
@@ -66,43 +69,49 @@ export function PortfolioPanel({ balance, onSendMessage, goals }: PortfolioPanel
     goals: goals ?? [],
   });
 
+  const dailyEarning = balance.savings * (balance.savingsRate / 365);
+
   const statCards = [
     {
       label: 'Savings',
+      drill: 'NAVI',
       value: `$${fmtUsd(balance.savings)}`,
       sub: balance.savingsRate > 0 ? `${(balance.savingsRate * 100).toFixed(1)}% APY` : '--',
+      trend: dailyEarning > 0 ? `$${dailyEarning.toFixed(4)}/day` : undefined,
       accent: balance.savings > 0,
       prompt: 'Show me my savings position and NAVI yield details',
-      drill: 'NAVI',
     },
     {
       label: 'Health',
+      drill: 'Simulate',
       value: balance.healthFactor != null ? balance.healthFactor.toFixed(1) : '--',
       sub: balance.borrows > 0 ? `$${fmtUsd(balance.borrows)} debt` : '$0 debt',
+      trend: balance.healthFactor != null && balance.healthFactor > 100 ? 'No liquidation risk' : balance.borrows > 0 ? 'Monitor closely' : undefined,
       warn: balance.healthFactor != null && balance.healthFactor < 2,
       accent: balance.healthFactor != null && balance.healthFactor >= 2,
       prompt: 'Open the health factor simulator',
-      drill: 'Simulate',
     },
     {
-      label: 'Available',
-      value: `$${fmtUsd(balance.cash)}`,
-      sub: 'wallet balance',
-      prompt: 'What is my current balance breakdown?',
-      drill: 'Details',
+      label: 'Activity (30D)',
+      drill: 'Heatmap',
+      value: '--',
+      sub: 'transactions',
+      trend: undefined,
+      prompt: 'Show my on-chain activity heatmap for the past year',
     },
     {
-      label: 'Savings APY',
-      value: balance.savingsRate > 0 ? `${(balance.savingsRate * 100).toFixed(1)}%` : '--',
-      sub: 'current NAVI rate',
-      accent: balance.savingsRate > 0,
-      prompt: 'What are the current savings rates?',
-      drill: 'Rates',
+      label: 'Spending',
+      drill: 'Breakdown',
+      value: '--',
+      sub: '40+ services',
+      trend: 'This month',
+      prompt: 'Show my API spending breakdown by category',
     },
   ];
 
   return (
     <div className="mx-auto w-full max-w-3xl px-4 sm:px-6 py-6 space-y-6">
+      {/* Tab bar */}
       <div className="flex gap-1 border-b border-border">
         {TABS.map((tab) => (
           <button
@@ -127,14 +136,17 @@ export function PortfolioPanel({ balance, onSendMessage, goals }: PortfolioPanel
                 onClick={() => onSendMessage(card.prompt)}
                 className="rounded-lg border border-border bg-surface px-3 py-3 text-left hover:border-border-bright transition group"
               >
-                <p className="font-mono text-[9px] tracking-[0.1em] uppercase text-muted mb-1">{card.label}</p>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="font-mono text-[9px] tracking-[0.1em] uppercase text-muted">{card.label}</p>
+                  <p className="font-mono text-[9px] text-dim">{card.drill} →</p>
+                </div>
                 <p className={`font-mono text-sm ${card.warn ? 'text-warning' : card.accent ? 'text-success' : 'text-foreground'}`}>
                   {card.value}
                 </p>
                 <p className="text-[10px] text-dim mt-0.5">{card.sub}</p>
-                <p className="font-mono text-[9px] tracking-[0.08em] uppercase text-muted mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                  {card.drill} &rarr;
-                </p>
+                {card.trend && (
+                  <p className="font-mono text-[9px] text-muted mt-1">{card.trend}</p>
+                )}
               </button>
             ))}
           </div>
@@ -143,7 +155,7 @@ export function PortfolioPanel({ balance, onSendMessage, goals }: PortfolioPanel
           {allocation.length > 0 && (
             <div className="space-y-2">
               <h3 className="font-mono text-[10px] tracking-[0.1em] uppercase text-muted">Allocation</h3>
-              <div className="h-2 rounded-full overflow-hidden flex bg-border">
+              <div className="h-[5px] rounded-[3px] overflow-hidden flex bg-border">
                 {allocation.map((seg) => (
                   <div
                     key={seg.label}
@@ -156,7 +168,7 @@ export function PortfolioPanel({ balance, onSendMessage, goals }: PortfolioPanel
               <div className="flex flex-wrap gap-x-4 gap-y-1">
                 {allocation.map((seg) => (
                   <div key={seg.label} className="flex items-center gap-1.5 text-[10px] text-dim">
-                    <span className="w-2 h-2 rounded-sm shrink-0" style={{ backgroundColor: seg.color }} />
+                    <span className="w-[7px] h-[7px] rounded-full shrink-0" style={{ backgroundColor: seg.color }} />
                     {seg.label} {seg.pct.toFixed(0)}%
                   </div>
                 ))}
@@ -164,14 +176,15 @@ export function PortfolioPanel({ balance, onSendMessage, goals }: PortfolioPanel
             </div>
           )}
 
-          {/* Insights */}
+          {/* Insights — green-tinted bordered panel */}
           {insights.length > 0 && (
-            <div className="space-y-1.5">
-              <h3 className="font-mono text-[10px] tracking-[0.1em] uppercase text-muted">Audric noticed</h3>
+            <div className="rounded-lg border border-success/15 bg-success/[0.04] px-4 py-3 space-y-1">
+              <h3 className="font-mono text-[9px] tracking-[0.1em] uppercase text-success mb-2">Audric noticed</h3>
               {insights.map((insight, i) => (
-                <p key={i} className="text-[12px] text-dim leading-relaxed">
-                  &rarr; {insight}
-                </p>
+                <div key={i} className="flex gap-2 text-[11px] text-dim leading-relaxed py-0.5">
+                  <span className="text-success shrink-0">→</span>
+                  <span>{insight}</span>
+                </div>
               ))}
             </div>
           )}
@@ -215,33 +228,36 @@ export function PortfolioPanel({ balance, onSendMessage, goals }: PortfolioPanel
             </div>
           )}
 
-          {/* Canvas launchers */}
+          {/* Interactive tools — 2x3 grid with category labels */}
           <div className="space-y-2">
-            <h3 className="font-mono text-[10px] tracking-[0.1em] uppercase text-muted">Analytics</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              {ANALYTICS_CANVASES.map((c) => (
-                <CanvasCard key={c.title} {...c} onClick={() => onSendMessage(c.prompt)} />
+            <h3 className="font-mono text-[10px] tracking-[0.1em] uppercase text-muted">Interactive tools</h3>
+            <div className="grid grid-cols-2 gap-[7px]">
+              {TOOL_GRID.map((t) => (
+                <button
+                  key={t.title}
+                  onClick={() => onSendMessage(t.prompt)}
+                  className="flex flex-col rounded-lg border border-border bg-surface px-4 py-3 text-left transition hover:bg-[var(--n700)] hover:border-border-bright"
+                >
+                  <span className="font-mono text-[8px] tracking-[0.08em] uppercase text-border-bright mb-1">{t.category}</span>
+                  <span className="text-[12px] font-medium text-[var(--n300)] mb-0.5">{t.title}</span>
+                  <span className="text-[10px] text-dim leading-relaxed">{t.desc}</span>
+                  <span className="font-mono text-[9px] text-border-bright mt-1.5">{t.action} →</span>
+                </button>
               ))}
             </div>
+            {/* Full portfolio overview — full width */}
+            <button
+              onClick={() => onSendMessage('Show me my full portfolio overview')}
+              className="w-full flex items-center justify-between rounded-lg border border-border bg-surface px-4 py-3 text-left hover:bg-[var(--n700)] hover:border-border-bright transition"
+            >
+              <div>
+                <span className="font-mono text-[8px] tracking-[0.08em] uppercase text-border-bright block mb-1">Overview</span>
+                <span className="text-[12px] font-medium text-[var(--n300)] block mb-0.5">Full portfolio overview</span>
+                <span className="text-[10px] text-dim">4-panel canvas: savings, health, activity, spending</span>
+              </div>
+              <span className="font-mono text-[18px] text-border ml-4">→</span>
+            </button>
           </div>
-
-          <div className="space-y-2">
-            <h3 className="font-mono text-[10px] tracking-[0.1em] uppercase text-muted">Simulators</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              {SIMULATOR_CANVASES.map((c) => (
-                <CanvasCard key={c.title} {...c} onClick={() => onSendMessage(c.prompt)} />
-              ))}
-            </div>
-          </div>
-
-          {/* Full overview launcher */}
-          <button
-            onClick={() => onSendMessage('Show me my full portfolio overview')}
-            className="w-full rounded-lg border border-border bg-surface px-4 py-4 text-left hover:border-border-bright transition group"
-          >
-            <p className="font-mono text-[11px] tracking-[0.06em] uppercase text-foreground">Full portfolio overview</p>
-            <p className="text-[11px] text-dim mt-0.5">4-panel canvas: savings, health, activity, spending</p>
-          </button>
         </div>
       )}
 
@@ -249,6 +265,7 @@ export function PortfolioPanel({ balance, onSendMessage, goals }: PortfolioPanel
         <TabPlaceholder
           label="Timeline"
           desc="Net worth over time — wallet, savings, and debt"
+          subtext="Opens canvas in chat"
           prompt="Show my portfolio timeline for the last 90 days"
           onSendMessage={onSendMessage}
         />
@@ -256,49 +273,52 @@ export function PortfolioPanel({ balance, onSendMessage, goals }: PortfolioPanel
 
       {activeTab === 'activity' && (
         <TabPlaceholder
-          label="Activity"
-          desc="On-chain transaction heatmap — GitHub-style grid"
-          prompt="Show my on-chain activity heatmap"
+          label="Activity heatmap"
+          desc="GitHub-style on-chain activity grid"
+          subtext="Opens canvas in chat"
+          prompt="Show my on-chain activity heatmap for the past year"
           onSendMessage={onSendMessage}
         />
       )}
 
       {activeTab === 'simulate' && (
-        <div className="space-y-4">
-          <p className="text-sm text-muted">Interactive financial simulators — adjust sliders and see real-time projections.</p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {SIMULATOR_CANVASES.map((c) => (
-              <CanvasCard key={c.title} {...c} onClick={() => onSendMessage(c.prompt)} />
-            ))}
-          </div>
+        <div className="space-y-2">
+          <p className="font-mono text-[9px] tracking-[0.1em] uppercase text-dim mb-1">Simulators — adjust and explore before acting</p>
+          {SIMULATE_TOOLS.map((t) => (
+            <button
+              key={t.title}
+              onClick={() => onSendMessage(t.prompt)}
+              className="w-full flex items-center justify-between rounded-lg border border-border bg-surface px-4 py-3 text-left hover:bg-[var(--n700)] hover:border-border-bright transition"
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-lg shrink-0">{t.icon}</span>
+                <div>
+                  <span className="text-[12px] font-medium text-[var(--n300)] block">{t.title}</span>
+                  <span className="text-[10px] text-dim leading-relaxed">{t.desc}</span>
+                </div>
+              </div>
+              <span className="text-border-bright text-lg ml-4">›</span>
+            </button>
+          ))}
         </div>
       )}
     </div>
   );
 }
 
-function CanvasCard({ title, desc, action, onClick }: { title: string; desc: string; action: string; onClick: () => void }) {
+function TabPlaceholder({ label, desc, subtext, prompt, onSendMessage }: { label: string; desc: string; subtext?: string; prompt: string; onSendMessage: (t: string) => void }) {
   return (
-    <button
-      onClick={onClick}
-      className="flex flex-col rounded-lg border border-border bg-surface px-4 py-3 text-left transition hover:bg-[var(--n700)] hover:border-border-bright"
-    >
-      <span className="font-mono text-[11px] tracking-[0.06em] uppercase text-foreground">{title}</span>
-      <span className="text-[10px] text-dim mt-0.5 leading-relaxed">{desc}</span>
-      <span className="font-mono text-[9px] tracking-[0.08em] uppercase text-muted mt-2">{action} &rarr;</span>
-    </button>
-  );
-}
-
-function TabPlaceholder({ label, desc, prompt, onSendMessage }: { label: string; desc: string; prompt: string; onSendMessage: (t: string) => void }) {
-  return (
-    <div className="flex flex-col items-center justify-center py-16 text-center">
-      <p className="text-sm text-muted mb-2">{desc}</p>
+    <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
+      <p className="font-mono text-[10px] tracking-[0.08em] uppercase text-dim">{label}</p>
+      <p className="text-[12px] text-border-bright text-center leading-relaxed">
+        {desc}
+        {subtext && <><br />{subtext}</>}
+      </p>
       <button
         onClick={() => onSendMessage(prompt)}
-        className="font-mono text-[11px] tracking-[0.08em] uppercase text-foreground border border-border rounded-full px-4 py-2 hover:bg-surface transition mt-2"
+        className="font-mono text-[11px] tracking-[0.08em] uppercase text-background bg-foreground rounded-full px-4 py-2 hover:opacity-90 transition mt-2"
       >
-        Open {label} &rarr;
+        Show {label} →
       </button>
     </div>
   );

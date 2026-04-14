@@ -20,6 +20,8 @@ const EMPTY_STATES: Record<ActivityFilter, { message: string; cta: string; flow:
   receive: { message: 'No incoming transfers yet.', cta: 'Share your address', flow: 'receive' },
   swap: { message: 'No swaps yet.', cta: 'Swap tokens', flow: 'swap' },
   pay: { message: 'No API calls yet.', cta: 'Ask Audric anything', flow: 'help' },
+  store: { message: 'No store activity yet.', cta: 'Open the store', flow: 'store' },
+  autonomous: { message: 'No autonomous actions yet.', cta: 'Set up an automation', flow: 'save' },
   follow_up: { message: 'No follow-ups yet.', cta: 'Set a savings goal', flow: 'save' },
   schedule: { message: 'No scheduled actions yet.', cta: 'Create a schedule', flow: 'save' },
 };
@@ -52,7 +54,7 @@ export function ActivityFeed({ feed, onAction }: ActivityFeedProps) {
               <p className="text-[10px] font-mono text-muted uppercase tracking-[0.15em] mb-2">
                 {group.label}
               </p>
-              <div className="divide-y divide-border">
+              <div className="space-y-2">
                 {group.items.map((item) => (
                   <ActivityCard key={item.id} item={item} network={feed.network} />
                 ))}
