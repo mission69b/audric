@@ -12,16 +12,11 @@ import { useBalance } from '@/hooks/useBalance';
 import { useScheduledActions } from '@/hooks/useScheduledActions';
 import { GoalCard } from '@/components/settings/GoalCard';
 import { GoalEditor } from '@/components/settings/GoalEditor';
+import { PassportSection } from '@/components/settings/PassportSection';
+import { SafetySection } from '@/components/settings/SafetySection';
+import { FeaturesSection } from '@/components/settings/FeaturesSection';
 import { truncateAddress } from '@/lib/format';
 import { SUI_NETWORK } from '@/lib/constants';
-
-interface SpendingSummary {
-  totalSpent: number;
-  requestCount: number;
-  serviceCount: number;
-  period: string;
-  byService: Array<{ service: string; totalSpent: number; requestCount: number }>;
-}
 
 function formatMemoryAge(extractedAt: string): string {
   const hoursAgo = (Date.now() - new Date(extractedAt).getTime()) / 3_600_000;
@@ -31,18 +26,18 @@ function formatMemoryAge(extractedAt: string): string {
   return `${daysAgo}d ago`;
 }
 
-type Section = 'account' | 'features' | 'goals' | 'safety' | 'contacts' | 'sessions' | 'memory' | 'schedules' | 'wallets';
+type Section = 'passport' | 'account' | 'features' | 'goals' | 'safety' | 'contacts' | 'sessions' | 'memory' | 'schedules' | 'wallets';
 
 const SECTIONS: { id: Section; label: string }[] = [
-  { id: 'account', label: 'Account' },
-  { id: 'wallets', label: 'Wallets' },
+  { id: 'passport', label: 'Passport' },
+  { id: 'safety', label: 'Safety' },
   { id: 'features', label: 'Features' },
+  { id: 'memory', label: 'Memory' },
+  { id: 'wallets', label: 'Wallets' },
   { id: 'schedules', label: 'Automations' },
   { id: 'goals', label: 'Goals' },
-  { id: 'safety', label: 'Safety' },
   { id: 'contacts', label: 'Contacts' },
   { id: 'sessions', label: 'Sessions' },
-  { id: 'memory', label: 'Memory' },
 ];
 
 const STAGE_LABELS: Record<number, string> = {
@@ -60,35 +55,6 @@ const PATTERN_LABELS: Record<string, string> = {
   swap_pattern: 'Regular Swap',
 };
 
-const NOTIFICATION_FEATURES = [
-  {
-    key: 'hf_alert' as const,
-    label: 'Health factor alerts',
-    description: 'Get notified when your credit position is at risk of liquidation',
-    free: true,
-  },
-  {
-    key: 'briefing' as const,
-    label: 'Morning briefing',
-    description: 'Daily summary of your earnings, rates, and suggested actions',
-    free: false,
-    cost: '$0.005/day',
-  },
-  {
-    key: 'rate_alert' as const,
-    label: 'Rate change alerts',
-    description: 'Get notified when USDC savings or borrow rates change significantly',
-    free: true,
-  },
-  {
-    key: 'auto_compound' as const,
-    label: 'Auto-compound rewards',
-    description: 'Automatically claim and re-deposit NAVX rewards into your savings',
-    free: false,
-    cost: '$0.005/day',
-  },
-];
-
 function SettingsContent() {
   const { address, session, logout, refresh, expiringSoon } = useZkLogin();
   const jwt = session?.jwt ?? null;
@@ -100,7 +66,6 @@ function SettingsContent() {
   const savingsBalance = balanceQuery.data?.savings ?? 0;
   const [editingGoal, setEditingGoal] = useState<SavingsGoal | null>(null);
   const [showGoalEditor, setShowGoalEditor] = useState(false);
-  const [spending, setSpending] = useState<SpendingSummary | null>(null);
 
   // Linked wallets state
   const [linkedWallets, setLinkedWallets] = useState<Array<{
@@ -113,27 +78,14 @@ function SettingsContent() {
   const [walletSaving, setWalletSaving] = useState(false);
   const [walletDeleting, setWalletDeleting] = useState<string | null>(null);
 
-  const fetchSpending = useCallback(async () => {
-    if (!address) return;
-    try {
-      const res = await fetch(`/api/analytics/spending?period=month`, { headers: { 'x-sui-address': address } });
-      if (res.ok) {
-        const data = await res.json();
-        if (data && typeof data.totalSpent === 'number') setSpending(data);
-      }
-    } catch { /* ignore */ }
-  }, [address]);
-
-  useEffect(() => { fetchSpending(); }, [fetchSpending]);
-
   const searchParams = useSearchParams();
   const [activeSection, setActiveSection] = useState<Section>(() => {
     const section = typeof window !== 'undefined'
       ? new URLSearchParams(window.location.search).get('section')
       : null;
-    return (section && SECTIONS.some((s) => s.id === section)) ? section as Section : 'account';
+    if (section === 'account') return 'passport' as Section;
+    return (section && SECTIONS.some((s) => s.id === section)) ? section as Section : 'passport';
   });
-  const [copied, setCopied] = useState(false);
   const [financialProfile, setFinancialProfile] = useState<{
     style: string;
     notes: string;
@@ -267,18 +219,7 @@ function SettingsContent() {
     finally { setClearingMemories(false); }
   };
 
-  const handleCopy = () => {
-    if (!address) return;
-    navigator.clipboard.writeText(address);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const expiresAt = session?.expiresAt;
-  const expiryDate = expiresAt ? new Date(expiresAt) : null;
-  const daysLeft = expiresAt
-    ? Math.max(0, Math.ceil((expiresAt - Date.now()) / (24 * 60 * 60 * 1000)))
-    : 0;
+  const expiresAt = session?.expiresAt ?? null;
 
   return (
     <main className="flex flex-1 flex-col items-center pt-10 pb-16 px-4">
@@ -316,57 +257,15 @@ function SettingsContent() {
           </nav>
 
           <div className="space-y-6">
-            {activeSection === 'account' && (
-              <section className="space-y-5">
-                <SectionTitle>Account</SectionTitle>
-
-                <SettingsRow label="Wallet address">
-                  <span className="font-mono text-xs text-foreground">
-                    {address ? truncateAddress(address) : '—'}
-                  </span>
-                  <button
-                    onClick={handleCopy}
-                    className="ml-2 font-mono text-[10px] tracking-wider text-muted uppercase hover:text-foreground transition"
-                  >
-                    {copied ? '✓ Copied' : 'Copy'}
-                  </button>
-                </SettingsRow>
-
-                <SettingsRow label="Network">
-                  <span className="text-sm text-foreground capitalize">{SUI_NETWORK}</span>
-                </SettingsRow>
-
-                <SettingsRow label="Sign-in session">
-                  <div className="flex flex-col items-end gap-1">
-                    <span className="text-sm text-foreground">
-                      {expiryDate
-                        ? `Expires ${expiryDate.toLocaleDateString()} (${daysLeft}d)`
-                        : '—'}
-                    </span>
-                    {expiringSoon && (
-                      <span className="text-xs text-warning flex items-center gap-1">
-                        <span className="h-1.5 w-1.5 rounded-full bg-warning" />
-                        Expiring soon
-                      </span>
-                    )}
-                  </div>
-                </SettingsRow>
-
-                <div className="flex gap-2 pt-2">
-                  <button
-                    onClick={() => refresh()}
-                    className="rounded-md border border-border px-4 py-2 font-mono text-[10px] tracking-[0.1em] text-muted uppercase hover:text-foreground hover:border-foreground/20 transition"
-                  >
-                    Refresh Session
-                  </button>
-                  <button
-                    onClick={logout}
-                    className="rounded-md border border-border px-4 py-2 font-mono text-[10px] tracking-[0.1em] text-muted uppercase hover:text-foreground hover:border-foreground/20 transition"
-                  >
-                    Sign Out
-                  </button>
-                </div>
-              </section>
+            {activeSection === 'passport' && (
+              <PassportSection
+                address={address}
+                network={SUI_NETWORK}
+                expiresAt={expiresAt}
+                expiringSoon={expiringSoon}
+                onRefresh={refresh}
+                onLogout={logout}
+              />
             )}
 
             {activeSection === 'wallets' && (
@@ -455,96 +354,13 @@ function SettingsContent() {
             )}
 
             {activeSection === 'features' && (
-              <section className="space-y-5">
-                <SectionTitle>Features</SectionTitle>
-
-                {/* Allowance budget card */}
-                {allowance.loading ? (
-                  <p className="text-sm text-muted">Loading budget...</p>
-                ) : allowance.allowanceId ? (
-                  <div className="rounded-lg border border-border bg-surface p-4 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted">Features budget</span>
-                      <span className="text-sm text-foreground font-medium">
-                        ${allowance.balance !== null ? allowance.balance.toFixed(2) : '—'}
-                      </span>
-                    </div>
-                    {allowance.balance !== null && allowance.balance < 0.05 && (
-                      <p className="text-xs text-warning">
-                        Budget running low. Top up to keep features active.
-                      </p>
-                    )}
-                    <div className="flex gap-2 pt-1">
-                      <Link
-                        href="/setup"
-                        className="rounded-md border border-border px-3 py-1.5 font-mono text-[10px] tracking-[0.1em] text-muted uppercase hover:text-foreground hover:border-foreground/20 transition"
-                      >
-                        Top Up
-                      </Link>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="rounded-lg border border-border bg-surface p-4 space-y-3">
-                    <p className="text-sm text-muted leading-relaxed">
-                      Set up a features budget to enable paid notifications like morning briefings and rate alerts.
-                    </p>
-                    <Link
-                      href="/setup"
-                      className="inline-block rounded-md bg-foreground px-4 py-2 font-mono text-[10px] tracking-[0.1em] text-background uppercase hover:opacity-90 transition"
-                    >
-                      Set Up Budget
-                    </Link>
-                  </div>
-                )}
-
-                {/* Feature toggles */}
-                <p className="text-sm text-muted leading-relaxed">
-                  Control which notifications Audric sends you. Health factor alerts are always free.
-                </p>
-                {prefsLoading ? (
-                  <p className="text-sm text-muted">Loading preferences...</p>
-                ) : (
-                  <div className="space-y-1">
-                    {NOTIFICATION_FEATURES.map((f) => (
-                      <div key={f.key} className="flex items-start justify-between py-3 border-b border-border last:border-0">
-                        <div className="flex-1 mr-4">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm text-foreground font-medium">{f.label}</span>
-                            {f.free && (
-                              <span className="font-mono text-[9px] tracking-wider text-success uppercase bg-success/10 px-1.5 py-0.5 rounded">
-                                Free
-                              </span>
-                            )}
-                            {f.cost && (
-                              <span className="font-mono text-[9px] tracking-wider text-muted uppercase bg-surface px-1.5 py-0.5 rounded">
-                                {f.cost}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-xs text-muted mt-0.5 leading-relaxed">{f.description}</p>
-                        </div>
-                        <button
-                          onClick={() => toggle(f.key)}
-                          disabled={toggling === f.key}
-                          className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors mt-0.5 ${
-                            prefs[f.key]
-                              ? 'bg-foreground'
-                              : 'bg-foreground/20'
-                          } ${toggling === f.key ? 'opacity-50' : ''}`}
-                          role="switch"
-                          aria-checked={prefs[f.key]}
-                        >
-                          <span
-                            className={`pointer-events-none inline-block h-3.5 w-3.5 rounded-full bg-background transition-transform ${
-                              prefs[f.key] ? 'translate-x-[18px]' : 'translate-x-[3px]'
-                            }`}
-                          />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </section>
+              <FeaturesSection
+                allowance={allowance}
+                prefs={prefs}
+                prefsLoading={prefsLoading}
+                toggling={toggling}
+                toggle={toggle}
+              />
             )}
 
             {activeSection === 'schedules' && (
@@ -772,68 +588,7 @@ function SettingsContent() {
             )}
 
             {activeSection === 'safety' && (
-              <section className="space-y-5">
-                <SectionTitle>Safety</SectionTitle>
-                <p className="text-sm text-muted leading-relaxed">
-                  Control spending limits and transaction safety settings.
-                </p>
-
-                {spending && spending.requestCount > 0 && (
-                  <div className="rounded-xl border border-border bg-surface/50 p-4">
-                    <p className="text-xs text-muted uppercase tracking-wider mb-2">API usage — {spending.period}</p>
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-lg font-semibold text-foreground">${spending.totalSpent.toFixed(2)}</span>
-                      <span className="text-xs text-muted">across {spending.requestCount} calls to {spending.serviceCount} service{spending.serviceCount !== 1 ? 's' : ''}</span>
-                    </div>
-                    {spending.byService.length > 0 && (
-                      <div className="mt-3 pt-3 border-t border-border space-y-1.5">
-                        {spending.byService.slice(0, 5).map((s) => (
-                          <div key={s.service} className="flex items-center justify-between text-xs">
-                            <span className="text-muted">{s.service}</span>
-                            <span className="text-foreground font-mono">${s.totalSpent.toFixed(2)} <span className="text-dim">({s.requestCount})</span></span>
-                          </div>
-                        ))}
-                        {spending.byService.length > 5 && (
-                          <p className="text-[10px] text-dim">+ {spending.byService.length - 5} more</p>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Daily API budget */}
-                <div className="rounded-xl border border-border bg-surface/50 p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <div>
-                      <p className="text-sm font-medium text-foreground">Daily API budget</p>
-                      <p className="text-xs text-muted mt-0.5">Maximum daily spend on MPP services (image gen, web search, etc.)</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 mt-3">
-                    <span className="text-sm text-muted">$</span>
-                    <input
-                      type="number"
-                      min={0}
-                      step={0.1}
-                      defaultValue={1.00}
-                      className="w-24 bg-background border border-border rounded-lg px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
-                      onBlur={async (e) => {
-                        if (!address) return;
-                        const val = parseFloat(e.target.value);
-                        if (isNaN(val) || val < 0) return;
-                        try {
-                          await fetch('/api/user/preferences', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ address, limits: { dailyApiBudget: val } }),
-                          });
-                        } catch { /* ignore */ }
-                      }}
-                    />
-                    <span className="text-xs text-muted">per day</span>
-                  </div>
-                </div>
-              </section>
+              <SafetySection address={address} />
             )}
 
             {activeSection === 'contacts' && (
