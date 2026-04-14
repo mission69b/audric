@@ -17,6 +17,7 @@ import { resolveFlow } from '@/components/dashboard/AgentMarkdown';
 import { UnifiedTimeline } from '@/components/dashboard/UnifiedTimeline';
 import { SettingsPanel } from '@/components/settings/SettingsPanel';
 import { EmailCaptureModal } from '@/components/auth/EmailCaptureModal';
+import { AppShell } from '@/components/shell/AppShell';
 import { useChipFlow, type ChipFlowResult, type FlowContext } from '@/hooks/useChipFlow';
 import { useFeed } from '@/hooks/useFeed';
 import { useEngine } from '@/hooks/useEngine';
@@ -36,10 +37,21 @@ import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
 import { useActivityFeed } from '@/hooks/useActivityFeed';
 import { BriefingCard } from '@/components/dashboard/BriefingCard';
 import { WelcomeCard } from '@/components/dashboard/WelcomeCard';
+import { NewConversationView } from '@/components/dashboard/NewConversationView';
+import { FirstLoginView } from '@/components/dashboard/FirstLoginView';
 import { TosBanner } from '@/components/dashboard/TosBanner';
 import { GracePeriodBanner } from '@/components/dashboard/GracePeriodBanner';
 import { useOvernightBriefing } from '@/hooks/useOvernightBriefing';
 import { useUserStatus } from '@/hooks/useUserStatus';
+import { usePanel } from '@/hooks/usePanel';
+import { PortfolioPanel } from '@/components/panels/PortfolioPanel';
+import { ActivityPanel } from '@/components/panels/ActivityPanel';
+import { PayPanel } from '@/components/panels/PayPanel';
+import { GoalsPanel } from '@/components/panels/GoalsPanel';
+import { ReportsPanel } from '@/components/panels/ReportsPanel';
+import { ContactsPanel } from '@/components/panels/ContactsPanel';
+import { AutomationsPanel } from '@/components/panels/AutomationsPanel';
+import { StorePanel } from '@/components/panels/StorePanel';
 
 const LS_LAST_SAVINGS = 't2000_last_savings';
 const LS_LAST_OPEN = 't2000_last_open_date';
@@ -205,6 +217,7 @@ export interface DashboardContentProps {
 export function DashboardContent({ initialSessionId }: DashboardContentProps = {}) {
   const router = useRouter();
   const { address, session, expiringSoon, logout, refresh } = useZkLogin();
+  const { panel } = usePanel();
   useUsdcSponsor(address);
   const allowance = useAllowanceStatus(address);
 
@@ -1312,133 +1325,67 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
     </div>
   ) : null;
 
-  if (isEmpty && !engine.isStreaming && activeTab === 'chat') {
+  const isFirstLogin = !userStatus.loading && !userStatus.onboarded;
+
+  const renderEmptyState = () => {
+    if (isFirstLogin) {
+      return (
+        <FirstLoginView
+          greeting={greeting}
+          onSend={handleInputSubmit}
+          onSave={handleWelcomeSave}
+          onAsk={handleWelcomeAsk}
+          onDismiss={handleWelcomeDismiss}
+          usdcBalance={balanceQuery.data?.usdc ?? 0}
+          hasSavings={(balanceQuery.data?.savings ?? 0) > 0}
+        />
+      );
+    }
+
+    const dailyYield = balance.savings > 0 && balance.savingsRate > 0
+      ? (balance.savings * balance.savingsRate) / 365
+      : 0;
+
     return (
-      <main className="flex flex-1 flex-col min-h-dvh">
-        <div className="mx-auto w-full max-w-2xl px-4 sm:px-6 pt-6 pb-4">
-          <BalanceHeader
-            address={address}
-            balance={balance}
-            compact={false}
-            onSettingsClick={() => setSettingsOpen(true)}
-          />
-          <div className="mt-4">
-            <DashboardTabs activeTab={activeTab} onTabChange={handleTabChange} hasUnread={activityFeed.hasUnread} />
-          </div>
-        </div>
-
-        <div className={`flex-1 flex flex-col items-center justify-center px-4 sm:px-6 ${!userStatus.loading && !userStatus.onboarded && !briefing.briefing ? 'mt-0' : '-mt-8'}`}>
-          {!userStatus.loading && !userStatus.onboarded && !briefing.briefing && (
-            <div className="w-full max-w-2xl mb-6">
-              <WelcomeCard
-                usdcBalance={balanceQuery.data?.usdc ?? 0}
-                hasSavings={(balanceQuery.data?.savings ?? 0) > 0}
-                onSave={handleWelcomeSave}
-                onAsk={handleWelcomeAsk}
-                onDismiss={handleWelcomeDismiss}
-              />
-            </div>
-          )}
-          {briefing.briefing && (
-            <div className="w-full max-w-2xl mb-6">
-              <BriefingCard
-                briefing={briefing.briefing}
-                onDismiss={briefing.dismiss}
-                onViewReport={handleBriefingViewReport}
-                onCtaClick={handleBriefingCtaClick}
-              />
-            </div>
-          )}
-
-          <p className="text-sm text-muted mb-6">{greeting}</p>
-
-          <div className="w-full max-w-2xl mb-6">
-            <InputBar
-              onSubmit={handleInputSubmit}
-              placeholder="Ask anything..."
-            />
-          </div>
-
-          {contextualChips.length > 0 && (
-            <div className="w-full max-w-2xl mb-6">
-              <ContextualChips
-                chips={contextualChips}
-                onChipFlow={handleChipClick}
-                onAgentPrompt={(prompt) => handleInputSubmit(prompt)}
-                onDismiss={handleDismissChip}
-              />
-            </div>
-          )}
-
-          <div className="w-full max-w-2xl overflow-x-auto scrollbar-none">
-            <ChipBar
-              onChipClick={handleChipClick}
-              activeFlow={chipFlow.state.flow}
-            />
-          </div>
-        </div>
-
-        {settingsPanel}
-        {emailModal}
-        {tosBanner}
-        {graceBanner}
-      </main>
+      <NewConversationView
+        greeting={greeting}
+        netWorth={balance.total}
+        dailyYield={dailyYield}
+        savingsRate={balance.savingsRate}
+        automationCount={0}
+        onSend={handleInputSubmit}
+        onChipClick={handleChipClick}
+        activeFlow={chipFlow.state.flow}
+        briefing={briefing.briefing ? {
+          briefing: briefing.briefing,
+          dismiss: briefing.dismiss,
+          onViewReport: handleBriefingViewReport,
+          onCtaClick: handleBriefingCtaClick,
+        } : null}
+      />
     );
-  }
+  };
 
-  if (activeTab === 'activity') {
-    return (
-      <main className="flex flex-1 flex-col min-h-dvh">
-        <div className={`sticky top-0 z-20 bg-background/95 backdrop-blur-sm transition-[border-color] duration-200 border-b ${scrolled ? 'border-border/50' : 'border-transparent'}`}>
-          <div className="mx-auto w-full max-w-2xl px-4 sm:px-6 pt-6 pb-0">
-            <BalanceHeader
-              address={address}
-              balance={balance}
-              compact={scrolled}
-              onSettingsClick={() => setSettingsOpen(true)}
+  const renderActivityTab = () => (
+    <div className="flex-1 flex flex-col">
+      <div className="mx-auto w-full max-w-2xl px-4 sm:px-6 py-4">
+        {briefing.briefing && (
+          <div className="mb-4">
+            <BriefingCard
+              briefing={briefing.briefing}
+              onDismiss={briefing.dismiss}
+              onViewReport={handleBriefingViewReport}
+              onCtaClick={handleBriefingCtaClick}
             />
-            <div className="mt-4">
-              <DashboardTabs activeTab={activeTab} onTabChange={handleTabChange} hasUnread={activityFeed.hasUnread} />
-            </div>
           </div>
-        </div>
-        <div className="mx-auto w-full max-w-2xl px-4 sm:px-6 py-4">
-          {briefing.briefing && (
-            <div className="mb-4">
-              <BriefingCard
-                briefing={briefing.briefing}
-                onDismiss={briefing.dismiss}
-                onViewReport={handleBriefingViewReport}
-                onCtaClick={handleBriefingCtaClick}
-              />
-            </div>
-          )}
-          <ActivityFeed feed={activityFeed} onAction={handleActivityAction} />
-        </div>
-
-        {settingsPanel}
-        {emailModal}
-        {tosBanner}
-        {graceBanner}
-      </main>
-    );
-  }
-
-  return (
-    <main className="flex flex-1 flex-col pb-32">
-      <div className={`sticky top-0 z-20 bg-background/95 backdrop-blur-sm transition-[border-color] duration-200 border-b ${scrolled ? 'border-border/50' : 'border-transparent'}`}>
-        <div className="mx-auto w-full max-w-2xl px-4 sm:px-6 pt-6 pb-0">
-          <BalanceHeader
-            address={address}
-            balance={balance}
-            compact={scrolled}
-            onSettingsClick={() => setSettingsOpen(true)}
-          />
-          <div className="mt-4">
-            <DashboardTabs activeTab={activeTab} onTabChange={handleTabChange} hasUnread={activityFeed.hasUnread} />
-          </div>
-        </div>
+        )}
+        <ActivityFeed feed={activityFeed} onAction={handleActivityAction} />
       </div>
+    </div>
+  );
+
+  const renderChatView = () => (
+    <div className="flex-1 flex flex-col pb-32">
       <div className="mx-auto w-full max-w-2xl px-4 sm:px-6 py-6 space-y-3">
 
         {chipFlow.state.phase === 'result' && chipFlow.state.result && (
@@ -1574,7 +1521,7 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
 
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 border-t border-border bg-background/95 backdrop-blur-sm safe-bottom z-30">
+      <div className="fixed bottom-0 left-0 right-0 md:left-[var(--sidebar-width)] border-t border-border bg-background/95 backdrop-blur-sm safe-bottom z-30">
         <div className="mx-auto max-w-2xl px-4 sm:px-6 py-3 space-y-3">
           {engine.isStreaming ? (
             <>
@@ -1600,6 +1547,14 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
             </>
           ) : (
             <>
+              {!isInFlow && contextualChips.length > 0 && (
+                <ContextualChips
+                  chips={contextualChips}
+                  onChipFlow={handleChipClick}
+                  onAgentPrompt={(prompt) => handleInputSubmit(prompt)}
+                  onDismiss={handleDismissChip}
+                />
+              )}
               <div className="flex items-center justify-between gap-2">
                 <div className="flex gap-2 overflow-x-auto scrollbar-none flex-1">
                   <ChipBar
@@ -1634,12 +1589,99 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
           )}
         </div>
       </div>
+    </div>
+  );
 
+  const panelContent = (() => {
+    switch (panel) {
+      case 'portfolio':
+        return (
+          <PortfolioPanel
+            address={address}
+            balance={balance}
+            onSendMessage={(text) => {
+              handleInputSubmit(text);
+            }}
+          />
+        );
+      case 'activity':
+        return (
+          <ActivityPanel
+            feed={activityFeed}
+            onAction={handleActivityAction}
+            briefing={briefing.briefing}
+            onBriefingDismiss={briefing.dismiss}
+            onBriefingViewReport={handleBriefingViewReport}
+            onBriefingCtaClick={handleBriefingCtaClick}
+          />
+        );
+      case 'pay':
+        return (
+          <PayPanel
+            address={address}
+            jwt={session.jwt}
+            onSendMessage={handleInputSubmit}
+          />
+        );
+      case 'automations':
+        return (
+          <AutomationsPanel
+            address={address}
+            jwt={session?.jwt ?? null}
+            onSendMessage={handleInputSubmit}
+          />
+        );
+      case 'goals':
+        return session?.jwt ? (
+          <GoalsPanel address={address} jwt={session.jwt} />
+        ) : null;
+      case 'reports':
+        return (
+          <ReportsPanel
+            address={address}
+            briefing={briefing.briefing}
+            onBriefingDismiss={briefing.dismiss}
+            onBriefingViewReport={() => window.open(`/report/${address}`, '_blank')}
+            onBriefingCtaClick={handleBriefingCtaClick}
+            onSendMessage={handleInputSubmit}
+          />
+        );
+      case 'contacts':
+        return (
+          <ContactsPanel
+            address={address}
+            onSendMessage={handleInputSubmit}
+          />
+        );
+      case 'store':
+        return <StorePanel />;
+      case 'settings':
+        return null;
+      case 'chat':
+      default: {
+        if (activeTab === 'activity') return renderActivityTab();
+        if (isEmpty && !engine.isStreaming) return renderEmptyState();
+        return renderChatView();
+      }
+    }
+  })();
+
+  return (
+    <AppShell
+      address={address}
+      balance={balance}
+      onSettingsClick={() => setSettingsOpen(true)}
+      jwt={session.jwt}
+      activeSessionId={engine.sessionId ?? undefined}
+      onLoadSession={engine.loadSession}
+      onNewConversation={handleNewConversation}
+    >
+      {panelContent}
       {settingsPanel}
       {emailModal}
       {tosBanner}
       {graceBanner}
-    </main>
+    </AppShell>
   );
 }
 

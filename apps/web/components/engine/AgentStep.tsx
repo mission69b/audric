@@ -112,19 +112,21 @@ export function getStepLabel(toolName: string): string {
 function StatusDot({ status }: { status: StepStatus }) {
   switch (status) {
     case 'pending':
-      return <span className="w-2.5 h-2.5 rounded-full border border-border-bright shrink-0" aria-hidden="true" />;
+      return <span className="w-4 h-4 rounded-full border border-border-bright shrink-0" aria-hidden="true" />;
     case 'running':
-      return <span className="w-2.5 h-2.5 rounded-full bg-foreground shrink-0 animate-pulse" aria-hidden="true" />;
+      return (
+        <span className="w-4 h-4 rounded-full border-2 border-foreground border-t-transparent shrink-0 animate-spin" aria-hidden="true" />
+      );
     case 'done':
       return (
-        <span className="w-2.5 h-2.5 rounded-full bg-success shrink-0 flex items-center justify-center" aria-hidden="true">
-          <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
-            <path d="M1.5 4L3.25 5.75L6.5 2.5" stroke="white" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" />
+        <span className="w-4 h-4 rounded-full bg-success shrink-0 flex items-center justify-center" aria-hidden="true">
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+            <path d="M2 5L4 7L8 3" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </span>
       );
     case 'error':
-      return <span className="w-2.5 h-2.5 rounded-full bg-error shrink-0" aria-hidden="true" />;
+      return <span className="w-4 h-4 rounded-full bg-error shrink-0" aria-hidden="true" />;
   }
 }
 
@@ -142,7 +144,7 @@ export function AgentStep({
     <div className="flex items-center gap-2 py-1">
       <StatusDot status={status} />
       {icon && <span className="text-sm leading-none shrink-0">{icon}</span>}
-      <span className="font-mono text-xs tracking-wider uppercase text-foreground">
+      <span className={`font-mono text-[10px] tracking-[0.1em] uppercase ${status === 'done' || status === 'error' ? 'text-muted' : 'text-foreground'}`}>
         {label}
       </span>
       {collapsible && (

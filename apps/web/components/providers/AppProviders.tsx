@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SuiClientProvider, createNetworkConfig } from '@mysten/dapp-kit';
 import { getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
 import { useState } from 'react';
+import { ToastProvider } from '@/components/ui/Toast';
 
 const { networkConfig } = createNetworkConfig({
   mainnet: { url: getJsonRpcFullnodeUrl('mainnet'), network: 'mainnet' },
@@ -22,7 +23,9 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <SuiClientProvider networks={networkConfig} defaultNetwork={defaultNetwork}>
-        {children}
+        <ToastProvider>
+          {children}
+        </ToastProvider>
       </SuiClientProvider>
     </QueryClientProvider>
   );

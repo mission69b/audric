@@ -7,12 +7,12 @@ interface ChipBarProps {
 }
 
 const CHIPS = [
-  { id: 'save', label: 'Save' },
-  { id: 'send', label: 'Send' },
-  { id: 'swap', label: 'Swap' },
-  { id: 'borrow', label: 'Credit' },
-  { id: 'receive', label: 'Receive' },
-  { id: 'charts', label: 'Charts' },
+  { id: 'save', label: 'Save', icon: '💰' },
+  { id: 'send', label: 'Send', icon: '📤' },
+  { id: 'swap', label: 'Swap', icon: '🔄' },
+  { id: 'borrow', label: 'Credit', icon: '💳' },
+  { id: 'receive', label: 'Receive', icon: '📥' },
+  { id: 'charts', label: 'Charts', icon: '📊' },
 ];
 
 export function ChipBar({ onChipClick, activeFlow, disabled }: ChipBarProps) {
@@ -25,7 +25,7 @@ export function ChipBar({ onChipClick, activeFlow, disabled }: ChipBarProps) {
           disabled={disabled}
           aria-pressed={activeFlow === chip.id}
           className={[
-            'shrink-0 rounded-full px-3 py-1.5 text-xs font-mono uppercase tracking-wider font-medium transition active:scale-[0.95] border',
+            'shrink-0 rounded-full px-3.5 py-1.5 text-[11px] font-mono uppercase tracking-[0.08em] font-medium transition active:scale-[0.95] border flex items-center gap-1.5',
             'disabled:opacity-40 disabled:cursor-not-allowed',
             'focus-visible:ring-2 focus-visible:ring-foreground/20 focus-visible:ring-offset-1 focus-visible:ring-offset-background',
             activeFlow === chip.id
@@ -33,6 +33,7 @@ export function ChipBar({ onChipClick, activeFlow, disabled }: ChipBarProps) {
               : 'bg-background border-border text-muted hover:border-border-bright hover:text-foreground',
           ].join(' ')}
         >
+          <span className="text-sm leading-none">{chip.icon}</span>
           {chip.label}
         </button>
       ))}
