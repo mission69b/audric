@@ -1381,7 +1381,7 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
   );
 
   const renderChatView = () => (
-    <div className="flex-1 flex flex-col pb-32">
+    <div className="flex-1 flex flex-col pb-52">
       <div className="mx-auto w-full max-w-2xl px-4 sm:px-6 py-6 space-y-3">
 
         {chipFlow.state.phase === 'result' && chipFlow.state.result && (
@@ -1517,7 +1517,7 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
 
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 md:left-[var(--sidebar-width)] border-t border-border bg-background/95 backdrop-blur-sm safe-bottom z-30">
+      <div className="sticky bottom-0 border-t border-border bg-background/95 backdrop-blur-sm safe-bottom z-30">
         <div className="mx-auto max-w-2xl px-4 sm:px-6 py-3 space-y-3">
           {engine.isStreaming ? (
             <>

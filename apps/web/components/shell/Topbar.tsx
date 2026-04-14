@@ -56,27 +56,25 @@ export function Topbar({
             onClick={() => setDrawerOpen(!drawerOpen)}
             className="inline-block cursor-pointer"
           >
-            <p className="text-[32px] font-light tracking-tight font-heading text-foreground leading-none">
+            <p className="text-4xl font-bold tracking-tight font-sans text-foreground leading-none">
               ${fmtUsd(balance.total)}
             </p>
-            <p className="font-mono text-[10px] text-muted tracking-wide mt-0.5">
-              <span className="text-dim">available</span>{' '}
-              <span className="text-foreground">${Math.floor(balance.cash)}</span>
+            <p className="text-xs font-mono text-muted tracking-wide mt-0.5">
+              available ${Math.floor(balance.cash)}
               {balance.savings >= 0.01 && (
-                <>
-                  {' · '}
-                  <span className="text-dim">earning</span>{' '}
-                  <span className="text-foreground">${Math.floor(balance.savings)}</span>
-                </>
+                <>{' · '}earning ${Math.floor(balance.savings)}</>
               )}
               {balance.borrows > 0 && (
                 <>
                   {' · '}
-                  <span className="text-warning font-mono text-[10px] tracking-[0.1em] uppercase">
-                    debt ${Math.floor(balance.borrows)} ▼
+                  <span className="text-warning">
+                    <span className="uppercase text-[10px] tracking-[0.1em]">debt</span> ${Math.floor(balance.borrows)}
                   </span>
                 </>
-              )}
+              )}{' '}
+              <span className={`inline-block transition-transform duration-200 text-dim ${drawerOpen ? 'rotate-180' : ''}`}>
+                &#9662;
+              </span>
             </p>
           </button>
         )}

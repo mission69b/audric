@@ -31,14 +31,20 @@ const URL_PANEL_MAP: Record<string, PanelId> = Object.fromEntries(
   Object.entries(PANEL_URL_MAP).map(([id, url]) => [url, id as PanelId]),
 );
 
-function panelFromPathname(pathname: string): PanelId {
+function panelFromUrl(): PanelId {
+  if (typeof window === 'undefined') return 'chat';
+  const { pathname, searchParams } = new URL(window.location.href);
+  const paramPanel = searchParams.get('panel');
+  if (paramPanel && paramPanel in URL_PANEL_MAP_REVERSE) return paramPanel as PanelId;
   if (pathname.startsWith('/chat/')) return 'chat';
   return URL_PANEL_MAP[pathname] ?? 'chat';
 }
 
-let currentPanel: PanelId = typeof window !== 'undefined'
-  ? panelFromPathname(window.location.pathname)
-  : 'chat';
+const URL_PANEL_MAP_REVERSE = Object.fromEntries(
+  (Object.keys(PANEL_URL_MAP) as PanelId[]).map((id) => [id, true]),
+);
+
+let currentPanel: PanelId = panelFromUrl();
 const listeners = new Set<() => void>();
 
 function emitChange() {
@@ -82,7 +88,7 @@ export function usePanel() {
 if (typeof window !== 'undefined') {
   window.addEventListener('popstate', (e) => {
     const state = e.state as { panel?: PanelId } | null;
-    const next = state?.panel ?? panelFromPathname(window.location.pathname);
+    const next = state?.panel ?? panelFromUrl();
     if (next !== currentPanel) {
       currentPanel = next;
       emitChange();

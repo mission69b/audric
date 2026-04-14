@@ -101,12 +101,7 @@ export function NewConversationView({
         </div>
       )}
 
-      <p className="font-heading text-lg text-foreground mb-1">{greeting}</p>
-      {stats.length > 0 && (
-        <p className="font-mono text-[11px] text-muted tracking-wide mb-8">
-          {stats.join(' · ')}
-        </p>
-      )}
+      <p className="font-heading text-lg text-foreground mb-8">{greeting}</p>
 
       <div className="w-full max-w-2xl mb-6">
         <InputBar

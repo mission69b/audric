@@ -11,6 +11,7 @@ interface ConvoSession {
 
 interface ConvoHistoryListProps {
   jwt: string | undefined;
+  address: string | undefined;
   activeSessionId?: string;
   onLoadSession: (sessionId: string) => void;
   onNewConversation: () => void;
@@ -31,6 +32,7 @@ function relativeTime(dateStr: string): string {
 
 export function ConvoHistoryList({
   jwt,
+  address,
   activeSessionId,
   onLoadSession,
   onNewConversation,
@@ -40,12 +42,12 @@ export function ConvoHistoryList({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!jwt) {
+    if (!jwt || !address) {
       setLoading(false);
       return;
     }
     setLoading(true);
-    fetch('/api/engine/sessions', {
+    fetch(`/api/engine/sessions?address=${address}`, {
       headers: { 'x-zklogin-jwt': jwt },
     })
       .then((r) => (r.ok ? r.json() : { sessions: [] }))

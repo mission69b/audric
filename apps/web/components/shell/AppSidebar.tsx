@@ -12,6 +12,7 @@ interface SidebarProps {
   onClose?: () => void;
   allowancePercent?: number;
   allowanceLabel?: string;
+  address?: string;
   jwt?: string;
   activeSessionId?: string;
   onLoadSession?: (sessionId: string) => void;
@@ -111,6 +112,7 @@ export function AppSidebar({
   onClose,
   allowancePercent,
   allowanceLabel,
+  address,
   jwt,
   activeSessionId,
   onLoadSession,
@@ -135,17 +137,17 @@ export function AppSidebar({
       aria-label="Main navigation"
     >
       {/* Logo */}
-      <div className={`flex items-center gap-2 px-3 py-4 ${collapsed ? 'justify-center' : ''}`}>
+      <div className={`flex items-center gap-1.5 px-3 py-4 ${collapsed ? 'justify-center' : ''}`}>
         {!collapsed && (
           <>
-            <span className="font-heading text-sm text-foreground tracking-tight">Audric</span>
-            <span className="font-mono text-[9px] tracking-[0.1em] uppercase text-dim bg-[var(--n700)] px-1.5 py-0.5 rounded">
-              Beta
+            <span className="font-mono text-base font-bold tracking-wide text-foreground uppercase">Audric</span>
+            <span className="text-[9px] uppercase tracking-widest font-medium text-muted border border-border rounded px-1.5 py-0.5 leading-none">
+              beta
             </span>
           </>
         )}
         {collapsed && (
-          <span className="font-heading text-sm text-foreground">A</span>
+          <span className="font-mono text-base font-bold text-foreground uppercase">A</span>
         )}
       </div>
 
@@ -172,6 +174,7 @@ export function AppSidebar({
           <p className="font-mono text-[9px] tracking-[0.1em] uppercase text-dim px-4 mb-1.5">History</p>
           <ConvoHistoryList
             jwt={jwt}
+            address={address}
             activeSessionId={activeSessionId}
             onLoadSession={(id) => {
               onPanelChange('chat');
