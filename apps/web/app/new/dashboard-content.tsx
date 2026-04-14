@@ -1555,8 +1555,10 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
                 <div className="flex gap-2 overflow-x-auto scrollbar-none flex-1">
                   <ChipBar
                     onChipClick={handleChipClick}
+                    onPrompt={(prompt) => engine.sendMessage(prompt)}
                     activeFlow={chipFlow.state.flow}
                     disabled={chipFlow.state.phase === 'executing'}
+                    prefetch={{ idleUsdc: balance.usdc, currentApy: balance.savingsRate }}
                   />
                 </div>
                 {isInFlow && chipFlow.state.phase !== 'result' && (
