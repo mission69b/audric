@@ -11,44 +11,38 @@ interface BalanceData {
 }
 
 export function BalanceCard({ data }: { data: BalanceData }) {
+  const cols: { label: string; value: string; color?: string }[] = [];
+  if (data.total != null) cols.push({ label: 'Total', value: `$${fmtUsd(data.total)}` });
+  if (data.available != null) cols.push({ label: 'Cash', value: `$${fmtUsd(data.available)}` });
+  if ((data.savings ?? 0) > 0) cols.push({ label: 'Savings', value: `$${fmtUsd(data.savings!)}`, color: 'text-success' });
+  if ((data.debt ?? 0) > 0) cols.push({ label: 'Debt', value: `$${fmtUsd(data.debt!)}`, color: 'text-warning' });
+
+  const hasHoldings = data.holdings && data.holdings.filter((h) => h.usdValue >= 0.01).length > 0;
+
   return (
-    <CardShell title="Balance">
-      <div className="flex gap-4 mb-2 font-mono">
-        {data.total != null && (
-          <div>
-            <span className="text-dim text-[10px] block">Total</span>
-            <span className="text-foreground font-medium">${fmtUsd(data.total)}</span>
+    <CardShell title="Balance" noPadding>
+      <div
+        className="grid"
+        style={{ gridTemplateColumns: `repeat(${cols.length}, 1fr)` }}
+      >
+        {cols.map((col, i) => (
+          <div
+            key={col.label}
+            className="px-3 py-2"
+            style={i < cols.length - 1 ? { borderRight: '0.5px solid var(--border)' } : undefined}
+          >
+            <div className="text-[11px] text-dim mb-1">{col.label}</div>
+            <div className={`font-mono text-[15px] font-medium ${col.color ?? 'text-foreground'}`}>{col.value}</div>
           </div>
-        )}
-        {data.available != null && (
-          <div>
-            <span className="text-dim text-[10px] block">Cash</span>
-            <span className="text-foreground">${fmtUsd(data.available)}</span>
-          </div>
-        )}
-        {(data.savings ?? 0) > 0 && (
-          <div>
-            <span className="text-dim text-[10px] block">Savings</span>
-            <span className="text-emerald-400">${fmtUsd(data.savings!)}</span>
-          </div>
-        )}
-        {(data.debt ?? 0) > 0 && (
-          <div>
-            <span className="text-dim text-[10px] block">Debt</span>
-            <span className="text-amber-400">${fmtUsd(data.debt!)}</span>
-          </div>
-        )}
+        ))}
       </div>
-      {data.holdings && data.holdings.filter((h) => h.usdValue >= 0.01).length > 0 && (
-        <div className="space-y-0.5 font-mono text-[11px]">
-          {data.holdings.filter((h) => h.usdValue >= 0.01).slice(0, 6).map((h) => (
-            <div key={h.symbol} className="flex justify-between">
-              <span className="text-foreground">{h.symbol}</span>
-              <span className="text-dim">
-                {h.balance.toLocaleString('en-US', { maximumFractionDigits: 4 })}
-                {h.usdValue > 0 ? ` · $${fmtUsd(h.usdValue)}` : ''}
-              </span>
-            </div>
+      {hasHoldings && (
+        <div className="flex justify-between px-3 py-2 font-mono text-[10px] text-dim" style={{ borderTop: '0.5px solid var(--border)' }}>
+          {data.holdings!.filter((h) => h.usdValue >= 0.01).slice(0, 4).map((h) => (
+            <span key={h.symbol}>
+              {h.symbol} {h.balance.toLocaleString('en-US', { maximumFractionDigits: 4 })}
+              {h.usdValue > 0 ? ` · $${fmtUsd(h.usdValue)}` : ''}
+            </span>
           ))}
         </div>
       )}

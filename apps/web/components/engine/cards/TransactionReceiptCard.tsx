@@ -1,6 +1,6 @@
 'use client';
 
-import { CardShell, DetailRow, SuiscanLink, fmtAmt } from './primitives';
+import { CardShell, SuiscanLink, fmtAmt } from './primitives';
 
 interface TxReceiptData {
   tx: string;
@@ -123,8 +123,8 @@ function getHeroLines(data: TxReceiptData, toolName: string): HeroLine[] {
 }
 
 const emphasisClass: Record<string, string> = {
-  positive: 'text-emerald-400',
-  negative: 'text-amber-400',
+  positive: 'text-success',
+  negative: 'text-warning',
   neutral: '',
 };
 
@@ -134,22 +134,33 @@ export function TransactionReceiptCard({ data, toolName }: { data: TxReceiptData
   const lines = getHeroLines(data, toolName);
 
   return (
-    <CardShell title="Transaction">
-      <div className="space-y-1 font-mono text-[11px]">
-        {lines.map((line) => (
-          <DetailRow key={line.label} label={line.label}>
-            <span className={line.emphasis ? emphasisClass[line.emphasis] : ''}>
-              {line.value}
-            </span>
-          </DetailRow>
-        ))}
+    <CardShell title="Transaction" noPadding>
+      {lines.map((line) => (
+        <div
+          key={line.label}
+          className="flex items-center justify-between px-3 py-2 text-[13px]"
+          style={{ borderBottom: '0.5px solid var(--border)' }}
+        >
+          <span className="text-muted">{line.label}</span>
+          <span className={`font-mono text-foreground ${line.emphasis ? emphasisClass[line.emphasis] : ''}`}>
+            {line.value}
+          </span>
+        </div>
+      ))}
 
-        {data.gasCost != null && data.gasCost > 0 && (
-          <DetailRow label="Gas">{data.gasCost.toFixed(4)} SUI</DetailRow>
-        )}
+      {data.gasCost != null && data.gasCost > 0 && (
+        <div
+          className="flex items-center justify-between px-3 py-2 text-[13px]"
+          style={{ borderBottom: '0.5px solid var(--border)' }}
+        >
+          <span className="text-muted">Gas</span>
+          <span className="font-mono text-foreground">{data.gasCost.toFixed(4)} SUI</span>
+        </div>
+      )}
+
+      <div className="px-3 py-2">
+        <SuiscanLink digest={data.tx} />
       </div>
-
-      <SuiscanLink digest={data.tx} />
     </CardShell>
   );
 }

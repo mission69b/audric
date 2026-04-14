@@ -178,7 +178,7 @@ export function ChatMessage({ message, onActionResolve, autoApproveTools, agentB
 
       {message.usage && !message.isStreaming && (
         <div className="flex justify-start pl-1">
-          <span className="text-[10px] text-dim font-mono" aria-label={`${message.usage.inputTokens + message.usage.outputTokens} tokens used`}>
+          <span className="text-[11px] text-dim" aria-label={`${message.usage.inputTokens + message.usage.outputTokens} tokens used`}>
             {message.usage.inputTokens + message.usage.outputTokens} tokens
           </span>
         </div>

@@ -2,14 +2,14 @@
 
 import React from 'react';
 
-export function CardShell({ title, badge, children }: { title: string; badge?: React.ReactNode; children: React.ReactNode }) {
+export function CardShell({ title, badge, children, noPadding }: { title: string; badge?: React.ReactNode; children: React.ReactNode; noPadding?: boolean }) {
   return (
-    <div className="rounded-lg border border-border bg-surface/50 overflow-hidden my-1.5">
-      <div className="px-3 py-1.5 border-b border-border flex items-center justify-between">
-        <span className="text-[10px] font-mono uppercase tracking-widest text-dim">{title}</span>
+    <div className="rounded-md overflow-hidden my-1.5" style={{ border: '0.5px solid var(--border)', background: 'var(--n800)' }}>
+      <div className="px-3 py-1.5 flex items-center justify-between" style={{ borderBottom: '0.5px solid var(--border)' }}>
+        <span className="text-[9px] font-mono uppercase tracking-[0.12em] text-dim">{title}</span>
         {badge}
       </div>
-      <div className="px-3 py-2 text-xs">{children}</div>
+      {noPadding ? children : <div className="px-3 py-2 text-xs">{children}</div>}
     </div>
   );
 }
