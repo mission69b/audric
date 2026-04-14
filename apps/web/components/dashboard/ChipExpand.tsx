@@ -1,16 +1,28 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState, useLayoutEffect } from 'react';
+import { createPortal } from 'react-dom';
 import type { ChipAction } from '@/lib/chip-configs';
 
 interface ChipExpandProps {
   actions: ChipAction[];
   onSelect: (prompt: string) => void;
   onClose: () => void;
+  anchorRef?: React.RefObject<HTMLElement | null>;
 }
 
-export function ChipExpand({ actions, onSelect, onClose }: ChipExpandProps) {
+export function ChipExpand({ actions, onSelect, onClose, anchorRef }: ChipExpandProps) {
   const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+
+  useLayoutEffect(() => {
+    if (!anchorRef?.current) return;
+    const rect = anchorRef.current.getBoundingClientRect();
+    setPos({
+      top: rect.top - 8,
+      left: rect.left,
+    });
+  }, [anchorRef]);
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -21,18 +33,26 @@ export function ChipExpand({ actions, onSelect, onClose }: ChipExpandProps) {
     function handleEscape(e: KeyboardEvent) {
       if (e.key === 'Escape') onClose();
     }
-    document.addEventListener('mousedown', handleClick);
+    const timer = setTimeout(() => {
+      document.addEventListener('mousedown', handleClick);
+    }, 0);
     document.addEventListener('keydown', handleEscape);
     return () => {
+      clearTimeout(timer);
       document.removeEventListener('mousedown', handleClick);
       document.removeEventListener('keydown', handleEscape);
     };
   }, [onClose]);
 
-  return (
+  const content = (
     <div
       ref={ref}
-      className="absolute bottom-full left-0 mb-2 w-72 rounded-lg border border-border bg-surface shadow-dropdown overflow-hidden z-50"
+      className="w-72 rounded-lg border border-border bg-surface shadow-dropdown overflow-hidden z-[9999]"
+      style={
+        pos
+          ? { position: 'fixed', bottom: `${window.innerHeight - pos.top}px`, left: `${pos.left}px` }
+          : { position: 'absolute', bottom: '100%', left: 0, marginBottom: 8 }
+      }
     >
       {actions.map((action, i) => (
         <button
@@ -49,4 +69,10 @@ export function ChipExpand({ actions, onSelect, onClose }: ChipExpandProps) {
       ))}
     </div>
   );
+
+  if (pos && typeof document !== 'undefined') {
+    return createPortal(content, document.body);
+  }
+
+  return content;
 }

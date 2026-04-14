@@ -105,10 +105,14 @@ export async function POST(request: NextRequest) {
         data: { limits },
       });
     } else {
-      await prisma.userPreferences.create({
-        data: {
+      await prisma.userPreferences.upsert({
+        where: { address },
+        create: {
           address,
           userId: user.id,
+          limits: { lastNotifiedRate },
+        },
+        update: {
           limits: { lastNotifiedRate },
         },
       });

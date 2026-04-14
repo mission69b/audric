@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { ChipExpand } from './ChipExpand';
 import { buildChipConfigs, type ChipPrefetchData } from '@/lib/chip-configs';
 
@@ -15,6 +15,7 @@ interface ChipBarProps {
 export function ChipBar({ onChipClick, onPrompt, activeFlow, disabled, prefetch }: ChipBarProps) {
   const [expandedChip, setExpandedChip] = useState<string | null>(null);
   const configs = buildChipConfigs(prefetch);
+  const chipRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
 
   const handleChipClick = useCallback(
     (chipId: string) => {
@@ -46,6 +47,10 @@ export function ChipBar({ onChipClick, onPrompt, activeFlow, disabled, prefetch 
       {configs.map((chip) => (
         <div key={chip.id} className="relative shrink-0">
           <button
+            ref={(el) => {
+              if (el) chipRefs.current.set(chip.id, el);
+              else chipRefs.current.delete(chip.id);
+            }}
             onClick={() => handleChipClick(chip.id)}
             disabled={disabled}
             aria-pressed={activeFlow === chip.id || expandedChip === chip.id}
@@ -77,6 +82,7 @@ export function ChipBar({ onChipClick, onPrompt, activeFlow, disabled, prefetch 
               actions={chip.actions}
               onSelect={handlePromptSelect}
               onClose={() => setExpandedChip(null)}
+              anchorRef={{ current: chipRefs.current.get(chip.id) ?? null }}
             />
           )}
         </div>
