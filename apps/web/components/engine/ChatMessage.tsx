@@ -91,8 +91,8 @@ function getInputAmount(input: unknown): number {
 export function ChatMessage({ message, onActionResolve, autoApproveTools, agentBudget = 0, onSendMessage }: ChatMessageProps) {
   if (message.role === 'user') {
     return (
-      <div className="flex justify-end" role="log" aria-label="Your message">
-        <div className="max-w-[80%] rounded-2xl rounded-br-md bg-surface border border-border px-4 py-2.5 text-sm text-foreground break-words overflow-hidden">
+      <div className="flex justify-end mb-3" role="log" aria-label="Your message">
+        <div className="max-w-[78%] bg-[var(--n700)] px-4 py-2.5 text-sm text-foreground break-words overflow-hidden" style={{ borderRadius: '16px 16px 4px 16px' }}>
           {message.content}
         </div>
       </div>
@@ -157,7 +157,7 @@ export function ChatMessage({ message, onActionResolve, autoApproveTools, agentB
           aria-live={message.isStreaming ? 'polite' : 'off'}
           aria-atomic="false"
         >
-          <span className="text-dim mr-1.5 float-left mt-0.5" aria-hidden="true"><AudricMark size={14} /></span>
+          <span className="text-muted mr-1.5 float-left mt-0.5 text-sm" aria-hidden="true">✦</span>
           <div className="text-foreground leading-relaxed overflow-hidden">
             {message.isStreaming ? (
               <span className="whitespace-pre-wrap">
