@@ -13,15 +13,14 @@ interface ChipExpandProps {
 
 export function ChipExpand({ actions, onSelect, onClose, anchorRef }: ChipExpandProps) {
   const ref = useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const [pos, setPos] = useState<{ top: number; left: number; maxH: number } | null>(null);
 
   useLayoutEffect(() => {
     if (!anchorRef?.current) return;
     const rect = anchorRef.current.getBoundingClientRect();
-    setPos({
-      top: rect.bottom + 8,
-      left: rect.left,
-    });
+    const top = rect.bottom + 8;
+    const maxH = window.innerHeight - top - 16;
+    setPos({ top, left: rect.left, maxH: Math.max(maxH, 120) });
   }, [anchorRef]);
 
   useEffect(() => {
@@ -47,11 +46,11 @@ export function ChipExpand({ actions, onSelect, onClose, anchorRef }: ChipExpand
   const content = (
     <div
       ref={ref}
-      className="w-72 rounded-xl border border-border bg-surface shadow-dropdown overflow-hidden z-[9999]"
+      className="w-72 rounded-xl border border-border bg-surface shadow-dropdown z-[9999] overflow-y-auto overscroll-contain"
       style={
         pos
-          ? { position: 'fixed', top: `${pos.top}px`, left: `${pos.left}px` }
-          : { position: 'absolute', top: '100%', left: 0, marginTop: 8 }
+          ? { position: 'fixed', top: `${pos.top}px`, left: `${pos.left}px`, maxHeight: `${pos.maxH}px` }
+          : { position: 'absolute', top: '100%', left: 0, marginTop: 8, maxHeight: '60vh' }
       }
     >
       {actions.map((action, i) => (
