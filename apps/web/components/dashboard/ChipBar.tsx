@@ -55,7 +55,7 @@ export function ChipBar({ onChipClick, onPrompt, activeFlow, disabled, prefetch 
               'disabled:opacity-40 disabled:cursor-not-allowed',
               'focus-visible:ring-2 focus-visible:ring-foreground/20 focus-visible:ring-offset-1 focus-visible:ring-offset-background',
               activeFlow === chip.id || expandedChip === chip.id
-                ? 'bg-foreground border-foreground text-background'
+                ? 'bg-[var(--n800)] border-[var(--n500)] text-foreground'
                 : 'bg-transparent border-border-bright text-muted hover:text-[var(--n300)] hover:border-[var(--n500)] hover:bg-[var(--n800)]',
             ].join(' ')}
           >

@@ -157,7 +157,7 @@ export function ChatMessage({ message, onActionResolve, autoApproveTools, agentB
           aria-live={message.isStreaming ? 'polite' : 'off'}
           aria-atomic="false"
         >
-          <span className="text-muted mr-1.5 float-left mt-0.5 text-sm" aria-hidden="true">✦</span>
+          <span className="text-success mr-1.5 float-left mt-0.5 text-[12px]" aria-hidden="true">✦</span>
           <div className="text-foreground leading-relaxed overflow-hidden">
             {message.isStreaming ? (
               <span className="whitespace-pre-wrap">

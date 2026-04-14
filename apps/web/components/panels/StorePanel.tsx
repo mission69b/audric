@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useToast } from '@/components/ui/Toast';
 
 interface StorePanelProps {
   onSendMessage?: (text: string) => void;
@@ -87,9 +88,14 @@ const ASYNC_PRODUCTS = [
   },
 ];
 
-export function StorePanel({ onSendMessage, address, jwt }: StorePanelProps) {
+export function StorePanel({ onSendMessage: _onSendMessage, address, jwt }: StorePanelProps) {
+  const toast = useToast();
   const [earnings, setEarnings] = useState<StoreEarnings | null>(null);
   const [listings, setListings] = useState<StoreListing[]>([]);
+
+  const handleComingSoon = useCallback(() => {
+    toast.toast('Store creation is being built — stay tuned.', 'info');
+  }, [toast]);
 
   useEffect(() => {
     if (!address || !jwt) return;
@@ -119,7 +125,7 @@ export function StorePanel({ onSendMessage, address, jwt }: StorePanelProps) {
             <p className="text-[11px] text-dim">Generate · list · earn USDC · 8% platform fee</p>
           </div>
           <button
-            onClick={() => onSendMessage?.('I want to create and sell something on the Audric Store — what can I make?')}
+            onClick={handleComingSoon}
             className="font-mono text-[10px] tracking-[0.08em] uppercase text-background bg-foreground rounded-lg px-4 py-2.5 hover:opacity-80 transition"
           >
             Create + list →
@@ -140,7 +146,7 @@ export function StorePanel({ onSendMessage, address, jwt }: StorePanelProps) {
               <div className="text-[10px] text-dim">{earnings.thisMonthSales} sale{earnings.thisMonthSales !== 1 ? 's' : ''}</div>
             </div>
             <button
-              onClick={() => onSendMessage?.('Show me my public storefront')}
+              onClick={handleComingSoon}
               className="bg-[var(--n800)] border border-border rounded-lg p-2.5 text-left hover:border-[var(--border-bright)] transition"
             >
               <div className="font-mono text-[9px] tracking-[0.1em] uppercase text-dim mb-1">Storefront</div>
@@ -164,7 +170,7 @@ export function StorePanel({ onSendMessage, address, jwt }: StorePanelProps) {
             <strong className="text-[var(--n400)]">Goals</strong>, and appear in your{' '}
             <strong className="text-[var(--n400)]">weekly income report</strong>.
             <button
-              onClick={() => onSendMessage?.('Save all my store earnings into NAVI savings')}
+              onClick={handleComingSoon}
               className="ml-2 font-mono text-[9px] tracking-[0.06em] uppercase text-muted border border-border rounded px-2 py-0.5 hover:text-foreground hover:border-[var(--border-bright)] transition"
             >
               Save earnings →
@@ -186,7 +192,7 @@ export function StorePanel({ onSendMessage, address, jwt }: StorePanelProps) {
                 title={listing.title}
                 desc={`$${listing.price} USDC · ${listing.sales} sale${listing.sales !== 1 ? 's' : ''} · $${listing.earned.toFixed(2)} earned`}
                 descSuccess
-                onClick={() => onSendMessage?.(`Show me the status and sales of my ${listing.title} listing`)}
+                onClick={handleComingSoon}
               />
             ))}
           </div>
@@ -200,13 +206,13 @@ export function StorePanel({ onSendMessage, address, jwt }: StorePanelProps) {
             emoji={p.emoji}
             title={p.title}
             desc={p.desc}
-            onClick={() => onSendMessage?.(p.prompt)}
+            onClick={handleComingSoon}
           />
         ))}
 
         {/* Automate store content */}
         <button
-          onClick={() => onSendMessage?.('Automate my store — generate and list a new art pack every Monday')}
+          onClick={handleComingSoon}
           className="w-full flex items-center gap-3 px-3 py-3 border border-dashed border-border rounded-lg mb-1 hover:bg-[var(--n800)] transition group"
         >
           <span className="text-[11px] shrink-0 w-7 text-center">⟳</span>
@@ -224,7 +230,7 @@ export function StorePanel({ onSendMessage, address, jwt }: StorePanelProps) {
             emoji={p.emoji}
             title={p.title}
             desc={p.desc}
-            onClick={() => onSendMessage?.(p.prompt)}
+            onClick={handleComingSoon}
             soon
           />
         ))}

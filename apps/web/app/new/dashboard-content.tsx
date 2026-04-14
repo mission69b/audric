@@ -214,7 +214,7 @@ export interface DashboardContentProps {
 
 export function DashboardContent({ initialSessionId }: DashboardContentProps = {}) {
   const { address, session, expiringSoon, logout, refresh } = useZkLogin();
-  const { panel } = usePanel();
+  const { panel, setPanel } = usePanel();
   useUsdcSponsor(address);
   const allowance = useAllowanceStatus(address);
 
@@ -727,9 +727,12 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
   const handleInputSubmit = useCallback(
     async (text: string) => {
       if (!address) return;
+      if (panel !== 'chat') {
+        setPanel('chat');
+      }
       engine.sendMessage(text);
     },
-    [address, engine],
+    [address, engine, panel, setPanel],
   );
 
   const handleFeedChipClick = useCallback(

@@ -57,15 +57,13 @@ export function InputBar({
   const hasContent = value.trim().length > 0;
 
   return (
-    <div className="flex items-end gap-2 rounded-xl border border-border bg-surface p-2 focus-within:border-foreground transition-colors">
+    <div className="flex items-center gap-3 rounded-[16px] border border-border bg-[var(--n800)] min-h-[52px] px-4 py-3 focus-within:border-[var(--n400)] transition-colors">
       <button
-        className="shrink-0 p-2 text-dim hover:text-muted transition"
+        className="shrink-0 text-[18px] font-light text-[var(--n600)] leading-none hover:text-muted transition w-5 text-center"
         aria-label="Attach"
         onClick={() => textareaRef.current?.focus()}
       >
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-          <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-        </svg>
+        +
       </button>
 
       <textarea
@@ -77,22 +75,22 @@ export function InputBar({
         disabled={disabled}
         rows={1}
         aria-label="Message Audric"
-        className="flex-1 resize-none bg-transparent text-sm text-foreground placeholder:text-dim outline-none max-h-40 leading-relaxed disabled:opacity-50"
+        className="flex-1 resize-none bg-transparent text-[15px] font-sans text-foreground placeholder:text-[var(--n600)] outline-none max-h-40 leading-[1.5] disabled:opacity-50"
       />
 
       <button
         onClick={handleSubmit}
         disabled={disabled || !hasContent}
         className={[
-          'shrink-0 rounded-full p-2 transition',
+          'shrink-0 w-[34px] h-[34px] rounded-full flex items-center justify-center transition',
           hasContent
             ? 'bg-foreground text-background hover:opacity-80 active:scale-[0.95]'
-            : 'bg-transparent text-dim cursor-default',
+            : 'bg-[var(--n700)] text-[var(--n900)] cursor-default',
         ].join(' ')}
         aria-label="Send message"
       >
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-          <path d="M8 13V3M8 3L3.5 7.5M8 3l4.5 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+          <path d="M8 13V3M8 3L3.5 7.5M8 3l4.5 4.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
     </div>
