@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import type { BalanceHeaderData } from '@/components/dashboard/BalanceHeader';
+import { generatePortfolioInsights } from '@/lib/portfolio-insights';
 
 type PortfolioTab = 'overview' | 'timeline' | 'activity' | 'simulate';
 
@@ -9,6 +10,7 @@ interface PortfolioPanelProps {
   address: string;
   balance: BalanceHeaderData;
   onSendMessage: (text: string) => void;
+  goals?: Array<{ name: string; targetAmount: number; currentAmount: number; deadline?: string }>;
 }
 
 function fmtUsd(n: number): string {
@@ -28,23 +30,24 @@ const TABS: { id: PortfolioTab; label: string }[] = [
   { id: 'simulate', label: 'Simulate' },
 ];
 
-const CANVAS_LAUNCHERS = [
-  { label: 'Portfolio Heatmap', icon: '🗓️', prompt: 'Show me my portfolio activity as a heatmap' },
-  { label: 'Yield Projector', icon: '📈', prompt: 'Show me a yield projection chart for my savings' },
-  { label: 'Asset Distribution', icon: '🍩', prompt: 'Show me a chart of my asset distribution' },
-  { label: 'DeFi Overview', icon: '🏦', prompt: 'Show me an overview of Sui DeFi protocols with TVL and yields' },
+const ANALYTICS_CANVASES = [
+  { title: 'Net worth timeline', desc: 'Wallet / savings / debt over time', action: '7D 30D 90D 1Y', prompt: 'Show my portfolio timeline for the last 90 days' },
+  { title: 'Activity heatmap', desc: 'GitHub-style transaction grid', action: 'Full year view', prompt: 'Show my on-chain activity heatmap' },
+  { title: 'Spending breakdown', desc: 'MPP API spend by service', action: 'Week/Month/Year', prompt: 'Show my spending breakdown by category' },
 ];
 
-export function PortfolioPanel({ balance, onSendMessage }: PortfolioPanelProps) {
+const SIMULATOR_CANVASES = [
+  { title: 'Yield projector', desc: 'Simulate compound returns with sliders', action: 'Adjust amount + APY', prompt: 'Show the yield projector' },
+  { title: 'Health simulator', desc: 'Model borrow scenarios before executing', action: 'Collateral + debt sliders', prompt: 'Open the health factor simulator' },
+  { title: 'DCA planner', desc: 'Recurring savings projection', action: 'Set amount + cadence', prompt: 'Show me a DCA savings plan: $200 per month for 2 years' },
+];
+
+export function PortfolioPanel({ balance, onSendMessage, goals }: PortfolioPanelProps) {
   const [activeTab, setActiveTab] = useState<PortfolioTab>('overview');
 
   const holdings: { symbol: string; amount: string; usd: string }[] = [];
-  if (balance.sui > 0) {
-    holdings.push({ symbol: 'SUI', amount: fmtToken(balance.sui), usd: `$${fmtUsd(balance.suiUsd)}` });
-  }
-  if (balance.usdc > 0) {
-    holdings.push({ symbol: 'USDC', amount: fmtUsd(balance.usdc), usd: `$${fmtUsd(balance.usdc)}` });
-  }
+  if (balance.sui > 0) holdings.push({ symbol: 'SUI', amount: fmtToken(balance.sui), usd: `$${fmtUsd(balance.suiUsd)}` });
+  if (balance.usdc > 0) holdings.push({ symbol: 'USDC', amount: fmtUsd(balance.usdc), usd: `$${fmtUsd(balance.usdc)}` });
   for (const [symbol, amt] of Object.entries(balance.assetBalances)) {
     const usdVal = balance.assetUsdValues[symbol] ?? 0;
     if (amt > 0 && (usdVal >= 0.01 || amt >= 0.01)) {
@@ -52,20 +55,62 @@ export function PortfolioPanel({ balance, onSendMessage }: PortfolioPanelProps) 
     }
   }
 
+  const allocation = buildAllocation(balance);
+  const insights = generatePortfolioInsights({
+    idleUsdc: balance.usdc,
+    savings: balance.savings,
+    savingsApy: balance.savingsRate,
+    total: balance.total,
+    debt: balance.borrows,
+    healthFactor: balance.healthFactor ?? null,
+    goals: goals ?? [],
+  });
+
+  const statCards = [
+    {
+      label: 'Savings',
+      value: `$${fmtUsd(balance.savings)}`,
+      sub: balance.savingsRate > 0 ? `${(balance.savingsRate * 100).toFixed(1)}% APY` : '--',
+      accent: balance.savings > 0,
+      prompt: 'Show me my savings position and NAVI yield details',
+      drill: 'NAVI',
+    },
+    {
+      label: 'Health',
+      value: balance.healthFactor != null ? balance.healthFactor.toFixed(1) : '--',
+      sub: balance.borrows > 0 ? `$${fmtUsd(balance.borrows)} debt` : '$0 debt',
+      warn: balance.healthFactor != null && balance.healthFactor < 2,
+      accent: balance.healthFactor != null && balance.healthFactor >= 2,
+      prompt: 'Open the health factor simulator',
+      drill: 'Simulate',
+    },
+    {
+      label: 'Available',
+      value: `$${fmtUsd(balance.cash)}`,
+      sub: 'wallet balance',
+      prompt: 'What is my current balance breakdown?',
+      drill: 'Details',
+    },
+    {
+      label: 'Savings APY',
+      value: balance.savingsRate > 0 ? `${(balance.savingsRate * 100).toFixed(1)}%` : '--',
+      sub: 'current NAVI rate',
+      accent: balance.savingsRate > 0,
+      prompt: 'What are the current savings rates?',
+      drill: 'Rates',
+    },
+  ];
+
   return (
     <div className="mx-auto w-full max-w-3xl px-4 sm:px-6 py-6 space-y-6">
-      {/* Tab bar */}
       <div className="flex gap-1 border-b border-border">
         {TABS.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`
-              px-3 py-2 font-mono text-[11px] tracking-[0.08em] uppercase transition-colors
-              ${activeTab === tab.id
-                ? 'text-foreground border-b-2 border-foreground -mb-px'
-                : 'text-muted hover:text-foreground'}
-            `}
+            className={`px-3 py-2 font-mono text-[11px] tracking-[0.08em] uppercase transition-colors ${
+              activeTab === tab.id ? 'text-foreground border-b-2 border-foreground -mb-px' : 'text-muted hover:text-foreground'
+            }`}
           >
             {tab.label}
           </button>
@@ -74,17 +119,62 @@ export function PortfolioPanel({ balance, onSendMessage }: PortfolioPanelProps) 
 
       {activeTab === 'overview' && (
         <div className="space-y-6">
-          {/* Summary cards */}
+          {/* 4-stat drill-down grid */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <StatCard label="Net Worth" value={`$${fmtUsd(balance.total)}`} />
-            <StatCard label="Available" value={`$${fmtUsd(balance.cash)}`} />
-            <StatCard label="Earning" value={`$${fmtUsd(balance.savings)}`} accent={balance.savings > 0} />
-            {balance.borrows > 0 ? (
-              <StatCard label="Debt" value={`$${fmtUsd(balance.borrows)}`} warn />
-            ) : (
-              <StatCard label="Savings APY" value={balance.savingsRate > 0 ? `${(balance.savingsRate * 100).toFixed(1)}%` : '--'} accent={balance.savingsRate > 0} />
-            )}
+            {statCards.map((card) => (
+              <button
+                key={card.label}
+                onClick={() => onSendMessage(card.prompt)}
+                className="rounded-lg border border-border bg-surface px-3 py-3 text-left hover:border-border-bright transition group"
+              >
+                <p className="font-mono text-[9px] tracking-[0.1em] uppercase text-muted mb-1">{card.label}</p>
+                <p className={`font-mono text-sm ${card.warn ? 'text-warning' : card.accent ? 'text-success' : 'text-foreground'}`}>
+                  {card.value}
+                </p>
+                <p className="text-[10px] text-dim mt-0.5">{card.sub}</p>
+                <p className="font-mono text-[9px] tracking-[0.08em] uppercase text-muted mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {card.drill} &rarr;
+                </p>
+              </button>
+            ))}
           </div>
+
+          {/* Allocation bar */}
+          {allocation.length > 0 && (
+            <div className="space-y-2">
+              <h3 className="font-mono text-[10px] tracking-[0.1em] uppercase text-muted">Allocation</h3>
+              <div className="h-2 rounded-full overflow-hidden flex bg-border">
+                {allocation.map((seg) => (
+                  <div
+                    key={seg.label}
+                    className="h-full transition-all"
+                    style={{ width: `${seg.pct}%`, backgroundColor: seg.color }}
+                    title={`${seg.label}: ${seg.pct.toFixed(0)}%`}
+                  />
+                ))}
+              </div>
+              <div className="flex flex-wrap gap-x-4 gap-y-1">
+                {allocation.map((seg) => (
+                  <div key={seg.label} className="flex items-center gap-1.5 text-[10px] text-dim">
+                    <span className="w-2 h-2 rounded-sm shrink-0" style={{ backgroundColor: seg.color }} />
+                    {seg.label} {seg.pct.toFixed(0)}%
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Insights */}
+          {insights.length > 0 && (
+            <div className="space-y-1.5">
+              <h3 className="font-mono text-[10px] tracking-[0.1em] uppercase text-muted">Audric noticed</h3>
+              {insights.map((insight, i) => (
+                <p key={i} className="text-[12px] text-dim leading-relaxed">
+                  &rarr; {insight}
+                </p>
+              ))}
+            </div>
+          )}
 
           {/* Holdings */}
           {holdings.length > 0 && (
@@ -93,9 +183,7 @@ export function PortfolioPanel({ balance, onSendMessage }: PortfolioPanelProps) 
               <div className="rounded-lg border border-border bg-surface divide-y divide-border">
                 {holdings.map((h) => (
                   <div key={h.symbol} className="flex items-center justify-between px-4 py-3">
-                    <div>
-                      <span className="font-mono text-sm text-foreground">{h.symbol}</span>
-                    </div>
+                    <span className="font-mono text-sm text-foreground">{h.symbol}</span>
                     <div className="text-right">
                       <p className="font-mono text-sm text-foreground">{h.amount}</p>
                       {h.usd && <p className="font-mono text-[11px] text-muted">{h.usd}</p>}
@@ -106,7 +194,7 @@ export function PortfolioPanel({ balance, onSendMessage }: PortfolioPanelProps) 
             </div>
           )}
 
-          {/* Savings breakdown */}
+          {/* Savings positions */}
           {balance.savingsBreakdown && balance.savingsBreakdown.filter((s) => s.amount >= 0.01).length > 0 && (
             <div className="space-y-2">
               <h3 className="font-mono text-[10px] tracking-[0.1em] uppercase text-muted">Savings Positions</h3>
@@ -129,45 +217,108 @@ export function PortfolioPanel({ balance, onSendMessage }: PortfolioPanelProps) 
 
           {/* Canvas launchers */}
           <div className="space-y-2">
-            <h3 className="font-mono text-[10px] tracking-[0.1em] uppercase text-muted">Visualizations</h3>
-            <div className="grid grid-cols-2 gap-2">
-              {CANVAS_LAUNCHERS.map((c) => (
-                <button
-                  key={c.label}
-                  onClick={() => onSendMessage(c.prompt)}
-                  className="flex items-center gap-2.5 rounded-lg border border-border bg-surface px-4 py-3 text-left transition hover:bg-[var(--n700)] hover:border-border-bright"
-                >
-                  <span className="text-xl shrink-0">{c.icon}</span>
-                  <span className="font-mono text-[11px] tracking-[0.06em] uppercase text-muted">{c.label}</span>
-                </button>
+            <h3 className="font-mono text-[10px] tracking-[0.1em] uppercase text-muted">Analytics</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              {ANALYTICS_CANVASES.map((c) => (
+                <CanvasCard key={c.title} {...c} onClick={() => onSendMessage(c.prompt)} />
               ))}
             </div>
           </div>
+
+          <div className="space-y-2">
+            <h3 className="font-mono text-[10px] tracking-[0.1em] uppercase text-muted">Simulators</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              {SIMULATOR_CANVASES.map((c) => (
+                <CanvasCard key={c.title} {...c} onClick={() => onSendMessage(c.prompt)} />
+              ))}
+            </div>
+          </div>
+
+          {/* Full overview launcher */}
+          <button
+            onClick={() => onSendMessage('Show me my full portfolio overview')}
+            className="w-full rounded-lg border border-border bg-surface px-4 py-4 text-left hover:border-border-bright transition group"
+          >
+            <p className="font-mono text-[11px] tracking-[0.06em] uppercase text-foreground">Full portfolio overview</p>
+            <p className="text-[11px] text-dim mt-0.5">4-panel canvas: savings, health, activity, spending</p>
+          </button>
         </div>
       )}
 
-      {activeTab !== 'overview' && (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <p className="text-muted text-sm mb-4">{activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} view coming soon</p>
-          <button
-            onClick={() => onSendMessage(`Show me my portfolio ${activeTab}`)}
-            className="font-mono text-[11px] tracking-[0.08em] uppercase text-foreground border border-border rounded-full px-4 py-2 hover:bg-surface transition"
-          >
-            Ask Audric
-          </button>
+      {activeTab === 'timeline' && (
+        <TabPlaceholder
+          label="Timeline"
+          desc="Net worth over time — wallet, savings, and debt"
+          prompt="Show my portfolio timeline for the last 90 days"
+          onSendMessage={onSendMessage}
+        />
+      )}
+
+      {activeTab === 'activity' && (
+        <TabPlaceholder
+          label="Activity"
+          desc="On-chain transaction heatmap — GitHub-style grid"
+          prompt="Show my on-chain activity heatmap"
+          onSendMessage={onSendMessage}
+        />
+      )}
+
+      {activeTab === 'simulate' && (
+        <div className="space-y-4">
+          <p className="text-sm text-muted">Interactive financial simulators — adjust sliders and see real-time projections.</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {SIMULATOR_CANVASES.map((c) => (
+              <CanvasCard key={c.title} {...c} onClick={() => onSendMessage(c.prompt)} />
+            ))}
+          </div>
         </div>
       )}
     </div>
   );
 }
 
-function StatCard({ label, value, accent, warn }: { label: string; value: string; accent?: boolean; warn?: boolean }) {
+function CanvasCard({ title, desc, action, onClick }: { title: string; desc: string; action: string; onClick: () => void }) {
   return (
-    <div className="rounded-lg border border-border bg-surface px-3 py-3">
-      <p className="font-mono text-[9px] tracking-[0.1em] uppercase text-muted mb-1">{label}</p>
-      <p className={`font-mono text-sm ${warn ? 'text-warning' : accent ? 'text-success' : 'text-foreground'}`}>
-        {value}
-      </p>
+    <button
+      onClick={onClick}
+      className="flex flex-col rounded-lg border border-border bg-surface px-4 py-3 text-left transition hover:bg-[var(--n700)] hover:border-border-bright"
+    >
+      <span className="font-mono text-[11px] tracking-[0.06em] uppercase text-foreground">{title}</span>
+      <span className="text-[10px] text-dim mt-0.5 leading-relaxed">{desc}</span>
+      <span className="font-mono text-[9px] tracking-[0.08em] uppercase text-muted mt-2">{action} &rarr;</span>
+    </button>
+  );
+}
+
+function TabPlaceholder({ label, desc, prompt, onSendMessage }: { label: string; desc: string; prompt: string; onSendMessage: (t: string) => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-16 text-center">
+      <p className="text-sm text-muted mb-2">{desc}</p>
+      <button
+        onClick={() => onSendMessage(prompt)}
+        className="font-mono text-[11px] tracking-[0.08em] uppercase text-foreground border border-border rounded-full px-4 py-2 hover:bg-surface transition mt-2"
+      >
+        Open {label} &rarr;
+      </button>
     </div>
   );
+}
+
+function buildAllocation(balance: BalanceHeaderData): Array<{ label: string; pct: number; color: string }> {
+  const total = balance.total;
+  if (total <= 0) return [];
+
+  const segments: Array<{ label: string; pct: number; color: string }> = [];
+  if (balance.usdc > 0) segments.push({ label: 'Wallet USDC', pct: (balance.usdc / total) * 100, color: 'var(--n500)' });
+  if (balance.suiUsd > 0) segments.push({ label: 'SUI', pct: (balance.suiUsd / total) * 100, color: '#4DA2FF' });
+  if (balance.savings > 0) segments.push({ label: 'NAVI Savings', pct: (balance.savings / total) * 100, color: 'var(--color-success)' });
+  if (balance.borrows > 0) segments.push({ label: 'Debt', pct: (balance.borrows / total) * 100, color: 'var(--color-warning)' });
+
+  let otherUsd = 0;
+  for (const [, usd] of Object.entries(balance.assetUsdValues)) {
+    otherUsd += usd ?? 0;
+  }
+  if (otherUsd > 0.01) segments.push({ label: 'Other', pct: (otherUsd / total) * 100, color: 'var(--color-purple)' });
+
+  return segments.filter((s) => s.pct >= 0.5);
 }
