@@ -40,13 +40,17 @@ export function ConvoHistoryList({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!jwt) return;
+    if (!jwt) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     fetch('/api/engine/sessions', {
       headers: { 'x-zklogin-jwt': jwt },
     })
       .then((r) => (r.ok ? r.json() : { sessions: [] }))
       .then((data) => setSessions(data.sessions ?? []))
-      .catch(() => {})
+      .catch(() => setSessions([]))
       .finally(() => setLoading(false));
   }, [jwt]);
 

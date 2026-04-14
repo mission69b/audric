@@ -27,7 +27,18 @@ const PANEL_URL_MAP: Record<PanelId, string> = {
   settings: '/settings',
 };
 
-let currentPanel: PanelId = 'chat';
+const URL_PANEL_MAP: Record<string, PanelId> = Object.fromEntries(
+  Object.entries(PANEL_URL_MAP).map(([id, url]) => [url, id as PanelId]),
+);
+
+function panelFromPathname(pathname: string): PanelId {
+  if (pathname.startsWith('/chat/')) return 'chat';
+  return URL_PANEL_MAP[pathname] ?? 'chat';
+}
+
+let currentPanel: PanelId = typeof window !== 'undefined'
+  ? panelFromPathname(window.location.pathname)
+  : 'chat';
 const listeners = new Set<() => void>();
 
 function emitChange() {
@@ -71,8 +82,9 @@ export function usePanel() {
 if (typeof window !== 'undefined') {
   window.addEventListener('popstate', (e) => {
     const state = e.state as { panel?: PanelId } | null;
-    if (state?.panel && state.panel !== currentPanel) {
-      currentPanel = state.panel;
+    const next = state?.panel ?? panelFromPathname(window.location.pathname);
+    if (next !== currentPanel) {
+      currentPanel = next;
       emitChange();
     }
   });

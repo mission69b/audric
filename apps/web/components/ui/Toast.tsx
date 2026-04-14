@@ -51,19 +51,24 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
 function ToastNotification({ item, onDismiss }: { item: ToastItem; onDismiss: (id: string) => void }) {
   const [exiting, setExiting] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  const startExit = useCallback(() => {
+    setExiting(true);
+    const t = setTimeout(() => onDismiss(item.id), 200);
+    timersRef.current.push(t);
+  }, [item.id, onDismiss]);
 
   useEffect(() => {
     if (item.duration && item.duration > 0) {
-      timerRef.current = setTimeout(() => {
-        setExiting(true);
-        setTimeout(() => onDismiss(item.id), 200);
-      }, item.duration);
+      const t = setTimeout(startExit, item.duration);
+      timersRef.current.push(t);
     }
     return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
+      timersRef.current.forEach(clearTimeout);
+      timersRef.current = [];
     };
-  }, [item.id, item.duration, onDismiss]);
+  }, [item.id, item.duration, startExit]);
 
   const variantClasses: Record<ToastVariant, string> = {
     success: 'border-success/30 bg-success/10',
@@ -99,10 +104,7 @@ function ToastNotification({ item, onDismiss }: { item: ToastItem; onDismiss: (i
       <span className={`text-sm font-bold ${textColorMap[item.variant]}`}>{iconMap[item.variant]}</span>
       <span className="text-sm text-foreground">{item.message}</span>
       <button
-        onClick={() => {
-          setExiting(true);
-          setTimeout(() => onDismiss(item.id), 200);
-        }}
+        onClick={startExit}
         className="ml-2 text-dim hover:text-foreground transition shrink-0"
         aria-label="Dismiss"
       >

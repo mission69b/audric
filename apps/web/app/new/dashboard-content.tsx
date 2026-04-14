@@ -1,11 +1,9 @@
 'use client';
 
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { AuthGuard } from '@/components/auth/AuthGuard';
 import { useZkLogin } from '@/components/auth/useZkLogin';
-import { BalanceHeader } from '@/components/dashboard/BalanceHeader';
 import { ContextualChips } from '@/components/dashboard/ContextualChips';
 import { ChipBar } from '@/components/dashboard/ChipBar';
 import { InputBar } from '@/components/dashboard/InputBar';
@@ -29,14 +27,13 @@ import { SUI_NETWORK } from '@/lib/constants';
 import { useContacts } from '@/hooks/useContacts';
 import { useAgent, ServiceDeliveryError } from '@/hooks/useAgent';
 import { useUsdcSponsor } from '@/hooks/useUsdcSponsor';
-import { COIN_REGISTRY, getDecimalsForCoinType, resolveSymbol } from '@/lib/token-registry';
+import { COIN_REGISTRY } from '@/lib/token-registry';
 import { parseActualAmount, buildSwapDisplayData } from '@/lib/balance-changes';
 import { useAllowanceStatus } from '@/hooks/useAllowanceStatus';
-import { DashboardTabs, type DashboardTab } from '@/components/dashboard/DashboardTabs';
+import { type DashboardTab } from '@/components/dashboard/DashboardTabs';
 import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
 import { useActivityFeed } from '@/hooks/useActivityFeed';
 import { BriefingCard } from '@/components/dashboard/BriefingCard';
-import { WelcomeCard } from '@/components/dashboard/WelcomeCard';
 import { NewConversationView } from '@/components/dashboard/NewConversationView';
 import { FirstLoginView } from '@/components/dashboard/FirstLoginView';
 import { TosBanner } from '@/components/dashboard/TosBanner';
@@ -215,7 +212,6 @@ export interface DashboardContentProps {
 }
 
 export function DashboardContent({ initialSessionId }: DashboardContentProps = {}) {
-  const router = useRouter();
   const { address, session, expiringSoon, logout, refresh } = useZkLogin();
   const { panel } = usePanel();
   useUsdcSponsor(address);

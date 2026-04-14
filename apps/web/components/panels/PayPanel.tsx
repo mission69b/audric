@@ -11,8 +11,8 @@ interface PayPanelProps {
 interface PaymentLink {
   id: string;
   slug: string;
-  amount: number;
-  memo?: string;
+  amount: number | null;
+  label: string | null;
   status: string;
   createdAt: string;
 }
@@ -20,10 +20,16 @@ interface PaymentLink {
 interface Invoice {
   id: string;
   slug: string;
-  amount: number;
-  memo?: string;
+  amount: number | null;
+  label: string | null;
+  recipientName: string | null;
   status: string;
   createdAt: string;
+}
+
+function fmtAmount(amount: number | null): string {
+  if (amount == null) return 'Variable';
+  return `$${amount.toFixed(2)}`;
 }
 
 export function PayPanel({ address, jwt, onSendMessage }: PayPanelProps) {
@@ -32,14 +38,26 @@ export function PayPanel({ address, jwt, onSendMessage }: PayPanelProps) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!address || !jwt) return;
+    if (!address || !jwt) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
+
+    const headers = {
+      'x-zklogin-jwt': jwt,
+      'x-sui-address': address,
+    };
+
     Promise.all([
-      fetch(`/api/payment-links?address=${address}`, { headers: { 'x-zklogin-jwt': jwt } }).then((r) => r.ok ? r.json() : { items: [] }),
-      fetch(`/api/invoices?address=${address}`, { headers: { 'x-zklogin-jwt': jwt } }).then((r) => r.ok ? r.json() : { items: [] }),
+      fetch('/api/payment-links', { headers }).then((r) => r.ok ? r.json() : []),
+      fetch('/api/invoices', { headers }).then((r) => r.ok ? r.json() : []),
     ]).then(([linksData, invoicesData]) => {
-      setPaymentLinks(linksData.items ?? []);
-      setInvoices(invoicesData.items ?? []);
+      setPaymentLinks(Array.isArray(linksData) ? linksData : []);
+      setInvoices(Array.isArray(invoicesData) ? invoicesData : []);
+    }).catch(() => {
+      setPaymentLinks([]);
+      setInvoices([]);
     }).finally(() => setLoading(false));
   }, [address, jwt]);
 
@@ -71,7 +89,6 @@ export function PayPanel({ address, jwt, onSendMessage }: PayPanelProps) {
         </div>
       ) : (
         <>
-          {/* Payment Links */}
           <Section title="Payment Links" count={paymentLinks.length}>
             {paymentLinks.length === 0 ? (
               <EmptyCard message="No payment links yet" cta="Create one" onCta={() => onSendMessage('Create a payment link')} />
@@ -80,11 +97,11 @@ export function PayPanel({ address, jwt, onSendMessage }: PayPanelProps) {
                 {paymentLinks.map((link) => (
                   <div key={link.id} className="flex items-center justify-between px-4 py-3">
                     <div>
-                      <p className="text-sm text-foreground">{link.memo || `$${link.amount.toFixed(2)} link`}</p>
+                      <p className="text-sm text-foreground">{link.label || `${fmtAmount(link.amount)} link`}</p>
                       <p className="font-mono text-[11px] text-muted">audric.ai/pay/{link.slug}</p>
                     </div>
                     <div className="text-right">
-                      <p className="font-mono text-sm text-foreground">${link.amount.toFixed(2)}</p>
+                      <p className="font-mono text-sm text-foreground">{fmtAmount(link.amount)}</p>
                       <StatusBadge status={link.status} />
                     </div>
                   </div>
@@ -93,7 +110,6 @@ export function PayPanel({ address, jwt, onSendMessage }: PayPanelProps) {
             )}
           </Section>
 
-          {/* Invoices */}
           <Section title="Invoices" count={invoices.length}>
             {invoices.length === 0 ? (
               <EmptyCard message="No invoices yet" cta="Create one" onCta={() => onSendMessage('Create an invoice')} />
@@ -102,11 +118,13 @@ export function PayPanel({ address, jwt, onSendMessage }: PayPanelProps) {
                 {invoices.map((inv) => (
                   <div key={inv.id} className="flex items-center justify-between px-4 py-3">
                     <div>
-                      <p className="text-sm text-foreground">{inv.memo || `$${inv.amount.toFixed(2)} invoice`}</p>
+                      <p className="text-sm text-foreground">
+                        {inv.label || (inv.recipientName ? `Invoice for ${inv.recipientName}` : `${fmtAmount(inv.amount)} invoice`)}
+                      </p>
                       <p className="font-mono text-[11px] text-muted">audric.ai/invoice/{inv.slug}</p>
                     </div>
                     <div className="text-right">
-                      <p className="font-mono text-sm text-foreground">${inv.amount.toFixed(2)}</p>
+                      <p className="font-mono text-sm text-foreground">{fmtAmount(inv.amount)}</p>
                       <StatusBadge status={inv.status} />
                     </div>
                   </div>

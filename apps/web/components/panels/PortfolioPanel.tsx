@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import type { BalanceHeaderData } from '@/components/dashboard/BalanceHeader';
 
 type PortfolioTab = 'overview' | 'timeline' | 'activity' | 'simulate';
@@ -35,7 +35,7 @@ const CANVAS_LAUNCHERS = [
   { label: 'DeFi Overview', icon: '🏦', prompt: 'Show me an overview of Sui DeFi protocols with TVL and yields' },
 ];
 
-export function PortfolioPanel({ address, balance, onSendMessage }: PortfolioPanelProps) {
+export function PortfolioPanel({ balance, onSendMessage }: PortfolioPanelProps) {
   const [activeTab, setActiveTab] = useState<PortfolioTab>('overview');
 
   const holdings: { symbol: string; amount: string; usd: string }[] = [];

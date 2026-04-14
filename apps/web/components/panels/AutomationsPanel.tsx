@@ -185,7 +185,7 @@ function AutomationCard({ action, schedules }: {
           <div className="h-1 bg-border rounded-full overflow-hidden">
             <div
               className="h-full bg-accent rounded-full transition-all"
-              style={{ width: `${(action.confirmationsCompleted / action.confirmationsRequired) * 100}%` }}
+              style={{ width: `${action.confirmationsRequired > 0 ? (action.confirmationsCompleted / action.confirmationsRequired) * 100 : 0}%` }}
             />
           </div>
         </div>

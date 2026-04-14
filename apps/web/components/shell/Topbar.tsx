@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { Skeleton } from '@/components/ui/Skeleton';
 import type { BalanceHeaderData } from '@/components/dashboard/BalanceHeader';
 import { BalanceDrawer } from './BalanceDrawer';
