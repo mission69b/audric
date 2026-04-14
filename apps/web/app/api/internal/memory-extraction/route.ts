@@ -165,12 +165,19 @@ export async function POST(request: NextRequest) {
 
   const client = new Anthropic({ apiKey });
 
-  const response = await client.messages.create({
-    model: MODEL,
-    max_tokens: 2048,
-    thinking: { type: 'enabled', budget_tokens: 2048 },
-    messages: [{ role: 'user', content: prompt }],
-  });
+  let response: Anthropic.Message;
+  try {
+    response = await client.messages.create({
+      model: MODEL,
+      max_tokens: 2048,
+      thinking: { type: 'enabled', budget_tokens: 2048 },
+      messages: [{ role: 'user', content: prompt }],
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[memory-extraction] Anthropic API error for ${userId}: ${msg}`);
+    return NextResponse.json({ error: 'Anthropic API error', detail: msg }, { status: 502 });
+  }
 
   const textBlock = response.content.find((b) => b.type === 'text');
   if (!textBlock || textBlock.type !== 'text') {
