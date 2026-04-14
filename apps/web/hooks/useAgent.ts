@@ -85,17 +85,6 @@ export function useAgent() {
           txType: string,
           params: Record<string, unknown>,
         ): Promise<{ tx: string; balanceChanges?: Array<{ coinType: string; amount: string; owner?: unknown }> }> {
-          if (jwt) {
-            try {
-              const payload = JSON.parse(atob(jwt.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
-              if (payload.exp && payload.exp * 1000 < Date.now()) {
-                throw new Error('Your session has expired. Please refresh the page or reconnect your wallet to continue.');
-              }
-            } catch (e) {
-              if (e instanceof Error && e.message.includes('session has expired')) throw e;
-            }
-          }
-
           const prepareHeaders: Record<string, string> = {
             'Content-Type': 'application/json',
           };
@@ -116,11 +105,7 @@ export function useAgent() {
 
           if (!prepareRes.ok) {
             const err = await prepareRes.json().catch(() => ({}));
-            const msg = (err as Record<string, string>).error ?? 'Unknown error';
-            if (prepareRes.status === 401) {
-              throw new Error('Your session has expired. Please refresh the page or reconnect your wallet to continue.');
-            }
-            throw new Error(`[PREPARE_${prepareRes.status}] ${msg}`);
+            throw new Error(`[PREPARE_${prepareRes.status}] ${(err as Record<string, string>).error ?? 'Unknown prepare error'}`);
           }
 
           const { bytes, digest } = await prepareRes.json();
