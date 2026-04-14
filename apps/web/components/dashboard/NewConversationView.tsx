@@ -1,7 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import { InputBar } from './InputBar';
-import { ChipBar } from './ChipBar';
+import { ChipBar, buildChipConfigs } from './ChipBar';
+import { ChipExpand } from './ChipExpand';
 import { BriefingCard } from './BriefingCard';
 import { ProactiveBanner } from './ProactiveBanner';
 import { HandledForYou } from './HandledForYou';
@@ -63,6 +65,7 @@ export function NewConversationView({
   handledActions,
   onViewHandled,
 }: NewConversationViewProps) {
+  const [expandedChip, setExpandedChip] = useState<string | null>(null);
   const stats: string[] = [];
   if (netWorth > 0) stats.push(fmtCompact(netWorth));
   if (dailyYield > 0) stats.push(`earning ${fmtCompact(dailyYield)}/day`);
@@ -122,8 +125,28 @@ export function NewConversationView({
           onChipClick={onChipClick}
           onPrompt={onSend}
           activeFlow={activeFlow}
+          expandedChip={expandedChip}
+          onExpandedChange={setExpandedChip}
         />
       </div>
+      {expandedChip && (() => {
+        const configs = buildChipConfigs();
+        const chip = configs.find(c => c.id === expandedChip);
+        if (!chip) return null;
+        return (
+          <div className="w-full max-w-2xl mt-3">
+            <ChipExpand
+              actions={chip.actions}
+              chipLabel={chip.label}
+              onSelect={(prompt) => {
+                setExpandedChip(null);
+                onSend(prompt);
+              }}
+              onClose={() => setExpandedChip(null)}
+            />
+          </div>
+        );
+      })()}
     </div>
   );
 }

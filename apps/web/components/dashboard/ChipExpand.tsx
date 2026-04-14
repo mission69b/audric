@@ -1,79 +1,42 @@
 'use client';
 
-import { useEffect, useRef, useState, useLayoutEffect } from 'react';
-import { createPortal } from 'react-dom';
 import type { ChipAction } from '@/lib/chip-configs';
 
 interface ChipExpandProps {
   actions: ChipAction[];
+  chipLabel: string;
   onSelect: (prompt: string) => void;
   onClose: () => void;
-  anchorRef?: React.RefObject<HTMLElement | null>;
 }
 
-export function ChipExpand({ actions, onSelect, onClose, anchorRef }: ChipExpandProps) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState<{ top: number; left: number; maxH: number } | null>(null);
-
-  useLayoutEffect(() => {
-    if (!anchorRef?.current) return;
-    const rect = anchorRef.current.getBoundingClientRect();
-    const top = rect.bottom + 8;
-    const maxH = window.innerHeight - top - 16;
-    setPos({ top, left: rect.left, maxH: Math.max(maxH, 120) });
-  }, [anchorRef]);
-
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        onClose();
-      }
-    }
-    function handleEscape(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose();
-    }
-    const timer = setTimeout(() => {
-      document.addEventListener('mousedown', handleClick);
-    }, 0);
-    document.addEventListener('keydown', handleEscape);
-    return () => {
-      clearTimeout(timer);
-      document.removeEventListener('mousedown', handleClick);
-      document.removeEventListener('keydown', handleEscape);
-    };
-  }, [onClose]);
-
-  const content = (
-    <div
-      ref={ref}
-      className="w-72 rounded-xl border border-border bg-surface shadow-dropdown z-[9999] overflow-y-auto overscroll-contain"
-      style={
-        pos
-          ? { position: 'fixed', top: `${pos.top}px`, left: `${pos.left}px`, maxHeight: `${pos.maxH}px` }
-          : { position: 'absolute', top: '100%', left: 0, marginTop: 8, maxHeight: '60vh' }
-      }
-    >
+export function ChipExpand({ actions, chipLabel, onSelect, onClose }: ChipExpandProps) {
+  return (
+    <div className="rounded-xl border border-border bg-surface overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/50">
+        <span className="font-mono text-[11px] tracking-[0.08em] uppercase text-muted">{chipLabel}</span>
+        <button
+          onClick={onClose}
+          className="text-dim hover:text-foreground transition text-sm leading-none p-1"
+          aria-label="Close"
+        >
+          ×
+        </button>
+      </div>
       {actions.map((action, i) => (
         <button
           key={i}
-          onClick={() => {
-            onSelect(action.prompt);
-            onClose();
-          }}
-          className="w-full text-left px-4 py-3 hover:bg-[var(--n700)] transition-colors border-b border-border/50 last:border-b-0"
+          onClick={() => onSelect(action.prompt)}
+          className="w-full text-left px-4 py-3 hover:bg-[var(--n700)] transition-colors border-b border-border/50 last:border-b-0 flex items-center justify-between group"
         >
-          <span className="text-[13px] text-foreground">{action.label}</span>
-          {action.sublabel && (
-            <span className="text-[11px] text-dim leading-tight block mt-0.5">{action.sublabel}</span>
-          )}
+          <div>
+            <span className="text-[13px] text-foreground">{action.label}</span>
+            {action.sublabel && (
+              <span className="text-[11px] text-dim leading-tight block mt-0.5">{action.sublabel}</span>
+            )}
+          </div>
+          <span className="text-border-bright group-hover:text-muted transition text-sm">›</span>
         </button>
       ))}
     </div>
   );
-
-  if (pos && typeof document !== 'undefined') {
-    return createPortal(content, document.body);
-  }
-
-  return content;
 }

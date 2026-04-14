@@ -5,7 +5,8 @@ import { useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { useZkLogin } from '@/components/auth/useZkLogin';
 import { ContextualChips } from '@/components/dashboard/ContextualChips';
-import { ChipBar } from '@/components/dashboard/ChipBar';
+import { ChipBar, buildChipConfigs } from '@/components/dashboard/ChipBar';
+import { ChipExpand } from '@/components/dashboard/ChipExpand';
 import { InputBar } from '@/components/dashboard/InputBar';
 import { ConfirmationCard } from '@/components/dashboard/ConfirmationCard';
 import { ResultCard } from '@/components/dashboard/ResultCard';
@@ -273,6 +274,7 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
   const [dismissedCards, setDismissedCards] = useState<Set<string>>(new Set());
   const [scrolled, setScrolled] = useState(false);
   const [emailModalOpen, setEmailModalOpen] = useState(false);
+  const [expandedChip, setExpandedChip] = useState<string | null>(null);
   const emailCheckedRef = useRef(false);
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
@@ -1539,7 +1541,7 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
       </div>
       </div>
 
-      <div className="shrink-0 bg-background safe-bottom z-30">
+      <div className="shrink-0 max-h-[60vh] overflow-y-auto bg-background safe-bottom z-30">
         <div className="mx-auto max-w-2xl px-4 sm:px-6 py-3 space-y-3">
           {engine.isStreaming ? (
             <>
@@ -1581,6 +1583,8 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
                     activeFlow={chipFlow.state.flow}
                     disabled={chipFlow.state.phase === 'executing'}
                     prefetch={{ idleUsdc: balance.usdc, currentApy: balance.savingsRate }}
+                    expandedChip={expandedChip}
+                    onExpandedChange={setExpandedChip}
                   />
                 </div>
                 {isInFlow && chipFlow.state.phase !== 'result' && (
@@ -1600,6 +1604,22 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
                   </button>
                 )}
               </div>
+              {expandedChip && (() => {
+                const configs = buildChipConfigs({ idleUsdc: balance.usdc, currentApy: balance.savingsRate });
+                const chip = configs.find(c => c.id === expandedChip);
+                if (!chip) return null;
+                return (
+                  <ChipExpand
+                    actions={chip.actions}
+                    chipLabel={chip.label}
+                    onSelect={(prompt) => {
+                      setExpandedChip(null);
+                      engine.sendMessage(prompt);
+                    }}
+                    onClose={() => setExpandedChip(null)}
+                  />
+                );
+              })()}
               <InputBar
                 onSubmit={handleInputSubmit}
                 disabled={chipFlow.state.phase === 'executing'}
