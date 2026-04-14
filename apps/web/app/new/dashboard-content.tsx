@@ -1669,7 +1669,7 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
           />
         );
       case 'store':
-        return <StorePanel />;
+        return <StorePanel onSendMessage={handleInputSubmit} />;
       case 'settings':
         return null;
       case 'chat':
