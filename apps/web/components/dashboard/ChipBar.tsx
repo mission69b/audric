@@ -7,12 +7,12 @@ interface ChipBarProps {
 }
 
 const CHIPS = [
-  { id: 'save', label: 'Save', icon: '💰' },
-  { id: 'send', label: 'Send', icon: '📤' },
-  { id: 'swap', label: 'Swap', icon: '🔄' },
-  { id: 'borrow', label: 'Credit', icon: '💳' },
-  { id: 'receive', label: 'Receive', icon: '📥' },
-  { id: 'charts', label: 'Charts', icon: '📊' },
+  { id: 'save', label: 'Save' },
+  { id: 'send', label: 'Send' },
+  { id: 'swap', label: 'Swap' },
+  { id: 'borrow', label: 'Credit' },
+  { id: 'receive', label: 'Receive' },
+  { id: 'charts', label: 'Charts' },
 ];
 
 export function ChipBar({ onChipClick, activeFlow, disabled }: ChipBarProps) {
@@ -30,10 +30,9 @@ export function ChipBar({ onChipClick, activeFlow, disabled }: ChipBarProps) {
             'focus-visible:ring-2 focus-visible:ring-foreground/20 focus-visible:ring-offset-1 focus-visible:ring-offset-background',
             activeFlow === chip.id
               ? 'bg-foreground border-foreground text-background'
-              : 'bg-background border-border text-muted hover:border-border-bright hover:text-foreground',
+              : 'bg-transparent border-border-bright text-muted hover:text-[var(--n300)] hover:border-[var(--n500)] hover:bg-[var(--n800)]',
           ].join(' ')}
         >
-          <span className="text-sm leading-none">{chip.icon}</span>
           {chip.label}
         </button>
       ))}

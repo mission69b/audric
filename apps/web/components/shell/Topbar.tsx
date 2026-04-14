@@ -27,7 +27,7 @@ export function Topbar({
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   return (
-    <div className="flex items-center justify-between px-5 py-3 border-b border-border shrink-0">
+    <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-border shrink-0">
       {/* Left zone — hamburger on mobile only */}
       <div className="w-[60px] flex items-center md:invisible">
         {showHamburger && (
@@ -56,7 +56,7 @@ export function Topbar({
             onClick={() => setDrawerOpen(!drawerOpen)}
             className="inline-block cursor-pointer"
           >
-            <p className="text-[40px] font-light tracking-[-0.03em] font-sans text-foreground leading-none">
+            <p className="text-4xl font-bold tracking-tight font-sans text-foreground leading-none">
               ${fmtUsd(balance.total)}
             </p>
             <p className="flex items-center justify-center gap-3 text-[12px] font-sans text-muted mt-1">

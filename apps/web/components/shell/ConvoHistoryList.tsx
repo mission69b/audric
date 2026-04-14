@@ -4,9 +4,11 @@ import { useEffect, useState } from 'react';
 
 interface ConvoSession {
   id: string;
-  title: string;
+  title?: string;
+  preview?: string;
   messageCount: number;
   updatedAt: string;
+  createdAt?: string;
 }
 
 interface ConvoHistoryListProps {
@@ -92,12 +94,12 @@ export function ConvoHistoryList({
             key={s.id}
             onClick={() => onLoadSession(s.id)}
             className={`
-              w-full text-left rounded-md px-2.5 py-1.5 transition-colors
-              ${activeSessionId === s.id ? 'bg-[var(--n700)] text-foreground' : 'text-muted hover:text-foreground hover:bg-[var(--n700)]/50'}
+              w-full text-left rounded-md px-2 py-2 mb-px transition-colors
+              ${activeSessionId === s.id ? 'bg-[var(--n700)]' : 'hover:bg-[var(--n700)]'}
             `}
           >
-            <p className="text-[11px] truncate max-w-[155px]">{s.title || 'Untitled'}</p>
-            <p className="text-[9px] text-dim mt-0.5">
+            <p className={`text-[11px] truncate max-w-[165px] ${activeSessionId === s.id ? 'text-[var(--n400)]' : 'text-dim'}`}>{s.title || s.preview || 'Conversation'}</p>
+            <p className="text-[10px] text-border-bright mt-px">
               {s.messageCount} msgs · {relativeTime(s.updatedAt)}
             </p>
           </button>

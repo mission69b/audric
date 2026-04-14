@@ -1668,6 +1668,8 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
       balance={balance}
       onSettingsClick={() => setSettingsOpen(true)}
       jwt={session.jwt}
+      allowancePercent={agentBudget > 0 ? Math.min(100, (agentBudget / 0.50) * 100) : 0}
+      allowanceLabel={`$${agentBudget.toFixed(2)}`}
       activeSessionId={engine.sessionId ?? undefined}
       onLoadSession={engine.loadSession}
       onNewConversation={handleNewConversation}
