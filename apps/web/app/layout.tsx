@@ -29,6 +29,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
+    site: '@AudricAI',
     title: 'Audric',
     description: 'Your money, handled.',
   },
