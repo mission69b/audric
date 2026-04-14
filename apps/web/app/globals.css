@@ -1,23 +1,44 @@
 @import "tailwindcss";
 
-:root {
-  /* Neutral palette — dark mode (inverted N-scale) */
-  --background: #0A0A0A;
-  --surface: #141414;
-  --panel: #1A1A1A;
-  --border: #2A2A2A;
-  --border-bright: #404040;
-  --foreground: #EDEDED;
-  --muted: #A0A0A0;
-  --dim: #666666;
-  --accent: #EDEDED;
-  --accent-dim: #1A1A1A;
+/* ============================================================
+   ADS N-SCALE TOKENS — aligned to spec/DESIGN_SYSTEM.md
+   ============================================================ */
 
-  /* Semantic colors */
+:root {
+  /* N-scale neutrals */
+  --n100: #FFFFFF;
+  --n200: #F7F7F7;
+  --n300: #E5E5E5;
+  --n400: #CCCCCC;
+  --n500: #8F8F8F;
+  --n600: #707070;
+  --n700: #363636;
+  --n800: #191919;
+  --n900: #000000;
+
+  /* Dark theme — semantic roles mapped to N-scale */
+  --background: var(--n900);
+  --surface: var(--n800);
+  --panel: var(--n800);
+  --border: var(--n700);
+  --border-bright: var(--n600);
+  --foreground: var(--n100);
+  --muted: var(--n500);
+  --dim: var(--n600);
+  --accent: var(--n100);
+  --accent-dim: var(--n800);
+  --input-bg: var(--n800);
+  --input-border: var(--n700);
+
+  /* Semantic colors (ADS canonical) */
   --success: #3CC14E;
-  --error: #F0201D;
-  --warning: #FFB014;
-  --info: #0966F6;
+  --error: #D50000;
+  --warning: #FF9800;
+  --info: #0D9DFC;
+
+  /* Audric extension */
+  --color-purple: #7B6FD4;
+  --color-purple-bg: rgba(123, 111, 212, 0.12);
 
   /* Chart monochrome segments */
   --chart-1: #D9D9D9;
@@ -25,44 +46,67 @@
   --chart-3: #666666;
   --chart-4: #404040;
 
-  /* Status colors (used for health factor, alerts) */
+  /* Status colors (health factor, alerts) */
   --status-healthy: #3CC14E;
-  --status-warning: #FFB014;
-  --status-danger: #F0201D;
+  --status-warning: #FF9800;
+  --status-danger: #D50000;
 
-  /* Elevation shadows (heavier for dark surfaces) */
+  /* Spacing (4px base) */
+  --sp1: 4px;
+  --sp2: 8px;
+  --sp3: 12px;
+  --sp4: 16px;
+  --sp5: 20px;
+  --sp6: 24px;
+  --sp8: 32px;
+  --sp10: 40px;
+
+  /* Radius */
+  --r-sm: 4px;
+  --r-md: 8px;
+  --r-lg: 12px;
+  --r-xl: 16px;
+  --r-full: 9999px;
+
+  /* Elevation shadows (dark-tuned) */
   --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
-  --shadow-dropdown: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
-  --shadow-drawer: -4px 0 24px rgba(0, 0, 0, 0.4);
-  --shadow-modal: 0 20px 60px rgba(0, 0, 0, 0.5);
+  --shadow-dropdown: 0 4px 12px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-drawer: 0 8px 24px rgba(0, 0, 0, 0.4), 0 2px 6px rgba(0, 0, 0, 0.3);
+  --shadow-modal: 0 16px 48px rgba(0, 0, 0, 0.5), 0 4px 12px rgba(0, 0, 0, 0.4);
+
+  /* Sidebar */
+  --sidebar-width: 210px;
+  --sidebar-icon-width: 48px;
 }
 
 .light-theme {
-  --background: #FFFFFF;
-  --surface: #F7F7F7;
-  --panel: #FFFFFF;
-  --border: #E5E5E5;
-  --border-bright: #CCCCCC;
-  --foreground: #191919;
-  --muted: #707070;
-  --dim: #9F9F9F;
-  --accent: #191919;
-  --accent-dim: #F7F7F7;
+  --background: var(--n100);
+  --surface: var(--n200);
+  --panel: var(--n100);
+  --border: var(--n300);
+  --border-bright: var(--n400);
+  --foreground: var(--n900);
+  --muted: var(--n600);
+  --dim: var(--n500);
+  --accent: var(--n900);
+  --accent-dim: var(--n200);
+  --input-bg: var(--n100);
+  --input-border: var(--n300);
   --chart-1: #333333;
   --chart-2: #666666;
   --chart-3: #999999;
   --chart-4: #CCCCCC;
-  --status-healthy: #16A34A;
-  --status-warning: #D97706;
-  --status-danger: #DC2626;
-  --success: #16A34A;
-  --error: #DC2626;
-  --warning: #D97706;
-  --info: #2563EB;
-  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
-  --shadow-dropdown: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
-  --shadow-drawer: -4px 0 24px rgba(0, 0, 0, 0.08);
-  --shadow-modal: 0 20px 60px rgba(0, 0, 0, 0.15);
+  --success: #3CC14E;
+  --error: #D50000;
+  --warning: #FF9800;
+  --info: #0D9DFC;
+  --status-healthy: #3CC14E;
+  --status-warning: #FF9800;
+  --status-danger: #D50000;
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-dropdown: 0 4px 12px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.06);
+  --shadow-drawer: 0 8px 24px rgba(0, 0, 0, 0.10), 0 2px 6px rgba(0, 0, 0, 0.06);
+  --shadow-modal: 0 16px 48px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 @theme inline {
@@ -89,8 +133,8 @@
   --color-status-danger: var(--status-danger);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-  --font-display: var(--font-instrument-serif), ui-serif, Georgia, serif;
-  --font-heading: var(--font-inter), 'Inter', system-ui, sans-serif;
+  --font-heading: var(--font-instrument-serif), 'Instrument Serif', Georgia, serif;
+  --font-display: var(--font-instrument-serif), 'Instrument Serif', Georgia, serif;
 }
 
 body {

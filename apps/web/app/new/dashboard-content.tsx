@@ -17,6 +17,7 @@ import { resolveFlow } from '@/components/dashboard/AgentMarkdown';
 import { UnifiedTimeline } from '@/components/dashboard/UnifiedTimeline';
 import { SettingsPanel } from '@/components/settings/SettingsPanel';
 import { EmailCaptureModal } from '@/components/auth/EmailCaptureModal';
+import { AppShell } from '@/components/shell/AppShell';
 import { useChipFlow, type ChipFlowResult, type FlowContext } from '@/hooks/useChipFlow';
 import { useFeed } from '@/hooks/useFeed';
 import { useEngine } from '@/hooks/useEngine';
@@ -1312,133 +1313,81 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
     </div>
   ) : null;
 
-  if (isEmpty && !engine.isStreaming && activeTab === 'chat') {
-    return (
-      <main className="flex flex-1 flex-col min-h-dvh">
-        <div className="mx-auto w-full max-w-2xl px-4 sm:px-6 pt-6 pb-4">
-          <BalanceHeader
-            address={address}
-            balance={balance}
-            compact={false}
-            onSettingsClick={() => setSettingsOpen(true)}
-          />
-          <div className="mt-4">
-            <DashboardTabs activeTab={activeTab} onTabChange={handleTabChange} hasUnread={activityFeed.hasUnread} />
-          </div>
-        </div>
-
-        <div className={`flex-1 flex flex-col items-center justify-center px-4 sm:px-6 ${!userStatus.loading && !userStatus.onboarded && !briefing.briefing ? 'mt-0' : '-mt-8'}`}>
-          {!userStatus.loading && !userStatus.onboarded && !briefing.briefing && (
-            <div className="w-full max-w-2xl mb-6">
-              <WelcomeCard
-                usdcBalance={balanceQuery.data?.usdc ?? 0}
-                hasSavings={(balanceQuery.data?.savings ?? 0) > 0}
-                onSave={handleWelcomeSave}
-                onAsk={handleWelcomeAsk}
-                onDismiss={handleWelcomeDismiss}
-              />
-            </div>
-          )}
-          {briefing.briefing && (
-            <div className="w-full max-w-2xl mb-6">
-              <BriefingCard
-                briefing={briefing.briefing}
-                onDismiss={briefing.dismiss}
-                onViewReport={handleBriefingViewReport}
-                onCtaClick={handleBriefingCtaClick}
-              />
-            </div>
-          )}
-
-          <p className="text-sm text-muted mb-6">{greeting}</p>
-
+  const renderEmptyState = () => (
+    <div className="flex-1 flex flex-col">
+      <div className={`flex-1 flex flex-col items-center justify-center px-4 sm:px-6 ${!userStatus.loading && !userStatus.onboarded && !briefing.briefing ? 'mt-0' : '-mt-8'}`}>
+        {!userStatus.loading && !userStatus.onboarded && !briefing.briefing && (
           <div className="w-full max-w-2xl mb-6">
-            <InputBar
-              onSubmit={handleInputSubmit}
-              placeholder="Ask anything..."
+            <WelcomeCard
+              usdcBalance={balanceQuery.data?.usdc ?? 0}
+              hasSavings={(balanceQuery.data?.savings ?? 0) > 0}
+              onSave={handleWelcomeSave}
+              onAsk={handleWelcomeAsk}
+              onDismiss={handleWelcomeDismiss}
             />
           </div>
-
-          {contextualChips.length > 0 && (
-            <div className="w-full max-w-2xl mb-6">
-              <ContextualChips
-                chips={contextualChips}
-                onChipFlow={handleChipClick}
-                onAgentPrompt={(prompt) => handleInputSubmit(prompt)}
-                onDismiss={handleDismissChip}
-              />
-            </div>
-          )}
-
-          <div className="w-full max-w-2xl overflow-x-auto scrollbar-none">
-            <ChipBar
-              onChipClick={handleChipClick}
-              activeFlow={chipFlow.state.flow}
+        )}
+        {briefing.briefing && (
+          <div className="w-full max-w-2xl mb-6">
+            <BriefingCard
+              briefing={briefing.briefing}
+              onDismiss={briefing.dismiss}
+              onViewReport={handleBriefingViewReport}
+              onCtaClick={handleBriefingCtaClick}
             />
           </div>
-        </div>
+        )}
 
-        {settingsPanel}
-        {emailModal}
-        {tosBanner}
-        {graceBanner}
-      </main>
-    );
-  }
+        <p className="text-sm text-muted mb-6">{greeting}</p>
 
-  if (activeTab === 'activity') {
-    return (
-      <main className="flex flex-1 flex-col min-h-dvh">
-        <div className={`sticky top-0 z-20 bg-background/95 backdrop-blur-sm transition-[border-color] duration-200 border-b ${scrolled ? 'border-border/50' : 'border-transparent'}`}>
-          <div className="mx-auto w-full max-w-2xl px-4 sm:px-6 pt-6 pb-0">
-            <BalanceHeader
-              address={address}
-              balance={balance}
-              compact={scrolled}
-              onSettingsClick={() => setSettingsOpen(true)}
-            />
-            <div className="mt-4">
-              <DashboardTabs activeTab={activeTab} onTabChange={handleTabChange} hasUnread={activityFeed.hasUnread} />
-            </div>
-          </div>
-        </div>
-        <div className="mx-auto w-full max-w-2xl px-4 sm:px-6 py-4">
-          {briefing.briefing && (
-            <div className="mb-4">
-              <BriefingCard
-                briefing={briefing.briefing}
-                onDismiss={briefing.dismiss}
-                onViewReport={handleBriefingViewReport}
-                onCtaClick={handleBriefingCtaClick}
-              />
-            </div>
-          )}
-          <ActivityFeed feed={activityFeed} onAction={handleActivityAction} />
-        </div>
-
-        {settingsPanel}
-        {emailModal}
-        {tosBanner}
-        {graceBanner}
-      </main>
-    );
-  }
-
-  return (
-    <main className="flex flex-1 flex-col pb-32">
-      <div className={`sticky top-0 z-20 bg-background/95 backdrop-blur-sm transition-[border-color] duration-200 border-b ${scrolled ? 'border-border/50' : 'border-transparent'}`}>
-        <div className="mx-auto w-full max-w-2xl px-4 sm:px-6 pt-6 pb-0">
-          <BalanceHeader
-            address={address}
-            balance={balance}
-            compact={scrolled}
-            onSettingsClick={() => setSettingsOpen(true)}
+        <div className="w-full max-w-2xl mb-6">
+          <InputBar
+            onSubmit={handleInputSubmit}
+            placeholder="Ask anything..."
           />
-          <div className="mt-4">
-            <DashboardTabs activeTab={activeTab} onTabChange={handleTabChange} hasUnread={activityFeed.hasUnread} />
+        </div>
+
+        {contextualChips.length > 0 && (
+          <div className="w-full max-w-2xl mb-6">
+            <ContextualChips
+              chips={contextualChips}
+              onChipFlow={handleChipClick}
+              onAgentPrompt={(prompt) => handleInputSubmit(prompt)}
+              onDismiss={handleDismissChip}
+            />
           </div>
+        )}
+
+        <div className="w-full max-w-2xl overflow-x-auto scrollbar-none">
+          <ChipBar
+            onChipClick={handleChipClick}
+            activeFlow={chipFlow.state.flow}
+          />
         </div>
       </div>
+    </div>
+  );
+
+  const renderActivityTab = () => (
+    <div className="flex-1 flex flex-col">
+      <div className="mx-auto w-full max-w-2xl px-4 sm:px-6 py-4">
+        {briefing.briefing && (
+          <div className="mb-4">
+            <BriefingCard
+              briefing={briefing.briefing}
+              onDismiss={briefing.dismiss}
+              onViewReport={handleBriefingViewReport}
+              onCtaClick={handleBriefingCtaClick}
+            />
+          </div>
+        )}
+        <ActivityFeed feed={activityFeed} onAction={handleActivityAction} />
+      </div>
+    </div>
+  );
+
+  const renderChatView = () => (
+    <div className="flex-1 flex flex-col pb-32">
       <div className="mx-auto w-full max-w-2xl px-4 sm:px-6 py-6 space-y-3">
 
         {chipFlow.state.phase === 'result' && chipFlow.state.result && (
@@ -1574,7 +1523,7 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
 
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 border-t border-border bg-background/95 backdrop-blur-sm safe-bottom z-30">
+      <div className="fixed bottom-0 left-0 right-0 md:left-[var(--sidebar-width)] border-t border-border bg-background/95 backdrop-blur-sm safe-bottom z-30">
         <div className="mx-auto max-w-2xl px-4 sm:px-6 py-3 space-y-3">
           {engine.isStreaming ? (
             <>
@@ -1634,12 +1583,27 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
           )}
         </div>
       </div>
+    </div>
+  );
 
+  const panelContent = (() => {
+    if (activeTab === 'activity') return renderActivityTab();
+    if (isEmpty && !engine.isStreaming) return renderEmptyState();
+    return renderChatView();
+  })();
+
+  return (
+    <AppShell
+      address={address}
+      balance={balance}
+      onSettingsClick={() => setSettingsOpen(true)}
+    >
+      {panelContent}
       {settingsPanel}
       {emailModal}
       {tosBanner}
       {graceBanner}
-    </main>
+    </AppShell>
   );
 }
 
