@@ -7,7 +7,8 @@ export const runtime = 'nodejs';
 /**
  * POST /api/user/briefing/dismiss
  * Body: { address }
- * Sets dismissedAt on today's briefing.
+ * Dismisses all undismissed briefings for today + yesterday (UTC).
+ * Matches the same date window that GET /api/user/briefing uses.
  */
 export async function POST(request: NextRequest) {
   const jwt = request.headers.get('x-zklogin-jwt');
@@ -28,29 +29,25 @@ export async function POST(request: NextRequest) {
 
   const user = await prisma.user.findUnique({
     where: { suiAddress: address },
-    select: { id: true, timezoneOffset: true },
+    select: { id: true },
   });
 
   if (!user) {
     return NextResponse.json({ error: 'User not found' }, { status: 404 });
   }
 
-  const localDate = getUserLocalDate(user.timezoneOffset);
+  const now = new Date();
+  const todayUtc = now.toISOString().slice(0, 10);
+  const yesterday = new Date(now.getTime() - 86_400_000).toISOString().slice(0, 10);
 
   await prisma.dailyBriefing.updateMany({
     where: {
       userId: user.id,
-      date: localDate,
+      date: { in: [todayUtc, yesterday] },
       dismissedAt: null,
     },
     data: { dismissedAt: new Date() },
   });
 
   return NextResponse.json({ ok: true });
-}
-
-function getUserLocalDate(timezoneOffset: number): string {
-  const now = new Date();
-  const localMs = now.getTime() - timezoneOffset * 60 * 1000;
-  return new Date(localMs).toISOString().slice(0, 10);
 }
