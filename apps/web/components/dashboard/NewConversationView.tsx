@@ -134,7 +134,7 @@ export function NewConversationView({
         const chip = configs.find(c => c.id === expandedChip);
         if (!chip) return null;
         return (
-          <div className="w-full max-w-2xl mt-3">
+          <div className="w-full max-w-2xl mt-2">
             <ChipExpand
               actions={chip.actions}
               chipLabel={chip.label}

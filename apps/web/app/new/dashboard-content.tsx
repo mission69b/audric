@@ -1575,53 +1575,51 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
                   onDismiss={handleDismissChip}
                 />
               )}
-              <div className="relative">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex gap-2 overflow-x-auto scrollbar-none flex-1">
-                    <ChipBar
-                      onChipClick={handleChipClick}
-                      onPrompt={(prompt) => engine.sendMessage(prompt)}
-                      activeFlow={chipFlow.state.flow}
-                      disabled={chipFlow.state.phase === 'executing'}
-                      prefetch={{ idleUsdc: balance.usdc, currentApy: balance.savingsRate }}
-                      expandedChip={expandedChip}
-                      onExpandedChange={setExpandedChip}
-                    />
-                  </div>
-                  {isInFlow && chipFlow.state.phase !== 'result' && (
-                    <button
-                      onClick={chipFlow.reset}
-                      className="text-xs text-muted hover:text-foreground transition shrink-0"
-                    >
-                      Cancel
-                    </button>
-                  )}
-                  {!isInFlow && engine.messages.length > 0 && (
-                    <button
-                      onClick={handleNewConversation}
-                      className="text-xs text-muted hover:text-foreground transition shrink-0"
-                    >
-                      New
-                    </button>
-                  )}
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex gap-2 overflow-x-auto scrollbar-none flex-1">
+                  <ChipBar
+                    onChipClick={handleChipClick}
+                    onPrompt={(prompt) => engine.sendMessage(prompt)}
+                    activeFlow={chipFlow.state.flow}
+                    disabled={chipFlow.state.phase === 'executing'}
+                    prefetch={{ idleUsdc: balance.usdc, currentApy: balance.savingsRate }}
+                    expandedChip={expandedChip}
+                    onExpandedChange={setExpandedChip}
+                  />
                 </div>
-                {expandedChip && (() => {
-                  const configs = buildChipConfigs({ idleUsdc: balance.usdc, currentApy: balance.savingsRate });
-                  const chip = configs.find(c => c.id === expandedChip);
-                  if (!chip) return null;
-                  return (
-                    <ChipExpand
-                      actions={chip.actions}
-                      chipLabel={chip.label}
-                      onSelect={(prompt) => {
-                        setExpandedChip(null);
-                        engine.sendMessage(prompt);
-                      }}
-                      onClose={() => setExpandedChip(null)}
-                    />
-                  );
-                })()}
+                {isInFlow && chipFlow.state.phase !== 'result' && (
+                  <button
+                    onClick={chipFlow.reset}
+                    className="text-xs text-muted hover:text-foreground transition shrink-0"
+                  >
+                    Cancel
+                  </button>
+                )}
+                {!isInFlow && engine.messages.length > 0 && (
+                  <button
+                    onClick={handleNewConversation}
+                    className="text-xs text-muted hover:text-foreground transition shrink-0"
+                  >
+                    New
+                  </button>
+                )}
               </div>
+              {expandedChip && (() => {
+                const configs = buildChipConfigs({ idleUsdc: balance.usdc, currentApy: balance.savingsRate });
+                const chip = configs.find(c => c.id === expandedChip);
+                if (!chip) return null;
+                return (
+                  <ChipExpand
+                    actions={chip.actions}
+                    chipLabel={chip.label}
+                    onSelect={(prompt) => {
+                      setExpandedChip(null);
+                      engine.sendMessage(prompt);
+                    }}
+                    onClose={() => setExpandedChip(null)}
+                  />
+                );
+              })()}
               <InputBar
                 onSubmit={handleInputSubmit}
                 disabled={chipFlow.state.phase === 'executing'}
