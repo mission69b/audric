@@ -67,7 +67,7 @@ export function Topbar({
                   <span>earning ${Math.floor(balance.savings)}</span>
                 </>
               )}
-              {balance.borrows > 0 && (
+              {balance.borrows >= 0.01 && (
                 <>
                   <span className="text-border-bright">&middot;</span>
                   <span className="font-mono text-[10px] tracking-[0.06em] uppercase text-warning border border-warning/30 rounded-full px-1.5 py-px">
@@ -75,7 +75,6 @@ export function Topbar({
                   </span>
                 </>
               )}
-              
             </p>
           </button>
         )}
