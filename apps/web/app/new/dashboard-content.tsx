@@ -37,6 +37,8 @@ import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
 import { useActivityFeed } from '@/hooks/useActivityFeed';
 import { BriefingCard } from '@/components/dashboard/BriefingCard';
 import { WelcomeCard } from '@/components/dashboard/WelcomeCard';
+import { NewConversationView } from '@/components/dashboard/NewConversationView';
+import { FirstLoginView } from '@/components/dashboard/FirstLoginView';
 import { TosBanner } from '@/components/dashboard/TosBanner';
 import { GracePeriodBanner } from '@/components/dashboard/GracePeriodBanner';
 import { useOvernightBriefing } from '@/hooks/useOvernightBriefing';
@@ -1313,60 +1315,46 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
     </div>
   ) : null;
 
-  const renderEmptyState = () => (
-    <div className="flex-1 flex flex-col">
-      <div className={`flex-1 flex flex-col items-center justify-center px-4 sm:px-6 ${!userStatus.loading && !userStatus.onboarded && !briefing.briefing ? 'mt-0' : '-mt-8'}`}>
-        {!userStatus.loading && !userStatus.onboarded && !briefing.briefing && (
-          <div className="w-full max-w-2xl mb-6">
-            <WelcomeCard
-              usdcBalance={balanceQuery.data?.usdc ?? 0}
-              hasSavings={(balanceQuery.data?.savings ?? 0) > 0}
-              onSave={handleWelcomeSave}
-              onAsk={handleWelcomeAsk}
-              onDismiss={handleWelcomeDismiss}
-            />
-          </div>
-        )}
-        {briefing.briefing && (
-          <div className="w-full max-w-2xl mb-6">
-            <BriefingCard
-              briefing={briefing.briefing}
-              onDismiss={briefing.dismiss}
-              onViewReport={handleBriefingViewReport}
-              onCtaClick={handleBriefingCtaClick}
-            />
-          </div>
-        )}
+  const isFirstLogin = !userStatus.loading && !userStatus.onboarded;
 
-        <p className="text-sm text-muted mb-6">{greeting}</p>
+  const renderEmptyState = () => {
+    if (isFirstLogin) {
+      return (
+        <FirstLoginView
+          greeting={greeting}
+          onSend={handleInputSubmit}
+          onSave={handleWelcomeSave}
+          onAsk={handleWelcomeAsk}
+          onDismiss={handleWelcomeDismiss}
+          usdcBalance={balanceQuery.data?.usdc ?? 0}
+          hasSavings={(balanceQuery.data?.savings ?? 0) > 0}
+        />
+      );
+    }
 
-        <div className="w-full max-w-2xl mb-6">
-          <InputBar
-            onSubmit={handleInputSubmit}
-            placeholder="Ask anything..."
-          />
-        </div>
+    const dailyYield = balance.savings > 0 && balance.savingsRate > 0
+      ? (balance.savings * balance.savingsRate) / 365
+      : 0;
 
-        {contextualChips.length > 0 && (
-          <div className="w-full max-w-2xl mb-6">
-            <ContextualChips
-              chips={contextualChips}
-              onChipFlow={handleChipClick}
-              onAgentPrompt={(prompt) => handleInputSubmit(prompt)}
-              onDismiss={handleDismissChip}
-            />
-          </div>
-        )}
-
-        <div className="w-full max-w-2xl overflow-x-auto scrollbar-none">
-          <ChipBar
-            onChipClick={handleChipClick}
-            activeFlow={chipFlow.state.flow}
-          />
-        </div>
-      </div>
-    </div>
-  );
+    return (
+      <NewConversationView
+        greeting={greeting}
+        netWorth={balance.total}
+        dailyYield={dailyYield}
+        savingsRate={balance.savingsRate}
+        automationCount={0}
+        onSend={handleInputSubmit}
+        onChipClick={handleChipClick}
+        activeFlow={chipFlow.state.flow}
+        briefing={briefing.briefing ? {
+          briefing: briefing.briefing,
+          dismiss: briefing.dismiss,
+          onViewReport: handleBriefingViewReport,
+          onCtaClick: handleBriefingCtaClick,
+        } : null}
+      />
+    );
+  };
 
   const renderActivityTab = () => (
     <div className="flex-1 flex flex-col">
