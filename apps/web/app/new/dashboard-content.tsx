@@ -1671,7 +1671,7 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
           />
         );
       case 'store':
-        return <StorePanel onSendMessage={handleInputSubmit} />;
+        return <StorePanel onSendMessage={handleInputSubmit} address={address} jwt={session.jwt} />;
       case 'settings':
         return null;
       case 'chat':
