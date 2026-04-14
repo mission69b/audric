@@ -24,7 +24,15 @@ export default async function Image({ params }: { params: Promise<{ address: str
   let suggestions = 0;
 
   try {
-    const res = await fetch(`${BASE_URL}/api/report/${address}`, { next: { revalidate: 3600 } });
+    const headers: Record<string, string> = {};
+    const secret = process.env.INTERNAL_API_SECRET ?? process.env.T2000_INTERNAL_KEY;
+    if (secret) {
+      headers['x-internal-secret'] = secret;
+    }
+    const res = await fetch(`${BASE_URL}/api/report/${address}`, {
+      headers,
+      next: { revalidate: 3600 },
+    });
     if (res.ok) {
       const data = (await res.json()) as WalletReportData;
       netWorth = `$${fmtCompact(data.portfolio.netWorth)}`;

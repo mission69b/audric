@@ -84,9 +84,11 @@ function buildPortfolioSection(
     debt,
     netWorth,
     healthFactor: positions?.healthFactor ?? null,
-    supplies: (positions?.supplies ?? []).map((s) => ({
-      asset: s.asset, amount: s.amount, amountUsd: s.amountUsd, apy: s.apy, protocol: s.protocol,
-    })),
+    supplies: (positions?.supplies ?? [])
+      .filter((s) => s.amountUsd >= 0.01)
+      .map((s) => ({
+        asset: s.asset, amount: s.amount, amountUsd: s.amountUsd, apy: s.apy, protocol: s.protocol,
+      })),
     borrows: (positions?.borrowsDetail ?? []).map((b) => ({
       asset: b.asset, amount: b.amount, amountUsd: b.amountUsd, apy: b.apy, protocol: b.protocol,
     })),

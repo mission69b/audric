@@ -37,15 +37,19 @@ export async function GET(
     return NextResponse.json({ error: 'Invalid Sui address' }, { status: 400 });
   }
 
-  const rl = getRatelimit();
-  if (rl) {
-    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
-    const { success } = await rl.limit(ip);
-    if (!success) {
-      return NextResponse.json(
-        { error: 'Rate limit exceeded. Try again later.' },
-        { status: 429 },
-      );
+  const internalSecret = process.env.INTERNAL_API_SECRET ?? process.env.T2000_INTERNAL_KEY;
+  const isInternal = internalSecret && request.headers.get('x-internal-secret') === internalSecret;
+  if (!isInternal) {
+    const rl = getRatelimit();
+    if (rl) {
+      const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
+      const { success } = await rl.limit(ip);
+      if (!success) {
+        return NextResponse.json(
+          { error: 'Rate limit exceeded. Try again later.' },
+          { status: 429 },
+        );
+      }
     }
   }
 
