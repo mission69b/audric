@@ -52,6 +52,12 @@ import { ReportsPanel } from '@/components/panels/ReportsPanel';
 import { ContactsPanel } from '@/components/panels/ContactsPanel';
 import { AutomationsPanel } from '@/components/panels/AutomationsPanel';
 import { StorePanel } from '@/components/panels/StorePanel';
+import { ProactiveBanner } from '@/components/dashboard/ProactiveBanner';
+import { HandledForYou } from '@/components/dashboard/HandledForYou';
+import { TaskCard } from '@/components/dashboard/TaskCard';
+import { MilestoneCard } from '@/components/dashboard/MilestoneCard';
+import { useScheduledActions } from '@/hooks/useScheduledActions';
+import { useGoals } from '@/hooks/useGoals';
 
 const LS_LAST_SAVINGS = 't2000_last_savings';
 const LS_LAST_OPEN = 't2000_last_open_date';
@@ -328,6 +334,51 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
     debt: balance.borrows,
     healthFactor: balance.healthFactor ?? null,
   });
+
+  const scheduledActions = useScheduledActions(address, session?.jwt ?? null);
+  const goalsHook = useGoals(address, session?.jwt);
+  const [dismissedMilestones, setDismissedMilestones] = useState<Set<string>>(new Set());
+
+  const upcomingTasks = useMemo(() => {
+    const now = Date.now();
+    const dayMs = 86_400_000;
+    return scheduledActions.actions.filter((a) => {
+      if (!a.enabled) return false;
+      const next = new Date(a.nextRunAt).getTime();
+      return next > now && next - now < dayMs;
+    });
+  }, [scheduledActions.actions]);
+
+  const proposalTasks = useMemo(
+    () => scheduledActions.actions.filter((a) => a.stage === 1 && !a.declinedAt && !a.pausedAt),
+    [scheduledActions.actions],
+  );
+
+  const milestoneGoals = useMemo(() => {
+    const savings = balance.savings;
+    return goalsHook.goals
+      .map((goal) => {
+        const current = Math.min(savings, goal.targetAmount);
+        const pct = goal.targetAmount > 0 ? (current / goal.targetAmount) * 100 : 0;
+        if (pct >= 100) return { goal, status: 'complete' as const, milestone: 100, savings };
+        for (const m of [75, 50, 25]) {
+          if (pct >= m) return { goal, status: 'milestone' as const, milestone: m, savings };
+        }
+        return null;
+      })
+      .filter((g): g is NonNullable<typeof g> => g != null && !dismissedMilestones.has(g.goal.id));
+  }, [goalsHook.goals, balance.savings, dismissedMilestones]);
+
+  const nightBeforeTasks = useMemo(() => {
+    const now = new Date();
+    const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const dayAfter = new Date(tomorrow.getTime() + 86_400_000);
+    return scheduledActions.actions.filter((a) => {
+      if (!a.enabled) return false;
+      const next = new Date(a.nextRunAt).getTime();
+      return next >= tomorrow.getTime() && next < dayAfter.getTime();
+    });
+  }, [scheduledActions.actions]);
 
   useEffect(() => {
     if (!address) return;
@@ -1516,28 +1567,110 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
         )}
 
         {!isInFlow && (
-          <UnifiedTimeline
-            engine={engine}
-            feed={feed}
-            onChipClick={handleFeedChipClick}
-            onCopy={handleCopy}
-            onSaveContact={handleSaveContact}
-            onExecuteAction={handleExecuteAction}
-            onValidateAction={validateAction}
-            agentBudget={agentBudget}
-            onSendMessage={engine.sendMessage}
-            onConfirmResolve={(approved) => {
-              const resolver = confirmResolverRef.current;
-              if (resolver) {
-                confirmResolverRef.current = null;
-                feed.updateLastItem((prev) => {
-                  if (prev.type !== 'agent-response') return prev;
-                  return { ...prev, confirm: undefined };
-                });
-                resolver(approved);
-              }
-            }}
-          />
+          <>
+            {/* Dashboard header zone: briefing + proactive + handled + tasks + milestones */}
+            {(briefing.briefing || dashInsights.proactive || dashInsights.handledActions.length > 0 || upcomingTasks.length > 0 || proposalTasks.length > 0 || milestoneGoals.length > 0 || nightBeforeTasks.length > 0) && (
+              <div className="space-y-2 mb-4">
+                {briefing.briefing && (
+                  <TaskCard
+                    title={`Morning briefing — ${new Date(briefing.briefing.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`}
+                    description={briefing.briefing.content.variant === 'savings'
+                      ? `Earned $${briefing.briefing.content.earned.toFixed(4)} overnight at ${(briefing.briefing.content.saveApy * 100).toFixed(1)}% APY`
+                      : briefing.briefing.content.variant === 'idle'
+                      ? `${briefing.briefing.content.idleUsdc.toFixed(2)} idle USDC not earning`
+                      : `Health factor: ${briefing.briefing.content.healthFactor?.toFixed(2) ?? 'N/A'}`}
+                    status="needs_input"
+                    actionLabel="View briefing"
+                    onAction={handleBriefingViewReport}
+                  />
+                )}
+
+                {dashInsights.proactive && (
+                  <ProactiveBanner
+                    title={dashInsights.proactive.title}
+                    description={dashInsights.proactive.description}
+                    cta={dashInsights.proactive.cta}
+                    variant={dashInsights.proactive.variant}
+                    onCtaClick={() => engine.sendMessage(dashInsights.proactive!.action)}
+                    onDismiss={dashInsights.dismissProactive}
+                  />
+                )}
+
+                {dashInsights.handledActions.length > 0 && (
+                  <HandledForYou
+                    actions={dashInsights.handledActions}
+                    onViewAll={() => setActiveTab('activity')}
+                  />
+                )}
+
+                {proposalTasks.map((a) => (
+                  <TaskCard
+                    key={a.id}
+                    title={`${a.patternType?.replace(/_/g, ' ') ?? a.actionType} — $${a.amount} ${a.asset}`}
+                    description={`Confidence: ${a.confidence ? Math.round(a.confidence * 100) : '?'}%. Tap to review.`}
+                    status="needs_input"
+                    actionLabel="Review"
+                    onAction={() => engine.sendMessage(`Show me the ${a.patternType ?? a.actionType} proposal`)}
+                  />
+                ))}
+
+                {upcomingTasks.map((a) => (
+                  <TaskCard
+                    key={a.id}
+                    title={`${a.actionType} $${a.amount} ${a.asset}`}
+                    description={`Runs ${new Date(a.nextRunAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
+                    status="upcoming"
+                  />
+                ))}
+
+                {nightBeforeTasks.map((a) => (
+                  <TaskCard
+                    key={`night-${a.id}`}
+                    title={`Tomorrow: ${a.actionType} $${a.amount} ${a.asset}`}
+                    description={`Scheduled for ${new Date(a.nextRunAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
+                    status="upcoming"
+                    actionLabel="Skip"
+                    onAction={() => scheduledActions.pauseAction(a.id)}
+                  />
+                ))}
+
+                {milestoneGoals.map((mg) => (
+                  <MilestoneCard
+                    key={mg.goal.id}
+                    goal={mg.goal}
+                    status={mg.status}
+                    milestone={mg.milestone}
+                    savings={mg.savings}
+                    onDismiss={() => setDismissedMilestones((prev) => new Set(prev).add(mg.goal.id))}
+                    onKeepSaving={() => engine.sendMessage(`Save more towards my ${mg.goal.name} goal`)}
+                  />
+                ))}
+              </div>
+            )}
+
+            <UnifiedTimeline
+              engine={engine}
+              feed={feed}
+              onChipClick={handleFeedChipClick}
+              onCopy={handleCopy}
+              onSaveContact={handleSaveContact}
+              onExecuteAction={handleExecuteAction}
+              onValidateAction={validateAction}
+              agentBudget={agentBudget}
+              onSendMessage={engine.sendMessage}
+              onConfirmResolve={(approved) => {
+                const resolver = confirmResolverRef.current;
+                if (resolver) {
+                  confirmResolverRef.current = null;
+                  feed.updateLastItem((prev) => {
+                    if (prev.type !== 'agent-response') return prev;
+                    return { ...prev, confirm: undefined };
+                  });
+                  resolver(approved);
+                }
+              }}
+            />
+          </>
         )}
 
       </div>

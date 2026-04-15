@@ -22,6 +22,7 @@ import { ActivitySummaryCard } from './cards/ActivitySummaryCard';
 import { StakingCard } from './cards/StakingCard';
 import { ProtocolCard } from './cards/ProtocolCard';
 import { PriceCard } from './cards/PriceCard';
+import { ProposalCard, type ProposalData } from './cards/ProposalCard';
 
 const WRITE_TOOL_NAMES = new Set([
   'save_deposit', 'withdraw', 'send_transfer', 'swap_execute',
@@ -153,6 +154,13 @@ const CARD_RENDERERS: Record<string, (result: unknown) => React.ReactNode | null
     const data = extractData(result);
     if (!data || typeof data !== 'object') return null;
     return <PriceCard data={data as Parameters<typeof PriceCard>[0]['data']} />;
+  },
+  pattern_status: (result) => {
+    const data = extractData(result);
+    if (!data || typeof data !== 'object') return null;
+    const d = data as Record<string, unknown>;
+    if (!d.proposalId) return null;
+    return <ProposalCard data={d as unknown as ProposalData} />;
   },
 };
 
