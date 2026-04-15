@@ -816,9 +816,13 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
   }, [activityFeed.markSeen]);
 
   const handleActivityAction = useCallback((flow: string) => {
+    if (flow === 'automations') {
+      setPanel('automations');
+      return;
+    }
     setActiveTab('chat');
     handleChipClick(flow);
-  }, [handleChipClick]);
+  }, [handleChipClick, setPanel]);
 
   const handleBriefingCtaClick = useCallback((type: string, amount?: number) => {
     if (type === 'save' && amount) {

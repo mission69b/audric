@@ -56,7 +56,7 @@ export function ActivityFeed({ feed, onAction }: ActivityFeedProps) {
               </p>
               <div className="space-y-2">
                 {group.items.map((item) => (
-                  <ActivityCard key={item.id} item={item} network={feed.network} />
+                  <ActivityCard key={item.id} item={item} network={feed.network} onAction={onAction} />
                 ))}
               </div>
             </div>

@@ -44,14 +44,18 @@ function truncDigest(digest: string): string {
 interface ActivityCardProps {
   item: ActivityItem;
   network: string;
+  onAction?: (flow: string) => void;
 }
 
-export function ActivityCard({ item, network }: ActivityCardProps) {
+export function ActivityCard({ item, network, onAction }: ActivityCardProps) {
+  const isScheduleConfirm = item.type === 'schedule_confirm';
   const iconData = TYPE_ICONS[item.type] ?? DEFAULT_ICON;
   const isIn = item.direction === 'in';
-  const sign = isIn ? '+' : item.direction === 'self' ? '' : '-';
-  const amountStr = item.amount != null ? `${sign}$${item.amount.toFixed(2)}` : null;
-  const amountColor = isIn ? 'text-success' : item.type === 'pay' ? 'text-info' : 'text-foreground';
+  const sign = isScheduleConfirm ? '' : isIn ? '+' : item.direction === 'self' ? '' : '-';
+  const amountStr = isScheduleConfirm
+    ? (item.amount != null ? `$${item.amount.toFixed(2)} pending` : null)
+    : (item.amount != null ? `${sign}$${item.amount.toFixed(2)}` : null);
+  const amountColor = isScheduleConfirm ? 'text-accent' : isIn ? 'text-success' : item.type === 'pay' ? 'text-info' : 'text-foreground';
 
   const explorerBase = network === 'testnet'
     ? 'https://suiscan.xyz/testnet/tx'
@@ -62,7 +66,7 @@ export function ActivityCard({ item, network }: ActivityCardProps) {
   const isReversible = item.type === 'autonomous' || item.type === 'schedule_execute';
 
   return (
-    <div className="rounded-lg border border-border bg-surface hover:border-border-bright transition">
+    <div className={`rounded-lg border bg-surface hover:border-border-bright transition ${isScheduleConfirm ? 'border-accent/30' : 'border-border'}`}>
       {/* Main row */}
       <div className="flex items-center justify-between px-4 py-3">
         <div className="flex items-center gap-3 min-w-0">
@@ -94,12 +98,21 @@ export function ActivityCard({ item, network }: ActivityCardProps) {
 
       {/* Tx actions row */}
       <div className="flex items-center gap-4 px-4 pb-2.5 pt-0">
-        <button
-          onClick={() => {/* fires prompt via parent in future */}}
-          className="font-mono text-[10px] tracking-[0.06em] uppercase text-muted hover:text-foreground transition"
-        >
-          Explain →
-        </button>
+        {isScheduleConfirm ? (
+          <button
+            onClick={() => onAction?.('automations')}
+            className="font-mono text-[10px] tracking-[0.06em] uppercase text-accent hover:text-accent/80 transition"
+          >
+            Confirm in Automations →
+          </button>
+        ) : (
+          <button
+            onClick={() => {/* fires prompt via parent in future */}}
+            className="font-mono text-[10px] tracking-[0.06em] uppercase text-muted hover:text-foreground transition"
+          >
+            Explain →
+          </button>
+        )}
         {isSaveable && (
           <button
             onClick={() => {}}

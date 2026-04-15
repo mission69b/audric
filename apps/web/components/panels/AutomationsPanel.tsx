@@ -20,7 +20,11 @@ export function AutomationsPanel({ address, jwt, onSendMessage }: AutomationsPan
   const schedules = useScheduledActions(address, jwt);
 
   const proposals = schedules.actions.filter(a => a.source === 'behavior_detected' && a.stage < 2 && !a.declinedAt);
-  const confirming = schedules.actions.filter(a => a.enabled && !a.pausedAt && a.source === 'behavior_detected' && a.stage >= 2 && a.stage < (a.confirmationsRequired || 5));
+  const confirming = schedules.actions.filter(a => {
+    if (!a.enabled || a.pausedAt) return false;
+    if (a.source === 'behavior_detected') return a.stage >= 2 && a.stage < (a.confirmationsRequired || 5);
+    return a.confirmationsCompleted < a.confirmationsRequired;
+  });
   const autonomous = schedules.actions.filter(a => {
     if (a.pausedAt || !a.enabled) return false;
     if (a.source === 'behavior_detected') return a.stage >= (a.confirmationsRequired || 5);
@@ -177,12 +181,13 @@ function ConfirmingCard({ action, schedules, onSendMessage }: { action: Schedule
   const required = action.confirmationsRequired || 5;
   const completed = action.confirmationsCompleted;
   const remaining = required - completed;
+  const awaitingConfirmation = action.source !== 'behavior_detected' && completed < required;
 
   return (
-    <div className="rounded-lg border border-border bg-surface p-4 space-y-2">
+    <div className={`rounded-lg border bg-surface p-4 space-y-2 ${awaitingConfirmation ? 'border-accent/40' : 'border-border'}`}>
       <div className="flex items-center justify-between">
         <span className="font-mono text-[9px] tracking-wider uppercase px-2 py-0.5 rounded-full bg-accent/10 text-accent">
-          Stage {completed} / {required}
+          {awaitingConfirmation ? 'Awaiting confirmation' : `Stage ${completed} / ${required}`}
         </span>
         {nextRun && <span className="font-mono text-[10px] text-dim">next: {nextRun}</span>}
       </div>
@@ -209,6 +214,13 @@ function ConfirmingCard({ action, schedules, onSendMessage }: { action: Schedule
       </div>
       <div className="flex gap-2 pt-1">
         <button
+          onClick={() => schedules.confirmAction(action.id)}
+          disabled={schedules.updating === action.id}
+          className="font-mono text-[10px] tracking-[0.06em] uppercase text-background bg-foreground px-3 py-1.5 rounded-full hover:opacity-90 transition disabled:opacity-50"
+        >
+          {schedules.updating === action.id ? 'Confirming...' : `Confirm ${verb.toLowerCase()}`}
+        </button>
+        <button
           onClick={() => action.source === 'behavior_detected' ? schedules.pausePattern(action.id) : schedules.pauseAction(action.id)}
           disabled={schedules.updating === action.id}
           className="font-mono text-[10px] tracking-[0.06em] uppercase text-foreground border border-border px-3 py-1.5 rounded-full hover:bg-surface transition disabled:opacity-50"
@@ -220,12 +232,6 @@ function ConfirmingCard({ action, schedules, onSendMessage }: { action: Schedule
           className="font-mono text-[10px] tracking-[0.06em] uppercase text-foreground border border-border px-3 py-1.5 rounded-full hover:bg-surface transition"
         >
           Edit
-        </button>
-        <button
-          onClick={() => onSendMessage(`Explain my ${verb} automation and when it goes fully autonomous`)}
-          className="font-mono text-[10px] tracking-[0.06em] uppercase text-info border border-info/30 px-3 py-1.5 rounded-full hover:bg-info/10 transition"
-        >
-          Explain →
         </button>
       </div>
     </div>

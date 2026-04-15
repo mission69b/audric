@@ -73,6 +73,7 @@ export function useScheduledActions(address: string | null, jwt: string | null) 
   const pauseAction = useCallback((id: string) => updateAction(id, { enabled: false }), [updateAction]);
   const resumeAction = useCallback((id: string) => updateAction(id, { enabled: true }), [updateAction]);
   const deleteAction = useCallback((id: string) => updateAction(id, { action: 'delete' }), [updateAction]);
+  const confirmAction = useCallback((id: string) => updateAction(id, { action: 'confirm' }), [updateAction]);
   const acceptProposal = useCallback((id: string) => updateAction(id, { action: 'accept_proposal' }), [updateAction]);
   const declineProposal = useCallback((id: string) => updateAction(id, { action: 'decline_proposal' }), [updateAction]);
   const pausePattern = useCallback((id: string) => updateAction(id, { action: 'pause_pattern' }), [updateAction]);
@@ -80,7 +81,7 @@ export function useScheduledActions(address: string | null, jwt: string | null) 
 
   return {
     actions, loading, updating,
-    pauseAction, resumeAction, deleteAction,
+    pauseAction, resumeAction, deleteAction, confirmAction,
     acceptProposal, declineProposal, pausePattern, resumePattern,
     refresh: fetchActions,
   };
