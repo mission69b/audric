@@ -174,8 +174,7 @@ export async function POST(request: NextRequest) {
   try {
     response = await client.messages.create({
       model: MODEL,
-      max_tokens: 16000,
-      thinking: { type: 'enabled', budget_tokens: 10000 },
+      max_tokens: 4096,
       messages: [{ role: 'user', content: prompt }],
     });
   } catch (err) {
