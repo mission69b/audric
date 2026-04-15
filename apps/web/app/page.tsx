@@ -87,7 +87,7 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
           <div>
             <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-muted mb-5">
-              Your money, handled.
+              Conversational finance
             </p>
             <h1 className="font-heading text-[40px] sm:text-[52px] font-normal leading-[1.05] tracking-[-2px] text-foreground mb-5">
               Your money,<br />
