@@ -118,7 +118,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── S2: Dashboard Preview (white) ── */}
+      {/* ── S2: Dashboard Preview (dark — matches actual product) ── */}
       <section className="px-5 sm:px-10 lg:px-16 py-14 sm:py-20 bg-surface border-t border-border">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-10">
@@ -129,106 +129,154 @@ export default function LandingPage() {
               This is what you get.
             </h2>
             <p className="text-[13px] text-muted leading-[1.7] max-w-[500px] mx-auto">
-              Clean, focused, built for your money. Proactive feed, canvas visualizations, reasoning transparency — all in one place.
+              Proactive feed, handled-for-you actions, income nudges, contextual chips — all in one conversation.
             </p>
           </div>
 
-          {/* Dashboard mockup — white */}
-          <div className="max-w-[900px] mx-auto border border-border rounded-lg overflow-hidden bg-background">
-            <div className="flex min-h-[380px]">
+          {/* Dashboard mockup — dark (actual product) */}
+          <div className="max-w-[960px] mx-auto border border-[#363636] rounded-xl overflow-hidden bg-[#000]">
+            <div className="flex min-h-[480px]">
               {/* Sidebar */}
-              <div className="w-[180px] shrink-0 bg-surface border-r border-border p-4 hidden sm:flex flex-col gap-1">
-                <div className="text-[13px] font-semibold text-foreground mb-4">
-                  Audric <span className="text-[8px] bg-border-bright px-1.5 py-0.5 rounded text-muted ml-1">BETA</span>
+              <div className="w-[190px] shrink-0 bg-[#000] border-r border-[#363636] p-4 hidden sm:flex flex-col gap-0.5">
+                <div className="text-[13px] font-semibold text-white mb-3">
+                  AUDRIC <span className="text-[8px] bg-[#363636] px-1.5 py-0.5 rounded text-[#8F8F8F] ml-1">BETA</span>
                 </div>
-                <p className="font-mono text-[9px] tracking-wider uppercase text-muted px-2.5 mb-2">Navigate</p>
+                <div className="bg-[#191919] rounded px-2.5 py-1.5 text-[11px] text-white mb-0.5 cursor-pointer">+ New conversation</div>
+                <div className="bg-[#191919] rounded px-2.5 py-1.5 text-[11px] text-[#8F8F8F] mb-2 cursor-pointer flex items-center gap-1.5">
+                  <span className="text-[9px]">⌕</span> Search
+                </div>
+                <p className="font-mono text-[8px] tracking-[0.1em] uppercase text-[#707070] px-2.5 mb-1.5">Navigate</p>
                 {[
-                  { label: 'Dashboard', active: true },
-                  { label: 'Portfolio' },
-                  { label: 'Activity', dot: true },
-                  { label: 'Pay' },
-                  { label: 'Automations', badge: '3' },
+                  { label: 'Dashboard', active: true, icon: '▫' },
+                  { label: 'Portfolio', icon: '▫' },
+                  { label: 'Activity', icon: '▫', dot: true },
+                  { label: 'Pay', icon: '▫' },
+                  { label: 'Automations', icon: '▫', badge: '2' },
                 ].map((item) => (
                   <div
                     key={item.label}
-                    className={`flex items-center gap-2 px-2.5 py-1.5 rounded text-[11px] ${item.active ? 'bg-background text-foreground' : 'text-muted'}`}
+                    className={`flex items-center gap-2 px-2.5 py-1.5 rounded text-[11px] ${item.active ? 'bg-[#191919] text-white' : 'text-[#8F8F8F]'}`}
                   >
-                    <span className="text-[8px]">{item.active ? '◉' : '◎'}</span>
                     {item.label}
                     {item.dot && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#60a5fa]" />}
-                    {item.badge && <span className="ml-auto text-[9px] text-[#00D68F]">{item.badge}</span>}
+                    {item.badge && <span className="ml-auto text-[9px] bg-[#3CC14E] text-black px-1 rounded-full font-semibold">{item.badge}</span>}
                   </div>
                 ))}
-                <p className="font-mono text-[9px] tracking-wider uppercase text-muted px-2.5 mt-4 mb-2">Account</p>
-                {['Goals', 'Reports', 'Contacts', 'Settings'].map((item) => (
-                  <div key={item} className="flex items-center gap-2 px-2.5 py-1.5 text-[11px] text-muted">
-                    <span className="text-[8px]">◎</span>
+                <p className="font-mono text-[8px] tracking-[0.1em] uppercase text-[#707070] px-2.5 mt-3 mb-1.5">Account</p>
+                {['Goals', 'Reports', 'Contacts', 'Store', 'Settings'].map((item) => (
+                  <div key={item} className="px-2.5 py-1.5 text-[11px] text-[#8F8F8F]">
                     {item}
+                    {item === 'Store' && <span className="text-[8px] text-[#707070] ml-1.5">SOON</span>}
                   </div>
                 ))}
-                <div className="mt-auto pt-3 border-t border-border">
-                  <div className="text-[10px] text-muted">john@gmail.com</div>
-                  <div className="text-[9px] text-dim font-mono mt-0.5">0x7f2a...9c4b</div>
-                  <div className="mt-2 h-[3px] bg-border rounded overflow-hidden">
-                    <div className="w-[35%] h-full bg-[#00D68F]" />
-                  </div>
-                  <div className="text-[8px] text-muted mt-1">$0.35 / $1.00 allowance</div>
+                <p className="font-mono text-[8px] tracking-[0.1em] uppercase text-[#707070] px-2.5 mt-3 mb-1.5">Conversations</p>
+                <div className="px-2.5 py-1.5 text-[10px] text-white">Save $1 USDC into Savings. <span className="text-[#707070] block text-[9px]">4 msgs · 4m ago</span></div>
+                <div className="px-2.5 py-1.5 text-[10px] text-[#8F8F8F]">Balance and health factor <span className="text-[#707070] block text-[9px]">16 msgs · 20m ago</span></div>
+                <div className="mt-auto pt-3 border-t border-[#363636]">
+                  <div className="text-[10px] text-[#8F8F8F]">funkiirabu@gmail.com</div>
+                  <div className="text-[9px] text-[#707070] font-mono mt-0.5">0x7f20...f6dc</div>
+                  <div className="font-mono text-[8px] text-[#707070] mt-2">BUDGET <span className="text-white ml-2">$0.42</span> · ~52d</div>
                 </div>
               </div>
 
-              {/* Main content */}
-              <div className="flex-1 p-5">
-                <div className="mb-4">
-                  <div className="font-mono text-[10px] text-muted tracking-wider uppercase">Total Balance</div>
-                  <div className="text-[32px] font-semibold text-foreground tracking-tight leading-none mt-1">$1,247.31</div>
-                  <div className="flex gap-3 mt-2 font-mono text-[10px] text-muted">
-                    <span>Wallet: $147.31</span>
-                    <span>Savings: $1,000.00 <span className="text-[#00D68F]">@ 5.2% APY</span></span>
+              {/* Main content area */}
+              <div className="flex-1 flex flex-col">
+                {/* Balance header */}
+                <div className="text-center py-4 border-b border-[#363636]">
+                  <div className="text-[36px] font-semibold text-white tracking-tight leading-none">$107.31</div>
+                  <div className="flex items-center justify-center gap-2 mt-1.5 font-mono text-[10px] text-[#8F8F8F]">
+                    <span>available $106</span>
+                    <span>·</span>
+                    <span>earning $1</span>
+                    <span>·</span>
+                    <span className="text-[#f97316]">DEBT $0 ▾</span>
                   </div>
                 </div>
 
-                <div className="flex gap-2 mb-3">
-                  <span className="text-[10px] text-foreground px-2 py-1 bg-surface border border-border rounded">Chat</span>
-                  <span className="text-[10px] text-muted px-2 py-1">Activity</span>
+                {/* Proactive insight card */}
+                <div className="mx-4 mt-3 bg-[#191919] border border-[#363636] rounded-lg p-3 flex items-start gap-3">
+                  <span className="text-[#3CC14E] text-[14px] mt-0.5">✦</span>
+                  <div className="flex-1">
+                    <div className="text-[12px] text-[#E5E5E5] leading-[1.6]">
+                      <strong className="text-white">I&apos;ve been watching your wallet.</strong> You&apos;ve saved ~$50 three Fridays in a row. Want me to automate it?
+                    </div>
+                  </div>
+                  <span className="text-[10px] text-[#8F8F8F] border border-[#363636] px-2 py-1 rounded shrink-0">REVIEW →</span>
                 </div>
 
-                <div className="space-y-2">
-                  <div className="bg-background border border-border rounded-md p-3 border-l-2 border-l-[#00D68F]">
-                    <div className="text-[10px] text-[#00D68F] mb-1">☀️ Morning Briefing</div>
-                    <div className="text-[11px] text-foreground/70">
-                      You earned <strong className="text-foreground">$0.14</strong> overnight. APY steady at 5.2%. Health factor safe at 2.4.
-                    </div>
+                {/* Chat / Activity tabs */}
+                <div className="flex gap-3 px-4 mt-3 border-b border-[#363636]">
+                  <span className="text-[11px] text-white px-1 pb-2 border-b border-white">CHAT</span>
+                  <span className="text-[11px] text-[#8F8F8F] px-1 pb-2">ACTIVITY <span className="inline-block w-1 h-1 rounded-full bg-[#60a5fa] ml-0.5 -translate-y-0.5" /></span>
+                </div>
+
+                {/* Feed content */}
+                <div className="flex-1 overflow-hidden px-4 py-3 space-y-2.5">
+                  {/* Greeting divider */}
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 h-px bg-[#363636]" />
+                    <span className="font-mono text-[9px] text-[#707070] tracking-wider uppercase">Good afternoon, funkiirabu</span>
+                    <div className="flex-1 h-px bg-[#363636]" />
                   </div>
-                  <div className="bg-background border border-border rounded-md p-3 border-l-2 border-l-[#f97316]">
-                    <div className="text-[10px] text-[#f97316] mb-1">💰 Idle USDC detected</div>
-                    <div className="text-[11px] text-foreground/70">$44.18 USDC sitting idle. Save it to earn ~$2.30/yr at current rates.</div>
-                    <div className="flex gap-2 mt-2">
-                      <span className="text-[9px] px-2 py-1 border border-border rounded text-muted cursor-pointer">Save it</span>
-                      <span className="text-[9px] px-2 py-1 text-dim cursor-pointer">Dismiss</span>
-                    </div>
+
+                  {/* Handled for you */}
+                  <div className="bg-[rgba(60,193,78,0.06)] border border-[rgba(60,193,78,0.18)] rounded-lg p-3">
+                    <div className="font-mono text-[9px] tracking-[0.1em] uppercase text-[#3CC14E] mb-2">Handled for you</div>
+                    {[
+                      'Auto-saved $50 USDC · Friday 9am',
+                      'Payment received · Logo design $50 · pay/abc123',
+                      'Store sale · Japanese woodblock pack · $13.80 earned',
+                    ].map((item) => (
+                      <div key={item} className="flex items-center gap-2 py-1">
+                        <span className="text-[10px] text-[#3CC14E]">✓</span>
+                        <span className="text-[11px] text-[#8F8F8F]">{item}</span>
+                      </div>
+                    ))}
                   </div>
-                  <div className="border border-border rounded-md overflow-hidden">
-                    <div className="px-3 py-2 flex justify-between items-center">
-                      <span className="text-[10px] text-muted">📊 Portfolio Timeline</span>
-                      <span className="text-[9px] text-dim cursor-pointer">Expand ↗</span>
+
+                  {/* Income received nudge */}
+                  <div className="bg-[rgba(60,193,78,0.06)] border border-[rgba(60,193,78,0.18)] rounded-lg p-3">
+                    <div className="font-mono text-[9px] tracking-[0.1em] uppercase text-[#3CC14E] mb-2">Income received</div>
+                    <div className="text-[12px] text-[#8F8F8F] leading-[1.6] mb-2.5">
+                      You received <strong className="text-[#E5E5E5]">$63.80</strong> this week — $50 from a payment link and $13.80 from your store. It&apos;s all sitting idle. Save it to start earning 4.3% APY?
                     </div>
-                    <div className="h-[60px] bg-gradient-to-br from-[#f0fdf4] via-[#ecfdf5] to-[#d1fae5] flex items-center justify-center">
-                      <span className="font-mono text-[10px] text-[#00D68F]">[ Net worth chart — $800 → $1,247 over 3mo ]</span>
+                    <div className="flex gap-2">
+                      <span className="text-[10px] bg-white text-black px-3 py-1.5 rounded font-semibold">SAVE $63.80 →</span>
+                      <span className="text-[10px] text-[#8F8F8F] border border-[#363636] px-3 py-1.5 rounded">GOAL →</span>
+                      <span className="text-[10px] text-[#8F8F8F] border border-[#363636] px-3 py-1.5 rounded">KEEP</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex gap-1.5 flex-wrap mt-4">
-                  {['Check balance', 'Save USDC', 'Show charts', 'My goals'].map((chip) => (
-                    <span key={chip} className="font-mono text-[9px] px-2.5 py-1 border border-border rounded-full text-muted">{chip}</span>
+                {/* Proactive chips row */}
+                <div className="px-4 pb-2 flex gap-1.5 flex-wrap">
+                  {[
+                    { label: 'SAVE $106 IDLE — 4.3%', icon: '💰' },
+                    { label: 'MY POSITIONS', icon: '📊' },
+                    { label: 'RISK ANALYSIS', icon: '🍷' },
+                    { label: '+ AUTOMATIONS (2)' },
+                  ].map((chip) => (
+                    <span key={chip.label} className="font-mono text-[9px] px-2.5 py-1.5 bg-[#191919] border border-[#363636] rounded-full text-[#E5E5E5]">
+                      {chip.icon && <span className="mr-1">{chip.icon}</span>}{chip.label}
+                    </span>
                   ))}
                 </div>
 
-                <div className="flex gap-2 items-center mt-3">
-                  <div className="flex-1 bg-surface border border-border rounded-md px-3 py-2 text-[11px] text-muted">
-                    Ask anything about your money...
+                {/* Product chips row */}
+                <div className="px-4 pb-2 flex gap-1.5 flex-wrap">
+                  {['SAVE', 'SEND', 'SWAP', 'ASK', 'CREDIT', 'RECEIVE', 'CHARTS'].map((chip) => (
+                    <span key={chip} className="font-mono text-[9px] px-2.5 py-1 border border-[#363636] rounded-full text-[#8F8F8F]">{chip}</span>
+                  ))}
+                </div>
+
+                {/* Input bar */}
+                <div className="px-4 pb-3 flex gap-2 items-center">
+                  <span className="text-[14px] text-[#707070]">+</span>
+                  <div className="flex-1 bg-[#191919] border border-[#363636] rounded-lg px-3 py-2.5 text-[12px] text-[#707070]">
+                    Ask anything...
                   </div>
-                  <div className="w-8 h-8 bg-foreground rounded-md flex items-center justify-center text-[12px] text-background">↑</div>
+                  <span className="text-[10px] text-[#707070]">New</span>
+                  <div className="w-8 h-8 bg-[#363636] rounded-full flex items-center justify-center text-[12px] text-[#8F8F8F]">↑</div>
                 </div>
               </div>
             </div>
