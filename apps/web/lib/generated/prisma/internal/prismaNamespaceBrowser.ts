@@ -62,8 +62,7 @@ export const ModelName = {
   SavingsGoal: 'SavingsGoal',
   AppEvent: 'AppEvent',
   AdviceLog: 'AdviceLog',
-  PaymentLink: 'PaymentLink',
-  Invoice: 'Invoice',
+  Payment: 'Payment',
   SavingsGoalDeposit: 'SavingsGoalDeposit',
   WatchAddress: 'WatchAddress',
   PortfolioSnapshot: 'PortfolioSnapshot',
@@ -260,51 +259,35 @@ export const AdviceLogScalarFieldEnum = {
 export type AdviceLogScalarFieldEnum = (typeof AdviceLogScalarFieldEnum)[keyof typeof AdviceLogScalarFieldEnum]
 
 
-export const PaymentLinkScalarFieldEnum = {
+export const PaymentScalarFieldEnum = {
   id: 'id',
   slug: 'slug',
+  nonce: 'nonce',
   userId: 'userId',
   suiAddress: 'suiAddress',
-  amount: 'amount',
-  label: 'label',
-  memo: 'memo',
-  currency: 'currency',
+  type: 'type',
   status: 'status',
-  expiresAt: 'expiresAt',
-  paidAt: 'paidAt',
-  paidBy: 'paidBy',
-  txDigest: 'txDigest',
-  createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
-} as const
-
-export type PaymentLinkScalarFieldEnum = (typeof PaymentLinkScalarFieldEnum)[keyof typeof PaymentLinkScalarFieldEnum]
-
-
-export const InvoiceScalarFieldEnum = {
-  id: 'id',
-  slug: 'slug',
-  userId: 'userId',
-  suiAddress: 'suiAddress',
-  recipientEmail: 'recipientEmail',
-  recipientName: 'recipientName',
   amount: 'amount',
   currency: 'currency',
   label: 'label',
-  items: 'items',
   memo: 'memo',
+  senderName: 'senderName',
+  lineItems: 'lineItems',
   dueDate: 'dueDate',
-  status: 'status',
-  paidAt: 'paidAt',
-  paidBy: 'paidBy',
-  txDigest: 'txDigest',
+  recipientName: 'recipientName',
+  recipientEmail: 'recipientEmail',
   sentAt: 'sentAt',
   reminderSentAt: 'reminderSentAt',
+  paymentMethod: 'paymentMethod',
+  paidAt: 'paidAt',
+  paidBy: 'paidBy',
+  txDigest: 'txDigest',
+  expiresAt: 'expiresAt',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
 
-export type InvoiceScalarFieldEnum = (typeof InvoiceScalarFieldEnum)[keyof typeof InvoiceScalarFieldEnum]
+export type PaymentScalarFieldEnum = (typeof PaymentScalarFieldEnum)[keyof typeof PaymentScalarFieldEnum]
 
 
 export const SavingsGoalDepositScalarFieldEnum = {

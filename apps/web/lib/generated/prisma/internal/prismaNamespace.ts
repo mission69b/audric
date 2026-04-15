@@ -395,8 +395,7 @@ export const ModelName = {
   SavingsGoal: 'SavingsGoal',
   AppEvent: 'AppEvent',
   AdviceLog: 'AdviceLog',
-  PaymentLink: 'PaymentLink',
-  Invoice: 'Invoice',
+  Payment: 'Payment',
   SavingsGoalDeposit: 'SavingsGoalDeposit',
   WatchAddress: 'WatchAddress',
   PortfolioSnapshot: 'PortfolioSnapshot',
@@ -423,7 +422,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "userPreferences" | "conversationLog" | "sessionUsage" | "servicePurchase" | "notificationPrefs" | "notificationLog" | "dailyBriefing" | "savingsGoal" | "appEvent" | "adviceLog" | "paymentLink" | "invoice" | "savingsGoalDeposit" | "watchAddress" | "portfolioSnapshot" | "scheduledAction" | "scheduledExecution" | "outcomeCheck" | "followUpQueue" | "userFinancialProfile" | "userMemory" | "linkedWallet" | "publicReport"
+    modelProps: "user" | "userPreferences" | "conversationLog" | "sessionUsage" | "servicePurchase" | "notificationPrefs" | "notificationLog" | "dailyBriefing" | "savingsGoal" | "appEvent" | "adviceLog" | "payment" | "savingsGoalDeposit" | "watchAddress" | "portfolioSnapshot" | "scheduledAction" | "scheduledExecution" | "outcomeCheck" | "followUpQueue" | "userFinancialProfile" | "userMemory" | "linkedWallet" | "publicReport"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1241,151 +1240,77 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
-    PaymentLink: {
-      payload: Prisma.$PaymentLinkPayload<ExtArgs>
-      fields: Prisma.PaymentLinkFieldRefs
+    Payment: {
+      payload: Prisma.$PaymentPayload<ExtArgs>
+      fields: Prisma.PaymentFieldRefs
       operations: {
         findUnique: {
-          args: Prisma.PaymentLinkFindUniqueArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$PaymentLinkPayload> | null
+          args: Prisma.PaymentFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PaymentPayload> | null
         }
         findUniqueOrThrow: {
-          args: Prisma.PaymentLinkFindUniqueOrThrowArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$PaymentLinkPayload>
+          args: Prisma.PaymentFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PaymentPayload>
         }
         findFirst: {
-          args: Prisma.PaymentLinkFindFirstArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$PaymentLinkPayload> | null
+          args: Prisma.PaymentFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PaymentPayload> | null
         }
         findFirstOrThrow: {
-          args: Prisma.PaymentLinkFindFirstOrThrowArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$PaymentLinkPayload>
+          args: Prisma.PaymentFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PaymentPayload>
         }
         findMany: {
-          args: Prisma.PaymentLinkFindManyArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$PaymentLinkPayload>[]
+          args: Prisma.PaymentFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PaymentPayload>[]
         }
         create: {
-          args: Prisma.PaymentLinkCreateArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$PaymentLinkPayload>
+          args: Prisma.PaymentCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PaymentPayload>
         }
         createMany: {
-          args: Prisma.PaymentLinkCreateManyArgs<ExtArgs>
+          args: Prisma.PaymentCreateManyArgs<ExtArgs>
           result: BatchPayload
         }
         createManyAndReturn: {
-          args: Prisma.PaymentLinkCreateManyAndReturnArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$PaymentLinkPayload>[]
+          args: Prisma.PaymentCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PaymentPayload>[]
         }
         delete: {
-          args: Prisma.PaymentLinkDeleteArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$PaymentLinkPayload>
+          args: Prisma.PaymentDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PaymentPayload>
         }
         update: {
-          args: Prisma.PaymentLinkUpdateArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$PaymentLinkPayload>
+          args: Prisma.PaymentUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PaymentPayload>
         }
         deleteMany: {
-          args: Prisma.PaymentLinkDeleteManyArgs<ExtArgs>
+          args: Prisma.PaymentDeleteManyArgs<ExtArgs>
           result: BatchPayload
         }
         updateMany: {
-          args: Prisma.PaymentLinkUpdateManyArgs<ExtArgs>
+          args: Prisma.PaymentUpdateManyArgs<ExtArgs>
           result: BatchPayload
         }
         updateManyAndReturn: {
-          args: Prisma.PaymentLinkUpdateManyAndReturnArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$PaymentLinkPayload>[]
+          args: Prisma.PaymentUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PaymentPayload>[]
         }
         upsert: {
-          args: Prisma.PaymentLinkUpsertArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$PaymentLinkPayload>
+          args: Prisma.PaymentUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PaymentPayload>
         }
         aggregate: {
-          args: Prisma.PaymentLinkAggregateArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.AggregatePaymentLink>
+          args: Prisma.PaymentAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregatePayment>
         }
         groupBy: {
-          args: Prisma.PaymentLinkGroupByArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.PaymentLinkGroupByOutputType>[]
+          args: Prisma.PaymentGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PaymentGroupByOutputType>[]
         }
         count: {
-          args: Prisma.PaymentLinkCountArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.PaymentLinkCountAggregateOutputType> | number
-        }
-      }
-    }
-    Invoice: {
-      payload: Prisma.$InvoicePayload<ExtArgs>
-      fields: Prisma.InvoiceFieldRefs
-      operations: {
-        findUnique: {
-          args: Prisma.InvoiceFindUniqueArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$InvoicePayload> | null
-        }
-        findUniqueOrThrow: {
-          args: Prisma.InvoiceFindUniqueOrThrowArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$InvoicePayload>
-        }
-        findFirst: {
-          args: Prisma.InvoiceFindFirstArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$InvoicePayload> | null
-        }
-        findFirstOrThrow: {
-          args: Prisma.InvoiceFindFirstOrThrowArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$InvoicePayload>
-        }
-        findMany: {
-          args: Prisma.InvoiceFindManyArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$InvoicePayload>[]
-        }
-        create: {
-          args: Prisma.InvoiceCreateArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$InvoicePayload>
-        }
-        createMany: {
-          args: Prisma.InvoiceCreateManyArgs<ExtArgs>
-          result: BatchPayload
-        }
-        createManyAndReturn: {
-          args: Prisma.InvoiceCreateManyAndReturnArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$InvoicePayload>[]
-        }
-        delete: {
-          args: Prisma.InvoiceDeleteArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$InvoicePayload>
-        }
-        update: {
-          args: Prisma.InvoiceUpdateArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$InvoicePayload>
-        }
-        deleteMany: {
-          args: Prisma.InvoiceDeleteManyArgs<ExtArgs>
-          result: BatchPayload
-        }
-        updateMany: {
-          args: Prisma.InvoiceUpdateManyArgs<ExtArgs>
-          result: BatchPayload
-        }
-        updateManyAndReturn: {
-          args: Prisma.InvoiceUpdateManyAndReturnArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$InvoicePayload>[]
-        }
-        upsert: {
-          args: Prisma.InvoiceUpsertArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$InvoicePayload>
-        }
-        aggregate: {
-          args: Prisma.InvoiceAggregateArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.AggregateInvoice>
-        }
-        groupBy: {
-          args: Prisma.InvoiceGroupByArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.InvoiceGroupByOutputType>[]
-        }
-        count: {
-          args: Prisma.InvoiceCountArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.InvoiceCountAggregateOutputType> | number
+          args: Prisma.PaymentCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PaymentCountAggregateOutputType> | number
         }
       }
     }
@@ -2409,51 +2334,35 @@ export const AdviceLogScalarFieldEnum = {
 export type AdviceLogScalarFieldEnum = (typeof AdviceLogScalarFieldEnum)[keyof typeof AdviceLogScalarFieldEnum]
 
 
-export const PaymentLinkScalarFieldEnum = {
+export const PaymentScalarFieldEnum = {
   id: 'id',
   slug: 'slug',
+  nonce: 'nonce',
   userId: 'userId',
   suiAddress: 'suiAddress',
-  amount: 'amount',
-  label: 'label',
-  memo: 'memo',
-  currency: 'currency',
+  type: 'type',
   status: 'status',
-  expiresAt: 'expiresAt',
-  paidAt: 'paidAt',
-  paidBy: 'paidBy',
-  txDigest: 'txDigest',
-  createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
-} as const
-
-export type PaymentLinkScalarFieldEnum = (typeof PaymentLinkScalarFieldEnum)[keyof typeof PaymentLinkScalarFieldEnum]
-
-
-export const InvoiceScalarFieldEnum = {
-  id: 'id',
-  slug: 'slug',
-  userId: 'userId',
-  suiAddress: 'suiAddress',
-  recipientEmail: 'recipientEmail',
-  recipientName: 'recipientName',
   amount: 'amount',
   currency: 'currency',
   label: 'label',
-  items: 'items',
   memo: 'memo',
+  senderName: 'senderName',
+  lineItems: 'lineItems',
   dueDate: 'dueDate',
-  status: 'status',
-  paidAt: 'paidAt',
-  paidBy: 'paidBy',
-  txDigest: 'txDigest',
+  recipientName: 'recipientName',
+  recipientEmail: 'recipientEmail',
   sentAt: 'sentAt',
   reminderSentAt: 'reminderSentAt',
+  paymentMethod: 'paymentMethod',
+  paidAt: 'paidAt',
+  paidBy: 'paidBy',
+  txDigest: 'txDigest',
+  expiresAt: 'expiresAt',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
 
-export type InvoiceScalarFieldEnum = (typeof InvoiceScalarFieldEnum)[keyof typeof InvoiceScalarFieldEnum]
+export type PaymentScalarFieldEnum = (typeof PaymentScalarFieldEnum)[keyof typeof PaymentScalarFieldEnum]
 
 
 export const SavingsGoalDepositScalarFieldEnum = {
@@ -2875,8 +2784,7 @@ export type GlobalOmitConfig = {
   savingsGoal?: Prisma.SavingsGoalOmit
   appEvent?: Prisma.AppEventOmit
   adviceLog?: Prisma.AdviceLogOmit
-  paymentLink?: Prisma.PaymentLinkOmit
-  invoice?: Prisma.InvoiceOmit
+  payment?: Prisma.PaymentOmit
   savingsGoalDeposit?: Prisma.SavingsGoalDepositOmit
   watchAddress?: Prisma.WatchAddressOmit
   portfolioSnapshot?: Prisma.PortfolioSnapshotOmit

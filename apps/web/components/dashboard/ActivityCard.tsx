@@ -47,22 +47,31 @@ interface ActivityCardProps {
   onAction?: (flow: string) => void;
 }
 
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  wallet_connect: 'Wallet',
+  card: 'Card',
+  manual: 'Manual',
+  qr: 'QR',
+};
+
 export function ActivityCard({ item, network, onAction }: ActivityCardProps) {
   const isScheduleConfirm = item.type === 'schedule_confirm';
+  const isPayReceived = item.type === 'pay_received';
   const iconData = TYPE_ICONS[item.type] ?? DEFAULT_ICON;
-  const isIn = item.direction === 'in';
+  const isIn = item.direction === 'in' || isPayReceived;
   const sign = isScheduleConfirm ? '' : isIn ? '+' : item.direction === 'self' ? '' : '-';
   const amountStr = isScheduleConfirm
     ? (item.amount != null ? `$${item.amount.toFixed(2)} pending` : null)
     : (item.amount != null ? `${sign}$${item.amount.toFixed(2)}` : null);
   const amountColor = isScheduleConfirm ? 'text-accent' : isIn ? 'text-success' : item.type === 'pay' ? 'text-info' : 'text-foreground';
+  const methodBadge = isPayReceived && item.paymentMethod ? PAYMENT_METHOD_LABELS[item.paymentMethod] ?? null : null;
 
   const explorerBase = network === 'testnet'
     ? 'https://suiscan.xyz/testnet/tx'
     : 'https://suiscan.xyz/mainnet/tx';
   const txUrl = item.digest ? `${explorerBase}/${item.digest}` : null;
 
-  const isSaveable = isIn && (item.amount ?? 0) > 0 && item.type !== 'lending';
+  const isSaveable = isIn && (item.amount ?? 0) > 0 && item.type !== 'lending' && item.type !== 'schedule_confirm';
   const isReversible = item.type === 'autonomous' || item.type === 'schedule_execute';
 
   return (
@@ -89,6 +98,11 @@ export function ActivityCard({ item, network, onAction }: ActivityCardProps) {
             <p className={`text-sm font-mono font-medium ${amountColor}`}>
               {amountStr}
             </p>
+          )}
+          {methodBadge && (
+            <span className="inline-block font-mono text-[8px] tracking-wider uppercase px-1.5 py-0.5 rounded bg-success/10 text-success mt-0.5">
+              {methodBadge}
+            </span>
           )}
           {item.digest && (
             <p className="font-mono text-[9px] text-dim">{truncDigest(item.digest)}</p>

@@ -10,6 +10,7 @@ export interface ActivityItem {
   counterparty?: string;
   digest?: string;
   timestamp: number;
+  paymentMethod?: string;
 }
 
 export type ActivityFilter = 'all' | 'savings' | 'send' | 'receive' | 'swap' | 'pay' | 'store' | 'autonomous' | 'follow_up' | 'schedule';

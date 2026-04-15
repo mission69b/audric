@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { PaymentLinkClient } from './PaymentLinkClient';
+import { PayClient } from '@/components/pay/PayClient';
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -7,14 +7,56 @@ interface PageProps {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
+
+  let title = 'Pay — Audric';
+  let description = `Complete a USDC payment via Audric.`;
+  let ogTitle = 'Audric Pay';
+
+  try {
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://audric.ai';
+    const res = await fetch(`${baseUrl}/api/payments/${slug}`, {
+      next: { revalidate: 60 },
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const isInvoice = data.type === 'invoice';
+      const amountStr = data.amount ? `$${data.amount.toFixed(2)} USDC` : 'USDC';
+
+      if (isInvoice) {
+        ogTitle = data.label ? `Invoice: ${data.label}` : 'Invoice';
+        title = `${ogTitle} — Audric`;
+        description = `Pay ${amountStr} for ${data.label ?? 'invoice'} via Audric.`;
+      } else {
+        ogTitle = data.label ? `Pay: ${data.label}` : `Pay ${amountStr}`;
+        title = `${ogTitle} — Audric`;
+        description = data.amount
+          ? `Send ${amountStr} to ${data.recipientName ?? 'recipient'} via Audric.`
+          : `Complete a USDC payment via Audric.`;
+      }
+    }
+  } catch {
+    // fall through to defaults
+  }
+
   return {
-    title: `Pay — Audric`,
-    description: `Complete a USDC payment via Audric payment link ${slug}.`,
+    title,
+    description,
     robots: { index: false },
+    openGraph: {
+      title: ogTitle,
+      description,
+      siteName: 'Audric',
+      type: 'website',
+    },
+    twitter: {
+      card: 'summary',
+      title: ogTitle,
+      description,
+    },
   };
 }
 
-export default async function PaymentLinkPage({ params }: PageProps) {
+export default async function PayPage({ params }: PageProps) {
   const { slug } = await params;
-  return <PaymentLinkClient slug={slug} />;
+  return <PayClient slug={slug} />;
 }

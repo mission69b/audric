@@ -8,24 +8,24 @@ interface PayPanelProps {
   onSendMessage: (text: string) => void;
 }
 
-interface PaymentLink {
+interface Payment {
   id: string;
   slug: string;
+  type: 'link' | 'invoice';
   amount: number | null;
   label: string | null;
   status: string;
+  paymentMethod: string | null;
+  paidAt: string | null;
   createdAt: string;
 }
 
-interface Invoice {
-  id: string;
-  slug: string;
-  amount: number | null;
-  label: string | null;
-  recipientName: string | null;
-  status: string;
-  createdAt: string;
-}
+const METHOD_LABELS: Record<string, string> = {
+  wallet_connect: 'via wallet',
+  card: 'via card',
+  manual: 'manual verify',
+  qr: 'via QR',
+};
 
 function fmtAmount(amount: number | null): string {
   if (amount == null) return 'Variable';
@@ -49,73 +49,64 @@ function timeAgo(dateStr: string): string {
 }
 
 export function PayPanel({ address, jwt, onSendMessage }: PayPanelProps) {
-  const [paymentLinks, setPaymentLinks] = useState<PaymentLink[]>([]);
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!address || !jwt) { setLoading(false); return; }
     setLoading(true);
     const headers = { 'x-zklogin-jwt': jwt, 'x-sui-address': address };
-    Promise.all([
-      fetch('/api/payment-links', { headers }).then((r) => r.ok ? r.json() : []),
-      fetch('/api/invoices', { headers }).then((r) => r.ok ? r.json() : []),
-    ]).then(([linksData, invoicesData]) => {
-      setPaymentLinks(Array.isArray(linksData) ? linksData : []);
-      setInvoices(Array.isArray(invoicesData) ? invoicesData : []);
-    }).catch(() => {
-      setPaymentLinks([]);
-      setInvoices([]);
-    }).finally(() => setLoading(false));
+    fetch('/api/payments', { headers })
+      .then((r) => r.ok ? r.json() : [])
+      .then((data) => setPayments(Array.isArray(data) ? data : []))
+      .catch(() => setPayments([]))
+      .finally(() => setLoading(false));
   }, [address, jwt]);
 
   const stats = useMemo(() => {
-    const activeLinks = paymentLinks.filter((l) => l.status === 'active').length;
-    const activeInvoices = invoices.filter((i) => i.status === 'active' || i.status === 'pending').length;
-    const paidLinks = paymentLinks.filter((l) => l.status === 'paid');
-    const paidInvoices = invoices.filter((i) => i.status === 'paid');
-    const received = [...paidLinks, ...paidInvoices].reduce((sum, item) => sum + (item.amount ?? 0), 0);
-    const overdueCount = invoices.filter((i) => i.status === 'overdue').length;
-    return { activeLinks, activeInvoices, received, overdueCount };
-  }, [paymentLinks, invoices]);
+    const active = payments.filter((p) => p.status === 'active');
+    const activeLinks = active.filter((p) => p.type === 'link').length;
+    const activeInvoices = active.filter((p) => p.type === 'invoice').length;
+    const paid = payments.filter((p) => p.status === 'paid');
+    const received = paid.reduce((sum, p) => sum + (p.amount ?? 0), 0);
+    const overdueCount = payments.filter((p) => p.status === 'overdue').length;
+    return { activeLinks, activeInvoices, received, overdueCount, totalActive: active.length };
+  }, [payments]);
 
   const recentItems = useMemo(() => {
-    const items: { id: string; icon: string; title: string; desc: string; status: string; statusColor: string; amount: string | null; prompt: string; saveable?: boolean }[] = [];
+    return payments.map((p) => {
+      const isPaid = p.status === 'paid';
+      const isInvoice = p.type === 'invoice';
+      const methodLabel = isPaid && p.paymentMethod ? METHOD_LABELS[p.paymentMethod] ?? p.paymentMethod : null;
 
-    for (const link of paymentLinks) {
-      const isPaid = link.status === 'paid';
-      items.push({
-        id: `link-${link.id}`,
-        icon: isPaid ? '✓' : '🔗',
-        title: `${link.label || 'Payment link'} · ${isPaid ? `${fmtAmount(link.amount)} received` : fmtAmount(link.amount)}`,
-        desc: `pay/${link.slug} · ${isPaid ? 'paid' : 'sent'} ${timeAgo(link.createdAt)}${isPaid ? ' · sitting in wallet' : ''}`,
-        status: link.status,
-        statusColor: isPaid ? 'text-success' : link.status === 'active' ? 'text-warning' : 'text-muted',
-        amount: link.amount != null ? `$${link.amount.toFixed(2)}` : null,
+      const titleParts = [
+        p.label || (isInvoice ? 'Invoice' : 'Payment link'),
+        isPaid ? `${fmtAmount(p.amount)} received` : fmtAmount(p.amount),
+      ];
+
+      const descParts = [
+        `pay/${p.slug}`,
+        methodLabel ?? (isPaid ? 'paid' : p.status),
+        timeAgo(p.paidAt ?? p.createdAt),
+        isPaid ? 'sitting in wallet' : null,
+      ].filter(Boolean);
+
+      return {
+        id: p.id,
+        icon: isPaid ? '✓' : isInvoice ? '📄' : '🔗',
+        title: titleParts.join(' · '),
+        desc: descParts.join(' · '),
+        status: p.status,
+        statusColor: isPaid ? 'text-success' : p.status === 'overdue' ? 'text-warning' : p.status === 'active' ? 'text-info' : 'text-muted',
+        amount: p.amount != null ? `$${p.amount.toFixed(2)}` : null,
         prompt: isPaid
-          ? `Show me the details of the ${fmtAmount(link.amount)} payment I received for ${link.label || 'this link'}`
-          : `What is the status of my payment link for ${link.label || link.slug}?`,
-        saveable: isPaid && (link.amount ?? 0) > 0,
-      });
-    }
-
-    for (const inv of invoices) {
-      const isPaid = inv.status === 'paid';
-      items.push({
-        id: `inv-${inv.id}`,
-        icon: isPaid ? '✓' : '📄',
-        title: `${inv.label || (inv.recipientName ? `Invoice for ${inv.recipientName}` : 'Invoice')} · ${fmtAmount(inv.amount)}`,
-        desc: `invoice/${inv.slug} · ${timeAgo(inv.createdAt)} · ${inv.status}`,
-        status: inv.status,
-        statusColor: isPaid ? 'text-success' : inv.status === 'overdue' ? 'text-warning' : 'text-info',
-        amount: inv.amount != null ? `$${inv.amount.toFixed(2)}` : null,
-        prompt: `Show me the details of my invoice ${inv.slug}`,
-        saveable: false,
-      });
-    }
-
-    return items;
-  }, [paymentLinks, invoices]);
+          ? `Show me the details of the ${fmtAmount(p.amount)} payment I received for ${p.label || 'this link'}`
+          : `What is the status of my ${isInvoice ? 'invoice' : 'payment link'} for ${p.label || p.slug}?`,
+        saveable: isPaid && (p.amount ?? 0) > 0,
+        methodBadge: methodLabel,
+      };
+    });
+  }, [payments]);
 
   return (
     <div className="mx-auto w-full max-w-3xl px-4 sm:px-6 py-6 space-y-5">
@@ -144,8 +135,8 @@ export function PayPanel({ address, jwt, onSendMessage }: PayPanelProps) {
       {/* 4-stat grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <StatCard
-          label="Payment links" drill="Manage" value={String(stats.activeLinks)}
-          sub={`active · ${paymentLinks.filter(l => l.status === 'paid').length} paid this month`}
+          label="Links" drill="Manage" value={String(stats.activeLinks)}
+          sub={`active · ${payments.filter(p => p.type === 'link' && p.status === 'paid').length} paid`}
           onClick={() => onSendMessage('Show me all my active payment links and their status')}
         />
         <StatCard
@@ -156,9 +147,9 @@ export function PayPanel({ address, jwt, onSendMessage }: PayPanelProps) {
         />
         <StatCard
           label="Received" drill="+ income" drillColor="text-success" value={fmtUsd(stats.received)}
-          sub="this month via links + invoices"
+          sub="total via links + invoices"
           accent={stats.received > 0}
-          onClick={() => onSendMessage('How much have I received via payment links and invoices this month?')}
+          onClick={() => onSendMessage('How much have I received via payment links and invoices?')}
         />
         <StatCard
           label="API spend" drill="Breakdown" value="--"
@@ -167,7 +158,7 @@ export function PayPanel({ address, jwt, onSendMessage }: PayPanelProps) {
         />
       </div>
 
-      {/* Where your income goes — education block */}
+      {/* Where your income goes */}
       {stats.received > 0 && (
         <div className="rounded-lg border border-success/15 bg-success/[0.04] px-4 py-3">
           <p className="font-mono text-[9px] tracking-[0.1em] uppercase text-success mb-2">Where your income goes</p>
@@ -231,6 +222,11 @@ export function PayPanel({ address, jwt, onSendMessage }: PayPanelProps) {
                 </div>
               </div>
               <div className="flex items-center gap-2 shrink-0 ml-3">
+                {item.methodBadge && (
+                  <span className="font-mono text-[8px] tracking-wider uppercase px-1.5 py-0.5 rounded bg-success/10 text-success whitespace-nowrap">
+                    {item.methodBadge}
+                  </span>
+                )}
                 {item.saveable && (
                   <button
                     onClick={(e) => { e.stopPropagation(); onSendMessage(`Save my ${item.amount} from this payment into NAVI savings`); }}

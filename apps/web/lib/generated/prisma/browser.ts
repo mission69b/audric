@@ -73,15 +73,10 @@ export type AppEvent = Prisma.AppEventModel
  */
 export type AdviceLog = Prisma.AdviceLogModel
 /**
- * Model PaymentLink
+ * Model Payment
  * 
  */
-export type PaymentLink = Prisma.PaymentLinkModel
-/**
- * Model Invoice
- * 
- */
-export type Invoice = Prisma.InvoiceModel
+export type Payment = Prisma.PaymentModel
 /**
  * Model SavingsGoalDeposit
  * 

@@ -36,9 +36,9 @@ const TYPE_FILTER_MAP: Record<string, string[]> = {
 const APP_EVENT_TYPE_MAP: Record<string, string[]> = {
   savings: [],
   send: [],
-  receive: [],
+  receive: ['pay_received'],
   swap: [],
-  pay: ['pay', 'alert'],
+  pay: ['pay', 'pay_received', 'alert'],
   follow_up: ['follow_up'],
   schedule: ['schedule_confirm', 'schedule_execute', 'schedule_reminder', 'compound_available'],
 };
@@ -182,6 +182,7 @@ async function fetchAppEvents(
       direction: details.direction as 'in' | 'out' | 'self' | undefined,
       digest: e.digest ?? undefined,
       timestamp: e.createdAt.getTime(),
+      paymentMethod: typeof details.paymentMethod === 'string' ? details.paymentMethod : undefined,
     };
   });
 }

@@ -1,10 +1,12 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { BriefingCard } from '@/components/dashboard/BriefingCard';
 import type { BriefingData } from '@/hooks/useOvernightBriefing';
 
 interface ReportsPanelProps {
   address: string;
+  jwt: string;
   briefing?: BriefingData | null;
   onBriefingDismiss: () => void;
   onBriefingViewReport: () => void;
@@ -12,33 +14,59 @@ interface ReportsPanelProps {
   onSendMessage: (text: string) => void;
 }
 
+interface WeeklyIncome {
+  paymentsReceived: number;
+  yieldEarned: number;
+  totalIncome: number;
+}
+
+function fmtUsd(n: number): string {
+  return `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
 export function ReportsPanel({
   address,
+  jwt,
   briefing,
   onBriefingDismiss,
   onBriefingViewReport,
   onBriefingCtaClick,
   onSendMessage,
 }: ReportsPanelProps) {
+  const [income, setIncome] = useState<WeeklyIncome | null>(null);
+
+  useEffect(() => {
+    if (!address || !jwt) return;
+    fetch('/api/reports/weekly', {
+      headers: { 'x-zklogin-jwt': jwt, 'x-sui-address': address },
+    })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { if (data) setIncome(data); })
+      .catch(() => {});
+  }, [address, jwt]);
+
+  const yield$ = income ? fmtUsd(income.yieldEarned) : '$--';
+  const payments$ = income ? fmtUsd(income.paymentsReceived) : '$--';
+  const total$ = income ? fmtUsd(income.totalIncome) : '$--';
+
   return (
     <div className="mx-auto w-full max-w-3xl px-4 sm:px-6 py-6 space-y-4">
       <h2 className="font-heading text-lg text-foreground">Reports</h2>
 
       {/* Weekly income summary */}
       <TaskCard
-        badge="Last Sunday"
+        badge="This week"
         badgeClass="bg-success/10 text-success"
-        time="weekly"
+        time="7 days"
         title="Weekly income summary"
         onClick={() => onSendMessage("Show me this week's full income and financial summary")}
       >
         <div className="rounded-lg border border-border overflow-hidden my-2">
-          <IncomeRow label="Yield earned" value="$0.04" />
-          <IncomeRow label="Payments received" value="$0.00" />
-          <IncomeRow label="Store sales" value="$0.00" border={false} />
+          <IncomeRow label="Yield earned" value={yield$} />
+          <IncomeRow label="Payments received" value={payments$} />
           <div className="flex items-center justify-between px-3 py-2 bg-white/[0.02]">
             <span className="text-[11px] text-[var(--n300)] font-medium">Total income</span>
-            <span className="font-mono text-[12px] text-foreground font-medium">$0.04</span>
+            <span className="font-mono text-[12px] text-foreground font-medium">{total$}</span>
           </div>
         </div>
         <div className="flex gap-2 pt-1">

@@ -1815,6 +1815,7 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
         return (
           <ReportsPanel
             address={address}
+            jwt={session?.jwt ?? ''}
             briefing={briefing.briefing}
             onBriefingDismiss={briefing.dismiss}
             onBriefingViewReport={() => window.open(`/report/${address}`, '_blank')}

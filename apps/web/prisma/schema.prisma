@@ -28,8 +28,7 @@ model User {
   savingsGoals         SavingsGoal[]
   adviceLogs           AdviceLog[]
   savingsGoalDeposits  SavingsGoalDeposit[]
-  paymentLinks         PaymentLink[]
-  invoices             Invoice[]
+  payments             Payment[]
   watchAddresses       WatchAddress[]
   portfolioSnapshots   PortfolioSnapshot[]
   scheduledActions     ScheduledAction[]
@@ -207,20 +206,36 @@ model AdviceLog {
   @@index([createdAt])
 }
 
-model PaymentLink {
+model Payment {
   id          String    @id @default(cuid())
   slug        String    @unique
+  nonce       String    @default(uuid())
   userId      String
   suiAddress  String
+
+  type        String    @default("link")
+  status      String    @default("active")
   amount      Float?
+  currency    String    @default("USDC")
   label       String?
   memo        String?
-  currency    String    @default("USDC")
-  status      String    @default("active")
-  expiresAt   DateTime?
-  paidAt      DateTime?
-  paidBy      String?
-  txDigest    String?
+  senderName  String?
+
+  // Invoice-specific (optional, ignored for type=link)
+  lineItems       Json?
+  dueDate         DateTime?
+  recipientName   String?
+  recipientEmail  String?
+  sentAt          DateTime?
+  reminderSentAt  DateTime?
+
+  // Payment tracking
+  paymentMethod   String?
+  paidAt          DateTime?
+  paidBy          String?
+  txDigest        String?
+  expiresAt       DateTime?
+
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
@@ -228,33 +243,7 @@ model PaymentLink {
 
   @@index([userId, status])
   @@index([suiAddress])
-}
-
-model Invoice {
-  id              String    @id @default(cuid())
-  slug            String    @unique
-  userId          String
-  suiAddress      String
-  recipientEmail  String?
-  recipientName   String?
-  amount          Float
-  currency        String    @default("USDC")
-  label           String
-  items           Json      @default("[]")
-  memo            String?
-  dueDate         DateTime?
-  status          String    @default("pending")
-  paidAt          DateTime?
-  paidBy          String?
-  txDigest        String?
-  sentAt          DateTime?
-  reminderSentAt  DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-
-  user User @relation(fields: [userId], references: [id])
-
-  @@index([userId, status])
+  @@index([status])
   @@index([dueDate, status])
 }
 
