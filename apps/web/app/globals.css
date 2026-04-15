@@ -133,8 +133,8 @@
   --color-status-danger: var(--status-danger);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-instrument-serif), 'Instrument Serif', Georgia, serif;
-  --font-display: var(--font-instrument-serif), 'Instrument Serif', Georgia, serif;
+  --font-heading: var(--font-inter), 'Inter', system-ui, sans-serif;
+  --font-display: var(--font-instrument-serif), ui-serif, Georgia, serif;
 }
 
 body {
