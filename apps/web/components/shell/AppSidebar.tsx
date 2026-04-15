@@ -267,11 +267,11 @@ export function AppSidebar({
             </button>
           )}
 
-          {/* Allowance / budget bar */}
+          {/* Features budget bar */}
           {allowancePercent != null && (
             <div className="space-y-1">
               <div className="flex justify-between">
-                <span className="font-mono text-[9px] tracking-[0.06em] uppercase text-border-bright">Budget</span>
+                <span className="font-mono text-[9px] tracking-[0.06em] uppercase text-border-bright">Features budget</span>
                 {allowanceLabel && (
                   <span className="font-mono text-[9px] text-muted">{allowanceLabel}</span>
                 )}

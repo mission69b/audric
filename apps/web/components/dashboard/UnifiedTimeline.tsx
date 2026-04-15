@@ -190,24 +190,23 @@ export function UnifiedTimeline({
 
   return (
     <div className="space-y-3">
-      {hasMessages && timeline.length > 0 && timeline[0].kind === 'engine' && timeline[0].msg.role === 'user' && (
-        <ChatDivider label="TASK INITIATED" />
-      )}
-
       {timeline.map((entry) => {
         if (entry.kind === 'engine') {
           if (showSkeleton && entry.msg.id === lastEngineMsg?.id) {
             return <ConnectingSkeleton key={entry.msg.id} />;
           }
+          const isUser = entry.msg.role === 'user';
           return (
-            <ChatMessage
-              key={entry.msg.id}
-              message={entry.msg}
-              onActionResolve={handleActionResolve}
-              autoApproveTools={AUTO_APPROVE_TOOLS}
-              agentBudget={agentBudget}
-              onSendMessage={onSendMessage ?? engine.sendMessage}
-            />
+            <div key={entry.msg.id}>
+              {isUser && <ChatDivider label="TASK INITIATED" />}
+              <ChatMessage
+                message={entry.msg}
+                onActionResolve={handleActionResolve}
+                autoApproveTools={AUTO_APPROVE_TOOLS}
+                agentBudget={agentBudget}
+                onSendMessage={onSendMessage ?? engine.sendMessage}
+              />
+            </div>
           );
         }
         return (

@@ -1713,8 +1713,8 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
       balance={balance}
       onSettingsClick={() => setSettingsOpen(true)}
       jwt={session.jwt}
-      allowancePercent={agentBudget > 0 ? Math.min(100, (agentBudget / 0.50) * 100) : 0}
-      allowanceLabel={`$${agentBudget.toFixed(2)}`}
+      allowancePercent={allowance.balance != null ? Math.min(100, (allowance.balance / 0.50) * 100) : undefined}
+      allowanceLabel={allowance.balance != null ? `$${allowance.balance.toFixed(2)} · ~${Math.max(1, Math.round(allowance.balance / 0.005))}d` : undefined}
       allowanceBalance={allowance.balance}
       activeSessionId={engine.sessionId ?? undefined}
       onLoadSession={engine.loadSession}

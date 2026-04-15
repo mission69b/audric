@@ -121,7 +121,7 @@ function StatusDot({ status }: { status: StepStatus }) {
       return (
         <span className="w-4 h-4 rounded-full bg-success shrink-0 flex items-center justify-center" aria-hidden="true">
           <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-            <path d="M2 5L4 7L8 3" stroke="black" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M2 5L4 7L8 3" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </span>
       );
