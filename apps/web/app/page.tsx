@@ -173,9 +173,17 @@ export default function LandingPage() {
                 <div className="px-2.5 py-1.5 text-[10px] text-white">Save $1 USDC into Savings. <span className="text-[#707070] block text-[9px]">4 msgs · 4m ago</span></div>
                 <div className="px-2.5 py-1.5 text-[10px] text-[#8F8F8F]">Balance and health factor <span className="text-[#707070] block text-[9px]">16 msgs · 20m ago</span></div>
                 <div className="mt-auto pt-3 border-t border-[#363636]">
-                  <div className="text-[10px] text-[#8F8F8F]">funkiirabu@gmail.com</div>
-                  <div className="text-[9px] text-[#707070] font-mono mt-0.5">0x7f20...f6dc</div>
-                  <div className="font-mono text-[8px] text-[#707070] mt-2">BUDGET <span className="text-white ml-2">$0.42</span> · ~52d</div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-6 h-6 rounded-full bg-[#363636] flex items-center justify-center text-[10px] text-[#8F8F8F] font-semibold shrink-0">J</div>
+                    <div>
+                      <div className="text-[10px] text-[#8F8F8F]">john@gmail.com</div>
+                      <div className="text-[9px] text-[#707070] font-mono">0x7f2a...9c4b</div>
+                    </div>
+                  </div>
+                  <div className="font-mono text-[8px] text-[#707070] flex items-center justify-between">
+                    <span>FEATURES BUDGET</span>
+                    <span className="text-white">$1.78 · ~357d</span>
+                  </div>
                 </div>
               </div>
 
@@ -215,7 +223,7 @@ export default function LandingPage() {
                   {/* Greeting divider */}
                   <div className="flex items-center gap-2">
                     <div className="flex-1 h-px bg-[#363636]" />
-                    <span className="font-mono text-[9px] text-[#707070] tracking-wider uppercase">Good afternoon, funkiirabu</span>
+                    <span className="font-mono text-[9px] text-[#707070] tracking-wider uppercase">Good afternoon, John</span>
                     <div className="flex-1 h-px bg-[#363636]" />
                   </div>
 
