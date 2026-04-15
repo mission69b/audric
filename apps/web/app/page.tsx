@@ -500,9 +500,9 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── S9: Audric Store ── */}
+      {/* ── S9: Audric Store + Store Flow Mockup ── */}
       <section id="store" className="px-5 sm:px-10 lg:px-16 py-14 sm:py-20 bg-surface border-t border-border">
-        <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-start">
+        <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
           <div>
             <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-muted mb-3">
               Audric Store
@@ -510,12 +510,24 @@ export default function LandingPage() {
             <h2 className="text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground mb-3">
               The new app store.
             </h2>
-            <p className="text-[13px] text-muted leading-[1.7] mb-5">
+            <p className="text-[13px] text-muted leading-[1.7] max-w-[420px] mb-5">
               Create and sell any digital content. Get paid in USDC. No middleman. 92% to you.
             </p>
-            <div className="flex gap-1.5 flex-wrap mb-5">
+            <div className="flex gap-1.5 flex-wrap mb-4">
               {['Music', 'Art', 'Ebooks', 'Templates', 'Courses'].map((tag) => (
                 <span key={tag} className="font-mono text-[10px] px-2.5 py-1 border border-border rounded-full text-muted">{tag}</span>
+              ))}
+            </div>
+            <div className="grid grid-cols-3 gap-px bg-border border border-border mb-5">
+              {[
+                { title: 'Permanent', desc: 'Files on Walrus' },
+                { title: 'Pay-to-unlock', desc: 'On-chain gating' },
+                { title: '92% to you', desc: 'Instant USDC' },
+              ].map((feat) => (
+                <div key={feat.title} className="bg-background px-3 py-2.5 text-center">
+                  <div className="text-[10px] font-semibold text-foreground mb-0.5">{feat.title}</div>
+                  <p className="font-mono text-[10px] text-muted">{feat.desc}</p>
+                </div>
               ))}
             </div>
             <button
@@ -526,30 +538,53 @@ export default function LandingPage() {
             </button>
           </div>
 
-          <div>
-            <div className="border border-border overflow-hidden">
-              {STORE_STEPS.map((step, i) => (
-                <div
-                  key={step.num}
-                  className={`bg-background px-5 py-4 ${i < STORE_STEPS.length - 1 ? 'border-b border-border' : ''}`}
-                >
-                  <div className="font-mono text-[11px] text-muted mb-1">{step.num} {step.label}</div>
-                  <div className="text-[14px] font-semibold text-foreground mb-1">{step.title}</div>
-                  <p className="text-[13px] text-muted leading-[1.7]">{step.desc}</p>
-                </div>
-              ))}
+          {/* Store flow mockup — white shell */}
+          <div className="border border-border rounded-lg overflow-hidden bg-background">
+            <div className="px-4 py-3 border-b border-border flex items-center gap-1.5">
+              <span className="text-[10px] text-muted">◎ Store</span>
+              <span className="ml-auto text-[9px] text-dim">Audric Dashboard</span>
             </div>
-            <div className="grid grid-cols-3 gap-px bg-border border border-border border-t-0">
-              {[
-                { title: 'Permanent', desc: 'Files on Walrus. No expiry.' },
-                { title: 'Pay-to-unlock', desc: 'On-chain gating. No DRM.' },
-                { title: 'Not our servers', desc: "We can't delete your content." },
-              ].map((feat) => (
-                <div key={feat.title} className="bg-background px-3 py-2.5">
-                  <div className="text-[10px] font-semibold text-foreground mb-0.5">{feat.title}</div>
-                  <p className="font-mono text-[10px] text-muted">{feat.desc}</p>
+            <div className="p-4 space-y-2.5">
+              <div className="bg-surface border border-border rounded-md px-3 py-2.5">
+                <div className="text-[11px] text-muted mb-1">You said:</div>
+                <div className="text-[13px] text-foreground">&quot;Make me a lo-fi track called Midnight Rain&quot;</div>
+              </div>
+              <div className="divide-y divide-border">
+                {[
+                  { label: 'Generated lo-fi track (2:34)', service: 'Suno', cost: '$0.05' },
+                  { label: 'Created album cover', service: 'DALL-E 3', cost: '$0.04' },
+                  { label: 'Uploaded to Walrus', service: '', cost: 'permanent' },
+                ].map((step) => (
+                  <div key={step.label} className="flex items-center gap-2 py-2">
+                    <span className="text-[10px] text-[#00D68F]">✓</span>
+                    <span className="flex-1 text-[11px] text-foreground">{step.label}</span>
+                    <span className="text-[9px] text-muted">{step.service}{step.service && ' · '}{step.cost}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="bg-surface border border-border rounded-md px-3 py-2.5">
+                <div className="text-[11px] text-muted mb-1">You said:</div>
+                <div className="text-[13px] text-foreground">&quot;Sell this for $3&quot;</div>
+              </div>
+              <div className="border border-border rounded-md p-3">
+                <div className="text-[10px] text-[#00D68F] mb-2">✓ Listed on Audric Store</div>
+                <div className="flex justify-between mb-1">
+                  <span className="text-[11px] text-muted">Track</span>
+                  <span className="text-[11px] text-foreground">Midnight Rain</span>
                 </div>
-              ))}
+                <div className="flex justify-between mb-1">
+                  <span className="text-[11px] text-muted">Price</span>
+                  <span className="text-[11px] text-foreground font-semibold">$3.00 USDC</span>
+                </div>
+                <div className="flex justify-between mb-1">
+                  <span className="text-[11px] text-muted">You earn</span>
+                  <span className="text-[11px] text-[#00D68F]">$2.76 (92%)</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[11px] text-muted">Link</span>
+                  <span className="text-[11px] text-foreground font-mono">audric.ai/store/mR7k</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
