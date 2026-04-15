@@ -137,7 +137,7 @@ export default function LandingPage() {
           <div className="max-w-[960px] mx-auto border border-[#363636] rounded-xl overflow-hidden bg-[#000]">
             <div className="flex min-h-[480px]">
               {/* Sidebar */}
-              <div className="w-[190px] shrink-0 bg-[#000] border-r border-[#363636] p-4 hidden sm:flex flex-col gap-0.5">
+              <div className="w-[190px] shrink-0 bg-[#191919] border-r border-[#363636] p-4 hidden sm:flex flex-col gap-0.5">
                 <div className="text-[13px] font-semibold text-white mb-3">
                   AUDRIC <span className="text-[8px] bg-[#363636] px-1.5 py-0.5 rounded text-[#8F8F8F] ml-1">BETA</span>
                 </div>
