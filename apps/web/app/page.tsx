@@ -79,7 +79,7 @@ export default function LandingPage() {
   }, [status, router]);
 
   return (
-    <div className="light-theme min-h-dvh bg-background font-heading">
+    <div className="light-theme min-h-dvh bg-background font-sans">
       <LandingNav />
 
       {/* ── S1: Hero ── */}
@@ -89,7 +89,7 @@ export default function LandingPage() {
             <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-muted mb-5">
               Your money, handled.
             </p>
-            <h1 className="text-[40px] sm:text-[52px] font-normal leading-[1.05] tracking-[-2px] text-foreground mb-5">
+            <h1 className="font-heading text-[40px] sm:text-[52px] font-normal leading-[1.05] tracking-[-2px] text-foreground mb-5">
               Your money,<br />
               <em className="italic font-light tracking-[-1.5px]">handled.</em>
             </h1>
@@ -125,7 +125,7 @@ export default function LandingPage() {
             <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-[#00D68F] mb-3">
               The Audric Dashboard
             </p>
-            <h2 className="text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground mb-3">
+            <h2 className="font-heading text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground mb-3">
               This is what you get.
             </h2>
             <p className="text-[13px] text-muted leading-[1.7] max-w-[500px] mx-auto">
@@ -242,7 +242,7 @@ export default function LandingPage() {
           <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-muted mb-3">
             How it works
           </p>
-          <h2 className="text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground mb-10">
+          <h2 className="font-heading text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground mb-10">
             Three steps to your money.
           </h2>
 
@@ -268,7 +268,7 @@ export default function LandingPage() {
           <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-muted mb-3">
             Products
           </p>
-          <h2 className="text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground mb-10">
+          <h2 className="font-heading text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground mb-10">
             Everything you need.
           </h2>
 
@@ -294,7 +294,7 @@ export default function LandingPage() {
             <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-muted mb-3">
               Send &amp; receive
             </p>
-            <h2 className="text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground mb-3">
+            <h2 className="font-heading text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground mb-3">
               Move money.<br />Free. Global. Instant.
             </h2>
             <p className="text-[13px] text-muted leading-[1.7] max-w-[420px] mb-5">
@@ -380,7 +380,7 @@ export default function LandingPage() {
             <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-muted mb-3">
               Audric Intelligence
             </p>
-            <h2 className="text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground mb-3">
+            <h2 className="font-heading text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground mb-3">
               Not a chatbot.<br />A financial agent.
             </h2>
             <p className="text-[13px] text-muted leading-[1.7] max-w-[500px] mx-auto">
@@ -408,7 +408,7 @@ export default function LandingPage() {
           <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-muted mb-3">
             Audric Passport
           </p>
-          <h2 className="text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground mb-10">
+          <h2 className="font-heading text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground mb-10">
             Your passport to a new kind of finance.
           </h2>
 
@@ -440,7 +440,7 @@ export default function LandingPage() {
             <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-muted mb-3">
               Audric Pay
             </p>
-            <h2 className="text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground mb-3">
+            <h2 className="font-heading text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground mb-3">
               Your agent pays so you don&apos;t have to.
             </h2>
             <p className="text-[13px] text-muted leading-[1.7] max-w-[420px] mb-5">
@@ -507,7 +507,7 @@ export default function LandingPage() {
             <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-muted mb-3">
               Audric Store
             </p>
-            <h2 className="text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground mb-3">
+            <h2 className="font-heading text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground mb-3">
               The new app store.
             </h2>
             <p className="text-[13px] text-muted leading-[1.7] max-w-[420px] mb-5">
