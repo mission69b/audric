@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { NavItem, type BadgeVariant } from './NavItem';
 import { ConvoHistoryList } from './ConvoHistoryList';
@@ -130,6 +130,16 @@ export function AppSidebar({
 
   const email = emailProp ?? decodeEmail(jwt);
   const initial = useMemo(() => (email ? email[0].toUpperCase() : address ? address.slice(2, 3).toUpperCase() : '?'), [email, address]);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyAddress = useCallback(async () => {
+    if (!address) return;
+    try {
+      await navigator.clipboard.writeText(address);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch { /* fallback: ignore */ }
+  }, [address]);
 
   return (
     <aside
@@ -268,11 +278,12 @@ export function AppSidebar({
       {/* Footer — user info + allowance */}
       {!collapsed && (
         <div className="shrink-0 border-t border-border px-3 py-3 space-y-2">
-          {/* User row */}
+          {/* User row — click to copy address */}
           {(email || address) && (
             <button
-              onClick={() => handleNav('settings')}
-              className="w-full flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-[var(--n700)] transition"
+              onClick={handleCopyAddress}
+              className="w-full flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-[var(--n700)] transition group"
+              title={address ? `Copy: ${address}` : undefined}
             >
               <div
                 className="w-[26px] h-[26px] rounded-full shrink-0 flex items-center justify-center font-mono text-[10px] text-[var(--n300)]"
@@ -285,17 +296,23 @@ export function AppSidebar({
                   <p className="text-[11px] text-muted truncate">{email}</p>
                 )}
                 {address && (
-                  <p className="font-mono text-[9px] text-border-bright mt-px">{truncateAddr(address)}</p>
+                  <p className="font-mono text-[9px] text-border-bright mt-px">
+                    {copied ? 'Copied!' : truncateAddr(address)}
+                  </p>
                 )}
               </div>
             </button>
           )}
 
-          {/* Features budget bar */}
+          {/* Features budget bar — click to top up */}
           {allowancePercent != null && (
-            <div className="space-y-1">
+            <button
+              onClick={() => router.push('/setup')}
+              className="w-full text-left space-y-1 group"
+              title="Top up features budget"
+            >
               <div className="flex justify-between">
-                <span className="font-mono text-[9px] tracking-[0.06em] uppercase text-border-bright">Features budget</span>
+                <span className="font-mono text-[9px] tracking-[0.06em] uppercase text-border-bright group-hover:text-muted transition">Features budget</span>
                 {allowanceLabel && (
                   <span className="font-mono text-[9px] text-muted">{allowanceLabel}</span>
                 )}
@@ -306,7 +323,7 @@ export function AppSidebar({
                   style={{ width: `${Math.min(allowancePercent, 100)}%` }}
                 />
               </div>
-            </div>
+            </button>
           )}
         </div>
       )}
