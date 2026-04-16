@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { Tooltip } from '@/components/ui/Tooltip';
 import type { ChipAction } from '@/lib/chip-configs';
 
 interface ChipExpandProps {
@@ -25,13 +26,15 @@ export function ChipExpand({ actions, chipLabel, onSelect, onFlowSelect, onClose
     >
       <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/50 bg-surface">
         <span className="font-mono text-[11px] tracking-[0.08em] uppercase text-muted">{chipLabel}</span>
-        <button
-          onClick={onClose}
-          className="text-dim hover:text-foreground transition text-sm leading-none p-1 rounded focus-visible:ring-2 focus-visible:ring-foreground/20 outline-none"
-          aria-label="Close"
-        >
-          ×
-        </button>
+        <Tooltip label="Close" side="top">
+          <button
+            onClick={onClose}
+            className="text-dim hover:text-foreground transition text-sm leading-none p-1 rounded focus-visible:ring-2 focus-visible:ring-foreground/20 outline-none"
+            aria-label="Close"
+          >
+            ×
+          </button>
+        </Tooltip>
       </div>
       {actions.map((action, i) => (
         <button

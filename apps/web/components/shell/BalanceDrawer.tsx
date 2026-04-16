@@ -1,5 +1,6 @@
 'use client';
 
+import { Tooltip } from '@/components/ui/Tooltip';
 import type { BalanceHeaderData } from '@/components/dashboard/BalanceHeader';
 
 interface BalanceDrawerProps {
@@ -38,7 +39,9 @@ export function BalanceDrawer({ balance, open, onClose }: BalanceDrawerProps) {
       >
         <div className="flex items-center justify-between">
           <p className="font-mono text-[9px] tracking-[0.1em] uppercase text-muted">Balance Breakdown</p>
-          <button onClick={onClose} className="text-dim hover:text-muted text-xs rounded focus-visible:ring-2 focus-visible:ring-foreground/20 outline-none" aria-label="Close">&times;</button>
+          <Tooltip label="Close" side="left">
+            <button onClick={onClose} className="text-dim hover:text-muted text-xs rounded focus-visible:ring-2 focus-visible:ring-foreground/20 outline-none" aria-label="Close">&times;</button>
+          </Tooltip>
         </div>
 
         <div className="space-y-2">

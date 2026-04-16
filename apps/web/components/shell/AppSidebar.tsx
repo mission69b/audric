@@ -1,9 +1,10 @@
 'use client';
 
-import { useCallback, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { NavItem, type BadgeVariant } from './NavItem';
 import { ConvoHistoryList } from './ConvoHistoryList';
+import { Tooltip } from '@/components/ui/Tooltip';
 import type { PanelId } from '@/hooks/usePanel';
 
 interface SidebarProps {
@@ -20,27 +21,6 @@ interface SidebarProps {
   activeSessionId?: string;
   onLoadSession?: (sessionId: string) => void;
   onNewConversation?: () => void;
-}
-
-function Tooltip({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="relative group/tip">
-      {children}
-      <div
-        role="tooltip"
-        className="
-          pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 z-50
-          whitespace-nowrap rounded-md bg-foreground px-2.5 py-1
-          font-mono text-[10px] tracking-[0.06em] text-background
-          opacity-0 scale-95 group-hover/tip:opacity-100 group-hover/tip:scale-100
-          transition-all duration-150 origin-left
-          shadow-[var(--shadow-dropdown)]
-        "
-      >
-        {label}
-      </div>
-    </div>
-  );
 }
 
 const SidebarToggleIcon = () => (
@@ -188,14 +168,14 @@ export function AppSidebar({
         aria-label="Main navigation"
       >
         {/* Open sidebar */}
-        <Tooltip label="Open sidebar">
+        <Tooltip label="Open sidebar" side="right">
           <button onClick={onToggleCollapse} className={iconBtnClass} aria-label="Open sidebar">
             <SidebarToggleIcon />
           </button>
         </Tooltip>
 
         {/* New conversation */}
-        <Tooltip label="New conversation">
+        <Tooltip label="New conversation" side="right">
           <button onClick={handleNewConvo} className={iconBtnClass} aria-label="New conversation">
             <PlusIcon />
           </button>
@@ -204,7 +184,7 @@ export function AppSidebar({
         {/* Nav icons */}
         <div className="flex flex-col items-center gap-0.5 mt-2 flex-1 overflow-y-auto">
           {NAV_ITEMS.map((item) => (
-            <Tooltip key={item.id} label={item.label}>
+            <Tooltip key={item.id} label={item.label} side="right">
               <NavItem
                 icon={item.icon}
                 label={item.label}
