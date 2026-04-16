@@ -46,7 +46,7 @@ export function ChipExpand({ actions, chipLabel, onSelect, onFlowSelect, onClose
               onSelect(action.prompt);
             }
           }}
-          className="w-full text-left px-4 py-3 hover:bg-surface transition-colors border-b border-border/50 last:border-b-0 flex items-center justify-between group focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-foreground/20 outline-none"
+          className="w-full text-left px-4 py-3 hover:bg-[var(--n700)] transition-colors border-b border-border/50 last:border-b-0 flex items-center justify-between group focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-foreground/20 outline-none"
         >
           <div>
             <span className="text-[13px] text-foreground">{action.label}</span>
