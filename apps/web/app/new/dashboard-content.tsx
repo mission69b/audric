@@ -31,8 +31,6 @@ import { useUsdcSponsor } from '@/hooks/useUsdcSponsor';
 import { COIN_REGISTRY } from '@/lib/token-registry';
 import { parseActualAmount, buildSwapDisplayData } from '@/lib/balance-changes';
 import { useAllowanceStatus } from '@/hooks/useAllowanceStatus';
-import { DashboardTabs, type DashboardTab } from '@/components/dashboard/DashboardTabs';
-import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
 import { useActivityFeed } from '@/hooks/useActivityFeed';
 import { BriefingCard } from '@/components/dashboard/BriefingCard';
 import { NewConversationView } from '@/components/dashboard/NewConversationView';
@@ -271,7 +269,6 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
         }));
     },
   });
-  const [activeTab, setActiveTab] = useState<DashboardTab>('chat');
   const activityFeed = useActivityFeed(address);
   const briefing = useOvernightBriefing(address, session?.jwt ?? null);
   const userStatus = useUserStatus(address, session?.jwt);
@@ -805,21 +802,15 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
     engine.clearMessages();
     feed.clear();
     chipFlow.reset();
-    setActiveTab('chat');
     window.history.replaceState(window.history.state, '', '/new');
   }, [engine, feed, chipFlow]);
-
-  const handleTabChange = useCallback((tab: DashboardTab) => {
-    setActiveTab(tab);
-    if (tab === 'activity') activityFeed.markSeen();
-  }, [activityFeed.markSeen]);
 
   const handleActivityAction = useCallback((flow: string) => {
     if (flow === 'automations') {
       setPanel('automations');
       return;
     }
-    setActiveTab('chat');
+    setPanel('chat');
     handleChipClick(flow);
   }, [handleChipClick, setPanel]);
 
@@ -1411,7 +1402,7 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
           onCtaClick: handleBriefingCtaClick,
         } : null}
         handledActions={dashInsights.handledActions}
-        onViewHandled={() => { setActiveTab('activity'); }}
+        onViewHandled={() => { setPanel('activity'); }}
         proactive={dashInsights.proactive ? {
           ...dashInsights.proactive,
           onCtaClick: () => engine.sendMessage(dashInsights.proactive!.action),
@@ -1420,24 +1411,6 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
       />
     );
   };
-
-  const renderActivityTab = () => (
-    <div className="flex-1 flex flex-col overflow-y-auto">
-      <div className="mx-auto w-full max-w-2xl px-4 sm:px-6 py-4">
-        {briefing.briefing && (
-          <div className="mb-4">
-            <BriefingCard
-              briefing={briefing.briefing}
-              onDismiss={briefing.dismiss}
-              onViewReport={handleBriefingViewReport}
-              onCtaClick={handleBriefingCtaClick}
-            />
-          </div>
-        )}
-        <ActivityFeed feed={activityFeed} onAction={handleActivityAction} />
-      </div>
-    </div>
-  );
 
   const renderChatView = () => (
     <div className="flex-1 flex flex-col min-h-0">
@@ -1583,7 +1556,7 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
                 {dashInsights.handledActions.length > 0 && (
                   <HandledForYou
                     actions={dashInsights.handledActions}
-                    onViewAll={() => setActiveTab('activity')}
+                    onViewAll={() => setPanel('activity')}
                   />
                 )}
 
@@ -1826,21 +1799,7 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
       case 'chat':
       default: {
         if (isEmpty && !engine.isStreaming) return renderEmptyState();
-        const showTabs = engine.messages.length > 0 || activeTab === 'activity';
-        return (
-          <>
-            {showTabs && (
-              <div className="mx-auto w-full max-w-2xl px-4 sm:px-6 pt-2">
-                <DashboardTabs
-                  activeTab={activeTab}
-                  onTabChange={handleTabChange}
-                  hasUnread={activityFeed.hasUnread}
-                />
-              </div>
-            )}
-            {activeTab === 'activity' ? renderActivityTab() : renderChatView()}
-          </>
-        );
+        return renderChatView();
       }
     }
   })();
