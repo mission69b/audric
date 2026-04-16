@@ -51,14 +51,34 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'type must be "link" or "invoice"' }, { status: 400 });
   }
 
-  if (body.amount != null && (typeof body.amount !== 'number' || body.amount < 0)) {
-    return NextResponse.json({ error: 'Invalid amount' }, { status: 400 });
+  if (body.amount == null || typeof body.amount !== 'number' || body.amount <= 0) {
+    return NextResponse.json({ error: 'Amount must be a positive number' }, { status: 400 });
+  }
+
+  if (body.label && body.label.length > 200) {
+    return NextResponse.json({ error: 'Label must be 200 characters or fewer' }, { status: 400 });
+  }
+  if (body.memo && body.memo.length > 500) {
+    return NextResponse.json({ error: 'Memo must be 500 characters or fewer' }, { status: 400 });
+  }
+  if (body.recipientName && body.recipientName.length > 100) {
+    return NextResponse.json({ error: 'Recipient name must be 100 characters or fewer' }, { status: 400 });
+  }
+  if (body.recipientEmail && body.recipientEmail.length > 254) {
+    return NextResponse.json({ error: 'Recipient email must be 254 characters or fewer' }, { status: 400 });
+  }
+  if (body.lineItems) {
+    if (body.lineItems.length > 20) {
+      return NextResponse.json({ error: 'Maximum 20 line items' }, { status: 400 });
+    }
+    for (const item of body.lineItems) {
+      if (item.description && item.description.length > 200) {
+        return NextResponse.json({ error: 'Line item description must be 200 characters or fewer' }, { status: 400 });
+      }
+    }
   }
 
   if (type === 'invoice') {
-    if (!body.amount || body.amount <= 0) {
-      return NextResponse.json({ error: 'Invoice amount must be positive' }, { status: 400 });
-    }
     if (!body.label || body.label.trim().length === 0) {
       return NextResponse.json({ error: 'Invoice label is required' }, { status: 400 });
     }
@@ -87,7 +107,7 @@ export async function POST(request: NextRequest) {
       userId: user.id,
       suiAddress: address,
       type,
-      amount: body.amount ?? null,
+      amount: body.amount,
       label: body.label?.trim() ?? null,
       memo: body.memo ?? null,
       expiresAt,

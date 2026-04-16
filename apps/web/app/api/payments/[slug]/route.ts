@@ -30,7 +30,6 @@ export async function GET(_request: NextRequest, { params }: Params) {
 
   return NextResponse.json({
     slug: payment.slug,
-    nonce: payment.nonce,
     type: payment.type,
     recipientAddress: payment.suiAddress,
     recipientName: user?.displayName ?? null,
@@ -58,24 +57,30 @@ export async function GET(_request: NextRequest, { params }: Params) {
 }
 
 /**
- * PATCH /api/payments/[slug] -- Update payment (cancel, mark paid).
- * - status=paid + txDigest: mark as paid (public, no auth)
- * - status=cancelled: cancel (auth required, owner only)
+ * PATCH /api/payments/[slug] -- Cancel a payment (auth required, owner only).
+ * All "mark paid" transitions go through POST /api/payments/[slug]/verify.
  */
 export async function PATCH(request: NextRequest, { params }: Params) {
   const { slug } = await params;
 
-  let body: {
-    status?: string;
-    paidBy?: string;
-    txDigest?: string;
-    paymentMethod?: string;
-    senderName?: string;
-  };
+  let body: { status?: string };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+  }
+
+  if (body.status !== 'cancelled') {
+    return NextResponse.json({ error: 'Only status=cancelled is supported' }, { status: 400 });
+  }
+
+  const jwt = request.headers.get('x-zklogin-jwt');
+  const jwtResult = validateJwt(jwt);
+  if ('error' in jwtResult) return jwtResult.error;
+
+  const address = request.headers.get('x-sui-address');
+  if (!address || !isValidSuiAddress(address)) {
+    return NextResponse.json({ error: 'Missing or invalid address' }, { status: 400 });
   }
 
   const payment = await prisma.payment.findUnique({ where: { slug } });
@@ -83,60 +88,27 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     return NextResponse.json({ error: 'Payment not found' }, { status: 404 });
   }
 
-  if (body.status === 'paid' && body.txDigest) {
-    if (payment.status !== 'active') {
-      return NextResponse.json({ error: `Cannot mark ${payment.status} payment as paid` }, { status: 409 });
-    }
-    if (!body.txDigest.match(/^[A-Za-z0-9+/=]{32,88}$/)) {
-      return NextResponse.json({ error: 'Invalid transaction digest' }, { status: 400 });
-    }
-    if (body.paidBy && !isValidSuiAddress(body.paidBy)) {
-      return NextResponse.json({ error: 'Invalid payer address' }, { status: 400 });
-    }
-
-    const updated = await prisma.payment.update({
-      where: { slug, status: 'active' },
-      data: {
-        status: 'paid',
-        paidAt: new Date(),
-        paidBy: body.paidBy ?? null,
-        txDigest: body.txDigest,
-        paymentMethod: body.paymentMethod ?? 'unknown',
-        senderName: body.senderName ?? null,
-      },
-    }).catch(() => null);
-
-    if (!updated) {
-      return NextResponse.json({ error: 'Payment already processed' }, { status: 409 });
-    }
-
-    return NextResponse.json({ status: updated.status, txDigest: updated.txDigest });
+  if (address !== payment.suiAddress) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
   }
 
-  if (body.status === 'cancelled') {
-    const jwt = request.headers.get('x-zklogin-jwt');
-    const jwtResult = validateJwt(jwt);
-    if ('error' in jwtResult) return jwtResult.error;
-
-    const address = request.headers.get('x-sui-address');
-    if (address !== payment.suiAddress) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-    }
-    if (payment.status === 'paid') {
-      return NextResponse.json({ error: 'Cannot cancel a paid payment' }, { status: 409 });
-    }
-    if (payment.status === 'cancelled') {
-      return NextResponse.json({ error: 'Already cancelled' }, { status: 409 });
-    }
-
-    const updated = await prisma.payment.update({
-      where: { slug },
-      data: { status: 'cancelled' },
-    });
-    return NextResponse.json({ status: updated.status });
+  if (payment.status === 'paid') {
+    return NextResponse.json({ error: 'Cannot cancel a paid payment' }, { status: 409 });
+  }
+  if (payment.status === 'cancelled') {
+    return NextResponse.json({ error: 'Already cancelled' }, { status: 409 });
   }
 
-  return NextResponse.json({ error: 'Invalid update' }, { status: 400 });
+  const isExpired = payment.expiresAt && payment.expiresAt < new Date();
+  if (isExpired) {
+    return NextResponse.json({ error: 'Cannot cancel an expired payment' }, { status: 409 });
+  }
+
+  const updated = await prisma.payment.update({
+    where: { slug },
+    data: { status: 'cancelled' },
+  });
+  return NextResponse.json({ status: updated.status });
 }
 
 /**

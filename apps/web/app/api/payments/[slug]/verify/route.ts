@@ -5,7 +5,11 @@ import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 
-const SUI_RPC = process.env.SUI_RPC_URL ?? 'https://fullnode.mainnet.sui.io:443';
+const SUI_RPC =
+  process.env.SUI_RPC_URL ??
+  (process.env.NEXT_PUBLIC_SUI_NETWORK === 'testnet'
+    ? 'https://fullnode.testnet.sui.io:443'
+    : 'https://fullnode.mainnet.sui.io:443');
 const USDC_TYPE =
   '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC';
 
@@ -50,9 +54,11 @@ export async function POST(request: NextRequest, { params }: Params) {
     // empty body = polling mode
   }
 
+  const senderName = body?.senderName?.slice(0, 100);
+
   try {
     if (body?.digest) {
-      return await verifyByDigest(payment, body.digest, body.paymentMethod, body.senderName);
+      return await verifyByDigest(payment, body.digest, body.paymentMethod, senderName);
     }
     return await verifyByPolling(payment);
   } catch {
@@ -92,6 +98,17 @@ async function verifyByDigest(
     return NextResponse.json({ error: 'Invalid transaction digest' }, { status: 400 });
   }
 
+  const existing = await prisma.payment.findFirst({
+    where: { txDigest: digest, status: 'paid' },
+    select: { slug: true },
+  });
+  if (existing && existing.slug !== payment.slug) {
+    return NextResponse.json(
+      { error: 'This transaction has already been used for another payment' },
+      { status: 409 },
+    );
+  }
+
   const res = await fetch(SUI_RPC, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -110,6 +127,7 @@ async function verifyByDigest(
   const json = (await res.json()) as {
     result?: {
       digest: string;
+      timestampMs?: string;
       transaction?: { data?: { sender?: string } };
       effects?: { status?: { status?: string } };
       balanceChanges?: Array<{
@@ -127,6 +145,16 @@ async function verifyByDigest(
 
   if (tx.effects?.status?.status !== 'success') {
     return NextResponse.json({ error: 'Transaction did not succeed' }, { status: 400 });
+  }
+
+  if (tx.timestampMs) {
+    const txTime = Number(tx.timestampMs);
+    if (txTime < payment.createdAt.getTime()) {
+      return NextResponse.json(
+        { error: 'Transaction predates the payment creation' },
+        { status: 400 },
+      );
+    }
   }
 
   const changes = tx.balanceChanges ?? [];
@@ -167,7 +195,7 @@ async function verifyByPolling(payment: PaymentRecord) {
       params: [
         {
           filter: { ToAddress: payment.suiAddress },
-          options: { showEffects: false, showInput: true, showBalanceChanges: true, showTimestampMs: true },
+          options: { showEffects: false, showInput: true, showBalanceChanges: true },
         },
         null,
         20,
@@ -212,6 +240,12 @@ async function verifyByPolling(payment: PaymentRecord) {
       if (!isUSDC || !isRecipient || amountUsdc <= 0) continue;
       if (payment.amount !== null && Math.abs(amountUsdc - payment.amount) > 0.01) continue;
 
+      const alreadyUsed = await prisma.payment.findFirst({
+        where: { txDigest: tx.digest, status: 'paid' },
+        select: { slug: true },
+      });
+      if (alreadyUsed && alreadyUsed.slug !== payment.slug) continue;
+
       const sender = tx.transaction?.data?.sender ?? null;
       return markPaid(payment, tx.digest, sender, amountUsdc, 'unknown');
     }
@@ -244,12 +278,22 @@ async function markPaid(
     .catch(() => null);
 
   if (!updated) {
-    return NextResponse.json({
-      status: 'paid',
-      paidAt: new Date().toISOString(),
-      txDigest: digest,
-      amountReceived,
+    const current = await prisma.payment.findUnique({
+      where: { slug: payment.slug },
+      select: { status: true, paidAt: true, txDigest: true },
     });
+    if (current?.status === 'paid') {
+      return NextResponse.json({
+        status: 'paid',
+        paidAt: current.paidAt?.toISOString() ?? new Date().toISOString(),
+        txDigest: current.txDigest ?? digest,
+        amountReceived,
+      });
+    }
+    return NextResponse.json(
+      { error: 'This transaction has already been used for another payment' },
+      { status: 409 },
+    );
   }
 
   await prisma.appEvent

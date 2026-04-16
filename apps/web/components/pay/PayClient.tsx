@@ -15,7 +15,6 @@ interface LineItem {
 
 interface PaymentData {
   slug: string;
-  nonce: string;
   type: 'link' | 'invoice';
   recipientAddress: string;
   recipientName: string | null;
@@ -134,17 +133,10 @@ export function PayClient({ slug }: { slug: string }) {
         setState('paid');
         return;
       }
-    } catch { /* fall through */ }
-
-    setData((prev) => prev ? {
-      ...prev,
-      status: 'paid',
-      paidAt: new Date().toISOString(),
-      paidBy: sender,
-      txDigest: digest,
-      paymentMethod: 'wallet_connect',
-    } : prev);
-    setState('paid');
+      setError(result.error ?? 'Verification failed — the transaction was sent but could not be confirmed. Please submit the digest manually.');
+    } catch {
+      setError('Transaction sent, verifying... Please submit the digest manually if this persists.');
+    }
   }, [slug]);
 
   const handleDigestSuccess = useCallback((digest: string) => {
@@ -253,13 +245,9 @@ function ActivePayment({
         ) : (
           <div className="text-center">
             {data.label && <div className="text-sm text-muted mb-1">{data.label}</div>}
-            {data.amount != null ? (
-              <div className="text-3xl font-semibold font-mono text-foreground">
-                ${fmtUsd(data.amount)}
-              </div>
-            ) : (
-              <div className="text-lg text-foreground font-medium">Any amount</div>
-            )}
+            <div className="text-3xl font-semibold font-mono text-foreground">
+              ${fmtUsd(data.amount ?? 0)}
+            </div>
             <div className="text-xs text-dim font-mono mt-1">{data.currency}</div>
           </div>
         )}

@@ -233,7 +233,7 @@ model Payment {
   paymentMethod   String?
   paidAt          DateTime?
   paidBy          String?
-  txDigest        String?
+  txDigest        String?    @unique
   expiresAt       DateTime?
 
   createdAt   DateTime  @default(now())
