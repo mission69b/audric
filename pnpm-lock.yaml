@@ -38,6 +38,9 @@ importers:
       '@mysten/dapp-kit':
         specifier: ^1.0.4
         version: 1.0.4(@mysten/sui@2.14.1(typescript@5.9.3))(@tanstack/react-query@5.96.1(react@19.2.4))(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)
+      '@mysten/payment-kit':
+        specifier: ^0.1.6
+        version: 0.1.6(@mysten/sui@2.14.1(typescript@5.9.3))
       '@mysten/sui':
         specifier: ^2.13.2
         version: 2.14.1(typescript@5.9.3)
@@ -757,6 +760,11 @@ packages:
       '@mysten/sui': ^2.13.2
       '@tanstack/react-query': ^5.0.0
       react: '*'
+
+  '@mysten/payment-kit@0.1.6':
+    resolution: {integrity: sha512-HZgdeiVL/DhmaRnbG+ta/A1FTxrMLFVc+KEkQAXVzUaTv6gkIXlUMiyWVWWMIeajhtR+oCgq8ARjo6yPs9zLbQ==}
+    peerDependencies:
+      '@mysten/sui': ^2.13.2
 
   '@mysten/slush-wallet@1.0.3':
     resolution: {integrity: sha512-TF1CXXug5VPaV4KImKxZ7nyR0XY//KJVzOFxFXaajBHewLBinCO7s6GS9EYbtQMaNvnjrYQn1cpGhYfwGkzvtQ==}
@@ -4964,6 +4972,11 @@ snapshots:
       - react-dom
       - typescript
       - use-sync-external-store
+
+  '@mysten/payment-kit@0.1.6(@mysten/sui@2.14.1(typescript@5.9.3))':
+    dependencies:
+      '@mysten/bcs': 2.0.3
+      '@mysten/sui': 2.14.1(typescript@5.9.3)
 
   '@mysten/slush-wallet@1.0.3(@mysten/sui@2.14.1(typescript@5.9.3))(typescript@5.9.3)':
     dependencies:

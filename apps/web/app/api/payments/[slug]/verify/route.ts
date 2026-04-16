@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import type { InputJsonValue } from '@/lib/generated/prisma/internal/prismaNamespace';
 import { prisma } from '@/lib/prisma';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
+import { getPaymentKitClient, USDC_TYPE, USDC_DECIMALS } from '@/lib/payment-kit';
 
 export const runtime = 'nodejs';
 
@@ -10,17 +11,15 @@ const SUI_RPC =
   (process.env.NEXT_PUBLIC_SUI_NETWORK === 'testnet'
     ? 'https://fullnode.testnet.sui.io:443'
     : 'https://fullnode.mainnet.sui.io:443');
-const USDC_TYPE =
-  '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC';
 
 type Params = { params: Promise<{ slug: string }> };
 
 /**
  * POST /api/payments/[slug]/verify
  *
- * Two modes:
- *   1. Body includes { digest } -- look up that specific transaction on-chain.
- *   2. No body / empty body   -- poll recent inbound txs (legacy behaviour).
+ * Two verification paths:
+ *   1. Registry check (no body) -- queries the Payment Kit registry for a PaymentRecord matching the nonce.
+ *   2. Digest verification (body: { digest }) -- verifies a specific transaction on-chain (fallback for non-registry payments).
  *
  * On success: marks payment as paid, stores pay_received AppEvent.
  * Rate-limited to 10 requests per minute per slug.
@@ -51,7 +50,7 @@ export async function POST(request: NextRequest, { params }: Params) {
   try {
     body = await request.json();
   } catch {
-    // empty body = polling mode
+    // empty body = registry check mode
   }
 
   const senderName = body?.senderName?.slice(0, 100);
@@ -60,14 +59,14 @@ export async function POST(request: NextRequest, { params }: Params) {
     if (body?.digest) {
       return await verifyByDigest(payment, body.digest, body.paymentMethod, senderName);
     }
-    return await verifyByPolling(payment);
+    return await verifyByRegistry(payment);
   } catch {
     const effectiveStatus = getEffectiveStatus(payment);
     return NextResponse.json({ status: effectiveStatus, paidAt: null });
   }
 }
 
-interface PaymentRecord {
+interface PaymentDbRecord {
   id: string;
   slug: string;
   nonce: string;
@@ -81,15 +80,54 @@ interface PaymentRecord {
   expiresAt: Date | null;
 }
 
-function getEffectiveStatus(payment: PaymentRecord): string {
+function getEffectiveStatus(payment: PaymentDbRecord): string {
   if (payment.type === 'invoice' && payment.dueDate && payment.dueDate < new Date()) {
     return 'overdue';
   }
   return payment.status;
 }
 
+/**
+ * Registry-based verification: check the on-chain PaymentRecord by nonce.
+ * Replaces the old polling-based approach.
+ */
+async function verifyByRegistry(payment: PaymentDbRecord) {
+  if (payment.amount === null || payment.amount <= 0) {
+    const effectiveStatus = getEffectiveStatus(payment);
+    return NextResponse.json({ status: effectiveStatus, paidAt: null });
+  }
+
+  const rawAmount = BigInt(Math.floor(payment.amount * 10 ** USDC_DECIMALS));
+  const client = getPaymentKitClient();
+
+  const record = await client.paymentKit.getPaymentRecord({
+    nonce: payment.nonce,
+    coinType: USDC_TYPE,
+    amount: rawAmount,
+    receiver: payment.suiAddress,
+  });
+
+  if (!record) {
+    const effectiveStatus = getEffectiveStatus(payment);
+    return NextResponse.json({ status: effectiveStatus, paidAt: null });
+  }
+
+  const digest = record.paymentTransactionDigest;
+  if (!digest) {
+    const effectiveStatus = getEffectiveStatus(payment);
+    return NextResponse.json({ status: effectiveStatus, paidAt: null });
+  }
+
+  const sender = await getSenderFromDigest(digest);
+  return markPaid(payment, digest, sender, payment.amount!, 'wallet_connect');
+}
+
+/**
+ * Digest-based verification: look up a specific transaction on-chain.
+ * Used when the payer submits a digest directly (manual or wallet flow).
+ */
 async function verifyByDigest(
-  payment: PaymentRecord,
+  payment: PaymentDbRecord,
   digest: string,
   paymentMethod?: string,
   senderName?: string,
@@ -109,6 +147,28 @@ async function verifyByDigest(
     );
   }
 
+  // First try: check if this digest has a PaymentReceipt in the registry
+  if (payment.amount !== null && payment.amount > 0) {
+    try {
+      const rawAmount = BigInt(Math.floor(payment.amount * 10 ** USDC_DECIMALS));
+      const client = getPaymentKitClient();
+      const record = await client.paymentKit.getPaymentRecord({
+        nonce: payment.nonce,
+        coinType: USDC_TYPE,
+        amount: rawAmount,
+        receiver: payment.suiAddress,
+      });
+
+      if (record?.paymentTransactionDigest === digest) {
+        const sender = await getSenderFromDigest(digest);
+        return markPaid(payment, digest, sender, payment.amount, paymentMethod ?? 'wallet_connect', senderName);
+      }
+    } catch {
+      // Registry check failed, fall through to balance change verification
+    }
+  }
+
+  // Fallback: verify via on-chain balance changes (for non-registry payments)
   const res = await fetch(SUI_RPC, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -184,79 +244,28 @@ async function verifyByDigest(
   return markPaid(payment, digest, sender, matchedAmount, paymentMethod ?? 'manual', senderName);
 }
 
-async function verifyByPolling(payment: PaymentRecord) {
-  const res = await fetch(SUI_RPC, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      jsonrpc: '2.0',
-      id: 1,
-      method: 'suix_queryTransactionBlocks',
-      params: [
-        {
-          filter: { ToAddress: payment.suiAddress },
-          options: { showEffects: false, showInput: true, showBalanceChanges: true },
-        },
-        null,
-        20,
-        true,
-      ],
-    }),
-  });
-
-  if (!res.ok) {
-    const effectiveStatus = getEffectiveStatus(payment);
-    return NextResponse.json({ status: effectiveStatus, paidAt: null });
+async function getSenderFromDigest(digest: string): Promise<string | null> {
+  try {
+    const res = await fetch(SUI_RPC, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'sui_getTransactionBlock',
+        params: [digest, { showInput: true }],
+      }),
+    });
+    if (!res.ok) return null;
+    const json = (await res.json()) as { result?: { transaction?: { data?: { sender?: string } } } };
+    return json.result?.transaction?.data?.sender ?? null;
+  } catch {
+    return null;
   }
-
-  const json = (await res.json()) as {
-    result?: {
-      data: Array<{
-        digest: string;
-        timestampMs?: string;
-        transaction?: { data?: { sender?: string } };
-        balanceChanges?: Array<{
-          owner: { AddressOwner?: string };
-          coinType: string;
-          amount: string;
-        }>;
-      }>;
-    };
-  };
-
-  const txs = json.result?.data ?? [];
-  const createdAtMs = payment.createdAt.getTime();
-
-  for (const tx of txs) {
-    const txTime = tx.timestampMs ? Number(tx.timestampMs) : null;
-    if (txTime !== null && txTime < createdAtMs) continue;
-
-    const changes = tx.balanceChanges ?? [];
-    for (const change of changes) {
-      const isUSDC = change.coinType === USDC_TYPE;
-      const isRecipient = change.owner.AddressOwner === payment.suiAddress;
-      const amountUsdc = Number(change.amount) / 1_000_000;
-
-      if (!isUSDC || !isRecipient || amountUsdc <= 0) continue;
-      if (payment.amount !== null && Math.abs(amountUsdc - payment.amount) > 0.01) continue;
-
-      const alreadyUsed = await prisma.payment.findFirst({
-        where: { txDigest: tx.digest, status: 'paid' },
-        select: { slug: true },
-      });
-      if (alreadyUsed && alreadyUsed.slug !== payment.slug) continue;
-
-      const sender = tx.transaction?.data?.sender ?? null;
-      return markPaid(payment, tx.digest, sender, amountUsdc, 'unknown');
-    }
-  }
-
-  const effectiveStatus = getEffectiveStatus(payment);
-  return NextResponse.json({ status: effectiveStatus, paidAt: null });
 }
 
 async function markPaid(
-  payment: PaymentRecord,
+  payment: PaymentDbRecord,
   digest: string,
   sender: string | null,
   amountReceived: number,

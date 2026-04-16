@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
-import { ConnectModal, useCurrentAccount, useSignAndExecuteTransaction, useSuiClient } from '@mysten/dapp-kit';
-import { Transaction } from '@mysten/sui/transactions';
+import { useState, useMemo } from 'react';
+import { ConnectModal, useCurrentAccount, useSignAndExecuteTransaction } from '@mysten/dapp-kit';
+import { SuiGrpcClient } from '@mysten/sui/grpc';
+import { paymentKit } from '@mysten/payment-kit';
 
 const USDC_TYPE =
   '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC';
@@ -11,17 +12,25 @@ const USDC_DECIMALS = 6;
 interface PayButtonProps {
   recipientAddress: string;
   amount: number | null;
+  nonce: string;
   slug: string;
   onSuccess: (digest: string, sender: string) => void;
   onError: (error: string) => void;
   disabled?: boolean;
 }
 
-export function PayButton({ recipientAddress, amount, slug, onSuccess, onError, disabled }: PayButtonProps) {
-  const client = useSuiClient();
+export function PayButton({ recipientAddress, amount, nonce, slug, onSuccess, onError, disabled }: PayButtonProps) {
   const account = useCurrentAccount();
   const { mutateAsync: signAndExecute, isPending } = useSignAndExecuteTransaction();
   const [connectOpen, setConnectOpen] = useState(false);
+
+  const pkClient = useMemo(() => {
+    const network = (process.env.NEXT_PUBLIC_SUI_NETWORK ?? 'mainnet') as 'mainnet' | 'testnet';
+    const baseUrl = network === 'testnet'
+      ? 'https://fullnode.testnet.sui.io:443'
+      : 'https://fullnode.mainnet.sui.io:443';
+    return new SuiGrpcClient({ network, baseUrl }).$extend(paymentKit());
+  }, []);
 
   const handlePay = async () => {
     if (!account) {
@@ -30,48 +39,35 @@ export function PayButton({ recipientAddress, amount, slug, onSuccess, onError, 
     }
 
     if (amount === null || amount <= 0) {
-      onError('Cannot pay with wallet for open-amount links. Please send USDC manually.');
+      onError('Invalid payment amount.');
       return;
     }
 
     try {
       const rawAmount = BigInt(Math.floor(amount * 10 ** USDC_DECIMALS));
 
-      const { data: coins } = await client.getCoins({
-        owner: account.address,
+      const tx = pkClient.paymentKit.tx.processRegistryPayment({
+        nonce,
         coinType: USDC_TYPE,
+        amount: rawAmount,
+        receiver: recipientAddress,
+        sender: account.address,
       });
 
-      if (coins.length === 0) {
-        onError('No USDC found in your wallet.');
-        return;
-      }
-
-      const totalBalance = coins.reduce((sum, c) => sum + BigInt(c.balance), BigInt(0));
-      if (totalBalance < rawAmount) {
-        const available = Number(totalBalance) / 10 ** USDC_DECIMALS;
-        onError(`Insufficient USDC. You have $${available.toFixed(2)} but need $${amount.toFixed(2)}.`);
-        return;
-      }
-
-      const tx = new Transaction();
-
-      const primaryCoin = tx.object(coins[0].coinObjectId);
-      if (coins.length > 1) {
-        tx.mergeCoins(primaryCoin, coins.slice(1).map((c) => tx.object(c.coinObjectId)));
-      }
-
-      const [sendCoin] = tx.splitCoins(primaryCoin, [rawAmount]);
-      tx.transferObjects([sendCoin], recipientAddress);
-
-      const result = await signAndExecute({
-        transaction: tx,
-      });
+      const result = await signAndExecute({ transaction: tx });
 
       onSuccess(result.digest, account.address);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Transaction failed';
       if (msg.includes('rejected') || msg.includes('cancelled')) {
+        return;
+      }
+      if (msg.includes('Duplicate')) {
+        onError('This payment has already been processed.');
+        return;
+      }
+      if (msg.includes('insufficient') || msg.includes('balance')) {
+        onError(`Insufficient USDC balance. You need $${amount.toFixed(2)} USDC.`);
         return;
       }
       onError(msg);

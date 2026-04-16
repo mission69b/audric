@@ -30,6 +30,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
 
   return NextResponse.json({
     slug: payment.slug,
+    nonce: payment.nonce,
     type: payment.type,
     recipientAddress: payment.suiAddress,
     recipientName: user?.displayName ?? null,

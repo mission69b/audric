@@ -15,6 +15,7 @@ interface LineItem {
 
 interface PaymentData {
   slug: string;
+  nonce: string;
   type: 'link' | 'invoice';
   recipientAddress: string;
   recipientName: string | null;
@@ -75,7 +76,7 @@ export function PayClient({ slug }: { slug: string }) {
     load();
   }, [slug, applyStatus]);
 
-  // Poll every 8s while active/overdue
+  // Poll every 6s while active/overdue — checks the on-chain Payment Kit registry
   useEffect(() => {
     if (state !== 'active' && state !== 'overdue') return;
     let stopped = false;
@@ -87,7 +88,7 @@ export function PayClient({ slug }: { slug: string }) {
         const res = await fetch(`/api/payments/${slug}/verify`, { method: 'POST' });
         if (!res.ok) return;
         const result = await res.json() as { status: string; paidAt: string | null; txDigest?: string; amountReceived?: number };
-        if (result.status === 'paid' && data) {
+        if (result.status === 'paid') {
           setData((prev) => prev ? {
             ...prev,
             status: 'paid',
@@ -102,9 +103,9 @@ export function PayClient({ slug }: { slug: string }) {
       }
     };
 
-    const interval = setInterval(poll, 8_000);
+    const interval = setInterval(poll, 6_000);
     return () => { stopped = true; clearInterval(interval); };
-  }, [state, slug, data]);
+  }, [state, slug]);
 
   const copyAddress = useCallback(() => {
     if (!data) return;
@@ -258,6 +259,9 @@ function ActivePayment({
         <SuiPayQr
           recipientAddress={data.recipientAddress}
           amount={data.amount}
+          nonce={data.nonce}
+          label={data.label}
+          memo={data.memo}
           size={isInvoice ? 140 : 180}
         />
       </div>
@@ -322,6 +326,7 @@ function ActivePayment({
         <PayButton
           recipientAddress={data.recipientAddress}
           amount={data.amount}
+          nonce={data.nonce}
           slug={data.slug}
           onSuccess={onWalletSuccess}
           onError={onError}
