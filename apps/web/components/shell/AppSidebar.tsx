@@ -278,12 +278,11 @@ export function AppSidebar({
       {/* Footer — user info + allowance */}
       {!collapsed && (
         <div className="shrink-0 border-t border-border px-3 py-3 space-y-2">
-          {/* User row — click to copy address */}
+          {/* User row — click goes to Settings, address copies on click */}
           {(email || address) && (
             <button
-              onClick={handleCopyAddress}
+              onClick={() => handleNav('settings')}
               className="w-full flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-[var(--n700)] transition group"
-              title={address ? `Copy: ${address}` : undefined}
             >
               <div
                 className="w-[26px] h-[26px] rounded-full shrink-0 flex items-center justify-center font-mono text-[10px] text-[var(--n300)]"
@@ -296,7 +295,11 @@ export function AppSidebar({
                   <p className="text-[11px] text-muted truncate">{email}</p>
                 )}
                 {address && (
-                  <p className="font-mono text-[9px] text-border-bright mt-px">
+                  <p
+                    className="font-mono text-[9px] text-border-bright mt-px hover:text-muted transition"
+                    onClick={(e) => { e.stopPropagation(); handleCopyAddress(); }}
+                    title={`Copy: ${address}`}
+                  >
                     {copied ? 'Copied!' : truncateAddr(address)}
                   </p>
                 )}
