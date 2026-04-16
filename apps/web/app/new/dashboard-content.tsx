@@ -1747,10 +1747,6 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
           <ActivityPanel
             feed={activityFeed}
             onAction={handleActivityAction}
-            briefing={briefing.briefing}
-            onBriefingDismiss={briefing.dismiss}
-            onBriefingViewReport={handleBriefingViewReport}
-            onBriefingCtaClick={handleBriefingCtaClick}
           />
         );
       case 'pay':
@@ -1767,6 +1763,7 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
             address={address}
             jwt={session?.jwt ?? null}
             onSendMessage={handleInputSubmit}
+            getAgent={agent ? () => agent.getInstance() : undefined}
           />
         );
       case 'goals':

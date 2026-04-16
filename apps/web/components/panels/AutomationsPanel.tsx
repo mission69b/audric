@@ -1,6 +1,8 @@
 'use client';
 
+import { useState } from 'react';
 import { useScheduledActions, type ScheduledAction } from '@/hooks/useScheduledActions';
+import type { AgentActions } from '@/hooks/useAgent';
 
 const PATTERN_LABELS: Record<string, string> = {
   recurring_save: 'Recurring Save',
@@ -14,9 +16,10 @@ interface AutomationsPanelProps {
   address: string;
   jwt: string | null;
   onSendMessage: (text: string) => void;
+  getAgent?: () => Promise<AgentActions>;
 }
 
-export function AutomationsPanel({ address, jwt, onSendMessage }: AutomationsPanelProps) {
+export function AutomationsPanel({ address, jwt, onSendMessage, getAgent }: AutomationsPanelProps) {
   const schedules = useScheduledActions(address, jwt);
 
   const proposals = schedules.actions.filter(a => a.source === 'behavior_detected' && a.stage < 2 && !a.declinedAt);
@@ -79,7 +82,7 @@ export function AutomationsPanel({ address, jwt, onSendMessage }: AutomationsPan
 
           {/* Confirming — trust ladder in progress */}
           {confirming.map(a => (
-            <ConfirmingCard key={a.id} action={a} schedules={schedules} onSendMessage={onSendMessage} />
+            <ConfirmingCard key={a.id} action={a} schedules={schedules} onSendMessage={onSendMessage} getAgent={getAgent} />
           ))}
 
           {/* Autonomous — graduated */}
@@ -175,13 +178,37 @@ function ProposalCard({ action, schedules, onSendMessage }: { action: ScheduledA
   );
 }
 
-function ConfirmingCard({ action, schedules, onSendMessage }: { action: ScheduledAction; schedules: ReturnType<typeof useScheduledActions>; onSendMessage: (t: string) => void }) {
+function ConfirmingCard({ action, schedules, onSendMessage, getAgent }: { action: ScheduledAction; schedules: ReturnType<typeof useScheduledActions>; onSendMessage: (t: string) => void; getAgent?: () => Promise<AgentActions> }) {
   const verb = getVerb(action);
   const nextRun = getNextRun(action);
   const required = action.confirmationsRequired || 5;
   const completed = action.confirmationsCompleted;
   const remaining = required - completed;
   const awaitingConfirmation = action.source !== 'behavior_detected' && completed < required;
+  const [execError, setExecError] = useState<string | null>(null);
+  const [txDigest, setTxDigest] = useState<string | null>(null);
+
+  const handleConfirm = async () => {
+    setExecError(null);
+    setTxDigest(null);
+
+    if (!getAgent) {
+      schedules.confirmAction(action.id);
+      return;
+    }
+
+    try {
+      const agent = await getAgent();
+      const result = await schedules.executeAndConfirm(action, agent);
+      if (result.success) {
+        setTxDigest(result.tx ?? null);
+      } else {
+        setExecError(result.error ?? 'Transaction failed');
+      }
+    } catch (err) {
+      setExecError(err instanceof Error ? err.message : 'Unexpected error');
+    }
+  };
 
   return (
     <div className={`rounded-lg border bg-surface p-4 space-y-2 ${awaitingConfirmation ? 'border-accent/40' : 'border-border'}`}>
@@ -212,13 +239,23 @@ function ConfirmingCard({ action, schedules, onSendMessage }: { action: Schedule
           style={{ width: `${(completed / required) * 100}%` }}
         />
       </div>
+
+      {txDigest && (
+        <p className="text-[11px] text-success">
+          ✓ Executed · <a href={`https://suiscan.xyz/mainnet/tx/${txDigest}`} target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground">view tx</a>
+        </p>
+      )}
+      {execError && (
+        <p className="text-[11px] text-error">{execError}</p>
+      )}
+
       <div className="flex gap-2 pt-1">
         <button
-          onClick={() => schedules.confirmAction(action.id)}
+          onClick={handleConfirm}
           disabled={schedules.updating === action.id}
           className="font-mono text-[10px] tracking-[0.06em] uppercase text-background bg-foreground px-3 py-1.5 rounded-full hover:opacity-90 transition disabled:opacity-50"
         >
-          {schedules.updating === action.id ? 'Confirming...' : `Confirm ${verb.toLowerCase()}`}
+          {schedules.updating === action.id ? 'Executing...' : `Confirm ${verb.toLowerCase()}`}
         </button>
         <button
           onClick={() => action.source === 'behavior_detected' ? schedules.pausePattern(action.id) : schedules.pauseAction(action.id)}

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import type { AgentActions } from '@/hooks/useAgent';
 
 export interface ScheduledAction {
   id: string;
@@ -74,6 +75,44 @@ export function useScheduledActions(address: string | null, jwt: string | null) 
   const resumeAction = useCallback((id: string) => updateAction(id, { enabled: true }), [updateAction]);
   const deleteAction = useCallback((id: string) => updateAction(id, { action: 'delete' }), [updateAction]);
   const confirmAction = useCallback((id: string) => updateAction(id, { action: 'confirm' }), [updateAction]);
+
+  const executeAndConfirm = useCallback(async (
+    action: ScheduledAction,
+    agent: AgentActions,
+  ): Promise<{ success: boolean; error?: string; tx?: string }> => {
+    if (!address || !jwt) return { success: false, error: 'Not authenticated' };
+
+    setUpdating(action.id);
+    try {
+      let result: { tx: string };
+
+      switch (action.actionType) {
+        case 'save':
+          result = await agent.save({ amount: action.amount, asset: action.asset });
+          break;
+        case 'swap':
+          result = await agent.swap({
+            from: action.asset,
+            to: action.targetAsset ?? 'SUI',
+            amount: action.amount,
+          });
+          break;
+        case 'repay':
+          result = await agent.repay({ amount: action.amount });
+          break;
+        default:
+          return { success: false, error: `Unknown action type: ${action.actionType}` };
+      }
+
+      await updateAction(action.id, { action: 'confirm' });
+      return { success: true, tx: result.tx };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { success: false, error: msg };
+    } finally {
+      setUpdating(null);
+    }
+  }, [address, jwt, updateAction]);
   const acceptProposal = useCallback((id: string) => updateAction(id, { action: 'accept_proposal' }), [updateAction]);
   const declineProposal = useCallback((id: string) => updateAction(id, { action: 'decline_proposal' }), [updateAction]);
   const pausePattern = useCallback((id: string) => updateAction(id, { action: 'pause_pattern' }), [updateAction]);
@@ -81,7 +120,7 @@ export function useScheduledActions(address: string | null, jwt: string | null) 
 
   return {
     actions, loading, updating,
-    pauseAction, resumeAction, deleteAction, confirmAction,
+    pauseAction, resumeAction, deleteAction, confirmAction, executeAndConfirm,
     acceptProposal, declineProposal, pausePattern, resumePattern,
     refresh: fetchActions,
   };
