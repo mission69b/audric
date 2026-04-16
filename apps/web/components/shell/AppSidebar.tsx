@@ -236,6 +236,9 @@ export function AppSidebar({
               onLoadSession(id);
               onClose?.();
             }}
+            onDeleteSession={() => {
+              onNewConversation?.();
+            }}
             collapsed={collapsed}
           />
         </div>
