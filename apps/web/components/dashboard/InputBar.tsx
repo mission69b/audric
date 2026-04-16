@@ -57,7 +57,7 @@ export function InputBar({
   const hasContent = value.trim().length > 0;
 
   return (
-    <div className="flex items-center gap-3 rounded-[16px] border border-border bg-[var(--n800)] min-h-[52px] px-4 py-3 focus-within:border-foreground transition-colors">
+    <div className="flex items-center gap-3 rounded-[16px] border border-border bg-[var(--n900)] min-h-[52px] px-4 py-3 focus-within:border-foreground transition-colors">
       <button
         className="shrink-0 text-[18px] font-light text-[var(--n600)] leading-none hover:text-muted transition w-5 text-center"
         aria-label="Attach"

@@ -134,7 +134,7 @@ export function AppSidebar({
   return (
     <aside
       className={`
-        flex flex-col h-full bg-background border-r border-border
+        flex flex-col h-full bg-surface border-r border-border
         ${collapsed ? 'w-[var(--sidebar-icon-width)]' : 'w-[var(--sidebar-width)]'}
         transition-[width] duration-200
       `}
