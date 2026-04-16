@@ -18,6 +18,7 @@ interface ConvoHistoryListProps {
   onLoadSession: (sessionId: string) => void;
   onDeleteSession?: (sessionId: string) => void;
   collapsed?: boolean;
+  searchQuery?: string;
 }
 
 function relativeTime(dateStr: string): string {
@@ -39,6 +40,7 @@ export function ConvoHistoryList({
   onLoadSession,
   onDeleteSession,
   collapsed,
+  searchQuery,
 }: ConvoHistoryListProps) {
   const [sessions, setSessions] = useState<ConvoSession[]>([]);
   const [loading, setLoading] = useState(true);
@@ -87,6 +89,14 @@ export function ConvoHistoryList({
 
   if (collapsed) return null;
 
+  const q = (searchQuery ?? '').toLowerCase().trim();
+  const filtered = q
+    ? sessions.filter((s) => {
+        const text = `${s.title ?? ''} ${s.preview ?? ''}`.toLowerCase();
+        return text.includes(q);
+      })
+    : sessions;
+
   return (
     <div className="flex flex-col gap-0.5 px-2">
       <div className="overflow-y-auto max-h-[200px] space-y-0.5 scrollbar-none">
@@ -98,7 +108,11 @@ export function ConvoHistoryList({
           </div>
         )}
 
-        {!loading && sessions.map((s) => (
+        {!loading && q && filtered.length === 0 && (
+          <p className="text-[10px] text-dim px-2 py-2">No matches</p>
+        )}
+
+        {!loading && filtered.map((s) => (
           <div
             key={s.id}
             className={`

@@ -131,6 +131,8 @@ export function AppSidebar({
   const email = emailProp ?? decodeEmail(jwt);
   const initial = useMemo(() => (email ? email[0].toUpperCase() : address ? address.slice(2, 3).toUpperCase() : '?'), [email, address]);
   const [copied, setCopied] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const handleCopyAddress = useCallback(async () => {
     if (!address) return;
@@ -181,9 +183,10 @@ export function AppSidebar({
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
           </button>
           <button
+            onClick={() => { setSearchOpen((p) => !p); setSearchQuery(''); }}
             className="w-8 h-8 flex items-center justify-center rounded-lg text-muted hover:text-foreground hover:bg-surface transition"
-            aria-label="Search"
-            title="Search"
+            aria-label="Search conversations"
+            title="Search conversations"
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
           </button>
@@ -200,12 +203,27 @@ export function AppSidebar({
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
             New conversation
           </button>
-          <button
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg font-mono text-[10px] tracking-[0.08em] uppercase text-muted border border-border hover:text-foreground hover:border-border-bright hover:bg-surface transition"
-          >
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
-            Search
-          </button>
+          {searchOpen ? (
+            <div className="relative">
+              <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-dim pointer-events-none" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+              <input
+                autoFocus
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Escape') { setSearchOpen(false); setSearchQuery(''); } }}
+                placeholder="Search conversations..."
+                className="w-full pl-8 pr-3 py-2 rounded-lg font-mono text-[10px] tracking-[0.04em] text-foreground bg-surface border border-border placeholder:text-dim outline-none focus:border-border-bright transition"
+              />
+            </div>
+          ) : (
+            <button
+              onClick={() => setSearchOpen(true)}
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg font-mono text-[10px] tracking-[0.08em] uppercase text-muted border border-border hover:text-foreground hover:border-border-bright hover:bg-surface transition"
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+              Search
+            </button>
+          )}
         </div>
       )}
 
@@ -271,6 +289,7 @@ export function AppSidebar({
               onNewConversation?.();
             }}
             collapsed={collapsed}
+            searchQuery={searchQuery}
           />
         </div>
       )}

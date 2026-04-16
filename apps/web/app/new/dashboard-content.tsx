@@ -805,6 +805,7 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
     engine.clearMessages();
     feed.clear();
     chipFlow.reset();
+    setActiveTab('chat');
     window.history.replaceState(window.history.state, '', '/new');
   }, [engine, feed, chipFlow]);
 
