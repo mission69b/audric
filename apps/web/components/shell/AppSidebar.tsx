@@ -196,6 +196,44 @@ export function AppSidebar({
             </Tooltip>
           ))}
         </div>
+
+        {/* Footer — profile + budget */}
+        <div className="flex flex-col items-center gap-2 pb-3 pt-2 border-t border-border shrink-0">
+          {allowancePercent != null && (
+            <Tooltip label={allowanceLabel ? `Budget: ${allowanceLabel}` : 'Features budget'} side="right">
+              <button
+                onClick={() => router.push('/settings?section=features')}
+                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[var(--n700)] transition focus-visible:ring-2 focus-visible:ring-foreground/20 outline-none"
+                aria-label="Features budget"
+              >
+                <div className="w-5 h-5 rounded-full border-2 border-[var(--n600)] relative flex items-center justify-center">
+                  <svg width="10" height="10" viewBox="0 0 36 36" className="-rotate-90">
+                    <circle cx="18" cy="18" r="14" fill="none" stroke="var(--n600)" strokeWidth="4" />
+                    <circle
+                      cx="18" cy="18" r="14" fill="none"
+                      stroke="var(--success)" strokeWidth="4"
+                      strokeDasharray={`${Math.min(allowancePercent, 100) * 0.88} 88`}
+                      strokeLinecap="round"
+                      opacity="0.6"
+                    />
+                  </svg>
+                </div>
+              </button>
+            </Tooltip>
+          )}
+          {(email || address) && (
+            <Tooltip label={email || (address ? truncateAddr(address) : 'Settings')} side="right">
+              <button
+                onClick={() => handleNav('settings')}
+                className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center font-mono text-[10px] text-[var(--n300)] hover:ring-2 hover:ring-[var(--n600)] transition focus-visible:ring-2 focus-visible:ring-foreground/20 outline-none"
+                style={{ background: 'linear-gradient(135deg, var(--n700) 50%, var(--n600) 50%)' }}
+                aria-label="Settings"
+              >
+                {initial}
+              </button>
+            </Tooltip>
+          )}
+        </div>
       </aside>
     );
   }
