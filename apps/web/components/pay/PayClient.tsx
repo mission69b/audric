@@ -115,28 +115,40 @@ export function PayClient({ slug }: { slug: string }) {
   }, [data]);
 
   const handleWalletSuccess = useCallback(async (digest: string, sender: string) => {
-    try {
+    const verify = async (): Promise<{ status: string; paidAt?: string; txDigest?: string; error?: string }> => {
       const res = await fetch(`/api/payments/${slug}/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ digest, paymentMethod: 'wallet_connect' }),
       });
-      const result = await res.json();
-      if (result.status === 'paid') {
-        setData((prev) => prev ? {
-          ...prev,
-          status: 'paid',
-          paidAt: result.paidAt ?? new Date().toISOString(),
-          paidBy: sender,
-          txDigest: digest,
-          paymentMethod: 'wallet_connect',
-        } : prev);
-        setState('paid');
-        return;
+      return res.json();
+    };
+
+    const delays = [2000, 3000, 5000];
+    for (let i = 0; i <= delays.length; i++) {
+      if (i > 0) await new Promise((r) => setTimeout(r, delays[i - 1]));
+      try {
+        const result = await verify();
+        if (result.status === 'paid') {
+          setData((prev) => prev ? {
+            ...prev,
+            status: 'paid',
+            paidAt: result.paidAt ?? new Date().toISOString(),
+            paidBy: sender,
+            txDigest: digest,
+            paymentMethod: 'wallet_connect',
+          } : prev);
+          setState('paid');
+          return;
+        }
+        if (i === delays.length) {
+          setError(result.error ?? 'Verification failed — the transaction was sent but could not be confirmed. Please submit the digest manually.');
+        }
+      } catch {
+        if (i === delays.length) {
+          setError('Transaction sent, verifying... Please submit the digest manually if this persists.');
+        }
       }
-      setError(result.error ?? 'Verification failed — the transaction was sent but could not be confirmed. Please submit the digest manually.');
-    } catch {
-      setError('Transaction sent, verifying... Please submit the digest manually if this persists.');
     }
   }, [slug]);
 
