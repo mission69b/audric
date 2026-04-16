@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { truncateAddress } from '@/lib/format';
 
 interface WalletsSectionProps {
-  address: string;
+  address: string | null;
   jwt: string | null;
 }
 

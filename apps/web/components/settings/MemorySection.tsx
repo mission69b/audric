@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 
 interface MemorySectionProps {
-  address: string;
+  address: string | null;
 }
 
 interface MemoryItem {

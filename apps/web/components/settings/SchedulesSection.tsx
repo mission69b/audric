@@ -3,7 +3,7 @@
 import { useScheduledActions } from '@/hooks/useScheduledActions';
 
 interface SchedulesSectionProps {
-  address: string;
+  address: string | null;
   jwt: string | null;
 }
 
