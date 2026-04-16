@@ -57,6 +57,26 @@ const STATIC_FOLLOWUPS: Record<string, SuggestedActionItem[]> = {
     { icon: '📊', label: 'SPENDING BREAKDOWN', prompt: 'Show my spending breakdown as a chart' },
     { icon: '💰', label: 'CHECK BALANCE', prompt: 'What is my balance?' },
   ],
+  yield_summary: [
+    { icon: '🏦', label: 'SAVE MORE', prompt: 'Save more USDC' },
+    { icon: '📈', label: 'YIELD PROJECTOR', prompt: 'Show the yield projector' },
+  ],
+  activity_summary: [
+    { icon: '📊', label: 'FULL HEATMAP', prompt: 'Show my activity heatmap' },
+    { icon: '💰', label: 'CHECK BALANCE', prompt: 'What is my balance?' },
+  ],
+  swap_quote: [
+    { icon: '🔄', label: 'EXECUTE SWAP', prompt: 'Execute the swap' },
+    { icon: '💰', label: 'CHECK BALANCE', prompt: 'What is my balance?' },
+  ],
+  pattern_status: [
+    { icon: '📅', label: 'MY SCHEDULES', prompt: 'Show my automations' },
+    { icon: '📊', label: 'FULL REPORT', prompt: 'Give me a full account report' },
+  ],
+  list_schedules: [
+    { icon: '📅', label: 'CREATE SCHEDULE', prompt: 'Create a new savings schedule' },
+    { icon: '💰', label: 'CHECK BALANCE', prompt: 'What is my balance?' },
+  ],
 };
 
 function deriveWriteToolChips(toolName: string, data: ToolResultData): SuggestedActionItem[] {

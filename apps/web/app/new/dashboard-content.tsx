@@ -15,7 +15,6 @@ import { AmountChips } from '@/components/dashboard/AmountChips';
 import { SwapAssetPicker, type SwapAsset } from '@/components/dashboard/SwapAssetPicker';
 import { resolveFlow } from '@/components/dashboard/AgentMarkdown';
 import { UnifiedTimeline } from '@/components/dashboard/UnifiedTimeline';
-import { SettingsPanel } from '@/components/settings/SettingsPanel';
 import { EmailCaptureModal } from '@/components/auth/EmailCaptureModal';
 import { AppShell } from '@/components/shell/AppShell';
 import { useChipFlow, type ChipFlowResult, type FlowContext } from '@/hooks/useChipFlow';
@@ -32,7 +31,7 @@ import { useUsdcSponsor } from '@/hooks/useUsdcSponsor';
 import { COIN_REGISTRY } from '@/lib/token-registry';
 import { parseActualAmount, buildSwapDisplayData } from '@/lib/balance-changes';
 import { useAllowanceStatus } from '@/hooks/useAllowanceStatus';
-import { type DashboardTab } from '@/components/dashboard/DashboardTabs';
+import { DashboardTabs, type DashboardTab } from '@/components/dashboard/DashboardTabs';
 import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
 import { useActivityFeed } from '@/hooks/useActivityFeed';
 import { BriefingCard } from '@/components/dashboard/BriefingCard';
@@ -276,7 +275,6 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
   const activityFeed = useActivityFeed(address);
   const briefing = useOvernightBriefing(address, session?.jwt ?? null);
   const userStatus = useUserStatus(address, session?.jwt);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [agentBudget, setAgentBudget] = useState(0.50);
   const [dismissedCards, setDismissedCards] = useState<Set<string>>(new Set());
   const [scrolled, setScrolled] = useState(false);
@@ -1354,25 +1352,6 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
   const email = decodeJwtEmail(session?.jwt);
   const greeting = getGreeting(email);
 
-  const settingsPanel = (
-    <SettingsPanel
-      open={settingsOpen}
-      onClose={() => setSettingsOpen(false)}
-      address={address}
-      email={email}
-      network={SUI_NETWORK}
-      sessionExpiresAt={session.expiresAt}
-      contacts={contactsHook.contacts}
-      onRemoveContact={contactsHook.removeContact}
-      onSignOut={logout}
-      onRefreshSession={refresh}
-      jwt={session.jwt}
-      activeSessionId={engine.sessionId}
-      onLoadSession={engine.loadSession}
-      onNewConversation={handleNewConversation}
-    />
-  );
-
   const emailModal = (
     <EmailCaptureModal
       open={emailModalOpen}
@@ -1752,6 +1731,10 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
                       chipExpand.close();
                       engine.sendMessage(prompt);
                     }}
+                    onFlowSelect={(flow) => {
+                      chipExpand.close();
+                      handleChipClick(flow);
+                    }}
                     onClose={chipExpand.close}
                   />
                 )}
@@ -1770,7 +1753,9 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
 
   const panelContent = (() => {
     switch (panel) {
-      case 'portfolio':
+      case 'portfolio': {
+        const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+        const recent = activityFeed.items.filter((i) => i.timestamp >= thirtyDaysAgo);
         return (
           <PortfolioPanel
             address={address}
@@ -1778,8 +1763,11 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
             onSendMessage={(text) => {
               handleInputSubmit(text);
             }}
+            activityCount={activityFeed.isLoading ? undefined : recent.length}
+            activityHasMore={activityFeed.hasNextPage && recent.length === activityFeed.items.length}
           />
         );
+      }
       case 'activity':
         return (
           <ActivityPanel
@@ -1836,9 +1824,22 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
         return null;
       case 'chat':
       default: {
-        if (activeTab === 'activity') return renderActivityTab();
         if (isEmpty && !engine.isStreaming) return renderEmptyState();
-        return renderChatView();
+        const showTabs = engine.messages.length > 0 || activeTab === 'activity';
+        return (
+          <>
+            {showTabs && (
+              <div className="mx-auto w-full max-w-2xl px-4 sm:px-6 pt-2">
+                <DashboardTabs
+                  activeTab={activeTab}
+                  onTabChange={handleTabChange}
+                  hasUnread={activityFeed.hasUnread}
+                />
+              </div>
+            )}
+            {activeTab === 'activity' ? renderActivityTab() : renderChatView()}
+          </>
+        );
       }
     }
   })();
@@ -1849,7 +1850,6 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
     <AppShell
       address={address}
       balance={balance}
-      onSettingsClick={() => setSettingsOpen(true)}
       jwt={session.jwt}
       allowancePercent={allowance.balance != null ? Math.min(100, (allowance.balance / 0.50) * 100) : undefined}
       allowanceLabel={allowance.balance != null ? `$${allowance.balance.toFixed(2)} · ~${Math.max(1, Math.round(allowance.balance / 0.005))}d` : undefined}
@@ -1861,7 +1861,6 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
       {isChatLayout ? panelContent : (
         <div className="flex-1 overflow-y-auto">{panelContent}</div>
       )}
-      {settingsPanel}
       {emailModal}
       {tosBanner}
       {graceBanner}

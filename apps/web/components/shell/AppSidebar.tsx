@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { NavItem, type BadgeVariant } from './NavItem';
 import { ConvoHistoryList } from './ConvoHistoryList';
 import type { PanelId } from '@/hooks/usePanel';
@@ -18,7 +19,6 @@ interface SidebarProps {
   activeSessionId?: string;
   onLoadSession?: (sessionId: string) => void;
   onNewConversation?: () => void;
-  onSettingsClick?: () => void;
 }
 
 const ChatIcon = () => (
@@ -113,19 +113,19 @@ export function AppSidebar({
   activeSessionId,
   onLoadSession,
   onNewConversation,
-  onSettingsClick,
 }: SidebarProps) {
+  const router = useRouter();
   const handleNav = useCallback(
     (id: PanelId) => {
       if (id === 'settings') {
-        onSettingsClick?.();
+        router.push('/settings');
         onClose?.();
         return;
       }
       onPanelChange(id);
       onClose?.();
     },
-    [onPanelChange, onClose, onSettingsClick],
+    [onPanelChange, onClose, router],
   );
 
   const email = emailProp ?? decodeEmail(jwt);

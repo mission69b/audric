@@ -55,6 +55,15 @@ const STEP_ICONS: Record<string, string> = {
   list_invoices: '📄',
   cancel_invoice: '📄',
   spending_analytics: '💸',
+  swap_quote: '🔄',
+  yield_summary: '📈',
+  activity_summary: '📋',
+  pattern_status: '🔁',
+  record_advice: '📝',
+  create_schedule: '📅',
+  list_schedules: '📅',
+  cancel_schedule: '🚫',
+  pause_pattern: '⏸️',
 };
 
 const STEP_LABELS: Record<string, string> = {
@@ -99,6 +108,15 @@ const STEP_LABELS: Record<string, string> = {
   list_invoices: 'LIST INVOICES',
   cancel_invoice: 'CANCEL INVOICE',
   spending_analytics: 'SPENDING ANALYTICS',
+  swap_quote: 'SWAP QUOTE',
+  yield_summary: 'YIELD SUMMARY',
+  activity_summary: 'ACTIVITY SUMMARY',
+  pattern_status: 'PATTERN STATUS',
+  record_advice: 'RECORD ADVICE',
+  create_schedule: 'CREATE SCHEDULE',
+  list_schedules: 'LIST SCHEDULES',
+  cancel_schedule: 'CANCEL SCHEDULE',
+  pause_pattern: 'PAUSE PATTERN',
 };
 
 export function getStepIcon(toolName: string): string {

@@ -141,6 +141,10 @@ export function NewConversationView({
               chipExpand.close();
               onSend(prompt);
             }}
+            onFlowSelect={(flow) => {
+              chipExpand.close();
+              onChipClick(flow);
+            }}
             onClose={chipExpand.close}
           />
         )}

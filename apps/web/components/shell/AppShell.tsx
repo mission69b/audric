@@ -10,7 +10,6 @@ import type { BalanceHeaderData } from '@/components/dashboard/BalanceHeader';
 interface AppShellProps {
   address: string;
   balance: BalanceHeaderData;
-  onSettingsClick: () => void;
   allowancePercent?: number;
   allowanceLabel?: string;
   allowanceBalance?: number | null;
@@ -26,7 +25,6 @@ const LS_SIDEBAR_KEY = 'audric_sidebar_collapsed';
 export function AppShell({
   address,
   balance,
-  onSettingsClick,
   allowancePercent,
   allowanceLabel,
   allowanceBalance,
@@ -55,10 +53,6 @@ export function AppShell({
     });
   }, []);
 
-  const handleSettingsClick = useCallback(() => {
-    onSettingsClick();
-  }, [onSettingsClick]);
-
   return (
     <div className="flex h-dvh overflow-hidden bg-background">
       {/* Desktop sidebar (>= 768px) */}
@@ -74,7 +68,6 @@ export function AppShell({
           activeSessionId={activeSessionId}
           onLoadSession={onLoadSession}
           onNewConversation={onNewConversation}
-          onSettingsClick={handleSettingsClick}
         />
         {/* Collapse toggle */}
         <button
@@ -116,7 +109,6 @@ export function AppShell({
               activeSessionId={activeSessionId}
               onLoadSession={onLoadSession}
               onNewConversation={onNewConversation}
-              onSettingsClick={handleSettingsClick}
             />
           </div>
         </>
@@ -128,7 +120,6 @@ export function AppShell({
         <Topbar
           address={address}
           balance={balance}
-          onSettingsClick={handleSettingsClick}
           showHamburger
           onHamburgerClick={() => setMobileOpen(true)}
         />

@@ -11,6 +11,8 @@ interface PortfolioPanelProps {
   balance: BalanceHeaderData;
   onSendMessage: (text: string) => void;
   goals?: Array<{ name: string; targetAmount: number; currentAmount: number; deadline?: string }>;
+  activityCount?: number;
+  activityHasMore?: boolean;
 }
 
 function fmtUsd(n: number): string {
@@ -45,7 +47,7 @@ const SIMULATE_TOOLS: { icon: string; title: string; desc: string; prompt: strin
   { icon: '📅', title: 'DCA planner', desc: 'Set amount + cadence · project savings curve over time', prompt: 'Show me a DCA savings plan: $200 per month for 2 years' },
 ];
 
-export function PortfolioPanel({ balance, onSendMessage, goals }: PortfolioPanelProps) {
+export function PortfolioPanel({ balance, onSendMessage, goals, activityCount, activityHasMore }: PortfolioPanelProps) {
   const [activeTab, setActiveTab] = useState<PortfolioTab>('overview');
 
   const holdings: { symbol: string; amount: string; usd: string }[] = [];
@@ -94,7 +96,7 @@ export function PortfolioPanel({ balance, onSendMessage, goals }: PortfolioPanel
     {
       label: 'Activity (30D)',
       drill: 'Heatmap',
-      value: '--',
+      value: activityCount != null ? `${activityCount}${activityHasMore ? '+' : ''}` : '--',
       sub: 'transactions',
       trend: undefined,
       prompt: 'Show my on-chain activity heatmap for the past year',
