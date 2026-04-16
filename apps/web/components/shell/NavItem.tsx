@@ -19,10 +19,11 @@ export function NavItem({ icon, label, active, badge, collapsed, onClick }: NavI
       onClick={onClick}
       className={`
         group flex items-center gap-2 w-full rounded-md px-2 py-2 text-left transition-colors
+        focus-visible:ring-2 focus-visible:ring-foreground/20 focus-visible:ring-offset-1 focus-visible:ring-offset-background outline-none
         ${active ? 'bg-[var(--n700)] text-foreground' : 'text-dim hover:text-muted hover:bg-[var(--n700)]'}
         ${collapsed ? 'justify-center px-0' : ''}
       `}
-      title={collapsed ? label : undefined}
+      aria-current={active ? 'page' : undefined}
     >
       <span className={`w-4 h-4 shrink-0 flex items-center justify-center ${active ? 'opacity-100' : 'opacity-60'}`}>{icon}</span>
       {!collapsed && (
@@ -31,7 +32,7 @@ export function NavItem({ icon, label, active, badge, collapsed, onClick }: NavI
             {label}{active && <span className="text-[6px] ml-1 align-middle">■</span>}
           </span>
           {badge === 'dot' && (
-            <span className="w-[5px] h-[5px] rounded-full bg-info shrink-0" />
+            <span className="w-[5px] h-[5px] rounded-full bg-info shrink-0" aria-label="Has updates" />
           )}
           {badge === 'soon' && (
             <span className="font-mono text-[8px] tracking-[0.06em] uppercase text-border-bright shrink-0">

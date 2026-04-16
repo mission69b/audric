@@ -27,7 +27,7 @@ export function ChipExpand({ actions, chipLabel, onSelect, onFlowSelect, onClose
         <span className="font-mono text-[11px] tracking-[0.08em] uppercase text-muted">{chipLabel}</span>
         <button
           onClick={onClose}
-          className="text-dim hover:text-foreground transition text-sm leading-none p-1"
+          className="text-dim hover:text-foreground transition text-sm leading-none p-1 rounded focus-visible:ring-2 focus-visible:ring-foreground/20 outline-none"
           aria-label="Close"
         >
           ×
@@ -43,7 +43,7 @@ export function ChipExpand({ actions, chipLabel, onSelect, onFlowSelect, onClose
               onSelect(action.prompt);
             }
           }}
-          className="w-full text-left px-4 py-3 hover:bg-surface transition-colors border-b border-border/50 last:border-b-0 flex items-center justify-between group"
+          className="w-full text-left px-4 py-3 hover:bg-surface transition-colors border-b border-border/50 last:border-b-0 flex items-center justify-between group focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-foreground/20 outline-none"
         >
           <div>
             <span className="text-[13px] text-foreground">{action.label}</span>

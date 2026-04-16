@@ -72,7 +72,7 @@ export function InputBar({
 
       <div className="flex items-center justify-between mt-2">
         <button
-          className="shrink-0 text-[18px] font-light text-dim leading-none hover:text-muted transition w-5 text-center"
+          className="shrink-0 text-[18px] font-light text-dim leading-none hover:text-muted transition w-5 text-center focus-visible:ring-2 focus-visible:ring-foreground/20 rounded outline-none"
           aria-label="Attach"
           onClick={() => textareaRef.current?.focus()}
         >
@@ -81,7 +81,7 @@ export function InputBar({
 
         <div className="flex items-center gap-2">
           <button
-            className="shrink-0 text-dim hover:text-muted transition"
+            className="shrink-0 text-dim hover:text-muted transition focus-visible:ring-2 focus-visible:ring-foreground/20 rounded outline-none"
             aria-label="Voice input"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">

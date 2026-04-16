@@ -61,6 +61,7 @@ export function AppShell({
           activePanel={panel}
           onPanelChange={setPanel}
           collapsed={collapsed}
+          onToggleCollapse={toggleCollapse}
           allowancePercent={allowancePercent}
           allowanceLabel={allowanceLabel}
           address={address}
@@ -69,25 +70,6 @@ export function AppShell({
           onLoadSession={onLoadSession}
           onNewConversation={onNewConversation}
         />
-        {/* Collapse toggle */}
-        <button
-          onClick={toggleCollapse}
-          className="absolute -right-3 top-1/2 -translate-y-1/2 z-10 w-6 h-6 rounded-full border border-border bg-surface flex items-center justify-center text-dim hover:text-foreground hover:bg-[var(--n700)] transition shadow-sm"
-          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        >
-          <svg
-            width="10"
-            height="10"
-            viewBox="0 0 10 10"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            className={`transition-transform ${collapsed ? 'rotate-180' : ''}`}
-          >
-            <polyline points="7,2 3,5 7,8" />
-          </svg>
-        </button>
       </div>
 
       {/* Mobile sidebar overlay */}
@@ -123,7 +105,7 @@ export function AppShell({
           showHamburger
           onHamburgerClick={() => setMobileOpen(true)}
         />
-        <main className="flex-1 overflow-hidden flex flex-col">
+        <main id="main-content" className="flex-1 overflow-hidden flex flex-col">
           {children}
         </main>
       </div>

@@ -32,7 +32,7 @@ export function Topbar({
         {showHamburger && (
           <button
             onClick={onHamburgerClick}
-            className="w-8 h-8 flex items-center justify-center text-muted hover:text-foreground transition rounded-md"
+            className="w-8 h-8 flex items-center justify-center text-muted hover:text-foreground transition rounded-md focus-visible:ring-2 focus-visible:ring-foreground/20 outline-none"
             aria-label="Open menu"
           >
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
@@ -83,7 +83,7 @@ export function Topbar({
       {/* Right zone — bell + settings icon buttons */}
       <div className="flex items-center gap-2">
         <button
-          className="w-8 h-8 flex items-center justify-center rounded-lg bg-surface border border-border hover:border-border-bright transition"
+          className="w-8 h-8 flex items-center justify-center rounded-lg bg-surface border border-border hover:border-border-bright transition focus-visible:ring-2 focus-visible:ring-foreground/20 outline-none"
           aria-label="Notifications"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--dim)" strokeWidth="1.5">
@@ -93,7 +93,7 @@ export function Topbar({
         </button>
         <Link
           href="/settings"
-          className="w-8 h-8 flex items-center justify-center rounded-lg bg-surface border border-border hover:border-border-bright transition"
+          className="w-8 h-8 flex items-center justify-center rounded-lg bg-surface border border-border hover:border-border-bright transition focus-visible:ring-2 focus-visible:ring-foreground/20 outline-none"
           aria-label="Settings"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--dim)" strokeWidth="1.5">

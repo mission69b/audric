@@ -18,7 +18,6 @@ interface ConvoHistoryListProps {
   onLoadSession: (sessionId: string) => void;
   onDeleteSession?: (sessionId: string) => void;
   collapsed?: boolean;
-  searchQuery?: string;
 }
 
 function relativeTime(dateStr: string): string {
@@ -40,7 +39,6 @@ export function ConvoHistoryList({
   onLoadSession,
   onDeleteSession,
   collapsed,
-  searchQuery,
 }: ConvoHistoryListProps) {
   const [sessions, setSessions] = useState<ConvoSession[]>([]);
   const [loading, setLoading] = useState(true);
@@ -89,14 +87,6 @@ export function ConvoHistoryList({
 
   if (collapsed) return null;
 
-  const q = (searchQuery ?? '').toLowerCase().trim();
-  const filtered = q
-    ? sessions.filter((s) => {
-        const text = `${s.title ?? ''} ${s.preview ?? ''}`.toLowerCase();
-        return text.includes(q);
-      })
-    : sessions;
-
   return (
     <div className="flex flex-col gap-0.5 px-2">
       <div className="overflow-y-auto max-h-[200px] space-y-0.5 scrollbar-none">
@@ -108,11 +98,7 @@ export function ConvoHistoryList({
           </div>
         )}
 
-        {!loading && q && filtered.length === 0 && (
-          <p className="text-[10px] text-dim px-2 py-2">No matches</p>
-        )}
-
-        {!loading && filtered.map((s) => (
+        {!loading && sessions.map((s) => (
           <div
             key={s.id}
             className={`
@@ -122,7 +108,7 @@ export function ConvoHistoryList({
           >
             <button
               onClick={() => onLoadSession(s.id)}
-              className="w-full text-left px-2 py-2 pr-7"
+              className="w-full text-left px-2 py-2 pr-7 rounded-md focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-foreground/20 outline-none"
             >
               <p className={`text-[11px] truncate max-w-[145px] ${activeSessionId === s.id ? 'text-foreground' : 'text-dim'}`}>
                 {s.title || s.preview || 'Conversation'}
@@ -139,6 +125,7 @@ export function ConvoHistoryList({
                 absolute right-1 top-1/2 -translate-y-1/2 p-1 rounded
                 text-dim hover:text-red-400 hover:bg-red-400/10
                 transition-opacity duration-150
+                focus-visible:ring-2 focus-visible:ring-red-400/40 outline-none focus-visible:opacity-100
                 ${deletingId === s.id ? 'opacity-50 cursor-not-allowed' : 'opacity-0 group-hover:opacity-100'}
               `}
               aria-label="Delete conversation"

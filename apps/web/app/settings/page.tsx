@@ -81,16 +81,17 @@ function SettingsContent() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-6">
-          <nav className="flex sm:flex-col gap-1 overflow-x-auto sm:overflow-visible pb-2 sm:pb-0">
+          <nav className="flex sm:flex-col gap-1 overflow-x-auto sm:overflow-visible pb-2 sm:pb-0" aria-label="Settings sections">
             {SECTIONS.map((s) => (
               <button
                 key={s.id}
                 onClick={() => setActiveSection(s.id)}
-                className={`whitespace-nowrap px-3 py-2 rounded-full font-mono text-[10px] tracking-[0.08em] uppercase transition text-left ${
+                className={`whitespace-nowrap px-3 py-2 rounded-full font-mono text-[10px] tracking-[0.08em] uppercase transition text-left focus-visible:ring-2 focus-visible:ring-foreground/20 outline-none ${
                   activeSection === s.id
                     ? 'bg-[var(--n700)] text-foreground'
                     : 'text-muted hover:text-foreground hover:bg-[var(--n700)]/50'
                 }`}
+                aria-current={activeSection === s.id ? 'true' : undefined}
               >
                 {s.label}
               </button>

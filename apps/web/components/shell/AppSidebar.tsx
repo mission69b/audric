@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { NavItem, type BadgeVariant } from './NavItem';
 import { ConvoHistoryList } from './ConvoHistoryList';
@@ -11,6 +11,7 @@ interface SidebarProps {
   onPanelChange: (panel: PanelId) => void;
   collapsed?: boolean;
   onClose?: () => void;
+  onToggleCollapse?: () => void;
   allowancePercent?: number;
   allowanceLabel?: string;
   address?: string;
@@ -19,6 +20,27 @@ interface SidebarProps {
   activeSessionId?: string;
   onLoadSession?: (sessionId: string) => void;
   onNewConversation?: () => void;
+}
+
+function Tooltip({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="relative group/tip">
+      {children}
+      <div
+        role="tooltip"
+        className="
+          pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 z-50
+          whitespace-nowrap rounded-md bg-foreground px-2.5 py-1
+          font-mono text-[10px] tracking-[0.06em] text-background
+          opacity-0 scale-95 group-hover/tip:opacity-100 group-hover/tip:scale-100
+          transition-all duration-150 origin-left
+          shadow-[var(--shadow-dropdown)]
+        "
+      >
+        {label}
+      </div>
+    </div>
+  );
 }
 
 const ChatIcon = () => (
@@ -105,6 +127,7 @@ export function AppSidebar({
   onPanelChange,
   collapsed = false,
   onClose,
+  onToggleCollapse,
   allowancePercent,
   allowanceLabel,
   address,
@@ -131,8 +154,6 @@ export function AppSidebar({
   const email = emailProp ?? decodeEmail(jwt);
   const initial = useMemo(() => (email ? email[0].toUpperCase() : address ? address.slice(2, 3).toUpperCase() : '?'), [email, address]);
   const [copied, setCopied] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
 
   const handleCopyAddress = useCallback(async () => {
     if (!address) return;
@@ -142,6 +163,11 @@ export function AppSidebar({
       setTimeout(() => setCopied(false), 1500);
     } catch { /* fallback: ignore */ }
   }, [address]);
+
+  const handleNewConvo = useCallback(() => {
+    onNewConversation?.();
+    handleNav('chat');
+  }, [onNewConversation, handleNav]);
 
   return (
     <aside
@@ -153,126 +179,122 @@ export function AppSidebar({
       role="navigation"
       aria-label="Main navigation"
     >
-      {/* Logo */}
-      <div className={`flex items-center gap-2 px-4 py-3 border-b border-border shrink-0 ${collapsed ? 'justify-center' : ''}`}>
-        {!collapsed && (
+      {/* Header */}
+      <div className={`flex items-center gap-2 px-3 py-3 border-b border-border shrink-0 ${collapsed ? 'justify-center' : 'justify-between'}`}>
+        {collapsed ? (
+          <Tooltip label="New conversation">
+            <button
+              onClick={handleNewConvo}
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-muted hover:text-foreground hover:bg-surface transition focus-visible:ring-2 focus-visible:ring-foreground/20 focus-visible:ring-offset-1 focus-visible:ring-offset-background outline-none"
+              aria-label="New conversation"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+            </button>
+          </Tooltip>
+        ) : (
           <>
-            <span className="font-mono text-[13px] tracking-[0.12em] text-foreground uppercase">Audric</span>
-            <span className="font-mono text-[9px] tracking-[0.08em] uppercase text-muted bg-[var(--n700)] px-1.5 py-0.5 rounded-sm leading-none">
-              beta
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-[13px] tracking-[0.12em] text-foreground uppercase">Audric</span>
+              <span className="font-mono text-[9px] tracking-[0.08em] uppercase text-muted bg-[var(--n700)] px-1.5 py-0.5 rounded-sm leading-none">
+                beta
+              </span>
+            </div>
+            {onToggleCollapse && (
+              <button
+                onClick={onToggleCollapse}
+                className="w-6 h-6 flex items-center justify-center rounded text-dim hover:text-foreground transition focus-visible:ring-2 focus-visible:ring-foreground/20 outline-none"
+                aria-label="Collapse sidebar"
+              >
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                  <polyline points="7,2 3,5 7,8" />
+                </svg>
+              </button>
+            )}
           </>
-        )}
-        {collapsed && (
-          <span className="font-mono text-[13px] text-foreground uppercase">A</span>
         )}
       </div>
 
-      {/* Action buttons */}
-      {collapsed ? (
-        <div className="flex flex-col items-center gap-1 py-2 shrink-0">
+      {/* New conversation button — expanded only */}
+      {!collapsed && (
+        <div className="px-3 pt-3 pb-2 shrink-0">
           <button
-            onClick={() => {
-              onNewConversation?.();
-              handleNav('chat');
-            }}
-            className="w-8 h-8 flex items-center justify-center rounded-lg text-muted hover:text-foreground hover:bg-surface transition"
-            aria-label="New conversation"
-            title="New conversation"
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
-          </button>
-          <button
-            onClick={() => { setSearchOpen((p) => !p); setSearchQuery(''); }}
-            className="w-8 h-8 flex items-center justify-center rounded-lg text-muted hover:text-foreground hover:bg-surface transition"
-            aria-label="Search conversations"
-            title="Search conversations"
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
-          </button>
-        </div>
-      ) : (
-        <div className="px-3 pt-3 pb-2 flex flex-col gap-1 shrink-0">
-          <button
-            onClick={() => {
-              onNewConversation?.();
-              handleNav('chat');
-            }}
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg font-mono text-[10px] tracking-[0.08em] uppercase text-muted border border-border hover:text-foreground hover:border-border-bright hover:bg-surface transition"
+            onClick={handleNewConvo}
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg font-mono text-[10px] tracking-[0.08em] uppercase text-muted border border-border hover:text-foreground hover:border-border-bright hover:bg-surface transition focus-visible:ring-2 focus-visible:ring-foreground/20 focus-visible:ring-offset-1 focus-visible:ring-offset-background outline-none"
           >
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
             New conversation
           </button>
-          {searchOpen ? (
-            <div className="relative">
-              <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-dim pointer-events-none" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
-              <input
-                autoFocus
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Escape') { setSearchOpen(false); setSearchQuery(''); } }}
-                placeholder="Search conversations..."
-                className="w-full pl-8 pr-3 py-2 rounded-lg font-mono text-[10px] tracking-[0.04em] text-foreground bg-surface border border-border placeholder:text-dim outline-none focus:border-border-bright transition"
-              />
-            </div>
-          ) : (
-            <button
-              onClick={() => setSearchOpen(true)}
-              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg font-mono text-[10px] tracking-[0.08em] uppercase text-muted border border-border hover:text-foreground hover:border-border-bright hover:bg-surface transition"
-            >
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
-              Search
-            </button>
-          )}
         </div>
       )}
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto">
-        {/* Primary nav — NAVIGATE */}
         {!collapsed && (
           <p className="font-mono text-[9px] tracking-[0.12em] uppercase text-dim px-4 pt-3 pb-1">Navigate</p>
         )}
         <div className="px-2 space-y-px">
-          {NAV_PRIMARY.map((item) => (
-            <NavItem
-              key={item.id}
-              icon={item.icon}
-              label={item.label}
-              active={activePanel === item.id}
-              badge={item.badge}
-              collapsed={collapsed}
-              onClick={() => handleNav(item.id)}
-            />
-          ))}
+          {NAV_PRIMARY.map((item) =>
+            collapsed ? (
+              <Tooltip key={item.id} label={item.label}>
+                <NavItem
+                  icon={item.icon}
+                  label={item.label}
+                  active={activePanel === item.id}
+                  badge={item.badge}
+                  collapsed={collapsed}
+                  onClick={() => handleNav(item.id)}
+                />
+              </Tooltip>
+            ) : (
+              <NavItem
+                key={item.id}
+                icon={item.icon}
+                label={item.label}
+                active={activePanel === item.id}
+                badge={item.badge}
+                collapsed={collapsed}
+                onClick={() => handleNav(item.id)}
+              />
+            ),
+          )}
         </div>
 
-        {/* Divider */}
         <div className="h-[0.5px] bg-border my-2 mx-3" />
 
-        {/* Secondary nav — ACCOUNT */}
         {!collapsed && (
           <p className="font-mono text-[9px] tracking-[0.12em] uppercase text-dim px-4 pt-1 pb-1">Account</p>
         )}
         <div className="px-2 space-y-px">
-          {NAV_ACCOUNT.map((item) => (
-            <NavItem
-              key={item.id}
-              icon={item.icon}
-              label={item.label}
-              active={activePanel === item.id}
-              badge={item.badge}
-              collapsed={collapsed}
-              onClick={() => handleNav(item.id)}
-            />
-          ))}
+          {NAV_ACCOUNT.map((item) =>
+            collapsed ? (
+              <Tooltip key={item.id} label={item.label}>
+                <NavItem
+                  icon={item.icon}
+                  label={item.label}
+                  active={activePanel === item.id}
+                  badge={item.badge}
+                  collapsed={collapsed}
+                  onClick={() => handleNav(item.id)}
+                />
+              </Tooltip>
+            ) : (
+              <NavItem
+                key={item.id}
+                icon={item.icon}
+                label={item.label}
+                active={activePanel === item.id}
+                badge={item.badge}
+                collapsed={collapsed}
+                onClick={() => handleNav(item.id)}
+              />
+            ),
+          )}
         </div>
 
-        {/* Divider */}
         <div className="h-[0.5px] bg-border my-2 mx-3" />
       </nav>
 
-      {/* Conversation history */}
+      {/* Conversation history — expanded only */}
       {!collapsed && onLoadSession && (
         <div className="shrink-0 border-t border-border">
           <p className="font-mono text-[9px] tracking-[0.12em] uppercase text-dim px-4 pt-2 pb-1">Conversations</p>
@@ -289,19 +311,17 @@ export function AppSidebar({
               onNewConversation?.();
             }}
             collapsed={collapsed}
-            searchQuery={searchQuery}
           />
         </div>
       )}
 
-      {/* Footer — user info + allowance */}
+      {/* Footer — user info + allowance (expanded only) */}
       {!collapsed && (
         <div className="shrink-0 border-t border-border px-3 py-3 space-y-2">
-          {/* User row — click goes to Settings, address copies on click */}
           {(email || address) && (
             <button
               onClick={() => handleNav('settings')}
-              className="w-full flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-[var(--n700)] transition group"
+              className="w-full flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-[var(--n700)] transition group focus-visible:ring-2 focus-visible:ring-foreground/20 focus-visible:ring-offset-1 focus-visible:ring-offset-background outline-none"
             >
               <div
                 className="w-[26px] h-[26px] rounded-full shrink-0 flex items-center justify-center font-mono text-[10px] text-[var(--n300)]"
@@ -326,12 +346,11 @@ export function AppSidebar({
             </button>
           )}
 
-          {/* Features budget bar — click to top up */}
           {allowancePercent != null && (
             <button
-              onClick={() => router.push('/setup')}
-              className="w-full text-left space-y-1 group"
-              title="Top up features budget"
+              onClick={() => router.push('/settings?section=features')}
+              className="w-full text-left space-y-1 group focus-visible:ring-2 focus-visible:ring-foreground/20 focus-visible:ring-offset-1 focus-visible:ring-offset-background outline-none rounded"
+              title="Manage features budget"
             >
               <div className="flex justify-between">
                 <span className="font-mono text-[9px] tracking-[0.06em] uppercase text-border-bright group-hover:text-muted transition">Features budget</span>
