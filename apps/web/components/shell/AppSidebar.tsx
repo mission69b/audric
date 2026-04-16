@@ -157,7 +157,28 @@ export function AppSidebar({
       </div>
 
       {/* Action buttons */}
-      {!collapsed && (
+      {collapsed ? (
+        <div className="flex flex-col items-center gap-1 py-2 shrink-0">
+          <button
+            onClick={() => {
+              onNewConversation?.();
+              handleNav('chat');
+            }}
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-muted hover:text-foreground hover:bg-surface transition"
+            aria-label="New conversation"
+            title="New conversation"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+          </button>
+          <button
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-muted hover:text-foreground hover:bg-surface transition"
+            aria-label="Search"
+            title="Search"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+          </button>
+        </div>
+      ) : (
         <div className="px-3 pt-3 pb-2 flex flex-col gap-1 shrink-0">
           <button
             onClick={() => {
