@@ -163,7 +163,7 @@ export function PayPanel({ address, jwt, onSendMessage }: PayPanelProps) {
         <div className="rounded-lg border border-success/15 bg-success/[0.04] px-4 py-3">
           <p className="font-mono text-[9px] tracking-[0.1em] uppercase text-success mb-2">Where your income goes</p>
           <p className="text-[11px] text-dim leading-relaxed">
-            Every payment received adds to <strong className="text-[var(--n400)]">balance.available</strong> immediately. Audric then offers to save it, direct it to a goal, or leave it as working capital — your choice, one tap.
+            Every payment received adds to <strong className="text-muted">balance.available</strong> immediately. Audric then offers to save it, direct it to a goal, or leave it as working capital — your choice, one tap.
           </p>
           <div className="flex gap-2 mt-3">
             <button
@@ -217,7 +217,7 @@ export function PayPanel({ address, jwt, onSendMessage }: PayPanelProps) {
               <div className="flex items-center gap-3 min-w-0">
                 <span className="text-sm shrink-0">{item.icon}</span>
                 <div className="min-w-0">
-                  <p className="text-[12px] text-[var(--n300)] font-medium truncate">{item.title}</p>
+                  <p className="text-[12px] text-foreground font-medium truncate">{item.title}</p>
                   <p className="text-[10px] text-dim truncate">{item.desc}</p>
                 </div>
               </div>

@@ -43,7 +43,7 @@ export function ChipExpand({ actions, chipLabel, onSelect, onFlowSelect, onClose
               onSelect(action.prompt);
             }
           }}
-          className="w-full text-left px-4 py-3 hover:bg-[var(--n700)] transition-colors border-b border-border/50 last:border-b-0 flex items-center justify-between group"
+          className="w-full text-left px-4 py-3 hover:bg-surface transition-colors border-b border-border/50 last:border-b-0 flex items-center justify-between group"
         >
           <div>
             <span className="text-[13px] text-foreground">{action.label}</span>

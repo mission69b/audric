@@ -12,7 +12,7 @@ export function SuggestedAction({ icon, label, onClick, disabled = false }: Sugg
     <button
       onClick={onClick}
       disabled={disabled}
-      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-border bg-surface hover:bg-[var(--n700)] text-muted hover:text-foreground font-mono text-[11px] tracking-[0.08em] uppercase transition-all duration-150 disabled:opacity-40 disabled:pointer-events-none"
+      className="inline-flex items-center gap-1.5 py-1.5 text-dim hover:text-foreground font-mono text-[11px] tracking-[0.08em] uppercase transition-colors duration-150 disabled:opacity-40 disabled:pointer-events-none"
     >
       {icon && <span className="text-sm leading-none shrink-0">{icon}</span>}
       <span>{label}</span>

@@ -92,7 +92,7 @@ export function ChatMessage({ message, onActionResolve, autoApproveTools, agentB
   if (message.role === 'user') {
     return (
       <div className="flex justify-end mb-3" role="log" aria-label="Your message">
-        <div className="max-w-[78%] bg-[var(--n700)] px-4 py-2.5 text-sm text-foreground break-words overflow-hidden" style={{ borderRadius: '16px 16px 4px 16px' }}>
+        <div className="max-w-[78%] bg-[var(--n800)] px-4 py-2.5 text-sm text-foreground break-words overflow-hidden" style={{ borderRadius: '16px 16px 4px 16px' }}>
           {message.content}
         </div>
       </div>

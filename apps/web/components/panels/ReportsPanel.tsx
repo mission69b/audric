@@ -65,7 +65,7 @@ export function ReportsPanel({
           <IncomeRow label="Yield earned" value={yield$} />
           <IncomeRow label="Payments received" value={payments$} />
           <div className="flex items-center justify-between px-3 py-2 bg-white/[0.02]">
-            <span className="text-[11px] text-[var(--n300)] font-medium">Total income</span>
+            <span className="text-[11px] text-foreground font-medium">Total income</span>
             <span className="font-mono text-[12px] text-foreground font-medium">{total$}</span>
           </div>
         </div>

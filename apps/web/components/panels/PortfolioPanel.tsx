@@ -241,7 +241,7 @@ export function PortfolioPanel({ balance, onSendMessage, goals, activityCount, a
                   className="flex flex-col rounded-lg border border-border bg-surface px-4 py-3 text-left transition hover:bg-[var(--n700)] hover:border-border-bright"
                 >
                   <span className="font-mono text-[8px] tracking-[0.08em] uppercase text-border-bright mb-1">{t.category}</span>
-                  <span className="text-[12px] font-medium text-[var(--n300)] mb-0.5">{t.title}</span>
+                  <span className="text-[12px] font-medium text-foreground mb-0.5">{t.title}</span>
                   <span className="text-[10px] text-dim leading-relaxed">{t.desc}</span>
                   <span className="font-mono text-[9px] text-border-bright mt-1.5">{t.action} →</span>
                 </button>
@@ -254,7 +254,7 @@ export function PortfolioPanel({ balance, onSendMessage, goals, activityCount, a
             >
               <div>
                 <span className="font-mono text-[8px] tracking-[0.08em] uppercase text-border-bright block mb-1">Overview</span>
-                <span className="text-[12px] font-medium text-[var(--n300)] block mb-0.5">Full portfolio overview</span>
+                <span className="text-[12px] font-medium text-foreground block mb-0.5">Full portfolio overview</span>
                 <span className="text-[10px] text-dim">4-panel canvas: savings, health, activity, spending</span>
               </div>
               <span className="font-mono text-[18px] text-border ml-4">→</span>
@@ -295,7 +295,7 @@ export function PortfolioPanel({ balance, onSendMessage, goals, activityCount, a
               <div className="flex items-center gap-3">
                 <span className="text-lg shrink-0">{t.icon}</span>
                 <div>
-                  <span className="text-[12px] font-medium text-[var(--n300)] block">{t.title}</span>
+                  <span className="text-[12px] font-medium text-foreground block">{t.title}</span>
                   <span className="text-[10px] text-dim leading-relaxed">{t.desc}</span>
                 </div>
               </div>

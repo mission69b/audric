@@ -135,19 +135,19 @@ export function StorePanel({ onSendMessage: _onSendMessage, address, jwt }: Stor
         {/* Earnings stats grid */}
         {hasEarnings ? (
           <div className="grid grid-cols-3 gap-2">
-            <div className="bg-[var(--n800)] border border-border rounded-lg p-2.5">
+            <div className="bg-surface border border-border rounded-lg p-2.5">
               <div className="font-mono text-[9px] tracking-[0.1em] uppercase text-dim mb-1">Total earned</div>
               <div className="text-[18px] font-light text-[var(--color-success)]">${earnings.totalEarned.toFixed(2)}</div>
               <div className="text-[10px] text-dim">lifetime · {earnings.totalSales} sale{earnings.totalSales !== 1 ? 's' : ''}</div>
             </div>
-            <div className="bg-[var(--n800)] border border-border rounded-lg p-2.5">
+            <div className="bg-surface border border-border rounded-lg p-2.5">
               <div className="font-mono text-[9px] tracking-[0.1em] uppercase text-dim mb-1">This month</div>
               <div className="text-[18px] font-light text-foreground">${earnings.thisMonth.toFixed(2)}</div>
               <div className="text-[10px] text-dim">{earnings.thisMonthSales} sale{earnings.thisMonthSales !== 1 ? 's' : ''}</div>
             </div>
             <button
               onClick={handleComingSoon}
-              className="bg-[var(--n800)] border border-border rounded-lg p-2.5 text-left hover:border-[var(--border-bright)] transition"
+              className="bg-surface border border-border rounded-lg p-2.5 text-left hover:border-[var(--border-bright)] transition"
             >
               <div className="font-mono text-[9px] tracking-[0.1em] uppercase text-dim mb-1">Storefront</div>
               <div className="text-[11px] text-[var(--color-info)] font-mono">audric.ai/</div>
@@ -155,7 +155,7 @@ export function StorePanel({ onSendMessage: _onSendMessage, address, jwt }: Stor
             </button>
           </div>
         ) : (
-          <div className="bg-[var(--n800)] border border-border rounded-lg p-3 text-center">
+          <div className="bg-surface border border-border rounded-lg p-3 text-center">
             <p className="text-[11px] text-dim leading-relaxed">
               No sales yet. Create your first product and start earning USDC.
             </p>
@@ -166,9 +166,9 @@ export function StorePanel({ onSendMessage: _onSendMessage, address, jwt }: Stor
         {hasEarnings && (
           <div className="mt-3 bg-[rgba(60,193,78,0.05)] border border-[rgba(60,193,78,0.12)] rounded-lg px-3 py-2 text-[11px] text-dim leading-[1.7]">
             Store earnings land in your wallet as USDC — same as any payment received. They show in{' '}
-            <strong className="text-[var(--n400)]">Activity → Store</strong>, count toward your{' '}
-            <strong className="text-[var(--n400)]">Goals</strong>, and appear in your{' '}
-            <strong className="text-[var(--n400)]">weekly income report</strong>.
+            <strong className="text-muted">Activity → Store</strong>, count toward your{' '}
+            <strong className="text-muted">Goals</strong>, and appear in your{' '}
+            <strong className="text-muted">weekly income report</strong>.
             <button
               onClick={handleComingSoon}
               className="ml-2 font-mono text-[9px] tracking-[0.06em] uppercase text-muted border border-border rounded px-2 py-0.5 hover:text-foreground hover:border-[var(--border-bright)] transition"
@@ -213,7 +213,7 @@ export function StorePanel({ onSendMessage: _onSendMessage, address, jwt }: Stor
         {/* Automate store content */}
         <button
           onClick={handleComingSoon}
-          className="w-full flex items-center gap-3 px-3 py-3 border border-dashed border-border rounded-lg mb-1 hover:bg-[var(--n800)] transition group"
+          className="w-full flex items-center gap-3 px-3 py-3 border border-dashed border-border rounded-lg mb-1 hover:bg-surface transition group"
         >
           <span className="text-[11px] shrink-0 w-7 text-center">⟳</span>
           <div className="flex-1 min-w-0 text-left">
@@ -265,11 +265,11 @@ function ProductRow({
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center gap-3 px-3 py-2.5 border-b border-border hover:bg-[var(--n800)] transition group ${soon ? 'opacity-45' : ''}`}
+      className={`w-full flex items-center gap-3 px-3 py-2.5 border-b border-border hover:bg-surface transition group ${soon ? 'opacity-45' : ''}`}
     >
       <span className="text-[16px] shrink-0 w-7 text-center">{emoji}</span>
       <div className="flex-1 min-w-0 text-left">
-        <div className="text-[12px] text-[var(--n300)] font-medium">{title}</div>
+        <div className="text-[12px] text-foreground font-medium">{title}</div>
         <div className={`text-[10px] mt-0.5 ${descSuccess ? 'text-[var(--color-success)]' : 'text-dim'}`}>{desc}</div>
       </div>
       {soon ? (

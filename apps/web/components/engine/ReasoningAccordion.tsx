@@ -36,7 +36,7 @@ export function ReasoningAccordion({ thinking, isStreaming }: ReasoningAccordion
       </button>
 
       {expanded && (
-        <div className="mt-1 ml-[18px] rounded-md border border-border bg-[var(--n800)] px-3 py-2.5">
+        <div className="mt-1 ml-[18px] rounded-md border border-border bg-surface px-3 py-2.5">
           <p className="font-mono text-[12px] leading-[1.7] text-muted whitespace-pre-wrap break-words">
             {thinking}
           </p>

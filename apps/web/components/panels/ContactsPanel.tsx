@@ -127,7 +127,7 @@ export function ContactsPanel({ address, onSendMessage }: ContactsPanelProps) {
                   }`}
                 >
                   <div
-                    className="w-[30px] h-[30px] rounded-full flex items-center justify-center shrink-0 text-[10px] font-medium text-[var(--n300)]"
+                    className="w-[30px] h-[30px] rounded-full flex items-center justify-center shrink-0 text-[10px] font-medium text-foreground"
                     style={{ background: AVATAR_GRADIENTS[i % AVATAR_GRADIENTS.length] }}
                   >
                     {getInitials(c.name)}
@@ -205,7 +205,7 @@ export function ContactsPanel({ address, onSendMessage }: ContactsPanelProps) {
                 {/* Profile card */}
                 <div className="flex flex-col items-center px-6 pt-6 pb-4">
                   <div
-                    className="w-[56px] h-[56px] rounded-full flex items-center justify-center text-[18px] font-medium text-[var(--n300)] mb-3"
+                    className="w-[56px] h-[56px] rounded-full flex items-center justify-center text-[18px] font-medium text-foreground mb-3"
                     style={{ background: AVATAR_GRADIENTS[contacts.findIndex(c => c.address === selectedContact.address) % AVATAR_GRADIENTS.length] }}
                   >
                     {getInitials(selectedContact.name)}
@@ -278,7 +278,7 @@ export function ContactsPanel({ address, onSendMessage }: ContactsPanelProps) {
                           <div className="flex items-center gap-3">
                             <span className="text-[13px]">$</span>
                             <div>
-                              <p className="text-[12px] text-[var(--n300)] font-medium">Send ${amt} USDC</p>
+                              <p className="text-[12px] text-foreground font-medium">Send ${amt} USDC</p>
                               <p className="text-[10px] text-dim">{amt === 50 ? 'same as last time' : 'quick · confirm in chat'}</p>
                             </div>
                           </div>
@@ -292,7 +292,7 @@ export function ContactsPanel({ address, onSendMessage }: ContactsPanelProps) {
                         <div className="flex items-center gap-3">
                           <span className="text-[13px]">✎</span>
                           <div>
-                            <p className="text-[12px] text-[var(--n300)] font-medium">Custom amount</p>
+                            <p className="text-[12px] text-foreground font-medium">Custom amount</p>
                             <p className="text-[10px] text-dim">I&apos;ll ask how much</p>
                           </div>
                         </div>
@@ -354,7 +354,7 @@ export function ContactsPanel({ address, onSendMessage }: ContactsPanelProps) {
           </button>
           <div className="flex flex-col items-center mb-6">
             <div
-              className="w-[56px] h-[56px] rounded-full flex items-center justify-center text-[18px] font-medium text-[var(--n300)] mb-3"
+              className="w-[56px] h-[56px] rounded-full flex items-center justify-center text-[18px] font-medium text-foreground mb-3"
               style={{ background: AVATAR_GRADIENTS[contacts.findIndex(c => c.address === selectedContact.address) % AVATAR_GRADIENTS.length] }}
             >
               {getInitials(selectedContact.name)}

@@ -110,7 +110,7 @@ export function ConvoHistoryList({
               onClick={() => onLoadSession(s.id)}
               className="w-full text-left px-2 py-2 pr-7"
             >
-              <p className={`text-[11px] truncate max-w-[145px] ${activeSessionId === s.id ? 'text-[var(--n400)]' : 'text-dim'}`}>
+              <p className={`text-[11px] truncate max-w-[145px] ${activeSessionId === s.id ? 'text-foreground' : 'text-dim'}`}>
                 {s.title || s.preview || 'Conversation'}
               </p>
               <p className="text-[10px] text-border-bright mt-px">

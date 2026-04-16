@@ -167,7 +167,7 @@ export function GoalsPanel({ address, jwt, onSendMessage }: GoalsPanelProps) {
               <div className="flex items-center gap-3">
                 <span className="text-lg">{t.icon}</span>
                 <div>
-                  <p className="text-[12px] text-[var(--n300)] font-medium">{t.label}</p>
+                  <p className="text-[12px] text-foreground font-medium">{t.label}</p>
                   <p className="text-[10px] text-dim">{t.desc}</p>
                 </div>
               </div>
