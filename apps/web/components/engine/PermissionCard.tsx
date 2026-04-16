@@ -134,7 +134,7 @@ export function PermissionCard({ action, onResolve }: PermissionCardProps) {
       {!resolved && (
         <div className="h-0.5 w-full bg-border rounded-full overflow-hidden">
           <div
-            className="h-full bg-foreground/30 rounded-full transition-all duration-1000 ease-linear"
+            className="h-full bg-foreground rounded-full transition-all duration-1000 ease-linear"
             style={{ width: `${progress * 100}%` }}
           />
         </div>

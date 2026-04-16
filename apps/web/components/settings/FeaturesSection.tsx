@@ -80,15 +80,21 @@ export function FeaturesSection({ allowance, prefs, prefsLoading, toggling, togg
               <button
                 onClick={() => toggle(f.key)}
                 disabled={toggling === f.key}
-                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors mt-0.5 ${
-                  prefs[f.key] ? 'bg-foreground' : 'bg-foreground/20'
+                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors mt-0.5 focus-visible:ring-2 focus-visible:ring-info focus-visible:ring-offset-1 focus-visible:ring-offset-background outline-none ${
+                  prefs[f.key] ? 'bg-foreground' : 'bg-[var(--n700)]'
                 } ${toggling === f.key ? 'opacity-50' : ''}`}
                 role="switch"
                 aria-checked={prefs[f.key]}
               >
-                <span className={`pointer-events-none inline-block h-3.5 w-3.5 rounded-full bg-background transition-transform ${
+                <span className={`pointer-events-none inline-flex items-center justify-center h-3.5 w-3.5 rounded-full bg-background transition-transform ${
                   prefs[f.key] ? 'translate-x-[18px]' : 'translate-x-[3px]'
-                }`} />
+                }`}>
+                  {prefs[f.key] && (
+                    <svg width="8" height="8" viewBox="0 0 12 12" fill="none">
+                      <path d="M2.5 6l2.5 2.5 5-5" stroke="var(--foreground)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                </span>
               </button>
             </div>
           ))}

@@ -59,20 +59,18 @@ export function SafetySection({ address }: SafetySectionProps) {
       )}
 
       <div className="rounded-xl border border-border bg-surface/50 p-4">
-        <div className="flex items-center justify-between mb-2">
-          <div>
-            <p className="text-sm font-medium text-foreground">Daily API budget</p>
-            <p className="text-xs text-muted mt-0.5">Maximum daily spend on MPP services</p>
-          </div>
+        <div className="mb-3">
+          <p className="font-mono text-[11px] tracking-[0.08em] uppercase text-muted">Daily API budget</p>
+          <p className="text-xs text-dim mt-1">Maximum daily spend on MPP services</p>
         </div>
-        <div className="flex items-center gap-3 mt-3">
+        <div className="flex items-center gap-3">
           <span className="text-sm text-muted">$</span>
           <input
             type="number"
             min={0}
             step={0.1}
             defaultValue={1.00}
-            className="w-24 bg-background border border-border rounded-lg px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
+            className="w-24 bg-background border border-border rounded-md px-3 py-1.5 text-sm text-foreground font-mono outline-none focus:border-foreground transition"
             onBlur={async (e) => {
               if (!address) return;
               const val = parseFloat(e.target.value);

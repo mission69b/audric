@@ -86,10 +86,10 @@ function SettingsContent() {
               <button
                 key={s.id}
                 onClick={() => setActiveSection(s.id)}
-                className={`whitespace-nowrap px-3 py-2 rounded-md text-sm font-medium transition text-left ${
+                className={`whitespace-nowrap px-3 py-2 rounded-full font-mono text-[10px] tracking-[0.08em] uppercase transition text-left ${
                   activeSection === s.id
-                    ? 'bg-foreground/[0.06] text-foreground'
-                    : 'text-muted hover:text-foreground hover:bg-surface'
+                    ? 'bg-[var(--n700)] text-foreground'
+                    : 'text-muted hover:text-foreground hover:bg-[var(--n700)]/50'
                 }`}
               >
                 {s.label}

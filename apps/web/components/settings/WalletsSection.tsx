@@ -140,22 +140,28 @@ export function WalletsSection({ address, jwt }: WalletsSectionProps) {
       {/* Add wallet form */}
       <div className="rounded-xl border border-border bg-surface/50 p-4 space-y-3">
         <p className="font-mono text-[10px] tracking-[0.12em] text-dim uppercase">Add Wallet</p>
-        <input
-          type="text"
-          value={newWalletAddress}
-          onChange={(e) => { setNewWalletAddress(e.target.value); setWalletError(''); }}
-          placeholder="0x..."
-          className="w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-xs text-foreground placeholder:text-dim focus:outline-none focus:ring-1 focus:ring-accent"
-          spellCheck={false}
-        />
-        <input
-          type="text"
-          value={newWalletLabel}
-          onChange={(e) => setNewWalletLabel(e.target.value)}
-          placeholder="Label (optional, e.g. Cold Wallet)"
-          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-dim focus:outline-none focus:ring-1 focus:ring-accent"
-          maxLength={50}
-        />
+        <div className="space-y-1">
+          <label className="font-mono text-[11px] tracking-[0.08em] uppercase text-muted">Address</label>
+          <input
+            type="text"
+            value={newWalletAddress}
+            onChange={(e) => { setNewWalletAddress(e.target.value); setWalletError(''); }}
+            placeholder="0x..."
+            className="w-full rounded-md border border-border bg-background px-3 py-2 font-mono text-xs text-foreground placeholder:text-dim outline-none focus:border-foreground transition"
+            spellCheck={false}
+          />
+        </div>
+        <div className="space-y-1">
+          <label className="font-mono text-[11px] tracking-[0.08em] uppercase text-muted">Label</label>
+          <input
+            type="text"
+            value={newWalletLabel}
+            onChange={(e) => setNewWalletLabel(e.target.value)}
+            placeholder="Optional, e.g. Cold Wallet"
+            className="w-full rounded-md border border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-dim outline-none focus:border-foreground transition"
+            maxLength={50}
+          />
+        </div>
         {walletError && <p className="text-xs text-error">{walletError}</p>}
         <button
           onClick={handleAddWallet}

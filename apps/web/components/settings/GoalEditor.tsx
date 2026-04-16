@@ -40,7 +40,7 @@ export function GoalEditor({ goal, onSave, onCancel, saving }: GoalEditorProps) 
 
       {/* Emoji picker */}
       <div className="space-y-1.5">
-        <label className="text-xs text-muted">Icon</label>
+        <label className="font-mono text-[11px] tracking-[0.08em] uppercase text-muted">Icon</label>
         <div className="flex flex-wrap gap-1">
           {EMOJI_SUGGESTIONS.map((e) => (
             <button
@@ -60,20 +60,20 @@ export function GoalEditor({ goal, onSave, onCancel, saving }: GoalEditorProps) 
 
       {/* Name */}
       <div className="space-y-1.5">
-        <label className="text-xs text-muted">What are you saving for?</label>
+        <label className="font-mono text-[11px] tracking-[0.08em] uppercase text-muted">Goal name</label>
         <input
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Trip to Japan"
           maxLength={100}
-          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-dim outline-none focus:border-foreground/30 transition"
+          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-dim outline-none focus:border-foreground transition"
         />
       </div>
 
       {/* Target amount */}
       <div className="space-y-1.5">
-        <label className="text-xs text-muted">Target amount (USD)</label>
+        <label className="font-mono text-[11px] tracking-[0.08em] uppercase text-muted">Target amount (USD)</label>
         <div className="relative">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted">$</span>
           <input
@@ -83,20 +83,20 @@ export function GoalEditor({ goal, onSave, onCancel, saving }: GoalEditorProps) 
             placeholder="500"
             min={0.01}
             step={0.01}
-            className="w-full rounded-md border border-border bg-background pl-7 pr-3 py-2 text-sm text-foreground font-mono placeholder:text-dim outline-none focus:border-foreground/30 transition"
+            className="w-full rounded-md border border-border bg-background pl-7 pr-3 py-2 text-sm text-foreground font-mono placeholder:text-dim outline-none focus:border-foreground transition"
           />
         </div>
       </div>
 
       {/* Deadline */}
       <div className="space-y-1.5">
-        <label className="text-xs text-muted">Deadline (optional)</label>
+        <label className="font-mono text-[11px] tracking-[0.08em] uppercase text-muted">Deadline (optional)</label>
         <input
           type="date"
           value={deadline}
           onChange={(e) => setDeadline(e.target.value)}
           min={new Date().toISOString().slice(0, 10)}
-          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-foreground/30 transition"
+          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-foreground transition"
         />
       </div>
 

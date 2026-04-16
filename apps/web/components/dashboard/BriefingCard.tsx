@@ -107,7 +107,7 @@ export function BriefingCard({ briefing, onDismiss, onViewReport, onCtaClick }: 
                   )}
                 </span>
               </div>
-              <div className="h-1 rounded-full bg-foreground/10 overflow-hidden">
+              <div className="h-1 rounded-full bg-border overflow-hidden">
                 <div
                   className={`h-full rounded-full ${g.progress >= 100 ? 'bg-success' : 'bg-foreground'}`}
                   style={{ width: `${g.progress}%` }}

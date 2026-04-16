@@ -57,7 +57,7 @@ export function InputBar({
   const hasContent = value.trim().length > 0;
 
   return (
-    <div className="flex items-center gap-3 rounded-[16px] border border-border bg-[var(--n800)] min-h-[52px] px-4 py-3 focus-within:border-[var(--n400)] transition-colors">
+    <div className="flex items-center gap-3 rounded-[16px] border border-border bg-[var(--n800)] min-h-[52px] px-4 py-3 focus-within:border-foreground transition-colors">
       <button
         className="shrink-0 text-[18px] font-light text-[var(--n600)] leading-none hover:text-muted transition w-5 text-center"
         aria-label="Attach"
@@ -85,7 +85,7 @@ export function InputBar({
           'shrink-0 w-[34px] h-[34px] rounded-full flex items-center justify-center transition',
           hasContent
             ? 'bg-foreground text-background hover:opacity-80 active:scale-[0.95]'
-            : 'bg-[var(--n700)] text-[var(--n900)] cursor-default',
+            : 'bg-[var(--n400)] text-[var(--n700)] cursor-default',
         ].join(' ')}
         aria-label="Send message"
       >

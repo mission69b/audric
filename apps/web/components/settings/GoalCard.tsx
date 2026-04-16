@@ -78,7 +78,7 @@ export function GoalCard({ goal, savingsBalance, onEdit, onDelete, deleting }: G
 
       {/* Progress bar */}
       <div className="space-y-1.5">
-        <div className="h-1.5 rounded-full bg-foreground/10 overflow-hidden">
+        <div className="h-1.5 rounded-full bg-border overflow-hidden">
           <div
             className={`h-full rounded-full transition-all duration-500 ${isComplete ? 'bg-success' : 'bg-foreground'}`}
             style={{ width: `${pct}%` }}
