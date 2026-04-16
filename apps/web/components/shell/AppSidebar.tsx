@@ -268,7 +268,7 @@ export function AppSidebar({
       <div className="px-3 shrink-0">
         <button
           onClick={handleNewConvo}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] text-muted hover:text-foreground hover:bg-[var(--n700)] transition focus-visible:ring-2 focus-visible:ring-foreground/20 outline-none"
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-mono text-[11px] tracking-[0.08em] uppercase text-muted hover:text-foreground hover:bg-[var(--n700)] transition focus-visible:ring-2 focus-visible:ring-foreground/20 outline-none"
         >
           <PlusIcon />
           <span>New conversation</span>

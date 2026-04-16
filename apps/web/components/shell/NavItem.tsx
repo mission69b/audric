@@ -28,7 +28,7 @@ export function NavItem({ icon, label, active, badge, collapsed, onClick }: NavI
       <span className={`w-5 h-5 shrink-0 flex items-center justify-center ${active ? 'opacity-100' : 'opacity-70'}`}>{icon}</span>
       {!collapsed && (
         <>
-          <span className="text-[13px] flex-1 truncate">{label}</span>
+          <span className="font-mono text-[11px] tracking-[0.08em] uppercase flex-1 truncate">{label}</span>
           {badge === 'dot' && (
             <span className="w-[6px] h-[6px] rounded-full bg-info shrink-0" aria-label="Has updates" />
           )}
