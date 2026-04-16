@@ -16,9 +16,10 @@
   --n800: #191919;
   --n900: #000000;
 
-  /* Dark theme — semantic roles mapped to N-scale */
-  --background: var(--n900);
-  --surface: var(--n800);
+  /* Dark theme — semantic roles mapped to N-scale
+     Depth: N900 (input) → N800 (page bg) → N700 (surfaces/cards) */
+  --background: var(--n800);
+  --surface: #222222;
   --panel: var(--n800);
   --border: var(--n700);
   --border-bright: var(--n600);
@@ -27,7 +28,7 @@
   --dim: var(--n600);
   --accent: var(--n100);
   --accent-dim: var(--n800);
-  --input-bg: var(--n800);
+  --input-bg: var(--n900);
   --input-border: var(--n700);
 
   /* Semantic colors (ADS canonical) */
