@@ -7,18 +7,21 @@ import {
 } from "@/lib/feature-flags";
 
 /**
- * Reads feature flags. Falls back to build-time NEXT_PUBLIC_* values immediately
- * (for first paint without flicker), then refreshes against `/api/feature-flags`
- * to catch any drift between client-bundle and server config.
+ * Reads feature flags from the server. The server endpoint (/api/feature-flags)
+ * is the canonical source. NEXT_PUBLIC_* values are used ONLY as placeholderData
+ * for first paint to avoid flicker — they don't mark the query as fresh, so the
+ * hook always issues a fetch on mount to catch any drift between client-bundle
+ * and server config (e.g. when COPILOT_ENABLED is set on Vercel but the build
+ * shipped before NEXT_PUBLIC_COPILOT_ENABLED was added).
  *
- * Refreshes on a 60s stale window — flags are static for the deploy lifetime.
+ * Refreshes on a 60s stale window once the server has confirmed.
  */
 export function useFeatureFlags(): FeatureFlags {
   const initial = getClientFeatureFlags();
 
   const query = useQuery<FeatureFlags>({
     queryKey: ["feature-flags"],
-    initialData: initial,
+    placeholderData: initial,
     staleTime: 60 * 1000,
     queryFn: async () => {
       const res = await fetch("/api/feature-flags");
