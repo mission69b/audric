@@ -112,7 +112,8 @@ export const UserScalarFieldEnum = {
   copilotMigrationNoticeShownAt: 'copilotMigrationNoticeShownAt',
   digestEnabled: 'digestEnabled',
   digestSendHourLocal: 'digestSendHourLocal',
-  lastDigestSentAt: 'lastDigestSentAt'
+  lastDigestSentAt: 'lastDigestSentAt',
+  hfWidgetEnabled: 'hfWidgetEnabled'
 } as const
 
 export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof UserScalarFieldEnum]

@@ -32,6 +32,10 @@ model User {
   digestSendHourLocal  Int       @default(8)    // 0-23, evaluated against (now - timezoneOffset)
   lastDigestSentAt     DateTime?                // dedup so we don't send twice in the same UTC day
 
+  // Copilot HF widget (Wave C.4 toggle, Wave C.5 widget) — controls visibility of
+  // the always-on health-factor widget in BalanceHeader.
+  hfWidgetEnabled      Boolean   @default(true)
+
   preferences          UserPreferences?
   conversationLogs     ConversationLog[]
   notificationPrefs    NotificationPrefs[]

@@ -16,10 +16,10 @@ import { SafetySection } from '@/components/settings/SafetySection';
 import { FeaturesSection } from '@/components/settings/FeaturesSection';
 import { MemorySection } from '@/components/settings/MemorySection';
 import { WalletsSection } from '@/components/settings/WalletsSection';
-import { SchedulesSection } from '@/components/settings/SchedulesSection';
+import { CopilotSection } from '@/components/settings/CopilotSection';
 import { SUI_NETWORK } from '@/lib/constants';
 
-type Section = 'passport' | 'account' | 'features' | 'goals' | 'safety' | 'contacts' | 'sessions' | 'memory' | 'schedules' | 'wallets';
+type Section = 'passport' | 'account' | 'features' | 'goals' | 'safety' | 'contacts' | 'sessions' | 'memory' | 'copilot' | 'wallets';
 
 const SECTIONS: { id: Section; label: string }[] = [
   { id: 'passport', label: 'Passport' },
@@ -27,11 +27,26 @@ const SECTIONS: { id: Section; label: string }[] = [
   { id: 'features', label: 'Features' },
   { id: 'memory', label: 'Memory' },
   { id: 'wallets', label: 'Wallets' },
-  { id: 'schedules', label: 'Automations' },
+  { id: 'copilot', label: 'Copilot' },
   { id: 'goals', label: 'Goals' },
   { id: 'contacts', label: 'Contacts' },
   { id: 'sessions', label: 'Sessions' },
 ];
+
+// Old `?section=schedules` (and the historical /settings/automations route)
+// both map to the new Copilot tab so existing deep links keep working.
+const SECTION_ALIASES: Record<string, Section> = {
+  schedules: 'copilot',
+  automations: 'copilot',
+  account: 'passport',
+};
+
+function resolveSection(raw: string | null): Section {
+  if (!raw) return 'passport';
+  if (raw in SECTION_ALIASES) return SECTION_ALIASES[raw];
+  if (SECTIONS.some((s) => s.id === raw)) return raw as Section;
+  return 'passport';
+}
 
 function SettingsContent() {
   const { address, session, logout, refresh, expiringSoon } = useZkLogin();
@@ -49,15 +64,11 @@ function SettingsContent() {
     const section = typeof window !== 'undefined'
       ? new URLSearchParams(window.location.search).get('section')
       : null;
-    if (section === 'account') return 'passport' as Section;
-    return (section && SECTIONS.some((s) => s.id === section)) ? section as Section : 'passport';
+    return resolveSection(section);
   });
 
   useEffect(() => {
-    const section = searchParams.get('section');
-    if (section && SECTIONS.some((s) => s.id === section)) {
-      setActiveSection(section as Section);
-    }
+    setActiveSection(resolveSection(searchParams.get('section')));
   }, [searchParams]);
 
   const expiresAt = session?.expiresAt ?? null;
@@ -124,8 +135,8 @@ function SettingsContent() {
               />
             )}
 
-            {activeSection === 'schedules' && (
-              <SchedulesSection address={address} jwt={jwt} />
+            {activeSection === 'copilot' && (
+              <CopilotSection address={address} jwt={jwt} />
             )}
 
             {activeSection === 'goals' && (

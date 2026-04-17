@@ -15,6 +15,16 @@ const PANEL_PATHS = new Set([
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Wave C.4 — `/settings/automations` was renamed to the Copilot tab.
+  // 308 (permanent + preserves method) so old emails / external links land in
+  // the right place without breaking POSTs (none expected, but cheap insurance).
+  if (pathname === '/settings/automations') {
+    const url = request.nextUrl.clone();
+    url.pathname = '/settings';
+    url.searchParams.set('section', 'copilot');
+    return NextResponse.redirect(url, 308);
+  }
+
   if (PANEL_PATHS.has(pathname)) {
     const url = request.nextUrl.clone();
     url.pathname = '/new';
@@ -26,5 +36,15 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/portfolio', '/activity', '/pay', '/automations', '/goals', '/reports', '/contacts', '/store'],
+  matcher: [
+    '/portfolio',
+    '/activity',
+    '/pay',
+    '/automations',
+    '/goals',
+    '/reports',
+    '/contacts',
+    '/store',
+    '/settings/automations',
+  ],
 };
