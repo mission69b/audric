@@ -3,10 +3,23 @@ import type { InputJsonValue } from "@/lib/generated/prisma/internal/prismaNames
 import { validateJwt, isValidSuiAddress } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { isCopilotEnabled } from "@/lib/feature-flags";
+import { CronExpressionParser } from "cron-parser";
 
 export const runtime = "nodejs";
 
 const MAX_FAIL_STRIKES = 3;
+
+// Advance nextRunAt to the next cron tick so the t2000 cron doesn't pick up
+// the same action again next hour. Mirrors apps/web/app/api/scheduled-actions
+// /[id]/route.ts on confirm/skip — same parser, same UTC timezone.
+function nextRunFromCron(expr: string): Date | null {
+  try {
+    const interval = CronExpressionParser.parse(expr, { tz: "UTC" });
+    return interval.next().toDate();
+  } catch {
+    return null;
+  }
+}
 
 interface ResultBody {
   address: string;
@@ -76,11 +89,13 @@ export async function POST(
         totalExecutions: true,
         totalAmountUsdc: true,
         patternType: true,
+        cronExpr: true,
       },
     });
     if (!action) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
     if (body.outcome === "confirmed") {
+      const nextRun = nextRunFromCron(action.cronExpr);
       await prisma.$transaction([
         prisma.scheduledAction.update({
           where: { id: action.id },
@@ -90,6 +105,7 @@ export async function POST(
             totalExecutions: action.totalExecutions + 1,
             totalAmountUsdc: action.totalAmountUsdc + Number(action.amount),
             failedAttempts: 0,
+            ...(nextRun ? { nextRunAt: nextRun } : {}),
           },
         }),
         prisma.user.update({
@@ -116,12 +132,18 @@ export async function POST(
 
     const nextStrikes = action.failedAttempts + 1;
     const shouldAutoFail = nextStrikes >= MAX_FAIL_STRIKES;
+    // On auto-fail, advance nextRunAt so the t2000 cron doesn't pick the row
+    // up every hour just to be throttled by surface-suggestion's 24h window.
+    // The next cron tick at the new cadence will surface a fresh suggestion
+    // (failedAttempts gets reset to 0 inside surface-suggestion).
+    const autoFailNextRun = shouldAutoFail ? nextRunFromCron(action.cronExpr) : null;
     await prisma.$transaction([
       prisma.scheduledAction.update({
         where: { id: action.id },
         data: {
           failedAttempts: nextStrikes,
           surfaceStatus: shouldAutoFail ? "failed" : action.surfaceStatus,
+          ...(autoFailNextRun ? { nextRunAt: autoFailNextRun } : {}),
         },
       }),
       prisma.appEvent.create({

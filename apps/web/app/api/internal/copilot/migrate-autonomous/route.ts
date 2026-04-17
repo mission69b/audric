@@ -46,12 +46,20 @@ export async function POST(request: NextRequest) {
     });
   }
 
+  // Bump migrated actions so they show up in the dashboard immediately.
+  // surfacedAt is what the dashboard uses to distinguish "actively asking"
+  // from default-pending rows. expiresAt left null intentionally — the cron
+  // sweep won't expire migrated rows, the user resolves them at their pace.
+  // Once they tap Confirm or Skip, the suggestion lifecycle takes over.
+  const now = new Date();
   await prisma.scheduledAction.updateMany({
     where: { id: { in: autonomous.map((a) => a.id) } },
     data: {
       stage: 2,
       confirmationsRequired: SENTINEL_ALWAYS_ASK,
       surfaceStatus: "pending",
+      surfacedAt: now,
+      failedAttempts: 0,
     },
   });
 

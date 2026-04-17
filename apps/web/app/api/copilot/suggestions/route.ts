@@ -50,8 +50,12 @@ export async function GET(request: NextRequest) {
     prisma.scheduledAction.findMany({
       where: {
         userId: user.id,
-        source: "behavior_detected",
+        // Default for surfaceStatus is 'pending', so we MUST also require an
+        // explicit surfacedAt timestamp to distinguish "actively surfaced"
+        // from "row was never surfaced (column default leaked in)".
+        // This covers behavior_detected AND migrated user_created actions.
         surfaceStatus: "pending",
+        surfacedAt: { not: null },
       },
       orderBy: { surfacedAt: "desc" },
       take: 20,

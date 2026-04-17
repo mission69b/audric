@@ -80,14 +80,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "ScheduledAction not found" }, { status: 404 });
     }
 
-    if (action.source !== "behavior_detected") {
-      return NextResponse.json(
-        { error: "Only behavior_detected actions can be surfaced as suggestions" },
-        { status: 400 }
-      );
-    }
+    // Both source values are valid surfacing targets in Copilot mode:
+    //   - behavior_detected: pattern detector surfaced it
+    //   - user_created: formerly-autonomous schedules migrated to always-ask
+    // The source-based gate that used to live here has moved to the dashboard
+    // GET query (`surfacedAt IS NOT NULL`) so default-pending rows that were
+    // never surfaced don't leak into the suggestions list.
 
-    if (action.surfaceStatus === "pending") {
+    if (action.surfaceStatus === "pending" && action.surfacedAt) {
       return NextResponse.json(
         { ok: true, throttled: true, reason: "already_pending", id: action.id },
         { status: 200 }

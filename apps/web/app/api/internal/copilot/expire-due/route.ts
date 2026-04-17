@@ -3,10 +3,19 @@ import type { InputJsonValue } from "@/lib/generated/prisma/internal/prismaNames
 import { prisma } from "@/lib/prisma";
 import { validateInternalKey } from "@/lib/internal-auth";
 import { isCopilotEnabled } from "@/lib/feature-flags";
+import { CronExpressionParser } from "cron-parser";
 
 export const runtime = "nodejs";
 
 const BATCH_SIZE = 200;
+
+function nextRunFromCron(expr: string): Date | null {
+  try {
+    return CronExpressionParser.parse(expr, { tz: "UTC" }).next().toDate();
+  } catch {
+    return null;
+  }
+}
 
 /**
  * POST /api/internal/copilot/expire-due
@@ -27,22 +36,35 @@ export async function POST(request: NextRequest) {
 
   const now = new Date();
 
-  // ScheduledAction sweep — only behavior_detected rows are surfaced as suggestions
+  // ScheduledAction sweep — both behavior_detected and migrated user_created
+  // rows can carry surfaceStatus='pending' + expiresAt. Source filter intentionally
+  // omitted (matches the dashboard GET semantics: surfacedAt-driven, not source-driven).
   const dueActions = await prisma.scheduledAction.findMany({
     where: {
-      source: "behavior_detected",
       surfaceStatus: "pending",
+      surfacedAt: { not: null },
       expiresAt: { lt: now, not: null },
     },
-    select: { id: true, userId: true, patternType: true },
+    select: { id: true, userId: true, patternType: true, cronExpr: true },
     take: BATCH_SIZE,
   });
 
   if (dueActions.length > 0) {
-    await prisma.scheduledAction.updateMany({
-      where: { id: { in: dueActions.map((a) => a.id) } },
-      data: { surfaceStatus: "expired" },
-    });
+    // Per-row update so we can advance nextRunAt to the next cadence — if we
+    // left nextRunAt in the past, the t2000 cron would re-poll every hour
+    // and burn API calls just to be throttled by surface-suggestion.
+    await Promise.all(
+      dueActions.map((a) => {
+        const nextRun = nextRunFromCron(a.cronExpr);
+        return prisma.scheduledAction.update({
+          where: { id: a.id },
+          data: {
+            surfaceStatus: "expired",
+            ...(nextRun ? { nextRunAt: nextRun } : {}),
+          },
+        });
+      })
+    );
 
     const userIds = Array.from(new Set(dueActions.map((a) => a.userId)));
     const users = await prisma.user.findMany({

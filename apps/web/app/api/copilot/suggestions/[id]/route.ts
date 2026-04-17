@@ -3,11 +3,20 @@ import type { InputJsonValue } from "@/lib/generated/prisma/internal/prismaNames
 import { validateJwt, isValidSuiAddress } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { isCopilotEnabled } from "@/lib/feature-flags";
+import { CronExpressionParser } from "cron-parser";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const SNOOZE_HOURS = 24; // Plan §4: snooze duration is fixed at 24h
+
+function nextRunFromCron(expr: string): Date | null {
+  try {
+    return CronExpressionParser.parse(expr, { tz: "UTC" }).next().toDate();
+  } catch {
+    return null;
+  }
+}
 
 /**
  * GET /api/copilot/suggestions/[id]?address=…&kind=scheduled_action|copilot_suggestion
@@ -161,7 +170,7 @@ export async function POST(
   if (body.kind === "scheduled_action") {
     const action = await prisma.scheduledAction.findFirst({
       where: { id, userId: user.id },
-      select: { id: true, surfaceStatus: true, patternType: true, expiresAt: true },
+      select: { id: true, surfaceStatus: true, patternType: true, expiresAt: true, cronExpr: true },
     });
 
     if (!action) {
@@ -193,9 +202,16 @@ export async function POST(
     }
 
     if (body.action === "skip") {
+      // Skip = "not this time" — advance nextRunAt to the next cadence so the
+      // pattern remains active (only pause_pattern / never_again disable it).
+      const nextRun = nextRunFromCron(action.cronExpr);
       await prisma.scheduledAction.update({
         where: { id: action.id },
-        data: { surfaceStatus: "skipped", lastSkippedAt: now },
+        data: {
+          surfaceStatus: "skipped",
+          lastSkippedAt: now,
+          ...(nextRun ? { nextRunAt: nextRun } : {}),
+        },
       });
       await prisma.appEvent.create({
         data: {

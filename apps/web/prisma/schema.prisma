@@ -330,10 +330,13 @@ model ScheduledAction {
   pausedAt    DateTime?
 
   // Copilot smart-confirmations surfacing (see audric-copilot-smart-confirmations.plan.md §10)
-  // Only meaningful for source = 'behavior_detected' rows; user_created schedules ignore these.
+  // surfaceStatus defaults to 'pending' for ALL rows (default value), so the
+  // dashboard query MUST also require `surfacedAt IS NOT NULL` to filter out
+  // rows that were never actively surfaced. Both behavior_detected (cron-driven)
+  // and user_created (migration-driven) sources can be surfaced.
   surfaceStatus  String    @default("pending") // pending | confirmed | skipped | expired | failed
-  surfacedAt     DateTime? // when last surfaced to user (advanced on snooze per §4)
-  expiresAt      DateTime? // §6 / §12: end-of-day local for DCA recurring; null = no expiry
+  surfacedAt     DateTime? // null = never surfaced. Set to now when surface-suggestion fires; advanced on snooze (+24h, see §4)
+  expiresAt      DateTime? // §6 / §12: 24h from surface for DCA recurring; null = no auto-expiry (e.g. migrated rows)
   failedAttempts Int       @default(0) // §6: 3-strike rule before auto-expire on persistent tx failure
 
   user       User                 @relation(fields: [userId], references: [id])
