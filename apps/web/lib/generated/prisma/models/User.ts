@@ -29,11 +29,13 @@ export type AggregateUser = {
 export type UserAvgAggregateOutputType = {
   timezoneOffset: number | null
   copilotConfirmedCount: number | null
+  digestSendHourLocal: number | null
 }
 
 export type UserSumAggregateOutputType = {
   timezoneOffset: number | null
   copilotConfirmedCount: number | null
+  digestSendHourLocal: number | null
 }
 
 export type UserMinAggregateOutputType = {
@@ -53,6 +55,9 @@ export type UserMinAggregateOutputType = {
   lastDashboardVisitAt: Date | null
   copilotConfirmedCount: number | null
   copilotMigrationNoticeShownAt: Date | null
+  digestEnabled: boolean | null
+  digestSendHourLocal: number | null
+  lastDigestSentAt: Date | null
 }
 
 export type UserMaxAggregateOutputType = {
@@ -72,6 +77,9 @@ export type UserMaxAggregateOutputType = {
   lastDashboardVisitAt: Date | null
   copilotConfirmedCount: number | null
   copilotMigrationNoticeShownAt: Date | null
+  digestEnabled: boolean | null
+  digestSendHourLocal: number | null
+  lastDigestSentAt: Date | null
 }
 
 export type UserCountAggregateOutputType = {
@@ -91,6 +99,9 @@ export type UserCountAggregateOutputType = {
   lastDashboardVisitAt: number
   copilotConfirmedCount: number
   copilotMigrationNoticeShownAt: number
+  digestEnabled: number
+  digestSendHourLocal: number
+  lastDigestSentAt: number
   _all: number
 }
 
@@ -98,11 +109,13 @@ export type UserCountAggregateOutputType = {
 export type UserAvgAggregateInputType = {
   timezoneOffset?: true
   copilotConfirmedCount?: true
+  digestSendHourLocal?: true
 }
 
 export type UserSumAggregateInputType = {
   timezoneOffset?: true
   copilotConfirmedCount?: true
+  digestSendHourLocal?: true
 }
 
 export type UserMinAggregateInputType = {
@@ -122,6 +135,9 @@ export type UserMinAggregateInputType = {
   lastDashboardVisitAt?: true
   copilotConfirmedCount?: true
   copilotMigrationNoticeShownAt?: true
+  digestEnabled?: true
+  digestSendHourLocal?: true
+  lastDigestSentAt?: true
 }
 
 export type UserMaxAggregateInputType = {
@@ -141,6 +157,9 @@ export type UserMaxAggregateInputType = {
   lastDashboardVisitAt?: true
   copilotConfirmedCount?: true
   copilotMigrationNoticeShownAt?: true
+  digestEnabled?: true
+  digestSendHourLocal?: true
+  lastDigestSentAt?: true
 }
 
 export type UserCountAggregateInputType = {
@@ -160,6 +179,9 @@ export type UserCountAggregateInputType = {
   lastDashboardVisitAt?: true
   copilotConfirmedCount?: true
   copilotMigrationNoticeShownAt?: true
+  digestEnabled?: true
+  digestSendHourLocal?: true
+  lastDigestSentAt?: true
   _all?: true
 }
 
@@ -266,6 +288,9 @@ export type UserGroupByOutputType = {
   lastDashboardVisitAt: Date | null
   copilotConfirmedCount: number
   copilotMigrationNoticeShownAt: Date | null
+  digestEnabled: boolean
+  digestSendHourLocal: number
+  lastDigestSentAt: Date | null
   _count: UserCountAggregateOutputType | null
   _avg: UserAvgAggregateOutputType | null
   _sum: UserSumAggregateOutputType | null
@@ -308,6 +333,9 @@ export type UserWhereInput = {
   lastDashboardVisitAt?: Prisma.DateTimeNullableFilter<"User"> | Date | string | null
   copilotConfirmedCount?: Prisma.IntFilter<"User"> | number
   copilotMigrationNoticeShownAt?: Prisma.DateTimeNullableFilter<"User"> | Date | string | null
+  digestEnabled?: Prisma.BoolFilter<"User"> | boolean
+  digestSendHourLocal?: Prisma.IntFilter<"User"> | number
+  lastDigestSentAt?: Prisma.DateTimeNullableFilter<"User"> | Date | string | null
   preferences?: Prisma.XOR<Prisma.UserPreferencesNullableScalarRelationFilter, Prisma.UserPreferencesWhereInput> | null
   conversationLogs?: Prisma.ConversationLogListRelationFilter
   notificationPrefs?: Prisma.NotificationPrefsListRelationFilter
@@ -344,6 +372,9 @@ export type UserOrderByWithRelationInput = {
   lastDashboardVisitAt?: Prisma.SortOrderInput | Prisma.SortOrder
   copilotConfirmedCount?: Prisma.SortOrder
   copilotMigrationNoticeShownAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  digestEnabled?: Prisma.SortOrder
+  digestSendHourLocal?: Prisma.SortOrder
+  lastDigestSentAt?: Prisma.SortOrderInput | Prisma.SortOrder
   preferences?: Prisma.UserPreferencesOrderByWithRelationInput
   conversationLogs?: Prisma.ConversationLogOrderByRelationAggregateInput
   notificationPrefs?: Prisma.NotificationPrefsOrderByRelationAggregateInput
@@ -383,6 +414,9 @@ export type UserWhereUniqueInput = Prisma.AtLeast<{
   lastDashboardVisitAt?: Prisma.DateTimeNullableFilter<"User"> | Date | string | null
   copilotConfirmedCount?: Prisma.IntFilter<"User"> | number
   copilotMigrationNoticeShownAt?: Prisma.DateTimeNullableFilter<"User"> | Date | string | null
+  digestEnabled?: Prisma.BoolFilter<"User"> | boolean
+  digestSendHourLocal?: Prisma.IntFilter<"User"> | number
+  lastDigestSentAt?: Prisma.DateTimeNullableFilter<"User"> | Date | string | null
   preferences?: Prisma.XOR<Prisma.UserPreferencesNullableScalarRelationFilter, Prisma.UserPreferencesWhereInput> | null
   conversationLogs?: Prisma.ConversationLogListRelationFilter
   notificationPrefs?: Prisma.NotificationPrefsListRelationFilter
@@ -419,6 +453,9 @@ export type UserOrderByWithAggregationInput = {
   lastDashboardVisitAt?: Prisma.SortOrderInput | Prisma.SortOrder
   copilotConfirmedCount?: Prisma.SortOrder
   copilotMigrationNoticeShownAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  digestEnabled?: Prisma.SortOrder
+  digestSendHourLocal?: Prisma.SortOrder
+  lastDigestSentAt?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.UserCountOrderByAggregateInput
   _avg?: Prisma.UserAvgOrderByAggregateInput
   _max?: Prisma.UserMaxOrderByAggregateInput
@@ -446,6 +483,9 @@ export type UserScalarWhereWithAggregatesInput = {
   lastDashboardVisitAt?: Prisma.DateTimeNullableWithAggregatesFilter<"User"> | Date | string | null
   copilotConfirmedCount?: Prisma.IntWithAggregatesFilter<"User"> | number
   copilotMigrationNoticeShownAt?: Prisma.DateTimeNullableWithAggregatesFilter<"User"> | Date | string | null
+  digestEnabled?: Prisma.BoolWithAggregatesFilter<"User"> | boolean
+  digestSendHourLocal?: Prisma.IntWithAggregatesFilter<"User"> | number
+  lastDigestSentAt?: Prisma.DateTimeNullableWithAggregatesFilter<"User"> | Date | string | null
 }
 
 export type UserCreateInput = {
@@ -465,6 +505,9 @@ export type UserCreateInput = {
   lastDashboardVisitAt?: Date | string | null
   copilotConfirmedCount?: number
   copilotMigrationNoticeShownAt?: Date | string | null
+  digestEnabled?: boolean
+  digestSendHourLocal?: number
+  lastDigestSentAt?: Date | string | null
   preferences?: Prisma.UserPreferencesCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsCreateNestedManyWithoutUserInput
@@ -501,6 +544,9 @@ export type UserUncheckedCreateInput = {
   lastDashboardVisitAt?: Date | string | null
   copilotConfirmedCount?: number
   copilotMigrationNoticeShownAt?: Date | string | null
+  digestEnabled?: boolean
+  digestSendHourLocal?: number
+  lastDigestSentAt?: Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogUncheckedCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedCreateNestedManyWithoutUserInput
@@ -537,6 +583,9 @@ export type UserUpdateInput = {
   lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
   copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  digestEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  digestSendHourLocal?: Prisma.IntFieldUpdateOperationsInput | number
+  lastDigestSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUpdateManyWithoutUserNestedInput
@@ -573,6 +622,9 @@ export type UserUncheckedUpdateInput = {
   lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
   copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  digestEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  digestSendHourLocal?: Prisma.IntFieldUpdateOperationsInput | number
+  lastDigestSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUncheckedUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedUpdateManyWithoutUserNestedInput
@@ -609,6 +661,9 @@ export type UserCreateManyInput = {
   lastDashboardVisitAt?: Date | string | null
   copilotConfirmedCount?: number
   copilotMigrationNoticeShownAt?: Date | string | null
+  digestEnabled?: boolean
+  digestSendHourLocal?: number
+  lastDigestSentAt?: Date | string | null
 }
 
 export type UserUpdateManyMutationInput = {
@@ -628,6 +683,9 @@ export type UserUpdateManyMutationInput = {
   lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
   copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  digestEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  digestSendHourLocal?: Prisma.IntFieldUpdateOperationsInput | number
+  lastDigestSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 export type UserUncheckedUpdateManyInput = {
@@ -647,6 +705,9 @@ export type UserUncheckedUpdateManyInput = {
   lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
   copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  digestEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  digestSendHourLocal?: Prisma.IntFieldUpdateOperationsInput | number
+  lastDigestSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 export type UserCountOrderByAggregateInput = {
@@ -666,11 +727,15 @@ export type UserCountOrderByAggregateInput = {
   lastDashboardVisitAt?: Prisma.SortOrder
   copilotConfirmedCount?: Prisma.SortOrder
   copilotMigrationNoticeShownAt?: Prisma.SortOrder
+  digestEnabled?: Prisma.SortOrder
+  digestSendHourLocal?: Prisma.SortOrder
+  lastDigestSentAt?: Prisma.SortOrder
 }
 
 export type UserAvgOrderByAggregateInput = {
   timezoneOffset?: Prisma.SortOrder
   copilotConfirmedCount?: Prisma.SortOrder
+  digestSendHourLocal?: Prisma.SortOrder
 }
 
 export type UserMaxOrderByAggregateInput = {
@@ -690,6 +755,9 @@ export type UserMaxOrderByAggregateInput = {
   lastDashboardVisitAt?: Prisma.SortOrder
   copilotConfirmedCount?: Prisma.SortOrder
   copilotMigrationNoticeShownAt?: Prisma.SortOrder
+  digestEnabled?: Prisma.SortOrder
+  digestSendHourLocal?: Prisma.SortOrder
+  lastDigestSentAt?: Prisma.SortOrder
 }
 
 export type UserMinOrderByAggregateInput = {
@@ -709,11 +777,15 @@ export type UserMinOrderByAggregateInput = {
   lastDashboardVisitAt?: Prisma.SortOrder
   copilotConfirmedCount?: Prisma.SortOrder
   copilotMigrationNoticeShownAt?: Prisma.SortOrder
+  digestEnabled?: Prisma.SortOrder
+  digestSendHourLocal?: Prisma.SortOrder
+  lastDigestSentAt?: Prisma.SortOrder
 }
 
 export type UserSumOrderByAggregateInput = {
   timezoneOffset?: Prisma.SortOrder
   copilotConfirmedCount?: Prisma.SortOrder
+  digestSendHourLocal?: Prisma.SortOrder
 }
 
 export type UserNullableScalarRelationFilter = {
@@ -1011,6 +1083,9 @@ export type UserCreateWithoutPreferencesInput = {
   lastDashboardVisitAt?: Date | string | null
   copilotConfirmedCount?: number
   copilotMigrationNoticeShownAt?: Date | string | null
+  digestEnabled?: boolean
+  digestSendHourLocal?: number
+  lastDigestSentAt?: Date | string | null
   conversationLogs?: Prisma.ConversationLogCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsCreateNestedManyWithoutUserInput
   dailyBriefings?: Prisma.DailyBriefingCreateNestedManyWithoutUserInput
@@ -1046,6 +1121,9 @@ export type UserUncheckedCreateWithoutPreferencesInput = {
   lastDashboardVisitAt?: Date | string | null
   copilotConfirmedCount?: number
   copilotMigrationNoticeShownAt?: Date | string | null
+  digestEnabled?: boolean
+  digestSendHourLocal?: number
+  lastDigestSentAt?: Date | string | null
   conversationLogs?: Prisma.ConversationLogUncheckedCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedCreateNestedManyWithoutUserInput
   dailyBriefings?: Prisma.DailyBriefingUncheckedCreateNestedManyWithoutUserInput
@@ -1097,6 +1175,9 @@ export type UserUpdateWithoutPreferencesInput = {
   lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
   copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  digestEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  digestSendHourLocal?: Prisma.IntFieldUpdateOperationsInput | number
+  lastDigestSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   conversationLogs?: Prisma.ConversationLogUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUpdateManyWithoutUserNestedInput
   dailyBriefings?: Prisma.DailyBriefingUpdateManyWithoutUserNestedInput
@@ -1132,6 +1213,9 @@ export type UserUncheckedUpdateWithoutPreferencesInput = {
   lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
   copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  digestEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  digestSendHourLocal?: Prisma.IntFieldUpdateOperationsInput | number
+  lastDigestSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   conversationLogs?: Prisma.ConversationLogUncheckedUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedUpdateManyWithoutUserNestedInput
   dailyBriefings?: Prisma.DailyBriefingUncheckedUpdateManyWithoutUserNestedInput
@@ -1167,6 +1251,9 @@ export type UserCreateWithoutConversationLogsInput = {
   lastDashboardVisitAt?: Date | string | null
   copilotConfirmedCount?: number
   copilotMigrationNoticeShownAt?: Date | string | null
+  digestEnabled?: boolean
+  digestSendHourLocal?: number
+  lastDigestSentAt?: Date | string | null
   preferences?: Prisma.UserPreferencesCreateNestedOneWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsCreateNestedManyWithoutUserInput
   dailyBriefings?: Prisma.DailyBriefingCreateNestedManyWithoutUserInput
@@ -1202,6 +1289,9 @@ export type UserUncheckedCreateWithoutConversationLogsInput = {
   lastDashboardVisitAt?: Date | string | null
   copilotConfirmedCount?: number
   copilotMigrationNoticeShownAt?: Date | string | null
+  digestEnabled?: boolean
+  digestSendHourLocal?: number
+  lastDigestSentAt?: Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedCreateNestedOneWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedCreateNestedManyWithoutUserInput
   dailyBriefings?: Prisma.DailyBriefingUncheckedCreateNestedManyWithoutUserInput
@@ -1253,6 +1343,9 @@ export type UserUpdateWithoutConversationLogsInput = {
   lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
   copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  digestEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  digestSendHourLocal?: Prisma.IntFieldUpdateOperationsInput | number
+  lastDigestSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUpdateOneWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUpdateManyWithoutUserNestedInput
   dailyBriefings?: Prisma.DailyBriefingUpdateManyWithoutUserNestedInput
@@ -1288,6 +1381,9 @@ export type UserUncheckedUpdateWithoutConversationLogsInput = {
   lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
   copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  digestEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  digestSendHourLocal?: Prisma.IntFieldUpdateOperationsInput | number
+  lastDigestSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedUpdateOneWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedUpdateManyWithoutUserNestedInput
   dailyBriefings?: Prisma.DailyBriefingUncheckedUpdateManyWithoutUserNestedInput
@@ -1323,6 +1419,9 @@ export type UserCreateWithoutNotificationPrefsInput = {
   lastDashboardVisitAt?: Date | string | null
   copilotConfirmedCount?: number
   copilotMigrationNoticeShownAt?: Date | string | null
+  digestEnabled?: boolean
+  digestSendHourLocal?: number
+  lastDigestSentAt?: Date | string | null
   preferences?: Prisma.UserPreferencesCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogCreateNestedManyWithoutUserInput
   dailyBriefings?: Prisma.DailyBriefingCreateNestedManyWithoutUserInput
@@ -1358,6 +1457,9 @@ export type UserUncheckedCreateWithoutNotificationPrefsInput = {
   lastDashboardVisitAt?: Date | string | null
   copilotConfirmedCount?: number
   copilotMigrationNoticeShownAt?: Date | string | null
+  digestEnabled?: boolean
+  digestSendHourLocal?: number
+  lastDigestSentAt?: Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogUncheckedCreateNestedManyWithoutUserInput
   dailyBriefings?: Prisma.DailyBriefingUncheckedCreateNestedManyWithoutUserInput
@@ -1409,6 +1511,9 @@ export type UserUpdateWithoutNotificationPrefsInput = {
   lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
   copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  digestEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  digestSendHourLocal?: Prisma.IntFieldUpdateOperationsInput | number
+  lastDigestSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUpdateManyWithoutUserNestedInput
   dailyBriefings?: Prisma.DailyBriefingUpdateManyWithoutUserNestedInput
@@ -1444,6 +1549,9 @@ export type UserUncheckedUpdateWithoutNotificationPrefsInput = {
   lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
   copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  digestEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  digestSendHourLocal?: Prisma.IntFieldUpdateOperationsInput | number
+  lastDigestSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUncheckedUpdateManyWithoutUserNestedInput
   dailyBriefings?: Prisma.DailyBriefingUncheckedUpdateManyWithoutUserNestedInput
@@ -1479,6 +1587,9 @@ export type UserCreateWithoutDailyBriefingsInput = {
   lastDashboardVisitAt?: Date | string | null
   copilotConfirmedCount?: number
   copilotMigrationNoticeShownAt?: Date | string | null
+  digestEnabled?: boolean
+  digestSendHourLocal?: number
+  lastDigestSentAt?: Date | string | null
   preferences?: Prisma.UserPreferencesCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsCreateNestedManyWithoutUserInput
@@ -1514,6 +1625,9 @@ export type UserUncheckedCreateWithoutDailyBriefingsInput = {
   lastDashboardVisitAt?: Date | string | null
   copilotConfirmedCount?: number
   copilotMigrationNoticeShownAt?: Date | string | null
+  digestEnabled?: boolean
+  digestSendHourLocal?: number
+  lastDigestSentAt?: Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogUncheckedCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedCreateNestedManyWithoutUserInput
@@ -1565,6 +1679,9 @@ export type UserUpdateWithoutDailyBriefingsInput = {
   lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
   copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  digestEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  digestSendHourLocal?: Prisma.IntFieldUpdateOperationsInput | number
+  lastDigestSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUpdateManyWithoutUserNestedInput
@@ -1600,6 +1717,9 @@ export type UserUncheckedUpdateWithoutDailyBriefingsInput = {
   lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
   copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  digestEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  digestSendHourLocal?: Prisma.IntFieldUpdateOperationsInput | number
+  lastDigestSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUncheckedUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedUpdateManyWithoutUserNestedInput
@@ -1635,6 +1755,9 @@ export type UserCreateWithoutSavingsGoalsInput = {
   lastDashboardVisitAt?: Date | string | null
   copilotConfirmedCount?: number
   copilotMigrationNoticeShownAt?: Date | string | null
+  digestEnabled?: boolean
+  digestSendHourLocal?: number
+  lastDigestSentAt?: Date | string | null
   preferences?: Prisma.UserPreferencesCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsCreateNestedManyWithoutUserInput
@@ -1670,6 +1793,9 @@ export type UserUncheckedCreateWithoutSavingsGoalsInput = {
   lastDashboardVisitAt?: Date | string | null
   copilotConfirmedCount?: number
   copilotMigrationNoticeShownAt?: Date | string | null
+  digestEnabled?: boolean
+  digestSendHourLocal?: number
+  lastDigestSentAt?: Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogUncheckedCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedCreateNestedManyWithoutUserInput
@@ -1721,6 +1847,9 @@ export type UserUpdateWithoutSavingsGoalsInput = {
   lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
   copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  digestEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  digestSendHourLocal?: Prisma.IntFieldUpdateOperationsInput | number
+  lastDigestSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUpdateManyWithoutUserNestedInput
@@ -1756,6 +1885,9 @@ export type UserUncheckedUpdateWithoutSavingsGoalsInput = {
   lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
   copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  digestEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  digestSendHourLocal?: Prisma.IntFieldUpdateOperationsInput | number
+  lastDigestSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUncheckedUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedUpdateManyWithoutUserNestedInput
@@ -1791,6 +1923,9 @@ export type UserCreateWithoutAdviceLogsInput = {
   lastDashboardVisitAt?: Date | string | null
   copilotConfirmedCount?: number
   copilotMigrationNoticeShownAt?: Date | string | null
+  digestEnabled?: boolean
+  digestSendHourLocal?: number
+  lastDigestSentAt?: Date | string | null
   preferences?: Prisma.UserPreferencesCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsCreateNestedManyWithoutUserInput
@@ -1826,6 +1961,9 @@ export type UserUncheckedCreateWithoutAdviceLogsInput = {
   lastDashboardVisitAt?: Date | string | null
   copilotConfirmedCount?: number
   copilotMigrationNoticeShownAt?: Date | string | null
+  digestEnabled?: boolean
+  digestSendHourLocal?: number
+  lastDigestSentAt?: Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogUncheckedCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedCreateNestedManyWithoutUserInput
@@ -1877,6 +2015,9 @@ export type UserUpdateWithoutAdviceLogsInput = {
   lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
   copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  digestEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  digestSendHourLocal?: Prisma.IntFieldUpdateOperationsInput | number
+  lastDigestSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUpdateManyWithoutUserNestedInput
@@ -1912,6 +2053,9 @@ export type UserUncheckedUpdateWithoutAdviceLogsInput = {
   lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
   copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  digestEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  digestSendHourLocal?: Prisma.IntFieldUpdateOperationsInput | number
+  lastDigestSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUncheckedUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedUpdateManyWithoutUserNestedInput
@@ -1947,6 +2091,9 @@ export type UserCreateWithoutPaymentsInput = {
   lastDashboardVisitAt?: Date | string | null
   copilotConfirmedCount?: number
   copilotMigrationNoticeShownAt?: Date | string | null
+  digestEnabled?: boolean
+  digestSendHourLocal?: number
+  lastDigestSentAt?: Date | string | null
   preferences?: Prisma.UserPreferencesCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsCreateNestedManyWithoutUserInput
@@ -1982,6 +2129,9 @@ export type UserUncheckedCreateWithoutPaymentsInput = {
   lastDashboardVisitAt?: Date | string | null
   copilotConfirmedCount?: number
   copilotMigrationNoticeShownAt?: Date | string | null
+  digestEnabled?: boolean
+  digestSendHourLocal?: number
+  lastDigestSentAt?: Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogUncheckedCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedCreateNestedManyWithoutUserInput
@@ -2033,6 +2183,9 @@ export type UserUpdateWithoutPaymentsInput = {
   lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
   copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  digestEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  digestSendHourLocal?: Prisma.IntFieldUpdateOperationsInput | number
+  lastDigestSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUpdateManyWithoutUserNestedInput
@@ -2068,6 +2221,9 @@ export type UserUncheckedUpdateWithoutPaymentsInput = {
   lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
   copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  digestEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  digestSendHourLocal?: Prisma.IntFieldUpdateOperationsInput | number
+  lastDigestSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUncheckedUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedUpdateManyWithoutUserNestedInput
@@ -2103,6 +2259,9 @@ export type UserCreateWithoutSavingsGoalDepositsInput = {
   lastDashboardVisitAt?: Date | string | null
   copilotConfirmedCount?: number
   copilotMigrationNoticeShownAt?: Date | string | null
+  digestEnabled?: boolean
+  digestSendHourLocal?: number
+  lastDigestSentAt?: Date | string | null
   preferences?: Prisma.UserPreferencesCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsCreateNestedManyWithoutUserInput
@@ -2138,6 +2297,9 @@ export type UserUncheckedCreateWithoutSavingsGoalDepositsInput = {
   lastDashboardVisitAt?: Date | string | null
   copilotConfirmedCount?: number
   copilotMigrationNoticeShownAt?: Date | string | null
+  digestEnabled?: boolean
+  digestSendHourLocal?: number
+  lastDigestSentAt?: Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogUncheckedCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedCreateNestedManyWithoutUserInput
@@ -2189,6 +2351,9 @@ export type UserUpdateWithoutSavingsGoalDepositsInput = {
   lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
   copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  digestEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  digestSendHourLocal?: Prisma.IntFieldUpdateOperationsInput | number
+  lastDigestSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUpdateManyWithoutUserNestedInput
@@ -2224,6 +2389,9 @@ export type UserUncheckedUpdateWithoutSavingsGoalDepositsInput = {
   lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
   copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  digestEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  digestSendHourLocal?: Prisma.IntFieldUpdateOperationsInput | number
+  lastDigestSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUncheckedUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedUpdateManyWithoutUserNestedInput
@@ -2259,6 +2427,9 @@ export type UserCreateWithoutWatchAddressesInput = {
   lastDashboardVisitAt?: Date | string | null
   copilotConfirmedCount?: number
   copilotMigrationNoticeShownAt?: Date | string | null
+  digestEnabled?: boolean
+  digestSendHourLocal?: number
+  lastDigestSentAt?: Date | string | null
   preferences?: Prisma.UserPreferencesCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsCreateNestedManyWithoutUserInput
@@ -2294,6 +2465,9 @@ export type UserUncheckedCreateWithoutWatchAddressesInput = {
   lastDashboardVisitAt?: Date | string | null
   copilotConfirmedCount?: number
   copilotMigrationNoticeShownAt?: Date | string | null
+  digestEnabled?: boolean
+  digestSendHourLocal?: number
+  lastDigestSentAt?: Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogUncheckedCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedCreateNestedManyWithoutUserInput
@@ -2345,6 +2519,9 @@ export type UserUpdateWithoutWatchAddressesInput = {
   lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
   copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  digestEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  digestSendHourLocal?: Prisma.IntFieldUpdateOperationsInput | number
+  lastDigestSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUpdateManyWithoutUserNestedInput
@@ -2380,6 +2557,9 @@ export type UserUncheckedUpdateWithoutWatchAddressesInput = {
   lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
   copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  digestEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  digestSendHourLocal?: Prisma.IntFieldUpdateOperationsInput | number
+  lastDigestSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUncheckedUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedUpdateManyWithoutUserNestedInput
@@ -2415,6 +2595,9 @@ export type UserCreateWithoutPortfolioSnapshotsInput = {
   lastDashboardVisitAt?: Date | string | null
   copilotConfirmedCount?: number
   copilotMigrationNoticeShownAt?: Date | string | null
+  digestEnabled?: boolean
+  digestSendHourLocal?: number
+  lastDigestSentAt?: Date | string | null
   preferences?: Prisma.UserPreferencesCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsCreateNestedManyWithoutUserInput
@@ -2450,6 +2633,9 @@ export type UserUncheckedCreateWithoutPortfolioSnapshotsInput = {
   lastDashboardVisitAt?: Date | string | null
   copilotConfirmedCount?: number
   copilotMigrationNoticeShownAt?: Date | string | null
+  digestEnabled?: boolean
+  digestSendHourLocal?: number
+  lastDigestSentAt?: Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogUncheckedCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedCreateNestedManyWithoutUserInput
@@ -2501,6 +2687,9 @@ export type UserUpdateWithoutPortfolioSnapshotsInput = {
   lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
   copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  digestEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  digestSendHourLocal?: Prisma.IntFieldUpdateOperationsInput | number
+  lastDigestSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUpdateManyWithoutUserNestedInput
@@ -2536,6 +2725,9 @@ export type UserUncheckedUpdateWithoutPortfolioSnapshotsInput = {
   lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
   copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  digestEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  digestSendHourLocal?: Prisma.IntFieldUpdateOperationsInput | number
+  lastDigestSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUncheckedUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedUpdateManyWithoutUserNestedInput
@@ -2571,6 +2763,9 @@ export type UserCreateWithoutScheduledActionsInput = {
   lastDashboardVisitAt?: Date | string | null
   copilotConfirmedCount?: number
   copilotMigrationNoticeShownAt?: Date | string | null
+  digestEnabled?: boolean
+  digestSendHourLocal?: number
+  lastDigestSentAt?: Date | string | null
   preferences?: Prisma.UserPreferencesCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsCreateNestedManyWithoutUserInput
@@ -2606,6 +2801,9 @@ export type UserUncheckedCreateWithoutScheduledActionsInput = {
   lastDashboardVisitAt?: Date | string | null
   copilotConfirmedCount?: number
   copilotMigrationNoticeShownAt?: Date | string | null
+  digestEnabled?: boolean
+  digestSendHourLocal?: number
+  lastDigestSentAt?: Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogUncheckedCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedCreateNestedManyWithoutUserInput
@@ -2657,6 +2855,9 @@ export type UserUpdateWithoutScheduledActionsInput = {
   lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
   copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  digestEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  digestSendHourLocal?: Prisma.IntFieldUpdateOperationsInput | number
+  lastDigestSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUpdateManyWithoutUserNestedInput
@@ -2692,6 +2893,9 @@ export type UserUncheckedUpdateWithoutScheduledActionsInput = {
   lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
   copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  digestEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  digestSendHourLocal?: Prisma.IntFieldUpdateOperationsInput | number
+  lastDigestSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUncheckedUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedUpdateManyWithoutUserNestedInput
@@ -2727,6 +2931,9 @@ export type UserCreateWithoutCopilotSuggestionsInput = {
   lastDashboardVisitAt?: Date | string | null
   copilotConfirmedCount?: number
   copilotMigrationNoticeShownAt?: Date | string | null
+  digestEnabled?: boolean
+  digestSendHourLocal?: number
+  lastDigestSentAt?: Date | string | null
   preferences?: Prisma.UserPreferencesCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsCreateNestedManyWithoutUserInput
@@ -2762,6 +2969,9 @@ export type UserUncheckedCreateWithoutCopilotSuggestionsInput = {
   lastDashboardVisitAt?: Date | string | null
   copilotConfirmedCount?: number
   copilotMigrationNoticeShownAt?: Date | string | null
+  digestEnabled?: boolean
+  digestSendHourLocal?: number
+  lastDigestSentAt?: Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogUncheckedCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedCreateNestedManyWithoutUserInput
@@ -2813,6 +3023,9 @@ export type UserUpdateWithoutCopilotSuggestionsInput = {
   lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
   copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  digestEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  digestSendHourLocal?: Prisma.IntFieldUpdateOperationsInput | number
+  lastDigestSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUpdateManyWithoutUserNestedInput
@@ -2848,6 +3061,9 @@ export type UserUncheckedUpdateWithoutCopilotSuggestionsInput = {
   lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
   copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  digestEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  digestSendHourLocal?: Prisma.IntFieldUpdateOperationsInput | number
+  lastDigestSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUncheckedUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedUpdateManyWithoutUserNestedInput
@@ -2883,6 +3099,9 @@ export type UserCreateWithoutOutcomeChecksInput = {
   lastDashboardVisitAt?: Date | string | null
   copilotConfirmedCount?: number
   copilotMigrationNoticeShownAt?: Date | string | null
+  digestEnabled?: boolean
+  digestSendHourLocal?: number
+  lastDigestSentAt?: Date | string | null
   preferences?: Prisma.UserPreferencesCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsCreateNestedManyWithoutUserInput
@@ -2918,6 +3137,9 @@ export type UserUncheckedCreateWithoutOutcomeChecksInput = {
   lastDashboardVisitAt?: Date | string | null
   copilotConfirmedCount?: number
   copilotMigrationNoticeShownAt?: Date | string | null
+  digestEnabled?: boolean
+  digestSendHourLocal?: number
+  lastDigestSentAt?: Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogUncheckedCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedCreateNestedManyWithoutUserInput
@@ -2969,6 +3191,9 @@ export type UserUpdateWithoutOutcomeChecksInput = {
   lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
   copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  digestEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  digestSendHourLocal?: Prisma.IntFieldUpdateOperationsInput | number
+  lastDigestSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUpdateManyWithoutUserNestedInput
@@ -3004,6 +3229,9 @@ export type UserUncheckedUpdateWithoutOutcomeChecksInput = {
   lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
   copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  digestEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  digestSendHourLocal?: Prisma.IntFieldUpdateOperationsInput | number
+  lastDigestSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUncheckedUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedUpdateManyWithoutUserNestedInput
@@ -3039,6 +3267,9 @@ export type UserCreateWithoutFollowUpQueueInput = {
   lastDashboardVisitAt?: Date | string | null
   copilotConfirmedCount?: number
   copilotMigrationNoticeShownAt?: Date | string | null
+  digestEnabled?: boolean
+  digestSendHourLocal?: number
+  lastDigestSentAt?: Date | string | null
   preferences?: Prisma.UserPreferencesCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsCreateNestedManyWithoutUserInput
@@ -3074,6 +3305,9 @@ export type UserUncheckedCreateWithoutFollowUpQueueInput = {
   lastDashboardVisitAt?: Date | string | null
   copilotConfirmedCount?: number
   copilotMigrationNoticeShownAt?: Date | string | null
+  digestEnabled?: boolean
+  digestSendHourLocal?: number
+  lastDigestSentAt?: Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogUncheckedCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedCreateNestedManyWithoutUserInput
@@ -3125,6 +3359,9 @@ export type UserUpdateWithoutFollowUpQueueInput = {
   lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
   copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  digestEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  digestSendHourLocal?: Prisma.IntFieldUpdateOperationsInput | number
+  lastDigestSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUpdateManyWithoutUserNestedInput
@@ -3160,6 +3397,9 @@ export type UserUncheckedUpdateWithoutFollowUpQueueInput = {
   lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
   copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  digestEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  digestSendHourLocal?: Prisma.IntFieldUpdateOperationsInput | number
+  lastDigestSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUncheckedUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedUpdateManyWithoutUserNestedInput
@@ -3195,6 +3435,9 @@ export type UserCreateWithoutFinancialProfileInput = {
   lastDashboardVisitAt?: Date | string | null
   copilotConfirmedCount?: number
   copilotMigrationNoticeShownAt?: Date | string | null
+  digestEnabled?: boolean
+  digestSendHourLocal?: number
+  lastDigestSentAt?: Date | string | null
   preferences?: Prisma.UserPreferencesCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsCreateNestedManyWithoutUserInput
@@ -3230,6 +3473,9 @@ export type UserUncheckedCreateWithoutFinancialProfileInput = {
   lastDashboardVisitAt?: Date | string | null
   copilotConfirmedCount?: number
   copilotMigrationNoticeShownAt?: Date | string | null
+  digestEnabled?: boolean
+  digestSendHourLocal?: number
+  lastDigestSentAt?: Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogUncheckedCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedCreateNestedManyWithoutUserInput
@@ -3281,6 +3527,9 @@ export type UserUpdateWithoutFinancialProfileInput = {
   lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
   copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  digestEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  digestSendHourLocal?: Prisma.IntFieldUpdateOperationsInput | number
+  lastDigestSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUpdateManyWithoutUserNestedInput
@@ -3316,6 +3565,9 @@ export type UserUncheckedUpdateWithoutFinancialProfileInput = {
   lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
   copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  digestEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  digestSendHourLocal?: Prisma.IntFieldUpdateOperationsInput | number
+  lastDigestSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUncheckedUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedUpdateManyWithoutUserNestedInput
@@ -3351,6 +3603,9 @@ export type UserCreateWithoutMemoriesInput = {
   lastDashboardVisitAt?: Date | string | null
   copilotConfirmedCount?: number
   copilotMigrationNoticeShownAt?: Date | string | null
+  digestEnabled?: boolean
+  digestSendHourLocal?: number
+  lastDigestSentAt?: Date | string | null
   preferences?: Prisma.UserPreferencesCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsCreateNestedManyWithoutUserInput
@@ -3386,6 +3641,9 @@ export type UserUncheckedCreateWithoutMemoriesInput = {
   lastDashboardVisitAt?: Date | string | null
   copilotConfirmedCount?: number
   copilotMigrationNoticeShownAt?: Date | string | null
+  digestEnabled?: boolean
+  digestSendHourLocal?: number
+  lastDigestSentAt?: Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogUncheckedCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedCreateNestedManyWithoutUserInput
@@ -3437,6 +3695,9 @@ export type UserUpdateWithoutMemoriesInput = {
   lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
   copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  digestEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  digestSendHourLocal?: Prisma.IntFieldUpdateOperationsInput | number
+  lastDigestSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUpdateManyWithoutUserNestedInput
@@ -3472,6 +3733,9 @@ export type UserUncheckedUpdateWithoutMemoriesInput = {
   lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
   copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  digestEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  digestSendHourLocal?: Prisma.IntFieldUpdateOperationsInput | number
+  lastDigestSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUncheckedUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedUpdateManyWithoutUserNestedInput
@@ -3507,6 +3771,9 @@ export type UserCreateWithoutLinkedWalletsInput = {
   lastDashboardVisitAt?: Date | string | null
   copilotConfirmedCount?: number
   copilotMigrationNoticeShownAt?: Date | string | null
+  digestEnabled?: boolean
+  digestSendHourLocal?: number
+  lastDigestSentAt?: Date | string | null
   preferences?: Prisma.UserPreferencesCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsCreateNestedManyWithoutUserInput
@@ -3542,6 +3809,9 @@ export type UserUncheckedCreateWithoutLinkedWalletsInput = {
   lastDashboardVisitAt?: Date | string | null
   copilotConfirmedCount?: number
   copilotMigrationNoticeShownAt?: Date | string | null
+  digestEnabled?: boolean
+  digestSendHourLocal?: number
+  lastDigestSentAt?: Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogUncheckedCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedCreateNestedManyWithoutUserInput
@@ -3593,6 +3863,9 @@ export type UserUpdateWithoutLinkedWalletsInput = {
   lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
   copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  digestEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  digestSendHourLocal?: Prisma.IntFieldUpdateOperationsInput | number
+  lastDigestSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUpdateManyWithoutUserNestedInput
@@ -3628,6 +3901,9 @@ export type UserUncheckedUpdateWithoutLinkedWalletsInput = {
   lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
   copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  digestEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  digestSendHourLocal?: Prisma.IntFieldUpdateOperationsInput | number
+  lastDigestSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUncheckedUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedUpdateManyWithoutUserNestedInput
@@ -3820,6 +4096,9 @@ export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   lastDashboardVisitAt?: boolean
   copilotConfirmedCount?: boolean
   copilotMigrationNoticeShownAt?: boolean
+  digestEnabled?: boolean
+  digestSendHourLocal?: boolean
+  lastDigestSentAt?: boolean
   preferences?: boolean | Prisma.User$preferencesArgs<ExtArgs>
   conversationLogs?: boolean | Prisma.User$conversationLogsArgs<ExtArgs>
   notificationPrefs?: boolean | Prisma.User$notificationPrefsArgs<ExtArgs>
@@ -3857,6 +4136,9 @@ export type UserSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   lastDashboardVisitAt?: boolean
   copilotConfirmedCount?: boolean
   copilotMigrationNoticeShownAt?: boolean
+  digestEnabled?: boolean
+  digestSendHourLocal?: boolean
+  lastDigestSentAt?: boolean
 }, ExtArgs["result"]["user"]>
 
 export type UserSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -3876,6 +4158,9 @@ export type UserSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   lastDashboardVisitAt?: boolean
   copilotConfirmedCount?: boolean
   copilotMigrationNoticeShownAt?: boolean
+  digestEnabled?: boolean
+  digestSendHourLocal?: boolean
+  lastDigestSentAt?: boolean
 }, ExtArgs["result"]["user"]>
 
 export type UserSelectScalar = {
@@ -3895,9 +4180,12 @@ export type UserSelectScalar = {
   lastDashboardVisitAt?: boolean
   copilotConfirmedCount?: boolean
   copilotMigrationNoticeShownAt?: boolean
+  digestEnabled?: boolean
+  digestSendHourLocal?: boolean
+  lastDigestSentAt?: boolean
 }
 
-export type UserOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "suiAddress" | "email" | "emailVerified" | "emailVerifyToken" | "emailVerifyExpiry" | "displayName" | "timezoneOffset" | "onboardedAt" | "tosAcceptedAt" | "createdAt" | "updatedAt" | "emailDeliverable" | "lastDashboardVisitAt" | "copilotConfirmedCount" | "copilotMigrationNoticeShownAt", ExtArgs["result"]["user"]>
+export type UserOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "suiAddress" | "email" | "emailVerified" | "emailVerifyToken" | "emailVerifyExpiry" | "displayName" | "timezoneOffset" | "onboardedAt" | "tosAcceptedAt" | "createdAt" | "updatedAt" | "emailDeliverable" | "lastDashboardVisitAt" | "copilotConfirmedCount" | "copilotMigrationNoticeShownAt" | "digestEnabled" | "digestSendHourLocal" | "lastDigestSentAt", ExtArgs["result"]["user"]>
 export type UserInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   preferences?: boolean | Prisma.User$preferencesArgs<ExtArgs>
   conversationLogs?: boolean | Prisma.User$conversationLogsArgs<ExtArgs>
@@ -3959,6 +4247,9 @@ export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     lastDashboardVisitAt: Date | null
     copilotConfirmedCount: number
     copilotMigrationNoticeShownAt: Date | null
+    digestEnabled: boolean
+    digestSendHourLocal: number
+    lastDigestSentAt: Date | null
   }, ExtArgs["result"]["user"]>
   composites: {}
 }
@@ -4415,6 +4706,9 @@ export interface UserFieldRefs {
   readonly lastDashboardVisitAt: Prisma.FieldRef<"User", 'DateTime'>
   readonly copilotConfirmedCount: Prisma.FieldRef<"User", 'Int'>
   readonly copilotMigrationNoticeShownAt: Prisma.FieldRef<"User", 'DateTime'>
+  readonly digestEnabled: Prisma.FieldRef<"User", 'Boolean'>
+  readonly digestSendHourLocal: Prisma.FieldRef<"User", 'Int'>
+  readonly lastDigestSentAt: Prisma.FieldRef<"User", 'DateTime'>
 }
     
 

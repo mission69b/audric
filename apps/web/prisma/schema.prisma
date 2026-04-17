@@ -27,6 +27,11 @@ model User {
   copilotConfirmedCount        Int       @default(0)    // drives §5 post-10-confirms email-add nudge
   copilotMigrationNoticeShownAt DateTime? // §2: one-time in-app notice for users whose isAutonomous=true schedules were migrated to always-ask
 
+  // Copilot digest (Wave C.3) — hourly cron picks up users whose local hour matches digestSendHourLocal
+  digestEnabled        Boolean   @default(true) // user opt-out toggled in /settings/copilot
+  digestSendHourLocal  Int       @default(8)    // 0-23, evaluated against (now - timezoneOffset)
+  lastDigestSentAt     DateTime?                // dedup so we don't send twice in the same UTC day
+
   preferences          UserPreferences?
   conversationLogs     ConversationLog[]
   notificationPrefs    NotificationPrefs[]
@@ -47,6 +52,7 @@ model User {
 
   @@index([email])
   @@index([emailVerified, timezoneOffset])
+  @@index([digestEnabled, emailDeliverable, digestSendHourLocal])
 }
 
 model UserPreferences {

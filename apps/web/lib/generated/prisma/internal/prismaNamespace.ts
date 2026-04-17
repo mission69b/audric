@@ -2258,7 +2258,10 @@ export const UserScalarFieldEnum = {
   emailDeliverable: 'emailDeliverable',
   lastDashboardVisitAt: 'lastDashboardVisitAt',
   copilotConfirmedCount: 'copilotConfirmedCount',
-  copilotMigrationNoticeShownAt: 'copilotMigrationNoticeShownAt'
+  copilotMigrationNoticeShownAt: 'copilotMigrationNoticeShownAt',
+  digestEnabled: 'digestEnabled',
+  digestSendHourLocal: 'digestSendHourLocal',
+  lastDigestSentAt: 'lastDigestSentAt'
 } as const
 
 export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof UserScalarFieldEnum]
