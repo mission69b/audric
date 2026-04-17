@@ -1409,6 +1409,8 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
           onCtaClick: () => engine.sendMessage(dashInsights.proactive!.action),
         } : null}
         onDismissProactive={dashInsights.dismissProactive}
+        copilotAddress={address}
+        copilotJwt={session?.jwt ?? null}
       />
     );
   };

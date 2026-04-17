@@ -47,23 +47,7 @@ export function CopilotSuggestionsRow({ address, jwt }: CopilotSuggestionsRowPro
   useDashboardPing(address, jwt, enabled);
 
   const query = useCopilotSuggestions(address, jwt);
-  const { data, isLoading, isError, error, fetchStatus } = query;
-  const suggestions = data?.suggestions ?? [];
-
-  // TEMP debug — will be removed once we confirm end-to-end
-  if (typeof window !== "undefined") {
-    // eslint-disable-next-line no-console
-    console.log("[CopilotRow]", {
-      enabled,
-      address: address?.slice(0, 10),
-      hasJwt: Boolean(jwt),
-      isLoading,
-      isError,
-      fetchStatus,
-      suggestionsCount: suggestions.length,
-      err: isError ? String(error) : null,
-    });
-  }
+  const suggestions = query.data?.suggestions ?? [];
 
   if (suggestions.length === 0) return null;
 

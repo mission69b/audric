@@ -6,6 +6,7 @@ import { ChipExpand } from './ChipExpand';
 import { BriefingCard } from './BriefingCard';
 import { ProactiveBanner } from './ProactiveBanner';
 import { HandledForYou } from './HandledForYou';
+import { CopilotSuggestionsRow } from './CopilotSuggestionsRow';
 import { useChipExpand } from '@/hooks/useChipExpand';
 import type { BriefingData } from '@/hooks/useOvernightBriefing';
 
@@ -42,6 +43,10 @@ interface NewConversationViewProps {
   onDismissProactive?: () => void;
   handledActions?: HandledAction[];
   onViewHandled?: () => void;
+  // Copilot suggestions (Wave B). Mounted here so users see pending
+  // confirmations even on a fresh dashboard with no chat history.
+  copilotAddress?: string | null;
+  copilotJwt?: string | null;
 }
 
 function fmtCompact(n: number): string {
@@ -64,6 +69,8 @@ export function NewConversationView({
   onDismissProactive,
   handledActions,
   onViewHandled,
+  copilotAddress,
+  copilotJwt,
 }: NewConversationViewProps) {
   const chipExpand = useChipExpand();
   const stats: string[] = [];
@@ -76,6 +83,15 @@ export function NewConversationView({
     <div className="flex-1 flex flex-col items-center overflow-y-auto px-4 sm:px-6">
       {/* Spacer — pushes content to center when it fits, collapses when it overflows */}
       <div className="flex-1 min-h-8" />
+
+      {/* Copilot suggestions — render at the top so users immediately see
+          pending confirmations on dashboard load. The component returns null
+          when there are no suggestions, so it's invisible by default. */}
+      {copilotAddress !== undefined && copilotJwt !== undefined && (
+        <div className="w-full max-w-2xl mb-4">
+          <CopilotSuggestionsRow address={copilotAddress ?? null} jwt={copilotJwt ?? null} />
+        </div>
+      )}
 
       {briefing && (
         <div className="w-full max-w-2xl mb-6">
