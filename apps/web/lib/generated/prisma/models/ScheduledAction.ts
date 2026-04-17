@@ -34,6 +34,7 @@ export type ScheduledActionAvgAggregateOutputType = {
   totalAmountUsdc: number | null
   confidence: number | null
   stage: number | null
+  failedAttempts: number | null
 }
 
 export type ScheduledActionSumAggregateOutputType = {
@@ -44,6 +45,7 @@ export type ScheduledActionSumAggregateOutputType = {
   totalAmountUsdc: number | null
   confidence: number | null
   stage: number | null
+  failedAttempts: number | null
 }
 
 export type ScheduledActionMinAggregateOutputType = {
@@ -71,6 +73,10 @@ export type ScheduledActionMinAggregateOutputType = {
   stage: number | null
   declinedAt: Date | null
   pausedAt: Date | null
+  surfaceStatus: string | null
+  surfacedAt: Date | null
+  expiresAt: Date | null
+  failedAttempts: number | null
 }
 
 export type ScheduledActionMaxAggregateOutputType = {
@@ -98,6 +104,10 @@ export type ScheduledActionMaxAggregateOutputType = {
   stage: number | null
   declinedAt: Date | null
   pausedAt: Date | null
+  surfaceStatus: string | null
+  surfacedAt: Date | null
+  expiresAt: Date | null
+  failedAttempts: number | null
 }
 
 export type ScheduledActionCountAggregateOutputType = {
@@ -125,6 +135,10 @@ export type ScheduledActionCountAggregateOutputType = {
   stage: number
   declinedAt: number
   pausedAt: number
+  surfaceStatus: number
+  surfacedAt: number
+  expiresAt: number
+  failedAttempts: number
   _all: number
 }
 
@@ -137,6 +151,7 @@ export type ScheduledActionAvgAggregateInputType = {
   totalAmountUsdc?: true
   confidence?: true
   stage?: true
+  failedAttempts?: true
 }
 
 export type ScheduledActionSumAggregateInputType = {
@@ -147,6 +162,7 @@ export type ScheduledActionSumAggregateInputType = {
   totalAmountUsdc?: true
   confidence?: true
   stage?: true
+  failedAttempts?: true
 }
 
 export type ScheduledActionMinAggregateInputType = {
@@ -174,6 +190,10 @@ export type ScheduledActionMinAggregateInputType = {
   stage?: true
   declinedAt?: true
   pausedAt?: true
+  surfaceStatus?: true
+  surfacedAt?: true
+  expiresAt?: true
+  failedAttempts?: true
 }
 
 export type ScheduledActionMaxAggregateInputType = {
@@ -201,6 +221,10 @@ export type ScheduledActionMaxAggregateInputType = {
   stage?: true
   declinedAt?: true
   pausedAt?: true
+  surfaceStatus?: true
+  surfacedAt?: true
+  expiresAt?: true
+  failedAttempts?: true
 }
 
 export type ScheduledActionCountAggregateInputType = {
@@ -228,6 +252,10 @@ export type ScheduledActionCountAggregateInputType = {
   stage?: true
   declinedAt?: true
   pausedAt?: true
+  surfaceStatus?: true
+  surfacedAt?: true
+  expiresAt?: true
+  failedAttempts?: true
   _all?: true
 }
 
@@ -342,6 +370,10 @@ export type ScheduledActionGroupByOutputType = {
   stage: number
   declinedAt: Date | null
   pausedAt: Date | null
+  surfaceStatus: string
+  surfacedAt: Date | null
+  expiresAt: Date | null
+  failedAttempts: number
   _count: ScheduledActionCountAggregateOutputType | null
   _avg: ScheduledActionAvgAggregateOutputType | null
   _sum: ScheduledActionSumAggregateOutputType | null
@@ -392,6 +424,10 @@ export type ScheduledActionWhereInput = {
   stage?: Prisma.IntFilter<"ScheduledAction"> | number
   declinedAt?: Prisma.DateTimeNullableFilter<"ScheduledAction"> | Date | string | null
   pausedAt?: Prisma.DateTimeNullableFilter<"ScheduledAction"> | Date | string | null
+  surfaceStatus?: Prisma.StringFilter<"ScheduledAction"> | string
+  surfacedAt?: Prisma.DateTimeNullableFilter<"ScheduledAction"> | Date | string | null
+  expiresAt?: Prisma.DateTimeNullableFilter<"ScheduledAction"> | Date | string | null
+  failedAttempts?: Prisma.IntFilter<"ScheduledAction"> | number
   user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
   executions?: Prisma.ScheduledExecutionListRelationFilter
 }
@@ -421,6 +457,10 @@ export type ScheduledActionOrderByWithRelationInput = {
   stage?: Prisma.SortOrder
   declinedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   pausedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  surfaceStatus?: Prisma.SortOrder
+  surfacedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  expiresAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  failedAttempts?: Prisma.SortOrder
   user?: Prisma.UserOrderByWithRelationInput
   executions?: Prisma.ScheduledExecutionOrderByRelationAggregateInput
 }
@@ -453,6 +493,10 @@ export type ScheduledActionWhereUniqueInput = Prisma.AtLeast<{
   stage?: Prisma.IntFilter<"ScheduledAction"> | number
   declinedAt?: Prisma.DateTimeNullableFilter<"ScheduledAction"> | Date | string | null
   pausedAt?: Prisma.DateTimeNullableFilter<"ScheduledAction"> | Date | string | null
+  surfaceStatus?: Prisma.StringFilter<"ScheduledAction"> | string
+  surfacedAt?: Prisma.DateTimeNullableFilter<"ScheduledAction"> | Date | string | null
+  expiresAt?: Prisma.DateTimeNullableFilter<"ScheduledAction"> | Date | string | null
+  failedAttempts?: Prisma.IntFilter<"ScheduledAction"> | number
   user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
   executions?: Prisma.ScheduledExecutionListRelationFilter
 }, "id">
@@ -482,6 +526,10 @@ export type ScheduledActionOrderByWithAggregationInput = {
   stage?: Prisma.SortOrder
   declinedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   pausedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  surfaceStatus?: Prisma.SortOrder
+  surfacedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  expiresAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  failedAttempts?: Prisma.SortOrder
   _count?: Prisma.ScheduledActionCountOrderByAggregateInput
   _avg?: Prisma.ScheduledActionAvgOrderByAggregateInput
   _max?: Prisma.ScheduledActionMaxOrderByAggregateInput
@@ -517,6 +565,10 @@ export type ScheduledActionScalarWhereWithAggregatesInput = {
   stage?: Prisma.IntWithAggregatesFilter<"ScheduledAction"> | number
   declinedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"ScheduledAction"> | Date | string | null
   pausedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"ScheduledAction"> | Date | string | null
+  surfaceStatus?: Prisma.StringWithAggregatesFilter<"ScheduledAction"> | string
+  surfacedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"ScheduledAction"> | Date | string | null
+  expiresAt?: Prisma.DateTimeNullableWithAggregatesFilter<"ScheduledAction"> | Date | string | null
+  failedAttempts?: Prisma.IntWithAggregatesFilter<"ScheduledAction"> | number
 }
 
 export type ScheduledActionCreateInput = {
@@ -543,6 +595,10 @@ export type ScheduledActionCreateInput = {
   stage?: number
   declinedAt?: Date | string | null
   pausedAt?: Date | string | null
+  surfaceStatus?: string
+  surfacedAt?: Date | string | null
+  expiresAt?: Date | string | null
+  failedAttempts?: number
   user: Prisma.UserCreateNestedOneWithoutScheduledActionsInput
   executions?: Prisma.ScheduledExecutionCreateNestedManyWithoutScheduledActionInput
 }
@@ -572,6 +628,10 @@ export type ScheduledActionUncheckedCreateInput = {
   stage?: number
   declinedAt?: Date | string | null
   pausedAt?: Date | string | null
+  surfaceStatus?: string
+  surfacedAt?: Date | string | null
+  expiresAt?: Date | string | null
+  failedAttempts?: number
   executions?: Prisma.ScheduledExecutionUncheckedCreateNestedManyWithoutScheduledActionInput
 }
 
@@ -599,6 +659,10 @@ export type ScheduledActionUpdateInput = {
   stage?: Prisma.IntFieldUpdateOperationsInput | number
   declinedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   pausedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  surfaceStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  surfacedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  failedAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   user?: Prisma.UserUpdateOneRequiredWithoutScheduledActionsNestedInput
   executions?: Prisma.ScheduledExecutionUpdateManyWithoutScheduledActionNestedInput
 }
@@ -628,6 +692,10 @@ export type ScheduledActionUncheckedUpdateInput = {
   stage?: Prisma.IntFieldUpdateOperationsInput | number
   declinedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   pausedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  surfaceStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  surfacedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  failedAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   executions?: Prisma.ScheduledExecutionUncheckedUpdateManyWithoutScheduledActionNestedInput
 }
 
@@ -656,6 +724,10 @@ export type ScheduledActionCreateManyInput = {
   stage?: number
   declinedAt?: Date | string | null
   pausedAt?: Date | string | null
+  surfaceStatus?: string
+  surfacedAt?: Date | string | null
+  expiresAt?: Date | string | null
+  failedAttempts?: number
 }
 
 export type ScheduledActionUpdateManyMutationInput = {
@@ -682,6 +754,10 @@ export type ScheduledActionUpdateManyMutationInput = {
   stage?: Prisma.IntFieldUpdateOperationsInput | number
   declinedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   pausedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  surfaceStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  surfacedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  failedAttempts?: Prisma.IntFieldUpdateOperationsInput | number
 }
 
 export type ScheduledActionUncheckedUpdateManyInput = {
@@ -709,6 +785,10 @@ export type ScheduledActionUncheckedUpdateManyInput = {
   stage?: Prisma.IntFieldUpdateOperationsInput | number
   declinedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   pausedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  surfaceStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  surfacedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  failedAttempts?: Prisma.IntFieldUpdateOperationsInput | number
 }
 
 export type ScheduledActionListRelationFilter = {
@@ -746,6 +826,10 @@ export type ScheduledActionCountOrderByAggregateInput = {
   stage?: Prisma.SortOrder
   declinedAt?: Prisma.SortOrder
   pausedAt?: Prisma.SortOrder
+  surfaceStatus?: Prisma.SortOrder
+  surfacedAt?: Prisma.SortOrder
+  expiresAt?: Prisma.SortOrder
+  failedAttempts?: Prisma.SortOrder
 }
 
 export type ScheduledActionAvgOrderByAggregateInput = {
@@ -756,6 +840,7 @@ export type ScheduledActionAvgOrderByAggregateInput = {
   totalAmountUsdc?: Prisma.SortOrder
   confidence?: Prisma.SortOrder
   stage?: Prisma.SortOrder
+  failedAttempts?: Prisma.SortOrder
 }
 
 export type ScheduledActionMaxOrderByAggregateInput = {
@@ -783,6 +868,10 @@ export type ScheduledActionMaxOrderByAggregateInput = {
   stage?: Prisma.SortOrder
   declinedAt?: Prisma.SortOrder
   pausedAt?: Prisma.SortOrder
+  surfaceStatus?: Prisma.SortOrder
+  surfacedAt?: Prisma.SortOrder
+  expiresAt?: Prisma.SortOrder
+  failedAttempts?: Prisma.SortOrder
 }
 
 export type ScheduledActionMinOrderByAggregateInput = {
@@ -810,6 +899,10 @@ export type ScheduledActionMinOrderByAggregateInput = {
   stage?: Prisma.SortOrder
   declinedAt?: Prisma.SortOrder
   pausedAt?: Prisma.SortOrder
+  surfaceStatus?: Prisma.SortOrder
+  surfacedAt?: Prisma.SortOrder
+  expiresAt?: Prisma.SortOrder
+  failedAttempts?: Prisma.SortOrder
 }
 
 export type ScheduledActionSumOrderByAggregateInput = {
@@ -820,6 +913,7 @@ export type ScheduledActionSumOrderByAggregateInput = {
   totalAmountUsdc?: Prisma.SortOrder
   confidence?: Prisma.SortOrder
   stage?: Prisma.SortOrder
+  failedAttempts?: Prisma.SortOrder
 }
 
 export type ScheduledActionScalarRelationFilter = {
@@ -907,6 +1001,10 @@ export type ScheduledActionCreateWithoutUserInput = {
   stage?: number
   declinedAt?: Date | string | null
   pausedAt?: Date | string | null
+  surfaceStatus?: string
+  surfacedAt?: Date | string | null
+  expiresAt?: Date | string | null
+  failedAttempts?: number
   executions?: Prisma.ScheduledExecutionCreateNestedManyWithoutScheduledActionInput
 }
 
@@ -934,6 +1032,10 @@ export type ScheduledActionUncheckedCreateWithoutUserInput = {
   stage?: number
   declinedAt?: Date | string | null
   pausedAt?: Date | string | null
+  surfaceStatus?: string
+  surfacedAt?: Date | string | null
+  expiresAt?: Date | string | null
+  failedAttempts?: number
   executions?: Prisma.ScheduledExecutionUncheckedCreateNestedManyWithoutScheduledActionInput
 }
 
@@ -991,6 +1093,10 @@ export type ScheduledActionScalarWhereInput = {
   stage?: Prisma.IntFilter<"ScheduledAction"> | number
   declinedAt?: Prisma.DateTimeNullableFilter<"ScheduledAction"> | Date | string | null
   pausedAt?: Prisma.DateTimeNullableFilter<"ScheduledAction"> | Date | string | null
+  surfaceStatus?: Prisma.StringFilter<"ScheduledAction"> | string
+  surfacedAt?: Prisma.DateTimeNullableFilter<"ScheduledAction"> | Date | string | null
+  expiresAt?: Prisma.DateTimeNullableFilter<"ScheduledAction"> | Date | string | null
+  failedAttempts?: Prisma.IntFilter<"ScheduledAction"> | number
 }
 
 export type ScheduledActionCreateWithoutExecutionsInput = {
@@ -1017,6 +1123,10 @@ export type ScheduledActionCreateWithoutExecutionsInput = {
   stage?: number
   declinedAt?: Date | string | null
   pausedAt?: Date | string | null
+  surfaceStatus?: string
+  surfacedAt?: Date | string | null
+  expiresAt?: Date | string | null
+  failedAttempts?: number
   user: Prisma.UserCreateNestedOneWithoutScheduledActionsInput
 }
 
@@ -1045,6 +1155,10 @@ export type ScheduledActionUncheckedCreateWithoutExecutionsInput = {
   stage?: number
   declinedAt?: Date | string | null
   pausedAt?: Date | string | null
+  surfaceStatus?: string
+  surfacedAt?: Date | string | null
+  expiresAt?: Date | string | null
+  failedAttempts?: number
 }
 
 export type ScheduledActionCreateOrConnectWithoutExecutionsInput = {
@@ -1087,6 +1201,10 @@ export type ScheduledActionUpdateWithoutExecutionsInput = {
   stage?: Prisma.IntFieldUpdateOperationsInput | number
   declinedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   pausedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  surfaceStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  surfacedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  failedAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   user?: Prisma.UserUpdateOneRequiredWithoutScheduledActionsNestedInput
 }
 
@@ -1115,6 +1233,10 @@ export type ScheduledActionUncheckedUpdateWithoutExecutionsInput = {
   stage?: Prisma.IntFieldUpdateOperationsInput | number
   declinedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   pausedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  surfaceStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  surfacedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  failedAttempts?: Prisma.IntFieldUpdateOperationsInput | number
 }
 
 export type ScheduledActionCreateManyUserInput = {
@@ -1141,6 +1263,10 @@ export type ScheduledActionCreateManyUserInput = {
   stage?: number
   declinedAt?: Date | string | null
   pausedAt?: Date | string | null
+  surfaceStatus?: string
+  surfacedAt?: Date | string | null
+  expiresAt?: Date | string | null
+  failedAttempts?: number
 }
 
 export type ScheduledActionUpdateWithoutUserInput = {
@@ -1167,6 +1293,10 @@ export type ScheduledActionUpdateWithoutUserInput = {
   stage?: Prisma.IntFieldUpdateOperationsInput | number
   declinedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   pausedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  surfaceStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  surfacedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  failedAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   executions?: Prisma.ScheduledExecutionUpdateManyWithoutScheduledActionNestedInput
 }
 
@@ -1194,6 +1324,10 @@ export type ScheduledActionUncheckedUpdateWithoutUserInput = {
   stage?: Prisma.IntFieldUpdateOperationsInput | number
   declinedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   pausedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  surfaceStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  surfacedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  failedAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   executions?: Prisma.ScheduledExecutionUncheckedUpdateManyWithoutScheduledActionNestedInput
 }
 
@@ -1221,6 +1355,10 @@ export type ScheduledActionUncheckedUpdateManyWithoutUserInput = {
   stage?: Prisma.IntFieldUpdateOperationsInput | number
   declinedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   pausedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  surfaceStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  surfacedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  failedAttempts?: Prisma.IntFieldUpdateOperationsInput | number
 }
 
 
@@ -1279,6 +1417,10 @@ export type ScheduledActionSelect<ExtArgs extends runtime.Types.Extensions.Inter
   stage?: boolean
   declinedAt?: boolean
   pausedAt?: boolean
+  surfaceStatus?: boolean
+  surfacedAt?: boolean
+  expiresAt?: boolean
+  failedAttempts?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   executions?: boolean | Prisma.ScheduledAction$executionsArgs<ExtArgs>
   _count?: boolean | Prisma.ScheduledActionCountOutputTypeDefaultArgs<ExtArgs>
@@ -1309,6 +1451,10 @@ export type ScheduledActionSelectCreateManyAndReturn<ExtArgs extends runtime.Typ
   stage?: boolean
   declinedAt?: boolean
   pausedAt?: boolean
+  surfaceStatus?: boolean
+  surfacedAt?: boolean
+  expiresAt?: boolean
+  failedAttempts?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["scheduledAction"]>
 
@@ -1337,6 +1483,10 @@ export type ScheduledActionSelectUpdateManyAndReturn<ExtArgs extends runtime.Typ
   stage?: boolean
   declinedAt?: boolean
   pausedAt?: boolean
+  surfaceStatus?: boolean
+  surfacedAt?: boolean
+  expiresAt?: boolean
+  failedAttempts?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["scheduledAction"]>
 
@@ -1365,9 +1515,13 @@ export type ScheduledActionSelectScalar = {
   stage?: boolean
   declinedAt?: boolean
   pausedAt?: boolean
+  surfaceStatus?: boolean
+  surfacedAt?: boolean
+  expiresAt?: boolean
+  failedAttempts?: boolean
 }
 
-export type ScheduledActionOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "actionType" | "amount" | "asset" | "targetAsset" | "cronExpr" | "nextRunAt" | "enabled" | "confirmationsRequired" | "confirmationsCompleted" | "totalExecutions" | "totalAmountUsdc" | "lastExecutedAt" | "lastSkippedAt" | "createdAt" | "updatedAt" | "source" | "patternType" | "detectedAt" | "confidence" | "stage" | "declinedAt" | "pausedAt", ExtArgs["result"]["scheduledAction"]>
+export type ScheduledActionOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "actionType" | "amount" | "asset" | "targetAsset" | "cronExpr" | "nextRunAt" | "enabled" | "confirmationsRequired" | "confirmationsCompleted" | "totalExecutions" | "totalAmountUsdc" | "lastExecutedAt" | "lastSkippedAt" | "createdAt" | "updatedAt" | "source" | "patternType" | "detectedAt" | "confidence" | "stage" | "declinedAt" | "pausedAt" | "surfaceStatus" | "surfacedAt" | "expiresAt" | "failedAttempts", ExtArgs["result"]["scheduledAction"]>
 export type ScheduledActionInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   executions?: boolean | Prisma.ScheduledAction$executionsArgs<ExtArgs>
@@ -1411,6 +1565,10 @@ export type $ScheduledActionPayload<ExtArgs extends runtime.Types.Extensions.Int
     stage: number
     declinedAt: Date | null
     pausedAt: Date | null
+    surfaceStatus: string
+    surfacedAt: Date | null
+    expiresAt: Date | null
+    failedAttempts: number
   }, ExtArgs["result"]["scheduledAction"]>
   composites: {}
 }
@@ -1860,6 +2018,10 @@ export interface ScheduledActionFieldRefs {
   readonly stage: Prisma.FieldRef<"ScheduledAction", 'Int'>
   readonly declinedAt: Prisma.FieldRef<"ScheduledAction", 'DateTime'>
   readonly pausedAt: Prisma.FieldRef<"ScheduledAction", 'DateTime'>
+  readonly surfaceStatus: Prisma.FieldRef<"ScheduledAction", 'String'>
+  readonly surfacedAt: Prisma.FieldRef<"ScheduledAction", 'DateTime'>
+  readonly expiresAt: Prisma.FieldRef<"ScheduledAction", 'DateTime'>
+  readonly failedAttempts: Prisma.FieldRef<"ScheduledAction", 'Int'>
 }
     
 

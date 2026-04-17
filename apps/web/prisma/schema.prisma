@@ -21,6 +21,12 @@ model User {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
+  // Copilot (see audric-copilot-smart-confirmations.plan.md §5, §7)
+  emailDeliverable             Boolean   @default(true) // flipped to false on Resend bounce; stops digest sends
+  lastDashboardVisitAt         DateTime? // drives §7 cross-surface chat suppression (no double-nag)
+  copilotConfirmedCount        Int       @default(0)    // drives §5 post-10-confirms email-add nudge
+  copilotMigrationNoticeShownAt DateTime? // §2: one-time in-app notice for users whose isAutonomous=true schedules were migrated to always-ask
+
   preferences          UserPreferences?
   conversationLogs     ConversationLog[]
   notificationPrefs    NotificationPrefs[]
@@ -37,6 +43,7 @@ model User {
   financialProfile     UserFinancialProfile?
   memories             UserMemory[]
   linkedWallets        LinkedWallet[]
+  copilotSuggestions   CopilotSuggestion[]
 
   @@index([email])
   @@index([emailVerified, timezoneOffset])
@@ -297,7 +304,7 @@ model PortfolioSnapshot {
 model ScheduledAction {
   id                     String    @id @default(cuid())
   userId                 String
-  actionType             String    // save | swap | repay
+  actionType             String    // save | swap | repay | stake | send | buy
   amount                 Float
   asset                  String    @default("USDC")
   targetAsset            String?
@@ -315,12 +322,19 @@ model ScheduledAction {
 
   // Phase D: autonomous action loop
   source      String    @default("user_created") // user_created | behavior_detected
-  patternType String?   // recurring_save | yield_reinvestment | debt_discipline | idle_usdc_tolerance | swap_pattern
+  patternType String?   // recurring_save | yield_reinvestment | debt_discipline | idle_usdc_tolerance | swap_pattern | recurring_income
   detectedAt  DateTime?
   confidence  Float?
-  stage       Int       @default(2) // 0=detected, 1=surfaced, 2=confirmed, 3=autonomous
+  stage       Int       @default(2) // 0=detected, 1=surfaced, 2=confirmed, 3=autonomous (deprecated for Copilot — see surfaceStatus)
   declinedAt  DateTime?
   pausedAt    DateTime?
+
+  // Copilot smart-confirmations surfacing (see audric-copilot-smart-confirmations.plan.md §10)
+  // Only meaningful for source = 'behavior_detected' rows; user_created schedules ignore these.
+  surfaceStatus  String    @default("pending") // pending | confirmed | skipped | expired | failed
+  surfacedAt     DateTime? // when last surfaced to user (advanced on snooze per §4)
+  expiresAt      DateTime? // §6 / §12: end-of-day local for DCA recurring; null = no expiry
+  failedAttempts Int       @default(0) // §6: 3-strike rule before auto-expire on persistent tx failure
 
   user       User                 @relation(fields: [userId], references: [id])
   executions ScheduledExecution[]
@@ -328,6 +342,9 @@ model ScheduledAction {
   @@index([userId, enabled])
   @@index([nextRunAt, enabled])
   @@index([userId, source, stage])
+  @@index([userId, source, surfaceStatus]) // dashboard UNION query: pending behavior_detected suggestions per user
+  @@index([expiresAt, surfaceStatus])      // copilotExpiry sweep
+  @@index([userId, patternType, createdAt]) // 24h cron-level throttle: was this (userId, patternType) surfaced recently?
 }
 
 model ScheduledExecution {
@@ -344,6 +361,32 @@ model ScheduledExecution {
   scheduledAction ScheduledAction @relation(fields: [scheduledActionId], references: [id])
 
   @@index([scheduledActionId, executedAt])
+}
+
+// Copilot threshold-triggered one-shot suggestions (Compound, Idle balance, Recurring income, HF top-up).
+// See audric-copilot-smart-confirmations.plan.md §10 (data model split rationale).
+// Recurring/time-triggered patterns live on ScheduledAction (UNION-queried on the dashboard).
+model CopilotSuggestion {
+  id             String    @id @default(cuid())
+  userId         String
+  type           String    // compound | idle_action | income_action | hf_topup
+  status         String    @default("pending") // pending | confirmed | skipped | expired | failed
+  payload        Json      // type-specific data (e.g. compound: { rewardAmount, position }; idle_action: { asset, amount, suggestedAction }; income_action: { incomingAmount, suggestedActionFromHistory }; hf_topup: { currentHf, options[] })
+  expiresAt      DateTime  // §12: compound 7d, idle 14d, income 48h, hf_topup persists until HF moves out of threshold
+  surfacedAt     DateTime  @default(now()) // advanced on snooze per §4
+  confirmedAt    DateTime?
+  skippedAt      DateTime?
+  failedAt       DateTime?
+  failedAttempts Int       @default(0) // §6: 3-strike rule before auto-marking failed
+  snoozedCount   Int       @default(0) // §4: second snooze auto-expires
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, status])              // dashboard UNION query
+  @@index([expiresAt, status])           // copilotExpiry sweep
+  @@index([userId, type, createdAt])     // 24h cron-level throttle: was this (userId, type) surfaced recently?
 }
 
 model OutcomeCheck {

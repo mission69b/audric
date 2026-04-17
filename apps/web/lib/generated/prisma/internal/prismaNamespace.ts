@@ -401,6 +401,7 @@ export const ModelName = {
   PortfolioSnapshot: 'PortfolioSnapshot',
   ScheduledAction: 'ScheduledAction',
   ScheduledExecution: 'ScheduledExecution',
+  CopilotSuggestion: 'CopilotSuggestion',
   OutcomeCheck: 'OutcomeCheck',
   FollowUpQueue: 'FollowUpQueue',
   UserFinancialProfile: 'UserFinancialProfile',
@@ -422,7 +423,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "userPreferences" | "conversationLog" | "sessionUsage" | "servicePurchase" | "notificationPrefs" | "notificationLog" | "dailyBriefing" | "savingsGoal" | "appEvent" | "adviceLog" | "payment" | "savingsGoalDeposit" | "watchAddress" | "portfolioSnapshot" | "scheduledAction" | "scheduledExecution" | "outcomeCheck" | "followUpQueue" | "userFinancialProfile" | "userMemory" | "linkedWallet" | "publicReport"
+    modelProps: "user" | "userPreferences" | "conversationLog" | "sessionUsage" | "servicePurchase" | "notificationPrefs" | "notificationLog" | "dailyBriefing" | "savingsGoal" | "appEvent" | "adviceLog" | "payment" | "savingsGoalDeposit" | "watchAddress" | "portfolioSnapshot" | "scheduledAction" | "scheduledExecution" | "copilotSuggestion" | "outcomeCheck" | "followUpQueue" | "userFinancialProfile" | "userMemory" | "linkedWallet" | "publicReport"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1684,6 +1685,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    CopilotSuggestion: {
+      payload: Prisma.$CopilotSuggestionPayload<ExtArgs>
+      fields: Prisma.CopilotSuggestionFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.CopilotSuggestionFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CopilotSuggestionPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.CopilotSuggestionFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CopilotSuggestionPayload>
+        }
+        findFirst: {
+          args: Prisma.CopilotSuggestionFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CopilotSuggestionPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.CopilotSuggestionFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CopilotSuggestionPayload>
+        }
+        findMany: {
+          args: Prisma.CopilotSuggestionFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CopilotSuggestionPayload>[]
+        }
+        create: {
+          args: Prisma.CopilotSuggestionCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CopilotSuggestionPayload>
+        }
+        createMany: {
+          args: Prisma.CopilotSuggestionCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.CopilotSuggestionCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CopilotSuggestionPayload>[]
+        }
+        delete: {
+          args: Prisma.CopilotSuggestionDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CopilotSuggestionPayload>
+        }
+        update: {
+          args: Prisma.CopilotSuggestionUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CopilotSuggestionPayload>
+        }
+        deleteMany: {
+          args: Prisma.CopilotSuggestionDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.CopilotSuggestionUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.CopilotSuggestionUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CopilotSuggestionPayload>[]
+        }
+        upsert: {
+          args: Prisma.CopilotSuggestionUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CopilotSuggestionPayload>
+        }
+        aggregate: {
+          args: Prisma.CopilotSuggestionAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateCopilotSuggestion>
+        }
+        groupBy: {
+          args: Prisma.CopilotSuggestionGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.CopilotSuggestionGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.CopilotSuggestionCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.CopilotSuggestionCountAggregateOutputType> | number
+        }
+      }
+    }
     OutcomeCheck: {
       payload: Prisma.$OutcomeCheckPayload<ExtArgs>
       fields: Prisma.OutcomeCheckFieldRefs
@@ -2179,7 +2254,11 @@ export const UserScalarFieldEnum = {
   onboardedAt: 'onboardedAt',
   tosAcceptedAt: 'tosAcceptedAt',
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
+  updatedAt: 'updatedAt',
+  emailDeliverable: 'emailDeliverable',
+  lastDashboardVisitAt: 'lastDashboardVisitAt',
+  copilotConfirmedCount: 'copilotConfirmedCount',
+  copilotMigrationNoticeShownAt: 'copilotMigrationNoticeShownAt'
 } as const
 
 export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof UserScalarFieldEnum]
@@ -2428,7 +2507,11 @@ export const ScheduledActionScalarFieldEnum = {
   confidence: 'confidence',
   stage: 'stage',
   declinedAt: 'declinedAt',
-  pausedAt: 'pausedAt'
+  pausedAt: 'pausedAt',
+  surfaceStatus: 'surfaceStatus',
+  surfacedAt: 'surfacedAt',
+  expiresAt: 'expiresAt',
+  failedAttempts: 'failedAttempts'
 } as const
 
 export type ScheduledActionScalarFieldEnum = (typeof ScheduledActionScalarFieldEnum)[keyof typeof ScheduledActionScalarFieldEnum]
@@ -2447,6 +2530,26 @@ export const ScheduledExecutionScalarFieldEnum = {
 } as const
 
 export type ScheduledExecutionScalarFieldEnum = (typeof ScheduledExecutionScalarFieldEnum)[keyof typeof ScheduledExecutionScalarFieldEnum]
+
+
+export const CopilotSuggestionScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  type: 'type',
+  status: 'status',
+  payload: 'payload',
+  expiresAt: 'expiresAt',
+  surfacedAt: 'surfacedAt',
+  confirmedAt: 'confirmedAt',
+  skippedAt: 'skippedAt',
+  failedAt: 'failedAt',
+  failedAttempts: 'failedAttempts',
+  snoozedCount: 'snoozedCount',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type CopilotSuggestionScalarFieldEnum = (typeof CopilotSuggestionScalarFieldEnum)[keyof typeof CopilotSuggestionScalarFieldEnum]
 
 
 export const OutcomeCheckScalarFieldEnum = {
@@ -2790,6 +2893,7 @@ export type GlobalOmitConfig = {
   portfolioSnapshot?: Prisma.PortfolioSnapshotOmit
   scheduledAction?: Prisma.ScheduledActionOmit
   scheduledExecution?: Prisma.ScheduledExecutionOmit
+  copilotSuggestion?: Prisma.CopilotSuggestionOmit
   outcomeCheck?: Prisma.OutcomeCheckOmit
   followUpQueue?: Prisma.FollowUpQueueOmit
   userFinancialProfile?: Prisma.UserFinancialProfileOmit

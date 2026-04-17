@@ -28,10 +28,12 @@ export type AggregateUser = {
 
 export type UserAvgAggregateOutputType = {
   timezoneOffset: number | null
+  copilotConfirmedCount: number | null
 }
 
 export type UserSumAggregateOutputType = {
   timezoneOffset: number | null
+  copilotConfirmedCount: number | null
 }
 
 export type UserMinAggregateOutputType = {
@@ -47,6 +49,10 @@ export type UserMinAggregateOutputType = {
   tosAcceptedAt: Date | null
   createdAt: Date | null
   updatedAt: Date | null
+  emailDeliverable: boolean | null
+  lastDashboardVisitAt: Date | null
+  copilotConfirmedCount: number | null
+  copilotMigrationNoticeShownAt: Date | null
 }
 
 export type UserMaxAggregateOutputType = {
@@ -62,6 +68,10 @@ export type UserMaxAggregateOutputType = {
   tosAcceptedAt: Date | null
   createdAt: Date | null
   updatedAt: Date | null
+  emailDeliverable: boolean | null
+  lastDashboardVisitAt: Date | null
+  copilotConfirmedCount: number | null
+  copilotMigrationNoticeShownAt: Date | null
 }
 
 export type UserCountAggregateOutputType = {
@@ -77,16 +87,22 @@ export type UserCountAggregateOutputType = {
   tosAcceptedAt: number
   createdAt: number
   updatedAt: number
+  emailDeliverable: number
+  lastDashboardVisitAt: number
+  copilotConfirmedCount: number
+  copilotMigrationNoticeShownAt: number
   _all: number
 }
 
 
 export type UserAvgAggregateInputType = {
   timezoneOffset?: true
+  copilotConfirmedCount?: true
 }
 
 export type UserSumAggregateInputType = {
   timezoneOffset?: true
+  copilotConfirmedCount?: true
 }
 
 export type UserMinAggregateInputType = {
@@ -102,6 +118,10 @@ export type UserMinAggregateInputType = {
   tosAcceptedAt?: true
   createdAt?: true
   updatedAt?: true
+  emailDeliverable?: true
+  lastDashboardVisitAt?: true
+  copilotConfirmedCount?: true
+  copilotMigrationNoticeShownAt?: true
 }
 
 export type UserMaxAggregateInputType = {
@@ -117,6 +137,10 @@ export type UserMaxAggregateInputType = {
   tosAcceptedAt?: true
   createdAt?: true
   updatedAt?: true
+  emailDeliverable?: true
+  lastDashboardVisitAt?: true
+  copilotConfirmedCount?: true
+  copilotMigrationNoticeShownAt?: true
 }
 
 export type UserCountAggregateInputType = {
@@ -132,6 +156,10 @@ export type UserCountAggregateInputType = {
   tosAcceptedAt?: true
   createdAt?: true
   updatedAt?: true
+  emailDeliverable?: true
+  lastDashboardVisitAt?: true
+  copilotConfirmedCount?: true
+  copilotMigrationNoticeShownAt?: true
   _all?: true
 }
 
@@ -234,6 +262,10 @@ export type UserGroupByOutputType = {
   tosAcceptedAt: Date | null
   createdAt: Date
   updatedAt: Date
+  emailDeliverable: boolean
+  lastDashboardVisitAt: Date | null
+  copilotConfirmedCount: number
+  copilotMigrationNoticeShownAt: Date | null
   _count: UserCountAggregateOutputType | null
   _avg: UserAvgAggregateOutputType | null
   _sum: UserSumAggregateOutputType | null
@@ -272,6 +304,10 @@ export type UserWhereInput = {
   tosAcceptedAt?: Prisma.DateTimeNullableFilter<"User"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"User"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"User"> | Date | string
+  emailDeliverable?: Prisma.BoolFilter<"User"> | boolean
+  lastDashboardVisitAt?: Prisma.DateTimeNullableFilter<"User"> | Date | string | null
+  copilotConfirmedCount?: Prisma.IntFilter<"User"> | number
+  copilotMigrationNoticeShownAt?: Prisma.DateTimeNullableFilter<"User"> | Date | string | null
   preferences?: Prisma.XOR<Prisma.UserPreferencesNullableScalarRelationFilter, Prisma.UserPreferencesWhereInput> | null
   conversationLogs?: Prisma.ConversationLogListRelationFilter
   notificationPrefs?: Prisma.NotificationPrefsListRelationFilter
@@ -288,6 +324,7 @@ export type UserWhereInput = {
   financialProfile?: Prisma.XOR<Prisma.UserFinancialProfileNullableScalarRelationFilter, Prisma.UserFinancialProfileWhereInput> | null
   memories?: Prisma.UserMemoryListRelationFilter
   linkedWallets?: Prisma.LinkedWalletListRelationFilter
+  copilotSuggestions?: Prisma.CopilotSuggestionListRelationFilter
 }
 
 export type UserOrderByWithRelationInput = {
@@ -303,6 +340,10 @@ export type UserOrderByWithRelationInput = {
   tosAcceptedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  emailDeliverable?: Prisma.SortOrder
+  lastDashboardVisitAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  copilotConfirmedCount?: Prisma.SortOrder
+  copilotMigrationNoticeShownAt?: Prisma.SortOrderInput | Prisma.SortOrder
   preferences?: Prisma.UserPreferencesOrderByWithRelationInput
   conversationLogs?: Prisma.ConversationLogOrderByRelationAggregateInput
   notificationPrefs?: Prisma.NotificationPrefsOrderByRelationAggregateInput
@@ -319,6 +360,7 @@ export type UserOrderByWithRelationInput = {
   financialProfile?: Prisma.UserFinancialProfileOrderByWithRelationInput
   memories?: Prisma.UserMemoryOrderByRelationAggregateInput
   linkedWallets?: Prisma.LinkedWalletOrderByRelationAggregateInput
+  copilotSuggestions?: Prisma.CopilotSuggestionOrderByRelationAggregateInput
 }
 
 export type UserWhereUniqueInput = Prisma.AtLeast<{
@@ -337,6 +379,10 @@ export type UserWhereUniqueInput = Prisma.AtLeast<{
   tosAcceptedAt?: Prisma.DateTimeNullableFilter<"User"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"User"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"User"> | Date | string
+  emailDeliverable?: Prisma.BoolFilter<"User"> | boolean
+  lastDashboardVisitAt?: Prisma.DateTimeNullableFilter<"User"> | Date | string | null
+  copilotConfirmedCount?: Prisma.IntFilter<"User"> | number
+  copilotMigrationNoticeShownAt?: Prisma.DateTimeNullableFilter<"User"> | Date | string | null
   preferences?: Prisma.XOR<Prisma.UserPreferencesNullableScalarRelationFilter, Prisma.UserPreferencesWhereInput> | null
   conversationLogs?: Prisma.ConversationLogListRelationFilter
   notificationPrefs?: Prisma.NotificationPrefsListRelationFilter
@@ -353,6 +399,7 @@ export type UserWhereUniqueInput = Prisma.AtLeast<{
   financialProfile?: Prisma.XOR<Prisma.UserFinancialProfileNullableScalarRelationFilter, Prisma.UserFinancialProfileWhereInput> | null
   memories?: Prisma.UserMemoryListRelationFilter
   linkedWallets?: Prisma.LinkedWalletListRelationFilter
+  copilotSuggestions?: Prisma.CopilotSuggestionListRelationFilter
 }, "id" | "suiAddress" | "email">
 
 export type UserOrderByWithAggregationInput = {
@@ -368,6 +415,10 @@ export type UserOrderByWithAggregationInput = {
   tosAcceptedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  emailDeliverable?: Prisma.SortOrder
+  lastDashboardVisitAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  copilotConfirmedCount?: Prisma.SortOrder
+  copilotMigrationNoticeShownAt?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.UserCountOrderByAggregateInput
   _avg?: Prisma.UserAvgOrderByAggregateInput
   _max?: Prisma.UserMaxOrderByAggregateInput
@@ -391,6 +442,10 @@ export type UserScalarWhereWithAggregatesInput = {
   tosAcceptedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"User"> | Date | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"User"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"User"> | Date | string
+  emailDeliverable?: Prisma.BoolWithAggregatesFilter<"User"> | boolean
+  lastDashboardVisitAt?: Prisma.DateTimeNullableWithAggregatesFilter<"User"> | Date | string | null
+  copilotConfirmedCount?: Prisma.IntWithAggregatesFilter<"User"> | number
+  copilotMigrationNoticeShownAt?: Prisma.DateTimeNullableWithAggregatesFilter<"User"> | Date | string | null
 }
 
 export type UserCreateInput = {
@@ -406,6 +461,10 @@ export type UserCreateInput = {
   tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  emailDeliverable?: boolean
+  lastDashboardVisitAt?: Date | string | null
+  copilotConfirmedCount?: number
+  copilotMigrationNoticeShownAt?: Date | string | null
   preferences?: Prisma.UserPreferencesCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsCreateNestedManyWithoutUserInput
@@ -422,6 +481,7 @@ export type UserCreateInput = {
   financialProfile?: Prisma.UserFinancialProfileCreateNestedOneWithoutUserInput
   memories?: Prisma.UserMemoryCreateNestedManyWithoutUserInput
   linkedWallets?: Prisma.LinkedWalletCreateNestedManyWithoutUserInput
+  copilotSuggestions?: Prisma.CopilotSuggestionCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateInput = {
@@ -437,6 +497,10 @@ export type UserUncheckedCreateInput = {
   tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  emailDeliverable?: boolean
+  lastDashboardVisitAt?: Date | string | null
+  copilotConfirmedCount?: number
+  copilotMigrationNoticeShownAt?: Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogUncheckedCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedCreateNestedManyWithoutUserInput
@@ -453,6 +517,7 @@ export type UserUncheckedCreateInput = {
   financialProfile?: Prisma.UserFinancialProfileUncheckedCreateNestedOneWithoutUserInput
   memories?: Prisma.UserMemoryUncheckedCreateNestedManyWithoutUserInput
   linkedWallets?: Prisma.LinkedWalletUncheckedCreateNestedManyWithoutUserInput
+  copilotSuggestions?: Prisma.CopilotSuggestionUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserUpdateInput = {
@@ -468,6 +533,10 @@ export type UserUpdateInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  emailDeliverable?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
+  copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUpdateManyWithoutUserNestedInput
@@ -484,6 +553,7 @@ export type UserUpdateInput = {
   financialProfile?: Prisma.UserFinancialProfileUpdateOneWithoutUserNestedInput
   memories?: Prisma.UserMemoryUpdateManyWithoutUserNestedInput
   linkedWallets?: Prisma.LinkedWalletUpdateManyWithoutUserNestedInput
+  copilotSuggestions?: Prisma.CopilotSuggestionUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateInput = {
@@ -499,6 +569,10 @@ export type UserUncheckedUpdateInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  emailDeliverable?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
+  copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUncheckedUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedUpdateManyWithoutUserNestedInput
@@ -515,6 +589,7 @@ export type UserUncheckedUpdateInput = {
   financialProfile?: Prisma.UserFinancialProfileUncheckedUpdateOneWithoutUserNestedInput
   memories?: Prisma.UserMemoryUncheckedUpdateManyWithoutUserNestedInput
   linkedWallets?: Prisma.LinkedWalletUncheckedUpdateManyWithoutUserNestedInput
+  copilotSuggestions?: Prisma.CopilotSuggestionUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateManyInput = {
@@ -530,6 +605,10 @@ export type UserCreateManyInput = {
   tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  emailDeliverable?: boolean
+  lastDashboardVisitAt?: Date | string | null
+  copilotConfirmedCount?: number
+  copilotMigrationNoticeShownAt?: Date | string | null
 }
 
 export type UserUpdateManyMutationInput = {
@@ -545,6 +624,10 @@ export type UserUpdateManyMutationInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  emailDeliverable?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
+  copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 export type UserUncheckedUpdateManyInput = {
@@ -560,6 +643,10 @@ export type UserUncheckedUpdateManyInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  emailDeliverable?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
+  copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 export type UserCountOrderByAggregateInput = {
@@ -575,10 +662,15 @@ export type UserCountOrderByAggregateInput = {
   tosAcceptedAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  emailDeliverable?: Prisma.SortOrder
+  lastDashboardVisitAt?: Prisma.SortOrder
+  copilotConfirmedCount?: Prisma.SortOrder
+  copilotMigrationNoticeShownAt?: Prisma.SortOrder
 }
 
 export type UserAvgOrderByAggregateInput = {
   timezoneOffset?: Prisma.SortOrder
+  copilotConfirmedCount?: Prisma.SortOrder
 }
 
 export type UserMaxOrderByAggregateInput = {
@@ -594,6 +686,10 @@ export type UserMaxOrderByAggregateInput = {
   tosAcceptedAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  emailDeliverable?: Prisma.SortOrder
+  lastDashboardVisitAt?: Prisma.SortOrder
+  copilotConfirmedCount?: Prisma.SortOrder
+  copilotMigrationNoticeShownAt?: Prisma.SortOrder
 }
 
 export type UserMinOrderByAggregateInput = {
@@ -609,10 +705,15 @@ export type UserMinOrderByAggregateInput = {
   tosAcceptedAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  emailDeliverable?: Prisma.SortOrder
+  lastDashboardVisitAt?: Prisma.SortOrder
+  copilotConfirmedCount?: Prisma.SortOrder
+  copilotMigrationNoticeShownAt?: Prisma.SortOrder
 }
 
 export type UserSumOrderByAggregateInput = {
   timezoneOffset?: Prisma.SortOrder
+  copilotConfirmedCount?: Prisma.SortOrder
 }
 
 export type UserNullableScalarRelationFilter = {
@@ -809,6 +910,20 @@ export type UserUpdateOneRequiredWithoutScheduledActionsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutScheduledActionsInput, Prisma.UserUpdateWithoutScheduledActionsInput>, Prisma.UserUncheckedUpdateWithoutScheduledActionsInput>
 }
 
+export type UserCreateNestedOneWithoutCopilotSuggestionsInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutCopilotSuggestionsInput, Prisma.UserUncheckedCreateWithoutCopilotSuggestionsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutCopilotSuggestionsInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserUpdateOneRequiredWithoutCopilotSuggestionsNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutCopilotSuggestionsInput, Prisma.UserUncheckedCreateWithoutCopilotSuggestionsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutCopilotSuggestionsInput
+  upsert?: Prisma.UserUpsertWithoutCopilotSuggestionsInput
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutCopilotSuggestionsInput, Prisma.UserUpdateWithoutCopilotSuggestionsInput>, Prisma.UserUncheckedUpdateWithoutCopilotSuggestionsInput>
+}
+
 export type UserCreateNestedOneWithoutOutcomeChecksInput = {
   create?: Prisma.XOR<Prisma.UserCreateWithoutOutcomeChecksInput, Prisma.UserUncheckedCreateWithoutOutcomeChecksInput>
   connectOrCreate?: Prisma.UserCreateOrConnectWithoutOutcomeChecksInput
@@ -892,6 +1007,10 @@ export type UserCreateWithoutPreferencesInput = {
   tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  emailDeliverable?: boolean
+  lastDashboardVisitAt?: Date | string | null
+  copilotConfirmedCount?: number
+  copilotMigrationNoticeShownAt?: Date | string | null
   conversationLogs?: Prisma.ConversationLogCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsCreateNestedManyWithoutUserInput
   dailyBriefings?: Prisma.DailyBriefingCreateNestedManyWithoutUserInput
@@ -907,6 +1026,7 @@ export type UserCreateWithoutPreferencesInput = {
   financialProfile?: Prisma.UserFinancialProfileCreateNestedOneWithoutUserInput
   memories?: Prisma.UserMemoryCreateNestedManyWithoutUserInput
   linkedWallets?: Prisma.LinkedWalletCreateNestedManyWithoutUserInput
+  copilotSuggestions?: Prisma.CopilotSuggestionCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutPreferencesInput = {
@@ -922,6 +1042,10 @@ export type UserUncheckedCreateWithoutPreferencesInput = {
   tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  emailDeliverable?: boolean
+  lastDashboardVisitAt?: Date | string | null
+  copilotConfirmedCount?: number
+  copilotMigrationNoticeShownAt?: Date | string | null
   conversationLogs?: Prisma.ConversationLogUncheckedCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedCreateNestedManyWithoutUserInput
   dailyBriefings?: Prisma.DailyBriefingUncheckedCreateNestedManyWithoutUserInput
@@ -937,6 +1061,7 @@ export type UserUncheckedCreateWithoutPreferencesInput = {
   financialProfile?: Prisma.UserFinancialProfileUncheckedCreateNestedOneWithoutUserInput
   memories?: Prisma.UserMemoryUncheckedCreateNestedManyWithoutUserInput
   linkedWallets?: Prisma.LinkedWalletUncheckedCreateNestedManyWithoutUserInput
+  copilotSuggestions?: Prisma.CopilotSuggestionUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutPreferencesInput = {
@@ -968,6 +1093,10 @@ export type UserUpdateWithoutPreferencesInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  emailDeliverable?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
+  copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   conversationLogs?: Prisma.ConversationLogUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUpdateManyWithoutUserNestedInput
   dailyBriefings?: Prisma.DailyBriefingUpdateManyWithoutUserNestedInput
@@ -983,6 +1112,7 @@ export type UserUpdateWithoutPreferencesInput = {
   financialProfile?: Prisma.UserFinancialProfileUpdateOneWithoutUserNestedInput
   memories?: Prisma.UserMemoryUpdateManyWithoutUserNestedInput
   linkedWallets?: Prisma.LinkedWalletUpdateManyWithoutUserNestedInput
+  copilotSuggestions?: Prisma.CopilotSuggestionUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutPreferencesInput = {
@@ -998,6 +1128,10 @@ export type UserUncheckedUpdateWithoutPreferencesInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  emailDeliverable?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
+  copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   conversationLogs?: Prisma.ConversationLogUncheckedUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedUpdateManyWithoutUserNestedInput
   dailyBriefings?: Prisma.DailyBriefingUncheckedUpdateManyWithoutUserNestedInput
@@ -1013,6 +1147,7 @@ export type UserUncheckedUpdateWithoutPreferencesInput = {
   financialProfile?: Prisma.UserFinancialProfileUncheckedUpdateOneWithoutUserNestedInput
   memories?: Prisma.UserMemoryUncheckedUpdateManyWithoutUserNestedInput
   linkedWallets?: Prisma.LinkedWalletUncheckedUpdateManyWithoutUserNestedInput
+  copilotSuggestions?: Prisma.CopilotSuggestionUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutConversationLogsInput = {
@@ -1028,6 +1163,10 @@ export type UserCreateWithoutConversationLogsInput = {
   tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  emailDeliverable?: boolean
+  lastDashboardVisitAt?: Date | string | null
+  copilotConfirmedCount?: number
+  copilotMigrationNoticeShownAt?: Date | string | null
   preferences?: Prisma.UserPreferencesCreateNestedOneWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsCreateNestedManyWithoutUserInput
   dailyBriefings?: Prisma.DailyBriefingCreateNestedManyWithoutUserInput
@@ -1043,6 +1182,7 @@ export type UserCreateWithoutConversationLogsInput = {
   financialProfile?: Prisma.UserFinancialProfileCreateNestedOneWithoutUserInput
   memories?: Prisma.UserMemoryCreateNestedManyWithoutUserInput
   linkedWallets?: Prisma.LinkedWalletCreateNestedManyWithoutUserInput
+  copilotSuggestions?: Prisma.CopilotSuggestionCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutConversationLogsInput = {
@@ -1058,6 +1198,10 @@ export type UserUncheckedCreateWithoutConversationLogsInput = {
   tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  emailDeliverable?: boolean
+  lastDashboardVisitAt?: Date | string | null
+  copilotConfirmedCount?: number
+  copilotMigrationNoticeShownAt?: Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedCreateNestedOneWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedCreateNestedManyWithoutUserInput
   dailyBriefings?: Prisma.DailyBriefingUncheckedCreateNestedManyWithoutUserInput
@@ -1073,6 +1217,7 @@ export type UserUncheckedCreateWithoutConversationLogsInput = {
   financialProfile?: Prisma.UserFinancialProfileUncheckedCreateNestedOneWithoutUserInput
   memories?: Prisma.UserMemoryUncheckedCreateNestedManyWithoutUserInput
   linkedWallets?: Prisma.LinkedWalletUncheckedCreateNestedManyWithoutUserInput
+  copilotSuggestions?: Prisma.CopilotSuggestionUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutConversationLogsInput = {
@@ -1104,6 +1249,10 @@ export type UserUpdateWithoutConversationLogsInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  emailDeliverable?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
+  copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUpdateOneWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUpdateManyWithoutUserNestedInput
   dailyBriefings?: Prisma.DailyBriefingUpdateManyWithoutUserNestedInput
@@ -1119,6 +1268,7 @@ export type UserUpdateWithoutConversationLogsInput = {
   financialProfile?: Prisma.UserFinancialProfileUpdateOneWithoutUserNestedInput
   memories?: Prisma.UserMemoryUpdateManyWithoutUserNestedInput
   linkedWallets?: Prisma.LinkedWalletUpdateManyWithoutUserNestedInput
+  copilotSuggestions?: Prisma.CopilotSuggestionUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutConversationLogsInput = {
@@ -1134,6 +1284,10 @@ export type UserUncheckedUpdateWithoutConversationLogsInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  emailDeliverable?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
+  copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedUpdateOneWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedUpdateManyWithoutUserNestedInput
   dailyBriefings?: Prisma.DailyBriefingUncheckedUpdateManyWithoutUserNestedInput
@@ -1149,6 +1303,7 @@ export type UserUncheckedUpdateWithoutConversationLogsInput = {
   financialProfile?: Prisma.UserFinancialProfileUncheckedUpdateOneWithoutUserNestedInput
   memories?: Prisma.UserMemoryUncheckedUpdateManyWithoutUserNestedInput
   linkedWallets?: Prisma.LinkedWalletUncheckedUpdateManyWithoutUserNestedInput
+  copilotSuggestions?: Prisma.CopilotSuggestionUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutNotificationPrefsInput = {
@@ -1164,6 +1319,10 @@ export type UserCreateWithoutNotificationPrefsInput = {
   tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  emailDeliverable?: boolean
+  lastDashboardVisitAt?: Date | string | null
+  copilotConfirmedCount?: number
+  copilotMigrationNoticeShownAt?: Date | string | null
   preferences?: Prisma.UserPreferencesCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogCreateNestedManyWithoutUserInput
   dailyBriefings?: Prisma.DailyBriefingCreateNestedManyWithoutUserInput
@@ -1179,6 +1338,7 @@ export type UserCreateWithoutNotificationPrefsInput = {
   financialProfile?: Prisma.UserFinancialProfileCreateNestedOneWithoutUserInput
   memories?: Prisma.UserMemoryCreateNestedManyWithoutUserInput
   linkedWallets?: Prisma.LinkedWalletCreateNestedManyWithoutUserInput
+  copilotSuggestions?: Prisma.CopilotSuggestionCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutNotificationPrefsInput = {
@@ -1194,6 +1354,10 @@ export type UserUncheckedCreateWithoutNotificationPrefsInput = {
   tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  emailDeliverable?: boolean
+  lastDashboardVisitAt?: Date | string | null
+  copilotConfirmedCount?: number
+  copilotMigrationNoticeShownAt?: Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogUncheckedCreateNestedManyWithoutUserInput
   dailyBriefings?: Prisma.DailyBriefingUncheckedCreateNestedManyWithoutUserInput
@@ -1209,6 +1373,7 @@ export type UserUncheckedCreateWithoutNotificationPrefsInput = {
   financialProfile?: Prisma.UserFinancialProfileUncheckedCreateNestedOneWithoutUserInput
   memories?: Prisma.UserMemoryUncheckedCreateNestedManyWithoutUserInput
   linkedWallets?: Prisma.LinkedWalletUncheckedCreateNestedManyWithoutUserInput
+  copilotSuggestions?: Prisma.CopilotSuggestionUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutNotificationPrefsInput = {
@@ -1240,6 +1405,10 @@ export type UserUpdateWithoutNotificationPrefsInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  emailDeliverable?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
+  copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUpdateManyWithoutUserNestedInput
   dailyBriefings?: Prisma.DailyBriefingUpdateManyWithoutUserNestedInput
@@ -1255,6 +1424,7 @@ export type UserUpdateWithoutNotificationPrefsInput = {
   financialProfile?: Prisma.UserFinancialProfileUpdateOneWithoutUserNestedInput
   memories?: Prisma.UserMemoryUpdateManyWithoutUserNestedInput
   linkedWallets?: Prisma.LinkedWalletUpdateManyWithoutUserNestedInput
+  copilotSuggestions?: Prisma.CopilotSuggestionUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutNotificationPrefsInput = {
@@ -1270,6 +1440,10 @@ export type UserUncheckedUpdateWithoutNotificationPrefsInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  emailDeliverable?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
+  copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUncheckedUpdateManyWithoutUserNestedInput
   dailyBriefings?: Prisma.DailyBriefingUncheckedUpdateManyWithoutUserNestedInput
@@ -1285,6 +1459,7 @@ export type UserUncheckedUpdateWithoutNotificationPrefsInput = {
   financialProfile?: Prisma.UserFinancialProfileUncheckedUpdateOneWithoutUserNestedInput
   memories?: Prisma.UserMemoryUncheckedUpdateManyWithoutUserNestedInput
   linkedWallets?: Prisma.LinkedWalletUncheckedUpdateManyWithoutUserNestedInput
+  copilotSuggestions?: Prisma.CopilotSuggestionUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutDailyBriefingsInput = {
@@ -1300,6 +1475,10 @@ export type UserCreateWithoutDailyBriefingsInput = {
   tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  emailDeliverable?: boolean
+  lastDashboardVisitAt?: Date | string | null
+  copilotConfirmedCount?: number
+  copilotMigrationNoticeShownAt?: Date | string | null
   preferences?: Prisma.UserPreferencesCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsCreateNestedManyWithoutUserInput
@@ -1315,6 +1494,7 @@ export type UserCreateWithoutDailyBriefingsInput = {
   financialProfile?: Prisma.UserFinancialProfileCreateNestedOneWithoutUserInput
   memories?: Prisma.UserMemoryCreateNestedManyWithoutUserInput
   linkedWallets?: Prisma.LinkedWalletCreateNestedManyWithoutUserInput
+  copilotSuggestions?: Prisma.CopilotSuggestionCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutDailyBriefingsInput = {
@@ -1330,6 +1510,10 @@ export type UserUncheckedCreateWithoutDailyBriefingsInput = {
   tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  emailDeliverable?: boolean
+  lastDashboardVisitAt?: Date | string | null
+  copilotConfirmedCount?: number
+  copilotMigrationNoticeShownAt?: Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogUncheckedCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedCreateNestedManyWithoutUserInput
@@ -1345,6 +1529,7 @@ export type UserUncheckedCreateWithoutDailyBriefingsInput = {
   financialProfile?: Prisma.UserFinancialProfileUncheckedCreateNestedOneWithoutUserInput
   memories?: Prisma.UserMemoryUncheckedCreateNestedManyWithoutUserInput
   linkedWallets?: Prisma.LinkedWalletUncheckedCreateNestedManyWithoutUserInput
+  copilotSuggestions?: Prisma.CopilotSuggestionUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutDailyBriefingsInput = {
@@ -1376,6 +1561,10 @@ export type UserUpdateWithoutDailyBriefingsInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  emailDeliverable?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
+  copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUpdateManyWithoutUserNestedInput
@@ -1391,6 +1580,7 @@ export type UserUpdateWithoutDailyBriefingsInput = {
   financialProfile?: Prisma.UserFinancialProfileUpdateOneWithoutUserNestedInput
   memories?: Prisma.UserMemoryUpdateManyWithoutUserNestedInput
   linkedWallets?: Prisma.LinkedWalletUpdateManyWithoutUserNestedInput
+  copilotSuggestions?: Prisma.CopilotSuggestionUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutDailyBriefingsInput = {
@@ -1406,6 +1596,10 @@ export type UserUncheckedUpdateWithoutDailyBriefingsInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  emailDeliverable?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
+  copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUncheckedUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedUpdateManyWithoutUserNestedInput
@@ -1421,6 +1615,7 @@ export type UserUncheckedUpdateWithoutDailyBriefingsInput = {
   financialProfile?: Prisma.UserFinancialProfileUncheckedUpdateOneWithoutUserNestedInput
   memories?: Prisma.UserMemoryUncheckedUpdateManyWithoutUserNestedInput
   linkedWallets?: Prisma.LinkedWalletUncheckedUpdateManyWithoutUserNestedInput
+  copilotSuggestions?: Prisma.CopilotSuggestionUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutSavingsGoalsInput = {
@@ -1436,6 +1631,10 @@ export type UserCreateWithoutSavingsGoalsInput = {
   tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  emailDeliverable?: boolean
+  lastDashboardVisitAt?: Date | string | null
+  copilotConfirmedCount?: number
+  copilotMigrationNoticeShownAt?: Date | string | null
   preferences?: Prisma.UserPreferencesCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsCreateNestedManyWithoutUserInput
@@ -1451,6 +1650,7 @@ export type UserCreateWithoutSavingsGoalsInput = {
   financialProfile?: Prisma.UserFinancialProfileCreateNestedOneWithoutUserInput
   memories?: Prisma.UserMemoryCreateNestedManyWithoutUserInput
   linkedWallets?: Prisma.LinkedWalletCreateNestedManyWithoutUserInput
+  copilotSuggestions?: Prisma.CopilotSuggestionCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutSavingsGoalsInput = {
@@ -1466,6 +1666,10 @@ export type UserUncheckedCreateWithoutSavingsGoalsInput = {
   tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  emailDeliverable?: boolean
+  lastDashboardVisitAt?: Date | string | null
+  copilotConfirmedCount?: number
+  copilotMigrationNoticeShownAt?: Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogUncheckedCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedCreateNestedManyWithoutUserInput
@@ -1481,6 +1685,7 @@ export type UserUncheckedCreateWithoutSavingsGoalsInput = {
   financialProfile?: Prisma.UserFinancialProfileUncheckedCreateNestedOneWithoutUserInput
   memories?: Prisma.UserMemoryUncheckedCreateNestedManyWithoutUserInput
   linkedWallets?: Prisma.LinkedWalletUncheckedCreateNestedManyWithoutUserInput
+  copilotSuggestions?: Prisma.CopilotSuggestionUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutSavingsGoalsInput = {
@@ -1512,6 +1717,10 @@ export type UserUpdateWithoutSavingsGoalsInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  emailDeliverable?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
+  copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUpdateManyWithoutUserNestedInput
@@ -1527,6 +1736,7 @@ export type UserUpdateWithoutSavingsGoalsInput = {
   financialProfile?: Prisma.UserFinancialProfileUpdateOneWithoutUserNestedInput
   memories?: Prisma.UserMemoryUpdateManyWithoutUserNestedInput
   linkedWallets?: Prisma.LinkedWalletUpdateManyWithoutUserNestedInput
+  copilotSuggestions?: Prisma.CopilotSuggestionUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutSavingsGoalsInput = {
@@ -1542,6 +1752,10 @@ export type UserUncheckedUpdateWithoutSavingsGoalsInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  emailDeliverable?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
+  copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUncheckedUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedUpdateManyWithoutUserNestedInput
@@ -1557,6 +1771,7 @@ export type UserUncheckedUpdateWithoutSavingsGoalsInput = {
   financialProfile?: Prisma.UserFinancialProfileUncheckedUpdateOneWithoutUserNestedInput
   memories?: Prisma.UserMemoryUncheckedUpdateManyWithoutUserNestedInput
   linkedWallets?: Prisma.LinkedWalletUncheckedUpdateManyWithoutUserNestedInput
+  copilotSuggestions?: Prisma.CopilotSuggestionUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutAdviceLogsInput = {
@@ -1572,6 +1787,10 @@ export type UserCreateWithoutAdviceLogsInput = {
   tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  emailDeliverable?: boolean
+  lastDashboardVisitAt?: Date | string | null
+  copilotConfirmedCount?: number
+  copilotMigrationNoticeShownAt?: Date | string | null
   preferences?: Prisma.UserPreferencesCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsCreateNestedManyWithoutUserInput
@@ -1587,6 +1806,7 @@ export type UserCreateWithoutAdviceLogsInput = {
   financialProfile?: Prisma.UserFinancialProfileCreateNestedOneWithoutUserInput
   memories?: Prisma.UserMemoryCreateNestedManyWithoutUserInput
   linkedWallets?: Prisma.LinkedWalletCreateNestedManyWithoutUserInput
+  copilotSuggestions?: Prisma.CopilotSuggestionCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutAdviceLogsInput = {
@@ -1602,6 +1822,10 @@ export type UserUncheckedCreateWithoutAdviceLogsInput = {
   tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  emailDeliverable?: boolean
+  lastDashboardVisitAt?: Date | string | null
+  copilotConfirmedCount?: number
+  copilotMigrationNoticeShownAt?: Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogUncheckedCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedCreateNestedManyWithoutUserInput
@@ -1617,6 +1841,7 @@ export type UserUncheckedCreateWithoutAdviceLogsInput = {
   financialProfile?: Prisma.UserFinancialProfileUncheckedCreateNestedOneWithoutUserInput
   memories?: Prisma.UserMemoryUncheckedCreateNestedManyWithoutUserInput
   linkedWallets?: Prisma.LinkedWalletUncheckedCreateNestedManyWithoutUserInput
+  copilotSuggestions?: Prisma.CopilotSuggestionUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutAdviceLogsInput = {
@@ -1648,6 +1873,10 @@ export type UserUpdateWithoutAdviceLogsInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  emailDeliverable?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
+  copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUpdateManyWithoutUserNestedInput
@@ -1663,6 +1892,7 @@ export type UserUpdateWithoutAdviceLogsInput = {
   financialProfile?: Prisma.UserFinancialProfileUpdateOneWithoutUserNestedInput
   memories?: Prisma.UserMemoryUpdateManyWithoutUserNestedInput
   linkedWallets?: Prisma.LinkedWalletUpdateManyWithoutUserNestedInput
+  copilotSuggestions?: Prisma.CopilotSuggestionUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutAdviceLogsInput = {
@@ -1678,6 +1908,10 @@ export type UserUncheckedUpdateWithoutAdviceLogsInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  emailDeliverable?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
+  copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUncheckedUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedUpdateManyWithoutUserNestedInput
@@ -1693,6 +1927,7 @@ export type UserUncheckedUpdateWithoutAdviceLogsInput = {
   financialProfile?: Prisma.UserFinancialProfileUncheckedUpdateOneWithoutUserNestedInput
   memories?: Prisma.UserMemoryUncheckedUpdateManyWithoutUserNestedInput
   linkedWallets?: Prisma.LinkedWalletUncheckedUpdateManyWithoutUserNestedInput
+  copilotSuggestions?: Prisma.CopilotSuggestionUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutPaymentsInput = {
@@ -1708,6 +1943,10 @@ export type UserCreateWithoutPaymentsInput = {
   tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  emailDeliverable?: boolean
+  lastDashboardVisitAt?: Date | string | null
+  copilotConfirmedCount?: number
+  copilotMigrationNoticeShownAt?: Date | string | null
   preferences?: Prisma.UserPreferencesCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsCreateNestedManyWithoutUserInput
@@ -1723,6 +1962,7 @@ export type UserCreateWithoutPaymentsInput = {
   financialProfile?: Prisma.UserFinancialProfileCreateNestedOneWithoutUserInput
   memories?: Prisma.UserMemoryCreateNestedManyWithoutUserInput
   linkedWallets?: Prisma.LinkedWalletCreateNestedManyWithoutUserInput
+  copilotSuggestions?: Prisma.CopilotSuggestionCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutPaymentsInput = {
@@ -1738,6 +1978,10 @@ export type UserUncheckedCreateWithoutPaymentsInput = {
   tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  emailDeliverable?: boolean
+  lastDashboardVisitAt?: Date | string | null
+  copilotConfirmedCount?: number
+  copilotMigrationNoticeShownAt?: Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogUncheckedCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedCreateNestedManyWithoutUserInput
@@ -1753,6 +1997,7 @@ export type UserUncheckedCreateWithoutPaymentsInput = {
   financialProfile?: Prisma.UserFinancialProfileUncheckedCreateNestedOneWithoutUserInput
   memories?: Prisma.UserMemoryUncheckedCreateNestedManyWithoutUserInput
   linkedWallets?: Prisma.LinkedWalletUncheckedCreateNestedManyWithoutUserInput
+  copilotSuggestions?: Prisma.CopilotSuggestionUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutPaymentsInput = {
@@ -1784,6 +2029,10 @@ export type UserUpdateWithoutPaymentsInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  emailDeliverable?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
+  copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUpdateManyWithoutUserNestedInput
@@ -1799,6 +2048,7 @@ export type UserUpdateWithoutPaymentsInput = {
   financialProfile?: Prisma.UserFinancialProfileUpdateOneWithoutUserNestedInput
   memories?: Prisma.UserMemoryUpdateManyWithoutUserNestedInput
   linkedWallets?: Prisma.LinkedWalletUpdateManyWithoutUserNestedInput
+  copilotSuggestions?: Prisma.CopilotSuggestionUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutPaymentsInput = {
@@ -1814,6 +2064,10 @@ export type UserUncheckedUpdateWithoutPaymentsInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  emailDeliverable?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
+  copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUncheckedUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedUpdateManyWithoutUserNestedInput
@@ -1829,6 +2083,7 @@ export type UserUncheckedUpdateWithoutPaymentsInput = {
   financialProfile?: Prisma.UserFinancialProfileUncheckedUpdateOneWithoutUserNestedInput
   memories?: Prisma.UserMemoryUncheckedUpdateManyWithoutUserNestedInput
   linkedWallets?: Prisma.LinkedWalletUncheckedUpdateManyWithoutUserNestedInput
+  copilotSuggestions?: Prisma.CopilotSuggestionUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutSavingsGoalDepositsInput = {
@@ -1844,6 +2099,10 @@ export type UserCreateWithoutSavingsGoalDepositsInput = {
   tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  emailDeliverable?: boolean
+  lastDashboardVisitAt?: Date | string | null
+  copilotConfirmedCount?: number
+  copilotMigrationNoticeShownAt?: Date | string | null
   preferences?: Prisma.UserPreferencesCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsCreateNestedManyWithoutUserInput
@@ -1859,6 +2118,7 @@ export type UserCreateWithoutSavingsGoalDepositsInput = {
   financialProfile?: Prisma.UserFinancialProfileCreateNestedOneWithoutUserInput
   memories?: Prisma.UserMemoryCreateNestedManyWithoutUserInput
   linkedWallets?: Prisma.LinkedWalletCreateNestedManyWithoutUserInput
+  copilotSuggestions?: Prisma.CopilotSuggestionCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutSavingsGoalDepositsInput = {
@@ -1874,6 +2134,10 @@ export type UserUncheckedCreateWithoutSavingsGoalDepositsInput = {
   tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  emailDeliverable?: boolean
+  lastDashboardVisitAt?: Date | string | null
+  copilotConfirmedCount?: number
+  copilotMigrationNoticeShownAt?: Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogUncheckedCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedCreateNestedManyWithoutUserInput
@@ -1889,6 +2153,7 @@ export type UserUncheckedCreateWithoutSavingsGoalDepositsInput = {
   financialProfile?: Prisma.UserFinancialProfileUncheckedCreateNestedOneWithoutUserInput
   memories?: Prisma.UserMemoryUncheckedCreateNestedManyWithoutUserInput
   linkedWallets?: Prisma.LinkedWalletUncheckedCreateNestedManyWithoutUserInput
+  copilotSuggestions?: Prisma.CopilotSuggestionUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutSavingsGoalDepositsInput = {
@@ -1920,6 +2185,10 @@ export type UserUpdateWithoutSavingsGoalDepositsInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  emailDeliverable?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
+  copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUpdateManyWithoutUserNestedInput
@@ -1935,6 +2204,7 @@ export type UserUpdateWithoutSavingsGoalDepositsInput = {
   financialProfile?: Prisma.UserFinancialProfileUpdateOneWithoutUserNestedInput
   memories?: Prisma.UserMemoryUpdateManyWithoutUserNestedInput
   linkedWallets?: Prisma.LinkedWalletUpdateManyWithoutUserNestedInput
+  copilotSuggestions?: Prisma.CopilotSuggestionUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutSavingsGoalDepositsInput = {
@@ -1950,6 +2220,10 @@ export type UserUncheckedUpdateWithoutSavingsGoalDepositsInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  emailDeliverable?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
+  copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUncheckedUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedUpdateManyWithoutUserNestedInput
@@ -1965,6 +2239,7 @@ export type UserUncheckedUpdateWithoutSavingsGoalDepositsInput = {
   financialProfile?: Prisma.UserFinancialProfileUncheckedUpdateOneWithoutUserNestedInput
   memories?: Prisma.UserMemoryUncheckedUpdateManyWithoutUserNestedInput
   linkedWallets?: Prisma.LinkedWalletUncheckedUpdateManyWithoutUserNestedInput
+  copilotSuggestions?: Prisma.CopilotSuggestionUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutWatchAddressesInput = {
@@ -1980,6 +2255,10 @@ export type UserCreateWithoutWatchAddressesInput = {
   tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  emailDeliverable?: boolean
+  lastDashboardVisitAt?: Date | string | null
+  copilotConfirmedCount?: number
+  copilotMigrationNoticeShownAt?: Date | string | null
   preferences?: Prisma.UserPreferencesCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsCreateNestedManyWithoutUserInput
@@ -1995,6 +2274,7 @@ export type UserCreateWithoutWatchAddressesInput = {
   financialProfile?: Prisma.UserFinancialProfileCreateNestedOneWithoutUserInput
   memories?: Prisma.UserMemoryCreateNestedManyWithoutUserInput
   linkedWallets?: Prisma.LinkedWalletCreateNestedManyWithoutUserInput
+  copilotSuggestions?: Prisma.CopilotSuggestionCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutWatchAddressesInput = {
@@ -2010,6 +2290,10 @@ export type UserUncheckedCreateWithoutWatchAddressesInput = {
   tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  emailDeliverable?: boolean
+  lastDashboardVisitAt?: Date | string | null
+  copilotConfirmedCount?: number
+  copilotMigrationNoticeShownAt?: Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogUncheckedCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedCreateNestedManyWithoutUserInput
@@ -2025,6 +2309,7 @@ export type UserUncheckedCreateWithoutWatchAddressesInput = {
   financialProfile?: Prisma.UserFinancialProfileUncheckedCreateNestedOneWithoutUserInput
   memories?: Prisma.UserMemoryUncheckedCreateNestedManyWithoutUserInput
   linkedWallets?: Prisma.LinkedWalletUncheckedCreateNestedManyWithoutUserInput
+  copilotSuggestions?: Prisma.CopilotSuggestionUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutWatchAddressesInput = {
@@ -2056,6 +2341,10 @@ export type UserUpdateWithoutWatchAddressesInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  emailDeliverable?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
+  copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUpdateManyWithoutUserNestedInput
@@ -2071,6 +2360,7 @@ export type UserUpdateWithoutWatchAddressesInput = {
   financialProfile?: Prisma.UserFinancialProfileUpdateOneWithoutUserNestedInput
   memories?: Prisma.UserMemoryUpdateManyWithoutUserNestedInput
   linkedWallets?: Prisma.LinkedWalletUpdateManyWithoutUserNestedInput
+  copilotSuggestions?: Prisma.CopilotSuggestionUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutWatchAddressesInput = {
@@ -2086,6 +2376,10 @@ export type UserUncheckedUpdateWithoutWatchAddressesInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  emailDeliverable?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
+  copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUncheckedUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedUpdateManyWithoutUserNestedInput
@@ -2101,6 +2395,7 @@ export type UserUncheckedUpdateWithoutWatchAddressesInput = {
   financialProfile?: Prisma.UserFinancialProfileUncheckedUpdateOneWithoutUserNestedInput
   memories?: Prisma.UserMemoryUncheckedUpdateManyWithoutUserNestedInput
   linkedWallets?: Prisma.LinkedWalletUncheckedUpdateManyWithoutUserNestedInput
+  copilotSuggestions?: Prisma.CopilotSuggestionUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutPortfolioSnapshotsInput = {
@@ -2116,6 +2411,10 @@ export type UserCreateWithoutPortfolioSnapshotsInput = {
   tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  emailDeliverable?: boolean
+  lastDashboardVisitAt?: Date | string | null
+  copilotConfirmedCount?: number
+  copilotMigrationNoticeShownAt?: Date | string | null
   preferences?: Prisma.UserPreferencesCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsCreateNestedManyWithoutUserInput
@@ -2131,6 +2430,7 @@ export type UserCreateWithoutPortfolioSnapshotsInput = {
   financialProfile?: Prisma.UserFinancialProfileCreateNestedOneWithoutUserInput
   memories?: Prisma.UserMemoryCreateNestedManyWithoutUserInput
   linkedWallets?: Prisma.LinkedWalletCreateNestedManyWithoutUserInput
+  copilotSuggestions?: Prisma.CopilotSuggestionCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutPortfolioSnapshotsInput = {
@@ -2146,6 +2446,10 @@ export type UserUncheckedCreateWithoutPortfolioSnapshotsInput = {
   tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  emailDeliverable?: boolean
+  lastDashboardVisitAt?: Date | string | null
+  copilotConfirmedCount?: number
+  copilotMigrationNoticeShownAt?: Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogUncheckedCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedCreateNestedManyWithoutUserInput
@@ -2161,6 +2465,7 @@ export type UserUncheckedCreateWithoutPortfolioSnapshotsInput = {
   financialProfile?: Prisma.UserFinancialProfileUncheckedCreateNestedOneWithoutUserInput
   memories?: Prisma.UserMemoryUncheckedCreateNestedManyWithoutUserInput
   linkedWallets?: Prisma.LinkedWalletUncheckedCreateNestedManyWithoutUserInput
+  copilotSuggestions?: Prisma.CopilotSuggestionUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutPortfolioSnapshotsInput = {
@@ -2192,6 +2497,10 @@ export type UserUpdateWithoutPortfolioSnapshotsInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  emailDeliverable?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
+  copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUpdateManyWithoutUserNestedInput
@@ -2207,6 +2516,7 @@ export type UserUpdateWithoutPortfolioSnapshotsInput = {
   financialProfile?: Prisma.UserFinancialProfileUpdateOneWithoutUserNestedInput
   memories?: Prisma.UserMemoryUpdateManyWithoutUserNestedInput
   linkedWallets?: Prisma.LinkedWalletUpdateManyWithoutUserNestedInput
+  copilotSuggestions?: Prisma.CopilotSuggestionUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutPortfolioSnapshotsInput = {
@@ -2222,6 +2532,10 @@ export type UserUncheckedUpdateWithoutPortfolioSnapshotsInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  emailDeliverable?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
+  copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUncheckedUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedUpdateManyWithoutUserNestedInput
@@ -2237,6 +2551,7 @@ export type UserUncheckedUpdateWithoutPortfolioSnapshotsInput = {
   financialProfile?: Prisma.UserFinancialProfileUncheckedUpdateOneWithoutUserNestedInput
   memories?: Prisma.UserMemoryUncheckedUpdateManyWithoutUserNestedInput
   linkedWallets?: Prisma.LinkedWalletUncheckedUpdateManyWithoutUserNestedInput
+  copilotSuggestions?: Prisma.CopilotSuggestionUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutScheduledActionsInput = {
@@ -2252,6 +2567,10 @@ export type UserCreateWithoutScheduledActionsInput = {
   tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  emailDeliverable?: boolean
+  lastDashboardVisitAt?: Date | string | null
+  copilotConfirmedCount?: number
+  copilotMigrationNoticeShownAt?: Date | string | null
   preferences?: Prisma.UserPreferencesCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsCreateNestedManyWithoutUserInput
@@ -2267,6 +2586,7 @@ export type UserCreateWithoutScheduledActionsInput = {
   financialProfile?: Prisma.UserFinancialProfileCreateNestedOneWithoutUserInput
   memories?: Prisma.UserMemoryCreateNestedManyWithoutUserInput
   linkedWallets?: Prisma.LinkedWalletCreateNestedManyWithoutUserInput
+  copilotSuggestions?: Prisma.CopilotSuggestionCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutScheduledActionsInput = {
@@ -2282,6 +2602,10 @@ export type UserUncheckedCreateWithoutScheduledActionsInput = {
   tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  emailDeliverable?: boolean
+  lastDashboardVisitAt?: Date | string | null
+  copilotConfirmedCount?: number
+  copilotMigrationNoticeShownAt?: Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogUncheckedCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedCreateNestedManyWithoutUserInput
@@ -2297,6 +2621,7 @@ export type UserUncheckedCreateWithoutScheduledActionsInput = {
   financialProfile?: Prisma.UserFinancialProfileUncheckedCreateNestedOneWithoutUserInput
   memories?: Prisma.UserMemoryUncheckedCreateNestedManyWithoutUserInput
   linkedWallets?: Prisma.LinkedWalletUncheckedCreateNestedManyWithoutUserInput
+  copilotSuggestions?: Prisma.CopilotSuggestionUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutScheduledActionsInput = {
@@ -2328,6 +2653,10 @@ export type UserUpdateWithoutScheduledActionsInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  emailDeliverable?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
+  copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUpdateManyWithoutUserNestedInput
@@ -2343,6 +2672,7 @@ export type UserUpdateWithoutScheduledActionsInput = {
   financialProfile?: Prisma.UserFinancialProfileUpdateOneWithoutUserNestedInput
   memories?: Prisma.UserMemoryUpdateManyWithoutUserNestedInput
   linkedWallets?: Prisma.LinkedWalletUpdateManyWithoutUserNestedInput
+  copilotSuggestions?: Prisma.CopilotSuggestionUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutScheduledActionsInput = {
@@ -2358,6 +2688,10 @@ export type UserUncheckedUpdateWithoutScheduledActionsInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  emailDeliverable?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
+  copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUncheckedUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedUpdateManyWithoutUserNestedInput
@@ -2368,6 +2702,163 @@ export type UserUncheckedUpdateWithoutScheduledActionsInput = {
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutUserNestedInput
   watchAddresses?: Prisma.WatchAddressUncheckedUpdateManyWithoutUserNestedInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotUncheckedUpdateManyWithoutUserNestedInput
+  outcomeChecks?: Prisma.OutcomeCheckUncheckedUpdateManyWithoutUserNestedInput
+  followUpQueue?: Prisma.FollowUpQueueUncheckedUpdateManyWithoutUserNestedInput
+  financialProfile?: Prisma.UserFinancialProfileUncheckedUpdateOneWithoutUserNestedInput
+  memories?: Prisma.UserMemoryUncheckedUpdateManyWithoutUserNestedInput
+  linkedWallets?: Prisma.LinkedWalletUncheckedUpdateManyWithoutUserNestedInput
+  copilotSuggestions?: Prisma.CopilotSuggestionUncheckedUpdateManyWithoutUserNestedInput
+}
+
+export type UserCreateWithoutCopilotSuggestionsInput = {
+  id?: string
+  suiAddress: string
+  email?: string | null
+  emailVerified?: boolean
+  emailVerifyToken?: string | null
+  emailVerifyExpiry?: Date | string | null
+  displayName?: string | null
+  timezoneOffset?: number
+  onboardedAt?: Date | string | null
+  tosAcceptedAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  emailDeliverable?: boolean
+  lastDashboardVisitAt?: Date | string | null
+  copilotConfirmedCount?: number
+  copilotMigrationNoticeShownAt?: Date | string | null
+  preferences?: Prisma.UserPreferencesCreateNestedOneWithoutUserInput
+  conversationLogs?: Prisma.ConversationLogCreateNestedManyWithoutUserInput
+  notificationPrefs?: Prisma.NotificationPrefsCreateNestedManyWithoutUserInput
+  dailyBriefings?: Prisma.DailyBriefingCreateNestedManyWithoutUserInput
+  savingsGoals?: Prisma.SavingsGoalCreateNestedManyWithoutUserInput
+  adviceLogs?: Prisma.AdviceLogCreateNestedManyWithoutUserInput
+  savingsGoalDeposits?: Prisma.SavingsGoalDepositCreateNestedManyWithoutUserInput
+  payments?: Prisma.PaymentCreateNestedManyWithoutUserInput
+  watchAddresses?: Prisma.WatchAddressCreateNestedManyWithoutUserInput
+  portfolioSnapshots?: Prisma.PortfolioSnapshotCreateNestedManyWithoutUserInput
+  scheduledActions?: Prisma.ScheduledActionCreateNestedManyWithoutUserInput
+  outcomeChecks?: Prisma.OutcomeCheckCreateNestedManyWithoutUserInput
+  followUpQueue?: Prisma.FollowUpQueueCreateNestedManyWithoutUserInput
+  financialProfile?: Prisma.UserFinancialProfileCreateNestedOneWithoutUserInput
+  memories?: Prisma.UserMemoryCreateNestedManyWithoutUserInput
+  linkedWallets?: Prisma.LinkedWalletCreateNestedManyWithoutUserInput
+}
+
+export type UserUncheckedCreateWithoutCopilotSuggestionsInput = {
+  id?: string
+  suiAddress: string
+  email?: string | null
+  emailVerified?: boolean
+  emailVerifyToken?: string | null
+  emailVerifyExpiry?: Date | string | null
+  displayName?: string | null
+  timezoneOffset?: number
+  onboardedAt?: Date | string | null
+  tosAcceptedAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  emailDeliverable?: boolean
+  lastDashboardVisitAt?: Date | string | null
+  copilotConfirmedCount?: number
+  copilotMigrationNoticeShownAt?: Date | string | null
+  preferences?: Prisma.UserPreferencesUncheckedCreateNestedOneWithoutUserInput
+  conversationLogs?: Prisma.ConversationLogUncheckedCreateNestedManyWithoutUserInput
+  notificationPrefs?: Prisma.NotificationPrefsUncheckedCreateNestedManyWithoutUserInput
+  dailyBriefings?: Prisma.DailyBriefingUncheckedCreateNestedManyWithoutUserInput
+  savingsGoals?: Prisma.SavingsGoalUncheckedCreateNestedManyWithoutUserInput
+  adviceLogs?: Prisma.AdviceLogUncheckedCreateNestedManyWithoutUserInput
+  savingsGoalDeposits?: Prisma.SavingsGoalDepositUncheckedCreateNestedManyWithoutUserInput
+  payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutUserInput
+  watchAddresses?: Prisma.WatchAddressUncheckedCreateNestedManyWithoutUserInput
+  portfolioSnapshots?: Prisma.PortfolioSnapshotUncheckedCreateNestedManyWithoutUserInput
+  scheduledActions?: Prisma.ScheduledActionUncheckedCreateNestedManyWithoutUserInput
+  outcomeChecks?: Prisma.OutcomeCheckUncheckedCreateNestedManyWithoutUserInput
+  followUpQueue?: Prisma.FollowUpQueueUncheckedCreateNestedManyWithoutUserInput
+  financialProfile?: Prisma.UserFinancialProfileUncheckedCreateNestedOneWithoutUserInput
+  memories?: Prisma.UserMemoryUncheckedCreateNestedManyWithoutUserInput
+  linkedWallets?: Prisma.LinkedWalletUncheckedCreateNestedManyWithoutUserInput
+}
+
+export type UserCreateOrConnectWithoutCopilotSuggestionsInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutCopilotSuggestionsInput, Prisma.UserUncheckedCreateWithoutCopilotSuggestionsInput>
+}
+
+export type UserUpsertWithoutCopilotSuggestionsInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutCopilotSuggestionsInput, Prisma.UserUncheckedUpdateWithoutCopilotSuggestionsInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutCopilotSuggestionsInput, Prisma.UserUncheckedCreateWithoutCopilotSuggestionsInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutCopilotSuggestionsInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutCopilotSuggestionsInput, Prisma.UserUncheckedUpdateWithoutCopilotSuggestionsInput>
+}
+
+export type UserUpdateWithoutCopilotSuggestionsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  suiAddress?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  emailVerifyToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  emailVerifyExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  timezoneOffset?: Prisma.IntFieldUpdateOperationsInput | number
+  onboardedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  emailDeliverable?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
+  copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  preferences?: Prisma.UserPreferencesUpdateOneWithoutUserNestedInput
+  conversationLogs?: Prisma.ConversationLogUpdateManyWithoutUserNestedInput
+  notificationPrefs?: Prisma.NotificationPrefsUpdateManyWithoutUserNestedInput
+  dailyBriefings?: Prisma.DailyBriefingUpdateManyWithoutUserNestedInput
+  savingsGoals?: Prisma.SavingsGoalUpdateManyWithoutUserNestedInput
+  adviceLogs?: Prisma.AdviceLogUpdateManyWithoutUserNestedInput
+  savingsGoalDeposits?: Prisma.SavingsGoalDepositUpdateManyWithoutUserNestedInput
+  payments?: Prisma.PaymentUpdateManyWithoutUserNestedInput
+  watchAddresses?: Prisma.WatchAddressUpdateManyWithoutUserNestedInput
+  portfolioSnapshots?: Prisma.PortfolioSnapshotUpdateManyWithoutUserNestedInput
+  scheduledActions?: Prisma.ScheduledActionUpdateManyWithoutUserNestedInput
+  outcomeChecks?: Prisma.OutcomeCheckUpdateManyWithoutUserNestedInput
+  followUpQueue?: Prisma.FollowUpQueueUpdateManyWithoutUserNestedInput
+  financialProfile?: Prisma.UserFinancialProfileUpdateOneWithoutUserNestedInput
+  memories?: Prisma.UserMemoryUpdateManyWithoutUserNestedInput
+  linkedWallets?: Prisma.LinkedWalletUpdateManyWithoutUserNestedInput
+}
+
+export type UserUncheckedUpdateWithoutCopilotSuggestionsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  suiAddress?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  emailVerifyToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  emailVerifyExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  timezoneOffset?: Prisma.IntFieldUpdateOperationsInput | number
+  onboardedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  emailDeliverable?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
+  copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  preferences?: Prisma.UserPreferencesUncheckedUpdateOneWithoutUserNestedInput
+  conversationLogs?: Prisma.ConversationLogUncheckedUpdateManyWithoutUserNestedInput
+  notificationPrefs?: Prisma.NotificationPrefsUncheckedUpdateManyWithoutUserNestedInput
+  dailyBriefings?: Prisma.DailyBriefingUncheckedUpdateManyWithoutUserNestedInput
+  savingsGoals?: Prisma.SavingsGoalUncheckedUpdateManyWithoutUserNestedInput
+  adviceLogs?: Prisma.AdviceLogUncheckedUpdateManyWithoutUserNestedInput
+  savingsGoalDeposits?: Prisma.SavingsGoalDepositUncheckedUpdateManyWithoutUserNestedInput
+  payments?: Prisma.PaymentUncheckedUpdateManyWithoutUserNestedInput
+  watchAddresses?: Prisma.WatchAddressUncheckedUpdateManyWithoutUserNestedInput
+  portfolioSnapshots?: Prisma.PortfolioSnapshotUncheckedUpdateManyWithoutUserNestedInput
+  scheduledActions?: Prisma.ScheduledActionUncheckedUpdateManyWithoutUserNestedInput
   outcomeChecks?: Prisma.OutcomeCheckUncheckedUpdateManyWithoutUserNestedInput
   followUpQueue?: Prisma.FollowUpQueueUncheckedUpdateManyWithoutUserNestedInput
   financialProfile?: Prisma.UserFinancialProfileUncheckedUpdateOneWithoutUserNestedInput
@@ -2388,6 +2879,10 @@ export type UserCreateWithoutOutcomeChecksInput = {
   tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  emailDeliverable?: boolean
+  lastDashboardVisitAt?: Date | string | null
+  copilotConfirmedCount?: number
+  copilotMigrationNoticeShownAt?: Date | string | null
   preferences?: Prisma.UserPreferencesCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsCreateNestedManyWithoutUserInput
@@ -2403,6 +2898,7 @@ export type UserCreateWithoutOutcomeChecksInput = {
   financialProfile?: Prisma.UserFinancialProfileCreateNestedOneWithoutUserInput
   memories?: Prisma.UserMemoryCreateNestedManyWithoutUserInput
   linkedWallets?: Prisma.LinkedWalletCreateNestedManyWithoutUserInput
+  copilotSuggestions?: Prisma.CopilotSuggestionCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutOutcomeChecksInput = {
@@ -2418,6 +2914,10 @@ export type UserUncheckedCreateWithoutOutcomeChecksInput = {
   tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  emailDeliverable?: boolean
+  lastDashboardVisitAt?: Date | string | null
+  copilotConfirmedCount?: number
+  copilotMigrationNoticeShownAt?: Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogUncheckedCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedCreateNestedManyWithoutUserInput
@@ -2433,6 +2933,7 @@ export type UserUncheckedCreateWithoutOutcomeChecksInput = {
   financialProfile?: Prisma.UserFinancialProfileUncheckedCreateNestedOneWithoutUserInput
   memories?: Prisma.UserMemoryUncheckedCreateNestedManyWithoutUserInput
   linkedWallets?: Prisma.LinkedWalletUncheckedCreateNestedManyWithoutUserInput
+  copilotSuggestions?: Prisma.CopilotSuggestionUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutOutcomeChecksInput = {
@@ -2464,6 +2965,10 @@ export type UserUpdateWithoutOutcomeChecksInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  emailDeliverable?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
+  copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUpdateManyWithoutUserNestedInput
@@ -2479,6 +2984,7 @@ export type UserUpdateWithoutOutcomeChecksInput = {
   financialProfile?: Prisma.UserFinancialProfileUpdateOneWithoutUserNestedInput
   memories?: Prisma.UserMemoryUpdateManyWithoutUserNestedInput
   linkedWallets?: Prisma.LinkedWalletUpdateManyWithoutUserNestedInput
+  copilotSuggestions?: Prisma.CopilotSuggestionUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutOutcomeChecksInput = {
@@ -2494,6 +3000,10 @@ export type UserUncheckedUpdateWithoutOutcomeChecksInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  emailDeliverable?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
+  copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUncheckedUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedUpdateManyWithoutUserNestedInput
@@ -2509,6 +3019,7 @@ export type UserUncheckedUpdateWithoutOutcomeChecksInput = {
   financialProfile?: Prisma.UserFinancialProfileUncheckedUpdateOneWithoutUserNestedInput
   memories?: Prisma.UserMemoryUncheckedUpdateManyWithoutUserNestedInput
   linkedWallets?: Prisma.LinkedWalletUncheckedUpdateManyWithoutUserNestedInput
+  copilotSuggestions?: Prisma.CopilotSuggestionUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutFollowUpQueueInput = {
@@ -2524,6 +3035,10 @@ export type UserCreateWithoutFollowUpQueueInput = {
   tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  emailDeliverable?: boolean
+  lastDashboardVisitAt?: Date | string | null
+  copilotConfirmedCount?: number
+  copilotMigrationNoticeShownAt?: Date | string | null
   preferences?: Prisma.UserPreferencesCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsCreateNestedManyWithoutUserInput
@@ -2539,6 +3054,7 @@ export type UserCreateWithoutFollowUpQueueInput = {
   financialProfile?: Prisma.UserFinancialProfileCreateNestedOneWithoutUserInput
   memories?: Prisma.UserMemoryCreateNestedManyWithoutUserInput
   linkedWallets?: Prisma.LinkedWalletCreateNestedManyWithoutUserInput
+  copilotSuggestions?: Prisma.CopilotSuggestionCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutFollowUpQueueInput = {
@@ -2554,6 +3070,10 @@ export type UserUncheckedCreateWithoutFollowUpQueueInput = {
   tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  emailDeliverable?: boolean
+  lastDashboardVisitAt?: Date | string | null
+  copilotConfirmedCount?: number
+  copilotMigrationNoticeShownAt?: Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogUncheckedCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedCreateNestedManyWithoutUserInput
@@ -2569,6 +3089,7 @@ export type UserUncheckedCreateWithoutFollowUpQueueInput = {
   financialProfile?: Prisma.UserFinancialProfileUncheckedCreateNestedOneWithoutUserInput
   memories?: Prisma.UserMemoryUncheckedCreateNestedManyWithoutUserInput
   linkedWallets?: Prisma.LinkedWalletUncheckedCreateNestedManyWithoutUserInput
+  copilotSuggestions?: Prisma.CopilotSuggestionUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutFollowUpQueueInput = {
@@ -2600,6 +3121,10 @@ export type UserUpdateWithoutFollowUpQueueInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  emailDeliverable?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
+  copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUpdateManyWithoutUserNestedInput
@@ -2615,6 +3140,7 @@ export type UserUpdateWithoutFollowUpQueueInput = {
   financialProfile?: Prisma.UserFinancialProfileUpdateOneWithoutUserNestedInput
   memories?: Prisma.UserMemoryUpdateManyWithoutUserNestedInput
   linkedWallets?: Prisma.LinkedWalletUpdateManyWithoutUserNestedInput
+  copilotSuggestions?: Prisma.CopilotSuggestionUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutFollowUpQueueInput = {
@@ -2630,6 +3156,10 @@ export type UserUncheckedUpdateWithoutFollowUpQueueInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  emailDeliverable?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
+  copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUncheckedUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedUpdateManyWithoutUserNestedInput
@@ -2645,6 +3175,7 @@ export type UserUncheckedUpdateWithoutFollowUpQueueInput = {
   financialProfile?: Prisma.UserFinancialProfileUncheckedUpdateOneWithoutUserNestedInput
   memories?: Prisma.UserMemoryUncheckedUpdateManyWithoutUserNestedInput
   linkedWallets?: Prisma.LinkedWalletUncheckedUpdateManyWithoutUserNestedInput
+  copilotSuggestions?: Prisma.CopilotSuggestionUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutFinancialProfileInput = {
@@ -2660,6 +3191,10 @@ export type UserCreateWithoutFinancialProfileInput = {
   tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  emailDeliverable?: boolean
+  lastDashboardVisitAt?: Date | string | null
+  copilotConfirmedCount?: number
+  copilotMigrationNoticeShownAt?: Date | string | null
   preferences?: Prisma.UserPreferencesCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsCreateNestedManyWithoutUserInput
@@ -2675,6 +3210,7 @@ export type UserCreateWithoutFinancialProfileInput = {
   followUpQueue?: Prisma.FollowUpQueueCreateNestedManyWithoutUserInput
   memories?: Prisma.UserMemoryCreateNestedManyWithoutUserInput
   linkedWallets?: Prisma.LinkedWalletCreateNestedManyWithoutUserInput
+  copilotSuggestions?: Prisma.CopilotSuggestionCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutFinancialProfileInput = {
@@ -2690,6 +3226,10 @@ export type UserUncheckedCreateWithoutFinancialProfileInput = {
   tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  emailDeliverable?: boolean
+  lastDashboardVisitAt?: Date | string | null
+  copilotConfirmedCount?: number
+  copilotMigrationNoticeShownAt?: Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogUncheckedCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedCreateNestedManyWithoutUserInput
@@ -2705,6 +3245,7 @@ export type UserUncheckedCreateWithoutFinancialProfileInput = {
   followUpQueue?: Prisma.FollowUpQueueUncheckedCreateNestedManyWithoutUserInput
   memories?: Prisma.UserMemoryUncheckedCreateNestedManyWithoutUserInput
   linkedWallets?: Prisma.LinkedWalletUncheckedCreateNestedManyWithoutUserInput
+  copilotSuggestions?: Prisma.CopilotSuggestionUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutFinancialProfileInput = {
@@ -2736,6 +3277,10 @@ export type UserUpdateWithoutFinancialProfileInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  emailDeliverable?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
+  copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUpdateManyWithoutUserNestedInput
@@ -2751,6 +3296,7 @@ export type UserUpdateWithoutFinancialProfileInput = {
   followUpQueue?: Prisma.FollowUpQueueUpdateManyWithoutUserNestedInput
   memories?: Prisma.UserMemoryUpdateManyWithoutUserNestedInput
   linkedWallets?: Prisma.LinkedWalletUpdateManyWithoutUserNestedInput
+  copilotSuggestions?: Prisma.CopilotSuggestionUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutFinancialProfileInput = {
@@ -2766,6 +3312,10 @@ export type UserUncheckedUpdateWithoutFinancialProfileInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  emailDeliverable?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
+  copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUncheckedUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedUpdateManyWithoutUserNestedInput
@@ -2781,6 +3331,7 @@ export type UserUncheckedUpdateWithoutFinancialProfileInput = {
   followUpQueue?: Prisma.FollowUpQueueUncheckedUpdateManyWithoutUserNestedInput
   memories?: Prisma.UserMemoryUncheckedUpdateManyWithoutUserNestedInput
   linkedWallets?: Prisma.LinkedWalletUncheckedUpdateManyWithoutUserNestedInput
+  copilotSuggestions?: Prisma.CopilotSuggestionUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutMemoriesInput = {
@@ -2796,6 +3347,10 @@ export type UserCreateWithoutMemoriesInput = {
   tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  emailDeliverable?: boolean
+  lastDashboardVisitAt?: Date | string | null
+  copilotConfirmedCount?: number
+  copilotMigrationNoticeShownAt?: Date | string | null
   preferences?: Prisma.UserPreferencesCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsCreateNestedManyWithoutUserInput
@@ -2811,6 +3366,7 @@ export type UserCreateWithoutMemoriesInput = {
   followUpQueue?: Prisma.FollowUpQueueCreateNestedManyWithoutUserInput
   financialProfile?: Prisma.UserFinancialProfileCreateNestedOneWithoutUserInput
   linkedWallets?: Prisma.LinkedWalletCreateNestedManyWithoutUserInput
+  copilotSuggestions?: Prisma.CopilotSuggestionCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutMemoriesInput = {
@@ -2826,6 +3382,10 @@ export type UserUncheckedCreateWithoutMemoriesInput = {
   tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  emailDeliverable?: boolean
+  lastDashboardVisitAt?: Date | string | null
+  copilotConfirmedCount?: number
+  copilotMigrationNoticeShownAt?: Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogUncheckedCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedCreateNestedManyWithoutUserInput
@@ -2841,6 +3401,7 @@ export type UserUncheckedCreateWithoutMemoriesInput = {
   followUpQueue?: Prisma.FollowUpQueueUncheckedCreateNestedManyWithoutUserInput
   financialProfile?: Prisma.UserFinancialProfileUncheckedCreateNestedOneWithoutUserInput
   linkedWallets?: Prisma.LinkedWalletUncheckedCreateNestedManyWithoutUserInput
+  copilotSuggestions?: Prisma.CopilotSuggestionUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutMemoriesInput = {
@@ -2872,6 +3433,10 @@ export type UserUpdateWithoutMemoriesInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  emailDeliverable?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
+  copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUpdateManyWithoutUserNestedInput
@@ -2887,6 +3452,7 @@ export type UserUpdateWithoutMemoriesInput = {
   followUpQueue?: Prisma.FollowUpQueueUpdateManyWithoutUserNestedInput
   financialProfile?: Prisma.UserFinancialProfileUpdateOneWithoutUserNestedInput
   linkedWallets?: Prisma.LinkedWalletUpdateManyWithoutUserNestedInput
+  copilotSuggestions?: Prisma.CopilotSuggestionUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutMemoriesInput = {
@@ -2902,6 +3468,10 @@ export type UserUncheckedUpdateWithoutMemoriesInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  emailDeliverable?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
+  copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUncheckedUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedUpdateManyWithoutUserNestedInput
@@ -2917,6 +3487,7 @@ export type UserUncheckedUpdateWithoutMemoriesInput = {
   followUpQueue?: Prisma.FollowUpQueueUncheckedUpdateManyWithoutUserNestedInput
   financialProfile?: Prisma.UserFinancialProfileUncheckedUpdateOneWithoutUserNestedInput
   linkedWallets?: Prisma.LinkedWalletUncheckedUpdateManyWithoutUserNestedInput
+  copilotSuggestions?: Prisma.CopilotSuggestionUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutLinkedWalletsInput = {
@@ -2932,6 +3503,10 @@ export type UserCreateWithoutLinkedWalletsInput = {
   tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  emailDeliverable?: boolean
+  lastDashboardVisitAt?: Date | string | null
+  copilotConfirmedCount?: number
+  copilotMigrationNoticeShownAt?: Date | string | null
   preferences?: Prisma.UserPreferencesCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsCreateNestedManyWithoutUserInput
@@ -2947,6 +3522,7 @@ export type UserCreateWithoutLinkedWalletsInput = {
   followUpQueue?: Prisma.FollowUpQueueCreateNestedManyWithoutUserInput
   financialProfile?: Prisma.UserFinancialProfileCreateNestedOneWithoutUserInput
   memories?: Prisma.UserMemoryCreateNestedManyWithoutUserInput
+  copilotSuggestions?: Prisma.CopilotSuggestionCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutLinkedWalletsInput = {
@@ -2962,6 +3538,10 @@ export type UserUncheckedCreateWithoutLinkedWalletsInput = {
   tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  emailDeliverable?: boolean
+  lastDashboardVisitAt?: Date | string | null
+  copilotConfirmedCount?: number
+  copilotMigrationNoticeShownAt?: Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogUncheckedCreateNestedManyWithoutUserInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedCreateNestedManyWithoutUserInput
@@ -2977,6 +3557,7 @@ export type UserUncheckedCreateWithoutLinkedWalletsInput = {
   followUpQueue?: Prisma.FollowUpQueueUncheckedCreateNestedManyWithoutUserInput
   financialProfile?: Prisma.UserFinancialProfileUncheckedCreateNestedOneWithoutUserInput
   memories?: Prisma.UserMemoryUncheckedCreateNestedManyWithoutUserInput
+  copilotSuggestions?: Prisma.CopilotSuggestionUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutLinkedWalletsInput = {
@@ -3008,6 +3589,10 @@ export type UserUpdateWithoutLinkedWalletsInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  emailDeliverable?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
+  copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUpdateManyWithoutUserNestedInput
@@ -3023,6 +3608,7 @@ export type UserUpdateWithoutLinkedWalletsInput = {
   followUpQueue?: Prisma.FollowUpQueueUpdateManyWithoutUserNestedInput
   financialProfile?: Prisma.UserFinancialProfileUpdateOneWithoutUserNestedInput
   memories?: Prisma.UserMemoryUpdateManyWithoutUserNestedInput
+  copilotSuggestions?: Prisma.CopilotSuggestionUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutLinkedWalletsInput = {
@@ -3038,6 +3624,10 @@ export type UserUncheckedUpdateWithoutLinkedWalletsInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  emailDeliverable?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  lastDashboardVisitAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  copilotConfirmedCount?: Prisma.IntFieldUpdateOperationsInput | number
+  copilotMigrationNoticeShownAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   preferences?: Prisma.UserPreferencesUncheckedUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUncheckedUpdateManyWithoutUserNestedInput
   notificationPrefs?: Prisma.NotificationPrefsUncheckedUpdateManyWithoutUserNestedInput
@@ -3053,6 +3643,7 @@ export type UserUncheckedUpdateWithoutLinkedWalletsInput = {
   followUpQueue?: Prisma.FollowUpQueueUncheckedUpdateManyWithoutUserNestedInput
   financialProfile?: Prisma.UserFinancialProfileUncheckedUpdateOneWithoutUserNestedInput
   memories?: Prisma.UserMemoryUncheckedUpdateManyWithoutUserNestedInput
+  copilotSuggestions?: Prisma.CopilotSuggestionUncheckedUpdateManyWithoutUserNestedInput
 }
 
 
@@ -3075,6 +3666,7 @@ export type UserCountOutputType = {
   followUpQueue: number
   memories: number
   linkedWallets: number
+  copilotSuggestions: number
 }
 
 export type UserCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -3092,6 +3684,7 @@ export type UserCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.I
   followUpQueue?: boolean | UserCountOutputTypeCountFollowUpQueueArgs
   memories?: boolean | UserCountOutputTypeCountMemoriesArgs
   linkedWallets?: boolean | UserCountOutputTypeCountLinkedWalletsArgs
+  copilotSuggestions?: boolean | UserCountOutputTypeCountCopilotSuggestionsArgs
 }
 
 /**
@@ -3202,6 +3795,13 @@ export type UserCountOutputTypeCountLinkedWalletsArgs<ExtArgs extends runtime.Ty
   where?: Prisma.LinkedWalletWhereInput
 }
 
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountCopilotSuggestionsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.CopilotSuggestionWhereInput
+}
+
 
 export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -3216,6 +3816,10 @@ export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   tosAcceptedAt?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  emailDeliverable?: boolean
+  lastDashboardVisitAt?: boolean
+  copilotConfirmedCount?: boolean
+  copilotMigrationNoticeShownAt?: boolean
   preferences?: boolean | Prisma.User$preferencesArgs<ExtArgs>
   conversationLogs?: boolean | Prisma.User$conversationLogsArgs<ExtArgs>
   notificationPrefs?: boolean | Prisma.User$notificationPrefsArgs<ExtArgs>
@@ -3232,6 +3836,7 @@ export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   financialProfile?: boolean | Prisma.User$financialProfileArgs<ExtArgs>
   memories?: boolean | Prisma.User$memoriesArgs<ExtArgs>
   linkedWallets?: boolean | Prisma.User$linkedWalletsArgs<ExtArgs>
+  copilotSuggestions?: boolean | Prisma.User$copilotSuggestionsArgs<ExtArgs>
   _count?: boolean | Prisma.UserCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["user"]>
 
@@ -3248,6 +3853,10 @@ export type UserSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   tosAcceptedAt?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  emailDeliverable?: boolean
+  lastDashboardVisitAt?: boolean
+  copilotConfirmedCount?: boolean
+  copilotMigrationNoticeShownAt?: boolean
 }, ExtArgs["result"]["user"]>
 
 export type UserSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -3263,6 +3872,10 @@ export type UserSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   tosAcceptedAt?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  emailDeliverable?: boolean
+  lastDashboardVisitAt?: boolean
+  copilotConfirmedCount?: boolean
+  copilotMigrationNoticeShownAt?: boolean
 }, ExtArgs["result"]["user"]>
 
 export type UserSelectScalar = {
@@ -3278,9 +3891,13 @@ export type UserSelectScalar = {
   tosAcceptedAt?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  emailDeliverable?: boolean
+  lastDashboardVisitAt?: boolean
+  copilotConfirmedCount?: boolean
+  copilotMigrationNoticeShownAt?: boolean
 }
 
-export type UserOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "suiAddress" | "email" | "emailVerified" | "emailVerifyToken" | "emailVerifyExpiry" | "displayName" | "timezoneOffset" | "onboardedAt" | "tosAcceptedAt" | "createdAt" | "updatedAt", ExtArgs["result"]["user"]>
+export type UserOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "suiAddress" | "email" | "emailVerified" | "emailVerifyToken" | "emailVerifyExpiry" | "displayName" | "timezoneOffset" | "onboardedAt" | "tosAcceptedAt" | "createdAt" | "updatedAt" | "emailDeliverable" | "lastDashboardVisitAt" | "copilotConfirmedCount" | "copilotMigrationNoticeShownAt", ExtArgs["result"]["user"]>
 export type UserInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   preferences?: boolean | Prisma.User$preferencesArgs<ExtArgs>
   conversationLogs?: boolean | Prisma.User$conversationLogsArgs<ExtArgs>
@@ -3298,6 +3915,7 @@ export type UserInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   financialProfile?: boolean | Prisma.User$financialProfileArgs<ExtArgs>
   memories?: boolean | Prisma.User$memoriesArgs<ExtArgs>
   linkedWallets?: boolean | Prisma.User$linkedWalletsArgs<ExtArgs>
+  copilotSuggestions?: boolean | Prisma.User$copilotSuggestionsArgs<ExtArgs>
   _count?: boolean | Prisma.UserCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type UserIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
@@ -3322,6 +3940,7 @@ export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     financialProfile: Prisma.$UserFinancialProfilePayload<ExtArgs> | null
     memories: Prisma.$UserMemoryPayload<ExtArgs>[]
     linkedWallets: Prisma.$LinkedWalletPayload<ExtArgs>[]
+    copilotSuggestions: Prisma.$CopilotSuggestionPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -3336,6 +3955,10 @@ export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     tosAcceptedAt: Date | null
     createdAt: Date
     updatedAt: Date
+    emailDeliverable: boolean
+    lastDashboardVisitAt: Date | null
+    copilotConfirmedCount: number
+    copilotMigrationNoticeShownAt: Date | null
   }, ExtArgs["result"]["user"]>
   composites: {}
 }
@@ -3746,6 +4369,7 @@ export interface Prisma__UserClient<T, Null = never, ExtArgs extends runtime.Typ
   financialProfile<T extends Prisma.User$financialProfileArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$financialProfileArgs<ExtArgs>>): Prisma.Prisma__UserFinancialProfileClient<runtime.Types.Result.GetResult<Prisma.$UserFinancialProfilePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   memories<T extends Prisma.User$memoriesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$memoriesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$UserMemoryPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   linkedWallets<T extends Prisma.User$linkedWalletsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$linkedWalletsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$LinkedWalletPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  copilotSuggestions<T extends Prisma.User$copilotSuggestionsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$copilotSuggestionsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$CopilotSuggestionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -3787,6 +4411,10 @@ export interface UserFieldRefs {
   readonly tosAcceptedAt: Prisma.FieldRef<"User", 'DateTime'>
   readonly createdAt: Prisma.FieldRef<"User", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"User", 'DateTime'>
+  readonly emailDeliverable: Prisma.FieldRef<"User", 'Boolean'>
+  readonly lastDashboardVisitAt: Prisma.FieldRef<"User", 'DateTime'>
+  readonly copilotConfirmedCount: Prisma.FieldRef<"User", 'Int'>
+  readonly copilotMigrationNoticeShownAt: Prisma.FieldRef<"User", 'DateTime'>
 }
     
 
@@ -4551,6 +5179,30 @@ export type User$linkedWalletsArgs<ExtArgs extends runtime.Types.Extensions.Inte
   take?: number
   skip?: number
   distinct?: Prisma.LinkedWalletScalarFieldEnum | Prisma.LinkedWalletScalarFieldEnum[]
+}
+
+/**
+ * User.copilotSuggestions
+ */
+export type User$copilotSuggestionsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the CopilotSuggestion
+   */
+  select?: Prisma.CopilotSuggestionSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the CopilotSuggestion
+   */
+  omit?: Prisma.CopilotSuggestionOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.CopilotSuggestionInclude<ExtArgs> | null
+  where?: Prisma.CopilotSuggestionWhereInput
+  orderBy?: Prisma.CopilotSuggestionOrderByWithRelationInput | Prisma.CopilotSuggestionOrderByWithRelationInput[]
+  cursor?: Prisma.CopilotSuggestionWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.CopilotSuggestionScalarFieldEnum | Prisma.CopilotSuggestionScalarFieldEnum[]
 }
 
 /**

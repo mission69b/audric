@@ -127,6 +127,11 @@ export type ScheduledAction = Prisma.ScheduledActionModel
  */
 export type ScheduledExecution = Prisma.ScheduledExecutionModel
 /**
+ * Model CopilotSuggestion
+ * 
+ */
+export type CopilotSuggestion = Prisma.CopilotSuggestionModel
+/**
  * Model OutcomeCheck
  * 
  */

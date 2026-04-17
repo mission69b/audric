@@ -68,6 +68,7 @@ export const ModelName = {
   PortfolioSnapshot: 'PortfolioSnapshot',
   ScheduledAction: 'ScheduledAction',
   ScheduledExecution: 'ScheduledExecution',
+  CopilotSuggestion: 'CopilotSuggestion',
   OutcomeCheck: 'OutcomeCheck',
   FollowUpQueue: 'FollowUpQueue',
   UserFinancialProfile: 'UserFinancialProfile',
@@ -104,7 +105,11 @@ export const UserScalarFieldEnum = {
   onboardedAt: 'onboardedAt',
   tosAcceptedAt: 'tosAcceptedAt',
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
+  updatedAt: 'updatedAt',
+  emailDeliverable: 'emailDeliverable',
+  lastDashboardVisitAt: 'lastDashboardVisitAt',
+  copilotConfirmedCount: 'copilotConfirmedCount',
+  copilotMigrationNoticeShownAt: 'copilotMigrationNoticeShownAt'
 } as const
 
 export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof UserScalarFieldEnum]
@@ -353,7 +358,11 @@ export const ScheduledActionScalarFieldEnum = {
   confidence: 'confidence',
   stage: 'stage',
   declinedAt: 'declinedAt',
-  pausedAt: 'pausedAt'
+  pausedAt: 'pausedAt',
+  surfaceStatus: 'surfaceStatus',
+  surfacedAt: 'surfacedAt',
+  expiresAt: 'expiresAt',
+  failedAttempts: 'failedAttempts'
 } as const
 
 export type ScheduledActionScalarFieldEnum = (typeof ScheduledActionScalarFieldEnum)[keyof typeof ScheduledActionScalarFieldEnum]
@@ -372,6 +381,26 @@ export const ScheduledExecutionScalarFieldEnum = {
 } as const
 
 export type ScheduledExecutionScalarFieldEnum = (typeof ScheduledExecutionScalarFieldEnum)[keyof typeof ScheduledExecutionScalarFieldEnum]
+
+
+export const CopilotSuggestionScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  type: 'type',
+  status: 'status',
+  payload: 'payload',
+  expiresAt: 'expiresAt',
+  surfacedAt: 'surfacedAt',
+  confirmedAt: 'confirmedAt',
+  skippedAt: 'skippedAt',
+  failedAt: 'failedAt',
+  failedAttempts: 'failedAttempts',
+  snoozedCount: 'snoozedCount',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type CopilotSuggestionScalarFieldEnum = (typeof CopilotSuggestionScalarFieldEnum)[keyof typeof CopilotSuggestionScalarFieldEnum]
 
 
 export const OutcomeCheckScalarFieldEnum = {
