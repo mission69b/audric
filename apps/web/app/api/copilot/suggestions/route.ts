@@ -46,6 +46,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ suggestions: [] });
   }
 
+  const nowDate = new Date();
+
   const [scheduled, oneShots] = await Promise.all([
     prisma.scheduledAction.findMany({
       where: {
@@ -53,9 +55,12 @@ export async function GET(request: NextRequest) {
         // Default for surfaceStatus is 'pending', so we MUST also require an
         // explicit surfacedAt timestamp to distinguish "actively surfaced"
         // from "row was never surfaced (column default leaked in)".
+        // The `<= now` clause hides snoozed cards: snooze advances surfacedAt
+        // into the future (now+24h) so the card disappears from the dashboard
+        // until the snooze window passes, then auto-reappears.
         // This covers behavior_detected AND migrated user_created actions.
         surfaceStatus: "pending",
-        surfacedAt: { not: null },
+        surfacedAt: { not: null, lte: nowDate },
       },
       orderBy: { surfacedAt: "desc" },
       take: 20,
@@ -74,7 +79,8 @@ export async function GET(request: NextRequest) {
       },
     }),
     prisma.copilotSuggestion.findMany({
-      where: { userId: user.id, status: "pending" },
+      // Same `surfacedAt <= now` snooze-hiding semantics as ScheduledAction.
+      where: { userId: user.id, status: "pending", surfacedAt: { lte: nowDate } },
       orderBy: { surfacedAt: "desc" },
       take: 20,
       select: {

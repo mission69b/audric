@@ -185,10 +185,18 @@ export async function POST(
     }
 
     if (body.action === "snooze") {
+      // Snooze hides the card for 24h then auto-reappears with a fresh 24h
+      // expiry window:
+      //   - surfacedAt → now+24h: dashboard query filters `surfacedAt <= now`
+      //     so the card disappears during the snooze window.
+      //   - expiresAt  → now+48h: ensures the expire-due cron doesn't sweep
+      //     it while it's still snoozed; the user gets a fresh 24h to act
+      //     after the card reappears.
       const snoozeUntil = new Date(now.getTime() + SNOOZE_HOURS * 60 * 60 * 1000);
+      const newExpiresAt = new Date(now.getTime() + 2 * SNOOZE_HOURS * 60 * 60 * 1000);
       await prisma.scheduledAction.update({
         where: { id: action.id },
-        data: { expiresAt: snoozeUntil },
+        data: { surfacedAt: snoozeUntil, expiresAt: newExpiresAt },
       });
       await prisma.appEvent.create({
         data: {
@@ -277,11 +285,39 @@ export async function POST(
     }
 
     if (body.action === "snooze") {
+      // Schema §4: second snooze auto-expires (one re-prompt is the limit).
+      if (suggestion.snoozedCount >= 1) {
+        await prisma.copilotSuggestion.update({
+          where: { id: suggestion.id },
+          data: {
+            status: "expired",
+            snoozedCount: suggestion.snoozedCount + 1,
+          },
+        });
+        await prisma.appEvent.create({
+          data: {
+            address: user.suiAddress,
+            type: "copilot_suggestion_expired",
+            title: "Suggestion expired (snoozed twice)",
+            details: {
+              kind: "copilot_suggestion",
+              copilotSuggestionId: suggestion.id,
+              reason: "second_snooze",
+            } as InputJsonValue,
+          },
+        });
+        return NextResponse.json({ ok: true, expired: true });
+      }
+
+      // First snooze: hide for 24h via surfacedAt, extend expiresAt to give
+      // the user a fresh 24h window after the card reappears.
       const snoozeUntil = new Date(now.getTime() + SNOOZE_HOURS * 60 * 60 * 1000);
+      const newExpiresAt = new Date(now.getTime() + 2 * SNOOZE_HOURS * 60 * 60 * 1000);
       await prisma.copilotSuggestion.update({
         where: { id: suggestion.id },
         data: {
-          expiresAt: snoozeUntil,
+          surfacedAt: snoozeUntil,
+          expiresAt: newExpiresAt,
           snoozedCount: suggestion.snoozedCount + 1,
         },
       });
