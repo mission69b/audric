@@ -52,6 +52,9 @@ import { StorePanel } from '@/components/panels/StorePanel';
 import { ProactiveBanner } from '@/components/dashboard/ProactiveBanner';
 import { HandledForYou } from '@/components/dashboard/HandledForYou';
 import { CopilotSuggestionsRow } from '@/components/dashboard/CopilotSuggestionsRow';
+import { CopilotOnboardingModal } from '@/components/copilot/CopilotOnboardingModal';
+import { EmailAddNudge } from '@/components/copilot/EmailAddNudge';
+import { useCopilotOnboarding } from '@/hooks/useCopilotOnboarding';
 import { TaskCard } from '@/components/dashboard/TaskCard';
 import { MilestoneCard } from '@/components/dashboard/MilestoneCard';
 import { useScheduledActions } from '@/hooks/useScheduledActions';
@@ -273,6 +276,7 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
   const activityFeed = useActivityFeed(address);
   const briefing = useOvernightBriefing(address, session?.jwt ?? null);
   const userStatus = useUserStatus(address, session?.jwt);
+  const copilotOnboarding = useCopilotOnboarding(address, session?.jwt ?? null);
   const [agentBudget, setAgentBudget] = useState(0.50);
   const [dismissedCards, setDismissedCards] = useState<Set<string>>(new Set());
   const [scrolled, setScrolled] = useState(false);
@@ -1533,7 +1537,15 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
                 invisible by default. Pulling it OUT of the legacy gate below
                 ensures a Copilot card shows even when the user has no other
                 dashboard items (briefing/proactive/tasks/milestones). */}
-            <div className="mb-4">
+            <div className="mb-4 space-y-2">
+              {copilotOnboarding.state.showEmailNudge && session?.jwt && (
+                <EmailAddNudge
+                  address={address}
+                  jwt={session.jwt}
+                  confirmedCount={copilotOnboarding.state.confirmedCount}
+                  onDismiss={() => copilotOnboarding.dismiss('email_nudge')}
+                />
+              )}
               <CopilotSuggestionsRow address={address} jwt={session?.jwt ?? null} />
             </div>
 
@@ -1627,6 +1639,9 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
               onValidateAction={validateAction}
               agentBudget={agentBudget}
               onSendMessage={engine.sendMessage}
+              address={address}
+              jwt={session?.jwt ?? null}
+              sessionId={engine.sessionId ?? null}
               onConfirmResolve={(approved) => {
                 const resolver = confirmResolverRef.current;
                 if (resolver) {
@@ -1833,6 +1848,11 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
       {emailModal}
       {tosBanner}
       {graceBanner}
+      <CopilotOnboardingModal
+        open={copilotOnboarding.state.showOnboarding}
+        hasMigratedActions={copilotOnboarding.state.hasMigratedActions}
+        onDismiss={() => copilotOnboarding.dismiss('onboarding')}
+      />
     </AppShell>
   );
 }

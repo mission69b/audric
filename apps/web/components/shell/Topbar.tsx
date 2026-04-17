@@ -6,10 +6,12 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { Tooltip } from '@/components/ui/Tooltip';
 import type { BalanceHeaderData } from '@/components/dashboard/BalanceHeader';
 import { BalanceDrawer } from './BalanceDrawer';
+import { HfWidget } from '@/components/dashboard/HfWidget';
 
 interface TopbarProps {
   address: string;
   balance: BalanceHeaderData;
+  jwt?: string;
   showHamburger?: boolean;
   onHamburgerClick?: () => void;
 }
@@ -21,6 +23,7 @@ function fmtUsd(n: number): string {
 export function Topbar({
   address,
   balance,
+  jwt,
   showHamburger,
   onHamburgerClick,
 }: TopbarProps) {
@@ -79,6 +82,16 @@ export function Topbar({
               )}
             </p>
           </button>
+        )}
+        {!balance.loading && balance.borrows >= 0.01 && (
+          <div className="flex items-center justify-center mt-1.5">
+            <HfWidget
+              address={address}
+              jwt={jwt ?? null}
+              healthFactor={balance.healthFactor}
+              borrows={balance.borrows}
+            />
+          </div>
         )}
         <BalanceDrawer balance={balance} open={drawerOpen} onClose={() => setDrawerOpen(false)} />
       </div>

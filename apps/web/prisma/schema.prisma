@@ -36,6 +36,10 @@ model User {
   // the always-on health-factor widget in BalanceHeader.
   hfWidgetEnabled      Boolean   @default(true)
 
+  // Copilot email-add nudge (Wave C.7) — set once the user dismisses or
+  // satisfies the post-10-confirms email nudge, so we never re-pop it.
+  copilotEmailNudgeShownAt DateTime?
+
   preferences          UserPreferences?
   conversationLogs     ConversationLog[]
   notificationPrefs    NotificationPrefs[]

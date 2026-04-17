@@ -102,6 +102,7 @@ export function AppShell({
         <Topbar
           address={address}
           balance={balance}
+          jwt={jwt}
           showHamburger
           onHamburgerClick={() => setMobileOpen(true)}
         />

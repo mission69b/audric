@@ -6,6 +6,8 @@ import { ThinkingState } from '@/components/engine/ThinkingState';
 import { ChatDivider } from '@/components/engine/ChatDivider';
 import { SuggestedActions } from '@/components/engine/SuggestedAction';
 import { FeedItemCard } from '@/components/dashboard/FeedRenderer';
+import { CopilotPill } from '@/components/dashboard/CopilotPill';
+import { InChatSurface } from '@/components/dashboard/InChatSurface';
 import { deriveSuggestedActions } from '@/lib/suggested-actions';
 import type { useEngine } from '@/hooks/useEngine';
 import type { useFeed } from '@/hooks/useFeed';
@@ -44,6 +46,13 @@ interface UnifiedTimelineProps {
   agentBudget?: number;
   /** Send a message on behalf of the user from canvas in-canvas actions. */
   onSendMessage?: (text: string) => void;
+  /** Wallet address — required to render the in-chat Copilot pill (Wave C.5)
+   *  and the InChatSurface card (Wave C.6). */
+  address?: string | null;
+  /** zkLogin JWT — required to render the in-chat Copilot surface (C.5/C.6). */
+  jwt?: string | null;
+  /** Engine session id — used to dedup the InChatSurface card per session. */
+  sessionId?: string | null;
 }
 
 function ConnectingSkeleton() {
@@ -73,6 +82,9 @@ export function UnifiedTimeline({
   onValidateAction,
   agentBudget = 0,
   onSendMessage,
+  address = null,
+  jwt = null,
+  sessionId = null,
 }: UnifiedTimelineProps) {
   const endRef = useRef<HTMLDivElement>(null);
   const lastCount = useRef(0);
@@ -190,6 +202,17 @@ export function UnifiedTimeline({
 
   return (
     <div className="space-y-3">
+      {/* Only show the in-chat Copilot card AFTER a conversation has started.
+          On the empty dashboard, the CopilotSuggestionsRow above the timeline
+          already covers this surface — rendering both creates a duplicate
+          card during the brief race window before /api/copilot/dashboard-ping
+          stamps lastDashboardVisitAt and the server-side suppression kicks in. */}
+      {hasMessages && (
+        <>
+          <InChatSurface address={address} jwt={jwt} sessionId={sessionId} />
+          <CopilotPill address={address} jwt={jwt} />
+        </>
+      )}
       {timeline.map((entry) => {
         if (entry.kind === 'engine') {
           if (showSkeleton && entry.msg.id === lastEngineMsg?.id) {
