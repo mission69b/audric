@@ -1526,6 +1526,15 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
 
         {!isInFlow && (
           <>
+            {/* Copilot suggestions render unconditionally — the row component
+                returns null when there are no pending suggestions, so it stays
+                invisible by default. Pulling it OUT of the legacy gate below
+                ensures a Copilot card shows even when the user has no other
+                dashboard items (briefing/proactive/tasks/milestones). */}
+            <div className="mb-4">
+              <CopilotSuggestionsRow address={address} jwt={session?.jwt ?? null} />
+            </div>
+
             {/* Dashboard header zone: briefing + proactive + handled + tasks + milestones */}
             {(briefing.briefing || dashInsights.proactive || dashInsights.handledActions.length > 0 || upcomingTasks.length > 0 || proposalTasks.length > 0 || milestoneGoals.length > 0 || nightBeforeTasks.length > 0) && (
               <div className="space-y-2 mb-4">
@@ -1553,8 +1562,6 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
                     onDismiss={dashInsights.dismissProactive}
                   />
                 )}
-
-                <CopilotSuggestionsRow address={address} jwt={session?.jwt ?? null} />
 
                 {dashInsights.handledActions.length > 0 && (
                   <HandledForYou
