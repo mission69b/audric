@@ -9,6 +9,7 @@ import type {
   CopilotOneShotSuggestion,
 } from "@/hooks/useCopilotSuggestions";
 import { useCopilotSuggestionAction } from "@/hooks/useCopilotSuggestions";
+import { formatCron } from "@/lib/copilot/format-cron";
 
 interface CopilotSuggestionCardProps {
   suggestion: CopilotSuggestion;
@@ -23,19 +24,7 @@ function fmtAmount(raw: string, asset: string): string {
   return `${n.toFixed(4).replace(/0+$/, "")} ${asset}`;
 }
 
-function fmtCron(expr: string): string {
-  // Friendly mapping for the small set of patterns the detectors emit.
-  // Falls back to the raw expression for anything custom.
-  if (expr === "0 0 * * 5") return "every Friday";
-  if (expr === "0 0 * * *") return "every day";
-  if (expr.startsWith("0 0 * * ")) {
-    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    const dow = parseInt(expr.split(" ")[4], 10);
-    if (!Number.isNaN(dow) && days[dow]) return `every ${days[dow]}`;
-  }
-  if (expr === "0 0 1 * *") return "monthly";
-  return expr;
-}
+// Cron formatter is shared with the digest email — see lib/copilot/format-cron.ts
 
 function describeScheduledAction(s: ScheduledActionSuggestion): {
   title: string;
@@ -43,7 +32,7 @@ function describeScheduledAction(s: ScheduledActionSuggestion): {
   actionVerb: string;
 } {
   const target = s.targetAsset ? ` into ${s.targetAsset}` : "";
-  const cadence = fmtCron(s.cronExpr);
+  const cadence = formatCron(s.cronExpr);
 
   if (s.actionType === "save") {
     return {

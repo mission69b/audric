@@ -6,6 +6,7 @@ import { useZkLogin } from "@/components/auth/useZkLogin";
 import { useCopilotEnabled } from "@/hooks/useFeatureFlags";
 import { useAgent } from "@/hooks/useAgent";
 import { useBalance, type BalanceData } from "@/hooks/useBalance";
+import { formatCron } from "@/lib/copilot/format-cron";
 
 type Kind = "scheduled_action" | "copilot_suggestion";
 
@@ -412,17 +413,9 @@ function buildSummaryLines(
   return { title: "Audric noticed something", subtitle: null, rows };
 }
 
-function prettyCron(expr: string): string {
-  if (expr === "0 0 * * 5") return "every Friday";
-  if (expr === "0 0 * * *") return "every day";
-  if (expr.startsWith("0 0 * * ")) {
-    const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-    const dow = parseInt(expr.split(" ")[4], 10);
-    if (!Number.isNaN(dow) && days[dow]) return `every ${days[dow]}`;
-  }
-  if (expr === "0 0 1 * *") return "monthly";
-  return expr;
-}
+// prettyCron is a thin alias to the shared formatter so the confirm screen,
+// dashboard card, and digest email all render cron the same way.
+const prettyCron = formatCron;
 
 interface CenterShellProps {
   title: string;
