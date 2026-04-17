@@ -31,7 +31,7 @@ export function SchedulesSection({ address, jwt }: SchedulesSectionProps) {
         Schedules &amp; Automations
       </h2>
       <p className="text-sm text-muted leading-relaxed">
-        User-created schedules and auto-detected patterns. Patterns start as proposals — accept to activate. After 3 confirmed executions, they become fully autonomous.
+        User-created schedules and auto-detected patterns. Audric proposes; you confirm before anything runs on-chain — every time.
       </p>
       {schedules.loading ? (
         <p className="text-sm text-muted">Loading...</p>
