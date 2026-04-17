@@ -52,55 +52,20 @@ export function CopilotOnboardingModal({
           aria-labelledby="copilot-onboarding-title"
           className="bg-background border border-border rounded-2xl shadow-xl max-w-sm w-full p-6 space-y-4"
         >
-          <div className="space-y-1">
-            <p className="font-mono text-[10px] tracking-[0.12em] uppercase text-accent">
-              Audric Copilot
-            </p>
-            <h2
-              id="copilot-onboarding-title"
-              className="text-lg font-semibold text-foreground"
-            >
-              {hasMigratedActions
-                ? "Your automations now ask first."
-                : "Audric noticed — you decide."}
-            </h2>
-          </div>
+          <h2
+            id="copilot-onboarding-title"
+            className="text-lg font-semibold text-foreground"
+          >
+            {hasMigratedActions
+              ? "Audric now asks first."
+              : "Meet Audric Copilot."}
+          </h2>
 
-          {hasMigratedActions ? (
-            <div className="space-y-3 text-sm text-muted leading-relaxed">
-              <p>
-                We&apos;ve switched your previously autonomous schedules to
-                ask-every-time. You stay in control of every transaction.
-              </p>
-              <p>
-                When Audric spots a recurring pattern or an opportunity (idle
-                balance, claimable rewards, low health factor), you&apos;ll
-                see a suggestion card. Tap it to review and confirm — or
-                snooze, skip, or pause it for good.
-              </p>
-              <p className="text-xs text-dim">
-                Manage digest emails and the health-factor widget in{" "}
-                <span className="font-mono">Settings → Copilot</span>.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3 text-sm text-muted leading-relaxed">
-              <p>
-                When Audric spots a recurring pattern or an opportunity (idle
-                balance, claimable rewards, low health factor), you&apos;ll
-                see a suggestion card on your dashboard.
-              </p>
-              <p>
-                Nothing happens on-chain until you tap{" "}
-                <span className="text-foreground font-medium">Confirm</span>.
-                You can snooze, skip, or pause patterns from the same card.
-              </p>
-              <p className="text-xs text-dim">
-                Tweak digests + the health-factor widget in{" "}
-                <span className="font-mono">Settings → Copilot</span>.
-              </p>
-            </div>
-          )}
+          <p className="text-sm text-muted leading-relaxed">
+            {hasMigratedActions
+              ? "Your automations now wait for a tap before running. Audric flags opportunities — you confirm."
+              : "Audric flags opportunities. Nothing runs on-chain until you tap Confirm."}
+          </p>
 
           <button
             type="button"
