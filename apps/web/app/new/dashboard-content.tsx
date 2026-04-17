@@ -51,6 +51,7 @@ import { AutomationsPanel } from '@/components/panels/AutomationsPanel';
 import { StorePanel } from '@/components/panels/StorePanel';
 import { ProactiveBanner } from '@/components/dashboard/ProactiveBanner';
 import { HandledForYou } from '@/components/dashboard/HandledForYou';
+import { CopilotSuggestionsRow } from '@/components/dashboard/CopilotSuggestionsRow';
 import { TaskCard } from '@/components/dashboard/TaskCard';
 import { MilestoneCard } from '@/components/dashboard/MilestoneCard';
 import { useScheduledActions } from '@/hooks/useScheduledActions';
@@ -1552,6 +1553,8 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
                     onDismiss={dashInsights.dismissProactive}
                   />
                 )}
+
+                <CopilotSuggestionsRow address={address} jwt={session?.jwt ?? null} />
 
                 {dashInsights.handledActions.length > 0 && (
                   <HandledForYou
