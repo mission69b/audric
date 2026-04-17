@@ -22,7 +22,7 @@ async function main() {
         userId: user!.id,
         status: "pending",
         surfacedAt: { lte: now },
-        OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+        expiresAt: { gt: now },
       },
       select: { id: true, type: true, surfacedAt: true, expiresAt: true, payload: true },
     });
