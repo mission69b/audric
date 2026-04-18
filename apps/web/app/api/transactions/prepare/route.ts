@@ -14,11 +14,10 @@ const ENOKI_SECRET_KEY = process.env.ENOKI_SECRET_KEY;
 const ENOKI_BASE = 'https://api.enoki.mystenlabs.com/v1';
 const SUI_NETWORK = (process.env.NEXT_PUBLIC_SUI_NETWORK ?? 'mainnet') as 'mainnet' | 'testnet';
 
-// [SIMPLIFICATION DAY 5] Removed `allowance-create` + `allowance-deposit` tx
-// types. The on-chain allowance billing flow (Move package + /setup wizard +
-// allowance-status hook + sponsor route) is fully retired. SDK helpers
-// `buildCreateAllowanceTx` / `addDepositAllowanceTx` get removed in S.7
-// alongside the rest of the engine/SDK contract surface deletions.
+// [SIMPLIFICATION DAYS 5+8] On-chain allowance billing is fully retired:
+// the Move package, /setup wizard, allowance-status hook, sponsor route,
+// and SDK helpers (buildCreateAllowanceTx / addDepositAllowanceTx /
+// buildDeductAllowanceTx / etc.) are all gone as of @t2000/sdk@0.39.0.
 type TxType = 'send' | 'save' | 'withdraw' | 'borrow' | 'repay' | 'claim-rewards' | 'swap' | 'volo-stake' | 'volo-unstake';
 
 interface BuildRequest {
