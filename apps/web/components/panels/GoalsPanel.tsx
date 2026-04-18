@@ -116,7 +116,7 @@ export function GoalsPanel({ address, jwt, onSendMessage }: GoalsPanelProps) {
           <span className="text-4xl mb-4">🎯</span>
           <p className="text-sm font-medium text-foreground mb-2">Save with a purpose.</p>
           <p className="text-xs text-dim max-w-[260px] mx-auto mb-6 leading-relaxed">
-            Set a goal and Audric tracks your progress in every morning briefing.
+            Set a goal and Audric tracks your progress whenever you check in.
           </p>
           <button
             onClick={() => onSendMessage?.('Save $500 for a trip by August')}

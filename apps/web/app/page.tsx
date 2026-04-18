@@ -8,9 +8,9 @@ import { MockChatDemo } from '@/components/landing/MockChatDemo';
 import { useZkLogin } from '@/components/auth/useZkLogin';
 
 const PRODUCTS = [
-  { icon: '◎', name: 'Save', desc: 'Earn 3–8% APY on USDC. Auto-compound rewards.' },
+  { icon: '◎', name: 'Save', desc: 'Earn 3–8% APY on USDC via NAVI. Withdraw anytime.' },
   { icon: '→', name: 'Send', desc: 'Instant transfers. Free. Sub-second. Globally.' },
-  { icon: '⊞', name: 'Credit', desc: 'Borrow against savings. Health factor alerts protect you.' },
+  { icon: '⊞', name: 'Credit', desc: 'Borrow against savings. Health factor visible at all times.' },
   { icon: '⇌', name: 'Swap', desc: 'Convert tokens. Best-route via 20+ DEXs. 0.1% fee.' },
   { icon: '↙', name: 'Receive', desc: 'Payment links, QR codes, invoices. Accept USDC from anyone.' },
   { icon: '📊', name: 'Charts', desc: 'Interactive visualizations from conversation. Yield, health, portfolio.' },
@@ -18,17 +18,17 @@ const PRODUCTS = [
 
 const PASSPORT_PILLARS = [
   { icon: '🪪', title: 'Identity', desc: 'Sign in with Google. Your Passport is a cryptographic wallet, created in 3 seconds. No seed phrase. Yours forever.' },
-  { icon: '💰', title: 'Budget', desc: 'You set the cap. Audric spends only what you approve, only for features you\'ve enabled. Withdraw the rest anytime.' },
-  { icon: '🔐', title: 'Security', desc: 'Every autonomous action uses a short-lived signed intent. Cryptographic guardrails on-chain — not app-layer promises.' },
+  { icon: '✋', title: 'You decide', desc: 'Audric never moves money on its own. Every save, send, swap, and borrow waits on your tap-to-confirm.' },
+  { icon: '🔐', title: 'Sponsored gas', desc: 'We pay the network fees so you don\'t need SUI to transact. Your USDC stays your USDC.' },
   { icon: '⛓️', title: 'Yours', desc: 'Non-custodial. We cannot move your money. Every transaction is on Sui mainnet, verifiable by anyone, forever.' },
 ];
 
 const INTELLIGENCE_PILLARS = [
-  { icon: '🎛️', title: 'Agent Harness', sub: '50 tools. One agent.', desc: 'The runtime that manages your money: balances, DeFi, analytics, payments, scheduling — all orchestrated by a single conversation.' },
+  { icon: '🎛️', title: 'Agent Harness', sub: '40 tools. One agent.', desc: 'The runtime that manages your money: balances, DeFi, analytics, payments — all orchestrated by a single conversation.' },
   { icon: '⚡', title: 'Reasoning Engine', sub: 'Thinks before it acts.', desc: 'Classifies complexity, matches skill recipes, runs 9 safety guards before every transaction. You see its reasoning.' },
-  { icon: '🧠', title: 'Intelligence Layer', sub: 'Knows your finances.', desc: 'Builds a financial profile, detects anomalies (idle USDC, health drops), adapts to your risk tolerance and goals.' },
-  { icon: '🔄', title: 'Autonomous Actions', sub: 'Works while you sleep.', desc: 'Morning briefings, scheduled saves, DCA, auto-compound. 5 confirmations then fully autonomous. Trust ladder.' },
-  { icon: '🔗', title: 'Chain Memory', sub: 'Remembers everything.', desc: 'Preferences, patterns, past decisions. Every conversation makes Audric smarter. No two nudges alike.' },
+  { icon: '🧠', title: 'Silent Profile', sub: 'Knows your finances.', desc: 'Builds a private financial profile from your chat history. Used silently to make answers more relevant — never surfaced as nudges.' },
+  { icon: '🔗', title: 'Chain Memory', sub: 'Remembers what you do on-chain.', desc: 'Reads your wallet history into structured facts the agent uses as context — recurring sends, idle balances, position changes.' },
+  { icon: '📓', title: 'AdviceLog', sub: 'Remembers what it told you.', desc: 'Every recommendation Audric makes is logged so it doesn\'t contradict itself across sessions. No two answers about the same topic.' },
 ];
 
 const STORE_STEPS = [
@@ -129,7 +129,7 @@ export default function LandingPage() {
               This is what you get.
             </h2>
             <p className="text-[13px] text-muted leading-[1.7] max-w-[500px] mx-auto">
-              Proactive feed, handled-for-you actions, income nudges, contextual chips — all in one conversation.
+              One conversation. Your balance pinned, your full chat history, and every product a tap away.
             </p>
           </div>
 
@@ -147,26 +147,22 @@ export default function LandingPage() {
                 </div>
                 <p className="font-mono text-[8px] tracking-[0.1em] uppercase text-[#707070] px-2.5 mb-1.5">Navigate</p>
                 {[
-                  { label: 'Dashboard', active: true, icon: '▫' },
-                  { label: 'Portfolio', icon: '▫' },
-                  { label: 'Activity', icon: '▫', dot: true },
-                  { label: 'Pay', icon: '▫' },
-                  { label: 'Automations', icon: '▫', badge: '2' },
+                  { label: 'Dashboard', active: true },
+                  { label: 'Portfolio' },
+                  { label: 'Activity' },
+                  { label: 'Pay' },
                 ].map((item) => (
                   <div
                     key={item.label}
                     className={`flex items-center gap-2 px-2.5 py-1.5 rounded text-[11px] ${item.active ? 'bg-[#191919] text-white' : 'text-[#8F8F8F]'}`}
                   >
                     {item.label}
-                    {item.dot && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#60a5fa]" />}
-                    {item.badge && <span className="ml-auto text-[9px] bg-[#3CC14E] text-black px-1 rounded-full font-semibold">{item.badge}</span>}
                   </div>
                 ))}
                 <p className="font-mono text-[8px] tracking-[0.1em] uppercase text-[#707070] px-2.5 mt-3 mb-1.5">Account</p>
-                {['Goals', 'Reports', 'Contacts', 'Store', 'Settings'].map((item) => (
+                {['Goals', 'Contacts', 'Settings'].map((item) => (
                   <div key={item} className="px-2.5 py-1.5 text-[11px] text-[#8F8F8F]">
                     {item}
-                    {item === 'Store' && <span className="text-[8px] text-[#707070] ml-1.5">SOON</span>}
                   </div>
                 ))}
                 <p className="font-mono text-[8px] tracking-[0.1em] uppercase text-[#707070] px-2.5 mt-3 mb-1.5">Conversations</p>
@@ -181,8 +177,8 @@ export default function LandingPage() {
                     </div>
                   </div>
                   <div className="font-mono text-[8px] text-[#707070] flex items-center justify-between">
-                    <span>FEATURES BUDGET</span>
-                    <span className="text-white">$1.78 · ~357d</span>
+                    <span>SESSIONS TODAY</span>
+                    <span className="text-white">3 / 20</span>
                   </div>
                 </div>
               </div>
@@ -197,29 +193,12 @@ export default function LandingPage() {
                     <span>·</span>
                     <span>earning $1</span>
                     <span>·</span>
-                    <span className="text-[#f97316]">DEBT $0 ▾</span>
+                    <span className="text-[#8F8F8F]">debt $0</span>
                   </div>
-                </div>
-
-                {/* Proactive insight card */}
-                <div className="mx-4 mt-3 bg-[#191919] border border-[#363636] rounded-lg p-3 flex items-start gap-3">
-                  <span className="text-[#3CC14E] text-[14px] mt-0.5">✦</span>
-                  <div className="flex-1">
-                    <div className="text-[12px] text-[#E5E5E5] leading-[1.6]">
-                      <strong className="text-white">I&apos;ve been watching your wallet.</strong> You&apos;ve saved ~$50 three Fridays in a row. Want me to automate it?
-                    </div>
-                  </div>
-                  <span className="text-[10px] text-[#8F8F8F] border border-[#363636] px-2 py-1 rounded shrink-0">REVIEW →</span>
-                </div>
-
-                {/* Chat / Activity tabs */}
-                <div className="flex gap-3 px-4 mt-3 border-b border-[#363636]">
-                  <span className="text-[11px] text-white px-1 pb-2 border-b border-white">CHAT</span>
-                  <span className="text-[11px] text-[#8F8F8F] px-1 pb-2">ACTIVITY <span className="inline-block w-1 h-1 rounded-full bg-[#60a5fa] ml-0.5 -translate-y-0.5" /></span>
                 </div>
 
                 {/* Feed content */}
-                <div className="flex-1 overflow-hidden px-4 py-3 space-y-2.5">
+                <div className="flex-1 overflow-hidden px-4 py-4 space-y-2.5">
                   {/* Greeting divider */}
                   <div className="flex items-center gap-2">
                     <div className="flex-1 h-px bg-[#363636]" />
@@ -227,52 +206,24 @@ export default function LandingPage() {
                     <div className="flex-1 h-px bg-[#363636]" />
                   </div>
 
-                  {/* Handled for you */}
-                  <div className="bg-[rgba(60,193,78,0.06)] border border-[rgba(60,193,78,0.18)] rounded-lg p-3">
-                    <div className="font-mono text-[9px] tracking-[0.1em] uppercase text-[#3CC14E] mb-2">Handled for you</div>
-                    {[
-                      'Auto-saved $50 USDC · Friday 9am',
-                      'Payment received · Logo design $50 · pay/abc123',
-                      'Store sale · Japanese woodblock pack · $13.80 earned',
-                    ].map((item) => (
-                      <div key={item} className="flex items-center gap-2 py-1">
-                        <span className="text-[10px] text-[#3CC14E]">✓</span>
-                        <span className="text-[11px] text-[#8F8F8F]">{item}</span>
-                      </div>
-                    ))}
+                  {/* Conversation snippet */}
+                  <div className="self-end max-w-[80%] ml-auto bg-white text-black rounded-2xl rounded-br-sm px-3.5 py-2 text-[12px]">
+                    What&apos;s my best USDC rate?
                   </div>
-
-                  {/* Income received nudge */}
-                  <div className="bg-[rgba(60,193,78,0.06)] border border-[rgba(60,193,78,0.18)] rounded-lg p-3">
-                    <div className="font-mono text-[9px] tracking-[0.1em] uppercase text-[#3CC14E] mb-2">Income received</div>
-                    <div className="text-[12px] text-[#8F8F8F] leading-[1.6] mb-2.5">
-                      You received <strong className="text-[#E5E5E5]">$63.80</strong> this week — $50 from a payment link and $13.80 from your store. It&apos;s all sitting idle. Save it to start earning 4.3% APY?
-                    </div>
-                    <div className="flex gap-2">
-                      <span className="text-[10px] bg-white text-black px-3 py-1.5 rounded font-semibold">SAVE $63.80 →</span>
-                      <span className="text-[10px] text-[#8F8F8F] border border-[#363636] px-3 py-1.5 rounded">GOAL →</span>
-                      <span className="text-[10px] text-[#8F8F8F] border border-[#363636] px-3 py-1.5 rounded">KEEP</span>
-                    </div>
+                  <div className="self-start max-w-[85%] bg-[#191919] text-[#E5E5E5] rounded-2xl rounded-bl-sm px-3.5 py-2.5 text-[12px] leading-[1.6]">
+                    NAVI is paying <strong className="text-white">5.2% APY</strong> on USDC right now — that&apos;s the best rate I see across the protocols I track. You have <strong className="text-white">$44.18 idle</strong>. Want to deposit it?
                   </div>
-                </div>
-
-                {/* Proactive chips row */}
-                <div className="px-4 pb-2 flex gap-1.5 flex-wrap">
-                  {[
-                    { label: 'SAVE $106 IDLE — 4.3%', icon: '💰' },
-                    { label: 'MY POSITIONS', icon: '📊' },
-                    { label: 'RISK ANALYSIS', icon: '🍷' },
-                    { label: '+ AUTOMATIONS (2)' },
-                  ].map((chip) => (
-                    <span key={chip.label} className="font-mono text-[9px] px-2.5 py-1.5 bg-[#191919] border border-[#363636] rounded-full text-[#E5E5E5]">
-                      {chip.icon && <span className="mr-1">{chip.icon}</span>}{chip.label}
-                    </span>
-                  ))}
+                  <div className="self-end max-w-[80%] ml-auto bg-white text-black rounded-2xl rounded-br-sm px-3.5 py-2 text-[12px]">
+                    Yes, save it.
+                  </div>
+                  <div className="self-start max-w-[85%] bg-[#191919] text-[#E5E5E5] rounded-2xl rounded-bl-sm px-3.5 py-2.5 text-[12px] leading-[1.6]">
+                    <span className="text-[#3CC14E]">✓</span> Saved <strong className="text-white">$44.18 USDC</strong> at 5.2% APY. New savings balance: <strong className="text-white">$144.18</strong>.
+                  </div>
                 </div>
 
                 {/* Product chips row */}
                 <div className="px-4 pb-2 flex gap-1.5 flex-wrap">
-                  {['SAVE', 'SEND', 'SWAP', 'ASK', 'CREDIT', 'RECEIVE', 'CHARTS'].map((chip) => (
+                  {['SAVE', 'SEND', 'SWAP', 'CREDIT', 'RECEIVE', 'PAY', 'CHARTS'].map((chip) => (
                     <span key={chip} className="font-mono text-[9px] px-2.5 py-1 border border-[#363636] rounded-full text-[#8F8F8F]">{chip}</span>
                   ))}
                 </div>
@@ -283,7 +234,6 @@ export default function LandingPage() {
                   <div className="flex-1 bg-[#191919] border border-[#363636] rounded-lg px-3 py-2.5 text-[12px] text-[#707070]">
                     Ask anything...
                   </div>
-                  <span className="text-[10px] text-[#707070]">New</span>
                   <div className="w-8 h-8 bg-[#363636] rounded-full flex items-center justify-center text-[12px] text-[#8F8F8F]">↑</div>
                 </div>
               </div>
@@ -305,8 +255,8 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-px bg-border border border-border">
             {[
               { num: '01', title: 'Sign in with Google', desc: 'No seed phrase. No wallet download. Your Audric Passport is ready in 3 seconds via zkLogin.' },
-              { num: '02', title: 'Your agent thinks, then acts', desc: 'Audric evaluates your request, checks safety guards, explains its reasoning, then executes — transparently.' },
-              { num: '03', title: 'Wake up to results', desc: 'Morning briefings, auto-compound summaries, goal progress, anomaly alerts. Your money works while you sleep.' },
+              { num: '02', title: 'Just say what you want', desc: 'Save $50, send to alice, what\'s my health factor? — Audric understands plain English. No menus, no forms.' },
+              { num: '03', title: 'Confirm, and it\'s done', desc: 'You see the action, the amount, the impact. One tap to confirm — Audric pays the gas, signs the transaction, and shows you the result.' },
             ].map((step) => (
               <div key={step.num} className="bg-background p-6 sm:p-7">
                 <div className="font-mono text-[32px] font-medium text-border-bright mb-3">{step.num}</div>
@@ -440,7 +390,7 @@ export default function LandingPage() {
               Not a chatbot.<br />A financial agent.
             </h2>
             <p className="text-[13px] text-muted leading-[1.7] max-w-[500px] mx-auto">
-              Five systems work together to understand your money, reason about decisions, act autonomously, and get smarter over time.
+              Five systems work together to understand your money, reason about decisions, and get smarter over time. Every action still waits on your confirmation.
             </p>
           </div>
 
@@ -497,10 +447,10 @@ export default function LandingPage() {
               Audric Pay
             </p>
             <h2 className="text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground mb-3">
-              Your agent pays so you don&apos;t have to.
+              Pay any API with USDC.
             </h2>
             <p className="text-[13px] text-muted leading-[1.7] max-w-[420px] mb-5">
-              Give Audric a budget. It accesses 41 AI services on your behalf — music, images, research, data. No subscriptions. No API keys.
+              Ask Audric to call any of 41 AI services on your behalf — music, images, research, data. Each call shows the price first; you confirm, Audric pays from your USDC. No subscriptions. No API keys.
             </p>
             <div className="grid grid-cols-3 gap-px bg-border border border-border mb-4">
               {[
@@ -548,7 +498,7 @@ export default function LandingPage() {
                 <span className="text-[13px] font-semibold text-foreground">$1.05</span>
               </div>
               <div className="flex justify-between text-[9px] text-muted">
-                <span>Budget: $0.35 / $1.00</span>
+                <span>Paid from USDC balance</span>
                 <span>3 services used</span>
               </div>
             </div>

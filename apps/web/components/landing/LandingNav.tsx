@@ -16,17 +16,20 @@ export function LandingNav() {
       </button>
 
       <div className="flex items-center gap-5 sm:gap-6">
+        <a href="#how" className="hidden sm:block font-mono text-[10px] tracking-[0.1em] uppercase text-muted hover:text-foreground transition">
+          How
+        </a>
+        <a href="#intelligence" className="hidden sm:block font-mono text-[10px] tracking-[0.1em] uppercase text-muted hover:text-foreground transition">
+          Intelligence
+        </a>
         <a href="#passport" className="hidden sm:block font-mono text-[10px] tracking-[0.1em] uppercase text-muted hover:text-foreground transition">
           Passport
         </a>
-        <a href="#copilot" className="hidden sm:block font-mono text-[10px] tracking-[0.1em] uppercase text-muted hover:text-foreground transition">
-          Copilot
+        <a href="#pay" className="hidden sm:block font-mono text-[10px] tracking-[0.1em] uppercase text-muted hover:text-foreground transition">
+          Pay
         </a>
         <a href="#store" className="hidden sm:block font-mono text-[10px] tracking-[0.1em] uppercase text-muted hover:text-foreground transition">
           Store
-        </a>
-        <a href="#pay" className="hidden sm:block font-mono text-[10px] tracking-[0.1em] uppercase text-muted hover:text-foreground transition">
-          Pay
         </a>
         <button
           onClick={login}
