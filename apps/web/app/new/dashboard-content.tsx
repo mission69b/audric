@@ -30,35 +30,27 @@ import { useAgent, ServiceDeliveryError } from '@/hooks/useAgent';
 import { useUsdcSponsor } from '@/hooks/useUsdcSponsor';
 import { COIN_REGISTRY } from '@/lib/token-registry';
 import { parseActualAmount, buildSwapDisplayData } from '@/lib/balance-changes';
-import { useAllowanceStatus } from '@/hooks/useAllowanceStatus';
 import { useActivityFeed } from '@/hooks/useActivityFeed';
-import { BriefingCard } from '@/components/dashboard/BriefingCard';
 import { NewConversationView } from '@/components/dashboard/NewConversationView';
-import { FirstLoginView } from '@/components/dashboard/FirstLoginView';
 import { TosBanner } from '@/components/dashboard/TosBanner';
-import { GracePeriodBanner } from '@/components/dashboard/GracePeriodBanner';
-import { useOvernightBriefing } from '@/hooks/useOvernightBriefing';
-import { useDashboardInsights } from '@/hooks/useDashboardInsights';
 import { useUserStatus } from '@/hooks/useUserStatus';
 import { usePanel } from '@/hooks/usePanel';
 import { PortfolioPanel } from '@/components/panels/PortfolioPanel';
 import { ActivityPanel } from '@/components/panels/ActivityPanel';
 import { PayPanel } from '@/components/panels/PayPanel';
 import { GoalsPanel } from '@/components/panels/GoalsPanel';
-import { ReportsPanel } from '@/components/panels/ReportsPanel';
 import { ContactsPanel } from '@/components/panels/ContactsPanel';
-import { AutomationsPanel } from '@/components/panels/AutomationsPanel';
 import { StorePanel } from '@/components/panels/StorePanel';
-import { ProactiveBanner } from '@/components/dashboard/ProactiveBanner';
-import { HandledForYou } from '@/components/dashboard/HandledForYou';
-import { CopilotSuggestionsRow } from '@/components/dashboard/CopilotSuggestionsRow';
-import { CopilotOnboardingModal } from '@/components/copilot/CopilotOnboardingModal';
-import { EmailAddNudge } from '@/components/copilot/EmailAddNudge';
-import { useCopilotOnboarding } from '@/hooks/useCopilotOnboarding';
-import { TaskCard } from '@/components/dashboard/TaskCard';
-import { MilestoneCard } from '@/components/dashboard/MilestoneCard';
-import { useScheduledActions } from '@/hooks/useScheduledActions';
-import { useGoals } from '@/hooks/useGoals';
+// [SIMPLIFICATION DAY 5] Folded S.6 in. Removed surfaces:
+//   - BriefingCard, FirstLoginView, GracePeriodBanner
+//   - ProactiveBanner, HandledForYou, CopilotSuggestionsRow
+//   - CopilotOnboardingModal, EmailAddNudge, useCopilotOnboarding
+//   - TaskCard, MilestoneCard
+//   - useOvernightBriefing, useDashboardInsights, useScheduledActions
+//   - AutomationsPanel, ReportsPanel
+// All of these depended on dropped tables (CopilotSuggestion, DailyBriefing,
+// ScheduledAction, OutcomeCheck, FollowUpQueue) or the retired allowance
+// flow. Chat-first means NewConversationView is the only empty state.
 
 const LS_LAST_SAVINGS = 't2000_last_savings';
 const LS_LAST_OPEN = 't2000_last_open_date';
@@ -225,9 +217,6 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
   const { address, session, expiringSoon, logout, refresh } = useZkLogin();
   const { panel, setPanel } = usePanel();
   useUsdcSponsor(address);
-  const allowance = useAllowanceStatus(address);
-
-  const needsAllowance = !allowance.loading && !allowance.allowanceId && !allowance.skipped && !!address;
 
   const chipFlow = useChipFlow();
   const feed = useFeed();
@@ -274,9 +263,7 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
     },
   });
   const activityFeed = useActivityFeed(address);
-  const briefing = useOvernightBriefing(address, session?.jwt ?? null);
   const userStatus = useUserStatus(address, session?.jwt);
-  const copilotOnboarding = useCopilotOnboarding(address, session?.jwt ?? null);
   const [agentBudget, setAgentBudget] = useState(0.50);
   const [dismissedCards, setDismissedCards] = useState<Set<string>>(new Set());
   const [scrolled, setScrolled] = useState(false);
@@ -325,60 +312,10 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
 
   const chipExpand = useChipExpand({ idleUsdc: balance.usdc, currentApy: balance.savingsRate });
 
-  const dashInsights = useDashboardInsights({
-    address,
-    jwt: session?.jwt ?? null,
-    idleUsdc: balance.usdc,
-    savings: balance.savings,
-    savingsRate: balance.savingsRate,
-    debt: balance.borrows,
-    healthFactor: balance.healthFactor ?? null,
-  });
-
-  const scheduledActions = useScheduledActions(address, session?.jwt ?? null);
-  const goalsHook = useGoals(address, session?.jwt);
-  const [dismissedMilestones, setDismissedMilestones] = useState<Set<string>>(new Set());
-
-  const upcomingTasks = useMemo(() => {
-    const now = Date.now();
-    const dayMs = 86_400_000;
-    return scheduledActions.actions.filter((a) => {
-      if (!a.enabled) return false;
-      const next = new Date(a.nextRunAt).getTime();
-      return next > now && next - now < dayMs;
-    });
-  }, [scheduledActions.actions]);
-
-  const proposalTasks = useMemo(
-    () => scheduledActions.actions.filter((a) => a.stage === 1 && !a.declinedAt && !a.pausedAt),
-    [scheduledActions.actions],
-  );
-
-  const milestoneGoals = useMemo(() => {
-    const savings = balance.savings;
-    return goalsHook.goals
-      .map((goal) => {
-        const current = Math.min(savings, goal.targetAmount);
-        const pct = goal.targetAmount > 0 ? (current / goal.targetAmount) * 100 : 0;
-        if (pct >= 100) return { goal, status: 'complete' as const, milestone: 100, savings };
-        for (const m of [75, 50, 25]) {
-          if (pct >= m) return { goal, status: 'milestone' as const, milestone: m, savings };
-        }
-        return null;
-      })
-      .filter((g): g is NonNullable<typeof g> => g != null && !dismissedMilestones.has(g.goal.id));
-  }, [goalsHook.goals, balance.savings, dismissedMilestones]);
-
-  const nightBeforeTasks = useMemo(() => {
-    const now = new Date();
-    const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-    const dayAfter = new Date(tomorrow.getTime() + 86_400_000);
-    return scheduledActions.actions.filter((a) => {
-      if (!a.enabled) return false;
-      const next = new Date(a.nextRunAt).getTime();
-      return next >= tomorrow.getTime() && next < dayAfter.getTime();
-    });
-  }, [scheduledActions.actions]);
+  // [SIMPLIFICATION DAY 5] dashInsights / scheduledActions / goalsHook
+  // milestone derivation removed — backed by dropped tables and retired
+  // dashboard surfaces. Goals still surface inside <GoalsPanel> via its
+  // own useGoals hook.
 
   useEffect(() => {
     if (!address) return;
@@ -819,33 +756,8 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
     handleChipClick(flow);
   }, [handleChipClick, setPanel]);
 
-  const handleBriefingCtaClick = useCallback((type: string, amount?: number) => {
-    if (type === 'save' && amount) {
-      handleInputSubmit(`Save $${amount} USDC`);
-    } else if (type === 'repay') {
-      handleInputSubmit('Repay my debt');
-    }
-  }, [handleInputSubmit]);
-
-  const handleBriefingViewReport = useCallback(() => {
-    handleInputSubmit('Give me my daily briefing');
-  }, [handleInputSubmit]);
-
-  const handleWelcomeSave = useCallback(() => {
-    const usdc = balanceQuery.data?.usdc ?? 0;
-    const amount = usdc < 1 ? usdc.toFixed(2) : Math.floor(usdc).toString();
-    handleInputSubmit(`Save $${amount} USDC`);
-    userStatus.markOnboarded();
-  }, [handleInputSubmit, balanceQuery.data?.usdc, userStatus.markOnboarded]);
-
-  const handleWelcomeAsk = useCallback(() => {
-    handleInputSubmit('What can you do?');
-    userStatus.markOnboarded();
-  }, [handleInputSubmit, userStatus.markOnboarded]);
-
-  const handleWelcomeDismiss = useCallback(() => {
-    userStatus.markOnboarded();
-  }, [userStatus.markOnboarded]);
+  // [SIMPLIFICATION DAY 5] handleBriefing* + handleWelcome* removed with
+  // BriefingCard / FirstLoginView / DailyBriefing cron stack.
 
   // Deep link: ?prefill=... auto-sends a message on load
   const searchParams = useSearchParams();
@@ -1363,29 +1275,11 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
     <TosBanner onAccept={userStatus.acceptTos} />
   ) : null;
 
-  const graceBanner = needsAllowance ? (
-    <div className="mx-auto w-full max-w-2xl px-4 sm:px-6 py-2">
-      <GracePeriodBanner sessionsUsed={userStatus.sessionsUsed} />
-    </div>
-  ) : null;
-
-  const isFirstLogin = !userStatus.loading && !userStatus.onboarded;
+  // [SIMPLIFICATION DAY 5] GracePeriodBanner / FirstLoginView retired.
+  // Chat-first means there's exactly one empty state: NewConversationView.
+  const graceBanner = null;
 
   const renderEmptyState = () => {
-    if (isFirstLogin) {
-      return (
-        <FirstLoginView
-          greeting={greeting}
-          onSend={handleInputSubmit}
-          onSave={handleWelcomeSave}
-          onAsk={handleWelcomeAsk}
-          onDismiss={handleWelcomeDismiss}
-          usdcBalance={balanceQuery.data?.usdc ?? 0}
-          hasSavings={(balanceQuery.data?.savings ?? 0) > 0}
-        />
-      );
-    }
-
     const dailyYield = balance.savings > 0 && balance.savingsRate > 0
       ? (balance.savings * balance.savingsRate) / 365
       : 0;
@@ -1400,21 +1294,6 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
         onSend={handleInputSubmit}
         onChipClick={handleChipClick}
         activeFlow={chipFlow.state.flow}
-        briefing={briefing.briefing ? {
-          briefing: briefing.briefing,
-          dismiss: briefing.dismiss,
-          onViewReport: handleBriefingViewReport,
-          onCtaClick: handleBriefingCtaClick,
-        } : null}
-        handledActions={dashInsights.handledActions}
-        onViewHandled={() => { setPanel('activity'); }}
-        proactive={dashInsights.proactive ? {
-          ...dashInsights.proactive,
-          onCtaClick: () => engine.sendMessage(dashInsights.proactive!.action),
-        } : null}
-        onDismissProactive={dashInsights.dismissProactive}
-        copilotAddress={address}
-        copilotJwt={session?.jwt ?? null}
       />
     );
   };
@@ -1532,102 +1411,11 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
 
         {!isInFlow && (
           <>
-            {/* Copilot suggestions render unconditionally — the row component
-                returns null when there are no pending suggestions, so it stays
-                invisible by default. Pulling it OUT of the legacy gate below
-                ensures a Copilot card shows even when the user has no other
-                dashboard items (briefing/proactive/tasks/milestones). */}
-            <div className="mb-4 space-y-2">
-              {copilotOnboarding.state.showEmailNudge && session?.jwt && (
-                <EmailAddNudge
-                  address={address}
-                  jwt={session.jwt}
-                  confirmedCount={copilotOnboarding.state.confirmedCount}
-                  onDismiss={() => copilotOnboarding.dismiss('email_nudge')}
-                />
-              )}
-              <CopilotSuggestionsRow address={address} jwt={session?.jwt ?? null} />
-            </div>
-
-            {/* Dashboard header zone: briefing + proactive + handled + tasks + milestones */}
-            {(briefing.briefing || dashInsights.proactive || dashInsights.handledActions.length > 0 || upcomingTasks.length > 0 || proposalTasks.length > 0 || milestoneGoals.length > 0 || nightBeforeTasks.length > 0) && (
-              <div className="space-y-2 mb-4">
-                {briefing.briefing && (
-                  <TaskCard
-                    title={`Morning briefing — ${new Date(briefing.briefing.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`}
-                    description={briefing.briefing.content.variant === 'savings'
-                      ? `Earned $${briefing.briefing.content.earned.toFixed(4)} overnight at ${(briefing.briefing.content.saveApy * 100).toFixed(1)}% APY`
-                      : briefing.briefing.content.variant === 'idle'
-                      ? `${briefing.briefing.content.idleUsdc.toFixed(2)} idle USDC not earning`
-                      : `Health factor: ${briefing.briefing.content.healthFactor?.toFixed(2) ?? 'N/A'}`}
-                    status="needs_input"
-                    actionLabel="View briefing"
-                    onAction={handleBriefingViewReport}
-                  />
-                )}
-
-                {dashInsights.proactive && (
-                  <ProactiveBanner
-                    title={dashInsights.proactive.title}
-                    description={dashInsights.proactive.description}
-                    cta={dashInsights.proactive.cta}
-                    variant={dashInsights.proactive.variant}
-                    onCtaClick={() => engine.sendMessage(dashInsights.proactive!.action)}
-                    onDismiss={dashInsights.dismissProactive}
-                  />
-                )}
-
-                {dashInsights.handledActions.length > 0 && (
-                  <HandledForYou
-                    actions={dashInsights.handledActions}
-                    onViewAll={() => setPanel('activity')}
-                  />
-                )}
-
-                {proposalTasks.map((a) => (
-                  <TaskCard
-                    key={a.id}
-                    title={`${a.patternType?.replace(/_/g, ' ') ?? a.actionType} — $${a.amount} ${a.asset}`}
-                    description={`Confidence: ${a.confidence ? Math.round(a.confidence * 100) : '?'}%. Tap to review.`}
-                    status="needs_input"
-                    actionLabel="Review"
-                    onAction={() => engine.sendMessage(`Show me the ${a.patternType ?? a.actionType} proposal`)}
-                  />
-                ))}
-
-                {upcomingTasks.map((a) => (
-                  <TaskCard
-                    key={a.id}
-                    title={`${a.actionType} $${a.amount} ${a.asset}`}
-                    description={`Runs ${new Date(a.nextRunAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
-                    status="upcoming"
-                  />
-                ))}
-
-                {nightBeforeTasks.map((a) => (
-                  <TaskCard
-                    key={`night-${a.id}`}
-                    title={`Tomorrow: ${a.actionType} $${a.amount} ${a.asset}`}
-                    description={`Scheduled for ${new Date(a.nextRunAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
-                    status="upcoming"
-                    actionLabel="Skip"
-                    onAction={() => scheduledActions.pauseAction(a.id)}
-                  />
-                ))}
-
-                {milestoneGoals.map((mg) => (
-                  <MilestoneCard
-                    key={mg.goal.id}
-                    goal={mg.goal}
-                    status={mg.status}
-                    milestone={mg.milestone}
-                    savings={mg.savings}
-                    onDismiss={() => setDismissedMilestones((prev) => new Set(prev).add(mg.goal.id))}
-                    onKeepSaving={() => engine.sendMessage(`Save more towards my ${mg.goal.name} goal`)}
-                  />
-                ))}
-              </div>
-            )}
+            {/* [SIMPLIFICATION DAY 3] Copilot suggestions row, email-add nudge,
+                and the entire dashboard header zone (morning briefing, proactive
+                banner, handled-for-you, scheduled-action proposals, upcoming
+                tasks, night-before reminders, milestone goals) have all been
+                removed. The chat timeline is the only surface left here. */}
 
             <UnifiedTimeline
               engine={engine}
@@ -1785,30 +1573,15 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
           />
         );
       case 'automations':
-        return (
-          <AutomationsPanel
-            address={address}
-            jwt={session?.jwt ?? null}
-            onSendMessage={handleInputSubmit}
-            getAgent={agent ? () => agent.getInstance() : undefined}
-          />
-        );
+      case 'reports':
+        // [SIMPLIFICATION DAY 5] AutomationsPanel + ReportsPanel deleted.
+        // Sidebar route still routes here as a soft no-op until S.11 removes
+        // the menu entry. Nothing to render.
+        return null;
       case 'goals':
         return session?.jwt ? (
           <GoalsPanel address={address} jwt={session.jwt} />
         ) : null;
-      case 'reports':
-        return (
-          <ReportsPanel
-            address={address}
-            jwt={session?.jwt ?? ''}
-            briefing={briefing.briefing}
-            onBriefingDismiss={briefing.dismiss}
-            onBriefingViewReport={() => window.open(`/report/${address}`, '_blank')}
-            onBriefingCtaClick={handleBriefingCtaClick}
-            onSendMessage={handleInputSubmit}
-          />
-        );
       case 'contacts':
         return (
           <ContactsPanel
@@ -1835,9 +1608,11 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
       address={address}
       balance={balance}
       jwt={session.jwt}
-      allowancePercent={allowance.balance != null ? Math.min(100, (allowance.balance / 0.50) * 100) : undefined}
-      allowanceLabel={allowance.balance != null ? `$${allowance.balance.toFixed(2)} · ~${Math.max(1, Math.round(allowance.balance / 0.005))}d` : undefined}
-      allowanceBalance={allowance.balance}
+      // [SIMPLIFICATION DAY 4] allowance* props intentionally omitted. The
+      // sidebar "Features budget" indicator and AllowanceLowBanner are gated
+      // on these being defined, so the UI for the (now-removed) on-chain
+      // allowance billing flow disappears. AppShell + AppSidebar still accept
+      // the props — Day 6 removes the prop surface area entirely.
       activeSessionId={engine.sessionId ?? undefined}
       onLoadSession={engine.loadSession}
       onNewConversation={handleNewConversation}
@@ -1848,11 +1623,10 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
       {emailModal}
       {tosBanner}
       {graceBanner}
-      <CopilotOnboardingModal
-        open={copilotOnboarding.state.showOnboarding}
-        hasMigratedActions={copilotOnboarding.state.hasMigratedActions}
-        onDismiss={() => copilotOnboarding.dismiss('onboarding')}
-      />
+      {/* [SIMPLIFICATION DAY 3] CopilotOnboardingModal removed.
+          Pattern-detected automation onboarding is gone — Day 6 deletes
+          the modal component, the copilotOnboarding hook, and the
+          email-add nudge wiring. */}
     </AppShell>
   );
 }

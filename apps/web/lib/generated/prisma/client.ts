@@ -67,21 +67,6 @@ export type SessionUsage = Prisma.SessionUsageModel
  */
 export type ServicePurchase = Prisma.ServicePurchaseModel
 /**
- * Model NotificationPrefs
- * 
- */
-export type NotificationPrefs = Prisma.NotificationPrefsModel
-/**
- * Model NotificationLog
- * 
- */
-export type NotificationLog = Prisma.NotificationLogModel
-/**
- * Model DailyBriefing
- * 
- */
-export type DailyBriefing = Prisma.DailyBriefingModel
-/**
  * Model SavingsGoal
  * 
  */
@@ -102,11 +87,6 @@ export type AdviceLog = Prisma.AdviceLogModel
  */
 export type Payment = Prisma.PaymentModel
 /**
- * Model SavingsGoalDeposit
- * 
- */
-export type SavingsGoalDeposit = Prisma.SavingsGoalDepositModel
-/**
  * Model WatchAddress
  * 
  */
@@ -116,31 +96,6 @@ export type WatchAddress = Prisma.WatchAddressModel
  * 
  */
 export type PortfolioSnapshot = Prisma.PortfolioSnapshotModel
-/**
- * Model ScheduledAction
- * 
- */
-export type ScheduledAction = Prisma.ScheduledActionModel
-/**
- * Model ScheduledExecution
- * 
- */
-export type ScheduledExecution = Prisma.ScheduledExecutionModel
-/**
- * Model CopilotSuggestion
- * 
- */
-export type CopilotSuggestion = Prisma.CopilotSuggestionModel
-/**
- * Model OutcomeCheck
- * 
- */
-export type OutcomeCheck = Prisma.OutcomeCheckModel
-/**
- * Model FollowUpQueue
- * 
- */
-export type FollowUpQueue = Prisma.FollowUpQueueModel
 /**
  * Model UserFinancialProfile
  * 

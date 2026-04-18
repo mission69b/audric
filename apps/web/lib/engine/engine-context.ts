@@ -57,24 +57,37 @@ export interface GoalSummary {
 
 export async function buildAdviceContext(userId: string): Promise<string> {
   try {
+    // [SIMPLIFICATION DAY 5] AdviceLog lost outcomeStatus, actionTaken,
+    // followUp* columns when the outcome-check + follow-up cron stack was
+    // retired. Advice context now reads pure history (last 5 in 30d) without
+    // outcome filtering or "acted on / not yet acted on" annotations. Goal
+    // join still works via goalId — we just hydrate it via a separate lookup
+    // to avoid keeping the include in the type signature.
     const recentAdvice = await prisma.adviceLog.findMany({
       where: {
         userId,
-        outcomeStatus: { in: ['pending', 'on_track', 'off_track'] },
         createdAt: { gte: new Date(Date.now() - 30 * 86_400_000) },
       },
       orderBy: { createdAt: 'desc' },
       take: 5,
-      include: { goal: true },
     });
 
     if (recentAdvice.length === 0) return '';
 
+    const goalIds = recentAdvice.map((a) => a.goalId).filter((g): g is string => !!g);
+    const goals = goalIds.length
+      ? await prisma.savingsGoal.findMany({
+          where: { id: { in: goalIds } },
+          select: { id: true, name: true },
+        }).catch(() => [])
+      : [];
+    const goalNameById = new Map(goals.map((g) => [g.id, g.name]));
+
     const lines = recentAdvice.map((a) => {
       const daysAgo = Math.round((Date.now() - a.createdAt.getTime()) / 86_400_000);
-      const acted = a.actionTaken ? 'acted on' : 'not yet acted on';
-      const goalNote = a.goal ? ` (toward ${a.goal.name})` : '';
-      return `- ${daysAgo}d ago: ${a.adviceText}${goalNote} — ${acted}`;
+      const goalName = a.goalId ? goalNameById.get(a.goalId) : undefined;
+      const goalNote = goalName ? ` (toward ${goalName})` : '';
+      return `- ${daysAgo}d ago: ${a.adviceText}${goalNote}`;
     });
 
     return [
@@ -215,14 +228,6 @@ When pay_api returns an image URL (e.g. from fal.ai), output it as a markdown im
 - **CRITICAL — always confirm before cancelling**: NEVER call cancel_invoice or cancel_payment_link immediately. Always resolve what you found first, then ask the user to confirm. Example: "Found: Web design — April, $50 USDC (xFYKBWy5). Cancel it?" Only call the cancel tool after they confirm.
 - **CRITICAL — multiple matches**: If multiple items match, list them all with slugs and amounts and ask which one. Never guess.
 - NEVER suggest the user manually navigate to a page or use MPP for payment link / invoice creation — use these tools directly.
-
-## Agent allowance controls
-- To show current allowance status: **allowance_status** (read, no confirmation needed).
-- To pause agent spending: **toggle_allowance** with \`enabled: false\`. To resume: \`enabled: true\`.
-- To change the daily spending cap: **update_daily_limit** with \`dailyLimitUsdc\`.
-- To change which services the agent can act on: **update_permissions** with the full list of enabled categories. Valid values: \`savings\`, \`send\`, \`pay\`, \`credit\`, \`swap\`, \`stake\`.
-- **CRITICAL — always confirm before modifying allowance**: These tools change how the agent spends. NEVER call toggle_allowance, update_daily_limit, or update_permissions without first telling the user what will change and getting explicit confirmation. Example: "This will set your daily limit to $10 USDC (currently $50). Confirm?" Only call the tool after they say yes.
-- When updating permissions, always show the current list vs the new list so the user can see what's being added/removed.
 
 ## Credit education (3.6)
 When the user asks about health factor or borrows for the FIRST TIME in a session, include a brief plain-English explanation:

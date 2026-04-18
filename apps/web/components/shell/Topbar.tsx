@@ -6,7 +6,9 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { Tooltip } from '@/components/ui/Tooltip';
 import type { BalanceHeaderData } from '@/components/dashboard/BalanceHeader';
 import { BalanceDrawer } from './BalanceDrawer';
-import { HfWidget } from '@/components/dashboard/HfWidget';
+// [SIMPLIFICATION DAY 5] HfWidget deleted with the Copilot HF top-up
+// surface. Health factor is still part of the balance drawer; the inline
+// widget under the hero balance is gone.
 
 interface TopbarProps {
   address: string;
@@ -27,6 +29,8 @@ export function Topbar({
   showHamburger,
   onHamburgerClick,
 }: TopbarProps) {
+  void address;
+  void jwt;
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   return (
@@ -82,16 +86,6 @@ export function Topbar({
               )}
             </p>
           </button>
-        )}
-        {!balance.loading && balance.borrows >= 0.01 && (
-          <div className="flex items-center justify-center mt-1.5">
-            <HfWidget
-              address={address}
-              jwt={jwt ?? null}
-              healthFactor={balance.healthFactor}
-              borrows={balance.borrows}
-            />
-          </div>
         )}
         <BalanceDrawer balance={balance} open={drawerOpen} onClose={() => setDrawerOpen(false)} />
       </div>

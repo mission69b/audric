@@ -1,10 +1,20 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
 
+/**
+ * [SIMPLIFICATION DAY 5] `onboarded` field removed from `UserStatus`. The
+ * `User.onboardedAt` column was dropped along with the /setup wizard. Any
+ * lingering `userStatus.onboarded` reads default to `true` (chat-first
+ * means everyone is "onboarded" the moment they sign in). `markOnboarded`
+ * is now a no-op kept for source-compat during the deprecation window —
+ * the next dashboard pass deletes both.
+ */
 interface UserStatus {
-  onboarded: boolean;
   tosAccepted: boolean;
+  emailVerified: boolean;
   sessionsUsed: number;
+  sessionLimit: number;
+  sessionWindowHours: number;
 }
 
 export function useUserStatus(address: string | null, jwt: string | undefined) {
@@ -34,30 +44,32 @@ export function useUserStatus(address: string | null, jwt: string | undefined) {
       body: JSON.stringify({ address }),
     });
     queryClient.setQueryData(['user-status', address], (old: UserStatus | undefined) =>
-      old ? { ...old, tosAccepted: true } : { onboarded: false, tosAccepted: true },
+      old
+        ? { ...old, tosAccepted: true }
+        : {
+            tosAccepted: true,
+            emailVerified: false,
+            sessionsUsed: 0,
+            sessionLimit: 5,
+            sessionWindowHours: 24,
+          },
     );
   }, [address, jwt, queryClient]);
 
   const markOnboarded = useCallback(async () => {
-    if (!address || !jwt) return;
-    await fetch('/api/user/onboarded', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-zklogin-jwt': jwt,
-      },
-      body: JSON.stringify({ address }),
-    });
-    queryClient.setQueryData(['user-status', address], (old: UserStatus | undefined) =>
-      old ? { ...old, onboarded: true } : { onboarded: true, tosAccepted: false },
-    );
-  }, [address, jwt, queryClient]);
+    // [SIMPLIFICATION DAY 5] No-op. /api/user/onboarded was deleted along
+    // with the onboarding wizard. Kept as an exported function so any
+    // remaining caller compiles until the dashboard pass strips it.
+  }, []);
 
   return {
     loading: query.isLoading,
-    onboarded: query.data?.onboarded ?? true,
+    onboarded: true,
     tosAccepted: query.data?.tosAccepted ?? true,
+    emailVerified: query.data?.emailVerified ?? false,
     sessionsUsed: query.data?.sessionsUsed ?? 0,
+    sessionLimit: query.data?.sessionLimit ?? 5,
+    sessionWindowHours: query.data?.sessionWindowHours ?? 24,
     acceptTos,
     markOnboarded,
   };

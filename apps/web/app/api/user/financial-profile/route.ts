@@ -10,7 +10,7 @@ type FinancialStyle = (typeof VALID_STYLES)[number];
  *
  * Stores the user's self-reported financial profile into
  * UserPreferences.limits.financialProfile — merging with existing limits
- * so other keys (allowanceId, agentBudget, etc.) are preserved.
+ * so other keys (permissionPreset, agentBudget, etc.) are preserved.
  *
  * Body: { address: string; style?: FinancialStyle; notes?: string }
  */
@@ -56,7 +56,6 @@ export async function POST(request: NextRequest) {
       address,
       contacts: [],
       limits: merged as Prisma.InputJsonValue,
-      dcaSchedules: [],
     },
     update: {
       limits: merged as Prisma.InputJsonValue,

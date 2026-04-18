@@ -2,7 +2,13 @@
 
 import { useState } from 'react';
 import type { BalanceHeaderData } from '@/components/dashboard/BalanceHeader';
-import { generatePortfolioInsights } from '@/lib/portfolio-insights';
+
+// [SIMPLIFICATION DAY 5] portfolio-insights deleted — its only consumer
+// was this panel + the (now-gone) DashboardInsights hook. Insights
+// generation depended on dropped CopilotSuggestion / ScheduledAction data.
+function generatePortfolioInsights(_args: unknown): string[] {
+  return [];
+}
 
 type PortfolioTab = 'overview' | 'timeline' | 'activity' | 'simulate';
 

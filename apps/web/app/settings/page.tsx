@@ -5,39 +5,37 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { AuthGuard } from '@/components/auth/AuthGuard';
 import { useZkLogin } from '@/components/auth/useZkLogin';
-import { useNotificationPrefs } from '@/hooks/useNotificationPrefs';
-import { useAllowanceStatus } from '@/hooks/useAllowanceStatus';
 import { useGoals, type SavingsGoal } from '@/hooks/useGoals';
 import { useBalance } from '@/hooks/useBalance';
 import { GoalCard } from '@/components/settings/GoalCard';
 import { GoalEditor } from '@/components/settings/GoalEditor';
 import { PassportSection } from '@/components/settings/PassportSection';
 import { SafetySection } from '@/components/settings/SafetySection';
-import { FeaturesSection } from '@/components/settings/FeaturesSection';
 import { MemorySection } from '@/components/settings/MemorySection';
 import { WalletsSection } from '@/components/settings/WalletsSection';
-import { CopilotSection } from '@/components/settings/CopilotSection';
 import { SUI_NETWORK } from '@/lib/constants';
 
-type Section = 'passport' | 'account' | 'features' | 'goals' | 'safety' | 'contacts' | 'sessions' | 'memory' | 'copilot' | 'wallets';
+// [SIMPLIFICATION DAY 5] Removed sections:
+//   - Features (allowance + notification toggles, gone with allowance flow)
+//   - Copilot (briefing/digest/automation toggles, gone with cron stack)
+// Old deep links collapse to Passport.
+type Section = 'passport' | 'account' | 'goals' | 'safety' | 'contacts' | 'sessions' | 'memory' | 'wallets';
 
 const SECTIONS: { id: Section; label: string }[] = [
   { id: 'passport', label: 'Passport' },
   { id: 'safety', label: 'Safety' },
-  { id: 'features', label: 'Features' },
   { id: 'memory', label: 'Memory' },
   { id: 'wallets', label: 'Wallets' },
-  { id: 'copilot', label: 'Copilot' },
   { id: 'goals', label: 'Goals' },
   { id: 'contacts', label: 'Contacts' },
   { id: 'sessions', label: 'Sessions' },
 ];
 
-// Old `?section=schedules` (and the historical /settings/automations route)
-// both map to the new Copilot tab so existing deep links keep working.
 const SECTION_ALIASES: Record<string, Section> = {
-  schedules: 'copilot',
-  automations: 'copilot',
+  schedules: 'passport',
+  automations: 'passport',
+  copilot: 'passport',
+  features: 'passport',
   account: 'passport',
 };
 
@@ -51,8 +49,6 @@ function resolveSection(raw: string | null): Section {
 function SettingsContent() {
   const { address, session, logout, refresh, expiringSoon } = useZkLogin();
   const jwt = session?.jwt ?? null;
-  const { prefs, loading: prefsLoading, toggling, toggle } = useNotificationPrefs(address, jwt);
-  const allowance = useAllowanceStatus(address);
   const goalsHook = useGoals(address, jwt ?? undefined);
   const balanceQuery = useBalance(address);
   const savingsBalance = balanceQuery.data?.savings ?? 0;
@@ -123,20 +119,6 @@ function SettingsContent() {
 
             {activeSection === 'wallets' && (
               <WalletsSection address={address} jwt={jwt} />
-            )}
-
-            {activeSection === 'features' && (
-              <FeaturesSection
-                allowance={allowance}
-                prefs={prefs}
-                prefsLoading={prefsLoading}
-                toggling={toggling}
-                toggle={toggle}
-              />
-            )}
-
-            {activeSection === 'copilot' && (
-              <CopilotSection address={address} jwt={jwt} />
             )}
 
             {activeSection === 'goals' && (

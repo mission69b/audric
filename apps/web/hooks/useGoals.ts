@@ -7,7 +7,6 @@ export interface SavingsGoal {
   emoji: string;
   targetAmount: number;
   deadline: string | null;
-  currentMilestone: number;
   status: string;
   createdAt: string;
 }

@@ -4,7 +4,11 @@ import { useState, useMemo } from 'react';
 import { useGoals, type SavingsGoal } from '@/hooks/useGoals';
 import { useBalance } from '@/hooks/useBalance';
 import { GoalEditor } from '@/components/settings/GoalEditor';
-import { MilestoneCard, type GoalStatus } from '@/components/dashboard/MilestoneCard';
+
+// [SIMPLIFICATION DAY 5] MilestoneCard + currentMilestone column retired
+// with the briefing/celebration cron stack. Goal cards still show
+// progress + status; milestone celebrations are gone.
+type GoalStatus = 'on_track' | 'behind' | 'milestone' | 'complete';
 
 interface GoalsPanelProps {
   address: string;
@@ -53,7 +57,6 @@ export function GoalsPanel({ address, jwt, onSendMessage }: GoalsPanelProps) {
   const savingsBalance = balanceQuery.data?.savings ?? 0;
   const [editingGoal, setEditingGoal] = useState<SavingsGoal | null>(null);
   const [showEditor, setShowEditor] = useState(false);
-  const [dismissedMilestones, setDismissedMilestones] = useState<Set<string>>(new Set());
 
   const goalsWithStatus = useMemo(() =>
     goalsHook.goals.map((goal) => ({
@@ -61,10 +64,6 @@ export function GoalsPanel({ address, jwt, onSendMessage }: GoalsPanelProps) {
       ...computeGoalStatus(goal, savingsBalance),
     })),
     [goalsHook.goals, savingsBalance],
-  );
-
-  const milestoneGoals = goalsWithStatus.filter(
-    (g) => (g.status === 'milestone' || g.status === 'complete') && !dismissedMilestones.has(g.goal.id),
   );
 
   return (
@@ -85,19 +84,6 @@ export function GoalsPanel({ address, jwt, onSendMessage }: GoalsPanelProps) {
           <p className="font-mono text-xl text-foreground">${savingsBalance.toFixed(2)}</p>
         </div>
       )}
-
-      {/* Milestone celebrations */}
-      {milestoneGoals.map(({ goal, status, milestone }) => (
-        <MilestoneCard
-          key={goal.id}
-          goal={goal}
-          status={status}
-          milestone={milestone}
-          savings={savingsBalance}
-          onDismiss={() => setDismissedMilestones((prev) => new Set(prev).add(goal.id))}
-          onKeepSaving={() => onSendMessage?.(`Save more towards my ${goal.name} goal`)}
-        />
-      ))}
 
       {showEditor || editingGoal ? (
         <GoalEditor

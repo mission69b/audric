@@ -59,25 +59,11 @@ function ToolSteps({ tools }: { tools: ToolExecution[] }) {
   );
 }
 
-// Tools that share a card type — only the last result per group should render.
-const CARD_GROUP: Record<string, string> = {
-  allowance_status:   'allowance',
-  toggle_allowance:   'allowance',
-  update_daily_limit: 'allowance',
-  update_permissions: 'allowance',
-};
-
+// [SIMPLIFICATION DAY 7] Tool-card grouping/dedupe was only used by the four
+// allowance_* tools (now removed). Render every tool result as-is until a new
+// multi-tool card group emerges that needs collapsing.
 function dedupeToolCards(tools: ToolExecution[]): ToolExecution[] {
-  // Find the last index for each singleton group
-  const lastIdx: Record<string, number> = {};
-  tools.forEach((t, i) => {
-    const group = CARD_GROUP[t.toolName];
-    if (group) lastIdx[group] = i;
-  });
-  return tools.filter((t, i) => {
-    const group = CARD_GROUP[t.toolName];
-    return !group || lastIdx[group] === i;
-  });
+  return tools;
 }
 
 function getInputAmount(input: unknown): number {

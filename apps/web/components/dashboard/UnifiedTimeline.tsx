@@ -6,8 +6,9 @@ import { ThinkingState } from '@/components/engine/ThinkingState';
 import { ChatDivider } from '@/components/engine/ChatDivider';
 import { SuggestedActions } from '@/components/engine/SuggestedAction';
 import { FeedItemCard } from '@/components/dashboard/FeedRenderer';
-import { CopilotPill } from '@/components/dashboard/CopilotPill';
-import { InChatSurface } from '@/components/dashboard/InChatSurface';
+// [SIMPLIFICATION DAY 5] CopilotPill + InChatSurface deleted with the
+// Copilot stack. The render tree was already short-circuited in S.3 — the
+// imports are now removed.
 import { deriveSuggestedActions } from '@/lib/suggested-actions';
 import type { useEngine } from '@/hooks/useEngine';
 import type { useFeed } from '@/hooks/useFeed';
@@ -89,6 +90,14 @@ export function UnifiedTimeline({
   const endRef = useRef<HTMLDivElement>(null);
   const lastCount = useRef(0);
   const autoApprovedRef = useRef(new Set<string>());
+
+  // [SIMPLIFICATION DAY 3] address/jwt/sessionId previously fed the in-chat
+  // Copilot surfaces (InChatSurface card + CopilotPill). Both are removed.
+  // Props stay on the interface so callers (DashboardContent, ChatSession)
+  // don't need to change yet — Day 6 narrows the surface area.
+  void address;
+  void jwt;
+  void sessionId;
 
   const timeline = useMemo<TimelineEntry[]>(() => {
     const entries: (TimelineEntry & { ts: number })[] = [];
@@ -202,15 +211,16 @@ export function UnifiedTimeline({
 
   return (
     <div className="space-y-3">
-      {/* Only show the in-chat Copilot card AFTER a conversation has started.
-          On the empty dashboard, the CopilotSuggestionsRow above the timeline
-          already covers this surface — rendering both creates a duplicate
-          card during the brief race window before /api/copilot/dashboard-ping
-          stamps lastDashboardVisitAt and the server-side suppression kicks in. */}
+      {/* [SIMPLIFICATION DAY 3] In-chat Copilot suggestion card and the
+          "N suggestions waiting" pill are removed. Copilot suggestions
+          (`CopilotSuggestion` rows + the Stage-2/3 pattern stack) are
+          retired — Audric is chat-first now. Day 6 deletes the
+          InChatSurface, CopilotPill, useInChatSurface, useCopilotSuggestions
+          hooks, and the suggestion API routes once we confirm no other
+          callers depend on them. */}
       {hasMessages && (
         <>
-          <InChatSurface address={address} jwt={jwt} sessionId={sessionId} />
-          <CopilotPill address={address} jwt={jwt} />
+          {/* InChatSurface and CopilotPill removed — see comment above. */}
         </>
       )}
       {timeline.map((entry) => {

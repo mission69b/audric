@@ -108,16 +108,6 @@ Engine emits render_canvas tool_result with HTML
   → Canvas components in components/engine/cards/canvas/
 ```
 
-### Scheduled actions flow
-
-```
-User: "Save $2 USDC to NAVI every week"
-  → create_schedule tool (isReadOnly: false → pending_action)
-  → Client confirms → POST /api/scheduled-actions (creates ScheduledAction row)
-  → t2000 server cron → POST /api/internal/execute-schedule (x-internal-key auth)
-  → Server-side execution with trust ladder (5 successful runs → auto-confirm)
-```
-
 ### Internal API routes
 
 20 routes under `/api/internal/` called by t2000 server cron jobs:
@@ -240,7 +230,7 @@ Assembled in `lib/engine/engine-context.ts` via `buildFullDynamicContext()` and 
 
 Located in `components/engine/cards/`. Rendered client-side based on `toolName` in `tool_result` events. Registered in `cards/index.ts` via `CARD_RENDERERS` map.
 
-Examples: `SavingsCard`, `BalanceCard`, `StakingCard`, `ProtocolCard`, `PriceCard`, `HealthCard`, `TransactionCard`, `ScheduleCard`, `AllowanceCard`, `SpendingCard`, `YieldCard`
+Examples: `SavingsCard`, `BalanceCard`, `StakingCard`, `ProtocolCard`, `PriceCard`, `HealthCard`, `TransactionReceiptCard`, `SpendingCard`, `YieldCard`
 
 ### Canvas visualizations (8 components)
 

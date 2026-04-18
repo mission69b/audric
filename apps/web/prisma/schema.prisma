@@ -16,59 +16,29 @@ model User {
   emailVerifyExpiry DateTime?
   displayName      String?
   timezoneOffset   Int       @default(0)
-  onboardedAt      DateTime?
   tosAcceptedAt    DateTime?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
-  // Copilot (see audric-copilot-smart-confirmations.plan.md §5, §7)
-  emailDeliverable             Boolean   @default(true) // flipped to false on Resend bounce; stops digest sends
-  lastDashboardVisitAt         DateTime? // drives §7 cross-surface chat suppression (no double-nag)
-  copilotConfirmedCount        Int       @default(0)    // drives §5 post-10-confirms email-add nudge
-  copilotMigrationNoticeShownAt DateTime? // §2: one-time in-app notice for users whose isAutonomous=true schedules were migrated to always-ask
-
-  // Copilot digest (Wave C.3) — hourly cron picks up users whose local hour matches digestSendHourLocal
-  digestEnabled        Boolean   @default(true) // user opt-out toggled in /settings/copilot
-  digestSendHourLocal  Int       @default(8)    // 0-23, evaluated against (now - timezoneOffset)
-  lastDigestSentAt     DateTime?                // dedup so we don't send twice in the same UTC day
-
-  // Copilot HF widget (Wave C.4 toggle, Wave C.5 widget) — controls visibility of
-  // the always-on health-factor widget in BalanceHeader.
-  hfWidgetEnabled      Boolean   @default(true)
-
-  // Copilot email-add nudge (Wave C.7) — set once the user dismisses or
-  // satisfies the post-10-confirms email nudge, so we never re-pop it.
-  copilotEmailNudgeShownAt DateTime?
-
   preferences          UserPreferences?
   conversationLogs     ConversationLog[]
-  notificationPrefs    NotificationPrefs[]
-  dailyBriefings       DailyBriefing[]
   savingsGoals         SavingsGoal[]
   adviceLogs           AdviceLog[]
-  savingsGoalDeposits  SavingsGoalDeposit[]
   payments             Payment[]
   watchAddresses       WatchAddress[]
   portfolioSnapshots   PortfolioSnapshot[]
-  scheduledActions     ScheduledAction[]
-  outcomeChecks        OutcomeCheck[]
-  followUpQueue        FollowUpQueue[]
   financialProfile     UserFinancialProfile?
   memories             UserMemory[]
   linkedWallets        LinkedWallet[]
-  copilotSuggestions   CopilotSuggestion[]
 
   @@index([email])
   @@index([emailVerified, timezoneOffset])
-  @@index([digestEnabled, emailDeliverable, digestSendHourLocal])
 }
 
 model UserPreferences {
   address      String   @id
-  allowanceId  String?
   contacts     Json     @default("[]")
   limits       Json?
-  dcaSchedules Json     @default("[]")
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -123,46 +93,6 @@ model ServicePurchase {
   @@index([address, createdAt])
 }
 
-model NotificationPrefs {
-  userId     String
-  feature    String
-  enabled    Boolean   @default(true)
-  lastSentAt DateTime?
-
-  user User @relation(fields: [userId], references: [id])
-
-  @@id([userId, feature])
-  @@index([userId])
-}
-
-model NotificationLog {
-  id         String   @id @default(cuid())
-  job        String
-  processed  Int
-  sent       Int
-  errors     Int
-  reportedAt DateTime
-  createdAt  DateTime @default(now())
-
-  @@index([createdAt])
-}
-
-model DailyBriefing {
-  id           String    @id @default(cuid())
-  userId       String
-  date         String
-  content      Json
-  emailSentAt  DateTime?
-  dismissedAt  DateTime?
-  chargeDigest String?
-  createdAt    DateTime  @default(now())
-
-  user User @relation(fields: [userId], references: [id])
-
-  @@unique([userId, date])
-  @@index([userId, dismissedAt])
-}
-
 model SavingsGoal {
   id               String    @id @default(cuid())
   userId           String
@@ -170,14 +100,12 @@ model SavingsGoal {
   emoji            String    @default("🎯")
   targetAmount     Float
   deadline         DateTime?
-  currentMilestone Int       @default(0)
   status           String    @default("active")
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
   user     User              @relation(fields: [userId], references: [id])
   adviceLogs AdviceLog[]
-  deposits   SavingsGoalDeposit[]
 
   @@index([userId, status])
 }
@@ -209,21 +137,14 @@ model AdviceLog {
   adviceType    String
   targetAmount  Float?
   goalId        String?
-  actionTaken   Boolean      @default(false)
   appEventId    String?
-  followUpDue   DateTime?
-  followUpSent  Boolean      @default(false)
-  outcomeStatus String       @default("pending")
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 
   user           User           @relation(fields: [userId], references: [id])
   goal           SavingsGoal?   @relation(fields: [goalId], references: [id])
-  outcomeChecks  OutcomeCheck[]
 
   @@index([userId])
-  @@index([outcomeStatus])
-  @@index([followUpDue])
   @@index([createdAt])
 }
 
@@ -268,21 +189,6 @@ model Payment {
   @@index([dueDate, status])
 }
 
-model SavingsGoalDeposit {
-  id         String   @id @default(cuid())
-  goalId     String
-  userId     String
-  amountUsdc Float
-  appEventId String?
-  createdAt  DateTime @default(now())
-
-  goal SavingsGoal @relation(fields: [goalId], references: [id])
-  user User        @relation(fields: [userId], references: [id])
-
-  @@index([goalId])
-  @@index([userId])
-}
-
 model WatchAddress {
   id        String   @id @default(cuid())
   userId    String
@@ -313,138 +219,6 @@ model PortfolioSnapshot {
 
   @@unique([userId, date])
   @@index([userId, date])
-}
-
-model ScheduledAction {
-  id                     String    @id @default(cuid())
-  userId                 String
-  actionType             String    // save | swap | repay | stake | send | buy
-  amount                 Float
-  asset                  String    @default("USDC")
-  targetAsset            String?
-  cronExpr               String    // e.g. "0 9 * * 5" (Fridays 9am)
-  nextRunAt              DateTime
-  enabled                Boolean   @default(true)
-  confirmationsRequired  Int       @default(5)
-  confirmationsCompleted Int       @default(0)
-  totalExecutions        Int       @default(0)
-  totalAmountUsdc        Float     @default(0)
-  lastExecutedAt         DateTime?
-  lastSkippedAt          DateTime?
-  createdAt              DateTime  @default(now())
-  updatedAt              DateTime  @updatedAt
-
-  // Phase D: autonomous action loop
-  source      String    @default("user_created") // user_created | behavior_detected
-  patternType String?   // recurring_save | yield_reinvestment | debt_discipline | idle_usdc_tolerance | swap_pattern | recurring_income
-  detectedAt  DateTime?
-  confidence  Float?
-  stage       Int       @default(2) // 0=detected, 1=surfaced, 2=confirmed, 3=autonomous (deprecated for Copilot — see surfaceStatus)
-  declinedAt  DateTime?
-  pausedAt    DateTime?
-
-  // Copilot smart-confirmations surfacing (see audric-copilot-smart-confirmations.plan.md §10)
-  // surfaceStatus defaults to 'pending' for ALL rows (default value), so the
-  // dashboard query MUST also require `surfacedAt IS NOT NULL` to filter out
-  // rows that were never actively surfaced. Both behavior_detected (cron-driven)
-  // and user_created (migration-driven) sources can be surfaced.
-  surfaceStatus  String    @default("pending") // pending | confirmed | skipped | expired | failed
-  surfacedAt     DateTime? // null = never surfaced. Set to now when surface-suggestion fires; advanced on snooze (+24h, see §4)
-  expiresAt      DateTime? // §6 / §12: 24h from surface for DCA recurring; null = no auto-expiry (e.g. migrated rows)
-  failedAttempts Int       @default(0) // §6: 3-strike rule before auto-expire on persistent tx failure
-
-  user       User                 @relation(fields: [userId], references: [id])
-  executions ScheduledExecution[]
-
-  @@index([userId, enabled])
-  @@index([nextRunAt, enabled])
-  @@index([userId, source, stage])
-  @@index([userId, source, surfaceStatus]) // dashboard UNION query: pending behavior_detected suggestions per user
-  @@index([expiresAt, surfaceStatus])      // copilotExpiry sweep
-  @@index([userId, patternType, createdAt]) // 24h cron-level throttle: was this (userId, patternType) surfaced recently?
-}
-
-model ScheduledExecution {
-  id                String   @id @default(cuid())
-  scheduledActionId String
-  txDigest          String?
-  amountUsd         Float
-  status            String   // success | skipped | failed
-  skipReason        String?
-  idempotencyKey    String   @unique
-  notified          Boolean  @default(false)
-  executedAt        DateTime @default(now())
-
-  scheduledAction ScheduledAction @relation(fields: [scheduledActionId], references: [id])
-
-  @@index([scheduledActionId, executedAt])
-}
-
-// Copilot threshold-triggered one-shot suggestions (Compound, Idle balance, Recurring income, HF top-up).
-// See audric-copilot-smart-confirmations.plan.md §10 (data model split rationale).
-// Recurring/time-triggered patterns live on ScheduledAction (UNION-queried on the dashboard).
-model CopilotSuggestion {
-  id             String    @id @default(cuid())
-  userId         String
-  type           String    // compound | idle_action | income_action | hf_topup
-  status         String    @default("pending") // pending | confirmed | skipped | expired | failed
-  payload        Json      // type-specific data (e.g. compound: { rewardAmount, position }; idle_action: { asset, amount, suggestedAction }; income_action: { incomingAmount, suggestedActionFromHistory }; hf_topup: { currentHf, options[] })
-  expiresAt      DateTime  // §12: compound 7d, idle 14d, income 48h, hf_topup persists until HF moves out of threshold
-  surfacedAt     DateTime  @default(now()) // advanced on snooze per §4
-  confirmedAt    DateTime?
-  skippedAt      DateTime?
-  failedAt       DateTime?
-  failedAttempts Int       @default(0) // §6: 3-strike rule before auto-marking failed
-  snoozedCount   Int       @default(0) // §4: second snooze auto-expires
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-
-  user User @relation(fields: [userId], references: [id])
-
-  @@index([userId, status])              // dashboard UNION query
-  @@index([expiresAt, status])           // copilotExpiry sweep
-  @@index([userId, type, createdAt])     // 24h cron-level throttle: was this (userId, type) surfaced recently?
-}
-
-model OutcomeCheck {
-  id            String   @id @default(cuid())
-  userId        String
-  adviceLogId   String
-  checkType     String   // savings_delta | goal_progress | debt_change | rate_change
-  expectedValue Float?
-  actualValue   Float?
-  deltaUsdc     Float?
-  onTrack       Boolean?
-  suiQueryAt    DateTime
-  createdAt     DateTime @default(now())
-
-  user      User      @relation(fields: [userId], references: [id])
-  adviceLog AdviceLog @relation(fields: [adviceLogId], references: [id])
-
-  @@index([userId])
-  @@index([adviceLogId])
-}
-
-model FollowUpQueue {
-  id              String    @id @default(cuid())
-  userId          String
-  triggerType     String    // scheduled | anomaly | goal_milestone | off_track
-  adviceLogId     String?
-  outcomeCheckId  String?
-  message         String
-  ctaType         String?
-  ctaAmount       Float?
-  priority        String    @default("normal") // urgent | normal | low
-  scheduledFor    DateTime
-  sentAt          DateTime?
-  deliveryMethod  String    @default("in_app") // in_app | email | both
-  createdAt       DateTime  @default(now())
-
-  user User @relation(fields: [userId], references: [id])
-
-  @@index([userId, sentAt])
-  @@index([scheduledFor, sentAt])
-  @@index([triggerType])
 }
 
 model UserFinancialProfile {

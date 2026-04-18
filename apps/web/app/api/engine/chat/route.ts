@@ -15,13 +15,13 @@ import {
 import { UpstashSessionStore } from '@/lib/engine/upstash-session-store';
 import { logSessionUsage } from '@/lib/engine/log-session-usage';
 import { prisma } from '@/lib/prisma';
+import {
+  SESSION_LIMIT_VERIFIED,
+  SESSION_WINDOW_MS,
+  sessionLimitFor,
+} from '@/lib/billing';
 
 const AGENT_MODEL = process.env.AGENT_MODEL ?? 'claude-sonnet-4-6';
-const SERVER_URL = process.env.SERVER_URL ?? 'https://api.t2000.ai';
-const SPONSOR_INTERNAL_KEY = process.env.SPONSOR_INTERNAL_KEY ?? '';
-const SESSION_CHARGE_AMOUNT = 10_000; // $0.01 USDC (6 decimals)
-const SESSION_FEATURE = 4; // ALLOWANCE_FEATURES.SESSION
-const FREE_SESSION_LIMIT = 20;
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -93,32 +93,57 @@ export async function POST(request: NextRequest) {
       session = requestedSessionId ? await store.get(requestedSessionId) : null;
       saveSession = true;
 
-      const prefs = await prisma.userPreferences.findUnique({
-        where: { address },
-        select: { contacts: true, allowanceId: true },
-      }).catch(() => null);
+      // [SIMPLIFICATION DAY 4] Central usage billing.
+      // Fetch user (verification tier), prefs (contacts), and the rolling-24h
+      // distinct-session list in parallel. SessionUsage logs every TURN, so we
+      // groupBy `sessionId` to count distinct sessions, not turns.
+      const [userRow, prefs, recentSessions] = await Promise.all([
+        prisma.user.findUnique({
+          where: { suiAddress: address },
+          select: { emailVerified: true },
+        }).catch(() => null),
+        prisma.userPreferences.findUnique({
+          where: { address },
+          select: { contacts: true },
+        }).catch(() => null),
+        prisma.sessionUsage.groupBy({
+          by: ['sessionId'],
+          where: {
+            address,
+            createdAt: { gte: new Date(Date.now() - SESSION_WINDOW_MS) },
+          },
+        }).catch(() => [] as Array<{ sessionId: string }>),
+      ]);
 
       const contacts = Array.isArray(prefs?.contacts) ? prefs.contacts as Array<{ name: string; address: string }> : [];
-      const hasAllowance = !!prefs?.allowanceId;
 
-      if (!requestedSessionId) {
-        if (hasAllowance) {
-          chargeSession(address).catch((err) =>
-            console.warn('[engine/chat] session charge fire-and-forget error:', err),
-          );
-        } else {
-          const sessionCount = await prisma.sessionUsage.groupBy({
-            by: ['sessionId'],
-            where: { address },
-          }).then((rows) => rows.length).catch(() => 0);
+      // Continuing an existing session (already counted toward the user's
+      // window) must never be blocked mid-conversation — only NEW sessions
+      // beyond the limit get a 429. Without this guard, a user could be
+      // cut off in the middle of a back-and-forth at the exact moment they
+      // crossed the threshold.
+      const recentSessionIds = new Set(recentSessions.map((r) => r.sessionId));
+      const continuingExistingSession = !!requestedSessionId && recentSessionIds.has(requestedSessionId);
+      const emailVerified = userRow?.emailVerified ?? false;
+      const limit = sessionLimitFor(emailVerified);
 
-          if (sessionCount >= FREE_SESSION_LIMIT) {
-            return jsonError(
-              'Free sessions used up. Set up your allowance to continue — it takes 30 seconds.',
-              402,
-            );
-          }
-        }
+      if (recentSessions.length >= limit && !continuingExistingSession) {
+        const message = emailVerified
+          ? `You've used ${limit} sessions in the last 24 hours. More sessions unlock as the 24h window rolls forward.`
+          : `You've used ${limit} of ${limit} sessions today. Verify your email to unlock ${SESSION_LIMIT_VERIFIED} sessions every 24 hours — it's free.`;
+        return new Response(
+          JSON.stringify({
+            error: message,
+            code: 'SESSION_LIMIT',
+            tier: emailVerified ? 'verified' : 'unverified',
+            limit,
+            windowHours: 24,
+          }),
+          {
+            status: 429,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        );
       }
 
       const conversationState = sessionId ? await getConversationState(sessionId).catch(() => undefined) : undefined;
@@ -274,13 +299,10 @@ function extractText(content: unknown): string {
   return texts.join('\n') || JSON.stringify(content);
 }
 
-function defaultFollowUpDays(type: string): number {
-  const map: Record<string, number> = {
-    save: 2, repay: 1, borrow: 7, swap: 7, goal: 7, rate: 7, general: 14,
-  };
-  return map[type] ?? 7;
-}
-
+// [SIMPLIFICATION DAY 5] defaultFollowUpDays + AdviceItem.followUpDays
+// retired with the follow-up cron stack. AdviceItem keeps the tool's input
+// shape (followUpDays still parsed from record_advice payloads for
+// backwards-compat) but the value is ignored on insert.
 interface AdviceItem {
   adviceType: string;
   adviceText: string;
@@ -317,7 +339,9 @@ async function handleAdviceResults(
   if (adviceItems.length === 0) return;
 
   for (const advice of adviceItems) {
-    const followUpDays = advice.followUpDays ?? defaultFollowUpDays(advice.adviceType);
+    // [SIMPLIFICATION DAY 5] followUpDue dropped from AdviceLog along with
+    // the follow-up cron stack. record_advice now logs pure history; advice
+    // context surfaces it via buildAdviceContext without scheduling a check.
     await prisma.adviceLog.create({
       data: {
         userId: user.id,
@@ -326,46 +350,8 @@ async function handleAdviceResults(
         adviceType: advice.adviceType,
         targetAmount: advice.targetAmount ?? null,
         goalId: advice.goalId ?? null,
-        followUpDue: new Date(Date.now() + followUpDays * 86_400_000),
       },
     });
-  }
-}
-
-async function chargeSession(address: string): Promise<string | null> {
-  try {
-    const prefs = await prisma.userPreferences.findUnique({
-      where: { address },
-      select: { allowanceId: true },
-    });
-
-    const allowanceId = prefs?.allowanceId ?? null;
-    if (!allowanceId) return null;
-
-    const res = await fetch(`${SERVER_URL}/api/internal/charge`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-internal-key': SPONSOR_INTERNAL_KEY,
-      },
-      body: JSON.stringify({
-        allowanceId,
-        amount: SESSION_CHARGE_AMOUNT,
-        feature: SESSION_FEATURE,
-      }),
-    });
-
-    if (!res.ok) {
-      const err = await res.text().catch(() => 'unknown');
-      console.warn(`[engine/chat] session charge failed (${res.status}):`, err);
-      return null;
-    }
-
-    const data = (await res.json()) as { digest?: string };
-    return data.digest ?? null;
-  } catch (err) {
-    console.warn('[engine/chat] session charge error:', err instanceof Error ? err.message : err);
-    return null;
   }
 }
 

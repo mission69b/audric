@@ -118,7 +118,6 @@ export const savingsGoalListTool = buildTool({
         emoji: true,
         targetAmount: true,
         deadline: true,
-        currentMilestone: true,
         status: true,
         createdAt: true,
       },

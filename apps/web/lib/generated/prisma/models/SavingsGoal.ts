@@ -28,12 +28,10 @@ export type AggregateSavingsGoal = {
 
 export type SavingsGoalAvgAggregateOutputType = {
   targetAmount: number | null
-  currentMilestone: number | null
 }
 
 export type SavingsGoalSumAggregateOutputType = {
   targetAmount: number | null
-  currentMilestone: number | null
 }
 
 export type SavingsGoalMinAggregateOutputType = {
@@ -43,7 +41,6 @@ export type SavingsGoalMinAggregateOutputType = {
   emoji: string | null
   targetAmount: number | null
   deadline: Date | null
-  currentMilestone: number | null
   status: string | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -56,7 +53,6 @@ export type SavingsGoalMaxAggregateOutputType = {
   emoji: string | null
   targetAmount: number | null
   deadline: Date | null
-  currentMilestone: number | null
   status: string | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -69,7 +65,6 @@ export type SavingsGoalCountAggregateOutputType = {
   emoji: number
   targetAmount: number
   deadline: number
-  currentMilestone: number
   status: number
   createdAt: number
   updatedAt: number
@@ -79,12 +74,10 @@ export type SavingsGoalCountAggregateOutputType = {
 
 export type SavingsGoalAvgAggregateInputType = {
   targetAmount?: true
-  currentMilestone?: true
 }
 
 export type SavingsGoalSumAggregateInputType = {
   targetAmount?: true
-  currentMilestone?: true
 }
 
 export type SavingsGoalMinAggregateInputType = {
@@ -94,7 +87,6 @@ export type SavingsGoalMinAggregateInputType = {
   emoji?: true
   targetAmount?: true
   deadline?: true
-  currentMilestone?: true
   status?: true
   createdAt?: true
   updatedAt?: true
@@ -107,7 +99,6 @@ export type SavingsGoalMaxAggregateInputType = {
   emoji?: true
   targetAmount?: true
   deadline?: true
-  currentMilestone?: true
   status?: true
   createdAt?: true
   updatedAt?: true
@@ -120,7 +111,6 @@ export type SavingsGoalCountAggregateInputType = {
   emoji?: true
   targetAmount?: true
   deadline?: true
-  currentMilestone?: true
   status?: true
   createdAt?: true
   updatedAt?: true
@@ -220,7 +210,6 @@ export type SavingsGoalGroupByOutputType = {
   emoji: string
   targetAmount: number
   deadline: Date | null
-  currentMilestone: number
   status: string
   createdAt: Date
   updatedAt: Date
@@ -256,13 +245,11 @@ export type SavingsGoalWhereInput = {
   emoji?: Prisma.StringFilter<"SavingsGoal"> | string
   targetAmount?: Prisma.FloatFilter<"SavingsGoal"> | number
   deadline?: Prisma.DateTimeNullableFilter<"SavingsGoal"> | Date | string | null
-  currentMilestone?: Prisma.IntFilter<"SavingsGoal"> | number
   status?: Prisma.StringFilter<"SavingsGoal"> | string
   createdAt?: Prisma.DateTimeFilter<"SavingsGoal"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"SavingsGoal"> | Date | string
   user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
   adviceLogs?: Prisma.AdviceLogListRelationFilter
-  deposits?: Prisma.SavingsGoalDepositListRelationFilter
 }
 
 export type SavingsGoalOrderByWithRelationInput = {
@@ -272,13 +259,11 @@ export type SavingsGoalOrderByWithRelationInput = {
   emoji?: Prisma.SortOrder
   targetAmount?: Prisma.SortOrder
   deadline?: Prisma.SortOrderInput | Prisma.SortOrder
-  currentMilestone?: Prisma.SortOrder
   status?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   user?: Prisma.UserOrderByWithRelationInput
   adviceLogs?: Prisma.AdviceLogOrderByRelationAggregateInput
-  deposits?: Prisma.SavingsGoalDepositOrderByRelationAggregateInput
 }
 
 export type SavingsGoalWhereUniqueInput = Prisma.AtLeast<{
@@ -291,13 +276,11 @@ export type SavingsGoalWhereUniqueInput = Prisma.AtLeast<{
   emoji?: Prisma.StringFilter<"SavingsGoal"> | string
   targetAmount?: Prisma.FloatFilter<"SavingsGoal"> | number
   deadline?: Prisma.DateTimeNullableFilter<"SavingsGoal"> | Date | string | null
-  currentMilestone?: Prisma.IntFilter<"SavingsGoal"> | number
   status?: Prisma.StringFilter<"SavingsGoal"> | string
   createdAt?: Prisma.DateTimeFilter<"SavingsGoal"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"SavingsGoal"> | Date | string
   user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
   adviceLogs?: Prisma.AdviceLogListRelationFilter
-  deposits?: Prisma.SavingsGoalDepositListRelationFilter
 }, "id">
 
 export type SavingsGoalOrderByWithAggregationInput = {
@@ -307,7 +290,6 @@ export type SavingsGoalOrderByWithAggregationInput = {
   emoji?: Prisma.SortOrder
   targetAmount?: Prisma.SortOrder
   deadline?: Prisma.SortOrderInput | Prisma.SortOrder
-  currentMilestone?: Prisma.SortOrder
   status?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -328,7 +310,6 @@ export type SavingsGoalScalarWhereWithAggregatesInput = {
   emoji?: Prisma.StringWithAggregatesFilter<"SavingsGoal"> | string
   targetAmount?: Prisma.FloatWithAggregatesFilter<"SavingsGoal"> | number
   deadline?: Prisma.DateTimeNullableWithAggregatesFilter<"SavingsGoal"> | Date | string | null
-  currentMilestone?: Prisma.IntWithAggregatesFilter<"SavingsGoal"> | number
   status?: Prisma.StringWithAggregatesFilter<"SavingsGoal"> | string
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"SavingsGoal"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"SavingsGoal"> | Date | string
@@ -340,13 +321,11 @@ export type SavingsGoalCreateInput = {
   emoji?: string
   targetAmount: number
   deadline?: Date | string | null
-  currentMilestone?: number
   status?: string
   createdAt?: Date | string
   updatedAt?: Date | string
   user: Prisma.UserCreateNestedOneWithoutSavingsGoalsInput
   adviceLogs?: Prisma.AdviceLogCreateNestedManyWithoutGoalInput
-  deposits?: Prisma.SavingsGoalDepositCreateNestedManyWithoutGoalInput
 }
 
 export type SavingsGoalUncheckedCreateInput = {
@@ -356,12 +335,10 @@ export type SavingsGoalUncheckedCreateInput = {
   emoji?: string
   targetAmount: number
   deadline?: Date | string | null
-  currentMilestone?: number
   status?: string
   createdAt?: Date | string
   updatedAt?: Date | string
   adviceLogs?: Prisma.AdviceLogUncheckedCreateNestedManyWithoutGoalInput
-  deposits?: Prisma.SavingsGoalDepositUncheckedCreateNestedManyWithoutGoalInput
 }
 
 export type SavingsGoalUpdateInput = {
@@ -370,13 +347,11 @@ export type SavingsGoalUpdateInput = {
   emoji?: Prisma.StringFieldUpdateOperationsInput | string
   targetAmount?: Prisma.FloatFieldUpdateOperationsInput | number
   deadline?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  currentMilestone?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneRequiredWithoutSavingsGoalsNestedInput
   adviceLogs?: Prisma.AdviceLogUpdateManyWithoutGoalNestedInput
-  deposits?: Prisma.SavingsGoalDepositUpdateManyWithoutGoalNestedInput
 }
 
 export type SavingsGoalUncheckedUpdateInput = {
@@ -386,12 +361,10 @@ export type SavingsGoalUncheckedUpdateInput = {
   emoji?: Prisma.StringFieldUpdateOperationsInput | string
   targetAmount?: Prisma.FloatFieldUpdateOperationsInput | number
   deadline?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  currentMilestone?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   adviceLogs?: Prisma.AdviceLogUncheckedUpdateManyWithoutGoalNestedInput
-  deposits?: Prisma.SavingsGoalDepositUncheckedUpdateManyWithoutGoalNestedInput
 }
 
 export type SavingsGoalCreateManyInput = {
@@ -401,7 +374,6 @@ export type SavingsGoalCreateManyInput = {
   emoji?: string
   targetAmount: number
   deadline?: Date | string | null
-  currentMilestone?: number
   status?: string
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -413,7 +385,6 @@ export type SavingsGoalUpdateManyMutationInput = {
   emoji?: Prisma.StringFieldUpdateOperationsInput | string
   targetAmount?: Prisma.FloatFieldUpdateOperationsInput | number
   deadline?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  currentMilestone?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -426,7 +397,6 @@ export type SavingsGoalUncheckedUpdateManyInput = {
   emoji?: Prisma.StringFieldUpdateOperationsInput | string
   targetAmount?: Prisma.FloatFieldUpdateOperationsInput | number
   deadline?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  currentMilestone?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -449,7 +419,6 @@ export type SavingsGoalCountOrderByAggregateInput = {
   emoji?: Prisma.SortOrder
   targetAmount?: Prisma.SortOrder
   deadline?: Prisma.SortOrder
-  currentMilestone?: Prisma.SortOrder
   status?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -457,7 +426,6 @@ export type SavingsGoalCountOrderByAggregateInput = {
 
 export type SavingsGoalAvgOrderByAggregateInput = {
   targetAmount?: Prisma.SortOrder
-  currentMilestone?: Prisma.SortOrder
 }
 
 export type SavingsGoalMaxOrderByAggregateInput = {
@@ -467,7 +435,6 @@ export type SavingsGoalMaxOrderByAggregateInput = {
   emoji?: Prisma.SortOrder
   targetAmount?: Prisma.SortOrder
   deadline?: Prisma.SortOrder
-  currentMilestone?: Prisma.SortOrder
   status?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -480,7 +447,6 @@ export type SavingsGoalMinOrderByAggregateInput = {
   emoji?: Prisma.SortOrder
   targetAmount?: Prisma.SortOrder
   deadline?: Prisma.SortOrder
-  currentMilestone?: Prisma.SortOrder
   status?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -488,17 +454,11 @@ export type SavingsGoalMinOrderByAggregateInput = {
 
 export type SavingsGoalSumOrderByAggregateInput = {
   targetAmount?: Prisma.SortOrder
-  currentMilestone?: Prisma.SortOrder
 }
 
 export type SavingsGoalNullableScalarRelationFilter = {
   is?: Prisma.SavingsGoalWhereInput | null
   isNot?: Prisma.SavingsGoalWhereInput | null
-}
-
-export type SavingsGoalScalarRelationFilter = {
-  is?: Prisma.SavingsGoalWhereInput
-  isNot?: Prisma.SavingsGoalWhereInput
 }
 
 export type SavingsGoalCreateNestedManyWithoutUserInput = {
@@ -559,32 +519,16 @@ export type SavingsGoalUpdateOneWithoutAdviceLogsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.SavingsGoalUpdateToOneWithWhereWithoutAdviceLogsInput, Prisma.SavingsGoalUpdateWithoutAdviceLogsInput>, Prisma.SavingsGoalUncheckedUpdateWithoutAdviceLogsInput>
 }
 
-export type SavingsGoalCreateNestedOneWithoutDepositsInput = {
-  create?: Prisma.XOR<Prisma.SavingsGoalCreateWithoutDepositsInput, Prisma.SavingsGoalUncheckedCreateWithoutDepositsInput>
-  connectOrCreate?: Prisma.SavingsGoalCreateOrConnectWithoutDepositsInput
-  connect?: Prisma.SavingsGoalWhereUniqueInput
-}
-
-export type SavingsGoalUpdateOneRequiredWithoutDepositsNestedInput = {
-  create?: Prisma.XOR<Prisma.SavingsGoalCreateWithoutDepositsInput, Prisma.SavingsGoalUncheckedCreateWithoutDepositsInput>
-  connectOrCreate?: Prisma.SavingsGoalCreateOrConnectWithoutDepositsInput
-  upsert?: Prisma.SavingsGoalUpsertWithoutDepositsInput
-  connect?: Prisma.SavingsGoalWhereUniqueInput
-  update?: Prisma.XOR<Prisma.XOR<Prisma.SavingsGoalUpdateToOneWithWhereWithoutDepositsInput, Prisma.SavingsGoalUpdateWithoutDepositsInput>, Prisma.SavingsGoalUncheckedUpdateWithoutDepositsInput>
-}
-
 export type SavingsGoalCreateWithoutUserInput = {
   id?: string
   name: string
   emoji?: string
   targetAmount: number
   deadline?: Date | string | null
-  currentMilestone?: number
   status?: string
   createdAt?: Date | string
   updatedAt?: Date | string
   adviceLogs?: Prisma.AdviceLogCreateNestedManyWithoutGoalInput
-  deposits?: Prisma.SavingsGoalDepositCreateNestedManyWithoutGoalInput
 }
 
 export type SavingsGoalUncheckedCreateWithoutUserInput = {
@@ -593,12 +537,10 @@ export type SavingsGoalUncheckedCreateWithoutUserInput = {
   emoji?: string
   targetAmount: number
   deadline?: Date | string | null
-  currentMilestone?: number
   status?: string
   createdAt?: Date | string
   updatedAt?: Date | string
   adviceLogs?: Prisma.AdviceLogUncheckedCreateNestedManyWithoutGoalInput
-  deposits?: Prisma.SavingsGoalDepositUncheckedCreateNestedManyWithoutGoalInput
 }
 
 export type SavingsGoalCreateOrConnectWithoutUserInput = {
@@ -637,7 +579,6 @@ export type SavingsGoalScalarWhereInput = {
   emoji?: Prisma.StringFilter<"SavingsGoal"> | string
   targetAmount?: Prisma.FloatFilter<"SavingsGoal"> | number
   deadline?: Prisma.DateTimeNullableFilter<"SavingsGoal"> | Date | string | null
-  currentMilestone?: Prisma.IntFilter<"SavingsGoal"> | number
   status?: Prisma.StringFilter<"SavingsGoal"> | string
   createdAt?: Prisma.DateTimeFilter<"SavingsGoal"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"SavingsGoal"> | Date | string
@@ -649,12 +590,10 @@ export type SavingsGoalCreateWithoutAdviceLogsInput = {
   emoji?: string
   targetAmount: number
   deadline?: Date | string | null
-  currentMilestone?: number
   status?: string
   createdAt?: Date | string
   updatedAt?: Date | string
   user: Prisma.UserCreateNestedOneWithoutSavingsGoalsInput
-  deposits?: Prisma.SavingsGoalDepositCreateNestedManyWithoutGoalInput
 }
 
 export type SavingsGoalUncheckedCreateWithoutAdviceLogsInput = {
@@ -664,11 +603,9 @@ export type SavingsGoalUncheckedCreateWithoutAdviceLogsInput = {
   emoji?: string
   targetAmount: number
   deadline?: Date | string | null
-  currentMilestone?: number
   status?: string
   createdAt?: Date | string
   updatedAt?: Date | string
-  deposits?: Prisma.SavingsGoalDepositUncheckedCreateNestedManyWithoutGoalInput
 }
 
 export type SavingsGoalCreateOrConnectWithoutAdviceLogsInput = {
@@ -693,12 +630,10 @@ export type SavingsGoalUpdateWithoutAdviceLogsInput = {
   emoji?: Prisma.StringFieldUpdateOperationsInput | string
   targetAmount?: Prisma.FloatFieldUpdateOperationsInput | number
   deadline?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  currentMilestone?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneRequiredWithoutSavingsGoalsNestedInput
-  deposits?: Prisma.SavingsGoalDepositUpdateManyWithoutGoalNestedInput
 }
 
 export type SavingsGoalUncheckedUpdateWithoutAdviceLogsInput = {
@@ -708,83 +643,9 @@ export type SavingsGoalUncheckedUpdateWithoutAdviceLogsInput = {
   emoji?: Prisma.StringFieldUpdateOperationsInput | string
   targetAmount?: Prisma.FloatFieldUpdateOperationsInput | number
   deadline?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  currentMilestone?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deposits?: Prisma.SavingsGoalDepositUncheckedUpdateManyWithoutGoalNestedInput
-}
-
-export type SavingsGoalCreateWithoutDepositsInput = {
-  id?: string
-  name: string
-  emoji?: string
-  targetAmount: number
-  deadline?: Date | string | null
-  currentMilestone?: number
-  status?: string
-  createdAt?: Date | string
-  updatedAt?: Date | string
-  user: Prisma.UserCreateNestedOneWithoutSavingsGoalsInput
-  adviceLogs?: Prisma.AdviceLogCreateNestedManyWithoutGoalInput
-}
-
-export type SavingsGoalUncheckedCreateWithoutDepositsInput = {
-  id?: string
-  userId: string
-  name: string
-  emoji?: string
-  targetAmount: number
-  deadline?: Date | string | null
-  currentMilestone?: number
-  status?: string
-  createdAt?: Date | string
-  updatedAt?: Date | string
-  adviceLogs?: Prisma.AdviceLogUncheckedCreateNestedManyWithoutGoalInput
-}
-
-export type SavingsGoalCreateOrConnectWithoutDepositsInput = {
-  where: Prisma.SavingsGoalWhereUniqueInput
-  create: Prisma.XOR<Prisma.SavingsGoalCreateWithoutDepositsInput, Prisma.SavingsGoalUncheckedCreateWithoutDepositsInput>
-}
-
-export type SavingsGoalUpsertWithoutDepositsInput = {
-  update: Prisma.XOR<Prisma.SavingsGoalUpdateWithoutDepositsInput, Prisma.SavingsGoalUncheckedUpdateWithoutDepositsInput>
-  create: Prisma.XOR<Prisma.SavingsGoalCreateWithoutDepositsInput, Prisma.SavingsGoalUncheckedCreateWithoutDepositsInput>
-  where?: Prisma.SavingsGoalWhereInput
-}
-
-export type SavingsGoalUpdateToOneWithWhereWithoutDepositsInput = {
-  where?: Prisma.SavingsGoalWhereInput
-  data: Prisma.XOR<Prisma.SavingsGoalUpdateWithoutDepositsInput, Prisma.SavingsGoalUncheckedUpdateWithoutDepositsInput>
-}
-
-export type SavingsGoalUpdateWithoutDepositsInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
-  name?: Prisma.StringFieldUpdateOperationsInput | string
-  emoji?: Prisma.StringFieldUpdateOperationsInput | string
-  targetAmount?: Prisma.FloatFieldUpdateOperationsInput | number
-  deadline?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  currentMilestone?: Prisma.IntFieldUpdateOperationsInput | number
-  status?: Prisma.StringFieldUpdateOperationsInput | string
-  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  user?: Prisma.UserUpdateOneRequiredWithoutSavingsGoalsNestedInput
-  adviceLogs?: Prisma.AdviceLogUpdateManyWithoutGoalNestedInput
-}
-
-export type SavingsGoalUncheckedUpdateWithoutDepositsInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
-  userId?: Prisma.StringFieldUpdateOperationsInput | string
-  name?: Prisma.StringFieldUpdateOperationsInput | string
-  emoji?: Prisma.StringFieldUpdateOperationsInput | string
-  targetAmount?: Prisma.FloatFieldUpdateOperationsInput | number
-  deadline?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  currentMilestone?: Prisma.IntFieldUpdateOperationsInput | number
-  status?: Prisma.StringFieldUpdateOperationsInput | string
-  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  adviceLogs?: Prisma.AdviceLogUncheckedUpdateManyWithoutGoalNestedInput
 }
 
 export type SavingsGoalCreateManyUserInput = {
@@ -793,7 +654,6 @@ export type SavingsGoalCreateManyUserInput = {
   emoji?: string
   targetAmount: number
   deadline?: Date | string | null
-  currentMilestone?: number
   status?: string
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -805,12 +665,10 @@ export type SavingsGoalUpdateWithoutUserInput = {
   emoji?: Prisma.StringFieldUpdateOperationsInput | string
   targetAmount?: Prisma.FloatFieldUpdateOperationsInput | number
   deadline?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  currentMilestone?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   adviceLogs?: Prisma.AdviceLogUpdateManyWithoutGoalNestedInput
-  deposits?: Prisma.SavingsGoalDepositUpdateManyWithoutGoalNestedInput
 }
 
 export type SavingsGoalUncheckedUpdateWithoutUserInput = {
@@ -819,12 +677,10 @@ export type SavingsGoalUncheckedUpdateWithoutUserInput = {
   emoji?: Prisma.StringFieldUpdateOperationsInput | string
   targetAmount?: Prisma.FloatFieldUpdateOperationsInput | number
   deadline?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  currentMilestone?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   adviceLogs?: Prisma.AdviceLogUncheckedUpdateManyWithoutGoalNestedInput
-  deposits?: Prisma.SavingsGoalDepositUncheckedUpdateManyWithoutGoalNestedInput
 }
 
 export type SavingsGoalUncheckedUpdateManyWithoutUserInput = {
@@ -833,7 +689,6 @@ export type SavingsGoalUncheckedUpdateManyWithoutUserInput = {
   emoji?: Prisma.StringFieldUpdateOperationsInput | string
   targetAmount?: Prisma.FloatFieldUpdateOperationsInput | number
   deadline?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  currentMilestone?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -846,12 +701,10 @@ export type SavingsGoalUncheckedUpdateManyWithoutUserInput = {
 
 export type SavingsGoalCountOutputType = {
   adviceLogs: number
-  deposits: number
 }
 
 export type SavingsGoalCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   adviceLogs?: boolean | SavingsGoalCountOutputTypeCountAdviceLogsArgs
-  deposits?: boolean | SavingsGoalCountOutputTypeCountDepositsArgs
 }
 
 /**
@@ -871,13 +724,6 @@ export type SavingsGoalCountOutputTypeCountAdviceLogsArgs<ExtArgs extends runtim
   where?: Prisma.AdviceLogWhereInput
 }
 
-/**
- * SavingsGoalCountOutputType without action
- */
-export type SavingsGoalCountOutputTypeCountDepositsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  where?: Prisma.SavingsGoalDepositWhereInput
-}
-
 
 export type SavingsGoalSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -886,13 +732,11 @@ export type SavingsGoalSelect<ExtArgs extends runtime.Types.Extensions.InternalA
   emoji?: boolean
   targetAmount?: boolean
   deadline?: boolean
-  currentMilestone?: boolean
   status?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   adviceLogs?: boolean | Prisma.SavingsGoal$adviceLogsArgs<ExtArgs>
-  deposits?: boolean | Prisma.SavingsGoal$depositsArgs<ExtArgs>
   _count?: boolean | Prisma.SavingsGoalCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["savingsGoal"]>
 
@@ -903,7 +747,6 @@ export type SavingsGoalSelectCreateManyAndReturn<ExtArgs extends runtime.Types.E
   emoji?: boolean
   targetAmount?: boolean
   deadline?: boolean
-  currentMilestone?: boolean
   status?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -917,7 +760,6 @@ export type SavingsGoalSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.E
   emoji?: boolean
   targetAmount?: boolean
   deadline?: boolean
-  currentMilestone?: boolean
   status?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -931,17 +773,15 @@ export type SavingsGoalSelectScalar = {
   emoji?: boolean
   targetAmount?: boolean
   deadline?: boolean
-  currentMilestone?: boolean
   status?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type SavingsGoalOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "name" | "emoji" | "targetAmount" | "deadline" | "currentMilestone" | "status" | "createdAt" | "updatedAt", ExtArgs["result"]["savingsGoal"]>
+export type SavingsGoalOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "name" | "emoji" | "targetAmount" | "deadline" | "status" | "createdAt" | "updatedAt", ExtArgs["result"]["savingsGoal"]>
 export type SavingsGoalInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   adviceLogs?: boolean | Prisma.SavingsGoal$adviceLogsArgs<ExtArgs>
-  deposits?: boolean | Prisma.SavingsGoal$depositsArgs<ExtArgs>
   _count?: boolean | Prisma.SavingsGoalCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type SavingsGoalIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -956,7 +796,6 @@ export type $SavingsGoalPayload<ExtArgs extends runtime.Types.Extensions.Interna
   objects: {
     user: Prisma.$UserPayload<ExtArgs>
     adviceLogs: Prisma.$AdviceLogPayload<ExtArgs>[]
-    deposits: Prisma.$SavingsGoalDepositPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -965,7 +804,6 @@ export type $SavingsGoalPayload<ExtArgs extends runtime.Types.Extensions.Interna
     emoji: string
     targetAmount: number
     deadline: Date | null
-    currentMilestone: number
     status: string
     createdAt: Date
     updatedAt: Date
@@ -1365,7 +1203,6 @@ export interface Prisma__SavingsGoalClient<T, Null = never, ExtArgs extends runt
   readonly [Symbol.toStringTag]: "PrismaPromise"
   user<T extends Prisma.UserDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.UserDefaultArgs<ExtArgs>>): Prisma.Prisma__UserClient<runtime.Types.Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   adviceLogs<T extends Prisma.SavingsGoal$adviceLogsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.SavingsGoal$adviceLogsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AdviceLogPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
-  deposits<T extends Prisma.SavingsGoal$depositsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.SavingsGoal$depositsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$SavingsGoalDepositPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1401,7 +1238,6 @@ export interface SavingsGoalFieldRefs {
   readonly emoji: Prisma.FieldRef<"SavingsGoal", 'String'>
   readonly targetAmount: Prisma.FieldRef<"SavingsGoal", 'Float'>
   readonly deadline: Prisma.FieldRef<"SavingsGoal", 'DateTime'>
-  readonly currentMilestone: Prisma.FieldRef<"SavingsGoal", 'Int'>
   readonly status: Prisma.FieldRef<"SavingsGoal", 'String'>
   readonly createdAt: Prisma.FieldRef<"SavingsGoal", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"SavingsGoal", 'DateTime'>
@@ -1827,30 +1663,6 @@ export type SavingsGoal$adviceLogsArgs<ExtArgs extends runtime.Types.Extensions.
   take?: number
   skip?: number
   distinct?: Prisma.AdviceLogScalarFieldEnum | Prisma.AdviceLogScalarFieldEnum[]
-}
-
-/**
- * SavingsGoal.deposits
- */
-export type SavingsGoal$depositsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  /**
-   * Select specific fields to fetch from the SavingsGoalDeposit
-   */
-  select?: Prisma.SavingsGoalDepositSelect<ExtArgs> | null
-  /**
-   * Omit specific fields from the SavingsGoalDeposit
-   */
-  omit?: Prisma.SavingsGoalDepositOmit<ExtArgs> | null
-  /**
-   * Choose, which related nodes to fetch as well
-   */
-  include?: Prisma.SavingsGoalDepositInclude<ExtArgs> | null
-  where?: Prisma.SavingsGoalDepositWhereInput
-  orderBy?: Prisma.SavingsGoalDepositOrderByWithRelationInput | Prisma.SavingsGoalDepositOrderByWithRelationInput[]
-  cursor?: Prisma.SavingsGoalDepositWhereUniqueInput
-  take?: number
-  skip?: number
-  distinct?: Prisma.SavingsGoalDepositScalarFieldEnum | Prisma.SavingsGoalDepositScalarFieldEnum[]
 }
 
 /**

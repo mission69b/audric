@@ -69,14 +69,6 @@ const STATIC_FOLLOWUPS: Record<string, SuggestedActionItem[]> = {
     { icon: '🔄', label: 'EXECUTE SWAP', prompt: 'Execute the swap' },
     { icon: '💰', label: 'CHECK BALANCE', prompt: 'What is my balance?' },
   ],
-  pattern_status: [
-    { icon: '📅', label: 'MY SCHEDULES', prompt: 'Show my automations' },
-    { icon: '📊', label: 'FULL REPORT', prompt: 'Give me a full account report' },
-  ],
-  list_schedules: [
-    { icon: '📅', label: 'CREATE SCHEDULE', prompt: 'Create a new savings schedule' },
-    { icon: '💰', label: 'CHECK BALANCE', prompt: 'What is my balance?' },
-  ],
 };
 
 function deriveWriteToolChips(toolName: string, data: ToolResultData): SuggestedActionItem[] {

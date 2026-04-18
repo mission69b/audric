@@ -7,6 +7,13 @@ import { PERMISSION_PRESETS, type UserPermissionConfig } from '@t2000/engine';
  * GET /api/user/preferences?address=0x...
  *
  * Returns user preferences for the given Sui address.
+ *
+ * [SIMPLIFICATION DAY 5] `allowanceId` and `dcaSchedules` were dropped from
+ * UserPreferences along with the on-chain allowance billing flow and the
+ * never-shipped DCA scheduler. The remaining surface is `contacts`, `limits`
+ * (which still hosts the financial profile + permission preset + agent
+ * config — see `lib/engine/engine-context.ts`), and the inferred
+ * `permissionPreset` for client-side display.
  */
 export async function GET(request: NextRequest) {
   const address = request.nextUrl.searchParams.get('address');
@@ -28,19 +35,17 @@ export async function GET(request: NextRequest) {
   });
 
   if (!prefs) {
-    return NextResponse.json({ allowanceId: null, contacts: [], limits: null, dcaSchedules: [] });
+    return NextResponse.json({ contacts: [], limits: null, permissionPreset: 'balanced' });
   }
 
-  const limitsObj = (prefs?.limits && typeof prefs.limits === 'object' && !Array.isArray(prefs.limits))
+  const limitsObj = (prefs.limits && typeof prefs.limits === 'object' && !Array.isArray(prefs.limits))
     ? prefs.limits as Record<string, unknown>
     : null;
   const permissionPreset = limitsObj?.permissionPreset ?? 'balanced';
 
   return NextResponse.json({
-    allowanceId: prefs.allowanceId,
     contacts: prefs.contacts,
     limits: prefs.limits,
-    dcaSchedules: prefs.dcaSchedules,
     permissionPreset,
   });
 }
@@ -49,19 +54,17 @@ export async function GET(request: NextRequest) {
  * POST /api/user/preferences
  *
  * Upserts user preferences for a Sui address.
- * Body: { address: string, contacts?: Contact[], limits?: object, dcaSchedules?: unknown }
+ * Body: { address: string, contacts?: Contact[], limits?: object, permissionPreset?: ... }
  *
- * IMPORTANT: `limits` is shallow-merged with existing limits so that callers
- * can update individual keys (e.g. `allowanceId`) without wiping others
- * (e.g. `agent`, `financialProfile`).
+ * IMPORTANT: `limits` is shallow-merged with existing limits so callers can
+ * update individual keys (financialProfile, permission preset, agent config)
+ * without wiping others.
  */
 export async function POST(request: NextRequest) {
   let body: {
     address?: string;
-    allowanceId?: string;
     contacts?: unknown;
     limits?: unknown;
-    dcaSchedules?: unknown;
     permissionPreset?: 'conservative' | 'balanced' | 'aggressive';
   };
   try {
@@ -70,7 +73,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const { address, allowanceId, contacts, dcaSchedules, permissionPreset } = body;
+  const { address, contacts, permissionPreset } = body;
   let { limits } = body;
 
   if (permissionPreset && permissionPreset in PERMISSION_PRESETS) {
@@ -96,27 +99,21 @@ export async function POST(request: NextRequest) {
   }
 
   const update: Prisma.UserPreferencesUpdateInput = {};
-  if (allowanceId !== undefined) update.allowanceId = allowanceId;
   if (contacts !== undefined) update.contacts = contacts as Prisma.InputJsonValue;
   if (mergedLimits !== undefined) update.limits = mergedLimits;
-  if (dcaSchedules !== undefined) update.dcaSchedules = dcaSchedules as Prisma.InputJsonValue;
 
   const prefs = await prisma.userPreferences.upsert({
     where: { address },
     create: {
       address,
-      allowanceId: allowanceId ?? undefined,
       contacts: (contacts ?? []) as Prisma.InputJsonValue,
       limits: (mergedLimits ?? limits) as Prisma.InputJsonValue | undefined,
-      dcaSchedules: (dcaSchedules ?? []) as Prisma.InputJsonValue,
     },
     update,
   });
 
   return NextResponse.json({
-    allowanceId: prefs.allowanceId,
     contacts: prefs.contacts,
     limits: prefs.limits,
-    dcaSchedules: prefs.dcaSchedules,
   });
 }

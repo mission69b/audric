@@ -98,23 +98,9 @@ export function GoalCard({ goal, savingsBalance, onEdit, onDelete, deleting }: G
         </div>
       </div>
 
-      {/* Milestone badges */}
-      {goal.currentMilestone > 0 && (
-        <div className="flex gap-1">
-          {[25, 50, 75, 100].map((m) => (
-            <span
-              key={m}
-              className={`font-mono text-[9px] tracking-wider px-1.5 py-0.5 rounded ${
-                goal.currentMilestone >= m
-                  ? 'bg-foreground/10 text-foreground'
-                  : 'bg-foreground/[0.03] text-dim'
-              }`}
-            >
-              {m}%
-            </span>
-          ))}
-        </div>
-      )}
+      {/* [SIMPLIFICATION DAY 5] Milestone badges removed alongside the
+          milestone celebration cron + emails. Goal progress is fully
+          conveyed by the bar above. */}
     </div>
   );
 }

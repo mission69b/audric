@@ -6,7 +6,7 @@ import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { validateJwt, isValidSuiAddress, validateAmount } from '@/lib/auth';
 import { getRegistry, getClient } from '@/lib/protocol-registry';
 import { fetchWalletBalances } from '@/lib/portfolio-data';
-import { resolveTokenType, getDecimalsForCoinType, USDC_TYPE, SUI_TYPE, assertAllowedAsset, buildCreateAllowanceTx, addDepositAllowanceTx } from '@t2000/sdk';
+import { resolveTokenType, getDecimalsForCoinType, USDC_TYPE, SUI_TYPE, assertAllowedAsset } from '@t2000/sdk';
 
 export const runtime = 'nodejs';
 
@@ -14,7 +14,12 @@ const ENOKI_SECRET_KEY = process.env.ENOKI_SECRET_KEY;
 const ENOKI_BASE = 'https://api.enoki.mystenlabs.com/v1';
 const SUI_NETWORK = (process.env.NEXT_PUBLIC_SUI_NETWORK ?? 'mainnet') as 'mainnet' | 'testnet';
 
-type TxType = 'send' | 'save' | 'withdraw' | 'borrow' | 'repay' | 'claim-rewards' | 'swap' | 'volo-stake' | 'volo-unstake' | 'allowance-create' | 'allowance-deposit';
+// [SIMPLIFICATION DAY 5] Removed `allowance-create` + `allowance-deposit` tx
+// types. The on-chain allowance billing flow (Move package + /setup wizard +
+// allowance-status hook + sponsor route) is fully retired. SDK helpers
+// `buildCreateAllowanceTx` / `addDepositAllowanceTx` get removed in S.7
+// alongside the rest of the engine/SDK contract surface deletions.
+type TxType = 'send' | 'save' | 'withdraw' | 'borrow' | 'repay' | 'claim-rewards' | 'swap' | 'volo-stake' | 'volo-unstake';
 
 interface BuildRequest {
   type: TxType;
@@ -29,7 +34,6 @@ interface BuildRequest {
   to?: string;
   slippage?: number;
   byAmountIn?: boolean;
-  allowanceId?: string;
 }
 
 function getLendingAdapter(protocolId?: string) {
@@ -141,11 +145,11 @@ export async function POST(request: NextRequest) {
   const rl = rateLimit(`tx:${address}`, 10, 60_000);
   if (!rl.success) return rateLimitResponse(rl.retryAfterMs!);
 
-  const skipAmountCheck = type === 'claim-rewards' || type === 'volo-unstake' || type === 'allowance-create';
+  const skipAmountCheck = type === 'claim-rewards' || type === 'volo-unstake';
   if (!skipAmountCheck && (!amount || amount <= 0)) {
     return NextResponse.json({ error: 'Invalid amount' }, { status: 400 });
   }
-  if (!skipAmountCheck && type !== 'swap' && type !== 'volo-stake' && type !== 'allowance-deposit') {
+  if (!skipAmountCheck && type !== 'swap' && type !== 'volo-stake') {
     const amountCheck = validateAmount(type, amount);
     if (!amountCheck.valid) {
       return NextResponse.json({ error: amountCheck.reason }, { status: 400 });
@@ -173,7 +177,6 @@ export async function POST(request: NextRequest) {
       protocol: body.protocol,
       from: body.from, to: body.to,
       slippage: body.slippage, byAmountIn: body.byAmountIn,
-      allowanceId: body.allowanceId,
     };
     const result = await buildAndSponsor(params, jwt);
 
@@ -419,37 +422,6 @@ async function buildTransaction(params: BuildRequest): Promise<Transaction> {
       });
       stakeTx.transferObjects([vSuiCoin], address);
       return stakeTx;
-    }
-
-    case 'allowance-create': {
-      const createTx = buildCreateAllowanceTx();
-      createTx.setSender(address);
-      return createTx;
-    }
-
-    case 'allowance-deposit': {
-      if (!params.allowanceId || !params.allowanceId.startsWith('0x')) {
-        throw new Error('Missing or invalid allowanceId');
-      }
-      const USDC_DECIMALS = 6;
-      const rawAmount = BigInt(Math.round(amount * 10 ** USDC_DECIMALS));
-      const depositCoins: Array<{ coinObjectId: string; balance: string }> = [];
-      let depositCursor: string | null | undefined;
-      do {
-        const page = await client.getCoins({ owner: address, coinType: USDC_TYPE, cursor: depositCursor ?? undefined });
-        depositCoins.push(...page.data);
-        depositCursor = page.hasNextPage ? page.nextCursor : null;
-      } while (depositCursor);
-      if (!depositCoins.length) throw new Error('No USDC coins found');
-      const depositTx = new Transaction();
-      depositTx.setSender(address);
-      const coinIds = depositCoins.map(c => c.coinObjectId);
-      if (coinIds.length > 1) {
-        depositTx.mergeCoins(depositTx.object(coinIds[0]), coinIds.slice(1).map(id => depositTx.object(id)));
-      }
-      const [splitCoin] = depositTx.splitCoins(depositTx.object(coinIds[0]), [rawAmount]);
-      addDepositAllowanceTx(depositTx, params.allowanceId, splitCoin);
-      return depositTx;
     }
 
     case 'volo-unstake': {

@@ -3,12 +3,14 @@
 import { InputBar } from './InputBar';
 import { ChipBar } from './ChipBar';
 import { ChipExpand } from './ChipExpand';
-import { BriefingCard } from './BriefingCard';
-import { ProactiveBanner } from './ProactiveBanner';
-import { HandledForYou } from './HandledForYou';
-import { CopilotSuggestionsRow } from './CopilotSuggestionsRow';
 import { useChipExpand } from '@/hooks/useChipExpand';
-import type { BriefingData } from '@/hooks/useOvernightBriefing';
+
+// [SIMPLIFICATION DAY 5] BriefingCard / ProactiveBanner / HandledForYou /
+// CopilotSuggestionsRow / useOvernightBriefing all deleted along with the
+// briefing + Copilot stack. Local placeholder types preserve the optional
+// prop shape so callers compiling against this view don't need a coordinated
+// edit; the next dashboard pass strips the props entirely.
+type BriefingData = unknown;
 
 interface HandledAction {
   icon: string;
@@ -79,49 +81,24 @@ export function NewConversationView({
   if (savingsRate > 0) stats.push(`${(savingsRate * 100).toFixed(1)}% APY`);
   if (automationCount > 0) stats.push(`${automationCount} automation${automationCount > 1 ? 's' : ''} running`);
 
+  // [SIMPLIFICATION DAY 3] Briefings, proactive banners, "Handled for you",
+  // and the Copilot suggestions row have all been removed from the empty
+  // state. Audric is chat-first now: greeting + stats + input + chips only.
+  // The props are still accepted (and the imports retained) so the
+  // component signature does not break callers; Day 6 will narrow the
+  // surface area and delete the unused imports.
+  void briefing;
+  void proactive;
+  void onDismissProactive;
+  void handledActions;
+  void onViewHandled;
+  void copilotAddress;
+  void copilotJwt;
+
   return (
     <div className="flex-1 flex flex-col items-center overflow-y-auto px-4 sm:px-6">
       {/* Spacer — pushes content to center when it fits, collapses when it overflows */}
       <div className="flex-1 min-h-8" />
-
-      {/* Copilot suggestions — render at the top so users immediately see
-          pending confirmations on dashboard load. The component returns null
-          when there are no suggestions, so it's invisible by default. */}
-      {copilotAddress !== undefined && copilotJwt !== undefined && (
-        <div className="w-full max-w-2xl mb-4">
-          <CopilotSuggestionsRow address={copilotAddress ?? null} jwt={copilotJwt ?? null} />
-        </div>
-      )}
-
-      {briefing && (
-        <div className="w-full max-w-2xl mb-6">
-          <BriefingCard
-            briefing={briefing.briefing}
-            onDismiss={briefing.dismiss}
-            onViewReport={briefing.onViewReport}
-            onCtaClick={briefing.onCtaClick}
-          />
-        </div>
-      )}
-
-      {handledActions && handledActions.length > 0 && onViewHandled && (
-        <div className="w-full max-w-2xl mb-4">
-          <HandledForYou actions={handledActions} onViewAll={onViewHandled} />
-        </div>
-      )}
-
-      {proactive && onDismissProactive && (
-        <div className="w-full max-w-2xl mb-4">
-          <ProactiveBanner
-            title={proactive.title}
-            description={proactive.description}
-            cta={proactive.cta}
-            onCtaClick={proactive.onCtaClick}
-            onDismiss={onDismissProactive}
-            variant={proactive.variant}
-          />
-        </div>
-      )}
 
       <div className="text-center mb-5">
         <p className="text-[26px] font-light tracking-[-0.01em] font-sans text-foreground mb-2">{greeting}</p>

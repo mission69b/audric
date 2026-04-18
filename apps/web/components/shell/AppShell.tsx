@@ -3,10 +3,14 @@
 import { useState, useCallback, useEffect } from 'react';
 import { AppSidebar } from './AppSidebar';
 import { Topbar } from './Topbar';
-import { AllowanceLowBanner } from './AllowanceLowBanner';
 import { usePanel } from '@/hooks/usePanel';
 import type { BalanceHeaderData } from '@/components/dashboard/BalanceHeader';
 
+// [SIMPLIFICATION DAY 5] AllowanceLowBanner deleted with the on-chain
+// allowance billing flow. The `allowance*` prop trio is preserved for
+// source-compat with callers in the dashboard tree but is no longer
+// rendered anywhere — the next dashboard pass strips both the props and
+// the AppSidebar "Features budget" pill they fed.
 interface AppShellProps {
   address: string;
   balance: BalanceHeaderData;
@@ -34,6 +38,7 @@ export function AppShell({
   onNewConversation,
   children,
 }: AppShellProps) {
+  void allowanceBalance;
   const { panel, setPanel } = usePanel();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(() => {
@@ -98,7 +103,6 @@ export function AppShell({
 
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <AllowanceLowBanner balance={allowanceBalance ?? null} />
         <Topbar
           address={address}
           balance={balance}

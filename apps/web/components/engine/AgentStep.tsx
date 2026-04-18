@@ -44,10 +44,6 @@ const STEP_ICONS: Record<string, string> = {
   protocol_deep_dive: '🛡️',
   save_contact: '📇',
   render_canvas: '🖼️',
-  allowance_status: '⚙️',
-  toggle_allowance: '⚙️',
-  update_daily_limit: '⚙️',
-  update_permissions: '⚙️',
   create_payment_link: '🔗',
   list_payment_links: '🔗',
   cancel_payment_link: '🔗',
@@ -58,12 +54,7 @@ const STEP_ICONS: Record<string, string> = {
   swap_quote: '🔄',
   yield_summary: '📈',
   activity_summary: '📋',
-  pattern_status: '🔁',
   record_advice: '📝',
-  create_schedule: '📅',
-  list_schedules: '📅',
-  cancel_schedule: '🚫',
-  pause_pattern: '⏸️',
 };
 
 const STEP_LABELS: Record<string, string> = {
@@ -97,10 +88,6 @@ const STEP_LABELS: Record<string, string> = {
   protocol_deep_dive: 'PROTOCOL DEEP DIVE',
   save_contact: 'SAVE CONTACT',
   render_canvas: 'DRAW CANVAS',
-  allowance_status: 'ALLOWANCE STATUS',
-  toggle_allowance: 'TOGGLE ALLOWANCE',
-  update_daily_limit: 'UPDATE DAILY LIMIT',
-  update_permissions: 'UPDATE PERMISSIONS',
   create_payment_link: 'CREATE PAYMENT LINK',
   list_payment_links: 'LIST PAYMENT LINKS',
   cancel_payment_link: 'CANCEL PAYMENT LINK',
@@ -111,12 +98,7 @@ const STEP_LABELS: Record<string, string> = {
   swap_quote: 'SWAP QUOTE',
   yield_summary: 'YIELD SUMMARY',
   activity_summary: 'ACTIVITY SUMMARY',
-  pattern_status: 'PATTERN STATUS',
   record_advice: 'RECORD ADVICE',
-  create_schedule: 'CREATE SCHEDULE',
-  list_schedules: 'LIST SCHEDULES',
-  cancel_schedule: 'CANCEL SCHEDULE',
-  pause_pattern: 'PAUSE PATTERN',
 };
 
 export function getStepIcon(toolName: string): string {

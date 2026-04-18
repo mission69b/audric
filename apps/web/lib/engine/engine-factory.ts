@@ -187,22 +187,18 @@ export async function createEngine(
     }).catch(() => []) : Promise.resolve([]),
   ]);
 
-  // Phase D — fetch at most 1 pending Stage 0 proposal for this user
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000);
-  const pendingProposals = userId
-    ? await prisma.scheduledAction.findMany({
-        where: {
-          userId,
-          source: 'behavior_detected',
-          stage: 0,
-          confidence: { gte: 0.8 },
-          OR: [{ declinedAt: null }, { declinedAt: { lt: thirtyDaysAgo } }],
-        },
-        orderBy: { confidence: 'desc' },
-        take: 1,
-        select: { id: true, patternType: true, actionType: true, amount: true, asset: true, confidence: true },
-      }).catch(() => [])
-    : [];
+  // [SIMPLIFICATION DAY 5] Phase D pattern-detected proposals removed.
+  // ScheduledAction table is dropped; the pendingProposals path always
+  // returned at most 1 row driving a "should I set up auto-X?" prompt that
+  // we no longer surface (chat-first means the user just asks).
+  const pendingProposals: Array<{
+    id: string;
+    patternType: string | null;
+    actionType: string;
+    amount: number;
+    asset: string;
+    confidence: number | null;
+  }> = [];
 
   const nonZeroCoins = walletCoins.filter((c) => Number(c.totalBalance) > 0);
   const prices = await fetchTokenPrices(nonZeroCoins.map((c) => c.coinType)).catch(() => ({} as Record<string, number>));

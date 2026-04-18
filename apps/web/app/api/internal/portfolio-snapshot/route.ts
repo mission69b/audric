@@ -17,8 +17,10 @@ export async function POST(request: NextRequest) {
   const today = new Date();
   today.setUTCHours(0, 0, 0, 0);
 
+  // [SIMPLIFICATION DAY 5] onboardedAt column dropped — onboarding gate
+  // retired. Snapshot every user; the cron is idempotent (skips if a row
+  // already exists for today) so the slightly larger candidate set is fine.
   const users = await prisma.user.findMany({
-    where: { onboardedAt: { not: null } },
     select: { id: true, suiAddress: true },
   });
 

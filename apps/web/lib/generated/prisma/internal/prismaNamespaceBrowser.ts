@@ -56,21 +56,12 @@ export const ModelName = {
   ConversationLog: 'ConversationLog',
   SessionUsage: 'SessionUsage',
   ServicePurchase: 'ServicePurchase',
-  NotificationPrefs: 'NotificationPrefs',
-  NotificationLog: 'NotificationLog',
-  DailyBriefing: 'DailyBriefing',
   SavingsGoal: 'SavingsGoal',
   AppEvent: 'AppEvent',
   AdviceLog: 'AdviceLog',
   Payment: 'Payment',
-  SavingsGoalDeposit: 'SavingsGoalDeposit',
   WatchAddress: 'WatchAddress',
   PortfolioSnapshot: 'PortfolioSnapshot',
-  ScheduledAction: 'ScheduledAction',
-  ScheduledExecution: 'ScheduledExecution',
-  CopilotSuggestion: 'CopilotSuggestion',
-  OutcomeCheck: 'OutcomeCheck',
-  FollowUpQueue: 'FollowUpQueue',
   UserFinancialProfile: 'UserFinancialProfile',
   UserMemory: 'UserMemory',
   LinkedWallet: 'LinkedWallet',
@@ -102,19 +93,9 @@ export const UserScalarFieldEnum = {
   emailVerifyExpiry: 'emailVerifyExpiry',
   displayName: 'displayName',
   timezoneOffset: 'timezoneOffset',
-  onboardedAt: 'onboardedAt',
   tosAcceptedAt: 'tosAcceptedAt',
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt',
-  emailDeliverable: 'emailDeliverable',
-  lastDashboardVisitAt: 'lastDashboardVisitAt',
-  copilotConfirmedCount: 'copilotConfirmedCount',
-  copilotMigrationNoticeShownAt: 'copilotMigrationNoticeShownAt',
-  digestEnabled: 'digestEnabled',
-  digestSendHourLocal: 'digestSendHourLocal',
-  lastDigestSentAt: 'lastDigestSentAt',
-  hfWidgetEnabled: 'hfWidgetEnabled',
-  copilotEmailNudgeShownAt: 'copilotEmailNudgeShownAt'
+  updatedAt: 'updatedAt'
 } as const
 
 export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof UserScalarFieldEnum]
@@ -122,10 +103,8 @@ export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof User
 
 export const UserPreferencesScalarFieldEnum = {
   address: 'address',
-  allowanceId: 'allowanceId',
   contacts: 'contacts',
   limits: 'limits',
-  dcaSchedules: 'dcaSchedules',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
   userId: 'userId'
@@ -179,43 +158,6 @@ export const ServicePurchaseScalarFieldEnum = {
 export type ServicePurchaseScalarFieldEnum = (typeof ServicePurchaseScalarFieldEnum)[keyof typeof ServicePurchaseScalarFieldEnum]
 
 
-export const NotificationPrefsScalarFieldEnum = {
-  userId: 'userId',
-  feature: 'feature',
-  enabled: 'enabled',
-  lastSentAt: 'lastSentAt'
-} as const
-
-export type NotificationPrefsScalarFieldEnum = (typeof NotificationPrefsScalarFieldEnum)[keyof typeof NotificationPrefsScalarFieldEnum]
-
-
-export const NotificationLogScalarFieldEnum = {
-  id: 'id',
-  job: 'job',
-  processed: 'processed',
-  sent: 'sent',
-  errors: 'errors',
-  reportedAt: 'reportedAt',
-  createdAt: 'createdAt'
-} as const
-
-export type NotificationLogScalarFieldEnum = (typeof NotificationLogScalarFieldEnum)[keyof typeof NotificationLogScalarFieldEnum]
-
-
-export const DailyBriefingScalarFieldEnum = {
-  id: 'id',
-  userId: 'userId',
-  date: 'date',
-  content: 'content',
-  emailSentAt: 'emailSentAt',
-  dismissedAt: 'dismissedAt',
-  chargeDigest: 'chargeDigest',
-  createdAt: 'createdAt'
-} as const
-
-export type DailyBriefingScalarFieldEnum = (typeof DailyBriefingScalarFieldEnum)[keyof typeof DailyBriefingScalarFieldEnum]
-
-
 export const SavingsGoalScalarFieldEnum = {
   id: 'id',
   userId: 'userId',
@@ -223,7 +165,6 @@ export const SavingsGoalScalarFieldEnum = {
   emoji: 'emoji',
   targetAmount: 'targetAmount',
   deadline: 'deadline',
-  currentMilestone: 'currentMilestone',
   status: 'status',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
@@ -257,11 +198,7 @@ export const AdviceLogScalarFieldEnum = {
   adviceType: 'adviceType',
   targetAmount: 'targetAmount',
   goalId: 'goalId',
-  actionTaken: 'actionTaken',
   appEventId: 'appEventId',
-  followUpDue: 'followUpDue',
-  followUpSent: 'followUpSent',
-  outcomeStatus: 'outcomeStatus',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -300,18 +237,6 @@ export const PaymentScalarFieldEnum = {
 export type PaymentScalarFieldEnum = (typeof PaymentScalarFieldEnum)[keyof typeof PaymentScalarFieldEnum]
 
 
-export const SavingsGoalDepositScalarFieldEnum = {
-  id: 'id',
-  goalId: 'goalId',
-  userId: 'userId',
-  amountUsdc: 'amountUsdc',
-  appEventId: 'appEventId',
-  createdAt: 'createdAt'
-} as const
-
-export type SavingsGoalDepositScalarFieldEnum = (typeof SavingsGoalDepositScalarFieldEnum)[keyof typeof SavingsGoalDepositScalarFieldEnum]
-
-
 export const WatchAddressScalarFieldEnum = {
   id: 'id',
   userId: 'userId',
@@ -337,110 +262,6 @@ export const PortfolioSnapshotScalarFieldEnum = {
 } as const
 
 export type PortfolioSnapshotScalarFieldEnum = (typeof PortfolioSnapshotScalarFieldEnum)[keyof typeof PortfolioSnapshotScalarFieldEnum]
-
-
-export const ScheduledActionScalarFieldEnum = {
-  id: 'id',
-  userId: 'userId',
-  actionType: 'actionType',
-  amount: 'amount',
-  asset: 'asset',
-  targetAsset: 'targetAsset',
-  cronExpr: 'cronExpr',
-  nextRunAt: 'nextRunAt',
-  enabled: 'enabled',
-  confirmationsRequired: 'confirmationsRequired',
-  confirmationsCompleted: 'confirmationsCompleted',
-  totalExecutions: 'totalExecutions',
-  totalAmountUsdc: 'totalAmountUsdc',
-  lastExecutedAt: 'lastExecutedAt',
-  lastSkippedAt: 'lastSkippedAt',
-  createdAt: 'createdAt',
-  updatedAt: 'updatedAt',
-  source: 'source',
-  patternType: 'patternType',
-  detectedAt: 'detectedAt',
-  confidence: 'confidence',
-  stage: 'stage',
-  declinedAt: 'declinedAt',
-  pausedAt: 'pausedAt',
-  surfaceStatus: 'surfaceStatus',
-  surfacedAt: 'surfacedAt',
-  expiresAt: 'expiresAt',
-  failedAttempts: 'failedAttempts'
-} as const
-
-export type ScheduledActionScalarFieldEnum = (typeof ScheduledActionScalarFieldEnum)[keyof typeof ScheduledActionScalarFieldEnum]
-
-
-export const ScheduledExecutionScalarFieldEnum = {
-  id: 'id',
-  scheduledActionId: 'scheduledActionId',
-  txDigest: 'txDigest',
-  amountUsd: 'amountUsd',
-  status: 'status',
-  skipReason: 'skipReason',
-  idempotencyKey: 'idempotencyKey',
-  notified: 'notified',
-  executedAt: 'executedAt'
-} as const
-
-export type ScheduledExecutionScalarFieldEnum = (typeof ScheduledExecutionScalarFieldEnum)[keyof typeof ScheduledExecutionScalarFieldEnum]
-
-
-export const CopilotSuggestionScalarFieldEnum = {
-  id: 'id',
-  userId: 'userId',
-  type: 'type',
-  status: 'status',
-  payload: 'payload',
-  expiresAt: 'expiresAt',
-  surfacedAt: 'surfacedAt',
-  confirmedAt: 'confirmedAt',
-  skippedAt: 'skippedAt',
-  failedAt: 'failedAt',
-  failedAttempts: 'failedAttempts',
-  snoozedCount: 'snoozedCount',
-  createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
-} as const
-
-export type CopilotSuggestionScalarFieldEnum = (typeof CopilotSuggestionScalarFieldEnum)[keyof typeof CopilotSuggestionScalarFieldEnum]
-
-
-export const OutcomeCheckScalarFieldEnum = {
-  id: 'id',
-  userId: 'userId',
-  adviceLogId: 'adviceLogId',
-  checkType: 'checkType',
-  expectedValue: 'expectedValue',
-  actualValue: 'actualValue',
-  deltaUsdc: 'deltaUsdc',
-  onTrack: 'onTrack',
-  suiQueryAt: 'suiQueryAt',
-  createdAt: 'createdAt'
-} as const
-
-export type OutcomeCheckScalarFieldEnum = (typeof OutcomeCheckScalarFieldEnum)[keyof typeof OutcomeCheckScalarFieldEnum]
-
-
-export const FollowUpQueueScalarFieldEnum = {
-  id: 'id',
-  userId: 'userId',
-  triggerType: 'triggerType',
-  adviceLogId: 'adviceLogId',
-  outcomeCheckId: 'outcomeCheckId',
-  message: 'message',
-  ctaType: 'ctaType',
-  ctaAmount: 'ctaAmount',
-  priority: 'priority',
-  scheduledFor: 'scheduledFor',
-  sentAt: 'sentAt',
-  deliveryMethod: 'deliveryMethod',
-  createdAt: 'createdAt'
-} as const
-
-export type FollowUpQueueScalarFieldEnum = (typeof FollowUpQueueScalarFieldEnum)[keyof typeof FollowUpQueueScalarFieldEnum]
 
 
 export const UserFinancialProfileScalarFieldEnum = {

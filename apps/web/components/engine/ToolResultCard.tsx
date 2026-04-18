@@ -12,7 +12,6 @@ import { TransactionReceiptCard } from './cards/TransactionReceiptCard';
 import { HealthCard } from './cards/HealthCard';
 import { TransactionHistoryCard } from './cards/TransactionHistoryCard';
 import { SwapQuoteCard } from './cards/SwapQuoteCard';
-import { AllowanceCard } from './cards/AllowanceCard';
 import { PaymentLinkCard } from './cards/PaymentLinkCard';
 import { InvoiceCard } from './cards/InvoiceCard';
 import { ServiceCatalogCard } from './cards/ServiceCatalogCard';
@@ -22,7 +21,6 @@ import { ActivitySummaryCard } from './cards/ActivitySummaryCard';
 import { StakingCard } from './cards/StakingCard';
 import { ProtocolCard } from './cards/ProtocolCard';
 import { PriceCard } from './cards/PriceCard';
-import { ProposalCard, type ProposalData } from './cards/ProposalCard';
 
 const WRITE_TOOL_NAMES = new Set([
   'save_deposit', 'withdraw', 'send_transfer', 'swap_execute',
@@ -85,26 +83,6 @@ const CARD_RENDERERS: Record<string, (result: unknown) => React.ReactNode | null
     if (!data || typeof data !== 'object') return null;
     return <SearchResultsCard data={data as Parameters<typeof SearchResultsCard>[0]['data']} />;
   },
-  allowance_status: (result) => {
-    const data = extractData(result);
-    if (!data || typeof data !== 'object') return null;
-    return <AllowanceCard data={data as Parameters<typeof AllowanceCard>[0]['data']} />;
-  },
-  toggle_allowance: (result) => {
-    const data = extractData(result);
-    if (!data || typeof data !== 'object') return null;
-    return <AllowanceCard data={data as Parameters<typeof AllowanceCard>[0]['data']} />;
-  },
-  update_daily_limit: (result) => {
-    const data = extractData(result);
-    if (!data || typeof data !== 'object') return null;
-    return <AllowanceCard data={data as Parameters<typeof AllowanceCard>[0]['data']} />;
-  },
-  update_permissions: (result) => {
-    const data = extractData(result);
-    if (!data || typeof data !== 'object') return null;
-    return <AllowanceCard data={data as Parameters<typeof AllowanceCard>[0]['data']} />;
-  },
   yield_summary: (result) => {
     const data = extractData(result);
     if (!data || typeof data !== 'object') return null;
@@ -154,13 +132,6 @@ const CARD_RENDERERS: Record<string, (result: unknown) => React.ReactNode | null
     const data = extractData(result);
     if (!data || typeof data !== 'object') return null;
     return <PriceCard data={data as Parameters<typeof PriceCard>[0]['data']} />;
-  },
-  pattern_status: (result) => {
-    const data = extractData(result);
-    if (!data || typeof data !== 'object') return null;
-    const d = data as Record<string, unknown>;
-    if (!d.proposalId) return null;
-    return <ProposalCard data={d as unknown as ProposalData} />;
   },
 };
 
