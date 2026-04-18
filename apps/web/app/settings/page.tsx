@@ -12,23 +12,25 @@ import { GoalEditor } from '@/components/settings/GoalEditor';
 import { PassportSection } from '@/components/settings/PassportSection';
 import { SafetySection } from '@/components/settings/SafetySection';
 import { MemorySection } from '@/components/settings/MemorySection';
-import { WalletsSection } from '@/components/settings/WalletsSection';
 import { SUI_NETWORK } from '@/lib/constants';
 
-// [SIMPLIFICATION DAY 5] Removed sections:
-//   - Features (allowance + notification toggles, gone with allowance flow)
-//   - Copilot (briefing/digest/automation toggles, gone with cron stack)
-// Old deep links collapse to Passport.
-type Section = 'passport' | 'account' | 'goals' | 'safety' | 'contacts' | 'sessions' | 'memory' | 'wallets';
+// [SIMPLIFICATION DAY 10] Settings reorganised to the canonical 5 sections
+// from the simplification spec — Passport, Safety, Memory, Goals, Contacts.
+// History of removals:
+//   - Features      (Day 5) — allowance + notification toggles, gone with allowance flow
+//   - Copilot       (Day 5) — briefing/digest/automation toggles, gone with cron stack
+//   - Wallets       (Day 10) — multi-wallet linking is no longer surfaced; the API
+//                              routes (`/api/user/wallets`) remain for future surfaces
+//   - Sessions      (Day 10) — was a placeholder stub; chat history lives in the sidebar
+// Old deep-links collapse to Passport.
+type Section = 'passport' | 'goals' | 'safety' | 'contacts' | 'memory';
 
 const SECTIONS: { id: Section; label: string }[] = [
   { id: 'passport', label: 'Passport' },
   { id: 'safety', label: 'Safety' },
   { id: 'memory', label: 'Memory' },
-  { id: 'wallets', label: 'Wallets' },
   { id: 'goals', label: 'Goals' },
   { id: 'contacts', label: 'Contacts' },
-  { id: 'sessions', label: 'Sessions' },
 ];
 
 const SECTION_ALIASES: Record<string, Section> = {
@@ -37,6 +39,8 @@ const SECTION_ALIASES: Record<string, Section> = {
   copilot: 'passport',
   features: 'passport',
   account: 'passport',
+  wallets: 'passport',
+  sessions: 'passport',
 };
 
 function resolveSection(raw: string | null): Section {
@@ -115,10 +119,6 @@ function SettingsContent() {
                 onRefresh={refresh}
                 onLogout={logout}
               />
-            )}
-
-            {activeSection === 'wallets' && (
-              <WalletsSection address={address} jwt={jwt} />
             )}
 
             {activeSection === 'goals' && (
@@ -205,17 +205,6 @@ function SettingsContent() {
                 </h2>
                 <p className="text-sm text-muted leading-relaxed">
                   Your saved contacts will appear here. Send to an address and you&apos;ll be prompted to save it.
-                </p>
-              </section>
-            )}
-
-            {activeSection === 'sessions' && (
-              <section className="space-y-5">
-                <h2 className="font-mono text-[10px] tracking-[0.12em] text-muted uppercase pb-2 border-b border-border">
-                  Conversations
-                </h2>
-                <p className="text-sm text-muted leading-relaxed">
-                  Chat history and session management will appear here.
                 </p>
               </section>
             )}

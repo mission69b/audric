@@ -19,7 +19,7 @@ export default function TermsPage() {
         <h1 className="text-2xl sm:text-3xl font-mono font-semibold text-foreground tracking-tight mb-2">
           Terms of Service
         </h1>
-        <p className="text-sm text-muted font-mono">Last updated: April 2026</p>
+        <p className="text-sm text-muted font-mono">Last updated: April 2026 (v2)</p>
       </header>
 
       <div className="space-y-8 text-muted leading-relaxed text-[13.5px]">
@@ -143,44 +143,41 @@ export default function TermsPage() {
               transaction
             </li>
             <li>
-              <strong className="text-foreground">Morning briefing</strong>{' '}
-              &mdash; $0.005 USDC per day, deducted from your features budget
-            </li>
-            <li>
-              <strong className="text-foreground">AI session charge</strong>{' '}
-              &mdash; $0.01 USDC per AI conversation, deducted from your
-              features budget
-            </li>
-            <li>
               <strong className="text-foreground">Yield spread</strong> &mdash;
               Audric displays net APY after a small spread on savings yield.
               The exact spread varies by market conditions
             </li>
           </ul>
           <p className="mt-2">
-            Health factor alerts and rate change alerts are free. All paid
-            feature charges are deducted from your on-chain features budget
-            (see Section 8). Fees may change with notice.
+            All other features &mdash; chat, balance lookups, savings deposits
+            and withdrawals, sends, borrows, payment links, and rate / health
+            factor lookups &mdash; are free to use within the daily session
+            limits described in Section 8. Fees may change with notice.
           </p>
         </section>
 
         <section>
           <h2 className="text-foreground text-base font-mono font-semibold mb-3">
-            8. Features Budget (Allowance)
+            8. Daily Free Sessions
           </h2>
           <p>
-            Audric uses an on-chain spending cap called the features budget.
-            You deposit USDC into a smart contract you control. Audric
-            deducts small amounts only for features you enable. You can
-            withdraw the remaining balance at any time from Settings &gt;
-            Features. The features budget is not a subscription &mdash; there
-            are no recurring charges. You are only charged for features you
-            actively use.
+            Audric is free to use within a daily session cap. We count distinct
+            chat sessions per wallet over a rolling 24-hour window. Verified
+            accounts get a higher cap than unverified ones; the current limits
+            are visible in the app. There is no on-chain spending cap or
+            features budget &mdash; the previous &ldquo;allowance&rdquo;
+            mechanism was retired in April 2026.
           </p>
           <p className="mt-2">
-            The smart contract is non-custodial: Audric can only deduct up to
-            the approved amount for permitted features. It cannot access your
-            wallet balance or savings.
+            If you reach the daily limit, new chat sessions are blocked until
+            the rolling window resets. Existing transactions, balance lookups,
+            and account access continue to work. Verifying your email raises
+            the daily cap and is the only billing-relevant action you can take.
+          </p>
+          <p className="mt-2">
+            We may adjust the cap, the window, or the verified / unverified
+            tiers at any time based on cost and abuse signals, with notice in
+            the app.
           </p>
         </section>
 

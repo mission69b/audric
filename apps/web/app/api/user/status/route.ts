@@ -21,6 +21,12 @@ export const runtime = 'nodejs';
  * keeps an `onboarded: true` default for any consumers reading it during
  * the deprecation window (chat-first means everyone is "onboarded" the
  * moment they sign in).
+ *
+ * [SIMPLIFICATION DAY 10] Use `upsert` instead of `findUnique` so the
+ * first call after sign-in materialises the User row. Replaces the role
+ * the deleted /setup wizard used to play and eliminates the 404 spam in
+ * Vercel logs when this route runs before the user posts a chat message
+ * or saves an email.
  */
 export async function GET(request: NextRequest) {
   const jwt = request.headers.get('x-zklogin-jwt');
@@ -33,8 +39,10 @@ export async function GET(request: NextRequest) {
   }
 
   const [user, sessionCount] = await Promise.all([
-    prisma.user.findUnique({
+    prisma.user.upsert({
       where: { suiAddress: address },
+      create: { suiAddress: address },
+      update: {},
       select: {
         tosAcceptedAt: true,
         emailVerified: true,
@@ -48,10 +56,6 @@ export async function GET(request: NextRequest) {
       },
     }).then((rows) => rows.length).catch(() => 0),
   ]);
-
-  if (!user) {
-    return NextResponse.json({ error: 'User not found' }, { status: 404 });
-  }
 
   const emailVerified = user.emailVerified;
   const sessionLimit = sessionLimitFor(emailVerified);
