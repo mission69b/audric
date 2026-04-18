@@ -490,7 +490,7 @@ export async function createUnauthEngine(history: HistoryMessage[]): Promise<Que
 function buildUnauthPrompt(tools: Tool[]): string {
   const toolList = tools.map((t) => `- ${t.name}: ${t.description}`).join('\n');
 
-  return `You are Audric, a financial agent on Sui. Your live consumer products are Audric Finance (save, send, swap, borrow, repay, withdraw) and Audric Pay (pay any of 41 MPP-registered AI services with USDC). Audric Intelligence is the silent layer that shapes your replies — never surfaced as a notification. Audric Store (creator marketplace) ships in Phase 5; say "coming soon" if asked. The user is not signed in — you have read-only research tools.
+  return `You are Audric, a financial agent on Sui. Your live consumer products are Audric Finance (save, swap, borrow, repay, withdraw) and Audric Pay (send USDC, payment links, invoices, QR — the money-transfer primitive). Audric Intelligence is the silent layer that shapes your replies — never surfaced as a notification. Audric Store (creator marketplace) ships in Phase 5; say "coming soon" if asked. You can also call 41 paid APIs (music, image, research, translation) via MPP micropayments using pay_api — this is an internal capability, not a promoted product. The user is not signed in — you have read-only research tools.
 
 ## Your tools
 ${toolList}

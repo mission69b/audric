@@ -51,21 +51,18 @@ interface SentLog {
 function buildEmailBody(suiAddress: string): { text: string; html: string } {
   const text = `Hey,
 
-Quick note about Audric.
-
-I retired some features that looked like autonomy but weren't. Morning
-briefings, scheduled actions, copilot suggestions, rate alerts,
-auto-compound, the features budget — all gone. zkLogin can't sign
-without you tapping confirm, so anything calling itself "autonomous"
-was really just a reminder. That wasn't honest, so I removed it.
+Quick note — I cleaned Audric up. Anything that pretended to run
+without you is gone: morning briefings, scheduled actions, rate
+alerts, auto-compound, the features budget. zkLogin needs your tap
+to sign, so calling those "autonomous" wasn't honest.
 
 Audric is now organised around four things:
 
   Audric Finance — save, send, swap, borrow, repay, withdraw. Same
   as before, all by asking in chat.
 
-  Audric Pay — call any of 41 AI services with USDC micropayments
-  (Suno, DALL-E, Lob, OpenAI, etc.). Cost shown first, you confirm.
+  Audric Pay — send USDC. To people, to wallets, to anywhere on
+  Sui. Same chat.
 
   Audric Intelligence — the silent layer. Your financial profile,
   conversation memory, chain memory, AdviceLog. Shapes my replies
@@ -74,31 +71,21 @@ Audric is now organised around four things:
   Audric Store — creator marketplace at audric.ai/your-name. Sell
   AI-generated music, art, ebooks in USDC. Coming soon.
 
-Your wallet, savings, and on-chain funds are unchanged. The features
-budget went back to your wallet — you'll see USDC at ${suiAddress}.
-Goals are still tracked silently. The only email I'll send going
-forward is one critical health factor alert, and only if your borrow
-drops below HF 1.2.
-
-Next up: better onramp (buy USDC with a card), then cross-chain USDC.
-
-Tap in any time.
+Your wallet, savings, and positions are unchanged. Any features-budget
+USDC is back at ${suiAddress}.
 
 — Funkii
 `;
 
   const html = `<div style="font-family: -apple-system, system-ui, sans-serif; max-width: 560px; margin: 0 auto; padding: 32px 24px; color: #111; line-height: 1.65; font-size: 15px;">
   <p>Hey,</p>
-  <p>Quick note about Audric.</p>
-  <p>I retired some features that looked like autonomy but weren't. Morning briefings, scheduled actions, copilot suggestions, rate alerts, auto-compound, the features budget — all gone. zkLogin can't sign without you tapping confirm, so anything calling itself "autonomous" was really just a reminder. That wasn't honest, so I removed it.</p>
+  <p>Quick note — I cleaned Audric up. Anything that pretended to run without you is gone: morning briefings, scheduled actions, rate alerts, auto-compound, the features budget. zkLogin needs your tap to sign, so calling those "autonomous" wasn't honest.</p>
   <p>Audric is now organised around four things:</p>
   <p style="margin: 16px 0;"><strong>Audric Finance</strong> — save, send, swap, borrow, repay, withdraw. Same as before, all by asking in chat.</p>
-  <p style="margin: 16px 0;"><strong>Audric Pay</strong> — call any of 41 AI services with USDC micropayments (Suno, DALL-E, Lob, OpenAI, etc.). Cost shown first, you confirm.</p>
+  <p style="margin: 16px 0;"><strong>Audric Pay</strong> — send USDC. To people, to wallets, to anywhere on Sui. Same chat.</p>
   <p style="margin: 16px 0;"><strong>Audric Intelligence</strong> — the silent layer. Your financial profile, conversation memory, chain memory, AdviceLog. Shapes my replies but never surfaces as a notification.</p>
   <p style="margin: 16px 0;"><strong>Audric Store</strong> — creator marketplace at audric.ai/your-name. Sell AI-generated music, art, ebooks in USDC. Coming soon.</p>
-  <p>Your wallet, savings, and on-chain funds are unchanged. The features budget went back to your wallet — you'll see USDC at <code style="background: #f4f4f5; padding: 2px 6px; border-radius: 4px; font-size: 13px;">${suiAddress}</code>. Goals are still tracked silently. The only email I'll send going forward is one critical health factor alert, and only if your borrow drops below HF 1.2.</p>
-  <p>Next up: better onramp (buy USDC with a card), then cross-chain USDC.</p>
-  <p>Tap in any time.</p>
+  <p>Your wallet, savings, and positions are unchanged. Any features-budget USDC is back at <code style="background: #f4f4f5; padding: 2px 6px; border-radius: 4px; font-size: 13px;">${suiAddress}</code>.</p>
   <p style="margin-top: 32px;">— Funkii</p>
 </div>`;
 

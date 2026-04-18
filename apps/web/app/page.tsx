@@ -278,7 +278,7 @@ export default function LandingPage() {
             Your money, in chat.
           </h2>
           <p className="text-[13px] text-muted leading-[1.7] max-w-[500px] mb-10">
-            Save, send, swap, borrow — every on-chain operation handled by asking. You confirm each one with a tap.
+            Save, swap, borrow, repay, withdraw — every on-chain operation handled by asking. You confirm each one with a tap.
           </p>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-px bg-border border border-border">
@@ -296,12 +296,12 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── S5: Move Money + Send Mockup ── */}
-      <section className="px-5 sm:px-10 lg:px-16 py-14 sm:py-20 bg-surface border-t border-border">
+      {/* ── S5: Audric Pay + Send Mockup ── */}
+      <section id="pay" className="px-5 sm:px-10 lg:px-16 py-14 sm:py-20 bg-surface border-t border-border">
         <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
           <div>
             <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-muted mb-3">
-              Send &amp; receive
+              Audric Pay
             </p>
             <h2 className="text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground mb-3">
               Move money.<br />Free. Global. Instant.
@@ -438,73 +438,6 @@ export default function LandingPage() {
             >
               Sign in with Google — get your Passport
             </button>
-          </div>
-        </div>
-      </section>
-
-      {/* ── S8: Audric Pay + Pay Flow Mockup ── */}
-      <section id="pay" className="px-5 sm:px-10 lg:px-16 py-14 sm:py-20 border-t border-border">
-        <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
-          <div>
-            <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-muted mb-3">
-              Audric Pay
-            </p>
-            <h2 className="text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground mb-3">
-              Pay any API with USDC.
-            </h2>
-            <p className="text-[13px] text-muted leading-[1.7] max-w-[420px] mb-5">
-              Ask Audric to call any of 41 AI services on your behalf — music, images, research, data. Each call shows the price first; you confirm, Audric pays from your USDC. No subscriptions. No API keys.
-            </p>
-            <div className="grid grid-cols-3 gap-px bg-border border border-border mb-4">
-              {[
-                { value: '41', label: 'Services' },
-                { value: '90+', label: 'Endpoints' },
-                { value: '$0.001', label: 'From' },
-              ].map((s) => (
-                <div key={s.label} className="bg-surface px-3 py-3 text-center">
-                  <div className="text-[18px] font-semibold text-foreground leading-none mb-1">{s.value}</div>
-                  <div className="font-mono text-[10px] text-muted">{s.label}</div>
-                </div>
-              ))}
-            </div>
-            <div className="font-mono text-[10px] text-dim">
-              Powered by suimpp · On Sui
-            </div>
-          </div>
-
-          {/* Pay flow mockup — white shell */}
-          <div className="border border-border rounded-lg overflow-hidden bg-background">
-            <div className="px-4 py-3 border-b border-border flex items-center gap-1.5">
-              <span className="text-[10px] text-muted">◎ Pay</span>
-              <span className="ml-auto text-[9px] text-dim">Audric Dashboard</span>
-            </div>
-            <div className="p-4 space-y-2.5">
-              <div className="bg-surface border border-border rounded-md px-3 py-2.5">
-                <div className="text-[11px] text-muted mb-1">You said:</div>
-                <div className="text-[13px] text-foreground">&quot;Send a birthday postcard to my mum&quot;</div>
-              </div>
-              <div className="divide-y divide-border">
-                {[
-                  { label: 'Wrote a personal message', service: 'OpenAI', cost: '$0.02' },
-                  { label: 'Designed the card', service: 'DALL-E 3', cost: '$0.04' },
-                  { label: 'Printed and mailed it', service: 'Lob', cost: '$0.99' },
-                ].map((step) => (
-                  <div key={step.label} className="flex items-center gap-2 py-2">
-                    <span className="text-[10px] text-[#00D68F]">✓</span>
-                    <span className="flex-1 text-[11px] text-foreground">{step.label}</span>
-                    <span className="text-[9px] text-muted">{step.service} · {step.cost}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="bg-surface border border-border rounded-md px-3 py-2.5 flex justify-between items-center">
-                <span className="text-[11px] text-foreground">Postcard on its way 💌</span>
-                <span className="text-[13px] font-semibold text-foreground">$1.05</span>
-              </div>
-              <div className="flex justify-between text-[9px] text-muted">
-                <span>Paid from USDC balance</span>
-                <span>3 services used</span>
-              </div>
-            </div>
           </div>
         </div>
       </section>
