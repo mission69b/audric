@@ -60,6 +60,7 @@
     "jsdom": "^29.0.1",
     "prisma": "^7.5.0",
     "tailwindcss": "^4",
+    "tsx": "^4.21.0",
     "typescript": "^5",
     "vitest": "^3"
   }

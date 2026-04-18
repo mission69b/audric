@@ -268,15 +268,18 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── S4: Products ── */}
-      <section className="px-5 sm:px-10 lg:px-16 py-14 sm:py-20 border-t border-border">
+      {/* ── S4: Audric Finance ── */}
+      <section id="finance" className="px-5 sm:px-10 lg:px-16 py-14 sm:py-20 border-t border-border">
         <div className="max-w-6xl mx-auto">
           <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-muted mb-3">
-            Products
+            Audric Finance
           </p>
-          <h2 className="text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground mb-10">
-            Everything you need.
+          <h2 className="text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground mb-3">
+            Your money, in chat.
           </h2>
+          <p className="text-[13px] text-muted leading-[1.7] max-w-[500px] mb-10">
+            Save, send, swap, borrow — every on-chain operation handled by asking. You confirm each one with a tap.
+          </p>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-px bg-border border border-border">
             {PRODUCTS.map((p) => (
@@ -510,14 +513,19 @@ export default function LandingPage() {
       <section id="store" className="px-5 sm:px-10 lg:px-16 py-14 sm:py-20 bg-surface border-t border-border">
         <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
           <div>
-            <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-muted mb-3">
-              Audric Store
-            </p>
+            <div className="flex items-center gap-2 mb-3">
+              <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-muted">
+                Audric Store
+              </p>
+              <span className="font-mono text-[8px] tracking-[0.15em] uppercase text-foreground border border-border-bright px-2 py-0.5">
+                Coming soon
+              </span>
+            </div>
             <h2 className="text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground mb-3">
               The new app store.
             </h2>
             <p className="text-[13px] text-muted leading-[1.7] max-w-[420px] mb-5">
-              Create and sell any digital content. Get paid in USDC. No middleman. 92% to you.
+              Create and sell any digital content. Get paid in USDC. No middleman. 92% to you. Phase 5 — preview below.
             </p>
             <div className="flex gap-1.5 flex-wrap mb-4">
               {['Music', 'Art', 'Ebooks', 'Templates', 'Courses'].map((tag) => (

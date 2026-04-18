@@ -28,6 +28,9 @@ Thumbs.db
 # turbo
 .turbo/
 
+# script audit logs (e.g. one-off comms send tracking)
+apps/web/scripts/.*-sent.json
+
 # vercel
 .vercel/
 
