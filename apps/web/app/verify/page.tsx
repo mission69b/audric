@@ -66,7 +66,8 @@ function VerifyContent() {
             <div className="text-3xl">✓</div>
             <h1 className="text-xl font-semibold">Email verified.</h1>
             <p className="text-muted leading-relaxed">
-              You&apos;ll receive your first morning briefing tomorrow at 8am.
+              You now get 20 chat sessions per day. We&apos;ll only email you for critical
+              health-factor alerts — never marketing or daily summaries.
             </p>
             <Link
               href="/new"

@@ -117,11 +117,12 @@ export function EmailCaptureModal({ open, onClose, address, jwt, initialEmail }:
           {step === 'input' && (
             <>
               <h2 className="text-lg font-semibold">
-                Get a morning briefing of your finances.
+                Verify your email to chat more.
               </h2>
               <p className="text-sm text-muted leading-relaxed">
-                Audric sends a daily summary of your balance, yield earned, and one action
-                item — straight to your inbox.
+                Verified accounts get 20 chat sessions per day instead of 5. We use it to
+                send you the verification link plus critical health-factor alerts only —
+                no marketing, no daily emails.
               </p>
               <div className="space-y-2">
                 <input
@@ -196,7 +197,8 @@ export function EmailCaptureModal({ open, onClose, address, jwt, initialEmail }:
                 <h2 className="text-lg font-semibold">Email verified.</h2>
               </div>
               <p className="text-sm text-muted text-center leading-relaxed">
-                You&apos;ll receive your first morning briefing tomorrow at 8am.
+                You now get 20 chat sessions per day. We&apos;ll only email you for critical
+                health-factor alerts.
               </p>
               <button
                 onClick={onClose}

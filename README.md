@@ -36,17 +36,17 @@ Your money lives in a non-custodial wallet. Audric executes transactions, but yo
 | Framework | Next.js 15 (App Router) |
 | Auth | zkLogin via Enoki (Google OAuth → Sui wallet) |
 | Gas | Enoki sponsored transactions (zero gas for users) |
-| AI | `@t2000/engine` — 50 tools, reasoning engine, extended thinking, canvas, autonomy |
-| Database | NeonDB (Prisma) — 17+ models (users, profiles, memories, goals, schedules, reports, analytics) |
+| AI | `@t2000/engine` — 40 tools, reasoning engine, extended thinking, canvas |
+| Database | NeonDB (Prisma) — 15 models (users, profiles, memories, goals, advice log, conversation log, payments, contacts, app events) |
 | Sessions | Upstash Redis (KV) |
 | Styling | Tailwind CSS v4, Agentic Design System |
 | Hosting | Vercel |
 
 ## AI Agent Capabilities
 
-### 50 Financial Tools
+### 40 Financial Tools
 
-38 read tools + 12 write tools covering balance checks, savings, lending, swaps, payments, analytics, scheduling, and autonomous pattern management. Read tools execute in parallel; write tools require user confirmation and execute sequentially under a transaction mutex.
+29 read tools + 11 write tools covering balance checks, savings, lending, swaps, payments, payment links / invoices, and on-chain analytics. Read tools execute in parallel; write tools require user confirmation and execute sequentially under a transaction mutex.
 
 ### Reasoning Engine
 
@@ -57,36 +57,30 @@ Your money lives in a non-custodial wallet. Audric executes transactions, but yo
 - **Preflight validation** — input validation on send, swap, pay, borrow, and save before execution
 - **Prompt caching** — static system prompt + tool definitions cached across turns for lower latency and cost
 
-### Intelligence Layer (F1–F5)
+### Silent Intelligence Layer
 
 | Feature | What it does |
 |---------|-------------|
-| **Financial Profile** (F1) | Risk tolerance, goals, investment horizon — inferred by Claude, stored in Prisma |
-| **Proactive Awareness** (F2) | Idle USDC nudges, HF warnings, follow-up queues injected each turn |
-| **Episodic Memory** (F3) | Key facts, preferences, past decisions remembered across sessions (50-memory cap, Jaccard dedup) |
-| **Conversation State** (F4) | 6 states (idle → exploring → confirming → executing) tracked in Redis |
-| **Self-Evaluation** (F5) | Post-action checklist for outcome tracking and confidence adjustment |
+| **Financial Profile** | Risk tolerance, goals, investment horizon — inferred by Claude, stored in Prisma. Silently calibrates tone + recommendations |
+| **Episodic Memory** | Key facts, preferences, past decisions remembered across sessions (50-memory cap, Jaccard dedup) |
+| **Advice Memory** | `record_advice` tool writes `AdviceLog` rows; `buildAdviceContext()` hydrates last 30 days into every turn so the chat remembers what it told you yesterday |
+| **Conversation Log** | Full chat transcripts logged for the future self-hosted model migration |
 
-### Autonomous Actions
+> **What was deleted in the April 2026 simplification:** Copilot suggestions, scheduled actions / DCA, morning briefings, rate alerts, auto-compound, the features-budget allowance, the proactive-nudges pipeline, savings-goal milestone celebrations, follow-up queues, and the proposal pipeline behind `BehavioralPattern`. zkLogin can't sign without user presence — "autonomous" was reminders dressed up as agency. See [`spec/SIMPLIFICATION_RATIONALE.md`](https://github.com/mission69b/t2000/blob/main/spec/SIMPLIFICATION_RATIONALE.md) for the locked decisions on what we will not bring back.
 
-- **5 behavioral detectors** — recurring saves, yield reinvestment, debt discipline, idle USDC tolerance, swap patterns
-- **Trust ladder** — Stage 0 (proposal) → Stage 2 (user-accepted, runs with notification) → Stage 3 (fully autonomous after N successes)
-- **Circuit breaker** — 3 consecutive failures auto-pause the pattern + email notification
-- **Fail-closed safety** — balance, health factor, daily limit, and borrow-ban checks before every autonomous execution
+### Chain Memory (silent)
 
-### Chain Memory
+7 on-chain classifiers extract financial patterns from AppEvent + PortfolioSnapshot history and feed them silently to the agent — no proposals, no surface, no notifications:
 
-7 on-chain classifiers extract financial patterns from AppEvent + PortfolioSnapshot history:
-
-deposit patterns, risk profile, yield behavior, borrow behavior, near-liquidation events, large transactions, compounding streaks. Chain facts stored as `UserMemory` with `source: 'chain'` and injected into agent context.
+deposit patterns, risk profile, yield behavior, borrow behavior, near-liquidation events, large transactions, compounding streaks. Chain facts stored as `ChainFact` rows and injected into the engine system prompt via `buildMemoryContext()`.
 
 ### Canvas Visualizations
 
-8 interactive HTML canvases rendered in-chat: portfolio timeline, activity heatmap, spending breakdown, yield projector, health simulator, DCA planner, watch list, and full portfolio dashboard. Generated via the `render_canvas` tool and delivered as `canvas` SSE events.
+Interactive HTML canvases rendered in-chat: portfolio timeline, activity heatmap, spending breakdown, yield projector, health simulator, watch list, and full portfolio dashboard. Generated via the `render_canvas` tool and delivered as `canvas` SSE events.
 
 ### Rich Cards
 
-21 structured card types for tool results: balance, savings, health, staking, protocol deep dive, price, swap quote, transaction history, receipts, allowance, spending, yield, activity summary, payment links, invoices, schedules, and more.
+Structured card types for tool results: balance, savings, health, staking, protocol deep dive, price, swap quote, transaction history, receipts, spending, yield, activity summary, payment links, and invoices.
 
 ### Public Wallet Report
 
@@ -100,20 +94,20 @@ Analyze any Sui wallet at `audric.ai/report/[address]` — no sign-up required:
 
 ### Additional Features
 
-- **DCA / scheduled actions** — recurring deposits, buys, and transfers with trust progression
-- **Morning briefings** — daily + weekly digests with portfolio changes, follow-ups, and alerts
-- **Savings goals** — named goals with deadlines, progress tracking, milestone celebrations
+- **Savings goals** — named goals with deadlines and progress tracking (silent — no notifications)
+- **Critical Health Factor email** — the only proactive surface: real-time indexer hook fires when HF < 1.2 (liquidation imminent). Always on, no opt-out
 - **Session pre-fetch** — balance + savings data injected at turn 0 for faster first responses
 - **Streaming tool dispatch** — read-only tools fire mid-stream before the LLM finishes
 - **Tool result budgeting** — large results auto-truncated with re-call hints
 - **Microcompact** — deduplicates identical tool calls in conversation history
+- **Daily-free billing** — 5 sessions per rolling 24h for unverified users, 20 for verified. No paywall, no allowance setup
 - **Unified data layer** — centralized portfolio + activity modules consumed by all API routes, canvases, and engine context
 
 ## Architecture
 
 ```
 audric.ai (this repo)
-├── @t2000/engine    ← Agent engine (50 tools, reasoning, MCP, streaming, autonomy)
+├── @t2000/engine    ← Agent engine (40 tools, reasoning, MCP, streaming)
 ├── @t2000/sdk       ← Core SDK (wallet, balance, transactions)
 ├── @suimpp/mpp      ← MPP payment client (Sui USDC)
 └── @mysten/sui      ← Sui blockchain client

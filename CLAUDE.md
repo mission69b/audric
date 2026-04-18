@@ -25,12 +25,12 @@ audric/
 │   │   └── engine/cards/       ← 21 rich card components + 8 canvas components
 │   ├── hooks/                  ← React hooks (useEngine, useBalance, useChipFlow, etc.)
 │   ├── lib/                    ← Utilities, types, constants
-│   │   ├── engine/             ← engine-factory.ts, engine-context.ts (F1-F5 assembly)
+│   │   ├── engine/             ← engine-factory.ts, engine-context.ts (silent context assembly)
 │   │   ├── report/             ← Report generator, analyzers, types (public wallet reports)
-│   │   ├── chain-memory/       ← Chain classifiers, pattern detectors (autonomous actions)
+│   │   ├── chain-memory/       ← Chain classifiers (silent context only — proposal pipeline removed S.5)
 │   │   ├── portfolio-data.ts   ← Unified portfolio data (wallet + positions + snapshots)
 │   │   └── activity-data.ts    ← Unified activity data (app events + chain txs)
-│   ├── prisma/                 ← 17+ models (profiles, memories, schedules, analytics, reports, ...)
+│   ├── prisma/                 ← 15 models (users, profiles, memories, advice log, conversation log, goals, contacts, payments, app events)
 │   └── types/                  ← TypeScript type definitions
 ├── patches/                    ← pnpm patches (@naviprotocol/lending)
 └── pnpm-workspace.yaml
@@ -47,15 +47,18 @@ audric/
 | **Receive** | Payment links, invoices, QR | Live |
 | **Wallet Report** | Public at `audric.ai/report/[address]` — no sign-up | Live |
 
-### Autonomous features
+### Silent intelligence (post-simplification)
+
+> The previous "Autonomous features" table (Copilot, scheduled actions, morning briefings, behavioral pattern proposals, trust ladder) was deleted in the April 2026 simplification — zkLogin can't sign without user presence, so "autonomous" was reminders dressed up as agency. See `t2000/spec/SIMPLIFICATION_RATIONALE.md`.
 
 | Feature | Description | Status |
 |---------|-------------|--------|
-| **Behavioral patterns** | 5 detectors (recurring_save, yield_reinvestment, debt_discipline, idle_usdc, swap_pattern) | Live |
-| **Trust ladder** | Stage 0→3 (proposal→confirm→auto) with circuit breaker | Live |
-| **Chain memory** | 7 on-chain classifiers (AppEvent + PortfolioSnapshot → UserMemory) | Live |
-| **DCA / Schedules** | Recurring saves, swaps, repayments with trust progression | Live |
-| **Morning briefings** | Daily digest with portfolio changes, alerts, follow-ups | Live |
+| **Chain memory** | 7 on-chain classifiers (AppEvent + PortfolioSnapshot → `ChainFact`); fed silently into agent context, never surfaced | Live |
+| **Episodic memory** | `UserMemory` extracted from chat transcripts by Claude (50-cap, Jaccard dedup) | Live |
+| **Financial profile** | `UserFinancialProfile` (risk tolerance, goals, horizon) inferred by Claude — silent calibration | Live |
+| **Advice log** | `record_advice` tool writes `AdviceLog`; `buildAdviceContext()` rehydrates last 30 days into every turn | Live |
+| **Conversation log** | Full transcripts logged for the future self-hosted model migration | Live |
+| **Critical HF email** | Real-time indexer hook → Resend when HF < 1.2 (liquidation imminent). Always on, the only proactive surface | Live |
 
 ---
 
@@ -88,9 +91,9 @@ audric/
 
 ```
 User types message
-  → POST /api/engine/chat (SSE stream)
-  → engine-context.ts: buildFullDynamicContext() → injects profile, memory, proactiveness
-  → engine-factory.ts: QueryEngine → AnthropicProvider → Claude with 47 tools
+  → POST /api/engine/chat (SSE stream) — daily-free billing gate (5 unverified / 20 verified per rolling 24h)
+  → engine-context.ts: buildFullDynamicContext() → injects profile, memory, advice log, chain facts (all silent)
+  → engine-factory.ts: QueryEngine → AnthropicProvider → Claude with 40 tools (29 read + 11 write)
   → Read tools (balance, savings, health, analytics) → auto-executed server-side
   → Write tools (save, withdraw, send) → pending_action event
   → Client displays confirmation card
@@ -210,17 +213,19 @@ Always fetch through these modules — never query wallet/NAVI/events directly i
 
 ---
 
-## Intelligence Layer (F1–F5)
+## Silent intelligence layer (post-simplification)
 
-Assembled in `lib/engine/engine-context.ts` via `buildFullDynamicContext()` and injected into the engine system prompt each turn.
+Assembled in `lib/engine/engine-context.ts` via `buildFullDynamicContext()` and injected into the engine system prompt each turn. Everything below is silent — no notifications, no surfaces, no proactive nudges.
 
 | Feature | What it does |
 |---------|-------------|
-| **F1 — Financial Profile** | `UserFinancialProfile` Prisma model: risk tolerance, goals, income bracket, investment horizon |
-| **F2 — Proactive Awareness** | Morning briefings, anomaly detection, follow-up queues |
-| **F3 — Episodic Memory** | `UserMemory` Prisma model: key facts, preferences, past decisions remembered across sessions |
-| **F4 — Conversation State** | `ConversationLog` tracks topic, intent, and flow state per session |
-| **F5 — Self-Evaluation** | `AdviceLog` + `OutcomeCheck`: records advice given, checks outcomes later, adjusts confidence |
+| **Financial Profile** | `UserFinancialProfile` Prisma model: risk tolerance, goals, income bracket, investment horizon. Calibrates tone + recommendations |
+| **Episodic Memory** | `UserMemory` Prisma model: key facts, preferences, past decisions remembered across sessions |
+| **Conversation Log** | `ConversationLog` records full chat transcripts — fine-tuning dataset for the future self-hosted model migration |
+| **Advice Memory** | `record_advice` engine tool writes `AdviceLog` rows; `buildAdviceContext()` rehydrates last 30 days into every turn |
+| **Chain Facts** | `ChainFact` rows produced by 7 chain-memory classifiers, surfaced as `[on-chain observation]` lines in the system prompt |
+
+> The "F2 — Proactive Awareness" / `OutcomeCheck` / follow-up-queue layer was deleted in S.5 — anything proactive was either a notification (gone) or a dashboard card (gone). The chat answers when asked.
 
 ---
 
