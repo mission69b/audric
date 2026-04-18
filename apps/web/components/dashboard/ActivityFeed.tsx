@@ -21,9 +21,7 @@ const EMPTY_STATES: Record<ActivityFilter, { message: string; cta: string; flow:
   swap: { message: 'No swaps yet.', cta: 'Swap tokens', flow: 'swap' },
   pay: { message: 'No API calls yet.', cta: 'Ask Audric anything', flow: 'help' },
   store: { message: 'No store activity yet.', cta: 'Open the store', flow: 'store' },
-  autonomous: { message: 'No autonomous actions yet.', cta: 'Set up an automation', flow: 'save' },
-  follow_up: { message: 'No follow-ups yet.', cta: 'Set a savings goal', flow: 'save' },
-  schedule: { message: 'No scheduled actions yet.', cta: 'Create a schedule', flow: 'save' },
+  autonomous: { message: 'No autonomous actions yet.', cta: 'Save USDC', flow: 'save' },
 };
 
 export function ActivityFeed({ feed, onAction }: ActivityFeedProps) {

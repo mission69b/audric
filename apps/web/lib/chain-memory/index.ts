@@ -5,12 +5,10 @@ export type {
   SnapshotRecord,
 } from './types';
 
-export type {
-  PatternType,
-  BehavioralPattern,
-  ProposedAction,
-} from './pattern-types';
-
+// [SIMPLIFICATION DAY 12.5] pattern-detectors + pattern-types removed
+// (~715 LOC). Detectors emitted BehavioralPattern proposals consumed only by
+// the deleted Copilot autonomy stack. Classifiers stay — they emit ChainFact
+// rows that the chain-memory cron writes for the agent to read silently.
 export {
   classifyDepositPattern,
   classifyRiskProfile,
@@ -21,12 +19,3 @@ export {
   classifyCompoundingStreak,
   runAllClassifiers,
 } from './classifiers';
-
-export {
-  detectRecurringSave,
-  detectYieldReinvestment,
-  detectDebtDiscipline,
-  detectIdleUsdcTolerance,
-  detectSwapPattern,
-  runAllDetectors,
-} from './pattern-detectors';

@@ -1,29 +1,22 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
+// [SIMPLIFICATION DAY 12.5] Dropped /automations + /reports rewrites and the
+// /settings/automations redirect. Both panels were retired in S.11; the dashboard
+// PanelId union no longer carries them, so the rewrites silently fell through to
+// chat. Old bookmarks now hit the standard 404. Other panel rewrites keep
+// working as the chat-first dashboard's deep-link surface.
 const PANEL_PATHS = new Set([
   '/portfolio',
   '/activity',
   '/pay',
-  '/automations',
   '/goals',
-  '/reports',
   '/contacts',
   '/store',
 ]);
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-
-  // Wave C.4 — `/settings/automations` was renamed to the Copilot tab.
-  // 308 (permanent + preserves method) so old emails / external links land in
-  // the right place without breaking POSTs (none expected, but cheap insurance).
-  if (pathname === '/settings/automations') {
-    const url = request.nextUrl.clone();
-    url.pathname = '/settings';
-    url.searchParams.set('section', 'copilot');
-    return NextResponse.redirect(url, 308);
-  }
 
   if (PANEL_PATHS.has(pathname)) {
     const url = request.nextUrl.clone();
@@ -40,11 +33,8 @@ export const config = {
     '/portfolio',
     '/activity',
     '/pay',
-    '/automations',
     '/goals',
-    '/reports',
     '/contacts',
     '/store',
-    '/settings/automations',
   ],
 };

@@ -33,14 +33,16 @@ const TYPE_FILTER_MAP: Record<string, string[]> = {
   pay: ['pay', 'alert'],
 };
 
+// [SIMPLIFICATION DAY 12.5] Dropped `follow_up` + `schedule` defensive
+// backstops — UI no longer exposes them and the autonomy stack that emitted
+// schedule_* / follow_up event types is gone. Stale `?type=follow_up` URLs
+// fall through to the empty default and return zero rows.
 const APP_EVENT_TYPE_MAP: Record<string, string[]> = {
   savings: [],
   send: [],
   receive: ['pay_received'],
   swap: [],
   pay: ['pay', 'pay_received', 'alert'],
-  follow_up: ['follow_up'],
-  schedule: ['schedule_confirm', 'schedule_execute', 'schedule_reminder', 'compound_available'],
 };
 
 /**

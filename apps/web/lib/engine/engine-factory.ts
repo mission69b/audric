@@ -45,7 +45,8 @@ const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
 const MODEL_OVERRIDE = process.env.AGENT_MODEL;
 const SUI_NETWORK = (process.env.NEXT_PUBLIC_SUI_NETWORK ?? 'mainnet') as 'mainnet' | 'testnet';
 const SUI_RPC_URL = `https://fullnode.${SUI_NETWORK}.sui.io:443`;
-const ALLOWANCE_API_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://audric.ai';
+// [SIMPLIFICATION DAY 12.5] ALLOWANCE_API_URL removed — engine never read
+// env.ALLOWANCE_API_URL after the on-chain allowance flow was retired in S.5.
 const AUDRIC_INTERNAL_KEY = process.env.T2000_INTERNAL_KEY ?? '';
 
 let sessionStore: SessionStore | null = null;
@@ -325,7 +326,6 @@ export async function createEngine(
     systemPrompt,
     model: routedModel,
     env: {
-      ALLOWANCE_API_URL,
       AUDRIC_INTERNAL_KEY,
     },
     maxTurns: 10,

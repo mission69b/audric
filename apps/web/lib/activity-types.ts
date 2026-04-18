@@ -13,7 +13,19 @@ export interface ActivityItem {
   paymentMethod?: string;
 }
 
-export type ActivityFilter = 'all' | 'savings' | 'send' | 'receive' | 'swap' | 'pay' | 'store' | 'autonomous' | 'follow_up' | 'schedule';
+// [SIMPLIFICATION DAY 12.5] Removed `follow_up` + `schedule` filter variants
+// (no chip exposes them, no event source emits them, autonomy stack retired).
+// `autonomous` stays — ActivityCard still flags onchain auto-actions if a
+// future surface re-introduces the concept; the chip exists in ACTIVITY_FILTERS.
+export type ActivityFilter =
+  | 'all'
+  | 'savings'
+  | 'send'
+  | 'receive'
+  | 'swap'
+  | 'pay'
+  | 'store'
+  | 'autonomous';
 
 export const ACTIVITY_FILTERS: { id: ActivityFilter; label: string }[] = [
   { id: 'all', label: 'All' },
