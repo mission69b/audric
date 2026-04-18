@@ -3,14 +3,16 @@
 import { useCallback, useEffect, useSyncExternalStore } from 'react';
 import { usePathname } from 'next/navigation';
 
+// [SIMPLIFICATION DAY 11] Dropped 'automations' + 'reports' panel ids.
+// Both panels were no-ops since S.5; the sidebar entries are gone now.
+// Old deep-links (`/automations`, `/reports`) silently fall through to
+// chat via panelFromUrl()'s `URL_PANEL_MAP[pathname] ?? 'chat'` default.
 export type PanelId =
   | 'chat'
   | 'portfolio'
   | 'activity'
   | 'pay'
-  | 'automations'
   | 'goals'
-  | 'reports'
   | 'contacts'
   | 'store'
   | 'settings';
@@ -20,9 +22,7 @@ const PANEL_URL_MAP: Record<PanelId, string> = {
   portfolio: '/portfolio',
   activity: '/activity',
   pay: '/pay',
-  automations: '/automations',
   goals: '/goals',
-  reports: '/reports',
   contacts: '/contacts',
   store: '/store',
   settings: '/settings',

@@ -13,8 +13,6 @@ interface SidebarProps {
   collapsed?: boolean;
   onClose?: () => void;
   onToggleCollapse?: () => void;
-  allowancePercent?: number;
-  allowanceLabel?: string;
   address?: string;
   jwt?: string;
   email?: string | null;
@@ -50,16 +48,8 @@ const PayIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="1" y="4" width="22" height="16" rx="2" /><line x1="1" y1="10" x2="23" y2="10" /></svg>
 );
 
-const AutoIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="12" r="3" /><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4" /></svg>
-);
-
 const GoalsIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
-);
-
-const ReportsIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" /><polyline points="14,2 14,8 20,8" /></svg>
 );
 
 const ContactsIcon = () => (
@@ -81,14 +71,16 @@ interface NavEntry {
   badge?: BadgeVariant;
 }
 
+// [SIMPLIFICATION DAY 11] Dropped Automations + Reports nav entries — both
+// panels were deleted in S.5/S.6 and the chat-first dashboard owns those
+// surfaces now (goals + recurring deposits live behind goal/contact CRUD,
+// reports are answered live in chat by `report` / `transaction_history`).
 const NAV_ITEMS: NavEntry[] = [
   { id: 'chat', label: 'Dashboard', icon: <ChatIcon /> },
   { id: 'portfolio', label: 'Portfolio', icon: <PortfolioIcon /> },
   { id: 'activity', label: 'Activity', icon: <ActivityIcon />, badge: 'dot' },
   { id: 'pay', label: 'Pay', icon: <PayIcon /> },
-  { id: 'automations', label: 'Automations', icon: <AutoIcon /> },
   { id: 'goals', label: 'Goals', icon: <GoalsIcon /> },
-  { id: 'reports', label: 'Reports', icon: <ReportsIcon /> },
   { id: 'contacts', label: 'Contacts', icon: <ContactsIcon /> },
   { id: 'store', label: 'Store', icon: <StoreIcon />, badge: 'soon' },
   { id: 'settings', label: 'Settings', icon: <SettingsIcon /> },
@@ -116,8 +108,6 @@ export function AppSidebar({
   collapsed = false,
   onClose,
   onToggleCollapse,
-  allowancePercent,
-  allowanceLabel,
   address,
   jwt,
   email: emailProp,
@@ -197,30 +187,8 @@ export function AppSidebar({
           ))}
         </div>
 
-        {/* Footer — profile + budget */}
+        {/* Footer — profile only (Features budget pill removed in S.11) */}
         <div className="flex flex-col items-center gap-2 pb-3 pt-2 border-t border-border shrink-0">
-          {allowancePercent != null && (
-            <Tooltip label={allowanceLabel ? `Budget: ${allowanceLabel}` : 'Features budget'} side="right">
-              <button
-                onClick={() => router.push('/settings?section=features')}
-                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[var(--n700)] transition focus-visible:ring-2 focus-visible:ring-foreground/20 outline-none"
-                aria-label="Features budget"
-              >
-                <div className="w-5 h-5 rounded-full border-2 border-[var(--n600)] relative flex items-center justify-center">
-                  <svg width="10" height="10" viewBox="0 0 36 36" className="-rotate-90">
-                    <circle cx="18" cy="18" r="14" fill="none" stroke="var(--n600)" strokeWidth="4" />
-                    <circle
-                      cx="18" cy="18" r="14" fill="none"
-                      stroke="var(--success)" strokeWidth="4"
-                      strokeDasharray={`${Math.min(allowancePercent, 100) * 0.88} 88`}
-                      strokeLinecap="round"
-                      opacity="0.6"
-                    />
-                  </svg>
-                </div>
-              </button>
-            </Tooltip>
-          )}
           {(email || address) && (
             <Tooltip label={email || (address ? truncateAddr(address) : 'Settings')} side="right">
               <button
@@ -313,7 +281,7 @@ export function AppSidebar({
         )}
       </nav>
 
-      {/* Footer — user info + allowance */}
+      {/* Footer — user info only (Features budget bar removed in S.11) */}
       <div className="shrink-0 border-t border-border px-3 py-3 space-y-2">
         {(email || address) && (
           <button
@@ -343,26 +311,6 @@ export function AppSidebar({
           </button>
         )}
 
-        {allowancePercent != null && (
-          <button
-            onClick={() => router.push('/settings?section=features')}
-            className="w-full text-left space-y-1 group focus-visible:ring-2 focus-visible:ring-foreground/20 outline-none rounded"
-            title="Manage features budget"
-          >
-            <div className="flex justify-between">
-              <span className="font-mono text-[9px] tracking-[0.06em] uppercase text-border-bright group-hover:text-muted transition">Features budget</span>
-              {allowanceLabel && (
-                <span className="font-mono text-[9px] text-muted">{allowanceLabel}</span>
-              )}
-            </div>
-            <div className="h-[2px] w-full bg-border rounded-[1px] overflow-hidden">
-              <div
-                className="h-full bg-success/40 rounded-[1px] transition-[width] duration-300"
-                style={{ width: `${Math.min(allowancePercent, 100)}%` }}
-              />
-            </div>
-          </button>
-        )}
       </div>
     </aside>
   );

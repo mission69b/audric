@@ -1,10 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
 import { useZkLogin } from '@/components/auth/useZkLogin';
-import { ContextualChips } from '@/components/dashboard/ContextualChips';
 import { ChipBar } from '@/components/dashboard/ChipBar';
 import { ChipExpand } from '@/components/dashboard/ChipExpand';
 import { InputBar } from '@/components/dashboard/InputBar';
@@ -23,7 +21,6 @@ import { useEngine } from '@/hooks/useEngine';
 import { useBalance } from '@/hooks/useBalance';
 import { parseIntent, type ParsedIntent } from '@/lib/intent-parser';
 import { mapError } from '@/lib/errors';
-import { deriveContextualChips, type AccountState } from '@/lib/contextual-chips';
 import { SUI_NETWORK } from '@/lib/constants';
 import { useContacts } from '@/hooks/useContacts';
 import { useAgent, ServiceDeliveryError } from '@/hooks/useAgent';
@@ -41,19 +38,20 @@ import { PayPanel } from '@/components/panels/PayPanel';
 import { GoalsPanel } from '@/components/panels/GoalsPanel';
 import { ContactsPanel } from '@/components/panels/ContactsPanel';
 import { StorePanel } from '@/components/panels/StorePanel';
-// [SIMPLIFICATION DAY 5] Folded S.6 in. Removed surfaces:
-//   - BriefingCard, FirstLoginView, GracePeriodBanner
-//   - ProactiveBanner, HandledForYou, CopilotSuggestionsRow
-//   - CopilotOnboardingModal, EmailAddNudge, useCopilotOnboarding
-//   - TaskCard, MilestoneCard
-//   - useOvernightBriefing, useDashboardInsights, useScheduledActions
-//   - AutomationsPanel, ReportsPanel
-// All of these depended on dropped tables (CopilotSuggestion, DailyBriefing,
-// ScheduledAction, OutcomeCheck, FollowUpQueue) or the retired allowance
-// flow. Chat-first means NewConversationView is the only empty state.
-
-const LS_LAST_SAVINGS = 't2000_last_savings';
-const LS_LAST_OPEN = 't2000_last_open_date';
+// [SIMPLIFICATION DAY 11] Final chat-first dashboard pass (Option A).
+// Removed in this pass:
+//   - ContextualChips + deriveContextualChips + dismissedCards state
+//     (banner-style hint chips above the input — spec: "no banners, no canvas chips")
+//   - useOvernightEarnings + LS_LAST_OPEN/LS_LAST_SAVINGS + dailyReportShown
+//     (proactive morning-report feed item — spec: "no proactive notifications")
+//   - automations + reports panel cases (sidebar entries removed; PanelId narrowed)
+//   - allowance* AppShell props (already noted as soft no-op since S.4)
+// Earlier S.5/S.6 already removed: BriefingCard, FirstLoginView, GracePeriodBanner,
+// ProactiveBanner, HandledForYou, CopilotSuggestionsRow, CopilotOnboardingModal,
+// EmailAddNudge, TaskCard, MilestoneCard, useOvernightBriefing,
+// useDashboardInsights, useScheduledActions, AutomationsPanel, ReportsPanel.
+// What's left above the fold: balance header, greeting (empty only),
+// chip bar, chat input — and an inline HF widget when debt AND HF<2.0.
 
 function decodeJwtEmail(jwt: string | undefined): string | null {
   if (!jwt) return null;
@@ -182,39 +180,12 @@ function SendRecipientInput({
   );
 }
 
-function useOvernightEarnings(savings: number, loading: boolean) {
-  return useMemo(() => {
-    if (loading || typeof window === 'undefined') {
-      return { earnings: undefined, isFirstOpenToday: false };
-    }
-
-    const today = new Date().toDateString();
-    const lastOpen = localStorage.getItem(LS_LAST_OPEN);
-    const isFirstOpenToday = lastOpen !== today;
-
-    let earnings: number | undefined;
-    if (isFirstOpenToday && savings > 0) {
-      const lastSavings = parseFloat(localStorage.getItem(LS_LAST_SAVINGS) ?? '0');
-      if (lastSavings > 0 && savings > lastSavings) {
-        earnings = savings - lastSavings;
-      }
-    }
-
-    localStorage.setItem(LS_LAST_OPEN, today);
-    if (savings > 0) {
-      localStorage.setItem(LS_LAST_SAVINGS, savings.toString());
-    }
-
-    return { earnings, isFirstOpenToday };
-  }, [savings, loading]);
-}
-
 export interface DashboardContentProps {
   initialSessionId?: string;
 }
 
 export function DashboardContent({ initialSessionId }: DashboardContentProps = {}) {
-  const { address, session, expiringSoon, logout, refresh } = useZkLogin();
+  const { address, session, refresh } = useZkLogin();
   const { panel, setPanel } = usePanel();
   useUsdcSponsor(address);
 
@@ -240,40 +211,11 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
   }, [engine.sessionId]);
 
   const balanceQuery = useBalance(address);
-  const incomingQuery = useQuery({
-    queryKey: ['incoming-tx', address],
-    enabled: !!address,
-    refetchInterval: 60_000,
-    staleTime: 30_000,
-    queryFn: async () => {
-      const res = await fetch(`/api/history?address=${address}&limit=5`);
-      const data = await res.json();
-      const items = (data.items ?? []) as Array<{
-        direction: string; amount?: number; asset?: string;
-        counterparty?: string; timestamp: number;
-      }>;
-      return items
-        .filter((tx) => tx.direction === 'in' && tx.amount && tx.amount > 0)
-        .map((tx) => ({
-          amount: tx.amount!,
-          asset: tx.asset ?? 'USDC',
-          from: tx.counterparty ?? '',
-          timestamp: tx.timestamp,
-        }));
-    },
-  });
   const activityFeed = useActivityFeed(address);
   const userStatus = useUserStatus(address, session?.jwt);
   const [agentBudget, setAgentBudget] = useState(0.50);
-  const [dismissedCards, setDismissedCards] = useState<Set<string>>(new Set());
-  const [scrolled, setScrolled] = useState(false);
   const [emailModalOpen, setEmailModalOpen] = useState(false);
   const emailCheckedRef = useRef(false);
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 40);
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
 
   useEffect(() => {
     if (!address || !session?.jwt || emailCheckedRef.current) return;
@@ -328,61 +270,7 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
       .catch(() => {});
   }, [address]);
 
-  const overnightData = useOvernightEarnings(balance.savings, balance.loading);
-  const dailyReportShown = useRef(false);
   const confirmResolverRef = useRef<((approved: boolean) => void) | null>(null);
-
-  useEffect(() => {
-    if (dailyReportShown.current || balance.loading || !overnightData.isFirstOpenToday) return;
-    if (balance.total <= 0) return;
-    dailyReportShown.current = true;
-
-    const reportLines = [
-      `Total: $${balance.total.toFixed(2)}`,
-      `Cash: $${balance.cash.toFixed(2)}`,
-      `Savings: $${balance.savings.toFixed(2)}`,
-    ].filter(Boolean);
-    if (balance.borrows > 0) {
-      reportLines.push(`Debt: $${balance.borrows.toFixed(2)}`);
-      if (balance.healthFactor && balance.healthFactor !== Infinity) {
-        reportLines.push(`Health Factor: ${balance.healthFactor.toFixed(1)}`);
-      }
-    }
-    if (balance.savingsRate > 0) reportLines.push(`Savings APY: ${(balance.savingsRate * 100).toFixed(1)}%`);
-    const assetLines: string[] = [];
-    const bd = balanceQuery.data;
-    if (bd) {
-      if (bd.sui > 0) assetLines.push(`SUI: ${bd.sui.toFixed(4)}`);
-      if (bd.usdc > 0) assetLines.push(`USDC: ${bd.usdc.toFixed(2)}`);
-      for (const [symbol, amt] of Object.entries(bd.assetBalances)) {
-        if (amt > 0) assetLines.push(`${symbol}: ${amt < 0.01 ? amt.toFixed(8) : amt.toFixed(4)}`);
-      }
-    }
-
-    feed.addItem({
-      type: 'report',
-      sections: [
-        { title: 'Good morning', lines: reportLines },
-        ...(assetLines.length > 0 ? [{ title: 'Assets', lines: assetLines }] : []),
-      ],
-    });
-  }, [balance, balanceQuery.data, overnightData.isFirstOpenToday, feed]);
-
-  const accountState: AccountState = {
-    cash: balance.cash,
-    usdc: balance.usdc,
-    savings: balance.savings,
-    borrows: balance.borrows,
-    savingsRate: balance.savingsRate,
-    pendingRewards: balance.pendingRewards,
-    currentRate: balance.currentRate > 0 ? balance.currentRate : undefined,
-    bestRate: balance.bestSaveRate?.rate ?? undefined,
-    healthFactor: balance.healthFactor ?? undefined,
-    overnightEarnings: overnightData.earnings,
-    isFirstOpenToday: overnightData.isFirstOpenToday,
-    sessionExpiringSoon: expiringSoon,
-    recentIncoming: incomingQuery.data,
-  };
 
   const flowContext: FlowContext = {
     cash: balance.cash,
@@ -393,16 +281,6 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
     bestRate: balance.bestSaveRate?.rate,
     maxBorrow: balance.maxBorrow,
   };
-
-  const [lastAgentAction, setLastAgentAction] = useState<string | undefined>();
-
-  const contextualChips = deriveContextualChips(accountState, { lastAgentAction }).filter(
-    (c) => !dismissedCards.has(c.id),
-  );
-
-  const handleDismissChip = useCallback((id: string) => {
-    setDismissedCards((prev) => new Set(prev).add(id));
-  }, []);
 
   const fetchHistory = useCallback(async () => {
     if (!address) return;
@@ -748,10 +626,6 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
   }, [engine, feed, chipFlow]);
 
   const handleActivityAction = useCallback((flow: string) => {
-    if (flow === 'automations') {
-      setPanel('automations');
-      return;
-    }
     setPanel('chat');
     handleChipClick(flow);
   }, [handleChipClick, setPanel]);
@@ -1254,10 +1128,31 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
     };
   };
 
-  if (!address || !session) return null;
-
   const isInFlow = chipFlow.state.phase !== 'idle';
   const isEmpty = engine.messages.length === 0 && feed.items.length === 0 && !isInFlow;
+
+  // [SIMPLIFICATION DAY 11] Greeting slide-out: keep <NewConversationView>
+  // mounted for ~250ms after isEmpty flips false so we can run a fade-up
+  // exit transition before swapping to the chat view. Without this, the
+  // empty state would simply unmount instantly on first message.
+  const [greetingMounted, setGreetingMounted] = useState(isEmpty);
+  const [greetingExiting, setGreetingExiting] = useState(false);
+  useEffect(() => {
+    if (isEmpty) {
+      setGreetingMounted(true);
+      setGreetingExiting(false);
+      return;
+    }
+    if (!greetingMounted) return;
+    setGreetingExiting(true);
+    const t = setTimeout(() => {
+      setGreetingMounted(false);
+      setGreetingExiting(false);
+    }, 250);
+    return () => clearTimeout(t);
+  }, [isEmpty, greetingMounted]);
+
+  if (!address || !session) return null;
   const email = decodeJwtEmail(session?.jwt);
   const greeting = getGreeting(email);
 
@@ -1275,10 +1170,6 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
     <TosBanner onAccept={userStatus.acceptTos} />
   ) : null;
 
-  // [SIMPLIFICATION DAY 5] GracePeriodBanner / FirstLoginView retired.
-  // Chat-first means there's exactly one empty state: NewConversationView.
-  const graceBanner = null;
-
   const renderEmptyState = () => {
     const dailyYield = balance.savings > 0 && balance.savingsRate > 0
       ? (balance.savings * balance.savingsRate) / 365
@@ -1290,7 +1181,6 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
         netWorth={balance.total}
         dailyYield={dailyYield}
         savingsRate={balance.savingsRate}
-        automationCount={0}
         onSend={handleInputSubmit}
         onChipClick={handleChipClick}
         activeFlow={chipFlow.state.flow}
@@ -1474,14 +1364,6 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
             </>
           ) : (
             <>
-              {!isInFlow && contextualChips.length > 0 && (
-                <ContextualChips
-                  chips={contextualChips}
-                  onChipFlow={handleChipClick}
-                  onAgentPrompt={(prompt) => handleInputSubmit(prompt)}
-                  onDismiss={handleDismissChip}
-                />
-              )}
               <div ref={chipExpand.containerRef}>
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex gap-2 overflow-x-auto scrollbar-none flex-1">
@@ -1572,12 +1454,6 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
             onSendMessage={handleInputSubmit}
           />
         );
-      case 'automations':
-      case 'reports':
-        // [SIMPLIFICATION DAY 5] AutomationsPanel + ReportsPanel deleted.
-        // Sidebar route still routes here as a soft no-op until S.11 removes
-        // the menu entry. Nothing to render.
-        return null;
       case 'goals':
         return session?.jwt ? (
           <GoalsPanel address={address} jwt={session.jwt} />
@@ -1595,7 +1471,18 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
         return null;
       case 'chat':
       default: {
-        if (isEmpty && !engine.isStreaming) return renderEmptyState();
+        if (greetingMounted && !engine.isStreaming) {
+          return (
+            <div
+              className={[
+                'flex-1 flex flex-col min-h-0 transition-all duration-250 ease-out',
+                greetingExiting ? 'opacity-0 -translate-y-3 pointer-events-none' : 'opacity-100 translate-y-0',
+              ].join(' ')}
+            >
+              {renderEmptyState()}
+            </div>
+          );
+        }
         return renderChatView();
       }
     }
@@ -1608,11 +1495,6 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
       address={address}
       balance={balance}
       jwt={session.jwt}
-      // [SIMPLIFICATION DAY 4] allowance* props intentionally omitted. The
-      // sidebar "Features budget" indicator and AllowanceLowBanner are gated
-      // on these being defined, so the UI for the (now-removed) on-chain
-      // allowance billing flow disappears. AppShell + AppSidebar still accept
-      // the props — Day 6 removes the prop surface area entirely.
       activeSessionId={engine.sessionId ?? undefined}
       onLoadSession={engine.loadSession}
       onNewConversation={handleNewConversation}
@@ -1622,11 +1504,6 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
       )}
       {emailModal}
       {tosBanner}
-      {graceBanner}
-      {/* [SIMPLIFICATION DAY 3] CopilotOnboardingModal removed.
-          Pattern-detected automation onboarding is gone — Day 6 deletes
-          the modal component, the copilotOnboarding hook, and the
-          email-add nudge wiring. */}
     </AppShell>
   );
 }

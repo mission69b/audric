@@ -6,17 +6,12 @@ import { Topbar } from './Topbar';
 import { usePanel } from '@/hooks/usePanel';
 import type { BalanceHeaderData } from '@/components/dashboard/BalanceHeader';
 
-// [SIMPLIFICATION DAY 5] AllowanceLowBanner deleted with the on-chain
-// allowance billing flow. The `allowance*` prop trio is preserved for
-// source-compat with callers in the dashboard tree but is no longer
-// rendered anywhere — the next dashboard pass strips both the props and
-// the AppSidebar "Features budget" pill they fed.
+// [SIMPLIFICATION DAY 11] allowance* prop trio removed. They were a soft
+// no-op since S.5 (allowance billing retired); the AppSidebar "Features
+// budget" pill / circle they fed is gone in this same pass.
 interface AppShellProps {
   address: string;
   balance: BalanceHeaderData;
-  allowancePercent?: number;
-  allowanceLabel?: string;
-  allowanceBalance?: number | null;
   jwt?: string;
   activeSessionId?: string;
   onLoadSession?: (sessionId: string) => void;
@@ -29,16 +24,12 @@ const LS_SIDEBAR_KEY = 'audric_sidebar_collapsed';
 export function AppShell({
   address,
   balance,
-  allowancePercent,
-  allowanceLabel,
-  allowanceBalance,
   jwt,
   activeSessionId,
   onLoadSession,
   onNewConversation,
   children,
 }: AppShellProps) {
-  void allowanceBalance;
   const { panel, setPanel } = usePanel();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(() => {
@@ -67,8 +58,6 @@ export function AppShell({
           onPanelChange={setPanel}
           collapsed={collapsed}
           onToggleCollapse={toggleCollapse}
-          allowancePercent={allowancePercent}
-          allowanceLabel={allowanceLabel}
           address={address}
           jwt={jwt}
           activeSessionId={activeSessionId}
@@ -89,8 +78,6 @@ export function AppShell({
               activePanel={panel}
               onPanelChange={setPanel}
               onClose={() => setMobileOpen(false)}
-              allowancePercent={allowancePercent}
-              allowanceLabel={allowanceLabel}
               address={address}
               jwt={jwt}
               activeSessionId={activeSessionId}

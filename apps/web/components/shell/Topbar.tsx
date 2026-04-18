@@ -6,9 +6,11 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { Tooltip } from '@/components/ui/Tooltip';
 import type { BalanceHeaderData } from '@/components/dashboard/BalanceHeader';
 import { BalanceDrawer } from './BalanceDrawer';
-// [SIMPLIFICATION DAY 5] HfWidget deleted with the Copilot HF top-up
-// surface. Health factor is still part of the balance drawer; the inline
-// widget under the hero balance is gone.
+// [SIMPLIFICATION DAY 11] Inline HF indicator returns — but only as a
+// passive chip beneath the hero balance, not the old proactive
+// "top up your debt" Copilot widget. Surfaces only when debt > 0 AND
+// HF < 2.0 (per spec). The Notifications bell button was removed in
+// this same pass — there is no notification UI mounted anywhere.
 
 interface TopbarProps {
   address: string;
@@ -32,6 +34,16 @@ export function Topbar({
   void address;
   void jwt;
   const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // Spec: HF widget is inline in the header **only** when user has debt
+  // AND HF < 2.0. Passive indicator, never a notification.
+  const hf = balance.healthFactor;
+  const showHfWidget =
+    balance.borrows > 0 &&
+    hf != null &&
+    hf !== Infinity &&
+    hf < 2.0;
+  const hfDanger = showHfWidget && hf! < 1.5;
 
   return (
     <div className="flex items-center justify-between px-5 pt-5 pb-3 shrink-0">
@@ -68,7 +80,7 @@ export function Topbar({
             <p className="text-4xl font-bold tracking-tight font-sans text-foreground leading-none">
               ${fmtUsd(balance.total)}
             </p>
-            <p className="flex items-center justify-center gap-3 text-[12px] font-sans text-muted mt-1">
+            <p className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[12px] font-sans text-muted mt-1">
               <span>available ${Math.floor(balance.cash)}</span>
               {balance.savings >= 0.01 && (
                 <>
@@ -84,25 +96,30 @@ export function Topbar({
                   </span>
                 </>
               )}
+              {showHfWidget && (
+                <>
+                  <span className="text-border-bright">&middot;</span>
+                  <span
+                    className={[
+                      'font-mono text-[10px] tracking-[0.06em] uppercase rounded-full px-1.5 py-px border',
+                      hfDanger
+                        ? 'text-error border-error/40'
+                        : 'text-warning border-warning/30',
+                    ].join(' ')}
+                    title={hfDanger ? 'Health factor critically low — repay debt to avoid liquidation' : 'Health factor below safe threshold'}
+                  >
+                    hf {hf!.toFixed(1)}
+                  </span>
+                </>
+              )}
             </p>
           </button>
         )}
         <BalanceDrawer balance={balance} open={drawerOpen} onClose={() => setDrawerOpen(false)} />
       </div>
 
-      {/* Right zone — bell + settings icon buttons */}
+      {/* Right zone — settings icon button only (Notifications bell removed in S.11) */}
       <div className="flex items-center gap-2">
-        <Tooltip label="Notifications">
-          <button
-            className="w-8 h-8 flex items-center justify-center rounded-lg bg-surface border border-border hover:border-border-bright transition focus-visible:ring-2 focus-visible:ring-foreground/20 outline-none"
-            aria-label="Notifications"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--dim)" strokeWidth="1.5">
-              <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" />
-              <path d="M13.73 21a2 2 0 01-3.46 0" />
-            </svg>
-          </button>
-        </Tooltip>
         <Tooltip label="Settings">
           <Link
             href="/settings"
