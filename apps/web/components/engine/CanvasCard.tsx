@@ -15,21 +15,21 @@ export function CanvasCard({ canvas, onSendMessage }: CanvasCardProps) {
 
   return (
     <>
-      <div className="rounded-lg border border-border bg-surface/50 overflow-hidden my-2">
+      <div className="rounded-lg border border-border-subtle bg-surface-card/50 overflow-hidden my-2">
         {/* Title bar */}
-        <div className="px-3 py-2 border-b border-border flex items-center justify-between">
+        <div className="px-3 py-2 border-b border-border-subtle flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-mono uppercase tracking-widest text-dim">
+            <span className="text-[10px] font-mono uppercase tracking-widest text-fg-muted">
               {getTemplateLabel(canvas.template)}
             </span>
-            <span className="font-mono text-[10px] tracking-wider text-foreground font-medium">
+            <span className="font-mono text-[10px] tracking-wider text-fg-primary font-medium">
               {canvas.title}
             </span>
           </div>
           <button
             onClick={() => setModalOpen(true)}
             title="Expand to fullscreen"
-            className="text-dim hover:text-foreground transition p-0.5 rounded"
+            className="text-fg-muted hover:text-fg-primary transition p-0.5 rounded"
             aria-label="Expand canvas"
           >
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">

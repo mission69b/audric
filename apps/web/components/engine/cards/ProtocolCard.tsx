@@ -31,11 +31,11 @@ function parseScore(raw: string | number | undefined): number | null {
 function ScoreBar({ score }: { score: number }) {
   const pct = (score / 10) * 100;
   const color =
-    score >= 7 ? 'var(--status-healthy)' : score >= 4 ? 'var(--status-warning)' : 'var(--status-danger)';
+    score >= 7 ? 'var(--success-solid)' : score >= 4 ? 'var(--warning-solid)' : 'var(--error-solid)';
 
   return (
     <div className="space-y-1">
-      <div className="relative h-2 rounded-full overflow-hidden bg-border/30">
+      <div className="relative h-2 rounded-full overflow-hidden bg-border-subtle/30">
         <div
           className="h-full rounded-full transition-all"
           style={{ width: `${pct}%`, background: color }}
@@ -52,14 +52,14 @@ export function ProtocolCard({ data }: { data: ProtocolData }) {
     <CardShell
       title={data.name}
       badge={data.category ? (
-        <span className="text-[9px] font-mono uppercase text-dim">{data.category}</span>
+        <span className="text-[9px] font-mono uppercase text-fg-muted">{data.category}</span>
       ) : undefined}
     >
       {score !== null && (
         <div className="mb-3">
           <div className="flex items-baseline justify-between mb-1">
-            <span className="text-[11px] text-dim">Safety Score</span>
-            <span className="text-sm font-mono font-semibold text-foreground">{score.toFixed(0)}/10</span>
+            <span className="text-[11px] text-fg-muted">Safety Score</span>
+            <span className="text-sm font-mono font-semibold text-fg-primary">{score.toFixed(0)}/10</span>
           </div>
           <ScoreBar score={score} />
         </div>
@@ -92,10 +92,10 @@ export function ProtocolCard({ data }: { data: ProtocolData }) {
       </div>
 
       {data.riskFactors && data.riskFactors.length > 0 && (
-        <div className="mt-2 pt-2 border-t border-border/50 space-y-0.5">
+        <div className="mt-2 pt-2 border-t border-border-subtle/50 space-y-0.5">
           {data.riskFactors.map((risk, i) => (
-            <div key={i} className="text-[10px] text-dim flex items-start gap-1">
-              <span className="text-status-warning shrink-0">⚠</span>
+            <div key={i} className="text-[10px] text-fg-muted flex items-start gap-1">
+              <span className="text-warning-solid shrink-0">⚠</span>
               <span>{risk}</span>
             </div>
           ))}
@@ -103,12 +103,12 @@ export function ProtocolCard({ data }: { data: ProtocolData }) {
       )}
 
       {data.url && (
-        <div className="mt-2 pt-1.5 border-t border-border/50">
+        <div className="mt-2 pt-1.5 border-t border-border-subtle/50">
           <a
             href={data.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-[10px] font-mono text-info hover:opacity-70 transition"
+            className="text-[10px] font-mono text-info-solid hover:opacity-70 transition"
           >
             {data.url.replace(/^https?:\/\//, '')} ↗
           </a>

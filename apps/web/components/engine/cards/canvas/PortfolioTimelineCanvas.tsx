@@ -36,9 +36,9 @@ const PERIODS = [
 ] as const;
 
 const SERIES = [
-  { key: 'walletValueUsd' as const, label: 'Wallet', color: 'text-foreground' },
-  { key: 'savingsValueUsd' as const, label: 'Savings', color: 'text-success' },
-  { key: 'debtValueUsd' as const, label: 'Debt', color: 'text-error' },
+  { key: 'walletValueUsd' as const, label: 'Wallet', color: 'text-fg-primary' },
+  { key: 'savingsValueUsd' as const, label: 'Savings', color: 'text-success-solid' },
+  { key: 'debtValueUsd' as const, label: 'Debt', color: 'text-error-solid' },
 ];
 
 function buildStackedPaths(
@@ -109,8 +109,8 @@ export function PortfolioTimelineCanvas({ data, onAction }: Props) {
     return (
       <div className="flex flex-col items-center justify-center py-10 space-y-2 text-center">
         <span className="text-3xl">📈</span>
-        <p className="text-sm text-foreground font-medium">Portfolio Timeline</p>
-        <p className="text-xs text-muted max-w-xs leading-relaxed">
+        <p className="text-sm text-fg-primary font-medium">Portfolio Timeline</p>
+        <p className="text-xs text-fg-secondary max-w-xs leading-relaxed">
           {'message' in data && data.message ? data.message : 'Portfolio timeline will be available once portfolio snapshot history is collected.'}
         </p>
       </div>
@@ -120,7 +120,7 @@ export function PortfolioTimelineCanvas({ data, onAction }: Props) {
   if (loading && !response) {
     return (
       <div className="flex items-center justify-center py-10">
-        <div className="animate-pulse font-mono text-xs text-dim">Loading portfolio history...</div>
+        <div className="animate-pulse font-mono text-xs text-fg-muted">Loading portfolio history...</div>
       </div>
     );
   }
@@ -129,8 +129,8 @@ export function PortfolioTimelineCanvas({ data, onAction }: Props) {
     return (
       <div className="flex flex-col items-center justify-center py-10 space-y-2 text-center">
         <span className="text-3xl">📈</span>
-        <p className="text-sm text-foreground font-medium">No Data Yet</p>
-        <p className="text-xs text-muted max-w-xs leading-relaxed">
+        <p className="text-sm text-fg-primary font-medium">No Data Yet</p>
+        <p className="text-xs text-fg-secondary max-w-xs leading-relaxed">
           Portfolio snapshots are collected daily. Check back tomorrow for your first data point.
         </p>
       </div>
@@ -141,11 +141,11 @@ export function PortfolioTimelineCanvas({ data, onAction }: Props) {
     <div className="space-y-4">
       {/* Net worth + change */}
       <div className="space-y-0.5">
-        <div className="font-mono text-lg text-foreground font-medium">
+        <div className="font-mono text-lg text-fg-primary font-medium">
           ${fmtUsd(latest?.netWorthUsd ?? 0)}
         </div>
         {change && change.absoluteUsd !== 0 && (
-          <div className={`font-mono text-xs ${change.absoluteUsd >= 0 ? 'text-success' : 'text-error'}`}>
+          <div className={`font-mono text-xs ${change.absoluteUsd >= 0 ? 'text-success-solid' : 'text-error-solid'}`}>
             {change.absoluteUsd >= 0 ? '+' : ''}{fmtUsd(change.absoluteUsd)} ({change.percentChange >= 0 ? '+' : ''}{change.percentChange.toFixed(1)}%)
           </div>
         )}
@@ -159,8 +159,8 @@ export function PortfolioTimelineCanvas({ data, onAction }: Props) {
             onClick={() => setPeriodIdx(i)}
             className={`flex-1 rounded py-1 font-mono text-[10px] tracking-wider uppercase transition ${
               periodIdx === i
-                ? 'bg-foreground text-background'
-                : 'border border-border text-muted hover:text-foreground hover:border-foreground/30'
+                ? 'bg-fg-primary text-fg-inverse'
+                : 'border border-border-subtle text-fg-secondary hover:text-fg-primary hover:border-fg-primary/30'
             }`}
           >
             {p.label}
@@ -169,7 +169,7 @@ export function PortfolioTimelineCanvas({ data, onAction }: Props) {
       </div>
 
       {/* Chart */}
-      <div className="rounded-lg border border-border bg-background overflow-hidden">
+      <div className="rounded-lg border border-border-subtle bg-surface-page overflow-hidden">
         <svg width="100%" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="h-20">
           {lines.map((line) => (
             <polyline
@@ -191,8 +191,8 @@ export function PortfolioTimelineCanvas({ data, onAction }: Props) {
       <div className="flex gap-3 font-mono text-[9px]">
         {SERIES.map((s) => (
           <div key={s.key} className="flex items-center gap-1">
-            <div className={`w-2 h-0.5 rounded-full ${s.color === 'text-foreground' ? 'bg-foreground' : s.color === 'text-success' ? 'bg-success' : 'bg-error'}`} />
-            <span className="text-dim">{s.label}</span>
+            <div className={`w-2 h-0.5 rounded-full ${s.color === 'text-fg-primary' ? 'bg-fg-primary' : s.color === 'text-success-solid' ? 'bg-success-solid' : 'bg-error-solid'}`} />
+            <span className="text-fg-muted">{s.label}</span>
           </div>
         ))}
       </div>
@@ -201,23 +201,23 @@ export function PortfolioTimelineCanvas({ data, onAction }: Props) {
       {latest && (
         <div className="space-y-1 font-mono text-xs">
           <div className="flex justify-between">
-            <span className="text-dim">Wallet</span>
-            <span className="text-foreground">${fmtUsd(latest.walletValueUsd)}</span>
+            <span className="text-fg-muted">Wallet</span>
+            <span className="text-fg-primary">${fmtUsd(latest.walletValueUsd)}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-dim">Savings</span>
-            <span className="text-success">${fmtUsd(latest.savingsValueUsd)}</span>
+            <span className="text-fg-muted">Savings</span>
+            <span className="text-success-solid">${fmtUsd(latest.savingsValueUsd)}</span>
           </div>
           {latest.debtValueUsd > 0 && (
             <div className="flex justify-between">
-              <span className="text-dim">Debt</span>
-              <span className="text-error">-${fmtUsd(latest.debtValueUsd)}</span>
+              <span className="text-fg-muted">Debt</span>
+              <span className="text-error-solid">-${fmtUsd(latest.debtValueUsd)}</span>
             </div>
           )}
           {latest.yieldEarnedUsd > 0 && (
-            <div className="flex justify-between pt-0.5 border-t border-border/50">
-              <span className="text-dim">Yield earned</span>
-              <span className="text-success">+${fmtUsd(latest.yieldEarnedUsd)}</span>
+            <div className="flex justify-between pt-0.5 border-t border-border-subtle/50">
+              <span className="text-fg-muted">Yield earned</span>
+              <span className="text-success-solid">+${fmtUsd(latest.yieldEarnedUsd)}</span>
             </div>
           )}
         </div>
@@ -227,7 +227,7 @@ export function PortfolioTimelineCanvas({ data, onAction }: Props) {
       {onAction && (
         <button
           onClick={() => onAction('Give me a full financial report')}
-          className="w-full rounded-md border border-border py-1.5 font-mono text-[10px] tracking-wider uppercase text-muted hover:text-foreground hover:border-foreground/30 transition"
+          className="w-full rounded-md border border-border-subtle py-1.5 font-mono text-[10px] tracking-wider uppercase text-fg-secondary hover:text-fg-primary hover:border-fg-primary/30 transition"
         >
           Full report →
         </button>

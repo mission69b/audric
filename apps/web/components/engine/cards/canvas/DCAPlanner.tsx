@@ -66,8 +66,8 @@ export function DCAPlanner({ data, onAction }: Props) {
       {/* Monthly amount slider */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
-          <label className="font-mono text-[10px] tracking-wider text-dim uppercase">Monthly deposit</label>
-          <span className="font-mono text-sm text-foreground">${monthly.toLocaleString()} USDC</span>
+          <label className="font-mono text-[10px] tracking-wider text-fg-muted uppercase">Monthly deposit</label>
+          <span className="font-mono text-sm text-fg-primary">${monthly.toLocaleString()} USDC</span>
         </div>
         <input
           type="range"
@@ -76,17 +76,17 @@ export function DCAPlanner({ data, onAction }: Props) {
           step={10}
           value={monthly}
           onChange={(e) => setMonthly(Number(e.target.value))}
-          className="w-full h-1.5 rounded-full appearance-none bg-border cursor-pointer accent-foreground"
+          className="w-full h-1.5 rounded-full appearance-none bg-border-subtle cursor-pointer accent-foreground"
         />
-        <div className="flex justify-between font-mono text-[9px] text-dim">
+        <div className="flex justify-between font-mono text-[9px] text-fg-muted">
           <span>$10</span><span>$5,000</span>
         </div>
       </div>
 
       {/* APY display (read-only, from live rate) */}
-      <div className="flex items-center justify-between rounded-md border border-border bg-background px-3 py-2">
-        <span className="font-mono text-[10px] tracking-wider text-dim uppercase">Current APY</span>
-        <span className="font-mono text-sm text-success">{apy.toFixed(2)}%</span>
+      <div className="flex items-center justify-between rounded-md border border-border-subtle bg-surface-page px-3 py-2">
+        <span className="font-mono text-[10px] tracking-wider text-fg-muted uppercase">Current APY</span>
+        <span className="font-mono text-sm text-success-solid">{apy.toFixed(2)}%</span>
       </div>
 
       {/* Duration tabs */}
@@ -97,8 +97,8 @@ export function DCAPlanner({ data, onAction }: Props) {
             onClick={() => setDurationIdx(i)}
             className={`flex-1 rounded py-1 font-mono text-[10px] tracking-wider uppercase transition ${
               durationIdx === i
-                ? 'bg-foreground text-background'
-                : 'border border-border text-muted hover:text-foreground hover:border-foreground/30'
+                ? 'bg-fg-primary text-fg-inverse'
+                : 'border border-border-subtle text-fg-secondary hover:text-fg-primary hover:border-fg-primary/30'
             }`}
           >
             {d.label}
@@ -107,7 +107,7 @@ export function DCAPlanner({ data, onAction }: Props) {
       </div>
 
       {/* Savings curve */}
-      <div className="rounded-lg border border-border bg-background overflow-hidden">
+      <div className="rounded-lg border border-border-subtle bg-surface-page overflow-hidden">
         <svg width="100%" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="h-20">
           <defs>
             <linearGradient id="dca-grad" x1="0" y1="0" x2="0" y2="1">
@@ -118,7 +118,7 @@ export function DCAPlanner({ data, onAction }: Props) {
           <polygon
             points={`0,${H} ${curvePoints} ${W},${H}`}
             fill="url(#dca-grad)"
-            className="text-success"
+            className="text-success-solid"
           />
           <polyline
             points={curvePoints}
@@ -127,7 +127,7 @@ export function DCAPlanner({ data, onAction }: Props) {
             strokeWidth="1.5"
             strokeLinecap="round"
             strokeLinejoin="round"
-            className="text-success"
+            className="text-success-solid"
           />
         </svg>
       </div>
@@ -135,24 +135,24 @@ export function DCAPlanner({ data, onAction }: Props) {
       {/* Projections */}
       <div className="space-y-1 font-mono text-xs">
         <div className="flex justify-between">
-          <span className="text-dim">After 1 year</span>
-          <span className="text-foreground">${fmtUsd(plan1y.total)} <span className="text-success">(+${fmtUsd(plan1y.yield)} yield)</span></span>
+          <span className="text-fg-muted">After 1 year</span>
+          <span className="text-fg-primary">${fmtUsd(plan1y.total)} <span className="text-success-solid">(+${fmtUsd(plan1y.yield)} yield)</span></span>
         </div>
         <div className="flex justify-between">
-          <span className="text-dim">After 2 years</span>
-          <span className="text-foreground">${fmtUsd(plan2y.total)} <span className="text-success">(+${fmtUsd(plan2y.yield)} yield)</span></span>
+          <span className="text-fg-muted">After 2 years</span>
+          <span className="text-fg-primary">${fmtUsd(plan2y.total)} <span className="text-success-solid">(+${fmtUsd(plan2y.yield)} yield)</span></span>
         </div>
         <div className="flex justify-between">
-          <span className="text-dim">After 5 years</span>
-          <span className="text-foreground">${fmtUsd(plan5y.total)} <span className="text-success">(+${fmtUsd(plan5y.yield)} yield)</span></span>
+          <span className="text-fg-muted">After 5 years</span>
+          <span className="text-fg-primary">${fmtUsd(plan5y.total)} <span className="text-success-solid">(+${fmtUsd(plan5y.yield)} yield)</span></span>
         </div>
-        <div className="flex justify-between pt-0.5 border-t border-border/50">
-          <span className="text-dim">Total deposited ({duration.label})</span>
-          <span className="text-foreground">${fmtUsd(monthly * duration.months)}</span>
+        <div className="flex justify-between pt-0.5 border-t border-border-subtle/50">
+          <span className="text-fg-muted">Total deposited ({duration.label})</span>
+          <span className="text-fg-primary">${fmtUsd(monthly * duration.months)}</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-dim">Yield earned ({duration.label})</span>
-          <span className="text-success">${fmtUsd(currentPlan.yield)}</span>
+          <span className="text-fg-muted">Yield earned ({duration.label})</span>
+          <span className="text-success-solid">${fmtUsd(currentPlan.yield)}</span>
         </div>
       </div>
 
@@ -160,7 +160,7 @@ export function DCAPlanner({ data, onAction }: Props) {
       {onAction && (
         <button
           onClick={() => onAction(`Save $${monthly.toLocaleString()} USDC into NAVI`)}
-          className="w-full rounded-md bg-foreground py-2 font-mono text-[10px] tracking-wider text-background uppercase hover:opacity-90 transition"
+          className="w-full rounded-md bg-fg-primary py-2 font-mono text-[10px] tracking-wider text-fg-inverse uppercase hover:opacity-90 transition"
         >
           Start saving ${monthly.toLocaleString()}/mo →
         </button>

@@ -88,10 +88,11 @@ export function PayButton({ recipientAddress, amount, nonce, slug, onSuccess, on
         trigger={<></>}
       />
       <button
+        type="button"
         onClick={handlePay}
         disabled={disabled || isPending}
         data-slug={slug}
-        className="w-full py-3 rounded-lg bg-foreground text-background text-xs font-mono uppercase tracking-wider hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed"
+        className="w-full h-12 rounded-pill bg-fg-primary text-fg-inverse font-mono text-[12px] tracking-[0.06em] uppercase hover:opacity-90 active:opacity-80 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
       >
         {label}
       </button>

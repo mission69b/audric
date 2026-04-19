@@ -85,26 +85,26 @@ export function BalanceHeader({ address, balance, compact, onSettingsClick }: Ba
           className="flex items-center gap-1.5 hover:opacity-70 transition cursor-pointer"
           aria-label="Refresh page"
         >
-          <span className="font-mono text-base font-bold tracking-wide text-foreground uppercase">Audric</span>
-          <span className="text-[9px] uppercase tracking-widest font-medium text-muted border border-border rounded px-1.5 py-0.5 leading-none">
+          <span className="font-mono text-base font-bold tracking-wide text-fg-primary uppercase">Audric</span>
+          <span className="text-[9px] uppercase tracking-widest font-medium text-fg-secondary border border-border-subtle rounded px-1.5 py-0.5 leading-none">
             beta
           </span>
         </button>
         <div className="flex items-center gap-2">
           <button
             onClick={copyAddress}
-            className="text-xs font-mono text-muted hover:text-foreground transition cursor-pointer"
+            className="text-xs font-mono text-fg-secondary hover:text-fg-primary transition cursor-pointer"
             title="Copy address"
           >
             {copied ? (
-              <span className="text-success">copied &#10003;</span>
+              <span className="text-success-solid">copied &#10003;</span>
             ) : (
               truncateAddress(address)
             )}
           </button>
           <button
             onClick={onSettingsClick}
-            className="rounded-lg p-1.5 text-muted hover:text-foreground hover:bg-surface transition"
+            className="rounded-lg p-1.5 text-fg-secondary hover:text-fg-primary hover:bg-surface-card transition"
             aria-label="Settings"
           >
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -122,10 +122,10 @@ export function BalanceHeader({ address, balance, compact, onSettingsClick }: Ba
         </div>
       ) : balance.error ? (
         <div className="py-4 text-center">
-          <p className="text-sm text-muted">Couldn&apos;t load balance</p>
+          <p className="text-sm text-fg-secondary">Couldn&apos;t load balance</p>
           <button
             onClick={() => window.location.reload()}
-            className="text-xs text-foreground underline underline-offset-2 hover:opacity-70 mt-1"
+            className="text-xs text-fg-primary underline underline-offset-2 hover:opacity-70 mt-1"
           >
             Tap to retry
           </button>
@@ -135,12 +135,12 @@ export function BalanceHeader({ address, balance, compact, onSettingsClick }: Ba
           onClick={() => setExpanded(!expanded)}
           aria-expanded={expanded}
           aria-label={`Balance $${fmtUsd(balance.total)}, ${expanded ? 'collapse' : 'expand'} details`}
-          className="w-full text-center focus:outline-none focus-visible:ring-2 focus-visible:ring-foreground/20 focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg group"
+          className="w-full text-center focus:outline-none focus-visible:ring-2 focus-visible:ring-fg-primary/20 focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg group"
         >
-          <p className="text-4xl font-bold tracking-tight font-sans text-foreground">
+          <p className="text-4xl font-bold tracking-tight font-sans text-fg-primary">
             ${fmtUsd(balance.total)}
           </p>
-          <p className="text-xs font-mono text-muted tracking-wide">
+          <p className="text-xs font-mono text-fg-secondary tracking-wide">
             available ${Math.floor(balance.cash)}
             {balance.savings >= 0.01 && (
               <>{' · '}earning ${Math.floor(balance.savings)}</>
@@ -148,13 +148,13 @@ export function BalanceHeader({ address, balance, compact, onSettingsClick }: Ba
             {balance.borrows > 0 && (
               <>
                 {' · '}
-                <span className="text-warning">
+                <span className="text-warning-solid">
                   <span className="uppercase text-[10px] tracking-[0.1em]">debt</span> ${Math.floor(balance.borrows)}
                 </span>
               </>
             )}
             {' '}
-            <span className={`inline-block transition-transform duration-200 text-dim ${expanded ? 'rotate-180' : ''}`}>
+            <span className={`inline-block transition-transform duration-200 text-fg-muted ${expanded ? 'rotate-180' : ''}`}>
               &#9662;
             </span>
           </p>
@@ -162,7 +162,7 @@ export function BalanceHeader({ address, balance, compact, onSettingsClick }: Ba
       )}
 
       {expanded && !balance.loading && (
-        <div className="mt-2 rounded-lg border border-border bg-surface text-left text-xs font-mono divide-y divide-border overflow-hidden shadow-[var(--shadow-card)] transition-all">
+        <div className="mt-2 rounded-lg border border-border-subtle bg-surface-card text-left text-xs font-mono divide-y divide-border-subtle overflow-hidden shadow-[var(--shadow-flat)] transition-all">
           <div className="px-4 py-3 space-y-1.5">
             <Row label="Available" value={`$${fmtUsd(balance.cash)}`} />
             {balance.savings >= 0.01 && (
@@ -199,7 +199,7 @@ export function BalanceHeader({ address, balance, compact, onSettingsClick }: Ba
 
           {holdings.length > 0 && (
             <div className="px-4 py-3 space-y-1.5">
-              <p className="text-[10px] uppercase tracking-[0.1em] text-muted mb-1">Assets</p>
+              <p className="text-[10px] uppercase tracking-[0.1em] text-fg-secondary mb-1">Assets</p>
               {holdings.map((h) => (
                 <Row key={h.symbol} label={h.symbol} value={h.amount} sublabel={h.usd} />
               ))}
@@ -214,10 +214,10 @@ export function BalanceHeader({ address, balance, compact, onSettingsClick }: Ba
 function Row({ label, value, sublabel, accent, warn }: { label: string; value: string; sublabel?: string; accent?: boolean; warn?: boolean }) {
   return (
     <div className="flex justify-between items-center">
-      <span className="text-muted">{label}</span>
-      <span className={accent ? 'text-foreground font-medium' : warn ? 'text-warning' : 'text-foreground'}>
+      <span className="text-fg-secondary">{label}</span>
+      <span className={accent ? 'text-fg-primary font-medium' : warn ? 'text-warning-solid' : 'text-fg-primary'}>
         {value}
-        {sublabel && <span className="text-muted ml-1.5">{sublabel}</span>}
+        {sublabel && <span className="text-fg-secondary ml-1.5">{sublabel}</span>}
       </span>
     </div>
   );

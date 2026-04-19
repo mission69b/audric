@@ -35,10 +35,10 @@ export function SuiPayQr({ recipientAddress, amount, nonce, label, memo, size = 
   }
 
   return (
-    <div className="relative p-3 rounded-lg border border-border bg-background">
+    <div className="relative p-3 rounded-lg border border-border-subtle bg-surface-page">
       <QrCode value={uri} size={size} />
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <span className="text-foreground bg-background p-1 rounded">
+        <span className="text-fg-primary bg-surface-page p-1 rounded">
           <AudricMark size={14} />
         </span>
       </div>

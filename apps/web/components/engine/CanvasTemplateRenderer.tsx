@@ -79,7 +79,7 @@ export function CanvasTemplateRenderer({ template, data, onAction }: Props) {
       return (
         <div className="flex flex-col items-center justify-center py-10 space-y-2 text-center">
           <span className="text-3xl">🖼️</span>
-          <p className="text-sm text-muted">Canvas template &ldquo;{template}&rdquo; is not yet available.</p>
+          <p className="text-sm text-fg-secondary">Canvas template &ldquo;{template}&rdquo; is not yet available.</p>
         </div>
       );
   }

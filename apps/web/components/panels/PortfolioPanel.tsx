@@ -1,14 +1,27 @@
 'use client';
 
-import { useState } from 'react';
-import type { BalanceHeaderData } from '@/components/dashboard/BalanceHeader';
+// [PHASE 5] Portfolio panel — re-skinned to match the new design system.
+//
+// Visual language now matches `design_handoff_audric/.../portfolio.jsx`:
+//   • <BalanceHero> at top (large serif total + AVAILABLE / EARNING eyebrow)
+//   • Centered 4-tab nav (OVERVIEW / TIMELINE / ACTIVITY / SIMULATE)
+//   • 4-up "panel-2" stat cards (SAVINGS / HEALTH / ACTIVITY / SPENDING)
+//     rendered as full-card <button>s so the entire surface is the click
+//     target (matches the engine-routing behavior from the previous panel)
+//   • 8px allocation bar with hover dim-out (legend mirrors the bar)
+//   • HOLDINGS / SAVINGS POSITIONS list cards via <Card surface="sunken">
+//     with pad=0 + internal divide-y rows
+//   • INTERACTIVE TOOLS grid (existing 6-card + full-width prompt set
+//     preserved — each card still routes to engine via `onSendMessage`)
+//
+// Behavior is unchanged: every clickable surface fires the same prompt
+// string into the engine that it did before. Tab routing, stat-card
+// prompts, tool-card prompts, and SIMULATE prompts are all byte-identical.
 
-// [SIMPLIFICATION DAY 5] portfolio-insights deleted — its only consumer
-// was this panel + the (now-gone) DashboardInsights hook. Insights
-// generation depended on dropped CopilotSuggestion / ScheduledAction data.
-function generatePortfolioInsights(_args: unknown): string[] {
-  return [];
-}
+import { useState } from 'react';
+import { Card } from '@/components/ui/Card';
+import { BalanceHero } from '@/components/ui/BalanceHero';
+import type { BalanceHeaderData } from '@/components/dashboard/BalanceHeader';
 
 type PortfolioTab = 'overview' | 'timeline' | 'activity' | 'simulate';
 
@@ -47,14 +60,15 @@ const TOOL_GRID: { category: string; title: string; desc: string; action: string
   { category: 'Simulator', title: 'DCA planner', desc: 'Recurring savings projection', action: 'Set amount + cadence', prompt: 'Show me a DCA savings plan: $200 per month for 2 years' },
 ];
 
-const SIMULATE_TOOLS: { icon: string; title: string; desc: string; prompt: string }[] = [
-  { icon: '⚡', title: 'Yield projector', desc: 'Sliders for principal, APY, time period · compound returns', prompt: 'Show the yield projector — how much would I earn if I saved $5000 for a year?' },
-  { icon: '🩺', title: 'Health factor simulator', desc: 'Collateral + debt sliders · liquidation scenario modelling', prompt: 'Open the health factor simulator' },
-  { icon: '📅', title: 'DCA planner', desc: 'Set amount + cadence · project savings curve over time', prompt: 'Show me a DCA savings plan: $200 per month for 2 years' },
+const SIMULATE_TOOLS: { category: string; title: string; desc: string; prompt: string }[] = [
+  { category: 'Yield', title: 'Yield projector', desc: 'Sliders for principal, APY, time period \u00B7 compound returns', prompt: 'Show the yield projector \u2014 how much would I earn if I saved $5000 for a year?' },
+  { category: 'Risk', title: 'Health factor simulator', desc: 'Collateral + debt sliders \u00B7 liquidation scenario modelling', prompt: 'Open the health factor simulator' },
+  { category: 'Plan', title: 'DCA planner', desc: 'Set amount + cadence \u00B7 project savings curve over time', prompt: 'Show me a DCA savings plan: $200 per month for 2 years' },
 ];
 
-export function PortfolioPanel({ balance, onSendMessage, goals, activityCount, activityHasMore }: PortfolioPanelProps) {
+export function PortfolioPanel({ balance, onSendMessage, activityCount, activityHasMore }: PortfolioPanelProps) {
   const [activeTab, setActiveTab] = useState<PortfolioTab>('overview');
+  const [allocHover, setAllocHover] = useState<string | null>(null);
 
   const holdings: { symbol: string; amount: string; usd: string }[] = [];
   if (balance.sui > 0) holdings.push({ symbol: 'SUI', amount: fmtToken(balance.sui), usd: `$${fmtUsd(balance.suiUsd)}` });
@@ -67,16 +81,6 @@ export function PortfolioPanel({ balance, onSendMessage, goals, activityCount, a
   }
 
   const allocation = buildAllocation(balance);
-  const insights = generatePortfolioInsights({
-    idleUsdc: balance.usdc,
-    savings: balance.savings,
-    savingsApy: balance.savingsRate,
-    total: balance.total,
-    debt: balance.borrows,
-    healthFactor: balance.healthFactor ?? null,
-    goals: goals ?? [],
-  });
-
   const dailyEarning = balance.savings * (balance.savingsRate / 365);
 
   const statCards = [
@@ -110,7 +114,7 @@ export function PortfolioPanel({ balance, onSendMessage, goals, activityCount, a
     {
       label: 'Spending',
       drill: 'Breakdown',
-      value: '--',
+      value: '\u2014',
       sub: '40+ services',
       trend: 'This month',
       prompt: 'Show my API spending breakdown by category',
@@ -118,152 +122,235 @@ export function PortfolioPanel({ balance, onSendMessage, goals, activityCount, a
   ];
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 sm:px-6 py-6 space-y-6">
-      {/* Tab bar */}
-      <div className="flex gap-1 border-b border-border">
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`px-3 py-2 font-mono text-[11px] tracking-[0.08em] uppercase transition-colors ${
-              activeTab === tab.id ? 'text-foreground border-b-2 border-foreground -mb-px' : 'text-muted hover:text-foreground'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+    <div className="mx-auto w-full max-w-[820px] px-4 sm:px-6 md:px-8 py-6 flex flex-col gap-[18px]">
+      {/* Top: BalanceHero matches design's <BalanceHeader/> primitive (large
+          serif total + uppercase AVAILABLE/EARNING eyebrow). Wrapper padding
+          mirrors the design's internal `padding:'20px 0 16px'`. */}
+      <div className="pt-5 pb-4">
+        <BalanceHero
+          total={balance.total}
+          available={balance.cash}
+          earning={balance.savings}
+          size="lg"
+        />
+      </div>
+
+      {/* Centered tab bar — sits on top of a thin underline that runs the
+          full panel width so the active tab's 2px under-bar visually merges
+          with the divider. */}
+      <div className="flex gap-1.5 justify-center border-b border-border-subtle">
+        {TABS.map((tab) => {
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={[
+                'px-4 py-2.5 -mb-px font-mono text-[11px] tracking-[0.1em] uppercase transition-colors border-b-2 focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)] rounded-t',
+                isActive
+                  ? 'text-fg-primary border-fg-primary'
+                  : 'text-fg-muted border-transparent hover:text-fg-primary',
+              ].join(' ')}
+              aria-current={isActive ? 'page' : undefined}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
 
       {activeTab === 'overview' && (
-        <div className="space-y-6">
-          {/* 4-stat drill-down grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="flex flex-col gap-[18px]">
+          {/* 4-up stat cards. Sunken surface == design's `var(--panel-2)`.
+              Rendered as `<button>` so the full card is the click target
+              (avoids a dead 14px gutter that a Card+inner-button pattern
+              creates). */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {statCards.map((card) => (
               <button
                 key={card.label}
+                type="button"
                 onClick={() => onSendMessage(card.prompt)}
-                className="rounded-lg border border-border bg-surface px-3 py-3 text-left hover:border-border-bright transition group"
+                className="text-left rounded-md border border-border-subtle bg-surface-sunken p-[14px] transition-colors hover:border-border-strong focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
               >
-                <div className="flex items-center justify-between mb-2">
-                  <p className="font-mono text-[9px] tracking-[0.1em] uppercase text-muted">{card.label}</p>
-                  <p className="font-mono text-[9px] text-dim">{card.drill} →</p>
+                <div className="flex items-center justify-between font-mono text-[9px] tracking-[0.1em] uppercase text-fg-muted">
+                  <span>{card.label}</span>
+                  <span className="text-fg-muted">{card.drill} &#8599;</span>
                 </div>
-                <p className={`font-mono text-sm ${card.warn ? 'text-warning' : card.accent ? 'text-success' : 'text-foreground'}`}>
+                <div
+                  className={[
+                    'text-[22px] tracking-[-0.02em] mt-2.5 leading-none',
+                    card.warn
+                      ? 'text-warning-solid'
+                      : card.accent
+                        ? 'text-success-solid'
+                        : 'text-fg-primary',
+                  ].join(' ')}
+                >
                   {card.value}
-                </p>
-                <p className="text-[10px] text-dim mt-0.5">{card.sub}</p>
+                </div>
+                <div className="text-[11px] text-fg-muted mt-1">{card.sub}</div>
                 {card.trend && (
-                  <p className="font-mono text-[9px] text-muted mt-1">{card.trend}</p>
+                  <div className="text-[11px] text-fg-muted">{card.trend}</div>
                 )}
               </button>
             ))}
           </div>
 
-          {/* Allocation bar */}
+          {/* Allocation: 8px bar + legend with synchronized hover dim-out. */}
           {allocation.length > 0 && (
-            <div className="space-y-2">
-              <h3 className="font-mono text-[10px] tracking-[0.1em] uppercase text-muted">Allocation</h3>
-              <div className="h-[5px] rounded-[3px] overflow-hidden flex bg-border">
-                {allocation.map((seg) => (
-                  <div
-                    key={seg.label}
-                    className="h-full transition-all"
-                    style={{ width: `${seg.pct}%`, backgroundColor: seg.color }}
-                    title={`${seg.label}: ${seg.pct.toFixed(0)}%`}
-                  />
-                ))}
+            <div>
+              <div className="font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted mb-2.5">
+                Allocation
               </div>
-              <div className="flex flex-wrap gap-x-4 gap-y-1">
-                {allocation.map((seg) => (
-                  <div key={seg.label} className="flex items-center gap-1.5 text-[10px] text-dim">
-                    <span className="w-[7px] h-[7px] rounded-full shrink-0" style={{ backgroundColor: seg.color }} />
-                    {seg.label} {seg.pct.toFixed(0)}%
-                  </div>
-                ))}
+              <div className="flex h-2 rounded-[4px] overflow-hidden bg-border-subtle">
+                {allocation.map((seg) => {
+                  const dim = allocHover && allocHover !== seg.key;
+                  return (
+                    <div
+                      key={seg.key}
+                      onMouseEnter={() => setAllocHover(seg.key)}
+                      onMouseLeave={() => setAllocHover(null)}
+                      className="h-full transition-opacity duration-150"
+                      style={{
+                        width: `${seg.pct}%`,
+                        backgroundColor: seg.color,
+                        opacity: dim ? 0.25 : 1,
+                      }}
+                      title={`${seg.label}: ${seg.pct.toFixed(0)}%`}
+                    />
+                  );
+                })}
+              </div>
+              <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2.5">
+                {allocation.map((seg) => {
+                  const dim = allocHover && allocHover !== seg.key;
+                  return (
+                    <span
+                      key={seg.key}
+                      onMouseEnter={() => setAllocHover(seg.key)}
+                      onMouseLeave={() => setAllocHover(null)}
+                      className="inline-flex items-center gap-1.5 text-[11px] text-fg-secondary transition-opacity duration-150"
+                      style={{ opacity: dim ? 0.35 : 1 }}
+                    >
+                      <span
+                        className="inline-block w-2 h-2 rounded-full shrink-0"
+                        style={{ backgroundColor: seg.color }}
+                      />
+                      {seg.label} {seg.pct.toFixed(0)}%
+                    </span>
+                  );
+                })}
               </div>
             </div>
           )}
 
-          {/* Insights — green-tinted bordered panel */}
-          {insights.length > 0 && (
-            <div className="rounded-lg border border-success/15 bg-success/[0.04] px-4 py-3 space-y-1">
-              <h3 className="font-mono text-[9px] tracking-[0.1em] uppercase text-success mb-2">Audric noticed</h3>
-              {insights.map((insight, i) => (
-                <div key={i} className="flex gap-2 text-[11px] text-dim leading-relaxed py-0.5">
-                  <span className="text-success shrink-0">→</span>
-                  <span>{insight}</span>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Holdings */}
+          {/* HOLDINGS list — sunken-surface card with divider rows. */}
           {holdings.length > 0 && (
-            <div className="space-y-2">
-              <h3 className="font-mono text-[10px] tracking-[0.1em] uppercase text-muted">Holdings</h3>
-              <div className="rounded-lg border border-border bg-surface divide-y divide-border">
-                {holdings.map((h) => (
-                  <div key={h.symbol} className="flex items-center justify-between px-4 py-3">
-                    <span className="font-mono text-sm text-foreground">{h.symbol}</span>
-                    <div className="text-right">
-                      <p className="font-mono text-sm text-foreground">{h.amount}</p>
-                      {h.usd && <p className="font-mono text-[11px] text-muted">{h.usd}</p>}
-                    </div>
-                  </div>
-                ))}
+            <div>
+              <div className="font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted mb-2.5">
+                Holdings
               </div>
+              <Card surface="sunken" pad={0}>
+                <ul className="divide-y divide-border-subtle">
+                  {holdings.map((h) => (
+                    <li
+                      key={h.symbol}
+                      className="flex items-center justify-between px-4 py-3.5"
+                    >
+                      <span className="text-[14px] text-fg-primary">{h.symbol}</span>
+                      <div className="text-right">
+                        <div className="font-mono text-[14px] text-fg-primary">{h.amount}</div>
+                        {h.usd && (
+                          <div className="font-mono text-[11px] text-fg-muted">{h.usd}</div>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </Card>
             </div>
           )}
 
-          {/* Savings positions */}
+          {/* SAVINGS POSITIONS — same chrome as Holdings. */}
           {balance.savingsBreakdown && balance.savingsBreakdown.filter((s) => s.amount >= 0.01).length > 0 && (
-            <div className="space-y-2">
-              <h3 className="font-mono text-[10px] tracking-[0.1em] uppercase text-muted">Savings Positions</h3>
-              <div className="rounded-lg border border-border bg-surface divide-y divide-border">
-                {balance.savingsBreakdown!.filter((s) => s.amount >= 0.01).map((s) => (
-                  <div key={`${s.protocolId}-${s.asset}`} className="flex items-center justify-between px-4 py-3">
-                    <div>
-                      <span className="text-sm text-foreground">{s.protocol}</span>
-                      {s.asset !== 'USDC' && <span className="text-xs text-muted ml-1.5">({s.asset})</span>}
-                    </div>
-                    <div className="text-right">
-                      <p className="font-mono text-sm text-foreground">${fmtUsd(s.amount)}</p>
-                      <p className="font-mono text-[11px] text-success">{(s.apy * 100).toFixed(1)}% APY</p>
-                    </div>
-                  </div>
-                ))}
+            <div>
+              <div className="font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted mb-2.5">
+                Savings positions
               </div>
+              <Card surface="sunken" pad={0}>
+                <ul className="divide-y divide-border-subtle">
+                  {balance.savingsBreakdown!.filter((s) => s.amount >= 0.01).map((s) => (
+                    <li
+                      key={`${s.protocolId}-${s.asset}`}
+                      className="flex items-center justify-between px-4 py-3.5"
+                    >
+                      <div className="text-[14px] text-fg-primary">
+                        {s.protocol}
+                        {s.asset !== 'USDC' && (
+                          <span className="text-fg-muted text-[12px] ml-1.5">({s.asset})</span>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <div className="font-mono text-[14px] text-fg-primary">${fmtUsd(s.amount)}</div>
+                        <div className="font-mono text-[11px] text-success-solid">
+                          {(s.apy * 100).toFixed(1)}% APY
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </Card>
             </div>
           )}
 
-          {/* Interactive tools — 2x3 grid with category labels */}
-          <div className="space-y-2">
-            <h3 className="font-mono text-[10px] tracking-[0.1em] uppercase text-muted">Interactive tools</h3>
-            <div className="grid grid-cols-2 gap-[7px]">
+          {/* INTERACTIVE TOOLS — 2-up grid + full-width "overview" tile.
+              Each tile is a button that routes its `prompt` into the engine. */}
+          <div>
+            <div className="font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted mb-2.5">
+              Interactive tools
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {TOOL_GRID.map((t) => (
                 <button
                   key={t.title}
+                  type="button"
                   onClick={() => onSendMessage(t.prompt)}
-                  className="flex flex-col rounded-lg border border-border bg-surface px-4 py-3 text-left transition hover:bg-[var(--n700)] hover:border-border-bright"
+                  className="flex flex-col rounded-md border border-border-subtle bg-surface-sunken px-[14px] py-3.5 text-left transition-colors hover:border-border-strong hover:bg-surface-card focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
                 >
-                  <span className="font-mono text-[8px] tracking-[0.08em] uppercase text-border-bright mb-1">{t.category}</span>
-                  <span className="text-[12px] font-medium text-foreground mb-0.5">{t.title}</span>
-                  <span className="text-[10px] text-dim leading-relaxed">{t.desc}</span>
-                  <span className="font-mono text-[9px] text-border-bright mt-1.5">{t.action} →</span>
+                  <span className="font-mono text-[9px] tracking-[0.1em] uppercase text-fg-muted">
+                    {t.category}
+                  </span>
+                  <span className="text-[14px] text-fg-primary mt-1.5">{t.title}</span>
+                  <span className="text-[12px] text-fg-muted leading-tight mt-0.5">
+                    {t.desc}
+                  </span>
+                  <span className="font-mono text-[9px] tracking-[0.12em] uppercase text-fg-muted mt-3">
+                    {t.action} &#8594;
+                  </span>
                 </button>
               ))}
             </div>
-            {/* Full portfolio overview — full width */}
             <button
+              type="button"
               onClick={() => onSendMessage('Show me my full portfolio overview')}
-              className="w-full flex items-center justify-between rounded-lg border border-border bg-surface px-4 py-3 text-left hover:bg-[var(--n700)] hover:border-border-bright transition"
+              className="mt-2 w-full flex items-center justify-between rounded-md border border-border-subtle bg-surface-sunken px-[14px] py-3.5 text-left transition-colors hover:border-border-strong hover:bg-surface-card focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
             >
               <div>
-                <span className="font-mono text-[8px] tracking-[0.08em] uppercase text-border-bright block mb-1">Overview</span>
-                <span className="text-[12px] font-medium text-foreground block mb-0.5">Full portfolio overview</span>
-                <span className="text-[10px] text-dim">4-panel canvas: savings, health, activity, spending</span>
+                <span className="block font-mono text-[9px] tracking-[0.1em] uppercase text-fg-muted">
+                  Overview
+                </span>
+                <span className="block text-[14px] text-fg-primary mt-1.5">
+                  Full portfolio overview
+                </span>
+                <span className="block text-[12px] text-fg-muted leading-tight mt-0.5">
+                  4-panel canvas: savings, health, activity, spending
+                </span>
               </div>
-              <span className="font-mono text-[18px] text-border ml-4">→</span>
+              <span aria-hidden="true" className="font-mono text-[18px] text-fg-disabled ml-4">
+                &#8594;
+              </span>
             </button>
           </div>
         </div>
@@ -272,7 +359,7 @@ export function PortfolioPanel({ balance, onSendMessage, goals, activityCount, a
       {activeTab === 'timeline' && (
         <TabPlaceholder
           label="Timeline"
-          desc="Net worth over time — wallet, savings, and debt"
+          desc={'Net worth over time \u2014 wallet, savings, and debt'}
           subtext="Opens canvas in chat"
           prompt="Show my portfolio timeline for the last 90 days"
           onSendMessage={onSendMessage}
@@ -290,22 +377,29 @@ export function PortfolioPanel({ balance, onSendMessage, goals, activityCount, a
       )}
 
       {activeTab === 'simulate' && (
-        <div className="space-y-2">
-          <p className="font-mono text-[9px] tracking-[0.1em] uppercase text-dim mb-1">Simulators — adjust and explore before acting</p>
+        <div className="flex flex-col gap-2">
+          <p className="font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted mb-1">
+            Simulators &#8212; adjust and explore before acting
+          </p>
           {SIMULATE_TOOLS.map((t) => (
             <button
               key={t.title}
+              type="button"
               onClick={() => onSendMessage(t.prompt)}
-              className="w-full flex items-center justify-between rounded-lg border border-border bg-surface px-4 py-3 text-left hover:bg-[var(--n700)] hover:border-border-bright transition"
+              className="w-full flex items-center justify-between rounded-md border border-border-subtle bg-surface-sunken px-[14px] py-3.5 text-left transition-colors hover:border-border-strong hover:bg-surface-card focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
             >
-              <div className="flex items-center gap-3">
-                <span className="text-lg shrink-0">{t.icon}</span>
-                <div>
-                  <span className="text-[12px] font-medium text-foreground block">{t.title}</span>
-                  <span className="text-[10px] text-dim leading-relaxed">{t.desc}</span>
-                </div>
+              <div>
+                <span className="block font-mono text-[9px] tracking-[0.1em] uppercase text-fg-muted">
+                  {t.category}
+                </span>
+                <span className="block text-[14px] text-fg-primary mt-1.5">{t.title}</span>
+                <span className="block text-[12px] text-fg-muted leading-tight mt-0.5">
+                  {t.desc}
+                </span>
               </div>
-              <span className="text-border-bright text-lg ml-4">›</span>
+              <span aria-hidden="true" className="font-mono text-[14px] text-fg-disabled ml-4">
+                &#8250;
+              </span>
             </button>
           ))}
         </div>
@@ -314,39 +408,105 @@ export function PortfolioPanel({ balance, onSendMessage, goals, activityCount, a
   );
 }
 
-function TabPlaceholder({ label, desc, subtext, prompt, onSendMessage }: { label: string; desc: string; subtext?: string; prompt: string; onSendMessage: (t: string) => void }) {
+function TabPlaceholder({
+  label,
+  desc,
+  subtext,
+  prompt,
+  onSendMessage,
+}: {
+  label: string;
+  desc: string;
+  subtext?: string;
+  prompt: string;
+  onSendMessage: (t: string) => void;
+}) {
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
-      <p className="font-mono text-[10px] tracking-[0.08em] uppercase text-dim">{label}</p>
-      <p className="text-[12px] text-border-bright text-center leading-relaxed">
+      <p className="font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted">{label}</p>
+      <p className="text-[12px] text-fg-muted leading-relaxed">
         {desc}
-        {subtext && <><br />{subtext}</>}
+        {subtext && (
+          <>
+            <br />
+            {subtext}
+          </>
+        )}
       </p>
       <button
+        type="button"
         onClick={() => onSendMessage(prompt)}
-        className="font-mono text-[11px] tracking-[0.08em] uppercase text-background bg-foreground rounded-full px-4 py-2 hover:opacity-90 transition mt-2"
+        className="mt-2 inline-flex items-center gap-1.5 h-[30px] px-3.5 rounded-pill bg-fg-primary font-mono text-[10px] tracking-[0.1em] uppercase text-fg-inverse transition hover:opacity-80 active:scale-[0.97] focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
       >
-        Show {label} →
+        Show {label} &#8594;
       </button>
     </div>
   );
 }
 
-function buildAllocation(balance: BalanceHeaderData): Array<{ label: string; pct: number; color: string }> {
+interface AllocationSegment {
+  key: string;
+  label: string;
+  pct: number;
+  color: string;
+}
+
+// Legend colors mirror design/portfolio.jsx:
+//   USDC  → primary text (var(--fg-primary))
+//   SUI   → blue (var(--info-solid))
+//   NAVI  → green (var(--success-solid))
+//   Debt  → amber (var(--warning-solid)) — extra row when applicable
+//   Other → purple (var(--color-purple))
+function buildAllocation(balance: BalanceHeaderData): AllocationSegment[] {
   const total = balance.total;
   if (total <= 0) return [];
 
-  const segments: Array<{ label: string; pct: number; color: string }> = [];
-  if (balance.usdc > 0) segments.push({ label: 'Wallet USDC', pct: (balance.usdc / total) * 100, color: 'var(--n500)' });
-  if (balance.suiUsd > 0) segments.push({ label: 'SUI', pct: (balance.suiUsd / total) * 100, color: '#4DA2FF' });
-  if (balance.savings > 0) segments.push({ label: 'NAVI Savings', pct: (balance.savings / total) * 100, color: 'var(--color-success)' });
-  if (balance.borrows > 0) segments.push({ label: 'Debt', pct: (balance.borrows / total) * 100, color: 'var(--color-warning)' });
+  const segments: AllocationSegment[] = [];
+  if (balance.usdc > 0) {
+    segments.push({
+      key: 'usdc',
+      label: 'Wallet USDC',
+      pct: (balance.usdc / total) * 100,
+      color: 'var(--fg-primary)',
+    });
+  }
+  if (balance.suiUsd > 0) {
+    segments.push({
+      key: 'sui',
+      label: 'SUI',
+      pct: (balance.suiUsd / total) * 100,
+      color: 'var(--info-solid)',
+    });
+  }
+  if (balance.savings > 0) {
+    segments.push({
+      key: 'navi',
+      label: 'NAVI Savings',
+      pct: (balance.savings / total) * 100,
+      color: 'var(--success-solid)',
+    });
+  }
+  if (balance.borrows > 0) {
+    segments.push({
+      key: 'debt',
+      label: 'Debt',
+      pct: (balance.borrows / total) * 100,
+      color: 'var(--warning-solid)',
+    });
+  }
 
   let otherUsd = 0;
   for (const [, usd] of Object.entries(balance.assetUsdValues)) {
     otherUsd += usd ?? 0;
   }
-  if (otherUsd > 0.01) segments.push({ label: 'Other', pct: (otherUsd / total) * 100, color: 'var(--color-purple)' });
+  if (otherUsd > 0.01) {
+    segments.push({
+      key: 'other',
+      label: 'Other',
+      pct: (otherUsd / total) * 100,
+      color: 'var(--color-purple)',
+    });
+  }
 
   return segments.filter((s) => s.pct >= 0.5);
 }

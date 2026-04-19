@@ -28,14 +28,14 @@ interface InvoiceList {
 
 function StatusPill({ status }: { status: string }) {
   const map: Record<string, { label: string; cls: string }> = {
-    pending: { label: 'Pending', cls: 'bg-amber-500/15 text-amber-400' },
-    overdue: { label: 'Overdue', cls: 'bg-red-500/15 text-red-400' },
-    paid: { label: 'Paid', cls: 'bg-green-500/15 text-green-400' },
-    cancelled: { label: 'Cancelled', cls: 'bg-zinc-500/15 text-zinc-400' },
+    pending: { label: 'Pending', cls: 'bg-warning-bg text-warning-fg border border-warning-border' },
+    overdue: { label: 'Overdue', cls: 'bg-error-bg text-error-fg border border-error-border' },
+    paid: { label: 'Paid', cls: 'bg-success-bg text-success-fg border border-success-border' },
+    cancelled: { label: 'Cancelled', cls: 'bg-surface-sunken text-fg-muted border border-border-subtle' },
   };
-  const s = map[status] ?? { label: status, cls: 'bg-zinc-500/15 text-zinc-400' };
+  const s = map[status] ?? { label: status, cls: 'bg-surface-sunken text-fg-muted border border-border-subtle' };
   return (
-    <span className={`text-[10px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded ${s.cls}`}>
+    <span className={`text-[10px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded-xs ${s.cls}`}>
       {s.label}
     </span>
   );
@@ -45,7 +45,7 @@ function CopyButton({ text }: { text: string }) {
   return (
     <button
       onClick={() => navigator.clipboard.writeText(text)}
-      className="text-[11px] font-mono text-zinc-400 hover:text-white transition-colors border border-zinc-700 hover:border-zinc-500 rounded px-2 py-0.5"
+      className="text-[11px] font-mono text-fg-secondary hover:text-fg-primary transition-colors border border-border-subtle hover:border-border-strong rounded px-2 py-0.5"
     >
       Copy link
     </button>
@@ -55,12 +55,11 @@ function CopyButton({ text }: { text: string }) {
 export function InvoiceCard({ data }: { data: unknown }) {
   const d = data as Invoice | InvoiceList;
 
-  // List view
   if ('invoices' in d) {
     if (!d.invoices.length) {
       return (
         <CardShell title="Invoices">
-          <p className="text-sm text-zinc-500">No invoices yet.</p>
+          <p className="text-sm text-fg-muted">No invoices yet.</p>
         </CardShell>
       );
     }
@@ -68,18 +67,18 @@ export function InvoiceCard({ data }: { data: unknown }) {
       <CardShell title="Invoices">
         <div className="space-y-2">
           {d.invoices.map((inv) => (
-            <div key={inv.slug} className="py-2 border-b border-zinc-800 last:border-0">
+            <div key={inv.slug} className="py-2 border-b border-border-subtle last:border-0">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-sm text-white truncate">{inv.label}</p>
-                  <span className="font-mono text-[11px] text-zinc-500">
+                  <p className="text-sm text-fg-primary truncate">{inv.label}</p>
+                  <span className="font-mono text-[11px] text-fg-muted">
                     {fmtUsd(inv.amount)} {inv.currency}
                     {inv.dueDate ? ` · Due ${new Date(inv.dueDate).toLocaleDateString()}` : ''}
                   </span>
                 </div>
                 <StatusPill status={inv.status} />
               </div>
-              <span className="font-mono text-[10px] text-zinc-600 mt-0.5 block">{inv.slug}</span>
+              <span className="font-mono text-[10px] text-fg-muted mt-0.5 block">{inv.slug}</span>
             </div>
           ))}
         </div>
@@ -87,31 +86,30 @@ export function InvoiceCard({ data }: { data: unknown }) {
     );
   }
 
-  // Single created invoice view
   const inv = d as Invoice;
 
   return (
     <CardShell title="Invoice Created">
       <div className="space-y-3">
-        <p className="text-sm text-white">{inv.label}</p>
+        <p className="text-sm text-fg-primary">{inv.label}</p>
         <div className="flex items-center justify-between">
-          <MonoLabel className="text-zinc-400">Total</MonoLabel>
-          <span className="text-sm font-semibold text-white">{fmtUsd(inv.amount)} {inv.currency}</span>
+          <MonoLabel>Total</MonoLabel>
+          <span className="text-sm font-semibold text-fg-primary font-mono">{fmtUsd(inv.amount)} {inv.currency}</span>
         </div>
         {inv.memo && (
           <div className="flex items-center justify-between">
-            <MonoLabel className="text-zinc-400">Memo</MonoLabel>
-            <span className="text-sm text-zinc-300">{inv.memo}</span>
+            <MonoLabel>Memo</MonoLabel>
+            <span className="text-sm text-fg-secondary">{inv.memo}</span>
           </div>
         )}
         {inv.dueDate && (
           <div className="flex items-center justify-between">
-            <MonoLabel className="text-zinc-400">Due date</MonoLabel>
-            <span className="text-sm text-zinc-300">{new Date(inv.dueDate).toLocaleDateString()}</span>
+            <MonoLabel>Due date</MonoLabel>
+            <span className="text-sm text-fg-secondary">{new Date(inv.dueDate).toLocaleDateString()}</span>
           </div>
         )}
         <div className="pt-1 space-y-2">
-          <div className="bg-zinc-900 rounded-lg px-3 py-2 font-mono text-xs text-zinc-300 break-all">
+          <div className="bg-surface-sunken border border-border-subtle rounded-md px-3 py-2 font-mono text-xs text-fg-secondary break-all">
             {inv.url}
           </div>
           <CopyButton text={inv.url} />

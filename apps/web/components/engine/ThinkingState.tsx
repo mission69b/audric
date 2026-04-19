@@ -54,14 +54,14 @@ export function ThinkingState({ status, intensity = 'active' }: ThinkingStatePro
         status === 'awakening' || status === 'priming' ? (
           <Spinner size="sm" />
         ) : (
-          <AudricMark size={16} animate className="text-foreground" />
+          <AudricMark size={16} animate className="text-fg-primary" />
         )
       ) : (
         <span className="text-sm leading-none" aria-hidden="true">
           {config.icon}
         </span>
       )}
-      <span className="font-mono text-xs tracking-wider uppercase text-dim">
+      <span className="font-mono text-xs tracking-wider uppercase text-fg-muted">
         {config.label}
       </span>
     </div>

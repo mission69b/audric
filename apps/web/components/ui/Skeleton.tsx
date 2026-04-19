@@ -11,7 +11,7 @@ export function Skeleton({
   height,
   className = '',
 }: SkeletonProps) {
-  const base = 'bg-surface relative overflow-hidden';
+  const base = 'bg-surface-card relative overflow-hidden';
 
   const variantClass =
     variant === 'avatar'
@@ -34,7 +34,7 @@ export function Skeleton({
         height: typeof h === 'number' ? `${h}px` : h,
       }}
     >
-      <div className="absolute inset-0 animate-shimmer bg-gradient-to-r from-transparent via-foreground/[0.04] to-transparent" />
+      <div className="absolute inset-0 animate-shimmer bg-gradient-to-r from-transparent via-fg-primary/[0.04] to-transparent" />
     </div>
   );
 }

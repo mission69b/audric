@@ -14,8 +14,8 @@ export function BalanceCard({ data }: { data: BalanceData }) {
   const cols: { label: string; value: string; color?: string }[] = [];
   if (data.total != null) cols.push({ label: 'Total', value: `$${fmtUsd(data.total)}` });
   if (data.available != null) cols.push({ label: 'Cash', value: `$${fmtUsd(data.available)}` });
-  if ((data.savings ?? 0) > 0) cols.push({ label: 'Savings', value: `$${fmtUsd(data.savings!)}`, color: 'text-success' });
-  if ((data.debt ?? 0) > 0) cols.push({ label: 'Debt', value: `$${fmtUsd(data.debt!)}`, color: 'text-warning' });
+  if ((data.savings ?? 0) > 0) cols.push({ label: 'Savings', value: `$${fmtUsd(data.savings!)}`, color: 'text-success-solid' });
+  if ((data.debt ?? 0) > 0) cols.push({ label: 'Debt', value: `$${fmtUsd(data.debt!)}`, color: 'text-warning-solid' });
 
   const hasHoldings = data.holdings && data.holdings.filter((h) => h.usdValue >= 0.01).length > 0;
 
@@ -29,15 +29,15 @@ export function BalanceCard({ data }: { data: BalanceData }) {
           <div
             key={col.label}
             className="px-3 py-2"
-            style={i < cols.length - 1 ? { borderRight: '0.5px solid var(--border)' } : undefined}
+            style={i < cols.length - 1 ? { borderRight: '0.5px solid var(--border-subtle)' } : undefined}
           >
-            <div className="text-[11px] text-dim mb-1">{col.label}</div>
-            <div className={`font-mono text-[15px] font-medium ${col.color ?? 'text-foreground'}`}>{col.value}</div>
+            <div className="text-[11px] text-fg-muted mb-1">{col.label}</div>
+            <div className={`font-mono text-[15px] font-medium ${col.color ?? 'text-fg-primary'}`}>{col.value}</div>
           </div>
         ))}
       </div>
       {hasHoldings && (
-        <div className="flex justify-between px-3 py-2 font-mono text-[10px] text-dim" style={{ borderTop: '0.5px solid var(--border)' }}>
+        <div className="flex justify-between px-3 py-2 font-mono text-[10px] text-fg-muted" style={{ borderTop: '0.5px solid var(--border-subtle)' }}>
           {data.holdings!.filter((h) => h.usdValue >= 0.01).slice(0, 4).map((h) => (
             <span key={h.symbol}>
               {h.symbol} {h.balance.toLocaleString('en-US', { maximumFractionDigits: 4 })}

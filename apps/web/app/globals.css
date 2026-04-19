@@ -1,11 +1,52 @@
 @import "tailwindcss";
 
 /* ============================================================
-   ADS N-SCALE TOKENS — design system tokens (sources of truth: this file + components/ui/)
+   AUDRIC DESIGN SYSTEM v1.1 — light only
+   Source of truth for tokens: this file + design_handoff_audric/design_files/colors_and_type.css
+
+   Phase 1B status: Backward-compat aliases removed. Every consumer
+   uses canonical token names (--surface-page, --fg-primary,
+   --border-subtle, etc.) and Tailwind utilities composed from them.
    ============================================================ */
 
 :root {
-  /* N-scale neutrals */
+  /* =========================================================
+     COLOR PALETTE  —  8 hues × 8 steps + 9-step neutral
+     ========================================================= */
+
+  /* Pink */
+  --p100: #FEF6FA; --p200: #FCDCEC; --p300: #F79CC8; --p400: #F155A0;
+  --p500: #DE458E; --p600: #A51359; --p700: #4B112D; --p800: #360606;
+
+  /* Red */
+  --r100: #FFF5F5; --r200: #FFEDED; --r300: #FFA0A0; --r400: #FF5C5C;
+  --r500: #F02D2D; --r600: #D50B0B; --r700: #570303; --r800: #2A0303;
+
+  /* Orange */
+  --o100: #FFF9F5; --o200: #FFEAD3; --o300: #FFC382; --o400: #FF8806;
+  --o500: #EC7303; --o600: #C15100; --o700: #562501; --o800: #2F1604;
+
+  /* Yellow */
+  --y100: #FFFFF5; --y200: #FFF8D5; --y300: #FFE58A; --y400: #FFBD14;
+  --y500: #EEBB04; --y600: #855F00; --y700: #553606; --y800: #312102;
+
+  /* Blue */
+  --b100: #F5F9FF; --b200: #D4E5FE; --b300: #84B4FB; --b400: #4D93FC;
+  --b500: #0968F6; --b600: #0049B8; --b700: #002A69; --b800: #19133A;
+
+  /* Teal */
+  --t100: #F7FDFD; --t200: #D7F4F6; --t300: #8EDFE5; --t400: #44CCD5;
+  --t500: #1BBFCA; --t600: #086F93; --t700: #07465A; --t800: #04252F;
+
+  /* Purple */
+  --pu100: #F6F5FE; --pu200: #E2DDFD; --pu300: #AD9EFA; --pu400: #836BFF;
+  --pu500: #583AEE; --pu600: #3B1FC6; --pu700: #271A68; --pu800: #20092B;
+
+  /* Green */
+  --g100: #F6FEF6; --g200: #E0FAE0; --g300: #A6F0A5; --g400: #4CE160;
+  --g500: #3CC14E; --g600: #288034; --g700: #1B561A; --g800: #0C310D;
+
+  /* Neutrals (preserved from prior system — value-identical) */
   --n100: #FFFFFF;
   --n200: #F7F7F7;
   --n300: #E5E5E5;
@@ -16,131 +57,348 @@
   --n800: #191919;
   --n900: #000000;
 
-  /* Dark theme — canonical DESIGN_SYSTEM.md Section 14 */
-  --background: var(--n900);
-  --surface: var(--n800);
-  --panel: var(--n800);
-  --border: var(--n700);
-  --border-bright: var(--n600);
-  --foreground: var(--n100);
-  --muted: var(--n500);
-  --dim: var(--n600);
-  --accent: var(--n100);
-  --accent-dim: var(--n800);
-  --input-bg: var(--n800);
-  --input-border: var(--n700);
+  /* =========================================================
+     SEMANTIC ALIASES (NEW — light theme only)
+     ========================================================= */
 
-  /* Semantic colors (ADS canonical) */
-  --success: #3CC14E;
-  --error: #D50000;
-  --warning: #FF9800;
-  --info: #0D9DFC;
+  /* Surface */
+  --surface-page:         var(--n200);
+  --surface-card:         var(--n100);
+  --surface-sunken:       var(--n200);
+  --surface-inverse:      var(--n800);
 
-  /* Audric extension */
-  --color-purple: #7B6FD4;
-  --color-purple-bg: rgba(123, 111, 212, 0.12);
+  /* Foreground */
+  --fg-primary:           var(--n800);
+  --fg-secondary:         var(--n600);
+  --fg-muted:             var(--n500);
+  --fg-disabled:          var(--n400);
+  --fg-inverse:           var(--n100);
 
-  /* Chart monochrome segments */
-  --chart-1: #D9D9D9;
-  --chart-2: #999999;
-  --chart-3: #666666;
-  --chart-4: #404040;
+  /* Lines */
+  --border-default:       var(--n300);
+  --border-subtle:        #E0E0E0;
+  --border-strong:        var(--n400);
+  --border-focus:         var(--b500);
 
-  /* Status colors (health factor, alerts) */
-  --status-healthy: #3CC14E;
-  --status-warning: #FF9800;
-  --status-danger: #D50000;
+  /* Brand / accent — cobalt */
+  --accent-primary:       var(--b500);
+  --accent-primary-hover: var(--b600);
+  --accent-primary-bg:    var(--b100);
+  --accent-shadow:        rgba(9, 104, 246, 0.50);
 
-  /* Spacing (4px base) */
-  --sp1: 4px;
-  --sp2: 8px;
-  --sp3: 12px;
-  --sp4: 16px;
-  --sp5: 20px;
-  --sp6: 24px;
-  --sp8: 32px;
-  --sp10: 40px;
+  /* Status — success / warning / error / info */
+  --success-fg:           var(--g700);
+  --success-bg:           var(--g200);
+  --success-border:       var(--g400);
+  --success-solid:        var(--g600);
 
-  /* Radius */
-  --r-sm: 4px;
-  --r-md: 8px;
-  --r-lg: 12px;
-  --r-xl: 16px;
-  --r-full: 9999px;
+  --warning-fg:           var(--y700);
+  --warning-bg:           var(--y200);
+  --warning-border:       var(--y400);
+  --warning-solid:        var(--o500);
 
-  /* Elevation shadows (aligned to ADS reference) */
-  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
-  --shadow-dropdown: 0 4px 12px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.06);
-  --shadow-drawer: 0 8px 24px rgba(0, 0, 0, 0.10), 0 2px 6px rgba(0, 0, 0, 0.06);
-  --shadow-modal: 0 16px 48px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.08);
+  --error-fg:             var(--r700);
+  --error-bg:             var(--r200);
+  --error-border:         var(--r400);
+  --error-solid:          var(--r600);
 
-  /* Sidebar */
-  --sidebar-width: 220px;
+  --info-fg:              var(--b700);
+  --info-bg:              var(--b200);
+  --info-border:          var(--b400);
+  --info-solid:           var(--b500);
+
+  /* =========================================================
+     TYPOGRAPHY
+     The font-loader vars (--font-ny-display, --font-ny-large,
+     --font-ny-medium, --font-departure-mono, --font-geist-sans,
+     --font-geist-mono) are injected by next/font/local in
+     `app/fonts.ts` and `app/layout.tsx`. We compose them into
+     three semantic stacks here.
+     ========================================================= */
+  --font-serif: var(--font-ny-display), var(--font-ny-large), var(--font-ny-medium), 'PT Serif', 'Times New Roman', ui-serif, Georgia, serif;
+  --font-sans:  var(--font-geist-sans), -apple-system, BlinkMacSystemFont, 'SF Pro Display', Helvetica, Arial, sans-serif;
+  --font-mono:  var(--font-departure-mono), var(--font-geist-mono), 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Weights */
+  --fw-regular: 400;
+  --fw-medium:  500;
+  --fw-semi:    600;
+
+  /* =========================================================
+     ELEVATION / SHADOW
+     ========================================================= */
+  --shadow-flat:
+    0 0 0 1px rgba(0, 0, 0, 0.08);
+  --shadow-dropdown:
+    0 1px 1px 0 rgba(0, 0, 0, 0.16),
+    0 2px 4px 0 rgba(0, 0, 0, 0.15);
+  --shadow-drawer:
+    0 0 0 1px rgba(0, 0, 0, 0.08),
+    0 3px 3px 0 rgba(0, 0, 0, 0.04),
+    0 6px 6px 0 rgba(0, 0, 0, 0.04),
+    0 12px 12px 0 rgba(0, 0, 0, 0.04);
+  --shadow-modal:
+    0 0 0 1px rgba(0, 0, 0, 0.08),
+    0 1px 1px -0.5px rgba(0, 0, 0, 0.04),
+    0 3px 3px 0 rgba(0, 0, 0, 0.04),
+    0 6px 6px 0 rgba(0, 0, 0, 0.04),
+    0 12px 12px 0 rgba(0, 0, 0, 0.04),
+    0 16px 16px 0 rgba(0, 0, 0, 0.04);
+  --shadow-focus-ring: 0 0 0 3px rgba(9, 104, 246, 0.5);
+
+  /* =========================================================
+     RADII
+     ========================================================= */
+  --radius-none:  0;
+  --radius-xs:    2px;
+  --radius-sm:    4px;
+  --radius-md:    8px;
+  --radius-lg:    12px;
+  --radius-xl:    16px;
+  --radius-2xl:   20px;
+  --radius-pill:  1000px;
+
+  /* =========================================================
+     SPACING (4px-grid named tokens — coexist with Tailwind defaults)
+     ========================================================= */
+  --space-0:  0;
+  --space-1:  2px;
+  --space-2:  4px;
+  --space-3:  8px;
+  --space-4:  12px;
+  --space-5:  16px;
+  --space-6:  24px;
+  --space-7:  32px;
+  --space-8:  48px;
+  --space-9:  64px;
+  --space-10: 96px;
+  --space-11: 128px;
+
+  /* =========================================================
+     LAYOUT — sidebar widths (preserved from prior system)
+     ========================================================= */
+  --sidebar-width: 240px;
   --sidebar-icon-width: 48px;
+
+  /* =========================================================
+     APP EXTENSION TOKENS
+     -------------------------------------------------------
+     Tokens used by app code that don't fit cleanly into a
+     hue/neutral scale name. Each composes from canonical
+     palette tokens so they remain themable from one place.
+     ========================================================= */
+
+  /* Audric purple — Activity icons, chart segments */
+  --color-purple:    var(--pu500);
+  --color-purple-bg: var(--pu100);
+
+  /* Chart monochrome segments — sequential greys */
+  --chart-1: var(--n400);
+  --chart-2: var(--n500);
+  --chart-3: var(--n600);
+  --chart-4: var(--n700);
 }
 
-.light-theme {
-  --background: var(--n100);
-  --surface: var(--n200);
-  --panel: var(--n100);
-  --border: var(--n300);
-  --border-bright: var(--n400);
-  --foreground: var(--n900);
-  --muted: var(--n600);
-  --dim: var(--n500);
-  --accent: var(--n900);
-  --accent-dim: var(--n200);
-  --input-bg: var(--n100);
-  --input-border: var(--n300);
-  --chart-1: #333333;
-  --chart-2: #666666;
-  --chart-3: #999999;
-  --chart-4: #CCCCCC;
-  --success: #3CC14E;
-  --error: #D50000;
-  --warning: #FF9800;
-  --info: #0D9DFC;
-  --status-healthy: #3CC14E;
-  --status-warning: #FF9800;
-  --status-danger: #D50000;
-  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
-  --shadow-dropdown: 0 4px 12px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.06);
-  --shadow-drawer: 0 8px 24px rgba(0, 0, 0, 0.10), 0 2px 6px rgba(0, 0, 0, 0.06);
-  --shadow-modal: 0 16px 48px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.08);
-}
-
+/* ============================================================
+   TAILWIND v4 BRIDGE — generates utility classes from --color-*
+   Phase 1B: legacy aliases stripped. Only canonical token names
+   are exposed; everything resolves to a hue/neutral step.
+   ============================================================ */
 @theme inline {
-  --color-background: var(--background);
-  --color-surface: var(--surface);
-  --color-panel: var(--panel);
-  --color-foreground: var(--foreground);
-  --color-muted: var(--muted);
-  --color-dim: var(--dim);
-  --color-accent: var(--accent);
-  --color-accent-dim: var(--accent-dim);
-  --color-border: var(--border);
-  --color-border-bright: var(--border-bright);
-  --color-success: var(--success);
-  --color-error: var(--error);
-  --color-warning: var(--warning);
-  --color-info: var(--info);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-status-healthy: var(--status-healthy);
-  --color-status-warning: var(--status-warning);
-  --color-status-danger: var(--status-danger);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-inter), 'Inter', system-ui, sans-serif;
-  --font-display: var(--font-instrument-serif), ui-serif, Georgia, serif;
+  /* ---- NEW: neutrals (every step gets bg-/text-/border- utilities) ---- */
+  --color-n100: var(--n100);
+  --color-n200: var(--n200);
+  --color-n300: var(--n300);
+  --color-n400: var(--n400);
+  --color-n500: var(--n500);
+  --color-n600: var(--n600);
+  --color-n700: var(--n700);
+  --color-n800: var(--n800);
+  --color-n900: var(--n900);
+
+  /* ---- NEW: surface ---- */
+  --color-surface-page:    var(--surface-page);
+  --color-surface-card:    var(--surface-card);
+  --color-surface-sunken:  var(--surface-sunken);
+  --color-surface-inverse: var(--surface-inverse);
+
+  /* ---- NEW: foreground ---- */
+  --color-fg-primary:   var(--fg-primary);
+  --color-fg-secondary: var(--fg-secondary);
+  --color-fg-muted:     var(--fg-muted);
+  --color-fg-disabled:  var(--fg-disabled);
+  --color-fg-inverse:   var(--fg-inverse);
+
+  /* ---- NEW: border ---- */
+  --color-border-default: var(--border-default);
+  --color-border-subtle:  var(--border-subtle);
+  --color-border-strong:  var(--border-strong);
+  --color-border-focus:   var(--border-focus);
+
+  /* ---- NEW: accent ---- */
+  --color-accent-primary:       var(--accent-primary);
+  --color-accent-primary-hover: var(--accent-primary-hover);
+  --color-accent-primary-bg:    var(--accent-primary-bg);
+
+  /* ---- NEW: status (full -fg / -bg / -border / -solid set per family) ---- */
+  --color-success-fg:     var(--success-fg);
+  --color-success-bg:     var(--success-bg);
+  --color-success-border: var(--success-border);
+  --color-success-solid:  var(--success-solid);
+
+  --color-warning-fg:     var(--warning-fg);
+  --color-warning-bg:     var(--warning-bg);
+  --color-warning-border: var(--warning-border);
+  --color-warning-solid:  var(--warning-solid);
+
+  --color-error-fg:       var(--error-fg);
+  --color-error-bg:       var(--error-bg);
+  --color-error-border:   var(--error-border);
+  --color-error-solid:    var(--error-solid);
+
+  --color-info-fg:        var(--info-fg);
+  --color-info-bg:        var(--info-bg);
+  --color-info-border:    var(--info-border);
+  --color-info-solid:     var(--info-solid);
+
+  /* ---- NEW: hue palette (8 hues × 8 steps) — primarily for marketing illustrations ---- */
+  --color-p100: var(--p100); --color-p200: var(--p200); --color-p300: var(--p300); --color-p400: var(--p400);
+  --color-p500: var(--p500); --color-p600: var(--p600); --color-p700: var(--p700); --color-p800: var(--p800);
+  --color-r100: var(--r100); --color-r200: var(--r200); --color-r300: var(--r300); --color-r400: var(--r400);
+  --color-r500: var(--r500); --color-r600: var(--r600); --color-r700: var(--r700); --color-r800: var(--r800);
+  --color-o100: var(--o100); --color-o200: var(--o200); --color-o300: var(--o300); --color-o400: var(--o400);
+  --color-o500: var(--o500); --color-o600: var(--o600); --color-o700: var(--o700); --color-o800: var(--o800);
+  --color-y100: var(--y100); --color-y200: var(--y200); --color-y300: var(--y300); --color-y400: var(--y400);
+  --color-y500: var(--y500); --color-y600: var(--y600); --color-y700: var(--y700); --color-y800: var(--y800);
+  --color-b100: var(--b100); --color-b200: var(--b200); --color-b300: var(--b300); --color-b400: var(--b400);
+  --color-b500: var(--b500); --color-b600: var(--b600); --color-b700: var(--b700); --color-b800: var(--b800);
+  --color-t100: var(--t100); --color-t200: var(--t200); --color-t300: var(--t300); --color-t400: var(--t400);
+  --color-t500: var(--t500); --color-t600: var(--t600); --color-t700: var(--t700); --color-t800: var(--t800);
+  --color-pu100: var(--pu100); --color-pu200: var(--pu200); --color-pu300: var(--pu300); --color-pu400: var(--pu400);
+  --color-pu500: var(--pu500); --color-pu600: var(--pu600); --color-pu700: var(--pu700); --color-pu800: var(--pu800);
+  --color-g100: var(--g100); --color-g200: var(--g200); --color-g300: var(--g300); --color-g400: var(--g400);
+  --color-g500: var(--g500); --color-g600: var(--g600); --color-g700: var(--g700); --color-g800: var(--g800);
+
+  /* ---- App extension tokens (chart segments + Audric purple) ---- */
+  --color-chart-1:   var(--chart-1);
+  --color-chart-2:   var(--chart-2);
+  --color-chart-3:   var(--chart-3);
+  --color-chart-4:   var(--chart-4);
+  --color-purple:    var(--pu500);
+  --color-purple-bg: var(--pu100);
+
+  /* ---- TYPOGRAPHY (Tailwind font-*) ---- */
+  --font-sans:  var(--font-sans);
+  --font-mono:  var(--font-mono);
+  --font-serif: var(--font-serif);
+
+  /* ---- RADII (Tailwind rounded-*) ---- */
+  --radius-xs:   var(--radius-xs);
+  --radius-sm:   var(--radius-sm);
+  --radius-md:   var(--radius-md);
+  --radius-lg:   var(--radius-lg);
+  --radius-xl:   var(--radius-xl);
+  --radius-2xl:  var(--radius-2xl);
+  --radius-pill: var(--radius-pill);
+
+  /* ---- SHADOWS (Tailwind shadow-*) ---- */
+  --shadow-flat:       var(--shadow-flat);
+  --shadow-dropdown:   var(--shadow-dropdown);
+  --shadow-drawer:     var(--shadow-drawer);
+  --shadow-modal:      var(--shadow-modal);
+  --shadow-focus-ring: var(--shadow-focus-ring);
 }
+
+/* ============================================================
+   TYPE RAMP — semantic classes mirror the Typography page in
+   `colors_and_type.css`. New components reach for these.
+   ============================================================ */
+
+.ads-h1 {
+  font-family: var(--font-serif);
+  font-weight: var(--fw-regular);
+  font-size: 64px;
+  line-height: 80px;
+  letter-spacing: -0.3px;
+  color: var(--fg-primary);
+}
+
+.ads-h2 {
+  font-family: var(--font-serif);
+  font-weight: var(--fw-regular);
+  font-size: 48px;
+  line-height: 56px;
+  letter-spacing: -0.3px;
+  color: var(--fg-primary);
+}
+
+.ads-h3 {
+  font-family: var(--font-serif);
+  font-weight: var(--fw-regular);
+  font-size: 32px;
+  line-height: 40px;
+  letter-spacing: -0.2px;
+  color: var(--fg-primary);
+}
+
+.ads-body { font-family: var(--font-sans); font-weight: var(--fw-regular); font-size: 14px; line-height: 20px; color: var(--fg-primary); }
+.ads-body-b { font-family: var(--font-sans); font-weight: var(--fw-medium); font-size: 14px; line-height: 20px; color: var(--fg-primary); }
+.ads-body-sm { font-family: var(--font-sans); font-weight: var(--fw-regular); font-size: 13px; line-height: 18px; color: var(--fg-secondary); }
+.ads-body-sm-b { font-family: var(--font-sans); font-weight: var(--fw-medium); font-size: 13px; line-height: 18px; color: var(--fg-primary); }
+.ads-body-xs { font-family: var(--font-sans); font-weight: var(--fw-regular); font-size: 12px; line-height: 16px; color: var(--fg-secondary); }
+.ads-body-xs-b { font-family: var(--font-sans); font-weight: var(--fw-medium); font-size: 12px; line-height: 16px; color: var(--fg-primary); }
+
+.ads-label-md { font-family: var(--font-mono); font-size: 12px; line-height: 16px; letter-spacing: 0.02em; color: var(--fg-primary); text-transform: uppercase; }
+.ads-label-sm { font-family: var(--font-mono); font-size: 10px; line-height: 14px; letter-spacing: 0.04em; color: var(--fg-secondary); text-transform: uppercase; }
+
+.ads-button-md { font-family: var(--font-mono); font-size: 12px; line-height: 16px; letter-spacing: 0.04em; text-transform: uppercase; }
+.ads-button-sm { font-family: var(--font-mono); font-size: 11px; line-height: 14px; letter-spacing: 0.06em; text-transform: uppercase; }
+
+.ads-code { font-family: var(--font-mono); font-size: 13px; line-height: 20px; color: var(--fg-primary); }
+
+/* ---- Numeral utilities (per design rules) ---- */
+.num-display { font-family: var(--font-serif); font-variant-numeric: lining-nums; }
+.num-tabular { font-family: var(--font-mono); font-variant-numeric: tabular-nums lining-nums; }
+.label-mono  { font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em; }
+
+/* ---- Characteristic dither border (drawers, wells, progress) ---- */
+.ads-dither-border {
+  font-family: var(--font-mono);
+  color: var(--border-subtle);
+  letter-spacing: 0.05em;
+  user-select: none;
+}
+
+/* ============================================================
+   ELEMENT DEFAULTS
+   ============================================================ */
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--surface-page);
+  color: var(--fg-primary);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 20px;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
+
+code, pre, kbd {
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+/* iOS form-zoom fix (preserved from prior system) */
+input,
+textarea,
+select {
+  font-size: 16px;
+}
+
+/* ============================================================
+   ANIMATIONS — preserved from prior system. These are behavior,
+   not theme. Any phase that needs to drop one must justify it.
+   ============================================================ */
 
 @keyframes feed-slide-in {
   from { opacity: 0; transform: translateY(-8px); }
@@ -160,13 +418,6 @@ body {
   animation: shimmer 1.5s ease-in-out infinite;
 }
 
-.scrollbar-none::-webkit-scrollbar { display: none; }
-.scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
-
-.safe-bottom {
-  padding-bottom: max(1rem, env(safe-area-inset-bottom));
-}
-
 @keyframes spin-arc {
   to { transform: rotate(360deg); }
 }
@@ -181,21 +432,17 @@ body {
   to { transform: translateX(0); }
 }
 
-@keyframes fadeDropIn {
-  from { opacity: 0; transform: translateY(-8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
 .animate-slide-from-left {
   animation: slideFromLeft 0.2s ease-out;
 }
 
-.animate-fade-drop-in {
-  animation: fadeDropIn 0.15s ease-out;
-}
+/* ============================================================
+   SCROLLBAR + SAFE-AREA UTILITIES — preserved
+   ============================================================ */
 
-input,
-textarea,
-select {
-  font-size: 16px;
+.scrollbar-none::-webkit-scrollbar { display: none; }
+.scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
+
+.safe-bottom {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
 }

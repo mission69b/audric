@@ -9,16 +9,16 @@ const LEGAL_LINKS = [
 
 export default function LegalLayout({ children }: { children: React.ReactNode }) {
   return (
-    <main className="light-theme min-h-screen bg-background text-foreground">
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-12 sm:py-20">
+    <main className="min-h-screen bg-surface-page text-fg-primary">
+      <div className="max-w-2xl mx-auto px-5 sm:px-6 py-14 sm:py-20">
         {children}
 
-        <footer className="mt-16 pt-8 border-t border-border text-xs text-dim font-mono flex gap-6">
+        <footer className="mt-20 pt-8 border-t border-border-subtle flex flex-wrap gap-x-6 gap-y-2 font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted">
           {LEGAL_LINKS.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className="hover:text-foreground transition-colors"
+              className="hover:text-fg-primary transition-colors"
             >
               {link.label}
             </Link>

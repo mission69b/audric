@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import type { ZkLoginStep } from '@/lib/zklogin';
 import { Spinner } from '@/components/ui/Spinner';
+import { Button } from '@/components/ui/Button';
+import { Icon } from '@/components/ui/Icon';
 
 interface LoadingScreenProps {
   step: ZkLoginStep | null;
@@ -38,24 +40,24 @@ export function LoadingScreen({ step, error, onRetry }: LoadingScreenProps) {
 
   if (error) {
     return (
-      <main className="flex flex-1 flex-col items-center justify-center px-6">
-        <div className="max-w-sm space-y-6 text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-error/10">
-            <svg className="h-8 w-8 text-error" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+      <main className="flex flex-1 flex-col items-center justify-center px-6 bg-surface-page">
+        <div className="max-w-sm w-full space-y-6 text-center">
+          <div className="mx-auto w-14 h-14 rounded-full bg-error-bg flex items-center justify-center text-error-solid">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M12 8v4M12 16h.01" />
             </svg>
           </div>
-          <div>
-            <h2 className="text-xl font-semibold text-foreground">Something went wrong</h2>
-            <p className="mt-2 text-sm text-muted">{error}</p>
+          <div className="space-y-2">
+            <h2 className="font-serif text-[28px] leading-[1.15] tracking-[-0.01em] text-fg-primary">
+              Something went wrong
+            </h2>
+            <p className="text-[13px] text-fg-secondary leading-relaxed">{error}</p>
           </div>
           {onRetry && (
-            <button
-              onClick={onRetry}
-              className="bg-foreground rounded-lg px-6 py-3 font-semibold text-background tracking-[0.05em] uppercase transition hover:opacity-80"
-            >
+            <Button variant="primary" size="lg" onClick={onRetry}>
               Try again
-            </button>
+            </Button>
           )}
         </div>
       </main>
@@ -64,27 +66,27 @@ export function LoadingScreen({ step, error, onRetry }: LoadingScreenProps) {
 
   if (showDone) {
     return (
-      <main className="flex flex-1 flex-col items-center justify-center px-6">
-        <div className="space-y-4 text-center animate-in fade-in duration-300">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-success/10">
-            <svg className="h-8 w-8 text-success" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-            </svg>
+      <main className="flex flex-1 flex-col items-center justify-center px-6 bg-surface-page">
+        <div className="space-y-3 text-center">
+          <div className="mx-auto w-14 h-14 rounded-full bg-success-bg flex items-center justify-center text-success-solid">
+            <Icon name="check" size={28} />
           </div>
-          <h2 className="text-xl font-semibold text-foreground">You&apos;re all set!</h2>
+          <h2 className="font-serif text-[28px] leading-[1.15] tracking-[-0.01em] text-fg-primary">
+            You&apos;re all set
+          </h2>
         </div>
       </main>
     );
   }
 
   return (
-    <main className="flex flex-1 flex-col items-center justify-center px-6">
-      <div className="w-full max-w-sm space-y-8">
-        <h2 className="text-xl font-semibold text-center text-foreground">
-          Signing you in...
+    <main className="flex flex-1 flex-col items-center justify-center px-6 bg-surface-page">
+      <div className="w-full max-w-sm space-y-7">
+        <h2 className="font-serif text-[28px] leading-[1.15] tracking-[-0.01em] text-center text-fg-primary">
+          Signing you in…
         </h2>
 
-        <div className="space-y-4">
+        <div className="space-y-3.5">
           {STEPS.map((s, i) => {
             const isComplete = currentIdx > i;
             const isActive = currentIdx === i;
@@ -92,31 +94,34 @@ export function LoadingScreen({ step, error, onRetry }: LoadingScreenProps) {
             return (
               <div key={s.key} className="flex items-center gap-3">
                 {isComplete ? (
-                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-success/10">
-                    <svg className="h-4 w-4 text-success" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                    </svg>
+                  <div className="w-6 h-6 rounded-full bg-success-bg flex items-center justify-center text-success-solid shrink-0">
+                    <Icon name="check" size={14} />
                   </div>
                 ) : isActive ? (
-                  <div className="h-6 w-6 flex items-center justify-center">
+                  <div className="w-6 h-6 flex items-center justify-center shrink-0">
                     <Spinner size="md" />
                   </div>
                 ) : (
-                  <div className="flex h-6 w-6 items-center justify-center">
-                    <div className="h-2.5 w-2.5 rounded-full bg-dim" />
+                  <div className="w-6 h-6 flex items-center justify-center shrink-0">
+                    <span className="w-1.5 h-1.5 rounded-full bg-fg-disabled" />
                   </div>
                 )}
-                <span className={isComplete || isActive ? 'text-foreground' : 'text-muted'}>
-                  {s.label}{isActive ? '...' : ''}
+                <span
+                  className={[
+                    'font-mono text-[11px] tracking-[0.08em] uppercase',
+                    isComplete || isActive ? 'text-fg-primary' : 'text-fg-muted',
+                  ].join(' ')}
+                >
+                  {s.label}{isActive ? '…' : ''}
                 </span>
               </div>
             );
           })}
         </div>
 
-        <div className="h-1.5 w-full rounded-full bg-surface overflow-hidden">
+        <div className="h-1 w-full rounded-pill bg-border-subtle overflow-hidden">
           <div
-            className="h-full rounded-full bg-foreground transition-all duration-500 ease-out"
+            className="h-full rounded-pill bg-fg-primary transition-all duration-500 ease-out"
             style={{ width: `${progress}%` }}
           />
         </div>

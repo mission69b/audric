@@ -1,5 +1,26 @@
 'use client';
 
+// [PHASE 12] PayClient — re-skin the public /pay/[slug] receipt screen.
+//
+// This is the only signed-out application surface, so the visuals lean on the
+// marketing site's QR-receipt pattern: serif amount, mono eyebrows, light card
+// shell, pulsing "Listening for payment" status indicator.
+//
+// Behavior preservation (Hard Rule 1 — no behavior change during re-skin):
+//   • All hooks (useState/useEffect/useCallback) preserved verbatim — same
+//     dependency arrays, same fetch URLs, same retry/poll cadence.
+//   • All sub-components (PayButton, DigestForm, SuiPayQr, InvoiceHeader)
+//     consumed with the same props.
+//   • The 6-second poll on `/api/payments/${slug}/verify` and the wallet-
+//     success retry-with-backoff (2s/3s/5s) flows are untouched.
+//
+// Visual updates:
+//   • Replaced legacy raw color tokens (red-400/amber-400/emerald-400) with
+//     the semantic error-* / warning-* / success-* tokens from globals.css.
+//   • Pulsing detection dot uses bg-success-solid.
+//   • Receipt card uses surface-card + border-subtle.
+//   • Terminal-state icons use semantic foreground tokens.
+
 import { useCallback, useEffect, useState } from 'react';
 import { AudricMark } from '@/components/ui/AudricMark';
 import { PayButton } from './PayButton';
@@ -28,9 +49,7 @@ interface PaymentData {
   paidAt: string | null;
   paidBy: string | null;
   txDigest: string | null;
-  // link-specific
   expiresAt?: string | null;
-  // invoice-specific
   lineItems?: LineItem[] | null;
   dueDate?: string | null;
   billToName?: string | null;
@@ -168,12 +187,14 @@ export function PayClient({ slug }: { slug: string }) {
   const headerLabel = isInvoice ? 'Invoice' : 'Audric Pay';
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-background text-foreground px-4 py-8">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-surface-page text-fg-primary px-4 py-8">
       <div className={`w-full ${isInvoice ? 'max-w-md' : 'max-w-sm'}`}>
         {/* Brand header */}
         <div className="flex items-center justify-center gap-2 mb-8">
           <AudricMark size={20} />
-          <span className="font-mono text-xs uppercase tracking-widest text-dim">{headerLabel}</span>
+          <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-fg-muted">
+            {headerLabel}
+          </span>
         </div>
 
         {state === 'loading' && <LoadingState />}
@@ -203,7 +224,7 @@ export function PayClient({ slug }: { slug: string }) {
             href="https://audric.ai"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-[10px] font-mono text-dim hover:text-foreground transition"
+            className="font-mono text-[10px] tracking-[0.08em] text-fg-muted hover:text-fg-primary transition"
           >
             Powered by Audric — Your money, handled. →
           </a>
@@ -240,7 +261,7 @@ function ActivePayment({
   const shortAddr = `${data.recipientAddress.slice(0, 8)}...${data.recipientAddress.slice(-6)}`;
 
   return (
-    <div className="rounded-xl border border-border bg-surface/50 overflow-hidden">
+    <div className="rounded-md border border-border-subtle bg-surface-card overflow-hidden shadow-[var(--shadow-flat)]">
       <div className="px-6 pt-6 pb-4">
         {isInvoice ? (
           <InvoiceHeader
@@ -257,11 +278,15 @@ function ActivePayment({
           />
         ) : (
           <div className="text-center">
-            {data.label && <div className="text-sm text-muted mb-1">{data.label}</div>}
-            <div className="text-3xl font-semibold font-mono text-foreground">
+            {data.label && (
+              <div className="text-[13px] text-fg-secondary mb-1">{data.label}</div>
+            )}
+            <div className="font-serif text-[40px] leading-none tracking-[-0.02em] text-fg-primary">
               ${fmtUsd(data.amount ?? 0)}
             </div>
-            <div className="text-xs text-dim font-mono mt-1">{data.currency}</div>
+            <div className="font-mono text-[10px] tracking-[0.12em] uppercase text-fg-muted mt-2">
+              {data.currency}
+            </div>
           </div>
         )}
       </div>
@@ -282,52 +307,31 @@ function ActivePayment({
       <div className="px-6 py-3 space-y-2">
         {!isInvoice && (
           <>
-            <div className="flex justify-between items-center text-xs font-mono">
-              <span className="text-dim">To</span>
-              <span className="text-foreground">{data.recipientName ?? shortAddr}</span>
-            </div>
-            {data.recipientName && (
-              <div className="flex justify-between items-center text-xs font-mono">
-                <span className="text-dim">Address</span>
-                <span className="text-foreground">{shortAddr}</span>
-              </div>
-            )}
-            {data.memo && (
-              <div className="flex justify-between items-center text-xs font-mono">
-                <span className="text-dim">Memo</span>
-                <span className="text-foreground">{data.memo}</span>
-              </div>
-            )}
+            <DetailRow label="To" value={data.recipientName ?? shortAddr} />
+            {data.recipientName && <DetailRow label="Address" value={shortAddr} />}
+            {data.memo && <DetailRow label="Memo" value={data.memo} />}
             {data.expiresAt && (
-              <div className="flex justify-between items-center text-xs font-mono">
-                <span className="text-dim">Expires</span>
-                <span className="text-foreground">
-                  {new Date(data.expiresAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
-                </span>
-              </div>
+              <DetailRow
+                label="Expires"
+                value={new Date(data.expiresAt).toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                  hour: 'numeric',
+                  minute: '2-digit',
+                })}
+              />
             )}
           </>
         )}
 
-        {isInvoice && (
-          <div className="flex justify-between items-center text-xs font-mono">
-            <span className="text-dim">Pay to</span>
-            <span className="text-foreground">{shortAddr}</span>
-          </div>
-        )}
-
-        {data.memo && isInvoice && (
-          <div className="flex justify-between items-center text-xs font-mono">
-            <span className="text-dim">Note</span>
-            <span className="text-foreground">{data.memo}</span>
-          </div>
-        )}
+        {isInvoice && <DetailRow label="Pay to" value={shortAddr} />}
+        {data.memo && isInvoice && <DetailRow label="Note" value={data.memo} />}
       </div>
 
       {/* Error message */}
       {error && (
         <div className="px-6 pb-2">
-          <div className="text-[10px] font-mono text-red-400 bg-red-400/5 border border-red-400/20 rounded-lg px-3 py-2">
+          <div className="font-mono text-[10px] text-error-fg bg-error-bg border border-error-border rounded-xs px-3 py-2">
             {error}
           </div>
         </div>
@@ -345,8 +349,9 @@ function ActivePayment({
         />
 
         <button
+          type="button"
           onClick={onCopy}
-          className="w-full py-2.5 rounded-lg border border-border bg-background text-xs font-mono uppercase tracking-wider text-foreground hover:bg-surface transition"
+          className="w-full h-10 rounded-pill border border-border-strong bg-transparent font-mono text-[11px] tracking-[0.06em] uppercase text-fg-primary hover:bg-surface-sunken transition focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
         >
           {copied ? 'Copied!' : 'Copy Address'}
         </button>
@@ -359,8 +364,12 @@ function ActivePayment({
 
         {/* Detection indicator */}
         <div className="flex items-center justify-center gap-1.5 pt-1">
-          <span className={`w-1.5 h-1.5 rounded-full ${detecting ? 'bg-emerald-400 animate-pulse' : 'bg-border'}`} />
-          <span className="text-[10px] font-mono text-dim">
+          <span
+            className={`w-1.5 h-1.5 rounded-full ${
+              detecting ? 'bg-success-solid animate-pulse' : 'bg-border-subtle'
+            }`}
+          />
+          <span className="font-mono text-[10px] tracking-[0.06em] text-fg-muted">
             {detecting ? 'Checking for payment...' : 'Listening for payment'}
           </span>
         </div>
@@ -369,15 +378,24 @@ function ActivePayment({
   );
 }
 
+function DetailRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between items-center font-mono text-[11px]">
+      <span className="text-fg-muted">{label}</span>
+      <span className="text-fg-primary">{value}</span>
+    </div>
+  );
+}
+
 /* ── Terminal States ─────────────────────────────────────────────── */
 
 function LoadingState() {
   return (
-    <div className="rounded-xl border border-border bg-surface/50 p-8 text-center">
+    <div className="rounded-md border border-border-subtle bg-surface-card p-8 text-center">
       <div className="animate-pulse space-y-4">
-        <div className="h-40 bg-border/30 rounded-lg mx-auto w-40" />
-        <div className="h-4 bg-border/30 rounded w-3/4 mx-auto" />
-        <div className="h-4 bg-border/30 rounded w-1/2 mx-auto" />
+        <div className="h-40 bg-surface-sunken rounded-md mx-auto w-40" />
+        <div className="h-4 bg-surface-sunken rounded w-3/4 mx-auto" />
+        <div className="h-4 bg-surface-sunken rounded w-1/2 mx-auto" />
       </div>
     </div>
   );
@@ -385,33 +403,51 @@ function LoadingState() {
 
 function PaidState({ data }: { data: PaymentData }) {
   const txUrl = data.txDigest ? `https://suiscan.xyz/mainnet/tx/${data.txDigest}` : null;
-  const shortDigest = data.txDigest ? `${data.txDigest.slice(0, 8)}...${data.txDigest.slice(-6)}` : null;
+  const shortDigest = data.txDigest
+    ? `${data.txDigest.slice(0, 8)}...${data.txDigest.slice(-6)}`
+    : null;
   const isInvoice = data.type === 'invoice';
 
   return (
-    <div className="rounded-xl border border-border bg-surface/50 p-8 text-center">
-      <div className="w-12 h-12 rounded-full bg-emerald-400/10 flex items-center justify-center mx-auto mb-4">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-emerald-400">
-          <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <div className="rounded-md border border-border-subtle bg-surface-card p-8 text-center shadow-[var(--shadow-flat)]">
+      <div className="w-12 h-12 rounded-full bg-success-bg border border-success-border flex items-center justify-center mx-auto mb-4">
+        <svg
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          className="text-success-solid"
+        >
+          <path
+            d="M20 6L9 17L4 12"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
         </svg>
       </div>
-      <h2 className="text-lg font-medium text-foreground mb-1">
+      <h2 className="font-serif text-[20px] tracking-[-0.01em] text-fg-primary mb-1">
         {isInvoice ? 'Invoice Paid' : 'Payment Complete'}
       </h2>
       {data.amount != null && (
-        <div className="text-2xl font-mono font-semibold text-foreground mb-1">
+        <div className="font-serif text-[28px] leading-tight tracking-[-0.02em] text-fg-primary mb-1">
           ${fmtUsd(data.amount)}
         </div>
       )}
       {isInvoice && data.label && (
-        <p className="text-xs text-dim font-mono mb-2">{data.label}</p>
+        <p className="font-mono text-[10px] text-fg-muted mb-2">{data.label}</p>
       )}
       {data.paymentMethod && (
-        <span className="inline-block text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-400/10 text-emerald-400 mb-3">
-          {data.paymentMethod === 'wallet_connect' ? 'Wallet' : data.paymentMethod === 'manual' ? 'Manual' : data.paymentMethod}
+        <span className="inline-block font-mono text-[9px] tracking-[0.12em] uppercase px-2 py-0.5 rounded-xs bg-success-bg text-success-fg border border-success-border mb-3">
+          {data.paymentMethod === 'wallet_connect'
+            ? 'Wallet'
+            : data.paymentMethod === 'manual'
+              ? 'Manual'
+              : data.paymentMethod}
         </span>
       )}
-      <p className="text-sm text-dim mb-4">
+      <p className="text-[13px] text-fg-secondary mb-4">
         {data.paidAt
           ? `Paid ${new Date(data.paidAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`
           : 'This payment has been completed.'}
@@ -421,7 +457,7 @@ function PaidState({ data }: { data: PaymentData }) {
           href={txUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-info text-xs font-mono hover:opacity-70 transition"
+          className="font-mono text-[11px] text-info-fg hover:opacity-70 transition"
         >
           {shortDigest} ↗
         </a>
@@ -432,15 +468,23 @@ function PaidState({ data }: { data: PaymentData }) {
 
 function ExpiredState() {
   return (
-    <div className="rounded-xl border border-border bg-surface/50 p-8 text-center">
-      <div className="w-12 h-12 rounded-full bg-amber-400/10 flex items-center justify-center mx-auto mb-4">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-amber-400">
+    <div className="rounded-md border border-border-subtle bg-surface-card p-8 text-center">
+      <div className="w-12 h-12 rounded-full bg-warning-bg border border-warning-border flex items-center justify-center mx-auto mb-4">
+        <svg
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          className="text-warning-solid"
+        >
           <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
           <path d="M12 8V12L14 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
         </svg>
       </div>
-      <h2 className="text-lg font-medium text-foreground mb-1">Expired</h2>
-      <p className="text-sm text-dim">
+      <h2 className="font-serif text-[20px] tracking-[-0.01em] text-fg-primary mb-1">
+        Expired
+      </h2>
+      <p className="text-[13px] text-fg-secondary">
         This payment link is no longer active. Please request a new one from the recipient.
       </p>
     </div>
@@ -449,16 +493,21 @@ function ExpiredState() {
 
 function CancelledState({ isInvoice }: { isInvoice: boolean }) {
   return (
-    <div className="rounded-xl border border-border bg-surface/50 p-8 text-center">
-      <div className="w-12 h-12 rounded-full bg-border/30 flex items-center justify-center mx-auto mb-4">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-dim">
-          <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    <div className="rounded-md border border-border-subtle bg-surface-card p-8 text-center">
+      <div className="w-12 h-12 rounded-full bg-surface-sunken border border-border-subtle flex items-center justify-center mx-auto mb-4">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-fg-muted">
+          <path
+            d="M18 6L6 18M6 6L18 18"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+          />
         </svg>
       </div>
-      <h2 className="text-lg font-medium text-foreground mb-1">
+      <h2 className="font-serif text-[20px] tracking-[-0.01em] text-fg-primary mb-1">
         {isInvoice ? 'Invoice Cancelled' : 'Link Cancelled'}
       </h2>
-      <p className="text-sm text-dim">
+      <p className="text-[13px] text-fg-secondary">
         {isInvoice
           ? 'This invoice has been cancelled by the sender.'
           : 'This payment link has been cancelled by the recipient. Please request a new one.'}
@@ -469,14 +518,21 @@ function CancelledState({ isInvoice }: { isInvoice: boolean }) {
 
 function NotFoundState() {
   return (
-    <div className="rounded-xl border border-border bg-surface/50 p-8 text-center">
-      <div className="w-12 h-12 rounded-full bg-border/30 flex items-center justify-center mx-auto mb-4">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-dim">
-          <path d="M12 9V13M12 17H12.01M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    <div className="rounded-md border border-border-subtle bg-surface-card p-8 text-center">
+      <div className="w-12 h-12 rounded-full bg-surface-sunken border border-border-subtle flex items-center justify-center mx-auto mb-4">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-fg-muted">
+          <path
+            d="M12 9V13M12 17H12.01M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+          />
         </svg>
       </div>
-      <h2 className="text-lg font-medium text-foreground mb-1">Not Found</h2>
-      <p className="text-sm text-dim">
+      <h2 className="font-serif text-[20px] tracking-[-0.01em] text-fg-primary mb-1">
+        Not Found
+      </h2>
+      <p className="text-[13px] text-fg-secondary">
         This payment doesn&apos;t exist or has been removed.
       </p>
     </div>

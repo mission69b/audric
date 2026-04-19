@@ -46,10 +46,10 @@ export function YieldEarningsCard({ data }: { data: YieldData }) {
   return (
     <CardShell title="Yield Earnings">
       <div className="text-center mb-1">
-        <span className="text-2xl font-semibold font-mono text-foreground">
+        <span className="text-2xl font-semibold font-mono text-fg-primary">
           {fmtYield(data.allTime)}
         </span>
-        <p className="text-[10px] font-mono uppercase tracking-widest text-dim mt-0.5">
+        <p className="text-[10px] font-mono uppercase tracking-widest text-fg-muted mt-0.5">
           All-time earnings
         </p>
       </div>
@@ -65,7 +65,7 @@ export function YieldEarningsCard({ data }: { data: YieldData }) {
         <DetailRow label="All Time">{fmtYield(data.allTime)}</DetailRow>
       </div>
 
-      <div className="mt-2 pt-2 border-t border-border/50 space-y-1 font-mono text-[11px]">
+      <div className="mt-2 pt-2 border-t border-border-subtle/50 space-y-1 font-mono text-[11px]">
         <DetailRow label="Current APY">{fmtApy(data.currentApy)}</DetailRow>
         <DetailRow label="Deposited">{data.deposited > 0 && data.deposited < 0.01 ? '< $0.01' : `$${fmtUsd(data.deposited)}`}</DetailRow>
         <DetailRow label="Projected / Year">{data.projectedYear > 0 && data.projectedYear < 0.01 ? '< $0.01' : `$${fmtUsd(data.projectedYear)}`}</DetailRow>

@@ -32,9 +32,9 @@ function fmtPrice(n: number): string {
 function PriceRow({ symbol, price, change, period }: { symbol: string; price: number | null; change?: number | null; period?: string }) {
   return (
     <div className="flex items-center justify-between py-0.5">
-      <span className="font-mono text-foreground font-medium">{symbol}</span>
+      <span className="font-mono text-fg-primary font-medium">{symbol}</span>
       <div className="flex items-center gap-2">
-        <span className="font-mono text-foreground">
+        <span className="font-mono text-fg-primary">
           {price != null ? fmtPrice(price) : '—'}
         </span>
         {change != null && (
@@ -43,7 +43,7 @@ function PriceRow({ symbol, price, change, period }: { symbol: string; price: nu
           </span>
         )}
         {change != null && period && (
-          <span className="text-dim text-[9px] font-mono">({period})</span>
+          <span className="text-fg-muted text-[9px] font-mono">({period})</span>
         )}
       </div>
     </div>
@@ -56,7 +56,7 @@ export function PriceCard({ data }: { data: PriceData }) {
     if (valid.length === 0) return null;
 
     return (
-      <CardShell title="Token Prices" badge={<span className="text-[9px] font-mono text-dim">{valid.length} tokens</span>}>
+      <CardShell title="Token Prices" badge={<span className="text-[9px] font-mono text-fg-muted">{valid.length} tokens</span>}>
         <div className="space-y-0.5 text-[11px]">
           {valid.map((t) => (
             <PriceRow key={t.symbol} symbol={t.symbol} price={t.price} />
@@ -71,17 +71,17 @@ export function PriceCard({ data }: { data: PriceData }) {
   return (
     <CardShell title="Price Change">
       <div className="text-center mb-2">
-        <span className="text-2xl font-semibold font-mono text-foreground">
+        <span className="text-2xl font-semibold font-mono text-fg-primary">
           {fmtPrice(data.currentPrice)}
         </span>
-        <div className="text-[10px] font-mono text-dim uppercase tracking-wider mt-0.5">
+        <div className="text-[10px] font-mono text-fg-muted uppercase tracking-wider mt-0.5">
           {data.symbol}
         </div>
       </div>
       {data.change != null && (
         <div className="text-center text-sm">
           <TrendIndicator value={data.change} />
-          {data.period && <span className="text-dim text-[10px] font-mono ml-1">({data.period})</span>}
+          {data.period && <span className="text-fg-muted text-[10px] font-mono ml-1">({data.period})</span>}
         </div>
       )}
     </CardShell>

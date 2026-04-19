@@ -37,25 +37,25 @@ export function ContactToast({ address, onSave, onDismiss }: ContactToastProps) 
 
   return (
     <div
-      className={`rounded-lg border border-border bg-surface p-4 transition-all duration-300 feed-row shadow-[var(--shadow-card)] ${
+      className={`rounded-lg border border-border-subtle bg-surface-card p-4 transition-all duration-300 feed-row shadow-[var(--shadow-flat)] ${
         visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
       }`}
     >
       {!expanded ? (
         <div className="flex items-center justify-between gap-3">
-          <p className="text-sm text-muted">
-            Save <span className="font-mono text-foreground">{truncated}</span> as a contact?
+          <p className="text-sm text-fg-secondary">
+            Save <span className="font-mono text-fg-primary">{truncated}</span> as a contact?
           </p>
           <div className="flex gap-2 shrink-0">
             <button
               onClick={() => setExpanded(true)}
-              className="bg-foreground rounded-lg px-3 py-1.5 text-xs font-medium text-background tracking-[0.05em] uppercase transition hover:opacity-80"
+              className="bg-fg-primary rounded-lg px-3 py-1.5 text-xs font-medium text-fg-inverse tracking-[0.05em] uppercase transition hover:opacity-80"
             >
               Save
             </button>
             <button
               onClick={() => setVisible(false)}
-              className="rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium text-muted hover:text-foreground transition"
+              className="rounded-lg border border-border-subtle bg-surface-page px-3 py-1.5 text-xs font-medium text-fg-secondary hover:text-fg-primary transition"
             >
               Skip
             </button>
@@ -63,8 +63,8 @@ export function ContactToast({ address, onSave, onDismiss }: ContactToastProps) 
         </div>
       ) : (
         <div className="space-y-3">
-          <p className="text-sm text-muted">
-            Name for <span className="font-mono text-foreground">{truncated}</span>
+          <p className="text-sm text-fg-secondary">
+            Name for <span className="font-mono text-fg-primary">{truncated}</span>
           </p>
           <div className="flex gap-2">
             <input
@@ -74,12 +74,12 @@ export function ContactToast({ address, onSave, onDismiss }: ContactToastProps) 
               onKeyDown={(e) => { if (e.key === 'Enter') handleSave(); }}
               placeholder="e.g. Alice, Rent, Exchange"
               autoFocus
-              className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-dim outline-none focus:border-border-bright"
+              className="flex-1 rounded-lg border border-border-subtle bg-surface-page px-3 py-2 text-sm text-fg-primary placeholder:text-fg-muted outline-none focus:border-border-strong"
             />
             <button
               onClick={handleSave}
               disabled={!name.trim()}
-              className="bg-foreground rounded-lg px-4 py-2 text-sm font-medium text-background tracking-[0.05em] uppercase transition hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="bg-fg-primary rounded-lg px-4 py-2 text-sm font-medium text-fg-inverse tracking-[0.05em] uppercase transition hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Save
             </button>

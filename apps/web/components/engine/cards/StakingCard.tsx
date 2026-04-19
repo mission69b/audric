@@ -22,8 +22,8 @@ export function StakingCard({ data }: { data: StakingData }) {
   return (
     <CardShell title="Volo Staking">
       <div className="text-center mb-3">
-        <span className="text-2xl font-semibold font-mono text-foreground">{apyPct.toFixed(2)}%</span>
-        <div className="text-[10px] font-mono text-dim uppercase tracking-wider mt-0.5">APY</div>
+        <span className="text-2xl font-semibold font-mono text-fg-primary">{apyPct.toFixed(2)}%</span>
+        <div className="text-[10px] font-mono text-fg-muted uppercase tracking-wider mt-0.5">APY</div>
       </div>
 
       <div className="space-y-1 font-mono text-[11px]">

@@ -1,0 +1,18 @@
+import type { SVGProps } from 'react';
+
+export const LinkIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+      width={16}
+      height={16}
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.25}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    {...props}
+  >
+    <path d="M7 9.5 9 7.5M6.25 10.75l-1.5 1.5a2.12 2.12 0 1 1-3-3l1.5-1.5M9.75 5.25l1.5-1.5a2.12 2.12 0 1 1 3 3l-1.5 1.5"></path>
+  </svg>
+);

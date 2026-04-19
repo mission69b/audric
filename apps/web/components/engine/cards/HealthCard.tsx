@@ -25,7 +25,7 @@ export function HealthCard({ data }: { data: HealthData }) {
   return (
     <CardShell title="Health Factor" badge={<StatusBadge status={status} />}>
       <div className="text-center mb-2">
-        <span className="text-2xl font-semibold font-mono text-foreground">{hf.toFixed(2)}</span>
+        <span className="text-2xl font-semibold font-mono text-fg-primary">{hf.toFixed(2)}</span>
       </div>
 
       <div className="mb-3">

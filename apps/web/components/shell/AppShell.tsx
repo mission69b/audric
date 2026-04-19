@@ -2,16 +2,16 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { AppSidebar } from './AppSidebar';
-import { Topbar } from './Topbar';
+import { SettingsCog } from '@/components/ui/SettingsCog';
+import { Tooltip } from '@/components/ui/Tooltip';
 import { usePanel } from '@/hooks/usePanel';
-import type { BalanceHeaderData } from '@/components/dashboard/BalanceHeader';
 
-// [SIMPLIFICATION DAY 11] allowance* prop trio removed. They were a soft
-// no-op since S.5 (allowance billing retired); the AppSidebar "Features
-// budget" pill / circle they fed is gone in this same pass.
+// [PHASE 2] Topbar deleted. The hero balance previously rendered in the
+// topbar moves to the dashboard's idle state in Phase 4 (BalanceHero).
+// SettingsCog absolute top-right replaces the gear button. Mobile-only
+// hamburger absolute top-left opens the overlay sidebar.
 interface AppShellProps {
   address: string;
-  balance: BalanceHeaderData;
   jwt?: string;
   activeSessionId?: string;
   onLoadSession?: (sessionId: string) => void;
@@ -23,7 +23,6 @@ const LS_SIDEBAR_KEY = 'audric_sidebar_collapsed';
 
 export function AppShell({
   address,
-  balance,
   jwt,
   activeSessionId,
   onLoadSession,
@@ -50,7 +49,7 @@ export function AppShell({
   }, []);
 
   return (
-    <div className="flex h-dvh overflow-hidden bg-background">
+    <div className="flex h-dvh overflow-hidden bg-surface-page">
       {/* Desktop sidebar (>= 768px) */}
       <div className="hidden md:flex shrink-0 relative">
         <AppSidebar
@@ -70,7 +69,7 @@ export function AppShell({
       {mobileOpen && (
         <>
           <div
-            className="fixed inset-0 z-[99] bg-black/60 md:hidden"
+            className="fixed inset-0 z-[99] bg-fg-primary/40 md:hidden"
             onClick={() => setMobileOpen(false)}
           />
           <div className="fixed inset-y-0 left-0 z-[100] w-[80vw] max-w-[320px] md:hidden animate-slide-from-left">
@@ -89,18 +88,34 @@ export function AppShell({
       )}
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <Topbar
-          address={address}
-          balance={balance}
-          jwt={jwt}
-          showHamburger
-          onHamburgerClick={() => setMobileOpen(true)}
-        />
-        <main id="main-content" className="flex-1 overflow-hidden flex flex-col">
-          {children}
-        </main>
-      </div>
+      <main
+        id="main-content"
+        className="flex-1 overflow-hidden flex flex-col relative min-w-0"
+      >
+        {/* Mobile-only hamburger — opens sidebar overlay */}
+        <div className="md:hidden absolute top-4 left-4 z-20">
+          <Tooltip label="Menu" side="right">
+            <button
+              onClick={() => setMobileOpen(true)}
+              aria-label="Open menu"
+              className="inline-flex items-center justify-center w-8 h-8 rounded-sm border border-border-strong bg-surface-card text-fg-muted hover:text-fg-primary hover:border-fg-primary transition-colors focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
+            >
+              <svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                <line x1="3" y1="5" x2="15" y2="5" />
+                <line x1="3" y1="9" x2="15" y2="9" />
+                <line x1="3" y1="13" x2="15" y2="13" />
+              </svg>
+            </button>
+          </Tooltip>
+        </div>
+
+        {/* Settings cog — absolute top-right, hidden on /settings */}
+        <div className="absolute top-4 right-6 z-20">
+          <SettingsCog />
+        </div>
+
+        {children}
+      </main>
     </div>
   );
 }

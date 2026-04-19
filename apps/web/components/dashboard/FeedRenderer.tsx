@@ -66,19 +66,19 @@ function ImageCard({ url, alt, cost }: { url: string; alt: string; cost?: string
   }, [getImageBlob, url, alt]);
 
   return (
-    <div className="rounded-lg border border-border bg-surface overflow-hidden feed-row shadow-[var(--shadow-card)]">
+    <div className="rounded-lg border border-border-subtle bg-surface-card overflow-hidden feed-row shadow-[var(--shadow-flat)]">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img ref={imgRef} src={url} alt={alt} crossOrigin="anonymous" className="w-full" />
       <div className="flex items-center justify-between px-3 py-2">
         {cost ? (
-          <p className="text-xs text-muted">{cost} from your balance</p>
+          <p className="text-xs text-fg-secondary">{cost} from your balance</p>
         ) : (
           <span />
         )}
         <div className="flex gap-1">
           <button
             onClick={handleCopy}
-            className="p-1.5 rounded-lg text-muted hover:text-foreground hover:bg-background transition-colors"
+            className="p-1.5 rounded-lg text-fg-secondary hover:text-fg-primary hover:bg-surface-page transition-colors"
             title={copied ? 'Copied!' : 'Copy image'}
           >
             {copied ? (
@@ -89,7 +89,7 @@ function ImageCard({ url, alt, cost }: { url: string; alt: string; cost?: string
           </button>
           <button
             onClick={handleDownload}
-            className="p-1.5 rounded-lg text-muted hover:text-foreground hover:bg-background transition-colors"
+            className="p-1.5 rounded-lg text-fg-secondary hover:text-fg-primary hover:bg-surface-page transition-colors"
             title="Save image"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" x2="12" y1="2" y2="15"/></svg>
@@ -140,15 +140,15 @@ function CopyableCode({ code, onCopy }: { code: string; onCopy?: (text: string) 
   return (
     <button
       onClick={handleCopy}
-      className="w-full flex items-center justify-between border border-border bg-background rounded-lg px-3 py-2 hover:border-border-bright transition cursor-pointer text-left"
+      className="w-full flex items-center justify-between border border-border-subtle bg-surface-page rounded-lg px-3 py-2 hover:border-border-strong transition cursor-pointer text-left"
       aria-label="Copy address"
     >
-      <code className="text-xs font-mono text-foreground break-all">{code}</code>
+      <code className="text-xs font-mono text-fg-primary break-all">{code}</code>
       <span className="shrink-0 ml-2 text-xs">
         {copied ? (
-          <span className="text-success">&#10003;</span>
+          <span className="text-success-solid">&#10003;</span>
         ) : (
-          <svg className="h-4 w-4 text-muted" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+          <svg className="h-4 w-4 text-fg-secondary" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9.75a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" />
           </svg>
         )}
@@ -176,7 +176,7 @@ export function FeedItemCard({
     case 'user-message':
       return (
         <div className="flex justify-end feed-row">
-          <div className="max-w-[80%] rounded-2xl rounded-br-md bg-foreground px-4 py-2.5 text-sm text-background break-words overflow-hidden">
+          <div className="max-w-[80%] rounded-2xl rounded-br-md bg-fg-primary px-4 py-2.5 text-sm text-fg-inverse break-words overflow-hidden">
             {data.text}
           </div>
         </div>
@@ -185,8 +185,8 @@ export function FeedItemCard({
     case 'ai-text':
       return (
         <div className="space-y-2 feed-row">
-          <div className="rounded-2xl rounded-bl-md border border-border bg-surface px-4 py-3 text-sm overflow-hidden shadow-[var(--shadow-card)]">
-            <span className="text-dim mr-1.5 float-left mt-0.5"><AudricMark size={14} /></span>
+          <div className="rounded-2xl rounded-bl-md border border-border-subtle bg-surface-card px-4 py-3 text-sm overflow-hidden shadow-[var(--shadow-flat)]">
+            <span className="text-fg-muted mr-1.5 float-left mt-0.5"><AudricMark size={14} /></span>
             <AgentMarkdown text={data.text} onAction={onChipClick} />
           </div>
           {data.chips && data.chips.length > 0 && (
@@ -195,7 +195,7 @@ export function FeedItemCard({
                 <button
                   key={chip.label}
                   onClick={() => onChipClick(chip.flow)}
-                  className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium text-muted hover:border-border-bright hover:text-foreground transition"
+                  className="rounded-full border border-border-subtle bg-surface-page px-3 py-1.5 text-xs font-medium text-fg-secondary hover:border-border-strong hover:text-fg-primary transition"
                 >
                   {chip.label}
                 </button>
@@ -207,18 +207,18 @@ export function FeedItemCard({
 
     case 'receipt':
       return (
-        <div className="rounded-lg border border-border bg-surface overflow-hidden feed-row shadow-[var(--shadow-card)]">
+        <div className="rounded-lg border border-border-subtle bg-surface-card overflow-hidden feed-row shadow-[var(--shadow-flat)]">
           <div className="px-4 pt-4 pb-3 flex items-center gap-2">
-            <span className="text-foreground text-xs">&#9679;</span>
-            <p className="text-sm font-medium text-foreground">{data.title}</p>
+            <span className="text-fg-primary text-xs">&#9679;</span>
+            <p className="text-sm font-medium text-fg-primary">{data.title}</p>
           </div>
 
           {data.qr && data.code && (
             <div className="flex justify-center py-4 px-4">
-              <div className="relative p-3 rounded-lg border border-border bg-background">
+              <div className="relative p-3 rounded-lg border border-border-subtle bg-surface-page">
                 <QrCode value={data.code} size={160} />
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <span className="text-foreground bg-background p-1 rounded"><AudricMark size={12} /></span>
+                  <span className="text-fg-primary bg-surface-page p-1 rounded"><AudricMark size={12} /></span>
                 </div>
               </div>
             </div>
@@ -227,9 +227,9 @@ export function FeedItemCard({
           {data.meta.length > 0 && (
             <div className="flex justify-center gap-2 px-4 pb-3">
               {data.meta.map((m) => (
-                <span key={m.label} className="inline-flex items-center gap-1.5 text-[11px] font-mono px-2.5 py-1 rounded bg-background border border-border">
-                  <span className="text-muted">{m.label}</span>
-                  <span className="text-foreground font-medium">{m.value}</span>
+                <span key={m.label} className="inline-flex items-center gap-1.5 text-[11px] font-mono px-2.5 py-1 rounded bg-surface-page border border-border-subtle">
+                  <span className="text-fg-secondary">{m.label}</span>
+                  <span className="text-fg-primary font-medium">{m.value}</span>
                 </span>
               ))}
             </div>
@@ -242,23 +242,23 @@ export function FeedItemCard({
           )}
 
           {data.instructions && data.instructions.length > 0 && (
-            <div className="border-t border-border px-4 py-3 space-y-3">
-              <p className="text-[11px] font-mono text-muted uppercase tracking-wider">How to deposit</p>
+            <div className="border-t border-border-subtle px-4 py-3 space-y-3">
+              <p className="text-[11px] font-mono text-fg-secondary uppercase tracking-wider">How to deposit</p>
               {data.instructions.map((inst) => (
                 <div key={inst.title} className="space-y-1">
-                  <p className="text-xs font-mono text-foreground font-medium">{inst.title}</p>
+                  <p className="text-xs font-mono text-fg-primary font-medium">{inst.title}</p>
                   <ol className="space-y-0.5">
                     {inst.steps.map((step, i) => (
-                      <li key={i} className="text-[11px] font-mono text-muted leading-relaxed flex gap-2">
-                        <span className="text-dim shrink-0">{i + 1}.</span>
-                        <span dangerouslySetInnerHTML={{ __html: step.replace(/\*\*(.*?)\*\*/g, '<span class="text-foreground font-medium">$1</span>') }} />
+                      <li key={i} className="text-[11px] font-mono text-fg-secondary leading-relaxed flex gap-2">
+                        <span className="text-fg-muted shrink-0">{i + 1}.</span>
+                        <span dangerouslySetInnerHTML={{ __html: step.replace(/\*\*(.*?)\*\*/g, '<span class="text-fg-primary font-medium">$1</span>') }} />
                       </li>
                     ))}
                   </ol>
                 </div>
               ))}
-              <p className="text-[10px] font-mono text-dim leading-relaxed pt-1">
-                Only send <span className="text-foreground font-medium">USDC on the Sui network</span>. Other tokens or networks may result in lost funds.
+              <p className="text-[10px] font-mono text-fg-muted leading-relaxed pt-1">
+                Only send <span className="text-fg-primary font-medium">USDC on the Sui network</span>. Other tokens or networks may result in lost funds.
               </p>
             </div>
           )}
@@ -267,16 +267,16 @@ export function FeedItemCard({
 
     case 'list':
       return (
-        <div className="rounded-lg border border-border bg-surface p-4 space-y-2 feed-row shadow-[var(--shadow-card)]">
-          <p className="text-sm font-medium text-foreground">{data.title}</p>
-          <div className="divide-y divide-border">
+        <div className="rounded-lg border border-border-subtle bg-surface-card p-4 space-y-2 feed-row shadow-[var(--shadow-flat)]">
+          <p className="text-sm font-medium text-fg-primary">{data.title}</p>
+          <div className="divide-y divide-border-subtle">
             {data.items.map((row, i) => (
               <div key={i} className="flex justify-between py-2 text-sm">
                 <div>
-                  <span className="text-foreground">{row.label}</span>
-                  {row.sub && <span className="ml-2 text-muted">{row.sub}</span>}
+                  <span className="text-fg-primary">{row.label}</span>
+                  {row.sub && <span className="ml-2 text-fg-secondary">{row.sub}</span>}
                 </div>
-                <span className="text-muted font-mono">{row.value}</span>
+                <span className="text-fg-secondary font-mono">{row.value}</span>
               </div>
             ))}
           </div>
@@ -285,12 +285,12 @@ export function FeedItemCard({
 
     case 'report':
       return (
-        <div className="rounded-lg border border-border bg-surface p-4 space-y-4 feed-row shadow-[var(--shadow-card)]">
+        <div className="rounded-lg border border-border-subtle bg-surface-card p-4 space-y-4 feed-row shadow-[var(--shadow-flat)]">
           {data.sections.map((section, i) => (
             <div key={i} className="space-y-1">
-              <p className="text-sm font-medium text-foreground">{section.title}</p>
+              <p className="text-sm font-medium text-fg-primary">{section.title}</p>
               {section.lines.map((line, j) => (
-                <p key={j} className="text-sm text-muted font-mono">{line}</p>
+                <p key={j} className="text-sm text-fg-secondary font-mono">{line}</p>
               ))}
             </div>
           ))}
@@ -304,12 +304,12 @@ export function FeedItemCard({
 
     case 'confirmation':
       return (
-        <div className="rounded-lg border border-border bg-surface p-4 space-y-3 feed-row shadow-[var(--shadow-card)]">
-          <p className="text-sm font-medium text-foreground">{data.title}</p>
+        <div className="rounded-lg border border-border-subtle bg-surface-card p-4 space-y-3 feed-row shadow-[var(--shadow-flat)]">
+          <p className="text-sm font-medium text-fg-primary">{data.title}</p>
           {data.details.map((d) => (
             <div key={d.label} className="flex justify-between text-sm">
-              <span className="text-muted">{d.label}</span>
-              <span className="text-foreground font-mono">{d.value}</span>
+              <span className="text-fg-secondary">{d.label}</span>
+              <span className="text-fg-primary font-mono">{d.value}</span>
             </div>
           ))}
         </div>
@@ -317,10 +317,10 @@ export function FeedItemCard({
 
     case 'result':
       return (
-        <div className={`rounded-lg p-4 text-sm feed-row ${data.success ? 'bg-success/5 border border-success/20' : 'bg-error/5 border border-error/20'}`}>
+        <div className={`rounded-lg p-4 text-sm feed-row ${data.success ? 'bg-success-solid/5 border border-success-solid/20' : 'bg-error-solid/5 border border-error-solid/20'}`}>
           <p className="font-medium">
             <span className="mr-1.5">{data.success ? '\u2713' : '\u2717'}</span>
-            <span className={data.success ? 'text-success' : 'text-error'}>{data.title}</span>
+            <span className={data.success ? 'text-success-solid' : 'text-error-solid'}>{data.title}</span>
           </p>
           {data.details && (
             data.txUrl ? (
@@ -328,12 +328,12 @@ export function FeedItemCard({
                 href={data.txUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="block mt-1 text-info hover:underline font-mono transition"
+                className="block mt-1 text-info-solid hover:underline font-mono transition"
               >
                 {data.details} &#8599;
               </a>
             ) : (
-              <p className={`mt-1 ${data.success ? 'text-success/70' : 'text-error/70'}`}>{data.details}</p>
+              <p className={`mt-1 ${data.success ? 'text-success-solid/70' : 'text-error-solid/70'}`}>{data.details}</p>
             )
           )}
         </div>
@@ -341,17 +341,17 @@ export function FeedItemCard({
 
     case 'audio':
       return (
-        <div className="rounded-lg border border-border bg-surface p-4 space-y-2 feed-row shadow-[var(--shadow-card)]">
-          <p className="text-sm font-medium text-foreground">{data.title}</p>
+        <div className="rounded-lg border border-border-subtle bg-surface-card p-4 space-y-2 feed-row shadow-[var(--shadow-flat)]">
+          <p className="text-sm font-medium text-fg-primary">{data.title}</p>
           <audio controls className="w-full" src={data.url} />
           <div className="flex items-center justify-between">
             {data.cost && (
-              <p className="text-xs text-muted">{data.cost} from your balance</p>
+              <p className="text-xs text-fg-secondary">{data.cost} from your balance</p>
             )}
             <a
               href={data.url}
               download
-              className="text-xs text-foreground underline underline-offset-2 hover:opacity-70 transition"
+              className="text-xs text-fg-primary underline underline-offset-2 hover:opacity-70 transition"
             >
               Download
             </a>
@@ -362,9 +362,9 @@ export function FeedItemCard({
     case 'error':
       return (
         <div className="space-y-2 feed-row">
-          <div className="rounded-lg bg-error/5 border border-error/20 px-4 py-3 text-sm">
-            <span className="text-dim mr-1.5 inline-block align-text-bottom"><AudricMark size={14} /></span>
-            <span className="text-error">{data.message}</span>
+          <div className="rounded-lg bg-error-solid/5 border border-error-solid/20 px-4 py-3 text-sm">
+            <span className="text-fg-muted mr-1.5 inline-block align-text-bottom"><AudricMark size={14} /></span>
+            <span className="text-error-solid">{data.message}</span>
           </div>
           {data.chips && data.chips.length > 0 && (
             <div className="flex flex-wrap gap-2 pl-2">
@@ -372,7 +372,7 @@ export function FeedItemCard({
                 <button
                   key={chip.label}
                   onClick={() => onChipClick(chip.flow)}
-                  className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium text-muted hover:border-border-bright hover:text-foreground transition"
+                  className="rounded-full border border-border-subtle bg-surface-page px-3 py-1.5 text-xs font-medium text-fg-secondary hover:border-border-strong hover:text-fg-primary transition"
                 >
                   {chip.label}
                 </button>
@@ -445,31 +445,31 @@ function InlineConfirm({ tool, cost, summary, onResolve }: { tool: string; cost:
   };
 
   return (
-    <div className="rounded-xl border border-border bg-surface p-3 space-y-2.5 shadow-[var(--shadow-card)]">
+    <div className="rounded-xl border border-border-subtle bg-surface-card p-3 space-y-2.5 shadow-[var(--shadow-flat)]">
       <div className="flex items-center justify-between">
-        <span className="text-xs text-muted">{toolLabel}</span>
-        <span className="text-sm font-semibold text-foreground">${cost.toFixed(2)}</span>
+        <span className="text-xs text-fg-secondary">{toolLabel}</span>
+        <span className="text-sm font-semibold text-fg-primary">${cost.toFixed(2)}</span>
       </div>
       {summary && (
-        <div className="text-xs text-muted truncate">{summary}</div>
+        <div className="text-xs text-fg-secondary truncate">{summary}</div>
       )}
       {!decided ? (
         <div className="flex gap-2">
           <button
             onClick={() => handle(false)}
-            className="flex-1 rounded-lg border border-border bg-background py-2 text-xs font-medium text-muted hover:text-foreground hover:border-border-bright transition active:scale-[0.97]"
+            className="flex-1 rounded-lg border border-border-subtle bg-surface-page py-2 text-xs font-medium text-fg-secondary hover:text-fg-primary hover:border-border-strong transition active:scale-[0.97]"
           >
             Cancel
           </button>
           <button
             onClick={() => handle(true)}
-            className="flex-1 rounded-lg bg-foreground py-2 text-xs font-semibold text-background transition hover:opacity-90 active:scale-[0.97]"
+            className="flex-1 rounded-lg bg-fg-primary py-2 text-xs font-semibold text-fg-inverse transition hover:opacity-90 active:scale-[0.97]"
           >
             Approve
           </button>
         </div>
       ) : (
-        <div className="text-xs text-muted text-center py-1">Processing...</div>
+        <div className="text-xs text-fg-secondary text-center py-1">Processing...</div>
       )}
     </div>
   );
@@ -482,16 +482,16 @@ function AgentResponseCard({ data, onAction, onConfirmResolve }: { data: Extract
   const isError = data.status === 'error';
 
   return (
-    <div className="rounded-2xl rounded-bl-md border border-border bg-surface px-4 py-3 text-sm space-y-2 feed-row overflow-hidden shadow-[var(--shadow-card)]">
+    <div className="rounded-2xl rounded-bl-md border border-border-subtle bg-surface-card px-4 py-3 text-sm space-y-2 feed-row overflow-hidden shadow-[var(--shadow-flat)]">
       {hasSteps && (
-        <div className="flex flex-wrap gap-x-3 gap-y-1.5 text-xs text-muted">
+        <div className="flex flex-wrap gap-x-3 gap-y-1.5 text-xs text-fg-secondary">
           {data.steps.map((step, i) => (
             <span key={i} className="flex items-center gap-1 min-w-0">
-              {step.status === 'done' && <span className="text-success shrink-0">&#10003;</span>}
+              {step.status === 'done' && <span className="text-success-solid shrink-0">&#10003;</span>}
               {step.status === 'running' && (
                 <Spinner size="sm" />
               )}
-              {step.status === 'error' && <span className="text-error shrink-0">&#10007;</span>}
+              {step.status === 'error' && <span className="text-error-solid shrink-0">&#10007;</span>}
               <span className="truncate">{TOOL_LABELS[step.tool] ?? step.tool.replace(/_/g, ' ')}</span>
             </span>
           ))}
@@ -499,14 +499,14 @@ function AgentResponseCard({ data, onAction, onConfirmResolve }: { data: Extract
       )}
 
       {data.status === 'running' && !data.text && !data.confirm && (
-        <div className="h-3 w-full max-w-[160px] rounded-full overflow-hidden bg-border">
-          <div className="h-full w-full animate-shimmer bg-gradient-to-r from-transparent via-foreground/10 to-transparent" />
+        <div className="h-3 w-full max-w-[160px] rounded-full overflow-hidden bg-border-subtle">
+          <div className="h-full w-full animate-shimmer bg-gradient-to-r from-transparent via-fg-primary/10 to-transparent" />
         </div>
       )}
 
       {data.text && (
         <div className="min-w-0">
-          <span className="text-dim mr-1.5 float-left mt-0.5"><AudricMark size={14} /></span>
+          <span className="text-fg-muted mr-1.5 float-left mt-0.5"><AudricMark size={14} /></span>
           <AgentMarkdown text={data.text} onAction={onAction} />
         </div>
       )}
@@ -521,14 +521,14 @@ function AgentResponseCard({ data, onAction, onConfirmResolve }: { data: Extract
       )}
 
       {isError && data.error && (
-        <div className="text-error text-xs break-words">{data.error}</div>
+        <div className="text-error-solid text-xs break-words">{data.error}</div>
       )}
 
       {isDone && data.totalCost != null && data.totalCost > 0 && (
         <div className="flex justify-end">
           <button
             onClick={() => setCostExpanded(!costExpanded)}
-            className="text-xs text-muted hover:text-foreground transition min-h-[32px] flex items-center gap-1 px-1"
+            className="text-xs text-fg-secondary hover:text-fg-primary transition min-h-[32px] flex items-center gap-1 px-1"
           >
             <span className="font-mono">${data.totalCost.toFixed(3)}</span>
             <span>{costExpanded ? '&#9662;' : '&#9656;'}</span>
@@ -537,9 +537,9 @@ function AgentResponseCard({ data, onAction, onConfirmResolve }: { data: Extract
       )}
 
       {costExpanded && data.steps.filter((s) => s.cost && s.cost > 0).length > 0 && (
-        <div className="border-t border-border pt-2 space-y-1.5">
+        <div className="border-t border-border-subtle pt-2 space-y-1.5">
           {data.steps.filter((s) => s.cost && s.cost > 0).map((step, i) => (
-            <div key={i} className="flex justify-between text-xs text-muted gap-2">
+            <div key={i} className="flex justify-between text-xs text-fg-secondary gap-2">
               <span className="truncate">{TOOL_LABELS[step.tool] ?? step.tool}</span>
               <span className="font-mono shrink-0">${step.cost!.toFixed(3)}</span>
             </div>
@@ -599,8 +599,8 @@ function TransactionHistoryCard({
 
   if (transactions.length === 0) {
     return (
-      <div className="rounded-lg border border-border bg-surface p-4 feed-row shadow-[var(--shadow-card)]">
-        <p className="text-sm text-muted">No transactions found yet. Make your first save or send to see activity here.</p>
+      <div className="rounded-lg border border-border-subtle bg-surface-card p-4 feed-row shadow-[var(--shadow-flat)]">
+        <p className="text-sm text-fg-secondary">No transactions found yet. Make your first save or send to see activity here.</p>
       </div>
     );
   }
@@ -609,12 +609,12 @@ function TransactionHistoryCard({
   const hasMore = transactions.length > INITIAL_LIMIT;
 
   return (
-    <div className="rounded-lg border border-border bg-surface p-4 space-y-1 feed-row shadow-[var(--shadow-card)]">
-      <p className="text-sm font-medium text-foreground mb-2">
+    <div className="rounded-lg border border-border-subtle bg-surface-card p-4 space-y-1 feed-row shadow-[var(--shadow-flat)]">
+      <p className="text-sm font-medium text-fg-primary mb-2">
         Recent Activity
-        <span className="text-xs text-muted font-normal ml-2">{transactions.length} txns</span>
+        <span className="text-xs text-fg-secondary font-normal ml-2">{transactions.length} txns</span>
       </p>
-      <div className="divide-y divide-border">
+      <div className="divide-y divide-border-subtle">
         {visible.map((tx) => {
           const icon = ACTION_ICONS[tx.action] ?? '\uD83D\uDCC4';
           const label = ACTION_LABELS[tx.action] ?? tx.action;
@@ -627,28 +627,28 @@ function TransactionHistoryCard({
               href={`${explorerBase}/${tx.digest}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center justify-between py-2.5 hover:bg-background -mx-1 px-1 rounded-lg transition group"
+              className="flex items-center justify-between py-2.5 hover:bg-surface-page -mx-1 px-1 rounded-lg transition group"
             >
               <div className="flex items-center gap-3 min-w-0">
                 <span className="text-base w-6 text-center shrink-0">{icon}</span>
                 <div className="min-w-0">
-                  <p className="text-sm text-foreground font-medium">{label}</p>
-                  <p className="text-xs text-muted font-mono truncate">
+                  <p className="text-sm text-fg-primary font-medium">{label}</p>
+                  <p className="text-xs text-fg-secondary font-mono truncate">
                     {tx.counterparty ? truncAddr(tx.counterparty) : relativeTime(tx.timestamp)}
                   </p>
                 </div>
               </div>
               <div className="text-right shrink-0 ml-3">
                 {amountStr && (
-                  <p className={`text-sm font-mono font-medium ${isIn ? 'text-success' : 'text-foreground'}`}>
+                  <p className={`text-sm font-mono font-medium ${isIn ? 'text-success-solid' : 'text-fg-primary'}`}>
                     {amountStr}
                   </p>
                 )}
                 {tx.counterparty && (
-                  <p className="text-xs text-muted">{relativeTime(tx.timestamp)}</p>
+                  <p className="text-xs text-fg-secondary">{relativeTime(tx.timestamp)}</p>
                 )}
                 {!tx.counterparty && tx.asset && (
-                  <p className="text-xs text-muted">{tx.asset}</p>
+                  <p className="text-xs text-fg-secondary">{tx.asset}</p>
                 )}
               </div>
             </a>
@@ -658,7 +658,7 @@ function TransactionHistoryCard({
       {hasMore && (
         <button
           onClick={() => setExpanded(!expanded)}
-          className="w-full pt-2 text-xs text-foreground underline underline-offset-2 hover:opacity-70 font-mono transition"
+          className="w-full pt-2 text-xs text-fg-primary underline underline-offset-2 hover:opacity-70 font-mono transition"
         >
           {expanded ? '\u25B2 Show less' : `\u25BC Show all ${transactions.length} transactions`}
         </button>

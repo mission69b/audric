@@ -4,12 +4,12 @@ import React from 'react';
 
 export function CardShell({ title, badge, children, noPadding }: { title: string; badge?: React.ReactNode; children: React.ReactNode; noPadding?: boolean }) {
   return (
-    <div className="rounded-md overflow-hidden my-1.5" style={{ border: '0.5px solid var(--border)', background: 'var(--n800)' }}>
-      <div className="px-3 py-1.5 flex items-center justify-between" style={{ borderBottom: '0.5px solid var(--border)' }}>
-        <span className="text-[9px] font-mono uppercase tracking-[0.12em] text-dim">{title}</span>
+    <div className="my-1.5 rounded-md overflow-hidden border border-border-subtle bg-surface-card">
+      <div className="flex items-center justify-between px-3.5 py-2 border-b border-border-subtle bg-surface-sunken">
+        <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-fg-muted">{title}</span>
         {badge}
       </div>
-      {noPadding ? children : <div className="px-3 py-2 text-xs">{children}</div>}
+      {noPadding ? children : <div className="px-3.5 py-2.5 text-xs">{children}</div>}
     </div>
   );
 }
@@ -17,21 +17,21 @@ export function CardShell({ title, badge, children, noPadding }: { title: string
 export function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex justify-between items-baseline">
-      <span className="text-dim">{label}</span>
-      <span className="text-foreground text-right">{children}</span>
+      <span className="text-fg-muted">{label}</span>
+      <span className="text-fg-primary text-right">{children}</span>
     </div>
   );
 }
 
 export function MonoLabel({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <span className={`text-[10px] font-mono uppercase tracking-widest text-dim${className ? ` ${className}` : ''}`}>{children}</span>;
+  return <span className={`text-[10px] font-mono uppercase tracking-widest text-fg-muted${className ? ` ${className}` : ''}`}>{children}</span>;
 }
 
 export function TrendIndicator({ value, suffix = '%' }: { value: number; suffix?: string }) {
-  if (value === 0) return <span className="text-dim">0{suffix}</span>;
+  if (value === 0) return <span className="text-fg-muted">0{suffix}</span>;
   const isPositive = value > 0;
   return (
-    <span className={isPositive ? 'text-emerald-400' : 'text-red-400'}>
+    <span className={isPositive ? 'text-success-solid' : 'text-error-solid'}>
       {isPositive ? '▲' : '▼'} {isPositive ? '+' : ''}{value.toFixed(1)}{suffix}
     </span>
   );
@@ -50,7 +50,7 @@ export function MiniBar({ segments }: { segments: MiniBarSegment[] }) {
 
   return (
     <div className="space-y-1.5">
-      <div className="flex h-2 rounded-full overflow-hidden bg-border/30">
+      <div className="flex h-2 rounded-full overflow-hidden bg-border-subtle">
         {segments.map((s, i) => (
           <div
             key={s.label}
@@ -59,7 +59,7 @@ export function MiniBar({ segments }: { segments: MiniBarSegment[] }) {
           />
         ))}
       </div>
-      <div className="flex gap-3 text-[10px] font-mono text-dim">
+      <div className="flex gap-3 text-[10px] font-mono text-fg-muted">
         {segments.slice(0, 4).map((s, i) => (
           <span key={s.label} className="flex items-center gap-1">
             <span className={`inline-block w-1.5 h-1.5 rounded-sm ${colors[i % colors.length]}`} />
@@ -74,10 +74,10 @@ export function MiniBar({ segments }: { segments: MiniBarSegment[] }) {
 type GaugeColorFn = (value: number) => string;
 
 const GAUGE_COLOR_HF: GaugeColorFn = (v) =>
-  v < 1.1 ? 'var(--status-danger)' : v < 1.5 ? 'var(--status-warning)' : v < 2.0 ? 'var(--status-warning)' : 'var(--status-healthy)';
+  v < 1.1 ? 'var(--error-solid)' : v < 1.5 ? 'var(--warning-solid)' : v < 2.0 ? 'var(--warning-solid)' : 'var(--success-solid)';
 
 const GAUGE_COLOR_USAGE: GaugeColorFn = (v) =>
-  v > 0.9 ? 'var(--status-danger)' : v > 0.7 ? 'var(--status-warning)' : 'var(--status-healthy)';
+  v > 0.9 ? 'var(--error-solid)' : v > 0.7 ? 'var(--warning-solid)' : 'var(--success-solid)';
 
 interface GaugeProps {
   value: number;
@@ -93,7 +93,7 @@ export function Gauge({ value, min = 0, max = 5, thresholds, colorMode = 'health
 
   return (
     <div className="space-y-1">
-      <div className="relative h-2 rounded-full overflow-hidden bg-border/30">
+      <div className="relative h-2 rounded-full overflow-hidden bg-border-subtle">
         <div
           className="h-full rounded-full transition-all"
           style={{
@@ -106,7 +106,7 @@ export function Gauge({ value, min = 0, max = 5, thresholds, colorMode = 'health
           return (
             <div
               key={t.label}
-              className="absolute top-0 h-full w-px bg-foreground/40"
+              className="absolute top-0 h-full w-px bg-border-strong"
               style={{ left: `${tPct}%` }}
               title={t.label}
             />
@@ -114,7 +114,7 @@ export function Gauge({ value, min = 0, max = 5, thresholds, colorMode = 'health
         })}
       </div>
       {thresholds && thresholds.length > 0 && (
-        <div className={`flex ${thresholds.length === 1 ? 'justify-end' : 'justify-between'} text-[9px] font-mono text-dim`}>
+        <div className={`flex ${thresholds.length === 1 ? 'justify-end' : 'justify-between'} text-[9px] font-mono text-fg-muted`}>
           {thresholds.map((t) => (
             <span key={t.label}>{t.label}</span>
           ))}
@@ -126,10 +126,10 @@ export function Gauge({ value, min = 0, max = 5, thresholds, colorMode = 'health
 
 export function StatusBadge({ status }: { status: 'healthy' | 'warning' | 'danger' | 'critical' }) {
   const config = {
-    healthy: { color: 'bg-status-healthy', text: 'text-status-healthy', label: 'Healthy' },
-    warning: { color: 'bg-status-warning', text: 'text-status-warning', label: 'Warning' },
-    danger: { color: 'bg-status-danger', text: 'text-status-danger', label: 'Danger' },
-    critical: { color: 'bg-status-danger animate-pulse', text: 'text-status-danger', label: 'Critical' },
+    healthy: { color: 'bg-success-solid', text: 'text-success-solid', label: 'Healthy' },
+    warning: { color: 'bg-warning-solid', text: 'text-warning-solid', label: 'Warning' },
+    danger: { color: 'bg-error-solid', text: 'text-error-solid', label: 'Danger' },
+    critical: { color: 'bg-error-solid animate-pulse', text: 'text-error-solid', label: 'Critical' },
   };
   const c = config[status];
   return (
@@ -153,13 +153,13 @@ export function SuiscanLink({ digest }: { digest: string }) {
   const txUrl = `${SUISCAN_TX_URL}/${digest}`;
   const shortTx = `${digest.slice(0, 8)}...${digest.slice(-6)}`;
   return (
-    <div className="pt-1.5 mt-1.5 border-t border-border/50 flex justify-between items-center font-mono text-[11px]">
-      <span className="text-dim">{shortTx}</span>
+    <div className="pt-1.5 mt-1.5 border-t border-border-subtle flex justify-between items-center font-mono text-[11px]">
+      <span className="text-fg-muted">{shortTx}</span>
       <a
         href={txUrl}
         target="_blank"
         rel="noopener noreferrer"
-        className="text-info hover:opacity-70 transition text-[10px] flex items-center gap-1"
+        className="text-info-solid hover:opacity-70 transition text-[10px] flex items-center gap-1"
       >
         View on Suiscan
         {SUISCAN_ICON}

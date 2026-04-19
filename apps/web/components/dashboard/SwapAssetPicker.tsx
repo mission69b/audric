@@ -25,14 +25,14 @@ function fmtBalance(amount: number): string {
 
 export function SwapAssetPicker({ assets, onSelect, message, onChangeTarget, autoTarget }: SwapAssetPickerProps) {
   return (
-    <div className="rounded-lg border border-border bg-surface p-4 space-y-3 feed-row shadow-[var(--shadow-card)]">
+    <div className="rounded-lg border border-border-subtle bg-surface-card p-4 space-y-3 feed-row shadow-[var(--shadow-flat)]">
       {message && (
         <div className="flex items-center justify-between">
-          <p className="text-sm text-muted whitespace-pre-line">{message}</p>
+          <p className="text-sm text-fg-secondary whitespace-pre-line">{message}</p>
           {onChangeTarget && autoTarget && (
             <button
               onClick={onChangeTarget}
-              className="text-xs text-muted hover:text-foreground transition underline underline-offset-2 shrink-0 ml-3"
+              className="text-xs text-fg-secondary hover:text-fg-primary transition underline underline-offset-2 shrink-0 ml-3"
             >
               Change target
             </button>
@@ -44,11 +44,11 @@ export function SwapAssetPicker({ assets, onSelect, message, onChangeTarget, aut
           <button
             key={a.symbol}
             onClick={() => onSelect(a.symbol)}
-            className="flex items-center gap-2 rounded-full border border-border bg-background px-4 py-2 text-sm font-medium text-foreground hover:border-border-bright transition active:scale-[0.95]"
+            className="flex items-center gap-2 rounded-full border border-border-subtle bg-surface-page px-4 py-2 text-sm font-medium text-fg-primary hover:border-border-strong transition active:scale-[0.95]"
           >
             <span className="font-mono font-semibold">{a.symbol}</span>
             {a.amount != null && (
-              <span className="text-muted text-xs font-mono">
+              <span className="text-fg-secondary text-xs font-mono">
                 {fmtBalance(a.amount)}
                 {a.usdValue != null && a.usdValue > 0.01 && (
                   <span className="ml-1 opacity-60">${a.usdValue.toFixed(2)}</span>
@@ -59,7 +59,7 @@ export function SwapAssetPicker({ assets, onSelect, message, onChangeTarget, aut
         ))}
       </div>
       {assets.length === 0 && (
-        <p className="text-xs text-dim">No assets available to swap.</p>
+        <p className="text-xs text-fg-muted">No assets available to swap.</p>
       )}
     </div>
   );

@@ -72,7 +72,7 @@ export function Tooltip({ label, side = 'bottom', children, className }: Tooltip
       {mounted && visible && createPortal(
         <div
           role="tooltip"
-          className="pointer-events-none whitespace-nowrap rounded-md bg-foreground px-2.5 py-1.5 text-[11px] text-background leading-none shadow-lg"
+          className="pointer-events-none whitespace-nowrap rounded-md bg-fg-primary px-2.5 py-1.5 text-[11px] text-fg-inverse leading-none shadow-lg"
           style={{
             position: 'fixed',
             top: coords.top,
