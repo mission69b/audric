@@ -56,7 +56,7 @@ Plus one public tool (no sign-up):
 
 ### Silent intelligence (Audric Intelligence's silent context layer)
 
-> The previous "Autonomous features" table (Copilot, scheduled actions, morning briefings, behavioral pattern proposals, trust ladder) was deleted in the April 2026 simplification — zkLogin can't sign without user presence, so "autonomous" was reminders dressed up as agency. See `t2000/spec/SIMPLIFICATION_RATIONALE.md`.
+> The previous "Autonomous features" table (Copilot, scheduled actions, morning briefings, behavioral pattern proposals, trust ladder) was deleted in the April 2026 simplification — zkLogin can't sign without user presence, so "autonomous" was reminders dressed up as agency. See the S.0–S.12 entries in `t2000/audric-build-tracker.md`.
 
 | Feature | Description | Status |
 |---------|-------------|--------|

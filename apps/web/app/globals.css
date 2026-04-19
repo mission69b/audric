@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /* ============================================================
-   ADS N-SCALE TOKENS — aligned to spec/DESIGN_SYSTEM.md
+   ADS N-SCALE TOKENS — design system tokens (sources of truth: this file + components/ui/)
    ============================================================ */
 
 :root {

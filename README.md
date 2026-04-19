@@ -74,7 +74,7 @@ Your money lives in a non-custodial wallet. Audric executes transactions, but yo
 
 `record_advice` tool writes `AdviceLog` rows; `buildAdviceContext()` hydrates last 30 days into every turn so the chat doesn't contradict itself across sessions. Episodic memory (`UserMemory`) and the full conversation log run alongside it for the future self-hosted model migration.
 
-> **What was deleted in the April 2026 simplification:** Copilot suggestions, scheduled actions / DCA, morning briefings, rate alerts, auto-compound, the features-budget allowance, the proactive-nudges pipeline, savings-goal milestone celebrations, follow-up queues, and the proposal pipeline behind `BehavioralPattern`. zkLogin can't sign without user presence — "autonomous" was reminders dressed up as agency. See [`spec/SIMPLIFICATION_RATIONALE.md`](https://github.com/mission69b/t2000/blob/main/spec/SIMPLIFICATION_RATIONALE.md) for the locked decisions on what we will not bring back.
+> **What was deleted in the April 2026 simplification:** Copilot suggestions, scheduled actions / DCA, morning briefings, rate alerts, auto-compound, the features-budget allowance, the proactive-nudges pipeline, savings-goal milestone celebrations, follow-up queues, and the proposal pipeline behind `BehavioralPattern`. zkLogin can't sign without user presence — "autonomous" was reminders dressed up as agency. See the S.0–S.19 entries in [`audric-build-tracker.md`](https://github.com/mission69b/t2000/blob/main/audric-build-tracker.md) for the locked decisions on what we will not bring back.
 
 ### Canvas Visualizations
 
