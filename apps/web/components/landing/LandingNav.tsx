@@ -22,6 +22,9 @@ export function LandingNav() {
         <a href="#intelligence" className="hidden sm:block font-mono text-[10px] tracking-[0.1em] uppercase text-muted hover:text-foreground transition">
           Intelligence
         </a>
+        <a href="#finance" className="hidden sm:block font-mono text-[10px] tracking-[0.1em] uppercase text-muted hover:text-foreground transition">
+          Finance
+        </a>
         <a href="#pay" className="hidden sm:block font-mono text-[10px] tracking-[0.1em] uppercase text-muted hover:text-foreground transition">
           Pay
         </a>

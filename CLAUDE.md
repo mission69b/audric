@@ -36,15 +36,16 @@ audric/
 └── pnpm-workspace.yaml
 ```
 
-### Product catalog — Audric is exactly four products
+### Product catalog — Audric is exactly five products
 
-> **"Audric Finance" is retired** (April 2026 reframe). Its operations (save, swap, borrow, repay, withdraw) are now surfaced through Audric Intelligence's Agent Harness, gated by Audric Passport's tap-to-confirm. Canonical reference: `t2000/audric-roadmap.md`.
+> **S.18 reframe (April 19 2026 evening):** S.17 retired Audric Finance and tried to surface save/swap/borrow under Intelligence; S.18 brought Finance back because Intelligence was overloaded as both "the moat" and "the home for every financial verb," and Send/Receive overlapped Pay. Finance now owns save/credit/swap/charts; Pay owns send/receive. Canonical reference: `t2000/audric-roadmap.md`.
 
 | Product | What it is | Implementation | Status |
 |---------|-----------|----------------|--------|
 | 🪪 **Audric Passport** | Trust layer — zkLogin via Google, non-custodial Sui wallet, tap-to-confirm consent on every write, sponsored gas. Wraps every other product. | `@t2000/sdk` + Enoki + `@mysten/dapp-kit` | Live |
-| 🧠 **Audric Intelligence** | Brain (the moat) — 5 systems orchestrate every money decision. Save, swap, borrow, repay, withdraw, send all run through the Agent Harness. | `@t2000/engine` (40 tools, reasoning, guards, recipes) + audric-side `record_advice` + silent context (`engine-context.ts`) | Live |
-| 💸 **Audric Pay** | Money primitive — send USDC, payment links, invoices, QR. Free, global, instant on Sui. | `@t2000/sdk` direct Sui tx + payment-link contract + invoice flows | Live |
+| 🧠 **Audric Intelligence** | Brain (the moat) — 5 systems orchestrate every money decision. Engineering-facing brand; users experience it as "Audric just understood me." | `@t2000/engine` (40 tools, reasoning, guards, recipes) + audric-side `record_advice` + silent context (`engine-context.ts`) | Live |
+| 💰 **Audric Finance** | Manage your money on Sui — Save (NAVI lend, 3–8% APY USDC), Credit (NAVI borrow, health factor), Swap (Cetus aggregator, 20+ DEXs, 0.1% fee), Charts (yield/health/portfolio viz). Every write taps to confirm via Passport. | `@t2000/sdk` NAVI builders + `cetus-swap.ts` + `@t2000/engine` chart canvas templates + audric `/api/internal/*` read endpoints | Live |
+| 💸 **Audric Pay** | Money primitive — send USDC, receive via payment links / invoices / QR. Free, global, instant on Sui. | `@t2000/sdk` direct Sui tx + payment-link contract + invoice flows | Live |
 | 🛒 **Audric Store** | Creator marketplace at `audric.ai/username`. AI-generated music/art/ebooks sold in USDC. 92% to creator. | `@t2000/sdk` + Walrus + payment links | Coming soon (Phase 5) |
 
 Plus one public tool (no sign-up):

@@ -8,15 +8,16 @@ Conversational finance on [Sui](https://sui.io). Save, pay, send, borrow — all
 
 ---
 
-## The four products
+## The five products
 
-Audric is exactly four products. Everything you can do is one of them. ("Audric Finance" was retired April 2026 — its operations are now surfaced through Audric Intelligence's Agent Harness, gated by Audric Passport's tap-to-confirm.)
+Audric is exactly five products. Everything you can do is one of them. (S.18 reverted S.17's Finance retirement — Intelligence was carrying both "the moat" and "the home for every financial verb," and Send/Receive overlapped Pay. Finance now owns save/credit/swap/charts; Pay owns send/receive.)
 
 | Product | Description |
 |---------|-------------|
 | 🪪 **Audric Passport** | Trust layer — sign in with Google, non-custodial Sui wallet in 3 seconds, every write taps to confirm, sponsored gas. Wraps every other product. |
-| 🧠 **Audric Intelligence** | The brain (the moat) — 5 systems: Agent Harness (40 tools), Reasoning Engine (9 guards, 7 skill recipes), Silent Profile, Chain Memory, AdviceLog. Save, swap, borrow, repay, withdraw, send, payments — all orchestrated here. |
-| 💸 **Audric Pay** | Money primitive — send USDC to anyone, payment links, invoices, QR. Free, global, instant on Sui. No bank, no borders, no fees. |
+| 🧠 **Audric Intelligence** | The brain (the moat) — 5 systems: Agent Harness (40 tools), Reasoning Engine (9 guards, 7 skill recipes), Silent Profile, Chain Memory, AdviceLog. Engineering-facing brand; users experience it as "Audric just understood me." |
+| 💰 **Audric Finance** | Manage your money on Sui — Save (NAVI lend, 3–8% APY on USDC), Credit (NAVI borrow, health factor visible), Swap (Cetus aggregator across 20+ DEXs, 0.1% fee), Charts (interactive yield/health/portfolio viz from chat). Every write taps to confirm via Passport. |
+| 💸 **Audric Pay** | Money primitive — send USDC to anyone, receive via payment links / invoices / QR. Free, global, instant on Sui. No bank, no borders, no fees. |
 | 🛒 **Audric Store** | Creator marketplace at `audric.ai/username`. Sell AI-generated music, art, ebooks in USDC. **Coming soon (Phase 5).** |
 
 Plus one public tool that needs no sign-up:

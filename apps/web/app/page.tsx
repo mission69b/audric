@@ -7,13 +7,16 @@ import { LandingNav } from '@/components/landing/LandingNav';
 import { MockChatDemo } from '@/components/landing/MockChatDemo';
 import { useZkLogin } from '@/components/auth/useZkLogin';
 
-const PRODUCTS = [
+const FINANCE_FEATURES = [
   { icon: '◎', name: 'Save', desc: 'Earn 3–8% APY on USDC via NAVI. Withdraw anytime.' },
-  { icon: '→', name: 'Send', desc: 'Instant transfers. Free. Sub-second. Globally.' },
   { icon: '⊞', name: 'Credit', desc: 'Borrow against savings. Health factor visible at all times.' },
   { icon: '⇌', name: 'Swap', desc: 'Convert tokens. Best-route via 20+ DEXs. 0.1% fee.' },
-  { icon: '↙', name: 'Receive', desc: 'Payment links, QR codes, invoices. Accept USDC from anyone.' },
   { icon: '📊', name: 'Charts', desc: 'Interactive visualizations from conversation. Yield, health, portfolio.' },
+];
+
+const PAY_FEATURES = [
+  { icon: '→', name: 'Send', desc: 'Instant USDC transfers. Free. Sub-second. Global.' },
+  { icon: '↙', name: 'Receive', desc: 'Payment links, QR codes, invoices. Accept USDC from anyone.' },
 ];
 
 const PASSPORT_PILLARS = [
@@ -144,21 +147,21 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── S4: What Audric does (Intelligence in action) ── */}
-      <section id="actions" className="px-5 sm:px-10 lg:px-16 py-14 sm:py-20 border-t border-border">
+      {/* ── S4: Audric Finance ── */}
+      <section id="finance" className="px-5 sm:px-10 lg:px-16 py-14 sm:py-20 border-t border-border">
         <div className="max-w-6xl mx-auto">
           <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-muted mb-3">
-            Audric Intelligence in action
+            Audric Finance
           </p>
           <h2 className="text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground mb-3">
-            Your money, in chat.
+            Your money, working on Sui.
           </h2>
           <p className="text-[13px] text-muted leading-[1.7] max-w-[500px] mb-10">
-            Save, swap, borrow, repay, withdraw — every on-chain operation handled by asking. The Agent Harness picks the right tool, the Reasoning Engine clears the guards, and your Passport taps to confirm.
+            Save, borrow, swap, see your positions — every DeFi op a user can do, all by asking in chat. The Agent Harness picks the right tool, the Reasoning Engine clears the guards, and your Passport taps to confirm.
           </p>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-px bg-border border border-border">
-            {PRODUCTS.map((p) => (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-border border border-border">
+            {FINANCE_FEATURES.map((p) => (
               <div
                 key={p.name}
                 className="bg-surface p-5 text-center"
@@ -183,7 +186,7 @@ export default function LandingPage() {
               Move money.<br />Free. Global. Instant.
             </h2>
             <p className="text-[13px] text-muted leading-[1.7] max-w-[420px] mb-5">
-              Send USDC to anyone, anywhere. Payment links for your business. Invoices that settle in seconds. No bank. No borders. No fees.
+              Send USDC to anyone, anywhere. Receive via payment links, QR codes, or invoices. No bank. No borders. No fees.
             </p>
 
             <div className="grid grid-cols-4 gap-px bg-border border border-border mb-5">
@@ -200,16 +203,12 @@ export default function LandingPage() {
               ))}
             </div>
 
-            <div className="grid grid-cols-3 gap-px bg-border border border-border">
-              {[
-                { icon: '→', title: 'Send to anyone', desc: '"Send $50 to alice" — 0.4s' },
-                { icon: '🔗', title: 'Payment links', desc: 'Share a link, get USDC' },
-                { icon: '📄', title: 'Invoices', desc: 'Settle on-chain instantly' },
-              ].map((uc) => (
-                <div key={uc.title} className="bg-background p-4 text-center">
-                  <div className="text-[16px] mb-1.5">{uc.icon}</div>
-                  <div className="text-[11px] font-semibold text-foreground mb-1">{uc.title}</div>
-                  <p className="font-mono text-[10px] text-muted">{uc.desc}</p>
+            <div className="grid grid-cols-2 gap-px bg-border border border-border">
+              {PAY_FEATURES.map((p) => (
+                <div key={p.name} className="bg-background p-4 text-center">
+                  <div className="text-[16px] mb-1.5">{p.icon}</div>
+                  <div className="text-[11px] font-semibold text-foreground mb-1">{p.name}</div>
+                  <p className="font-mono text-[10px] text-muted leading-[1.7]">{p.desc}</p>
                 </div>
               ))}
             </div>
