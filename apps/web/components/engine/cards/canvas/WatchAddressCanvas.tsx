@@ -55,8 +55,8 @@ export function WatchAddressCanvas({ data, onAction }: Props) {
     return (
       <div className="flex flex-col items-center justify-center py-10 space-y-2 text-center">
         <span className="text-3xl">👁</span>
-        <p className="text-sm text-foreground font-medium">Watch Address</p>
-        <p className="text-xs text-muted max-w-xs leading-relaxed">
+        <p className="text-sm text-fg-primary font-medium">Watch Address</p>
+        <p className="text-xs text-fg-secondary max-w-xs leading-relaxed">
           {'message' in data && data.message ? data.message : 'Provide a Sui address to watch.'}
         </p>
       </div>
@@ -68,7 +68,7 @@ export function WatchAddressCanvas({ data, onAction }: Props) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-10">
-        <div className="animate-pulse font-mono text-xs text-dim">Fetching balances...</div>
+        <div className="animate-pulse font-mono text-xs text-fg-muted">Fetching balances...</div>
       </div>
     );
   }
@@ -78,19 +78,19 @@ export function WatchAddressCanvas({ data, onAction }: Props) {
       {/* Header */}
       <div className="space-y-1">
         <div className="flex items-center justify-between">
-          <span className="font-mono text-[10px] tracking-wider text-dim uppercase">
+          <span className="font-mono text-[10px] tracking-wider text-fg-muted uppercase">
             {label ?? 'Watched Address'}
           </span>
           <a
             href={`https://suiscan.xyz/mainnet/account/${addr}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="font-mono text-[10px] text-dim hover:text-foreground transition"
+            className="font-mono text-[10px] text-fg-muted hover:text-fg-primary transition"
           >
             {truncAddr(addr)}↗
           </a>
         </div>
-        <div className="font-mono text-lg text-foreground font-medium">
+        <div className="font-mono text-lg text-fg-primary font-medium">
           ${fmtUsd(totalUsd)}
         </div>
       </div>
@@ -100,11 +100,11 @@ export function WatchAddressCanvas({ data, onAction }: Props) {
         <div className="space-y-1.5">
           {balances.map((coin) => (
             <div key={coin.symbol} className="flex items-center justify-between font-mono text-xs">
-              <span className="text-foreground">{coin.symbol}</span>
-              <span className="text-dim">
+              <span className="text-fg-primary">{coin.symbol}</span>
+              <span className="text-fg-muted">
                 {coin.amount < 0.01 ? '<0.01' : coin.amount.toLocaleString(undefined, { maximumFractionDigits: 4 })}
                 {coin.usdValue != null && (
-                  <span className="ml-2 text-foreground">${fmtUsd(coin.usdValue)}</span>
+                  <span className="ml-2 text-fg-primary">${fmtUsd(coin.usdValue)}</span>
                 )}
               </span>
             </div>
@@ -112,7 +112,7 @@ export function WatchAddressCanvas({ data, onAction }: Props) {
         </div>
       ) : (
         <div className="text-center py-4">
-          <p className="font-mono text-xs text-dim">No token balances found</p>
+          <p className="font-mono text-xs text-fg-muted">No token balances found</p>
         </div>
       )}
 
@@ -121,13 +121,13 @@ export function WatchAddressCanvas({ data, onAction }: Props) {
         <div className="flex gap-2">
           <button
             onClick={() => onAction(`Show me the activity heatmap for ${addr}`)}
-            className="flex-1 rounded-md border border-border py-1.5 font-mono text-[10px] tracking-wider uppercase text-muted hover:text-foreground hover:border-foreground/30 transition"
+            className="flex-1 rounded-md border border-border-subtle py-1.5 font-mono text-[10px] tracking-wider uppercase text-fg-secondary hover:text-fg-primary hover:border-fg-primary/30 transition"
           >
             Activity →
           </button>
           <button
             onClick={() => onAction(`Send USDC to ${addr}`)}
-            className="flex-1 rounded-md bg-foreground py-1.5 font-mono text-[10px] tracking-wider text-background uppercase hover:opacity-90 transition"
+            className="flex-1 rounded-md bg-fg-primary py-1.5 font-mono text-[10px] tracking-wider text-fg-inverse uppercase hover:opacity-90 transition"
           >
             Send →
           </button>

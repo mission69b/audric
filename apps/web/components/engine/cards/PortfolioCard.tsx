@@ -41,13 +41,13 @@ export function PortfolioCard({ data }: { data: PortfolioData }) {
     <CardShell title="Your Portfolio">
       {/* Hero: Total value + trend */}
       <div className="text-center mb-2">
-        <span className="text-2xl font-semibold font-mono text-foreground">
+        <span className="text-2xl font-semibold font-mono text-fg-primary">
           ${fmtUsd(data.totalValue)}
         </span>
         {data.weekChange && data.weekChange.absoluteUsd !== 0 && (
           <div className="mt-0.5">
             <TrendIndicator value={data.weekChange.percentChange} />
-            <span className="text-dim text-[10px] ml-1">this week</span>
+            <span className="text-fg-muted text-[10px] ml-1">this week</span>
           </div>
         )}
       </div>
@@ -66,7 +66,7 @@ export function PortfolioCard({ data }: { data: PortfolioData }) {
         <DetailRow label="Savings">
           <span>${fmtUsd(data.savingsValue)}</span>
           {data.savingsApy ? (
-            <span className="text-dim ml-1 text-[10px]">
+            <span className="text-fg-muted ml-1 text-[10px]">
               {fmtApy(data.savingsApy)}
               {data.dailyEarning ? ` · $${data.dailyEarning.toFixed(4)}/day` : ''}
             </span>
@@ -76,12 +76,12 @@ export function PortfolioCard({ data }: { data: PortfolioData }) {
         {data.debtValue > 0 && (
           <>
             <DetailRow label="Debt">
-              <span className="text-amber-400">-${fmtUsd(data.debtValue)}</span>
+              <span className="text-warning-solid">-${fmtUsd(data.debtValue)}</span>
             </DetailRow>
             {data.healthFactor != null && Number.isFinite(data.healthFactor) && (
               <div className="pl-2">
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-dim">HF {data.healthFactor.toFixed(2)}</span>
+                  <span className="text-fg-muted">HF {data.healthFactor.toFixed(2)}</span>
                   <StatusBadge status={hfStatus(data.healthFactor)} />
                 </div>
                 <Gauge value={data.healthFactor} min={0} max={5} />
@@ -90,7 +90,7 @@ export function PortfolioCard({ data }: { data: PortfolioData }) {
           </>
         )}
 
-        <div className="pt-1 border-t border-border/50">
+        <div className="pt-1 border-t border-border-subtle/50">
           <DetailRow label="Net Worth">
             <span className="font-medium">${fmtUsd(data.totalValue)}</span>
           </DetailRow>
@@ -99,9 +99,9 @@ export function PortfolioCard({ data }: { data: PortfolioData }) {
 
       {/* Insights callout */}
       {data.insights.length > 0 && (
-        <div className="space-y-1 pt-2 mt-2 border-t border-border/50 text-[11px]">
+        <div className="space-y-1 pt-2 mt-2 border-t border-border-subtle/50 text-[11px]">
           {data.insights.map((i, idx) => (
-            <div key={idx} className={i.type === 'warning' ? 'text-amber-400' : 'text-dim'}>
+            <div key={idx} className={i.type === 'warning' ? 'text-warning-solid' : 'text-fg-muted'}>
               {i.type === 'warning' ? '⚠ ' : '→ '}{i.message}
             </div>
           ))}

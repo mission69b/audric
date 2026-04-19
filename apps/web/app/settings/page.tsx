@@ -1,8 +1,28 @@
 'use client';
 
+// [PHASE 10] Settings shell — re-skinned to match
+// `design_handoff_audric/.../settings.jsx`.
+//
+// Layout:
+//   • Header strip (border-bottom): "← Back to chat" left + "SETTINGS"
+//     mono eyebrow right.
+//   • Two-pane below: 220px sub-nav (border-right, pill items) + scroll
+//     content area (max-w-640, mono eyebrow w/ section name + bottom
+//     border, then section content).
+//
+// Sub-nav order matches design: PASSPORT / SAFETY / MEMORY / GOALS / CONTACTS.
+//
+// Behavior preserved:
+//   • Section state still seeded from `?section=` query param + alias map
+//   • All sub-section components (Passport/Safety/Memory/GoalCard/GoalEditor/
+//     Contacts) re-skinned in place — same hook wiring, same handlers.
+//   • Goals editor still opens inline + uses real `useGoals` mutations.
+//   • AuthGuard wrapper preserved.
+
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { Icon } from '@/components/ui/Icon';
 import { AuthGuard } from '@/components/auth/AuthGuard';
 import { useZkLogin } from '@/components/auth/useZkLogin';
 import { useGoals, type SavingsGoal } from '@/hooks/useGoals';
@@ -12,6 +32,7 @@ import { GoalEditor } from '@/components/settings/GoalEditor';
 import { PassportSection } from '@/components/settings/PassportSection';
 import { SafetySection } from '@/components/settings/SafetySection';
 import { MemorySection } from '@/components/settings/MemorySection';
+import { ContactsSection } from '@/components/settings/ContactsSection';
 import { SUI_NETWORK } from '@/lib/constants';
 
 // [SIMPLIFICATION DAY 10] Settings reorganised to the canonical 5 sections
@@ -23,7 +44,7 @@ import { SUI_NETWORK } from '@/lib/constants';
 //                              routes (`/api/user/wallets`) remain for future surfaces
 //   - Sessions      (Day 10) — was a placeholder stub; chat history lives in the sidebar
 // Old deep-links collapse to Passport.
-type Section = 'passport' | 'goals' | 'safety' | 'contacts' | 'memory';
+type Section = 'passport' | 'safety' | 'memory' | 'goals' | 'contacts';
 
 const SECTIONS: { id: Section; label: string }[] = [
   { id: 'passport', label: 'Passport' },
@@ -61,9 +82,10 @@ function SettingsContent() {
 
   const searchParams = useSearchParams();
   const [activeSection, setActiveSection] = useState<Section>(() => {
-    const section = typeof window !== 'undefined'
-      ? new URLSearchParams(window.location.search).get('section')
-      : null;
+    const section =
+      typeof window !== 'undefined'
+        ? new URLSearchParams(window.location.search).get('section')
+        : null;
     return resolveSection(section);
   });
 
@@ -72,148 +94,146 @@ function SettingsContent() {
   }, [searchParams]);
 
   const expiresAt = session?.expiresAt ?? null;
+  const activeLabel = SECTIONS.find((s) => s.id === activeSection)?.label.toUpperCase() ?? '';
 
   return (
-    <main className="flex flex-1 flex-col items-center pt-10 pb-16 px-4">
-      <div className="w-full max-w-3xl">
-        <div className="flex items-center gap-3 mb-8">
-          <Link
-            href="/new"
-            className="flex items-center gap-1 text-sm text-muted hover:text-foreground transition"
-          >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-            </svg>
-            Back to chat
-          </Link>
-          <h1 className="font-mono text-xs tracking-[0.12em] text-foreground uppercase ml-auto">
-            Settings
-          </h1>
-        </div>
+    <main className="flex flex-col h-screen overflow-hidden bg-surface-page">
+      {/* Header strip */}
+      <header className="flex items-center justify-between px-6 sm:px-8 py-[18px] border-b border-border-subtle">
+        <Link
+          href="/new"
+          className="inline-flex items-center gap-1.5 text-[13px] text-fg-secondary hover:text-fg-primary transition focus-visible:outline-none focus-visible:underline"
+        >
+          <Icon name="chevron-left" size={14} />
+          Back to chat
+        </Link>
+        <span className="font-mono text-[10px] tracking-[0.2em] uppercase text-fg-secondary">
+          Settings
+        </span>
+      </header>
 
-        <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-6">
-          <nav className="flex sm:flex-col gap-1 overflow-x-auto sm:overflow-visible pb-2 sm:pb-0" aria-label="Settings sections">
-            {SECTIONS.map((s) => (
+      <div className="flex-1 grid grid-cols-1 md:grid-cols-[220px_1fr] overflow-hidden">
+        {/* Sub-nav */}
+        <aside className="md:border-r border-border-subtle px-3.5 py-5 flex md:flex-col flex-row gap-1 overflow-x-auto md:overflow-y-auto md:overflow-x-visible">
+          {SECTIONS.map((s) => {
+            const isActive = activeSection === s.id;
+            return (
               <button
                 key={s.id}
+                type="button"
                 onClick={() => setActiveSection(s.id)}
-                className={`whitespace-nowrap px-3 py-2 rounded-full font-mono text-[10px] tracking-[0.08em] uppercase transition text-left focus-visible:ring-2 focus-visible:ring-foreground/20 outline-none ${
-                  activeSection === s.id
-                    ? 'bg-[var(--n700)] text-foreground'
-                    : 'text-muted hover:text-foreground hover:bg-[var(--n700)]/50'
-                }`}
-                aria-current={activeSection === s.id ? 'true' : undefined}
+                aria-current={isActive ? 'true' : undefined}
+                className={[
+                  'whitespace-nowrap text-left px-3.5 py-2.5 rounded-pill font-mono text-[10px] tracking-[0.1em] uppercase transition focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]',
+                  isActive
+                    ? 'bg-border-subtle text-fg-primary'
+                    : 'text-fg-muted hover:text-fg-primary hover:bg-border-subtle/50',
+                ].join(' ')}
               >
                 {s.label}
               </button>
-            ))}
-          </nav>
+            );
+          })}
+        </aside>
 
-          <div className="space-y-6">
-            {activeSection === 'passport' && (
-              <PassportSection
-                address={address}
-                network={SUI_NETWORK}
-                expiresAt={expiresAt}
-                expiringSoon={expiringSoon}
-                onRefresh={refresh}
-                onLogout={logout}
-              />
-            )}
+        {/* Content */}
+        <section className="overflow-y-auto px-6 sm:px-10 py-7">
+          <div className="max-w-[640px] mx-auto">
+            <div className="font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted pb-2.5 border-b border-border-subtle">
+              {activeLabel}
+            </div>
+            <div className="pt-[22px]">
+              {activeSection === 'passport' && (
+                <PassportSection
+                  address={address}
+                  network={SUI_NETWORK}
+                  expiresAt={expiresAt}
+                  expiringSoon={expiringSoon}
+                  onRefresh={refresh}
+                  onLogout={logout}
+                />
+              )}
 
-            {activeSection === 'goals' && (
-              <section className="space-y-5">
-                <h2 className="font-mono text-[10px] tracking-[0.12em] text-muted uppercase pb-2 border-b border-border">
-                  Savings Goals
-                </h2>
+              {activeSection === 'safety' && <SafetySection address={address} />}
 
-                {showGoalEditor || editingGoal ? (
-                  <GoalEditor
-                    goal={editingGoal ?? undefined}
-                    saving={goalsHook.creating || goalsHook.updating}
-                    onSave={async (data) => {
-                      if (editingGoal) {
-                        await goalsHook.updateGoal(editingGoal.id, data);
-                      } else {
-                        await goalsHook.createGoal({
-                          name: data.name,
-                          emoji: data.emoji,
-                          targetAmount: data.targetAmount,
-                          deadline: data.deadline ?? undefined,
-                        });
-                      }
-                      setEditingGoal(null);
-                      setShowGoalEditor(false);
-                    }}
-                    onCancel={() => {
-                      setEditingGoal(null);
-                      setShowGoalEditor(false);
-                    }}
-                  />
-                ) : (
-                  <>
-                    <button
-                      onClick={() => setShowGoalEditor(true)}
-                      className="w-full min-h-[40px] rounded-md bg-foreground text-background font-mono text-[10px] tracking-[0.1em] uppercase hover:opacity-80 transition"
-                    >
-                      + New Goal
-                    </button>
+              {activeSection === 'memory' && <MemorySection address={address} />}
 
-                    {goalsHook.loading ? (
-                      <p className="text-sm text-muted">Loading goals...</p>
-                    ) : goalsHook.goals.length === 0 ? (
-                      <div className="text-center py-8 space-y-2">
-                        <p className="text-2xl">🎯</p>
-                        <p className="text-sm text-muted">No savings goals yet.</p>
-                        <p className="text-xs text-dim leading-relaxed">
-                          Set a goal and track your progress as you save. You can also ask Audric to create one.
+              {activeSection === 'goals' && (
+                <div className="flex flex-col">
+                  {showGoalEditor || editingGoal ? (
+                    <GoalEditor
+                      goal={editingGoal ?? undefined}
+                      saving={goalsHook.creating || goalsHook.updating}
+                      onSave={async (data) => {
+                        if (editingGoal) {
+                          await goalsHook.updateGoal(editingGoal.id, data);
+                        } else {
+                          await goalsHook.createGoal({
+                            name: data.name,
+                            emoji: data.emoji,
+                            targetAmount: data.targetAmount,
+                            deadline: data.deadline ?? undefined,
+                          });
+                        }
+                        setEditingGoal(null);
+                        setShowGoalEditor(false);
+                      }}
+                      onCancel={() => {
+                        setEditingGoal(null);
+                        setShowGoalEditor(false);
+                      }}
+                    />
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setShowGoalEditor(true)}
+                        className="w-full px-3.5 py-3.5 rounded-md border border-border-strong bg-transparent font-mono text-[10px] tracking-[0.1em] uppercase text-fg-primary hover:bg-surface-sunken transition mb-3.5 focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
+                      >
+                        + New goal
+                      </button>
+
+                      {goalsHook.loading ? (
+                        <p className="text-[13px] text-fg-secondary">Loading goals&hellip;</p>
+                      ) : goalsHook.goals.length === 0 ? (
+                        <div className="rounded-md border border-border-subtle bg-surface-sunken p-6 text-center flex flex-col items-center gap-2">
+                          <span aria-hidden="true" className="text-2xl">🎯</span>
+                          <p className="text-[13px] text-fg-secondary">No savings goals yet.</p>
+                          <p className="text-[11px] text-fg-muted leading-relaxed max-w-xs">
+                            Set a goal and track your progress as you save. You can also ask Audric
+                            to create one.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col gap-2.5">
+                          {goalsHook.goals.map((goal) => (
+                            <GoalCard
+                              key={goal.id}
+                              goal={goal}
+                              savingsBalance={savingsBalance}
+                              onEdit={() => setEditingGoal(goal)}
+                              onDelete={() => goalsHook.deleteGoal(goal.id)}
+                              deleting={goalsHook.deleting}
+                            />
+                          ))}
+                        </div>
+                      )}
+
+                      {goalsHook.goals.length > 0 && (
+                        <p className="font-mono text-[9px] tracking-[0.1em] uppercase text-fg-muted leading-relaxed mt-5">
+                          Goals track your total savings balance (${savingsBalance.toFixed(2)})
+                          &mdash; not individual deposits.
                         </p>
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        {goalsHook.goals.map((goal) => (
-                          <GoalCard
-                            key={goal.id}
-                            goal={goal}
-                            savingsBalance={savingsBalance}
-                            onEdit={() => setEditingGoal(goal)}
-                            onDelete={() => goalsHook.deleteGoal(goal.id)}
-                            deleting={goalsHook.deleting}
-                          />
-                        ))}
-                      </div>
-                    )}
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
 
-                    {goalsHook.goals.length > 0 && (
-                      <p className="font-mono text-[10px] tracking-wider text-dim uppercase leading-relaxed">
-                        Goals track your total savings balance (${savingsBalance.toFixed(2)}) — not individual deposits.
-                      </p>
-                    )}
-                  </>
-                )}
-              </section>
-            )}
-
-            {activeSection === 'safety' && (
-              <SafetySection address={address} />
-            )}
-
-            {activeSection === 'contacts' && (
-              <section className="space-y-5">
-                <h2 className="font-mono text-[10px] tracking-[0.12em] text-muted uppercase pb-2 border-b border-border">
-                  Contacts
-                </h2>
-                <p className="text-sm text-muted leading-relaxed">
-                  Your saved contacts will appear here. Send to an address and you&apos;ll be prompted to save it.
-                </p>
-              </section>
-            )}
-
-            {activeSection === 'memory' && (
-              <MemorySection address={address} />
-            )}
+              {activeSection === 'contacts' && <ContactsSection address={address} />}
+            </div>
           </div>
-        </div>
+        </section>
       </div>
     </main>
   );

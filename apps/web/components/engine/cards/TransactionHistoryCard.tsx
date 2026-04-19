@@ -83,36 +83,36 @@ export function TransactionHistoryCard({ data }: { data: HistoryData }) {
   return (
     <CardShell
       title="Recent Transactions"
-      badge={<span className="text-[10px] font-mono text-dim">{data.count} total</span>}
+      badge={<span className="text-[10px] font-mono text-fg-muted">{data.count} total</span>}
     >
       <div className="space-y-2">
         {Array.from(groups.entries()).map(([label, items]) => (
           <div key={label}>
-            <span className="text-[10px] font-mono uppercase tracking-wider text-dim">{label}</span>
+            <span className="text-[10px] font-mono uppercase tracking-wider text-fg-muted">{label}</span>
             <div className="mt-1 space-y-0.5">
               {items.map((tx) => {
                 const outflow = isOutflow(tx.action);
                 return (
-                  <div key={tx.digest} className="flex items-center justify-between py-1 border-t border-border/30 font-mono text-[11px]">
+                  <div key={tx.digest} className="flex items-center justify-between py-1 border-t border-border-subtle/30 font-mono text-[11px]">
                     <div className="flex items-center gap-1.5 min-w-0">
-                      <span className="text-dim">{getIcon(tx.action)}</span>
-                      <span className="text-foreground font-medium capitalize truncate">{tx.action}</span>
+                      <span className="text-fg-muted">{getIcon(tx.action)}</span>
+                      <span className="text-fg-primary font-medium capitalize truncate">{tx.action}</span>
                       {tx.recipient && (
-                        <span className="text-dim truncate max-w-[60px]">→ {tx.recipient.length > 10 ? `${tx.recipient.slice(0, 6)}...` : tx.recipient}</span>
+                        <span className="text-fg-muted truncate max-w-[60px]">→ {tx.recipient.length > 10 ? `${tx.recipient.slice(0, 6)}...` : tx.recipient}</span>
                       )}
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       {tx.amount != null && tx.amount > 0 && (
-                        <span className={outflow ? 'text-foreground' : 'text-emerald-400'}>
+                        <span className={outflow ? 'text-fg-primary' : 'text-success-solid'}>
                           {outflow ? '−' : '+'}{fmtAmt(tx.amount)} {tx.asset ?? 'USDC'}
                         </span>
                       )}
-                      <span className="text-dim text-[9px]">{fmtRelativeTime(toIso(tx.timestamp))}</span>
+                      <span className="text-fg-muted text-[9px]">{fmtRelativeTime(toIso(tx.timestamp))}</span>
                       <a
                         href={`${SUISCAN_TX_URL}/${tx.digest}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-info hover:opacity-70"
+                        className="text-info-solid hover:opacity-70"
                       >
                         {SUISCAN_ICON}
                       </a>
@@ -125,7 +125,7 @@ export function TransactionHistoryCard({ data }: { data: HistoryData }) {
         ))}
       </div>
       {data.count > 5 && (
-        <div className="mt-1.5 pt-1.5 border-t border-border/50 text-[10px] font-mono text-dim text-center">
+        <div className="mt-1.5 pt-1.5 border-t border-border-subtle/50 text-[10px] font-mono text-fg-muted text-center">
           Showing {txs.length} of {data.count}
         </div>
       )}

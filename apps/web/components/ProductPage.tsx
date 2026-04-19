@@ -1,3 +1,24 @@
+// [PHASE 12] ProductPage — re-skin shared marketing/product shell used by
+// /savings, /credit, /swap, /send, /receive, and /pay (the manager).
+//
+// Visual updates:
+//   • Mono back-link (chevron + label) at top
+//   • Mono uppercase badge eyebrow
+//   • Serif (NY Display) headline; sans subtitle
+//   • 3-up stat cards on `surface-card` with mono eyebrow + serif value
+//   • Numbered step rows with serif index inside a thin square pill
+//   • Primary CTA renders as a styled <Link> (matching the Button primitive's
+//     primary/lg pill visual; a private <CtaLink> helper is used because the
+//     Button primitive renders <button>, and CTAs here must navigate)
+//   • Footer hairline + mono utility links
+//
+// Behavior preservation:
+//   • Identical prop surface (badge / title / subtitle / stats / steps / cta /
+//     ctaPrompt / status / children).
+//   • CTA href still points to `/?prompt=<encoded ctaPrompt>` — the dashboard
+//     reads this query param to pre-seed the chip flow.
+//   • `coming-soon` still renders the warning Tag.
+
 import Link from 'next/link';
 
 interface Stat {
@@ -35,11 +56,11 @@ export function ProductPage({
   children,
 }: ProductPageProps) {
   return (
-    <main className="light-theme flex-1 px-4 py-16 sm:px-6 sm:py-24 bg-background text-foreground">
-      <div className="mx-auto max-w-2xl">
+    <main className="flex-1 px-4 py-16 sm:px-6 sm:py-24 bg-surface-page text-fg-primary">
+      <div className="mx-auto max-w-[640px]">
         <Link
           href="/"
-          className="inline-flex items-center gap-1.5 min-h-[44px] text-sm text-muted transition-colors hover:text-foreground -ml-1 pl-1"
+          className="inline-flex items-center gap-1.5 min-h-[44px] -ml-1 pl-1 font-mono text-[11px] tracking-[0.08em] uppercase text-fg-secondary hover:text-fg-primary transition-colors"
         >
           <span aria-hidden="true">&larr;</span>
           Back to chat
@@ -47,28 +68,34 @@ export function ProductPage({
 
         <header className="mt-10 space-y-4">
           <div className="flex items-center gap-3">
-            <span className="font-mono text-xs tracking-widest text-muted uppercase">
+            <span className="font-mono text-[10px] tracking-[0.12em] uppercase text-fg-muted">
               {badge}
             </span>
             {status === 'coming-soon' && (
-              <span className="rounded-full bg-warning/20 px-2 py-0.5 font-mono text-[10px] tracking-wider text-warning uppercase">
+              <span className="font-mono text-[9px] tracking-[0.12em] uppercase text-warning-fg bg-warning-bg border border-warning-border rounded-xs px-2 py-0.5">
                 Coming soon
               </span>
             )}
           </div>
-          <h1 className="text-3xl tracking-tight text-foreground sm:text-4xl md:text-5xl">{title}</h1>
-          <p className="text-base text-muted sm:text-lg">{subtitle}</p>
+          <h1 className="font-serif text-[40px] leading-[1.05] tracking-[-0.02em] text-fg-primary sm:text-[48px] md:text-[56px]">
+            {title}
+          </h1>
+          <p className="text-[15px] leading-relaxed text-fg-secondary sm:text-base">
+            {subtitle}
+          </p>
         </header>
 
         {stats.length > 0 && (
-          <div className="mt-12 grid grid-cols-3 gap-3 sm:gap-4">
+          <div className="mt-10 grid grid-cols-3 gap-2.5 sm:gap-3">
             {stats.map((stat) => (
               <div
                 key={stat.label}
-                className="rounded-xl border border-border p-3 sm:p-4 shadow-[var(--shadow-card)] min-w-0"
+                className="rounded-md border border-border-subtle bg-surface-card p-3 sm:p-4 min-w-0"
               >
-                <p className="text-xl font-medium text-foreground sm:text-2xl break-words">{stat.value}</p>
-                <p className="mt-1 font-mono text-[10px] tracking-wider text-muted uppercase sm:text-[11px]">
+                <p className="font-serif text-[20px] leading-tight text-fg-primary tracking-[-0.01em] sm:text-[22px] break-words">
+                  {stat.value}
+                </p>
+                <p className="mt-1.5 font-mono text-[9px] tracking-[0.12em] uppercase text-fg-muted sm:text-[10px]">
                   {stat.label}
                 </p>
               </div>
@@ -78,47 +105,70 @@ export function ProductPage({
 
         {children}
 
-        <section className="mt-16">
-          <h2 className="text-2xl text-foreground">How it works</h2>
-          <div className="mt-8 space-y-6">
+        <section className="mt-14">
+          <h2 className="font-mono text-[10px] tracking-[0.12em] uppercase text-fg-muted">
+            How it works
+          </h2>
+          <div className="mt-1 mb-5 h-px bg-border-subtle" />
+          <div className="space-y-5">
             {steps.map((step) => (
               <div key={step.number} className="flex gap-4">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border font-mono text-xs text-muted">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xs border border-border-subtle bg-surface-card font-serif text-[15px] text-fg-primary">
                   {step.number}
                 </div>
-                <div className="min-w-0">
-                  <p className="font-medium text-foreground">{step.title}</p>
-                  <p className="mt-1 text-sm text-muted">{step.description}</p>
+                <div className="min-w-0 pt-0.5">
+                  <p className="text-sm font-medium text-fg-primary">{step.title}</p>
+                  <p className="mt-1 text-[13px] leading-relaxed text-fg-secondary">
+                    {step.description}
+                  </p>
                 </div>
               </div>
             ))}
           </div>
         </section>
 
-        <div className="mt-16">
-          <Link
-            href={`/?prompt=${encodeURIComponent(ctaPrompt)}`}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-foreground min-h-[44px] px-6 py-3 font-mono text-xs tracking-wider text-background uppercase transition-opacity hover:opacity-80"
-          >
-            {cta}
-            <span aria-hidden="true">&rarr;</span>
-          </Link>
+        <div className="mt-14">
+          <CtaLink href={`/?prompt=${encodeURIComponent(ctaPrompt)}`} label={cta} />
         </div>
 
-        <footer className="mt-24 border-t border-border pt-6 text-xs text-dim space-y-3">
+        <footer className="mt-20 border-t border-border-subtle pt-6 space-y-3 text-[11px] text-fg-muted">
           <p>
             Built with{' '}
-            <span className="font-mono tracking-wider uppercase">t2000</span>{' '}
+            <span className="font-mono tracking-[0.06em] uppercase">t2000</span>{' '}
             infrastructure. Non-custodial. You approve every transaction.
           </p>
-          <div className="flex gap-6 font-mono">
-            <Link href="/terms" className="hover:text-muted transition-colors">Terms</Link>
-            <Link href="/privacy" className="hover:text-muted transition-colors">Privacy</Link>
-            <Link href="/disclaimer" className="hover:text-muted transition-colors">Disclaimer</Link>
-            <Link href="/security" className="hover:text-muted transition-colors">Security</Link>
+          <div className="flex gap-6 font-mono text-[10px] tracking-[0.1em] uppercase">
+            <Link href="/terms" className="hover:text-fg-secondary transition-colors">
+              Terms
+            </Link>
+            <Link href="/privacy" className="hover:text-fg-secondary transition-colors">
+              Privacy
+            </Link>
+            <Link href="/disclaimer" className="hover:text-fg-secondary transition-colors">
+              Disclaimer
+            </Link>
+            <Link href="/security" className="hover:text-fg-secondary transition-colors">
+              Security
+            </Link>
           </div>
         </footer>
       </div>
     </main>
+  );
+}
+
+// CTA renders as a real <Link> so prefetching + middle-click open work, but
+// borrows the same pill visual as <Button variant="primary" size="lg">. Kept
+// private to this file because no other surface needs a link-styled-as-button
+// right now.
+function CtaLink({ href, label }: { href: string; label: string }) {
+  return (
+    <Link
+      href={href}
+      className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-pill bg-fg-primary text-fg-inverse font-mono text-[12px] tracking-[0.06em] uppercase hover:opacity-90 active:opacity-80 transition-opacity focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
+    >
+      <span>{label}</span>
+      <span aria-hidden="true">&rarr;</span>
+    </Link>
   );
 }

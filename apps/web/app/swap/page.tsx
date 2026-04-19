@@ -56,23 +56,26 @@ export default function SwapPage() {
       cta="Swap tokens"
       ctaPrompt="Swap USDC to SUI"
     >
-      <section className="mt-12">
-        <h2 className="text-lg text-foreground mb-1">Supported tokens</h2>
-        <p className="text-sm text-muted mb-6">
+      <section className="mt-14">
+        <h2 className="font-mono text-[10px] tracking-[0.12em] uppercase text-fg-muted">
+          Supported tokens
+        </h2>
+        <div className="mt-1 mb-3 h-px bg-border-subtle" />
+        <p className="text-[13px] text-fg-secondary mb-5">
           {TOKENS.length} tokens available. Routed via Cetus aggregator for best price.
         </p>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {TOKENS.map((token) => (
             <div
               key={token.symbol}
-              className="flex items-center gap-3 rounded-xl border border-border px-3.5 py-3 transition-colors hover:bg-surface"
+              className="flex items-center gap-3 rounded-md border border-border-subtle bg-surface-card px-3.5 py-3 transition-colors hover:bg-surface-sunken"
             >
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface font-mono text-[10px] font-medium text-foreground border border-border">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface-sunken border border-border-subtle font-mono text-[10px] font-medium text-fg-primary">
                 {token.symbol.slice(0, 2)}
               </span>
               <div className="min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">{token.symbol}</p>
-                <p className="font-mono text-[10px] text-muted truncate">{token.name}</p>
+                <p className="text-[13px] font-medium text-fg-primary truncate">{token.symbol}</p>
+                <p className="font-mono text-[10px] text-fg-secondary truncate">{token.name}</p>
               </div>
             </div>
           ))}

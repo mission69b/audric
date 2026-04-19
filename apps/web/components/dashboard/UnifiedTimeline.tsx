@@ -266,15 +266,15 @@ export function UnifiedTimeline({
 
       {engine.error && !engine.isStreaming && (
         <div
-          className="rounded-lg bg-error/5 border border-error/20 px-4 py-3 text-sm flex items-center justify-between gap-2"
+          className="rounded-lg bg-error-solid/5 border border-error-solid/20 px-4 py-3 text-sm flex items-center justify-between gap-2"
           role="alert"
         >
-          <span className="text-error">{engine.error}</span>
+          <span className="text-error-solid">{engine.error}</span>
           <div className="flex gap-2 shrink-0">
             {engine.canRetry && (
               <button
                 onClick={engine.retry}
-                className="rounded-lg border border-error/30 px-3 py-1 text-xs text-error hover:bg-error/5 transition"
+                className="rounded-lg border border-error-solid/30 px-3 py-1 text-xs text-error-solid hover:bg-error-solid/5 transition"
               >
                 Retry
               </button>

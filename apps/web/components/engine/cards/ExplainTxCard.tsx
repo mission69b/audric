@@ -17,22 +17,22 @@ export function ExplainTxCard({ data }: { data: TxExplanation }) {
     <CardShell title="Transaction">
       <div className="space-y-1 font-mono text-[11px]">
         <div className="flex justify-between">
-          <span className="text-dim">Status</span>
-          <span className={data.status === 'success' ? 'text-emerald-400' : 'text-amber-400'}>{data.status}</span>
+          <span className="text-fg-muted">Status</span>
+          <span className={data.status === 'success' ? 'text-success-solid' : 'text-warning-solid'}>{data.status}</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-dim">Gas</span>
-          <span className="text-foreground">{data.gasUsed}</span>
+          <span className="text-fg-muted">Gas</span>
+          <span className="text-fg-primary">{data.gasUsed}</span>
         </div>
         {data.timestamp && (
           <div className="flex justify-between">
-            <span className="text-dim">Time</span>
-            <span className="text-foreground">{fmtRelativeTime(data.timestamp)}</span>
+            <span className="text-fg-muted">Time</span>
+            <span className="text-fg-primary">{fmtRelativeTime(data.timestamp)}</span>
           </div>
         )}
       </div>
       {data.effects.length > 0 && (
-        <div className="mt-2 pt-2 border-t border-border/50 space-y-1 text-[11px]">
+        <div className="mt-2 pt-2 border-t border-border-subtle/50 space-y-1 text-[11px]">
           {data.effects.filter((e) => e.type !== 'event').map((e, i) => {
             const match = e.description.match(/^(0x\S+)\s+(?:sent|received)\s+(.+)$/);
             const amount = match ? match[2] : e.description;
@@ -40,10 +40,10 @@ export function ExplainTxCard({ data }: { data: TxExplanation }) {
             const prefix = e.type === 'send' ? '↑ −' : '↓ +';
             return (
               <div key={i} className="flex justify-between items-baseline font-mono">
-                <span className={e.type === 'send' ? 'text-amber-400' : 'text-emerald-400'}>
+                <span className={e.type === 'send' ? 'text-warning-solid' : 'text-success-solid'}>
                   {prefix}{amount}
                 </span>
-                {addr && <span className="text-dim text-[10px]">{addr}</span>}
+                {addr && <span className="text-fg-muted text-[10px]">{addr}</span>}
               </div>
             );
           })}

@@ -21,7 +21,7 @@ export function RatesCard({ data }: { data: Record<string, RateEntry> }) {
     <CardShell title="Lending Rates">
       <table className="w-full">
         <thead>
-          <tr className="text-dim text-[10px]">
+          <tr className="text-fg-muted text-[10px]">
             <th className="text-left font-medium pb-1">Asset</th>
             <th className="text-right font-medium pb-1">Supply</th>
             <th className="text-right font-medium pb-1">Borrow</th>
@@ -29,10 +29,10 @@ export function RatesCard({ data }: { data: Record<string, RateEntry> }) {
         </thead>
         <tbody className="font-mono">
           {entries.map(([symbol, rate]) => (
-            <tr key={symbol} className="border-t border-border/50">
-              <td className="py-1 text-foreground font-medium">{symbol}</td>
-              <td className="py-1 text-right text-emerald-400">{fmtPct(rate.saveApy)}%</td>
-              <td className="py-1 text-right text-amber-400">{fmtPct(rate.borrowApy)}%</td>
+            <tr key={symbol} className="border-t border-border-subtle/50">
+              <td className="py-1 text-fg-primary font-medium">{symbol}</td>
+              <td className="py-1 text-right text-success-solid">{fmtPct(rate.saveApy)}%</td>
+              <td className="py-1 text-right text-warning-solid">{fmtPct(rate.borrowApy)}%</td>
             </tr>
           ))}
         </tbody>

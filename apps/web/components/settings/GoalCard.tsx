@@ -1,5 +1,21 @@
 'use client';
 
+// [PHASE 10] Settings → Goals sub-section card — re-skinned to match
+// `design_handoff_audric/.../settings.jsx` GoalsSub block.
+//
+// Layout:
+//   • Sunken card (padding 14)
+//   • Top row: emoji + name (regular weight) + ETA mono eyebrow on left;
+//     edit + close icons (text-fg-muted) on right
+//   • 4px-tall progress bar (`bg-border-subtle` track / `bg-fg-primary`
+//     fill, swap to `bg-success-solid` when complete)
+//   • Footer row: "$X to go" left, "P% · $have / $target" right (mono)
+//
+// Behavior preserved:
+//   • Same SavingsGoal props + same onEdit/onDelete handlers
+//   • Two-step delete confirmation preserved
+//   • Progress math identical (clamped 0..1, rounded percent)
+
 import { useState } from 'react';
 import type { SavingsGoal } from '@/hooks/useGoals';
 
@@ -19,56 +35,84 @@ export function GoalCard({ goal, savingsBalance, onEdit, onDelete, deleting }: G
   const isComplete = pct >= 100;
 
   const deadlineStr = goal.deadline
-    ? new Date(goal.deadline).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+    ? new Date(goal.deadline).toLocaleDateString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      })
     : null;
 
   return (
-    <div className="rounded-lg border border-border bg-surface/50 p-4 space-y-3">
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="text-lg leading-none">{goal.emoji}</span>
+    <div className="rounded-md border border-border-subtle bg-surface-sunken p-3.5">
+      <div className="flex items-start justify-between gap-2.5">
+        <div className="flex items-start gap-1.5 min-w-0">
+          <span aria-hidden="true" className="text-[14px] leading-tight">
+            {goal.emoji}
+          </span>
           <div className="min-w-0">
-            <h4 className="text-sm text-foreground font-medium truncate">{goal.name}</h4>
+            <div className="text-[14px] text-fg-primary font-medium truncate">{goal.name}</div>
             {deadlineStr && (
-              <p className="font-mono text-[10px] tracking-wider text-muted uppercase mt-0.5">
+              <div className="font-mono text-[9px] tracking-[0.1em] uppercase text-fg-muted mt-0.5">
                 by {deadlineStr}
-              </p>
+              </div>
             )}
           </div>
         </div>
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex items-center gap-1.5 shrink-0 text-fg-muted">
           <button
+            type="button"
             onClick={onEdit}
-            className="flex items-center justify-center h-7 w-7 rounded text-muted hover:text-foreground hover:bg-surface transition"
+            className="flex items-center justify-center h-6 w-6 rounded-xs hover:text-fg-primary hover:bg-border-subtle transition focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
+            aria-label="Edit goal"
             title="Edit goal"
           >
-            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+            <svg
+              className="h-[13px] w-[13px]"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={2}
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"
+              />
             </svg>
           </button>
           {confirmDelete ? (
             <div className="flex items-center gap-1">
               <button
+                type="button"
                 onClick={onDelete}
                 disabled={deleting}
-                className="font-mono text-[9px] tracking-wider text-error uppercase px-1.5 py-1 hover:opacity-70 transition disabled:opacity-50"
+                className="font-mono text-[9px] tracking-[0.1em] uppercase text-error-fg px-1.5 py-1 hover:opacity-80 transition disabled:opacity-50 focus-visible:outline-none focus-visible:underline"
               >
-                {deleting ? '...' : 'Yes'}
+                {deleting ? '\u2026' : 'Yes'}
               </button>
               <button
+                type="button"
                 onClick={() => setConfirmDelete(false)}
-                className="font-mono text-[9px] tracking-wider text-muted uppercase px-1.5 py-1 hover:text-foreground transition"
+                className="font-mono text-[9px] tracking-[0.1em] uppercase text-fg-secondary px-1.5 py-1 hover:text-fg-primary transition focus-visible:outline-none focus-visible:underline"
               >
                 No
               </button>
             </div>
           ) : (
             <button
+              type="button"
               onClick={() => setConfirmDelete(true)}
-              className="flex items-center justify-center h-7 w-7 rounded text-dim hover:text-error hover:bg-error/10 transition"
+              className="flex items-center justify-center h-6 w-6 rounded-xs hover:text-error-fg hover:bg-error-bg transition focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
+              aria-label="Delete goal"
               title="Delete goal"
             >
-              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <svg
+                className="h-[13px] w-[13px]"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={2}
+                stroke="currentColor"
+              >
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
@@ -76,31 +120,25 @@ export function GoalCard({ goal, savingsBalance, onEdit, onDelete, deleting }: G
         </div>
       </div>
 
-      {/* Progress bar */}
-      <div className="space-y-1.5">
-        <div className="h-1.5 rounded-full bg-border overflow-hidden">
-          <div
-            className={`h-full rounded-full transition-all duration-500 ${isComplete ? 'bg-success' : 'bg-foreground'}`}
-            style={{ width: `${pct}%` }}
-          />
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="font-mono text-[10px] tracking-wider text-muted">
-            {isComplete ? (
-              <span className="text-success">Goal reached</span>
-            ) : (
-              <>${remaining.toFixed(2)} to go</>
-            )}
-          </span>
-          <span className="font-mono text-[10px] tracking-wider text-foreground">
-            {pct}% &middot; ${savingsBalance.toFixed(2)} / ${goal.targetAmount.toFixed(2)}
-          </span>
-        </div>
+      <div className="h-1 rounded-xs bg-border-subtle overflow-hidden mt-3.5 mb-2.5">
+        <div
+          className={`h-full transition-all duration-500 ${isComplete ? 'bg-success-solid' : 'bg-fg-primary'}`}
+          style={{ width: `${pct}%` }}
+        />
       </div>
 
-      {/* [SIMPLIFICATION DAY 5] Milestone badges removed alongside the
-          milestone celebration cron + emails. Goal progress is fully
-          conveyed by the bar above. */}
+      <div className="flex items-center justify-between text-[11px] text-fg-muted">
+        <span>
+          {isComplete ? (
+            <span className="text-success-fg">Goal reached</span>
+          ) : (
+            <>${remaining.toFixed(2)} to go</>
+          )}
+        </span>
+        <span className="font-mono text-fg-secondary">
+          {pct}% &middot; ${savingsBalance.toFixed(2)} / ${goal.targetAmount.toFixed(2)}
+        </span>
+      </div>
     </div>
   );
 }

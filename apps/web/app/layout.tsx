@@ -1,21 +1,10 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter, Instrument_Serif } from 'next/font/google';
 import { GeistSans } from 'geist/font/sans';
 import { GeistMono } from 'geist/font/mono';
 import { Analytics } from '@vercel/analytics/next';
 import { AppProviders } from '@/components/providers/AppProviders';
+import { newYorkDisplay, newYorkLarge, newYorkMedium, departureMono } from './fonts';
 import './globals.css';
-
-const inter = Inter({
-  variable: '--font-inter',
-  subsets: ['latin'],
-});
-
-const instrumentSerif = Instrument_Serif({
-  variable: '--font-instrument-serif',
-  subsets: ['latin'],
-  weight: '400',
-});
 
 export const metadata: Metadata = {
   title: 'Audric — Your money, handled.',
@@ -49,9 +38,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable} ${instrumentSerif.variable} ${inter.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col bg-background text-foreground font-sans">
-        <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[200] focus:px-4 focus:py-2 focus:bg-foreground focus:text-background focus:rounded-md focus:font-mono focus:text-xs">
+    <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable} ${newYorkDisplay.variable} ${newYorkLarge.variable} ${newYorkMedium.variable} ${departureMono.variable} h-full antialiased`}>
+      <body className="min-h-full flex flex-col bg-surface-page text-fg-primary font-sans">
+        <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[200] focus:px-4 focus:py-2 focus:bg-fg-primary focus:text-fg-inverse focus:rounded-md focus:font-mono focus:text-xs">
           Skip to content
         </a>
         <AppProviders>{children}</AppProviders>

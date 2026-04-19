@@ -34,25 +34,25 @@ export function SearchResultsCard({ data }: { data: SearchResultsData }) {
     <CardShell
       title="Search Results"
       badge={
-        <span className="text-[10px] font-mono text-dim">{data.results.length} found</span>
+        <span className="text-[10px] font-mono text-fg-muted">{data.results.length} found</span>
       }
     >
-      <div className="space-y-0 divide-y divide-border/40">
+      <div className="space-y-0 divide-y divide-border-subtle/40">
         {visible.map((r, i) => (
           <div key={i} className="py-2 first:pt-0 last:pb-0">
             <a
               href={r.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-[12px] font-medium text-foreground hover:text-accent transition-colors leading-snug block truncate"
+              className="text-[12px] font-medium text-fg-primary hover:text-accent-primary transition-colors leading-snug block truncate"
             >
               {r.title}
             </a>
-            <span className="text-[10px] font-mono text-accent/70 block truncate mt-0.5">
+            <span className="text-[10px] font-mono text-accent-primary/70 block truncate mt-0.5">
               {extractDomain(r.url)}
             </span>
             {r.description && (
-              <p className="text-[11px] text-muted leading-[1.5] mt-0.5 line-clamp-2">
+              <p className="text-[11px] text-fg-secondary leading-[1.5] mt-0.5 line-clamp-2">
                 {r.description}
               </p>
             )}
@@ -63,7 +63,7 @@ export function SearchResultsCard({ data }: { data: SearchResultsData }) {
       {remaining > 0 && !showAll && (
         <button
           onClick={() => setShowAll(true)}
-          className="mt-2 text-[10px] font-mono text-dim hover:text-muted transition-colors"
+          className="mt-2 text-[10px] font-mono text-fg-muted hover:text-fg-secondary transition-colors"
         >
           Show {remaining} more result{remaining !== 1 ? 's' : ''} ↓
         </button>

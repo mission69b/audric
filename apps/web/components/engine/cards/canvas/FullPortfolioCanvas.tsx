@@ -88,8 +88,8 @@ export function FullPortfolioCanvas({ data, onAction }: Props) {
     return (
       <div className="flex flex-col items-center justify-center py-10 space-y-2 text-center">
         <span className="text-3xl">📋</span>
-        <p className="text-sm text-foreground font-medium">Full Portfolio</p>
-        <p className="text-xs text-muted max-w-xs leading-relaxed">
+        <p className="text-sm text-fg-primary font-medium">Full Portfolio</p>
+        <p className="text-xs text-fg-secondary max-w-xs leading-relaxed">
           {'message' in data && data.message ? data.message : 'Full portfolio overview is not yet available.'}
         </p>
       </div>
@@ -143,10 +143,10 @@ export function FullPortfolioCanvas({ data, onAction }: Props) {
 
       {/* Net worth header */}
       <div className="space-y-0.5">
-        <span className="font-mono text-[10px] tracking-wider text-dim uppercase">
+        <span className="font-mono text-[10px] tracking-wider text-fg-muted uppercase">
           {isAllTab ? 'Total Net Worth' : 'Net Worth'}
         </span>
-        <div className="font-mono text-xl text-foreground font-medium">
+        <div className="font-mono text-xl text-fg-primary font-medium">
           ${fmtUsd(netWorth)}
         </div>
       </div>
@@ -157,9 +157,9 @@ export function FullPortfolioCanvas({ data, onAction }: Props) {
           title="Savings"
           onClick={() => onAction?.('Show me the yield projector')}
         >
-          <div className="font-mono text-sm text-foreground font-medium">${fmtUsd(savings)}</div>
+          <div className="font-mono text-sm text-fg-primary font-medium">${fmtUsd(savings)}</div>
           {apy > 0 && (
-            <div className="font-mono text-[10px] text-success">{apy.toFixed(2)}% APY</div>
+            <div className="font-mono text-[10px] text-success-solid">{apy.toFixed(2)}% APY</div>
           )}
         </PanelCard>
 
@@ -172,14 +172,14 @@ export function FullPortfolioCanvas({ data, onAction }: Props) {
               <div className={`font-mono text-sm font-medium ${hfColor(hf)}`}>
                 {hf != null ? hf.toFixed(2) : '∞'}
               </div>
-              <div className="font-mono text-[10px] text-dim">
+              <div className="font-mono text-[10px] text-fg-muted">
                 ${fmtUsd(debt)} debt
               </div>
             </>
           ) : (
             <>
-              <div className="font-mono text-sm text-success font-medium">No debt</div>
-              <div className="font-mono text-[10px] text-dim">Safe</div>
+              <div className="font-mono text-sm text-success-solid font-medium">No debt</div>
+              <div className="font-mono text-[10px] text-fg-muted">Safe</div>
             </>
           )}
         </PanelCard>
@@ -189,14 +189,14 @@ export function FullPortfolioCanvas({ data, onAction }: Props) {
           onClick={() => onAction?.('Show my activity heatmap')}
         >
           {loading ? (
-            <div className="font-mono text-xs text-dim animate-pulse">...</div>
+            <div className="font-mono text-xs text-fg-muted animate-pulse">...</div>
           ) : panelData.heatmap ? (
             <>
-              <div className="font-mono text-sm text-foreground font-medium">{panelData.heatmap.totalEvents}</div>
-              <div className="font-mono text-[10px] text-dim">{panelData.heatmap.activeDays} active days</div>
+              <div className="font-mono text-sm text-fg-primary font-medium">{panelData.heatmap.totalEvents}</div>
+              <div className="font-mono text-[10px] text-fg-muted">{panelData.heatmap.activeDays} active days</div>
             </>
           ) : (
-            <div className="font-mono text-xs text-dim">No data</div>
+            <div className="font-mono text-xs text-fg-muted">No data</div>
           )}
         </PanelCard>
 
@@ -205,14 +205,14 @@ export function FullPortfolioCanvas({ data, onAction }: Props) {
           onClick={() => onAction?.('Show my spending breakdown')}
         >
           {loading ? (
-            <div className="font-mono text-xs text-dim animate-pulse">...</div>
+            <div className="font-mono text-xs text-fg-muted animate-pulse">...</div>
           ) : panelData.spending && panelData.spending.totalSpent > 0 ? (
             <>
-              <div className="font-mono text-sm text-foreground font-medium">${fmtUsd(panelData.spending.totalSpent)}</div>
-              <div className="font-mono text-[10px] text-dim">{panelData.spending.requestCount} requests</div>
+              <div className="font-mono text-sm text-fg-primary font-medium">${fmtUsd(panelData.spending.totalSpent)}</div>
+              <div className="font-mono text-[10px] text-fg-muted">{panelData.spending.requestCount} requests</div>
             </>
           ) : (
-            <div className="font-mono text-xs text-dim">$0.00</div>
+            <div className="font-mono text-xs text-fg-muted">$0.00</div>
           )}
         </PanelCard>
       </div>
@@ -220,33 +220,33 @@ export function FullPortfolioCanvas({ data, onAction }: Props) {
       {/* Quick breakdown */}
       <div className="space-y-1 font-mono text-xs">
         <div className="flex justify-between">
-          <span className="text-dim">Wallet</span>
-          <span className="text-foreground">${fmtUsd(walletUsd)}</span>
+          <span className="text-fg-muted">Wallet</span>
+          <span className="text-fg-primary">${fmtUsd(walletUsd)}</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-dim">Savings</span>
-          <span className="text-success">${fmtUsd(savings)}</span>
+          <span className="text-fg-muted">Savings</span>
+          <span className="text-success-solid">${fmtUsd(savings)}</span>
         </div>
         {debt > 0 && (
           <div className="flex justify-between">
-            <span className="text-dim">Debt</span>
-            <span className="text-error">-${fmtUsd(debt)}</span>
+            <span className="text-fg-muted">Debt</span>
+            <span className="text-error-solid">-${fmtUsd(debt)}</span>
           </div>
         )}
       </div>
 
       {/* Per-wallet breakdown when "All" tab is active */}
       {isAllTab && (
-        <div className="space-y-1.5 pt-2 border-t border-border">
-          <span className="font-mono text-[9px] tracking-wider text-dim uppercase">Per Wallet</span>
+        <div className="space-y-1.5 pt-2 border-t border-border-subtle">
+          <span className="font-mono text-[9px] tracking-wider text-fg-muted uppercase">Per Wallet</span>
           {multiData.wallets.map((w) => (
             <button
               key={w.address}
               onClick={() => setActiveTab(w.isPrimary ? 'primary' : w.address)}
-              className="flex items-center justify-between w-full text-left font-mono text-xs py-1 hover:bg-surface rounded px-1 transition"
+              className="flex items-center justify-between w-full text-left font-mono text-xs py-1 hover:bg-surface-card rounded px-1 transition"
             >
-              <span className="text-muted truncate">{w.label ?? `${w.address.slice(0, 6)}...${w.address.slice(-4)}`}</span>
-              <span className="text-foreground">${fmtUsd(w.netWorth)}</span>
+              <span className="text-fg-secondary truncate">{w.label ?? `${w.address.slice(0, 6)}...${w.address.slice(-4)}`}</span>
+              <span className="text-fg-primary">${fmtUsd(w.netWorth)}</span>
             </button>
           ))}
         </div>
@@ -257,13 +257,13 @@ export function FullPortfolioCanvas({ data, onAction }: Props) {
         <div className="flex gap-2">
           <button
             onClick={() => onAction('Show my portfolio timeline')}
-            className="flex-1 rounded-md border border-border py-1.5 font-mono text-[10px] tracking-wider uppercase text-muted hover:text-foreground hover:border-foreground/30 transition"
+            className="flex-1 rounded-md border border-border-subtle py-1.5 font-mono text-[10px] tracking-wider uppercase text-fg-secondary hover:text-fg-primary hover:border-fg-primary/30 transition"
           >
             Timeline →
           </button>
           <button
             onClick={() => onAction('Give me a full financial report')}
-            className="flex-1 rounded-md bg-foreground py-1.5 font-mono text-[10px] tracking-wider text-background uppercase hover:opacity-90 transition"
+            className="flex-1 rounded-md bg-fg-primary py-1.5 font-mono text-[10px] tracking-wider text-fg-inverse uppercase hover:opacity-90 transition"
           >
             Full report →
           </button>
@@ -279,8 +279,8 @@ function TabButton({ active, onClick, label }: { active: boolean; onClick: () =>
       onClick={onClick}
       className={`shrink-0 rounded-md px-2.5 py-1 font-mono text-[10px] tracking-wider uppercase transition ${
         active
-          ? 'bg-foreground/10 text-foreground'
-          : 'text-dim hover:text-muted'
+          ? 'bg-fg-primary/10 text-fg-primary'
+          : 'text-fg-muted hover:text-fg-secondary'
       }`}
     >
       {label}
@@ -292,9 +292,9 @@ function PanelCard({ title, children, onClick }: { title: string; children: Reac
   return (
     <button
       onClick={onClick}
-      className="rounded-lg border border-border bg-background p-3 text-left space-y-1 hover:border-foreground/20 transition group"
+      className="rounded-lg border border-border-subtle bg-surface-page p-3 text-left space-y-1 hover:border-fg-primary/20 transition group"
     >
-      <span className="font-mono text-[9px] tracking-wider text-dim uppercase group-hover:text-muted transition">
+      <span className="font-mono text-[9px] tracking-wider text-fg-muted uppercase group-hover:text-fg-secondary transition">
         {title} →
       </span>
       {children}
@@ -303,9 +303,9 @@ function PanelCard({ title, children, onClick }: { title: string; children: Reac
 }
 
 function hfColor(hf: number | null | undefined): string {
-  if (hf == null) return 'text-success';
-  if (hf < 1.2) return 'text-error';
-  if (hf < 1.5) return 'text-warning';
-  if (hf < 2.0) return 'text-foreground';
-  return 'text-success';
+  if (hf == null) return 'text-success-solid';
+  if (hf < 1.2) return 'text-error-solid';
+  if (hf < 1.5) return 'text-warning-solid';
+  if (hf < 2.0) return 'text-fg-primary';
+  return 'text-success-solid';
 }

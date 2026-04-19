@@ -12,19 +12,19 @@ export default function PrivacyPage() {
       <header className="mb-12">
         <Link
           href="/"
-          className="inline-block text-muted hover:text-foreground font-mono text-[10px] tracking-[0.12em] uppercase mb-8 transition-colors"
+          className="inline-block text-fg-secondary hover:text-fg-primary font-mono text-[10px] tracking-[0.12em] uppercase mb-8 transition-colors"
         >
           &larr; audric.ai
         </Link>
-        <h1 className="text-2xl sm:text-3xl font-mono font-semibold text-foreground tracking-tight mb-2">
+        <h1 className="font-serif text-[36px] sm:text-[44px] leading-[1.1] tracking-[-0.01em] text-fg-primary mb-3">
           Privacy Policy
         </h1>
-        <p className="text-sm text-muted font-mono">Last updated: April 2026</p>
+        <p className="font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted">Last updated · April 2026</p>
       </header>
 
-      <div className="space-y-8 text-muted leading-relaxed text-[13.5px]">
+      <div className="space-y-10 text-fg-secondary leading-[1.7] text-[14px]">
         <section>
-          <h2 className="text-foreground text-base font-mono font-semibold mb-3">
+          <h2 className="text-fg-primary font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
             Overview
           </h2>
           <p>
@@ -35,47 +35,47 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2 className="text-foreground text-base font-mono font-semibold mb-3">
+          <h2 className="text-fg-primary font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
             What We Collect
           </h2>
           <ul className="list-disc pl-5 space-y-1.5">
             <li>
-              <strong className="text-foreground">Email address</strong> &mdash;
+              <strong className="text-fg-primary">Email address</strong> &mdash;
               Collected via Google sign-in (zkLogin) for authentication. Used
               solely to derive your wallet address.
             </li>
             <li>
-              <strong className="text-foreground">Sui wallet address</strong>{' '}
+              <strong className="text-fg-primary">Sui wallet address</strong>{' '}
               &mdash; Generated via zkLogin (Mysten Labs Enoki). This is a
               public blockchain address derived from your Google session.
             </li>
             <li>
-              <strong className="text-foreground">Chat messages</strong> &mdash;
+              <strong className="text-fg-primary">Chat messages</strong> &mdash;
               Sent to Anthropic&apos;s API for AI processing during your session.
               Not stored by Audric after your session ends. Subject to{' '}
               <a
                 href="https://www.anthropic.com/privacy"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-foreground underline underline-offset-2 hover:opacity-70"
+                className="text-fg-primary underline underline-offset-2 hover:opacity-70"
               >
                 Anthropic&apos;s privacy policy
               </a>
               .
             </li>
             <li>
-              <strong className="text-foreground">Saved contacts</strong> &mdash;
+              <strong className="text-fg-primary">Saved contacts</strong> &mdash;
               Contact names and Sui addresses you save are stored in our database
               linked to your wallet address for convenience.
             </li>
             <li>
-              <strong className="text-foreground">Website analytics</strong>{' '}
+              <strong className="text-fg-primary">Website analytics</strong>{' '}
               &mdash; We use{' '}
               <a
                 href="https://vercel.com/analytics"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-foreground underline underline-offset-2 hover:opacity-70"
+                className="text-fg-primary underline underline-offset-2 hover:opacity-70"
               >
                 Vercel Analytics
               </a>{' '}
@@ -85,7 +85,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2 className="text-foreground text-base font-mono font-semibold mb-3">
+          <h2 className="text-fg-primary font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
             What We Do Not Collect
           </h2>
           <ul className="list-disc pl-5 space-y-1.5">
@@ -99,7 +99,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2 className="text-foreground text-base font-mono font-semibold mb-3">
+          <h2 className="text-fg-primary font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
             Data Shared with Third Parties
           </h2>
           <p>
@@ -109,35 +109,35 @@ export default function PrivacyPage() {
           </p>
           <ul className="list-disc pl-5 space-y-1.5 mt-2">
             <li>
-              <strong className="text-foreground">Anthropic</strong> &mdash; Chat
+              <strong className="text-fg-primary">Anthropic</strong> &mdash; Chat
               messages for AI processing
             </li>
             <li>
-              <strong className="text-foreground">Mysten Labs (Enoki)</strong>{' '}
+              <strong className="text-fg-primary">Mysten Labs (Enoki)</strong>{' '}
               &mdash; Authentication and gas sponsorship
             </li>
             <li>
-              <strong className="text-foreground">Google</strong> &mdash; OAuth
+              <strong className="text-fg-primary">Google</strong> &mdash; OAuth
               sign-in via zkLogin
             </li>
             <li>
-              <strong className="text-foreground">DeFi protocols</strong> (NAVI,
+              <strong className="text-fg-primary">DeFi protocols</strong> (NAVI,
               Cetus, VOLO) &mdash; Via on-chain smart contracts (public
               blockchain data only)
             </li>
             <li>
-              <strong className="text-foreground">Sui RPC nodes</strong> &mdash;
+              <strong className="text-fg-primary">Sui RPC nodes</strong> &mdash;
               For blockchain interaction
             </li>
             <li>
-              <strong className="text-foreground">Vercel</strong> &mdash; App
+              <strong className="text-fg-primary">Vercel</strong> &mdash; App
               hosting and analytics
             </li>
           </ul>
         </section>
 
         <section>
-          <h2 className="text-foreground text-base font-mono font-semibold mb-3">
+          <h2 className="text-fg-primary font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
             Data Storage
           </h2>
           <p>
@@ -149,7 +149,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2 className="text-foreground text-base font-mono font-semibold mb-3">
+          <h2 className="text-fg-primary font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
             Blockchain Data
           </h2>
           <p>
@@ -162,7 +162,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2 className="text-foreground text-base font-mono font-semibold mb-3">
+          <h2 className="text-fg-primary font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
             Open Source
           </h2>
           <p>
@@ -172,7 +172,7 @@ export default function PrivacyPage() {
               href="https://github.com/mission69b/audric"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-foreground underline underline-offset-2 hover:opacity-70"
+              className="text-fg-primary underline underline-offset-2 hover:opacity-70"
             >
               source code
             </a>
@@ -181,12 +181,12 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2 className="text-foreground text-base font-mono font-semibold mb-3">
+          <h2 className="text-fg-primary font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
             Contact
           </h2>
           <p>
             For privacy-related questions, reach out at{' '}
-            <span className="text-foreground">security@t2000.ai</span>.
+            <span className="text-fg-primary">security@t2000.ai</span>.
           </p>
         </section>
       </div>

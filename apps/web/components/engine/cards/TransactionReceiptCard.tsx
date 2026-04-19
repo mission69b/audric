@@ -123,8 +123,8 @@ function getHeroLines(data: TxReceiptData, toolName: string): HeroLine[] {
 }
 
 const emphasisClass: Record<string, string> = {
-  positive: 'text-success',
-  negative: 'text-warning',
+  positive: 'text-success-solid',
+  negative: 'text-warning-solid',
   neutral: '',
 };
 
@@ -139,10 +139,10 @@ export function TransactionReceiptCard({ data, toolName }: { data: TxReceiptData
         <div
           key={line.label}
           className="flex items-center justify-between px-3 py-2 text-[13px]"
-          style={{ borderBottom: '0.5px solid var(--border)' }}
+          style={{ borderBottom: '0.5px solid var(--border-subtle)' }}
         >
-          <span className="text-muted">{line.label}</span>
-          <span className={`font-mono text-foreground ${line.emphasis ? emphasisClass[line.emphasis] : ''}`}>
+          <span className="text-fg-secondary">{line.label}</span>
+          <span className={`font-mono text-fg-primary ${line.emphasis ? emphasisClass[line.emphasis] : ''}`}>
             {line.value}
           </span>
         </div>
@@ -151,10 +151,10 @@ export function TransactionReceiptCard({ data, toolName }: { data: TxReceiptData
       {data.gasCost != null && data.gasCost > 0 && (
         <div
           className="flex items-center justify-between px-3 py-2 text-[13px]"
-          style={{ borderBottom: '0.5px solid var(--border)' }}
+          style={{ borderBottom: '0.5px solid var(--border-subtle)' }}
         >
-          <span className="text-muted">Gas</span>
-          <span className="font-mono text-foreground">{data.gasCost.toFixed(4)} SUI</span>
+          <span className="text-fg-secondary">Gas</span>
+          <span className="font-mono text-fg-primary">{data.gasCost.toFixed(4)} SUI</span>
         </div>
       )}
 

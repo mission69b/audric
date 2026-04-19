@@ -28,7 +28,7 @@ export function SavingsCard({ data }: { data: SavingsData }) {
       {supplies.length > 0 && (
         <table className="w-full mb-1">
           <thead>
-            <tr className="text-dim text-[10px]">
+            <tr className="text-fg-muted text-[10px]">
               <th className="text-left font-medium pb-1">Supply</th>
               <th className="text-right font-medium pb-1">Amount</th>
               <th className="text-right font-medium pb-1">APY</th>
@@ -36,27 +36,27 @@ export function SavingsCard({ data }: { data: SavingsData }) {
           </thead>
           <tbody className="font-mono">
             {supplies.map((p, i) => (
-              <tr key={i} className="border-t border-border/50">
-                <td className="py-1 text-foreground font-medium">{p.symbol}</td>
-                <td className="py-1 text-right text-dim">
+              <tr key={i} className="border-t border-border-subtle/50">
+                <td className="py-1 text-fg-primary font-medium">{p.symbol}</td>
+                <td className="py-1 text-right text-fg-muted">
                   {p.amount.toLocaleString('en-US', { maximumFractionDigits: 4 })}
                   {p.valueUsd > 0 ? ` · $${fmtUsd(p.valueUsd)}` : ''}
                 </td>
-                <td className="py-1 text-right text-emerald-400">{(p.apy * 100).toFixed(2)}%</td>
+                <td className="py-1 text-right text-success-solid">{(p.apy * 100).toFixed(2)}%</td>
               </tr>
             ))}
           </tbody>
         </table>
       )}
       {!supplies.length && hasEarnings && (
-        <div className="text-center py-2 text-dim text-[11px]">
+        <div className="text-center py-2 text-fg-muted text-[11px]">
           <span className="font-mono">${fmtUsd(data.earnings!.supplied)}</span> deposited
         </div>
       )}
       {borrows.length > 0 && (
         <table className="w-full">
           <thead>
-            <tr className="text-dim text-[10px]">
+            <tr className="text-fg-muted text-[10px]">
               <th className="text-left font-medium pb-1">Borrow</th>
               <th className="text-right font-medium pb-1">Amount</th>
               <th className="text-right font-medium pb-1">APY</th>
@@ -64,24 +64,24 @@ export function SavingsCard({ data }: { data: SavingsData }) {
           </thead>
           <tbody className="font-mono">
             {borrows.map((p, i) => (
-              <tr key={i} className="border-t border-border/50">
-                <td className="py-1 text-foreground font-medium">{p.symbol}</td>
-                <td className="py-1 text-right text-dim">${fmtUsd(p.valueUsd)}</td>
-                <td className="py-1 text-right text-amber-400">{(p.apy * 100).toFixed(2)}%</td>
+              <tr key={i} className="border-t border-border-subtle/50">
+                <td className="py-1 text-fg-primary font-medium">{p.symbol}</td>
+                <td className="py-1 text-right text-fg-muted">${fmtUsd(p.valueUsd)}</td>
+                <td className="py-1 text-right text-warning-solid">{(p.apy * 100).toFixed(2)}%</td>
               </tr>
             ))}
           </tbody>
         </table>
       )}
       {data.earnings && (
-        <div className="flex gap-4 mt-2 pt-2 border-t border-border/50 font-mono text-[11px]">
+        <div className="flex gap-4 mt-2 pt-2 border-t border-border-subtle font-mono text-[11px]">
           <div>
-            <span className="text-dim block text-[10px]">Blended APY</span>
-            <span className="text-emerald-400">{(data.earnings.currentApy * 100).toFixed(2)}%</span>
+            <span className="text-fg-muted block text-[10px]">Blended APY</span>
+            <span className="text-success-solid">{(data.earnings.currentApy * 100).toFixed(2)}%</span>
           </div>
           <div>
-            <span className="text-dim block text-[10px]">Daily</span>
-            <span className="text-foreground">${data.earnings.dailyEarning.toFixed(4)}</span>
+            <span className="text-fg-muted block text-[10px]">Daily</span>
+            <span className="text-fg-primary">${data.earnings.dailyEarning.toFixed(4)}</span>
           </div>
         </div>
       )}

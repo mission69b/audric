@@ -78,7 +78,7 @@ export function ChatMessage({ message, onActionResolve, autoApproveTools, agentB
   if (message.role === 'user') {
     return (
       <div className="flex justify-end mb-3" role="log" aria-label="Your message">
-        <div className="max-w-[78%] bg-[var(--n800)] px-4 py-2.5 text-sm text-foreground break-words overflow-hidden" style={{ borderRadius: '16px 16px 4px 16px' }}>
+        <div className="max-w-[78%] bg-surface-inverse px-4 py-2.5 text-sm text-fg-inverse break-words overflow-hidden" style={{ borderRadius: '16px 16px 4px 16px' }}>
           {message.content}
         </div>
       </div>
@@ -143,8 +143,8 @@ export function ChatMessage({ message, onActionResolve, autoApproveTools, agentB
           aria-live={message.isStreaming ? 'polite' : 'off'}
           aria-atomic="false"
         >
-          <span className="text-success mr-1.5 float-left mt-0.5 text-[12px]" aria-hidden="true">✦</span>
-          <div className="text-foreground leading-relaxed overflow-hidden">
+          <span className="text-success-solid mr-1.5 float-left mt-0.5 text-[12px]" aria-hidden="true">✦</span>
+          <div className="text-fg-primary leading-relaxed overflow-hidden">
             {message.isStreaming ? (
               <span className="whitespace-pre-wrap">
                 {message.content}
@@ -164,7 +164,7 @@ export function ChatMessage({ message, onActionResolve, autoApproveTools, agentB
 
       {message.usage && !message.isStreaming && (
         <div className="flex justify-start pl-1">
-          <span className="text-[11px] text-dim" aria-label={`${message.usage.inputTokens + message.usage.outputTokens} tokens used`}>
+          <span className="text-[11px] text-fg-muted" aria-label={`${message.usage.inputTokens + message.usage.outputTokens} tokens used`}>
             {message.usage.inputTokens + message.usage.outputTokens} tokens
           </span>
         </div>

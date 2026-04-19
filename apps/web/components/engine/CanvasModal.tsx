@@ -29,23 +29,23 @@ export function CanvasModal({ canvas, onSendMessage, onClose }: CanvasModalProps
     >
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+        className="absolute inset-0 bg-surface-page/80 backdrop-blur-sm"
         onClick={onClose}
         aria-hidden="true"
       />
 
       {/* Panel */}
-      <div className="relative w-full max-w-lg max-h-[90dvh] overflow-y-auto rounded-xl border border-border bg-surface shadow-2xl">
+      <div className="relative w-full max-w-lg max-h-[90dvh] overflow-y-auto rounded-xl border border-border-subtle bg-surface-card shadow-[var(--shadow-modal)]">
         {/* Header */}
-        <div className="sticky top-0 px-4 py-3 border-b border-border flex items-center justify-between bg-surface z-10">
+        <div className="sticky top-0 px-4 py-3 border-b border-border-subtle flex items-center justify-between bg-surface-card z-10">
           <div className="flex items-center gap-2">
-            <span className="font-mono text-[10px] tracking-wider text-foreground font-medium">
+            <span className="font-mono text-[10px] tracking-wider text-fg-primary font-medium">
               {canvas.title}
             </span>
           </div>
           <button
             onClick={onClose}
-            className="text-dim hover:text-foreground transition p-1 rounded"
+            className="text-fg-muted hover:text-fg-primary transition p-1 rounded"
             aria-label="Close canvas"
           >
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">

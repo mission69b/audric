@@ -58,9 +58,9 @@ export function HealthSimulatorCanvas({ data, onAction }: Props) {
     danger: 'Danger',
   };
   const statusColor: Record<typeof status, string> = {
-    healthy: 'text-success',
-    warning: 'text-warning',
-    danger: 'text-error',
+    healthy: 'text-success-solid',
+    warning: 'text-warning-solid',
+    danger: 'text-error-solid',
   };
 
   return (
@@ -68,8 +68,8 @@ export function HealthSimulatorCanvas({ data, onAction }: Props) {
       {/* Collateral slider */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
-          <label className="font-mono text-[10px] tracking-wider text-dim uppercase">Collateral</label>
-          <span className="font-mono text-sm text-foreground">${collateral.toLocaleString()} USDC</span>
+          <label className="font-mono text-[10px] tracking-wider text-fg-muted uppercase">Collateral</label>
+          <span className="font-mono text-sm text-fg-primary">${collateral.toLocaleString()} USDC</span>
         </div>
         <input
           type="range"
@@ -78,15 +78,15 @@ export function HealthSimulatorCanvas({ data, onAction }: Props) {
           step={100}
           value={collateral}
           onChange={(e) => setCollateral(Number(e.target.value))}
-          className="w-full h-1.5 rounded-full appearance-none bg-border cursor-pointer accent-foreground"
+          className="w-full h-1.5 rounded-full appearance-none bg-border-subtle cursor-pointer accent-foreground"
         />
       </div>
 
       {/* Debt slider */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
-          <label className="font-mono text-[10px] tracking-wider text-dim uppercase">Debt</label>
-          <span className="font-mono text-sm text-foreground">${debt.toLocaleString()} USDC</span>
+          <label className="font-mono text-[10px] tracking-wider text-fg-muted uppercase">Debt</label>
+          <span className="font-mono text-sm text-fg-primary">${debt.toLocaleString()} USDC</span>
         </div>
         <input
           type="range"
@@ -95,15 +95,15 @@ export function HealthSimulatorCanvas({ data, onAction }: Props) {
           step={50}
           value={Math.min(debt, collateral * 0.75)}
           onChange={(e) => setDebt(Number(e.target.value))}
-          className="w-full h-1.5 rounded-full appearance-none bg-border cursor-pointer accent-foreground"
+          className="w-full h-1.5 rounded-full appearance-none bg-border-subtle cursor-pointer accent-foreground"
         />
       </div>
 
       {/* HF gauge */}
-      <div className="rounded-lg border border-border bg-background p-3 space-y-2">
+      <div className="rounded-lg border border-border-subtle bg-surface-page p-3 space-y-2">
         <div className="flex items-center justify-between">
-          <span className="font-mono text-[10px] tracking-wider text-dim uppercase">Health Factor</span>
-          <span className={`font-mono text-sm font-medium ${hf !== null ? statusColor[status] : 'text-dim'}`}>
+          <span className="font-mono text-[10px] tracking-wider text-fg-muted uppercase">Health Factor</span>
+          <span className={`font-mono text-sm font-medium ${hf !== null ? statusColor[status] : 'text-fg-muted'}`}>
             {hf !== null ? hf.toFixed(2) : '∞'}
             {hf !== null && (
               <span className={`ml-2 text-[10px] ${statusColor[status]}`}>
@@ -120,27 +120,27 @@ export function HealthSimulatorCanvas({ data, onAction }: Props) {
       {/* Scenario analysis */}
       <div className="space-y-1 font-mono text-xs">
         <div className="flex justify-between">
-          <span className="text-dim">Price drops 20%</span>
-          <span className={drop20hf !== null && drop20hf < 1.5 ? 'text-warning' : 'text-foreground'}>
+          <span className="text-fg-muted">Price drops 20%</span>
+          <span className={drop20hf !== null && drop20hf < 1.5 ? 'text-warning-solid' : 'text-fg-primary'}>
             HF → {drop20hf !== null ? drop20hf.toFixed(2) : '∞'}{drop20hf !== null && drop20hf < 1.5 ? ' ⚠' : ''}
           </span>
         </div>
         <div className="flex justify-between">
-          <span className="text-dim">Price drops 40%</span>
-          <span className={drop40hf !== null && drop40hf < 1.5 ? 'text-error' : 'text-foreground'}>
+          <span className="text-fg-muted">Price drops 40%</span>
+          <span className={drop40hf !== null && drop40hf < 1.5 ? 'text-error-solid' : 'text-fg-primary'}>
             HF → {drop40hf !== null ? drop40hf.toFixed(2) : '∞'}{drop40hf !== null && drop40hf < 1.1 ? ' ✕ Liquidation risk' : drop40hf !== null && drop40hf < 1.5 ? ' ⚠' : ''}
           </span>
         </div>
         {liqCollateral !== null && debt > 0 && (
           <div className="flex justify-between">
-            <span className="text-dim">Liquidation at</span>
-            <span className="text-foreground">${fmtUsd(liqCollateral)} collateral</span>
+            <span className="text-fg-muted">Liquidation at</span>
+            <span className="text-fg-primary">${fmtUsd(liqCollateral)} collateral</span>
           </div>
         )}
         {safeRepay > 1 && (
-          <div className="flex justify-between pt-0.5 border-t border-border/50">
-            <span className="text-dim">Repay for HF 3.0</span>
-            <span className="text-success">${fmtUsd(safeRepay)}</span>
+          <div className="flex justify-between pt-0.5 border-t border-border-subtle/50">
+            <span className="text-fg-muted">Repay for HF 3.0</span>
+            <span className="text-success-solid">${fmtUsd(safeRepay)}</span>
           </div>
         )}
       </div>
@@ -149,7 +149,7 @@ export function HealthSimulatorCanvas({ data, onAction }: Props) {
       {onAction && safeRepay > 1 && (
         <button
           onClick={() => onAction(`Repay $${Math.ceil(safeRepay)} USDC debt`)}
-          className="w-full rounded-md bg-foreground py-2 font-mono text-[10px] tracking-wider text-background uppercase hover:opacity-90 transition"
+          className="w-full rounded-md bg-fg-primary py-2 font-mono text-[10px] tracking-wider text-fg-inverse uppercase hover:opacity-90 transition"
         >
           Repay ${Math.ceil(safeRepay).toLocaleString()} now →
         </button>

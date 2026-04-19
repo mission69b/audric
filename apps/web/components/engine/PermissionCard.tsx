@@ -114,16 +114,16 @@ export function PermissionCard({ action, onResolve }: PermissionCardProps) {
 
   return (
     <div
-      className="rounded-xl border border-border bg-surface p-3 space-y-2.5 shadow-[var(--shadow-card)]"
+      className="rounded-xl border border-border-subtle bg-surface-card p-3 space-y-2.5 shadow-[var(--shadow-flat)]"
       role="alertdialog"
       aria-label={`Confirm ${label}`}
       aria-describedby={`perm-desc-${action.toolUseId}`}
     >
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-foreground">{label}</span>
+        <span className="text-xs font-medium text-fg-primary">{label}</span>
         {!resolved && (
           <span
-            className={`text-[10px] font-mono tabular-nums ${secondsLeft <= 10 ? 'text-error' : 'text-muted'}`}
+            className={`text-[10px] font-mono tabular-nums ${secondsLeft <= 10 ? 'text-error-solid' : 'text-fg-secondary'}`}
             aria-label={`${secondsLeft} seconds remaining`}
           >
             {secondsLeft}s
@@ -132,20 +132,20 @@ export function PermissionCard({ action, onResolve }: PermissionCardProps) {
       </div>
 
       {!resolved && (
-        <div className="h-0.5 w-full bg-border rounded-full overflow-hidden">
+        <div className="h-0.5 w-full bg-border-subtle rounded-full overflow-hidden">
           <div
-            className="h-full bg-foreground rounded-full transition-all duration-1000 ease-linear"
+            className="h-full bg-fg-primary rounded-full transition-all duration-1000 ease-linear"
             style={{ width: `${progress * 100}%` }}
           />
         </div>
       )}
 
       {action.description && (
-        <p className="text-xs text-muted" id={`perm-desc-${action.toolUseId}`}>{action.description}</p>
+        <p className="text-xs text-fg-secondary" id={`perm-desc-${action.toolUseId}`}>{action.description}</p>
       )}
 
       {inputSummary && (
-        <p className="text-sm font-mono text-foreground">{inputSummary}</p>
+        <p className="text-sm font-mono text-fg-primary">{inputSummary}</p>
       )}
 
       {action.guardInjections && action.guardInjections.length > 0 && (
@@ -153,7 +153,7 @@ export function PermissionCard({ action, onResolve }: PermissionCardProps) {
           {action.guardInjections.map((g, i) => (
             <p
               key={i}
-              className={`text-[11px] leading-tight ${g._warning ? 'text-warning' : 'text-muted'}`}
+              className={`text-[11px] leading-tight ${g._warning ? 'text-warning-solid' : 'text-fg-secondary'}`}
             >
               {g._warning ?? g._hint}
             </p>
@@ -165,19 +165,19 @@ export function PermissionCard({ action, onResolve }: PermissionCardProps) {
         <div className="flex gap-2">
           <button
             onClick={() => handle(false, 'denied')}
-            className="flex-1 rounded-lg border border-border bg-background py-2 text-xs font-medium text-muted hover:text-foreground hover:border-border-bright transition active:scale-[0.97]"
+            className="flex-1 rounded-lg border border-border-subtle bg-surface-page py-2 text-xs font-medium text-fg-secondary hover:text-fg-primary hover:border-border-strong transition active:scale-[0.97]"
           >
             Deny
           </button>
           <button
             onClick={() => handle(true)}
-            className="flex-1 rounded-lg bg-foreground py-2 text-xs font-semibold text-background transition hover:opacity-90 active:scale-[0.97]"
+            className="flex-1 rounded-lg bg-fg-primary py-2 text-xs font-semibold text-fg-inverse transition hover:opacity-90 active:scale-[0.97]"
           >
             Approve
           </button>
         </div>
       ) : (
-        <div className="text-xs text-muted text-center py-1">Processing...</div>
+        <div className="text-xs text-fg-secondary text-center py-1">Processing...</div>
       )}
     </div>
   );

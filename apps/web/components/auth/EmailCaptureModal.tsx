@@ -1,6 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Button } from '@/components/ui/Button';
+import { Icon } from '@/components/ui/Icon';
 
 type ModalStep = 'input' | 'waiting' | 'verified';
 
@@ -104,7 +106,7 @@ export function EmailCaptureModal({ open, onClose, address, jwt, initialEmail }:
   return (
     <>
       <div
-        className="fixed inset-0 bg-black/20 backdrop-blur-[2px] z-40"
+        className="fixed inset-0 bg-fg-primary/30 backdrop-blur-[2px] z-40"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -112,18 +114,18 @@ export function EmailCaptureModal({ open, onClose, address, jwt, initialEmail }:
         <div
           role="dialog"
           aria-modal="true"
-          className="bg-background border border-border rounded-2xl shadow-xl max-w-sm w-full p-6 space-y-4"
+          className="bg-surface-card border border-border-subtle rounded-lg shadow-[var(--shadow-modal)] max-w-md w-full p-7 space-y-5"
         >
           {step === 'input' && (
             <>
-              <h2 className="text-lg font-semibold">
-                Verify your email to chat more.
-              </h2>
-              <p className="text-sm text-muted leading-relaxed">
-                Verified accounts get 20 chat sessions per day instead of 5. We use it to
-                send you the verification link plus critical health-factor alerts only —
-                no marketing, no daily emails.
-              </p>
+              <div className="space-y-2">
+                <h2 className="font-serif text-[28px] leading-[1.15] tracking-[-0.01em] text-fg-primary">
+                  Verify your email to chat more.
+                </h2>
+                <p className="text-[13px] text-fg-secondary leading-relaxed">
+                  Verified accounts get 20 chat sessions per day instead of 5. We use it to send you the verification link plus critical health-factor alerts only — no marketing, no daily emails.
+                </p>
+              </div>
               <div className="space-y-2">
                 <input
                   ref={inputRef}
@@ -132,58 +134,72 @@ export function EmailCaptureModal({ open, onClose, address, jwt, initialEmail }:
                   onChange={(e) => { setEmail(e.target.value); setError(''); }}
                   onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
                   placeholder="Email address"
-                  className="w-full rounded-lg border border-border bg-surface/50 px-4 py-3 text-sm text-foreground placeholder:text-dim outline-none focus:border-foreground transition"
+                  className="w-full rounded-sm border border-border-subtle bg-surface-page px-3.5 py-3 text-sm text-fg-primary placeholder:text-fg-muted outline-none focus:border-border-focus transition-colors"
                 />
-                {error && <p className="text-xs text-error">{error}</p>}
+                {error && (
+                  <p className="font-mono text-[10px] tracking-[0.06em] uppercase text-error-solid">
+                    {error}
+                  </p>
+                )}
               </div>
-              <button
-                onClick={handleSubmit}
-                disabled={submitting}
-                className="w-full rounded-lg bg-foreground px-4 py-3 font-semibold text-background transition hover:opacity-80 disabled:opacity-50"
-              >
-                {submitting ? 'Sending...' : 'Continue'}
-              </button>
-              <button
-                onClick={onClose}
-                className="w-full text-sm text-muted hover:text-foreground transition py-1"
-              >
-                Skip — I&apos;ll add this later
-              </button>
+              <div className="flex flex-col gap-2 pt-1">
+                <Button
+                  variant="primary"
+                  size="lg"
+                  onClick={handleSubmit}
+                  loading={submitting}
+                  className="w-full"
+                >
+                  {submitting ? 'Sending…' : 'Continue'}
+                </Button>
+                <button
+                  onClick={onClose}
+                  className="w-full font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted hover:text-fg-primary transition-colors py-2"
+                >
+                  Skip — I&apos;ll add this later
+                </button>
+              </div>
             </>
           )}
 
           {step === 'waiting' && (
             <>
-              <h2 className="text-lg font-semibold">Check your inbox.</h2>
-              <p className="text-sm text-muted leading-relaxed">
-                We sent a verification link to{' '}
-                <span className="text-foreground font-medium">{email}</span>
-              </p>
-              <div className="flex items-center justify-center gap-1 py-4">
-                <span className="h-2 w-2 rounded-full bg-foreground animate-bounce [animation-delay:0ms]" />
-                <span className="h-2 w-2 rounded-full bg-foreground animate-bounce [animation-delay:150ms]" />
-                <span className="h-2 w-2 rounded-full bg-foreground animate-bounce [animation-delay:300ms]" />
+              <div className="space-y-2">
+                <h2 className="font-serif text-[28px] leading-[1.15] tracking-[-0.01em] text-fg-primary">
+                  Check your inbox.
+                </h2>
+                <p className="text-[13px] text-fg-secondary leading-relaxed">
+                  We sent a verification link to{' '}
+                  <span className="text-fg-primary font-medium">{email}</span>
+                </p>
               </div>
-              <p className="text-xs text-dim text-center">Waiting for verification...</p>
-              <div className="flex items-center justify-center gap-3 pt-2">
+              <div className="flex items-center justify-center gap-1.5 py-3">
+                <span className="h-1.5 w-1.5 rounded-full bg-fg-secondary animate-bounce [animation-delay:0ms]" />
+                <span className="h-1.5 w-1.5 rounded-full bg-fg-secondary animate-bounce [animation-delay:150ms]" />
+                <span className="h-1.5 w-1.5 rounded-full bg-fg-secondary animate-bounce [animation-delay:300ms]" />
+              </div>
+              <p className="font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted text-center">
+                Waiting for verification…
+              </p>
+              <div className="flex items-center justify-center gap-3">
                 <button
                   onClick={handleResend}
                   disabled={resendCooldown > 0}
-                  className="text-sm text-muted hover:text-foreground transition disabled:opacity-40"
+                  className="font-mono text-[10px] tracking-[0.1em] uppercase text-fg-secondary hover:text-fg-primary transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   {resendCooldown > 0 ? `Resend (${resendCooldown}s)` : 'Resend email'}
                 </button>
-                <span className="text-dim">·</span>
+                <span className="text-fg-muted">·</span>
                 <button
                   onClick={() => { setStep('input'); setEmail(''); }}
-                  className="text-sm text-muted hover:text-foreground transition"
+                  className="font-mono text-[10px] tracking-[0.1em] uppercase text-fg-secondary hover:text-fg-primary transition-colors"
                 >
                   Change email
                 </button>
               </div>
               <button
                 onClick={onClose}
-                className="w-full text-sm text-muted hover:text-foreground transition py-1 pt-2"
+                className="w-full font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted hover:text-fg-primary transition-colors py-1"
               >
                 Skip — I&apos;ll verify later
               </button>
@@ -192,20 +208,25 @@ export function EmailCaptureModal({ open, onClose, address, jwt, initialEmail }:
 
           {step === 'verified' && (
             <>
-              <div className="text-center">
-                <div className="text-3xl mb-2">✓</div>
-                <h2 className="text-lg font-semibold">Email verified.</h2>
+              <div className="text-center space-y-3">
+                <div className="mx-auto w-12 h-12 rounded-full bg-success-bg flex items-center justify-center text-success-solid">
+                  <Icon name="check" size={24} />
+                </div>
+                <h2 className="font-serif text-[28px] leading-[1.15] tracking-[-0.01em] text-fg-primary">
+                  Email verified.
+                </h2>
+                <p className="text-[13px] text-fg-secondary text-center leading-relaxed">
+                  You now get 20 chat sessions per day. We&apos;ll only email you for critical health-factor alerts.
+                </p>
               </div>
-              <p className="text-sm text-muted text-center leading-relaxed">
-                You now get 20 chat sessions per day. We&apos;ll only email you for critical
-                health-factor alerts.
-              </p>
-              <button
+              <Button
+                variant="primary"
+                size="lg"
                 onClick={onClose}
-                className="w-full rounded-lg bg-foreground px-4 py-3 font-semibold text-background transition hover:opacity-80"
+                className="w-full"
               >
                 Continue to dashboard
-              </button>
+              </Button>
             </>
           )}
         </div>

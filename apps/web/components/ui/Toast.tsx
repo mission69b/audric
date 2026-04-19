@@ -84,17 +84,17 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 }
 
 const BADGE_STYLES: Record<ToastVariant, string> = {
-  success: 'bg-success text-background',
-  error: 'bg-error text-background',
-  warning: 'bg-warning text-background',
-  info: 'bg-info text-background',
+  success: 'bg-success-solid text-fg-inverse',
+  error: 'bg-error-solid text-fg-inverse',
+  warning: 'bg-warning-solid text-fg-inverse',
+  info: 'bg-info-solid text-fg-inverse',
 };
 
 const BORDER_STYLES: Record<ToastVariant, string> = {
-  success: 'border-success/30',
-  error: 'border-error/30',
-  warning: 'border-warning/30',
-  info: 'border-border',
+  success: 'border-success-solid/30',
+  error: 'border-error-solid/30',
+  warning: 'border-warning-solid/30',
+  info: 'border-border-subtle',
 };
 
 const ICON_MAP: Record<ToastVariant, string> = {
@@ -130,7 +130,7 @@ function ToastNotification({ item, onDismiss }: { item: ToastItem; onDismiss: (i
   return (
     <div
       className={`
-        pointer-events-auto rounded-lg border bg-surface shadow-[var(--shadow-dropdown)]
+        pointer-events-auto rounded-lg border bg-surface-card shadow-[var(--shadow-dropdown)]
         transition-all duration-200
         ${BORDER_STYLES[item.variant]}
         ${exiting ? 'opacity-0 translate-x-4' : 'opacity-100 translate-x-0 animate-[fadeSlideIn_0.2s_ease-out]'}
@@ -145,7 +145,7 @@ function ToastNotification({ item, onDismiss }: { item: ToastItem; onDismiss: (i
         <div className="flex-1" />
         <button
           onClick={startExit}
-          className="shrink-0 text-dim hover:text-foreground transition -mt-0.5"
+          className="shrink-0 text-fg-muted hover:text-fg-primary transition -mt-0.5"
           aria-label="Dismiss"
         >
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
@@ -155,7 +155,7 @@ function ToastNotification({ item, onDismiss }: { item: ToastItem; onDismiss: (i
       </div>
 
       <div className="px-4 pb-3">
-        <p className="text-sm text-foreground leading-relaxed">{item.message}</p>
+        <p className="text-sm text-fg-primary leading-relaxed">{item.message}</p>
       </div>
 
       {item.actions && item.actions.length > 0 && (
@@ -169,10 +169,10 @@ function ToastNotification({ item, onDismiss }: { item: ToastItem; onDismiss: (i
               }}
               className={`flex-1 rounded-md py-2 font-mono text-[10px] tracking-[0.1em] uppercase transition ${
                 action.variant === 'destructive'
-                  ? 'bg-error text-background hover:opacity-90'
+                  ? 'bg-error-solid text-fg-inverse hover:opacity-90'
                   : action.variant === 'primary'
-                    ? 'bg-foreground text-background hover:opacity-90'
-                    : 'border border-border text-muted hover:text-foreground hover:border-foreground/30'
+                    ? 'bg-fg-primary text-fg-inverse hover:opacity-90'
+                    : 'border border-border-subtle text-fg-secondary hover:text-fg-primary hover:border-fg-primary/30'
               }`}
             >
               {action.label}

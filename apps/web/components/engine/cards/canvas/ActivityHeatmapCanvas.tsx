@@ -29,12 +29,12 @@ const CELL = 11;
 const GAP = 2;
 
 function intensityClass(count: number, max: number): string {
-  if (count === 0) return 'bg-border/40';
+  if (count === 0) return 'bg-border-subtle/40';
   const ratio = count / Math.max(max, 1);
-  if (ratio <= 0.25) return 'bg-success/30';
-  if (ratio <= 0.5) return 'bg-success/50';
-  if (ratio <= 0.75) return 'bg-success/70';
-  return 'bg-success';
+  if (ratio <= 0.25) return 'bg-success-solid/30';
+  if (ratio <= 0.5) return 'bg-success-solid/50';
+  if (ratio <= 0.75) return 'bg-success-solid/70';
+  return 'bg-success-solid';
 }
 
 function buildGrid(buckets: DayBucket[]) {
@@ -128,8 +128,8 @@ export function ActivityHeatmapCanvas({ data, onAction }: Props) {
     return (
       <div className="flex flex-col items-center justify-center py-10 space-y-2 text-center">
         <span className="text-3xl">📊</span>
-        <p className="text-sm text-foreground font-medium">Coming Soon</p>
-        <p className="text-xs text-muted max-w-xs leading-relaxed">
+        <p className="text-sm text-fg-primary font-medium">Coming Soon</p>
+        <p className="text-xs text-fg-secondary max-w-xs leading-relaxed">
           {'message' in data && data.message ? data.message : 'Activity heatmap requires an address.'}
         </p>
       </div>
@@ -139,7 +139,7 @@ export function ActivityHeatmapCanvas({ data, onAction }: Props) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-10">
-        <div className="animate-pulse font-mono text-xs text-dim">Loading activity data...</div>
+        <div className="animate-pulse font-mono text-xs text-fg-muted">Loading activity data...</div>
       </div>
     );
   }
@@ -152,16 +152,16 @@ export function ActivityHeatmapCanvas({ data, onAction }: Props) {
       {/* Summary */}
       <div className="flex items-center gap-4 font-mono text-xs">
         <div>
-          <span className="text-dim">Transactions</span>{' '}
-          <span className="text-foreground font-medium">{response?.summary.totalEvents ?? 0}</span>
+          <span className="text-fg-muted">Transactions</span>{' '}
+          <span className="text-fg-primary font-medium">{response?.summary.totalEvents ?? 0}</span>
         </div>
         <div>
-          <span className="text-dim">Active days</span>{' '}
-          <span className="text-foreground font-medium">{response?.summary.activeDays ?? 0}</span>
+          <span className="text-fg-muted">Active days</span>{' '}
+          <span className="text-fg-primary font-medium">{response?.summary.activeDays ?? 0}</span>
         </div>
         <div>
-          <span className="text-dim">Peak</span>{' '}
-          <span className="text-foreground font-medium">{maxCount}/day</span>
+          <span className="text-fg-muted">Peak</span>{' '}
+          <span className="text-fg-primary font-medium">{maxCount}/day</span>
         </div>
       </div>
 
@@ -172,7 +172,7 @@ export function ActivityHeatmapCanvas({ data, onAction }: Props) {
           {monthLabels.map((m, i) => (
             <span
               key={`${m.label}-${i}`}
-              className="font-mono text-[9px] text-dim absolute"
+              className="font-mono text-[9px] text-fg-muted absolute"
               style={{ left: 24 + m.weekIdx * (CELL + GAP) }}
             >
               {m.label}
@@ -184,7 +184,7 @@ export function ActivityHeatmapCanvas({ data, onAction }: Props) {
           {/* Day labels */}
           <div className="flex flex-col shrink-0" style={{ width: 22, gap: GAP }}>
             {DAYS.map((d, i) => (
-              <div key={i} className="font-mono text-[9px] text-dim flex items-center" style={{ height: CELL }}>
+              <div key={i} className="font-mono text-[9px] text-fg-muted flex items-center" style={{ height: CELL }}>
                 {d}
               </div>
             ))}
@@ -200,7 +200,7 @@ export function ActivityHeatmapCanvas({ data, onAction }: Props) {
                     className={`rounded-[2px] transition-colors ${
                       cell.count < 0
                         ? 'bg-transparent'
-                        : `${intensityClass(cell.count, maxCount)} ${cell.date ? 'cursor-pointer hover:ring-1 hover:ring-foreground/30' : ''}`
+                        : `${intensityClass(cell.count, maxCount)} ${cell.date ? 'cursor-pointer hover:ring-1 hover:ring-fg-primary/30' : ''}`
                     }`}
                     style={{ width: CELL, height: CELL }}
                     onMouseEnter={(e) => {
@@ -220,7 +220,7 @@ export function ActivityHeatmapCanvas({ data, onAction }: Props) {
         {/* Tooltip */}
         {hoveredCell && (
           <div
-            className="fixed z-50 px-2 py-1 rounded bg-foreground text-background text-[10px] font-mono pointer-events-none whitespace-nowrap"
+            className="fixed z-50 px-2 py-1 rounded bg-fg-primary text-fg-inverse text-[10px] font-mono pointer-events-none whitespace-nowrap"
             style={{ left: hoveredCell.x, top: hoveredCell.y - 28 }}
           >
             {hoveredCell.count} transaction{hoveredCell.count !== 1 ? 's' : ''} on{' '}
@@ -230,13 +230,13 @@ export function ActivityHeatmapCanvas({ data, onAction }: Props) {
       </div>
 
       {/* Legend */}
-      <div className="flex items-center gap-1.5 font-mono text-[9px] text-dim">
+      <div className="flex items-center gap-1.5 font-mono text-[9px] text-fg-muted">
         <span>Less</span>
-        <div className="w-[11px] h-[11px] rounded-[2px] bg-border/40" />
-        <div className="w-[11px] h-[11px] rounded-[2px] bg-success/30" />
-        <div className="w-[11px] h-[11px] rounded-[2px] bg-success/50" />
-        <div className="w-[11px] h-[11px] rounded-[2px] bg-success/70" />
-        <div className="w-[11px] h-[11px] rounded-[2px] bg-success" />
+        <div className="w-[11px] h-[11px] rounded-[2px] bg-border-subtle/40" />
+        <div className="w-[11px] h-[11px] rounded-[2px] bg-success-solid/30" />
+        <div className="w-[11px] h-[11px] rounded-[2px] bg-success-solid/50" />
+        <div className="w-[11px] h-[11px] rounded-[2px] bg-success-solid/70" />
+        <div className="w-[11px] h-[11px] rounded-[2px] bg-success-solid" />
         <span>More</span>
       </div>
     </div>

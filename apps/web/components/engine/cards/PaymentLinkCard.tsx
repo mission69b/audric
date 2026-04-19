@@ -28,14 +28,14 @@ interface PaymentLinkList {
 
 function StatusPill({ status }: { status: string }) {
   const map: Record<string, { label: string; cls: string }> = {
-    active: { label: 'Active', cls: 'bg-green-500/15 text-green-400' },
-    paid: { label: 'Paid', cls: 'bg-blue-500/15 text-blue-400' },
-    expired: { label: 'Expired', cls: 'bg-zinc-500/15 text-zinc-400' },
-    cancelled: { label: 'Cancelled', cls: 'bg-red-500/15 text-red-400' },
+    active: { label: 'Active', cls: 'bg-success-bg text-success-fg border border-success-border' },
+    paid: { label: 'Paid', cls: 'bg-info-bg text-info-fg border border-info-border' },
+    expired: { label: 'Expired', cls: 'bg-surface-sunken text-fg-muted border border-border-subtle' },
+    cancelled: { label: 'Cancelled', cls: 'bg-error-bg text-error-fg border border-error-border' },
   };
-  const s = map[status] ?? { label: status, cls: 'bg-zinc-500/15 text-zinc-400' };
+  const s = map[status] ?? { label: status, cls: 'bg-surface-sunken text-fg-muted border border-border-subtle' };
   return (
-    <span className={`text-[10px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded ${s.cls}`}>
+    <span className={`text-[10px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded-xs ${s.cls}`}>
       {s.label}
     </span>
   );
@@ -55,8 +55,8 @@ function CopyButton({ text }: { text: string }) {
       onClick={handleCopy}
       className={`text-[11px] font-mono transition-colors border rounded px-2 py-0.5 ${
         copied
-          ? 'text-emerald-400 border-emerald-400/40'
-          : 'text-zinc-400 hover:text-white border-zinc-700 hover:border-zinc-500'
+          ? 'text-success-solid border-success-border'
+          : 'text-fg-secondary hover:text-fg-primary border-border-subtle hover:border-border-strong'
       }`}
     >
       {copied ? 'Copied!' : 'Copy link'}
@@ -67,12 +67,11 @@ function CopyButton({ text }: { text: string }) {
 export function PaymentLinkCard({ data }: { data: unknown }) {
   const d = data as PaymentLink | PaymentLinkList;
 
-  // List view
   if ('links' in d) {
     if (!d.links.length) {
       return (
         <CardShell title="Payment Links">
-          <p className="text-sm text-zinc-500">No payment links yet.</p>
+          <p className="text-sm text-fg-muted">No payment links yet.</p>
         </CardShell>
       );
     }
@@ -80,11 +79,11 @@ export function PaymentLinkCard({ data }: { data: unknown }) {
       <CardShell title="Payment Links">
         <div className="space-y-2">
           {d.links.map((l) => (
-            <div key={l.slug} className="py-2 border-b border-zinc-800 last:border-0">
+            <div key={l.slug} className="py-2 border-b border-border-subtle last:border-0">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-sm text-white truncate">{l.label ?? `Link ${l.slug.slice(0, 6)}`}</p>
-                  <span className="font-mono text-[11px] text-zinc-500">
+                  <p className="text-sm text-fg-primary truncate">{l.label ?? `Link ${l.slug.slice(0, 6)}`}</p>
+                  <span className="font-mono text-[11px] text-fg-muted">
                     {l.amount != null ? fmtUsd(l.amount) : 'Open amount'} · {new Date(l.createdAt).toLocaleDateString()}
                   </span>
                 </div>
@@ -93,7 +92,7 @@ export function PaymentLinkCard({ data }: { data: unknown }) {
                   {l.status === 'active' && <CopyButton text={l.url} />}
                 </div>
               </div>
-              <span className="font-mono text-[10px] text-zinc-600 mt-0.5 block">{l.slug}</span>
+              <span className="font-mono text-[10px] text-fg-muted mt-0.5 block">{l.slug}</span>
             </div>
           ))}
         </div>
@@ -101,7 +100,6 @@ export function PaymentLinkCard({ data }: { data: unknown }) {
     );
   }
 
-  // Single created link view
   const link = d as PaymentLink;
   const amountStr = link.amount != null ? fmtUsd(link.amount) : 'Open amount';
 
@@ -109,26 +107,26 @@ export function PaymentLinkCard({ data }: { data: unknown }) {
     <CardShell title="Payment Link Created">
       <div className="space-y-3">
         {link.label && (
-          <p className="text-sm text-white">{link.label}</p>
+          <p className="text-sm text-fg-primary">{link.label}</p>
         )}
         <div className="flex items-center justify-between">
-          <MonoLabel className="text-zinc-400">Amount</MonoLabel>
-          <span className="text-sm font-semibold text-white">{amountStr} {link.currency}</span>
+          <MonoLabel>Amount</MonoLabel>
+          <span className="text-sm font-semibold text-fg-primary font-mono">{amountStr} {link.currency}</span>
         </div>
         {link.memo && (
           <div className="flex items-center justify-between">
-            <MonoLabel className="text-zinc-400">Memo</MonoLabel>
-            <span className="text-sm text-zinc-300">{link.memo}</span>
+            <MonoLabel>Memo</MonoLabel>
+            <span className="text-sm text-fg-secondary">{link.memo}</span>
           </div>
         )}
         {link.expiresAt && (
           <div className="flex items-center justify-between">
-            <MonoLabel className="text-zinc-400">Expires</MonoLabel>
-            <span className="text-sm text-zinc-300">{new Date(link.expiresAt).toLocaleDateString()}</span>
+            <MonoLabel>Expires</MonoLabel>
+            <span className="text-sm text-fg-secondary">{new Date(link.expiresAt).toLocaleDateString()}</span>
           </div>
         )}
         <div className="pt-1 space-y-2">
-          <div className="bg-zinc-900 rounded-lg px-3 py-2 font-mono text-xs text-zinc-300 break-all">
+          <div className="bg-surface-sunken border border-border-subtle rounded-md px-3 py-2 font-mono text-xs text-fg-secondary break-all">
             {link.url}
           </div>
           <CopyButton text={link.url} />

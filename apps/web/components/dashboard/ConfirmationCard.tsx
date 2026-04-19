@@ -20,14 +20,14 @@ export function ConfirmationCard({
   loading,
 }: ConfirmationCardProps) {
   return (
-    <div className="rounded-lg border border-border bg-surface p-5 space-y-4 shadow-[var(--shadow-card)] feed-row">
-      <p className="font-medium text-foreground">{title}</p>
+    <div className="rounded-lg border border-border-subtle bg-surface-card p-5 space-y-4 shadow-[var(--shadow-flat)] feed-row">
+      <p className="font-medium text-fg-primary">{title}</p>
 
       <div className="space-y-2">
         {details.map((d) => (
           <div key={d.label} className="flex justify-between text-sm">
-            <span className="text-muted">{d.label}</span>
-            <span className="text-foreground font-medium font-mono">{d.value}</span>
+            <span className="text-fg-secondary">{d.label}</span>
+            <span className="text-fg-primary font-medium font-mono">{d.value}</span>
           </div>
         ))}
       </div>
@@ -36,11 +36,11 @@ export function ConfirmationCard({
         <button
           onClick={onConfirm}
           disabled={loading}
-          className="flex-1 bg-foreground rounded-lg py-3 text-sm font-semibold text-background tracking-[0.05em] uppercase transition hover:opacity-80 active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
+          className="flex-1 bg-fg-primary rounded-lg py-3 text-sm font-semibold text-fg-inverse tracking-[0.05em] uppercase transition hover:opacity-80 active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
         >
           {loading ? (
             <>
-              <Spinner size="sm" className="border-background/40 border-t-background" />
+              <Spinner size="sm" className="border-surface-page/40 border-t-surface-page" />
               Processing...
             </>
           ) : (
@@ -50,7 +50,7 @@ export function ConfirmationCard({
         <button
           onClick={onCancel}
           disabled={loading}
-          className="px-5 py-3 text-sm text-muted hover:text-foreground transition disabled:opacity-50"
+          className="px-5 py-3 text-sm text-fg-secondary hover:text-fg-primary transition disabled:opacity-50"
         >
           Cancel
         </button>

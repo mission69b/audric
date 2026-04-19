@@ -239,15 +239,52 @@ pnpm test         # Run tests (Vitest)
 
 ---
 
-## Styling — Agentic Design System
+## Styling — Audric Design System v1.1 (light only)
 
-- **Fonts:** Geist Sans (body), Geist Mono (code/labels), Instrument Serif (display)
-- **Colors:** White/black neutrals (N100–N900), no brand accent color
-- **Semantic:** `--success` green, `--error` red, `--warning` amber, `--info` blue
-- **Buttons:** `bg-foreground text-background` (black on white)
-- **User messages:** Inverted (dark bubble, light text)
-- Group utilities: layout → spacing → sizing → colors → effects
-- `cn()` for conditional classes
+Source of truth: `apps/web/app/globals.css` + `design_handoff_audric/design_files/colors_and_type.css`.
+The full handoff lives in `design_handoff_audric/`; the implementation history is in `design_handoff_audric/IMPLEMENTATION_PLAN.md` (Phases 1–14).
+
+### Fonts
+
+Loaded via `next/font/local` in `apps/web/app/fonts.ts` and injected as CSS variables on `<html>` from `apps/web/app/layout.tsx`. Composed into three semantic stacks in `globals.css`:
+
+- **`font-serif`** — New York (Display / Large / Medium). Headlines, balances, hero numerals.
+- **`font-sans`** — Geist Sans. Default body text; set on `<body>`.
+- **`font-mono`** — Departure Mono (with Geist Mono fallback). Labels, eyebrows, badges, button text, all uppercase + tracking.
+- `apps/web/app/fonts/InstrumentSerif-Regular.ttf` is **only** loaded by `app/opengraph-image.tsx` for the OG image — never used in the running app.
+
+### Color tokens
+
+Every value resolves to a hue/neutral step; no raw hex values in components.
+
+- **Palette:** 9-step neutrals (`--n100` … `--n900`) + 8 hues × 8 steps (Pink `p`, Red `r`, Orange `o`, Yellow `y`, Blue `b`, Teal `t`, Purple `pu`, Green `g`).
+- **Surface:** `--surface-page` / `--surface-card` / `--surface-sunken` / `--surface-inverse`.
+- **Foreground:** `--fg-primary` / `--fg-secondary` / `--fg-muted` / `--fg-disabled` / `--fg-inverse`.
+- **Border:** `--border-default` / `--border-subtle` / `--border-strong` / `--border-focus`.
+- **Accent (cobalt blue, `--b500`):** `--accent-primary` / `--accent-primary-hover` / `--accent-primary-bg`.
+- **Status (each has `-fg` / `-bg` / `-border` / `-solid`):** `--success-*` / `--warning-*` / `--error-*` / `--info-*`.
+- **Charts:** `--chart-1` … `--chart-4` (sequential greys) + `--color-purple` / `--color-purple-bg` for Activity icons.
+
+### Tailwind utilities
+
+The `@theme inline` block in `globals.css` exposes every token as a Tailwind utility. Reach for these — never raw hex or `red-400`-style defaults:
+
+- `bg-surface-card`, `text-fg-primary`, `border-border-subtle`, `bg-accent-primary`
+- `text-success-fg`, `bg-error-bg`, `border-warning-border`, `bg-info-solid`
+- `bg-p400`, `text-pu500`, etc. (full hue palette, primarily for marketing illustrations)
+- `rounded-pill`, `rounded-xs`, `shadow-flat`, `shadow-modal`, `shadow-focus-ring`
+- `font-serif` / `font-sans` / `font-mono`
+
+### Typography ramp
+
+`globals.css` exposes semantic ramp classes that mirror the Typography handoff: `.ads-h1` / `.ads-h2` / `.ads-h3`, `.ads-body[-b/-sm/-sm-b/-xs/-xs-b]`, `.ads-label-md` / `.ads-label-sm`, `.ads-button-md` / `.ads-button-sm`, `.ads-code`, plus numeral helpers `.num-display` / `.num-tabular` / `.label-mono`.
+
+### Conventions
+
+- Light theme only — no dark-mode opt-in (the legacy `.light-theme` no-op was removed in Phase 14).
+- Group utilities: layout → spacing → sizing → colors → effects.
+- `cn()` for conditional classes.
+- New marketing/landing components live under `components/landing/`; shared primitives (`BorderedGrid`, `BrowserFrame`, `QRReceiptCard`) sit alongside section components.
 
 ---
 

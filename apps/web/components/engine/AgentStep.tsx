@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Icon } from '@/components/ui/Icon';
 
 export type StepStatus = 'pending' | 'running' | 'done' | 'error';
 
@@ -112,21 +113,21 @@ export function getStepLabel(toolName: string): string {
 function StatusDot({ status }: { status: StepStatus }) {
   switch (status) {
     case 'pending':
-      return <span className="w-4 h-4 rounded-full border border-border-bright shrink-0" aria-hidden="true" />;
+      return <span className="w-4 h-4 rounded-full border border-border-strong shrink-0" aria-hidden="true" />;
     case 'running':
       return (
-        <span className="w-4 h-4 rounded-full border-2 border-foreground border-t-transparent shrink-0 animate-spin" aria-hidden="true" />
+        <span className="w-4 h-4 rounded-full border-2 border-fg-primary border-t-transparent shrink-0 animate-spin" aria-hidden="true" />
       );
     case 'done':
       return (
-        <span className="w-4 h-4 rounded-full bg-success shrink-0 flex items-center justify-center" aria-hidden="true">
+        <span className="w-4 h-4 rounded-full bg-success-solid shrink-0 flex items-center justify-center" aria-hidden="true">
           <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
             <path d="M2 5L4 7L8 3" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </span>
       );
     case 'error':
-      return <span className="w-4 h-4 rounded-full bg-error shrink-0" aria-hidden="true" />;
+      return <span className="w-4 h-4 rounded-full bg-error-solid shrink-0" aria-hidden="true" />;
   }
 }
 
@@ -144,15 +145,15 @@ export function AgentStep({
     <div className="flex items-center gap-2 py-1">
       <StatusDot status={status} />
       {icon && <span className="text-sm leading-none shrink-0">{icon}</span>}
-      <span className={`font-mono text-[10px] tracking-[0.1em] uppercase ${status === 'done' || status === 'error' ? 'text-muted' : 'text-foreground'}`}>
+      <span className={`font-mono text-[10px] tracking-[0.1em] uppercase ${status === 'done' || status === 'error' ? 'text-fg-secondary' : 'text-fg-primary'}`}>
         {label}
       </span>
       {collapsible && (
         <span
-          className={`text-[10px] text-dim transition-transform duration-150 ${expanded ? 'rotate-180' : ''}`}
+          className={`inline-flex text-fg-muted transition-transform duration-150 ${expanded ? 'rotate-180' : ''}`}
           aria-hidden="true"
         >
-          ▾
+          <Icon name="chevron-down" size={10} />
         </span>
       )}
     </div>
@@ -172,7 +173,7 @@ export function AgentStep({
         content
       )}
       {children && expanded && (
-        <div className="ml-[5px] pl-4 border-l border-border">
+        <div className="ml-[5px] pl-4 border-l border-border-subtle">
           {children}
         </div>
       )}

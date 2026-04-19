@@ -172,13 +172,13 @@ function InlineSegments({
         switch (seg.type) {
           case 'bold':
             return (
-              <strong key={i} className="font-semibold text-foreground">
+              <strong key={i} className="font-semibold text-fg-primary">
                 {seg.content}
               </strong>
             );
           case 'code':
             return (
-              <code key={i} className="bg-surface border border-border rounded px-1.5 py-0.5 text-xs font-mono text-foreground break-all">
+              <code key={i} className="bg-surface-card border border-border-subtle rounded px-1.5 py-0.5 text-xs font-mono text-fg-primary break-all">
                 {seg.content}
               </code>
             );
@@ -189,7 +189,7 @@ function InlineSegments({
                 key={i}
                 src={seg.url}
                 alt={seg.alt || 'Generated image'}
-                className="rounded-lg border border-border max-w-full mt-2 mb-1"
+                className="rounded-lg border border-border-subtle max-w-full mt-2 mb-1"
                 loading="lazy"
               />
             );
@@ -200,7 +200,7 @@ function InlineSegments({
                 href={seg.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-info underline underline-offset-2 hover:opacity-70 transition"
+                className="text-info-solid underline underline-offset-2 hover:opacity-70 transition"
               >
                 {seg.text}
               </a>
@@ -212,14 +212,14 @@ function InlineSegments({
                 <button
                   key={i}
                   onClick={() => onAction(seg.label)}
-                  className="inline-flex items-center rounded-full border border-border bg-surface px-2.5 py-0.5 text-xs font-medium text-foreground hover:bg-border/50 hover:border-border-bright transition active:scale-[0.97] mx-0.5 align-baseline"
+                  className="inline-flex items-center rounded-full border border-border-subtle bg-surface-card px-2.5 py-0.5 text-xs font-medium text-fg-primary hover:bg-border-subtle/50 hover:border-border-strong transition active:scale-[0.97] mx-0.5 align-baseline"
                 >
                   {seg.label}
                 </button>
               );
             }
             return (
-              <span key={i} className="font-medium text-foreground">
+              <span key={i} className="font-medium text-fg-primary">
                 {seg.label}
               </span>
             );
@@ -233,27 +233,27 @@ function InlineSegments({
 }
 
 const STATUS_COLORS: Record<StatData['status'], string> = {
-  safe: 'text-success',
-  warning: 'text-warning',
-  danger: 'text-error',
-  neutral: 'text-foreground',
+  safe: 'text-success-solid',
+  warning: 'text-warning-solid',
+  danger: 'text-error-solid',
+  neutral: 'text-fg-primary',
 };
 
 const STATUS_DOT: Record<StatData['status'], string> = {
-  safe: 'bg-success',
-  warning: 'bg-warning',
-  danger: 'bg-error',
-  neutral: 'bg-border-bright',
+  safe: 'bg-success-solid',
+  warning: 'bg-warning-solid',
+  danger: 'bg-error-solid',
+  neutral: 'bg-border-strong',
 };
 
 function StatGrid({ stats }: { stats: StatData[] }) {
   return (
     <div className="my-2 grid grid-cols-2 gap-1.5">
       {stats.map((s, i) => (
-        <div key={i} className="rounded-xl bg-surface border border-border px-3 py-2.5">
+        <div key={i} className="rounded-xl bg-surface-card border border-border-subtle px-3 py-2.5">
           <div className="flex items-center gap-1.5 mb-1">
             <div className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[s.status]}`} />
-            <span className="text-[10px] uppercase tracking-wider text-muted font-medium">{s.label}</span>
+            <span className="text-[10px] uppercase tracking-wider text-fg-secondary font-medium">{s.label}</span>
           </div>
           <div className={`text-sm font-semibold ${STATUS_COLORS[s.status]}`}>{s.value}</div>
         </div>
@@ -264,33 +264,33 @@ function StatGrid({ stats }: { stats: StatData[] }) {
 
 function PostcardVisual({ data }: { data: PostcardData }) {
   return (
-    <div className="my-2 rounded-2xl overflow-hidden border border-info/20 bg-info/5">
+    <div className="my-2 rounded-2xl overflow-hidden border border-info-solid/20 bg-info-solid/5">
       <div className="px-4 pt-4 pb-2">
         <div className="flex items-start justify-between">
           <div>
-            <div className="text-[10px] uppercase tracking-widest text-info/60 font-medium">Postcard Sent</div>
-            <div className="text-sm font-semibold text-foreground mt-0.5">To: {data.to}</div>
+            <div className="text-[10px] uppercase tracking-widest text-info-solid/60 font-medium">Postcard Sent</div>
+            <div className="text-sm font-semibold text-fg-primary mt-0.5">To: {data.to}</div>
           </div>
           <div className="text-2xl">📬</div>
         </div>
-        <p className="text-xs text-muted mt-2 italic leading-relaxed">&ldquo;{data.message}&rdquo;</p>
+        <p className="text-xs text-fg-secondary mt-2 italic leading-relaxed">&ldquo;{data.message}&rdquo;</p>
       </div>
 
       {(data.front || data.back) && (
         <div className="px-4 pb-2 flex gap-2">
           {data.front && (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={data.front} alt="Postcard front" className="w-1/2 rounded-lg border border-border" />
+            <img src={data.front} alt="Postcard front" className="w-1/2 rounded-lg border border-border-subtle" />
           )}
           {data.back && (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={data.back} alt="Postcard back" className="w-1/2 rounded-lg border border-border" />
+            <img src={data.back} alt="Postcard back" className="w-1/2 rounded-lg border border-border-subtle" />
           )}
         </div>
       )}
 
-      <div className="px-4 pb-4 flex items-center justify-between text-xs text-muted">
-        <span>Est. delivery: <span className="text-foreground font-medium">{data.delivery}</span></span>
+      <div className="px-4 pb-4 flex items-center justify-between text-xs text-fg-secondary">
+        <span>Est. delivery: <span className="text-fg-primary font-medium">{data.delivery}</span></span>
         {data.tracking && <span className="font-mono text-[11px]">{data.tracking}</span>}
       </div>
     </div>
@@ -321,8 +321,8 @@ export function AgentMarkdown({ text, onAction }: AgentMarkdownProps) {
       elements.push(<PostcardVisual key={i} data={line.data} />);
     } else if (line.type === 'heading') {
       const cls = line.level === 1
-        ? 'font-semibold text-foreground text-sm mt-2 first:mt-0'
-        : 'font-semibold text-foreground text-[13px] mt-2 first:mt-0';
+        ? 'font-semibold text-fg-primary text-sm mt-2 first:mt-0'
+        : 'font-semibold text-fg-primary text-[13px] mt-2 first:mt-0';
       elements.push(
         <p key={i} className={cls}>
           <InlineSegments segments={line.segments} onAction={onAction} />
@@ -331,7 +331,7 @@ export function AgentMarkdown({ text, onAction }: AgentMarkdownProps) {
     } else if (line.type === 'list-item') {
       elements.push(
         <div key={i} className="flex gap-2 pl-0.5">
-          <span className="text-dim font-mono text-xs leading-relaxed shrink-0 w-4 text-right">
+          <span className="text-fg-muted font-mono text-xs leading-relaxed shrink-0 w-4 text-right">
             {line.number}.
           </span>
           <span>
@@ -342,7 +342,7 @@ export function AgentMarkdown({ text, onAction }: AgentMarkdownProps) {
     } else if (line.type === 'bullet-item') {
       elements.push(
         <div key={i} className="flex gap-2 pl-0.5">
-          <span className="text-dim leading-relaxed shrink-0 w-4 text-center">
+          <span className="text-fg-muted leading-relaxed shrink-0 w-4 text-center">
             •
           </span>
           <span>
@@ -361,7 +361,7 @@ export function AgentMarkdown({ text, onAction }: AgentMarkdownProps) {
   }
 
   return (
-    <div className="space-y-1 text-foreground/85 leading-relaxed break-words">
+    <div className="space-y-1 text-fg-primary/85 leading-relaxed break-words">
       {elements}
     </div>
   );

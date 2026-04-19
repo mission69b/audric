@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect, type KeyboardEvent } from 'react';
 import { Tooltip } from '@/components/ui/Tooltip';
+import { Icon } from '@/components/ui/Icon';
 
 interface InputBarProps {
   onSubmit: (text: string) => void;
@@ -58,7 +59,7 @@ export function InputBar({
   const hasContent = value.trim().length > 0;
 
   return (
-    <div className="flex flex-col rounded-[16px] border border-border bg-surface px-4 pt-3 pb-2 focus-within:border-foreground transition-colors">
+    <div className="flex flex-col rounded-lg border border-border-subtle bg-surface-card p-4 focus-within:border-border-strong transition-colors">
       <textarea
         ref={textareaRef}
         value={value}
@@ -68,50 +69,46 @@ export function InputBar({
         disabled={disabled}
         rows={1}
         aria-label="Message Audric"
-        className="w-full resize-none bg-transparent text-[15px] font-sans text-foreground placeholder:text-dim outline-none max-h-40 leading-[1.5] disabled:opacity-50"
+        className="w-full resize-none bg-transparent text-[14px] font-sans text-fg-primary placeholder:text-fg-muted outline-none max-h-40 leading-[1.5] pb-3.5 disabled:opacity-50"
       />
 
-      <div className="flex items-center justify-between mt-2">
+      <div className="flex items-center justify-between">
         <Tooltip label="Attach" side="top">
           <button
-            className="shrink-0 text-[18px] font-light text-dim leading-none hover:text-muted transition w-5 text-center focus-visible:ring-2 focus-visible:ring-foreground/20 rounded outline-none"
+            type="button"
+            className="shrink-0 inline-flex items-center justify-center w-7 h-7 text-fg-muted hover:text-fg-secondary transition rounded focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
             aria-label="Attach"
             onClick={() => textareaRef.current?.focus()}
           >
-            +
+            <Icon name="plus" size={16} />
           </button>
         </Tooltip>
 
         <div className="flex items-center gap-2">
           <Tooltip label="Voice input" side="top">
             <button
-              className="shrink-0 text-dim hover:text-muted transition focus-visible:ring-2 focus-visible:ring-foreground/20 rounded outline-none"
+              type="button"
+              className="shrink-0 inline-flex items-center justify-center w-7 h-7 text-fg-muted hover:text-fg-secondary transition rounded focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
               aria-label="Voice input"
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
-                <path d="M19 10v2a7 7 0 01-14 0v-2" />
-                <line x1="12" y1="19" x2="12" y2="23" />
-                <line x1="8" y1="23" x2="16" y2="23" />
-              </svg>
+              <Icon name="microphone" size={16} />
             </button>
           </Tooltip>
 
           <Tooltip label="Send" side="top">
             <button
+              type="button"
               onClick={handleSubmit}
               disabled={disabled || !hasContent}
               className={[
-                'shrink-0 w-[34px] h-[34px] rounded-full flex items-center justify-center transition',
+                'shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-full transition focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]',
                 hasContent
-                  ? 'bg-foreground text-background hover:opacity-80 active:scale-[0.95]'
-                  : 'bg-[var(--n700)] text-[var(--n500)] cursor-default',
+                  ? 'bg-fg-primary text-fg-inverse hover:opacity-80 active:scale-[0.95]'
+                  : 'bg-border-subtle text-fg-muted cursor-default',
               ].join(' ')}
               aria-label="Send message"
             >
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                <path d="M8 13V3M8 3L3.5 7.5M8 3l4.5 4.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              <Icon name="arrow-up" size={14} />
             </button>
           </Tooltip>
         </div>

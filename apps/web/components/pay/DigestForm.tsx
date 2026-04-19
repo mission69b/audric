@@ -1,5 +1,13 @@
 'use client';
 
+// [PHASE 12] DigestForm — re-skin the manual transaction-digest fallback
+// inside the /pay/[slug] receipt. Lets a payer paste a Sui tx digest if the
+// auto-poller didn't pick up their payment.
+//
+// Behavior preservation: identical state machine (collapsed → expanded → form
+// submit → fetch /api/payments/<slug>/verify → onSuccess/onError). Same
+// validation regex (`^[A-Za-z0-9+/=]{32,88}$`).
+
 import { useState } from 'react';
 
 interface DigestFormProps {
@@ -50,8 +58,9 @@ export function DigestForm({ slug, onSuccess, onError }: DigestFormProps) {
   if (!expanded) {
     return (
       <button
+        type="button"
         onClick={() => setExpanded(true)}
-        className="w-full text-center text-[10px] font-mono text-dim hover:text-foreground transition py-1"
+        className="w-full text-center font-mono text-[10px] tracking-[0.06em] text-fg-muted hover:text-fg-primary transition py-1"
       >
         I already sent payment →
       </button>
@@ -60,7 +69,7 @@ export function DigestForm({ slug, onSuccess, onError }: DigestFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-2">
-      <label className="block text-[10px] font-mono text-dim">
+      <label className="block font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted">
         Transaction digest
       </label>
       <input
@@ -68,7 +77,7 @@ export function DigestForm({ slug, onSuccess, onError }: DigestFormProps) {
         value={digest}
         onChange={(e) => setDigest(e.target.value)}
         placeholder="e.g. 5Kx9V3..."
-        className="w-full px-3 py-2 rounded-lg border border-border bg-background text-xs font-mono text-foreground placeholder:text-dim/50 focus:outline-none focus:border-foreground/30"
+        className="w-full h-10 px-3 rounded-xs border border-border-subtle bg-surface-page font-mono text-[11px] text-fg-primary placeholder:text-fg-muted focus:outline-none focus:border-border-focus"
         disabled={verifying}
         autoFocus
       />
@@ -76,14 +85,17 @@ export function DigestForm({ slug, onSuccess, onError }: DigestFormProps) {
         <button
           type="submit"
           disabled={!digest.trim() || verifying}
-          className="flex-1 py-2 rounded-lg border border-border bg-background text-xs font-mono uppercase tracking-wider text-foreground hover:bg-surface transition disabled:opacity-40"
+          className="flex-1 h-10 rounded-pill border border-border-strong bg-transparent font-mono text-[11px] tracking-[0.06em] uppercase text-fg-primary hover:bg-surface-sunken transition disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
         >
           {verifying ? 'Verifying...' : 'Verify'}
         </button>
         <button
           type="button"
-          onClick={() => { setExpanded(false); setDigest(''); }}
-          className="px-3 py-2 rounded-lg border border-border bg-background text-xs font-mono text-dim hover:text-foreground transition"
+          onClick={() => {
+            setExpanded(false);
+            setDigest('');
+          }}
+          className="h-10 px-4 rounded-pill border border-border-subtle bg-transparent font-mono text-[11px] tracking-[0.06em] uppercase text-fg-secondary hover:text-fg-primary hover:bg-surface-sunken transition focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
         >
           Cancel
         </button>

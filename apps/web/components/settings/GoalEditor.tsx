@@ -33,14 +33,14 @@ export function GoalEditor({ goal, onSave, onCancel, saving }: GoalEditorProps) 
   };
 
   return (
-    <div className="rounded-lg border border-border bg-surface p-4 space-y-4">
-      <h4 className="font-mono text-[10px] tracking-[0.12em] text-muted uppercase">
+    <div className="rounded-lg border border-border-subtle bg-surface-card p-4 space-y-4">
+      <h4 className="font-mono text-[10px] tracking-[0.12em] text-fg-secondary uppercase">
         {goal ? 'Edit goal' : 'New goal'}
       </h4>
 
       {/* Emoji picker */}
       <div className="space-y-1.5">
-        <label className="font-mono text-[11px] tracking-[0.08em] uppercase text-muted">Icon</label>
+        <label className="font-mono text-[11px] tracking-[0.08em] uppercase text-fg-secondary">Icon</label>
         <div className="flex flex-wrap gap-1">
           {EMOJI_SUGGESTIONS.map((e) => (
             <button
@@ -48,7 +48,7 @@ export function GoalEditor({ goal, onSave, onCancel, saving }: GoalEditorProps) 
               onClick={() => setEmoji(e)}
               className={`h-8 w-8 rounded-md text-base flex items-center justify-center transition ${
                 emoji === e
-                  ? 'bg-foreground/10 ring-1 ring-foreground/30'
+                  ? 'bg-fg-primary/10 ring-1 ring-fg-primary/30'
                   : 'hover:bg-surface-bright'
               }`}
             >
@@ -60,22 +60,22 @@ export function GoalEditor({ goal, onSave, onCancel, saving }: GoalEditorProps) 
 
       {/* Name */}
       <div className="space-y-1.5">
-        <label className="font-mono text-[11px] tracking-[0.08em] uppercase text-muted">Goal name</label>
+        <label className="font-mono text-[11px] tracking-[0.08em] uppercase text-fg-secondary">Goal name</label>
         <input
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Trip to Japan"
           maxLength={100}
-          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-dim outline-none focus:border-foreground transition"
+          className="w-full rounded-md border border-border-subtle bg-surface-page px-3 py-2 text-sm text-fg-primary placeholder:text-fg-muted outline-none focus:border-fg-primary transition"
         />
       </div>
 
       {/* Target amount */}
       <div className="space-y-1.5">
-        <label className="font-mono text-[11px] tracking-[0.08em] uppercase text-muted">Target amount (USD)</label>
+        <label className="font-mono text-[11px] tracking-[0.08em] uppercase text-fg-secondary">Target amount (USD)</label>
         <div className="relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted">$</span>
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-fg-secondary">$</span>
           <input
             type="number"
             value={targetAmount}
@@ -83,20 +83,20 @@ export function GoalEditor({ goal, onSave, onCancel, saving }: GoalEditorProps) 
             placeholder="500"
             min={0.01}
             step={0.01}
-            className="w-full rounded-md border border-border bg-background pl-7 pr-3 py-2 text-sm text-foreground font-mono placeholder:text-dim outline-none focus:border-foreground transition"
+            className="w-full rounded-md border border-border-subtle bg-surface-page pl-7 pr-3 py-2 text-sm text-fg-primary font-mono placeholder:text-fg-muted outline-none focus:border-fg-primary transition"
           />
         </div>
       </div>
 
       {/* Deadline */}
       <div className="space-y-1.5">
-        <label className="font-mono text-[11px] tracking-[0.08em] uppercase text-muted">Deadline (optional)</label>
+        <label className="font-mono text-[11px] tracking-[0.08em] uppercase text-fg-secondary">Deadline (optional)</label>
         <input
           type="date"
           value={deadline}
           onChange={(e) => setDeadline(e.target.value)}
           min={new Date().toISOString().slice(0, 10)}
-          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-foreground transition"
+          className="w-full rounded-md border border-border-subtle bg-surface-page px-3 py-2 text-sm text-fg-primary outline-none focus:border-fg-primary transition"
         />
       </div>
 
@@ -105,13 +105,13 @@ export function GoalEditor({ goal, onSave, onCancel, saving }: GoalEditorProps) 
         <button
           onClick={handleSubmit}
           disabled={!isValid || saving}
-          className="flex-1 rounded-md bg-foreground py-2 font-mono text-[10px] tracking-[0.1em] text-background uppercase hover:opacity-90 transition disabled:opacity-50"
+          className="flex-1 rounded-md bg-fg-primary py-2 font-mono text-[10px] tracking-[0.1em] text-fg-inverse uppercase hover:opacity-90 transition disabled:opacity-50"
         >
           {saving ? 'Saving...' : goal ? 'Update' : 'Create Goal'}
         </button>
         <button
           onClick={onCancel}
-          className="rounded-md border border-border px-4 py-2 font-mono text-[10px] tracking-[0.1em] text-muted uppercase hover:text-foreground hover:border-foreground/20 transition"
+          className="rounded-md border border-border-subtle px-4 py-2 font-mono text-[10px] tracking-[0.1em] text-fg-secondary uppercase hover:text-fg-primary hover:border-fg-primary/20 transition"
         >
           Cancel
         </button>

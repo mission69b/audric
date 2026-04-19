@@ -2,6 +2,8 @@
 
 import { useEffect, useRef } from 'react';
 import { Tooltip } from '@/components/ui/Tooltip';
+import { Icon } from '@/components/ui/Icon';
+import { Tag } from '@/components/ui/Tag';
 import type { ChipAction } from '@/lib/chip-configs';
 
 interface ChipExpandProps {
@@ -22,23 +24,27 @@ export function ChipExpand({ actions, chipLabel, onSelect, onFlowSelect, onClose
   return (
     <div
       ref={ref}
-      className="mt-2 rounded-xl border border-border bg-surface overflow-hidden shadow-lg"
+      className="mt-3 rounded-lg border border-border-subtle bg-surface-sunken overflow-hidden shadow-[var(--shadow-flat)]"
     >
-      <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/50 bg-surface">
-        <span className="font-mono text-[11px] tracking-[0.08em] uppercase text-muted">{chipLabel}</span>
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-border-subtle bg-surface-sunken">
+        <span className="font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted">
+          {chipLabel}
+        </span>
         <Tooltip label="Close" side="top">
           <button
+            type="button"
             onClick={onClose}
-            className="text-dim hover:text-foreground transition text-sm leading-none p-1 rounded focus-visible:ring-2 focus-visible:ring-foreground/20 outline-none"
+            className="text-fg-muted hover:text-fg-primary transition p-1 rounded focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
             aria-label="Close"
           >
-            ×
+            <Icon name="close" size={12} />
           </button>
         </Tooltip>
       </div>
       {actions.map((action, i) => (
         <button
           key={i}
+          type="button"
           onClick={() => {
             if (action.flow && onFlowSelect) {
               onFlowSelect(action.flow);
@@ -46,20 +52,22 @@ export function ChipExpand({ actions, chipLabel, onSelect, onFlowSelect, onClose
               onSelect(action.prompt);
             }
           }}
-          className="w-full text-left px-4 py-3 hover:bg-[var(--n700)] transition-colors border-b border-border/50 last:border-b-0 flex items-center justify-between group focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-foreground/20 outline-none"
+          className="w-full text-left px-4 py-3.5 hover:bg-surface-card transition-colors border-b border-border-subtle last:border-b-0 flex items-center justify-between gap-3 group focus-visible:outline-none focus-visible:bg-surface-card"
         >
-          <div>
-            <span className="text-[13px] text-foreground">{action.label}</span>
+          <div className="flex-1 min-w-0">
+            <div className="text-[14px] text-fg-primary truncate">{action.label}</div>
             {action.sublabel && (
-              <span className="text-[11px] text-dim leading-tight block mt-0.5">{action.sublabel}</span>
+              <div className="text-[12px] text-fg-muted leading-tight mt-0.5 truncate">
+                {action.sublabel}
+              </div>
             )}
           </div>
           {action.flow ? (
-            <span className="font-mono text-[9px] tracking-wider text-success uppercase bg-success/10 px-1.5 py-0.5 rounded group-hover:bg-success/20 transition">
-              instant
-            </span>
+            <Tag tone="green">INSTANT</Tag>
           ) : (
-            <span className="text-border-bright group-hover:text-muted transition text-sm">›</span>
+            <span className="shrink-0 text-fg-muted group-hover:text-fg-secondary transition">
+              <Icon name="chevron-right" size={14} />
+            </span>
           )}
         </button>
       ))}

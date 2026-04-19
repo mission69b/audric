@@ -39,3 +39,7 @@ npm-debug.log*
 pnpm-debug.log*
 .vercel
 .env.vercel-check
+
+# local-only redesign artifacts (kept out of the repo on purpose)
+design_handoff_audric/
+scripts/

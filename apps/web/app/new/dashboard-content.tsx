@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { useZkLogin } from '@/components/auth/useZkLogin';
 import { ChipBar } from '@/components/dashboard/ChipBar';
 import { ChipExpand } from '@/components/dashboard/ChipExpand';
+import { SaveDrawer } from '@/components/dashboard/SaveDrawer';
 import { InputBar } from '@/components/dashboard/InputBar';
 import { useChipExpand } from '@/hooks/useChipExpand';
 import { ConfirmationCard } from '@/components/dashboard/ConfirmationCard';
@@ -135,15 +136,16 @@ function SendRecipientInput({
   };
 
   return (
-    <div className="rounded-lg border border-border bg-surface p-4 space-y-3 feed-row shadow-[var(--shadow-card)]">
-      <p className="text-sm text-muted">Who do you want to send to?</p>
+    <div className="rounded-lg border border-border-subtle bg-surface-card p-4 space-y-3 feed-row shadow-[var(--shadow-flat)]">
+      <p className="text-[13px] text-fg-secondary">Who do you want to send to?</p>
       {contacts.length > 0 && (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-1.5">
           {contacts.map((c) => (
             <button
               key={c.address}
+              type="button"
               onClick={() => onSelectContact(c.address, c.name)}
-              className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium text-muted hover:border-border-bright hover:text-foreground transition"
+              className="rounded-pill border border-border-subtle bg-transparent px-3 py-1.5 font-mono text-[10px] tracking-[0.1em] uppercase text-fg-secondary hover:border-border-strong hover:text-fg-primary hover:bg-surface-sunken transition"
             >
               {c.name}
             </button>
@@ -157,22 +159,24 @@ function SendRecipientInput({
           onChange={(e) => setValue(e.target.value)}
           placeholder="Address (0x...) or contact name"
           autoFocus
-          className="flex-1 rounded-lg border border-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-dim outline-none focus:border-border-bright"
+          className="flex-1 rounded-lg border border-border-subtle bg-surface-page px-4 py-3 text-[14px] text-fg-primary placeholder:text-fg-muted outline-none focus:border-border-strong transition-colors"
           onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit(); }}
         />
         {value.trim() ? (
           <button
+            type="button"
             onClick={handleSubmit}
-            className="bg-foreground rounded-lg px-4 py-2 text-sm font-medium text-background tracking-[0.05em] uppercase transition hover:opacity-80 active:scale-[0.97]"
+            className="bg-fg-primary rounded-lg px-4 py-2 font-mono text-[10px] tracking-[0.1em] uppercase font-medium text-fg-inverse transition hover:opacity-80 active:scale-[0.97]"
           >
             Go
           </button>
         ) : (
           <button
+            type="button"
             onClick={handlePaste}
-            className="rounded-lg border border-border bg-background px-4 py-2 text-sm text-muted transition hover:text-foreground hover:border-border-bright active:scale-[0.97]"
+            className="rounded-lg border border-border-subtle bg-surface-page px-4 py-2 font-mono text-[10px] tracking-[0.1em] uppercase text-fg-secondary transition hover:text-fg-primary hover:border-border-strong hover:bg-surface-sunken active:scale-[0.97]"
           >
-            📋 Paste
+            Paste
           </button>
         )}
       </div>
@@ -1181,9 +1185,12 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
         netWorth={balance.total}
         dailyYield={dailyYield}
         savingsRate={balance.savingsRate}
+        available={balance.cash}
+        earning={balance.savings}
         onSend={handleInputSubmit}
         onChipClick={handleChipClick}
         activeFlow={chipFlow.state.flow}
+        prefetch={{ idleUsdc: balance.usdc, currentApy: balance.savingsRate }}
       />
     );
   };
@@ -1248,8 +1255,9 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
             />
             <div className="flex justify-end px-1">
               <button
+                type="button"
                 onClick={() => chipFlow.clearToAsset()}
-                className="text-xs text-muted hover:text-foreground transition underline underline-offset-2"
+                className="font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted hover:text-fg-primary transition underline underline-offset-2"
               >
                 Change target ({chipFlow.state.toAsset})
               </button>
@@ -1338,7 +1346,7 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
       </div>
       </div>
 
-      <div className="shrink-0 max-h-[55vh] overflow-y-auto bg-background safe-bottom z-30">
+      <div className="shrink-0 max-h-[55vh] overflow-y-auto bg-surface-page safe-bottom z-30">
         <div className="mx-auto max-w-2xl px-4 sm:px-6 py-3 space-y-3">
           {engine.isStreaming ? (
             <>
@@ -1350,14 +1358,15 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
               />
               <div className="flex items-center justify-between">
                 <button
+                  type="button"
                   onClick={engine.cancel}
-                  className="flex items-center gap-2 rounded-lg border border-border bg-surface px-4 py-2 text-xs font-mono uppercase tracking-wider text-muted hover:text-foreground hover:border-foreground transition active:scale-[0.97]"
+                  className="flex items-center gap-2 rounded-pill border border-border-subtle bg-transparent px-3.5 h-[30px] font-mono text-[10px] uppercase tracking-[0.1em] text-fg-secondary hover:text-fg-primary hover:border-border-strong hover:bg-surface-sunken transition active:scale-[0.97]"
                 >
-                  <span className="text-base leading-none">&#9632;</span> Stop
+                  <span aria-hidden="true" className="inline-block w-2 h-2 bg-current" /> Stop
                 </button>
                 {engine.usage && (
-                  <span className="text-[10px] text-dim font-mono">
-                    {engine.usage.inputTokens + engine.usage.outputTokens} tokens
+                  <span className="text-[10px] text-fg-muted font-mono tracking-[0.05em]">
+                    {engine.usage.inputTokens + engine.usage.outputTokens} TOKENS
                   </span>
                 )}
               </div>
@@ -1379,22 +1388,38 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
                   </div>
                   {isInFlow && chipFlow.state.phase !== 'result' && (
                     <button
+                      type="button"
                       onClick={chipFlow.reset}
-                      className="text-xs text-muted hover:text-foreground transition shrink-0"
+                      className="font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted hover:text-fg-primary transition shrink-0"
                     >
                       Cancel
                     </button>
                   )}
                   {!isInFlow && engine.messages.length > 0 && (
                     <button
+                      type="button"
                       onClick={handleNewConversation}
-                      className="text-xs text-muted hover:text-foreground transition shrink-0"
+                      className="font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted hover:text-fg-primary transition shrink-0"
                     >
                       New
                     </button>
                   )}
                 </div>
-                {chipExpand.activeConfig && (
+                {chipExpand.activeConfig && chipExpand.expandedChip === 'save' && (
+                  <SaveDrawer
+                    prefetch={{ idleUsdc: balance.usdc, currentApy: balance.savingsRate }}
+                    onSelect={(prompt) => {
+                      chipExpand.close();
+                      engine.sendMessage(prompt);
+                    }}
+                    onFlowSelect={(flow) => {
+                      chipExpand.close();
+                      handleChipClick(flow);
+                    }}
+                    onClose={chipExpand.close}
+                  />
+                )}
+                {chipExpand.activeConfig && chipExpand.expandedChip !== 'save' && (
                   <ChipExpand
                     actions={chipExpand.activeConfig.actions}
                     chipLabel={chipExpand.activeConfig.label}
@@ -1443,6 +1468,7 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
         return (
           <ActivityPanel
             feed={activityFeed}
+            balance={balance}
             onAction={handleActivityAction}
           />
         );
@@ -1451,22 +1477,32 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
           <PayPanel
             address={address}
             jwt={session.jwt}
+            balance={balance}
             onSendMessage={handleInputSubmit}
           />
         );
       case 'goals':
         return session?.jwt ? (
-          <GoalsPanel address={address} jwt={session.jwt} />
+          <GoalsPanel address={address} jwt={session.jwt} onSendMessage={handleInputSubmit} />
         ) : null;
       case 'contacts':
         return (
           <ContactsPanel
             address={address}
+            balance={balance}
+            feed={activityFeed}
             onSendMessage={handleInputSubmit}
           />
         );
       case 'store':
-        return <StorePanel onSendMessage={handleInputSubmit} address={address} jwt={session.jwt} />;
+        return (
+          <StorePanel
+            onSendMessage={handleInputSubmit}
+            address={address}
+            jwt={session.jwt}
+            balance={balance}
+          />
+        );
       case 'settings':
         return null;
       case 'chat':
@@ -1493,7 +1529,6 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
   return (
     <AppShell
       address={address}
-      balance={balance}
       jwt={session.jwt}
       activeSessionId={engine.sessionId ?? undefined}
       onLoadSession={engine.loadSession}

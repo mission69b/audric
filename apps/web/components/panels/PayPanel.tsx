@@ -1,10 +1,38 @@
 'use client';
 
+// [PHASE 7] Pay panel — re-skinned to match
+// `design_handoff_audric/.../pay.jsx`.
+//
+// Layout (820px column):
+//   • <BalanceHero>                                          (top, lg)
+//   • 3-button header strip:  + PAYMENT LINK | + INVOICE | QR  (mono pills)
+//   • 4-up "panel-2" stat grid: LINKS / INVOICES / RECEIVED / API SPEND
+//     (received uses success-solid for accent, overdue invoices warn)
+//   • Green income card "WHERE YOUR INCOME GOES" — rendered only when
+//     `received > 0` (matches existing behavior; mock-free)
+//   • RECENT list — bg-surface-sunken rows, ✓ / link glyph, mono sub-line,
+//     `<Tag>` badges for "VIA WALLET" / "SAVE IT →", chevron-right at end.
+//
+// Behavior preserved byte-identically:
+//   • All `onSendMessage(...)` prompt strings unchanged
+//   • `useEffect` data fetch shape preserved (same headers, same endpoint)
+//   • `payments` / `stats` / `recentItems` derivations untouched
+//   • The "Save it →" badge is a clickable Tag-styled <button> wired to the
+//     same prompt that the previous pill button fired (e.stopPropagation so
+//     it doesn't double-trigger the row click)
+//   • The recurring-invoice upsell row stays — not in design but it's a real
+//     entry point that was wired before; preserved per "no behavior change".
+
 import { useState, useEffect, useMemo } from 'react';
+import { BalanceHero } from '@/components/ui/BalanceHero';
+import { Tag } from '@/components/ui/Tag';
+import { Icon } from '@/components/ui/Icon';
+import type { BalanceHeaderData } from '@/components/dashboard/BalanceHeader';
 
 interface PayPanelProps {
   address: string;
   jwt: string;
+  balance: BalanceHeaderData;
   onSendMessage: (text: string) => void;
 }
 
@@ -25,6 +53,13 @@ const METHOD_LABELS: Record<string, string> = {
   card: 'via card',
   manual: 'manual verify',
   qr: 'via QR',
+};
+
+const METHOD_BADGES: Record<string, string> = {
+  wallet_connect: 'VIA WALLET',
+  card: 'VIA CARD',
+  manual: 'MANUAL',
+  qr: 'VIA QR',
 };
 
 function fmtAmount(amount: number | null): string {
@@ -48,7 +83,7 @@ function timeAgo(dateStr: string): string {
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
-export function PayPanel({ address, jwt, onSendMessage }: PayPanelProps) {
+export function PayPanel({ address, jwt, balance, onSendMessage }: PayPanelProps) {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -70,7 +105,8 @@ export function PayPanel({ address, jwt, onSendMessage }: PayPanelProps) {
     const paid = payments.filter((p) => p.status === 'paid');
     const received = paid.reduce((sum, p) => sum + (p.amount ?? 0), 0);
     const overdueCount = payments.filter((p) => p.status === 'overdue').length;
-    return { activeLinks, activeInvoices, received, overdueCount, totalActive: active.length };
+    const paidLinkCount = payments.filter((p) => p.type === 'link' && p.status === 'paid').length;
+    return { activeLinks, activeInvoices, received, overdueCount, paidLinkCount };
   }, [payments]);
 
   const recentItems = useMemo(() => {
@@ -78,6 +114,7 @@ export function PayPanel({ address, jwt, onSendMessage }: PayPanelProps) {
       const isPaid = p.status === 'paid';
       const isInvoice = p.type === 'invoice';
       const methodLabel = isPaid && p.paymentMethod ? METHOD_LABELS[p.paymentMethod] ?? p.paymentMethod : null;
+      const methodBadge = isPaid && p.paymentMethod ? METHOD_BADGES[p.paymentMethod] ?? p.paymentMethod.toUpperCase() : null;
 
       const titleParts = [
         p.label || (isInvoice ? 'Invoice' : 'Payment link'),
@@ -93,181 +130,263 @@ export function PayPanel({ address, jwt, onSendMessage }: PayPanelProps) {
 
       return {
         id: p.id,
-        icon: isPaid ? '✓' : isInvoice ? '📄' : '🔗',
-        title: titleParts.join(' · '),
-        desc: descParts.join(' · '),
-        status: p.status,
-        statusColor: isPaid ? 'text-success' : p.status === 'overdue' ? 'text-warning' : p.status === 'active' ? 'text-info' : 'text-muted',
+        isPaid,
+        title: titleParts.join(' \u00B7 '),
+        desc: descParts.join(' \u00B7 '),
         amount: p.amount != null ? `$${p.amount.toFixed(2)}` : null,
+        methodBadge,
         prompt: isPaid
           ? `Show me the details of the ${fmtAmount(p.amount)} payment I received for ${p.label || 'this link'}`
           : `What is the status of my ${isInvoice ? 'invoice' : 'payment link'} for ${p.label || p.slug}?`,
         saveable: isPaid && (p.amount ?? 0) > 0,
-        methodBadge: methodLabel,
       };
     });
   }, [payments]);
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 sm:px-6 py-6 space-y-5">
-      {/* Quick create strip */}
-      <div className="flex gap-2">
+    <div className="mx-auto w-full max-w-[820px] px-4 sm:px-6 md:px-8 py-6 flex flex-col gap-[18px]">
+      {/* BalanceHero — same wrapper padding as the other panels. */}
+      <div className="pt-5 pb-4">
+        <BalanceHero
+          total={balance.total}
+          available={balance.cash}
+          earning={balance.savings}
+          size="lg"
+        />
+      </div>
+
+      {/* 3-button header strip: + PAYMENT LINK / + INVOICE / QR. Mirrors the
+          design's `gridTemplateColumns:'1fr 1fr auto'` row. */}
+      <div className="grid grid-cols-[1fr_1fr_auto] gap-2">
         <button
-          onClick={() => onSendMessage('Create a payment link for $50 USDC — label it logo design work')}
-          className="flex-1 font-mono text-[11px] tracking-[0.08em] uppercase text-background bg-foreground rounded-full py-2.5 hover:opacity-90 transition text-center"
+          type="button"
+          onClick={() => onSendMessage('Create a payment link for $50 USDC \u2014 label it logo design work')}
+          className="font-mono text-[11px] tracking-[0.1em] uppercase text-fg-inverse bg-fg-primary rounded-pill px-5 py-3.5 hover:opacity-90 active:scale-[0.99] transition focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
         >
           + Payment link
         </button>
         <button
+          type="button"
           onClick={() => onSendMessage('Create an invoice for $500 for design work due May 1')}
-          className="flex-1 font-mono text-[11px] tracking-[0.08em] uppercase text-foreground border border-border rounded-full py-2.5 hover:bg-surface transition text-center"
+          className="font-mono text-[11px] tracking-[0.1em] uppercase text-fg-primary bg-transparent border border-border-subtle rounded-pill px-5 py-3.5 hover:bg-surface-card hover:border-border-strong transition focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
         >
           + Invoice
         </button>
         <button
+          type="button"
           onClick={() => onSendMessage('Show me my wallet address and QR code for receiving USDC')}
-          className="font-mono text-[11px] tracking-[0.08em] uppercase text-foreground border border-border rounded-full px-4 py-2.5 hover:bg-surface transition"
+          className="font-mono text-[11px] tracking-[0.1em] uppercase text-fg-secondary bg-transparent border border-border-subtle rounded-pill px-5 py-3.5 hover:bg-surface-card hover:text-fg-primary hover:border-border-strong transition focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
         >
           QR
         </button>
       </div>
 
-      {/* 4-stat grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      {/* 4-up stat grid. Like Portfolio's stat row, each card is a single
+          <button> so the entire surface is the click target. */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         <StatCard
-          label="Links" drill="Manage" value={String(stats.activeLinks)}
-          sub={`active · ${payments.filter(p => p.type === 'link' && p.status === 'paid').length} paid`}
+          label="LINKS"
+          value={String(stats.activeLinks)}
+          sub={`active \u00B7 ${stats.paidLinkCount} paid`}
           onClick={() => onSendMessage('Show me all my active payment links and their status')}
         />
         <StatCard
-          label="Invoices" drill="Manage" value={String(stats.activeInvoices)}
-          sub={`active · ${stats.overdueCount} overdue`}
+          label="INVOICES"
+          value={String(stats.activeInvoices)}
+          sub={`active \u00B7 ${stats.overdueCount} overdue`}
           warn={stats.overdueCount > 0}
           onClick={() => onSendMessage('Show me all my invoices and their payment status')}
         />
         <StatCard
-          label="Received" drill="+ income" drillColor="text-success" value={fmtUsd(stats.received)}
+          label="RECEIVED"
+          value={fmtUsd(stats.received)}
           sub="total via links + invoices"
           accent={stats.received > 0}
           onClick={() => onSendMessage('How much have I received via payment links and invoices?')}
         />
         <StatCard
-          label="API spend" drill="Breakdown" value="--"
+          label="API SPEND"
+          value="—"
           sub="today · 40+ services"
           onClick={() => onSendMessage('Show me my API spending breakdown — what services have I paid for today?')}
         />
       </div>
 
-      {/* Where your income goes */}
+      {/* WHERE YOUR INCOME GOES — green tinted card, only shown when there
+          are paid payments to act on. */}
       {stats.received > 0 && (
-        <div className="rounded-lg border border-success/15 bg-success/[0.04] px-4 py-3">
-          <p className="font-mono text-[9px] tracking-[0.1em] uppercase text-success mb-2">Where your income goes</p>
-          <p className="text-[11px] text-dim leading-relaxed">
-            Every payment received adds to <strong className="text-muted">balance.available</strong> immediately. Audric then offers to save it, direct it to a goal, or leave it as working capital — your choice, one tap.
+        <section
+          aria-labelledby="pay-income-card-heading"
+          className="rounded-md border p-4"
+          style={{ background: 'rgba(40,128,52,0.06)', borderColor: 'rgba(40,128,52,0.3)' }}
+        >
+          <h3
+            id="pay-income-card-heading"
+            className="font-mono text-[10px] tracking-[0.1em] uppercase text-success-solid mb-2"
+          >
+            Where your income goes
+          </h3>
+          <p className="text-[13px] text-fg-secondary leading-[1.5] mb-3.5">
+            Every payment received adds to{' '}
+            <span className="font-mono text-fg-primary">balance.available</span> immediately. Audric
+            then offers to save it, direct it to a goal, or leave it as working capital &mdash; your
+            choice, one tap.
           </p>
-          <div className="flex gap-2 mt-3">
+          <div className="flex flex-wrap gap-2">
             <button
+              type="button"
               onClick={() => onSendMessage(`Save my ${fmtUsd(stats.received)} received payment into NAVI savings`)}
-              className="font-mono text-[9px] tracking-[0.06em] uppercase text-background bg-foreground px-3 py-1 rounded-full hover:opacity-90 transition"
+              className="inline-flex items-center font-mono text-[10px] tracking-[0.1em] uppercase text-fg-primary bg-transparent border border-border-subtle rounded-pill px-3.5 py-2 hover:bg-surface-card hover:border-border-strong transition focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
             >
-              Save {fmtUsd(stats.received)} →
+              Save {fmtUsd(stats.received)} &rsaquo;
             </button>
             <button
+              type="button"
               onClick={() => onSendMessage(`Apply my ${fmtUsd(stats.received)} received payment toward my goal`)}
-              className="font-mono text-[9px] tracking-[0.06em] uppercase text-foreground border border-border px-3 py-1 rounded-full hover:bg-surface transition"
+              className="inline-flex items-center font-mono text-[10px] tracking-[0.1em] uppercase text-fg-primary bg-transparent border border-border-subtle rounded-pill px-3.5 py-2 hover:bg-surface-card hover:border-border-strong transition focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
             >
-              Goal →
+              Goal &rsaquo;
             </button>
             <button
+              type="button"
               onClick={() => onSendMessage(`Keep my ${fmtUsd(stats.received)} received payment in wallet as working capital`)}
-              className="font-mono text-[9px] tracking-[0.06em] uppercase text-foreground border border-border px-3 py-1 rounded-full hover:bg-surface transition"
+              className="inline-flex items-center font-mono text-[10px] tracking-[0.1em] uppercase text-fg-secondary bg-transparent border border-border-subtle rounded-pill px-3.5 py-2 hover:bg-surface-card hover:border-border-strong hover:text-fg-primary transition focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
             >
               Keep
             </button>
           </div>
-        </div>
+        </section>
       )}
 
-      {/* Unified Recent feed */}
-      {loading ? (
-        <div className="space-y-3">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="h-16 rounded-lg bg-surface animate-pulse" />
-          ))}
-        </div>
-      ) : recentItems.length === 0 ? (
-        <div className="rounded-lg border border-border bg-surface px-4 py-8 text-center">
-          <p className="text-sm text-muted mb-3">No payment activity yet</p>
-          <button
-            onClick={() => onSendMessage('Create a payment link')}
-            className="font-mono text-[11px] tracking-[0.08em] uppercase text-foreground border border-border rounded-full px-4 py-2 hover:bg-[var(--n700)] transition"
-          >
-            Create your first link
-          </button>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          <p className="font-mono text-[9px] tracking-[0.1em] uppercase text-dim">Recent</p>
-          {recentItems.map((item) => (
+      {/* RECENT — list of payment links / invoices. */}
+      <section aria-labelledby="pay-recent-heading">
+        <h3
+          id="pay-recent-heading"
+          className="font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted mb-2"
+        >
+          Recent
+        </h3>
+
+        {loading ? (
+          <div className="flex flex-col gap-2">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div
+                key={i}
+                className="h-[60px] rounded-md border border-border-subtle bg-surface-sunken animate-pulse"
+              />
+            ))}
+          </div>
+        ) : recentItems.length === 0 ? (
+          <div className="rounded-md border border-border-subtle bg-surface-sunken p-6 text-center space-y-3">
+            <p className="text-sm text-fg-secondary">No payment activity yet</p>
             <button
-              key={item.id}
-              onClick={() => onSendMessage(item.prompt)}
-              className="w-full flex items-center justify-between rounded-lg border border-border bg-surface px-4 py-3 text-left hover:bg-[var(--n700)] hover:border-border-bright transition"
+              type="button"
+              onClick={() => onSendMessage('Create a payment link')}
+              className="inline-flex items-center gap-1.5 h-[30px] px-3.5 rounded-pill border border-border-subtle bg-transparent font-mono text-[10px] leading-[14px] tracking-[0.1em] uppercase text-fg-secondary hover:bg-surface-card hover:border-border-strong hover:text-fg-primary transition focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
             >
-              <div className="flex items-center gap-3 min-w-0">
-                <span className="text-sm shrink-0">{item.icon}</span>
-                <div className="min-w-0">
-                  <p className="text-[12px] text-foreground font-medium truncate">{item.title}</p>
-                  <p className="text-[10px] text-dim truncate">{item.desc}</p>
+              Create your first link &rsaquo;
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {recentItems.map((item) => (
+              <div
+                key={item.id}
+                className="flex items-center gap-3 px-4 py-3.5 rounded-md border border-border-subtle bg-surface-sunken hover:border-border-strong transition"
+              >
+                <button
+                  type="button"
+                  onClick={() => onSendMessage(item.prompt)}
+                  className="flex items-center gap-3 flex-1 min-w-0 text-left focus-visible:outline-none focus-visible:underline"
+                  aria-label={item.title}
+                >
+                  <span
+                    aria-hidden="true"
+                    className={`shrink-0 inline-flex items-center justify-center w-4 ${
+                      item.isPaid ? 'text-success-solid' : 'text-fg-muted'
+                    }`}
+                  >
+                    {item.isPaid ? <Icon name="check" size={14} /> : <Icon name="link" size={14} />}
+                  </span>
+                  <div className="min-w-0">
+                    <div className="text-[14px] text-fg-primary truncate">{item.title}</div>
+                    <div className="font-mono text-[10px] tracking-[0.06em] text-fg-muted mt-1 truncate">
+                      {item.desc}
+                    </div>
+                  </div>
+                </button>
+                <div className="flex items-center gap-2 shrink-0">
+                  {item.methodBadge && <Tag tone="green">{item.methodBadge}</Tag>}
+                  {item.saveable && (
+                    <button
+                      type="button"
+                      onClick={() => onSendMessage(`Save my ${item.amount} from this payment into NAVI savings`)}
+                      className="inline-flex items-center rounded-xs px-1.5 py-px font-mono text-[9px] leading-[14px] uppercase tracking-[0.1em] whitespace-nowrap select-none bg-surface-sunken text-fg-secondary border border-border-subtle hover:bg-surface-card hover:text-fg-primary hover:border-border-strong transition focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
+                    >
+                      Save it &rsaquo;
+                    </button>
+                  )}
+                  <span aria-hidden="true" className="text-fg-muted">
+                    <Icon name="chevron-right" size={14} />
+                  </span>
                 </div>
               </div>
-              <div className="flex items-center gap-2 shrink-0 ml-3">
-                {item.methodBadge && (
-                  <span className="font-mono text-[8px] tracking-wider uppercase px-1.5 py-0.5 rounded bg-success/10 text-success whitespace-nowrap">
-                    {item.methodBadge}
-                  </span>
-                )}
-                {item.saveable && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); onSendMessage(`Save my ${item.amount} from this payment into NAVI savings`); }}
-                    className="font-mono text-[9px] tracking-[0.06em] uppercase text-foreground border border-border px-2 py-0.5 rounded-full hover:bg-surface transition whitespace-nowrap"
-                  >
-                    Save it →
-                  </button>
-                )}
-                <span className="text-border-bright text-lg">›</span>
+            ))}
+
+            {/* Recurring-invoice upsell row — not in the new design but a
+                real entry point in the previous skin. Kept per "no behavior
+                change" and re-styled to the new dashed-card pattern. */}
+            <button
+              type="button"
+              onClick={() => onSendMessage('Set up a recurring invoice \u2014 send $500 to my client on the 1st of every month')}
+              className="flex items-center gap-3 px-4 py-3.5 rounded-md border border-dashed border-border-subtle bg-transparent text-left hover:border-border-strong hover:bg-surface-sunken transition focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
+            >
+              <span aria-hidden="true" className="shrink-0 inline-flex items-center justify-center w-4 text-fg-muted">
+                &#8634;
+              </span>
+              <div className="min-w-0">
+                <div className="text-[14px] text-fg-secondary">Automate recurring invoice</div>
+                <div className="font-mono text-[10px] tracking-[0.06em] text-fg-muted mt-1">
+                  Monthly client billing &middot; trust ladder applies
+                </div>
               </div>
             </button>
-          ))}
-
-          {/* Recurring invoice upsell */}
-          <button
-            onClick={() => onSendMessage('Set up a recurring invoice — send $500 to my client on the 1st of every month')}
-            className="w-full flex items-center gap-3 rounded-lg border border-dashed border-border bg-transparent px-4 py-3 text-left hover:border-border-bright transition"
-          >
-            <span className="text-[11px] shrink-0">⟳</span>
-            <div className="min-w-0">
-              <p className="text-[12px] text-dim font-medium">Automate recurring invoice</p>
-              <p className="text-[10px] text-dim">Monthly client billing · trust ladder applies</p>
-            </div>
-          </button>
-        </div>
-      )}
+          </div>
+        )}
+      </section>
     </div>
   );
 }
 
-function StatCard({ label, drill, drillColor, value, sub, accent, warn, onClick }: {
-  label: string; drill: string; drillColor?: string; value: string; sub: string; accent?: boolean; warn?: boolean; onClick: () => void;
+function StatCard({
+  label,
+  value,
+  sub,
+  accent,
+  warn,
+  onClick,
+}: {
+  label: string;
+  value: string;
+  sub: string;
+  accent?: boolean;
+  warn?: boolean;
+  onClick: () => void;
 }) {
+  const valueColor = warn
+    ? 'text-warning-solid'
+    : accent
+      ? 'text-success-solid'
+      : 'text-fg-primary';
   return (
-    <button onClick={onClick} className="rounded-lg border border-border bg-surface px-3 py-3 text-left hover:border-border-bright transition group">
-      <div className="flex items-center justify-between mb-2">
-        <p className="font-mono text-[9px] tracking-[0.1em] uppercase text-muted">{label}</p>
-        <p className={`font-mono text-[9px] ${drillColor || 'text-dim'}`}>{drill} →</p>
-      </div>
-      <p className={`font-mono text-[28px] font-light ${warn ? 'text-warning' : accent ? 'text-success' : 'text-foreground'}`}>{value}</p>
-      <p className="text-[10px] text-dim mt-0.5">{sub}</p>
+    <button
+      type="button"
+      onClick={onClick}
+      className="text-left rounded-md border border-border-subtle bg-surface-sunken p-[14px] hover:border-border-strong transition focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
+    >
+      <div className="font-mono text-[9px] tracking-[0.1em] uppercase text-fg-muted">{label}</div>
+      <div className={`text-[22px] mt-2.5 tracking-[-0.02em] ${valueColor}`}>{value}</div>
+      <div className="text-[11px] text-fg-muted mt-1">{sub}</div>
     </button>
   );
 }
