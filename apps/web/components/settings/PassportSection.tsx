@@ -68,19 +68,6 @@ export function PassportSection({ address, network, expiresAt, expiringSoon, onR
         </div>
       </Row>
 
-      {address && (
-        <Row label="Public report">
-          <a
-            href={`/report/${address}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-mono text-[10px] tracking-wider text-muted uppercase hover:text-foreground transition"
-          >
-            View report &rarr;
-          </a>
-        </Row>
-      )}
-
       <div className="flex gap-2 pt-2">
         <button onClick={onRefresh} className="rounded-md border border-border px-4 py-2 font-mono text-[10px] tracking-[0.1em] text-muted uppercase hover:text-foreground hover:border-foreground/20 transition">
           Refresh Session

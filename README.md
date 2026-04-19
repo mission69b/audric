@@ -20,10 +20,6 @@ Audric is exactly five products. Everything you can do is one of them. (S.18 rev
 | 💸 **Audric Pay** | Money primitive — send USDC to anyone, receive via payment links / invoices / QR. Free, global, instant on Sui. No bank, no borders, no fees. |
 | 🛒 **Audric Store** | Creator marketplace at `audric.ai/username`. Sell AI-generated music, art, ebooks in USDC. **Coming soon (Phase 5).** |
 
-Plus one public tool that needs no sign-up:
-
-- **Public Wallet Report** at `audric.ai/report/[address]` — heuristic portfolio analysis, yield efficiency, risk signals. No LLM, no sign-up.
-
 ## How it works
 
 1. **Sign in with Google** — no seed phrase, no keys, no downloads (zkLogin)
@@ -83,16 +79,6 @@ Interactive HTML canvases rendered in-chat: portfolio timeline, activity heatmap
 ### Rich Cards
 
 Structured card types for tool results: balance, savings, health, staking, protocol deep dive, price, swap quote, transaction history, receipts, spending, yield, activity summary, payment links, and invoices.
-
-### Public Wallet Report
-
-Analyze any Sui wallet at `audric.ai/report/[address]` — no sign-up required:
-
-- Portfolio breakdown, yield efficiency gauge, activity stats
-- 5 pattern detectors, 3 risk signals, 4 "Audric would do" suggestions (all heuristic, no LLM)
-- Share: copy link, Twitter, Telegram, image download, QR code
-- Dynamic OG image (1200×630) for social media previews
-- Rate limited (5/hr/IP), 24h cache, multi-wallet support (link up to 10 addresses)
 
 ### Additional Features
 

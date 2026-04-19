@@ -20,13 +20,11 @@ suimpp (separate)    → Protocol: suimpp.dev, @suimpp/mpp, @suimpp/discovery
 audric/
 ├── apps/web/                   ← audric.ai (Next.js, Vercel)
 │   ├── app/                    ← App Router pages + API routes (75+ routes, 20 internal)
-│   │   └── report/             ← Public wallet intelligence report (/report, /report/[address])
 │   ├── components/             ← UI components (auth, dashboard, engine, settings, ui)
 │   │   └── engine/cards/       ← 21 rich card components + 8 canvas components
 │   ├── hooks/                  ← React hooks (useEngine, useBalance, useChipFlow, etc.)
 │   ├── lib/                    ← Utilities, types, constants
 │   │   ├── engine/             ← engine-factory.ts, engine-context.ts (silent context assembly)
-│   │   ├── report/             ← Report generator, analyzers, types (public wallet reports)
 │   │   ├── chain-memory/       ← Chain classifiers (silent context only — proposal pipeline removed S.5)
 │   │   ├── portfolio-data.ts   ← Unified portfolio data (wallet + positions + snapshots)
 │   │   └── activity-data.ts    ← Unified activity data (app events + chain txs)
@@ -47,12 +45,6 @@ audric/
 | 💰 **Audric Finance** | Manage your money on Sui — Save (NAVI lend, 3–8% APY USDC), Credit (NAVI borrow, health factor), Swap (Cetus aggregator, 20+ DEXs, 0.1% fee), Charts (yield/health/portfolio viz). Every write taps to confirm via Passport. | `@t2000/sdk` NAVI builders + `cetus-swap.ts` + `@t2000/engine` chart canvas templates + audric `/api/internal/*` read endpoints | Live |
 | 💸 **Audric Pay** | Money primitive — send USDC, receive via payment links / invoices / QR. Free, global, instant on Sui. | `@t2000/sdk` direct Sui tx + payment-link contract + invoice flows | Live |
 | 🛒 **Audric Store** | Creator marketplace at `audric.ai/username`. AI-generated music/art/ebooks sold in USDC. 92% to creator. | `@t2000/sdk` + Walrus + payment links | Coming soon (Phase 5) |
-
-Plus one public tool (no sign-up):
-
-| Tool | Where | Status |
-|------|-------|--------|
-| **Wallet Report** | `audric.ai/report/[address]` — heuristic portfolio analysis, yield efficiency, risk signals (no LLM) | Live |
 
 ### Silent intelligence (Audric Intelligence's silent context layer)
 
@@ -154,47 +146,19 @@ type EngineEvent =
 
 ---
 
-## Public Wallet Report (`/report`)
+## Multi-wallet linking
 
-Public acquisition funnel — analyze any Sui wallet with no sign-up required.
-
-### Routes
+Signed-in users can link up to 10 Sui addresses (e.g. a hardware wallet alongside their zkLogin wallet) for aggregated portfolio views inside the chat canvas + settings.
 
 | Route | Runtime | Auth | Description |
 |-------|---------|------|-------------|
-| `/report` | Client | None | Landing page with address input + example addresses |
-| `/report/[address]` | Server + Client | None | Report page (SSR metadata + client-side fetch) |
-| `/report/[address]/opengraph-image` | Edge | None | Dynamic OG image (1200×630) |
-| `/api/report/[address]` | Node.js | Rate limited (5/hr/IP) | Report generation + 24h Prisma cache |
-| `/api/analytics/portfolio-multi` | Node.js | x-sui-address | Aggregated multi-wallet portfolio data |
-| `/api/user/wallets` | Node.js | x-zklogin-jwt | Link/unlink wallets (max 10 per user) |
+| `/api/user/wallets` (GET / POST) | Node.js | x-zklogin-jwt | List + link wallets (max 10 per user) |
+| `/api/user/wallets/[id]` (DELETE) | Node.js | x-zklogin-jwt | Unlink a wallet |
+| `/api/analytics/portfolio-multi` | Node.js | x-sui-address | Aggregated multi-wallet portfolio data (consumed by `FullPortfolioCanvas`) |
 
-### Report data flow
+Backed by the `LinkedWallet` Prisma model (`userId`, `suiAddress`, `label`, `isPrimary`, `verifiedAt`).
 
-```
-GET /api/report/[address]
-  → Rate limit check (Upstash, bypass via x-internal-secret for OG images)
-  → Cache lookup (PublicReport, 24h TTL)
-  → On miss: generateWalletReport(address)
-    → Promise.all: fetchWalletBalances + fetchPositions + fetchActivityBuckets
-    → buildPortfolioSection → buildYieldEfficiency → buildActivitySection
-    → detectPatterns (5) + detectRiskSignals (3) + generateSuggestions (4)
-  → Cache store + return WalletReportData
-```
-
-### Key files
-
-| File | Purpose |
-|------|---------|
-| `lib/report/types.ts` | `WalletReportData` interface (portfolio, yield, activity, patterns, risks, suggestions) |
-| `lib/report/generator.ts` | Orchestrates parallel data fetching + report assembly |
-| `lib/report/analyzers.ts` | Pure heuristic functions — no LLM calls |
-| `app/report/[address]/ReportPageClient.tsx` | Full report UI with 8 sections + share mechanics |
-
-### Prisma models
-
-- `LinkedWallet` — userId, suiAddress, label, isPrimary, verifiedAt
-- `PublicReport` — suiAddress, reportData (Json), viewCount, expiresAt
+> **Removed in S.22 (April 2026):** the public `/report/[address]` wallet report (and its `PublicReport` cache). The "Audric would do" suggestions there were promoting features deleted in S.0–S.12 (24/7 alerts, recurring transactions, savings-goal automation), and a second standalone product surface contradicted the chat-first thesis. Heuristic portfolio analysis lives inside chat now via `portfolio_overview` + `health_check`.
 
 ---
 

@@ -397,8 +397,7 @@ export const ModelName = {
   PortfolioSnapshot: 'PortfolioSnapshot',
   UserFinancialProfile: 'UserFinancialProfile',
   UserMemory: 'UserMemory',
-  LinkedWallet: 'LinkedWallet',
-  PublicReport: 'PublicReport'
+  LinkedWallet: 'LinkedWallet'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -414,7 +413,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "userPreferences" | "conversationLog" | "sessionUsage" | "servicePurchase" | "savingsGoal" | "appEvent" | "adviceLog" | "payment" | "watchAddress" | "portfolioSnapshot" | "userFinancialProfile" | "userMemory" | "linkedWallet" | "publicReport"
+    modelProps: "user" | "userPreferences" | "conversationLog" | "sessionUsage" | "servicePurchase" | "savingsGoal" | "appEvent" | "adviceLog" | "payment" | "watchAddress" | "portfolioSnapshot" | "userFinancialProfile" | "userMemory" | "linkedWallet"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1454,80 +1453,6 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
-    PublicReport: {
-      payload: Prisma.$PublicReportPayload<ExtArgs>
-      fields: Prisma.PublicReportFieldRefs
-      operations: {
-        findUnique: {
-          args: Prisma.PublicReportFindUniqueArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$PublicReportPayload> | null
-        }
-        findUniqueOrThrow: {
-          args: Prisma.PublicReportFindUniqueOrThrowArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$PublicReportPayload>
-        }
-        findFirst: {
-          args: Prisma.PublicReportFindFirstArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$PublicReportPayload> | null
-        }
-        findFirstOrThrow: {
-          args: Prisma.PublicReportFindFirstOrThrowArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$PublicReportPayload>
-        }
-        findMany: {
-          args: Prisma.PublicReportFindManyArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$PublicReportPayload>[]
-        }
-        create: {
-          args: Prisma.PublicReportCreateArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$PublicReportPayload>
-        }
-        createMany: {
-          args: Prisma.PublicReportCreateManyArgs<ExtArgs>
-          result: BatchPayload
-        }
-        createManyAndReturn: {
-          args: Prisma.PublicReportCreateManyAndReturnArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$PublicReportPayload>[]
-        }
-        delete: {
-          args: Prisma.PublicReportDeleteArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$PublicReportPayload>
-        }
-        update: {
-          args: Prisma.PublicReportUpdateArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$PublicReportPayload>
-        }
-        deleteMany: {
-          args: Prisma.PublicReportDeleteManyArgs<ExtArgs>
-          result: BatchPayload
-        }
-        updateMany: {
-          args: Prisma.PublicReportUpdateManyArgs<ExtArgs>
-          result: BatchPayload
-        }
-        updateManyAndReturn: {
-          args: Prisma.PublicReportUpdateManyAndReturnArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$PublicReportPayload>[]
-        }
-        upsert: {
-          args: Prisma.PublicReportUpsertArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$PublicReportPayload>
-        }
-        aggregate: {
-          args: Prisma.PublicReportAggregateArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.AggregatePublicReport>
-        }
-        groupBy: {
-          args: Prisma.PublicReportGroupByArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.PublicReportGroupByOutputType>[]
-        }
-        count: {
-          args: Prisma.PublicReportCountArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.PublicReportCountAggregateOutputType> | number
-        }
-      }
-    }
   }
 } & {
   other: {
@@ -1799,18 +1724,6 @@ export const LinkedWalletScalarFieldEnum = {
 export type LinkedWalletScalarFieldEnum = (typeof LinkedWalletScalarFieldEnum)[keyof typeof LinkedWalletScalarFieldEnum]
 
 
-export const PublicReportScalarFieldEnum = {
-  id: 'id',
-  suiAddress: 'suiAddress',
-  reportData: 'reportData',
-  viewCount: 'viewCount',
-  generatedAt: 'generatedAt',
-  expiresAt: 'expiresAt'
-} as const
-
-export type PublicReportScalarFieldEnum = (typeof PublicReportScalarFieldEnum)[keyof typeof PublicReportScalarFieldEnum]
-
-
 export const SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -2050,7 +1963,6 @@ export type GlobalOmitConfig = {
   userFinancialProfile?: Prisma.UserFinancialProfileOmit
   userMemory?: Prisma.UserMemoryOmit
   linkedWallet?: Prisma.LinkedWalletOmit
-  publicReport?: Prisma.PublicReportOmit
 }
 
 /* Types for Logging */

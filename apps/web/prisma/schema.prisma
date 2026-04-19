@@ -278,14 +278,3 @@ model LinkedWallet {
   @@unique([userId, suiAddress])
   @@index([userId])
 }
-
-model PublicReport {
-  id          String   @id @default(cuid())
-  suiAddress  String
-  reportData  Json
-  viewCount   Int      @default(0)
-  generatedAt DateTime @default(now())
-  expiresAt   DateTime
-
-  @@index([suiAddress, generatedAt])
-}
