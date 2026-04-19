@@ -3,12 +3,17 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useZkLogin } from '@/components/auth/useZkLogin';
+// Ordered by S.18 product taxonomy: Audric Finance ops first
+// (Savings · Swap · Credit), then Audric Pay ops (Send · Receive · Pay).
+// `/pay` is the payment-link surface, kept last to avoid label-collision
+// with the Audric Pay product brand at first glance.
 const products = [
   { label: 'Savings', href: '/savings' },
-  { label: 'Pay', href: '/pay' },
-  { label: 'Send', href: '/send' },
+  { label: 'Swap', href: '/swap' },
   { label: 'Credit', href: '/credit' },
+  { label: 'Send', href: '/send' },
   { label: 'Receive', href: '/receive' },
+  { label: 'Pay', href: '/pay' },
 ] as const;
 
 export function ProductNav() {
