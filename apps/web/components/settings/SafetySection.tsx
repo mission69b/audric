@@ -99,15 +99,17 @@ interface SafetySectionProps {
 }
 
 // Operations we surface in the table. Mirrors `PermissionOperation` from the
-// engine, ordered by frequency-of-use rather than alphabetically.
+// engine, ordered by frequency-of-use rather than alphabetically. `save` and
+// `repay` share thresholds in every preset, so they're collapsed into one
+// row to keep the table compact (the actual engine rules are unchanged —
+// runtime gating still uses both keys via PERMISSION_PRESETS).
 const OPERATIONS: Array<{ key: string; label: string }> = [
-  { key: 'save', label: 'save' },
+  { key: 'save', label: 'save / repay' },
   { key: 'send', label: 'send' },
   { key: 'swap', label: 'swap' },
   { key: 'withdraw', label: 'withdraw' },
   { key: 'pay', label: 'pay' },
   { key: 'borrow', label: 'borrow' },
-  { key: 'repay', label: 'repay' },
 ];
 
 const PRESET_ORDER: PermissionPreset[] = ['conservative', 'balanced', 'aggressive'];
@@ -233,7 +235,7 @@ export function SafetySection({ address }: SafetySectionProps) {
                   'focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]',
                   'disabled:opacity-50 disabled:cursor-not-allowed',
                   active
-                    ? 'bg-fg-primary text-bg-primary border-fg-primary'
+                    ? 'bg-fg-primary text-fg-inverse border-fg-primary'
                     : 'bg-surface-card text-fg-secondary border-border-strong hover:text-fg-primary hover:border-fg-primary',
                 ].join(' ')}
               >
@@ -244,7 +246,7 @@ export function SafetySection({ address }: SafetySectionProps) {
         </div>
 
         <div className="mt-4 pt-3.5 border-t border-border-subtle">
-          <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 gap-y-2 items-center">
+          <div className="grid grid-cols-[minmax(0,1fr)_repeat(3,minmax(72px,auto))] gap-x-5 items-center pb-1.5 border-b border-border-subtle">
             <span aria-hidden="true" />
             <span className="font-mono text-[9px] tracking-[0.12em] uppercase text-fg-muted text-right">
               Auto
@@ -255,19 +257,26 @@ export function SafetySection({ address }: SafetySectionProps) {
             <span className="font-mono text-[9px] tracking-[0.12em] uppercase text-fg-muted text-right">
               Explicit
             </span>
+          </div>
 
-            {OPERATIONS.map(({ key, label }) => {
+          <div className="grid grid-cols-[minmax(0,1fr)_repeat(3,minmax(72px,auto))] gap-x-5 items-center">
+            {OPERATIONS.map(({ key, label }, idx) => {
               const { autoBelow, confirmBetween } = getRule(preset, key);
+              const last = idx === OPERATIONS.length - 1;
+              const rowClass = [
+                'py-2',
+                last ? '' : 'border-b border-border-subtle',
+              ].join(' ');
               return (
                 <div key={key} className="contents">
-                  <span className="text-[12px] text-fg-secondary lowercase">{label}</span>
-                  <span className="font-mono text-[11px] text-fg-primary text-right tabular-nums">
+                  <span className={`${rowClass} text-[12px] text-fg-secondary`}>{label}</span>
+                  <span className={`${rowClass} font-mono text-[11px] text-fg-primary text-right tabular-nums`}>
                     {fmtCell('auto', autoBelow, confirmBetween)}
                   </span>
-                  <span className="font-mono text-[11px] text-fg-primary text-right tabular-nums">
+                  <span className={`${rowClass} font-mono text-[11px] text-fg-primary text-right tabular-nums`}>
                     {fmtCell('confirm', autoBelow, confirmBetween)}
                   </span>
-                  <span className="font-mono text-[11px] text-fg-primary text-right tabular-nums">
+                  <span className={`${rowClass} font-mono text-[11px] text-fg-primary text-right tabular-nums`}>
                     {fmtCell('explicit', autoBelow, confirmBetween)}
                   </span>
                 </div>
