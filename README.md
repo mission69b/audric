@@ -8,18 +8,20 @@ Conversational finance on [Sui](https://sui.io). Save, pay, send, borrow — all
 
 ---
 
-## What it does
+## The four products
+
+Audric is exactly four products. Everything you can do is one of them. ("Audric Finance" was retired April 2026 — its operations are now surfaced through Audric Intelligence's Agent Harness, gated by Audric Passport's tap-to-confirm.)
 
 | Product | Description |
 |---------|-------------|
-| **Savings** | Earn yield on USDC via NAVI Protocol |
-| **Pay** | Access 40+ services (88 endpoints) with USDC micropayments |
-| **Send** | Transfer any supported token to any Sui address |
-| **Credit** | Borrow USDC against your savings |
-| **Receive** | Payment links, invoices, QR codes — accept payments anywhere |
-| **Wallet Report** | Public wallet intelligence at `audric.ai/report/[address]` — no sign-up |
+| 🪪 **Audric Passport** | Trust layer — sign in with Google, non-custodial Sui wallet in 3 seconds, every write taps to confirm, sponsored gas. Wraps every other product. |
+| 🧠 **Audric Intelligence** | The brain (the moat) — 5 systems: Agent Harness (40 tools), Reasoning Engine (9 guards, 7 skill recipes), Silent Profile, Chain Memory, AdviceLog. Save, swap, borrow, repay, withdraw, send, payments — all orchestrated here. |
+| 💸 **Audric Pay** | Money primitive — send USDC to anyone, payment links, invoices, QR. Free, global, instant on Sui. No bank, no borders, no fees. |
+| 🛒 **Audric Store** | Creator marketplace at `audric.ai/username`. Sell AI-generated music, art, ebooks in USDC. **Coming soon (Phase 5).** |
 
-Swap is available as a utility within flows (any token pair via Cetus Aggregator), not a standalone product.
+Plus one public tool that needs no sign-up:
+
+- **Public Wallet Report** at `audric.ai/report/[address]` — heuristic portfolio analysis, yield efficiency, risk signals. No LLM, no sign-up.
 
 ## How it works
 
@@ -42,13 +44,15 @@ Your money lives in a non-custodial wallet. Audric executes transactions, but yo
 | Styling | Tailwind CSS v4, Agentic Design System |
 | Hosting | Vercel |
 
-## AI Agent Capabilities
+## Audric Intelligence — the 5-system moat
 
-### 40 Financial Tools
+> **Not a chatbot. A financial agent.** Five systems work together to understand your money, reason about decisions, and get smarter over time. Every action still waits on Audric Passport's tap-to-confirm.
 
-29 read tools + 11 write tools covering balance checks, savings, lending, swaps, payments, payment links / invoices, and on-chain analytics. Read tools execute in parallel; write tools require user confirmation and execute sequentially under a transaction mutex.
+### 🎛️ Agent Harness — 40 tools, one agent
 
-### Reasoning Engine
+29 read tools + 11 write tools covering balance checks, savings (`save_deposit`, `withdraw`), lending (`borrow`, `repay_debt`), swaps (`swap_quote`, `swap_execute`), liquid staking (`volo_stake`, `volo_unstake`), payments (`send_transfer`, `pay_api`), payment links / invoices, and on-chain analytics. Read tools execute in parallel; write tools require user Passport confirmation and execute sequentially under a transaction mutex (`TxMutex`).
+
+### ⚡ Reasoning Engine — thinks before it acts
 
 - **Extended thinking** — always-on for Sonnet/Opus (adaptive mode). Haiku for low-effort queries
 - **Adaptive effort** — classifies each turn as `low`/`medium`/`high`/`max` and adjusts model + thinking depth
@@ -57,22 +61,19 @@ Your money lives in a non-custodial wallet. Audric executes transactions, but yo
 - **Preflight validation** — input validation on send, swap, pay, borrow, and save before execution
 - **Prompt caching** — static system prompt + tool definitions cached across turns for lower latency and cost
 
-### Silent Intelligence Layer
+### 🧠 Silent Profile — knows your finances
 
-| Feature | What it does |
-|---------|-------------|
-| **Financial Profile** | Risk tolerance, goals, investment horizon — inferred by Claude, stored in Prisma. Silently calibrates tone + recommendations |
-| **Episodic Memory** | Key facts, preferences, past decisions remembered across sessions (50-memory cap, Jaccard dedup) |
-| **Advice Memory** | `record_advice` tool writes `AdviceLog` rows; `buildAdviceContext()` hydrates last 30 days into every turn so the chat remembers what it told you yesterday |
-| **Conversation Log** | Full chat transcripts logged for the future self-hosted model migration |
+`UserFinancialProfile` (risk tolerance, goals, investment horizon) inferred by Claude from your chat history. Stored in Prisma, injected via `buildProfileContext()`. Silently calibrates tone + recommendations — never surfaced as nudges.
+
+### 🔗 Chain Memory — remembers what you do on-chain
+
+7 on-chain classifiers (deposit patterns, risk profile, yield behavior, borrow behavior, near-liquidation events, large transactions, compounding streaks) extract financial facts from `AppEvent` + `PortfolioSnapshot` history → `ChainFact` rows → `buildMemoryContext()` injects them into the engine system prompt. Silent context only.
+
+### 📓 AdviceLog — remembers what it told you
+
+`record_advice` tool writes `AdviceLog` rows; `buildAdviceContext()` hydrates last 30 days into every turn so the chat doesn't contradict itself across sessions. Episodic memory (`UserMemory`) and the full conversation log run alongside it for the future self-hosted model migration.
 
 > **What was deleted in the April 2026 simplification:** Copilot suggestions, scheduled actions / DCA, morning briefings, rate alerts, auto-compound, the features-budget allowance, the proactive-nudges pipeline, savings-goal milestone celebrations, follow-up queues, and the proposal pipeline behind `BehavioralPattern`. zkLogin can't sign without user presence — "autonomous" was reminders dressed up as agency. See [`spec/SIMPLIFICATION_RATIONALE.md`](https://github.com/mission69b/t2000/blob/main/spec/SIMPLIFICATION_RATIONALE.md) for the locked decisions on what we will not bring back.
-
-### Chain Memory (silent)
-
-7 on-chain classifiers extract financial patterns from AppEvent + PortfolioSnapshot history and feed them silently to the agent — no proposals, no surface, no notifications:
-
-deposit patterns, risk profile, yield behavior, borrow behavior, near-liquidation events, large transactions, compounding streaks. Chain facts stored as `ChainFact` rows and injected into the engine system prompt via `buildMemoryContext()`.
 
 ### Canvas Visualizations
 

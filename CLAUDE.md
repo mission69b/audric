@@ -36,18 +36,24 @@ audric/
 └── pnpm-workspace.yaml
 ```
 
-### Product catalog (6 products + 1 public tool)
+### Product catalog — Audric is exactly four products
 
-| Product | Integration | Status |
-|---------|-------------|--------|
-| **Savings** | NAVI MCP + thin tx builders | Live |
-| **Pay** | MPP / t2000 gateway | Live |
-| **Send** | Direct Sui transactions | Live |
-| **Credit** | NAVI MCP + thin tx builders | Live |
-| **Receive** | Payment links, invoices, QR | Live |
-| **Wallet Report** | Public at `audric.ai/report/[address]` — no sign-up | Live |
+> **"Audric Finance" is retired** (April 2026 reframe). Its operations (save, swap, borrow, repay, withdraw) are now surfaced through Audric Intelligence's Agent Harness, gated by Audric Passport's tap-to-confirm. Canonical reference: `t2000/audric-roadmap.md`.
 
-### Silent intelligence (post-simplification)
+| Product | What it is | Implementation | Status |
+|---------|-----------|----------------|--------|
+| 🪪 **Audric Passport** | Trust layer — zkLogin via Google, non-custodial Sui wallet, tap-to-confirm consent on every write, sponsored gas. Wraps every other product. | `@t2000/sdk` + Enoki + `@mysten/dapp-kit` | Live |
+| 🧠 **Audric Intelligence** | Brain (the moat) — 5 systems orchestrate every money decision. Save, swap, borrow, repay, withdraw, send all run through the Agent Harness. | `@t2000/engine` (40 tools, reasoning, guards, recipes) + audric-side `record_advice` + silent context (`engine-context.ts`) | Live |
+| 💸 **Audric Pay** | Money primitive — send USDC, payment links, invoices, QR. Free, global, instant on Sui. | `@t2000/sdk` direct Sui tx + payment-link contract + invoice flows | Live |
+| 🛒 **Audric Store** | Creator marketplace at `audric.ai/username`. AI-generated music/art/ebooks sold in USDC. 92% to creator. | `@t2000/sdk` + Walrus + payment links | Coming soon (Phase 5) |
+
+Plus one public tool (no sign-up):
+
+| Tool | Where | Status |
+|------|-------|--------|
+| **Wallet Report** | `audric.ai/report/[address]` — heuristic portfolio analysis, yield efficiency, risk signals (no LLM) | Live |
+
+### Silent intelligence (Audric Intelligence's silent context layer)
 
 > The previous "Autonomous features" table (Copilot, scheduled actions, morning briefings, behavioral pattern proposals, trust ladder) was deleted in the April 2026 simplification — zkLogin can't sign without user presence, so "autonomous" was reminders dressed up as agency. See `t2000/spec/SIMPLIFICATION_RATIONALE.md`.
 

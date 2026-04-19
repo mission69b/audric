@@ -61,8 +61,9 @@ Audric is now organised around four things:
   Audric Finance — save, send, swap, borrow, repay, withdraw. Same
   as before, all by asking in chat.
 
-  Audric Pay — send USDC. To people, to wallets, to anywhere on
-  Sui. Same chat.
+  Audric Pay — move money. Free, global, instant (on Sui for now).
+  Send USDC to anyone, payment links for your business, invoices
+  that settle in seconds. No bank, no borders, no fees.
 
   Audric Intelligence — the silent layer. Your financial profile,
   conversation memory, chain memory, AdviceLog. Shapes my replies
@@ -82,7 +83,7 @@ USDC is back at ${suiAddress}.
   <p>Quick note — I cleaned Audric up. Anything that pretended to run without you is gone: morning briefings, scheduled actions, rate alerts, auto-compound, the features budget. zkLogin needs your tap to sign, so calling those "autonomous" wasn't honest.</p>
   <p>Audric is now organised around four things:</p>
   <p style="margin: 16px 0;"><strong>Audric Finance</strong> — save, send, swap, borrow, repay, withdraw. Same as before, all by asking in chat.</p>
-  <p style="margin: 16px 0;"><strong>Audric Pay</strong> — send USDC. To people, to wallets, to anywhere on Sui. Same chat.</p>
+  <p style="margin: 16px 0;"><strong>Audric Pay</strong> — move money. Free, global, instant (on Sui for now). Send USDC to anyone, payment links for your business, invoices that settle in seconds. No bank, no borders, no fees.</p>
   <p style="margin: 16px 0;"><strong>Audric Intelligence</strong> — the silent layer. Your financial profile, conversation memory, chain memory, AdviceLog. Shapes my replies but never surfaces as a notification.</p>
   <p style="margin: 16px 0;"><strong>Audric Store</strong> — creator marketplace at audric.ai/your-name. Sell AI-generated music, art, ebooks in USDC. Coming soon.</p>
   <p>Your wallet, savings, and positions are unchanged. Any features-budget USDC is back at <code style="background: #f4f4f5; padding: 2px 6px; border-radius: 4px; font-size: 13px;">${suiAddress}</code>.</p>

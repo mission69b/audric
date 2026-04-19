@@ -268,17 +268,17 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── S4: Audric Finance ── */}
-      <section id="finance" className="px-5 sm:px-10 lg:px-16 py-14 sm:py-20 border-t border-border">
+      {/* ── S4: What Audric does (Intelligence in action) ── */}
+      <section id="actions" className="px-5 sm:px-10 lg:px-16 py-14 sm:py-20 border-t border-border">
         <div className="max-w-6xl mx-auto">
           <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-muted mb-3">
-            Audric Finance
+            Audric Intelligence in action
           </p>
           <h2 className="text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground mb-3">
             Your money, in chat.
           </h2>
           <p className="text-[13px] text-muted leading-[1.7] max-w-[500px] mb-10">
-            Save, swap, borrow, repay, withdraw — every on-chain operation handled by asking. You confirm each one with a tap.
+            Save, swap, borrow, repay, withdraw — every on-chain operation handled by asking. The Agent Harness picks the right tool, the Reasoning Engine clears the guards, and your Passport taps to confirm.
           </p>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-px bg-border border border-border">
