@@ -63,7 +63,7 @@ const FLOWS: FlowDef[] = [
       { who: 'user', text: 'Send $20 USDC to alice', delay: 400 },
       {
         who: 'bot',
-        text: tool('PAY · RESOLVE RECIPIENT') + 'Found <b>alice.sui</b> → 0x9a2…b4f1. Confirm $20 USDC?',
+        text: tool('PAY · RESOLVE RECIPIENT') + 'Found <b>alice</b> → 0x9a2…b4f1. Confirm $20 USDC?',
         delay: 1200,
       },
       { who: 'user', text: 'Yes', delay: 2600 },
