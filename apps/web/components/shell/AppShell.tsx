@@ -2,14 +2,14 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { AppSidebar } from './AppSidebar';
-import { SettingsCog } from '@/components/ui/SettingsCog';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { usePanel } from '@/hooks/usePanel';
 
 // [PHASE 2] Topbar deleted. The hero balance previously rendered in the
 // topbar moves to the dashboard's idle state in Phase 4 (BalanceHero).
-// SettingsCog absolute top-right replaces the gear button. Mobile-only
-// hamburger absolute top-left opens the overlay sidebar.
+// Mobile-only hamburger absolute top-left opens the overlay sidebar.
+// (Top-right SettingsCog removed — Settings is reachable via the sidebar
+// nav item and the avatar button.)
 interface AppShellProps {
   address: string;
   jwt?: string;
@@ -107,11 +107,6 @@ export function AppShell({
               </svg>
             </button>
           </Tooltip>
-        </div>
-
-        {/* Settings cog — absolute top-right, hidden on /settings */}
-        <div className="absolute top-4 right-6 z-20">
-          <SettingsCog />
         </div>
 
         {children}

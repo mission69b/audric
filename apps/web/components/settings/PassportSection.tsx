@@ -53,11 +53,6 @@ export function PassportSection({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // The "public report" CTA mirrors the design's mono link. There is no
-  // public report endpoint yet, so this is a static affordance per
-  // Hard Rule 10 — no behavior wired, surfaced as a plain mono span.
-  // TODO: wire when public-report route ships.
-
   return (
     <div className="flex flex-col">
       <div className="rounded-md border border-border-subtle bg-surface-sunken p-4 mb-5">
@@ -92,7 +87,7 @@ export function PassportSection({
         <span className="text-[13px] text-fg-primary capitalize">{network}</span>
       </PassportRow>
 
-      <PassportRow label="Sign-in session">
+      <PassportRow label="Sign-in session" last>
         <div className="flex flex-col items-end gap-0.5">
           <span className="text-[13px] text-fg-primary">
             {expiryDate ? `Expires ${expiryDate.toLocaleDateString()} (${daysLeft}d)` : '\u2014'}
@@ -104,12 +99,6 @@ export function PassportSection({
             </span>
           )}
         </div>
-      </PassportRow>
-
-      <PassportRow label="Public report" last>
-        <span className="font-mono text-[10px] tracking-[0.1em] uppercase text-fg-secondary">
-          View report &rsaquo;
-        </span>
       </PassportRow>
 
       <div className="flex gap-2 mt-6">
