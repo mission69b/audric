@@ -62,8 +62,10 @@ const DETAIL_TABS: { id: DetailTab; label: string }[] = [
 
 // Single subtle gradient mirrors the design's `linear-gradient(135deg,
 // #D4D4D4, #8F8F8F)` — used for both the list row avatar and the larger
-// detail-pane avatar.
-const AVATAR_GRADIENT = 'linear-gradient(135deg, #D4D4D4, #8F8F8F)';
+// detail-pane avatar. Tokenized to `--n400`/`--n500` so it stays
+// chroma-neutral across themes (greys read fine on both light and dark
+// surfaces, and the foreground initial stays legible via `text-fg-inverse`).
+const AVATAR_GRADIENT = 'linear-gradient(135deg, var(--n400), var(--n500))';
 
 function getInitial(name: string): string {
   return (name.trim()[0] ?? '?').toUpperCase();
@@ -251,7 +253,7 @@ export function ContactsPanel({ address, balance, feed, onSendMessage }: Contact
                 aria-current={isSelected ? 'true' : undefined}
               >
                 <div
-                  className="shrink-0 w-7 h-7 rounded-full grid place-items-center text-[11px] font-semibold text-white"
+                  className="shrink-0 w-7 h-7 rounded-full grid place-items-center text-[11px] font-semibold text-fg-inverse"
                   style={{ background: AVATAR_GRADIENT }}
                   aria-hidden="true"
                 >
@@ -319,7 +321,7 @@ export function ContactsPanel({ address, balance, feed, onSendMessage }: Contact
 
               <div className="flex flex-col items-center text-center gap-3">
                 <div
-                  className="w-16 h-16 rounded-full grid place-items-center text-[22px] font-semibold text-white"
+                  className="w-16 h-16 rounded-full grid place-items-center text-[22px] font-semibold text-fg-inverse"
                   style={{ background: AVATAR_GRADIENT }}
                   aria-hidden="true"
                 >
@@ -477,7 +479,7 @@ export function ContactsPanel({ address, balance, feed, onSendMessage }: Contact
           <div className="px-4 pb-8 max-w-[640px] mx-auto flex flex-col gap-[18px]">
             <div className="flex flex-col items-center text-center gap-3">
               <div
-                className="w-16 h-16 rounded-full grid place-items-center text-[22px] font-semibold text-white"
+                className="w-16 h-16 rounded-full grid place-items-center text-[22px] font-semibold text-fg-inverse"
                 style={{ background: AVATAR_GRADIENT }}
               >
                 {getInitial(selectedContact.name)}

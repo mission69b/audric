@@ -27,7 +27,7 @@ interface ContactsSectionProps {
   address: string | null;
 }
 
-const AVATAR_GRADIENT = 'linear-gradient(135deg, #D4D4D4, #8F8F8F)';
+const AVATAR_GRADIENT = 'linear-gradient(135deg, var(--n400), var(--n500))';
 
 function getInitial(name: string): string {
   return (name.trim()[0] ?? '?').toUpperCase();
@@ -88,7 +88,7 @@ export function ContactsSection({ address }: ContactsSectionProps) {
                 .join(' ')}
             >
               <div
-                className="shrink-0 w-7 h-7 rounded-full grid place-items-center text-[11px] font-semibold text-white"
+                className="shrink-0 w-7 h-7 rounded-full grid place-items-center text-[11px] font-semibold text-fg-inverse"
                 style={{ background: AVATAR_GRADIENT }}
                 aria-hidden="true"
               >

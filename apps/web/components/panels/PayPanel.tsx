@@ -213,12 +213,15 @@ export function PayPanel({ address, jwt, balance, onSendMessage }: PayPanelProps
       </div>
 
       {/* WHERE YOUR INCOME GOES — green tinted card, only shown when there
-          are paid payments to act on. */}
+          are paid payments to act on. Pre-dark-mode this used literal
+          `rgba(40,128,52,...)` which happens to be `--g600` (= our
+          `--success-solid` in light) at 6%/30% alpha. Tailwind v4's
+          slash-opacity on the semantic token reproduces light exactly and
+          auto-promotes to the brighter `--g400` accent in dark. */}
       {stats.received > 0 && (
         <section
           aria-labelledby="pay-income-card-heading"
-          className="rounded-md border p-4"
-          style={{ background: 'rgba(40,128,52,0.06)', borderColor: 'rgba(40,128,52,0.3)' }}
+          className="rounded-md border bg-success-solid/[0.06] border-success-solid/30 p-4"
         >
           <h3
             id="pay-income-card-heading"
