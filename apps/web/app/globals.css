@@ -284,7 +284,12 @@
   --chart-3: var(--n400);
   --chart-4: var(--n300);
 
-  /* Audric purple — surface-tinted variant for dark */
+  /* Audric purple — promoted one step up the hue scale per dark spec rule
+     ("accents promoted to 400 for dark-bg legibility"). The dark prototype
+     does not list purple explicitly but it's used in Activity glyphs and the
+     Portfolio "Other" stat — pu500 (#583AEE) on #141414 is borderline AA;
+     pu400 (#836BFF) reads cleanly. The -bg alpha tint keeps the brand hue. */
+  --color-purple:    var(--pu400);
   --color-purple-bg: rgba(88, 58, 238, 0.18);
 
   /* Shadows — light values are designed for white surfaces and disappear

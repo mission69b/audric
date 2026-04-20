@@ -10,6 +10,16 @@
  * Single source of truth — keep both call sites pointing here so the
  * pre-paint and post-hydration logic can never disagree.
  *
+ * Rule of thumb (decided in Phase 6):
+ *   PUBLIC = anything a signed-out visitor can land on
+ *   (marketing, legal, product info pages, auth handoff, public
+ *   pay receipt). All public surfaces stay LIGHT — Audric's brand
+ *   face to the world is light-only.
+ *
+ *   THEMED = the authenticated app shell (`/new`, `/chat/[sessionId]`,
+ *   `/settings`). Only here does the user's `light / dark / system`
+ *   choice apply.
+ *
  * Adding a route:
  *   - Static path with no params  →  `PUBLIC_PATHS`
  *   - Dynamic path (`/foo/[slug]`) →  `PUBLIC_PREFIXES` (include the
@@ -17,16 +27,27 @@
  */
 
 export const PUBLIC_PATHS: readonly string[] = [
-  '/',           // marketing homepage
-  '/privacy',    // legal
-  '/terms',      // legal
-  '/disclaimer', // legal
-  '/security',   // legal
-  '/verify',     // post-auth landing (still pre-app)
+  // Marketing
+  '/',           // homepage
+  // Legal
+  '/privacy',
+  '/terms',
+  '/disclaimer',
+  '/security',
+  // Product info pages (pre-auth marketing-style explainers — middleware
+  // does NOT rewrite these like it does /pay /goals etc., so they render
+  // their own ProductPage shell to signed-out visitors)
+  '/savings',
+  '/credit',
+  '/swap',
+  '/send',
+  '/receive',
+  // Auth handoff (post-OAuth, pre-app)
+  '/verify',
 ];
 
 export const PUBLIC_PREFIXES: readonly string[] = [
-  '/pay/',     // /pay/[slug] — recipient-facing payment receipt (note: `/pay` itself, the create-link form, is themed)
+  '/pay/',     // /pay/[slug] — recipient-facing payment receipt
   '/invoice/', // /invoice/[slug] — legacy redirect target to /pay/[slug]
   '/auth/',    // any auth callback / handoff routes
 ];
