@@ -27,7 +27,7 @@ interface ContactsSectionProps {
   address: string | null;
 }
 
-const AVATAR_GRADIENT = 'linear-gradient(135deg, #D4D4D4, #8F8F8F)';
+const AVATAR_GRADIENT = 'linear-gradient(135deg, var(--n400), var(--n500))';
 
 function getInitial(name: string): string {
   return (name.trim()[0] ?? '?').toUpperCase();

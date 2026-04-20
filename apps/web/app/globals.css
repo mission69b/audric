@@ -1,15 +1,22 @@
 @import "tailwindcss";
 
 /* ============================================================
-   AUDRIC DESIGN SYSTEM v1.1 — light only
+   AUDRIC DESIGN SYSTEM v1.2 — light + dark
    Source of truth for tokens: this file + design_handoff_audric/design_files/colors_and_type.css
+   Dark spec: design_handoff_audric-2/design_files/audric-app-dark/index.html
 
-   Phase 1B status: Backward-compat aliases removed. Every consumer
-   uses canonical token names (--surface-page, --fg-primary,
-   --border-subtle, etc.) and Tailwind utilities composed from them.
+   Theming model: every consumer uses canonical token names
+   (--surface-page, --fg-primary, --border-subtle, etc.) and
+   Tailwind utilities composed from them. Dark mode lives in a
+   single [data-theme="dark"] override block — there are no per-
+   component dark styles, no `dark:` Tailwind variants. The
+   attribute is stamped on <html> by an anti-flash script for
+   themed routes (everything except marketing / public pay /
+   legal / auth — see lib/theme/public-paths.ts in Phase 3).
    ============================================================ */
 
 :root {
+  color-scheme: light;
   /* =========================================================
      COLOR PALETTE  —  8 hues × 8 steps + 9-step neutral
      ========================================================= */
@@ -65,6 +72,7 @@
   --surface-page:         var(--n200);
   --surface-card:         var(--n100);
   --surface-sunken:       var(--n200);
+  --surface-elevated:     var(--n300);  /* nav-row hover / active lift; light has no equivalent in current screens but exposed for parity with dark */
   --surface-inverse:      var(--n800);
 
   /* Foreground */
@@ -200,6 +208,109 @@
 }
 
 /* ============================================================
+   DARK THEME OVERRIDES
+   -------------------------------------------------------
+   Single source of truth for dark mode. Components stay theme-
+   agnostic and consume the same semantic tokens; this block
+   retunes the values when the html element carries
+   data-theme="dark".
+
+   Token map traceability:
+     --surface-page    ← dark spec --bg       (#141414)
+     --surface-card    ← dark spec --panel    (#1F1F1F)
+     --surface-sunken  ← dark spec --panel-2  (#0A0A0A — INVERTED from light)
+     --surface-elevated← dark spec --panel-3  (#2A2A2A)
+     --fg-inverse      ← dark spec --on-text  (#0A0A0A)
+     accents           ← promoted one step up the hue scale (400 over 500/600)
+     status -bg        ← rgba alphas of the 400-step solids
+     shadows           ← retuned for dark surfaces (subtle white inset border + heavier black blur)
+   ============================================================ */
+
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Surface */
+  --surface-page:         #141414;
+  --surface-card:         #1F1F1F;
+  --surface-sunken:       #0A0A0A;
+  --surface-elevated:     #2A2A2A;
+  --surface-inverse:      var(--n100);
+
+  /* Foreground */
+  --fg-primary:           #F5F5F5;
+  --fg-secondary:         #B0B0B0;
+  --fg-muted:             #808080;
+  --fg-disabled:          #5A5A5A;
+  --fg-inverse:           #0A0A0A;
+
+  /* Lines */
+  --border-default:       #2A2A2A;
+  --border-subtle:        #2A2A2A;
+  --border-strong:        #3D3D3D;
+  --border-focus:         var(--b400);
+
+  /* Brand / accent — promoted to 400 step for dark-bg legibility */
+  --accent-primary:       var(--b400);
+  --accent-primary-hover: var(--b500);
+  --accent-primary-bg:    rgba(77, 147, 252, 0.14);
+  --accent-shadow:        rgba(77, 147, 252, 0.40);
+
+  /* Status — fg/solid promoted to 400; -bg becomes alpha tint of the 400 solid;
+     -border one step dimmer than fg for visual hierarchy */
+  --success-fg:           var(--g400);
+  --success-bg:           rgba(76, 225, 96, 0.14);
+  --success-border:       var(--g500);
+  --success-solid:        var(--g400);
+
+  --warning-fg:           var(--y400);
+  --warning-bg:           rgba(255, 189, 20, 0.18);
+  --warning-border:       var(--y500);
+  --warning-solid:        var(--y400);
+
+  --error-fg:             var(--r400);
+  --error-bg:             rgba(255, 92, 92, 0.14);
+  --error-border:         var(--r500);
+  --error-solid:          var(--r400);
+
+  --info-fg:              var(--b400);
+  --info-bg:              rgba(77, 147, 252, 0.14);
+  --info-border:          var(--b500);
+  --info-solid:           var(--b400);
+
+  /* Charts — sequential greys reversed so segments stay legible on dark page.
+     Light runs n400→n700 (light→dark); dark runs n600→n300 (medium→light). */
+  --chart-1: var(--n600);
+  --chart-2: var(--n500);
+  --chart-3: var(--n400);
+  --chart-4: var(--n300);
+
+  /* Audric purple — promoted one step up the hue scale per dark spec rule
+     ("accents promoted to 400 for dark-bg legibility"). The dark prototype
+     does not list purple explicitly but it's used in Activity glyphs and the
+     Portfolio "Other" stat — pu500 (#583AEE) on #141414 is borderline AA;
+     pu400 (#836BFF) reads cleanly. The -bg alpha tint keeps the brand hue. */
+  --color-purple:    var(--pu400);
+  --color-purple-bg: rgba(88, 58, 238, 0.18);
+
+  /* Shadows — light values are designed for white surfaces and disappear
+     on dark. Replace with a subtle white inset hairline + heavier black
+     blur. The flat shadow becomes the inverse of the light token. */
+  --shadow-flat:
+    0 0 0 1px rgba(255, 255, 255, 0.08);
+  --shadow-dropdown:
+    0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 4px 12px 0 rgba(0, 0, 0, 0.40);
+  --shadow-drawer:
+    0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 8px 24px 0 rgba(0, 0, 0, 0.40);
+  --shadow-modal:
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 16px 48px 0 rgba(0, 0, 0, 0.50);
+  --shadow-focus-ring:
+    0 0 0 3px rgba(77, 147, 252, 0.5);
+}
+
+/* ============================================================
    TAILWIND v4 BRIDGE — generates utility classes from --color-*
    Phase 1B: legacy aliases stripped. Only canonical token names
    are exposed; everything resolves to a hue/neutral step.
@@ -217,10 +328,11 @@
   --color-n900: var(--n900);
 
   /* ---- NEW: surface ---- */
-  --color-surface-page:    var(--surface-page);
-  --color-surface-card:    var(--surface-card);
-  --color-surface-sunken:  var(--surface-sunken);
-  --color-surface-inverse: var(--surface-inverse);
+  --color-surface-page:     var(--surface-page);
+  --color-surface-card:     var(--surface-card);
+  --color-surface-sunken:   var(--surface-sunken);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-surface-inverse:  var(--surface-inverse);
 
   /* ---- NEW: foreground ---- */
   --color-fg-primary:   var(--fg-primary);
@@ -445,4 +557,56 @@ select {
 
 .safe-bottom {
   padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
+/* ============================================================
+   GLOBAL THEMED CHROME — selection, scrollbars, autofill
+   -------------------------------------------------------
+   All three resolve through tokens, so the same rules work in
+   both light and dark via the [data-theme] override block.
+   ============================================================ */
+
+::selection {
+  background: rgba(9, 104, 246, 0.20);
+  color: var(--fg-primary);
+}
+[data-theme="dark"] ::selection {
+  background: rgba(77, 147, 252, 0.30);
+  color: var(--fg-primary);
+}
+
+/* Themed scrollbars (WebKit). Firefox uses scrollbar-color via
+   the html declaration below for the same effect. */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--fg-muted);
+}
+html {
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+/* WebKit autofill — Chrome/Safari paint inputs with a hardcoded
+   yellow/blue background that survives normal background-color
+   rules. The box-shadow inset hack overrides it; we paint the
+   shadow with the surface token so the input theme follows. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-box-shadow: inset 0 0 0 1000px var(--surface-card) !important;
+  -webkit-text-fill-color: var(--fg-primary) !important;
+  caret-color: var(--fg-primary) !important;
+  transition: background-color 99999s ease-in-out 0s;
 }

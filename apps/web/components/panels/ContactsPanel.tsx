@@ -62,8 +62,14 @@ const DETAIL_TABS: { id: DetailTab; label: string }[] = [
 
 // Single subtle gradient mirrors the design's `linear-gradient(135deg,
 // #D4D4D4, #8F8F8F)` — used for both the list row avatar and the larger
-// detail-pane avatar.
-const AVATAR_GRADIENT = 'linear-gradient(135deg, #D4D4D4, #8F8F8F)';
+// detail-pane avatar. Tokenized to `--n400`/`--n500` (raw scale tokens
+// that intentionally don't flip per theme) so the avatar identity is
+// chroma-stable across light and dark, matching the dark prototype:
+// `audric-app-dark/contacts.jsx` uses the SAME gradient + SAME white
+// initial in both modes. The initial is therefore pinned to `text-white`
+// (not `text-fg-inverse`, which would flip to black in dark and become
+// unreadable against the gray gradient).
+const AVATAR_GRADIENT = 'linear-gradient(135deg, var(--n400), var(--n500))';
 
 function getInitial(name: string): string {
   return (name.trim()[0] ?? '?').toUpperCase();
