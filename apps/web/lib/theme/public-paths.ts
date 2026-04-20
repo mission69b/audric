@@ -39,6 +39,7 @@
 export const PUBLIC_PATHS: readonly string[] = [
   // Marketing
   '/',           // homepage
+  '/litepaper',  // investor litepaper — light-only brand surface
   // Legal
   '/privacy',
   '/terms',
