@@ -17,8 +17,13 @@
  *     keeps the marketing pitch reading the way it was approved.
  *
  *   THEMED = the authenticated app shell (`/new`, `/chat/[sessionId]`,
- *     `/settings`) PLUS two utility surfaces that should follow the OS:
- *       - `/verify` (1–2s OAuth handoff, no brand identity to protect)
+ *     `/settings`) PLUS three utility/handoff surfaces that should
+ *     follow the OS:
+ *       - `/verify` (post-email-click landing, no brand identity)
+ *       - `/auth/callback` (3–5s zkLogin "Signing you in…" screen —
+ *         user came from clicking Sign in with Google so we already
+ *         know they're an Audric user mid-flow; flashing them white
+ *         in a dark-OS browser is jarring)
  *       - `/pay/[slug]` (recipient-facing receipt — recipient may not be
  *         an Audric user, but they DID set their OS to dark/light, and a
  *         hard-light pay link in a dark browser is a poor first
@@ -49,14 +54,15 @@ export const PUBLIC_PATHS: readonly string[] = [
   '/receive',
   // NOTE: `/verify` was intentionally MOVED out of this list — it now
   // follows the user's stored theme (or OS default). See module header
-  // for rationale. Same for `/pay/` (was in PUBLIC_PREFIXES below).
+  // for rationale. Same for `/pay/` and `/auth/` (were in PUBLIC_PREFIXES
+  // below).
 ];
 
 export const PUBLIC_PREFIXES: readonly string[] = [
   '/invoice/', // /invoice/[slug] — legacy redirect target to /pay/[slug]
-  '/auth/',    // any auth callback / handoff routes
-  // NOTE: `/pay/` MOVED out — recipient-facing receipt now follows OS /
-  // stored theme. See module header for rationale.
+  // NOTE: `/pay/` and `/auth/` MOVED out — both are utility/handoff
+  // surfaces that follow the OS / stored theme. See module header for
+  // rationale.
 ];
 
 export function isPublicPath(pathname: string): boolean {
