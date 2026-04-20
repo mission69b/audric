@@ -10,15 +10,20 @@
  * Single source of truth — keep both call sites pointing here so the
  * pre-paint and post-hydration logic can never disagree.
  *
- * Rule of thumb (decided in Phase 6):
- *   PUBLIC = anything a signed-out visitor can land on
- *   (marketing, legal, product info pages, auth handoff, public
- *   pay receipt). All public surfaces stay LIGHT — Audric's brand
- *   face to the world is light-only.
+ * Rule of thumb (Phase 6 → revised post-launch):
+ *   LIGHT-ONLY = curated brand surfaces a signed-out visitor lands on:
+ *     marketing homepage, legal docs, product info pages. Typography +
+ *     hero compositions were designed against a white canvas; force-light
+ *     keeps the marketing pitch reading the way it was approved.
  *
  *   THEMED = the authenticated app shell (`/new`, `/chat/[sessionId]`,
- *   `/settings`). Only here does the user's `light / dark / system`
- *   choice apply.
+ *     `/settings`) PLUS two utility surfaces that should follow the OS:
+ *       - `/verify` (1–2s OAuth handoff, no brand identity to protect)
+ *       - `/pay/[slug]` (recipient-facing receipt — recipient may not be
+ *         an Audric user, but they DID set their OS to dark/light, and a
+ *         hard-light pay link in a dark browser is a poor first
+ *         impression). Recipients with no Audric localStorage default to
+ *         `theme: 'system'`, so the page mirrors their OS automatically.
  *
  * Adding a route:
  *   - Static path with no params  →  `PUBLIC_PATHS`
@@ -42,14 +47,16 @@ export const PUBLIC_PATHS: readonly string[] = [
   '/swap',
   '/send',
   '/receive',
-  // Auth handoff (post-OAuth, pre-app)
-  '/verify',
+  // NOTE: `/verify` was intentionally MOVED out of this list — it now
+  // follows the user's stored theme (or OS default). See module header
+  // for rationale. Same for `/pay/` (was in PUBLIC_PREFIXES below).
 ];
 
 export const PUBLIC_PREFIXES: readonly string[] = [
-  '/pay/',     // /pay/[slug] — recipient-facing payment receipt
   '/invoice/', // /invoice/[slug] — legacy redirect target to /pay/[slug]
   '/auth/',    // any auth callback / handoff routes
+  // NOTE: `/pay/` MOVED out — recipient-facing receipt now follows OS /
+  // stored theme. See module header for rationale.
 ];
 
 export function isPublicPath(pathname: string): boolean {

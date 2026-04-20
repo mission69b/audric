@@ -105,7 +105,7 @@ export function ConvoHistoryList({
               key={s.id}
               className={[
                 'group relative w-full rounded-sm transition-colors',
-                isActive ? 'bg-border-subtle' : 'hover:bg-surface-card',
+                isActive ? 'bg-border-subtle' : 'hover:bg-surface-nav-hover',
               ].join(' ')}
             >
               <button

@@ -10,10 +10,14 @@
  *   <script dangerouslySetInnerHTML={{ __html: getThemeScript() }} />
  *
  * Behaviour:
- *   1. Bail out if the current pathname is a public route — those
- *      never theme (marketing, legal, public pay receipt, auth, etc).
- *      Public-route list is inlined from `public-paths.ts` at build
- *      time so the source of truth is shared with the runtime
+ *   1. Bail out if the current pathname is a light-locked route —
+ *      those never theme (marketing homepage, legal, product info
+ *      pages). Note that `/verify` and `/pay/[slug]` were removed
+ *      from this list post-launch — they now follow the user's
+ *      stored theme or OS `prefers-color-scheme` (see
+ *      `public-paths.ts` module header for rationale). The public-
+ *      route list is inlined from `public-paths.ts` at build time
+ *      so the source of truth is shared with the runtime
  *      ThemeProvider.
  *   2. Otherwise read `localStorage['audric-theme']`. Valid values:
  *      `'light'`, `'dark'`, `'system'`. Anything else → default to

@@ -78,7 +78,17 @@ export function ChatMessage({ message, onActionResolve, autoApproveTools, agentB
   if (message.role === 'user') {
     return (
       <div className="flex justify-end mb-3" role="log" aria-label="Your message">
-        <div className="max-w-[78%] bg-surface-inverse px-4 py-2.5 text-sm text-fg-inverse break-words overflow-hidden" style={{ borderRadius: '16px 16px 4px 16px' }}>
+        {/* User bubble — near-black with white text in BOTH light and dark.
+            Cannot use bg-surface-inverse / text-fg-inverse here because those
+            tokens semantically invert per theme (white-on-black in light flips
+            to black-on-white in dark — wrong for a user chat chip). The
+            --bubble-user-* token pair pins the bubble to "near-black + white"
+            in both themes, matching the dark prototype's user-bubble frame
+            (audric-app-dark/dashboard.jsx line 124) and the light prototype's
+            equivalent (background:'var(--text)', color:'#fff'). The hairline
+            border is invisible on the white page in light, but provides the
+            #0A0A0A-on-#141414 separation the dark spec calls for. */}
+        <div className="max-w-[78%] bg-bubble-user-bg px-4 py-2.5 text-sm text-bubble-user-fg break-words overflow-hidden border border-border-subtle" style={{ borderRadius: '16px 16px 4px 16px' }}>
           {message.content}
         </div>
       </div>

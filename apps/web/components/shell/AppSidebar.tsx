@@ -4,7 +4,6 @@ import { useCallback, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { NavItem, type BadgeVariant } from './NavItem';
 import { ConvoHistoryList } from './ConvoHistoryList';
-import { ThemeToggleButton } from './ThemeToggleButton';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { Tag } from '@/components/ui/Tag';
 import { Icon } from '@/components/ui/Icon';
@@ -115,12 +114,12 @@ export function AppSidebar({
   if (collapsed) {
     const iconBtnClass =
       'inline-flex items-center justify-center w-8 h-8 rounded-sm text-fg-muted ' +
-      'hover:text-fg-primary hover:bg-surface-card transition-colors ' +
+      'hover:text-fg-primary hover:bg-surface-nav-hover transition-colors ' +
       'focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]';
 
     return (
       <aside
-        className="flex flex-col items-center h-full bg-surface-sunken border-r border-border-subtle w-[var(--sidebar-icon-width)] py-3 gap-1 shrink-0"
+        className="flex flex-col items-center h-full bg-surface-nav border-r border-border-subtle w-[var(--sidebar-icon-width)] py-3 gap-1 shrink-0"
         role="navigation"
         aria-label="Main navigation"
       >
@@ -154,9 +153,9 @@ export function AppSidebar({
           ))}
         </div>
 
-        {/* Footer — theme toggle + profile (Features budget pill removed in S.11) */}
+        {/* Footer — profile only. Theme toggle removed; users switch themes
+            from Settings → Account → Appearance. */}
         <div className="flex flex-col items-center gap-1.5 pb-3 pt-2 border-t border-border-subtle shrink-0 w-full">
-          <ThemeToggleButton tooltipSide="right" />
           {(email || address) && (
             <Tooltip label={email || (address ? truncateAddr(address) : 'Settings')} side="right">
               <button
@@ -182,7 +181,7 @@ export function AppSidebar({
   /* ─── EXPANDED ─── */
   return (
     <aside
-      className="flex flex-col h-full bg-surface-sunken border-r border-border-subtle w-[var(--sidebar-width)] shrink-0"
+      className="flex flex-col h-full bg-surface-nav border-r border-border-subtle w-[var(--sidebar-width)] shrink-0"
       role="navigation"
       aria-label="Main navigation"
     >
@@ -197,7 +196,7 @@ export function AppSidebar({
         {onToggleCollapse && (
           <button
             onClick={onToggleCollapse}
-            className="inline-flex items-center justify-center w-7 h-7 rounded-sm text-fg-muted hover:text-fg-primary hover:bg-surface-card transition-colors focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
+            className="inline-flex items-center justify-center w-7 h-7 rounded-sm text-fg-muted hover:text-fg-primary hover:bg-surface-nav-hover transition-colors focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
             aria-label="Close sidebar"
           >
             <Icon name="panel-left" size={14} />
@@ -209,7 +208,7 @@ export function AppSidebar({
       <div className="px-3 pb-3.5 shrink-0">
         <button
           onClick={handleNewConvo}
-          className="w-full flex items-center gap-2 px-2.5 py-2.5 rounded-sm border border-border-subtle bg-transparent text-fg-secondary hover:text-fg-primary hover:border-border-strong hover:bg-surface-card transition-colors font-mono text-[10px] tracking-[0.1em] uppercase focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
+          className="w-full flex items-center gap-2 px-2.5 py-2.5 rounded-sm border border-border-subtle bg-transparent text-fg-secondary hover:text-fg-primary hover:border-border-strong hover:bg-surface-nav-hover transition-colors font-mono text-[10px] tracking-[0.1em] uppercase focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
         >
           <Icon name="plus" size={12} />
           <span>New conversation</span>
@@ -256,39 +255,37 @@ export function AppSidebar({
         )}
       </nav>
 
-      {/* Footer — user info + theme toggle */}
+      {/* Footer — user info only. Theme toggle removed; users switch themes
+          from Settings → Account → Appearance. */}
       <div className="shrink-0 border-t border-border-subtle px-3 py-3">
         {(email || address) && (
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => handleNav('settings')}
-              className="flex-1 min-w-0 flex items-center gap-2.5 px-2 py-1.5 rounded-sm hover:bg-surface-card transition-colors group focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
+          <button
+            onClick={() => handleNav('settings')}
+            className="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-sm hover:bg-surface-nav-hover transition-colors group focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
+          >
+            <div
+              // See collapsed sidebar above for the rationale on `text-white`
+              // (color-stable avatar pill across themes, matches dark prototype).
+              className="w-7 h-7 rounded-full shrink-0 flex items-center justify-center font-mono text-[11px] text-white"
+              style={{ background: 'linear-gradient(135deg, var(--g500) 0%, var(--g700) 100%)' }}
             >
-              <div
-                // See collapsed sidebar above for the rationale on `text-white`
-                // (color-stable avatar pill across themes, matches dark prototype).
-                className="w-7 h-7 rounded-full shrink-0 flex items-center justify-center font-mono text-[11px] text-white"
-                style={{ background: 'linear-gradient(135deg, var(--g500) 0%, var(--g700) 100%)' }}
-              >
-                {initial}
-              </div>
-              <div className="flex-1 min-w-0 text-left">
-                {email && (
-                  <p className="text-[12px] text-fg-secondary truncate">{email}</p>
-                )}
-                {address && (
-                  <p
-                    className="font-mono text-[9px] tracking-[0.06em] uppercase text-fg-muted mt-0.5 hover:text-fg-secondary transition-colors"
-                    onClick={(e) => { e.stopPropagation(); handleCopyAddress(); }}
-                    title={`Copy: ${address}`}
-                  >
-                    {copied ? 'Copied!' : truncateAddr(address)}
-                  </p>
-                )}
-              </div>
-            </button>
-            <ThemeToggleButton tooltipSide="top" />
-          </div>
+              {initial}
+            </div>
+            <div className="flex-1 min-w-0 text-left">
+              {email && (
+                <p className="text-[12px] text-fg-secondary truncate">{email}</p>
+              )}
+              {address && (
+                <p
+                  className="font-mono text-[9px] tracking-[0.06em] uppercase text-fg-muted mt-0.5 hover:text-fg-secondary transition-colors"
+                  onClick={(e) => { e.stopPropagation(); handleCopyAddress(); }}
+                  title={`Copy: ${address}`}
+                >
+                  {copied ? 'Copied!' : truncateAddr(address)}
+                </p>
+              )}
+            </div>
+          </button>
         )}
       </div>
     </aside>

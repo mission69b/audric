@@ -74,11 +74,20 @@ export function NewConversationView({
         <BalanceHero total={netWorth} available={available} earning={earning} size="lg" />
       </div>
 
-      {/* Spacer pushes the centered block toward the visual middle when
-          the panel is tall enough. */}
-      <div className="flex-1 min-h-4" />
+      {/* Top spacer is FIXED-height (not flex-1) so the composer's vertical
+          position is determined solely by what's above it. When a chip
+          drawer expands below, only the bottom flex-1 spacer shrinks — the
+          composer + greeting + chip-bar all stay anchored. Without this,
+          equal flex-1 spacers above and below would each absorb half the
+          drawer's growth, shifting the composer upward as the user clicked
+          a chip (the "input jumps up" bug from the dashboard screenshot).
+          ~14vh chosen so the composer still reads as roughly upper-middle
+          on common viewport heights, without falling off the bottom on
+          short screens. */}
+      <div className="h-[14vh] shrink-0" />
 
-      {/* Centered composer block. */}
+      {/* Composer block — greeting + input + chip-bar + (optional) drawer.
+          Stays in normal flex flow; expansion grows downward only. */}
       <div className="w-full max-w-[700px] flex flex-col items-stretch">
         {/* Greeting + sub-eyebrow above the composer. */}
         <div className="text-center mb-7">
@@ -135,6 +144,7 @@ export function NewConversationView({
         </div>
       </div>
 
+      {/* Bottom flex-1 spacer absorbs ALL height changes from the drawer. */}
       <div className="flex-1 min-h-4" />
     </div>
   );

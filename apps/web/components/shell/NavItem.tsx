@@ -22,7 +22,7 @@ export function NavItem({ icon, label, active, badge, collapsed, onClick }: NavI
         'focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]',
         active
           ? 'bg-border-subtle text-fg-primary'
-          : 'text-fg-secondary hover:text-fg-primary hover:bg-surface-card',
+          : 'text-fg-secondary hover:text-fg-primary hover:bg-surface-nav-hover',
         collapsed
           ? 'justify-center w-10 h-10 px-0'
           : 'gap-2.5 px-2.5 py-2',

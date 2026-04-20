@@ -75,6 +75,18 @@
   --surface-elevated:     var(--n300);  /* nav-row hover / active lift; light has no equivalent in current screens but exposed for parity with dark */
   --surface-inverse:      var(--n800);
 
+  /* Theme-flipping surfaces — see comment block above the [data-theme="dark"]
+     overrides for the rationale. These exist because a handful of surfaces
+     (sidebar, composer/input, user chat bubble) sit at *different* positions
+     in the surface hierarchy between light and dark per the dark prototype.
+     A single Tailwind utility cannot express that flip via the canonical
+     surface-{page|card|sunken} tokens, so we expose dedicated semantic names. */
+  --surface-input:        var(--surface-card);    /* composer/textarea — light: white card; dark: pure black */
+  --surface-nav:          var(--surface-sunken);  /* sidebar/nav rail — light: sunken gray; dark: lifted card */
+  --surface-nav-hover:    var(--surface-card);    /* sidebar row hover — always one step lighter than --surface-nav (matches light prototype's `var(--panel)`) */
+  --bubble-user-bg:       var(--fg-primary);      /* user chat bubble — near-black in both themes */
+  --bubble-user-fg:       var(--fg-inverse);      /* user chat bubble text — white in both themes */
+
   /* Foreground */
   --fg-primary:           var(--n800);
   --fg-secondary:         var(--n600);
@@ -220,6 +232,10 @@
      --surface-card    ← dark spec --panel    (#1F1F1F)
      --surface-sunken  ← dark spec --panel-2  (#0A0A0A — INVERTED from light)
      --surface-elevated← dark spec --panel-3  (#2A2A2A)
+     --surface-input   ← dark spec --panel-2  (composer/textarea — flipped: card→sunken)
+     --surface-nav     ← dark spec --panel    (sidebar — flipped: sunken→card)
+     --bubble-user-bg  ← dark spec --panel-2  (user chat bubble — near-black both themes)
+     --bubble-user-fg  ← dark spec --text     (white in light, near-white in dark)
      --fg-inverse      ← dark spec --on-text  (#0A0A0A)
      accents           ← promoted one step up the hue scale (400 over 500/600)
      status -bg        ← rgba alphas of the 400-step solids
@@ -235,6 +251,20 @@
   --surface-sunken:       #0A0A0A;
   --surface-elevated:     #2A2A2A;
   --surface-inverse:      var(--n100);
+
+  /* Theme-flipping surfaces — these flip relative to the canonical surface
+     tokens because the dark prototype puts the composer + user-bubble at the
+     deepest surface (--panel-2 = #0A0A0A), while the sidebar shifts UP to
+     the lifted card surface (--panel = #1F1F1F) so it stays visibly
+     separated from the page canvas. The user bubble must stay near-black
+     with white text in both themes (matches the Figma chat frame), which
+     means it can't ride on --surface-inverse / --fg-inverse (those legitimately
+     invert per theme for other consumers like the primary button). */
+  --surface-input:        var(--surface-sunken);  /* dark spec --panel-2 (#0A0A0A) */
+  --surface-nav:          var(--surface-card);    /* dark spec --panel    (#1F1F1F) */
+  --surface-nav-hover:    var(--surface-elevated);/* dark spec --panel-3  (#2A2A2A) — matches NavRow active+hover in dark prototype */
+  --bubble-user-bg:       var(--surface-sunken);  /* dark spec --panel-2 (#0A0A0A) */
+  --bubble-user-fg:       var(--fg-primary);      /* dark spec --text — near-white */
 
   /* Foreground */
   --fg-primary:           #F5F5F5;
@@ -333,6 +363,13 @@
   --color-surface-sunken:   var(--surface-sunken);
   --color-surface-elevated: var(--surface-elevated);
   --color-surface-inverse:  var(--surface-inverse);
+
+  /* Theme-flipping surface aliases — composer/input, sidebar/nav, user bubble */
+  --color-surface-input:      var(--surface-input);
+  --color-surface-nav:        var(--surface-nav);
+  --color-surface-nav-hover:  var(--surface-nav-hover);
+  --color-bubble-user-bg:     var(--bubble-user-bg);
+  --color-bubble-user-fg:     var(--bubble-user-fg);
 
   /* ---- NEW: foreground ---- */
   --color-fg-primary:   var(--fg-primary);

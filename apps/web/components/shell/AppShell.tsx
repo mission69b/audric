@@ -72,7 +72,12 @@ export function AppShell({
             className="fixed inset-0 z-[99] bg-fg-primary/40 md:hidden"
             onClick={() => setMobileOpen(false)}
           />
-          <div className="fixed inset-y-0 left-0 z-[100] w-[80vw] max-w-[320px] md:hidden animate-slide-from-left">
+          {/* Drawer wrapper uses h-dvh (dynamic viewport height) instead of
+              inset-y-0 because iOS Safari's address bar shrinks/grows the
+              visual viewport — `inset-y-0` left a stripe of dimmer visible
+              between the drawer and the bottom URL bar. h-dvh + top-0 tracks
+              the live viewport on mobile. */}
+          <div className="fixed top-0 left-0 h-dvh z-[100] w-[80vw] max-w-[320px] md:hidden animate-slide-from-left">
             <AppSidebar
               activePanel={panel}
               onPanelChange={setPanel}
