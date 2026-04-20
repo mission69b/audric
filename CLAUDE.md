@@ -239,10 +239,14 @@ pnpm test         # Run tests (Vitest)
 
 ---
 
-## Styling — Audric Design System v1.1 (light only)
+## Styling — Audric Design System v1.2 (light + dark)
 
 Source of truth: `apps/web/app/globals.css` + `design_handoff_audric/design_files/colors_and_type.css`.
-The full handoff lives in `design_handoff_audric/`; the implementation history is in `design_handoff_audric/IMPLEMENTATION_PLAN.md` (Phases 1–14).
+The full handoff lives in `design_handoff_audric/`. Implementation history:
+- `IMPLEMENTATION_PLAN.md` — dark-mode build plan (Phases 1–6 + post-launch revisions)
+- `IMPLEMENTATION_PLAN_PHASES_1_14_LIGHT_MARKETING.md` — light theme + marketing reskin (Phases 1–14)
+
+See also: `.cursor/rules/design-system.mdc` for the day-to-day rules every new component must follow.
 
 ### Fonts
 
@@ -279,9 +283,19 @@ The `@theme inline` block in `globals.css` exposes every token as a Tailwind uti
 
 `globals.css` exposes semantic ramp classes that mirror the Typography handoff: `.ads-h1` / `.ads-h2` / `.ads-h3`, `.ads-body[-b/-sm/-sm-b/-xs/-xs-b]`, `.ads-label-md` / `.ads-label-sm`, `.ads-button-md` / `.ads-button-sm`, `.ads-code`, plus numeral helpers `.num-display` / `.num-tabular` / `.label-mono`.
 
+### Theming (light + dark, Phase 6 onward)
+
+- The authenticated app shell (`/new`, `/chat/[sessionId]`, `/settings`) and the utility/handoff surfaces (`/verify`, `/auth/callback`, `/pay/[slug]`) all theme via `data-theme="dark"` on `<html>`. Marketing (`/`, `/savings`, `/credit`, `/swap`, `/send`, `/receive`) and legal (`/privacy`, `/terms`, `/disclaimer`, `/security`) stay **light-locked**. Single source of truth: `apps/web/lib/theme/public-paths.ts`, consumed by both the inline anti-flash script (`lib/theme/script.ts`) and the runtime `ThemeProvider`.
+- Default user pref: `system` (follows `prefers-color-scheme`). Toggle lives in Settings → Account → Appearance — there is **no** sidebar toggle (removed post-Phase 6 — too much nav-rail noise).
+- All dark overrides live in the single `[data-theme="dark"] { ... }` block in `globals.css`. **Never** branch a component on theme. **Never** use `dark:` Tailwind variants. If a screen looks wrong in dark, the fix is either (a) tune a token in that block, or (b) replace a hardcoded color with the right semantic token.
+- **Theme-flipping semantic tokens** — for the handful of surfaces that sit at *different* positions in the surface hierarchy between light and dark per the dark prototype (where a single canonical `surface-{page|card|sunken}` token can't express the flip):
+  - `--surface-input` — composer/textarea bg (light: card; dark: deepest panel)
+  - `--surface-nav` — sidebar/nav rail bg (light: sunken; dark: lifted card)
+  - `--surface-nav-hover` — sidebar row hover (always one step lighter than nav)
+  - `--bubble-user-bg` / `--bubble-user-fg` — user chat bubble (near-black bg + white text in *both* themes)
+
 ### Conventions
 
-- Light theme only — no dark-mode opt-in (the legacy `.light-theme` no-op was removed in Phase 14).
 - Group utilities: layout → spacing → sizing → colors → effects.
 - `cn()` for conditional classes.
 - New marketing/landing components live under `components/landing/`; shared primitives (`BorderedGrid`, `BrowserFrame`, `QRReceiptCard`) sit alongside section components.

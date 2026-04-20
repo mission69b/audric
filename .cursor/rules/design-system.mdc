@@ -1,0 +1,107 @@
+---
+description: Audric Design System v1.2 — semantic tokens only, typography ramp, theme-flipping tokens, no raw hex / no Tailwind defaults / no dark: variants
+alwaysApply: true
+---
+
+# Audric Design System
+
+Source of truth: `apps/web/app/globals.css` + `design_handoff_audric/design_files/colors_and_type.css`.
+Prototype reference: `design_handoff_audric/design_files/audric-app-{light,dark}/`.
+
+## Rule 1 — Semantic tokens only, no raw colors
+
+Every color value resolves through a CSS variable. Never use raw hex, never use Tailwind default colors (`red-400`, `gray-500`, `bg-white` outside the documented avatar exception).
+
+```tsx
+// ❌ BAD
+<div className="bg-white border border-gray-200 text-red-500">
+<div className="bg-[#F7F7F7] text-[#191919]">
+<div style={{ background: '#F7F7F7' }}>
+
+// ✅ GOOD
+<div className="bg-surface-page border border-border-subtle text-error-fg">
+<div className="bg-surface-card text-fg-primary">
+<div style={{ background: 'var(--surface-card)' }}>
+```
+
+Available semantic groups (full list in `globals.css`):
+
+- **Surface**: `surface-page` / `surface-card` / `surface-sunken` / `surface-elevated` / `surface-inverse`
+- **Foreground**: `fg-primary` / `fg-secondary` / `fg-muted` / `fg-disabled` / `fg-inverse`
+- **Border**: `border-default` / `border-subtle` / `border-strong` / `border-focus`
+- **Status** (each has `-fg` / `-bg` / `-border` / `-solid`): `success-*` / `warning-*` / `error-*` / `info-*`
+- **Accent**: `accent-primary` / `accent-primary-hover` / `accent-primary-bg`
+- **Hue palette** (marketing illustrations only): `p400`, `pu500`, `t300`, etc.
+
+## Rule 2 — Theme-flipping tokens for surfaces that swap hierarchy
+
+A handful of surfaces sit at *different* positions in the surface hierarchy between light and dark per the prototype. Use the dedicated theme-flipping token, not a canonical surface token.
+
+| Surface | Token | Light | Dark |
+|---|---|---|---|
+| Composer / textarea | `surface-input` | card (white) | deepest panel (`#0A0A0A`) |
+| Sidebar / nav rail | `surface-nav` | sunken (gray) | lifted card (`#1F1F1F`) |
+| Sidebar row hover | `surface-nav-hover` | card | elevated |
+| User chat bubble bg | `bubble-user-bg` | near-black | near-black (stable) |
+| User chat bubble fg | `bubble-user-fg` | white | white (stable) |
+
+```tsx
+// ❌ BAD — sidebar will look identical to page bg in dark
+<aside className="bg-surface-sunken">
+
+// ✅ GOOD — sidebar lifts above page in dark per prototype
+<aside className="bg-surface-nav">
+```
+
+## Rule 3 — Typography uses the ADS ramp + `font-{serif,sans,mono}`
+
+Three semantic font stacks:
+
+- `font-serif` — New York. Headlines, balances, hero numerals.
+- `font-sans` — Geist Sans. Default body. Set on `<body>`.
+- `font-mono` — Departure Mono. Labels, eyebrows, badges, button text. Always uppercase + tracking.
+
+For full type scale, prefer the `.ads-*` semantic ramp classes (`ads-h1`, `ads-body`, `ads-label-md`, `ads-button-md`, etc.) defined in `globals.css`. Numerals: `.num-display`, `.num-tabular`.
+
+```tsx
+// ❌ BAD
+<h1 className="text-3xl font-bold">Balance</h1>
+
+// ✅ GOOD
+<h1 className="ads-h1">Balance</h1>
+<span className="font-mono text-[11px] tracking-[0.08em] uppercase">Available</span>
+```
+
+## Rule 4 — Theming: `data-theme="dark"` only, never branch components
+
+Dark mode is a single `[data-theme="dark"] { ... }` block in `globals.css`. **Never** use `dark:` Tailwind variants. **Never** branch a component on theme. If something looks wrong in dark, fix it at the token layer.
+
+```tsx
+// ❌ BAD
+<div className="bg-white dark:bg-black text-black dark:text-white">
+const bg = theme === 'dark' ? 'bg-zinc-900' : 'bg-white';
+
+// ✅ GOOD — tokens flip automatically via [data-theme="dark"] in globals.css
+<div className="bg-surface-card text-fg-primary">
+```
+
+Light-locked routes (marketing + legal) bypass theming via `apps/web/lib/theme/public-paths.ts`. Themed routes (app shell + utility surfaces like `/verify`, `/auth/callback`, `/pay/[slug]`) get the attribute. Don't add toggle UI outside Settings → Account → Appearance.
+
+## Rule 5 — New screens reference the prototype HTML
+
+Before building a new component or panel, check the corresponding `.jsx` in `design_handoff_audric/design_files/audric-app-{light,dark}/` for the canonical layout, spacing, and tokens. Cite the prototype path in a header comment so the next reader can diff against it:
+
+```tsx
+// Visual language matches `design_handoff_audric/design_files/audric-app-light/portfolio.jsx`
+// (and `audric-app-dark/portfolio.jsx` for dark variant — same component tree).
+export function PortfolioPanel() { ... }
+```
+
+## Quick checklist before opening a PR with new UI
+
+- [ ] No raw hex / Tailwind default colors in `className` or inline styles
+- [ ] No `dark:` variants
+- [ ] Sidebar / composer / chat bubble use the right theme-flipping token
+- [ ] Typography uses `.ads-*` ramp classes or `font-{serif,sans,mono}` stacks
+- [ ] Header comment cites the design-handoff prototype path
+- [ ] Screen renders correctly in both themes (toggle via Settings → Account → Appearance)
