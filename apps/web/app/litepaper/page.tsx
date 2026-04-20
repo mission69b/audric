@@ -40,7 +40,7 @@ export default function LitepaperPage() {
         <section className={s.sec}>
           <div className={s.secLabel}>The Problem</div>
           <h2>Your money apps don&apos;t<br /><em>understand money.</em></h2>
-          <p>Five apps. None of them talk to each other. None of them know you. Every financial action requires you to already know what you&apos;re doing.</p>
+          <p>Your bank charges $25 for a wire. Your savings earns 0.1%. PayPal takes a cut. None of them know you — your history, your goals, what you asked last month.</p>
           <p>AI got good at answering questions. It doesn&apos;t move money.</p>
         </section>
 
