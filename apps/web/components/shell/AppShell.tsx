@@ -99,7 +99,7 @@ export function AppShell({
             <button
               onClick={() => setMobileOpen(true)}
               aria-label="Open menu"
-              className="inline-flex items-center justify-center w-8 h-8 rounded-sm border border-border-strong bg-surface-card text-fg-muted hover:text-fg-primary hover:border-fg-primary transition-colors focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
+              className="inline-flex items-center justify-center w-8 h-8 rounded-sm border border-border-strong bg-surface-card text-fg-muted focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
             >
               <svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
                 <line x1="3" y1="5" x2="15" y2="5" />
