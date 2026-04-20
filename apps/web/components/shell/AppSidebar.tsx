@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { NavItem, type BadgeVariant } from './NavItem';
 import { ConvoHistoryList } from './ConvoHistoryList';
+import { ThemeToggleButton } from './ThemeToggleButton';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { Tag } from '@/components/ui/Tag';
 import { Icon } from '@/components/ui/Icon';
@@ -153,8 +154,9 @@ export function AppSidebar({
           ))}
         </div>
 
-        {/* Footer — profile only (Features budget pill removed in S.11) */}
-        <div className="flex flex-col items-center gap-2 pb-3 pt-2 border-t border-border-subtle shrink-0 w-full">
+        {/* Footer — theme toggle + profile (Features budget pill removed in S.11) */}
+        <div className="flex flex-col items-center gap-1.5 pb-3 pt-2 border-t border-border-subtle shrink-0 w-full">
+          <ThemeToggleButton tooltipSide="right" />
           {(email || address) && (
             <Tooltip label={email || (address ? truncateAddr(address) : 'Settings')} side="right">
               <button
@@ -254,36 +256,39 @@ export function AppSidebar({
         )}
       </nav>
 
-      {/* Footer — user info */}
+      {/* Footer — user info + theme toggle */}
       <div className="shrink-0 border-t border-border-subtle px-3 py-3">
         {(email || address) && (
-          <button
-            onClick={() => handleNav('settings')}
-            className="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-sm hover:bg-surface-card transition-colors group focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
-          >
-            <div
-              // See collapsed sidebar above for the rationale on `text-white`
-              // (color-stable avatar pill across themes, matches dark prototype).
-              className="w-7 h-7 rounded-full shrink-0 flex items-center justify-center font-mono text-[11px] text-white"
-              style={{ background: 'linear-gradient(135deg, var(--g500) 0%, var(--g700) 100%)' }}
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => handleNav('settings')}
+              className="flex-1 min-w-0 flex items-center gap-2.5 px-2 py-1.5 rounded-sm hover:bg-surface-card transition-colors group focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
             >
-              {initial}
-            </div>
-            <div className="flex-1 min-w-0 text-left">
-              {email && (
-                <p className="text-[12px] text-fg-secondary truncate">{email}</p>
-              )}
-              {address && (
-                <p
-                  className="font-mono text-[9px] tracking-[0.06em] uppercase text-fg-muted mt-0.5 hover:text-fg-secondary transition-colors"
-                  onClick={(e) => { e.stopPropagation(); handleCopyAddress(); }}
-                  title={`Copy: ${address}`}
-                >
-                  {copied ? 'Copied!' : truncateAddr(address)}
-                </p>
-              )}
-            </div>
-          </button>
+              <div
+                // See collapsed sidebar above for the rationale on `text-white`
+                // (color-stable avatar pill across themes, matches dark prototype).
+                className="w-7 h-7 rounded-full shrink-0 flex items-center justify-center font-mono text-[11px] text-white"
+                style={{ background: 'linear-gradient(135deg, var(--g500) 0%, var(--g700) 100%)' }}
+              >
+                {initial}
+              </div>
+              <div className="flex-1 min-w-0 text-left">
+                {email && (
+                  <p className="text-[12px] text-fg-secondary truncate">{email}</p>
+                )}
+                {address && (
+                  <p
+                    className="font-mono text-[9px] tracking-[0.06em] uppercase text-fg-muted mt-0.5 hover:text-fg-secondary transition-colors"
+                    onClick={(e) => { e.stopPropagation(); handleCopyAddress(); }}
+                    title={`Copy: ${address}`}
+                  >
+                    {copied ? 'Copied!' : truncateAddr(address)}
+                  </p>
+                )}
+              </div>
+            </button>
+            <ThemeToggleButton tooltipSide="top" />
+          </div>
         )}
       </div>
     </aside>

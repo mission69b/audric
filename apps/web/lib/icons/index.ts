@@ -25,6 +25,8 @@ import { GoalsIcon } from './GoalsIcon';
 import { LinkIcon } from './LinkIcon';
 import { MailIcon } from './MailIcon';
 import { MicrophoneIcon } from './MicrophoneIcon';
+import { MonitorIcon } from './MonitorIcon';
+import { MoonIcon } from './MoonIcon';
 import { PanelLeftIcon } from './PanelLeftIcon';
 import { PauseIcon } from './PauseIcon';
 import { PayIcon } from './PayIcon';
@@ -38,6 +40,7 @@ import { ShieldIcon } from './ShieldIcon';
 import { SparkleIcon } from './SparkleIcon';
 import { SpinnerIcon } from './SpinnerIcon';
 import { StoreIcon } from './StoreIcon';
+import { SunIcon } from './SunIcon';
 
 export type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
 
@@ -68,6 +71,8 @@ export const ICONS = {
   'link': LinkIcon,
   'mail': MailIcon,
   'microphone': MicrophoneIcon,
+  'monitor': MonitorIcon,
+  'moon': MoonIcon,
   'panel-left': PanelLeftIcon,
   'pause': PauseIcon,
   'pay': PayIcon,
@@ -81,6 +86,7 @@ export const ICONS = {
   'sparkle': SparkleIcon,
   'spinner': SpinnerIcon,
   'store': StoreIcon,
+  'sun': SunIcon,
 } as const satisfies Record<string, IconComponent>;
 
 export type IconName = keyof typeof ICONS;
@@ -111,6 +117,8 @@ export { GoalsIcon };
 export { LinkIcon };
 export { MailIcon };
 export { MicrophoneIcon };
+export { MonitorIcon };
+export { MoonIcon };
 export { PanelLeftIcon };
 export { PauseIcon };
 export { PayIcon };
@@ -124,3 +132,4 @@ export { ShieldIcon };
 export { SparkleIcon };
 export { SpinnerIcon };
 export { StoreIcon };
+export { SunIcon };
