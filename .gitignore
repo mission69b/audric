@@ -41,5 +41,5 @@ pnpm-debug.log*
 .env.vercel-check
 
 # local-only redesign artifacts (kept out of the repo on purpose)
-design_handoff_audric/
+design_handoff_audric*/
 scripts/
