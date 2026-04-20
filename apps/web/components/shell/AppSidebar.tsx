@@ -159,7 +159,12 @@ export function AppSidebar({
             <Tooltip label={email || (address ? truncateAddr(address) : 'Settings')} side="right">
               <button
                 onClick={() => handleNav('settings')}
-                className="w-7 h-7 rounded-full shrink-0 flex items-center justify-center font-mono text-[11px] text-fg-inverse focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
+                // Avatar pill is color-stable across themes (matches dark prototype's
+                // `audric-app-dark/sidebar.jsx` line 78 — same green gradient + same
+                // white initial in light and dark). `text-white` is pinned, NOT
+                // `text-fg-inverse`, because fg-inverse flips to black in dark and
+                // would be unreadable against the dark-green stop of the gradient.
+                className="w-7 h-7 rounded-full shrink-0 flex items-center justify-center font-mono text-[11px] text-white focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
                 style={{ background: 'linear-gradient(135deg, var(--g500) 0%, var(--g700) 100%)' }}
                 aria-label="Settings"
               >
@@ -257,7 +262,9 @@ export function AppSidebar({
             className="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-sm hover:bg-surface-card transition-colors group focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
           >
             <div
-              className="w-7 h-7 rounded-full shrink-0 flex items-center justify-center font-mono text-[11px] text-fg-inverse"
+              // See collapsed sidebar above for the rationale on `text-white`
+              // (color-stable avatar pill across themes, matches dark prototype).
+              className="w-7 h-7 rounded-full shrink-0 flex items-center justify-center font-mono text-[11px] text-white"
               style={{ background: 'linear-gradient(135deg, var(--g500) 0%, var(--g700) 100%)' }}
             >
               {initial}

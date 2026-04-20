@@ -88,7 +88,7 @@ export function ContactsSection({ address }: ContactsSectionProps) {
                 .join(' ')}
             >
               <div
-                className="shrink-0 w-7 h-7 rounded-full grid place-items-center text-[11px] font-semibold text-fg-inverse"
+                className="shrink-0 w-7 h-7 rounded-full grid place-items-center text-[11px] font-semibold text-white"
                 style={{ background: AVATAR_GRADIENT }}
                 aria-hidden="true"
               >
