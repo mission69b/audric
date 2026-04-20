@@ -1,0 +1,489 @@
+/* ── Nav ── */
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 32px;
+  border-bottom: 1px solid var(--border-default);
+  background: var(--surface-card);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.navBrand {
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--n900);
+}
+.navLinks {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+}
+.navLinks a {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--n600);
+  text-decoration: none;
+  transition: color 0.12s;
+}
+.navLinks a:hover {
+  color: var(--n900);
+}
+.navCta {
+  border: 1px solid var(--n300);
+  padding: 9px 14px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--n700);
+  border-radius: 4px;
+  transition: border-color 0.12s, color 0.12s;
+  text-decoration: none;
+}
+.navCta:hover {
+  border-color: var(--n600);
+  color: var(--n900);
+}
+
+/* ── Layout ── */
+.page {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 0 32px;
+}
+
+/* ── Eyebrow ── */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--n600);
+}
+
+/* ── Hero ── */
+.hero {
+  padding: 80px 0 72px;
+  border-bottom: 1px solid var(--border-default);
+}
+.hero h1 {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  font-size: clamp(48px, 7vw, 80px);
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+  margin: 20px 0 24px;
+  color: var(--n900);
+}
+.hero h1 em {
+  font-style: italic;
+  color: var(--n700);
+}
+.heroLede {
+  font-size: 17px;
+  color: var(--n700);
+  max-width: 480px;
+  line-height: 1.55;
+  margin-bottom: 32px;
+}
+.heroMeta {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--n500);
+}
+
+/* ── Sections ── */
+.sec {
+  padding: 64px 0;
+  border-bottom: 1px solid var(--border-default);
+}
+.sec:last-child {
+  border-bottom: none;
+}
+.secLabel {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--n500);
+  margin-bottom: 20px;
+}
+.sec h2 {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  font-size: clamp(28px, 4vw, 40px);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  margin-bottom: 24px;
+  color: var(--n900);
+}
+.sec h2 em {
+  font-style: italic;
+}
+.sec p {
+  font-size: 15px;
+  color: var(--n700);
+  line-height: 1.6;
+  margin-bottom: 16px;
+  max-width: 640px;
+}
+.sec p:last-child {
+  margin-bottom: 0;
+}
+.secNote {
+  font-size: 14px;
+  color: var(--n500);
+}
+
+/* ── Bordered grid (ADS pattern) ── */
+.gridBorder {
+  border: 1px solid var(--border-default);
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 32px 0;
+}
+.gridRow {
+  display: grid;
+}
+.cols3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+.cols2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+.cols4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+.gridCell {
+  padding: 22px 24px;
+  border-right: 1px solid var(--border-default);
+  border-bottom: 1px solid var(--border-default);
+  background: var(--surface-card);
+}
+.gridCell:last-child,
+.gridRow:last-child .gridCell {
+  border-bottom: none;
+}
+.gridRow .gridCell:last-child {
+  border-right: none;
+}
+.gridCellCenter {
+  text-align: center;
+}
+.gridCellFaded {
+  background: var(--n200);
+}
+.cellLabel {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--n500);
+  margin-bottom: 6px;
+}
+.cellValue {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  font-size: 28px;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--n900);
+  margin-bottom: 4px;
+}
+.cellValueSm {
+  font-size: 22px;
+}
+.cellTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--n900);
+  margin-bottom: 6px;
+}
+.cellBody {
+  font-size: 13px;
+  color: var(--n700);
+  line-height: 1.55;
+}
+.cellBodyXs {
+  font-size: 12px;
+}
+
+/* ── Table ── */
+.tblWrap {
+  border: 1px solid var(--border-default);
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 32px 0;
+}
+.tblWrap table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.tblWrap thead tr {
+  border-bottom: 1px solid var(--border-default);
+}
+.tblWrap th {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--n500);
+  text-align: left;
+  padding: 10px 16px;
+  background: var(--surface-card);
+}
+.tblWrap td {
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--border-default);
+  color: var(--n700);
+  vertical-align: top;
+  line-height: 1.5;
+}
+.tblWrap tr:last-child td {
+  border-bottom: none;
+}
+.tblWrap td:first-child {
+  color: var(--n900);
+  font-weight: 500;
+  white-space: nowrap;
+}
+.tblWrap code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  background: var(--n200);
+  padding: 1px 5px;
+  border-radius: 2px;
+}
+
+/* ── Raise params ── */
+.params {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  border: 1px solid var(--border-default);
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 32px 0;
+}
+.param {
+  padding: 18px 22px;
+  border-right: 1px solid var(--border-default);
+  border-bottom: 1px solid var(--border-default);
+  background: var(--surface-card);
+}
+.param:nth-child(2n) {
+  border-right: none;
+}
+.param:nth-last-child(-n+2) {
+  border-bottom: none;
+}
+.paramLabel {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--n500);
+  margin-bottom: 5px;
+}
+.paramValue {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--n900);
+  letter-spacing: -0.01em;
+}
+
+/* ── Chat demo ── */
+.chat {
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 32px 0;
+  background: var(--surface-card);
+}
+.chatHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--n200);
+}
+.chatHeadLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+}
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--g500);
+}
+.chatHeadRight {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--n600);
+}
+.chatBody {
+  padding: 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.bubble {
+  max-width: 76%;
+  padding: 9px 13px;
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.45;
+}
+.bubbleUser {
+  align-self: flex-end;
+  background: var(--n900);
+  color: var(--n100);
+  border-bottom-right-radius: 3px;
+}
+.bubbleAgent {
+  align-self: flex-start;
+  background: var(--n200);
+  color: var(--n800);
+  border-bottom-left-radius: 3px;
+}
+
+/* ── Team ── */
+.teamCard {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  border: 1px solid var(--border-default);
+  border-radius: 4px;
+  padding: 24px;
+  margin: 24px 0;
+  background: var(--surface-card);
+}
+.teamAvatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--n300);
+  display: grid;
+  place-items: center;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--n700);
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+}
+.teamName {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--n900);
+  margin-bottom: 2px;
+}
+.teamRole {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--n500);
+  margin-bottom: 10px;
+}
+.teamBio {
+  font-size: 14px;
+  color: var(--n700);
+  line-height: 1.55;
+}
+
+/* ── Links ── */
+.linkRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 24px;
+}
+.linkChip {
+  border: 1px solid var(--border-default);
+  border-radius: 4px;
+  padding: 8px 14px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--n700);
+  text-decoration: none;
+  transition: border-color 0.12s, color 0.12s;
+}
+.linkChip:hover {
+  border-color: var(--n600);
+  color: var(--n900);
+}
+
+/* ── Footer ── */
+.footer {
+  padding: 48px 0 80px;
+  border-top: 1px solid var(--border-default);
+}
+.footerLegal {
+  font-size: 12px;
+  color: var(--n500);
+  line-height: 1.6;
+  max-width: 640px;
+  margin-bottom: 20px;
+}
+.footerMeta {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--n400);
+}
+
+/* ── Responsive ── */
+@media (max-width: 680px) {
+  .nav {
+    padding: 16px 20px;
+  }
+  .hideMob {
+    display: none;
+  }
+  .page {
+    padding: 0 20px;
+  }
+  .hero {
+    padding: 56px 0 48px;
+  }
+  .sec {
+    padding: 48px 0;
+  }
+  .cols3,
+  .cols4 {
+    grid-template-columns: 1fr;
+  }
+  .cols2 {
+    grid-template-columns: 1fr;
+  }
+  .gridCell,
+  .param {
+    border-right: none;
+  }
+  .params {
+    grid-template-columns: 1fr;
+  }
+  .param:nth-child(2n) {
+    border-right: none;
+  }
+  .teamCard {
+    flex-direction: column;
+    gap: 12px;
+  }
+}
