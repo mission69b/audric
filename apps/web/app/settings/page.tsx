@@ -112,9 +112,9 @@ function SettingsContent() {
         </span>
       </header>
 
-      <div className="flex-1 grid grid-cols-1 md:grid-cols-[220px_1fr] overflow-hidden">
+      <div className="flex-1 min-h-0 grid grid-cols-1 grid-rows-[auto_1fr] md:grid-rows-none md:grid-cols-[220px_1fr] overflow-hidden">
         {/* Sub-nav */}
-        <aside className="border-b md:border-b-0 md:border-r border-border-subtle px-3 py-2.5 md:px-3.5 md:py-5 flex md:flex-col flex-row gap-1 overflow-x-auto md:overflow-y-auto md:overflow-x-visible shrink-0 md:shrink">
+        <aside className="self-start md:self-auto border-b md:border-b-0 md:border-r border-border-subtle px-3 py-2.5 md:px-3.5 md:py-5 flex md:flex-col flex-row gap-1 overflow-x-auto md:overflow-y-auto md:overflow-x-visible">
           {SECTIONS.map((s) => {
             const isActive = activeSection === s.id;
             return (
@@ -137,7 +137,7 @@ function SettingsContent() {
         </aside>
 
         {/* Content */}
-        <section className="overflow-y-auto px-6 sm:px-10 py-7">
+        <section className="min-h-0 overflow-y-auto px-6 sm:px-10 py-7">
           <div className="max-w-[640px] mx-auto">
             <div className="font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted pb-2.5 border-b border-border-subtle">
               {activeLabel}
