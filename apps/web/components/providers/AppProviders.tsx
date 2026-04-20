@@ -5,6 +5,7 @@ import { SuiClientProvider, WalletProvider, createNetworkConfig } from '@mysten/
 import { getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
 import { useState } from 'react';
 import { ToastProvider } from '@/components/ui/Toast';
+import { ThemeProvider } from '@/components/providers/ThemeProvider';
 import '@mysten/dapp-kit/dist/index.css';
 
 const { networkConfig } = createNetworkConfig({
@@ -22,14 +23,16 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <SuiClientProvider networks={networkConfig} defaultNetwork={defaultNetwork}>
-        <WalletProvider autoConnect>
-          <ToastProvider>
-            {children}
-          </ToastProvider>
-        </WalletProvider>
-      </SuiClientProvider>
-    </QueryClientProvider>
+    <ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <SuiClientProvider networks={networkConfig} defaultNetwork={defaultNetwork}>
+          <WalletProvider autoConnect>
+            <ToastProvider>
+              {children}
+            </ToastProvider>
+          </WalletProvider>
+        </SuiClientProvider>
+      </QueryClientProvider>
+    </ThemeProvider>
   );
 }
