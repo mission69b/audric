@@ -114,7 +114,7 @@ function SettingsContent() {
 
       <div className="flex-1 grid grid-cols-1 md:grid-cols-[220px_1fr] overflow-hidden">
         {/* Sub-nav */}
-        <aside className="md:border-r border-border-subtle px-3.5 py-5 flex md:flex-col flex-row gap-1 overflow-x-auto md:overflow-y-auto md:overflow-x-visible">
+        <aside className="border-b md:border-b-0 md:border-r border-border-subtle px-3 py-2.5 md:px-3.5 md:py-5 flex md:flex-col flex-row gap-1 overflow-x-auto md:overflow-y-auto md:overflow-x-visible shrink-0 md:shrink">
           {SECTIONS.map((s) => {
             const isActive = activeSection === s.id;
             return (
@@ -124,10 +124,10 @@ function SettingsContent() {
                 onClick={() => setActiveSection(s.id)}
                 aria-current={isActive ? 'true' : undefined}
                 className={[
-                  'whitespace-nowrap text-left px-3.5 py-2.5 rounded-pill font-mono text-[10px] tracking-[0.1em] uppercase transition focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]',
+                  'whitespace-nowrap text-left px-3 py-1.5 md:px-3.5 md:py-2.5 rounded-pill font-mono text-[10px] tracking-[0.1em] uppercase transition focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]',
                   isActive
-                    ? 'bg-border-subtle text-fg-primary'
-                    : 'text-fg-muted hover:text-fg-primary hover:bg-border-subtle/50',
+                    ? 'bg-surface-card text-fg-primary shadow-[var(--shadow-flat)]'
+                    : 'text-fg-muted hover:text-fg-primary hover:bg-surface-card',
                 ].join(' ')}
               >
                 {s.label}

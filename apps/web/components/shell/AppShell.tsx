@@ -90,10 +90,11 @@ export function AppShell({
       {/* Main content */}
       <main
         id="main-content"
-        className="flex-1 overflow-hidden flex flex-col relative min-w-0"
+        className="flex-1 overflow-hidden flex flex-col min-w-0"
       >
-        {/* Mobile-only hamburger — opens sidebar overlay */}
-        <div className="md:hidden absolute top-4 left-4 z-20">
+        {/* Mobile-only top strip — keeps the hamburger from overlapping
+            panel headings (it used to be absolute-positioned). */}
+        <div className="md:hidden flex items-center px-4 py-3 border-b border-border-subtle bg-surface-page shrink-0">
           <Tooltip label="Menu" side="right">
             <button
               onClick={() => setMobileOpen(true)}
@@ -109,7 +110,9 @@ export function AppShell({
           </Tooltip>
         </div>
 
-        {children}
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+          {children}
+        </div>
       </main>
     </div>
   );

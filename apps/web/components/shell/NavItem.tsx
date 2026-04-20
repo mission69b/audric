@@ -21,7 +21,7 @@ export function NavItem({ icon, label, active, badge, collapsed, onClick }: NavI
         'group flex items-center w-full rounded-sm text-left transition-colors',
         'focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]',
         active
-          ? 'bg-border-subtle text-fg-primary'
+          ? 'bg-surface-card text-fg-primary shadow-[var(--shadow-flat)]'
           : 'text-fg-secondary hover:text-fg-primary hover:bg-surface-card',
         collapsed
           ? 'justify-center w-10 h-10 px-0'

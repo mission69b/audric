@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Audric · Dashboard (Dark)</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  /* Dark-mode palette — overrides the light aliases with hand-tuned dark values.
+     Tokens from colors_and_type.css still back the marketing site; we override
+     only the app-scoped aliases here so the shared stylesheet stays untouched. */
+  :root{
+    /* Dark-mode spec derived from the Figma chat + navbar frames.
+       Key insight: page is a LIFTED grey (#1C1C1C), cards share it, and
+       INPUTS / USER BUBBLES are PURE BLACK (#0A0A0A) — inverted from light
+       mode where inputs are lighter than page. */
+    --bg:      #141414;  /* page canvas — near-black, matches Figma navbar page */
+    --panel:   #1F1F1F;  /* card / sidebar — lifted grey, visibly separated */
+    --panel-2: #0A0A0A;  /* input / user bubble — pure black (Figma composer) */
+    --panel-3: #2A2A2A;  /* active nav row / hover — one step above panel */
+    --line:    #2A2A2A;  /* hairline divider */
+    --line-2:  #3D3D3D;  /* interactive border / hover */
+    --text:    #F5F5F5;  /* primary text */
+    --text-2:  #B0B0B0;  /* secondary */
+    --text-3:  #808080;  /* muted / placeholder */
+    --on-text: #0A0A0A;  /* foreground for buttons filled with --text */
+
+    /* Accents shifted UP the hue scale for dark-bg legibility
+       (design system only defines light-mode 500/600s — 400 reads cleaner on dark) */
+    --green:   var(--g400);     /* #4CE160 — crisp on dark (was g500) */
+    --green-d: var(--g500);
+    --blue:    var(--b400);     /* #3D91FF — reads as accent, not plastic (was b500) */
+    --red:     var(--r400);     /* #F66A6A — softer red on dark (was r600) */
+    --yellow:  var(--y400);     /* warmer yellow */
+
+    /* Status tints — dark-mode equivalents of light's --xx-bg pastels.
+       We can't use b200/g200/r200 (too washed out on #1F) — so use a
+       low-alpha version of the solid at 15% opacity mixed into the panel. */
+    --info-bg:    rgba(61, 145, 255, 0.14);
+    --success-bg: rgba(76, 225, 96, 0.14);
+    --error-bg:   rgba(246, 106, 106, 0.14);
+    --warning-bg: rgba(229, 177, 0, 0.18);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font-sans);font-size:14px;height:100%;line-height:1.45;-webkit-font-smoothing:antialiased}
+  button{font:inherit;cursor:pointer;border:none;background:none;color:inherit;padding:0;transition:background .12s ease, color .12s ease, border-color .12s ease, opacity .12s ease}
+  button:hover{opacity:.92}
+  a{color:inherit;text-decoration:none;transition:color .12s ease}
+  a:hover{color:var(--text)}
+  input,textarea{font:inherit;color:inherit;background:transparent;border:none;outline:none}
+  input:focus,textarea:focus{outline:none}
+  .mono{font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.08em}
+  #root{height:100%}
+  ::-webkit-scrollbar{width:6px;height:6px}
+  ::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:3px}
+  ::-webkit-scrollbar-thumb:hover{background:var(--text-3)}
+  /* Card + row hover */
+  .hover-card{transition:border-color .12s ease, background .12s ease}
+  .hover-card:hover{border-color:var(--line-2)}
+  .hover-row:hover{background:var(--panel)}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="./primitives.jsx"></script>
+<script type="text/babel" src="./sidebar.jsx"></script>
+<script type="text/babel" src="./dashboard.jsx"></script>
+<script type="text/babel" src="./portfolio.jsx"></script>
+<script type="text/babel" src="./activity.jsx"></script>
+<script type="text/babel" src="./pay.jsx"></script>
+<script type="text/babel" src="./goals.jsx"></script>
+<script type="text/babel" src="./contacts.jsx"></script>
+<script type="text/babel" src="./store.jsx"></script>
+<script type="text/babel" src="./settings.jsx"></script>
+<script type="text/babel" src="./app.jsx"></script>
+</body>
+</html>
