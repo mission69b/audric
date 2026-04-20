@@ -262,7 +262,7 @@ export default function LitepaperPage() {
             <div className={s.param}><div className={s.paramLabel}>Target</div><div className={s.paramValue}>$350,000</div></div>
             <div className={s.param}><div className={s.paramLabel}>Minimum cheque</div><div className={s.paramValue}>$25,000</div></div>
             <div className={s.param}><div className={s.paramLabel}>Runway</div><div className={s.paramValue}>18 months</div></div>
-            <div className={s.param}><div className={s.paramLabel}>Valuation cap</div><div className={s.paramValue}>On request</div></div>
+            <div className={s.param}><div className={s.paramLabel}>Valuation cap</div><div className={s.paramValue}>$5,000,000</div></div>
           </div>
 
           <div className={s.tblWrap}>
