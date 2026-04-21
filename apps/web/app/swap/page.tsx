@@ -18,8 +18,6 @@ const TOKENS = [
   { symbol: 'DEEP', name: 'DeepBook' },
   { symbol: 'SCA', name: 'Scallop' },
   { symbol: 'BUCK', name: 'Bucket USD' },
-  { symbol: 'haSUI', name: 'Haedal Staked SUI' },
-  { symbol: 'afSUI', name: 'Aftermath Staked SUI' },
 ];
 
 export default function SwapPage() {
