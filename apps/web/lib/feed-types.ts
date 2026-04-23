@@ -44,7 +44,14 @@ export interface AgentStepData {
 
 export interface TxHistoryEntry {
   digest: string;
+  /** Coarse bucket: send / lending / swap / transaction. */
   action: string;
+  /**
+   * [v1.5.3] Finer-grained label from engine ≥ 0.45.0
+   * (deposit, withdraw, borrow, repay, payment_link, on-chain, …).
+   * Display logic should prefer this over `action` when present.
+   */
+  label?: string;
   direction: 'out' | 'in' | 'self';
   amount?: number;
   asset?: string;

@@ -4,7 +4,14 @@ import { CardShell, fmtAmt, fmtRelativeTime, SUISCAN_TX_URL, SUISCAN_ICON } from
 
 interface TxRecord {
   digest: string;
+  /** Coarse bucket: send / lending / swap / transaction. */
   action: string;
+  /**
+   * [v1.5.3] Finer-grained display label from engine
+   * (deposit, withdraw, borrow, repay, payment_link, on-chain, …).
+   * Falls back to `action` when missing (older SDK versions).
+   */
+  label?: string;
   amount?: number;
   asset?: string;
   recipient?: string;
@@ -41,21 +48,50 @@ const ACTION_ICONS: Record<string, string> = {
   swap: '↺',
   claim: '↗',
   pay: '⚡',
+  payment_link: '⚡',
+  invoice: '⚡',
   stake: '↗',
   unstake: '↙',
+  liquidate: '⚠',
+  'on-chain': '◆',
+  lending: '◆',
 };
 
-function getIcon(action: string): string {
-  const lower = action.toLowerCase();
+/**
+ * [v1.5.3] Friendly capitalized labels for the new finer-grained
+ * `label` strings emitted by engine ≥ v0.45.0. Anything not in this
+ * map falls through to a CSS-capitalized version of the raw label.
+ */
+const FRIENDLY_LABELS: Record<string, string> = {
+  payment_link: 'Payment link',
+  'on-chain': 'On-chain',
+  unstake: 'Unstake',
+};
+
+function getIcon(label: string): string {
+  const lower = label.toLowerCase();
+  if (ACTION_ICONS[lower]) return ACTION_ICONS[lower];
   for (const [key, icon] of Object.entries(ACTION_ICONS)) {
     if (lower.includes(key)) return icon;
   }
   return '•';
 }
 
-function isOutflow(action: string): boolean {
-  const lower = action.toLowerCase();
-  return lower.includes('send') || lower.includes('pay') || lower.includes('repay') || lower.includes('withdraw');
+function getDisplayLabel(label: string): string {
+  return FRIENDLY_LABELS[label.toLowerCase()] ?? label;
+}
+
+function isOutflow(label: string): boolean {
+  const lower = label.toLowerCase();
+  return (
+    lower.includes('send') ||
+    lower.includes('pay') ||
+    lower.includes('repay') ||
+    lower.includes('withdraw') ||
+    lower === 'deposit' ||
+    lower === 'supply' ||
+    lower === 'stake'
+  );
 }
 
 function groupByDate(txs: TxRecord[]): Map<string, TxRecord[]> {
@@ -74,8 +110,18 @@ function groupByDate(txs: TxRecord[]): Map<string, TxRecord[]> {
   return groups;
 }
 
+/**
+ * [v1.5.3] Show up to 10 rows by default (was 5). The engine caps
+ * `transaction_history` at 50 with `maxResultSizeChars: 8000`, so
+ * 10 is a comfortable fit while still feeling like a real list.
+ *
+ * If the user wants more, they can ask for a date filter or the
+ * dashboard activity feed (which renders the full set).
+ */
+const VISIBLE_LIMIT = 10;
+
 export function TransactionHistoryCard({ data }: { data: HistoryData }) {
-  const txs = data.transactions.slice(0, 5);
+  const txs = data.transactions.slice(0, VISIBLE_LIMIT);
   if (!txs.length) return null;
 
   const groups = groupByDate(txs);
@@ -91,12 +137,14 @@ export function TransactionHistoryCard({ data }: { data: HistoryData }) {
             <span className="text-[10px] font-mono uppercase tracking-wider text-fg-muted">{label}</span>
             <div className="mt-1 space-y-0.5">
               {items.map((tx) => {
-                const outflow = isOutflow(tx.action);
+                const rawLabel = tx.label ?? tx.action;
+                const display = getDisplayLabel(rawLabel);
+                const outflow = isOutflow(rawLabel);
                 return (
                   <div key={tx.digest} className="flex items-center justify-between py-1 border-t border-border-subtle/30 font-mono text-[11px]">
                     <div className="flex items-center gap-1.5 min-w-0">
-                      <span className="text-fg-muted">{getIcon(tx.action)}</span>
-                      <span className="text-fg-primary font-medium capitalize truncate">{tx.action}</span>
+                      <span className="text-fg-muted">{getIcon(rawLabel)}</span>
+                      <span className="text-fg-primary font-medium capitalize truncate">{display}</span>
                       {tx.recipient && (
                         <span className="text-fg-muted truncate max-w-[60px]">→ {tx.recipient.length > 10 ? `${tx.recipient.slice(0, 6)}...` : tx.recipient}</span>
                       )}
@@ -124,7 +172,7 @@ export function TransactionHistoryCard({ data }: { data: HistoryData }) {
           </div>
         ))}
       </div>
-      {data.count > 5 && (
+      {data.count > VISIBLE_LIMIT && (
         <div className="mt-1.5 pt-1.5 border-t border-border-subtle/50 text-[10px] font-mono text-fg-muted text-center">
           Showing {txs.length} of {data.count}
         </div>
