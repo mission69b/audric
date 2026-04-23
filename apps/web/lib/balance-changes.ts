@@ -9,6 +9,12 @@ export interface BalanceChange {
 /**
  * Parse actual amount from Sui balance changes.
  * Used after transaction execution to extract real on-chain amounts.
+ *
+ * Matches by both:
+ *   1. The last `::` segment of the coin type (uppercased), and
+ *   2. The registry-resolved symbol (uppercased) — needed for tokens whose
+ *      on-chain coin type differs from their display symbol (e.g. vSUI is
+ *      `...::cert::CERT`).
  */
 export function parseActualAmount(
   changes: BalanceChange[] | undefined,
@@ -18,9 +24,15 @@ export function parseActualAmount(
   if (!changes?.length) return null;
   const hint = (assetHint ?? 'USDC').toUpperCase();
   const matches = changes.filter((c) => {
-    const sym = c.coinType.split('::').pop()?.toUpperCase() ?? '';
+    const lastSegment = c.coinType.split('::').pop()?.toUpperCase() ?? '';
+    const registrySymbol = resolveSymbol(c.coinType).toUpperCase();
     const amtOk = direction === 'positive' ? Number(c.amount) > 0 : Number(c.amount) < 0;
-    return amtOk && (sym === hint || sym.includes(hint));
+    const symMatch =
+      lastSegment === hint ||
+      lastSegment.includes(hint) ||
+      registrySymbol === hint ||
+      registrySymbol.includes(hint);
+    return amtOk && symMatch;
   });
   if (!matches.length) return null;
   // Pick the largest absolute amount — avoids selecting overlay fee entries

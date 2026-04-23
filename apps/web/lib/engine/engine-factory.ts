@@ -26,6 +26,7 @@ import {
 import { UpstashSessionStore } from './upstash-session-store';
 import { getRecipeRegistry } from './recipes';
 import { UpstashConversationStateStore } from './upstash-conversation-state-store';
+import { incrementSessionSpend } from './session-spend';
 import { GOAL_TOOLS } from './goal-tools';
 import { ADVICE_TOOLS } from './advice-tool';
 import { prisma } from '@/lib/prisma';
@@ -38,6 +39,12 @@ import {
   type Contact,
   type GoalSummary,
 } from './engine-context';
+import { runStartupCheck } from './spec-consistency';
+
+// [v1.4 Item 5] One-shot spec consistency check at module load. Dev-mode
+// hard-fails to surface drift immediately; prod-mode logs only because CI
+// is the real gate (see .github/workflows/ci.yml).
+runStartupCheck();
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const SONNET_MODEL = 'claude-sonnet-4-6';
@@ -134,6 +141,36 @@ export interface CreateEngineOpts {
   contacts?: Contact[];
   message?: string;
   conversationState?: ConversationState;
+  /**
+   * [v1.4] Total USD already auto-executed in this chat session. Threaded
+   * into the engine to enforce `autonomousDailyLimit`. Optional; `undefined`
+   * disables the cumulative cap.
+   */
+  sessionSpendUsd?: number;
+  /**
+   * [v1.4] Session id used by the engine's `onAutoExecuted` callback to
+   * persist incremental spend back into Redis. Required when
+   * `sessionSpendUsd` is set or daily-cap accounting is desired.
+   */
+  sessionId?: string;
+  /**
+   * [v1.4 Item 4] Surface routing decisions (effort + resolved model) so
+   * the chat route's `TurnMetricsCollector` can record them without
+   * re-implementing classifier logic. Fired exactly once after the
+   * engine is constructed.
+   */
+  onMeta?: (meta: { effortLevel: string; modelUsed: string }) => void;
+  /**
+   * [v1.4 Item 4] Per-guard observation hook forwarded directly to the
+   * engine's `onGuardFired`. Hosts wire their `TurnMetricsCollector`
+   * here so guard verdicts surface in `TurnMetrics.guardsFired`.
+   */
+  onGuardFired?: (guard: {
+    name: string;
+    tier: 'safety' | 'financial' | 'ux';
+    action: 'allow' | 'warn' | 'block';
+    injectionAdded: boolean;
+  }) => void;
 }
 
 export async function createEngine(
@@ -317,6 +354,7 @@ export async function createEngine(
     : 'medium';
   const routedModel = MODEL_OVERRIDE ?? (effort === 'low' ? HAIKU_MODEL : SONNET_MODEL);
   console.log(`[engine-factory] model=${routedModel} effort=${effort} thinking=${!routedModel.includes('haiku')}`);
+  opts.onMeta?.({ effortLevel: effort, modelUsed: routedModel });
 
   const engine = new QueryEngine({
     provider: new AnthropicProvider({ apiKey: ANTHROPIC_API_KEY }),
@@ -345,6 +383,21 @@ export async function createEngine(
     recipes: recipeRegistry,
     priceCache,
     permissionConfig,
+    /**
+     * [v1.4 Day 6 TODO] `sessionSpendUsd` and `onAutoExecuted` land in
+     * `@t2000/engine 0.41.0`. Until that publish, the published 0.40.4 type
+     * definitions don't expose them, so we cast to `unknown` then
+     * `EngineConfig` to keep the wiring in place. Remove the cast once
+     * the engine is bumped on Day 6.
+     */
+    ...((({
+      sessionSpendUsd: opts.sessionSpendUsd,
+      onAutoExecuted: opts.sessionId
+        ? ({ usdValue }: { usdValue: number }) =>
+            incrementSessionSpend(opts.sessionId!, usdValue)
+        : undefined,
+      onGuardFired: opts.onGuardFired,
+    } as unknown) as object)),
     ...(!routedModel.includes('haiku') && {
       thinking: { type: 'adaptive' as const },
       outputConfig: { effort },

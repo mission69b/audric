@@ -12,7 +12,12 @@ import { AudricMark } from '@/components/ui/AudricMark';
 
 interface ChatMessageProps {
   message: EngineChatMessage;
-  onActionResolve?: (action: PendingAction, approved: boolean, reason?: DenyReason) => void;
+  onActionResolve?: (
+    action: PendingAction,
+    approved: boolean,
+    reason?: DenyReason,
+    modifications?: Record<string, unknown>,
+  ) => void;
   autoApproveTools?: Set<string>;
   agentBudget?: number;
   onSendMessage?: (text: string) => void;

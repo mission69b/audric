@@ -5,6 +5,8 @@ import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { validateJwt, isValidSuiAddress } from '@/lib/auth';
 import { createEngine, getSessionStore, setConversationState } from '@/lib/engine/engine-factory';
 import { logSessionUsage } from '@/lib/engine/log-session-usage';
+import { getSessionSpend } from '@/lib/engine/session-spend';
+import { applyModificationsToAction, resolveOutcome } from '@/lib/engine/apply-modifications';
 import { prisma } from '@/lib/prisma';
 
 const AGENT_MODEL = process.env.AGENT_MODEL ?? 'claude-sonnet-4-20250514';
@@ -18,6 +20,20 @@ interface ResumeRequestBody {
   action: PendingAction;
   approved: boolean;
   executionResult?: unknown;
+  /**
+   * [v1.4 Item 4] Coarse outcome stored on the originating
+   * `TurnMetrics.pendingActionOutcome` row so analytics can compute
+   * approve / decline / modify ratios per tool. Optional: defaults to
+   * `approved` / `declined` from the boolean if omitted.
+   */
+  outcome?: 'approved' | 'declined' | 'modified';
+  /**
+   * [v1.4 Item 6] Subset of `action.input` keys the user edited via the
+   * permission card's modifiable-field controls. Overlaid onto
+   * `action.input` before reconstructing the turn so the recorded history
+   * matches what was actually approved.
+   */
+  modifications?: Record<string, unknown>;
 }
 
 function jsonError(message: string, status: number): Response {
@@ -35,7 +51,13 @@ export async function POST(request: NextRequest) {
     return jsonError('Invalid JSON body', 400);
   }
 
-  const { address, sessionId, action, approved, executionResult } = body;
+  const { address, sessionId, action: rawAction, approved, executionResult, outcome, modifications } = body;
+
+  // [v1.4 Item 6] Overlay user modifications on top of action.input so the
+  // engine reconstructs the turn with the approved values. The shared helper
+  // also handles the no-modifications case as identity for ref-equality.
+  const action: PendingAction = applyModificationsToAction(rawAction, modifications);
+  const resolvedOutcome = resolveOutcome(approved, modifications, outcome);
 
   if (!address || !sessionId || !action?.toolUseId) {
     return jsonError('address, sessionId, and action are required', 400);
@@ -66,10 +88,16 @@ export async function POST(request: NextRequest) {
     .catch(() => []);
 
   try {
+    // [v1.4] Forward cumulative session spend so the resumed turn enforces
+    // the daily autonomous cap on any subsequent auto-tier write tools.
+    const sessionSpendUsd = await getSessionSpend(sessionId);
+
     const engine = await createEngine({
       address,
       session,
       contacts,
+      sessionSpendUsd,
+      sessionId,
     });
     const priorMsgCount = engine.getMessages().length;
 
@@ -146,6 +174,29 @@ export async function POST(request: NextRequest) {
           logSessionUsage(address, sessionId, usage, messages, AGENT_MODEL, priorMsgCount).catch((err) =>
             console.error('[engine/resume] session usage log failed:', err),
           );
+
+          /**
+           * [v1.4 Item 6] Update the originating `TurnMetrics` row with
+           * the resolved outcome (approved / declined / modified). Keyed
+           * on `(sessionId, turnIndex)` from `PendingAction.turnIndex`
+           * (engine 0.41.0). When that field is absent (pre-publish), we
+           * fall back to the looser `pendingActionOutcome:'pending'`
+           * match per Day 4's interim contract.
+           */
+          const actionTurnIndex =
+            (action as PendingAction & { turnIndex?: number }).turnIndex;
+          const updateWhere =
+            typeof actionTurnIndex === 'number'
+              ? { sessionId, turnIndex: actionTurnIndex }
+              : { sessionId, pendingActionOutcome: 'pending' };
+          prisma.turnMetrics
+            .updateMany({
+              where: updateWhere,
+              data: { pendingActionOutcome: resolvedOutcome },
+            })
+            .catch((err) =>
+              console.warn('[TurnMetrics] pendingActionOutcome update failed (non-fatal):', err),
+            );
 
           controller.close();
         }

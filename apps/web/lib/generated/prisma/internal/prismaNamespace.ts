@@ -397,7 +397,8 @@ export const ModelName = {
   PortfolioSnapshot: 'PortfolioSnapshot',
   UserFinancialProfile: 'UserFinancialProfile',
   UserMemory: 'UserMemory',
-  LinkedWallet: 'LinkedWallet'
+  LinkedWallet: 'LinkedWallet',
+  TurnMetrics: 'TurnMetrics'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -413,7 +414,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "userPreferences" | "conversationLog" | "sessionUsage" | "servicePurchase" | "savingsGoal" | "appEvent" | "adviceLog" | "payment" | "watchAddress" | "portfolioSnapshot" | "userFinancialProfile" | "userMemory" | "linkedWallet"
+    modelProps: "user" | "userPreferences" | "conversationLog" | "sessionUsage" | "servicePurchase" | "savingsGoal" | "appEvent" | "adviceLog" | "payment" | "watchAddress" | "portfolioSnapshot" | "userFinancialProfile" | "userMemory" | "linkedWallet" | "turnMetrics"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1453,6 +1454,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    TurnMetrics: {
+      payload: Prisma.$TurnMetricsPayload<ExtArgs>
+      fields: Prisma.TurnMetricsFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.TurnMetricsFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TurnMetricsPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.TurnMetricsFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TurnMetricsPayload>
+        }
+        findFirst: {
+          args: Prisma.TurnMetricsFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TurnMetricsPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.TurnMetricsFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TurnMetricsPayload>
+        }
+        findMany: {
+          args: Prisma.TurnMetricsFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TurnMetricsPayload>[]
+        }
+        create: {
+          args: Prisma.TurnMetricsCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TurnMetricsPayload>
+        }
+        createMany: {
+          args: Prisma.TurnMetricsCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.TurnMetricsCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TurnMetricsPayload>[]
+        }
+        delete: {
+          args: Prisma.TurnMetricsDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TurnMetricsPayload>
+        }
+        update: {
+          args: Prisma.TurnMetricsUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TurnMetricsPayload>
+        }
+        deleteMany: {
+          args: Prisma.TurnMetricsDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.TurnMetricsUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.TurnMetricsUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TurnMetricsPayload>[]
+        }
+        upsert: {
+          args: Prisma.TurnMetricsUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TurnMetricsPayload>
+        }
+        aggregate: {
+          args: Prisma.TurnMetricsAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateTurnMetrics>
+        }
+        groupBy: {
+          args: Prisma.TurnMetricsGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.TurnMetricsGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.TurnMetricsCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.TurnMetricsCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -1724,6 +1799,35 @@ export const LinkedWalletScalarFieldEnum = {
 export type LinkedWalletScalarFieldEnum = (typeof LinkedWalletScalarFieldEnum)[keyof typeof LinkedWalletScalarFieldEnum]
 
 
+export const TurnMetricsScalarFieldEnum = {
+  id: 'id',
+  sessionId: 'sessionId',
+  userId: 'userId',
+  turnIndex: 'turnIndex',
+  effortLevel: 'effortLevel',
+  modelUsed: 'modelUsed',
+  wallTimeMs: 'wallTimeMs',
+  firstTokenMs: 'firstTokenMs',
+  toolsCalled: 'toolsCalled',
+  guardsFired: 'guardsFired',
+  compactionTriggered: 'compactionTriggered',
+  contextTokensStart: 'contextTokensStart',
+  cacheHit: 'cacheHit',
+  cacheReadTokens: 'cacheReadTokens',
+  cacheWriteTokens: 'cacheWriteTokens',
+  inputTokens: 'inputTokens',
+  outputTokens: 'outputTokens',
+  estimatedCostUsd: 'estimatedCostUsd',
+  pendingActionYielded: 'pendingActionYielded',
+  pendingActionOutcome: 'pendingActionOutcome',
+  aciRefinements: 'aciRefinements',
+  sessionSpendUsd: 'sessionSpendUsd',
+  createdAt: 'createdAt'
+} as const
+
+export type TurnMetricsScalarFieldEnum = (typeof TurnMetricsScalarFieldEnum)[keyof typeof TurnMetricsScalarFieldEnum]
+
+
 export const SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -1963,6 +2067,7 @@ export type GlobalOmitConfig = {
   userFinancialProfile?: Prisma.UserFinancialProfileOmit
   userMemory?: Prisma.UserMemoryOmit
   linkedWallet?: Prisma.LinkedWalletOmit
+  turnMetrics?: Prisma.TurnMetricsOmit
 }
 
 /* Types for Logging */

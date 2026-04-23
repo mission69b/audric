@@ -278,3 +278,37 @@ model LinkedWallet {
   @@unique([userId, suiAddress])
   @@index([userId])
 }
+
+/// [v1.4] HarnessMetrics — per-turn instrumentation row written by the
+/// chat route at turn close. Purely additive, fire-and-forget; failures
+/// must never block a chat response. Retention is 90 days via Vercel cron.
+model TurnMetrics {
+  id                   String   @id @default(cuid())
+  sessionId            String
+  userId               String
+  turnIndex            Int
+  effortLevel          String
+  modelUsed            String
+  wallTimeMs           Int
+  firstTokenMs         Int
+  toolsCalled          Json
+  guardsFired          Json
+  compactionTriggered  Boolean  @default(false)
+  contextTokensStart   Int
+  cacheHit             Boolean  @default(false)
+  cacheReadTokens      Int      @default(0)
+  cacheWriteTokens     Int      @default(0)
+  inputTokens          Int
+  outputTokens         Int
+  estimatedCostUsd     Float
+  pendingActionYielded Boolean  @default(false)
+  pendingActionOutcome String?
+  aciRefinements       Int      @default(0)
+  sessionSpendUsd      Float    @default(0)
+  createdAt            DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([sessionId])
+  @@index([effortLevel, modelUsed])
+  @@index([createdAt])
+}

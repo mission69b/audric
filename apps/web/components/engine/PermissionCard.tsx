@@ -1,7 +1,84 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { PendingAction } from '@/lib/engine-types';
+
+/**
+ * [v1.4 Item 6] Single editable input rendered inside a `PermissionCard`.
+ * Mirrors the engine's `PendingActionModifiableField` registry shape but is
+ * decoupled here because the published 0.40.4 engine type union does not
+ * yet expose `PendingActionModifiableField`. Once the 0.41.0 publish lands
+ * we can `import type { PendingActionModifiableField } from '@t2000/engine'`.
+ */
+interface ModifiableFieldDescriptor {
+  name: string;
+  kind: 'amount' | 'address';
+  asset?: string;
+}
+
+interface ModifiableFieldProps {
+  field: ModifiableFieldDescriptor;
+  initialValue: string | number | undefined;
+  /** Approximate maximum (e.g. wallet balance) — surfaces a "~Max" hint. */
+  approxMax?: number;
+  onChange: (name: string, value: string | number) => void;
+  disabled?: boolean;
+}
+
+function ModifiableField({
+  field,
+  initialValue,
+  approxMax,
+  onChange,
+  disabled,
+}: ModifiableFieldProps) {
+  const [value, setValue] = useState<string>(
+    initialValue === undefined || initialValue === null ? '' : String(initialValue),
+  );
+  const isAmount = field.kind === 'amount';
+
+  const handleChange = (next: string) => {
+    setValue(next);
+    if (isAmount) {
+      const num = Number(next);
+      onChange(field.name, Number.isFinite(num) ? num : next);
+    } else {
+      onChange(field.name, next);
+    }
+  };
+
+  return (
+    <label className="flex flex-col gap-1 text-[11px] text-fg-secondary">
+      <span className="uppercase tracking-wide">
+        {field.name}
+        {field.asset ? ` (${field.asset})` : ''}
+      </span>
+      <div className="flex items-center gap-2">
+        <input
+          type={isAmount ? 'number' : 'text'}
+          inputMode={isAmount ? 'decimal' : 'text'}
+          step={isAmount ? 'any' : undefined}
+          min={isAmount ? 0 : undefined}
+          value={value}
+          disabled={disabled}
+          onChange={(e) => handleChange(e.target.value)}
+          className="flex-1 rounded-md border border-border-subtle bg-surface-page px-2 py-1.5 text-sm font-mono text-fg-primary focus:outline-none focus:border-border-strong disabled:opacity-50"
+        />
+        {isAmount && approxMax !== undefined && (
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => handleChange(String(approxMax))}
+            className="text-[10px] font-mono text-fg-secondary hover:text-fg-primary disabled:opacity-50"
+            aria-label={`Set to maximum (~${approxMax})`}
+          >
+            ~Max ({approxMax})
+          </button>
+        )}
+      </div>
+    </label>
+  );
+}
 
 const TOOL_LABELS: Record<string, string> = {
   save_deposit: 'Save deposit',
@@ -70,25 +147,77 @@ function formatInput(input: unknown, toolName?: string): string | null {
 
 export type DenyReason = 'timeout' | 'denied';
 
+/**
+ * [v1.4 Item 6] Optional 4th `modifications` arg lets the user edit fields
+ * declared by the engine's `tool-modifiable-fields` registry before
+ * approving. `reason` retains its `DenyReason` type per the spec.
+ */
 interface PermissionCardProps {
   action: PendingAction;
-  onResolve: (action: PendingAction, approved: boolean, reason?: DenyReason) => void;
+  onResolve: (
+    action: PendingAction,
+    approved: boolean,
+    reason?: DenyReason,
+    modifications?: Record<string, unknown>,
+  ) => void;
+  /** Symbol → wallet balance map for the "~Max" hint on amount fields. */
+  approxMaxByAsset?: Record<string, number>;
 }
 
-export function PermissionCard({ action, onResolve }: PermissionCardProps) {
+export function PermissionCard({ action, onResolve, approxMaxByAsset }: PermissionCardProps) {
   const [resolved, setResolved] = useState(false);
   const resolvedRef = useRef(false);
   const [secondsLeft, setSecondsLeft] = useState(TIMEOUT_SEC);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const label = TOOL_LABELS[action.toolName] ?? action.toolName.replace(/_/g, ' ');
-  const inputSummary = formatInput(action.input, action.toolName);
+
+  // [v1.4 Item 6] `modifiableFields` lands with engine 0.41.0. Read it
+  // through a permissive cast until the bump so the audric repo type-checks
+  // against the published 0.40.4 PendingAction shape.
+  const modifiableFields =
+    (action as PendingAction & { modifiableFields?: ModifiableFieldDescriptor[] })
+      .modifiableFields ?? [];
+
+  // Track edits to action.input for fields declared modifiable.
+  const initialInput = useMemo(
+    () => (action.input && typeof action.input === 'object'
+      ? { ...(action.input as Record<string, unknown>) }
+      : {}),
+    [action.input],
+  );
+  const [modifiedInput, setModifiedInput] = useState<Record<string, unknown>>(initialInput);
+
+  // Recompute the human-readable summary against the modified input so the
+  // user sees the new amount before clicking "Approve".
+  const inputSummary = formatInput(modifiedInput, action.toolName);
+
+  const handleFieldChange = (name: string, value: string | number) => {
+    setModifiedInput((prev) => ({ ...prev, [name]: value }));
+  };
 
   const handle = (approved: boolean, reason?: DenyReason) => {
     if (resolvedRef.current) return;
     resolvedRef.current = true;
     setResolved(true);
     if (timerRef.current) clearInterval(timerRef.current);
-    onResolve(action, approved, reason);
+
+    // Only forward modifications when the user actually changed a value
+    // declared as modifiable. Comparing `String(...)` keeps numeric vs string
+    // edits aligned with how the input was displayed.
+    let modifications: Record<string, unknown> | undefined;
+    if (approved && modifiableFields.length) {
+      const diff: Record<string, unknown> = {};
+      for (const f of modifiableFields) {
+        const before = (initialInput as Record<string, unknown>)[f.name];
+        const after = modifiedInput[f.name];
+        if (String(before ?? '') !== String(after ?? '')) {
+          diff[f.name] = after;
+        }
+      }
+      if (Object.keys(diff).length > 0) modifications = diff;
+    }
+
+    onResolve(action, approved, reason, modifications);
   };
 
   useEffect(() => {
@@ -146,6 +275,24 @@ export function PermissionCard({ action, onResolve }: PermissionCardProps) {
 
       {inputSummary && (
         <p className="text-sm font-mono text-fg-primary">{inputSummary}</p>
+      )}
+
+      {!resolved && modifiableFields.length > 0 && (
+        <div className="space-y-2 rounded-md border border-border-subtle bg-surface-page p-2">
+          {modifiableFields.map((field) => (
+            <ModifiableField
+              key={field.name}
+              field={field}
+              initialValue={(initialInput as Record<string, unknown>)[field.name] as
+                | string
+                | number
+                | undefined}
+              approxMax={field.asset ? approxMaxByAsset?.[field.asset] : undefined}
+              onChange={handleFieldChange}
+              disabled={resolved}
+            />
+          ))}
+        </div>
       )}
 
       {action.guardInjections && action.guardInjections.length > 0 && (
