@@ -127,16 +127,43 @@ export class TurnMetricsCollector {
     this._compactionTriggered = true;
   }
 
+  /**
+   * [v1.5.2] Token accumulation — fixes the "0% cache hit rate" measurement bug.
+   *
+   * The Anthropic provider emits TWO `usage` events per LLM call:
+   *   1. `message_start` carries `inputTokens` (system + history) +
+   *      `cacheReadTokens` + `cacheWriteTokens` from `msg.usage`.
+   *   2. `message_delta` carries an output-token delta with
+   *      `inputTokens: 0` and no cache fields.
+   *
+   * The previous implementation OVERWROTE every field on each call, so
+   * the second event clobbered `_inputTokens` and the cache counters
+   * back to 0. Result: every TurnMetrics row stored
+   * `inputTokens=0, cacheReadTokens=0, cacheWriteTokens=0`, making
+   * `cacheHit` impossible to detect even when the prompt cache was
+   * actually working. Multi-step turns (multiple LLM calls per Audric
+   * turn) had the same problem on the input/cache side and only
+   * captured the LAST call's counters.
+   *
+   * Now: accumulate input/output across all usage events; pick the
+   * MAX cache values (which arrive with the first usage event of each
+   * LLM call — multi-call turns sum naturally because the second
+   * call's cache_read_input_tokens is additive in Anthropic's API).
+   */
   onUsage(event: {
     inputTokens: number;
     outputTokens: number;
     cacheReadTokens?: number;
     cacheWriteTokens?: number;
   }): void {
-    this._inputTokens = event.inputTokens;
-    this._outputTokens = event.outputTokens;
-    this._cacheReadTokens = event.cacheReadTokens ?? 0;
-    this._cacheWriteTokens = event.cacheWriteTokens ?? 0;
+    this._inputTokens += event.inputTokens;
+    this._outputTokens += event.outputTokens;
+    if (event.cacheReadTokens && event.cacheReadTokens > 0) {
+      this._cacheReadTokens += event.cacheReadTokens;
+    }
+    if (event.cacheWriteTokens && event.cacheWriteTokens > 0) {
+      this._cacheWriteTokens += event.cacheWriteTokens;
+    }
     this._cacheHit = this._cacheReadTokens > 0;
   }
 
