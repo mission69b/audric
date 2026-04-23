@@ -46,6 +46,48 @@ import { runStartupCheck } from './spec-consistency';
 // is the real gate (see .github/workflows/ci.yml).
 runStartupCheck();
 
+/**
+ * [v1.5] Post-write refresh map — for each write tool, the read tools
+ * whose state it invalidates. The engine auto-runs these after a
+ * successful write (see `EngineConfig.postWriteRefresh`) and pushes
+ * fresh `tool_result` blocks into the conversation BEFORE the LLM
+ * narrates. Eliminates the "you now have ~$X total" hallucination
+ * class — the model has authoritative ground truth in context and
+ * physically cannot invent post-write totals.
+ *
+ * Coverage rules:
+ *  - Anything that changes wallet balance      → balance_check
+ *  - Anything that changes NAVI lending state  → savings_info
+ *  - Anything that changes borrow/health       → health_check
+ *
+ * Read-only/internal writes (payment-link create, invoice create,
+ * contact save) are intentionally excluded — they don't change
+ * balances until paid, so refresh would just surface unchanged data.
+ */
+const POST_WRITE_REFRESH_MAP: Record<string, string[]> = {
+  // Savings (NAVI lending)
+  save_deposit: ['balance_check', 'savings_info'],
+  withdraw: ['balance_check', 'savings_info'],
+
+  // Credit (NAVI borrowing — affects health factor)
+  borrow: ['balance_check', 'savings_info', 'health_check'],
+  repay_debt: ['balance_check', 'savings_info', 'health_check'],
+
+  // Pay
+  send_transfer: ['balance_check'],
+  pay_api: ['balance_check'],
+
+  // Swap
+  swap_execute: ['balance_check'],
+
+  // Liquid staking (Volo) — vSUI/SUI swap effectively
+  volo_stake: ['balance_check'],
+  volo_unstake: ['balance_check'],
+
+  // Claim rewards — adds tokens to wallet, may also clear NAVI rewards
+  claim_rewards: ['balance_check', 'savings_info'],
+};
+
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const SONNET_MODEL = 'claude-sonnet-4-6';
 const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
@@ -389,6 +431,10 @@ export async function createEngine(
           incrementSessionSpend(opts.sessionId!, usdValue)
       : undefined,
     onGuardFired: opts.onGuardFired,
+    // [v1.5] Auto-inject fresh balance/savings/health reads after every
+    // successful write so post-write narration cites real numbers. See
+    // `POST_WRITE_REFRESH_MAP` above.
+    postWriteRefresh: POST_WRITE_REFRESH_MAP,
     ...(!routedModel.includes('haiku') && {
       thinking: { type: 'adaptive' as const },
       outputConfig: { effort },
