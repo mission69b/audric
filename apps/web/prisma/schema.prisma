@@ -305,6 +305,15 @@ model TurnMetrics {
   pendingActionOutcome String?
   aciRefinements       Int      @default(0)
   sessionSpendUsd      Float    @default(0)
+  /// [v1.5.1] Drift signal for the `cacheable: false` invariant.
+  /// Counts tools in `MUTABLE_TOOL_SET` (derived from the post-write
+  /// refresh map) whose `resultDeduped` flag flipped true this turn.
+  /// Microcompact MUST never dedupe these tools; if this column is ever
+  /// > 0 in prod, a new mutable tool was added to the refresh map but
+  /// the engine's `Tool.cacheable: false` annotation was forgotten.
+  /// Cheap audit: `SELECT id, modelUsed, mutableToolDedupes FROM
+  /// "TurnMetrics" WHERE "mutableToolDedupes" > 0;`
+  mutableToolDedupes   Int      @default(0)
   createdAt            DateTime @default(now())
 
   @@index([userId, createdAt])

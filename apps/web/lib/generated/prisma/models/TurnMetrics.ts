@@ -40,6 +40,7 @@ export type TurnMetricsAvgAggregateOutputType = {
   estimatedCostUsd: number | null
   aciRefinements: number | null
   sessionSpendUsd: number | null
+  mutableToolDedupes: number | null
 }
 
 export type TurnMetricsSumAggregateOutputType = {
@@ -54,6 +55,7 @@ export type TurnMetricsSumAggregateOutputType = {
   estimatedCostUsd: number | null
   aciRefinements: number | null
   sessionSpendUsd: number | null
+  mutableToolDedupes: number | null
 }
 
 export type TurnMetricsMinAggregateOutputType = {
@@ -77,6 +79,7 @@ export type TurnMetricsMinAggregateOutputType = {
   pendingActionOutcome: string | null
   aciRefinements: number | null
   sessionSpendUsd: number | null
+  mutableToolDedupes: number | null
   createdAt: Date | null
 }
 
@@ -101,6 +104,7 @@ export type TurnMetricsMaxAggregateOutputType = {
   pendingActionOutcome: string | null
   aciRefinements: number | null
   sessionSpendUsd: number | null
+  mutableToolDedupes: number | null
   createdAt: Date | null
 }
 
@@ -127,6 +131,7 @@ export type TurnMetricsCountAggregateOutputType = {
   pendingActionOutcome: number
   aciRefinements: number
   sessionSpendUsd: number
+  mutableToolDedupes: number
   createdAt: number
   _all: number
 }
@@ -144,6 +149,7 @@ export type TurnMetricsAvgAggregateInputType = {
   estimatedCostUsd?: true
   aciRefinements?: true
   sessionSpendUsd?: true
+  mutableToolDedupes?: true
 }
 
 export type TurnMetricsSumAggregateInputType = {
@@ -158,6 +164,7 @@ export type TurnMetricsSumAggregateInputType = {
   estimatedCostUsd?: true
   aciRefinements?: true
   sessionSpendUsd?: true
+  mutableToolDedupes?: true
 }
 
 export type TurnMetricsMinAggregateInputType = {
@@ -181,6 +188,7 @@ export type TurnMetricsMinAggregateInputType = {
   pendingActionOutcome?: true
   aciRefinements?: true
   sessionSpendUsd?: true
+  mutableToolDedupes?: true
   createdAt?: true
 }
 
@@ -205,6 +213,7 @@ export type TurnMetricsMaxAggregateInputType = {
   pendingActionOutcome?: true
   aciRefinements?: true
   sessionSpendUsd?: true
+  mutableToolDedupes?: true
   createdAt?: true
 }
 
@@ -231,6 +240,7 @@ export type TurnMetricsCountAggregateInputType = {
   pendingActionOutcome?: true
   aciRefinements?: true
   sessionSpendUsd?: true
+  mutableToolDedupes?: true
   createdAt?: true
   _all?: true
 }
@@ -344,6 +354,7 @@ export type TurnMetricsGroupByOutputType = {
   pendingActionOutcome: string | null
   aciRefinements: number
   sessionSpendUsd: number
+  mutableToolDedupes: number
   createdAt: Date
   _count: TurnMetricsCountAggregateOutputType | null
   _avg: TurnMetricsAvgAggregateOutputType | null
@@ -393,6 +404,7 @@ export type TurnMetricsWhereInput = {
   pendingActionOutcome?: Prisma.StringNullableFilter<"TurnMetrics"> | string | null
   aciRefinements?: Prisma.IntFilter<"TurnMetrics"> | number
   sessionSpendUsd?: Prisma.FloatFilter<"TurnMetrics"> | number
+  mutableToolDedupes?: Prisma.IntFilter<"TurnMetrics"> | number
   createdAt?: Prisma.DateTimeFilter<"TurnMetrics"> | Date | string
 }
 
@@ -419,6 +431,7 @@ export type TurnMetricsOrderByWithRelationInput = {
   pendingActionOutcome?: Prisma.SortOrderInput | Prisma.SortOrder
   aciRefinements?: Prisma.SortOrder
   sessionSpendUsd?: Prisma.SortOrder
+  mutableToolDedupes?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
 
@@ -448,6 +461,7 @@ export type TurnMetricsWhereUniqueInput = Prisma.AtLeast<{
   pendingActionOutcome?: Prisma.StringNullableFilter<"TurnMetrics"> | string | null
   aciRefinements?: Prisma.IntFilter<"TurnMetrics"> | number
   sessionSpendUsd?: Prisma.FloatFilter<"TurnMetrics"> | number
+  mutableToolDedupes?: Prisma.IntFilter<"TurnMetrics"> | number
   createdAt?: Prisma.DateTimeFilter<"TurnMetrics"> | Date | string
 }, "id">
 
@@ -474,6 +488,7 @@ export type TurnMetricsOrderByWithAggregationInput = {
   pendingActionOutcome?: Prisma.SortOrderInput | Prisma.SortOrder
   aciRefinements?: Prisma.SortOrder
   sessionSpendUsd?: Prisma.SortOrder
+  mutableToolDedupes?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   _count?: Prisma.TurnMetricsCountOrderByAggregateInput
   _avg?: Prisma.TurnMetricsAvgOrderByAggregateInput
@@ -508,6 +523,7 @@ export type TurnMetricsScalarWhereWithAggregatesInput = {
   pendingActionOutcome?: Prisma.StringNullableWithAggregatesFilter<"TurnMetrics"> | string | null
   aciRefinements?: Prisma.IntWithAggregatesFilter<"TurnMetrics"> | number
   sessionSpendUsd?: Prisma.FloatWithAggregatesFilter<"TurnMetrics"> | number
+  mutableToolDedupes?: Prisma.IntWithAggregatesFilter<"TurnMetrics"> | number
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"TurnMetrics"> | Date | string
 }
 
@@ -534,6 +550,7 @@ export type TurnMetricsCreateInput = {
   pendingActionOutcome?: string | null
   aciRefinements?: number
   sessionSpendUsd?: number
+  mutableToolDedupes?: number
   createdAt?: Date | string
 }
 
@@ -560,6 +577,7 @@ export type TurnMetricsUncheckedCreateInput = {
   pendingActionOutcome?: string | null
   aciRefinements?: number
   sessionSpendUsd?: number
+  mutableToolDedupes?: number
   createdAt?: Date | string
 }
 
@@ -586,6 +604,7 @@ export type TurnMetricsUpdateInput = {
   pendingActionOutcome?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   aciRefinements?: Prisma.IntFieldUpdateOperationsInput | number
   sessionSpendUsd?: Prisma.FloatFieldUpdateOperationsInput | number
+  mutableToolDedupes?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -612,6 +631,7 @@ export type TurnMetricsUncheckedUpdateInput = {
   pendingActionOutcome?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   aciRefinements?: Prisma.IntFieldUpdateOperationsInput | number
   sessionSpendUsd?: Prisma.FloatFieldUpdateOperationsInput | number
+  mutableToolDedupes?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -638,6 +658,7 @@ export type TurnMetricsCreateManyInput = {
   pendingActionOutcome?: string | null
   aciRefinements?: number
   sessionSpendUsd?: number
+  mutableToolDedupes?: number
   createdAt?: Date | string
 }
 
@@ -664,6 +685,7 @@ export type TurnMetricsUpdateManyMutationInput = {
   pendingActionOutcome?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   aciRefinements?: Prisma.IntFieldUpdateOperationsInput | number
   sessionSpendUsd?: Prisma.FloatFieldUpdateOperationsInput | number
+  mutableToolDedupes?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -690,6 +712,7 @@ export type TurnMetricsUncheckedUpdateManyInput = {
   pendingActionOutcome?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   aciRefinements?: Prisma.IntFieldUpdateOperationsInput | number
   sessionSpendUsd?: Prisma.FloatFieldUpdateOperationsInput | number
+  mutableToolDedupes?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -716,6 +739,7 @@ export type TurnMetricsCountOrderByAggregateInput = {
   pendingActionOutcome?: Prisma.SortOrder
   aciRefinements?: Prisma.SortOrder
   sessionSpendUsd?: Prisma.SortOrder
+  mutableToolDedupes?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
 
@@ -731,6 +755,7 @@ export type TurnMetricsAvgOrderByAggregateInput = {
   estimatedCostUsd?: Prisma.SortOrder
   aciRefinements?: Prisma.SortOrder
   sessionSpendUsd?: Prisma.SortOrder
+  mutableToolDedupes?: Prisma.SortOrder
 }
 
 export type TurnMetricsMaxOrderByAggregateInput = {
@@ -754,6 +779,7 @@ export type TurnMetricsMaxOrderByAggregateInput = {
   pendingActionOutcome?: Prisma.SortOrder
   aciRefinements?: Prisma.SortOrder
   sessionSpendUsd?: Prisma.SortOrder
+  mutableToolDedupes?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
 
@@ -778,6 +804,7 @@ export type TurnMetricsMinOrderByAggregateInput = {
   pendingActionOutcome?: Prisma.SortOrder
   aciRefinements?: Prisma.SortOrder
   sessionSpendUsd?: Prisma.SortOrder
+  mutableToolDedupes?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
 
@@ -793,6 +820,7 @@ export type TurnMetricsSumOrderByAggregateInput = {
   estimatedCostUsd?: Prisma.SortOrder
   aciRefinements?: Prisma.SortOrder
   sessionSpendUsd?: Prisma.SortOrder
+  mutableToolDedupes?: Prisma.SortOrder
 }
 
 
@@ -820,6 +848,7 @@ export type TurnMetricsSelect<ExtArgs extends runtime.Types.Extensions.InternalA
   pendingActionOutcome?: boolean
   aciRefinements?: boolean
   sessionSpendUsd?: boolean
+  mutableToolDedupes?: boolean
   createdAt?: boolean
 }, ExtArgs["result"]["turnMetrics"]>
 
@@ -846,6 +875,7 @@ export type TurnMetricsSelectCreateManyAndReturn<ExtArgs extends runtime.Types.E
   pendingActionOutcome?: boolean
   aciRefinements?: boolean
   sessionSpendUsd?: boolean
+  mutableToolDedupes?: boolean
   createdAt?: boolean
 }, ExtArgs["result"]["turnMetrics"]>
 
@@ -872,6 +902,7 @@ export type TurnMetricsSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.E
   pendingActionOutcome?: boolean
   aciRefinements?: boolean
   sessionSpendUsd?: boolean
+  mutableToolDedupes?: boolean
   createdAt?: boolean
 }, ExtArgs["result"]["turnMetrics"]>
 
@@ -898,10 +929,11 @@ export type TurnMetricsSelectScalar = {
   pendingActionOutcome?: boolean
   aciRefinements?: boolean
   sessionSpendUsd?: boolean
+  mutableToolDedupes?: boolean
   createdAt?: boolean
 }
 
-export type TurnMetricsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "sessionId" | "userId" | "turnIndex" | "effortLevel" | "modelUsed" | "wallTimeMs" | "firstTokenMs" | "toolsCalled" | "guardsFired" | "compactionTriggered" | "contextTokensStart" | "cacheHit" | "cacheReadTokens" | "cacheWriteTokens" | "inputTokens" | "outputTokens" | "estimatedCostUsd" | "pendingActionYielded" | "pendingActionOutcome" | "aciRefinements" | "sessionSpendUsd" | "createdAt", ExtArgs["result"]["turnMetrics"]>
+export type TurnMetricsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "sessionId" | "userId" | "turnIndex" | "effortLevel" | "modelUsed" | "wallTimeMs" | "firstTokenMs" | "toolsCalled" | "guardsFired" | "compactionTriggered" | "contextTokensStart" | "cacheHit" | "cacheReadTokens" | "cacheWriteTokens" | "inputTokens" | "outputTokens" | "estimatedCostUsd" | "pendingActionYielded" | "pendingActionOutcome" | "aciRefinements" | "sessionSpendUsd" | "mutableToolDedupes" | "createdAt", ExtArgs["result"]["turnMetrics"]>
 
 export type $TurnMetricsPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "TurnMetrics"
@@ -929,6 +961,17 @@ export type $TurnMetricsPayload<ExtArgs extends runtime.Types.Extensions.Interna
     pendingActionOutcome: string | null
     aciRefinements: number
     sessionSpendUsd: number
+    /**
+     * [v1.5.1] Drift signal for the `cacheable: false` invariant.
+     * Counts tools in `MUTABLE_TOOL_SET` (derived from the post-write
+     * refresh map) whose `resultDeduped` flag flipped true this turn.
+     * Microcompact MUST never dedupe these tools; if this column is ever
+     * > 0 in prod, a new mutable tool was added to the refresh map but
+     * the engine's `Tool.cacheable: false` annotation was forgotten.
+     * Cheap audit: `SELECT id, modelUsed, mutableToolDedupes FROM
+     * "TurnMetrics" WHERE "mutableToolDedupes" > 0;`
+     */
+    mutableToolDedupes: number
     createdAt: Date
   }, ExtArgs["result"]["turnMetrics"]>
   composites: {}
@@ -1375,6 +1418,7 @@ export interface TurnMetricsFieldRefs {
   readonly pendingActionOutcome: Prisma.FieldRef<"TurnMetrics", 'String'>
   readonly aciRefinements: Prisma.FieldRef<"TurnMetrics", 'Int'>
   readonly sessionSpendUsd: Prisma.FieldRef<"TurnMetrics", 'Float'>
+  readonly mutableToolDedupes: Prisma.FieldRef<"TurnMetrics", 'Int'>
   readonly createdAt: Prisma.FieldRef<"TurnMetrics", 'DateTime'>
 }
     

@@ -339,6 +339,7 @@ export const TurnMetricsScalarFieldEnum = {
   pendingActionOutcome: 'pendingActionOutcome',
   aciRefinements: 'aciRefinements',
   sessionSpendUsd: 'sessionSpendUsd',
+  mutableToolDedupes: 'mutableToolDedupes',
   createdAt: 'createdAt'
 } as const
 
