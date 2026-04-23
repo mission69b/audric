@@ -5,6 +5,12 @@
  * Authenticated with the standard `CRON_SECRET` bearer header so only
  * Vercel's cron infrastructure can invoke it. Returns a count for log
  * visibility; failures bubble as 500 so cron retries kick in.
+ *
+ * Operational note: `CRON_SECRET` is provisioned across all three Vercel
+ * environments (production / preview / development). Vercel automatically
+ * attaches `Authorization: Bearer ${CRON_SECRET}` to scheduled invocations
+ * once the env is set, so the same value powers both server-side
+ * validation here and the cron caller — no separate wiring required.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
