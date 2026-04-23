@@ -47,7 +47,12 @@ function extractEndpointLabel(url: string): string {
 export function ServiceCatalogCard({ data }: { data: ServiceCatalogData }) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
-  const groups = groupByCategory(data.services);
+  // Defensive: ToolResultCard already filters refinement payloads, but if a
+  // future tool revision changes the shape we'd rather render an empty card
+  // than crash the page-level error boundary.
+  const services = Array.isArray(data?.services) ? data.services : [];
+  const total = typeof data?.total === 'number' ? data.total : services.length;
+  const groups = groupByCategory(services);
   const categoryKeys = Object.keys(groups).sort();
 
   function toggle(cat: string) {
@@ -62,7 +67,7 @@ export function ServiceCatalogCard({ data }: { data: ServiceCatalogData }) {
     <CardShell
       title="Available Services"
       badge={
-        <span className="text-[10px] font-mono text-fg-muted">{data.total} total</span>
+        <span className="text-[10px] font-mono text-fg-muted">{total} total</span>
       }
     >
       <div className="space-y-1">

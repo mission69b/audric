@@ -27,6 +27,20 @@ const WRITE_TOOL_NAMES = new Set([
   'volo_stake', 'volo_unstake', 'borrow', 'repay_debt', 'claim_rewards', 'pay_api',
 ]);
 
+/**
+ * [v1.4 ACI] Tools that opt into Agent-Controlled Interface refinement
+ * (defillama_yield_pools, transaction_history, mpp_services) may return a
+ * `_refine` payload instead of their normal data shape. The LLM uses that
+ * to re-call with narrower params; the UI has no card to show, so we
+ * skip rendering. Without this, cards that destructure the missing data
+ * shape (e.g. `ServiceCatalogCard` iterating `data.services`) crash with
+ * "TypeError: e is not iterable" and the page-level error boundary
+ * swallows the entire chat.
+ */
+function isRefinementPayload(data: unknown): boolean {
+  return !!data && typeof data === 'object' && '_refine' in (data as Record<string, unknown>);
+}
+
 const CARD_RENDERERS: Record<string, (result: unknown) => React.ReactNode | null> = {
   rates_info: (result) => {
     const data = extractData(result);
@@ -45,6 +59,7 @@ const CARD_RENDERERS: Record<string, (result: unknown) => React.ReactNode | null
   },
   defillama_yield_pools: (result) => {
     const data = extractData(result);
+    if (isRefinementPayload(data)) return null;
     if (!Array.isArray(data)) return null;
     return <YieldCard data={data as Parameters<typeof YieldCard>[0]['data']} />;
   },
@@ -65,6 +80,7 @@ const CARD_RENDERERS: Record<string, (result: unknown) => React.ReactNode | null
   },
   transaction_history: (result) => {
     const data = extractData(result);
+    if (isRefinementPayload(data)) return null;
     if (!data || typeof data !== 'object') return null;
     return <TransactionHistoryCard data={data as Parameters<typeof TransactionHistoryCard>[0]['data']} />;
   },
@@ -75,6 +91,7 @@ const CARD_RENDERERS: Record<string, (result: unknown) => React.ReactNode | null
   },
   mpp_services: (result) => {
     const data = extractData(result);
+    if (isRefinementPayload(data)) return null;
     if (!data || typeof data !== 'object') return null;
     return <ServiceCatalogCard data={data as Parameters<typeof ServiceCatalogCard>[0]['data']} />;
   },
