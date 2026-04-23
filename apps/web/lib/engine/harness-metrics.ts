@@ -9,6 +9,8 @@
  * is fail-soft, and the `build(...)` call cannot throw.
  */
 
+import { MUTABLE_TOOL_SET } from './engine-factory';
+
 export interface ToolMetric {
   /**
    * Engine-side tool-use id. Stored so we can flip the `resultDeduped`
@@ -153,6 +155,16 @@ export class TurnMetricsCollector {
     sessionSpendUsd: number;
   }) {
     const wallTimeMs = Date.now() - this.startTime;
+    // [v1.5.1] Drift counter for the `cacheable: false` invariant.
+    // `MUTABLE_TOOL_SET` is the union of all post-write refresh targets;
+    // engine v0.43.0+ marks every member `cacheable: false`, so
+    // `resultDeduped` should NEVER be true for these tools. Any non-zero
+    // count here = silent regression (someone added a mutable tool to
+    // the refresh map without flagging it `cacheable: false`).
+    const mutableToolDedupes = this.toolMetrics.reduce(
+      (n, t) => (t.resultDeduped && MUTABLE_TOOL_SET.has(t.name) ? n + 1 : n),
+      0,
+    );
     return {
       ...context,
       wallTimeMs,
@@ -171,6 +183,7 @@ export class TurnMetricsCollector {
       pendingActionYielded: this._pendingActionYielded,
       pendingActionOutcome: this._pendingActionYielded ? 'pending' : null,
       aciRefinements: this._aciRefinements,
+      mutableToolDedupes,
     };
   }
 }

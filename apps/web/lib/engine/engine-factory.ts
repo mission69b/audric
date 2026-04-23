@@ -64,7 +64,7 @@ runStartupCheck();
  * contact save) are intentionally excluded — they don't change
  * balances until paid, so refresh would just surface unchanged data.
  */
-const POST_WRITE_REFRESH_MAP: Record<string, string[]> = {
+export const POST_WRITE_REFRESH_MAP: Record<string, string[]> = {
   // Savings (NAVI lending)
   save_deposit: ['balance_check', 'savings_info'],
   withdraw: ['balance_check', 'savings_info'],
@@ -87,6 +87,20 @@ const POST_WRITE_REFRESH_MAP: Record<string, string[]> = {
   // Claim rewards — adds tokens to wallet, may also clear NAVI rewards
   claim_rewards: ['balance_check', 'savings_info'],
 };
+
+/**
+ * [v1.5.1] Set of tools whose results depend on mutable on-chain state —
+ * derived from the refresh map's union of all targets. These are exactly
+ * the tools the engine marks `cacheable: false`. We expose this set so
+ * `harness-metrics.ts` can detect drift: if any tool in this set ever
+ * shows `resultDeduped: true` in `TurnMetrics.toolsCalled`, microcompact
+ * has wrongly collapsed a fresh-state read — i.e. someone added a new
+ * mutable tool to the refresh map but forgot the `cacheable: false`
+ * flag in the engine package. Should always be 0 in production.
+ */
+export const MUTABLE_TOOL_SET: ReadonlySet<string> = new Set(
+  Object.values(POST_WRITE_REFRESH_MAP).flat(),
+);
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const SONNET_MODEL = 'claude-sonnet-4-6';
