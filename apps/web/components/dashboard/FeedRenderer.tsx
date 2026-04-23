@@ -554,8 +554,20 @@ const ACTION_ICONS: Record<string, string> = {
   send: '\u2191',
   receive: '\u2193',
   lending: '\uD83C\uDFE6',
+  // [v1.5.3] Engine ≥ 0.45.0 emits finer-grained `label` values.
+  deposit: '\u2191',
+  withdraw: '\u2193',
+  borrow: '\u2193',
+  repay: '\u2191',
+  payment_link: '\u26A1',
+  invoice: '\u26A1',
+  claim: '\u2713',
+  stake: '\u2191',
+  unstake: '\u2193',
+  liquidate: '\u26A0\uFE0F',
   swap: '\u21C4',
   contract: '\uD83D\uDCC4',
+  'on-chain': '\uD83D\uDCC4',
   transaction: '\uD83D\uDCC4',
 };
 
@@ -563,8 +575,19 @@ const ACTION_LABELS: Record<string, string> = {
   send: 'Sent',
   receive: 'Received',
   lending: 'DeFi',
+  deposit: 'Deposit',
+  withdraw: 'Withdraw',
+  borrow: 'Borrow',
+  repay: 'Repay',
+  payment_link: 'Payment link',
+  invoice: 'Invoice',
+  claim: 'Claim',
+  stake: 'Stake',
+  unstake: 'Unstake',
+  liquidate: 'Liquidation',
   swap: 'Swap',
   contract: 'Contract',
+  'on-chain': 'On-chain',
   transaction: 'Transaction',
 };
 
@@ -616,8 +639,9 @@ function TransactionHistoryCard({
       </p>
       <div className="divide-y divide-border-subtle">
         {visible.map((tx) => {
-          const icon = ACTION_ICONS[tx.action] ?? '\uD83D\uDCC4';
-          const label = ACTION_LABELS[tx.action] ?? tx.action;
+          const key = (tx.label ?? tx.action) as string;
+          const icon = ACTION_ICONS[key] ?? '\uD83D\uDCC4';
+          const label = ACTION_LABELS[key] ?? key;
           const isIn = tx.direction === 'in';
           const amountStr = tx.amount ? `${isIn ? '+' : '-'}$${tx.amount.toFixed(2)}` : '';
 
