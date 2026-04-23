@@ -11,6 +11,14 @@ import type {
   CanvasData,
 } from '@/lib/engine-types';
 
+// [v1.4] Re-export the pure executor so consumers and tests can use a single
+// import path: `import { executeToolAction } from '@/hooks/useEngine'`.
+export {
+  executeToolAction,
+  type ExecuteToolActionResult,
+  type ExecuteToolActionEffects,
+} from './executeToolAction';
+
 let msgIdCounter = 0;
 function nextMsgId(): string {
   return `emsg_${Date.now()}_${++msgIdCounter}`;
@@ -102,8 +110,20 @@ export function useEngine({ address, jwt }: UseEngineOptions) {
    * Resume the engine after a pending action is resolved.
    * Opens a new SSE stream to /api/engine/resume with the tool result.
    */
+  /**
+   * [v1.4 Item 6] `modifications` carries user-edited input fields from
+   * `PermissionCard`. The resume route overlays them on `action.input`
+   * before persisting the originating turn so analytics see the modified
+   * values, and stamps `pendingActionOutcome='modified'` when set.
+   */
   const resolveAction = useCallback(
-    async (action: PendingAction, approved: boolean, executionResult?: unknown, denyReason?: 'timeout' | 'denied') => {
+    async (
+      action: PendingAction,
+      approved: boolean,
+      executionResult?: unknown,
+      denyReason?: 'timeout' | 'denied',
+      modifications?: Record<string, unknown>,
+    ) => {
       if (!sessionId || !jwt || !address) return;
 
       setMessages((prev) =>
@@ -152,6 +172,9 @@ export function useEngine({ address, jwt }: UseEngineOptions) {
         action,
         approved,
         executionResult,
+        ...(modifications && Object.keys(modifications).length
+          ? { modifications, outcome: 'modified' as const }
+          : {}),
       });
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps

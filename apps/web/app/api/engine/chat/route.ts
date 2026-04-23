@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { engineToSSE } from '@t2000/engine';
+import { serializeSSE } from '@t2000/engine';
 import type { PendingAction } from '@t2000/engine';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { validateJwt, isValidSuiAddress } from '@/lib/auth';
@@ -14,6 +14,12 @@ import {
 } from '@/lib/engine/engine-factory';
 import { UpstashSessionStore } from '@/lib/engine/upstash-session-store';
 import { logSessionUsage } from '@/lib/engine/log-session-usage';
+import { getSessionSpend } from '@/lib/engine/session-spend';
+import {
+  TurnMetricsCollector,
+  detectRefinement,
+  detectTruncation,
+} from '@/lib/engine/harness-metrics';
 import { prisma } from '@/lib/prisma';
 import {
   SESSION_LIMIT_VERIFIED,
@@ -86,6 +92,11 @@ export async function POST(request: NextRequest) {
     let sessionId: string | undefined;
     let session = null;
     let saveSession = false;
+    let engineMeta: { effortLevel: string; modelUsed: string } | undefined;
+    let sessionSpendUsdAtStart = 0;
+    // Constructed early so the engine factory can pipe `onGuardFired`
+    // directly into the collector before the agent loop starts.
+    const collector = new TurnMetricsCollector();
 
     if (isAuth) {
       const store = getSessionStore();
@@ -148,18 +159,35 @@ export async function POST(request: NextRequest) {
 
       const conversationState = sessionId ? await getConversationState(sessionId).catch(() => undefined) : undefined;
 
+      // [v1.4] Read accumulated session spend so the engine can enforce
+      // `autonomousDailyLimit` for the next auto-tier check.
+      sessionSpendUsdAtStart = sessionId ? await getSessionSpend(sessionId) : 0;
+
       engine = await createEngine({
         address,
         session,
         contacts,
         message: message.trim(),
         conversationState,
+        sessionSpendUsd: sessionSpendUsdAtStart,
+        sessionId,
+        onMeta: (meta) => { engineMeta = meta; },
+        onGuardFired: (guard) => collector.onGuardFired(guard),
       });
     } else {
       engine = await createUnauthEngine(history);
     }
 
     const priorMsgCount = engine.getMessages().length;
+    /**
+     * [v1.4 Item 4] turnIndex = number of assistant messages BEFORE this
+     * turn's response is added. Stable across resume because each
+     * tool_result + assistant continuation lives in the same session
+     * message ledger.
+     */
+    const turnIndex = engine.getMessages().filter((m) => m.role === 'assistant').length;
+
+    const toolNamesByUseId = new Map<string, string>();
 
     const stream = new ReadableStream({
       async start(controller) {
@@ -175,21 +203,56 @@ export async function POST(request: NextRequest) {
             );
           }
 
-          for await (const chunk of engineToSSE(
-            engine.submitMessage(message.trim()),
-          )) {
-            controller.enqueue(encoder.encode(chunk));
-
-            if (chunk.includes('"type":"pending_action"')) {
-              try {
-                const match = chunk.match(/data: (.+)/);
-                if (match) {
-                  const parsed = JSON.parse(match[1]);
-                  if (parsed.type === 'pending_action') {
-                    pendingAction = parsed.action;
-                  }
+          // [v1.4 Item 4] Tap raw EngineEvents for metrics BEFORE
+          // serializing — the SSE adapter is lossy for our needs (`error`
+          // events lose the Error type, and we want refinement detection
+          // on the original `result` object).
+          for await (const event of engine.submitMessage(message.trim())) {
+            switch (event.type) {
+              case 'compaction':
+                collector.onCompaction();
+                continue; // don't pollute the SSE stream
+              case 'text_delta':
+                collector.onFirstTextDelta();
+                break;
+              case 'tool_start':
+                toolNamesByUseId.set(event.toolUseId, event.toolName);
+                collector.onToolStart(event.toolUseId);
+                break;
+              case 'tool_result':
+                if (event.toolName === '__deduped__') {
+                  // Engine-internal marker for microcompact dedup hits.
+                  // Don't record a separate ToolMetric — flip the flag
+                  // on the prior matching row so analytics see the saving.
+                  collector.markToolResultDeduped(event.toolUseId);
+                } else {
+                  collector.onToolResult(event.toolUseId, event.toolName, event.result, {
+                    wasTruncated: detectTruncation(event.result),
+                    wasEarlyDispatched: event.wasEarlyDispatched ?? false,
+                    resultDeduped: event.resultDeduped ?? false,
+                    returnedRefinement: detectRefinement(event.result),
+                  });
                 }
-              } catch { /* best effort */ }
+                break;
+              case 'usage':
+                collector.onUsage(event);
+                break;
+              case 'pending_action':
+                collector.onPendingAction();
+                pendingAction = event.action;
+                break;
+              default:
+                break;
+            }
+
+            if (event.type === 'error') {
+              controller.enqueue(
+                encoder.encode(serializeSSE({ type: 'error', message: event.error.message })),
+              );
+            } else if (event.type === 'tool_result' && event.toolName === '__deduped__') {
+              // Engine-internal marker; skip serialization.
+            } else {
+              controller.enqueue(encoder.encode(serializeSSE(event)));
             }
           }
         } catch (err) {
@@ -252,6 +315,44 @@ export async function POST(request: NextRequest) {
             AGENT_MODEL,
             priorMsgCount,
           ).catch((err) => console.error('[engine/chat] session usage log failed:', err));
+
+          // [v1.4 Item 4] Fire-and-forget TurnMetrics row at turn close.
+          // Wrapped in try/catch and `.catch()` to ensure analytics
+          // failures NEVER surface to the user — the response is already
+          // closed by `controller.close()` below regardless.
+          if (saveSession && sessionId && address && engineMeta) {
+            try {
+              const inputTokens = usage.inputTokens ?? 0;
+              const outputTokens = usage.outputTokens ?? 0;
+              const estimatedCostUsd =
+                inputTokens * COST_PER_INPUT_TOKEN + outputTokens * COST_PER_OUTPUT_TOKEN;
+              const built = collector.build({
+                sessionId,
+                userId: address,
+                turnIndex,
+                effortLevel: engineMeta.effortLevel,
+                modelUsed: engineMeta.modelUsed,
+                contextTokensStart: priorMsgCount,
+                estimatedCostUsd,
+                sessionSpendUsd: sessionSpendUsdAtStart,
+              });
+              // Prisma's JSON columns demand `InputJsonValue` shapes —
+              // round-trip through JSON to strip class-y types and satisfy
+              // both the runtime serialiser and the static typing.
+              const payload = {
+                ...built,
+                toolsCalled: JSON.parse(JSON.stringify(built.toolsCalled)),
+                guardsFired: JSON.parse(JSON.stringify(built.guardsFired)),
+              };
+              prisma.turnMetrics
+                .create({ data: payload })
+                .catch((err) =>
+                  console.error('[TurnMetrics] write failed (non-fatal):', err),
+                );
+            } catch (metricsErr) {
+              console.error('[TurnMetrics] build failed (non-fatal):', metricsErr);
+            }
+          }
 
           controller.close();
         }

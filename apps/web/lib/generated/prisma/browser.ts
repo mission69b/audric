@@ -87,3 +87,10 @@ export type UserMemory = Prisma.UserMemoryModel
  * 
  */
 export type LinkedWallet = Prisma.LinkedWalletModel
+/**
+ * Model TurnMetrics
+ * [v1.4] HarnessMetrics — per-turn instrumentation row written by the
+ * chat route at turn close. Purely additive, fire-and-forget; failures
+ * must never block a chat response. Retention is 90 days via Vercel cron.
+ */
+export type TurnMetrics = Prisma.TurnMetricsModel

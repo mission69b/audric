@@ -64,7 +64,8 @@ export const ModelName = {
   PortfolioSnapshot: 'PortfolioSnapshot',
   UserFinancialProfile: 'UserFinancialProfile',
   UserMemory: 'UserMemory',
-  LinkedWallet: 'LinkedWallet'
+  LinkedWallet: 'LinkedWallet',
+  TurnMetrics: 'TurnMetrics'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -313,6 +314,35 @@ export const LinkedWalletScalarFieldEnum = {
 } as const
 
 export type LinkedWalletScalarFieldEnum = (typeof LinkedWalletScalarFieldEnum)[keyof typeof LinkedWalletScalarFieldEnum]
+
+
+export const TurnMetricsScalarFieldEnum = {
+  id: 'id',
+  sessionId: 'sessionId',
+  userId: 'userId',
+  turnIndex: 'turnIndex',
+  effortLevel: 'effortLevel',
+  modelUsed: 'modelUsed',
+  wallTimeMs: 'wallTimeMs',
+  firstTokenMs: 'firstTokenMs',
+  toolsCalled: 'toolsCalled',
+  guardsFired: 'guardsFired',
+  compactionTriggered: 'compactionTriggered',
+  contextTokensStart: 'contextTokensStart',
+  cacheHit: 'cacheHit',
+  cacheReadTokens: 'cacheReadTokens',
+  cacheWriteTokens: 'cacheWriteTokens',
+  inputTokens: 'inputTokens',
+  outputTokens: 'outputTokens',
+  estimatedCostUsd: 'estimatedCostUsd',
+  pendingActionYielded: 'pendingActionYielded',
+  pendingActionOutcome: 'pendingActionOutcome',
+  aciRefinements: 'aciRefinements',
+  sessionSpendUsd: 'sessionSpendUsd',
+  createdAt: 'createdAt'
+} as const
+
+export type TurnMetricsScalarFieldEnum = (typeof TurnMetricsScalarFieldEnum)[keyof typeof TurnMetricsScalarFieldEnum]
 
 
 export const SortOrder = {

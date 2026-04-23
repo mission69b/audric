@@ -18,16 +18,16 @@ import { EmailCaptureModal } from '@/components/auth/EmailCaptureModal';
 import { AppShell } from '@/components/shell/AppShell';
 import { useChipFlow, type ChipFlowResult, type FlowContext } from '@/hooks/useChipFlow';
 import { useFeed } from '@/hooks/useFeed';
-import { useEngine } from '@/hooks/useEngine';
+import { useEngine, executeToolAction } from '@/hooks/useEngine';
 import { useBalance } from '@/hooks/useBalance';
 import { parseIntent, type ParsedIntent } from '@/lib/intent-parser';
 import { mapError } from '@/lib/errors';
 import { SUI_NETWORK } from '@/lib/constants';
 import { useContacts } from '@/hooks/useContacts';
-import { useAgent, ServiceDeliveryError } from '@/hooks/useAgent';
+import { useAgent } from '@/hooks/useAgent';
 import { useUsdcSponsor } from '@/hooks/useUsdcSponsor';
 import { COIN_REGISTRY } from '@/lib/token-registry';
-import { parseActualAmount, buildSwapDisplayData } from '@/lib/balance-changes';
+import { buildSwapDisplayData } from '@/lib/balance-changes';
 import { useActivityFeed } from '@/hooks/useActivityFeed';
 import { NewConversationView } from '@/components/dashboard/NewConversationView';
 import { TosBanner } from '@/components/dashboard/TosBanner';
@@ -677,120 +677,29 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
     [balanceQuery.data],
   );
 
+  // [v1.4] Pure SDK-call logic lives in executeToolAction (apps/web/hooks/executeToolAction.ts);
+  // this wrapper adds React-side effects (balance refetch, contact resolution).
   const handleExecuteAction = useCallback(
     async (toolName: string, input: unknown): Promise<{ success: boolean; data: unknown }> => {
       if (!agent) throw new Error('Not authenticated');
       const sdk = await agent.getInstance();
-      const inp = (input ?? {}) as Record<string, unknown>;
 
-      switch (toolName) {
-        case 'save_deposit': {
-          const res = await sdk.save({ amount: Number(inp.amount), asset: inp.asset as string | undefined, protocol: inp.protocol as string | undefined });
-          balanceQuery.refetch();
-          const actual = parseActualAmount(res.balanceChanges, inp.asset as string, 'negative');
-          return { success: true, data: { success: true, tx: res.tx, amount: actual ?? inp.amount, asset: inp.asset } };
-        }
-        case 'withdraw': {
-          const res = await sdk.withdraw({ amount: Number(inp.amount), asset: inp.asset as string | undefined, protocol: inp.protocol as string | undefined });
-          balanceQuery.refetch();
-          const actual = parseActualAmount(res.balanceChanges, inp.asset as string, 'positive');
-          return { success: true, data: { success: true, tx: res.tx, amount: actual ?? inp.amount, asset: inp.asset } };
-        }
-        case 'send_transfer': {
-          const rawTo = String(inp.to);
-          const resolvedTo = contactsHook.resolveContact(rawTo) ?? rawTo;
-          const res = await sdk.send({ to: resolvedTo, amount: Number(inp.amount), asset: inp.asset as string | undefined });
-          balanceQuery.refetch();
-          const actual = parseActualAmount(res.balanceChanges, inp.asset as string, 'negative');
-          return { success: true, data: { success: true, tx: res.tx, amount: actual ?? inp.amount, to: rawTo } };
-        }
-        case 'borrow': {
-          const res = await sdk.borrow({ amount: Number(inp.amount), protocol: inp.protocol as string | undefined });
-          balanceQuery.refetch();
-          return { success: true, data: { success: true, tx: res.tx, amount: inp.amount } };
-        }
-        case 'repay_debt': {
-          const res = await sdk.repay({ amount: Number(inp.amount), protocol: inp.protocol as string | undefined });
-          balanceQuery.refetch();
-          return { success: true, data: { success: true, tx: res.tx, amount: inp.amount } };
-        }
-        case 'claim_rewards': {
-          const res = await sdk.claimRewards();
-          balanceQuery.refetch();
-          return { success: true, data: { success: true, tx: res.tx } };
-        }
-        case 'swap_execute': {
-          try {
-            const res = await sdk.swap({
-              from: String(inp.from),
-              to: String(inp.to),
-              amount: Number(inp.amount),
-              slippage: inp.slippage ? Number(inp.slippage) : undefined,
-              byAmountIn: inp.byAmountIn as boolean | undefined,
-            });
-            balanceQuery.refetch();
-            setTimeout(() => balanceQuery.refetch(), 3000);
-            const swap = buildSwapDisplayData(res.balanceChanges, String(inp.from), String(inp.to), Number(inp.amount));
-            return {
-              success: true,
-              data: {
-                success: true,
-                tx: res.tx,
-                ...swap,
-                from: swap.fromToken,
-                to: swap.toToken,
-                amount: inp.amount,
-              },
-            };
-          } catch (swapErr) {
-            const msg = swapErr instanceof Error ? swapErr.message : String(swapErr);
-            console.error('[swap_execute] failed:', msg);
-            return { success: false, data: { success: false, error: msg, from: inp.from, to: inp.to, amount: inp.amount } };
-          }
-        }
-        case 'volo_stake': {
-          const res = await sdk.stakeVSui({ amount: Number(inp.amount) });
-          balanceQuery.refetch();
+      const result = await executeToolAction(sdk, toolName, input, {
+        resolveContact: (raw) => contactsHook.resolveContact(raw),
+        addContact: (name, address) => contactsHook.addContact(name, address),
+      });
+
+      // Side effects after a successful execution. Refetch balance for any
+      // tool that moves funds. Tools with longer settlement (swap, volo)
+      // also schedule a delayed refetch.
+      if (result.success && toolName !== 'save_contact' && toolName !== 'pay_api') {
+        balanceQuery.refetch();
+        if (toolName === 'swap_execute' || toolName === 'volo_stake' || toolName === 'volo_unstake') {
           setTimeout(() => balanceQuery.refetch(), 3000);
-          return { success: true, data: { success: true, tx: res.tx, amount: inp.amount } };
         }
-        case 'volo_unstake': {
-          const res = await sdk.unstakeVSui({ amount: Number(inp.amount ?? 0) });
-          balanceQuery.refetch();
-          setTimeout(() => balanceQuery.refetch(), 3000);
-          return { success: true, data: { success: true, tx: res.tx, amount: inp.amount } };
-        }
-        case 'pay_api': {
-          try {
-            const serviceResult = await sdk.payService({
-              url: inp.url as string,
-              rawBody: inp.body ? JSON.parse(String(inp.body)) : undefined,
-            });
-            return { success: true, data: serviceResult };
-          } catch (payErr) {
-            if (payErr instanceof ServiceDeliveryError) {
-              return {
-                success: false,
-                data: {
-                  error: payErr.message,
-                  paymentConfirmed: true,
-                  paymentDigest: payErr.paymentDigest,
-                  doNotRetry: true,
-                  warning: 'Payment was already charged on-chain. DO NOT call pay_api again for this request. Tell the user the service failed and their payment of $' + (payErr.meta?.price ?? '?') + ' was charged. They can contact support for a refund.',
-                },
-              };
-            }
-            const msg = payErr instanceof Error ? payErr.message : String(payErr);
-            return { success: false, data: { error: msg } };
-          }
-        }
-        case 'save_contact': {
-          await contactsHook.addContact(String(inp.name), String(inp.address));
-          return { success: true, data: { saved: true, name: inp.name, address: inp.address } };
-        }
-        default:
-          throw new Error(`Unknown tool: ${toolName}`);
       }
+
+      return result;
     },
     [agent, balanceQuery, contactsHook],
   );

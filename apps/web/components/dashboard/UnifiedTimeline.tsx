@@ -136,27 +136,53 @@ export function UnifiedTimeline({
   );
 
   const handleActionResolve = useCallback(
-    async (action: PendingAction, approved: boolean, reason?: DenyReason) => {
+    async (
+      action: PendingAction,
+      approved: boolean,
+      reason?: DenyReason,
+      // [v1.4 Item 6] User-edited fields from PermissionCard. When set,
+      // overlay them on action.input before execution and forward to the
+      // resume route so server-side history matches the approved values.
+      modifications?: Record<string, unknown>,
+    ) => {
       if (!approved || !onExecuteAction) {
         engine.resolveAction(action, approved, undefined, reason);
         return;
       }
 
-      // Pre-flight balance validation — reject before executing
+      const effectiveInput =
+        modifications && Object.keys(modifications).length
+          ? action.input && typeof action.input === 'object'
+            ? { ...(action.input as Record<string, unknown>), ...modifications }
+            : modifications
+          : action.input;
+
       if (onValidateAction) {
-        const validationError = onValidateAction(action.toolName, action.input);
+        const validationError = onValidateAction(action.toolName, effectiveInput);
         if (validationError) {
-          engine.resolveAction(action, true, { success: false, error: validationError });
+          engine.resolveAction(
+            action,
+            true,
+            { success: false, error: validationError },
+            undefined,
+            modifications,
+          );
           return;
         }
       }
 
       try {
-        const result = await onExecuteAction(action.toolName, action.input);
-        engine.resolveAction(action, true, result.data);
+        const result = await onExecuteAction(action.toolName, effectiveInput);
+        engine.resolveAction(action, true, result.data, undefined, modifications);
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : 'Execution failed';
-        engine.resolveAction(action, true, { success: false, error: errorMsg });
+        engine.resolveAction(
+          action,
+          true,
+          { success: false, error: errorMsg },
+          undefined,
+          modifications,
+        );
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps

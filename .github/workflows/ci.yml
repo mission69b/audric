@@ -23,6 +23,14 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter web lint
       - run: pnpm --filter web typecheck
+      # [v1.4 Item 5] Spec consistency assertions. Runs the dedicated
+      # vitest file because the script imports `@t2000/engine` (ESM-only),
+      # which the bare `tsx` CJS register can't resolve from the workspace
+      # root. Vitest pipes through the same Next.js module resolver that
+      # `pnpm --filter web test` uses, so the assertions execute in the
+      # same module graph as the runtime check in `engine-factory.ts`.
+      - name: Spec consistency check
+        run: pnpm --filter web exec vitest run lib/engine/spec-consistency.test.ts
 
   test:
     name: Unit Tests
