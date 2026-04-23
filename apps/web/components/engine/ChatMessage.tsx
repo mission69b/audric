@@ -18,8 +18,14 @@ interface ChatMessageProps {
     reason?: DenyReason,
     modifications?: Record<string, unknown>,
   ) => void;
-  autoApproveTools?: Set<string>;
-  agentBudget?: number;
+  /**
+   * [v1.4 hotfix] Single tier-aware predicate that decides whether to
+   * skip rendering the `<PermissionCard>` because the action will be
+   * auto-resolved by `<UnifiedTimeline>`'s effect. Replaces the old
+   * `autoApproveTools: Set<string>` + `agentBudget` pair, both of
+   * which ignored the user's safety preset.
+   */
+  shouldAutoApprove?: (action: Pick<PendingAction, 'toolName' | 'input'>) => boolean;
   onSendMessage?: (text: string) => void;
 }
 
@@ -71,15 +77,7 @@ function dedupeToolCards(tools: ToolExecution[]): ToolExecution[] {
   return tools;
 }
 
-function getInputAmount(input: unknown): number {
-  if (!input || typeof input !== 'object') return Infinity;
-  const inp = input as Record<string, unknown>;
-  if (typeof inp.amount === 'number') return inp.amount;
-  if (typeof inp.maxPrice === 'number') return inp.maxPrice;
-  return Infinity;
-}
-
-export function ChatMessage({ message, onActionResolve, autoApproveTools, agentBudget = 0, onSendMessage }: ChatMessageProps) {
+export function ChatMessage({ message, onActionResolve, shouldAutoApprove, onSendMessage }: ChatMessageProps) {
   if (message.role === 'user') {
     return (
       <div className="flex justify-end mb-3" role="log" aria-label="Your message">
@@ -129,7 +127,7 @@ export function ChatMessage({ message, onActionResolve, autoApproveTools, agentB
         </div>
       )}
 
-      {hasPendingAction && onActionResolve && !(autoApproveTools?.has(message.pendingAction!.toolName)) && !(agentBudget > 0 && getInputAmount(message.pendingAction!.input) <= agentBudget) && (
+      {hasPendingAction && onActionResolve && !shouldAutoApprove?.(message.pendingAction!) && (
         <PermissionCard
           action={message.pendingAction!}
           onResolve={onActionResolve}

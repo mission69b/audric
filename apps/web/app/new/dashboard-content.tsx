@@ -14,6 +14,7 @@ import { AmountChips } from '@/components/dashboard/AmountChips';
 import { SwapAssetPicker, type SwapAsset } from '@/components/dashboard/SwapAssetPicker';
 import { resolveFlow } from '@/components/dashboard/AgentMarkdown';
 import { UnifiedTimeline } from '@/components/dashboard/UnifiedTimeline';
+import { getPresetConfig } from '@/lib/engine/permission-tiers-client';
 import { EmailCaptureModal } from '@/components/auth/EmailCaptureModal';
 import { AppShell } from '@/components/shell/AppShell';
 import { useChipFlow, type ChipFlowResult, type FlowContext } from '@/hooks/useChipFlow';
@@ -218,6 +219,11 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
   const activityFeed = useActivityFeed(address);
   const userStatus = useUserStatus(address, session?.jwt);
   const [agentBudget, setAgentBudget] = useState(0.50);
+  // [v1.4 hotfix] Source of truth for the client-side permission tier gate
+  // in <UnifiedTimeline>. Defaults to `balanced` when the user hasn't
+  // explicitly set a preset; settings UI persists this via
+  // POST /api/user/preferences { permissionPreset }.
+  const [permissionPreset, setPermissionPreset] = useState<'conservative' | 'balanced' | 'aggressive'>('balanced');
   const [emailModalOpen, setEmailModalOpen] = useState(false);
   const emailCheckedRef = useRef(false);
 
@@ -270,6 +276,13 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
       .then((data) => {
         const budget = data.limits?.agentBudget;
         if (typeof budget === 'number' && budget >= 0) setAgentBudget(budget);
+        // [v1.4 hotfix] Pull the saved preset name so the timeline's
+        // shouldClientAutoApprove gate honors it. Same shape returned
+        // by the existing /api/user/preferences GET handler.
+        const preset = data.permissionPreset;
+        if (preset === 'conservative' || preset === 'balanced' || preset === 'aggressive') {
+          setPermissionPreset(preset);
+        }
       })
       .catch(() => {});
   }, [address]);
@@ -1233,6 +1246,18 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
               onExecuteAction={handleExecuteAction}
               onValidateAction={validateAction}
               agentBudget={agentBudget}
+              permissionConfig={getPresetConfig(permissionPreset)}
+              priceCache={(() => {
+                // [v1.4 hotfix] symbol → USD price for client tier
+                // resolution. SUI from the live balance, USDC/USDT pinned
+                // to 1. Other assets fall through to Infinity which the
+                // resolver upgrades out of the auto band — failing safe.
+                const m = new Map<string, number>();
+                m.set('USDC', 1);
+                m.set('USDT', 1);
+                if (balance.suiPrice > 0) m.set('SUI', balance.suiPrice);
+                return m;
+              })()}
               onSendMessage={engine.sendMessage}
               address={address}
               jwt={session?.jwt ?? null}

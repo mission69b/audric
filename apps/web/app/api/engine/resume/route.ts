@@ -5,8 +5,12 @@ import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { validateJwt, isValidSuiAddress } from '@/lib/auth';
 import { createEngine, getSessionStore, setConversationState } from '@/lib/engine/engine-factory';
 import { logSessionUsage } from '@/lib/engine/log-session-usage';
-import { getSessionSpend } from '@/lib/engine/session-spend';
+import { getSessionSpend, incrementSessionSpend } from '@/lib/engine/session-spend';
 import { applyModificationsToAction, resolveOutcome } from '@/lib/engine/apply-modifications';
+import {
+  resolveUsdValue,
+  toolNameToOperation,
+} from '@/lib/engine/permission-tiers-client';
 import { prisma } from '@/lib/prisma';
 
 const AGENT_MODEL = process.env.AGENT_MODEL ?? 'claude-sonnet-4-20250514';
@@ -186,6 +190,44 @@ export async function POST(request: NextRequest) {
             .catch((err) =>
               console.warn('[TurnMetrics] pendingActionOutcome update failed (non-fatal):', err),
             );
+
+          // [v1.4 hotfix] Audric signs writes client-side, so the
+          // engine's `onAutoExecuted → incrementSessionSpend` callback
+          // never fires (the engine yields a pending_action and the
+          // client executes). To make the v1.4 daily autonomous cap
+          // real we increment the Redis counter here, on every approved
+          // client-executed write that didn't error. USDC/USDT writes
+          // are valued at amount; non-stable writes need a price cache
+          // — that's only available inside the engine, so we pass an
+          // empty cache and let `resolveUsdValue` fall through to
+          // Infinity, which the next-turn permission resolver treats
+          // as "definitely confirm" (failing safe).
+          if (
+            resolvedOutcome === 'approved' || resolvedOutcome === 'modified'
+          ) {
+            const op = toolNameToOperation(action.toolName);
+            const looksSuccessful =
+              executionResult == null ||
+              !(
+                typeof executionResult === 'object' &&
+                executionResult !== null &&
+                ('success' in executionResult
+                  ? (executionResult as { success?: unknown }).success === false
+                  : false)
+              );
+            if (op && looksSuccessful) {
+              const usd = resolveUsdValue(
+                action.toolName,
+                (action.input as Record<string, unknown>) ?? {},
+                new Map<string, number>([['USDC', 1], ['USDT', 1]]),
+              );
+              if (Number.isFinite(usd) && usd > 0) {
+                incrementSessionSpend(sessionId, usd).catch((err) =>
+                  console.warn('[session-spend] increment failed (non-fatal):', err),
+                );
+              }
+            }
+          }
 
           controller.close();
         }

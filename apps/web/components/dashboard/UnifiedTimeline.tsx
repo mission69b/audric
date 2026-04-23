@@ -15,6 +15,11 @@ import type { useFeed } from '@/hooks/useFeed';
 import type { FeedItem } from '@/lib/feed-types';
 import type { EngineChatMessage, PendingAction } from '@/lib/engine-types';
 import type { DenyReason } from '@/components/engine/PermissionCard';
+import {
+  shouldClientAutoApprove,
+  DEFAULT_PERMISSION_CONFIG,
+  type UserPermissionConfig,
+} from '@/lib/engine/permission-tiers-client';
 
 type EngineInstance = ReturnType<typeof useEngine>;
 type FeedInstance = ReturnType<typeof useFeed>;
@@ -23,10 +28,12 @@ type TimelineEntry =
   | { kind: 'engine'; msg: EngineChatMessage }
   | { kind: 'feed'; item: FeedItem };
 
-const AUTO_APPROVE_TOOLS = new Set([
-  'save_deposit', 'withdraw', 'repay_debt', 'claim_rewards',
-  'volo_stake', 'volo_unstake', 'pay_api', 'save_contact',
-]);
+// [v1.4 hotfix] The previous hardcoded `AUTO_APPROVE_TOOLS` set ignored
+// the user's safety preset and amount, so every save/withdraw/etc.
+// auto-executed regardless of value — even though the engine yielded a
+// `pending_action` for each. Replaced by `shouldClientAutoApprove`,
+// which honors the engine's tier semantics. See
+// `apps/web/lib/engine/permission-tiers-client.ts`.
 
 export type ExecuteActionFn = (
   toolName: string,
@@ -45,6 +52,21 @@ interface UnifiedTimelineProps {
   onValidateAction?: (toolName: string, input: unknown) => string | null;
   /** Max USD amount to auto-approve without user confirmation (0 = always confirm). */
   agentBudget?: number;
+  /**
+   * [v1.4 hotfix] User's resolved permission config (one of the
+   * conservative/balanced/aggressive presets). Required for the
+   * tier-aware auto-approve gate. Falls back to `balanced` defaults
+   * if omitted so dev surfaces don't crash, but production callers
+   * MUST pass this through.
+   */
+  permissionConfig?: UserPermissionConfig;
+  /**
+   * [v1.4 hotfix] Symbol → USD price map used by `resolveUsdValue` to
+   * value non-USDC writes (SUI swaps, transfers). USDC/USDT are pinned
+   * to 1 inside the resolver — callers only need to provide non-stable
+   * prices. Missing symbols fail safe (Infinity → confirm).
+   */
+  priceCache?: Map<string, number>;
   /** Send a message on behalf of the user from canvas in-canvas actions. */
   onSendMessage?: (text: string) => void;
   /** Wallet address — required to render the in-chat Copilot pill (Wave C.5)
@@ -64,14 +86,6 @@ function ConnectingSkeleton() {
   );
 }
 
-function extractAmount(input: unknown): number {
-  if (!input || typeof input !== 'object') return Infinity;
-  const inp = input as Record<string, unknown>;
-  if (typeof inp.amount === 'number') return inp.amount;
-  if (typeof inp.maxPrice === 'number') return inp.maxPrice;
-  return Infinity;
-}
-
 export function UnifiedTimeline({
   engine,
   feed,
@@ -82,6 +96,8 @@ export function UnifiedTimeline({
   onExecuteAction,
   onValidateAction,
   agentBudget = 0,
+  permissionConfig = DEFAULT_PERMISSION_CONFIG,
+  priceCache,
   onSendMessage,
   address = null,
   jwt = null,
@@ -90,6 +106,30 @@ export function UnifiedTimeline({
   const endRef = useRef<HTMLDivElement>(null);
   const lastCount = useRef(0);
   const autoApprovedRef = useRef(new Set<string>());
+
+  // [v1.4 hotfix] Single client-side gate consulted by both the
+  // auto-resolve effect below and the <ChatMessage> render. The
+  // server-side `/api/engine/resume` route is the source of truth for
+  // the cumulative daily cap (it reads/writes Redis via
+  // session-spend.ts). We track the same counter client-side as a
+  // mirror so the UI starts surfacing confirmation cards as the
+  // session approaches the cap, without waiting for a round-trip.
+  const resolvedPriceCache = useMemo(
+    () => priceCache ?? new Map<string, number>([['USDC', 1], ['USDT', 1]]),
+    [priceCache],
+  );
+  const sessionSpendRef = useRef(0);
+  const shouldAutoApprove = useCallback(
+    (action: Pick<PendingAction, 'toolName' | 'input'>) =>
+      shouldClientAutoApprove(
+        action,
+        permissionConfig,
+        sessionSpendRef.current,
+        resolvedPriceCache,
+        agentBudget,
+      ),
+    [permissionConfig, resolvedPriceCache, agentBudget],
+  );
 
   // [SIMPLIFICATION DAY 3] address/jwt/sessionId previously fed the in-chat
   // Copilot surfaces (InChatSurface card + CopilotPill). Both are removed.
@@ -195,21 +235,28 @@ export function UnifiedTimeline({
     if (!action || !onExecuteAction) return;
     if (autoApprovedRef.current.has(action.toolUseId)) return;
 
-    // Auto-approve tools: validate then execute immediately
-    if (AUTO_APPROVE_TOOLS.has(action.toolName)) {
+    // [v1.4 hotfix] Tier-aware auto-approve. The previous implementation
+    // checked a hardcoded set + a single agentBudget threshold; both
+    // ignored the user's safety preset. `shouldClientAutoApprove` now
+    // honors preset thresholds, the daily-cap counter, AND the explicit
+    // agentBudget — see `permission-tiers-client.ts`.
+    if (shouldAutoApprove(action)) {
       autoApprovedRef.current.add(action.toolUseId);
+      // Mirror the server-side cumulative spend so subsequent writes
+      // in this session correctly downgrade once the daily cap is hit.
+      const usd = Number(
+        (action.input as Record<string, unknown> | null | undefined)?.amount,
+      );
+      if (Number.isFinite(usd) && usd > 0) {
+        sessionSpendRef.current += usd;
+      }
       handleActionResolve(action, true);
       return;
     }
 
-    // Budget-based auto-approve: if amount <= agentBudget, approve without confirmation
-    if (agentBudget > 0 && extractAmount(action.input) <= agentBudget) {
-      autoApprovedRef.current.add(action.toolUseId);
-      handleActionResolve(action, true);
-      return;
-    }
-
-    // Manual-approve tools: pre-flight balance check — auto-deny if insufficient
+    // Manual-approve path: pre-flight balance check — auto-deny early if
+    // the wallet can't cover the amount, so the user isn't asked to
+    // confirm something that will fail.
     if (onValidateAction) {
       const validationError = onValidateAction(action.toolName, action.input);
       if (validationError) {
@@ -217,7 +264,7 @@ export function UnifiedTimeline({
         engine.resolveAction(action, true, { success: false, error: validationError });
       }
     }
-  }, [engine.messages, onExecuteAction, handleActionResolve, onValidateAction, engine, agentBudget]);
+  }, [engine.messages, onExecuteAction, handleActionResolve, onValidateAction, engine, shouldAutoApprove]);
 
   const isConnecting = engine.status === 'connecting';
   const lastEngineMsg = engine.messages[engine.messages.length - 1];
@@ -261,8 +308,7 @@ export function UnifiedTimeline({
               <ChatMessage
                 message={entry.msg}
                 onActionResolve={handleActionResolve}
-                autoApproveTools={AUTO_APPROVE_TOOLS}
-                agentBudget={agentBudget}
+                shouldAutoApprove={shouldAutoApprove}
                 onSendMessage={onSendMessage ?? engine.sendMessage}
               />
             </div>
