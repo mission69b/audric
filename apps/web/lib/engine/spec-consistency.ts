@@ -21,19 +21,14 @@
  *     "(${READ_COUNT} read tools, ${WRITE_COUNT} write tools)" matches
  *     the live `READ_TOOLS.length` + `WRITE_TOOLS.length` registry.
  */
-import * as sdkRaw from '@t2000/sdk';
+import * as sdk from '@t2000/sdk';
 import { READ_TOOLS, WRITE_TOOLS } from '@t2000/engine';
 import { STATIC_SYSTEM_PROMPT } from './engine-context';
 
-// [v1.4 Item 5] The published 0.40.4 SDK barrel does not yet expose
-// `SAVE_FEE_BPS` / `BORROW_FEE_BPS` / `OVERLAY_FEE_RATE` in its `.d.ts` — they
-// land with the 0.40.5 patch in this batch. Until the publish completes we
-// access them through a permissive shape so the assertions still execute at
-// runtime. Once 0.40.5 is wired this cast can be tightened to `typeof sdkRaw`.
-const sdk = sdkRaw as unknown as Record<string, unknown> & {
-  USDC_DECIMALS: number;
-  SUI_DECIMALS: number;
-};
+// `sdk` exports `SAVE_FEE_BPS`, `BORROW_FEE_BPS`, and `OVERLAY_FEE_RATE`
+// natively as of @t2000/sdk 0.41.0. Read the "no fee" guards through an
+// indexed view since we're checking that they remain absent.
+const sdkLookup = sdk as unknown as Record<string, unknown>;
 
 export interface SpecAssertion {
   /** Stable identifier used in CI logs and error messages. */
@@ -90,7 +85,7 @@ export function runSpecConsistencyChecks(): SpecConsistencyResult {
   // remain free. Catch a future drift where someone re-introduces a fee under
   // a familiar name without updating the spec.
   for (const banned of ['WITHDRAW_FEE_BPS', 'REPAY_FEE_BPS', 'SEND_FEE_BPS']) {
-    const present = sdk[banned];
+    const present = sdkLookup[banned];
     assertions.push({
       id: `NO_${banned}`,
       pass: present === undefined,
@@ -150,31 +145,9 @@ export function assertSpecConsistency(): void {
 }
 
 /**
- * Returns true when the v1.4 SDK constants (`SAVE_FEE_BPS`, `BORROW_FEE_BPS`,
- * `OVERLAY_FEE_RATE`) are exported from the SDK. In the gap between the
- * Day 4 SDK publish (0.40.5) and the audric pin update, these constants are
- * `undefined` because the published 0.40.4 does not surface them. We use
- * this to soften the startup check so dev environments aren't blocked while
- * the publish + pin land.
- */
-function sdkConstantsAvailable(): boolean {
-  return (
-    typeof sdk.SAVE_FEE_BPS === 'bigint' &&
-    typeof sdk.BORROW_FEE_BPS === 'bigint' &&
-    typeof sdk.OVERLAY_FEE_RATE === 'number'
-  );
-}
-
-/**
  * Boot-time hook used by `engine-factory.ts`. Hard-fails in dev so local
  * development surfaces drift immediately; logs in prod so deploys never
  * crash on a constant mismatch (the CI gate is the real enforcement).
- *
- * NOTE: While the published SDK still predates the v1.4 constant exports
- * (i.e. SDK < 0.40.5), the dev hard-fail is downgraded to a warning so
- * local dev isn't blocked by an obvious-and-tracked drift. Once 0.40.5 is
- * pinned in `package.json`, this branch becomes unreachable and the strict
- * dev hard-fail kicks back in automatically.
  */
 export function runStartupCheck(): void {
   const result = runSpecConsistencyChecks();
@@ -185,15 +158,11 @@ export function runStartupCheck(): void {
     .map((a) => `  ✗ ${a.id}: ${a.message}`)
     .join('\n');
 
-  const isPrePublishGap = !sdkConstantsAvailable();
-  if (process.env.NODE_ENV !== 'production' && !isPrePublishGap) {
+  if (process.env.NODE_ENV !== 'production') {
     throw new Error(`[spec-consistency] startup assertion failed:\n${failures}`);
   }
 
-  const prefix = isPrePublishGap
-    ? '[spec-consistency] WARNING — SDK pre-0.40.5 detected; assertions will be enforced after the pin update:'
-    : '[spec-consistency] startup assertion failed (logged-only in prod):';
-  console.error(`${prefix}\n${failures}`);
+  console.error(`[spec-consistency] startup assertion failed (logged-only in prod):\n${failures}`);
 }
 
 // ─── CLI entry point ──────────────────────────────────────────────────────

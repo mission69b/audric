@@ -207,23 +207,11 @@ export async function POST(request: NextRequest) {
           // serializing — the SSE adapter is lossy for our needs (`error`
           // events lose the Error type, and we want refinement detection
           // on the original `result` object).
-          //
-          // Iterate over the strongly-typed stream; the v1.4 additions
-          // (`compaction` event + `wasEarlyDispatched`/`resultDeduped` flags)
-          // are not in the published 0.40.4 type union yet, so they're read
-          // through a permissive cast at the access sites below. The 0.41.0
-          // publish will let us drop those casts.
           for await (const event of engine.submitMessage(message.trim())) {
-            // [v1.4 Item 4] `compaction` is a 0.41.0 addition not yet in the
-            // published 0.40.4 `EngineEvent` union. Detect it before the
-            // discriminated switch so we can act on it without TS errors.
-            const eventType = (event as { type: string }).type;
-            if (eventType === 'compaction') {
-              collector.onCompaction();
-              continue; // don't pollute the SSE stream
-            }
-
             switch (event.type) {
+              case 'compaction':
+                collector.onCompaction();
+                continue; // don't pollute the SSE stream
               case 'text_delta':
                 collector.onFirstTextDelta();
                 break;
@@ -231,28 +219,21 @@ export async function POST(request: NextRequest) {
                 toolNamesByUseId.set(event.toolUseId, event.toolName);
                 collector.onToolStart(event.toolUseId);
                 break;
-              case 'tool_result': {
-                // `wasEarlyDispatched` + `resultDeduped` are 0.41.0 additions
-                // — read through a permissive cast until the publish lands.
-                const r = event as typeof event & {
-                  wasEarlyDispatched?: boolean;
-                  resultDeduped?: boolean;
-                };
-                if (r.toolName === '__deduped__') {
+              case 'tool_result':
+                if (event.toolName === '__deduped__') {
                   // Engine-internal marker for microcompact dedup hits.
                   // Don't record a separate ToolMetric — flip the flag
                   // on the prior matching row so analytics see the saving.
-                  collector.markToolResultDeduped(r.toolUseId);
+                  collector.markToolResultDeduped(event.toolUseId);
                 } else {
-                  collector.onToolResult(r.toolUseId, r.toolName, r.result, {
-                    wasTruncated: detectTruncation(r.result),
-                    wasEarlyDispatched: r.wasEarlyDispatched ?? false,
-                    resultDeduped: r.resultDeduped ?? false,
-                    returnedRefinement: detectRefinement(r.result),
+                  collector.onToolResult(event.toolUseId, event.toolName, event.result, {
+                    wasTruncated: detectTruncation(event.result),
+                    wasEarlyDispatched: event.wasEarlyDispatched ?? false,
+                    resultDeduped: event.resultDeduped ?? false,
+                    returnedRefinement: detectRefinement(event.result),
                   });
                 }
                 break;
-              }
               case 'usage':
                 collector.onUsage(event);
                 break;
@@ -271,8 +252,7 @@ export async function POST(request: NextRequest) {
             } else if (event.type === 'tool_result' && event.toolName === '__deduped__') {
               // Engine-internal marker; skip serialization.
             } else {
-              // serializeSSE accepts the same shapes as EngineEvent minus `error`.
-              controller.enqueue(encoder.encode(serializeSSE(event as never)));
+              controller.enqueue(encoder.encode(serializeSSE(event)));
             }
           }
         } catch (err) {

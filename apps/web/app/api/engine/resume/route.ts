@@ -175,23 +175,12 @@ export async function POST(request: NextRequest) {
             console.error('[engine/resume] session usage log failed:', err),
           );
 
-          /**
-           * [v1.4 Item 6] Update the originating `TurnMetrics` row with
-           * the resolved outcome (approved / declined / modified). Keyed
-           * on `(sessionId, turnIndex)` from `PendingAction.turnIndex`
-           * (engine 0.41.0). When that field is absent (pre-publish), we
-           * fall back to the looser `pendingActionOutcome:'pending'`
-           * match per Day 4's interim contract.
-           */
-          const actionTurnIndex =
-            (action as PendingAction & { turnIndex?: number }).turnIndex;
-          const updateWhere =
-            typeof actionTurnIndex === 'number'
-              ? { sessionId, turnIndex: actionTurnIndex }
-              : { sessionId, pendingActionOutcome: 'pending' };
+          // [v1.4 Item 6] Update the originating `TurnMetrics` row with
+          // the resolved outcome (approved / declined / modified). Keyed
+          // on `(sessionId, turnIndex)` from `PendingAction.turnIndex`.
           prisma.turnMetrics
             .updateMany({
-              where: updateWhere,
+              where: { sessionId, turnIndex: action.turnIndex },
               data: { pendingActionOutcome: resolvedOutcome },
             })
             .catch((err) =>

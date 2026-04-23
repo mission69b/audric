@@ -383,21 +383,12 @@ export async function createEngine(
     recipes: recipeRegistry,
     priceCache,
     permissionConfig,
-    /**
-     * [v1.4 Day 6 TODO] `sessionSpendUsd` and `onAutoExecuted` land in
-     * `@t2000/engine 0.41.0`. Until that publish, the published 0.40.4 type
-     * definitions don't expose them, so we cast to `unknown` then
-     * `EngineConfig` to keep the wiring in place. Remove the cast once
-     * the engine is bumped on Day 6.
-     */
-    ...((({
-      sessionSpendUsd: opts.sessionSpendUsd,
-      onAutoExecuted: opts.sessionId
-        ? ({ usdValue }: { usdValue: number }) =>
-            incrementSessionSpend(opts.sessionId!, usdValue)
-        : undefined,
-      onGuardFired: opts.onGuardFired,
-    } as unknown) as object)),
+    sessionSpendUsd: opts.sessionSpendUsd,
+    onAutoExecuted: opts.sessionId
+      ? ({ usdValue }: { usdValue: number }) =>
+          incrementSessionSpend(opts.sessionId!, usdValue)
+      : undefined,
+    onGuardFired: opts.onGuardFired,
     ...(!routedModel.includes('haiku') && {
       thinking: { type: 'adaptive' as const },
       outputConfig: { effort },

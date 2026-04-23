@@ -1,5 +1,4 @@
 import { describe, it, expect } from 'vitest';
-import * as sdk from '@t2000/sdk';
 import { runSpecConsistencyChecks, assertSpecConsistency } from './spec-consistency';
 
 /**
@@ -10,20 +9,7 @@ import { runSpecConsistencyChecks, assertSpecConsistency } from './spec-consiste
  *
  * Deliberately small surface (per plan: 2 tests). The real coverage lives
  * in the runtime invocation paths.
- *
- * The strict assertions activate once SDK 0.40.5 (which exports
- * `SAVE_FEE_BPS`, `BORROW_FEE_BPS`, `OVERLAY_FEE_RATE`) is pinned in
- * `package.json`. While the audric repo still resolves the published 0.40.4,
- * the structural test below verifies the surface is wired (9 assertions
- * present + assertion shapes correct) without requiring the constant values
- * to be present. This is the "Day 4 → Day 5" contract from the plan.
  */
-const sdkRecord = sdk as unknown as Record<string, unknown>;
-const sdkV1_4Ready =
-  typeof sdkRecord.SAVE_FEE_BPS === 'bigint' &&
-  typeof sdkRecord.BORROW_FEE_BPS === 'bigint' &&
-  typeof sdkRecord.OVERLAY_FEE_RATE === 'number';
-
 describe('[v1.4 Item 5] spec consistency', () => {
   it('exposes 9 well-formed assertions covering fees, decimals, and tool counts', () => {
     const result = runSpecConsistencyChecks();
@@ -47,18 +33,15 @@ describe('[v1.4 Item 5] spec consistency', () => {
     }
   });
 
-  it.skipIf(!sdkV1_4Ready)(
-    'all 9 assertions pass once SDK 0.40.5 is pinned (post-publish gate)',
-    () => {
-      const result = runSpecConsistencyChecks();
-      const failed = result.assertions.filter((a) => !a.pass);
-      if (failed.length) {
-        throw new Error(
-          `Failed assertions:\n${failed.map((f) => `  - ${f.id}: ${f.message}`).join('\n')}`,
-        );
-      }
-      expect(result.ok).toBe(true);
-      expect(() => assertSpecConsistency()).not.toThrow();
-    },
-  );
+  it('all 9 assertions pass against the live SDK + engine packages', () => {
+    const result = runSpecConsistencyChecks();
+    const failed = result.assertions.filter((a) => !a.pass);
+    if (failed.length) {
+      throw new Error(
+        `Failed assertions:\n${failed.map((f) => `  - ${f.id}: ${f.message}`).join('\n')}`,
+      );
+    }
+    expect(result.ok).toBe(true);
+    expect(() => assertSpecConsistency()).not.toThrow();
+  });
 });

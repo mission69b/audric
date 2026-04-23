@@ -1,23 +1,17 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { PendingActionModifiableField } from '@t2000/engine';
 import type { PendingAction } from '@/lib/engine-types';
 
 /**
  * [v1.4 Item 6] Single editable input rendered inside a `PermissionCard`.
- * Mirrors the engine's `PendingActionModifiableField` registry shape but is
- * decoupled here because the published 0.40.4 engine type union does not
- * yet expose `PendingActionModifiableField`. Once the 0.41.0 publish lands
- * we can `import type { PendingActionModifiableField } from '@t2000/engine'`.
+ * The descriptor shape is sourced from the engine's exported
+ * `PendingActionModifiableField` type so it can never drift from the
+ * registry that produces it (`TOOL_MODIFIABLE_FIELDS`).
  */
-interface ModifiableFieldDescriptor {
-  name: string;
-  kind: 'amount' | 'address';
-  asset?: string;
-}
-
 interface ModifiableFieldProps {
-  field: ModifiableFieldDescriptor;
+  field: PendingActionModifiableField;
   initialValue: string | number | undefined;
   /** Approximate maximum (e.g. wallet balance) — surfaces a "~Max" hint. */
   approxMax?: number;
@@ -171,12 +165,8 @@ export function PermissionCard({ action, onResolve, approxMaxByAsset }: Permissi
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const label = TOOL_LABELS[action.toolName] ?? action.toolName.replace(/_/g, ' ');
 
-  // [v1.4 Item 6] `modifiableFields` lands with engine 0.41.0. Read it
-  // through a permissive cast until the bump so the audric repo type-checks
-  // against the published 0.40.4 PendingAction shape.
-  const modifiableFields =
-    (action as PendingAction & { modifiableFields?: ModifiableFieldDescriptor[] })
-      .modifiableFields ?? [];
+  // [v1.4 Item 6] Engine-stamped registry of fields the user can edit.
+  const modifiableFields = action.modifiableFields ?? [];
 
   // Track edits to action.input for fields declared modifiable.
   const initialInput = useMemo(
