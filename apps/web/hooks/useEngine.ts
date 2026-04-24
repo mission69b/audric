@@ -382,6 +382,29 @@ export function useEngine({ address, jwt }: UseEngineOptions) {
       }
 
       case 'tool_result':
+        // [v0.46.8] When the engine flags `resultDeduped: true`, this
+        // tool_use_id is the SECOND (or Nth) call to the same read-only
+        // tool with identical args within one user turn. The first call
+        // already rendered a card; rendering this one would stack a
+        // duplicate on top. The engine still emits the event so the
+        // LLM's tool_use_id has a matching tool_result in history, but
+        // the host MUST suppress the UI entry. Two paths to handle:
+        //   1. EarlyToolDispatcher dedup → a `tool_start` already
+        //      created a "running" tool entry; we REMOVE it here so
+        //      the card never renders.
+        //   2. Post-LLM cache-hit dedup → no `tool_start` was emitted,
+        //      no entry exists; the removal below is a no-op.
+        if (event.resultDeduped) {
+          setMessages((prev) =>
+            prev.map((m) => {
+              if (m.id !== msgId) return m;
+              const tools = (m.tools ?? []).filter((t) => t.toolUseId !== event.toolUseId);
+              return { ...m, tools };
+            }),
+          );
+          break;
+        }
+
         setMessages((prev) => {
           const alreadyResolved = prev.some((m) =>
             m.id !== msgId && (m.tools ?? []).some((t) => t.toolUseId === event.toolUseId && t.status === 'done'),
