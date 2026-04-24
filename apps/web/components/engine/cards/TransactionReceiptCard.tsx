@@ -26,8 +26,14 @@ interface TxReceiptData {
   fee?: number;
   healthFactor?: number;
   remainingDebt?: number;
-  rewards?: { asset: string; amount: number; estimatedValueUsd?: number }[];
-  totalValueUsd?: number;
+  rewards?: {
+    asset?: string;
+    /** Reward token symbol (e.g. "vSUI") — engine populates this from coinType. */
+    symbol?: string;
+    amount: number;
+    estimatedValueUsd?: number;
+  }[];
+  totalValueUsd?: number | null;
   memo?: string;
   serviceName?: string;
   serviceEndpoint?: string;
@@ -88,8 +94,35 @@ function getHeroLines(data: TxReceiptData, toolName: string): HeroLine[] {
     return lines;
   }
 
-  if (toolName === 'claim_rewards' && data.totalValueUsd != null) {
-    lines.push({ label: 'Claimed', value: `$${fmtAmt(data.totalValueUsd)}`, emphasis: 'positive' });
+  if (toolName === 'claim_rewards') {
+    const rewards = (data.rewards ?? []).filter((r) => Number.isFinite(r.amount) && r.amount > 0);
+
+    // Per-reward lines (e.g. "0.0165 vSUI") — surfaces the actual on-chain
+    // credit even when USD pricing is missing. We previously only showed
+    // a "Claimed $X.XX" line that collapsed to "$0.00" or disappeared
+    // entirely whenever `totalValueUsd` was null/0/NaN, which made successful
+    // reward claims look like no-ops in the UI.
+    for (const r of rewards) {
+      const symbol = r.symbol ?? r.asset ?? 'REWARD';
+      lines.push({
+        label: 'Claimed',
+        value: `${fmtAmt(r.amount, 4)} ${symbol}`,
+        emphasis: 'positive',
+      });
+    }
+
+    if (data.totalValueUsd != null && data.totalValueUsd > 0) {
+      lines.push({
+        label: 'Value',
+        value: `~$${fmtAmt(data.totalValueUsd)}`,
+        emphasis: 'positive',
+      });
+    }
+
+    if (rewards.length === 0) {
+      lines.push({ label: 'Claimed', value: 'No pending rewards', emphasis: 'neutral' });
+    }
+
     return lines;
   }
 
@@ -135,9 +168,9 @@ export function TransactionReceiptCard({ data, toolName }: { data: TxReceiptData
 
   return (
     <CardShell title="Transaction" noPadding>
-      {lines.map((line) => (
+      {lines.map((line, idx) => (
         <div
-          key={line.label}
+          key={`${line.label}-${idx}`}
           className="flex items-center justify-between px-3 py-2 text-[13px]"
           style={{ borderBottom: '0.5px solid var(--border-subtle)' }}
         >
