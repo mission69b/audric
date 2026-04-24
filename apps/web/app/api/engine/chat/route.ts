@@ -1,6 +1,10 @@
 import { NextRequest } from 'next/server';
 import { serializeSSE } from '@t2000/engine';
-import type { PendingAction } from '@t2000/engine';
+import type { PendingAction, ContentBlock, EngineEvent } from '@t2000/engine';
+import {
+  classifyReadIntents,
+  makeAutoDispatchId,
+} from '@/lib/engine/intent-dispatcher';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { validateJwt, isValidSuiAddress } from '@/lib/auth';
 import {
@@ -211,11 +215,126 @@ export async function POST(request: NextRequest) {
             );
           }
 
+          // [v0.46.7] Intent-driven pre-dispatch.
+          //
+          // For direct read questions ("what's my net worth", "am I at risk
+          // of liquidation", "show available MPP services") we deterministically
+          // run the corresponding read tool BEFORE invoking the LLM. This
+          // closes the long-tail gap where the model skipped tool calls based
+          // on its own efficiency heuristic ("data is fresh enough from earlier
+          // turn"), leaving the user without a rich card.
+          //
+          // Mechanism mirrors the existing prefetch convention in
+          // `buildSyntheticPrefetch`: append assistant(tool_use) + user(tool_result)
+          // ContentBlocks to the message ledger, then let `submitMessage` push
+          // the user's text and run the agent loop. The LLM sees the fresh
+          // result in context and narrates around it without re-calling.
+          // SSE events for the synthetic tool calls are streamed BEFORE the
+          // LLM's stream so cards render immediately and metrics row is complete.
+          const trimmedMessage = message.trim();
+          const intents = classifyReadIntents(trimmedMessage);
+          if (intents.length > 0) {
+            const priorMessages = engine.getMessages();
+            const syntheticToolUses: ContentBlock[] = [];
+            const syntheticToolResults: ContentBlock[] = [];
+
+            for (const intent of intents) {
+              const callId = makeAutoDispatchId(turnIndex, intent.toolName);
+
+              let result: { data: unknown; isError: boolean };
+              try {
+                result = await engine.invokeReadTool(
+                  intent.toolName,
+                  intent.args,
+                );
+              } catch (dispatchErr) {
+                console.warn(
+                  '[intent-dispatch] invokeReadTool threw — falling back to LLM flow',
+                  {
+                    sessionId: sessionId ?? null,
+                    toolName: intent.toolName,
+                    label: intent.label,
+                    error:
+                      dispatchErr instanceof Error
+                        ? dispatchErr.message
+                        : String(dispatchErr),
+                  },
+                );
+                continue;
+              }
+
+              if (result.isError) {
+                console.warn(
+                  '[intent-dispatch] tool returned isError — falling back to LLM flow',
+                  {
+                    sessionId: sessionId ?? null,
+                    toolName: intent.toolName,
+                    label: intent.label,
+                  },
+                );
+                continue;
+              }
+
+              syntheticToolUses.push({
+                type: 'tool_use',
+                id: callId,
+                name: intent.toolName,
+                input: intent.args,
+              });
+              syntheticToolResults.push({
+                type: 'tool_result',
+                toolUseId: callId,
+                content: JSON.stringify({ data: result.data }),
+              });
+
+              const startEvent: EngineEvent = {
+                type: 'tool_start',
+                toolName: intent.toolName,
+                toolUseId: callId,
+                input: intent.args,
+              };
+              const resultEvent: EngineEvent = {
+                type: 'tool_result',
+                toolName: intent.toolName,
+                toolUseId: callId,
+                result: { data: result.data },
+                isError: false,
+                wasEarlyDispatched: true,
+              };
+
+              controller.enqueue(encoder.encode(serializeSSE(startEvent)));
+              controller.enqueue(encoder.encode(serializeSSE(resultEvent)));
+
+              toolNamesByUseId.set(callId, intent.toolName);
+              calledToolNames.push(intent.toolName);
+              collector.onToolStart(callId);
+              collector.onToolResult(
+                callId,
+                intent.toolName,
+                { data: result.data },
+                {
+                  wasTruncated: false,
+                  wasEarlyDispatched: true,
+                  resultDeduped: false,
+                  returnedRefinement: false,
+                },
+              );
+            }
+
+            if (syntheticToolUses.length > 0) {
+              engine.loadMessages([
+                ...priorMessages,
+                { role: 'assistant', content: syntheticToolUses },
+                { role: 'user', content: syntheticToolResults },
+              ]);
+            }
+          }
+
           // [v1.4 Item 4] Tap raw EngineEvents for metrics BEFORE
           // serializing — the SSE adapter is lossy for our needs (`error`
           // events lose the Error type, and we want refinement detection
           // on the original `result` object).
-          for await (const event of engine.submitMessage(message.trim())) {
+          for await (const event of engine.submitMessage(trimmedMessage)) {
             switch (event.type) {
               case 'compaction':
                 collector.onCompaction();
