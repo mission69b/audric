@@ -41,6 +41,7 @@ import { SparkleIcon } from './SparkleIcon';
 import { SpinnerIcon } from './SpinnerIcon';
 import { StoreIcon } from './StoreIcon';
 import { SunIcon } from './SunIcon';
+import { WaveformIcon } from './WaveformIcon';
 
 export type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
 
@@ -87,6 +88,7 @@ export const ICONS = {
   'spinner': SpinnerIcon,
   'store': StoreIcon,
   'sun': SunIcon,
+  'waveform': WaveformIcon,
 } as const satisfies Record<string, IconComponent>;
 
 export type IconName = keyof typeof ICONS;
@@ -133,3 +135,4 @@ export { SparkleIcon };
 export { SpinnerIcon };
 export { StoreIcon };
 export { SunIcon };
+export { WaveformIcon };
