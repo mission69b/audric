@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { validateJwt, isValidSuiAddress } from '@/lib/auth';
@@ -9,6 +10,19 @@ const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KE
 export const runtime = 'nodejs';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** Short fingerprint for log correlation. Never log raw email — the
+ *  hash is enough to confirm "same email" across log lines without
+ *  putting PII in our log retention. */
+function emailHash(email: string): string {
+  return createHash('sha256').update(email.toLowerCase()).digest('hex').slice(0, 12);
+}
+
+/** "0x2314…96cd" — for user-facing copy and operator logs. */
+function maskAddress(addr: string): string {
+  if (!addr || addr.length < 10) return addr;
+  return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
+}
 
 function generateToken(): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -49,10 +63,44 @@ export async function POST(request: NextRequest) {
 
   const existing = await prisma.user.findFirst({
     where: { email, NOT: { suiAddress: address } },
-    select: { id: true },
+    select: { id: true, suiAddress: true },
   });
   if (existing) {
-    return NextResponse.json({ error: 'This email is already registered to another account' }, { status: 409 });
+    // [send-safety / auth re-prompt diagnostic] We've seen users hit this
+    // 409 after re-logging-in with the same Gmail account from a different
+    // deployment URL (preview vs prod). zkLogin is deterministic per
+    // (sub + aud + Enoki app), so when the same `sub` produces a different
+    // `suiAddress`, the most likely cause is `NEXT_PUBLIC_GOOGLE_CLIENT_ID`
+    // (= JWT `aud`) differing between deployments. Logging `aud` + a sub
+    // prefix here lets us confirm or rule that out from real reports
+    // without putting raw email/sub in retention.
+    const claims = ('payload' in jwtResult ? jwtResult.payload : null) ?? null;
+    console.warn('[email-conflict]', {
+      route: 'POST /api/user/email',
+      emailHash: emailHash(email),
+      requestedSuiAddress: address,
+      existingSuiAddress: existing.suiAddress,
+      jwt: claims
+        ? {
+            aud: claims.aud,
+            sub: typeof claims.sub === 'string' ? claims.sub.slice(0, 8) : null,
+            iss: claims.iss,
+          }
+        : null,
+      origin: request.headers.get('origin'),
+    });
+    return NextResponse.json(
+      {
+        error: 'EMAIL_LINKED_TO_DIFFERENT_WALLET',
+        message: `This email is linked to a different wallet (${maskAddress(existing.suiAddress)}).`,
+        hint:
+          'This usually happens when you previously signed in from a different URL ' +
+          '(e.g. a preview link) or selected a different Google account. ' +
+          'If you have funds in the previous wallet, please contact support@audric.ai for help recovering them.',
+        previousAddressMasked: maskAddress(existing.suiAddress),
+      },
+      { status: 409 },
+    );
   }
 
   const token = generateToken();

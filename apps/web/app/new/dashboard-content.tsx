@@ -1306,6 +1306,8 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
                 return m;
               })()}
               onSendMessage={engine.sendMessage}
+              contacts={contactsHook.contacts}
+              onSaveContactBeforeApprove={contactsHook.addContact}
               address={address}
               jwt={session?.jwt ?? null}
               sessionId={engine.sessionId ?? null}

@@ -440,6 +440,11 @@ export async function createEngine(
     recipes: recipeRegistry,
     priceCache,
     permissionConfig,
+    // Saved contacts thread into both `guardAddressSource` (treats a
+    // contact's address as a trusted source for `send_transfer.to`) and
+    // the engine permission tier resolver (sends to non-contact
+    // addresses always require client confirmation, regardless of amount).
+    contacts: opts.contacts,
     sessionSpendUsd: opts.sessionSpendUsd,
     onAutoExecuted: opts.sessionId
       ? ({ usdValue }: { usdValue: number }) =>

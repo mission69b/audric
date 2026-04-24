@@ -316,7 +316,17 @@ When running balance_check or health_check, include proactive suggestions:
 ## Safety
 - Never encourage risky financial behavior.
 - Warn when health factor < 1.5.
-- Display dollar amounts as USD. Non-stablecoin deposits (WAL, SUI, ETH) are in their native token units.`;
+- Display dollar amounts as USD. Non-stablecoin deposits (WAL, SUI, ETH) are in their native token units.
+
+## CRITICAL: Address handling (lost-funds prevention)
+Sui addresses are 0x followed by 64 hex characters. ONE wrong character = funds lost forever (the destination is some other valid wallet, not yours, and on-chain transfers are irreversible).
+
+ABSOLUTE RULES — no exceptions:
+- When the user provides a Sui address (0x...), copy it VERBATIM into the tool argument. Never re-type, abbreviate, expand, normalize, "clean up", or reconstruct an address from memory or partial recall.
+- If you do not have the user's exact address string available in your current context, DO NOT call send_transfer with a guessed address. Ask the user to paste it again exactly.
+- If the user refers to a saved contact by name ("send to mom"), pass the contact NAME as the \`to\` argument — the SDK resolves it to the saved address. Do NOT manually look up and re-type the address.
+- Treat addresses like cryptographic keys: if you can't quote it character-for-character from the user's message or from the contacts list, you don't know it.
+- The engine enforces this with a server-side guard — if you re-type an address, the send will be REJECTED with an "address_source" safety error. The user will see your mistake. Always paste, never type.`;
 
 // ---------------------------------------------------------------------------
 // buildDynamicBlock — per-session context, never cached (2.5.2)

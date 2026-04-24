@@ -1,6 +1,7 @@
 'use client';
 
 import { CardShell, SuiscanLink, fmtAmt } from './primitives';
+import { formatChunkedAddress, isSuiAddress } from '@/lib/sui-address';
 
 interface TxReceiptData {
   tx: string;
@@ -40,7 +41,22 @@ interface TxReceiptData {
   deliveryEstimate?: string;
 }
 
-type HeroLine = { label: string; value: string; emphasis?: 'positive' | 'negative' | 'neutral' };
+type HeroLine = {
+  label: string;
+  value: string;
+  emphasis?: 'positive' | 'negative' | 'neutral';
+  /**
+   * When set, renders `value` as a full-width chunked-hex Sui address
+   * (with the contact name as a sub-line if present) instead of the
+   * compact right-aligned label/value row. Used for `send_transfer.to`
+   * so a single-character typo is glanceable on the receipt — the
+   * old `slice(0, 10)` truncation hid exactly the position where the
+   * lost-funds bug occurred.
+   */
+  variant?: 'address';
+  /** Raw 0x address shown beneath a contact name when variant === 'address'. */
+  rawAddress?: string;
+};
 
 function getHeroLines(data: TxReceiptData, toolName: string): HeroLine[] {
   const lines: HeroLine[] = [];
@@ -64,7 +80,21 @@ function getHeroLines(data: TxReceiptData, toolName: string): HeroLine[] {
 
   if (toolName === 'send_transfer') {
     lines.push({ label: 'Amount', value: `$${fmtAmt(data.amount ?? 0)}` });
-    lines.push({ label: 'To', value: data.contactName ?? `${String(data.to ?? '').slice(0, 10)}...` });
+    const rawTo = String(data.to ?? '');
+    if (data.contactName) {
+      lines.push({
+        label: 'To',
+        value: data.contactName,
+        variant: 'address',
+        rawAddress: isSuiAddress(rawTo) ? rawTo : undefined,
+      });
+    } else {
+      lines.push({
+        label: 'To',
+        value: rawTo,
+        variant: 'address',
+      });
+    }
     if (data.memo) lines.push({ label: 'Memo', value: data.memo });
     return lines;
   }
@@ -168,18 +198,48 @@ export function TransactionReceiptCard({ data, toolName }: { data: TxReceiptData
 
   return (
     <CardShell title="Transaction" noPadding>
-      {lines.map((line, idx) => (
-        <div
-          key={`${line.label}-${idx}`}
-          className="flex items-center justify-between px-3 py-2 text-[13px]"
-          style={{ borderBottom: '0.5px solid var(--border-subtle)' }}
-        >
-          <span className="text-fg-secondary">{line.label}</span>
-          <span className={`font-mono text-fg-primary ${line.emphasis ? emphasisClass[line.emphasis] : ''}`}>
-            {line.value}
-          </span>
-        </div>
-      ))}
+      {lines.map((line, idx) => {
+        if (line.variant === 'address') {
+          // Full-width address row: contact name (if any) on the right,
+          // chunked-hex address on its own line beneath. When the contact
+          // name IS the address (no nickname), we just render the chunked
+          // hex once. The chunked render is the whole point — typos at
+          // position 20 are visible only when every nibble is shown.
+          const addrToShow = line.rawAddress ?? line.value;
+          const showName = line.rawAddress && line.value !== line.rawAddress;
+          return (
+            <div
+              key={`${line.label}-${idx}`}
+              className="px-3 py-2 text-[13px]"
+              style={{ borderBottom: '0.5px solid var(--border-subtle)' }}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-fg-secondary">{line.label}</span>
+                {showName && (
+                  <span className="font-mono text-fg-primary">{line.value}</span>
+                )}
+              </div>
+              {isSuiAddress(addrToShow) && (
+                <div className="mt-1 font-mono text-[11px] leading-[1.5] text-fg-secondary break-all">
+                  {formatChunkedAddress(addrToShow)}
+                </div>
+              )}
+            </div>
+          );
+        }
+        return (
+          <div
+            key={`${line.label}-${idx}`}
+            className="flex items-center justify-between px-3 py-2 text-[13px]"
+            style={{ borderBottom: '0.5px solid var(--border-subtle)' }}
+          >
+            <span className="text-fg-secondary">{line.label}</span>
+            <span className={`font-mono text-fg-primary ${line.emphasis ? emphasisClass[line.emphasis] : ''}`}>
+              {line.value}
+            </span>
+          </div>
+        );
+      })}
 
       {data.gasCost != null && data.gasCost > 0 && (
         <div
