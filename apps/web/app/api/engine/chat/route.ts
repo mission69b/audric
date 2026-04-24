@@ -234,6 +234,29 @@ export async function POST(request: NextRequest) {
           // LLM's stream so cards render immediately and metrics row is complete.
           const trimmedMessage = message.trim();
           const intents = classifyReadIntents(trimmedMessage);
+
+          // [Bug A trace] Always log a one-liner with intent classification
+          // + dispatch outcome. When users report "this prompt didn't render
+          // a card", we can grep this trace to see whether (a) classification
+          // matched, (b) invokeReadTool ran, (c) what it returned. Cheap
+          // (one log line per turn) and avoids the previous black box where
+          // a missed card looked identical to "no rule matched".
+          const messagePreview =
+            trimmedMessage.length > 80
+              ? `${trimmedMessage.slice(0, 80)}…`
+              : trimmedMessage;
+          console.info('[intent-dispatch] classified', {
+            sessionId: sessionId ?? null,
+            turnIndex,
+            messagePreview,
+            intentCount: intents.length,
+            intents: intents.map((i) => ({
+              tool: i.toolName,
+              label: i.label,
+              args: i.args,
+            })),
+          });
+
           if (intents.length > 0) {
             const priorMessages = engine.getMessages();
             const syntheticToolUses: ContentBlock[] = [];
@@ -330,6 +353,17 @@ export async function POST(request: NextRequest) {
                   returnedRefinement: false,
                 },
               );
+
+              // [Bug A trace] Confirm SSE events were enqueued. Pairs with
+              // the [intent-dispatch] classified log above so a failed
+              // reproduction shows whether dispatch reached this point.
+              console.info('[intent-dispatch] dispatched', {
+                sessionId: sessionId ?? null,
+                turnIndex,
+                callId,
+                tool: intent.toolName,
+                label: intent.label,
+              });
             }
 
             if (syntheticToolUses.length > 0) {
