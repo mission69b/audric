@@ -13,100 +13,108 @@ function asMsg(role: 'user' | 'assistant', content: string, id = 'm1'): EngineCh
 }
 
 describe('useEngineReplyAwaiter', () => {
-  it('resolves with the latest assistant text once isStreaming flips false', async () => {
-    const messages: EngineChatMessage[] = [
+  it('resolves with the latest assistant text once kickoff finishes streaming', async () => {
+    let messages: EngineChatMessage[] = [
       asMsg('user', 'hi', 'u1'),
       asMsg('assistant', '', 'a1'),
     ];
 
     const { result, rerender } = renderHook(
-      ({ isStreaming, msgs }) => useEngineReplyAwaiter(isStreaming, msgs),
-      { initialProps: { isStreaming: true, msgs: messages } },
+      ({ s, m }: { s: boolean; m: EngineChatMessage[] }) =>
+        useEngineReplyAwaiter(s, m),
+      { initialProps: { s: false, m: messages } },
     );
 
-    let resolved: string | undefined;
-    act(() => {
-      void result.current().then((text) => {
-        resolved = text;
+    // Simulate engine.sendMessage: flips isStreaming true, streams
+    // content, flips isStreaming false. Each rerender is wrapped in
+    // its own act() so React commits effects between them — without
+    // that, RTL batches into the final state and the falling edge is
+    // never observed.
+    const kickoff = async () => {
+      await act(async () => {
+        rerender({ s: true, m: messages });
       });
-    });
-
-    // Streaming continues — promise should still be pending.
-    rerender({
-      isStreaming: true,
-      msgs: [...messages.slice(0, 1), asMsg('assistant', 'Hello there', 'a1')],
-    });
-
-    expect(resolved).toBeUndefined();
-
-    // Streaming ends — awaiter should resolve with the assistant content.
-    await act(async () => {
-      rerender({
-        isStreaming: false,
-        msgs: [...messages.slice(0, 1), asMsg('assistant', 'Hello there', 'a1')],
+      messages = [messages[0], asMsg('assistant', 'Hello there', 'a1')];
+      await act(async () => {
+        rerender({ s: true, m: messages });
       });
-      // Allow microtasks queued inside the effect to flush.
-      await Promise.resolve();
-    });
+      await act(async () => {
+        rerender({ s: false, m: messages });
+      });
+    };
+
+    let resolved = '';
+    // Outer act not needed — the awaiter Promise resolves inside the
+    // last inner act(rerender). Directly await the result.
+    resolved = await result.current(kickoff);
 
     expect(resolved).toBe('Hello there');
   });
 
-  it('resolves with empty string when no assistant message has content', async () => {
+  it('uses the LAST message in the array (not find-from-reverse with content)', async () => {
+    // Two assistant messages: an older one with content, a newer empty one.
+    // The new contract returns the *last* element if it's an assistant
+    // message, even when empty — so we don't accidentally TTS-speak a
+    // stale older reply.
+    const initial: EngineChatMessage[] = [
+      asMsg('assistant', 'OLD reply', 'a-old'),
+      asMsg('user', 'follow up', 'u1'),
+      asMsg('assistant', '', 'a-new'),
+    ];
+
     const { result, rerender } = renderHook(
-      ({ isStreaming, msgs }) => useEngineReplyAwaiter(isStreaming, msgs),
-      { initialProps: { isStreaming: true, msgs: [asMsg('user', 'hi', 'u1')] } },
+      ({ s, m }: { s: boolean; m: EngineChatMessage[] }) =>
+        useEngineReplyAwaiter(s, m),
+      { initialProps: { s: false, m: initial } },
     );
 
-    let resolved: string | undefined;
-    act(() => {
-      void result.current().then((text) => {
-        resolved = text;
+    const kickoff = async () => {
+      await act(async () => {
+        rerender({ s: true, m: initial });
       });
-    });
+      await act(async () => {
+        rerender({ s: false, m: initial });
+      });
+    };
 
-    await act(async () => {
-      rerender({ isStreaming: false, msgs: [asMsg('user', 'hi', 'u1')] });
-      await Promise.resolve();
-    });
-
+    const resolved = await result.current(kickoff);
     expect(resolved).toBe('');
   });
 
-  it('does not resolve unless isStreaming has actually transitioned from true to false', async () => {
-    const { result, rerender } = renderHook(
-      ({ isStreaming, msgs }) => useEngineReplyAwaiter(isStreaming, msgs),
-      { initialProps: { isStreaming: false, msgs: [] as EngineChatMessage[] } },
+  it('safety net resolves with empty when kickoff completes without any transition', async () => {
+    // Engine no-op'd (e.g. guarded out): no isStreaming transitions
+    // happen during kickoff. The safety net inside the hook must still
+    // resolve so voice mode doesn't hang waiting forever.
+    const messages: EngineChatMessage[] = [asMsg('user', 'hi', 'u1')];
+
+    const { result } = renderHook(
+      ({ s, m }: { s: boolean; m: EngineChatMessage[] }) =>
+        useEngineReplyAwaiter(s, m),
+      { initialProps: { s: false, m: messages } },
     );
 
-    let resolved: string | undefined;
-    act(() => {
-      void result.current().then((text) => {
-        resolved = text;
-      });
-    });
+    const kickoff = async () => {
+      // Engine guard returns immediately, no state changes.
+      return;
+    };
 
-    // Re-render at the same false → false: no transition, no resolution.
-    await act(async () => {
-      rerender({ isStreaming: false, msgs: [] });
-      await Promise.resolve();
-    });
+    const resolved = await result.current(kickoff);
+    expect(resolved).toBe('');
+  });
 
-    expect(resolved).toBeUndefined();
+  it('propagates kickoff errors and clears the pending resolver', async () => {
+    const messages: EngineChatMessage[] = [asMsg('user', 'hi', 'u1')];
 
-    // Now actually transition true → false: should resolve.
-    await act(async () => {
-      rerender({ isStreaming: true, msgs: [] });
-      await Promise.resolve();
-    });
-    await act(async () => {
-      rerender({
-        isStreaming: false,
-        msgs: [asMsg('assistant', 'final', 'a1')],
-      });
-      await Promise.resolve();
-    });
+    const { result } = renderHook(
+      ({ s, m }: { s: boolean; m: EngineChatMessage[] }) =>
+        useEngineReplyAwaiter(s, m),
+      { initialProps: { s: false, m: messages } },
+    );
 
-    expect(resolved).toBe('final');
+    const kickoff = async () => {
+      throw new Error('boom');
+    };
+
+    await expect(result.current(kickoff)).rejects.toThrow('boom');
   });
 });

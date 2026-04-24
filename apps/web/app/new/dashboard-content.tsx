@@ -206,30 +206,37 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
 
   // ─── Voice mode (Claude-style continuous loop) ────────────────────
   // The hook is engine-agnostic: it owns the mic + TTS lifecycle and
-  // calls back into useEngine via the awaiter bridge. Pulling the
+  // calls back into useEngine via `submitAndAwaitReply`. Pulling the
   // status from /api/voice/status keeps the mic button hidden on
   // deployments without OPENAI_API_KEY / ELEVENLABS_API_KEY configured.
+  //
+  // CRITICAL: `useEngine.sendMessage` internally awaits the entire SSE
+  // stream, so the awaiter must register its falling-edge listener
+  // *before* the kickoff fires. The awaiter wraps that ordering.
   const voiceStatus = useVoiceStatus();
   const awaitReply = useEngineReplyAwaiter(engine.isStreaming, engine.messages);
-  const submitTranscriptRef = useRef<(text: string) => Promise<void>>(async () => {});
-  submitTranscriptRef.current = async (text: string) => {
-    await engine.sendMessage(text);
-  };
+  const sendMessageRef = useRef(engine.sendMessage);
+  sendMessageRef.current = engine.sendMessage;
+  const submitAndAwaitReplyRef = useRef<(text: string) => Promise<string>>(
+    async () => '',
+  );
+  submitAndAwaitReplyRef.current = (text: string) =>
+    awaitReply(() => sendMessageRef.current(text));
   const voice = useVoiceMode({
     address,
     jwt: session?.jwt,
-    submitTranscript: (text) => submitTranscriptRef.current(text),
-    awaitAssistantReply: awaitReply,
+    submitAndAwaitReply: (text) => submitAndAwaitReplyRef.current(text),
   });
 
-  // The id of the last assistant message — that's the one being spoken
-  // when voice mode enters the `speaking` state. Computed here (not in
-  // the hook) because the hook is engine-agnostic and doesn't have
-  // direct access to the message list.
+  // The id of the message currently being spoken. After `sendMessage`
+  // the engine guarantees the last array element is the freshly-streamed
+  // assistant message, so we anchor highlighting to that id.
   const speakingMessageId =
     voice.state === 'speaking'
-      ? [...engine.messages].reverse().find((m) => m.role === 'assistant' && m.content.length > 0)?.id ??
-        null
+      ? (() => {
+          const last = engine.messages[engine.messages.length - 1];
+          return last && last.role === 'assistant' ? last.id : null;
+        })()
       : null;
 
   const initialSessionLoaded = useRef(false);
@@ -1338,20 +1345,27 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
                   errorMessage: voice.errorMessage,
                 }}
               />
-              <div className="flex items-center justify-between">
-                <button
-                  type="button"
-                  onClick={engine.cancel}
-                  className="flex items-center gap-2 rounded-pill border border-border-subtle bg-transparent px-3.5 h-[30px] font-mono text-[10px] uppercase tracking-[0.1em] text-fg-secondary hover:text-fg-primary hover:border-border-strong hover:bg-surface-sunken transition active:scale-[0.97]"
-                >
-                  <span aria-hidden="true" className="inline-block w-2 h-2 bg-current" /> Stop
-                </button>
-                {engine.usage && (
-                  <span className="text-[10px] text-fg-muted font-mono tracking-[0.05em]">
-                    {engine.usage.inputTokens + engine.usage.outputTokens} TOKENS
-                  </span>
-                )}
-              </div>
+              {/* Hide the engine-cancel Stop while voice mode is active —
+                  the InputBar's own "••• Stop" pill is the canonical
+                  voice control, and clicking engine.cancel mid-voice
+                  would resolve the awaiter with "Cancelled." text and
+                  TTS-speak it. */}
+              {!voice.isActive && (
+                <div className="flex items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={engine.cancel}
+                    className="flex items-center gap-2 rounded-pill border border-border-subtle bg-transparent px-3.5 h-[30px] font-mono text-[10px] uppercase tracking-[0.1em] text-fg-secondary hover:text-fg-primary hover:border-border-strong hover:bg-surface-sunken transition active:scale-[0.97]"
+                  >
+                    <span aria-hidden="true" className="inline-block w-2 h-2 bg-current" /> Stop
+                  </button>
+                  {engine.usage && (
+                    <span className="text-[10px] text-fg-muted font-mono tracking-[0.05em]">
+                      {engine.usage.inputTokens + engine.usage.outputTokens} TOKENS
+                    </span>
+                  )}
+                </div>
+              )}
             </>
           ) : (
             <>

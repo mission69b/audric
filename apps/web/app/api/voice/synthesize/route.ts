@@ -84,8 +84,12 @@ export async function POST(request: NextRequest) {
 
   let response: Response;
   try {
+    // mp3_44100_64 = 44.1 kHz / 64 kbps. Significantly clearer than the
+    // 22.05 kHz / 32 kbps default at ~2x the bytes (~60 KB / sentence).
+    // Voice mode is opt-in and ElevenLabs free tier covers ~10k chars,
+    // so the bandwidth bump is negligible relative to the UX win.
     response = await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/with-timestamps?output_format=mp3_22050_32`,
+      `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/with-timestamps?output_format=mp3_44100_64`,
       {
         method: 'POST',
         headers: {

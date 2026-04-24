@@ -42,14 +42,16 @@ export type VoiceState =
 export interface UseVoiceModeOptions {
   address: string | null;
   jwt: string | undefined;
-  /** Submit the transcribed text to the engine. */
-  submitTranscript: (text: string) => Promise<void>;
   /**
-   * Resolve when the assistant has finished generating its reply. The
-   * resolved value is the assistant's text, which we'll synthesise to
-   * speech. Returning an empty string skips TTS gracefully.
+   * Submit the transcribed text to the engine and resolve with the
+   * assistant's full reply text once streaming has finished. Returning
+   * an empty string skips TTS gracefully (e.g. card-only responses).
+   *
+   * The bridge implementation must register its falling-edge listener
+   * before kicking off the engine to avoid missing the
+   * `isStreaming: true → false` transition. See `useEngineReplyAwaiter`.
    */
-  awaitAssistantReply: () => Promise<string>;
+  submitAndAwaitReply: (text: string) => Promise<string>;
 }
 
 export interface UseVoiceMode {
@@ -225,6 +227,14 @@ export function useVoiceMode(opts: UseVoiceModeOptions): UseVoiceMode {
       const bytes = new Uint8Array(binary.length);
       for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
       const blob = new Blob([bytes], { type: 'audio/mpeg' });
+
+      // Defence-in-depth: revoke any previous URL before allocating a
+      // new one. teardownAudio normally clears this between turns, but
+      // we don't want to rely on call-order alone.
+      if (audioObjectUrlRef.current) {
+        URL.revokeObjectURL(audioObjectUrlRef.current);
+        audioObjectUrlRef.current = null;
+      }
       const url = URL.createObjectURL(blob);
       audioObjectUrlRef.current = url;
 
@@ -321,8 +331,7 @@ export function useVoiceMode(opts: UseVoiceModeOptions): UseVoiceMode {
       setInterimTranscript(text);
 
       try {
-        await optsRef.current.submitTranscript(text);
-        const reply = await optsRef.current.awaitAssistantReply();
+        const reply = await optsRef.current.submitAndAwaitReply(text);
         if ((stateRef.current as string) === 'idle') return;
         setInterimTranscript('');
         if (reply.trim().length === 0) {
@@ -451,8 +460,28 @@ export function useVoiceMode(opts: UseVoiceModeOptions): UseVoiceMode {
   // ─── start (public) ───────────────────────────────────────────────
   const start = useCallback(async () => {
     if (stateRef.current !== 'idle' && stateRef.current !== 'error') return;
+    // Clear any previous error before retry so the placeholder
+    // immediately reflects the new attempt.
+    setErrorMessage(null);
     await beginListeningRef.current();
   }, []);
+
+  // ─── auto-recover from `error` so it doesn't linger forever ──────
+  // If the user ignores the error placeholder and resumes typing /
+  // navigating, fade the state back to `idle` after 5s so the input
+  // bar doesn't stay stuck displaying a stale error message.
+  useEffect(() => {
+    if (state !== 'error') return;
+    const timer = setTimeout(() => {
+      // Re-check via ref in case the user already started a new
+      // voice session before the timer fired.
+      if (stateRef.current === 'error') {
+        setState('idle');
+        setErrorMessage(null);
+      }
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [state]);
 
   // ─── ESC to exit voice mode ───────────────────────────────────────
   useEffect(() => {

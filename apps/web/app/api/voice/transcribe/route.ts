@@ -91,11 +91,17 @@ export async function POST(request: NextRequest) {
   // typically emits `audio/webm;codecs=opus` which Whisper accepts.
   const whisperForm = new FormData();
   // Whisper requires a filename to infer the format — without it the
-  // upload is rejected with a 400.
+  // upload is rejected with a 400. Keep the list aligned with the
+  // MIME types MediaRecorder advertises across browsers (Chrome &
+  // Firefox: webm/opus, Safari iOS17+: mp4, Firefox legacy: ogg).
+  const audioType = (audio.type ?? '').toLowerCase();
   const filename =
-    audio.type.includes('mp4') ? 'audio.mp4' :
-    audio.type.includes('mpeg') ? 'audio.mp3' :
-    audio.type.includes('wav') ? 'audio.wav' :
+    audioType.includes('mp4') ? 'audio.mp4' :
+    audioType.includes('mpeg') || audioType.includes('mp3') ? 'audio.mp3' :
+    audioType.includes('wav') ? 'audio.wav' :
+    audioType.includes('ogg') ? 'audio.ogg' :
+    audioType.includes('flac') ? 'audio.flac' :
+    audioType.includes('m4a') ? 'audio.m4a' :
     'audio.webm';
   whisperForm.append('file', audio, filename);
   whisperForm.append('model', 'whisper-1');
