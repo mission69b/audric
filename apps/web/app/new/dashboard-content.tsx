@@ -20,6 +20,10 @@ import { AppShell } from '@/components/shell/AppShell';
 import { useChipFlow, type ChipFlowResult, type FlowContext } from '@/hooks/useChipFlow';
 import { useFeed } from '@/hooks/useFeed';
 import { useEngine, executeToolAction } from '@/hooks/useEngine';
+import { useVoiceMode } from '@/hooks/useVoiceMode';
+import { useVoiceStatus } from '@/hooks/useVoiceStatus';
+import { useEngineReplyAwaiter } from '@/hooks/useEngineReplyAwaiter';
+import { VoiceModeProvider } from '@/components/dashboard/VoiceModeContext';
 import { useBalance } from '@/hooks/useBalance';
 import { parseIntent, type ParsedIntent } from '@/lib/intent-parser';
 import { mapError } from '@/lib/errors';
@@ -199,6 +203,34 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
   const contactsHook = useContacts(address);
   const { agent } = useAgent();
   const engine = useEngine({ address, jwt: session?.jwt });
+
+  // ─── Voice mode (Claude-style continuous loop) ────────────────────
+  // The hook is engine-agnostic: it owns the mic + TTS lifecycle and
+  // calls back into useEngine via the awaiter bridge. Pulling the
+  // status from /api/voice/status keeps the mic button hidden on
+  // deployments without OPENAI_API_KEY / ELEVENLABS_API_KEY configured.
+  const voiceStatus = useVoiceStatus();
+  const awaitReply = useEngineReplyAwaiter(engine.isStreaming, engine.messages);
+  const submitTranscriptRef = useRef<(text: string) => Promise<void>>(async () => {});
+  submitTranscriptRef.current = async (text: string) => {
+    await engine.sendMessage(text);
+  };
+  const voice = useVoiceMode({
+    address,
+    jwt: session?.jwt,
+    submitTranscript: (text) => submitTranscriptRef.current(text),
+    awaitAssistantReply: awaitReply,
+  });
+
+  // The id of the last assistant message — that's the one being spoken
+  // when voice mode enters the `speaking` state. Computed here (not in
+  // the hook) because the hook is engine-agnostic and doesn't have
+  // direct access to the message list.
+  const speakingMessageId =
+    voice.state === 'speaking'
+      ? [...engine.messages].reverse().find((m) => m.role === 'assistant' && m.content.length > 0)?.id ??
+        null
+      : null;
 
   const initialSessionLoaded = useRef(false);
   useEffect(() => {
@@ -1113,6 +1145,14 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
         onChipClick={handleChipClick}
         activeFlow={chipFlow.state.flow}
         prefetch={{ idleUsdc: balance.usdc, currentApy: balance.savingsRate }}
+        voiceMode={{
+          enabled: voiceStatus.enabled,
+          state: voice.state,
+          onStart: voice.start,
+          onStop: voice.stop,
+          interimTranscript: voice.interimTranscript,
+          errorMessage: voice.errorMessage,
+        }}
       />
     );
   };
@@ -1289,6 +1329,14 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
                 onCancel={engine.cancel}
                 disabled
                 placeholder="Ask a follow up..."
+                voiceMode={{
+                  enabled: voiceStatus.enabled,
+                  state: voice.state,
+                  onStart: voice.start,
+                  onStop: voice.stop,
+                  interimTranscript: voice.interimTranscript,
+                  errorMessage: voice.errorMessage,
+                }}
               />
               <div className="flex items-center justify-between">
                 <button
@@ -1373,6 +1421,14 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
                 onSubmit={handleInputSubmit}
                 disabled={chipFlow.state.phase === 'executing'}
                 placeholder={engine.messages.length > 0 ? 'Ask a follow up...' : 'Ask anything...'}
+                voiceMode={{
+                  enabled: voiceStatus.enabled,
+                  state: voice.state,
+                  onStart: voice.start,
+                  onStop: voice.stop,
+                  interimTranscript: voice.interimTranscript,
+                  errorMessage: voice.errorMessage,
+                }}
               />
             </>
           )}
@@ -1461,19 +1517,28 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
   const isChatLayout = panel === 'chat' || panel === undefined;
 
   return (
-    <AppShell
-      address={address}
-      jwt={session.jwt}
-      activeSessionId={engine.sessionId ?? undefined}
-      onLoadSession={engine.loadSession}
-      onNewConversation={handleNewConversation}
+    <VoiceModeProvider
+      value={{
+        state: voice.state,
+        speakingMessageId,
+        spokenWordIndex: voice.spokenWordIndex,
+        currentSpans: voice.currentSpans,
+      }}
     >
-      {isChatLayout ? panelContent : (
-        <div className="flex-1 overflow-y-auto">{panelContent}</div>
-      )}
-      {emailModal}
-      {tosBanner}
-    </AppShell>
+      <AppShell
+        address={address}
+        jwt={session.jwt}
+        activeSessionId={engine.sessionId ?? undefined}
+        onLoadSession={engine.loadSession}
+        onNewConversation={handleNewConversation}
+      >
+        {isChatLayout ? panelContent : (
+          <div className="flex-1 overflow-y-auto">{panelContent}</div>
+        )}
+        {emailModal}
+        {tosBanner}
+      </AppShell>
+    </VoiceModeProvider>
   );
 }
 

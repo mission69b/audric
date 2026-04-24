@@ -1,6 +1,7 @@
 'use client';
 
 import { InputBar } from './InputBar';
+import type { ComponentProps } from 'react';
 import { ChipBar } from './ChipBar';
 import { ChipExpand } from './ChipExpand';
 import { SaveDrawer } from './SaveDrawer';
@@ -41,6 +42,8 @@ interface NewConversationViewProps {
   onChipClick: (flow: string) => void;
   activeFlow: string | null;
   prefetch?: { idleUsdc: number; currentApy: number };
+  /** Optional voice-mode wiring (forwarded to <InputBar>). */
+  voiceMode?: ComponentProps<typeof InputBar>['voiceMode'];
 }
 
 function fmtCompact(n: number): string {
@@ -60,6 +63,7 @@ export function NewConversationView({
   onChipClick,
   activeFlow,
   prefetch,
+  voiceMode,
 }: NewConversationViewProps) {
   const chipExpand = useChipExpand(prefetch);
 
@@ -101,7 +105,7 @@ export function NewConversationView({
           )}
         </div>
 
-        <InputBar onSubmit={onSend} placeholder="Ask anything..." />
+        <InputBar onSubmit={onSend} placeholder="Ask anything..." voiceMode={voiceMode} />
 
         <div ref={chipExpand.containerRef} className="mt-5">
           <ChipBar
