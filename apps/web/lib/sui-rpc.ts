@@ -21,7 +21,9 @@ export function getSuiRpcUrl(): string {
 
   const blockvisionKey = process.env.BLOCKVISION_API_KEY;
   if (blockvisionKey) {
-    return `https://sui-${network}-endpoint.blockvision.org/${blockvisionKey}`;
+    // Format from BlockVision dashboard:
+    //   https://sui-<network>.blockvision.org/v1/<API_KEY>
+    return `https://sui-${network}.blockvision.org/v1/${blockvisionKey}`;
   }
 
   return `https://fullnode.${network}.sui.io:443`;
