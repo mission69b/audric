@@ -29,6 +29,19 @@
  *   - Idempotent: classifying the same message twice returns the same set
  *   - Order-stable: intents are returned in registration order so the UI
  *     always sees cards in the same sequence for a given prompt
+ *
+ * [v0.46.9] Expanded coverage to include long-tail "direct read" questions
+ * that baseline E-H surfaced as missed-card cases:
+ *   - transaction_history (last tx, today, yesterday)
+ *   - activity_summary (services-spend)
+ *   - yield_summary (yield questions)
+ *
+ * Rule registry now supports per-rule arg builders (so multi-rule per tool
+ * with different args is possible — e.g. transaction_history fires with
+ * `{ limit: 1 }` for "my last transaction" and `{ date: '2026-04-19' }`
+ * for "what did I do today"). Dedup key is `toolName + JSON(args)` so a
+ * single message can produce multiple distinct intents that map to the same
+ * tool with different inputs (rare but supported).
  */
 
 export interface ReadIntent {
@@ -42,7 +55,17 @@ export interface ReadIntent {
 
 interface IntentRule {
   toolName: string;
-  args: Record<string, unknown>;
+  /**
+   * Static args. Used when `argsBuilder` is omitted. Most rules use this.
+   */
+  args?: Record<string, unknown>;
+  /**
+   * Computed args. Takes precedence over `args` when present. Used for
+   * rules that need a value derived at classification time (e.g. today's
+   * date in YYYY-MM-DD for `transaction_history`). Receives the regex
+   * match for context but most builders ignore it.
+   */
+  argsBuilder?: (match: RegExpMatchArray) => Record<string, unknown>;
   label: string;
   /**
    * Pattern must match a meaningful slice of the user's message.
@@ -50,6 +73,26 @@ interface IntentRule {
    * "balance the books" should NOT trigger balance_check.
    */
   pattern: RegExp;
+}
+
+/**
+ * Returns YYYY-MM-DD relative to today (server time). `0` = today,
+ * `-1` = yesterday. Used by the date-driven `transaction_history` rules.
+ *
+ * NOTE: server time vs user time. Audric runs the dispatcher on the
+ * Next.js server, so "today" is whatever the server thinks. For users in
+ * very different timezones this can be off by one day at edges — that's
+ * accepted as "good enough" since the existing transaction_history `date`
+ * filter has the same property and we don't currently track user TZ at
+ * the request layer. Worth revisiting when we do.
+ */
+function isoDateOffset(daysOffset: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + daysOffset);
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
 }
 
 /**
@@ -111,7 +154,92 @@ const READ_INTENT_RULES: readonly IntentRule[] = [
     pattern:
       /\b(?:(?:show\s+(?:me\s+)?(?:all\s+)?(?:available\s+)?(?:mpp\s+)?services?(?:\s+(?:on\s+sui|catalog))?)|(?:list\s+(?:all\s+)?(?:available\s+)?(?:mpp\s+)?services?)|(?:available\s+(?:mpp\s+)?services?)|(?:what\s+(?:mpp\s+)?services?\s+(?:are\s+available|exist|do\s+(?:you|we)\s+have))|(?:mpp\s+services?)|(?:service\s+catalog))\b/i,
   },
+
+  // ─────────────── transaction_history — last single tx ──────────────
+  {
+    toolName: 'transaction_history',
+    args: { limit: 1 },
+    label: 'last transaction direct read',
+    // Matches: "what was my last transaction", "what's my last transaction",
+    // "show my last transaction", "my last transaction", "last tx".
+    // Singular only — uses \b after "transaction" which fails before the
+    // plural 's' (both word chars), so "my last 5 transactions" is left
+    // for the LLM to handle (and the existing limit-aware path renders fine).
+    // Does NOT match: "my last transactions", "my last 5 transactions",
+    // "last week's transaction" (no "my").
+    pattern:
+      /\b(?:what\s+(?:was|is)\s+|show\s+(?:me\s+)?)?my\s+last\s+(?:transaction|tx)\b(?!s)/i,
+  },
+
+  // ─────────────── transaction_history — today's activity ────────────
+  {
+    toolName: 'transaction_history',
+    argsBuilder: () => ({ date: isoDateOffset(0) }),
+    label: "today's activity direct read",
+    // Matches: "show today's activity", "today's transactions", "what did I
+    // do today", "show me today's transactions".
+    // Does NOT match: "show me activity for today's market" (no possessive
+    // attached to today + activity/tx structure).
+    pattern:
+      /\b(?:show\s+(?:me\s+)?)?today(?:['’]?s)?\s+(?:activity|transactions?|tx)\b|\bwhat\s+did\s+i\s+do\s+today\b/i,
+  },
+
+  // ─────────────── transaction_history — yesterday's activity ────────
+  {
+    toolName: 'transaction_history',
+    argsBuilder: () => ({ date: isoDateOffset(-1) }),
+    label: "yesterday's activity direct read",
+    // Matches: "what did I do yesterday", "yesterday's activity",
+    // "yesterday's transactions", "show me yesterday's activity".
+    // Does NOT match: "what happened to BTC yesterday" (no "I" pronoun
+    // and no explicit activity/tx noun).
+    pattern:
+      /\b(?:show\s+(?:me\s+)?)?yesterday(?:['’]?s)?\s+(?:activity|transactions?|tx)\b|\bwhat\s+(?:did\s+i\s+do|happened)\s+yesterday\b/i,
+  },
+
+  // ─────────────────── activity_summary — services spend ─────────────
+  {
+    toolName: 'activity_summary',
+    args: { period: 'month' },
+    label: 'services spend direct read',
+    // Matches: "what did I spend on services this month", "what have I
+    // spent on services", "how much did I spend on APIs", "what did I pay
+    // for services", "what did I spend on MPP".
+    // Does NOT match: "spend $5 on a service" (write intent), "spending
+    // breakdown" (handled by canvas tool).
+    pattern:
+      /\b(?:what|how\s+much)\s+(?:did|have)\s+i\s+(?:spen[dt]|paid?|use[ds]?)\b.*\b(?:services?|apis?|mpp|gateway|tools?)\b/i,
+  },
+
+  // ─────────────────── yield_summary — yield direct read ─────────────
+  {
+    toolName: 'yield_summary',
+    args: {},
+    label: 'yield earnings direct read',
+    // Matches: "show my yield", "what's my yield", "what's my yield this
+    // month", "show my yield earnings", "how much have I earned",
+    // "how much am I earning", "my earnings", "my yield earnings",
+    // "what is my yield".
+    // Does NOT match: "yield farming strategies" (no "my"/"I"),
+    // "show me yields on Sui" (asks about market yields, not user's),
+    // "high yield pools" (market query).
+    pattern:
+      /\b(?:what(?:'s|\s+is)?\s+)?my\s+(?:current\s+|monthly\s+)?yield(?:\s+earnings?|\s+this\s+(?:week|month|year))?\b|\bshow\s+(?:me\s+)?my\s+yield(?:\s+earnings?)?\b|\bhow\s+much\s+(?:have\s+i\s+earned|am\s+i\s+earning|do\s+i\s+earn)\b|\bmy\s+earnings\b/i,
+  },
 ];
+
+/**
+ * Stable JSON fingerprint of args. Used for both dedup-key and the
+ * makeAutoDispatchId discriminator so two rules that target the same tool
+ * with different args don't collide.
+ */
+function argsFingerprint(args: Record<string, unknown>): string {
+  const keys = Object.keys(args).sort();
+  if (keys.length === 0) return '';
+  const sorted: Record<string, unknown> = {};
+  for (const k of keys) sorted[k] = args[k];
+  return JSON.stringify(sorted);
+}
 
 export function classifyReadIntents(message: string): ReadIntent[] {
   if (!message || typeof message !== 'string') return [];
@@ -120,18 +248,23 @@ export function classifyReadIntents(message: string): ReadIntent[] {
   if (trimmed.length === 0) return [];
 
   const matches: ReadIntent[] = [];
-  const seenTools = new Set<string>();
+  // Dedup by (toolName + argsFingerprint) so the same tool can fire with
+  // different args from different rules in one message, but identical
+  // (toolName, args) pairs only fire once.
+  const seenKeys = new Set<string>();
 
   for (const rule of READ_INTENT_RULES) {
-    if (seenTools.has(rule.toolName)) continue;
-    if (rule.pattern.test(trimmed)) {
-      matches.push({
-        toolName: rule.toolName,
-        args: { ...rule.args },
-        label: rule.label,
-      });
-      seenTools.add(rule.toolName);
-    }
+    const m = trimmed.match(rule.pattern);
+    if (!m) continue;
+    const args = rule.argsBuilder ? rule.argsBuilder(m) : { ...(rule.args ?? {}) };
+    const dedupKey = `${rule.toolName}:${argsFingerprint(args)}`;
+    if (seenKeys.has(dedupKey)) continue;
+    matches.push({
+      toolName: rule.toolName,
+      args,
+      label: rule.label,
+    });
+    seenKeys.add(dedupKey);
   }
 
   return matches;
@@ -139,12 +272,44 @@ export function classifyReadIntents(message: string): ReadIntent[] {
 
 /**
  * Generate a stable synthetic call ID for an injected tool dispatch. Stable
- * means: deterministic given (turnIndex, toolName) so retrying the same turn
- * doesn't generate a different ID. The `auto_` prefix is what `harness-metrics`
- * keys off when reporting which tools were pre-dispatched vs. LLM-called.
+ * means: deterministic given (turnIndex, toolName, discriminator) so retrying
+ * the same turn doesn't generate a different ID. The `auto_` prefix is what
+ * `harness-metrics` keys off when reporting which tools were pre-dispatched
+ * vs. LLM-called.
+ *
+ * `discriminator` (optional) lets the caller distinguish multiple intents
+ * that target the same tool with different args in one turn (e.g. if a
+ * single message matched both "yesterday's activity" and "today's activity"
+ * for transaction_history). Backward-compatible: omitting it preserves the
+ * v0.46.7 behavior where each turn had at most one dispatch per tool.
  */
-export function makeAutoDispatchId(turnIndex: number, toolName: string): string {
-  return `auto_${turnIndex}_${toolName}`;
+export function makeAutoDispatchId(
+  turnIndex: number,
+  toolName: string,
+  discriminator?: string,
+): string {
+  const suffix = discriminator ? `_${discriminator}` : '';
+  return `auto_${turnIndex}_${toolName}${suffix}`;
 }
 
-export const __testOnly__ = { READ_INTENT_RULES };
+/**
+ * Compute a short, URL-safe discriminator suitable for embedding in a
+ * tool call ID. Used by chat-route to disambiguate same-tool/different-args
+ * dispatches. Returns empty string for no-arg intents (preserves the
+ * unsuffixed ID format for the simple case).
+ */
+export function intentDiscriminator(intent: ReadIntent): string {
+  const fp = argsFingerprint(intent.args);
+  if (!fp) return '';
+  // Hash the JSON to a short alphanumeric token. Cheap FNV-1a 32-bit;
+  // collisions across distinct args within one turn are vanishingly rare
+  // for the rule set we register.
+  let h = 0x811c9dc5;
+  for (let i = 0; i < fp.length; i++) {
+    h ^= fp.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return (h >>> 0).toString(36);
+}
+
+export const __testOnly__ = { READ_INTENT_RULES, isoDateOffset, argsFingerprint };
