@@ -16,20 +16,24 @@ export function isSuiAddress(s: string): boolean {
 }
 
 /**
- * Format a Sui address as 16 groups of 4 hex characters, with the 0x
- * prefix preserved. Example:
- *   `0x2314 55f0 e980 5bdd 0945 9814 63da f034 6310 a7b3 b04a 733b 011c c791 feb8 96cd`
+ * Split a Sui address into chunks for visual rendering. Returns the
+ * raw groups (no spaces, no 0x). The renderer is expected to display
+ * them with CSS gap so the user can scan typos easily, while copy/paste
+ * still yields the canonical 0x...64-hex string (no spaces leaked).
  *
- * Falls back to the input unchanged when not a valid 0x...64-hex string.
+ * Example: `chunkAddress('0x231455f0...96cd')` →
+ *   `['2314', '55f0', 'e980', '5bdd', '0945', '9814', '63da', 'f034', '6310', 'a7b3', 'b04a', '733b', '011c', 'c791', 'feb8', '96cd']`
+ *
+ * Returns `null` when not a valid 0x...64-hex string.
  */
-export function formatChunkedAddress(addr: string, groupSize = 4): string {
-  if (!isSuiAddress(addr)) return addr;
+export function chunkAddress(addr: string, groupSize = 4): string[] | null {
+  if (!isSuiAddress(addr)) return null;
   const hex = addr.slice(2);
   const groups: string[] = [];
   for (let i = 0; i < hex.length; i += groupSize) {
     groups.push(hex.slice(i, i + groupSize));
   }
-  return `0x${groups.join(' ')}`;
+  return groups;
 }
 
 /**
@@ -103,21 +107,3 @@ export function findContactByAddress<T extends { name: string; address: string }
   return contacts.find((c) => c.address.trim().toLowerCase() === normalized) ?? null;
 }
 
-/**
- * Suggests an auto-name for an unnamed wallet (Wallet 1, Wallet 2, ...).
- * Counts existing contacts that match `Wallet N` and returns the next
- * integer. Used as the placeholder + fallback for the
- * "save as contact" inline field on the permission card.
- */
-export function nextAutoWalletName(
-  contacts: ReadonlyArray<{ name: string }>,
-): string {
-  const taken = new Set<number>();
-  for (const c of contacts) {
-    const m = /^Wallet\s+(\d+)$/i.exec(c.name);
-    if (m) taken.add(Number(m[1]));
-  }
-  let i = 1;
-  while (taken.has(i)) i++;
-  return `Wallet ${i}`;
-}

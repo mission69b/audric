@@ -1,7 +1,8 @@
 'use client';
 
 import { CardShell, SuiscanLink, fmtAmt } from './primitives';
-import { formatChunkedAddress, isSuiAddress } from '@/lib/sui-address';
+import { isSuiAddress } from '@/lib/sui-address';
+import { ChunkedAddress } from '../ChunkedAddress';
 
 interface TxReceiptData {
   tx: string;
@@ -220,9 +221,10 @@ export function TransactionReceiptCard({ data, toolName }: { data: TxReceiptData
                 )}
               </div>
               {isSuiAddress(addrToShow) && (
-                <div className="mt-1 font-mono text-[11px] leading-[1.5] text-fg-secondary break-all">
-                  {formatChunkedAddress(addrToShow)}
-                </div>
+                <ChunkedAddress
+                  address={addrToShow}
+                  className="mt-1 text-[11px] text-fg-secondary"
+                />
               )}
             </div>
           );

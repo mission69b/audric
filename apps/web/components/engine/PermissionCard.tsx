@@ -6,10 +6,8 @@ import type { PendingAction } from '@/lib/engine-types';
 import {
   findContactByAddress,
   findNearContact,
-  formatChunkedAddress,
-  isSuiAddress,
-  nextAutoWalletName,
 } from '@/lib/sui-address';
+import { ChunkedAddress } from './ChunkedAddress';
 
 /**
  * [v1.4 Item 6] Single editable input rendered inside a `PermissionCard`.
@@ -159,33 +157,27 @@ interface SendAddressBlockProps {
   contacts: ReadonlyArray<SavedContact>;
   walletAddress?: string | null;
   recentUserText?: string;
-  /** When the user types a name (or leaves it blank → auto-name) for a
-   *  raw-address send. Bubbles up to the parent so the contact can be
-   *  persisted on Approve, BEFORE the tx is broadcast. */
-  saveAsName: string;
-  onSaveAsNameChange: (value: string) => void;
-  saveDecision: 'save' | 'skip';
-  onSaveDecisionChange: (next: 'save' | 'skip') => void;
-  disabled?: boolean;
 }
 
 /**
  * Renders the recipient address for a `send_transfer` permission card
- * with full-width chunked hex, a source badge ("Saved contact: X" /
- * "Address from your message" / "Sending to self"), a near-contact
- * warning when the address looks like a typo of an existing contact,
- * and an inline "Save as contact" affordance for first-time addresses.
+ * with full chunked-hex display + a one-tap copy button (so users can
+ * verify against an external source without spaces leaking into the
+ * clipboard), plus a source badge ("Saved contact: X" / "Address from
+ * your message" / "Sending to self") and a near-contact warning when
+ * the address looks like a typo of an existing contact.
+ *
+ * Intentional non-feature: there is NO "save as contact" inline field
+ * here. The previous implementation auto-saved unnamed addresses as
+ * "Wallet 1", "Wallet 2", etc., which polluted the contact list and
+ * confused users (a contact appeared without them realizing). Contacts
+ * are now managed exclusively from the user's contacts UI.
  */
 function SendAddressBlock({
   to,
   contacts,
   walletAddress,
   recentUserText,
-  saveAsName,
-  onSaveAsNameChange,
-  saveDecision,
-  onSaveDecisionChange,
-  disabled,
 }: SendAddressBlockProps) {
   const normalizedTo = to.trim().toLowerCase();
   const matchedContact = useMemo(
@@ -202,17 +194,15 @@ function SendAddressBlock({
     [to, contacts, matchedContact],
   );
 
-  const isRawNewAddress = isSuiAddress(to) && !matchedContact && !isSelf;
-  const placeholderName = useMemo(() => nextAutoWalletName(contacts), [contacts]);
-
   return (
     <div className="space-y-1.5">
       <div className="text-[10px] font-medium uppercase tracking-wide text-fg-secondary">
         To
       </div>
-      <div className="rounded-md border border-border-subtle bg-surface-page px-2.5 py-2 font-mono text-[12px] leading-[1.5] text-fg-primary break-all">
-        {formatChunkedAddress(to)}
-      </div>
+      <ChunkedAddress
+        address={to}
+        className="rounded-md border border-border-subtle bg-surface-page px-2.5 py-2 text-[12px] text-fg-primary"
+      />
 
       <div className="flex flex-wrap items-center gap-1.5">
         {matchedContact && (
@@ -241,37 +231,6 @@ function SendAddressBlock({
           </span>
           ). Verify carefully — a single wrong character means lost funds.
         </p>
-      )}
-
-      {isRawNewAddress && (
-        <div className="rounded-md border border-border-subtle bg-surface-page p-2 space-y-1.5">
-          <label className="flex flex-col gap-1 text-[11px] text-fg-secondary">
-            <span className="uppercase tracking-wide">
-              Save as contact (optional)
-            </span>
-            <input
-              type="text"
-              value={saveAsName}
-              disabled={disabled || saveDecision === 'skip'}
-              onChange={(e) => onSaveAsNameChange(e.target.value)}
-              placeholder={placeholderName}
-              maxLength={40}
-              className="rounded-md border border-border-subtle bg-surface-card px-2 py-1.5 text-sm text-fg-primary focus:outline-none focus:border-border-strong disabled:opacity-50"
-            />
-          </label>
-          <label className="flex items-center gap-1.5 text-[11px] text-fg-secondary cursor-pointer">
-            <input
-              type="checkbox"
-              checked={saveDecision === 'skip'}
-              disabled={disabled}
-              onChange={(e) =>
-                onSaveDecisionChange(e.target.checked ? 'skip' : 'save')
-              }
-              className="h-3 w-3 accent-fg-primary"
-            />
-            <span>Don’t save (one-off send)</span>
-          </label>
-        </div>
       )}
     </div>
   );
@@ -310,14 +269,6 @@ interface PermissionCardProps {
    * already enforces the same check server-side; this is purely UI.
    */
   recentUserText?: string;
-  /**
-   * Persists the contact BEFORE the tx broadcasts. The promise must
-   * resolve before `onResolve` fires, so a failed contact-save still
-   * blocks the spend rather than orphaning a ghost address.
-   * Called only when the user is sending to a raw 0x address with no
-   * existing contact match AND has not opted into "don't save".
-   */
-  onSaveContactBeforeApprove?: (name: string, address: string) => Promise<void> | void;
 }
 
 export function PermissionCard({
@@ -327,7 +278,6 @@ export function PermissionCard({
   contacts = [],
   walletAddress,
   recentUserText,
-  onSaveContactBeforeApprove,
 }: PermissionCardProps) {
   const [resolved, setResolved] = useState(false);
   const resolvedRef = useRef(false);
@@ -350,12 +300,6 @@ export function PermissionCard({
   // Recompute the human-readable summary against the modified input so the
   // user sees the new amount before clicking "Approve".
   const inputSummary = formatInput(modifiedInput, action.toolName);
-
-  // [send-safety] Inline "Save as contact" state for raw-address sends.
-  // Captured here (not in SendAddressBlock) so handle() can persist the
-  // contact BEFORE we resolve the action — i.e. before the tx broadcasts.
-  const [saveAsName, setSaveAsName] = useState('');
-  const [saveDecision, setSaveDecision] = useState<'save' | 'skip'>('save');
 
   const sendTo = useMemo(() => {
     if (action.toolName !== 'send_transfer') return null;
@@ -387,30 +331,6 @@ export function PermissionCard({
         }
       }
       if (Object.keys(diff).length > 0) modifications = diff;
-    }
-
-    // [send-safety] Persist the contact BEFORE broadcasting. If the
-    // save fails for any reason (network blip, validation), we still
-    // proceed with the approve — the user's explicit confirmation is
-    // what makes this safe; the contact-save is an opt-in convenience
-    // for the next send. Wrapped in try/catch so a failed POST never
-    // blocks the spend the user just authorized.
-    if (
-      approved &&
-      sendTo &&
-      isSuiAddress(sendTo) &&
-      !findContactByAddress(sendTo, contacts) &&
-      (!walletAddress || walletAddress.toLowerCase() !== sendTo.toLowerCase()) &&
-      saveDecision === 'save' &&
-      onSaveContactBeforeApprove
-    ) {
-      const trimmed = saveAsName.trim();
-      const finalName = trimmed.length > 0 ? trimmed : nextAutoWalletName(contacts);
-      try {
-        await onSaveContactBeforeApprove(finalName, sendTo);
-      } catch {
-        // intentional: see comment above
-      }
     }
 
     onResolve(action, approved, reason, modifications);
@@ -479,11 +399,6 @@ export function PermissionCard({
           contacts={contacts}
           walletAddress={walletAddress}
           recentUserText={recentUserText}
-          saveAsName={saveAsName}
-          onSaveAsNameChange={setSaveAsName}
-          saveDecision={saveDecision}
-          onSaveDecisionChange={setSaveDecision}
-          disabled={resolved}
         />
       )}
 
