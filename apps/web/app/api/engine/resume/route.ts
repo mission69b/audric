@@ -7,6 +7,7 @@ import { createEngine, getSessionStore, setConversationState } from '@/lib/engin
 import { logSessionUsage } from '@/lib/engine/log-session-usage';
 import { getSessionSpend, incrementSessionSpend } from '@/lib/engine/session-spend';
 import { applyModificationsToAction, resolveOutcome } from '@/lib/engine/apply-modifications';
+import { sanitizeStreamErrorMessage } from '@/lib/engine/stream-errors';
 import {
   resolveUsdValue,
   toolNameToOperation,
@@ -129,9 +130,9 @@ export async function POST(request: NextRequest) {
             }
           }
         } catch (err) {
-          const errorMsg =
-            err instanceof Error ? err.message : 'Engine error';
-          console.error('[engine/resume] stream error:', errorMsg);
+          const rawMsg = err instanceof Error ? err.message : 'Engine error';
+          const errorMsg = sanitizeStreamErrorMessage(rawMsg);
+          console.error('[engine/resume] stream error:', rawMsg);
           controller.enqueue(
             encoder.encode(
               `event: error\ndata: ${JSON.stringify({ type: 'error', message: errorMsg })}\n\n`,
