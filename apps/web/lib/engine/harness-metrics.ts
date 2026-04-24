@@ -225,6 +225,81 @@ export function detectTruncation(result: unknown): boolean {
 }
 
 /**
+ * [v0.46.6] Card-rendering tools — keep aligned with the system prompt's
+ * "Never duplicate card data" rule and with the registered renderers in
+ * `components/engine/cards/*`. When ANY of these fired in a turn AND the
+ * narration contains a markdown table, that's a v0.46.6 contract
+ * violation: the model is dumping data the card already shows.
+ */
+export const CARD_RENDERING_TOOLS = new Set<string>([
+  'balance_check',
+  'savings_info',
+  'health_check',
+  'transaction_history',
+  'rates_info',
+  'mpp_services',
+  'list_payment_links',
+  'list_invoices',
+  'defillama_yield_pools',
+  'defillama_protocol_info',
+  'defillama_token_prices',
+  'portfolio_analysis',
+  'activity_summary',
+  'yield_summary',
+  'spending_analytics',
+  'explain_tx',
+  'swap_quote',
+  'protocol_deep_dive',
+]);
+
+/**
+ * Detect a markdown table in narration text.
+ *
+ * Strategy: match a header divider row of the form `|---|---|...|`
+ * (with optional leading/trailing whitespace and pipes). Plain `|`
+ * characters in prose don't trigger — we require at least two `---`
+ * cells separated by pipes, which only appears in real tables.
+ *
+ * Examples that match:
+ *   `| Asset | Save |\n|-------|------|\n| USDC | 4% |`
+ *   `|---|---|---|`
+ *
+ * Examples that do NOT match:
+ *   `Use \`|\` to separate fields`
+ *   `Result: a | b | c`
+ */
+const MARKDOWN_TABLE_DIVIDER = /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/m;
+
+export function containsMarkdownTable(narration: string): boolean {
+  if (!narration) return false;
+  return MARKDOWN_TABLE_DIVIDER.test(narration);
+}
+
+export interface NarrationDumpReport {
+  violated: boolean;
+  cardTool?: string;
+}
+
+/**
+ * Returns a report describing whether the model dumped a markdown table
+ * in narration AFTER a card-rendering tool fired in the same turn. The
+ * chat route wires this in fire-and-forget to console.warn so we can
+ * track the regression rate without altering the response.
+ *
+ * Future: surface as a `narrationDumpedTable` boolean on TurnMetrics
+ * once the next Prisma migration ships.
+ */
+export function detectNarrationTableDump(
+  narration: string,
+  toolNames: readonly string[],
+): NarrationDumpReport {
+  if (!containsMarkdownTable(narration)) return { violated: false };
+  const cardTool = toolNames.find((n) => CARD_RENDERING_TOOLS.has(n));
+  if (!cardTool) return { violated: false };
+  return { violated: true, cardTool };
+}
+
+/**
  * Detect ACI refinement payloads.
  *
  * Two flavors of refinement are both valid signals that the tool told the

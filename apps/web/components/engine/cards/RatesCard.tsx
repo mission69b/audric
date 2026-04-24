@@ -10,10 +10,13 @@ interface RateEntry {
 }
 
 export function RatesCard({ data }: { data: Record<string, RateEntry> }) {
+  // [v0.46.6] Engine-side `applyFilters` already trims and sorts the data
+  // (default topN=8, max 50). Render whatever the engine sends so a
+  // "show me ALL NAVI markets" call with topN=50 actually displays 50 rows
+  // instead of the card silently slicing back down to 8.
   const entries = Object.entries(data)
     .filter(([, v]) => v && typeof v.saveApy === 'number')
-    .sort(([, a], [, b]) => b.saveApy - a.saveApy)
-    .slice(0, 8);
+    .sort(([, a], [, b]) => b.saveApy - a.saveApy);
 
   if (!entries.length) return null;
 
