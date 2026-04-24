@@ -161,7 +161,7 @@ export function InputBar({
               aria-pressed={voiceActive}
               disabled={disabled}
             >
-              <Icon name="microphone" size={16} />
+              <Icon name="waveform" size={16} />
             </button>
           )}
 
