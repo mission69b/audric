@@ -19,6 +19,7 @@ import {
   TurnMetricsCollector,
   detectRefinement,
   detectTruncation,
+  detectNarrationTableDump,
 } from '@/lib/engine/harness-metrics';
 import { prisma } from '@/lib/prisma';
 import {
@@ -190,6 +191,11 @@ export async function POST(request: NextRequest) {
     const turnIndex = engine.getMessages().filter((m) => m.role === 'assistant').length;
 
     const toolNamesByUseId = new Map<string, string>();
+    // [v0.46.6] Accumulate text deltas so we can run the markdown-table-
+    // dump detector once the turn closes. Pure observation — never blocks
+    // the stream, never modifies the response.
+    const narrationParts: string[] = [];
+    const calledToolNames: string[] = [];
 
     const stream = new ReadableStream({
       async start(controller) {
@@ -216,9 +222,11 @@ export async function POST(request: NextRequest) {
                 continue; // don't pollute the SSE stream
               case 'text_delta':
                 collector.onFirstTextDelta();
+                if (typeof event.text === 'string') narrationParts.push(event.text);
                 break;
               case 'tool_start':
                 toolNamesByUseId.set(event.toolUseId, event.toolName);
+                calledToolNames.push(event.toolName);
                 collector.onToolStart(event.toolUseId);
                 break;
               case 'tool_result':
@@ -275,6 +283,29 @@ export async function POST(request: NextRequest) {
         } finally {
           const messages = [...engine.getMessages()];
           const usage = engine.getUsage();
+
+          // [v0.46.6] Card-tool + markdown-table-in-narration detector.
+          // Pure observation — logs to the server only, never alters the
+          // response. Tracks the rate at which Audric duplicates rich-card
+          // data as a markdown table in chat (a v0.46.6 contract violation
+          // per "Never duplicate card data in chat text").
+          try {
+            const narration = narrationParts.join('');
+            const dump = detectNarrationTableDump(narration, calledToolNames);
+            if (dump.violated) {
+              console.warn(
+                '[narration-dump] markdown table emitted alongside card-rendering tool',
+                {
+                  sessionId: sessionId ?? null,
+                  cardTool: dump.cardTool,
+                  toolsCalled: calledToolNames,
+                  narrationPreview: narration.slice(0, 280),
+                },
+              );
+            }
+          } catch (dumpErr) {
+            console.error('[narration-dump] detector failed (non-fatal):', dumpErr);
+          }
 
           if (saveSession && sessionId && address) {
             try {
