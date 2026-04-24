@@ -20,6 +20,18 @@ export function EmailCaptureModal({ open, onClose, address, jwt, initialEmail }:
   const [step, setStep] = useState<ModalStep>('input');
   const [email, setEmail] = useState(initialEmail ?? '');
   const [error, setError] = useState('');
+  /**
+   * [auth re-prompt] When the backend returns the structured
+   * `EMAIL_LINKED_TO_DIFFERENT_WALLET` 409, we render a fuller
+   * explanation than the inline `error` field can carry — message
+   * + hint + a mailto link to support. Distinct from the generic
+   * `error` so a network/validation failure doesn't accidentally
+   * surface a "linked to different wallet" support link.
+   */
+  const [conflict, setConflict] = useState<{
+    message: string;
+    hint: string;
+  } | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
   const pollRef = useRef<ReturnType<typeof setInterval>>(undefined);
@@ -66,6 +78,7 @@ export function EmailCaptureModal({ open, onClose, address, jwt, initialEmail }:
       return;
     }
     setError('');
+    setConflict(null);
     setSubmitting(true);
     try {
       const res = await fetch('/api/user/email', {
@@ -75,7 +88,19 @@ export function EmailCaptureModal({ open, onClose, address, jwt, initialEmail }:
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setError(data.error ?? 'Something went wrong');
+        // [auth re-prompt] Structured 409: render the full message + hint
+        // panel instead of the cryptic "EMAIL IS ALREADY REGISTERED..."
+        // string the user reported. The legacy server might still send
+        // the old shape during rollout, so we fall back to whichever
+        // human-readable field is present.
+        if (res.status === 409 && data?.error === 'EMAIL_LINKED_TO_DIFFERENT_WALLET') {
+          setConflict({
+            message: data.message ?? 'This email is linked to a different wallet.',
+            hint: data.hint ?? '',
+          });
+          return;
+        }
+        setError(data.message ?? data.error ?? 'Something went wrong');
         return;
       }
       setStep('waiting');
@@ -131,7 +156,11 @@ export function EmailCaptureModal({ open, onClose, address, jwt, initialEmail }:
                   ref={inputRef}
                   type="email"
                   value={email}
-                  onChange={(e) => { setEmail(e.target.value); setError(''); }}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setError('');
+                    setConflict(null);
+                  }}
                   onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
                   placeholder="Email address"
                   className="w-full rounded-sm border border-border-subtle bg-surface-page px-3.5 py-3 text-sm text-fg-primary placeholder:text-fg-muted outline-none focus:border-border-focus transition-colors"
@@ -140,6 +169,35 @@ export function EmailCaptureModal({ open, onClose, address, jwt, initialEmail }:
                   <p className="font-mono text-[10px] tracking-[0.06em] uppercase text-error-solid">
                     {error}
                   </p>
+                )}
+                {conflict && (
+                  <div
+                    role="alert"
+                    className="rounded-md border border-warning-solid/30 bg-warning-solid/5 p-3 space-y-1.5"
+                  >
+                    <p className="text-[13px] font-medium text-fg-primary">
+                      {conflict.message}
+                    </p>
+                    {conflict.hint && (
+                      <p className="text-[12px] leading-relaxed text-fg-secondary">
+                        {conflict.hint
+                          .split(/(support@audric\.ai)/)
+                          .map((part, i) =>
+                            part === 'support@audric.ai' ? (
+                              <a
+                                key={i}
+                                href="mailto:support@audric.ai?subject=Wallet%20recovery%20%E2%80%94%20email%20linked%20to%20different%20wallet"
+                                className="text-fg-primary underline hover:no-underline"
+                              >
+                                {part}
+                              </a>
+                            ) : (
+                              <span key={i}>{part}</span>
+                            ),
+                          )}
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
               <div className="flex flex-col gap-2 pt-1">

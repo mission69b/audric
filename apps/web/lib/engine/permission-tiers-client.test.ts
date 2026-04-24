@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   PERMISSION_PRESETS,
   getPresetConfig,
+  isKnownContactAddress,
   resolvePermissionTier,
   resolveUsdValue,
   shouldClientAutoApprove,
@@ -158,6 +159,95 @@ describe('shouldClientAutoApprove', () => {
         PRICES,
       ),
     ).toBe(false);
+  });
+
+  // ------------------------------------------------------------------
+  // Send-safety gate (the lost-funds regression)
+  // ------------------------------------------------------------------
+  const KNOWN =
+    '0x231455f0e9805bdd0945981463daf0346310a7b3b04a733b011cc791feb896cd';
+  const TYPO =
+    '0x231455f0e9805bdd0345981463daf0346310a7b3b04a733b011cc791feb896cd';
+  const contacts = [{ name: 'main', address: KNOWN }];
+
+  it('send to raw 0x with no contact match → never auto, even if tiny', () => {
+    expect(
+      shouldClientAutoApprove(
+        {
+          toolName: 'send_transfer',
+          input: { to: TYPO, amount: 0.01, asset: 'USDC' },
+        },
+        cfg,
+        0,
+        PRICES,
+        0,
+        contacts,
+      ),
+    ).toBe(false);
+  });
+
+  it('send to raw 0x with no contact match → not even agentBudget bypasses', () => {
+    expect(
+      shouldClientAutoApprove(
+        {
+          toolName: 'send_transfer',
+          input: { to: TYPO, amount: 5, asset: 'USDC' },
+        },
+        cfg,
+        0,
+        PRICES,
+        100,
+        contacts,
+      ),
+    ).toBe(false);
+  });
+
+  it('send to a saved contact under threshold → auto', () => {
+    expect(
+      shouldClientAutoApprove(
+        {
+          toolName: 'send_transfer',
+          input: { to: KNOWN, amount: 5, asset: 'USDC' },
+        },
+        cfg,
+        0,
+        PRICES,
+        0,
+        contacts,
+      ),
+    ).toBe(true);
+  });
+
+  it('send to a saved contact still confirms above tier threshold', () => {
+    expect(
+      shouldClientAutoApprove(
+        {
+          toolName: 'send_transfer',
+          input: { to: KNOWN, amount: 50, asset: 'USDC' },
+        },
+        cfg,
+        0,
+        PRICES,
+        0,
+        contacts,
+      ),
+    ).toBe(false);
+  });
+});
+
+describe('isKnownContactAddress', () => {
+  const KNOWN =
+    '0x231455f0e9805bdd0945981463daf0346310a7b3b04a733b011cc791feb896cd';
+  const TYPO =
+    '0x231455f0e9805bdd0345981463daf0346310a7b3b04a733b011cc791feb896cd';
+  const contacts = [{ address: KNOWN }];
+
+  it('matches case-insensitively', () => {
+    expect(isKnownContactAddress(KNOWN.toUpperCase().replace('0X', '0x'), contacts)).toBe(true);
+  });
+
+  it('rejects a one-character typo (the lost-funds case)', () => {
+    expect(isKnownContactAddress(TYPO, contacts)).toBe(false);
   });
 });
 

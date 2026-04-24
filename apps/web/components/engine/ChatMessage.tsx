@@ -29,6 +29,16 @@ interface ChatMessageProps {
    */
   shouldAutoApprove?: (action: Pick<PendingAction, 'toolName' | 'input'>) => boolean;
   onSendMessage?: (text: string) => void;
+  /** Saved contacts — passed through so PermissionCard can render
+   *  the Saved-contact badge / near-contact warning / save field. */
+  contacts?: ReadonlyArray<{ name: string; address: string }>;
+  /** User's own zkLogin address — for the "self-send" badge. */
+  walletAddress?: string | null;
+  /** Concatenated last ~10 user messages — for the
+   *  "Address from your message" badge. */
+  recentUserText?: string;
+  /** Persists a contact BEFORE the tx broadcasts. See PermissionCard. */
+  onSaveContactBeforeApprove?: (name: string, address: string) => Promise<void> | void;
 }
 
 function ToolSteps({ tools }: { tools: ToolExecution[] }) {
@@ -79,7 +89,16 @@ function dedupeToolCards(tools: ToolExecution[]): ToolExecution[] {
   return tools;
 }
 
-export function ChatMessage({ message, onActionResolve, shouldAutoApprove, onSendMessage }: ChatMessageProps) {
+export function ChatMessage({
+  message,
+  onActionResolve,
+  shouldAutoApprove,
+  onSendMessage,
+  contacts,
+  walletAddress,
+  recentUserText,
+  onSaveContactBeforeApprove,
+}: ChatMessageProps) {
   // Voice mode: when this assistant message is the one currently being
   // spoken aloud, swap the markdown renderer for the word-highlight
   // variant so the UI matches Claude's "lighter color = not yet spoken"
@@ -143,6 +162,10 @@ export function ChatMessage({ message, onActionResolve, shouldAutoApprove, onSen
         <PermissionCard
           action={message.pendingAction!}
           onResolve={onActionResolve}
+          contacts={contacts}
+          walletAddress={walletAddress}
+          recentUserText={recentUserText}
+          onSaveContactBeforeApprove={onSaveContactBeforeApprove}
         />
       )}
 

@@ -3,6 +3,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { PendingActionModifiableField } from '@t2000/engine';
 import type { PendingAction } from '@/lib/engine-types';
+import {
+  findContactByAddress,
+  findNearContact,
+  formatChunkedAddress,
+  isSuiAddress,
+  nextAutoWalletName,
+} from '@/lib/sui-address';
 
 /**
  * [v1.4 Item 6] Single editable input rendered inside a `PermissionCard`.
@@ -131,12 +138,143 @@ function formatInput(input: unknown, toolName?: string): string | null {
   const parts: string[] = [];
   if (obj.amount) parts.push(`$${obj.amount}`);
   if (obj.asset) parts.push(String(obj.asset));
-  if (obj.to) parts.push(`To: ${String(obj.to).slice(0, 8)}...`);
-  if (obj.recipient) parts.push(`To: ${String(obj.recipient).slice(0, 8)}...`);
+  // For send_transfer the chunked-hex address is rendered separately
+  // (see SendAddressBlock) so we deliberately skip the truncated
+  // "To: 0x1234..." summary line — that truncation is exactly what
+  // hid the lost-funds typo (see audric-send-safety-and-auth plan).
+  if (toolName !== 'send_transfer') {
+    if (obj.to) parts.push(`To: ${String(obj.to).slice(0, 8)}...`);
+    if (obj.recipient) parts.push(`To: ${String(obj.recipient).slice(0, 8)}...`);
+  }
   if (obj.url) parts.push(String(obj.url).replace('https://mpp.t2000.ai/', ''));
   if (obj.maxPrice) parts.push(`max $${obj.maxPrice}`);
   if (obj.memo) parts.push(`"${String(obj.memo)}"`);
   return parts.length > 0 ? parts.join(' · ') : null;
+}
+
+type SavedContact = { name: string; address: string };
+
+interface SendAddressBlockProps {
+  to: string;
+  contacts: ReadonlyArray<SavedContact>;
+  walletAddress?: string | null;
+  recentUserText?: string;
+  /** When the user types a name (or leaves it blank → auto-name) for a
+   *  raw-address send. Bubbles up to the parent so the contact can be
+   *  persisted on Approve, BEFORE the tx is broadcast. */
+  saveAsName: string;
+  onSaveAsNameChange: (value: string) => void;
+  saveDecision: 'save' | 'skip';
+  onSaveDecisionChange: (next: 'save' | 'skip') => void;
+  disabled?: boolean;
+}
+
+/**
+ * Renders the recipient address for a `send_transfer` permission card
+ * with full-width chunked hex, a source badge ("Saved contact: X" /
+ * "Address from your message" / "Sending to self"), a near-contact
+ * warning when the address looks like a typo of an existing contact,
+ * and an inline "Save as contact" affordance for first-time addresses.
+ */
+function SendAddressBlock({
+  to,
+  contacts,
+  walletAddress,
+  recentUserText,
+  saveAsName,
+  onSaveAsNameChange,
+  saveDecision,
+  onSaveDecisionChange,
+  disabled,
+}: SendAddressBlockProps) {
+  const normalizedTo = to.trim().toLowerCase();
+  const matchedContact = useMemo(
+    () => findContactByAddress(to, contacts),
+    [to, contacts],
+  );
+  const isSelf = !!walletAddress && walletAddress.toLowerCase() === normalizedTo;
+  const isVerbatimFromUser = useMemo(() => {
+    if (!recentUserText) return false;
+    return recentUserText.toLowerCase().includes(normalizedTo);
+  }, [recentUserText, normalizedTo]);
+  const nearContact = useMemo(
+    () => (matchedContact ? null : findNearContact(to, contacts)),
+    [to, contacts, matchedContact],
+  );
+
+  const isRawNewAddress = isSuiAddress(to) && !matchedContact && !isSelf;
+  const placeholderName = useMemo(() => nextAutoWalletName(contacts), [contacts]);
+
+  return (
+    <div className="space-y-1.5">
+      <div className="text-[10px] font-medium uppercase tracking-wide text-fg-secondary">
+        To
+      </div>
+      <div className="rounded-md border border-border-subtle bg-surface-page px-2.5 py-2 font-mono text-[12px] leading-[1.5] text-fg-primary break-all">
+        {formatChunkedAddress(to)}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-1.5">
+        {matchedContact && (
+          <span className="inline-flex items-center rounded-full border border-border-subtle bg-surface-page px-2 py-0.5 text-[10px] font-medium text-fg-secondary">
+            Saved contact: {matchedContact.name}
+          </span>
+        )}
+        {!matchedContact && isSelf && (
+          <span className="inline-flex items-center rounded-full border border-border-subtle bg-surface-page px-2 py-0.5 text-[10px] font-medium text-fg-secondary">
+            Sending to your own wallet
+          </span>
+        )}
+        {!matchedContact && !isSelf && isVerbatimFromUser && (
+          <span className="inline-flex items-center rounded-full border border-border-subtle bg-surface-page px-2 py-0.5 text-[10px] font-medium text-fg-secondary">
+            Address from your message
+          </span>
+        )}
+      </div>
+
+      {nearContact && (
+        <p className="text-[11px] leading-tight text-warning-solid">
+          ⚠ This is similar to but NOT the same as your saved contact
+          “{nearContact.name}” (
+          <span className="font-mono">
+            {nearContact.address.slice(0, 6)}…{nearContact.address.slice(-4)}
+          </span>
+          ). Verify carefully — a single wrong character means lost funds.
+        </p>
+      )}
+
+      {isRawNewAddress && (
+        <div className="rounded-md border border-border-subtle bg-surface-page p-2 space-y-1.5">
+          <label className="flex flex-col gap-1 text-[11px] text-fg-secondary">
+            <span className="uppercase tracking-wide">
+              Save as contact (optional)
+            </span>
+            <input
+              type="text"
+              value={saveAsName}
+              disabled={disabled || saveDecision === 'skip'}
+              onChange={(e) => onSaveAsNameChange(e.target.value)}
+              placeholder={placeholderName}
+              maxLength={40}
+              className="rounded-md border border-border-subtle bg-surface-card px-2 py-1.5 text-sm text-fg-primary focus:outline-none focus:border-border-strong disabled:opacity-50"
+            />
+          </label>
+          <label className="flex items-center gap-1.5 text-[11px] text-fg-secondary cursor-pointer">
+            <input
+              type="checkbox"
+              checked={saveDecision === 'skip'}
+              disabled={disabled}
+              onChange={(e) =>
+                onSaveDecisionChange(e.target.checked ? 'skip' : 'save')
+              }
+              className="h-3 w-3 accent-fg-primary"
+            />
+            <span>Don’t save (one-off send)</span>
+          </label>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export type DenyReason = 'timeout' | 'denied';
@@ -156,9 +294,41 @@ interface PermissionCardProps {
   ) => void;
   /** Symbol → wallet balance map for the "~Max" hint on amount fields. */
   approxMaxByAsset?: Record<string, number>;
+  /**
+   * Saved contacts. Used to render the "Saved contact: <name>" badge,
+   * the near-contact Levenshtein warning, and to compute the
+   * `Wallet N` auto-name placeholder for the inline save field.
+   */
+  contacts?: ReadonlyArray<SavedContact>;
+  /** User's own zkLogin address — surfaces a "Sending to your own
+   *  wallet" badge when the recipient matches. */
+  walletAddress?: string | null;
+  /**
+   * Concatenated text from the user's recent messages (last ~10 turns).
+   * Used to render the "Address from your message" badge when the
+   * recipient appears verbatim in the conversation. The engine guard
+   * already enforces the same check server-side; this is purely UI.
+   */
+  recentUserText?: string;
+  /**
+   * Persists the contact BEFORE the tx broadcasts. The promise must
+   * resolve before `onResolve` fires, so a failed contact-save still
+   * blocks the spend rather than orphaning a ghost address.
+   * Called only when the user is sending to a raw 0x address with no
+   * existing contact match AND has not opted into "don't save".
+   */
+  onSaveContactBeforeApprove?: (name: string, address: string) => Promise<void> | void;
 }
 
-export function PermissionCard({ action, onResolve, approxMaxByAsset }: PermissionCardProps) {
+export function PermissionCard({
+  action,
+  onResolve,
+  approxMaxByAsset,
+  contacts = [],
+  walletAddress,
+  recentUserText,
+  onSaveContactBeforeApprove,
+}: PermissionCardProps) {
   const [resolved, setResolved] = useState(false);
   const resolvedRef = useRef(false);
   const [secondsLeft, setSecondsLeft] = useState(TIMEOUT_SEC);
@@ -181,11 +351,23 @@ export function PermissionCard({ action, onResolve, approxMaxByAsset }: Permissi
   // user sees the new amount before clicking "Approve".
   const inputSummary = formatInput(modifiedInput, action.toolName);
 
+  // [send-safety] Inline "Save as contact" state for raw-address sends.
+  // Captured here (not in SendAddressBlock) so handle() can persist the
+  // contact BEFORE we resolve the action — i.e. before the tx broadcasts.
+  const [saveAsName, setSaveAsName] = useState('');
+  const [saveDecision, setSaveDecision] = useState<'save' | 'skip'>('save');
+
+  const sendTo = useMemo(() => {
+    if (action.toolName !== 'send_transfer') return null;
+    const raw = (modifiedInput as Record<string, unknown>).to;
+    return typeof raw === 'string' ? raw : null;
+  }, [action.toolName, modifiedInput]);
+
   const handleFieldChange = (name: string, value: string | number) => {
     setModifiedInput((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handle = (approved: boolean, reason?: DenyReason) => {
+  const handle = async (approved: boolean, reason?: DenyReason) => {
     if (resolvedRef.current) return;
     resolvedRef.current = true;
     setResolved(true);
@@ -205,6 +387,30 @@ export function PermissionCard({ action, onResolve, approxMaxByAsset }: Permissi
         }
       }
       if (Object.keys(diff).length > 0) modifications = diff;
+    }
+
+    // [send-safety] Persist the contact BEFORE broadcasting. If the
+    // save fails for any reason (network blip, validation), we still
+    // proceed with the approve — the user's explicit confirmation is
+    // what makes this safe; the contact-save is an opt-in convenience
+    // for the next send. Wrapped in try/catch so a failed POST never
+    // blocks the spend the user just authorized.
+    if (
+      approved &&
+      sendTo &&
+      isSuiAddress(sendTo) &&
+      !findContactByAddress(sendTo, contacts) &&
+      (!walletAddress || walletAddress.toLowerCase() !== sendTo.toLowerCase()) &&
+      saveDecision === 'save' &&
+      onSaveContactBeforeApprove
+    ) {
+      const trimmed = saveAsName.trim();
+      const finalName = trimmed.length > 0 ? trimmed : nextAutoWalletName(contacts);
+      try {
+        await onSaveContactBeforeApprove(finalName, sendTo);
+      } catch {
+        // intentional: see comment above
+      }
     }
 
     onResolve(action, approved, reason, modifications);
@@ -265,6 +471,20 @@ export function PermissionCard({ action, onResolve, approxMaxByAsset }: Permissi
 
       {inputSummary && (
         <p className="text-sm font-mono text-fg-primary">{inputSummary}</p>
+      )}
+
+      {sendTo && (
+        <SendAddressBlock
+          to={sendTo}
+          contacts={contacts}
+          walletAddress={walletAddress}
+          recentUserText={recentUserText}
+          saveAsName={saveAsName}
+          onSaveAsNameChange={setSaveAsName}
+          saveDecision={saveDecision}
+          onSaveDecisionChange={setSaveDecision}
+          disabled={resolved}
+        />
       )}
 
       {!resolved && modifiableFields.length > 0 && (

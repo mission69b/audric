@@ -167,16 +167,40 @@ export function resolveUsdValue(
 }
 
 /**
+ * True when `to` matches a saved contact's address (case-insensitive,
+ * normalized). Mirror of `isKnownContactAddress` in
+ * `packages/engine/src/permission-rules.ts` — keep in sync.
+ */
+export function isKnownContactAddress(
+  to: string,
+  contacts: ReadonlyArray<{ address: string }>,
+): boolean {
+  if (!to) return false;
+  const normalized = to.trim().toLowerCase();
+  return contacts.some((c) => c.address.trim().toLowerCase() === normalized);
+}
+
+/**
  * Mirror of the engine resolver. When `sessionSpendUsd` is supplied and
  * adding the incoming `amountUsd` would push cumulative spend over
  * `config.autonomousDailyLimit`, an otherwise-`auto` tier is downgraded
  * to `confirm` (the v1.4 daily cap).
+ *
+ * Send-safety rule (mirror of engine): `send_transfer` to a raw `0x`
+ * recipient with NO matching saved contact always confirms, regardless
+ * of amount/preset. Bounds the "typo silently ships funds" failure
+ * mode to one confirmation per recipient — once saved as a contact,
+ * subsequent sends auto-approve under tier as normal.
  */
 export function resolvePermissionTier(
   operation: string,
   amountUsd: number,
   config: UserPermissionConfig,
   sessionSpendUsd?: number,
+  sendContext?: {
+    to?: string;
+    contacts?: ReadonlyArray<{ address: string }>;
+  },
 ): 'auto' | 'confirm' | 'explicit' {
   const rule = config.rules.find((r) => r.operation === operation);
   const autoBelow = rule?.autoBelow ?? config.globalAutoBelow;
@@ -192,7 +216,16 @@ export function resolvePermissionTier(
     typeof sessionSpendUsd === 'number' &&
     sessionSpendUsd + amountUsd > config.autonomousDailyLimit
   ) {
-    return 'confirm';
+    tier = 'confirm';
+  }
+
+  if (
+    tier === 'auto' &&
+    operation === 'send' &&
+    sendContext?.to &&
+    !isKnownContactAddress(sendContext.to, sendContext.contacts ?? [])
+  ) {
+    tier = 'confirm';
   }
 
   return tier;
@@ -211,10 +244,17 @@ const NON_FINANCIAL_AUTO_APPROVE = new Set(['claim_rewards', 'save_contact']);
  *
  * Resolution order:
  *   1. Non-financial writes (rewards, contacts) — always auto.
- *   2. `agentBudget` fast path — explicit per-session ceiling that the
+ *   2. Send-safety: a raw 0x recipient with no contact match always
+ *      shows the card so the user can verify the address. The
+ *      `agentBudget` fast path does NOT bypass this — the whole point
+ *      is that "address came from the LLM" is the dangerous case the
+ *      user must eyeball. Bypassing for "small amounts" is the exact
+ *      regression we're closing (the lost-funds incident was $13.53).
+ *   3. `agentBudget` fast path — explicit per-session ceiling that the
  *      user set in the dashboard. Independent of the safety preset.
- *   3. Tier resolver against the user's preset, with `sessionSpendUsd`
- *      enforcing the daily autonomous cap.
+ *   4. Tier resolver against the user's preset, with `sessionSpendUsd`
+ *      enforcing the daily autonomous cap and the contact-aware send
+ *      rule.
  */
 export function shouldClientAutoApprove(
   action: Pick<PendingAction, 'toolName' | 'input'>,
@@ -222,6 +262,7 @@ export function shouldClientAutoApprove(
   sessionSpendUsd: number,
   priceCache: Map<string, number>,
   agentBudget = 0,
+  contacts: ReadonlyArray<{ address: string }> = [],
 ): boolean {
   if (NON_FINANCIAL_AUTO_APPROVE.has(action.toolName)) return true;
 
@@ -234,10 +275,24 @@ export function shouldClientAutoApprove(
     priceCache,
   );
 
+  if (operation === 'send') {
+    const to = String((action.input as Record<string, unknown>)?.to ?? '');
+    if (to.startsWith('0x') && !isKnownContactAddress(to, contacts)) {
+      return false;
+    }
+  }
+
   if (agentBudget > 0 && Number.isFinite(usdValue) && usdValue <= agentBudget) {
     return true;
   }
 
-  const tier = resolvePermissionTier(operation, usdValue, config, sessionSpendUsd);
+  const sendContext =
+    operation === 'send'
+      ? {
+          to: String((action.input as Record<string, unknown>)?.to ?? ''),
+          contacts,
+        }
+      : undefined;
+  const tier = resolvePermissionTier(operation, usdValue, config, sessionSpendUsd, sendContext);
   return tier === 'auto';
 }

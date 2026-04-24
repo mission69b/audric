@@ -69,6 +69,21 @@ interface UnifiedTimelineProps {
   priceCache?: Map<string, number>;
   /** Send a message on behalf of the user from canvas in-canvas actions. */
   onSendMessage?: (text: string) => void;
+  /**
+   * Saved contacts for the current user. Threaded into
+   * `shouldClientAutoApprove` so a `send_transfer` to a raw 0x address
+   * with no contact match always shows the PermissionCard, regardless
+   * of amount or preset. Closes the "LLM-typed address silently ships
+   * funds" failure mode at the gate, not just at the card.
+   */
+  contacts?: ReadonlyArray<{ name: string; address: string }>;
+  /**
+   * Persists a contact BEFORE a `send_transfer` is broadcast. Threaded
+   * through to PermissionCard's inline "Save as contact" affordance.
+   * `dashboard-content` wires this to `useContacts.addContact`, which
+   * also writes through to `/api/user/preferences`.
+   */
+  onSaveContactBeforeApprove?: (name: string, address: string) => Promise<void> | void;
   /** Wallet address — required to render the in-chat Copilot pill (Wave C.5)
    *  and the InChatSurface card (Wave C.6). */
   address?: string | null;
@@ -99,6 +114,8 @@ export function UnifiedTimeline({
   permissionConfig = DEFAULT_PERMISSION_CONFIG,
   priceCache,
   onSendMessage,
+  contacts = [],
+  onSaveContactBeforeApprove,
   address = null,
   jwt = null,
   sessionId = null,
@@ -127,17 +144,27 @@ export function UnifiedTimeline({
         sessionSpendRef.current,
         resolvedPriceCache,
         agentBudget,
+        contacts,
       ),
-    [permissionConfig, resolvedPriceCache, agentBudget],
+    [permissionConfig, resolvedPriceCache, agentBudget, contacts],
   );
 
   // [SIMPLIFICATION DAY 3] address/jwt/sessionId previously fed the in-chat
   // Copilot surfaces (InChatSurface card + CopilotPill). Both are removed.
   // Props stay on the interface so callers (DashboardContent, ChatSession)
   // don't need to change yet — Day 6 narrows the surface area.
-  void address;
   void jwt;
   void sessionId;
+
+  // [send-safety] Last 10 user messages, concatenated. Lets PermissionCard
+  // render the "Address from your message" badge for raw-address sends
+  // when the recipient appears verbatim in the conversation. Mirrors the
+  // 10-turn window the engine's `guardAddressSource` uses, so the badge
+  // is consistent with the server-side accept/reject decision.
+  const recentUserText = useMemo(() => {
+    const userMsgs = engine.messages.filter((m) => m.role === 'user');
+    return userMsgs.slice(-10).map((m) => m.content).join('\n');
+  }, [engine.messages]);
 
   const timeline = useMemo<TimelineEntry[]>(() => {
     const entries: (TimelineEntry & { ts: number })[] = [];
@@ -310,6 +337,10 @@ export function UnifiedTimeline({
                 onActionResolve={handleActionResolve}
                 shouldAutoApprove={shouldAutoApprove}
                 onSendMessage={onSendMessage ?? engine.sendMessage}
+                contacts={contacts}
+                walletAddress={address}
+                recentUserText={recentUserText}
+                onSaveContactBeforeApprove={onSaveContactBeforeApprove}
               />
             </div>
           );
