@@ -1,6 +1,22 @@
 'use client';
 
-import { CardShell, fmtAmt, fmtRelativeTime, SUISCAN_TX_URL, SUISCAN_ICON } from './primitives';
+import { CardShell, fmtRelativeTime, SUISCAN_TX_URL, SUISCAN_ICON } from './primitives';
+
+/**
+ * Transaction-history-specific amount formatter.
+ *
+ * Differs from the shared `fmtAmt` (which falls into 6-decimal mode for
+ * any value < 1) — for tx history rows that produces eyesores like
+ * `+0.100000 USDC` for a $0.10 borrow.
+ *
+ * Rules:
+ *   - amount >= 0.01 → 2 decimals (e.g. `0.10`, `1.00`, `1,234.56`)
+ *   - 0 < amount < 0.01 → 4 decimals (true dust where 2dp would round to 0)
+ */
+function fmtTxAmount(n: number): string {
+  if (n > 0 && n < 0.01) return n.toFixed(4);
+  return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
 
 interface TxRecord {
   digest: string;
@@ -181,7 +197,7 @@ export function TransactionHistoryCard({ data }: { data: HistoryData }) {
                     <div className="flex items-center gap-2 shrink-0">
                       {tx.amount != null && tx.amount > 0 && (
                         <span className={outflow ? 'text-fg-primary' : 'text-success-solid'}>
-                          {outflow ? '−' : '+'}{fmtAmt(tx.amount)} {tx.asset ?? 'USDC'}
+                          {outflow ? '−' : '+'}{fmtTxAmount(tx.amount)} {tx.asset ?? 'USDC'}
                         </span>
                       )}
                       <span className="text-fg-muted text-[9px]">{fmtRelativeTime(toIso(tx.timestamp))}</span>
