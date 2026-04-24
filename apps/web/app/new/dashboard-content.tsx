@@ -20,6 +20,10 @@ import { AppShell } from '@/components/shell/AppShell';
 import { useChipFlow, type ChipFlowResult, type FlowContext } from '@/hooks/useChipFlow';
 import { useFeed } from '@/hooks/useFeed';
 import { useEngine, executeToolAction } from '@/hooks/useEngine';
+import { useVoiceMode } from '@/hooks/useVoiceMode';
+import { useVoiceStatus } from '@/hooks/useVoiceStatus';
+import { useEngineReplyAwaiter } from '@/hooks/useEngineReplyAwaiter';
+import { VoiceModeProvider } from '@/components/dashboard/VoiceModeContext';
 import { useBalance } from '@/hooks/useBalance';
 import { parseIntent, type ParsedIntent } from '@/lib/intent-parser';
 import { mapError } from '@/lib/errors';
@@ -199,6 +203,41 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
   const contactsHook = useContacts(address);
   const { agent } = useAgent();
   const engine = useEngine({ address, jwt: session?.jwt });
+
+  // ─── Voice mode (Claude-style continuous loop) ────────────────────
+  // The hook is engine-agnostic: it owns the mic + TTS lifecycle and
+  // calls back into useEngine via `submitAndAwaitReply`. Pulling the
+  // status from /api/voice/status keeps the mic button hidden on
+  // deployments without OPENAI_API_KEY / ELEVENLABS_API_KEY configured.
+  //
+  // CRITICAL: `useEngine.sendMessage` internally awaits the entire SSE
+  // stream, so the awaiter must register its falling-edge listener
+  // *before* the kickoff fires. The awaiter wraps that ordering.
+  const voiceStatus = useVoiceStatus();
+  const awaitReply = useEngineReplyAwaiter(engine.isStreaming, engine.messages);
+  const sendMessageRef = useRef(engine.sendMessage);
+  sendMessageRef.current = engine.sendMessage;
+  const submitAndAwaitReplyRef = useRef<(text: string) => Promise<string>>(
+    async () => '',
+  );
+  submitAndAwaitReplyRef.current = (text: string) =>
+    awaitReply(() => sendMessageRef.current(text));
+  const voice = useVoiceMode({
+    address,
+    jwt: session?.jwt,
+    submitAndAwaitReply: (text) => submitAndAwaitReplyRef.current(text),
+  });
+
+  // The id of the message currently being spoken. After `sendMessage`
+  // the engine guarantees the last array element is the freshly-streamed
+  // assistant message, so we anchor highlighting to that id.
+  const speakingMessageId =
+    voice.state === 'speaking'
+      ? (() => {
+          const last = engine.messages[engine.messages.length - 1];
+          return last && last.role === 'assistant' ? last.id : null;
+        })()
+      : null;
 
   const initialSessionLoaded = useRef(false);
   useEffect(() => {
@@ -1113,6 +1152,14 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
         onChipClick={handleChipClick}
         activeFlow={chipFlow.state.flow}
         prefetch={{ idleUsdc: balance.usdc, currentApy: balance.savingsRate }}
+        voiceMode={{
+          enabled: voiceStatus.enabled,
+          state: voice.state,
+          onStart: voice.start,
+          onStop: voice.stop,
+          interimTranscript: voice.interimTranscript,
+          errorMessage: voice.errorMessage,
+        }}
       />
     );
   };
@@ -1289,21 +1336,36 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
                 onCancel={engine.cancel}
                 disabled
                 placeholder="Ask a follow up..."
+                voiceMode={{
+                  enabled: voiceStatus.enabled,
+                  state: voice.state,
+                  onStart: voice.start,
+                  onStop: voice.stop,
+                  interimTranscript: voice.interimTranscript,
+                  errorMessage: voice.errorMessage,
+                }}
               />
-              <div className="flex items-center justify-between">
-                <button
-                  type="button"
-                  onClick={engine.cancel}
-                  className="flex items-center gap-2 rounded-pill border border-border-subtle bg-transparent px-3.5 h-[30px] font-mono text-[10px] uppercase tracking-[0.1em] text-fg-secondary hover:text-fg-primary hover:border-border-strong hover:bg-surface-sunken transition active:scale-[0.97]"
-                >
-                  <span aria-hidden="true" className="inline-block w-2 h-2 bg-current" /> Stop
-                </button>
-                {engine.usage && (
-                  <span className="text-[10px] text-fg-muted font-mono tracking-[0.05em]">
-                    {engine.usage.inputTokens + engine.usage.outputTokens} TOKENS
-                  </span>
-                )}
-              </div>
+              {/* Hide the engine-cancel Stop while voice mode is active —
+                  the InputBar's own "••• Stop" pill is the canonical
+                  voice control, and clicking engine.cancel mid-voice
+                  would resolve the awaiter with "Cancelled." text and
+                  TTS-speak it. */}
+              {!voice.isActive && (
+                <div className="flex items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={engine.cancel}
+                    className="flex items-center gap-2 rounded-pill border border-border-subtle bg-transparent px-3.5 h-[30px] font-mono text-[10px] uppercase tracking-[0.1em] text-fg-secondary hover:text-fg-primary hover:border-border-strong hover:bg-surface-sunken transition active:scale-[0.97]"
+                  >
+                    <span aria-hidden="true" className="inline-block w-2 h-2 bg-current" /> Stop
+                  </button>
+                  {engine.usage && (
+                    <span className="text-[10px] text-fg-muted font-mono tracking-[0.05em]">
+                      {engine.usage.inputTokens + engine.usage.outputTokens} TOKENS
+                    </span>
+                  )}
+                </div>
+              )}
             </>
           ) : (
             <>
@@ -1373,6 +1435,14 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
                 onSubmit={handleInputSubmit}
                 disabled={chipFlow.state.phase === 'executing'}
                 placeholder={engine.messages.length > 0 ? 'Ask a follow up...' : 'Ask anything...'}
+                voiceMode={{
+                  enabled: voiceStatus.enabled,
+                  state: voice.state,
+                  onStart: voice.start,
+                  onStop: voice.stop,
+                  interimTranscript: voice.interimTranscript,
+                  errorMessage: voice.errorMessage,
+                }}
               />
             </>
           )}
@@ -1461,19 +1531,28 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
   const isChatLayout = panel === 'chat' || panel === undefined;
 
   return (
-    <AppShell
-      address={address}
-      jwt={session.jwt}
-      activeSessionId={engine.sessionId ?? undefined}
-      onLoadSession={engine.loadSession}
-      onNewConversation={handleNewConversation}
+    <VoiceModeProvider
+      value={{
+        state: voice.state,
+        speakingMessageId,
+        spokenWordIndex: voice.spokenWordIndex,
+        currentSpans: voice.currentSpans,
+      }}
     >
-      {isChatLayout ? panelContent : (
-        <div className="flex-1 overflow-y-auto">{panelContent}</div>
-      )}
-      {emailModal}
-      {tosBanner}
-    </AppShell>
+      <AppShell
+        address={address}
+        jwt={session.jwt}
+        activeSessionId={engine.sessionId ?? undefined}
+        onLoadSession={engine.loadSession}
+        onNewConversation={handleNewConversation}
+      >
+        {isChatLayout ? panelContent : (
+          <div className="flex-1 overflow-y-auto">{panelContent}</div>
+        )}
+        {emailModal}
+        {tosBanner}
+      </AppShell>
+    </VoiceModeProvider>
   );
 }
 

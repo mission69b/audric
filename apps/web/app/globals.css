@@ -586,6 +586,31 @@ select {
 }
 
 /* ============================================================
+   VOICE MODE — animated dots inside the "••• Stop" pill
+   ------------------------------------------------------------
+   Each dot pulses opacity on a 1.2s cycle, staggered 0.2s apart
+   via Tailwind arbitrary `[animation-delay:...]` utilities in
+   InputBar. Mirrors the "thinking" indicator in Claude / OpenAI
+   voice mode.
+   ============================================================ */
+@keyframes voice-dot {
+  0%, 100% { opacity: 0.3; transform: scale(0.85); }
+  50%      { opacity: 1;   transform: scale(1); }
+}
+
+/* Subtle breathing glow used behind a message that is currently
+   being spoken aloud. Matches the soft red blob in the user's
+   reference screenshot but tinted to our accent palette. */
+@keyframes voice-speaking-glow {
+  0%, 100% { opacity: 0.45; }
+  50%      { opacity: 0.75; }
+}
+
+.voice-speaking-glow {
+  animation: voice-speaking-glow 2.4s ease-in-out infinite;
+}
+
+/* ============================================================
    SCROLLBAR + SAFE-AREA UTILITIES — preserved
    ============================================================ */
 

@@ -9,6 +9,8 @@ import { PermissionCard, type DenyReason } from './PermissionCard';
 import { CanvasCard } from './CanvasCard';
 import { AgentMarkdown } from '@/components/dashboard/AgentMarkdown';
 import { AudricMark } from '@/components/ui/AudricMark';
+import { useVoiceModeContext } from '@/components/dashboard/VoiceModeContext';
+import { VoiceHighlightedText } from '@/components/dashboard/VoiceHighlightedText';
 
 interface ChatMessageProps {
   message: EngineChatMessage;
@@ -78,6 +80,16 @@ function dedupeToolCards(tools: ToolExecution[]): ToolExecution[] {
 }
 
 export function ChatMessage({ message, onActionResolve, shouldAutoApprove, onSendMessage }: ChatMessageProps) {
+  // Voice mode: when this assistant message is the one currently being
+  // spoken aloud, swap the markdown renderer for the word-highlight
+  // variant so the UI matches Claude's "lighter color = not yet spoken"
+  // playback indicator. Falls back to the standard renderer at all other
+  // times — including for older messages and once TTS has finished.
+  const voice = useVoiceModeContext();
+  const isBeingSpoken =
+    voice.state === 'speaking' &&
+    voice.speakingMessageId === message.id &&
+    !!voice.currentSpans;
   if (message.role === 'user') {
     return (
       <div className="flex justify-end mb-3" role="log" aria-label="Your message">
@@ -165,6 +177,12 @@ export function ChatMessage({ message, onActionResolve, shouldAutoApprove, onSen
                   <ThinkingState status="delivering" intensity="transitioning" />
                 </span>
               </span>
+            ) : isBeingSpoken ? (
+              <VoiceHighlightedText
+                text={message.content}
+                spans={voice.currentSpans!}
+                spokenWordIndex={voice.spokenWordIndex}
+              />
             ) : (
               <AgentMarkdown text={message.content} />
             )}
