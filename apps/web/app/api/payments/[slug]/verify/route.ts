@@ -3,14 +3,11 @@ import type { InputJsonValue } from '@/lib/generated/prisma/internal/prismaNames
 import { prisma } from '@/lib/prisma';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { USDC_TYPE, USDC_DECIMALS } from '@/lib/payment-kit';
+import { getSuiRpcUrl } from '@/lib/sui-rpc';
 
 export const runtime = 'nodejs';
 
-const SUI_RPC =
-  process.env.SUI_RPC_URL ??
-  (process.env.NEXT_PUBLIC_SUI_NETWORK === 'testnet'
-    ? 'https://fullnode.testnet.sui.io:443'
-    : 'https://fullnode.mainnet.sui.io:443');
+const SUI_RPC = getSuiRpcUrl();
 
 const PAYMENT_RECEIPT_TYPE =
   '0xbc126f1535fba7d641cb9150ad9eae93b104972586ba20f3c60bfe0e53b69bc6::payment_kit::PaymentReceipt';

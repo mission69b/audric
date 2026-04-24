@@ -27,6 +27,8 @@ import {
   sessionLimitFor,
 } from '@/lib/billing';
 
+import { sanitizeStreamErrorMessage } from '@/lib/engine/stream-errors';
+
 const AGENT_MODEL = process.env.AGENT_MODEL ?? 'claude-sonnet-4-6';
 
 export const runtime = 'nodejs';
@@ -247,7 +249,12 @@ export async function POST(request: NextRequest) {
 
             if (event.type === 'error') {
               controller.enqueue(
-                encoder.encode(serializeSSE({ type: 'error', message: event.error.message })),
+                encoder.encode(
+                  serializeSSE({
+                    type: 'error',
+                    message: sanitizeStreamErrorMessage(event.error.message),
+                  }),
+                ),
               );
             } else if (event.type === 'tool_result' && event.toolName === '__deduped__') {
               // Engine-internal marker; skip serialization.
@@ -256,9 +263,10 @@ export async function POST(request: NextRequest) {
             }
           }
         } catch (err) {
-          const errorMsg =
-            err instanceof Error ? err.message : 'Engine error';
-          console.error('[engine/chat] stream error:', errorMsg);
+          const rawMsg = err instanceof Error ? err.message : 'Engine error';
+          const errorMsg = sanitizeStreamErrorMessage(rawMsg);
+          // Always log the raw message server-side for debugging.
+          console.error('[engine/chat] stream error:', rawMsg);
           controller.enqueue(
             encoder.encode(
               `event: error\ndata: ${JSON.stringify({ type: 'error', message: errorMsg })}\n\n`,

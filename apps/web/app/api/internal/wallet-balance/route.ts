@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { validateInternalKey } from '@/lib/internal-auth';
 import { isValidSuiAddress } from '@/lib/auth';
 import { fetchWalletCoins, fetchTokenPrices } from '@t2000/engine';
+import { getSuiRpcUrl } from '@/lib/sui-rpc';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const SUI_RPC_URL = process.env.SUI_RPC_URL ?? 'https://fullnode.mainnet.sui.io:443';
+const SUI_RPC_URL = getSuiRpcUrl();
 
 /**
  * GET /api/internal/wallet-balance?address=0x...&asset=USDC

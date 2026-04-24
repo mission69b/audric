@@ -23,6 +23,7 @@ import {
   type UserFinancialProfile,
   type UserPermissionConfig,
 } from '@t2000/engine';
+import { getSuiRpcUrl } from '@/lib/sui-rpc';
 import { UpstashSessionStore } from './upstash-session-store';
 import { getRecipeRegistry } from './recipes';
 import { UpstashConversationStateStore } from './upstash-conversation-state-store';
@@ -107,7 +108,7 @@ const SONNET_MODEL = 'claude-sonnet-4-6';
 const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
 const MODEL_OVERRIDE = process.env.AGENT_MODEL;
 const SUI_NETWORK = (process.env.NEXT_PUBLIC_SUI_NETWORK ?? 'mainnet') as 'mainnet' | 'testnet';
-const SUI_RPC_URL = `https://fullnode.${SUI_NETWORK}.sui.io:443`;
+const SUI_RPC_URL = getSuiRpcUrl();
 // Internal base URL for engine tools that hit Audric's own /api/internal/*
 // routes (payment links, invoices, activity summaries, spending analytics).
 // Falls back to a same-origin path so server-side fetches work in any

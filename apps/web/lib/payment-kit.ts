@@ -1,12 +1,9 @@
 import { SuiGrpcClient } from '@mysten/sui/grpc';
 import { paymentKit } from '@mysten/payment-kit';
+import { getSuiRpcUrl } from '@/lib/sui-rpc';
 
 const network = (process.env.NEXT_PUBLIC_SUI_NETWORK ?? 'mainnet') as 'mainnet' | 'testnet';
-const baseUrl =
-  process.env.SUI_RPC_URL ??
-  (network === 'testnet'
-    ? 'https://fullnode.testnet.sui.io:443'
-    : 'https://fullnode.mainnet.sui.io:443');
+const baseUrl = getSuiRpcUrl();
 
 let _client: ReturnType<typeof createClient> | null = null;
 
