@@ -286,7 +286,7 @@ export async function POST(request: NextRequest) {
                 await store.addToUserIndex(address, sessionId);
               }
 
-              logConversationTurn(address, sessionId, messages, usage).catch((err) =>
+              logConversationTurn(address, sessionId, messages, usage, engineMeta?.modelUsed).catch((err) =>
                 console.error('[engine/chat] conversation log failed:', err),
               );
             } catch (saveErr) {
@@ -324,8 +324,20 @@ export async function POST(request: NextRequest) {
             try {
               const inputTokens = usage.inputTokens ?? 0;
               const outputTokens = usage.outputTokens ?? 0;
+              const cacheReadTokens = usage.cacheReadTokens ?? 0;
+              const cacheWriteTokens = usage.cacheWriteTokens ?? 0;
+              // [v0.47] Use per-model rates instead of hardcoded Sonnet
+              // ($3/$15 per MTok). Pre-fix, Haiku turns were charged at
+              // Sonnet rates in this metric, making them look 2–3x more
+              // expensive than reality and muddying the effort-classifier
+              // cost analysis. Also: include cache read/write rates so
+              // cached turns aren't reported at full input cost.
+              const rates = costRatesForModel(engineMeta.modelUsed);
               const estimatedCostUsd =
-                inputTokens * COST_PER_INPUT_TOKEN + outputTokens * COST_PER_OUTPUT_TOKEN;
+                inputTokens * rates.input +
+                outputTokens * rates.output +
+                cacheReadTokens * rates.cacheRead +
+                cacheWriteTokens * rates.cacheWrite;
               const built = collector.build({
                 sessionId,
                 userId: address,
@@ -379,8 +391,42 @@ interface MessageLike {
   content?: unknown;
 }
 
+// Sonnet rates retained as defaults for the legacy `Message` row writer
+// below, where we don't have model context. The TurnMetrics path uses the
+// per-model `costRatesForModel` helper instead.
 const COST_PER_INPUT_TOKEN = 3 / 1_000_000;
 const COST_PER_OUTPUT_TOKEN = 15 / 1_000_000;
+
+interface ModelCostRates {
+  input: number;
+  output: number;
+  cacheRead: number;
+  cacheWrite: number;
+}
+
+/**
+ * Per-million-token Anthropic pricing as of late 2025:
+ *   Haiku 4.5:  $1 input / $5 output
+ *   Sonnet 4.6: $3 input / $15 output
+ *   Opus 4.6:   $15 input / $75 output
+ * Cache reads bill at 0.1× input rate, cache writes at 1.25× input rate.
+ *
+ * Used by TurnMetrics to charge each turn at its actual model's rate
+ * instead of always assuming Sonnet (the pre-0.47 bug that made Haiku
+ * turns look 2–3× more expensive than reality).
+ */
+function costRatesForModel(model: string): ModelCostRates {
+  if (model.includes('haiku')) {
+    const i = 1 / 1_000_000;
+    return { input: i, output: 5 / 1_000_000, cacheRead: i * 0.1, cacheWrite: i * 1.25 };
+  }
+  if (model.includes('opus')) {
+    const i = 15 / 1_000_000;
+    return { input: i, output: 75 / 1_000_000, cacheRead: i * 0.1, cacheWrite: i * 1.25 };
+  }
+  const i = 3 / 1_000_000;
+  return { input: i, output: 15 / 1_000_000, cacheRead: i * 0.1, cacheWrite: i * 1.25 };
+}
 
 function extractToolCalls(content: unknown): Record<string, unknown>[] | undefined {
   if (!Array.isArray(content)) return undefined;
@@ -461,6 +507,7 @@ async function logConversationTurn(
   sessionId: string,
   messages: MessageLike[],
   usage: { inputTokens?: number; outputTokens?: number },
+  modelUsed?: string,
 ) {
   const user = await prisma.user.upsert({
     where: { suiAddress: address },
@@ -472,7 +519,10 @@ async function logConversationTurn(
   const lastTwo = messages.slice(-2);
   const inputTokens = usage.inputTokens ?? 0;
   const outputTokens = usage.outputTokens ?? 0;
-  const costUsd = inputTokens * COST_PER_INPUT_TOKEN + outputTokens * COST_PER_OUTPUT_TOKEN;
+  // [v0.47] Per-model rates so Haiku turns aren't reported at Sonnet prices.
+  // Falls back to Sonnet defaults when modelUsed is unknown (e.g. unauth turns).
+  const rates = modelUsed ? costRatesForModel(modelUsed) : { input: COST_PER_INPUT_TOKEN, output: COST_PER_OUTPUT_TOKEN };
+  const costUsd = inputTokens * rates.input + outputTokens * rates.output;
 
   const rows = lastTwo.map((m) => {
     const tc = extractToolCalls(m.content);

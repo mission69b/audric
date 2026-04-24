@@ -225,17 +225,39 @@ export function detectTruncation(result: unknown): boolean {
 }
 
 /**
- * Detect ACI refinement payloads. v1.4 tools (`defillama_yield_pools`,
- * `transaction_history`, `mpp_services`) return a `_refine` shape under
- * `data` when the input is too broad.
+ * Detect ACI refinement payloads.
+ *
+ * Two flavors of refinement are both valid signals that the tool told the
+ * model to narrow its query:
+ *
+ *   1. Explicit `_refine` shape (used by `defillama_yield_pools` and
+ *      `mpp_services` when called with no filter — the discovery path).
+ *   2. Truncation markers (`_truncated: true` from `budgetToolResult`, or
+ *      `summarizeOnTruncate`-emitted shapes like `_originalCount`). Used by
+ *      `transaction_history` and any other tool whose response exceeds
+ *      `maxResultSizeChars` — the result includes a "narrow your query"
+ *      hint as part of the truncation note.
+ *
+ * Pre-0.47 this function only counted (1), making `transaction_history`
+ * structurally show 0% refinement rate even when working correctly. The
+ * baseline metrics queries depend on this count being honest.
  */
 export function detectRefinement(result: unknown): boolean {
   if (typeof result !== 'object' || result === null) return false;
   const obj = result as Record<string, unknown>;
+
   if ('_refine' in obj) return true;
   if ('refinementSuggested' in obj || 'refinementRequired' in obj) return true;
+  if (obj._truncated === true) return true;
+  if (typeof obj._originalCount === 'number') return true;
+
   const data = obj.data;
-  if (data && typeof data === 'object' && '_refine' in (data as object)) return true;
+  if (data && typeof data === 'object') {
+    const dataObj = data as Record<string, unknown>;
+    if ('_refine' in dataObj) return true;
+    if (dataObj._truncated === true) return true;
+    if (typeof dataObj._originalCount === 'number') return true;
+  }
   return false;
 }
 
