@@ -4,6 +4,7 @@ import type { PendingAction, ContentBlock, EngineEvent } from '@t2000/engine';
 import {
   classifyReadIntents,
   makeAutoDispatchId,
+  intentDiscriminator,
 } from '@/lib/engine/intent-dispatcher';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { validateJwt, isValidSuiAddress } from '@/lib/auth';
@@ -239,7 +240,17 @@ export async function POST(request: NextRequest) {
             const syntheticToolResults: ContentBlock[] = [];
 
             for (const intent of intents) {
-              const callId = makeAutoDispatchId(turnIndex, intent.toolName);
+              // [v0.46.9] Discriminator avoids ID collisions when one turn
+              // dispatches the same tool twice with different args (e.g.
+              // transaction_history { date: today } AND { date: yesterday }
+              // from a compound prompt). Empty discriminator preserves the
+              // pre-existing `auto_<turn>_<tool>` ID for no-arg intents so
+              // metrics and tests stay stable.
+              const callId = makeAutoDispatchId(
+                turnIndex,
+                intent.toolName,
+                intentDiscriminator(intent),
+              );
 
               let result: { data: unknown; isError: boolean };
               try {
