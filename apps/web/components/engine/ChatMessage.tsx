@@ -37,8 +37,6 @@ interface ChatMessageProps {
   /** Concatenated last ~10 user messages — for the
    *  "Address from your message" badge. */
   recentUserText?: string;
-  /** Persists a contact BEFORE the tx broadcasts. See PermissionCard. */
-  onSaveContactBeforeApprove?: (name: string, address: string) => Promise<void> | void;
 }
 
 function ToolSteps({ tools }: { tools: ToolExecution[] }) {
@@ -97,7 +95,6 @@ export function ChatMessage({
   contacts,
   walletAddress,
   recentUserText,
-  onSaveContactBeforeApprove,
 }: ChatMessageProps) {
   // Voice mode: when this assistant message is the one currently being
   // spoken aloud, swap the markdown renderer for the word-highlight
@@ -165,7 +162,6 @@ export function ChatMessage({
           contacts={contacts}
           walletAddress={walletAddress}
           recentUserText={recentUserText}
-          onSaveContactBeforeApprove={onSaveContactBeforeApprove}
         />
       )}
 

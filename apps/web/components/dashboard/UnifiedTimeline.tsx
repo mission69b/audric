@@ -77,13 +77,6 @@ interface UnifiedTimelineProps {
    * funds" failure mode at the gate, not just at the card.
    */
   contacts?: ReadonlyArray<{ name: string; address: string }>;
-  /**
-   * Persists a contact BEFORE a `send_transfer` is broadcast. Threaded
-   * through to PermissionCard's inline "Save as contact" affordance.
-   * `dashboard-content` wires this to `useContacts.addContact`, which
-   * also writes through to `/api/user/preferences`.
-   */
-  onSaveContactBeforeApprove?: (name: string, address: string) => Promise<void> | void;
   /** Wallet address — required to render the in-chat Copilot pill (Wave C.5)
    *  and the InChatSurface card (Wave C.6). */
   address?: string | null;
@@ -115,7 +108,6 @@ export function UnifiedTimeline({
   priceCache,
   onSendMessage,
   contacts = [],
-  onSaveContactBeforeApprove,
   address = null,
   jwt = null,
   sessionId = null,
@@ -340,7 +332,6 @@ export function UnifiedTimeline({
                 contacts={contacts}
                 walletAddress={address}
                 recentUserText={recentUserText}
-                onSaveContactBeforeApprove={onSaveContactBeforeApprove}
               />
             </div>
           );
