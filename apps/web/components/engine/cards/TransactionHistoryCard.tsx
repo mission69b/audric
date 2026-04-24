@@ -15,6 +15,15 @@ interface TxRecord {
   amount?: number;
   asset?: string;
   recipient?: string;
+  /**
+   * [v0.46.2] Direction of the user's principal balance change on
+   * this tx — `'in'` if the user received the asset, `'out'` if they
+   * spent it. Computed from on-chain balance flows by the SDK, NOT
+   * from the textual label, so opaque actions (`swap`, `router`,
+   * unknown contracts) still render the correct sign. Older engine
+   * versions don't emit this; we fall back to a label-based heuristic.
+   */
+  direction?: 'in' | 'out';
   timestamp: string | number;
   gasCost?: number;
 }
@@ -53,8 +62,9 @@ const ACTION_ICONS: Record<string, string> = {
   stake: '↗',
   unstake: '↙',
   liquidate: '⚠',
-  'on-chain': '◆',
   lending: '◆',
+  transaction: '◆',
+  'on-chain': '◆',
 };
 
 /**
@@ -66,6 +76,17 @@ const FRIENDLY_LABELS: Record<string, string> = {
   payment_link: 'Payment link',
   'on-chain': 'On-chain',
   unstake: 'Unstake',
+  swap: 'Swap',
+  send: 'Send',
+  deposit: 'Deposit',
+  withdraw: 'Withdraw',
+  borrow: 'Borrow',
+  repay: 'Repay',
+  claim: 'Claim',
+  stake: 'Stake',
+  invoice: 'Invoice',
+  lending: 'Lending',
+  transaction: 'On-chain',
 };
 
 function getIcon(label: string): string {
@@ -81,13 +102,18 @@ function getDisplayLabel(label: string): string {
   return FRIENDLY_LABELS[label.toLowerCase()] ?? label;
 }
 
-function isOutflow(label: string): boolean {
+/**
+ * Legacy heuristic for inferring sign from the textual label, kept as
+ * a fallback for older engine versions that don't emit `direction`.
+ * Engine ≥ v0.46.2 always emits `direction` from on-chain balance
+ * flows, so this branch should be dead code in production.
+ */
+function legacyIsOutflow(label: string): boolean {
   const lower = label.toLowerCase();
   return (
     lower.includes('send') ||
     lower.includes('pay') ||
     lower.includes('repay') ||
-    lower.includes('withdraw') ||
     lower === 'deposit' ||
     lower === 'supply' ||
     lower === 'stake'
@@ -139,7 +165,10 @@ export function TransactionHistoryCard({ data }: { data: HistoryData }) {
               {items.map((tx) => {
                 const rawLabel = tx.label ?? tx.action;
                 const display = getDisplayLabel(rawLabel);
-                const outflow = isOutflow(rawLabel);
+                const outflow =
+                  tx.direction === 'out' ? true
+                  : tx.direction === 'in' ? false
+                  : legacyIsOutflow(rawLabel);
                 return (
                   <div key={tx.digest} className="flex items-center justify-between py-1 border-t border-border-subtle/30 font-mono text-[11px]">
                     <div className="flex items-center gap-1.5 min-w-0">

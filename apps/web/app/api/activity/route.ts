@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
-import { getDecimalsForCoinType, resolveSymbol, SUI_TYPE } from '@t2000/sdk';
+import {
+  extractTxCommands,
+  extractTxSender,
+  parseSuiRpcTx,
+  type SuiRpcTxBlock,
+  type TransactionRecord,
+} from '@t2000/sdk';
 import { prisma } from '@/lib/prisma';
 import type { ActivityItem, ActivityPage } from '@/lib/activity-types';
 
@@ -12,19 +18,11 @@ const suiClient = new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl(SUI_NETWORK)
 const ALLOWANCE_PACKAGE_PREFIX = '0xd775fcc66eae26797654d435d751dea56b82eeb999de51fd285348e573b968ad';
 const MPP_TREASURY = '0x76d70cf9d3ab7f714a35adf8766a2cb25929cae92ab4de54ff4dea0482b05012';
 
-// Layer 1: Protocol-specific module names (high confidence, verified against SDK sources)
-// NAVI: incentive_v\d+, lending, navi_adaptor, oracle_pro, flash_loan
-// Suilend: suilend, obligation, reserve
-// Cetus: cetus (package/module namespace)
-// DeepBook: deepbook
-const KNOWN_TARGETS: [RegExp, string][] = [
-  [/::suilend|::obligation|::reserve/, 'lending'],
-  [/::incentive_v\d+|::oracle_pro|::flash_loan|::lending|::navi_adaptor/, 'lending'],
-  [/::cetus/, 'swap'],
-  [/::deepbook/, 'swap'],
-  [/::transfer::public_transfer/, 'send'],
-];
-
+/**
+ * Map filter chip → set of resolved `ActivityItem.type` values that
+ * should pass through. `'savings'` covers any lending bucket
+ * (`'lending'` action), regardless of the fine-grained label.
+ */
 const TYPE_FILTER_MAP: Record<string, string[]> = {
   savings: ['lending'],
   send: ['send'],
@@ -48,8 +46,12 @@ const APP_EVENT_TYPE_MAP: Record<string, string[]> = {
 /**
  * GET /api/activity?address=0x...&type=all&cursor=<ms-timestamp>&limit=20
  *
- * Merges on-chain transaction history (Sui RPC) with AppEvent rows (NeonDB).
- * Supports cursor-based pagination and type filtering.
+ * Merges on-chain transaction history (Sui RPC) with AppEvent rows
+ * (NeonDB). Supports cursor-based pagination and type filtering.
+ *
+ * Transaction parsing is delegated to `@t2000/sdk`'s shared
+ * `parseSuiRpcTx` (same parser used by the engine's
+ * `transaction_history` tool and the `/api/history` route).
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
@@ -115,16 +117,16 @@ async function fetchChainActivity(
   ]);
 
   const seen = new Set<string>();
-  const allTxns: TxBlock[] = [];
+  const allTxns: SuiRpcTxBlock[] = [];
 
   for (const tx of outgoing.data ?? []) {
     seen.add(tx.digest);
-    allTxns.push(tx as unknown as TxBlock);
+    allTxns.push(tx as unknown as SuiRpcTxBlock);
   }
   for (const tx of incoming.data ?? []) {
     if (!seen.has(tx.digest)) {
       seen.add(tx.digest);
-      allTxns.push(tx as unknown as TxBlock);
+      allTxns.push(tx as unknown as SuiRpcTxBlock);
     }
   }
 
@@ -135,7 +137,7 @@ async function fetchChainActivity(
 
   for (const tx of allTxns) {
     try {
-      const parsed = parseTx(tx, address);
+      const parsed = parseChainTx(tx, address);
       if (!parsed) continue;
       if (allowedTypes && !allowedTypes.includes(parsed.type)) continue;
       items.push(parsed);
@@ -190,89 +192,31 @@ async function fetchAppEvents(
 }
 
 // ---------------------------------------------------------------------------
-// On-chain transaction parsing (adapted from /api/history)
+// On-chain transaction → ActivityItem (uses shared SDK parser)
 // ---------------------------------------------------------------------------
 
-interface TxBlock {
-  digest: string;
-  timestampMs?: string;
-  transaction?: unknown;
-  effects?: { gasUsed?: { computationCost: string; storageCost: string; storageRebate: string } };
-  balanceChanges?: BalanceChange[];
-}
-
-interface BalanceChange {
-  owner: { AddressOwner?: string } | string;
-  coinType: string;
-  amount: string;
-}
-
-function resolveOwner(owner: BalanceChange['owner']): string | null {
-  if (typeof owner === 'object' && owner.AddressOwner) return owner.AddressOwner;
-  if (typeof owner === 'string') return owner;
-  return null;
-}
-
-function extractSender(txBlock: unknown): string | null {
-  try {
-    if (!txBlock || typeof txBlock !== 'object') return null;
-    const data = 'data' in txBlock ? (txBlock as Record<string, unknown>).data : undefined;
-    if (!data || typeof data !== 'object') return null;
-    return (data as Record<string, unknown>).sender as string ?? null;
-  } catch {
-    return null;
-  }
-}
-
-function extractCommands(txBlock: unknown): { moveCallTargets: string[]; commandTypes: string[] } {
-  const result = { moveCallTargets: [] as string[], commandTypes: [] as string[] };
-  try {
-    if (!txBlock || typeof txBlock !== 'object') return result;
-    const data = 'data' in txBlock ? (txBlock as Record<string, unknown>).data : undefined;
-    if (!data || typeof data !== 'object') return result;
-    const inner = 'transaction' in (data as Record<string, unknown>)
-      ? (data as Record<string, unknown>).transaction
-      : undefined;
-    if (!inner || typeof inner !== 'object') return result;
-    const commands = 'commands' in (inner as Record<string, unknown>)
-      ? (inner as Record<string, unknown>).commands
-      : 'transactions' in (inner as Record<string, unknown>)
-        ? (inner as Record<string, unknown>).transactions
-        : undefined;
-    if (!Array.isArray(commands)) return result;
-    for (const cmd of commands as Record<string, unknown>[]) {
-      if (cmd.MoveCall) {
-        const mc = cmd.MoveCall as { package: string; module: string; function: string };
-        result.moveCallTargets.push(`${mc.package}::${mc.module}::${mc.function}`);
-        result.commandTypes.push('MoveCall');
-      } else if (cmd.TransferObjects) {
-        result.commandTypes.push('TransferObjects');
-      }
-    }
-  } catch { /* best effort */ }
-  return result;
-}
-
-function classifyAction(targets: string[], commandTypes: string[]): string {
-  for (const target of targets) {
-    for (const [pattern, label] of KNOWN_TARGETS) {
-      if (pattern.test(target)) return label;
-    }
-  }
-  if (commandTypes.includes('TransferObjects') && !commandTypes.includes('MoveCall')) return 'send';
-  if (commandTypes.includes('MoveCall')) return 'contract';
-  return 'transaction';
-}
-
+/**
+ * Truncate an address for display (`0xabcd…1234`). Falls back to the
+ * raw value when shorter than the cutoff.
+ */
 function truncAddr(addr: string): string {
   return addr.length > 12 ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : addr;
 }
 
-function buildTitle(action: string, direction: 'in' | 'out' | 'self', amount?: number, asset?: string, counterparty?: string): string {
+/**
+ * Build the activity-feed title from a resolved {@link TransactionRecord}.
+ */
+function buildTitle(
+  type: string,
+  direction: 'in' | 'out' | 'self',
+  amount?: number,
+  asset?: string,
+  counterparty?: string,
+): string {
   const amtStr = amount != null ? `$${amount.toFixed(2)}` : '';
   const assetStr = asset ?? '';
 
-  switch (action) {
+  switch (type) {
     case 'pay':
       return `Paid ${amtStr} for service`.trim();
     case 'send':
@@ -296,99 +240,66 @@ function buildTitle(action: string, direction: 'in' | 'out' | 'self', amount?: n
   }
 }
 
-function parseTx(tx: TxBlock, address: string): ActivityItem | null {
-  const { moveCallTargets, commandTypes } = extractCommands(tx.transaction);
-
+/**
+ * Convert a raw RPC tx to an `ActivityItem` for the dashboard feed.
+ *
+ * Logic:
+ *   1. Drop transactions touching the legacy allowance package — those
+ *      are scaffolding noise.
+ *   2. Run the canonical SDK parser to get action / direction / amount.
+ *   3. Apply two dashboard-specific overrides:
+ *        - `recipient === MPP_TREASURY` ⇒ rebrand as `'pay'`
+ *        - inflow from a different sender ⇒ rebrand as `'receive'`
+ *   4. Build a human-readable title.
+ */
+function parseChainTx(tx: SuiRpcTxBlock, address: string): ActivityItem | null {
+  const { moveCallTargets } = extractTxCommands(tx.transaction);
   if (moveCallTargets.some((t) => t.startsWith(ALLOWANCE_PACKAGE_PREFIX))) {
     return null;
   }
 
-  const sender = extractSender(tx.transaction);
+  const record: TransactionRecord = parseSuiRpcTx(tx, address);
+  const sender = extractTxSender(tx.transaction);
   const isUserTx = sender === address;
-  const action = classifyAction(moveCallTargets, commandTypes);
-  const changes = tx.balanceChanges ?? [];
 
-  const userInflows = changes.filter(
-    (c) => resolveOwner(c.owner) === address && BigInt(c.amount) > BigInt(0) && c.coinType !== SUI_TYPE,
-  );
-  const userOutflows = changes.filter(
-    (c) => resolveOwner(c.owner) === address && BigInt(c.amount) < BigInt(0) && c.coinType !== SUI_TYPE,
-  );
+  // Map the SDK direction (`'in' | 'out' | undefined`) to the
+  // dashboard's tri-state (`'in' | 'out' | 'self'`). Undefined means
+  // we couldn't detect a user balance change — usually a self-call /
+  // contract interaction.
+  const direction: 'in' | 'out' | 'self' = record.direction ?? 'self';
 
-  let direction: 'out' | 'in' | 'self' = 'self';
-  let amount: number | undefined;
-  let asset: string | undefined;
-  let counterparty: string | undefined;
-
-  if (userOutflows.length > 0 && userInflows.length === 0) {
-    direction = 'out';
-    const primary = userOutflows.sort((a, b) => Number(BigInt(a.amount) - BigInt(b.amount)))[0];
-    const decimals = getDecimalsForCoinType(primary.coinType);
-    amount = Math.round(Math.abs(Number(BigInt(primary.amount))) / 10 ** decimals * 100) / 100;
-    asset = resolveSymbol(primary.coinType);
-    const recipientChange = changes.find(
-      (c) => resolveOwner(c.owner) !== address && c.coinType === primary.coinType && BigInt(c.amount) > BigInt(0),
-    );
-    counterparty = recipientChange ? resolveOwner(recipientChange.owner) ?? undefined : undefined;
-  } else if (userInflows.length > 0 && userOutflows.length === 0) {
-    direction = 'in';
-    const primary = userInflows.sort((a, b) => Number(BigInt(b.amount) - BigInt(a.amount)))[0];
-    const decimals = getDecimalsForCoinType(primary.coinType);
-    amount = Math.round(Math.abs(Number(BigInt(primary.amount))) / 10 ** decimals * 100) / 100;
-    asset = resolveSymbol(primary.coinType);
-    if (!isUserTx && sender) counterparty = sender;
-  } else if (userOutflows.length > 0 && userInflows.length > 0) {
-    direction = 'out';
-    const primary = userOutflows.sort((a, b) => Number(BigInt(a.amount) - BigInt(b.amount)))[0];
-    const decimals = getDecimalsForCoinType(primary.coinType);
-    amount = Math.round(Math.abs(Number(BigInt(primary.amount))) / 10 ** decimals * 100) / 100;
-    asset = resolveSymbol(primary.coinType);
-  } else {
-    const suiChanges = changes.filter(
-      (c) => resolveOwner(c.owner) === address && c.coinType === SUI_TYPE,
-    );
-    if (suiChanges.length > 0) {
-      const netSui = suiChanges.reduce((s, c) => s + Number(BigInt(c.amount)), 0);
-      if (Math.abs(netSui) > 1_000_000) {
-        direction = netSui > 0 ? 'in' : 'out';
-        amount = Math.round(Math.abs(netSui) / 1e9 * 100) / 100;
-        asset = 'SUI';
-      }
-    }
+  // Counterparty rules:
+  //   - For outflows: SDK populates `recipient` with the address that
+  //     received the principal asset.
+  //   - For inflows from a different sender: surface the sender as the
+  //     counterparty so the title reads "Received from 0xabc…".
+  let counterparty: string | undefined = record.recipient;
+  if (!counterparty && direction === 'in' && !isUserTx && sender) {
+    counterparty = sender;
   }
 
-  let resolvedAction = action;
-  const hasMoveCall = commandTypes.includes('MoveCall');
-  const hasMultipleAssetTypes = new Set(
-    [...userInflows, ...userOutflows].map((c) => c.coinType),
-  ).size > 1;
-
-  if (hasMultipleAssetTypes && userInflows.length > 0 && userOutflows.length > 0 && action !== 'lending') {
-    resolvedAction = 'swap';
-  } else if (direction === 'in' && !isUserTx) {
-    resolvedAction = 'receive';
-  } else if (isUserTx && hasMoveCall && (action === 'contract' || action === 'transaction')) {
-    resolvedAction = direction === 'self' && !amount ? 'contract' : 'lending';
-  } else if (direction === 'out' && !hasMoveCall) {
-    resolvedAction = 'send';
+  // Type resolution: prefer the explicit action bucket, then layer
+  // dashboard-only refinements on top.
+  let type: string = record.action;
+  if (direction === 'in' && !isUserTx && type !== 'lending' && type !== 'swap') {
+    type = 'receive';
   }
-
   if (counterparty === MPP_TREASURY) {
-    resolvedAction = 'pay';
+    type = 'pay';
   }
 
-  const title = buildTitle(resolvedAction, direction, amount, asset, counterparty);
+  const title = buildTitle(type, direction, record.amount, record.asset, counterparty);
 
   return {
-    id: tx.digest,
+    id: record.digest,
     source: 'chain',
-    type: resolvedAction,
+    type,
     title,
-    amount,
-    asset,
+    amount: record.amount,
+    asset: record.asset,
     direction,
     counterparty,
-    digest: tx.digest,
-    timestamp: Number(tx.timestampMs ?? 0),
+    digest: record.digest,
+    timestamp: record.timestamp,
   };
 }
