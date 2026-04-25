@@ -73,8 +73,12 @@ function getHeroLines(data: TxReceiptData, toolName: string): HeroLine[] {
     if (swapToAmt != null && !isNaN(swapToAmt)) {
       lines.push({ label: 'Received', value: `${fmtAmt(swapToAmt, 4)} ${swapTo}`, emphasis: 'positive' });
     }
-    if (data.priceImpact != null && data.priceImpact > 0.01) {
-      lines.push({ label: 'Impact', value: `${data.priceImpact.toFixed(2)}%`, emphasis: data.priceImpact > 1 ? 'negative' : 'neutral' });
+    // Defensive coerce: Cetus's deviationRatio sometimes arrives as a string,
+    // and a stray .toFixed() on a non-number takes the chat down via the
+    // React error boundary.
+    const impactNum = data.priceImpact == null ? null : Number(data.priceImpact);
+    if (impactNum != null && Number.isFinite(impactNum) && impactNum > 0.01) {
+      lines.push({ label: 'Impact', value: `${impactNum.toFixed(2)}%`, emphasis: impactNum > 1 ? 'negative' : 'neutral' });
     }
     return lines;
   }
