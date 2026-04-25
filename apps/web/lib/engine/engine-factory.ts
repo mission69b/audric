@@ -31,6 +31,7 @@ import { UpstashConversationStateStore } from './upstash-conversation-state-stor
 import { incrementSessionSpend } from './session-spend';
 import { GOAL_TOOLS } from './goal-tools';
 import { ADVICE_TOOLS } from './advice-tool';
+import { audricSaveContactTool, audricListContactsTool } from './contact-tools';
 import { prisma } from '@/lib/prisma';
 import { fetchPositions as fetchPortfolioPositions } from '@/lib/portfolio-data';
 import {
@@ -377,7 +378,24 @@ export async function createEngine(
   // price impact for actual trades. Quoting is read-only and fast.
   const EXCLUDED_TOOLS = new Set<string>();
   const filteredReads = READ_TOOLS.filter((t) => !EXCLUDED_TOOLS.has(t.name));
-  const allTools = applyToolFlags([...filteredReads, ...WRITE_TOOLS, ...GOAL_TOOLS, ...ADVICE_TOOLS, ...mcpTools]);
+
+  // Replace the engine's stub `save_contact` (no-op call returning
+  // `{saved:true}`) with a Prisma-backed override that actually persists,
+  // and add `list_contacts` so the LLM can authoritatively answer
+  // "show me my contacts" without confessing the gap. Both live in
+  // `lib/engine/contact-tools.ts`. See the file's header for context on
+  // the persistence bug the previous client-only path produced.
+  const filteredWrites = WRITE_TOOLS.filter((t) => t.name !== 'save_contact');
+  const audricContactTools: Tool[] = [audricSaveContactTool, audricListContactsTool];
+
+  const allTools = applyToolFlags([
+    ...filteredReads,
+    ...filteredWrites,
+    ...audricContactTools,
+    ...GOAL_TOOLS,
+    ...ADVICE_TOOLS,
+    ...mcpTools,
+  ]);
 
   console.log(`[engine-factory] tools=${allTools.length}: ${allTools.map(t => t.name).join(', ')}`);
 

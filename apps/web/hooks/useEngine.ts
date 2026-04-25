@@ -37,6 +37,18 @@ class AuthError extends Error {
 interface UseEngineOptions {
   address: string | null;
   jwt: string | undefined;
+  /**
+   * Fired whenever a tool resolves (success or error). Used by the
+   * dashboard to refresh server-owned client caches after writes the
+   * tool itself persisted (e.g. `save_contact` writes via Prisma in
+   * `lib/engine/contact-tools.ts`; the contacts tab needs to re-read).
+   */
+  onToolResult?: (event: {
+    toolName: string;
+    toolUseId: string;
+    isError: boolean;
+    result: unknown;
+  }) => void;
 }
 
 function buildHistory(messages: EngineChatMessage[]): { role: 'user' | 'assistant'; content: string }[] {
@@ -45,7 +57,11 @@ function buildHistory(messages: EngineChatMessage[]): { role: 'user' | 'assistan
     .map((m) => ({ role: m.role, content: m.content }));
 }
 
-export function useEngine({ address, jwt }: UseEngineOptions) {
+export function useEngine({ address, jwt, onToolResult }: UseEngineOptions) {
+  // Hold the latest callback in a ref so the SSE handler doesn't re-bind
+  // (and risk dropping events) when the parent re-renders with a new fn.
+  const onToolResultRef = useRef(onToolResult);
+  onToolResultRef.current = onToolResult;
   const isAuth = !!address && !!jwt;
   const [messages, setMessages] = useState<EngineChatMessage[]>([]);
   const [status, setStatus] = useState<EngineStatus>('idle');
@@ -382,6 +398,22 @@ export function useEngine({ address, jwt }: UseEngineOptions) {
       }
 
       case 'tool_result':
+        // Notify hosts about every resolved tool so they can refresh
+        // server-owned client caches (e.g. `save_contact` persists
+        // via Prisma; the contacts tab needs to re-read after that).
+        // Fired even for deduped results — the tool DID succeed, the
+        // dedup just suppresses the duplicate UI card.
+        try {
+          onToolResultRef.current?.({
+            toolName: event.toolName,
+            toolUseId: event.toolUseId,
+            isError: !!event.isError,
+            result: event.result,
+          });
+        } catch {
+          // Host callback errors must not break stream processing.
+        }
+
         // [v0.46.8] When the engine flags `resultDeduped: true`, this
         // tool_use_id is the SECOND (or Nth) call to the same read-only
         // tool with identical args within one user turn. The first call

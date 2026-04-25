@@ -4,10 +4,12 @@ import { ServiceDeliveryError, type AgentActions } from '@/hooks/useAgent';
 /**
  * Side-effect callbacks the pure helper needs from React land.
  * Kept optional and explicit so the helper stays testable without RTL.
+ *
+ * `addContact` was removed when `save_contact` moved server-side
+ * (see the tombstone in the switch below).
  */
 export interface ExecuteToolActionEffects {
   resolveContact?: (raw: string) => string | null;
-  addContact?: (name: string, address: string) => Promise<void>;
 }
 
 export type ExecuteToolActionResult = { success: boolean; data: unknown };
@@ -202,13 +204,15 @@ export async function executeToolAction(
       }
     }
 
-    case 'save_contact': {
-      if (!effects.addContact) {
-        throw new Error('save_contact requires effects.addContact callback');
-      }
-      await effects.addContact(String(inp.name), String(inp.address));
-      return { success: true, data: { saved: true, name: inp.name, address: inp.address } };
-    }
+    // Note: `save_contact` used to dispatch here via `effects.addContact`
+    // (client POST to `/api/user/preferences`). That path silently lost
+    // contacts when the POST returned a non-2xx response — the in-session
+    // React state updated, the LLM narrated success, but Postgres never
+    // saw the row. The audric override in `lib/engine/contact-tools.ts`
+    // now persists server-side via Prisma with `permissionLevel: 'auto'`,
+    // so the engine never yields a `pending_action` for save_contact and
+    // this dispatcher is never reached for that tool. Kept the comment as
+    // a tombstone in case anyone wonders why the case is missing.
 
     default:
       throw new Error(`Unknown tool: ${toolName}`);
