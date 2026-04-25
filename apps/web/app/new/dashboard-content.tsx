@@ -202,7 +202,19 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
   const feed = useFeed();
   const contactsHook = useContacts(address);
   const { agent } = useAgent();
-  const engine = useEngine({ address, jwt: session?.jwt });
+  // Refetch the contacts tab whenever the LLM resolves a `save_contact`
+  // call. The tool now persists to Postgres directly via Prisma (see
+  // `lib/engine/contact-tools.ts`), so this hook is the canonical reader
+  // — without the refetch the contacts tab would stay stale until reload.
+  const engine = useEngine({
+    address,
+    jwt: session?.jwt,
+    onToolResult: (event) => {
+      if (event.toolName === 'save_contact' && !event.isError) {
+        void contactsHook.refetch();
+      }
+    },
+  });
 
   // ─── Voice mode (Claude-style continuous loop) ────────────────────
   // The hook is engine-agnostic: it owns the mic + TTS lifecycle and
@@ -738,7 +750,6 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
 
       const result = await executeToolAction(sdk, toolName, input, {
         resolveContact: (raw) => contactsHook.resolveContact(raw),
-        addContact: (name, address) => contactsHook.addContact(name, address),
       });
 
       // Side effects after a successful execution. Refetch balance for any

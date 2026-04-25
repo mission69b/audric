@@ -232,11 +232,16 @@ export function resolvePermissionTier(
 }
 
 /**
- * Tools without a financial-value mapping (e.g. `claim_rewards`,
- * `save_contact`). Treated as auto-approve client-side because they
- * carry no spendable USD value — the engine still validates them.
+ * Tools without a financial-value mapping (e.g. `claim_rewards`).
+ * Treated as auto-approve client-side because they carry no spendable
+ * USD value — the engine still validates them.
+ *
+ * `save_contact` is intentionally NOT here: the audric override in
+ * `lib/engine/contact-tools.ts` runs with `permissionLevel: 'auto'` so
+ * the engine executes it server-side and never emits `pending_action`.
+ * Listing it here would be dead code.
  */
-const NON_FINANCIAL_AUTO_APPROVE = new Set(['claim_rewards', 'save_contact']);
+const NON_FINANCIAL_AUTO_APPROVE = new Set(['claim_rewards']);
 
 /**
  * The single client-side gate. Returns true when the pending action

@@ -78,7 +78,7 @@ describe('resolveUsdValue (client mirror)', () => {
 describe('shouldClientAutoApprove', () => {
   const cfg = PERMISSION_PRESETS.balanced;
 
-  it('auto-approves non-financial writes', () => {
+  it('auto-approves non-financial writes (claim_rewards)', () => {
     expect(
       shouldClientAutoApprove(
         { toolName: 'claim_rewards', input: {} },
@@ -87,6 +87,17 @@ describe('shouldClientAutoApprove', () => {
         PRICES,
       ),
     ).toBe(true);
+  });
+
+  it('does NOT special-case save_contact at the client gate', () => {
+    // The audric override executes save_contact server-side with
+    // `permissionLevel: 'auto'`, so the engine never yields a
+    // pending_action for it and this gate is never consulted. If
+    // save_contact ever DOES reach this gate it falls through to the
+    // generic resolver — which has no operation mapping for it and
+    // therefore returns false (forces a confirmation card). That's
+    // safer than silently auto-approving a tool we no longer manage
+    // here. See `lib/engine/contact-tools.ts`.
     expect(
       shouldClientAutoApprove(
         { toolName: 'save_contact', input: { name: 'a', address: 'b' } },
@@ -94,7 +105,7 @@ describe('shouldClientAutoApprove', () => {
         0,
         PRICES,
       ),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it('reproduces the bug repro: balanced + $50 save → no auto', () => {
