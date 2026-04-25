@@ -244,6 +244,29 @@ describe('shouldClientAutoApprove', () => {
       ),
     ).toBe(false);
   });
+
+  it('regression: send by contact NAME (e.g. "main") under threshold → auto', () => {
+    // Repros the v0.46.15 production bug: user saved wallet1, then said
+    // "send 1 SUI to wallet1", LLM passed `to: "wallet1"` (the name,
+    // not the address). The send-safety check inside resolvePermissionTier
+    // ran `isKnownContactAddress("wallet1", contacts)` which compared
+    // the name against contact *addresses* and returned false, demoting
+    // tier auto → confirm. Fix: only enforce the unknown-contact rule
+    // when `to.startsWith('0x')` (raw addresses are the dangerous case).
+    expect(
+      shouldClientAutoApprove(
+        {
+          toolName: 'send_transfer',
+          input: { to: 'main', amount: 5, asset: 'USDC' },
+        },
+        cfg,
+        0,
+        PRICES,
+        0,
+        contacts,
+      ),
+    ).toBe(true);
+  });
 });
 
 describe('isKnownContactAddress', () => {
