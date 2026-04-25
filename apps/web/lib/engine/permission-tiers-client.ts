@@ -219,10 +219,17 @@ export function resolvePermissionTier(
     tier = 'confirm';
   }
 
+  // Send-safety: a *raw* 0x recipient that doesn't match a saved
+  // contact forces confirm. Contact names (e.g. `to: "wallet1"`) are
+  // already trusted — the user explicitly saved that contact — and get
+  // resolved to addresses downstream by `effects.resolveContact`.
+  // Mirror of `resolvePermissionTier` in
+  // `packages/engine/src/permission-rules.ts` — keep in sync.
   if (
     tier === 'auto' &&
     operation === 'send' &&
     sendContext?.to &&
+    sendContext.to.startsWith('0x') &&
     !isKnownContactAddress(sendContext.to, sendContext.contacts ?? [])
   ) {
     tier = 'confirm';
