@@ -13,7 +13,14 @@ interface SwapQuoteData {
 
 export function SwapQuoteCard({ data }: { data: SwapQuoteData }) {
   const rate = data.fromAmount > 0 ? data.toAmount / data.fromAmount : 0;
-  const impactColor = data.priceImpact > 3 ? 'text-error-solid' : data.priceImpact > 1 ? 'text-warning-solid' : 'text-fg-primary';
+  // Defensive: Cetus's `deviationRatio` is typed as number but occasionally
+  // arrives as a string ("0.001234"). The SDK now coerces, but we still
+  // normalize here so a single bad payload can never crash the chat (which
+  // happens because .toFixed throws on a string and the React error boundary
+  // tears down the whole conversation).
+  const impactPct = Number(data.priceImpact);
+  const safeImpact = Number.isFinite(impactPct) ? impactPct : 0;
+  const impactColor = safeImpact > 3 ? 'text-error-solid' : safeImpact > 1 ? 'text-warning-solid' : 'text-fg-primary';
 
   return (
     <CardShell title="Swap Quote">
@@ -26,7 +33,7 @@ export function SwapQuoteCard({ data }: { data: SwapQuoteData }) {
       <div className="space-y-1 font-mono text-[11px]">
         <DetailRow label="Rate">1 {data.fromToken} = {rate.toFixed(4)} {data.toToken}</DetailRow>
         <DetailRow label="Impact">
-          <span className={impactColor}>{data.priceImpact.toFixed(2)}%</span>
+          <span className={impactColor}>{safeImpact.toFixed(2)}%</span>
         </DetailRow>
         {data.route && (
           <DetailRow label="Route">{data.route}</DetailRow>
