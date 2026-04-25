@@ -44,7 +44,12 @@ const TOTAL_COUNT = READ_COUNT + WRITE_COUNT;
 
 export interface WalletBalanceSummary {
   coins: { symbol: string; amount: number; usdValue?: number }[];
+  /** USD prices keyed by full Sui coinType (e.g. "0x2::sui::SUI" → 0.946). */
   prices?: Record<string, number>;
+  /** USD prices keyed by short symbol (e.g. "SUI" → 0.946, "USDC" → 1.0).
+   * Includes both held coins and the canonical supported assets so the LLM
+   * can quote tokens the user doesn't currently hold. */
+  symbolPrices?: Record<string, number>;
 }
 
 export interface Contact {
@@ -207,9 +212,9 @@ All transactions are gas-sponsored (free for the user). The user does NOT need S
   1. ALWAYS check the snapshot (or call balance_check if stale) to verify the user has enough. For save/send/swap: check wallet balance of that token. For withdraw: check savings positions. For repay: check wallet USDC.
   2. If the requested amount EXCEEDS the available balance, REFUSE immediately — do NOT call the write tool. State the exact available balance and ask the user to confirm a lower amount. Example: "You only have 0.97 USDC. Want me to send all 0.97?"
   3. NEVER pass an amount larger than the available balance to a write tool. This applies equally to send_transfer, save_deposit, swap_execute, and all other write tools. Violating this rule causes silent failures or incorrect receipts.
-- For swap estimates, calculate from the token prices in ## Session Context — no need to call defillama_token_prices first.
+- For swap estimates, ALWAYS read the actual price from the "Token prices (USD…)" line in ## Session Context (or the "prices" field on the prefetched balance_check result). NEVER guess from training memory — token prices change daily and your training data is months stale. The "$3.50/SUI" or "$0.30/SUI" you remember is wrong.
+- If a price you need is NOT in ## Session Context, you MUST call swap_quote (preferred — gives the exact route) or defillama_token_prices BEFORE quoting any number to the user.
 - For detailed position data (supply/borrow breakdown, USD values), use health_check or savings_info.
-- Only call defillama_* tools for tokens NOT in the session balances, or for historical/protocol data.
 - Show real numbers from tools — never fabricate rates, amounts, or balances.
 
 ## Tool usage
@@ -232,10 +237,14 @@ All transactions are gas-sponsored (free for the user). The user does NOT need S
 - "Sell all X" or "Swap all X to Y" → from=X, amount=FULL balance of X from session balances
 - Double-check: the "from" token's balance must be >= the amount. If not, you have from/to backwards.
 
-### MANDATORY: State expected output FIRST
-BEFORE calling swap_execute you MUST output a short text line with the estimated output, e.g.:
-  "At $0.87/SUI, 5 USDC should get you ~5.75 SUI. Executing swap now."
-Calculate the estimate from the token prices in ## Session Context. Do NOT skip this step.
+### MANDATORY: Quote first, then state expected output
+BEFORE calling swap_execute you MUST:
+  1. Call swap_quote with the exact (from, to, amount) you intend to execute. This is read-only, fast (~300-800ms), and returns the real on-chain output, route, and price impact. The engine guard \`swap_preview\` will BLOCK swap_execute if no matching swap_quote ran in this turn.
+  2. Output ONE short text line citing the quote's numbers, e.g.:
+       "Quote: 5 USDC → 5.71 SUI (0.12% impact via Cetus). Executing swap now."
+  3. Then call swap_execute with the same (from, to, amount).
+
+NEVER pre-narrate an estimate from price math like "at \$X/TOKEN, you should get ~Y" — token prices in ## Session Context are a sanity check, not a quote. Use the quote tool's numbers verbatim. The LLM's training-memory price for any non-stablecoin is almost certainly wrong.
 
 ### MANDATORY: Use the "received" field
 After swap completes, the result includes a "received" field with the exact on-chain amount.
@@ -260,9 +269,9 @@ For single-step requests, skip the plan — just execute.
 
 ## Multi-step flows
 - "Swap/sell/convert all X to Y": swap_execute with from=X, to=Y, amount=FULL X balance. Gas is sponsored — no reserve needed.
-- "How much X for Y?": swap_execute — the confirmation card shows the quote. User can deny if they don't like it.
-- "Swap then save": swap_execute → save_deposit.
-- "Buy $X of token": defillama_token_prices → calculate amount → swap_execute.
+- "How much X for Y?": call swap_quote (read-only) and report the result. Do NOT call swap_execute unless the user has explicitly said to execute.
+- "Swap then save": swap_quote → swap_execute → save_deposit.
+- "Buy $X of token": read the token's price from ## Session Context (or call swap_quote with byAmountIn=false for an exact-out quote) → swap_execute.
 - "Best yield on SUI": compare rates_info + defillama_yield_pools + volo_stats.
 - For deposit/withdraw, check the tool description for supported assets. Depositing a token only requires that token. Gas is always sponsored.
 
@@ -377,6 +386,22 @@ export function buildDynamicBlock(
         return `Current wallet balances (snapshot at session start): ${balanceLines}`;
       })();
 
+  // Token prices: surface the symbol→USD map explicitly so the LLM never has
+  // to derive prices by dividing usdValue/amount. This block is the
+  // authoritative price source for swap estimates — `STATIC_SYSTEM_PROMPT`
+  // points the model here and forbids guessing from training memory.
+  const pricesSection = (() => {
+    const sp = balances?.symbolPrices;
+    if (!sp || Object.keys(sp).length === 0) return '';
+    const entries = Object.entries(sp)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([sym, p]) => {
+        const formatted = p >= 100 ? p.toFixed(2) : p >= 1 ? p.toFixed(4) : p.toFixed(6);
+        return `${sym}=$${formatted}`;
+      });
+    return `Token prices (USD, snapshot at session start): ${entries.join(', ')}`;
+  })();
+
   const writeTools = tools.filter((t) => !t.isReadOnly);
   const writeToolList = writeTools.map((t) => `- ${t.name}`).join('\n');
 
@@ -390,7 +415,7 @@ export function buildDynamicBlock(
 
   return `## Session Context
 Wallet address: ${walletAddress}. Never ask for it.
-${balanceSection}
+${balanceSection}${pricesSection ? `\n${pricesSection}` : ''}
 
 ## Your write tools (you CAN execute these — use them)
 ${writeToolList}

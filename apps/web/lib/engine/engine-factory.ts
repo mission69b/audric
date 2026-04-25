@@ -23,6 +23,7 @@ import {
   type UserFinancialProfile,
   type UserPermissionConfig,
 } from '@t2000/engine';
+import { SUPPORTED_ASSETS } from '@t2000/sdk';
 import { getSuiRpcUrl } from '@/lib/sui-rpc';
 import { UpstashSessionStore } from './upstash-session-store';
 import { getRecipeRegistry } from './recipes';
@@ -302,7 +303,16 @@ export async function createEngine(
   }> = [];
 
   const nonZeroCoins = walletCoins.filter((c) => Number(c.totalBalance) > 0);
-  const prices = await fetchTokenPrices(nonZeroCoins.map((c) => c.coinType)).catch(() => ({} as Record<string, number>));
+
+  // Fetch prices for held coins PLUS the canonical supported assets so swap
+  // estimates work even when the user is buying a token they don't yet hold.
+  // Without this the LLM has no price for tokens like NAVX/CETUS/DEEP/ETH/WAL
+  // and falls back to (stale) training memory — the root cause of the
+  // "$3.50/SUI" hallucination class of bugs.
+  const referenceCoinTypes = Object.values(SUPPORTED_ASSETS).map((a) => a.type);
+  const heldCoinTypes = nonZeroCoins.map((c) => c.coinType);
+  const allCoinTypesToPrice = Array.from(new Set([...heldCoinTypes, ...referenceCoinTypes]));
+  const prices = await fetchTokenPrices(allCoinTypesToPrice).catch(() => ({} as Record<string, number>));
 
   const balanceSummary: WalletBalanceSummary = {
     coins: nonZeroCoins.map((c) => {
@@ -315,16 +325,33 @@ export async function createEngine(
       };
     }),
     prices,
+    // symbolPrices is filled in below after we build the priceCache.
   };
 
-  // B.4: Build symbol → USD price map for permission resolution
+  // B.4: Build symbol → USD price map for permission resolution AND for
+  // surfacing in the system prompt / synthetic balance_check result. We
+  // include both the user's held coins and the canonical supported assets
+  // so the LLM has a price for every token it can swap into.
   const priceCache = new Map<string, number>();
   for (const coin of nonZeroCoins) {
     const p = prices[coin.coinType];
     if (p) priceCache.set(coin.symbol.toUpperCase(), p);
   }
+  for (const asset of Object.values(SUPPORTED_ASSETS)) {
+    if (priceCache.has(asset.symbol.toUpperCase())) continue;
+    const p = prices[asset.type];
+    if (p) priceCache.set(asset.symbol.toUpperCase(), p);
+  }
   if (!priceCache.has('USDC')) priceCache.set('USDC', 1);
   if (!priceCache.has('USDT')) priceCache.set('USDT', 1);
+
+  // Symbol→USD map (sorted by symbol for stable cache hits) used by both the
+  // synthetic balance_check prefetch and the system-prompt Session Context.
+  const symbolPrices: Record<string, number> = {};
+  for (const symbol of [...priceCache.keys()].sort()) {
+    symbolPrices[symbol] = priceCache.get(symbol)!;
+  }
+  balanceSummary.symbolPrices = symbolPrices;
 
   // B.4: Load per-user permission config (fall back to defaults)
   const userPrefs = await prisma.userPreferences.findUnique({
@@ -344,7 +371,11 @@ export async function createEngine(
     (t) => MCP_ALLOWLIST.has(t.name),
   ) as Tool[];
 
-  const EXCLUDED_TOOLS = new Set(['swap_quote']);
+  // swap_quote is REQUIRED before swap_execute (enforced by the engine
+  // guardSwapPreview). Without an on-chain quote the LLM can only estimate
+  // from prices, which is fine for "how much is X token" but misses route +
+  // price impact for actual trades. Quoting is read-only and fast.
+  const EXCLUDED_TOOLS = new Set<string>();
   const filteredReads = READ_TOOLS.filter((t) => !EXCLUDED_TOOLS.has(t.name));
   const allTools = applyToolFlags([...filteredReads, ...WRITE_TOOLS, ...GOAL_TOOLS, ...ADVICE_TOOLS, ...mcpTools]);
 
@@ -508,6 +539,12 @@ function buildSyntheticPrefetch(
         pendingRewards: positions?.pendingRewards ?? 0,
         total: totalUsd + (positions?.savings ?? 0) - (positions?.borrows ?? 0) + (positions?.pendingRewards ?? 0),
         saveableUsdc: usdcHolding?.balance ?? 0,
+        // Symbol→USD price snapshot. The model MUST read prices from this
+        // field (and the matching system-prompt block) for any swap/value
+        // estimate — never from training memory. Includes both held coins
+        // and canonical supported assets so unheld tokens are quotable too.
+        prices: balances.symbolPrices ?? {},
+        pricesAsOf: new Date().toISOString(),
       }),
     });
   }
