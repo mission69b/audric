@@ -5,7 +5,6 @@ import {
   classifyReadIntents,
   makeAutoDispatchId,
   intentDiscriminator,
-  type ReadIntent,
 } from '@/lib/engine/intent-dispatcher';
 import { buildDispatchIntents } from '@/lib/engine/dispatch-intents';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
@@ -48,29 +47,29 @@ const MAX_HISTORY = 12;
 const MAX_MSG_LEN = 500;
 
 /**
- * [v1.4 — Item 2] Synthetic read intents pre-fetched on the first user
- * turn of a *resumed* auth session. New sessions are already covered by
- * `engine-factory.ts:buildSyntheticPrefetch`, which preloads
- * `balance_check` + `savings_info` `tool_use`/`tool_result` blocks into
- * the engine's message ledger before the agent loop runs.
+ * [v0.48 — bug 3] The unconditional resumed-session pre-fetch
+ * (RESUMED_SESSION_INTENTS — balance_check + savings_info on every
+ * turn of a returning auth session) was deleted here. Reasoning:
  *
- * The baseline metric this targets is "Returning user 2 → 0 tool calls":
- * when a user resumes an existing session with a free-form message ("hey",
- * "what should I do"), the LLM's freshness heuristic skipped tool calls
- * because nothing in the prompt explicitly asked for new data — leaving
- * the user without any rich balance/savings card.
+ *   1. The <financial_context> block in the system prompt
+ *      (`buildFinancialContextBlock`) already gives the LLM a daily
+ *      orientation snapshot of balance, savings, debt, HF, APY, and
+ *      recent activity — the LLM doesn't need a fresh tool result on
+ *      every turn to know the current state.
+ *   2. `READ_INTENT_RULES` already classifies explicit balance/savings
+ *      questions ("what's my balance", "how much am I earning") and
+ *      dispatches them through the same `buildDispatchIntents` path.
+ *   3. Post-write tools refresh balance/savings via
+ *      `EngineConfig.postWriteRefresh`, so action turns can't go stale
+ *      either.
  *
- * The two intents below collide with `READ_INTENT_RULES` in
- * `intent-dispatcher.ts` (specifically the no-arg `balance_check` rules);
- * the dedup loop below uses `argsFingerprint` so a single classified
- * `balance_check` doesn't fire twice. Both tools are excluded from
- * `createUnauthEngine`'s tool set (engine-factory.ts:616–623) — the
- * `isReturningSession` gate blocks pre-fetch on cold landing-page hits.
+ * The original baseline metric this targeted ("Returning user 2 → 0
+ * tool calls" — bare-message resumes producing zero card renders) is
+ * better fixed by the system-prompt freshness signal than by always
+ * stamping two cards on every turn. The reported regression: asking
+ * "what's funkii's address" rendered the user's own balance + savings
+ * card *before* the LLM even saw the message.
  */
-const RESUMED_SESSION_INTENTS: readonly ReadIntent[] = [
-  { toolName: 'balance_check', args: {}, label: 'resumed-session pre-fetch (balance)' },
-  { toolName: 'savings_info', args: {}, label: 'resumed-session pre-fetch (savings)' },
-];
 
 interface ChatRequestBody {
   message: string;
@@ -232,7 +231,6 @@ export async function POST(request: NextRequest) {
      * have access to `balance_check` / `savings_info` and would just log
      * "tool not found" warnings on every cold landing-page hit.
      */
-    const isReturningSession = isAuth && !!(session?.messages?.length);
 
     const toolNamesByUseId = new Map<string, string>();
     // [v0.46.6] Accumulate text deltas so we can run the markdown-table-
@@ -274,16 +272,14 @@ export async function POST(request: NextRequest) {
           const trimmedMessage = message.trim();
 
           /**
-           * [v1.4 — Item 2] Build the dispatch list as
-           *   RESUMED_SESSION_INTENTS (auth + resumed only)  +  classifier output
-           * with `argsFingerprint`-keyed dedup. Implementation lives in
-           * `lib/engine/dispatch-intents.ts` so the merge semantics can be
-           * unit-tested without booting the full SSE handler.
+           * [v0.48] Pure classifier-driven dispatch — no synthetic
+           * pre-fetch. `buildDispatchIntents` exists solely to dedup
+           * the classified list by (toolName, argsFingerprint) so a
+           * compound prompt (e.g. "show my balance and balance again")
+           * doesn't fire `balance_check` twice.
            */
           const intents = buildDispatchIntents({
             classified: classifyReadIntents(trimmedMessage),
-            isReturningSession,
-            resumedIntents: RESUMED_SESSION_INTENTS,
           });
 
           // [Bug A trace] Always log a one-liner with intent classification
