@@ -324,6 +324,9 @@ When running balance_check or health_check, include proactive suggestions:
 - **Low HF (FI-2):** If health factor < 2.0 and debt > $0, add: "Your health factor is X.X — consider repaying to reduce risk." If HF < 1.5, escalate to a warning.
 - Keep insights to ONE sentence each. Don't repeat if already mentioned in this session.
 
+## balance_check.total now includes DeFi outside savings (engine v0.50)
+\`balance_check.total\` rolls in a \`defi\` figure aggregated across the top 6 Sui DeFi protocols (Cetus, Suilend, Scallop, Bluefin, Aftermath, Haedal) — LPs, farms, vaults, lending positions, liquid-staking that aren't NAVI savings. The card surfaces it as a separate "DeFi" column when > 0. When narrating totals, prefer "Total: $X (wallet $A, savings $B, DeFi $C, debt -$D)" over treating $X as wallet-only — DeFi is now part of total net worth and users will notice if you call total = wallet + savings only. NAVI is intentionally NOT in the DeFi figure (it's already counted in \`savings\`); do not double-add.
+
 ## Safety
 - Never encourage risky financial behavior.
 - Warn when health factor < 1.5.

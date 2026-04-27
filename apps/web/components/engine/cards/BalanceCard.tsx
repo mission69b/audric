@@ -7,6 +7,10 @@ interface BalanceData {
   savings?: number;
   debt?: number;
   total?: number;
+  /** [engine v0.50] Aggregated DeFi positions outside savings (Cetus/Suilend/Scallop/Bluefin/Aftermath/Haedal). */
+  defi?: number;
+  /** [engine v0.50] Per-protocol breakdown — keys are lowercase protocol slugs. */
+  defiByProtocol?: Record<string, number>;
   holdings?: { symbol: string; balance: number; usdValue: number }[];
   /** [v0.49] Stamped by the engine's balance_check tool. */
   address?: string;
@@ -19,6 +23,7 @@ export function BalanceCard({ data }: { data: BalanceData }) {
   if (data.total != null) cols.push({ label: 'Total', value: `$${fmtUsd(data.total)}` });
   if (data.available != null) cols.push({ label: 'Cash', value: `$${fmtUsd(data.available)}` });
   if ((data.savings ?? 0) > 0) cols.push({ label: 'Savings', value: `$${fmtUsd(data.savings!)}`, color: 'text-success-solid' });
+  if ((data.defi ?? 0) > 0) cols.push({ label: 'DeFi', value: `$${fmtUsd(data.defi!)}`, color: 'text-success-solid' });
   if ((data.debt ?? 0) > 0) cols.push({ label: 'Debt', value: `$${fmtUsd(data.debt!)}`, color: 'text-warning-solid' });
 
   const hasHoldings = data.holdings && data.holdings.filter((h) => h.usdValue >= 0.01).length > 0;
