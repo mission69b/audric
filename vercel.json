@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/turn-metrics-cleanup",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/turn-metrics-pending-sweep",
+      "schedule": "*/5 * * * *"
     }
   ]
 }

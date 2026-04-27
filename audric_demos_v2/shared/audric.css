@@ -1,0 +1,159 @@
+@import url("./colors_and_type.css");
+
+:root{
+  --bg:      var(--surface-page);
+  --panel:   var(--surface-card);
+  --panel-2: var(--surface-sunken);
+  --line:    var(--border-subtle);
+  --line-2:  var(--border-strong);
+  --text:    var(--fg-primary);
+  --text-2:  var(--fg-secondary);
+  --text-3:  var(--fg-muted);
+  --green:   var(--success-solid);
+  --green-d: var(--g700);
+  --blue:    var(--accent-primary);
+  --red:     var(--error-solid);
+  --yellow:  var(--y600);
+  --purple:  var(--pu500);
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font-sans);font-size:14px;height:100%;line-height:1.45;-webkit-font-smoothing:antialiased}
+button{font:inherit;cursor:pointer;border:none;background:none;color:inherit;padding:0;transition:background .12s ease, color .12s ease, border-color .12s ease, opacity .12s ease}
+button:hover{opacity:.92}
+button:disabled{cursor:default;opacity:.5}
+a{color:inherit;text-decoration:none;transition:color .12s ease}
+input,textarea{font:inherit;color:inherit;background:transparent;border:none;outline:none;width:100%}
+.mono{font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.08em}
+.serif{font-family:var(--font-serif)}
+#root{height:100%}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:3px}
+.hover-card{transition:border-color .12s ease, background .12s ease}
+.hover-card:hover{border-color:var(--line-2)}
+
+/* Streaming "thinking" pulse */
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+.pulse{animation:pulse 1.2s ease-in-out infinite}
+
+/* Slow shimmer on processing rows */
+@keyframes shimmer { 0%{background-position:-300px 0} 100%{background-position:300px 0} }
+.shimmer{
+  background-image:linear-gradient(90deg, transparent 0, rgba(0,0,0,0.04) 40%, rgba(0,0,0,0.08) 50%, rgba(0,0,0,0.04) 60%, transparent 100%);
+  background-size:600px 100%;
+  animation:shimmer 1.6s linear infinite;
+}
+
+/* Step appear — fade + rise. opacity 0→1 so elements never pop in. */
+@keyframes appearUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:none} }
+.appear{animation:appearUp .55s cubic-bezier(.16,.84,.44,1) both}
+.chat-scroll{scroll-behavior:smooth}
+
+@keyframes shake { 0%,100%{transform:none} 25%{transform:translateX(-2px)} 75%{transform:translateX(2px)} }
+
+@keyframes spin { to{transform:rotate(360deg)} }
+.spin{animation:spin 1s linear infinite}
+
+@keyframes fadein { from{opacity:0} to{opacity:1} }
+.fadein{animation:fadein .4s ease both}
+
+/* Hero composer entry — fade + scale gently */
+@keyframes heroFadeIn { from{opacity:0;transform:translateY(-6px) scale(.98)} to{opacity:1;transform:none} }
+
+/* Smoother appearance — slightly longer + spring-y curve */
+@keyframes appearSmooth { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:none} }
+.appear-smooth{animation:appearSmooth .5s cubic-bezier(.16,.84,.32,1) both}
+
+/* Caret */
+@keyframes blink {0%,49%{opacity:1}50%,100%{opacity:0}}
+.caret::after{content:'▌';display:inline-block;animation:blink 1s step-end infinite;color:var(--text-3);margin-left:2px}
+/* Audric "A" thinking indicator — soft breathe */
+@keyframes audricThink { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.55;transform:scale(.88)} }
+.audric-think{animation:audricThink 1.4s cubic-bezier(.4,0,.6,1) infinite}
+
+/* Audio bars */
+@keyframes bar1 { 0%,100%{height:18%} 50%{height:78%} }
+@keyframes bar2 { 0%,100%{height:60%} 50%{height:18%} }
+@keyframes bar3 { 0%,100%{height:35%} 50%{height:88%} }
+@keyframes bar4 { 0%,100%{height:80%} 50%{height:25%} }
+@keyframes bar5 { 0%,100%{height:30%} 50%{height:62%} }
+.aud-bar{width:3px;background:var(--text);border-radius:2px}
+.aud-bar:nth-child(1){animation:bar1 .9s ease-in-out infinite}
+.aud-bar:nth-child(2){animation:bar2 .9s ease-in-out infinite}
+.aud-bar:nth-child(3){animation:bar3 .9s ease-in-out infinite}
+.aud-bar:nth-child(4){animation:bar4 .9s ease-in-out infinite}
+.aud-bar:nth-child(5){animation:bar5 .9s ease-in-out infinite}
+
+/* Bump composer up so it sits above ribbon */
+.composer-fixed{position:fixed;bottom:90px;left:0;right:0;display:flex;justify-content:center;padding:0 24px;pointer-events:none;z-index:10}
+.composer-fixed > .inner{width:100%;max-width:760px;background:var(--panel);border:1px solid var(--line-2);border-radius:16px;padding:14px 16px;pointer-events:auto;box-shadow:0 6px 24px rgba(0,0,0,0.05)}
+
+/* Demo footer ribbon */
+.demo-ribbon{
+  background:var(--n800);color:#fff;
+  padding:10px 20px;display:flex;align-items:center;gap:16px;
+  font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+  z-index:50;
+}
+.demo-ribbon a{color:var(--n400)}
+.demo-ribbon a:hover{color:#fff}
+.demo-ribbon .restart{margin-left:auto;border:1px solid var(--n700);padding:6px 12px;border-radius:2px;color:#fff}
+.demo-ribbon .restart:hover{background:var(--n700)}
+
+/* dither line */
+.dither{font-family:var(--font-mono);color:var(--n400);user-select:none;letter-spacing:.05em;line-height:1}
+
+/* ============ MOBILE (≤768px) ============ */
+@media (max-width: 768px){
+  html,body{font-size:14px}
+  /* compact balance header */
+  .chat-balance{padding:10px 0 2px !important}
+  .chat-balance-amt{font-size:34px !important}
+  .chat-balance-label{font-size:10px !important;letter-spacing:.08em !important}
+  /* demo ribbon */
+  .demo-ribbon{padding:8px 12px;gap:10px;font-size:9px;flex-wrap:wrap}
+  .demo-ribbon .demo-sentence{display:none}
+  .demo-ribbon .demo-title{font-size:9px}
+  .demo-ribbon .restart{padding:4px 10px;font-size:9px}
+  /* transcript padding */
+  .chat-scroll{padding:10px 14px 14px !important}
+  /* condense top bar */
+  .chat-topbar{padding:10px 14px !important}
+  .topbar-mainnet{display:none}
+  /* permission/tool cards */
+  .pc-row{padding:12px 14px !important;gap:10px !important}
+  .pc-action{padding:10px 14px !important;flex-wrap:wrap}
+
+  /* ── Per-demo responsive helpers ── */
+
+  /* Demo 02: split screen → stack vertically */
+  .d02-split{flex-direction:column !important}
+  .d02-merchant{flex:none !important;height:60vh;border-right:none !important;border-bottom:1px solid var(--line)}
+  .d02-buyer{flex:none !important;height:auto;max-height:50vh;overflow-y:auto}
+
+  /* Demo 05: card+permission side-by-side → stack */
+  .d05-permission-grid{grid-template-columns:1fr !important}
+  /* Demo 05: receipt row → 1 col */
+  .d05-receipts{grid-template-columns:1fr !important}
+
+  /* Demo 01: BalCards 3-col → 2-col */
+  .d01-balcards{grid-template-columns:repeat(2,1fr) !important}
+  /* Demo 01: earnings grid 3-col → 3-col (numbers are small, ok) */
+
+  /* Demo 03: buyer page flex → column */
+  .d03-buyer-inner{flex-direction:column !important}
+  .d03-buyer-art{width:100% !important;height:160px !important}
+
+  /* Generic compare grids (3-col) → 1-col */
+  .compare-3{grid-template-columns:1fr !important}
+
+  /* Index hero */
+  .index-hero-h1{font-size:38px !important}
+  /* Index demo row → 2-col (num + info), hide badges + open arrow */
+  .index-demo-row{grid-template-columns:48px 1fr !important;gap:12px !important;padding:18px 12px !important}
+  .index-demo-row .index-badges,.index-demo-row .index-open{display:none !important}
+  /* Index stats 5-col → 2-col wrap */
+  .index-stats{grid-template-columns:repeat(2,1fr) !important}
+  .index-stats .stat:nth-child(5){border-right:none}
+  /* Index wrap */
+  .index-wrap{padding:28px 16px 60px !important}
+}

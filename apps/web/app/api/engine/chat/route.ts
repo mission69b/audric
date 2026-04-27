@@ -5,7 +5,9 @@ import {
   classifyReadIntents,
   makeAutoDispatchId,
   intentDiscriminator,
+  type ReadIntent,
 } from '@/lib/engine/intent-dispatcher';
+import { buildDispatchIntents } from '@/lib/engine/dispatch-intents';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { validateJwt, isValidSuiAddress } from '@/lib/auth';
 import {
@@ -26,6 +28,8 @@ import {
   detectTruncation,
   detectNarrationTableDump,
 } from '@/lib/engine/harness-metrics';
+import { costRatesForModel } from '@/lib/engine/cost-rates';
+import { isSyntheticSessionId } from '@/lib/engine/synthetic-sessions';
 import { prisma } from '@/lib/prisma';
 import {
   SESSION_LIMIT_VERIFIED,
@@ -42,6 +46,31 @@ export const maxDuration = 60;
 
 const MAX_HISTORY = 12;
 const MAX_MSG_LEN = 500;
+
+/**
+ * [v1.4 — Item 2] Synthetic read intents pre-fetched on the first user
+ * turn of a *resumed* auth session. New sessions are already covered by
+ * `engine-factory.ts:buildSyntheticPrefetch`, which preloads
+ * `balance_check` + `savings_info` `tool_use`/`tool_result` blocks into
+ * the engine's message ledger before the agent loop runs.
+ *
+ * The baseline metric this targets is "Returning user 2 → 0 tool calls":
+ * when a user resumes an existing session with a free-form message ("hey",
+ * "what should I do"), the LLM's freshness heuristic skipped tool calls
+ * because nothing in the prompt explicitly asked for new data — leaving
+ * the user without any rich balance/savings card.
+ *
+ * The two intents below collide with `READ_INTENT_RULES` in
+ * `intent-dispatcher.ts` (specifically the no-arg `balance_check` rules);
+ * the dedup loop below uses `argsFingerprint` so a single classified
+ * `balance_check` doesn't fire twice. Both tools are excluded from
+ * `createUnauthEngine`'s tool set (engine-factory.ts:616–623) — the
+ * `isReturningSession` gate blocks pre-fetch on cold landing-page hits.
+ */
+const RESUMED_SESSION_INTENTS: readonly ReadIntent[] = [
+  { toolName: 'balance_check', args: {}, label: 'resumed-session pre-fetch (balance)' },
+  { toolName: 'savings_info', args: {}, label: 'resumed-session pre-fetch (savings)' },
+];
 
 interface ChatRequestBody {
   message: string;
@@ -195,6 +224,16 @@ export async function POST(request: NextRequest) {
      */
     const turnIndex = engine.getMessages().filter((m) => m.role === 'assistant').length;
 
+    /**
+     * [v1.4 — Item 2] Trigger resumed-session pre-fetch ONLY when an
+     * authenticated user is reopening a session that already has prior
+     * messages. New auth sessions are covered upstream by
+     * `engine-factory.ts:buildSyntheticPrefetch`; unauth sessions don't
+     * have access to `balance_check` / `savings_info` and would just log
+     * "tool not found" warnings on every cold landing-page hit.
+     */
+    const isReturningSession = isAuth && !!(session?.messages?.length);
+
     const toolNamesByUseId = new Map<string, string>();
     // [v0.46.6] Accumulate text deltas so we can run the markdown-table-
     // dump detector once the turn closes. Pure observation — never blocks
@@ -233,7 +272,19 @@ export async function POST(request: NextRequest) {
           // SSE events for the synthetic tool calls are streamed BEFORE the
           // LLM's stream so cards render immediately and metrics row is complete.
           const trimmedMessage = message.trim();
-          const intents = classifyReadIntents(trimmedMessage);
+
+          /**
+           * [v1.4 — Item 2] Build the dispatch list as
+           *   RESUMED_SESSION_INTENTS (auth + resumed only)  +  classifier output
+           * with `argsFingerprint`-keyed dedup. Implementation lives in
+           * `lib/engine/dispatch-intents.ts` so the merge semantics can be
+           * unit-tested without booting the full SSE handler.
+           */
+          const intents = buildDispatchIntents({
+            classified: classifyReadIntents(trimmedMessage),
+            isReturningSession,
+            resumedIntents: RESUMED_SESSION_INTENTS,
+          });
 
           // [Bug A trace] Always log a one-liner with intent classification
           // + dispatch outcome. When users report "this prompt didn't render
@@ -412,7 +463,13 @@ export async function POST(request: NextRequest) {
                 collector.onUsage(event);
                 break;
               case 'pending_action':
-                collector.onPendingAction();
+                // [v1.4.2 — Day 3 / Spec Item 3] Pass the engine-stamped
+                // `attemptId` so the resulting `TurnMetrics` row carries
+                // it, and the resume route can `updateMany where {
+                // attemptId }` to write the per-attempt outcome onto the
+                // exact row this turn produced (instead of the ambiguous
+                // `(sessionId, turnIndex)` pair that v1.3 used).
+                collector.onPendingAction(event.action.attemptId);
                 pendingAction = event.action;
                 break;
               default:
@@ -550,6 +607,23 @@ export async function POST(request: NextRequest) {
                 contextTokensStart: priorMsgCount,
                 estimatedCostUsd,
                 sessionSpendUsd: sessionSpendUsdAtStart,
+                // [v1.4.2 — Day 3 / Spec Item 3] Mark the row synthetic
+                // when `sessionId` matches a prefix in
+                // `SYNTHETIC_SESSION_PREFIXES`. The chat route is
+                // user-prompt-driven for human traffic, but bot/test
+                // harnesses (e.g. the `s_1777047351366…` load tester
+                // backfilled in the v1.4.2 deploy SQL) drive it the
+                // same way — so the *route* can't decide the bit on
+                // its own; the sessionId prefix is the canonical
+                // signal. This MUST stay aligned with the resume
+                // route's identical derivation so a turn's `initial`
+                // and `resume` rows agree on `synthetic` and don't
+                // mis-pair under `WHERE synthetic = false` filters.
+                synthetic: isSyntheticSessionId(sessionId),
+                // [v1.4.2 — Day 3] Initial chat-route close. The resume
+                // route writes a separate row with `turnPhase: 'resume'`
+                // when the user resolves a pending action.
+                turnPhase: 'initial',
               });
               // Prisma's JSON columns demand `InputJsonValue` shapes —
               // round-trip through JSON to strip class-y types and satisfy
@@ -594,42 +668,12 @@ interface MessageLike {
   content?: unknown;
 }
 
-// Sonnet rates retained as defaults for the legacy `Message` row writer
-// below, where we don't have model context. The TurnMetrics path uses the
-// per-model `costRatesForModel` helper instead.
+// [v1.3 — G11] Sonnet rates retained as defaults for the legacy
+// `Message` / `ConversationLog` row writer below, where we don't have
+// model context. The TurnMetrics path uses the per-model
+// `costRatesForModel` helper imported from `@/lib/engine/cost-rates`.
 const COST_PER_INPUT_TOKEN = 3 / 1_000_000;
 const COST_PER_OUTPUT_TOKEN = 15 / 1_000_000;
-
-interface ModelCostRates {
-  input: number;
-  output: number;
-  cacheRead: number;
-  cacheWrite: number;
-}
-
-/**
- * Per-million-token Anthropic pricing as of late 2025:
- *   Haiku 4.5:  $1 input / $5 output
- *   Sonnet 4.6: $3 input / $15 output
- *   Opus 4.6:   $15 input / $75 output
- * Cache reads bill at 0.1× input rate, cache writes at 1.25× input rate.
- *
- * Used by TurnMetrics to charge each turn at its actual model's rate
- * instead of always assuming Sonnet (the pre-0.47 bug that made Haiku
- * turns look 2–3× more expensive than reality).
- */
-function costRatesForModel(model: string): ModelCostRates {
-  if (model.includes('haiku')) {
-    const i = 1 / 1_000_000;
-    return { input: i, output: 5 / 1_000_000, cacheRead: i * 0.1, cacheWrite: i * 1.25 };
-  }
-  if (model.includes('opus')) {
-    const i = 15 / 1_000_000;
-    return { input: i, output: 75 / 1_000_000, cacheRead: i * 0.1, cacheWrite: i * 1.25 };
-  }
-  const i = 3 / 1_000_000;
-  return { input: i, output: 15 / 1_000_000, cacheRead: i * 0.1, cacheWrite: i * 1.25 };
-}
 
 function extractToolCalls(content: unknown): Record<string, unknown>[] | undefined {
   if (!Array.isArray(content)) return undefined;

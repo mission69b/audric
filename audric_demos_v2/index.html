@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Audric × Sui · Demo Playbook</title>
+<link rel="stylesheet" href="shared/audric.css?v=4">
+<style>
+  body{overflow-y:auto}
+  .wrap{max-width:1180px;margin:0 auto;padding:48px 32px 80px}
+  .hero-num{font-family:var(--font-mono);font-size:11px;letter-spacing:.18em;color:var(--text-3)}
+  .hero-h1{font-family:var(--font-serif);font-size:64px;line-height:1.05;letter-spacing:-.015em;margin:14px 0 0}
+  .hero-sub{font-size:16px;color:var(--text-2);max-width:620px;margin-top:18px;line-height:1.55}
+  .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-top:32px}
+  .stat{padding:18px 20px;border-right:1px solid var(--line)}
+  .stat:last-child{border-right:none}
+  .stat .v{font-family:var(--font-serif);font-size:36px;letter-spacing:-.01em}
+  .stat .l{font-family:var(--font-mono);font-size:9px;letter-spacing:.14em;color:var(--text-3);margin-top:4px}
+  .demo-row{display:grid;grid-template-columns:80px 1fr 220px 120px;gap:20px;align-items:center;padding:24px 16px;border-bottom:1px solid var(--line);text-decoration:none;color:inherit;transition:background .15s ease}
+  .demo-row:hover{background:var(--panel)}
+  .demo-num{font-family:var(--font-serif);font-size:48px;color:var(--text-3);line-height:1}
+  .demo-title{font-family:var(--font-serif);font-size:24px;letter-spacing:-.01em}
+  .demo-tag{font-family:var(--font-mono);font-size:9px;letter-spacing:.14em;color:var(--text-3);margin-top:6px}
+  .demo-line{font-size:13px;color:var(--text-2);margin-top:8px;font-style:italic;line-height:1.5;max-width:560px}
+  @media(max-width:600px){
+    .wrap{padding:28px 16px 60px}
+    .hero-h1{font-size:38px}
+    .hero-sub{font-size:14px}
+    .stats{grid-template-columns:repeat(2,1fr)}
+    .stat:nth-child(2){border-right:none}
+    .stat:nth-child(5){border-right:none}
+    .demo-row{grid-template-columns:44px 1fr;gap:12px;padding:18px 12px}
+    .demo-row .badges,.demo-row .open{display:none}
+    .demo-num{font-size:32px}
+    .demo-title{font-size:18px}
+    .demo-line{font-size:12px;margin-top:4px}
+    .dither-row{display:none}
+  }
+  .open{font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;color:var(--text-2);text-align:right}
+  .section-h{font-family:var(--font-mono);font-size:11px;letter-spacing:.18em;color:var(--text-3);margin:48px 0 14px}
+  .badges{display:flex;flex-wrap:wrap;gap:6px}
+  .badge{font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;padding:4px 9px;border-radius:3px;border:1px solid var(--line-2);color:var(--text-2);background:var(--panel);white-space:nowrap}
+  .badge.blue{background:var(--b100,#eff6ff);color:var(--b600,#2563eb);border-color:var(--b200,#bfdbfe)}
+  .badge.green{background:var(--g200);color:var(--green);border-color:var(--g300,#bbf7d0)}
+  .badge.amber{background:#fef3c7;color:#92400e;border-color:#fde68a}
+  .badge.pink{background:#fce7f3;color:#9d174d;border-color:#fbcfe8}
+  .dither-row{font-family:var(--font-mono);color:var(--n400);user-select:none;letter-spacing:.05em;font-size:10px;margin:24px 0;overflow:hidden;white-space:nowrap}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hero-num">// AUDRIC</div>
+  <h1 class="hero-h1">Demo Pack</h1>
+  <p class="hero-sub">
+    7 demos · click any card to launch.<br/>
+    All demos are mocks — Audric 2.0 UI/UX · Built on Sui.
+  </p>
+
+  <div class="dither-row" style="margin-top:32px">░▒▓██▓▒░░▒▓██▓▒░░▒▓██▓▒░░▒▓██▓▒░░▒▓██▓▒░░▒▓██▓▒░░▒▓██▓▒░░▒▓██▓▒░░▒▓██▓▒░░▒▓██▓▒░░▒▓██▓▒░░▒▓██▓▒░░▒▓██▓▒░░▒▓██▓▒░</div>
+
+  <div class="section-h">// THE SEVEN DEMOS</div>
+
+  <a class="demo-row" href="demos/01-save-50.html">
+    <div class="demo-num">01</div>
+    <div>
+      <div class="demo-tag">AGENTIC FINANCE · 50s</div>
+      <div class="demo-title" style="margin-top:8px">"Swap, save, and send — in one sentence"</div>
+      <div class="demo-line">"I asked it to do three things. It did all three on-chain in 0.6 seconds. One signature."</div>
+    </div>
+    <div class="badges">
+      <span class="badge blue">Payment Streams</span>
+      <span class="badge green">DeFi</span>
+      <span class="badge green">USDsui</span>
+    </div>
+    <div class="open">OPEN →</div>
+  </a>
+
+  <a class="demo-row" href="demos/02-payment-link.html">
+    <div class="demo-num">02</div>
+    <div>
+      <div class="demo-tag">AGENTIC PAYMENTS · 50s</div>
+      <div class="demo-title" style="margin-top:8px">"Create a payment link for my coffee"</div>
+      <div class="demo-line">"A buyer with no wallet, no seed phrase, no SUI — pays in 0.4 seconds with a Google account."</div>
+    </div>
+    <div class="badges">
+      <span class="badge blue">Audric Pay</span>
+      <span class="badge blue">zkLogin</span>
+      <span class="badge">QR</span>
+    </div>
+    <div class="open">OPEN →</div>
+  </a>
+
+  <a class="demo-row" href="demos/03-make-a-beat.html">
+    <div class="demo-num">03</div>
+    <div>
+      <div class="demo-tag">AGENTIC COMMERCE · 90s</div>
+      <div class="demo-title" style="margin-top:8px">"Make me a beat and sell it for $5"</div>
+      <div class="demo-line">"I typed one sentence. AI made the music. Sui stores it forever. I earn 92%. Spotify gives me $0.003."</div>
+    </div>
+    <div class="badges">
+      <span class="badge amber">Walrus</span>
+      <span class="badge amber">Seal</span>
+      <span class="badge pink">MPP</span>
+    </div>
+    <div class="open">OPEN →</div>
+  </a>
+
+  <a class="demo-row" href="demos/04-coloring-book.html">
+    <div class="demo-num">04</div>
+    <div>
+      <div class="demo-tag">AGENTIC COMMERCE · 75s</div>
+      <div class="demo-title" style="margin-top:8px">"Make me a coloring book and sell it"</div>
+      <div class="demo-line">"My daughter typed one sentence. AI drew it. PDFShift bound it. Sui capped it at 100 copies. She's 10."</div>
+    </div>
+    <div class="badges">
+      <span class="badge amber">Walrus</span>
+      <span class="badge amber">Seal</span>
+      <span class="badge pink">MPP</span>
+      <span class="badge green">DeFi</span>
+    </div>
+    <div class="open">OPEN →</div>
+  </a>
+
+  <a class="demo-row" href="demos/05-mums-birthday.html">
+    <div class="demo-num">05</div>
+    <div>
+      <div class="demo-tag">AGENTIC SERVICES · 60s</div>
+      <div class="demo-title" style="margin-top:8px">"Order flowers and a card for mum's birthday"</div>
+      <div class="demo-line">"I said 'flowers and a card for mum on Sunday.' Three services. One sentence. One payment. She got flowers."</div>
+    </div>
+    <div class="badges">
+      <span class="badge pink">MPP Chain</span>
+      <span class="badge pink">Multi-service</span>
+      <span class="badge">USDC</span>
+    </div>
+    <div class="open">OPEN →</div>
+  </a>
+
+  <a class="demo-row" href="demos/06-party-shop.html">
+    <div class="demo-num">06</div>
+    <div>
+      <div class="demo-tag">AGENTIC COMMERCE · 60s</div>
+      <div class="demo-title" style="margin-top:8px">"Buy everything for my house party this Saturday"</div>
+      <div class="demo-line">"Balloons, lights, a cake, a banner. 5 items, 3 shops, $108 USDC. One sentence. One signature. Party sorted."</div>
+    </div>
+    <div class="badges">
+      <span class="badge pink">MPP Chain</span>
+      <span class="badge pink">Multi-vendor</span>
+      <span class="badge">USDC</span>
+    </div>
+    <div class="open">OPEN →</div>
+  </a>
+
+  <a class="demo-row" href="demos/07-xmas-gifts.html">
+    <div class="demo-num">07</div>
+    <div>
+      <div class="demo-tag">AGENTIC COMMERCE · 75s</div>
+      <div class="demo-title" style="margin-top:8px">"Christmas shopping for the whole family, max $50 each"</div>
+      <div class="demo-line">"5 people, 5 personalised gifts curated by AI, 5 vendors paid atomically. $195 USDC. Done in 0.6s."</div>
+    </div>
+    <div class="badges">
+      <span class="badge pink">MPP Chain</span>
+      <span class="badge pink">AI Curation</span>
+      <span class="badge">USDC</span>
+    </div>
+    <div class="open">OPEN →</div>
+  </a>
+
+  <div class="dither-row" style="margin-top:48px">░▒▓██▓▒░░▒▓██▓▒░░▒▓██▓▒░░▒▓██▓▒░░▒▓██▓▒░░▒▓██▓▒░░▒▓██▓▒░░▒▓██▓▒░░▒▓██▓▒░░▒▓██▓▒░░▒▓██▓▒░░▒▓██▓▒░░▒▓██▓▒░░▒▓██▓▒░░▒▓██▓▒░</div>
+
+  <div style="display:flex;justify-content:space-between;color:var(--text-3);font-family:var(--font-mono);font-size:10px;letter-spacing:.12em">
+    <span>// AUDRIC × SUI</span>
+    <span>// MOCKS · AUDRIC 2.0 UI/UX</span>
+  </div>
+</div>
+</body>
+</html>

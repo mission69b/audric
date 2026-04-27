@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Demo 4 · Coloring Book — Audric × Sui</title>
+<link rel="stylesheet" href="../shared/audric.css?v=5">
+</head>
+<body>
+<div id="root"></div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="../shared/primitives.jsx"></script>
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+const PROMPT = "Make me a coloring book about unicorns and sell only 100 copies for $3 each";
+const THOUGHT = "User is a 10-year-old. She wants AI to draw unicorn pages, bind them into a real PDF coloring book, and sell exactly 100 copies — never more. I'll fan out: DALL-E generates 12 line-art pages, PDFShift converts the HTML gallery to a print-ready PDF, Walrus stores it permanently, and a Move contract caps supply at 100. Each MPP call is a per-use micropayment. Sui's Move language enforces the cap on-chain — once 100 mint, the function reverts. No webserver to trust.";
+
+const Demo4 = () => {
+  // 0 typing, 1 sent, 2 thinking, 3 querying, 4 plan, 5 cover preview + review gate, 6 regenerating, 7 listed + buyer arrives, 8 auto-buying, 9 sale settled
+  const [step, setStep] = useState(0);
+  const [regenCount, setRegenCount] = useState(0);
+  const typed = useTyped(PROMPT, step===0, 26);
+
+  useEffect(() => {
+    const delays = { 0: PROMPT.length*26+400, 1: 600, 2: 1800, 3: 3200, 4: 600 };
+    const d = delays[step]; if (d == null) return;
+    const t = setTimeout(()=>setStep(s=>Math.min(s+1, 5)), d);
+    return ()=>clearTimeout(t);
+  }, [step]);
+
+  // Auto-accept 3s after entering review step
+  useEffect(() => {
+    if (step === 5) { const t = setTimeout(()=>setStep(7), 3000); return ()=>clearTimeout(t); }
+  }, [step]);
+
+  // Regen brief loop
+  useEffect(() => {
+    if (step === 6) { const t = setTimeout(()=>setStep(5), 1600); return ()=>clearTimeout(t); }
+  }, [step]);
+
+  // Auto-buy: buyer arrives → buys → settles
+  useEffect(() => {
+    if (step === 7) { const t = setTimeout(()=>setStep(8), 3000); return ()=>clearTimeout(t); }
+    if (step === 8) { const t = setTimeout(()=>setStep(9), 2200); return ()=>clearTimeout(t); }
+  }, [step]);
+
+  const accept = () => setStep(7);
+  const regen  = () => { setRegenCount(c=>c+1); setStep(6); };
+  const cancel = () => { setStep(0); setRegenCount(0); };
+  const restart = () => { setStep(0); setRegenCount(0); };
+
+  const tools = [
+    {glyph:'✦', label:'DALL-E · 12 PAGES',  finishAt:1300, result:'line-art · $0.48'},
+    {glyph:'📄', label:'PDFSHIFT BIND',      finishAt:1800, result:'24pp · A4 · $0.05'},
+    {glyph:'◇', label:'WALRUS UPLOAD',       finishAt:2400, result:'permanent · $0.00'},
+    {glyph:'⊡', label:'MOVE · SUPPLY=100',   finishAt:3000, result:'cap enforced on-chain'},
+  ];
+
+  return (
+    <MainShell
+      hero={step===0}
+      balance={step>=9 ? '$115' : '$113'}
+      balanceLabel={step>=9 ? 'AVAILABLE $115 · EARNING $11' : 'AVAILABLE $112 · EARNING $11'}
+      composer={<Composer value={step===0 ? typed : ''}/>}
+      ribbon={<DemoRibbon demoNum={4} demoTitle="COLORING BOOK — AGENTIC COMMERCE" sentence="AI drew it. PDFShift bound it. Sui capped it at 100. She's 10." onRestart={restart}/>}
+    >
+      <TaskInitiated/>
+      {step >= 1 && (
+        <div className="appear" style={{alignSelf:'flex-end',display:'flex',alignItems:'center',gap:10,maxWidth:'80%'}}>
+          <Tag tone="purple" style={{fontSize:8}}>VOICE · MAYA, 10</Tag>
+          <UserBubble>{PROMPT}</UserBubble>
+        </div>
+      )}
+
+      {step >= 2 && (
+        <>
+          <ThinkingHeader done={step>=3}/>
+          <ReasoningStream text={THOUGHT} active={step>=2} done={step>=3}/>
+          {step>=3 && <ParallelTools tools={tools} active={step>=3} headerLabel="DISPATCHING 4 MPP CALLS"/>}
+          {step>=4 && (
+            <HowIEvaluated tokens="294" model="AUDRIC v2.0" latency="3.0s">
+              4 MPP service calls in parallel: DALL-E art generation ($0.48), PDFShift HTML→PDF binding ($0.05), Walrus permanent storage (free), Move contract deploy with hardcoded supply=100. Total cost-of-creation $0.53. Move's compile-time supply cap means no off-chain server can be tricked into over-minting — the 101st mint reverts.
+            </HowIEvaluated>
+          )}
+        </>
+      )}
+
+      {step >= 5 && <BookCover regenerating={step===6} regenCount={regenCount}/>}
+
+      {step === 5 && (
+        <>
+          <AudricLine>
+            Preview's ready. <strong style={{color:'var(--text)'}}>Stored on Walrus</strong> · Move contract drafted with <strong style={{color:'var(--text)'}}>supply cap = 100</strong>. <strong style={{color:'var(--text)'}}>Listing not live yet — your call.</strong>
+          </AudricLine>
+          <ReviewCard onAccept={accept} onRegen={regen} onCancel={cancel} regenCount={regenCount}/>
+        </>
+      )}
+
+      {step === 6 && (
+        <div className="appear" style={{display:'flex',alignItems:'center',gap:10,fontSize:12,color:'var(--blue)',padding:'8px 4px'}}>
+          <span className="spin" style={{display:'inline-block'}}><Icon name="spinner" size={14}/></span>
+          <span className="mono pulse" style={{letterSpacing:'.1em'}}>REGENERATING · NEW DALL-E PAGES · PDFSHIFT REBIND · WALRUS REUPLOAD…</span>
+        </div>
+      )}
+
+      {step >= 7 && (
+        <AudricLine>
+          Listed at <strong style={{color:'var(--text)',fontFamily:'var(--font-mono)'}}>audric.ai/maya/unicorn-coloring</strong> · $3 · <strong style={{color:'var(--text)'}}>100 copies, ever</strong>. Move enforces the cap — page 101 reverts. You earn <strong style={{color:'var(--green)'}}>$2.74 (91%)</strong> per copy.
+        </AudricLine>
+      )}
+
+      {step >= 7 && <BuyerPage step={step}/>}
+
+      {step >= 9 && (
+        <div className="appear" style={{
+          border:'1px solid rgba(40,128,52,0.3)',background:'rgba(40,128,52,0.06)',
+          borderRadius:8,padding:'14px 18px',display:'flex',alignItems:'center',gap:14
+        }}>
+          <span style={{width:32,height:32,borderRadius:'50%',background:'var(--green)',display:'grid',placeItems:'center',color:'#fff'}}><Icon name="check" size={14}/></span>
+          <div style={{flex:1}}>
+            <div className="mono" style={{fontSize:10,color:'var(--green-d)'}}>SALE · $2.74 USDC TO YOU · COPY 1/100</div>
+            <div style={{fontSize:14,color:'var(--text)',marginTop:3}}>"Maya's Unicorn Coloring Book" · sold to <strong>0xc4e1…9b2f</strong> · 99 remaining</div>
+          </div>
+          <Tag tone="green">91%</Tag>
+        </div>
+      )}
+
+      {step >= 9 && (
+        <>
+          <div className="appear" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+            <Comp label="MAYA EARNS" big="$2.74" sub="91% to creator · USDC instantly" good/>
+            <Comp label="MAX EVER" big="100" sub="Move-enforced · 101st reverts"/>
+          </div>
+          <div className="appear" style={{textAlign:'center',padding:'14px',background:'var(--n900)',color:'#fff',borderRadius:8,fontFamily:'var(--font-serif)',fontSize:22,letterSpacing:'-.01em',lineHeight:1.35}}>
+            A 10-year-old just shipped a <span style={{color:'var(--g400)'}}>scarce, on-chain product</span><br/>in 8 seconds.
+          </div>
+          <WhyOnlySui points={[
+            "The supply cap of 100 is in the Move contract bytecode — not a database flag, not a server config. It cannot be changed after deploy. The 101st mint reverts.",
+            "PDFShift + Walrus + Seal + Move in one 8-second agent loop. The full digital commerce stack, orchestrated in one sentence.",
+            "Every buyer gets a provably scarce Sui object — not a file download that can be re-shared. Seal's unlock enforces ownership on-chain.",
+          ]}/>
+        </>
+      )}
+    </MainShell>
+  );
+};
+
+// === Creator approval gate — accept / regenerate / cancel ===
+const ReviewCard = ({onAccept, onRegen, onCancel, regenCount}) => (
+  <div className="appear" style={{
+    border:'1px solid var(--line-2)', borderRadius:10, background:'var(--panel)',
+    overflow:'hidden'
+  }}>
+    <div style={{padding:'10px 16px',borderBottom:'1px solid var(--line)',background:'var(--panel-2)',display:'flex',alignItems:'center',gap:10}}>
+      <Icon name="shield" size={12} color="var(--blue)"/>
+      <span className="mono" style={{fontSize:10,color:'var(--text-2)',letterSpacing:'.14em'}}>YOUR APPROVAL · NOTHING IS PUBLIC YET</span>
+      {regenCount>0 && <Tag tone="dark" style={{marginLeft:'auto'}}>TAKE {regenCount+1}</Tag>}
+    </div>
+    <div style={{padding:'14px 16px',display:'flex',gap:10,flexWrap:'wrap'}}>
+      <button onClick={onAccept} className="mono" style={{
+        flex:'1 1 200px',padding:'14px 16px',borderRadius:8,background:'var(--green)',color:'#fff',
+        fontSize:11,letterSpacing:'.14em',display:'flex',alignItems:'center',justifyContent:'center',gap:8
+      }}>
+        <Icon name="check" size={14}/> ACCEPT &amp; LIST FOR $3
+      </button>
+      <button onClick={onRegen} className="mono" style={{
+        flex:'1 1 160px',padding:'14px 16px',borderRadius:8,background:'var(--panel-2)',color:'var(--text)',
+        border:'1px solid var(--line-2)',fontSize:11,letterSpacing:'.14em',display:'flex',alignItems:'center',justifyContent:'center',gap:8
+      }}>
+        <Icon name="spinner" size={14}/> REGENERATE
+      </button>
+      <button onClick={onCancel} className="mono" style={{
+        flex:'1 1 120px',padding:'14px 16px',borderRadius:8,background:'transparent',color:'var(--text-3)',
+        border:'1px solid var(--line)',fontSize:11,letterSpacing:'.14em',display:'flex',alignItems:'center',justifyContent:'center',gap:8
+      }}>
+        <Icon name="close" size={14}/> CANCEL
+      </button>
+    </div>
+    <div style={{padding:'10px 16px',borderTop:'1px solid var(--line)',background:'var(--panel-2)',fontSize:11,color:'var(--text-3)',display:'flex',alignItems:'center',gap:8}}>
+      <Icon name="bolt" size={11} color="var(--text-3)"/>
+      <span>Regenerating costs <strong style={{color:'var(--text-2)'}}>$0.53</strong> in MPP calls. Cancelling costs nothing — Walrus draft expires in 24h.</span>
+    </div>
+  </div>
+);
+
+// === Coloring book cover preview — generated PDF in a paper card ===
+const BookCover = ({ regenerating, regenCount = 0 }) => (
+  <div className="appear" style={{
+    background:'linear-gradient(135deg,#FFF5E6,#FFE2C2)',
+    borderRadius:14,padding:18,display:'flex',gap:16,alignItems:'center',
+    opacity:regenerating?0.4:1,transition:'opacity .3s'
+  }}>
+    <div style={{width:120,height:160,borderRadius:6,background:'#fff',position:'relative',overflow:'hidden',flexShrink:0,boxShadow:'0 8px 22px rgba(0,0,0,0.12), 0 1px 0 rgba(0,0,0,0.05)'}}>
+      {/* Cover line-art unicorn — placeholder svg */}
+      <svg viewBox="0 0 120 160" style={{position:'absolute',inset:0,width:'100%',height:'100%'}}>
+        <g fill="none" stroke="#1A1A1A" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+          {/* Unicorn body */}
+          <ellipse cx="60" cy="92" rx="28" ry="14"/>
+          {/* legs */}
+          <line x1="44" y1="104" x2="42" y2="118"/>
+          <line x1="54" y1="106" x2="52" y2="120"/>
+          <line x1="68" y1="106" x2="70" y2="120"/>
+          <line x1="78" y1="104" x2="80" y2="118"/>
+          {/* neck + head */}
+          <path d="M82 88 Q92 78 92 68 Q92 60 86 58 Q80 58 78 64"/>
+          {/* horn */}
+          <path d="M84 60 L88 48 L92 60"/>
+          {/* ear */}
+          <path d="M82 62 Q85 56 88 60"/>
+          {/* eye */}
+          <circle cx="86" cy="68" r="0.8" fill="#1A1A1A"/>
+          {/* mane */}
+          <path d="M78 64 Q72 70 70 78 Q72 76 76 80 Q72 84 70 88"/>
+          {/* tail */}
+          <path d="M32 88 Q24 90 20 100 Q26 96 30 102"/>
+          {/* ground */}
+          <path d="M20 122 Q40 118 60 122 T100 122"/>
+          {/* stars */}
+          <path d="M30 30 l2 4 l4 1 l-3 3 l1 4 l-4 -2 l-4 2 l1 -4 l-3 -3 l4 -1 z"/>
+          <path d="M92 32 l1.5 3 l3 1 l-2 2 l1 3 l-3 -1.5 l-3 1.5 l1 -3 l-2 -2 l3 -1 z"/>
+        </g>
+      </svg>
+      <div style={{position:'absolute',bottom:6,left:0,right:0,textAlign:'center',fontFamily:'var(--font-serif)',fontSize:9,color:'#1A1A1A',letterSpacing:'.04em'}}>by Maya, age 10</div>
+      <div style={{position:'absolute',top:8,left:0,right:0,textAlign:'center',fontFamily:'var(--font-serif)',fontSize:11,color:'#1A1A1A',letterSpacing:'-.01em',padding:'0 6px',lineHeight:1.1}}>Unicorn<br/>Coloring Book</div>
+    </div>
+    <div style={{flex:1,minWidth:0}}>
+      <div style={{fontFamily:'var(--font-mono)',fontSize:9,color:'var(--text-3)',letterSpacing:'.14em'}}>{regenerating ? 'REGENERATING…' : 'PREVIEW · 24 PAGES · A4 PDF'}</div>
+      <div style={{fontFamily:'var(--font-serif)',fontSize:24,marginTop:4,letterSpacing:'-.01em'}}>Maya's Unicorn Coloring Book</div>
+      <div style={{fontFamily:'var(--font-mono)',fontSize:9,color:'var(--text-3)',letterSpacing:'.12em',marginTop:4}}>BOUND BY PDFSHIFT · STORED ON WALRUS · CAP 100{regenCount>0 && ' · TAKE '+(regenCount+1)}</div>
+      <div style={{display:'flex',gap:6,marginTop:12,flexWrap:'wrap'}}>
+        {[...Array(6)].map((_,i)=>(
+          <div key={i} style={{width:28,height:38,borderRadius:3,background:'#fff',border:'1px solid var(--line-2)',display:'grid',placeItems:'center',fontFamily:'var(--font-mono)',fontSize:8,color:'var(--text-3)'}}>
+            P{i+1}
+          </div>
+        ))}
+        <div style={{width:28,height:38,display:'grid',placeItems:'center',fontFamily:'var(--font-mono)',fontSize:8,color:'var(--text-3)'}}>+18</div>
+      </div>
+    </div>
+  </div>
+);
+
+const BuyerPage = ({ step }) => (
+  <div className="appear" style={{border:'1px solid var(--line-2)',borderRadius:12,overflow:'hidden',background:'var(--panel)'}}>
+    <div style={{padding:'12px 18px',borderBottom:'1px solid var(--line)',background:'var(--panel-2)',display:'flex',alignItems:'center',gap:8}}>
+      <Icon name="globe" size={12} color="var(--text-3)"/>
+      <span style={{fontFamily:'var(--font-mono)',fontSize:11,color:'var(--text-2)'}}>audric.ai/@maya/unicorn-coloring</span>
+      <Tag tone="dark" style={{marginLeft:'auto'}}>BUYER VIEW</Tag>
+    </div>
+    <div style={{padding:'24px',display:'flex',gap:20,alignItems:'center'}}>
+      <div style={{width:120,height:160,borderRadius:6,background:'#fff',position:'relative',overflow:'hidden',flexShrink:0,boxShadow:'0 8px 22px rgba(0,0,0,0.10)'}}>
+        <svg viewBox="0 0 120 160" style={{position:'absolute',inset:0,width:'100%',height:'100%'}}>
+          <g fill="none" stroke="#1A1A1A" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+            <ellipse cx="60" cy="92" rx="28" ry="14"/>
+            <line x1="44" y1="104" x2="42" y2="118"/>
+            <line x1="54" y1="106" x2="52" y2="120"/>
+            <line x1="68" y1="106" x2="70" y2="120"/>
+            <line x1="78" y1="104" x2="80" y2="118"/>
+            <path d="M82 88 Q92 78 92 68 Q92 60 86 58 Q80 58 78 64"/>
+            <path d="M84 60 L88 48 L92 60"/>
+            <path d="M82 62 Q85 56 88 60"/>
+            <circle cx="86" cy="68" r="0.8" fill="#1A1A1A"/>
+            <path d="M78 64 Q72 70 70 78 Q72 76 76 80 Q72 84 70 88"/>
+            <path d="M32 88 Q24 90 20 100 Q26 96 30 102"/>
+            <path d="M20 122 Q40 118 60 122 T100 122"/>
+          </g>
+        </svg>
+        <div style={{position:'absolute',top:8,left:0,right:0,textAlign:'center',fontFamily:'var(--font-serif)',fontSize:11,color:'#1A1A1A',padding:'0 6px',lineHeight:1.1}}>Unicorn<br/>Coloring Book</div>
+      </div>
+      <div style={{flex:1}}>
+        <div className="mono" style={{fontSize:10,color:'var(--text-3)'}}>BY @MAYA · 24 PAGES · A4 PDF</div>
+        <div style={{fontFamily:'var(--font-serif)',fontSize:26,marginTop:6,letterSpacing:'-.01em'}}>Maya's Unicorn Coloring Book</div>
+        <div style={{fontSize:13,color:'var(--text-2)',marginTop:10,lineHeight:1.5}}>
+          Pay <strong style={{color:'var(--text)'}}>$3 USDC</strong>, get the PDF forever. <Tag tone="purple" style={{marginLeft:6}}>100 EVER · 99 LEFT</Tag>
+        </div>
+        {step === 7 && (
+          <div style={{marginTop:14,display:'flex',alignItems:'center',gap:10,fontSize:12,color:'var(--text-2)'}}>
+            <span className="mono pulse" style={{letterSpacing:'.1em',fontSize:10}}>BUYER ARRIVING · WALLET CHECK</span>
+          </div>
+        )}
+        {step === 7 && (
+          <button disabled className="mono" style={{marginTop:8,padding:'12px 20px',borderRadius:999,background:'var(--text)',color:'#fff',fontSize:11,letterSpacing:'.14em',display:'inline-flex',alignItems:'center',gap:8,opacity:0.7}}>
+            <Icon name="google" size={14}/> BUY $3 USDC
+          </button>
+        )}
+        {step === 8 && (
+          <div style={{marginTop:14,display:'flex',alignItems:'center',gap:10,fontSize:12,color:'var(--blue)'}}>
+            <span className="spin" style={{display:'inline-block'}}><Icon name="spinner" size={14}/></span>
+            <span className="mono pulse" style={{letterSpacing:'.1em'}}>SIGNING IN · MOVE::MINT(SUPPLY=100) · DOWNLOADING…</span>
+          </div>
+        )}
+        {step >= 9 && (
+          <div style={{marginTop:14,display:'flex',alignItems:'center',gap:10,fontSize:12,color:'var(--green)'}}>
+            <Icon name="check-circle" size={14}/>
+            <span className="mono" style={{letterSpacing:'.1em'}}>COPY 1/100 MINTED · PDF DOWNLOADED · 0.4s</span>
+          </div>
+        )}
+      </div>
+    </div>
+  </div>
+);
+
+const Comp = ({label,big,sub,good}) => (
+  <div style={{border:'1px solid '+(good?'rgba(40,128,52,0.3)':'var(--line)'),background:good?'rgba(40,128,52,0.06)':'var(--panel)',borderRadius:8,padding:'18px 20px'}}>
+    <div className="mono" style={{fontSize:9,color:good?'var(--green)':'var(--text-3)'}}>{label}</div>
+    <div style={{fontFamily:'var(--font-serif)',fontSize:48,marginTop:8,letterSpacing:'-.02em',color:good?'var(--green-d)':'var(--text)'}}>{big}</div>
+    <div style={{fontSize:12,color:'var(--text-3)',marginTop:6,lineHeight:1.5}}>{sub}</div>
+  </div>
+);
+
+ReactDOM.createRoot(document.getElementById('root')).render(<Demo4/>);
+</script>
+</body>
+</html>

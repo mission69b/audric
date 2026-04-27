@@ -18,6 +18,7 @@ const FOOTER_LINK_CLASS =
 const PRODUCT_LINKS = [
   { href: '#passport', label: 'Passport' },
   { href: '#intelligence', label: 'Intelligence' },
+  { href: '#finance', label: 'Finance' },
   { href: '#pay', label: 'Pay' },
   { href: '#store', label: 'Store' },
 ];

@@ -43,3 +43,7 @@ pnpm-debug.log*
 # local-only redesign artifacts (kept out of the repo on purpose)
 design_handoff_audric*/
 scripts/
+
+# pitch-deck iterations (marketing artifacts, not part of the app)
+pitch-deck.html
+pitch-deck-v*.html

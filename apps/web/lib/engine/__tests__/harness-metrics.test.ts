@@ -9,7 +9,7 @@ import {
 
 describe('detectRefinement — post-0.47 (counts both _refine and truncation signals)', () => {
   describe('explicit _refine shapes', () => {
-    it('detects top-level _refine (mpp_services / defillama_yield_pools no-filter path)', () => {
+    it('detects top-level _refine (mpp_services no-filter path)', () => {
       expect(detectRefinement({ _refine: { reason: 'too broad' } })).toBe(true);
     });
 
@@ -190,7 +190,12 @@ describe('detectNarrationTableDump — card tool + table = violation', () => {
     expect(CARD_RENDERING_TOOLS.has('transaction_history')).toBe(true);
     expect(CARD_RENDERING_TOOLS.has('rates_info')).toBe(true);
     expect(CARD_RENDERING_TOOLS.has('mpp_services')).toBe(true);
-    expect(CARD_RENDERING_TOOLS.has('defillama_yield_pools')).toBe(true);
+    // [v1.4 — Day 3] BlockVision-backed `token_prices` replaces the
+    // deleted `defillama_yield_pools` / `_token_prices` / `_protocol_info`
+    // entries that pre-Day-3 anchored this assertion.
+    expect(CARD_RENDERING_TOOLS.has('token_prices')).toBe(true);
+    expect(CARD_RENDERING_TOOLS.has('protocol_deep_dive')).toBe(true);
+    expect(CARD_RENDERING_TOOLS.has('defillama_yield_pools')).toBe(false);
     expect(CARD_RENDERING_TOOLS.has('web_search')).toBe(false);
     expect(CARD_RENDERING_TOOLS.has('pay_api')).toBe(false);
   });

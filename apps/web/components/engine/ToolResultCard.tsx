@@ -5,7 +5,6 @@ import { extractData } from './cards/primitives';
 import { RatesCard } from './cards/RatesCard';
 import { BalanceCard } from './cards/BalanceCard';
 import { SavingsCard } from './cards/SavingsCard';
-import { YieldCard } from './cards/YieldCard';
 import { PortfolioCard } from './cards/PortfolioCard';
 import { ExplainTxCard } from './cards/ExplainTxCard';
 import { TransactionReceiptCard } from './cards/TransactionReceiptCard';
@@ -29,13 +28,16 @@ const WRITE_TOOL_NAMES = new Set([
 
 /**
  * [v1.4 ACI] Tools that opt into Agent-Controlled Interface refinement
- * (defillama_yield_pools, transaction_history, mpp_services) may return a
- * `_refine` payload instead of their normal data shape. The LLM uses that
- * to re-call with narrower params; the UI has no card to show, so we
- * skip rendering. Without this, cards that destructure the missing data
- * shape (e.g. `ServiceCatalogCard` iterating `data.services`) crash with
+ * (transaction_history, mpp_services) may return a `_refine` payload
+ * instead of their normal data shape. The LLM uses that to re-call with
+ * narrower params; the UI has no card to show, so we skip rendering.
+ * Without this, cards that destructure the missing data shape (e.g.
+ * `ServiceCatalogCard` iterating `data.services`) crash with
  * "TypeError: e is not iterable" and the page-level error boundary
  * swallows the entire chat.
+ *
+ * [v1.4 — Day 3] Pre-Day-3 `defillama_yield_pools` was the third tool in
+ * this set; deletion of all 7 `defillama_*` LLM tools narrowed it to two.
  */
 function isRefinementPayload(data: unknown): boolean {
   return !!data && typeof data === 'object' && '_refine' in (data as Record<string, unknown>);
@@ -56,12 +58,6 @@ const CARD_RENDERERS: Record<string, (result: unknown) => React.ReactNode | null
     const data = extractData(result);
     if (!data || typeof data !== 'object') return null;
     return <SavingsCard data={data as Parameters<typeof SavingsCard>[0]['data']} />;
-  },
-  defillama_yield_pools: (result) => {
-    const data = extractData(result);
-    if (isRefinementPayload(data)) return null;
-    if (!Array.isArray(data)) return null;
-    return <YieldCard data={data as Parameters<typeof YieldCard>[0]['data']} />;
   },
   portfolio_analysis: (result) => {
     const data = extractData(result);
@@ -140,14 +136,15 @@ const CARD_RENDERERS: Record<string, (result: unknown) => React.ReactNode | null
     if (!data || typeof data !== 'object') return null;
     return <ProtocolCard data={data as Parameters<typeof ProtocolCard>[0]['data']} />;
   },
-  defillama_token_prices: (result) => {
+  // [v1.4 — Day 3] BlockVision-backed `token_prices` replaces
+  // `defillama_token_prices` and `defillama_price_change`. Same array
+  // shape `[{ coinType, symbol, price, change24h?, priceUnavailable? }]`
+  // — feeds straight into PriceCard's existing array branch. The
+  // optional `change24h` lets PriceRow render a 24h trend pill when the
+  // tool was called with `include24hChange: true`.
+  token_prices: (result) => {
     const data = extractData(result);
     if (!Array.isArray(data)) return null;
-    return <PriceCard data={data as Parameters<typeof PriceCard>[0]['data']} />;
-  },
-  defillama_price_change: (result) => {
-    const data = extractData(result);
-    if (!data || typeof data !== 'object') return null;
     return <PriceCard data={data as Parameters<typeof PriceCard>[0]['data']} />;
   },
 };

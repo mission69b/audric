@@ -230,6 +230,9 @@ describe('READ_INTENT_RULES — registry sanity', () => {
   });
 
   it('all current rules cover read-only tools (defensive)', () => {
+    // [v1.4 — Day 3] `defillama_yield_pools` removed; `token_prices`
+    // (BlockVision) and `protocol_deep_dive` added so any new classifier
+    // rule pointing at the post-Day-3 read surface still passes.
     const READ_ONLY_TOOLS = new Set([
       'balance_check',
       'savings_info',
@@ -239,7 +242,8 @@ describe('READ_INTENT_RULES — registry sanity', () => {
       'mpp_services',
       'list_payment_links',
       'list_invoices',
-      'defillama_yield_pools',
+      'token_prices',
+      'protocol_deep_dive',
       'portfolio_analysis',
       'activity_summary',
       'yield_summary',

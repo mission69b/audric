@@ -10,6 +10,7 @@
  */
 
 import { MUTABLE_TOOL_SET } from './engine-factory';
+import { costRatesForModel } from './cost-rates';
 
 export interface ToolMetric {
   /**
@@ -71,6 +72,17 @@ export class TurnMetricsCollector {
   private _outputTokens = 0;
   private _pendingActionYielded = false;
   private _aciRefinements = 0;
+  /**
+   * [v1.4.2 — Day 3 / Spec Item 3] UUID stamped by the engine on the
+   * `pending_action` event. Captured via `onPendingAction(attemptId)` and
+   * persisted on the `TurnMetrics` row so the resume route can do a
+   * single-row `updateMany where { attemptId }` instead of the ambiguous
+   * `(sessionId, turnIndex)` pair. `null` for read-only turns and for the
+   * legacy callers that haven't been wired yet (defensive — the typed
+   * signature requires a string, but `onPendingAction` short-circuits
+   * silently on falsy input rather than throwing).
+   */
+  private _pendingAttemptId: string | null = null;
 
   onFirstTextDelta(): void {
     if (this.firstTextDeltaTime === null) {
@@ -167,8 +179,18 @@ export class TurnMetricsCollector {
     this._cacheHit = this._cacheReadTokens > 0;
   }
 
-  onPendingAction(): void {
+  /**
+   * [v1.4.2 — Day 3 / Spec Item 3] Captures the `attemptId` from the
+   * engine's `pending_action` event so it lands on the resulting
+   * `TurnMetrics` row. The argument is required by the type but we
+   * tolerate a missing one defensively — the collector has historically
+   * never thrown from a callback and we don't want to change that
+   * invariant for instrumentation. A null/empty id keeps the legacy
+   * sessionId+turnIndex fallback path working in the resume route.
+   */
+  onPendingAction(attemptId?: string): void {
     this._pendingActionYielded = true;
+    if (attemptId) this._pendingAttemptId = attemptId;
   }
 
   build(context: {
@@ -180,6 +202,20 @@ export class TurnMetricsCollector {
     contextTokensStart: number;
     estimatedCostUsd: number;
     sessionSpendUsd: number;
+    /**
+     * [v1.4.2 — Day 3] `true` when the turn was driven by a synthetic
+     * pre-fetch intent (e.g. `RESUMED_SESSION_INTENTS`) rather than a
+     * user prompt. Caller (chat-route) decides; collector just stamps.
+     * Default (when omitted) is `false` so existing call sites that
+     * haven't been migrated still write a sane row.
+     */
+    synthetic?: boolean;
+    /**
+     * [v1.4.2 — Day 3] `'initial'` for the chat-route close, `'resume'`
+     * for the resume-route close. Lets dashboards split first-turn
+     * latency from post-confirmation tail latency.
+     */
+    turnPhase?: 'initial' | 'resume';
   }) {
     const wallTimeMs = Date.now() - this.startTime;
     // [v1.5.1] Drift counter for the `cacheable: false` invariant.
@@ -191,6 +227,17 @@ export class TurnMetricsCollector {
     const mutableToolDedupes = this.toolMetrics.reduce(
       (n, t) => (t.resultDeduped && MUTABLE_TOOL_SET.has(t.name) ? n + 1 : n),
       0,
+    );
+    // [v1.4.2 — Day 3] Cache savings — the USD we *didn't* pay because
+    // Anthropic's prompt cache served the prefix at 0.1× the input rate.
+    // Computed at build time (not on every onUsage event) so the model
+    // rate lookup happens once per turn. Hard-floored at 0 in case a
+    // future rate regression makes cacheRead > input (would break
+    // dashboards otherwise).
+    const rates = costRatesForModel(context.modelUsed);
+    const cacheSavingsUsd = Math.max(
+      0,
+      this._cacheReadTokens * (rates.input - rates.cacheRead),
     );
     return {
       ...context,
@@ -211,6 +258,11 @@ export class TurnMetricsCollector {
       pendingActionOutcome: this._pendingActionYielded ? 'pending' : null,
       aciRefinements: this._aciRefinements,
       mutableToolDedupes,
+      // [v1.4.2 — Day 3 / Spec Item 3] New TurnMetrics columns.
+      attemptId: this._pendingAttemptId,
+      synthetic: context.synthetic ?? false,
+      cacheSavingsUsd,
+      turnPhase: context.turnPhase ?? 'initial',
     };
   }
 }
@@ -231,6 +283,11 @@ export function detectTruncation(result: unknown): boolean {
  * narration contains a markdown table, that's a v0.46.6 contract
  * violation: the model is dumping data the card already shows.
  */
+// [v1.4 — Day 3] DefiLlama LLM tools deleted. `defillama_yield_pools`,
+// `defillama_protocol_info`, `defillama_token_prices` removed; the new
+// BlockVision-backed `token_prices` tool takes their place in the
+// card-renderer registry. `protocol_deep_dive` (separate file, not in
+// the deleted set) stays.
 export const CARD_RENDERING_TOOLS = new Set<string>([
   'balance_check',
   'savings_info',
@@ -240,9 +297,7 @@ export const CARD_RENDERING_TOOLS = new Set<string>([
   'mpp_services',
   'list_payment_links',
   'list_invoices',
-  'defillama_yield_pools',
-  'defillama_protocol_info',
-  'defillama_token_prices',
+  'token_prices',
   'portfolio_analysis',
   'activity_summary',
   'yield_summary',
@@ -305,8 +360,9 @@ export function detectNarrationTableDump(
  * Two flavors of refinement are both valid signals that the tool told the
  * model to narrow its query:
  *
- *   1. Explicit `_refine` shape (used by `defillama_yield_pools` and
- *      `mpp_services` when called with no filter — the discovery path).
+ *   1. Explicit `_refine` shape (used by `mpp_services` when called
+ *      with no filter — the discovery path. Pre-Day-3 the same shape
+ *      was emitted by `defillama_yield_pools`; that tool is gone now).
  *   2. Truncation markers (`_truncated: true` from `budgetToolResult`, or
  *      `summarizeOnTruncate`-emitted shapes like `_originalCount`). Used by
  *      `transaction_history` and any other tool whose response exceeds

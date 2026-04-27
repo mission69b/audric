@@ -37,8 +37,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ balance: amount });
     }
 
-    const prices = await fetchTokenPrices([match.coinType]);
-    const price = prices[match.coinType] ?? 0;
+    const prices = await fetchTokenPrices(
+      [match.coinType],
+      process.env.BLOCKVISION_API_KEY,
+    );
+    const price = prices[match.coinType]?.price ?? 0;
 
     return NextResponse.json({ balance: amount * price });
   } catch (err) {

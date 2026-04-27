@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Audric — Demo 5: Agentic Services · MPP Chain</title>
+<link rel="stylesheet" href="audric.css">
+<style>
+.main { display: flex; flex-direction: column; overflow: hidden; height: 100vh; }
+.bal-header-wrap { flex-shrink: 0; }
+
+/* Birthday card preview */
+.card-preview { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.card-img { height: 100px; width: 100%; background: linear-gradient(135deg,#fce7f3,#fbcfe8,#f9a8d4); display: flex; align-items: center; justify-content: center; font-size: 36px; position: relative; }
+.card-caption { position: absolute; bottom: 6px; left: 10px; font-size: 11px; font-weight: 600; color: rgba(120,0,60,.8); letter-spacing: .02em; }
+.card-meta { padding: 8px 12px; font-size: 12px; color: var(--text-2); border-top: 1px solid var(--line); }
+
+/* MPP chain card */
+.mpp-card { border: 1px solid var(--line-2); border-radius: 8px; background: var(--panel); overflow: hidden; }
+.mpp-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: var(--panel-2); border-bottom: 1px solid var(--line); }
+.mpp-head-lbl { font-family: var(--font-mono); font-size: 10px; color: var(--text-3); letter-spacing: .08em; text-transform: uppercase; }
+.mpp-head-sub { font-family: var(--font-mono); font-size: 9px; color: var(--text-3); letter-spacing: .06em; text-transform: uppercase; }
+.mpp-svc { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+.mpp-icon { width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0; display: grid; place-items: center; font-size: 14px; }
+.mpp-icon.dalle { background: #dbeafe; }
+.mpp-icon.lob { background: #fef3c7; }
+.mpp-icon.flowers { background: #fce7f3; }
+.mpp-body { flex: 1; }
+.mpp-svc-name { font-size: 13px; font-weight: 500; color: var(--text); }
+.mpp-svc-desc { font-size: 11px; color: var(--text-2); margin-top: 1px; }
+.mpp-svc-cost { font-family: var(--font-mono); font-size: 13px; color: var(--text); flex-shrink: 0; }
+.mpp-arrow { display: flex; align-items: center; justify-content: center; padding: 2px 14px; background: var(--panel-2); border-bottom: 1px solid var(--line); font-family: var(--font-mono); font-size: 9px; color: var(--text-3); letter-spacing: .08em; text-transform: uppercase; }
+.mpp-total { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; background: var(--panel-2); border-top: 1px solid var(--line); }
+.mpp-total-lbl { font-family: var(--font-mono); font-size: 9px; color: var(--text-3); letter-spacing: .08em; text-transform: uppercase; margin-bottom: 4px; }
+.mpp-total-amt { font-family: var(--font-serif); font-size: 24px; font-weight: 500; letter-spacing: -.02em; color: var(--text); }
+.mpp-total-cur { font-family: var(--font-mono); font-size: 11px; color: var(--text-2); margin-left: 4px; }
+.confirm-btn { padding: 10px 20px; border-radius: 999px; background: var(--text); color: #fff; font-family: var(--font-mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; transition: opacity .12s, transform .1s; }
+.confirm-btn:hover { opacity: .88; }
+.confirm-btn.done { background: var(--green); }
+.confirm-btn.pressing { opacity: .7; transform: scale(.96); }
+
+.conf-notif { background: var(--g200); border: 1px solid var(--g300); border-radius: 8px; padding: 10px 14px; }
+.cn-top { font-family: var(--font-mono); font-size: 10px; color: var(--green); letter-spacing: .08em; text-transform: uppercase; margin-bottom: 4px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="sb-brand"><span class="sb-logo">Audric</span><span class="sb-beta">Beta</span></div>
+    <button class="sb-new"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"><path d="M8 3v10M3 8h10"/></svg> New conversation</button>
+    <nav class="sb-nav">
+      <button class="nav-row active"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25"><rect x="2.5" y="2.5" width="4.5" height="5.5" rx=".75"/><rect x="9" y="2.5" width="4.5" height="3.5" rx=".75"/><rect x="2.5" y="10" width="4.5" height="3.5" rx=".75"/><rect x="9" y="8" width="4.5" height="5.5" rx=".75"/></svg>Dashboard</button>
+      <button class="nav-row"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25"><rect x="1.5" y="4" width="13" height="8" rx="1"/><path d="M1.5 7h13"/><path d="M4 10h2"/></svg>Pay</button>
+      <button class="nav-row"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25"><circle cx="8" cy="8" r="5.5"/><circle cx="8" cy="8" r="3"/><circle cx="8" cy="8" r="1" fill="currentColor" stroke="none"/></svg>Goals</button>
+    </nav>
+    <div class="sb-recents">
+      <div class="sb-recents-lbl">Recents</div>
+      <button class="recent-item"><div class="recent-title">Save $200 to NAVI</div><div class="recent-meta">2d ago</div></button>
+      <button class="recent-item"><div class="recent-title">Pay Alex $150</div><div class="recent-meta">5d ago</div></button>
+    </div>
+    <div style="margin:0 14px 14px;padding:12px 14px;background:var(--panel);border:1px solid var(--line);border-radius:8px;flex-shrink:0">
+      <div class="mono" style="font-size:9px;color:var(--text-3);margin-bottom:6px">BALANCE</div>
+      <div style="font-family:var(--font-serif);font-size:22px;font-weight:500;letter-spacing:-.02em" id="s-bal">$3,800</div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-3);margin-top:4px;letter-spacing:.06em;text-transform:uppercase" id="s-bal-sub">Available · 0 pending</div>
+    </div>
+    <div class="sb-footer">
+      <div class="sb-av">S</div>
+      <div style="flex:1;min-width:0"><div class="sb-av-name">sam@hello.io</div><div class="sb-av-addr">0x3a71…9e4c</div></div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="bal-header-wrap">
+      <div class="bal-header">
+        <div class="bal-amount" id="bal-amount">$3,800</div>
+        <div class="bal-meta"><span id="bal-avail">Available $3,800 · Earning $0/day</span></div>
+      </div>
+    </div>
+
+    <!-- Idle view -->
+    <div class="idle-view" id="idle-view">
+      <div class="idle-inner">
+        <div class="greeting">
+          <div class="greeting-name">Good morning, Sam</div>
+          <div class="greeting-sub">What would you like to do today?</div>
+        </div>
+        <div class="composer">
+          <input class="composer-input" id="composer-input" placeholder="Ask anything…" autocomplete="off"/>
+          <div class="composer-footer">
+            <div class="composer-left"><button class="composer-icon-btn"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"><path d="M8 3v10M3 8h10"/></svg></button></div>
+            <div class="composer-right">
+              <button class="composer-icon-btn"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"><rect x="6" y="2" width="4" height="8" rx="2"/><path d="M3.5 8a4.5 4.5 0 0 0 9 0"/><path d="M8 12.5V14"/></svg></button>
+              <button class="send-btn dim" id="send-btn"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"><path d="M8 13V3M4 7l4-4 4 4"/></svg></button>
+            </div>
+          </div>
+        </div>
+        <div class="chip-bar idle">
+          <button class="chip">Save</button>
+          <button class="chip">Swap</button>
+          <button class="chip">Send</button>
+          <button class="chip">Credit</button>
+          <button class="chip">Receive</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chat view -->
+    <div class="chat-view" id="chat-view" style="display:none">
+      <div class="messages" id="messages">
+        <div class="msgs-inner" id="msgs-inner">
+          <div class="task-divider">task initiated</div>
+          <div style="display:flex;justify-content:flex-end"><div class="user-msg">Order flowers and a personalised card for my mum's birthday this Sunday. Her name is Margaret.</div></div>
+        </div>
+      </div>
+      <div class="composer-row">
+        <div class="composer-row-inner">
+          <div class="chip-bar chat">
+            <button class="chip">Save</button>
+            <button class="chip">Swap</button>
+            <button class="chip">Send</button>
+            <button class="chip">Credit</button>
+            <button class="chip">Receive</button>
+          </div>
+          <div class="composer">
+            <input class="composer-input" id="chat-input" placeholder="Ask anything…" autocomplete="off" readonly/>
+            <div class="composer-footer">
+              <div class="composer-left"><button class="composer-icon-btn"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"><path d="M8 3v10M3 8h10"/></svg></button></div>
+              <div class="composer-right">
+                <button class="composer-icon-btn"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"><rect x="6" y="2" width="4" height="8" rx="2"/><path d="M3.5 8a4.5 4.5 0 0 0 9 0"/><path d="M8 12.5V14"/></svg></button>
+                <button class="send-btn dim"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"><path d="M8 13V3M4 7l4-4 4 4"/></svg></button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="hint" id="hint">Auto-confirming in 3s…</div>
+
+<script>
+const MSG = "Order flowers and a personalised card for my mum's birthday this Sunday. Her name is Margaret.";
+const ADDR_RESP = "42 Biscayne Blvd, Miami, FL 33132";
+let payReady=false, confirmBtnEl=null;
+
+function $(id){ return document.getElementById(id); }
+function scrollToBottom(){ const m=$('messages'); requestAnimationFrame(()=>{ m.scrollTop=m.scrollHeight; }); }
+
+function append(el, delay=0){
+  return new Promise(resolve=>{
+    setTimeout(()=>{
+      el.style.opacity='0'; el.style.transform='translateY(5px)';
+      el.style.transition='opacity .28s ease, transform .28s ease';
+      $('msgs-inner').appendChild(el); scrollToBottom();
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{
+        el.style.opacity='1'; el.style.transform='translateY(0)';
+        setTimeout(resolve, 280);
+      }));
+    }, delay);
+  });
+}
+
+function fadeOut(el,cb){ el.style.transition='opacity .25s'; el.style.opacity='0'; setTimeout(()=>{ el.remove(); if(cb)cb(); },280); }
+
+function makeSuggestionChips(chips){
+  const wrap=document.createElement('div'); wrap.className='suggestion-chips';
+  chips.forEach(({icon,label})=>{ const btn=document.createElement('button'); btn.className='suggestion-chip'; btn.innerHTML=`<span class="sc-icon">${icon}</span><span class="sc-label">${label}</span>`; wrap.appendChild(btn); });
+  return wrap;
+}
+function makeThinking(){ const d=document.createElement('div'); d.className='thinking-row'; d.innerHTML=`<span class="thinking-sparkle">✦</span><span>Thinking</span>`; return d; }
+
+function makeToolAcc(icon, name, meta, contentHTML){
+  const d=document.createElement('div'); d.className='tool-acc';
+  d.innerHTML=`<div class="tool-acc-head"><span class="tacc-prefix">—</span><span class="tacc-icon">${icon}</span><span class="tacc-name">${name}</span>${meta?`<span class="tacc-meta">${meta}</span>`:''}<span class="tacc-chevron">↓</span></div><div class="tool-acc-body">${contentHTML}</div>`;
+  d.querySelector('.tool-acc-head').addEventListener('click',()=>{ const b=d.querySelector('.tool-acc-body'),c=d.querySelector('.tacc-chevron'); b.classList.toggle('open'); c.classList.toggle('open'); scrollToBottom(); });
+  d.expand=()=>{ d.querySelector('.tool-acc-body').classList.add('open'); d.querySelector('.tacc-chevron').classList.add('open'); d.classList.add('done'); d.querySelector('.tacc-prefix').textContent='✓'; setTimeout(scrollToBottom,370); };
+  return d;
+}
+
+function makeReasoningAcc(text, tokens){
+  const d=document.createElement('div'); d.className='reasoning-acc';
+  d.innerHTML=`<div class="reasoning-head"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25" style="transform:rotate(90deg)"><path d="m6 4 4 4-4 4"/></svg><span class="reasoning-title">How I evaluated this</span><span class="reasoning-tokens">${tokens}</span></div><div class="reasoning-body open">${text}</div>`;
+  d.querySelector('.reasoning-head').addEventListener('click',()=>{ d.querySelector('.reasoning-body').classList.toggle('open'); scrollToBottom(); });
+  return d;
+}
+
+function makeAudricMsg(text, meta){ const d=document.createElement('div'); d.className='audric-msg'; d.innerHTML=`<span class="sparkle">✦</span><div><div class="audric-text">${text}</div>${meta?`<div class="audric-tokens">${meta}</div>`:''}</div>`; return d; }
+function makeUserMsg(text){ const w=document.createElement('div'); w.style.cssText='display:flex;justify-content:flex-end'; const d=document.createElement('div'); d.className='user-msg'; d.textContent=text; w.appendChild(d); return w; }
+function makeDivider(text){ const d=document.createElement('div'); d.className='task-divider'; d.textContent=text; return d; }
+
+function doConfirm(){
+  if(!payReady) return; payReady=false; $('hint').classList.remove('show');
+  const btn=confirmBtnEl; btn.classList.add('pressing'); btn.textContent='Confirming…';
+  setTimeout(()=>{
+    btn.classList.remove('pressing'); btn.classList.add('done'); btn.textContent='✓ Paid';
+    $('bal-amount').textContent='$3,748.96'; $('s-bal').textContent='$3,748.96';
+    $('s-bal-sub').textContent='−$51.04 · 3 services';
+    $('bal-avail').textContent='Available $3,748.96';
+    const notif=document.createElement('div'); notif.className='conf-notif';
+    notif.innerHTML=`<div class="cn-top">3 services paid · $51.04 USDC</div><div style="font-size:13px;color:var(--text-2)">Margaret gets a card in the mail <strong>Sunday morning</strong> and a bouquet of pink roses <strong>10am–2pm</strong>.</div>`;
+    append(notif);
+    setTimeout(()=>{
+      append(makeAudricMsg('Done. All 3 services confirmed in one payment. Margaret\'s Sunday is sorted.','3 services · Machine Payment Protocol · 2.1s'));
+      setTimeout(()=>{ append(makeSuggestionChips([
+        {icon:'📋',label:'Order Status'},
+        {icon:'🔔',label:'Track Delivery'},
+        {icon:'📊',label:'Activity Heatmap'},
+      ])); }, 600);
+    }, 800);
+  }, 700);
+}
+
+document.addEventListener('keydown', e=>{ if((e.code==='Space'||e.code==='Enter')&&payReady) doConfirm(); });
+
+function typeMsg(text, cb){
+  const inp=$('composer-input'); $('send-btn').classList.remove('dim'); $('send-btn').classList.add('active');
+  let i=0; const iv=setInterval(()=>{ inp.value=text.slice(0,i); inp.scrollLeft=inp.scrollWidth; if(++i>text.length){ clearInterval(iv); setTimeout(cb,350); } }, 42);
+}
+
+function typeChatInput(text, cb){
+  const inp=$('chat-input'); if(inp) inp.removeAttribute('readonly');
+  let i=0; const iv=setInterval(()=>{
+    if(inp) inp.value=text.slice(0,i);
+    if(++i>text.length){ clearInterval(iv);
+      setTimeout(()=>{ if(inp){ inp.value=''; inp.setAttribute('readonly',''); } cb(); }, 350);
+    }
+  }, 42);
+}
+
+function switchToChat(){
+  $('idle-view').style.display='none';
+  const cv=$('chat-view'); cv.style.display='flex'; cv.style.opacity='1';
+}
+
+// Auto-play
+setTimeout(()=>{
+  typeMsg(MSG, ()=>{
+    switchToChat();
+    $('composer-input').value='';
+
+    let t=0; function at(ms,fn){ setTimeout(fn,ms); }
+
+    // Audric asks for delivery address
+    at(t+=700, ()=> append(makeAudricMsg('Got it! To arrange the flower delivery, I\'ll need Margaret\'s delivery address. What is it?','')));
+
+    // User provides address
+    at(t+=1500, ()=>{
+      typeChatInput(ADDR_RESP, ()=>{
+        append(makeUserMsg(ADDR_RESP));
+
+        let t2=0; function at2(ms,fn){ setTimeout(fn,ms+400); }
+        let thinkEl;
+        at2(t2+=300, ()=>{ thinkEl=makeThinking(); append(thinkEl); });
+
+        at2(t2+=700, ()=>{
+          const r=makeReasoningAcc('Margaret\'s address: 42 Biscayne Blvd, Miami FL. I\'ll call DALL-E for a personalised card design, Lob for print &amp; mail, and FlowerFast for local delivery. Running services via MPP.','52 tokens');
+          append(r);
+        });
+
+        at2(t2+=500, ()=>{ fadeOut(thinkEl, ()=>{
+          const a=makeToolAcc('🎨','mpp_call','DALL-E · $0.04','<div class="result-card"><div class="rc-header"><span>Birthday card designed</span></div><div class="rc-row"><span class="rc-label">Style</span><span class="rc-value">Floral watercolour · personalised</span></div></div>');
+          append(a).then(()=>setTimeout(()=>a.expand(),200));
+        }); });
+
+        // Card preview
+        at2(t2+=1000, ()=>{
+          const prev=document.createElement('div'); prev.className='card-preview';
+          prev.innerHTML=`<div class="card-img">🌸<div class="card-caption">Happy Birthday, Margaret 🎂</div></div><div class="card-meta">5×7 glossy · USPS First Class · Arrives Sunday · via Lob</div>`;
+          append(prev);
+        });
+
+        at2(t2+=800, ()=>{ const a=makeToolAcc('📮','mpp_call','Lob · $1.00','<div class="result-card"><div class="rc-header"><span>Print + mail queued</span></div><div class="rc-row"><span class="rc-label">Delivery</span><span class="rc-value">USPS First Class · Sunday arrival</span></div><div class="rc-row"><span class="rc-label">Address</span><span class="rc-value" style="font-size:12px">42 Biscayne Blvd, Miami FL 33132</span></div></div>'); append(a).then(()=>setTimeout(()=>a.expand(),200)); });
+        at2(t2+=900, ()=>{ const a=makeToolAcc('🌷','mpp_call','FlowerFast · $50.00','<div class="result-card"><div class="rc-header"><span>Bouquet reserved</span></div><div class="rc-row"><span class="rc-label">Arrangement</span><span class="rc-value">Pink roses &amp; lilies</span></div><div class="rc-row"><span class="rc-label">Delivery</span><span class="rc-value">Sunday 10am–2pm</span></div><div class="rc-row"><span class="rc-label">Address</span><span class="rc-value" style="font-size:12px">42 Biscayne Blvd, Miami FL</span></div></div>'); append(a).then(()=>setTimeout(()=>a.expand(),200)); });
+
+        // MPP chain card
+        at2(t2+=1100, ()=>{
+          const card=document.createElement('div'); card.className='mpp-card';
+          card.innerHTML=`
+            <div class="mpp-head"><span class="mpp-head-lbl">3 services · 1 payment</span><span class="mpp-head-sub">Machine Payment Protocol</span></div>
+            <div class="mpp-svc"><div class="mpp-icon dalle">🎨</div><div class="mpp-body"><div class="mpp-svc-name">DALL-E 3 — Personalised card</div><div class="mpp-svc-desc">AI-designed birthday card for Margaret</div></div><span class="mpp-svc-cost">$0.04</span></div>
+            <div class="mpp-arrow">↓ mpp</div>
+            <div class="mpp-svc"><div class="mpp-icon lob">📮</div><div class="mpp-body"><div class="mpp-svc-name">Lob — Print &amp; mail</div><div class="mpp-svc-desc">5×7 glossy · USPS First Class · arrives Sunday</div></div><span class="mpp-svc-cost">$1.00</span></div>
+            <div class="mpp-arrow">↓ mpp</div>
+            <div class="mpp-svc"><div class="mpp-icon flowers">🌷</div><div class="mpp-body"><div class="mpp-svc-name">FlowerFast — Bouquet delivery</div><div class="mpp-svc-desc">Pink roses &amp; lilies · Sunday 10am–2pm</div></div><span class="mpp-svc-cost">$50.00</span></div>
+            <div class="mpp-total">
+              <div><div class="mpp-total-lbl">Total · 1 USDC transaction</div><div><span class="mpp-total-amt">$51.04</span><span class="mpp-total-cur">USDC</span></div></div>
+              <button class="confirm-btn" id="confirm-btn">Confirm &amp; Pay</button>
+            </div>`;
+          append(card).then(()=>{
+            confirmBtnEl=document.getElementById('confirm-btn');
+            confirmBtnEl.addEventListener('click', doConfirm);
+            payReady=true; $('hint').classList.add('show');
+            setTimeout(doConfirm, 3500);
+          });
+        });
+      });
+    });
+  });
+}, 1500);
+</script>
+</body>
+</html>

@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Demo 3 · Make a Beat — Audric × Sui</title>
+<link rel="stylesheet" href="../shared/audric.css?v=6">
+</head>
+<body>
+<div id="root"></div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="../shared/primitives.jsx"></script>
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+const PROMPT = "Make me a lo-fi beat called Midnight Rain and sell it for $5";
+const THOUGHT = "User wants me to spin up a tiny commerce stack: generate the beat, design cover art, store it permanently, gate access on payment, and prepare a listing. I'll dispatch generation + storage + gating tools in parallel via MPP. Suno for music, DALL-E for art, Walrus for storage, Seal for the $5 unlock. I'll surface a preview before listing — the creator should approve the output, regenerate, or cancel.";
+
+const Demo3 = () => {
+  // 0 typing, 1 sent, 2 thinking, 3 querying, 4 plan ready, 5 review (regen/accept), 6 regenerating, 7 listed + buyer arrives, 8 buyer auto-buying, 9 sold
+  const [step, setStep] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const [regenCount, setRegenCount] = useState(0);
+  const typed = useTyped(PROMPT, step===0, 28);
+
+  useEffect(() => {
+    const delays = { 0: PROMPT.length*28+400, 1: 600, 2: 1800, 3: 3200, 4: 600 };
+    const d = delays[step]; if (d == null) return;
+    const t = setTimeout(()=>{
+      setStep(s=>Math.min(s+1, 5));
+      if (step===4) setPlaying(true);
+    }, d);
+    return ()=>clearTimeout(t);
+  }, [step]);
+
+  // Auto-accept the listing 3s after entering review step
+  useEffect(() => {
+    if (step === 5) { const t = setTimeout(()=>setStep(7), 3000); return ()=>clearTimeout(t); }
+  }, [step]);
+
+  // Auto-advance once listed: buyer arrives → buys → settles
+  useEffect(() => {
+    if (step === 7) { const t = setTimeout(()=>setStep(8), 1800); return ()=>clearTimeout(t); }
+    if (step === 8) { const t = setTimeout(()=>setStep(9), 2200); return ()=>clearTimeout(t); }
+  }, [step]);
+
+  // Regen brief loop
+  useEffect(() => {
+    if (step === 6) { const t = setTimeout(()=>setStep(5), 1600); return ()=>clearTimeout(t); }
+  }, [step]);
+
+  const accept = () => setStep(7);
+  const regen  = () => { setRegenCount(c=>c+1); setStep(6); };
+  const cancel = () => { setStep(0); setPlaying(false); setRegenCount(0); };
+  const restart = () => { setStep(0); setPlaying(false); setRegenCount(0); };
+
+  const tools = [
+    {glyph:'♪', label:'SUNO GENERATE',  finishAt:1200, result:'2:14 lo-fi · $0.05'},
+    {glyph:'✦', label:'DALL-E COVER',    finishAt:1700, result:'1024×1024 · $0.04'},
+    {glyph:'◇', label:'WALRUS UPLOAD',   finishAt:2400, result:'permanent · $0.00'},
+    {glyph:'⊡', label:'SEAL UNLOCK GATE',finishAt:3000, result:'$5 USDC gate'},
+  ];
+
+  return (
+    <MainShell
+      hero={step===0}
+        balance={step>=9 ? '$117' : '$112'}
+        balanceLabel={step>=9 ? 'AVAILABLE $117 · EARNING $11' : 'AVAILABLE $113 · EARNING $11'}
+      composer={<Composer value={step===0 ? typed : ''}/>}
+      ribbon={<DemoRibbon demoNum={3} demoTitle="MAKE A BEAT — AGENTIC COMMERCE" sentence="AI made the music. Sui stores it forever. I earn 92%." onRestart={restart}/>}
+    >
+      <TaskInitiated/>
+      {step >= 1 && <UserBubble>{PROMPT}</UserBubble>}
+
+      {step >= 2 && (
+        <>
+          <ThinkingHeader done={step>=3}/>
+          <ReasoningStream text={THOUGHT} active={step>=2} done={step>=3}/>
+          {step>=3 && <ParallelTools tools={tools} active={step>=3} headerLabel="DISPATCHING 4 MPP CALLS"/>}
+          {step>=4 && (
+            <HowIEvaluated tokens="318" model="AUDRIC v2.0" latency="3.0s">
+              4 MPP service calls in parallel: generation ($0.09), storage (free on Walrus tier), gating (free Seal config). Total cost-of-creation $0.09 — payable because Sui gas is fractions of a cent. EVM gas alone would exceed total content value.
+            </HowIEvaluated>
+          )}
+        </>
+      )}
+
+      {step >= 5 && <TrackPlayer playing={playing} regenerating={step===6} regenCount={regenCount}/>}
+
+      {step === 5 && (
+        <>
+          <AudricLine>
+            Preview's ready. Stored on <strong style={{color:'var(--text)'}}>Walrus</strong> · gated by <strong style={{color:'var(--text)'}}>Seal</strong>. <strong style={{color:'var(--text)'}}>Listing not live yet — your call.</strong>
+          </AudricLine>
+          <ReviewCard onAccept={accept} onRegen={regen} onCancel={cancel} regenCount={regenCount}/>
+        </>
+      )}
+
+      {step === 6 && (
+        <div className="appear" style={{display:'flex',alignItems:'center',gap:10,fontSize:12,color:'var(--blue)',padding:'8px 4px'}}>
+          <span className="spin" style={{display:'inline-block'}}><Icon name="spinner" size={14}/></span>
+          <span className="mono pulse" style={{letterSpacing:'.1em'}}>REGENERATING · NEW SUNO SEED · COVER ART · WALRUS REUPLOAD…</span>
+        </div>
+      )}
+
+      {step >= 7 && (
+        <AudricLine>
+          Listed at <strong style={{color:'var(--text)',fontFamily:'var(--font-mono)'}}>audric.ai/maya/midnight-rain</strong> · $5 · You earn <strong style={{color:'var(--green)'}}>$4.60 (92%)</strong> per sale.
+        </AudricLine>
+      )}
+
+      {step >= 7 && <BuyerPage step={step}/>}
+
+      {step >= 9 && (
+        <div className="appear" style={{
+          border:'1px solid rgba(40,128,52,0.3)',background:'rgba(40,128,52,0.06)',
+          borderRadius:8,padding:'14px 18px',display:'flex',alignItems:'center',gap:14
+        }}>
+          <span style={{width:32,height:32,borderRadius:'50%',background:'var(--green)',display:'grid',placeItems:'center',color:'#fff'}}><Icon name="check" size={14}/></span>
+          <div style={{flex:1}}>
+            <div className="mono" style={{fontSize:10,color:'var(--green-d)'}}>SALE · $4.60 USDC TO YOU</div>
+            <div style={{fontSize:14,color:'var(--text)',marginTop:3}}>"Midnight Rain" · sold to <strong>0xb1d2…3a8c</strong> · Seal decrypted on-chain</div>
+          </div>
+          <Tag tone="green">92%</Tag>
+        </div>
+      )}
+
+      {step >= 9 && (
+        <>
+          <div className="appear" style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))',gap:10}}>
+            <Comp label="ONE AUDRIC SALE" big="$4.60" sub="92% to creator · USDC instantly" good/>
+            <Comp label="ONE SPOTIFY STREAM" big="$0.003" sub="55% to label · 30 days delayed"/>
+          </div>
+          <div className="appear" style={{textAlign:'center',padding:'14px',background:'var(--n900)',color:'#fff',borderRadius:8,fontFamily:'var(--font-serif)',fontSize:24,letterSpacing:'-.01em'}}>
+            1 Audric sale = <span style={{color:'var(--g400)'}}>1,533</span> Spotify streams.
+          </div>
+          <WhyOnlySui points={[
+            "Walrus stores the track permanently on Sui. Not IPFS (can be unpinned), not S3 (can be deleted) — permanent.",
+            "Seal's unlock key lives in a Move object. No server ever holds the key — no breach, no downtime, no middleman.",
+            "Royalties settle in 0.4s to your Passport. No distributor holding period, no label take, no 90-day payment cycle.",
+          ]}/>
+        </>
+      )}
+    </MainShell>
+  );
+};
+
+const ReviewCard = ({onAccept, onRegen, onCancel, regenCount}) => (
+  <div className="appear" style={{
+    border:'1px solid var(--line-2)', borderRadius:10, background:'var(--panel)',
+    overflow:'hidden'
+  }}>
+    <div style={{padding:'10px 16px',borderBottom:'1px solid var(--line)',background:'var(--panel-2)',display:'flex',alignItems:'center',gap:10}}>
+      <Icon name="shield" size={12} color="var(--blue)"/>
+      <span className="mono" style={{fontSize:10,color:'var(--text-2)',letterSpacing:'.14em'}}>YOUR APPROVAL · NOTHING IS PUBLIC YET</span>
+      {regenCount>0 && <Tag tone="dark" style={{marginLeft:'auto'}}>TAKE {regenCount+1}</Tag>}
+    </div>
+    <div style={{padding:'14px 16px',display:'flex',gap:10,flexWrap:'wrap'}}>
+      <button onClick={onAccept} className="mono" style={{
+        flex:'1 1 200px',padding:'14px 16px',borderRadius:8,background:'var(--green)',color:'#fff',
+        fontSize:11,letterSpacing:'.14em',display:'flex',alignItems:'center',justifyContent:'center',gap:8
+      }}>
+        <Icon name="check" size={14}/> ACCEPT &amp; LIST FOR $5
+      </button>
+      <button onClick={onRegen} className="mono" style={{
+        flex:'1 1 160px',padding:'14px 16px',borderRadius:8,background:'var(--panel-2)',color:'var(--text)',
+        border:'1px solid var(--line-2)',fontSize:11,letterSpacing:'.14em',display:'flex',alignItems:'center',justifyContent:'center',gap:8
+      }}>
+        <Icon name="spinner" size={14}/> REGENERATE
+      </button>
+      <button onClick={onCancel} className="mono" style={{
+        flex:'1 1 120px',padding:'14px 16px',borderRadius:8,background:'transparent',color:'var(--text-3)',
+        border:'1px solid var(--line)',fontSize:11,letterSpacing:'.14em',display:'flex',alignItems:'center',justifyContent:'center',gap:8
+      }}>
+        <Icon name="close" size={14}/> CANCEL
+      </button>
+    </div>
+    <div style={{padding:'10px 16px',borderTop:'1px solid var(--line)',background:'var(--panel-2)',fontSize:11,color:'var(--text-3)',display:'flex',alignItems:'center',gap:8}}>
+      <Icon name="bolt" size={11} color="var(--text-3)"/>
+      <span>Regenerating costs <strong style={{color:'var(--text-2)'}}>$0.09</strong> in MPP calls. Cancelling costs nothing — Walrus draft expires in 24h.</span>
+    </div>
+  </div>
+);
+
+const TrackPlayer = ({ playing, regenerating, regenCount }) => (
+  <div className="appear" style={{
+    background:'linear-gradient(135deg,#0a0a0a,#222)',color:'#fff',
+    borderRadius:14,padding:18,display:'flex',gap:16,alignItems:'center',
+    opacity:regenerating?0.4:1,transition:'opacity .3s'
+  }}>
+    <div style={{width:96,height:96,borderRadius:8,background:'radial-gradient(circle at 30% 30%,#583AEE,#19133A 60%,#000)',position:'relative',overflow:'hidden',flexShrink:0}}>
+      {[...Array(14)].map((_,i)=>(
+        <div key={i+'-'+regenCount} style={{position:'absolute',width:1,height:18,background:'rgba(255,255,255,0.5)',top:((i*7)+regenCount*5)%96,left:((i*11)+regenCount*9)%96,transform:'rotate(15deg)'}}/>
+      ))}
+      <div style={{position:'absolute',bottom:8,left:8,right:8,fontFamily:'var(--font-serif)',fontSize:11,color:'#fff',lineHeight:1}}>Midnight<br/>Rain</div>
+    </div>
+    <div style={{flex:1,minWidth:0}}>
+      <div style={{fontFamily:'var(--font-mono)',fontSize:9,color:'#aaa',letterSpacing:'.14em'}}>{regenerating ? 'REGENERATING…' : 'PREVIEW · IN-CHAT'}</div>
+      <div style={{fontFamily:'var(--font-serif)',fontSize:22,marginTop:4}}>Midnight Rain</div>
+      <div style={{fontFamily:'var(--font-mono)',fontSize:9,color:'#888',letterSpacing:'.12em',marginTop:2}}>LO-FI · 2:14 · GENERATED VIA SUNO{regenCount>0 && ' · TAKE '+(regenCount+1)}</div>
+      <div style={{display:'flex',alignItems:'center',gap:10,marginTop:14}}>
+        <button style={{width:36,height:36,borderRadius:'50%',background:'#fff',color:'#000',display:'grid',placeItems:'center'}}>
+          {playing ? <Icon name="pause" size={14}/> : <Icon name="play" size={14}/>}
+        </button>
+        <div style={{flex:1,height:32,display:'flex',alignItems:'flex-end',gap:3}}>
+          {playing ? [...Array(40)].map((_,i)=>(
+            <div key={i} style={{
+              width:3,background:'#fff',borderRadius:1,
+              height:(Math.sin(i*0.4)*0.4+0.5)*100+'%',opacity:0.7,
+              animation:`bar${(i%5)+1} ${0.6+(i%3)*0.2}s ease-in-out infinite`
+            }}/>
+          )) : <div style={{flex:1,height:2,background:'rgba(255,255,255,0.2)',borderRadius:1}}/>}
+        </div>
+        <div style={{fontFamily:'var(--font-mono)',fontSize:10,color:'#aaa'}}>0:42 / 2:14</div>
+      </div>
+    </div>
+  </div>
+);
+
+const BuyerPage = ({ step }) => (
+  <div className="appear" style={{border:'1px solid var(--line-2)',borderRadius:12,overflow:'hidden',background:'var(--panel)'}}>
+    <div style={{padding:'12px 18px',borderBottom:'1px solid var(--line)',background:'var(--panel-2)',display:'flex',alignItems:'center',gap:8}}>
+      <Icon name="globe" size={12} color="var(--text-3)"/>
+      <span style={{fontFamily:'var(--font-mono)',fontSize:11,color:'var(--text-2)'}}>audric.ai/maya/midnight-rain</span>
+      <Tag tone="dark" style={{marginLeft:'auto'}}>BUYER VIEW · @kira</Tag>
+    </div>
+    <div className="d03-buyer-inner" style={{padding:'24px',display:'flex',gap:20,alignItems:'center',flexWrap:'wrap'}}>
+      <div className="d03-buyer-art" style={{width:140,height:140,borderRadius:8,background:'radial-gradient(circle at 30% 30%,#583AEE,#19133A 60%,#000)',position:'relative',overflow:'hidden',flexShrink:0}}>
+        {[...Array(20)].map((_,i)=>(<div key={i} style={{position:'absolute',width:1,height:22,background:'rgba(255,255,255,0.45)',top:(i*9)%140,left:(i*13)%140,transform:'rotate(15deg)'}}/>))}
+        <div style={{position:'absolute',bottom:12,left:12,right:12,fontFamily:'var(--font-serif)',fontSize:14,color:'#fff'}}>Midnight Rain</div>
+      </div>
+      <div style={{flex:1}}>
+        <div className="mono" style={{fontSize:10,color:'var(--text-3)'}}>BY @MAYA · LO-FI · 2:14</div>
+        <div style={{fontFamily:'var(--font-serif)',fontSize:28,marginTop:6,letterSpacing:'-.01em'}}>Midnight Rain</div>
+        <div style={{fontSize:13,color:'var(--text-2)',marginTop:10,lineHeight:1.5}}>
+          Pay <strong style={{color:'var(--text)'}}>$5 USDC</strong>, get the file forever. Stored on Walrus · access gated by Seal. <Tag tone="purple" style={{marginLeft:6}}>SEAL ENCRYPTED</Tag>
+        </div>
+        {step === 7 && (
+          <div style={{marginTop:14,display:'flex',alignItems:'center',gap:10,fontSize:12,color:'var(--text-2)'}}>
+            <span className="mono pulse" style={{letterSpacing:'.1em',fontSize:10}}>BUYER ARRIVING · NO WALLET YET</span>
+          </div>
+        )}
+        {step === 7 && (
+          <button disabled className="mono" style={{marginTop:8,padding:'12px 20px',borderRadius:999,background:'var(--text)',color:'#fff',fontSize:11,letterSpacing:'.14em',display:'inline-flex',alignItems:'center',gap:8,opacity:0.7}}>
+            <Icon name="google" size={14}/> BUY $5 USDC
+          </button>
+        )}
+        {step === 8 && (
+          <div style={{marginTop:14,display:'flex',alignItems:'center',gap:10,fontSize:12,color:'var(--blue)'}}>
+            <span className="spin" style={{display:'inline-block'}}><Icon name="spinner" size={14}/></span>
+            <span className="mono pulse" style={{letterSpacing:'.1em'}}>SIGNING IN · PAYING $5 · SEAL DECRYPTING…</span>
+          </div>
+        )}
+        {step >= 9 && (
+          <div style={{marginTop:14,display:'flex',alignItems:'center',gap:10,fontSize:12,color:'var(--green)'}}>
+            <Icon name="check-circle" size={14}/>
+            <span className="mono" style={{letterSpacing:'.1em'}}>UNLOCKED · DOWNLOADED · 0.4s</span>
+          </div>
+        )}
+      </div>
+    </div>
+  </div>
+);
+
+const Comp = ({label,big,sub,good}) => (
+  <div style={{border:'1px solid '+(good?'rgba(40,128,52,0.3)':'var(--line)'),background:good?'rgba(40,128,52,0.06)':'var(--panel)',borderRadius:8,padding:'18px 20px'}}>
+    <div className="mono" style={{fontSize:9,color:good?'var(--green)':'var(--text-3)'}}>{label}</div>
+    <div style={{fontFamily:'var(--font-serif)',fontSize:48,marginTop:8,letterSpacing:'-.02em',color:good?'var(--green-d)':'var(--text)'}}>{big}</div>
+    <div style={{fontSize:12,color:'var(--text-3)',marginTop:6,lineHeight:1.5}}>{sub}</div>
+  </div>
+);
+
+ReactDOM.createRoot(document.getElementById('root')).render(<Demo3/>);
+</script>
+</body>
+</html>

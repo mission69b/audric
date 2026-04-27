@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Audric — Demo 2: Agentic Payments</title>
+<link rel="stylesheet" href="audric.css">
+<style>
+/* Three-column: sidebar + chat + payment panel */
+.app { display: grid; grid-template-columns: 240px 1fr 1fr; }
+@media (max-width: 768px) {
+  .app { display: flex !important; flex-direction: column !important; overflow: hidden !important; }
+  .pay-panel { display: none !important; }
+  .chat-panel { border-right: none; width: 100%; }
+}
+
+.chat-panel {
+  display: flex; flex-direction: column;
+  border-right: 1px solid var(--line); background: var(--bg); overflow: hidden;
+  min-height: 0; height: 100vh;
+}
+@media (max-width: 768px) {
+  .chat-panel { flex: 1; height: 100dvh; }
+}
+.bal-header-wrap { flex-shrink: 0; }
+
+.messages {
+  flex: 1; overflow-y: auto;
+  display: flex; flex-direction: column;
+  scroll-behavior: smooth;
+}
+.messages::-webkit-scrollbar { width: 3px; }
+.messages::-webkit-scrollbar-thumb { background: var(--line-2); }
+.msgs-inner {
+  padding: 12px 16px;
+  display: flex; flex-direction: column; gap: 12px;
+  flex: 1;
+}
+
+/* Payment panel */
+.pay-panel {
+  background: var(--n200); display: flex; flex-direction: column;
+  align-items: center; justify-content: center; position: relative; overflow: hidden;
+}
+.pay-panel-lbl {
+  position: absolute; top: 16px; left: 0; right: 0; text-align: center;
+  font-family: var(--font-mono); font-size: 9px; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--text-3);
+}
+.pay-page {
+  width: 340px; background: var(--panel);
+  border: 1px solid var(--line); border-radius: 16px; overflow: hidden;
+  box-shadow: var(--shadow-card);
+  opacity: 0; transform: translateY(12px) scale(.97);
+  transition: opacity .5s cubic-bezier(.34,1.56,.64,1), transform .5s cubic-bezier(.34,1.56,.64,1);
+}
+.pay-page.show { opacity: 1; transform: translateY(0) scale(1); }
+.pay-page-top {
+  padding: 22px 22px 18px; text-align: center;
+  border-bottom: 1px solid var(--line); background: var(--panel-2);
+}
+.pp-from { font-family: var(--font-mono); font-size: 9px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-3); margin-bottom: 10px; }
+.pp-av {
+  width: 44px; height: 44px; border-radius: 50%;
+  background: linear-gradient(135deg,var(--b300),var(--b500));
+  margin: 0 auto 10px; display: grid; place-items: center;
+  font-size: 16px; font-weight: 700; color: #fff;
+}
+.pp-name { font-size: 14px; font-weight: 500; }
+.pp-addr { font-family: var(--font-mono); font-size: 10px; color: var(--text-3); margin-top: 3px; }
+.pay-page-mid { padding: 18px 22px; text-align: center; border-bottom: 1px solid var(--line); }
+.pp-for { font-family: var(--font-mono); font-size: 9px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-3); margin-bottom: 8px; }
+.pp-amount { font-family: var(--font-serif); font-size: 48px; font-weight: 500; letter-spacing: -.02em; line-height: 1; }
+.pp-cur { font-family: var(--font-mono); font-size: 12px; color: var(--text-2); letter-spacing: .06em; text-transform: uppercase; margin-top: 4px; }
+.pp-desc { font-size: 12px; color: var(--text-2); margin-top: 8px; }
+.pay-page-bot { padding: 16px 22px; }
+.qr-wrap { width: 100px; height: 100px; margin: 0 auto 14px; background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 8px; display: grid; place-items: center; }
+.qr-svg { width: 84px; height: 84px; }
+.pp-or {
+  font-family: var(--font-mono); font-size: 9px; color: var(--text-3);
+  letter-spacing: .08em; text-transform: uppercase;
+  text-align: center; margin: 10px 0;
+  display: flex; align-items: center; gap: 8px;
+}
+.pp-or::before, .pp-or::after { content:''; flex:1; height:1px; background:var(--line); }
+.pp-pay-btn {
+  width: 100%; padding: 12px; border-radius: 999px;
+  background: var(--text); color: #fff;
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
+  transition: opacity .12s, transform .1s;
+}
+.pp-pay-btn:hover { opacity: .88; }
+.pp-pay-btn.paying { opacity: .7; transform: scale(.97); }
+.pp-pay-btn.paid { background: var(--green); }
+.pp-footer { padding: 10px 22px 16px; text-align: center; font-family: var(--font-mono); font-size: 9px; color: var(--text-3); letter-spacing: .06em; text-transform: uppercase; }
+
+.settled {
+  position: absolute; inset: 0;
+  background: rgba(247,247,247,.9); backdrop-filter: blur(8px);
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity .4s; pointer-events: none; z-index: 5;
+}
+.settled.show { opacity: 1; pointer-events: auto; }
+.settled-card {
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: 16px; padding: 28px 32px; text-align: center;
+  box-shadow: var(--shadow-card);
+  transform: scale(.9) translateY(8px);
+  transition: transform .5s cubic-bezier(.34,1.56,.64,1);
+}
+.settled.show .settled-card { transform: scale(1) translateY(0); }
+.settled-icon { width: 48px; height: 48px; border-radius: 50%; background: var(--g200); margin: 0 auto 12px; display: grid; place-items: center; }
+.settled-title { font-size: 20px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+.settled-sub { font-size: 13px; color: var(--text-2); line-height: 1.5; }
+.settled-meta { font-family: var(--font-mono); font-size: 9px; color: var(--text-3); letter-spacing: .08em; text-transform: uppercase; margin-top: 10px; }
+
+.notif-card {
+  background: var(--g200); border: 1px solid var(--g300);
+  border-radius: 8px; padding: 12px 14px;
+  opacity: 0; transform: translateY(4px); transition: opacity .35s, transform .35s;
+}
+.notif-card.show { opacity: 1; transform: translateY(0); }
+.notif-top { font-family: var(--font-mono); font-size: 10px; color: var(--green); letter-spacing: .08em; text-transform: uppercase; margin-bottom: 4px; }
+.notif-body { font-size: 13px; color: var(--text-2); }
+</style>
+</head>
+<body>
+
+
+<div class="app">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sb-brand"><span class="sb-logo">Audric</span><span class="sb-beta">Beta</span></div>
+    <button class="sb-new">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"><path d="M8 3v10M3 8h10"/></svg>
+      New conversation
+    </button>
+    <nav class="sb-nav">
+      <button class="nav-row">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25"><rect x="2.5" y="2.5" width="4.5" height="5.5" rx=".75"/><rect x="9" y="2.5" width="4.5" height="3.5" rx=".75"/><rect x="2.5" y="10" width="4.5" height="3.5" rx=".75"/><rect x="9" y="8" width="4.5" height="5.5" rx=".75"/></svg>
+        Dashboard
+      </button>
+      <button class="nav-row active">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25"><rect x="1.5" y="4" width="13" height="8" rx="1"/><path d="M1.5 7h13"/><path d="M4 10h2"/></svg>
+        Pay
+      </button>
+      <button class="nav-row">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25"><path d="M2.5 13V5M6 13V8M9.5 13V3M13 13V7"/><path d="M2 13.5h12"/></svg>
+        Portfolio
+      </button>
+      <button class="nav-row">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25"><circle cx="8" cy="8" r="5.5"/><circle cx="8" cy="8" r="3"/><circle cx="8" cy="8" r="1" fill="currentColor" stroke="none"/></svg>
+        Goals
+      </button>
+    </nav>
+    <div class="sb-recents">
+      <div class="sb-recents-lbl">Recents</div>
+      <button class="recent-item"><div class="recent-title">Payment link · $50.00</div><div class="recent-meta">pay/mK9xW2 · 2d ago</div></button>
+      <button class="recent-item"><div class="recent-title">Invoice · $1,200</div><div class="recent-meta">4 msgs · 5d ago</div></button>
+    </div>
+    <div class="sb-footer">
+      <div class="sb-av">A</div>
+      <div style="flex:1;min-width:0">
+        <div class="sb-av-name">alex@studio.io</div>
+        <div class="sb-av-addr">0x7f20…f6dc</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Chat panel -->
+  <div class="chat-panel">
+
+    <!-- Balance header -->
+    <div class="bal-header-wrap">
+      <div class="bal-header">
+        <div class="bal-amount" id="bal-amount">$8,240</div>
+        <div class="bal-meta">
+          <span id="bal-avail">Available $8,240 · Earning $0/day</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Idle view -->
+    <div class="idle-view" id="idle-view">
+      <div class="idle-inner">
+        <div class="greeting">
+          <div class="greeting-name">Good morning, Alex</div>
+          <div class="greeting-sub">Available $8,240 · Earning $0/day · 0.0% APY</div>
+        </div>
+        <div class="composer" id="idle-composer">
+          <input class="composer-input" id="composer-input" placeholder="Ask anything…" autocomplete="off" spellcheck="false"/>
+          <div class="composer-footer">
+            <div class="composer-left">
+              <button class="composer-icon-btn"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"><path d="M8 3v10M3 8h10"/></svg></button>
+            </div>
+            <div class="composer-right">
+              <button class="composer-icon-btn"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"><rect x="6" y="2" width="4" height="8" rx="2"/><path d="M3.5 8a4.5 4.5 0 0 0 9 0"/><path d="M8 12.5V14"/></svg></button>
+              <button class="send-btn dim" id="send-btn"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"><path d="M8 13V3M4 7l4-4 4 4"/></svg></button>
+            </div>
+          </div>
+        </div>
+        <div class="chip-bar idle">
+          <button class="chip">Save</button>
+          <button class="chip">Swap</button>
+          <button class="chip">Send</button>
+          <button class="chip">Credit</button>
+          <button class="chip">Receive</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chat view -->
+    <div class="chat-view" id="chat-view" style="display:none">
+      <div class="messages" id="messages">
+        <div class="msgs-inner" id="msgs-inner">
+          <div class="task-divider">task initiated</div>
+          <div style="display:flex;justify-content:flex-end"><div class="user-msg">Create a payment link for my web design invoice — $500</div></div>
+        </div>
+      </div>
+      <div class="composer-row">
+        <div class="composer-row-inner">
+          <div class="chip-bar chat">
+            <button class="chip">Save</button>
+            <button class="chip">Swap</button>
+            <button class="chip">Send</button>
+            <button class="chip">Credit</button>
+            <button class="chip">Receive</button>
+          </div>
+          <div class="composer">
+            <input class="composer-input" id="composer-input-chat" placeholder="Ask anything…" autocomplete="off"/>
+            <div class="composer-footer">
+              <div class="composer-left">
+                <button class="composer-icon-btn"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"><path d="M8 3v10M3 8h10"/></svg></button>
+              </div>
+              <div class="composer-right">
+                <button class="composer-icon-btn"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"><rect x="6" y="2" width="4" height="8" rx="2"/><path d="M3.5 8a4.5 4.5 0 0 0 9 0"/><path d="M8 12.5V14"/></svg></button>
+                <button class="send-btn dim" id="send-btn-chat">
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"><path d="M8 13V3M4 7l4-4 4 4"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Payment page panel -->
+  <div class="pay-panel">
+    <div class="pay-panel-lbl">client receives this link</div>
+
+    <div class="pay-page" id="pay-page">
+      <div class="pay-page-top">
+        <div class="pp-from">Invoice from</div>
+        <div class="pp-av">A</div>
+        <div class="pp-name">Alex Chen</div>
+        <div class="pp-addr">0x7f20…f6dc</div>
+      </div>
+      <div class="pay-page-mid">
+        <div class="pp-for">Web Design Project</div>
+        <div class="pp-amount">500</div>
+        <div class="pp-cur">USDC</div>
+        <div class="pp-desc">Web design — Q2 retainer · Due on receipt</div>
+      </div>
+      <div class="pay-page-bot">
+        <div class="qr-wrap">
+          <svg class="qr-svg" viewBox="0 0 84 84" xmlns="http://www.w3.org/2000/svg">
+            <rect x="4" y="4" width="22" height="22" rx="3" fill="#191919"/>
+            <rect x="7" y="7" width="16" height="16" rx="1.5" fill="white"/>
+            <rect x="10" y="10" width="10" height="10" fill="#191919"/>
+            <rect x="58" y="4" width="22" height="22" rx="3" fill="#191919"/>
+            <rect x="61" y="7" width="16" height="16" rx="1.5" fill="white"/>
+            <rect x="64" y="10" width="10" height="10" fill="#191919"/>
+            <rect x="4" y="58" width="22" height="22" rx="3" fill="#191919"/>
+            <rect x="7" y="61" width="16" height="16" rx="1.5" fill="white"/>
+            <rect x="10" y="64" width="10" height="10" fill="#191919"/>
+            <rect x="32" y="4" width="6" height="6" fill="#191919"/>
+            <rect x="44" y="4" width="6" height="6" fill="#191919"/>
+            <rect x="38" y="10" width="6" height="6" fill="#191919"/>
+            <rect x="32" y="16" width="6" height="6" fill="#191919"/>
+            <rect x="44" y="10" width="6" height="6" fill="#191919"/>
+            <rect x="32" y="32" width="6" height="6" fill="#191919"/>
+            <rect x="44" y="32" width="6" height="6" fill="#191919"/>
+            <rect x="38" y="38" width="6" height="6" fill="#191919"/>
+            <rect x="32" y="44" width="6" height="6" fill="#191919"/>
+            <rect x="50" y="38" width="6" height="6" fill="#191919"/>
+            <rect x="56" y="32" width="6" height="6" fill="#191919"/>
+            <rect x="62" y="38" width="6" height="6" fill="#191919"/>
+            <rect x="74" y="32" width="6" height="6" fill="#191919"/>
+            <rect x="68" y="44" width="6" height="6" fill="#191919"/>
+            <rect x="4" y="32" width="6" height="6" fill="#191919"/>
+            <rect x="16" y="32" width="6" height="6" fill="#191919"/>
+            <rect x="22" y="38" width="6" height="6" fill="#191919"/>
+            <rect x="10" y="44" width="6" height="6" fill="#191919"/>
+            <rect x="32" y="58" width="6" height="6" fill="#191919"/>
+            <rect x="44" y="58" width="6" height="6" fill="#191919"/>
+            <rect x="38" y="64" width="6" height="6" fill="#191919"/>
+            <rect x="32" y="70" width="6" height="6" fill="#191919"/>
+            <rect x="50" y="64" width="6" height="6" fill="#191919"/>
+            <rect x="44" y="76" width="6" height="6" fill="#191919"/>
+          </svg>
+        </div>
+        <div class="pp-or">or</div>
+        <button class="pp-pay-btn" id="pp-pay-btn">Pay $500 with Sui wallet</button>
+      </div>
+      <div class="pp-footer">Powered by Audric Pay · Sui mainnet · $0 fees</div>
+    </div>
+
+    <div class="settled" id="settled">
+      <div class="settled-card">
+        <div class="settled-icon">
+          <svg width="22" height="22" viewBox="0 0 16 16" fill="none" stroke="var(--green)" stroke-width="1.5" stroke-linecap="round"><path d="M3 8.5 6.5 12 13 4.5"/></svg>
+        </div>
+        <div class="settled-title">$500 Sent</div>
+        <div class="settled-sub">Payment confirmed on Sui mainnet.<br>Alex received $500.00 USDC.</div>
+        <div class="settled-meta">Settled in 0.8s · Free · Global · Instant</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="hint" id="hint">Auto-paying in 3s…</div>
+
+<script>
+// On mobile: hide pay panel and suppress the "Auto-paying in 3s" hint
+const isMobile = window.innerWidth <= 768;
+if (isMobile) {
+  const pp = document.querySelector('.pay-panel');
+  if (pp) pp.style.cssText = 'display:none!important';
+}
+
+let payReady = false;
+
+function $(id){ return document.getElementById(id); }
+function scrollToBottom(){ const m=$('messages'); requestAnimationFrame(()=>{ m.scrollTop=m.scrollHeight; }); }
+
+function append(el, delay=0){
+  return new Promise(resolve=>{
+    setTimeout(()=>{
+      el.style.opacity='0'; el.style.transform='translateY(5px)';
+      el.style.transition='opacity .28s ease, transform .28s ease';
+      $('msgs-inner').appendChild(el); scrollToBottom();
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{
+        el.style.opacity='1'; el.style.transform='translateY(0)';
+        setTimeout(resolve, 280);
+      }));
+    }, delay);
+  });
+}
+
+function fadeOut(el, cb){ el.style.transition='opacity .25s'; el.style.opacity='0'; setTimeout(()=>{ el.remove(); if(cb) cb(); }, 280); }
+
+function makeSuggestionChips(chips){
+  const wrap=document.createElement('div'); wrap.className='suggestion-chips';
+  chips.forEach(({icon,label})=>{ const btn=document.createElement('button'); btn.className='suggestion-chip'; btn.innerHTML=`<span class="sc-icon">${icon}</span><span class="sc-label">${label}</span>`; wrap.appendChild(btn); });
+  return wrap;
+}
+function makeReasoningAcc(text, tokens){
+  const d=document.createElement('div'); d.className='reasoning-acc';
+  d.innerHTML=`<div class="reasoning-head"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25" style="transform:rotate(90deg)"><path d="m6 4 4 4-4 4"/></svg><span class="reasoning-title">How I evaluated this</span><span class="reasoning-tokens">${tokens}</span></div><div class="reasoning-body open">${text}</div>`;
+  d.querySelector('.reasoning-head').addEventListener('click',()=>{ d.querySelector('.reasoning-body').classList.toggle('open'); scrollToBottom(); });
+  return d;
+}
+function makeThinking(){ const d=document.createElement('div'); d.className='thinking-row'; d.innerHTML=`<span class="thinking-sparkle">✦</span><span>Thinking</span>`; return d; }
+
+function makeToolAcc(icon, name, meta, contentHTML){
+  const d=document.createElement('div'); d.className='tool-acc';
+  d.innerHTML=`<div class="tool-acc-head"><span class="tacc-prefix">—</span><span class="tacc-icon">${icon}</span><span class="tacc-name">${name}</span>${meta?`<span class="tacc-meta">${meta}</span>`:''}<span class="tacc-chevron">↓</span></div><div class="tool-acc-body">${contentHTML}</div>`;
+  d.querySelector('.tool-acc-head').addEventListener('click',()=>{ const b=d.querySelector('.tool-acc-body'),c=d.querySelector('.tacc-chevron'); b.classList.toggle('open'); c.classList.toggle('open'); scrollToBottom(); });
+  d.expand=()=>{ d.querySelector('.tool-acc-body').classList.add('open'); d.querySelector('.tacc-chevron').classList.add('open'); d.classList.add('done'); d.querySelector('.tacc-prefix').textContent='✓'; setTimeout(scrollToBottom,370); };
+  return d;
+}
+
+function makeAudricMsg(text, tokens){ const d=document.createElement('div'); d.className='audric-msg'; d.innerHTML=`<span class="sparkle">✦</span><div><div class="audric-text">${text}</div>${tokens?`<div class="audric-tokens">${tokens}</div>`:''}</div>`; return d; }
+function makeUserMsg(text){ const w=document.createElement('div'); w.style.cssText='display:flex;justify-content:flex-end'; const d=document.createElement('div'); d.className='user-msg'; d.textContent=text; w.appendChild(d); return w; }
+function makeDivider(text){ const d=document.createElement('div'); d.className='task-divider'; d.textContent=text; return d; }
+
+function doPay(){
+  if(!payReady) return; payReady=false; $('hint').classList.remove('show');
+  const btn=$('pp-pay-btn'); btn.classList.add('paying'); btn.textContent='Confirming…';
+  setTimeout(()=>{
+    btn.classList.remove('paying'); btn.classList.add('paid'); btn.textContent='✓ Paid';
+    $('settled').classList.add('show');
+    setTimeout(()=>{
+      const notif=document.createElement('div'); notif.className='notif-card';
+      notif.innerHTML=`<div class="notif-top">+ $500 received</div><div class="notif-body">Your client paid via <strong>audric.ai/pay/mK9xW2</strong> — settled in <strong>0.8s</strong>. Balance updated to <strong>$8,740 USDC</strong>.</div>`;
+      append(notif); $('bal-amount').textContent='$8,740'; $('bal-avail').textContent='Available $8,740';
+      setTimeout(()=>{ append(makeSuggestionChips([
+        {icon:'🔗',label:'New Link'},
+        {icon:'📊',label:'Payment History'},
+        {icon:'💸',label:'Withdraw Funds'},
+      ])); }, 600);
+    }, 700);
+  }, 800);
+}
+
+$('pp-pay-btn').addEventListener('click', doPay);
+document.addEventListener('keydown', e=>{ if((e.code==='Space'||e.code==='Enter')&&payReady) doPay(); });
+
+function switchToChat(){
+  $('idle-view').style.display='none';
+  const cv=$('chat-view'); cv.style.display='flex'; cv.style.opacity='1';
+}
+
+function typeMsg(text, cb){
+  const inp=$('composer-input'); $('send-btn').classList.remove('dim'); $('send-btn').classList.add('active');
+  let i=0; const iv=setInterval(()=>{ inp.value=text.slice(0,i); inp.scrollLeft=inp.scrollWidth; if(++i>text.length){ clearInterval(iv); setTimeout(cb,350); } }, 42);
+}
+
+setTimeout(()=>{
+  typeMsg('Create a payment link for my web design invoice — $500', ()=>{
+    switchToChat();
+    $('composer-input').value=''; $('send-btn').classList.remove('active'); $('send-btn').classList.add('dim');
+    let t=0; function at(ms,fn){ setTimeout(fn,ms); }
+
+    let thinkEl;
+    at(t+=400, ()=>{ thinkEl=makeThinking(); append(thinkEl); });
+    at(t+=700, ()=>{
+      const r=makeReasoningAcc('Alex wants a $500 payment link for a web design invoice. I\'ll call create_payment_link with no expiry — anyone with the URL can pay, no Audric account needed. Will generate a QR code and shareable link.','41 tokens');
+      append(r);
+    });
+    at(t+=800, ()=>{
+      fadeOut(thinkEl, ()=>{
+        const acc=makeToolAcc('🔗','create_payment_link','','<div class="result-card"><div class="rc-header"><span>Payment link created</span></div><div class="rc-row"><span class="rc-label">Amount</span><span class="rc-value">500.00 USDC</span></div><div class="rc-row"><span class="rc-label">Link</span><span class="rc-link">audric.ai/pay/mK9xW2</span></div><div class="rc-row"><span class="rc-label">Expires</span><span class="rc-value">Never</span></div></div>');
+        append(acc).then(()=> setTimeout(()=>acc.expand(),200));
+      });
+    });
+    at(t+=1300, ()=> append(makeAudricMsg('Payment link created — <strong>$500 USDC</strong>, no expiry. Share it anywhere. Your client doesn\'t need an account to pay.','36 tokens · 0.4s')));
+    at(t+=800, ()=>{ $('pay-page').classList.add('show'); payReady=true; if(!isMobile) $('hint').classList.add('show'); setTimeout(doPay, 3500); });
+  });
+}, 1500);
+</script>
+</body>
+</html>

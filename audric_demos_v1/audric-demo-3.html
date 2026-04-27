@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Audric — Demo 3: Agentic Commerce · Music</title>
+<link rel="stylesheet" href="audric.css">
+<style>
+.main { display: flex; flex-direction: column; overflow: hidden; height: 100vh; }
+.bal-header-wrap { flex-shrink: 0; }
+
+/* Track card */
+.track-card {
+  border: 1px solid var(--line); border-radius: 8px;
+  background: var(--panel); overflow: hidden;
+}
+.track-cover {
+  width: 100%; height: 120px;
+  background: linear-gradient(140deg,#0f0520 0%,#0a1a2e 40%,#081a10 100%);
+  position: relative; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+}
+.track-cover-glow {
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 35% 55%, rgba(9,104,246,.28) 0%, transparent 60%);
+}
+.track-cover-emoji { font-size: 40px; opacity: .7; position: relative; z-index: 1; }
+.track-cover-title {
+  position: absolute; bottom: 10px; left: 12px; z-index: 1;
+  font-size: 15px; font-weight: 600; color: #fff;
+  text-shadow: 0 1px 6px rgba(0,0,0,.6);
+}
+.track-cover-by {
+  position: absolute; bottom: 10px; right: 12px; z-index: 1;
+  font-family: var(--font-mono); font-size: 9px; color: rgba(255,255,255,.5);
+  letter-spacing: .06em; text-transform: uppercase;
+}
+.track-player { padding: 10px 14px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 10px; }
+.play-btn {
+  width: 30px; height: 30px; border-radius: 50%;
+  background: var(--text); color: #fff;
+  display: grid; place-items: center; flex-shrink: 0; font-size: 10px;
+  transition: opacity .12s;
+}
+.play-btn:hover { opacity: .8; }
+.waveform { flex: 1; height: 24px; display: flex; align-items: center; gap: 1.5px; }
+.w-bar { flex: 1; border-radius: 1px; background: var(--line-2); transition: height .08s; }
+.w-bar.lit { background: var(--blue); }
+.track-dur { font-family: var(--font-mono); font-size: 10px; color: var(--text-3); flex-shrink: 0; letter-spacing: .04em; }
+.track-meta { padding: 0; }
+.tm-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+.tm-row:last-child { border-bottom: none; }
+.tm-lbl { font-size: 13px; color: var(--text-2); }
+.tm-val { font-family: var(--font-mono); font-size: 12px; color: var(--text); }
+.tm-val.green { color: var(--green); }
+.tm-val.link { color: var(--blue); cursor: pointer; }
+.seal-row { padding: 8px 14px; background: var(--panel-2); font-family: var(--font-mono); font-size: 10px; color: var(--text-2); letter-spacing: .06em; text-transform: uppercase; display: flex; align-items: center; gap: 6px; }
+
+.sale-notif { background: var(--g200); border: 1px solid var(--g300); border-radius: 8px; padding: 10px 14px; }
+.sn-top { font-family: var(--font-mono); font-size: 10px; color: var(--green); letter-spacing: .08em; text-transform: uppercase; margin-bottom: 4px; }
+.sn-body { font-size: 13px; color: var(--text-2); }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sb-brand"><span class="sb-logo">Audric</span><span class="sb-beta">Beta</span></div>
+    <button class="sb-new"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"><path d="M8 3v10M3 8h10"/></svg> New conversation</button>
+    <nav class="sb-nav">
+      <button class="nav-row active"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25"><rect x="2.5" y="2.5" width="4.5" height="5.5" rx=".75"/><rect x="9" y="2.5" width="4.5" height="3.5" rx=".75"/><rect x="2.5" y="10" width="4.5" height="3.5" rx=".75"/><rect x="9" y="8" width="4.5" height="5.5" rx=".75"/></svg>Dashboard</button>
+      <button class="nav-row"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25"><path d="M2.5 5.5h11l-.75 3.5a1 1 0 0 1-1 .75h-7.5a1 1 0 0 1-1-.75L2.5 5.5Z"/><path d="M4.5 5.5V4a1.5 1.5 0 0 1 1.5-1.5h4A1.5 1.5 0 0 1 11.5 4v1.5"/><path d="M3.5 10v3.5h9V10"/></svg>Store</button>
+      <button class="nav-row"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25"><rect x="1.5" y="4" width="13" height="8" rx="1"/><path d="M1.5 7h13"/><path d="M4 10h2"/></svg>Pay</button>
+    </nav>
+    <div class="sb-recents">
+      <div class="sb-recents-lbl">Recents</div>
+      <button class="recent-item"><div class="recent-title">Withdraw $200 NAVI</div><div class="recent-meta">1d ago</div></button>
+      <button class="recent-item"><div class="recent-title">Send $50 to Jamie</div><div class="recent-meta">3d ago</div></button>
+    </div>
+    <div style="margin:0 14px 14px;padding:12px 14px;background:var(--panel);border:1px solid var(--line);border-radius:8px;flex-shrink:0">
+      <div class="mono" style="font-size:9px;color:var(--text-3);margin-bottom:8px">STORE</div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+        <span style="color:var(--text-2)">Tracks</span><span style="font-family:var(--font-mono)" id="s-tracks">0</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:12px">
+        <span style="color:var(--text-2)">Earned</span><span style="font-family:var(--font-mono);color:var(--green)" id="s-earned">$0.00</span>
+      </div>
+    </div>
+    <div class="sb-footer">
+      <div class="sb-av">J</div>
+      <div style="flex:1;min-width:0"><div class="sb-av-name">jordan@music.io</div><div class="sb-av-addr">0x9a12…3c8e</div></div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <div class="bal-header-wrap">
+      <div class="bal-header">
+        <div class="bal-amount">$640</div>
+        <div class="bal-meta"><span id="bal-avail">Available $640 · Earning $0/day</span></div>
+      </div>
+    </div>
+
+    <!-- Idle view -->
+    <div class="idle-view" id="idle-view">
+      <div class="idle-inner">
+        <div class="greeting">
+          <div class="greeting-name">Good evening, Jordan</div>
+          <div class="greeting-sub">Your Audric Store is live. Create anything and sell it on-chain. You keep 92%.</div>
+        </div>
+        <div class="composer" id="idle-composer">
+          <input class="composer-input" id="composer-input" placeholder="Ask anything…" autocomplete="off"/>
+          <div class="composer-footer">
+            <div class="composer-left"><button class="composer-icon-btn"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"><path d="M8 3v10M3 8h10"/></svg></button></div>
+            <div class="composer-right">
+              <button class="composer-icon-btn"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"><rect x="6" y="2" width="4" height="8" rx="2"/><path d="M3.5 8a4.5 4.5 0 0 0 9 0"/><path d="M8 12.5V14"/></svg></button>
+              <button class="send-btn dim" id="send-btn"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"><path d="M8 13V3M4 7l4-4 4 4"/></svg></button>
+            </div>
+          </div>
+        </div>
+        <div class="chip-bar idle">
+          <button class="chip">Save</button>
+          <button class="chip">Swap</button>
+          <button class="chip">Send</button>
+          <button class="chip">Credit</button>
+          <button class="chip">Receive</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chat view -->
+    <div class="chat-view" id="chat-view" style="display:none">
+      <div class="messages" id="messages">
+        <div class="msgs-inner" id="msgs-inner">
+          <div class="task-divider">task initiated</div>
+          <div style="display:flex;justify-content:flex-end"><div class="user-msg">Make me a lo-fi beat called "Midnight Rain" and sell it for $3</div></div>
+        </div>
+      </div>
+      <div class="composer-row">
+        <div class="composer-row-inner">
+          <div class="chip-bar chat">
+            <button class="chip">Save</button>
+            <button class="chip">Swap</button>
+            <button class="chip">Send</button>
+            <button class="chip">Credit</button>
+            <button class="chip">Receive</button>
+          </div>
+          <div class="composer">
+            <input class="composer-input" placeholder="Ask anything…" autocomplete="off" readonly/>
+            <div class="composer-footer">
+              <div class="composer-left"><button class="composer-icon-btn"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"><path d="M8 3v10M3 8h10"/></svg></button></div>
+              <div class="composer-right">
+                <button class="composer-icon-btn"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"><rect x="6" y="2" width="4" height="8" rx="2"/><path d="M3.5 8a4.5 4.5 0 0 0 9 0"/><path d="M8 12.5V14"/></svg></button>
+                <button class="send-btn dim"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"><path d="M8 13V3M4 7l4-4 4 4"/></svg></button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+const MSG = 'Make me a lo-fi beat called "Midnight Rain" and sell it for $3';
+let playing=false, wavePos=0, waveIv=null;
+
+function $(id){ return document.getElementById(id); }
+
+function scrollToBottom(){
+  const m=$('messages');
+  requestAnimationFrame(()=>{ m.scrollTop=m.scrollHeight; });
+}
+
+function append(el, delay=0){
+  return new Promise(resolve=>{
+    setTimeout(()=>{
+      el.style.opacity='0';
+      el.style.transform='translateY(6px)';
+      el.style.transition='opacity .3s ease, transform .3s ease';
+      $('msgs-inner').appendChild(el);
+      scrollToBottom();
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{
+        el.style.opacity='1'; el.style.transform='translateY(0)';
+        setTimeout(resolve, 300);
+      }));
+    }, delay);
+  });
+}
+
+function makeSuggestionChips(chips){
+  const wrap=document.createElement('div'); wrap.className='suggestion-chips';
+  chips.forEach(({icon,label})=>{ const btn=document.createElement('button'); btn.className='suggestion-chip'; btn.innerHTML=`<span class="sc-icon">${icon}</span><span class="sc-label">${label}</span>`; wrap.appendChild(btn); });
+  return wrap;
+}
+function makeReasoningAcc(text, tokens){
+  const d=document.createElement('div'); d.className='reasoning-acc';
+  d.innerHTML=`<div class="reasoning-head"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25" style="transform:rotate(90deg)"><path d="m6 4 4 4-4 4"/></svg><span class="reasoning-title">How I evaluated this</span><span class="reasoning-tokens">${tokens}</span></div><div class="reasoning-body open">${text}</div>`;
+  d.querySelector('.reasoning-head').addEventListener('click',()=>{ d.querySelector('.reasoning-body').classList.toggle('open'); scrollToBottom(); });
+  return d;
+}
+function makeThinking(){ const d=document.createElement('div'); d.className='thinking-row'; d.innerHTML=`<span class="thinking-sparkle">✦</span><span>Thinking</span>`; return d; }
+function fadeOut(el,cb){ el.style.transition='opacity .25s'; el.style.opacity='0'; setTimeout(()=>{ el.remove(); if(cb)cb(); },280); }
+
+function makeToolAcc(icon, name, meta, contentHTML){
+  const d=document.createElement('div'); d.className='tool-acc';
+  d.innerHTML=`<div class="tool-acc-head"><span class="tacc-prefix">—</span><span class="tacc-icon">${icon}</span><span class="tacc-name">${name}</span>${meta?`<span class="tacc-meta">${meta}</span>`:''}<span class="tacc-chevron">↓</span></div><div class="tool-acc-body">${contentHTML}</div>`;
+  d.querySelector('.tool-acc-head').addEventListener('click',()=>{ const b=d.querySelector('.tool-acc-body'),c=d.querySelector('.tacc-chevron'); b.classList.toggle('open'); c.classList.toggle('open'); scrollToBottom(); });
+  d.expand=()=>{ d.querySelector('.tool-acc-body').classList.add('open'); d.querySelector('.tacc-chevron').classList.add('open'); d.classList.add('done'); d.querySelector('.tacc-prefix').textContent='✓'; setTimeout(scrollToBottom,370); };
+  return d;
+}
+
+function makeAudricMsg(text, meta){
+  const d=document.createElement('div'); d.className='audric-msg';
+  d.innerHTML=`<span class="sparkle">✦</span><div><div class="audric-text">${text}</div>${meta?`<div class="audric-tokens">${meta}</div>`:''}</div>`;
+  return d;
+}
+
+function makeUserMsg(text){
+  const wrap=document.createElement('div');
+  wrap.style.cssText='display:flex;justify-content:flex-end';
+  const d=document.createElement('div'); d.className='user-msg'; d.textContent=text;
+  wrap.appendChild(d); return wrap;
+}
+
+function makeDivider(text){
+  const d=document.createElement('div'); d.className='task-divider'; d.textContent=text; return d;
+}
+
+function buildTrackCard(){
+  const card=document.createElement('div');
+  card.className='track-card';
+  card.innerHTML=`
+    <div class="track-cover">
+      <div class="track-cover-glow"></div>
+      <div class="track-cover-emoji">🌧</div>
+      <div class="track-cover-title">Midnight Rain</div>
+      <div class="track-cover-by">Jordan · Audric Store</div>
+    </div>
+    <div class="track-player">
+      <button class="play-btn" id="play-btn">▶</button>
+      <div class="waveform" id="waveform"></div>
+      <span class="track-dur">2:34</span>
+    </div>
+    <div class="track-meta">
+      <div class="tm-row"><span class="tm-lbl">Listed at</span><span class="tm-val link">audric.ai/store/mR7k</span></div>
+      <div class="tm-row"><span class="tm-lbl">Price</span><span class="tm-val">$3.00 USDC</span></div>
+      <div class="tm-row"><span class="tm-lbl">You earn</span><span class="tm-val green">$2.76 per sale (92%)</span></div>
+    </div>
+    <div class="seal-row">🔒 Seal gating active · buyers unlock on payment · on-chain forever</div>`;
+  return card;
+}
+
+function initWaveform(){
+  const wf=$('waveform');
+  if(!wf) return;
+  const heights=[4,7,11,16,20,16,11,16,22,18,14,18,14,10,14,18,22,18,14,10,16,20,16,11,7,11,16,20,16,11,8,14,18,14,10,8,12,18,14];
+  heights.forEach(h=>{ const b=document.createElement('div'); b.className='w-bar'; b.style.height=h+'px'; wf.appendChild(b); });
+  const playBtn=$('play-btn');
+  playBtn.addEventListener('click',()=>{
+    playing=!playing;
+    playBtn.textContent=playing?'⏸':'▶';
+    if(playing){
+      const bars=document.querySelectorAll('.w-bar');
+      waveIv=setInterval(()=>{
+        bars.forEach(b=>b.classList.remove('lit'));
+        if(bars[wavePos%bars.length]) bars[wavePos%bars.length].classList.add('lit');
+        wavePos++;
+      },80);
+    } else { clearInterval(waveIv); document.querySelectorAll('.w-bar').forEach(b=>b.classList.remove('lit')); }
+  });
+}
+
+function typeMsg(text, cb){
+  const inp=$('composer-input'); $('send-btn').classList.remove('dim'); $('send-btn').classList.add('active');
+  let i=0; const iv=setInterval(()=>{ inp.value=text.slice(0,i); inp.scrollLeft=inp.scrollWidth; if(++i>text.length){ clearInterval(iv); setTimeout(cb,350); } }, 42);
+}
+
+function switchToChat(){
+  $('idle-view').style.display='none';
+  const cv=$('chat-view'); cv.style.display='flex'; cv.style.opacity='1';
+}
+
+// Auto-play
+setTimeout(()=>{
+  typeMsg(MSG, ()=>{
+    switchToChat();
+    $('composer-input').value='';
+
+    let t=0; function at(ms,fn){ setTimeout(fn,ms); }
+
+    let thinkEl;
+    at(t+=500, ()=>{ thinkEl=makeThinking(); append(thinkEl); });
+    at(t+=700, ()=>{
+      const r=makeReasoningAcc('Jordan wants a lo-fi beat called "Midnight Rain" listed for $3. I\'ll call Suno via MPP to generate the track, DALL-E for album art, then upload permanently to Walrus and gate access with a Seal pay-to-unlock contract. Jordan keeps 92%.','58 tokens');
+      append(r);
+    });
+    at(t+=800, ()=>{ fadeOut(thinkEl, ()=>{
+      const a=makeToolAcc('🎵','mpp_call','Suno · $0.05','<div class="result-card"><div class="rc-header"><span>Track generated</span><span>2:34</span></div><div class="rc-row"><span class="rc-label">Title</span><span class="rc-value">Midnight Rain</span></div><div class="rc-row"><span class="rc-label">Style</span><span class="rc-value">lo-fi hip hop · 80bpm</span></div></div>');
+      append(a).then(()=>setTimeout(()=>a.expand(),200));
+    }); });
+    at(t+=1100, ()=>{ const a=makeToolAcc('🎨','mpp_call','DALL-E · $0.04','<div class="result-card"><div class="rc-header"><span>Album cover generated</span></div><div class="rc-row"><span class="rc-label">Prompt</span><span class="rc-value" style="font-size:12px">rainy night city skyline, lo-fi aesthetic</span></div></div>'); append(a).then(()=>setTimeout(()=>a.expand(),200)); });
+    at(t+=1000, ()=>{ const a=makeToolAcc('☁️','walrus_upload','','<div class="result-card"><div class="rc-header"><span>Uploaded to Walrus</span><span style="color:var(--green)">Permanent</span></div><div class="rc-row"><span class="rc-label">Storage</span><span class="rc-value">Decentralised · forever</span></div></div>'); append(a).then(()=>setTimeout(()=>a.expand(),200)); });
+    at(t+=1000, ()=>{ const a=makeToolAcc('🔒','seal_gate','','<div class="result-card"><div class="rc-header"><span>Pay-to-unlock enabled</span></div><div class="rc-row"><span class="rc-label">Unlock price</span><span class="rc-value">$3.00 USDC</span></div><div class="rc-row"><span class="rc-label">You receive</span><span class="rc-value green">$2.76 (92%)</span></div></div>'); append(a).then(()=>setTimeout(()=>a.expand(),200)); });
+    at(t+=900, ()=> append(makeAudricMsg('Done. <strong>"Midnight Rain"</strong> is live on your Store — permanent on Walrus, pay-to-unlock via Seal.','$0.09 total · 34 tokens · 1.8s')));
+
+    at(t+=700, ()=>{ const card=buildTrackCard(); append(card).then(()=>{ initWaveform(); }); $('s-tracks').textContent='1'; });
+
+    at(t+=3000, ()=>{
+      const notif=document.createElement('div'); notif.className='sale-notif';
+      notif.innerHTML=`<div class="sn-top">Sale · +$2.76 received</div><div class="sn-body">Someone bought <strong>Midnight Rain</strong> — they now have permanent access on Sui. audric.ai/store/mR7k · 0.3s</div>`;
+      append(notif); $('s-earned').textContent='$2.76'; $('bal-avail').textContent='Available $637.24';
+      setTimeout(()=>{ append(makeSuggestionChips([
+        {icon:'🎵',label:'New Track'},
+        {icon:'📊',label:'Store Analytics'},
+        {icon:'💰',label:'Withdraw Earnings'},
+      ])); }, 600);
+      const pb=$('play-btn'); if(pb&&!playing) pb.click();
+    });
+  });
+}, 1500);
+</script>
+</body>
+</html>
