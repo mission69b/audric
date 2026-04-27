@@ -6,6 +6,18 @@ import { fmtUsd } from '../primitives';
 interface TimelineData {
   available: true;
   address: string;
+  /**
+   * [Bug — 2026-04-27] When the canvas targets a watched / contact
+   * address rather than the signed-in user, snapshot history doesn't
+   * exist (PortfolioSnapshot rows are keyed by Audric userId, not
+   * arbitrary wallets). The API falls back to a single live data
+   * point, which produces a degenerate one-point polyline that
+   * renders as an empty chart box. We use `isSelfRender` to swap in
+   * a clear "current snapshot only" view in that case instead of
+   * silently showing an empty chart. Optional for backwards compat
+   * with engines that don't emit it (treated as self-render).
+   */
+  isSelfRender?: boolean;
 }
 
 interface Snapshot {
@@ -82,6 +94,10 @@ export function PortfolioTimelineCanvas({ data, onAction }: Props) {
   const [periodIdx, setPeriodIdx] = useState(1); // default 30D
 
   const address = 'available' in data && data.available ? data.address : null;
+  // Engines older than this build omit the flag — absence == self-render
+  // (legacy behavior). Only the explicit `false` switches us into the
+  // watched-address copy.
+  const isSelfRender = 'available' in data && data.available ? (data.isSelfRender ?? true) : true;
   const period = PERIODS[periodIdx];
 
   useEffect(() => {
@@ -131,8 +147,67 @@ export function PortfolioTimelineCanvas({ data, onAction }: Props) {
         <span className="text-3xl">📈</span>
         <p className="text-sm text-fg-primary font-medium">No Data Yet</p>
         <p className="text-xs text-fg-secondary max-w-xs leading-relaxed">
-          Portfolio snapshots are collected daily. Check back tomorrow for your first data point.
+          {isSelfRender
+            ? 'Portfolio snapshots are collected daily. Check back tomorrow for your first data point.'
+            : 'No portfolio history is tracked for this address yet.'}
         </p>
+      </div>
+    );
+  }
+
+  // [Bug — 2026-04-27] One snapshot = degenerate <polyline> with a
+  // single point, which browsers render as nothing. Show a clear
+  // current-state view instead of a silent empty chart. This is the
+  // common path for watched / contact addresses that aren't Audric
+  // users (no PortfolioSnapshot rows; the API falls back to a single
+  // live data point).
+  if (snapshots.length < 2) {
+    return (
+      <div className="space-y-4">
+        <div className="space-y-0.5">
+          <div className="font-mono text-lg text-fg-primary font-medium">
+            ${fmtUsd(latest?.netWorthUsd ?? 0)}
+          </div>
+          <div className="font-mono text-[10px] text-fg-muted uppercase tracking-wider">
+            Current snapshot
+          </div>
+        </div>
+
+        <div className="rounded-lg border border-border-subtle bg-surface-page py-6 px-3 text-center">
+          <p className="font-mono text-[10px] text-fg-secondary leading-relaxed max-w-xs mx-auto">
+            {isSelfRender
+              ? "Your first snapshot is in. Check back tomorrow once we've collected a second data point and we'll start drawing the trend."
+              : "We don't track historical snapshots for this wallet yet — only Audric users get a daily trendline. Showing the live snapshot only."}
+          </p>
+        </div>
+
+        {latest && (
+          <div className="space-y-1 font-mono text-xs">
+            <div className="flex justify-between">
+              <span className="text-fg-muted">Wallet</span>
+              <span className="text-fg-primary">${fmtUsd(latest.walletValueUsd)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-fg-muted">Savings</span>
+              <span className="text-success-solid">${fmtUsd(latest.savingsValueUsd)}</span>
+            </div>
+            {latest.debtValueUsd > 0 && (
+              <div className="flex justify-between">
+                <span className="text-fg-muted">Debt</span>
+                <span className="text-error-solid">-${fmtUsd(latest.debtValueUsd)}</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {onAction && (
+          <button
+            onClick={() => onAction(isSelfRender ? 'Give me a full financial report' : `Give me a full portfolio overview of ${address}`)}
+            className="w-full rounded-md border border-border-subtle py-1.5 font-mono text-[10px] tracking-wider uppercase text-fg-secondary hover:text-fg-primary hover:border-fg-primary/30 transition"
+          >
+            Full report →
+          </button>
+        )}
       </div>
     );
   }
