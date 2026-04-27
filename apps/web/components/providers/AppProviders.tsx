@@ -6,6 +6,7 @@ import { getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
 import { useState } from 'react';
 import { ToastProvider } from '@/components/ui/Toast';
 import { ThemeProvider } from '@/components/providers/ThemeProvider';
+import { ChunkErrorReloader } from '@/components/shell/ChunkErrorReloader';
 import '@mysten/dapp-kit/dist/index.css';
 
 const { networkConfig } = createNetworkConfig({
@@ -28,6 +29,10 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
         <SuiClientProvider networks={networkConfig} defaultNetwork={defaultNetwork}>
           <WalletProvider autoConnect>
             <ToastProvider>
+              {/* Skew/stale-bundle safety net. Mounted inside
+                  ToastProvider so the version-check hook can fire
+                  the "New version available" toast. Renders nothing. */}
+              <ChunkErrorReloader />
               {children}
             </ToastProvider>
           </WalletProvider>

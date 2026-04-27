@@ -1,5 +1,15 @@
 import type { NextConfig } from 'next';
 
+// Resolve the deployment id once and reuse it for both the build-time
+// `deploymentId` (server/edge skew routing) and the
+// `NEXT_PUBLIC_DEPLOYMENT_ID` env var (baked into the client bundle so
+// `useVersionCheck` can compare what the browser shipped with against
+// what `/api/build-id` reports as live).
+const RESOLVED_DEPLOYMENT_ID =
+  process.env.VERCEL_DEPLOYMENT_ID
+  || process.env.VERCEL_GIT_COMMIT_SHA
+  || 'local-dev';
+
 const securityHeaders = [
   {
     key: 'X-Content-Type-Options',
@@ -55,6 +65,28 @@ const nextConfig: NextConfig = {
         headers: securityHeaders,
       },
     ];
+  },
+  // Vercel Skew Protection: pin every framework-managed asset/navigation
+  // request to the deployment that served the user's initial HTML so a
+  // tab opened against the previous build keeps loading chunks from the
+  // previous build instead of 404-ing against the new one (which is what
+  // produced the post-deploy flicker users saw before they signed out and
+  // back in to force a fresh HTML fetch). Vercel stamps this build-time
+  // ID into `routes-manifest.json` and uses it on the edge to route
+  // `?dpl=` and `x-deployment-id` requests to the matching deployment.
+  // Falls back to `VERCEL_GIT_COMMIT_SHA` for prebuilt deploys, and
+  // `'local-dev'` for `pnpm dev` (where skew is irrelevant).
+  // Skew Protection itself must also be toggled on under Vercel project
+  // Settings → Advanced → Skew Protection; this config is the build-side
+  // half. See `audric-build-tracker.md` Phase H tail (S.24, 2026-04-27).
+  deploymentId: RESOLVED_DEPLOYMENT_ID,
+  // Inline the same id into the client bundle so the version-check
+  // hook can detect a deploy mismatch (build-time id vs. the id served
+  // live by `/api/build-id`). `NEXT_PUBLIC_*` is statically replaced at
+  // build time by Next, which is exactly what we want — the value is
+  // frozen to the deploy that produced this bundle.
+  env: {
+    NEXT_PUBLIC_DEPLOYMENT_ID: RESOLVED_DEPLOYMENT_ID,
   },
   turbopack: {},
 };
