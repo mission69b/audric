@@ -53,12 +53,17 @@ interface MultiWalletData {
     debtUsd: number;
     estimatedDailyYield: number;
   };
+  // Each wallet is the canonical {@link Portfolio} shape from
+  // `/api/analytics/portfolio-multi`, with two derived fields the
+  // route adds on top: `netWorth` (alias of `netWorthUsd`) and
+  // `label` / `isPrimary` (linked-wallet metadata).
   wallets: Array<{
     address: string;
     label: string | null;
     isPrimary: boolean;
     netWorth: number;
-    wallet: { totalUsd: number };
+    netWorthUsd: number;
+    walletValueUsd: number;
     positions: { savings: number; borrows: number; savingsRate: number; healthFactor: number | null };
   }>;
 }
@@ -157,7 +162,7 @@ export function FullPortfolioCanvas({ data, onAction }: Props) {
     : livePortfolio ? livePortfolio.positions.borrows
     : data.currentDebt ?? 0;
   const walletUsd = isAllTab ? multiData!.aggregated.walletUsd
-    : selectedWallet ? selectedWallet.wallet.totalUsd
+    : selectedWallet ? selectedWallet.walletValueUsd
     : livePortfolio ? livePortfolio.walletValueUsd
     : 0;
   const netWorth = isAllTab ? multiData!.aggregated.netWorthUsd

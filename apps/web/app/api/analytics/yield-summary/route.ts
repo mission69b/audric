@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { fetchPositions } from '@/lib/portfolio-data';
+import { getPortfolio } from '@/lib/portfolio';
 
 export const runtime = 'nodejs';
 
@@ -81,9 +81,9 @@ export async function GET(request: NextRequest) {
       currentSavings = latest.savingsValueUsd ?? 0;
     }
 
-    const livePositions = await fetchPositions(address);
-    const liveSavings = livePositions.savings;
-    const liveRate = livePositions.savingsRate;
+    const livePortfolio = await getPortfolio(address);
+    const liveSavings = livePortfolio.positions.savings;
+    const liveRate = livePortfolio.positions.savingsRate;
 
     if (liveSavings > currentSavings || currentSavings === 0) {
       currentSavings = liveSavings;

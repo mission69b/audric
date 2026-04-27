@@ -5,7 +5,7 @@ import { AggregatorClient, Env, getProvidersExcluding } from '@cetusprotocol/agg
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { validateJwt, isValidSuiAddress, validateAmount } from '@/lib/auth';
 import { getRegistry, getClient } from '@/lib/protocol-registry';
-import { fetchWalletBalances } from '@/lib/portfolio-data';
+import { getPortfolio } from '@/lib/portfolio';
 import { resolveTokenType, getDecimalsForCoinType, USDC_TYPE, SUI_TYPE, assertAllowedAsset } from '@t2000/sdk';
 
 export const runtime = 'nodejs';
@@ -59,7 +59,9 @@ function extractMoveCallTargets(tx: Transaction): string[] {
 
 /**
  * Server-side balance validation — prevents building transactions that will fail on-chain.
- * Uses the shared fetchWalletBalances for USDC/SUI, falls back to direct getBalance for other coins.
+ * Uses canonical `getPortfolio()` for USDC validation (the common path), and a
+ * direct `getBalance` only when we need precision against an exact `coinType`
+ * that `getPortfolio`'s symbol-aggregated allocations can't disambiguate.
  * Returns an error message string if validation fails, or null if OK.
  */
 async function validateBalance(
@@ -74,12 +76,19 @@ async function validateBalance(
       const coinType = resolveTokenType(sym) ?? USDC_TYPE;
 
       if (coinType === USDC_TYPE || sym === 'USDC') {
-        const wallet = await fetchWalletBalances(address);
-        if (amount > wallet.USDC + 0.001) {
-          return `Insufficient USDC balance: you have ${wallet.USDC.toFixed(4)} but requested ${amount}`;
+        const portfolio = await getPortfolio(address);
+        const usdc = portfolio.walletAllocations.USDC ?? 0;
+        if (amount > usdc + 0.001) {
+          return `Insufficient USDC balance: you have ${usdc.toFixed(4)} but requested ${amount}`;
         }
       } else {
+        // CANONICAL-BYPASS: tradeable balance check against an arbitrary
+        // coin type. `getPortfolio` aggregates by symbol, but tx-build
+        // validation needs precision against the EXACT `coinType`
+        // requested (some legacy tokens collide on symbol). Direct
+        // RPC call is the right call here.
         const client = getClient();
+        // eslint-disable-next-line no-restricted-properties -- CANONICAL-BYPASS: coin-type-precise balance for tx-build validation
         const bal = await client.getBalance({ owner: address, coinType });
         const decimals = getDecimalsForCoinType(coinType);
         const available = Number(bal.totalBalance) / 10 ** decimals;
@@ -92,12 +101,15 @@ async function validateBalance(
       const coinType = resolveTokenType(fromToken) ?? fromToken;
 
       if (coinType === USDC_TYPE || fromToken === 'USDC') {
-        const wallet = await fetchWalletBalances(address);
-        if (amount > wallet.USDC + 0.001) {
-          return `Insufficient USDC balance: you have ${wallet.USDC.toFixed(4)} but requested ${amount}`;
+        const portfolio = await getPortfolio(address);
+        const usdc = portfolio.walletAllocations.USDC ?? 0;
+        if (amount > usdc + 0.001) {
+          return `Insufficient USDC balance: you have ${usdc.toFixed(4)} but requested ${amount}`;
         }
       } else {
+        // CANONICAL-BYPASS: see note above — coin-type-precise balance check.
         const client = getClient();
+        // eslint-disable-next-line no-restricted-properties -- CANONICAL-BYPASS: coin-type-precise balance for tx-build validation
         const bal = await client.getBalance({ owner: address, coinType });
         const decimals = getDecimalsForCoinType(coinType);
         const available = Number(bal.totalBalance) / 10 ** decimals;

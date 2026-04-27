@@ -1,14 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateInternalKey } from '@/lib/internal-auth';
 import { isValidSuiAddress } from '@/lib/auth';
-import { fetchPositions } from '@/lib/portfolio-data';
+import { getPortfolio } from '@/lib/portfolio';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 /**
  * GET /api/internal/health-factor?address=0x...
- * Returns the user's current NAVI health factor.
+ *
+ * Internal endpoint: returns the user's current NAVI health factor.
+ * Thin adapter around `getPortfolio()` — pulls the canonical positions
+ * slice and surfaces the `healthFactor` field only.
  */
 export async function GET(request: NextRequest) {
   const auth = validateInternalKey(request.headers.get('x-internal-key'));
@@ -21,9 +24,8 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const positions = await fetchPositions(address);
-    const hf = positions?.healthFactor ?? null;
-    return NextResponse.json({ healthFactor: hf });
+    const { positions } = await getPortfolio(address);
+    return NextResponse.json({ healthFactor: positions.healthFactor ?? null });
   } catch (err) {
     console.error('[health-factor] Error:', err);
     return NextResponse.json({ healthFactor: null });

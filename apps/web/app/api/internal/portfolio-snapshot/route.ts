@@ -1,14 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { validateInternalKey } from '@/lib/internal-auth';
-import { fetchPortfolio } from '@/lib/portfolio-data';
+import { getPortfolio } from '@/lib/portfolio';
 
 export const runtime = 'nodejs';
 
 /**
  * POST /api/internal/portfolio-snapshot
- * Called by ECS cron to snapshot portfolio state for all active users.
+ *
+ * Daily ECS cron — snapshots portfolio state for every active user.
+ * Thin adapter around `getPortfolio()` so wallet/savings/debt numbers
+ * persisted to history match exactly what every other surface shows
+ * for the same wallet on the same day.
+ *
  * Headers: x-internal-key
+ *
+ * BACKFIX (April 2026): pre-rewrite, this cron's `walletValueUsd`
+ * undercounted wallets by storing only `wallet.totalUsd` from the
+ * legacy `fetchPortfolio` (which summed USDC + USDsui only, dropping
+ * SUI and tradeables). The migration to `getPortfolio()` automatically
+ * fixes the daily writes going forward — old rows stay frozen and
+ * undercounted; backfill is documented in the plan but not run here.
  */
 export async function POST(request: NextRequest) {
   const auth = validateInternalKey(request.headers.get('x-internal-key'));
@@ -17,9 +29,6 @@ export async function POST(request: NextRequest) {
   const today = new Date();
   today.setUTCHours(0, 0, 0, 0);
 
-  // [SIMPLIFICATION DAY 5] onboardedAt column dropped — onboarding gate
-  // retired. Snapshot every user; the cron is idempotent (skips if a row
-  // already exists for today) so the slightly larger candidate set is fine.
   const users = await prisma.user.findMany({
     select: { id: true, suiAddress: true },
   });
@@ -35,23 +44,26 @@ export async function POST(request: NextRequest) {
       });
       if (existing) { skipped++; continue; }
 
-      const portfolio = await fetchPortfolio(user.suiAddress);
+      const portfolio = await getPortfolio(user.suiAddress);
 
       await prisma.portfolioSnapshot.create({
         data: {
           userId: user.id,
           date: today,
-          walletValueUsd: portfolio.wallet.totalUsd,
+          // walletValueUsd now sums every priced coin (SUI + USDC + USDsui
+          // + tradeables) — see [/Users/funkii/dev/audric/apps/web/lib/portfolio.ts]
+          // and the `single-source-of-truth` workspace rule.
+          walletValueUsd: portfolio.walletValueUsd,
           savingsValueUsd: portfolio.positions.savings,
           debtValueUsd: portfolio.positions.borrows,
           netWorthUsd: portfolio.netWorthUsd,
           yieldEarnedUsd: Math.round(portfolio.estimatedDailyYield * 10000) / 10000,
           healthFactor: portfolio.positions.healthFactor,
-          // Persist the weighted savings APY here so the daily 02:00 UTC
+          // Persist the weighted savings APY so the daily 02:00 UTC
           // financial-context-snapshot cron can read it from the latest
           // snapshot row instead of re-fetching positions per user.
           savingsRate: portfolio.positions.savingsRate,
-          allocations: portfolio.wallet.allocations,
+          allocations: portfolio.walletAllocations,
         },
       });
       created++;

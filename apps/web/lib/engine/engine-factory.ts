@@ -6,8 +6,6 @@ import {
   READ_TOOLS,
   WRITE_TOOLS,
   adaptAllServerTools,
-  fetchWalletCoins,
-  fetchTokenPrices,
   buildCachedSystemPrompt,
   classifyEffort,
   applyToolFlags,
@@ -34,7 +32,7 @@ import { GOAL_TOOLS } from './goal-tools';
 import { ADVICE_TOOLS } from './advice-tool';
 import { audricSaveContactTool, audricListContactsTool } from './contact-tools';
 import { prisma } from '@/lib/prisma';
-import { fetchPositions as fetchPortfolioPositions } from '@/lib/portfolio-data';
+import { getPortfolio, getTokenPrices } from '@/lib/portfolio';
 import {
   buildAdviceContext,
   buildFullDynamicContext,
@@ -177,9 +175,17 @@ async function ensureMcpConnected(): Promise<McpClientManager> {
   return mcpManager!;
 }
 
+/**
+ * [single-source-of-truth — Apr 2026] Reads from canonical `getPortfolio`
+ * (which calls `fetchPositions` under the hood) so the engine, the
+ * dashboard, the daily cron, and the LLM all see identical NAVI position
+ * data. The transform here just renames the wire shape's `borrowsDetail`
+ * → engine's `borrows_detail`.
+ */
 export async function fetchServerPositions(address: string): Promise<ServerPositionData | undefined> {
   try {
-    const pos = await fetchPortfolioPositions(address);
+    const portfolio = await getPortfolio(address);
+    const pos = portfolio.positions;
     return {
       savings: pos.savings,
       borrows: pos.borrows,
@@ -267,10 +273,15 @@ export async function createEngine(
 
   const userId = userRecord?.id;
 
+  // [single-source-of-truth — Apr 2026] One canonical `getPortfolio()`
+  // call replaces the previous `fetchServerPositions` + `fetchWalletCoins`
+  // pair. Wallet (priced) and NAVI positions come from the same
+  // canonical fetcher the dashboard, /api/portfolio, and the daily cron
+  // use, so the LLM's synthetic balance_check seed and the rendered
+  // dashboard hero can never disagree.
   const [
     mgr,
-    positions,
-    walletCoins,
+    portfolio,
     swapTokenNames,
     goals,
     adviceContext,
@@ -279,10 +290,9 @@ export async function createEngine(
     financialContext,
   ] = await Promise.all([
     ensureMcpConnected(),
-    fetchServerPositions(address),
-    fetchWalletCoins(address, SUI_RPC_URL).catch((err) => {
-      console.warn('[engine] wallet coin fetch failed:', err);
-      return [];
+    getPortfolio(address).catch((err) => {
+      console.warn('[engine] canonical portfolio fetch failed:', err);
+      return null;
     }),
     import('@t2000/sdk').then((m) => Object.keys(m.TOKEN_MAP)).catch(() => [] as string[]),
     prisma.savingsGoal.findMany({
@@ -333,41 +343,70 @@ export async function createEngine(
     confidence: number | null;
   }> = [];
 
-  const nonZeroCoins = walletCoins.filter((c) => Number(c.totalBalance) > 0);
+  // [single-source-of-truth — Apr 2026] Derive held coins + per-coin
+  // prices from the canonical portfolio's already-priced `wallet` array.
+  // No second BlockVision round-trip for held coins — same data the
+  // dashboard sees.
+  const walletCoinsPriced = portfolio?.wallet ?? [];
+  const nonZeroCoins = walletCoinsPriced.filter(
+    (c) => c.balance != null && Number(c.balance) > 0,
+  );
 
-  // Fetch prices for held coins PLUS the canonical supported assets so swap
-  // estimates work even when the user is buying a token they don't yet hold.
-  // Without this the LLM has no price for tokens like NAVX/CETUS/DEEP/ETH/WAL
-  // and falls back to (stale) training memory — the root cause of the
-  // "$3.50/SUI" hallucination class of bugs.
+  // Map positions back into the engine `ServerPositionData` shape (just
+  // a field rename for `borrowsDetail` → `borrows_detail`).
+  const positions: ServerPositionData | undefined = portfolio
+    ? {
+        savings: portfolio.positions.savings,
+        borrows: portfolio.positions.borrows,
+        savingsRate: portfolio.positions.savingsRate,
+        healthFactor: portfolio.positions.healthFactor,
+        maxBorrow: portfolio.positions.maxBorrow,
+        pendingRewards: portfolio.positions.pendingRewards,
+        supplies: portfolio.positions.supplies.map((s) => ({
+          asset: s.asset, amount: s.amount, amountUsd: s.amountUsd, apy: s.apy, protocol: s.protocol,
+        })),
+        borrows_detail: portfolio.positions.borrowsDetail.map((b) => ({
+          asset: b.asset, amount: b.amount, amountUsd: b.amountUsd, apy: b.apy, protocol: b.protocol,
+        })),
+      }
+    : undefined;
+
+  // Reference prices for tokens the user can swap INTO but doesn't
+  // currently hold. The canonical portfolio only prices held coins, so
+  // tokens like NAVX/CETUS/DEEP/ETH/WAL still need a separate
+  // `fetchTokenPrices` call — without it the LLM falls back to (stale)
+  // training memory and emits "$3.50/SUI" hallucinations.
   //
-  // [v1.4 BlockVision] [v1.4.1 — M6'] This is a critical-path call:
-  // every authenticated `createEngine()` boot waits on it. The
-  // BlockVision `fetchTokenPrices` helper wraps each chunk in
-  // `AbortSignal.timeout(3000)` and chunks transparently when
-  // `tokenIds` exceeds the 10-token API cap; the `.catch(() => ({}))`
-  // envelope below stays so a slow / failing BlockVision response
-  // never hangs the engine.
+  // [v1.4 BlockVision] [v1.4.1 — M6'] Critical-path call. The
+  // BlockVision helper wraps each chunk in `AbortSignal.timeout(3000)`
+  // and chunks transparently when `tokenIds` exceeds the 10-token API
+  // cap; the `.catch(() => ({}))` envelope keeps a slow / failing
+  // response from hanging the engine.
   const referenceCoinTypes = Object.values(SUPPORTED_ASSETS).map((a) => a.type);
   const heldCoinTypes = nonZeroCoins.map((c) => c.coinType);
-  const allCoinTypesToPrice = Array.from(new Set([...heldCoinTypes, ...referenceCoinTypes]));
-  const richPrices = await fetchTokenPrices(
-    allCoinTypesToPrice,
-    BLOCKVISION_API_KEY,
-  ).catch(() => ({} as Record<string, { price: number; change24h?: number }>));
+  const heldCoinTypeSet = new Set(heldCoinTypes);
+  const referenceOnlyCoinTypes = referenceCoinTypes.filter((t) => !heldCoinTypeSet.has(t));
+  const referencePrices = referenceOnlyCoinTypes.length > 0
+    ? await getTokenPrices(referenceOnlyCoinTypes).catch(
+        () => ({} as Record<string, { price: number; change24h?: number }>),
+      )
+    : {};
+
   const prices: Record<string, number> = {};
-  for (const [coinType, entry] of Object.entries(richPrices)) {
-    prices[coinType] = entry.price;
+  for (const coin of walletCoinsPriced) {
+    if (coin.price != null) prices[coin.coinType] = coin.price;
+  }
+  for (const [coinType, entry] of Object.entries(referencePrices)) {
+    if (prices[coinType] == null) prices[coinType] = entry.price;
   }
 
   const balanceSummary: WalletBalanceSummary = {
     coins: nonZeroCoins.map((c) => {
-      const amount = Number(c.totalBalance) / 10 ** c.decimals;
-      const price = prices[c.coinType];
+      const amount = Number(c.balance) / 10 ** c.decimals;
       return {
         symbol: c.symbol,
         amount,
-        usdValue: price ? amount * price : undefined,
+        usdValue: c.usdValue ?? (c.price != null ? amount * c.price : undefined),
       };
     }),
     prices,
@@ -380,8 +419,7 @@ export async function createEngine(
   // so the LLM has a price for every token it can swap into.
   const priceCache = new Map<string, number>();
   for (const coin of nonZeroCoins) {
-    const p = prices[coin.coinType];
-    if (p) priceCache.set(coin.symbol.toUpperCase(), p);
+    if (coin.price != null) priceCache.set(coin.symbol.toUpperCase(), coin.price);
   }
   for (const asset of Object.values(SUPPORTED_ASSETS)) {
     if (priceCache.has(asset.symbol.toUpperCase())) continue;

@@ -43,6 +43,13 @@ pnpm-debug.log*
 # local-only redesign artifacts (kept out of the repo on purpose)
 design_handoff_audric*/
 scripts/
+# but track tooling under apps/web/scripts (canonical scan, shadow check, etc.)
+!apps/web/scripts/
+!apps/web/scripts/**
+# ...except local-only one-offs (audit logs, baseline runners, stress tests)
+apps/web/scripts/.*-sent.json
+apps/web/scripts/run-turn-metrics-baseline.mjs
+apps/web/scripts/stress-test-prisma-*.mjs
 
 # pitch-deck iterations (marketing artifacts, not part of the app)
 pitch-deck.html

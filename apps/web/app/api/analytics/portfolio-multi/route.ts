@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isValidSuiAddress } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { fetchPortfolio, type PortfolioSnapshot } from '@/lib/portfolio-data';
+import { getPortfolio, type Portfolio } from '@/lib/portfolio';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-interface WalletPortfolio extends PortfolioSnapshot {
+interface WalletPortfolio extends Portfolio {
   netWorth: number;
-  address: string;
   label: string | null;
   isPrimary: boolean;
 }
@@ -17,7 +16,11 @@ interface WalletPortfolio extends PortfolioSnapshot {
  * GET /api/analytics/portfolio-multi
  * Header: x-sui-address (primary wallet for auth)
  *
- * Returns portfolio data for all linked wallets + the primary wallet.
+ * Returns the canonical {@link Portfolio} for the primary wallet plus
+ * every linked wallet, plus an aggregated total. Thin adapter around
+ * `getPortfolio()` — every per-wallet number comes from the canonical
+ * fetcher, so totals on this endpoint always match what
+ * `/api/portfolio` returns for each individual wallet.
  */
 export async function GET(request: NextRequest) {
   const address = request.headers.get('x-sui-address');
@@ -50,8 +53,8 @@ export async function GET(request: NextRequest) {
 
   const results = await Promise.allSettled(
     wallets.map(async (w): Promise<WalletPortfolio> => {
-      const portfolio = await fetchPortfolio(w.address);
-      return { ...portfolio, netWorth: portfolio.netWorthUsd, address: w.address, label: w.label, isPrimary: w.isPrimary };
+      const portfolio = await getPortfolio(w.address);
+      return { ...portfolio, netWorth: portfolio.netWorthUsd, label: w.label, isPrimary: w.isPrimary };
     }),
   );
 
@@ -62,7 +65,7 @@ export async function GET(request: NextRequest) {
 
   const aggregated = {
     netWorthUsd: portfolios.reduce((s, p) => s + p.netWorthUsd, 0),
-    walletUsd: portfolios.reduce((s, p) => s + p.wallet.totalUsd, 0),
+    walletUsd: portfolios.reduce((s, p) => s + p.walletValueUsd, 0),
     savingsUsd: portfolios.reduce((s, p) => s + p.positions.savings, 0),
     debtUsd: portfolios.reduce((s, p) => s + p.positions.borrows, 0),
     estimatedDailyYield: portfolios.reduce((s, p) => s + p.estimatedDailyYield, 0),

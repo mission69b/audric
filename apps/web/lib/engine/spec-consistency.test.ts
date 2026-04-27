@@ -11,12 +11,16 @@ import { runSpecConsistencyChecks, assertSpecConsistency } from './spec-consiste
  * in the runtime invocation paths.
  */
 describe('[v1.4 Item 5] spec consistency', () => {
-  it('exposes 9 well-formed assertions covering fees, decimals, and tool counts', () => {
+  it('exposes 13 well-formed assertions covering fees, decimals, tool counts, and canonical portfolio exports', () => {
     const result = runSpecConsistencyChecks();
-    expect(result.assertions).toHaveLength(9);
+    expect(result.assertions).toHaveLength(13);
     const ids = result.assertions.map((a) => a.id).sort();
     expect(ids).toEqual([
       'BORROW_FEE_BPS',
+      'CANONICAL_GET_PORTFOLIO',
+      'CANONICAL_GET_RATES',
+      'CANONICAL_GET_TOKEN_PRICES',
+      'CANONICAL_GET_TRANSACTION_HISTORY',
       'NO_REPAY_FEE_BPS',
       'NO_SEND_FEE_BPS',
       'NO_WITHDRAW_FEE_BPS',
@@ -33,7 +37,7 @@ describe('[v1.4 Item 5] spec consistency', () => {
     }
   });
 
-  it('all 9 assertions pass against the live SDK + engine packages', () => {
+  it('all 13 assertions pass against the live SDK + engine packages and canonical exports', () => {
     const result = runSpecConsistencyChecks();
     const failed = result.assertions.filter((a) => !a.pass);
     if (failed.length) {

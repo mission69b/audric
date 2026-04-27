@@ -1,23 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { fetchPortfolio } from '@/lib/portfolio-data';
+import { getPortfolio } from '@/lib/portfolio';
 
 export const runtime = 'nodejs';
 
 /**
  * GET /api/analytics/portfolio-history?days=30&address=0x...
- * Header: x-sui-address (caller identity — required)
- * Query: address (read target — optional; defaults to caller)
  *
  * Returns daily portfolio snapshots for the requested address plus
- * period change calculations. Appends a live data point for today if
- * the cron snapshot hasn't run yet.
- *
- * [v0.49] Address-aware: a watched / saved-contact address is allowed
- * via `?address=` even though the caller is the signed-in user. When
- * the target isn't an Audric user we have no snapshot rows — we fall
- * back to a single live data point so canvases like
- * `portfolio_timeline` still have something to render.
+ * period change calculations. Falls back to a single live data point
+ * (via the canonical `getPortfolio()`) when no historical snapshot
+ * row exists for today (e.g. cron hasn't run, or the target is a
+ * watched address that isn't a registered Audric user).
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
@@ -42,9 +36,8 @@ export async function GET(request: NextRequest) {
 
     // For watched-address reads where the target isn't a registered
     // Audric user, `user` is null — we skip the historical query and
-    // synthesize a single live data point below. This is intentional:
-    // the snapshot table is keyed by Audric userId, not arbitrary
-    // wallet addresses.
+    // synthesize a single live data point below. The snapshot table
+    // is keyed by Audric userId, not arbitrary wallet addresses.
     const snapshots = user
       ? await prisma.portfolioSnapshot.findMany({
           where: { userId: user.id, date: { gte: since } },
@@ -77,11 +70,11 @@ export async function GET(request: NextRequest) {
 
     if (needsLivePoint) {
       try {
-        const portfolio = await fetchPortfolio(address);
+        const portfolio = await getPortfolio(address);
         mapped.push({
           date: todayStr,
           netWorthUsd: portfolio.netWorthUsd,
-          walletValueUsd: portfolio.wallet.totalUsd,
+          walletValueUsd: portfolio.walletValueUsd,
           savingsValueUsd: portfolio.positions.savings,
           debtValueUsd: portfolio.positions.borrows,
           yieldEarnedUsd: 0,

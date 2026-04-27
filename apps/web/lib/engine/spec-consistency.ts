@@ -25,6 +25,14 @@ import * as sdk from '@t2000/sdk';
 import { READ_TOOLS, WRITE_TOOLS } from '@t2000/engine';
 import { STATIC_SYSTEM_PROMPT } from './engine-context';
 
+// Re-import the canonical portfolio surface so the runtime check below
+// fails if anyone deletes / renames the canonical exports without
+// updating every adapter. ESLint catches forbidden *imports*, this
+// catches the dual case: the canonical itself going missing.
+import * as canonicalPortfolio from '@/lib/portfolio';
+import * as canonicalHistory from '@/lib/transaction-history';
+import * as canonicalRates from '@/lib/rates';
+
 // `sdk` exports `SAVE_FEE_BPS`, `BORROW_FEE_BPS`, and `OVERLAY_FEE_RATE`
 // natively as of @t2000/sdk 0.41.0. Read the "no fee" guards through an
 // indexed view since we're checking that they remain absent.
@@ -122,6 +130,43 @@ export function runSpecConsistencyChecks(): SpecConsistencyResult {
       'engine package and audric prompt are out of sync.',
   });
 
+  // ── 4 canonical-portfolio export assertions ────────────────────────────
+  // Single-source-of-truth (Apr 2026, see
+  // `.cursor/rules/single-source-of-truth.mdc`): every consumer of
+  // wallet / position / price / history data MUST go through the
+  // canonical fetchers below. These assertions catch the dual case
+  // ESLint can't — someone deleting / renaming the canonical export
+  // itself, which would silently break every adapter.
+  assertions.push({
+    id: 'CANONICAL_GET_PORTFOLIO',
+    pass: typeof canonicalPortfolio.getPortfolio === 'function',
+    message:
+      '`getPortfolio` must remain exported from `@/lib/portfolio` — every ' +
+      'API route, hook, engine tool, and cron depends on this single source.',
+  });
+  assertions.push({
+    id: 'CANONICAL_GET_TOKEN_PRICES',
+    pass: typeof canonicalPortfolio.getTokenPrices === 'function',
+    message:
+      '`getTokenPrices` must remain exported from `@/lib/portfolio` — ' +
+      'engine prompt seeding and price-display callers depend on it.',
+  });
+  assertions.push({
+    id: 'CANONICAL_GET_TRANSACTION_HISTORY',
+    pass: typeof canonicalHistory.getTransactionHistory === 'function',
+    message:
+      '`getTransactionHistory` must remain exported from ' +
+      '`@/lib/transaction-history` — `/api/history`, `/api/activity`, and ' +
+      'the engine `transaction_history` tool all depend on it.',
+  });
+  assertions.push({
+    id: 'CANONICAL_GET_RATES',
+    pass: typeof canonicalRates.getRates === 'function',
+    message:
+      '`getRates` must remain exported from `@/lib/rates` — `/api/rates` ' +
+      'and the engine `rates_info` tool depend on it.',
+  });
+
   return {
     ok: assertions.every((a) => a.pass),
     assertions,
@@ -165,25 +210,8 @@ export function runStartupCheck(): void {
   console.error(`[spec-consistency] startup assertion failed (logged-only in prod):\n${failures}`);
 }
 
-// ─── CLI entry point ──────────────────────────────────────────────────────
-// Invoked from `.github/workflows/ci.yml` after typecheck:
-//   pnpm --filter web tsx apps/web/lib/engine/spec-consistency.ts
-//
-// Exits 0 on success, 1 on any failed assertion.
-const isMain =
-  typeof process !== 'undefined' &&
-  process.argv[1] &&
-  /spec-consistency\.(ts|js|mjs|cjs)$/.test(process.argv[1]);
-
-if (isMain) {
-  const result = runSpecConsistencyChecks();
-  for (const a of result.assertions) {
-    const mark = a.pass ? '✓' : '✗';
-    console.log(`${mark} ${a.id}${a.pass ? '' : ` — ${a.message}`}`);
-  }
-  if (!result.ok) {
-    console.error(`\n[spec-consistency] FAILED: ${result.assertions.filter((a) => !a.pass).length} of ${result.assertions.length} assertions did not hold.`);
-    process.exit(1);
-  }
-  console.log(`\n[spec-consistency] OK: ${result.assertions.length}/${result.assertions.length} assertions passed.`);
-}
+// Note: the static "forbidden import" scanner lives in
+// `scripts/canonical-source-scan.mjs` as a self-contained Node script so
+// it can run in any CI environment without needing the `@t2000/*`
+// workspace resolver. ESLint enforces the same rules at dev time; the
+// scan script is the redundant CI gate.

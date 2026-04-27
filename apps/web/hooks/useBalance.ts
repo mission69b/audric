@@ -1,12 +1,19 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { useSuiClient } from '@mysten/dapp-kit';
-import { getDecimalsForCoinType, resolveSymbol, COIN_REGISTRY, USDC_TYPE } from '@/lib/token-registry';
+import type { PortfolioCoin } from '@t2000/engine';
 
-const MIST_PER_SUI = 1_000_000_000;
-const USDC_DECIMALS = 6;
-const CETUS_USDC_SUI_POOL = '0xb8d7d9e66a60c239e7a60110efcf8571655daa67b55b7534e1bc855fcff644d9';
+const SUI_TYPE = '0x2::sui::SUI';
+const USDC_TYPE_LONG =
+  '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC';
+
+function r2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+function r4(n: number): number {
+  return Math.round(n * 10000) / 10000;
+}
 
 export interface SavingsBreakdownEntry {
   protocol: string;
@@ -18,9 +25,9 @@ export interface SavingsBreakdownEntry {
 
 export interface BalanceData {
   total: number;
-  /** Liquid spendable balance: USDC + SUI (in USD) */
+  /** Liquid spendable balance: every priced coin (USDC + SUI USD + tradeables) */
   cash: number;
-  /** Non-USDC tradeable balances in USD (e.g. BTC, ETH) */
+  /** Always 0 — kept for legacy callers; tradeables are folded into `cash`. */
   otherAssetsUsd: number;
   savings: number;
   borrows: number;
@@ -33,45 +40,59 @@ export interface BalanceData {
   maxBorrow: number;
   pendingRewards: number;
   bestSaveRate: { protocol: string; protocolId: string; asset: string; rate: number } | null;
-  /** The user's current blended savings rate from their primary savings protocol */
+  /** Blended savings rate from the user's primary savings protocol */
   currentRate: number;
   /** Per-protocol savings breakdown */
   savingsBreakdown: SavingsBreakdownEntry[];
-  /** Raw token balances for tradeable assets (BTC, ETH, GOLD) */
+  /** Raw token balances for tradeable assets (every non-SUI/USDC coin) */
   assetBalances: Record<string, number>;
   /** USD values for tradeable assets */
   assetUsdValues: Record<string, number>;
   loading: boolean;
 }
 
-async function fetchSuiPrice(client: ReturnType<typeof useSuiClient>): Promise<number> {
-  try {
-    const pool = await client.getObject({
-      id: CETUS_USDC_SUI_POOL,
-      options: { showContent: true },
-    });
-
-    if (pool.data?.content?.dataType === 'moveObject') {
-      const fields = pool.data.content.fields as Record<string, unknown>;
-      const currentSqrtPrice = BigInt(String(fields.current_sqrt_price ?? '0'));
-
-      if (currentSqrtPrice > BigInt(0)) {
-        const Q64 = BigInt(2) ** BigInt(64);
-        const sqrtPriceFloat = Number(currentSqrtPrice) / Number(Q64);
-        const rawPrice = sqrtPriceFloat * sqrtPriceFloat;
-        const price = 1000 / rawPrice;
-        if (price > 0.01 && price < 1000) return price;
-      }
-    }
-  } catch {
-    // fallback
-  }
-  return 1.0;
+interface PortfolioRouteResponse {
+  address: string;
+  netWorthUsd: number;
+  walletValueUsd: number;
+  walletAllocations: Record<string, number>;
+  wallet: PortfolioCoin[];
+  positions: {
+    savings: number;
+    borrows: number;
+    savingsRate: number;
+    healthFactor: number | null;
+    maxBorrow: number;
+    pendingRewards: number;
+    supplies: Array<{ protocol: string; protocolId: string; asset: string; amountUsd: number; apy: number }>;
+    borrowsDetail: Array<{ protocol: string; protocolId: string; asset: string; amountUsd: number; apy: number }>;
+  };
+  estimatedDailyYield: number;
+  source: string;
+  pricedAt: number;
 }
 
-export function useBalance(address: string | null) {
-  const client = useSuiClient();
+interface RatesRouteResponse {
+  rates: Array<{ protocol: string; protocolId: string; asset: string; saveApy: number; borrowApy: number }>;
+  bestSaveRate: { protocol: string; protocolId: string; asset: string; rate: number } | null;
+}
 
+/**
+ * Wallet balance hook — thin wrapper around `/api/portfolio` and
+ * `/api/rates`. All pricing, summing, and aggregation happens in the
+ * canonical `getPortfolio()` ([apps/web/lib/portfolio.ts]); this hook
+ * only reshapes the response into the legacy `BalanceData` wire shape
+ * consumed by the dashboard balance hero, balance card, and goals
+ * panel.
+ *
+ * The pre-rewrite version of this hook fetched balances directly via
+ * `client.getAllBalances`, computed SUI price from the Cetus pool,
+ * resolved metadata via `client.getCoinMetadata`, and combined with
+ * `/api/positions` + `/api/prices`. That fragmented path produced
+ * different numbers than the engine and the canvases. Now everything
+ * routes through one place.
+ */
+export function useBalance(address: string | null) {
   return useQuery<BalanceData>({
     queryKey: ['balance', address],
     enabled: !!address,
@@ -81,90 +102,69 @@ export function useBalance(address: string | null) {
     queryFn: async (): Promise<BalanceData> => {
       if (!address) throw new Error('No address');
 
-      const [allBalances, suiPrice, posData, ratesData] = await Promise.all([
-        client.getAllBalances({ owner: address }),
-        fetchSuiPrice(client),
-        fetch(`/api/positions?address=${address}`)
-          .then(r => r.json())
-          .catch(() => ({ savings: 0, borrows: 0 })),
+      const [portfolioResp, ratesResp] = await Promise.all([
+        fetch(`/api/portfolio?address=${address}`)
+          .then((r) => (r.ok ? (r.json() as Promise<PortfolioRouteResponse>) : null))
+          .catch(() => null),
         fetch('/api/rates')
-          .then(r => r.json())
-          .catch(() => ({ rates: [], bestSaveRate: null })),
+          .then((r) => (r.ok ? (r.json() as Promise<RatesRouteResponse>) : null))
+          .catch(() => null),
       ]);
 
-      const heldCoinTypes = allBalances
-        .filter((b) => Number(b.totalBalance) > 0)
-        .map((b) => b.coinType);
-      const pricesResp = await fetch(`/api/prices?coins=${encodeURIComponent(heldCoinTypes.join(','))}`)
-        .then(r => r.json())
-        .catch(() => ({ prices: {}, decimals: {} }));
-
-      const r2 = (n: number) => Math.round(n * 100) / 100;
-      const prices = (pricesResp.prices ?? pricesResp) as Record<string, number>;
-      const remoteDecs = (pricesResp.decimals ?? {}) as Record<string, number>;
-
-      const knownTypes = new Set(Object.values(COIN_REGISTRY).map((m) => m.type));
-      const unknownCoinTypes = heldCoinTypes.filter(
-        (ct) => !knownTypes.has(ct) && ct !== '0x2::sui::SUI' && ct !== USDC_TYPE && !(ct in remoteDecs),
-      );
-      const metadataMap: Record<string, { symbol: string; decimals: number }> = {};
-      if (unknownCoinTypes.length > 0) {
-        const metas = await Promise.all(
-          unknownCoinTypes.map((ct) =>
-            client.getCoinMetadata({ coinType: ct })
-              .then((m) => m ? { coinType: ct, symbol: m.symbol, decimals: m.decimals } : null)
-              .catch(() => null),
-          ),
-        );
-        for (const m of metas) {
-          if (m) metadataMap[m.coinType] = { symbol: m.symbol, decimals: m.decimals };
-        }
+      if (!portfolioResp) {
+        return EMPTY_BALANCE;
       }
 
-      const balByType = new Map<string, string>();
-      for (const b of allBalances) {
-        balByType.set(b.coinType, b.totalBalance);
-      }
+      const wallet = portfolioResp.wallet ?? [];
 
-      const suiRaw = Number(balByType.get('0x2::sui::SUI') ?? '0') / MIST_PER_SUI;
-      const sui = Math.floor(suiRaw * 10000) / 10000;
-      const usdcRaw = Number(balByType.get(USDC_TYPE) ?? '0') / (10 ** USDC_DECIMALS);
-      const usdc = Math.floor(usdcRaw * 100) / 100;
-      const suiUsd = r2(sui * (prices['0x2::sui::SUI'] ?? prices['SUI'] ?? suiPrice));
-
+      let sui = 0;
+      let suiUsd = 0;
+      let suiPrice = 0;
+      let usdc = 0;
       const assetBalances: Record<string, number> = {};
       const assetUsdValues: Record<string, number> = {};
       let tradeableUsd = 0;
 
-      for (const [coinType, raw] of balByType) {
-        if (coinType === '0x2::sui::SUI' || coinType === USDC_TYPE) continue;
-        const meta = metadataMap[coinType];
-        const symbol = meta?.symbol ?? resolveSymbol(coinType);
-        const decimals = meta?.decimals ?? getDecimalsForCoinType(coinType);
-        const rawAmount = Number(raw) / 10 ** decimals;
-        const amount = Math.floor(rawAmount * 10 ** Math.min(decimals, 8)) / 10 ** Math.min(decimals, 8);
-        if (amount <= 0.000001) continue;
-        const price = prices[coinType] ?? prices[symbol] ?? 0;
-        const usdVal = r2(amount * price);
-        if (usdVal < 0.01 && amount < 0.01) continue;
-        assetBalances[symbol] = amount;
-        assetUsdValues[symbol] = usdVal;
-        tradeableUsd += usdVal;
+      for (const coin of wallet) {
+        const decimals = coin.decimals;
+        const amount = Number(coin.balance) / 10 ** decimals;
+        if (!Number.isFinite(amount) || amount <= 0) continue;
+
+        const symbol = coin.symbol || '?';
+        const usdValue = coin.usdValue ?? 0;
+
+        if (coin.coinType === SUI_TYPE || symbol === 'SUI') {
+          sui = Math.floor(amount * 10000) / 10000;
+          suiUsd = r2(usdValue);
+          suiPrice = coin.price ?? 0;
+          continue;
+        }
+
+        if (coin.coinType === USDC_TYPE_LONG || symbol === 'USDC') {
+          usdc = Math.floor(amount * 100) / 100;
+          continue;
+        }
+
+        const display = Math.floor(amount * 10 ** Math.min(decimals, 8)) / 10 ** Math.min(decimals, 8);
+        if (display <= 0.000001 && usdValue < 0.01) continue;
+
+        assetBalances[symbol] = display;
+        assetUsdValues[symbol] = r2(usdValue);
+        tradeableUsd += usdValue;
       }
 
       const cash = r2(usdc + suiUsd + tradeableUsd);
-      const otherAssetsUsd = 0;
-      const savings = r2(posData.savings ?? 0);
-      const borrows = posData.borrows ?? 0;
-      const savingsRate = r2(posData.savingsRate ?? 0);
-      const healthFactor = posData.healthFactor ?? null;
-      const maxBorrow = r2(posData.maxBorrow ?? 0);
-      const pendingRewards = r2(posData.pendingRewards ?? 0);
-      const bestSaveRate = ratesData.bestSaveRate ?? null;
 
-      const suppliesRaw: Array<{ protocol: string; protocolId: string; asset: string; amountUsd: number; apy: number }> =
-        posData.supplies ?? [];
-      const savingsBreakdown: SavingsBreakdownEntry[] = [];
+      const positions = portfolioResp.positions;
+      const savings = r2(positions.savings ?? 0);
+      const borrows = positions.borrows ?? 0;
+      const savingsRate = r4(positions.savingsRate ?? 0);
+      const healthFactor = positions.healthFactor ?? null;
+      const maxBorrow = r2(positions.maxBorrow ?? 0);
+      const pendingRewards = r2(positions.pendingRewards ?? 0);
+      const bestSaveRate = ratesResp?.bestSaveRate ?? null;
+
+      const suppliesRaw = positions.supplies ?? [];
       const byKey = new Map<string, { protocol: string; protocolId: string; asset: string; amount: number; weightedApy: number }>();
       for (const s of suppliesRaw) {
         const key = `${s.protocolId}:${s.asset}`;
@@ -182,26 +182,26 @@ export function useBalance(address: string | null) {
           });
         }
       }
+      const savingsBreakdown: SavingsBreakdownEntry[] = [];
       for (const entry of byKey.values()) {
         savingsBreakdown.push({
           protocol: entry.protocol,
           protocolId: entry.protocolId,
           asset: entry.asset,
           amount: r2(entry.amount),
-          apy: entry.amount > 0 ? r2(entry.weightedApy / entry.amount) : 0,
+          apy: entry.amount > 0 ? r4(entry.weightedApy / entry.amount) : 0,
         });
       }
 
       const primaryPosition = savingsBreakdown.length > 0
-        ? savingsBreakdown.reduce((a, b) => a.amount > b.amount ? a : b)
+        ? savingsBreakdown.reduce((a, b) => (a.amount > b.amount ? a : b))
         : null;
-
       const currentRate = primaryPosition?.apy ?? savingsRate;
 
       return {
-        total: r2(cash + otherAssetsUsd + savings - borrows),
+        total: r2(cash + savings - borrows),
         cash,
-        otherAssetsUsd,
+        otherAssetsUsd: 0,
         savings,
         borrows,
         sui,
@@ -222,3 +222,25 @@ export function useBalance(address: string | null) {
     },
   });
 }
+
+const EMPTY_BALANCE: BalanceData = {
+  total: 0,
+  cash: 0,
+  otherAssetsUsd: 0,
+  savings: 0,
+  borrows: 0,
+  sui: 0,
+  suiUsd: 0,
+  usdc: 0,
+  suiPrice: 0,
+  savingsRate: 0,
+  healthFactor: null,
+  maxBorrow: 0,
+  pendingRewards: 0,
+  bestSaveRate: null,
+  currentRate: 0,
+  savingsBreakdown: [],
+  assetBalances: {},
+  assetUsdValues: {},
+  loading: false,
+};

@@ -1,21 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
-import {
-  extractTxCommands,
-  extractTxSender,
-  parseSuiRpcTx,
-  type SuiRpcTxBlock,
-  type TransactionRecord,
-} from '@t2000/sdk';
 import { prisma } from '@/lib/prisma';
 import type { ActivityItem, ActivityPage } from '@/lib/activity-types';
+import {
+  getTransactionHistory,
+  getSuiNetwork,
+  type ChainTxRecord,
+} from '@/lib/transaction-history';
 
 export const runtime = 'nodejs';
 
-const SUI_NETWORK = (process.env.NEXT_PUBLIC_SUI_NETWORK ?? 'mainnet') as 'mainnet' | 'testnet';
-const suiClient = new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl(SUI_NETWORK), network: SUI_NETWORK });
-
-const ALLOWANCE_PACKAGE_PREFIX = '0xd775fcc66eae26797654d435d751dea56b82eeb999de51fd285348e573b968ad';
 const MPP_TREASURY = '0x76d70cf9d3ab7f714a35adf8766a2cb25929cae92ab4de54ff4dea0482b05012';
 
 /**
@@ -31,10 +24,6 @@ const TYPE_FILTER_MAP: Record<string, string[]> = {
   pay: ['pay', 'alert'],
 };
 
-// [SIMPLIFICATION DAY 12.5] Dropped `follow_up` + `schedule` defensive
-// backstops — UI no longer exposes them and the autonomy stack that emitted
-// schedule_* / follow_up event types is gone. Stale `?type=follow_up` URLs
-// fall through to the empty default and return zero rows.
 const APP_EVENT_TYPE_MAP: Record<string, string[]> = {
   savings: [],
   send: [],
@@ -46,12 +35,14 @@ const APP_EVENT_TYPE_MAP: Record<string, string[]> = {
 /**
  * GET /api/activity?address=0x...&type=all&cursor=<ms-timestamp>&limit=20
  *
- * Merges on-chain transaction history (Sui RPC) with AppEvent rows
- * (NeonDB). Supports cursor-based pagination and type filtering.
+ * Merges on-chain transaction history (via the canonical
+ * `getTransactionHistory()`) with AppEvent rows (NeonDB). Supports
+ * cursor-based pagination and type filtering.
  *
- * Transaction parsing is delegated to `@t2000/sdk`'s shared
- * `parseSuiRpcTx` (same parser used by the engine's
- * `transaction_history` tool and the `/api/history` route).
+ * Chain reads are delegated to `lib/transaction-history.ts`; this
+ * route layers dashboard-specific overrides (`MPP_TREASURY` →
+ * `'pay'`, inflows from another sender → `'receive'`) on top of the
+ * canonical parser output, plus the AppEvent merge + de-dup by digest.
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
@@ -66,7 +57,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const [chainItems, appItems] = await Promise.all([
-      fetchChainActivity(address, limit + 5, cursorMs, filterType),
+      fetchChainActivity(address, limit + 5, filterType),
       fetchAppEvents(address, limit + 5, cursorMs, filterType),
     ]);
 
@@ -82,68 +73,36 @@ export async function GET(request: NextRequest) {
     const page = merged.slice(0, limit);
     const nextCursor = page.length === limit ? String(page[page.length - 1].timestamp) : null;
 
-    const result: ActivityPage = { items: page, nextCursor, network: SUI_NETWORK };
+    const result: ActivityPage = { items: page, nextCursor, network: getSuiNetwork() };
     return NextResponse.json(result);
   } catch (err) {
     console.error('[activity] Error:', err);
-    return NextResponse.json({ items: [], nextCursor: null, network: SUI_NETWORK });
+    return NextResponse.json({ items: [], nextCursor: null, network: getSuiNetwork() });
   }
 }
 
 async function fetchChainActivity(
   address: string,
   limit: number,
-  _cursorMs: number | null,
   filterType: string,
 ): Promise<ActivityItem[]> {
   const skipOutgoing = filterType === 'receive';
   const incomingLimit = filterType === 'receive' ? Math.min(limit, 50) : Math.min(limit, 15);
 
-  const [outgoing, incoming] = await Promise.all([
-    skipOutgoing
-      ? { data: [] }
-      : suiClient.queryTransactionBlocks({
-          filter: { FromAddress: address },
-          options: { showEffects: true, showInput: true, showBalanceChanges: true },
-          limit: Math.min(limit, 50),
-          order: 'descending',
-        }).catch(() => ({ data: [] })),
-    suiClient.queryTransactionBlocks({
-      filter: { ToAddress: address },
-      options: { showEffects: true, showInput: true, showBalanceChanges: true },
-      limit: incomingLimit,
-      order: 'descending',
-    }).catch(() => ({ data: [] })),
-  ]);
-
-  const seen = new Set<string>();
-  const allTxns: SuiRpcTxBlock[] = [];
-
-  for (const tx of outgoing.data ?? []) {
-    seen.add(tx.digest);
-    allTxns.push(tx as unknown as SuiRpcTxBlock);
-  }
-  for (const tx of incoming.data ?? []) {
-    if (!seen.has(tx.digest)) {
-      seen.add(tx.digest);
-      allTxns.push(tx as unknown as SuiRpcTxBlock);
-    }
-  }
-
-  allTxns.sort((a, b) => Number(b.timestampMs ?? 0) - Number(a.timestampMs ?? 0));
+  const records = await getTransactionHistory(address, {
+    limit: Math.min(limit, 50),
+    skipOutgoing,
+    incomingLimit,
+  });
 
   const items: ActivityItem[] = [];
   const allowedTypes = filterType !== 'all' ? TYPE_FILTER_MAP[filterType] ?? null : null;
 
-  for (const tx of allTxns) {
-    try {
-      const parsed = parseChainTx(tx, address);
-      if (!parsed) continue;
-      if (allowedTypes && !allowedTypes.includes(parsed.type)) continue;
-      items.push(parsed);
-    } catch {
-      // skip unparseable
-    }
+  for (const r of records) {
+    const item = recordToActivityItem(r);
+    if (!item) continue;
+    if (allowedTypes && !allowedTypes.includes(item.type)) continue;
+    items.push(item);
   }
 
   return items;
@@ -192,20 +151,13 @@ async function fetchAppEvents(
 }
 
 // ---------------------------------------------------------------------------
-// On-chain transaction → ActivityItem (uses shared SDK parser)
+// On-chain transaction → ActivityItem
 // ---------------------------------------------------------------------------
 
-/**
- * Truncate an address for display (`0xabcd…1234`). Falls back to the
- * raw value when shorter than the cutoff.
- */
 function truncAddr(addr: string): string {
   return addr.length > 12 ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : addr;
 }
 
-/**
- * Build the activity-feed title from a resolved {@link TransactionRecord}.
- */
 function buildTitle(
   type: string,
   direction: 'in' | 'out' | 'self',
@@ -241,65 +193,45 @@ function buildTitle(
 }
 
 /**
- * Convert a raw RPC tx to an `ActivityItem` for the dashboard feed.
+ * Convert a canonical {@link ChainTxRecord} to an `ActivityItem` for
+ * the dashboard feed. Layers two dashboard-specific overrides on top
+ * of the canonical parser output:
  *
- * Logic:
- *   1. Drop transactions touching the legacy allowance package — those
- *      are scaffolding noise.
- *   2. Run the canonical SDK parser to get action / direction / amount.
- *   3. Apply two dashboard-specific overrides:
- *        - `recipient === MPP_TREASURY` ⇒ rebrand as `'pay'`
- *        - inflow from a different sender ⇒ rebrand as `'receive'`
- *   4. Build a human-readable title.
+ *   - `counterparty === MPP_TREASURY` ⇒ rebrand as `'pay'`
+ *   - inflow from a different sender ⇒ rebrand as `'receive'`
+ *
+ * Returns `null` if the record can't be mapped (legacy allowance
+ * filtering already happens inside `getTransactionHistory`, so we
+ * don't repeat it here).
  */
-function parseChainTx(tx: SuiRpcTxBlock, address: string): ActivityItem | null {
-  const { moveCallTargets } = extractTxCommands(tx.transaction);
-  if (moveCallTargets.some((t) => t.startsWith(ALLOWANCE_PACKAGE_PREFIX))) {
-    return null;
-  }
-
-  const record: TransactionRecord = parseSuiRpcTx(tx, address);
-  const sender = extractTxSender(tx.transaction);
-  const isUserTx = sender === address;
-
+function recordToActivityItem(r: ChainTxRecord): ActivityItem | null {
   // Map the SDK direction (`'in' | 'out' | undefined`) to the
   // dashboard's tri-state (`'in' | 'out' | 'self'`). Undefined means
   // we couldn't detect a user balance change — usually a self-call /
   // contract interaction.
-  const direction: 'in' | 'out' | 'self' = record.direction ?? 'self';
+  const direction: 'in' | 'out' | 'self' = r.direction ?? 'self';
+  const counterparty = r.counterparty;
 
-  // Counterparty rules:
-  //   - For outflows: SDK populates `recipient` with the address that
-  //     received the principal asset.
-  //   - For inflows from a different sender: surface the sender as the
-  //     counterparty so the title reads "Received from 0xabc…".
-  let counterparty: string | undefined = record.recipient;
-  if (!counterparty && direction === 'in' && !isUserTx && sender) {
-    counterparty = sender;
-  }
-
-  // Type resolution: prefer the explicit action bucket, then layer
-  // dashboard-only refinements on top.
-  let type: string = record.action;
-  if (direction === 'in' && !isUserTx && type !== 'lending' && type !== 'swap') {
+  let type: string = r.action;
+  if (direction === 'in' && !r.isUserTx && type !== 'lending' && type !== 'swap') {
     type = 'receive';
   }
   if (counterparty === MPP_TREASURY) {
     type = 'pay';
   }
 
-  const title = buildTitle(type, direction, record.amount, record.asset, counterparty);
+  const title = buildTitle(type, direction, r.amount, r.asset, counterparty);
 
   return {
-    id: record.digest,
+    id: r.digest,
     source: 'chain',
     type,
     title,
-    amount: record.amount,
-    asset: record.asset,
+    amount: r.amount,
+    asset: r.asset,
     direction,
     counterparty,
-    digest: record.digest,
-    timestamp: record.timestamp,
+    digest: r.digest,
+    timestamp: r.timestamp,
   };
 }
