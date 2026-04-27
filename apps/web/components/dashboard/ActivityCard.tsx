@@ -63,9 +63,13 @@ interface ActivityCardProps {
   item: ActivityItem;
   network: string;
   onAction?: (flow: string) => void;
+  // [Bug 3 / 2026-04-27] Wire EXPLAIN to engine.sendMessage(`Explain transaction ${digest}`).
+  // Pre-v1.1 EXPLAIN was a stub <button onClick={() => {}}>; the v1.1 reskin made it a <span>
+  // and dropped even the affordance. This handler restores the click path.
+  onExplainTx?: (digest: string) => void;
 }
 
-export function ActivityCard({ item, network, onAction }: ActivityCardProps) {
+export function ActivityCard({ item, network, onAction, onExplainTx }: ActivityCardProps) {
   const isScheduleConfirm = item.type === 'schedule_confirm';
   const isPayReceived = item.type === 'pay_received';
   const glyphData = KIND_GLYPHS[item.type] ?? DEFAULT_GLYPH;
@@ -117,9 +121,15 @@ export function ActivityCard({ item, network, onAction }: ActivityCardProps) {
             >
               Confirm in Automations &rsaquo;
             </button>
-          ) : (
-            <span>Explain &rsaquo;</span>
-          )}
+          ) : item.digest && onExplainTx ? (
+            <button
+              type="button"
+              onClick={() => onExplainTx(item.digest!)}
+              className="text-fg-secondary hover:text-fg-primary transition focus-visible:outline-none focus-visible:underline"
+            >
+              Explain &rsaquo;
+            </button>
+          ) : null}
           {txUrl && (
             <a
               href={txUrl}

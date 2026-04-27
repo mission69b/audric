@@ -24,9 +24,10 @@ interface ActivityPanelProps {
   feed: FeedState;
   balance: BalanceHeaderData;
   onAction: (flow: string) => void;
+  onExplainTx?: (digest: string) => void;
 }
 
-export function ActivityPanel({ feed, balance, onAction }: ActivityPanelProps) {
+export function ActivityPanel({ feed, balance, onAction, onExplainTx }: ActivityPanelProps) {
   return (
     <div className="mx-auto w-full max-w-[820px] px-4 sm:px-6 md:px-8 py-6 flex flex-col gap-[18px]">
       <div className="pt-5 pb-4">
@@ -37,7 +38,7 @@ export function ActivityPanel({ feed, balance, onAction }: ActivityPanelProps) {
           size="lg"
         />
       </div>
-      <ActivityFeed feed={feed} onAction={onAction} />
+      <ActivityFeed feed={feed} onAction={onAction} onExplainTx={onExplainTx} />
     </div>
   );
 }

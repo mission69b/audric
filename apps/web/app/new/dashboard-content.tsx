@@ -258,13 +258,20 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
     engine.loadSession(initialSessionId);
   }, [initialSessionId, session?.jwt, engine.loadSession]);
 
+  // [Bug 2 / 2026-04-27] Keep URL on /chat/{sessionId} whenever the chat
+  // panel is active AND a session exists. Pre-fix this effect only ran on
+  // sessionId changes, so subsequent setPanel('chat') calls (from chip clicks
+  // in Portfolio/Pay/Activity panels) pushed `/new` and the URL got stuck
+  // there even though the in-memory session was alive. By also depending on
+  // `panel`, we re-sync the URL on every transition back into chat.
   useEffect(() => {
     if (!engine.sessionId) return;
+    if (panel !== 'chat') return;
     const target = `/chat/${engine.sessionId}`;
     if (window.location.pathname !== target) {
       window.history.replaceState(window.history.state, '', target);
     }
-  }, [engine.sessionId]);
+  }, [engine.sessionId, panel]);
 
   const balanceQuery = useBalance(address);
   const activityFeed = useActivityFeed(address);
@@ -698,10 +705,22 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
     handleChipClick(flow);
   }, [handleChipClick, setPanel]);
 
+  // [Bug 3 / 2026-04-27] EXPLAIN button on each ActivityCard. Switch to chat
+  // and ask the agent to explain the transaction — the LLM dispatches the
+  // engine `explain_tx` tool against the digest.
+  const handleExplainTx = useCallback((digest: string) => {
+    setPanel('chat');
+    handleInputSubmit(`Explain transaction ${digest}`);
+  }, [handleInputSubmit, setPanel]);
+
   // [SIMPLIFICATION DAY 5] handleBriefing* + handleWelcome* removed with
   // BriefingCard / FirstLoginView / DailyBriefing cron stack.
 
   // Deep link: ?prefill=... auto-sends a message on load
+  // [Bug 2 / 2026-04-27] Strip ?prefill= without clobbering an active
+  // session URL. The `useEffect` above ([engine.sessionId, panel]) will land
+  // us back on /chat/{id} once the session resolves; here we just remove
+  // the search params on the current pathname instead of forcing /new.
   const searchParams = useSearchParams();
   const prefillHandled = useRef(false);
   useEffect(() => {
@@ -710,7 +729,8 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
     if (prefill && address) {
       prefillHandled.current = true;
       handleInputSubmit(decodeURIComponent(prefill));
-      window.history.replaceState({}, '', '/new');
+      const cleanPath = window.location.pathname || '/new';
+      window.history.replaceState({}, '', cleanPath);
     }
   }, [searchParams, address, handleInputSubmit]);
 
@@ -1486,6 +1506,7 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
             feed={activityFeed}
             balance={balance}
             onAction={handleActivityAction}
+            onExplainTx={handleExplainTx}
           />
         );
       case 'pay':

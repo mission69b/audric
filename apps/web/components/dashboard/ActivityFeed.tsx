@@ -26,6 +26,7 @@ type FeedState = ReturnType<typeof useActivityFeed>;
 interface ActivityFeedProps {
   feed: FeedState;
   onAction: (flow: string) => void;
+  onExplainTx?: (digest: string) => void;
 }
 
 const EMPTY_STATES: Record<ActivityFilter, { message: string; cta: string; flow: string }> = {
@@ -72,7 +73,7 @@ function groupByDate(items: ActivityItem[]): DateGroup[] {
   return order.map((label) => ({ label, items: groups.get(label)! }));
 }
 
-export function ActivityFeed({ feed, onAction }: ActivityFeedProps) {
+export function ActivityFeed({ feed, onAction, onExplainTx }: ActivityFeedProps) {
   useEffect(() => {
     feed.markSeen();
   }, [feed.markSeen]);
@@ -125,6 +126,7 @@ export function ActivityFeed({ feed, onAction }: ActivityFeedProps) {
                     item={item}
                     network={feed.network}
                     onAction={onAction}
+                    onExplainTx={onExplainTx}
                   />
                 ))}
               </div>
