@@ -47,6 +47,10 @@ export async function POST(request: NextRequest) {
           netWorthUsd: portfolio.netWorthUsd,
           yieldEarnedUsd: Math.round(portfolio.estimatedDailyYield * 10000) / 10000,
           healthFactor: portfolio.positions.healthFactor,
+          // Persist the weighted savings APY here so the daily 02:00 UTC
+          // financial-context-snapshot cron can read it from the latest
+          // snapshot row instead of re-fetching positions per user.
+          savingsRate: portfolio.positions.savingsRate,
           allocations: portfolio.wallet.allocations,
         },
       });

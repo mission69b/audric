@@ -33,6 +33,7 @@ export type PortfolioSnapshotAvgAggregateOutputType = {
   netWorthUsd: number | null
   yieldEarnedUsd: number | null
   healthFactor: number | null
+  savingsRate: number | null
 }
 
 export type PortfolioSnapshotSumAggregateOutputType = {
@@ -42,6 +43,7 @@ export type PortfolioSnapshotSumAggregateOutputType = {
   netWorthUsd: number | null
   yieldEarnedUsd: number | null
   healthFactor: number | null
+  savingsRate: number | null
 }
 
 export type PortfolioSnapshotMinAggregateOutputType = {
@@ -54,6 +56,7 @@ export type PortfolioSnapshotMinAggregateOutputType = {
   netWorthUsd: number | null
   yieldEarnedUsd: number | null
   healthFactor: number | null
+  savingsRate: number | null
 }
 
 export type PortfolioSnapshotMaxAggregateOutputType = {
@@ -66,6 +69,7 @@ export type PortfolioSnapshotMaxAggregateOutputType = {
   netWorthUsd: number | null
   yieldEarnedUsd: number | null
   healthFactor: number | null
+  savingsRate: number | null
 }
 
 export type PortfolioSnapshotCountAggregateOutputType = {
@@ -78,6 +82,7 @@ export type PortfolioSnapshotCountAggregateOutputType = {
   netWorthUsd: number
   yieldEarnedUsd: number
   healthFactor: number
+  savingsRate: number
   allocations: number
   _all: number
 }
@@ -90,6 +95,7 @@ export type PortfolioSnapshotAvgAggregateInputType = {
   netWorthUsd?: true
   yieldEarnedUsd?: true
   healthFactor?: true
+  savingsRate?: true
 }
 
 export type PortfolioSnapshotSumAggregateInputType = {
@@ -99,6 +105,7 @@ export type PortfolioSnapshotSumAggregateInputType = {
   netWorthUsd?: true
   yieldEarnedUsd?: true
   healthFactor?: true
+  savingsRate?: true
 }
 
 export type PortfolioSnapshotMinAggregateInputType = {
@@ -111,6 +118,7 @@ export type PortfolioSnapshotMinAggregateInputType = {
   netWorthUsd?: true
   yieldEarnedUsd?: true
   healthFactor?: true
+  savingsRate?: true
 }
 
 export type PortfolioSnapshotMaxAggregateInputType = {
@@ -123,6 +131,7 @@ export type PortfolioSnapshotMaxAggregateInputType = {
   netWorthUsd?: true
   yieldEarnedUsd?: true
   healthFactor?: true
+  savingsRate?: true
 }
 
 export type PortfolioSnapshotCountAggregateInputType = {
@@ -135,6 +144,7 @@ export type PortfolioSnapshotCountAggregateInputType = {
   netWorthUsd?: true
   yieldEarnedUsd?: true
   healthFactor?: true
+  savingsRate?: true
   allocations?: true
   _all?: true
 }
@@ -235,6 +245,7 @@ export type PortfolioSnapshotGroupByOutputType = {
   netWorthUsd: number
   yieldEarnedUsd: number
   healthFactor: number | null
+  savingsRate: number | null
   allocations: runtime.JsonValue
   _count: PortfolioSnapshotCountAggregateOutputType | null
   _avg: PortfolioSnapshotAvgAggregateOutputType | null
@@ -271,6 +282,7 @@ export type PortfolioSnapshotWhereInput = {
   netWorthUsd?: Prisma.FloatFilter<"PortfolioSnapshot"> | number
   yieldEarnedUsd?: Prisma.FloatFilter<"PortfolioSnapshot"> | number
   healthFactor?: Prisma.FloatNullableFilter<"PortfolioSnapshot"> | number | null
+  savingsRate?: Prisma.FloatNullableFilter<"PortfolioSnapshot"> | number | null
   allocations?: Prisma.JsonFilter<"PortfolioSnapshot">
   user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
 }
@@ -285,6 +297,7 @@ export type PortfolioSnapshotOrderByWithRelationInput = {
   netWorthUsd?: Prisma.SortOrder
   yieldEarnedUsd?: Prisma.SortOrder
   healthFactor?: Prisma.SortOrderInput | Prisma.SortOrder
+  savingsRate?: Prisma.SortOrderInput | Prisma.SortOrder
   allocations?: Prisma.SortOrder
   user?: Prisma.UserOrderByWithRelationInput
 }
@@ -303,6 +316,7 @@ export type PortfolioSnapshotWhereUniqueInput = Prisma.AtLeast<{
   netWorthUsd?: Prisma.FloatFilter<"PortfolioSnapshot"> | number
   yieldEarnedUsd?: Prisma.FloatFilter<"PortfolioSnapshot"> | number
   healthFactor?: Prisma.FloatNullableFilter<"PortfolioSnapshot"> | number | null
+  savingsRate?: Prisma.FloatNullableFilter<"PortfolioSnapshot"> | number | null
   allocations?: Prisma.JsonFilter<"PortfolioSnapshot">
   user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
 }, "id" | "userId_date">
@@ -317,6 +331,7 @@ export type PortfolioSnapshotOrderByWithAggregationInput = {
   netWorthUsd?: Prisma.SortOrder
   yieldEarnedUsd?: Prisma.SortOrder
   healthFactor?: Prisma.SortOrderInput | Prisma.SortOrder
+  savingsRate?: Prisma.SortOrderInput | Prisma.SortOrder
   allocations?: Prisma.SortOrder
   _count?: Prisma.PortfolioSnapshotCountOrderByAggregateInput
   _avg?: Prisma.PortfolioSnapshotAvgOrderByAggregateInput
@@ -338,6 +353,7 @@ export type PortfolioSnapshotScalarWhereWithAggregatesInput = {
   netWorthUsd?: Prisma.FloatWithAggregatesFilter<"PortfolioSnapshot"> | number
   yieldEarnedUsd?: Prisma.FloatWithAggregatesFilter<"PortfolioSnapshot"> | number
   healthFactor?: Prisma.FloatNullableWithAggregatesFilter<"PortfolioSnapshot"> | number | null
+  savingsRate?: Prisma.FloatNullableWithAggregatesFilter<"PortfolioSnapshot"> | number | null
   allocations?: Prisma.JsonWithAggregatesFilter<"PortfolioSnapshot">
 }
 
@@ -350,6 +366,7 @@ export type PortfolioSnapshotCreateInput = {
   netWorthUsd: number
   yieldEarnedUsd: number
   healthFactor?: number | null
+  savingsRate?: number | null
   allocations: Prisma.JsonNullValueInput | runtime.InputJsonValue
   user: Prisma.UserCreateNestedOneWithoutPortfolioSnapshotsInput
 }
@@ -364,6 +381,7 @@ export type PortfolioSnapshotUncheckedCreateInput = {
   netWorthUsd: number
   yieldEarnedUsd: number
   healthFactor?: number | null
+  savingsRate?: number | null
   allocations: Prisma.JsonNullValueInput | runtime.InputJsonValue
 }
 
@@ -376,6 +394,7 @@ export type PortfolioSnapshotUpdateInput = {
   netWorthUsd?: Prisma.FloatFieldUpdateOperationsInput | number
   yieldEarnedUsd?: Prisma.FloatFieldUpdateOperationsInput | number
   healthFactor?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  savingsRate?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   allocations?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   user?: Prisma.UserUpdateOneRequiredWithoutPortfolioSnapshotsNestedInput
 }
@@ -390,6 +409,7 @@ export type PortfolioSnapshotUncheckedUpdateInput = {
   netWorthUsd?: Prisma.FloatFieldUpdateOperationsInput | number
   yieldEarnedUsd?: Prisma.FloatFieldUpdateOperationsInput | number
   healthFactor?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  savingsRate?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   allocations?: Prisma.JsonNullValueInput | runtime.InputJsonValue
 }
 
@@ -403,6 +423,7 @@ export type PortfolioSnapshotCreateManyInput = {
   netWorthUsd: number
   yieldEarnedUsd: number
   healthFactor?: number | null
+  savingsRate?: number | null
   allocations: Prisma.JsonNullValueInput | runtime.InputJsonValue
 }
 
@@ -415,6 +436,7 @@ export type PortfolioSnapshotUpdateManyMutationInput = {
   netWorthUsd?: Prisma.FloatFieldUpdateOperationsInput | number
   yieldEarnedUsd?: Prisma.FloatFieldUpdateOperationsInput | number
   healthFactor?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  savingsRate?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   allocations?: Prisma.JsonNullValueInput | runtime.InputJsonValue
 }
 
@@ -428,6 +450,7 @@ export type PortfolioSnapshotUncheckedUpdateManyInput = {
   netWorthUsd?: Prisma.FloatFieldUpdateOperationsInput | number
   yieldEarnedUsd?: Prisma.FloatFieldUpdateOperationsInput | number
   healthFactor?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  savingsRate?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   allocations?: Prisma.JsonNullValueInput | runtime.InputJsonValue
 }
 
@@ -456,6 +479,7 @@ export type PortfolioSnapshotCountOrderByAggregateInput = {
   netWorthUsd?: Prisma.SortOrder
   yieldEarnedUsd?: Prisma.SortOrder
   healthFactor?: Prisma.SortOrder
+  savingsRate?: Prisma.SortOrder
   allocations?: Prisma.SortOrder
 }
 
@@ -466,6 +490,7 @@ export type PortfolioSnapshotAvgOrderByAggregateInput = {
   netWorthUsd?: Prisma.SortOrder
   yieldEarnedUsd?: Prisma.SortOrder
   healthFactor?: Prisma.SortOrder
+  savingsRate?: Prisma.SortOrder
 }
 
 export type PortfolioSnapshotMaxOrderByAggregateInput = {
@@ -478,6 +503,7 @@ export type PortfolioSnapshotMaxOrderByAggregateInput = {
   netWorthUsd?: Prisma.SortOrder
   yieldEarnedUsd?: Prisma.SortOrder
   healthFactor?: Prisma.SortOrder
+  savingsRate?: Prisma.SortOrder
 }
 
 export type PortfolioSnapshotMinOrderByAggregateInput = {
@@ -490,6 +516,7 @@ export type PortfolioSnapshotMinOrderByAggregateInput = {
   netWorthUsd?: Prisma.SortOrder
   yieldEarnedUsd?: Prisma.SortOrder
   healthFactor?: Prisma.SortOrder
+  savingsRate?: Prisma.SortOrder
 }
 
 export type PortfolioSnapshotSumOrderByAggregateInput = {
@@ -499,6 +526,7 @@ export type PortfolioSnapshotSumOrderByAggregateInput = {
   netWorthUsd?: Prisma.SortOrder
   yieldEarnedUsd?: Prisma.SortOrder
   healthFactor?: Prisma.SortOrder
+  savingsRate?: Prisma.SortOrder
 }
 
 export type PortfolioSnapshotCreateNestedManyWithoutUserInput = {
@@ -552,6 +580,7 @@ export type PortfolioSnapshotCreateWithoutUserInput = {
   netWorthUsd: number
   yieldEarnedUsd: number
   healthFactor?: number | null
+  savingsRate?: number | null
   allocations: Prisma.JsonNullValueInput | runtime.InputJsonValue
 }
 
@@ -564,6 +593,7 @@ export type PortfolioSnapshotUncheckedCreateWithoutUserInput = {
   netWorthUsd: number
   yieldEarnedUsd: number
   healthFactor?: number | null
+  savingsRate?: number | null
   allocations: Prisma.JsonNullValueInput | runtime.InputJsonValue
 }
 
@@ -606,6 +636,7 @@ export type PortfolioSnapshotScalarWhereInput = {
   netWorthUsd?: Prisma.FloatFilter<"PortfolioSnapshot"> | number
   yieldEarnedUsd?: Prisma.FloatFilter<"PortfolioSnapshot"> | number
   healthFactor?: Prisma.FloatNullableFilter<"PortfolioSnapshot"> | number | null
+  savingsRate?: Prisma.FloatNullableFilter<"PortfolioSnapshot"> | number | null
   allocations?: Prisma.JsonFilter<"PortfolioSnapshot">
 }
 
@@ -618,6 +649,7 @@ export type PortfolioSnapshotCreateManyUserInput = {
   netWorthUsd: number
   yieldEarnedUsd: number
   healthFactor?: number | null
+  savingsRate?: number | null
   allocations: Prisma.JsonNullValueInput | runtime.InputJsonValue
 }
 
@@ -630,6 +662,7 @@ export type PortfolioSnapshotUpdateWithoutUserInput = {
   netWorthUsd?: Prisma.FloatFieldUpdateOperationsInput | number
   yieldEarnedUsd?: Prisma.FloatFieldUpdateOperationsInput | number
   healthFactor?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  savingsRate?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   allocations?: Prisma.JsonNullValueInput | runtime.InputJsonValue
 }
 
@@ -642,6 +675,7 @@ export type PortfolioSnapshotUncheckedUpdateWithoutUserInput = {
   netWorthUsd?: Prisma.FloatFieldUpdateOperationsInput | number
   yieldEarnedUsd?: Prisma.FloatFieldUpdateOperationsInput | number
   healthFactor?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  savingsRate?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   allocations?: Prisma.JsonNullValueInput | runtime.InputJsonValue
 }
 
@@ -654,6 +688,7 @@ export type PortfolioSnapshotUncheckedUpdateManyWithoutUserInput = {
   netWorthUsd?: Prisma.FloatFieldUpdateOperationsInput | number
   yieldEarnedUsd?: Prisma.FloatFieldUpdateOperationsInput | number
   healthFactor?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  savingsRate?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   allocations?: Prisma.JsonNullValueInput | runtime.InputJsonValue
 }
 
@@ -669,6 +704,7 @@ export type PortfolioSnapshotSelect<ExtArgs extends runtime.Types.Extensions.Int
   netWorthUsd?: boolean
   yieldEarnedUsd?: boolean
   healthFactor?: boolean
+  savingsRate?: boolean
   allocations?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["portfolioSnapshot"]>
@@ -683,6 +719,7 @@ export type PortfolioSnapshotSelectCreateManyAndReturn<ExtArgs extends runtime.T
   netWorthUsd?: boolean
   yieldEarnedUsd?: boolean
   healthFactor?: boolean
+  savingsRate?: boolean
   allocations?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["portfolioSnapshot"]>
@@ -697,6 +734,7 @@ export type PortfolioSnapshotSelectUpdateManyAndReturn<ExtArgs extends runtime.T
   netWorthUsd?: boolean
   yieldEarnedUsd?: boolean
   healthFactor?: boolean
+  savingsRate?: boolean
   allocations?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["portfolioSnapshot"]>
@@ -711,10 +749,11 @@ export type PortfolioSnapshotSelectScalar = {
   netWorthUsd?: boolean
   yieldEarnedUsd?: boolean
   healthFactor?: boolean
+  savingsRate?: boolean
   allocations?: boolean
 }
 
-export type PortfolioSnapshotOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "date" | "walletValueUsd" | "savingsValueUsd" | "debtValueUsd" | "netWorthUsd" | "yieldEarnedUsd" | "healthFactor" | "allocations", ExtArgs["result"]["portfolioSnapshot"]>
+export type PortfolioSnapshotOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "date" | "walletValueUsd" | "savingsValueUsd" | "debtValueUsd" | "netWorthUsd" | "yieldEarnedUsd" | "healthFactor" | "savingsRate" | "allocations", ExtArgs["result"]["portfolioSnapshot"]>
 export type PortfolioSnapshotInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
 }
@@ -740,6 +779,7 @@ export type $PortfolioSnapshotPayload<ExtArgs extends runtime.Types.Extensions.I
     netWorthUsd: number
     yieldEarnedUsd: number
     healthFactor: number | null
+    savingsRate: number | null
     allocations: runtime.JsonValue
   }, ExtArgs["result"]["portfolioSnapshot"]>
   composites: {}
@@ -1174,6 +1214,7 @@ export interface PortfolioSnapshotFieldRefs {
   readonly netWorthUsd: Prisma.FieldRef<"PortfolioSnapshot", 'Float'>
   readonly yieldEarnedUsd: Prisma.FieldRef<"PortfolioSnapshot", 'Float'>
   readonly healthFactor: Prisma.FieldRef<"PortfolioSnapshot", 'Float'>
+  readonly savingsRate: Prisma.FieldRef<"PortfolioSnapshot", 'Float'>
   readonly allocations: Prisma.FieldRef<"PortfolioSnapshot", 'Json'>
 }
     
