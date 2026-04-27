@@ -74,16 +74,21 @@ export async function executeToolAction(
     }
 
     case 'borrow': {
+      // [v0.51.0] Pass asset through (USDC or USDsui) so the borrow routes to
+      // the right NAVI pool. parseActualAmount also keys off the chosen asset
+      // — if we left it hardcoded as 'USDC', a USDsui borrow's balanceChanges
+      // would parse to null and we'd echo back the requested input instead of
+      // the on-chain truth.
+      const borrowAsset = (inp.asset as string | undefined) ?? 'USDC';
       const res = await sdk.borrow({
         amount: Number(inp.amount),
+        asset: borrowAsset,
         protocol: inp.protocol as string | undefined,
       });
-      // [v1.4 fix] Use balanceChanges to surface the actual disbursed USDC,
-      // not the requested input. Borrow protocols can deduct fees on disbursal.
-      const actual = parseActualAmount(res.balanceChanges, 'USDC', 'positive');
+      const actual = parseActualAmount(res.balanceChanges, borrowAsset, 'positive');
       return {
         success: true,
-        data: { success: true, tx: res.tx, amount: actual ?? inp.amount },
+        data: { success: true, tx: res.tx, amount: actual ?? inp.amount, asset: borrowAsset },
       };
     }
 

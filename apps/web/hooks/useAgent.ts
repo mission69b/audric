@@ -43,7 +43,7 @@ export interface AgentActions {
   send(params: { to: string; amount: number; asset?: string }): Promise<TxResult>;
   save(params: { amount: number; asset?: string; protocol?: string }): Promise<TxResult>;
   withdraw(params: { amount: number; asset?: string; protocol?: string; fromAsset?: string; toAsset?: string }): Promise<TxResult>;
-  borrow(params: { amount: number; protocol?: string }): Promise<TxResult>;
+  borrow(params: { amount: number; asset?: string; protocol?: string }): Promise<TxResult>;
   repay(params: { amount: number; protocol?: string }): Promise<TxResult>;
   claimRewards(): Promise<TxResult>;
   swap(params: { from: string; to: string; amount: number; slippage?: number; byAmountIn?: boolean }): Promise<TxResult>;
@@ -154,8 +154,12 @@ export function useAgent() {
             return sponsoredTransaction('withdraw', { amount, asset, protocol, fromAsset, toAsset });
           },
 
-          async borrow({ amount, protocol }) {
-            return sponsoredTransaction('borrow', { amount, protocol });
+          async borrow({ amount, asset, protocol }) {
+            // [v0.51.0] Plumb asset through to /api/transactions/prepare so
+            // USDsui borrows route to NAVI's USDsui pool. Pre-v0.51 we
+            // dropped the asset here even though the SDK allow-list now
+            // accepts USDC + USDsui.
+            return sponsoredTransaction('borrow', { amount, asset, protocol });
           },
 
           async repay({ amount, protocol }) {

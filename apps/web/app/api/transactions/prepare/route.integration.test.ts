@@ -25,7 +25,12 @@ function buildRequest(body: unknown, jwt: string = TEST_JWT): NextRequest {
   });
 }
 
-describe('POST /api/transactions/prepare — USDC enforcement', () => {
+describe('POST /api/transactions/prepare — savings asset allow-list', () => {
+  // [v0.51.0] USDsui joined USDC as a permitted save/borrow asset (strategic
+  // exception — see .cursor/rules/savings-usdc-only.mdc). Every other asset
+  // (GOLD, SUI, USDT, USDe, ETH, NAVX, WAL) must still be rejected by the
+  // SDK's `assertAllowedAsset` allow-list. These tests are the regression
+  // guard for that boundary.
   let POST: (req: NextRequest) => Promise<Response>;
 
   beforeEach(async () => {
@@ -36,7 +41,7 @@ describe('POST /api/transactions/prepare — USDC enforcement', () => {
     POST = mod.POST as unknown as (req: NextRequest) => Promise<Response>;
   });
 
-  it('rejects save with asset=USDT (caught by balance or asset check)', async () => {
+  it('rejects save with asset=USDT (caught by allow-list)', async () => {
     const res = await POST(buildRequest({
       type: 'save',
       address: VALID_ADDR,
@@ -54,6 +59,18 @@ describe('POST /api/transactions/prepare — USDC enforcement', () => {
       address: VALID_ADDR,
       amount: 1,
       asset: 'SUI',
+    }));
+    expect(res.status).toBeGreaterThanOrEqual(400);
+    const body = await res.json();
+    expect(body.error).toBeTruthy();
+  });
+
+  it('rejects save with asset=USDe (other stable still blocked)', async () => {
+    const res = await POST(buildRequest({
+      type: 'save',
+      address: VALID_ADDR,
+      amount: 1,
+      asset: 'USDe',
     }));
     expect(res.status).toBeGreaterThanOrEqual(400);
     const body = await res.json();
@@ -82,6 +99,34 @@ describe('POST /api/transactions/prepare — USDC enforcement', () => {
     expect(res.status).toBeGreaterThanOrEqual(400);
     const body = await res.json();
     expect(body.error).toBeTruthy();
+  });
+
+  it('allows save with asset=USDsui (strategic exception)', async () => {
+    // USDsui passes the allow-list; the route still fails downstream because
+    // there's no real Sui RPC in the test env, but it MUST get past
+    // assertAllowedAsset without an INVALID_ASSET error. That's the boundary
+    // we're guarding here.
+    const res = await POST(buildRequest({
+      type: 'save',
+      address: VALID_ADDR,
+      amount: 1,
+      asset: 'USDsui',
+    }));
+    const body = await res.json();
+    expect(body.error).not.toContain('INVALID_ASSET');
+    expect(body.error).not.toContain('only supports');
+  });
+
+  it('allows borrow with asset=USDsui (strategic exception)', async () => {
+    const res = await POST(buildRequest({
+      type: 'borrow',
+      address: VALID_ADDR,
+      amount: 1,
+      asset: 'USDsui',
+    }));
+    const body = await res.json();
+    expect(body.error).not.toContain('INVALID_ASSET');
+    expect(body.error).not.toContain('only supports');
   });
 });
 

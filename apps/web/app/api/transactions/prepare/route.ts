@@ -308,9 +308,14 @@ async function buildTransaction(params: BuildRequest): Promise<Transaction> {
     }
 
     case 'save': {
+      // [v0.51.0] Honor the asset param — pre-v0.51 we hardcoded 'USDC' here
+      // even after the assertAllowedAsset check, which silently rewrote a
+      // USDsui save into a USDC save (broken end-to-end). The SDK allow-list
+      // is the gate; this route just plumbs the chosen asset through.
       assertAllowedAsset('save', asset);
+      const saveAsset = asset ?? 'USDC';
       const adapter = getLendingAdapter(params.protocol);
-      const result = await adapter.buildSaveTx(address, amount, 'USDC', { sponsored: true });
+      const result = await adapter.buildSaveTx(address, amount, saveAsset, { sponsored: true });
       return result.tx;
     }
 
@@ -322,9 +327,13 @@ async function buildTransaction(params: BuildRequest): Promise<Transaction> {
     }
 
     case 'borrow': {
+      // [v0.51.0] Same fix as save above — honor the asset param so USDsui
+      // borrows actually flow through to NAVI's USDsui pool instead of
+      // silently routing to USDC.
       assertAllowedAsset('borrow', asset);
+      const borrowAsset = asset ?? 'USDC';
       const adapter = getLendingAdapter(params.protocol);
-      const result = await adapter.buildBorrowTx(address, amount, 'USDC', { sponsored: true });
+      const result = await adapter.buildBorrowTx(address, amount, borrowAsset, { sponsored: true });
       return result.tx;
     }
 
