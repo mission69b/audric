@@ -37,7 +37,17 @@ export async function GET(request: NextRequest) {
     sessionIds.map(async (id) => {
       const data = await store.get(id);
       if (!data) return null;
-      const firstUserMsg = data.messages?.find((m) => m.role === 'user');
+      // Skip the `[session bootstrap]` sentinel inserted by
+      // buildSyntheticPrefetch — it's an internal seed message that
+      // satisfies Anthropic's "first message must be user" invariant
+      // and should never surface as the conversation title.
+      const firstUserMsg = data.messages?.find((m) => {
+        if (m.role !== 'user') return false;
+        const text = (m.content as Array<{ type: string; text?: string }>).find(
+          (b) => b.type === 'text',
+        )?.text;
+        return text !== '[session bootstrap]';
+      });
       let preview = 'Conversation';
       if (firstUserMsg?.content) {
         const textBlock = firstUserMsg.content.find(
