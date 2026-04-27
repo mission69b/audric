@@ -138,6 +138,14 @@ model AdviceLog {
   targetAmount  Float?
   goalId        String?
   appEventId    String?
+  /// [v1.4.2 — Day 3 / Spec §AdviceLog migration] Set to `true` when the
+  /// user acts on the suggestion (e.g. confirms a recommended save / swap
+  /// originated from the surfaced advice). Used by the daily financial-
+  /// context cron to surface only *unactioned* advice as
+  /// `pendingAdvice` — without this flag the cron re-surfaces stale
+  /// suggestions the user already followed. Default `false` covers all
+  /// pre-migration rows correctly (treat as not yet acted on).
+  actedOn       Boolean      @default(false)
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 
@@ -314,10 +322,80 @@ model TurnMetrics {
   /// Cheap audit: `SELECT id, modelUsed, mutableToolDedupes FROM
   /// "TurnMetrics" WHERE "mutableToolDedupes" > 0;`
   mutableToolDedupes   Int      @default(0)
+  /// [v1.4.2 — Day 3 / Spec Item 3] Per-yield UUID emitted by the engine
+  /// on `pending_action`. Nullable because (a) turns without a write
+  /// never yield one and (b) pre-migration rows have no value. The
+  /// resume route's `prisma.turnMetrics.updateMany` keys on this column
+  /// instead of `(sessionId, turnIndex)` to eliminate the cross-attempt
+  /// false-resolution that pair allows when the same turn yields a
+  /// second pending action (e.g. modifiable-field re-yield). Indexed
+  /// because resume is a per-row lookup and the column is sparse.
+  attemptId            String?
+  /// [v1.4.2 — Day 3] `true` when this turn was driven by a
+  /// pre-fetch / synthetic intent (e.g. resumed-session snapshot reads)
+  /// rather than a user prompt. Lets dashboards exclude synthetic
+  /// turns from latency / cost percentiles without losing the
+  /// instrumentation row.
+  synthetic            Boolean  @default(false)
+  /// [v1.4.2 — Day 3] Wall-clock ms reported by the host for the
+  /// client-side write tool execution (signing + broadcast +
+  /// indexer-lag absorption). Written only on resume; null on the
+  /// initial chat row that yielded the `pending_action`.
+  writeToolDurationMs  Int?
+  /// [v1.4.2 — Day 3] Estimated USD savings from prompt-cache reads on
+  /// this turn — `cacheReadTokens * (input_rate - cacheRead_rate)` per
+  /// `costRatesForModel`. Reported separately from `estimatedCostUsd`
+  /// so dashboards can attribute hit-rate value without subtraction.
+  cacheSavingsUsd      Float    @default(0)
+  /// [v1.4.2 — Day 3] Phase of the turn that produced this row:
+  /// `'initial'` for the chat-route close, `'resume'` for the row the
+  /// resume-route close writes when the user resolves the pending
+  /// action. Default `'initial'` is the safe value for backfilled
+  /// pre-migration rows (none of them carried a resume row).
+  turnPhase            String   @default("initial")
   createdAt            DateTime @default(now())
 
   @@index([userId, createdAt])
   @@index([sessionId])
   @@index([effortLevel, modelUsed])
   @@index([createdAt])
+  @@index([attemptId])
+}
+
+/// [v1.4.2 — Day 5 / Spec Item 6] Daily snapshot of every active user's
+/// orientation block — savings / debt / wallet totals, health factor, open
+/// goals, last unactioned advice, and a one-line "recent activity"
+/// summary. Read by `engine-context.ts:buildDynamicBlock` at engine boot
+/// to seed the `<financial_context>` system-prompt section so a returning
+/// user gets a contextual greeting WITHOUT spending tool calls (and tokens)
+/// re-deriving state every session.
+///
+/// Dual-key by design [v1.4 — B2]: callers in the engine path only know
+/// the wallet `address` (no Prisma `User.id` cuid), but joins to
+/// `AdviceLog` / `SavingsGoal` / `PortfolioSnapshot` need the cuid. The
+/// cron writer populates BOTH on upsert so either lookup works.
+///
+/// Cached at `fin_ctx:${address}` in Upstash Redis with a 24h TTL that
+/// matches the cron cadence. Invalidated synchronously after every
+/// auto-tier (`engine-factory.ts:onAutoExecuted`) and confirm-tier
+/// (`resume/route.ts`) write so a user who saves / sends / swaps and
+/// reopens chat 5 minutes later sees the updated snapshot — not a
+/// stale 23-hour-old block. Reading is fail-open: a Redis miss falls
+/// through to Prisma, and a Prisma miss returns `null` (the engine
+/// boot path then skips the `<financial_context>` section entirely).
+model UserFinancialContext {
+  id                   String   @id @default(cuid())
+  userId               String   @unique
+  address              String   @unique
+  savingsUsdc          Float
+  debtUsdc             Float
+  healthFactor         Float?
+  walletUsdc           Float
+  currentApy           Float?
+  recentActivity       String
+  openGoals            Json
+  pendingAdvice        String?
+  daysSinceLastSession Int
+  generatedAt          DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 }

@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { engineToSSE } from '@t2000/engine';
+import { serializeSSE } from '@t2000/engine';
 import type { PendingAction } from '@t2000/engine';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { validateJwt, isValidSuiAddress } from '@/lib/auth';
@@ -12,6 +12,14 @@ import {
   resolveUsdValue,
   toolNameToOperation,
 } from '@/lib/engine/permission-tiers-client';
+import {
+  TurnMetricsCollector,
+  detectRefinement,
+  detectTruncation,
+} from '@/lib/engine/harness-metrics';
+import { costRatesForModel } from '@/lib/engine/cost-rates';
+import { isSyntheticSessionId } from '@/lib/engine/synthetic-sessions';
+import { invalidateUserFinancialContext } from '@/lib/redis/user-financial-context';
 import { prisma } from '@/lib/prisma';
 
 const AGENT_MODEL = process.env.AGENT_MODEL ?? 'claude-sonnet-4-20250514';
@@ -39,6 +47,17 @@ interface ResumeRequestBody {
    * matches what was actually approved.
    */
   modifications?: Record<string, unknown>;
+  /**
+   * [v1.4.2 — Day 3 / Day 4 / Spec Item 3] Wall-clock ms the client
+   * spent executing the approved write tool — i.e. the round-trip from
+   * approval click through signing, broadcast, and indexer-lag
+   * absorption. Day-3 added the column on `TurnMetrics`; Day-4 wires
+   * the UI to actually populate this field via
+   * `useEngine.ts:resolveAction`. When omitted (legacy clients in the
+   * deploy window) the field updates to `null`, which is the same as
+   * untouched for the resume row's purposes.
+   */
+  executionDurationMs?: number;
 }
 
 function jsonError(message: string, status: number): Response {
@@ -56,7 +75,7 @@ export async function POST(request: NextRequest) {
     return jsonError('Invalid JSON body', 400);
   }
 
-  const { address, sessionId, action: rawAction, approved, executionResult, outcome, modifications } = body;
+  const { address, sessionId, action: rawAction, approved, executionResult, outcome, modifications, executionDurationMs } = body;
 
   // [v1.4 Item 6] Overlay user modifications on top of action.input so the
   // engine reconstructs the turn with the approved values. The shared helper
@@ -97,12 +116,27 @@ export async function POST(request: NextRequest) {
     // the daily autonomous cap on any subsequent auto-tier write tools.
     const sessionSpendUsd = await getSessionSpend(sessionId);
 
+    // [v1.4.2 — Day 4 / Spec Edit 4] `TurnMetricsCollector` is constructed
+    // BEFORE `createEngine` so the engine factory's `onGuardFired`
+    // callback can write into it directly (mirrors chat/route.ts:212).
+    const collector = new TurnMetricsCollector();
+    let engineMeta: { effortLevel: string; modelUsed: string } | undefined;
+
     const engine = await createEngine({
       address,
       session,
       contacts,
       sessionSpendUsd,
       sessionId,
+      // [v1.4.2 — Day 4 / Spec M3] Capture routing decisions for the
+      // resume-row's effortLevel/modelUsed columns. Fired exactly once
+      // after engine construction.
+      onMeta: (meta) => { engineMeta = meta; },
+      // [v1.4.2 — Day 4 / Spec Item 4] Forward guard verdicts to the
+      // resume row so dashboards see post-confirmation guard activity
+      // (rare but real — chained writes in a resume turn re-trigger
+      // the same guard chain as the initial turn).
+      onGuardFired: (guard) => collector.onGuardFired(guard),
     });
     const priorMsgCount = engine.getMessages().length;
 
@@ -112,21 +146,63 @@ export async function POST(request: NextRequest) {
         let pendingAction: PendingAction | null = null;
 
         try {
-          for await (const chunk of engineToSSE(
-            engine.resumeWithToolResult(action, { approved, executionResult }),
-          )) {
-            controller.enqueue(encoder.encode(chunk));
-
-            if (chunk.includes('"type":"pending_action"')) {
-              try {
-                const match = chunk.match(/data: (.+)/);
-                if (match) {
-                  const parsed = JSON.parse(match[1]);
-                  if (parsed.type === 'pending_action') {
-                    pendingAction = parsed.action;
-                  }
+          // [v1.4.2 — Day 4 / Spec G3] Switch from `engineToSSE` (which
+          // returns serialized strings, hiding raw event shape) to raw
+          // event iteration so `TurnMetricsCollector` can tap each event
+          // and `serializeSSE` is called per-event. Mirrors chat/route.ts.
+          for await (const event of engine.resumeWithToolResult(action, { approved, executionResult })) {
+            switch (event.type) {
+              case 'compaction':
+                collector.onCompaction();
+                continue;
+              case 'text_delta':
+                collector.onFirstTextDelta();
+                break;
+              case 'tool_start':
+                collector.onToolStart(event.toolUseId);
+                break;
+              case 'tool_result':
+                if (event.toolName === '__deduped__') {
+                  // Engine-internal microcompact dedup marker — flip the
+                  // flag on the prior tool row instead of recording a new
+                  // one (same behaviour as chat/route.ts:447-460).
+                  collector.markToolResultDeduped(event.toolUseId);
+                } else {
+                  collector.onToolResult(event.toolUseId, event.toolName, event.result, {
+                    wasTruncated: detectTruncation(event.result),
+                    wasEarlyDispatched: event.wasEarlyDispatched ?? false,
+                    resultDeduped: event.resultDeduped ?? false,
+                    returnedRefinement: detectRefinement(event.result),
+                  });
                 }
-              } catch { /* best effort */ }
+                break;
+              case 'usage':
+                collector.onUsage(event);
+                break;
+              case 'pending_action':
+                // [v1.3.1 — G13] Capture for the existing finally-block
+                // setConversationState transition + session store write
+                // — replaces the regex-extraction path used pre-Day-4.
+                collector.onPendingAction(event.action.attemptId);
+                pendingAction = event.action;
+                break;
+              default:
+                break;
+            }
+
+            if (event.type === 'error') {
+              controller.enqueue(
+                encoder.encode(
+                  serializeSSE({
+                    type: 'error',
+                    message: sanitizeStreamErrorMessage(event.error.message),
+                  }),
+                ),
+              );
+            } else if (event.type === 'tool_result' && event.toolName === '__deduped__') {
+              // Engine-internal marker; never serialize to the client.
+            } else {
+              controller.enqueue(encoder.encode(serializeSSE(event)));
             }
           }
         } catch (err) {
@@ -180,17 +256,112 @@ export async function POST(request: NextRequest) {
             console.error('[engine/resume] session usage log failed:', err),
           );
 
-          // [v1.4 Item 6] Update the originating `TurnMetrics` row with
-          // the resolved outcome (approved / declined / modified). Keyed
-          // on `(sessionId, turnIndex)` from `PendingAction.turnIndex`.
-          prisma.turnMetrics
-            .updateMany({
-              where: { sessionId, turnIndex: action.turnIndex },
-              data: { pendingActionOutcome: resolvedOutcome },
-            })
-            .catch((err) =>
-              console.warn('[TurnMetrics] pendingActionOutcome update failed (non-fatal):', err),
-            );
+          // [v1.4.2 — Day 3 / Spec Item 3] Update the originating
+          // `TurnMetrics` row with the resolved outcome (approved /
+          // declined / modified). Switched from `(sessionId, turnIndex)`
+          // keying to `attemptId` keying — the pair-based update could
+          // collide on resumed sessions where the same turn yielded a
+          // second pending action (modifiable-field re-yield), causing
+          // the *wrong* row's outcome to be overwritten. attemptId is
+          // unique per yield by construction.
+          //
+          // Defensive fallback: pre-v1.4.2 sessions (or pre-Day-5
+          // pre-engine-republish sessions where audric/apps/web is
+          // still consuming engine 0.46.16) rehydrate `PendingAction`
+          // without an `attemptId`. In that case we keep the legacy
+          // pair-keyed update so existing in-flight pending actions
+          // don't lose their outcome telemetry. Branch becomes dead
+          // code after Day 5 republish + 24h session TTL rotation.
+          if (action.attemptId) {
+            prisma.turnMetrics
+              .updateMany({
+                where: { attemptId: action.attemptId },
+                data: {
+                  pendingActionOutcome: resolvedOutcome,
+                  writeToolDurationMs: executionDurationMs ?? null,
+                },
+              })
+              .catch((err) =>
+                console.warn('[TurnMetrics] attemptId update failed (non-fatal):', err),
+              );
+          } else {
+            prisma.turnMetrics
+              .updateMany({
+                where: { sessionId, turnIndex: action.turnIndex },
+                data: { pendingActionOutcome: resolvedOutcome },
+              })
+              .catch((err) =>
+                console.warn('[TurnMetrics] pendingActionOutcome update failed (non-fatal, legacy keying):', err),
+              );
+          }
+
+          // [v1.4.2 — Day 4 / Spec Edit 4] Write a NEW TurnMetrics row
+          // for the resume turn itself. The `updateMany` above patches
+          // the *initial* row's outcome; this row captures the
+          // post-confirmation portion of the turn (narration latency,
+          // tokens, any chained tool calls). Q5 / Q6 dashboards filter
+          // `WHERE turnPhase = 'initial'` for cold-start metrics and
+          // `WHERE turnPhase = 'resume'` for confirm-tier tail latency.
+          // Failure is fire-and-forget; instrumentation must never
+          // block the chat response.
+          try {
+            const modelUsed = engineMeta?.modelUsed ?? AGENT_MODEL;
+            const effortLevel = engineMeta?.effortLevel ?? 'medium';
+            const rates = costRatesForModel(modelUsed);
+            const estimatedCostUsd =
+              (usage.inputTokens ?? 0) * rates.input +
+              (usage.outputTokens ?? 0) * rates.output +
+              (usage.cacheReadTokens ?? 0) * rates.cacheRead +
+              (usage.cacheWriteTokens ?? 0) * rates.cacheWrite;
+
+            const built = collector.build({
+              sessionId,
+              userId: address,
+              // [v1.4.2 — Day 4 / Spec Edit 4 line 1066] Resume row
+              // shares `turnIndex` with the originating chat row so
+              // `(sessionId, turnIndex)` joins return both phases of
+              // the same turn. `action.turnIndex` was stamped by the
+              // engine at the *original* `pending_action` yield (see
+              // engine.ts:1158: `messages.filter(m =>
+              // m.role === 'assistant').length`) which is the same
+              // assistant-message-count convention chat/route.ts:225
+              // uses for its own row. Distinguished from the chat row
+              // by `turnPhase`. Crucially, `action.turnIndex` is NOT
+              // the same as `priorMsgCount`: the latter is total
+              // message count (incl. user messages and persisted
+              // tool_use blocks); only one of these two values is the
+              // correct turn id for joining rows.
+              turnIndex: action.turnIndex,
+              effortLevel,
+              modelUsed,
+              // [v1.4.1 — C1] Aligns with chat/route.ts:607 — total
+              // `engine.getMessages().length` immediately after
+              // `createEngine`, before this turn's stream begins.
+              // Naming is "messages-prior-to-this-turn" not "tokens";
+              // see the v1.4.1 — C1 naming note in the spec body.
+              contextTokensStart: priorMsgCount,
+              estimatedCostUsd,
+              sessionSpendUsd,
+              // [v1.4.2 — Day 3] Same derivation as chat route via the
+              // shared `synthetic-sessions` module — both phases of a
+              // turn must agree on the bit so dashboards `WHERE
+              // synthetic = false` don't mis-pair them.
+              synthetic: isSyntheticSessionId(sessionId),
+              turnPhase: 'resume',
+            });
+            const payload = {
+              ...built,
+              toolsCalled: JSON.parse(JSON.stringify(built.toolsCalled)),
+              guardsFired: JSON.parse(JSON.stringify(built.guardsFired)),
+            };
+            prisma.turnMetrics
+              .create({ data: payload })
+              .catch((err) =>
+                console.error('[TurnMetrics] resume row write failed (non-fatal):', err),
+              );
+          } catch (buildErr) {
+            console.error('[TurnMetrics] resume row build failed (non-fatal):', buildErr);
+          }
 
           // [v1.4 hotfix] Audric signs writes client-side, so the
           // engine's `onAutoExecuted → incrementSessionSpend` callback
@@ -227,6 +398,18 @@ export async function POST(request: NextRequest) {
                   console.warn('[session-spend] increment failed (non-fatal):', err),
                 );
               }
+
+              // [v1.4 — B1] Drop the cached `UserFinancialContext`
+              // snapshot for this address. Confirm-tier writes never
+              // fire engine.onAutoExecuted, so the daily-cron snapshot
+              // would otherwise stay stale until 02:00 UTC the next
+              // day. The very next chat then re-hydrates the cache
+              // from fresh on-chain state instead of inferring from a
+              // 24h-old snapshot. Cache key is `address`, not `userId`
+              // — universally available without a DB lookup.
+              invalidateUserFinancialContext(address).catch((err) =>
+                console.warn('[fin_ctx] resume invalidation failed (non-fatal):', err),
+              );
             }
           }
 

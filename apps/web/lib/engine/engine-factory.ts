@@ -14,6 +14,7 @@ import {
   DEFAULT_GUARD_CONFIG,
   DEFAULT_PERMISSION_CONFIG,
   RecipeRegistry,
+  type AddressPortfolio,
   type SessionData,
   type SessionStore,
   type ServerPositionData,
@@ -42,6 +43,10 @@ import {
   type Contact,
   type GoalSummary,
 } from './engine-context';
+import {
+  getUserFinancialContext,
+  invalidateUserFinancialContext,
+} from '@/lib/redis/user-financial-context';
 import { runStartupCheck } from './spec-consistency';
 
 // [v1.4 Item 5] One-shot spec consistency check at module load. Dev-mode
@@ -106,6 +111,13 @@ export const MUTABLE_TOOL_SET: ReadonlySet<string> = new Set(
 );
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+// [v1.4 BlockVision] Pro-tier Indexer REST API key. Same vendor as the
+// JSON-RPC routing in `lib/sui-rpc.ts`, but a different API surface
+// (`api.blockvision.org/v2/sui/...`, `x-api-key` header). When undefined
+// the engine's `fetchAddressPortfolio` / `fetchTokenPrices` helpers
+// degrade to Sui RPC + the hardcoded stable allow-list — see
+// `packages/engine/src/blockvision-prices.ts`.
+const BLOCKVISION_API_KEY = process.env.BLOCKVISION_API_KEY;
 const SONNET_MODEL = 'claude-sonnet-4-6';
 const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
 const MODEL_OVERRIDE = process.env.AGENT_MODEL;
@@ -255,7 +267,17 @@ export async function createEngine(
 
   const userId = userRecord?.id;
 
-  const [mgr, positions, walletCoins, swapTokenNames, goals, adviceContext, profileRecord, memoryRecords] = await Promise.all([
+  const [
+    mgr,
+    positions,
+    walletCoins,
+    swapTokenNames,
+    goals,
+    adviceContext,
+    profileRecord,
+    memoryRecords,
+    financialContext,
+  ] = await Promise.all([
     ensureMcpConnected(),
     fetchServerPositions(address),
     fetchWalletCoins(address, SUI_RPC_URL).catch((err) => {
@@ -288,6 +310,14 @@ export async function createEngine(
       take: 8,
       select: { id: true, memoryType: true, content: true, extractedAt: true, source: true },
     }).catch(() => []) : Promise.resolve([]),
+    // [v1.4.2 — Day 5 / Spec Item 6] Daily orientation snapshot read-
+    // through cache. Joins the rest of the Promise.all so the engine-
+    // boot critical path doesn't gain a serial round-trip; on a Redis
+    // hit this is sub-ms, on a cold miss it's one Prisma read. Returns
+    // null for brand-new users (skip the section), Redis errors
+    // (degrade to Prisma), or Prisma errors (skip the section). Never
+    // throws — `getUserFinancialContext` swallows transport failures.
+    getUserFinancialContext(address),
   ]);
 
   // [SIMPLIFICATION DAY 5] Phase D pattern-detected proposals removed.
@@ -310,10 +340,25 @@ export async function createEngine(
   // Without this the LLM has no price for tokens like NAVX/CETUS/DEEP/ETH/WAL
   // and falls back to (stale) training memory — the root cause of the
   // "$3.50/SUI" hallucination class of bugs.
+  //
+  // [v1.4 BlockVision] [v1.4.1 — M6'] This is a critical-path call:
+  // every authenticated `createEngine()` boot waits on it. The
+  // BlockVision `fetchTokenPrices` helper wraps each chunk in
+  // `AbortSignal.timeout(3000)` and chunks transparently when
+  // `tokenIds` exceeds the 10-token API cap; the `.catch(() => ({}))`
+  // envelope below stays so a slow / failing BlockVision response
+  // never hangs the engine.
   const referenceCoinTypes = Object.values(SUPPORTED_ASSETS).map((a) => a.type);
   const heldCoinTypes = nonZeroCoins.map((c) => c.coinType);
   const allCoinTypesToPrice = Array.from(new Set([...heldCoinTypes, ...referenceCoinTypes]));
-  const prices = await fetchTokenPrices(allCoinTypesToPrice).catch(() => ({} as Record<string, number>));
+  const richPrices = await fetchTokenPrices(
+    allCoinTypesToPrice,
+    BLOCKVISION_API_KEY,
+  ).catch(() => ({} as Record<string, { price: number; change24h?: number }>));
+  const prices: Record<string, number> = {};
+  for (const [coinType, entry] of Object.entries(richPrices)) {
+    prices[coinType] = entry.price;
+  }
 
   const balanceSummary: WalletBalanceSummary = {
     coins: nonZeroCoins.map((c) => {
@@ -441,6 +486,7 @@ export async function createEngine(
         : undefined,
     },
     useSyntheticPrefetch: isNewSession,
+    financialContext,
   });
 
   const systemPrompt = buildCachedSystemPrompt([STATIC_SYSTEM_PROMPT], dynamicBlock);
@@ -495,9 +541,32 @@ export async function createEngine(
     // addresses always require client confirmation, regardless of amount).
     contacts: opts.contacts,
     sessionSpendUsd: opts.sessionSpendUsd,
+    // [v1.4 BlockVision] Forwarded into every `ToolContext` build site
+    // inside the engine. Empty per-request portfolio cache shared by
+    // `balance_check` and `portfolio_analysis` for in-turn dedup.
+    blockvisionApiKey: BLOCKVISION_API_KEY,
+    portfolioCache: new Map<string, AddressPortfolio>(),
+    // [v1.3 — G5] [v1.4.1 — M4'] [v1.4.2 — Day 5 / Spec Item 6]
+    // `walletAddress` is populated by the engine from
+    // `config.walletAddress`. Two side-effects chain here:
+    //   1. `incrementSessionSpend` — Redis-backed session-spend
+    //      accounting that feeds the autonomousDailyLimit cap.
+    //   2. `invalidateUserFinancialContext(walletAddress)` — drops
+    //      the cached orientation snapshot at `fin_ctx:${address}`
+    //      so the next chat boot reads fresh DB state instead of the
+    //      pre-write cron snapshot.
+    // No `engine.invalidateBalanceCache()` call — there is no engine-
+    // side balance cache (`postWriteRefresh` covers in-session balance
+    // freshness; `balance_check` is `cacheable: false`). Both calls
+    // are fail-open — failures surface to console.warn but never
+    // propagate, mirroring confirm-tier behavior in `resume/route.ts`.
     onAutoExecuted: opts.sessionId
-      ? ({ usdValue }: { usdValue: number }) =>
-          incrementSessionSpend(opts.sessionId!, usdValue)
+      ? async ({ usdValue, walletAddress }: { usdValue: number; walletAddress?: string }) => {
+          await incrementSessionSpend(opts.sessionId!, usdValue);
+          if (walletAddress) {
+            await invalidateUserFinancialContext(walletAddress).catch(() => null);
+          }
+        }
       : undefined,
     onGuardFired: opts.onGuardFired,
     // [v1.5] Auto-inject fresh balance/savings/health reads after every
@@ -655,7 +724,7 @@ export async function createUnauthEngine(history: HistoryMessage[]): Promise<Que
 function buildUnauthPrompt(tools: Tool[]): string {
   const toolList = tools.map((t) => `- ${t.name}: ${t.description}`).join('\n');
 
-  return `You are Audric, a financial agent on Sui. Audric is exactly five products: Audric Passport (Google sign-in, non-custodial Sui wallet, tap-to-confirm, sponsored gas — wraps every other product), Audric Intelligence (you — the 5-system brain: Agent Harness 40 tools, Reasoning Engine 9 guards + 7 skill recipes, Silent Profile, Chain Memory, AdviceLog), Audric Finance (manage money on Sui — Save via NAVI lending at 3-8% APY USDC, Credit via NAVI borrowing with health factor, Swap via Cetus aggregator across 20+ DEXs at 0.1% fee, Charts for yield/health/portfolio viz), Audric Pay (move money — send USDC, receive via payment links / invoices / QR — free, global, instant on Sui), and Audric Store (creator marketplace, ships Phase 5 — say "coming soon" if asked). Operation→product mapping: save, swap, borrow, repay, withdraw, charts → Audric Finance. send, receive, payment-link, invoice, QR → Audric Pay. You can also call 41 paid APIs (music, image, research, translation) via MPP micropayments using pay_api — this is an internal capability, not a promoted product. The user is not signed in — you have read-only research tools.
+  return `You are Audric, a financial agent on Sui. Audric is exactly five products: Audric Passport (Google sign-in, non-custodial Sui wallet, tap-to-confirm, sponsored gas — wraps every other product), Audric Intelligence (you — the 5-system brain: Agent Harness 34 tools, Reasoning Engine 9 guards + 7 skill recipes, Silent Profile, Chain Memory, AdviceLog), Audric Finance (manage money on Sui — Save via NAVI lending at 3-8% APY USDC, Credit via NAVI borrowing with health factor, Swap via Cetus aggregator across 20+ DEXs at 0.1% fee, Charts for yield/health/portfolio viz), Audric Pay (move money — send USDC, receive via payment links / invoices / QR — free, global, instant on Sui), and Audric Store (creator marketplace, ships Phase 5 — say "coming soon" if asked). Operation→product mapping: save, swap, borrow, repay, withdraw, charts → Audric Finance. send, receive, payment-link, invoice, QR → Audric Pay. You can also call 41 paid APIs (music, image, research, translation) via MPP micropayments using pay_api — this is an internal capability, not a promoted product. The user is not signed in — you have read-only research tools.
 
 ## Your tools
 ${toolList}
@@ -679,7 +748,7 @@ ${toolList}
 
 ## Rate & yield questions
 - For "savings rates", "lending rates", "NAVI rates" → use rates_info. This returns actual NAVI lending APYs.
-- For "best DeFi yields", "top yields" → use defillama_yield_pools with chain "Sui". These are LP yields with higher risk.
+- For "best yield on Sui" → compare rates_info (NAVI single-sided lending) and volo_stats (vSUI liquid staking).
 - For protocol-specific questions (e.g. "Is NAVI safe?") → use protocol_deep_dive.
 - When user asks to save/deposit, use rates_info first, then describe the action.
 

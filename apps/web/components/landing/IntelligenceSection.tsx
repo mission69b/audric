@@ -18,7 +18,7 @@ interface Pillar {
 const PILLARS: Pillar[] = [
   {
     title: 'Agent Harness',
-    italic: '40 tools. One agent.',
+    italic: '34 tools. One agent.',
     body:
       'The runtime that manages your money: balances, DeFi, analytics, payments — all orchestrated by a single conversation.',
     glyph: (
@@ -45,7 +45,7 @@ const PILLARS: Pillar[] = [
     title: 'Silent Profile',
     italic: 'Knows your finances.',
     body:
-      'Builds a private financial profile from your chat history. Used silently to make answers more relevant — never surfaced as nudges.',
+      'Builds a private financial profile from your chat history and a daily on-chain snapshot of your savings, debt, and yield. Every chat starts oriented — no warm-up tool calls. Never surfaced as nudges.',
     glyph: (
       <svg width="30" height="30" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <path d="M12 3c5 0 9 4 9 9 0 4-3 8-9 8s-9-4-9-8c0-5 4-9 9-9Z" fill="#F155A0" />

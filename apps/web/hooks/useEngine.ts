@@ -139,6 +139,17 @@ export function useEngine({ address, jwt, onToolResult }: UseEngineOptions) {
       executionResult?: unknown,
       denyReason?: 'timeout' | 'denied',
       modifications?: Record<string, unknown>,
+      /**
+       * [v1.4.2 — Day 4 / Spec m1] Wall-clock ms the caller spent
+       * executing the approved write tool — typically the
+       * `onExecuteAction` round-trip in `UnifiedTimeline.handleActionResolve`.
+       * Forwarded to `/api/engine/resume` so the matching `TurnMetrics`
+       * row's `writeToolDurationMs` column is populated. Optional
+       * because deny / timeout / pre-validation-fail paths skip the
+       * execution step entirely; the resume route accepts `undefined`
+       * and writes `null` (column is nullable per Day-3 schema).
+       */
+      executionDurationMs?: number,
     ) => {
       if (!sessionId || !jwt || !address) return;
 
@@ -190,6 +201,13 @@ export function useEngine({ address, jwt, onToolResult }: UseEngineOptions) {
         executionResult,
         ...(modifications && Object.keys(modifications).length
           ? { modifications, outcome: 'modified' as const }
+          : {}),
+        // [v1.4.2 — Day 4 / Spec m1] Append optionally — only forward
+        // when the caller actually measured an execution. Keeps the
+        // body shape stable for deny / timeout paths that skip
+        // `onExecuteAction` entirely.
+        ...(typeof executionDurationMs === 'number' && executionDurationMs >= 0
+          ? { executionDurationMs }
           : {}),
       });
     },

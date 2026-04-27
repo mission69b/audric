@@ -78,7 +78,7 @@ export default function LitepaperPage() {
               </div>
               <div className={s.gridCell}>
                 <div className={s.cellTitle}>Intelligence</div>
-                <div className={s.cellBody}>40 tools. 9 safety guards. Knows your risk profile, your history, and what it told you last month — silently, before you ask.</div>
+                <div className={s.cellBody}>34 tools. 9 safety guards. Knows your risk profile, your history, and what it told you last month — silently, before you ask.</div>
               </div>
               <div className={s.gridCell}>
                 <div className={s.cellTitle}>Finance</div>
@@ -138,7 +138,7 @@ export default function LitepaperPage() {
             <div className={`${s.gridRow} ${s.cols3}`}>
               <div className={s.gridCell}>
                 <div className={s.cellTitle}>Agent Harness</div>
-                <div className={s.cellBody}>40 tools. 29 reads in parallel. 11 writes with Passport confirmation. All in one conversation.</div>
+                <div className={s.cellBody}>34 tools. 23 reads in parallel. 11 writes with Passport confirmation. All in one conversation.</div>
               </div>
               <div className={s.gridCell}>
                 <div className={s.cellTitle}>Reasoning Engine</div>
@@ -190,8 +190,8 @@ export default function LitepaperPage() {
             <div className={`${s.gridRow} ${s.cols4}`}>
               <div className={`${s.gridCell} ${s.gridCellCenter}`}>
                 <div className={s.cellLabel}>Agent tools</div>
-                <div className={s.cellValue}>40</div>
-                <div className={`${s.cellBody} ${s.cellBodyXs}`}>29 read + 11 write</div>
+                <div className={s.cellValue}>34</div>
+                <div className={`${s.cellBody} ${s.cellBodyXs}`}>23 read + 11 write</div>
               </div>
               <div className={`${s.gridCell} ${s.gridCellCenter}`}>
                 <div className={s.cellLabel}>Safety guards</div>
@@ -218,9 +218,9 @@ export default function LitepaperPage() {
               </thead>
               <tbody>
                 <tr><td>Consumer app</td><td>audric.ai — Next.js 15, Vercel</td></tr>
-                <tr><td>AI engine</td><td><code>@t2000/engine</code> — 40 tools, reasoning, guards, streaming</td></tr>
+                <tr><td>AI engine</td><td><code>@t2000/engine</code> — 34 tools, reasoning, guards, streaming</td></tr>
                 <tr><td>Core SDK</td><td><code>@t2000/sdk</code> — wallet, NAVI / Cetus / VOLO adapters</td></tr>
-                <tr><td>CLI + MCP</td><td><code>@t2000/cli</code> 29 commands · <code>@t2000/mcp</code> 50 tools for Claude, Cursor, Copilot</td></tr>
+                <tr><td>CLI + MCP</td><td><code>@t2000/cli</code> 29 commands · <code>@t2000/mcp</code> 29 tools for Claude, Cursor, Copilot</td></tr>
                 <tr><td>On-chain</td><td>Sui Move — treasury, fee collection, atomic PTBs</td></tr>
               </tbody>
             </table>

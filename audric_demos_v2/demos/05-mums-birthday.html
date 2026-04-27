@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Demo 5 · Mum's Birthday — Audric × Sui</title>
+<link rel="stylesheet" href="../shared/audric.css?v=5">
+</head>
+<body>
+<div id="root"></div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="../shared/primitives.jsx"></script>
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+const PROMPT = "Order flowers and a personalised card for my mum's birthday this Sunday. Her name is Margaret.";
+const THOUGHT = "Multi-service request. I need delivery address — I'll ask once, then run discovery. After address: parse date, discover MPP services, design + price card, price flowers. Three vendors, one Sui USDC payment, all atomic.";
+
+const Demo5 = () => {
+  const [step, setStep] = useState(0);
+  // 0 typing, 1 sent, 2 ask address, 3 user answers, 4 thinking, 5 querying, 6 plan ready, 7 permission visible, 8 executing, 9 done
+  const [name, setName] = useState('Margaret Chen');
+  const [addr, setAddr] = useState('14 Elm St, Apt 3B');
+  const [city, setCity] = useState('Brooklyn, NY 11201');
+  const typed = useTyped(PROMPT, step===0, 22);
+
+  useEffect(() => {
+    const delays = { 0: PROMPT.length*22+400, 1: 700, 2: null, 3: 600, 4: 1800, 5: 3700, 6: 600 };
+    const d = delays[step]; if (d == null) return;
+    const t = setTimeout(()=>setStep(s=>Math.min(s+1, 7)), d);
+    return ()=>clearTimeout(t);
+  }, [step]);
+
+  const submitAddress = (e) => { e.preventDefault(); setStep(3); };
+  const approve = () => { setStep(8); setTimeout(()=>setStep(9), 1300); };
+  const restart = () => setStep(0);
+
+  // Auto-approve permission 3s after it appears
+  useEffect(() => {
+    if (step === 7) { const t = setTimeout(()=>approve(), 3000); return ()=>clearTimeout(t); }
+  }, [step]);
+
+  // Auto-submit the address form 3s after it appears
+  useEffect(() => {
+    if (step === 2) { const t = setTimeout(()=>setStep(3), 3000); return ()=>clearTimeout(t); }
+  }, [step]);
+
+  const tools = [
+    {glyph:'📅', label:'RESOLVE DATE',   finishAt:700,  result:'Sun Apr 27, 2026'},
+    {glyph:'⊞', label:'DISCOVER MPP',     finishAt:1300, result:'40 svcs · 88 endpts'},
+    {glyph:'✦', label:'DALL-E DESIGN',    finishAt:2100, result:'preview ready · $0.04'},
+    {glyph:'✉', label:'LOB PRINT QUOTE',  finishAt:2700, result:'6×4 · ETA Fri · $1'},
+  {glyph:'✿', label:'TELEFLORA QUOTE',  finishAt:3400, result:'12 stems Sun · $45'},
+  ];
+
+  return (
+    <MainShell
+      hero={step===0}
+      balance={step>=9 ? '$66.76' : '$112.80'}
+      balanceLabel={step>=9 ? 'AVAILABLE $66 · EARNING $11' : 'AVAILABLE $112 · EARNING $11'}
+    
+      composer={<Composer value={step===0 ? typed : ''}/>}
+      ribbon={<DemoRibbon demoNum={5} demoTitle="MUM'S BIRTHDAY — MPP CHAIN" sentence="One sentence. Three MPP services. One USDC payment." onRestart={restart}/>}
+    >
+      <TaskInitiated/>
+      {step >= 1 && <UserBubble>{PROMPT}</UserBubble>}
+
+      {step === 2 && (
+        <ToolCard label="NEED INFORMATION" status="running" tokens="1 QUESTION" glyph="?">
+          <form onSubmit={submitAddress} style={{padding:'16px 18px'}}>
+            <div style={{fontSize:13,color:'var(--text-2)',marginBottom:12,lineHeight:1.5}}>
+              I don't have Margaret's address yet. Where should the card and flowers go?
+            </div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr',gap:8}}>
+              <Field label="RECIPIENT NAME" value={name} onChange={setName}/>
+              <Field label="STREET ADDRESS"  value={addr} onChange={setAddr}/>
+              <Field label="CITY · STATE · ZIP" value={city} onChange={setCity}/>
+            </div>
+            <div style={{display:'flex',alignItems:'center',gap:10,marginTop:14}}>
+              <span className="mono" style={{fontSize:10,color:'var(--text-3)',flex:1}}>SAVE TO CONTACTS · ENCRYPTED</span>
+              <button type="submit" className="mono" style={{padding:'8px 16px',borderRadius:999,background:'var(--text)',color:'#fff',fontSize:10,letterSpacing:'.12em'}}>CONFIRM ADDRESS</button>
+            </div>
+          </form>
+        </ToolCard>
+      )}
+
+      {step >= 3 && (
+        <UserBubble>{name} · {addr} · {city}</UserBubble>
+      )}
+
+      {step >= 4 && (
+        <>
+          <ThinkingHeader done={step>=5}/>
+          <ReasoningStream text={THOUGHT} active={step>=4} done={step>=5}/>
+          {step>=5 && <ParallelTools tools={tools} active={step>=5} headerLabel="DISPATCHING 5 MPP CALLS · DISCOVERY + QUOTES"/>}
+          {step>=6 && (
+            <HowIEvaluated tokens="412" model="AUDRIC v2.0" latency="3.4s">
+              5 MPP calls in parallel. Lob quoted $1 print+mail (USPS First-Class) — cheapest tier covers 6×4 cards. Teleflora quoted $45 for Sunday delivery in zip 11201. Total $46.04 — compiling into one Payment Stream PTB.
+            </HowIEvaluated>
+          )}
+          {step>=6 && (
+            <PtbCard
+              calls={[
+                {vendor:'DALL-E (MPP)', desc:'Generate birthday card · AI-designed 6×4', amount:'$0.04'},
+                {vendor:'Lob (MPP)',    desc:'Print + mail · USPS First-Class · ETA Fri', amount:'$1'},
+                {vendor:'Teleflora (MPP)', desc:`12-stem bouquet · Sunday delivery · ${city}`, amount:'$45'},
+              ]}
+              total="$46.04"
+            />
+          )}
+        </>
+      )}
+
+      {step >= 7 && (
+        <div className="appear d05-permission-grid" style={{display:'grid',gridTemplateColumns:'minmax(0,320px) 1fr',gap:14}}>
+          <CardPreview name={name.split(' ')[0]}/>
+          <PermissionCard
+            title="APPROVE PAYMENT STREAM · 1 PTB · 3 CALLS"
+            subtitle="ATOMIC · USDC"
+            rows={[
+              {title:'Card design — DALL-E (MPP)', sub:'AI-generated · already previewed', right:'$0.04'},
+              {title:'Print + mail — Lob (MPP)',   sub:`USPS First-Class · ETA Fri · to ${name.split(' ')[0]}`, right:'$1'},
+              {title:'Bouquet — Teleflora (MPP)',  sub:'Sunday delivery · 12 stems', right:'$45'},
+            ]}
+            footer={<><Icon name="bolt" size={12} color="var(--blue)"/><span>Single PTB on Sui — all 3 calls execute atomically in one block. <strong style={{color:'var(--text)'}}>$46.04 total.</strong> If any call fails, all revert.</span></>}
+            onApprove={approve}
+            executing={step===8}
+            executed={step>=9}
+            executionDetail="0.4s · 1 PTB EXECUTED · 3 CALLS ATOMIC · GAS $0.003"
+          />
+        </div>
+      )}
+
+      {step >= 9 && (
+        <>
+          <AudricLine>
+            Done. <strong style={{color:'var(--text)'}}>One PTB. Three MPP services. One signature.</strong> Card printing now — arrives Friday. Flowers confirmed for Sunday.
+          </AudricLine>
+          <div className="appear d05-receipts" style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10}}>
+            <Receipt vendor="DALL-E" service="Card design" cost="$0.04" status="DELIVERED · INSTANT"/>
+            <Receipt vendor="Lob"    service="Print + mail" cost="$1" status="ETA · APR 24"/>
+            <Receipt vendor="Teleflora" service="Bouquet delivery" cost="$45" status="ETA · APR 27"/>
+          </div>
+          <WhyOnlySui points={[
+            "DALL-E design, Lob print-and-mail, Teleflora delivery — three real-world services paid in one PTB. One signature, one USDC transaction.",
+            "If Teleflora can't deliver Sunday, Lob and DALL-E revert too. Atomic guarantees extended to physical-world outcomes.",
+            "Total cost: $46.04. Gas: $0.003, sponsored. A birthday across three companies, settled globally in 0.4s.",
+          ]}/>
+        </>
+      )}
+    </MainShell>
+  );
+};
+
+const Field = ({label,value,onChange}) => (
+  <label style={{display:'block'}}>
+    <div className="mono" style={{fontSize:9,color:'var(--text-3)',letterSpacing:'.12em',marginBottom:4}}>{label}</div>
+    <input value={value} onChange={e=>onChange(e.target.value)} style={{
+      width:'100%',padding:'10px 12px',border:'1px solid var(--line-2)',borderRadius:6,
+      background:'var(--panel-2)',fontSize:13,fontFamily:'var(--font-sans)',color:'var(--text)',outline:'none'
+    }}/>
+  </label>
+);
+
+const CardPreview = ({name}) => (
+  <div style={{border:'1px solid var(--line-2)',borderRadius:8,overflow:'hidden',background:'var(--panel)'}}>
+    <div style={{padding:'8px 12px',background:'var(--panel-2)',borderBottom:'1px solid var(--line)',display:'flex',alignItems:'center',gap:8}}>
+      <Icon name="sparkle" size={11} color="var(--purple)"/>
+      <span className="mono" style={{fontSize:9,color:'var(--text-2)',letterSpacing:'.12em'}}>DALL-E PREVIEW · GENERATED</span>
+    </div>
+    <div style={{aspectRatio:'4/5',background:'linear-gradient(160deg,#FDE5EE 0%,#F79CC8 50%,#DE458E 100%)',position:'relative',padding:18}}>
+      <svg viewBox="0 0 100 130" width="100%" height="100%" style={{position:'absolute',inset:0,padding:14}}>
+        <circle cx="22" cy="22" r="6" fill="#fff" opacity="0.85"/><circle cx="22" cy="22" r="3" fill="#FFBD14"/>
+        <circle cx="78" cy="30" r="8" fill="#fff" opacity="0.8"/><circle cx="78" cy="30" r="4" fill="#FFBD14"/>
+        <circle cx="20" cy="105" r="10" fill="#fff" opacity="0.7"/><circle cx="20" cy="105" r="5" fill="#FFBD14"/>
+        <circle cx="82" cy="100" r="7" fill="#fff" opacity="0.85"/><circle cx="82" cy="100" r="3" fill="#FFBD14"/>
+        <path d="M22 28 Q22 50 35 65" stroke="#288034" strokeWidth="1.5" fill="none"/>
+        <path d="M78 38 Q78 55 65 70" stroke="#288034" strokeWidth="1.5" fill="none"/>
+      </svg>
+      <div style={{position:'relative',height:'100%',display:'flex',flexDirection:'column',justifyContent:'center',alignItems:'center',textAlign:'center',color:'#3a0820'}}>
+        <div style={{fontFamily:'var(--font-serif)',fontStyle:'italic',fontSize:13,opacity:0.85}}>For my dearest</div>
+        <div style={{fontFamily:'var(--font-serif)',fontSize:34,marginTop:4,lineHeight:1}}>{name}</div>
+        <div style={{fontFamily:'var(--font-serif)',fontStyle:'italic',fontSize:14,marginTop:14,maxWidth:200,lineHeight:1.4}}>
+          Wishing you a birthday as warm and beautiful as the love you've given.
+        </div>
+        <div style={{fontFamily:'var(--font-serif)',fontStyle:'italic',fontSize:12,marginTop:14,opacity:0.85}}>— with all my love</div>
+      </div>
+    </div>
+    <div style={{padding:'10px 14px',display:'flex',gap:8,alignItems:'center',borderTop:'1px solid var(--line)'}}>
+      <span className="mono" style={{fontSize:9,color:'var(--text-3)',letterSpacing:'.12em',flex:1}}>6×4 PREMIUM · USPS FIRST-CLASS</span>
+      <Tag tone="purple">AI-DESIGNED</Tag>
+    </div>
+  </div>
+);
+
+const Receipt = ({vendor,service,cost,status}) => (
+  <div className="appear" style={{border:'1px solid var(--line)',borderRadius:8,padding:'14px 16px',background:'var(--panel)'}}>
+    <div style={{display:'flex',alignItems:'center',gap:8}}>
+      <Tag tone="dark">{vendor.toUpperCase()}</Tag>
+      <span style={{fontFamily:'var(--font-serif)',fontSize:18,marginLeft:'auto',letterSpacing:'-.01em'}}>{cost}</span>
+    </div>
+    <div style={{fontSize:13,color:'var(--text)',marginTop:10}}>{service}</div>
+    <div className="mono" style={{fontSize:9,color:'var(--green)',marginTop:6,letterSpacing:'.12em'}}>✓ {status}</div>
+  </div>
+);
+
+ReactDOM.createRoot(document.getElementById('root')).render(<Demo5/>);
+</script></body></html>

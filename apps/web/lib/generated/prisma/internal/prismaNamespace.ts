@@ -398,7 +398,8 @@ export const ModelName = {
   UserFinancialProfile: 'UserFinancialProfile',
   UserMemory: 'UserMemory',
   LinkedWallet: 'LinkedWallet',
-  TurnMetrics: 'TurnMetrics'
+  TurnMetrics: 'TurnMetrics',
+  UserFinancialContext: 'UserFinancialContext'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -414,7 +415,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "userPreferences" | "conversationLog" | "sessionUsage" | "servicePurchase" | "savingsGoal" | "appEvent" | "adviceLog" | "payment" | "watchAddress" | "portfolioSnapshot" | "userFinancialProfile" | "userMemory" | "linkedWallet" | "turnMetrics"
+    modelProps: "user" | "userPreferences" | "conversationLog" | "sessionUsage" | "servicePurchase" | "savingsGoal" | "appEvent" | "adviceLog" | "payment" | "watchAddress" | "portfolioSnapshot" | "userFinancialProfile" | "userMemory" | "linkedWallet" | "turnMetrics" | "userFinancialContext"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1528,6 +1529,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    UserFinancialContext: {
+      payload: Prisma.$UserFinancialContextPayload<ExtArgs>
+      fields: Prisma.UserFinancialContextFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.UserFinancialContextFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserFinancialContextPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.UserFinancialContextFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserFinancialContextPayload>
+        }
+        findFirst: {
+          args: Prisma.UserFinancialContextFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserFinancialContextPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.UserFinancialContextFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserFinancialContextPayload>
+        }
+        findMany: {
+          args: Prisma.UserFinancialContextFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserFinancialContextPayload>[]
+        }
+        create: {
+          args: Prisma.UserFinancialContextCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserFinancialContextPayload>
+        }
+        createMany: {
+          args: Prisma.UserFinancialContextCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.UserFinancialContextCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserFinancialContextPayload>[]
+        }
+        delete: {
+          args: Prisma.UserFinancialContextDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserFinancialContextPayload>
+        }
+        update: {
+          args: Prisma.UserFinancialContextUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserFinancialContextPayload>
+        }
+        deleteMany: {
+          args: Prisma.UserFinancialContextDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.UserFinancialContextUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.UserFinancialContextUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserFinancialContextPayload>[]
+        }
+        upsert: {
+          args: Prisma.UserFinancialContextUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserFinancialContextPayload>
+        }
+        aggregate: {
+          args: Prisma.UserFinancialContextAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateUserFinancialContext>
+        }
+        groupBy: {
+          args: Prisma.UserFinancialContextGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.UserFinancialContextGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.UserFinancialContextCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.UserFinancialContextCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -1682,6 +1757,7 @@ export const AdviceLogScalarFieldEnum = {
   targetAmount: 'targetAmount',
   goalId: 'goalId',
   appEventId: 'appEventId',
+  actedOn: 'actedOn',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -1823,10 +1899,35 @@ export const TurnMetricsScalarFieldEnum = {
   aciRefinements: 'aciRefinements',
   sessionSpendUsd: 'sessionSpendUsd',
   mutableToolDedupes: 'mutableToolDedupes',
+  attemptId: 'attemptId',
+  synthetic: 'synthetic',
+  writeToolDurationMs: 'writeToolDurationMs',
+  cacheSavingsUsd: 'cacheSavingsUsd',
+  turnPhase: 'turnPhase',
   createdAt: 'createdAt'
 } as const
 
 export type TurnMetricsScalarFieldEnum = (typeof TurnMetricsScalarFieldEnum)[keyof typeof TurnMetricsScalarFieldEnum]
+
+
+export const UserFinancialContextScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  address: 'address',
+  savingsUsdc: 'savingsUsdc',
+  debtUsdc: 'debtUsdc',
+  healthFactor: 'healthFactor',
+  walletUsdc: 'walletUsdc',
+  currentApy: 'currentApy',
+  recentActivity: 'recentActivity',
+  openGoals: 'openGoals',
+  pendingAdvice: 'pendingAdvice',
+  daysSinceLastSession: 'daysSinceLastSession',
+  generatedAt: 'generatedAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type UserFinancialContextScalarFieldEnum = (typeof UserFinancialContextScalarFieldEnum)[keyof typeof UserFinancialContextScalarFieldEnum]
 
 
 export const SortOrder = {
@@ -2069,6 +2170,7 @@ export type GlobalOmitConfig = {
   userMemory?: Prisma.UserMemoryOmit
   linkedWallet?: Prisma.LinkedWalletOmit
   turnMetrics?: Prisma.TurnMetricsOmit
+  userFinancialContext?: Prisma.UserFinancialContextOmit
 }
 
 /* Types for Logging */

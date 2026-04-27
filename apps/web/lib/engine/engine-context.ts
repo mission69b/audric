@@ -29,6 +29,7 @@ import {
   type UserFinancialProfile,
   type ConversationState,
 } from '@t2000/engine';
+import type { FinancialContextSnapshot } from '@/lib/redis/user-financial-context';
 
 // [v1.4] Build-time interpolation: derive tool counts from the engine's own
 // tool exports so the system prompt cannot drift from the runtime registry.
@@ -138,7 +139,7 @@ The initial balance data (from prefetched tool results or ## Session Context) is
 - If you're about to state a wallet/savings/total figure in a post-write sentence and you cannot point to the specific tool_result block it came from, omit the figure entirely. Better to under-narrate than to invent.
 
 ## CRITICAL: Rich-card rendering on direct read questions
-The UI renders a rich data card EVERY TIME you call balance_check, savings_info, health_check, transaction_history, rates_info, mpp_services, list_payment_links, list_invoices, defillama_yield_pools, or any other tool with a registered card renderer. The card is a major part of the user experience — text alone is not enough. So:
+The UI renders a rich data card EVERY TIME you call balance_check, savings_info, health_check, transaction_history, rates_info, mpp_services, list_payment_links, list_invoices, token_prices, or any other tool with a registered card renderer. The card is a major part of the user experience — text alone is not enough. So:
 
 - When the user EXPLICITLY asks for any of the following, you MUST call the corresponding read tool, even if you already have the same data from a prefetch, an earlier turn, or a post-write refresh. Do NOT answer from cached context for these direct read questions.
 
@@ -149,7 +150,7 @@ The UI renders a rich data card EVERY TIME you call balance_check, savings_info,
   | health factor, liquidation risk, am I safe, borrow capacity, can I borrow more | health_check |
   | transactions, history, last activity, recent transfers, show me X transactions, transactions over $Y, my USDC sends, my swaps | transaction_history (use minUsd / assetSymbol / direction args when the question is filtered) |
   | rates, APY, USDC save APY, all NAVI markets, lending rates, borrow rates | rates_info (use assets / stableOnly / topN args when the question is filtered) |
-  | yield pools, LP yields, farming options, "higher yield with risk" | defillama_yield_pools (only — NEVER pair with rates_info in the same turn) |
+  | spot price, "what is X worth", "did Y move today", "price of Z" | token_prices (BlockVision-backed; pass coinTypes; set include24hChange when the user asks about movement) |
   | MPP services, available APIs, what services exist, full catalog, list all services | mpp_services (use mode:"full" for "all" requests — never enumerate per category) |
   | payment links list, my payment links | list_payment_links |
   | invoices list, my invoices | list_invoices |
@@ -162,7 +163,7 @@ The UI renders a rich data card EVERY TIME you call balance_check, savings_info,
 When a tool renders a rich card, the user already SEES the data — repeating it in chat as a markdown table or bulleted list creates noise and pushes useful narration off-screen.
 
 ABSOLUTE RULE — applies to EVERY card-rendering tool, no exceptions:
-balance_check, savings_info, health_check, transaction_history, rates_info, mpp_services, list_payment_links, list_invoices, defillama_yield_pools, defillama_protocol_info, portfolio_analysis, activity_summary, yield_summary, spending_analytics, explain_tx, swap_quote, defillama_token_prices, protocol_deep_dive — and any future tool whose result is rendered as a card.
+balance_check, savings_info, health_check, transaction_history, rates_info, mpp_services, list_payment_links, list_invoices, portfolio_analysis, activity_summary, yield_summary, spending_analytics, explain_tx, swap_quote, token_prices, protocol_deep_dive — and any future tool whose result is rendered as a card.
 
 After ANY of these cards appears, you may write AT MOST one short summary sentence plus AT MOST one proactive insight. Specifically:
 - NEVER write a markdown table (pipes + dashed divider row) summarizing card data. The card IS the table.
@@ -215,7 +216,7 @@ All transactions are gas-sponsored (free for the user). The user does NOT need S
   2. If the requested amount EXCEEDS the available balance, REFUSE immediately — do NOT call the write tool. State the exact available balance and ask the user to confirm a lower amount. Example: "You only have 0.97 USDC. Want me to send all 0.97?"
   3. NEVER pass an amount larger than the available balance to a write tool. This applies equally to send_transfer, save_deposit, swap_execute, and all other write tools. Violating this rule causes silent failures or incorrect receipts.
 - For swap estimates, ALWAYS read the actual price from the "Token prices (USD…)" line in ## Session Context (or the "prices" field on the prefetched balance_check result). NEVER guess from training memory — token prices change daily and your training data is months stale. The "$3.50/SUI" or "$0.30/SUI" you remember is wrong.
-- If a price you need is NOT in ## Session Context, you MUST call swap_quote (preferred — gives the exact route) or defillama_token_prices BEFORE quoting any number to the user.
+- If a price you need is NOT in ## Session Context, you MUST call swap_quote (preferred — gives the exact route) or token_prices BEFORE quoting any number to the user.
 - For detailed position data (supply/borrow breakdown, USD values), use health_check or savings_info.
 - Show real numbers from tools — never fabricate rates, amounts, or balances.
 
@@ -223,7 +224,6 @@ All transactions are gas-sponsored (free for the user). The user does NOT need S
 - Use tools proactively — don't refuse requests you can handle.
 - For web search / news / current info, use web_search (free). Only use pay_api for search if web_search is unavailable.
 - For weather, translation, image gen, postcards, email, and other real-world services, use pay_api. Tell the user the cost first.
-- For broad market data (yields across protocols, token prices, TVL, protocol comparisons), use defillama_* tools.
 - For NAVI-specific data (pools, positions, health factor), use navi_* tools.
 - For portfolio overview with risk insights, use portfolio_analysis.
 - For protocol safety/audit info, use protocol_deep_dive.
@@ -274,7 +274,7 @@ For single-step requests, skip the plan — just execute.
 - "How much X for Y?": call swap_quote (read-only) and report the result. Do NOT call swap_execute unless the user has explicitly said to execute.
 - "Swap then save": swap_quote → swap_execute → save_deposit.
 - "Buy $X of token": read the token's price from ## Session Context (or call swap_quote with byAmountIn=false for an exact-out quote) → swap_execute.
-- "Best yield on SUI": compare rates_info + defillama_yield_pools + volo_stats.
+- "Best yield on SUI": compare rates_info (NAVI lending) + volo_stats (vSUI liquid staking).
 - For deposit/withdraw, check the tool description for supported assets. Depositing a token only requires that token. Gas is always sponsored.
 
 ## MPP services (40+ real-world APIs via micropayments)
@@ -358,6 +358,56 @@ ABSOLUTE RULES:
 // In RE-1.3 this becomes the second (uncached) system block.
 // ---------------------------------------------------------------------------
 
+/**
+ * [v1.4 — Item 6] Render the cached daily orientation snapshot as an
+ * XML-tagged block so the LLM can lean on it for greeting / "where did
+ * we leave off?" / "what's pending?" questions WITHOUT spending tool
+ * calls re-deriving state. Returns empty string when no snapshot is
+ * available (brand-new user before first cron tick, Redis + Prisma
+ * miss path, or `getUserFinancialContext` returned null) so callers
+ * can drop it into a section list without an extra null guard.
+ *
+ * The shape mirrors the spec's `<financial_context>` block: short,
+ * machine-readable, no narration. Day-since-last-session uses
+ * "Today" / "Yesterday" for the two most common values; everything
+ * else is a count.
+ */
+export function buildFinancialContextBlock(
+  snapshot: FinancialContextSnapshot | null | undefined,
+): string {
+  if (!snapshot) return '';
+
+  const lines: string[] = ['<financial_context>'];
+  lines.push(`Savings: $${snapshot.savingsUsdc.toFixed(2)} USDC`);
+  lines.push(`Wallet (non-savings): $${snapshot.walletUsdc.toFixed(2)} USDC equiv`);
+  lines.push(`Debt: $${snapshot.debtUsdc.toFixed(2)} USDC`);
+  if (snapshot.healthFactor !== null) {
+    lines.push(`Health factor: ${snapshot.healthFactor.toFixed(2)}`);
+  }
+  if (snapshot.currentApy !== null) {
+    lines.push(`Current savings APY: ${snapshot.currentApy.toFixed(2)}%`);
+  }
+  if (snapshot.openGoals.length > 0) {
+    lines.push(`Open goals: ${snapshot.openGoals.join('; ')}`);
+  }
+  if (snapshot.pendingAdvice) {
+    lines.push(`Last advice (not yet acted on): ${snapshot.pendingAdvice}`);
+  }
+  lines.push(`Recent activity: ${snapshot.recentActivity}`);
+  const sessionPhrase =
+    snapshot.daysSinceLastSession === 0
+      ? 'Today'
+      : snapshot.daysSinceLastSession === 1
+        ? 'Yesterday'
+        : `${snapshot.daysSinceLastSession} days ago`;
+  lines.push(`Last session: ${sessionPhrase}`);
+  lines.push('</financial_context>');
+  lines.push(
+    'Use the block above for orientation / greeting / "where did we leave off?" — do NOT re-derive these numbers with tool calls unless the user explicitly asks for current data. The snapshot is at most 24h old; for fresher numbers call balance_check / savings_info / health_check.',
+  );
+  return lines.join('\n');
+}
+
 export function buildDynamicBlock(
   walletAddress: string,
   tools: Tool[],
@@ -368,6 +418,13 @@ export function buildDynamicBlock(
     goals?: GoalSummary[];
     adviceContext?: string;
     useSyntheticPrefetch?: boolean;
+    /**
+     * [v1.4 — Item 6] Daily orientation snapshot read from
+     * `UserFinancialContext` (cron-written, Redis-cached). Optional —
+     * passing `null`/`undefined` skips the `<financial_context>` block
+     * entirely so unauthenticated / brand-new users get a clean prompt.
+     */
+    financialContext?: FinancialContextSnapshot | null;
   },
 ): string {
   const balances = opts?.balances;
@@ -375,6 +432,7 @@ export function buildDynamicBlock(
   const swapTokenNames = opts?.swapTokenNames;
   const goals = opts?.goals;
   const adviceContext = opts?.adviceContext;
+  const financialContextBlock = buildFinancialContextBlock(opts?.financialContext);
 
   const balanceSection = opts?.useSyntheticPrefetch
     ? 'Wallet balances and savings positions were prefetched as balance_check and savings_info tool results at the start of this conversation. Reference those results for current data. After ANY write action, call balance_check for fresh data.'
@@ -415,9 +473,13 @@ export function buildDynamicBlock(
     ? `Active goals:\n${goals.map((g) => `- ${g.emoji} ${g.name}: $${g.targetAmount.toFixed(2)}${g.deadline ? ` by ${g.deadline}` : ''} (ID: ${g.id})`).join('\n')}\n- When mentioning progress, compare the total savings balance (from prefetched data or savings_info) against each goal's target.`
     : 'No savings goals set.';
 
+  const financialContextSection = financialContextBlock
+    ? `\n\n## Daily orientation snapshot\n${financialContextBlock}`
+    : '';
+
   return `## Session Context
 Wallet address: ${walletAddress}. Never ask for it.
-${balanceSection}${pricesSection ? `\n${pricesSection}` : ''}
+${balanceSection}${pricesSection ? `\n${pricesSection}` : ''}${financialContextSection}
 
 ## Your write tools (you CAN execute these — use them)
 ${writeToolList}
@@ -508,6 +570,13 @@ export function buildFullDynamicContext(
     adviceContext?: string;
     intelligence?: IntelligenceContext;
     useSyntheticPrefetch?: boolean;
+    /**
+     * [v1.4 — Item 6] Forwarded into `buildDynamicBlock` so the
+     * cron-written orientation snapshot lands inside the dynamic
+     * (uncached) system block. Optional — `null`/`undefined` skips
+     * the section entirely.
+     */
+    financialContext?: FinancialContextSnapshot | null;
   },
 ): string {
   const base = buildDynamicBlock(walletAddress, tools, {
@@ -517,6 +586,7 @@ export function buildFullDynamicContext(
     goals: opts.goals,
     adviceContext: opts.adviceContext,
     useSyntheticPrefetch: opts.useSyntheticPrefetch,
+    financialContext: opts.financialContext,
   });
 
   const sections: string[] = [base];

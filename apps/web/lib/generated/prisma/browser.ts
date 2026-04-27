@@ -94,3 +94,28 @@ export type LinkedWallet = Prisma.LinkedWalletModel
  * must never block a chat response. Retention is 90 days via Vercel cron.
  */
 export type TurnMetrics = Prisma.TurnMetricsModel
+/**
+ * Model UserFinancialContext
+ * [v1.4.2 — Day 5 / Spec Item 6] Daily snapshot of every active user's
+ * orientation block — savings / debt / wallet totals, health factor, open
+ * goals, last unactioned advice, and a one-line "recent activity"
+ * summary. Read by `engine-context.ts:buildDynamicBlock` at engine boot
+ * to seed the `<financial_context>` system-prompt section so a returning
+ * user gets a contextual greeting WITHOUT spending tool calls (and tokens)
+ * re-deriving state every session.
+ * 
+ * Dual-key by design [v1.4 — B2]: callers in the engine path only know
+ * the wallet `address` (no Prisma `User.id` cuid), but joins to
+ * `AdviceLog` / `SavingsGoal` / `PortfolioSnapshot` need the cuid. The
+ * cron writer populates BOTH on upsert so either lookup works.
+ * 
+ * Cached at `fin_ctx:${address}` in Upstash Redis with a 24h TTL that
+ * matches the cron cadence. Invalidated synchronously after every
+ * auto-tier (`engine-factory.ts:onAutoExecuted`) and confirm-tier
+ * (`resume/route.ts`) write so a user who saves / sends / swaps and
+ * reopens chat 5 minutes later sees the updated snapshot — not a
+ * stale 23-hour-old block. Reading is fail-open: a Redis miss falls
+ * through to Prisma, and a Prisma miss returns `null` (the engine
+ * boot path then skips the `<financial_context>` section entirely).
+ */
+export type UserFinancialContext = Prisma.UserFinancialContextModel

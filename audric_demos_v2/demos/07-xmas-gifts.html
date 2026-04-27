@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Demo 7 · Christmas Gifts — Audric × Sui</title>
+<link rel="stylesheet" href="../shared/audric.css?v=5">
+<style>
+.gift-table { border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+.gift-row {
+  display:grid; grid-template-columns:140px 1fr 100px;
+  align-items:center; gap:12px;
+  padding:13px 16px; border-bottom:1px solid var(--line);
+  transition:background .2s;
+}
+.gift-row:last-child { border-bottom:none; }
+.gift-row.done { background:rgba(40,128,52,0.04); }
+.gift-person { font-size:13px; color:var(--text); font-weight:500; }
+.gift-rel { font-family:var(--font-mono); font-size:9px; color:var(--text-3); letter-spacing:.1em; margin-top:2px; }
+.gift-name { font-size:13px; color:var(--text-2); line-height:1.4; }
+.gift-vendor { font-family:var(--font-mono); font-size:9px; color:var(--text-3); letter-spacing:.08em; margin-top:3px; }
+.gift-price { font-family:var(--font-mono); font-size:13px; color:var(--text); text-align:right; }
+.gift-budget { font-family:var(--font-mono); font-size:9px; color:var(--green); text-align:right; margin-top:3px; letter-spacing:.08em; }
+.gift-receipts { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+.gift-cards { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; }
+.gift-card { border-radius:10px; overflow:hidden; border:1px solid var(--line); }
+.gift-card-art { padding:24px 16px 16px; display:flex; flex-direction:column; align-items:center; gap:8px; }
+.gift-card-body { padding:12px 14px; background:var(--panel); border-top:1px solid var(--line); }
+@media(max-width:768px){
+  .gift-row { grid-template-columns:1fr 60px; }
+  .gift-row .gift-item-col { display:none; }
+  .gift-receipts { grid-template-columns:1fr 1fr; }
+  .gift-cards { grid-template-columns:repeat(2,1fr); }
+}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="../shared/primitives.jsx"></script>
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+const PROMPT = "Christmas shopping for the family, max $50 each — Mom (gardening & cooking), Dad (coffee & golf), Emma my sister (indie music), Jake my brother (gaming), and Grandma Rose (herbal tea & old films).";
+
+const THOUGHT = "5 people, 5 budgets of $50 each. I'll run personalised gift searches in parallel — matching each person's interests to a specific product, source from MPP vendors that accept USDC, and verify price + delivery before Dec 25. Once I have the full manifest, I'll request one Payment Stream to purchase all 5 gifts atomically.";
+
+const GIFTS = [
+  {
+    person: 'Mom Sarah', rel: 'MOM · 58',
+    gift: '"The Soulful Garden" cookbook',
+    vendor: 'Bookshop.org · MPP',
+    price: '$34', saving: '$16 under',
+    why: 'Gardening meets cooking in one book — exactly her two passions combined.',
+    status: 'DIGITAL · DELIVERED INSTANTLY',
+    emoji: '🌱',
+    artBg: 'linear-gradient(160deg,#d1fae5 0%,#6ee7b7 60%,#059669 100%)',
+    artLabel: 'Cookbook',
+    artSub: 'The Soulful Garden',
+  },
+  {
+    person: 'Dad Michael', rel: 'DAD · 60',
+    gift: 'Blue Bottle 3-month subscription',
+    vendor: 'Blue Bottle Coffee · MPP',
+    price: '$45', saving: '$5 under',
+    why: 'Rotating single-origin roasts, curated for the discerning coffee drinker.',
+    status: 'SHIPS DEC 22 · FEDEX',
+    emoji: '☕',
+    artBg: 'linear-gradient(160deg,#fef3c7 0%,#d97706 60%,#92400e 100%)',
+    artLabel: '3-Month Sub',
+    artSub: 'Blue Bottle Coffee',
+  },
+  {
+    person: 'Emma', rel: 'SISTER · 27',
+    gift: 'Bandcamp credits — artist bundle',
+    vendor: 'Bandcamp · MPP',
+    price: '$28', saving: '$22 under',
+    why: 'She supports indie artists — Bandcamp credits let her pay them directly, no algorithm tax.',
+    status: 'DIGITAL · DELIVERED INSTANTLY',
+    emoji: '🎵',
+    artBg: 'linear-gradient(160deg,#ede9fe 0%,#a78bfa 60%,#6d28d9 100%)',
+    artLabel: 'Credits',
+    artSub: 'Bandcamp',
+  },
+  {
+    person: 'Jake', rel: 'BROTHER · 24',
+    gift: 'Steam gift card',
+    vendor: 'Steam · MPP',
+    price: '$50', saving: 'ON BUDGET',
+    why: 'Maximum flexibility — Jake picks what he wants. No guessing the right game.',
+    status: 'DIGITAL · DELIVERED INSTANTLY',
+    emoji: '🎮',
+    artBg: 'linear-gradient(160deg,#dbeafe 0%,#3b82f6 60%,#1e3a8a 100%)',
+    artLabel: 'Gift Card',
+    artSub: 'Steam',
+  },
+  {
+    person: 'Grandma Rose', rel: 'GRANDMA · 78',
+    gift: 'Rare tea collection — 12 varieties',
+    vendor: 'Harney & Sons · MPP',
+    price: '$38', saving: '$12 under',
+    why: 'Single-origin teas from 6 countries — perfect with her classic film nights.',
+    status: 'SHIPS DEC 21 · USPS PRIORITY',
+    emoji: '🍵',
+    artBg: 'linear-gradient(160deg,#fce7f3 0%,#f9a8d4 60%,#be185d 100%)',
+    artLabel: 'Tea Collection',
+    artSub: 'Harney & Sons',
+  },
+];
+
+const TOTAL = 195;
+
+const Demo7 = () => {
+  const [step, setStep] = useState(0);
+  const typed = useTyped(PROMPT, step === 0, 18);
+
+  // steps: 0 type · 1 sent · 2 thinking · 3 querying · 4 how-evaluated · 5 manifest+line · 6 ptb · 7 permission · 8 executing · 9 done
+  useEffect(() => {
+    const delays = { 0: PROMPT.length * 18 + 500, 1: 700, 2: 1800, 3: 4400, 4: 900, 5: 1000, 6: 900 };
+    const d = delays[step]; if (d == null) return;
+    const t = setTimeout(() => setStep(s => s + 1), d);
+    return () => clearTimeout(t);
+  }, [step]);
+
+  const approve = () => { setStep(8); setTimeout(() => setStep(9), 1400); };
+  const restart = () => setStep(0);
+
+  // Auto-confirm order after 3s (mirrors demo 03/04 review pattern)
+  useEffect(() => {
+    if (step === 7) { const t = setTimeout(approve, 3000); return () => clearTimeout(t); }
+  }, [step]);
+
+  const tools = [
+    { glyph: '🌱', label: 'GIFT SEARCH · MOM',     finishAt: 1000, result: '"The Soulful Garden" cookbook · $34 · Bookshop.org' },
+    { glyph: '☕', label: 'GIFT SEARCH · DAD',      finishAt: 1700, result: 'Blue Bottle 3-month sub · $45 · bluebottlecoffee.com' },
+    { glyph: '🎵', label: 'GIFT SEARCH · EMMA',     finishAt: 2500, result: 'Bandcamp credits · $28 · bandcamp.com' },
+    { glyph: '🎮', label: 'GIFT SEARCH · JAKE',     finishAt: 3100, result: 'Steam gift card $50 · steam.com' },
+    { glyph: '🍵', label: 'GIFT SEARCH · GRANDMA',  finishAt: 4000, result: 'Rare tea collection · $38 · harney.com' },
+  ];
+
+  return (
+    <MainShell
+      hero={step === 0}
+      balance={step >= 9 ? '$1,805' : '$2,000'}
+      balanceLabel={step >= 9 ? 'AVAILABLE $1,805 · EARNING $11' : 'AVAILABLE $2,000 · EARNING $11'}
+      name="felix"
+      composer={<Composer value={step === 0 ? typed : ''}/>}
+      ribbon={<DemoRibbon/>}
+    >
+      <TaskInitiated/>
+      {step >= 1 && (
+        <UserBubble>
+          {PROMPT}
+        </UserBubble>
+      )}
+
+      {step >= 2 && (
+        <>
+          <ThinkingHeader done={step >= 3}/>
+          <ReasoningStream text={THOUGHT} active={step >= 2} done={step >= 3}/>
+          {step >= 3 && <ParallelTools tools={tools} active={step >= 3} headerLabel="PERSONALISED GIFT SEARCH · 5 PEOPLE · IN PARALLEL"/>}
+          {step >= 4 && (
+            <HowIEvaluated tokens="386" model="AUDRIC v2.0" latency="4.0s">
+              <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                {GIFTS.map(g => (
+                  <div key={g.person} style={{display:'flex',gap:8,alignItems:'flex-start'}}>
+                    <span style={{color:'var(--green)',flexShrink:0}}>—</span>
+                    <span><strong style={{color:'var(--text-2)'}}>{g.person}:</strong> {g.why}</span>
+                  </div>
+                ))}
+              </div>
+            </HowIEvaluated>
+          )}
+          {step >= 4 && (
+            <div className="gift-cards">
+              {GIFTS.map((g, i) => (
+                <GiftCard key={i} gift={g} delay={i * 90}/>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      {step >= 5 && (
+        <ToolCard label="GIFT MANIFEST · ALL UNDER $50" status="done" tokens="0.4s">
+          <div className="gift-table" style={{margin:'4px 0', border:'none', borderRadius:0}}>
+            {/* Header */}
+            <div className="gift-row" style={{background:'var(--panel-2)', borderBottom:'1px solid var(--line-2)'}}>
+              <span className="mono" style={{fontSize:9,color:'var(--text-3)',letterSpacing:'.1em'}}>PERSON</span>
+              <span className="mono gift-item-col" style={{fontSize:9,color:'var(--text-3)',letterSpacing:'.1em'}}>GIFT · VENDOR</span>
+              <span className="mono" style={{fontSize:9,color:'var(--text-3)',letterSpacing:'.1em',textAlign:'right'}}>PRICE</span>
+            </div>
+            {GIFTS.map((g, i) => (
+              <div key={i} className="gift-row done">
+                <div>
+                  <div className="gift-person">{g.person}</div>
+                  <div className="gift-rel">{g.rel}</div>
+                </div>
+                <div className="gift-item-col">
+                  <div className="gift-name">{g.gift}</div>
+                  <div className="gift-vendor">{g.vendor}</div>
+                </div>
+                <div>
+                  <div className="gift-price">{g.price}</div>
+                  <div className="gift-budget">{g.saving}</div>
+                </div>
+              </div>
+            ))}
+            {/* Total row */}
+            <div style={{
+              display:'flex', justifyContent:'space-between', alignItems:'center',
+              padding:'13px 16px', background:'var(--panel-2)', borderTop:'2px solid var(--line-2)'
+            }}>
+              <div>
+                <span className="mono" style={{fontSize:9,color:'var(--text-3)',letterSpacing:'.1em'}}>5 GIFTS · 5 VENDORS · ALL PERSONALISED</span>
+                <div className="mono" style={{fontSize:9,color:'var(--green)',marginTop:3,letterSpacing:'.1em'}}>ALL UNDER $50 · 3 DIGITAL · 2 PHYSICAL BY DEC 23</div>
+              </div>
+              <span className="mono" style={{fontSize:18,color:'var(--text)'}}>${TOTAL}</span>
+            </div>
+          </div>
+        </ToolCard>
+      )}
+
+      {step >= 5 && (
+        <AudricLine>
+          <strong style={{color:'var(--text)'}}>5 personalised gifts, all under $50.</strong> $195 total — one signature to buy all five.
+        </AudricLine>
+      )}
+
+      {step >= 6 && (
+        <PtbCard
+          calls={[
+            {vendor:'Bookshop.org (MPP)',       desc:'Cookbook for Mom · digital delivery',         amount:'$34'},
+            {vendor:'Blue Bottle Coffee (MPP)', desc:'3-month sub for Dad · ships Dec 22',          amount:'$45'},
+            {vendor:'Bandcamp (MPP)',            desc:'Credits for Emma · digital delivery',         amount:'$28'},
+            {vendor:'Steam (MPP)',               desc:'Gift card for Jake · digital delivery',       amount:'$50'},
+            {vendor:'Harney & Sons (MPP)',       desc:'Tea collection for Grandma · ships Dec 21',  amount:'$38'},
+          ]}
+          total="$195"
+        />
+      )}
+
+      {step === 7 && (
+        <OrderReviewCard total="$195" onAccept={approve} onCancel={restart}
+          footer="Single PTB on Sui — all 5 vendors paid atomically. If any gift fails to deliver, all 5 payments revert."
+        />
+      )}
+
+      {step === 8 && (
+        <div className="appear" style={{display:'flex',alignItems:'center',gap:10,fontSize:12,color:'var(--blue)',padding:'8px 4px'}}>
+          <span className="spin" style={{display:'inline-block'}}><Icon name="spinner" size={14}/></span>
+          <span className="mono pulse" style={{letterSpacing:'.1em'}}>EXECUTING PAYMENT STREAM · 1 PTB · 5 CALLS…</span>
+        </div>
+      )}
+
+      {step >= 9 && (
+        <>
+          <AudricLine>
+            Done. <strong style={{color:'var(--text)'}}>5 gifts, 5 people, $195 USDC.</strong> Digital gifts delivered instantly. Physical gifts arrive by Dec 23. Merry Christmas.
+          </AudricLine>
+          <div className="gift-receipts">
+            {GIFTS.map((g, i) => (
+              <GiftReceipt key={i} person={g.person} gift={g.gift} cost={g.price} status={g.status} delay={i * 80}/>
+            ))}
+          </div>
+          <WhyOnlySui points={[
+            "5 vendors across 4 countries. One USDC payment, no FX conversion, no international card declines, 0.6s.",
+            "AI curation + atomic purchase in one agent loop. 5 personalised gifts, researched and bought, in under a minute.",
+            "Every gift is a permanent on-chain record — recipient, amount, vendor, and delivery, immutably on Sui.",
+          ]}/>
+        </>
+      )}
+    </MainShell>
+  );
+};
+
+const OrderReviewCard = ({ total, onAccept, onCancel, footer }) => (
+  <div className="appear" style={{
+    border:'1.5px solid var(--text)', borderRadius:10,
+    background:'var(--panel)', overflow:'hidden',
+    boxShadow:'0 2px 0 var(--text)'
+  }}>
+    <div style={{padding:'10px 16px', borderBottom:'1px solid var(--line)', background:'var(--panel-2)', display:'flex', alignItems:'center', gap:10}}>
+      <Icon name="shield" size={12} color="var(--blue)"/>
+      <span className="mono" style={{fontSize:10, color:'var(--text-2)', letterSpacing:'.14em'}}>YOUR APPROVAL · REVIEW BEFORE PAYING</span>
+    </div>
+    <div style={{padding:'14px 16px', display:'flex', gap:10, flexWrap:'wrap'}}>
+      <button onClick={onAccept} className="mono" style={{
+        flex:'1 1 200px', padding:'14px 16px', borderRadius:8, background:'var(--text)', color:'#fff',
+        fontSize:11, letterSpacing:'.14em', display:'flex', alignItems:'center', justifyContent:'center', gap:8
+      }}>
+        <Icon name="check" size={14}/> CONFIRM · PAY {total} USDC
+      </button>
+      <button onClick={onCancel} className="mono" style={{
+        flex:'1 1 80px', padding:'14px 16px', borderRadius:8, background:'transparent', color:'var(--text-3)',
+        border:'1px solid var(--line)', fontSize:11, letterSpacing:'.14em', display:'flex', alignItems:'center', justifyContent:'center', gap:8
+      }}>
+        <Icon name="close" size={14}/> CANCEL
+      </button>
+    </div>
+    <div style={{padding:'10px 16px', borderTop:'1px solid var(--line)', background:'var(--panel-2)', fontSize:11, color:'var(--text-3)', display:'flex', alignItems:'center', gap:8}}>
+      <Icon name="bolt" size={11} color="var(--text-3)"/>
+      <span>{footer}</span>
+    </div>
+  </div>
+);
+
+const GiftCard = ({ gift: g, delay = 0 }) => (
+  <div className="gift-card appear" style={{animationDelay:`${delay}ms`}}>
+    <div className="gift-card-art" style={{background: g.artBg}}>
+      <span style={{fontSize:32, filter:'drop-shadow(0 1px 2px rgba(0,0,0,.2))'}}>{g.emoji}</span>
+      <div style={{textAlign:'center'}}>
+        <div className="mono" style={{fontSize:8, letterSpacing:'.14em', color:'rgba(255,255,255,.8)', marginBottom:2}}>{g.artLabel.toUpperCase()}</div>
+        <div style={{fontFamily:'var(--font-serif)', fontSize:11, color:'#fff', lineHeight:1.3, fontStyle:'italic'}}>{g.artSub}</div>
+      </div>
+    </div>
+    <div className="gift-card-body">
+      <div style={{fontFamily:'var(--font-serif)', fontSize:13, color:'var(--text)', lineHeight:1.2}}>{g.person.split(' ')[0]}</div>
+      <div className="mono" style={{fontSize:8, color:'var(--text-3)', letterSpacing:'.1em', marginTop:2}}>{g.rel}</div>
+      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:8}}>
+        <span className="mono" style={{fontSize:10, color:'var(--text-2)'}}>{g.price}</span>
+        <span className="mono" style={{fontSize:8, color:'var(--green)', letterSpacing:'.08em'}}>✓ {g.saving}</span>
+      </div>
+    </div>
+  </div>
+);
+
+const GiftReceipt = ({ person, gift, cost, status, delay = 0 }) => (
+  <div className="appear" style={{animationDelay:`${delay}ms`, border:'1px solid var(--line)', borderRadius:8, padding:'14px 16px', background:'var(--panel)'}}>
+    <div style={{display:'flex', alignItems:'center', gap:8}}>
+      <span style={{
+        width:28,height:28,borderRadius:'50%',
+        background:'linear-gradient(135deg,var(--g300),var(--g600))',
+        display:'grid',placeItems:'center',
+        fontFamily:'var(--font-serif)',fontSize:12,color:'#fff',fontWeight:500,flexShrink:0
+      }}>{person[0]}</span>
+      <span style={{fontFamily:'var(--font-serif)',fontSize:15,letterSpacing:'-.01em'}}>{person.split(' ')[0]}</span>
+      <span style={{fontFamily:'var(--font-serif)',fontSize:16,marginLeft:'auto',letterSpacing:'-.01em'}}>{cost}</span>
+    </div>
+    <div style={{fontSize:12,color:'var(--text-2)',marginTop:10,lineHeight:1.4}}>{gift}</div>
+    <div className="mono" style={{fontSize:9,color:'var(--green)',marginTop:8,letterSpacing:'.12em'}}>✓ {status}</div>
+  </div>
+);
+
+ReactDOM.createRoot(document.getElementById('root')).render(<Demo7/>);
+</script>
+</body>
+</html>

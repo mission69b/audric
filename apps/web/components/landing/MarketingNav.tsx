@@ -14,6 +14,7 @@ import { useZkLogin } from '@/components/auth/useZkLogin';
 const NAV_LINKS = [
   { href: '#passport', label: 'Passport' },
   { href: '#intelligence', label: 'Intelligence' },
+  { href: '#finance', label: 'Finance' },
   { href: '#pay', label: 'Pay' },
   { href: '#store', label: 'Store' },
 ];

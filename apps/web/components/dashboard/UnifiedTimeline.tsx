@@ -230,10 +230,27 @@ export function UnifiedTimeline({
         }
       }
 
+      // [v1.4.2 — Day 4 / Spec m1] Measure wall-clock ms around the
+      // client-side execution (signing + broadcast + indexer-lag
+      // absorption) and forward to the engine resume route so the
+      // matching `TurnMetrics` row's `writeToolDurationMs` is
+      // populated. Both success and failure paths report a duration —
+      // the column carries "how long the user waited" regardless of
+      // outcome, which is what dashboard p95s want.
+      const executionStart = Date.now();
       try {
         const result = await onExecuteAction(action.toolName, effectiveInput);
-        engine.resolveAction(action, true, result.data, undefined, modifications);
+        const executionDurationMs = Date.now() - executionStart;
+        engine.resolveAction(
+          action,
+          true,
+          result.data,
+          undefined,
+          modifications,
+          executionDurationMs,
+        );
       } catch (err) {
+        const executionDurationMs = Date.now() - executionStart;
         const errorMsg = err instanceof Error ? err.message : 'Execution failed';
         engine.resolveAction(
           action,
@@ -241,6 +258,7 @@ export function UnifiedTimeline({
           { success: false, error: errorMsg },
           undefined,
           modifications,
+          executionDurationMs,
         );
       }
     },

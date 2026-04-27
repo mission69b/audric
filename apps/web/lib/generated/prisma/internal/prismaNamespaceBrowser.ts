@@ -65,7 +65,8 @@ export const ModelName = {
   UserFinancialProfile: 'UserFinancialProfile',
   UserMemory: 'UserMemory',
   LinkedWallet: 'LinkedWallet',
-  TurnMetrics: 'TurnMetrics'
+  TurnMetrics: 'TurnMetrics',
+  UserFinancialContext: 'UserFinancialContext'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -199,6 +200,7 @@ export const AdviceLogScalarFieldEnum = {
   targetAmount: 'targetAmount',
   goalId: 'goalId',
   appEventId: 'appEventId',
+  actedOn: 'actedOn',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -340,10 +342,35 @@ export const TurnMetricsScalarFieldEnum = {
   aciRefinements: 'aciRefinements',
   sessionSpendUsd: 'sessionSpendUsd',
   mutableToolDedupes: 'mutableToolDedupes',
+  attemptId: 'attemptId',
+  synthetic: 'synthetic',
+  writeToolDurationMs: 'writeToolDurationMs',
+  cacheSavingsUsd: 'cacheSavingsUsd',
+  turnPhase: 'turnPhase',
   createdAt: 'createdAt'
 } as const
 
 export type TurnMetricsScalarFieldEnum = (typeof TurnMetricsScalarFieldEnum)[keyof typeof TurnMetricsScalarFieldEnum]
+
+
+export const UserFinancialContextScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  address: 'address',
+  savingsUsdc: 'savingsUsdc',
+  debtUsdc: 'debtUsdc',
+  healthFactor: 'healthFactor',
+  walletUsdc: 'walletUsdc',
+  currentApy: 'currentApy',
+  recentActivity: 'recentActivity',
+  openGoals: 'openGoals',
+  pendingAdvice: 'pendingAdvice',
+  daysSinceLastSession: 'daysSinceLastSession',
+  generatedAt: 'generatedAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type UserFinancialContextScalarFieldEnum = (typeof UserFinancialContextScalarFieldEnum)[keyof typeof UserFinancialContextScalarFieldEnum]
 
 
 export const SortOrder = {

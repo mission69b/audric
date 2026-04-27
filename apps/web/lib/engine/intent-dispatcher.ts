@@ -232,8 +232,14 @@ const READ_INTENT_RULES: readonly IntentRule[] = [
  * Stable JSON fingerprint of args. Used for both dedup-key and the
  * makeAutoDispatchId discriminator so two rules that target the same tool
  * with different args don't collide.
+ *
+ * [v1.4 — Item 2 / G12] Promoted from `__testOnly__` to a public export so
+ * `chat/route.ts` can reuse the same canonical key formula when deduping
+ * resumed-session pre-fetch intents against classifier output. Two diverging
+ * fingerprint implementations would silently drift and resurrect the
+ * "Returning user 2 → 0 tool calls" baseline regression.
  */
-function argsFingerprint(args: Record<string, unknown>): string {
+export function argsFingerprint(args: Record<string, unknown>): string {
   const keys = Object.keys(args).sort();
   if (keys.length === 0) return '';
   const sorted: Record<string, unknown> = {};
@@ -312,4 +318,4 @@ export function intentDiscriminator(intent: ReadIntent): string {
   return (h >>> 0).toString(36);
 }
 
-export const __testOnly__ = { READ_INTENT_RULES, isoDateOffset, argsFingerprint };
+export const __testOnly__ = { READ_INTENT_RULES, isoDateOffset };

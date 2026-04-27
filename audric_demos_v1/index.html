@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Audric · Miami Sui Demos</title>
+<link rel="stylesheet" href="audric.css">
+<style>
+body { min-height: 100vh; padding: 40px; overflow: auto; }
+@media (max-width: 768px) {
+  body { padding: 20px 16px; }
+  .header { margin-bottom: 24px; }
+}
+.header { text-align: center; margin-bottom: 40px; }
+.header-logo { font-size: 22px; font-weight: 500; margin-bottom: 6px; }
+.header-sub { font-size: 13px; color: var(--text-2); margin-bottom: 14px; }
+.event-tag {
+  display: inline-block;
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase;
+  padding: 5px 14px; border-radius: 2px;
+  background: var(--panel); border: 1px solid var(--line-2); color: var(--text-2);
+}
+
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px,1fr)); gap: 12px; max-width: 1200px; margin: 0 auto; }
+
+.demo-card {
+  display: block; background: var(--panel); border: 1px solid var(--line);
+  border-radius: 8px; padding: 20px; text-decoration: none; color: inherit;
+  transition: border-color .12s, transform .12s;
+}
+.demo-card:hover { border-color: var(--line-2); transform: translateY(-1px); }
+
+.dc-num { font-family: var(--font-mono); font-size: 9px; color: var(--text-3); letter-spacing: .1em; text-transform: uppercase; margin-bottom: 10px; }
+.dc-icon { font-size: 28px; margin-bottom: 12px; display: block; }
+.dc-title { font-size: 17px; font-weight: 600; letter-spacing: -.01em; margin-bottom: 6px; }
+.dc-tag {
+  display: inline-block; font-family: var(--font-mono); font-size: 9px;
+  letter-spacing: .08em; text-transform: uppercase;
+  padding: 2px 7px; border-radius: 2px; margin-bottom: 10px;
+}
+.dc-desc { font-size: 13px; color: var(--text-2); line-height: 1.55; margin-bottom: 14px; }
+.dc-pops { display: flex; flex-direction: column; gap: 4px; margin-bottom: 16px; }
+.dc-pop { font-size: 12px; color: var(--text-2); display: flex; align-items: baseline; gap: 6px; }
+.dc-pop::before { content: '→'; color: var(--blue); font-family: var(--font-mono); flex-shrink: 0; }
+.dc-open {
+  display: flex; align-items: center; justify-content: space-between;
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--text-2); padding-top: 12px; border-top: 1px solid var(--line);
+}
+
+.tag-ptb { background: var(--b200); color: var(--b600); }
+.tag-pay { background: var(--b100); color: var(--b500); }
+.tag-commerce { background: var(--g200); color: var(--green); }
+.tag-nextgen { background: #fef3c7; color: #92400e; }
+.tag-mpp { background: #fce7f3; color: #9d174d; }
+
+.footer { text-align: center; margin-top: 40px; font-family: var(--font-mono); font-size: 10px; color: var(--text-3); letter-spacing: .06em; text-transform: uppercase; }
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="header-logo">Audric</div>
+  <div class="header-sub">Demo Pack</div>
+  <span class="event-tag">5 demos · click any card to launch</span>
+</div>
+
+<div class="grid">
+
+  <a class="demo-card" href="audric-demo-1.html" target="_blank">
+    <div class="dc-num">Demo 01</div>
+    <span class="dc-icon">⚡</span>
+    <div class="dc-title">Agentic Finance</div>
+    <span class="dc-tag tag-ptb">Payment Streams · zkLogin · DeFi</span>
+    <div class="dc-desc">"Swap 10% into SUI, save 50% of my remaining USDC, then send $100 to Mom." One sentence — 3 on-chain operations — 1 atomic PTB.</div>
+    <div class="dc-pops">
+      <div class="dc-pop">Multi-step intent resolved in real-time</div>
+      <div class="dc-pop">3 ops bundled into 1 Sui transaction</div>
+      <div class="dc-pop">Settled in 0.4s · Gas sponsored</div>
+    </div>
+    <div class="dc-open">Open demo 01 <span>→</span></div>
+  </a>
+
+  <a class="demo-card" href="audric-demo-2.html" target="_blank">
+    <div class="dc-num">Demo 02</div>
+    <span class="dc-icon">⬡</span>
+    <div class="dc-title">Agentic Payments</div>
+    <span class="dc-tag tag-pay">Audric Pay · Instant</span>
+    <div class="dc-desc">Freelancer creates a $5,000 invoice link. Client scans QR, pays instantly. No account. No bank. No delay.</div>
+    <div class="dc-pops">
+      <div class="dc-pop">Payment link from one sentence</div>
+      <div class="dc-pop">Anyone can pay — no account needed</div>
+      <div class="dc-pop">$5,000 settled in 0.8s · $0 fees</div>
+    </div>
+    <div class="dc-open">Open demo 02 <span>→</span></div>
+  </a>
+
+  <a class="demo-card" href="audric-demo-3.html" target="_blank">
+    <div class="dc-num">Demo 03</div>
+    <span class="dc-icon">🎵</span>
+    <div class="dc-title">Agentic Commerce</div>
+    <span class="dc-tag tag-commerce">Walrus · Seal · MPP</span>
+    <div class="dc-desc">"Make me a lo-fi beat called Midnight Rain and sell it for $3." AI creates, uploads to Walrus, gates with Seal — live in 1.8s.</div>
+    <div class="dc-pops">
+      <div class="dc-pop">Suno + DALL-E via MPP micropayments</div>
+      <div class="dc-pop">Permanent on Walrus · Seal pay-to-unlock</div>
+      <div class="dc-pop">92% creator payout · first sale instant</div>
+    </div>
+    <div class="dc-open">Open demo 03 <span>→</span></div>
+  </a>
+
+  <a class="demo-card" href="audric-demo-4.html" target="_blank">
+    <div class="dc-num">Demo 04</div>
+    <span class="dc-icon">🎨</span>
+    <div class="dc-title">Agentic Commerce</div>
+    <span class="dc-tag tag-nextgen">Walrus · Seal · MPP · DeFi</span>
+    <div class="dc-desc">A daughter sells her coloring book — 100 copies maximum, enforced forever on-chain via Seal. Reinvests earnings: 50% to NAVI savings.</div>
+    <div class="dc-pops">
+      <div class="dc-pop">Seal on-chain supply cap — trustless scarcity</div>
+      <div class="dc-pop">Type to publish a listing in seconds</div>
+      <div class="dc-pop">Earnings auto-reinvested via Audric</div>
+    </div>
+    <div class="dc-open">Open demo 04 <span>→</span></div>
+  </a>
+
+  <a class="demo-card" href="audric-demo-5.html" target="_blank">
+    <div class="dc-num">Demo 05</div>
+    <span class="dc-icon">🌷</span>
+    <div class="dc-title">Agentic Services</div>
+    <span class="dc-tag tag-mpp">MPP Chain · Multi-service</span>
+    <div class="dc-desc">"Order flowers and a personalised card for my mum's birthday Sunday." — DALL-E + Lob + FlowerFast, 3 services, 1 payment, done.</div>
+    <div class="dc-pops">
+      <div class="dc-pop">3 real-world APIs chained via MPP</div>
+      <div class="dc-pop">One $51.04 USDC payment for all services</div>
+      <div class="dc-pop">Margaret's Sunday sorted in 2.1s</div>
+    </div>
+    <div class="dc-open">Open demo 05 <span>→</span></div>
+  </a>
+
+</div>
+
+<div class="footer">All demos are mocks — exact Audric UI/UX · Built on Sui</div>
+</body>
+</html>
