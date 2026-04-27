@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/prisma';
+import { prisma, withPrismaRetry } from '@/lib/prisma';
 
 interface MessageLike {
   role: string;
@@ -49,17 +49,21 @@ export async function logSessionUsage(
   const newMessages = priorMessageCount > 0 ? messages.slice(priorMessageCount) : messages;
   const toolNames = extractToolNames(newMessages);
 
-  await prisma.sessionUsage.create({
-    data: {
-      address,
-      sessionId,
-      inputTokens: usage.inputTokens,
-      outputTokens: usage.outputTokens,
-      cacheReadTokens: usage.cacheReadTokens,
-      cacheWriteTokens: usage.cacheWriteTokens,
-      costUsd: usage.estimatedCostUsd,
-      toolNames,
-      model,
-    },
-  });
+  // [v0.49] Wrap in withPrismaRetry for Vercel/Neon driver-blip resilience.
+  await withPrismaRetry(
+    () => prisma.sessionUsage.create({
+      data: {
+        address,
+        sessionId,
+        inputTokens: usage.inputTokens,
+        outputTokens: usage.outputTokens,
+        cacheReadTokens: usage.cacheReadTokens,
+        cacheWriteTokens: usage.cacheWriteTokens,
+        costUsd: usage.estimatedCostUsd,
+        toolNames,
+        model,
+      },
+    }),
+    { label: 'logSessionUsage' },
+  );
 }

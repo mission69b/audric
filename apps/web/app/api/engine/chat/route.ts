@@ -30,7 +30,7 @@ import {
 } from '@/lib/engine/harness-metrics';
 import { costRatesForModel } from '@/lib/engine/cost-rates';
 import { isSyntheticSessionId } from '@/lib/engine/synthetic-sessions';
-import { prisma } from '@/lib/prisma';
+import { prisma, withPrismaRetry } from '@/lib/prisma';
 import {
   SESSION_LIMIT_VERIFIED,
   SESSION_WINDOW_MS,
@@ -710,10 +710,13 @@ async function handleAdviceResults(
   sessionId: string,
   messages: MessageLike[],
 ): Promise<void> {
-  const user = await prisma.user.findUnique({
-    where: { suiAddress: address },
-    select: { id: true },
-  });
+  const user = await withPrismaRetry(
+    () => prisma.user.findUnique({
+      where: { suiAddress: address },
+      select: { id: true },
+    }),
+    { label: 'handleAdviceResults:userFind' },
+  );
   if (!user) return;
 
   const adviceItems: AdviceItem[] = [];
@@ -736,16 +739,19 @@ async function handleAdviceResults(
     // [SIMPLIFICATION DAY 5] followUpDue dropped from AdviceLog along with
     // the follow-up cron stack. record_advice now logs pure history; advice
     // context surfaces it via buildAdviceContext without scheduling a check.
-    await prisma.adviceLog.create({
-      data: {
-        userId: user.id,
-        sessionId,
-        adviceText: advice.adviceText.slice(0, 500),
-        adviceType: advice.adviceType,
-        targetAmount: advice.targetAmount ?? null,
-        goalId: advice.goalId ?? null,
-      },
-    });
+    await withPrismaRetry(
+      () => prisma.adviceLog.create({
+        data: {
+          userId: user.id,
+          sessionId,
+          adviceText: advice.adviceText.slice(0, 500),
+          adviceType: advice.adviceType,
+          targetAmount: advice.targetAmount ?? null,
+          goalId: advice.goalId ?? null,
+        },
+      }),
+      { label: 'handleAdviceResults:create' },
+    );
   }
 }
 
@@ -756,12 +762,19 @@ async function logConversationTurn(
   usage: { inputTokens?: number; outputTokens?: number },
   modelUsed?: string,
 ) {
-  const user = await prisma.user.upsert({
-    where: { suiAddress: address },
-    create: { suiAddress: address },
-    update: {},
-    select: { id: true },
-  });
+  // [v0.49] Wrap fire-and-forget Prisma writes in withPrismaRetry to
+  // smooth over transient Vercel / Neon driver hiccups. Without this
+  // the lambda log fills with `DriverAdapterError: server conn crashed`
+  // every time a freeze/thaw cycle kills the underlying socket.
+  const user = await withPrismaRetry(
+    () => prisma.user.upsert({
+      where: { suiAddress: address },
+      create: { suiAddress: address },
+      update: {},
+      select: { id: true },
+    }),
+    { label: 'logConversationTurn:userUpsert' },
+  );
 
   const lastTwo = messages.slice(-2);
   const inputTokens = usage.inputTokens ?? 0;
@@ -784,7 +797,10 @@ async function logConversationTurn(
     };
   });
 
-  await prisma.conversationLog.createMany({ data: rows });
+  await withPrismaRetry(
+    () => prisma.conversationLog.createMany({ data: rows }),
+    { label: 'logConversationTurn:createMany' },
+  );
 }
 
 async function updateConversationState(
