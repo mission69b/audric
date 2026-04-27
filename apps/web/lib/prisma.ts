@@ -46,12 +46,29 @@ export const prisma = globalForPrisma.prisma;
  */
 function isTransientPrismaError(err: unknown): boolean {
   if (!(err instanceof Error)) return false;
+
+  // Prisma Known Request errors expose a stable code on the top-level
+  // object (e.g. `P1017` server closed connection, `P2024` connection
+  // pool timeout). Check those by code rather than message-matching.
+  const code = (err as { code?: unknown }).code;
+  if (typeof code === 'string' && (code === 'P1001' || code === 'P1002' || code === 'P1008' || code === 'P1017' || code === 'P2024')) {
+    return true;
+  }
+
+  // Driver-adapter / network-stack errors surface as plain Error
+  // instances with a recognizable substring in either `message` or
+  // `cause.message`. The list mirrors the strings observed across our
+  // Vercel logs during the @prisma/adapter-pg → @prisma/adapter-neon
+  // migration window (DriverAdapterError "server conn crashed?" is the
+  // user-reported one; the rest are conservative).
   const msg = `${err.message} ${(err as { cause?: unknown }).cause instanceof Error ? (err as { cause: Error }).cause.message : ''}`;
   return (
+    /DriverAdapterError/i.test(msg) ||
     /server conn crashed/i.test(msg) ||
     /connection terminated/i.test(msg) ||
     /ECONNRESET/i.test(msg) ||
     /ETIMEDOUT/i.test(msg) ||
+    /EPIPE/i.test(msg) ||
     /websocket.*close/i.test(msg) ||
     /socket hang up/i.test(msg) ||
     /Engine is not yet connected/i.test(msg)
@@ -60,7 +77,7 @@ function isTransientPrismaError(err: unknown): boolean {
 
 /**
  * Retries a Prisma operation up to 3 attempts with exponential backoff
- * (50ms, 150ms, 350ms) on transient driver errors. Use for fire-and-
+ * (50ms, 150ms, 450ms — factor of 3) on transient driver errors. Use for fire-and-
  * forget writes where the failure mode is "noisy log + lost row" rather
  * than user-visible. Non-transient errors (validation, unique constraint,
  * etc.) re-throw on the first attempt.
@@ -83,7 +100,7 @@ export async function withPrismaRetry<T>(
       if (i === attempts - 1 || !isTransientPrismaError(err)) {
         throw err;
       }
-      const backoff = 50 * Math.pow(3, i); // 50, 150, 450
+      const backoff = 50 * Math.pow(3, i); // 50ms, 150ms, 450ms
       await new Promise((r) => setTimeout(r, backoff));
       console.warn(
         `[prisma-retry${opts.label ? `:${opts.label}` : ''}] transient error attempt ${i + 1}/${attempts} — retrying in ${backoff}ms:`,
