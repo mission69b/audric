@@ -260,6 +260,7 @@ export const PortfolioSnapshotScalarFieldEnum = {
   netWorthUsd: 'netWorthUsd',
   yieldEarnedUsd: 'yieldEarnedUsd',
   healthFactor: 'healthFactor',
+  savingsRate: 'savingsRate',
   allocations: 'allocations'
 } as const
 

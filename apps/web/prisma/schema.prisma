@@ -221,6 +221,13 @@ model PortfolioSnapshot {
   netWorthUsd     Float
   yieldEarnedUsd  Float
   healthFactor    Float?
+  // Weighted average APY across all savings positions, expressed as a
+  // decimal (e.g. 0.0421 = 4.21%). Persisted so the daily
+  // financial-context-snapshot cron can wire `currentApy` into the
+  // <financial_context> agent prompt block without re-fetching positions
+  // per user. Nullable for backfill compatibility on rows written before
+  // this column existed.
+  savingsRate     Float?
   allocations     Json
 
   user User @relation(fields: [userId], references: [id])

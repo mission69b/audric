@@ -114,7 +114,12 @@ export async function POST(request: NextRequest) {
         debtUsdc: latest?.debtValueUsd ?? 0,
         walletUsdc: latest?.walletValueUsd ?? 0,
         healthFactor: latest?.healthFactor ?? null,
-        currentApy: null as number | null,
+        // [Follow-up to v1.4.2] `currentApy` mirrors the most recent
+        // snapshot's `savingsRate` (weighted across all savings positions)
+        // so the agent prompt can quote the user's actual yield instead of
+        // a static placeholder. Pre-migration rows have `savingsRate = null`
+        // and naturally fall through to `null` here.
+        currentApy: latest?.savingsRate ?? null,
         recentActivity,
         openGoals,
         pendingAdvice: pendingAdvice?.adviceText ?? null,

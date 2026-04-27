@@ -39,7 +39,7 @@ const securityHeaders = [
       // Without `blob:`, CSP rejects the audio source with no console
       // hint that's easy to spot.
       "media-src 'self' blob:",
-      "connect-src 'self' https://fullnode.mainnet.sui.io:443 https://fullnode.testnet.sui.io:443 https://api.enoki.mystenlabs.com https://prover.mystenlabs.com https://prover-dev.mystenlabs.com https://accounts.google.com https://*.googleapis.com https://t2000-server.fly.dev https://*.upstash.io https://open-api.naviprotocol.io https://mpp.t2000.ai https://*.mvr.mystenlabs.com",
+      "connect-src 'self' https://fullnode.mainnet.sui.io:443 https://fullnode.testnet.sui.io:443 https://api.enoki.mystenlabs.com https://prover.mystenlabs.com https://prover-dev.mystenlabs.com https://accounts.google.com https://*.googleapis.com https://*.upstash.io https://open-api.naviprotocol.io https://mpp.t2000.ai https://*.mvr.mystenlabs.com",
       "frame-src https://accounts.google.com",
       "base-uri 'self'",
       "form-action 'self' https://accounts.google.com",
