@@ -501,3 +501,79 @@ describe('makeAutoDispatchId — discriminator support', () => {
     expect(a).not.toBe(b);
   });
 });
+
+// ───────────── Bug 1 / 2026-04-28 — third-party intent gating ─────────────
+//
+// Regression coverage for the duplicate-card bug: phrasings like "what's
+// the balance of funkii's account?" used to fire SELF balance_check from
+// the dispatcher AND third-party balance_check from the LLM, producing
+// two cards in chat. The dispatcher must now defer to the LLM whenever
+// the message looks like a third-party ask.
+
+describe('isThirdPartyAsk', () => {
+  it.each([
+    "what's the balance of funkii's account?",
+    "show me the balance of alice",
+    "what's funkii's balance?",
+    "alice's portfolio",
+    "show me alice's wallet",
+    "show me bob's holdings",
+    "what's funkii's net worth",
+    "what's the net worth of 0x40cdfd49d252c798833ddb6e48900b4cd44eeff5f2ee8e5fad76b69b739c3e62",
+    // Plain hex address present anywhere in the message also flags
+    // third-party intent.
+    "balance 0x40cdfd49d252c798833ddb6e48900b4cd44eeff5f2ee8e5fad76b69b739c3e62 please",
+  ])('flags as third-party: %s', (msg) => {
+    expect(__testOnly__.isThirdPartyAsk(msg)).toBe(true);
+  });
+
+  it.each([
+    "what's my balance",
+    "what is my balance",
+    "show me my balance",
+    "my net worth",
+    "balance for me please",
+    "balance of mine",
+    "what's the balance",
+    "what's my portfolio look like",
+    "rebalance my portfolio",
+    "the balance sheet looks good",
+    // "your balance" is a 2nd-person reference, not a 3rd-party name —
+    // the assistant doesn't have a wallet, so this is just casual
+    // phrasing for the user's own wallet.
+    "your balance is fine",
+  ])('does NOT flag: %s', (msg) => {
+    expect(__testOnly__.isThirdPartyAsk(msg)).toBe(false);
+  });
+});
+
+describe('classifyReadIntents — Bug 1 third-party gating', () => {
+  it.each([
+    "what's the balance of funkii's account?",
+    "what's funkii's balance",
+    "show me alice's wallet",
+    "what's funkii's net worth",
+    "balance of 0x40cdfd49d252c798833ddb6e48900b4cd44eeff5f2ee8e5fad76b69b739c3e62",
+  ])('does NOT pre-dispatch SELF balance_check: %s', (msg) => {
+    const intents = classifyReadIntents(msg);
+    expect(intents.map((i) => i.toolName)).not.toContain('balance_check');
+  });
+
+  it.each([
+    "what's funkii's health factor",
+    "is alice's account safe",
+  ])('does NOT pre-dispatch SELF health_check: %s', (msg) => {
+    const intents = classifyReadIntents(msg);
+    expect(intents.map((i) => i.toolName)).not.toContain('health_check');
+  });
+
+  it('still fires SELF balance_check for first-person phrasings', () => {
+    const intents = classifyReadIntents("what's my balance?");
+    expect(intents.map((i) => i.toolName)).toContain('balance_check');
+  });
+
+  it('still fires SELF health_check for first-person phrasings', () => {
+    const intents = classifyReadIntents("what's my health factor?");
+    expect(intents.map((i) => i.toolName)).toContain('health_check');
+  });
+});

@@ -73,6 +73,70 @@ interface IntentRule {
    * "balance the books" should NOT trigger balance_check.
    */
   pattern: RegExp;
+  /**
+   * [Bug 1 / 2026-04-28] When true, skip this rule if the message looks
+   * like a third-party ask ("balance of funkii", "alice's balance",
+   * "what's the balance of 0x40cd…"). This prevents the dispatcher from
+   * pre-firing a SELF balance_check on top of the LLM's correctly-targeted
+   * third-party balance_check, which produced two cards in chat.
+   *
+   * Only applies to rules whose static `args` would default to the
+   * signed-in wallet. Rules that explicitly target an address (or that
+   * always run regardless of subject) leave this off.
+   */
+  skipIfThirdParty?: boolean;
+}
+
+/**
+ * Detects whether the user's message is asking about someone else's
+ * balance/portfolio/wallet/account, rather than their own.
+ *
+ * Two patterns trigger third-party intent:
+ *   1. Possessive + noun: `<name>'s balance` (e.g. "funkii's balance",
+ *      "alice's portfolio"). Excludes `my balance` / `your balance`
+ *      because those are pronouns, not third-party names.
+ *   2. Noun + of/for + non-self target: `balance of <X>` /
+ *      `portfolio for <X>` where `<X>` is anything other than
+ *      `me|mine|myself|my`.
+ *
+ * A literal hex Sui address (`0x...`) in the message also counts as
+ * third-party — even without a possessive — because the user has
+ * explicitly named a target wallet.
+ *
+ * False positives are tolerable here (we just defer to the LLM, which
+ * usually handles it correctly via prompt rules + guardAddressScope).
+ * False negatives are NOT — they cause the duplicate-card bug we're
+ * fixing.
+ */
+function isThirdPartyAsk(message: string): boolean {
+  const NOUN =
+    '(?:balance|account|portfolio|wallet|holdings|assets|tokens|coins|net\\s*worth|health(?:\\s*factor)?|yield|earnings|positions?)';
+  const SELF_TARGETS = new Set(['me', 'mine', 'myself', 'my']);
+
+  // Pattern 1: <name>'s <noun>. \w+ catches names but also "my" / "your" —
+  // we filter those out by hand because Unicode \b makes the lookbehind
+  // version too brittle across runtimes.
+  const possessiveMatch = message.match(
+    new RegExp(`\\b(\\w+)['\u2019]s\\s+${NOUN}\\b`, 'i'),
+  );
+  if (possessiveMatch) {
+    const owner = possessiveMatch[1].toLowerCase();
+    if (owner !== 'my' && owner !== 'your' && owner !== 'our') return true;
+  }
+
+  // Pattern 2: <noun> (of|for) <target>, where target isn't a self-pronoun.
+  const ofForMatch = message.match(
+    new RegExp(`\\b${NOUN}\\s+(?:of|for)\\s+([\\w'\u2019.@-]+)`, 'i'),
+  );
+  if (ofForMatch) {
+    const target = ofForMatch[1].toLowerCase().replace(/[.,?!'"]+$/g, '');
+    if (!SELF_TARGETS.has(target)) return true;
+  }
+
+  // Pattern 3: explicit hex Sui address present (60-64 hex chars).
+  if (/0x[a-fA-F0-9]{60,64}/.test(message)) return true;
+
+  return false;
 }
 
 /**
@@ -128,8 +192,15 @@ const READ_INTENT_RULES: readonly IntentRule[] = [
     // Does NOT match: "balance the books", "find a healthy balance",
     // "rebalance my portfolio", "your balance" (third person),
     // "show my portfolio" (handled by portfolio_analysis, not balance_check).
+    //
+    // [Bug 1 / 2026-04-28] Also gated by `skipIfThirdParty` so phrasings
+    // like "what's the balance of funkii's account?" or "alice's net
+    // worth" no longer pre-fire a SELF balance_check on top of the
+    // LLM's correct third-party balance_check (which produced two
+    // overlapping cards in chat).
     pattern:
       /\b(?:net\s*worth|(?:what(?:'s|\s+is|\s+are)?\s+(?:my|the)\s+(?:total\s+)?(?:balance|wallet|holdings|net\s*worth|assets|tokens|coins))|(?:my\s+(?:balance|wallet|holdings|net\s*worth|assets|tokens|coins))|(?:(?:show|list)\s+(?:me\s+)?(?:all\s+)?my\s+(?:balance|wallet|holdings|assets|tokens|coins))|(?:how\s+much\s+(?:do\s+i\s+have|am\s+i\s+holding|is\s+in\s+my\s+wallet))|(?:what(?:'s|\s+is)?\s+in\s+my\s+wallet))\b/i,
+    skipIfThirdParty: true,
   },
 
   // ────────────────────────── health_check ───────────────────────────
@@ -145,8 +216,13 @@ const READ_INTENT_RULES: readonly IntentRule[] = [
     // "run a health check", "check my account health".
     // Does NOT match: "the health of the protocol", "health of the market"
     // (no "my" / "I" / "account").
+    //
+    // [Bug 1 / 2026-04-28] Gated by `skipIfThirdParty` for the same reason
+    // as balance_check: "what's funkii's health factor" should not fire a
+    // SELF health_check.
     pattern:
       /\b(?:health\s*factor|liquidation(?:\s+risk)?|risk\s+of\s+liquidation|am\s+i\s+(?:safe|at\s+risk)|is\s+my\s+account\s+safe|borrow(?:ing)?\s+capacity|can\s+i\s+borrow(?:\s+more)?|how\s+much\s+can\s+i\s+borrow|max(?:imum)?\s+borrow|(?:full\s+)?health\s+check(?:\s+on\s+my\s+account)?|check\s+my\s+(?:account\s+)?health|run\s+a\s+health\s+check)\b/i,
+    skipIfThirdParty: true,
   },
 
   // ────────────────────────── mpp_services ───────────────────────────
@@ -268,7 +344,11 @@ export function classifyReadIntents(message: string): ReadIntent[] {
   // (toolName, args) pairs only fire once.
   const seenKeys = new Set<string>();
 
+  // Compute once per call so per-rule checks are O(1).
+  const thirdParty = isThirdPartyAsk(trimmed);
+
   for (const rule of READ_INTENT_RULES) {
+    if (rule.skipIfThirdParty && thirdParty) continue;
     const m = trimmed.match(rule.pattern);
     if (!m) continue;
     const args = rule.argsBuilder ? rule.argsBuilder(m) : { ...(rule.args ?? {}) };
@@ -327,4 +407,4 @@ export function intentDiscriminator(intent: ReadIntent): string {
   return (h >>> 0).toString(36);
 }
 
-export const __testOnly__ = { READ_INTENT_RULES, isoDateOffset };
+export const __testOnly__ = { READ_INTENT_RULES, isoDateOffset, isThirdPartyAsk };
