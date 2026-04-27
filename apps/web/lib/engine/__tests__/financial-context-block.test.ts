@@ -99,11 +99,18 @@ describe('buildFinancialContextBlock', () => {
     expect(out).toContain('Last session: 7 days ago');
   });
 
-  it('always appends the do-not-re-derive instruction so the LLM defers tool calls', () => {
+  it('appends an orientation-only instruction that defers to the rich-card rule for direct read questions', () => {
+    // [v0.50.2] The earlier "do NOT re-derive these numbers with tool calls"
+    // line directly contradicted the rich-card rendering rule above it in
+    // the system prompt and made the LLM answer "what's my balance" from
+    // the snapshot text instead of calling balance_check (so the rich
+    // BalanceCard never rendered for self-queries). The replacement frames
+    // the block as orientation-only and explicitly defers to the rich-card
+    // rule for balance / savings / net worth / health questions.
     const out = buildFinancialContextBlock(baseSnapshot);
-    expect(out).toContain('do NOT re-derive these numbers with tool calls');
-    expect(out).toContain('balance_check');
-    expect(out).toContain('savings_info');
-    expect(out).toContain('health_check');
+    expect(out).toContain('orientation');
+    expect(out).toContain('NOT a substitute for tool calls');
+    expect(out).toContain('Rich-card rendering on direct read questions');
+    expect(out).not.toContain('do NOT re-derive these numbers with tool calls');
   });
 });
