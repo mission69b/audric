@@ -93,15 +93,22 @@ export async function executeToolAction(
     }
 
     case 'repay_debt': {
+      // [v0.51.1] Plumb asset (USDC or USDsui) end-to-end. parseActualAmount
+      // keys off the chosen asset to read the correct balanceChanges row —
+      // a USDsui repay's balanceChanges row carries the USDsui coin type,
+      // so hardcoding 'USDC' would parse to null and we'd echo back the
+      // requested input instead of the on-chain truth.
+      const repayAsset = (inp.asset as string | undefined) ?? 'USDC';
       const res = await sdk.repay({
         amount: Number(inp.amount),
+        asset: repayAsset,
         protocol: inp.protocol as string | undefined,
       });
       // [v1.4 fix] Repay-all may settle a different amount than `inp.amount`.
-      const actual = parseActualAmount(res.balanceChanges, 'USDC', 'negative');
+      const actual = parseActualAmount(res.balanceChanges, repayAsset, 'negative');
       return {
         success: true,
-        data: { success: true, tx: res.tx, amount: actual ?? inp.amount },
+        data: { success: true, tx: res.tx, amount: actual ?? inp.amount, asset: repayAsset },
       };
     }
 

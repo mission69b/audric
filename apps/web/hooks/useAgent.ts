@@ -44,7 +44,7 @@ export interface AgentActions {
   save(params: { amount: number; asset?: string; protocol?: string }): Promise<TxResult>;
   withdraw(params: { amount: number; asset?: string; protocol?: string; fromAsset?: string; toAsset?: string }): Promise<TxResult>;
   borrow(params: { amount: number; asset?: string; protocol?: string }): Promise<TxResult>;
-  repay(params: { amount: number; protocol?: string }): Promise<TxResult>;
+  repay(params: { amount: number; asset?: string; protocol?: string }): Promise<TxResult>;
   claimRewards(): Promise<TxResult>;
   swap(params: { from: string; to: string; amount: number; slippage?: number; byAmountIn?: boolean }): Promise<TxResult>;
   stakeVSui(params: { amount: number }): Promise<TxResult>;
@@ -162,8 +162,12 @@ export function useAgent() {
             return sponsoredTransaction('borrow', { amount, asset, protocol });
           },
 
-          async repay({ amount, protocol }) {
-            return sponsoredTransaction('repay', { amount, protocol });
+          async repay({ amount, asset, protocol }) {
+            // [v0.51.1] Plumb asset through to /api/transactions/prepare so a
+            // USDsui debt repays via NAVI's USDsui pool with USDsui coins.
+            // Pre-v0.51.1 we dropped asset here even though both the engine
+            // tool and the prepare route already accepted it.
+            return sponsoredTransaction('repay', { amount, asset, protocol });
           },
 
           async claimRewards() {
