@@ -37,25 +37,26 @@ export async function GET(request: NextRequest) {
     sessionIds.map(async (id) => {
       const data = await store.get(id);
       if (!data) return null;
-      // Skip the `[session bootstrap]` sentinel inserted by
-      // buildSyntheticPrefetch — it's an internal seed message that
-      // satisfies Anthropic's "first message must be user" invariant
-      // and should never surface as the conversation title.
-      const firstUserMsg = data.messages?.find((m) => {
-        if (m.role !== 'user') return false;
-        const text = (m.content as Array<{ type: string; text?: string }>).find(
-          (b) => b.type === 'text',
-        )?.text;
-        return text !== '[session bootstrap]';
-      });
+      // Walk all user messages to find the first real text utterance.
+      // We must skip:
+      //   - user messages with no text block (e.g. tool_result envelopes
+      //     emitted by buildSyntheticPrefetch and runtime tool execution),
+      //   - the `[session bootstrap]` sentinel inserted by
+      //     buildSyntheticPrefetch to satisfy Anthropic's
+      //     "first message must be user" invariant.
       let preview = 'Conversation';
-      if (firstUserMsg?.content) {
-        const textBlock = firstUserMsg.content.find(
-          (b: { type: string }) => b.type === 'text',
-        ) as { type: 'text'; text: string } | undefined;
-        if (textBlock?.text) {
-          preview = textBlock.text.slice(0, 80);
-        }
+      const userMessages =
+        data.messages?.filter((m) => m.role === 'user') ?? [];
+      for (const m of userMessages) {
+        const textBlock = (
+          m.content as Array<{ type: string; text?: string }>
+        ).find((b) => b.type === 'text' && typeof b.text === 'string') as
+          | { type: 'text'; text: string }
+          | undefined;
+        if (!textBlock?.text) continue;
+        if (textBlock.text === '[session bootstrap]') continue;
+        preview = textBlock.text.slice(0, 80);
+        break;
       }
       return {
         id: data.id,
