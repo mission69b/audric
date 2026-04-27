@@ -7,9 +7,9 @@ interface BalanceData {
   savings?: number;
   debt?: number;
   total?: number;
-  /** [engine v0.50] Aggregated DeFi positions outside savings (Cetus/Suilend/Scallop/Bluefin/Aftermath/Haedal). */
+  /** [engine v0.50.1] Aggregated DeFi positions outside savings — all 26 BlockVision protocols (excludes NAVI, which is in `savings`). */
   defi?: number;
-  /** [engine v0.50] Per-protocol breakdown — keys are lowercase protocol slugs. */
+  /** [engine v0.50.1] Per-protocol breakdown — keys are lowercase protocol slugs. */
   defiByProtocol?: Record<string, number>;
   holdings?: { symbol: string; balance: number; usdValue: number }[];
   /** [v0.49] Stamped by the engine's balance_check tool. */
