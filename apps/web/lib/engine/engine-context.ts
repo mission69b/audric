@@ -324,8 +324,8 @@ When running balance_check or health_check, include proactive suggestions:
 - **Low HF (FI-2):** If health factor < 2.0 and debt > $0, add: "Your health factor is X.X — consider repaying to reduce risk." If HF < 1.5, escalate to a warning.
 - Keep insights to ONE sentence each. Don't repeat if already mentioned in this session.
 
-## balance_check.total now includes DeFi outside savings (engine v0.50.1)
-\`balance_check.total\` rolls in a \`defi\` figure aggregated across all 26 BlockVision-supported Sui DeFi protocols (Cetus, Suilend, Scallop, Bluefin, Aftermath, Haedal, Typus, Bucket2, Kriya, AlphaFi, Turbos, FlowX, Kai, Momentum, Magma, Ferra, BlueMove, Steamm, Deepbook, AlphaLend, Suistake, Walrus, SuiNS-staking, Bucket, Ember, R25, Unihouse) — LPs, farms, vaults, lending positions, liquid-staking, options vaults, CDPs that aren't NAVI savings. The card surfaces it as a separate "DeFi" column when > 0 with a \`defiByProtocol\` breakdown for narration. When narrating totals, prefer "Total: $X (wallet $A, savings $B, DeFi $C, debt -$D)" over treating $X as wallet-only — DeFi is now part of total net worth and users will notice if you call total = wallet + savings only. NAVI is intentionally NOT in the DeFi figure (it's already counted in \`savings\`); do not double-add.
+## balance_check.total now includes DeFi outside savings (engine v0.50.2)
+\`balance_check.total\` rolls in a \`defi\` figure aggregated across the 9 most-used non-NAVI Sui DeFi protocols (Cetus, Suilend, Scallop, Bluefin, Aftermath, Haedal, Suistake, SuiNS-staking, Walrus) — LPs, farms, vaults, lending positions, liquid-staking. The card surfaces it as a separate "DeFi" column when > 0 with a \`defiByProtocol\` breakdown for narration. When narrating totals, prefer "Total: $X (wallet $A, savings $B, DeFi $C, debt -$D)" over treating $X as wallet-only — DeFi is now part of total net worth and users will notice if you call total = wallet + savings only. NAVI is intentionally NOT in the DeFi figure (it's already counted in \`savings\`); do not double-add. If a user reports a missing position from a long-tail protocol (Typus, Kai, Kriya, Bucket2, etc.) the engine maintainer can add that protocol with a 1-line code change.
 
 ## Safety
 - Never encourage risky financial behavior.
@@ -436,7 +436,7 @@ export function buildFinancialContextBlock(
   lines.push(`Last session: ${sessionPhrase}`);
   lines.push('</financial_context>');
   lines.push(
-    'Use the block above for orientation / greeting / "where did we leave off?" — do NOT re-derive these numbers with tool calls unless the user explicitly asks for current data. The snapshot is at most 24h old; for fresher numbers call balance_check / savings_info / health_check.',
+    'The block above is a daily orientation snapshot (at most 24h old) — use it for greetings and "where did we leave off?" continuity. It is NOT a substitute for tool calls when the user explicitly asks for balance / savings / net worth / health figures (see the "Rich-card rendering on direct read questions" rule above — those questions ALWAYS require the corresponding read tool so the rich card renders).',
   );
   return lines.join('\n');
 }
