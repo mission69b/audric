@@ -6,40 +6,54 @@ export const runtime = 'nodejs';
 
 /**
  * GET /api/analytics/yield-summary?address=0x...
+ * Header: x-sui-address (caller identity — required)
+ * Query: address (read target — optional; defaults to caller)
  *
  * Returns yield earnings breakdown: today, week, month, all-time,
  * current APY, deposited amount, projected yearly, and monthly sparkline.
  *
  * Uses PortfolioSnapshot for historical data and live position data
  * from the protocol registry for current state.
+ *
+ * [v0.49] Address-aware: a watched / saved-contact address is allowed
+ * via `?address=` even though the caller is the signed-in user. When
+ * the target isn't an Audric user the historical snapshot path is
+ * skipped (no rows) and we report live-only state from the protocol
+ * registry — yieldToday/Week/Month/AllTime stay 0 for non-Audric
+ * users (we have no record of past yield), but currentApy + deposited
+ * + projectedYear come straight from the live position.
  */
 export async function GET(request: NextRequest) {
-  const address = request.headers.get('x-sui-address');
-  if (!address) {
+  const callerAddress = request.headers.get('x-sui-address');
+  const queryAddress = request.nextUrl.searchParams.get('address');
+  if (!callerAddress) {
     return NextResponse.json({ error: 'Missing x-sui-address header' }, { status: 401 });
   }
+  const address = queryAddress ?? callerAddress;
 
   try {
     const user = await prisma.user.findUnique({
       where: { suiAddress: address },
       select: { id: true },
     });
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
 
     const now = new Date();
 
-    const snapshots = await prisma.portfolioSnapshot.findMany({
-      where: { userId: user.id },
-      orderBy: { date: 'asc' },
-      select: {
-        date: true,
-        savingsValueUsd: true,
-        yieldEarnedUsd: true,
-        healthFactor: true,
-      },
-    });
+    // Watched-address fallback: when the target isn't a registered
+    // Audric user we don't have snapshot rows. We still want to
+    // return live state, so we proceed with an empty snapshot list.
+    const snapshots = user
+      ? await prisma.portfolioSnapshot.findMany({
+          where: { userId: user.id },
+          orderBy: { date: 'asc' },
+          select: {
+            date: true,
+            savingsValueUsd: true,
+            yieldEarnedUsd: true,
+            healthFactor: true,
+          },
+        })
+      : [];
 
     const todayStr = now.toISOString().slice(0, 10);
     const weekAgo = new Date(now.getTime() - 7 * 86_400_000);

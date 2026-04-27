@@ -1,6 +1,6 @@
 'use client';
 
-import { CardShell, fmtUsd } from './primitives';
+import { AddressBadge, CardShell, fmtUsd } from './primitives';
 
 interface SavingsPosition {
   symbol: string;
@@ -14,6 +14,10 @@ interface SavingsPosition {
 interface SavingsData {
   positions?: SavingsPosition[];
   earnings?: { currentApy: number; dailyEarning: number; supplied: number };
+  /** [v0.49] Stamped by the engine's savings_info tool. */
+  address?: string;
+  /** [v0.49] False for watched-address reads. */
+  isSelfQuery?: boolean;
 }
 
 export function SavingsCard({ data }: { data: SavingsData }) {
@@ -23,8 +27,11 @@ export function SavingsCard({ data }: { data: SavingsData }) {
 
   if (!supplies.length && !borrows.length && !hasEarnings) return null;
 
+  const isWatched = data.isSelfQuery === false && !!data.address;
+  const badge = isWatched ? <AddressBadge address={data.address!} /> : undefined;
+
   return (
-    <CardShell title="Savings Positions">
+    <CardShell title="Savings Positions" badge={badge}>
       {supplies.length > 0 && (
         <table className="w-full mb-1">
           <thead>

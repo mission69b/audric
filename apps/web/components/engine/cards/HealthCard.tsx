@@ -1,6 +1,6 @@
 'use client';
 
-import { CardShell, DetailRow, Gauge, StatusBadge, fmtUsd } from './primitives';
+import { AddressBadge, CardShell, DetailRow, Gauge, StatusBadge, fmtUsd } from './primitives';
 
 interface HealthData {
   /**
@@ -17,6 +17,10 @@ interface HealthData {
   maxBorrow?: number;
   liquidationThreshold?: number;
   status?: string;
+  /** [v0.49] Stamped by the engine's health_check tool. */
+  address?: string;
+  /** [v0.49] False for watched-address reads. */
+  isSelfQuery?: boolean;
 }
 
 /**
@@ -60,9 +64,22 @@ export function formatHf(
 export function HealthCard({ data }: { data: HealthData }) {
   const status = getHfStatus(data.healthFactor, data.borrowed);
   const { display, gaugeValue } = formatHf(data.healthFactor, data.borrowed);
+  const isWatched = data.isSelfQuery === false && !!data.address;
+
+  // CardShell only accepts a single ReactNode for `badge`; on watched
+  // reads we surface the chip alongside the status pip so the user can
+  // see both at a glance. Self-reads keep the original status-only badge.
+  const badge = isWatched ? (
+    <span className="inline-flex items-center gap-2">
+      <AddressBadge address={data.address!} />
+      <StatusBadge status={status} />
+    </span>
+  ) : (
+    <StatusBadge status={status} />
+  );
 
   return (
-    <CardShell title="Health Factor" badge={<StatusBadge status={status} />}>
+    <CardShell title="Health Factor" badge={badge}>
       <div className="text-center mb-2">
         <span className="text-2xl font-semibold font-mono text-fg-primary">{display}</span>
       </div>
