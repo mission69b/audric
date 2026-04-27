@@ -113,8 +113,13 @@ try {
   );
 
   // 4. Rates consistency — USDC save rate should be in [0, 0.5] (sanity).
+  // /api/rates returns either { bestSaveRate: { rate: number, ... } } or
+  // a flat number on `usdc.save` depending on caller. Accept both shapes.
   if (rates) {
-    const usdcSave = rates.bestSaveRate ?? rates.usdc?.save ?? null;
+    const usdcSave =
+      typeof rates.bestSaveRate === 'object' && rates.bestSaveRate !== null
+        ? rates.bestSaveRate.rate
+        : (rates.bestSaveRate ?? rates.usdc?.save ?? null);
     check(
       'rates USDC save in sane range',
       typeof usdcSave === 'number' && usdcSave >= 0 && usdcSave <= 0.5,
