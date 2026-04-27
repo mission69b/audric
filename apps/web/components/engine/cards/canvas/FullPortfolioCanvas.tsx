@@ -17,10 +17,32 @@ interface Props {
   onAction?: (text: string) => void;
 }
 
+interface CanonicalPortfolio {
+  netWorthUsd: number;
+  walletValueUsd: number;
+  positions: {
+    savings: number;
+    borrows: number;
+    savingsRate: number;
+    healthFactor: number | null;
+  };
+}
+
 interface PanelData {
   heatmap: { totalEvents: number; activeDays: number } | null;
   spending: { totalSpent: number; requestCount: number; serviceCount: number } | null;
-  walletUsd: number;
+  /**
+   * [Bug — 2026-04-27] Canonical portfolio snapshot for the rendered
+   * address. Populated by `/api/portfolio?address=...`, which is backed
+   * by the same `fetchPortfolio()` call the daily snapshot cron and the
+   * portfolio-history fallback use. Pre-fix this canvas stitched
+   * together `/api/balances` + engine-seeded position data, which
+   * produced wrong numbers for watched addresses (savings hardcoded to
+   * 0) and mis-summed wallet value (USDC + raw SUI tokens, no USDsui).
+   * `null` while in-flight or on RPC failure → fall back to the
+   * engine-seeded data so the card is never blank.
+   */
+  portfolio: CanonicalPortfolio | null;
 }
 
 interface MultiWalletData {
@@ -44,7 +66,7 @@ interface MultiWalletData {
 type WalletTab = 'all' | string;
 
 export function FullPortfolioCanvas({ data, onAction }: Props) {
-  const [panelData, setPanelData] = useState<PanelData>({ heatmap: null, spending: null, walletUsd: 0 });
+  const [panelData, setPanelData] = useState<PanelData>({ heatmap: null, spending: null, portfolio: null });
   const [loading, setLoading] = useState(false);
   const [multiData, setMultiData] = useState<MultiWalletData | null>(null);
   const [activeTab, setActiveTab] = useState<WalletTab>('primary');
@@ -57,6 +79,13 @@ export function FullPortfolioCanvas({ data, onAction }: Props) {
     setLoading(true);
 
     const hdrs = { 'x-sui-address': address };
+    // [Bug — 2026-04-27] Canonical wallet/savings/debt/net-worth comes
+    // from `/api/portfolio?address=...` (single source of truth, backed
+    // by fetchPortfolio()). Activity + spending are separate concerns
+    // so they stay on their own routes. Pre-fix we summed `/api/balances`
+    // USDC + raw SUI tokens (broken: SUI is in tokens, not USD) and
+    // relied on engine-seeded `currentSavings` which is hardcoded to 0
+    // for watched addresses.
     Promise.all([
       fetch(`/api/analytics/activity-heatmap?days=30`, { headers: hdrs })
         .then((r) => r.json())
@@ -65,20 +94,29 @@ export function FullPortfolioCanvas({ data, onAction }: Props) {
       fetch(`/api/analytics/spending?period=month`, { headers: hdrs })
         .then((r) => r.json())
         .catch(() => null),
-      fetch(`/api/balances?address=${address}`)
-        .then((r) => r.json())
-        .then((d) => {
-          const usdc = typeof d.USDC === 'number' ? d.USDC : 0;
-          const sui = typeof d.SUI === 'number' ? d.SUI : 0;
-          return usdc + sui;
-        })
-        .catch(() => 0),
+      fetch(`/api/portfolio?address=${address}`)
+        .then((r) => r.ok ? r.json() : null)
+        .then((d): CanonicalPortfolio | null =>
+          d && typeof d.netWorthUsd === 'number'
+            ? {
+                netWorthUsd: d.netWorthUsd,
+                walletValueUsd: d.walletValueUsd ?? 0,
+                positions: {
+                  savings: d.positions?.savings ?? 0,
+                  borrows: d.positions?.borrows ?? 0,
+                  savingsRate: d.positions?.savingsRate ?? 0,
+                  healthFactor: d.positions?.healthFactor ?? null,
+                },
+              }
+            : null,
+        )
+        .catch(() => null),
       fetch(`/api/analytics/portfolio-multi`, { headers: hdrs })
         .then((r) => r.ok ? r.json() : null)
         .catch(() => null),
     ])
-      .then(([heatmap, spending, walletUsd, multi]) => {
-        setPanelData({ heatmap, spending, walletUsd: walletUsd as number });
+      .then(([heatmap, spending, portfolio, multi]) => {
+        setPanelData({ heatmap, spending, portfolio });
         if (multi?.wallets?.length > 1) setMultiData(multi);
       })
       .finally(() => setLoading(false));
@@ -101,23 +139,38 @@ export function FullPortfolioCanvas({ data, onAction }: Props) {
     ? multiData.wallets.find((w) => w.address === activeTab)
     : null;
 
+  // [Bug — 2026-04-27] Resolution order for the single-wallet view:
+  //   1) `panelData.portfolio` — live from /api/portfolio (canonical,
+  //      always correct for both self and watched addresses).
+  //   2) Engine-seeded `data.*` — fallback while the fetch is in flight
+  //      or if it failed. Note: `data.currentSavings` is hardcoded to 0
+  //      for watched addresses by the engine, so we ONLY trust it as
+  //      a fallback, never as the primary value. The /api/portfolio
+  //      result must win whenever it resolves.
+  const livePortfolio = panelData.portfolio;
   const savings = isAllTab ? multiData!.aggregated.savingsUsd
     : selectedWallet ? selectedWallet.positions.savings
+    : livePortfolio ? livePortfolio.positions.savings
     : data.currentSavings ?? 0;
   const debt = isAllTab ? multiData!.aggregated.debtUsd
     : selectedWallet ? selectedWallet.positions.borrows
+    : livePortfolio ? livePortfolio.positions.borrows
     : data.currentDebt ?? 0;
   const walletUsd = isAllTab ? multiData!.aggregated.walletUsd
     : selectedWallet ? selectedWallet.wallet.totalUsd
-    : panelData.walletUsd;
+    : livePortfolio ? livePortfolio.walletValueUsd
+    : 0;
   const netWorth = isAllTab ? multiData!.aggregated.netWorthUsd
     : selectedWallet ? selectedWallet.netWorth
+    : livePortfolio ? livePortfolio.netWorthUsd
     : walletUsd + savings - debt;
   const hf = isAllTab ? null
     : selectedWallet ? selectedWallet.positions.healthFactor
+    : livePortfolio ? livePortfolio.positions.healthFactor
     : data.healthFactor;
   const apy = isAllTab ? 0
     : selectedWallet ? selectedWallet.positions.savingsRate
+    : livePortfolio ? livePortfolio.positions.savingsRate
     : data.savingsRate ?? 0;
 
   return (
