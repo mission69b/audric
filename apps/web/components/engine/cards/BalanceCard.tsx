@@ -1,6 +1,6 @@
 'use client';
 
-import { CardShell, fmtUsd } from './primitives';
+import { AddressBadge, CardShell, fmtUsd } from './primitives';
 
 interface BalanceData {
   available?: number;
@@ -8,6 +8,10 @@ interface BalanceData {
   debt?: number;
   total?: number;
   holdings?: { symbol: string; balance: number; usdValue: number }[];
+  /** [v0.49] Stamped by the engine's balance_check tool. */
+  address?: string;
+  /** [v0.49] False for watched-address reads. */
+  isSelfQuery?: boolean;
 }
 
 export function BalanceCard({ data }: { data: BalanceData }) {
@@ -18,9 +22,11 @@ export function BalanceCard({ data }: { data: BalanceData }) {
   if ((data.debt ?? 0) > 0) cols.push({ label: 'Debt', value: `$${fmtUsd(data.debt!)}`, color: 'text-warning-solid' });
 
   const hasHoldings = data.holdings && data.holdings.filter((h) => h.usdValue >= 0.01).length > 0;
+  const isWatched = data.isSelfQuery === false && !!data.address;
+  const badge = isWatched ? <AddressBadge address={data.address!} /> : undefined;
 
   return (
-    <CardShell title="Balance" noPadding>
+    <CardShell title="Balance" badge={badge} noPadding>
       <div
         className="grid"
         style={{ gridTemplateColumns: `repeat(${cols.length}, 1fr)` }}

@@ -27,6 +27,27 @@ export function MonoLabel({ children, className }: { children: React.ReactNode; 
   return <span className={`text-[10px] font-mono uppercase tracking-widest text-fg-muted${className ? ` ${className}` : ''}`}>{children}</span>;
 }
 
+/**
+ * [v0.49] Watched-address chip — slot into CardShell's `badge` prop
+ * when `isSelfQuery === false`. Mirrors the truncated-address cue used
+ * by ActivityHeatmapCanvas (PR #67) so a card showing a contact's /
+ * watched-address position is visually distinguishable from one
+ * showing the signed-in user's own.
+ */
+export function AddressBadge({ address }: { address: string }) {
+  const truncated = `${address.slice(0, 6)}…${address.slice(-4)}`;
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-mono uppercase tracking-[0.08em] text-fg-muted"
+      style={{ border: '0.5px solid var(--border-subtle)', background: 'var(--surface-sunken)' }}
+      title={address}
+    >
+      <span className="inline-block w-1 h-1 rounded-full bg-warning-solid" />
+      {truncated}
+    </span>
+  );
+}
+
 export function TrendIndicator({ value, suffix = '%' }: { value: number; suffix?: string }) {
   if (value === 0) return <span className="text-fg-muted">0{suffix}</span>;
   const isPositive = value > 0;
