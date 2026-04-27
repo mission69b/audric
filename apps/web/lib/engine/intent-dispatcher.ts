@@ -108,16 +108,17 @@ interface IntentRule {
  * False negatives are NOT — they cause the duplicate-card bug we're
  * fixing.
  */
+const FINANCIAL_NOUN_GROUP =
+  '(?:balance|account|portfolio|wallet|holdings|assets|tokens|coins|net\\s*worth|health(?:\\s*factor)?|yield|earnings|positions?)';
+
 function isThirdPartyAsk(message: string): boolean {
-  const NOUN =
-    '(?:balance|account|portfolio|wallet|holdings|assets|tokens|coins|net\\s*worth|health(?:\\s*factor)?|yield|earnings|positions?)';
   const SELF_TARGETS = new Set(['me', 'mine', 'myself', 'my']);
 
   // Pattern 1: <name>'s <noun>. \w+ catches names but also "my" / "your" —
   // we filter those out by hand because Unicode \b makes the lookbehind
   // version too brittle across runtimes.
   const possessiveMatch = message.match(
-    new RegExp(`\\b(\\w+)['\u2019]s\\s+${NOUN}\\b`, 'i'),
+    new RegExp(`\\b(\\w+)['\u2019]s\\s+${FINANCIAL_NOUN_GROUP}\\b`, 'i'),
   );
   if (possessiveMatch) {
     const owner = possessiveMatch[1].toLowerCase();
@@ -126,7 +127,7 @@ function isThirdPartyAsk(message: string): boolean {
 
   // Pattern 2: <noun> (of|for) <target>, where target isn't a self-pronoun.
   const ofForMatch = message.match(
-    new RegExp(`\\b${NOUN}\\s+(?:of|for)\\s+([\\w'\u2019.@-]+)`, 'i'),
+    new RegExp(`\\b${FINANCIAL_NOUN_GROUP}\\s+(?:of|for)\\s+([\\w'\u2019.@-]+)`, 'i'),
   );
   if (ofForMatch) {
     const target = ofForMatch[1].toLowerCase().replace(/[.,?!'"]+$/g, '');
@@ -136,6 +137,32 @@ function isThirdPartyAsk(message: string): boolean {
   // Pattern 3: explicit hex Sui address present (60-64 hex chars).
   if (/0x[a-fA-F0-9]{60,64}/.test(message)) return true;
 
+  return false;
+}
+
+/**
+ * Detects whether the user's message ALSO contains a self-balance ask in
+ * addition to (or instead of) any third-party reference. We use this to
+ * keep `skipIfThirdParty` from over-suppressing compound queries like
+ * "what's my balance and funkii's balance" — those should still fire the
+ * SELF balance card so the user sees both wallets, not just the contact's.
+ *
+ * Patterns considered self:
+ *   - `my <financial_noun>` (e.g. "my balance", "my net worth").
+ *   - `<financial_noun> (of|for) (me|mine|myself|my)`.
+ *
+ * Note: this is intentionally narrow (financial nouns only). A vague "I"
+ * elsewhere in the sentence isn't enough — the user has to actually be
+ * asking about a balance/portfolio/etc. of their own.
+ */
+function hasSelfBalanceAsk(message: string): boolean {
+  if (new RegExp(`\\bmy\\s+${FINANCIAL_NOUN_GROUP}\\b`, 'i').test(message)) {
+    return true;
+  }
+  const ofForMe = message.match(
+    new RegExp(`\\b${FINANCIAL_NOUN_GROUP}\\s+(?:of|for)\\s+(me|mine|myself|my)\\b`, 'i'),
+  );
+  if (ofForMe) return true;
   return false;
 }
 
@@ -346,9 +373,17 @@ export function classifyReadIntents(message: string): ReadIntent[] {
 
   // Compute once per call so per-rule checks are O(1).
   const thirdParty = isThirdPartyAsk(trimmed);
+  const selfAsk = hasSelfBalanceAsk(trimmed);
+  // Compound queries that mention BOTH a third party AND the user's own
+  // wallet ("what's my balance and funkii's balance") must keep the SELF
+  // pre-dispatch — otherwise the LLM only renders the contact's card and
+  // the user's own balance is reduced to a caption sentence. We only
+  // suppress the self-targeting rule when the message is *purely*
+  // third-party.
+  const suppressSelfRules = thirdParty && !selfAsk;
 
   for (const rule of READ_INTENT_RULES) {
-    if (rule.skipIfThirdParty && thirdParty) continue;
+    if (rule.skipIfThirdParty && suppressSelfRules) continue;
     const m = trimmed.match(rule.pattern);
     if (!m) continue;
     const args = rule.argsBuilder ? rule.argsBuilder(m) : { ...(rule.args ?? {}) };
@@ -407,4 +442,9 @@ export function intentDiscriminator(intent: ReadIntent): string {
   return (h >>> 0).toString(36);
 }
 
-export const __testOnly__ = { READ_INTENT_RULES, isoDateOffset, isThirdPartyAsk };
+export const __testOnly__ = {
+  READ_INTENT_RULES,
+  isoDateOffset,
+  isThirdPartyAsk,
+  hasSelfBalanceAsk,
+};

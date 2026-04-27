@@ -577,3 +577,65 @@ describe('classifyReadIntents — Bug 1 third-party gating', () => {
     expect(intents.map((i) => i.toolName)).toContain('health_check');
   });
 });
+
+// ───────── Bug 1b / 2026-04-28 — compound queries (self + third-party) ─────────
+//
+// Regression coverage for the second-pass duplicate-card bug: phrasings
+// that mention BOTH the user's own wallet AND a contact's wallet
+// ("what's my balance and funkii's balance") must keep the SELF
+// pre-dispatch — otherwise only the contact's card renders and the
+// user's own balance is reduced to a caption sentence. We only suppress
+// the self rule when the message is *purely* third-party.
+
+describe('hasSelfBalanceAsk', () => {
+  it.each([
+    "what's my balance",
+    "show my net worth",
+    "my health factor",
+    "balance for me please",
+    "net worth of mine",
+    "health factor for myself",
+    "show my portfolio and funkii's portfolio",
+    "what's my balance and funkii's balance",
+    "my holdings vs alice's",
+  ])('flags as self-ask: %s', (msg) => {
+    expect(__testOnly__.hasSelfBalanceAsk(msg)).toBe(true);
+  });
+
+  it.each([
+    "what's funkii's balance",
+    "show me alice's wallet",
+    "what's the balance of funkii's account?",
+    "balance of 0x40cdfd49d252c798833ddb6e48900b4cd44eeff5f2ee8e5fad76b69b739c3e62",
+    // Casual mentions of "I" / "me" without a financial noun should NOT
+    // trip the self-ask gate.
+    "tell me about funkii",
+    "I want funkii's balance",
+  ])('does NOT flag: %s', (msg) => {
+    expect(__testOnly__.hasSelfBalanceAsk(msg)).toBe(false);
+  });
+});
+
+describe('classifyReadIntents — Bug 1b compound (self + third-party)', () => {
+  it('keeps SELF balance_check pre-dispatch for "what\'s my balance and funkii\'s balance"', () => {
+    const intents = classifyReadIntents("what's my balance and funkii's balance");
+    expect(intents.map((i) => i.toolName)).toContain('balance_check');
+  });
+
+  it('keeps SELF balance_check for "show my balance and alice\'s wallet"', () => {
+    const intents = classifyReadIntents("show my balance and alice's wallet");
+    expect(intents.map((i) => i.toolName)).toContain('balance_check');
+  });
+
+  it('keeps SELF health_check for "show my health factor and funkii\'s health factor"', () => {
+    const intents = classifyReadIntents(
+      "show my health factor and funkii's health factor",
+    );
+    expect(intents.map((i) => i.toolName)).toContain('health_check');
+  });
+
+  it('still suppresses SELF balance_check for purely third-party queries', () => {
+    const intents = classifyReadIntents("what's funkii's balance");
+    expect(intents.map((i) => i.toolName)).not.toContain('balance_check');
+  });
+});
