@@ -48,8 +48,17 @@ function key(address: string): string {
  */
 export interface FinancialContextSnapshot {
   savingsUsdc: number;
+  /**
+   * [Bug 1c / 2026-04-27] USDsui breakouts. Both fields are nullable in the
+   * DB for backfill compatibility; the cron writer populates them from the
+   * latest `PortfolioSnapshot.allocations` (wallet) and a fresh
+   * `fetchPositions` call (savings). The `<financial_context>` block builder
+   * renders them as separate "$X USDsui" lines when present.
+   */
+  savingsUsdsui: number | null;
   debtUsdc: number;
   walletUsdc: number;
+  walletUsdsui: number | null;
   healthFactor: number | null;
   currentApy: number | null;
   recentActivity: string;
@@ -105,8 +114,13 @@ export async function getUserFinancialContext(
 
   const snapshot: FinancialContextSnapshot = {
     savingsUsdc: row.savingsUsdc,
+    // [Bug 1c / 2026-04-27] Pre-migration rows have `null` for both USDsui
+    // columns. The block builder treats null as "no USDsui line" so the
+    // prompt degrades gracefully until the next cron tick backfills them.
+    savingsUsdsui: row.savingsUsdsui ?? null,
     debtUsdc: row.debtUsdc,
     walletUsdc: row.walletUsdc,
+    walletUsdsui: row.walletUsdsui ?? null,
     healthFactor: row.healthFactor,
     currentApy: row.currentApy,
     recentActivity: row.recentActivity,

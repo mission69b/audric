@@ -145,7 +145,7 @@ The UI renders a rich data card EVERY TIME you call balance_check, savings_info,
 
   | User intent (any phrasing) | Required tool |
   |---|---|
-  | balance, net worth, total, what do I have, how much do I have, my wallet, my holdings | balance_check |
+  | balance, net worth, total, what do I have, how much do I have, my wallet, my holdings, my assets, my tokens, my coins, what are my assets, list my tokens | balance_check |
   | savings, what's saved, supplied positions, how much earning | savings_info |
   | health factor, liquidation risk, am I safe, borrow capacity, can I borrow more | health_check |
   | transactions, history, last activity, recent transfers, show me X transactions, transactions over $Y, my USDC sends, my swaps | transaction_history (use minUsd / assetSymbol / direction args when the question is filtered) |
@@ -410,9 +410,31 @@ export function buildFinancialContextBlock(
 ): string {
   if (!snapshot) return '';
 
+  // [Bug 1c / 2026-04-27] Render per-asset stable lines when USDsui
+  // breakouts are present. The pre-fix block hardcoded "USDC" labels and
+  // silently rolled USDsui into the USDC aggregate, which let the LLM
+  // answer "what are my assets" without ever mentioning USDsui — see
+  // intent-dispatcher.ts (1a) and STATIC_SYSTEM_PROMPT (1b) for the
+  // tool-dispatch half of the fix.
+  const usdsuiSavings = snapshot.savingsUsdsui ?? 0;
+  const usdsuiWallet = snapshot.walletUsdsui ?? 0;
   const lines: string[] = ['<financial_context>'];
-  lines.push(`Savings: $${snapshot.savingsUsdc.toFixed(2)} USDC`);
-  lines.push(`Wallet (non-savings): $${snapshot.walletUsdc.toFixed(2)} USDC equiv`);
+  if (usdsuiSavings > 0) {
+    const totalSavings = snapshot.savingsUsdc + usdsuiSavings;
+    lines.push(
+      `Savings (NAVI): $${snapshot.savingsUsdc.toFixed(2)} USDC + $${usdsuiSavings.toFixed(2)} USDsui = $${totalSavings.toFixed(2)} total stables`,
+    );
+  } else {
+    lines.push(`Savings: $${snapshot.savingsUsdc.toFixed(2)} USDC`);
+  }
+  if (usdsuiWallet > 0) {
+    const totalWalletStables = snapshot.walletUsdc + usdsuiWallet;
+    lines.push(
+      `Wallet stables (non-savings): $${snapshot.walletUsdc.toFixed(2)} USDC + $${usdsuiWallet.toFixed(2)} USDsui = $${totalWalletStables.toFixed(2)} total`,
+    );
+  } else {
+    lines.push(`Wallet (non-savings): $${snapshot.walletUsdc.toFixed(2)} USDC equiv`);
+  }
   lines.push(`Debt: $${snapshot.debtUsdc.toFixed(2)} USDC`);
   if (snapshot.healthFactor !== null) {
     lines.push(`Health factor: ${snapshot.healthFactor.toFixed(2)}`);

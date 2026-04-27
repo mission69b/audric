@@ -19,8 +19,13 @@ import type { FinancialContextSnapshot } from '@/lib/redis/user-financial-contex
  */
 const baseSnapshot: FinancialContextSnapshot = {
   savingsUsdc: 1234.567,
+  // [Bug 1c / 2026-04-27] USDsui fields default to null in the base snapshot
+  // so existing assertions still test the USDC-only rendering path. The new
+  // "renders USDsui breakouts" suite below exercises the multi-stable path.
+  savingsUsdsui: null,
   debtUsdc: 50,
   walletUsdc: 12.5,
+  walletUsdsui: null,
   healthFactor: 2.456,
   currentApy: 4.234,
   recentActivity: 'Saved $100.00.',
@@ -97,6 +102,51 @@ describe('buildFinancialContextBlock', () => {
   it('renders "Nd days ago" for 2+ days', () => {
     const out = buildFinancialContextBlock({ ...baseSnapshot, daysSinceLastSession: 7 });
     expect(out).toContain('Last session: 7 days ago');
+  });
+
+  describe('[Bug 1c / 2026-04-27] USDsui breakouts', () => {
+    it('renders USDC-only Savings line when savingsUsdsui is null or 0', () => {
+      const out = buildFinancialContextBlock(baseSnapshot);
+      expect(out).toContain('Savings: $1234.57 USDC');
+      expect(out).not.toContain('USDsui');
+    });
+
+    it('renders combined Savings line with USDsui breakout', () => {
+      const out = buildFinancialContextBlock({
+        ...baseSnapshot,
+        savingsUsdc: 100,
+        savingsUsdsui: 50,
+      });
+      expect(out).toContain('Savings (NAVI): $100.00 USDC + $50.00 USDsui = $150.00 total stables');
+      expect(out).not.toContain('Savings: $100.00 USDC\n');
+    });
+
+    it('renders USDC-only Wallet line when walletUsdsui is null or 0', () => {
+      const out = buildFinancialContextBlock(baseSnapshot);
+      expect(out).toContain('Wallet (non-savings): $12.50 USDC equiv');
+    });
+
+    it('renders combined Wallet line with USDsui breakout', () => {
+      const out = buildFinancialContextBlock({
+        ...baseSnapshot,
+        walletUsdc: 81.30,
+        walletUsdsui: 0.99,
+      });
+      expect(out).toContain(
+        'Wallet stables (non-savings): $81.30 USDC + $0.99 USDsui = $82.29 total',
+      );
+      expect(out).not.toContain('Wallet (non-savings): $81.30 USDC equiv');
+    });
+
+    it('falls back to USDC-only label when USDsui values are 0', () => {
+      const out = buildFinancialContextBlock({
+        ...baseSnapshot,
+        savingsUsdsui: 0,
+        walletUsdsui: 0,
+      });
+      expect(out).toContain('Savings: $1234.57 USDC');
+      expect(out).toContain('Wallet (non-savings): $12.50 USDC equiv');
+    });
   });
 
   it('appends an orientation-only instruction that defers to the rich-card rule for direct read questions', () => {

@@ -20,6 +20,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       SUI: bal.SUI,
       USDC: bal.USDC,
+      USDsui: bal.USDsui,
       ...Object.fromEntries(
         Object.entries(bal.assets).map(([k, v]) => [k, v]),
       ),

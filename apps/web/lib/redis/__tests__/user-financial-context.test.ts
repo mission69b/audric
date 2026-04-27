@@ -42,8 +42,13 @@ import {
 
 const SAMPLE_SNAPSHOT: FinancialContextSnapshot = {
   savingsUsdc: 1234.56,
+  // [Bug 1c / 2026-04-27] USDsui breakouts default to null in the canonical
+  // sample so Prisma rows written before the migration deserialize without
+  // surprises (the helper coerces `undefined`/missing → `null`).
+  savingsUsdsui: null,
   debtUsdc: 200,
   walletUsdc: 50,
+  walletUsdsui: null,
   healthFactor: 2.4,
   currentApy: 4.2,
   recentActivity: 'Saved $100.00.',
@@ -142,8 +147,10 @@ describe('getUserFinancialContext', () => {
       userId: 'user_1',
       address: '0xmiss',
       savingsUsdc: SAMPLE_SNAPSHOT.savingsUsdc,
+      savingsUsdsui: SAMPLE_SNAPSHOT.savingsUsdsui,
       debtUsdc: SAMPLE_SNAPSHOT.debtUsdc,
       walletUsdc: SAMPLE_SNAPSHOT.walletUsdc,
+      walletUsdsui: SAMPLE_SNAPSHOT.walletUsdsui,
       healthFactor: SAMPLE_SNAPSHOT.healthFactor,
       currentApy: SAMPLE_SNAPSHOT.currentApy,
       recentActivity: SAMPLE_SNAPSHOT.recentActivity,
@@ -189,8 +196,10 @@ describe('getUserFinancialContext', () => {
       userId: 'user_2',
       address: '0xdegrade',
       savingsUsdc: 0,
+      savingsUsdsui: null,
       debtUsdc: 0,
       walletUsdc: 0,
+      walletUsdsui: null,
       healthFactor: null,
       currentApy: null,
       recentActivity: 'No recent activity.',
@@ -205,8 +214,10 @@ describe('getUserFinancialContext', () => {
     const result = await getUserFinancialContext('0xdegrade');
     expect(result).toEqual({
       savingsUsdc: 0,
+      savingsUsdsui: null,
       debtUsdc: 0,
       walletUsdc: 0,
+      walletUsdsui: null,
       healthFactor: null,
       currentApy: null,
       recentActivity: 'No recent activity.',
@@ -236,8 +247,10 @@ describe('getUserFinancialContext', () => {
       userId: 'user_3',
       address: '0xbadgoals',
       savingsUsdc: 1,
+      savingsUsdsui: null,
       debtUsdc: 0,
       walletUsdc: 0,
+      walletUsdsui: null,
       healthFactor: null,
       currentApy: null,
       recentActivity: 'x',
@@ -259,8 +272,10 @@ describe('getUserFinancialContext', () => {
       userId: 'user_4',
       address: '0xwriteerr',
       savingsUsdc: 1,
+      savingsUsdsui: null,
       debtUsdc: 0,
       walletUsdc: 0,
+      walletUsdsui: null,
       healthFactor: null,
       currentApy: null,
       recentActivity: 'x',

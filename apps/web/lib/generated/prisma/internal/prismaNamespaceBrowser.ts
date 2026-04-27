@@ -362,6 +362,8 @@ export const UserFinancialContextScalarFieldEnum = {
   debtUsdc: 'debtUsdc',
   healthFactor: 'healthFactor',
   walletUsdc: 'walletUsdc',
+  walletUsdsui: 'walletUsdsui',
+  savingsUsdsui: 'savingsUsdsui',
   currentApy: 'currentApy',
   recentActivity: 'recentActivity',
   openGoals: 'openGoals',

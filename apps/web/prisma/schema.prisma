@@ -398,6 +398,15 @@ model UserFinancialContext {
   debtUsdc             Float
   healthFactor         Float?
   walletUsdc           Float
+  /// [Bug 1c / 2026-04-27] USDsui breakouts. NAVI's USDsui pool launched
+  /// after this table was created, so both columns are nullable for
+  /// backfill (older rows return `null`, which the prompt builder treats
+  /// as "no USDsui line"). Both values are USD-equivalent (USDsui is
+  /// $1-pegged) and live alongside the existing USDC fields rather than
+  /// replacing them — pre-fix the LLM was answering balance questions
+  /// from a USDC-labeled aggregate that silently dropped USDsui.
+  walletUsdsui         Float?
+  savingsUsdsui        Float?
   currentApy           Float?
   recentActivity       String
   openGoals            Json

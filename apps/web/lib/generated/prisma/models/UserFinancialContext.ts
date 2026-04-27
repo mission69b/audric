@@ -51,6 +51,8 @@ export type UserFinancialContextAvgAggregateOutputType = {
   debtUsdc: number | null
   healthFactor: number | null
   walletUsdc: number | null
+  walletUsdsui: number | null
+  savingsUsdsui: number | null
   currentApy: number | null
   daysSinceLastSession: number | null
 }
@@ -60,6 +62,8 @@ export type UserFinancialContextSumAggregateOutputType = {
   debtUsdc: number | null
   healthFactor: number | null
   walletUsdc: number | null
+  walletUsdsui: number | null
+  savingsUsdsui: number | null
   currentApy: number | null
   daysSinceLastSession: number | null
 }
@@ -72,6 +76,8 @@ export type UserFinancialContextMinAggregateOutputType = {
   debtUsdc: number | null
   healthFactor: number | null
   walletUsdc: number | null
+  walletUsdsui: number | null
+  savingsUsdsui: number | null
   currentApy: number | null
   recentActivity: string | null
   pendingAdvice: string | null
@@ -88,6 +94,8 @@ export type UserFinancialContextMaxAggregateOutputType = {
   debtUsdc: number | null
   healthFactor: number | null
   walletUsdc: number | null
+  walletUsdsui: number | null
+  savingsUsdsui: number | null
   currentApy: number | null
   recentActivity: string | null
   pendingAdvice: string | null
@@ -104,6 +112,8 @@ export type UserFinancialContextCountAggregateOutputType = {
   debtUsdc: number
   healthFactor: number
   walletUsdc: number
+  walletUsdsui: number
+  savingsUsdsui: number
   currentApy: number
   recentActivity: number
   openGoals: number
@@ -120,6 +130,8 @@ export type UserFinancialContextAvgAggregateInputType = {
   debtUsdc?: true
   healthFactor?: true
   walletUsdc?: true
+  walletUsdsui?: true
+  savingsUsdsui?: true
   currentApy?: true
   daysSinceLastSession?: true
 }
@@ -129,6 +141,8 @@ export type UserFinancialContextSumAggregateInputType = {
   debtUsdc?: true
   healthFactor?: true
   walletUsdc?: true
+  walletUsdsui?: true
+  savingsUsdsui?: true
   currentApy?: true
   daysSinceLastSession?: true
 }
@@ -141,6 +155,8 @@ export type UserFinancialContextMinAggregateInputType = {
   debtUsdc?: true
   healthFactor?: true
   walletUsdc?: true
+  walletUsdsui?: true
+  savingsUsdsui?: true
   currentApy?: true
   recentActivity?: true
   pendingAdvice?: true
@@ -157,6 +173,8 @@ export type UserFinancialContextMaxAggregateInputType = {
   debtUsdc?: true
   healthFactor?: true
   walletUsdc?: true
+  walletUsdsui?: true
+  savingsUsdsui?: true
   currentApy?: true
   recentActivity?: true
   pendingAdvice?: true
@@ -173,6 +191,8 @@ export type UserFinancialContextCountAggregateInputType = {
   debtUsdc?: true
   healthFactor?: true
   walletUsdc?: true
+  walletUsdsui?: true
+  savingsUsdsui?: true
   currentApy?: true
   recentActivity?: true
   openGoals?: true
@@ -277,6 +297,8 @@ export type UserFinancialContextGroupByOutputType = {
   debtUsdc: number
   healthFactor: number | null
   walletUsdc: number
+  walletUsdsui: number | null
+  savingsUsdsui: number | null
   currentApy: number | null
   recentActivity: string
   openGoals: runtime.JsonValue
@@ -317,6 +339,8 @@ export type UserFinancialContextWhereInput = {
   debtUsdc?: Prisma.FloatFilter<"UserFinancialContext"> | number
   healthFactor?: Prisma.FloatNullableFilter<"UserFinancialContext"> | number | null
   walletUsdc?: Prisma.FloatFilter<"UserFinancialContext"> | number
+  walletUsdsui?: Prisma.FloatNullableFilter<"UserFinancialContext"> | number | null
+  savingsUsdsui?: Prisma.FloatNullableFilter<"UserFinancialContext"> | number | null
   currentApy?: Prisma.FloatNullableFilter<"UserFinancialContext"> | number | null
   recentActivity?: Prisma.StringFilter<"UserFinancialContext"> | string
   openGoals?: Prisma.JsonFilter<"UserFinancialContext">
@@ -334,6 +358,8 @@ export type UserFinancialContextOrderByWithRelationInput = {
   debtUsdc?: Prisma.SortOrder
   healthFactor?: Prisma.SortOrderInput | Prisma.SortOrder
   walletUsdc?: Prisma.SortOrder
+  walletUsdsui?: Prisma.SortOrderInput | Prisma.SortOrder
+  savingsUsdsui?: Prisma.SortOrderInput | Prisma.SortOrder
   currentApy?: Prisma.SortOrderInput | Prisma.SortOrder
   recentActivity?: Prisma.SortOrder
   openGoals?: Prisma.SortOrder
@@ -354,6 +380,8 @@ export type UserFinancialContextWhereUniqueInput = Prisma.AtLeast<{
   debtUsdc?: Prisma.FloatFilter<"UserFinancialContext"> | number
   healthFactor?: Prisma.FloatNullableFilter<"UserFinancialContext"> | number | null
   walletUsdc?: Prisma.FloatFilter<"UserFinancialContext"> | number
+  walletUsdsui?: Prisma.FloatNullableFilter<"UserFinancialContext"> | number | null
+  savingsUsdsui?: Prisma.FloatNullableFilter<"UserFinancialContext"> | number | null
   currentApy?: Prisma.FloatNullableFilter<"UserFinancialContext"> | number | null
   recentActivity?: Prisma.StringFilter<"UserFinancialContext"> | string
   openGoals?: Prisma.JsonFilter<"UserFinancialContext">
@@ -371,6 +399,8 @@ export type UserFinancialContextOrderByWithAggregationInput = {
   debtUsdc?: Prisma.SortOrder
   healthFactor?: Prisma.SortOrderInput | Prisma.SortOrder
   walletUsdc?: Prisma.SortOrder
+  walletUsdsui?: Prisma.SortOrderInput | Prisma.SortOrder
+  savingsUsdsui?: Prisma.SortOrderInput | Prisma.SortOrder
   currentApy?: Prisma.SortOrderInput | Prisma.SortOrder
   recentActivity?: Prisma.SortOrder
   openGoals?: Prisma.SortOrder
@@ -396,6 +426,8 @@ export type UserFinancialContextScalarWhereWithAggregatesInput = {
   debtUsdc?: Prisma.FloatWithAggregatesFilter<"UserFinancialContext"> | number
   healthFactor?: Prisma.FloatNullableWithAggregatesFilter<"UserFinancialContext"> | number | null
   walletUsdc?: Prisma.FloatWithAggregatesFilter<"UserFinancialContext"> | number
+  walletUsdsui?: Prisma.FloatNullableWithAggregatesFilter<"UserFinancialContext"> | number | null
+  savingsUsdsui?: Prisma.FloatNullableWithAggregatesFilter<"UserFinancialContext"> | number | null
   currentApy?: Prisma.FloatNullableWithAggregatesFilter<"UserFinancialContext"> | number | null
   recentActivity?: Prisma.StringWithAggregatesFilter<"UserFinancialContext"> | string
   openGoals?: Prisma.JsonWithAggregatesFilter<"UserFinancialContext">
@@ -413,6 +445,8 @@ export type UserFinancialContextCreateInput = {
   debtUsdc: number
   healthFactor?: number | null
   walletUsdc: number
+  walletUsdsui?: number | null
+  savingsUsdsui?: number | null
   currentApy?: number | null
   recentActivity: string
   openGoals: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -430,6 +464,8 @@ export type UserFinancialContextUncheckedCreateInput = {
   debtUsdc: number
   healthFactor?: number | null
   walletUsdc: number
+  walletUsdsui?: number | null
+  savingsUsdsui?: number | null
   currentApy?: number | null
   recentActivity: string
   openGoals: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -447,6 +483,8 @@ export type UserFinancialContextUpdateInput = {
   debtUsdc?: Prisma.FloatFieldUpdateOperationsInput | number
   healthFactor?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   walletUsdc?: Prisma.FloatFieldUpdateOperationsInput | number
+  walletUsdsui?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  savingsUsdsui?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   currentApy?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   recentActivity?: Prisma.StringFieldUpdateOperationsInput | string
   openGoals?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -464,6 +502,8 @@ export type UserFinancialContextUncheckedUpdateInput = {
   debtUsdc?: Prisma.FloatFieldUpdateOperationsInput | number
   healthFactor?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   walletUsdc?: Prisma.FloatFieldUpdateOperationsInput | number
+  walletUsdsui?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  savingsUsdsui?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   currentApy?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   recentActivity?: Prisma.StringFieldUpdateOperationsInput | string
   openGoals?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -481,6 +521,8 @@ export type UserFinancialContextCreateManyInput = {
   debtUsdc: number
   healthFactor?: number | null
   walletUsdc: number
+  walletUsdsui?: number | null
+  savingsUsdsui?: number | null
   currentApy?: number | null
   recentActivity: string
   openGoals: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -498,6 +540,8 @@ export type UserFinancialContextUpdateManyMutationInput = {
   debtUsdc?: Prisma.FloatFieldUpdateOperationsInput | number
   healthFactor?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   walletUsdc?: Prisma.FloatFieldUpdateOperationsInput | number
+  walletUsdsui?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  savingsUsdsui?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   currentApy?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   recentActivity?: Prisma.StringFieldUpdateOperationsInput | string
   openGoals?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -515,6 +559,8 @@ export type UserFinancialContextUncheckedUpdateManyInput = {
   debtUsdc?: Prisma.FloatFieldUpdateOperationsInput | number
   healthFactor?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   walletUsdc?: Prisma.FloatFieldUpdateOperationsInput | number
+  walletUsdsui?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  savingsUsdsui?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   currentApy?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   recentActivity?: Prisma.StringFieldUpdateOperationsInput | string
   openGoals?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -532,6 +578,8 @@ export type UserFinancialContextCountOrderByAggregateInput = {
   debtUsdc?: Prisma.SortOrder
   healthFactor?: Prisma.SortOrder
   walletUsdc?: Prisma.SortOrder
+  walletUsdsui?: Prisma.SortOrder
+  savingsUsdsui?: Prisma.SortOrder
   currentApy?: Prisma.SortOrder
   recentActivity?: Prisma.SortOrder
   openGoals?: Prisma.SortOrder
@@ -546,6 +594,8 @@ export type UserFinancialContextAvgOrderByAggregateInput = {
   debtUsdc?: Prisma.SortOrder
   healthFactor?: Prisma.SortOrder
   walletUsdc?: Prisma.SortOrder
+  walletUsdsui?: Prisma.SortOrder
+  savingsUsdsui?: Prisma.SortOrder
   currentApy?: Prisma.SortOrder
   daysSinceLastSession?: Prisma.SortOrder
 }
@@ -558,6 +608,8 @@ export type UserFinancialContextMaxOrderByAggregateInput = {
   debtUsdc?: Prisma.SortOrder
   healthFactor?: Prisma.SortOrder
   walletUsdc?: Prisma.SortOrder
+  walletUsdsui?: Prisma.SortOrder
+  savingsUsdsui?: Prisma.SortOrder
   currentApy?: Prisma.SortOrder
   recentActivity?: Prisma.SortOrder
   pendingAdvice?: Prisma.SortOrder
@@ -574,6 +626,8 @@ export type UserFinancialContextMinOrderByAggregateInput = {
   debtUsdc?: Prisma.SortOrder
   healthFactor?: Prisma.SortOrder
   walletUsdc?: Prisma.SortOrder
+  walletUsdsui?: Prisma.SortOrder
+  savingsUsdsui?: Prisma.SortOrder
   currentApy?: Prisma.SortOrder
   recentActivity?: Prisma.SortOrder
   pendingAdvice?: Prisma.SortOrder
@@ -587,6 +641,8 @@ export type UserFinancialContextSumOrderByAggregateInput = {
   debtUsdc?: Prisma.SortOrder
   healthFactor?: Prisma.SortOrder
   walletUsdc?: Prisma.SortOrder
+  walletUsdsui?: Prisma.SortOrder
+  savingsUsdsui?: Prisma.SortOrder
   currentApy?: Prisma.SortOrder
   daysSinceLastSession?: Prisma.SortOrder
 }
@@ -601,6 +657,8 @@ export type UserFinancialContextSelect<ExtArgs extends runtime.Types.Extensions.
   debtUsdc?: boolean
   healthFactor?: boolean
   walletUsdc?: boolean
+  walletUsdsui?: boolean
+  savingsUsdsui?: boolean
   currentApy?: boolean
   recentActivity?: boolean
   openGoals?: boolean
@@ -618,6 +676,8 @@ export type UserFinancialContextSelectCreateManyAndReturn<ExtArgs extends runtim
   debtUsdc?: boolean
   healthFactor?: boolean
   walletUsdc?: boolean
+  walletUsdsui?: boolean
+  savingsUsdsui?: boolean
   currentApy?: boolean
   recentActivity?: boolean
   openGoals?: boolean
@@ -635,6 +695,8 @@ export type UserFinancialContextSelectUpdateManyAndReturn<ExtArgs extends runtim
   debtUsdc?: boolean
   healthFactor?: boolean
   walletUsdc?: boolean
+  walletUsdsui?: boolean
+  savingsUsdsui?: boolean
   currentApy?: boolean
   recentActivity?: boolean
   openGoals?: boolean
@@ -652,6 +714,8 @@ export type UserFinancialContextSelectScalar = {
   debtUsdc?: boolean
   healthFactor?: boolean
   walletUsdc?: boolean
+  walletUsdsui?: boolean
+  savingsUsdsui?: boolean
   currentApy?: boolean
   recentActivity?: boolean
   openGoals?: boolean
@@ -661,7 +725,7 @@ export type UserFinancialContextSelectScalar = {
   updatedAt?: boolean
 }
 
-export type UserFinancialContextOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "address" | "savingsUsdc" | "debtUsdc" | "healthFactor" | "walletUsdc" | "currentApy" | "recentActivity" | "openGoals" | "pendingAdvice" | "daysSinceLastSession" | "generatedAt" | "updatedAt", ExtArgs["result"]["userFinancialContext"]>
+export type UserFinancialContextOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "address" | "savingsUsdc" | "debtUsdc" | "healthFactor" | "walletUsdc" | "walletUsdsui" | "savingsUsdsui" | "currentApy" | "recentActivity" | "openGoals" | "pendingAdvice" | "daysSinceLastSession" | "generatedAt" | "updatedAt", ExtArgs["result"]["userFinancialContext"]>
 
 export type $UserFinancialContextPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "UserFinancialContext"
@@ -674,6 +738,17 @@ export type $UserFinancialContextPayload<ExtArgs extends runtime.Types.Extension
     debtUsdc: number
     healthFactor: number | null
     walletUsdc: number
+    /**
+     * [Bug 1c / 2026-04-27] USDsui breakouts. NAVI's USDsui pool launched
+     * after this table was created, so both columns are nullable for
+     * backfill (older rows return `null`, which the prompt builder treats
+     * as "no USDsui line"). Both values are USD-equivalent (USDsui is
+     * $1-pegged) and live alongside the existing USDC fields rather than
+     * replacing them — pre-fix the LLM was answering balance questions
+     * from a USDC-labeled aggregate that silently dropped USDsui.
+     */
+    walletUsdsui: number | null
+    savingsUsdsui: number | null
     currentApy: number | null
     recentActivity: string
     openGoals: runtime.JsonValue
@@ -1111,6 +1186,8 @@ export interface UserFinancialContextFieldRefs {
   readonly debtUsdc: Prisma.FieldRef<"UserFinancialContext", 'Float'>
   readonly healthFactor: Prisma.FieldRef<"UserFinancialContext", 'Float'>
   readonly walletUsdc: Prisma.FieldRef<"UserFinancialContext", 'Float'>
+  readonly walletUsdsui: Prisma.FieldRef<"UserFinancialContext", 'Float'>
+  readonly savingsUsdsui: Prisma.FieldRef<"UserFinancialContext", 'Float'>
   readonly currentApy: Prisma.FieldRef<"UserFinancialContext", 'Float'>
   readonly recentActivity: Prisma.FieldRef<"UserFinancialContext", 'String'>
   readonly openGoals: Prisma.FieldRef<"UserFinancialContext", 'Json'>

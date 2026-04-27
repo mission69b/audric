@@ -25,6 +25,20 @@ describe('classifyReadIntents — balance_check', () => {
     "What's in my wallet?",
     "What's my total balance?",
     'What is my total balance',
+    // [Bug 1a / 2026-04-27] Plural-noun phrasings that previously fell through
+    // to the LLM and let cached USDC-only context overwrite USDsui balances.
+    'what are my assets',
+    'What are my assets?',
+    'What are my holdings?',
+    'my assets',
+    'My tokens',
+    'my coins',
+    'list my assets',
+    'list all my tokens',
+    'show me my tokens',
+    'show my coins',
+    "what's my assets",
+    'what is my assets',
   ])('matches: %s', (msg) => {
     const intents = classifyReadIntents(msg);
     expect(intents.map((i) => i.toolName)).toContain('balance_check');
@@ -37,6 +51,14 @@ describe('classifyReadIntents — balance_check', () => {
     'your balance is low',
     'the balance sheet looks good',
     'work-life balance',
+    // Negative-test the new noun set: portfolio is NOT in balance_check
+    // (handled by portfolio_analysis), and unrelated "my X" phrasings should
+    // not trigger.
+    'show me my portfolio',
+    'my portfolio',
+    'my plans for the day',
+    'what are my goals',
+    'what are my options',
   ])('does NOT match: %s', (msg) => {
     const intents = classifyReadIntents(msg);
     expect(intents.map((i) => i.toolName)).not.toContain('balance_check');

@@ -1,7 +1,8 @@
 import { getClient, getRegistry } from '@/lib/protocol-registry';
-import { COIN_REGISTRY, USDC_TYPE } from '@t2000/sdk';
+import { COIN_REGISTRY, USDC_TYPE, USDSUI_TYPE } from '@t2000/sdk';
 
 const USDC_DECIMALS = 6;
+const USDSUI_DECIMALS = 6;
 const MIST_PER_SUI = 1_000_000_000;
 
 const TRADEABLE_COINS: Record<string, { type: string; decimals: number }> = {
@@ -14,6 +15,13 @@ const TRADEABLE_COINS: Record<string, { type: string; decimals: number }> = {
 export interface WalletBalances {
   SUI: number;
   USDC: number;
+  /**
+   * [Bug 1c / 2026-04-27] USDsui wallet balance. Treated as $1-pegged stable
+   * for `totalUsd` aggregation (NAVI USDsui pool launched at $1 peg). Surfaced
+   * as a first-class field so `<financial_context>` can render it explicitly
+   * instead of folding it into a USDC-labeled aggregate.
+   */
+  USDsui: number;
   assets: Record<string, number>;
   totalUsd: number;
   allocations: Record<string, number>;
@@ -55,7 +63,7 @@ export interface PortfolioSnapshot {
   estimatedDailyYield: number;
 }
 
-const EMPTY_WALLET: WalletBalances = { SUI: 0, USDC: 0, assets: {}, totalUsd: 0, allocations: {} };
+const EMPTY_WALLET: WalletBalances = { SUI: 0, USDC: 0, USDsui: 0, assets: {}, totalUsd: 0, allocations: {} };
 const EMPTY_POSITIONS: PositionSummary = {
   savings: 0, borrows: 0, savingsRate: 0, healthFactor: null,
   maxBorrow: 0, pendingRewards: 0, supplies: [], borrowsDetail: [],
@@ -69,9 +77,14 @@ export async function fetchWalletBalances(address: string): Promise<WalletBalanc
   const client = getClient();
   const tradeableEntries = Object.entries(TRADEABLE_COINS);
 
-  const [suiBal, usdcBal, ...tradeableBals] = await Promise.all([
+  // [Bug 1c / 2026-04-27] Fetch USDsui alongside USDC. Both are $1-pegged
+  // stables (NAVI launched USDsui at $1 with a productive lending pool); we
+  // sum them into `totalUsd` and surface USDsui as a first-class field so
+  // the orientation snapshot can render it explicitly instead of dropping it.
+  const [suiBal, usdcBal, usdsuiBal, ...tradeableBals] = await Promise.all([
     client.getBalance({ owner: address, coinType: '0x2::sui::SUI' }),
     client.getBalance({ owner: address, coinType: USDC_TYPE }).catch(() => ({ totalBalance: '0' })),
+    client.getBalance({ owner: address, coinType: USDSUI_TYPE }).catch(() => ({ totalBalance: '0' })),
     ...tradeableEntries.map(([, info]) =>
       client.getBalance({ owner: address, coinType: info.type }).catch(() => ({ totalBalance: '0' })),
     ),
@@ -79,6 +92,7 @@ export async function fetchWalletBalances(address: string): Promise<WalletBalanc
 
   const suiRounded = Math.round(Number(suiBal.totalBalance) / MIST_PER_SUI * 1e4) / 1e4;
   const usdcRounded = Math.round(Number(usdcBal.totalBalance) / (10 ** USDC_DECIMALS) * 100) / 100;
+  const usdsuiRounded = Math.round(Number(usdsuiBal.totalBalance) / (10 ** USDSUI_DECIMALS) * 100) / 100;
 
   const assets: Record<string, number> = {};
   tradeableEntries.forEach(([symbol, info], idx) => {
@@ -88,9 +102,13 @@ export async function fetchWalletBalances(address: string): Promise<WalletBalanc
   return {
     SUI: suiRounded,
     USDC: usdcRounded,
+    USDsui: usdsuiRounded,
     assets,
-    totalUsd: usdcRounded,
-    allocations: { USDC: usdcRounded, SUI: suiRounded, ...assets },
+    // [Bug 1c / 2026-04-27] `totalUsd` now sums all $1-pegged stables (USDC
+    // + USDsui). Pre-fix this was just `usdcRounded`, which dropped USDsui
+    // from `PortfolioSnapshot.walletValueUsd` and downstream net-worth math.
+    totalUsd: usdcRounded + usdsuiRounded,
+    allocations: { USDC: usdcRounded, USDsui: usdsuiRounded, SUI: suiRounded, ...assets },
   };
 }
 

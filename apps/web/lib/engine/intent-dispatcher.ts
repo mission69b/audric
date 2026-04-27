@@ -113,14 +113,23 @@ const READ_INTENT_RULES: readonly IntentRule[] = [
     toolName: 'balance_check',
     args: {},
     label: 'balance/net-worth direct read',
+    // [Bug 1a / 2026-04-27] Extended to match plural-noun phrasings the user
+    // hit in production: "what are my assets", "my assets", "list my tokens".
+    // Pre-fix the verb form `\s+are` was missing and the noun set excluded
+    // `assets|tokens|coins`, so "what are my assets" fell through to the
+    // LLM, which answered from cached <financial_context> and dropped USDsui.
+    //
     // Matches: "what's my net worth", "my net worth?", "net worth?",
     // "what's my balance", "what is my balance", "my balance", "show my balance",
     // "what do I have", "how much do I have", "my wallet", "my holdings",
-    // "what's in my wallet", "total balance", "what's my total".
+    // "what's in my wallet", "total balance", "what's my total",
+    // "what are my assets", "my assets", "my tokens", "my coins",
+    // "list my assets", "show me my tokens", "what are my holdings".
     // Does NOT match: "balance the books", "find a healthy balance",
-    // "rebalance my portfolio", "your balance" (third person).
+    // "rebalance my portfolio", "your balance" (third person),
+    // "show my portfolio" (handled by portfolio_analysis, not balance_check).
     pattern:
-      /\b(?:net\s*worth|(?:what(?:'s|\s+is)?\s+(?:my|the)\s+(?:total\s+)?(?:balance|wallet|holdings|net\s*worth))|(?:my\s+(?:balance|wallet|holdings|net\s*worth))|(?:show\s+(?:me\s+)?my\s+(?:balance|wallet|holdings))|(?:how\s+much\s+(?:do\s+i\s+have|am\s+i\s+holding|is\s+in\s+my\s+wallet))|(?:what(?:'s|\s+is)?\s+in\s+my\s+wallet))\b/i,
+      /\b(?:net\s*worth|(?:what(?:'s|\s+is|\s+are)?\s+(?:my|the)\s+(?:total\s+)?(?:balance|wallet|holdings|net\s*worth|assets|tokens|coins))|(?:my\s+(?:balance|wallet|holdings|net\s*worth|assets|tokens|coins))|(?:(?:show|list)\s+(?:me\s+)?(?:all\s+)?my\s+(?:balance|wallet|holdings|assets|tokens|coins))|(?:how\s+much\s+(?:do\s+i\s+have|am\s+i\s+holding|is\s+in\s+my\s+wallet))|(?:what(?:'s|\s+is)?\s+in\s+my\s+wallet))\b/i,
   },
 
   // ────────────────────────── health_check ───────────────────────────
