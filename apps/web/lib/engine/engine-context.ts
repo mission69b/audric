@@ -496,7 +496,7 @@ export function buildDynamicBlock(
   const writeToolList = writeTools.map((t) => `- ${t.name}`).join('\n');
 
   const contactsBlock = contacts && contacts.length > 0
-    ? `Saved contacts: ${contacts.map((c) => `${c.name} → ${c.address}`).join(', ')}\n- When user says "send to <name>", resolve from contacts above and use send_transfer with the address.`
+    ? `Saved contacts: ${contacts.map((c) => `${c.name} → ${c.address}`).join(', ')}\n- When user says "send to <name>", resolve from contacts above and use send_transfer with the address.\n- When the user asks ONLY for a contact's address ("what's funkii's address", "what is X's wallet"), answer DIRECTLY from the list above. Do NOT call balance_check, savings_info, or any other tool — the address is already in this prompt. Just quote it.\n- When the user wants to inspect a contact's wallet (history, activity, portfolio), pass the contact's address explicitly — \`transaction_history({ address: "<contact_addr>" })\`, \`render_canvas({ template: "activity_heatmap", params: { address: "<contact_addr>" } })\`, etc. Do NOT default to the user's own wallet.`
     : 'No saved contacts yet.';
 
   const goalsBlock = goals && goals.length > 0

@@ -204,10 +204,13 @@ export class TurnMetricsCollector {
     sessionSpendUsd: number;
     /**
      * [v1.4.2 — Day 3] `true` when the turn was driven by a synthetic
-     * pre-fetch intent (e.g. `RESUMED_SESSION_INTENTS`) rather than a
-     * user prompt. Caller (chat-route) decides; collector just stamps.
-     * Default (when omitted) is `false` so existing call sites that
-     * haven't been migrated still write a sane row.
+     * pre-fetch intent rather than a user prompt. The remaining live
+     * source is `engine-factory.ts:buildSyntheticPrefetch` (new-session
+     * cold-start balance/savings preload). The chat route's
+     * resumed-session pre-fetch (`RESUMED_SESSION_INTENTS`) was deleted
+     * in v0.48 (bug 3); it never set this flag at the row level
+     * regardless. Caller (chat-route) decides; collector just stamps.
+     * Default (when omitted) is `false`.
      */
     synthetic?: boolean;
     /**
