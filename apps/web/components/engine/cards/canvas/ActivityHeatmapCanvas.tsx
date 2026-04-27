@@ -5,6 +5,19 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 interface HeatmapData {
   available: true;
   address: string;
+  /**
+   * [v0.48] Engine-provided flag indicating whether this canvas is
+   * rendering the signed-in user's own wallet (true) or a third-party
+   * address — saved contact, watched address, etc. (false). Drives the
+   * cell-click action message: self-renders produce "Show my
+   * transactions from <date>", non-self renders produce "Show
+   * transactions for <0xshort> on <date>" so the followup query routes
+   * to the correct address.
+   *
+   * Optional for backwards compat: an engine < 0.48 won't emit it, in
+   * which case we infer self-render from the absence of the flag.
+   */
+  isSelfRender?: boolean;
 }
 
 interface DayBucket {
@@ -87,6 +100,9 @@ export function ActivityHeatmapCanvas({ data, onAction }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const address = 'available' in data && data.available ? data.address : null;
+  // Engines older than 0.48 omit this; absence == self-render (legacy behavior).
+  const isSelfRender = 'available' in data && data.available ? (data.isSelfRender ?? true) : true;
+  const shortAddr = address ? `${address.slice(0, 6)}…${address.slice(-4)}` : null;
 
   useEffect(() => {
     if (!address) return;
@@ -119,9 +135,19 @@ export function ActivityHeatmapCanvas({ data, onAction }: Props) {
         day: 'numeric',
         year: 'numeric',
       });
-      onAction(`Show my transactions from ${formatted} (${date}) — I had ${count} transaction${count !== 1 ? 's' : ''} that day`);
+      const txWord = `transaction${count !== 1 ? 's' : ''}`;
+      // [v0.48 — bug 2 fix] When the heatmap renders a third-party
+      // address (a contact / watched wallet), routing the cell click
+      // back through "Show my transactions" sent the LLM hunting in
+      // the user's own history — the bug the user reported. Now we
+      // pass the watched address explicitly so the LLM forwards it to
+      // transaction_history({ address, date }).
+      const prompt = isSelfRender
+        ? `Show my transactions from ${formatted} (${date}) — I had ${count} ${txWord} that day`
+        : `Show transactions for ${address} on ${formatted} (${date}) — there ${count !== 1 ? 'were' : 'was'} ${count} ${txWord} that day`;
+      onAction(prompt);
     },
-    [onAction],
+    [onAction, isSelfRender, address],
   );
 
   if (!('available' in data) || !data.available) {
@@ -163,6 +189,12 @@ export function ActivityHeatmapCanvas({ data, onAction }: Props) {
           <span className="text-fg-muted">Peak</span>{' '}
           <span className="text-fg-primary font-medium">{maxCount}/day</span>
         </div>
+        {!isSelfRender && shortAddr && (
+          <div>
+            <span className="text-fg-muted">Address</span>{' '}
+            <span className="text-fg-primary font-medium">{shortAddr}</span>
+          </div>
+        )}
       </div>
 
       {/* Heatmap grid */}
