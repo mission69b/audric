@@ -130,6 +130,22 @@ export function runSpecConsistencyChecks(): SpecConsistencyResult {
       'engine package and audric prompt are out of sync.',
   });
 
+  // ── 1 caption-fidelity prompt rule assertion ───────────────────────────
+  // The "NEVER CONTRADICT THE CARD" sentence is a load-bearing safety
+  // rule (Apr 2026 — bug where the LLM said "no active savings" while
+  // the savings card showed $100 — see audric-build-tracker.md S.18+).
+  // If a future prompt edit reflows this section and accidentally drops
+  // the rule, this assertion catches it before the engine boots.
+  assertions.push({
+    id: 'STATIC_SYSTEM_PROMPT_NEVER_CONTRADICT_CARD',
+    pass: STATIC_SYSTEM_PROMPT.includes('NEVER CONTRADICT THE CARD'),
+    message:
+      'STATIC_SYSTEM_PROMPT must contain the "NEVER CONTRADICT THE CARD" ' +
+      'caption-fidelity rule. This rule prevents the LLM from describing a ' +
+      'position as "no", "none", or "zero" when the card shows a positive ' +
+      'value. Removing it re-opens the regression.',
+  });
+
   // ── 4 canonical-portfolio export assertions ────────────────────────────
   // Single-source-of-truth (Apr 2026, see
   // `.cursor/rules/single-source-of-truth.mdc`): every consumer of

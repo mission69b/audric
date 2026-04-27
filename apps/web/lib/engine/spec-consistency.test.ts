@@ -11,9 +11,9 @@ import { runSpecConsistencyChecks, assertSpecConsistency } from './spec-consiste
  * in the runtime invocation paths.
  */
 describe('[v1.4 Item 5] spec consistency', () => {
-  it('exposes 13 well-formed assertions covering fees, decimals, tool counts, and canonical portfolio exports', () => {
+  it('exposes 14 well-formed assertions covering fees, decimals, tool counts, caption-fidelity prompt rule, and canonical portfolio exports', () => {
     const result = runSpecConsistencyChecks();
-    expect(result.assertions).toHaveLength(13);
+    expect(result.assertions).toHaveLength(14);
     const ids = result.assertions.map((a) => a.id).sort();
     expect(ids).toEqual([
       'BORROW_FEE_BPS',
@@ -26,6 +26,7 @@ describe('[v1.4 Item 5] spec consistency', () => {
       'NO_WITHDRAW_FEE_BPS',
       'OVERLAY_FEE_RATE',
       'SAVE_FEE_BPS',
+      'STATIC_SYSTEM_PROMPT_NEVER_CONTRADICT_CARD',
       'STATIC_SYSTEM_PROMPT_TOOL_COUNTS',
       'SUI_DECIMALS',
       'USDC_DECIMALS',
@@ -37,7 +38,7 @@ describe('[v1.4 Item 5] spec consistency', () => {
     }
   });
 
-  it('all 13 assertions pass against the live SDK + engine packages and canonical exports', () => {
+  it('all 14 assertions pass against the live SDK + engine packages and canonical exports', () => {
     const result = runSpecConsistencyChecks();
     const failed = result.assertions.filter((a) => !a.pass);
     if (failed.length) {

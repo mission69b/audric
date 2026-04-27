@@ -698,6 +698,20 @@ function buildSyntheticPrefetch(
   }
 
   if (toolUses.length > 0) {
+    // Anthropic conversations MUST start with a user message. Without
+    // this seed, the engine's `validateHistory` "first message must be
+    // user" shift drops our leading assistant turn and orphans the
+    // prefetch tool_results — Anthropic rejects the request with
+    // "tool_result blocks must follow tool_use" and the user sees a
+    // "request was rejected by Anthropic" error on the first turn of a
+    // new session that has both wallet holdings and savings.
+    //
+    // The `[session bootstrap]` sentinel is a deterministic marker the
+    // LLM is trained to ignore — it never surfaces in narration, and
+    // the read-intent classifier never matches against it because
+    // classification runs against the user's actual `trimmedMessage`,
+    // not conversation history.
+    messages.push({ role: 'user', content: [{ type: 'text', text: '[session bootstrap]' }] });
     messages.push({ role: 'assistant', content: toolUses });
     messages.push({ role: 'user', content: toolResults });
     messages.push({ role: 'assistant', content: [{ type: 'text', text: 'Session data loaded.' }] });
