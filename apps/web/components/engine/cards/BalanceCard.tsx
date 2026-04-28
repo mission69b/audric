@@ -11,6 +11,16 @@ interface BalanceData {
   defi?: number;
   /** [engine v0.50.2] Per-protocol breakdown — keys are lowercase protocol slugs. */
   defiByProtocol?: Record<string, number>;
+  /**
+   * [engine v0.50.3] DeFi fetch state:
+   *   - 'blockvision' → all 9 protocols responded successfully
+   *   - 'partial'     → at least one protocol failed; total may under-count
+   *   - 'degraded'    → no API key OR every protocol failed; total UNKNOWN, not zero
+   * When 'degraded', the card surfaces a "DeFi —" placeholder instead of
+   * silently hiding the column, so a misconfigured runtime is visible to
+   * the user (otherwise the LLM has nothing to caveat against).
+   */
+  defiSource?: 'blockvision' | 'partial' | 'degraded';
   holdings?: { symbol: string; balance: number; usdValue: number }[];
   /** [v0.49] Stamped by the engine's balance_check tool. */
   address?: string;
@@ -23,7 +33,14 @@ export function BalanceCard({ data }: { data: BalanceData }) {
   if (data.total != null) cols.push({ label: 'Total', value: `$${fmtUsd(data.total)}` });
   if (data.available != null) cols.push({ label: 'Cash', value: `$${fmtUsd(data.available)}` });
   if ((data.savings ?? 0) > 0) cols.push({ label: 'Savings', value: `$${fmtUsd(data.savings!)}`, color: 'text-success-solid' });
-  if ((data.defi ?? 0) > 0) cols.push({ label: 'DeFi', value: `$${fmtUsd(data.defi!)}`, color: 'text-success-solid' });
+  if ((data.defi ?? 0) > 0) {
+    cols.push({ label: 'DeFi', value: `$${fmtUsd(data.defi!)}`, color: 'text-success-solid' });
+  } else if (data.defiSource === 'degraded') {
+    // Surface unavailability rather than silently hiding the column —
+    // a missing/empty BLOCKVISION_API_KEY would otherwise look identical
+    // to "no DeFi positions" and the LLM would caption it incorrectly.
+    cols.push({ label: 'DeFi', value: '—', color: 'text-fg-muted' });
+  }
   if ((data.debt ?? 0) > 0) cols.push({ label: 'Debt', value: `$${fmtUsd(data.debt!)}`, color: 'text-warning-solid' });
 
   const hasHoldings = data.holdings && data.holdings.filter((h) => h.usdValue >= 0.01).length > 0;

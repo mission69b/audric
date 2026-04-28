@@ -170,6 +170,15 @@ describe('getTokenPrices', () => {
     const prices = await getTokenPrices([SUI_TYPE, USDC_TYPE]);
     expect(prices[SUI_TYPE].price).toBe(2.5);
     expect(prices[USDC_TYPE].price).toBe(1);
-    expect(fetchTokenPrices).toHaveBeenCalledWith([SUI_TYPE, USDC_TYPE], undefined);
+    // The second arg is the BLOCKVISION_API_KEY env var captured at module
+    // import time. In CI / clean dev shells it's `undefined`; on machines
+    // that have the var set to empty string `""` (e.g. a botched `.env.local`
+    // entry — exactly the bug we're regressing against here) the mock sees
+    // `""`. Both flow through `fetchTokenPrices` to the same degraded path,
+    // so the contract this test guards is "first arg is the coin list" —
+    // the second arg's exact identity is environment-dependent.
+    expect(fetchTokenPrices).toHaveBeenCalledTimes(1);
+    const call = vi.mocked(fetchTokenPrices).mock.calls[0];
+    expect(call[0]).toEqual([SUI_TYPE, USDC_TYPE]);
   });
 });

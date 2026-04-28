@@ -146,6 +146,25 @@ export function runSpecConsistencyChecks(): SpecConsistencyResult {
       'value. Removing it re-opens the regression.',
   });
 
+  // ── 1 DeFi-unavailable prompt rule assertion ───────────────────────────
+  // Companion to the above — when BlockVision DeFi fetch is degraded
+  // (missing API key, every protocol failed), `balance_check` returns
+  // `defi: 0` with `defiSource: 'degraded'` and a displayText that says
+  // "DeFi positions: UNAVAILABLE". Without this rule, the LLM sees `0`
+  // and confidently claims "no DeFi positions" — which is wrong.
+  // Apr 2026 — discovered during regression after the audric SOT pass.
+  assertions.push({
+    id: 'STATIC_SYSTEM_PROMPT_DEFI_UNAVAILABLE_RULE',
+    pass: STATIC_SYSTEM_PROMPT.includes('NEVER CLAIM "NO DEFI POSITIONS"'),
+    message:
+      'STATIC_SYSTEM_PROMPT must contain the "NEVER CLAIM \\"NO DEFI ' +
+      'POSITIONS\\" UNLESS THE TOOL CONFIRMS IT" rule. Without it the LLM ' +
+      'will assert "no DeFi positions" when the underlying BlockVision ' +
+      'fetch is degraded (e.g. missing/empty BLOCKVISION_API_KEY in the ' +
+      'runtime). The rule must teach the LLM to check displayText for ' +
+      '"DeFi positions: UNAVAILABLE" before claiming the slice is empty.',
+  });
+
   // ── 4 canonical-portfolio export assertions ────────────────────────────
   // Single-source-of-truth (Apr 2026, see
   // `.cursor/rules/single-source-of-truth.mdc`): every consumer of
