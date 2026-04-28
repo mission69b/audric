@@ -27,14 +27,24 @@
     .hero-h1{font-size:38px}
     .hero-sub{font-size:14px}
     .stats{grid-template-columns:repeat(2,1fr)}
-    .stat:nth-child(2){border-right:none}
-    .stat:nth-child(5){border-right:none}
+    .stat{padding:14px 14px}
+    .stat:nth-child(2n){border-right:none}
+    .stat:last-child{border-right:none}
+    .stat .v{font-size:28px}
     .demo-row{grid-template-columns:44px 1fr;gap:12px;padding:18px 12px}
     .demo-row .badges,.demo-row .open{display:none}
     .demo-num{font-size:32px}
     .demo-title{font-size:18px}
     .demo-line{font-size:12px;margin-top:4px}
     .dither-row{display:none}
+  }
+  @media(max-width:380px){
+    .hero-h1{font-size:30px}
+    .stats{grid-template-columns:1fr}
+    .stat{border-right:none}
+    .demo-row{grid-template-columns:36px 1fr;gap:10px}
+    .demo-num{font-size:26px}
+    .demo-title{font-size:16px}
   }
   .open{font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;color:var(--text-2);text-align:right}
   .section-h{font-family:var(--font-mono);font-size:11px;letter-spacing:.18em;color:var(--text-3);margin:48px 0 14px}
@@ -141,7 +151,7 @@
     <div>
       <div class="demo-tag">AGENTIC COMMERCE · 60s</div>
       <div class="demo-title" style="margin-top:8px">"Buy everything for my house party this Saturday"</div>
-      <div class="demo-line">"Balloons, lights, a cake, a banner. 5 items, 3 shops, $108 USDC. One sentence. One signature. Party sorted."</div>
+      <div class="demo-line">"Balloons, lights, a cake, a banner — and Audric spotted I had no drinks. 5 items, 4 shops, $119 USDC. One signature. Party sorted."</div>
     </div>
     <div class="badges">
       <span class="badge pink">MPP Chain</span>
