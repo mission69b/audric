@@ -48,6 +48,26 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
+    # Supply placeholder values for every required env var so the
+    # boot-time validation in `lib/env.ts` (added in S.25 / commit
+    # 9ab2c28) doesn't reject the CI build. Vercel rebuilds the app
+    # independently with the real secrets set in the dashboard, so
+    # these placeholders never reach production. They exist purely so
+    # `next build`'s "Collecting page data" phase (which loads every
+    # API route module) can construct module graphs without crashing.
+    # If you add a new required key to `lib/env.ts`, add a placeholder
+    # here too — otherwise every PR will turn red.
+    env:
+      ANTHROPIC_API_KEY: ci-placeholder-anthropic
+      BLOCKVISION_API_KEY: ci-placeholder-blockvision
+      DATABASE_URL: postgres://ci@localhost/ci
+      ENOKI_SECRET_KEY: ci-placeholder-enoki
+      T2000_INTERNAL_KEY: ci-placeholder-t2000
+      SPONSOR_INTERNAL_KEY: ci-placeholder-sponsor
+      UPSTASH_REDIS_REST_URL: https://ci.upstash.io
+      UPSTASH_REDIS_REST_TOKEN: ci-placeholder-redis
+      NEXT_PUBLIC_GOOGLE_CLIENT_ID: ci-placeholder-google
+      NEXT_PUBLIC_ENOKI_API_KEY: ci-placeholder-enoki-pub
     steps:
       - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v5
