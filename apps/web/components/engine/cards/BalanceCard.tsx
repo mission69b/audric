@@ -16,9 +16,18 @@ interface BalanceData {
    *   - 'blockvision' → all 9 protocols responded successfully
    *   - 'partial'     → at least one protocol failed; total may under-count
    *   - 'degraded'    → no API key OR every protocol failed; total UNKNOWN, not zero
-   * When 'degraded', the card surfaces a "DeFi —" placeholder instead of
-   * silently hiding the column, so a misconfigured runtime is visible to
-   * the user (otherwise the LLM has nothing to caveat against).
+   *
+   * The card surfaces a "DeFi —" placeholder for ANY non-`blockvision`
+   * source when total is 0 — both `partial` (some protocols 429'd, the
+   * rest reported $0 but the missing slice could be > 0) and `degraded`
+   * (every protocol failed) are "we don't know" states, not "we know
+   * it's $0" states. Pre-v0.53.4 only `degraded` triggered the
+   * placeholder; `partial` + 0 silently hid the row, which produced
+   * the bug where `balance_check` reported $29,516.61 net worth for
+   * a wallet whose DeFi was unreachable while the timeline canvas
+   * (cache miss, fresh fetch) reported $36,995.14 with $7,478.54 of
+   * DeFi visible — same SSOT drift the v0.53.x SSOT work was meant
+   * to eliminate, just relocated into the partial-with-zero path.
    */
   defiSource?: 'blockvision' | 'partial' | 'degraded';
   holdings?: { symbol: string; balance: number; usdValue: number }[];
@@ -35,10 +44,11 @@ export function BalanceCard({ data }: { data: BalanceData }) {
   if ((data.savings ?? 0) > 0) cols.push({ label: 'Savings', value: `$${fmtUsd(data.savings!)}`, color: 'text-success-solid' });
   if ((data.defi ?? 0) > 0) {
     cols.push({ label: 'DeFi', value: `$${fmtUsd(data.defi!)}`, color: 'text-success-solid' });
-  } else if (data.defiSource === 'degraded') {
-    // Surface unavailability rather than silently hiding the column —
-    // a missing/empty BLOCKVISION_API_KEY would otherwise look identical
-    // to "no DeFi positions" and the LLM would caption it incorrectly.
+  } else if (data.defiSource && data.defiSource !== 'blockvision') {
+    // [v0.53.4] Surface unavailability rather than silently hiding the
+    // column for ANY non-blockvision source with $0 total. `partial`
+    // and `degraded` are both "we don't know" states — see the
+    // `defiSource` JSDoc on `BalanceData` above for the bug rationale.
     cols.push({ label: 'DeFi', value: '—', color: 'text-fg-muted' });
   }
   if ((data.debt ?? 0) > 0) cols.push({ label: 'Debt', value: `$${fmtUsd(data.debt!)}`, color: 'text-warning-solid' });
