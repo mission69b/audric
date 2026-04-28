@@ -157,4 +157,38 @@ describe('env validation', () => {
     process.env.NEXT_PUBLIC_SUI_NETWORK = 'prod';
     await expect(import('../env')).rejects.toThrow();
   });
+
+  // ── Client-side runtime detection (regression test for the prod crash) ──
+  // The original `isServer` check used `typeof process.env === 'object'`,
+  // which spuriously returned `true` in Next.js client bundles (Webpack
+  // polyfills `process.env` to a truthy object). That made the client
+  // bundle validate the FULL schema and crash at first page load with
+  // "8 env var(s) required" because server vars are stripped to
+  // `undefined` in client code.
+  //
+  // The fix discriminates on `process.versions.node`. This test pins
+  // that contract by simulating a client environment: delete
+  // `process.versions.node` so the detection picks the client schema
+  // and verify the module loads even without server vars set.
+  it('client runtime: validates ONLY client schema when process.versions.node is missing', async () => {
+    // Set ONLY the client vars (NEXT_PUBLIC_*); leave server vars unset.
+    process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID = 'google-client-test';
+    process.env.NEXT_PUBLIC_ENOKI_API_KEY = 'enoki-client-test';
+    process.env.NEXT_PUBLIC_SUI_NETWORK = 'mainnet';
+    // Simulate a browser bundle: `process.versions.node` is absent.
+    const originalVersions = process.versions;
+    Object.defineProperty(process, 'versions', {
+      value: { ...originalVersions, node: undefined },
+      configurable: true,
+    });
+    try {
+      const { env } = await import('../env');
+      expect(env.NEXT_PUBLIC_GOOGLE_CLIENT_ID).toBe('google-client-test');
+    } finally {
+      Object.defineProperty(process, 'versions', {
+        value: originalVersions,
+        configurable: true,
+      });
+    }
+  });
 });
