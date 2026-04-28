@@ -37,11 +37,13 @@
  * "wrong process injected the store" failure mode.
  */
 
-import { setDefiCacheStore, setWalletCacheStore, setFetchLock } from '@t2000/engine';
+import { setDefiCacheStore, setWalletCacheStore, setFetchLock, setNaviCacheStore, setTelemetrySink } from '@t2000/engine';
 import { env } from '@/lib/env';
 import { UpstashDefiCacheStore } from './upstash-defi-cache';
 import { UpstashWalletCacheStore } from './upstash-wallet-cache';
 import { UpstashFetchLock } from './upstash-fetch-lock';
+import { UpstashNaviCacheStore } from './upstash-navi-cache';
+import { VercelTelemetrySink } from './vercel-sink';
 
 let initialized = false;
 
@@ -63,6 +65,12 @@ export function initEngineStores(): void {
     return;
   }
 
+  // [PR 5 — v0.56] Telemetry sink — always set unconditionally in Vercel.
+  // Does NOT depend on Upstash; you want structured Observability log lines
+  // even if Redis isn't configured (e.g. a staging deploy with no Redis).
+  // Setting before the Upstash guard ensures it fires regardless.
+  setTelemetrySink(new VercelTelemetrySink());
+
   // Defensive — if either env var is missing the engine falls back
   // to its default in-memory store. The env schema marks both as
   // required so this branch should be unreachable in production,
@@ -70,7 +78,7 @@ export function initEngineStores(): void {
   // crashing the whole process.
   if (!env.UPSTASH_REDIS_REST_URL || !env.UPSTASH_REDIS_REST_TOKEN) {
     console.warn(
-      '[init-engine-stores] UPSTASH_REDIS_REST_URL or _TOKEN missing — DeFi + wallet caches will use in-memory store (per-instance, not shared) and the cross-instance fetch lock will use in-memory mode (no cross-instance coalescing). Set both env vars to enable cross-instance SSOT.',
+      '[init-engine-stores] UPSTASH_REDIS_REST_URL or _TOKEN missing — DeFi + wallet + NAVI caches will use in-memory store (per-instance, not shared) and the cross-instance fetch lock will use in-memory mode (no cross-instance coalescing). Set both env vars to enable cross-instance SSOT.',
     );
     return;
   }
@@ -91,6 +99,11 @@ export function initEngineStores(): void {
   // for the same address at the same instant and all N fan out to BV.
   // With it, only one instance is the leader; the rest poll the cache.
   setFetchLock(new UpstashFetchLock());
+
+  // [PR 4 — v0.56] NAVI MCP read cache — 30s TTL for address-scoped reads
+  // (savings, health), 5-min TTL for rates. Prevents repeated MCP round-trips
+  // on consecutive tool calls for the same address in the same chat session.
+  setNaviCacheStore(new UpstashNaviCacheStore());
 }
 
 // Side-effect — run on import. Safe because `initEngineStores` is

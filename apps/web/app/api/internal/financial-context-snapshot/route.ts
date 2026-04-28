@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { validateInternalKey } from '@/lib/internal-auth';
 import { getPortfolio } from '@/lib/portfolio';
+import { getTelemetrySink } from '@t2000/engine';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -31,6 +32,16 @@ export async function POST(request: NextRequest) {
   const auth = validateInternalKey(request.headers.get('x-internal-key'));
   if ('error' in auth) return auth.error;
 
+  // [PR 3 — scaling spec] Shard parameters. The t2000-server cron fires N
+  // parallel POSTs each with `?shard=i&total=N`. This route only processes
+  // the slice of users at indices where `index % total === shard`, so all N
+  // shards together cover every user exactly once.
+  // Falls back to shard=0, total=1 (process all) for backward compat.
+  const { searchParams } = new URL(request.url);
+  const shard = Math.max(0, parseInt(searchParams.get('shard') ?? '0', 10) || 0);
+  const total = Math.max(1, parseInt(searchParams.get('total') ?? '1', 10) || 1);
+  const shardStart = Date.now();
+
   const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000);
 
   const recentSessions = await prisma.sessionUsage.findMany({
@@ -39,8 +50,13 @@ export async function POST(request: NextRequest) {
     distinct: ['address'],
   });
 
-  const addresses = recentSessions.map((s) => s.address);
+  const allAddresses = recentSessions.map((s) => s.address);
+  // Apply shard filter — each address is deterministically assigned to one
+  // shard by index so the union of all shards covers every address exactly once.
+  const addresses = allAddresses.filter((_, i) => i % total === shard);
+
   if (addresses.length === 0) {
+    getTelemetrySink().histogram('cron.fin_ctx_shard_duration_ms', Date.now() - shardStart, { shard: String(shard), result: 'ok' });
     return NextResponse.json({ created: 0, skipped: 0, errors: 0, total: 0 });
   }
 
@@ -130,6 +146,11 @@ export async function POST(request: NextRequest) {
       errors++;
     }
   }
+
+  const shardResult = errors === 0 ? 'ok' : 'partial';
+  const sink = getTelemetrySink();
+  sink.histogram('cron.fin_ctx_shard_duration_ms', Date.now() - shardStart, { shard: String(shard), result: shardResult });
+  sink.counter('cron.fin_ctx_users_processed', { shard: String(shard) }, addresses.length);
 
   return NextResponse.json({
     created,

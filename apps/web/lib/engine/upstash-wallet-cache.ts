@@ -1,5 +1,6 @@
 import { Redis } from '@upstash/redis';
 import type { WalletCacheStore, WalletCacheEntry } from '@t2000/engine';
+import { getTelemetrySink } from '@t2000/engine';
 
 /**
  * [PR 1 — v0.55] Upstash-backed implementation of `WalletCacheStore`.
@@ -67,15 +68,18 @@ export class UpstashWalletCacheStore implements WalletCacheStore {
   }
 
   async get(address: string): Promise<WalletCacheEntry | null> {
+    getTelemetrySink().counter('upstash.requests', { op: 'get', prefix: 'wallet:' });
     const value = await this.redis.get<WalletCacheEntry>(this.key(address));
     return value ?? null;
   }
 
   async set(address: string, entry: WalletCacheEntry, ttlSec: number): Promise<void> {
+    getTelemetrySink().counter('upstash.requests', { op: 'set', prefix: 'wallet:' });
     await this.redis.set(this.key(address), entry, { ex: ttlSec });
   }
 
   async delete(address: string): Promise<void> {
+    getTelemetrySink().counter('upstash.requests', { op: 'del', prefix: 'wallet:' });
     await this.redis.del(this.key(address));
   }
 
@@ -86,6 +90,7 @@ export class UpstashWalletCacheStore implements WalletCacheStore {
     // keys per call to avoid hot-pathing the Redis worker.
     let cursor: string | number = 0;
     do {
+      getTelemetrySink().counter('upstash.requests', { op: 'scan', prefix: 'wallet:' });
       const result: [string | number, string[]] = await this.redis.scan(cursor, {
         match: `${this.prefix}*`,
         count: 100,
