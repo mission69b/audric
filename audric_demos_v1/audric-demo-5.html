@@ -109,7 +109,7 @@
       <div class="messages" id="messages">
         <div class="msgs-inner" id="msgs-inner">
           <div class="task-divider">task initiated</div>
-          <div style="display:flex;justify-content:flex-end"><div class="user-msg">Order flowers and a personalised card for my Mum's birthday this Sunday.</div></div>
+          <div style="display:flex;justify-content:flex-end"><div class="user-msg">Order flowers and a personalised card for my Mom's birthday this Sunday.</div></div>
         </div>
       </div>
       <div class="composer-row">
@@ -140,7 +140,7 @@
 <div class="hint" id="hint">Auto-confirming in 3s…</div>
 
 <script>
-const MSG = "Order flowers and a personalised card for my Mum's birthday this Sunday.";
+const MSG = "Order flowers and a personalised card for my Mom's birthday this Sunday.";
 const ADDR_RESP = "42 Biscayne Blvd, Miami, FL 33132";
 let payReady=false, confirmBtnEl=null;
 
@@ -198,10 +198,10 @@ function doConfirm(){
     $('s-bal-sub').textContent='−$51.04 · 3 services';
     $('bal-avail').textContent='Available $3,748.96';
     const notif=document.createElement('div'); notif.className='conf-notif';
-    notif.innerHTML=`<div class="cn-top">3 services paid · $51.04 USDC</div><div style="font-size:13px;color:var(--text-2)">Mum gets a card in the mail <strong>Sunday morning</strong> and a bouquet of pink roses <strong>10am–2pm</strong>.</div>`;
+    notif.innerHTML=`<div class="cn-top">3 services paid · $51.04 USDC</div><div style="font-size:13px;color:var(--text-2)">Mom gets a card in the mail <strong>Sunday morning</strong> and a bouquet of pink roses <strong>10am–2pm</strong>.</div>`;
     append(notif);
     setTimeout(()=>{
-      append(makeAudricMsg('Done. All 3 services confirmed in one payment. Mum\'s Sunday is sorted.','3 services · Machine Payment Protocol · 2.1s'));
+      append(makeAudricMsg('Done. All 3 services confirmed in one payment. Mom\'s Sunday is sorted.','3 services · Machine Payment Protocol · 2.1s'));
       setTimeout(()=>{ append(makeSuggestionChips([
         {icon:'📋',label:'Order Status'},
         {icon:'🔔',label:'Track Delivery'},
@@ -242,7 +242,7 @@ setTimeout(()=>{
     let t=0; function at(ms,fn){ setTimeout(fn,ms); }
 
     // Audric asks for delivery address
-    at(t+=700, ()=> append(makeAudricMsg('Got it! To arrange the flower delivery, I\'ll need your Mum\'s delivery address. What is it?','')));
+    at(t+=700, ()=> append(makeAudricMsg('Got it! To arrange the flower delivery, I\'ll need your Mom\'s delivery address. What is it?','')));
 
     // User provides address
     at(t+=1500, ()=>{
@@ -278,7 +278,7 @@ setTimeout(()=>{
           const card=document.createElement('div'); card.className='mpp-card';
           card.innerHTML=`
             <div class="mpp-head"><span class="mpp-head-lbl">3 services · 1 payment</span><span class="mpp-head-sub">Machine Payment Protocol</span></div>
-            <div class="mpp-svc"><div class="mpp-icon dalle">🎨</div><div class="mpp-body"><div class="mpp-svc-name">DALL-E 3 — Personalised card</div><div class="mpp-svc-desc">AI-designed birthday card for Mum</div></div><span class="mpp-svc-cost">$0.04</span></div>
+            <div class="mpp-svc"><div class="mpp-icon dalle">🎨</div><div class="mpp-body"><div class="mpp-svc-name">DALL-E 3 — Personalised card</div><div class="mpp-svc-desc">AI-designed birthday card for Mom</div></div><span class="mpp-svc-cost">$0.04</span></div>
             <div class="mpp-arrow">↓ mpp</div>
             <div class="mpp-svc"><div class="mpp-icon lob">📮</div><div class="mpp-body"><div class="mpp-svc-name">Lob — Print &amp; mail</div><div class="mpp-svc-desc">5×7 glossy · USPS First Class · arrives Sunday</div></div><span class="mpp-svc-cost">$1.00</span></div>
             <div class="mpp-arrow">↓ mpp</div>

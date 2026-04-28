@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Demo 5 · Mum's Birthday — Audric × Sui</title>
+<title>Demo 5 · Mom's Birthday — Audric × Sui</title>
 <link rel="stylesheet" href="../shared/audric.css?v=5">
 </head>
 <body>
@@ -15,13 +15,13 @@
 <script type="text/babel">
 const { useState, useEffect } = React;
 
-const PROMPT = "Order flowers and a personalised card for my mum's birthday this Sunday. Her name is Margaret.";
+const PROMPT = "Order flowers and a personalised card for my mom's birthday this Sunday.";
 const THOUGHT = "Multi-service request. I need delivery address — I'll ask once, then run discovery. After address: parse date, discover MPP services, design + price card, price flowers. Three vendors, one Sui USDC payment, all atomic.";
 
 const Demo5 = () => {
   const [step, setStep] = useState(0);
   // 0 typing, 1 sent, 2 ask address, 3 user answers, 4 thinking, 5 querying, 6 plan ready, 7 permission visible, 8 executing, 9 done
-  const [name, setName] = useState('Margaret Chen');
+  const [name, setName] = useState('Mom');
   const [addr, setAddr] = useState('14 Elm St, Apt 3B');
   const [city, setCity] = useState('Brooklyn, NY 11201');
   const typed = useTyped(PROMPT, step===0, 22);
@@ -62,7 +62,7 @@ const Demo5 = () => {
       balanceLabel={step>=9 ? 'AVAILABLE $66 · EARNING $11' : 'AVAILABLE $112 · EARNING $11'}
     
       composer={<Composer value={step===0 ? typed : ''}/>}
-      ribbon={<DemoRibbon demoNum={5} demoTitle="MUM'S BIRTHDAY — MPP CHAIN" sentence="One sentence. Three MPP services. One USDC payment." onRestart={restart}/>}
+      ribbon={<DemoRibbon demoNum={5} demoTitle="MOM'S BIRTHDAY — MPP CHAIN" sentence="One sentence. Three MPP services. One USDC payment." onRestart={restart}/>}
     >
       <TaskInitiated/>
       {step >= 1 && <UserBubble>{PROMPT}</UserBubble>}
@@ -71,7 +71,7 @@ const Demo5 = () => {
         <ToolCard label="NEED INFORMATION" status="running" tokens="1 QUESTION" glyph="?">
           <form onSubmit={submitAddress} style={{padding:'16px 18px'}}>
             <div style={{fontSize:13,color:'var(--text-2)',marginBottom:12,lineHeight:1.5}}>
-              I don't have Margaret's address yet. Where should the card and flowers go?
+              I don't have Mom's address yet. Where should the card and flowers go?
             </div>
             <div style={{display:'grid',gridTemplateColumns:'1fr',gap:8}}>
               <Field label="RECIPIENT NAME" value={name} onChange={setName}/>
