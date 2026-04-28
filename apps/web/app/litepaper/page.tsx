@@ -78,7 +78,7 @@ export default function LitepaperPage() {
               </div>
               <div className={s.gridCell}>
                 <div className={s.cellTitle}>Intelligence</div>
-                <div className={s.cellBody}>34 tools. 9 safety guards. Knows your risk profile, your history, and what it told you last month — silently, before you ask.</div>
+                <div className={s.cellBody}>34 tools. 14 safety guards. Knows your risk profile, your history, and what it told you last month — silently, before you ask.</div>
               </div>
               <div className={s.gridCell}>
                 <div className={s.cellTitle}>Finance</div>
@@ -142,7 +142,7 @@ export default function LitepaperPage() {
               </div>
               <div className={s.gridCell}>
                 <div className={s.cellTitle}>Reasoning Engine</div>
-                <div className={s.cellBody}>9 guards, 3 tiers. 7 skill recipes for multi-step flows. Adaptive model routing per turn.</div>
+                <div className={s.cellBody}>14 guards, 3 tiers. 6 skill recipes for multi-step flows. Adaptive model routing per turn.</div>
               </div>
               <div className={s.gridCell}>
                 <div className={s.cellTitle}>Silent Profile + Memory</div>

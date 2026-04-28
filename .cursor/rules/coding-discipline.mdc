@@ -1,0 +1,68 @@
+---
+description: Coding discipline — Think before coding, simplicity first, surgical changes
+alwaysApply: true
+---
+
+# Coding Discipline
+
+Three habits that shrink diffs, reduce rewrites, and surface the right questions before code is written. Adapted from Karpathy's coding-skills repo.
+
+## 1. Think Before Coding
+
+**Don't assume. Don't hide confusion. Surface tradeoffs.**
+
+Before implementing:
+- State your assumptions explicitly. If uncertain, ask.
+- If multiple interpretations exist, present them — don't pick silently.
+- If a simpler approach exists, say so. Push back when warranted.
+- If something is unclear, stop. Name what's confusing. Ask.
+
+Before any portfolio / write / engine fix: trace the path. Pre-S.18 most "wrong fix" iterations came from fixing in the engine when the bug was in audric/web (or vice versa).
+
+## 2. Simplicity First
+
+**Minimum code that solves the problem. Nothing speculative.**
+
+- No features beyond what was asked.
+- No abstractions for single-use code.
+- No "flexibility" or "configurability" that wasn't requested.
+- No error handling for impossible scenarios.
+- If you write 200 lines and it could be 50, rewrite it.
+
+This pairs with `audric-canonical-portfolio.mdc` and `engine-context-assembly.mdc` — most overcomplication comes from forking a canonical instead of extending it.
+
+## 3. Surgical Changes
+
+**Touch only what you must. Clean up only your own mess.**
+
+When editing existing code:
+- Don't "improve" adjacent code, comments, or formatting.
+- Don't refactor things that aren't broken.
+- Match existing style — Audric Design System tokens, semantic font classes, `cn()` for conditionals (see `design-system.mdc`).
+- If you notice unrelated dead code, mention it — don't delete it.
+
+When your changes create orphans:
+- Remove imports/variables/functions that YOUR changes made unused.
+- Don't remove pre-existing dead code unless asked.
+
+**The test:** Every changed line should trace directly to the user's request.
+
+## Why this matters in this codebase
+
+The audric/web codebase has 75+ API routes, 20+ components, and a stratified intelligence layer. "While I'm here" refactors compound — a 3-line UI fix that "improves" an adjacent hook and "tidies" an unrelated route ends up touching 12 files and breaks a regression test you didn't know existed.
+
+Surgical changes ship faster.
+
+## Working signals
+
+These guidelines are working if:
+- Fewer unnecessary changes in diffs.
+- Fewer rewrites due to overcomplication.
+- Clarifying questions come **before** implementation rather than after mistakes.
+- Each PR can be summarized in 1-2 sentences without weasel words.
+
+## Cross-references
+
+- Verifiable goals → `goal-driven-execution.mdc`
+- Audric design system → `design-system.mdc`
+- Karpathy's original → `https://github.com/forrestchang/andrej-karpathy-skills`

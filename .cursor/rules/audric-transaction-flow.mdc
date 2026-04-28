@@ -1,0 +1,70 @@
+---
+description: Audric transaction execution flow — sponsored vs SDK direct
+globs: "apps/web/**/*.ts,apps/web/**/*.tsx"
+alwaysApply: false
+---
+
+# Audric Transaction Flow
+
+## CRITICAL: Two different execution paths exist
+
+### Path 1 — Engine tool execution (server-side, never used in audric/web today)
+
+```
+LLM → engine tool → sdk.swap()/sdk.save()/etc → full SDK result
+```
+
+- Returns the full SDK return shape (`SwapResult`, etc.) with `fromToken`, `toToken`, `toAmount`, balances, fees.
+- Only happens when a tool has `permissionLevel: 'auto'` AND it's a write that the engine is allowed to execute server-side. **Audric does not enable this for any write today.**
+- Reads only — never writes.
+
+### Path 2 — Client-side confirm execution (sponsored transactions)
+
+```
+LLM → pending_action (engine yields) → user taps Confirm
+   → handleExecuteAction() in page.tsx
+   → POST /api/transactions/prepare (server builds + sponsors via Enoki)
+   → user signs (Enoki popup)
+   → POST /api/transactions/execute (server executes sponsored tx)
+   → returns { tx, balanceChanges? }
+   → page.tsx renders the receipt
+```
+
+- Server returns only `TxResult = { tx: string; balanceChanges?: BalanceChange[] }`.
+- Does **NOT** call `sdk.swap()` / `sdk.save()` / etc. directly. The build happens inside `/api/transactions/prepare` route.
+- `balanceChanges` must be parsed **client-side** for the actual on-chain amounts (the SDK's typed return is unavailable here).
+- After ship, the client must call back into the engine resume route with `attemptId` so `EngineConfig.onAutoExecuted` can mark the action `EXECUTED` (Spec 1).
+
+### Every confirm-gated tool uses Path 2
+
+All write tools have `permissionLevel: 'confirm'` and therefore flow through Path 2:
+
+`swap_execute`, `save_deposit`, `withdraw`, `send_transfer`, `borrow`, `repay_debt`, `claim_rewards`, `pay_api`, `volo_stake`, `volo_unstake`, `save_contact`.
+
+> If you ever change one of these to `permissionLevel: 'auto'`, you've broken the user-consent contract. Don't.
+
+## When fixing a transaction receipt or balance display
+
+1. The data lands in `handleExecuteAction` inside `apps/web/app/page.tsx`. **Start there.**
+2. **NOT** from a typed SDK result — the API only returns `TxResult`.
+3. Parse `res.balanceChanges` for actual on-chain deltas (negative = sent, positive = received).
+4. Use `inp.*` (the original tool input the LLM emitted) for token names. Strip full coin types with `.split('::').pop()`.
+5. Floor display amounts using `Math.floor(value * 10000) / 10000` — never `Math.round` (see `financial-amounts.mdc`).
+6. After the receipt renders, the resume route MUST be called with `attemptId` (Spec 1 — `EngineConfig.onAutoExecuted` keys updateMany on `attemptId`).
+
+## When fixing "engine doesn't see that I executed"
+
+This is a Spec 1 bug. The flow:
+
+1. Engine yields `pending_action` with a UUID `attemptId`.
+2. Audric persists `attemptId` on `TurnMetrics` for this turn.
+3. After execute success, audric calls `/api/agent/resume` with `{ attemptId, txDigest, balanceChanges }`.
+4. Engine's `EngineConfig.onAutoExecuted` runs `updateMany({ where: { attemptId } })` to mark the action `EXECUTED` and inject the result into the next turn's context.
+
+**If you skip the `attemptId`** — the next turn won't know the tx happened, and the agent will offer to retry. **Always pass it through.**
+
+## Cross-references
+
+- Engine pending-action contract → `t2000/.cursor/rules/agent-harness-spec.mdc`
+- Pay flow specifically → `audric-pay-flow.mdc`
+- Finance flow specifically → `audric-finance-flow.mdc`

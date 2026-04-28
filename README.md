@@ -15,7 +15,7 @@ Audric is exactly five products. Everything you can do is one of them. (S.18 rev
 | Product | Description |
 |---------|-------------|
 | 🪪 **Audric Passport** | Trust layer — sign in with Google, non-custodial Sui wallet in 3 seconds, every write taps to confirm, sponsored gas. Wraps every other product. |
-| 🧠 **Audric Intelligence** | The brain (the moat) — 5 systems: Agent Harness (34 tools), Reasoning Engine (9 guards, 7 skill recipes), Silent Profile, Chain Memory, AdviceLog. Engineering-facing brand; users experience it as "Audric just understood me." |
+| 🧠 **Audric Intelligence** | The brain (the moat) — 5 systems: Agent Harness (34 tools), Reasoning Engine (14 guards, 6 skill recipes), Silent Profile, Chain Memory, AdviceLog. Engineering-facing brand; users experience it as "Audric just understood me." |
 | 💰 **Audric Finance** | Manage your money on Sui — Save (NAVI lend, 3–8% APY on USDC), Credit (NAVI borrow, health factor visible), Swap (Cetus aggregator across 20+ DEXs, 0.1% fee), Charts (interactive yield/health/portfolio viz from chat). Every write taps to confirm via Passport. |
 | 💸 **Audric Pay** | Money primitive — send USDC to anyone, receive via payment links / invoices / QR. Free, global, instant on Sui. No bank, no borders, no fees. |
 | 🛒 **Audric Store** | Creator marketplace at `audric.ai/username`. Sell AI-generated music, art, ebooks in USDC. **Coming soon (Phase 5).** |
@@ -36,7 +36,7 @@ Your money lives in a non-custodial wallet. Audric executes transactions, but yo
 | Auth | zkLogin via Enoki (Google OAuth → Sui wallet) |
 | Gas | Enoki sponsored transactions (zero gas for users) |
 | AI | `@t2000/engine` — 34 tools, reasoning engine, extended thinking, canvas |
-| Database | NeonDB (Prisma) — 15 models (users, profiles, memories, goals, advice log, conversation log, payments, contacts, app events) |
+| Database | NeonDB (Prisma) — 16 models (users, profiles, memories, financial context, goals, advice log, conversation log, session usage, payments, contacts, watch addresses, linked wallets, portfolio snapshots, turn metrics, app events, service purchases) |
 | Sessions | Upstash Redis (KV) |
 | Styling | Tailwind CSS v4, Agentic Design System |
 | Hosting | Vercel |
@@ -53,8 +53,8 @@ Your money lives in a non-custodial wallet. Audric executes transactions, but yo
 
 - **Extended thinking** — always-on for Sonnet/Opus (adaptive mode). Haiku for low-effort queries
 - **Adaptive effort** — classifies each turn as `low`/`medium`/`high`/`max` and adjusts model + thinking depth
-- **Guard runner** — 9 guards across 3 priority tiers (Safety > Financial > UX) enforce balance checks, health factor limits, slippage thresholds, and irreversibility warnings
-- **Skill recipes** — 7 YAML recipes (swap-and-save, safe-borrow, emergency-withdraw, etc.) with longest-trigger-match-wins
+- **Guard runner** — 14 guards (12 pre-execution + 2 post-execution hints) across 3 priority tiers (Safety > Financial > UX) enforce balance freshness, health factor limits, slippage thresholds, irreversibility warnings, address-source / address-scope / asset-intent gates, swap preview confirmation, retry protection, and cost warnings
+- **Skill recipes** — 6 YAML recipes (`swap_and_save`, `safe_borrow`, `send_to_contact`, `portfolio_rebalance`, `account_report`, `emergency_withdraw`) with longest-trigger-match-wins
 - **Preflight validation** — input validation on send, swap, pay, borrow, and save before execution
 - **Prompt caching** — static system prompt + tool definitions cached across turns for lower latency and cost
 
@@ -71,6 +71,17 @@ Your money lives in a non-custodial wallet. Audric executes transactions, but yo
 `record_advice` tool writes `AdviceLog` rows; `buildAdviceContext()` hydrates last 30 days into every turn so the chat doesn't contradict itself across sessions. Episodic memory (`UserMemory`) and the full conversation log run alongside it for the future self-hosted model migration.
 
 > **What was deleted in the April 2026 simplification:** Copilot suggestions, scheduled actions / DCA, morning briefings, rate alerts, auto-compound, the features-budget allowance, the proactive-nudges pipeline, savings-goal milestone celebrations, follow-up queues, and the proposal pipeline behind `BehavioralPattern`. zkLogin can't sign without user presence — "autonomous" was reminders dressed up as agency. See the S.0–S.19 entries in [`audric-build-tracker.md`](https://github.com/mission69b/t2000/blob/main/audric-build-tracker.md) for the locked decisions on what we will not bring back.
+
+### What shipped recently — Spec 1 + Spec 2
+
+Two harness upgrades on top of the 5-system base:
+
+| Spec | Versions | What it added |
+|---|---|---|
+| **Spec 1 — Correctness** | `@t2000/engine` v0.41.0 → v0.50.3 | `attemptId` UUID v4 stamped on every `pending_action` (stable join key from action → on-chain receipt → `TurnMetrics.pendingActionOutcome` row). `modifiableFields` registry — fields the user can edit on a confirm card without losing the LLM's reasoning. `EngineConfig.onAutoExecuted` hook so `auto`-permission writes (currently none in Audric) participate in the same telemetry as confirm-gated ones. |
+| **Spec 2 — Intelligence** | `@t2000/engine` v0.47.0 → v0.54.1 | BlockVision swap — replaced 7 `defillama_*` tools with one `token_prices` tool; `balance_check` + `portfolio_analysis` rewired to BlockVision Indexer REST. Sticky-positive cache + retry/circuit breaker for graceful 429 handling. `<financial_context>` orientation block injected at every engine boot from the daily 02:00 UTC `UserFinancialContext` snapshot — every chat starts oriented, no warm-up tool calls. `attemptId`-keyed resume so two pending actions in the same turn never clobber each other's outcome. `protocol_deep_dive` retained on DefiLlama as the lone exception. |
+
+> Specs are local working documents (`AUDRIC_HARNESS_CORRECTNESS_SPEC_v1.3.md`, `AUDRIC_HARNESS_INTELLIGENCE_SPEC_v1.4.1.md`). Cross-repo contracts live in `audric/.cursor/rules/audric-transaction-flow.mdc`, `audric/.cursor/rules/write-tool-pending-action.mdc`, and `t2000/.cursor/rules/agent-harness-spec.mdc`.
 
 ### Canvas Visualizations
 

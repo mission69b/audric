@@ -1,0 +1,72 @@
+---
+description: Goal-driven execution — define verifiable success criteria, loop until passing
+alwaysApply: true
+---
+
+# Goal-Driven Execution
+
+Adapted from Karpathy's coding-skills repo. The most important behavior change for any agent working in this codebase.
+
+## The standard
+
+**Transform tasks into verifiable goals.** Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification and bounce back.
+
+| Vague task | Verifiable goal |
+|---|---|
+| "Add validation" | "Write tests for invalid inputs, then make them pass" |
+| "Fix the bug" | "Write a test that reproduces it, then make it pass" |
+| "Refactor X" | "Ensure tests pass before and after" |
+| "Make it look right in dark mode" | "Screenshot in light + dark, both should match the design handoff" |
+| "Make it more reliable" | "Add a test for the failure mode I just hit, watch it fail, fix until it passes" |
+
+## For multi-step tasks, state the plan
+
+Before writing code:
+
+```
+1. [Step] → verify: [check]
+2. [Step] → verify: [check]
+3. [Step] → verify: [check]
+```
+
+Each verify step is something you can run. `pnpm test`, `pnpm lint`, a curl against the dev server, a screenshot match — anything that proves the step is done.
+
+## Example — fixing the v0.54 SSOT regression
+
+Bad: "Fix Full Portfolio Overview undercounting DeFi."
+
+Good:
+```
+1. Repro → verify: hit /api/portfolio for the test wallet → defiValueUsd is correct;
+                   hit chat → ask Audric for full portfolio → defiValueUsd is wrong
+2. Identify divergence → verify: log defiSource in both paths, confirm the engine
+                          uses InMemoryDefiCacheStore while /api/portfolio uses Upstash
+3. Wire engine to Upstash via instrumentation.ts + lib/portfolio.ts side-effect import
+   → verify: both paths report identical defiValueUsd in 5 consecutive curls
+4. Add regression test for cache parity → verify: test fails before fix, passes after
+5. Update PORTFOLIO_REGRESSION_MATRIX.md → verify: matrix run is green
+```
+
+## When to ask vs. when to proceed
+
+**Ask when:**
+- Multiple valid interpretations of the goal exist (e.g. "make the chip flow nicer" — UX choice).
+- The goal touches the design system in non-obvious ways.
+- The fix requires changing a load-bearing API signature or Prisma schema.
+
+**Proceed when:**
+- The goal is unambiguous and the verify step is obvious.
+- Existing tests + code conventions tell you which approach matches the codebase.
+- The change is local to one file with one obvious entry point.
+
+## What's banned
+
+- "Done!" without running the verify step.
+- "I think this works" without running tests.
+- "Looks fine in dark mode" without actually opening dark mode.
+- Closing the loop on a partial fix because "the user can tell me if anything's wrong."
+
+## Cross-references
+
+- Coding discipline → `coding-discipline.mdc`
+- Portfolio regression matrix → `PORTFOLIO_REGRESSION_MATRIX.md`

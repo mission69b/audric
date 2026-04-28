@@ -1,0 +1,134 @@
+---
+description: Cron architecture (audric side) — internal endpoints called by t2000 ECS cron. Auth, idempotency, sharding.
+globs: "apps/web/app/api/internal/**/*.ts,apps/web/lib/internal-auth.ts"
+alwaysApply: false
+---
+
+# Cron Architecture (audric side)
+
+t2000 server runs the cron schedule (ECS, `node-cron`). Audric exposes internal endpoints under `/api/internal/*` that the cron POSTs into. Each endpoint owns a domain and writes to one set of Prisma models.
+
+## The endpoints
+
+| Route | Writes | Triggered by |
+|---|---|---|
+| `POST /api/internal/financial-context-snapshot` | `UserFinancialContext` | 02:30 UTC |
+| `POST /api/internal/portfolio-snapshot` | `PortfolioSnapshot` | 02:00 UTC |
+| `POST /api/internal/memory-extraction` | `UserMemory` | 03:15 UTC |
+| `POST /api/internal/profile-inference` | `UserFinancialProfile` | 03:00 UTC |
+| `POST /api/internal/chain-memory` | `ChainFact` | 04:00 UTC |
+| `POST /api/internal/payments` | `Payment` (status updates) | On chain event |
+| `POST /api/internal/health-factor` + `hf-alert` | sends Resend email when HF < 1.2 | Indexer hook (real-time) |
+| `POST /api/internal/notification-users` | (read-only) | t2000 cron lookup |
+| `POST /api/internal/user-address` + `app-event` | misc internal lookups | Various |
+
+## Auth — every internal endpoint MUST check `x-internal-key`
+
+```typescript
+// apps/web/lib/internal-auth.ts
+import { env } from '@/lib/env';
+
+export function assertInternal(req: Request) {
+  const key = req.headers.get('x-internal-key');
+  if (!key || key !== env.T2000_INTERNAL_KEY) {
+    throw new Response('Unauthorized', { status: 401 });
+  }
+}
+
+// apps/web/app/api/internal/financial-context-snapshot/route.ts
+export async function POST(req: Request) {
+  assertInternal(req);
+  // ... do the work
+}
+```
+
+**Never** assume "internal" means "no auth needed because it's only called by ECS." Vercel functions are public HTTPS endpoints; the auth gate is the only security boundary.
+
+## Idempotency — every endpoint MUST be safe to re-call
+
+Cron WILL retry. Use upserts, not creates:
+
+```typescript
+// ✅ Idempotent
+await prisma.userFinancialContext.upsert({
+  where: { userId },
+  create: { userId, snapshot, computedAt: new Date() },
+  update: { snapshot, computedAt: new Date() },
+});
+
+// ❌ Not idempotent — second call creates duplicate row
+await prisma.userFinancialContext.create({ data: { userId, snapshot } });
+```
+
+## Sharding — required at 1k+ DAU
+
+Single-endpoint fan-out (process all users in one POST) hits Vercel function timeout (10s pro / 60s pro+) at scale. Accept optional `{ shard, total }` body params:
+
+```typescript
+const body = await req.json().catch(() => ({}));
+const { shard, total } = body as { shard?: number; total?: number };
+
+const users = await prisma.user.findMany({
+  where: shard != null && total != null
+    ? {
+        // hash-based shard filter — id is cuid, hash to a number 0..total-1
+        id: { /* shard predicate */ },
+      }
+    : undefined,
+});
+```
+
+Default shard count is **8**. Driven by the t2000 cron — see `t2000/.cursor/rules/cron-job-architecture.mdc`.
+
+## Response shape — uniform across endpoints
+
+```typescript
+return Response.json({
+  created: 100,
+  skipped: 50,
+  errors: 2,
+  total: 152,
+});
+```
+
+t2000 cron logs the aggregate counts; deviation from this shape breaks cron observability.
+
+## What MUST NOT happen
+
+```typescript
+// ❌ Internal endpoint that hits Sui RPC per user
+for (const user of users) {
+  await suiClient.getAllBalances({ owner: user.suiAddress });  // 10k calls = rate limit
+}
+// — batch via BlockVision OR go through the canonical getPortfolio (it caches).
+
+// ❌ Internal endpoint that writes to multiple domains
+// — financial-context shouldn't also update UserMemory. One job, one domain.
+
+// ❌ Internal endpoint that responds with HTML / a redirect
+return NextResponse.redirect('/some-page');
+// — internal endpoints are JSON-only.
+
+// ❌ Skipping the auth check
+// — lib/internal-auth.ts is one line; use it.
+
+// ❌ Long-running synchronous work inside a route
+// — split the work into shards and let t2000 fan out.
+```
+
+## Adding a new cron-triggered endpoint
+
+1. Create `app/api/internal/<job>/route.ts`.
+2. `assertInternal(req)` first line.
+3. Accept optional `{ shard, total }`.
+4. Make it idempotent (upsert).
+5. Return `{ created, skipped, errors, total }`.
+6. Add the t2000 cron job (see `t2000/.cursor/rules/cron-job-architecture.mdc`).
+7. Update `prisma-models-overview.mdc` if it writes to a model not yet listed there.
+
+## Cross-references
+
+- Auth helper → `apps/web/lib/internal-auth.ts`
+- t2000 cron jobs → `t2000/.cursor/rules/cron-job-architecture.mdc`
+- Prisma models → `prisma-models-overview.mdc`
+- Env config → `env-validation-gate.mdc`

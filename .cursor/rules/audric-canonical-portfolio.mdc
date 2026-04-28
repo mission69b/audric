@@ -1,0 +1,88 @@
+---
+description: Canonical portfolio data — every wallet/positions/pricing read goes through getPortfolio
+alwaysApply: true
+---
+
+# Canonical Portfolio Data (audric/web)
+
+## The contract
+
+Every API route, React hook, engine context call, canvas adapter, and cron job that reads wallet/positions/pricing/timeline data MUST go through one of these canonical functions:
+
+| Domain | Function | File |
+|---|---|---|
+| Wallet + positions + net worth | `getPortfolio(address)` | `lib/portfolio.ts` |
+| Token prices (USD) | `getTokenPrices(coinTypes)` | `lib/portfolio.ts` |
+| Transaction history | `getTransactionHistory(address, opts)` | `lib/transaction-history.ts` |
+| Lending rates (NAVI) | `getRates()` | `lib/rates.ts` |
+| Activity feed (app events + chain txs) | `getActivity(...)` | `lib/activity-data.ts` |
+
+`portfolio-data.ts` is **internal** — only `lib/portfolio.ts` imports it. The legacy public fetchers (`fetchWalletBalances`, `fetchPortfolio`, `fetchPositions`) were collapsed into `getPortfolio` in April 2026.
+
+## Why this is non-negotiable
+
+In April 2026 we had **five different code paths** computing wallet USD: `useBalance` hook, `fetchPortfolio` server function, `/api/balances` raw endpoint, engine `balance_check` tool, and the daily cron. Each had different pricing logic, different token coverage, and different bugs. The user surfaces showed five different numbers for the same wallet.
+
+That's a structural bug class. The fix collapses every read into one canonical function backed by BlockVision (priced wallet) + the protocol registry (NAVI) + the engine's DeFi aggregator. Drift becomes impossible by construction.
+
+The S.18-era regression (Full Portfolio Overview undercounting DeFi vs balance_check on the same chat turn) was a SECOND instance of the same class, fixed by routing the engine through the same Upstash DeFi cache the audric `/api/portfolio` route uses (see `lib/engine/init-engine-stores.ts` and the side-effect import at the top of `lib/portfolio.ts`).
+
+## Forbidden patterns (ESLint enforces)
+
+```typescript
+// ❌ Direct Sui RPC for portfolio data
+client.getBalance({ owner, coinType });
+client.getAllBalances({ owner });
+client.getCoinMetadata({ coinType });
+
+// ❌ Direct vendor calls
+fetch('https://api.blockvision.org/...');
+fetch('https://coins.llama.fi/...');
+
+// ❌ Hardcoded stable maps
+const STABLES = { USDC: 1, USDT: 1, USDsui: 1 };
+
+// ❌ Hardcoded tradeable lists
+const TRADEABLE = ['USDC', 'SUI', 'BTC'];
+
+// ❌ Partial sums
+totalUsd = USDC + USDsui;          // missing other holdings
+totalUsd = USDC + SUI;             // unit-mixed (SUI is tokens, not USD)
+
+// ✅ Always
+import { getPortfolio } from '@/lib/portfolio';
+const p = await getPortfolio(address);
+const total = p.netWorthUsd;       // single source of truth
+const wallet = p.walletValueUsd;
+const defi = p.defiValueUsd;
+```
+
+## Adapter checklist (before adding or modifying any portfolio read)
+
+1. **Does the canonical fetcher already cover this read?** Use it. Done.
+2. **Does it cover it but the shape isn't quite right?** Extend the canonical's return type. Don't fork.
+3. **Does it not cover this read at all?** Extend the canonical. Don't add a parallel path.
+4. **Worried about cost?** The canonical has a 60s in-process cache + per-request `portfolioCache` Map shared across tools. Redundant calls are cheap.
+
+If you genuinely need to bypass (rare — e.g. a write-side balance check inside a tx builder), leave a `// CANONICAL-BYPASS:` comment with the reason and link to a follow-up issue.
+
+## How this is enforced
+
+- **ESLint rule** `audric/canonical-portfolio` — fails CI on forbidden patterns outside canonical files.
+- **Spec consistency runner** `lib/engine/spec-consistency.ts` — runs at server startup; dev hard-fails, prod logs.
+- **Contract test** `lib/__tests__/portfolio-contract.test.ts` — asserts identical output across every adapter for a fixed mocked-RPC test address.
+- **Regression matrix** `PORTFOLIO_REGRESSION_MATRIX.md` — manual SSOT verification across surfaces (run after any portfolio change).
+
+## Special case — the engine
+
+Engine tools (`balance_check`, `portfolio_analysis`, `health_check`) run inside `@t2000/engine` and call BlockVision directly via `fetchAddressPortfolio` / `fetchAddressDefiPortfolio`. That's fine — but the engine's DeFi cache MUST be wired to the SAME Upstash store audric's API routes use, otherwise SSOT regresses.
+
+`lib/engine/init-engine-stores.ts` (loaded by `instrumentation.ts` AND side-effect-imported from `lib/portfolio.ts` as belt-and-suspenders) injects `UpstashDefiCacheStore` into the engine. Don't disable that.
+
+## Cross-references
+
+- Implementation → `apps/web/lib/portfolio.ts`, `apps/web/lib/portfolio-data.ts`
+- Engine cache injection → `apps/web/lib/engine/init-engine-stores.ts`
+- t2000-side standard → `t2000/.cursor/rules/single-source-of-truth.mdc`
+- BlockVision resilience → `t2000/.cursor/rules/blockvision-resilience.mdc`
+- Manual verification → `PORTFOLIO_REGRESSION_MATRIX.md`

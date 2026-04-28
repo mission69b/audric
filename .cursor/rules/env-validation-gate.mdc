@@ -1,0 +1,68 @@
+---
+description: Env validation gate — never read process.env directly; always go through lib/env.ts
+alwaysApply: true
+---
+
+# Env Validation Gate
+
+## Why this rule exists
+
+April 2026, a production deploy ran for ~4 days with `BLOCKVISION_API_KEY=""` (empty string in Vercel UI), silently degrading every BlockVision-backed feature. The bug surfaced as "the LLM thinks the user has no DeFi positions" — three layers below the actual misconfig.
+
+`lib/env.ts` is the gate that catches this bug class. Bypass it and you bring back the bug.
+
+## The contract — no exceptions
+
+1. **Every server-side `process.env.X` read goes through `env.X`** imported from `@/lib/env`.
+2. **The Zod schema runs at boot** via `instrumentation.ts`. Required vars throw if missing, empty, or whitespace-only. The error lists EVERY broken var plus the Vercel settings URL — one click to fix.
+3. **Optional vars** are typed `string | undefined`. Empty/whitespace is normalized to `undefined` so `if (env.X)` does the right thing.
+4. **Server-only vars are guarded by a Proxy** — accidental client-side reads throw a loud error instead of silently returning `undefined`.
+5. **`NEXT_PUBLIC_*` vars** must use literal `process.env.NEXT_PUBLIC_X` references in the `runtimeEnv` map (Next.js static replacement requirement). Don't refactor that map to a loop.
+
+## Adding a new env var
+
+```typescript
+// Step 1 — add to serverSchema OR clientSchema in lib/env.ts:
+BLOCKVISION_API_KEY: requiredString,  // or optionalString
+
+// Step 2 — add to runtimeEnv map (literal reference required):
+BLOCKVISION_API_KEY: process.env.BLOCKVISION_API_KEY,
+
+// Step 3 — add to SERVER_ONLY_KEYS set if it's server-only.
+
+// Step 4 — read it via env.X everywhere:
+import { env } from '@/lib/env';
+const key = env.BLOCKVISION_API_KEY;  // ✅
+```
+
+## What's banned
+
+```typescript
+// ❌ BAD — bypasses the gate, accepts "" as valid
+const key = process.env.BLOCKVISION_API_KEY;
+
+// ❌ BAD — same issue, just hidden behind destructuring
+const { BLOCKVISION_API_KEY } = process.env;
+
+// ❌ BAD — fallback masks misconfig forever
+const url = process.env.SOME_URL || 'http://localhost:3000';
+
+// ✅ GOOD
+import { env } from '@/lib/env';
+const key = env.BLOCKVISION_API_KEY;        // throws at boot if missing
+const url = env.SOME_URL ?? 'http://localhost:3000';  // optional with explicit fallback
+```
+
+## ESLint enforces this
+
+`no-restricted-syntax` rule fails CI on raw `process.env.X` reads outside `lib/env.ts`. The only allowed direct read is `process.env.NODE_ENV` (build-time constant Next.js requires) and `process.env.NEXT_RUNTIME` (runtime detection inside `lib/env.ts`).
+
+## When the build fails with "Invalid environment configuration"
+
+Read the error block — it lists every misconfigured var and the Vercel settings URL. Don't disable the gate. Don't add a fallback. Fix the env var.
+
+## Cross-references
+
+- Canonical implementation → `apps/web/lib/env.ts`
+- Boot-time hook → `apps/web/instrumentation.ts`
+- zkLogin parity runbook (the S.25 incident) → `apps/web/RUNBOOK_zklogin_env_parity.md`

@@ -1,0 +1,196 @@
+---
+description: Write tool execution — pending_action → user confirm → resume protocol. attemptId is load-bearing.
+globs: "apps/web/app/page.tsx,apps/web/app/api/engine/**/*.ts,apps/web/app/api/transactions/**/*.ts,apps/web/components/engine/cards/**/*.tsx"
+alwaysApply: false
+---
+
+# Write Tool Execution — Pending Action Protocol
+
+Every Audric write (save, send, swap, borrow, repay, claim, pay_api, volo_stake, volo_unstake, save_contact) goes through the same protocol. Get any step wrong and either (a) the user double-confirms, (b) the agent forgets the action happened, or (c) the wrong row's outcome is overwritten in `TurnMetrics`.
+
+## The 6-step protocol
+
+```
+Step 1 — Engine yields pending_action
+Step 2 — Audric persists attemptId on TurnMetrics
+Step 3 — Audric renders confirm card with modifiableFields
+Step 4 — User taps Confirm (with optional edits)
+Step 5 — handleExecuteAction runs sponsored tx flow
+Step 6 — Audric POSTs /api/engine/resume with { attemptId, txDigest, balanceChanges }
+         → resume route runs updateMany({ where: { attemptId } }) on TurnMetrics
+         → engine consumes execution result → next turn knows the tx happened
+```
+
+## Step 1 — `pending_action` shape (what the engine sends)
+
+```typescript
+{
+  type: 'pending_action',
+  action: {
+    toolName: 'save_deposit',
+    toolUseId: 'toolu_xxx',
+    input: { asset: 'USDC', amount: 10 },
+    description: 'Save 10 USDC at NAVI (3.2% APY)',
+    assistantContent: [...],     // Full LLM message that triggered
+    completedResults: [...],     // Auto-approved tool results in same turn
+    guardInjections: [...],      // _hint / _warning from runGuards
+    modifiableFields: [{ name: 'amount', kind: 'amount', asset: 'USDC' }],
+    turnIndex: 4,                // Monotonic turn counter (legacy fallback key)
+    attemptId: 'a1b2c3d4-...',   // UUID v4 — the only resume key for new code
+  },
+}
+```
+
+## Step 2 — Persist `attemptId` at chat-time
+
+In `/api/engine/chat/route.ts`, when the SSE stream emits `pending_action`:
+
+```typescript
+// chat/route.ts collector pattern
+collector.onPendingAction(event.action.attemptId);
+
+// At end of turn, write the TurnMetrics row WITH attemptId:
+await prisma.turnMetrics.create({
+  data: {
+    sessionId,
+    turnIndex,
+    attemptId: collector.attemptId,        // ← REQUIRED
+    // ... other metrics
+  },
+});
+```
+
+Skipping `attemptId` here means the resume route can't find the row → outcome telemetry is lost forever.
+
+## Step 3 — Render the confirm card
+
+```tsx
+// apps/web/app/page.tsx
+<TransactionConfirmCard
+  action={pendingAction}
+  modifiableFields={pendingAction.modifiableFields}
+  onConfirm={(edits) => handleExecuteAction(pendingAction, edits)}
+  onDecline={() => handleDeclineAction(pendingAction)}
+/>
+```
+
+Confirm card MUST:
+- Show the plain-English `description`.
+- Surface every `_warning` from `guardInjections` prominently.
+- Allow editing only the fields in `modifiableFields` (don't allow edits the engine didn't authorize).
+- Call out gas sponsorship ("Free — Audric pays the gas").
+- Have a clear Decline option that's visually equal to Confirm (no dark patterns).
+
+## Step 4 — User taps Confirm
+
+User edits flow back through `applyModifications(action, edits)` (see `apps/web/lib/engine/apply-modifications.ts`) which produces a new `input` object the engine will see on resume.
+
+## Step 5 — Execute via sponsored tx
+
+`handleExecuteAction` in `apps/web/app/page.tsx`:
+
+```typescript
+async function handleExecuteAction(action, edits) {
+  const finalInput = applyModifications(action, edits);
+
+  const prep = await fetch('/api/transactions/prepare', {
+    method: 'POST',
+    body: JSON.stringify({ toolName: action.toolName, input: finalInput }),
+  });
+  const { sponsoredTxBytes, sponsoredSig } = await prep.json();
+
+  const userSig = await signWithEphemeralKey(sponsoredTxBytes);
+
+  const exec = await fetch('/api/transactions/execute', {
+    method: 'POST',
+    body: JSON.stringify({ sponsoredTxBytes, sponsoredSig, userSig }),
+  });
+  const { tx: txDigest, balanceChanges } = await exec.json();
+
+  // Render receipt — parse balanceChanges client-side (NOT the SDK return shape)
+  renderReceipt(action, txDigest, balanceChanges);
+
+  // Step 6 — resume the engine
+  await fetch('/api/engine/resume', {
+    method: 'POST',
+    body: JSON.stringify({
+      attemptId: action.attemptId,            // ← REQUIRED
+      txDigest,
+      balanceChanges,
+      modifiedInput: finalInput,
+    }),
+  });
+}
+```
+
+## Step 6 — Resume the engine
+
+```typescript
+// apps/web/app/api/engine/resume/route.ts
+if (action.attemptId) {
+  await prisma.turnMetrics.updateMany({
+    where: { attemptId: action.attemptId },
+    data: {
+      pendingActionOutcome: resolvedOutcome,
+      writeToolDurationMs: executionDurationMs,
+    },
+  });
+} else {
+  // Legacy fallback for pre-v1.4.2 sessions — dies after one TTL rotation.
+  await prisma.turnMetrics.updateMany({
+    where: { sessionId, turnIndex: action.turnIndex },
+    data: { pendingActionOutcome: resolvedOutcome },
+  });
+}
+
+// Then write a NEW TurnMetrics row for the resume turn itself
+// (post-confirmation narration latency, tokens, chained tools).
+```
+
+The engine then continues the conversation — its next turn's context includes the executed tool's result, so it narrates "Done. You're now earning 3.2% on $10 USDC."
+
+## What happens if you skip `attemptId`
+
+| Skip step | Symptom |
+|---|---|
+| Step 2 (persist) | Resume can't find TurnMetrics row → outcome telemetry lost |
+| Step 6 (post back) | Engine doesn't know tx happened → next turn offers to retry → user rejects → confusion |
+| Step 6 (wrong key) | Same `(sessionId, turnIndex)` pair matches multiple rows → wrong row gets overwritten → metrics regression |
+
+## Modifiable fields — what the user can edit
+
+Sourced from `tool-modifiable-fields.ts` in the engine. Adding a new editable field:
+
+1. Add to the engine's `tool-modifiable-fields.ts` map.
+2. Audric's `applyModifications` already handles `kind: 'amount'` and `kind: 'address'` — extend it for new kinds.
+3. Add a UI control to `TransactionConfirmCard` for the new kind.
+
+## What's banned
+
+```typescript
+// ❌ Auto-execute under zkLogin
+permissionLevel: 'auto'  // for any write tool
+
+// ❌ Forget attemptId on TurnMetrics
+prisma.turnMetrics.create({ data: { sessionId, turnIndex /* no attemptId */ } });
+
+// ❌ Forget attemptId on resume POST
+await fetch('/api/engine/resume', { body: JSON.stringify({ txDigest /* no attemptId */ }) });
+
+// ❌ Trust the SDK return shape under sponsored flow
+const result: SwapResult = await /* /api/transactions/execute */;
+result.toAmount;  // doesn't exist — server only returns { tx, balanceChanges }
+
+// ✅ Parse balanceChanges client-side
+const change = balanceChanges?.find((c) => c.coinType === USDC_TYPE);
+const usdcDelta = Number(change?.amount ?? 0) / 1e6;
+```
+
+## Cross-references
+
+- Spec → `t2000/AUDRIC_HARNESS_CORRECTNESS_SPEC_v1.3.md` (local-only)
+- Engine harness contract → `t2000/.cursor/rules/agent-harness-spec.mdc`
+- Sponsored tx implementation → `audric-transaction-flow.mdc`
+- Modifiable fields → `apps/web/lib/engine/apply-modifications.ts`
+- Resume route → `apps/web/app/api/engine/resume/route.ts`
+- TurnMetrics schema → `prisma-models-overview.mdc`

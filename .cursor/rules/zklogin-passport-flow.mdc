@@ -1,0 +1,128 @@
+---
+description: zkLogin (Audric Passport) — Google OAuth → ephemeral key → ZK proof → deterministic Sui address. Plus env parity + the EMAIL_LINKED_TO_DIFFERENT_WALLET trap.
+globs: "apps/web/lib/zklogin.ts,apps/web/app/auth/**/*.ts,apps/web/app/auth/**/*.tsx,apps/web/app/api/user/**/*.ts"
+alwaysApply: false
+---
+
+# zkLogin / Audric Passport Flow
+
+The trust layer for every Audric write. Get this wrong and users either (a) can't sign in, or (b) end up with a different Sui address than they had yesterday.
+
+## The 4 pillars (binding — see CLAUDE.md product taxonomy)
+
+1. **Identity** — Sign in with Google. Wallet is created in 3s. No seed phrase. Yours forever.
+2. **You decide** — Audric never moves money on its own. Every Finance and Pay action waits on tap-to-confirm.
+3. **Sponsored gas** — Audric pays the network fees so users don't need SUI. USDC stays USDC. (Enoki sponsorship.)
+4. **Yours** — Non-custodial. We can't move user funds. Every tx is on Sui mainnet, verifiable by anyone.
+
+## The login flow (5 steps)
+
+```
+1. User clicks "Sign in with Google"
+   → generate ephemeral Ed25519 keypair (browser only)
+   → generate randomness + maxEpoch (current epoch + 2 ≈ 48h validity)
+   → derive nonce from (extendedEphemeralPubKey, maxEpoch, randomness)
+   → redirect to Google OAuth with this nonce
+
+2. Google → redirect back with JWT (id_token in URL fragment)
+
+3. Browser extracts JWT, then:
+   → POST /api/zklogin/salt    → Enoki returns user_salt (deterministic per Google sub)
+   → POST /api/zklogin/proof   → Enoki returns ZK proof
+   → derive Sui address from (sub, aud, salt) — this is THE address, deterministic forever
+
+4. Persist ZkLoginSession in localStorage (ephemeral key + proof + maxEpoch + address)
+   → Session expires when maxEpoch is reached (~48h)
+
+5. /api/user/email links email ↔ suiAddress in Postgres (User table)
+   → If email already linked to a DIFFERENT suiAddress → 409 EMAIL_LINKED_TO_DIFFERENT_WALLET
+```
+
+## The deterministic-address property
+
+`suiAddress = derive(sub, aud, salt)`. The same Google account ALWAYS produces the same Sui address — IF and only if `aud` (your Google OAuth client ID) and `salt` are stable across deployments.
+
+**This is the failure mode `RUNBOOK_zklogin_env_parity.md` exists to prevent:** a preview deploy with a different `NEXT_PUBLIC_GOOGLE_CLIENT_ID` produces a different `aud`, which produces a different Sui address, which trips the 409 in `/api/user/email` and locks the user out of their existing wallet.
+
+**Always run the runbook** when:
+- Rotating Google OAuth credentials.
+- Adding a new Vercel environment.
+- A user reports "EMAIL IS ALREADY REGISTERED TO ANOTHER ACCOUNT."
+
+## The MaxEpoch math
+
+```typescript
+// At login:
+const currentEpoch = await suiClient.getLatestSuiSystemState();
+const maxEpoch = Number(currentEpoch.epoch) + 2;  // ~48h validity
+
+// On every tx sign:
+if (currentEpoch > session.maxEpoch) {
+  throw new Error('Session expired — please sign in again');
+}
+```
+
+Don't extend `maxEpoch` past 2. Longer-lived ephemeral keys are an attack surface — if localStorage leaks, the attacker has up to maxEpoch worth of signing window.
+
+## Storage rules
+
+- **Ephemeral private key** — `localStorage` (the standard for zkLogin; no server has the key).
+- **JWT** — `localStorage` (within the session).
+- **ZK proof** — `localStorage`.
+- **NEVER** send the ephemeral private key to the server. Sponsorship works by the server building the tx, the client signing with the ephemeral key, the server submitting the signed tx.
+- `clearSession()` on sign-out wipes localStorage.
+
+## Sponsored transaction flow
+
+```
+Client builds intent (e.g. "save 10 USDC")
+  → POST /api/transactions/prepare  (server) — builds Transaction, asks Enoki to sponsor
+  → Server returns { sponsoredTxBytes, sponsoredSig }
+  → Client signs with ephemeral key (zkLogin signature)
+  → POST /api/transactions/execute  (server) — submits sponsored tx with both sigs
+  → Server returns { tx (digest), balanceChanges }
+  → Client renders receipt + calls /api/engine/resume with attemptId
+```
+
+Server-side (`/api/transactions/prepare`) MUST:
+- Validate the intent against the user's actual balance.
+- Validate the recipient address with `isValidSuiAddress`.
+- Simulate the tx before sponsoring (catches "insufficient gas" / "balance changed").
+- Cap sponsored gas budget per request.
+
+## What's banned
+
+```typescript
+// ❌ Trying to sign on the server
+const tx = new Transaction();
+tx.transferObjects(...);
+const signed = await keypair.signTransaction(tx);  // server doesn't have the key — and shouldn't
+
+// ❌ Persisting the ephemeral key to Postgres / Redis / anywhere server-side
+prisma.user.update({ data: { ephemeralKey: ... } });
+
+// ❌ Skipping the deterministic-address check
+const newAddress = derivedFromJwt(jwt);
+prisma.user.upsert({ where: { suiAddress: newAddress } });  // creates a duplicate user
+
+// ✅ Always check email linkage first
+const existing = await prisma.user.findUnique({ where: { email } });
+if (existing && existing.suiAddress !== newAddress) {
+  return Response.json(
+    { error: 'EMAIL_LINKED_TO_DIFFERENT_WALLET', existingSuiAddress: existing.suiAddress },
+    { status: 409 },
+  );
+}
+```
+
+## Multi-wallet linking
+
+Signed-in users can link up to 10 Sui addresses (e.g. a hardware wallet alongside their zkLogin wallet) via `/api/user/wallets`. Linked wallets are read-only — Audric doesn't sign for them. Aggregated portfolio views are computed via `/api/analytics/portfolio-multi`.
+
+## Cross-references
+
+- Implementation → `apps/web/lib/zklogin.ts`
+- Server-side auth → `apps/web/lib/auth.ts` (verifies JWT + extracts `sub`)
+- Email-linkage runbook → `apps/web/RUNBOOK_zklogin_env_parity.md`
+- Sponsored tx flow → `audric-transaction-flow.mdc`
+- Constants (CLIENT_ID etc.) → ALWAYS via `env.X` from `lib/env.ts`. See `env-validation-gate.mdc`.

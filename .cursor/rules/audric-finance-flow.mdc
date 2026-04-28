@@ -1,0 +1,147 @@
+---
+description: Audric Finance — save / withdraw / borrow / repay / swap / charts. Manage money on Sui.
+globs: "apps/web/components/engine/cards/Savings*.tsx,apps/web/components/engine/cards/Borrow*.tsx,apps/web/components/engine/cards/Health*.tsx,apps/web/components/engine/cards/Yield*.tsx,apps/web/components/engine/cards/Swap*.tsx,apps/web/components/engine/cards/canvas/**/*.tsx,apps/web/lib/portfolio.ts,apps/web/lib/rates.ts"
+alwaysApply: false
+---
+
+# Audric Finance Flow
+
+Manage your money on Sui. The product that owns save / credit / swap / charts. Every write taps to confirm via Passport.
+
+## Operations under Audric Finance
+
+| Operation | UI surface | Engine tool | Backed by |
+|---|---|---|---|
+| Save USDC | Save chip + chat | `save_deposit` (USDC only) | NAVI lending |
+| Withdraw savings | Withdraw chip + chat | `withdraw` | NAVI |
+| Borrow against savings | Credit chip + chat | `borrow` | NAVI |
+| Repay borrow | Repay chip + chat | `repay_debt` | NAVI |
+| Claim NAVI rewards | Auto-suggested | `claim_rewards` | NAVI |
+| Swap (any Tier 2 → any Tier 2) | Swap chip + chat | `swap_execute` | Cetus aggregator |
+| Charts (yield, health, portfolio viz) | Inline canvas in chat | `render_canvas` | Engine canvas templates |
+| Stake SUI → vSUI | Save chip → SUI option | `volo_stake` | Volo (LST) |
+| Unstake vSUI → SUI | Withdraw chip → vSUI | `volo_unstake` | Volo |
+
+> **No Invest product.** Savings (USDC at NAVI, 3–8% APY) covers yield. Don't propose Invest as a separate product — see CLAUDE.md taxonomy rule.
+
+## Save flow (USDC only)
+
+```
+1. User intent — "save 10 USDC"
+   → engine routes to save_deposit tool
+   → tool preflight enforces: asset == USDC, amount > 0, amount ≤ wallet USDC balance
+
+2. Engine yields pending_action with:
+   - description: "Save 10 USDC at NAVI (3.2% APY)"
+   - modifiableFields: [amount]
+   - guardInjections: insufficient balance, USD threshold
+
+3. User taps Confirm → sponsored tx:
+   - /api/transactions/prepare builds NAVI deposit tx (move call to NAVI lending pool)
+   - User signs with ephemeral key
+   - /api/transactions/execute submits
+
+4. Receipt + AdviceLog:
+   - Show: "+ 10 USDC at NAVI (3.2% APY)"
+   - record_advice writes AdviceLog so Audric remembers across sessions
+   - Trigger PortfolioSnapshot refresh
+   - POST /api/engine/resume with attemptId
+```
+
+## Borrow flow — health factor first
+
+```
+1. User intent — "borrow 100 USDC against my savings"
+   → engine routes to borrow tool
+   → tool preflight enforces: amount > 0, asset is borrowable
+
+2. Health Factor guard runs (Layer 3 / Safety tier):
+   - Fetch current HF from NAVI MCP
+   - Simulate post-borrow HF (with audric/web's local NAVI sim, NOT trust client)
+   - If post-borrow HF < 1.5 → BLOCK with explanation
+   - If post-borrow HF < 2.0 → WARN in confirm card
+   - Otherwise proceed
+
+3. Confirm card surfaces:
+   - Borrowed amount + APR
+   - Current HF → projected HF (color-coded)
+   - Liquidation threshold reminder
+
+4. User taps Confirm → sponsored tx (same pattern as save)
+```
+
+## Charts (Audric Finance owns the visualization layer)
+
+Engine canvas templates render inline in chat:
+- **Portfolio timeline** — historical net worth from `PortfolioSnapshot` (90/180/365 day windows)
+- **Yield comparison** — current/historical APYs across NAVI/Volo/Walrus
+- **Health factor over time** — HF series with liquidation threshold band
+- **Spending breakdown** — categorized outflow from `Payment` table
+
+Canvas rendering: engine emits `{ type: 'canvas', html: '...' }` SSE event → audric renders `<iframe srcDoc={html} />`. Templates live in `apps/web/components/engine/cards/canvas/`.
+
+**Don't fetch on the canvas critical path.** Pre-compute via cron and read from Prisma. The canvas is a render of pre-aggregated data, not a query layer.
+
+## Swap flow — Cetus aggregator
+
+```
+1. User intent — "swap 10 USDC to SUI"
+   → engine first calls swap_quote (read tool) to surface route + slippage
+   → user confirms intent (in-chat narration)
+   → engine routes to swap_execute (write tool)
+
+2. swap_execute uses @cetusprotocol/aggregator-sdk
+   - This is the ONE protocol SDK exception (see CLAUDE.md Critical Rule #2)
+   - Multi-DEX routing across 20+ DEXs cannot feasibly be replaced by thin tx builders
+
+3. Cetus 0.1% fee surfaced in confirm card
+
+4. Sponsored tx flow → receipt → resume
+```
+
+## Withdraw / repay / claim — same pattern
+
+All follow the same: preflight → engine yields pending_action → user confirms → sponsored tx → receipt + resume.
+
+## What MUST NOT happen
+
+```typescript
+// ❌ Save anything other than USDC
+save_deposit({ asset: 'SUI', amount: 1 });
+// — assertAllowedAsset throws. SUI/USDsui/etc. are holdable but NOT saveable.
+// — see usdc-only-saves.mdc
+
+// ❌ Borrow without HF guard
+runEngine({ guards: guards.filter((g) => g.name !== 'health_factor') });
+
+// ❌ Conflate wallet holdings with savings positions
+displayText: `Savings: $${total}`  // where total includes loose SUI in wallet
+// — see savings-usdc-only.mdc; engine MUST distinguish wallet vs NAVI positions
+
+// ❌ Re-implement portfolio reads in a Finance card
+const balance = await client.getAllBalances({ owner });
+// — always go through getPortfolio (audric-canonical-portfolio.mdc)
+
+// ❌ Use Math.round on display amounts
+// — always Math.floor (financial-amounts.mdc)
+
+// ❌ Trust the LLM's reported HF without re-fetching
+const hf = parseFloat(llmReportedHf);
+// — Health Factor guard re-fetches from NAVI MCP every time
+```
+
+## NAVI MCP vs direct SDK (Critical Rule)
+
+**Reads** go through NAVI MCP (`https://open-api.naviprotocol.io/api/mcp`). **Writes** use thin transaction builders via `@mysten/sui` directly. The `@naviprotocol/lending` SDK is patched (see `patches/`) but should NOT be imported in new code.
+
+The Cetus aggregator SDK is the only exception (multi-DEX routing).
+
+## Cross-references
+
+- Sponsored tx flow → `audric-transaction-flow.mdc`
+- Pending action protocol → `write-tool-pending-action.mdc`
+- Defense layers → `safeguards-defense-in-depth.mdc`
+- Canonical portfolio → `audric-canonical-portfolio.mdc`
+- USDC-only saves → `usdc-only-saves.mdc`
+- Financial amounts → `financial-amounts.mdc`
+- Engine tool dev → `t2000/.cursor/rules/engine-tool-development.mdc`

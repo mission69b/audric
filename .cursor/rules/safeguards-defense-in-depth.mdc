@@ -1,0 +1,112 @@
+---
+description: User safeguards — six layers of defense between user intent and on-chain action
+alwaysApply: true
+---
+
+# Safeguards — Defense in Depth
+
+Every Audric write passes through six layers of safety. Each layer fails closed. Skipping any one of them is a security regression — there's no "user clicks too fast" excuse to remove a layer.
+
+## The six layers (top to bottom — closest-to-user first)
+
+### Layer 1 — UI affordance / chip flow
+
+The chip flow (Save / Send / Swap / Borrow buttons in the chat composer) bounds inputs to known-good ranges:
+- Amounts use `Math.floor` precision per the asset's decimals (see `financial-amounts.mdc`).
+- Asset picker only shows held tokens (no typo-Sui).
+- Address input uses paste/scan, not freeform typing.
+
+### Layer 2 — Engine preflight (`tool.preflight()`)
+
+Every write tool implements `preflight(input)`. Runs before the LLM round-trip. Cheap, synchronous, no I/O. Catches:
+- Negative / zero amounts.
+- Amounts past sanity ceilings.
+- Malformed addresses.
+
+If preflight fails, the LLM is told "tool input invalid" and re-asks the user instead of yielding a `pending_action` for a broken intent.
+
+### Layer 3 — Engine guards (`runGuards()`)
+
+14 guards across 3 priority tiers (Safety > Financial > UX) run around every write — 12 pre-execution gates + 2 post-execution hints. Examples:
+- **Health Factor guard** — refuses borrow if HF would drop below 1.5 post-action.
+- **Insufficient balance guard** — verifies wallet balance covers amount + gas.
+- **Recipient validation guard** — refuses send to known-malicious addresses (TODO list maintained per ecosystem reports).
+- **USD threshold guard** — large amounts get extra warning copy in the confirm card.
+
+Guards either:
+- **Block** (refuse to proceed, agent narrates why)
+- **Warn** (allow with `_warning` injected into the pending action)
+- **Hint** (allow with `_hint` for the LLM context)
+
+### Layer 4 — Tap-to-confirm (the user gate)
+
+Engine yields `pending_action`. Audric renders a confirm card with:
+- Tool name + plain-English action ("Save 10 USDC at NAVI")
+- Modifiable fields (user can edit amount before approving — Spec 1 Item 6)
+- Warnings/hints from guards
+- Network fee note ("Gas sponsored by Audric")
+- Confirm + Decline buttons
+
+User must tap. No keyboard shortcut, no auto-confirm, no "remember my choice." The user-presence requirement is structural under zkLogin (the ephemeral key needs the user's session).
+
+### Layer 5 — Server-side intent validation (`/api/transactions/prepare`)
+
+Even after the user confirms, the server re-validates everything before sponsoring:
+- Re-fetches the user's actual on-chain balance (don't trust the client).
+- Re-validates the recipient address (`isValidSuiAddress`).
+- Caps the sponsored gas budget per request.
+- Simulates the tx (catches state changes that happened between confirm and submit).
+
+### Layer 6 — On-chain final state
+
+The Move contracts themselves enforce invariants (e.g. NAVI lending caps, allowance permits). Even if every layer above were bypassed, the chain refuses bad txs.
+
+## Failure modes by layer
+
+| Layer fails → user sees |
+|---|
+| 1 — UI affordance | Wrong asset / wrong amount in input → preflight catches it |
+| 2 — Preflight | "Invalid input" → agent re-asks |
+| 3 — Guards | "Refused: Health factor too low" → agent explains, suggests safer alternative |
+| 4 — User confirm | "Action declined" → agent acknowledges and asks what to do instead |
+| 5 — Server validation | "Insufficient balance / Invalid recipient" → agent re-fetches and tries again |
+| 6 — On-chain | Tx fails → receipt shows error, agent helps debug |
+
+Loud failures are fine. **Silent successes after a guard fail are not.**
+
+## What you MUST NOT do
+
+```typescript
+// ❌ Skip preflight to "speed things up"
+buildTool({ /* no preflight */ });
+
+// ❌ Bypass guards because "the LLM won't get it wrong"
+runEngine({ guards: [] });
+
+// ❌ Auto-confirm a write because "it's a tiny amount"
+permissionLevel: 'auto'  // for a write tool — never under zkLogin
+
+// ❌ Trust client-supplied balance
+const balance = await fetch('/api/transactions/prepare', {
+  body: JSON.stringify({ amount, balance: clientReportedBalance }),  // server must re-fetch
+});
+
+// ❌ Cap gas budget client-side only
+// Server MUST cap independently. Client validation is convenience, not security.
+```
+
+## Adding a new safeguard
+
+1. Identify which layer it belongs to (most safeguards live at L2 or L3).
+2. Add it. Test it. Make sure it FAILS LOUDLY when triggered.
+3. Add a regression test that simulates the bypass attempt.
+4. Update the catalog above.
+5. Never add a "soft" safeguard that warns but allows. Either it blocks or it doesn't exist.
+
+## Cross-references
+
+- Engine preflight → `t2000/.cursor/rules/engine-tool-development.mdc`
+- Engine guards → `packages/engine/src/guards.ts`
+- Pending action contract → `write-tool-pending-action.mdc`
+- Sponsored tx flow → `audric-transaction-flow.mdc`
+- Financial amount safety → `financial-amounts.mdc`

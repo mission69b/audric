@@ -1,0 +1,135 @@
+---
+description: Audric Pay — send / payment-link / invoice / QR end-to-end. Free, global, instant on Sui.
+globs: "apps/web/app/api/payments/**/*.ts,apps/web/app/pay/**/*.tsx,apps/web/components/**/*Pay*.tsx,apps/web/components/**/Receive*.tsx,apps/web/lib/payment-kit.ts"
+alwaysApply: false
+---
+
+# Audric Pay Flow
+
+Move money. Free, global, instant on Sui. The Audric product that owns send, receive, payment-link, invoice, and QR.
+
+## Operations under Audric Pay
+
+| Operation | UI surface | Engine tool | Receipt model |
+|---|---|---|---|
+| Send USDC (or any Tier 2 asset) | Send chip + chat → confirm card | `send_transfer` | `Payment` (status: `sent`) |
+| Receive (payment link) | Receive chip → `/pay/[slug]` | `create_payment_link` | `Payment` (status: `pending` → `paid`) |
+| Receive (invoice) | Invoice flow → email | `create_invoice` | `Payment` (type: `invoice`) |
+| Receive (QR) | Receive chip → QR card | `create_payment_link` (QR-rendered) | `Payment` |
+
+> **Receive is not a separate product.** It's the receive-half of Audric Pay. See CLAUDE.md taxonomy rule.
+
+## Send flow (the canonical write)
+
+```
+1. User intent — "send 5 USDC to alice@example.com" OR "0x123..."
+   → engine routes to send_transfer tool
+
+2. send_transfer.preflight() validates:
+   - amount > 0
+   - amount ≤ wallet balance for asset
+   - recipient is either:
+     a) valid Sui address (isValidSuiAddress)
+     b) a known contact in UserPreferences.contacts
+     c) an email → look up linked Sui address
+
+3. Engine yields pending_action with:
+   - description: "Send 5 USDC to alice (0x123...)"
+   - modifiableFields: [amount, to]
+   - guardInjections from runGuards (insufficient balance, recipient validation, USD threshold)
+
+4. Audric renders confirm card with QR scan / paste affordance for `to`
+
+5. User taps Confirm → handleExecuteAction() → sponsored tx flow
+   → /api/transactions/prepare builds the Sui Transaction (splitCoins + transferObjects)
+   → user signs with ephemeral key
+   → /api/transactions/execute submits
+
+6. Receipt:
+   - Parse balanceChanges client-side (negative = sent)
+   - Show: amount, recipient, txDigest (link to Sui Vision)
+   - Save to Payment table
+   - POST /api/engine/resume with attemptId + balanceChanges
+```
+
+## Payment link flow
+
+```
+1. User intent — "make a $50 link"
+   → engine routes to create_payment_link tool
+
+2. Tool generates a slug (cuid), stores Payment row (status: pending),
+   returns share URL: https://audric.ai/pay/<slug>
+
+3. Anyone visits /pay/[slug]:
+   → page.tsx fetches Payment row
+   → renders: amount, recipient name, "Pay with Audric" button
+   → if visitor signed in: one-tap pay flow
+   → if not: sign in via zkLogin first, then one-tap
+
+4. On payment success:
+   → /api/payments/[slug] updates Payment.status = 'paid', records payerAddress + txDigest
+   → optional: webhook / email notification to recipient
+
+5. Recipient sees the paid status in their activity feed (lib/activity-data.ts)
+```
+
+## Invoice flow
+
+Same as payment-link but:
+- The `Payment` row carries `type: 'invoice'` and a `dueDate`.
+- Email sent to the payer via Resend.
+- Reminder cron (TODO — not currently active) would re-send before due date.
+
+## QR flow
+
+A QR-rendered payment link. Same backend as payment-link, just a different render.
+
+## What MUST NOT happen
+
+```typescript
+// ❌ Auto-execute a send because "the user already confirmed once today"
+permissionLevel: 'auto'  // — every send is confirm
+
+// ❌ Trust client-supplied recipient resolution
+const recipient = clientSuppliedAddress;  // server MUST re-resolve from email/contact
+
+// ❌ Construct the Transaction client-side and ask the server to "just sign"
+// — server builds, client signs; never the reverse.
+
+// ❌ Round amounts UP on display
+const display = Math.round(amount * 100) / 100;
+// — see financial-amounts.mdc; always Math.floor
+
+// ❌ Assume sponsored gas is unlimited
+// — server caps gas budget per request. Reject txs that simulate over budget.
+
+// ❌ Email a payment link without the recipient consenting
+// — invoice flow requires the payer's email up-front; consent is implicit by sharing.
+```
+
+## Cross-asset support
+
+Send and swap support all Tier 2 assets (`getTier(asset) >= 2`). Saves and borrows are USDC-only — see `usdc-only-saves.mdc`. The `assertAllowedAsset(operation, asset)` helper in the engine enforces this.
+
+## Receipt parsing — read this carefully
+
+The server returns `{ tx, balanceChanges }` from `/api/transactions/execute`. NOT a typed `SendResult`. Parse balanceChanges client-side:
+
+```typescript
+const usdcDelta = balanceChanges
+  ?.find((c) => c.coinType === USDC_TYPE && c.owner === userAddress)
+  ?.amount;
+const sent = Math.abs(Number(usdcDelta ?? 0)) / 1e6;
+```
+
+See `audric-transaction-flow.mdc` for the full sponsored-tx contract.
+
+## Cross-references
+
+- Sponsored tx flow → `audric-transaction-flow.mdc`
+- Pending action protocol → `write-tool-pending-action.mdc`
+- Financial amount safety → `financial-amounts.mdc`
+- Defense layers → `safeguards-defense-in-depth.mdc`
+- Payment kit → `apps/web/lib/payment-kit.ts`
+- Pay page → `apps/web/app/pay/[slug]/page.tsx`

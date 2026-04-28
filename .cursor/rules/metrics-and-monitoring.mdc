@@ -1,0 +1,99 @@
+---
+description: Metrics + monitoring (audric side) — TurnMetrics, SessionUsage, Vercel/CloudWatch, what to instrument
+globs: "apps/web/lib/engine/harness-metrics.ts,apps/web/lib/engine/log-session-usage.ts,apps/web/app/api/engine/**/*.ts"
+alwaysApply: false
+---
+
+# Metrics + Monitoring (audric side)
+
+The audric web app is the producer for every metric the agent generates. The split:
+
+| Goes to | Who reads it |
+|---|---|
+| Prisma (`TurnMetrics`, `SessionUsage`, `ConversationLog`, `AppEvent`, `AdviceLog`) | Q5/Q6 dashboards, harness regression analysis, billing |
+| Vercel Observability | On-call alerting, perf regressions |
+| Vercel Speed Insights | LCP/FCP/TTI for chat UI |
+| CloudWatch | t2000 ECS task health (cron, indexer) |
+
+## TurnMetrics — the harness telemetry table (Spec 1)
+
+Every chat turn writes one row. Every confirmed/declined/modified pending action updates the row via `attemptId`-keyed `updateMany`. Resume turns get their own row.
+
+Schema highlights (see `prisma-models-overview.mdc` for full list):
+
+- `sessionId`, `turnIndex` — pair (legacy fallback for resume key)
+- `attemptId` — UUID v4, primary resume key (Spec 1 Item 3)
+- `pendingActionOutcome` — `confirmed | declined | modified | resume_failed | unresolved | null`
+- `modifiableFieldsTouched` — JSON of which fields the user edited (Spec 1 Item 6)
+- `writeToolDurationMs` — time from confirm → execute response
+- `inputTokens`, `outputTokens`, `cacheReadTokens`, `cacheWriteTokens`, `costUsd`
+- `engineVersion`, `model`, `complexityClass`, `thinkingEffort`
+- `toolNames`, `toolDurationMs` (per-tool)
+
+Where it's written:
+- `apps/web/app/api/engine/chat/route.ts` — chat-time row
+- `apps/web/app/api/engine/resume/route.ts` — outcome update + resume turn row
+- `apps/web/lib/engine/harness-metrics.ts` — the helper functions
+
+## SessionUsage — billing + cost tracking
+
+One row per session. Drives the billing gate (5 unverified / 20 verified turns per rolling 24h). Written at session end by `lib/engine/log-session-usage.ts`.
+
+## ConversationLog — full transcripts
+
+Every role + content + toolCalls + tokens + cost. Used for:
+- Future self-hosted model migration training data.
+- Memory extraction cron (`UserMemory`).
+- Profile inference cron (`UserFinancialProfile`).
+
+## AppEvent — chip taps + sponsor failures + key flows
+
+Used by the chain memory classifiers. Don't write user-facing notification spam here.
+
+## What MUST NOT happen
+
+```typescript
+// ❌ Skip TurnMetrics because "the turn was simple"
+// — EVERY turn writes a row. Always.
+
+// ❌ Forget attemptId on TurnMetrics
+prisma.turnMetrics.create({ data: { sessionId, turnIndex /* no attemptId */ } });
+// — resume route can't find the row → outcome telemetry lost
+
+// ❌ Write to a vendor we haven't approved
+fetch('https://api.axiom.co/...');
+// — Vercel + CloudWatch + Prisma. Adding new vendors needs roadmap approval.
+
+// ❌ Log PII in plaintext to console
+console.log(`User email: ${email}, address: ${address}, amount: ${amount}`);
+// — structured logging only. Use the helpers in lib/errors.ts.
+
+// ❌ Synchronous metric write on the critical path
+await prisma.turnMetrics.create(...);  // adds 50ms to every turn
+return Response.json(...);
+// — fire and forget with .catch() instead.
+```
+
+## Read paths
+
+- Daily spend → `prisma.sessionUsage.aggregate({ _sum: { costUsd: true } })`
+- Pending action outcome distribution → `prisma.turnMetrics.groupBy({ by: ['pendingActionOutcome'] })`
+- Tool latency p95 → custom query against `toolDurationMs` JSON column
+- Resume failure rate → `prisma.turnMetrics.count({ where: { pendingActionOutcome: 'resume_failed' } })`
+
+## Adding a new metric
+
+1. Decide: durable (Prisma) or transient (Vercel/CloudWatch)?
+2. If durable, extend `TurnMetrics` (preferred) or add a model. Add `@@index` on filter columns.
+3. Update `prisma-models-overview.mdc` if a new model.
+4. Backfill if it's meaningful for past sessions (run a one-off migration).
+5. Document the dashboard query.
+
+## Cross-references
+
+- Spec 1 → `t2000/AUDRIC_HARNESS_CORRECTNESS_SPEC_v1.3.md` (local-only)
+- Pending action protocol (where attemptId comes from) → `write-tool-pending-action.mdc`
+- t2000-side metrics rule → `t2000/.cursor/rules/metrics-and-monitoring.mdc`
+- Prisma models → `prisma-models-overview.mdc`
+- Cost rates → `apps/web/lib/engine/cost-rates.ts`
+- Scaling spec → `t2000/audric-scaling-spec.md` (local-only)

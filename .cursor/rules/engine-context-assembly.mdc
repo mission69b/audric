@@ -1,0 +1,90 @@
+---
+description: Engine context assembly — what goes into the system prompt each turn (silent context, financial_context block)
+globs: "apps/web/lib/engine/**/*.ts,apps/web/app/api/engine/**/*.ts"
+alwaysApply: false
+---
+
+# Engine Context Assembly (Silent Intelligence)
+
+Every turn, audric calls `buildFullDynamicContext()` from `lib/engine/engine-context.ts` to assemble a multi-section system prompt that the engine sends to Claude. Everything in this prompt is **silent** — no notifications, no surfaces, no proactive nudges. The chat answers when asked.
+
+## Section order (deterministic — don't reorder)
+
+```
+<system>
+... base engine instructions ...
+
+## User Profile        ← buildProfileContext(profile)         [F1]
+## Remembered Context  ← buildMemoryContext(memories)         [F3]
+## Recent Advice       ← buildAdviceContext(userId)           [F-advice]
+## Chain Memory        ← buildChainFactsBlock(facts)          [F-chain]
+<financial_context>    ← buildFinancialContextBlock(snapshot) [F-financial]
+... daily snapshot ...
+</financial_context>
+## Conversation State  ← buildStateContext(state)             [F4]
+## Self-Evaluation     ← buildSelfEvaluationInstruction(...)  [F5]
+
+## Tools available
+... tool definitions ...
+</system>
+```
+
+## What each section does
+
+### F1 — Profile (`UserFinancialProfile`)
+Risk tolerance, goals, income bracket, investment horizon, time-of-day preferences. Inferred by Claude from chat history (cron job). **Calibrates tone + recommendations.** Never surfaced to the user as a profile card — silent only.
+
+### F3 — Episodic memory (`UserMemory`)
+Up to 50 facts extracted from prior conversations (Jaccard dedup'd). Things like "user has a wedding in November" or "user prefers conservative allocations." Rehydrated every turn.
+
+### F-advice — AdviceLog (last 30 days)
+`record_advice` tool writes `AdviceLog` rows when Audric recommends an action. `buildAdviceContext()` rehydrates them so Audric doesn't contradict itself across sessions ("two days ago you said USDC at NAVI, today you're saying VOLO?").
+
+### F-chain — Chain memory facts (`ChainFact`)
+7 chain classifiers run over the user's wallet history (recurring sends, idle balances, position changes). Surfaced as `[on-chain observation]` lines. Silent context only — the agent decides if/how to use them.
+
+### F-financial — `<financial_context>` block (Spec 2)
+The daily on-chain snapshot built from `UserFinancialContext` (refreshed by 02:00 UTC `financial-context-snapshot` cron). Contains:
+- `savings_usdc`, `savings_usdsui` (amount + APY)
+- `wallet` (USDC, USDsui, SUI, GOLD, total USD)
+- `debt` (amount, asset, APR, HF if applicable)
+- `recent_activity` (last N events as terse one-liners)
+
+Format is short and machine-readable — no narration. Days since last session uses "Today" / "Yesterday" for the two most common values.
+
+### F4 — Conversation state
+Engine-internal — short-term turn state for multi-step flows (e.g. "user asked for a quote → next message is likely an execute").
+
+### F5 — Self-evaluation
+A 1-line reminder for the agent to check its own answer before sending. Lightweight metacognition.
+
+## What MUST NOT go in the system prompt
+
+- **Marketing copy.** The prompt isn't a sales pitch.
+- **User-facing chrome.** No "Here are your savings stats:" — that's the agent's job to write.
+- **Anything that would surprise a user if leaked.** The prompt is silent and trusted.
+- **Stale data.** Rehydrate from Prisma every turn, not from a process-local cache.
+- **Anything that requires user-presence permission to act on.** Under zkLogin the agent can't sign autonomously, so "remind user to do X tomorrow at 9am" is just noise — see S.5 in `audric-build-tracker.md`.
+
+## When adding a new context layer
+
+1. Build a `buildXContext(...)` helper that returns a string (or `''` if nothing to add).
+2. Add it to `buildFullDynamicContext()` in deterministic position (top = highest priority, bottom = least).
+3. Never add a "context layer" that fetches data on the critical path of every turn — pre-compute via cron and read from Prisma. Per-turn budget is < 100ms for context assembly.
+4. Update the spec doc (`AUDRIC_HARNESS_INTELLIGENCE_SPEC_v1.4.1.md`) AND this rule.
+
+## Token budget
+
+Context assembly should target **< 4k tokens** of system-prompt overhead per turn. Breakdown:
+- Profile + Memory + AdviceLog: ~2k cap (`buildAdviceContext` already truncates)
+- `<financial_context>`: ~500 tokens
+- Tool definitions (34 tools): ~1.5k
+
+If a new layer pushes total > 6k, it's too much. Compact, summarize, or move to a tool the agent can call on-demand.
+
+## Cross-references
+
+- Implementation → `apps/web/lib/engine/engine-context.ts`
+- Spec → `t2000/AUDRIC_HARNESS_INTELLIGENCE_SPEC_v1.4.1.md` (local-only)
+- Snapshot cron → `apps/web/app/api/internal/financial-context-snapshot/route.ts`
+- Prisma models that feed it → `prisma-models-overview.mdc`

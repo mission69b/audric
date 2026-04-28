@@ -34,7 +34,7 @@ const PILLARS: Pillar[] = [
     title: 'Reasoning Engine',
     italic: 'Thinks before it acts.',
     body:
-      'Classifies complexity, matches skill recipes, runs 9 safety guards before every transaction. You see its reasoning.',
+      'Classifies complexity, matches skill recipes, runs 14 safety guards before every transaction. You see its reasoning.',
     glyph: (
       <svg width="30" height="30" viewBox="0 0 24 24" fill="#FFBD14" aria-hidden="true">
         <path d="M13 2 3 14h7l-1 8 10-12h-7l1-8Z" />

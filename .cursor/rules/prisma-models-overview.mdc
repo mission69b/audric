@@ -1,0 +1,117 @@
+---
+description: Prisma data model — what each of the 16 models is for, what owns it, when to read/write
+globs: "apps/web/prisma/**/*.prisma,apps/web/lib/prisma.ts,apps/web/app/api/**/*.ts,apps/web/lib/engine/**/*.ts"
+alwaysApply: false
+---
+
+# Prisma Models Overview
+
+NeonDB Postgres with 16 Prisma models. Schema lives at `apps/web/prisma/schema.prisma`. Generated client output is `apps/web/lib/generated/prisma`.
+
+## Model catalog
+
+### Identity + preferences
+
+| Model | What it stores | Owned by | Updated by |
+|---|---|---|---|
+| `User` | `id`, `suiAddress` (unique), `email` (unique), `emailVerified`, `displayName`, `timezoneOffset`, `tosAcceptedAt` | Auth/login flow | `/api/user/email`, `/api/user/verify-email` |
+| `UserPreferences` | `contacts` (JSON address book), `limits` (JSON spend limits) | User | `/api/user/preferences`, `save_contact` tool |
+| `LinkedWallet` | Up to 10 secondary Sui addresses for aggregated portfolio views | User | `/api/user/wallets` |
+
+### Engine / conversation
+
+| Model | What it stores | Owned by | Updated by |
+|---|---|---|---|
+| `ConversationLog` | Full chat transcripts (every role + content + toolCalls + tokensUsed + costUsd) | Engine | `/api/engine/chat` per turn |
+| `SessionUsage` | Per-session token + cost rollup (drives billing gate) | Engine | `/api/engine/chat` end-of-session |
+| `TurnMetrics` | Per-turn metrics (Spec 1) — latency, attemptId, modifiableFieldsTouched, pendingActionOutcome, writeToolDurationMs | Engine harness | `/api/engine/chat` (chat-time row), `/api/engine/resume` (updateMany on attemptId) |
+
+### Silent intelligence (`<financial_context>` + context layers)
+
+| Model | What it stores | Owned by | Updated by |
+|---|---|---|---|
+| `UserFinancialProfile` | Risk tolerance, goals, income bracket, horizon (Claude-inferred) | Cron | Daily Claude inference job |
+| `UserMemory` | Up to 50 episodic facts (Jaccard dedup'd) | Cron | Per-conversation extraction |
+| `UserFinancialContext` | Daily on-chain snapshot — savings/wallet/debt/HF/APY/recent activity | Cron | 02:00 UTC `financial-context-snapshot` job |
+| `AdviceLog` | Recommendations the agent gave (last 30d rehydrated each turn) | Engine tool | `record_advice` tool |
+| `PortfolioSnapshot` | Historical portfolio totals for timeline canvas | Cron | Daily snapshot job |
+
+### Audric Pay + Audric Finance
+
+| Model | What it stores | Owned by | Updated by |
+|---|---|---|---|
+| `Payment` | Sent payments, payment links, invoices (status, amount, recipient) | Pay flows | `/api/payments/*` |
+| `SavingsGoal` | Optional user-set goals ("$5k by Dec") — silent context only | User | `/api/goals`, `goal` tools |
+
+### Indexer / chain memory
+
+| Model | What it stores | Owned by | Updated by |
+|---|---|---|---|
+| `WatchAddress` | Addresses the user has asked Audric to track | User | `/api/user/wallets` |
+| `AppEvent` | App-side events the chain classifiers ingest (chip taps, sponsor failures, key flows) | App | Various event emitters |
+| `ServicePurchase` | MPP service purchases via `pay_api` tool | Engine tool | `pay_api` execution |
+
+## Where to write — only here, never in a route
+
+Database writes are concentrated by domain to make audits + migrations sane:
+
+| Domain | Write site |
+|---|---|
+| User identity | `apps/web/app/api/user/*` |
+| Conversation | `apps/web/app/api/engine/chat/route.ts`, `apps/web/app/api/engine/resume/route.ts` |
+| Telemetry | `apps/web/lib/engine/harness-metrics.ts` |
+| Cron snapshots | `apps/web/app/api/internal/*` (called by t2000 cron with `x-internal-key`) |
+| Pay flows | `apps/web/app/api/payments/*` |
+| Engine tools that write Prisma | `apps/web/lib/engine/{advice-tool,goal-tools,contact-tools}.ts` |
+
+If you find yourself reaching for `prisma.X.create` in a new place, ask whether the existing write site can absorb it. Drift in write sites → drift in invariants.
+
+## Where to read — go through helpers when one exists
+
+| Read | Helper | Don't write `prisma.X.findMany` for this |
+|---|---|---|
+| Portfolio | `getPortfolio(address)` | See `audric-canonical-portfolio.mdc` |
+| Activity feed | `getActivity(...)` | `lib/activity-data.ts` |
+| Last 30d advice | `buildAdviceContext(userId)` | `lib/engine/engine-context.ts` |
+| Episodic memories | `buildMemoryContext(memories)` | `lib/engine/engine-context.ts` |
+| Financial profile | `buildProfileContext(profile)` | engine + Prisma `UserFinancialProfile` |
+
+Direct reads in route handlers are fine for one-offs. Pattern is: helpers when the read appears in 2+ places.
+
+## Migrations
+
+```bash
+pnpm --filter audric-web prisma migrate dev --name <descriptive-name>
+pnpm --filter audric-web prisma generate
+```
+
+After migration:
+- Update this rule's catalog if a new model landed.
+- If the model is read by the engine, update `engine-context-assembly.mdc` too.
+- Add a `@@index` for any column you'll filter on. Postgres without indexes scales badly.
+
+## What's banned
+
+```typescript
+// ❌ Direct prisma in a React component (server component or otherwise)
+// — always go through an API route or server action.
+import { prisma } from '@/lib/prisma';
+export default async function Page() {
+  const user = await prisma.user.findUnique({ where: { id } });
+}
+
+// ❌ Cross-domain writes (e.g. engine tool writing User table)
+// — engine tools write engine-owned models (AdviceLog) only.
+
+// ❌ Silently dropping invariants
+prisma.user.upsert({ where: { suiAddress }, ... });
+// — always check email-linkage first (see zklogin-passport-flow.mdc).
+```
+
+## Cross-references
+
+- Schema → `apps/web/prisma/schema.prisma`
+- Generated client → `apps/web/lib/generated/prisma`
+- Prisma singleton → `apps/web/lib/prisma.ts`
+- Engine context that reads these → `engine-context-assembly.mdc`
+- Cron jobs that write these → `cron-job-architecture.mdc`
