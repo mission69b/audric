@@ -230,40 +230,39 @@ const runtimeEnv = {
 // ─── Validate ──────────────────────────────────────────────────────────
 //
 // Detection: identify the actual runtime so we know which schema to
-// validate against. Three runtimes matter:
+// validate against. Three runtimes matter — TWO of them are server:
 //
 //   1. Node.js server (next start, Vercel serverless functions, vitest)
-//      → validate FULL schema (server + client vars)
-//   2. Browser client (Next.js bundle running in a tab)
-//      → validate ONLY the client schema; server vars are stripped to
-//        `undefined` by the Next.js bundler and would all spuriously
-//        fail "required" checks
-//   3. Edge runtime (middleware, edge functions) — also browser-like for
-//      our purposes; treat as client and rely on the proxy guard
+//      → SERVER. Validate FULL schema (server + client vars).
+//   2. Edge runtime (middleware, edge API routes)
+//      → SERVER. Validate FULL schema. Vercel injects all env vars
+//        into edge workers exactly like Node functions.
+//   3. Browser client (Next.js bundle running in a tab)
+//      → CLIENT. Validate ONLY the client schema; server vars are
+//        stripped to `undefined` by the Next.js bundler and would all
+//        spuriously fail "required" checks.
 //
-// Discriminator: `process.versions.node`. This is set ONLY in a real
-// Node.js process. Webpack/Next polyfill `process` and `process.env` on
-// the client (Next inlines `process.env.NEXT_PUBLIC_*` as string
-// literals at build time and stubs `process.env` to a truthy object
-// at runtime), so checking `typeof process !== 'undefined'` or
-// `process.env != null` falsely returns true in the client bundle.
-// `process.versions.node` is NOT polyfilled — it's a string ("22.x")
-// only in actual Node, and undefined/missing everywhere else.
+// Two discriminators OR'd together cover both server runtimes:
 //
-// Vitest runs in Node (even with jsdom), so `process.versions.node`
-// is set and `isServer` is true — this is what env.test.ts depends on
-// to validate the full server schema.
+//   (a) `process.versions.node` is a string (e.g. "22.x") → Node.js.
+//       Webpack's process polyfill does NOT set this, so it's a
+//       reliable Node-vs-browser test. Vitest also satisfies this.
 //
-// Edge runtime: V8 isolates with a partial Node compat layer that
-// generally does NOT expose `process.versions.node`. Treating edge as
-// "client" is the safe default — middleware should not depend on
-// server-only secrets, and if it does the proxy guard will throw at
-// the read site instead of crashing the whole runtime at boot.
+//   (b) `process.env.NEXT_RUNTIME === 'edge'` → Edge runtime. Next.js
+//       statically sets this in edge bundles at build time, and Vercel
+//       sets it as a real env var in the edge worker. Without this
+//       branch, edge routes that read server-only vars (like
+//       `/api/build-id` reading `VERCEL_DEPLOYMENT_ID`) would hit the
+//       proxy guard and 500 every request. Discovered the hard way
+//       in production after the v1 fix shipped.
+//
+// Anything else (no Node, no edge marker) is the browser client.
 const isServer =
   typeof process !== 'undefined' &&
-  typeof process.versions === 'object' &&
-  process.versions !== null &&
-  typeof process.versions.node === 'string';
+  ((typeof process.versions === 'object' &&
+    process.versions !== null &&
+    typeof process.versions.node === 'string') ||
+    process.env?.NEXT_RUNTIME === 'edge');
 
 // On the server, parse the FULL schema (server + client). Server vars
 // must be set or boot fails.

@@ -191,4 +191,36 @@ describe('env validation', () => {
       });
     }
   });
+
+  // ── Edge runtime detection (regression test for /api/build-id 500) ──
+  // After fixing the client crash by switching to `process.versions.node`,
+  // edge routes (e.g. `/api/build-id` with `runtime = 'edge'`) started
+  // 500-ing because the V8-isolate edge runtime has no `process.versions.node`
+  // and was being classified as "client" — proxy guard then blocked
+  // `env.VERCEL_DEPLOYMENT_ID` (a SERVER_ONLY_KEYS member). The fix
+  // adds `process.env.NEXT_RUNTIME === 'edge'` as a second OR-branch.
+  it('edge runtime: validates FULL schema and allows server-only var reads', async () => {
+    setMinimumValidEnv();
+    // Simulate the Vercel edge worker: no node version, NEXT_RUNTIME=edge.
+    process.env.NEXT_RUNTIME = 'edge';
+    process.env.VERCEL_DEPLOYMENT_ID = 'dpl_test_deployment_id';
+    const originalVersions = process.versions;
+    Object.defineProperty(process, 'versions', {
+      value: { ...originalVersions, node: undefined },
+      configurable: true,
+    });
+    try {
+      const { env } = await import('../env');
+      // Server-only var must be readable in edge (it's still server).
+      expect(env.VERCEL_DEPLOYMENT_ID).toBe('dpl_test_deployment_id');
+      // Required server var must be present (full-schema validation ran).
+      expect(env.BLOCKVISION_API_KEY).toBe('bv-test');
+    } finally {
+      Object.defineProperty(process, 'versions', {
+        value: originalVersions,
+        configurable: true,
+      });
+      delete process.env.NEXT_RUNTIME;
+    }
+  });
 });
