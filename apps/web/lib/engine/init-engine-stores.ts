@@ -44,6 +44,10 @@ import { UpstashWalletCacheStore } from './upstash-wallet-cache';
 import { UpstashFetchLock } from './upstash-fetch-lock';
 import { UpstashNaviCacheStore } from './upstash-navi-cache';
 import { VercelTelemetrySink } from './vercel-sink';
+import {
+  setTxHistoryCacheStore,
+  UpstashTxHistoryCacheStore,
+} from '@/lib/upstash-tx-history-cache';
 
 let initialized = false;
 
@@ -104,6 +108,14 @@ export function initEngineStores(): void {
   // (savings, health), 5-min TTL for rates. Prevents repeated MCP round-trips
   // on consecutive tool calls for the same address in the same chat session.
   setNaviCacheStore(new UpstashNaviCacheStore());
+
+  // [PR 7 — v0.57] Transaction-history cache — 30s TTL keyed by
+  // (address + opts fingerprint). Same SSOT bug class as PR 1+2 but for
+  // the BlockVision Sui RPC path used by `/api/activity` and `/api/history`.
+  // Without it, dashboard auto-refresh + concurrent users produce 429
+  // bursts on `client.queryTransactionBlocks` (observed in Vercel logs
+  // 2026-04-28). Coalesces with `awaitOrFetch` over the existing PR 2 lock.
+  setTxHistoryCacheStore(new UpstashTxHistoryCacheStore());
 }
 
 // Side-effect — run on import. Safe because `initEngineStores` is
