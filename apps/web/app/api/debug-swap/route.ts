@@ -3,11 +3,12 @@ import { Transaction } from '@mysten/sui/transactions';
 import { toBase64 } from '@mysten/sui/utils';
 import { AggregatorClient, Env } from '@cetusprotocol/aggregator-sdk';
 import { getClient } from '@/lib/protocol-registry';
+import { env } from '@/lib/env';
 
 export const runtime = 'nodejs';
 
-const SUI_NETWORK = (process.env.NEXT_PUBLIC_SUI_NETWORK ?? 'mainnet') as 'mainnet' | 'testnet';
-const ENOKI_SECRET_KEY = process.env.ENOKI_SECRET_KEY;
+const SUI_NETWORK = env.NEXT_PUBLIC_SUI_NETWORK;
+const ENOKI_SECRET_KEY = env.ENOKI_SECRET_KEY;
 const ENOKI_BASE = 'https://api.enoki.mystenlabs.com/v1';
 
 const USDC_TYPE = '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC';

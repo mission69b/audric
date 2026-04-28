@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { validateJwt, isValidSuiAddress } from '@/lib/auth';
+import { env } from '@/lib/env';
 
 /**
  * POST /api/voice/transcribe
@@ -45,7 +46,7 @@ function jsonError(message: string, status: number): Response {
 }
 
 export async function POST(request: NextRequest) {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = env.OPENAI_API_KEY;
   if (!apiKey) {
     return jsonError('Voice mode is not configured on this deployment', 503);
   }

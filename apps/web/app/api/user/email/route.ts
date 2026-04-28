@@ -4,8 +4,9 @@ import { Resend } from 'resend';
 import { validateJwt, isValidSuiAddress } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
+import { env } from '@/lib/env';
 
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+const resend = env.RESEND_API_KEY ? new Resend(env.RESEND_API_KEY) : null;
 
 export const runtime = 'nodejs';
 
@@ -123,7 +124,7 @@ export async function POST(request: NextRequest) {
     },
   });
 
-  const verifyUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://audric.ai'}/verify?token=${token}`;
+  const verifyUrl = `${env.NEXT_PUBLIC_APP_URL ?? 'https://audric.ai'}/verify?token=${token}`;
 
   if (resend) {
     try {

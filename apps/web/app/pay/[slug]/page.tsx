@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { PayClient } from '@/components/pay/PayClient';
+import { env } from '@/lib/env';
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -13,7 +14,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   let ogTitle = 'Audric Pay';
 
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://audric.ai';
+    const baseUrl = env.NEXT_PUBLIC_APP_URL ?? 'https://audric.ai';
     const res = await fetch(`${baseUrl}/api/payments/${slug}`, {
       next: { revalidate: 60 },
     });

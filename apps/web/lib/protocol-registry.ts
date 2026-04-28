@@ -3,8 +3,9 @@ import {
   ProtocolRegistry,
   NaviAdapter,
 } from '@t2000/sdk/adapters';
+import { env } from '@/lib/env';
 
-const SUI_NETWORK = (process.env.NEXT_PUBLIC_SUI_NETWORK ?? 'mainnet') as 'mainnet' | 'testnet';
+const SUI_NETWORK = env.NEXT_PUBLIC_SUI_NETWORK;
 
 type RegistryInstance = InstanceType<typeof ProtocolRegistry>;
 type ClientInstance = InstanceType<typeof SuiJsonRpcClient>;

@@ -17,9 +17,10 @@ import {
   type SupplyEntry,
   type BorrowEntry,
 } from '@/lib/portfolio-data';
+import { env } from '@/lib/env';
 import { getSuiRpcUrl } from '@/lib/sui-rpc';
 
-const BLOCKVISION_API_KEY = process.env.BLOCKVISION_API_KEY;
+const BLOCKVISION_API_KEY = env.BLOCKVISION_API_KEY;
 
 // ---------------------------------------------------------------------------
 // Types

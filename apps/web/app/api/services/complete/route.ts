@@ -5,13 +5,14 @@ import { suiCharge } from '@suimpp/mpp/client';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { GATEWAY_BASE } from '@/lib/service-gateway';
 import { prisma } from '@/lib/prisma';
+import { env } from '@/lib/env';
 
 export const runtime = 'nodejs';
 
-const SUI_NETWORK = (process.env.NEXT_PUBLIC_SUI_NETWORK ?? 'mainnet') as 'mainnet' | 'testnet';
-const ENOKI_SECRET_KEY = process.env.ENOKI_SECRET_KEY;
+const SUI_NETWORK = env.NEXT_PUBLIC_SUI_NETWORK;
+const ENOKI_SECRET_KEY = env.ENOKI_SECRET_KEY;
 const ENOKI_BASE = 'https://api.enoki.mystenlabs.com/v1';
-const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY ?? '';
+const INTERNAL_API_KEY = env.INTERNAL_API_KEY ?? '';
 
 const client = new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl(SUI_NETWORK), network: SUI_NETWORK });
 

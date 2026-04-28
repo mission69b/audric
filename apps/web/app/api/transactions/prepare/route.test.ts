@@ -80,16 +80,12 @@ describe('POST /api/transactions/prepare', () => {
     expect(res.status).toBe(400);
   });
 
-  it('returns 500 when ENOKI_SECRET_KEY is missing', async () => {
-    vi.stubEnv('ENOKI_SECRET_KEY', '');
-    vi.resetModules();
-
-    const mod = await import('./route');
-    const handler = mod.POST as unknown as (req: NextRequest) => Promise<Response>;
-
-    const res = await handler(buildRequest({ type: 'send', address: '0x1234', amount: 1 }));
-    expect(res.status).toBe(500);
-    const body = await res.json();
-    expect(body.error).toContain('not configured');
+  // See note in execute/route.test.ts — the runtime "ENOKI not
+  // configured" 500 path is unreachable now that `lib/env.ts`
+  // rejects empty values at module-load. Boot-time guarantee is
+  // pinned in `lib/__tests__/env.test.ts > REJECTS empty
+  // ENOKI_SECRET_KEY`.
+  it('boot-time env validation prevents the route from running with an empty key (covered in env.test.ts)', () => {
+    expect(true).toBe(true);
   });
 });

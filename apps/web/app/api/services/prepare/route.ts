@@ -9,11 +9,12 @@ import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { validateJwt, isValidSuiAddress } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { getDecimalsForCoinType, USDC_TYPE } from '@t2000/sdk';
+import { env } from '@/lib/env';
 
 export const runtime = 'nodejs';
 
-const SUI_NETWORK = (process.env.NEXT_PUBLIC_SUI_NETWORK ?? 'mainnet') as 'mainnet' | 'testnet';
-const ENOKI_SECRET_KEY = process.env.ENOKI_SECRET_KEY;
+const SUI_NETWORK = env.NEXT_PUBLIC_SUI_NETWORK;
+const ENOKI_SECRET_KEY = env.ENOKI_SECRET_KEY;
 const ENOKI_BASE = 'https://api.enoki.mystenlabs.com/v1';
 
 const client = new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl(SUI_NETWORK), network: SUI_NETWORK });

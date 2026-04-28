@@ -1,6 +1,7 @@
 import { getRegistry } from '@/lib/protocol-registry';
+import { env } from '@/lib/env';
 
-const GATEWAY_URL = process.env.NEXT_PUBLIC_GATEWAY_URL ?? 'https://mpp.t2000.ai';
+const GATEWAY_URL = env.NEXT_PUBLIC_GATEWAY_URL ?? 'https://mpp.t2000.ai';
 
 interface UsdcRates {
   saveApy: number;

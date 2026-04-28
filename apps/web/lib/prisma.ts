@@ -1,5 +1,6 @@
 import { PrismaClient } from './generated/prisma/client';
 import { PrismaNeon } from '@prisma/adapter-neon';
+import { env } from '@/lib/env';
 
 /**
  * Vercel + Neon: use the Neon serverless WebSocket driver instead of the
@@ -23,7 +24,7 @@ import { PrismaNeon } from '@prisma/adapter-neon';
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined };
 
 function createClient(): PrismaClient {
-  const adapter = new PrismaNeon({ connectionString: process.env.DATABASE_URL! });
+  const adapter = new PrismaNeon({ connectionString: env.DATABASE_URL });
   return new PrismaClient({ adapter });
 }
 

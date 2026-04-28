@@ -8,14 +8,16 @@
  *
  * Public endpoint by design: returns no secrets, only booleans.
  */
+import { env } from '@/lib/env';
+
 export const runtime = 'nodejs';
 
 export async function GET() {
   return new Response(
     JSON.stringify({
-      enabled: !!process.env.OPENAI_API_KEY && !!process.env.ELEVENLABS_API_KEY,
-      sttEnabled: !!process.env.OPENAI_API_KEY,
-      ttsEnabled: !!process.env.ELEVENLABS_API_KEY,
+      enabled: !!env.OPENAI_API_KEY && !!env.ELEVENLABS_API_KEY,
+      sttEnabled: !!env.OPENAI_API_KEY,
+      ttsEnabled: !!env.ELEVENLABS_API_KEY,
     }),
     {
       status: 200,

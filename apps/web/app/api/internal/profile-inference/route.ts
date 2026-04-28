@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { validateInternalKey } from '@/lib/internal-auth';
 import Anthropic from '@anthropic-ai/sdk';
+import { env } from '@/lib/env';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -163,11 +164,7 @@ export async function POST(request: NextRequest) {
 
   const prompt = buildInferencePrompt(messages, existing);
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    return NextResponse.json({ error: 'ANTHROPIC_API_KEY not configured' }, { status: 503 });
-  }
-
+  const apiKey = env.ANTHROPIC_API_KEY;
   const client = new Anthropic({ apiKey });
 
   let response: Anthropic.Message;

@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { validateJwt, isValidSuiAddress } from '@/lib/auth';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { generateSlug } from '@/lib/slug';
+import { env } from '@/lib/env';
 
 export const runtime = 'nodejs';
 
@@ -120,7 +121,7 @@ export async function POST(request: NextRequest) {
     },
   });
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://audric.ai';
+  const baseUrl = env.NEXT_PUBLIC_APP_URL ?? 'https://audric.ai';
   const url = `${baseUrl}/pay/${payment.slug}`;
 
   return NextResponse.json({
@@ -175,7 +176,7 @@ export async function GET(request: NextRequest) {
     take: 50,
   });
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://audric.ai';
+  const baseUrl = env.NEXT_PUBLIC_APP_URL ?? 'https://audric.ai';
   const now = new Date();
 
   return NextResponse.json(

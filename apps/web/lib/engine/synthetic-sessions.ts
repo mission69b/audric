@@ -17,6 +17,8 @@
  * stable prefix (the Day-3 follow-up documented in `.env.example`).
  */
 
+import { env } from '@/lib/env';
+
 /**
  * Parsed prefix list. Computed once at module load — the chat route hot
  * path runs hundreds of times per second on a warm Vercel function and
@@ -25,7 +27,7 @@
  * Exported for tests; production code should call `isSyntheticSessionId`.
  */
 export const SYNTHETIC_SESSION_PREFIXES: readonly string[] = (
-  process.env.SYNTHETIC_SESSION_PREFIXES ?? ''
+  env.SYNTHETIC_SESSION_PREFIXES ?? ''
 )
   .split(',')
   .map((p) => p.trim())
@@ -43,15 +45,21 @@ export function isSyntheticSessionId(sessionId: string): boolean {
 
 /**
  * Test-only helper: re-derive the prefix list from the current
- * `process.env` (rather than the module-load-time snapshot). Used by
- * the synthetic-sessions test suite to verify env semantics without
- * forcing every consumer through a configurable factory.
+ * `process.env` (rather than the module-load-time snapshot in `env`).
+ * Used by the synthetic-sessions test suite to verify env semantics
+ * without forcing every consumer through a configurable factory.
+ *
+ * This helper INTENTIONALLY bypasses the validated `env` module — it's
+ * the one escape hatch that lets tests mutate prefixes between cases.
+ * The lint rule that forbids `process.env` exempts this file's
+ * `__test_*` helpers.
  *
  * Production code MUST NOT call this — it would silently break the
  * "compute once at module load" invariant the cache-friendly default
  * relies on.
  */
 export function __test_currentPrefixes(): readonly string[] {
+  // eslint-disable-next-line no-restricted-syntax -- PROCESS-ENV-BYPASS: test helper deliberately re-reads raw env to verify the test-isolation invariant.
   return (process.env.SYNTHETIC_SESSION_PREFIXES ?? '')
     .split(',')
     .map((p) => p.trim())

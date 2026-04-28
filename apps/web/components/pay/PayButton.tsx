@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import { ConnectModal, useCurrentAccount, useSignAndExecuteTransaction } from '@mysten/dapp-kit';
 import { SuiGrpcClient } from '@mysten/sui/grpc';
 import { paymentKit } from '@mysten/payment-kit';
+import { env } from '@/lib/env';
 
 const USDC_TYPE =
   '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC';
@@ -25,7 +26,7 @@ export function PayButton({ recipientAddress, amount, nonce, slug, onSuccess, on
   const [connectOpen, setConnectOpen] = useState(false);
 
   const pkClient = useMemo(() => {
-    const network = (process.env.NEXT_PUBLIC_SUI_NETWORK ?? 'mainnet') as 'mainnet' | 'testnet';
+    const network = env.NEXT_PUBLIC_SUI_NETWORK;
     const baseUrl = network === 'testnet'
       ? 'https://fullnode.testnet.sui.io:443'
       : 'https://fullnode.mainnet.sui.io:443';

@@ -7,8 +7,10 @@
  * Use require() and requirePositive() helpers for all required fields.
  */
 
-const GATEWAY_BASE = process.env.NEXT_PUBLIC_GATEWAY_URL ?? 'https://mpp.t2000.ai';
-const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY ?? '';
+import { env } from '@/lib/env';
+
+const GATEWAY_BASE = env.NEXT_PUBLIC_GATEWAY_URL ?? 'https://mpp.t2000.ai';
+const INTERNAL_API_KEY = env.INTERNAL_API_KEY ?? '';
 
 export interface GatewayMapping {
   url: string;

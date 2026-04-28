@@ -1,8 +1,9 @@
 import { SuiGrpcClient } from '@mysten/sui/grpc';
 import { paymentKit } from '@mysten/payment-kit';
+import { env } from '@/lib/env';
 import { getSuiRpcUrl } from '@/lib/sui-rpc';
 
-const network = (process.env.NEXT_PUBLIC_SUI_NETWORK ?? 'mainnet') as 'mainnet' | 'testnet';
+const network = env.NEXT_PUBLIC_SUI_NETWORK;
 const baseUrl = getSuiRpcUrl();
 
 let _client: ReturnType<typeof createClient> | null = null;

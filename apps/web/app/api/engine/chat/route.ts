@@ -37,8 +37,9 @@ import {
 } from '@/lib/billing';
 
 import { sanitizeStreamErrorMessage } from '@/lib/engine/stream-errors';
+import { env } from '@/lib/env';
 
-const AGENT_MODEL = process.env.AGENT_MODEL ?? 'claude-sonnet-4-6';
+const AGENT_MODEL = env.AGENT_MODEL ?? 'claude-sonnet-4-6';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;

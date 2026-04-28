@@ -24,6 +24,7 @@
 import * as sdk from '@t2000/sdk';
 import { READ_TOOLS, WRITE_TOOLS } from '@t2000/engine';
 import { STATIC_SYSTEM_PROMPT } from './engine-context';
+import { env } from '@/lib/env';
 
 // Re-import the canonical portfolio surface so the runtime check below
 // fails if anyone deletes / renames the canonical exports without
@@ -238,7 +239,7 @@ export function runStartupCheck(): void {
     .map((a) => `  ✗ ${a.id}: ${a.message}`)
     .join('\n');
 
-  if (process.env.NODE_ENV !== 'production') {
+  if (env.NODE_ENV !== 'production') {
     throw new Error(`[spec-consistency] startup assertion failed:\n${failures}`);
   }
 

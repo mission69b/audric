@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { validateJwt, isValidSuiAddress } from '@/lib/auth';
+import { env } from '@/lib/env';
 
 /**
  * POST /api/voice/synthesize
@@ -48,7 +49,7 @@ function jsonError(message: string, status: number): Response {
 }
 
 export async function POST(request: NextRequest) {
-  const apiKey = process.env.ELEVENLABS_API_KEY;
+  const apiKey = env.ELEVENLABS_API_KEY;
   if (!apiKey) {
     return jsonError('Voice mode is not configured on this deployment', 503);
   }
@@ -80,7 +81,7 @@ export async function POST(request: NextRequest) {
     return jsonError(`Text too long (max ${MAX_TEXT_LEN} chars)`, 413);
   }
 
-  const voiceId = process.env.ELEVENLABS_VOICE_ID ?? DEFAULT_VOICE_ID;
+  const voiceId = env.ELEVENLABS_VOICE_ID ?? DEFAULT_VOICE_ID;
 
   let response: Response;
   try {

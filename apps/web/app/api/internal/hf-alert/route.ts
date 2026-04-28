@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { prisma } from '@/lib/prisma';
 import { validateInternalKey } from '@/lib/internal-auth';
+import { env } from '@/lib/env';
 
 export const runtime = 'nodejs';
 
@@ -26,7 +27,7 @@ export const runtime = 'nodejs';
 //  - AppEvent write remains (used by the activity feed).
 
 function getResend(): Resend | null {
-  const key = process.env.RESEND_API_KEY;
+  const key = env.RESEND_API_KEY;
   return key ? new Resend(key) : null;
 }
 

@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
+import { env } from '@/lib/env';
 
-const ENOKI_SECRET_KEY = process.env.ENOKI_SECRET_KEY;
+const ENOKI_SECRET_KEY = env.ENOKI_SECRET_KEY;
 const ENOKI_BASE = 'https://api.enoki.mystenlabs.com/v1';
-const SUI_NETWORK = (process.env.NEXT_PUBLIC_SUI_NETWORK ?? 'mainnet') as 'mainnet' | 'testnet';
+const SUI_NETWORK = env.NEXT_PUBLIC_SUI_NETWORK;
 const suiClient = new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl(SUI_NETWORK), network: SUI_NETWORK });
 
 /**

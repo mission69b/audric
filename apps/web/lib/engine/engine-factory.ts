@@ -23,6 +23,7 @@ import {
   type UserPermissionConfig,
 } from '@t2000/engine';
 import { SUPPORTED_ASSETS } from '@t2000/sdk';
+import { env } from '@/lib/env';
 import { getSuiRpcUrl } from '@/lib/sui-rpc';
 import { UpstashSessionStore } from './upstash-session-store';
 import { getRecipeRegistry } from './recipes';
@@ -108,28 +109,28 @@ export const MUTABLE_TOOL_SET: ReadonlySet<string> = new Set(
   Object.values(POST_WRITE_REFRESH_MAP).flat(),
 );
 
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+const ANTHROPIC_API_KEY = env.ANTHROPIC_API_KEY;
 // [v1.4 BlockVision] Pro-tier Indexer REST API key. Same vendor as the
 // JSON-RPC routing in `lib/sui-rpc.ts`, but a different API surface
-// (`api.blockvision.org/v2/sui/...`, `x-api-key` header). When undefined
-// the engine's `fetchAddressPortfolio` / `fetchTokenPrices` helpers
-// degrade to Sui RPC + the hardcoded stable allow-list — see
-// `packages/engine/src/blockvision-prices.ts`.
-const BLOCKVISION_API_KEY = process.env.BLOCKVISION_API_KEY;
+// (`api.blockvision.org/v2/sui/...`, `x-api-key` header). Required by the
+// env schema — boot fails if missing/empty, so this is guaranteed to be
+// a non-empty string here. The engine's BlockVision callers
+// (`fetchAddressPortfolio` / `fetchTokenPrices`) keep their internal
+// degraded-fallback paths as defense-in-depth, but the runtime keeps
+// them from ever firing in this app.
+const BLOCKVISION_API_KEY = env.BLOCKVISION_API_KEY;
 const SONNET_MODEL = 'claude-sonnet-4-6';
 const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
-const MODEL_OVERRIDE = process.env.AGENT_MODEL;
-const SUI_NETWORK = (process.env.NEXT_PUBLIC_SUI_NETWORK ?? 'mainnet') as 'mainnet' | 'testnet';
+const MODEL_OVERRIDE = env.AGENT_MODEL;
+const SUI_NETWORK = env.NEXT_PUBLIC_SUI_NETWORK;
 const SUI_RPC_URL = getSuiRpcUrl();
 // Internal base URL for engine tools that hit Audric's own /api/internal/*
 // routes (payment links, invoices, activity summaries, spending analytics).
 // Falls back to a same-origin path so server-side fetches work in any
 // deployment without per-env configuration.
 const AUDRIC_INTERNAL_API_URL =
-  process.env.AUDRIC_INTERNAL_API_URL ??
-  process.env.NEXT_PUBLIC_APP_URL ??
-  'https://audric.ai';
-const AUDRIC_INTERNAL_KEY = process.env.T2000_INTERNAL_KEY ?? '';
+  env.AUDRIC_INTERNAL_API_URL ?? env.NEXT_PUBLIC_APP_URL ?? 'https://audric.ai';
+const AUDRIC_INTERNAL_KEY = env.T2000_INTERNAL_KEY;
 
 let sessionStore: SessionStore | null = null;
 let mcpManager: McpClientManager | null = null;

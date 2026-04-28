@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { ToastProvider } from '@/components/ui/Toast';
 import { ThemeProvider } from '@/components/providers/ThemeProvider';
 import { ChunkErrorReloader } from '@/components/shell/ChunkErrorReloader';
+import { env } from '@/lib/env';
 import '@mysten/dapp-kit/dist/index.css';
 
 const { networkConfig } = createNetworkConfig({
@@ -14,7 +15,7 @@ const { networkConfig } = createNetworkConfig({
   testnet: { url: getJsonRpcFullnodeUrl('testnet'), network: 'testnet' },
 });
 
-const defaultNetwork = (process.env.NEXT_PUBLIC_SUI_NETWORK ?? 'mainnet') as 'mainnet' | 'testnet';
+const defaultNetwork = env.NEXT_PUBLIC_SUI_NETWORK;
 
 export function AppProviders({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(

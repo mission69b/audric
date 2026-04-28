@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { env } from '@/lib/env';
 
 // `force-dynamic` so this is always evaluated at request time on the
 // instance currently serving traffic. With Vercel Skew Protection the
@@ -13,8 +14,8 @@ export const runtime = 'edge';
 
 export function GET() {
   const id =
-    process.env.VERCEL_DEPLOYMENT_ID
-    || process.env.VERCEL_GIT_COMMIT_SHA
+    env.VERCEL_DEPLOYMENT_ID
+    || env.VERCEL_GIT_COMMIT_SHA
     || 'local-dev';
   return NextResponse.json(
     { id },

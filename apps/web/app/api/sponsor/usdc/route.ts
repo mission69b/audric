@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
+import { env } from '@/lib/env';
 
-const SERVER_URL = process.env.SERVER_URL ?? 'https://api.t2000.ai';
-const SPONSOR_INTERNAL_KEY = process.env.SPONSOR_INTERNAL_KEY ?? '';
+const SERVER_URL = env.SERVER_URL ?? 'https://api.t2000.ai';
+const SPONSOR_INTERNAL_KEY = env.SPONSOR_INTERNAL_KEY;
 
 export async function POST(req: Request) {
   try {

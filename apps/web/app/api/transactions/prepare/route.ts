@@ -7,12 +7,13 @@ import { validateJwt, isValidSuiAddress, validateAmount } from '@/lib/auth';
 import { getRegistry, getClient } from '@/lib/protocol-registry';
 import { getPortfolio } from '@/lib/portfolio';
 import { resolveTokenType, getDecimalsForCoinType, USDC_TYPE, SUI_TYPE, assertAllowedAsset } from '@t2000/sdk';
+import { env } from '@/lib/env';
 
 export const runtime = 'nodejs';
 
-const ENOKI_SECRET_KEY = process.env.ENOKI_SECRET_KEY;
+const ENOKI_SECRET_KEY = env.ENOKI_SECRET_KEY;
 const ENOKI_BASE = 'https://api.enoki.mystenlabs.com/v1';
-const SUI_NETWORK = (process.env.NEXT_PUBLIC_SUI_NETWORK ?? 'mainnet') as 'mainnet' | 'testnet';
+const SUI_NETWORK = env.NEXT_PUBLIC_SUI_NETWORK;
 
 // [SIMPLIFICATION DAYS 5+8] On-chain allowance billing is fully retired:
 // the Move package, /setup wizard, allowance-status hook, sponsor route,

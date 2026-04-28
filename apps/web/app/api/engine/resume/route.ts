@@ -21,8 +21,9 @@ import { costRatesForModel } from '@/lib/engine/cost-rates';
 import { isSyntheticSessionId } from '@/lib/engine/synthetic-sessions';
 import { invalidateUserFinancialContext } from '@/lib/redis/user-financial-context';
 import { prisma } from '@/lib/prisma';
+import { env } from '@/lib/env';
 
-const AGENT_MODEL = process.env.AGENT_MODEL ?? 'claude-sonnet-4-20250514';
+const AGENT_MODEL = env.AGENT_MODEL ?? 'claude-sonnet-4-20250514';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;

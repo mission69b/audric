@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { env } from '@/lib/env';
 
 export const runtime = 'nodejs';
 
-const INTERNAL_KEY = process.env.T2000_INTERNAL_KEY ?? '';
+const INTERNAL_KEY = env.T2000_INTERNAL_KEY;
 
 /**
  * GET /api/analytics/weekly-summary?address=0x...

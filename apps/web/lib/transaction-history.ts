@@ -16,9 +16,10 @@ import {
   type TransactionRecord,
   type TxDirection,
 } from '@t2000/sdk';
+import { env } from '@/lib/env';
 import { getSuiRpcUrl } from '@/lib/sui-rpc';
 
-const SUI_NETWORK = (process.env.NEXT_PUBLIC_SUI_NETWORK ?? 'mainnet') as 'mainnet' | 'testnet';
+const SUI_NETWORK = env.NEXT_PUBLIC_SUI_NETWORK;
 const client = new SuiJsonRpcClient({ url: getSuiRpcUrl(), network: SUI_NETWORK });
 
 const ALLOWANCE_PACKAGE_PREFIX = '0xd775fcc66eae26797654d435d751dea56b82eeb999de51fd285348e573b968ad';

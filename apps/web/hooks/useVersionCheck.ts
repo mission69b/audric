@@ -2,19 +2,23 @@
 
 import { useEffect, useRef } from 'react';
 import { useToast } from '@/components/ui/Toast';
+import { env } from '@/lib/env';
 
-// `__NEXT_DEPLOYMENT_ID` is the env name Next bakes into the client
-// bundle when `next.config.ts` sets `deploymentId`. We read the same
-// thing back here so the comparison is build-time vs run-time, not
-// run-time vs run-time (which would always match).
+// `NEXT_PUBLIC_DEPLOYMENT_ID` is baked into the client bundle by
+// `next.config.ts` (which mirrors the `deploymentId` field into the
+// public env at build time). We read the same thing back here so the
+// comparison is build-time vs run-time, not run-time vs run-time
+// (which would always match).
 //
-// In dev (`pnpm dev`) the env is `'local-dev'` and the polled value is
-// also `'local-dev'`, so the toast never fires.
-const BUILT_WITH_ID =
-  process.env.NEXT_PUBLIC_DEPLOYMENT_ID
-  || process.env.VERCEL_DEPLOYMENT_ID
-  || process.env.VERCEL_GIT_COMMIT_SHA
-  || 'local-dev';
+// Server-only `VERCEL_*` fallbacks were removed: on the client they
+// are stripped to `undefined` by Next's bundler anyway, and reading
+// them through `env.X` here would throw the proxy guard. The
+// `next.config.ts` resolver already folds those server vars into
+// `NEXT_PUBLIC_DEPLOYMENT_ID` at build time so the chain still works.
+//
+// In dev (`pnpm dev`) the env is `'local-dev'` and the polled value
+// is also `'local-dev'`, so the toast never fires.
+const BUILT_WITH_ID = env.NEXT_PUBLIC_DEPLOYMENT_ID || 'local-dev';
 
 const POLL_INTERVAL_MS = 5 * 60_000; // 5 minutes — gentle, no thrash.
 const FOCUS_DEBOUNCE_MS = 30_000;    // re-check on tab focus, but at most once per 30s.
