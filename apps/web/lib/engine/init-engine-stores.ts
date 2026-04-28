@@ -38,6 +38,7 @@
  */
 
 import { setDefiCacheStore } from '@t2000/engine';
+import { env } from '@/lib/env';
 import { UpstashDefiCacheStore } from './upstash-defi-cache';
 
 let initialized = false;
@@ -46,12 +47,26 @@ export function initEngineStores(): void {
   if (initialized) return;
   initialized = true;
 
+  // Vitest seeds a placeholder Upstash URL (`https://test.upstash.io`)
+  // in `vitest.setup.ts` so env-schema validation passes. If we
+  // instantiate the store anyway, every test that imports
+  // `lib/portfolio.ts` triggers a real network call to that bogus
+  // host on the first cache lookup. The store catches the error
+  // gracefully ("cache get failed, continuing as cache miss") but
+  // each TLS handshake / retry burns multiple seconds, blowing the
+  // 5s default `testTimeout` for any test that touches the engine.
+  // Skip injection in test env — tests want the in-memory default.
+  // eslint-disable-next-line no-restricted-syntax -- PROCESS-ENV-BYPASS: VITEST is set by vitest itself, has no env-schema entry, and only gates a test-only bypass that never runs in production.
+  if (process.env.VITEST === 'true' || process.env.NODE_ENV === 'test') {
+    return;
+  }
+
   // Defensive — if either env var is missing the engine falls back
   // to its default in-memory store. The env schema marks both as
   // required so this branch should be unreachable in production,
   // but the guard prevents a misconfigured preview deploy from
   // crashing the whole process.
-  if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
+  if (!env.UPSTASH_REDIS_REST_URL || !env.UPSTASH_REDIS_REST_TOKEN) {
     console.warn(
       '[init-engine-stores] UPSTASH_REDIS_REST_URL or _TOKEN missing — DeFi cache will use in-memory store (per-instance, not shared). Set both env vars to enable cross-instance SSOT.',
     );
