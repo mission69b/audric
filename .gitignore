@@ -54,3 +54,4 @@ apps/web/scripts/stress-test-prisma-*.mjs
 # pitch-deck iterations (marketing artifacts, not part of the app)
 pitch-deck.html
 pitch-deck-v*.html
+PORTFOLIO_REGRESSION_MATRIX.md
