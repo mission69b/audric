@@ -10,6 +10,16 @@
 // BlockVision (priced wallet) + the protocol registry (NAVI positions).
 // ---------------------------------------------------------------------------
 
+// [v0.54] Side-effect import — wires the Upstash DeFi cache store into
+// the engine for THIS process. `/api/portfolio` and `/api/analytics/*`
+// don't import `engine-factory.ts`, so without this they'd silently
+// keep the engine's default `InMemoryDefiCacheStore` and serve a
+// per-instance stale view (the SSOT regression that caused Full
+// Portfolio Overview to under-count DeFi while balance_check showed
+// the right number on the same chat turn). instrumentation.ts also
+// loads it at boot — this is belt-and-suspenders for any runtime that
+// skips the instrumentation hook.
+import './engine/init-engine-stores';
 import {
   fetchAddressPortfolio,
   fetchAddressDefiPortfolio,

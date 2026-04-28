@@ -18,6 +18,8 @@ vi.mock('@t2000/engine', () => ({
   fetchAddressPortfolio: vi.fn(),
   fetchAddressDefiPortfolio: vi.fn(),
   fetchTokenPrices: vi.fn(),
+  // Side-effect import via `lib/portfolio.ts` → `init-engine-stores`.
+  setDefiCacheStore: vi.fn(),
 }));
 
 vi.mock('@/lib/portfolio-data', () => ({

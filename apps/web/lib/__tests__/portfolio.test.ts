@@ -9,6 +9,10 @@ vi.mock('@t2000/engine', () => ({
     source: 'degraded',
   }),
   fetchTokenPrices: vi.fn(),
+  // Side-effect import in `lib/portfolio.ts` calls `setDefiCacheStore`
+  // via `./engine/init-engine-stores`. Provide a no-op so the mock
+  // satisfies the import; the test doesn't exercise cache wiring.
+  setDefiCacheStore: vi.fn(),
 }));
 
 vi.mock('@/lib/portfolio-data', () => ({
