@@ -23,7 +23,7 @@ const CART = [
   { name: 'Fairy lights 10m (warm white)',      vendor: 'Amazon',      price: '$24', detail: 'MPP · Prime · ships Sat' },
   { name: 'Custom cake, 10-inch',               vendor: 'CakeBoss',    price: '$55', detail: 'MPP · pickup Sat 10am' },
   { name: '"Happy Birthday" banner',            vendor: 'Amazon',      price: '$9',  detail: 'MPP · Prime · ships Sat' },
-  { name: 'Pepsi × 6, water × 6, cups + plates', vendor: 'Woolworths', price: '$11', detail: 'MPP · same-day · ships Sat', proactive: true },
+  { name: 'Pepsi × 6, water × 6, cups + plates', vendor: 'Walmart', price: '$11', detail: 'MPP · same-day · ships Sat', proactive: true },
 ];
 
 const Demo6 = () => {
@@ -51,7 +51,7 @@ const Demo6 = () => {
     { glyph: '💡', label: 'AMAZON MPP',       finishAt: 1500, result: 'fairy lights 10m · $24 · Prime Sat' },
     { glyph: '🎂', label: 'CAKEBOSS MPP',     finishAt: 2400, result: 'custom cake 10-inch · $55 · pickup Sat 10am' },
     { glyph: '🎉', label: 'AMAZON MPP',       finishAt: 3000, result: '"Happy Birthday" banner · $9 · Prime Sat' },
-    { glyph: '🛒', label: 'WOOLWORTHS MPP',   finishAt: 3600, result: 'Pepsi × 6, water × 6, cups + plates · $11 · same-day Sat' },
+    { glyph: '🛒', label: 'WALMART MPP',       finishAt: 3600, result: 'Pepsi × 6, water × 6, cups + plates · $11 · same-day Sat' },
     { glyph: '📦', label: 'DELIVERY CONFIRM', finishAt: 4500, result: 'all 4 vendors confirm Saturday ✓' },
   ];
 
@@ -74,12 +74,12 @@ const Demo6 = () => {
           {step >= 3 && <ParallelTools tools={tools} active={step >= 3} headerLabel="QUERYING 4 VENDORS IN PARALLEL · MPP DISCOVERY"/>}
           {step >= 4 && (
             <HowIEvaluated tokens="261" model="AUDRIC v2.0" latency="4.5s">
-              All requested items available, all deliver Saturday. Total $108 — $12 under budget. I also noticed no beverages or serving materials on the list, so I queried Woolworths: Pepsi × 6, water × 6, cups + plates for $11 — fits the remaining budget. New total $119. Party City ships same-day; Amazon Prime confirms Saturday; CakeBoss has 10am pickup; Woolworths same-day confirmed.
+              All requested items available, all deliver Saturday. Total $108 — $12 under budget. I also noticed no beverages or serving materials on the list, so I queried Walmart: Pepsi × 6, water × 6, cups + plates for $11 — fits the remaining budget. New total $119. Party City ships same-day; Amazon Prime confirms Saturday; CakeBoss has 10am pickup; Walmart same-day confirmed.
             </HowIEvaluated>
           )}
           {step >= 5 && (
             <AudricLine>
-              One thing I noticed — <strong style={{color:'var(--text)'}}>no drinks or serving items</strong> on your list. You had $12 left, so I added a Woolworths order (Pepsi, water, cups + plates) for $11. Total comes to <strong style={{color:'var(--text)'}}>$119 of $120</strong>.
+              One thing I noticed — <strong style={{color:'var(--text)'}}>no drinks or serving items</strong> on your list. You had $12 left, so I added a Walmart order (Pepsi, water, cups + plates) for $11. Total comes to <strong style={{color:'var(--text)'}}>$119 of $120</strong>.
             </AudricLine>
           )}
         </>
@@ -132,7 +132,7 @@ const Demo6 = () => {
             {vendor:'Party City (MPP)',  desc:'Balloons × 20 + streamers · ships Saturday',         amount:'$20'},
             {vendor:'Amazon (MPP)',      desc:'Fairy lights 10m + banner · Prime Saturday',          amount:'$33'},
             {vendor:'CakeBoss (MPP)',    desc:'Custom birthday cake 10-inch · pickup Sat 10am',      amount:'$55'},
-            {vendor:'Woolworths (MPP)',  desc:'Pepsi × 6, water × 6, cups + plates · same-day Sat', amount:'$11'},
+            {vendor:'Walmart (MPP)',     desc:'Pepsi × 6, water × 6, cups + plates · same-day Sat', amount:'$11'},
           ]}
           total="$119"
         />
@@ -140,7 +140,7 @@ const Demo6 = () => {
 
       {step === 8 && (
         <OrderReviewCard total="$119" onAccept={approve} onCancel={restart}
-          footer="Single PTB on Sui — Party City, Amazon, CakeBoss, Woolworths paid atomically. If any order fails, all four revert."
+          footer="Single PTB on Sui — Party City, Amazon, CakeBoss, Walmart paid atomically. If any order fails, all four revert."
         />
       )}
 
@@ -154,16 +154,16 @@ const Demo6 = () => {
       {step >= 10 && (
         <>
           <AudricLine>
-            Done. <strong style={{color:'var(--text)'}}>5 items, 4 shops, $119 USDC.</strong> Balloons and lights arrive Saturday morning. Cake pickup: 10am. Drinks and plates from Woolworths same-day. Party's sorted.
+            Done. <strong style={{color:'var(--text)'}}>5 items, 4 shops, $119 USDC.</strong> Balloons and lights arrive Saturday morning. Cake pickup: 10am. Drinks and plates from Walmart same-day. Party's sorted.
           </AudricLine>
           <div style={{display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:10}}>
             <ShopReceipt vendor="Party City" item="Balloons + streamers"       cost="$20" eta="SHIPS SAT · USPS"      delay={0}/>
             <ShopReceipt vendor="Amazon"     item="Lights + banner"            cost="$33" eta="SHIPS SAT · PRIME"     delay={90}/>
             <ShopReceipt vendor="CakeBoss"   item="Custom birthday cake"       cost="$55" eta="PICKUP SAT · 10AM"     delay={180}/>
-            <ShopReceipt vendor="Woolworths" item="Pepsi, water, cups + plates" cost="$11" eta="SHIPS SAT · SAME-DAY" delay={270}/>
+            <ShopReceipt vendor="Walmart"    item="Pepsi, water, cups + plates" cost="$11" eta="SHIPS SAT · SAME-DAY" delay={270}/>
           </div>
           <WhyOnlySui points={[
-            "4 vendors, 1 PTB. If Woolworths can't deliver same-day, all four orders revert — no partial charges, ever.",
+            "4 vendors, 1 PTB. If Walmart can't deliver same-day, all four orders revert — no partial charges, ever.",
             "USDC settles in 0.6s across all vendors. No card authorisation holds, no 2–3 day payment delays to merchants.",
             "One on-chain receipt covers the whole order — from balloons to birthday cake to beverages. Permanent, auditable, owned by you.",
           ]}/>
