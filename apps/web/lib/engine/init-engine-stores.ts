@@ -37,9 +37,11 @@
  * "wrong process injected the store" failure mode.
  */
 
-import { setDefiCacheStore } from '@t2000/engine';
+import { setDefiCacheStore, setWalletCacheStore, setFetchLock } from '@t2000/engine';
 import { env } from '@/lib/env';
 import { UpstashDefiCacheStore } from './upstash-defi-cache';
+import { UpstashWalletCacheStore } from './upstash-wallet-cache';
+import { UpstashFetchLock } from './upstash-fetch-lock';
 
 let initialized = false;
 
@@ -68,12 +70,27 @@ export function initEngineStores(): void {
   // crashing the whole process.
   if (!env.UPSTASH_REDIS_REST_URL || !env.UPSTASH_REDIS_REST_TOKEN) {
     console.warn(
-      '[init-engine-stores] UPSTASH_REDIS_REST_URL or _TOKEN missing — DeFi cache will use in-memory store (per-instance, not shared). Set both env vars to enable cross-instance SSOT.',
+      '[init-engine-stores] UPSTASH_REDIS_REST_URL or _TOKEN missing — DeFi + wallet caches will use in-memory store (per-instance, not shared) and the cross-instance fetch lock will use in-memory mode (no cross-instance coalescing). Set both env vars to enable cross-instance SSOT.',
     );
     return;
   }
 
+  // [v0.54] DeFi half — shared cache for `fetchAddressDefiPortfolio`.
   setDefiCacheStore(new UpstashDefiCacheStore());
+
+  // [PR 1 — v0.55] Wallet half — shared cache for `fetchAddressPortfolio`.
+  // Same SSOT bug class as DeFi, just on the wallet portfolio. Closes
+  // the divergence where balance_check / portfolio_analysis /
+  // transaction_history could see three different totals on one chat
+  // turn under BlockVision burst.
+  setWalletCacheStore(new UpstashWalletCacheStore());
+
+  // [PR 2 — v0.55] Cross-instance fetch lock — coalesces concurrent
+  // BlockVision fan-outs across Vercel instances. Without this, even
+  // with the shared caches, N concurrent instances all miss the cache
+  // for the same address at the same instant and all N fan out to BV.
+  // With it, only one instance is the leader; the rest poll the cache.
+  setFetchLock(new UpstashFetchLock());
 }
 
 // Side-effect — run on import. Safe because `initEngineStores` is
