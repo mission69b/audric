@@ -16,6 +16,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('@t2000/engine', () => ({
   fetchAddressPortfolio: vi.fn(),
+  fetchAddressDefiPortfolio: vi.fn(),
   fetchTokenPrices: vi.fn(),
 }));
 
@@ -27,13 +28,14 @@ vi.mock('@/lib/sui-rpc', () => ({
   getSuiRpcUrl: () => 'https://fullnode.mainnet.sui.io:443',
 }));
 
-import { fetchAddressPortfolio } from '@t2000/engine';
+import { fetchAddressPortfolio, fetchAddressDefiPortfolio } from '@t2000/engine';
 import { fetchPositions } from '@/lib/portfolio-data';
 import { getPortfolio } from '../portfolio';
 import {
   FIXTURE_ADDRESS,
   FIXTURE_BLOCKVISION_PORTFOLIO,
   FIXTURE_POSITIONS,
+  FIXTURE_DEFI,
   EXPECTED_CANONICAL,
 } from './portfolio-contract.fixture';
 
@@ -42,6 +44,7 @@ describe('portfolio contract', () => {
     vi.clearAllMocks();
     vi.mocked(fetchAddressPortfolio).mockResolvedValue(FIXTURE_BLOCKVISION_PORTFOLIO);
     vi.mocked(fetchPositions).mockResolvedValue(FIXTURE_POSITIONS);
+    vi.mocked(fetchAddressDefiPortfolio).mockResolvedValue(FIXTURE_DEFI);
   });
 
   it('canonical getPortfolio() matches the pinned EXPECTED_CANONICAL fixture', async () => {
@@ -50,6 +53,8 @@ describe('portfolio contract', () => {
     // Top-level scalar fields
     expect(portfolio.address).toBe(EXPECTED_CANONICAL.address);
     expect(portfolio.walletValueUsd).toBe(EXPECTED_CANONICAL.walletValueUsd);
+    expect(portfolio.defiValueUsd).toBe(EXPECTED_CANONICAL.defiValueUsd);
+    expect(portfolio.defiSource).toBe(EXPECTED_CANONICAL.defiSource);
     expect(portfolio.netWorthUsd).toBe(EXPECTED_CANONICAL.netWorthUsd);
     expect(portfolio.estimatedDailyYield).toBeCloseTo(EXPECTED_CANONICAL.estimatedDailyYield);
     expect(portfolio.source).toBe(EXPECTED_CANONICAL.source);
@@ -79,11 +84,37 @@ describe('portfolio contract', () => {
     expect(portfolio.walletValueUsd).toBe(100); // SUI 30 + USDC 50 + USDT 20
   });
 
-  it('netWorthUsd accounts for both wallet value AND outstanding NAVI debt', async () => {
+  it('netWorthUsd accounts for wallet + savings + pendingRewards + DeFi - debt', async () => {
     const portfolio = await getPortfolio(FIXTURE_ADDRESS);
+    // Pin the canonical formula. Mirrors `balance_check.total` in
+    // `@t2000/engine`'s `tools/balance.ts`. If you change the
+    // formula in either place you MUST change the other in lockstep
+    // — the SSOT only buys us anything if both adapters compute
+    // identically.
     expect(portfolio.netWorthUsd).toBe(
-      portfolio.walletValueUsd + portfolio.positions.savings - portfolio.positions.borrows,
+      portfolio.walletValueUsd
+      + portfolio.positions.savings
+      + portfolio.positions.pendingRewards
+      + portfolio.defiValueUsd
+      - portfolio.positions.borrows,
     );
+  });
+
+  it('netWorthUsd includes DeFi (regression: timeline canvas was missing $7,520 Bluefin/Suilend value for an external wallet)', async () => {
+    const portfolio = await getPortfolio(FIXTURE_ADDRESS);
+    // Pre-fix: 100 + 200 + 0.5 - 25 = 275.5 (DeFi silently dropped).
+    // Post-fix: 100 + 200 + 0.5 + 50 - 25 = 325.5.
+    expect(portfolio.netWorthUsd).toBe(325.5);
+    expect(portfolio.netWorthUsd - portfolio.defiValueUsd).toBe(275.5);
+  });
+
+  it('defi degrades to zero with source="degraded" when fetcher throws', async () => {
+    vi.mocked(fetchAddressDefiPortfolio).mockRejectedValueOnce(new Error('blockvision down'));
+    const portfolio = await getPortfolio(FIXTURE_ADDRESS);
+    expect(portfolio.defiValueUsd).toBe(0);
+    expect(portfolio.defiSource).toBe('degraded');
+    // Net worth still computes — DeFi just contributes 0.
+    expect(portfolio.netWorthUsd).toBe(275.5);
   });
 
   it('walletAllocations aggregates by symbol, not coin type', async () => {

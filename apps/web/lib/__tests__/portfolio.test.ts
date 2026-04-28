@@ -2,6 +2,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('@t2000/engine', () => ({
   fetchAddressPortfolio: vi.fn(),
+  fetchAddressDefiPortfolio: vi.fn().mockResolvedValue({
+    totalUsd: 0,
+    perProtocol: {},
+    pricedAt: Date.now(),
+    source: 'degraded',
+  }),
   fetchTokenPrices: vi.fn(),
 }));
 
@@ -13,9 +19,22 @@ vi.mock('@/lib/sui-rpc', () => ({
   getSuiRpcUrl: () => 'https://fullnode.mainnet.sui.io:443',
 }));
 
-import { fetchAddressPortfolio, fetchTokenPrices } from '@t2000/engine';
+import { fetchAddressPortfolio, fetchAddressDefiPortfolio, fetchTokenPrices } from '@t2000/engine';
 import { fetchPositions } from '@/lib/portfolio-data';
 import { getPortfolio, getWalletSnapshot, getTokenPrices } from '../portfolio';
+
+// Default DeFi mock for every test in this file. Tests that care about
+// DeFi behavior override per-case via `mockResolvedValueOnce` /
+// `mockRejectedValueOnce`. Without this, `vi.clearAllMocks()` in the
+// nested `beforeEach`s strips the factory-level default and the mock
+// returns `undefined`, crashing `getPortfolio` when it tries to read
+// `defi.totalUsd` on the resolved value.
+const defaultDefiSummary = {
+  totalUsd: 0,
+  perProtocol: {},
+  pricedAt: Date.now(),
+  source: 'degraded' as const,
+};
 
 const SUI_TYPE = '0x2::sui::SUI';
 const USDC_TYPE = '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC';
@@ -23,6 +42,7 @@ const USDC_TYPE = '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f
 describe('getPortfolio', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(fetchAddressDefiPortfolio).mockResolvedValue(defaultDefiSummary);
   });
 
   it('combines BlockVision wallet + protocol positions into one canonical shape', async () => {

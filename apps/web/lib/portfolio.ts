@@ -10,7 +10,14 @@
 // BlockVision (priced wallet) + the protocol registry (NAVI positions).
 // ---------------------------------------------------------------------------
 
-import { fetchAddressPortfolio, fetchTokenPrices, type AddressPortfolio, type PortfolioCoin } from '@t2000/engine';
+import {
+  fetchAddressPortfolio,
+  fetchAddressDefiPortfolio,
+  fetchTokenPrices,
+  type AddressPortfolio,
+  type PortfolioCoin,
+  type DefiSummary,
+} from '@t2000/engine';
 import {
   fetchPositions,
   type PositionSummary,
@@ -47,7 +54,32 @@ export interface Portfolio {
   walletAllocations: Record<string, number>;
   /** Lending positions (NAVI). */
   positions: PositionSummary;
-  /** `walletValueUsd + positions.savings - positions.borrows`. */
+  /**
+   * Net USD value of all aggregated DeFi positions outside NAVI
+   * (Bluefin, Suilend, Cetus, Aftermath, Volo, Walrus). Sourced from
+   * BlockVision's per-protocol DeFi endpoints; mirrors what
+   * `balance_check` reports as the "DeFi" line. Pre-DeFi-integration
+   * (April 2026) `getPortfolio` omitted this and `netWorthUsd` was
+   * silently lower than `balance_check.total` — the portfolio-history
+   * canvas would render $X while balance_check showed $X + DeFi for
+   * the same wallet. The bug surfaced for an external wallet with a
+   * $7,520 Bluefin/Suilend position; the timeline showed $29,672 while
+   * `balance_check` correctly returned $37,192.
+   */
+  defiValueUsd: number;
+  /**
+   * Source of the DeFi read. `blockvision` = all protocols responded,
+   * `partial` = some failed (value may under-count), `degraded` = no
+   * API key or every protocol failed. Surfaces so the UI / LLM can
+   * caveat DeFi appropriately when partial.
+   */
+  defiSource: DefiSummary['source'];
+  /**
+   * `walletValueUsd + positions.savings + positions.pendingRewards
+   *  + defiValueUsd - positions.borrows`. Mirrors balance_check's
+   * canonical total formula exactly so timeline / balance_check /
+   * portfolio cards never disagree on the same wallet.
+   */
   netWorthUsd: number;
   /** `positions.savings * positions.savingsRate / 365`, capped at 0. */
   estimatedDailyYield: number;
@@ -97,9 +129,14 @@ export interface WalletSnapshot {
  * so cron loops and prompt seeding don't crash on one bad RPC call.
  */
 export async function getPortfolio(address: string): Promise<Portfolio> {
-  const [walletResult, positionsResult] = await Promise.allSettled([
+  // Three independent reads in parallel. Each degrades to an empty/zero
+  // shape on failure rather than throwing, so the canonical fetcher
+  // never crashes a caller because one upstream is down. balance_check
+  // uses the same allSettled-then-zero pattern.
+  const [walletResult, positionsResult, defiResult] = await Promise.allSettled([
     fetchAddressPortfolio(address, BLOCKVISION_API_KEY, getSuiRpcUrl()),
     fetchPositions(address),
+    fetchAddressDefiPortfolio(address, BLOCKVISION_API_KEY),
   ]);
 
   const walletPortfolio: AddressPortfolio = walletResult.status === 'fulfilled'
@@ -119,11 +156,18 @@ export async function getPortfolio(address: string): Promise<Portfolio> {
         borrowsDetail: [],
       };
 
+  const defi: DefiSummary = defiResult.status === 'fulfilled'
+    ? defiResult.value
+    : { totalUsd: 0, perProtocol: {}, pricedAt: Date.now(), source: 'degraded' };
+
   if (walletResult.status === 'rejected') {
     console.error(`[portfolio] wallet fetch failed for ${address}:`, walletResult.reason);
   }
   if (positionsResult.status === 'rejected') {
     console.error(`[portfolio] positions fetch failed for ${address}:`, positionsResult.reason);
+  }
+  if (defiResult.status === 'rejected') {
+    console.error(`[portfolio] defi fetch failed for ${address}:`, defiResult.reason);
   }
 
   // Per-symbol allocations map for backwards-compat with consumers that
@@ -143,7 +187,20 @@ export async function getPortfolio(address: string): Promise<Portfolio> {
     walletAllocations[coin.symbol] = (walletAllocations[coin.symbol] ?? 0) + amount;
   }
 
-  const netWorthUsd = walletPortfolio.totalUsd + positions.savings - positions.borrows;
+  // Canonical net-worth formula. Mirrors `balance_check`'s `total`:
+  //   total = availableUsd + savings + gasReserveUsd + pendingRewardsUsd + defi.totalUsd - debt
+  // where `availableUsd + gasReserveUsd` is the priced wallet sum
+  // (= `walletPortfolio.totalUsd` here). Keeping these two formulas
+  // byte-for-byte identical is the whole point of the SSOT — drift
+  // means the timeline canvas and balance_check show different totals
+  // for the same wallet on the same second, which is exactly the
+  // class of bug the SSOT was introduced to eliminate.
+  const netWorthUsd =
+    walletPortfolio.totalUsd
+    + positions.savings
+    + positions.pendingRewards
+    + defi.totalUsd
+    - positions.borrows;
   const estimatedDailyYield = positions.savings > 0 && positions.savingsRate > 0
     ? Math.max(0, (positions.savings * positions.savingsRate) / 365)
     : 0;
@@ -154,6 +211,8 @@ export async function getPortfolio(address: string): Promise<Portfolio> {
     walletValueUsd: walletPortfolio.totalUsd,
     walletAllocations,
     positions,
+    defiValueUsd: defi.totalUsd,
+    defiSource: defi.source,
     netWorthUsd,
     estimatedDailyYield,
     source: walletPortfolio.source,
@@ -201,4 +260,11 @@ export async function getTokenPrices(
 }
 
 // Re-export the underlying types so adapters can use one import path.
-export type { PortfolioCoin, AddressPortfolio, PositionSummary, SupplyEntry, BorrowEntry };
+export type {
+  PortfolioCoin,
+  AddressPortfolio,
+  PositionSummary,
+  SupplyEntry,
+  BorrowEntry,
+  DefiSummary,
+};

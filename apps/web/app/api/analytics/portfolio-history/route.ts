@@ -54,12 +54,23 @@ export async function GET(request: NextRequest) {
         })
       : [];
 
+    // Note: historical PortfolioSnapshot rows don't carry a defi
+    // column yet (the daily cron predates the SSOT DeFi inclusion),
+    // so per-day DeFi is `0` for stored points. The `livePoint`
+    // overlay below ALWAYS carries the real DeFi value, which is
+    // what users see for the rightmost point and for external
+    // wallets (which only ever have the live point). The cron
+    // writer will start persisting DeFi as a follow-up — until it
+    // does, expect a small "step up" on the rightmost point for
+    // wallets with non-zero DeFi positions. That step is the
+    // truth: prior days' netWorth WAS undercounted, today's isn't.
     const mapped = snapshots.map((s) => ({
       date: s.date.toISOString().slice(0, 10),
       netWorthUsd: s.netWorthUsd,
       walletValueUsd: s.walletValueUsd,
       savingsValueUsd: s.savingsValueUsd,
       debtValueUsd: s.debtValueUsd,
+      defiValueUsd: 0,
       yieldEarnedUsd: s.yieldEarnedUsd,
       healthFactor: s.healthFactor,
     }));
@@ -87,10 +98,19 @@ export async function GET(request: NextRequest) {
       const portfolio = await getPortfolio(address);
       livePoint = {
         date: todayStr,
+        // `getPortfolio.netWorthUsd` is the canonical SSOT total —
+        // wallet + savings + pendingRewards + DeFi - debt. Mirrors
+        // `balance_check.total` byte-for-byte. Before the SSOT was
+        // taught about DeFi (Apr 28, 2026) this number was silently
+        // missing the BlockVision DeFi leg, so the timeline canvas
+        // showed $29,672 for an external wallet while balance_check
+        // (which always queried DeFi separately) returned $37,192
+        // for the same wallet on the same second.
         netWorthUsd: portfolio.netWorthUsd,
         walletValueUsd: portfolio.walletValueUsd,
         savingsValueUsd: portfolio.positions.savings,
         debtValueUsd: portfolio.positions.borrows,
+        defiValueUsd: portfolio.defiValueUsd,
         yieldEarnedUsd: 0,
         healthFactor: portfolio.positions.healthFactor,
       };

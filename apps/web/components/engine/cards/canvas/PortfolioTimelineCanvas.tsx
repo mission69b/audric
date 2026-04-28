@@ -26,6 +26,17 @@ interface Snapshot {
   walletValueUsd: number;
   savingsValueUsd: number;
   debtValueUsd: number;
+  /**
+   * Net USD value of all aggregated DeFi positions outside NAVI
+   * (Bluefin / Suilend / Cetus / Aftermath / Volo / Walrus). Optional
+   * for backwards-compat with engines/APIs that don't emit it (treated
+   * as 0). Historical snapshots stored before the SSOT learned about
+   * DeFi (Apr 28, 2026) are always 0; the rightmost "live" point
+   * carries the real value via the API's overlay. See the
+   * `[portfolio-history]` route for the rationale on why we don't
+   * back-fill historical rows.
+   */
+  defiValueUsd?: number;
   yieldEarnedUsd: number;
   healthFactor: number | null;
 }
@@ -191,6 +202,12 @@ export function PortfolioTimelineCanvas({ data, onAction }: Props) {
               <span className="text-fg-muted">Savings</span>
               <span className="text-success-solid">${fmtUsd(latest.savingsValueUsd)}</span>
             </div>
+            {(latest.defiValueUsd ?? 0) > 0 && (
+              <div className="flex justify-between">
+                <span className="text-fg-muted">DeFi</span>
+                <span className="text-fg-primary">${fmtUsd(latest.defiValueUsd ?? 0)}</span>
+              </div>
+            )}
             {latest.debtValueUsd > 0 && (
               <div className="flex justify-between">
                 <span className="text-fg-muted">Debt</span>
@@ -283,6 +300,12 @@ export function PortfolioTimelineCanvas({ data, onAction }: Props) {
             <span className="text-fg-muted">Savings</span>
             <span className="text-success-solid">${fmtUsd(latest.savingsValueUsd)}</span>
           </div>
+          {(latest.defiValueUsd ?? 0) > 0 && (
+            <div className="flex justify-between">
+              <span className="text-fg-muted">DeFi</span>
+              <span className="text-fg-primary">${fmtUsd(latest.defiValueUsd ?? 0)}</span>
+            </div>
+          )}
           {latest.debtValueUsd > 0 && (
             <div className="flex justify-between">
               <span className="text-fg-muted">Debt</span>

@@ -6,7 +6,7 @@
 // here and every adapter must update in lockstep.
 // ---------------------------------------------------------------------------
 
-import type { AddressPortfolio } from '@t2000/engine';
+import type { AddressPortfolio, DefiSummary } from '@t2000/engine';
 import type { Portfolio, PositionSummary } from '@/lib/portfolio';
 
 export const FIXTURE_ADDRESS = '0xc0ffeeC0FFEEc0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffee0001';
@@ -59,6 +59,21 @@ export const FIXTURE_POSITIONS: PositionSummary = {
 };
 
 /**
+ * BlockVision DeFi positions outside NAVI (Bluefin, Suilend, Cetus,
+ * Aftermath, Volo, Walrus). Pinned at $50 here so the contract test
+ * verifies that the canonical formula counts DeFi in net worth — the
+ * regression that the timeline canvas missed and that landed an
+ * external wallet at $29,672 instead of the live $37,192 reported by
+ * `balance_check`.
+ */
+export const FIXTURE_DEFI: DefiSummary = {
+  totalUsd: 50,
+  perProtocol: { bluefin: 30, suilend: 20 },
+  pricedAt: FIXTURE_BLOCKVISION_PORTFOLIO.pricedAt,
+  source: 'blockvision',
+};
+
+/**
  * The expected canonical Portfolio for the fixtures above. Every
  * adapter that surfaces portfolio data MUST produce these numbers
  * exactly when fed the fixtures.
@@ -73,7 +88,12 @@ export const EXPECTED_CANONICAL: Portfolio = {
     USDT: 20,
   },
   positions: FIXTURE_POSITIONS,
-  netWorthUsd: 275, // 100 + 200 - 25
+  defiValueUsd: 50,
+  defiSource: 'blockvision',
+  // 100 (wallet) + 200 (savings) + 0.5 (rewards) + 50 (defi) - 25 (debt) = 325.5
+  // This matches `balance_check.total = availableUsd + savings + gasReserve
+  // + pendingRewards + defi - debt` byte-for-byte.
+  netWorthUsd: 325.5,
   estimatedDailyYield: (200 * 0.05) / 365,
   source: 'blockvision',
   pricedAt: FIXTURE_BLOCKVISION_PORTFOLIO.pricedAt,
