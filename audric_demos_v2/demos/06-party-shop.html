@@ -16,33 +16,34 @@
 const { useState, useEffect } = React;
 
 const PROMPT = "Buy everything for my house party this Saturday — balloons, fairy lights, a birthday cake, and a banner. Budget $120.";
-const THOUGHT = "5 items across 3 vendors, all with MPP endpoints. I'll run parallel price + availability queries, confirm Saturday delivery for each, then compile a cart. If the total is under $120, I'll generate one Payment Stream to cover all three vendors atomically — one signature, one USDC transaction.";
+const THOUGHT = "4 items across 3 vendors, all with MPP endpoints. I'll also check for missing essentials — no beverages or serving items on this list. Running parallel price + availability queries, confirming Saturday delivery for each, then compiling a cart. If the total is under $120, I'll generate one Payment Stream to cover all vendors atomically — one signature, one USDC transaction.";
 
 const CART = [
-  { name: 'Balloons × 20 + streamers',    vendor: 'Party City', price: '$20', detail: 'MPP · same-day · ships Sat' },
-  { name: 'Fairy lights 10m (warm white)', vendor: 'Amazon',     price: '$24', detail: 'MPP · Prime · ships Sat' },
-  { name: 'Custom cake, 10-inch',          vendor: 'CakeBoss',   price: '$55', detail: 'MPP · pickup Sat 10am' },
-  { name: '"Happy Birthday" banner',       vendor: 'Amazon',     price: '$9',  detail: 'MPP · Prime · ships Sat' },
+  { name: 'Balloons × 20 + streamers',         vendor: 'Party City',  price: '$20', detail: 'MPP · same-day · ships Sat' },
+  { name: 'Fairy lights 10m (warm white)',      vendor: 'Amazon',      price: '$24', detail: 'MPP · Prime · ships Sat' },
+  { name: 'Custom cake, 10-inch',               vendor: 'CakeBoss',    price: '$55', detail: 'MPP · pickup Sat 10am' },
+  { name: '"Happy Birthday" banner',            vendor: 'Amazon',      price: '$9',  detail: 'MPP · Prime · ships Sat' },
+  { name: 'Pepsi × 6, water × 6, cups + plates', vendor: 'Woolworths', price: '$11', detail: 'MPP · same-day · ships Sat', proactive: true },
 ];
 
 const Demo6 = () => {
   const [step, setStep] = useState(0);
   const typed = useTyped(PROMPT, step === 0, 20);
 
-  // steps: 0 type · 1 sent · 2 thinking · 3 querying · 4 how-evaluated · 5 cart+line · 6 ptb · 7 permission · 8 executing · 9 done
+  // steps: 0 type · 1 sent · 2 thinking · 3 querying · 4 how-evaluated · 5 proactive-insight · 6 cart+line · 7 ptb · 8 permission · 9 executing · 10 done
   useEffect(() => {
-    const delays = { 0: PROMPT.length * 20 + 500, 1: 700, 2: 1800, 3: 4200, 4: 800, 5: 1000, 6: 900 };
+    const delays = { 0: PROMPT.length * 20 + 500, 1: 700, 2: 1800, 3: 4800, 4: 800, 5: 1400, 6: 1000, 7: 900 };
     const d = delays[step]; if (d == null) return;
     const t = setTimeout(() => setStep(s => s + 1), d);
     return () => clearTimeout(t);
   }, [step]);
 
-  const approve = () => { setStep(8); setTimeout(() => setStep(9), 1400); };
+  const approve = () => { setStep(9); setTimeout(() => setStep(10), 1400); };
   const restart = () => setStep(0);
 
   // Auto-confirm order after 3s (mirrors demo 03/04 review pattern)
   useEffect(() => {
-    if (step === 7) { const t = setTimeout(approve, 3000); return () => clearTimeout(t); }
+    if (step === 8) { const t = setTimeout(approve, 3000); return () => clearTimeout(t); }
   }, [step]);
 
   const tools = [
@@ -50,14 +51,15 @@ const Demo6 = () => {
     { glyph: '💡', label: 'AMAZON MPP',       finishAt: 1500, result: 'fairy lights 10m · $24 · Prime Sat' },
     { glyph: '🎂', label: 'CAKEBOSS MPP',     finishAt: 2400, result: 'custom cake 10-inch · $55 · pickup Sat 10am' },
     { glyph: '🎉', label: 'AMAZON MPP',       finishAt: 3000, result: '"Happy Birthday" banner · $9 · Prime Sat' },
-    { glyph: '📦', label: 'DELIVERY CONFIRM', finishAt: 3900, result: 'all 3 vendors confirm Saturday ✓' },
+    { glyph: '🛒', label: 'WOOLWORTHS MPP',   finishAt: 3600, result: 'Pepsi × 6, water × 6, cups + plates · $11 · same-day Sat' },
+    { glyph: '📦', label: 'DELIVERY CONFIRM', finishAt: 4500, result: 'all 4 vendors confirm Saturday ✓' },
   ];
 
   return (
     <MainShell
       hero={step === 0}
-      balance={step >= 9 ? '$1,892' : '$2,000'}
-      balanceLabel={step >= 9 ? 'AVAILABLE $1,892 · EARNING $11' : 'AVAILABLE $2,000 · EARNING $11'}
+      balance={step >= 10 ? '$1,881' : '$2,000'}
+      balanceLabel={step >= 10 ? 'AVAILABLE $1,881 · EARNING $11' : 'AVAILABLE $2,000 · EARNING $11'}
       name="felix"
       composer={<Composer value={step === 0 ? typed : ''}/>}
       ribbon={<DemoRibbon/>}
@@ -69,26 +71,35 @@ const Demo6 = () => {
         <>
           <ThinkingHeader done={step >= 3}/>
           <ReasoningStream text={THOUGHT} active={step >= 2} done={step >= 3}/>
-          {step >= 3 && <ParallelTools tools={tools} active={step >= 3} headerLabel="QUERYING 3 VENDORS IN PARALLEL · MPP DISCOVERY"/>}
+          {step >= 3 && <ParallelTools tools={tools} active={step >= 3} headerLabel="QUERYING 4 VENDORS IN PARALLEL · MPP DISCOVERY"/>}
           {step >= 4 && (
-            <HowIEvaluated tokens="224" model="AUDRIC v2.0" latency="3.9s">
-              All 5 items available, all deliver Saturday. Total $108 — $12 under your $120 budget. Party City ships same-day; Amazon Prime confirms Saturday; CakeBoss has a Saturday 10am pickup slot open.
+            <HowIEvaluated tokens="261" model="AUDRIC v2.0" latency="4.5s">
+              All requested items available, all deliver Saturday. Total $108 — $12 under budget. I also noticed no beverages or serving materials on the list, so I queried Woolworths: Pepsi × 6, water × 6, cups + plates for $11 — fits the remaining budget. New total $119. Party City ships same-day; Amazon Prime confirms Saturday; CakeBoss has 10am pickup; Woolworths same-day confirmed.
             </HowIEvaluated>
+          )}
+          {step >= 5 && (
+            <AudricLine>
+              One thing I noticed — <strong style={{color:'var(--text)'}}>no drinks or serving items</strong> on your list. You had $12 left, so I added a Woolworths order (Pepsi, water, cups + plates) for $11. Total comes to <strong style={{color:'var(--text)'}}>$119 of $120</strong>.
+            </AudricLine>
           )}
         </>
       )}
 
-      {step >= 5 && (
-        <ToolCard label="PARTY CART · READY" status="done" tokens="0.4s">
+      {step >= 6 && (
+        <ToolCard label="PARTY CART · READY" status="done" tokens="0.5s">
           <div>
             {CART.map((item, i) => (
               <div key={i} style={{
                 display:'flex', alignItems:'center', gap:12,
                 padding:'12px 18px',
-                borderBottom: i < CART.length - 1 ? '1px solid var(--line)' : 'none'
+                borderBottom: i < CART.length - 1 ? '1px solid var(--line)' : 'none',
+                background: item.proactive ? 'rgba(40,108,232,0.04)' : 'transparent'
               }}>
                 <div style={{flex:1, minWidth:0}}>
-                  <div style={{fontSize:14, color:'var(--text)'}}>{item.name}</div>
+                  <div style={{display:'flex', alignItems:'center', gap:8}}>
+                    <span style={{fontSize:14, color:'var(--text)'}}>{item.name}</span>
+                    {item.proactive && <span className="mono" style={{fontSize:8, color:'var(--blue)', letterSpacing:'.1em', background:'var(--info-bg)', padding:'1px 6px', borderRadius:2}}>✦ ADDED BY AUDRIC</span>}
+                  </div>
                   <div className="mono" style={{fontSize:9, color:'var(--text-3)', marginTop:3, letterSpacing:'.1em'}}>{item.vendor} · {item.detail}</div>
                 </div>
                 <span className="mono" style={{fontSize:13, color:'var(--text)', flexShrink:0}}>{item.price}</span>
@@ -99,60 +110,62 @@ const Demo6 = () => {
               padding:'12px 18px', background:'var(--panel-2)',
               borderTop:'2px solid var(--line-2)'
             }}>
-              <span className="mono" style={{fontSize:9, color:'var(--text-3)', letterSpacing:'.1em'}}>4 ITEMS · 3 VENDORS · SAT DELIVERY</span>
+              <span className="mono" style={{fontSize:9, color:'var(--text-3)', letterSpacing:'.1em'}}>5 ITEMS · 4 VENDORS · SAT DELIVERY</span>
               <div style={{display:'flex', alignItems:'baseline', gap:8}}>
-                <span className="mono" style={{fontSize:9, color:'var(--green)', letterSpacing:'.1em'}}>$12 UNDER BUDGET</span>
-                <span className="mono" style={{fontSize:16, color:'var(--text)'}}>$108</span>
+                <span className="mono" style={{fontSize:9, color:'var(--green)', letterSpacing:'.1em'}}>$1 UNDER BUDGET</span>
+                <span className="mono" style={{fontSize:16, color:'var(--text)'}}>$119</span>
               </div>
             </div>
           </div>
         </ToolCard>
       )}
 
-      {step >= 5 && (
+      {step >= 6 && (
         <AudricLine>
-          Found everything under budget — <strong style={{color:'var(--text)'}}>$108 of $120</strong>. All 3 vendors deliver Saturday. One signature covers all.
+          Found everything under budget — <strong style={{color:'var(--text)'}}>$119 of $120</strong>. All 4 vendors deliver Saturday. One signature covers all.
         </AudricLine>
       )}
 
-      {step >= 6 && (
+      {step >= 7 && (
         <PtbCard
           calls={[
-            {vendor:'Party City (MPP)', desc:'Balloons × 20 + streamers · ships Saturday',      amount:'$20'},
-            {vendor:'Amazon (MPP)',     desc:'Fairy lights 10m + banner · Prime Saturday',        amount:'$33'},
-            {vendor:'CakeBoss (MPP)',   desc:'Custom birthday cake 10-inch · pickup Sat 10am',    amount:'$55'},
+            {vendor:'Party City (MPP)',  desc:'Balloons × 20 + streamers · ships Saturday',         amount:'$20'},
+            {vendor:'Amazon (MPP)',      desc:'Fairy lights 10m + banner · Prime Saturday',          amount:'$33'},
+            {vendor:'CakeBoss (MPP)',    desc:'Custom birthday cake 10-inch · pickup Sat 10am',      amount:'$55'},
+            {vendor:'Woolworths (MPP)',  desc:'Pepsi × 6, water × 6, cups + plates · same-day Sat', amount:'$11'},
           ]}
-          total="$108"
-        />
-      )}
-
-      {step === 7 && (
-        <OrderReviewCard total="$108" onAccept={approve} onCancel={restart}
-          footer="Single PTB on Sui — Party City, Amazon, CakeBoss paid atomically. If any order fails, all three revert."
+          total="$119"
         />
       )}
 
       {step === 8 && (
+        <OrderReviewCard total="$119" onAccept={approve} onCancel={restart}
+          footer="Single PTB on Sui — Party City, Amazon, CakeBoss, Woolworths paid atomically. If any order fails, all four revert."
+        />
+      )}
+
+      {step === 9 && (
         <div className="appear" style={{display:'flex',alignItems:'center',gap:10,fontSize:12,color:'var(--blue)',padding:'8px 4px'}}>
           <span className="spin" style={{display:'inline-block'}}><Icon name="spinner" size={14}/></span>
-          <span className="mono pulse" style={{letterSpacing:'.1em'}}>EXECUTING PAYMENT STREAM · 1 PTB · 3 CALLS…</span>
+          <span className="mono pulse" style={{letterSpacing:'.1em'}}>EXECUTING PAYMENT STREAM · 1 PTB · 4 CALLS…</span>
         </div>
       )}
 
-      {step >= 9 && (
+      {step >= 10 && (
         <>
           <AudricLine>
-            Done. <strong style={{color:'var(--text)'}}>5 items, 3 shops, $108 USDC.</strong> Balloons and lights arrive Saturday morning. Cake pickup: 10am. Party's sorted.
+            Done. <strong style={{color:'var(--text)'}}>5 items, 4 shops, $119 USDC.</strong> Balloons and lights arrive Saturday morning. Cake pickup: 10am. Drinks and plates from Woolworths same-day. Party's sorted.
           </AudricLine>
-          <div className="compare-3" style={{display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:10}}>
-            <ShopReceipt vendor="Party City" item="Balloons + streamers" cost="$20" eta="SHIPS SAT · USPS"  delay={0}/>
-            <ShopReceipt vendor="Amazon"     item="Lights + banner"      cost="$33" eta="SHIPS SAT · PRIME" delay={90}/>
-            <ShopReceipt vendor="CakeBoss"   item="Custom birthday cake" cost="$55" eta="PICKUP SAT · 10AM" delay={180}/>
+          <div style={{display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:10}}>
+            <ShopReceipt vendor="Party City" item="Balloons + streamers"       cost="$20" eta="SHIPS SAT · USPS"      delay={0}/>
+            <ShopReceipt vendor="Amazon"     item="Lights + banner"            cost="$33" eta="SHIPS SAT · PRIME"     delay={90}/>
+            <ShopReceipt vendor="CakeBoss"   item="Custom birthday cake"       cost="$55" eta="PICKUP SAT · 10AM"     delay={180}/>
+            <ShopReceipt vendor="Woolworths" item="Pepsi, water, cups + plates" cost="$11" eta="SHIPS SAT · SAME-DAY" delay={270}/>
           </div>
           <WhyOnlySui points={[
-            "3 vendors, 1 PTB. If CakeBoss can't deliver Saturday, Party City and Amazon revert too. No partial charges, ever.",
+            "4 vendors, 1 PTB. If Woolworths can't deliver same-day, all four orders revert — no partial charges, ever.",
             "USDC settles in 0.6s across all vendors. No card authorisation holds, no 2–3 day payment delays to merchants.",
-            "One on-chain receipt covers the whole order. Permanent, auditable, owned by you — not a merchant's database entry.",
+            "One on-chain receipt covers the whole order — from balloons to birthday cake to beverages. Permanent, auditable, owned by you.",
           ]}/>
         </>
       )}
