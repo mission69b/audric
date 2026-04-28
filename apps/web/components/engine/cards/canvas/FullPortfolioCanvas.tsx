@@ -31,15 +31,27 @@ interface CanonicalPortfolio {
    */
   defiValueUsd: number;
   /**
-   * [Bug — 2026-04-28] Source of the DeFi read. `blockvision` = all 9
-   * protocols responded fresh, `partial` = some failed (under-counts),
-   * `degraded` = no API key or every protocol failed (under-counts).
-   * Surfaces so we can render a "DeFi —" placeholder with caveat copy
-   * when degraded, matching the BalanceCard convention. Pre-fix this
-   * route stripped the field, so even a healthy DeFi value never made
-   * it to the canvas (route layer ate the data the SSOT produced).
+   * [Bug — 2026-04-28] Source of the DeFi read.
+   *   - `blockvision`   — all 9 protocols responded fresh.
+   *   - `partial`       — some failed; total under-counts.
+   *   - `partial-stale` — [v0.54] live fetch failed but the engine cache
+   *                        had a recent positive value (≤30 min). The
+   *                        number is real, just not freshly verified —
+   *                        canvas renders it with "cached Nm ago" so the
+   *                        provenance is honest.
+   *   - `degraded`      — no API key or every protocol failed AND no
+   *                        sticky fallback exists; total = 0.
+   * Pre-fix this route stripped the field, so even a healthy DeFi value
+   * never made it to the canvas (route layer ate the data the SSOT
+   * produced).
    */
-  defiSource: 'blockvision' | 'partial' | 'degraded';
+  defiSource: 'blockvision' | 'partial' | 'partial-stale' | 'degraded';
+  /**
+   * [v0.54] Wall-clock ms when the underlying DeFi data was priced.
+   * Renders "cached Nm ago" for the partial-stale source so the user
+   * can tell sticky data from a fresh read.
+   */
+  defiPricedAt?: number;
   positions: {
     savings: number;
     borrows: number;
@@ -133,6 +145,7 @@ export function FullPortfolioCanvas({ data, onAction }: Props) {
                 // crashing the canvas.
                 defiValueUsd: d.defiValueUsd ?? 0,
                 defiSource: d.defiSource ?? 'degraded',
+                defiPricedAt: typeof d.defiPricedAt === 'number' ? d.defiPricedAt : undefined,
                 positions: {
                   savings: d.positions?.savings ?? 0,
                   borrows: d.positions?.borrows ?? 0,
@@ -201,10 +214,24 @@ export function FullPortfolioCanvas({ data, onAction }: Props) {
     : selectedWallet ? 0
     : livePortfolio ? livePortfolio.defiValueUsd
     : 0;
-  const defiSource = isAllTab || selectedWallet
-    ? 'degraded' as const
-    : livePortfolio?.defiSource ?? 'degraded';
-  const defiKnown = !isAllTab && !selectedWallet && livePortfolio?.defiSource === 'blockvision';
+  const defiSource: 'blockvision' | 'partial' | 'partial-stale' | 'degraded' =
+    isAllTab || selectedWallet
+      ? 'degraded'
+      : livePortfolio?.defiSource ?? 'degraded';
+  const defiPricedAt = !isAllTab && !selectedWallet ? livePortfolio?.defiPricedAt : undefined;
+  // [v0.54] `defiKnown` widened: a `partial-stale` entry has a real
+  // positive value backed by the sticky cache, so we want to RENDER
+  // the number (not the "—" placeholder). The accompanying caveat
+  // below distinguishes "fresh" from "cached Nm ago" for the user.
+  // Pre-v0.54 only `blockvision` was treated as renderable, which
+  // meant a 30-second BlockVision burst hid $7,500 of DeFi from the
+  // canvas while `balance_check` (cached fresh) showed it.
+  const defiKnown =
+    !isAllTab &&
+    !selectedWallet &&
+    (livePortfolio?.defiSource === 'blockvision' ||
+      livePortfolio?.defiSource === 'partial-stale');
+  const defiIsStale = defiSource === 'partial-stale';
   const netWorth = isAllTab ? multiData!.aggregated.netWorthUsd
     : selectedWallet ? selectedWallet.netWorth
     : livePortfolio ? livePortfolio.netWorthUsd
@@ -343,7 +370,14 @@ export function FullPortfolioCanvas({ data, onAction }: Props) {
         {defiKnown && defi > 0 && (
           <div className="flex justify-between">
             <span className="text-fg-muted">DeFi</span>
-            <span className="text-fg-primary">${fmtUsd(defi)}</span>
+            {defiIsStale && defiPricedAt ? (
+              <span className="text-warning-solid">
+                ${fmtUsd(defi)} ·{' '}
+                {Math.max(0, Math.round((Date.now() - defiPricedAt) / 60_000))}m
+              </span>
+            ) : (
+              <span className="text-fg-primary">${fmtUsd(defi)}</span>
+            )}
           </div>
         )}
         {!defiKnown && !isAllTab && !selectedWallet && (
@@ -356,6 +390,21 @@ export function FullPortfolioCanvas({ data, onAction }: Props) {
           <div className="flex justify-between">
             <span className="text-fg-muted">Debt</span>
             <span className="text-error-solid">-${fmtUsd(debt)}</span>
+          </div>
+        )}
+        {/*
+          Caveat copy. Three flavors:
+            - `partial-stale`: number IS rendered above; explain it's
+              the cached value (live fetch failed). Net worth still
+              includes the cached DeFi total, so don't say "may
+              under-count" — it's the most accurate number we have.
+            - `partial`: live fetch returned partial-zero with no
+              sticky fallback; net worth genuinely under-counts.
+            - `degraded`: every protocol failed; net worth excludes DeFi.
+        */}
+        {!isAllTab && !selectedWallet && defiIsStale && defiPricedAt && (
+          <div className="pt-1 text-[10px] text-warning-solid leading-snug">
+            DeFi cached {Math.max(0, Math.round((Date.now() - defiPricedAt) / 60_000))}m ago — live fetch failed, showing last known value.
           </div>
         )}
         {!defiKnown && !isAllTab && !selectedWallet && (

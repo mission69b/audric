@@ -13,23 +13,28 @@ interface BalanceData {
   defiByProtocol?: Record<string, number>;
   /**
    * [engine v0.50.3] DeFi fetch state:
-   *   - 'blockvision' → all 9 protocols responded successfully
-   *   - 'partial'     → at least one protocol failed; total may under-count
-   *   - 'degraded'    → no API key OR every protocol failed; total UNKNOWN, not zero
+   *   - 'blockvision'    → all 9 protocols responded successfully
+   *   - 'partial'        → at least one protocol failed; total may under-count
+   *   - 'partial-stale'  → [v0.54] fresh fetch failed; serving last-known-good
+   *                        positive value from the sticky cache (≤30min old).
+   *                        Card renders "DeFi $X · cached Nm ago" with the
+   *                        provenance visible so the user knows it's a
+   *                        sticky fallback, not a fresh read.
+   *   - 'degraded'       → no API key OR every protocol failed; total UNKNOWN, not zero
    *
-   * The card surfaces a "DeFi —" placeholder for ANY non-`blockvision`
-   * source when total is 0 — both `partial` (some protocols 429'd, the
-   * rest reported $0 but the missing slice could be > 0) and `degraded`
-   * (every protocol failed) are "we don't know" states, not "we know
-   * it's $0" states. Pre-v0.53.4 only `degraded` triggered the
-   * placeholder; `partial` + 0 silently hid the row, which produced
-   * the bug where `balance_check` reported $29,516.61 net worth for
-   * a wallet whose DeFi was unreachable while the timeline canvas
-   * (cache miss, fresh fetch) reported $36,995.14 with $7,478.54 of
-   * DeFi visible — same SSOT drift the v0.53.x SSOT work was meant
-   * to eliminate, just relocated into the partial-with-zero path.
+   * The card surfaces a "DeFi —" placeholder for non-`blockvision` sources
+   * when total is 0. The `partial-stale` source always has total > 0 (the
+   * fetcher only returns it when there's a positive cached value to fall
+   * back on), so it renders the value with a "cached Nm ago" suffix
+   * instead of the placeholder.
    */
-  defiSource?: 'blockvision' | 'partial' | 'degraded';
+  defiSource?: 'blockvision' | 'partial' | 'partial-stale' | 'degraded';
+  /**
+   * Wall-clock ms when the underlying DeFi data was priced. Used to
+   * render "cached Nm ago" for the `partial-stale` source. Optional
+   * for backward compatibility — older engines don't ship this.
+   */
+  defiPricedAt?: number;
   holdings?: { symbol: string; balance: number; usdValue: number }[];
   /** [v0.49] Stamped by the engine's balance_check tool. */
   address?: string;
@@ -43,7 +48,20 @@ export function BalanceCard({ data }: { data: BalanceData }) {
   if (data.available != null) cols.push({ label: 'Cash', value: `$${fmtUsd(data.available)}` });
   if ((data.savings ?? 0) > 0) cols.push({ label: 'Savings', value: `$${fmtUsd(data.savings!)}`, color: 'text-success-solid' });
   if ((data.defi ?? 0) > 0) {
-    cols.push({ label: 'DeFi', value: `$${fmtUsd(data.defi!)}`, color: 'text-success-solid' });
+    // [v0.54] partial-stale: render the cached value with provenance so
+    // the user can tell the difference between fresh and sticky data.
+    // The number is real ($X actually exists in DeFi), but BlockVision
+    // failed on this turn, so we're showing what we knew Nm ago.
+    if (data.defiSource === 'partial-stale' && data.defiPricedAt) {
+      const ageMin = Math.max(0, Math.round((Date.now() - data.defiPricedAt) / 60_000));
+      cols.push({
+        label: 'DeFi',
+        value: `$${fmtUsd(data.defi!)} · ${ageMin}m`,
+        color: 'text-warning-solid',
+      });
+    } else {
+      cols.push({ label: 'DeFi', value: `$${fmtUsd(data.defi!)}`, color: 'text-success-solid' });
+    }
   } else if (data.defiSource && data.defiSource !== 'blockvision') {
     // [v0.53.4] Surface unavailability rather than silently hiding the
     // column for ANY non-blockvision source with $0 total. `partial`

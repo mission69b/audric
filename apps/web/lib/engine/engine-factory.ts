@@ -12,6 +12,7 @@ import {
   DEFAULT_GUARD_CONFIG,
   DEFAULT_PERMISSION_CONFIG,
   RecipeRegistry,
+  setDefiCacheStore,
   type AddressPortfolio,
   type SessionData,
   type SessionStore,
@@ -26,6 +27,7 @@ import { SUPPORTED_ASSETS } from '@t2000/sdk';
 import { env } from '@/lib/env';
 import { getSuiRpcUrl } from '@/lib/sui-rpc';
 import { UpstashSessionStore } from './upstash-session-store';
+import { UpstashDefiCacheStore } from './upstash-defi-cache';
 import { getRecipeRegistry } from './recipes';
 import { UpstashConversationStateStore } from './upstash-conversation-state-store';
 import { incrementSessionSpend } from './session-spend';
@@ -52,6 +54,28 @@ import { runStartupCheck } from './spec-consistency';
 // hard-fails to surface drift immediately; prod-mode logs only because CI
 // is the real gate (see .github/workflows/ci.yml).
 runStartupCheck();
+
+// [v0.54] Inject the Upstash-backed DeFi cache store so every Vercel
+// function instance / API route shares ONE cache. Pre-injection the
+// engine defaults to an in-memory `Map`, which gave each serverless
+// instance its own divergent cache state — same address served three
+// different DeFi totals on three canvases on the same chat turn during
+// BlockVision bursts. With the shared store + the engine's sticky-
+// positive write rules, every reader (`balance_check`,
+// `/api/portfolio`, `/api/analytics/portfolio-history`) gets the same
+// number for the same address on the same turn. See
+// `lib/engine/upstash-defi-cache.ts` for the impl, and
+// `packages/engine/src/defi-cache.ts` for the contract.
+//
+// Runs at module load, NOT per-request — `setDefiCacheStore` mutates a
+// module-level singleton in the engine, so a single call wires up
+// every subsequent `fetchAddressDefiPortfolio` call across the
+// process. Skipped when `UPSTASH_REDIS_REST_URL` is missing (dev/CI
+// where env validation might let it through with placeholders) so the
+// engine falls back to its in-memory default.
+if (env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN) {
+  setDefiCacheStore(new UpstashDefiCacheStore());
+}
 
 /**
  * [v1.5] Post-write refresh map — for each write tool, the read tools
