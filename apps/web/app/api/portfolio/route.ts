@@ -51,6 +51,11 @@ export async function GET(request: NextRequest) {
         // (cf. BalanceCard's "DeFi —" placeholder pattern).
         defiValueUsd: portfolio.defiValueUsd,
         defiSource: portfolio.defiSource,
+        // [Bug — 2026-04-28] Forward DeFi pricedAt so FullPortfolioCanvas
+        // can render "cached Nm ago" when source === 'partial-stale'.
+        // Pre-fix the route stripped this and the canvas's `defiIsStale`
+        // branch silently fell through to the no-pricedAt fallback.
+        defiPricedAt: portfolio.defiPricedAt,
         estimatedDailyYield: portfolio.estimatedDailyYield,
         source: portfolio.source,
         pricedAt: portfolio.pricedAt,

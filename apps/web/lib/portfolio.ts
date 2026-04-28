@@ -79,11 +79,20 @@ export interface Portfolio {
   defiValueUsd: number;
   /**
    * Source of the DeFi read. `blockvision` = all protocols responded,
-   * `partial` = some failed (value may under-count), `degraded` = no
-   * API key or every protocol failed. Surfaces so the UI / LLM can
-   * caveat DeFi appropriately when partial.
+   * `partial` = some failed (value may under-count), `partial-stale` =
+   * cached positive value served because fresh fetch failed,
+   * `degraded` = no API key or every protocol failed. Surfaces so the
+   * UI / LLM can caveat DeFi appropriately when partial.
    */
   defiSource: DefiSummary['source'];
+  /**
+   * [Bug — 2026-04-28] Wall-clock ms when the underlying DeFi data was
+   * priced. Forwarded so FullPortfolioCanvas can render "cached Nm ago"
+   * for `partial-stale` reads. Pre-fix this was always undefined on the
+   * canvas because the route + this lib stripped it, leaving the stale
+   * caveat without a timestamp to render.
+   */
+  defiPricedAt: number;
   /**
    * `walletValueUsd + positions.savings + positions.pendingRewards
    *  + defiValueUsd - positions.borrows`. Mirrors balance_check's
@@ -223,6 +232,7 @@ export async function getPortfolio(address: string): Promise<Portfolio> {
     positions,
     defiValueUsd: defi.totalUsd,
     defiSource: defi.source,
+    defiPricedAt: defi.pricedAt,
     netWorthUsd,
     estimatedDailyYield,
     source: walletPortfolio.source,

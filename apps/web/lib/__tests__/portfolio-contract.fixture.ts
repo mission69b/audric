@@ -90,6 +90,7 @@ export const EXPECTED_CANONICAL: Portfolio = {
   positions: FIXTURE_POSITIONS,
   defiValueUsd: 50,
   defiSource: 'blockvision',
+  defiPricedAt: FIXTURE_BLOCKVISION_PORTFOLIO.pricedAt,
   // 100 (wallet) + 200 (savings) + 0.5 (rewards) + 50 (defi) - 25 (debt) = 325.5
   // This matches `balance_check.total = availableUsd + savings + gasReserve
   // + pendingRewards + defi - debt` byte-for-byte.

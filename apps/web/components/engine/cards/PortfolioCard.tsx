@@ -6,6 +6,17 @@ interface PortfolioData {
   totalValue: number;
   walletValue: number;
   savingsValue: number;
+  /**
+   * [Bug — 2026-04-28] Surface DeFi positions (Cetus LPs, Bluefin, Suilend,
+   * etc.) on the card. Pre-fix this tool dropped DeFi entirely from the
+   * breakdown, so a wallet with $1,569 in Cetus LPs reported $228 total
+   * here while balance_check (correctly DeFi-aware) reported $1,797 —
+   * the two cards in the same chat session contradicted each other on
+   * the same wallet. Optional on the wire so a stale audric deploy
+   * (engine pre-fix) doesn't crash the card.
+   */
+  defiValue?: number;
+  defiSource?: 'blockvision' | 'partial' | 'partial-stale' | 'degraded';
   debtValue: number;
   healthFactor: number | null;
   allocations: { symbol: string; amount: number; usdValue: number; percentage: number }[];
@@ -72,6 +83,24 @@ export function PortfolioCard({ data }: { data: PortfolioData }) {
             </span>
           ) : null}
         </DetailRow>
+
+        {/*
+          [Bug — 2026-04-28] DeFi row. Render whenever the engine returned
+          a positive value, regardless of source — `'partial'` and
+          `'partial-stale'` still represent real on-chain value, just with
+          provenance caveats. The accompanying insights array (engine-side)
+          surfaces the warning copy so we don't double up here.
+        */}
+        {(data.defiValue ?? 0) > 0 && (
+          <DetailRow label="DeFi">
+            <span>${fmtUsd(data.defiValue!)}</span>
+            {data.defiSource === 'partial' ? (
+              <span className="text-warning-solid ml-1 text-[10px]">(partial)</span>
+            ) : data.defiSource === 'partial-stale' ? (
+              <span className="text-warning-solid ml-1 text-[10px]">(cached)</span>
+            ) : null}
+          </DetailRow>
+        )}
 
         {data.debtValue > 0 && (
           <>

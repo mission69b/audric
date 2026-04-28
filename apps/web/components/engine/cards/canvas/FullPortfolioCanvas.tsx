@@ -219,19 +219,30 @@ export function FullPortfolioCanvas({ data, onAction }: Props) {
       ? 'degraded'
       : livePortfolio?.defiSource ?? 'degraded';
   const defiPricedAt = !isAllTab && !selectedWallet ? livePortfolio?.defiPricedAt : undefined;
-  // [v0.54] `defiKnown` widened: a `partial-stale` entry has a real
-  // positive value backed by the sticky cache, so we want to RENDER
-  // the number (not the "—" placeholder). The accompanying caveat
-  // below distinguishes "fresh" from "cached Nm ago" for the user.
-  // Pre-v0.54 only `blockvision` was treated as renderable, which
-  // meant a 30-second BlockVision burst hid $7,500 of DeFi from the
-  // canvas while `balance_check` (cached fresh) showed it.
+  // [Bug — 2026-04-28] `defiKnown` further widened: `'partial'` with a
+  // positive `defiValueUsd` is *also* a known number — it just means at
+  // least one of the 9 protocols failed and we may be missing a slice.
+  // Pre-fix this canvas treated `'partial'` as completely unreachable
+  // and rendered "—" + "DeFi partially unreachable", even though the
+  // `Net Worth` math above ALREADY included the partial DeFi value.
+  // The result was a contradictory card: Net Worth ($1,797) silently
+  // contained DeFi ($1,569) that the visible breakdown ("Wallet $228 +
+  // Savings $0 + DeFi —") couldn't account for. Now we render the
+  // number with an inline `(partial)` suffix and a softened caveat.
+  //
+  // [v0.54] Sticky-positive caching contributed `'partial-stale'` —
+  // a positive cached value served because the fresh fetch failed.
+  // The accompanying caveat distinguishes "fresh" from "cached Nm ago"
+  // and "partial". Treat all three as renderable when value > 0.
+  const defiPositive = livePortfolio?.defiValueUsd != null && livePortfolio.defiValueUsd > 0;
   const defiKnown =
     !isAllTab &&
     !selectedWallet &&
     (livePortfolio?.defiSource === 'blockvision' ||
-      livePortfolio?.defiSource === 'partial-stale');
+      livePortfolio?.defiSource === 'partial-stale' ||
+      (livePortfolio?.defiSource === 'partial' && defiPositive));
   const defiIsStale = defiSource === 'partial-stale';
+  const defiIsPartial = defiSource === 'partial' && defiPositive;
   const netWorth = isAllTab ? multiData!.aggregated.netWorthUsd
     : selectedWallet ? selectedWallet.netWorth
     : livePortfolio ? livePortfolio.netWorthUsd
@@ -375,6 +386,12 @@ export function FullPortfolioCanvas({ data, onAction }: Props) {
                 ${fmtUsd(defi)} ·{' '}
                 {Math.max(0, Math.round((Date.now() - defiPricedAt) / 60_000))}m
               </span>
+            ) : defiIsPartial ? (
+              // [Bug — 2026-04-28] Partial-with-value: render the number
+              // (which already counts toward Net Worth) but warn inline
+              // that 1+ protocol failed so the user reads the figure as
+              // a floor, not a ceiling.
+              <span className="text-warning-solid">${fmtUsd(defi)} (partial)</span>
             ) : (
               <span className="text-fg-primary">${fmtUsd(defi)}</span>
             )}
@@ -393,25 +410,33 @@ export function FullPortfolioCanvas({ data, onAction }: Props) {
           </div>
         )}
         {/*
-          Caveat copy. Three flavors:
+          [Bug — 2026-04-28] Caveat copy. Four flavors:
             - `partial-stale`: number IS rendered above; explain it's
               the cached value (live fetch failed). Net worth still
               includes the cached DeFi total, so don't say "may
               under-count" — it's the most accurate number we have.
-            - `partial`: live fetch returned partial-zero with no
-              sticky fallback; net worth genuinely under-counts.
-            - `degraded`: every protocol failed; net worth excludes DeFi.
+            - `partial` + value > 0 (defiIsPartial): number rendered
+              with `(partial)` suffix; soft caveat that 1+ protocol
+              failed and the figure is a lower bound. NOT "unreachable".
+            - `partial` + value === 0 (no defiKnown): live fetch returned
+              degraded, no sticky fallback; net worth genuinely
+              under-counts. Same wording as `degraded`.
+            - `degraded`: every protocol failed AND no cache; net worth
+              excludes DeFi entirely.
         */}
         {!isAllTab && !selectedWallet && defiIsStale && defiPricedAt && (
           <div className="pt-1 text-[10px] text-warning-solid leading-snug">
             DeFi cached {Math.max(0, Math.round((Date.now() - defiPricedAt) / 60_000))}m ago — live fetch failed, showing last known value.
           </div>
         )}
+        {!isAllTab && !selectedWallet && defiIsPartial && (
+          <div className="pt-1 text-[10px] text-fg-muted leading-snug">
+            DeFi partial — at least one protocol failed; figure is a lower bound.
+          </div>
+        )}
         {!defiKnown && !isAllTab && !selectedWallet && (
           <div className="pt-1 text-[10px] text-fg-muted leading-snug">
-            {defiSource === 'partial'
-              ? 'DeFi partially unreachable — net worth may under-count.'
-              : 'DeFi unreachable — net worth may under-count.'}
+            DeFi unreachable — net worth may under-count.
           </div>
         )}
       </div>
