@@ -6,6 +6,20 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
+// The "happy path past validation" tests below (allow-list passers, swap
+// missing-tokens, save-without-asset, claim-rewards) deliberately don't
+// short-circuit at param validation — they need the route to reach the
+// SDK adapter / Enoki sponsor layer to prove `assertAllowedAsset` and
+// the field-validation gates fire AFTER the auth/JWT path. The adapter
+// layer makes real outbound HTTP (Enoki 401, BlockVision 429, Sui RPC)
+// in CI, and each retry burns 1-3 seconds. Local runs hit 1-3s per
+// case; GitHub Actions runners occasionally tip past the 5s default
+// `testTimeout` and the suite goes red. Bumping this file's budget to
+// 15s covers worst-case CI latency without masking real regressions —
+// the adapter still has its own short retry budgets, so a genuine hang
+// would still time out, just at 15s instead of 5s.
+vi.setConfig({ testTimeout: 15000 });
+
 function fakeJwt(payload: Record<string, unknown> = { sub: '123', email: 'test@test.com' }): string {
   const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
   const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
