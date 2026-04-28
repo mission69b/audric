@@ -40,6 +40,17 @@ export async function GET(request: NextRequest) {
           supplies: portfolio.positions.supplies,
           borrowsDetail: portfolio.positions.borrowsDetail,
         },
+        // [Bug — 2026-04-28] DeFi values were stripped from this route's
+        // response BEFORE this fix, even though `getPortfolio()` returned
+        // them. That meant FullPortfolioCanvas (the only direct consumer
+        // of `/api/portfolio`) could never render a DeFi row, so a
+        // wallet with $7,520 in Bluefin+Suilend showed as $29,641
+        // instead of $37,160 — silently dropping the same DeFi line
+        // `balance_check` reported correctly. Surfacing both the value
+        // and the source lets the canvas caveat partial/degraded reads
+        // (cf. BalanceCard's "DeFi —" placeholder pattern).
+        defiValueUsd: portfolio.defiValueUsd,
+        defiSource: portfolio.defiSource,
         estimatedDailyYield: portfolio.estimatedDailyYield,
         source: portfolio.source,
         pricedAt: portfolio.pricedAt,

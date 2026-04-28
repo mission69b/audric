@@ -20,6 +20,26 @@ interface Props {
 interface CanonicalPortfolio {
   netWorthUsd: number;
   walletValueUsd: number;
+  /**
+   * [Bug — 2026-04-28] Total USD across non-NAVI DeFi positions
+   * (Bluefin, Suilend, Cetus, Aftermath, Volo, Walrus, etc). Mirrors
+   * the "DeFi" line in `balance_check`. Pre-fix this canvas had no
+   * notion of DeFi at all — a wallet with $7,520 in Bluefin+Suilend
+   * silently rendered net worth as `wallet + savings - debt` instead
+   * of the canonical `wallet + savings + defi - debt`, dropping the
+   * DeFi line entirely from the breakdown panel.
+   */
+  defiValueUsd: number;
+  /**
+   * [Bug — 2026-04-28] Source of the DeFi read. `blockvision` = all 9
+   * protocols responded fresh, `partial` = some failed (under-counts),
+   * `degraded` = no API key or every protocol failed (under-counts).
+   * Surfaces so we can render a "DeFi —" placeholder with caveat copy
+   * when degraded, matching the BalanceCard convention. Pre-fix this
+   * route stripped the field, so even a healthy DeFi value never made
+   * it to the canvas (route layer ate the data the SSOT produced).
+   */
+  defiSource: 'blockvision' | 'partial' | 'degraded';
   positions: {
     savings: number;
     borrows: number;
@@ -106,6 +126,13 @@ export function FullPortfolioCanvas({ data, onAction }: Props) {
             ? {
                 netWorthUsd: d.netWorthUsd,
                 walletValueUsd: d.walletValueUsd ?? 0,
+                // [Bug — 2026-04-28] The route surfaces these fields
+                // via the v0.53.2 fix to /api/portfolio. Default to 0/
+                // 'degraded' so an older route version (deploy lag,
+                // Vercel cache) still degrades gracefully instead of
+                // crashing the canvas.
+                defiValueUsd: d.defiValueUsd ?? 0,
+                defiSource: d.defiSource ?? 'degraded',
                 positions: {
                   savings: d.positions?.savings ?? 0,
                   borrows: d.positions?.borrows ?? 0,
@@ -165,10 +192,23 @@ export function FullPortfolioCanvas({ data, onAction }: Props) {
     : selectedWallet ? selectedWallet.walletValueUsd
     : livePortfolio ? livePortfolio.walletValueUsd
     : 0;
+  // [Bug — 2026-04-28] DeFi value comes from the same /api/portfolio
+  // SSOT response. We only show it for single-wallet views — the
+  // multi-wallet "All" tab + linked-wallet route doesn't aggregate
+  // DeFi yet (separate follow-up). When degraded, render a "—"
+  // placeholder + caveat so users don't read $0 as truth.
+  const defi = isAllTab ? 0
+    : selectedWallet ? 0
+    : livePortfolio ? livePortfolio.defiValueUsd
+    : 0;
+  const defiSource = isAllTab || selectedWallet
+    ? 'degraded' as const
+    : livePortfolio?.defiSource ?? 'degraded';
+  const defiKnown = !isAllTab && !selectedWallet && livePortfolio?.defiSource === 'blockvision';
   const netWorth = isAllTab ? multiData!.aggregated.netWorthUsd
     : selectedWallet ? selectedWallet.netWorth
     : livePortfolio ? livePortfolio.netWorthUsd
-    : walletUsd + savings - debt;
+    : walletUsd + savings + defi - debt;
   const hf = isAllTab ? null
     : selectedWallet ? selectedWallet.positions.healthFactor
     : livePortfolio ? livePortfolio.positions.healthFactor
@@ -285,10 +325,44 @@ export function FullPortfolioCanvas({ data, onAction }: Props) {
           <span className="text-fg-muted">Savings</span>
           <span className="text-success-solid">${fmtUsd(savings)}</span>
         </div>
+        {/*
+          [Bug — 2026-04-28] DeFi row. Three states:
+            1) `defiKnown` (source === 'blockvision') and value > 0 →
+               show the number alongside Wallet/Savings, contributing
+               to net worth above. This is the path the user expected
+               to see for an external wallet with $7,520 in
+               Bluefin+Suilend that was silently absent pre-fix.
+            2) `defiKnown` and value === 0 → omit the row to avoid
+               clutter for wallets that genuinely have no DeFi.
+            3) `!defiKnown` (partial/degraded) → render "—" with a
+               muted caveat so the user knows DeFi was unreachable
+               and that the net-worth figure under-counts. Mirrors
+               the BalanceCard convention from the `balance_check`
+               canvas template.
+        */}
+        {defiKnown && defi > 0 && (
+          <div className="flex justify-between">
+            <span className="text-fg-muted">DeFi</span>
+            <span className="text-fg-primary">${fmtUsd(defi)}</span>
+          </div>
+        )}
+        {!defiKnown && !isAllTab && !selectedWallet && (
+          <div className="flex justify-between">
+            <span className="text-fg-muted">DeFi</span>
+            <span className="text-fg-muted">—</span>
+          </div>
+        )}
         {debt > 0 && (
           <div className="flex justify-between">
             <span className="text-fg-muted">Debt</span>
             <span className="text-error-solid">-${fmtUsd(debt)}</span>
+          </div>
+        )}
+        {!defiKnown && !isAllTab && !selectedWallet && (
+          <div className="pt-1 text-[10px] text-fg-muted leading-snug">
+            {defiSource === 'partial'
+              ? 'DeFi partially unreachable — net worth may under-count.'
+              : 'DeFi unreachable — net worth may under-count.'}
           </div>
         )}
       </div>
