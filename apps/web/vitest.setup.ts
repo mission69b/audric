@@ -21,7 +21,6 @@ const TEST_ENV: Record<string, string> = {
   DATABASE_URL: 'postgres://test@localhost/audric_test',
   ENOKI_SECRET_KEY: 'enoki-test-vitest-setup',
   T2000_INTERNAL_KEY: 't2000-test-vitest-setup',
-  SPONSOR_INTERNAL_KEY: 'sponsor-test-vitest-setup',
   UPSTASH_REDIS_REST_URL: 'https://test.upstash.io',
   UPSTASH_REDIS_REST_TOKEN: 'redis-test-vitest-setup',
   NEXT_PUBLIC_GOOGLE_CLIENT_ID: 'google-test-vitest-setup',

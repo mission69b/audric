@@ -63,7 +63,6 @@ jobs:
       DATABASE_URL: postgres://ci@localhost/ci
       ENOKI_SECRET_KEY: ci-placeholder-enoki
       T2000_INTERNAL_KEY: ci-placeholder-t2000
-      SPONSOR_INTERNAL_KEY: ci-placeholder-sponsor
       UPSTASH_REDIS_REST_URL: https://ci.upstash.io
       UPSTASH_REDIS_REST_TOKEN: ci-placeholder-redis
       NEXT_PUBLIC_GOOGLE_CLIENT_ID: ci-placeholder-google

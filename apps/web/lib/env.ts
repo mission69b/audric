@@ -95,9 +95,6 @@ const serverSchema = z.object({
   /** Internal shared secret with t2000 cron for `/api/internal/notification-users` + `/api/internal/health-factor` reads. */
   T2000_INTERNAL_KEY: requiredString,
 
-  /** Internal key for the sponsor-USDC API route. */
-  SPONSOR_INTERNAL_KEY: requiredString,
-
   /** Upstash Redis URL — session storage for the engine. */
   UPSTASH_REDIS_REST_URL: requiredString,
 
@@ -134,9 +131,6 @@ const serverSchema = z.object({
 
   /** Override Sui RPC URL — defaults to BlockVision-routed mainnet. */
   SUI_RPC_URL: optionalString,
-
-  /** t2000 server URL — defaults to https://api.t2000.ai. */
-  SERVER_URL: optionalString,
 
   /** Comma-separated session-id prefixes that mark synthetic/bot traffic. */
   SYNTHETIC_SESSION_PREFIXES: optionalString,
@@ -197,7 +191,6 @@ const runtimeEnv = {
   DATABASE_URL: process.env.DATABASE_URL,
   ENOKI_SECRET_KEY: process.env.ENOKI_SECRET_KEY,
   T2000_INTERNAL_KEY: process.env.T2000_INTERNAL_KEY,
-  SPONSOR_INTERNAL_KEY: process.env.SPONSOR_INTERNAL_KEY,
   UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
   UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
   AGENT_MODEL: process.env.AGENT_MODEL,
@@ -210,7 +203,6 @@ const runtimeEnv = {
   RESEND_API_KEY: process.env.RESEND_API_KEY,
   INTERNAL_API_KEY: process.env.INTERNAL_API_KEY,
   SUI_RPC_URL: process.env.SUI_RPC_URL,
-  SERVER_URL: process.env.SERVER_URL,
   SYNTHETIC_SESSION_PREFIXES: process.env.SYNTHETIC_SESSION_PREFIXES,
   NODE_ENV: process.env.NODE_ENV,
   VERCEL_DEPLOYMENT_ID: process.env.VERCEL_DEPLOYMENT_ID,
@@ -334,7 +326,6 @@ const SERVER_ONLY_KEYS = new Set([
   'DATABASE_URL',
   'ENOKI_SECRET_KEY',
   'T2000_INTERNAL_KEY',
-  'SPONSOR_INTERNAL_KEY',
   'UPSTASH_REDIS_REST_URL',
   'UPSTASH_REDIS_REST_TOKEN',
   'AGENT_MODEL',
@@ -347,7 +338,6 @@ const SERVER_ONLY_KEYS = new Set([
   'RESEND_API_KEY',
   'INTERNAL_API_KEY',
   'SUI_RPC_URL',
-  'SERVER_URL',
   'SYNTHETIC_SESSION_PREFIXES',
   'NODE_ENV',
   'VERCEL_DEPLOYMENT_ID',

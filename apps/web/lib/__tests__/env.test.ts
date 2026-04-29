@@ -23,7 +23,6 @@ function setMinimumValidEnv() {
   process.env.DATABASE_URL = 'postgres://test';
   process.env.ENOKI_SECRET_KEY = 'enoki-test';
   process.env.T2000_INTERNAL_KEY = 't2000-test';
-  process.env.SPONSOR_INTERNAL_KEY = 'sponsor-test';
   process.env.UPSTASH_REDIS_REST_URL = 'https://x.upstash.io';
   process.env.UPSTASH_REDIS_REST_TOKEN = 'redis-test';
   process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID = 'google-test';
@@ -42,7 +41,6 @@ beforeEach(() => {
       key.startsWith('DATABASE_') ||
       key.startsWith('ENOKI_') ||
       key.startsWith('T2000_') ||
-      key.startsWith('SPONSOR_') ||
       key.startsWith('UPSTASH_') ||
       key.startsWith('NEXT_PUBLIC_') ||
       key.startsWith('AGENT_') ||
@@ -54,7 +52,6 @@ beforeEach(() => {
       key.startsWith('RESEND_') ||
       key.startsWith('INTERNAL_') ||
       key.startsWith('SUI_') ||
-      key === 'SERVER_URL' ||
       key === 'SYNTHETIC_SESSION_PREFIXES'
     ) {
       delete process.env[key];

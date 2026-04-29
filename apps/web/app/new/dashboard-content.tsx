@@ -30,7 +30,6 @@ import { mapError } from '@/lib/errors';
 import { SUI_NETWORK } from '@/lib/constants';
 import { useContacts } from '@/hooks/useContacts';
 import { useAgent } from '@/hooks/useAgent';
-import { useUsdcSponsor } from '@/hooks/useUsdcSponsor';
 import { COIN_REGISTRY } from '@/lib/token-registry';
 import { buildSwapDisplayData } from '@/lib/balance-changes';
 import { useActivityFeed } from '@/hooks/useActivityFeed';
@@ -196,7 +195,6 @@ export interface DashboardContentProps {
 export function DashboardContent({ initialSessionId }: DashboardContentProps = {}) {
   const { address, session, refresh } = useZkLogin();
   const { panel, setPanel } = usePanel();
-  useUsdcSponsor(address);
 
   const chipFlow = useChipFlow();
   const feed = useFeed();

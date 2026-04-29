@@ -18,7 +18,6 @@ const REQUIRED_BASE_ENV: Record<string, string> = {
   DATABASE_URL: 'postgres://test',
   ENOKI_SECRET_KEY: 'enoki-test',
   T2000_INTERNAL_KEY: 't2000-test',
-  SPONSOR_INTERNAL_KEY: 'sponsor-test',
   UPSTASH_REDIS_REST_URL: 'https://x.upstash.io',
   UPSTASH_REDIS_REST_TOKEN: 'redis-test',
   NEXT_PUBLIC_GOOGLE_CLIENT_ID: 'google-test',
