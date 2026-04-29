@@ -9,30 +9,47 @@
 2. ECS CloudWatch logs — the daily cron emits the same JSON shape (filter pattern `{ $.kind = "metric" && $.name = "cron.*" }`)
 3. `/admin/scaling` (founder-only, uses `T2000_INTERNAL_KEY`) — current snapshot
 
+**Notification channel.** Discord — already the established alert surface for this org (see `DISCORD_RELEASES_WEBHOOK` + `DISCORD_DEVLOG_WEBHOOK` in `.github/workflows/`). Vercel Observability natively integrates with Slack but **not** Discord. The standard workaround: Discord exposes a Slack-compatible endpoint at `<webhook_url>/slack` that accepts Slack-formatted payloads and converts them. Vercel's "Slack" integration then works against Discord with zero adapter code.
+
 ## Alerts to configure
 
 | Alert | Threshold | Severity | Destination |
 |---|---|---|---|
-| `bv.cb_open` gauge stays at 1 for > 5 min | 5 min | P1 — page on-call | Slack `#audric-alerts` + email |
-| `navi.cb_open` gauge stays at 1 for > 5 min | 5 min | P1 — page on-call | Slack `#audric-alerts` + email |
-| `bv.cache_hit / bv.requests` ratio drops below 0.85 over 15 min window | 15 min | P3 — Slack only | Slack `#audric-alerts` |
-| `cron.fin_ctx_shard_duration_ms` p99 > 240,000ms (4 min — 80% of the 5min budget) | per-run | P3 — Slack only | Slack `#audric-alerts` |
+| `bv.cb_open` gauge stays at 1 for > 5 min | 5 min | P1 — page on-call | Discord `#audric-alerts` + email |
+| `navi.cb_open` gauge stays at 1 for > 5 min | 5 min | P1 — page on-call | Discord `#audric-alerts` + email |
+| `bv.cache_hit / bv.requests` ratio drops below 0.85 over 15 min window | 15 min | P3 — Discord only | Discord `#audric-alerts` |
+| `cron.fin_ctx_shard_duration_ms` p99 > 240,000ms (4 min — 80% of the 5min budget) | per-run | P3 — Discord only | Discord `#audric-alerts` |
 | `anthropic.tokens` daily counter exceeds budget ($150 USD/day) | daily 09:00 UTC | P3 — email | Email |
 | `upstash.requests` rate exceeds 80% of monthly cap (Pay-as-you-go: 500K/day) | daily | P3 — email | Email |
-| `sui_rpc.requests` 429-tagged rate > 5% over 10 min window | 10 min | P3 — Slack only | Slack `#audric-alerts` |
+| `sui_rpc.requests` 429-tagged rate > 5% over 10 min window | 10 min | P3 — Discord only | Discord `#audric-alerts` |
 
 ## Setup steps (one-time per Vercel project)
 
-1. **Create the Slack webhook.** In Slack admin, create an incoming webhook for `#audric-alerts` (or whatever channel the founder prefers). Copy the URL.
-2. **Add the webhook to Vercel.** Vercel project → Settings → Integrations → Slack → Add webhook URL. Test with a sample message.
-3. **For each alert in the table above:**
-   - Vercel project → Observability → Logs → search for the metric name (e.g. `name="bv.cb_open"` and `value=1`)
+1. **Create the Discord webhook.**
+   - In your Discord server: pick or create the alerts channel (suggested `#audric-alerts` — keep it separate from `#releases` and `#devlog` so the noise levels don't bleed into each other).
+   - Channel settings → Integrations → Webhooks → New Webhook → name it "Vercel Observability" → Copy Webhook URL.
+   - The URL ends in `/api/webhooks/<id>/<token>`.
+2. **Append `/slack` to the URL.** This is the load-bearing trick — Discord accepts Slack-formatted payloads at `<webhook_url>/slack` and converts them. So the URL you give to Vercel becomes:
+   ```
+   https://discord.com/api/webhooks/<id>/<token>/slack
+   ```
+   Without `/slack` Vercel's Slack-formatted POST will 400 because Discord expects `{ content }` or `{ embeds }` natively.
+3. **Sanity-test the URL.** Before wiring Vercel, confirm the webhook works:
+   ```
+   curl -X POST -H "Content-Type: application/json" \
+     -d '{"text":"test from runbook setup"}' \
+     "https://discord.com/api/webhooks/<id>/<token>/slack"
+   ```
+   You should see `test from runbook setup` post into the channel within a second.
+4. **Add the webhook to Vercel.** Vercel project → Settings → Integrations → **Slack** (yes, Slack — that's the integration that emits the format Discord's `/slack` endpoint accepts) → Add webhook URL → paste the `/slack`-suffixed Discord URL → Test.
+5. **For each alert in the table above:**
+   - Vercel project → Observability → Logs → search for the metric name (e.g. `name="bv.cb_open" value=1`)
    - Click "Save Search" → "Create Alert"
    - Set the threshold per the table
-   - Set the destination per the table
+   - Set the destination per the table (the Discord-via-Slack webhook for Discord rows; your founder email for email rows)
    - Name it identically to the metric (`bv.cb_open` → "BV circuit breaker open > 5 min")
-4. **Tag every alert with severity (P1 / P3).** This drives the on-call rotation behaviour.
-5. **Smoke-test each alert.** See "Validation" below.
+6. **Tag every alert with severity (P1 / P3).** P1 = founder gets pinged + emailed; P3 = Discord channel only, investigate next business day.
+7. **Smoke-test each alert.** See "Validation" below.
 
 ## When each alert means what
 
@@ -46,7 +63,7 @@
 - **First-line response:** Check NAVI MCP status at `https://open-api.naviprotocol.io/api/mcp` (curl it). If 5xx → wait. If returning 429 → bump our cache TTL temporarily in `engine-factory.ts`.
 - **Customer impact:** Users see slightly stale APYs / HF / savings until NAVI recovers.
 
-### P3 alerts (Slack only — investigate next business day)
+### P3 alerts (Discord only — investigate next business day)
 
 **Cache hit ratio < 0.85 over 15 min.** Either Upstash is dropping writes (rare) or some new code path is bypassing the cache.
 - **First-line response:** Check the most recent deploy's diff for new `fetchAddressPortfolio` / `getPortfolio` callers that aren't routing through the cache. Check `/admin/scaling` for `upstash.requests` errors.
@@ -67,21 +84,21 @@
 
 | Alert | Manual test |
 |---|---|
-| `bv.cb_open` | In staging, set `BLOCKVISION_API_KEY=invalid` and trigger 10 `balance_check` calls in 5s → CB opens → wait 6 min → confirm Slack message |
-| `navi.cb_open` | Same pattern with `NAVI_MCP_URL=https://invalid.example` → confirm Slack |
-| Cache hit < 0.85 | Disable Upstash by setting `UPSTASH_REDIS_REST_URL=` in staging → run S2 (k6 viral burst, 20 VUs) → cache_hit drops → confirm Slack |
-| Cron duration p99 > 4 min | Manually trigger ECS task with `CRON_OVERRIDE_HOUR=2` and `T2000_FIN_CTX_SHARD_COUNT=1` (forces serial) → confirm Slack |
+| `bv.cb_open` | In staging, set `BLOCKVISION_API_KEY=invalid` and trigger 10 `balance_check` calls in 5s → CB opens → wait 6 min → confirm Discord message |
+| `navi.cb_open` | Same pattern with `NAVI_MCP_URL=https://invalid.example` → confirm Discord |
+| Cache hit < 0.85 | Disable Upstash by setting `UPSTASH_REDIS_REST_URL=` in staging → run S2 (k6 viral burst, 20 VUs) → cache_hit drops → confirm Discord |
+| Cron duration p99 > 4 min | Manually trigger ECS task with `CRON_OVERRIDE_HOUR=2` and `T2000_FIN_CTX_SHARD_COUNT=1` (forces serial) → confirm Discord |
 | Anthropic budget | Wait for natural daily tick, OR set the budget temporarily to $0.01 and wait until 09:00 UTC |
 | Upstash rate | Set the monthly cap temporarily to a low value in Upstash console → wait for daily tick |
-| Sui RPC 429 | In staging, point `SUI_RPC_URL` to a deliberately rate-limited proxy → run S1 → confirm Slack |
+| Sui RPC 429 | In staging, point `SUI_RPC_URL` to a deliberately rate-limited proxy → run S1 → confirm Discord |
 
 After each test, **delete the staging override** so production behavior is preserved.
 
 ## What this runbook does NOT cover
 
-- **Setting up the Slack webhook URL.** That's a one-time founder task in Slack admin.
+- **Creating the Discord channel + webhook URL.** That's a one-time founder task in Discord (server settings → channel → integrations → webhooks).
 - **On-call rotation.** Currently single-engineer; revisit when the team grows.
-- **PagerDuty / Opsgenie integration.** Vercel Observability native alerts + Slack webhooks are sufficient at our scale; graduate when we have a paying ops team.
+- **PagerDuty / Opsgenie integration.** Vercel Observability native alerts + Discord webhooks are sufficient at our scale; graduate when we have a paying ops team.
 - **Custom dashboards.** `/admin/scaling` covers the founder's needs; Vercel's built-in time-series view covers historical exploration.
 
 ## Related
