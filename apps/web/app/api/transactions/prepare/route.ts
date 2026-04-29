@@ -328,14 +328,14 @@ async function buildTransaction(params: BuildRequest): Promise<Transaction> {
       assertAllowedAsset('save', asset);
       const saveAsset = asset ?? 'USDC';
       const adapter = getLendingAdapter(params.protocol);
-      const result = await adapter.buildSaveTx(address, amount, saveAsset, { sponsored: true });
+      const result = await adapter.buildSaveTx(address, amount, saveAsset);
       return result.tx;
     }
 
     case 'withdraw': {
       const adapter = getLendingAdapter(params.protocol);
       const withdrawAsset = params.fromAsset ?? asset ?? 'USDC';
-      const result = await adapter.buildWithdrawTx(address, amount, withdrawAsset, { sponsored: true });
+      const result = await adapter.buildWithdrawTx(address, amount, withdrawAsset);
       return result.tx;
     }
 
@@ -346,14 +346,13 @@ async function buildTransaction(params: BuildRequest): Promise<Transaction> {
       assertAllowedAsset('borrow', asset);
       const borrowAsset = asset ?? 'USDC';
       const adapter = getLendingAdapter(params.protocol);
-      const result = await adapter.buildBorrowTx(address, amount, borrowAsset, { sponsored: true });
+      const result = await adapter.buildBorrowTx(address, amount, borrowAsset);
       return result.tx;
     }
 
     case 'repay': {
       const adapter = getLendingAdapter(params.protocol);
       const result = await adapter.buildRepayTx(address, amount, asset ?? 'USDC', {
-        sponsored: true,
         skipOracle: true,
       });
       return result.tx;
