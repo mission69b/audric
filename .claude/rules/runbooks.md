@@ -4,14 +4,17 @@ Operational runbooks. Read before acting on the corresponding incident class.
 
 ## zkLogin env-var parity
 
-**File:** `apps/web/RUNBOOK_zklogin_env_parity.md`
-
 **Run when:**
 - Rotating Google OAuth credentials.
 - Adding a new Vercel environment.
-- A user reports "EMAIL IS ALREADY REGISTERED TO ANOTHER ACCOUNT" (the 409 from `/api/user/email`).
+- A user reports "I signed in but my wallet is empty / has no history."
 
-**Why it matters.** zkLogin derives the Sui address deterministically from `(Google sub + JWT aud + Enoki app)`. If `NEXT_PUBLIC_GOOGLE_CLIENT_ID` differs between deployments, the same Gmail account produces different Sui addresses, and existing users get locked out of their wallets.
+**Why it matters.** zkLogin derives the Sui address deterministically from `(Google sub + JWT aud + Enoki app)`. If `NEXT_PUBLIC_GOOGLE_CLIENT_ID` differs between Production / Preview / Development in Vercel, the same Gmail account produces different Sui addresses, and existing users sign in to a brand-new empty wallet (looks like data loss; it's actually an `aud` mismatch).
+
+**Steps:**
+1. `vercel env pull --environment=production .env.prod && vercel env pull --environment=preview .env.preview` and diff `NEXT_PUBLIC_GOOGLE_CLIENT_ID`.
+2. If they differ, set both to the same value via `vercel env add NEXT_PUBLIC_GOOGLE_CLIENT_ID <value> preview` (and re-deploy).
+3. Verify by signing in to a preview deployment with a known account and checking the derived address matches production.
 
 ## Portfolio regression matrix
 

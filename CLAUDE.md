@@ -68,7 +68,7 @@ audric/
 3. **Engine from npm.** Import `@t2000/engine` from npm — never copy engine code into this repo.
 4. **Server Components by default.** Only add `'use client'` when needed.
 5. **Check t2000 PRODUCT_FACTS.md** before writing documentation or marketing copy.
-6. **Never read `process.env.X` directly.** Every server-side env access must go through the typed `env` proxy from `apps/web/lib/env.ts`. The Zod schema runs at boot via `instrumentation.ts` and fails fast on misconfiguration. Direct reads bypass the gate that catches the empty-string-in-Vercel bug class (S.25 / `RUNBOOK_zklogin_env_parity.md`). New env var: add to schema first, then read via `env.X`. See `.cursor/rules/env-validation-gate.mdc`.
+6. **Never read `process.env.X` directly.** Every server-side env access must go through the typed `env` proxy from `apps/web/lib/env.ts`. The Zod schema runs at boot via `instrumentation.ts` and fails fast on misconfiguration. Direct reads bypass the gate that catches the empty-string-in-Vercel bug class (S.25 incident). New env var: add to schema first, then read via `env.X`. See `.cursor/rules/env-validation-gate.mdc`.
 7. **Never break the resume contract.** When the engine yields `pending_action`, persist `attemptId` on `TurnMetrics`, then on execute success call `/api/agent/resume` with `{ attemptId, txDigest, balanceChanges }`. Skipping `attemptId` orphans the action and the agent will offer to retry. See `.cursor/rules/audric-transaction-flow.mdc` + t2000's `agent-harness-spec.mdc`.
 8. **Single source of truth for portfolio data.** Never re-implement balance / position / pricing fetches in route handlers — always go through `lib/portfolio-data.ts` (`getCanonicalPortfolio`) and `lib/activity-data.ts`. ESLint enforces this. See `.cursor/rules/audric-canonical-portfolio.mdc`.
 9. **All writes are `permissionLevel: 'confirm'`.** No write tool ever auto-executes server-side under zkLogin. If you find yourself wanting `auto` for a write, you've broken the user-consent contract.
@@ -93,7 +93,6 @@ audric/
 | Document | What it covers | Read before |
 |----------|---------------|-------------|
 | `apps/web/lib/env.ts` | Zod env schema + typed proxy. Single gate for every `process.env` read | Adding/changing env vars |
-| `apps/web/RUNBOOK_zklogin_env_parity.md` | How to keep zkLogin client IDs identical across Preview/Prod (S.25 incident runbook) | zkLogin auth bugs / env parity |
 | `PORTFOLIO_REGRESSION_MATRIX.md` | Manual SSOT verification checklist across surfaces | Post-merge SSOT verification |
 | `.cursor/rules/audric-transaction-flow.mdc` | Sponsored tx vs SDK direct — which path runs when, attemptId resume contract | Any write/receipt bug |
 | `.cursor/rules/audric-canonical-portfolio.mdc` | Always go through `getCanonicalPortfolio` | Portfolio/wallet/positions read |
@@ -381,7 +380,6 @@ emoji type(scope): subject
 | `KV_REST_API_URL` | Upstash Redis URL |
 | `KV_REST_API_TOKEN` | Upstash Redis token |
 | `T2000_INTERNAL_KEY` | Shared secret for internal API route authentication (cron jobs) |
-| `RESEND_API_KEY` | Email delivery (Resend) for payment links, invoices |
 
 ### Optional
 

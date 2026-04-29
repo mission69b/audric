@@ -65,4 +65,4 @@ Read the error block — it lists every misconfigured var and the Vercel setting
 
 - Canonical implementation → `apps/web/lib/env.ts`
 - Boot-time hook → `apps/web/instrumentation.ts`
-- zkLogin parity runbook (the S.25 incident) → `apps/web/RUNBOOK_zklogin_env_parity.md`
+- S.25 incident context → `audric-build-tracker.md` (S.25 — BlockVision empty-string degradation)

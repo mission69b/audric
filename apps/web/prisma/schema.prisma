@@ -12,8 +12,6 @@ model User {
   suiAddress       String    @unique
   email            String?   @unique
   emailVerified    Boolean   @default(false)
-  emailVerifyToken String?
-  emailVerifyExpiry DateTime?
   displayName      String?
   timezoneOffset   Int       @default(0)
   tosAcceptedAt    DateTime?

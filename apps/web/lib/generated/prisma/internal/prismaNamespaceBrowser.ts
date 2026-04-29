@@ -90,8 +90,6 @@ export const UserScalarFieldEnum = {
   suiAddress: 'suiAddress',
   email: 'email',
   emailVerified: 'emailVerified',
-  emailVerifyToken: 'emailVerifyToken',
-  emailVerifyExpiry: 'emailVerifyExpiry',
   displayName: 'displayName',
   timezoneOffset: 'timezoneOffset',
   tosAcceptedAt: 'tosAcceptedAt',

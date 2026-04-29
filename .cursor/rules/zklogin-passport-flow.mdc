@@ -34,20 +34,23 @@ The trust layer for every Audric write. Get this wrong and users either (a) can'
 4. Persist ZkLoginSession in localStorage (ephemeral key + proof + maxEpoch + address)
    → Session expires when maxEpoch is reached (~48h)
 
-5. /api/user/email links email ↔ suiAddress in Postgres (User table)
-   → If email already linked to a DIFFERENT suiAddress → 409 EMAIL_LINKED_TO_DIFFERENT_WALLET
+5. /api/user/status upserts the User row keyed on suiAddress
+   → email + emailVerified are sourced from the JWT claims (Google OIDC),
+     not from a separate verify-link round-trip (PR-B2 retired Resend).
+   → No 409 — different Google accounts deterministically derive different
+     suiAddresses, so the unique constraint is satisfied by construction.
 ```
 
 ## The deterministic-address property
 
 `suiAddress = derive(sub, aud, salt)`. The same Google account ALWAYS produces the same Sui address — IF and only if `aud` (your Google OAuth client ID) and `salt` are stable across deployments.
 
-**This is the failure mode `RUNBOOK_zklogin_env_parity.md` exists to prevent:** a preview deploy with a different `NEXT_PUBLIC_GOOGLE_CLIENT_ID` produces a different `aud`, which produces a different Sui address, which trips the 409 in `/api/user/email` and locks the user out of their existing wallet.
+**Why parity matters:** a preview deploy with a different `NEXT_PUBLIC_GOOGLE_CLIENT_ID` produces a different `aud`, which produces a different Sui address. Existing users sign in and get a brand-new wallet (empty balance, no history) — they think they've lost their funds. Always keep `NEXT_PUBLIC_GOOGLE_CLIENT_ID` identical across Production, Preview, and Development in Vercel.
 
-**Always run the runbook** when:
+**Always re-verify env parity** when:
 - Rotating Google OAuth credentials.
 - Adding a new Vercel environment.
-- A user reports "EMAIL IS ALREADY REGISTERED TO ANOTHER ACCOUNT."
+- A user reports "I signed in but my wallet is empty" (likely an `aud` mismatch, not a real loss).
 
 ## The MaxEpoch math
 
@@ -101,18 +104,14 @@ const signed = await keypair.signTransaction(tx);  // server doesn't have the ke
 // ❌ Persisting the ephemeral key to Postgres / Redis / anywhere server-side
 prisma.user.update({ data: { ephemeralKey: ... } });
 
-// ❌ Skipping the deterministic-address check
-const newAddress = derivedFromJwt(jwt);
-prisma.user.upsert({ where: { suiAddress: newAddress } });  // creates a duplicate user
+// ❌ Trusting an unverified email from the JWT
+//    (Google sets `email_verified: false` for some Workspace orgs.)
+const verified = decoded.email_verified;
+if (verified) grantHigherSessionTier();  // ← always check the boolean STRICTLY
 
-// ✅ Always check email linkage first
-const existing = await prisma.user.findUnique({ where: { email } });
-if (existing && existing.suiAddress !== newAddress) {
-  return Response.json(
-    { error: 'EMAIL_LINKED_TO_DIFFERENT_WALLET', existingSuiAddress: existing.suiAddress },
-    { status: 409 },
-  );
-}
+// ✅ Use the helper from lib/auth.ts — strict `=== true` comparison
+import { isJwtEmailVerified } from '@/lib/auth';
+const verified = isJwtEmailVerified(jwt);  // false for null / malformed / missing claim
 ```
 
 ## Multi-wallet linking
@@ -122,7 +121,6 @@ Signed-in users can link up to 10 Sui addresses (e.g. a hardware wallet alongsid
 ## Cross-references
 
 - Implementation → `apps/web/lib/zklogin.ts`
-- Server-side auth → `apps/web/lib/auth.ts` (verifies JWT + extracts `sub`)
-- Email-linkage runbook → `apps/web/RUNBOOK_zklogin_env_parity.md`
+- Server-side auth → `apps/web/lib/auth.ts` (decodes JWT + `isJwtEmailVerified` helper)
 - Sponsored tx flow → `audric-transaction-flow.mdc`
 - Constants (CLIENT_ID etc.) → ALWAYS via `env.X` from `lib/env.ts`. See `env-validation-gate.mdc`.

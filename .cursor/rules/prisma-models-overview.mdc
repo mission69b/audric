@@ -14,7 +14,7 @@ NeonDB Postgres with 16 Prisma models. Schema lives at `apps/web/prisma/schema.p
 
 | Model | What it stores | Owned by | Updated by |
 |---|---|---|---|
-| `User` | `id`, `suiAddress` (unique), `email` (unique), `emailVerified`, `displayName`, `timezoneOffset`, `tosAcceptedAt` | Auth/login flow | `/api/user/email`, `/api/user/verify-email` |
+| `User` | `id`, `suiAddress` (unique), `email` (unique, optional), `emailVerified` (mirrors Google OIDC `email_verified` claim — written on first sign-in via `/api/user/status`), `displayName`, `timezoneOffset`, `tosAcceptedAt` | Auth/login flow | `/api/user/status` upsert (PR-B2 retired the dedicated email-link routes) |
 | `UserPreferences` | `contacts` (JSON address book), `limits` (JSON spend limits) | User | `/api/user/preferences`, `save_contact` tool |
 | `LinkedWallet` | Up to 10 secondary Sui addresses for aggregated portfolio views | User | `/api/user/wallets` |
 

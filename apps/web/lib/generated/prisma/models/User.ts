@@ -39,8 +39,6 @@ export type UserMinAggregateOutputType = {
   suiAddress: string | null
   email: string | null
   emailVerified: boolean | null
-  emailVerifyToken: string | null
-  emailVerifyExpiry: Date | null
   displayName: string | null
   timezoneOffset: number | null
   tosAcceptedAt: Date | null
@@ -53,8 +51,6 @@ export type UserMaxAggregateOutputType = {
   suiAddress: string | null
   email: string | null
   emailVerified: boolean | null
-  emailVerifyToken: string | null
-  emailVerifyExpiry: Date | null
   displayName: string | null
   timezoneOffset: number | null
   tosAcceptedAt: Date | null
@@ -67,8 +63,6 @@ export type UserCountAggregateOutputType = {
   suiAddress: number
   email: number
   emailVerified: number
-  emailVerifyToken: number
-  emailVerifyExpiry: number
   displayName: number
   timezoneOffset: number
   tosAcceptedAt: number
@@ -91,8 +85,6 @@ export type UserMinAggregateInputType = {
   suiAddress?: true
   email?: true
   emailVerified?: true
-  emailVerifyToken?: true
-  emailVerifyExpiry?: true
   displayName?: true
   timezoneOffset?: true
   tosAcceptedAt?: true
@@ -105,8 +97,6 @@ export type UserMaxAggregateInputType = {
   suiAddress?: true
   email?: true
   emailVerified?: true
-  emailVerifyToken?: true
-  emailVerifyExpiry?: true
   displayName?: true
   timezoneOffset?: true
   tosAcceptedAt?: true
@@ -119,8 +109,6 @@ export type UserCountAggregateInputType = {
   suiAddress?: true
   email?: true
   emailVerified?: true
-  emailVerifyToken?: true
-  emailVerifyExpiry?: true
   displayName?: true
   timezoneOffset?: true
   tosAcceptedAt?: true
@@ -220,8 +208,6 @@ export type UserGroupByOutputType = {
   suiAddress: string
   email: string | null
   emailVerified: boolean
-  emailVerifyToken: string | null
-  emailVerifyExpiry: Date | null
   displayName: string | null
   timezoneOffset: number
   tosAcceptedAt: Date | null
@@ -257,8 +243,6 @@ export type UserWhereInput = {
   suiAddress?: Prisma.StringFilter<"User"> | string
   email?: Prisma.StringNullableFilter<"User"> | string | null
   emailVerified?: Prisma.BoolFilter<"User"> | boolean
-  emailVerifyToken?: Prisma.StringNullableFilter<"User"> | string | null
-  emailVerifyExpiry?: Prisma.DateTimeNullableFilter<"User"> | Date | string | null
   displayName?: Prisma.StringNullableFilter<"User"> | string | null
   timezoneOffset?: Prisma.IntFilter<"User"> | number
   tosAcceptedAt?: Prisma.DateTimeNullableFilter<"User"> | Date | string | null
@@ -281,8 +265,6 @@ export type UserOrderByWithRelationInput = {
   suiAddress?: Prisma.SortOrder
   email?: Prisma.SortOrderInput | Prisma.SortOrder
   emailVerified?: Prisma.SortOrder
-  emailVerifyToken?: Prisma.SortOrderInput | Prisma.SortOrder
-  emailVerifyExpiry?: Prisma.SortOrderInput | Prisma.SortOrder
   displayName?: Prisma.SortOrderInput | Prisma.SortOrder
   timezoneOffset?: Prisma.SortOrder
   tosAcceptedAt?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -308,8 +290,6 @@ export type UserWhereUniqueInput = Prisma.AtLeast<{
   OR?: Prisma.UserWhereInput[]
   NOT?: Prisma.UserWhereInput | Prisma.UserWhereInput[]
   emailVerified?: Prisma.BoolFilter<"User"> | boolean
-  emailVerifyToken?: Prisma.StringNullableFilter<"User"> | string | null
-  emailVerifyExpiry?: Prisma.DateTimeNullableFilter<"User"> | Date | string | null
   displayName?: Prisma.StringNullableFilter<"User"> | string | null
   timezoneOffset?: Prisma.IntFilter<"User"> | number
   tosAcceptedAt?: Prisma.DateTimeNullableFilter<"User"> | Date | string | null
@@ -332,8 +312,6 @@ export type UserOrderByWithAggregationInput = {
   suiAddress?: Prisma.SortOrder
   email?: Prisma.SortOrderInput | Prisma.SortOrder
   emailVerified?: Prisma.SortOrder
-  emailVerifyToken?: Prisma.SortOrderInput | Prisma.SortOrder
-  emailVerifyExpiry?: Prisma.SortOrderInput | Prisma.SortOrder
   displayName?: Prisma.SortOrderInput | Prisma.SortOrder
   timezoneOffset?: Prisma.SortOrder
   tosAcceptedAt?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -354,8 +332,6 @@ export type UserScalarWhereWithAggregatesInput = {
   suiAddress?: Prisma.StringWithAggregatesFilter<"User"> | string
   email?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
   emailVerified?: Prisma.BoolWithAggregatesFilter<"User"> | boolean
-  emailVerifyToken?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
-  emailVerifyExpiry?: Prisma.DateTimeNullableWithAggregatesFilter<"User"> | Date | string | null
   displayName?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
   timezoneOffset?: Prisma.IntWithAggregatesFilter<"User"> | number
   tosAcceptedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"User"> | Date | string | null
@@ -368,8 +344,6 @@ export type UserCreateInput = {
   suiAddress: string
   email?: string | null
   emailVerified?: boolean
-  emailVerifyToken?: string | null
-  emailVerifyExpiry?: Date | string | null
   displayName?: string | null
   timezoneOffset?: number
   tosAcceptedAt?: Date | string | null
@@ -392,8 +366,6 @@ export type UserUncheckedCreateInput = {
   suiAddress: string
   email?: string | null
   emailVerified?: boolean
-  emailVerifyToken?: string | null
-  emailVerifyExpiry?: Date | string | null
   displayName?: string | null
   timezoneOffset?: number
   tosAcceptedAt?: Date | string | null
@@ -416,8 +388,6 @@ export type UserUpdateInput = {
   suiAddress?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  emailVerifyToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  emailVerifyExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   timezoneOffset?: Prisma.IntFieldUpdateOperationsInput | number
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -440,8 +410,6 @@ export type UserUncheckedUpdateInput = {
   suiAddress?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  emailVerifyToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  emailVerifyExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   timezoneOffset?: Prisma.IntFieldUpdateOperationsInput | number
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -464,8 +432,6 @@ export type UserCreateManyInput = {
   suiAddress: string
   email?: string | null
   emailVerified?: boolean
-  emailVerifyToken?: string | null
-  emailVerifyExpiry?: Date | string | null
   displayName?: string | null
   timezoneOffset?: number
   tosAcceptedAt?: Date | string | null
@@ -478,8 +444,6 @@ export type UserUpdateManyMutationInput = {
   suiAddress?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  emailVerifyToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  emailVerifyExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   timezoneOffset?: Prisma.IntFieldUpdateOperationsInput | number
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -492,8 +456,6 @@ export type UserUncheckedUpdateManyInput = {
   suiAddress?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  emailVerifyToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  emailVerifyExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   timezoneOffset?: Prisma.IntFieldUpdateOperationsInput | number
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -506,8 +468,6 @@ export type UserCountOrderByAggregateInput = {
   suiAddress?: Prisma.SortOrder
   email?: Prisma.SortOrder
   emailVerified?: Prisma.SortOrder
-  emailVerifyToken?: Prisma.SortOrder
-  emailVerifyExpiry?: Prisma.SortOrder
   displayName?: Prisma.SortOrder
   timezoneOffset?: Prisma.SortOrder
   tosAcceptedAt?: Prisma.SortOrder
@@ -524,8 +484,6 @@ export type UserMaxOrderByAggregateInput = {
   suiAddress?: Prisma.SortOrder
   email?: Prisma.SortOrder
   emailVerified?: Prisma.SortOrder
-  emailVerifyToken?: Prisma.SortOrder
-  emailVerifyExpiry?: Prisma.SortOrder
   displayName?: Prisma.SortOrder
   timezoneOffset?: Prisma.SortOrder
   tosAcceptedAt?: Prisma.SortOrder
@@ -538,8 +496,6 @@ export type UserMinOrderByAggregateInput = {
   suiAddress?: Prisma.SortOrder
   email?: Prisma.SortOrder
   emailVerified?: Prisma.SortOrder
-  emailVerifyToken?: Prisma.SortOrder
-  emailVerifyExpiry?: Prisma.SortOrder
   displayName?: Prisma.SortOrder
   timezoneOffset?: Prisma.SortOrder
   tosAcceptedAt?: Prisma.SortOrder
@@ -573,16 +529,16 @@ export type BoolFieldUpdateOperationsInput = {
   set?: boolean
 }
 
-export type NullableDateTimeFieldUpdateOperationsInput = {
-  set?: Date | string | null
-}
-
 export type IntFieldUpdateOperationsInput = {
   set?: number
   increment?: number
   decrement?: number
   multiply?: number
   divide?: number
+}
+
+export type NullableDateTimeFieldUpdateOperationsInput = {
+  set?: Date | string | null
 }
 
 export type DateTimeFieldUpdateOperationsInput = {
@@ -736,8 +692,6 @@ export type UserCreateWithoutPreferencesInput = {
   suiAddress: string
   email?: string | null
   emailVerified?: boolean
-  emailVerifyToken?: string | null
-  emailVerifyExpiry?: Date | string | null
   displayName?: string | null
   timezoneOffset?: number
   tosAcceptedAt?: Date | string | null
@@ -759,8 +713,6 @@ export type UserUncheckedCreateWithoutPreferencesInput = {
   suiAddress: string
   email?: string | null
   emailVerified?: boolean
-  emailVerifyToken?: string | null
-  emailVerifyExpiry?: Date | string | null
   displayName?: string | null
   timezoneOffset?: number
   tosAcceptedAt?: Date | string | null
@@ -798,8 +750,6 @@ export type UserUpdateWithoutPreferencesInput = {
   suiAddress?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  emailVerifyToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  emailVerifyExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   timezoneOffset?: Prisma.IntFieldUpdateOperationsInput | number
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -821,8 +771,6 @@ export type UserUncheckedUpdateWithoutPreferencesInput = {
   suiAddress?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  emailVerifyToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  emailVerifyExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   timezoneOffset?: Prisma.IntFieldUpdateOperationsInput | number
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -844,8 +792,6 @@ export type UserCreateWithoutConversationLogsInput = {
   suiAddress: string
   email?: string | null
   emailVerified?: boolean
-  emailVerifyToken?: string | null
-  emailVerifyExpiry?: Date | string | null
   displayName?: string | null
   timezoneOffset?: number
   tosAcceptedAt?: Date | string | null
@@ -867,8 +813,6 @@ export type UserUncheckedCreateWithoutConversationLogsInput = {
   suiAddress: string
   email?: string | null
   emailVerified?: boolean
-  emailVerifyToken?: string | null
-  emailVerifyExpiry?: Date | string | null
   displayName?: string | null
   timezoneOffset?: number
   tosAcceptedAt?: Date | string | null
@@ -906,8 +850,6 @@ export type UserUpdateWithoutConversationLogsInput = {
   suiAddress?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  emailVerifyToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  emailVerifyExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   timezoneOffset?: Prisma.IntFieldUpdateOperationsInput | number
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -929,8 +871,6 @@ export type UserUncheckedUpdateWithoutConversationLogsInput = {
   suiAddress?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  emailVerifyToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  emailVerifyExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   timezoneOffset?: Prisma.IntFieldUpdateOperationsInput | number
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -952,8 +892,6 @@ export type UserCreateWithoutSavingsGoalsInput = {
   suiAddress: string
   email?: string | null
   emailVerified?: boolean
-  emailVerifyToken?: string | null
-  emailVerifyExpiry?: Date | string | null
   displayName?: string | null
   timezoneOffset?: number
   tosAcceptedAt?: Date | string | null
@@ -975,8 +913,6 @@ export type UserUncheckedCreateWithoutSavingsGoalsInput = {
   suiAddress: string
   email?: string | null
   emailVerified?: boolean
-  emailVerifyToken?: string | null
-  emailVerifyExpiry?: Date | string | null
   displayName?: string | null
   timezoneOffset?: number
   tosAcceptedAt?: Date | string | null
@@ -1014,8 +950,6 @@ export type UserUpdateWithoutSavingsGoalsInput = {
   suiAddress?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  emailVerifyToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  emailVerifyExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   timezoneOffset?: Prisma.IntFieldUpdateOperationsInput | number
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1037,8 +971,6 @@ export type UserUncheckedUpdateWithoutSavingsGoalsInput = {
   suiAddress?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  emailVerifyToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  emailVerifyExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   timezoneOffset?: Prisma.IntFieldUpdateOperationsInput | number
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1060,8 +992,6 @@ export type UserCreateWithoutAdviceLogsInput = {
   suiAddress: string
   email?: string | null
   emailVerified?: boolean
-  emailVerifyToken?: string | null
-  emailVerifyExpiry?: Date | string | null
   displayName?: string | null
   timezoneOffset?: number
   tosAcceptedAt?: Date | string | null
@@ -1083,8 +1013,6 @@ export type UserUncheckedCreateWithoutAdviceLogsInput = {
   suiAddress: string
   email?: string | null
   emailVerified?: boolean
-  emailVerifyToken?: string | null
-  emailVerifyExpiry?: Date | string | null
   displayName?: string | null
   timezoneOffset?: number
   tosAcceptedAt?: Date | string | null
@@ -1122,8 +1050,6 @@ export type UserUpdateWithoutAdviceLogsInput = {
   suiAddress?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  emailVerifyToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  emailVerifyExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   timezoneOffset?: Prisma.IntFieldUpdateOperationsInput | number
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1145,8 +1071,6 @@ export type UserUncheckedUpdateWithoutAdviceLogsInput = {
   suiAddress?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  emailVerifyToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  emailVerifyExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   timezoneOffset?: Prisma.IntFieldUpdateOperationsInput | number
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1168,8 +1092,6 @@ export type UserCreateWithoutPaymentsInput = {
   suiAddress: string
   email?: string | null
   emailVerified?: boolean
-  emailVerifyToken?: string | null
-  emailVerifyExpiry?: Date | string | null
   displayName?: string | null
   timezoneOffset?: number
   tosAcceptedAt?: Date | string | null
@@ -1191,8 +1113,6 @@ export type UserUncheckedCreateWithoutPaymentsInput = {
   suiAddress: string
   email?: string | null
   emailVerified?: boolean
-  emailVerifyToken?: string | null
-  emailVerifyExpiry?: Date | string | null
   displayName?: string | null
   timezoneOffset?: number
   tosAcceptedAt?: Date | string | null
@@ -1230,8 +1150,6 @@ export type UserUpdateWithoutPaymentsInput = {
   suiAddress?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  emailVerifyToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  emailVerifyExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   timezoneOffset?: Prisma.IntFieldUpdateOperationsInput | number
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1253,8 +1171,6 @@ export type UserUncheckedUpdateWithoutPaymentsInput = {
   suiAddress?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  emailVerifyToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  emailVerifyExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   timezoneOffset?: Prisma.IntFieldUpdateOperationsInput | number
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1276,8 +1192,6 @@ export type UserCreateWithoutWatchAddressesInput = {
   suiAddress: string
   email?: string | null
   emailVerified?: boolean
-  emailVerifyToken?: string | null
-  emailVerifyExpiry?: Date | string | null
   displayName?: string | null
   timezoneOffset?: number
   tosAcceptedAt?: Date | string | null
@@ -1299,8 +1213,6 @@ export type UserUncheckedCreateWithoutWatchAddressesInput = {
   suiAddress: string
   email?: string | null
   emailVerified?: boolean
-  emailVerifyToken?: string | null
-  emailVerifyExpiry?: Date | string | null
   displayName?: string | null
   timezoneOffset?: number
   tosAcceptedAt?: Date | string | null
@@ -1338,8 +1250,6 @@ export type UserUpdateWithoutWatchAddressesInput = {
   suiAddress?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  emailVerifyToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  emailVerifyExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   timezoneOffset?: Prisma.IntFieldUpdateOperationsInput | number
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1361,8 +1271,6 @@ export type UserUncheckedUpdateWithoutWatchAddressesInput = {
   suiAddress?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  emailVerifyToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  emailVerifyExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   timezoneOffset?: Prisma.IntFieldUpdateOperationsInput | number
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1384,8 +1292,6 @@ export type UserCreateWithoutPortfolioSnapshotsInput = {
   suiAddress: string
   email?: string | null
   emailVerified?: boolean
-  emailVerifyToken?: string | null
-  emailVerifyExpiry?: Date | string | null
   displayName?: string | null
   timezoneOffset?: number
   tosAcceptedAt?: Date | string | null
@@ -1407,8 +1313,6 @@ export type UserUncheckedCreateWithoutPortfolioSnapshotsInput = {
   suiAddress: string
   email?: string | null
   emailVerified?: boolean
-  emailVerifyToken?: string | null
-  emailVerifyExpiry?: Date | string | null
   displayName?: string | null
   timezoneOffset?: number
   tosAcceptedAt?: Date | string | null
@@ -1446,8 +1350,6 @@ export type UserUpdateWithoutPortfolioSnapshotsInput = {
   suiAddress?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  emailVerifyToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  emailVerifyExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   timezoneOffset?: Prisma.IntFieldUpdateOperationsInput | number
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1469,8 +1371,6 @@ export type UserUncheckedUpdateWithoutPortfolioSnapshotsInput = {
   suiAddress?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  emailVerifyToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  emailVerifyExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   timezoneOffset?: Prisma.IntFieldUpdateOperationsInput | number
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1492,8 +1392,6 @@ export type UserCreateWithoutFinancialProfileInput = {
   suiAddress: string
   email?: string | null
   emailVerified?: boolean
-  emailVerifyToken?: string | null
-  emailVerifyExpiry?: Date | string | null
   displayName?: string | null
   timezoneOffset?: number
   tosAcceptedAt?: Date | string | null
@@ -1515,8 +1413,6 @@ export type UserUncheckedCreateWithoutFinancialProfileInput = {
   suiAddress: string
   email?: string | null
   emailVerified?: boolean
-  emailVerifyToken?: string | null
-  emailVerifyExpiry?: Date | string | null
   displayName?: string | null
   timezoneOffset?: number
   tosAcceptedAt?: Date | string | null
@@ -1554,8 +1450,6 @@ export type UserUpdateWithoutFinancialProfileInput = {
   suiAddress?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  emailVerifyToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  emailVerifyExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   timezoneOffset?: Prisma.IntFieldUpdateOperationsInput | number
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1577,8 +1471,6 @@ export type UserUncheckedUpdateWithoutFinancialProfileInput = {
   suiAddress?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  emailVerifyToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  emailVerifyExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   timezoneOffset?: Prisma.IntFieldUpdateOperationsInput | number
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1600,8 +1492,6 @@ export type UserCreateWithoutMemoriesInput = {
   suiAddress: string
   email?: string | null
   emailVerified?: boolean
-  emailVerifyToken?: string | null
-  emailVerifyExpiry?: Date | string | null
   displayName?: string | null
   timezoneOffset?: number
   tosAcceptedAt?: Date | string | null
@@ -1623,8 +1513,6 @@ export type UserUncheckedCreateWithoutMemoriesInput = {
   suiAddress: string
   email?: string | null
   emailVerified?: boolean
-  emailVerifyToken?: string | null
-  emailVerifyExpiry?: Date | string | null
   displayName?: string | null
   timezoneOffset?: number
   tosAcceptedAt?: Date | string | null
@@ -1662,8 +1550,6 @@ export type UserUpdateWithoutMemoriesInput = {
   suiAddress?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  emailVerifyToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  emailVerifyExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   timezoneOffset?: Prisma.IntFieldUpdateOperationsInput | number
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1685,8 +1571,6 @@ export type UserUncheckedUpdateWithoutMemoriesInput = {
   suiAddress?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  emailVerifyToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  emailVerifyExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   timezoneOffset?: Prisma.IntFieldUpdateOperationsInput | number
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1708,8 +1592,6 @@ export type UserCreateWithoutLinkedWalletsInput = {
   suiAddress: string
   email?: string | null
   emailVerified?: boolean
-  emailVerifyToken?: string | null
-  emailVerifyExpiry?: Date | string | null
   displayName?: string | null
   timezoneOffset?: number
   tosAcceptedAt?: Date | string | null
@@ -1731,8 +1613,6 @@ export type UserUncheckedCreateWithoutLinkedWalletsInput = {
   suiAddress: string
   email?: string | null
   emailVerified?: boolean
-  emailVerifyToken?: string | null
-  emailVerifyExpiry?: Date | string | null
   displayName?: string | null
   timezoneOffset?: number
   tosAcceptedAt?: Date | string | null
@@ -1770,8 +1650,6 @@ export type UserUpdateWithoutLinkedWalletsInput = {
   suiAddress?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  emailVerifyToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  emailVerifyExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   timezoneOffset?: Prisma.IntFieldUpdateOperationsInput | number
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1793,8 +1671,6 @@ export type UserUncheckedUpdateWithoutLinkedWalletsInput = {
   suiAddress?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  emailVerifyToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  emailVerifyExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   timezoneOffset?: Prisma.IntFieldUpdateOperationsInput | number
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1910,8 +1786,6 @@ export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   suiAddress?: boolean
   email?: boolean
   emailVerified?: boolean
-  emailVerifyToken?: boolean
-  emailVerifyExpiry?: boolean
   displayName?: boolean
   timezoneOffset?: boolean
   tosAcceptedAt?: boolean
@@ -1935,8 +1809,6 @@ export type UserSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   suiAddress?: boolean
   email?: boolean
   emailVerified?: boolean
-  emailVerifyToken?: boolean
-  emailVerifyExpiry?: boolean
   displayName?: boolean
   timezoneOffset?: boolean
   tosAcceptedAt?: boolean
@@ -1949,8 +1821,6 @@ export type UserSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   suiAddress?: boolean
   email?: boolean
   emailVerified?: boolean
-  emailVerifyToken?: boolean
-  emailVerifyExpiry?: boolean
   displayName?: boolean
   timezoneOffset?: boolean
   tosAcceptedAt?: boolean
@@ -1963,8 +1833,6 @@ export type UserSelectScalar = {
   suiAddress?: boolean
   email?: boolean
   emailVerified?: boolean
-  emailVerifyToken?: boolean
-  emailVerifyExpiry?: boolean
   displayName?: boolean
   timezoneOffset?: boolean
   tosAcceptedAt?: boolean
@@ -1972,7 +1840,7 @@ export type UserSelectScalar = {
   updatedAt?: boolean
 }
 
-export type UserOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "suiAddress" | "email" | "emailVerified" | "emailVerifyToken" | "emailVerifyExpiry" | "displayName" | "timezoneOffset" | "tosAcceptedAt" | "createdAt" | "updatedAt", ExtArgs["result"]["user"]>
+export type UserOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "suiAddress" | "email" | "emailVerified" | "displayName" | "timezoneOffset" | "tosAcceptedAt" | "createdAt" | "updatedAt", ExtArgs["result"]["user"]>
 export type UserInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   preferences?: boolean | Prisma.User$preferencesArgs<ExtArgs>
   conversationLogs?: boolean | Prisma.User$conversationLogsArgs<ExtArgs>
@@ -2008,8 +1876,6 @@ export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     suiAddress: string
     email: string | null
     emailVerified: boolean
-    emailVerifyToken: string | null
-    emailVerifyExpiry: Date | null
     displayName: string | null
     timezoneOffset: number
     tosAcceptedAt: Date | null
@@ -2452,8 +2318,6 @@ export interface UserFieldRefs {
   readonly suiAddress: Prisma.FieldRef<"User", 'String'>
   readonly email: Prisma.FieldRef<"User", 'String'>
   readonly emailVerified: Prisma.FieldRef<"User", 'Boolean'>
-  readonly emailVerifyToken: Prisma.FieldRef<"User", 'String'>
-  readonly emailVerifyExpiry: Prisma.FieldRef<"User", 'DateTime'>
   readonly displayName: Prisma.FieldRef<"User", 'String'>
   readonly timezoneOffset: Prisma.FieldRef<"User", 'Int'>
   readonly tosAcceptedAt: Prisma.FieldRef<"User", 'DateTime'>
