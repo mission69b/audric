@@ -335,7 +335,17 @@ async function buildTransaction(params: BuildRequest): Promise<Transaction> {
     case 'withdraw': {
       const adapter = getLendingAdapter(params.protocol);
       const withdrawAsset = params.fromAsset ?? asset ?? 'USDC';
-      const result = await adapter.buildWithdrawTx(address, amount, withdrawAsset);
+      // skipPythUpdate=true is REQUIRED for Enoki sponsored builds. Pyth's
+      // SuiPythClient.updatePriceFeeds (called by NAVI when oracle feeds
+      // are stale) does tx.splitCoins(tx.gas, ...) for the oracle fee.
+      // tx.gas can't be referenced as an argument under sponsorship —
+      // Sui rejects with "Cannot use GasCoin as a transaction argument".
+      // The on-chain `update_single_price_v2` moveCalls still run and
+      // read Pyth's on-chain state, kept fresh by Pyth keepers (~5s
+      // for major assets). See @t2000/sdk navi.ts buildWithdrawTx.
+      const result = await adapter.buildWithdrawTx(address, amount, withdrawAsset, {
+        skipPythUpdate: true,
+      });
       return result.tx;
     }
 
@@ -346,12 +356,18 @@ async function buildTransaction(params: BuildRequest): Promise<Transaction> {
       assertAllowedAsset('borrow', asset);
       const borrowAsset = asset ?? 'USDC';
       const adapter = getLendingAdapter(params.protocol);
-      const result = await adapter.buildBorrowTx(address, amount, borrowAsset);
+      // See note on `withdraw` above — skipPythUpdate=true is required for
+      // Enoki sponsored builds.
+      const result = await adapter.buildBorrowTx(address, amount, borrowAsset, {
+        skipPythUpdate: true,
+      });
       return result.tx;
     }
 
     case 'repay': {
       const adapter = getLendingAdapter(params.protocol);
+      // skipOracle bypasses oracle entirely — safe for repay since debt
+      // reduction has no health-factor risk and prices aren't checked.
       const result = await adapter.buildRepayTx(address, amount, asset ?? 'USDC', {
         skipOracle: true,
       });
