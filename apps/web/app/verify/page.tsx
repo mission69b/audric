@@ -81,7 +81,7 @@ function VerifyContent() {
               Email verified.
             </h1>
             <p className="text-[13px] text-fg-secondary leading-relaxed">
-              You now get 20 chat sessions per day. We&apos;ll only email you for critical health-factor alerts — never marketing or daily summaries.
+              You now get 20 chat sessions per day. No marketing, no daily summaries — verification was the only reason we needed your email.
             </p>
           </div>
           <Link href="/new">

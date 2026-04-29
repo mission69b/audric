@@ -18,7 +18,7 @@ t2000 server runs the cron schedule (ECS, `node-cron`). Audric exposes internal 
 | `POST /api/internal/profile-inference` | `UserFinancialProfile` | 03:00 UTC |
 | `POST /api/internal/chain-memory` | `ChainFact` | 04:00 UTC |
 | `POST /api/internal/payments` | `Payment` (status updates) | On chain event |
-| `POST /api/internal/health-factor` + `hf-alert` | sends Resend email when HF < 1.2 | Indexer hook (real-time) |
+| `GET /api/internal/health-factor` | reads HF for an address (used by tooling/cron) | On demand |
 | `POST /api/internal/notification-users` | (read-only) | t2000 cron lookup |
 | `POST /api/internal/user-address` + `app-event` | misc internal lookups | Various |
 

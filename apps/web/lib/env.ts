@@ -92,7 +92,7 @@ const serverSchema = z.object({
   /** Enoki sponsor API secret — signs sponsored transactions. */
   ENOKI_SECRET_KEY: requiredString,
 
-  /** Internal shared secret with t2000 cron + indexer for HF alerts etc. */
+  /** Internal shared secret with t2000 cron for `/api/internal/notification-users` + `/api/internal/health-factor` reads. */
   T2000_INTERNAL_KEY: requiredString,
 
   /** Internal key for the sponsor-USDC API route. */
@@ -126,7 +126,7 @@ const serverSchema = z.object({
   /** ElevenLabs voice ID — defaults to Rachel (US English, multilingual). */
   ELEVENLABS_VOICE_ID: optionalString,
 
-  /** Resend email API key — HF alert emails + verification. Emails silently disabled if unset. */
+  /** Resend email API key — used for email verification only. Emails silently disabled if unset. */
   RESEND_API_KEY: optionalString,
 
   /** Internal API key for service gateway auth — only needed for the MPP services route. */

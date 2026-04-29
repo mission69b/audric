@@ -16,8 +16,14 @@ export const dynamic = 'force-dynamic';
 //  - The eligibility filtering by `notificationPrefs` (table dropped)
 //  - The `prefs` map per user (no NotificationPrefs anymore)
 //  - The `allowanceId` field per user (column dropped)
-//  - The `briefing` / `hf-alert` / `rate-alert` fan-out branches (cron jobs deleted)
+//  - The `briefing` / `rate-alert` fan-out branches (cron jobs deleted)
 //  - The `pattern-detection` branch (job + ScheduledAction table dropped)
+//
+// What was deleted in S.31 (2026-04-29):
+//  - The `hf-alert` fan-out branch + the `/api/internal/hf-alert` route
+//    + the t2000 indexer's hfHook.ts. Stablecoin-only collateral + zkLogin
+//    tap-to-confirm makes proactive HF email net-negative UX vs surfacing
+//    HF prominently in chat.
 //
 // What stayed:
 //  - Per-source eligibility filtering for `profile-inference`,
@@ -29,9 +35,7 @@ export const dynamic = 'force-dynamic';
 //
 // The shape returned is the minimum each cron job actually consumes:
 //   { userId, walletAddress }
-// (email/timezone fields are gone — no cron emails users anymore. Critical
-// HF email comes from the indexer hook, which calls /api/internal/hf-alert
-// with the wallet address directly — it doesn't iterate this list.)
+// (email/timezone fields are gone — no cron emails users anymore.)
 
 interface CronUser {
   userId: string;

@@ -94,7 +94,7 @@ Structured card types for tool results: balance, savings, health, staking, proto
 ### Additional Features
 
 - **Savings goals** — named goals with deadlines and progress tracking (silent — no notifications)
-- **Critical Health Factor email** — the only proactive surface: real-time indexer hook fires when HF < 1.2 (liquidation imminent). Always on, no opt-out
+- **Health Factor in chat** — surfaced prominently in `health_check` and `balance_check` cards. As of S.31 (2026-04-29) there are zero proactive surfaces; HF is shown when the user asks (and chat naturally surfaces it whenever they touch credit)
 - **Session pre-fetch** — balance + savings data injected at turn 0 for faster first responses
 - **Streaming tool dispatch** — read-only tools fire mid-stream before the LLM finishes
 - **Tool result budgeting** — large results auto-truncated with re-call hints

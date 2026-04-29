@@ -54,7 +54,7 @@ Cron WILL retry. Use `prisma.X.upsert(...)`, never `create(...)`.
 | `/api/internal/profile-inference` | UserFinancialProfile | 03:00 |
 | `/api/internal/chain-memory` | ChainFact | 04:00 |
 | `/api/internal/payments` | Payment status updates | On-event |
-| `/api/internal/health-factor` + `hf-alert` | Resend email when HF < 1.2 | Real-time indexer hook |
+| `/api/internal/health-factor` (GET) | Read HF for an address | On demand |
 
 ## Adding a new endpoint
 

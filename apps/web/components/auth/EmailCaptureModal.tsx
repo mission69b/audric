@@ -148,7 +148,7 @@ export function EmailCaptureModal({ open, onClose, address, jwt, initialEmail }:
                   Verify your email to chat more.
                 </h2>
                 <p className="text-[13px] text-fg-secondary leading-relaxed">
-                  Verified accounts get 20 chat sessions per day instead of 5. We use it to send you the verification link plus critical health-factor alerts only — no marketing, no daily emails.
+                  Verified accounts get 20 chat sessions per day instead of 5. We use it to send the verification link only — no marketing, no daily emails.
                 </p>
               </div>
               <div className="space-y-2">
@@ -274,7 +274,7 @@ export function EmailCaptureModal({ open, onClose, address, jwt, initialEmail }:
                   Email verified.
                 </h2>
                 <p className="text-[13px] text-fg-secondary text-center leading-relaxed">
-                  You now get 20 chat sessions per day. We&apos;ll only email you for critical health-factor alerts.
+                  You now get 20 chat sessions per day. No more emails from us.
                 </p>
               </div>
               <Button

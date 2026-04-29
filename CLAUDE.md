@@ -57,7 +57,7 @@ audric/
 | **Financial profile** | `UserFinancialProfile` (risk tolerance, goals, horizon) inferred by Claude — silent calibration | Live |
 | **Advice log** | `record_advice` tool writes `AdviceLog`; `buildAdviceContext()` rehydrates last 30 days into every turn | Live |
 | **Conversation log** | Full transcripts logged for the future self-hosted model migration | Live |
-| **Critical HF email** | Real-time indexer hook → Resend when HF < 1.2 (liquidation imminent). Always on, the only proactive surface | Live |
+| ~~**Critical HF email**~~ | Removed in S.31 (2026-04-29). Stablecoin-only collateral + zkLogin tap-to-confirm makes proactive HF email net-negative UX vs surfacing HF prominently in chat. Zero proactive surfaces now. | Removed |
 
 ---
 

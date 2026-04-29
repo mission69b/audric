@@ -38,7 +38,7 @@ export default async function CreditPage() {
           number: '3',
           title: 'Repay on your terms',
           description:
-            'Pay back anytime — "Repay $200" or "Pay off my loan." Audric monitors your health factor and alerts you if it gets low.',
+            'Pay back anytime — "Repay $200" or "Pay off my loan." Your health factor stays visible in chat so you always know where you stand.',
         },
       ]}
       cta="Check borrowing"
