@@ -1,15 +1,17 @@
 # Runbook: Scaling alerts
 
-**Goal:** Make the metrics shipped in PR 5 of the audric-scaling-spec actionable. Without alerts, a 90% → 60% cache hit drop (or a circuit breaker stuck open) goes unnoticed until a user complains.
+> **STATUS: DEFERRED (2026-04-29).** PR 11 of the audric-scaling-spec was scoped against an incorrect assumption that Vercel Observability supports custom-metric alerts on log-field counters (it doesn't — the product only supports Error Anomaly + Usage Anomaly on built-in metrics, and the Slack destination is an OAuth-installed app, not a paste-your-webhook-URL field). This runbook is preserved as the **alert specification** (thresholds + severity + response playbook). The implementation was deferred until scaling v2 wakes up. See "Implementation when we resume" at the bottom.
+>
+> In the meantime: `/admin/scaling` (founder-only, uses `T2000_INTERNAL_KEY`) is the current alert surface. Manual daily check is fine at our load (~165 active users, comfortable headroom on every metric).
 
-**Where alerts live.** Vercel Observability dashboard. There is no code involved — alerts are configured via the Vercel project UI against the structured logs already emitted by `lib/telemetry.ts` (counters/gauges/histograms tagged `name=...`).
+**Goal:** Make the metrics shipped in PR 5 of the audric-scaling-spec actionable. Without alerts, a 90% → 60% cache hit drop (or a circuit breaker stuck open) goes unnoticed until a user complains.
 
 **Where the metrics live.** Three surfaces:
 1. Audric Vercel logs — the `kind=metric` JSON lines
 2. ECS CloudWatch logs — the daily cron emits the same JSON shape (filter pattern `{ $.kind = "metric" && $.name = "cron.*" }`)
 3. `/admin/scaling` (founder-only, uses `T2000_INTERNAL_KEY`) — current snapshot
 
-**Notification channel.** Discord — already the established alert surface for this org (see `DISCORD_RELEASES_WEBHOOK` + `DISCORD_DEVLOG_WEBHOOK` in `.github/workflows/`). Vercel Observability natively integrates with Slack but **not** Discord. The standard workaround: Discord exposes a Slack-compatible endpoint at `<webhook_url>/slack` that accepts Slack-formatted payloads and converts them. Vercel's "Slack" integration then works against Discord with zero adapter code.
+**Notification channel (when we ship the implementation).** Discord — already the established alert surface for this org (see `DISCORD_RELEASES_WEBHOOK` + `DISCORD_DEVLOG_WEBHOOK` in `.github/workflows/`). Implementation will reuse the same `{ embeds }` payload shape via a new `DISCORD_ALERTS_WEBHOOK` env var.
 
 ## Alerts to configure
 
@@ -23,33 +25,36 @@
 | `upstash.requests` rate exceeds 80% of monthly cap (Pay-as-you-go: 500K/day) | daily | P3 — email | Email |
 | `sui_rpc.requests` 429-tagged rate > 5% over 10 min window | 10 min | P3 — Discord only | Discord `#audric-alerts` |
 
-## Setup steps (one-time per Vercel project)
+## Implementation when we resume
 
-1. **Create the Discord webhook.**
-   - In your Discord server: pick or create the alerts channel (suggested `#audric-alerts` — keep it separate from `#releases` and `#devlog` so the noise levels don't bleed into each other).
-   - Channel settings → Integrations → Webhooks → New Webhook → name it "Vercel Observability" → Copy Webhook URL.
-   - The URL ends in `/api/webhooks/<id>/<token>`.
-2. **Append `/slack` to the URL.** This is the load-bearing trick — Discord accepts Slack-formatted payloads at `<webhook_url>/slack` and converts them. So the URL you give to Vercel becomes:
-   ```
-   https://discord.com/api/webhooks/<id>/<token>/slack
-   ```
-   Without `/slack` Vercel's Slack-formatted POST will 400 because Discord expects `{ content }` or `{ embeds }` natively.
-3. **Sanity-test the URL.** Before wiring Vercel, confirm the webhook works:
-   ```
-   curl -X POST -H "Content-Type: application/json" \
-     -d '{"text":"test from runbook setup"}' \
-     "https://discord.com/api/webhooks/<id>/<token>/slack"
-   ```
-   You should see `test from runbook setup` post into the channel within a second.
-4. **Add the webhook to Vercel.** Vercel project → Settings → Integrations → **Slack** (yes, Slack — that's the integration that emits the format Discord's `/slack` endpoint accepts) → Add webhook URL → paste the `/slack`-suffixed Discord URL → Test.
-5. **For each alert in the table above:**
-   - Vercel project → Observability → Logs → search for the metric name (e.g. `name="bv.cb_open" value=1`)
-   - Click "Save Search" → "Create Alert"
-   - Set the threshold per the table
-   - Set the destination per the table (the Discord-via-Slack webhook for Discord rows; your founder email for email rows)
-   - Name it identically to the metric (`bv.cb_open` → "BV circuit breaker open > 5 min")
-6. **Tag every alert with severity (P1 / P3).** P1 = founder gets pinged + emailed; P3 = Discord channel only, investigate next business day.
-7. **Smoke-test each alert.** See "Validation" below.
+The right path is a self-built relay (~50 lines) — Vercel's built-in alerting doesn't reach our custom counters, and adding a third-party observability vendor is overkill at our scale.
+
+**Components to build:**
+
+1. **`audric/apps/web/app/api/cron/scaling-alerts/route.ts`** — Vercel cron route, runs every 5 min via `vercel.json`.
+   - Reads counter / gauge state from `lib/telemetry.ts` (in-process snapshot or Upstash-stored, depending on persistence model — check what `/admin/scaling` reads at the time of implementation).
+   - Evaluates each of the 7 thresholds in the alerts table below.
+   - For any breach, POSTs to `DISCORD_ALERTS_WEBHOOK` with a Discord `{ embeds }` payload (reuse the format from `.github/workflows/publish.yml` — colour-coded by severity, link to `/admin/scaling`).
+   - Idempotent dedup: track last-fired-at per alert in Upstash (TTL = severity-dependent, e.g. P1 every 30 min, P3 every 4 h) so we don't spam the channel during sustained breaches.
+
+2. **`audric/apps/web/lib/env.ts`** — add `DISCORD_ALERTS_WEBHOOK` as an optional env var (warns at boot if missing in production, doesn't fail-fast since alerts are non-critical).
+
+3. **`audric/apps/web/vercel.json`** — add cron entry: `{ "path": "/api/cron/scaling-alerts", "schedule": "*/5 * * * *" }`. Auth via existing `CRON_SECRET` Bearer header.
+
+4. **Discord webhook setup:**
+   - Discord server → pick or create `#audric-alerts` channel (separate from `#releases` and `#devlog` so noise levels don't bleed)
+   - Channel settings → Integrations → Webhooks → New Webhook → name "Audric Scaling Alerts" → Copy URL
+   - Add to Vercel env as `DISCORD_ALERTS_WEBHOOK` (production scope only — keep dev/preview noise out)
+   - Sanity test:
+     ```
+     curl -H "Content-Type: application/json" \
+       -d '{"content":"test from runbook setup"}' \
+       "https://discord.com/api/webhooks/<id>/<token>"
+     ```
+
+5. **Effort:** ~3 hours to build + test the cron route, plus ~10 min to wire the Discord webhook.
+
+**Why we deferred:** Scaling v2 (PRs 8–13) is parked until after the sui-cli refactor + USDC sponsorship simplification. At our current load (~165 active users), `/admin/scaling` checked manually once a day is fine. Setting up alerts for a system not under load is premature optimization. Revisit when scaling v2 wakes up.
 
 ## When each alert means what
 
@@ -80,7 +85,9 @@
 **Sui RPC 429 rate > 5%.** Public Sui RPC is throttling us. Acceptable up to ~10% during ecosystem mint events; sustained > 5% means we should ship PR 12 (Sui RPC pool with round-robin failover).
 - **First-line response:** Note the day/time + which scenario triggered it. If sustained for > 24h, schedule PR 12.
 
-## Validation (run once per alert when first configured)
+## Validation when we ship the implementation (one per alert)
+
+Each test below should produce a Discord message in the alerts channel within one cron tick (5 min).
 
 | Alert | Manual test |
 |---|---|
@@ -96,10 +103,10 @@ After each test, **delete the staging override** so production behavior is prese
 
 ## What this runbook does NOT cover
 
-- **Creating the Discord channel + webhook URL.** That's a one-time founder task in Discord (server settings → channel → integrations → webhooks).
 - **On-call rotation.** Currently single-engineer; revisit when the team grows.
-- **PagerDuty / Opsgenie integration.** Vercel Observability native alerts + Discord webhooks are sufficient at our scale; graduate when we have a paying ops team.
+- **PagerDuty / Opsgenie integration.** A self-built relay + Discord webhook is sufficient at our scale; graduate when we have a paying ops team.
 - **Custom dashboards.** `/admin/scaling` covers the founder's needs; Vercel's built-in time-series view covers historical exploration.
+- **Built-in Vercel anomaly alerts.** Vercel does support Error Anomaly + Usage Anomaly natively (Settings → Alerts → Add Rule). These cover ~2 of the 7 things in our table as proxies (function-invocation spikes for cron timeout, error rate for cb_open) and require zero code. Worth turning on independently of this runbook — but they don't replace the custom-metric alerts described here.
 
 ## Related
 
