@@ -8,7 +8,7 @@ import {
 } from '@/lib/engine/intent-dispatcher';
 import { buildDispatchIntents } from '@/lib/engine/dispatch-intents';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
-import { validateJwt, isValidSuiAddress } from '@/lib/auth';
+import { validateJwt, isValidSuiAddress, isJwtEmailVerified } from '@/lib/auth';
 import {
   createEngine,
   createUnauthEngine,
@@ -141,15 +141,14 @@ export async function POST(request: NextRequest) {
       session = requestedSessionId ? await store.get(requestedSessionId) : null;
       saveSession = true;
 
-      // [SIMPLIFICATION DAY 4] Central usage billing.
-      // Fetch user (verification tier), prefs (contacts), and the rolling-24h
-      // distinct-session list in parallel. SessionUsage logs every TURN, so we
-      // groupBy `sessionId` to count distinct sessions, not turns.
-      const [userRow, prefs, recentSessions] = await Promise.all([
-        prisma.user.findUnique({
-          where: { suiAddress: address },
-          select: { emailVerified: true },
-        }).catch(() => null),
+      // [PR-B2] Central usage billing.
+      // Source `emailVerified` from the Google OIDC `email_verified` claim
+      // on the zkLogin JWT — replaces the deleted Resend verify-link flow.
+      // Personal Gmail is always `true`; Workspace depends on org policy.
+      // Fetch prefs (contacts) and the rolling-24h distinct-session list
+      // in parallel. SessionUsage logs every TURN, so we groupBy
+      // `sessionId` to count distinct sessions, not turns.
+      const [prefs, recentSessions] = await Promise.all([
         prisma.userPreferences.findUnique({
           where: { address },
           select: { contacts: true },
@@ -172,13 +171,27 @@ export async function POST(request: NextRequest) {
       // crossed the threshold.
       const recentSessionIds = new Set(recentSessions.map((r) => r.sessionId));
       const continuingExistingSession = !!requestedSessionId && recentSessionIds.has(requestedSessionId);
-      const emailVerified = userRow?.emailVerified ?? false;
+      const emailVerified = isJwtEmailVerified(jwt);
       const limit = sessionLimitFor(emailVerified);
+
+      // [PR-B2] Operational signal — log when Google reports
+      // `email_verified: false`. Personal Gmail is always `true`; only
+      // Workspace orgs with specific auth policies produce `false`. If
+      // we see this above ~1%/day in prod, we should add a DB override
+      // table so support can manually bump those users to the 20-session
+      // tier (per simplification spec §B.4).
+      if (!emailVerified) {
+        console.warn('[email-verified-false]', {
+          address,
+          limit,
+          recentSessions: recentSessions.length,
+        });
+      }
 
       if (recentSessions.length >= limit && !continuingExistingSession) {
         const message = emailVerified
           ? `You've used ${limit} sessions in the last 24 hours. More sessions unlock as the 24h window rolls forward.`
-          : `You've used ${limit} of ${limit} sessions today. Verify your email to unlock ${SESSION_LIMIT_VERIFIED} sessions every 24 hours — it's free.`;
+          : `You've used ${limit} of ${limit} sessions today. Your Google account isn't marked verified by Google — contact support@audric.ai if you need the higher ${SESSION_LIMIT_VERIFIED}/day cap.`;
         return new Response(
           JSON.stringify({
             error: message,

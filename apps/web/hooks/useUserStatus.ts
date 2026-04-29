@@ -8,6 +8,13 @@ import { useCallback } from 'react';
  * means everyone is "onboarded" the moment they sign in). `markOnboarded`
  * is now a no-op kept for source-compat during the deprecation window —
  * the next dashboard pass deletes both.
+ *
+ * [PR-B2] `emailVerified` is still returned by `/api/user/status` (sourced
+ * from the Google OIDC JWT claim) but no surface in the app gates on it
+ * client-side anymore. The session-tier 429 message in `/api/engine/chat`
+ * is the only place the unverified case is visible; the modal that used
+ * to live here was deleted in PR-B2. Keeping the field in the response
+ * type for any future "session usage today" UI.
  */
 interface UserStatus {
   tosAccepted: boolean;

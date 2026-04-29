@@ -15,7 +15,6 @@ import { SwapAssetPicker, type SwapAsset } from '@/components/dashboard/SwapAsse
 import { resolveFlow } from '@/components/dashboard/AgentMarkdown';
 import { UnifiedTimeline } from '@/components/dashboard/UnifiedTimeline';
 import { getPresetConfig } from '@/lib/engine/permission-tiers-client';
-import { EmailCaptureModal } from '@/components/auth/EmailCaptureModal';
 import { AppShell } from '@/components/shell/AppShell';
 import { useChipFlow, type ChipFlowResult, type FlowContext } from '@/hooks/useChipFlow';
 import { useFeed } from '@/hooks/useFeed';
@@ -280,48 +279,12 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
   // explicitly set a preset; settings UI persists this via
   // POST /api/user/preferences { permissionPreset }.
   const [permissionPreset, setPermissionPreset] = useState<'conservative' | 'balanced' | 'aggressive'>('balanced');
-  const [emailModalOpen, setEmailModalOpen] = useState(false);
-  const emailCheckedRef = useRef(false);
 
-  // [PR — modal re-prompt fix] Pressing "Skip — I'll add this later" used
-  // to set local state only. Navigating to /settings unmounted this
-  // component; on return, the ref reset and the same email check fired
-  // again, so the modal popped right back up. We now persist the skip
-  // in localStorage with a 7-day cooldown so a deliberate dismissal
-  // sticks across mounts/navigations, while still re-prompting after a
-  // week if the user still hasn't verified.
-  useEffect(() => {
-    if (!address || !session?.jwt || emailCheckedRef.current) return;
-    emailCheckedRef.current = true;
-
-    const SKIP_KEY = `audric:email-skip:${address}`;
-    const SKIP_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
-    try {
-      const skippedAt = Number(window.localStorage.getItem(SKIP_KEY) ?? '0');
-      if (skippedAt && Date.now() - skippedAt < SKIP_COOLDOWN_MS) return;
-    } catch {
-      // localStorage disabled (private browsing / quota) — fall through
-      // and show the modal as before.
-    }
-
-    fetch(`/api/user/email?address=${address}`, {
-      headers: { 'x-zklogin-jwt': session.jwt },
-    })
-      .then((r) => r.json())
-      .then((data) => {
-        if (!data.emailVerified) setEmailModalOpen(true);
-      })
-      .catch(() => {});
-  }, [address, session?.jwt]);
-
-  const handleEmailModalClose = useCallback(() => {
-    setEmailModalOpen(false);
-    try {
-      window.localStorage.setItem(`audric:email-skip:${address}`, String(Date.now()));
-    } catch {
-      // localStorage disabled — modal will re-prompt on next mount; ack'd.
-    }
-  }, [address]);
+  // [PR-B2] EmailCaptureModal + verify-link round-trip removed. The
+  // session-tier (5 vs 20 sessions/day) now reads `email_verified` off
+  // the Google OIDC JWT directly. No client-side capture, no modal, no
+  // localStorage skip cooldown. The previous flow lived here from
+  // S.5 → S.31 and is logged in audric-build-tracker.md.
 
   const balance = {
     total: balanceQuery.data?.total ?? 0,
@@ -1177,16 +1140,6 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
   const email = decodeJwtEmail(session?.jwt);
   const greeting = getGreeting(email);
 
-  const emailModal = (
-    <EmailCaptureModal
-      open={emailModalOpen}
-      onClose={handleEmailModalClose}
-      address={address}
-      jwt={session.jwt}
-      initialEmail={email}
-    />
-  );
-
   const tosBanner = !userStatus.loading && !userStatus.tosAccepted ? (
     <TosBanner onAccept={userStatus.acceptTos} />
   ) : null;
@@ -1607,7 +1560,6 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
         {isChatLayout ? panelContent : (
           <div className="flex-1 overflow-y-auto">{panelContent}</div>
         )}
-        {emailModal}
         {tosBanner}
       </AppShell>
     </VoiceModeProvider>

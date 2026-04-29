@@ -171,8 +171,9 @@ export default function TermsPage() {
           <p className="mt-2">
             If you reach the daily limit, new chat sessions are blocked until
             the rolling window resets. Existing transactions, balance lookups,
-            and account access continue to work. Verifying your email raises
-            the daily cap and is the only billing-relevant action you can take.
+            and account access continue to work. Signing in with a Google
+            account whose email is verified by Google (default for personal
+            Gmail) automatically qualifies for the higher cap.
           </p>
           <p className="mt-2">
             We may adjust the cap, the window, or the verified / unverified

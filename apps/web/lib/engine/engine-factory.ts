@@ -132,6 +132,11 @@ const SUI_RPC_URL = getSuiRpcUrl();
 const AUDRIC_INTERNAL_API_URL =
   env.AUDRIC_INTERNAL_API_URL ?? env.NEXT_PUBLIC_APP_URL ?? 'https://audric.ai';
 const AUDRIC_INTERNAL_KEY = env.T2000_INTERNAL_KEY;
+// [PR-B2] BRAVE_API_KEY now flows through ToolContext.env instead of the
+// engine reading process.env directly. Goes hand-in-hand with the engine
+// drop of the process.env fallback in `web-search.ts`. Empty string when
+// unset — `web_search` returns "not configured" gracefully.
+const BRAVE_API_KEY = env.BRAVE_API_KEY ?? '';
 
 let sessionStore: SessionStore | null = null;
 let mcpManager: McpClientManager | null = null;
@@ -564,6 +569,7 @@ export async function createEngine(
     env: {
       AUDRIC_INTERNAL_API_URL,
       AUDRIC_INTERNAL_KEY,
+      BRAVE_API_KEY,
     },
     maxTurns: 10,
     maxTokens: effort === 'high' || effort === 'max' ? 16384 : 8192,

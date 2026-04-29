@@ -49,7 +49,6 @@ beforeEach(() => {
       key.startsWith('CRON_') ||
       key.startsWith('OPENAI_') ||
       key.startsWith('ELEVENLABS_') ||
-      key.startsWith('RESEND_') ||
       key.startsWith('INTERNAL_') ||
       key.startsWith('SUI_') ||
       key === 'SYNTHETIC_SESSION_PREFIXES'

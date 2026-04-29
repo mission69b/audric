@@ -6,6 +6,18 @@ interface JwtPayload {
   aud?: string;
   exp?: number;
   email?: string;
+  /**
+   * Google OIDC standard claim (RFC 7519 §4.1 + Google extension). `true`
+   * iff Google has verified the email address — for personal Gmail this
+   * is always `true`; for Workspace it depends on the org's policy.
+   * PR-B2 trusts this claim to gate the session-tier (5 vs 20 sessions/day),
+   * replacing the deleted Resend-based verification flow.
+   */
+  email_verified?: boolean;
+  /** Google OIDC standard — display name. */
+  name?: string;
+  /** Google OIDC standard — profile picture URL. */
+  picture?: string;
 }
 
 /**
@@ -59,6 +71,24 @@ export function validateJwt(
  */
 export function isValidSuiAddress(address: string): boolean {
   return /^0x[a-fA-F0-9]{64}$/.test(address);
+}
+
+/**
+ * Trust the Google OIDC `email_verified` claim from the zkLogin JWT.
+ *
+ * PR-B2 replaces the Resend-backed email-link verification with this
+ * single-claim check. Google's OIDC implementation guarantees:
+ *   - personal Gmail accounts: always `email_verified: true`
+ *   - Workspace accounts: depends on the org's auth policy
+ *
+ * Returns `false` for null / undecodable JWTs and for any payload
+ * missing the claim. The session-tier resolver (`sessionLimitFor`)
+ * treats `false` as "unverified" → 5 sessions/day cap.
+ */
+export function isJwtEmailVerified(jwt: string | null | undefined): boolean {
+  if (!jwt) return false;
+  const payload = decodeJwt(jwt);
+  return payload?.email_verified === true;
 }
 
 const MAX_AMOUNTS: Record<string, number> = {

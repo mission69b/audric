@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { validateJwt, isValidSuiAddress } from '@/lib/auth';
+import { validateJwt, isValidSuiAddress, isJwtEmailVerified } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import {
   SESSION_WINDOW_MS,
@@ -27,6 +27,10 @@ export const runtime = 'nodejs';
  * the deleted /setup wizard used to play and eliminates the 404 spam in
  * Vercel logs when this route runs before the user posts a chat message
  * or saves an email.
+ *
+ * [PR-B2] `emailVerified` now comes from the Google OIDC `email_verified`
+ * claim on the zkLogin JWT. The Resend verify-link flow is gone. The DB
+ * column stays for legacy / debugging but is no longer authoritative.
  */
 export async function GET(request: NextRequest) {
   const jwt = request.headers.get('x-zklogin-jwt');
@@ -45,7 +49,6 @@ export async function GET(request: NextRequest) {
       update: {},
       select: {
         tosAcceptedAt: true,
-        emailVerified: true,
       },
     }),
     prisma.sessionUsage.groupBy({
@@ -57,7 +60,7 @@ export async function GET(request: NextRequest) {
     }).then((rows) => rows.length).catch(() => 0),
   ]);
 
-  const emailVerified = user.emailVerified;
+  const emailVerified = isJwtEmailVerified(jwt);
   const sessionLimit = sessionLimitFor(emailVerified);
 
   return NextResponse.json({

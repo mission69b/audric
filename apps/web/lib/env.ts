@@ -123,9 +123,6 @@ const serverSchema = z.object({
   /** ElevenLabs voice ID — defaults to Rachel (US English, multilingual). */
   ELEVENLABS_VOICE_ID: optionalString,
 
-  /** Resend email API key — used for email verification only. Emails silently disabled if unset. */
-  RESEND_API_KEY: optionalString,
-
   /** Internal API key for service gateway auth — only needed for the MPP services route. */
   INTERNAL_API_KEY: optionalString,
 
@@ -147,12 +144,6 @@ const serverSchema = z.object({
 
   /** Vercel environment — preview/production/development. */
   VERCEL_ENV: z.enum(['development', 'preview', 'production']).optional(),
-
-  /** Vercel deployment URL. */
-  VERCEL_URL: optionalString,
-
-  /** Vercel OIDC token. */
-  VERCEL_OIDC_TOKEN: optionalString,
 });
 
 // ─── Client-side schema (NEXT_PUBLIC_*) ────────────────────────────────
@@ -200,7 +191,6 @@ const runtimeEnv = {
   OPENAI_API_KEY: process.env.OPENAI_API_KEY,
   ELEVENLABS_API_KEY: process.env.ELEVENLABS_API_KEY,
   ELEVENLABS_VOICE_ID: process.env.ELEVENLABS_VOICE_ID,
-  RESEND_API_KEY: process.env.RESEND_API_KEY,
   INTERNAL_API_KEY: process.env.INTERNAL_API_KEY,
   SUI_RPC_URL: process.env.SUI_RPC_URL,
   SYNTHETIC_SESSION_PREFIXES: process.env.SYNTHETIC_SESSION_PREFIXES,
@@ -208,8 +198,6 @@ const runtimeEnv = {
   VERCEL_DEPLOYMENT_ID: process.env.VERCEL_DEPLOYMENT_ID,
   VERCEL_GIT_COMMIT_SHA: process.env.VERCEL_GIT_COMMIT_SHA,
   VERCEL_ENV: process.env.VERCEL_ENV,
-  VERCEL_URL: process.env.VERCEL_URL,
-  VERCEL_OIDC_TOKEN: process.env.VERCEL_OIDC_TOKEN,
   // Client (NEXT_PUBLIC_*)
   NEXT_PUBLIC_SUI_NETWORK: process.env.NEXT_PUBLIC_SUI_NETWORK,
   NEXT_PUBLIC_GOOGLE_CLIENT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
@@ -335,7 +323,6 @@ const SERVER_ONLY_KEYS = new Set([
   'OPENAI_API_KEY',
   'ELEVENLABS_API_KEY',
   'ELEVENLABS_VOICE_ID',
-  'RESEND_API_KEY',
   'INTERNAL_API_KEY',
   'SUI_RPC_URL',
   'SYNTHETIC_SESSION_PREFIXES',
@@ -343,8 +330,6 @@ const SERVER_ONLY_KEYS = new Set([
   'VERCEL_DEPLOYMENT_ID',
   'VERCEL_GIT_COMMIT_SHA',
   'VERCEL_ENV',
-  'VERCEL_URL',
-  'VERCEL_OIDC_TOKEN',
 ]);
 
 export const env = new Proxy(parsedData, {

@@ -17,9 +17,8 @@
  *     keeps the marketing pitch reading the way it was approved.
  *
  *   THEMED = the authenticated app shell (`/new`, `/chat/[sessionId]`,
- *     `/settings`) PLUS three utility/handoff surfaces that should
+ *     `/settings`) PLUS two utility/handoff surfaces that should
  *     follow the OS:
- *       - `/verify` (post-email-click landing, no brand identity)
  *       - `/auth/callback` (3–5s zkLogin "Signing you in…" screen —
  *         user came from clicking Sign in with Google so we already
  *         know they're an Audric user mid-flow; flashing them white
@@ -53,10 +52,11 @@ export const PUBLIC_PATHS: readonly string[] = [
   '/swap',
   '/send',
   '/receive',
-  // NOTE: `/verify` was intentionally MOVED out of this list — it now
-  // follows the user's stored theme (or OS default). See module header
-  // for rationale. Same for `/pay/` and `/auth/` (were in PUBLIC_PREFIXES
-  // below).
+  // NOTE: `/pay/` and `/auth/` were intentionally MOVED out of
+  // PUBLIC_PREFIXES below — both are utility/handoff surfaces that
+  // follow the OS / stored theme. See module header for rationale.
+  // (Pre-PR-B2 the `/verify` route was here too; the entire Resend
+  // verify-link flow has since been deleted.)
 ];
 
 export const PUBLIC_PREFIXES: readonly string[] = [
