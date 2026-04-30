@@ -63,6 +63,31 @@ This is a Spec 1 bug. The flow:
 
 **If you skip the `attemptId`** — the next turn won't know the tx happened, and the agent will offer to retry. **Always pass it through.**
 
+## Enoki `allowedAddresses` rule (sponsored tx allow-listing)
+
+Enoki's sponsor service does **static analysis** on the PTB before sponsoring. Any top-level `transferObjects` command whose recipient is not in `sponsorBody.allowedAddresses` causes Enoki to reject the tx with `"Address is not allow-listed for receiving transfers"`.
+
+**The rule:** every top-level `transferObjects` recipient inside a sponsored PTB MUST be present in the `allowedAddresses` array passed to `/api/transactions/prepare → buildAndSponsor`. This includes:
+
+1. **The user's recipient** (e.g. for `send` / `transfer_payment_link` flows) — set from `params.recipient`.
+2. **The treasury wallet** (`T2000_OVERLAY_FEE_WALLET`) — required for ANY operation where Audric injects an `addFeeTransfer(...)` call (today: `save`, `borrow`). The fee transfer is a top-level `transferObjects`, so Enoki sees it.
+
+Swap is the exception that obscures this: Cetus's overlay-fee routes through Move calls (`cetus::aggregator::swap`), which Enoki does not statically inspect — so swaps work without `T2000_OVERLAY_FEE_WALLET` in `allowedAddresses`. **This is the trap.** A change to save/borrow that adds a fee transfer will silently break in production unless the wallet is in `allowedAddresses` too.
+
+**The implementation in `prepare/route.ts`:**
+
+```typescript
+import { T2000_OVERLAY_FEE_WALLET } from '@t2000/sdk';
+
+// ALWAYS include the treasury wallet — required for the inline addFeeTransfer
+// in save/borrow flows. Add the user's recipient on top for send-style flows.
+const allowedAddresses = [T2000_OVERLAY_FEE_WALLET];
+if (params.recipient) allowedAddresses.push(params.recipient);
+sponsorBody.allowedAddresses = allowedAddresses;
+```
+
+**Test contract:** any change to `prepare/route.ts` that adds, removes, or restructures a top-level `transferObjects` MUST be re-tested against all three write paths (swap, save, borrow) on the prod-mode sponsor before shipping. The mock-Enoki integration test (PR-H1) catches this in CI; until that lands, the runbook check is mandatory.
+
 ## Cross-references
 
 - Engine pending-action contract → `t2000/.cursor/rules/agent-harness-spec.mdc`
