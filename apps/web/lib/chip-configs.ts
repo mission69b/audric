@@ -87,7 +87,7 @@ export function buildChipConfigs(prefetch?: ChipPrefetchData): ChipConfig[] {
       id: 'receive',
       label: 'Receive',
       actions: [
-        { label: 'Show wallet address', sublabel: 'copy or share QR', prompt: 'Show me my wallet address and QR code for receiving USDC' },
+        { label: 'Show wallet address', sublabel: 'copy or share QR', prompt: 'Show me my wallet address and QR code for receiving USDC', flow: 'receive' },
         { label: 'Create payment link', sublabel: 'let others pay you', prompt: 'Create a payment link for $25 USDC' },
         { label: 'Create invoice', sublabel: 'request payment with memo', prompt: 'Create an invoice for $100 USDC' },
       ],

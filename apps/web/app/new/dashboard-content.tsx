@@ -523,6 +523,25 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
                   'Send USDC to the address above',
                 ],
               },
+              // [Option A / 2026-04-30] Card on-ramp via Mercuryo. This is the
+              // smallest-possible ship of the deferred PR-B4 spec — a single
+              // markdown link inline in the existing deposit-address receipt
+              // instead of a dedicated modal + engine tool + settings link.
+              //
+              // Why two-hop: Mercuryo doesn't issue Sui-native USDC directly,
+              // so the path is buy SUI on card → swap SUI→USDC via the Cetus
+              // swap chip. Fee stack (Mercuryo 3-5% + Cetus 0.1%) is real, so
+              // we surface it after a CEX exchange transfer (the cheaper path)
+              // rather than leading with it. Same widget URL as the CLI's
+              // `init` step (packages/cli/src/commands/init.ts) — single source
+              // of truth for the on-ramp link.
+              {
+                title: 'From a card (no exchange)',
+                steps: [
+                  'Open [Mercuryo](https://exchange.mercuryo.io/?widget_id=89960d1a-8db7-49e5-8823-4c5e01c1cea2), buy SUI with your card to the address above',
+                  'Then ask Audric **"swap all my SUI to USDC"** to convert it',
+                ],
+              },
             ],
           });
           break;
@@ -1504,6 +1523,11 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
             jwt={session.jwt}
             balance={balance}
             onSendMessage={handleInputSubmit}
+            onShowAddress={() => {
+              setPanel('chat');
+              chipFlow.reset();
+              executeIntent({ action: 'address' });
+            }}
           />
         );
       case 'goals':

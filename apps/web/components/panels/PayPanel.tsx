@@ -34,6 +34,15 @@ interface PayPanelProps {
   jwt: string;
   balance: BalanceHeaderData;
   onSendMessage: (text: string) => void;
+  /**
+   * Optional deterministic-flow handler for the QR button.
+   * When provided, the QR button bypasses the LLM and routes straight to
+   * `executeIntent({ action: 'address' })` in dashboard-content.tsx so the
+   * user sees the rich Deposit Address receipt (with QR + exchange-specific
+   * deposit instructions) instead of an LLM-narrated markdown blob. Falls
+   * back to the legacy onSendMessage prompt path if omitted.
+   */
+  onShowAddress?: () => void;
 }
 
 interface Payment {
@@ -83,7 +92,7 @@ function timeAgo(dateStr: string): string {
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
-export function PayPanel({ address, jwt, balance, onSendMessage }: PayPanelProps) {
+export function PayPanel({ address, jwt, balance, onSendMessage, onShowAddress }: PayPanelProps) {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -174,7 +183,11 @@ export function PayPanel({ address, jwt, balance, onSendMessage }: PayPanelProps
         </button>
         <button
           type="button"
-          onClick={() => onSendMessage('Show me my wallet address and QR code for receiving USDC')}
+          onClick={() =>
+            onShowAddress
+              ? onShowAddress()
+              : onSendMessage('Show me my wallet address and QR code for receiving USDC')
+          }
           className="font-mono text-[11px] tracking-[0.1em] uppercase text-fg-secondary bg-transparent border border-border-subtle rounded-pill px-5 py-3.5 hover:bg-surface-card hover:text-fg-primary hover:border-border-strong transition focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
         >
           QR

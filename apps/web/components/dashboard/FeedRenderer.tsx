@@ -251,7 +251,25 @@ export function FeedItemCard({
                     {inst.steps.map((step, i) => (
                       <li key={i} className="text-[11px] font-mono text-fg-secondary leading-relaxed flex gap-2">
                         <span className="text-fg-muted shrink-0">{i + 1}.</span>
-                        <span dangerouslySetInnerHTML={{ __html: step.replace(/\*\*(.*?)\*\*/g, '<span class="text-fg-primary font-medium">$1</span>') }} />
+                        <span
+                          dangerouslySetInnerHTML={{
+                            // Inputs to `instructions[].steps` are server-defined
+                            // (see dashboard-content.tsx → case 'address'), never
+                            // user-controlled, so the dangerouslySetInnerHTML
+                            // trust model is intact. Two passes:
+                            //   1. **bold** → emphasized span
+                            //   2. [text](https://...) → external anchor
+                            // Link pass restricts URLs to http/https to keep
+                            // future contributors from accidentally inlining
+                            // a `javascript:` URI even from a server source.
+                            __html: step
+                              .replace(/\*\*(.*?)\*\*/g, '<span class="text-fg-primary font-medium">$1</span>')
+                              .replace(
+                                /\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,
+                                '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-info-solid underline underline-offset-2 hover:opacity-70 transition">$1</a>',
+                              ),
+                          }}
+                        />
                       </li>
                     ))}
                   </ol>
