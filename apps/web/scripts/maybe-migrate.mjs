@@ -40,8 +40,27 @@
  * - Missing `DATABASE_URL` on a production build → fail-fast (it's
  *   already a hard requirement of `lib/env.ts`, but failing here gives
  *   a clearer error in the build log).
+ *
+ * Retry semantics (TD.4 — added 2026-04-30)
+ * -----------------------------------------
+ * `prisma migrate deploy` acquires a Postgres advisory lock with a
+ * default timeout of 10s. On Neon, that timeout is regularly exceeded
+ * during cold-start wake-ups or when a previous deploy's connection
+ * orphaned the lock. We hit `P1002` ("timed out trying to acquire a
+ * postgres advisory lock") 3× in 24h on 2026-04-30 — including for
+ * deploys whose code change had nothing to do with the schema (e.g.
+ * a single-line UI revert, commit `cc2c9ea`).
+ *
+ * The fix is to retry. `prisma migrate deploy` is idempotent — if
+ * migrations 1..N are applied and N+1 fails, retrying picks up at N+1.
+ * We retry up to 3 times with 5s/15s/30s backoff (50s total budget).
+ * On the third failure we still abort the build (preserves the
+ * fail-closed semantic — we never ship code expecting a schema that
+ * isn't there). On any successful attempt we log the attempt count so
+ * a flaky-Neon trend is visible in build logs.
  */
 import { spawnSync } from 'node:child_process';
+import { setTimeout as sleep } from 'node:timers/promises';
 
 const isProductionDeploy = process.env.VERCEL_ENV === 'production';
 
@@ -61,18 +80,54 @@ if (!process.env.DATABASE_URL) {
   process.exit(1);
 }
 
-console.log('[maybe-migrate] VERCEL_ENV=production, applying pending migrations…');
+const MAX_ATTEMPTS = 3;
+const BACKOFF_MS = [5_000, 15_000, 30_000];
 
-const result = spawnSync('pnpm', ['exec', 'prisma', 'migrate', 'deploy'], {
-  stdio: 'inherit',
-  env: process.env,
-});
-
-if (result.status !== 0) {
-  console.error(
-    `[maybe-migrate] prisma migrate deploy exited with code ${result.status} — aborting build`,
-  );
-  process.exit(result.status ?? 1);
+function runMigrate() {
+  const result = spawnSync('pnpm', ['exec', 'prisma', 'migrate', 'deploy'], {
+    stdio: 'inherit',
+    env: process.env,
+  });
+  return result.status ?? 1;
 }
 
-console.log('[maybe-migrate] migrations applied successfully');
+let lastExitCode = 0;
+let succeededOnAttempt = 0;
+
+for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+  console.log(
+    `[maybe-migrate] VERCEL_ENV=production, applying pending migrations (attempt ${attempt}/${MAX_ATTEMPTS})…`,
+  );
+
+  lastExitCode = runMigrate();
+
+  if (lastExitCode === 0) {
+    succeededOnAttempt = attempt;
+    break;
+  }
+
+  if (attempt < MAX_ATTEMPTS) {
+    const waitMs = BACKOFF_MS[attempt - 1];
+    console.warn(
+      `[maybe-migrate] attempt ${attempt} exited with code ${lastExitCode} — retrying in ${
+        waitMs / 1000
+      }s (likely Neon cold-start / advisory-lock contention; see TD.4 in build tracker)`,
+    );
+    await sleep(waitMs);
+  }
+}
+
+if (succeededOnAttempt === 0) {
+  console.error(
+    `[maybe-migrate] all ${MAX_ATTEMPTS} attempts failed (last exit code ${lastExitCode}) — aborting build`,
+  );
+  process.exit(lastExitCode);
+}
+
+if (succeededOnAttempt > 1) {
+  console.log(
+    `[maybe-migrate] migrations applied successfully on attempt ${succeededOnAttempt}/${MAX_ATTEMPTS} (recorded for trend tracking)`,
+  );
+} else {
+  console.log('[maybe-migrate] migrations applied successfully');
+}
