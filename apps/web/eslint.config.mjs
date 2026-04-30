@@ -153,6 +153,18 @@ const eslintConfig = [
     ignores: ["lib/generated/**"],
   },
   {
+    // PR-H3 (2026-04-30) bumped this from `warn` (Next.js default) to
+    // `error` after fixing the 14 standing warnings. The 8 intentional
+    // `eslint-disable-next-line react-hooks/exhaustive-deps` escape
+    // hatches across the codebase still work at error-level, so genuine
+    // exceptions remain explicit and reviewable. Any future regression
+    // now fails CI immediately instead of accumulating as noise.
+    files: ["**/*.{ts,tsx}"],
+    rules: {
+      "react-hooks/exhaustive-deps": "error",
+    },
+  },
+  {
     files: ["**/*.{ts,tsx}"],
     ignores: [
       ...CANONICAL_FILES,

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useZkLogin } from '@/components/auth/useZkLogin';
 import { ChipBar } from '@/components/dashboard/ChipBar';
@@ -253,7 +253,10 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
     if (initialSessionLoaded.current || !initialSessionId || !session?.jwt) return;
     initialSessionLoaded.current = true;
     engine.loadSession(initialSessionId);
-  }, [initialSessionId, session?.jwt, engine.loadSession]);
+    // `engine` is recreated on every render (useEngine returns a fresh object),
+    // so this effect re-attaches each render — but the `initialSessionLoaded`
+    // ref guards `loadSession` from firing more than once.
+  }, [initialSessionId, session?.jwt, engine]);
 
   // [Bug 2 / 2026-04-27] Keep URL on /chat/{sessionId} whenever the chat
   // panel is active AND a session exists. Pre-fix this effect only ran on
@@ -286,7 +289,11 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
   // localStorage skip cooldown. The previous flow lived here from
   // S.5 → S.31 and is logged in audric-build-tracker.md.
 
-  const balance = {
+  // Memoized so the dozen-plus useCallbacks below that include `balance` in
+  // their deps don't re-create on every render. Pre-memo, every parent render
+  // churned every callback's identity, defeating useCallback for the chip
+  // flow + intent handlers downstream.
+  const balance = useMemo(() => ({
     total: balanceQuery.data?.total ?? 0,
     cash: balanceQuery.data?.cash ?? 0,
     savings: balanceQuery.data?.savings ?? 0,
@@ -306,7 +313,7 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
     assetUsdValues: balanceQuery.data?.assetUsdValues ?? {},
     loading: balanceQuery.isLoading,
     error: balanceQuery.isError,
-  };
+  }), [balanceQuery.data, balanceQuery.isLoading, balanceQuery.isError]);
 
   const chipExpand = useChipExpand({ idleUsdc: balance.usdc, currentApy: balance.savingsRate });
 
@@ -335,7 +342,10 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
 
   const confirmResolverRef = useRef<((approved: boolean) => void) | null>(null);
 
-  const flowContext: FlowContext = {
+  // Same memoization rationale as `balance` above — flowContext is included
+  // in chip handler useCallback deps; recreating it every render churned
+  // those callbacks.
+  const flowContext: FlowContext = useMemo(() => ({
     cash: balance.cash,
     usdc: balance.usdc,
     savings: balance.savings,
@@ -343,7 +353,7 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
     savingsRate: balance.savingsRate,
     bestRate: balance.bestSaveRate?.rate,
     maxBorrow: balance.maxBorrow,
-  };
+  }), [balance]);
 
   const fetchHistory = useCallback(async () => {
     if (!address) return;
@@ -1046,7 +1056,7 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
       chipFlow.setError(errorData.type === 'error' ? errorData.message : 'Transaction failed');
       feed.addItem(errorData);
     }
-  }, [chipFlow, feed, agent, contactsHook, balanceQuery]);
+  }, [chipFlow, feed, agent, contactsHook, balanceQuery, balance]);
 
   const getConfirmationDetails = () => {
     const flow = chipFlow.state.flow;

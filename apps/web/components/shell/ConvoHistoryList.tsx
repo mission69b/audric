@@ -57,7 +57,7 @@ export function ConvoHistoryList({
       .then((data) => setSessions(data.sessions ?? []))
       .catch(() => setSessions([]))
       .finally(() => setLoading(false));
-  }, [jwt]);
+  }, [jwt, address]);
 
   const handleDelete = useCallback(
     async (e: React.MouseEvent, sessionId: string) => {

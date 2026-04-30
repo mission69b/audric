@@ -123,7 +123,11 @@ export function PortfolioTimelineCanvas({ data, onAction }: Props) {
       .finally(() => setLoading(false));
   }, [address, period.days]);
 
-  const snapshots = response?.snapshots ?? [];
+  // Wrap in useMemo so the `?? []` fallback doesn't allocate a fresh empty
+  // array on every render when `response` is null — that fresh array is the
+  // dep of the buildStackedPaths memo below, so without this it re-computed
+  // every render in the loading state.
+  const snapshots = useMemo(() => response?.snapshots ?? [], [response?.snapshots]);
   const change = response?.change;
 
   const W = 320;

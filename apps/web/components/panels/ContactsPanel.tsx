@@ -109,16 +109,20 @@ export function ContactsPanel({ address, balance, feed, onSendMessage }: Contact
   // note: "derive ACTIVITY from existing tx history filtered by
   // counterparty"). All metrics fall back to "—" when there is no match,
   // matching the design's placeholders.
+  // Extract `feed.items` into a local so the useMemo dep is the array
+  // reference itself, not a member access — satisfies the exhaustive-deps
+  // rule without depending on the entire `feed` object.
+  const feedItems = feed.items;
   const contactMetrics = useMemo(() => {
     const map = new Map<string, {
       verified: boolean;
       lastSentTs: number | null;
       totalSent: number;
       lastTxTs: number | null;
-      activity: typeof feed.items;
+      activity: typeof feedItems;
     }>();
     for (const c of contacts) {
-      const items = feed.items.filter(
+      const items = feedItems.filter(
         (i) => i.counterparty?.toLowerCase() === c.address.toLowerCase(),
       );
       const sent = items.filter((i) => i.direction === 'out');
@@ -135,7 +139,7 @@ export function ContactsPanel({ address, balance, feed, onSendMessage }: Contact
       });
     }
     return map;
-  }, [contacts, feed.items]);
+  }, [contacts, feedItems]);
 
   const networkLabel = feed.network === 'testnet' ? 'Sui testnet' : 'Sui mainnet';
 

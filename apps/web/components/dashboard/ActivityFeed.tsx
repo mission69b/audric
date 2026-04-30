@@ -74,9 +74,14 @@ function groupByDate(items: ActivityItem[]): DateGroup[] {
 }
 
 export function ActivityFeed({ feed, onAction, onExplainTx }: ActivityFeedProps) {
+  // Destructure first so the effect dep is the stable `useCallback` reference
+  // (from useActivityFeed) rather than a member access — the lint rule
+  // can't reason about `feed.markSeen` being stable, but extracting it does
+  // the right thing.
+  const { markSeen } = feed;
   useEffect(() => {
-    feed.markSeen();
-  }, [feed.markSeen]);
+    markSeen();
+  }, [markSeen]);
 
   const displayGroups = useMemo<DateGroup[]>(() => {
     if (feed.filter !== 'all') {
