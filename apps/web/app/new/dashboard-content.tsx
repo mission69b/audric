@@ -32,7 +32,6 @@ import { useContacts } from '@/hooks/useContacts';
 import { useAgent } from '@/hooks/useAgent';
 import { COIN_REGISTRY } from '@/lib/token-registry';
 import { buildSwapDisplayData } from '@/lib/balance-changes';
-import { buildSuiPayUri } from '@/lib/sui-pay-uri';
 import { useActivityFeed } from '@/hooks/useActivityFeed';
 import { NewConversationView } from '@/components/dashboard/NewConversationView';
 import { TosBanner } from '@/components/dashboard/TosBanner';
@@ -508,15 +507,15 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
             title: 'Deposit Address',
             code: address ?? '',
             qr: true,
-            // [v0.56] qrUri = `sui:pay?recipient=…&coinType=USDC` so phone-camera
-            // scans open Slush / Phantom / Suiet directly with the address +
-            // asset pre-filled. The bare 0x address still renders below the QR
-            // (via CopyableCode using `code`) for CEX-withdrawal pasting.
-            // Helper lives in lib/payment-kit.ts — same source of truth as the
-            // pay/invoice flow's SuiPayQr.
-            qrUri: address
-              ? buildSuiPayUri({ recipient: address, amount: null })
-              : undefined,
+            // Receive QR encodes the bare 0x address — NOT a sui:pay URI.
+            // Reason: the dominant scan path for receive QRs is wallet-to-wallet
+            // (Slush / Phantom / Suiet "Send → Scan QR" recipient picker), which
+            // parses the QR contents as a destination address and rejects URIs as
+            // invalid. The pay/invoice flow correctly uses sui:pay URIs because
+            // those are scanned from "scan to pay" intent-aware flows.
+            // Trade-off: phone-camera scans don't deep-link to a wallet app — but
+            // that path is the minority and matches every major wallet's receive
+            // convention (Cash App, Coinbase, Phantom, MetaMask all use bare).
             meta: [
               { label: 'Network', value: 'Sui (mainnet)' },
               { label: 'Token', value: 'USDC' },
