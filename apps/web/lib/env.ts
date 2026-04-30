@@ -290,7 +290,6 @@ if (!parsed.success) {
     '',
   ].join('\n');
 
-  // eslint-disable-next-line no-console
   console.error(message);
   throw new Error(`Invalid environment configuration. ${parsed.error.issues.length} issue(s). See log above.`);
 }

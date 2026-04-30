@@ -143,6 +143,16 @@ const noProcessEnvRule = {
 const eslintConfig = [
   ...compat.extends("next/core-web-vitals"),
   {
+    // Auto-generated Prisma client files emit `/* eslint-disable */`
+    // headers for rules that aren't in our config (e.g. `no-unused-vars`
+    // for the project-wide TS rule). With Next 15's
+    // `--report-unused-disable-directives` default, every generated
+    // file then triggers a "Unused eslint-disable directive" warning.
+    // Ignoring the whole tree is the right call — generated code
+    // shouldn't drive our lint output.
+    ignores: ["lib/generated/**"],
+  },
+  {
     files: ["**/*.{ts,tsx}"],
     ignores: [
       ...CANONICAL_FILES,
