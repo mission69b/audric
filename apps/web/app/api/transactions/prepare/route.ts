@@ -264,9 +264,16 @@ async function buildAndSponsor(
     sponsorBody.allowedMoveCallTargets = moveCallTargets;
   }
 
-  if (params.recipient) {
-    sponsorBody.allowedAddresses = [params.recipient];
-  }
+  // [B5 v2 / 2026-04-30] Treasury wallet must always be in allowedAddresses
+  // because save/borrow inline-transfer the protocol fee there via
+  // addFeeTransfer (a top-level PTB transferObjects command). Enoki rejects
+  // any transferObjects to a recipient not in allowedAddresses, even though
+  // the global allow-list config may include other addresses. Swap is
+  // unaffected because Cetus's overlay routing happens inside Move calls,
+  // which Enoki can't statically inspect.
+  const allowedAddresses = [T2000_OVERLAY_FEE_WALLET];
+  if (params.recipient) allowedAddresses.push(params.recipient);
+  sponsorBody.allowedAddresses = allowedAddresses;
 
   const sponsorRes = await fetch(`${ENOKI_BASE}/transaction-blocks/sponsor`, {
     method: 'POST',
