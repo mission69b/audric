@@ -33,17 +33,29 @@ export function MonoLabel({ children, className }: { children: React.ReactNode; 
  * by ActivityHeatmapCanvas (PR #67) so a card showing a contact's /
  * watched-address position is visually distinguishable from one
  * showing the signed-in user's own.
+ *
+ * [v1.2 SuiNS] When `suinsName` is set (the user passed `address: "alex.sui"`
+ * and the engine resolved it via Sui RPC), prefer the human-readable
+ * name over the truncated 0x. Hover/title still surfaces the on-chain
+ * address so the user can confirm exactly what's being inspected.
  */
-export function AddressBadge({ address }: { address: string }) {
+export function AddressBadge({
+  address,
+  suinsName,
+}: {
+  address: string;
+  suinsName?: string | null;
+}) {
   const truncated = `${address.slice(0, 6)}…${address.slice(-4)}`;
+  const label = suinsName ?? truncated;
   return (
     <span
       className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-mono uppercase tracking-[0.08em] text-fg-muted"
       style={{ border: '0.5px solid var(--border-subtle)', background: 'var(--surface-sunken)' }}
-      title={address}
+      title={suinsName ? `${suinsName} · ${address}` : address}
     >
       <span className="inline-block w-1 h-1 rounded-full bg-warning-solid" />
-      {truncated}
+      {label}
     </span>
   );
 }

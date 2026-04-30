@@ -1,6 +1,6 @@
 'use client';
 
-import { CardShell, fmtRelativeTime, SUISCAN_TX_URL, SUISCAN_ICON } from './primitives';
+import { AddressBadge, CardShell, fmtRelativeTime, SUISCAN_TX_URL, SUISCAN_ICON } from './primitives';
 
 /**
  * Transaction-history-specific amount formatter.
@@ -58,6 +58,15 @@ function toIso(ts: string | number): string {
 interface HistoryData {
   transactions: TxRecord[];
   count: number;
+  /** [v0.49] Stamped by the engine's transaction_history tool. */
+  address?: string;
+  /** [v0.49] False for watched-address reads. */
+  isSelfQuery?: boolean;
+  /**
+   * [v1.2 SuiNS] Original SuiNS name when the user passed
+   * `address: "alex.sui"`. Surfaced on the watched-address chip.
+   */
+  suinsName?: string | null;
 }
 
 const ACTION_ICONS: Record<string, string> = {
@@ -167,11 +176,20 @@ export function TransactionHistoryCard({ data }: { data: HistoryData }) {
   if (!txs.length) return null;
 
   const groups = groupByDate(txs);
+  const isWatched = data.isSelfQuery === false && !!data.address;
+  const badge = isWatched ? (
+    <span className="inline-flex items-center gap-2">
+      <AddressBadge address={data.address!} suinsName={data.suinsName} />
+      <span className="text-[10px] font-mono text-fg-muted">{data.count} total</span>
+    </span>
+  ) : (
+    <span className="text-[10px] font-mono text-fg-muted">{data.count} total</span>
+  );
 
   return (
     <CardShell
       title="Recent Transactions"
-      badge={<span className="text-[10px] font-mono text-fg-muted">{data.count} total</span>}
+      badge={badge}
     >
       <div className="space-y-2">
         {Array.from(groups.entries()).map(([label, items]) => (

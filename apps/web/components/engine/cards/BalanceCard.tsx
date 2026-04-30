@@ -40,6 +40,12 @@ interface BalanceData {
   address?: string;
   /** [v0.49] False for watched-address reads. */
   isSelfQuery?: boolean;
+  /**
+   * [v1.2 SuiNS] Original SuiNS name when the user passed
+   * `address: "alex.sui"`. Used by the watched-address chip so the user
+   * sees "alex.sui" instead of "0x4abc…1234".
+   */
+  suinsName?: string | null;
 }
 
 export function BalanceCard({ data }: { data: BalanceData }) {
@@ -78,7 +84,7 @@ export function BalanceCard({ data }: { data: BalanceData }) {
 
   const hasHoldings = data.holdings && data.holdings.filter((h) => h.usdValue >= 0.01).length > 0;
   const isWatched = data.isSelfQuery === false && !!data.address;
-  const badge = isWatched ? <AddressBadge address={data.address!} /> : undefined;
+  const badge = isWatched ? <AddressBadge address={data.address!} suinsName={data.suinsName} /> : undefined;
 
   return (
     <CardShell title="Balance" badge={badge} noPadding>

@@ -18,6 +18,11 @@ interface SavingsData {
   address?: string;
   /** [v0.49] False for watched-address reads. */
   isSelfQuery?: boolean;
+  /**
+   * [v1.2 SuiNS] Original SuiNS name when the user passed
+   * `address: "alex.sui"`. Surfaced on the watched-address chip.
+   */
+  suinsName?: string | null;
 }
 
 export function SavingsCard({ data }: { data: SavingsData }) {
@@ -28,7 +33,7 @@ export function SavingsCard({ data }: { data: SavingsData }) {
   if (!supplies.length && !borrows.length && !hasEarnings) return null;
 
   const isWatched = data.isSelfQuery === false && !!data.address;
-  const badge = isWatched ? <AddressBadge address={data.address!} /> : undefined;
+  const badge = isWatched ? <AddressBadge address={data.address!} suinsName={data.suinsName} /> : undefined;
 
   return (
     <CardShell title="Savings Positions" badge={badge}>

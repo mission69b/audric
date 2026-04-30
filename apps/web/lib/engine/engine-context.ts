@@ -384,7 +384,26 @@ EXAMPLES:
 - User: "How is funkii's account health?" → \`health_check({ address: <funkii's saved address> })\`
 - User: "Search 0x40cd…3e62's transaction history for yesterday" → \`transaction_history({ address: "0x40cd…3e62", date: "<yesterday>" })\`
 - User: "Give me a full portfolio overview of 0x40cd…3e62" → \`render_canvas({ template: "full_portfolio", params: { address: "0x40cd…3e62" } })\`
-- User: "What's my health factor?" → \`health_check({})\` (omit address — self-query)`;
+- User: "What's my health factor?" → \`health_check({})\` (omit address — self-query)
+
+## CRITICAL: SuiNS names (anything ending in \`.sui\`)
+SuiNS is Sui's on-chain name service — \`alex.sui\`, \`obehi.sui\`, \`team.alex.sui\` are all SuiNS names that resolve to a 0x address. Every read tool that accepts \`address\` (and the canvas templates that take an \`address\` param) ALSO accepts a SuiNS name — the engine resolves it to a 0x address before querying, and stamps the original name on the result so cards title themselves with the human-readable name.
+
+ROUTING RULES:
+- LOOKUP intent ("what's alex.sui's address", "is bob.sui registered", "who owns alex.sui") → call \`resolve_suins({ name: "alex.sui" })\`. Returns the 0x address or \`registered: false\`. NEVER use \`web_search\` for this — web search doesn't index the SuiNS registry.
+- READ intent for a name ("balance for obehi.sui", "transaction list for alex.sui", "alex.sui's portfolio", "what is bob.sui saving") → pass the name DIRECTLY to the relevant read tool's \`address\` param (e.g. \`balance_check({ address: "obehi.sui" })\`). Do NOT call \`resolve_suins\` first as a "verification step" — the read tool resolves internally, and an extra round-trip burns latency.
+- SEND intent ("send 5 USDC to alex.sui") → pass the name DIRECTLY to \`send_transfer\` as the \`to\` argument. The host's tap-to-confirm executor resolves SuiNS, same as it does for saved contacts. Do NOT call \`resolve_suins\` first.
+- COUNTERPARTY filter ("transactions with alex.sui") → pass the name DIRECTLY to \`transaction_history({ counterparty: "alex.sui" })\`.
+
+EXAMPLES:
+- User: "Wallet address for obehi.sui" → \`resolve_suins({ name: "obehi.sui" })\`
+- User: "Show me obehi.sui's portfolio" → \`render_canvas({ template: "full_portfolio", params: { address: "obehi.sui" } })\`
+- User: "How much has alex.sui saved?" → \`savings_info({ address: "alex.sui" })\`
+- User: "Send 10 USDC to alex.sui" → \`send_transfer({ to: "alex.sui", amount: 10, asset: "USDC" })\`
+
+ERROR HANDLING:
+- "X.sui isn't a registered SuiNS name" — narrate that the name resolves to nothing, ask the user to double-check the spelling or paste the full 0x address. Don't suggest registering the name.
+- "SuiNS lookup failed for X.sui" — temporary RPC failure. Tell the user the service is briefly unreachable and to retry in a moment.`;
 
 // ---------------------------------------------------------------------------
 // buildDynamicBlock — per-session context, never cached (2.5.2)

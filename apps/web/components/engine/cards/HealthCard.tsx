@@ -21,6 +21,11 @@ interface HealthData {
   address?: string;
   /** [v0.49] False for watched-address reads. */
   isSelfQuery?: boolean;
+  /**
+   * [v1.2 SuiNS] Original SuiNS name when the user passed
+   * `address: "alex.sui"`. Surfaced on the watched-address chip.
+   */
+  suinsName?: string | null;
 }
 
 /**
@@ -71,7 +76,7 @@ export function HealthCard({ data }: { data: HealthData }) {
   // see both at a glance. Self-reads keep the original status-only badge.
   const badge = isWatched ? (
     <span className="inline-flex items-center gap-2">
-      <AddressBadge address={data.address!} />
+      <AddressBadge address={data.address!} suinsName={data.suinsName} />
       <StatusBadge status={status} />
     </span>
   ) : (

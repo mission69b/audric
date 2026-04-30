@@ -1,6 +1,6 @@
 'use client';
 
-import { CardShell, DetailRow, Gauge, MiniBar, StatusBadge, TrendIndicator, fmtUsd } from './primitives';
+import { AddressBadge, CardShell, DetailRow, Gauge, MiniBar, StatusBadge, TrendIndicator, fmtUsd } from './primitives';
 
 interface PortfolioData {
   totalValue: number;
@@ -25,6 +25,15 @@ interface PortfolioData {
   savingsApy?: number;
   dailyEarning?: number;
   weekChange?: { absoluteUsd: number; percentChange: number };
+  /** [v1.2 SuiNS] Stamped by the engine's portfolio_analysis tool. */
+  address?: string;
+  /** [v1.2 SuiNS] False for watched-address reads. */
+  isSelfQuery?: boolean;
+  /**
+   * [v1.2 SuiNS] Original SuiNS name when the user passed
+   * `address: "alex.sui"`. Surfaced on the watched-address chip.
+   */
+  suinsName?: string | null;
 }
 
 function hfStatus(hf: number): 'healthy' | 'warning' | 'danger' | 'critical' {
@@ -48,8 +57,12 @@ export function PortfolioCard({ data }: { data: PortfolioData }) {
     percentage: a.percentage,
   }));
 
+  const isWatched = data.isSelfQuery === false && !!data.address;
+  const badge = isWatched ? <AddressBadge address={data.address!} suinsName={data.suinsName} /> : undefined;
+  const title = isWatched ? 'Portfolio' : 'Your Portfolio';
+
   return (
-    <CardShell title="Your Portfolio">
+    <CardShell title={title} badge={badge}>
       {/* Hero: Total value + trend */}
       <div className="text-center mb-2">
         <span className="text-2xl font-semibold font-mono text-fg-primary">
