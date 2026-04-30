@@ -86,7 +86,33 @@ if (params.recipient) allowedAddresses.push(params.recipient);
 sponsorBody.allowedAddresses = allowedAddresses;
 ```
 
-**Test contract:** any change to `prepare/route.ts` that adds, removes, or restructures a top-level `transferObjects` MUST be re-tested against all three write paths (swap, save, borrow) on the prod-mode sponsor before shipping. The mock-Enoki integration test (PR-H1) catches this in CI; until that lands, the runbook check is mandatory.
+**Test contract:** any change to `prepare/route.ts` that adds, removes, or restructures a top-level `transferObjects` MUST be re-tested against all three write paths (swap, save, borrow) on the prod-mode sponsor before shipping. The mock-Enoki integration test (`apps/web/__tests__/sponsor-allowedAddresses.test.ts`) catches this in CI as of PR-H1.
+
+## Pre-deploy smoke checklist for `prepare/route.ts`
+
+Run this checklist **before merging any PR that touches `app/api/transactions/prepare/route.ts`** (or any helper it calls — `addFeeTransfer`, `addCetusSwap`, NAVI deposit/borrow PTB builders). Skip only if your diff is purely cosmetic (e.g. comments).
+
+**1. CI checks (mandatory, automatic):**
+- [ ] `pnpm --filter @t2000/web test` passes — must include `sponsor-allowedAddresses.test.ts` (the mock-Enoki integration test). This test fails CI if a sponsored PTB has a top-level `transferObjects` whose recipient is missing from `allowedAddresses`.
+- [ ] `pnpm --filter @t2000/web typecheck` passes.
+- [ ] `pnpm --filter @t2000/web lint` passes.
+
+**2. Local E2E (mandatory if the diff changes `allowedAddresses` math, the `addFeeTransfer` call site, or any swap/save/borrow PTB shape):**
+- [ ] Swap (e.g. SUI → USDC, $1 amount) — confirms Cetus path still sponsors. Cetus fee is a Move call so it doesn't need allow-listing, but the swap success/failure tells us the sponsor service is healthy.
+- [ ] Save USDC ($1 amount, NAVI deposit) — confirms `T2000_OVERLAY_FEE_WALLET` is in `allowedAddresses`. If this fails with "Address is not allow-listed for receiving transfers", the fee wallet was dropped from the array.
+- [ ] Borrow USDC ($1 amount, NAVI borrow) — same allow-listing path as save. Both confirm the fee transfer wallet is wired through.
+
+**3. Visual diff sanity (mandatory for any code change in the route):**
+- [ ] In `prepare/route.ts`, the `allowedAddresses` array always includes `T2000_OVERLAY_FEE_WALLET` for save/borrow operations.
+- [ ] Any new operation that calls `addFeeTransfer(...)` (or any other top-level `transferObjects`) ALSO appends its recipient to `allowedAddresses`.
+- [ ] No early-return or conditional branch builds a sponsorBody without going through the same `allowedAddresses` logic.
+
+**4. Post-deploy verification (recommended):**
+- [ ] Within 10 min of deploy, run one save + one borrow + one swap on the live prod URL with a test wallet. The transaction-history view should show `splitCoins → transferObjects → fee_amount` for save/borrow.
+- [ ] Check the `ProtocolFeeLedger` in NeonDB for a row with `feeAsset=USDC` and the expected `feeAmount`.
+- [ ] If the fee row is missing, the indexer didn't see the transfer to `T2000_OVERLAY_FEE_WALLET` — likely the allow-listing dropped the wallet and the tx silently failed sponsorship (Enoki returned an error, the client showed "transaction failed", no on-chain transfer happened).
+
+**Why this exists:** April 2026 we shipped a `prepare/route.ts` refactor that dropped `T2000_OVERLAY_FEE_WALLET` from `allowedAddresses` for the save and borrow paths. Enoki rejected every sponsored save/borrow with `"Address is not allow-listed for receiving transfers"`. Swap kept working because Cetus's overlay fee is a Move call, not a `transferObjects`, so Enoki never inspected the recipient. The bug shipped because the test matrix was "swap works = all three work." It cost ~30 min of manual e2e to surface during PR-B5 v2 verification. PR-H1's mock-Enoki test now catches this in CI; this checklist is the belt-and-braces.
 
 ## Cross-references
 

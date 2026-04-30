@@ -6,6 +6,7 @@ import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { validateJwt, isValidSuiAddress, validateAmount } from '@/lib/auth';
 import { getRegistry, getClient } from '@/lib/protocol-registry';
 import { getPortfolio } from '@/lib/portfolio';
+import { assertAllowedAddressesCoverTransfers } from '@/lib/sponsor-allowed-addresses';
 import {
   resolveTokenType,
   getDecimalsForCoinType,
@@ -274,6 +275,13 @@ async function buildAndSponsor(
   const allowedAddresses = [T2000_OVERLAY_FEE_WALLET];
   if (params.recipient) allowedAddresses.push(params.recipient);
   sponsorBody.allowedAddresses = allowedAddresses;
+
+  // [PR-H5] Belt-and-braces: walk the built PTB ourselves and assert every
+  // top-level transferObjects recipient appears in `allowedAddresses`. If
+  // someone adds a new write path that injects a transfer without updating
+  // the allow-list, this throws here (clear stack trace) instead of letting
+  // Enoki reject with its terse "Address is not allow-listed" 400.
+  assertAllowedAddressesCoverTransfers(tx, allowedAddresses);
 
   const sponsorRes = await fetch(`${ENOKI_BASE}/transaction-blocks/sponsor`, {
     method: 'POST',
