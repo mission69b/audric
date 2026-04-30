@@ -79,14 +79,20 @@ export async function executeToolAction(
       // had ever happened. Now step 2 is a real call; failures throw a
       // SuinsResolutionError with a truthful narration that the LLM can
       // pass through without making things up.
-      let resolvedTo = effects.resolveContact?.(rawTo);
-      if (!resolvedTo && looksLikeSuiNs(rawTo) && effects.resolveSuiNs) {
+      const contactAddr = effects.resolveContact?.(rawTo) ?? null;
+      const usedSuins = !contactAddr && looksLikeSuiNs(rawTo) && !!effects.resolveSuiNs;
+
+      let resolvedTo: string;
+      if (contactAddr) {
+        resolvedTo = contactAddr;
+      } else if (usedSuins) {
         // Throws SuinsResolutionError on failure — propagates to the LLM
         // so it can narrate "not a registered SuiNS name" / "RPC failure"
         // instead of confabulating.
-        resolvedTo = await effects.resolveSuiNs(rawTo);
+        resolvedTo = await effects.resolveSuiNs!(rawTo);
+      } else {
+        resolvedTo = rawTo;
       }
-      if (!resolvedTo) resolvedTo = rawTo;
 
       const res = await sdk.send({
         to: resolvedTo,
@@ -94,9 +100,31 @@ export async function executeToolAction(
         asset: inp.asset as string | undefined,
       });
       const actual = parseActualAmount(res.balanceChanges, inp.asset as string, 'negative');
+
+      // Receipt-card data shape:
+      //   - `to`           is ALWAYS the on-chain 0x address (what actually moved).
+      //                    Used by TransactionReceiptCard to render the chunked
+      //                    hex line — `isSuiAddress(to)` must hold for the chunked
+      //                    render to fire. Pre-fix this was `rawTo`, so SuiNS /
+      //                    contact sends rendered a blank "To" row because
+      //                    `isSuiAddress('funkii.sui')` is false.
+      //   - `contactName`  human-readable name when the user used a saved contact.
+      //                    Mirrors what the engine-side transfer.ts tool sets via
+      //                    `agent.send()` so both code paths produce the same
+      //                    receipt shape.
+      //   - `suinsName`    human-readable name when the user used a SuiNS name.
+      //                    Treated the same way as contactName by the renderer
+      //                    (display the name, chunked address beneath).
       return {
         success: true,
-        data: { success: true, tx: res.tx, amount: actual ?? inp.amount, to: rawTo },
+        data: {
+          success: true,
+          tx: res.tx,
+          amount: actual ?? inp.amount,
+          to: resolvedTo,
+          contactName: contactAddr ? rawTo : undefined,
+          suinsName: usedSuins ? rawTo : undefined,
+        },
       };
     }
 

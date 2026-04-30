@@ -138,6 +138,19 @@ describe('executeToolAction — send_transfer SuiNS resolution', () => {
     expect(sendSpy).toHaveBeenCalledWith(
       expect.objectContaining({ to: '0xresolved' }),
     );
+
+    // [v0.56 receipt fix] The receipt card needs:
+    //   - `to`         = on-chain 0x address (so isSuiAddress() passes and
+    //                    the chunked-hex render fires)
+    //   - `suinsName`  = the human-readable name the user typed (rendered as
+    //                    the "To: funkii.sui" label above the chunked hex)
+    //   - `contactName`= undefined (not a contact)
+    // Pre-fix, `to: rawTo` left the receipt with a blank "To" row because
+    // `isSuiAddress('alex.sui')` is false.
+    const data = out.data as { to: string; suinsName?: string; contactName?: string };
+    expect(data.to).toBe('0xresolved');
+    expect(data.suinsName).toBe('alex.sui');
+    expect(data.contactName).toBeUndefined();
   });
 
   it('skips SuiNS resolution when resolveContact returns a hit', async () => {
@@ -145,7 +158,7 @@ describe('executeToolAction — send_transfer SuiNS resolution', () => {
     const sdk = fakeAgent({ send: sendSpy });
     const resolveSuiNs = vi.fn();
 
-    await executeToolAction(
+    const out = await executeToolAction(
       sdk,
       'send_transfer',
       { to: 'alex.sui', amount: 1, asset: 'USDC' },
@@ -159,6 +172,14 @@ describe('executeToolAction — send_transfer SuiNS resolution', () => {
     expect(sendSpy).toHaveBeenCalledWith(
       expect.objectContaining({ to: '0xfromcontact' }),
     );
+
+    // Contact-resolved sends populate `contactName` (not `suinsName`), even
+    // when the typed string happens to look like a SuiNS name. The contact
+    // takes precedence and the receipt should reflect that.
+    const data = out.data as { to: string; suinsName?: string; contactName?: string };
+    expect(data.to).toBe('0xfromcontact');
+    expect(data.contactName).toBe('alex.sui');
+    expect(data.suinsName).toBeUndefined();
   });
 
   it('skips SuiNS resolution when the input does not look like a SuiNS name', async () => {
@@ -166,7 +187,7 @@ describe('executeToolAction — send_transfer SuiNS resolution', () => {
     const sdk = fakeAgent({ send: sendSpy });
     const resolveSuiNs = vi.fn();
 
-    await executeToolAction(
+    const out = await executeToolAction(
       sdk,
       'send_transfer',
       { to: '0xrawaddress', amount: 1, asset: 'USDC' },
@@ -177,6 +198,13 @@ describe('executeToolAction — send_transfer SuiNS resolution', () => {
     expect(sendSpy).toHaveBeenCalledWith(
       expect.objectContaining({ to: '0xrawaddress' }),
     );
+
+    // Pure 0x pass-through — neither display-name field set; `to` is the
+    // raw address (which is also what was sent on-chain).
+    const data = out.data as { to: string; suinsName?: string; contactName?: string };
+    expect(data.to).toBe('0xrawaddress');
+    expect(data.contactName).toBeUndefined();
+    expect(data.suinsName).toBeUndefined();
   });
 
   it('propagates SuinsResolutionError up the stack so the LLM can narrate the truthful reason', async () => {

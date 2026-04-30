@@ -13,6 +13,16 @@ interface TxReceiptData {
   savingsBalance?: number;
   to?: string;
   contactName?: string;
+  /**
+   * Human-readable SuiNS name (e.g. `funkii.sui`) the user typed as the
+   * recipient. Treated the same as `contactName` by the renderer — the
+   * label shows the name, the resolved 0x address is chunked beneath. Set
+   * by `executeToolAction.send_transfer` after a successful resolve via
+   * `/api/suins/resolve`. Without this, SuiNS sends rendered a blank "To"
+   * row because `data.to` (the SuiNS string) failed `isSuiAddress` and the
+   * chunked-hex render skipped.
+   */
+  suinsName?: string;
   fromToken?: string;
   toToken?: string;
   fromAmount?: number;
@@ -86,10 +96,15 @@ function getHeroLines(data: TxReceiptData, toolName: string): HeroLine[] {
   if (toolName === 'send_transfer') {
     lines.push({ label: 'Amount', value: `$${fmtAmt(data.amount ?? 0)}` });
     const rawTo = String(data.to ?? '');
-    if (data.contactName) {
+    // contactName + suinsName are interchangeable for display purposes:
+    // both are human-readable strings the user typed (e.g. "funkii" or
+    // "funkii.sui") that resolved to `rawTo` (the 0x address). Render either
+    // as the label and chunk the resolved address beneath.
+    const displayName = data.contactName ?? data.suinsName;
+    if (displayName) {
       lines.push({
         label: 'To',
-        value: data.contactName,
+        value: displayName,
         variant: 'address',
         rawAddress: isSuiAddress(rawTo) ? rawTo : undefined,
       });
