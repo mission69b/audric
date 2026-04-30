@@ -6,7 +6,17 @@ import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { validateJwt, isValidSuiAddress, validateAmount } from '@/lib/auth';
 import { getRegistry, getClient } from '@/lib/protocol-registry';
 import { getPortfolio } from '@/lib/portfolio';
-import { resolveTokenType, getDecimalsForCoinType, USDC_TYPE, SUI_TYPE, assertAllowedAsset } from '@t2000/sdk';
+import {
+  resolveTokenType,
+  getDecimalsForCoinType,
+  USDC_TYPE,
+  SUI_TYPE,
+  assertAllowedAsset,
+  addFeeTransfer,
+  SAVE_FEE_BPS,
+  BORROW_FEE_BPS,
+  T2000_OVERLAY_FEE_WALLET,
+} from '@t2000/sdk';
 import { env } from '@/lib/env';
 
 export const runtime = 'nodejs';
@@ -328,8 +338,36 @@ async function buildTransaction(params: BuildRequest): Promise<Transaction> {
       assertAllowedAsset('save', asset);
       const saveAsset = asset ?? 'USDC';
       const adapter = getLendingAdapter(params.protocol);
-      const result = await adapter.buildSaveTx(address, amount, saveAsset);
-      return result.tx;
+
+      // [B5 v2 / 2026-04-30] Inline fee collection for USDC saves. SDK is
+      // fee-free; Audric is the only fee owner. Build the tx manually here so
+      // we can wedge `addFeeTransfer` between the splitCoins and the NAVI
+      // deposit — order matters because the deposit consumes the coin.
+      // USDsui saves are fee-free at this layer (the indexer only watches
+      // USDC inflows to the treasury wallet anyway).
+      if (saveAsset !== 'USDC' || !adapter.addSaveToTx) {
+        const result = await adapter.buildSaveTx(address, amount, saveAsset);
+        return result.tx;
+      }
+
+      const coinType = resolveTokenType(saveAsset) ?? USDC_TYPE;
+      const decimals = getDecimalsForCoinType(coinType);
+      const { ids: saveCoinIds, totalBalance: saveTotal } = await fetchCoinsForSwap(client, address, coinType);
+      if (saveCoinIds.length === 0) throw new Error(`No ${saveAsset} coins found`);
+
+      const savePrimary = tx.object(saveCoinIds[0]);
+      if (saveCoinIds.length > 1) {
+        tx.mergeCoins(savePrimary, saveCoinIds.slice(1).map(id => tx.object(id)));
+      }
+
+      const requestedRaw = BigInt(Math.floor(amount * 10 ** decimals));
+      const cappedRaw = requestedRaw > saveTotal ? saveTotal : requestedRaw;
+      const [depositCoin] = tx.splitCoins(savePrimary, [cappedRaw]);
+
+      addFeeTransfer(tx, depositCoin, SAVE_FEE_BPS, T2000_OVERLAY_FEE_WALLET, amount);
+
+      await adapter.addSaveToTx(tx, address, depositCoin, saveAsset);
+      return tx;
     }
 
     case 'withdraw': {
@@ -356,12 +394,26 @@ async function buildTransaction(params: BuildRequest): Promise<Transaction> {
       assertAllowedAsset('borrow', asset);
       const borrowAsset = asset ?? 'USDC';
       const adapter = getLendingAdapter(params.protocol);
-      // See note on `withdraw` above — skipPythUpdate=true is required for
-      // Enoki sponsored builds.
-      const result = await adapter.buildBorrowTx(address, amount, borrowAsset, {
+
+      // [B5 v2 / 2026-04-30] Inline fee collection for USDC borrows. Use the
+      // lower-level `addBorrowToTx` adapter method (returns the borrowed coin
+      // without transferring) so we can split the fee BEFORE the user gets
+      // the remainder. USDsui borrows skip the fee at this layer (matches
+      // the save path's USDC-only fee policy). See note on `withdraw` for
+      // skipPythUpdate semantics.
+      if (borrowAsset !== 'USDC' || !adapter.addBorrowToTx) {
+        const result = await adapter.buildBorrowTx(address, amount, borrowAsset, {
+          skipPythUpdate: true,
+        });
+        return result.tx;
+      }
+
+      const borrowedCoin = await adapter.addBorrowToTx(tx, address, amount, borrowAsset, {
         skipPythUpdate: true,
       });
-      return result.tx;
+      addFeeTransfer(tx, borrowedCoin, BORROW_FEE_BPS, T2000_OVERLAY_FEE_WALLET, amount);
+      tx.transferObjects([borrowedCoin], address);
+      return tx;
     }
 
     case 'repay': {
@@ -534,15 +586,19 @@ const SPONSORED_TX_PROVIDERS = getProvidersExcluding([
   'STEAMM_OMM', 'STEAMM_OMM_V2', 'SEVENK', 'HAEDALHMMV2',
 ]);
 
+// [B5 v2 / 2026-04-30] Pre-B5 v2 the overlay receiver was hardcoded to the
+// Move object ID `0x3bb501…ec91` (the bug — USDC sent there became inaccessible).
+// Now sourced from the canonical SDK constant `T2000_OVERLAY_FEE_WALLET`,
+// which IS a regular Sui wallet address. The indexer detects USDC inflows to
+// this wallet and writes them to `ProtocolFeeLedger`.
 const OVERLAY_FEE_RATE = 0.001; // 0.1% swap fee
-const OVERLAY_FEE_RECEIVER = '0x3bb501b8300125dca59019247941a42af6b292a150ce3cfcce9449456be2ec91';
 
 function getCetusAggregator(signer: string): AggregatorClient {
   return new AggregatorClient({
     signer,
     env: CETUS_ENV,
     overlayFeeRate: OVERLAY_FEE_RATE,
-    overlayFeeReceiver: OVERLAY_FEE_RECEIVER,
+    overlayFeeReceiver: T2000_OVERLAY_FEE_WALLET,
   });
 }
 

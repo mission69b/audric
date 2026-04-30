@@ -7,6 +7,6 @@ declare module '@t2000/sdk/browser' {
   export type { T2000ErrorCode, T2000ErrorData } from '@t2000/sdk';
   export { validateAddress, truncateAddress } from '@t2000/sdk';
   export { toBase64, fromBase64 } from '@t2000/sdk';
-  export { calculateFee, addCollectFeeToTx } from '@t2000/sdk';
+  export { calculateFee, addFeeTransfer } from '@t2000/sdk';
   export type { ProtocolFeeInfo, FeeOperation } from '@t2000/sdk';
 }

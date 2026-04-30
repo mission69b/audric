@@ -36,7 +36,9 @@ export function parseActualAmount(
   });
   if (!matches.length) return null;
   // Pick the largest absolute amount — avoids selecting overlay fee entries
-  // (e.g. 0.1% fee to treasury) instead of the actual user amount.
+  // (the 0.1% fee that Audric splits off via `addFeeTransfer` and routes to
+  // T2000_OVERLAY_FEE_WALLET, or the Cetus overlay fee on swaps) instead of
+  // the user's actual swap output.
   const best = matches.reduce((a, b) =>
     Math.abs(Number(a.amount)) >= Math.abs(Number(b.amount)) ? a : b,
   );
