@@ -88,7 +88,7 @@ export function useChipFlow() {
   }, []);
 
   const selectRecipient = useCallback((recipient: string, label?: string, cash?: number) => {
-    const available = cash !== undefined ? `$${Math.floor(cash)} available` : 'cash balance';
+    const available = cash !== undefined ? `$${Math.floor(cash)} available` : 'wallet balance';
     setState((prev) => ({
       ...prev,
       recipient,

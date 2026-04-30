@@ -44,19 +44,17 @@ export const PUBLIC_PATHS: readonly string[] = [
   '/terms',
   '/disclaimer',
   '/security',
-  // Product info pages (pre-auth marketing-style explainers — middleware
-  // does NOT rewrite these like it does /pay /goals etc., so they render
-  // their own ProductPage shell to signed-out visitors)
-  '/savings',
-  '/credit',
-  '/swap',
-  '/send',
-  '/receive',
   // NOTE: `/pay/` and `/auth/` were intentionally MOVED out of
   // PUBLIC_PREFIXES below — both are utility/handoff surfaces that
   // follow the OS / stored theme. See module header for rationale.
   // (Pre-PR-B2 the `/verify` route was here too; the entire Resend
   // verify-link flow has since been deleted.)
+  // (S.51 — removed `/savings` `/credit` `/swap` `/send` `/receive`:
+  // these were ProductPage subpages from the pre-S.18 6-operation
+  // taxonomy. They contradicted the canonical 5-product model, were
+  // orphaned from the homepage footer, and accumulated stale token /
+  // APY claims. Homepage now markets Passport / Intelligence /
+  // Finance / Pay / Store as in-page anchors.)
 ];
 
 export const PUBLIC_PREFIXES: readonly string[] = [

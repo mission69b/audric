@@ -1,8 +1,8 @@
 // ---------------------------------------------------------------------------
 // Canonical rates fetcher — SINGLE SOURCE OF TRUTH for "what are the
 // current save/borrow APYs across all protocols". `/api/rates`,
-// `lib/product-stats.ts`, the `rates_info` engine tool, and any future
-// rate-aware UI all go through this module.
+// the `rates_info` engine tool, and any future rate-aware UI all
+// go through this module.
 //
 // See [.cursor/rules/single-source-of-truth.mdc].
 // ---------------------------------------------------------------------------

@@ -120,7 +120,7 @@ export default function DisclaimerPage() {
           <p>
             Audric does not provide financial services and is not a bank,
             custodian, exchange, or financial advisor. The use of terms like
-            &quot;savings,&quot; &quot;cash,&quot; and &quot;debt&quot; are
+            &quot;savings,&quot; &quot;wallet,&quot; and &quot;debt&quot; are
             functional labels within the app and describe interactions with DeFi
             protocols, not traditional banking products. Deposits are not
             insured. Users are responsible for understanding and complying with
