@@ -1,32 +1,53 @@
 ---
-description: Save operations are USDC-only — every save path must use balance.usdc, not balance.cash
+description: Save operations are USDC or USDsui only — every save path must use the saveable balance, not balance.cash
 alwaysApply: true
 ---
 
-# Saves = USDC Only
+# Saves = USDC or USDsui
 
-`balance.cash` is total liquid value (USDC + SUI + GOLD + everything in USD). Saving only accepts USDC. Every save-related code path must use `balance.usdc`.
+> **Strategic exception (v0.51.0+):** USDsui is permitted alongside USDC for `save_deposit` and `borrow`. The USDC-canonical thesis still applies to **every other asset** (GOLD, SUI, USDT, USDe, ETH, NAVX, WAL): they are holdable / swappable but **never** saveable.
+>
+> Why USDsui is the exception: it's the only other Sui-native stable with a productive NAVI pool (USDC pool ~4.6% APY, USDsui pool variable, often higher). Adding it as a saveable asset captures yield optimization without inviting "save anything stable" creep (which would pull in USDe / USDT and break the simplicity invariant). See `t2000/.cursor/rules/savings-usdc-only.mdc` for the engine-side counterpart.
 
-## Where to use `balance.usdc` (save-specific)
+`balance.cash` is total liquid value (USDC + SUI + GOLD + everything in USD). Saving only accepts USDC or USDsui. Every save-related code path must use the saveable balance — typically `balance.usdc` (the canonical default) or `balance.usdsui` when the user explicitly chose USDsui.
+
+## Where to use `balance.usdc` (USDC default save path)
 
 - `FlowContext.usdc` → passed to `getFlowMessage('save')`
-- `capForFlow('save')` → returns `bal.usdc`
+- `capForFlow('save')` → returns `bal.usdc` when no asset chosen / asset === 'USDC'
 - Save "All" label → `fmtDollar(balance.usdc)`
 - `save-all` chip click → `chipFlow.selectAmount(balance.usdc)`
-- Rates chip gate → `balance.usdc > 5`
-- Contextual chips idle/what-if → `state.usdc ?? state.cash`
+- Rates chip gate → `balance.usdc > 5` (chip surfaces when USDC is saveable)
+- Contextual chips idle / what-if → `state.usdc ?? state.cash`
 - Smart cards idle-funds → `state.usdc ?? state.cash`
+
+## Where to use the USDsui balance (USDsui save path)
+
+- When the user explicitly picks USDsui in the Save chip asset picker, plumb `balance.usdsui` into `FlowContext` instead.
+- The Save chip asset picker should only render USDsui as an option when `balance.usdsui > 0` (don't show it as saveable when the wallet has none).
+- For "save 10 USDsui" the API call is `save_deposit({ amount: 10, asset: 'USDsui' })` — the asset param is binding, never substitute.
+- Repay symmetry (v0.51.1+): a USDsui debt MUST be repaid with USDsui (and a USDC debt with USDC). The SDK fetches the correct coin type, but the user must hold enough of that stable. If they hold only the wrong stable, ask them to swap manually first — never auto-chain.
 
 ## Where `balance.cash` is correct (NOT save-specific)
 
-- Display labels: "Cash: $X", "Available: $X" (total liquid balance)
+- Display labels: "Cash: $X", "Available: $X" (total liquid balance — both saveable + non-saveable)
 - Send flow (send supports any asset)
 - General onboarding checks: `state.cash === 0 && state.savings === 0`
-- Seasonal gift/spend chips (buying, not saving)
+- Seasonal gift / spend chips (buying, not saving)
 
 ## Engine side (`@t2000/engine`)
 
-- `balance_check` returns `saveableUsdc` field — only USDC can be saved
-- `displayText` labels "Wallet holdings (NOT savings)" vs "NAVI savings deposits"
-- System prompt has "Savings = USDC only (critical)" section
-- LLM must never say non-USDC tokens are "in savings" or "earning APY in savings"
+- `balance_check` returns `saveableUsdc` (USDC wallet balance) + the wallet's USDsui balance flagged as saveable
+- `displayText` distinguishes "Wallet holdings (NOT savings)" vs "NAVI savings deposits" vs "Saveable USDC / USDsui"
+- System prompt has a "Savings = USDC or USDsui" section that:
+  - Tells the LLM only USDC or USDsui can be saved via `save_deposit` and used as collateral via `borrow`
+  - Forbids the LLM from saying non-saveable tokens (GOLD, SUI, USDT, USDe, etc.) are "earning APY in savings"
+  - Tells the LLM that for "save 10" with no asset specified, call `balance_check` first then ask which stable they want (or default to whichever they hold more of, with a one-line explanation)
+- `save_deposit` + `borrow` + `repay_debt` tools accept `asset: 'USDC' | 'USDsui'`, default to `'USDC'` when omitted (except `repay_debt` where omitting means "highest-APY borrow"), and reject every other asset with a clear error
+- LLM must never auto-chain swap + deposit / swap + repay — the user decides which stable to save or repay
+
+## Adding new assets
+
+When adding assets to the token registry, they are holdable / swappable but **NOT saveable** — even other stables (USDe, USDT). Only USDC and USDsui flow through `save_deposit` / `borrow`. This is enforced by `assertAllowedAsset('save', asset)` and `assertAllowedAsset('borrow', asset)` in `packages/sdk/src/constants.ts` (`OPERATION_ASSETS`).
+
+To extend the saveable set in the future (e.g., a hypothetical USDe-on-NAVI pool), update `OPERATION_ASSETS.save` and `OPERATION_ASSETS.borrow` in `packages/sdk/src/constants.ts` AND revisit this rule + its t2000 sibling — don't bypass the allow-list.
