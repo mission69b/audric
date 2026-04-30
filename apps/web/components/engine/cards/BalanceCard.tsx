@@ -45,7 +45,12 @@ interface BalanceData {
 export function BalanceCard({ data }: { data: BalanceData }) {
   const cols: { label: string; value: string; color?: string }[] = [];
   if (data.total != null) cols.push({ label: 'Total', value: `$${fmtUsd(data.total)}` });
-  if (data.available != null) cols.push({ label: 'Cash', value: `$${fmtUsd(data.available)}` });
+  // [v0.55 Fix 2] "Wallet" instead of "Cash" — the value here aggregates every
+  // priced wallet asset (USDC + SUI + tradeables), not just stables, so "Cash"
+  // mismatched the user's mental model (e.g. SUI showing under "Cash" surprised
+  // testers who expected only USDC/USDsui). The internal property name stays
+  // `available` / `cash` to avoid a wider rename — labels are user-facing only.
+  if (data.available != null) cols.push({ label: 'Wallet', value: `$${fmtUsd(data.available)}` });
   if ((data.savings ?? 0) > 0) cols.push({ label: 'Savings', value: `$${fmtUsd(data.savings!)}`, color: 'text-success-solid' });
   if ((data.defi ?? 0) > 0) {
     // [v0.54] partial-stale: render the cached value with provenance so

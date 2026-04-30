@@ -1,5 +1,6 @@
 import { parseActualAmount, buildSwapDisplayData } from '@/lib/balance-changes';
 import { ServiceDeliveryError, type AgentActions } from '@/hooks/useAgent';
+import { looksLikeSuiNs } from '@/lib/suins-resolver';
 
 /**
  * Side-effect callbacks the pure helper needs from React land.
@@ -7,9 +8,16 @@ import { ServiceDeliveryError, type AgentActions } from '@/hooks/useAgent';
  *
  * `addContact` was removed when `save_contact` moved server-side
  * (see the tombstone in the switch below).
+ *
+ * `resolveSuiNs` is async and only called for inputs that look like SuiNS
+ * names (ending in `.sui`). Throws `SuinsResolutionError` from
+ * `lib/suins-resolver.ts` on failure — the caller branch (send_transfer)
+ * lets the error propagate so the LLM narrates the truthful reason
+ * (not registered / RPC down / etc.) rather than confabulating.
  */
 export interface ExecuteToolActionEffects {
   resolveContact?: (raw: string) => string | null;
+  resolveSuiNs?: (rawName: string) => Promise<string>;
 }
 
 export type ExecuteToolActionResult = { success: boolean; data: unknown };
@@ -60,7 +68,26 @@ export async function executeToolAction(
 
     case 'send_transfer': {
       const rawTo = String(inp.to);
-      const resolvedTo = effects.resolveContact?.(rawTo) ?? rawTo;
+
+      // Resolution order:
+      //   1. Saved contact (alex → 0x...). Free, in-memory hashmap.
+      //   2. SuiNS name (alex.sui → 0x... via /api/suins/resolve). One RPC.
+      //   3. Pass through (assume it's already a 0x address, let SDK validate).
+      //
+      // Pre-fix, the LLM hallucinated step 2 — telling users "I tried that
+      // already, the SuiNS name couldn't be resolved" when no SuiNS lookup
+      // had ever happened. Now step 2 is a real call; failures throw a
+      // SuinsResolutionError with a truthful narration that the LLM can
+      // pass through without making things up.
+      let resolvedTo = effects.resolveContact?.(rawTo);
+      if (!resolvedTo && looksLikeSuiNs(rawTo) && effects.resolveSuiNs) {
+        // Throws SuinsResolutionError on failure — propagates to the LLM
+        // so it can narrate "not a registered SuiNS name" / "RPC failure"
+        // instead of confabulating.
+        resolvedTo = await effects.resolveSuiNs(rawTo);
+      }
+      if (!resolvedTo) resolvedTo = rawTo;
+
       const res = await sdk.send({
         to: resolvedTo,
         amount: Number(inp.amount),

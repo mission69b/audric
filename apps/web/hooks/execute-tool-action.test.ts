@@ -104,3 +104,106 @@ describe('executeToolAction — volo_stake exposes vSuiReceived from balance cha
     expect(data.vSuiReceived).toBeCloseTo(9.8, 6);
   });
 });
+
+// [v0.55 Fix 3] Send-transfer recipient resolution order. Pre-fix, the only
+// resolver was `effects.resolveContact`, so SuiNS-style inputs ("alex.sui")
+// were passed through to the SDK which rejected them as malformed addresses.
+// The LLM then confabulated "I tried that already, the SuiNS name couldn't
+// be resolved" — see the bug report in audric-build-tracker.md S.49.
+//
+// New order: contact → SuiNS (async) → pass-through to SDK.
+describe('executeToolAction — send_transfer SuiNS resolution', () => {
+  const SEND_RESULT = {
+    tx: '0xsenddigest',
+    balanceChanges: [{ coinType: USDC_TYPE, amount: '-1000000' }],
+  };
+
+  it('resolves a SuiNS name via effects.resolveSuiNs when the contact lookup misses', async () => {
+    const sendSpy = vi.fn().mockResolvedValue(SEND_RESULT);
+    const sdk = fakeAgent({ send: sendSpy });
+    const resolveSuiNs = vi.fn().mockResolvedValue('0xresolved');
+
+    const out = await executeToolAction(
+      sdk,
+      'send_transfer',
+      { to: 'alex.sui', amount: 1, asset: 'USDC' },
+      {
+        resolveContact: () => null,
+        resolveSuiNs,
+      },
+    );
+
+    expect(out.success).toBe(true);
+    expect(resolveSuiNs).toHaveBeenCalledWith('alex.sui');
+    expect(sendSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ to: '0xresolved' }),
+    );
+  });
+
+  it('skips SuiNS resolution when resolveContact returns a hit', async () => {
+    const sendSpy = vi.fn().mockResolvedValue(SEND_RESULT);
+    const sdk = fakeAgent({ send: sendSpy });
+    const resolveSuiNs = vi.fn();
+
+    await executeToolAction(
+      sdk,
+      'send_transfer',
+      { to: 'alex.sui', amount: 1, asset: 'USDC' },
+      {
+        resolveContact: () => '0xfromcontact',
+        resolveSuiNs,
+      },
+    );
+
+    expect(resolveSuiNs).not.toHaveBeenCalled();
+    expect(sendSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ to: '0xfromcontact' }),
+    );
+  });
+
+  it('skips SuiNS resolution when the input does not look like a SuiNS name', async () => {
+    const sendSpy = vi.fn().mockResolvedValue(SEND_RESULT);
+    const sdk = fakeAgent({ send: sendSpy });
+    const resolveSuiNs = vi.fn();
+
+    await executeToolAction(
+      sdk,
+      'send_transfer',
+      { to: '0xrawaddress', amount: 1, asset: 'USDC' },
+      { resolveSuiNs },
+    );
+
+    expect(resolveSuiNs).not.toHaveBeenCalled();
+    expect(sendSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ to: '0xrawaddress' }),
+    );
+  });
+
+  it('propagates SuinsResolutionError up the stack so the LLM can narrate the truthful reason', async () => {
+    const { SuinsResolutionError } = await import('@/lib/suins-resolver');
+    const sendSpy = vi.fn();
+    const sdk = fakeAgent({ send: sendSpy });
+    const resolveSuiNs = vi.fn().mockRejectedValue(
+      new SuinsResolutionError(
+        'not_registered',
+        '"alex.sui" is not a registered SuiNS name.',
+        'alex.sui',
+      ),
+    );
+
+    await expect(
+      executeToolAction(
+        sdk,
+        'send_transfer',
+        { to: 'alex.sui', amount: 1, asset: 'USDC' },
+        { resolveContact: () => null, resolveSuiNs },
+      ),
+    ).rejects.toMatchObject({
+      code: 'not_registered',
+    });
+
+    // SDK send was NEVER called — we don't waste an RPC round-trip on a
+    // bad address.
+    expect(sendSpy).not.toHaveBeenCalled();
+  });
+});

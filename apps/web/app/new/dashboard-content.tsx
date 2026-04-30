@@ -547,8 +547,12 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
           break;
         case 'balance': {
           const bd = balanceQuery.data;
+          // [v0.55 Fix 2] "Wallet" instead of "Cash" — `balance.cash`
+          // aggregates every priced wallet asset (USDC + SUI + tradeables),
+          // not just stables, so "Cash" mismatched the user's mental model.
+          // Internal property name kept as `cash` to avoid a wider rename.
           const stats: string[] = [
-            `<<stat label="Cash" value="$${balance.cash.toFixed(2)}" status="${balance.cash > 0 ? 'safe' : 'neutral'}">>`,
+            `<<stat label="Wallet" value="$${balance.cash.toFixed(2)}" status="${balance.cash > 0 ? 'safe' : 'neutral'}">>`,
             `<<stat label="Savings" value="$${balance.savings.toFixed(2)}" status="${balance.savings > 0 ? 'safe' : 'neutral'}">>`,
           ];
           stats.push(`<<stat label="Total" value="$${balance.total.toFixed(2)}" status="${balance.total > 0 ? 'safe' : 'neutral'}">>`)
@@ -570,8 +574,10 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
         }
         case 'report': {
           const rd = balanceQuery.data;
+          // [v0.55 Fix 2] "Wallet" instead of "Cash" — see comment in the
+          // `balance` case above. Same reasoning, same surface.
           const rStats: string[] = [
-            `<<stat label="Cash" value="$${balance.cash.toFixed(2)}" status="${balance.cash > 0 ? 'safe' : 'neutral'}">>`,
+            `<<stat label="Wallet" value="$${balance.cash.toFixed(2)}" status="${balance.cash > 0 ? 'safe' : 'neutral'}">>`,
             `<<stat label="Savings" value="$${balance.savings.toFixed(2)}" status="${balance.savings > 0 ? 'safe' : 'neutral'}">>`,
           ];
           if (balance.borrows > 0) {
@@ -787,6 +793,14 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
 
       const result = await executeToolAction(sdk, toolName, input, {
         resolveContact: (raw) => contactsHook.resolveContact(raw),
+        // [v0.55 Fix 3] Real SuiNS resolution. Async, server-routed via
+        // /api/suins/resolve. Throws SuinsResolutionError on failure so
+        // the LLM narrates the truthful reason (not registered, RPC down)
+        // instead of confabulating "I tried that already".
+        resolveSuiNs: async (raw) => {
+          const { resolveSuiNs } = await import('@/lib/suins-resolver');
+          return resolveSuiNs(raw);
+        },
       });
 
       // Side effects after a successful execution. Refetch balance for any
