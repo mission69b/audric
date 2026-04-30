@@ -1,12 +1,8 @@
 'use client';
 
-import { createPaymentTransactionUri } from '@mysten/payment-kit';
 import { QrCode } from '@/components/dashboard/QrCode';
 import { AudricMark } from '@/components/ui/AudricMark';
-
-const USDC_TYPE =
-  '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC';
-const USDC_DECIMALS = 6;
+import { buildSuiPayUri } from '@/lib/payment-kit';
 
 interface SuiPayQrProps {
   recipientAddress: string;
@@ -18,21 +14,13 @@ interface SuiPayQrProps {
 }
 
 export function SuiPayQr({ recipientAddress, amount, nonce, label, memo, size = 180 }: SuiPayQrProps) {
-  let uri: string;
-  if (amount !== null && amount > 0) {
-    const rawAmount = BigInt(Math.floor(amount * 10 ** USDC_DECIMALS));
-    uri = createPaymentTransactionUri({
-      receiverAddress: recipientAddress,
-      amount: rawAmount,
-      coinType: USDC_TYPE,
-      nonce,
-      ...(label ? { label } : {}),
-      ...(memo ? { message: memo } : {}),
-    });
-  } else {
-    const params = new URLSearchParams({ recipient: recipientAddress, coinType: USDC_TYPE });
-    uri = `sui:pay?${params.toString()}`;
-  }
+  const uri = buildSuiPayUri({
+    recipient: recipientAddress,
+    amount,
+    nonce,
+    label,
+    memo,
+  });
 
   return (
     <div className="relative p-3 rounded-lg border border-border-subtle bg-surface-page">

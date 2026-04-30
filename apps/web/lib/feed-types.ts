@@ -25,7 +25,27 @@ export type FeedItemData =
   | { type: 'ai-text'; text: string; chips?: { label: string; flow: string }[] }
   | { type: 'confirmation'; title: string; details: { label: string; value: string }[]; flow: string; amount?: number }
   | { type: 'result'; success: boolean; title: string; details: string; txUrl?: string }
-  | { type: 'receipt'; title: string; code?: string; qr?: boolean; meta: { label: string; value: string }[]; instructions?: { title: string; steps: string[] }[] }
+  | {
+      type: 'receipt';
+      title: string;
+      /** Human-readable code shown beneath the QR (rendered via CopyableCode). */
+      code?: string;
+      qr?: boolean;
+      /**
+       * Optional override for the QR payload. When set, the QR encodes this
+       * value instead of `code`. Used by the receive flow to encode a
+       * `sui:pay?recipient=…&coinType=…` deep-link URI so phone-camera scans
+       * open Slush / Phantom / Suiet directly with the address pre-filled,
+       * while the copyable text below still shows the bare 0x address for
+       * CEX-withdrawal pasting. Without this split, the QR and the copyable
+       * text were forced to be the same string — opening Slush required
+       * encoding the URI in `code`, which then made the copyable show
+       * "sui:pay?recipient=0x..." gibberish.
+       */
+      qrUri?: string;
+      meta: { label: string; value: string }[];
+      instructions?: { title: string; steps: string[] }[];
+    }
   | { type: 'list'; title: string; items: { label: string; value: string; sub?: string }[] }
   | { type: 'report'; sections: { title: string; lines: string[] }[] }
   | { type: 'image'; url: string; alt: string; cost?: string }

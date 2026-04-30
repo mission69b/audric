@@ -24,6 +24,7 @@ import { useVoiceStatus } from '@/hooks/useVoiceStatus';
 import { useEngineReplyAwaiter } from '@/hooks/useEngineReplyAwaiter';
 import { VoiceModeProvider } from '@/components/dashboard/VoiceModeContext';
 import { useBalance } from '@/hooks/useBalance';
+import { useReceiveToast } from '@/hooks/useReceiveToast';
 import { parseIntent, type ParsedIntent } from '@/lib/intent-parser';
 import { mapError } from '@/lib/errors';
 import { SUI_NETWORK } from '@/lib/constants';
@@ -31,6 +32,7 @@ import { useContacts } from '@/hooks/useContacts';
 import { useAgent } from '@/hooks/useAgent';
 import { COIN_REGISTRY } from '@/lib/token-registry';
 import { buildSwapDisplayData } from '@/lib/balance-changes';
+import { buildSuiPayUri } from '@/lib/payment-kit';
 import { useActivityFeed } from '@/hooks/useActivityFeed';
 import { NewConversationView } from '@/components/dashboard/NewConversationView';
 import { TosBanner } from '@/components/dashboard/TosBanner';
@@ -317,6 +319,18 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
 
   const chipExpand = useChipExpand({ idleUsdc: balance.usdc, currentApy: balance.savingsRate });
 
+  // [v0.56 receive-toast] Stamped right before EVERY user-initiated write
+  // tool runs (in handleExecuteAction). useReceiveToast reads it to
+  // distinguish "I just withdrew → USDC went up" (suppress toast) from
+  // "someone deposited → USDC went up" (fire toast). Ref vs state on
+  // purpose — updating the timestamp shouldn't re-render every consumer.
+  const lastUserActionAtRef = useRef<number>(0);
+
+  // Surface a "+X USDC arrived" toast when polling detects an unexpected
+  // USDC inbound delta. 30-second latency (poll cadence) is acceptable for
+  // v1; future PR can layer Sui event subscriptions for sub-second push.
+  useReceiveToast({ usdc: balanceQuery.data?.usdc, lastUserActionAtRef });
+
   // [SIMPLIFICATION DAY 5] dashInsights / scheduledActions / goalsHook
   // milestone derivation removed — backed by dropped tables and retired
   // dashboard surfaces. Goals still surface inside <GoalsPanel> via its
@@ -494,6 +508,15 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
             title: 'Deposit Address',
             code: address ?? '',
             qr: true,
+            // [v0.56] qrUri = `sui:pay?recipient=…&coinType=USDC` so phone-camera
+            // scans open Slush / Phantom / Suiet directly with the address +
+            // asset pre-filled. The bare 0x address still renders below the QR
+            // (via CopyableCode using `code`) for CEX-withdrawal pasting.
+            // Helper lives in lib/payment-kit.ts — same source of truth as the
+            // pay/invoice flow's SuiPayQr.
+            qrUri: address
+              ? buildSuiPayUri({ recipient: address, amount: null })
+              : undefined,
             meta: [
               { label: 'Network', value: 'Sui (mainnet)' },
               { label: 'Token', value: 'USDC' },
@@ -790,6 +813,14 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
     async (toolName: string, input: unknown): Promise<{ success: boolean; data: unknown }> => {
       if (!agent) throw new Error('Not authenticated');
       const sdk = await agent.getInstance();
+
+      // [v0.56 receive-toast] Stamp the user-action timestamp BEFORE running
+      // the tool. useReceiveToast suppresses receive notifications within a
+      // 60s grace window so the user's own withdraw / swap-to-USDC / etc.
+      // doesn't surface as "+X USDC arrived". Stamped pre-call (vs post)
+      // because the tool can take ~5–10s to settle and the next balance
+      // poll might already be in flight.
+      lastUserActionAtRef.current = Date.now();
 
       const result = await executeToolAction(sdk, toolName, input, {
         resolveContact: (raw) => contactsHook.resolveContact(raw),

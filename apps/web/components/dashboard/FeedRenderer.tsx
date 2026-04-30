@@ -213,10 +213,16 @@ export function FeedItemCard({
             <p className="text-sm font-medium text-fg-primary">{data.title}</p>
           </div>
 
-          {data.qr && data.code && (
+          {data.qr && (data.qrUri || data.code) && (
             <div className="flex justify-center py-4 px-4">
               <div className="relative p-3 rounded-lg border border-border-subtle bg-surface-page">
-                <QrCode value={data.code} size={160} />
+                {/*
+                  QR payload precedence: qrUri (e.g. sui:pay?...) wins over
+                  code (the human-readable address). The copyable text below
+                  still shows `code` so users can paste the bare address into
+                  CEX withdrawal forms.
+                */}
+                <QrCode value={data.qrUri ?? data.code ?? ''} size={160} />
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                   <span className="text-fg-primary bg-surface-page p-1 rounded"><AudricMark size={12} /></span>
                 </div>
