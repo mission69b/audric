@@ -272,8 +272,24 @@ async function buildAndSponsor(
   // the global allow-list config may include other addresses. Swap is
   // unaffected because Cetus's overlay routing happens inside Move calls,
   // which Enoki can't statically inspect.
-  const allowedAddresses = [T2000_OVERLAY_FEE_WALLET];
-  if (params.recipient) allowedAddresses.push(params.recipient);
+  //
+  // [PR-H4 / 2026-04-30] Sender's own wallet must also be in allowedAddresses
+  // because most write paths transferObjects back to the sender:
+  //   - claim-rewards: rewards coin → sender
+  //   - swap:          output coin   → sender
+  //   - borrow:        borrowed coin → sender (after fee split)
+  //   - withdraw:      withdrawn coin → sender (inside NAVI adapter)
+  //   - volo-stake:    vSUI receipt  → sender
+  //   - volo-unstake:  SUI proceeds  → sender
+  // Enoki has historically been lenient about self-transfers (sender as
+  // recipient), but PR-H1's runtime guard correctly enforces that every
+  // top-level transferObjects target appears in allowedAddresses — including
+  // the sender. Adding sender explicitly makes both layers accurate and
+  // future-proofs against any tightening of Enoki's policy.
+  const allowedAddresses = [T2000_OVERLAY_FEE_WALLET, params.address];
+  if (params.recipient && params.recipient !== params.address) {
+    allowedAddresses.push(params.recipient);
+  }
   sponsorBody.allowedAddresses = allowedAddresses;
 
   // [PR-H5] Belt-and-braces: walk the built PTB ourselves and assert every

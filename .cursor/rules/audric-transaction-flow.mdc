@@ -69,20 +69,25 @@ Enoki's sponsor service does **static analysis** on the PTB before sponsoring. A
 
 **The rule:** every top-level `transferObjects` recipient inside a sponsored PTB MUST be present in the `allowedAddresses` array passed to `/api/transactions/prepare → buildAndSponsor`. This includes:
 
-1. **The user's recipient** (e.g. for `send` / `transfer_payment_link` flows) — set from `params.recipient`.
+1. **The sender's own wallet** (`params.address`) — required for ANY operation that returns a coin to the user (`claim-rewards`, `swap`, `borrow`, `withdraw`, `volo-stake`, `volo-unstake`). The SDK's adapter / Cetus / NAVI builds typically end with `tx.transferObjects([resultCoin], sender)` — that's a top-level `transferObjects` and Enoki sees it. **This is the trap that bit claim-rewards in PR-H4.** Enoki has historically been lenient about self-transfers (sender as recipient), but PR-H1's runtime guard correctly enforced strict allow-listing and surfaced the latent gap.
 2. **The treasury wallet** (`T2000_OVERLAY_FEE_WALLET`) — required for ANY operation where Audric injects an `addFeeTransfer(...)` call (today: `save`, `borrow`). The fee transfer is a top-level `transferObjects`, so Enoki sees it.
+3. **The user's recipient** (e.g. for `send` / `transfer_payment_link` flows) — set from `params.recipient`. Skip if it equals the sender (already covered above).
 
-Swap is the exception that obscures this: Cetus's overlay-fee routes through Move calls (`cetus::aggregator::swap`), which Enoki does not statically inspect — so swaps work without `T2000_OVERLAY_FEE_WALLET` in `allowedAddresses`. **This is the trap.** A change to save/borrow that adds a fee transfer will silently break in production unless the wallet is in `allowedAddresses` too.
+Swap is the exception that obscured both #1 and #2: Cetus's overlay-fee routes through Move calls (`cetus::aggregator::swap`), which Enoki does not statically inspect — so swap *fee* allow-listing has never been needed. But swap's *output transfer* (`transferObjects([outputCoin], sender)`) IS top-level and IS covered by #1.
 
 **The implementation in `prepare/route.ts`:**
 
 ```typescript
 import { T2000_OVERLAY_FEE_WALLET } from '@t2000/sdk';
 
-// ALWAYS include the treasury wallet — required for the inline addFeeTransfer
-// in save/borrow flows. Add the user's recipient on top for send-style flows.
-const allowedAddresses = [T2000_OVERLAY_FEE_WALLET];
-if (params.recipient) allowedAddresses.push(params.recipient);
+// ALWAYS include treasury (for inline addFeeTransfer in save/borrow) AND the
+// sender (for tools that return a coin to the user — claim-rewards, swap,
+// borrow, withdraw, volo-stake, volo-unstake). Add the user's recipient
+// on top for send-style flows when it differs from the sender.
+const allowedAddresses = [T2000_OVERLAY_FEE_WALLET, params.address];
+if (params.recipient && params.recipient !== params.address) {
+  allowedAddresses.push(params.recipient);
+}
 sponsorBody.allowedAddresses = allowedAddresses;
 ```
 
@@ -103,7 +108,7 @@ Run this checklist **before merging any PR that touches `app/api/transactions/pr
 - [ ] Borrow USDC ($1 amount, NAVI borrow) — same allow-listing path as save. Both confirm the fee transfer wallet is wired through.
 
 **3. Visual diff sanity (mandatory for any code change in the route):**
-- [ ] In `prepare/route.ts`, the `allowedAddresses` array always includes `T2000_OVERLAY_FEE_WALLET` for save/borrow operations.
+- [ ] In `prepare/route.ts`, the `allowedAddresses` array always includes `T2000_OVERLAY_FEE_WALLET` (treasury) AND `params.address` (sender). The sender is required because most write paths return a coin to the user.
 - [ ] Any new operation that calls `addFeeTransfer(...)` (or any other top-level `transferObjects`) ALSO appends its recipient to `allowedAddresses`.
 - [ ] No early-return or conditional branch builds a sponsorBody without going through the same `allowedAddresses` logic.
 
@@ -113,6 +118,8 @@ Run this checklist **before merging any PR that touches `app/api/transactions/pr
 - [ ] If the fee row is missing, the indexer didn't see the transfer to `T2000_OVERLAY_FEE_WALLET` — likely the allow-listing dropped the wallet and the tx silently failed sponsorship (Enoki returned an error, the client showed "transaction failed", no on-chain transfer happened).
 
 **Why this exists:** April 2026 we shipped a `prepare/route.ts` refactor that dropped `T2000_OVERLAY_FEE_WALLET` from `allowedAddresses` for the save and borrow paths. Enoki rejected every sponsored save/borrow with `"Address is not allow-listed for receiving transfers"`. Swap kept working because Cetus's overlay fee is a Move call, not a `transferObjects`, so Enoki never inspected the recipient. The bug shipped because the test matrix was "swap works = all three work." It cost ~30 min of manual e2e to surface during PR-B5 v2 verification. PR-H1's mock-Enoki test now catches this in CI; this checklist is the belt-and-braces.
+
+**PR-H4 follow-up (April 30, 2026):** PR-H1's runtime guard (`assertAllowedAddressesCoverTransfers`) caught a second latent bug — `params.address` (the sender) was never being added to `allowedAddresses`, so claim-rewards (which transfers the rewards coin back to the user via a top-level `transferObjects`) was preemptively rejected by the guard. Swap, borrow, withdraw, volo-stake, and volo-unstake all do the same self-transfer and were equally exposed; they'd been silently passing in production because Enoki was lenient about self-transfers, but that leniency isn't documented and could change. The fix: always include `params.address` in `allowedAddresses` alongside the treasury wallet. Regression test: `sponsor-allowed-addresses.test.ts → "claim-rewards regression"`.
 
 ## Cross-references
 

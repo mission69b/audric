@@ -132,4 +132,52 @@ describe('assertAllowedAddressesCoverTransfers — H5 regression', () => {
       assertAllowedAddressesCoverTransfers(tx, [upper]),
     ).not.toThrow();
   });
+
+  // [PR-H4 / 2026-04-30] Production-caught regression: claim-rewards transfers
+  // the rewards coin to the sender's own wallet via a top-level transferObjects.
+  // Pre-PR-H4, prepare/route.ts only put `[treasury, recipient?]` in
+  // allowedAddresses — the sender was missing, and the runtime guard correctly
+  // failed claim-rewards (and would have failed swap/borrow/withdraw/volo-stake/
+  // volo-unstake too — those just happened to be working in production because
+  // Enoki was lenient about self-transfers). The fix in route.ts always pushes
+  // `params.address` (the sender) into allowedAddresses; these tests pin the
+  // contract.
+  it('THROWS when sender is the transfer recipient and sender is missing from allowedAddresses (claim-rewards regression)', () => {
+    const tx = newTx();
+    // Mirrors what addClaimRewardsToTx in @t2000/sdk produces: claim_reward →
+    // from_balance → transferObjects [coin] sender. We model the final transfer
+    // here.
+    tx.transferObjects([tx.gas], tx.pure.address(SENDER));
+
+    expect(() => assertAllowedAddressesCoverTransfers(tx, [TREASURY])).toThrow(
+      /not allow-listed/,
+    );
+    expect(() => assertAllowedAddressesCoverTransfers(tx, [TREASURY])).toThrow(
+      new RegExp(normalizeSuiAddress(SENDER)),
+    );
+  });
+
+  it('passes when sender is the transfer recipient AND sender is in allowedAddresses (the fix)', () => {
+    const tx = newTx();
+    tx.transferObjects([tx.gas], tx.pure.address(SENDER));
+
+    // [TREASURY, SENDER] mirrors what route.ts now passes for every write op.
+    expect(() =>
+      assertAllowedAddressesCoverTransfers(tx, [TREASURY, SENDER]),
+    ).not.toThrow();
+  });
+
+  it('passes when both treasury fee + sender output are present (borrow / save with USDC fee)', () => {
+    // Mirrors the borrow flow: addBorrowToTx → addFeeTransfer to treasury →
+    // transferObjects [borrowedCoin] to sender. Both recipients must be in
+    // allowedAddresses or Enoki rejects.
+    const tx = newTx();
+    const [feeCoin] = tx.splitCoins(tx.gas, [tx.pure.u64(BigInt(100))]);
+    tx.transferObjects([feeCoin], tx.pure.address(TREASURY));
+    tx.transferObjects([tx.gas], tx.pure.address(SENDER));
+
+    expect(() =>
+      assertAllowedAddressesCoverTransfers(tx, [TREASURY, SENDER]),
+    ).not.toThrow();
+  });
 });
