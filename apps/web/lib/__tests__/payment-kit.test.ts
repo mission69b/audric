@@ -1,17 +1,13 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
+import { buildSuiPayUri, USDC_TYPE, USDC_DECIMALS } from '@/lib/sui-pay-uri';
 
-// Mock the env module before importing payment-kit. The real env module
-// throws at import time when required vars are missing — fine for app
-// boot, hostile to unit tests that don't care about the gRPC client.
-vi.mock('@/lib/env', () => ({
-  env: { NEXT_PUBLIC_SUI_NETWORK: 'mainnet' },
-}));
-
-vi.mock('@/lib/sui-rpc', () => ({
-  getSuiRpcUrl: () => 'https://fullnode.mainnet.sui.io:443',
-}));
-
-import { buildSuiPayUri, USDC_TYPE, USDC_DECIMALS } from '@/lib/payment-kit';
+// NOTE: This file is named `payment-kit.test.ts` for git-history continuity
+// but actually tests `lib/sui-pay-uri.ts` — the URI helpers were extracted
+// out of `lib/payment-kit.ts` after a v0.56 client-bundle regression
+// (env proxy fired on first paint when `dashboard-content.tsx` imported
+// `buildSuiPayUri` from `payment-kit.ts`, dragging in `getSuiRpcUrl()`).
+// `sui-pay-uri.ts` is a leaf module with zero env / server deps, so this
+// test no longer needs the env mocks the original version had.
 
 const ADDRESS =
   '0x7f2059fb1c395f4800809b4b97ed8e661535c8c55f89b1379b6b9d0208d2f6dc';

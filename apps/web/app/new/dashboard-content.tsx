@@ -32,7 +32,7 @@ import { useContacts } from '@/hooks/useContacts';
 import { useAgent } from '@/hooks/useAgent';
 import { COIN_REGISTRY } from '@/lib/token-registry';
 import { buildSwapDisplayData } from '@/lib/balance-changes';
-import { buildSuiPayUri } from '@/lib/payment-kit';
+import { buildSuiPayUri } from '@/lib/sui-pay-uri';
 import { useActivityFeed } from '@/hooks/useActivityFeed';
 import { NewConversationView } from '@/components/dashboard/NewConversationView';
 import { TosBanner } from '@/components/dashboard/TosBanner';

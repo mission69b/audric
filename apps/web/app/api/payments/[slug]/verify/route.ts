@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import type { InputJsonValue } from '@/lib/generated/prisma/internal/prismaNamespace';
 import { prisma } from '@/lib/prisma';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
-import { USDC_TYPE, USDC_DECIMALS } from '@/lib/payment-kit';
+import { USDC_TYPE, USDC_DECIMALS } from '@/lib/sui-pay-uri';
 import { getSuiRpcUrl } from '@/lib/sui-rpc';
 
 export const runtime = 'nodejs';

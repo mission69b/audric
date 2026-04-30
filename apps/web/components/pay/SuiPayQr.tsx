@@ -2,7 +2,7 @@
 
 import { QrCode } from '@/components/dashboard/QrCode';
 import { AudricMark } from '@/components/ui/AudricMark';
-import { buildSuiPayUri } from '@/lib/payment-kit';
+import { buildSuiPayUri } from '@/lib/sui-pay-uri';
 
 interface SuiPayQrProps {
   recipientAddress: string;
