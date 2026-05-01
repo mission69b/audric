@@ -26,7 +26,9 @@ import {
   detectRefinement,
   detectTruncation,
   detectNarrationTableDump,
+  emitHarnessTelemetry,
 } from '@/lib/engine/harness-metrics';
+import { getTelemetrySink } from '@t2000/engine';
 import { costRatesForModel } from '@/lib/engine/cost-rates';
 import { isSyntheticSessionId } from '@/lib/engine/synthetic-sessions';
 import { prisma, withPrismaRetry } from '@/lib/prisma';
@@ -483,6 +485,13 @@ export async function POST(request: NextRequest) {
           // serializing — the SSE adapter is lossy for our needs (`error`
           // events lose the Error type, and we want refinement detection
           // on the original `result` object).
+          //
+          // [SPEC 8 v0.5.1 B3.6] Stamp the harness shape on the
+          // collector BEFORE the stream loop so the row carries the
+          // shape even if the LLM call errors before yielding the
+          // `harness_shape` event. The engine echo via `case 'harness_shape'`
+          // below stays as a defensive last-write-wins.
+          collector.onHarnessShape(engineMeta?.harnessShape);
           for await (const event of engine.submitMessage(trimmedMessage, {
             // [SPEC 8 v0.5.1 B3.2] Engine emits the one-shot `harness_shape`
             // event at turn start; host stashes the shape on the assistant
@@ -498,12 +507,51 @@ export async function POST(request: NextRequest) {
                 continue; // don't pollute the SSE stream
               case 'text_delta':
                 collector.onFirstTextDelta();
-                if (typeof event.text === 'string') narrationParts.push(event.text);
+                // [SPEC 8 v0.5.1 B3.6] Accumulate the user-visible final
+                // text length so the row carries `finalTextTokens` as a
+                // terseness regression signal.
+                if (typeof event.text === 'string') {
+                  collector.onTextDelta(event.text);
+                  narrationParts.push(event.text);
+                }
+                break;
+              case 'thinking_delta':
+                // [SPEC 8 v0.5.1 B3.6] Stamp TTFVP off the first thinking
+                // burst — typically the earliest renderable signal on a
+                // write-recommendation turn.
+                collector.onThinkingDelta();
+                break;
+              case 'thinking_done':
+                // [SPEC 8 v0.5.1 B3.6] Increment the per-turn block count
+                // and (when the engine parsed an `<eval_summary>` marker
+                // from the buffered text) the eval-summary emission count.
+                collector.onThinkingDone({ summaryMode: event.summaryMode });
                 break;
               case 'tool_start':
                 toolNamesByUseId.set(event.toolUseId, event.toolName);
                 calledToolNames.push(event.toolName);
                 collector.onToolStart(event.toolUseId);
+                break;
+              case 'tool_progress':
+                // [SPEC 8 v0.5.1 B3.6] Long-running tools emit progress
+                // mid-call (Cetus swap_execute, protocol_deep_dive,
+                // portfolio_analysis). Counter feeds the dashboard pull.
+                collector.onToolProgress();
+                break;
+              case 'todo_update':
+                // [SPEC 8 v0.5.1 B3.6] Every `update_todo` tool call
+                // surfaces here on the side channel — one increment per
+                // call, regardless of the items array length. The host
+                // also renders the persistent todo card from this event.
+                collector.onTodoUpdate();
+                break;
+              case 'pending_input':
+                // [SPEC 8 v0.5.1 B3.6 / D2] No-op handler for engine
+                // forward-compat with SPEC 9 v0.1.2. The event MUST NOT
+                // arrive under engine v1.5.0; if it does on a session
+                // pinned to legacy, flag it on telemetry so we can spot
+                // session-pinning breakage during phased rollout.
+                collector.onPendingInput(harnessVersion);
                 break;
               case 'tool_result':
                 if (event.toolName === '__deduped__') {
@@ -538,6 +586,13 @@ export async function POST(request: NextRequest) {
                 // `(sessionId, turnIndex)` pair that v1.3 used).
                 collector.onPendingAction(event.action.attemptId);
                 pendingAction = event.action;
+                break;
+              case 'harness_shape':
+                // [SPEC 8 v0.5.1 B3.6] Defensive last-write-wins. The
+                // collector was pre-stamped from `engineMeta` before the
+                // stream loop; this just ensures the engine-emitted
+                // value (the source of truth) wins if it ever differs.
+                collector.onHarnessShape(event.shape);
                 break;
               default:
                 break;
@@ -607,6 +662,12 @@ export async function POST(request: NextRequest) {
               // we explicitly clear any prior marker so the retry
               // pill from the previous turn doesn't stick around.
               const wasInterrupted = !turnCompleteSeen && !pendingAction;
+              if (wasInterrupted) {
+                // [SPEC 8 v0.5.1 B3.6 / Gap J] Telemetry mirror of the
+                // session-side `lastInterruption` marker. Rollback gate:
+                // >1% over 24h flips SPEC 8 v0.5.1 B3.7 back to legacy.
+                collector.markInterrupted();
+              }
               const lastInterruption = wasInterrupted
                 ? {
                     turnIndex,
@@ -739,6 +800,33 @@ export async function POST(request: NextRequest) {
                 .catch((err) =>
                   console.error('[TurnMetrics] write failed (non-fatal):', err),
                 );
+
+              // [SPEC 8 v0.5.1 B3.6 / Layer 6] Emit per-turn transient
+              // counters via the engine's installed Vercel sink — same
+              // dashboard pull as `audric.tool.retry_count` etc. No new
+              // vendor (per `metrics-and-monitoring.mdc`). Wrapped in
+              // try/catch defensively even though the sink swallows
+              // its own errors — telemetry must NEVER break a response.
+              try {
+                emitHarnessTelemetry(getTelemetrySink(), {
+                  harnessShape: built.harnessShape,
+                  modelUsed: built.modelUsed,
+                  thinkingBlockCount: built.thinkingBlockCount,
+                  todoUpdateCount: built.todoUpdateCount,
+                  ttfvpMs: built.ttfvpMs,
+                  finalTextTokens: built.finalTextTokens,
+                  evalSummaryEmittedCount: built.evalSummaryEmittedCount,
+                  evalSummaryViolationsCount: built.evalSummaryViolationsCount,
+                  pendingInputSeenOnLegacy: built.pendingInputSeenOnLegacy,
+                  toolProgressEventCount: built.toolProgressEventCount,
+                  interruptedMessageCount: built.interruptedMessageCount,
+                });
+              } catch (telemetryErr) {
+                console.error(
+                  '[harness-telemetry] emit failed (non-fatal):',
+                  telemetryErr,
+                );
+              }
             } catch (metricsErr) {
               console.error('[TurnMetrics] build failed (non-fatal):', metricsErr);
             }

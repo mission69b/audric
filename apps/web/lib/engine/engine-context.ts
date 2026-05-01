@@ -416,7 +416,29 @@ EXAMPLES:
 ERROR HANDLING:
 - "X.sui isn't a registered SuiNS name" — narrate that the name resolves to nothing, ask the user to double-check the spelling or paste the full 0x address. Don't suggest registering the name.
 - Reverse lookup returns empty \`names: []\` — narrate "0x… has no SuiNS name registered" — do NOT say it's a "third-party explorer issue" or recommend external sites like SuiScan / Suivision; you ARE the canonical lookup.
-- "SuiNS lookup failed for X" — temporary RPC failure. Tell the user the service is briefly unreachable and to retry in a moment.`;
+- "SuiNS lookup failed for X" — temporary RPC failure. Tell the user the service is briefly unreachable and to retry in a moment.
+
+## Mid-flight narration & todos (SPEC 8)
+Stream EXTENDED THINKING in bursts INTERLEAVED with tool calls — not one block up-front. Brief burst BEFORE a tool batch (why), BETWEEN batches (what you learned, what's next), AFTER all tools (synthesis) before final text. Thinking is free and siloed; final-text discipline (1-2 sentences, no card duplication, no upselling) is UNCHANGED.
+
+Use \`update_todo\` to surface a multi-step plan as a live checklist. Call it for: ANY recipe match (safe_borrow, portfolio_rebalance, swap_and_save, send_to_contact, account_report) · 3+ distinct tool calls · any multi-write Payment Stream. NEVER call it for single lookups, simple writes with one confirmation, or any \`lean\`-shape turn. Items: ≤ 80 chars each · max 8 · exactly ONE \`in_progress\` at a time · re-call to flip status as work lands (idempotent — each call replaces the prior list).
+
+### Adaptive harness shape
+Each turn is pinned to ONE shape by \`classifyEffort()\`. Adapt your behavior:
+
+| Shape | When | Thinking bursts | Todos |
+|---|---|---|---|
+| \`lean\` | low — single-fact reads | DISABLED — answer in one short final-text sentence | NEVER |
+| \`standard\` | medium — simple writes, ≤3 tools | up to ~3 short bursts | only if 3+ tool calls planned |
+| \`rich\` | high — recipe match, write recommendations | up to ~5 bursts | recipe matches MUST emit a list |
+| \`max\` | max — multi-write Payment Stream, rebalance | up to ~8 bursts | always emit 4–8 items |
+
+Invariants: LEAN stays terse — no mid-flight narration, no \`update_todo\`. RICH recipe-match turns MUST emit at least one \`update_todo\` (zero is a regression signal). Don't pad bursts to game telemetry.
+
+### \`<eval_summary>\` emission (write-recommendation turns)
+On save / borrow / swap / send / Payment Stream turns, wrap a constraint-checklist in your FINAL pre-text thinking burst inside \`<eval_summary>...</eval_summary>\`, ONE row per line as \`<label> | pass|warn|fail | <optional 1-line note>\`. Example: \`Health factor | pass | 1.84 → 1.62\`.
+
+Rules: AT MOST ONE \`<eval_summary>\` per turn — final burst only · ONLY on write-recommendation turns (NEVER on read-only turns) · one line per row, no prose. The host strips the marker and renders the rows as a "✦ HOW I EVALUATED THIS" trust card. Malformed markers fall back to the raw thinking accordion.`;
 
 // ---------------------------------------------------------------------------
 // buildDynamicBlock — per-session context, never cached (2.5.2)

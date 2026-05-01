@@ -1,11 +1,27 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+import type { TelemetrySink } from '@t2000/engine';
 import {
   detectRefinement,
   detectTruncation,
   containsMarkdownTable,
   detectNarrationTableDump,
+  emitHarnessTelemetry,
+  TurnMetricsCollector,
   CARD_RENDERING_TOOLS,
 } from '../harness-metrics';
+
+// Shared build-context for collector tests — keeps each `build()` call
+// short while preserving the v1.4.x columns that aren't the focus here.
+const buildContext = {
+  sessionId: 's_test',
+  userId: '0xtest',
+  turnIndex: 0,
+  effortLevel: 'medium',
+  modelUsed: 'claude-sonnet-4-6',
+  contextTokensStart: 100,
+  estimatedCostUsd: 0.001,
+  sessionSpendUsd: 0,
+} as const;
 
 describe('detectRefinement — post-0.47 (counts both _refine and truncation signals)', () => {
   describe('explicit _refine shapes', () => {
@@ -200,3 +216,258 @@ describe('detectNarrationTableDump — card tool + table = violation', () => {
     expect(CARD_RENDERING_TOOLS.has('pay_api')).toBe(false);
   });
 });
+
+// ---------------------------------------------------------------------------
+// [SPEC 8 v0.5.1 B3.6 / Layer 6] TurnMetricsCollector — harness telemetry
+// ---------------------------------------------------------------------------
+
+describe('TurnMetricsCollector — harness telemetry (B3.6)', () => {
+  it('produces zeroed defaults when no observers fire (read-only-error path)', () => {
+    const c = new TurnMetricsCollector();
+    const built = c.build(buildContext);
+    expect(built.harnessShape).toBeNull();
+    expect(built.thinkingBlockCount).toBe(0);
+    expect(built.todoUpdateCount).toBe(0);
+    expect(built.ttfvpMs).toBeNull();
+    expect(built.finalTextTokens).toBe(0);
+    expect(built.evalSummaryEmittedCount).toBe(0);
+    expect(built.evalSummaryViolationsCount).toBe(0);
+    expect(built.pendingInputSeenOnLegacy).toBe(false);
+    expect(built.toolProgressEventCount).toBe(0);
+    expect(built.interruptedMessageCount).toBe(0);
+  });
+
+  it('captures the engine-emitted harness shape', () => {
+    const c = new TurnMetricsCollector();
+    c.onHarnessShape('rich');
+    const built = c.build(buildContext);
+    expect(built.harnessShape).toBe('rich');
+  });
+
+  it('counts thinking blocks and eval-summary emissions independently', () => {
+    const c = new TurnMetricsCollector();
+    c.onThinkingDone({ summaryMode: false });
+    c.onThinkingDone({ summaryMode: false });
+    c.onThinkingDone({ summaryMode: true });
+    const built = c.build(buildContext);
+    expect(built.thinkingBlockCount).toBe(3);
+    expect(built.evalSummaryEmittedCount).toBe(1);
+  });
+
+  it('flags evalSummaryViolationsCount when the LLM emits ≥2 markers in one turn', () => {
+    const c = new TurnMetricsCollector();
+    c.onThinkingDone({ summaryMode: true });
+    c.onThinkingDone({ summaryMode: true });
+    c.onThinkingDone({ summaryMode: true });
+    const built = c.build(buildContext);
+    expect(built.evalSummaryEmittedCount).toBe(3);
+    expect(built.evalSummaryViolationsCount).toBe(2); // 3 - 1
+  });
+
+  it('counts todoUpdate events one-per-call (idempotent tool, multiple calls)', () => {
+    const c = new TurnMetricsCollector();
+    c.onTodoUpdate();
+    c.onTodoUpdate();
+    c.onTodoUpdate();
+    expect(c.build(buildContext).todoUpdateCount).toBe(3);
+  });
+
+  it('counts toolProgress events per emission', () => {
+    const c = new TurnMetricsCollector();
+    c.onToolProgress();
+    c.onToolProgress();
+    expect(c.build(buildContext).toolProgressEventCount).toBe(2);
+  });
+
+  it('flags pendingInputSeenOnLegacy ONLY for legacy harness sessions', () => {
+    const legacy = new TurnMetricsCollector();
+    legacy.onPendingInput('legacy');
+    expect(legacy.build(buildContext).pendingInputSeenOnLegacy).toBe(true);
+
+    const v2 = new TurnMetricsCollector();
+    v2.onPendingInput('v2');
+    expect(v2.build(buildContext).pendingInputSeenOnLegacy).toBe(false);
+
+    const undef = new TurnMetricsCollector();
+    undef.onPendingInput(undefined);
+    expect(undef.build(buildContext).pendingInputSeenOnLegacy).toBe(false);
+  });
+
+  it('flags interruptedMessageCount=1 only after markInterrupted', () => {
+    const clean = new TurnMetricsCollector();
+    expect(clean.build(buildContext).interruptedMessageCount).toBe(0);
+
+    const interrupted = new TurnMetricsCollector();
+    interrupted.markInterrupted();
+    expect(interrupted.build(buildContext).interruptedMessageCount).toBe(1);
+  });
+
+  it('approximates finalTextTokens via chars/4 (matches @t2000/engine estimateTokens)', () => {
+    const c = new TurnMetricsCollector();
+    const a = 'Deposited 20 USDC at 4.99% APY.';
+    const b = ' Health factor unchanged.';
+    c.onTextDelta(a);
+    c.onTextDelta(b);
+    const built = c.build(buildContext);
+    expect(built.finalTextTokens).toBe(Math.ceil((a.length + b.length) / 4));
+  });
+
+  it('does NOT increment finalTextTokens for empty / non-string text deltas', () => {
+    const c = new TurnMetricsCollector();
+    c.onTextDelta('');
+    expect(c.build(buildContext).finalTextTokens).toBe(0);
+  });
+
+  it('stamps TTFVP from the FIRST visible-progress event (any of: thinking_delta, tool_start, todo_update, text_delta)', async () => {
+    const c = new TurnMetricsCollector();
+    // The constructor stamped startTime synchronously; sleep a tick so the
+    // computed delta is non-zero in the assertion below.
+    await new Promise((r) => setTimeout(r, 5));
+    c.onThinkingDelta();
+    // Subsequent events must NOT overwrite — TTFVP is stamped exactly once.
+    await new Promise((r) => setTimeout(r, 5));
+    c.onTextDelta('hi');
+    c.onFirstTextDelta();
+    const built = c.build(buildContext);
+    expect(built.ttfvpMs).not.toBeNull();
+    expect(built.ttfvpMs!).toBeGreaterThanOrEqual(5);
+    // TTFVP must be ≤ wallTime (sanity).
+    expect(built.ttfvpMs!).toBeLessThanOrEqual(built.wallTimeMs);
+  });
+
+  it('stamps TTFVP from tool_start when no thinking burst preceded', async () => {
+    const c = new TurnMetricsCollector();
+    await new Promise((r) => setTimeout(r, 5));
+    c.onToolStart('toolUseId-1');
+    expect(c.build(buildContext).ttfvpMs).not.toBeNull();
+  });
+
+  it('stamps TTFVP from todo_update for plan-first turns', async () => {
+    const c = new TurnMetricsCollector();
+    await new Promise((r) => setTimeout(r, 5));
+    c.onTodoUpdate();
+    expect(c.build(buildContext).ttfvpMs).not.toBeNull();
+  });
+});
+
+describe('emitHarnessTelemetry — Vercel sink emissions (B3.6)', () => {
+  function makeSpy(): {
+    sink: TelemetrySink;
+    counter: ReturnType<typeof vi.fn>;
+    histogram: ReturnType<typeof vi.fn>;
+    gauge: ReturnType<typeof vi.fn>;
+  } {
+    const counter = vi.fn();
+    const gauge = vi.fn();
+    const histogram = vi.fn();
+    return {
+      sink: { counter, gauge, histogram } as TelemetrySink,
+      counter,
+      histogram,
+      gauge,
+    };
+  }
+
+  const baseInput = {
+    harnessShape: 'standard' as const,
+    modelUsed: 'claude-sonnet-4-6',
+    thinkingBlockCount: 2,
+    todoUpdateCount: 0,
+    ttfvpMs: 800,
+    finalTextTokens: 120,
+    evalSummaryEmittedCount: 1,
+    evalSummaryViolationsCount: 0,
+    pendingInputSeenOnLegacy: false,
+    toolProgressEventCount: 0,
+    interruptedMessageCount: 0,
+  };
+
+  it('emits the always-on counters tagged with shape + model', () => {
+    const { sink, counter } = makeSpy();
+    emitHarnessTelemetry(sink, baseInput);
+    const tags = { shape: 'standard', model: 'claude-sonnet-4-6' };
+    expect(counter).toHaveBeenCalledWith('audric.harness.thinking_block_count', tags, 2);
+    expect(counter).toHaveBeenCalledWith('audric.harness.todo_update_count', tags, 0);
+    expect(counter).toHaveBeenCalledWith('audric.harness.eval_summary_emitted_count', tags, 1);
+  });
+
+  it('omits the discrete counters when their values are zero / false', () => {
+    const { sink, counter } = makeSpy();
+    emitHarnessTelemetry(sink, baseInput);
+    const names = counter.mock.calls.map((c) => c[0] as string);
+    expect(names).not.toContain('audric.harness.eval_summary_violations_count');
+    expect(names).not.toContain('audric.harness.pending_input_seen_on_legacy');
+    expect(names).not.toContain('audric.harness.interrupted_message_count');
+  });
+
+  it('emits the discrete counters when their values are non-zero / true', () => {
+    const { sink, counter } = makeSpy();
+    emitHarnessTelemetry(sink, {
+      ...baseInput,
+      evalSummaryViolationsCount: 1,
+      pendingInputSeenOnLegacy: true,
+      interruptedMessageCount: 1,
+    });
+    const names = counter.mock.calls.map((c) => c[0] as string);
+    expect(names).toContain('audric.harness.eval_summary_violations_count');
+    expect(names).toContain('audric.harness.pending_input_seen_on_legacy');
+    expect(names).toContain('audric.harness.interrupted_message_count');
+  });
+
+  it('emits histograms for ttfvp + final text tokens, skips when null/zero', () => {
+    const { sink, histogram } = makeSpy();
+    emitHarnessTelemetry(sink, baseInput);
+    expect(histogram).toHaveBeenCalledWith(
+      'audric.harness.ttfvp_ms',
+      800,
+      { shape: 'standard', model: 'claude-sonnet-4-6' },
+    );
+    expect(histogram).toHaveBeenCalledWith(
+      'audric.harness.final_text_tokens',
+      120,
+      { shape: 'standard', model: 'claude-sonnet-4-6' },
+    );
+
+    const { sink: sink2, histogram: hist2 } = makeSpy();
+    emitHarnessTelemetry(sink2, { ...baseInput, ttfvpMs: null, finalTextTokens: 0 });
+    const names = hist2.mock.calls.map((c) => c[0] as string);
+    expect(names).not.toContain('audric.harness.ttfvp_ms');
+    expect(names).not.toContain('audric.harness.final_text_tokens');
+  });
+
+  it('falls back to shape="legacy" when harnessShape is null (pre-engine-1.5 sessions)', () => {
+    const { sink, counter } = makeSpy();
+    emitHarnessTelemetry(sink, { ...baseInput, harnessShape: null });
+    const firstCall = counter.mock.calls[0];
+    expect(firstCall[1]).toEqual({ shape: 'legacy', model: 'claude-sonnet-4-6' });
+  });
+});
+
+describe('STATIC_SYSTEM_PROMPT — B3.6 budget gate', () => {
+  it('grew by ≤700 tokens after appending Mid-flight narration & todos + <eval_summary>', async () => {
+    // [SPEC 8 v0.5.1 B3.6 / Layer 5 / Gap 8] Cache-size regression gate.
+    //
+    // The B3.6 prompt rewrite added a "Mid-flight narration & todos"
+    // section + an `<eval_summary>` emission contract. Spec budget is
+    // baseline + 700 tokens. We test the FINAL prompt (post-B3.6) is
+    // ≤ a hard ceiling so a future "while I'm here" prompt edit can't
+    // silently push us past Anthropic's prompt-cache boundary.
+    //
+    // Why a hard char ceiling instead of a delta:
+    //   - The pre-B3.6 baseline was 8960 tokens (35840 chars).
+    //   - The post-B3.6 ceiling = baseline (8960) + budget (700) = 9660 tokens
+    //     = 38640 chars at 4 chars/token (matches @t2000/engine estimateTokens).
+    //   - Hardcoding the ceiling beats hardcoding both halves; the test
+    //     trips on ANY future edit that pushes the prompt past the
+    //     boundary, regardless of whose change it was.
+    //
+    // If this test fails in the future:
+    //   1. Trim the new prompt content first (bullet > prose, fewer examples).
+    //   2. Only raise this ceiling with explicit founder approval +
+    //      a re-run of the SPEC 7/P1 eval corpus on the new prompt.
+    const { STATIC_SYSTEM_PROMPT } = await import('../engine-context');
+    const tokens = Math.ceil(STATIC_SYSTEM_PROMPT.length / 4);
+    expect(tokens).toBeLessThanOrEqual(9660);
+  });
+});
+

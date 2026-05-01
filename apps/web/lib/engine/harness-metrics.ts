@@ -9,8 +9,18 @@
  * is fail-soft, and the `build(...)` call cannot throw.
  */
 
+import type { HarnessShape, TelemetrySink } from '@t2000/engine';
 import { MUTABLE_TOOL_SET } from './engine-factory';
 import { costRatesForModel } from './cost-rates';
+
+/**
+ * [SPEC 8 v0.5.1 B3.6 / Layer 6] `chars / 4` mirrors @t2000/engine's
+ * `estimateTokens` helper (`packages/engine/src/context.ts:CHARS_PER_TOKEN`).
+ * Keeping the constant aligned across both sides means terseness
+ * regression analysis (`finalTextTokens`) is comparable to the engine's
+ * own context budget math without an extra dependency.
+ */
+const FINAL_TEXT_CHARS_PER_TOKEN = 4;
 
 export interface ToolMetric {
   /**
@@ -84,14 +94,157 @@ export class TurnMetricsCollector {
    */
   private _pendingAttemptId: string | null = null;
 
+  // ---------------------------------------------------------------------
+  // [SPEC 8 v0.5.1 B3.6 / Layer 6] Per-turn harness telemetry state.
+  // ---------------------------------------------------------------------
+
+  /**
+   * Shape pinned by the engine `harness_shape` event at turn start.
+   * `null` until the event lands (for engines older than v1.5.0 that
+   * never emit it, the row stores null and dashboards filter it out).
+   */
+  private _harnessShape: HarnessShape | null = null;
+
+  /** Count of `thinking_done` events. Soft-capped per shape by the engine. */
+  private _thinkingBlockCount = 0;
+
+  /** Count of `update_todo` tool calls (one per `todo_update` event). */
+  private _todoUpdateCount = 0;
+
+  /** Count of `tool_progress` events from long-running tools. */
+  private _toolProgressEventCount = 0;
+
+  /** Count of `<eval_summary>` markers parsed (from `thinking_done.summaryMode`). */
+  private _evalSummaryEmittedCount = 0;
+
+  /** True when a `pending_input` event arrived under the legacy harness. */
+  private _pendingInputSeenOnLegacy = false;
+
+  /** True when the turn ended without a `turn_complete` and without a `pending_action`. */
+  private _interrupted = false;
+
+  /**
+   * Time To First Visible Progress (TTFVP) — ms timestamp of the first
+   * non-control event the host renders (`thinking_delta`, `tool_start`,
+   * `todo_update`, `text_delta`, whichever first). Stays null when the
+   * turn produces no renderable events (rare error path) — `build()`
+   * surfaces null on the row in that case.
+   */
+  private _firstVisibleProgressTime: number | null = null;
+
+  /**
+   * Char count of all `text_delta` events. Converted to `finalTextTokens`
+   * at `build()` time via `chars / FINAL_TEXT_CHARS_PER_TOKEN`. Excludes
+   * thinking and tool I/O so we measure the user-facing terseness signal.
+   */
+  private _finalTextChars = 0;
+
   onFirstTextDelta(): void {
     if (this.firstTextDeltaTime === null) {
       this.firstTextDeltaTime = Date.now();
     }
+    this.markVisibleProgress();
+  }
+
+  /**
+   * [SPEC 8 v0.5.1 B3.6] Accumulate `text_delta` characters for the
+   * `finalTextTokens` terseness signal. Called on every `text_delta`
+   * event (not just the first one).
+   */
+  onTextDelta(text: string): void {
+    if (typeof text === 'string' && text.length > 0) {
+      this._finalTextChars += text.length;
+    }
+  }
+
+  /**
+   * [SPEC 8 v0.5.1 B3.6] Stamp the engine-declared shape for this turn.
+   * Idempotent — the engine emits `harness_shape` exactly once at turn
+   * start, but a defensive last-write-wins makes resume / replay safe.
+   */
+  onHarnessShape(shape: HarnessShape | undefined | null): void {
+    if (!shape) return;
+    this._harnessShape = shape;
+  }
+
+  /**
+   * [SPEC 8 v0.5.1 B3.6] Increment the thinking-block counter and, when
+   * the engine flagged the marker, the eval-summary emission counter.
+   * `summaryMode === true` means the engine parsed an
+   * `<eval_summary>...</eval_summary>` block from the buffered thinking
+   * text — the host renders the structured rows as a "✦ HOW I EVALUATED
+   * THIS" trust card.
+   */
+  onThinkingDone(opts?: { summaryMode?: boolean }): void {
+    this._thinkingBlockCount++;
+    if (opts?.summaryMode) this._evalSummaryEmittedCount++;
+  }
+
+  /**
+   * [SPEC 8 v0.5.1 B3.6] Increment on every `thinking_delta` event so
+   * we can stamp TTFVP from the very first thinking burst (typically
+   * the earliest renderable signal in a write-recommendation turn).
+   */
+  onThinkingDelta(): void {
+    this.markVisibleProgress();
+  }
+
+  /**
+   * [SPEC 8 v0.5.1 B3.6] Each `update_todo` tool call surfaces as a
+   * `todo_update` event on the side channel. Increment per event.
+   */
+  onTodoUpdate(): void {
+    this._todoUpdateCount++;
+    this.markVisibleProgress();
+  }
+
+  /**
+   * [SPEC 8 v0.5.1 B3.6] Long-running tools opt into emitting
+   * `tool_progress` events from inside their `call` implementation
+   * (Cetus swap_execute, protocol_deep_dive, portfolio_analysis).
+   */
+  onToolProgress(): void {
+    this._toolProgressEventCount++;
+  }
+
+  /**
+   * [SPEC 8 v0.5.1 B3.6 / D2] Record `pending_input` arrival, flagged
+   * with whether the active session is pinned to the legacy harness.
+   * In production under engine v1.5.0 (which doesn't emit
+   * `pending_input`), this should never fire — non-zero values mean
+   * either the session-pinning broke or a SPEC 9 emission leaked into
+   * a legacy session.
+   */
+  onPendingInput(harnessVersion: string | null | undefined): void {
+    if (harnessVersion === 'legacy') {
+      this._pendingInputSeenOnLegacy = true;
+    }
+  }
+
+  /**
+   * [SPEC 8 v0.5.1 B3.6 / Gap J] Server-side detected interruption —
+   * called from the chat-route `finally` block when neither
+   * `turn_complete` nor `pending_action` fired during the stream.
+   */
+  markInterrupted(): void {
+    this._interrupted = true;
   }
 
   onToolStart(toolUseId: string): void {
     this.toolStartTimes.set(toolUseId, Date.now());
+    this.markVisibleProgress();
+  }
+
+  /**
+   * [SPEC 8 v0.5.1 B3.6] Stamp the first-visible-progress timestamp
+   * exactly once per turn. Called by `onTextDelta`, `onThinkingDelta`,
+   * `onToolStart`, `onTodoUpdate` — whichever fires first. The chat
+   * route never calls this directly.
+   */
+  private markVisibleProgress(): void {
+    if (this._firstVisibleProgressTime === null) {
+      this._firstVisibleProgressTime = Date.now();
+    }
   }
 
   onToolResult(
@@ -242,6 +395,21 @@ export class TurnMetricsCollector {
       0,
       this._cacheReadTokens * (rates.input - rates.cacheRead),
     );
+    // [SPEC 8 v0.5.1 B3.6 / G9] Violation = LLM emitted ≥2 markers in
+    // the same turn. Should be ~zero in steady state — the system prompt
+    // explicitly says "AT MOST ONE per turn". A non-zero value here means
+    // the prompt rule stopped working and two trust cards rendered.
+    const evalSummaryViolationsCount =
+      this._evalSummaryEmittedCount > 1
+        ? this._evalSummaryEmittedCount - 1
+        : 0;
+    // [SPEC 8 v0.5.1 B3.6] TTFVP — null when the turn produced no
+    // renderable events (rare error path before any tool/text/thinking
+    // ever yielded). Dashboards filter this case out of latency p50s.
+    const ttfvpMs =
+      this._firstVisibleProgressTime !== null
+        ? this._firstVisibleProgressTime - this.startTime
+        : null;
     return {
       ...context,
       wallTimeMs,
@@ -266,7 +434,101 @@ export class TurnMetricsCollector {
       synthetic: context.synthetic ?? false,
       cacheSavingsUsd,
       turnPhase: context.turnPhase ?? 'initial',
+      // [SPEC 8 v0.5.1 B3.6 / Layer 6] Per-turn harness telemetry.
+      harnessShape: this._harnessShape,
+      thinkingBlockCount: this._thinkingBlockCount,
+      todoUpdateCount: this._todoUpdateCount,
+      ttfvpMs,
+      finalTextTokens: Math.ceil(this._finalTextChars / FINAL_TEXT_CHARS_PER_TOKEN),
+      evalSummaryEmittedCount: this._evalSummaryEmittedCount,
+      evalSummaryViolationsCount,
+      pendingInputSeenOnLegacy: this._pendingInputSeenOnLegacy,
+      toolProgressEventCount: this._toolProgressEventCount,
+      interruptedMessageCount: this._interrupted ? 1 : 0,
     };
+  }
+}
+
+/**
+ * [SPEC 8 v0.5.1 B3.6 / Layer 6] Subset of `TurnMetricsCollector.build()`
+ * output needed to emit transient harness counters. Typed loosely to
+ * avoid coupling this helper to the full `TurnMetrics` row shape — the
+ * chat route just spreads the built object straight in.
+ */
+export interface HarnessTelemetryInput {
+  harnessShape: HarnessShape | null;
+  modelUsed: string;
+  thinkingBlockCount: number;
+  todoUpdateCount: number;
+  ttfvpMs: number | null;
+  finalTextTokens: number;
+  evalSummaryEmittedCount: number;
+  evalSummaryViolationsCount: number;
+  pendingInputSeenOnLegacy: boolean;
+  toolProgressEventCount: number;
+  interruptedMessageCount: number;
+}
+
+/**
+ * [SPEC 8 v0.5.1 B3.6 / Layer 6] Emit per-turn `audric.harness.*`
+ * counters/gauges via the engine's currently-installed
+ * `VercelTelemetrySink` (set in `init-engine-stores.ts`). All emissions
+ * are fire-and-forget — the sink swallows its own errors. Caller MUST
+ * still wrap in try/catch defensively because telemetry failures must
+ * never break a chat response.
+ *
+ * No new vendor here — strict adherence to `metrics-and-monitoring.mdc`.
+ * The sink writes structured `console.log` lines that Vercel
+ * Observability ingests automatically, plus `@vercel/analytics`
+ * `track()` for the binary discrete events (interrupted, legacy-input).
+ */
+export function emitHarnessTelemetry(
+  sink: TelemetrySink,
+  metrics: HarnessTelemetryInput,
+): void {
+  const shape = metrics.harnessShape ?? 'legacy';
+  const tags = { shape, model: metrics.modelUsed };
+
+  // Counters that are always meaningful to record — even at zero — so
+  // dashboard rates have a denominator (e.g. todo-emission rate per
+  // shape needs both numerator and denominator counters).
+  sink.counter('audric.harness.thinking_block_count', tags, metrics.thinkingBlockCount);
+  sink.counter('audric.harness.todo_update_count', tags, metrics.todoUpdateCount);
+  sink.counter(
+    'audric.harness.tool_progress_event_count',
+    tags,
+    metrics.toolProgressEventCount,
+  );
+  sink.counter(
+    'audric.harness.eval_summary_emitted_count',
+    tags,
+    metrics.evalSummaryEmittedCount,
+  );
+
+  // Discrete binary events — emit only when non-zero so the
+  // analytics-track stream (which fires at value=1) stays signal-only.
+  if (metrics.evalSummaryViolationsCount > 0) {
+    sink.counter(
+      'audric.harness.eval_summary_violations_count',
+      tags,
+      metrics.evalSummaryViolationsCount,
+    );
+  }
+  if (metrics.pendingInputSeenOnLegacy) {
+    sink.counter('audric.harness.pending_input_seen_on_legacy', tags);
+  }
+  if (metrics.interruptedMessageCount > 0) {
+    sink.counter('audric.harness.interrupted_message_count', tags);
+  }
+
+  // Latency / size — histograms (Vercel Observability charts these as
+  // p50/p95/p99 over the rolling window). Skip when null/zero so we
+  // don't pollute the distribution with synthetic 0s on error paths.
+  if (metrics.ttfvpMs !== null) {
+    sink.histogram('audric.harness.ttfvp_ms', metrics.ttfvpMs, tags);
+  }
+  if (metrics.finalTextTokens > 0) {
+    sink.histogram('audric.harness.final_text_tokens', metrics.finalTextTokens, tags);
   }
 }
 

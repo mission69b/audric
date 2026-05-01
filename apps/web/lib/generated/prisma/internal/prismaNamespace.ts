@@ -1903,6 +1903,16 @@ export const TurnMetricsScalarFieldEnum = {
   writeToolDurationMs: 'writeToolDurationMs',
   cacheSavingsUsd: 'cacheSavingsUsd',
   turnPhase: 'turnPhase',
+  harnessShape: 'harnessShape',
+  thinkingBlockCount: 'thinkingBlockCount',
+  todoUpdateCount: 'todoUpdateCount',
+  ttfvpMs: 'ttfvpMs',
+  finalTextTokens: 'finalTextTokens',
+  evalSummaryEmittedCount: 'evalSummaryEmittedCount',
+  evalSummaryViolationsCount: 'evalSummaryViolationsCount',
+  pendingInputSeenOnLegacy: 'pendingInputSeenOnLegacy',
+  toolProgressEventCount: 'toolProgressEventCount',
+  interruptedMessageCount: 'interruptedMessageCount',
   createdAt: 'createdAt'
 } as const
 
