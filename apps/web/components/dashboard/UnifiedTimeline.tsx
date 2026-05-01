@@ -350,6 +350,7 @@ export function UnifiedTimeline({
                 contacts={contacts}
                 walletAddress={address}
                 recentUserText={recentUserText}
+                pinnedHarnessVersion={engine.harnessVersion}
               />
             </div>
           );

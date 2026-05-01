@@ -3,6 +3,7 @@ import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { validateJwt } from '@/lib/auth';
 import { getSessionStore } from '@/lib/engine/engine-factory';
 import { UpstashSessionStore } from '@/lib/engine/upstash-session-store';
+import { asHarnessVersion } from '@/lib/interactive-harness';
 
 export const runtime = 'nodejs';
 
@@ -139,11 +140,20 @@ export async function GET(
     data.createdAt,
   );
 
+  // [B3.3 / G4] Surface the pinned harness version so the client can
+  // gate <ChatMessage> on a stable per-session value when re-loading
+  // an existing session (instead of re-evaluating the env var, which
+  // could mid-rollout differ from the value the session was opened
+  // under). Pre-B3.3 sessions return `undefined`; the client falls
+  // back to the env-var read in that case.
+  const harnessVersion = asHarnessVersion(data.metadata?.harnessVersion);
+
   return NextResponse.json({
     id: data.id,
     messages,
     createdAt: data.createdAt,
     updatedAt: data.updatedAt,
+    harnessVersion,
   });
 }
 

@@ -6,7 +6,7 @@
 // we just assert that the right text + structured rows surface.
 // ───────────────────────────────────────────────────────────────────────────
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, fireEvent } from '@testing-library/react';
 import { ThinkingBlockView } from '../ThinkingBlockView';
 import type { ThinkingTimelineBlock } from '@/lib/engine-types';
@@ -80,5 +80,50 @@ describe('ThinkingBlockView', () => {
     };
     const { container } = render(<ThinkingBlockView block={empty} />);
     expect(container.firstChild).toBeNull();
+  });
+
+  // ───────────────────────────────────────────────────────────────────────
+  // [SPEC 8 v0.5.1 B3.3 / G8] Controlled-mode props (`expanded` + `onToggle`)
+  // ───────────────────────────────────────────────────────────────────────
+
+  it('controlled mode: respects `expanded={true}` regardless of streaming status', () => {
+    // Block is `done` (rehydrate case) — uncontrolled fallback would
+    // collapse it. With expanded=true, the body must show.
+    const { getByText } = render(
+      <ThinkingBlockView block={DONE} expanded={true} onToggle={() => {}} />,
+    );
+    expect(getByText('Considering the swap…')).toBeTruthy();
+  });
+
+  it('controlled mode: respects `expanded={false}` regardless of streaming status', () => {
+    // Block is `streaming` — uncontrolled fallback would expand it. With
+    // expanded=false, the body must stay hidden.
+    const { queryByText } = render(
+      <ThinkingBlockView block={STREAMING} expanded={false} onToggle={() => {}} />,
+    );
+    expect(queryByText('Considering the swap…')).toBeNull();
+  });
+
+  it('controlled mode: clicks invoke `onToggle` (parent updates the prop next render)', () => {
+    const onToggle = vi.fn();
+    const { getByRole } = render(
+      <ThinkingBlockView block={DONE} expanded={false} onToggle={onToggle} />,
+    );
+    fireEvent.click(getByRole('button'));
+    expect(onToggle).toHaveBeenCalledTimes(1);
+  });
+
+  it('controlled mode: internal useState is NOT consulted (controlled wins on re-render)', () => {
+    // Streaming block — internal state would have initialized to true
+    // (expanded). The controlled `expanded={false}` must override.
+    const { rerender, queryByText } = render(
+      <ThinkingBlockView block={STREAMING} expanded={false} onToggle={() => {}} />,
+    );
+    expect(queryByText('Considering the swap…')).toBeNull();
+    // Flip controlled to true; body shows.
+    rerender(
+      <ThinkingBlockView block={STREAMING} expanded={true} onToggle={() => {}} />,
+    );
+    expect(queryByText('Considering the swap…')).toBeTruthy();
   });
 });

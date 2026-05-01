@@ -1,5 +1,6 @@
 'use client';
 
+import { useCallback, useEffect, useState } from 'react';
 import type { TimelineBlock, PendingAction } from '@/lib/engine-types';
 import type { DenyReason } from './PermissionCard';
 import { groupTimelineBlocks } from '@/lib/timeline-groups';
@@ -7,7 +8,7 @@ import { BlockRouter } from './timeline/BlockRouter';
 import { ParallelToolsGroup } from './timeline/ParallelToolsGroup';
 
 // ───────────────────────────────────────────────────────────────────────────
-// SPEC 8 v0.5.1 — ReasoningTimeline (B2.2)
+// SPEC 8 v0.5.1 — ReasoningTimeline (B2.2 + B3.3)
 //
 // Replaces the static "tools section first → reasoning accordion → text
 // last" layout with a chronological timeline built from the engine's
@@ -20,9 +21,13 @@ import { ParallelToolsGroup } from './timeline/ParallelToolsGroup';
 // do the rendering. This keeps each concern independently testable
 // (timeline-groups.test.ts, block-renderer.stories.tsx in B2.3).
 //
-// Optional callbacks (onActionResolve / onSendMessage / wallet context)
-// are forwarded straight through to the leaf renderers that need them
-// (PermissionCardBlockView, CanvasBlockView).
+// [B3.3 / G8] Owns a `Map<blockIndex, 'expanded' | 'collapsed'>` for the
+// thinking blocks so manual user toggles survive child unmount/remount
+// (e.g. virtualization, parallel-group regrouping, status transitions).
+// Auto-expand seeds happen ONCE per blockIndex, on first observation —
+// status flipping streaming→done never re-seeds. The map is per-message
+// (one ReasoningTimeline per assistant message) so toggles in one
+// message can't bleed into another.
 // ───────────────────────────────────────────────────────────────────────────
 
 interface ReasoningTimelineProps {
@@ -56,6 +61,42 @@ export function ReasoningTimeline({
   recentUserText,
   shouldAutoApprove,
 }: ReasoningTimelineProps) {
+  // [B3.3 / G8] Manual-state-preserved expansion map for thinking blocks.
+  // Lazy-init from the blocks present at first mount (rehydration case)
+  // so we don't drop a frame computing defaults in `useEffect`.
+  const [thinkingExpanded, setThinkingExpanded] = useState<
+    Map<number, boolean>
+  >(() => seedExpandedMap(blocks));
+
+  // Seed any new blockIndex that arrived after first mount. Existing
+  // entries (whether they came from initial seed or a user click) are
+  // never overwritten — this is what gives the rule "auto-expand on
+  // first emission ONLY". A streaming→done transition does NOT re-seed.
+  useEffect(() => {
+    setThinkingExpanded((prev) => {
+      let next = prev;
+      let changed = false;
+      for (const block of blocks) {
+        if (block.type !== 'thinking') continue;
+        if (next.has(block.blockIndex)) continue;
+        if (!changed) {
+          next = new Map(prev);
+          changed = true;
+        }
+        next.set(block.blockIndex, block.status === 'streaming');
+      }
+      return changed ? next : prev;
+    });
+  }, [blocks]);
+
+  const toggleThinking = useCallback((blockIndex: number) => {
+    setThinkingExpanded((prev) => {
+      const next = new Map(prev);
+      next.set(blockIndex, !(prev.get(blockIndex) ?? false));
+      return next;
+    });
+  }, []);
+
   if (!blocks || blocks.length === 0) return null;
 
   const items = groupTimelineBlocks(blocks);
@@ -72,10 +113,11 @@ export function ReasoningTimeline({
             />
           );
         }
+        const block = item.block;
         return (
           <BlockRouter
-            key={`block-${i}-${blockKey(item.block)}`}
-            block={item.block}
+            key={`block-${i}-${blockKey(block)}`}
+            block={block}
             isStreaming={isStreaming}
             onActionResolve={onActionResolve}
             onSendMessage={onSendMessage}
@@ -83,11 +125,34 @@ export function ReasoningTimeline({
             walletAddress={walletAddress}
             recentUserText={recentUserText}
             shouldAutoApprove={shouldAutoApprove}
+            thinkingExpanded={
+              block.type === 'thinking'
+                ? thinkingExpanded.get(block.blockIndex) ??
+                  block.status === 'streaming'
+                : undefined
+            }
+            onToggleThinking={
+              block.type === 'thinking'
+                ? () => toggleThinking(block.blockIndex)
+                : undefined
+            }
           />
         );
       })}
     </div>
   );
+}
+
+/** Initial seed for the thinking-expansion map. Streaming = expanded,
+ *  done (rehydrate case) = collapsed. */
+function seedExpandedMap(blocks: TimelineBlock[]): Map<number, boolean> {
+  const m = new Map<number, boolean>();
+  for (const b of blocks) {
+    if (b.type !== 'thinking') continue;
+    if (m.has(b.blockIndex)) continue;
+    m.set(b.blockIndex, b.status === 'streaming');
+  }
+  return m;
 }
 
 /** Stable key derivation per block type — id-style fields where they

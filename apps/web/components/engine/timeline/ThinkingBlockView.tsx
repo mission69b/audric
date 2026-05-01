@@ -6,7 +6,7 @@ import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
 
 // ───────────────────────────────────────────────────────────────────────────
-// SPEC 8 v0.5.1 — ThinkingBlockView (B2.2)
+// SPEC 8 v0.5.1 — ThinkingBlockView (B2.2 + B3.3)
 //
 // Two render modes selected by the engine via the `summaryMode` flag:
 //
@@ -20,15 +20,37 @@ import { cn } from '@/lib/cn';
 //      ("✦ HOW I EVALUATED THIS") with structured rows from
 //      `evaluationItems` instead of the raw thinking text.
 //
-// Auto-expand semantics (SPEC 8 v0.5 G8) — auto-expand on FIRST emission
-// only; once the user manually collapses it stays collapsed across re-
-// renders. B2.2 ships the simpler "always default collapsed" behavior;
-// the manual-state-preservation refinement lands in B3 alongside the
-// session rehydrate work.
+// Auto-expand semantics (SPEC 8 v0.5 G8 + B3.3):
+//
+//   - **Controlled mode** (used by `<ReasoningTimeline>`): parent owns
+//     a `Map<blockIndex, 'expanded' | 'collapsed'>` and passes the
+//     current value via `expanded` + a `onToggle` callback. This is
+//     what gives us "auto-expand on first emission only, manual state
+//     preserved on rehydrate" — the parent seeds the map from the
+//     block's status the FIRST time it sees a blockIndex, and never
+//     re-seeds on a streaming→done transition. User toggles persist
+//     until the parent unmounts (whole-message scope).
+//
+//   - **Uncontrolled mode** (used by standalone tests + any future
+//     consumer that doesn't lift state): falls back to a per-component
+//     `useState(isStreaming)` — the pre-B3.3 behavior. Existing tests
+//     keep working with no changes.
 // ───────────────────────────────────────────────────────────────────────────
 
 interface ThinkingBlockViewProps {
   block: ThinkingTimelineBlock;
+  /**
+   * [B3.3] Controlled-mode expansion state. When provided, `<ThinkingBlockView>`
+   * does NOT manage its own `useState`; the parent owns it via a
+   * `Map<blockIndex, ...>`. Pair with `onToggle` to make it interactive.
+   */
+  expanded?: boolean;
+  /**
+   * [B3.3] Click handler for the disclosure button. Required when
+   * `expanded` is provided (controlled mode); ignored in uncontrolled
+   * mode (the component manages its own state).
+   */
+  onToggle?: () => void;
 }
 
 const STATUS_DOT: Record<EvaluationItem['status'], string> = {
@@ -45,10 +67,21 @@ const STATUS_GLYPH: Record<EvaluationItem['status'], string> = {
   info: '·',
 };
 
-export function ThinkingBlockView({ block }: ThinkingBlockViewProps) {
+export function ThinkingBlockView({
+  block,
+  expanded: controlledExpanded,
+  onToggle: controlledOnToggle,
+}: ThinkingBlockViewProps) {
   const isStreaming = block.status === 'streaming';
-  // Default expanded while streaming, collapsed once done (until user opens).
-  const [expanded, setExpanded] = useState(isStreaming);
+  // Uncontrolled fallback: only used when the parent did not provide
+  // `expanded`. Default is `isStreaming` — matches pre-B3.3 behavior so
+  // every existing standalone consumer/test continues to work.
+  const [uncontrolled, setUncontrolled] = useState(isStreaming);
+  const isControlled = controlledExpanded !== undefined;
+  const expanded = isControlled ? controlledExpanded : uncontrolled;
+  const handleToggle = isControlled
+    ? (controlledOnToggle ?? (() => {}))
+    : () => setUncontrolled((v) => !v);
 
   if (block.summaryMode && block.evaluationItems && block.evaluationItems.length > 0) {
     return <HowIEvaluatedCard items={block.evaluationItems} />;
@@ -60,7 +93,7 @@ export function ThinkingBlockView({ block }: ThinkingBlockViewProps) {
     <div className="pl-1 mb-1.5">
       <button
         type="button"
-        onClick={() => setExpanded((v) => !v)}
+        onClick={handleToggle}
         className="group flex items-center gap-1.5 py-1 text-fg-muted hover:text-fg-primary/60 transition-colors"
         aria-expanded={expanded}
       >

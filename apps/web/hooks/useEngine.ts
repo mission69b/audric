@@ -11,6 +11,7 @@ import type {
   CanvasData,
 } from '@/lib/engine-types';
 import { applyEventToTimeline, markPermissionCardResolved } from '@/lib/timeline-builder';
+import { asHarnessVersion, type HarnessVersion } from '@/lib/interactive-harness';
 
 // [v1.4] Re-export the pure executor so consumers and tests can use a single
 // import path: `import { executeToolAction } from '@/hooks/useEngine'`.
@@ -69,6 +70,12 @@ export function useEngine({ address, jwt, onToolResult }: UseEngineOptions) {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [usage, setUsage] = useState<UsageData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // [SPEC 8 v0.5.1 B3.3 / G4] Per-session harness version pinned by the
+  // server. `null` while the session SSE event hasn't arrived yet (or
+  // for unauth/demo paths that have no persisted session). The
+  // `<ChatMessage>` consumer falls back to the global env-var when
+  // this is `null`.
+  const [harnessVersion, setHarnessVersion] = useState<HarnessVersion | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
   const streamingMsgRef = useRef<string | null>(null);
@@ -364,8 +371,18 @@ export function useEngine({ address, jwt, onToolResult }: UseEngineOptions) {
 
     if (eventType === 'session') {
       try {
-        const parsed = JSON.parse(dataStr) as { sessionId: string };
+        // [B3.3 / G4] Server now also stamps `harnessVersion` here so the
+        // client can pin <ChatMessage> rendering for the life of this
+        // session. Older deploys may omit the field — `asHarnessVersion`
+        // returns `undefined` in that case and we leave the existing
+        // pin untouched (still better than re-reading the env var).
+        const parsed = JSON.parse(dataStr) as {
+          sessionId: string;
+          harnessVersion?: unknown;
+        };
         setSessionId(parsed.sessionId);
+        const v = asHarnessVersion(parsed.harnessVersion);
+        if (v) setHarnessVersion(v);
       } catch { /* ignore */ }
       return;
     }
@@ -694,6 +711,9 @@ export function useEngine({ address, jwt, onToolResult }: UseEngineOptions) {
     setSessionId(null);
     setUsage(null);
     setError(null);
+    // [B3.3 / G4] Drop the pinned harness version on "new chat" so the
+    // next session's first turn evaluates the env-var fresh.
+    setHarnessVersion(null);
     lastFailedMessage.current = null;
   }, []);
 
@@ -703,6 +723,9 @@ export function useEngine({ address, jwt, onToolResult }: UseEngineOptions) {
       setSessionId(id);
       setUsage(null);
       setError(null);
+      // [B3.3 / G4] Reset before fetch — old session's pin must not leak
+      // into the new one's first render.
+      setHarnessVersion(null);
       lastFailedMessage.current = null;
 
       if (!jwt) return;
@@ -715,6 +738,12 @@ export function useEngine({ address, jwt, onToolResult }: UseEngineOptions) {
         if (data.messages?.length) {
           setMessages(data.messages as EngineChatMessage[]);
         }
+        // [B3.3 / G4] Pre-B3.3 sessions return `undefined`; leave the
+        // pin null so the renderer falls back to the env-var. The next
+        // chat turn on this session will pin it (and the GET will then
+        // return it on subsequent loads).
+        const v = asHarnessVersion(data.harnessVersion);
+        if (v) setHarnessVersion(v);
       } catch {
         // session loads silently
       }
@@ -732,6 +761,10 @@ export function useEngine({ address, jwt, onToolResult }: UseEngineOptions) {
     sessionId,
     usage,
     error,
+    // [B3.3 / G4] Per-session pinned harness version (`'v2'` | `'legacy'`)
+    // OR `null` until the server announces it. Consumers (`<ChatMessage>`
+    // via `<UnifiedTimeline>`) prefer this over the raw env-var read.
+    harnessVersion,
     sendMessage,
     resolveAction,
     cancel,

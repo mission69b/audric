@@ -40,6 +40,16 @@ interface BlockRouterProps {
    * gating. See `PermissionCardBlockView` for the contract.
    */
   shouldAutoApprove?: (action: Pick<PendingAction, 'toolName' | 'input'>) => boolean;
+  /**
+   * [B3.3 / G8] Controlled-mode expansion state for thinking blocks.
+   * The parent (`<ReasoningTimeline>`) owns the per-message
+   * `Map<blockIndex, ...>` and forwards the relevant slice to each
+   * thinking block via these two props. `undefined` for non-thinking
+   * blocks (and for thinking blocks when a non-timeline consumer of
+   * `<BlockRouter>` opts out of controlled mode).
+   */
+  thinkingExpanded?: boolean;
+  onToggleThinking?: () => void;
 }
 
 export function BlockRouter({
@@ -51,10 +61,18 @@ export function BlockRouter({
   walletAddress,
   recentUserText,
   shouldAutoApprove,
+  thinkingExpanded,
+  onToggleThinking,
 }: BlockRouterProps) {
   switch (block.type) {
     case 'thinking':
-      return <ThinkingBlockView block={block} />;
+      return (
+        <ThinkingBlockView
+          block={block}
+          expanded={thinkingExpanded}
+          onToggle={onToggleThinking}
+        />
+      );
 
     case 'tool':
       return <ToolBlockView block={block} isStreaming={isStreaming} />;

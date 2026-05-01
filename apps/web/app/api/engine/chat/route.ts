@@ -38,6 +38,11 @@ import {
 
 import { sanitizeStreamErrorMessage } from '@/lib/engine/stream-errors';
 import { env } from '@/lib/env';
+import {
+  asHarnessVersion,
+  currentHarnessVersion,
+  type HarnessVersion,
+} from '@/lib/interactive-harness';
 
 const AGENT_MODEL = env.AGENT_MODEL ?? 'claude-sonnet-4-6';
 
@@ -129,6 +134,12 @@ export async function POST(request: NextRequest) {
     let sessionId: string | undefined;
     let session = null;
     let saveSession = false;
+    // [SPEC 8 v0.5.1 B3.3 / G4] Pin the harness renderer for the life of
+    // this session. Decided ONCE per session (at creation, or on the
+    // first turn of a pre-B3.3 session that hasn't been pinned yet) and
+    // persisted into `session.metadata.harnessVersion`. Resolved below
+    // after we load the session record.
+    let harnessVersion: HarnessVersion = 'legacy';
     let engineMeta: {
       effortLevel: string;
       modelUsed: string;
@@ -148,6 +159,16 @@ export async function POST(request: NextRequest) {
       sessionId = requestedSessionId || generateSessionId();
       session = requestedSessionId ? await store.get(requestedSessionId) : null;
       saveSession = true;
+
+      // [SPEC 8 v0.5.1 B3.3 / G4] Per-session harness-version pinning.
+      //
+      // Existing session with a pinned value → respect it (won't flip
+      // mid-rollout). Existing session without one (pre-B3.3 record) OR
+      // brand-new session → evaluate the env var ONCE and that decision
+      // sticks for the rest of this session's life via the `metadata`
+      // write in the `finally` block below.
+      const pinned = asHarnessVersion(session?.metadata?.harnessVersion);
+      harnessVersion = pinned ?? currentHarnessVersion();
 
       // [PR-B2] Central usage billing.
       // Source `emailVerified` from the Google OIDC `email_verified` claim
@@ -268,9 +289,15 @@ export async function POST(request: NextRequest) {
 
         try {
           if (sessionId) {
+            // [B3.3 / G4] Carry the pinned harness version on the same
+            // event the client already uses to capture `sessionId`. The
+            // client (`useEngine.ts`) stashes both at once, so the
+            // renderer in `<ChatMessage>` can gate on a stable per-
+            // session value instead of re-reading the env var on every
+            // render.
             controller.enqueue(
               encoder.encode(
-                `event: session\ndata: ${JSON.stringify({ sessionId })}\n\n`,
+                `event: session\ndata: ${JSON.stringify({ sessionId, harnessVersion })}\n\n`,
               ),
             );
           }
@@ -564,7 +591,16 @@ export async function POST(request: NextRequest) {
                 createdAt: session?.createdAt ?? Date.now(),
                 updatedAt: Date.now(),
                 pendingAction,
-                metadata: { address },
+                // [B3.3 / G4] Persist the pinned harness version so a
+                // session that started under "legacy" never flips to "v2"
+                // (or vice-versa) when the rollout dial moves. Merged with
+                // any pre-existing metadata so we don't clobber other
+                // host-set fields on this record.
+                metadata: {
+                  ...(session?.metadata ?? {}),
+                  address,
+                  harnessVersion,
+                },
               };
               await store.set(updatedSession);
 
