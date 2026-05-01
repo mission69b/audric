@@ -9,6 +9,7 @@ import {
   localSpokenWordIndex,
   type TextBlockVoiceSlice,
 } from '@/lib/voice/timeline-voice-slices';
+import { stripEvalSummaryMarker } from '@/lib/sanitize-text';
 
 // ───────────────────────────────────────────────────────────────────────────
 // SPEC 8 v0.5.1 — TextBlockView (B2.2 + B3.4 + B3.5)
@@ -46,7 +47,12 @@ interface TextBlockViewProps {
 }
 
 export function TextBlockView({ block, voiceSlice, spokenWordIndex }: TextBlockViewProps) {
-  if (!block.text) return null;
+  // [SPEC 8 v0.5.2 hotfix · G1 leak] Strip any `<eval_summary>...</eval_summary>`
+  // markers that the model leaks into final assistant text (the engine already
+  // parses + suppresses the marker in thinking content; the leak is a separate
+  // model-compliance issue). See lib/sanitize-text.ts for the full rationale.
+  const displayText = stripEvalSummaryMarker(block.text);
+  if (!displayText) return null;
 
   const isActiveVoice =
     voiceSlice !== undefined &&
@@ -60,7 +66,7 @@ export function TextBlockView({ block, voiceSlice, spokenWordIndex }: TextBlockV
         // behavior — without it, long unbroken tokens (coin types, addresses)
         // overflow the narrow chat column on mobile during streaming.
         <span className="whitespace-pre-wrap break-words">
-          {block.text}
+          {displayText}
           <span className="inline-flex items-center ml-1.5 align-text-bottom">
             <ThinkingState status="delivering" intensity="transitioning" />
           </span>
@@ -68,12 +74,12 @@ export function TextBlockView({ block, voiceSlice, spokenWordIndex }: TextBlockV
         </span>
       ) : isActiveVoice ? (
         <VoiceHighlightedText
-          text={block.text}
+          text={displayText}
           spans={voiceSlice!.localSpans}
           spokenWordIndex={localSpokenWordIndex(voiceSlice!, spokenWordIndex!)}
         />
       ) : (
-        <AgentMarkdown text={block.text} />
+        <AgentMarkdown text={displayText} />
       )}
     </AudricLine>
   );
