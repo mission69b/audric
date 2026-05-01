@@ -10,7 +10,7 @@ import type {
   SSEEvent,
   CanvasData,
 } from '@/lib/engine-types';
-import { applyEventToTimeline } from '@/lib/timeline-builder';
+import { applyEventToTimeline, markPermissionCardResolved } from '@/lib/timeline-builder';
 
 // [v1.4] Re-export the pure executor so consumers and tests can use a single
 // import path: `import { executeToolAction } from '@/hooks/useEngine'`.
@@ -164,7 +164,18 @@ export function useEngine({ address, jwt, onToolResult }: UseEngineOptions) {
                   : t,
               )
             : m.tools;
-          return { ...m, pendingAction: undefined, tools };
+          // [SPEC 8 v0.5.1 B3.1 / audit Gap B] Transition the matching
+          // permission-card timeline block out of 'pending' so the new
+          // ReasoningTimeline path stops rendering an active approve/deny
+          // card after resolution. The legacy `pendingAction = undefined`
+          // above takes care of the same thing for the legacy renderer; this
+          // line covers the timeline path. Skip entirely when the message
+          // never carried a timeline (flag-OFF sessions) so we don't
+          // synthesize an empty array on legacy messages.
+          const timeline = m.timeline
+            ? markPermissionCardResolved(m.timeline, action.toolUseId, approved ? 'approved' : 'denied')
+            : m.timeline;
+          return { ...m, pendingAction: undefined, tools, timeline };
         }),
       );
 

@@ -165,6 +165,7 @@ export function ChatMessage({
           contacts={contacts}
           walletAddress={walletAddress}
           recentUserText={recentUserText}
+          shouldAutoApprove={shouldAutoApprove}
         />
 
         {message.usage && !message.isStreaming && (

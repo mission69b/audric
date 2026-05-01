@@ -34,6 +34,12 @@ interface BlockRouterProps {
   contacts?: ReadonlyArray<{ name: string; address: string }>;
   walletAddress?: string | null;
   recentUserText?: string;
+  /**
+   * [B3.1 / audit Gap A] Forwarded to `PermissionCardBlockView` so the
+   * new timeline path matches `ChatMessage.tsx`'s legacy auto-approve
+   * gating. See `PermissionCardBlockView` for the contract.
+   */
+  shouldAutoApprove?: (action: Pick<PendingAction, 'toolName' | 'input'>) => boolean;
 }
 
 export function BlockRouter({
@@ -44,6 +50,7 @@ export function BlockRouter({
   contacts,
   walletAddress,
   recentUserText,
+  shouldAutoApprove,
 }: BlockRouterProps) {
   switch (block.type) {
     case 'thinking':
@@ -70,6 +77,7 @@ export function BlockRouter({
           contacts={contacts}
           walletAddress={walletAddress}
           recentUserText={recentUserText}
+          shouldAutoApprove={shouldAutoApprove}
         />
       );
 

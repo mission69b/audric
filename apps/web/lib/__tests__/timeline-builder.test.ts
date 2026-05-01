@@ -6,7 +6,7 @@
 // ───────────────────────────────────────────────────────────────────────────
 
 import { describe, it, expect } from 'vitest';
-import { applyEventToTimeline } from '@/lib/timeline-builder';
+import { applyEventToTimeline, markPermissionCardResolved } from '@/lib/timeline-builder';
 import type {
   SSEEvent,
   TimelineBlock,
@@ -14,6 +14,7 @@ import type {
   TextTimelineBlock,
   ToolTimelineBlock,
   TodoTimelineBlock,
+  PendingAction,
 } from '@/lib/engine-types';
 
 const T0 = 1_700_000_000_000;
@@ -364,5 +365,83 @@ describe('applyEventToTimeline — purity invariants', () => {
   it('treats undefined timeline same as []', () => {
     const next = applyEventToTimeline(undefined, { type: 'text_delta', text: 'hi' }, T0);
     expect(next).toHaveLength(1);
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────
+// SPEC 8 v0.5.1 B3.1 — markPermissionCardResolved (audit Gap B)
+//
+// Closes the user-confirm round-trip in the timeline. Without this helper
+// the permission-card block stays at status: 'pending' forever even after
+// the user approved/denied, leaving an orphaned "active" card on scroll-back.
+// ───────────────────────────────────────────────────────────────────────────
+
+function fakeAction(toolUseId: string, toolName = 'send_transfer'): PendingAction {
+  return {
+    toolName,
+    toolUseId,
+    input: { amount: 10 },
+    description: `${toolName} test`,
+    assistantContent: [],
+    turnIndex: 0,
+    attemptId: `attempt-${toolUseId}`,
+  };
+}
+
+describe('markPermissionCardResolved', () => {
+  it('transitions a matching pending permission-card to approved', () => {
+    const seed: TimelineBlock[] = [
+      { type: 'text', text: 'hi', status: 'done' },
+      { type: 'permission-card', payload: fakeAction('t1'), status: 'pending' },
+    ];
+    const next = markPermissionCardResolved(seed, 't1', 'approved');
+    expect(next).not.toBe(seed);
+    expect(next[1]).toMatchObject({ type: 'permission-card', status: 'approved' });
+    expect(next[0]).toBe(seed[0]);
+  });
+
+  it('transitions to denied without mutating other blocks', () => {
+    const seed: TimelineBlock[] = [
+      { type: 'permission-card', payload: fakeAction('t1'), status: 'pending' },
+      { type: 'text', text: 'tail', status: 'streaming' },
+    ];
+    const snapshot = JSON.stringify(seed);
+    const next = markPermissionCardResolved(seed, 't1', 'denied');
+    expect(next[0]).toMatchObject({ type: 'permission-card', status: 'denied' });
+    expect(next[1]).toBe(seed[1]);
+    expect(JSON.stringify(seed)).toBe(snapshot);
+  });
+
+  it('returns same reference when no permission-card matches the toolUseId', () => {
+    const seed: TimelineBlock[] = [
+      { type: 'permission-card', payload: fakeAction('t1'), status: 'pending' },
+    ];
+    const next = markPermissionCardResolved(seed, 'unknown', 'approved');
+    expect(next).toBe(seed);
+  });
+
+  it('returns same reference when the matching block is already at the target status', () => {
+    const seed: TimelineBlock[] = [
+      { type: 'permission-card', payload: fakeAction('t1'), status: 'approved' },
+    ];
+    const next = markPermissionCardResolved(seed, 't1', 'approved');
+    expect(next).toBe(seed);
+  });
+
+  it('treats undefined timeline same as []', () => {
+    const next = markPermissionCardResolved(undefined, 't1', 'approved');
+    expect(next).toEqual([]);
+  });
+
+  it('only flips the first match when toolUseId is unique (typical case)', () => {
+    const seed: TimelineBlock[] = [
+      { type: 'permission-card', payload: fakeAction('t1'), status: 'pending' },
+      { type: 'tool', toolUseId: 't2', toolName: 'x', input: {}, status: 'done', startedAt: T0, result: null, isError: false },
+      { type: 'permission-card', payload: fakeAction('t3'), status: 'pending' },
+    ];
+    const next = markPermissionCardResolved(seed, 't3', 'approved');
+    expect(next[0]).toMatchObject({ type: 'permission-card', status: 'pending' });
+    expect(next[1]).toBe(seed[1]);
+    expect(next[2]).toMatchObject({ type: 'permission-card', status: 'approved' });
   });
 });

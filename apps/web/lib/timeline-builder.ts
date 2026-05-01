@@ -31,6 +31,7 @@ import type {
   TextTimelineBlock,
   ToolTimelineBlock,
   TodoTimelineBlock,
+  PermissionCardTimelineBlock,
 } from '@/lib/engine-types';
 
 /**
@@ -228,6 +229,53 @@ export function applyEventToTimeline(
     case 'error':
       return current;
   }
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// SPEC 8 v0.5.1 B3.1 — Permission-card lifecycle transition (audit Gap B)
+//
+// `applyEventToTimeline` only reacts to engine SSE events, so it never sees
+// the user-confirm round-trip — that lives in `useEngine.resolveAction`.
+// Without this helper, `permission-card` blocks created on `pending_action`
+// would be stuck at `status: 'pending'` forever; on scroll-back the user
+// would see an "active" approve/deny card for an action that already
+// resolved 5 minutes ago.
+//
+// The helper is a pure function (testable) that takes the timeline + a
+// toolUseId + a target status and returns a new timeline with the matching
+// permission-card transitioned. No-op (returns same reference) when:
+//   - timeline is undefined / empty
+//   - no permission-card with that toolUseId exists
+//   - the matching block is already at the target status
+//
+// `PermissionCardBlockView` reads `block.status` and renders nothing once
+// status leaves 'pending' — same UX as today's legacy path where the card
+// disappears when `message.pendingAction` clears.
+// ───────────────────────────────────────────────────────────────────────────
+
+export type PermissionCardResolution = Exclude<
+  PermissionCardTimelineBlock['status'],
+  'pending'
+>;
+
+export function markPermissionCardResolved(
+  timeline: TimelineBlock[] | undefined,
+  toolUseId: string,
+  status: PermissionCardResolution,
+): TimelineBlock[] {
+  const current = timeline ?? [];
+
+  const idx = current.findIndex(
+    (b): b is PermissionCardTimelineBlock =>
+      b.type === 'permission-card' && b.payload.toolUseId === toolUseId,
+  );
+  if (idx === -1) return current;
+  if ((current[idx] as PermissionCardTimelineBlock).status === status) return current;
+
+  return current.map((b, i): TimelineBlock => {
+    if (i !== idx || b.type !== 'permission-card') return b;
+    return { ...b, status };
+  });
 }
 
 /**

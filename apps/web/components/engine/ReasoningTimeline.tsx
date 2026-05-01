@@ -38,6 +38,12 @@ interface ReasoningTimelineProps {
   contacts?: ReadonlyArray<{ name: string; address: string }>;
   walletAddress?: string | null;
   recentUserText?: string;
+  /**
+   * [B3.1 / audit Gap A] Forwarded to PermissionCardBlockView so the
+   * timeline path matches the legacy renderer's auto-approve gating.
+   * See `PermissionCardBlockView` for the contract.
+   */
+  shouldAutoApprove?: (action: Pick<PendingAction, 'toolName' | 'input'>) => boolean;
 }
 
 export function ReasoningTimeline({
@@ -48,6 +54,7 @@ export function ReasoningTimeline({
   contacts,
   walletAddress,
   recentUserText,
+  shouldAutoApprove,
 }: ReasoningTimelineProps) {
   if (!blocks || blocks.length === 0) return null;
 
@@ -75,6 +82,7 @@ export function ReasoningTimeline({
             contacts={contacts}
             walletAddress={walletAddress}
             recentUserText={recentUserText}
+            shouldAutoApprove={shouldAutoApprove}
           />
         );
       })}
