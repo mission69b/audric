@@ -206,15 +206,33 @@ export function applyEventToTimeline(
         },
       ];
 
-    case 'pending_action':
+    case 'pending_action': {
+      // [SPEC 8 v0.5.2 hotfix · Bug F] When the engine yields
+      // pending_action, the LLM has stopped streaming for THIS batch —
+      // the turn pauses until the user approves/denies. Any in-flight
+      // text/thinking blocks (e.g. "Executing swap now.") must
+      // transition out of `streaming` or the renderer will keep showing
+      // the DELIVERING indicator + "Audric is typing" hint forever.
+      // Mirror the turn_complete finalization so the chat reads "Quote
+      // → permission card → receipt → narration" cleanly.
+      let changed = false;
+      const finalized = current.map((b): TimelineBlock => {
+        if ((b.type === 'thinking' || b.type === 'text') && b.status === 'streaming') {
+          changed = true;
+          return { ...b, status: 'done' };
+        }
+        return b;
+      });
+      const base = changed ? finalized : current;
       return [
-        ...current,
+        ...base,
         {
           type: 'permission-card',
           payload: event.action,
           status: 'pending',
         },
       ];
+    }
 
     case 'pending_input':
       return [

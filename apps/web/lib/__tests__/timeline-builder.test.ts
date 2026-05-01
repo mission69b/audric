@@ -384,6 +384,39 @@ describe('applyEventToTimeline — slot blocks (canvas, permission-card, pending
     expect((tl[0] as { status: string }).status).toBe('pending');
   });
 
+  it('finalizes in-flight streaming text + thinking blocks when pending_action arrives (Bug F regression)', () => {
+    // [SPEC 8 v0.5.2 hotfix · Bug F] When the LLM yields pending_action,
+    // streaming text/thinking blocks must transition to 'done' or the
+    // renderer keeps showing the DELIVERING indicator + "Audric is
+    // typing" hint forever (the screenshot bug).
+    const tl = applyAll([
+      { type: 'thinking_delta', text: 'pre-quote', blockIndex: 0 },
+      { type: 'text_delta', text: 'Executing swap now.' },
+      {
+        type: 'pending_action',
+        action: { id: 'pa1', toolName: 'swap_execute', input: {} } as never,
+      },
+    ]);
+    expect(tl).toHaveLength(3);
+    expect(tl[0]).toMatchObject({ type: 'thinking', status: 'done' });
+    expect(tl[1]).toMatchObject({ type: 'text', text: 'Executing swap now.', status: 'done' });
+    expect(tl[2]).toMatchObject({ type: 'permission-card', status: 'pending' });
+  });
+
+  it('leaves already-done blocks untouched when pending_action arrives', () => {
+    const tl = applyAll([
+      { type: 'thinking_delta', text: 'plan', blockIndex: 0 },
+      { type: 'thinking_done', blockIndex: 0 },
+      {
+        type: 'pending_action',
+        action: { id: 'pa1', toolName: 'swap_execute', input: {} } as never,
+      },
+    ]);
+    expect(tl).toHaveLength(2);
+    expect(tl[0]).toMatchObject({ type: 'thinking', status: 'done' });
+    expect(tl[1]).toMatchObject({ type: 'permission-card', status: 'pending' });
+  });
+
   it('appends a pending-input block (SPEC 9 reservation)', () => {
     const tl = applyAll([
       {
