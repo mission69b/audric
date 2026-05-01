@@ -6,6 +6,7 @@ import { cn } from '@/lib/cn';
 import { ThinkingHeader } from './primitives/ThinkingHeader';
 import { ReasoningStream } from './primitives/ReasoningStream';
 import { HowIEvaluated } from './primitives/HowIEvaluated';
+import { stripEvalSummaryMarker } from '@/lib/sanitize-text';
 
 // ───────────────────────────────────────────────────────────────────────────
 // SPEC 8 v0.5.1 — ThinkingBlockView (B2.2 + B3.3 + B3.5)
@@ -81,14 +82,24 @@ export function ThinkingBlockView({
     return <HowIEvaluatedCard items={block.evaluationItems} />;
   }
 
-  if (!block.text) return null;
+  // [SPEC 8 v0.5.2 hotfix · G1 streaming flash] Strip `<eval_summary>...`
+  // markers from the raw thinking text WHILE streaming. The engine's
+  // anthropic provider parses the marker on thinking_done and flips
+  // summaryMode → true, at which point the trust card replaces this
+  // entire branch (the early return above). Until thinking_done fires,
+  // the raw marker text leaks into the accordion as it streams in.
+  // stripEvalSummaryMarker handles partial markers (truncates from the
+  // open tag onward when no closing tag exists yet), so the user sees
+  // clean prose right up to the moment the trust card swaps in.
+  const displayText = stripEvalSummaryMarker(block.text);
+  if (!displayText) return null;
 
   return (
     <div className="pl-1 mb-1.5">
       <ThinkingHeader done={!isStreaming} onClick={handleToggle} expanded={expanded} />
       {expanded && (
         <div className="mt-0.5">
-          <ReasoningStream text={block.text} streaming={isStreaming} />
+          <ReasoningStream text={displayText} streaming={isStreaming} />
         </div>
       )}
     </div>
