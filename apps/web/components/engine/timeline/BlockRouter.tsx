@@ -2,6 +2,7 @@
 
 import type { TimelineBlock, PendingAction } from '@/lib/engine-types';
 import type { DenyReason } from '../PermissionCard';
+import type { TextBlockVoiceSlice } from '@/lib/voice/timeline-voice-slices';
 import { ThinkingBlockView } from './ThinkingBlockView';
 import { ToolBlockView } from './ToolBlockView';
 import { TextBlockView } from './TextBlockView';
@@ -50,6 +51,21 @@ interface BlockRouterProps {
    */
   thinkingExpanded?: boolean;
   onToggleThinking?: () => void;
+  /**
+   * [B3.4 / Gap F] Voice slice for THIS block (only meaningful when
+   * `block.type === 'text'` and TTS is active for the message). The
+   * parent computes one slice per text block via
+   * `computeTextBlockVoiceSlices(blocks, spans)` and forwards the
+   * matching entry. Undefined for non-text blocks and on every
+   * non-active assistant message.
+   */
+  voiceSlice?: TextBlockVoiceSlice;
+  /**
+   * [B3.4 / Gap F] Global `spokenWordIndex` from `useVoiceModeContext`.
+   * Forwarded as-is — `<TextBlockView>` re-bases it via
+   * `localSpokenWordIndex(slice, idx)`.
+   */
+  spokenWordIndex?: number;
 }
 
 export function BlockRouter({
@@ -63,6 +79,8 @@ export function BlockRouter({
   shouldAutoApprove,
   thinkingExpanded,
   onToggleThinking,
+  voiceSlice,
+  spokenWordIndex,
 }: BlockRouterProps) {
   switch (block.type) {
     case 'thinking':
@@ -78,7 +96,13 @@ export function BlockRouter({
       return <ToolBlockView block={block} isStreaming={isStreaming} />;
 
     case 'text':
-      return <TextBlockView block={block} />;
+      return (
+        <TextBlockView
+          block={block}
+          voiceSlice={voiceSlice}
+          spokenWordIndex={spokenWordIndex}
+        />
+      );
 
     case 'todo':
       return <TodoBlockView block={block} />;

@@ -281,6 +281,14 @@ export async function POST(request: NextRequest) {
     // the stream, never modifies the response.
     const narrationParts: string[] = [];
     const calledToolNames: string[] = [];
+    // [SPEC 8 v0.5.1 B3.4 / Gap J] Server-side cleanliness flag for the
+    // partial-turn case. Flipped to `true` when the engine emits
+    // `turn_complete`; if the `finally` block runs without seeing one,
+    // the SSE stream was cut off (client abort, serverless timeout,
+    // unhandled exception) and we persist a `lastInterruption` marker
+    // so a future page load can render `<RetryInterruptedTurn>` instead
+    // of leaving the user staring at half a response.
+    let turnCompleteSeen = false;
 
     const stream = new ReadableStream({
       async start(controller) {
@@ -515,6 +523,12 @@ export async function POST(request: NextRequest) {
               case 'usage':
                 collector.onUsage(event);
                 break;
+              case 'turn_complete':
+                // [B3.4 / Gap J] Engine confirmed clean turn close;
+                // any pending `lastInterruption` from prior turns
+                // gets cleared on the metadata write below.
+                turnCompleteSeen = true;
+                break;
               case 'pending_action':
                 // [v1.4.2 — Day 3 / Spec Item 3] Pass the engine-stamped
                 // `attemptId` so the resulting `TurnMetrics` row carries
@@ -584,6 +598,25 @@ export async function POST(request: NextRequest) {
           if (saveSession && sessionId && address) {
             try {
               const store = getSessionStore();
+              // [B3.4 / Gap J] Compute the interruption marker BEFORE
+              // building the metadata payload. A turn that ended with
+              // `pending_action` is intentionally paused, not
+              // interrupted; only flag when neither `turn_complete`
+              // nor `pending_action` was ever emitted (server crash /
+              // serverless timeout / network drop). On a clean turn,
+              // we explicitly clear any prior marker so the retry
+              // pill from the previous turn doesn't stick around.
+              const wasInterrupted = !turnCompleteSeen && !pendingAction;
+              const lastInterruption = wasInterrupted
+                ? {
+                    turnIndex,
+                    // `trimmedMessage` was set inside the try block
+                    // (out of scope here); re-trim from the outer
+                    // `message` capture instead.
+                    replayText: message.trim(),
+                    interruptedAt: Date.now(),
+                  }
+                : undefined;
               const updatedSession = {
                 id: sessionId,
                 messages,
@@ -600,6 +633,12 @@ export async function POST(request: NextRequest) {
                   ...(session?.metadata ?? {}),
                   address,
                   harnessVersion,
+                  // [B3.4 / Gap J] `undefined` → key omitted on JSON
+                  // serialise → previous value cleared on next read.
+                  // Carrying the explicit `undefined` is intentional —
+                  // it overrides the spread above when this turn was
+                  // clean.
+                  lastInterruption,
                 },
               };
               await store.set(updatedSession);

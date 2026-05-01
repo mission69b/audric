@@ -1,8 +1,10 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { TimelineBlock, PendingAction } from '@/lib/engine-types';
 import type { DenyReason } from './PermissionCard';
+import type { WordSpan } from '@/lib/voice/word-alignment';
+import { computeTextBlockVoiceSlices } from '@/lib/voice/timeline-voice-slices';
 import { groupTimelineBlocks } from '@/lib/timeline-groups';
 import { BlockRouter } from './timeline/BlockRouter';
 import { ParallelToolsGroup } from './timeline/ParallelToolsGroup';
@@ -49,6 +51,19 @@ interface ReasoningTimelineProps {
    * See `PermissionCardBlockView` for the contract.
    */
   shouldAutoApprove?: (action: Pick<PendingAction, 'toolName' | 'input'>) => boolean;
+  /**
+   * [B3.4 / Gap F] Voice playback context for THIS message. Set when:
+   *   - `voice.state === 'speaking'`
+   *   - `voice.speakingMessageId === message.id`
+   *   - `voice.currentSpans !== null`
+   * The renderer slices the spans per text block so each
+   * `<TextBlockView>` can swap in `<VoiceHighlightedText>`. Undefined
+   * on every non-active assistant message and during streaming.
+   */
+  voiceContext?: {
+    spans: WordSpan[];
+    spokenWordIndex: number;
+  };
 }
 
 export function ReasoningTimeline({
@@ -60,6 +75,7 @@ export function ReasoningTimeline({
   walletAddress,
   recentUserText,
   shouldAutoApprove,
+  voiceContext,
 }: ReasoningTimelineProps) {
   // [B3.3 / G8] Manual-state-preserved expansion map for thinking blocks.
   // Lazy-init from the blocks present at first mount (rehydration case)
@@ -97,6 +113,19 @@ export function ReasoningTimeline({
     });
   }, []);
 
+  // [B3.4 / Gap F] Compute one voice slice per text block when TTS is
+  // active. Memoized on (blocks, spans) — the slices don't change as
+  // `spokenWordIndex` advances, so re-running this every rAF tick would
+  // be wasteful. Renders past `<TextBlockView>` use the slice plus the
+  // current `spokenWordIndex` to advance their highlight.
+  const voiceSlices = useMemo(
+    () =>
+      voiceContext
+        ? computeTextBlockVoiceSlices(blocks, voiceContext.spans)
+        : null,
+    [blocks, voiceContext],
+  );
+
   if (!blocks || blocks.length === 0) return null;
 
   const items = groupTimelineBlocks(blocks);
@@ -114,6 +143,8 @@ export function ReasoningTimeline({
           );
         }
         const block = item.block;
+        const voiceSlice =
+          block.type === 'text' && voiceSlices ? voiceSlices.get(block) : undefined;
         return (
           <BlockRouter
             key={`block-${i}-${blockKey(block)}`}
@@ -136,6 +167,8 @@ export function ReasoningTimeline({
                 ? () => toggleThinking(block.blockIndex)
                 : undefined
             }
+            voiceSlice={voiceSlice}
+            spokenWordIndex={voiceContext?.spokenWordIndex}
           />
         );
       })}

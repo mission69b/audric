@@ -6,7 +6,11 @@
 // ───────────────────────────────────────────────────────────────────────────
 
 import { describe, it, expect } from 'vitest';
-import { applyEventToTimeline, markPermissionCardResolved } from '@/lib/timeline-builder';
+import {
+  applyEventToTimeline,
+  markPermissionCardResolved,
+  markTimelineInterrupted,
+} from '@/lib/timeline-builder';
 import type {
   SSEEvent,
   TimelineBlock,
@@ -487,5 +491,92 @@ describe('markPermissionCardResolved', () => {
     expect(next[0]).toMatchObject({ type: 'permission-card', status: 'pending' });
     expect(next[1]).toBe(seed[1]);
     expect(next[2]).toMatchObject({ type: 'permission-card', status: 'approved' });
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────
+// SPEC 8 v0.5.1 B3.4 — markTimelineInterrupted (audit Gap J)
+//
+// Flips in-flight blocks (text/thinking 'streaming', tool 'running') to
+// 'interrupted' so the renderer can dim the partial output and the
+// retry-pill becomes visible. Terminal-state blocks (done / error) are
+// untouched.
+// ───────────────────────────────────────────────────────────────────────────
+
+describe('markTimelineInterrupted', () => {
+  it('flips streaming text blocks to interrupted', () => {
+    const seed: TimelineBlock[] = [
+      { type: 'text', text: 'partial', status: 'streaming' },
+    ];
+    const next = markTimelineInterrupted(seed, T0);
+    expect(next).not.toBe(seed);
+    expect(next[0]).toMatchObject({ type: 'text', status: 'interrupted', text: 'partial' });
+  });
+
+  it('flips streaming thinking blocks to interrupted', () => {
+    const seed: TimelineBlock[] = [
+      { type: 'thinking', blockIndex: 0, text: 't', status: 'streaming' },
+    ];
+    const next = markTimelineInterrupted(seed, T0);
+    expect(next[0]).toMatchObject({ type: 'thinking', status: 'interrupted' });
+  });
+
+  it('flips running tool blocks to interrupted and stamps endedAt', () => {
+    const seed: TimelineBlock[] = [
+      { type: 'tool', toolUseId: 't1', toolName: 'x', input: {}, status: 'running', startedAt: T0 - 5000 },
+    ];
+    const next = markTimelineInterrupted(seed, T0);
+    expect(next[0]).toMatchObject({
+      type: 'tool',
+      status: 'interrupted',
+      startedAt: T0 - 5000,
+      endedAt: T0,
+    });
+  });
+
+  it('leaves done / error blocks untouched', () => {
+    const seed: TimelineBlock[] = [
+      { type: 'text', text: 'final', status: 'done' },
+      { type: 'tool', toolUseId: 't1', toolName: 'x', input: {}, status: 'error', startedAt: T0, endedAt: T0 + 1, isError: true },
+      { type: 'thinking', blockIndex: 0, text: 'thunk', status: 'done', signature: 'abc' },
+    ];
+    const next = markTimelineInterrupted(seed, T0 + 100);
+    expect(next).toBe(seed);
+  });
+
+  it('returns same reference when no in-flight blocks remain', () => {
+    const seed: TimelineBlock[] = [
+      { type: 'text', text: 'x', status: 'done' },
+    ];
+    expect(markTimelineInterrupted(seed, T0)).toBe(seed);
+  });
+
+  it('treats undefined / empty timeline as no-op', () => {
+    expect(markTimelineInterrupted(undefined, T0)).toEqual([]);
+    const empty: TimelineBlock[] = [];
+    expect(markTimelineInterrupted(empty, T0)).toBe(empty);
+  });
+
+  it('flips a mix of in-flight blocks in one pass', () => {
+    const seed: TimelineBlock[] = [
+      { type: 'text', text: 'final', status: 'done' },
+      { type: 'thinking', blockIndex: 0, text: 'mid', status: 'streaming' },
+      { type: 'tool', toolUseId: 't1', toolName: 'x', input: {}, status: 'running', startedAt: T0 - 200 },
+      { type: 'text', text: 'partial', status: 'streaming' },
+    ];
+    const next = markTimelineInterrupted(seed, T0);
+    expect(next[0]).toBe(seed[0]); // done text untouched (referentially)
+    expect(next[1]).toMatchObject({ type: 'thinking', status: 'interrupted' });
+    expect(next[2]).toMatchObject({ type: 'tool', status: 'interrupted', endedAt: T0 });
+    expect(next[3]).toMatchObject({ type: 'text', status: 'interrupted' });
+  });
+
+  it('does not mutate the input timeline', () => {
+    const seed: TimelineBlock[] = [
+      { type: 'text', text: 'partial', status: 'streaming' },
+    ];
+    const snapshot = JSON.stringify(seed);
+    markTimelineInterrupted(seed, T0);
+    expect(JSON.stringify(seed)).toBe(snapshot);
   });
 });

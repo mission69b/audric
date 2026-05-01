@@ -194,6 +194,25 @@ export interface EngineChatMessage {
    */
   harnessShape?: 'lean' | 'standard' | 'rich' | 'max';
   /**
+   * [SPEC 8 v0.5.1 B3.4 / Gap J] Set when this assistant turn ended
+   * WITHOUT a `turn_complete` event — i.e. the SSE stream was cut off
+   * by a client abort, server crash, or auth expiry mid-stream. Causes
+   * `<RetryInterruptedTurn>` to render under the message so the user
+   * can replay their input. The corresponding timeline blocks are also
+   * flipped to status `'interrupted'` via `markTimelineInterrupted` so
+   * the renderer can dim the partial output. Undefined = "completed
+   * normally" (the common case).
+   */
+  interrupted?: boolean;
+  /**
+   * [SPEC 8 v0.5.1 B3.4 / Gap J] The user message text whose response
+   * was interrupted. Captured at interruption time (rather than walked
+   * up the messages array on render) so the retry button works even
+   * after subsequent messages get appended above it. Only set together
+   * with `interrupted: true`.
+   */
+  interruptedReplayText?: string;
+  /**
    * [SPEC 8 v0.5.1 B3.2] 1-line human-readable rationale for the shape
    * decision (e.g. "matched recipe portfolio_rebalance → max"). Used in
    * Datadog logs + dashboard tooltips to explain WHY a turn picked its

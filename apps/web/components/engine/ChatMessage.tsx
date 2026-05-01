@@ -4,8 +4,10 @@ import type { EngineChatMessage, PendingAction } from '@/lib/engine-types';
 import { ThinkingState } from './ThinkingState';
 import { ReasoningTimeline } from './ReasoningTimeline';
 import { LegacyReasoningRender } from './LegacyReasoningRender';
+import { RetryInterruptedTurn } from './RetryInterruptedTurn';
 import type { DenyReason } from './PermissionCard';
 import { currentHarnessVersion, type HarnessVersion } from '@/lib/interactive-harness';
+import { useVoiceModeContext } from '@/components/dashboard/VoiceModeContext';
 
 // ───────────────────────────────────────────────────────────────────────────
 // SPEC 8 v0.5.1 B3.3 — ChatMessage gate
@@ -107,50 +109,127 @@ export function ChatMessage({
   if (useNewTimeline) {
     const hasTools = message.tools && message.tools.length > 0;
     return (
-      <div className="space-y-2" role="log" aria-label="Audric response">
-        {/* Same "thinking-only" spinner as the legacy path — the timeline
-            doesn't render anything until the first SSE event arrives, so
-            we still need a "Audric is thinking" hint for early frames. */}
-        {message.isThinking && !message.content && !hasTools && message.timeline!.length === 0 && (
-          <div className="pl-1">
-            <ThinkingState status="thinking" intensity="active" />
-          </div>
-        )}
-
-        <ReasoningTimeline
-          blocks={message.timeline!}
-          isStreaming={message.isStreaming}
-          onActionResolve={onActionResolve}
-          onSendMessage={onSendMessage}
-          contacts={contacts}
-          walletAddress={walletAddress}
-          recentUserText={recentUserText}
-          shouldAutoApprove={shouldAutoApprove}
-        />
-
-        {message.usage && !message.isStreaming && (
-          <div className="flex justify-start pl-1">
-            <span
-              className="text-[11px] text-fg-muted"
-              aria-label={`${message.usage.inputTokens + message.usage.outputTokens} tokens used`}
-            >
-              {message.usage.inputTokens + message.usage.outputTokens} tokens
-            </span>
-          </div>
-        )}
-      </div>
+      <ChatMessageV2
+        message={message}
+        hasTools={!!hasTools}
+        onActionResolve={onActionResolve}
+        onSendMessage={onSendMessage}
+        contacts={contacts}
+        walletAddress={walletAddress}
+        recentUserText={recentUserText}
+        shouldAutoApprove={shouldAutoApprove}
+      />
     );
   }
 
   return (
-    <LegacyReasoningRender
-      message={message}
-      onActionResolve={onActionResolve}
-      shouldAutoApprove={shouldAutoApprove}
-      onSendMessage={onSendMessage}
-      contacts={contacts}
-      walletAddress={walletAddress}
-      recentUserText={recentUserText}
-    />
+    <>
+      <LegacyReasoningRender
+        message={message}
+        onActionResolve={onActionResolve}
+        shouldAutoApprove={shouldAutoApprove}
+        onSendMessage={onSendMessage}
+        contacts={contacts}
+        walletAddress={walletAddress}
+        recentUserText={recentUserText}
+      />
+      {/* [B3.4 / Gap J] Legacy path: render the same retry pill so a
+          flag-OFF session that gets cut off still has an obvious
+          recovery affordance. The legacy renderer doesn't own
+          `<RetryInterruptedTurn>` itself — extracting from
+          `LegacyReasoningRender` would force every test fixture to
+          add a voice-mode provider, and ChatMessage already owns the
+          `onSendMessage` callback. */}
+      {message.interrupted && message.interruptedReplayText && onSendMessage && (
+        <RetryInterruptedTurn
+          replayText={message.interruptedReplayText}
+          onRetry={onSendMessage}
+        />
+      )}
+    </>
+  );
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// SPEC 8 v0.5.1 B3.4 — v2 assistant render branch (audit Gap F)
+//
+// Extracted into a sub-component so the voice-mode hook only runs on
+// the v2 path. The legacy branch already calls `useVoiceModeContext`
+// inside `<LegacyReasoningRender>`, so each render path consults the
+// context independently and the React hook tree stays stable per
+// branch.
+// ───────────────────────────────────────────────────────────────────────────
+
+interface ChatMessageV2Props extends Omit<ChatMessageProps, 'pinnedHarnessVersion'> {
+  hasTools: boolean;
+}
+
+function ChatMessageV2({
+  message,
+  hasTools,
+  onActionResolve,
+  shouldAutoApprove,
+  onSendMessage,
+  contacts,
+  walletAddress,
+  recentUserText,
+}: ChatMessageV2Props) {
+  const voice = useVoiceModeContext();
+  const isBeingSpoken =
+    voice.state === 'speaking' &&
+    voice.speakingMessageId === message.id &&
+    !!voice.currentSpans;
+
+  return (
+    <div className="space-y-2" role="log" aria-label="Audric response">
+      {/* Same "thinking-only" spinner as the legacy path — the timeline
+          doesn't render anything until the first SSE event arrives, so
+          we still need a "Audric is thinking" hint for early frames. */}
+      {message.isThinking && !message.content && !hasTools && message.timeline!.length === 0 && (
+        <div className="pl-1">
+          <ThinkingState status="thinking" intensity="active" />
+        </div>
+      )}
+
+      <ReasoningTimeline
+        blocks={message.timeline!}
+        isStreaming={message.isStreaming}
+        onActionResolve={onActionResolve}
+        onSendMessage={onSendMessage}
+        contacts={contacts}
+        walletAddress={walletAddress}
+        recentUserText={recentUserText}
+        shouldAutoApprove={shouldAutoApprove}
+        voiceContext={
+          isBeingSpoken
+            ? { spans: voice.currentSpans!, spokenWordIndex: voice.spokenWordIndex }
+            : undefined
+        }
+      />
+
+      {message.usage && !message.isStreaming && (
+        <div className="flex justify-start pl-1">
+          <span
+            className="text-[11px] text-fg-muted"
+            aria-label={`${message.usage.inputTokens + message.usage.outputTokens} tokens used`}
+          >
+            {message.usage.inputTokens + message.usage.outputTokens} tokens
+          </span>
+        </div>
+      )}
+
+      {/* [B3.4 / Gap J] Retry pill — rendered AFTER the timeline so it
+          sits below the partial output. Visible only when the engine
+          flagged this turn as interrupted. The replay click reopens
+          the SSE stream with the original user message; React will
+          then unmount this component as soon as the new turn writes
+          a fresh assistant message. */}
+      {message.interrupted && message.interruptedReplayText && onSendMessage && (
+        <RetryInterruptedTurn
+          replayText={message.interruptedReplayText}
+          onRetry={onSendMessage}
+        />
+      )}
+    </div>
   );
 }

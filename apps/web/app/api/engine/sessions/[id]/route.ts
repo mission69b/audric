@@ -36,6 +36,27 @@ interface ChatMessage {
     result?: unknown;
     isError?: boolean;
   }[];
+  // [B3.4 / Gap J] Optional interruption flag — set on the LAST
+  // assistant message when `metadata.lastInterruption` matches its
+  // turn index. Powers the `<RetryInterruptedTurn>` pill on rehydrate.
+  interrupted?: boolean;
+  interruptedReplayText?: string;
+}
+
+interface LastInterruption {
+  turnIndex: number;
+  replayText: string;
+  interruptedAt: number;
+}
+
+function isLastInterruption(v: unknown): v is LastInterruption {
+  if (!v || typeof v !== 'object') return false;
+  const r = v as Record<string, unknown>;
+  return (
+    typeof r.turnIndex === 'number' &&
+    typeof r.replayText === 'string' &&
+    typeof r.interruptedAt === 'number'
+  );
 }
 
 function convertSessionMessages(messages: SessionMessage[], createdAt: number): ChatMessage[] {
@@ -139,6 +160,30 @@ export async function GET(
     data.messages as SessionMessage[],
     data.createdAt,
   );
+
+  // [B3.4 / Gap J] Attach the interruption marker to the matching
+  // assistant message (the one whose response was cut off) so the
+  // client renders `<RetryInterruptedTurn>` on rehydrate. We compare
+  // by `turnIndex` (number of assistant messages BEFORE the
+  // interrupted one) against the position of each assistant in the
+  // returned `messages` array. The match is loose-by-position rather
+  // than by id — `convertSessionMessages` synthesises ids, and the
+  // server doesn't carry stable ids across reloads.
+  const lastInterruption = isLastInterruption(data.metadata?.lastInterruption)
+    ? data.metadata.lastInterruption
+    : undefined;
+  if (lastInterruption) {
+    let assistantSeen = 0;
+    for (const m of messages) {
+      if (m.role !== 'assistant') continue;
+      if (assistantSeen === lastInterruption.turnIndex) {
+        m.interrupted = true;
+        m.interruptedReplayText = lastInterruption.replayText;
+        break;
+      }
+      assistantSeen++;
+    }
+  }
 
   // [B3.3 / G4] Surface the pinned harness version so the client can
   // gate <ChatMessage> on a stable per-session value when re-loading

@@ -10,7 +10,11 @@ import type {
   SSEEvent,
   CanvasData,
 } from '@/lib/engine-types';
-import { applyEventToTimeline, markPermissionCardResolved } from '@/lib/timeline-builder';
+import {
+  applyEventToTimeline,
+  markPermissionCardResolved,
+  markTimelineInterrupted,
+} from '@/lib/timeline-builder';
 import { asHarnessVersion, type HarnessVersion } from '@/lib/interactive-harness';
 
 // [v1.4] Re-export the pure executor so consumers and tests can use a single
@@ -82,6 +86,19 @@ export function useEngine({ address, jwt, onToolResult }: UseEngineOptions) {
   const lastFailedMessage = useRef<string | null>(null);
   const hasReceivedContent = useRef(false);
   const retryCountRef = useRef(0);
+  // [B3.4 / Gap J] Tracked per-stream so the cleanup paths (AbortError,
+  // post-retry failure, EOF without `turn_complete`) can flag the
+  // streaming message as interrupted. Reset at the top of `sendMessage`
+  // and flipped on inside `processSSEChunk` when `turn_complete` lands.
+  const turnCompleteSeenRef = useRef(false);
+  // [B3.4 / Gap J] Set when the engine yielded `pending_action` —
+  // these turns end the stream cleanly WITHOUT `turn_complete`, so we
+  // must not flag them as interrupted (the pause is intentional).
+  const pendingActionSeenRef = useRef(false);
+  // [B3.4 / Gap J] The user message text whose reply is currently
+  // streaming. Captured at `sendMessage` time so the retry button can
+  // replay it even if the user types more in between.
+  const currentReplayTextRef = useRef<string | null>(null);
 
   const messagesRef = useRef<EngineChatMessage[]>([]);
   messagesRef.current = messages;
@@ -95,6 +112,9 @@ export function useEngine({ address, jwt, onToolResult }: UseEngineOptions) {
       lastFailedMessage.current = null;
       retryCountRef.current = 0;
       hasReceivedContent.current = false;
+      turnCompleteSeenRef.current = false;
+      pendingActionSeenRef.current = false;
+      currentReplayTextRef.current = text;
 
       const userMsg: EngineChatMessage = {
         id: nextMsgId(),
@@ -234,6 +254,40 @@ export function useEngine({ address, jwt, onToolResult }: UseEngineOptions) {
     [address, jwt, sessionId],
   );
 
+  /**
+   * [B3.4 / Gap J] Patch the streaming assistant message so the UI can
+   * render `<RetryInterruptedTurn>`. Walks any in-flight timeline
+   * blocks (text/thinking still `streaming`, tools still `running`)
+   * and flips them to `interrupted`, then sets `interrupted: true` and
+   * captures the user's last input as `interruptedReplayText`.
+   *
+   * Idempotent (safe to call from multiple cleanup paths) and a no-op
+   * for messages that completed normally.
+   */
+  function flagInterrupted(msgId: string | null) {
+    if (!msgId) return;
+    const replayText = currentReplayTextRef.current;
+    if (!replayText) return;
+    const now = Date.now();
+    setMessages((prev) =>
+      prev.map((m) => {
+        if (m.id !== msgId) return m;
+        // The legacy path (no timeline) gets only the message-level
+        // flag — the renderer falls through to the legacy retry surface.
+        const nextTimeline = markTimelineInterrupted(m.timeline, now);
+        return {
+          ...m,
+          isStreaming: false,
+          interrupted: true,
+          interruptedReplayText: replayText,
+          // Reference-equal when no in-flight blocks were found, so React
+          // skips the timeline re-render in the (rare) clean-disconnect case.
+          timeline: nextTimeline,
+        };
+      }),
+    );
+  }
+
   async function attemptStream(url: string, body: Record<string, unknown>) {
     setStatus('connecting');
 
@@ -289,25 +343,45 @@ export function useEngine({ address, jwt, onToolResult }: UseEngineOptions) {
         processSSEChunk(buffer);
       }
 
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === streamingMsgRef.current
-            ? { ...m, isStreaming: false }
-            : m,
-        ),
-      );
+      // [B3.4 / Gap J] If the stream closed cleanly without a
+      // `turn_complete` AND no `pending_action` was emitted (the
+      // intentional pause case), the engine itself was cut off
+      // (server crash / serverless timeout / network blip). Flag the
+      // message so the user can retry.
+      if (!turnCompleteSeenRef.current && !pendingActionSeenRef.current) {
+        flagInterrupted(streamingMsgRef.current);
+      } else {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === streamingMsgRef.current
+              ? { ...m, isStreaming: false }
+              : m,
+          ),
+        );
+      }
       streamingMsgRef.current = null;
       abortRef.current = null;
       setStatus('idle');
     } catch (err) {
       if ((err as Error).name === 'AbortError') {
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === streamingMsgRef.current
-              ? { ...m, isStreaming: false, content: m.content || 'Cancelled.' }
-              : m,
-          ),
-        );
+        // [B3.4 / Gap J] User aborts (Stop button / page nav) ARE
+        // interruptions — the UI should offer a retry, same as a
+        // network drop. The message keeps its partial content; the
+        // retry button gets the original user text. We DON'T flag
+        // when `pending_action` was already emitted (the engine
+        // already paused; the stream-cleanup path here is the same as
+        // a clean close).
+        if (!pendingActionSeenRef.current) {
+          flagInterrupted(streamingMsgRef.current);
+        } else {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === streamingMsgRef.current
+                ? { ...m, isStreaming: false, content: m.content || 'Cancelled.' }
+                : m,
+            ),
+          );
+        }
         streamingMsgRef.current = null;
         abortRef.current = null;
         setStatus('idle');
@@ -341,13 +415,24 @@ export function useEngine({ address, jwt, onToolResult }: UseEngineOptions) {
       const errorMsg = err instanceof Error ? err.message : 'Connection failed';
       setError(errorMsg);
       if (body.message) lastFailedMessage.current = body.message as string;
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === streamingMsgRef.current
-            ? { ...m, isStreaming: false, content: m.content || errorMsg }
-            : m,
-        ),
-      );
+      // [B3.4 / Gap J] After exhausting retries (or hitting a non-
+      // retriable error) we end up here. If the stream had started
+      // emitting events before failing AND the engine wasn't already
+      // paused at `pending_action`, the partial timeline survives —
+      // flag it as interrupted so the retry button shows up. For the
+      // pre-stream HTTP-error case there's no timeline to flag, so the
+      // legacy `errorMsg` path takes over.
+      if (hasReceivedContent.current && !pendingActionSeenRef.current) {
+        flagInterrupted(streamingMsgRef.current);
+      } else {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === streamingMsgRef.current
+              ? { ...m, isStreaming: false, content: m.content || errorMsg }
+              : m,
+          ),
+        );
+      }
       streamingMsgRef.current = null;
       abortRef.current = null;
       setStatus('idle');
@@ -519,6 +604,11 @@ export function useEngine({ address, jwt, onToolResult }: UseEngineOptions) {
 
       case 'pending_action': {
         hasReceivedContent.current = true;
+        // [B3.4 / Gap J] Stream will end cleanly without
+        // `turn_complete`; that's the engine's pause-for-confirm
+        // signal, not an interruption. The flagInterrupted cleanup
+        // paths skip the message when this ref is set.
+        pendingActionSeenRef.current = true;
         setStatus('executing');
         setMessages((prev) =>
           prev.map((m) =>
@@ -566,6 +656,13 @@ export function useEngine({ address, jwt, onToolResult }: UseEngineOptions) {
         break;
 
       case 'turn_complete':
+        // [B3.4 / Gap J] Mark the turn as cleanly completed BEFORE the
+        // stream-end path runs. The cleanup paths in `attemptStream`
+        // check this ref to decide whether to flag the message as
+        // `interrupted`. `applyEventToTimeline` also flips any still-
+        // streaming blocks to `done` here, so the timeline is left in
+        // a clean state.
+        turnCompleteSeenRef.current = true;
         setMessages((prev) =>
           prev.map((m) =>
             m.id === msgId ? { ...m, isStreaming: false } : m,

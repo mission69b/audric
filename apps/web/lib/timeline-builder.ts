@@ -290,6 +290,50 @@ export function markPermissionCardResolved(
   });
 }
 
+// ───────────────────────────────────────────────────────────────────────────
+// SPEC 8 v0.5.1 B3.4 — Mark in-flight blocks as interrupted (audit Gap J)
+//
+// Called when:
+//   - The SSE stream closes WITHOUT a `turn_complete` event (network drop,
+//     server abort, AuthError mid-stream).
+//   - A persisted session is rehydrated and the server-side timeline ended
+//     with `streaming` / `running` blocks (page reload after a tab close).
+//
+// Walks the timeline and flips:
+//   - `text` / `thinking` blocks at status `streaming` → `interrupted`
+//   - `tool` blocks at status `running` → `interrupted` (also stamps `endedAt`
+//     so the renderer can compute "it ran for N seconds before the cut")
+//   - All other statuses are left alone — `done` / `error` blocks are
+//     terminal and re-marking them would lose information.
+//
+// Idempotent: returns the same reference when no in-flight blocks remain.
+// `<RetryInterruptedTurn>` keys off the presence of any `interrupted`
+// block (or the message's `interrupted` flag — set by the caller next to
+// this helper).
+// ───────────────────────────────────────────────────────────────────────────
+
+export function markTimelineInterrupted(
+  timeline: TimelineBlock[] | undefined,
+  now: number,
+): TimelineBlock[] {
+  const current = timeline ?? [];
+  if (current.length === 0) return current;
+
+  let changed = false;
+  const next = current.map((b): TimelineBlock => {
+    if ((b.type === 'text' || b.type === 'thinking') && b.status === 'streaming') {
+      changed = true;
+      return { ...b, status: 'interrupted' };
+    }
+    if (b.type === 'tool' && b.status === 'running') {
+      changed = true;
+      return { ...b, status: 'interrupted', endedAt: now };
+    }
+    return b;
+  });
+  return changed ? next : current;
+}
+
 /**
  * Local `findLastIndex` helper. Native Array.findLastIndex exists in
  * ES2023 and is available in modern Node/browsers, but using it directly

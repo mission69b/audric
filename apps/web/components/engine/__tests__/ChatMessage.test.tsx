@@ -41,7 +41,7 @@ const ASSISTANT_BASE: EngineChatMessage = {
 const ASSISTANT_WITH_TIMELINE: EngineChatMessage = {
   ...ASSISTANT_BASE,
   timeline: [
-    { type: 'text', text: 'Here is your balance.', startedAt: 0 },
+    { type: 'text', text: 'Here is your balance.', status: 'done' },
   ],
 };
 
