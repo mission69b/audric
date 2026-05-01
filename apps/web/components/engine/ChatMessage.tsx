@@ -5,12 +5,14 @@ import { AgentStep, getStepIcon, getStepLabel } from './AgentStep';
 import { ToolResultCard } from './ToolResultCard';
 import { ThinkingState } from './ThinkingState';
 import { ReasoningAccordion } from './ReasoningAccordion';
+import { ReasoningTimeline } from './ReasoningTimeline';
 import { PermissionCard, type DenyReason } from './PermissionCard';
 import { CanvasCard } from './CanvasCard';
 import { AgentMarkdown } from '@/components/dashboard/AgentMarkdown';
 import { AudricMark } from '@/components/ui/AudricMark';
 import { useVoiceModeContext } from '@/components/dashboard/VoiceModeContext';
 import { VoiceHighlightedText } from '@/components/dashboard/VoiceHighlightedText';
+import { isInteractiveHarnessEnabled } from '@/lib/interactive-harness';
 
 interface ChatMessageProps {
   message: EngineChatMessage;
@@ -131,6 +133,53 @@ export function ChatMessage({
   const hasPendingAction = !!message.pendingAction;
   const hasContent = message.content.length > 0;
   const isOnlyStreaming = message.isStreaming && !hasContent && !hasTools;
+
+  // [SPEC 8 v0.5.1 B2.2] Flag-gated path. When the interactive harness
+  // flag is on AND the message has a populated timeline (B2.1 dual-write
+  // ensures this for every engine ≥1.4.0 message), render the new
+  // chronological ReasoningTimeline instead of the legacy section layout.
+  // Flag OFF / empty timeline → fall through to today's render tree
+  // unchanged.
+  const useNewTimeline =
+    isInteractiveHarnessEnabled() &&
+    message.timeline !== undefined &&
+    message.timeline.length > 0;
+
+  if (useNewTimeline) {
+    return (
+      <div className="space-y-2" role="log" aria-label="Audric response">
+        {/* Same "thinking-only" spinner as the legacy path — the timeline
+            doesn't render anything until the first SSE event arrives, so
+            we still need a "Audric is thinking" hint for early frames. */}
+        {message.isThinking && !message.content && !hasTools && message.timeline!.length === 0 && (
+          <div className="pl-1">
+            <ThinkingState status="thinking" intensity="active" />
+          </div>
+        )}
+
+        <ReasoningTimeline
+          blocks={message.timeline!}
+          isStreaming={message.isStreaming}
+          onActionResolve={onActionResolve}
+          onSendMessage={onSendMessage}
+          contacts={contacts}
+          walletAddress={walletAddress}
+          recentUserText={recentUserText}
+        />
+
+        {message.usage && !message.isStreaming && (
+          <div className="flex justify-start pl-1">
+            <span
+              className="text-[11px] text-fg-muted"
+              aria-label={`${message.usage.inputTokens + message.usage.outputTokens} tokens used`}
+            >
+              {message.usage.inputTokens + message.usage.outputTokens} tokens
+            </span>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-2" role="log" aria-label="Audric response">

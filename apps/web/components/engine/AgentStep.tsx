@@ -51,6 +51,7 @@ const STEP_ICONS: Record<string, string> = {
   activity_summary: '📋',
   record_advice: '📝',
   resolve_suins: '🪪',
+  update_todo: '🗒️',
 };
 
 const STEP_LABELS: Record<string, string> = {
@@ -90,6 +91,7 @@ const STEP_LABELS: Record<string, string> = {
   activity_summary: 'ACTIVITY SUMMARY',
   record_advice: 'RECORD ADVICE',
   resolve_suins: 'RESOLVE SUINS',
+  update_todo: 'UPDATING PLAN',
 };
 
 export function getStepIcon(toolName: string): string {
