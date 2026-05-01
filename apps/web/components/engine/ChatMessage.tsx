@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import type { EngineChatMessage, PendingAction } from '@/lib/engine-types';
 import { ThinkingState } from './ThinkingState';
 import { ReasoningTimeline } from './ReasoningTimeline';
@@ -180,6 +181,20 @@ function ChatMessageV2({
     voice.speakingMessageId === message.id &&
     !!voice.currentSpans;
 
+  // [SPEC 8 v0.5.1 audit polish] Stabilise the voiceContext object so
+  // ReasoningTimeline's per-block memoisation doesn't break on every
+  // parent render. Without this, every text-delta on a sibling message
+  // forced a full timeline rerender chain (each block recomputed even
+  // when its own data was reference-equal). Recomputes only when the
+  // active speaker, span set, or word position changes.
+  const voiceContext = useMemo(
+    () =>
+      isBeingSpoken
+        ? { spans: voice.currentSpans!, spokenWordIndex: voice.spokenWordIndex }
+        : undefined,
+    [isBeingSpoken, voice.currentSpans, voice.spokenWordIndex],
+  );
+
   return (
     <div className="space-y-2" role="log" aria-label="Audric response">
       {/* Same "thinking-only" spinner as the legacy path — the timeline
@@ -200,11 +215,7 @@ function ChatMessageV2({
         walletAddress={walletAddress}
         recentUserText={recentUserText}
         shouldAutoApprove={shouldAutoApprove}
-        voiceContext={
-          isBeingSpoken
-            ? { spans: voice.currentSpans!, spokenWordIndex: voice.spokenWordIndex }
-            : undefined
-        }
+        voiceContext={voiceContext}
       />
 
       {message.usage && !message.isStreaming && (

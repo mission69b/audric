@@ -389,6 +389,10 @@ describe('emitHarnessTelemetry — Vercel sink emissions (B3.6)', () => {
     expect(counter).toHaveBeenCalledWith('audric.harness.thinking_block_count', tags, 2);
     expect(counter).toHaveBeenCalledWith('audric.harness.todo_update_count', tags, 0);
     expect(counter).toHaveBeenCalledWith('audric.harness.eval_summary_emitted_count', tags, 1);
+    // [SPEC 8 v0.5.1 audit polish] tool_progress_event_count is the
+    // 4th always-on counter — locked here so a future emit-skip tweak
+    // for "0" values doesn't accidentally drop the tool-progress signal.
+    expect(counter).toHaveBeenCalledWith('audric.harness.tool_progress_event_count', tags, 0);
   });
 
   it('omits the discrete counters when their values are zero / false', () => {

@@ -53,8 +53,14 @@ export function isInteractiveHarnessEnabled(): boolean {
 /**
  * [SPEC 8 v0.5.1 B3.7] Parsed `NEXT_PUBLIC_INTERACTIVE_HARNESS_ROLLOUT_PERCENT`,
  * clamped to `[0, 100]`. Returns `null` when the env var is undefined,
- * empty, or non-numeric — caller treats null as "no percentage gate;
+ * empty, or non-integer — caller treats null as "no percentage gate;
  * flag-on means admit every bucket" (today's behavior).
+ *
+ * Strict integer-only parse (audit polish): "50abc", "10.7", "5e2" all
+ * return `null` instead of silently parsing as 50/10/5. The dial is a
+ * whole-number percentage and a typo should fail loud (the founder
+ * notices the rollout didn't move) rather than silently parse the
+ * leading digits.
  *
  * Exported for tests; production callers should go through
  * `currentHarnessVersion(bucketKey)`.
@@ -63,7 +69,7 @@ export function rolloutPercent(): number | null {
   const raw = env.NEXT_PUBLIC_INTERACTIVE_HARNESS_ROLLOUT_PERCENT;
   if (!raw) return null;
   const trimmed = raw.trim();
-  if (trimmed.length === 0) return null;
+  if (!/^-?\d+$/.test(trimmed)) return null;
   const parsed = Number.parseInt(trimmed, 10);
   if (!Number.isFinite(parsed)) return null;
   if (parsed <= 0) return 0;

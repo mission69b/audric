@@ -127,10 +127,15 @@ describe('rolloutPercent', () => {
     expect(rolloutPercent()).toBe(100);
   });
 
-  it('parses integer-only (drops fractional silently — 10.7 → 10)', async () => {
+  it('rejects fractional / partial / scientific-notation strings (audit polish)', async () => {
     const { rolloutPercent } = await import('@/lib/interactive-harness');
-    mockEnv.NEXT_PUBLIC_INTERACTIVE_HARNESS_ROLLOUT_PERCENT = '10.7';
-    expect(rolloutPercent()).toBe(10);
+    // Strict integer-only parse: anything that isn't exactly /^-?\d+$/
+    // returns null. This catches founder typos like '50abc' or '10.7'
+    // (treated as 50/10 by Number.parseInt, masking the typo).
+    for (const v of ['10.7', '50abc', '5e2', '0x10', ' 50 abc', '+50']) {
+      mockEnv.NEXT_PUBLIC_INTERACTIVE_HARNESS_ROLLOUT_PERCENT = v;
+      expect(rolloutPercent()).toBeNull();
+    }
   });
 });
 

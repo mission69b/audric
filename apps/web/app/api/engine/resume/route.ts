@@ -141,6 +141,16 @@ export async function POST(request: NextRequest) {
     });
     const priorMsgCount = engine.getMessages().length;
 
+    // [SPEC 8 v0.5.1 audit polish] Mirror chat/route.ts:303 server-side
+    // cleanliness flag. Resume streams that close without `turn_complete`
+    // (server crash / serverless timeout / unhandled exception during
+    // narration) are interruptions — persist a `lastInterruption` marker
+    // so the next page load surfaces `<RetryInterruptedTurn>` on the
+    // resume turn's assistant message, same UX as an interrupted chat
+    // turn. A resume that yielded another `pending_action` (chained
+    // write) is intentionally paused, NOT interrupted.
+    let turnCompleteSeen = false;
+
     const stream = new ReadableStream({
       async start(controller) {
         const encoder = new TextEncoder();
@@ -161,6 +171,9 @@ export async function POST(request: NextRequest) {
                 break;
               case 'tool_start':
                 collector.onToolStart(event.toolUseId);
+                break;
+              case 'turn_complete':
+                turnCompleteSeen = true;
                 break;
               case 'tool_result':
                 if (event.toolName === '__deduped__') {
@@ -220,12 +233,61 @@ export async function POST(request: NextRequest) {
           const usage = engine.getUsage();
 
           try {
+            // [SPEC 8 v0.5.1 audit polish] Compute interruption marker
+            // BEFORE building the metadata payload. Mirrors
+            // chat/route.ts:674. A resume turn that yielded a fresh
+            // pending_action (chained write) is intentionally paused,
+            // not interrupted. On a clean resume turn, we explicitly
+            // override any prior marker (the spread above carries the
+            // chat-turn's `lastInterruption` forward; an explicit
+            // `undefined` clears it).
+            const wasInterrupted = !turnCompleteSeen && !pendingAction;
+            if (wasInterrupted) {
+              collector.markInterrupted();
+            }
+            // Resume-turn assistant message is the next assistant index in
+            // the persisted history. Same convention as the session-load
+            // route: matches the Nth assistant message on rehydrate.
+            const resumeTurnIndex = messages.filter((m) => m.role === 'assistant').length - 1;
+            // Walk back through messages for the last user-text block —
+            // that's the chat message that originated this resume turn.
+            // Engine `Message.content` is always `ContentBlock[]`; user
+            // messages carry either `[{type:'text', text}]` (the chat
+            // message we want) or `[{type:'tool_result', ...}]` (the
+            // synthetic block engine inserts for `resumeWithToolResult`).
+            // We pick the most-recent message that has a non-empty text
+            // block.
+            let replayText: string | undefined;
+            for (let i = messages.length - 1; i >= 0; i--) {
+              const m = messages[i];
+              if (m.role !== 'user') continue;
+              const textBlock = m.content.find(
+                (b): b is { type: 'text'; text: string } => b.type === 'text',
+              );
+              if (textBlock && textBlock.text.trim().length > 0) {
+                replayText = textBlock.text.trim();
+                break;
+              }
+            }
+            const lastInterruption = wasInterrupted && replayText
+              ? {
+                  turnIndex: Math.max(0, resumeTurnIndex),
+                  replayText,
+                  interruptedAt: Date.now(),
+                }
+              : undefined;
             const updatedSession = {
               ...session,
               messages,
               usage,
               updatedAt: Date.now(),
               pendingAction,
+              metadata: {
+                ...(session.metadata ?? {}),
+                // Explicit `undefined` overrides the spread when this
+                // resume turn was clean — clears any chat-turn marker.
+                lastInterruption,
+              },
             };
             await store.set(updatedSession);
           } catch (saveErr) {

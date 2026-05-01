@@ -14,7 +14,7 @@ import { cn } from '@/lib/cn';
 //
 // Status mapping (from `ToolTimelineBlock.status`):
 //   running    → blue dot, blue pulse, "…" badge
-//   done       → green dot, faint-green row tint, "DONE" badge
+//   done       → green dot, faint-green row tint, "✓ DONE" badge
 //   error      → red dot, faint-red row tint, "FAIL" badge
 //   interrupted→ amber dot, faint-amber row tint, "ABORT" badge
 //
@@ -42,7 +42,7 @@ const STATUS_DOT_BG: Record<ParallelRowStatus, string> = {
 
 const STATUS_BADGE_TEXT: Record<ParallelRowStatus, string> = {
   running: '…',
-  done: 'DONE',
+  done: '✓ DONE',
   error: 'FAIL',
   interrupted: 'ABORT',
 };
@@ -106,7 +106,7 @@ export function ParallelToolsRow({
       />
       <span
         className={cn(
-          'font-mono text-[9px] tracking-[0.12em] uppercase w-[42px] text-right shrink-0',
+          'font-mono text-[9px] tracking-[0.12em] uppercase w-[52px] text-right shrink-0',
           STATUS_BADGE_COLOR[status],
         )}
       >

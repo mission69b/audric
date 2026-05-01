@@ -476,6 +476,18 @@ describe('markPermissionCardResolved', () => {
     expect(next).toBe(seed);
   });
 
+  it('is idempotent for denied → denied (audit polish — symmetry with approved)', () => {
+    // Mirrors the approved→approved case above. Without this regression
+    // lock, a future refactor could accidentally drop the early-return
+    // for one resolution branch but not the other, double-allocating
+    // the timeline array on every re-resolve attempt for that branch.
+    const seed: TimelineBlock[] = [
+      { type: 'permission-card', payload: fakeAction('t1'), status: 'denied' },
+    ];
+    const next = markPermissionCardResolved(seed, 't1', 'denied');
+    expect(next).toBe(seed);
+  });
+
   it('treats undefined timeline same as []', () => {
     const next = markPermissionCardResolved(undefined, 't1', 'approved');
     expect(next).toEqual([]);

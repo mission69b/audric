@@ -85,4 +85,15 @@ describe('TextBlockView', () => {
     );
     expect(container.querySelectorAll('span.transition-colors').length).toBe(0);
   });
+
+  it('falls back to AgentMarkdown when only spokenWordIndex is provided (audit polish)', () => {
+    // Symmetric counterpart to the test above — covers the second
+    // half-set permutation. Without a voiceSlice we have no spans to
+    // partition, so spokenWordIndex alone is non-actionable and must
+    // not silently activate voice rendering.
+    const { container } = render(
+      <TextBlockView block={TEXT} spokenWordIndex={0} />,
+    );
+    expect(container.querySelectorAll('span.transition-colors').length).toBe(0);
+  });
 });

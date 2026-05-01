@@ -23,7 +23,7 @@ describe('ParallelToolsRow', () => {
     expect(container.querySelector('.animate-pulse')).toBeTruthy();
   });
 
-  it('switches to a "DONE" badge with green dot + faint-green tint when done', () => {
+  it('switches to a "✓ DONE" badge with green dot + faint-green tint when done', () => {
     const { container, getByText } = render(
       <ParallelToolsRow
         glyph="💰"
@@ -32,7 +32,7 @@ describe('ParallelToolsRow', () => {
         status="done"
       />,
     );
-    expect(getByText('DONE')).toBeTruthy();
+    expect(getByText('✓ DONE')).toBeTruthy();
     // Done rows pick up the success tint AND lose the pulsing animation.
     expect(container.querySelector('.animate-pulse')).toBeNull();
     // Tint class applied to the row root.

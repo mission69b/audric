@@ -3,7 +3,7 @@
 // SPEC 8 v0.5.1 B3.7 — rollout regression-gate runner
 //
 // Pulls TurnMetrics from production Postgres (DATABASE_URL in .env.local)
-// and runs the 6 hard-fail gates from `spec/SPEC_8_INTERACTIVE_HARNESS.md`
+// and runs the 7 hard-fail gates from `spec/SPEC_8_INTERACTIVE_HARNESS.md`
 // § "Acceptance gates" against the rolling production traffic. Compares
 // the v2 cohort (rows with `harnessShape IN ('lean','standard','rich','max')`)
 // against the legacy cohort (rows with `harnessShape IS NULL OR = 'legacy'`)
@@ -26,11 +26,21 @@
 //   4. Total latency p50 > legacy p50 × 1.20 (UX regression)
 //   5. LEAN todo_update  > 0   (LEAN must NEVER emit todos)
 //   6. LEAN thinking p95 > 1   (LEAN must hold ≤1 thinking block in 95%+)
-//   7. RICH recipe-match todo emission rate < 50% (todo discipline)
+//   7. RICH harness-shape todo emission rate < 50% (todo discipline)
 //
-// "Recipe match" = effortLevel='high' rows (audric's classifyEffort
-// promotes recipes to `high`). When that mapping changes, update the
-// SQL CTE below.
+// Gate 2 metric notes — both cohorts use `finalTextTokens` (the v0.5.1
+// B3.6 column that counts only post-tools narration). Pre-B3.6 legacy
+// rows have `finalTextTokens IS NULL` and are auto-excluded by the
+// `> 0` guards below; post-B3.6 legacy rows are populated unconditionally
+// by the chat route's collector regardless of harness version, which
+// makes the v2-vs-legacy comparison apples-to-apples.
+//
+// Gate 7 cohort = `harnessShape = 'rich'`. The engine's
+// `harnessShapeForEffort()` mapping makes `rich` ⟺ `effortLevel='high'`
+// (1:1), so this is the high-effort cohort where todo discipline matters.
+// MAX-shape turns (recipe-matched) are tracked in the corpus eval pass,
+// not in this gate. When the shape↔effort mapping changes, update the
+// SQL CTE + this comment together.
 // ───────────────────────────────────────────────────────────────────────────
 
 import 'dotenv/config';
@@ -113,10 +123,11 @@ const SQL = `
        FROM v2 WHERE "ttfvpMs" IS NOT NULL)                           AS v2_ttfvp_p50_ms,
 
     -- Gate 2 — Final-text p50 (v2 vs legacy)
+    -- Both cohorts use finalTextTokens. Pre-B3.6 rows are NULL → excluded.
     (SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY "finalTextTokens")
        FROM v2 WHERE "finalTextTokens" > 0)                           AS v2_final_text_p50,
-    (SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY "outputTokens")
-       FROM legacy WHERE "outputTokens" > 0)                          AS legacy_final_text_p50,
+    (SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY "finalTextTokens")
+       FROM legacy WHERE "finalTextTokens" > 0)                       AS legacy_final_text_p50,
 
     -- Gate 3 — Total cost p50 (v2 vs legacy)
     (SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY "estimatedCostUsd")
@@ -139,7 +150,8 @@ const SQL = `
     (SELECT PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY "thinkingBlockCount")
        FROM v2 WHERE "harnessShape" = 'lean')                         AS lean_thinking_p95,
 
-    -- Gate 7 — RICH effort='high' rows must emit ≥1 todo on ≥50% of turns
+    -- Gate 7 — RICH harness-shape rows (effort='high', 1:1 mapping)
+    -- must emit ≥1 todo_update on ≥50% of turns.
     (SELECT COUNT(*) FROM v2
        WHERE "harnessShape" = 'rich' AND "todoUpdateCount" >= 1)      AS rich_with_todo,
     (SELECT COUNT(*) FROM v2 WHERE "harnessShape" = 'rich')           AS rich_total,
@@ -199,7 +211,7 @@ gates.push({
   unit: 'ratio',
   note:
     finalRatio === null
-      ? 'need both cohorts populated — v2 uses finalTextTokens (text_delta only); legacy uses outputTokens (proxy)'
+      ? 'need both cohorts populated — both use finalTextTokens (post-B3.6 only; pre-B3.6 NULL rows excluded)'
       : `v2 ${Math.round(v2FinalP50)} tok vs legacy ${Math.round(legacyFinalP50)} tok = ${finalRatio.toFixed(2)}×`,
 });
 

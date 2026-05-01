@@ -232,6 +232,21 @@ export function useEngine({ address, jwt, onToolResult }: UseEngineOptions) {
       streamingMsgRef.current = resumeMsg.id;
       setMessages((prev) => [...prev, resumeMsg]);
 
+      // [SPEC 8 v0.5.1 audit polish] Reset stream-cleanliness refs before
+      // opening the resume stream. Without this reset, `pendingActionSeenRef`
+      // remains `true` from the chat turn that yielded the original
+      // pending_action, so a resume stream that gets cut off mid-narration
+      // would NOT flag the new resume message as interrupted (the cleanup
+      // paths in `attemptStream` skip the flag when `pendingActionSeenRef`
+      // is set, on the assumption the engine paused intentionally — which
+      // is true for chat → pending_action, but false for resume → drop).
+      // `currentReplayTextRef` keeps the original user message so the
+      // retry button still fires a fresh chat turn (action was already
+      // executed; no duplicate exec risk).
+      turnCompleteSeenRef.current = false;
+      pendingActionSeenRef.current = false;
+      hasReceivedContent.current = false;
+
       await attemptStream('/api/engine/resume', {
         address,
         sessionId,
