@@ -1,14 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
-import { Transaction } from '@mysten/sui/transactions';
 import { toBase64 } from '@mysten/sui/utils';
 import { Challenge } from 'mppx';
-import { getGatewayMapping, createRawGatewayMapping, getInternalApiKey } from '@/lib/service-gateway';
+import {
+  getGatewayMapping,
+  createRawGatewayMapping,
+  getInternalApiKey,
+} from '@/lib/service-gateway';
 import type { GatewayMapping } from '@/lib/service-gateway';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { validateJwt, isValidSuiAddress } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { getDecimalsForCoinType, USDC_TYPE } from '@t2000/sdk';
+import { composeTx, USDC_TYPE } from '@t2000/sdk';
 import { env } from '@/lib/env';
 
 export const runtime = 'nodejs';
@@ -16,8 +19,14 @@ export const runtime = 'nodejs';
 const SUI_NETWORK = env.NEXT_PUBLIC_SUI_NETWORK;
 const ENOKI_SECRET_KEY = env.ENOKI_SECRET_KEY;
 const ENOKI_BASE = 'https://api.enoki.mystenlabs.com/v1';
+const USDC_DECIMALS = 6;
+const DAILY_PURCHASE_LIMIT_USD = 50;
+const MONTHLY_PURCHASE_LIMIT_USD = 500;
 
-const client = new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl(SUI_NETWORK), network: SUI_NETWORK });
+const client = new SuiJsonRpcClient({
+  url: getJsonRpcFullnodeUrl(SUI_NETWORK),
+  network: SUI_NETWORK,
+});
 
 /**
  * POST /api/services/prepare
@@ -25,14 +34,27 @@ const client = new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl(SUI_NETWORK), n
  * Two flows depending on the service mapping:
  *
  * **Deliver-first** (merch orders, etc.):
- *   1. Call the gateway's internal endpoint — upstream service runs FIRST
- *   2. If upstream fails → return error, user is NEVER charged
- *   3. If upstream succeeds → build payment tx, store result in meta
+ *   1. Check USDC balance + spending limits
+ *   2. Call gateway's internal endpoint — upstream service runs FIRST
+ *   3. If upstream fails → return error, user is NEVER charged
+ *   4. If upstream succeeds → compose payment tx via composeTx, sponsor
  *
  * **Standard** (cheap, idempotent services):
  *   1. Pre-flight the gateway to get a 402 challenge
- *   2. Build payment tx from the challenge
- *   3. Return { bytes, digest, meta } for client-side signing
+ *   2. Compose payment tx from the challenge via composeTx
+ *   3. Sponsor + return { bytes, digest, meta } for client-side signing
+ *
+ * [SPEC 7 P2.2c, 2026-05-02] Both paths now route the on-chain leg through
+ * `@t2000/sdk` `composeTx`, dropping the hand-rolled merge/split/transfer
+ * pattern + hand-maintained `allowedAddresses` array. Three latent bugs
+ * fixed for free:
+ *   - `Math.round` violation on the rawAmount conversion (could round UP
+ *     above wallet balance — composeTx uses `Math.floor` per
+ *     financial-amounts.mdc)
+ *   - duplicate `client.getCoins` between balance check and PTB build
+ *     (composeTx fetches once via `selectAndSplitCoin`)
+ *   - hand-maintained `allowedAddresses` (composeTx auto-derives —
+ *     PR-H1/H4 bug class permanently eliminated)
  */
 export async function POST(request: NextRequest) {
   if (!ENOKI_SECRET_KEY) {
@@ -98,10 +120,68 @@ export async function POST(request: NextRequest) {
   }
 }
 
-const USDC_DECIMALS = 6;
+/**
+ * Compose + sponsor a payment USDC send. Shared between deliver-first and
+ * standard MPP paths. Returns the Enoki sponsor response unwrapped.
+ */
+async function composeAndSponsor(
+  address: string,
+  recipient: string,
+  amountUsdc: number,
+  jwt: string | null,
+): Promise<{ ok: true; bytes: string; digest: string } | { ok: false; status: number; error: string }> {
+  const composed = await composeTx({
+    sender: address,
+    client,
+    sponsoredContext: true,
+    steps: [
+      {
+        toolName: 'send_transfer',
+        input: { to: recipient, amount: amountUsdc, asset: 'USDC' },
+      },
+    ],
+  });
 
-const DAILY_PURCHASE_LIMIT_USD = 50;
-const MONTHLY_PURCHASE_LIMIT_USD = 500;
+  const sponsorHeaders: Record<string, string> = {
+    Authorization: `Bearer ${ENOKI_SECRET_KEY!}`,
+    'Content-Type': 'application/json',
+  };
+  if (jwt) {
+    sponsorHeaders['zklogin-jwt'] = jwt;
+  }
+
+  const allowedAddresses = Array.from(
+    new Set([...composed.derivedAllowedAddresses, address]),
+  );
+
+  const sponsorRes = await fetch(`${ENOKI_BASE}/transaction-blocks/sponsor`, {
+    method: 'POST',
+    headers: sponsorHeaders,
+    body: JSON.stringify({
+      network: SUI_NETWORK,
+      transactionBlockKindBytes: toBase64(composed.txKindBytes),
+      sender: address,
+      allowedAddresses,
+    }),
+  });
+
+  if (!sponsorRes.ok) {
+    const errorBody = await sponsorRes.text().catch(() => '');
+    console.error(`[services/prepare] Sponsor error (${sponsorRes.status}):`, errorBody);
+    let parsed: { message?: string } = {};
+    try {
+      parsed = JSON.parse(errorBody);
+    } catch {}
+    return {
+      ok: false,
+      status: sponsorRes.status,
+      error: parsed.message ?? `Sponsorship failed (${sponsorRes.status})`,
+    };
+  }
+
+  const { data } = await sponsorRes.json();
+  return { ok: true, bytes: data.bytes, digest: data.digest };
+}
 
 /**
  * Deliver-first: call upstream BEFORE building any payment.
@@ -111,7 +191,7 @@ const MONTHLY_PURCHASE_LIMIT_USD = 500;
  * 1. Check USDC balance (prevent $0 users from getting free services)
  * 2. Check daily/monthly spending limits
  * 3. Call upstream service
- * 4. Build payment tx
+ * 4. Compose payment tx via composeTx + sponsor
  */
 async function handleDeliverFirst(
   mapping: GatewayMapping,
@@ -133,7 +213,6 @@ async function handleDeliverFirst(
     ? parseFloat(String((serviceBody as { unitPrice?: number }).unitPrice))
     : isNaN(parsedPrice) ? 1.0 : parsedPrice;
 
-  // --- SAFETY CHECK 1: Verify user has enough USDC before touching upstream ---
   const coins = await client.getCoins({ owner: address, coinType: USDC_TYPE });
   const totalBalance = coins.data.reduce(
     (sum, c) => sum + BigInt(c.balance),
@@ -148,7 +227,6 @@ async function handleDeliverFirst(
     );
   }
 
-  // --- SAFETY CHECK 2: Daily/monthly spending limits ---
   const limitCheck = await checkSpendingLimits(address, estimatedCostUsd);
   if (limitCheck) {
     return NextResponse.json({ error: limitCheck }, { status: 429 });
@@ -184,64 +262,29 @@ async function handleDeliverFirst(
 
   const { recipient, currency, amount: chargeAmount } = deliverData.payment;
 
-  console.log(`[services/prepare] Deliver-first succeeded, building payment tx: $${chargeAmount} → ${recipient}`);
-
-  // Record purchase for audit trail and spending limit tracking
-  recordPurchase(address, serviceId, parseFloat(chargeAmount), String(serviceBody.productId ?? '')).catch(() => {});
-
-  const decimals = getDecimalsForCoinType(currency);
-  const rawAmount = BigInt(Math.round(parseFloat(chargeAmount) * 10 ** decimals));
-
-  // eslint-disable-next-line no-restricted-syntax -- CANONICAL-BYPASS: SPEC 7 P2.2c migrates this deliver-first MPP path to composeTx({ steps: [{ toolName: 'pay_api', input }] }); see audric-build-tracker.md P2.2c.
-  const tx = new Transaction();
-  tx.setSender(address);
-
-  // Reuse coins from balance check — no need to fetch again
-  const coinIds = coins.data.map((c) => c.coinObjectId);
-  if (coinIds.length > 1) {
-    tx.mergeCoins(tx.object(coinIds[0]), coinIds.slice(1).map((id) => tx.object(id)));
-  }
-  const [split] = tx.splitCoins(tx.object(coinIds[0]), [rawAmount]);
-  tx.transferObjects([split], recipient);
-
-  const txKindBytes = await tx.build({ client, onlyTransactionKind: true });
-  const txKindBase64 = toBase64(txKindBytes);
-
-  const sponsorHeaders: Record<string, string> = {
-    Authorization: `Bearer ${ENOKI_SECRET_KEY!}`,
-    'Content-Type': 'application/json',
-  };
-  if (jwt) {
-    sponsorHeaders['zklogin-jwt'] = jwt;
-  }
-
-  const sponsorRes = await fetch(`${ENOKI_BASE}/transaction-blocks/sponsor`, {
-    method: 'POST',
-    headers: sponsorHeaders,
-    body: JSON.stringify({
-      network: SUI_NETWORK,
-      transactionBlockKindBytes: txKindBase64,
-      sender: address,
-      allowedAddresses: [recipient],
-    }),
-  });
-
-  if (!sponsorRes.ok) {
-    const errorBody = await sponsorRes.text().catch(() => '');
-    console.error(`[services/prepare] Sponsor error (${sponsorRes.status}):`, errorBody);
-    let parsed: { message?: string } = {};
-    try { parsed = JSON.parse(errorBody); } catch {}
+  if (currency !== USDC_TYPE) {
+    console.error(`[services/prepare] Unsupported payment currency: ${currency} (only USDC supported)`);
     return NextResponse.json(
-      { error: parsed.message ?? `Sponsorship failed (${sponsorRes.status})` },
-      { status: sponsorRes.status >= 500 ? 502 : sponsorRes.status },
+      { error: 'Unsupported payment currency from upstream service' },
+      { status: 502 },
     );
   }
 
-  const { data } = await sponsorRes.json();
+  console.log(`[services/prepare] Deliver-first succeeded, composing payment tx: $${chargeAmount} → ${recipient}`);
+
+  recordPurchase(address, serviceId, parseFloat(chargeAmount), String(serviceBody.productId ?? '')).catch(() => {});
+
+  const sponsor = await composeAndSponsor(address, recipient, parseFloat(chargeAmount), jwt);
+  if (!sponsor.ok) {
+    return NextResponse.json(
+      { error: sponsor.error },
+      { status: sponsor.status >= 500 ? 502 : sponsor.status },
+    );
+  }
 
   return NextResponse.json({
-    bytes: data.bytes,
-    digest: data.digest,
+    bytes: sponsor.bytes,
+    digest: sponsor.digest,
     meta: {
       serviceId,
       gatewayUrl: mapping.url,
@@ -254,7 +297,7 @@ async function handleDeliverFirst(
 }
 
 /**
- * Standard MPP: pre-flight → 402 challenge → build payment tx.
+ * Standard MPP: pre-flight → 402 challenge → build payment tx via composeTx.
  * Service is called AFTER payment in the complete route.
  */
 async function handleStandardMpp(
@@ -315,71 +358,25 @@ async function handleStandardMpp(
     );
   }
 
-  const decimals = getDecimalsForCoinType(currency);
-  const rawAmount = BigInt(Math.round(parseFloat(chargeAmount) * 10 ** decimals));
-
-  // eslint-disable-next-line no-restricted-syntax -- CANONICAL-BYPASS: SPEC 7 P2.2c migrates this standard-MPP path to composeTx({ steps: [{ toolName: 'pay_api', input }] }); see audric-build-tracker.md P2.2c.
-  const tx = new Transaction();
-  tx.setSender(address);
-
-  const coins = await client.getCoins({ owner: address, coinType: currency });
-  if (!coins.data.length) {
-    return NextResponse.json({ error: 'No USDC balance to pay for service' }, { status: 400 });
-  }
-  const totalBalance = coins.data.reduce((sum, c) => sum + BigInt(c.balance), BigInt(0));
-  if (totalBalance < rawAmount) {
-    const balanceUsd = Number(totalBalance) / 10 ** decimals;
+  if (currency !== USDC_TYPE) {
+    console.error(`[services/prepare] Unsupported payment currency: ${currency} (only USDC supported)`);
     return NextResponse.json(
-      { error: `Insufficient USDC balance ($${balanceUsd.toFixed(2)}) for $${chargeAmount} service` },
-      { status: 400 },
+      { error: 'Unsupported payment currency from gateway' },
+      { status: 502 },
     );
   }
 
-  const coinIds = coins.data.map((c) => c.coinObjectId);
-  if (coinIds.length > 1) {
-    tx.mergeCoins(tx.object(coinIds[0]), coinIds.slice(1).map((id) => tx.object(id)));
-  }
-  const [split] = tx.splitCoins(tx.object(coinIds[0]), [rawAmount]);
-  tx.transferObjects([split], gatewayRecipient);
-
-  const txKindBytes = await tx.build({ client, onlyTransactionKind: true });
-  const txKindBase64 = toBase64(txKindBytes);
-
-  const sponsorHeaders: Record<string, string> = {
-    Authorization: `Bearer ${ENOKI_SECRET_KEY!}`,
-    'Content-Type': 'application/json',
-  };
-  if (jwt) {
-    sponsorHeaders['zklogin-jwt'] = jwt;
-  }
-
-  const sponsorRes = await fetch(`${ENOKI_BASE}/transaction-blocks/sponsor`, {
-    method: 'POST',
-    headers: sponsorHeaders,
-    body: JSON.stringify({
-      network: SUI_NETWORK,
-      transactionBlockKindBytes: txKindBase64,
-      sender: address,
-      allowedAddresses: [gatewayRecipient],
-    }),
-  });
-
-  if (!sponsorRes.ok) {
-    const errorBody = await sponsorRes.text().catch(() => '');
-    console.error(`[services/prepare] Sponsor error (${sponsorRes.status}):`, errorBody);
-    let parsed: { message?: string } = {};
-    try { parsed = JSON.parse(errorBody); } catch {}
+  const sponsor = await composeAndSponsor(address, gatewayRecipient, parseFloat(chargeAmount), jwt);
+  if (!sponsor.ok) {
     return NextResponse.json(
-      { error: parsed.message ?? `Sponsorship failed (${sponsorRes.status})` },
-      { status: sponsorRes.status >= 500 ? 502 : sponsorRes.status },
+      { error: sponsor.error },
+      { status: sponsor.status >= 500 ? 502 : sponsor.status },
     );
   }
-
-  const { data } = await sponsorRes.json();
 
   return NextResponse.json({
-    bytes: data.bytes,
-    digest: data.digest,
+    bytes: sponsor.bytes,
+    digest: sponsor.digest,
     meta: {
       serviceId,
       gatewayUrl: mapping.url,
