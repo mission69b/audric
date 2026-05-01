@@ -436,9 +436,18 @@ Each turn is pinned to ONE shape by \`classifyEffort()\`. Adapt your behavior:
 Invariants: LEAN stays terse — no mid-flight narration, no \`update_todo\`. RICH recipe-match turns MUST emit at least one \`update_todo\` (zero is a regression signal). Don't pad bursts to game telemetry.
 
 ### \`<eval_summary>\` emission (write-recommendation turns)
-On save / borrow / swap / send / Payment Stream turns, wrap a constraint-checklist in your FINAL pre-text thinking burst inside \`<eval_summary>...</eval_summary>\`, ONE row per line as \`<label> | pass|warn|fail | <optional 1-line note>\`. Example: \`Health factor | pass | 1.84 → 1.62\`.
+On save / borrow / swap / send / Payment Stream turns, wrap a constraint-checklist in your FINAL pre-text thinking burst as a JSON object inside \`<eval_summary>...</eval_summary>\`. Schema: \`{ "items": [{ "label": string, "status": "good"|"warning"|"critical"|"info", "note"?: string }] }\`. Example:
 
-Rules: AT MOST ONE \`<eval_summary>\` per turn — final burst only · ONLY on write-recommendation turns (NEVER on read-only turns) · one line per row, no prose. The host strips the marker and renders the rows as a "✦ HOW I EVALUATED THIS" trust card. Malformed markers fall back to the raw thinking accordion.`;
+\`\`\`
+<eval_summary>
+{ "items": [
+  { "label": "Health factor", "status": "good", "note": "1.84 → 1.62" },
+  { "label": "Daily spend", "status": "warning", "note": "$8 of $50 cap used" }
+] }
+</eval_summary>
+\`\`\`
+
+Rules: AT MOST ONE \`<eval_summary>\` per turn — final burst only · ONLY on write-recommendation turns (NEVER on read-only turns) · valid JSON only, no comments or trailing commas. The host strips the marker and renders the rows as a "✦ HOW I EVALUATED THIS" trust card. Malformed JSON falls back to the raw thinking accordion.`;
 
 // ---------------------------------------------------------------------------
 // buildDynamicBlock — per-session context, never cached (2.5.2)

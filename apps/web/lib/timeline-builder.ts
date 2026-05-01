@@ -119,6 +119,21 @@ export function applyEventToTimeline(
     }
 
     case 'tool_result': {
+      // [SPEC 8 v0.5.2 hotfix · Bug A] When the engine's
+      // EarlyToolDispatcher serves a duplicate read from cache it emits
+      // tool_start (creates the timeline block) THEN tool_result with
+      // resultDeduped=true. The legacy `tools[]` array is filtered in
+      // useEngine.processSSEChunk, but `applyEventToTimeline` runs at
+      // the bottom of the same reducer regardless of break — so without
+      // this branch the duplicate stays as a 'done' tool block and v2
+      // renders TWO identical balance/swap-quote/etc cards. Mirror the
+      // legacy suppression by filtering the matching tool block out of
+      // the timeline entirely.
+      if (event.resultDeduped) {
+        return current.filter(
+          (b) => !(b.type === 'tool' && b.toolUseId === event.toolUseId),
+        );
+      }
       const idx = findLastIndex(
         current,
         (b): b is ToolTimelineBlock =>
@@ -288,6 +303,94 @@ export function markPermissionCardResolved(
     if (i !== idx || b.type !== 'permission-card') return b;
     return { ...b, status };
   });
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// SPEC 8 v0.5.2 hotfix · Bug B — Receipt card after writes
+//
+// The engine yields `pending_action` for confirm-tier write tools (no
+// `tool_start` event). After the user approves and the client-side
+// sponsored-tx flow returns `{ tx: digest, balanceChanges, ... }`, the
+// engine DOES NOT emit a `tool_result` event back to the host — it
+// injects the result into the LLM message history server-side and
+// resumes streaming the narration. So under v2, the timeline never
+// gets a `tool` block carrying the digest, and `<TransactionReceiptCard>`
+// (which keys off `result.data.tx`) never renders.
+//
+// This helper fills the gap by synthesizing a `done` tool block from
+// the `executionResult` that `resolveAction` already has in hand.
+// Behavior:
+//   - When a tool block with that `toolUseId` already exists (rare for
+//     confirm tier; common for auto tier in future), update it in place.
+//   - Otherwise, append a new `done` tool block with `result =
+//     executionResult` and a `permission-card`-relative position
+//     (after the resolved card, before whatever the resume turn
+//     renders next).
+//   - When no permission card exists either (denied path / synthesized
+//     pre-execute failure), still append — keeps the timeline a
+//     single-source-of-truth render even on edge paths.
+//
+// Idempotent: calling with the same `toolUseId` twice returns the same
+// reference on the second call (state already reflects executionResult).
+// ───────────────────────────────────────────────────────────────────────────
+
+export function mergeWriteExecutionIntoTimeline(
+  timeline: TimelineBlock[] | undefined,
+  toolUseId: string,
+  toolName: string,
+  input: unknown,
+  executionResult: unknown,
+  now: number,
+): TimelineBlock[] {
+  const current = timeline ?? [];
+
+  const existingIdx = current.findIndex(
+    (b): b is ToolTimelineBlock =>
+      b.type === 'tool' && b.toolUseId === toolUseId,
+  );
+
+  if (existingIdx !== -1) {
+    const existing = current[existingIdx] as ToolTimelineBlock;
+    if (existing.status === 'done' && existing.result === executionResult) {
+      return current;
+    }
+    return current.map((b, i): TimelineBlock => {
+      if (i !== existingIdx || b.type !== 'tool') return b;
+      return {
+        ...b,
+        status: 'done',
+        result: executionResult,
+        isError: false,
+        endedAt: now,
+      };
+    });
+  }
+
+  // Insert AFTER the resolved permission card if one exists, so the
+  // chronological reading is "user approved → tx ran → here's the
+  // receipt". Falls back to plain append when there's no card.
+  const cardIdx = current.findIndex(
+    (b): b is PermissionCardTimelineBlock =>
+      b.type === 'permission-card' && b.payload.toolUseId === toolUseId,
+  );
+
+  const synthesized: ToolTimelineBlock = {
+    type: 'tool',
+    toolUseId,
+    toolName,
+    input,
+    status: 'done',
+    startedAt: now,
+    endedAt: now,
+    result: executionResult,
+    isError: false,
+  };
+
+  if (cardIdx === -1) return [...current, synthesized];
+
+  const next = current.slice();
+  next.splice(cardIdx + 1, 0, synthesized);
+  return next;
 }
 
 // ───────────────────────────────────────────────────────────────────────────

@@ -103,22 +103,20 @@ describe('ReasoningTimeline — thinking-block expansion (G8)', () => {
   });
 
   // ───────────────────────────────────────────────────────────────────────
-  // [SPEC 8 v0.5.1 B3.5 / Gap C] TaskInitiated divider at head of timeline
+  // [SPEC 8 v0.5.2 hotfix · Bug D] TASK INITIATED divider lives in
+  // UnifiedTimeline only — ReasoningTimeline must NOT emit one. Rendering
+  // it here produced 2-3 dividers per logical turn (chat msg + resume
+  // narration each had their own copy).
   // ───────────────────────────────────────────────────────────────────────
 
-  it('renders the TASK INITIATED divider once at the top of any non-empty timeline', () => {
+  it('does NOT render a TASK INITIATED divider (UnifiedTimeline owns the divider)', () => {
     const blocks: TimelineBlock[] = [T(0, 'done', 'first thought')];
-    const { getAllByText, getByRole } = render(
-      <ReasoningTimeline blocks={blocks} />,
-    );
-    expect(getAllByText('TASK INITIATED').length).toBe(1);
-    // The separator role is exposed for assistive tech.
-    expect(getByRole('separator')).toBeTruthy();
+    const { queryByText } = render(<ReasoningTimeline blocks={blocks} />);
+    expect(queryByText('TASK INITIATED')).toBeNull();
   });
 
-  it('omits the TASK INITIATED divider when the timeline is empty', () => {
+  it('returns null entirely when the timeline is empty', () => {
     const { container } = render(<ReasoningTimeline blocks={[]} />);
-    // Empty timeline returns null entirely — no divider emitted.
     expect(container.firstChild).toBeNull();
   });
 

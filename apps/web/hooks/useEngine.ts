@@ -14,6 +14,7 @@ import {
   applyEventToTimeline,
   markPermissionCardResolved,
   markTimelineInterrupted,
+  mergeWriteExecutionIntoTimeline,
 } from '@/lib/timeline-builder';
 import { asHarnessVersion, type HarnessVersion } from '@/lib/interactive-harness';
 
@@ -199,9 +200,26 @@ export function useEngine({ address, jwt, onToolResult }: UseEngineOptions) {
           // line covers the timeline path. Skip entirely when the message
           // never carried a timeline (flag-OFF sessions) so we don't
           // synthesize an empty array on legacy messages.
-          const timeline = m.timeline
+          let timeline = m.timeline
             ? markPermissionCardResolved(m.timeline, action.toolUseId, approved ? 'approved' : 'denied')
             : m.timeline;
+          // [SPEC 8 v0.5.2 hotfix · Bug B] Synthesize a 'done' tool block
+          // carrying the executionResult so v2 can render
+          // <TransactionReceiptCard> (which keys off `result.data.tx`).
+          // The engine never emits a tool_result event after resume —
+          // it only injects the result into the LLM message history —
+          // so without this merge the timeline path would silently
+          // drop the SuiScan link the legacy `tools[]` path renders.
+          if (timeline && approved && executionResult !== undefined) {
+            timeline = mergeWriteExecutionIntoTimeline(
+              timeline,
+              action.toolUseId,
+              action.toolName,
+              action.input,
+              executionResult,
+              Date.now(),
+            );
+          }
           return { ...m, pendingAction: undefined, tools, timeline };
         }),
       );

@@ -5,6 +5,7 @@ import {
   NAVI_MCP_CONFIG,
   READ_TOOLS,
   WRITE_TOOLS,
+  updateTodoTool,
   adaptAllServerTools,
   buildCachedSystemPrompt,
   classifyEffort,
@@ -491,6 +492,12 @@ export async function createEngine(
   const filteredWrites = WRITE_TOOLS.filter((t) => t.name !== 'save_contact');
   const audricContactTools: Tool[] = [audricSaveContactTool, audricListContactsTool];
 
+  // [SPEC 8 v0.5.1 hotfix] Register the host-side `update_todo` tool that
+  // the system prompt teaches RICH / recipe-match turns to call. The engine
+  // exports it as opt-in (see packages/engine/src/index.ts ~226-228); without
+  // this line, the LLM physically cannot comply with the prompt and Gate 7
+  // (RICH todo emission ≥50%) hard-fails at 0%. See SPEC 8 v0.5.2 patch
+  // notes in audric-build-tracker.md.
   const allTools = applyToolFlags([
     ...filteredReads,
     ...filteredWrites,
@@ -498,6 +505,7 @@ export async function createEngine(
     ...GOAL_TOOLS,
     ...ADVICE_TOOLS,
     ...mcpTools,
+    updateTodoTool,
   ]);
 
   console.log(`[engine-factory] tools=${allTools.length}: ${allTools.map(t => t.name).join(', ')}`);

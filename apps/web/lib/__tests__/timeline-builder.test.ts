@@ -10,6 +10,7 @@ import {
   applyEventToTimeline,
   markPermissionCardResolved,
   markTimelineInterrupted,
+  mergeWriteExecutionIntoTimeline,
 } from '@/lib/timeline-builder';
 import type {
   SSEEvent,
@@ -263,6 +264,56 @@ describe('applyEventToTimeline — tools', () => {
       T0 + 999,
     );
     expect(next).toBe(seed);
+  });
+
+  it('removes the matching tool block when tool_result arrives with resultDeduped=true (Bug A regression)', () => {
+    // [SPEC 8 v0.5.2 hotfix · Bug A] EarlyToolDispatcher emits a
+    // tool_start for the dedup'd call, then tool_result with
+    // resultDeduped=true. Without the suppression branch this would
+    // leave a phantom 'done' tool block in the timeline, causing v2 to
+    // render the same balance_check / swap_quote / etc card twice.
+    const tl = applyAll([
+      { type: 'tool_start', toolName: 'balance_check', toolUseId: 't1', input: {} },
+      { type: 'tool_start', toolName: 'balance_check', toolUseId: 't2', input: {} },
+      {
+        type: 'tool_result',
+        toolName: 'balance_check',
+        toolUseId: 't1',
+        result: { wallet: 100 },
+        isError: false,
+      },
+      {
+        type: 'tool_result',
+        toolName: 'balance_check',
+        toolUseId: 't2',
+        result: { wallet: 100 },
+        isError: false,
+        resultDeduped: true,
+      },
+    ]);
+    expect(tl).toHaveLength(1);
+    expect((tl[0] as ToolTimelineBlock).toolUseId).toBe('t1');
+    expect((tl[0] as ToolTimelineBlock).status).toBe('done');
+  });
+
+  it('resultDeduped on an unknown toolUseId is a safe no-op', () => {
+    const seed = applyAll([
+      { type: 'tool_start', toolName: 'balance_check', toolUseId: 't1', input: {} },
+    ]);
+    const next = applyEventToTimeline(
+      seed,
+      {
+        type: 'tool_result',
+        toolName: 'balance_check',
+        toolUseId: 'OTHER',
+        result: 'x',
+        isError: false,
+        resultDeduped: true,
+      },
+      T0 + 999,
+    );
+    expect(next).toHaveLength(1);
+    expect((next[0] as ToolTimelineBlock).toolUseId).toBe('t1');
   });
 });
 
@@ -590,5 +641,161 @@ describe('markTimelineInterrupted', () => {
     const snapshot = JSON.stringify(seed);
     markTimelineInterrupted(seed, T0);
     expect(JSON.stringify(seed)).toBe(snapshot);
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────
+// SPEC 8 v0.5.2 hotfix · Bug B — Receipt card after writes
+// ───────────────────────────────────────────────────────────────────────────
+
+describe('mergeWriteExecutionIntoTimeline', () => {
+  const action: PendingAction = {
+    toolUseId: 'wt1',
+    toolName: 'save_deposit',
+    input: { amount: 10, asset: 'USDC' },
+    description: 'Save 10 USDC to NAVI at 5.64% APY',
+    assistantContent: [],
+    attemptId: 'att-1',
+    turnIndex: 0,
+  };
+  const txDigest = '0xabc123';
+  const executionResult = {
+    data: {
+      tx: txDigest,
+      asset: 'USDC',
+      amount: 10,
+      balanceChanges: [],
+    },
+    success: true,
+  };
+
+  it('appends a synthesized done tool block when no tool block exists (confirm-tier write path)', () => {
+    const seed: TimelineBlock[] = [
+      {
+        type: 'permission-card',
+        payload: action,
+        status: 'approved',
+      },
+    ];
+    const next = mergeWriteExecutionIntoTimeline(
+      seed,
+      action.toolUseId,
+      action.toolName,
+      action.input,
+      executionResult,
+      T0,
+    );
+    expect(next).toHaveLength(2);
+    expect(next[1]).toMatchObject({
+      type: 'tool',
+      toolUseId: 'wt1',
+      toolName: 'save_deposit',
+      status: 'done',
+      result: executionResult,
+      isError: false,
+      startedAt: T0,
+      endedAt: T0,
+    });
+  });
+
+  it('inserts the synthesized tool block AFTER the resolved permission card', () => {
+    const seed: TimelineBlock[] = [
+      { type: 'thinking', blockIndex: 0, text: 'plan', status: 'done' },
+      { type: 'permission-card', payload: action, status: 'approved' },
+    ];
+    const next = mergeWriteExecutionIntoTimeline(
+      seed,
+      action.toolUseId,
+      action.toolName,
+      action.input,
+      executionResult,
+      T0,
+    );
+    expect(next).toHaveLength(3);
+    expect(next[0].type).toBe('thinking');
+    expect(next[1].type).toBe('permission-card');
+    expect(next[2].type).toBe('tool');
+  });
+
+  it('updates an existing tool block in place when one already exists (auto-tier path)', () => {
+    const seed: TimelineBlock[] = [
+      {
+        type: 'tool',
+        toolUseId: 'wt1',
+        toolName: 'save_deposit',
+        input: action.input,
+        status: 'running',
+        startedAt: T0 - 1000,
+      },
+    ];
+    const next = mergeWriteExecutionIntoTimeline(
+      seed,
+      action.toolUseId,
+      action.toolName,
+      action.input,
+      executionResult,
+      T0,
+    );
+    expect(next).toHaveLength(1);
+    expect(next[0]).toMatchObject({
+      type: 'tool',
+      status: 'done',
+      result: executionResult,
+      isError: false,
+      startedAt: T0 - 1000,
+      endedAt: T0,
+    });
+  });
+
+  it('appends when no permission card and no prior tool block exists (defensive)', () => {
+    const seed: TimelineBlock[] = [
+      { type: 'thinking', blockIndex: 0, text: 'orphan', status: 'done' },
+    ];
+    const next = mergeWriteExecutionIntoTimeline(
+      seed,
+      action.toolUseId,
+      action.toolName,
+      action.input,
+      executionResult,
+      T0,
+    );
+    expect(next).toHaveLength(2);
+    expect(next[1].type).toBe('tool');
+  });
+
+  it('is idempotent — calling twice with same executionResult returns same reference on second call', () => {
+    const seed: TimelineBlock[] = [
+      { type: 'permission-card', payload: action, status: 'approved' },
+    ];
+    const first = mergeWriteExecutionIntoTimeline(
+      seed,
+      action.toolUseId,
+      action.toolName,
+      action.input,
+      executionResult,
+      T0,
+    );
+    const second = mergeWriteExecutionIntoTimeline(
+      first,
+      action.toolUseId,
+      action.toolName,
+      action.input,
+      executionResult,
+      T0 + 100,
+    );
+    expect(second).toBe(first);
+  });
+
+  it('treats undefined timeline as empty array starting point', () => {
+    const next = mergeWriteExecutionIntoTimeline(
+      undefined,
+      action.toolUseId,
+      action.toolName,
+      action.input,
+      executionResult,
+      T0,
+    );
+    expect(next).toHaveLength(1);
+    expect(next[0].type).toBe('tool');
   });
 });

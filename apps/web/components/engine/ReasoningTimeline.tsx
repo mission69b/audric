@@ -8,7 +8,6 @@ import { computeTextBlockVoiceSlices } from '@/lib/voice/timeline-voice-slices';
 import { groupTimelineBlocks } from '@/lib/timeline-groups';
 import { BlockRouter } from './timeline/BlockRouter';
 import { ParallelToolsGroup } from './timeline/ParallelToolsGroup';
-import { TaskInitiated } from './timeline/primitives/TaskInitiated';
 
 // ───────────────────────────────────────────────────────────────────────────
 // SPEC 8 v0.5.1 — ReasoningTimeline (B2.2 + B3.3 + B3.5)
@@ -133,11 +132,12 @@ export function ReasoningTimeline({
 
   return (
     <div className="space-y-2">
-      {/* [B3.5 / Gap C] v2 demo's em-rule divider — gives the user the
-          "turn started" beat without an avatar reveal. Renders once at
-          the head of every assistant message that has any timeline
-          content. */}
-      <TaskInitiated />
+      {/* [SPEC 8 v0.5.2 hotfix · Bug D] The TASK INITIATED divider lives
+          ONLY in `UnifiedTimeline` (above each user message) — rendering
+          it here too produced 2-3 dividers per logical turn (chat msg
+          + resume narration each had their own). The primitive
+          `<TaskInitiated />` stays in the codebase for the future
+          "RESUMED" variant, but is intentionally not invoked here. */}
       {items.map((item, i) => {
         if (item.kind === 'group') {
           return (
