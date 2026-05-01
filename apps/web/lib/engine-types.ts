@@ -1,6 +1,6 @@
-import type { SSEEvent, PendingAction, TodoItem } from '@t2000/engine';
+import type { SSEEvent, PendingAction, TodoItem, EvaluationItem } from '@t2000/engine';
 
-export type { SSEEvent, PendingAction, TodoItem };
+export type { SSEEvent, PendingAction, TodoItem, EvaluationItem };
 
 export interface CanvasData {
   template: string;
@@ -8,6 +8,132 @@ export interface CanvasData {
   data: unknown;
   toolUseId: string;
 }
+
+// ───────────────────────────────────────────────────────────────────────────
+// SPEC 8 v0.5.1 — TimelineBlock taxonomy (B2.1)
+//
+// The timeline is an ordered list of typed blocks built incrementally from
+// SSE events as they stream. Replaces the "tools section first → thinking
+// accordion → text last" layout with chronological emission order.
+//
+// Two-phase rollout:
+//   B2.1 (this commit) — define the model, dual-write from SSE, render NOTHING
+//                        (gated by NEXT_PUBLIC_INTERACTIVE_HARNESS flag, default OFF)
+//   B2.2 (next commit) — ReasoningTimeline component reads timeline[] when flag ON;
+//                        flag OFF still uses today's ReasoningAccordion + tools rows
+//
+// Block lifecycle status:
+//   - 'streaming' — block is currently receiving deltas (thinking, text)
+//   - 'running'   — tool is in flight (between tool_start and tool_result)
+//   - 'done'      — terminal success state
+//   - 'error'     — terminal error state
+//   - 'interrupted' — set by the rehydrate path on disconnect (B3 territory)
+// ───────────────────────────────────────────────────────────────────────────
+
+export type BlockStatus = 'streaming' | 'running' | 'done' | 'error' | 'interrupted';
+
+/**
+ * One per Anthropic thinking block (matched by `blockIndex`). Multiple
+ * thinking blocks per turn = multi-burst thinking. When the LLM emits
+ * an `<eval_summary>` marker inside, `summaryMode` flips and
+ * `evaluationItems` populates — host renders HowIEvaluated card instead
+ * of raw thinking text.
+ */
+export interface ThinkingTimelineBlock {
+  type: 'thinking';
+  blockIndex: number;
+  text: string;
+  status: BlockStatus;
+  signature?: string;
+  summaryMode?: boolean;
+  evaluationItems?: EvaluationItem[];
+}
+
+/**
+ * One per `tool_use_id`. Mutates as `tool_progress` events arrive (latest
+ * progress wins) and as `tool_result` lands (status flips to done/error).
+ * `attemptCount` carries through for tool retries (SPEC 8 v0.3 G5).
+ */
+export interface ToolTimelineBlock {
+  type: 'tool';
+  toolUseId: string;
+  toolName: string;
+  input: unknown;
+  status: BlockStatus;
+  startedAt: number;
+  endedAt?: number;
+  result?: unknown;
+  isError?: boolean;
+  // Latest tool_progress event for this tool, if any.
+  progress?: { message: string; pct?: number };
+  attemptCount?: number;
+}
+
+/** Final assistant text run. Today: 1 per turn (rare to have 2+). */
+export interface TextTimelineBlock {
+  type: 'text';
+  text: string;
+  status: BlockStatus;
+}
+
+/**
+ * Sticky singleton per turn — persists across multiple `update_todo`
+ * calls within the same turn. Latest items array always wins (the tool
+ * is idempotent). After `turn_complete`, B2.2 renders this block as
+ * "✓ N-step plan completed".
+ */
+export interface TodoTimelineBlock {
+  type: 'todo';
+  /** First toolUseId we saw — used for keying the React render cell. */
+  toolUseId: string;
+  items: TodoItem[];
+  /** Updated each time `update_todo` fires; lets us animate transitions. */
+  lastUpdatedAt: number;
+}
+
+/** One per canvas event. Same shape as the legacy CanvasData. */
+export interface CanvasTimelineBlock {
+  type: 'canvas';
+  toolUseId: string;
+  template: string;
+  title: string;
+  data: unknown;
+}
+
+/**
+ * SPEC 7 v0.3.2 multi-step PermissionCard slot. SPEC 8 v0.5 (D1) added
+ * this variant so the bundle UI has a typed home in the chronological
+ * timeline. SPEC 7 owns the renderer; SPEC 8 owns only the slot type +
+ * positioning. `status` reflects the user-confirm lifecycle.
+ */
+export interface PermissionCardTimelineBlock {
+  type: 'permission-card';
+  payload: PendingAction;
+  status: 'pending' | 'approving' | 'regenerating' | 'denied' | 'approved';
+}
+
+/**
+ * SPEC 9 v0.1.2 inline-form slot. SPEC 8 v0.5 (D2) reserved this so the
+ * timeline has a typed home for the future. Engine doesn't emit
+ * `pending_input` under SPEC 8; this block only appears once SPEC 9
+ * lands. Today the variant exists to keep the discriminated union
+ * complete (TS exhaustiveness checks B2.2's renderer).
+ */
+export interface PendingInputTimelineBlock {
+  type: 'pending-input';
+  inputId: string;
+  schema: unknown;
+  prompt?: string;
+}
+
+export type TimelineBlock =
+  | ThinkingTimelineBlock
+  | ToolTimelineBlock
+  | TextTimelineBlock
+  | TodoTimelineBlock
+  | CanvasTimelineBlock
+  | PermissionCardTimelineBlock
+  | PendingInputTimelineBlock;
 
 // [SPEC 8 v0.5.1 B1] Per-event captures from the new SSE event types.
 // These shapes mirror the engine's SSEEvent union — kept local rather
@@ -49,6 +175,14 @@ export interface EngineChatMessage {
   todoUpdates?: TodoUpdateEvent[];
   toolProgress?: ToolProgressEvent[];
   pendingInputs?: PendingInputEvent[];
+  /**
+   * [SPEC 8 v0.5.1 B2.1] Chronological timeline built incrementally from
+   * SSE events as they stream. Read by ReasoningTimeline (B2.2) when
+   * NEXT_PUBLIC_INTERACTIVE_HARNESS is ON. When OFF, this field is still
+   * populated (dual-write) but no consumer reads it — the existing
+   * ReasoningAccordion + tools rows render as before.
+   */
+  timeline?: TimelineBlock[];
 }
 
 export interface ToolExecution {

@@ -169,6 +169,15 @@ const clientSchema = z.object({
 
   /** Deployment id surfaced to client (for the version-check banner). */
   NEXT_PUBLIC_DEPLOYMENT_ID: optionalString,
+
+  /**
+   * [SPEC 8 v0.5.1 B2] Feature flag for the new ReasoningTimeline UX.
+   * - "1" / "true" → render the chronological timeline (B2.2 renderer)
+   * - undefined / anything else → render today's ReasoningAccordion
+   * Default OFF. Per-session pinning lands in B3 (harnessVersion on the
+   * Upstash session record); B2 uses a global flag for staged rollout.
+   */
+  NEXT_PUBLIC_INTERACTIVE_HARNESS: optionalString,
 });
 
 // ─── Runtime env (Next.js requires literal references) ────────────────
@@ -205,6 +214,7 @@ const runtimeEnv = {
   NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
   NEXT_PUBLIC_GATEWAY_URL: process.env.NEXT_PUBLIC_GATEWAY_URL,
   NEXT_PUBLIC_DEPLOYMENT_ID: process.env.NEXT_PUBLIC_DEPLOYMENT_ID,
+  NEXT_PUBLIC_INTERACTIVE_HARNESS: process.env.NEXT_PUBLIC_INTERACTIVE_HARNESS,
 } as const;
 
 // ─── Validate ──────────────────────────────────────────────────────────

@@ -10,6 +10,7 @@ import type {
   SSEEvent,
   CanvasData,
 } from '@/lib/engine-types';
+import { applyEventToTimeline } from '@/lib/timeline-builder';
 
 // [v1.4] Re-export the pure executor so consumers and tests can use a single
 // import path: `import { executeToolAction } from '@/hooks/useEngine'`.
@@ -612,6 +613,22 @@ export function useEngine({ address, jwt, onToolResult }: UseEngineOptions) {
         break;
       }
     }
+
+    // [SPEC 8 v0.5.1 B2.1] Dual-write to the chronological timeline.
+    // Every event runs through applyEventToTimeline. React batches this
+    // setMessages call with the per-case one above into a single render.
+    // When the event has no timeline impact (usage, error) the helper
+    // returns the same reference and we short-circuit to skip the
+    // re-render. now is hoisted outside the reducer so StrictMode's
+    // double-invoke doesn't drift timestamps.
+    const now = Date.now();
+    setMessages((prev) =>
+      prev.map((m) => {
+        if (m.id !== msgId) return m;
+        const next = applyEventToTimeline(m.timeline, event, now);
+        return next === m.timeline ? m : { ...m, timeline: next };
+      }),
+    );
   }
 
   const cancel = useCallback(() => {
