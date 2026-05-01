@@ -38,7 +38,10 @@ export function TextBlockView({ block }: TextBlockViewProps) {
       </span>
       <div className="text-fg-primary leading-relaxed overflow-hidden">
         {block.status === 'streaming' ? (
-          <span className="whitespace-pre-wrap">
+          // [B2.3 mobile] break-words matches AgentMarkdown's post-stream
+          // behavior — without it, long unbroken tokens (coin types, addresses)
+          // overflow the narrow chat column on mobile during streaming.
+          <span className="whitespace-pre-wrap break-words">
             {block.text}
             <span className="inline-flex items-center ml-1.5 align-text-bottom">
               <ThinkingState status="delivering" intensity="transitioning" />
