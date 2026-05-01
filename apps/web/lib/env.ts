@@ -178,6 +178,33 @@ const clientSchema = z.object({
    * Upstash session record); B2 uses a global flag for staged rollout.
    */
   NEXT_PUBLIC_INTERACTIVE_HARNESS: optionalString,
+
+  /**
+   * [SPEC 8 v0.5.1 B3.7] Graduated rollout percentage for the
+   * interactive harness, evaluated ONLY when `NEXT_PUBLIC_INTERACTIVE_
+   * HARNESS` is also set. Integer string in `0..100` (interpretation:
+   * "X% of distinct user buckets see v2; the remainder stay on legacy").
+   *
+   * - undefined (default) → behave as today: flag-on means EVERY new
+   *   session gets v2 (i.e. effective 100% rollout once flag is on)
+   * - "10" → 10% of distinct user-address buckets see v2
+   * - "50" → 50% — etc.
+   * - "100" → equivalent to undefined (every bucket admitted)
+   *
+   * Bucketing is a deterministic FNV-1a hash of the user's
+   * Sui address (or session id for unauth) modulo 100. Same user
+   * always lands in the same bucket so dashboard aggregations don't
+   * see a user flipping shapes mid-week. Per-session pinning (B3.3)
+   * still applies — once a session is admitted, it stays v2 for its
+   * lifetime even if the dial moves back later.
+   *
+   * Founder workflow:
+   *   Day 1 — set to "10", monitor TurnMetrics 24h
+   *   Day 2 — set to "50", monitor 24h
+   *   Day 3 — set to "100" (or unset entirely)
+   * Rollback path: set to "0" or unset `NEXT_PUBLIC_INTERACTIVE_HARNESS`.
+   */
+  NEXT_PUBLIC_INTERACTIVE_HARNESS_ROLLOUT_PERCENT: optionalString,
 });
 
 // ─── Runtime env (Next.js requires literal references) ────────────────
@@ -215,6 +242,8 @@ const runtimeEnv = {
   NEXT_PUBLIC_GATEWAY_URL: process.env.NEXT_PUBLIC_GATEWAY_URL,
   NEXT_PUBLIC_DEPLOYMENT_ID: process.env.NEXT_PUBLIC_DEPLOYMENT_ID,
   NEXT_PUBLIC_INTERACTIVE_HARNESS: process.env.NEXT_PUBLIC_INTERACTIVE_HARNESS,
+  NEXT_PUBLIC_INTERACTIVE_HARNESS_ROLLOUT_PERCENT:
+    process.env.NEXT_PUBLIC_INTERACTIVE_HARNESS_ROLLOUT_PERCENT,
 } as const;
 
 // ─── Validate ──────────────────────────────────────────────────────────

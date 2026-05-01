@@ -162,15 +162,25 @@ export async function POST(request: NextRequest) {
       session = requestedSessionId ? await store.get(requestedSessionId) : null;
       saveSession = true;
 
-      // [SPEC 8 v0.5.1 B3.3 / G4] Per-session harness-version pinning.
+      // [SPEC 8 v0.5.1 B3.3 / G4 + B3.7] Per-session harness-version pinning.
       //
       // Existing session with a pinned value → respect it (won't flip
-      // mid-rollout). Existing session without one (pre-B3.3 record) OR
-      // brand-new session → evaluate the env var ONCE and that decision
-      // sticks for the rest of this session's life via the `metadata`
-      // write in the `finally` block below.
+      // mid-rollout, won't flip when the dial moves back). Existing
+      // session without one (pre-B3.3 record) OR brand-new session →
+      // evaluate the env var ONCE and that decision sticks for the
+      // rest of this session's life via the `metadata` write in the
+      // `finally` block below.
+      //
+      // [B3.7] When the rollout-percent dial is set, `currentHarnessVersion`
+      // hashes the user address into a stable bucket and admits only the
+      // lower `percent%` slice. The user's Sui `address` is the bucket
+      // key — the same user always lands in the same bucket across
+      // sessions, so a 10% rollout admits the SAME 10% of users every
+      // session (no flicker). Falls back to `sessionId` for safety
+      // (the address is always set in this branch — `isAuth` is true
+      // — but defensive null-coalescing keeps the type clean).
       const pinned = asHarnessVersion(session?.metadata?.harnessVersion);
-      harnessVersion = pinned ?? currentHarnessVersion();
+      harnessVersion = pinned ?? currentHarnessVersion(address ?? sessionId);
 
       // [PR-B2] Central usage billing.
       // Source `emailVerified` from the Google OIDC `email_verified` claim

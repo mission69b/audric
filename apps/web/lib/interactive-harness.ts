@@ -51,11 +51,84 @@ export function isInteractiveHarnessEnabled(): boolean {
 }
 
 /**
- * The version label that corresponds to the current env-var state.
- * Used at session-creation time to stamp `session.metadata.harnessVersion`.
+ * [SPEC 8 v0.5.1 B3.7] Parsed `NEXT_PUBLIC_INTERACTIVE_HARNESS_ROLLOUT_PERCENT`,
+ * clamped to `[0, 100]`. Returns `null` when the env var is undefined,
+ * empty, or non-numeric — caller treats null as "no percentage gate;
+ * flag-on means admit every bucket" (today's behavior).
+ *
+ * Exported for tests; production callers should go through
+ * `currentHarnessVersion(bucketKey)`.
  */
-export function currentHarnessVersion(): HarnessVersion {
-  return isInteractiveHarnessEnabled() ? 'v2' : 'legacy';
+export function rolloutPercent(): number | null {
+  const raw = env.NEXT_PUBLIC_INTERACTIVE_HARNESS_ROLLOUT_PERCENT;
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  if (trimmed.length === 0) return null;
+  const parsed = Number.parseInt(trimmed, 10);
+  if (!Number.isFinite(parsed)) return null;
+  if (parsed <= 0) return 0;
+  if (parsed >= 100) return 100;
+  return parsed;
+}
+
+/**
+ * [SPEC 8 v0.5.1 B3.7] Stable 32-bit FNV-1a hash of an arbitrary string,
+ * modulo 100. Used to deterministically bucket users into the rollout
+ * cohort: a single user always lands in the same `0..99` slot so they
+ * don't flip between v2 and legacy across sessions while the rollout
+ * dial is mid-flight.
+ *
+ * FNV-1a is chosen for: (a) zero-dep — doesn't need WebCrypto on the
+ * server-side path, (b) deterministic across host restarts, (c)
+ * uniform enough for a 100-bucket cohort split (we don't need
+ * cryptographic strength — adversarial bucket gaming isn't a threat
+ * model for a UX-shape rollout).
+ *
+ * Exported for tests; production callers should go through
+ * `currentHarnessVersion(bucketKey)`.
+ */
+export function bucketFor(input: string): number {
+  // FNV offset basis + prime (32-bit). All ops use `>>> 0` to stay in
+  // unsigned 32-bit; JS bitwise ops are signed otherwise.
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < input.length; i++) {
+    hash ^= input.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return hash % 100;
+}
+
+/**
+ * The version label that corresponds to the current env-var state.
+ *
+ * **Without** a `bucketKey` (legacy callers, unauth/demo sessions): pure
+ * env-var check — flag-on means v2.
+ *
+ * **With** a `bucketKey` (typically the user's Sui address; sessionId
+ * for unauth sessions): when both `NEXT_PUBLIC_INTERACTIVE_HARNESS=1`
+ * AND `NEXT_PUBLIC_INTERACTIVE_HARNESS_ROLLOUT_PERCENT` is set, only
+ * admits buckets in the lower `rolloutPercent()` slice. A bucketKey
+ * that lands in slots 0..(percent-1) gets v2; everything else stays
+ * legacy. With percent=100 (or undefined) every bucket is admitted —
+ * matches the no-bucket call signature.
+ *
+ * Used at session-creation time to stamp `session.metadata.harnessVersion`.
+ * The pinned value (B3.3) still wins on subsequent turns of the same
+ * session, so a dial-back from 50%→10% does NOT regress in-flight v2
+ * sessions to legacy.
+ */
+export function currentHarnessVersion(bucketKey?: string): HarnessVersion {
+  if (!isInteractiveHarnessEnabled()) return 'legacy';
+  const percent = rolloutPercent();
+  // No percent gate → flag-on means admit every session (legacy
+  // behavior; preserved for tests that don't pass a bucketKey).
+  if (percent === null || percent >= 100) return 'v2';
+  if (percent <= 0) return 'legacy';
+  // Percent gate active but caller can't bucket (no auth, no session
+  // id). Conservative default: leave on legacy. A lone test-route
+  // call without a key during 10% rollout shouldn't randomly admit.
+  if (!bucketKey) return 'legacy';
+  return bucketFor(bucketKey) < percent ? 'v2' : 'legacy';
 }
 
 /**
