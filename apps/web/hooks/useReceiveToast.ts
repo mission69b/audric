@@ -12,11 +12,16 @@ const MIN_DELTA_USDC = 0.01;
 
 /**
  * Window after a user-initiated tx during which we suppress receive toasts.
- * useBalance polls every 30s, so 60s gives us two grace polls — covers both
- * the immediate refetch (kicked by handleExecuteAction) and the next scheduled
- * poll. Receives that arrive 60s+ after the last action will still toast.
+ * useBalance polls every 30s. The original 60s window covered two grace
+ * polls but was too tight for swap-to-USDC settlement on slow indexer
+ * conditions: swap settles in ~3s on chain, indexer can lag 5-30s,
+ * then the next poll fires. Founder hit the edge case 2026-05-01 — got
+ * a "+$4.55 deposit" toast 1 min after a `swap_execute` 5 SUI → 4.55
+ * USDC settled. 120s covers settlement + worst-case indexer lag + four
+ * grace polls without making genuine inbound deposits look stale (real
+ * receives still toast within 2 min of the last user-initiated tx).
  */
-const USER_ACTION_GRACE_MS = 60_000;
+const USER_ACTION_GRACE_MS = 120_000;
 
 interface UseReceiveToastOpts {
   /**
