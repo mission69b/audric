@@ -59,6 +59,7 @@ export async function GET(request: Request) {
 
     // Step 3: Build swap transaction
     start = t();
+    // eslint-disable-next-line no-restricted-syntax -- CANONICAL-BYPASS: SPEC 7 P2.2c deletes this diagnostic route as part of the Layer 0 host migration; until then it stays out of the canonical contract.
     const swapTx = new Transaction();
     swapTx.setSender(address);
 

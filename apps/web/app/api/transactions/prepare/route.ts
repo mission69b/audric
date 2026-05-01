@@ -326,6 +326,7 @@ async function buildAndSponsor(
 async function buildTransaction(params: BuildRequest): Promise<Transaction> {
   const { type, address, amount, recipient, asset } = params;
   const client = getClient();
+  // eslint-disable-next-line no-restricted-syntax -- CANONICAL-BYPASS: SPEC 7 P2.2c thin-dispatcher refactor (~600→~80 lines) routes this through composeTx({ steps: [{ toolName, input }] }) and the WRITE_APPENDER_REGISTRY; see audric-build-tracker.md P2.2c.
   const tx = new Transaction();
   tx.setSender(address);
 
@@ -520,6 +521,7 @@ async function buildTransaction(params: BuildRequest): Promise<Transaction> {
       const amountMist = BigInt(Math.floor(amount * 1e9));
       if (amountMist < BigInt(1_000_000_000)) throw new Error('Minimum stake is 1 SUI');
 
+      // eslint-disable-next-line no-restricted-syntax -- CANONICAL-BYPASS: SPEC 7 P2.2c moves the volo_stake builder under composeTx via addStakeVSuiToTx (Layer 1 appender); see audric-build-tracker.md P2.2c.
       const stakeTx = new Transaction();
       stakeTx.setSender(address);
       // For Enoki-sponsored txs, fetch actual SUI coins (tx.gas belongs to the sponsor)
@@ -553,6 +555,7 @@ async function buildTransaction(params: BuildRequest): Promise<Transaction> {
       const { ids: vSuiCoinIds } = await fetchCoinsForSwap(client, address, VSUI_TYPE);
       if (vSuiCoinIds.length === 0) throw new Error('No vSUI found in wallet');
 
+      // eslint-disable-next-line no-restricted-syntax -- CANONICAL-BYPASS: SPEC 7 P2.2c moves the volo_unstake builder under composeTx via addUnstakeVSuiToTx (Layer 1 appender); see audric-build-tracker.md P2.2c.
       const unstakeTx = new Transaction();
       unstakeTx.setSender(address);
       const primary = unstakeTx.object(vSuiCoinIds[0]);
@@ -697,6 +700,7 @@ async function buildSwapTx(
       if (routerData.insufficientLiquidity) throw new Error(`Insufficient liquidity for ${fromToken} → ${toToken}`);
       console.log(`[swap] route found: paths=${routerData.paths?.length}, amountOut=${routerData.amountOut}`);
 
+      // eslint-disable-next-line no-restricted-syntax -- CANONICAL-BYPASS: SPEC 7 P2.2c moves the swap builder under composeTx via addSwapToTx (Layer 1 appender); see audric-build-tracker.md P2.2c.
       const swapTx = new Transaction();
       swapTx.setSender(address);
 

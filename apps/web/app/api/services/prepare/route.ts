@@ -192,6 +192,7 @@ async function handleDeliverFirst(
   const decimals = getDecimalsForCoinType(currency);
   const rawAmount = BigInt(Math.round(parseFloat(chargeAmount) * 10 ** decimals));
 
+  // eslint-disable-next-line no-restricted-syntax -- CANONICAL-BYPASS: SPEC 7 P2.2c migrates this deliver-first MPP path to composeTx({ steps: [{ toolName: 'pay_api', input }] }); see audric-build-tracker.md P2.2c.
   const tx = new Transaction();
   tx.setSender(address);
 
@@ -317,6 +318,7 @@ async function handleStandardMpp(
   const decimals = getDecimalsForCoinType(currency);
   const rawAmount = BigInt(Math.round(parseFloat(chargeAmount) * 10 ** decimals));
 
+  // eslint-disable-next-line no-restricted-syntax -- CANONICAL-BYPASS: SPEC 7 P2.2c migrates this standard-MPP path to composeTx({ steps: [{ toolName: 'pay_api', input }] }); see audric-build-tracker.md P2.2c.
   const tx = new Transaction();
   tx.setSender(address);
 

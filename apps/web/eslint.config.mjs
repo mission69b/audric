@@ -79,25 +79,38 @@ const canonicalPortfolioRules = {
         "Coin metadata is bundled with `getPortfolio`'s priced wallet response. Use that instead.",
     },
   ],
-  "no-restricted-syntax": [
-    "error",
-    {
-      // Block direct vendor HTTP calls; price/wallet aggregation must
-      // go through `getPortfolio` / `getTokenPrices` so vendor-specific
-      // chunking / timeouts / fallback live in one place.
-      selector:
-        "CallExpression[callee.name='fetch'] > Literal[value=/api\\.blockvision\\.org|coins\\.llama\\.fi|api\\.coingecko\\.com/]",
-      message:
-        "Direct vendor calls (BlockVision / DefiLlama / CoinGecko) for wallet or price data are forbidden — use `getPortfolio` / `getTokenPrices` from `@/lib/portfolio` so chunking, timeouts, and fallback live in one place.",
-    },
-    {
-      selector:
-        "CallExpression[callee.name='fetch'] > TemplateLiteral > TemplateElement[value.raw=/api\\.blockvision\\.org|coins\\.llama\\.fi|api\\.coingecko\\.com/]",
-      message:
-        "Direct vendor calls (BlockVision / DefiLlama / CoinGecko) for wallet or price data are forbidden — use `getPortfolio` / `getTokenPrices` from `@/lib/portfolio`.",
-    },
-  ],
+  // NOTE: canonical-portfolio's `no-restricted-syntax` vendor-fetch bans
+  // (BlockVision / DefiLlama / CoinGecko) live in `combinedRestrictedSyntax`
+  // below. ESLint flat config OVERRIDES rule values across blocks (verified
+  // empirically 2026-05-02 — see SPEC 7 v0.4.1 C0.2 patch notes). All
+  // `no-restricted-syntax` selectors must coexist in a single rule entry.
 };
+
+// ---------------------------------------------------------------------------
+// `audric/canonical-write` (single-source-of-truth for writes) enforcement.
+//
+// SPEC 7 v0.4 Layer 0 contract: every Audric Enoki-sponsored write goes
+// through one `composeTx({ steps })` primitive in `@t2000/sdk`. Direct
+// `new Transaction()` construction in `app/api/**`, `components/**`, or
+// `lib/**` is forbidden — the rule fails CI on those constructors.
+//
+// Documented bypasses (must use `// eslint-disable-next-line
+// no-restricted-syntax -- CANONICAL-BYPASS: <reason>` at the call site):
+//  - PayButton (`apps/web/components/pay/PayButton.tsx`) — dapp-kit
+//    `useSignAndExecuteTransaction`, any-wallet payer, no Enoki. Stays
+//    out by design. Resolved decision #29.
+//  - SPEC 10 leaf-mint API routes (`app/api/identity/**`) — service-
+//    account-signed; user's zkLogin key is NOT involved. Smoke-tested
+//    mainnet 2026-05-01 (S.52). Structurally outside canonical contract.
+//  - Routes scheduled for SPEC 7 P2.2c migration: `transactions/prepare`,
+//    `services/prepare`, `debug-swap` — tagged with the migration stage
+//    label. The bypass comments are removed when each route flips to
+//    `composeTx`.
+//
+// See `audric/.cursor/rules/audric-canonical-write.mdc` for the full
+// architectural contract. Spec section: SPEC 7 v0.4 § "Layer 0 — Canonical
+// Write Architecture" (build-tracker P2.2d).
+// ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
 // `audric/no-process-env` (env-validation) enforcement.
@@ -121,23 +134,44 @@ const canonicalPortfolioRules = {
 // PROCESS-ENV-BYPASS: <reason>` and link an issue justifying why.
 // ---------------------------------------------------------------------------
 
-const noProcessEnvRule = {
-  "no-restricted-syntax": [
-    "error",
-    {
-      // Ban `process.env.X` reads EXCEPT `process.env.NODE_ENV`. NODE_ENV
-      // is a Next.js / build-tool managed constant statically replaced
-      // into both server and client bundles — it cannot be empty or
-      // whitespace, so the env-gate has nothing to add. Forcing it
-      // through the gate would also break the proxy guard (the
-      // server-only check would throw on every client `if (NODE_ENV ===
-      // 'production')` branch).
-      selector:
-        "MemberExpression[object.object.name='process'][object.property.name='env'][property.name!='NODE_ENV']",
-      message:
-        "Read env vars through `import { env } from '@/lib/env'` instead of `process.env.X`. The validated env module rejects empty/whitespace values at boot, preventing the silent-degradation bug class. (`process.env.NODE_ENV` is exempted — it's a build-time constant.) To bypass for legitimate test/bootstrap code, add `// eslint-disable-next-line no-restricted-syntax -- PROCESS-ENV-BYPASS: <reason>`.",
-    },
-  ],
+// Combined `no-restricted-syntax` selectors. ESLint flat config OVERRIDES
+// rule values rather than merging across blocks — verified empirically on
+// 2026-05-02 — so all selectors must live in ONE rule entry to coexist.
+// (Prior to consolidation, canonical-portfolio's vendor-fetch bans were
+// silently overridden by the env-gate's `no-restricted-syntax` rule.
+// Surfaced + fixed during SPEC 7 v0.4.1 C0.2 ESLint rule landing.)
+const combinedRestrictedSyntax = [
+  // audric/no-process-env — env-validation gate
+  {
+    selector:
+      "MemberExpression[object.object.name='process'][object.property.name='env'][property.name!='NODE_ENV']",
+    message:
+      "Read env vars through `import { env } from '@/lib/env'` instead of `process.env.X`. The validated env module rejects empty/whitespace values at boot, preventing the silent-degradation bug class. (`process.env.NODE_ENV` is exempted — it's a build-time constant.) To bypass for legitimate test/bootstrap code, add `// eslint-disable-next-line no-restricted-syntax -- PROCESS-ENV-BYPASS: <reason>`.",
+  },
+  // audric/canonical-portfolio — vendor fetch bans (literal URL form)
+  {
+    selector:
+      "CallExpression[callee.name='fetch'] > Literal[value=/api\\.blockvision\\.org|coins\\.llama\\.fi|api\\.coingecko\\.com/]",
+    message:
+      "Direct vendor calls (BlockVision / DefiLlama / CoinGecko) for wallet or price data are forbidden — use `getPortfolio` / `getTokenPrices` from `@/lib/portfolio` so chunking, timeouts, and fallback live in one place.",
+  },
+  // audric/canonical-portfolio — vendor fetch bans (template literal form)
+  {
+    selector:
+      "CallExpression[callee.name='fetch'] > TemplateLiteral > TemplateElement[value.raw=/api\\.blockvision\\.org|coins\\.llama\\.fi|api\\.coingecko\\.com/]",
+    message:
+      "Direct vendor calls (BlockVision / DefiLlama / CoinGecko) for wallet or price data are forbidden — use `getPortfolio` / `getTokenPrices` from `@/lib/portfolio`.",
+  },
+  // audric/canonical-write — direct PTB construction ban (SPEC 7 v0.4 Layer 0)
+  {
+    selector: "NewExpression[callee.name='Transaction']",
+    message:
+      "Direct PTB construction (`new Transaction()`) is forbidden in `app/api/**`, `components/**`, and `lib/**` — every Audric Enoki-sponsored write must go through `composeTx({ steps })` from `@t2000/sdk`. See `audric/.cursor/rules/audric-canonical-write.mdc` for the contract. Documented bypasses (PayButton dapp-kit flow, SPEC 10 leaf-mint API routes, SPEC 7 P2.2c pre-migration routes): add `// eslint-disable-next-line no-restricted-syntax -- CANONICAL-BYPASS: <reason>` at the call site.",
+  },
+];
+
+const combinedRestrictedSyntaxRule = {
+  "no-restricted-syntax": ["error", ...combinedRestrictedSyntax],
 };
 
 const eslintConfig = [
@@ -177,27 +211,43 @@ const eslintConfig = [
     rules: canonicalPortfolioRules,
   },
   {
+    // Combined `no-restricted-syntax` block. Holds env-gate, canonical-
+    // portfolio vendor-fetch, and canonical-write `new Transaction()`
+    // selectors. Single entry per the override-not-merge constraint.
+    //
+    // The ignore list is the UNION of every per-rule allowlist:
+    //  - canonical-portfolio canonical fetchers (CANONICAL_FILES)
+    //  - protocol-registry / sui-rpc (lower-layer dependencies)
+    //  - env-gate exempt files (env.ts itself, env.test.ts, bootstrap)
+    //  - tests (file-level escape via `**/*.test.{ts,tsx}` + `__tests__/`)
+    //  - generated code
     files: ["**/*.{ts,tsx}"],
     ignores: [
-      // The env module IS the gate — it has to read process.env.
+      // canonical-portfolio: canonical fetchers + their lower-layer deps
+      ...CANONICAL_FILES,
+      "lib/protocol-registry.ts",
+      "lib/sui-rpc.ts",
+      // env-gate: the gate itself + its test + bootstrap entry-points
       "lib/env.ts",
-      // Tests for the env gate mutate process.env to verify rejection.
       "lib/__tests__/env.test.ts",
-      // Bootstrap code that runs before / coordinates the env module.
       "next.config.ts",
       "instrumentation.ts",
       // Prisma CLI config — loaded by `prisma migrate` before any app
       // code runs. It loads .env.local itself via dotenv and can't
       // depend on the validated env module.
       "prisma.config.ts",
-      // Test files commonly need to mutate process.env for setup/teardown.
+      // Test files commonly need to mutate process.env for setup/teardown
+      // and to build raw `new Transaction()` for tx-build assertions.
       "**/*.test.ts",
       "**/*.test.tsx",
+      "**/*.spec.ts",
+      "**/__tests__/**",
       "vitest.setup.ts",
-      // Generated code — comments only, doesn't actually read process.env.
+      // Generated code — comments only, doesn't actually read process.env
+      // or build PTBs.
       "lib/generated/**",
     ],
-    rules: noProcessEnvRule,
+    rules: combinedRestrictedSyntaxRule,
   },
 ];
 

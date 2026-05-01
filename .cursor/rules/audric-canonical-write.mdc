@@ -1,0 +1,152 @@
+---
+description: Canonical write architecture — every Audric Enoki-sponsored write goes through composeTx
+alwaysApply: true
+---
+
+# Canonical Write Architecture (audric/web)
+
+> **Status:** Specced in SPEC 7 v0.4 (2026-05-01). **Lands when SPEC 7 Layer 0 ships.** Until then, this rule documents the target architecture and the bypass conventions that will be enforced at CI time.
+
+## The contract
+
+Every Audric Enoki-sponsored write — chat-agent writes, MPP `services/prepare`, diagnostics — MUST go through one canonical compose primitive: **`composeTx(steps)` in `@t2000/sdk`**. The fragment-appender pattern (one `add{Tool}ToTx` per write tool) is the implementation; `composeTx` is the canonical entry-point.
+
+The intent: same drift-impossible-by-construction guarantee the read-side `getPortfolio()` collapse delivered in April 2026, applied to the write side.
+
+## Canonical files
+
+| Concern | Function | File |
+|---|---|---|
+| Canonical write composer | `composeTx({ sender, steps, sponsoredContext? })` | `@t2000/sdk` → `packages/sdk/src/composeTx.ts` |
+| Fragment-appender registry | `WRITE_APPENDER_REGISTRY: Record<WriteToolName, AppenderFn>` | Same file |
+| Auto-derived allow-list | `deriveAllowedAddressesFromPtb(tx)` | Same file (helper) |
+| Per-protocol appenders | `addSaveToTx`, `addWithdrawToTx`, `addBorrowToTx`, `addRepayToTx`, `addSendToTx`, `addSwapToTx`, `addStakeVSuiToTx`, `addUnstakeVSuiToTx`, `addClaimRewardsToTx` | `@t2000/sdk` → `packages/sdk/src/protocols/*.ts` + `wallet/send.ts` |
+| Shared Enoki sponsor wrapper | `sponsorViaEnoki({ txKindBytes, sender, allowedAddresses, jwt })` | `audric/apps/web/lib/sponsor.ts` (NEW in SPEC 7 v0.4) |
+
+## Why this is non-negotiable
+
+In April 2026 the **read-side** had five different code paths computing wallet USD with five different bugs. The fix collapsed every read into one `getPortfolio()` canonical fetcher. Drift became impossible by construction. See `audric-canonical-portfolio.mdc`.
+
+The **write-side audit** for SPEC 7 v0.4 surfaced the same structural pattern in a different shape:
+
+- **`/api/transactions/prepare`** (chat-agent writes) — fat ~600-line route with inline send/fee/Cetus/Volo PTB-building (NAVI delegated to adapter).
+- **`/api/services/prepare`** (MPP `pay_api`) — hand-rolled merge/split/transfer pattern, separate from `transactions/prepare`. Three latent bugs caught during the audit (`Math.round` violation, duplicate `client.getCoins`, hand-maintained `allowedAddresses`).
+- **`/api/debug-swap`** — diagnostic with a parallel Cetus aggregator config that can mislead.
+- **PayButton** (`@mysten/payment-kit` + dapp-kit) — **intentionally separate** (different signer, different identity, no Enoki). This stays out of `composeTx` by design.
+
+PR-H1 + PR-H4 caught two production bugs in 60 days where someone forgot to add a recipient to the hand-maintained `allowedAddresses` array. That bug class disappears when `allowedAddresses` is auto-derived from the PTB shape inside `composeTx`.
+
+## Forbidden patterns (ESLint enforces — `audric/canonical-write` rule, ships in SPEC 7 v0.4)
+
+```typescript
+// ❌ Direct Transaction construction outside canonical files
+import { Transaction } from '@mysten/sui/transactions';
+const tx = new Transaction();
+// ... merge/split/transfer ...
+
+// ❌ Hand-maintained allowedAddresses
+const allowedAddresses = [T2000_OVERLAY_FEE_WALLET, params.address, params.recipient];
+
+// ❌ Inline coin fetch + merge/split for tx-building
+const coins = await client.getCoins({ owner, coinType });
+if (coins.data.length > 1) {
+  tx.mergeCoins(tx.object(coins.data[0].coinObjectId), ...);
+}
+const [split] = tx.splitCoins(...);
+tx.transferObjects([split], recipient);
+
+// ❌ Math.round on raw amount conversion
+const rawAmount = BigInt(Math.round(parseFloat(amountUsd) * 10 ** decimals));
+
+// ❌ Forking a parallel sponsor flow
+const sponsorRes = await fetch('https://api.enoki.mystenlabs.com/v1/transaction-blocks/sponsor', { ... });
+```
+
+```typescript
+// ✅ Always — single composeTx call, single sponsor helper
+
+import { composeTx } from '@t2000/sdk';
+import { sponsorViaEnoki } from '@/lib/sponsor';
+
+const composed = await composeTx({
+  sender: address,
+  steps: [{ toolName: 'send_transfer', input: { to: recipient, amount, asset: 'USDC' } }],
+  sponsoredContext: true,
+});
+
+const sponsored = await sponsorViaEnoki({
+  txKindBytes: composed.txKindBytes,
+  sender: address,
+  allowedAddresses: composed.derivedAllowedAddresses,
+  jwt,
+});
+```
+
+## Adapter checklist (before adding or modifying any write surface)
+
+1. **Does `composeTx` already cover this write tool?** If yes, use it. Done.
+2. **Does it cover it but the tool input shape isn't quite right?** Extend the appender's input contract. Don't fork the route.
+3. **Is this a new write tool?** Add a fragment-appender to `@t2000/sdk` (e.g. `addNewToolToTx` in `packages/sdk/src/protocols/new-tool.ts`), wire it into `WRITE_APPENDER_REGISTRY`, then use `composeTx` from the route.
+4. **Is the route doing service-specific business logic** (gateway negotiation, balance pre-checks, audit trail, post-payment HTTPS calls)? **Keep that in the route.** Only the on-chain leg goes through `composeTx`. See `services/prepare/route.ts` post-SPEC-7-Layer-0 for the canonical pattern.
+
+If you genuinely need to bypass `composeTx`, leave a `// CANONICAL-BYPASS:` comment with the reason and link to a follow-up issue (or the spec section that documents the exemption). Reviewers gate on this.
+
+## Documented bypasses (the only ones)
+
+| Surface | File | Reason | Documented in |
+|---|---|---|---|
+| **PayButton** | `apps/web/components/pay/PayButton.tsx` | dapp-kit `useSignAndExecuteTransaction` (any-wallet payer); no Enoki sponsorship; payer pays own gas; payer identity NOT necessarily an Audric user. **Intentional product separation.** | SPEC 7 v0.4 "What this spec does NOT touch" + Resolved decision #29. Audric-payer-on-someone-else's-link routing gap → SPEC 11. |
+| **SPEC 10 leaf-mint API routes** | `apps/web/app/api/identity/{reserve,change,release}/route.ts`, `apps/web/app/api/admin/identity/{reserve,release}/route.ts` | **Service-account-signed** writes. Signer = Audric custody key (parent NFT owner of `audric.sui`); user's zkLogin key is NOT involved. Enoki sponsors gas, but no user JWT in the loop — server-to-server flow. PTB atomicity requires single signer, so leaf-mint cannot be bundled with chat-agent writes via `composeTx`. **Structurally outside the canonical contract by design.** | SPEC 10 v0.2.1 Phase A signer-model callout + SPEC 7 v0.4 "What this Layer does NOT touch". Smoke-tested mainnet 2026-05-01 (S.52); reference shape lives in `RUNBOOK_audric_sui_parent.md` §3. |
+| **Write-side coin selection** (`getCoins` calls inside fragment appenders) | `packages/sdk/src/protocols/*.ts`, `wallet/send.ts` | Tx builders need coin object IDs (not aggregated balances) to construct `mergeCoins` + `splitCoins` PTBs. Canonical portfolio cache models balances, not object IDs. **Different shape, not drift.** | `audric-canonical-portfolio.mdc` carve-out + SPEC 7 v0.4 Layer 0 "What this Layer does NOT touch". |
+| **Test fixtures** | `**/__tests__/**`, `**/*.test.ts`, `**/*.spec.ts` | Tests build `Transaction` directly to assert against. ESLint rule explicitly excludes test files. | ESLint rule scope (below). |
+
+## ESLint rule scope (`audric/canonical-write`)
+
+The rule's include-list is the SINGLE source of truth for "where the contract applies." Files outside the include-list are not lint-checked at all (no need for `// CANONICAL-BYPASS:` comments). Files inside the include-list MUST either route through `composeTx` OR carry a `// CANONICAL-BYPASS: <reason>` comment matching one of the documented bypasses above.
+
+**Include-list:**
+
+```
+apps/web/app/api/**/*.ts            // every API route under apps/web (including app/api/identity/**)
+apps/web/components/**/*.tsx        // every React component (PayButton lives here)
+apps/web/lib/**/*.ts                // every library helper
+```
+
+**Exclude-list** (silent, no enforcement):
+
+```
+**/__tests__/**                     // test fixtures
+**/*.test.ts                        // unit tests
+**/*.spec.ts                        // spec/integration tests
+packages/**                         // SDK / engine internals (these define composeTx, not consume it)
+scripts/**                          // one-off scripts (smoke-suins-leaf.ts, etc.)
+```
+
+**The contract:** if your file is in the include-list and you need to call `new Transaction()` directly, the ONLY legitimate path is a `// CANONICAL-BYPASS: <reason>` comment matching a documented bypass. Do NOT add file-pattern exclusions to widen the silent zone. Reviewers gate on both the comment AND the bypass row in the table above.
+
+## How this is enforced
+
+- **ESLint rule** `audric/canonical-write` (SPEC 7 v0.4 Layer 0 deliverable) — fails CI on direct `new Transaction()` outside canonical files; fails on hand-maintained `allowedAddresses` outside the auto-derive path.
+- **Spec consistency runner** `lib/engine/spec-consistency.ts` (extended in SPEC 7 v0.4) — runs at server startup; dev hard-fails, prod logs. Asserts no parallel write paths exist under `app/api/transactions/` or `app/api/services/`.
+- **Contract test** `apps/web/__tests__/composeTx-allowed-addresses.test.ts` (NEW in SPEC 7 v0.4) — asserts `derivedAllowedAddresses` matches today's hand-maintained array for every write tool. Fails if a future appender adds a `transferObjects` recipient that wouldn't have been in the hand-maintained list (catches drift immediately).
+- **Migration parity test** `apps/web/__tests__/composeTx-migration.test.ts` (NEW in SPEC 7 v0.4) — asserts `composeTx({ steps: [{ toolName, input }] })` produces a byte-identical PTB to today's `transactions/prepare` `case toolName` path on a fixed test wallet, for all 11 write tools.
+- **`services/prepare` parity test** `apps/web/__tests__/services-prepare-parity.test.ts` (NEW in SPEC 7 v0.4) — asserts the migrated route returns identical `{ bytes, digest, meta }` shapes for both deliver-first and standard-MPP flows on a fixed test gateway response.
+
+## Special case — the engine
+
+Engine write tools (`save_deposit`, `send_transfer`, `swap_execute`, etc.) DON'T directly call `composeTx`. Their `tool.call()` method emits a `pending_action` with `{ toolName, input }`; the audric host calls `composeTx` after the user confirms. This is correct — engine carries intent, host owns the on-chain build.
+
+> **Why this matters:** under audric/web's zkLogin trust model, engine `tool.call()` literally never runs in production for confirm-tier writes (the permission gate breaks before `runTools`). Bundling intent (engine) and tx-building (host) is correct. SPEC 7 Layer 0's `composeTx` is the canonical host primitive that consumes engine intent.
+
+For non-zkLogin runtimes (CLI, MCP, server tasks), engine tools DO call `T2000.save()` / `T2000.swap()` / etc. directly — these orchestrators in `packages/sdk/src/t2000.ts` will be migrated to compose via `composeTx` internally during SPEC 7 Layer 1 (one canonical primitive across all runtimes).
+
+## Cross-references
+
+- Specification → `t2000/spec/SPEC_7_MULTI_WRITE_PTB.md` v0.4 (Layer 0)
+- Read-side companion → `audric-canonical-portfolio.mdc` (the architectural pattern this rule mirrors)
+- Sponsored tx flow → `audric-transaction-flow.mdc` (will be updated in SPEC 7 v0.4 to reflect the thin-dispatcher refactor)
+- Pending action protocol → `write-tool-pending-action.mdc`
+- Engine harness contract → `t2000/.cursor/rules/agent-harness-spec.mdc`
+- t2000-side principle → `t2000/.cursor/rules/single-source-of-truth.mdc`
+- PayButton bypass rationale → SPEC 7 v0.4 "What this spec does NOT touch" + Resolved decision #29
+- SPEC 11 (PayButton + Audric-payer routing) → not yet drafted; placeholder in `audric-build-tracker.md`
