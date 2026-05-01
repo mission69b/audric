@@ -8,6 +8,7 @@ import {
   adaptAllServerTools,
   buildCachedSystemPrompt,
   classifyEffort,
+  harnessShapeForEffort,
   applyToolFlags,
   DEFAULT_GUARD_CONFIG,
   DEFAULT_PERMISSION_CONFIG,
@@ -242,8 +243,20 @@ export interface CreateEngineOpts {
    * the chat route's `TurnMetricsCollector` can record them without
    * re-implementing classifier logic. Fired exactly once after the
    * engine is constructed.
+   *
+   * [SPEC 8 v0.5.1 B3.2] Also surfaces the derived `harnessShape` and a
+   * 1-line `harnessRationale`. Chat route stashes both and passes them
+   * into `engine.submitMessage(prompt, { harnessShape, harnessRationale })`
+   * so the engine can yield the one-shot `harness_shape` event at turn
+   * start. `TurnMetrics.harnessShape` records the shape verbatim for
+   * dashboard segmentation.
    */
-  onMeta?: (meta: { effortLevel: string; modelUsed: string }) => void;
+  onMeta?: (meta: {
+    effortLevel: string;
+    modelUsed: string;
+    harnessShape: 'lean' | 'standard' | 'rich' | 'max';
+    harnessRationale: string;
+  }) => void;
   /**
    * [v1.4 Item 4] Per-guard observation hook forwarded directly to the
    * engine's `onGuardFired`. Hosts wire their `TurnMetricsCollector`
@@ -551,7 +564,20 @@ export async function createEngine(
     : 'medium';
   const routedModel = MODEL_OVERRIDE ?? (effort === 'low' ? HAIKU_MODEL : SONNET_MODEL);
   console.log(`[engine-factory] model=${routedModel} effort=${effort} thinking=${!routedModel.includes('haiku')}`);
-  opts.onMeta?.({ effortLevel: effort, modelUsed: routedModel });
+
+  // [SPEC 8 v0.5.1 B3.2] Adaptive harness shape — derived from the same
+  // effort classifier the thinking-budget routing uses. Rationale is a
+  // 1-line human-readable explanation for telemetry; built from the
+  // signals that actually drove the classifier's decision so a Datadog
+  // operator skimming a turn can see WHY without re-running classify.
+  const harnessShape = harnessShapeForEffort(effort);
+  const harnessRationale = buildHarnessRationale({
+    effort,
+    matchedRecipeName: matchedRecipe?.name,
+    sessionWriteCount,
+    message: opts.message,
+  });
+  opts.onMeta?.({ effortLevel: effort, modelUsed: routedModel, harnessShape, harnessRationale });
 
   const engine = new QueryEngine({
     provider: new AnthropicProvider({ apiKey: ANTHROPIC_API_KEY }),
@@ -731,6 +757,33 @@ function buildSyntheticPrefetch(
 export function generateSessionId(): string {
   return `s_${Date.now()}_${crypto.randomUUID().replace(/-/g, '').slice(0, 12)}`;
 }
+
+// ---------------------------------------------------------------------------
+// [SPEC 8 v0.5.1 B3.2] Build a 1-line `harness_shape.rationale` string
+// summarising why this turn landed in this shape. Mirrors the precedence
+// in `classifyEffort()` (recipe match > write-history keyword > vocab
+// heuristic > default) so a Datadog operator can skim turn metrics
+// without re-running the classifier.
+// ---------------------------------------------------------------------------
+
+function buildHarnessRationale(args: {
+  effort: 'low' | 'medium' | 'high' | 'max';
+  matchedRecipeName?: string;
+  sessionWriteCount: number;
+  message?: string;
+}): string {
+  const { effort, matchedRecipeName, sessionWriteCount, message } = args;
+  if (matchedRecipeName) {
+    return `matched recipe ${matchedRecipeName} → ${effort}`;
+  }
+  if (sessionWriteCount > 0 && message && /borrow|withdraw|send|swap/i.test(message)) {
+    return `session has prior writes + write-keyword → ${effort}`;
+  }
+  if (effort === 'low') return `single-fact lookup → lean`;
+  if (effort === 'max') return `MAX-tier signal in message → max`;
+  return `default heuristic → ${effort}`;
+}
+
 
 export interface HistoryMessage {
   role: 'user' | 'assistant';

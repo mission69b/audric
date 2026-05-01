@@ -87,4 +87,79 @@ describe('ToolBlockView', () => {
     );
     expect(getByText('NOOP TEST TOOL')).toBeTruthy();
   });
+
+  // ───────────────────────────────────────────────────────────────────────
+  // [SPEC 8 v0.5.1 B3.2] attemptCount surface
+  // ───────────────────────────────────────────────────────────────────────
+
+  it('shows "attempt N · 1.4s" subtitle when the tool retried (attemptCount > 1)', () => {
+    const settled: ToolTimelineBlock = {
+      ...BASE,
+      status: 'done',
+      startedAt: 0,
+      endedAt: 1400,
+      result: null,
+      isError: false,
+      attemptCount: 2,
+    };
+    const { getByText } = render(<ToolBlockView block={settled} />);
+    expect(getByText(/· attempt 2 · 1\.4s/)).toBeTruthy();
+  });
+
+  it('shows "attempt N" alone while still running on a retry (no endedAt yet)', () => {
+    const retrying: ToolTimelineBlock = {
+      ...BASE,
+      status: 'running',
+      startedAt: 0,
+      attemptCount: 3,
+    };
+    const { getByText, queryByText } = render(<ToolBlockView block={retrying} />);
+    expect(getByText(/· attempt 3/)).toBeTruthy();
+    expect(queryByText(/\ds/)).toBeNull();
+  });
+
+  it('omits the subtitle entirely on a 1st-try success (no attemptCount)', () => {
+    const settled: ToolTimelineBlock = {
+      ...BASE,
+      status: 'done',
+      startedAt: 0,
+      endedAt: 1400,
+      result: null,
+      isError: false,
+      // attemptCount intentionally omitted
+    };
+    const { queryByText } = render(<ToolBlockView block={settled} />);
+    // The dot prefix " · " only renders when meta is present, so the absence
+    // of any "attempt" / duration text confirms the header stays clean.
+    expect(queryByText(/attempt/)).toBeNull();
+    expect(queryByText(/1\.4s/)).toBeNull();
+  });
+
+  it('omits the subtitle when attemptCount is exactly 1 (defensive against engine misbehavior)', () => {
+    const settled: ToolTimelineBlock = {
+      ...BASE,
+      status: 'done',
+      startedAt: 0,
+      endedAt: 1400,
+      result: null,
+      isError: false,
+      attemptCount: 1,
+    };
+    const { queryByText } = render(<ToolBlockView block={settled} />);
+    expect(queryByText(/attempt/)).toBeNull();
+  });
+
+  it('hides the subtitle in headerless mode (group renders the combined header)', () => {
+    const settled: ToolTimelineBlock = {
+      ...BASE,
+      status: 'done',
+      startedAt: 0,
+      endedAt: 1400,
+      result: null,
+      isError: false,
+      attemptCount: 2,
+    };
+    const { queryByText } = render(<ToolBlockView block={settled} headerless />);
+    expect(queryByText(/attempt 2/)).toBeNull();
+  });
 });

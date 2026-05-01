@@ -199,6 +199,50 @@ describe('applyEventToTimeline — tools', () => {
     expect((tl[0] as ToolTimelineBlock).progress).toEqual({ message: 'building tx', pct: 70 });
   });
 
+  it('attaches attemptCount on tool_result when the engine reports retries (>1)', () => {
+    const tl = applyAll([
+      { type: 'tool_start', toolName: 'balance_check', toolUseId: 't1', input: {} },
+      {
+        type: 'tool_result',
+        toolName: 'balance_check',
+        toolUseId: 't1',
+        result: { ok: 1 },
+        isError: false,
+        attemptCount: 3,
+      },
+    ]);
+    const b = tl[0] as ToolTimelineBlock;
+    expect(b.attemptCount).toBe(3);
+    expect(b.status).toBe('done');
+  });
+
+  it('omits attemptCount on tool_result when the engine does not report it (1st-try success)', () => {
+    const tl = applyAll([
+      { type: 'tool_start', toolName: 'balance_check', toolUseId: 't1', input: {} },
+      {
+        type: 'tool_result',
+        toolName: 'balance_check',
+        toolUseId: 't1',
+        result: { ok: 1 },
+        isError: false,
+      },
+    ]);
+    const b = tl[0] as ToolTimelineBlock;
+    expect(b.attemptCount).toBeUndefined();
+  });
+
+  it('harness_shape is a no-op for the timeline (metadata lives on the message)', () => {
+    const seed = applyAll([
+      { type: 'tool_start', toolName: 'balance_check', toolUseId: 't1', input: {} },
+    ]);
+    const next = applyEventToTimeline(
+      seed,
+      { type: 'harness_shape', shape: 'rich', rationale: 'classifyEffort=high' },
+      T0 + 100,
+    );
+    expect(next).toBe(seed);
+  });
+
   it('tool_result for an unknown toolUseId is a no-op', () => {
     const seed = applyAll([
       { type: 'tool_start', toolName: 'balance_check', toolUseId: 't1', input: {} },

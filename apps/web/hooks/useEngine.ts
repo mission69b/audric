@@ -623,6 +623,28 @@ export function useEngine({ address, jwt, onToolResult }: UseEngineOptions) {
         );
         break;
       }
+
+      // [SPEC 8 v0.5.1 B3.2] One-shot per-turn harness shape declaration.
+      // Stamp on the assistant message so `TurnMetrics.harnessShape`
+      // (and future engineering-only effort badges) can read it. NOT a
+      // timeline block — `applyEventToTimeline` returns the timeline
+      // unchanged for this event type. Idempotent: a repeat emission
+      // (shouldn't happen — engine emits exactly once per submitMessage)
+      // would just overwrite with the same value.
+      case 'harness_shape': {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === msgId
+              ? {
+                  ...m,
+                  harnessShape: event.shape,
+                  harnessRationale: event.rationale,
+                }
+              : m,
+          ),
+        );
+        break;
+      }
     }
 
     // [SPEC 8 v0.5.1 B2.1] Dual-write to the chronological timeline.

@@ -12,6 +12,13 @@ interface AgentStepProps {
   collapsible?: boolean;
   defaultExpanded?: boolean;
   children?: React.ReactNode;
+  /**
+   * [SPEC 8 v0.5.1 B3.2] Optional dimmed metadata that renders to the
+   * right of the label as `LABEL · meta`. Used by `ToolBlockView` to
+   * surface "attempt N · 1.4s" when a tool went through HTTP retries.
+   * Undefined (the common case) renders no extra text.
+   */
+  meta?: string;
 }
 
 const STEP_ICONS: Record<string, string> = {
@@ -130,6 +137,7 @@ export function AgentStep({
   collapsible = false,
   defaultExpanded = true,
   children,
+  meta,
 }: AgentStepProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
 
@@ -140,6 +148,11 @@ export function AgentStep({
       <span className={`font-mono text-[10px] tracking-[0.1em] uppercase ${status === 'done' || status === 'error' ? 'text-fg-secondary' : 'text-fg-primary'}`}>
         {label}
       </span>
+      {meta && (
+        <span className="font-mono text-[10px] tracking-[0.05em] uppercase text-fg-muted">
+          · {meta}
+        </span>
+      )}
       {collapsible && (
         <span
           className={`inline-flex text-fg-muted transition-transform duration-150 ${expanded ? 'rotate-180' : ''}`}

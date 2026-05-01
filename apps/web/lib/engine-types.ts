@@ -183,6 +183,23 @@ export interface EngineChatMessage {
    * ReasoningAccordion + tools rows render as before.
    */
   timeline?: TimelineBlock[];
+  /**
+   * [SPEC 8 v0.5.1 B3.2] Adaptive harness shape this assistant turn ran
+   * under. Stamped from the engine's `harness_shape` SSE event (one
+   * emission per turn, fired before `agentLoop` begins). Surfaces in
+   * `TurnMetrics.harnessShape` for dashboard segmentation; rendered
+   * verbatim in the engineering-only effort badge today (no user-facing
+   * surface in B3 — telemetry-only). Undefined for legacy / pre-SPEC-8
+   * turns where the engine didn't emit the event.
+   */
+  harnessShape?: 'lean' | 'standard' | 'rich' | 'max';
+  /**
+   * [SPEC 8 v0.5.1 B3.2] 1-line human-readable rationale for the shape
+   * decision (e.g. "matched recipe portfolio_rebalance → max"). Used in
+   * Datadog logs + dashboard tooltips to explain WHY a turn picked its
+   * shape without re-running the classifier.
+   */
+  harnessRationale?: string;
 }
 
 export interface ToolExecution {

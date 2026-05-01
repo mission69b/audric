@@ -22,9 +22,9 @@ type RunStatus = 'running' | 'done' | 'error';
 // indented line under the step header. Per spec, this kills the static-
 // spinner dead-air on the worst-offender ~10% of tool calls.
 //
-// `attemptCount` (SPEC 8 v0.3 G5) is reserved for the ToolBlock shape
-// but the visual surface ("attempt 2 · 1.4s" header subtitle) lands in
-// B3 alongside the tool-retry test cases.
+// `attemptCount` (SPEC 8 v0.3 G5, wired in B3.2) renders as a header
+// subtitle "attempt N · 1.4s" only when the engine reports N>1 — first-try
+// successes leave the field undefined so the header stays clean.
 // ───────────────────────────────────────────────────────────────────────────
 
 interface ToolBlockViewProps {
@@ -71,6 +71,32 @@ export function ToolBlockView({ block, isStreaming, headerless }: ToolBlockViewP
     isError: block.isError,
   };
 
+  // [SPEC 8 v0.5.1 B3.2] Build the `attempt N · 1.4s` header meta when
+  // either side has a value worth surfacing.
+  //  - Retry count surfaces only when > 1 (engine omits otherwise).
+  //  - Duration surfaces once the tool settles (startedAt + endedAt).
+  // Both pieces are joined with ` · ` so a tool with only retry info
+  // (still running on retry 2) renders "attempt 2", and a tool with
+  // only duration (1st-try success) renders "1.4s".
+  const headerMetaParts: string[] = [];
+  if (block.attemptCount !== undefined && block.attemptCount > 1) {
+    headerMetaParts.push(`attempt ${block.attemptCount}`);
+  }
+  // `startedAt: 0` is a legitimate timestamp in tests (and theoretically at
+  // epoch boot), so use `!== undefined` rather than truthiness.
+  if (block.startedAt !== undefined && block.endedAt !== undefined) {
+    const seconds = Math.max(0, (block.endedAt - block.startedAt) / 1000);
+    headerMetaParts.push(`${seconds.toFixed(1)}s`);
+  }
+  // Only set `meta` when retry info is present — the duration alone is
+  // ambient noise we don't want to add to the common-case header. The
+  // spec's "TOOL · attempt N · 1.4s" pattern is a retry surface, not a
+  // generic timing badge.
+  const headerMeta =
+    block.attemptCount !== undefined && block.attemptCount > 1 && headerMetaParts.length > 0
+      ? headerMetaParts.join(' · ')
+      : undefined;
+
   return (
     <div className="space-y-1">
       {!headerless && (
@@ -78,6 +104,7 @@ export function ToolBlockView({ block, isStreaming, headerless }: ToolBlockViewP
           icon={getStepIcon(block.toolName)}
           label={getStepLabel(block.toolName)}
           status={stepStatus}
+          meta={headerMeta}
         />
       )}
 

@@ -129,7 +129,15 @@ export async function POST(request: NextRequest) {
     let sessionId: string | undefined;
     let session = null;
     let saveSession = false;
-    let engineMeta: { effortLevel: string; modelUsed: string } | undefined;
+    let engineMeta: {
+      effortLevel: string;
+      modelUsed: string;
+      // [SPEC 8 v0.5.1 B3.2] Surfaced via the same factory `onMeta` hook
+      // so the chat route can pass them into `engine.submitMessage(...)`
+      // and the metrics row can stamp `harnessShape` for dashboards.
+      harnessShape: 'lean' | 'standard' | 'rich' | 'max';
+      harnessRationale: string;
+    } | undefined;
     let sessionSpendUsdAtStart = 0;
     // Constructed early so the engine factory can pipe `onGuardFired`
     // directly into the collector before the agent loop starts.
@@ -440,7 +448,15 @@ export async function POST(request: NextRequest) {
           // serializing — the SSE adapter is lossy for our needs (`error`
           // events lose the Error type, and we want refinement detection
           // on the original `result` object).
-          for await (const event of engine.submitMessage(trimmedMessage)) {
+          for await (const event of engine.submitMessage(trimmedMessage, {
+            // [SPEC 8 v0.5.1 B3.2] Engine emits the one-shot `harness_shape`
+            // event at turn start; host stashes the shape on the assistant
+            // EngineChatMessage + on `TurnMetrics.harnessShape`. Falls back
+            // to `'standard'` only when factory metadata is unavailable
+            // (shouldn't happen in production — defensive default).
+            harnessShape: engineMeta?.harnessShape ?? 'standard',
+            harnessRationale: engineMeta?.harnessRationale,
+          })) {
             switch (event.type) {
               case 'compaction':
                 collector.onCompaction();

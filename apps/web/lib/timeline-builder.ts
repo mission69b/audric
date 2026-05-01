@@ -127,13 +127,20 @@ export function applyEventToTimeline(
       if (idx === -1) return current;
       return current.map((b, i): TimelineBlock => {
         if (i !== idx || b.type !== 'tool') return b;
-        return {
+        const next: ToolTimelineBlock = {
           ...b,
           status: event.isError ? 'error' : 'done',
           result: event.result,
           isError: event.isError,
           endedAt: now,
         };
+        // [SPEC 8 v0.5.1 B3.2] HTTP retry surface — only set when > 1
+        // (engine omits the field on first-try success). `ToolBlockView`
+        // renders "TOOL · attempt N · 1.4s" subtitle when present.
+        if (event.attemptCount !== undefined) {
+          next.attemptCount = event.attemptCount;
+        }
+        return next;
       });
     }
 
@@ -225,6 +232,11 @@ export function applyEventToTimeline(
       return changed ? next : current;
     }
 
+    // [SPEC 8 v0.5.1 B3.2] `harness_shape` is a turn-level metadata
+    // event; it produces no timeline block of its own. The host stashes
+    // the shape on `EngineChatMessage.harnessShape` (handled in
+    // useEngine.processSSEChunk), and the timeline stays unchanged.
+    case 'harness_shape':
     case 'usage':
     case 'error':
       return current;
