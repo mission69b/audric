@@ -560,6 +560,57 @@ export function useEngine({ address, jwt, onToolResult }: UseEngineOptions) {
         );
         break;
       }
+
+      // [SPEC 8 v0.5.1 B1] Captured-but-not-rendered.
+      // Three new SSE event types ship with @t2000/engine@1.4.0. We
+      // stash them on the message so B2's ReasoningTimeline can read
+      // them later — today nothing renders. Keeping the cases explicit
+      // (vs. a no-op default) means TypeScript exhaustiveness still
+      // protects us when SPEC 9 adds more events.
+      case 'todo_update': {
+        const update = { items: event.items, toolUseId: event.toolUseId };
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === msgId
+              ? { ...m, todoUpdates: [...(m.todoUpdates ?? []), update] }
+              : m,
+          ),
+        );
+        break;
+      }
+
+      case 'tool_progress': {
+        const progress = {
+          toolUseId: event.toolUseId,
+          toolName: event.toolName,
+          message: event.message,
+          pct: event.pct,
+        };
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === msgId
+              ? { ...m, toolProgress: [...(m.toolProgress ?? []), progress] }
+              : m,
+          ),
+        );
+        break;
+      }
+
+      case 'pending_input': {
+        const input = {
+          schema: event.schema,
+          inputId: event.inputId,
+          prompt: event.prompt,
+        };
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === msgId
+              ? { ...m, pendingInputs: [...(m.pendingInputs ?? []), input] }
+              : m,
+          ),
+        );
+        break;
+      }
     }
   }
 
