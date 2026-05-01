@@ -40,8 +40,12 @@ const SUMMARY: ThinkingTimelineBlock = {
 describe('ThinkingBlockView', () => {
   it('renders streaming text expanded by default', () => {
     const { getByText, queryByText } = render(<ThinkingBlockView block={STREAMING} />);
-    expect(getByText('Reasoning…')).toBeTruthy();
-    // Body is shown while streaming.
+    // [B3.5 / Gap C] Header label is now driven by `<ThinkingHeader>`
+    // which renders "THINKING…" while streaming and "THOUGHT" once done.
+    expect(getByText('THINKING…')).toBeTruthy();
+    // Body is shown while streaming. `<ReasoningStream>` snaps the
+    // reveal cursor to text.length on initial mount, so the full text
+    // is in the DOM immediately (no animation race).
     expect(getByText('Considering the swap…')).toBeTruthy();
     expect(queryByText('How I evaluated this')).toBeNull();
   });

@@ -102,6 +102,26 @@ describe('ReasoningTimeline — thinking-block expansion (G8)', () => {
     expect(queryByText('thought one')).toBeTruthy();
   });
 
+  // ───────────────────────────────────────────────────────────────────────
+  // [SPEC 8 v0.5.1 B3.5 / Gap C] TaskInitiated divider at head of timeline
+  // ───────────────────────────────────────────────────────────────────────
+
+  it('renders the TASK INITIATED divider once at the top of any non-empty timeline', () => {
+    const blocks: TimelineBlock[] = [T(0, 'done', 'first thought')];
+    const { getAllByText, getByRole } = render(
+      <ReasoningTimeline blocks={blocks} />,
+    );
+    expect(getAllByText('TASK INITIATED').length).toBe(1);
+    // The separator role is exposed for assistive tech.
+    expect(getByRole('separator')).toBeTruthy();
+  });
+
+  it('omits the TASK INITIATED divider when the timeline is empty', () => {
+    const { container } = render(<ReasoningTimeline blocks={[]} />);
+    // Empty timeline returns null entirely — no divider emitted.
+    expect(container.firstChild).toBeNull();
+  });
+
   it('per-message scope: separate <ReasoningTimeline> instances do not share state', () => {
     // Two SEQUENTIAL (not concurrent) renders prove a fresh map per
     // component. We `cleanup()` between them so the second render

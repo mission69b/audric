@@ -2,39 +2,33 @@
 
 import { useState } from 'react';
 import type { ThinkingTimelineBlock, EvaluationItem } from '@/lib/engine-types';
-import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
+import { ThinkingHeader } from './primitives/ThinkingHeader';
+import { ReasoningStream } from './primitives/ReasoningStream';
+import { HowIEvaluated } from './primitives/HowIEvaluated';
 
 // ───────────────────────────────────────────────────────────────────────────
-// SPEC 8 v0.5.1 — ThinkingBlockView (B2.2 + B3.3)
+// SPEC 8 v0.5.1 — ThinkingBlockView (B2.2 + B3.3 + B3.5)
 //
 // Two render modes selected by the engine via the `summaryMode` flag:
 //
-//   1. Default mode: italic "✦ audric is thinking" header + accumulating
-//      text. Streaming = always expanded with a soft animation hint.
-//      Done = collapsed by default, click to expand. Matches the v0.4
-//      visual primitive (italic typeset, low-key tone).
+//   1. Default mode: `<ThinkingHeader>` (pulsing Audric "A" → green
+//      check) + `<ReasoningStream>` (typed-italic 2-3 chars/tick reveal
+//      while streaming, snap-to-final on done) when expanded. B3.5
+//      ports both halves to the v2 visual primitives (audit Gap C).
+//      Streaming = auto-expanded by parent. Done = collapsed by default,
+//      click to expand.
 //
 //   2. summaryMode: the LLM emitted a parseable <eval_summary> marker
-//      inside this block. We render the HowIEvaluated trust card
-//      ("✦ HOW I EVALUATED THIS") with structured rows from
-//      `evaluationItems` instead of the raw thinking text.
+//      inside this block. `<HowIEvaluated>` renders the disclosure with
+//      a token/model/latency badge (B3.5) and the existing
+//      `<HowIEvaluatedItems>` ul as its body.
 //
-// Auto-expand semantics (SPEC 8 v0.5 G8 + B3.3):
-//
-//   - **Controlled mode** (used by `<ReasoningTimeline>`): parent owns
-//     a `Map<blockIndex, 'expanded' | 'collapsed'>` and passes the
-//     current value via `expanded` + a `onToggle` callback. This is
-//     what gives us "auto-expand on first emission only, manual state
-//     preserved on rehydrate" — the parent seeds the map from the
-//     block's status the FIRST time it sees a blockIndex, and never
-//     re-seeds on a streaming→done transition. User toggles persist
-//     until the parent unmounts (whole-message scope).
-//
-//   - **Uncontrolled mode** (used by standalone tests + any future
-//     consumer that doesn't lift state): falls back to a per-component
-//     `useState(isStreaming)` — the pre-B3.3 behavior. Existing tests
-//     keep working with no changes.
+// Auto-expand semantics (SPEC 8 v0.5 G8 + B3.3): unchanged from B3.3.
+// Controlled mode owns expansion via a `Map<blockIndex, expanded>` in
+// `<ReasoningTimeline>`. Uncontrolled mode falls back to a per-component
+// `useState(isStreaming)` so standalone tests + future consumers stay
+// byte-compatible.
 // ───────────────────────────────────────────────────────────────────────────
 
 interface ThinkingBlockViewProps {
@@ -91,36 +85,10 @@ export function ThinkingBlockView({
 
   return (
     <div className="pl-1 mb-1.5">
-      <button
-        type="button"
-        onClick={handleToggle}
-        className="group flex items-center gap-1.5 py-1 text-fg-muted hover:text-fg-primary/60 transition-colors"
-        aria-expanded={expanded}
-      >
-        <span
-          className={cn(
-            'inline-flex transition-transform duration-200',
-            expanded && 'rotate-90',
-          )}
-          aria-hidden="true"
-        >
-          <Icon name="chevron-right" size={10} />
-        </span>
-        <span className="font-mono text-[11px] tracking-wider uppercase">
-          {isStreaming ? 'Reasoning…' : 'How I evaluated this'}
-        </span>
-      </button>
-
+      <ThinkingHeader done={!isStreaming} onClick={handleToggle} expanded={expanded} />
       {expanded && (
-        <div className="mt-1 ml-[18px] rounded-md border border-border-subtle bg-surface-card px-3 py-2.5">
-          <p
-            className={cn(
-              'font-mono text-[12px] leading-[1.7] text-fg-secondary whitespace-pre-wrap break-words',
-              isStreaming && 'italic',
-            )}
-          >
-            {block.text}
-          </p>
+        <div className="mt-0.5">
+          <ReasoningStream text={block.text} streaming={isStreaming} />
         </div>
       )}
     </div>
@@ -133,33 +101,25 @@ interface HowIEvaluatedCardProps {
 
 function HowIEvaluatedCard({ items }: HowIEvaluatedCardProps) {
   return (
-    <div className="pl-1 mb-2">
-      <div className="rounded-md border border-border-subtle bg-surface-card px-3 py-2.5">
-        <div className="flex items-center gap-1.5 pb-1.5 border-b border-border-subtle/50">
-          <span className="text-success-solid text-[11px]" aria-hidden="true">✦</span>
-          <span className="font-mono text-[11px] tracking-wider uppercase text-fg-muted">
-            How I evaluated this
-          </span>
-        </div>
-        <ul className="mt-2 space-y-1.5">
-          {items.map((item, i) => (
-            <li key={i} className="flex items-start gap-2 text-[12px] leading-snug">
-              <span
-                className={cn('font-mono w-3 shrink-0 text-center', STATUS_DOT[item.status])}
-                aria-label={item.status}
-              >
-                {STATUS_GLYPH[item.status]}
-              </span>
-              <div className="flex-1 min-w-0">
-                <span className="font-medium text-fg-primary">{item.label}</span>
-                {item.note && (
-                  <span className="text-fg-secondary ml-2">{item.note}</span>
-                )}
-              </div>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </div>
+    <HowIEvaluated>
+      <ul className="space-y-1.5">
+        {items.map((item, i) => (
+          <li key={i} className="flex items-start gap-2 text-[12px] leading-snug">
+            <span
+              className={cn('font-mono w-3 shrink-0 text-center', STATUS_DOT[item.status])}
+              aria-label={item.status}
+            >
+              {STATUS_GLYPH[item.status]}
+            </span>
+            <div className="flex-1 min-w-0">
+              <span className="font-medium text-fg-primary">{item.label}</span>
+              {item.note && (
+                <span className="text-fg-secondary ml-2">{item.note}</span>
+              )}
+            </div>
+          </li>
+        ))}
+      </ul>
+    </HowIEvaluated>
   );
 }

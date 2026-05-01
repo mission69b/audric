@@ -4,17 +4,19 @@ import type { TextTimelineBlock } from '@/lib/engine-types';
 import { AgentMarkdown } from '@/components/dashboard/AgentMarkdown';
 import { ThinkingState } from '../ThinkingState';
 import { VoiceHighlightedText } from '@/components/dashboard/VoiceHighlightedText';
+import { AudricLine } from './primitives/AudricLine';
 import {
   localSpokenWordIndex,
   type TextBlockVoiceSlice,
 } from '@/lib/voice/timeline-voice-slices';
 
 // ───────────────────────────────────────────────────────────────────────────
-// SPEC 8 v0.5.1 — TextBlockView (B2.2 + B3.4)
+// SPEC 8 v0.5.1 — TextBlockView (B2.2 + B3.4 + B3.5)
 //
-// Renders the assistant's final text run. Mirrors the styling from the
-// existing ChatMessage `hasContent` block (✦ leading mark + leading-relaxed
-// text). When streaming, shows the trailing delivery indicator.
+// Renders the assistant's final text run. The outer ✦ + leading-relaxed
+// shell is owned by the `<AudricLine>` v2 primitive (B3.5 / Gap C); this
+// view picks the inner content branch — streaming, voice-highlighted,
+// or terminal markdown.
 //
 // [B3.4 / Gap F] Voice mode — when this message is the one currently
 // being spoken via TTS, `voiceSlice` carries the per-block char/word
@@ -52,41 +54,27 @@ export function TextBlockView({ block, voiceSlice, spokenWordIndex }: TextBlockV
     block.status !== 'streaming';
 
   return (
-    <div
-      className="pl-1 text-sm"
-      aria-live={block.status === 'streaming' ? 'polite' : 'off'}
-      aria-atomic="false"
-    >
-      <span
-        className="text-success-solid mr-1.5 float-left mt-0.5 text-[12px]"
-        aria-hidden="true"
-      >
-        ✦
-      </span>
-      <div className="text-fg-primary leading-relaxed overflow-hidden">
-        {block.status === 'streaming' ? (
-          // [B2.3 mobile] break-words matches AgentMarkdown's post-stream
-          // behavior — without it, long unbroken tokens (coin types, addresses)
-          // overflow the narrow chat column on mobile during streaming.
-          <span className="whitespace-pre-wrap break-words">
-            {block.text}
-            <span className="inline-flex items-center ml-1.5 align-text-bottom">
-              <ThinkingState status="delivering" intensity="transitioning" />
-            </span>
+    <AudricLine ariaLive={block.status === 'streaming' ? 'polite' : 'off'}>
+      {block.status === 'streaming' ? (
+        // [B2.3 mobile] break-words matches AgentMarkdown's post-stream
+        // behavior — without it, long unbroken tokens (coin types, addresses)
+        // overflow the narrow chat column on mobile during streaming.
+        <span className="whitespace-pre-wrap break-words">
+          {block.text}
+          <span className="inline-flex items-center ml-1.5 align-text-bottom">
+            <ThinkingState status="delivering" intensity="transitioning" />
           </span>
-        ) : isActiveVoice ? (
-          <VoiceHighlightedText
-            text={block.text}
-            spans={voiceSlice!.localSpans}
-            spokenWordIndex={localSpokenWordIndex(voiceSlice!, spokenWordIndex!)}
-          />
-        ) : (
-          <AgentMarkdown text={block.text} />
-        )}
-      </div>
-      {block.status === 'streaming' && (
-        <span className="sr-only">Audric is typing</span>
+          <span className="sr-only">Audric is typing</span>
+        </span>
+      ) : isActiveVoice ? (
+        <VoiceHighlightedText
+          text={block.text}
+          spans={voiceSlice!.localSpans}
+          spokenWordIndex={localSpokenWordIndex(voiceSlice!, spokenWordIndex!)}
+        />
+      ) : (
+        <AgentMarkdown text={block.text} />
       )}
-    </div>
+    </AudricLine>
   );
 }
