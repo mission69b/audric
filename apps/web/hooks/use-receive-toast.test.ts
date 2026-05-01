@@ -92,7 +92,7 @@ describe('useReceiveToast — delta detection', () => {
 });
 
 describe('useReceiveToast — user-action grace window', () => {
-  it('suppresses toast when within 60s of a user-initiated tx', () => {
+  it('suppresses toast when within 120s of a user-initiated tx', () => {
     const ref = makeRef(Date.now()); // user just acted
     const { rerender } = renderHook(
       ({ usdc }: { usdc: number | undefined }) =>
@@ -105,8 +105,25 @@ describe('useReceiveToast — user-action grace window', () => {
     expect(richToastSpy).not.toHaveBeenCalled();
   });
 
-  it('fires toast when last user action was > 60s ago', () => {
-    const ref = makeRef(Date.now() - 90_000); // 90 seconds ago — outside grace
+  it('still suppresses toast when last user action was 90s ago (within new 120s window)', () => {
+    // [SPEC 8 v0.5.2 hotfix] USER_ACTION_GRACE_MS bumped from 60_000 → 120_000
+    // to cover slow indexer settlement on swap outputs (founder repro:
+    // 60s window let a $4.55 swap-to-USDC inflow fire a misleading
+    // "received" toast). 90s is now WITHIN the grace window so the
+    // toast must stay suppressed.
+    const ref = makeRef(Date.now() - 90_000);
+    const { rerender } = renderHook(
+      ({ usdc }: { usdc: number | undefined }) =>
+        useReceiveToast({ usdc, lastUserActionAtRef: ref }),
+      { initialProps: { usdc: 100 as number | undefined } },
+    );
+
+    rerender({ usdc: 110 });
+    expect(richToastSpy).not.toHaveBeenCalled();
+  });
+
+  it('fires toast when last user action was > 120s ago (outside new grace window)', () => {
+    const ref = makeRef(Date.now() - 150_000); // 150 seconds ago — outside grace
     const { rerender } = renderHook(
       ({ usdc }: { usdc: number | undefined }) =>
         useReceiveToast({ usdc, lastUserActionAtRef: ref }),

@@ -224,6 +224,13 @@ All transactions are gas-sponsored (free for the user). The user does NOT need S
 - For detailed position data (supply/borrow breakdown, USD values), use health_check or savings_info.
 - Show real numbers from tools — never fabricate rates, amounts, or balances.
 
+## CRITICAL: \`<eval_summary>\` BEFORE every confirm-tier write (MANDATORY, NEVER SKIP)
+Your FINAL thinking burst BEFORE save_deposit / borrow / repay_debt / swap_execute / send_transfer / withdraw / claim_rewards / volo_stake / volo_unstake / pay_api MUST contain \`<eval_summary>{ "items": [...] }</eval_summary>\` — valid JSON, 2-5 items, each \`{ label, status: "good"|"warning"|"critical"|"info", note? }\`. Cover whichever apply: Health factor, Wallet balance, Daily spend, Slippage, Recipient, APY. Example BEFORE "save 5 USDC":
+
+\`<eval_summary>{ "items": [{ "label": "Wallet", "status": "good", "note": "$64 USDC, dep $5" }, { "label": "APY", "status": "good", "note": "4.69%" }] }</eval_summary>\`
+
+NEVER on read-only / recommendation turns. Valid JSON only — no comments, no trailing commas. Renders as "✦ HOW I EVALUATED THIS" trust card.
+
 ## Tool usage
 - Use tools proactively — don't refuse requests you can handle.
 - For web search / news / current info, use web_search (free). Only use pay_api for search if web_search is unavailable.
@@ -435,19 +442,7 @@ Each turn is pinned to ONE shape by \`classifyEffort()\`. Adapt your behavior:
 
 Invariants: LEAN stays terse — no mid-flight narration, no \`update_todo\`. RICH recipe-match turns MUST emit at least one \`update_todo\` (zero is a regression signal). Don't pad bursts to game telemetry.
 
-### \`<eval_summary>\` emission (write-recommendation turns)
-On save / borrow / swap / send / Payment Stream turns, wrap a constraint-checklist in your FINAL pre-text thinking burst as a JSON object inside \`<eval_summary>...</eval_summary>\`. Schema: \`{ "items": [{ "label": string, "status": "good"|"warning"|"critical"|"info", "note"?: string }] }\`. Example:
-
-\`\`\`
-<eval_summary>
-{ "items": [
-  { "label": "Health factor", "status": "good", "note": "1.84 → 1.62" },
-  { "label": "Daily spend", "status": "warning", "note": "$8 of $50 cap used" }
-] }
-</eval_summary>
-\`\`\`
-
-Rules: AT MOST ONE \`<eval_summary>\` per turn — final burst only · ONLY on write-recommendation turns (NEVER on read-only turns) · valid JSON only, no comments or trailing commas. The host strips the marker and renders the rows as a "✦ HOW I EVALUATED THIS" trust card. Malformed JSON falls back to the raw thinking accordion.`;
+`;
 
 // ---------------------------------------------------------------------------
 // buildDynamicBlock — per-session context, never cached (2.5.2)
