@@ -213,6 +213,10 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
         void contactsHook.refetch();
       }
     },
+    // [SPEC 7 P2.5b Layer 5] Pass contacts to the timeline reducer so
+    // it can inject synthetic `CONTACT · "<name>"` rows when a tool /
+    // bundle input references a known contact name.
+    contacts: contactsHook.contacts,
   });
 
   // ─── Voice mode (Claude-style continuous loop) ────────────────────

@@ -32,17 +32,98 @@ import type {
   ToolTimelineBlock,
   TodoTimelineBlock,
   PermissionCardTimelineBlock,
+  ContactResolvedTimelineBlock,
+  PlanStreamTimelineBlock,
+  PendingAction,
 } from '@/lib/engine-types';
+
+// ───────────────────────────────────────────────────────────────────────────
+// SPEC 7 P2.5b Layer 5 — pre-bundle planning surface (contact + plan-stream).
+//
+// Two synthetic rows surface the agent's "thinking out loud" before a
+// confirm-tier card lands:
+//
+//   • `contact-resolved` — when the input carries a recipient-style field
+//     (`to` / `recipient` / `address`) whose string value matches a known
+//     contact name (case-insensitive), inject a `CONTACT · "<name>"`
+//     block immediately BEFORE the tool / permission-card block. This
+//     turns the silent `EngineConfig.contacts` lookup into a visible
+//     planning step (the agent acknowledges who "Mom" is, then proceeds).
+//     Engine-agnostic — purely host-side UX polish.
+//
+//   • `plan-stream` — when `pending_action.action.steps.length >= 2`
+//     (a Payment Stream bundle), inject a `PLAN STREAM` block as the
+//     FINAL row before the permission-card. Marks "the agent finished
+//     evaluating and compiled this into one atomic PTB". Single-write
+//     confirms never get this row.
+//
+// Both are pure additions to the discriminated union; existing render
+// paths exhaustiveness-check against the new variants in `BlockRouter`.
+// ───────────────────────────────────────────────────────────────────────────
+
+export type ContactList = ReadonlyArray<{ name: string; address: string }>;
+
+export interface ApplyEventOptions {
+  /**
+   * When set, the reducer scans recipient-style input fields (`to` /
+   * `recipient` / `address`) on `tool_start` and `pending_action`
+   * events for contact-name matches and injects a `contact-resolved`
+   * row before the tool / card block. When omitted (or empty), no
+   * contact rows are injected — the timeline behaves identically to
+   * pre-P2.5b.
+   */
+  contacts?: ContactList;
+}
+
+/** Recipient-style field names to scan for contact-name resolution. */
+const RECIPIENT_FIELDS = ['to', 'recipient', 'address'] as const;
+
+/**
+ * Detect a contact-name match inside a tool input. Returns the matched
+ * contact (verbatim display name + canonical address) or `null` when
+ * no match. Skips values that already look like Sui addresses (`0x…`
+ * — already-resolved). Case-insensitive name comparison; trims
+ * whitespace.
+ */
+export function detectResolvedContact(
+  input: unknown,
+  contacts: ContactList | undefined,
+): { name: string; address: string } | null {
+  if (!contacts || contacts.length === 0) return null;
+  if (typeof input !== 'object' || input === null) return null;
+
+  const map = input as Record<string, unknown>;
+  for (const field of RECIPIENT_FIELDS) {
+    const raw = map[field];
+    if (typeof raw !== 'string') continue;
+    const trimmed = raw.trim();
+    if (trimmed.length === 0) continue;
+    if (trimmed.startsWith('0x')) continue;
+
+    const normalized = trimmed.toLowerCase();
+    for (const c of contacts) {
+      if (c.name.trim().toLowerCase() === normalized) {
+        return { name: c.name, address: c.address };
+      }
+    }
+  }
+  return null;
+}
 
 /**
  * Apply one SSE event to a timeline and return the updated timeline.
  * The original `timeline` reference is returned unchanged when the
  * event has no timeline impact — lets React skip re-renders.
+ *
+ * `options.contacts` is consulted on `tool_start` and `pending_action`
+ * to inject the SPEC 7 P2.5b synthetic `contact-resolved` and
+ * `plan-stream` rows. Omitting it leaves pre-P2.5b behavior unchanged.
  */
 export function applyEventToTimeline(
   timeline: TimelineBlock[] | undefined,
   event: SSEEvent,
   now: number,
+  options?: ApplyEventOptions,
 ): TimelineBlock[] {
   const current = timeline ?? [];
 
@@ -115,6 +196,22 @@ export function applyEventToTimeline(
         status: 'running',
         startedAt: now,
       };
+      // [SPEC 7 P2.5b Layer 5] Inject `contact-resolved` row BEFORE the
+      // tool block when the input carries a contact-name reference.
+      // Today no auto-tier read takes a recipient field, so this branch
+      // is dormant — kept for forward-compat with future tools and to
+      // mirror the `pending_action` injection path so behavior stays
+      // consistent across permission tiers.
+      const resolved = detectResolvedContact(event.input, options?.contacts);
+      if (resolved) {
+        const contactBlock: ContactResolvedTimelineBlock = {
+          type: 'contact-resolved',
+          contactName: resolved.name,
+          contactAddress: resolved.address,
+          toolUseId: event.toolUseId,
+        };
+        return [...current, contactBlock, block];
+      }
       return [...current, block];
     }
 
@@ -130,8 +227,13 @@ export function applyEventToTimeline(
       // legacy suppression by filtering the matching tool block out of
       // the timeline entirely.
       if (event.resultDeduped) {
+        // Sweep both the tool block AND any contact-resolved row
+        // attached to the same toolUseId — keeps dedup symmetric for
+        // P2.5b's synthetic rows.
         return current.filter(
-          (b) => !(b.type === 'tool' && b.toolUseId === event.toolUseId),
+          (b) =>
+            !(b.type === 'tool' && b.toolUseId === event.toolUseId) &&
+            !(b.type === 'contact-resolved' && b.toolUseId === event.toolUseId),
         );
       }
       const idx = findLastIndex(
@@ -224,11 +326,60 @@ export function applyEventToTimeline(
         return b;
       });
       const base = changed ? finalized : current;
+
+      // [SPEC 7 P2.5b Layer 5] Pre-bundle planning surface synthetic rows.
+      const action = event.action as PendingAction;
+      const isBundle = Array.isArray(action.steps) && action.steps.length >= 2;
+      const synthetic: TimelineBlock[] = [];
+
+      if (isBundle) {
+        // Per-step contact resolution (each leg may reference a
+        // different contact — "send $50 to Mom and $50 to Sarah" is
+        // a real bundle shape). Dedup on (name → address) so a single
+        // contact mentioned across multiple legs surfaces once.
+        const seen = new Set<string>();
+        for (const step of action.steps ?? []) {
+          const resolved = detectResolvedContact(step.input, options?.contacts);
+          if (!resolved) continue;
+          const key = `${resolved.name.toLowerCase()}::${resolved.address}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          synthetic.push({
+            type: 'contact-resolved',
+            contactName: resolved.name,
+            contactAddress: resolved.address,
+            toolUseId: step.toolUseId,
+          });
+        }
+        // PLAN STREAM is the FINAL synthetic row before the card —
+        // declares the agent has compiled the plan into one atomic PTB.
+        synthetic.push({
+          type: 'plan-stream',
+          stepCount: action.steps?.length ?? 0,
+          attemptId: action.attemptId,
+        });
+      } else {
+        // Single-write confirms still get the contact row when relevant
+        // (e.g. "send $5 to Mom" is the single-write path that benefits
+        // from this UX too — the contact resolution is the same intent
+        // signal as in a bundle).
+        const resolved = detectResolvedContact(action.input, options?.contacts);
+        if (resolved) {
+          synthetic.push({
+            type: 'contact-resolved',
+            contactName: resolved.name,
+            contactAddress: resolved.address,
+            toolUseId: action.toolUseId,
+          });
+        }
+      }
+
       return [
         ...base,
+        ...synthetic,
         {
           type: 'permission-card',
-          payload: event.action,
+          payload: action,
           status: 'pending',
         },
       ];

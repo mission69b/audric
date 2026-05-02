@@ -11,6 +11,8 @@ import { CanvasBlockView } from './CanvasBlockView';
 import { PermissionCardBlockView } from './PermissionCardBlockView';
 import { PendingInputBlockView } from './PendingInputBlockView';
 import { RegeneratedBlockView } from './RegeneratedBlockView';
+import { ContactResolvedBlockView } from './ContactResolvedBlockView';
+import { PlanStreamBlockView } from './PlanStreamBlockView';
 
 // ───────────────────────────────────────────────────────────────────────────
 // SPEC 8 v0.5.1 — BlockRouter (B2.2)
@@ -143,5 +145,11 @@ export function BlockRouter({
 
     case 'regenerated':
       return <RegeneratedBlockView block={block} />;
+
+    case 'contact-resolved':
+      return <ContactResolvedBlockView block={block} />;
+
+    case 'plan-stream':
+      return <PlanStreamBlockView block={block} />;
   }
 }

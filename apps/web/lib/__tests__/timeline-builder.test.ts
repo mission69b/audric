@@ -8,6 +8,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   applyEventToTimeline,
+  detectResolvedContact,
   markPermissionCardResolved,
   markTimelineInterrupted,
   mergeWriteExecutionIntoTimeline,
@@ -20,6 +21,8 @@ import type {
   ToolTimelineBlock,
   TodoTimelineBlock,
   PendingAction,
+  ContactResolvedTimelineBlock,
+  PlanStreamTimelineBlock,
 } from '@/lib/engine-types';
 
 const T0 = 1_700_000_000_000;
@@ -830,5 +833,344 @@ describe('mergeWriteExecutionIntoTimeline', () => {
     );
     expect(next).toHaveLength(1);
     expect(next[0].type).toBe('tool');
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────
+// SPEC 7 P2.5b Layer 5 — synthetic pre-bundle planning rows
+// ───────────────────────────────────────────────────────────────────────────
+
+const CONTACTS_FIXTURE = [
+  { name: 'Mom', address: '0x111111111111111111111111111111111111111111111111111111111111aaaa' },
+  { name: 'Sarah', address: '0x222222222222222222222222222222222222222222222222222222222222bbbb' },
+] as const;
+
+describe('detectResolvedContact — pure helper', () => {
+  it('matches a recipient field case-insensitively (input "mom" → contact "Mom")', () => {
+    const out = detectResolvedContact({ to: 'mom', amount: 5 }, CONTACTS_FIXTURE);
+    expect(out).toEqual({ name: 'Mom', address: CONTACTS_FIXTURE[0].address });
+  });
+
+  it('preserves the contact display name verbatim (NOT lowercased)', () => {
+    const out = detectResolvedContact({ to: 'MOM' }, CONTACTS_FIXTURE);
+    expect(out?.name).toBe('Mom'); // canonical from the contact list, not the user's input casing
+  });
+
+  it('skips already-resolved Sui addresses (0x… values are not contacts)', () => {
+    const out = detectResolvedContact(
+      { to: '0xabcdef0000000000000000000000000000000000000000000000000000000000' },
+      CONTACTS_FIXTURE,
+    );
+    expect(out).toBeNull();
+  });
+
+  it('only scans recipient-style fields (`to` / `recipient` / `address`)', () => {
+    // `memo` and `note` should NOT be scanned (false-positive prevention —
+    // "Hi Mom" in a memo isn't a recipient resolution).
+    const out = detectResolvedContact(
+      { to: '0xabcd000000000000000000000000000000000000000000000000000000000000', memo: 'Hi Mom' },
+      CONTACTS_FIXTURE,
+    );
+    expect(out).toBeNull();
+  });
+
+  it('matches the `recipient` and `address` fields too', () => {
+    const a = detectResolvedContact({ recipient: 'sarah', amount: 1 }, CONTACTS_FIXTURE);
+    expect(a).toEqual({ name: 'Sarah', address: CONTACTS_FIXTURE[1].address });
+    const b = detectResolvedContact({ address: 'mom' }, CONTACTS_FIXTURE);
+    expect(b).toEqual({ name: 'Mom', address: CONTACTS_FIXTURE[0].address });
+  });
+
+  it('returns null when contacts list is empty / undefined / no match', () => {
+    expect(detectResolvedContact({ to: 'mom' }, [])).toBeNull();
+    expect(detectResolvedContact({ to: 'mom' }, undefined)).toBeNull();
+    expect(detectResolvedContact({ to: 'unknown-name' }, CONTACTS_FIXTURE)).toBeNull();
+  });
+
+  it('returns null for non-object inputs (defensive — engine inputs are objects but be safe)', () => {
+    expect(detectResolvedContact(null, CONTACTS_FIXTURE)).toBeNull();
+    expect(detectResolvedContact(undefined, CONTACTS_FIXTURE)).toBeNull();
+    expect(detectResolvedContact('mom', CONTACTS_FIXTURE)).toBeNull();
+    expect(detectResolvedContact(42, CONTACTS_FIXTURE)).toBeNull();
+  });
+
+  it('handles whitespace and empty strings (trims before compare; empty → null)', () => {
+    expect(detectResolvedContact({ to: '   Mom   ' }, CONTACTS_FIXTURE)).toMatchObject({ name: 'Mom' });
+    expect(detectResolvedContact({ to: '' }, CONTACTS_FIXTURE)).toBeNull();
+    expect(detectResolvedContact({ to: '   ' }, CONTACTS_FIXTURE)).toBeNull();
+  });
+});
+
+describe('applyEventToTimeline — P2.5b synthetic rows on pending_action (single-write)', () => {
+  it('injects a contact-resolved row before the permission-card when input.to matches a contact', () => {
+    const tl = applyEventToTimeline(
+      [],
+      {
+        type: 'pending_action',
+        action: {
+          attemptId: 'att-1',
+          toolName: 'send_transfer',
+          toolUseId: 'tu1',
+          input: { to: 'Mom', amount: 5 },
+        } as never,
+      },
+      T0,
+      { contacts: CONTACTS_FIXTURE },
+    );
+    expect(tl).toHaveLength(2);
+    expect(tl[0]).toMatchObject({
+      type: 'contact-resolved',
+      contactName: 'Mom',
+      contactAddress: CONTACTS_FIXTURE[0].address,
+      toolUseId: 'tu1',
+    });
+    expect(tl[1]).toMatchObject({ type: 'permission-card', status: 'pending' });
+  });
+
+  it('does NOT inject a plan-stream row for single-write actions', () => {
+    const tl = applyEventToTimeline(
+      [],
+      {
+        type: 'pending_action',
+        action: {
+          attemptId: 'att-1',
+          toolName: 'send_transfer',
+          toolUseId: 'tu1',
+          input: { to: 'Mom', amount: 5 },
+        } as never,
+      },
+      T0,
+      { contacts: CONTACTS_FIXTURE },
+    );
+    expect(tl.find((b) => b.type === 'plan-stream')).toBeUndefined();
+  });
+
+  it('omits the contact row when input.to is already a Sui address', () => {
+    const tl = applyEventToTimeline(
+      [],
+      {
+        type: 'pending_action',
+        action: {
+          attemptId: 'att-1',
+          toolName: 'send_transfer',
+          toolUseId: 'tu1',
+          input: { to: '0xabcd000000000000000000000000000000000000000000000000000000000000', amount: 5 },
+        } as never,
+      },
+      T0,
+      { contacts: CONTACTS_FIXTURE },
+    );
+    expect(tl).toHaveLength(1);
+    expect(tl[0].type).toBe('permission-card');
+  });
+
+  it('omits the contact row when contacts list is omitted (P2.5b opt-in)', () => {
+    const tl = applyEventToTimeline(
+      [],
+      {
+        type: 'pending_action',
+        action: {
+          attemptId: 'att-1',
+          toolName: 'send_transfer',
+          toolUseId: 'tu1',
+          input: { to: 'Mom', amount: 5 },
+        } as never,
+      },
+      T0,
+      // no options arg
+    );
+    expect(tl).toHaveLength(1);
+    expect(tl[0].type).toBe('permission-card');
+  });
+});
+
+describe('applyEventToTimeline — P2.5b synthetic rows on pending_action (bundle)', () => {
+  const bundleAction = {
+    attemptId: 'att-bundle-1',
+    toolName: 'swap_execute',
+    toolUseId: 'tu-bundle',
+    input: { from: 'SUI', to: 'USDC', amount: 10 },
+    steps: [
+      {
+        attemptId: 'att-step-1',
+        toolName: 'swap_execute',
+        toolUseId: 'tu-step-1',
+        input: { from: 'SUI', to: 'USDC', amount: 10 },
+      },
+      {
+        attemptId: 'att-step-2',
+        toolName: 'send_transfer',
+        toolUseId: 'tu-step-2',
+        input: { to: 'Mom', amount: 5, asset: 'USDC' },
+      },
+    ],
+  };
+
+  it('appends contact rows + plan-stream + permission-card in that order', () => {
+    const tl = applyEventToTimeline(
+      [],
+      { type: 'pending_action', action: bundleAction as never },
+      T0,
+      { contacts: CONTACTS_FIXTURE },
+    );
+    expect(tl).toHaveLength(3);
+    expect(tl[0]).toMatchObject({ type: 'contact-resolved', contactName: 'Mom' });
+    expect(tl[1]).toMatchObject({
+      type: 'plan-stream',
+      stepCount: 2,
+      attemptId: 'att-bundle-1',
+    });
+    expect(tl[2]).toMatchObject({ type: 'permission-card', status: 'pending' });
+  });
+
+  it('dedups multi-leg references to the same contact (single contact row per (name,address))', () => {
+    const dupAction = {
+      ...bundleAction,
+      steps: [
+        bundleAction.steps[0],
+        bundleAction.steps[1], // sends to Mom
+        {
+          attemptId: 'att-step-3',
+          toolName: 'send_transfer',
+          toolUseId: 'tu-step-3',
+          input: { to: 'mom', amount: 2, asset: 'USDC' }, // also Mom (case-insensitive dup)
+        },
+      ],
+    };
+    const tl = applyEventToTimeline(
+      [],
+      { type: 'pending_action', action: dupAction as never },
+      T0,
+      { contacts: CONTACTS_FIXTURE },
+    );
+    const contactRows = tl.filter((b) => b.type === 'contact-resolved');
+    expect(contactRows).toHaveLength(1);
+    expect((contactRows[0] as ContactResolvedTimelineBlock).contactName).toBe('Mom');
+  });
+
+  it('emits a contact row PER unique contact when bundle legs reference different contacts', () => {
+    const multiAction = {
+      ...bundleAction,
+      steps: [
+        {
+          attemptId: 'att-step-1',
+          toolName: 'send_transfer',
+          toolUseId: 'tu-step-1',
+          input: { to: 'Mom', amount: 5, asset: 'USDC' },
+        },
+        {
+          attemptId: 'att-step-2',
+          toolName: 'send_transfer',
+          toolUseId: 'tu-step-2',
+          input: { to: 'Sarah', amount: 5, asset: 'USDC' },
+        },
+      ],
+    };
+    const tl = applyEventToTimeline(
+      [],
+      { type: 'pending_action', action: multiAction as never },
+      T0,
+      { contacts: CONTACTS_FIXTURE },
+    );
+    const contactRows = tl.filter((b) => b.type === 'contact-resolved') as ContactResolvedTimelineBlock[];
+    expect(contactRows).toHaveLength(2);
+    expect(contactRows.map((r) => r.contactName).sort()).toEqual(['Mom', 'Sarah']);
+  });
+
+  it('emits plan-stream even when no contact rows fire (rebalance bundle)', () => {
+    const rebalance = {
+      ...bundleAction,
+      steps: [
+        {
+          attemptId: 'att-r1',
+          toolName: 'swap_execute',
+          toolUseId: 'tu-r1',
+          input: { from: 'SUI', to: 'USDC', amount: 10 },
+        },
+        {
+          attemptId: 'att-r2',
+          toolName: 'swap_execute',
+          toolUseId: 'tu-r2',
+          input: { from: 'GOLD', to: 'USDC', amount: 1 },
+        },
+      ],
+    };
+    const tl = applyEventToTimeline(
+      [],
+      { type: 'pending_action', action: rebalance as never },
+      T0,
+      { contacts: CONTACTS_FIXTURE },
+    );
+    expect(tl.find((b) => b.type === 'contact-resolved')).toBeUndefined();
+    const plan = tl.find((b) => b.type === 'plan-stream') as PlanStreamTimelineBlock | undefined;
+    expect(plan).toBeDefined();
+    expect(plan?.stepCount).toBe(2);
+  });
+
+  it('still finalizes streaming text/thinking before the synthetic rows (Bug F regression carries through)', () => {
+    const tl = applyEventToTimeline(
+      [
+        { type: 'thinking', blockIndex: 0, text: 'planning', status: 'streaming' },
+        { type: 'text', text: 'Compiling stream...', status: 'streaming' },
+      ],
+      { type: 'pending_action', action: bundleAction as never },
+      T0,
+      { contacts: CONTACTS_FIXTURE },
+    );
+    expect(tl[0]).toMatchObject({ type: 'thinking', status: 'done' });
+    expect(tl[1]).toMatchObject({ type: 'text', status: 'done' });
+    expect(tl[2]).toMatchObject({ type: 'contact-resolved' });
+    expect(tl[3]).toMatchObject({ type: 'plan-stream' });
+    expect(tl[4]).toMatchObject({ type: 'permission-card' });
+  });
+});
+
+describe('applyEventToTimeline — P2.5b contact row on tool_start (forward-compat)', () => {
+  it('injects a contact-resolved row before the tool block when input matches a contact', () => {
+    // No auto-tier read takes a recipient field today, but the branch is
+    // defensive for future tools. This locks the behavior so a future
+    // contact-aware read tool gets the polish for free.
+    const tl = applyEventToTimeline(
+      [],
+      {
+        type: 'tool_start',
+        toolName: 'future_recipient_lookup',
+        toolUseId: 'tu1',
+        input: { recipient: 'Sarah' },
+      },
+      T0,
+      { contacts: CONTACTS_FIXTURE },
+    );
+    expect(tl).toHaveLength(2);
+    expect(tl[0]).toMatchObject({ type: 'contact-resolved', contactName: 'Sarah' });
+    expect(tl[1]).toMatchObject({ type: 'tool', toolUseId: 'tu1' });
+  });
+
+  it('also sweeps the contact row when tool_result.resultDeduped fires for that toolUseId', () => {
+    const seed = applyEventToTimeline(
+      [],
+      {
+        type: 'tool_start',
+        toolName: 'future_recipient_lookup',
+        toolUseId: 'tu1',
+        input: { to: 'Mom' },
+      },
+      T0,
+      { contacts: CONTACTS_FIXTURE },
+    );
+    expect(seed).toHaveLength(2); // contact row + tool block
+    const next = applyEventToTimeline(
+      seed,
+      {
+        type: 'tool_result',
+        toolName: 'future_recipient_lookup',
+        toolUseId: 'tu1',
+        result: null,
+        isError: false,
+        resultDeduped: true,
+      },
+      T0 + 1,
+    );
+    expect(next).toHaveLength(0);
   });
 });

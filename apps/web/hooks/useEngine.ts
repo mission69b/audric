@@ -67,6 +67,20 @@ interface UseEngineOptions {
     isError: boolean;
     result: unknown;
   }) => void;
+  /**
+   * [SPEC 7 P2.5b Layer 5] Contacts list passed through to the
+   * timeline reducer (`applyEventToTimeline`). When set, the reducer
+   * scans `tool_start` and `pending_action` event inputs for
+   * recipient-style fields (`to` / `recipient` / `address`) whose
+   * value matches a known contact name, and injects a synthetic
+   * `contact-resolved` row before the tool / card block. Omitting
+   * (or passing an empty array) keeps pre-P2.5b behavior — no
+   * synthetic rows surface.
+   *
+   * Held in a ref so the SSE handler doesn't rebind on every parent
+   * re-render of the contacts hook (which fires on add/edit/delete).
+   */
+  contacts?: ReadonlyArray<{ name: string; address: string }>;
 }
 
 function buildHistory(messages: EngineChatMessage[]): { role: 'user' | 'assistant'; content: string }[] {
@@ -120,11 +134,18 @@ function updateTimelineForRegenerate(
   return next;
 }
 
-export function useEngine({ address, jwt, onToolResult }: UseEngineOptions) {
+export function useEngine({ address, jwt, onToolResult, contacts }: UseEngineOptions) {
   // Hold the latest callback in a ref so the SSE handler doesn't re-bind
   // (and risk dropping events) when the parent re-renders with a new fn.
   const onToolResultRef = useRef(onToolResult);
   onToolResultRef.current = onToolResult;
+  // [SPEC 7 P2.5b] Held in a ref so contact additions/edits during a
+  // streaming turn don't re-bind the SSE handler. The reducer reads
+  // the latest list at event-emit time — late-add of a contact whose
+  // name appears in a still-streaming tool_start would correctly
+  // surface the synthetic row.
+  const contactsRef = useRef(contacts);
+  contactsRef.current = contacts;
   const isAuth = !!address && !!jwt;
   const [messages, setMessages] = useState<EngineChatMessage[]>([]);
   const [status, setStatus] = useState<EngineStatus>('idle');
@@ -1067,11 +1088,19 @@ export function useEngine({ address, jwt, onToolResult }: UseEngineOptions) {
     // returns the same reference and we short-circuit to skip the
     // re-render. now is hoisted outside the reducer so StrictMode's
     // double-invoke doesn't drift timestamps.
+    //
+    // [SPEC 7 P2.5b] `contacts` is read from the ref at event-emit
+    // time so the synthetic contact-resolved rows reflect the latest
+    // contacts list (an add/edit during a streaming turn surfaces
+    // immediately on the next event).
     const now = Date.now();
+    const contactsSnapshot = contactsRef.current;
     setMessages((prev) =>
       prev.map((m) => {
         if (m.id !== msgId) return m;
-        const next = applyEventToTimeline(m.timeline, event, now);
+        const next = applyEventToTimeline(m.timeline, event, now, {
+          contacts: contactsSnapshot,
+        });
         return next === m.timeline ? m : { ...m, timeline: next };
       }),
     );

@@ -226,5 +226,9 @@ function blockKey(block: TimelineBlock): string {
       return 'text';
     case 'regenerated':
       return `regen-${block.originalAttemptId}`;
+    case 'contact-resolved':
+      return `contact-${block.toolUseId}-${block.contactAddress}`;
+    case 'plan-stream':
+      return `plan-${block.attemptId}`;
   }
 }

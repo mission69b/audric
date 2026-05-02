@@ -155,6 +155,58 @@ export interface RegeneratedTimelineBlock {
   originalAttemptId: string;
 }
 
+/**
+ * [SPEC 7 P2.5b Layer 5] Synthetic "CONTACT · "<name>"" planning row
+ * surfacing the resolution from a chat-mentioned contact name to its
+ * on-chain address. Pushed by `applyEventToTimeline` immediately
+ * before the related tool / permission-card block whenever the input
+ * carries a recipient field (`to` / `recipient` / `address`) whose
+ * value matches a contact in `useContacts()`. Engine-agnostic — the
+ * engine continues to pass contacts silently via `EngineConfig.contacts`;
+ * this block is host-side UX polish ("the agent is thinking out loud").
+ *
+ * `toolUseId` keys the block to the downstream tool / pending-action
+ * — used by the `tool_result.resultDeduped` cleanup path to remove
+ * the contact-resolved row when the early-dispatch dedup also drops
+ * the tool block.
+ */
+export interface ContactResolvedTimelineBlock {
+  type: 'contact-resolved';
+  /** Display name as it appeared in the input (verbatim, NOT lowercased). */
+  contactName: string;
+  /** Canonical Sui address from the matched contact. */
+  contactAddress: string;
+  /** toolUseId of the downstream tool block (or pending_action). */
+  toolUseId: string;
+}
+
+/**
+ * [SPEC 7 P2.5b Layer 5] Synthetic "PLAN STREAM" planning row that
+ * appears as the FINAL row before a multi-step Payment Stream
+ * `permission-card` block. Indicates the agent has finished evaluating
+ * the upstream reads / contact resolution / etc. and has compiled
+ * everything into one atomic PTB. Pushed by `applyEventToTimeline` on
+ * `pending_action` events whose action carries `steps.length >= 2`.
+ * Single-write actions never get a plan-stream row (the existing
+ * `pre-write` thinking + `<eval_summary>` already serve that purpose
+ * for single-write confirms).
+ *
+ * Status is always `'done'` at emission time — by the moment the
+ * engine yields `pending_action`, the planning IS the bundle. Modeling
+ * this as a static row (not running → done) keeps the timeline
+ * deterministic and avoids a hung "PLAN STREAM …" indicator if the
+ * user navigates away mid-card. The row is purely a typed visual
+ * separator that says "the agent compiled what comes next into one
+ * atomic stream."
+ */
+export interface PlanStreamTimelineBlock {
+  type: 'plan-stream';
+  /** Number of bundleable writes packaged into the stream (≥2). */
+  stepCount: number;
+  /** attemptId of the bundle this PLAN STREAM precedes. */
+  attemptId: string;
+}
+
 export type TimelineBlock =
   | ThinkingTimelineBlock
   | ToolTimelineBlock
@@ -163,7 +215,9 @@ export type TimelineBlock =
   | CanvasTimelineBlock
   | PermissionCardTimelineBlock
   | PendingInputTimelineBlock
-  | RegeneratedTimelineBlock;
+  | RegeneratedTimelineBlock
+  | ContactResolvedTimelineBlock
+  | PlanStreamTimelineBlock;
 
 // [SPEC 8 v0.5.1 B1] Per-event captures from the new SSE event types.
 // These shapes mirror the engine's SSEEvent union — kept local rather
