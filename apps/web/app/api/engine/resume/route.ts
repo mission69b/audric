@@ -20,6 +20,7 @@ import {
 import { costRatesForModel } from '@/lib/engine/cost-rates';
 import { isSyntheticSessionId } from '@/lib/engine/synthetic-sessions';
 import { invalidateUserFinancialContext } from '@/lib/redis/user-financial-context';
+import { emitBundleOutcome } from '@/lib/engine/bundle-metrics';
 import { prisma } from '@/lib/prisma';
 import { env } from '@/lib/env';
 
@@ -521,6 +522,21 @@ export async function POST(request: NextRequest) {
                     ? (executionResult as { success?: unknown }).success === false
                     : false)
                 ));
+
+            // [SPEC 7 P2.7] Bundle outcome telemetry. Fires once per
+            // approved bundle (denied bundles never reach this branch —
+            // resolveOutcome would be 'declined'). The looksSuccessful
+            // check follows the SAME atomic semantics as the
+            // session-spend accounting below: a bundle either fully
+            // succeeded (every step's stepResult is non-error) or fully
+            // reverted (any step erroring → atomic on-chain revert).
+            // Mid-states are impossible by Sui PTB contract.
+            if (isBundle) {
+              emitBundleOutcome({
+                outcome: looksSuccessful ? 'executed' : 'reverted',
+                stepCount: action.steps!.length,
+              });
+            }
 
             if (looksSuccessful) {
               const stableCache = new Map<string, number>([['USDC', 1], ['USDT', 1]]);

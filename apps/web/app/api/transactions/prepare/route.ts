@@ -18,6 +18,10 @@ import {
   type SupportedAsset,
 } from '@t2000/sdk';
 import { env } from '@/lib/env';
+import {
+  emitBundleComposeDuration,
+  emitBundleOutcome,
+} from '@/lib/engine/bundle-metrics';
 
 export const runtime = 'nodejs';
 
@@ -243,6 +247,30 @@ export async function POST(request: NextRequest) {
     if (body.steps.length > 10) {
       return NextResponse.json({ error: 'Bundle exceeds 10-step limit' }, { status: 400 });
     }
+    // [SPEC 7 P2.7] Break-glass disable. When the 48h soak metrics show
+    // sustained revert_rate > 5%, set PAYMENT_STREAM_DISABLE=1 in Vercel
+    // (server-only env, no rebuild needed — flipping takes <30s for the
+    // next serverless invocation). Returns 503 so the client surfaces a
+    // clean error and the user re-prompts; the LLM emits single-write
+    // pending_actions naturally on the next turn (the engine's bundling
+    // is purely additive — disabling the bundle path here doesn't break
+    // single-step writes).
+    //
+    // Telemetry: not emitted here on purpose. The break-glass IS the
+    // signal — Vercel logs already show the 503; if we emitted a
+    // bundle_outcome_count{outcome=...} we'd be double-counting (the
+    // user's request never reached composeTx, so neither compose_error
+    // nor sponsorship_failed semantically applies).
+    if (env.PAYMENT_STREAM_DISABLE === '1' || env.PAYMENT_STREAM_DISABLE === 'true') {
+      console.warn('[prepare] Payment Stream disable flag is set — rejecting bundle');
+      return NextResponse.json(
+        {
+          error:
+            'Payment Streams are temporarily disabled. Please cancel and ask again — I\'ll do these one at a time.',
+        },
+        { status: 503 },
+      );
+    }
   } else {
     const { amount, recipient } = body;
     const skipAmountCheck = type === 'claim-rewards' || type === 'volo-unstake';
@@ -305,33 +333,66 @@ async function buildAndSponsor(params: BuildRequest, jwt: string | null): Promis
   const steps: WriteStep[] =
     params.type === 'bundle' ? params.steps : [buildStepFromRequest(params)];
 
+  // [SPEC 7 P2.7] Whether this request is a multi-step bundle. Used to gate
+  // the three bundle-specific metrics. Single-step pending_actions are
+  // already covered by per-tool telemetry (regenerate_count + harness
+  // metrics); only multi-step bundles need the new instrumentation.
+  const isBundle = params.type === 'bundle' && steps.length >= 2;
+
   // Overlay fee applies whenever the bundle contains a swap_execute step.
   // composeTx forwards `overlayFee` to every swap step it encounters, so
   // multi-swap bundles bill the fee per-swap (matching today's per-tx
   // single-swap behavior).
   const hasSwap = steps.some((s) => s.toolName === 'swap_execute');
 
-  const composed = await composeTx({
-    sender: params.address,
-    client: getClient(),
-    sponsoredContext: true,
-    steps,
-    overlayFee: hasSwap
-      ? { rate: OVERLAY_FEE_RATE, receiver: T2000_OVERLAY_FEE_WALLET }
-      : undefined,
-    feeHooks: {
-      save_deposit: ({ tx, coin, input }) => {
-        if (input.asset === 'USDC' || input.asset === undefined) {
-          addFeeTransfer(tx, coin, SAVE_FEE_BPS, T2000_OVERLAY_FEE_WALLET, input.amount);
-        }
+  const composeStartedAt = isBundle ? Date.now() : 0;
+
+  let composed;
+  try {
+    composed = await composeTx({
+      sender: params.address,
+      client: getClient(),
+      sponsoredContext: true,
+      steps,
+      overlayFee: hasSwap
+        ? { rate: OVERLAY_FEE_RATE, receiver: T2000_OVERLAY_FEE_WALLET }
+        : undefined,
+      feeHooks: {
+        save_deposit: ({ tx, coin, input }) => {
+          if (input.asset === 'USDC' || input.asset === undefined) {
+            addFeeTransfer(tx, coin, SAVE_FEE_BPS, T2000_OVERLAY_FEE_WALLET, input.amount);
+          }
+        },
+        borrow: ({ tx, coin, input }) => {
+          if (input.asset === 'USDC' || input.asset === undefined) {
+            addFeeTransfer(tx, coin, BORROW_FEE_BPS, T2000_OVERLAY_FEE_WALLET, input.amount);
+          }
+        },
       },
-      borrow: ({ tx, coin, input }) => {
-        if (input.asset === 'USDC' || input.asset === undefined) {
-          addFeeTransfer(tx, coin, BORROW_FEE_BPS, T2000_OVERLAY_FEE_WALLET, input.amount);
-        }
-      },
-    },
-  });
+    });
+  } catch (composeErr) {
+    // [SPEC 7 P2.7] composeTx threw locally before Enoki was contacted. This
+    // is "our code is wrong" territory — wrong tool name, malformed input,
+    // SDK regression, etc. Distinct from sponsorship_failed (Enoki dry-run
+    // rejected the assembled PTB). Re-throw to preserve the original
+    // try/catch semantics in the POST handler.
+    if (isBundle) {
+      const reason =
+        composeErr instanceof Error
+          ? composeErr.message.slice(0, 80)
+          : 'unknown';
+      emitBundleOutcome({
+        outcome: 'compose_error',
+        stepCount: steps.length,
+        reason,
+      });
+    }
+    throw composeErr;
+  }
+
+  if (isBundle) {
+    emitBundleComposeDuration(steps.length, Date.now() - composeStartedAt);
+  }
 
   if (params.type === 'claim-rewards') {
     const preview = composed.perStepPreviews[0];
@@ -385,6 +446,22 @@ async function buildAndSponsor(params: BuildRequest, jwt: string | null): Promis
       const enokiMsg = parsed?.errors?.[0]?.message ?? parsed?.message;
       if (enokiMsg) errorMsg = enokiMsg;
     } catch {}
+
+    // [SPEC 7 P2.7] Enoki rejected the sponsor request. Most commonly this
+    // is a dry-run failure (the assembled PTB would have reverted on-chain
+    // — `CommandArgumentError`, missing coin, allowance violation, etc.).
+    // Distinct from compose_error (our SDK threw before Enoki was called).
+    // Note: this is the same surface that caught Finding F7 during P2.6 —
+    // a malformed `to` address (literal "funkii" instead of 0x...) in a
+    // bundle reached Enoki and dry-ran with `ArgumentWithoutValue`.
+    if (isBundle) {
+      emitBundleOutcome({
+        outcome: 'sponsorship_failed',
+        stepCount: steps.length,
+        statusCode: sponsorRes.status,
+        reason: errorMsg.slice(0, 80),
+      });
+    }
 
     return { ok: false, status: sponsorRes.status, error: errorMsg };
   }

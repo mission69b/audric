@@ -29,6 +29,7 @@ import {
   emitHarnessTelemetry,
 } from '@/lib/engine/harness-metrics';
 import { getTelemetrySink } from '@t2000/engine';
+import { emitBundleProposed } from '@/lib/engine/bundle-metrics';
 import { costRatesForModel } from '@/lib/engine/cost-rates';
 import { isSyntheticSessionId } from '@/lib/engine/synthetic-sessions';
 import { prisma, withPrismaRetry } from '@/lib/prisma';
@@ -596,6 +597,15 @@ export async function POST(request: NextRequest) {
                 // `(sessionId, turnIndex)` pair that v1.3 used).
                 collector.onPendingAction(event.action.attemptId);
                 pendingAction = event.action;
+                // [SPEC 7 P2.7] Measure LLM bundle-proposal rate. Single-
+                // step pending_actions are no-op'd inside the helper —
+                // only multi-step bundles emit. Combined with the
+                // bundle_outcome_count emitted from the resume route, we
+                // get the soak's headline metric: revert_rate =
+                // (reverted + compose_error + sponsorship_failed) / total.
+                if (Array.isArray(event.action.steps) && event.action.steps.length >= 2) {
+                  emitBundleProposed(event.action.steps);
+                }
                 break;
               case 'harness_shape':
                 // [SPEC 8 v0.5.1 B3.6] Defensive last-write-wins. The

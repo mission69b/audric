@@ -132,6 +132,27 @@ const serverSchema = z.object({
   /** Comma-separated session-id prefixes that mark synthetic/bot traffic. */
   SYNTHETIC_SESSION_PREFIXES: optionalString,
 
+  /**
+   * [SPEC 7 P2.7] Break-glass disable for Payment Stream multi-write
+   * bundles. Set to "1" / "true" to make `/api/transactions/prepare`
+   * reject every `type: 'bundle'` request with a 503, forcing the
+   * client to error-out cleanly. The user sees a one-time message
+   * ("Payment Streams temporarily disabled — please retry one
+   * operation at a time") and can re-prompt the LLM, which will emit
+   * single-write `pending_action`s naturally on the next turn.
+   *
+   * Server-side (NOT NEXT_PUBLIC_*) by design — Vercel's runtime env
+   * for serverless functions takes effect on the next invocation
+   * (~30s), no redeploy required. NEXT_PUBLIC_* env changes need a
+   * fresh build (~3 min) because Next.js statically bakes them into
+   * client bundles. The break-glass needs to be FAST.
+   *
+   * Default OFF. Only set in Vercel when the 48h soak metrics call
+   * for it (revert_rate > 5% sustained for >30 min — see
+   * `spec/runbooks/RUNBOOK_spec7_p27_ramp.md` § decision matrix).
+   */
+  PAYMENT_STREAM_DISABLE: optionalString,
+
   // ── Vercel / runtime managed (always present in production, optional locally) ─
   /** NODE_ENV — Next.js sets this. */
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
@@ -230,6 +251,7 @@ const runtimeEnv = {
   INTERNAL_API_KEY: process.env.INTERNAL_API_KEY,
   SUI_RPC_URL: process.env.SUI_RPC_URL,
   SYNTHETIC_SESSION_PREFIXES: process.env.SYNTHETIC_SESSION_PREFIXES,
+  PAYMENT_STREAM_DISABLE: process.env.PAYMENT_STREAM_DISABLE,
   NODE_ENV: process.env.NODE_ENV,
   VERCEL_DEPLOYMENT_ID: process.env.VERCEL_DEPLOYMENT_ID,
   VERCEL_GIT_COMMIT_SHA: process.env.VERCEL_GIT_COMMIT_SHA,
@@ -364,6 +386,7 @@ const SERVER_ONLY_KEYS = new Set([
   'INTERNAL_API_KEY',
   'SUI_RPC_URL',
   'SYNTHETIC_SESSION_PREFIXES',
+  'PAYMENT_STREAM_DISABLE',
   'NODE_ENV',
   'VERCEL_DEPLOYMENT_ID',
   'VERCEL_GIT_COMMIT_SHA',

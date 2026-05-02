@@ -333,3 +333,70 @@ describe('POST /api/transactions/prepare — bundle requests', () => {
     expect(body.error).not.toMatch(/10-step limit/);
   });
 });
+
+describe('POST /api/transactions/prepare — SPEC 7 P2.7 break-glass disable', () => {
+  let POST: (req: NextRequest) => Promise<Response>;
+
+  beforeEach(async () => {
+    vi.resetModules();
+    vi.stubEnv('ENOKI_SECRET_KEY', 'enoki_private_test_key');
+    vi.stubEnv('NEXT_PUBLIC_SUI_NETWORK', 'mainnet');
+    vi.stubEnv('PAYMENT_STREAM_DISABLE', '1');
+    const mod = await import('./route');
+    POST = mod.POST as unknown as (req: NextRequest) => Promise<Response>;
+  });
+
+  it('rejects bundles with 503 + a guidance message when PAYMENT_STREAM_DISABLE=1', async () => {
+    const res = await POST(buildRequest({
+      type: 'bundle',
+      address: VALID_ADDR,
+      steps: [
+        { toolName: 'save_deposit', input: { amount: 1, asset: 'USDC' } },
+        { toolName: 'send_transfer', input: { to: '0x' + 'b'.repeat(64), amount: 1, asset: 'USDC' } },
+      ],
+    }));
+    expect(res.status).toBe(503);
+    const body = await res.json();
+    expect(body.error).toMatch(/Payment Streams are temporarily disabled/);
+    expect(body.error).toMatch(/one at a time/);
+  });
+
+  it('still accepts single-write requests when PAYMENT_STREAM_DISABLE=1 (gate is bundle-only)', async () => {
+    const res = await POST(buildRequest({
+      type: 'send',
+      address: VALID_ADDR,
+      recipient: '0x' + 'b'.repeat(64),
+      amount: 1,
+    }));
+    // Single-write requests should pass the bundle gate cleanly. They
+    // may still fail downstream at SDK / Enoki, but the error MUST NOT
+    // be the break-glass guidance message — that's the bundle-only path.
+    const body = await res.json();
+    if (res.status === 503) {
+      expect(body.error).not.toMatch(/Payment Streams are temporarily disabled/);
+    }
+  });
+
+  it('does not reject bundles when PAYMENT_STREAM_DISABLE is unset (the default)', async () => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+    vi.stubEnv('ENOKI_SECRET_KEY', 'enoki_private_test_key');
+    vi.stubEnv('NEXT_PUBLIC_SUI_NETWORK', 'mainnet');
+    // PAYMENT_STREAM_DISABLE is intentionally NOT stubbed.
+    const mod = await import('./route');
+    const POST_NO_FLAG = mod.POST as unknown as (req: NextRequest) => Promise<Response>;
+
+    const res = await POST_NO_FLAG(buildRequest({
+      type: 'bundle',
+      address: VALID_ADDR,
+      steps: [
+        { toolName: 'save_deposit', input: { amount: 1, asset: 'USDC' } },
+        { toolName: 'send_transfer', input: { to: '0x' + 'b'.repeat(64), amount: 1, asset: 'USDC' } },
+      ],
+    }));
+    const body = await res.json();
+    // Specifically NOT the break-glass message — the request reaches
+    // composeTx / Enoki and fails for unrelated reasons in the test env.
+    expect(body.error ?? '').not.toMatch(/Payment Streams are temporarily disabled/);
+  });
+});
