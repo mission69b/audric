@@ -75,8 +75,28 @@ export interface ApplyEventOptions {
   contacts?: ContactList;
 }
 
-/** Recipient-style field names to scan for contact-name resolution. */
-const RECIPIENT_FIELDS = ['to', 'recipient', 'address'] as const;
+/**
+ * Recipient-style field names that are SAFE to scan universally — these
+ * field names are not (today) overloaded as non-recipient inputs by any
+ * tool. `recipient` and `address` only appear on contact-or-address
+ * inputs; no tool uses them for token symbols or other free-form text.
+ */
+const ALWAYS_SCANNED_FIELDS = ['recipient', 'address'] as const;
+
+/**
+ * Tools whose `to` field is a recipient (contact name OR Sui address).
+ * Outside this set, the `to` field is assumed to mean something else
+ * (e.g. `swap_execute.to` and `swap_quote.to` carry the *target token*
+ * symbol like "USDC" or "SUI"). Without this gate, a user whose
+ * contact list happens to include a token-symbol name (e.g. "BTC",
+ * "ETH") would see a phantom `CONTACT · "USDC"` row injected into a
+ * swap-and-save bundle's plan stream because the swap step's
+ * `to: "USDC"` would match.
+ *
+ * Today only `send_transfer` carries a recipient `to`. Add tools here
+ * as the inventory grows.
+ */
+const TOOLS_WHERE_TO_IS_RECIPIENT = new Set<string>(['send_transfer']);
 
 /**
  * Detect a contact-name match inside a tool input. Returns the matched
@@ -84,16 +104,29 @@ const RECIPIENT_FIELDS = ['to', 'recipient', 'address'] as const;
  * no match. Skips values that already look like Sui addresses (`0x…`
  * — already-resolved). Case-insensitive name comparison; trims
  * whitespace.
+ *
+ * `toolName` gates the overloaded `to` field per
+ * `TOOLS_WHERE_TO_IS_RECIPIENT` — when omitted, only the unambiguous
+ * `recipient` and `address` fields are scanned. Keeps the helper
+ * defensible against future tools whose `to` carries non-recipient
+ * semantics.
  */
 export function detectResolvedContact(
   input: unknown,
   contacts: ContactList | undefined,
+  toolName?: string,
 ): { name: string; address: string } | null {
   if (!contacts || contacts.length === 0) return null;
   if (typeof input !== 'object' || input === null) return null;
 
   const map = input as Record<string, unknown>;
-  for (const field of RECIPIENT_FIELDS) {
+  const toIsRecipient =
+    toolName !== undefined && TOOLS_WHERE_TO_IS_RECIPIENT.has(toolName);
+  const fields: ReadonlyArray<string> = toIsRecipient
+    ? ['to', ...ALWAYS_SCANNED_FIELDS]
+    : ALWAYS_SCANNED_FIELDS;
+
+  for (const field of fields) {
     const raw = map[field];
     if (typeof raw !== 'string') continue;
     const trimmed = raw.trim();
@@ -201,8 +234,10 @@ export function applyEventToTimeline(
       // Today no auto-tier read takes a recipient field, so this branch
       // is dormant — kept for forward-compat with future tools and to
       // mirror the `pending_action` injection path so behavior stays
-      // consistent across permission tiers.
-      const resolved = detectResolvedContact(event.input, options?.contacts);
+      // consistent across permission tiers. `event.toolName` gates the
+      // overloaded `to` field — without it, a `swap_quote.to: "USDC"`
+      // would false-positive against a contact named "USDC".
+      const resolved = detectResolvedContact(event.input, options?.contacts, event.toolName);
       if (resolved) {
         const contactBlock: ContactResolvedTimelineBlock = {
           type: 'contact-resolved',
@@ -337,9 +372,12 @@ export function applyEventToTimeline(
         // different contact — "send $50 to Mom and $50 to Sarah" is
         // a real bundle shape). Dedup on (name → address) so a single
         // contact mentioned across multiple legs surfaces once.
+        // `step.toolName` gates the overloaded `to` field per step —
+        // a swap_execute step's `to: "USDC"` won't false-positive
+        // against a contact named "USDC".
         const seen = new Set<string>();
         for (const step of action.steps ?? []) {
-          const resolved = detectResolvedContact(step.input, options?.contacts);
+          const resolved = detectResolvedContact(step.input, options?.contacts, step.toolName);
           if (!resolved) continue;
           const key = `${resolved.name.toLowerCase()}::${resolved.address}`;
           if (seen.has(key)) continue;
@@ -362,8 +400,9 @@ export function applyEventToTimeline(
         // Single-write confirms still get the contact row when relevant
         // (e.g. "send $5 to Mom" is the single-write path that benefits
         // from this UX too — the contact resolution is the same intent
-        // signal as in a bundle).
-        const resolved = detectResolvedContact(action.input, options?.contacts);
+        // signal as in a bundle). `action.toolName` gates the
+        // overloaded `to` field per the same rule used for bundle steps.
+        const resolved = detectResolvedContact(action.input, options?.contacts, action.toolName);
         if (resolved) {
           synthetic.push({
             type: 'contact-resolved',

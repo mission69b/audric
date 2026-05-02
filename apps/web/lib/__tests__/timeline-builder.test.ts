@@ -847,12 +847,12 @@ const CONTACTS_FIXTURE = [
 
 describe('detectResolvedContact — pure helper', () => {
   it('matches a recipient field case-insensitively (input "mom" → contact "Mom")', () => {
-    const out = detectResolvedContact({ to: 'mom', amount: 5 }, CONTACTS_FIXTURE);
+    const out = detectResolvedContact({ to: 'mom', amount: 5 }, CONTACTS_FIXTURE, 'send_transfer');
     expect(out).toEqual({ name: 'Mom', address: CONTACTS_FIXTURE[0].address });
   });
 
   it('preserves the contact display name verbatim (NOT lowercased)', () => {
-    const out = detectResolvedContact({ to: 'MOM' }, CONTACTS_FIXTURE);
+    const out = detectResolvedContact({ to: 'MOM' }, CONTACTS_FIXTURE, 'send_transfer');
     expect(out?.name).toBe('Mom'); // canonical from the contact list, not the user's input casing
   });
 
@@ -860,6 +860,7 @@ describe('detectResolvedContact — pure helper', () => {
     const out = detectResolvedContact(
       { to: '0xabcdef0000000000000000000000000000000000000000000000000000000000' },
       CONTACTS_FIXTURE,
+      'send_transfer',
     );
     expect(out).toBeNull();
   });
@@ -870,6 +871,7 @@ describe('detectResolvedContact — pure helper', () => {
     const out = detectResolvedContact(
       { to: '0xabcd000000000000000000000000000000000000000000000000000000000000', memo: 'Hi Mom' },
       CONTACTS_FIXTURE,
+      'send_transfer',
     );
     expect(out).toBeNull();
   });
@@ -882,22 +884,74 @@ describe('detectResolvedContact — pure helper', () => {
   });
 
   it('returns null when contacts list is empty / undefined / no match', () => {
-    expect(detectResolvedContact({ to: 'mom' }, [])).toBeNull();
-    expect(detectResolvedContact({ to: 'mom' }, undefined)).toBeNull();
-    expect(detectResolvedContact({ to: 'unknown-name' }, CONTACTS_FIXTURE)).toBeNull();
+    expect(detectResolvedContact({ to: 'mom' }, [], 'send_transfer')).toBeNull();
+    expect(detectResolvedContact({ to: 'mom' }, undefined, 'send_transfer')).toBeNull();
+    expect(detectResolvedContact({ to: 'unknown-name' }, CONTACTS_FIXTURE, 'send_transfer')).toBeNull();
   });
 
   it('returns null for non-object inputs (defensive — engine inputs are objects but be safe)', () => {
-    expect(detectResolvedContact(null, CONTACTS_FIXTURE)).toBeNull();
-    expect(detectResolvedContact(undefined, CONTACTS_FIXTURE)).toBeNull();
-    expect(detectResolvedContact('mom', CONTACTS_FIXTURE)).toBeNull();
-    expect(detectResolvedContact(42, CONTACTS_FIXTURE)).toBeNull();
+    expect(detectResolvedContact(null, CONTACTS_FIXTURE, 'send_transfer')).toBeNull();
+    expect(detectResolvedContact(undefined, CONTACTS_FIXTURE, 'send_transfer')).toBeNull();
+    expect(detectResolvedContact('mom', CONTACTS_FIXTURE, 'send_transfer')).toBeNull();
+    expect(detectResolvedContact(42, CONTACTS_FIXTURE, 'send_transfer')).toBeNull();
   });
 
   it('handles whitespace and empty strings (trims before compare; empty → null)', () => {
-    expect(detectResolvedContact({ to: '   Mom   ' }, CONTACTS_FIXTURE)).toMatchObject({ name: 'Mom' });
-    expect(detectResolvedContact({ to: '' }, CONTACTS_FIXTURE)).toBeNull();
-    expect(detectResolvedContact({ to: '   ' }, CONTACTS_FIXTURE)).toBeNull();
+    expect(detectResolvedContact({ to: '   Mom   ' }, CONTACTS_FIXTURE, 'send_transfer')).toMatchObject({ name: 'Mom' });
+    expect(detectResolvedContact({ to: '' }, CONTACTS_FIXTURE, 'send_transfer')).toBeNull();
+    expect(detectResolvedContact({ to: '   ' }, CONTACTS_FIXTURE, 'send_transfer')).toBeNull();
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // P2.5b audit BUG #1 (MED) — toolName-aware `to` field gating.
+  // The reducer used to scan `to` universally; `swap_execute.to` and
+  // `swap_quote.to` carry the TARGET TOKEN symbol ("USDC", "SUI"), not a
+  // recipient. A user with a contact whose name matched a token symbol
+  // (e.g. "ETH", "BTC") would see a phantom CONTACT row injected into the
+  // bundle's plan stream. These regressions lock the fix.
+  // ─────────────────────────────────────────────────────────────────────────
+
+  it('audit BUG #1: does NOT match contact-named-after-token on swap_execute.to (token symbol, not recipient)', () => {
+    const tokenContacts = [
+      { name: 'USDC', address: '0xfake1111111111111111111111111111111111111111111111111111111111aa' },
+    ];
+    const out = detectResolvedContact(
+      { from: 'SUI', to: 'USDC', amount: 10 },
+      tokenContacts,
+      'swap_execute',
+    );
+    expect(out).toBeNull();
+  });
+
+  it('audit BUG #1: does NOT match on swap_quote.to (read tool — same token-symbol semantic)', () => {
+    const tokenContacts = [
+      { name: 'eth', address: '0xfake1111111111111111111111111111111111111111111111111111111111aa' },
+    ];
+    const out = detectResolvedContact(
+      { from: 'SUI', to: 'ETH', amount: 1 },
+      tokenContacts,
+      'swap_quote',
+    );
+    expect(out).toBeNull();
+  });
+
+  it('audit BUG #1: STILL matches on send_transfer.to (the only tool where `to` is a recipient today)', () => {
+    const out = detectResolvedContact(
+      { to: 'Mom', amount: 5, asset: 'USDC' },
+      CONTACTS_FIXTURE,
+      'send_transfer',
+    );
+    expect(out).toEqual({ name: 'Mom', address: CONTACTS_FIXTURE[0].address });
+  });
+
+  it('audit BUG #1: when toolName is omitted, defaults to scanning ONLY `recipient` + `address` (conservative — neither is overloaded today)', () => {
+    // Forward-compat caller without toolName context (e.g. a future host
+    // hook that doesn't track tool identity). Should NOT match `to` —
+    // can't tell whether `to` is recipient or token without toolName.
+    expect(detectResolvedContact({ to: 'mom' }, CONTACTS_FIXTURE)).toBeNull();
+    // But `recipient` + `address` keep working (universally recipient-ish).
+    expect(detectResolvedContact({ recipient: 'mom' }, CONTACTS_FIXTURE)).toMatchObject({ name: 'Mom' });
+    expect(detectResolvedContact({ address: 'sarah' }, CONTACTS_FIXTURE)).toMatchObject({ name: 'Sarah' });
   });
 });
 
@@ -1021,6 +1075,88 @@ describe('applyEventToTimeline — P2.5b synthetic rows on pending_action (bundl
       attemptId: 'att-bundle-1',
     });
     expect(tl[2]).toMatchObject({ type: 'permission-card', status: 'pending' });
+  });
+
+  it('audit BUG #1: a swap-and-save bundle with a contact named "USDC" (token symbol) does NOT phantom-inject a CONTACT row for the swap leg', () => {
+    // Realistic regression: the headline use case for SPEC 7. The user
+    // has a contact named "USDC" (e.g. a friend nicknamed after a token).
+    // A `swap_execute → save_deposit` bundle's swap step has
+    // `to: "USDC"` (target token), and the save step has no recipient.
+    // Pre-fix this would have rendered "CONTACT · "USDC"" between the
+    // upstream reads and the PLAN STREAM row — wildly wrong.
+    const swapAndSave = {
+      attemptId: 'att-sas-1',
+      toolName: 'swap_execute',
+      toolUseId: 'tu-sas',
+      input: { from: 'SUI', to: 'USDC', amount: 10 },
+      steps: [
+        {
+          attemptId: 'att-sas-1-step-1',
+          toolName: 'swap_execute',
+          toolUseId: 'tu-sas-step-1',
+          input: { from: 'SUI', to: 'USDC', amount: 10 },
+        },
+        {
+          attemptId: 'att-sas-1-step-2',
+          toolName: 'save_deposit',
+          toolUseId: 'tu-sas-step-2',
+          input: { amount: 10, asset: 'USDC' },
+        },
+      ],
+    };
+    const contactsIncludingTokenName = [
+      ...CONTACTS_FIXTURE,
+      { name: 'USDC', address: '0xfake0000000000000000000000000000000000000000000000000000000000aa' },
+    ];
+    const tl = applyEventToTimeline(
+      [],
+      { type: 'pending_action', action: swapAndSave as never },
+      T0,
+      { contacts: contactsIncludingTokenName },
+    );
+    expect(tl.find((b) => b.type === 'contact-resolved')).toBeUndefined();
+    expect(tl.find((b) => b.type === 'plan-stream')).toBeDefined();
+    expect(tl.find((b) => b.type === 'permission-card')).toBeDefined();
+  });
+
+  it('audit BUG #1: a hybrid bundle with swap_execute (no recipient) + send_transfer (recipient="Mom") emits exactly ONE CONTACT row', () => {
+    // The "swap to USDC and send to Mom" use case from the spec mocks.
+    // The swap step's `to: "USDC"` must NOT fire a CONTACT row even when
+    // the user has a contact named "USDC". The send_transfer step's
+    // `to: "Mom"` should fire normally.
+    const hybridBundle = {
+      attemptId: 'att-h-1',
+      toolName: 'swap_execute',
+      toolUseId: 'tu-h',
+      input: { from: 'SUI', to: 'USDC', amount: 10 },
+      steps: [
+        {
+          attemptId: 'att-h-1-step-1',
+          toolName: 'swap_execute',
+          toolUseId: 'tu-h-step-1',
+          input: { from: 'SUI', to: 'USDC', amount: 10 },
+        },
+        {
+          attemptId: 'att-h-1-step-2',
+          toolName: 'send_transfer',
+          toolUseId: 'tu-h-step-2',
+          input: { to: 'Mom', amount: 5, asset: 'USDC' },
+        },
+      ],
+    };
+    const contactsIncludingTokenName = [
+      ...CONTACTS_FIXTURE,
+      { name: 'USDC', address: '0xfake0000000000000000000000000000000000000000000000000000000000aa' },
+    ];
+    const tl = applyEventToTimeline(
+      [],
+      { type: 'pending_action', action: hybridBundle as never },
+      T0,
+      { contacts: contactsIncludingTokenName },
+    );
+    const contactRows = tl.filter((b) => b.type === 'contact-resolved') as ContactResolvedTimelineBlock[];
+    expect(contactRows).toHaveLength(1);
+    expect(contactRows[0].contactName).toBe('Mom');
   });
 
   it('dedups multi-leg references to the same contact (single contact row per (name,address))', () => {
@@ -1147,13 +1283,17 @@ describe('applyEventToTimeline — P2.5b contact row on tool_start (forward-comp
   });
 
   it('also sweeps the contact row when tool_result.resultDeduped fires for that toolUseId', () => {
+    // Use `recipient` (universally-scanned, not gated by toolName) so the
+    // forward-compat tool name doesn't need to be on the
+    // TOOLS_WHERE_TO_IS_RECIPIENT allow-list. The dedup-sweep behavior
+    // is what we're locking in here, not the field-allow-list.
     const seed = applyEventToTimeline(
       [],
       {
         type: 'tool_start',
         toolName: 'future_recipient_lookup',
         toolUseId: 'tu1',
-        input: { to: 'Mom' },
+        input: { recipient: 'Mom' },
       },
       T0,
       { contacts: CONTACTS_FIXTURE },
