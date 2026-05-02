@@ -2,12 +2,18 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { PendingActionModifiableField, PendingActionStep } from '@t2000/engine';
+import { bundleShortestTtl } from '@t2000/engine';
 import type { PendingAction } from '@/lib/engine-types';
 import {
   findContactByAddress,
   findNearContact,
 } from '@/lib/sui-address';
 import { ChunkedAddress } from './ChunkedAddress';
+import {
+  formatQuoteAge,
+  quoteAgeSeverity,
+  type QuoteAgeSeverity,
+} from '@/lib/format-quote-age';
 
 /**
  * [v1.4 Item 6] Single editable input rendered inside a `PermissionCard`.
@@ -396,6 +402,20 @@ function BundleStepsList({ steps }: BundleStepsListProps) {
 export type DenyReason = 'timeout' | 'denied';
 
 /**
+ * [SPEC 7 P2.4b] Quote-Refresh ReviewCard — regenerate slot. Host
+ * passes a populated `regenerate` prop when `action.canRegenerate`
+ * is true; the renderer draws the QUOTE Ns OLD badge in the header
+ * and a third button between Deny and Approve. Empty when undefined
+ * (default for single-write actions).
+ */
+export interface PermissionCardRegenerateSlot {
+  /** Click handler fired when the user taps the regenerate button. */
+  onRegenerate: () => void;
+  /** True while the host's regenerate round-trip is in flight. */
+  isRegenerating: boolean;
+}
+
+/**
  * [v1.4 Item 6] Optional 4th `modifications` arg lets the user edit fields
  * declared by the engine's `tool-modifiable-fields` registry before
  * approving. `reason` retains its `DenyReason` type per the spec.
@@ -426,6 +446,13 @@ interface PermissionCardProps {
    * already enforces the same check server-side; this is purely UI.
    */
   recentUserText?: string;
+  /**
+   * [SPEC 7 P2.4b] Quote-Refresh slot. Only consulted on bundle render
+   * branch + when `action.canRegenerate === true`. Single-write
+   * pending_actions ignore this prop. See
+   * `PermissionCardRegenerateSlot` for the contract.
+   */
+  regenerate?: PermissionCardRegenerateSlot;
 }
 
 export function PermissionCard({
@@ -435,6 +462,7 @@ export function PermissionCard({
   contacts = [],
   walletAddress,
   recentUserText,
+  regenerate,
 }: PermissionCardProps) {
   const [resolved, setResolved] = useState(false);
   const resolvedRef = useRef(false);
@@ -524,6 +552,43 @@ export function PermissionCard({
   // ─── Bundle render branch (multi-write Payment Stream) ─────────────────
   if (isBundle && action.steps) {
     const stepCount = action.steps.length;
+    // [SPEC 7 P2.4b] Quote-Refresh slot lives on the multi-write
+    // bundle UI only (single-writes don't carry `quoteAge` /
+    // `canRegenerate` / `regenerateInput`).
+    const showRegenerate =
+      regenerate !== undefined && action.canRegenerate === true;
+
+    // Live age tick — same `secondsLeft` interval the timeout countdown
+    // uses re-renders this badge each second. We compute the age string
+    // and severity inline so the host doesn't need to push us a stream
+    // of updated `ageMs` props.
+    const ageMs =
+      typeof action.quoteAge === 'number' ? action.quoteAge + (TIMEOUT_SEC - secondsLeft) * 1000 : undefined;
+    const toolNamesById: Record<string, string> = {};
+    if (action.regenerateInput?.toolUseIds) {
+      // Without per-id tool name lookup, `bundleShortestTtl` uses the
+      // DEFAULT_TOOL_TTL_MS fallback per id. That's the spec-faithful
+      // behaviour for hosts that don't track per-id tool names; the
+      // resulting TTL is conservative (60s) which is fine — Sui's
+      // dry-run is the actual safety gate.
+      for (const id of action.regenerateInput.toolUseIds) {
+        // Default unknown — bundleShortestTtl handles missing entries.
+        toolNamesById[id] = '';
+      }
+    }
+    const shortestTtl =
+      action.regenerateInput?.toolUseIds
+        ? bundleShortestTtl(action.regenerateInput.toolUseIds, toolNamesById)
+        : 60_000;
+    const severity: QuoteAgeSeverity = quoteAgeSeverity(ageMs, shortestTtl);
+    const ageBadge = formatQuoteAge(ageMs);
+    const ageBadgeClass =
+      severity === 'stale'
+        ? 'text-error-solid'
+        : severity === 'amber'
+          ? 'text-warning-solid animate-pulse'
+          : 'text-fg-secondary';
+
     return (
       <div
         className="rounded-xl border border-border-subtle bg-surface-card p-3 space-y-2.5 shadow-[var(--shadow-flat)]"
@@ -535,14 +600,25 @@ export function PermissionCard({
           <span className="text-xs font-medium text-fg-primary">
             {stepCount} operations · 1 Payment Stream · Atomic
           </span>
-          {!resolved && (
-            <span
-              className={`text-[10px] font-mono tabular-nums ${secondsLeft <= 10 ? 'text-error-solid' : 'text-fg-secondary'}`}
-              aria-label={`${secondsLeft} seconds remaining`}
-            >
-              {secondsLeft}s
-            </span>
-          )}
+          <div className="flex items-center gap-2">
+            {showRegenerate && (
+              <span
+                className={`text-[10px] font-mono uppercase tracking-wide tabular-nums ${ageBadgeClass}`}
+                aria-label={`Quote age: ${ageBadge}`}
+                data-severity={severity}
+              >
+                {ageBadge}
+              </span>
+            )}
+            {!resolved && (
+              <span
+                className={`text-[10px] font-mono tabular-nums ${secondsLeft <= 10 ? 'text-error-solid' : 'text-fg-secondary'}`}
+                aria-label={`${secondsLeft} seconds remaining`}
+              >
+                {secondsLeft}s
+              </span>
+            )}
+          </div>
         </div>
 
         {!resolved && (
@@ -582,13 +658,25 @@ export function PermissionCard({
           <div className="flex gap-2">
             <button
               onClick={() => handle(false, 'denied')}
-              className="flex-1 rounded-lg border border-border-subtle bg-surface-page py-2 text-xs font-medium text-fg-secondary hover:text-fg-primary hover:border-border-strong transition active:scale-[0.97]"
+              disabled={regenerate?.isRegenerating}
+              className="flex-1 rounded-lg border border-border-subtle bg-surface-page py-2 text-xs font-medium text-fg-secondary hover:text-fg-primary hover:border-border-strong transition active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Deny
             </button>
+            {showRegenerate && (
+              <button
+                onClick={regenerate.onRegenerate}
+                disabled={regenerate.isRegenerating}
+                className="flex-1 rounded-lg border border-border-subtle bg-surface-page py-2 text-xs font-medium text-fg-secondary hover:text-fg-primary hover:border-border-strong transition active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed"
+                aria-label="Regenerate bundle with fresh quotes"
+              >
+                {regenerate.isRegenerating ? 'Regenerating…' : '↻ Regenerate'}
+              </button>
+            )}
             <button
               onClick={() => handle(true)}
-              className="flex-1 rounded-lg bg-fg-primary py-2 text-xs font-semibold text-fg-inverse transition hover:opacity-90 active:scale-[0.97]"
+              disabled={regenerate?.isRegenerating}
+              className="flex-1 rounded-lg bg-fg-primary py-2 text-xs font-semibold text-fg-inverse transition hover:opacity-90 active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Approve
             </button>

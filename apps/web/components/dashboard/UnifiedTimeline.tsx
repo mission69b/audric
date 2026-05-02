@@ -456,6 +456,8 @@ export function UnifiedTimeline({
                 walletAddress={address}
                 recentUserText={recentUserText}
                 pinnedHarnessVersion={engine.harnessVersion}
+                onRegenerate={engine.handleRegenerate}
+                regeneratingAttemptIds={engine.regeneratingAttemptIds}
               />
             </div>
           );

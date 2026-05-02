@@ -10,6 +10,7 @@ import { TodoBlockView } from './TodoBlockView';
 import { CanvasBlockView } from './CanvasBlockView';
 import { PermissionCardBlockView } from './PermissionCardBlockView';
 import { PendingInputBlockView } from './PendingInputBlockView';
+import { RegeneratedBlockView } from './RegeneratedBlockView';
 
 // ───────────────────────────────────────────────────────────────────────────
 // SPEC 8 v0.5.1 — BlockRouter (B2.2)
@@ -41,6 +42,16 @@ interface BlockRouterProps {
    * gating. See `PermissionCardBlockView` for the contract.
    */
   shouldAutoApprove?: (action: Pick<PendingAction, 'toolName' | 'input'>) => boolean;
+  /**
+   * [SPEC 7 P2.4b] Quote-Refresh wiring. Passed through to
+   * `PermissionCardBlockView` which forwards to the underlying
+   * `PermissionCard.regenerate` slot. Only consulted on bundle
+   * payloads whose `canRegenerate === true`. The `regeneratingAttemptIds`
+   * set lets the renderer mark the in-flight regenerate state without
+   * a per-card React refactor.
+   */
+  onRegenerate?: (action: PendingAction) => void;
+  regeneratingAttemptIds?: ReadonlySet<string>;
   /**
    * [B3.3 / G8] Controlled-mode expansion state for thinking blocks.
    * The parent (`<ReasoningTimeline>`) owns the per-message
@@ -81,6 +92,8 @@ export function BlockRouter({
   onToggleThinking,
   voiceSlice,
   spokenWordIndex,
+  onRegenerate,
+  regeneratingAttemptIds,
 }: BlockRouterProps) {
   switch (block.type) {
     case 'thinking':
@@ -120,10 +133,15 @@ export function BlockRouter({
           walletAddress={walletAddress}
           recentUserText={recentUserText}
           shouldAutoApprove={shouldAutoApprove}
+          onRegenerate={onRegenerate}
+          regeneratingAttemptIds={regeneratingAttemptIds}
         />
       );
 
     case 'pending-input':
       return <PendingInputBlockView block={block} />;
+
+    case 'regenerated':
+      return <RegeneratedBlockView block={block} />;
   }
 }

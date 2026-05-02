@@ -43,6 +43,13 @@ interface LegacyReasoningRenderProps {
   contacts?: ReadonlyArray<{ name: string; address: string }>;
   walletAddress?: string | null;
   recentUserText?: string;
+  /**
+   * [SPEC 7 P2.4b] Quote-Refresh handler — wired through to the
+   * legacy `<PermissionCard>` so legacy-pinned sessions also benefit
+   * from the Regenerate button. Bundle pending_actions only.
+   */
+  onRegenerate?: (action: PendingAction) => void;
+  regeneratingAttemptIds?: ReadonlySet<string>;
 }
 
 function ToolSteps({ tools }: { tools: ToolExecution[] }) {
@@ -101,6 +108,8 @@ export function LegacyReasoningRender({
   contacts,
   walletAddress,
   recentUserText,
+  onRegenerate,
+  regeneratingAttemptIds,
 }: LegacyReasoningRenderProps) {
   // Voice mode: when this assistant message is the one currently being
   // spoken aloud, swap the markdown renderer for the word-highlight
@@ -142,15 +151,33 @@ export function LegacyReasoningRender({
         </div>
       )}
 
-      {hasPendingAction && onActionResolve && !shouldAutoApprove?.(message.pendingAction!) && (
-        <PermissionCard
-          action={message.pendingAction!}
-          onResolve={onActionResolve}
-          contacts={contacts}
-          walletAddress={walletAddress}
-          recentUserText={recentUserText}
-        />
-      )}
+      {hasPendingAction && onActionResolve && !shouldAutoApprove?.(message.pendingAction!) && (() => {
+        const action = message.pendingAction!;
+        // [SPEC 7 P2.4b] Same gate as `PermissionCardBlockView` — only
+        // bundles flagged with `canRegenerate` get the Regenerate slot.
+        const isBundle = Array.isArray(action.steps) && action.steps.length >= 2;
+        const showRegenerate = Boolean(
+          onRegenerate && isBundle && action.canRegenerate && action.regenerateInput,
+        );
+        return (
+          <PermissionCard
+            action={action}
+            onResolve={onActionResolve}
+            contacts={contacts}
+            walletAddress={walletAddress}
+            recentUserText={recentUserText}
+            regenerate={
+              showRegenerate
+                ? {
+                    onRegenerate: () => onRegenerate?.(action),
+                    isRegenerating:
+                      regeneratingAttemptIds?.has(action.attemptId) ?? false,
+                  }
+                : undefined
+            }
+          />
+        );
+      })()}
 
       {message.isThinking && !message.content && !hasTools && (
         <div className="pl-1">

@@ -52,6 +52,14 @@ interface ReasoningTimelineProps {
    */
   shouldAutoApprove?: (action: Pick<PendingAction, 'toolName' | 'input'>) => boolean;
   /**
+   * [SPEC 7 P2.4b] Quote-Refresh ReviewCard wiring. Forwarded to the
+   * `permission-card` block (only consulted on bundles flagged with
+   * `canRegenerate`). Parent owns the round-trip to
+   * `/api/engine/regenerate` and the post-success timeline mutation.
+   */
+  onRegenerate?: (action: PendingAction) => void;
+  regeneratingAttemptIds?: ReadonlySet<string>;
+  /**
    * [B3.4 / Gap F] Voice playback context for THIS message. Set when:
    *   - `voice.state === 'speaking'`
    *   - `voice.speakingMessageId === message.id`
@@ -76,6 +84,8 @@ export function ReasoningTimeline({
   recentUserText,
   shouldAutoApprove,
   voiceContext,
+  onRegenerate,
+  regeneratingAttemptIds,
 }: ReasoningTimelineProps) {
   // [B3.3 / G8] Manual-state-preserved expansion map for thinking blocks.
   // Lazy-init from the blocks present at first mount (rehydration case)
@@ -162,6 +172,8 @@ export function ReasoningTimeline({
             walletAddress={walletAddress}
             recentUserText={recentUserText}
             shouldAutoApprove={shouldAutoApprove}
+            onRegenerate={onRegenerate}
+            regeneratingAttemptIds={regeneratingAttemptIds}
             thinkingExpanded={
               block.type === 'thinking'
                 ? thinkingExpanded.get(block.blockIndex) ??
@@ -212,5 +224,7 @@ function blockKey(block: TimelineBlock): string {
       return `pinput-${block.inputId}`;
     case 'text':
       return 'text';
+    case 'regenerated':
+      return `regen-${block.originalAttemptId}`;
   }
 }

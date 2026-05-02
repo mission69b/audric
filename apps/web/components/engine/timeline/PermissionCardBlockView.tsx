@@ -43,6 +43,21 @@ interface PermissionCardBlockViewProps {
    * timeline visually clean while that happens.
    */
   shouldAutoApprove?: (action: Pick<PendingAction, 'toolName' | 'input'>) => boolean;
+  /**
+   * [SPEC 7 P2.4b] Quote-Refresh ReviewCard. When the underlying
+   * pending action is a bundle with `canRegenerate === true`, the
+   * card surfaces a "↻ Regenerate" button that calls this handler.
+   * Parent (`useEngine.handleRegenerate`) is responsible for hitting
+   * `/api/engine/regenerate`, swapping in the fresh `PendingAction`,
+   * and pushing a `RegeneratedTimelineBlock` for the re-fired reads.
+   */
+  onRegenerate?: (action: PendingAction) => void;
+  /**
+   * [SPEC 7 P2.4b] Set of `attemptId`s currently mid-flight on the
+   * regenerate endpoint. The card shows the spinner-state Regenerate
+   * button when its own `payload.attemptId` is in this set.
+   */
+  regeneratingAttemptIds?: ReadonlySet<string>;
 }
 
 export function PermissionCardBlockView({
@@ -52,11 +67,26 @@ export function PermissionCardBlockView({
   walletAddress,
   recentUserText,
   shouldAutoApprove,
+  onRegenerate,
+  regeneratingAttemptIds,
 }: PermissionCardBlockViewProps) {
   if (block.status !== 'pending') return null;
   if (shouldAutoApprove?.({ toolName: block.payload.toolName, input: block.payload.input })) {
     return null;
   }
+  // [SPEC 7 P2.4b] Only wire the regenerate slot when the engine flagged
+  // the bundle as refreshable AND the host gave us a handler. Single-step
+  // actions never get a regenerate button (the spec restricts this to
+  // bundle quote refresh). `steps.length >= 2` mirrors `PermissionCard`'s
+  // own `isBundle` check.
+  const isBundle =
+    Array.isArray(block.payload.steps) && block.payload.steps.length >= 2;
+  const showRegenerate = Boolean(
+    onRegenerate &&
+      isBundle &&
+      block.payload.canRegenerate &&
+      block.payload.regenerateInput,
+  );
   return (
     <PermissionCard
       action={block.payload}
@@ -64,6 +94,15 @@ export function PermissionCardBlockView({
       contacts={contacts}
       walletAddress={walletAddress}
       recentUserText={recentUserText}
+      regenerate={
+        showRegenerate
+          ? {
+              onRegenerate: () => onRegenerate?.(block.payload),
+              isRegenerating:
+                regeneratingAttemptIds?.has(block.payload.attemptId) ?? false,
+            }
+          : undefined
+      }
     />
   );
 }

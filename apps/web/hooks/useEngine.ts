@@ -9,6 +9,9 @@ import type {
   EngineStatus,
   SSEEvent,
   CanvasData,
+  RegeneratedTimelineBlock,
+  ToolTimelineBlock,
+  TimelineBlock,
 } from '@/lib/engine-types';
 import {
   applyEventToTimeline,
@@ -17,6 +20,8 @@ import {
   mergeWriteExecutionIntoTimeline,
 } from '@/lib/timeline-builder';
 import { asHarnessVersion, type HarnessVersion } from '@/lib/interactive-harness';
+import type { RegenerateTimelineEvent, RegenerateFailure } from '@t2000/engine';
+import { REGEN_ERROR_COPY } from '@/lib/engine/regen-error-copy';
 
 // [v1.4] Re-export the pure executor so consumers and tests can use a single
 // import path: `import { executeToolAction } from '@/hooks/useEngine'`.
@@ -70,6 +75,51 @@ function buildHistory(messages: EngineChatMessage[]): { role: 'user' | 'assistan
     .map((m) => ({ role: m.role, content: m.content }));
 }
 
+/**
+ * [SPEC 7 P2.4b] Rebuild a message's timeline after a successful
+ * regenerate. Three things need to happen, in order:
+ *  1. Find the `permission-card` block whose `payload.attemptId`
+ *     matches the old action and swap its `payload` to the fresh
+ *     `newAction` (so the renderer sees the new attemptId + quoteAge).
+ *  2. Insert the `regeneratedBlock` immediately ABOVE that card, so
+ *     the user reads "↻ Regenerated · 1.4s" then the fresh card.
+ *  3. Leave every other block untouched — we do not unwind the prior
+ *     `tool` blocks for the old reads (they're conversational history
+ *     and should remain visible).
+ *
+ * Returns the same reference when no permission-card matches (e.g. a
+ * legacy session with no timeline writes), so React skips the
+ * timeline re-render in those cases.
+ */
+function updateTimelineForRegenerate(
+  timeline: TimelineBlock[] | undefined,
+  oldAttemptId: string,
+  newAction: PendingAction,
+  regeneratedBlock: RegeneratedTimelineBlock,
+): TimelineBlock[] | undefined {
+  if (!timeline || timeline.length === 0) return timeline;
+  const cardIdx = timeline.findIndex(
+    (b) =>
+      b.type === 'permission-card' &&
+      b.payload.attemptId === oldAttemptId,
+  );
+  if (cardIdx < 0) return timeline;
+  const next: TimelineBlock[] = [];
+  for (let i = 0; i < timeline.length; i++) {
+    if (i === cardIdx) {
+      next.push(regeneratedBlock);
+      next.push({
+        type: 'permission-card',
+        payload: newAction,
+        status: 'pending',
+      });
+      continue;
+    }
+    next.push(timeline[i]);
+  }
+  return next;
+}
+
 export function useEngine({ address, jwt, onToolResult }: UseEngineOptions) {
   // Hold the latest callback in a ref so the SSE handler doesn't re-bind
   // (and risk dropping events) when the parent re-renders with a new fn.
@@ -106,6 +156,14 @@ export function useEngine({ address, jwt, onToolResult }: UseEngineOptions) {
   // streaming. Captured at `sendMessage` time so the retry button can
   // replay it even if the user types more in between.
   const currentReplayTextRef = useRef<string | null>(null);
+
+  // [SPEC 7 P2.4b] Set of `attemptId`s currently mid-flight on the
+  // regenerate endpoint. Renders as the spinner-state Regenerate button
+  // on the matching PermissionCard. Maintained as state (not ref) so
+  // the cards re-render when an attempt enters/leaves the set.
+  const [regeneratingAttemptIds, setRegeneratingAttemptIds] = useState<
+    ReadonlySet<string>
+  >(() => new Set());
 
   const messagesRef = useRef<EngineChatMessage[]>([]);
   messagesRef.current = messages;
@@ -343,6 +401,147 @@ export function useEngine({ address, jwt, onToolResult }: UseEngineOptions) {
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [address, jwt, sessionId],
+  );
+
+  /**
+   * [SPEC 7 P2.4b] Quote-Refresh handler — POSTs the bundle's
+   * `attemptId` to `/api/engine/regenerate`, rebuilds the matching
+   * timeline (insert "↻ Regenerated · Ns" group above the card,
+   * swap the card's `payload` to the fresh action), and surfaces
+   * failures via `setError`. Idempotent on the in-flight set so
+   * double-tapping the button is a no-op while the round-trip is
+   * still pending.
+   */
+  const handleRegenerate = useCallback(
+    async (action: PendingAction) => {
+      if (!sessionId || !jwt || !address) return;
+      const targetAttemptId = action.attemptId;
+      if (!targetAttemptId) return;
+      if (regeneratingAttemptIds.has(targetAttemptId)) return;
+
+      setRegeneratingAttemptIds((prev) => {
+        const next = new Set(prev);
+        next.add(targetAttemptId);
+        return next;
+      });
+      setError(null);
+
+      try {
+        const res = await fetch('/api/engine/regenerate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-zklogin-jwt': jwt,
+          },
+          body: JSON.stringify({
+            address,
+            sessionId,
+            attemptId: targetAttemptId,
+          }),
+        });
+
+        const body = (await res.json().catch(() => null)) as
+          | {
+              success: true;
+              newPendingAction: PendingAction;
+              timelineEvents: RegenerateTimelineEvent[];
+            }
+          | (RegenerateFailure & { success: false })
+          | null;
+
+        if (!res.ok || !body || body.success !== true) {
+          const reason: RegenerateFailure['reason'] =
+            body && body.success === false ? body.reason : 'engine_error';
+          setError(REGEN_ERROR_COPY[reason] ?? REGEN_ERROR_COPY.engine_error);
+          return;
+        }
+
+        // Build a single `RegeneratedTimelineBlock` carrying every
+        // re-fired read as a child `ToolTimelineBlock` (so each renders
+        // its own rich result card via `ToolBlockView`). Timeline events
+        // arrive paired (`tool_start` then `tool_result`) per spec; we
+        // index by `toolUseId` to merge into one block per read.
+        const childByToolUseId = new Map<string, ToolTimelineBlock>();
+        let totalDurationMs = 0;
+        const now = Date.now();
+        for (const ev of body.timelineEvents) {
+          if (ev.type === 'tool_start') {
+            childByToolUseId.set(ev.toolUseId, {
+              type: 'tool',
+              toolUseId: ev.toolUseId,
+              toolName: ev.toolName,
+              input: ev.input,
+              status: 'running',
+              startedAt: now,
+            });
+          } else {
+            const existing = childByToolUseId.get(ev.toolUseId) ?? {
+              type: 'tool' as const,
+              toolUseId: ev.toolUseId,
+              toolName: ev.toolName,
+              input: undefined,
+              status: 'running' as const,
+              startedAt: now,
+            };
+            childByToolUseId.set(ev.toolUseId, {
+              ...existing,
+              status: ev.isError ? 'error' : 'done',
+              endedAt: now,
+              result: ev.result,
+              isError: ev.isError,
+            });
+            totalDurationMs += ev.durationMs;
+          }
+        }
+        const toolBlocks = Array.from(childByToolUseId.values());
+        const regeneratedBlock: RegeneratedTimelineBlock = {
+          type: 'regenerated',
+          durationMs: totalDurationMs,
+          toolBlocks,
+          originalAttemptId: targetAttemptId,
+        };
+
+        const newAction = body.newPendingAction;
+        setMessages((prev) =>
+          prev.map((m) => {
+            // Match on the message that holds the (now-stale)
+            // pending_action. Any other engine message is left alone.
+            if (
+              !m.pendingAction ||
+              m.pendingAction.attemptId !== targetAttemptId
+            ) {
+              return m;
+            }
+            // Swap in the fresh action so the renderers (legacy
+            // PermissionCard via `pendingAction`, new path via the
+            // permission-card timeline block) both see the new
+            // attemptId, fresh quoteAge, and updated step list.
+            const nextTimeline = updateTimelineForRegenerate(
+              m.timeline,
+              targetAttemptId,
+              newAction,
+              regeneratedBlock,
+            );
+            return {
+              ...m,
+              pendingAction: newAction,
+              timeline: nextTimeline,
+            };
+          }),
+        );
+      } catch (err) {
+        console.error('[useEngine] regenerate failed:', err);
+        setError(REGEN_ERROR_COPY.engine_error);
+      } finally {
+        setRegeneratingAttemptIds((prev) => {
+          if (!prev.has(targetAttemptId)) return prev;
+          const next = new Set(prev);
+          next.delete(targetAttemptId);
+          return next;
+        });
+      }
+    },
+    [address, jwt, sessionId, regeneratingAttemptIds],
   );
 
   /**
@@ -962,5 +1161,10 @@ export function useEngine({ address, jwt, onToolResult }: UseEngineOptions) {
     injectMessage,
     canRetry: !!lastFailedMessage.current,
     isStreaming: status === 'streaming' || status === 'connecting' || status === 'executing',
+    // [SPEC 7 P2.4b] Quote-Refresh — `<UnifiedTimeline>` threads these
+    // down to `<ChatMessage>` → `<ReasoningTimeline>` → `<BlockRouter>`
+    // → `<PermissionCardBlockView>` (and the legacy path equivalent).
+    handleRegenerate,
+    regeneratingAttemptIds,
   };
 }

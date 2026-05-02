@@ -126,6 +126,35 @@ export interface PendingInputTimelineBlock {
   prompt?: string;
 }
 
+/**
+ * [SPEC 7 P2.4b] "↻ Regenerated · Ns" labeled group surfacing the
+ * upstream reads that re-fired during a Quote-Refresh round-trip.
+ * Pushed onto the timeline by `useEngine.handleRegenerate` after a
+ * successful POST /api/engine/regenerate; rendered immediately above
+ * the new permission-card block whose `payload` got swapped in. The
+ * child `toolBlocks` are rendered with the standard `ToolBlockView`
+ * so each gets its existing rich result card (BalCard, RatesCard,
+ * etc.) — same UX as if the LLM had re-emitted them.
+ */
+export interface RegeneratedTimelineBlock {
+  type: 'regenerated';
+  /**
+   * Sum of every child's `tool_result.durationMs`. Drives the
+   * "↻ Regenerated · 1.4s" header label.
+   */
+  durationMs: number;
+  /** Embedded child tool blocks (one per re-fired upstream read). */
+  toolBlocks: ToolTimelineBlock[];
+  /**
+   * The `attemptId` of the original (now-replaced) bundle. Lets the
+   * rendering pipeline correlate this group with the fresh
+   * permission-card block whose payload arrived in the same
+   * regenerate response (e.g. "show this group above the new card,
+   * collapse when its sibling card resolves").
+   */
+  originalAttemptId: string;
+}
+
 export type TimelineBlock =
   | ThinkingTimelineBlock
   | ToolTimelineBlock
@@ -133,7 +162,8 @@ export type TimelineBlock =
   | TodoTimelineBlock
   | CanvasTimelineBlock
   | PermissionCardTimelineBlock
-  | PendingInputTimelineBlock;
+  | PendingInputTimelineBlock
+  | RegeneratedTimelineBlock;
 
 // [SPEC 8 v0.5.1 B1] Per-event captures from the new SSE event types.
 // These shapes mirror the engine's SSEEvent union — kept local rather

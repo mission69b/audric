@@ -63,6 +63,15 @@ interface ChatMessageProps {
    * back to `currentHarnessVersion()` which reads the env-var.
    */
   pinnedHarnessVersion?: HarnessVersion | null;
+  /**
+   * [SPEC 7 P2.4b] Quote-Refresh handler — forwarded to the
+   * `<PermissionCard>` slot in both the v2 (`<ReasoningTimeline>`) and
+   * legacy (`<LegacyReasoningRender>`) render paths. When omitted, no
+   * Regenerate button appears even on bundles that support it (parent
+   * has opted out of the feature).
+   */
+  onRegenerate?: (action: PendingAction) => void;
+  regeneratingAttemptIds?: ReadonlySet<string>;
 }
 
 export function ChatMessage({
@@ -74,6 +83,8 @@ export function ChatMessage({
   walletAddress,
   recentUserText,
   pinnedHarnessVersion,
+  onRegenerate,
+  regeneratingAttemptIds,
 }: ChatMessageProps) {
   if (message.role === 'user') {
     return (
@@ -119,6 +130,8 @@ export function ChatMessage({
         walletAddress={walletAddress}
         recentUserText={recentUserText}
         shouldAutoApprove={shouldAutoApprove}
+        onRegenerate={onRegenerate}
+        regeneratingAttemptIds={regeneratingAttemptIds}
       />
     );
   }
@@ -133,6 +146,8 @@ export function ChatMessage({
         contacts={contacts}
         walletAddress={walletAddress}
         recentUserText={recentUserText}
+        onRegenerate={onRegenerate}
+        regeneratingAttemptIds={regeneratingAttemptIds}
       />
       {/* [B3.4 / Gap J] Legacy path: render the same retry pill so a
           flag-OFF session that gets cut off still has an obvious
@@ -174,6 +189,8 @@ function ChatMessageV2({
   contacts,
   walletAddress,
   recentUserText,
+  onRegenerate,
+  regeneratingAttemptIds,
 }: ChatMessageV2Props) {
   const voice = useVoiceModeContext();
   const isBeingSpoken =
@@ -216,6 +233,8 @@ function ChatMessageV2({
         recentUserText={recentUserText}
         shouldAutoApprove={shouldAutoApprove}
         voiceContext={voiceContext}
+        onRegenerate={onRegenerate}
+        regeneratingAttemptIds={regeneratingAttemptIds}
       />
 
       {message.usage && !message.isStreaming && (

@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { serializeSSE } from '@t2000/engine';
+import { serializeSSE, getTelemetrySink } from '@t2000/engine';
 import type { PendingAction } from '@t2000/engine';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { validateJwt, isValidSuiAddress } from '@/lib/auth';
@@ -381,6 +381,45 @@ export async function POST(request: NextRequest) {
                 console.warn('[TurnMetrics] pendingActionOutcome update failed (non-fatal, legacy keying):', err),
               );
           }
+
+          // [SPEC 7 P2.4b] If a prior pending_action in the same turn
+          // was marked `'regenerated'`, this resume is the "after-regen"
+          // decision — emit a segmented `audric.harness.regenerate_count`
+          // counter so the dashboard can split approve/deny rates between
+          // first-card and post-regenerate cards. Cheap (one indexed
+          // lookup on `(sessionId, turnIndex, pendingActionOutcome)`),
+          // and fire-and-forget so it never adds latency to the SSE
+          // resume stream. `regen_then_expired` is intentionally not
+          // emitted here — that requires a session-GC hook (deferred).
+          prisma.turnMetrics
+            .findFirst({
+              where: {
+                sessionId,
+                turnIndex: action.turnIndex,
+                pendingActionOutcome: 'regenerated',
+              },
+              select: { id: true },
+            })
+            .then((priorRegenerated) => {
+              if (!priorRegenerated) return;
+              const segment =
+                resolvedOutcome === 'approved' || resolvedOutcome === 'modified'
+                  ? 'approved_after_regen'
+                  : 'denied_after_regen';
+              try {
+                getTelemetrySink().counter('audric.harness.regenerate_count', {
+                  outcome: segment,
+                });
+              } catch {
+                // Telemetry must never block the response.
+              }
+            })
+            .catch((err) =>
+              console.warn(
+                '[engine/resume] regenerate-segment lookup failed (non-fatal):',
+                err,
+              ),
+            );
 
           // [v1.4.2 — Day 4 / Spec Edit 4] Write a NEW TurnMetrics row
           // for the resume turn itself. The `updateMany` above patches
