@@ -40,6 +40,28 @@ export type ExecuteActionFn = (
   input: unknown,
 ) => Promise<{ success: boolean; data: unknown }>;
 
+/**
+ * [SPEC 7 P2.4 Layer 3] Multi-write Payment Stream executor. Caller
+ * dispatches `sdk.executeBundle(steps)` and returns per-step results
+ * mapped from the shared tx digest. Engine matches each step's
+ * `toolUseId` to its result on resume and emits N tool_result blocks.
+ * Atomic semantics: on revert, every step's `isError: true` with the
+ * same root error so the LLM narrates "the bundle reverted" coherently.
+ */
+export type ExecuteBundleFn = (
+  action: PendingAction,
+) => Promise<{
+  success: boolean;
+  txDigest?: string;
+  stepResults: Array<{
+    toolUseId: string;
+    attemptId: string;
+    result: unknown;
+    isError: boolean;
+  }>;
+  error?: string;
+}>;
+
 interface UnifiedTimelineProps {
   engine: EngineInstance;
   feed: FeedInstance;
@@ -48,6 +70,13 @@ interface UnifiedTimelineProps {
   onSaveContact?: (name: string, address: string) => void;
   onConfirmResolve?: (approved: boolean) => void;
   onExecuteAction?: ExecuteActionFn;
+  /**
+   * [SPEC 7 P2.4 Layer 3] Multi-write bundle executor. When set, bundle-
+   * shaped pending actions (`action.steps?.length > 0`) dispatch through
+   * this instead of `onExecuteAction`. Both single-write and bundle paths
+   * coexist; the discriminator is the presence of `action.steps`.
+   */
+  onExecuteBundle?: ExecuteBundleFn;
   /** Pre-flight balance check. Returns error string if insufficient, null if OK. */
   onValidateAction?: (toolName: string, input: unknown) => string | null;
   /** Max USD amount to auto-approve without user confirmation (0 = always confirm). */
@@ -102,6 +131,7 @@ export function UnifiedTimeline({
   onSaveContact,
   onConfirmResolve,
   onExecuteAction,
+  onExecuteBundle,
   onValidateAction,
   agentBudget = 0,
   permissionConfig = DEFAULT_PERMISSION_CONFIG,
@@ -204,7 +234,82 @@ export function UnifiedTimeline({
       // resume route so server-side history matches the approved values.
       modifications?: Record<string, unknown>,
     ) => {
-      if (!approved || !onExecuteAction) {
+      // [SPEC 7 P2.4 Layer 3] Bundle vs single-write dispatch. The engine
+      // emits `action.steps` for multi-write Payment Streams (>=2
+      // bundleable confirm-tier writes resolved in the same turn). Single
+      // writes leave `steps` undefined.
+      const isBundle = Array.isArray(action.steps) && action.steps.length > 0;
+
+      if (!approved) {
+        engine.resolveAction(action, approved, undefined, reason);
+        return;
+      }
+
+      if (isBundle) {
+        if (!onExecuteBundle) {
+          // No bundle executor wired → cannot proceed. Surface as
+          // pre-execute failure so the LLM narrates the host bug
+          // rather than silently dropping the approval.
+          const errorResults = action.steps!.map((s) => ({
+            toolUseId: s.toolUseId,
+            attemptId: s.attemptId,
+            result: { success: false, error: 'Bundle executor unavailable on this host' },
+            isError: true,
+          }));
+          engine.resolveAction(
+            action,
+            true,
+            undefined,
+            undefined,
+            modifications,
+            undefined,
+            errorResults,
+          );
+          return;
+        }
+
+        const executionStart = Date.now();
+        try {
+          const bundleResult = await onExecuteBundle(action);
+          const executionDurationMs = Date.now() - executionStart;
+          engine.resolveAction(
+            action,
+            true,
+            undefined,
+            undefined,
+            modifications,
+            executionDurationMs,
+            bundleResult.stepResults,
+          );
+        } catch (err) {
+          const executionDurationMs = Date.now() - executionStart;
+          const errorMsg = err instanceof Error ? err.message : 'Bundle execution failed';
+          // Synthesize per-step error results from the thrown error so
+          // every step gets a tool_result block on resume (atomic
+          // semantics). Mirrors executeBundleAction's catch path for
+          // when the executor itself throws synchronously before the
+          // SDK call lands.
+          const errorResults = action.steps!.map((s) => ({
+            toolUseId: s.toolUseId,
+            attemptId: s.attemptId,
+            result: { success: false, error: errorMsg, _bundleReverted: true },
+            isError: true,
+          }));
+          engine.resolveAction(
+            action,
+            true,
+            undefined,
+            undefined,
+            modifications,
+            executionDurationMs,
+            errorResults,
+          );
+        }
+        return;
+      }
+
+      // ─── Single-write path (legacy, unchanged) ─────────────────────
+      if (!onExecuteAction) {
         engine.resolveAction(action, approved, undefined, reason);
         return;
       }
@@ -263,7 +368,7 @@ export function UnifiedTimeline({
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [engine.resolveAction, onExecuteAction, onValidateAction],
+    [engine.resolveAction, onExecuteAction, onExecuteBundle, onValidateAction],
   );
 
   useEffect(() => {

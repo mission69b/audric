@@ -23,6 +23,7 @@ function fakeAgent(overrides: Partial<AgentActions>): AgentActions {
     unstakeVSui: vi.fn(),
     payService: vi.fn(),
     retryServiceDelivery: vi.fn(),
+    executeBundle: vi.fn(),
   };
   return { ...base, ...overrides };
 }
@@ -233,5 +234,174 @@ describe('executeToolAction — send_transfer SuiNS resolution', () => {
     // SDK send was NEVER called — we don't waste an RPC round-trip on a
     // bad address.
     expect(sendSpy).not.toHaveBeenCalled();
+  });
+});
+
+// ─── SPEC 7 P2.4 Layer 3 — executeBundleAction ─────────────────────────────
+
+describe('executeBundleAction — multi-write Payment Stream dispatch', () => {
+  it('forwards minimal { toolName, input } step shape to sdk.executeBundle', async () => {
+    const { executeBundleAction } = await import('./executeToolAction');
+    const executeBundle = vi.fn().mockResolvedValue({ tx: '0xbundle' });
+    const sdk = fakeAgent({ executeBundle });
+
+    const action = {
+      toolName: 'swap_execute',
+      toolUseId: 'tool-use-1',
+      input: { from: 'USDC', to: 'SUI', amount: 200 },
+      description: 'bundle',
+      assistantContent: [],
+      turnIndex: 0,
+      attemptId: 'attempt-step-1',
+      steps: [
+        {
+          toolName: 'swap_execute',
+          toolUseId: 'tool-use-1',
+          attemptId: 'attempt-step-1',
+          input: { from: 'USDC', to: 'SUI', amount: 200 },
+          description: 'Swap 200 USDC → SUI',
+        },
+        {
+          toolName: 'save_deposit',
+          toolUseId: 'tool-use-2',
+          attemptId: 'attempt-step-2',
+          input: { amount: 900, asset: 'USDC' },
+          description: 'Save 900 USDC',
+        },
+        {
+          toolName: 'send_transfer',
+          toolUseId: 'tool-use-3',
+          attemptId: 'attempt-step-3',
+          input: { amount: 100, to: '0xabc', asset: 'USDC' },
+          description: 'Send 100 USDC',
+        },
+      ],
+    } as never;
+
+    const out = await executeBundleAction(sdk, action);
+
+    expect(out.success).toBe(true);
+    expect(out.txDigest).toBe('0xbundle');
+    expect(out.stepResults).toHaveLength(3);
+
+    // sdk.executeBundle must receive ONLY toolName + input (no
+    // toolUseId / attemptId / description fields leak to the wire).
+    expect(executeBundle).toHaveBeenCalledTimes(1);
+    const passedSteps = executeBundle.mock.calls[0][0];
+    expect(passedSteps).toEqual([
+      { toolName: 'swap_execute', input: { from: 'USDC', to: 'SUI', amount: 200 } },
+      { toolName: 'save_deposit', input: { amount: 900, asset: 'USDC' } },
+      { toolName: 'send_transfer', input: { amount: 100, to: '0xabc', asset: 'USDC' } },
+    ]);
+  });
+
+  it('builds per-step results echoing input + shared tx digest on success', async () => {
+    const { executeBundleAction } = await import('./executeToolAction');
+    const sdk = fakeAgent({
+      executeBundle: vi.fn().mockResolvedValue({ tx: '0xbundle' }),
+    });
+
+    const action = {
+      toolName: 'save_deposit',
+      toolUseId: 'tool-use-1',
+      input: { amount: 100, asset: 'USDC' },
+      description: '',
+      assistantContent: [],
+      turnIndex: 0,
+      attemptId: 'a1',
+      steps: [
+        {
+          toolName: 'save_deposit',
+          toolUseId: 'tool-use-1',
+          attemptId: 'a1',
+          input: { amount: 100, asset: 'USDC' },
+          description: 'Save 100 USDC',
+        },
+        {
+          toolName: 'send_transfer',
+          toolUseId: 'tool-use-2',
+          attemptId: 'a2',
+          input: { amount: 50, to: '0xdef', asset: 'USDC' },
+          description: 'Send 50 USDC',
+        },
+      ],
+    } as never;
+
+    const out = await executeBundleAction(sdk, action);
+
+    expect(out.stepResults[0]).toMatchObject({
+      toolUseId: 'tool-use-1',
+      attemptId: 'a1',
+      isError: false,
+      result: { success: true, tx: '0xbundle', amount: 100, asset: 'USDC' },
+    });
+    expect(out.stepResults[1]).toMatchObject({
+      toolUseId: 'tool-use-2',
+      attemptId: 'a2',
+      isError: false,
+      result: { success: true, tx: '0xbundle', amount: 50, to: '0xdef', asset: 'USDC' },
+    });
+  });
+
+  it('on revert, marks every step as isError with same root cause (atomic semantics)', async () => {
+    const { executeBundleAction } = await import('./executeToolAction');
+    const sdk = fakeAgent({
+      executeBundle: vi.fn().mockRejectedValue(new Error('Insufficient gas (sponsor revert)')),
+    });
+
+    const action = {
+      toolName: 'save_deposit',
+      toolUseId: 'tool-use-1',
+      input: { amount: 100, asset: 'USDC' },
+      description: '',
+      assistantContent: [],
+      turnIndex: 0,
+      attemptId: 'a1',
+      steps: [
+        {
+          toolName: 'save_deposit',
+          toolUseId: 'tool-use-1',
+          attemptId: 'a1',
+          input: { amount: 100, asset: 'USDC' },
+          description: '',
+        },
+        {
+          toolName: 'send_transfer',
+          toolUseId: 'tool-use-2',
+          attemptId: 'a2',
+          input: { amount: 50, to: '0xdef' },
+          description: '',
+        },
+      ],
+    } as never;
+
+    const out = await executeBundleAction(sdk, action);
+
+    expect(out.success).toBe(false);
+    expect(out.error).toMatch(/Insufficient gas/);
+    expect(out.txDigest).toBeUndefined();
+    expect(out.stepResults).toHaveLength(2);
+    for (const sr of out.stepResults) {
+      expect(sr.isError).toBe(true);
+      expect((sr.result as Record<string, unknown>)._bundleReverted).toBe(true);
+      expect((sr.result as Record<string, unknown>).error).toMatch(/Insufficient gas/);
+    }
+  });
+
+  it('throws when called with no steps (host-bug guard)', async () => {
+    const { executeBundleAction } = await import('./executeToolAction');
+    const sdk = fakeAgent({});
+
+    const action = {
+      toolName: 'save_deposit',
+      toolUseId: 'tool-use-1',
+      input: {},
+      description: '',
+      assistantContent: [],
+      turnIndex: 0,
+      attemptId: 'a1',
+    } as never;
+
+    await expect(executeBundleAction(sdk, action)).rejects.toThrow(/no steps/);
   });
 });

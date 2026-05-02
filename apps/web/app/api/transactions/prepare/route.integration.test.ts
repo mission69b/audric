@@ -266,3 +266,70 @@ describe('POST /api/transactions/prepare — parameter validation', () => {
     expect(body.error).not.toContain('Invalid amount');
   });
 });
+
+// ─── SPEC 7 P2.4 Layer 3 — Bundle (Payment Stream) parameter validation ───
+
+describe('POST /api/transactions/prepare — bundle requests', () => {
+  let POST: (req: NextRequest) => Promise<Response>;
+
+  beforeEach(async () => {
+    vi.resetModules();
+    vi.stubEnv('ENOKI_SECRET_KEY', 'enoki_private_test_key');
+    vi.stubEnv('NEXT_PUBLIC_SUI_NETWORK', 'mainnet');
+    const mod = await import('./route');
+    POST = mod.POST as unknown as (req: NextRequest) => Promise<Response>;
+  });
+
+  it('rejects bundle with missing steps array', async () => {
+    const res = await POST(buildRequest({
+      type: 'bundle',
+      address: VALID_ADDR,
+    }));
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toMatch(/steps/);
+  });
+
+  it('rejects bundle with empty steps array', async () => {
+    const res = await POST(buildRequest({
+      type: 'bundle',
+      address: VALID_ADDR,
+      steps: [],
+    }));
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toMatch(/non-empty/);
+  });
+
+  it('rejects bundle with > 10 steps (DoS guard)', async () => {
+    const steps = Array.from({ length: 11 }, () => ({
+      toolName: 'save_deposit',
+      input: { amount: 1, asset: 'USDC' },
+    }));
+    const res = await POST(buildRequest({
+      type: 'bundle',
+      address: VALID_ADDR,
+      steps,
+    }));
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toMatch(/10-step limit/);
+  });
+
+  it('accepts a valid 2-step bundle past parameter validation', async () => {
+    // Failure at the SDK / Enoki adapter layer is fine — we're only
+    // proving the bundle handler accepts the shape and reaches composeTx.
+    const res = await POST(buildRequest({
+      type: 'bundle',
+      address: VALID_ADDR,
+      steps: [
+        { toolName: 'save_deposit', input: { amount: 1, asset: 'USDC' } },
+        { toolName: 'send_transfer', input: { to: '0x' + 'b'.repeat(64), amount: 1, asset: 'USDC' } },
+      ],
+    }));
+    const body = await res.json();
+    // Specifically NOT one of the bundle-validation errors:
+    expect(body.error).not.toMatch(/non-empty/);
+    expect(body.error).not.toMatch(/10-step limit/);
+  });
+});

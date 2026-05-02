@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { PendingActionModifiableField } from '@t2000/engine';
+import type { PendingActionModifiableField, PendingActionStep } from '@t2000/engine';
 import type { PendingAction } from '@/lib/engine-types';
 import {
   findContactByAddress,
@@ -236,6 +236,163 @@ function SendAddressBlock({
   );
 }
 
+// ─── SPEC 7 P2.4 Layer 3 — Multi-write Payment Stream rendering ────────────
+
+/**
+ * Protocol badge mapping per write tool. NAVI covers all lending ops
+ * (save/withdraw/borrow/repay/claim_rewards). VOLO covers liquid
+ * staking. TRANSFER is the wallet-to-wallet primitive. CETUS is the
+ * aggregator that fronts every swap.
+ */
+const PROTOCOL_BADGE: Record<string, string> = {
+  save_deposit: 'NAVI',
+  withdraw: 'NAVI',
+  borrow: 'NAVI',
+  repay_debt: 'NAVI',
+  claim_rewards: 'NAVI',
+  swap_execute: 'CETUS',
+  send_transfer: 'TRANSFER',
+  volo_stake: 'VOLO',
+  volo_unstake: 'VOLO',
+};
+
+/**
+ * Verb summary per step. Returns the human-readable single-line
+ * description shown next to the number badge in the bundle UI.
+ */
+function bundleStepSummary(step: PendingActionStep): string {
+  const inp = (step.input ?? {}) as Record<string, unknown>;
+  const amount = inp.amount;
+
+  switch (step.toolName) {
+    case 'swap_execute': {
+      const from = resolveSymbol(inp.from);
+      const to = resolveSymbol(inp.to);
+      return `Swap ${amount ?? '?'} ${from} → ${to}`;
+    }
+    case 'save_deposit':
+      return `Save ${amount ?? '?'} ${inp.asset ?? 'USDC'} → NAVI`;
+    case 'withdraw':
+      return `Withdraw ${amount ?? '?'} ${inp.asset ?? 'USDC'} from NAVI`;
+    case 'borrow':
+      return `Borrow ${amount ?? '?'} ${inp.asset ?? 'USDC'} from NAVI`;
+    case 'repay_debt':
+      return `Repay ${amount ?? '?'} ${inp.asset ?? 'USDC'} to NAVI`;
+    case 'claim_rewards':
+      return 'Claim NAVI rewards';
+    case 'send_transfer': {
+      const to = String(inp.to ?? '?');
+      const truncated = to.startsWith('0x') ? `${to.slice(0, 6)}…${to.slice(-4)}` : to;
+      return `Send ${amount ?? '?'} ${inp.asset ?? 'USDC'} → ${truncated}`;
+    }
+    case 'volo_stake':
+      return `Stake ${amount ?? '?'} SUI → vSUI`;
+    case 'volo_unstake':
+      return inp.amount === 'all' ? 'Unstake all vSUI' : `Unstake ${amount ?? '?'} vSUI`;
+    default:
+      // Defensive: bundleable tools should never hit this branch (engine
+      // recipe loader rejects non-bundleable tools at load time).
+      return `${step.toolName.replace(/_/g, ' ')} ${amount ?? ''}`.trim();
+  }
+}
+
+/**
+ * UX clustering — if step N is `swap_execute(to=B)` and step N+1 is
+ * `save_deposit(asset=B)`, collapse them into one visual row labeled
+ * "Swap X USDC → B + deposit". Pure UI grouping; the engine still
+ * emits 2 separate `PendingActionStep`s and the user approves/denies
+ * the whole bundle atomically.
+ */
+interface BundleClusterRow {
+  steps: PendingActionStep[];
+  summary: string;
+  badges: string[];
+  /** Optional sub-line (e.g. APY for NAVI, slippage for swap, etc.) */
+  detail?: string;
+}
+
+function clusterBundleSteps(steps: ReadonlyArray<PendingActionStep>): BundleClusterRow[] {
+  const rows: BundleClusterRow[] = [];
+  let i = 0;
+  while (i < steps.length) {
+    const current = steps[i];
+    const next = i + 1 < steps.length ? steps[i + 1] : null;
+
+    // Pattern: swap_execute(to=X) + save_deposit(asset=X) → single row
+    if (
+      next &&
+      current.toolName === 'swap_execute' &&
+      next.toolName === 'save_deposit'
+    ) {
+      const swapInp = (current.input ?? {}) as Record<string, unknown>;
+      const saveInp = (next.input ?? {}) as Record<string, unknown>;
+      const swapTo = resolveSymbol(swapInp.to);
+      const saveAsset = String(saveInp.asset ?? 'USDC');
+      if (swapTo === saveAsset) {
+        rows.push({
+          steps: [current, next],
+          summary: `Swap ${swapInp.amount ?? '?'} ${resolveSymbol(swapInp.from)} → ${swapTo} + save`,
+          badges: ['CETUS', 'NAVI'],
+        });
+        i += 2;
+        continue;
+      }
+    }
+
+    // Default: one step → one row
+    rows.push({
+      steps: [current],
+      summary: bundleStepSummary(current),
+      badges: [PROTOCOL_BADGE[current.toolName] ?? current.toolName.toUpperCase()],
+    });
+    i += 1;
+  }
+  return rows;
+}
+
+interface BundleStepsListProps {
+  steps: ReadonlyArray<PendingActionStep>;
+}
+
+function BundleStepsList({ steps }: BundleStepsListProps) {
+  const rows = useMemo(() => clusterBundleSteps(steps), [steps]);
+
+  return (
+    <div className="space-y-0 rounded-lg border border-border-subtle bg-surface-page divide-y divide-border-subtle">
+      {rows.map((row, idx) => (
+        <div
+          key={`${row.steps[0].toolUseId}-${idx}`}
+          className="flex items-center gap-3 px-3 py-2.5"
+        >
+          <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-fg-primary text-[10px] font-mono font-semibold text-fg-inverse">
+            {idx + 1}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-[13px] font-medium text-fg-primary truncate">
+              {row.summary}
+            </div>
+            {row.detail && (
+              <div className="text-[11px] text-fg-secondary truncate mt-0.5">
+                {row.detail}
+              </div>
+            )}
+          </div>
+          <div className="flex shrink-0 gap-1">
+            {row.badges.map((badge) => (
+              <span
+                key={badge}
+                className="inline-flex items-center rounded border border-border-subtle bg-surface-card px-1.5 py-0.5 text-[9px] font-mono font-semibold tracking-wide text-fg-secondary"
+              >
+                {badge}
+              </span>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export type DenyReason = 'timeout' | 'denied';
 
 /**
@@ -284,6 +441,13 @@ export function PermissionCard({
   const [secondsLeft, setSecondsLeft] = useState(TIMEOUT_SEC);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const label = TOOL_LABELS[action.toolName] ?? action.toolName.replace(/_/g, ' ');
+
+  // [SPEC 7 P2.4 Layer 3] Multi-write Payment Stream rendering takes
+  // priority over the single-write layout when the engine emitted a
+  // bundle. Falls back to single-write when `steps` is undefined or
+  // contains exactly one step (1-step bundles still render as the
+  // legacy single card to preserve UI density on common-case writes).
+  const isBundle = Array.isArray(action.steps) && action.steps.length >= 2;
 
   // [v1.4 Item 6] Engine-stamped registry of fields the user can edit.
   const modifiableFields = action.modifiableFields ?? [];
@@ -357,6 +521,86 @@ export function PermissionCard({
 
   const progress = secondsLeft / TIMEOUT_SEC;
 
+  // ─── Bundle render branch (multi-write Payment Stream) ─────────────────
+  if (isBundle && action.steps) {
+    const stepCount = action.steps.length;
+    return (
+      <div
+        className="rounded-xl border border-border-subtle bg-surface-card p-3 space-y-2.5 shadow-[var(--shadow-flat)]"
+        role="alertdialog"
+        aria-label={`Confirm ${stepCount}-step Payment Stream`}
+        aria-describedby={`perm-desc-${action.toolUseId}`}
+      >
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-medium text-fg-primary">
+            {stepCount} operations · 1 Payment Stream · Atomic
+          </span>
+          {!resolved && (
+            <span
+              className={`text-[10px] font-mono tabular-nums ${secondsLeft <= 10 ? 'text-error-solid' : 'text-fg-secondary'}`}
+              aria-label={`${secondsLeft} seconds remaining`}
+            >
+              {secondsLeft}s
+            </span>
+          )}
+        </div>
+
+        {!resolved && (
+          <div className="h-0.5 w-full bg-border-subtle rounded-full overflow-hidden">
+            <div
+              className="h-full bg-fg-primary rounded-full transition-all duration-1000 ease-linear"
+              style={{ width: `${progress * 100}%` }}
+            />
+          </div>
+        )}
+
+        <p className="text-xs text-fg-secondary" id={`perm-desc-${action.toolUseId}`}>
+          {action.description ?? `Approve ${stepCount} chained operations as one atomic transaction.`}
+        </p>
+
+        <BundleStepsList steps={action.steps} />
+
+        <div className="flex items-center justify-between pt-1 text-[10px] font-mono uppercase tracking-wide text-fg-secondary">
+          <span>GAS · SPONSORED</span>
+          <span>ALL SUCCEED OR ALL REVERT</span>
+        </div>
+
+        {action.guardInjections && action.guardInjections.length > 0 && (
+          <div className="space-y-1">
+            {action.guardInjections.map((g, i) => (
+              <p
+                key={i}
+                className={`text-[11px] leading-tight ${g._warning ? 'text-warning-solid' : 'text-fg-secondary'}`}
+              >
+                {g._warning ?? g._hint}
+              </p>
+            ))}
+          </div>
+        )}
+
+        {!resolved ? (
+          <div className="flex gap-2">
+            <button
+              onClick={() => handle(false, 'denied')}
+              className="flex-1 rounded-lg border border-border-subtle bg-surface-page py-2 text-xs font-medium text-fg-secondary hover:text-fg-primary hover:border-border-strong transition active:scale-[0.97]"
+            >
+              Deny
+            </button>
+            <button
+              onClick={() => handle(true)}
+              className="flex-1 rounded-lg bg-fg-primary py-2 text-xs font-semibold text-fg-inverse transition hover:opacity-90 active:scale-[0.97]"
+            >
+              Approve
+            </button>
+          </div>
+        ) : (
+          <div className="text-xs text-fg-secondary text-center py-1">Approving…</div>
+        )}
+      </div>
+    );
+  }
+
+  // ─── Single-write render (legacy, unchanged) ──────────────────────────
   return (
     <div
       className="rounded-xl border border-border-subtle bg-surface-card p-3 space-y-2.5 shadow-[var(--shadow-flat)]"

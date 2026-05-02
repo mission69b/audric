@@ -34,7 +34,7 @@ const OVERLAY_FEE_RATE = 0.001;
 // array bug class permanently. Fees stay an Audric concern (CLAUDE.md
 // rule #9): we pass `feeHooks` to inline `addFeeTransfer` for USDC saves
 // and borrows mid-PTB without leaking fee policy into the SDK.
-type TxType =
+type SingleTxType =
   | 'send'
   | 'save'
   | 'withdraw'
@@ -45,8 +45,10 @@ type TxType =
   | 'volo-stake'
   | 'volo-unstake';
 
-interface BuildRequest {
-  type: TxType;
+type TxType = SingleTxType | 'bundle';
+
+interface SingleBuildRequest {
+  type: SingleTxType;
   address: string;
   amount: number;
   recipient?: string;
@@ -61,6 +63,26 @@ interface BuildRequest {
 }
 
 /**
+ * [SPEC 7 P2.4 Layer 3] Multi-write Payment Stream bundle. The engine emits
+ * a `pending_action` with `steps[]` when 2+ confirm-tier writes resolve in
+ * the same turn and all are `bundleable: true`. Host posts the steps array
+ * here verbatim; we forward to `composeTx({ steps })` which assembles them
+ * into a single PTB. All-succeed-or-all-revert atomicity is on-chain.
+ *
+ * Per-step balance validation is skipped — the engine already ran preflight
+ * on each step, and the Enoki dry-run is the last line of defense before
+ * on-chain. Adding host-side per-step validation would duplicate engine
+ * logic without raising the safety floor.
+ */
+interface BundleBuildRequest {
+  type: 'bundle';
+  address: string;
+  steps: WriteStep[];
+}
+
+type BuildRequest = SingleBuildRequest | BundleBuildRequest;
+
+/**
  * Map a host-shaped {@link BuildRequest} to the SDK's typed `WriteStep`.
  * Throws on missing required fields (recipient for send, from/to for swap)
  * — symmetric with the pre-migration switch statement's behavior.
@@ -69,7 +91,7 @@ interface BuildRequest {
  * JSDoc) and are routed through `services/prepare` / Prisma respectively;
  * they never reach this route.
  */
-function buildStepFromRequest(body: BuildRequest): WriteStep {
+function buildStepFromRequest(body: SingleBuildRequest): WriteStep {
   const { type, recipient, amount, asset, from, to, slippage, byAmountIn } = body;
   switch (type) {
     case 'send':
@@ -129,10 +151,10 @@ function buildStepFromRequest(body: BuildRequest): WriteStep {
  * validation fails, or null if OK.
  */
 async function validateBalance(
-  type: TxType,
+  type: SingleTxType,
   address: string,
   amount: number,
-  body: BuildRequest,
+  body: SingleBuildRequest,
 ): Promise<string | null> {
   try {
     if (type === 'send' || type === 'save') {
@@ -205,7 +227,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const { type, address, amount, recipient } = body;
+  const { type, address } = body;
 
   if (!address || !isValidSuiAddress(address)) {
     return NextResponse.json({ error: 'Invalid address' }, { status: 400 });
@@ -214,27 +236,37 @@ export async function POST(request: NextRequest) {
   const rl = rateLimit(`tx:${address}`, 10, 60_000);
   if (!rl.success) return rateLimitResponse(rl.retryAfterMs!);
 
-  const skipAmountCheck = type === 'claim-rewards' || type === 'volo-unstake';
-  if (!skipAmountCheck && (!amount || amount <= 0)) {
-    return NextResponse.json({ error: 'Invalid amount' }, { status: 400 });
-  }
-  if (!skipAmountCheck && type !== 'swap' && type !== 'volo-stake') {
-    const amountCheck = validateAmount(type, amount);
-    if (!amountCheck.valid) {
-      return NextResponse.json({ error: amountCheck.reason }, { status: 400 });
+  if (type === 'bundle') {
+    if (!Array.isArray(body.steps) || body.steps.length === 0) {
+      return NextResponse.json({ error: 'Bundle requires non-empty steps array' }, { status: 400 });
     }
-  }
-  if (recipient && !isValidSuiAddress(recipient)) {
-    return NextResponse.json({ error: 'Invalid recipient address' }, { status: 400 });
-  }
+    if (body.steps.length > 10) {
+      return NextResponse.json({ error: 'Bundle exceeds 10-step limit' }, { status: 400 });
+    }
+  } else {
+    const { amount, recipient } = body;
+    const skipAmountCheck = type === 'claim-rewards' || type === 'volo-unstake';
+    if (!skipAmountCheck && (!amount || amount <= 0)) {
+      return NextResponse.json({ error: 'Invalid amount' }, { status: 400 });
+    }
+    if (!skipAmountCheck && type !== 'swap' && type !== 'volo-stake') {
+      const amountCheck = validateAmount(type, amount);
+      if (!amountCheck.valid) {
+        return NextResponse.json({ error: amountCheck.reason }, { status: 400 });
+      }
+    }
+    if (recipient && !isValidSuiAddress(recipient)) {
+      return NextResponse.json({ error: 'Invalid recipient address' }, { status: 400 });
+    }
 
-  if (!skipAmountCheck && amount > 0) {
-    if (type === 'send' && (!recipient || !recipient.startsWith('0x'))) {
-      return NextResponse.json({ error: 'Invalid or missing recipient address' }, { status: 400 });
-    }
-    const balanceError = await validateBalance(type, address, amount, body);
-    if (balanceError) {
-      return NextResponse.json({ error: balanceError }, { status: 400 });
+    if (!skipAmountCheck && amount > 0) {
+      if (type === 'send' && (!recipient || !recipient.startsWith('0x'))) {
+        return NextResponse.json({ error: 'Invalid or missing recipient address' }, { status: 400 });
+      }
+      const balanceError = await validateBalance(type, address, amount, body);
+      if (balanceError) {
+        return NextResponse.json({ error: balanceError }, { status: 400 });
+      }
     }
   }
 
@@ -270,17 +302,23 @@ type SponsorResult =
 async function buildAndSponsor(params: BuildRequest, jwt: string | null): Promise<SponsorResult> {
   console.log(`[prepare] composing ${params.type}...`);
 
-  const step = buildStepFromRequest(params);
+  const steps: WriteStep[] =
+    params.type === 'bundle' ? params.steps : [buildStepFromRequest(params)];
+
+  // Overlay fee applies whenever the bundle contains a swap_execute step.
+  // composeTx forwards `overlayFee` to every swap step it encounters, so
+  // multi-swap bundles bill the fee per-swap (matching today's per-tx
+  // single-swap behavior).
+  const hasSwap = steps.some((s) => s.toolName === 'swap_execute');
 
   const composed = await composeTx({
     sender: params.address,
     client: getClient(),
     sponsoredContext: true,
-    steps: [step],
-    overlayFee:
-      params.type === 'swap'
-        ? { rate: OVERLAY_FEE_RATE, receiver: T2000_OVERLAY_FEE_WALLET }
-        : undefined,
+    steps,
+    overlayFee: hasSwap
+      ? { rate: OVERLAY_FEE_RATE, receiver: T2000_OVERLAY_FEE_WALLET }
+      : undefined,
     feeHooks: {
       save_deposit: ({ tx, coin, input }) => {
         if (input.asset === 'USDC' || input.asset === undefined) {

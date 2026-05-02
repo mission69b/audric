@@ -1,6 +1,7 @@
 import { parseActualAmount, buildSwapDisplayData } from '@/lib/balance-changes';
-import { ServiceDeliveryError, type AgentActions } from '@/hooks/useAgent';
+import { ServiceDeliveryError, type AgentActions, type BundleStep } from '@/hooks/useAgent';
 import { looksLikeSuiNs } from '@/lib/suins-resolver';
+import type { PendingAction, PendingActionStep } from '@t2000/engine';
 
 /**
  * Side-effect callbacks the pure helper needs from React land.
@@ -283,5 +284,138 @@ export async function executeToolAction(
 
     default:
       throw new Error(`Unknown tool: ${toolName}`);
+  }
+}
+
+// ─── SPEC 7 P2.4 Layer 3 — Bundle (Payment Stream) executor ────────────────
+
+export interface BundleStepResult {
+  toolUseId: string;
+  attemptId: string;
+  result: unknown;
+  isError: boolean;
+}
+
+export interface ExecuteBundleResult {
+  success: boolean;
+  txDigest?: string;
+  stepResults: BundleStepResult[];
+  error?: string;
+}
+
+/**
+ * [SPEC 7 P2.4 Layer 3] Per-step result mapping for a multi-write bundle.
+ *
+ * The PTB executes atomically server-side; we get back ONE tx digest and
+ * ONE flattened balanceChanges array. For per-step `result` shapes that
+ * the LLM can narrate, we echo each step's input + the shared tx digest
+ * (mirroring the single-write per-tool shapes from executeToolAction).
+ *
+ * Why echo instead of parsing per-step:
+ *   - PTB intermediate outputs (e.g. swap output → save input for the same
+ *     asset) don't appear in net balanceChanges — the asset comes in then
+ *     goes out, netting to zero. Per-step parse can't recover them.
+ *   - The LLM narration only needs the user's INTENT per step ("swapped X,
+ *     then saved Y"). The receipt card renders the actual balance changes
+ *     separately — that's where on-chain fidelity surfaces.
+ *
+ * Future fidelity work: thread `composed.perStepPreviews` from the prepare
+ * route through the execute response and use it to build accurate per-step
+ * results. Tracked in SPEC 12.
+ */
+function buildStepResultFromInput(
+  step: PendingActionStep,
+  txDigest: string,
+): BundleStepResult {
+  const inp = (step.input ?? {}) as Record<string, unknown>;
+  const result: Record<string, unknown> = {
+    success: true,
+    tx: txDigest,
+  };
+
+  switch (step.toolName) {
+    case 'save_deposit':
+    case 'withdraw':
+      result.amount = inp.amount;
+      result.asset = inp.asset ?? 'USDC';
+      break;
+    case 'send_transfer':
+      result.amount = inp.amount;
+      result.to = inp.to;
+      result.asset = inp.asset ?? 'USDC';
+      break;
+    case 'borrow':
+    case 'repay_debt':
+      result.amount = inp.amount;
+      result.asset = inp.asset ?? 'USDC';
+      break;
+    case 'swap_execute':
+      result.from = inp.from;
+      result.to = inp.to;
+      result.amount = inp.amount;
+      break;
+    case 'volo_stake':
+    case 'volo_unstake':
+      result.amount = inp.amount;
+      break;
+    // claim_rewards: just `{ success, tx }` — no extra fields
+  }
+
+  return {
+    toolUseId: step.toolUseId,
+    attemptId: step.attemptId,
+    result,
+    isError: false,
+  };
+}
+
+/**
+ * Execute a multi-write Payment Stream bundle.
+ *
+ * Calls `sdk.executeBundle(steps)` — which posts to /api/transactions/prepare
+ * with `type: 'bundle'`, gets a sponsored PTB back, signs locally, executes
+ * via /api/transactions/execute. The whole bundle is one atomic tx
+ * (all-succeed-or-all-revert by Sui PTB semantics).
+ *
+ * On success, builds per-step results echoing each step's input + the
+ * shared tx digest. On failure, returns N error results so the engine's
+ * resume loop can narrate "the bundle reverted" coherently for every step
+ * (matches the engine-side atomic semantics in `runPostWriteRefresh`).
+ */
+export async function executeBundleAction(
+  sdk: AgentActions,
+  action: PendingAction,
+): Promise<ExecuteBundleResult> {
+  if (!action.steps || action.steps.length === 0) {
+    throw new Error('executeBundleAction called with no steps');
+  }
+
+  const wireSteps: BundleStep[] = action.steps.map((s) => ({
+    toolName: s.toolName,
+    input: s.input,
+  }));
+
+  try {
+    const res = await sdk.executeBundle(wireSteps);
+    const stepResults = action.steps.map((step) =>
+      buildStepResultFromInput(step, res.tx),
+    );
+    return { success: true, txDigest: res.tx, stepResults };
+  } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : 'Bundle execution failed';
+    // Atomic semantics: if the PTB reverts, every step failed. Surface a
+    // matching error result for each step so the engine's resume route
+    // pushes N tool_result blocks back to the LLM with consistent reason.
+    const stepResults = action.steps.map((step) => ({
+      toolUseId: step.toolUseId,
+      attemptId: step.attemptId,
+      result: {
+        success: false,
+        error: errorMsg,
+        _bundleReverted: true,
+      },
+      isError: true,
+    }));
+    return { success: false, error: errorMsg, stepResults };
   }
 }

@@ -59,6 +59,23 @@ interface ResumeRequestBody {
    * untouched for the resume row's purposes.
    */
   executionDurationMs?: number;
+  /**
+   * [SPEC 7 P2.4 Layer 3] Per-step results for a multi-write Payment
+   * Stream resume. When set, the engine emits N `tool_result` blocks
+   * (one per step's `toolUseId`) back to the LLM with each step's
+   * `result` / `isError`. Mutually exclusive with `executionResult` —
+   * the host populates one or the other based on `action.steps`.
+   *
+   * Atomic semantics: on bundle revert, every step carries the same
+   * `_bundleReverted: true` flag with `isError: true` so the LLM
+   * narrates "the stream reverted; nothing executed" coherently.
+   */
+  stepResults?: Array<{
+    toolUseId: string;
+    attemptId: string;
+    result: unknown;
+    isError: boolean;
+  }>;
 }
 
 function jsonError(message: string, status: number): Response {
@@ -76,7 +93,7 @@ export async function POST(request: NextRequest) {
     return jsonError('Invalid JSON body', 400);
   }
 
-  const { address, sessionId, action: rawAction, approved, executionResult, outcome, modifications, executionDurationMs } = body;
+  const { address, sessionId, action: rawAction, approved, executionResult, outcome, modifications, executionDurationMs, stepResults } = body;
 
   // [v1.4 Item 6] Overlay user modifications on top of action.input so the
   // engine reconstructs the turn with the approved values. The shared helper
@@ -161,7 +178,14 @@ export async function POST(request: NextRequest) {
           // returns serialized strings, hiding raw event shape) to raw
           // event iteration so `TurnMetricsCollector` can tap each event
           // and `serializeSSE` is called per-event. Mirrors chat/route.ts.
-          for await (const event of engine.resumeWithToolResult(action, { approved, executionResult })) {
+          // [SPEC 7 P2.4] Bundle vs single-write resume. The engine's
+          // `PermissionResponse` accepts either `executionResult` (single)
+          // or `stepResults` (bundle). Host populates one based on
+          // whether the approved pending_action carried `steps`.
+          const permissionResponse = stepResults && stepResults.length > 0
+            ? { approved, stepResults }
+            : { approved, executionResult };
+          for await (const event of engine.resumeWithToolResult(action, permissionResponse)) {
             switch (event.type) {
               case 'compaction':
                 collector.onCompaction();
@@ -437,42 +461,72 @@ export async function POST(request: NextRequest) {
           // empty cache and let `resolveUsdValue` fall through to
           // Infinity, which the next-turn permission resolver treats
           // as "definitely confirm" (failing safe).
+          //
+          // [SPEC 7 P2.4 Layer 3] Bundle accounting — when the host
+          // forwards `stepResults`, derive success from atomic
+          // semantics (every step succeeded ⇔ bundle succeeded) and
+          // sum USD across every step (not just steps[0], which is
+          // what action.toolName/input mirror for backward-compat).
           if (
             resolvedOutcome === 'approved' || resolvedOutcome === 'modified'
           ) {
-            const op = toolNameToOperation(action.toolName);
-            const looksSuccessful =
-              executionResult == null ||
-              !(
-                typeof executionResult === 'object' &&
-                executionResult !== null &&
-                ('success' in executionResult
-                  ? (executionResult as { success?: unknown }).success === false
-                  : false)
-              );
-            if (op && looksSuccessful) {
-              const usd = resolveUsdValue(
-                action.toolName,
-                (action.input as Record<string, unknown>) ?? {},
-                new Map<string, number>([['USDC', 1], ['USDT', 1]]),
-              );
-              if (Number.isFinite(usd) && usd > 0) {
-                incrementSessionSpend(sessionId, usd).catch((err) =>
-                  console.warn('[session-spend] increment failed (non-fatal):', err),
-                );
+            const isBundle = stepResults && stepResults.length > 0 && Array.isArray(action.steps) && action.steps.length > 0;
+
+            const looksSuccessful = isBundle
+              ? stepResults!.every((s) => !s.isError)
+              : (executionResult == null ||
+                !(
+                  typeof executionResult === 'object' &&
+                  executionResult !== null &&
+                  ('success' in executionResult
+                    ? (executionResult as { success?: unknown }).success === false
+                    : false)
+                ));
+
+            if (looksSuccessful) {
+              const stableCache = new Map<string, number>([['USDC', 1], ['USDT', 1]]);
+              let totalUsd = 0;
+
+              if (isBundle && action.steps) {
+                for (const step of action.steps) {
+                  const op = toolNameToOperation(step.toolName);
+                  if (!op) continue;
+                  const usd = resolveUsdValue(
+                    step.toolName,
+                    (step.input as Record<string, unknown>) ?? {},
+                    stableCache,
+                  );
+                  if (Number.isFinite(usd) && usd > 0) totalUsd += usd;
+                }
+              } else {
+                const op = toolNameToOperation(action.toolName);
+                if (op) {
+                  const usd = resolveUsdValue(
+                    action.toolName,
+                    (action.input as Record<string, unknown>) ?? {},
+                    stableCache,
+                  );
+                  if (Number.isFinite(usd) && usd > 0) totalUsd = usd;
+                }
               }
 
-              // [v1.4 — B1] Drop the cached `UserFinancialContext`
-              // snapshot for this address. Confirm-tier writes never
-              // fire engine.onAutoExecuted, so the daily-cron snapshot
-              // would otherwise stay stale until 02:00 UTC the next
-              // day. The very next chat then re-hydrates the cache
-              // from fresh on-chain state instead of inferring from a
-              // 24h-old snapshot. Cache key is `address`, not `userId`
-              // — universally available without a DB lookup.
-              invalidateUserFinancialContext(address).catch((err) =>
-                console.warn('[fin_ctx] resume invalidation failed (non-fatal):', err),
-              );
+              if (totalUsd > 0) {
+                incrementSessionSpend(sessionId, totalUsd).catch((err) =>
+                  console.warn('[session-spend] increment failed (non-fatal):', err),
+                );
+
+                // [v1.4 — B1] Drop the cached `UserFinancialContext`
+                // snapshot for this address. Confirm-tier writes never
+                // fire engine.onAutoExecuted, so the daily-cron snapshot
+                // would otherwise stay stale until 02:00 UTC the next
+                // day. The very next chat then re-hydrates the cache
+                // from fresh on-chain state instead of inferring from a
+                // 24h-old snapshot. Cache key is `address`, not `userId`
+                // — universally available without a DB lookup.
+                invalidateUserFinancialContext(address).catch((err) =>
+                  console.warn('[fin_ctx] resume invalidation failed (non-fatal):', err),
+                );
+              }
             }
           }
 

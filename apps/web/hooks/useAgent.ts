@@ -38,6 +38,18 @@ export interface BalanceChange {
 
 export type TxResult = { tx: string; balanceChanges?: BalanceChange[] };
 
+/**
+ * [SPEC 7 P2.4 Layer 3] Minimal bundle-step shape sent over the wire.
+ * The full `WriteStep` type lives in `@t2000/sdk` (server-only); we keep
+ * the browser surface minimal so the SDK doesn't have to be reachable
+ * from client code. The prepare route validates and re-types each step
+ * server-side via `composeTx`.
+ */
+export interface BundleStep {
+  toolName: string;
+  input: unknown;
+}
+
 export interface AgentActions {
   address: string;
   send(params: { to: string; amount: number; asset?: string }): Promise<TxResult>;
@@ -51,6 +63,14 @@ export interface AgentActions {
   unstakeVSui(params: { amount: number }): Promise<TxResult>;
   payService(params: { serviceId?: string; fields?: Record<string, string>; url?: string; rawBody?: Record<string, unknown> }): Promise<ServiceResult>;
   retryServiceDelivery(paymentDigest: string, meta: ServiceRetryMeta): Promise<ServiceResult>;
+  /**
+   * [SPEC 7 P2.4] Multi-write Payment Stream. All steps execute atomically
+   * inside a single PTB sponsored by Enoki. The single tx digest + the
+   * combined `balanceChanges` are returned; the caller (executeToolAction)
+   * is responsible for splitting balanceChanges back into per-step
+   * `stepResults` shapes for the resume route.
+   */
+  executeBundle(steps: ReadonlyArray<BundleStep>): Promise<TxResult>;
 }
 
 export function useAgent() {
@@ -184,6 +204,15 @@ export function useAgent() {
 
           async unstakeVSui({ amount }) {
             return sponsoredTransaction('volo-unstake', { amount });
+          },
+
+          async executeBundle(steps) {
+            // [SPEC 7 P2.4 Layer 3] Forward steps verbatim to the prepare
+            // route; composeTx assembles them into one PTB. The shape is
+            // `{ steps: [{ toolName, input }] }` (type:'bundle' set by the
+            // sponsoredTransaction helper). All-succeed-or-all-revert is
+            // guaranteed on-chain by Sui PTB semantics.
+            return sponsoredTransaction('bundle', { steps });
           },
 
           async payService({ serviceId, fields, url, rawBody }) {

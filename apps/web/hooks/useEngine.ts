@@ -20,10 +20,16 @@ import { asHarnessVersion, type HarnessVersion } from '@/lib/interactive-harness
 
 // [v1.4] Re-export the pure executor so consumers and tests can use a single
 // import path: `import { executeToolAction } from '@/hooks/useEngine'`.
+//
+// [SPEC 7 P2.4 Layer 3] Bundle executor re-export. Hosts dispatching
+// multi-write Payment Streams import this alongside `executeToolAction`.
 export {
   executeToolAction,
+  executeBundleAction,
   type ExecuteToolActionResult,
   type ExecuteToolActionEffects,
+  type ExecuteBundleResult,
+  type BundleStepResult,
 } from './executeToolAction';
 
 let msgIdCounter = 0;
@@ -179,18 +185,47 @@ export function useEngine({ address, jwt, onToolResult }: UseEngineOptions) {
        * and writes `null` (column is nullable per Day-3 schema).
        */
       executionDurationMs?: number,
+      /**
+       * [SPEC 7 P2.4 Layer 3] Per-step results for a multi-write bundle.
+       * When set, `executionResult` is undefined and the resume route
+       * passes the array verbatim to `engine.resumeWithToolResult` so
+       * the engine emits N tool_result blocks (one per step) back to
+       * the LLM. Mutually exclusive with `executionResult` — the bundle
+       * branch in `handleActionResolve` populates one or the other.
+       */
+      stepResults?: Array<{
+        toolUseId: string;
+        attemptId: string;
+        result: unknown;
+        isError: boolean;
+      }>,
     ) => {
       if (!sessionId || !jwt || !address) return;
 
       setMessages((prev) =>
         prev.map((m) => {
           if (!m.pendingAction || m.pendingAction.toolUseId !== action.toolUseId) return m;
-          const tools = approved && executionResult !== undefined
-            ? (m.tools ?? []).map((t) =>
-                t.toolUseId === action.toolUseId
-                  ? { ...t, status: 'done' as const, result: executionResult, isError: false }
-                  : t,
-              )
+          // [SPEC 7 P2.4] For bundles, walk every step's toolUseId to
+          // mark each as done with its per-step result. For single-write,
+          // the legacy single-tool branch covers it.
+          const isBundle = stepResults && stepResults.length > 0;
+          const resultByToolUseId = new Map<string, { result: unknown; isError: boolean }>();
+          if (isBundle && stepResults) {
+            for (const sr of stepResults) {
+              resultByToolUseId.set(sr.toolUseId, { result: sr.result, isError: sr.isError });
+            }
+          }
+          const tools = approved && (executionResult !== undefined || isBundle)
+            ? (m.tools ?? []).map((t) => {
+                if (isBundle && resultByToolUseId.has(t.toolUseId)) {
+                  const sr = resultByToolUseId.get(t.toolUseId)!;
+                  return { ...t, status: 'done' as const, result: sr.result, isError: sr.isError };
+                }
+                if (t.toolUseId === action.toolUseId && executionResult !== undefined) {
+                  return { ...t, status: 'done' as const, result: executionResult, isError: false };
+                }
+                return t;
+              })
             : m.tools;
           // [SPEC 8 v0.5.1 B3.1 / audit Gap B] Transition the matching
           // permission-card timeline block out of 'pending' so the new
@@ -210,7 +245,25 @@ export function useEngine({ address, jwt, onToolResult }: UseEngineOptions) {
           // it only injects the result into the LLM message history —
           // so without this merge the timeline path would silently
           // drop the SuiScan link the legacy `tools[]` path renders.
-          if (timeline && approved && executionResult !== undefined) {
+          if (timeline && approved && isBundle && action.steps) {
+            // [SPEC 7 P2.4] Bundle path — merge each step's per-step
+            // result into the timeline so each tool block in the
+            // chronological view renders its own outcome (matches the
+            // legacy `tools[]` mutation above).
+            const now = Date.now();
+            for (const step of action.steps) {
+              const sr = resultByToolUseId.get(step.toolUseId);
+              if (!sr) continue;
+              timeline = mergeWriteExecutionIntoTimeline(
+                timeline,
+                step.toolUseId,
+                step.toolName,
+                step.input,
+                sr.result,
+                now,
+              );
+            }
+          } else if (timeline && approved && executionResult !== undefined) {
             timeline = mergeWriteExecutionIntoTimeline(
               timeline,
               action.toolUseId,
@@ -281,6 +334,11 @@ export function useEngine({ address, jwt, onToolResult }: UseEngineOptions) {
         ...(typeof executionDurationMs === 'number' && executionDurationMs >= 0
           ? { executionDurationMs }
           : {}),
+        // [SPEC 7 P2.4] Bundle resume — append per-step results when the
+        // caller approved a multi-write Payment Stream. Engine matches
+        // each step's `toolUseId` to its result and emits N `tool_result`
+        // blocks back to the LLM (atomic semantics).
+        ...(stepResults && stepResults.length > 0 ? { stepResults } : {}),
       });
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps

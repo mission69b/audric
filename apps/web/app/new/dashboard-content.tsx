@@ -18,7 +18,8 @@ import { getPresetConfig } from '@/lib/engine/permission-tiers-client';
 import { AppShell } from '@/components/shell/AppShell';
 import { useChipFlow, type ChipFlowResult, type FlowContext } from '@/hooks/useChipFlow';
 import { useFeed } from '@/hooks/useFeed';
-import { useEngine, executeToolAction } from '@/hooks/useEngine';
+import { useEngine, executeToolAction, executeBundleAction } from '@/hooks/useEngine';
+import type { PendingAction } from '@/lib/engine-types';
 import { useVoiceMode } from '@/hooks/useVoiceMode';
 import { useVoiceStatus } from '@/hooks/useVoiceStatus';
 import { useEngineReplyAwaiter } from '@/hooks/useEngineReplyAwaiter';
@@ -848,6 +849,43 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
     [agent, balanceQuery, contactsHook],
   );
 
+  // [SPEC 7 P2.4 Layer 3] Multi-write Payment Stream executor. Mirrors
+  // `handleExecuteAction` for single-writes — dispatches the engine-emitted
+  // bundle through `executeBundleAction`, which posts to /api/transactions/
+  // prepare with `type: 'bundle'` and assembles the steps into one PTB
+  // server-side via composeTx. The whole bundle is one atomic tx
+  // (all-succeed-or-all-revert).
+  const handleExecuteBundle = useCallback(
+    async (action: PendingAction) => {
+      if (!agent) throw new Error('Not authenticated');
+      const sdk = await agent.getInstance();
+
+      lastUserActionAtRef.current = Date.now();
+
+      const result = await executeBundleAction(sdk, action);
+
+      // Refetch balance once for the whole bundle (vs per-step). Bundles
+      // typically contain a swap or volo step → schedule a delayed
+      // refetch too. Cheap to over-refetch; expensive to miss a state
+      // change after a 3-op stream.
+      if (result.success) {
+        balanceQuery.refetch();
+        const hasDelayedSettlement = action.steps?.some(
+          (s) =>
+            s.toolName === 'swap_execute' ||
+            s.toolName === 'volo_stake' ||
+            s.toolName === 'volo_unstake',
+        );
+        if (hasDelayedSettlement) {
+          setTimeout(() => balanceQuery.refetch(), 3000);
+        }
+      }
+
+      return result;
+    },
+    [agent, balanceQuery],
+  );
+
   const handleSaveContact = useCallback(
     async (name: string, addr: string) => {
       await contactsHook.addContact(name, addr);
@@ -1373,6 +1411,7 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
               onCopy={handleCopy}
               onSaveContact={handleSaveContact}
               onExecuteAction={handleExecuteAction}
+              onExecuteBundle={handleExecuteBundle}
               onValidateAction={validateAction}
               agentBudget={agentBudget}
               permissionConfig={getPresetConfig(permissionPreset)}
