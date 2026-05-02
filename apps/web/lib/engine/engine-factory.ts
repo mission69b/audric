@@ -648,6 +648,26 @@ export async function createEngine(
           }
         }
       : undefined,
+    // [F2 / engine v1.11] Tell the engine "the system prompt already
+    // carries a balance + HF snapshot." Pre-fix, every first-turn write
+    // fired redundant "Balance not checked / Health factor not checked"
+    // hints despite the LLM having both numbers in its context window.
+    // The seed flips `BalanceTracker.hasEverRead()` to true and seeds
+    // `lastHealthFactor` for users with known HF.
+    //
+    // For zero-debt users (`healthFactor: null` in the snapshot), seed
+    // with `+Infinity` — the guard's `< blockBelow` / `< warnBelow`
+    // checks both pass trivially, and the hint stays silent. For
+    // users whose snapshot lacks HF altogether, leave it `null` so
+    // the hint correctly fires (legitimate "we don't know" state).
+    financialContextSeed: financialContext
+      ? {
+          balanceAt: Date.now(),
+          healthFactor:
+            financialContext.healthFactor ??
+            (financialContext.debtUsdc === 0 ? Number.POSITIVE_INFINITY : null),
+        }
+      : undefined,
     onGuardFired: opts.onGuardFired,
     // [v1.5] Auto-inject fresh balance/savings/health reads after every
     // successful write so post-write narration cites real numbers. See

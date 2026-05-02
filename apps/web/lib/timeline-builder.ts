@@ -34,6 +34,8 @@ import type {
   PermissionCardTimelineBlock,
   ContactResolvedTimelineBlock,
   PlanStreamTimelineBlock,
+  BundleReceiptTimelineBlock,
+  BundleReceiptLeg,
   PendingAction,
 } from '@/lib/engine-types';
 
@@ -593,6 +595,114 @@ export function mergeWriteExecutionIntoTimeline(
     result: executionResult,
     isError: false,
   };
+
+  if (cardIdx === -1) return [...current, synthesized];
+
+  const next = current.slice();
+  next.splice(cardIdx + 1, 0, synthesized);
+  return next;
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// SPEC 7 P2.7 prep / Finding F6 — Bundle receipt fold
+//
+// Replaces the per-leg `mergeWriteExecutionIntoTimeline` calls that
+// `useEngine.resolveAction` previously made (one per `action.steps[i]`)
+// for an approved bundle. Pre-fix, that produced N `tool` blocks → N
+// `TransactionReceiptCard`s → N "View on Suiscan" links pointing to the
+// SAME atomic-PTB digest, breaking the user's mental model ("I signed
+// one thing — why do I have three receipts?"). Now: one single
+// `bundle-receipt` block holding the per-leg outcomes inline.
+//
+// Insertion semantics mirror `mergeWriteExecutionIntoTimeline`:
+//   - Find the resolved permission-card by `attemptId` (the bundle-card
+//     was inserted from the original pending_action; its top-level
+//     `payload.attemptId` mirrors `steps[0].attemptId`).
+//   - Insert the bundle-receipt immediately AFTER that card so chrono-
+//     logical reading is "user approved → tx ran → here's the receipt."
+//   - Fall through to plain append when there's no card (denied path
+//     never reaches this helper since `resolveAction` skips on deny;
+//     this fallback exists only for defense-in-depth).
+//
+// `txDigest` is extracted from the first non-error leg's result — every
+// leg shares the same digest under atomic PTB semantics, so the first
+// is canonical. When all legs errored (e.g. `_bundleReverted`),
+// `txDigest` stays undefined and the receipt UI surfaces "Payment
+// Stream reverted" without a Suiscan link.
+//
+// Idempotency: re-calling with the same attemptId no-ops if a
+// bundle-receipt already exists for that attemptId.
+// ───────────────────────────────────────────────────────────────────────────
+
+export function mergeBundleExecutionIntoTimeline(
+  timeline: TimelineBlock[] | undefined,
+  action: PendingAction,
+  stepResults: Array<{ toolUseId: string; result: unknown; isError: boolean }>,
+  now: number,
+): TimelineBlock[] {
+  const current = timeline ?? [];
+
+  if (!action.steps || action.steps.length < 2) {
+    return current;
+  }
+
+  const existingIdx = current.findIndex(
+    (b): b is BundleReceiptTimelineBlock =>
+      b.type === 'bundle-receipt' && b.attemptId === action.attemptId,
+  );
+  if (existingIdx !== -1) {
+    return current;
+  }
+
+  const resultByToolUseId = new Map(
+    stepResults.map((sr) => [sr.toolUseId, sr]),
+  );
+
+  const legs: BundleReceiptLeg[] = action.steps.map((step) => {
+    const sr = resultByToolUseId.get(step.toolUseId);
+    return {
+      toolName: step.toolName,
+      toolUseId: step.toolUseId,
+      description: step.description,
+      isError: sr?.isError ?? false,
+      result: sr?.result,
+    };
+  });
+
+  const txDigest = (() => {
+    for (const leg of legs) {
+      if (leg.isError) continue;
+      const r = leg.result;
+      if (!r || typeof r !== 'object') continue;
+      const data = (r as Record<string, unknown>).data;
+      const direct = (r as Record<string, unknown>).tx;
+      const fromData =
+        data && typeof data === 'object'
+          ? (data as Record<string, unknown>).tx
+          : undefined;
+      const candidate = fromData ?? direct;
+      if (typeof candidate === 'string' && candidate.length > 0) {
+        return candidate;
+      }
+    }
+    return undefined;
+  })();
+
+  const synthesized: BundleReceiptTimelineBlock = {
+    type: 'bundle-receipt',
+    attemptId: action.attemptId,
+    txDigest,
+    legs,
+    startedAt: now,
+    endedAt: now,
+    isError: legs.some((l) => l.isError),
+  };
+
+  const cardIdx = current.findIndex(
+    (b): b is PermissionCardTimelineBlock =>
+      b.type === 'permission-card' &&
+      b.payload.attemptId === action.attemptId,
+  );
 
   if (cardIdx === -1) return [...current, synthesized];
 

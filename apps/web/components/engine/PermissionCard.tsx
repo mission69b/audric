@@ -618,29 +618,27 @@ export function PermissionCard({
         aria-label={`Confirm ${stepCount}-step Payment Stream`}
         aria-describedby={`perm-desc-${action.toolUseId}`}
       >
+        {/*
+          [F5c] Header carries ONE timer only — the deny-timer (countdown
+          to auto-deny). Pre-fix the QUOTE Xs OLD badge sat next to it
+          here, both rendered as 10px mono tabular-nums color-shifting
+          pills, so the user couldn't tell which was which at a glance.
+          The quote-age badge moved inline with the Refresh-quote button
+          (below) where its meaning is unambiguous: "this quote is X
+          seconds old → tap Refresh to regenerate."
+        */}
         <div className="flex items-center justify-between">
           <span className="text-xs font-medium text-fg-primary">
             {stepCount} operations · 1 Payment Stream · Atomic
           </span>
-          <div className="flex items-center gap-2">
-            {showRegenerate && (
-              <span
-                className={`text-[10px] font-mono uppercase tracking-wide tabular-nums ${ageBadgeClass}`}
-                aria-label={`Quote age: ${ageBadge}`}
-                data-severity={severity}
-              >
-                {ageBadge}
-              </span>
-            )}
-            {!resolved && (
-              <span
-                className={`text-[10px] font-mono tabular-nums ${secondsLeft <= 10 ? 'text-error-solid' : 'text-fg-secondary'}`}
-                aria-label={`${secondsLeft} seconds remaining`}
-              >
-                {secondsLeft}s
-              </span>
-            )}
-          </div>
+          {!resolved && (
+            <span
+              className={`text-[10px] font-mono tabular-nums ${secondsLeft <= 10 ? 'text-error-solid' : 'text-fg-tertiary'}`}
+              aria-label={`${secondsLeft} seconds remaining`}
+            >
+              {secondsLeft}s
+            </span>
+          )}
         </div>
 
         {!resolved && (
@@ -677,31 +675,51 @@ export function PermissionCard({
         )}
 
         {!resolved ? (
-          <div className="flex gap-2">
-            <button
-              onClick={() => handle(false, 'denied')}
-              disabled={regenerate?.isRegenerating}
-              className="flex-1 rounded-lg border border-border-subtle bg-surface-page py-2 text-xs font-medium text-fg-secondary hover:text-fg-primary hover:border-border-strong transition active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Deny
-            </button>
+          <div className="space-y-1.5">
+            {/*
+              [F5c] Quote-age signal lives next to its action (Refresh
+              quote button) instead of competing with the deny-timer in
+              the header. Right-aligned over the regenerate button —
+              when amber/red, the eye flows down to the matching amber
+              Refresh button, telling the user exactly what to do.
+            */}
             {showRegenerate && (
-              <button
-                onClick={regenerate.onRegenerate}
-                disabled={regenerate.isRegenerating}
-                className="flex-1 rounded-lg border border-border-subtle bg-surface-page py-2 text-xs font-medium text-fg-secondary hover:text-fg-primary hover:border-border-strong transition active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed"
-                aria-label="Regenerate bundle with fresh quotes"
-              >
-                {regenerate.isRegenerating ? 'Regenerating…' : '↻ Regenerate'}
-              </button>
+              <div className="flex justify-end">
+                <span
+                  className={`text-[10px] font-mono uppercase tracking-wide tabular-nums ${ageBadgeClass}`}
+                  aria-label={`Quote age: ${ageBadge}`}
+                  data-severity={severity}
+                >
+                  {ageBadge}
+                </span>
+              </div>
             )}
-            <button
-              onClick={() => handle(true)}
-              disabled={regenerate?.isRegenerating}
-              className="flex-1 rounded-lg bg-fg-primary py-2 text-xs font-semibold text-fg-inverse transition hover:opacity-90 active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Approve
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => handle(false, 'denied')}
+                disabled={regenerate?.isRegenerating}
+                className="flex-1 rounded-lg border border-border-subtle bg-surface-page py-2 text-xs font-medium text-fg-secondary hover:text-fg-primary hover:border-border-strong transition active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Deny
+              </button>
+              {showRegenerate && (
+                <button
+                  onClick={regenerate.onRegenerate}
+                  disabled={regenerate.isRegenerating}
+                  className="flex-1 rounded-lg border border-warning-border bg-warning-bg py-2 text-xs font-medium text-warning-solid hover:bg-warning-bg hover:border-warning-solid transition active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed"
+                  aria-label="Regenerate bundle with fresh quotes"
+                >
+                  {regenerate.isRegenerating ? '↻ Regenerating…' : '↻ Refresh quote'}
+                </button>
+              )}
+              <button
+                onClick={() => handle(true)}
+                disabled={regenerate?.isRegenerating}
+                className="flex-1 rounded-lg bg-fg-primary py-2 text-xs font-semibold text-fg-inverse transition hover:opacity-90 active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Approve
+              </button>
+            </div>
           </div>
         ) : (
           <div className="text-xs text-fg-secondary text-center py-1">Approving…</div>

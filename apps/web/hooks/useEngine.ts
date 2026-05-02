@@ -18,6 +18,7 @@ import {
   markPermissionCardResolved,
   markTimelineInterrupted,
   mergeWriteExecutionIntoTimeline,
+  mergeBundleExecutionIntoTimeline,
 } from '@/lib/timeline-builder';
 import { asHarnessVersion, type HarnessVersion } from '@/lib/interactive-harness';
 import type { RegenerateTimelineEvent, RegenerateFailure } from '@t2000/engine';
@@ -324,24 +325,22 @@ export function useEngine({ address, jwt, onToolResult, contacts }: UseEngineOpt
           // it only injects the result into the LLM message history —
           // so without this merge the timeline path would silently
           // drop the SuiScan link the legacy `tools[]` path renders.
-          if (timeline && approved && isBundle && action.steps) {
-            // [SPEC 7 P2.4] Bundle path — merge each step's per-step
-            // result into the timeline so each tool block in the
-            // chronological view renders its own outcome (matches the
-            // legacy `tools[]` mutation above).
-            const now = Date.now();
-            for (const step of action.steps) {
-              const sr = resultByToolUseId.get(step.toolUseId);
-              if (!sr) continue;
-              timeline = mergeWriteExecutionIntoTimeline(
-                timeline,
-                step.toolUseId,
-                step.toolName,
-                step.input,
-                sr.result,
-                now,
-              );
-            }
+          if (timeline && approved && isBundle && action.steps && action.steps.length >= 2) {
+            // [SPEC 7 P2.7 prep / Finding F6] Bundle path — fold all
+            // legs into ONE `bundle-receipt` block instead of N
+            // separate `tool` blocks. Pre-fix this loop synthesized
+            // N tool blocks via `mergeWriteExecutionIntoTimeline`,
+            // each rendering as its own `TransactionReceiptCard` with
+            // a duplicate "View on Suiscan" link. Atomic PTB ⇒ one
+            // digest ⇒ one receipt is the correct mental model.
+            // Single-step "bundles" (rare; `length === 1`) fall
+            // through to the single-write branch below for parity.
+            timeline = mergeBundleExecutionIntoTimeline(
+              timeline,
+              action,
+              stepResults ?? [],
+              Date.now(),
+            );
           } else if (timeline && approved && executionResult !== undefined) {
             timeline = mergeWriteExecutionIntoTimeline(
               timeline,

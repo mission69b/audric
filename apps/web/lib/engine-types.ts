@@ -207,6 +207,69 @@ export interface PlanStreamTimelineBlock {
   attemptId: string;
 }
 
+/**
+ * [SPEC 7 P2.7 prep / Finding F6] One leg of a `bundle-receipt` block.
+ * Mirrors the per-step shape of `PendingActionStep` so the receipt UI
+ * can show what the user just approved with the same description text
+ * shown on the PermissionCard. `result` is the per-leg payload from the
+ * sponsored-tx flow (each leg's row in `executeBundleAction`'s
+ * `stepResults`); the host extracts whatever per-leg detail it can
+ * (e.g. a swap's destination amount) but the txDigest lives at the
+ * parent level (atomic PTB ⇒ one digest for all legs).
+ */
+export interface BundleReceiptLeg {
+  toolName: string;
+  toolUseId: string;
+  /** Mirrors `PendingActionStep.description` from the original action. */
+  description: string;
+  isError: boolean;
+  result?: unknown;
+}
+
+/**
+ * [SPEC 7 P2.7 prep / Finding F6] Single receipt for a multi-leg
+ * Payment Stream PTB. Replaces the pre-fix UX where N atomic legs
+ * rendered N separate `tool` blocks → N `TransactionReceiptCard`s →
+ * N "View on Suiscan" links pointing to the SAME digest. Now: ONE
+ * `bundle-receipt` block, one Suiscan link, atomicity language
+ * mirroring the pre-execution `PlanStreamTimelineBlock`.
+ *
+ * Inserted by `mergeBundleExecutionIntoTimeline` from
+ * `useEngine.resolveAction` immediately AFTER the resolved
+ * permission-card on bundle approve. Bundles with `steps.length < 2`
+ * fall through to the existing single-write path
+ * (`mergeWriteExecutionIntoTimeline`).
+ *
+ * Engine-agnostic — the engine continues to yield N `tool_result`
+ * SSE events on bundle resume; the timeline reducer's `tool_result`
+ * branch silently no-ops on those (idx === -1) because we don't
+ * create per-step `tool` blocks anymore. The on-chain state is
+ * already reflected in the synthesized bundle-receipt at the moment
+ * the user-confirmation round-trip returns, so the redundant SSE
+ * `tool_result`s are LLM-side bookkeeping only.
+ */
+export interface BundleReceiptTimelineBlock {
+  type: 'bundle-receipt';
+  /** Mirrors the parent bundle's `attemptId` (top-level on PendingAction). */
+  attemptId: string;
+  /** Shared PTB digest (set when the user-confirmation round-trip succeeds). */
+  txDigest?: string;
+  /** Per-leg outcomes; ordered to match the PermissionCard's step order. */
+  legs: BundleReceiptLeg[];
+  /** Wallclock ms at insertion (always equal to `endedAt` since atomicity). */
+  startedAt: number;
+  endedAt: number;
+  /**
+   * `true` iff ANY leg's `isError` is true OR the executor returned
+   * `_bundleReverted`. Atomic PTB semantics ⇒ all-success or
+   * all-failure on-chain, but the host's `executeBundleAction`
+   * marks every leg `isError: true` on revert (see
+   * `executeToolAction.ts`), so any single errored leg signals the
+   * whole bundle reverted.
+   */
+  isError: boolean;
+}
+
 export type TimelineBlock =
   | ThinkingTimelineBlock
   | ToolTimelineBlock
@@ -217,7 +280,8 @@ export type TimelineBlock =
   | PendingInputTimelineBlock
   | RegeneratedTimelineBlock
   | ContactResolvedTimelineBlock
-  | PlanStreamTimelineBlock;
+  | PlanStreamTimelineBlock
+  | BundleReceiptTimelineBlock;
 
 // [SPEC 8 v0.5.1 B1] Per-event captures from the new SSE event types.
 // These shapes mirror the engine's SSEEvent union — kept local rather

@@ -13,6 +13,7 @@ import { PendingInputBlockView } from './PendingInputBlockView';
 import { RegeneratedBlockView } from './RegeneratedBlockView';
 import { ContactResolvedBlockView } from './ContactResolvedBlockView';
 import { PlanStreamBlockView } from './PlanStreamBlockView';
+import { BundleReceiptBlockView } from './BundleReceiptBlockView';
 
 // ───────────────────────────────────────────────────────────────────────────
 // SPEC 8 v0.5.1 — BlockRouter (B2.2)
@@ -151,5 +152,8 @@ export function BlockRouter({
 
     case 'plan-stream':
       return <PlanStreamBlockView block={block} />;
+
+    case 'bundle-receipt':
+      return <BundleReceiptBlockView block={block} />;
   }
 }

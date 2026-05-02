@@ -12,6 +12,7 @@ import {
   markPermissionCardResolved,
   markTimelineInterrupted,
   mergeWriteExecutionIntoTimeline,
+  mergeBundleExecutionIntoTimeline,
 } from '@/lib/timeline-builder';
 import type {
   SSEEvent,
@@ -833,6 +834,227 @@ describe('mergeWriteExecutionIntoTimeline', () => {
     );
     expect(next).toHaveLength(1);
     expect(next[0].type).toBe('tool');
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────
+// SPEC 7 P2.7 prep / Finding F6 — bundle receipt fold tests
+// ───────────────────────────────────────────────────────────────────────────
+
+describe('mergeBundleExecutionIntoTimeline (F6)', () => {
+  const sharedDigest = 'HnqsoXiUx2PwaULudyqL2ZKxcK4DB2RzQGskoQjswjki';
+  const bundleAction: PendingAction = {
+    toolUseId: 'tc-1',
+    toolName: 'swap_execute',
+    input: { fromToken: 'USDC', toToken: 'SUI', amount: 5 },
+    description: 'Swap 5 USDC for SUI (1% max slippage)',
+    assistantContent: [],
+    attemptId: 'bundle-att-1',
+    turnIndex: 0,
+    canRegenerate: true,
+    regenerateInput: { toolUseIds: ['rd-1'] },
+    quoteAge: 9000,
+    steps: [
+      {
+        toolName: 'swap_execute',
+        toolUseId: 'tc-1',
+        attemptId: 'bundle-att-1',
+        input: { fromToken: 'USDC', toToken: 'SUI', amount: 5 },
+        description: 'Swap 5 USDC for SUI (1% max slippage)',
+      },
+      {
+        toolName: 'save_deposit',
+        toolUseId: 'tc-2',
+        attemptId: 'bundle-att-2',
+        input: { amount: 20, asset: 'USDC' },
+        description: 'Save 20 USDC into NAVI at 4.72% APY',
+      },
+      {
+        toolName: 'send_transfer',
+        toolUseId: 'tc-3',
+        attemptId: 'bundle-att-3',
+        input: { amount: 1, asset: 'USDC', to: '0x40cd...' },
+        description: 'Send 1 USDC to 0x40cd…3e62',
+      },
+    ],
+  };
+
+  const successfulStepResults = [
+    { toolUseId: 'tc-1', result: { data: { tx: sharedDigest, success: true } }, isError: false },
+    { toolUseId: 'tc-2', result: { data: { tx: sharedDigest, success: true } }, isError: false },
+    { toolUseId: 'tc-3', result: { data: { tx: sharedDigest, success: true } }, isError: false },
+  ];
+
+  it('replaces N per-leg cards with ONE bundle-receipt block (the F6 headline regression)', () => {
+    const seed: TimelineBlock[] = [
+      { type: 'permission-card', payload: bundleAction, status: 'approved' },
+    ];
+    const next = mergeBundleExecutionIntoTimeline(
+      seed,
+      bundleAction,
+      successfulStepResults,
+      T0,
+    );
+
+    expect(next).toHaveLength(2);
+    expect(next[0].type).toBe('permission-card');
+    expect(next[1].type).toBe('bundle-receipt');
+
+    const receipt = next[1] as Extract<TimelineBlock, { type: 'bundle-receipt' }>;
+    expect(receipt.legs).toHaveLength(3);
+    expect(receipt.txDigest).toBe(sharedDigest);
+    expect(receipt.isError).toBe(false);
+    expect(receipt.attemptId).toBe(bundleAction.attemptId);
+
+    expect(receipt.legs.filter((l) => l.toolUseId === 'tc-1')).toHaveLength(1);
+    const swapLeg = receipt.legs.find((l) => l.toolUseId === 'tc-1');
+    expect(swapLeg?.description).toBe('Swap 5 USDC for SUI (1% max slippage)');
+    expect(swapLeg?.toolName).toBe('swap_execute');
+    expect(swapLeg?.isError).toBe(false);
+  });
+
+  it('inserts the bundle-receipt AFTER the resolved permission card (chronological reading)', () => {
+    const seed: TimelineBlock[] = [
+      { type: 'thinking', blockIndex: 0, text: 'evaluating', status: 'done' },
+      { type: 'plan-stream', stepCount: 3, attemptId: bundleAction.attemptId },
+      { type: 'permission-card', payload: bundleAction, status: 'approved' },
+    ];
+    const next = mergeBundleExecutionIntoTimeline(
+      seed,
+      bundleAction,
+      successfulStepResults,
+      T0,
+    );
+
+    expect(next).toHaveLength(4);
+    expect(next[0].type).toBe('thinking');
+    expect(next[1].type).toBe('plan-stream');
+    expect(next[2].type).toBe('permission-card');
+    expect(next[3].type).toBe('bundle-receipt');
+  });
+
+  it('extracts shared txDigest from the first non-error leg (atomic PTB → one digest for all)', () => {
+    const seed: TimelineBlock[] = [
+      { type: 'permission-card', payload: bundleAction, status: 'approved' },
+    ];
+    const next = mergeBundleExecutionIntoTimeline(
+      seed,
+      bundleAction,
+      successfulStepResults,
+      T0,
+    );
+    const receipt = next.find((b) => b.type === 'bundle-receipt') as
+      | Extract<TimelineBlock, { type: 'bundle-receipt' }>
+      | undefined;
+    expect(receipt).toBeDefined();
+    expect(receipt!.txDigest).toBe(sharedDigest);
+  });
+
+  it('handles `_bundleReverted` — every leg errored → isError=true, txDigest=undefined', () => {
+    const revertedStepResults = bundleAction.steps!.map((step) => ({
+      toolUseId: step.toolUseId,
+      result: { error: 'PTB reverted', _bundleReverted: true },
+      isError: true,
+    }));
+    const seed: TimelineBlock[] = [
+      { type: 'permission-card', payload: bundleAction, status: 'approved' },
+    ];
+    const next = mergeBundleExecutionIntoTimeline(
+      seed,
+      bundleAction,
+      revertedStepResults,
+      T0,
+    );
+    const receipt = next.find((b) => b.type === 'bundle-receipt') as
+      | Extract<TimelineBlock, { type: 'bundle-receipt' }>
+      | undefined;
+    expect(receipt).toBeDefined();
+    expect(receipt!.isError).toBe(true);
+    expect(receipt!.txDigest).toBeUndefined();
+    expect(receipt!.legs.every((l) => l.isError)).toBe(true);
+  });
+
+  it('falls through to plain append when no permission card exists (defensive)', () => {
+    const seed: TimelineBlock[] = [
+      { type: 'thinking', blockIndex: 0, text: 'orphan', status: 'done' },
+    ];
+    const next = mergeBundleExecutionIntoTimeline(
+      seed,
+      bundleAction,
+      successfulStepResults,
+      T0,
+    );
+    expect(next).toHaveLength(2);
+    expect(next[1].type).toBe('bundle-receipt');
+  });
+
+  it('is idempotent — calling twice with same attemptId returns the same reference', () => {
+    const seed: TimelineBlock[] = [
+      { type: 'permission-card', payload: bundleAction, status: 'approved' },
+    ];
+    const first = mergeBundleExecutionIntoTimeline(seed, bundleAction, successfulStepResults, T0);
+    const second = mergeBundleExecutionIntoTimeline(first, bundleAction, successfulStepResults, T0 + 100);
+    expect(second).toBe(first);
+  });
+
+  it('refuses to fold for actions with steps.length < 2 (single-write path takes over)', () => {
+    const singleStepAction: PendingAction = {
+      ...bundleAction,
+      steps: [bundleAction.steps![0]],
+    };
+    const seed: TimelineBlock[] = [
+      { type: 'permission-card', payload: singleStepAction, status: 'approved' },
+    ];
+    const next = mergeBundleExecutionIntoTimeline(
+      seed,
+      singleStepAction,
+      [successfulStepResults[0]],
+      T0,
+    );
+    expect(next).toBe(seed);
+    expect(next.find((b) => b.type === 'bundle-receipt')).toBeUndefined();
+  });
+
+  it('preserves leg order from action.steps (matches PermissionCard step ordering)', () => {
+    const seed: TimelineBlock[] = [
+      { type: 'permission-card', payload: bundleAction, status: 'approved' },
+    ];
+    const reorderedStepResults = [
+      successfulStepResults[2],
+      successfulStepResults[0],
+      successfulStepResults[1],
+    ];
+    const next = mergeBundleExecutionIntoTimeline(
+      seed,
+      bundleAction,
+      reorderedStepResults,
+      T0,
+    );
+    const receipt = next.find((b) => b.type === 'bundle-receipt') as
+      | Extract<TimelineBlock, { type: 'bundle-receipt' }>
+      | undefined;
+    expect(receipt).toBeDefined();
+    expect(receipt!.legs.map((l) => l.toolUseId)).toEqual(['tc-1', 'tc-2', 'tc-3']);
+  });
+
+  it('marks legs without a matching stepResult as not-errored with undefined result (defensive)', () => {
+    const seed: TimelineBlock[] = [
+      { type: 'permission-card', payload: bundleAction, status: 'approved' },
+    ];
+    const next = mergeBundleExecutionIntoTimeline(
+      seed,
+      bundleAction,
+      [successfulStepResults[0]],
+      T0,
+    );
+    const receipt = next.find((b) => b.type === 'bundle-receipt') as
+      | Extract<TimelineBlock, { type: 'bundle-receipt' }>
+      | undefined;
+    expect(receipt).toBeDefined();
+    expect(receipt!.legs).toHaveLength(3);
+    expect(receipt!.legs[0].result).toBeDefined();
+    expect(receipt!.legs[1].result).toBeUndefined();
+    expect(receipt!.legs[2].result).toBeUndefined();
   });
 });
 

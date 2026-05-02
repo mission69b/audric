@@ -53,10 +53,10 @@ describe('PermissionCard — regenerate slot (Quote-Refresh ReviewCard)', () => 
     const { queryByText } = render(
       <PermissionCard action={action} onResolve={vi.fn()} />,
     );
-    expect(queryByText(/Regenerate/i)).toBeNull();
+    expect(queryByText(/Refresh quote/i)).toBeNull();
   });
 
-  it('renders the Regenerate button when `regenerate` prop is provided', () => {
+  it('renders the Refresh quote button when `regenerate` prop is provided', () => {
     const action = fakeBundle({
       canRegenerate: true,
       quoteAge: 1000,
@@ -70,7 +70,7 @@ describe('PermissionCard — regenerate slot (Quote-Refresh ReviewCard)', () => 
         regenerate={{ onRegenerate, isRegenerating: false }}
       />,
     );
-    const btn = getByText(/Regenerate/i);
+    const btn = getByText(/Refresh quote/i);
     expect(btn).toBeTruthy();
     fireEvent.click(btn);
     expect(onRegenerate).toHaveBeenCalledTimes(1);

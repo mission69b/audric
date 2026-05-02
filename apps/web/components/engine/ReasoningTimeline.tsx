@@ -230,5 +230,7 @@ function blockKey(block: TimelineBlock): string {
       return `contact-${block.toolUseId}-${block.contactAddress}`;
     case 'plan-stream':
       return `plan-${block.attemptId}`;
+    case 'bundle-receipt':
+      return `bundle-receipt-${block.attemptId}`;
   }
 }
