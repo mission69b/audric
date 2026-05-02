@@ -900,7 +900,7 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
 
       return result;
     },
-    [agent, balanceQuery],
+    [agent, balanceQuery, contactsHook],
   );
 
   const handleSaveContact = useCallback(
