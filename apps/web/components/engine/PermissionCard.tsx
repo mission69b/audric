@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { PendingActionModifiableField, PendingActionStep } from '@t2000/engine';
-import { bundleShortestTtl } from '@t2000/engine';
 import type { PendingAction } from '@/lib/engine-types';
 import {
   findContactByAddress,
@@ -470,6 +469,28 @@ export function PermissionCard({
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const label = TOOL_LABELS[action.toolName] ?? action.toolName.replace(/_/g, ' ');
 
+  // [SPEC 7 P2.4b audit fix] When `attemptId` changes mid-render — the
+  // single legitimate trigger is a successful regenerate, where the parent
+  // swaps the message's `pendingAction` to a fresh action without
+  // unmounting this component — reset the deny-timer countdown AND the
+  // ageMs origin. Without this:
+  //   1. The user gets only the leftover seconds on their fresh quote
+  //      (e.g. tap Regenerate at secondsLeft=15 → 15s to approve a
+  //      brand-new quote vs the 60s they'd expect).
+  //   2. The "QUOTE Ns OLD" badge inflates instantly because
+  //      `(TIMEOUT_SEC - secondsLeft) * 1000` carries forward across
+  //      the swap — a fresh quoteAge ≈ 0 plus 45s of stale countdown
+  //      reads as "QUOTE 45s OLD" the moment the new card lands.
+  // Resetting `secondsLeft` rebases both the countdown and the live-tick
+  // age formula, so the new card behaves like a freshly-mounted one.
+  const lastAttemptIdRef = useRef(action.attemptId);
+  useEffect(() => {
+    if (lastAttemptIdRef.current !== action.attemptId) {
+      lastAttemptIdRef.current = action.attemptId;
+      setSecondsLeft(TIMEOUT_SEC);
+    }
+  }, [action.attemptId]);
+
   // [SPEC 7 P2.4 Layer 3] Multi-write Payment Stream rendering takes
   // priority over the single-write layout when the engine emitted a
   // bundle. Falls back to single-write when `steps` is undefined or
@@ -564,22 +585,23 @@ export function PermissionCard({
     // of updated `ageMs` props.
     const ageMs =
       typeof action.quoteAge === 'number' ? action.quoteAge + (TIMEOUT_SEC - secondsLeft) * 1000 : undefined;
-    const toolNamesById: Record<string, string> = {};
-    if (action.regenerateInput?.toolUseIds) {
-      // Without per-id tool name lookup, `bundleShortestTtl` uses the
-      // DEFAULT_TOOL_TTL_MS fallback per id. That's the spec-faithful
-      // behaviour for hosts that don't track per-id tool names; the
-      // resulting TTL is conservative (60s) which is fine — Sui's
-      // dry-run is the actual safety gate.
-      for (const id of action.regenerateInput.toolUseIds) {
-        // Default unknown — bundleShortestTtl handles missing entries.
-        toolNamesById[id] = '';
-      }
-    }
-    const shortestTtl =
-      action.regenerateInput?.toolUseIds
-        ? bundleShortestTtl(action.regenerateInput.toolUseIds, toolNamesById)
-        : 60_000;
+    // [SPEC 7 P2.4b — known limitation] The engine's `regenerateInput`
+    // currently exposes `toolUseIds: string[]` only, no parallel
+    // `toolName` map. `bundleShortestTtl(ids, namesById)` therefore
+    // falls through to the DEFAULT_TOOL_TTL_MS (60_000ms) for every
+    // id, regardless of whether the upstream read was `swap_quote`
+    // (real TTL 30s) or `balance_check` (real TTL 120s). The badge
+    // severity is approximate as a result — swap-heavy bundles
+    // shouldn't pulse amber until 60s when the spec wants 30s.
+    //
+    // This is a UX hint, not a correctness gate (per spec line 537:
+    // "Sui's on-chain dry-run is the actual correctness gate"), so we
+    // ship with the conservative 60s default and track the engine API
+    // extension as a follow-up: extend `PendingAction.regenerateInput`
+    // with `toolNamesById?: Record<string,string>` (or a parallel
+    // `toolNames: string[]`) in the next engine minor bump, then
+    // populate it from `composeBundleFromToolResults`.
+    const shortestTtl = 60_000;
     const severity: QuoteAgeSeverity = quoteAgeSeverity(ageMs, shortestTtl);
     const ageBadge = formatQuoteAge(ageMs);
     const ageBadgeClass =

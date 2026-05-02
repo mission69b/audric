@@ -461,6 +461,13 @@ export function useEngine({ address, jwt, onToolResult }: UseEngineOptions) {
         // its own rich result card via `ToolBlockView`). Timeline events
         // arrive paired (`tool_start` then `tool_result`) per spec; we
         // index by `toolUseId` to merge into one block per read.
+        //
+        // [SPEC 7 P2.4b audit fix — BUG #6] Per-tool startedAt is rebased
+        // off `event.durationMs` so `ToolBlockView`'s
+        // `(endedAt - startedAt) / 1000` header reads the real duration.
+        // Previously both timestamps were pinned to the same `now`, so
+        // every tool reported "0.0s" in the regenerated group while the
+        // group label correctly summed to (e.g.) "1.4s".
         const childByToolUseId = new Map<string, ToolTimelineBlock>();
         let totalDurationMs = 0;
         const now = Date.now();
@@ -483,14 +490,16 @@ export function useEngine({ address, jwt, onToolResult }: UseEngineOptions) {
               status: 'running' as const,
               startedAt: now,
             };
+            const durationMs = Number.isFinite(ev.durationMs) ? ev.durationMs : 0;
             childByToolUseId.set(ev.toolUseId, {
               ...existing,
               status: ev.isError ? 'error' : 'done',
+              startedAt: now - durationMs,
               endedAt: now,
               result: ev.result,
               isError: ev.isError,
             });
-            totalDurationMs += ev.durationMs;
+            totalDurationMs += durationMs;
           }
         }
         const toolBlocks = Array.from(childByToolUseId.values());

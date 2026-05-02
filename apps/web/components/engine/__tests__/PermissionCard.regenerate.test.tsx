@@ -7,8 +7,8 @@
 // during regeneration, and the no-op when `regenerate` prop is omitted.
 // ───────────────────────────────────────────────────────────────────────────
 
-import { describe, it, expect, vi } from 'vitest';
-import { render, fireEvent } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, fireEvent, act } from '@testing-library/react';
 import { PermissionCard } from '../PermissionCard';
 import type { PendingAction } from '@/lib/engine-types';
 
@@ -116,5 +116,71 @@ describe('PermissionCard — regenerate slot (Quote-Refresh ReviewCard)', () => 
       />,
     );
     expect(getByText(/QUOTE.*OLD/i)).toBeTruthy();
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────
+// SPEC 7 P2.4b audit — BUG #2 regression
+//
+// When a regenerate succeeds, the parent swaps the message's pendingAction
+// to a fresh action carrying a new `attemptId`. PermissionCard does NOT
+// unmount (same key path: parent maps prev messages → swaps `pendingAction`
+// in place). The deny-timer countdown and the live-tick `ageMs` formula
+// must rebase off the new attemptId, otherwise:
+//   - the user gets only leftover seconds on a brand-new quote, AND
+//   - the QUOTE Ns OLD badge inflates by the elapsed timer instantly
+//     (e.g. fresh `quoteAge=0` + 45s of stale countdown = "QUOTE 45s OLD"
+//     the moment the new card lands).
+// ───────────────────────────────────────────────────────────────────────────
+
+describe('PermissionCard — regenerate attemptId swap (BUG #2 regression)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('resets the deny-timer countdown to TIMEOUT_SEC when attemptId changes', () => {
+    const initial = fakeBundle({
+      canRegenerate: true,
+      quoteAge: 0,
+      regenerateInput: { toolUseIds: ['t1'] },
+    });
+    initial.attemptId = 'attempt-original';
+
+    const { getByLabelText, rerender } = render(
+      <PermissionCard
+        action={initial}
+        onResolve={vi.fn()}
+        regenerate={{ onRegenerate: vi.fn(), isRegenerating: false }}
+      />,
+    );
+
+    // Timer starts at 60s (TIMEOUT_SEC) and ticks down. Advance 30s.
+    act(() => {
+      vi.advanceTimersByTime(30_000);
+    });
+    expect(getByLabelText(/seconds remaining/i).textContent).toBe('30s');
+
+    // Simulate a successful regenerate landing — the parent swaps the
+    // action to a fresh one with a new attemptId and quoteAge ≈ 0.
+    const refreshed: PendingAction = {
+      ...initial,
+      attemptId: 'attempt-fresh-after-regen',
+      quoteAge: 0,
+    };
+
+    rerender(
+      <PermissionCard
+        action={refreshed}
+        onResolve={vi.fn()}
+        regenerate={{ onRegenerate: vi.fn(), isRegenerating: false }}
+      />,
+    );
+
+    // Without the fix, the badge label still showed "30s" (and the badge
+    // was about to read "QUOTE 30s OLD"). With the reset, both rebase.
+    expect(getByLabelText(/seconds remaining/i).textContent).toBe('60s');
   });
 });
