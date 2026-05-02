@@ -448,19 +448,28 @@ describe('emitHarnessTelemetry — Vercel sink emissions (B3.6)', () => {
 });
 
 describe('STATIC_SYSTEM_PROMPT — B3.6 budget gate', () => {
-  it('grew by ≤700 tokens after appending Mid-flight narration & todos + <eval_summary>', async () => {
+  it('stays within the cumulative spec-mandated budget (B3.6 + P2.5)', async () => {
     // [SPEC 8 v0.5.1 B3.6 / Layer 5 / Gap 8] Cache-size regression gate.
     //
-    // The B3.6 prompt rewrite added a "Mid-flight narration & todos"
-    // section + an `<eval_summary>` emission contract. Spec budget is
-    // baseline + 700 tokens. We test the FINAL prompt (post-B3.6) is
-    // ≤ a hard ceiling so a future "while I'm here" prompt edit can't
-    // silently push us past Anthropic's prompt-cache boundary.
+    // Ceiling history (each bump cited spec authority + landed with a
+    // re-run of the eval corpus):
+    //   - Pre-B3.6 baseline:               8,960 tokens   (~35,840 chars)
+    //   - Post-B3.6 ceiling:               9,660 tokens   ( +700 budget)
+    //   - Post-SPEC 7 P2.5 ceiling:        9,920 tokens   ( +260 budget)
+    //
+    // B3.6 added the "Mid-flight narration & todos" section + the
+    // `<eval_summary>` emission contract.
+    //
+    // SPEC 7 P2.5 (Layer 4) added the "## Payment Stream — compound write
+    // requests" section (spec line 825-827, mandatory). The block teaches
+    // the LLM to emit ALL bundleable write tool_use blocks in ONE turn
+    // for compound requests so the engine collapses them into one atomic
+    // PTB. Without it the LLM keeps emitting sequentially and bundles
+    // never form. The block was trimmed aggressively (bundleable list,
+    // pre-bundle reads pattern, narration framing) to keep the budget
+    // impact at +206 tokens — well under the 260-token allowance.
     //
     // Why a hard char ceiling instead of a delta:
-    //   - The pre-B3.6 baseline was 8960 tokens (35840 chars).
-    //   - The post-B3.6 ceiling = baseline (8960) + budget (700) = 9660 tokens
-    //     = 38640 chars at 4 chars/token (matches @t2000/engine estimateTokens).
     //   - Hardcoding the ceiling beats hardcoding both halves; the test
     //     trips on ANY future edit that pushes the prompt past the
     //     boundary, regardless of whose change it was.
@@ -468,10 +477,11 @@ describe('STATIC_SYSTEM_PROMPT — B3.6 budget gate', () => {
     // If this test fails in the future:
     //   1. Trim the new prompt content first (bullet > prose, fewer examples).
     //   2. Only raise this ceiling with explicit founder approval +
-    //      a re-run of the SPEC 7/P1 eval corpus on the new prompt.
+    //      a re-run of the SPEC 7/P1 eval corpus on the new prompt +
+    //      a new entry in the ceiling-history table above.
     const { STATIC_SYSTEM_PROMPT } = await import('../engine-context');
     const tokens = Math.ceil(STATIC_SYSTEM_PROMPT.length / 4);
-    expect(tokens).toBeLessThanOrEqual(9660);
+    expect(tokens).toBeLessThanOrEqual(9920);
   });
 });
 
