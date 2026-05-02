@@ -385,19 +385,80 @@ function buildStepResultFromInput(
 export async function executeBundleAction(
   sdk: AgentActions,
   action: PendingAction,
+  effects: ExecuteToolActionEffects = {},
 ): Promise<ExecuteBundleResult> {
   if (!action.steps || action.steps.length === 0) {
     throw new Error('executeBundleAction called with no steps');
   }
 
-  const wireSteps: BundleStep[] = action.steps.map((s) => ({
+  // [F7 / SPEC 12] Resolve recipient names BEFORE handing the bundle to
+  // the SDK + prepare route. Single-write `send_transfer` already does
+  // this in the case branch above; bundles silently skipped it pre-fix
+  // and the SDK's `validateAddress` rejected raw contact strings like
+  // "funkii" with a non-obvious Enoki dry-run failure
+  // (`CommandArgumentError { arg_idx: 1, kind: ArgumentWithoutValue }`).
+  //
+  // Resolution order mirrors single-write exactly:
+  //   1. Saved contact (alex → 0x...). Free, in-memory hashmap.
+  //   2. SuiNS name (alex.sui → 0x... via /api/suins/resolve).
+  //   3. Pass through (assume it's already a 0x address; SDK validates).
+  //
+  // Only `send_transfer.to` is resolved — `swap_execute.to` carries a
+  // token symbol, not a recipient (mirrors `TOOLS_WHERE_TO_IS_RECIPIENT`
+  // gate in `lib/timeline-builder.ts`).
+  //
+  // SuiNS errors (SuinsResolutionError) are caught and surfaced through
+  // the same atomic _bundleReverted shape as on-chain failures, so the
+  // engine resume route always gets a uniform N stepResults response.
+  // (Single-write lets the error propagate; bundles fold it into the
+  // atomic-revert contract instead.)
+  let resolvedSteps: PendingActionStep[];
+  try {
+    resolvedSteps = await Promise.all(
+      action.steps.map(async (s) => {
+        if (s.toolName !== 'send_transfer') return s;
+        const inp = (s.input ?? {}) as Record<string, unknown>;
+        const rawTo = String(inp.to ?? '');
+        if (!rawTo) return s;
+        const contactAddr = effects.resolveContact?.(rawTo) ?? null;
+        let resolvedTo: string;
+        if (contactAddr) {
+          resolvedTo = contactAddr;
+        } else if (looksLikeSuiNs(rawTo) && effects.resolveSuiNs) {
+          resolvedTo = await effects.resolveSuiNs(rawTo);
+        } else {
+          resolvedTo = rawTo;
+        }
+        if (resolvedTo === rawTo) return s;
+        return { ...s, input: { ...inp, to: resolvedTo } };
+      }),
+    );
+  } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : 'Recipient resolution failed';
+    const stepResults = action.steps.map((step) => ({
+      toolUseId: step.toolUseId,
+      attemptId: step.attemptId,
+      result: {
+        success: false,
+        error: errorMsg,
+        _bundleReverted: true,
+      },
+      isError: true,
+    }));
+    return { success: false, error: errorMsg, stepResults };
+  }
+
+  const wireSteps: BundleStep[] = resolvedSteps.map((s) => ({
     toolName: s.toolName,
     input: s.input,
   }));
 
   try {
     const res = await sdk.executeBundle(wireSteps);
-    const stepResults = action.steps.map((step) =>
+    // Use `resolvedSteps` (not `action.steps`) so the stepResults' echoed
+    // `to` field reflects the on-chain recipient — matches single-write
+    // receipt parity and the BundleReceiptBlockView leg description.
+    const stepResults = resolvedSteps.map((step) =>
       buildStepResultFromInput(step, res.tx),
     );
     return { success: true, txDigest: res.tx, stepResults };

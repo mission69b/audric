@@ -866,7 +866,20 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
 
       lastUserActionAtRef.current = Date.now();
 
-      const result = await executeBundleAction(sdk, action);
+      // [F7 / SPEC 12] Pass the same contact + SuiNS resolvers as
+      // `handleExecuteAction`. Without this, a `send_transfer` step with
+      // `to: "<contactName>"` (which the system prompt explicitly tells
+      // the LLM to emit) reaches the SDK unresolved and Enoki rejects
+      // the dry-run with a non-obvious CommandArgumentError. Symmetry
+      // with single-write means saved contacts work consistently in
+      // both flows.
+      const result = await executeBundleAction(sdk, action, {
+        resolveContact: (raw) => contactsHook.resolveContact(raw),
+        resolveSuiNs: async (raw) => {
+          const { resolveSuiNs } = await import('@/lib/suins-resolver');
+          return resolveSuiNs(raw);
+        },
+      });
 
       // Refetch balance once for the whole bundle (vs per-step). Bundles
       // typically contain a swap or volo step → schedule a delayed
