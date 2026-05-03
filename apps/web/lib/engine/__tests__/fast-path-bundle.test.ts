@@ -216,6 +216,14 @@ describe('tryConsumeFastPathBundle', () => {
     expect(result!.proposal).toBe(proposal);
     expect(result!.syntheticAssistantText).toContain('2 writes');
     expect(result!.syntheticAssistantText).toContain('Payment Stream');
+    // [May 3 soak fix] The ack MUST be past-or-in-flight tense, not
+    // forward-looking ("Compiling..."), because by the time the
+    // narration LLM sees this message the bundle has already settled.
+    // Forward-looking text triggers a 2k-char detective-work tangent.
+    expect(result!.syntheticAssistantText).not.toContain('Compiling');
+    expect(result!.syntheticAssistantText.toLowerCase()).toMatch(
+      /\bdispatched\b|\bexecuted\b|\bverif/,
+    );
   });
 
   it.each([

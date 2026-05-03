@@ -222,8 +222,23 @@ export async function tryConsumeFastPathBundle(
   return {
     action,
     proposal,
+    // [SPEC 14 Phase 2 — May 3 prod soak] The synthetic ack must be
+    // temporally unambiguous. By the time the resume route's narration
+    // LLM sees this message, the bundle has already settled on-chain
+    // and `postWriteRefresh` has injected balance_check + savings_info
+    // tool_use blocks INTO this same assistant message. A
+    // forward-looking "Compiling..." text confuses the model because
+    // it sees no record of the actual write tool_use blocks (those
+    // went through the sponsored-tx flow, not the engine) and tries
+    // to detective-work whether the writes happened. The 2,361-char
+    // tangent on the first prod confirm was that exact failure mode.
+    //
+    // Past-tense + "verifying" framing tells the LLM: "The writes
+    // executed. The post-write refresh reads you're about to see are
+    // VERIFICATION reads. Now narrate the outcome." Empirically saves
+    // ~2,000 thinking chars per fast-path narration turn.
     syntheticAssistantText:
-      `Confirmed. Compiling ${proposal.steps.length} writes into one Payment Stream — atomic, if any leg fails nothing executes.`,
+      `Confirmed. Bundle dispatched as one atomic Payment Stream (${proposal.steps.length} writes) — verifying on-chain outcome.`,
   };
 }
 
