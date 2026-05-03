@@ -320,31 +320,33 @@ describe('TurnMetricsCollector — harness telemetry (B3.6)', () => {
 
   it('stamps TTFVP from the FIRST visible-progress event (any of: thinking_delta, tool_start, todo_update, text_delta)', async () => {
     const c = new TurnMetricsCollector();
-    // The constructor stamped startTime synchronously; sleep a tick so the
-    // computed delta is non-zero in the assertion below.
-    await new Promise((r) => setTimeout(r, 5));
+    // [SPEC 7 P2.8 followup, 2026-05-03] setTimeout is approximate, NOT a
+    // hard floor — fast CI runners (GitHub Actions, especially) can fire
+    // a setTimeout(5) in 4ms. The semantic this test verifies is
+    // "TTFVP is non-null and reflects elapsed time", not "exactly ≥ 5ms".
+    // Use a longer sleep + relaxed lower-bound to absorb sub-ms jitter.
+    await new Promise((r) => setTimeout(r, 20));
     c.onThinkingDelta();
-    // Subsequent events must NOT overwrite — TTFVP is stamped exactly once.
-    await new Promise((r) => setTimeout(r, 5));
+    await new Promise((r) => setTimeout(r, 20));
     c.onTextDelta('hi');
     c.onFirstTextDelta();
     const built = c.build(buildContext);
     expect(built.ttfvpMs).not.toBeNull();
-    expect(built.ttfvpMs!).toBeGreaterThanOrEqual(5);
+    expect(built.ttfvpMs!).toBeGreaterThan(0);
     // TTFVP must be ≤ wallTime (sanity).
     expect(built.ttfvpMs!).toBeLessThanOrEqual(built.wallTimeMs);
   });
 
   it('stamps TTFVP from tool_start when no thinking burst preceded', async () => {
     const c = new TurnMetricsCollector();
-    await new Promise((r) => setTimeout(r, 5));
+    await new Promise((r) => setTimeout(r, 20));
     c.onToolStart('toolUseId-1');
     expect(c.build(buildContext).ttfvpMs).not.toBeNull();
   });
 
   it('stamps TTFVP from todo_update for plan-first turns', async () => {
     const c = new TurnMetricsCollector();
-    await new Promise((r) => setTimeout(r, 5));
+    await new Promise((r) => setTimeout(r, 20));
     c.onTodoUpdate();
     expect(c.build(buildContext).ttfvpMs).not.toBeNull();
   });
