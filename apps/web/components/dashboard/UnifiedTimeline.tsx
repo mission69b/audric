@@ -9,7 +9,7 @@ import { FeedItemCard } from '@/components/dashboard/FeedRenderer';
 // [SIMPLIFICATION DAY 5] CopilotPill + InChatSurface deleted with the
 // Copilot stack. The render tree was already short-circuited in S.3 — the
 // imports are now removed.
-import { deriveSuggestedActions } from '@/lib/suggested-actions';
+import { deriveSuggestedActions, endsWithQuestion } from '@/lib/suggested-actions';
 import type { useEngine } from '@/hooks/useEngine';
 import type { useFeed } from '@/hooks/useFeed';
 import type { FeedItem } from '@/lib/feed-types';
@@ -413,12 +413,17 @@ export function UnifiedTimeline({
   const showSkeleton = isConnecting && lastEngineMsg?.role === 'assistant' && !lastEngineMsg.content;
 
   const hasMessages = engine.messages.length > 0;
+  // [F15 / 2026-05-03] Suppress chips when the assistant just asked a
+  // question — the answer is yes/no/clarification, not a new prompt.
+  // See `endsWithQuestion` JSDoc in `lib/suggested-actions.ts` for the
+  // 6-op repro.
   const showSuggestions =
     !engine.isStreaming &&
     lastEngineMsg?.role === 'assistant' &&
     !lastEngineMsg.isStreaming &&
     !lastEngineMsg.pendingAction &&
-    lastEngineMsg.content.length > 0;
+    lastEngineMsg.content.length > 0 &&
+    !endsWithQuestion(lastEngineMsg.content);
 
   const suggestedActions = showSuggestions
     ? deriveSuggestedActions(lastEngineMsg?.tools)

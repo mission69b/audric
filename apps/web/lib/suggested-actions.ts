@@ -123,3 +123,31 @@ export function deriveSuggestedActions(tools?: ToolExecution[]): SuggestedAction
 
   return typeof chips === 'function' ? chips(extractResultData(lastDoneTool)) : chips;
 }
+
+/**
+ * [F15 / 2026-05-03] True when the assistant's last text ends with a
+ * question — surface call-site uses this to suppress action chips while
+ * the agent is awaiting an answer (e.g. "Confirm to proceed?").
+ *
+ * Repro: a 6-op compound flow had the LLM emit Turn 1 = reads + plan
+ * ending in "Confirm to proceed?" with no `pending_action` yet (the
+ * engine waits for the user's "yes" before emitting the writes). The
+ * chip system saw the last successful tool (`swap_quote`) and rendered
+ * "EXECUTE SWAP" / "Execute the swap". The user tapped it expecting
+ * plan execution; the LLM treated it as a fresh swap request and asked
+ * "which swap?" because there were 2 in the plan. The fix: hide chips
+ * when the agent's tail is a question — yes/no/clarification belongs in
+ * the input, not in a generic chip.
+ *
+ * Heuristic: literal trailing `?` after stripping common markdown punct
+ * that may follow it (`*`, `_`, backtick, closing quote/paren). Avoids
+ * false negatives on `**Confirm to proceed?**` and similar.
+ */
+const TRAILING_QUESTION_REGEX = /\?[*_`)\]'"\s]*$/;
+
+export function endsWithQuestion(text: string | undefined | null): boolean {
+  if (!text) return false;
+  const trimmed = text.trimEnd();
+  if (!trimmed) return false;
+  return TRAILING_QUESTION_REGEX.test(trimmed);
+}
