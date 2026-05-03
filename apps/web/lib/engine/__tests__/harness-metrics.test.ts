@@ -460,6 +460,7 @@ describe('STATIC_SYSTEM_PROMPT — B3.6 budget gate', () => {
     //   - Post-SPEC 7 P2.5 ceiling:        9,920 tokens   ( +260 budget)
     //   - Post-SPEC 7 P2.8 / F13 ceiling: 10,000 tokens   ( +80 budget)
     //   - Post-F14-fix-2 ceiling:         10,200 tokens   ( +200 budget)
+    //   - Post-failed-write-narration:    10,250 tokens   ( +50 budget)
     //
     // B3.6 added the "Mid-flight narration & todos" section + the
     // `<eval_summary>` emission contract.
@@ -509,6 +510,19 @@ describe('STATIC_SYSTEM_PROMPT — B3.6 budget gate', () => {
     // example, rule 4: ~70 tokens with good/bad examples). The +200
     // ceiling allows ~60 tokens of headroom for future minor edits.
     //
+    // failed-write-narration (May 2026 — `followup-hallucinated-narration`)
+    // added one rule in response to a session-1 cascade where a reverted
+    // bundle led the LLM to confabulate "settlement delay" / "still
+    // processing" narration, implying the user should wait — Sui PTBs are
+    // atomic so there is nothing to wait for. The rule (added as a 4th
+    // bullet inside "## CRITICAL: Balance data after write actions" so it
+    // sits next to its success-path counterparts) defines `isError: true`
+    // / `_bundleReverted: true` semantics and bans the confabulated phrases.
+    // Adds ~50 tokens; this is the smallest bump in the ceiling history.
+    // Paired with the `STATIC_SYSTEM_PROMPT_FAILED_WRITE_NARRATION_RULE`
+    // assertion in `spec-consistency.ts` so a future prompt edit cannot
+    // silently drop the rule.
+    //
     // Why a hard char ceiling instead of a delta:
     //   - Hardcoding the ceiling beats hardcoding both halves; the test
     //     trips on ANY future edit that pushes the prompt past the
@@ -521,7 +535,7 @@ describe('STATIC_SYSTEM_PROMPT — B3.6 budget gate', () => {
     //      a new entry in the ceiling-history table above.
     const { STATIC_SYSTEM_PROMPT } = await import('../engine-context');
     const tokens = Math.ceil(STATIC_SYSTEM_PROMPT.length / 4);
-    expect(tokens).toBeLessThanOrEqual(10_200);
+    expect(tokens).toBeLessThanOrEqual(10_250);
   });
 });
 

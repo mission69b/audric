@@ -1,10 +1,10 @@
 /**
  * spec-consistency.ts — Audric Harness Correctness Spec v1.4 / Item 5
  *
- * Runs nine assertions against the live `@t2000/sdk` + `@t2000/engine` exports
- * and the audric-side `STATIC_SYSTEM_PROMPT` to guarantee that the values
- * documented in the spec, encoded in the SDK, and surfaced to the LLM never
- * silently drift apart.
+ * Runs sixteen assertions against the live `@t2000/sdk` + `@t2000/engine`
+ * exports and the audric-side `STATIC_SYSTEM_PROMPT` to guarantee that the
+ * values documented in the spec, encoded in the SDK, and surfaced to the
+ * LLM never silently drift apart.
  *
  * The same module powers two enforcement paths:
  *   1. CI: invoked as a script (`tsx apps/web/lib/engine/spec-consistency.ts`)
@@ -12,7 +12,8 @@
  *   2. Runtime: imported by `engine-factory.ts` so a dev-mode boot trips a
  *      hard error and a prod-mode boot logs the violation. See `runStartupCheck`.
  *
- * The nine assertions (per spec line 1681 + plan Day 5):
+ * The sixteen assertions (originally nine per spec line 1681 + plan Day 5;
+ * grown to track new canonical sources and load-bearing prompt rules):
  *   - 6 fee constants — SAVE_FEE_BPS=10n, BORROW_FEE_BPS=5n,
  *     OVERLAY_FEE_RATE=0.001, and three "no fee" guards
  *     (no WITHDRAW_FEE / REPAY_FEE / SEND_FEE exports).
@@ -20,6 +21,10 @@
  *   - 1 tool-count assertion — STATIC_SYSTEM_PROMPT's interpolated
  *     "(${READ_COUNT} read tools, ${WRITE_COUNT} write tools)" matches
  *     the live `READ_TOOLS.length` + `WRITE_TOOLS.length` registry.
+ *   - 3 load-bearing prompt rule assertions — NEVER_CONTRADICT_CARD,
+ *     DEFI_UNAVAILABLE_RULE, FAILED_WRITE_NARRATION_RULE.
+ *   - 4 canonical source-of-truth exports — getPortfolio, getTokenPrices,
+ *     getTransactionHistory, getRates (per `single-source-of-truth.mdc`).
  */
 import * as sdk from '@t2000/sdk';
 import { READ_TOOLS, WRITE_TOOLS } from '@t2000/engine';
@@ -164,6 +169,28 @@ export function runSpecConsistencyChecks(): SpecConsistencyResult {
       'fetch is degraded (e.g. missing/empty BLOCKVISION_API_KEY in the ' +
       'runtime). The rule must teach the LLM to check displayText for ' +
       '"DeFi positions: UNAVAILABLE" before claiming the slice is empty.',
+  });
+
+  // ── 1 failed-write narration prompt rule assertion ─────────────────────
+  // SPEC 13 Phase 3a soak follow-up (May 2026 — `followup-hallucinated-
+  // narration`): a session-1 cascade where a reverted bundle led the LLM
+  // to confabulate "settlement delay" / "still processing" narration,
+  // implying the user should wait — Sui PTBs are atomic so there is
+  // nothing to wait for. The rule defines `isError: true` /
+  // `_bundleReverted: true` semantics and bans the confabulated phrases.
+  // If a future prompt edit reflows this section and accidentally drops
+  // the rule, this assertion catches it before the engine boots.
+  assertions.push({
+    id: 'STATIC_SYSTEM_PROMPT_FAILED_WRITE_NARRATION_RULE',
+    pass: STATIC_SYSTEM_PROMPT.includes('atomic = no settlement delay'),
+    message:
+      'STATIC_SYSTEM_PROMPT must contain the "Failed-write narration ' +
+      '(atomic = no settlement delay)" rule. Without it the LLM ' +
+      'confabulates "settlement delay" / "still processing" narration ' +
+      'when a write tool result returns isError: true or any bundle leg ' +
+      'returns _bundleReverted: true — implying the user should wait for ' +
+      'something that will never happen. Sui PTBs are atomic; the rule ' +
+      'must teach the LLM there is no in-flight state to wait for.',
   });
 
   // ── 4 canonical-portfolio export assertions ────────────────────────────
