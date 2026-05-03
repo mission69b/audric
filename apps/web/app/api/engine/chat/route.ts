@@ -40,6 +40,7 @@ import {
 } from '@/lib/billing';
 
 import { sanitizeStreamErrorMessage } from '@/lib/engine/stream-errors';
+import { tryConsumeFastPathBundle } from '@/lib/engine/fast-path-bundle';
 import { env } from '@/lib/env';
 import {
   asHarnessVersion,
@@ -358,6 +359,99 @@ export async function POST(request: NextRequest) {
           // LLM's stream so cards render immediately and metrics row is complete.
           const trimmedMessage = message.trim();
 
+          // [SPEC 14 Phase 2] Fast-path: if we have a fresh stashed
+          // bundle proposal for this session AND the user's reply is
+          // an affirmative confirm AND the wallet matches, yield the
+          // `pending_action` directly — bypass the LLM entirely.
+          //
+          // This decouples the bundle invariant from LLM emission
+          // timing (the load-bearing failure mode of `1.14.0 → 1.14.3`).
+          // The bundle was committed at PLAN time via the
+          // `prepare_bundle` tool call; the confirm turn just dispatches.
+          //
+          // On miss (no stash, expired, wallet mismatch, non-affirmative
+          // reply) the helper increments
+          // `audric.bundle.fast_path_skipped` with a `reason` label and
+          // returns null — we fall through to the legacy path below.
+          let fastPathFired = false;
+          if (saveSession && sessionId && address) {
+            const fastPath = await tryConsumeFastPathBundle({
+              sessionId,
+              walletAddress: address,
+              trimmedMessage,
+              turnIndex,
+            });
+            if (fastPath) {
+              fastPathFired = true;
+
+              // Yield the bundle as a normal `pending_action` SSE event.
+              // The host's renderer (`useEngine.ts`) and PermissionCard
+              // are agnostic to whether this came from the LLM or the
+              // fast path — only the toolUseId prefix `fastpath_`
+              // identifies it in logs.
+              controller.enqueue(
+                encoder.encode(
+                  serializeSSE({ type: 'pending_action', action: fastPath.action }),
+                ),
+              );
+              // Mirror engine.ts behavior — emit turn_complete with
+              // `stopReason: 'tool_use'` (same as the engine yields
+              // when an agentLoop iteration ends on a pending_action).
+              // The host's stream-close instrumentation buckets this
+              // as `outcome: 'pending_action'` via the `pendingActionSeen`
+              // flag, not via `stopReason`.
+              controller.enqueue(
+                encoder.encode(
+                  serializeSSE({ type: 'turn_complete', stopReason: 'tool_use' }),
+                ),
+              );
+
+              // Mirror the engine's collector bookkeeping that
+              // normally fires from the `case 'pending_action'`
+              // branch below.
+              pendingAction = fastPath.action;
+              pendingActionSeen = true;
+              turnCompleteSeen = true;
+              lastEventType = 'turn_complete';
+              collector.onPendingAction(fastPath.action.attemptId);
+              if (
+                Array.isArray(fastPath.action.steps) &&
+                fastPath.action.steps.length >= 2
+              ) {
+                emitBundleProposed(fastPath.action.steps);
+              }
+
+              // Append synthetic user + assistant messages to the
+              // engine's ledger so the chat-history UI and the next
+              // LLM turn see a coherent transcript. Without this, the
+              // saved session would record the user's "Confirm" with
+              // no matching assistant turn — the next prompt would
+              // see a hanging plan turn. Both messages use the typed
+              // `ContentBlock[]` shape (single `text` block each).
+              const priorMessages = engine.getMessages();
+              engine.loadMessages([
+                ...priorMessages,
+                {
+                  role: 'user',
+                  content: [{ type: 'text', text: trimmedMessage }],
+                },
+                {
+                  role: 'assistant',
+                  content: [{ type: 'text', text: fastPath.syntheticAssistantText }],
+                },
+              ]);
+
+              console.info('[fast-path] bundle dispatched', {
+                sessionId,
+                bundleId: fastPath.proposal.bundleId,
+                stepCount: fastPath.proposal.steps.length,
+                pairs: fastPath.proposal.steps
+                  .slice(1)
+                  .map((s, i) => `${fastPath.proposal.steps[i].toolName}->${s.toolName}`),
+              });
+            }
+          }
+
           /**
            * [v0.48] Pure classifier-driven dispatch — no synthetic
            * pre-fetch. `buildDispatchIntents` exists solely to dedup
@@ -365,9 +459,11 @@ export async function POST(request: NextRequest) {
            * compound prompt (e.g. "show my balance and balance again")
            * doesn't fire `balance_check` twice.
            */
-          const intents = buildDispatchIntents({
-            classified: classifyReadIntents(trimmedMessage),
-          });
+          const intents = fastPathFired
+            ? []
+            : buildDispatchIntents({
+                classified: classifyReadIntents(trimmedMessage),
+              });
 
           // [Bug A trace] Always log a one-liner with intent classification
           // + dispatch outcome. When users report "this prompt didn't render
@@ -520,7 +616,15 @@ export async function POST(request: NextRequest) {
           // `harness_shape` event. The engine echo via `case 'harness_shape'`
           // below stays as a defensive last-write-wins.
           collector.onHarnessShape(engineMeta?.harnessShape);
-          for await (const event of engine.submitMessage(trimmedMessage, {
+          // [SPEC 14 Phase 2] When the fast path fired we already
+          // emitted `pending_action` + `turn_complete` from the
+          // stashed proposal; skipping `engine.submitMessage` is what
+          // makes this path "fast" (zero LLM cost, ~10ms total).
+          // Falls through to the existing finally block which handles
+          // session save, TurnMetrics row, etc — those work
+          // unchanged because we set the same state flags the legacy
+          // path's `case 'pending_action'` would set.
+          if (!fastPathFired) for await (const event of engine.submitMessage(trimmedMessage, {
             // [SPEC 8 v0.5.1 B3.2] Engine emits the one-shot `harness_shape`
             // event at turn start; host stashes the shape on the assistant
             // EngineChatMessage + on `TurnMetrics.harnessShape`. Falls back

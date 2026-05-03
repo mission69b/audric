@@ -120,6 +120,23 @@ export function detectBundleConfirm(currentMessage: string, history: Message[]):
   return { matched: true, priorWriteVerbCount: verbCount, reason: 'matched' };
 }
 
+/**
+ * [SPEC 14 Phase 2] Tight predicate for "is the user's reply an
+ * affirmative short confirm?". Re-exports the same regex
+ * `detectBundleConfirm` uses for its first gate, so the fast-path
+ * bypass and the Haiku→Sonnet promotion path agree on what a
+ * confirm message looks like.
+ *
+ * Intentionally narrow — only matches short, unambiguous yes-words
+ * with no trailing question marks. Anything longer than 30 chars
+ * falls through to the LLM (which can handle nuance).
+ */
+export function isAffirmativeConfirmReply(message: string): boolean {
+  const trimmed = message.trim();
+  if (trimmed.length === 0 || trimmed.length > 30) return false;
+  return CONFIRM_PATTERN.test(trimmed);
+}
+
 export const __testOnly__ = {
   CONFIRM_PATTERN,
   WRITE_VERB_PATTERN,
