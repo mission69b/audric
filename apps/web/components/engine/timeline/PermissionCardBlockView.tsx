@@ -41,8 +41,18 @@ interface PermissionCardBlockViewProps {
    * actual auto-approval round-trip happens in the parent (it must call
    * `onActionResolve(action, true, ...)` itself); this just keeps the
    * timeline visually clean while that happens.
+   *
+   * [F14-fix-2 / 2026-05-03] MUST include `steps` for bundle correctness.
+   * `shouldClientAutoApprove` only iterates bundle legs when
+   * `Array.isArray(action.steps) && action.steps.length >= 2`. Stripping
+   * `steps` at this callsite (the original Bug A shape) silently
+   * downgrades the gate to single-step (step[0]-only) logic, which hides
+   * the card for bundles whose first leg is auto-tier even when later
+   * legs require confirmation. Always pass the full payload.
    */
-  shouldAutoApprove?: (action: Pick<PendingAction, 'toolName' | 'input'>) => boolean;
+  shouldAutoApprove?: (
+    action: Pick<PendingAction, 'toolName' | 'input' | 'steps'>,
+  ) => boolean;
   /**
    * [SPEC 7 P2.4b] Quote-Refresh ReviewCard. When the underlying
    * pending action is a bundle with `canRegenerate === true`, the
@@ -71,7 +81,18 @@ export function PermissionCardBlockView({
   regeneratingAttemptIds,
 }: PermissionCardBlockViewProps) {
   if (block.status !== 'pending') return null;
-  if (shouldAutoApprove?.({ toolName: block.payload.toolName, input: block.payload.input })) {
+  // [F14-fix-2] Pass the full PendingAction payload (including `steps`)
+  // so the bundle iteration in `shouldClientAutoApprove` actually runs.
+  // The original implementation cherry-picked `{toolName, input}` which
+  // stripped `steps` and silently re-introduced the Bug A pattern in the
+  // render path: a bundle whose step[0] was auto-tier (e.g. `repay $2`)
+  // would have its card hidden even when step[5] was a `borrow`
+  // (always-confirm). The auto-approve `useEffect` in `UnifiedTimeline`
+  // gets the full action and resolves correctly to `confirm`, so the
+  // bundle ends up neither auto-approved nor card-rendered — stuck in
+  // pending state forever. See `permission-tiers-client.ts`'s F14 block
+  // and the regression test `bundle render-path callsite preserves steps`.
+  if (shouldAutoApprove?.(block.payload)) {
     return null;
   }
   // [SPEC 7 P2.4b] Only wire the regenerate slot when the engine flagged

@@ -158,8 +158,17 @@ export function UnifiedTimeline({
     [priceCache],
   );
   const sessionSpendRef = useRef(0);
+  // [F14-fix-2 / 2026-05-03] Type signature MUST include `steps`. The
+  // bundle iteration in `shouldClientAutoApprove` only runs when
+  // `Array.isArray(action.steps) && action.steps.length >= 2`. Without
+  // `steps` in the type, callers can silently strip it at the callsite
+  // (the bug we just fixed in `PermissionCardBlockView.tsx:74`) and the
+  // gate degrades to single-step (step[0]-only) semantics. Mirrors the
+  // tightened prop types on `PermissionCardBlockView` and
+  // `LegacyReasoningRender` so the type system catches a regression at
+  // every consumer.
   const shouldAutoApprove = useCallback(
-    (action: Pick<PendingAction, 'toolName' | 'input'>) =>
+    (action: Pick<PendingAction, 'toolName' | 'input' | 'steps'>) =>
       shouldClientAutoApprove(
         action,
         permissionConfig,

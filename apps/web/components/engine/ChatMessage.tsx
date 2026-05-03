@@ -41,7 +41,12 @@ interface ChatMessageProps {
    * `autoApproveTools: Set<string>` + `agentBudget` pair, both of
    * which ignored the user's safety preset.
    */
-  shouldAutoApprove?: (action: Pick<PendingAction, 'toolName' | 'input'>) => boolean;
+  // [F14-fix-2 / 2026-05-03] MUST include `steps` so bundle iteration
+  // runs in `shouldClientAutoApprove`. See PermissionCardBlockView.tsx
+  // F14-fix-2 comment for the full root-cause writeup.
+  shouldAutoApprove?: (
+    action: Pick<PendingAction, 'toolName' | 'input' | 'steps'>,
+  ) => boolean;
   onSendMessage?: (text: string) => void;
   /** Saved contacts — passed through so PermissionCard can render
    *  the Saved-contact badge / near-contact warning / save field. */

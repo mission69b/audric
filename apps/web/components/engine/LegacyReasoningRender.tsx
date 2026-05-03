@@ -38,7 +38,13 @@ interface LegacyReasoningRenderProps {
     reason?: DenyReason,
     modifications?: Record<string, unknown>,
   ) => void;
-  shouldAutoApprove?: (action: Pick<PendingAction, 'toolName' | 'input'>) => boolean;
+  // [F14-fix-2 / 2026-05-03] MUST include `steps` so bundle iteration in
+  // `shouldClientAutoApprove` runs. The legacy path already passes the
+  // full `message.pendingAction!` so this is just tightening the type to
+  // catch any future callsite that strips `steps` at compile time.
+  shouldAutoApprove?: (
+    action: Pick<PendingAction, 'toolName' | 'input' | 'steps'>,
+  ) => boolean;
   onSendMessage?: (text: string) => void;
   contacts?: ReadonlyArray<{ name: string; address: string }>;
   walletAddress?: string | null;

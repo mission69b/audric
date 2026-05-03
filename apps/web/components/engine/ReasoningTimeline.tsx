@@ -50,7 +50,12 @@ interface ReasoningTimelineProps {
    * timeline path matches the legacy renderer's auto-approve gating.
    * See `PermissionCardBlockView` for the contract.
    */
-  shouldAutoApprove?: (action: Pick<PendingAction, 'toolName' | 'input'>) => boolean;
+  // [F14-fix-2 / 2026-05-03] MUST include `steps` so bundle iteration
+  // runs in `shouldClientAutoApprove`. See PermissionCardBlockView.tsx
+  // F14-fix-2 comment for the full root-cause writeup.
+  shouldAutoApprove?: (
+    action: Pick<PendingAction, 'toolName' | 'input' | 'steps'>,
+  ) => boolean;
   /**
    * [SPEC 7 P2.4b] Quote-Refresh ReviewCard wiring. Forwarded to the
    * `permission-card` block (only consulted on bundles flagged with

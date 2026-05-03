@@ -459,6 +459,7 @@ describe('STATIC_SYSTEM_PROMPT — B3.6 budget gate', () => {
     //   - Post-B3.6 ceiling:               9,660 tokens   ( +700 budget)
     //   - Post-SPEC 7 P2.5 ceiling:        9,920 tokens   ( +260 budget)
     //   - Post-SPEC 7 P2.8 / F13 ceiling: 10,000 tokens   ( +80 budget)
+    //   - Post-F14-fix-2 ceiling:         10,200 tokens   ( +200 budget)
     //
     // B3.6 added the "Mid-flight narration & todos" section + the
     // `<eval_summary>` emission contract.
@@ -486,6 +487,28 @@ describe('STATIC_SYSTEM_PROMPT — B3.6 budget gate', () => {
     // total). The +80 ceiling allows ~25 tokens of headroom for future
     // minor edits before requiring another bump.
     //
+    // F14-fix-2 (2026-05-03) added two more rules in response to a
+    // SECOND 6-op incident on the same day where the bundle composed
+    // successfully but the PermissionCard never rendered (a render-path
+    // strip dropped `steps` from `shouldClientAutoApprove`'s input,
+    // silently re-introducing Bug A inside the card view):
+    //   3. "6+ writes: HARD CAP at 5 per bundle" — pairs with a new
+    //      MAX_BUNDLE_OPS=5 ceiling in `@t2000/engine` so the LLM can't
+    //      compose a bundle that the engine will refuse anyway. Forces
+    //      6+ op compound flows to split into two sequential ≤5-op
+    //      bundles, each with its own plan-and-confirm round. Bounds
+    //      Vercel runtime, quote-freshness window, LLM working memory,
+    //      and PermissionCard cognitive load.
+    //   4. "Multi-write plans list each WRITE by verb + amount + asset,
+    //      NEVER abstract phases" — fixes a UX regression where the
+    //      LLM started emitting `update_todo` with meta-phases (Plan /
+    //      Confirm / Execute) instead of the 6 named operations after
+    //      the F13 plan-and-confirm rule landed. Restores the per-leg
+    //      visibility that's the user's audit trail.
+    // The two F14-fix-2 rules add ~140 tokens (rule 3: ~70 tokens with
+    // example, rule 4: ~70 tokens with good/bad examples). The +200
+    // ceiling allows ~60 tokens of headroom for future minor edits.
+    //
     // Why a hard char ceiling instead of a delta:
     //   - Hardcoding the ceiling beats hardcoding both halves; the test
     //     trips on ANY future edit that pushes the prompt past the
@@ -498,7 +521,7 @@ describe('STATIC_SYSTEM_PROMPT — B3.6 budget gate', () => {
     //      a new entry in the ceiling-history table above.
     const { STATIC_SYSTEM_PROMPT } = await import('../engine-context');
     const tokens = Math.ceil(STATIC_SYSTEM_PROMPT.length / 4);
-    expect(tokens).toBeLessThanOrEqual(10_000);
+    expect(tokens).toBeLessThanOrEqual(10_200);
   });
 });
 
