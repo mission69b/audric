@@ -45,3 +45,41 @@ export function stripEvalSummaryMarker(text: string): string {
 
   return cleaned;
 }
+
+// ───────────────────────────────────────────────────────────────────────────
+// SPEC 7 P2.8 follow-up · Bug C — strip `<thinking>` tags from visible text.
+//
+// Sonnet with extended thinking enabled occasionally mimics the `<thinking>`
+// XML pattern in its FINAL TEXT response (instead of using the dedicated
+// thinking channel). Founder repro 2026-05-03:
+//
+//   ✦ <thinking>
+//
+//   The guard is checking that swap_quote was called IMMEDIATELY before...
+//
+//   </thinking>
+//
+// The model's actual reasoning is already routed through the extended
+// thinking channel (parsed by the engine, rendered as a separate THOUGHT
+// block via ThinkingBlockView). The leaked `<thinking>` block in text
+// content is a duplicate that confuses users and breaks the chat layout.
+//
+// This util strips the marker (plus surrounding whitespace) from any
+// rendered assistant text. Mirrors stripEvalSummaryMarker — same streaming
+// truncation behavior for partial markers.
+// ───────────────────────────────────────────────────────────────────────────
+
+const COMPLETE_THINKING_REGEX = /\s*<thinking>[\s\S]*?<\/thinking>\s*/g;
+
+export function stripThinkingTags(text: string): string {
+  if (!text || !text.includes('<thinking>')) return text;
+
+  let cleaned = text.replace(COMPLETE_THINKING_REGEX, '');
+
+  const trailingOpenIdx = cleaned.indexOf('<thinking>');
+  if (trailingOpenIdx !== -1) {
+    cleaned = cleaned.slice(0, trailingOpenIdx).trimEnd();
+  }
+
+  return cleaned;
+}

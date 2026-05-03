@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { stripEvalSummaryMarker } from '../sanitize-text';
+import { stripEvalSummaryMarker, stripThinkingTags } from '../sanitize-text';
 
 describe('stripEvalSummaryMarker', () => {
   it('returns input unchanged when no marker is present', () => {
@@ -59,5 +59,57 @@ describe('stripEvalSummaryMarker', () => {
     expect(stripEvalSummaryMarker(input)).toBe(
       'Quote: 1 SUI → 0.913593 USDC (0.05% impact via Bluefin). Executing now.',
     );
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────
+// SPEC 7 P2.8 follow-up · Bug C — `<thinking>` leak into chat text
+// ───────────────────────────────────────────────────────────────────────────
+describe('stripThinkingTags', () => {
+  it('returns input unchanged when no marker is present', () => {
+    expect(stripThinkingTags('Compiling into one Payment Stream')).toBe(
+      'Compiling into one Payment Stream',
+    );
+  });
+
+  it('returns empty string unchanged', () => {
+    expect(stripThinkingTags('')).toBe('');
+  });
+
+  it('strips a complete marker with surrounding whitespace', () => {
+    const input =
+      '<thinking>\n\nThe guard is checking that swap_quote was called.\n\n</thinking>\n\nExecuting now.';
+    expect(stripThinkingTags(input)).toBe('Executing now.');
+  });
+
+  it('strips a marker in the middle of text', () => {
+    const input = 'Before. <thinking>let me think</thinking> After.';
+    expect(stripThinkingTags(input)).toBe('Before.After.');
+  });
+
+  it('strips multiple complete markers', () => {
+    const input = 'A.\n<thinking>x</thinking>\nB.\n<thinking>y</thinking>\nC.';
+    expect(stripThinkingTags(input)).toBe('A.B.C.');
+  });
+
+  it('truncates at an unclosed marker (streaming case)', () => {
+    const input = 'Executing now.\n\n<thinking>let me re-fetch';
+    expect(stripThinkingTags(input)).toBe('Executing now.');
+  });
+
+  it('handles only the marker (entire text is the marker)', () => {
+    const input = '<thinking>internal reasoning</thinking>';
+    expect(stripThinkingTags(input)).toBe('');
+  });
+
+  it('preserves long unrelated text untouched (early return path)', () => {
+    const input = 'Long assistant text without any marker present here.';
+    expect(stripThinkingTags(input)).toBe(input);
+  });
+
+  it('the founder-repro 2026-05-03 trace renders cleanly', () => {
+    const input =
+      '<thinking>\n\nThe guard is checking that swap_quote was called IMMEDIATELY before swap_execute in the same turn. I called swap_quote twice earlier, then moved to update_todo and plan narration, then the user said "yes". Now when I try to execute, the guard has timed out or doesn\'t consider those old quotes fresh anymore.\n\nI need to call swap_quote again to refresh the quotes before executing. Let me re-quote both swaps.\n\n</thinking>';
+    expect(stripThinkingTags(input)).toBe('');
   });
 });

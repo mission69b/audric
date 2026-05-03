@@ -9,7 +9,7 @@ import {
   localSpokenWordIndex,
   type TextBlockVoiceSlice,
 } from '@/lib/voice/timeline-voice-slices';
-import { stripEvalSummaryMarker } from '@/lib/sanitize-text';
+import { stripEvalSummaryMarker, stripThinkingTags } from '@/lib/sanitize-text';
 
 // ───────────────────────────────────────────────────────────────────────────
 // SPEC 8 v0.5.1 — TextBlockView (B2.2 + B3.4 + B3.5)
@@ -51,7 +51,10 @@ export function TextBlockView({ block, voiceSlice, spokenWordIndex }: TextBlockV
   // markers that the model leaks into final assistant text (the engine already
   // parses + suppresses the marker in thinking content; the leak is a separate
   // model-compliance issue). See lib/sanitize-text.ts for the full rationale.
-  const displayText = stripEvalSummaryMarker(block.text);
+  // [SPEC 7 P2.8 follow-up · Bug C] Also strip `<thinking>...</thinking>` tags
+  // that Sonnet occasionally mimics in text output (its real reasoning already
+  // flows through the extended thinking channel and renders as THOUGHT blocks).
+  const displayText = stripThinkingTags(stripEvalSummaryMarker(block.text));
   if (!displayText) return null;
 
   const isActiveVoice =
