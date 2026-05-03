@@ -21,6 +21,7 @@ import { costRatesForModel } from '@/lib/engine/cost-rates';
 import { isSyntheticSessionId } from '@/lib/engine/synthetic-sessions';
 import { invalidateUserFinancialContext } from '@/lib/redis/user-financial-context';
 import { emitBundleOutcome } from '@/lib/engine/bundle-metrics';
+import { emitPostWriteRefreshMetrics } from '@/lib/engine/post-write-refresh-metrics';
 import { prisma } from '@/lib/prisma';
 import { env } from '@/lib/env';
 
@@ -227,6 +228,26 @@ export async function POST(request: NextRequest) {
                     resultDeduped: event.resultDeduped ?? false,
                     returnedRefinement: detectRefinement(event.result),
                   });
+                  // [Backlog-1 / followup-stale-blockvision] BlockVision
+                  // freshness telemetry. Only `balance_check` carries the
+                  // `defiSource` / `defiPricedAt` provenance fields, so
+                  // we filter by toolName before emitting. The metrics
+                  // helper is internally defensive (no-ops on missing
+                  // payload), but pre-filtering here keeps the call rate
+                  // bounded to the actual signal source.
+                  if (
+                    event.wasPostWriteRefresh === true &&
+                    event.toolName === 'balance_check'
+                  ) {
+                    const stepCount = Array.isArray(action.steps) && action.steps.length > 0
+                      ? action.steps.length
+                      : 1;
+                    emitPostWriteRefreshMetrics({
+                      stepCount,
+                      isError: event.isError,
+                      result: event.result,
+                    });
+                  }
                 }
                 break;
               case 'usage':
