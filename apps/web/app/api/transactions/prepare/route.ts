@@ -21,6 +21,7 @@ import { env } from '@/lib/env';
 import {
   emitBundleComposeDuration,
   emitBundleOutcome,
+  emitSwapComposeDuration,
 } from '@/lib/engine/bundle-metrics';
 
 export const runtime = 'nodejs';
@@ -345,7 +346,14 @@ async function buildAndSponsor(params: BuildRequest, jwt: string | null): Promis
   // single-swap behavior).
   const hasSwap = steps.some((s) => s.toolName === 'swap_execute');
 
-  const composeStartedAt = isBundle ? Date.now() : 0;
+  // [Backlog 2a-bis / 2026-05-04] Time `composeTx` whenever a step is
+  // `swap_execute` (single-step OR bundled). The engine-side
+  // `cetus.swap_execute_total_ms` instrumentation is dead code in audric
+  // prod — confirm-tier writes flow through this route's `composeTx` call,
+  // bypassing the engine tool's `call()` method. Capture the latency here
+  // so the Backlog 2b decision gate has data for the dominant single-swap
+  // shape, not just bundles.
+  const composeStartedAt = isBundle || hasSwap ? Date.now() : 0;
 
   let composed;
   try {
@@ -387,11 +395,25 @@ async function buildAndSponsor(params: BuildRequest, jwt: string | null): Promis
         reason,
       });
     }
+    if (hasSwap) {
+      emitSwapComposeDuration({
+        stepCount: steps.length,
+        durationMs: Date.now() - composeStartedAt,
+        outcome: 'compose_error',
+      });
+    }
     throw composeErr;
   }
 
   if (isBundle) {
     emitBundleComposeDuration(steps.length, Date.now() - composeStartedAt);
+  }
+  if (hasSwap) {
+    emitSwapComposeDuration({
+      stepCount: steps.length,
+      durationMs: Date.now() - composeStartedAt,
+      outcome: 'success',
+    });
   }
 
   if (params.type === 'claim-rewards') {

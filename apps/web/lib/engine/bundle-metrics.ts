@@ -149,3 +149,55 @@ export function emitBundleComposeDuration(stepCount: number, durationMs: number)
     // Telemetry must never block the request.
   }
 }
+
+/**
+ * [Backlog 2a-bis / 2026-05-04] Server-side swap-build latency for the
+ * Backlog 2b decision gate.
+ *
+ * Why this exists separately from `bundle_compose_duration_ms`:
+ *   - `bundle_compose_duration_ms` only fires for bundles (steps ≥ 2). It
+ *     misses the most common swap shape (single-step "swap 1 USDC to SUI").
+ *   - Engine-side `cetus.swap_execute_total_ms` (instrumented in
+ *     `packages/engine/src/tools/swap.ts`) is dead code in audric's prod
+ *     path: confirm-tier writes are dispatched through `/api/transactions/
+ *     prepare` which calls `composeTx` directly, never going through the
+ *     engine tool's `call()` method. The engine metric only fires from
+ *     non-audric hosts (CLI today) — useful for those, but doesn't tell us
+ *     anything about audric's actual production swap latency.
+ *
+ * Fires on every `composeTx` call where `hasSwap === true`, regardless of
+ * step count. Tag with `step_count` so dashboards can split:
+ *   - `step_count=1, has_swap=true`  → pure single-swap server-side cost
+ *   - `step_count≥2, has_swap=true`  → bundle-with-swap server-side cost
+ *
+ * Outcome tag matches the existing `emitBundleOutcome` semantics:
+ *   - `success`: composeTx returned a built tx
+ *   - `compose_error`: composeTx threw locally (SDK regression / bad input)
+ *
+ * Sponsorship_failed is NOT a compose-side outcome — by the time we see it,
+ * composeTx already succeeded. Caller must emit `success` even when the
+ * subsequent Enoki call fails.
+ *
+ * Pairs with engine-side `cetus.find_route_ms` (route fetch in `swap_quote`)
+ * to compute "what fraction of swap_execute server cost is route fetch?"
+ * — the upper bound on what a per-request route cache (Backlog 2b) saves.
+ */
+export function emitSwapComposeDuration(args: {
+  stepCount: number;
+  durationMs: number;
+  outcome: 'success' | 'compose_error';
+}): void {
+  try {
+    const sink = getTelemetrySink();
+    sink.histogram(`${NAMESPACE}.swap_compose_duration_ms`, args.durationMs, {
+      stepCount: args.stepCount,
+      outcome: args.outcome,
+    });
+    sink.counter(`${NAMESPACE}.swap_compose_count`, {
+      stepCount: args.stepCount,
+      outcome: args.outcome,
+    });
+  } catch {
+    // Telemetry must never block the request.
+  }
+}

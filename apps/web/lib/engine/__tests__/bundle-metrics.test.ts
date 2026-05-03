@@ -8,6 +8,7 @@ import {
   emitBundleProposed,
   emitBundleOutcome,
   emitBundleComposeDuration,
+  emitSwapComposeDuration,
 } from '../bundle-metrics';
 
 /**
@@ -243,5 +244,77 @@ describe('emitBundleComposeDuration', () => {
     setTelemetrySink(throwingSink);
 
     expect(() => emitBundleComposeDuration(2, 100)).not.toThrow();
+  });
+});
+
+describe('emitSwapComposeDuration', () => {
+  it('emits histogram + counter on success path with stepCount=1 (single-step swap)', () => {
+    const { sink, histogram, counter } = makeSpy();
+    setTelemetrySink(sink);
+
+    emitSwapComposeDuration({ stepCount: 1, durationMs: 187, outcome: 'success' });
+
+    expect(histogram).toHaveBeenCalledOnce();
+    expect(histogram).toHaveBeenCalledWith(
+      'audric.harness.swap_compose_duration_ms',
+      187,
+      { stepCount: 1, outcome: 'success' },
+    );
+    expect(counter).toHaveBeenCalledOnce();
+    expect(counter).toHaveBeenCalledWith(
+      'audric.harness.swap_compose_count',
+      { stepCount: 1, outcome: 'success' },
+    );
+  });
+
+  it('emits with stepCount=4 (bundled swap) — Phase 3a max-bundle case', () => {
+    const { sink, histogram, counter } = makeSpy();
+    setTelemetrySink(sink);
+
+    emitSwapComposeDuration({ stepCount: 4, durationMs: 612, outcome: 'success' });
+
+    expect(histogram).toHaveBeenCalledWith(
+      'audric.harness.swap_compose_duration_ms',
+      612,
+      { stepCount: 4, outcome: 'success' },
+    );
+    expect(counter).toHaveBeenCalledWith(
+      'audric.harness.swap_compose_count',
+      { stepCount: 4, outcome: 'success' },
+    );
+  });
+
+  it('emits with outcome=compose_error when composeTx throws locally', () => {
+    const { sink, histogram, counter } = makeSpy();
+    setTelemetrySink(sink);
+
+    emitSwapComposeDuration({ stepCount: 2, durationMs: 43, outcome: 'compose_error' });
+
+    expect(histogram).toHaveBeenCalledWith(
+      'audric.harness.swap_compose_duration_ms',
+      43,
+      { stepCount: 2, outcome: 'compose_error' },
+    );
+    expect(counter).toHaveBeenCalledWith(
+      'audric.harness.swap_compose_count',
+      { stepCount: 2, outcome: 'compose_error' },
+    );
+  });
+
+  it('emits cleanly when telemetry sink throws (telemetry must not block writes)', () => {
+    const throwingSink: TelemetrySink = {
+      counter: () => {
+        throw new Error('boom');
+      },
+      gauge: vi.fn(),
+      histogram: () => {
+        throw new Error('boom');
+      },
+    };
+    setTelemetrySink(throwingSink);
+
+    expect(() =>
+      emitSwapComposeDuration({ stepCount: 1, durationMs: 100, outcome: 'success' }),
+    ).not.toThrow();
   });
 });
