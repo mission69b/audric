@@ -556,8 +556,6 @@ export async function createEngine(
     financialContext,
   });
 
-  const systemPrompt = buildCachedSystemPrompt([STATIC_SYSTEM_PROMPT], dynamicBlock);
-
   // RE-1.2: Classify effort level based on message content + matched recipe
   const recipeRegistry = getRecipeRegistry();
   const matchedRecipe = opts.message ? recipeRegistry.match(opts.message) : null;
@@ -594,6 +592,30 @@ export async function createEngine(
   const routedModel = MODEL_OVERRIDE ?? (effort === 'low' ? HAIKU_MODEL : SONNET_MODEL);
   console.log(
     `[engine-factory] model=${routedModel} effort=${effort} thinking=${!routedModel.includes('haiku')}${confirmPromoted ? ' confirm_promoted=true' : ''}`,
+  );
+
+  // [1.14.3] Confirm-of-bundle override block. Appended ONLY when the
+  // detector promoted a confirm turn from low → medium. Targets the
+  // failure mode observed in the 1.14.2 soak: when the plan turn used
+  // `update_todo` (because it included a quote), Sonnet carried that
+  // cadence into the confirm turn — emitted `update_todo` alone in its
+  // first assistant message, then individual writes one-per-turn — which
+  // splits the atomic Payment Stream. Static prompt rules ("re-call when
+  // batches LAND — NEVER between bundled writes") were not strong enough
+  // to override the established cadence. This block is the override.
+  // Lives outside the cached static prefix so it neither inflates the
+  // 10,200-token static-prompt ceiling nor breaks the prompt cache.
+  const CONFIRM_OF_BUNDLE_OVERRIDE = `[CONFIRM-OF-BUNDLE TURN — STRICT OVERRIDE]
+User just affirmed a multi-write Payment Stream plan. On THIS turn ONLY:
+- Emit ALL writes from the plan as PARALLEL \`tool_use\` blocks in your FIRST assistant message (single dispatch). The engine bundles them into one atomic PTB.
+- Do NOT call \`update_todo\` on this turn — leading or interleaving \`update_todo\` splits the atomic Payment Stream into solo writes (verified failure mode, 1.14.2 soak).
+- Skip mid-flight thinking bursts between writes; one brief pre-batch burst is enough.
+- Final text after the bundle dispatches: ≤ 1 short sentence, no card duplication.
+After the bundle settles (NEXT turn, after tool_results land), you may re-call \`update_todo\` once to mark items ✓.`;
+
+  const systemPrompt = buildCachedSystemPrompt(
+    [STATIC_SYSTEM_PROMPT],
+    confirmPromoted ? `${dynamicBlock}\n\n${CONFIRM_OF_BUNDLE_OVERRIDE}` : dynamicBlock,
   );
 
   // [SPEC 8 v0.5.1 B3.2] Adaptive harness shape — derived from the same
