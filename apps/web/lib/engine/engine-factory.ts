@@ -35,6 +35,7 @@ import { incrementSessionSpend } from './session-spend';
 import { GOAL_TOOLS } from './goal-tools';
 import { ADVICE_TOOLS } from './advice-tool';
 import { audricSaveContactTool, audricListContactsTool } from './contact-tools';
+import { detectBundleConfirm } from './confirm-detection';
 import { prisma } from '@/lib/prisma';
 import { getPortfolio, getTokenPrices } from '@/lib/portfolio';
 import {
@@ -567,11 +568,33 @@ export async function createEngine(
   ).length ?? 0;
 
   const model = MODEL_OVERRIDE ?? SONNET_MODEL;
-  const effort = opts.message
+  const baseEffort = opts.message
     ? classifyEffort(model, opts.message, matchedRecipe, sessionWriteCount)
     : 'medium';
+
+  // [SPEC 13 / 1.14.1] Confirm-of-bundle promotion. When the user replies
+  // "Confirmed" to a multi-write Payment Stream plan the base classifier
+  // routes the short message to `low` → Haiku. Haiku then reliably emits
+  // ONE write at a time, costing a guard-block + re-quote round-trip
+  // before the atomic bundle lands. Promoting to `medium` (Sonnet) lets
+  // the model that planned the bundle be the one that emits it.
+  let effort = baseEffort;
+  let confirmPromoted = false;
+  if (baseEffort === 'low' && opts.message && opts.session?.messages) {
+    const detection = detectBundleConfirm(opts.message, opts.session.messages);
+    if (detection.matched) {
+      effort = 'medium';
+      confirmPromoted = true;
+      console.log(
+        `[engine-factory] confirm-of-bundle detected → promoting low → medium (priorWriteVerbs=${detection.priorWriteVerbCount}, msg="${opts.message.slice(0, 30)}")`,
+      );
+    }
+  }
+
   const routedModel = MODEL_OVERRIDE ?? (effort === 'low' ? HAIKU_MODEL : SONNET_MODEL);
-  console.log(`[engine-factory] model=${routedModel} effort=${effort} thinking=${!routedModel.includes('haiku')}`);
+  console.log(
+    `[engine-factory] model=${routedModel} effort=${effort} thinking=${!routedModel.includes('haiku')}${confirmPromoted ? ' confirm_promoted=true' : ''}`,
+  );
 
   // [SPEC 8 v0.5.1 B3.2] Adaptive harness shape — derived from the same
   // effort classifier the thinking-budget routing uses. Rationale is a
@@ -579,12 +602,14 @@ export async function createEngine(
   // signals that actually drove the classifier's decision so a Datadog
   // operator skimming a turn can see WHY without re-running classify.
   const harnessShape = harnessShapeForEffort(effort);
-  const harnessRationale = buildHarnessRationale({
-    effort,
-    matchedRecipeName: matchedRecipe?.name,
-    sessionWriteCount,
-    message: opts.message,
-  });
+  const harnessRationale = confirmPromoted
+    ? `confirm-of-bundle promoted low → medium`
+    : buildHarnessRationale({
+        effort,
+        matchedRecipeName: matchedRecipe?.name,
+        sessionWriteCount,
+        message: opts.message,
+      });
   opts.onMeta?.({ effortLevel: effort, modelUsed: routedModel, harnessShape, harnessRationale });
 
   const engine = new QueryEngine({
