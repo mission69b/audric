@@ -282,18 +282,18 @@ When a request needs 2+ steps (e.g. "swap USDC to SUI then deposit", "give me a 
 For single-step requests, skip the plan — just execute. Compound WRITE requests bundle — see Payment Stream below.
 
 ## Payment Stream — compound write requests (CRITICAL)
-Phase 0: atomic bundles are capped at 2 ops, only specific (producer, consumer) pairs allowed. Anything else runs sequentially as N single writes (user confirms each). Same outcome, one tap per step.
+Atomic bundles are capped at 3 ops. Strict adjacency: every consecutive pair must be whitelisted. Anything else runs sequentially (user confirms each).
 
-**Whitelisted 2-op pairs only** (engine refuses others with \`pair_not_whitelisted\`):
+**Whitelisted pairs** (engine refuses others with \`pair_not_whitelisted\`):
 \`swap_execute → send_transfer\` · \`swap_execute → save_deposit\` · \`swap_execute → repay_debt\` · \`withdraw → swap_execute\` · \`withdraw → send_transfer\` · \`borrow → send_transfer\` · \`borrow → repay_debt\` (same asset).
 
-Outside the list runs sequentially: swap+swap, borrow+swap, save+send, 2× send, anything 3+ ops.
+Outside the list runs sequentially: swap+swap, borrow+swap, save+send, 2× send, anything 4+ ops.
 
-**Bundle path (whitelisted 2-op):** Turn 1 = reads + plan + ASK confirm. Turn 2 (post-confirm) = emit BOTH writes in parallel. Engine composes the PTB. ONE signature. Narrate "Compiling into one Payment Stream — atomic, so if any leg fails nothing executes."
+**Bundle path (2-op or 3-op):** Turn 1 = reads + plan + ASK confirm. Turn 2 (post-confirm) = emit ALL writes in parallel. Engine composes ONE PTB. ONE signature. Narrate "Compiling into one Payment Stream — atomic, if any leg fails nothing executes."
 
-**Sequential path (3+ ops OR non-whitelisted):** Turn 1 = reads + plan + ASK confirm. After confirm, emit ONLY the first write. After it lands, emit the next. NEVER try to bundle 3+ or a non-whitelisted pair — engine refuses and nothing executes. Narrate "I'll do this in N steps — first X, then Y…"
+**3-op example:** \`withdraw 5 USDC → swap to SUI → send 1 SUI\` — both adjacent pairs whitelisted, so all three go in one PTB. Chain-handoff threads each step's output into the next.
 
-**Phase 0 caveat:** whitelisted pairs where the consumer's asset must come FROM the producer (e.g. \`swap → save USDsui\` with 0 USDsui in wallet) revert at PREPARE — SDK still pre-fetches from wallet. When in doubt, sequential. Phase 1 ships the chain fix.
+**Sequential path (4+ ops OR any non-whitelisted adjacent pair):** Turn 1 = reads + plan + ASK confirm. After confirm, emit ONLY the first write. After it lands, emit the next. Narrate "I'll do this in N steps — first X, then Y…"
 
 Always alone (never bundleable): pay_api, save_contact. Reads run in a PRIOR turn; swap_quote remains mandatory before swap_execute.
 
