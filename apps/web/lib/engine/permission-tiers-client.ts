@@ -74,7 +74,15 @@ const AGGRESSIVE: UserPermissionConfig = {
   rules: [
     { operation: 'save', autoBelow: 100, confirmBetween: 2000 },
     { operation: 'send', autoBelow: 25, confirmBetween: 500 },
-    { operation: 'borrow', autoBelow: 10, confirmBetween: 1000 },
+    // [F14 / 2026-05-03] Was `autoBelow: 10` — violated the absolute
+    // invariant in `t2000/.cursor/rules/safeguards-defense-in-depth.mdc`:
+    // "borrow always confirms (autoBelow: 0 across every preset) — debt
+    // is too consequential to silently take on." A user on aggressive
+    // had a 6-op bundle silently auto-execute because step[0]=`repay $2`
+    // resolved auto AND only step[0] was inspected by the gate.
+    // Mirrors @t2000/engine 1.11.3+ permission-rules.ts. Engine release
+    // notes: F14 — bundle/borrow safety.
+    { operation: 'borrow', autoBelow: 0, confirmBetween: 1000 },
     { operation: 'withdraw', autoBelow: 50, confirmBetween: 1000 },
     { operation: 'swap', autoBelow: 50, confirmBetween: 500 },
     { operation: 'pay', autoBelow: 5, confirmBetween: 100 },
@@ -251,10 +259,69 @@ export function resolvePermissionTier(
 const NON_FINANCIAL_AUTO_APPROVE = new Set(['claim_rewards']);
 
 /**
+ * Per-step gate used for both single-write actions and EACH leg of a
+ * bundle. Pulled out of `shouldClientAutoApprove` so the bundle iterator
+ * can call it once per leg without duplicating the safety logic.
+ *
+ * Returns the resolved tier (`auto` | `confirm` | `explicit`). The
+ * caller decides what to do — for single writes, anything other than
+ * `auto` shows the card. For bundles, `shouldClientAutoApprove` takes
+ * the *worst* tier across legs.
+ *
+ * NOTE the special-cases — these mirror `shouldClientAutoApprove`'s
+ * pre-F14 behavior so single-write semantics are unchanged:
+ *   - `claim_rewards` is force-auto (no spendable USD).
+ *   - `send_transfer` to a raw 0x recipient with no contact match is
+ *     force-confirm regardless of amount/preset (the lost-funds
+ *     regression we close).
+ *   - `agentBudget > 0` and `usd <= agentBudget` is force-auto (an
+ *     explicit per-session bypass set in the dashboard).
+ */
+function resolveStepTier(
+  step: Pick<PendingAction, 'toolName' | 'input'>,
+  config: UserPermissionConfig,
+  sessionSpendUsd: number,
+  priceCache: Map<string, number>,
+  agentBudget: number,
+  contacts: ReadonlyArray<{ address: string }>,
+): 'auto' | 'confirm' | 'explicit' {
+  if (NON_FINANCIAL_AUTO_APPROVE.has(step.toolName)) return 'auto';
+
+  const operation = toolNameToOperation(step.toolName);
+  if (!operation) return 'confirm';
+
+  const usdValue = resolveUsdValue(
+    step.toolName,
+    (step.input as Record<string, unknown>) ?? {},
+    priceCache,
+  );
+
+  if (operation === 'send') {
+    const to = String((step.input as Record<string, unknown>)?.to ?? '');
+    if (to.startsWith('0x') && !isKnownContactAddress(to, contacts)) {
+      return 'confirm';
+    }
+  }
+
+  if (agentBudget > 0 && Number.isFinite(usdValue) && usdValue <= agentBudget) {
+    return 'auto';
+  }
+
+  const sendContext =
+    operation === 'send'
+      ? {
+          to: String((step.input as Record<string, unknown>)?.to ?? ''),
+          contacts,
+        }
+      : undefined;
+  return resolvePermissionTier(operation, usdValue, config, sessionSpendUsd, sendContext);
+}
+
+/**
  * The single client-side gate. Returns true when the pending action
  * should be auto-resolved without rendering a `<PermissionCard>`.
  *
- * Resolution order:
+ * Resolution order (single-write, unchanged pre-F14 semantics):
  *   1. Non-financial writes (rewards, contacts) — always auto.
  *   2. Send-safety: a raw 0x recipient with no contact match always
  *      shows the card so the user can verify the address. The
@@ -267,44 +334,48 @@ const NON_FINANCIAL_AUTO_APPROVE = new Set(['claim_rewards']);
  *   4. Tier resolver against the user's preset, with `sessionSpendUsd`
  *      enforcing the daily autonomous cap and the contact-aware send
  *      rule.
+ *
+ * [F14 / 2026-05-03] Bundle path: when `action.steps?.length >= 2`,
+ * iterate every step and resolve each leg's tier independently. Return
+ * `true` ONLY if EVERY leg resolves to `auto`. Any single confirm/
+ * explicit leg surfaces the PermissionCard for the WHOLE bundle. Without
+ * this, a 6-op bundle whose step[0] resolved `auto` (e.g. `repay $2` on
+ * aggressive preset) silently auto-executed even when step[5] was a
+ * `borrow` (always-confirm) — `repay`/`borrow` are independent decisions
+ * but the gate only inspected step[0].
  */
 export function shouldClientAutoApprove(
-  action: Pick<PendingAction, 'toolName' | 'input'>,
+  action: Pick<PendingAction, 'toolName' | 'input' | 'steps'>,
   config: UserPermissionConfig,
   sessionSpendUsd: number,
   priceCache: Map<string, number>,
   agentBudget = 0,
   contacts: ReadonlyArray<{ address: string }> = [],
 ): boolean {
-  if (NON_FINANCIAL_AUTO_APPROVE.has(action.toolName)) return true;
-
-  const operation = toolNameToOperation(action.toolName);
-  if (!operation) return false;
-
-  const usdValue = resolveUsdValue(
-    action.toolName,
-    (action.input as Record<string, unknown>) ?? {},
-    priceCache,
-  );
-
-  if (operation === 'send') {
-    const to = String((action.input as Record<string, unknown>)?.to ?? '');
-    if (to.startsWith('0x') && !isKnownContactAddress(to, contacts)) {
-      return false;
+  // [F14] Bundle path. Inspect EVERY step. Worst tier wins.
+  // Spend accounting note: we pass `sessionSpendUsd` un-modified to
+  // every step's resolver. That's intentional — the daily cap is a
+  // SAFETY net, not a per-leg accumulator. If the cap would trip on
+  // any single leg under naive accumulation, the user already saw a
+  // confirm card on the prior turn (so the cap is doing its job). We
+  // don't preemptively trip it inside a bundle.
+  if (Array.isArray(action.steps) && action.steps.length >= 2) {
+    for (const step of action.steps) {
+      const tier = resolveStepTier(
+        { toolName: step.toolName, input: step.input },
+        config,
+        sessionSpendUsd,
+        priceCache,
+        agentBudget,
+        contacts,
+      );
+      if (tier !== 'auto') return false;
     }
-  }
-
-  if (agentBudget > 0 && Number.isFinite(usdValue) && usdValue <= agentBudget) {
     return true;
   }
 
-  const sendContext =
-    operation === 'send'
-      ? {
-          to: String((action.input as Record<string, unknown>)?.to ?? ''),
-          contacts,
-        }
-      : undefined;
-  const tier = resolvePermissionTier(operation, usdValue, config, sessionSpendUsd, sendContext);
-  return tier === 'auto';
+  // Single-write path (unchanged pre-F14 behavior).
+  return (
+    resolveStepTier(action, config, sessionSpendUsd, priceCache, agentBudget, contacts) === 'auto'
+  );
 }

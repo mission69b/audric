@@ -301,3 +301,195 @@ describe('preset & tool helpers', () => {
     expect(toolNameToOperation('claim_rewards')).toBeUndefined();
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────
+// [F14 / 2026-05-03] Bundle-aware shouldClientAutoApprove
+//
+// Bug A regression: the gate iterates `action.steps[]` for bundles and
+// returns `false` (renders the PermissionCard) if ANY leg resolves to
+// confirm/explicit. Pre-F14 the gate only inspected step[0] which let
+// bundles with mixed-tier legs silently auto-execute — the production
+// repro was a 6-op bundle where step[0]=`repay $2` (auto) bypassed the
+// confirm card while step[5]=`borrow $1` should have forced confirm.
+//
+// Bug B regression: aggressive preset's `borrow.autoBelow` is now `0`
+// (was `10`) — borrow ALWAYS confirms across every preset regardless
+// of amount, matching the engine's documented invariant in
+// `t2000/.cursor/rules/safeguards-defense-in-depth.mdc`.
+// ─────────────────────────────────────────────────────────────────────
+
+describe('shouldClientAutoApprove — bundles (F14)', () => {
+  const balanced = PERMISSION_PRESETS.balanced;
+  const aggressive = PERMISSION_PRESETS.aggressive;
+
+  type Step = {
+    toolName: string;
+    toolUseId: string;
+    attemptId: string;
+    input: Record<string, unknown>;
+    description: string;
+  };
+
+  const stepRepay: Step = {
+    toolName: 'repay_debt',
+    toolUseId: 'tu_1',
+    attemptId: 'a_1',
+    input: { amount: 2.006, asset: 'USDsui' },
+    description: 'Repay 2.006 USDsui debt',
+  };
+  const stepSwapSmall: Step = {
+    toolName: 'swap_execute',
+    toolUseId: 'tu_2',
+    attemptId: 'a_2',
+    input: { fromAmount: 2, fromAsset: 'USDC', toAsset: 'SUI' },
+    description: 'Swap 2 USDC → SUI',
+  };
+  const stepSwapMid: Step = {
+    toolName: 'swap_execute',
+    toolUseId: 'tu_3',
+    attemptId: 'a_3',
+    input: { fromAmount: 5, fromAsset: 'USDC', toAsset: 'USDsui' },
+    description: 'Swap 5 USDC → USDsui',
+  };
+  const stepSaveSmall: Step = {
+    toolName: 'save_deposit',
+    toolUseId: 'tu_4',
+    attemptId: 'a_4',
+    input: { amount: 9.98, asset: 'USDsui' },
+    description: 'Save 9.98 USDsui',
+  };
+  const stepBorrow: Step = {
+    toolName: 'borrow',
+    toolUseId: 'tu_5',
+    attemptId: 'a_5',
+    input: { amount: 1, asset: 'USDsui' },
+    description: 'Borrow 1 USDsui',
+  };
+  const stepSendContact: Step = {
+    toolName: 'send_transfer',
+    toolUseId: 'tu_6',
+    attemptId: 'a_6',
+    input: { to: 'funkii', amount: 1, asset: 'SUI' },
+    description: 'Send 1 SUI to funkii',
+  };
+
+  const buildBundle = (
+    steps: Step[],
+  ): Pick<
+    import('@/lib/engine-types').PendingAction,
+    'toolName' | 'input' | 'steps'
+  > => ({
+    // Bundle top-level mirrors steps[0] per SPEC 7 P2.3.
+    toolName: steps[0].toolName,
+    input: steps[0].input,
+    steps,
+  });
+
+  // ──────────────────────────────────────────────────────────────────
+  // The exact production repro: 6-op bundle on aggressive preset.
+  // ──────────────────────────────────────────────────────────────────
+  it('production repro: 6-op bundle on aggressive preset shows card (because borrow leg)', () => {
+    const bundle = buildBundle([
+      stepRepay,
+      stepSwapSmall,
+      stepSwapMid,
+      stepSaveSmall,
+      stepBorrow,
+      stepSendContact,
+    ]);
+    expect(
+      shouldClientAutoApprove(bundle, aggressive, 0, PRICES, 0, [
+        { address: 'funkii' },
+      ]),
+    ).toBe(false);
+  });
+
+  it('bundle with ANY borrow leg surfaces card on every preset (Bug B invariant)', () => {
+    const bundle = buildBundle([stepRepay, stepBorrow]);
+    for (const preset of [
+      PERMISSION_PRESETS.conservative,
+      PERMISSION_PRESETS.balanced,
+      PERMISSION_PRESETS.aggressive,
+    ]) {
+      expect(shouldClientAutoApprove(bundle, preset, 0, PRICES, 0, [])).toBe(false);
+    }
+  });
+
+  it('bundle with ALL legs auto-tier on aggressive auto-approves (no card)', () => {
+    // Bundle of 2 small swaps + a small save — none is a borrow, all
+    // legs under aggressive's autoBelow thresholds. SHOULD auto-approve.
+    const bundle = buildBundle([stepSwapSmall, stepSwapMid, stepSaveSmall]);
+    expect(shouldClientAutoApprove(bundle, aggressive, 0, PRICES, 0, [])).toBe(true);
+  });
+
+  it('bundle with ONE explicit-tier leg surfaces card', () => {
+    const stepHugeSwap: Step = {
+      ...stepSwapSmall,
+      input: { fromAmount: 600, fromAsset: 'USDC', toAsset: 'SUI' },
+      description: 'Swap 600 USDC → SUI',
+    };
+    const bundle = buildBundle([stepSwapSmall, stepHugeSwap]);
+    expect(shouldClientAutoApprove(bundle, aggressive, 0, PRICES, 0, [])).toBe(false);
+  });
+
+  it('bundle with raw-0x send to unknown recipient surfaces card', () => {
+    const stepSendStranger: Step = {
+      toolName: 'send_transfer',
+      toolUseId: 'tu_x',
+      attemptId: 'a_x',
+      input: {
+        to: '0xdeadbeef0000000000000000000000000000000000000000000000000000beef',
+        amount: 0.01,
+        asset: 'USDC',
+      },
+      description: 'Send 0.01 USDC to stranger',
+    };
+    // All legs would otherwise be auto on aggressive.
+    const bundle = buildBundle([stepSwapSmall, stepSendStranger]);
+    expect(shouldClientAutoApprove(bundle, aggressive, 0, PRICES, 0, [])).toBe(false);
+  });
+
+  it('single-write semantics unchanged: balanced + $50 save → no auto', () => {
+    expect(
+      shouldClientAutoApprove(
+        { toolName: 'save_deposit', input: { amount: 50 } },
+        balanced,
+        0,
+        PRICES,
+      ),
+    ).toBe(false);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────
+// [F14 / 2026-05-03] Aggressive preset borrow rule MUST be autoBelow:0
+// across the client mirror. Locks the invariant against drift between
+// the engine and host (the engine tests have the matching guard).
+// ─────────────────────────────────────────────────────────────────────
+
+describe('aggressive preset (F14)', () => {
+  it('borrow.autoBelow is 0 across every preset (debt is non-auto)', () => {
+    for (const [presetName, config] of Object.entries(PERMISSION_PRESETS)) {
+      const borrowRule = config.rules.find((r) => r.operation === 'borrow');
+      expect(
+        borrowRule,
+        `${presetName} preset must define an explicit borrow rule`,
+      ).toBeDefined();
+      expect(
+        borrowRule!.autoBelow,
+        `${presetName} preset must have borrow.autoBelow === 0`,
+      ).toBe(0);
+    }
+  });
+
+  it('aggressive borrow $1 NEVER auto-approves (was the F14 production bug)', () => {
+    expect(
+      shouldClientAutoApprove(
+        { toolName: 'borrow', input: { amount: 1, asset: 'USDsui' } },
+        PERMISSION_PRESETS.aggressive,
+        0,
+        PRICES,
+      ),
+    ).toBe(false);
+  });
+});
