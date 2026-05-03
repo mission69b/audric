@@ -14,7 +14,7 @@
  * design + rationale.
  */
 
-import { buildTool, MAX_BUNDLE_OPS, VALID_PAIRS, checkValidPair } from '@t2000/engine';
+import { buildTool, MAX_BUNDLE_OPS, VALID_PAIRS } from '@t2000/engine';
 import type { ToolContext, ToolResult } from '@t2000/engine';
 import { z } from 'zod';
 import { randomUUID } from 'node:crypto';
@@ -103,6 +103,13 @@ type StepInput = z.infer<typeof stepSchema>;
  * optional fields below are present in at least one branch — declaring
  * them on the union avoids per-branch widening that fails the
  * `ToolResult<T>` constraint.
+ *
+ * **Phase 3a (1.15.0):** `pair_not_whitelisted` removed from the
+ * union — the adjacency-whitelist rejection has been replaced by
+ * DAG-aware semantics (whitelisted asset-aligned pairs auto-thread
+ * via `inputCoinFromStep`; non-chained pairs run wallet-mode
+ * independently inside the same atomic PTB). Plan-time rejection
+ * paths reduce to `no_session` + `no_wallet`.
  */
 type PrepareBundleData =
   | {
@@ -115,10 +122,8 @@ type PrepareBundleData =
     }
   | {
       ok: false;
-      reason: 'no_session' | 'no_wallet' | 'pair_not_whitelisted';
+      reason: 'no_session' | 'no_wallet';
       details: string;
-      badPair?: string;
-      badPairIndex?: number;
     };
 
 /**
@@ -172,10 +177,11 @@ export const audricPrepareBundleTool = buildTool({
     'and ask the user to confirm. When the user replies affirmatively, the bundle executes ' +
     'as one atomic Sui transaction without re-emitting the writes. ' +
     'For single writes (N=1), DO NOT call this — emit the write tool directly. ' +
-    'Validates: (a) 2≤N≤cap, (b) every adjacent (producer, consumer) pair is whitelisted ' +
-    '(swap_execute→send_transfer, swap_execute→save_deposit, swap_execute→repay_debt, ' +
-    'withdraw→swap_execute, withdraw→send_transfer, borrow→send_transfer, borrow→repay_debt), ' +
-    '(c) for chained pairs, producer.output asset matches consumer.input asset.',
+    'Validates: (a) 2≤N≤cap. ' +
+    'Chain-mode (auto-populates `inputCoinFromStep`) for whitelisted asset-aligned pairs: ' +
+    'swap_execute→send_transfer, swap_execute→save_deposit, swap_execute→repay_debt, ' +
+    'withdraw→swap_execute, withdraw→send_transfer, borrow→send_transfer, borrow→repay_debt. ' +
+    'Non-chained adjacent steps (e.g. two independent sends) run wallet-mode in the same atomic PTB.',
   inputSchema: z.object({
     steps: z
       .array(stepSchema)
@@ -253,36 +259,25 @@ export const audricPrepareBundleTool = buildTool({
       };
     }
 
-    // Adjacency-whitelist check: for each (i, i+1) pair, the pair must
-    // be in `VALID_PAIRS`. This is the same gate the engine applies at
-    // confirm-time (`engine.ts:1594-1640`); doing it here surfaces the
-    // failure in the plan turn so the LLM can re-plan immediately
-    // instead of getting a tool_result error after the user confirms.
-    for (let i = 0; i < input.steps.length - 1; i++) {
-      const producer = input.steps[i].toolName;
-      const consumer = input.steps[i + 1].toolName;
-      const check = checkValidPair(producer, consumer);
-      if (!check.ok) {
-        return {
-          data: {
-            ok: false,
-            reason: 'pair_not_whitelisted',
-            details:
-              `Adjacent pair '${check.pair}' (step ${i} → step ${i + 1}) is not in the bundle whitelist. ` +
-              `Whitelisted pairs: ${[...VALID_PAIRS].join(', ')}. ` +
-              `Split the bundle and emit the steps sequentially.`,
-            badPair: check.pair,
-            badPairIndex: i,
-          },
-          displayText: `Bundle rejected: '${check.pair}' is not bundleable. Splitting sequentially.`,
-        };
-      }
-    }
+    // [Phase 3a / 1.15.0] No envelope-level adjacency rejection. Pre-3a
+    // the prepare_bundle tool refused any bundle where any (i, i+1)
+    // pair fell outside `VALID_PAIRS`. Phase 3a relaxes this: the
+    // chain-mode population below opportunistically wires
+    // `inputCoinFromStep` for whitelisted asset-aligned pairs;
+    // non-chained pairs run wallet-mode independently inside the same
+    // atomic PTB. The SDK's existing `T2000Error('NO_COINS_FOUND')`
+    // wallet-mode preflight surfaces any bad-shape failures at
+    // /api/transactions/prepare time before the user signs.
+    //
+    // `VALID_PAIRS` is still imported (used in JSDoc-style debug
+    // strings if ever needed); `checkValidPair` is no longer needed
+    // here because the population loop calls `shouldChainCoin`
+    // directly.
 
     // Chain-mode inference: for each adjacent pair where shouldChainCoin
     // returns true, populate `inputCoinFromStep` on the consumer if the
-    // LLM didn't already set it. This matches `engine.ts:1577-1660`'s
-    // chained-coin handoff behavior exactly.
+    // LLM didn't already set it. This is the only validation Phase 3a
+    // applies to bundle envelopes.
     const wiredSteps: BundleProposalStep[] = input.steps.map((step, i) => {
       const out: BundleProposalStep = {
         toolName: step.toolName,

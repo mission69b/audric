@@ -12,7 +12,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi, type MockInstance } from 'vitest';
-import type { ToolContext } from '@t2000/engine';
+import { MAX_BUNDLE_OPS, type ToolContext } from '@t2000/engine';
 import { audricPrepareBundleTool, __testOnly__ } from '../prepare-bundle-tool';
 import * as store from '../bundle-proposal-store';
 import type { BundleProposal } from '../bundle-proposal-store';
@@ -225,7 +225,15 @@ describe('audricPrepareBundleTool.call', () => {
     expect(stashed.steps[1].inputCoinFromStep).toBe(0);
   });
 
-  it('rejects non-whitelisted adjacent pair (swap_execute → swap_execute)', async () => {
+  // [Phase 3a / 1.15.0] Pre-3a this returned `pair_not_whitelisted`.
+  // Phase 3a permits the bundle (no envelope-level adjacency rejection);
+  // chain-mode auto-population doesn't fire (assets misalign anyway —
+  // step 0 outputs SUI, step 1 inputs SUI? actually they DO align, but
+  // swap_execute→swap_execute isn't in VALID_PAIRS so chain-mode skips).
+  // The bundle composes and runs wallet-mode for both swap legs. The
+  // SDK's wallet-mode preflight surfaces NO_COINS_FOUND if the user
+  // doesn't hold the input asset.
+  it('Phase 3a accepts previously-rejected swap_execute → swap_execute (wallet-mode, no chain)', async () => {
     const result = await audricPrepareBundleTool.call!(
       {
         steps: [
@@ -235,14 +243,135 @@ describe('audricPrepareBundleTool.call', () => {
       },
       makeContext(),
     );
-    expect(result.data).toMatchObject({
-      ok: false,
-      reason: 'pair_not_whitelisted',
-      badPair: 'swap_execute->swap_execute',
-      badPairIndex: 0,
-    });
-    expect(writeSpy).not.toHaveBeenCalled();
+    expect(result.data).toMatchObject({ ok: true, stepCount: 2, validatedChain: false });
+    const stashed = writeSpy.mock.calls[0][1] as BundleProposal;
+    expect(stashed.steps[0].inputCoinFromStep).toBeUndefined();
+    expect(stashed.steps[1].inputCoinFromStep).toBeUndefined();
   });
+
+  // [Phase 3a / P0-10] Zero-chain bundle: two independent sends.
+  // Bundle composes; both legs run wallet-mode; atomic at the PTB
+  // level (both succeed or both revert).
+  it('Phase 3a accepts zero-chain 2-op bundle (two independent sends — P0-10)', async () => {
+    const result = await audricPrepareBundleTool.call!(
+      {
+        steps: [
+          { toolName: 'send_transfer', input: { asset: 'USDC', amount: 5, to: '0xalice' } },
+          { toolName: 'send_transfer', input: { asset: 'USDC', amount: 3, to: '0xbob' } },
+        ],
+      },
+      makeContext(),
+    );
+    expect(result.data).toMatchObject({ ok: true, stepCount: 2, validatedChain: false });
+    const stashed = writeSpy.mock.calls[0][1] as BundleProposal;
+    expect(stashed.steps[0].inputCoinFromStep).toBeUndefined();
+    expect(stashed.steps[1].inputCoinFromStep).toBeUndefined();
+  });
+
+  // [Phase 3a / P0-10] Three independent sends inside one bundle.
+  it('Phase 3a accepts zero-chain 3-op bundle (three independent sends)', async () => {
+    const result = await audricPrepareBundleTool.call!(
+      {
+        steps: [
+          { toolName: 'send_transfer', input: { asset: 'USDC', amount: 5, to: '0xalice' } },
+          { toolName: 'send_transfer', input: { asset: 'USDC', amount: 3, to: '0xbob' } },
+          { toolName: 'send_transfer', input: { asset: 'USDC', amount: 1, to: '0xcarol' } },
+        ],
+      },
+      makeContext(),
+    );
+    expect(result.data).toMatchObject({ ok: true, stepCount: 3, validatedChain: false });
+  });
+
+  // [Phase 3a / P0-9] Partial-chain bundle: only one pair chains,
+  // the rest run wallet-mode. The envelope still composes.
+  it('Phase 3a accepts 3-op partial-chain (send → swap → save — only swap→save chains)', async () => {
+    const result = await audricPrepareBundleTool.call!(
+      {
+        steps: [
+          { toolName: 'send_transfer', input: { asset: 'USDC', amount: 1, to: '0xfirst' } },
+          { toolName: 'swap_execute', input: { from: 'USDC', to: 'USDsui', amount: 5 } },
+          { toolName: 'save_deposit', input: { asset: 'USDsui' } },
+        ],
+      },
+      makeContext(),
+    );
+    expect(result.data).toMatchObject({ ok: true, stepCount: 3, validatedChain: true });
+    const stashed = writeSpy.mock.calls[0][1] as BundleProposal;
+    expect(stashed.steps[0].inputCoinFromStep).toBeUndefined();
+    expect(stashed.steps[1].inputCoinFromStep).toBeUndefined();
+    expect(stashed.steps[2].inputCoinFromStep).toBe(1);
+  });
+
+  // [Phase 3a / P0-8] 4-op DAG: Demo 1 shape with one chained pair
+  // mid-bundle. Activates when engine ≥1.15.0 (cap=4); skipped on
+  // 1.14.0 because the cap rejects 4-op envelopes.
+  it.skipIf(MAX_BUNDLE_OPS < 4)(
+    'Phase 3a accepts 4-op DAG bundle (Demo 1: send + swap + save + send, only swap→save chains)',
+    async () => {
+      const result = await audricPrepareBundleTool.call!(
+        {
+          steps: [
+            { toolName: 'send_transfer', input: { asset: 'USDC', amount: 5, to: '0xfirst' } },
+            { toolName: 'swap_execute', input: { from: 'USDC', to: 'USDsui', amount: 10 } },
+            { toolName: 'save_deposit', input: { asset: 'USDsui' } },
+            { toolName: 'send_transfer', input: { asset: 'USDC', amount: 100, to: '0xlast' } },
+          ],
+        },
+        makeContext(),
+      );
+      expect(result.data).toMatchObject({ ok: true, stepCount: 4, validatedChain: true });
+      const stashed = writeSpy.mock.calls[0][1] as BundleProposal;
+      expect(stashed.steps[0].inputCoinFromStep).toBeUndefined();
+      expect(stashed.steps[1].inputCoinFromStep).toBeUndefined();
+      expect(stashed.steps[2].inputCoinFromStep).toBe(1);
+      expect(stashed.steps[3].inputCoinFromStep).toBeUndefined();
+    },
+  );
+
+  // [Phase 3a / P0-9] 4-op partial-chain: two chained pairs in a row
+  // followed by an independent send. Activates at engine ≥1.15.0.
+  it.skipIf(MAX_BUNDLE_OPS < 4)(
+    'Phase 3a accepts 4-op partial-chain bundle (withdraw → swap → send chained, fourth send wallet-mode)',
+    async () => {
+      const result = await audricPrepareBundleTool.call!(
+        {
+          steps: [
+            { toolName: 'withdraw', input: { asset: 'USDC', amount: 5 } },
+            { toolName: 'swap_execute', input: { from: 'USDC', to: 'SUI', amount: 5 } },
+            { toolName: 'send_transfer', input: { asset: 'SUI', amount: 5, to: '0xrecipient' } },
+            { toolName: 'send_transfer', input: { asset: 'USDC', amount: 1, to: '0xother' } },
+          ],
+        },
+        makeContext(),
+      );
+      expect(result.data).toMatchObject({ ok: true, stepCount: 4, validatedChain: true });
+      const stashed = writeSpy.mock.calls[0][1] as BundleProposal;
+      expect(stashed.steps[0].inputCoinFromStep).toBeUndefined();
+      expect(stashed.steps[1].inputCoinFromStep).toBe(0);
+      expect(stashed.steps[2].inputCoinFromStep).toBe(1);
+      expect(stashed.steps[3].inputCoinFromStep).toBeUndefined();
+    },
+  );
+
+  // [Phase 3a / P0-10] 4-op zero-chain bundle. Activates at engine ≥1.15.0.
+  it.skipIf(MAX_BUNDLE_OPS < 4)(
+    'Phase 3a accepts 4-op zero-chain bundle (four independent sends)',
+    async () => {
+      const result = await audricPrepareBundleTool.call!(
+        {
+          steps: [
+            { toolName: 'send_transfer', input: { asset: 'USDC', amount: 1, to: '0xa' } },
+            { toolName: 'send_transfer', input: { asset: 'USDC', amount: 2, to: '0xb' } },
+            { toolName: 'send_transfer', input: { asset: 'USDC', amount: 3, to: '0xc' } },
+            { toolName: 'send_transfer', input: { asset: 'USDC', amount: 4, to: '0xd' } },
+          ],
+        },
+        makeContext(),
+      );
+      expect(result.data).toMatchObject({ ok: true, stepCount: 4, validatedChain: false });
+    },
+  );
 
   it('rejects when sessionId missing in env', async () => {
     const result = await audricPrepareBundleTool.call!(

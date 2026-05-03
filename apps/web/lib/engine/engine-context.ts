@@ -24,6 +24,7 @@ import {
   buildProfileContext,
   buildSelfEvaluationInstruction,
   buildStateContext,
+  MAX_BUNDLE_OPS,
   READ_TOOLS,
   WRITE_TOOLS,
   type UserFinancialProfile,
@@ -282,18 +283,15 @@ When a request needs 2+ steps (e.g. "swap USDC to SUI then deposit", "give me a 
 For single-step requests, skip the plan — just execute. Compound WRITE requests bundle — see Payment Stream below.
 
 ## Payment Stream — compound write requests (CRITICAL)
-Atomic bundles are capped at 3 ops. Strict adjacency: every consecutive pair must be whitelisted. Anything else runs sequentially (user confirms each).
+Atomic bundles cap at ${MAX_BUNDLE_OPS} ops. **DAG-aware**: chained pairs (one step's output funds the next) must be from the whitelist below; other steps run wallet-mode in the same atomic PTB. One tap, all-or-nothing.
 
-**Whitelisted pairs** (engine refuses others with \`pair_not_whitelisted\`):
-\`swap_execute → send_transfer\` · \`swap_execute → save_deposit\` · \`swap_execute → repay_debt\` · \`withdraw → swap_execute\` · \`withdraw → send_transfer\` · \`borrow → send_transfer\` · \`borrow → repay_debt\` (same asset).
+**Whitelisted chain pairs** (auto-thread via \`inputCoinFromStep\`): \`swap_execute → send_transfer\` · \`swap_execute → save_deposit\` · \`swap_execute → repay_debt\` · \`withdraw → swap_execute\` · \`withdraw → send_transfer\` · \`borrow → send_transfer\` · \`borrow → repay_debt\` (same asset). Zero-chain bundles (e.g. multiple independent sends) are also valid — atomicity holds.
 
-Outside the list runs sequentially: swap+swap, borrow+swap, save+send, 2× send, anything 4+ ops.
+**Bundle path (2 to ${MAX_BUNDLE_OPS} ops):** Turn 1 = reads + call \`prepare_bundle({steps})\` ONCE with the typed step list + plan text + ASK confirm. Do NOT emit writes turn 1. After user confirms, bundle dispatches as ONE atomic PTB. Narrate "Compiling into one Payment Stream — atomic, if any leg fails nothing executes."
 
-**Bundle path (2-op or 3-op):** Turn 1 = reads + call \`prepare_bundle({steps})\` ONCE with the full typed step list + plan text + ASK confirm. Do NOT emit the writes in turn 1. After user confirms, the bundle dispatches as ONE atomic PTB without you re-emitting. Narrate "Compiling into one Payment Stream — atomic, if any leg fails nothing executes."
+**Examples:** 3-op chain: \`withdraw 5 USDC → swap to SUI → send 1 SUI\`. 4-op DAG: \`swap 200 USDC→SUI, swap 900 USDC→USDsui, save 900 USDsui (chained), send 100 USDC to Mom\` — only step 3 chains; others wallet-mode.
 
-**3-op example:** \`withdraw 5 USDC → swap to SUI → send 1 SUI\` — pass all three to prepare_bundle. Chain-handoff threads each step's output into the next.
-
-**Sequential path (4+ ops OR any non-whitelisted adjacent pair):** Turn 1 = reads + plan + ASK confirm. Do NOT call prepare_bundle. After confirm, emit ONLY the first write. After it lands, emit the next. Narrate "I'll do this in N steps — first X, then Y…"
+**Sequential path (${MAX_BUNDLE_OPS + 1}+ ops):** Turn 1 = reads + plan + ASK confirm. Do NOT call prepare_bundle. After confirm, emit ONLY the first write. After it lands, emit the next.
 
 Always alone (never bundleable, never inside prepare_bundle): pay_api, save_contact. Reads run in a PRIOR turn; swap_quote remains mandatory before swap_execute.
 
