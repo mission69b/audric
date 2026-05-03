@@ -41,23 +41,45 @@
  *   already a hard requirement of `lib/env.ts`, but failing here gives
  *   a clearer error in the build log).
  *
- * Retry semantics (TD.4 — added 2026-04-30)
- * -----------------------------------------
+ * Retry semantics (TD.4 — added 2026-04-30, budget bumped 2026-05-04)
+ * -------------------------------------------------------------------
  * `prisma migrate deploy` acquires a Postgres advisory lock with a
- * default timeout of 10s. On Neon, that timeout is regularly exceeded
- * during cold-start wake-ups or when a previous deploy's connection
- * orphaned the lock. We hit `P1002` ("timed out trying to acquire a
- * postgres advisory lock") 3× in 24h on 2026-04-30 — including for
- * deploys whose code change had nothing to do with the schema (e.g.
- * a single-line UI revert, commit `cc2c9ea`).
+ * Prisma-side timeout of 10s (not configurable via the CLI). On Neon,
+ * that timeout is regularly exceeded during cold-start wake-ups OR
+ * when a previous deploy was killed mid-migrate and orphaned the lock
+ * (Postgres only releases the lock when the holding session
+ * disconnects, which on Neon's pooler can take several minutes via
+ * idle-connection TCP timeout).
  *
- * The fix is to retry. `prisma migrate deploy` is idempotent — if
- * migrations 1..N are applied and N+1 fails, retrying picks up at N+1.
- * We retry up to 3 times with 5s/15s/30s backoff (50s total budget).
- * On the third failure we still abort the build (preserves the
+ * History
+ * - 2026-04-30: Hit `P1002` 3× in 24h, including a single-line UI
+ *   revert (commit `cc2c9ea`). Initial fix: 3 attempts, 5s/15s/30s
+ *   backoff, 50s total budget.
+ * - 2026-05-04: Hit P1002 again on commit `7592344` (BlockVision
+ *   telemetry — schema-touchless code change). All 3 attempts failed
+ *   in ~53s. Retriggered via empty commit `d426bb5` and the next
+ *   deploy succeeded first try. Pattern: lock contention can persist
+ *   beyond our 50s budget (orphaned lock case, not just cold-start).
+ *   Bumped to 5 attempts with 5s/15s/30s/60s backoff between attempts
+ *   (110s total wait + ~50s of Prisma's own per-attempt timeouts ≈
+ *   2.7min end-to-end budget). Still well inside Vercel's 45min build
+ *   limit. The 60s tail intentionally pushes the final retry past
+ *   Neon's typical idle-connection TCP timeout window so an orphaned
+ *   lock from a killed earlier deploy has time to release.
+ *
+ * The fix is to retry — `prisma migrate deploy` is idempotent (if
+ * migrations 1..N are applied and N+1 fails, retrying picks up at
+ * N+1). On final failure we still abort the build (preserves the
  * fail-closed semantic — we never ship code expecting a schema that
  * isn't there). On any successful attempt we log the attempt count so
  * a flaky-Neon trend is visible in build logs.
+ *
+ * What we deliberately do NOT do: forcibly break the advisory lock
+ * (e.g. `pg_advisory_unlock_all()` from a side connection). If a
+ * legitimate concurrent migrate is mid-flight, breaking its lock
+ * would race the migration table writes. Better to fail loudly after
+ * an extended retry budget and let a human investigate than to
+ * silently corrupt a partial migration.
  */
 import { spawnSync } from 'node:child_process';
 import { setTimeout as sleep } from 'node:timers/promises';
@@ -80,8 +102,11 @@ if (!process.env.DATABASE_URL) {
   process.exit(1);
 }
 
-const MAX_ATTEMPTS = 3;
-const BACKOFF_MS = [5_000, 15_000, 30_000];
+const MAX_ATTEMPTS = 5;
+// Sleep happens between attempts only (not after the last), so this has
+// MAX_ATTEMPTS - 1 entries. Total wait budget: 5+15+30+60 = 110s, plus
+// ~5×10s of Prisma's own lock-acquisition timeouts ≈ 160s end-to-end.
+const BACKOFF_MS = [5_000, 15_000, 30_000, 60_000];
 
 function runMigrate() {
   const result = spawnSync('pnpm', ['exec', 'prisma', 'migrate', 'deploy'], {
