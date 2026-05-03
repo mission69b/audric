@@ -48,6 +48,16 @@ export type TxResult = { tx: string; balanceChanges?: BalanceChange[] };
 export interface BundleStep {
   toolName: string;
   input: unknown;
+  /**
+   * [SPEC 13 Phase 1] Index of an earlier step whose output coin handle
+   * is consumed as THIS step's input coin. The prepare route forwards
+   * this to `composeTx({ steps })`, whose orchestration loop threads
+   * `priorOutputs[N]` into the consumer appender's `inputCoin`,
+   * suppressing the wallet pre-fetch path. Populated by the engine's
+   * `composeBundleFromToolResults` for whitelisted aligned producer →
+   * consumer pairs.
+   */
+  inputCoinFromStep?: number;
 }
 
 export interface AgentActions {

@@ -451,6 +451,7 @@ export async function executeBundleAction(
   const wireSteps: BundleStep[] = resolvedSteps.map((s) => ({
     toolName: s.toolName,
     input: s.input,
+    ...(s.inputCoinFromStep !== undefined ? { inputCoinFromStep: s.inputCoinFromStep } : {}),
   }));
 
   try {
