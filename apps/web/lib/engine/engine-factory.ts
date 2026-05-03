@@ -35,6 +35,7 @@ import { incrementSessionSpend } from './session-spend';
 import { GOAL_TOOLS } from './goal-tools';
 import { ADVICE_TOOLS } from './advice-tool';
 import { audricSaveContactTool, audricListContactsTool } from './contact-tools';
+import { audricPrepareBundleTool } from './prepare-bundle-tool';
 import { detectBundleConfirm } from './confirm-detection';
 import { prisma } from '@/lib/prisma';
 import { getPortfolio, getTokenPrices } from '@/lib/portfolio';
@@ -493,6 +494,16 @@ export async function createEngine(
   const filteredWrites = WRITE_TOOLS.filter((t) => t.name !== 'save_contact');
   const audricContactTools: Tool[] = [audricSaveContactTool, audricListContactsTool];
 
+  // [SPEC 14 Phase 1] `prepare_bundle` plan-time bundle commitment tool.
+  // The LLM calls this once during the plan turn for any multi-write
+  // Payment Stream (N≥2 writes). The tool stashes the typed steps in
+  // Redis with a 60s TTL; the chat-route fast-path (Phase 2, not yet
+  // wired) will read + consume the stash on user confirm and yield a
+  // `pending_action_bundle` SSE event without re-emitting via the LLM.
+  // Phase 1 is dormant — registering the tool but not yet bypassing
+  // the legacy path is intentional. See SPEC 14 for the full design.
+  const audricBundleTools: Tool[] = [audricPrepareBundleTool];
+
   // [SPEC 8 v0.5.1 hotfix] Register the host-side `update_todo` tool that
   // the system prompt teaches RICH / recipe-match turns to call. The engine
   // exports it as opt-in (see packages/engine/src/index.ts ~226-228); without
@@ -503,6 +514,7 @@ export async function createEngine(
     ...filteredReads,
     ...filteredWrites,
     ...audricContactTools,
+    ...audricBundleTools,
     ...GOAL_TOOLS,
     ...ADVICE_TOOLS,
     ...mcpTools,
@@ -629,6 +641,13 @@ export async function createEngine(
       AUDRIC_INTERNAL_API_URL,
       AUDRIC_INTERNAL_KEY,
       BRAVE_API_KEY,
+      // [SPEC 14 Phase 1] The `prepare_bundle` tool reads SESSION_ID
+      // from `ToolContext.env` to scope its Redis stash. Engine doesn't
+      // pass sessionId via a typed field today; threading via `env`
+      // (which is already a Record<string, string>) avoids an engine
+      // bump. Empty string when sessionId is missing — prepare_bundle
+      // returns `ok: false reason: 'no_session'` defensively.
+      SESSION_ID: opts.sessionId ?? '',
     },
     maxTurns: 10,
     maxTokens: effort === 'high' || effort === 'max' ? 16384 : 8192,
