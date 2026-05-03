@@ -36,8 +36,30 @@
 
 import type { Message } from '@t2000/engine';
 
+// [Fix 1 / 2026-05-04] Pattern extended to cover production-observed misses:
+//
+//   - "execute" / "exec" — observed at 21:28:09 in session
+//     `s_1777843407792_2b7fc088a8fa`. User said "execute" after "proceed";
+//     fast-path skipped with `not_affirmative`; Haiku-low (no thinking) then
+//     emitted 7,159 final-text tokens of stream-of-consciousness over 69s
+//     trying to figure out whether "execute" was a confirm or a command.
+//     Adding it to the affirmative set fast-paths the redundant-confirm and
+//     prevents the 69s ramble. (Fix 2 — guarding Haiku-lean against the
+//     ramble itself when there's nothing to do — is tracked separately.)
+//
+//   - "confimed" — observed at 21:19:19 in session
+//     `s_1777841977869_2f844b8a694a`. Common typo of "confirmed". Same skip,
+//     same downstream cost.
+//
+//   - "run" / "fire" / "launch" — natural synonyms for "execute" the
+//     planner's plan-tail copy invites ("Confirm to proceed?" → user types
+//     "fire it" / "launch"). Adding these now prevents the same regression
+//     for the next user who picks a different verb.
+//
+// All anchored at `^...$` and length-capped at 30 chars upstream, so
+// "run analytics" or "execute the audit" still fall through to the LLM.
 const CONFIRM_PATTERN =
-  /^(y|yes|yep|yeah|ok|okay|sure|confirm(ed|s)?|do it|go|proceed|approve(d)?|let'?s do it|sounds good|ship it|👍)[.!?]?$/i;
+  /^(y|yes|yep|yeah|ok|okay|sure|confirm(ed|s)?|confimed|do it|go|proceed|approve(d)?|let'?s do it|sounds good|ship it|execute|exec|run|fire|launch|👍)[.!?]?$/i;
 
 /**
  * Write verbs the system prompt uses when describing a Payment Stream plan.

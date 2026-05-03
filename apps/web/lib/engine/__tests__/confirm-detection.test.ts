@@ -97,6 +97,32 @@ describe('CONFIRM_PATTERN', () => {
     expect(CONFIRM_PATTERN.test(msg)).toBe(true);
   });
 
+  // [Fix 1 / 2026-05-04] Production-observed misses that fell through to the
+  // LLM and triggered Haiku-lean rambles. Each row corresponds to a real
+  // production session — adding here pins the regression so a future
+  // pattern refactor can't silently re-introduce the bug.
+  it.each([
+    // session s_1777843407792_2b7fc088a8fa @ 21:28:09 (69s ramble)
+    'execute',
+    'Execute',
+    'execute.',
+    'execute!',
+    // synonym for execute — pre-empted before the next user types it
+    'exec',
+    'run',
+    'Run',
+    'fire',
+    'Fire',
+    'launch',
+    'Launch',
+    // session s_1777841977869_2f844b8a694a @ 21:19:19 (typo of "confirmed")
+    'confimed',
+    'Confimed',
+    'CONFIMED',
+  ])('[Fix 1] matches production-observed affirmative: %s', (msg) => {
+    expect(CONFIRM_PATTERN.test(msg)).toBe(true);
+  });
+
   it.each([
     'no',
     'cancel',
@@ -109,6 +135,12 @@ describe('CONFIRM_PATTERN', () => {
     'show me the plan',
     'Confirmed but actually swap less',
     'yes please swap less',
+    // [Fix 1] Boundary: synonym words must NOT match when followed by an
+    // object — they only fast-path as a bare standalone affirmative.
+    'run analytics',
+    'execute the audit',
+    'fire off the request',
+    'launch dashboard',
   ])('does NOT match: %s', (msg) => {
     expect(CONFIRM_PATTERN.test(msg)).toBe(false);
   });
@@ -190,6 +222,45 @@ describe('detectBundleConfirm', () => {
         asstText(PLAN_2OP),
       ];
       expect(detectBundleConfirm('Confirmed', history).matched).toBe(true);
+    });
+
+    it('[Fix 1] matches a 4-op Phase 3a plan + "execute" (production repro)', () => {
+      // Repro of session s_1777843407792_2b7fc088a8fa @ 21:28:09 — the
+      // 69-second Haiku-ramble. Plan turn proposed a 4-op bundle; user
+      // typed "execute" after "proceed"; pre-fix, this skipped the
+      // fast-path with `not_affirmative` and burned 7,159 final-text
+      // tokens. Post-fix it must match cleanly.
+      const PLAN_4OP = [
+        'Quotes: 6 USDC → **6.4806 SUI** (0.00% impact via HAEDAL) · 2 USDC → 1.9987 USDsui',
+        '',
+        'Plan (4-op atomic):',
+        '1. Withdraw 9.700979 USDC from savings',
+        '2. Withdraw 0.001 USDsui from savings',
+        '3. Swap 6 USDC → ~6.4806 SUI',
+        '4. Swap 2 USDC → ~1.9987 USDsui',
+        '',
+        'Confirm to proceed?',
+      ].join('\n');
+      const history: Message[] = [
+        userText('Withdraw all from savings, swap 6 USDC to SUI, swap 2 USDC to USDsui'),
+        asstText(PLAN_4OP),
+      ];
+      const result = detectBundleConfirm('execute', history);
+      expect(result.matched).toBe(true);
+      expect(result.priorWriteVerbCount).toBe(2); // withdraw, swap
+      expect(result.reason).toBe('matched');
+    });
+
+    it('[Fix 1] matches a 2-op plan + "confimed" typo (production repro)', () => {
+      // Repro of session s_1777841977869_2f844b8a694a @ 21:19:19. User
+      // typed "confimed" (missing 'r'); pre-fix, fast-path skipped.
+      const history: Message[] = [
+        userText('swap 0.1 USDsui to USDC and save the USDC'),
+        asstText(PLAN_2OP),
+      ];
+      const result = detectBundleConfirm('confimed', history);
+      expect(result.matched).toBe(true);
+      expect(result.reason).toBe('matched');
     });
   });
 
