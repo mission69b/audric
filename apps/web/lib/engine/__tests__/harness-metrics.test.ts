@@ -456,6 +456,7 @@ describe('STATIC_SYSTEM_PROMPT — B3.6 budget gate', () => {
     //   - Pre-B3.6 baseline:               8,960 tokens   (~35,840 chars)
     //   - Post-B3.6 ceiling:               9,660 tokens   ( +700 budget)
     //   - Post-SPEC 7 P2.5 ceiling:        9,920 tokens   ( +260 budget)
+    //   - Post-SPEC 7 P2.8 / F13 ceiling: 10,000 tokens   ( +80 budget)
     //
     // B3.6 added the "Mid-flight narration & todos" section + the
     // `<eval_summary>` emission contract.
@@ -469,6 +470,20 @@ describe('STATIC_SYSTEM_PROMPT — B3.6 budget gate', () => {
     // pre-bundle reads pattern, narration framing) to keep the budget
     // impact at +206 tokens — well under the 260-token allowance.
     //
+    // SPEC 7 P2.8 / F13 (2026-05-03) added two rules in response to a
+    // production timeout incident (Vercel 60s budget exceeded twice on a
+    // 6-write compound request):
+    //   1. "4+ writes: split across TWO turns" exception to the Payment
+    //      Stream rule — better UX (user reviews plan before signing 6
+    //      ops) AND splits the time budget across two turns. Pairs with
+    //      bumping maxDuration 60→300s in chat/route.ts + resume/route.ts.
+    //   2. "If you DO emit a markdown table, NO blank lines between rows"
+    //      cosmetic rule (M3 from the same incident) — fixes the markdown
+    //      renderer fragmenting comparison tables into single-row blocks.
+    // Both rules were trimmed to the bone: ~140 + ~80 chars (~55 tokens
+    // total). The +80 ceiling allows ~25 tokens of headroom for future
+    // minor edits before requiring another bump.
+    //
     // Why a hard char ceiling instead of a delta:
     //   - Hardcoding the ceiling beats hardcoding both halves; the test
     //     trips on ANY future edit that pushes the prompt past the
@@ -481,7 +496,7 @@ describe('STATIC_SYSTEM_PROMPT — B3.6 budget gate', () => {
     //      a new entry in the ceiling-history table above.
     const { STATIC_SYSTEM_PROMPT } = await import('../engine-context');
     const tokens = Math.ceil(STATIC_SYSTEM_PROMPT.length / 4);
-    expect(tokens).toBeLessThanOrEqual(9920);
+    expect(tokens).toBeLessThanOrEqual(10_000);
   });
 });
 

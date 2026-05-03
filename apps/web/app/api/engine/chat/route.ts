@@ -50,7 +50,12 @@ import {
 const AGENT_MODEL = env.AGENT_MODEL ?? 'claude-sonnet-4-6';
 
 export const runtime = 'nodejs';
-export const maxDuration = 60;
+// F13 (2026-05-03): bumped 60 → 300 to handle "max" shape compound write
+// requests (4+ writes with multiple pre-write reads). Sonnet at high effort
+// + extended thinking can burn 30–60s on planning alone before emitting the
+// bundle proposal. Vercel Pro allows up to 300s. Cost impact ~zero — only
+// long-running edge cases consume the extra budget.
+export const maxDuration = 300;
 
 const MAX_HISTORY = 12;
 const MAX_MSG_LEN = 500;

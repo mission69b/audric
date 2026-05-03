@@ -27,7 +27,10 @@ import { env } from '@/lib/env';
 const AGENT_MODEL = env.AGENT_MODEL ?? 'claude-sonnet-4-20250514';
 
 export const runtime = 'nodejs';
-export const maxDuration = 60;
+// F13 (2026-05-03): bumped 60 → 300 to mirror chat/route.ts. Resume takes
+// the post-confirm narration turn and any chained tool calls; same budget
+// math applies for compound flows.
+export const maxDuration = 300;
 
 interface ResumeRequestBody {
   address: string;
