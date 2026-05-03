@@ -307,6 +307,18 @@ export async function POST(request: NextRequest) {
     // so a future page load can render `<RetryInterruptedTurn>` instead
     // of leaving the user staring at half a response.
     let turnCompleteSeen = false;
+    // [Phase 0 / SPEC 13 / 2026-05-03 evening] Stream-close instrumentation.
+    // Pairs with the engine's `engine.turn_outcome` counter so we can
+    // diagnose the "Response interrupted · retry" bug from real traffic.
+    // The structured log at `controller.close()` captures whether the
+    // host actually saw the engine's terminator events; if engine emits
+    // `turn_complete` but the host's `streamCloseLog` shows `false`,
+    // the gap is in the for-await loop (delivery-side). If both are
+    // false, the engine returned silently — investigate the engine.
+    let pendingActionSeen = false;
+    let errorEventSeen = false;
+    let lastEventType: string | null = null;
+    const streamStartMs = Date.now();
 
     const stream = new ReadableStream({
       async start(controller) {
@@ -517,6 +529,10 @@ export async function POST(request: NextRequest) {
             harnessShape: engineMeta?.harnessShape ?? 'standard',
             harnessRationale: engineMeta?.harnessRationale,
           })) {
+            // [Phase 0 / SPEC 13] Track every event for stream-close log.
+            lastEventType = event.type;
+            if (event.type === 'pending_action') pendingActionSeen = true;
+            if (event.type === 'error') errorEventSeen = true;
             switch (event.type) {
               case 'compaction':
                 collector.onCompaction();
@@ -855,6 +871,59 @@ export async function POST(request: NextRequest) {
             } catch (metricsErr) {
               console.error('[TurnMetrics] build failed (non-fatal):', metricsErr);
             }
+          }
+
+          // [Phase 0 / SPEC 13 / 2026-05-03 evening] Structured stream-close
+          // log. The 4-tuple (turnCompleteSeen, pendingActionSeen,
+          // errorEventSeen, lastEventType) lets us tell apart:
+          //   - clean (true,  false, false, …)  — natural turn end
+          //   - paused (false, true,  false, 'pending_action')
+          //   - errored (false,false, true,  'error')
+          //   - SILENT (false, false, false, …) — the bug we're hunting.
+          //     A SILENT close means the engine generator returned
+          //     without emitting any of its terminator events; on the
+          //     engine side the matching `engine.turn_outcome` counter
+          //     should have ALWAYS fired. If host=silent + engine=fired,
+          //     the gap is in delivery (streaming/SSE/CDN). If
+          //     host=silent + engine=silent, the gap is in engine.
+          const streamClosedSilently =
+            !turnCompleteSeen && !pendingActionSeen && !errorEventSeen;
+          try {
+            getTelemetrySink().counter('audric.engine.chat_stream_close', {
+              outcome: turnCompleteSeen
+                ? 'turn_complete'
+                : pendingActionSeen
+                  ? 'pending_action'
+                  : errorEventSeen
+                    ? 'error'
+                    : 'silent',
+              lastEventType: lastEventType ?? 'none',
+            });
+            getTelemetrySink().histogram(
+              'audric.engine.chat_stream_duration_ms',
+              Date.now() - streamStartMs,
+              {
+                outcome: turnCompleteSeen
+                  ? 'turn_complete'
+                  : pendingActionSeen
+                    ? 'pending_action'
+                    : errorEventSeen
+                      ? 'error'
+                      : 'silent',
+              },
+            );
+            if (streamClosedSilently) {
+              console.error('[engine/chat] STREAM_CLOSED_SILENTLY', {
+                sessionId: sessionId ?? null,
+                address: address ?? null,
+                turnIndex,
+                lastEventType,
+                durationMs: Date.now() - streamStartMs,
+                priorMsgCount,
+              });
+            }
+          } catch (logErr) {
+            console.error('[engine/chat] stream-close log failed (non-fatal):', logErr);
           }
 
           controller.close();

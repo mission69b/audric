@@ -171,6 +171,13 @@ export async function POST(request: NextRequest) {
     // turn. A resume that yielded another `pending_action` (chained
     // write) is intentionally paused, NOT interrupted.
     let turnCompleteSeen = false;
+    // [Phase 0 / SPEC 13 / 2026-05-03 evening] Stream-close instrumentation,
+    // same shape as chat/route.ts. See chat route comment for the
+    // diagnostic matrix.
+    let pendingActionSeen = false;
+    let errorEventSeen = false;
+    let lastEventType: string | null = null;
+    const streamStartMs = Date.now();
 
     const stream = new ReadableStream({
       async start(controller) {
@@ -190,6 +197,10 @@ export async function POST(request: NextRequest) {
             ? { approved, stepResults }
             : { approved, executionResult };
           for await (const event of engine.resumeWithToolResult(action, permissionResponse)) {
+            // [Phase 0 / SPEC 13] Track every event for stream-close log.
+            lastEventType = event.type;
+            if (event.type === 'pending_action') pendingActionSeen = true;
+            if (event.type === 'error') errorEventSeen = true;
             switch (event.type) {
               case 'compaction':
                 collector.onCompaction();
@@ -586,6 +597,43 @@ export async function POST(request: NextRequest) {
                 );
               }
             }
+          }
+
+          // [Phase 0 / SPEC 13 / 2026-05-03 evening] Stream-close log.
+          // See chat/route.ts mirror for full diagnostic context.
+          const streamClosedSilently =
+            !turnCompleteSeen && !pendingActionSeen && !errorEventSeen;
+          try {
+            const outcome = turnCompleteSeen
+              ? 'turn_complete'
+              : pendingActionSeen
+                ? 'pending_action'
+                : errorEventSeen
+                  ? 'error'
+                  : 'silent';
+            getTelemetrySink().counter('audric.engine.resume_stream_close', {
+              outcome,
+              lastEventType: lastEventType ?? 'none',
+              approved: String(approved),
+            });
+            getTelemetrySink().histogram(
+              'audric.engine.resume_stream_duration_ms',
+              Date.now() - streamStartMs,
+              { outcome },
+            );
+            if (streamClosedSilently) {
+              console.error('[engine/resume] STREAM_CLOSED_SILENTLY', {
+                sessionId: sessionId ?? null,
+                address: address ?? null,
+                turnIndex: action.turnIndex ?? null,
+                attemptId: action.attemptId ?? null,
+                approved,
+                lastEventType,
+                durationMs: Date.now() - streamStartMs,
+              });
+            }
+          } catch (logErr) {
+            console.error('[engine/resume] stream-close log failed (non-fatal):', logErr);
           }
 
           controller.close();

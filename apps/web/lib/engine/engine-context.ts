@@ -282,12 +282,20 @@ When a request needs 2+ steps (e.g. "swap USDC to SUI then deposit", "give me a 
 For single-step requests, skip the plan — just execute. Compound WRITE requests bundle — see Payment Stream below.
 
 ## Payment Stream — compound write requests (CRITICAL)
-For 2-3 WRITE actions sharing a goal (swap-and-save, withdraw-and-send, rebalance, claim-and-stake, close-position = repay + withdraw, split-pay $X to A / $Y to B) emit ALL write tool_use blocks in ONE assistant turn — the engine collapses them into ONE atomic PTB the user signs once. NEVER step across turns unless the user says "one at a time".
-**4-5 writes: split across TWO turns. Turn 1 = reads + plan + ASK confirmation. Turn 2 (post-confirm) = emit ALL N agreed writes in parallel (re-fetch expired quotes first; never drop any). Bundles into ONE atomic PTB.**
-**6+ writes: HARD CAP at 5 per bundle (engine returns \`max_bundle_ops\` error on 6+). Split into TWO sequential ≤5-op bundles, each with its own plan-and-confirm round. Up front: "I'll do this in two stages — first [ops 1-5], then [remaining]." Don't try to bundle 6 in Turn 2; the cap rejects all.**
-Bundleable: save_deposit, withdraw, borrow, repay_debt, send_transfer, swap_execute, claim_rewards, volo_stake, volo_unstake. NOT bundleable (execute alone): pay_api, save_contact.
-Reads run in a PRIOR turn (the engine can't bundle reads with writes — swap_quote is still mandatory before swap_execute). Pattern: turn 1 = required reads, turn 2 = parallel write tool_use blocks.
-Narrate BEFORE with "Compiling into one Payment Stream — atomic, so if any leg fails nothing executes." AFTER with ONE sentence summarising the whole stream; the receipt card shows per-leg detail.
+Phase 0: atomic bundles are capped at 2 ops, only specific (producer, consumer) pairs allowed. Anything else runs sequentially as N single writes (user confirms each). Same outcome, one tap per step.
+
+**Whitelisted 2-op pairs only** (engine refuses others with \`pair_not_whitelisted\`):
+\`swap_execute → send_transfer\` · \`swap_execute → save_deposit\` · \`swap_execute → repay_debt\` · \`withdraw → swap_execute\` · \`withdraw → send_transfer\` · \`borrow → send_transfer\` · \`borrow → repay_debt\` (same asset).
+
+Outside the list runs sequentially: swap+swap, borrow+swap, save+send, 2× send, anything 3+ ops.
+
+**Bundle path (whitelisted 2-op):** Turn 1 = reads + plan + ASK confirm. Turn 2 (post-confirm) = emit BOTH writes in parallel. Engine composes the PTB. ONE signature. Narrate "Compiling into one Payment Stream — atomic, so if any leg fails nothing executes."
+
+**Sequential path (3+ ops OR non-whitelisted):** Turn 1 = reads + plan + ASK confirm. After confirm, emit ONLY the first write. After it lands, emit the next. NEVER try to bundle 3+ or a non-whitelisted pair — engine refuses and nothing executes. Narrate "I'll do this in N steps — first X, then Y…"
+
+**Phase 0 caveat:** whitelisted pairs where the consumer's asset must come FROM the producer (e.g. \`swap → save USDsui\` with 0 USDsui in wallet) revert at PREPARE — SDK still pre-fetches from wallet. When in doubt, sequential. Phase 1 ships the chain fix.
+
+Always alone (never bundleable): pay_api, save_contact. Reads run in a PRIOR turn; swap_quote remains mandatory before swap_execute.
 
 ## Multi-step flows
 - "Swap/sell/convert all X to Y": swap_execute with from=X, to=Y, amount=FULL X balance. Gas is sponsored — no reserve needed.

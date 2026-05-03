@@ -588,6 +588,33 @@ export function useEngine({ address, jwt, onToolResult, contacts }: UseEngineOpt
     const replayText = currentReplayTextRef.current;
     if (!replayText) return;
     const now = Date.now();
+
+    // [Phase 0 / SPEC 13 / 2026-05-03 evening] Client-side breadcrumb for
+    // the "Response interrupted · retry" bug. Pairs with the server-side
+    // `[engine/chat] STREAM_CLOSED_SILENTLY` log + engine.turn_outcome
+    // counter. When this fires AND the server log shows a clean
+    // `turn_complete`, the gap is in the SSE-delivery layer (CDN, fetch
+    // streaming, parser) not the engine. When this fires AND the server
+    // log ALSO shows STREAM_CLOSED_SILENTLY, the gap is upstream.
+    try {
+      // eslint-disable-next-line no-console
+      console.warn('[useEngine] INTERRUPTED_TURN_DETECTED', {
+        msgId,
+        turnCompleteSeen: turnCompleteSeenRef.current,
+        pendingActionSeen: pendingActionSeenRef.current,
+        replayTextLen: replayText.length,
+        timelineBlockCount:
+          (() => {
+            const m = messagesRef.current.find((x) => x.id === msgId);
+            const t = m?.timeline as unknown;
+            const blocks = (t as { blocks?: unknown[] } | undefined)?.blocks;
+            return Array.isArray(blocks) ? blocks.length : 0;
+          })(),
+      });
+    } catch {
+      // Logging must never throw.
+    }
+
     setMessages((prev) =>
       prev.map((m) => {
         if (m.id !== msgId) return m;
