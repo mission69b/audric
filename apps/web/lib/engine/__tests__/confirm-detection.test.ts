@@ -29,6 +29,31 @@ const PLAN_2OP = [
   'Confirm to proceed?',
 ].join('\n');
 
+// [1.14.2] Production logs show the planner ends with "Shall I proceed?"
+// roughly as often as "Confirm to proceed?". Both must trigger the
+// detector — original pattern only matched "confirm" and silently missed
+// every plan with "Shall I proceed?" → wrong model on confirm turn.
+const PLAN_2OP_SHALL_PROCEED = [
+  'You have $4.66 USDC saved, so the withdrawal is fine. This is a whitelisted withdraw → send pair — I can compile both into one atomic Payment Stream.',
+  '',
+  'Plan:',
+  '1. Withdraw 3 USDC from NAVI savings',
+  '2. Send 1 USDC to funkii.sui',
+  '',
+  'Shall I proceed?',
+].join('\n');
+
+const PLAN_3OP_READY_PROCEED = [
+  'Quote: 6 USDsui → 6.002667 USDC (0.00% impact via Bluefin).',
+  '',
+  'Plan:',
+  '1. Withdraw 6 USDsui from NAVI',
+  '2. Swap → 6.002667 USDC',
+  '3. Save USDC into NAVI',
+  '',
+  'Ready to proceed?',
+].join('\n');
+
 const SINGLE_WRITE_PLAN = [
   'Ready to deposit 50 USDC into NAVI savings.',
   '',
@@ -132,6 +157,29 @@ describe('detectBundleConfirm', () => {
     it('matches with thumbs-up emoji', () => {
       const history: Message[] = [userText('plan it'), asstText(PLAN_3OP)];
       expect(detectBundleConfirm('👍', history).matched).toBe(true);
+    });
+
+    it('[1.14.2] matches a 2-op plan with "Shall I proceed?" tail', () => {
+      // Production-observed: session 2 of the 1.14.1 soak. Original
+      // pattern missed this entirely → Haiku → guard_block_continue.
+      const history: Message[] = [
+        userText('Withdraw 3 USDC and send 1 USDC to funkii.sui'),
+        asstText(PLAN_2OP_SHALL_PROCEED),
+      ];
+      const result = detectBundleConfirm('Yes', history);
+      expect(result.matched).toBe(true);
+      expect(result.priorWriteVerbCount).toBe(2);
+      expect(result.reason).toBe('matched');
+    });
+
+    it('[1.14.2] matches a 3-op plan with "Ready to proceed?" tail', () => {
+      const history: Message[] = [
+        userText('withdraw 6 USDsui then swap then save'),
+        asstText(PLAN_3OP_READY_PROCEED),
+      ];
+      const result = detectBundleConfirm('Yes', history);
+      expect(result.matched).toBe(true);
+      expect(result.priorWriteVerbCount).toBe(3);
     });
 
     it('skips intervening user messages and matches the most recent assistant', () => {

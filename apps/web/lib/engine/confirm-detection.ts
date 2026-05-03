@@ -21,8 +21,11 @@
  * Detection rules (all three must hold):
  *   1. Current message is short (≤ 30 chars) and matches the affirmative-
  *      confirmation pattern.
- *   2. The most recent assistant message contains the word "confirm"
- *      (matching the system-prompt-mandated "Confirm to proceed?" tail).
+ *   2. The most recent assistant message contains the word "confirm" OR
+ *      "proceed" — covers both "Confirm to proceed?" and "Shall I
+ *      proceed?" / "Ready to proceed?" phrasings the planner emits.
+ *      (1.14.2: original pattern only matched "confirm" and missed every
+ *      "Shall I proceed?" plan tail in production logs.)
  *   3. The same assistant message mentions ≥ 2 distinct write verbs (the
  *      verbs the system prompt uses to describe Payment Stream legs).
  *
@@ -43,7 +46,7 @@ const CONFIRM_PATTERN =
  */
 const WRITE_VERB_PATTERN = /\b(swap|withdraw|borrow|send|repay|save|deposit|stake|unstake|claim|pay)\b/gi;
 
-const PRIOR_PLAN_MARKER = /\bconfirm\b/i;
+const PRIOR_PLAN_MARKER = /\b(confirm|proceed)\b/i;
 
 interface PriorAssistantTextResult {
   text: string;
