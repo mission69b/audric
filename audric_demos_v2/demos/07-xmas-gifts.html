@@ -45,7 +45,7 @@ const { useState, useEffect } = React;
 
 const PROMPT = "Christmas shopping for the family, max $50 each — Mom (gardening & cooking), Dad (coffee & golf), Emma my sister (indie music), Jake my brother (gaming), and Grandma Rose (herbal tea & old films).";
 
-const THOUGHT = "5 people, 5 budgets of $50 each. I'll run personalised gift searches in parallel — matching each person's interests to a specific product, source from MPP vendors that accept USDC, and verify price + delivery before Dec 25. Once I have the full manifest, I'll request one Payment Stream to purchase all 5 gifts atomically.";
+const THOUGHT = "5 people, 5 budgets of $50 each. I'll run personalised gift searches in parallel — matching each person's interests to a specific product, source from MPP vendors that accept USDC, and verify price + delivery before Dec 25. Once I have the full manifest, I'll request one Payment Intent to purchase all 5 gifts atomically.";
 
 const GIFTS = [
   {
@@ -251,7 +251,7 @@ const Demo7 = () => {
       {step === 8 && (
         <div className="appear" style={{display:'flex',alignItems:'center',gap:10,fontSize:12,color:'var(--blue)',padding:'8px 4px'}}>
           <span className="spin" style={{display:'inline-block'}}><Icon name="spinner" size={14}/></span>
-          <span className="mono pulse" style={{letterSpacing:'.1em'}}>EXECUTING PAYMENT STREAM · 1 PTB · 5 CALLS…</span>
+          <span className="mono pulse" style={{letterSpacing:'.1em'}}>EXECUTING PAYMENT INTENT · 1 PTB · 5 CALLS…</span>
         </div>
       )}
 

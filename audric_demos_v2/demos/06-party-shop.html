@@ -16,7 +16,7 @@
 const { useState, useEffect } = React;
 
 const PROMPT = "Buy everything for my house party this Saturday — balloons, fairy lights, a birthday cake, and a banner. Budget $120.";
-const THOUGHT = "4 items across 3 vendors, all with MPP endpoints. I'll also check for missing essentials — no beverages or serving items on this list. Running parallel price + availability queries, confirming Saturday delivery for each, then compiling a cart. If the total is under $120, I'll generate one Payment Stream to cover all vendors atomically — one signature, one USDC transaction.";
+const THOUGHT = "4 items across 3 vendors, all with MPP endpoints. I'll also check for missing essentials — no beverages or serving items on this list. Running parallel price + availability queries, confirming Saturday delivery for each, then compiling a cart. If the total is under $120, I'll generate one Payment Intent to cover all vendors atomically — one signature, one USDC transaction.";
 
 const CART = [
   { name: 'Balloons × 20 + streamers',         vendor: 'Party City',  price: '$20', detail: 'MPP · same-day · ships Sat' },
@@ -147,7 +147,7 @@ const Demo6 = () => {
       {step === 9 && (
         <div className="appear" style={{display:'flex',alignItems:'center',gap:10,fontSize:12,color:'var(--blue)',padding:'8px 4px'}}>
           <span className="spin" style={{display:'inline-block'}}><Icon name="spinner" size={14}/></span>
-          <span className="mono pulse" style={{letterSpacing:'.1em'}}>EXECUTING PAYMENT STREAM · 1 PTB · 4 CALLS…</span>
+          <span className="mono pulse" style={{letterSpacing:'.1em'}}>EXECUTING PAYMENT INTENT · 1 PTB · 4 CALLS…</span>
         </div>
       )}
 

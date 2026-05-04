@@ -97,7 +97,7 @@ const Demo5 = () => {
           {step>=5 && <ParallelTools tools={tools} active={step>=5} headerLabel="DISPATCHING 5 MPP CALLS · DISCOVERY + QUOTES"/>}
           {step>=6 && (
             <HowIEvaluated tokens="412" model="AUDRIC v2.0" latency="3.4s">
-              5 MPP calls in parallel. Lob quoted $1 print+mail (USPS First-Class) — cheapest tier covers 6×4 cards. Teleflora quoted $45 for Sunday delivery in zip 11201. Total $46.04 — compiling into one Payment Stream PTB.
+              5 MPP calls in parallel. Lob quoted $1 print+mail (USPS First-Class) — cheapest tier covers 6×4 cards. Teleflora quoted $45 for Sunday delivery in zip 11201. Total $46.04 — compiling into one Payment Intent PTB.
             </HowIEvaluated>
           )}
           {step>=6 && (
@@ -117,7 +117,7 @@ const Demo5 = () => {
         <div className="appear d05-permission-grid" style={{display:'grid',gridTemplateColumns:'minmax(0,320px) 1fr',gap:14}}>
           <CardPreview name={name.split(' ')[0]}/>
           <PermissionCard
-            title="APPROVE PAYMENT STREAM · 1 PTB · 3 CALLS"
+            title="APPROVE PAYMENT INTENT · 1 PTB · 3 CALLS"
             subtitle="ATOMIC · USDC"
             rows={[
               {title:'Card design — DALL-E (MPP)', sub:'AI-generated · already previewed', right:'$0.04'},

@@ -15,7 +15,7 @@
 <script type="text/babel">
 const { useState, useEffect } = React;
 const PROMPT = "Swap 10% into SUI, save 50% of my remaining USDC, then send $100 to Mom.";
-const THOUGHT = "Three operations the user wants chained. I'll resolve each: (1) swap $200 USDC → SUI via Cetus best-route. (2) Of the $1,800 remaining USDC, save half — swap $900 to USDsui and deposit into NAVI's 8.4% pool. (3) Send $100 USDC to Mom (resolved from contacts → 0xa3f9…b27c). All three compile into one atomic Payment Stream — if any leg fails, none execute. Total gas sponsored ~$0.005.";
+const THOUGHT = "Three operations the user wants chained. I'll resolve each: (1) swap $200 USDC → SUI via Cetus best-route. (2) Of the $1,800 remaining USDC, save half — swap $900 to USDsui and deposit into NAVI's 8.4% pool. (3) Send $100 USDC to Mom (resolved from contacts → 0xa3f9…b27c). All three compile into one atomic Payment Intent — if any leg fails, none execute. Total gas sponsored ~$0.005.";
 
 const Demo1 = () => {
   const [step, setStep] = useState(0);
@@ -47,7 +47,7 @@ const Demo1 = () => {
         balance={step>=7 ? '$800' : '$2,000'}
         balanceLabel={step>=7 ? 'AVAILABLE $800 · EARNING $11' : 'AVAILABLE $2,000 · EARNING $11'}
         composer={<Composer value={step===0 ? typed : ''}/>}
-        ribbon={<DemoRibbon demoNum={1} demoTitle="ONE SENTENCE, 3 OPS — AGENTIC FINANCE" sentence="One sentence. Three on-chain operations. One atomic Payment Stream." onRestart={restart}/>}
+        ribbon={<DemoRibbon demoNum={1} demoTitle="ONE SENTENCE, 3 OPS — AGENTIC FINANCE" sentence="One sentence. Three on-chain operations. One atomic Payment Intent." onRestart={restart}/>}
       >
         <TaskInitiated/>
         {step >= 1 && <UserBubble>{PROMPT}</UserBubble>}
@@ -59,7 +59,7 @@ const Demo1 = () => {
             {step>=3 && <ParallelTools tools={tools} active={step>=3} headerLabel="DISPATCHING 5 READS · PARALLEL"/>}
             {step>=4 && (
               <HowIEvaluated tokens="368" model="AUDRIC v2.0" latency="2.9s">
-                Three sequential operations, but reads run in parallel. Order matters: swap to SUI first (so the 50% calc is on the remaining USDC, not the total), then save half, then send. Compiled into one Payment Stream — atomic guarantees mean a single failure reverts the whole batch. Gas sponsored, total cost ~$0.005.
+                Three sequential operations, but reads run in parallel. Order matters: swap to SUI first (so the 50% calc is on the remaining USDC, not the total), then save half, then send. Compiled into one Payment Intent — atomic guarantees mean a single failure reverts the whole batch. Gas sponsored, total cost ~$0.005.
               </HowIEvaluated>
             )}
           </>
@@ -68,11 +68,11 @@ const Demo1 = () => {
         {step >= 5 && (
           <>
             <AudricLine>
-              Three operations chained: <strong style={{color:'var(--text)'}}>swap → save → send</strong>. Compiled into one Payment Stream so they execute atomically. If any leg fails, nothing happens. <strong style={{color:'var(--text)'}}>Confirm?</strong>
+              Three operations chained: <strong style={{color:'var(--text)'}}>swap → save → send</strong>. Compiled into one Payment Intent so they execute atomically. If any leg fails, nothing happens. <strong style={{color:'var(--text)'}}>Confirm?</strong>
             </AudricLine>
 
             <PermissionCard
-              title="PERMISSION REQUIRED · 1 PAYMENT STREAM · ATOMIC"
+              title="PERMISSION REQUIRED · 1 PAYMENT INTENT · ATOMIC"
               subtitle="3 OPERATIONS · 1 SIGNATURE"
               rows={[
                 {title:'1 · Swap $200 USDC → SUI',         sub:'Cetus best-route · 0.03% slippage · 212.77 SUI', right:'CETUS'},
