@@ -141,6 +141,15 @@ export function ChatMessage({
   //   3. Caller wired up `onChipDecision` (auth/demo split — unauth
   //      sessions can't dispatch bundles anyway, no need to render).
   // Stops streaming = chips lock once the next assistant turn starts.
+  //
+  // [v0.4 — Refresh-on-expiry] When `onSendMessage` is wired (the
+  // common case — `<UnifiedTimeline>` always passes
+  // `onSendMessage ?? engine.sendMessage`), we plumb a literal
+  // "refresh quote" turn through it as the chip's `onRefresh`. The
+  // backend's plan-context promotion (priorWriteVerbs ≥ 1 +
+  // PRIOR_PLAN_MARKER hit) catches that turn, promotes to Sonnet, and
+  // re-runs swap_quote + prepare_bundle from the prior plan in
+  // context. New `expects_confirm` event surfaces fresh chips below.
   const chipsBlock =
     message.expectsConfirm &&
     onChipDecision &&
@@ -149,6 +158,7 @@ export function ChatMessage({
       <ConfirmChips
         payload={message.expectsConfirm}
         onChipDecision={onChipDecision}
+        onRefresh={onSendMessage ? () => onSendMessage('refresh quote') : undefined}
       />
     ) : null;
 
