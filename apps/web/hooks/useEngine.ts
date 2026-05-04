@@ -238,6 +238,73 @@ export function useEngine({ address, jwt, onToolResult, contacts }: UseEngineOpt
   );
 
   /**
+   * [SPEC 15 Phase 2] Send a chip click as a chat turn. Mirrors
+   * `sendMessage` but adds the `chipDecision` body field that the
+   * chat route's chip-routing block reads to short-circuit the LLM.
+   *
+   * **Wire-format contract** (per `SPEC_15_PHASE2_DESIGN.md` v0.2):
+   *   - value='yes' → message text MUST be a CONFIRM_PATTERN match
+   *     ("Confirm") so a stale-stash mismatch can fall through to
+   *     the regex-admitted text-confirm path.
+   *   - value='no' → message text SHOULD be verb-aligned ("Cancel")
+   *     for chat-history readability. The chat route appends the
+   *     message to the engine ledger as the user turn before
+   *     synthesizing the assistant cancel acknowledgment.
+   *
+   * Auth-gated — chip clicks against an unauth/demo session are
+   * silently ignored (the chat route would reject them anyway because
+   * `saveSession=false` skips the chip-routing block).
+   */
+  const sendChipDecision = useCallback(
+    async (decision: { value: 'yes' | 'no'; forStashId: string }) => {
+      if (!isAuth || !address || !jwt) return;
+      if (!sessionId) return;
+      if (status === 'streaming' || status === 'connecting' || status === 'executing') return;
+      if (!decision.forStashId) return;
+
+      setError(null);
+      lastFailedMessage.current = null;
+      retryCountRef.current = 0;
+      hasReceivedContent.current = false;
+      turnCompleteSeenRef.current = false;
+      pendingActionSeenRef.current = false;
+
+      const messageText = decision.value === 'yes' ? 'Confirm' : 'Cancel';
+      currentReplayTextRef.current = messageText;
+
+      const userMsg: EngineChatMessage = {
+        id: nextMsgId(),
+        role: 'user',
+        content: messageText,
+        timestamp: Date.now(),
+      };
+      const assistantMsg: EngineChatMessage = {
+        id: nextMsgId(),
+        role: 'assistant',
+        content: '',
+        timestamp: Date.now(),
+        tools: [],
+        isStreaming: true,
+      };
+      streamingMsgRef.current = assistantMsg.id;
+      setMessages((prev) => [...prev, userMsg, assistantMsg]);
+
+      await attemptStream('/api/engine/chat', {
+        message: messageText,
+        address,
+        sessionId: sessionId ?? undefined,
+        chipDecision: {
+          via: 'chip',
+          value: decision.value,
+          forStashId: decision.forStashId,
+        },
+      });
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [address, jwt, sessionId, status, isAuth],
+  );
+
+  /**
    * Resume the engine after a pending action is resolved.
    * Opens a new SSE stream to /api/engine/resume with the tool result.
    */
@@ -818,6 +885,48 @@ export function useEngine({ address, jwt, onToolResult, contacts }: UseEngineOpt
       return;
     }
 
+    // [SPEC 15 Phase 2] Audric-only `expects_confirm` event — emitted
+    // from the chat route's `case 'turn_complete'` decorator just
+    // before the engine's `turn_complete` SSE forwards. Stamps the
+    // streaming assistant message with chip data so `<ChatMessage>`
+    // can render `<ConfirmChips />` underneath. Frontend-render gating
+    // happens in `<ChatMessage>` (env flag check) — at the reducer
+    // layer we always stash the payload so the field stays accurate
+    // for telemetry / debugging even when chips are flag-OFF.
+    if (eventType === 'expects_confirm') {
+      try {
+        const parsed = JSON.parse(dataStr) as {
+          variant?: string;
+          stashId?: unknown;
+          expiresAt?: unknown;
+          stepCount?: unknown;
+        };
+        // Defensive shape validation — server is the source of truth
+        // but we don't want a malformed event to crash the reducer.
+        const variant = parsed.variant;
+        const stashId = parsed.stashId;
+        const stepCount = parsed.stepCount;
+        if (
+          (variant === 'commit' || variant === 'acknowledge' || variant === 'choice') &&
+          typeof stashId === 'string' &&
+          stashId.length > 0 &&
+          typeof stepCount === 'number'
+        ) {
+          const expiresAt = typeof parsed.expiresAt === 'number' ? parsed.expiresAt : undefined;
+          const msgId = streamingMsgRef.current;
+          if (!msgId) return;
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === msgId
+                ? { ...m, expectsConfirm: { variant, stashId, expiresAt, stepCount } }
+                : m,
+            ),
+          );
+        }
+      } catch { /* ignore — non-fatal */ }
+      return;
+    }
+
     let event: SSEEvent;
     try {
       event = JSON.parse(dataStr) as SSEEvent;
@@ -1217,6 +1326,7 @@ export function useEngine({ address, jwt, onToolResult, contacts }: UseEngineOpt
     // via `<UnifiedTimeline>`) prefer this over the raw env-var read.
     harnessVersion,
     sendMessage,
+    sendChipDecision,
     resolveAction,
     cancel,
     retry,

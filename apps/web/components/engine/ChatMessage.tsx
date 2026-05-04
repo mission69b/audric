@@ -6,8 +6,10 @@ import { ThinkingState } from './ThinkingState';
 import { ReasoningTimeline } from './ReasoningTimeline';
 import { LegacyReasoningRender } from './LegacyReasoningRender';
 import { RetryInterruptedTurn } from './RetryInterruptedTurn';
+import { ConfirmChips } from './ConfirmChips';
 import type { DenyReason } from './PermissionCard';
 import { currentHarnessVersion, type HarnessVersion } from '@/lib/interactive-harness';
+import { isConfirmChipsEnabled } from '@/lib/confirm-chips';
 import { useVoiceModeContext } from '@/components/dashboard/VoiceModeContext';
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -77,6 +79,14 @@ interface ChatMessageProps {
    */
   onRegenerate?: (action: PendingAction) => void;
   regeneratingAttemptIds?: ReadonlySet<string>;
+  /**
+   * [SPEC 15 Phase 2 commit 2] Chip click handler — invoked when the
+   * user taps Confirm / Cancel on a multi-write plan. Wired up by
+   * `<UnifiedTimeline>` from `engine.sendChipDecision`. When omitted
+   * (e.g. unauth/demo sessions), `<ConfirmChips />` does not render
+   * even if `message.expectsConfirm` is set + the env flag is on.
+   */
+  onChipDecision?: (decision: { value: 'yes' | 'no'; forStashId: string }) => void;
 }
 
 export function ChatMessage({
@@ -90,6 +100,7 @@ export function ChatMessage({
   pinnedHarnessVersion,
   onRegenerate,
   regeneratingAttemptIds,
+  onChipDecision,
 }: ChatMessageProps) {
   if (message.role === 'user') {
     return (
@@ -123,21 +134,42 @@ export function ChatMessage({
     message.timeline !== undefined &&
     message.timeline.length > 0;
 
+  // [SPEC 15 Phase 2 commit 2] Chip render is shared across v2 and
+  // legacy assistant render paths. Three gates, all required:
+  //   1. Server emitted `expects_confirm` for this message → payload set.
+  //   2. Frontend env flag NEXT_PUBLIC_CONFIRM_CHIPS_V1 is "1"/"true".
+  //   3. Caller wired up `onChipDecision` (auth/demo split — unauth
+  //      sessions can't dispatch bundles anyway, no need to render).
+  // Stops streaming = chips lock once the next assistant turn starts.
+  const chipsBlock =
+    message.expectsConfirm &&
+    onChipDecision &&
+    isConfirmChipsEnabled() &&
+    !message.isStreaming ? (
+      <ConfirmChips
+        payload={message.expectsConfirm}
+        onChipDecision={onChipDecision}
+      />
+    ) : null;
+
   if (useNewTimeline) {
     const hasTools = message.tools && message.tools.length > 0;
     return (
-      <ChatMessageV2
-        message={message}
-        hasTools={!!hasTools}
-        onActionResolve={onActionResolve}
-        onSendMessage={onSendMessage}
-        contacts={contacts}
-        walletAddress={walletAddress}
-        recentUserText={recentUserText}
-        shouldAutoApprove={shouldAutoApprove}
-        onRegenerate={onRegenerate}
-        regeneratingAttemptIds={regeneratingAttemptIds}
-      />
+      <>
+        <ChatMessageV2
+          message={message}
+          hasTools={!!hasTools}
+          onActionResolve={onActionResolve}
+          onSendMessage={onSendMessage}
+          contacts={contacts}
+          walletAddress={walletAddress}
+          recentUserText={recentUserText}
+          shouldAutoApprove={shouldAutoApprove}
+          onRegenerate={onRegenerate}
+          regeneratingAttemptIds={regeneratingAttemptIds}
+        />
+        {chipsBlock}
+      </>
     );
   }
 
@@ -167,6 +199,7 @@ export function ChatMessage({
           onRetry={onSendMessage}
         />
       )}
+      {chipsBlock}
     </>
   );
 }

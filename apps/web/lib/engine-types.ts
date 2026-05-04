@@ -367,6 +367,46 @@ export interface EngineChatMessage {
    * shape without re-running the classifier.
    */
   harnessRationale?: string;
+  /**
+   * [SPEC 15 Phase 2 commit 2 / 2026-05-04] Set when this assistant
+   * turn's SSE stream included an audric-only `expects_confirm` event
+   * — i.e. the message proposed a multi-write Payment Stream plan
+   * AND a fresh stash exists in Redis AND the final text matches the
+   * plan-confirm marker. `<ChatMessage>` reads this to decide whether
+   * to render `<ConfirmChips />` underneath the message body.
+   *
+   * Stamped from `processSSEChunk`'s `expects_confirm` handler — see
+   * `apps/web/lib/engine/expects-confirm-decorator.ts` for the
+   * server-side emission gate. `forStashId` is the bundleId the
+   * server stashed; chip clicks echo it back so the chat route can
+   * detect ghost-dispatch races (R7).
+   *
+   * `variant` is reserved for future multi-step confirmation shapes
+   * (`acknowledge`, `choice`); v1 only emits `'commit'`.
+   */
+  expectsConfirm?: ExpectsConfirmPayload;
+}
+
+/**
+ * [SPEC 15 Phase 2] Payload mirroring the audric-only `expects_confirm`
+ * SSE event shape from `apps/web/lib/engine/sse-types.ts`. Kept as a
+ * client-side type to avoid coupling the React tree to the server
+ * SSE module — both files agree on the wire shape.
+ */
+export interface ExpectsConfirmPayload {
+  /** Always `'commit'` in v1; reserved for `acknowledge` / `choice` later. */
+  variant: 'commit' | 'acknowledge' | 'choice';
+  /** The Redis stash bundleId — echoed back on chip click for R7 detection. */
+  stashId: string;
+  /**
+   * Unix ms when the underlying swap quote goes stale, when the bundle
+   * contains a `swap_execute` step. Undefined for non-swap bundles.
+   * `<ConfirmChips />` disables both buttons + shows "Quote expired"
+   * once `Date.now() >= expiresAt`.
+   */
+  expiresAt?: number;
+  /** Mirrored on the SSE event for telemetry — `<ConfirmChips />` ignores it today. */
+  stepCount: number;
 }
 
 export interface ToolExecution {

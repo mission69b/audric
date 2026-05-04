@@ -472,6 +472,7 @@ export function UnifiedTimeline({
                 pinnedHarnessVersion={engine.harnessVersion}
                 onRegenerate={engine.handleRegenerate}
                 regeneratingAttemptIds={engine.regeneratingAttemptIds}
+                onChipDecision={engine.sendChipDecision}
               />
             </div>
           );
