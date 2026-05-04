@@ -159,6 +159,69 @@ export function isAffirmativeConfirmReply(message: string): boolean {
   return CONFIRM_PATTERN.test(trimmed);
 }
 
+/**
+ * [SPEC 15 Phase 1 / 2026-05-04] Plan-context detection — should we
+ * promote Haiku-low → Sonnet-medium for THIS user reply, based on
+ * the SHAPE OF THE PRIOR ASSISTANT TURN, not the user's message?
+ *
+ * Promotes whenever the most recent assistant message is a multi-write
+ * Payment Stream plan (≥ 2 distinct write verbs + a "confirm"/"proceed"
+ * tail), regardless of what the user typed in response. The fast-path
+ * bypass (`isAffirmativeConfirmReply`) handles the cheap happy-case in
+ * 108 ms; this detector is the safety net for everything else —
+ * modifications, voice transcripts, multi-language confirms, typos
+ * the regex doesn't cover.
+ *
+ * Why this DROPPED the regex check that `detectBundleConfirm` keeps:
+ *   We were chasing the long tail of human language with regex
+ *   extensions (Fix 1 added "execute" / "exec" / "run" / "fire" /
+ *   "launch" / "confimed" after a 69-second Haiku-lean ramble in
+ *   prod — session `s_1777843407792_2b7fc088a8fa` @ 21:28:09). The
+ *   next user types "vamos", "do it bro", "proceed it", "let's go",
+ *   "sí", or speaks the confirm into voice mode — same bug. The
+ *   structural answer is: when the prior assistant turn is a plan,
+ *   ALWAYS use Sonnet for the next turn — Sonnet handles language
+ *   variance natively, no regex maintenance.
+ *
+ *   The fast-path bypass keeps the strict regex (false positives
+ *   there = wrongly dispatched bundle = bad). Promotion can be
+ *   liberal because the worst case is one extra Sonnet-medium turn
+ *   (~$0.03 vs Haiku, negligible) and Sonnet handles unrelated
+ *   messages gracefully whereas Haiku-lean rambles for 7 K tokens.
+ *
+ * Detection rules (both must hold):
+ *   1. The most recent assistant message contains "confirm" OR
+ *      "proceed" (covers "Confirm to proceed?", "Shall I proceed?",
+ *      "Ready to proceed?" — same marker `detectBundleConfirm` uses).
+ *   2. The same assistant message mentions ≥ 2 distinct write verbs.
+ *
+ * Pure function — no side effects, no LLM calls. Cheap to run on
+ * every turn (the engine-factory only calls it when baseEffort is
+ * already 'low', so single-write replies and chitchat short-circuit
+ * upstream).
+ */
+export function detectPriorPlanContext(history: Message[]): BundleConfirmDetection {
+  if (history.length === 0) {
+    return { matched: false, priorWriteVerbCount: 0, reason: 'no-history' };
+  }
+
+  const prior = findMostRecentAssistantText(history);
+  if (!prior) {
+    return { matched: false, priorWriteVerbCount: 0, reason: 'no-prior-assistant' };
+  }
+
+  if (!PRIOR_PLAN_MARKER.test(prior.text)) {
+    return { matched: false, priorWriteVerbCount: 0, reason: 'no-confirm-marker' };
+  }
+
+  const verbCount = countDistinctWriteVerbs(prior.text);
+  if (verbCount < 2) {
+    return { matched: false, priorWriteVerbCount: verbCount, reason: 'fewer-than-two-writes' };
+  }
+
+  return { matched: true, priorWriteVerbCount: verbCount, reason: 'matched' };
+}
+
 export const __testOnly__ = {
   CONFIRM_PATTERN,
   WRITE_VERB_PATTERN,

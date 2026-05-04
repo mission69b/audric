@@ -1,7 +1,7 @@
 /**
  * spec-consistency.ts — Audric Harness Correctness Spec v1.4 / Item 5
  *
- * Runs sixteen assertions against the live `@t2000/sdk` + `@t2000/engine`
+ * Runs seventeen assertions against the live `@t2000/sdk` + `@t2000/engine`
  * exports and the audric-side `STATIC_SYSTEM_PROMPT` to guarantee that the
  * values documented in the spec, encoded in the SDK, and surfaced to the
  * LLM never silently drift apart.
@@ -12,7 +12,7 @@
  *   2. Runtime: imported by `engine-factory.ts` so a dev-mode boot trips a
  *      hard error and a prod-mode boot logs the violation. See `runStartupCheck`.
  *
- * The sixteen assertions (originally nine per spec line 1681 + plan Day 5;
+ * The seventeen assertions (originally nine per spec line 1681 + plan Day 5;
  * grown to track new canonical sources and load-bearing prompt rules):
  *   - 6 fee constants — SAVE_FEE_BPS=10n, BORROW_FEE_BPS=5n,
  *     OVERLAY_FEE_RATE=0.001, and three "no fee" guards
@@ -25,6 +25,8 @@
  *     DEFI_UNAVAILABLE_RULE, FAILED_WRITE_NARRATION_RULE.
  *   - 4 canonical source-of-truth exports — getPortfolio, getTokenPrices,
  *     getTransactionHistory, getRates (per `single-source-of-truth.mdc`).
+ *   - 1 plan-context promotion export — `detectPriorPlanContext` from
+ *     `./confirm-detection` (SPEC 15 Phase 1, May 2026).
  */
 import * as sdk from '@t2000/sdk';
 import { READ_TOOLS, WRITE_TOOLS } from '@t2000/engine';
@@ -38,6 +40,13 @@ import { env } from '@/lib/env';
 import * as canonicalPortfolio from '@/lib/portfolio';
 import * as canonicalHistory from '@/lib/transaction-history';
 import * as canonicalRates from '@/lib/rates';
+
+// [SPEC 15 Phase 1] Assertion source — `detectPriorPlanContext` is the
+// load-bearing function for plan-context promotion (engine-factory.ts
+// drops Haiku-low → Sonnet-medium based on its return value). If a
+// future PR renames or removes it, the engine-factory will fail to
+// import; this assertion adds a clearer error message before that.
+import * as confirmDetection from './confirm-detection';
 
 // `sdk` exports `SAVE_FEE_BPS`, `BORROW_FEE_BPS`, and `OVERLAY_FEE_RATE`
 // natively as of @t2000/sdk 0.41.0. Read the "no fee" guards through an
@@ -228,6 +237,27 @@ export function runSpecConsistencyChecks(): SpecConsistencyResult {
     message:
       '`getRates` must remain exported from `@/lib/rates` — `/api/rates` ' +
       'and the engine `rates_info` tool depend on it.',
+  });
+
+  // ── 1 plan-context promotion export assertion ──────────────────────────
+  // SPEC 15 Phase 1 (May 2026 / 2026-05-04): `detectPriorPlanContext` is
+  // the load-bearing function for promoting Haiku-low → Sonnet-medium
+  // based on prior-turn shape (rather than the user's message text via
+  // `CONFIRM_PATTERN`, which is the regex Fix 1 incrementally extended).
+  // engine-factory.ts depends on it; if a future refactor renames or
+  // removes the export the engine factory will fail to import — this
+  // assertion adds a clearer pre-boot error message before that happens.
+  assertions.push({
+    id: 'CONFIRM_DETECTION_PLAN_CONTEXT',
+    pass: typeof confirmDetection.detectPriorPlanContext === 'function',
+    message:
+      '`detectPriorPlanContext` must remain exported from ' +
+      '`./confirm-detection`. SPEC 15 Phase 1 (plan-context promotion) ' +
+      'depends on this function; engine-factory.ts uses it for the ' +
+      'Haiku → Sonnet promotion path independently of CONFIRM_PATTERN. ' +
+      'Removing it re-opens the regression where short replies after ' +
+      'a multi-write Payment Stream plan stay on Haiku-lean (which ' +
+      'rambles 7K tokens / 69s when the regex misses — see SPEC 15 v0.1).',
   });
 
   return {

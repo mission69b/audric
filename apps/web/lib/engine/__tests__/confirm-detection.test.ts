@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { Message } from '@t2000/engine';
-import { detectBundleConfirm, __testOnly__ } from '../confirm-detection';
+import { detectBundleConfirm, detectPriorPlanContext, __testOnly__ } from '../confirm-detection';
 
 const { CONFIRM_PATTERN, countDistinctWriteVerbs } = __testOnly__;
 
@@ -337,6 +337,183 @@ describe('detectBundleConfirm', () => {
       const result = detectBundleConfirm('Confirmed', history);
       expect(result.matched).toBe(false);
       expect(result.reason).toBe('no-confirm-marker');
+    });
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// [SPEC 15 Phase 1 / 2026-05-04] detectPriorPlanContext — promotion based
+// on prior-turn shape, not user message content. The structural answer to
+// the regex-chasing trap that Fix 1 (CONFIRM_PATTERN extension) was
+// incrementally patching.
+// ─────────────────────────────────────────────────────────────────────────
+
+describe('detectPriorPlanContext', () => {
+  describe('positive cases (should promote regardless of user message)', () => {
+    it('matches a 3-op plan in history (no message argument required)', () => {
+      const history: Message[] = [
+        userText('withdraw 5 USDC, convert to USDsui, save it'),
+        asstText(PLAN_3OP),
+      ];
+      const result = detectPriorPlanContext(history);
+      expect(result.matched).toBe(true);
+      expect(result.priorWriteVerbCount).toBe(3);
+      expect(result.reason).toBe('matched');
+    });
+
+    it('matches a 2-op plan with "Confirm to proceed?" tail', () => {
+      const history: Message[] = [
+        userText('withdraw and send'),
+        asstText(PLAN_2OP),
+      ];
+      expect(detectPriorPlanContext(history).matched).toBe(true);
+    });
+
+    it('matches a 2-op plan with "Shall I proceed?" tail', () => {
+      const history: Message[] = [
+        userText('Withdraw 3 USDC and send 1 USDC to funkii.sui'),
+        asstText(PLAN_2OP_SHALL_PROCEED),
+      ];
+      expect(detectPriorPlanContext(history).matched).toBe(true);
+    });
+
+    it('matches a 3-op plan with "Ready to proceed?" tail', () => {
+      const history: Message[] = [
+        userText('withdraw 6 USDsui then swap then save'),
+        asstText(PLAN_3OP_READY_PROCEED),
+      ];
+      expect(detectPriorPlanContext(history).matched).toBe(true);
+    });
+
+    it('skips intervening user messages and finds the most recent assistant', () => {
+      const history: Message[] = [
+        userText('first request'),
+        asstText('Some chitchat without a write plan.'),
+        userText('actually withdraw 5 then send 1'),
+        asstText(PLAN_2OP),
+      ];
+      expect(detectPriorPlanContext(history).matched).toBe(true);
+    });
+  });
+
+  describe('negative cases (should NOT promote)', () => {
+    it('rejects empty history', () => {
+      const result = detectPriorPlanContext([]);
+      expect(result.matched).toBe(false);
+      expect(result.reason).toBe('no-history');
+    });
+
+    it('rejects when there is no prior assistant turn', () => {
+      const history: Message[] = [userText('first user message')];
+      expect(detectPriorPlanContext(history).reason).toBe('no-prior-assistant');
+    });
+
+    it('rejects when prior assistant has no text content', () => {
+      const history: Message[] = [
+        userText('hello'),
+        { role: 'assistant', content: [{ type: 'tool_use', id: 't1', name: 'balance_check', input: {} }] },
+      ];
+      expect(detectPriorPlanContext(history).reason).toBe('no-prior-assistant');
+    });
+
+    it('rejects when prior assistant message lacks the "confirm/proceed" marker', () => {
+      const planNoConfirm = [
+        'Plan:',
+        '1. Withdraw 5 USDC',
+        '2. Swap to USDsui',
+        '3. Save it',
+      ].join('\n');
+      const history: Message[] = [asstText(planNoConfirm)];
+      expect(detectPriorPlanContext(history).reason).toBe('no-confirm-marker');
+    });
+
+    it('rejects single-write plans (Haiku handles those fine)', () => {
+      const history: Message[] = [asstText(SINGLE_WRITE_PLAN)];
+      const result = detectPriorPlanContext(history);
+      expect(result.matched).toBe(false);
+      expect(result.reason).toBe('fewer-than-two-writes');
+      expect(result.priorWriteVerbCount).toBe(1);
+    });
+
+    it('rejects purely informational replies', () => {
+      const history: Message[] = [
+        userText('whats my balance'),
+        asstText('Your wallet has 10 USDC and 1.2 SUI. Net worth: $12.30'),
+      ];
+      expect(detectPriorPlanContext(history).reason).toBe('no-confirm-marker');
+    });
+  });
+
+  describe('integration story — what differs from detectBundleConfirm', () => {
+    // These tests are the load-bearing rationale for SPEC 15 Phase 1: a
+    // shared history where detectPriorPlanContext promotes but
+    // detectBundleConfirm doesn't, because the user message content is
+    // irrelevant to plan-context promotion.
+
+    const sharedHistory: Message[] = [
+      userText('swap 0.5 USDC to USDsui, save the USDsui, send 0.05 USDC to funkii.sui'),
+      asstText(PLAN_3OP),
+    ];
+
+    it.each([
+      // Multi-language affirmatives — regex misses every one of these
+      'sí',
+      'vamos',
+      'dale',
+      'ja',
+      'はい',
+      // Casual / colloquial — regex misses
+      'do it bro',
+      'send it',
+      "let's go",
+      'yolo',
+      // Voice-to-text artifacts (ASR adds filler words)
+      'yeah ah do it',
+      'yes uh fire it',
+      // Typos NOT in the Fix 1 set (which only added "confimed")
+      'confurm',
+      'execte',
+      'procede',
+      // Emoji-only that's NOT 👍 (which IS in Fix 1)
+      '✅',
+      '🚀',
+      // Qualified yeses — too long for the regex (> 30 chars)
+      'yes please change leg 3 to 0.1 USDC instead',
+      'ok do it now and send the rest later',
+    ])('promotes when user typed "%s" (regex misses, plan-context catches)', (msg) => {
+      // detectBundleConfirm — gated on the regex — does NOT match.
+      expect(detectBundleConfirm(msg, sharedHistory).matched).toBe(false);
+      // detectPriorPlanContext — gated only on prior turn shape — DOES match.
+      expect(detectPriorPlanContext(sharedHistory).matched).toBe(true);
+    });
+
+    it('promotes even when user message is empty', () => {
+      // Edge case: the engine-factory caller fans out to detectPriorPlanContext
+      // independently of opts.message, so an empty message should still
+      // promote when the prior turn is a plan. Sonnet handles empty input
+      // gracefully (asks for clarification) — Haiku-lean rambles.
+      expect(detectPriorPlanContext(sharedHistory).matched).toBe(true);
+    });
+
+    it('agrees with detectBundleConfirm when the regex DOES match', () => {
+      // The fast-path bypass already dispatches in 108ms when the regex
+      // matches; promotion is redundant in that case. But it should still
+      // fire (and emit telemetry with matched_regex=true) so dashboards
+      // can split "regex caught it" vs "plan-context caught it" cohorts.
+      expect(detectBundleConfirm('Confirmed', sharedHistory).matched).toBe(true);
+      expect(detectPriorPlanContext(sharedHistory).matched).toBe(true);
+    });
+
+    it('rejects in lockstep with detectBundleConfirm when there is no plan in history', () => {
+      // Both detectors should agree: with no multi-write plan in the
+      // prior turn, neither should promote. Prevents "plan-context
+      // promotes everything liberally" from over-applying to chitchat.
+      const noPlan: Message[] = [
+        userText('whats my balance'),
+        asstText('Your wallet has 10 USDC and 1.2 SUI. Net worth: $12.30'),
+      ];
+      expect(detectBundleConfirm('yes', noPlan).matched).toBe(false);
+      expect(detectPriorPlanContext(noPlan).matched).toBe(false);
     });
   });
 });

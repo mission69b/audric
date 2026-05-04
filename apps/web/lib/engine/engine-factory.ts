@@ -36,7 +36,8 @@ import { GOAL_TOOLS } from './goal-tools';
 import { ADVICE_TOOLS } from './advice-tool';
 import { audricSaveContactTool, audricListContactsTool } from './contact-tools';
 import { audricPrepareBundleTool } from './prepare-bundle-tool';
-import { detectBundleConfirm } from './confirm-detection';
+import { detectPriorPlanContext, isAffirmativeConfirmReply } from './confirm-detection';
+import { emitPlanContextPromoted } from './plan-context-metrics';
 import { prisma } from '@/lib/prisma';
 import { getPortfolio, getTokenPrices } from '@/lib/portfolio';
 import {
@@ -590,16 +591,34 @@ export async function createEngine(
   // ONE write at a time, costing a guard-block + re-quote round-trip
   // before the atomic bundle lands. Promoting to `medium` (Sonnet) lets
   // the model that planned the bundle be the one that emits it.
+  //
+  // [SPEC 15 Phase 1 / 2026-05-04] Promotion now decides on the SHAPE OF
+  // THE PRIOR ASSISTANT TURN, not the user's message text. The fast-path
+  // bypass (`isAffirmativeConfirmReply`) keeps the strict regex; this
+  // gate is liberal because the worst case (false positive) is one
+  // wasted Sonnet-medium turn (~$0.03), and the failure case it prevents
+  // — Haiku-lean rambling 7 K tokens for 69 s on "vamos" / "do it bro" /
+  // a voice transcript / a typo Fix 1's regex doesn't cover — is much
+  // worse. Telemetry tag `matched_regex` distinguishes whether Fix 1's
+  // pattern would have caught the message; watching `matched_regex=false`
+  // over a 24h window quantifies what Phase 1 catches that Fix 1 misses.
   let effort = baseEffort;
   let confirmPromoted = false;
-  if (baseEffort === 'low' && opts.message && opts.session?.messages) {
-    const detection = detectBundleConfirm(opts.message, opts.session.messages);
+  if (baseEffort === 'low' && opts.session?.messages) {
+    const detection = detectPriorPlanContext(opts.session.messages);
     if (detection.matched) {
       effort = 'medium';
       confirmPromoted = true;
+      const userMessage = opts.message ?? '';
+      const matchedRegex = userMessage.length > 0 && isAffirmativeConfirmReply(userMessage);
       console.log(
-        `[engine-factory] confirm-of-bundle detected → promoting low → medium (priorWriteVerbs=${detection.priorWriteVerbCount}, msg="${opts.message.slice(0, 30)}")`,
+        `[engine-factory] plan-context detected → promoting low → medium (priorWriteVerbs=${detection.priorWriteVerbCount}, matchedRegex=${matchedRegex}, msg="${userMessage.slice(0, 30)}")`,
       );
+      emitPlanContextPromoted({
+        message: userMessage,
+        matchedRegex,
+        priorWriteVerbCount: detection.priorWriteVerbCount,
+      });
     }
   }
 
@@ -615,7 +634,7 @@ export async function createEngine(
   // operator skimming a turn can see WHY without re-running classify.
   const harnessShape = harnessShapeForEffort(effort);
   const harnessRationale = confirmPromoted
-    ? `confirm-of-bundle promoted low → medium`
+    ? `plan-context promoted low → medium`
     : buildHarnessRationale({
         effort,
         matchedRecipeName: matchedRecipe?.name,
