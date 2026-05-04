@@ -242,10 +242,10 @@ setTimeout(()=>{
     let t=0; function at(ms,fn){ setTimeout(fn,ms); }
 
     // Audric asks for delivery address
-    at(t+=700, ()=> append(makeAudricMsg('Got it! To arrange the flower delivery, I\'ll need your Mom\'s delivery address. What is it?','')));
+    at(t+=900, ()=> append(makeAudricMsg('Got it! To arrange the flower delivery, I\'ll need your Mom\'s delivery address. What is it?','')));
 
     // User provides address
-    at(t+=1500, ()=>{
+    at(t+=2000, ()=>{
       typeChatInput(ADDR_RESP, ()=>{
         append(makeUserMsg(ADDR_RESP));
 
@@ -253,28 +253,28 @@ setTimeout(()=>{
         let thinkEl;
         at2(t2+=300, ()=>{ thinkEl=makeThinking(); append(thinkEl); });
 
-        at2(t2+=700, ()=>{
+        at2(t2+=900, ()=>{
           const r=makeReasoningAcc('Address: 42 Biscayne Blvd, Miami FL. I\'ll call DALL-E for a personalised card design, Lob for print &amp; mail, and FlowerFast for local delivery. Running services via MPP.','52 tokens');
           append(r);
         });
 
-        at2(t2+=500, ()=>{ fadeOut(thinkEl, ()=>{
+        at2(t2+=600, ()=>{ fadeOut(thinkEl, ()=>{
           const a=makeToolAcc('🎨','mpp_call','DALL-E · $0.04','<div class="result-card"><div class="rc-header"><span>Birthday card designed</span></div><div class="rc-row"><span class="rc-label">Style</span><span class="rc-value">Floral watercolour · personalised</span></div></div>');
           append(a).then(()=>setTimeout(()=>a.expand(),200));
         }); });
 
         // Card preview
-        at2(t2+=1000, ()=>{
+        at2(t2+=1300, ()=>{
           const prev=document.createElement('div'); prev.className='card-preview';
           prev.innerHTML=`<div class="card-img">🌸<div class="card-caption">Happy Birthday, Mom 🎂</div></div><div class="card-meta">5×7 glossy · USPS First Class · Arrives Sunday · via Lob</div>`;
           append(prev);
         });
 
-        at2(t2+=800, ()=>{ const a=makeToolAcc('📮','mpp_call','Lob · $1.00','<div class="result-card"><div class="rc-header"><span>Print + mail queued</span></div><div class="rc-row"><span class="rc-label">Delivery</span><span class="rc-value">USPS First Class · Sunday arrival</span></div><div class="rc-row"><span class="rc-label">Address</span><span class="rc-value" style="font-size:12px">42 Biscayne Blvd, Miami FL 33132</span></div></div>'); append(a).then(()=>setTimeout(()=>a.expand(),200)); });
-        at2(t2+=900, ()=>{ const a=makeToolAcc('🌷','mpp_call','FlowerFast · $50.00','<div class="result-card"><div class="rc-header"><span>Bouquet reserved</span></div><div class="rc-row"><span class="rc-label">Arrangement</span><span class="rc-value">Pink roses &amp; lilies</span></div><div class="rc-row"><span class="rc-label">Delivery</span><span class="rc-value">Sunday 10am–2pm</span></div><div class="rc-row"><span class="rc-label">Address</span><span class="rc-value" style="font-size:12px">42 Biscayne Blvd, Miami FL</span></div></div>'); append(a).then(()=>setTimeout(()=>a.expand(),200)); });
+        at2(t2+=1000, ()=>{ const a=makeToolAcc('📮','mpp_call','Lob · $1.00','<div class="result-card"><div class="rc-header"><span>Print + mail queued</span></div><div class="rc-row"><span class="rc-label">Delivery</span><span class="rc-value">USPS First Class · Sunday arrival</span></div><div class="rc-row"><span class="rc-label">Address</span><span class="rc-value" style="font-size:12px">42 Biscayne Blvd, Miami FL 33132</span></div></div>'); append(a).then(()=>setTimeout(()=>a.expand(),200)); });
+        at2(t2+=1200, ()=>{ const a=makeToolAcc('🌷','mpp_call','FlowerFast · $50.00','<div class="result-card"><div class="rc-header"><span>Bouquet reserved</span></div><div class="rc-row"><span class="rc-label">Arrangement</span><span class="rc-value">Pink roses &amp; lilies</span></div><div class="rc-row"><span class="rc-label">Delivery</span><span class="rc-value">Sunday 10am–2pm</span></div><div class="rc-row"><span class="rc-label">Address</span><span class="rc-value" style="font-size:12px">42 Biscayne Blvd, Miami FL</span></div></div>'); append(a).then(()=>setTimeout(()=>a.expand(),200)); });
 
         // MPP chain card
-        at2(t2+=1100, ()=>{
+        at2(t2+=1400, ()=>{
           const card=document.createElement('div'); card.className='mpp-card';
           card.innerHTML=`
             <div class="mpp-head"><span class="mpp-head-lbl">3 services · 1 payment</span><span class="mpp-head-sub">Machine Payment Protocol</span></div>
@@ -291,7 +291,7 @@ setTimeout(()=>{
             confirmBtnEl=document.getElementById('confirm-btn');
             confirmBtnEl.addEventListener('click', doConfirm);
             payReady=true; $('hint').classList.add('show');
-            setTimeout(doConfirm, 3500);
+            setTimeout(doConfirm, 4600);
           });
         });
       });

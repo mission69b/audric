@@ -32,7 +32,7 @@ const Demo6 = () => {
 
   // steps: 0 type · 1 sent · 2 thinking · 3 querying · 4 how-evaluated · 5 proactive-insight · 6 cart+line · 7 ptb · 8 permission · 9 executing · 10 done
   useEffect(() => {
-    const delays = { 0: PROMPT.length * 20 + 500, 1: 700, 2: 1800, 3: 4800, 4: 800, 5: 1400, 6: 1000, 7: 900 };
+    const delays = { 0: PROMPT.length * 20 + 500, 1: 900, 2: 2300, 3: 6200, 4: 1000, 5: 1800, 6: 1300, 7: 1200 };
     const d = delays[step]; if (d == null) return;
     const t = setTimeout(() => setStep(s => s + 1), d);
     return () => clearTimeout(t);
@@ -43,16 +43,16 @@ const Demo6 = () => {
 
   // Auto-confirm order after 3s (mirrors demo 03/04 review pattern)
   useEffect(() => {
-    if (step === 8) { const t = setTimeout(approve, 3000); return () => clearTimeout(t); }
+    if (step === 8) { const t = setTimeout(approve, 3900); return () => clearTimeout(t); }
   }, [step]);
 
   const tools = [
-    { glyph: '🎈', label: 'PARTY CITY MPP',  finishAt: 900,  result: 'balloons × 20 + streamers · $20 · ships Sat' },
-    { glyph: '💡', label: 'AMAZON MPP',       finishAt: 1500, result: 'fairy lights 10m · $24 · Prime Sat' },
-    { glyph: '🎂', label: 'CAKEBOSS MPP',     finishAt: 2400, result: 'custom cake 10-inch · $55 · pickup Sat 10am' },
-    { glyph: '🎉', label: 'AMAZON MPP',       finishAt: 3000, result: '"Happy Birthday" banner · $9 · Prime Sat' },
-    { glyph: '🛒', label: 'WALMART MPP',       finishAt: 3600, result: 'Pepsi × 6, water × 6, cups + plates · $11 · same-day Sat' },
-    { glyph: '📦', label: 'DELIVERY CONFIRM', finishAt: 4500, result: 'all 4 vendors confirm Saturday ✓' },
+    { glyph: '🎈', label: 'PARTY CITY MPP',  finishAt: 1200,  result: 'balloons × 20 + streamers · $20 · ships Sat' },
+    { glyph: '💡', label: 'AMAZON MPP',       finishAt: 2000, result: 'fairy lights 10m · $24 · Prime Sat' },
+    { glyph: '🎂', label: 'CAKEBOSS MPP',     finishAt: 3100, result: 'custom cake 10-inch · $55 · pickup Sat 10am' },
+    { glyph: '🎉', label: 'AMAZON MPP',       finishAt: 3900, result: '"Happy Birthday" banner · $9 · Prime Sat' },
+    { glyph: '🛒', label: 'WALMART MPP',       finishAt: 4700, result: 'Pepsi × 6, water × 6, cups + plates · $11 · same-day Sat' },
+    { glyph: '📦', label: 'DELIVERY CONFIRM', finishAt: 5800, result: 'all 4 vendors confirm Saturday ✓' },
   ];
 
   return (

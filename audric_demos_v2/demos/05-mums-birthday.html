@@ -27,32 +27,32 @@ const Demo5 = () => {
   const typed = useTyped(PROMPT, step===0, 22);
 
   useEffect(() => {
-    const delays = { 0: PROMPT.length*22+400, 1: 700, 2: null, 3: 600, 4: 1800, 5: 3700, 6: 600 };
+    const delays = { 0: PROMPT.length*22+400, 1: 900, 2: null, 3: 800, 4: 2300, 5: 4800, 6: 800 };
     const d = delays[step]; if (d == null) return;
     const t = setTimeout(()=>setStep(s=>Math.min(s+1, 7)), d);
     return ()=>clearTimeout(t);
   }, [step]);
 
   const submitAddress = (e) => { e.preventDefault(); setStep(3); };
-  const approve = () => { setStep(8); setTimeout(()=>setStep(9), 1300); };
+  const approve = () => { setStep(8); setTimeout(()=>setStep(9), 1700); };
   const restart = () => setStep(0);
 
   // Auto-approve permission 3s after it appears
   useEffect(() => {
-    if (step === 7) { const t = setTimeout(()=>approve(), 3000); return ()=>clearTimeout(t); }
+    if (step === 7) { const t = setTimeout(()=>approve(), 3900); return ()=>clearTimeout(t); }
   }, [step]);
 
   // Auto-submit the address form 3s after it appears
   useEffect(() => {
-    if (step === 2) { const t = setTimeout(()=>setStep(3), 3000); return ()=>clearTimeout(t); }
+    if (step === 2) { const t = setTimeout(()=>setStep(3), 3900); return ()=>clearTimeout(t); }
   }, [step]);
 
   const tools = [
-    {glyph:'📅', label:'RESOLVE DATE',   finishAt:700,  result:'Sun Apr 27, 2026'},
-    {glyph:'⊞', label:'DISCOVER MPP',     finishAt:1300, result:'40 svcs · 88 endpts'},
-    {glyph:'✦', label:'DALL-E DESIGN',    finishAt:2100, result:'preview ready · $0.04'},
-    {glyph:'✉', label:'LOB PRINT QUOTE',  finishAt:2700, result:'6×4 · ETA Fri · $1'},
-  {glyph:'✿', label:'TELEFLORA QUOTE',  finishAt:3400, result:'12 stems Sun · $45'},
+    {glyph:'📅', label:'RESOLVE DATE',   finishAt: 900,  result:'Sun Apr 27, 2026'},
+    {glyph:'⊞', label:'DISCOVER MPP',     finishAt: 1700, result:'40 svcs · 88 endpts'},
+    {glyph:'✦', label:'DALL-E DESIGN',    finishAt: 2700, result:'preview ready · $0.04'},
+    {glyph:'✉', label:'LOB PRINT QUOTE',  finishAt: 3500, result:'6×4 · ETA Fri · $1'},
+  {glyph:'✿', label:'TELEFLORA QUOTE',  finishAt: 4400, result:'12 stems Sun · $45'},
   ];
 
   return (

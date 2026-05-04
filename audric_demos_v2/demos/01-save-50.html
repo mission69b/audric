@@ -23,21 +23,21 @@ const Demo1 = () => {
 
   // 0 typing, 1 sent, 2 thinking, 3 querying, 4 plan ready, 5 permission visible, 6 executing, 7 done
   useEffect(() => {
-    const delays = { 0: PROMPT.length*28+500, 1: 600, 2: 1800, 3: 3200, 4: 600 };
+    const delays = { 0: PROMPT.length*28+500, 1: 800, 2: 2300, 3: 4200, 4: 800 };
     const d = delays[step]; if (d == null) return;
     const t = setTimeout(()=>setStep(s=>Math.min(s+1, 5)), d);
     return ()=>clearTimeout(t);
   }, [step]);
 
-  const approve = () => { setStep(6); setTimeout(()=>setStep(7), 1300); };
+  const approve = () => { setStep(6); setTimeout(()=>setStep(7), 1700); };
   const restart = () => { setStep(0); };
 
   const tools = [
-    {glyph:'💰',label:'BALANCE',         finishAt:600,  result:'$2,000 USDC'},
-    {glyph:'⇆',label:'CETUS · SUI ROUTE', finishAt:1100, result:'$200 → 212.77 SUI · 0.03%'},
-    {glyph:'📈',label:'NAVI USDSUI POOL', finishAt:1700, result:'8.4% APY · TVL $48M'},
-    {glyph:'👤',label:'CONTACT · "MOM"',  finishAt:2200, result:'0xa3f9…b27c · verified'},
-    {glyph:'⊞',label:'PLAN STREAM',       finishAt:2900, result:'3 ops · atomic'},
+    {glyph:'💰',label:'BALANCE',         finishAt: 800,  result:'$2,000 USDC'},
+    {glyph:'⇆',label:'CETUS · SUI ROUTE', finishAt: 1400, result:'$200 → 212.77 SUI · 0.03%'},
+    {glyph:'📈',label:'NAVI USDSUI POOL', finishAt: 2200, result:'8.4% APY · TVL $48M'},
+    {glyph:'👤',label:'CONTACT · "MOM"',  finishAt: 2900, result:'0xa3f9…b27c · verified'},
+    {glyph:'⊞',label:'PLAN STREAM',       finishAt: 3800, result:'3 ops · atomic'},
   ];
 
   return (

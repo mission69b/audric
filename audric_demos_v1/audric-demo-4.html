@@ -250,9 +250,9 @@ setTimeout(()=>{
     let t=0; function at(ms,fn){ setTimeout(fn,ms); }
 
     let thinkEl;
-    at(t+=500, ()=>{ thinkEl=makeThinking(); append(thinkEl); });
+    at(t+=600, ()=>{ thinkEl=makeThinking(); append(thinkEl); });
 
-    at(t+=700, ()=>{
+    at(t+=900, ()=>{
       const r=makeReasoningAcc(
         "Lily wants a kids coloring book called Rainbow Adventures — 100 copies at $14.99. I'll generate the cover and 8 coloring page illustrations via fal.ai (MPP), then assemble them into a PDF via PDFShift (MPP), store permanently on Walrus, enforce the 100-copy cap on-chain via Seal, and create the store listing.",
         '84 tokens'
@@ -261,7 +261,7 @@ setTimeout(()=>{
     });
 
     // Step 1: Cover generation via fal.ai (MPP)
-    at(t+=900, ()=>{ fadeOut(thinkEl, ()=>{
+    at(t+=1200, ()=>{ fadeOut(thinkEl, ()=>{
       const a=makeToolAcc('🎨','mpp_fal_ai','fal.ai · cover image',
         `<div class="result-card">
           <div class="rc-header"><span>Cover generated</span><span>1.8s</span></div>
@@ -274,11 +274,11 @@ setTimeout(()=>{
 
     // Step 2: 8 page illustrations in parallel
     let pg1;
-    at(t+=1100, ()=>{
+    at(t+=1400, ()=>{
       pg1=makeParallelGroup(['🖼️  page_1_3 · sun, clouds, balloons','🖼️  page_4_6 · flowers, butterflies, stars','🖼️  page_7_8 · rainbow bridge, castle']);
       append(pg1);
     });
-    at(t+=1400, ()=>{ pg1.complete(); });
+    at(t+=1800, ()=>{ pg1.complete(); });
 
     // Step 3: PDFShift assembles cover + pages
     at(t+=400, ()=>{
@@ -293,7 +293,7 @@ setTimeout(()=>{
     });
 
     // Step 4: Walrus upload
-    at(t+=1100, ()=>{
+    at(t+=1400, ()=>{
       const a=makeToolAcc('☁️','walrus_upload','permanent · Sui mainnet',
         `<div class="result-card">
           <div class="rc-header"><span>Stored on Walrus</span><span style="color:var(--green)">Permanent</span></div>
@@ -305,11 +305,11 @@ setTimeout(()=>{
 
     // Step 5: Seal + Store in parallel
     let pg2;
-    at(t+=1000, ()=>{
+    at(t+=1300, ()=>{
       pg2=makeParallelGroup(['🔒  seal_configure · 100 copy cap','🛍️  store_create_listing · $14.99']);
       append(pg2);
     });
-    at(t+=1100, ()=>{ pg2.complete(); });
+    at(t+=1400, ()=>{ pg2.complete(); });
 
     // Cover preview card
     at(t+=400, ()=>{
@@ -328,21 +328,21 @@ setTimeout(()=>{
       append(cover);
     });
 
-    at(t+=600, ()=> append(makeAudricMsg(
+    at(t+=800, ()=> append(makeAudricMsg(
       'Rainbow Adventures is live. <strong>100 copies — enforced on Sui forever</strong> via Seal. PDF hosted permanently on Walrus. You earn <strong>$13.79</strong> per sale.',
       '32 tokens · 3.7s'
     )));
 
-    at(t+=600, ()=> append(buildBookCard()));
+    at(t+=800, ()=> append(buildBookCard()));
 
     // Sales ticks
-    at(t+=2500, ()=>{
+    at(t+=3200, ()=>{
       const t1=document.createElement('div'); t1.className='sale-tick';
       t1.innerHTML='✓ <strong>3 copies sold</strong> · $41.37 earned · 97 remaining';
       append(t1); updateSales(3, 41.37);
       $('copies-left') && ($('copies-left').textContent='97 / 100');
     });
-    at(t+=2000, ()=>{
+    at(t+=2600, ()=>{
       const t2=document.createElement('div'); t2.className='sale-tick';
       t2.innerHTML='✓ <strong>+5 more</strong> · $110.32 total · 92 remaining';
       append(t2); updateSales(8, 110.32);
@@ -350,7 +350,7 @@ setTimeout(()=>{
     });
 
     // Second message: save to NAVI
-    at(t+=1800, ()=>{
+    at(t+=2300, ()=>{
       const chatInp=$('chat-input');
       if(chatInp) chatInp.removeAttribute('readonly');
       const MSG2='Save 50% of my earnings to NAVI';
@@ -399,7 +399,7 @@ setTimeout(()=>{
                   if(permSecs<=0) clearInterval(permTimerIv);
                 },1000);
                 permReady=true; $('hint').classList.add('show');
-                setTimeout(doApprove, 3500);
+                setTimeout(doApprove, 4600);
               });
             }, 800);
           }, 350);

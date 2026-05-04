@@ -118,7 +118,7 @@ const Demo7 = () => {
 
   // steps: 0 type · 1 sent · 2 thinking · 3 querying · 4 how-evaluated · 5 manifest+line · 6 ptb · 7 permission · 8 executing · 9 done
   useEffect(() => {
-    const delays = { 0: PROMPT.length * 18 + 500, 1: 700, 2: 1800, 3: 4400, 4: 900, 5: 1000, 6: 900 };
+    const delays = { 0: PROMPT.length * 18 + 500, 1: 900, 2: 2300, 3: 5700, 4: 1200, 5: 1300, 6: 1200 };
     const d = delays[step]; if (d == null) return;
     const t = setTimeout(() => setStep(s => s + 1), d);
     return () => clearTimeout(t);
@@ -129,15 +129,15 @@ const Demo7 = () => {
 
   // Auto-confirm order after 3s (mirrors demo 03/04 review pattern)
   useEffect(() => {
-    if (step === 7) { const t = setTimeout(approve, 3000); return () => clearTimeout(t); }
+    if (step === 7) { const t = setTimeout(approve, 3900); return () => clearTimeout(t); }
   }, [step]);
 
   const tools = [
-    { glyph: '🌱', label: 'GIFT SEARCH · MOM',     finishAt: 1000, result: '"The Soulful Garden" cookbook · $34 · Bookshop.org' },
-    { glyph: '☕', label: 'GIFT SEARCH · DAD',      finishAt: 1700, result: 'Blue Bottle 3-month sub · $45 · bluebottlecoffee.com' },
-    { glyph: '🎵', label: 'GIFT SEARCH · EMMA',     finishAt: 2500, result: 'Bandcamp credits · $28 · bandcamp.com' },
-    { glyph: '🎮', label: 'GIFT SEARCH · JAKE',     finishAt: 3100, result: 'Steam gift card $50 · steam.com' },
-    { glyph: '🍵', label: 'GIFT SEARCH · GRANDMA',  finishAt: 4000, result: 'Rare tea collection · $38 · harney.com' },
+    { glyph: '🌱', label: 'GIFT SEARCH · MOM',     finishAt: 1300, result: '"The Soulful Garden" cookbook · $34 · Bookshop.org' },
+    { glyph: '☕', label: 'GIFT SEARCH · DAD',      finishAt: 2200, result: 'Blue Bottle 3-month sub · $45 · bluebottlecoffee.com' },
+    { glyph: '🎵', label: 'GIFT SEARCH · EMMA',     finishAt: 3200, result: 'Bandcamp credits · $28 · bandcamp.com' },
+    { glyph: '🎮', label: 'GIFT SEARCH · JAKE',     finishAt: 4000, result: 'Steam gift card $50 · steam.com' },
+    { glyph: '🍵', label: 'GIFT SEARCH · GRANDMA',  finishAt: 5200, result: 'Rare tea collection · $38 · harney.com' },
   ];
 
   return (
