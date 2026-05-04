@@ -473,7 +473,6 @@ export function UnifiedTimeline({
                 onRegenerate={engine.handleRegenerate}
                 regeneratingAttemptIds={engine.regeneratingAttemptIds}
                 onChipDecision={engine.sendChipDecision}
-                onRefreshClick={engine.sendRefreshClick}
               />
             </div>
           );

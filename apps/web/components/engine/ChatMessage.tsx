@@ -87,17 +87,6 @@ interface ChatMessageProps {
    * even if `message.expectsConfirm` is set + the env flag is on.
    */
   onChipDecision?: (decision: { value: 'yes' | 'no'; forStashId: string }) => void;
-  /**
-   * [SPEC 15 v0.6 — Unified quote refresh] Refresh-chip click handler.
-   * Functionally identical to `onSendMessage(text)` but tags the
-   * server-side request with `refreshDecision: { via: 'chip' }` so
-   * the unified `audric.quote_refresh.fired{surface=chip}` counter
-   * fires. Wired up by `<UnifiedTimeline>` from
-   * `engine.sendRefreshClick`. Falls back to `onSendMessage` when
-   * omitted (legacy callers / unauth path) — same UX, just no chip
-   * surface attribution in telemetry.
-   */
-  onRefreshClick?: (text: string) => void;
 }
 
 export function ChatMessage({
@@ -112,7 +101,6 @@ export function ChatMessage({
   onRegenerate,
   regeneratingAttemptIds,
   onChipDecision,
-  onRefreshClick,
 }: ChatMessageProps) {
   if (message.role === 'user') {
     return (
@@ -154,26 +142,11 @@ export function ChatMessage({
   //      sessions can't dispatch bundles anyway, no need to render).
   // Stops streaming = chips lock once the next assistant turn starts.
   //
-  // [v0.5 — Refresh-on-expiry intent replay] When `onSendMessage` is
-  // wired (the common case — `<UnifiedTimeline>` always passes
-  // `onSendMessage ?? engine.sendMessage`), the Refresh chip replays
-  // the originating user intent verbatim. The SSE reducer captures
-  // it onto `payload.originatingUserText` at `expects_confirm` time;
-  // we fall back to a literal "refresh quote" only when the capture
-  // missed (legacy server / stream lifecycle edge). Replaying the
-  // original intent text deterministically re-runs swap_quote +
-  // prepare_bundle via plan-context promotion — fixes the
-  // production-observed gap where Sonnet read literal "refresh
-  // quote" as quote-only and skipped re-bundling (2026-05-04).
-  //
-  // [v0.6 — Unified telemetry] Prefer `onRefreshClick` when wired so
-  // the server-side `audric.quote_refresh.fired{surface=chip}`
-  // counter fires; falls back to `onSendMessage` for legacy callers
-  // / tests where the click was indistinguishable from a normal text
-  // turn. Both paths produce identical UX — the difference is purely
-  // observability.
-  const refreshTargetText = message.expectsConfirm?.originatingUserText ?? 'refresh quote';
-  const refreshDispatcher = onRefreshClick ?? onSendMessage;
+  // [v0.7 — Refresh chip removed, 2026-05-04] On expiry the chip
+  // shows "Quote expired — ask for a fresh one" and the user retypes.
+  // PermissionCard regenerate covers post-dispatch quote refresh on
+  // confirm-tier writes. See `SPEC_15_PHASE2_DESIGN.md` v0.7 for the
+  // production-driven rationale.
   const chipsBlock =
     message.expectsConfirm &&
     onChipDecision &&
@@ -182,7 +155,6 @@ export function ChatMessage({
       <ConfirmChips
         payload={message.expectsConfirm}
         onChipDecision={onChipDecision}
-        onRefresh={refreshDispatcher ? () => refreshDispatcher(refreshTargetText) : undefined}
       />
     ) : null;
 

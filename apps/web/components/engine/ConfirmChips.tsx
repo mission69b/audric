@@ -21,14 +21,16 @@ import type { ExpectsConfirmPayload } from '@/lib/engine-types';
 // so a stale-stash mismatch falls through cleanly. We send literal
 // "Confirm" / "Cancel" strings to honor that.
 //
-// **[v0.4 — Refresh-on-expiry]** When the swap-quote `expiresAt` has
-// passed and the parent wired `onRefresh`, we surface a third
-// "Refresh quote" chip alongside the now-disabled Confirm/Cancel.
-// Click → re-sends a literal "refresh quote" turn through normal
-// `sendMessage`. The plan-context promotion (`priorWriteVerbs ≥ 1` +
-// `PRIOR_PLAN_MARKER` match) deterministically promotes that turn to
-// Sonnet, which sees the prior Payment Stream plan in context and
-// re-runs swap_quote + prepare_bundle, surfacing fresh chips below.
+// **[v0.7 — Refresh chip removed, 2026-05-04]** A "Refresh quote"
+// chip lived here in v0.4–v0.6 and produced three production gaps in
+// 24h: literal "refresh quote" text was read as quote-only; replaying
+// the original intent caused Sonnet to auto-execute auto-tier bundles
+// without re-confirmation. The chip's only unique value was "save 1
+// retype on auto-tier multi-write bundle expiry" — too small a UX
+// win for the ongoing Sonnet-interpretation fragility. PermissionCard
+// regenerate (server-side, deterministic) covers every other expiry
+// scenario. On chip expiry the user types the request again. See
+// `SPEC_15_PHASE2_DESIGN.md` v0.7.
 // ───────────────────────────────────────────────────────────────────────────
 
 interface ConfirmChipsProps {
@@ -41,28 +43,12 @@ interface ConfirmChipsProps {
    * `expiresAt` countdown which we own internally.
    */
   disabled?: boolean;
-  /**
-   * [SPEC 15 Phase 2 v0.4 — Refresh-on-expiry] When the swap quote
-   * expires AND the parent provides this callback, we render a
-   * "Refresh quote" button that re-runs the prior plan with a fresh
-   * quote (parent typically wires it to
-   * `onSendMessage('refresh quote')` — plan-context promotion picks
-   * up the prior assistant plan and re-runs swap_quote +
-   * prepare_bundle). When omitted, the expired state shows the
-   * legacy "ask for a fresh one" copy + the user must type
-   * manually.
-   *
-   * Rendered only when `expired === true && !clicked && !disabled`
-   * to avoid double-firing on a still-streaming Confirm/Cancel turn.
-   */
-  onRefresh?: () => void;
 }
 
 export function ConfirmChips({
   payload,
   onChipDecision,
   disabled = false,
-  onRefresh,
 }: ConfirmChipsProps) {
   // [Click latch] Once the user clicks either chip we lock the row so
   // a double-click can't fire two POSTs. The streaming response will
@@ -70,16 +56,10 @@ export function ConfirmChips({
   // don't need to re-enable on success.
   const [clicked, setClicked] = useState<'yes' | 'no' | null>(null);
 
-  // [Refresh-on-expiry click latch] Same one-shot guard as `clicked`,
-  // scoped to the Refresh button. Once fired the parent's
-  // `sendMessage` will start a new streaming turn which unmounts this
-  // component on the next assistant message.
-  const [refreshing, setRefreshing] = useState(false);
-
   // [Quote expiry countdown] Only meaningful when the bundle contains
   // a `swap_execute` step (server stamps `expiresAt` then). Re-renders
   // every second; once past expiry the chips lock + show "Quote
-  // expired" so the user is steered to ask for a fresh quote.
+  // expired — ask for a fresh one" so the user types the request again.
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     if (!payload.expiresAt) return;
@@ -95,23 +75,10 @@ export function ConfirmChips({
 
   const isDisabled = disabled || clicked !== null || expired;
 
-  // [Refresh-on-expiry] Show the Refresh chip ONLY when the quote has
-  // truly expired AND no Confirm/Cancel turn is mid-flight — never
-  // surface it as a co-equal third option pre-expiry. This keeps the
-  // primary tap-to-confirm UX unambiguous and reserves Refresh as a
-  // recovery affordance.
-  const showRefreshChip = expired && !clicked && !disabled && !!onRefresh;
-
   const handleClick = (value: 'yes' | 'no') => {
     if (isDisabled) return;
     setClicked(value);
     onChipDecision({ value, forStashId: payload.stashId });
-  };
-
-  const handleRefresh = () => {
-    if (refreshing || !onRefresh) return;
-    setRefreshing(true);
-    onRefresh();
   };
 
   return (
@@ -140,23 +107,7 @@ export function ConfirmChips({
       >
         Cancel
       </Button>
-      {showRefreshChip ? (
-        <>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={refreshing}
-            loading={refreshing}
-            aria-label="Refresh the quote and prepare a new plan"
-          >
-            Refresh quote
-          </Button>
-          <span className="text-[11px] text-fg-muted font-mono uppercase tracking-[0.06em]">
-            Quote expired
-          </span>
-        </>
-      ) : expired ? (
+      {expired ? (
         <span className="text-[11px] text-fg-muted font-mono uppercase tracking-[0.06em]">
           Quote expired — ask for a fresh one
         </span>
