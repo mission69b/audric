@@ -292,7 +292,7 @@ const PtbCard = ({ calls, total }) => (
           padding:'10px 18px',
           borderBottom: i < calls.length - 1 ? '1px solid var(--line)' : 'none'
         }}>
-          <span className="mono" style={{fontSize:10, color:'var(--text-3)', width:36, flexShrink:0}}>tx[{i}]</span>
+          <span className="mono" style={{fontSize:10, color:'var(--text-3)', width:46, flexShrink:0}}>call[{i}]</span>
           <div style={{flex:1, minWidth:0}}>
             <div style={{fontSize:13, color:'var(--text)'}}>{call.vendor}</div>
             {call.desc && <div style={{fontSize:11, color:'var(--text-3)', marginTop:2}}>{call.desc}</div>}
