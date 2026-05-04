@@ -116,7 +116,7 @@ const Demo7 = () => {
   const [step, setStep] = useState(0);
   const typed = useTyped(PROMPT, step === 0, 18);
 
-  // steps: 0 type · 1 sent · 2 thinking · 3 querying · 4 how-evaluated · 5 manifest+line · 6 ptb · 7 permission · 8 executing · 9 done
+  // steps: 0 type · 1 sent · 2 thinking · 3 querying · 4 how-evaluated · 5 manifest+line · 6 payment-intent · 7 permission · 8 executing · 9 done
   useEffect(() => {
     const delays = { 0: PROMPT.length * 18 + 500, 1: 900, 2: 2300, 3: 5700, 4: 1200, 5: 1300, 6: 1200 };
     const d = delays[step]; if (d == null) return;
@@ -244,14 +244,14 @@ const Demo7 = () => {
 
       {step === 7 && (
         <OrderReviewCard total="$195" onAccept={approve} onCancel={restart}
-          footer="Single PTB on Sui — all 5 vendors paid atomically. If any gift fails to deliver, all 5 payments revert."
+          footer="Single Payment Intent on Sui — all 5 vendors paid atomically. If any gift fails to deliver, all 5 payments revert."
         />
       )}
 
       {step === 8 && (
         <div className="appear" style={{display:'flex',alignItems:'center',gap:10,fontSize:12,color:'var(--blue)',padding:'8px 4px'}}>
           <span className="spin" style={{display:'inline-block'}}><Icon name="spinner" size={14}/></span>
-          <span className="mono pulse" style={{letterSpacing:'.1em'}}>EXECUTING PAYMENT INTENT · 1 PTB · 5 CALLS…</span>
+          <span className="mono pulse" style={{letterSpacing:'.1em'}}>EXECUTING PAYMENT INTENT · 5 CALLS…</span>
         </div>
       )}
 

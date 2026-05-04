@@ -30,7 +30,7 @@ const Demo6 = () => {
   const [step, setStep] = useState(0);
   const typed = useTyped(PROMPT, step === 0, 20);
 
-  // steps: 0 type · 1 sent · 2 thinking · 3 querying · 4 how-evaluated · 5 proactive-insight · 6 cart+line · 7 ptb · 8 permission · 9 executing · 10 done
+  // steps: 0 type · 1 sent · 2 thinking · 3 querying · 4 how-evaluated · 5 proactive-insight · 6 cart+line · 7 payment-intent · 8 permission · 9 executing · 10 done
   useEffect(() => {
     const delays = { 0: PROMPT.length * 20 + 500, 1: 900, 2: 2300, 3: 6200, 4: 1000, 5: 1800, 6: 1300, 7: 1200 };
     const d = delays[step]; if (d == null) return;
@@ -140,14 +140,14 @@ const Demo6 = () => {
 
       {step === 8 && (
         <OrderReviewCard total="$119" onAccept={approve} onCancel={restart}
-          footer="Single PTB on Sui — Party City, Amazon, CakeBoss, Walmart paid atomically. If any order fails, all four revert."
+          footer="Single Payment Intent on Sui — Party City, Amazon, CakeBoss, Walmart paid atomically. If any order fails, all four revert."
         />
       )}
 
       {step === 9 && (
         <div className="appear" style={{display:'flex',alignItems:'center',gap:10,fontSize:12,color:'var(--blue)',padding:'8px 4px'}}>
           <span className="spin" style={{display:'inline-block'}}><Icon name="spinner" size={14}/></span>
-          <span className="mono pulse" style={{letterSpacing:'.1em'}}>EXECUTING PAYMENT INTENT · 1 PTB · 4 CALLS…</span>
+          <span className="mono pulse" style={{letterSpacing:'.1em'}}>EXECUTING PAYMENT INTENT · 4 CALLS…</span>
         </div>
       )}
 
@@ -163,7 +163,7 @@ const Demo6 = () => {
             <ShopReceipt vendor="Walmart"    item="Pepsi, water, cups + plates" cost="$11" eta="SHIPS SAT · SAME-DAY" delay={270}/>
           </div>
           <WhyOnlySui points={[
-            "4 vendors, 1 PTB. If Walmart can't deliver same-day, all four orders revert — no partial charges, ever.",
+            "4 vendors, 1 Payment Intent. If Walmart can't deliver same-day, all four orders revert — no partial charges, ever.",
             "USDC settles in 0.6s across all vendors. No card authorisation holds, no 2–3 day payment delays to merchants.",
             "One on-chain receipt covers the whole order — from balloons to birthday cake to beverages. Permanent, auditable, owned by you.",
           ]}/>

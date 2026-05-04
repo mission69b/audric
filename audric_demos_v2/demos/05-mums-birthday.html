@@ -97,7 +97,7 @@ const Demo5 = () => {
           {step>=5 && <ParallelTools tools={tools} active={step>=5} headerLabel="DISPATCHING 5 MPP CALLS · DISCOVERY + QUOTES"/>}
           {step>=6 && (
             <HowIEvaluated tokens="412" model="AUDRIC v2.0" latency="3.4s">
-              5 MPP calls in parallel. Lob quoted $1 print+mail (USPS First-Class) — cheapest tier covers 6×4 cards. Teleflora quoted $45 for Sunday delivery in zip 11201. Total $46.04 — compiling into one Payment Intent PTB.
+              5 MPP calls in parallel. Lob quoted $1 print+mail (USPS First-Class) — cheapest tier covers 6×4 cards. Teleflora quoted $45 for Sunday delivery in zip 11201. Total $46.04 — compiling into one Payment Intent.
             </HowIEvaluated>
           )}
           {step>=6 && (
@@ -117,18 +117,18 @@ const Demo5 = () => {
         <div className="appear d05-permission-grid" style={{display:'grid',gridTemplateColumns:'minmax(0,320px) 1fr',gap:14}}>
           <CardPreview name={name.split(' ')[0]}/>
           <PermissionCard
-            title="APPROVE PAYMENT INTENT · 1 PTB · 3 CALLS"
+            title="APPROVE PAYMENT INTENT · 3 CALLS"
             subtitle="ATOMIC · USDC"
             rows={[
               {title:'Card design — DALL-E (MPP)', sub:'AI-generated · already previewed', right:'$0.04'},
               {title:'Print + mail — Lob (MPP)',   sub:`USPS First-Class · ETA Fri · to ${name.split(' ')[0]}`, right:'$1'},
               {title:'Bouquet — Teleflora (MPP)',  sub:'Sunday delivery · 12 stems', right:'$45'},
             ]}
-            footer={<><Icon name="bolt" size={12} color="var(--blue)"/><span>Single PTB on Sui — all 3 calls execute atomically in one block. <strong style={{color:'var(--text)'}}>$46.04 total.</strong> If any call fails, all revert.</span></>}
+            footer={<><Icon name="bolt" size={12} color="var(--blue)"/><span>Single Payment Intent on Sui — all 3 calls execute atomically in one block. <strong style={{color:'var(--text)'}}>$46.04 total.</strong> If any call fails, all revert.</span></>}
             onApprove={approve}
             executing={step===8}
             executed={step>=9}
-            executionDetail="0.4s · 1 PTB EXECUTED · 3 CALLS ATOMIC · GAS $0.003"
+            executionDetail="0.4s · 1 PAYMENT INTENT EXECUTED · 3 CALLS ATOMIC · GAS $0.003"
           />
         </div>
       )}
@@ -136,7 +136,7 @@ const Demo5 = () => {
       {step >= 9 && (
         <>
           <AudricLine>
-            Done. <strong style={{color:'var(--text)'}}>One PTB. Three MPP services. One signature.</strong> Card printing now — arrives Friday. Flowers confirmed for Sunday.
+            Done. <strong style={{color:'var(--text)'}}>One Payment Intent. Three MPP services. One signature.</strong> Card printing now — arrives Friday. Flowers confirmed for Sunday.
           </AudricLine>
           <div className="appear d05-receipts" style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10}}>
             <Receipt vendor="DALL-E" service="Card design" cost="$0.04" status="DELIVERED · INSTANT"/>
@@ -144,7 +144,7 @@ const Demo5 = () => {
             <Receipt vendor="Teleflora" service="Bouquet delivery" cost="$45" status="ETA · APR 27"/>
           </div>
           <WhyOnlySui points={[
-            "DALL-E design, Lob print-and-mail, Teleflora delivery — three real-world services paid in one PTB. One signature, one USDC transaction.",
+            "DALL-E design, Lob print-and-mail, Teleflora delivery — three real-world services paid in one Payment Intent. One signature, one USDC transaction.",
             "If Teleflora can't deliver Sunday, Lob and DALL-E revert too. Atomic guarantees extended to physical-world outcomes.",
             "Total cost: $46.04. Gas: $0.003, sponsored. A birthday across three companies, settled globally in 0.4s.",
           ]}/>
