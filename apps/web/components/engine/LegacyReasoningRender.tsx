@@ -159,11 +159,20 @@ export function LegacyReasoningRender({
 
       {hasPendingAction && onActionResolve && !shouldAutoApprove?.(message.pendingAction!) && (() => {
         const action = message.pendingAction!;
-        // [SPEC 7 P2.4b] Same gate as `PermissionCardBlockView` — only
-        // bundles flagged with `canRegenerate` get the Regenerate slot.
-        const isBundle = Array.isArray(action.steps) && action.steps.length >= 2;
+        // [SPEC 7 P2.4b + SPEC 15 v0.7 follow-up — single-write
+        // regenerate, 2026-05-04] Pre-v0.7 the gate was
+        // `isBundle && canRegenerate && regenerateInput`. v0.7
+        // dropped the bundle-only gate because `@t2000/engine`
+        // ≥1.16.0 stamps `canRegenerate=true` on confirm-tier
+        // single-write actions whose composition consumed a
+        // regeneratable read (e.g. a $50 swap_execute that
+        // referenced a prior `swap_quote`). Keeping the
+        // `canRegenerate` + `regenerateInput` checks ensures the
+        // slot stays empty for actions whose inputs came from user
+        // text (no upstream read to re-fire). Same shape applies in
+        // `PermissionCardBlockView`.
         const showRegenerate = Boolean(
-          onRegenerate && isBundle && action.canRegenerate && action.regenerateInput,
+          onRegenerate && action.canRegenerate && action.regenerateInput,
         );
         return (
           <PermissionCard

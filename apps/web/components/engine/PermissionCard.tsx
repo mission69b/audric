@@ -446,9 +446,18 @@ interface PermissionCardProps {
    */
   recentUserText?: string;
   /**
-   * [SPEC 7 P2.4b] Quote-Refresh slot. Only consulted on bundle render
-   * branch + when `action.canRegenerate === true`. Single-write
-   * pending_actions ignore this prop. See
+   * [SPEC 7 P2.4b] Quote-Refresh slot.
+   *
+   * **[SPEC 15 v0.7 follow-up — 2026-05-04]** Now consulted on BOTH
+   * bundle and single-write render branches, gated on
+   * `action.canRegenerate === true`. Pre-v0.7 the single-write branch
+   * ignored this prop because the engine never populated
+   * `canRegenerate` for single-writes — that gap has been closed
+   * upstream (`@t2000/engine` ≥1.16.0 stamps the field on confirm-
+   * tier single-write actions whose composition referenced same-turn
+   * regeneratable reads, e.g. a $50 swap_execute that consumed a
+   * prior swap_quote). Hosts on engine ≥1.16.0 will see the Refresh
+   * button on single-write swap PermissionCards too. See
    * `PermissionCardRegenerateSlot` for the contract.
    */
   regenerate?: PermissionCardRegenerateSlot;
@@ -728,7 +737,36 @@ export function PermissionCard({
     );
   }
 
-  // ─── Single-write render (legacy, unchanged) ──────────────────────────
+  // ─── Single-write render ─────────────────────────────────────────────
+  // [SPEC 15 v0.7 follow-up — single-write regenerate, 2026-05-04]
+  // Mirrors the bundle branch's regenerate slot: when the engine
+  // populated `canRegenerate=true` on this single-write action AND
+  // the host wired a `regenerate` slot, render the QUOTE Ns OLD
+  // age badge + the "↻ Refresh quote" button between Deny and
+  // Approve. Same code path as the bundle branch — only the parent
+  // shape differs. The badge severity uses the conservative
+  // `DEFAULT_TOOL_TTL_MS` of 60s for the same reason the bundle
+  // branch does (engine doesn't currently expose per-toolUseId TTL
+  // alongside `regenerateInput.toolUseIds` — see line 588 comment).
+  const singleShowRegenerate =
+    regenerate !== undefined && action.canRegenerate === true;
+  const singleAgeMs =
+    typeof action.quoteAge === 'number'
+      ? action.quoteAge + (TIMEOUT_SEC - secondsLeft) * 1000
+      : undefined;
+  const singleShortestTtl = 60_000;
+  const singleSeverity: QuoteAgeSeverity = quoteAgeSeverity(
+    singleAgeMs,
+    singleShortestTtl,
+  );
+  const singleAgeBadge = formatQuoteAge(singleAgeMs);
+  const singleAgeBadgeClass =
+    singleSeverity === 'stale'
+      ? 'text-error-solid'
+      : singleSeverity === 'amber'
+        ? 'text-warning-solid animate-pulse'
+        : 'text-fg-secondary';
+
   return (
     <div
       className="rounded-xl border border-border-subtle bg-surface-card p-3 space-y-2.5 shadow-[var(--shadow-flat)]"
@@ -806,19 +844,55 @@ export function PermissionCard({
       )}
 
       {!resolved ? (
-        <div className="flex gap-2">
-          <button
-            onClick={() => handle(false, 'denied')}
-            className="flex-1 rounded-lg border border-border-subtle bg-surface-page py-2 text-xs font-medium text-fg-secondary hover:text-fg-primary hover:border-border-strong transition active:scale-[0.97]"
-          >
-            Deny
-          </button>
-          <button
-            onClick={() => handle(true)}
-            className="flex-1 rounded-lg bg-fg-primary py-2 text-xs font-semibold text-fg-inverse transition hover:opacity-90 active:scale-[0.97]"
-          >
-            Approve
-          </button>
+        <div className="space-y-1.5">
+          {/*
+            [SPEC 15 v0.7 follow-up] Age badge — same pattern as the
+            bundle branch. Sits right-aligned over the action row so
+            the eye flows from the amber/red badge straight to the
+            matching Refresh button below. Hidden when no
+            regenerate slot is wired or the engine didn't populate
+            `canRegenerate` (e.g. swap_execute under the auto-tier
+            single-write path that bypasses PermissionCard entirely,
+            or any single-write where no regeneratable read fed the
+            input).
+          */}
+          {singleShowRegenerate && (
+            <div className="flex justify-end">
+              <span
+                className={`text-[10px] font-mono uppercase tracking-wide tabular-nums ${singleAgeBadgeClass}`}
+                aria-label={`Quote age: ${singleAgeBadge}`}
+                data-severity={singleSeverity}
+              >
+                {singleAgeBadge}
+              </span>
+            </div>
+          )}
+          <div className="flex gap-2">
+            <button
+              onClick={() => handle(false, 'denied')}
+              disabled={regenerate?.isRegenerating}
+              className="flex-1 rounded-lg border border-border-subtle bg-surface-page py-2 text-xs font-medium text-fg-secondary hover:text-fg-primary hover:border-border-strong transition active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Deny
+            </button>
+            {singleShowRegenerate && (
+              <button
+                onClick={regenerate.onRegenerate}
+                disabled={regenerate.isRegenerating}
+                className="flex-1 rounded-lg border border-warning-border bg-warning-bg py-2 text-xs font-medium text-warning-solid hover:bg-warning-bg hover:border-warning-solid transition active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed"
+                aria-label="Refresh the quote and prepare a new plan"
+              >
+                {regenerate.isRegenerating ? '↻ Refreshing…' : '↻ Refresh quote'}
+              </button>
+            )}
+            <button
+              onClick={() => handle(true)}
+              disabled={regenerate?.isRegenerating}
+              className="flex-1 rounded-lg bg-fg-primary py-2 text-xs font-semibold text-fg-inverse transition hover:opacity-90 active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Approve
+            </button>
+          </div>
         </div>
       ) : (
         <div className="text-xs text-fg-secondary text-center py-1">Processing...</div>

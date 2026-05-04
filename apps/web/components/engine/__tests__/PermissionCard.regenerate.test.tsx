@@ -123,6 +123,122 @@ describe('PermissionCard — regenerate slot (Quote-Refresh ReviewCard)', () => 
 });
 
 // ───────────────────────────────────────────────────────────────────────────
+// SPEC 15 v0.7 follow-up — single-write regenerate slot (2026-05-04)
+//
+// Pre-v0.7 the single-write render branch ignored the `regenerate` prop —
+// the engine never populated `canRegenerate` on N=1 actions, and the
+// PermissionCard's bundle-only `isBundle` gate kept the slot hidden even
+// if a host had wired a callback. v0.7 closes the gap end-to-end:
+//   - Engine ≥1.16.0 stamps `canRegenerate=true` on confirm-tier
+//     single-write actions whose composition consumed a same-turn
+//     regeneratable read (e.g. a $50 swap_execute that referenced a
+//     prior swap_quote).
+//   - Audric host gates `showRegenerate` on `canRegenerate +
+//     regenerateInput` only (no `isBundle` check).
+//   - PermissionCard's single-write branch renders the same QUOTE Ns OLD
+//     badge + "↻ Refresh quote" button as the bundle branch.
+// ───────────────────────────────────────────────────────────────────────────
+
+function fakeSingleWrite(opts: {
+  canRegenerate?: boolean;
+  quoteAge?: number;
+  regenerateInput?: { toolUseIds: string[] };
+} = {}): PendingAction {
+  return {
+    toolName: 'swap_execute',
+    toolUseId: 'tu-single-1',
+    input: { from: 'USDC', to: 'SUI', amount: 50 },
+    description: 'Swap 50 USDC → SUI',
+    assistantContent: [],
+    turnIndex: 0,
+    attemptId: 'attempt-single-1',
+    canRegenerate: opts.canRegenerate,
+    quoteAge: opts.quoteAge,
+    regenerateInput: opts.regenerateInput,
+    // No `steps` — single-write shape.
+  };
+}
+
+describe('PermissionCard — single-write regenerate slot (SPEC 15 v0.7)', () => {
+  it('does NOT render the Refresh button on a single-write action without canRegenerate', () => {
+    // The regression scenario v0.7 was filed against: a confirm-tier
+    // swap whose engine never stamped `canRegenerate` (e.g. on engine
+    // <1.16.0). The host wires the regenerate prop unconditionally;
+    // the card itself stays empty until canRegenerate flips true.
+    const action = fakeSingleWrite({});
+    const { queryByText } = render(
+      <PermissionCard
+        action={action}
+        onResolve={vi.fn()}
+        regenerate={{ onRegenerate: vi.fn(), isRegenerating: false }}
+      />,
+    );
+    expect(queryByText(/Refresh quote/i)).toBeNull();
+  });
+
+  it('renders the Refresh quote button on a single-write swap with canRegenerate=true', () => {
+    const action = fakeSingleWrite({
+      canRegenerate: true,
+      quoteAge: 1000,
+      regenerateInput: { toolUseIds: ['read-swap-quote-1'] },
+    });
+    const onRegenerate = vi.fn();
+    const { getByText } = render(
+      <PermissionCard
+        action={action}
+        onResolve={vi.fn()}
+        regenerate={{ onRegenerate, isRegenerating: false }}
+      />,
+    );
+    const btn = getByText(/Refresh quote/i);
+    expect(btn).toBeTruthy();
+    fireEvent.click(btn);
+    expect(onRegenerate).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders the QUOTE Ns OLD badge on a single-write action when quoteAge is set', () => {
+    const action = fakeSingleWrite({
+      canRegenerate: true,
+      quoteAge: 47_000,
+      regenerateInput: { toolUseIds: ['read-1'] },
+    });
+    const { getByText } = render(
+      <PermissionCard
+        action={action}
+        onResolve={vi.fn()}
+        regenerate={{ onRegenerate: vi.fn(), isRegenerating: false }}
+      />,
+    );
+    expect(getByText(/QUOTE.*OLD/i)).toBeTruthy();
+  });
+
+  it('disables Approve + Deny + Refresh on a single-write while regenerating', () => {
+    const action = fakeSingleWrite({
+      canRegenerate: true,
+      quoteAge: 1000,
+      regenerateInput: { toolUseIds: ['read-1'] },
+    });
+    const onResolve = vi.fn();
+    const { getByText } = render(
+      <PermissionCard
+        action={action}
+        onResolve={onResolve}
+        regenerate={{ onRegenerate: vi.fn(), isRegenerating: true }}
+      />,
+    );
+    const approveBtn = getByText('Approve') as HTMLButtonElement;
+    const denyBtn = getByText('Deny') as HTMLButtonElement;
+    const refreshBtn = getByText(/Refreshing/i) as HTMLButtonElement;
+    expect(approveBtn.disabled).toBe(true);
+    expect(denyBtn.disabled).toBe(true);
+    expect(refreshBtn.disabled).toBe(true);
+    fireEvent.click(approveBtn);
+    fireEvent.click(denyBtn);
+    expect(onResolve).not.toHaveBeenCalled();
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────
 // SPEC 7 P2.4b audit — BUG #2 regression
 //
 // When a regenerate succeeds, the parent swaps the message's pendingAction

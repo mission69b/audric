@@ -97,14 +97,17 @@ export function PermissionCardBlockView({
   }
   // [SPEC 7 P2.4b] Only wire the regenerate slot when the engine flagged
   // the bundle as refreshable AND the host gave us a handler. Single-step
-  // actions never get a regenerate button (the spec restricts this to
-  // bundle quote refresh). `steps.length >= 2` mirrors `PermissionCard`'s
-  // own `isBundle` check.
-  const isBundle =
-    Array.isArray(block.payload.steps) && block.payload.steps.length >= 2;
+  // actions get a regenerate slot when the engine populated
+  // `canRegenerate` + `regenerateInput` AND the host wired a callback.
+  // [SPEC 15 v0.7 follow-up — single-write regenerate, 2026-05-04]
+  // Pre-v0.7 also gated on `isBundle` (steps.length >= 2). Lifted
+  // because `@t2000/engine` ≥1.16.0 now populates `canRegenerate`
+  // on single-write confirm-tier actions whose composition
+  // consumed a same-turn regeneratable read (e.g. a $50
+  // swap_execute that referenced a prior `swap_quote`). Same shape
+  // change applied in `LegacyReasoningRender.tsx`.
   const showRegenerate = Boolean(
     onRegenerate &&
-      isBundle &&
       block.payload.canRegenerate &&
       block.payload.regenerateInput,
   );
