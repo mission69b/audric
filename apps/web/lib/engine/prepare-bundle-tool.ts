@@ -172,16 +172,16 @@ function readSessionId(context: ToolContext): string | null {
 export const audricPrepareBundleTool = buildTool({
   name: 'prepare_bundle',
   description:
-    `Pre-commit a multi-write Payment Stream (${MAX_BUNDLE_OPS}-op cap) at PLAN time. ` +
+    `Pre-commit a multi-write Payment Intent (${MAX_BUNDLE_OPS}-op cap) at PLAN time. ` +
     'Call this ONCE in the plan turn with the full typed step list, then write your text plan ' +
-    'and ask the user to confirm. When the user replies affirmatively, the bundle executes ' +
+    'and ask the user to confirm. When the user replies affirmatively, the intent executes ' +
     'as one atomic Sui transaction without re-emitting the writes. ' +
     'For single writes (N=1), DO NOT call this — emit the write tool directly. ' +
     'Validates: (a) 2≤N≤cap. ' +
     'Chain-mode (auto-populates `inputCoinFromStep`) for whitelisted asset-aligned pairs: ' +
     'swap_execute→send_transfer, swap_execute→save_deposit, swap_execute→repay_debt, ' +
     'withdraw→swap_execute, withdraw→send_transfer, borrow→send_transfer, borrow→repay_debt. ' +
-    'Non-chained adjacent steps (e.g. two independent sends) run wallet-mode in the same atomic PTB.',
+    'Non-chained adjacent steps (e.g. two independent sends) run wallet-mode in the same atomic Payment Intent.',
   inputSchema: z.object({
     steps: z
       .array(stepSchema)
