@@ -407,6 +407,20 @@ export interface ExpectsConfirmPayload {
   expiresAt?: number;
   /** Mirrored on the SSE event for telemetry — `<ConfirmChips />` ignores it today. */
   stepCount: number;
+  /**
+   * [v0.5 — Refresh-on-expiry intent replay] The literal user message
+   * text that triggered THIS plan turn — captured client-side by the
+   * SSE reducer (walks back through `messagesRef.current` for the
+   * immediately preceding `role: 'user'` entry). The Refresh chip
+   * replays this verbatim so plan-context promotion + chat history
+   * unambiguously re-runs `swap_quote` + `prepare_bundle` (vs. the
+   * literal "refresh quote" text which Sonnet correctly interpreted
+   * as quote-only — production-confirmed gap, 2026-05-04).
+   *
+   * Optional for backward-compat with pre-v0.5 messages persisted
+   * mid-rollout; falls back to `'refresh quote'` if missing.
+   */
+  originatingUserText?: string;
 }
 
 export interface ToolExecution {

@@ -142,14 +142,18 @@ export function ChatMessage({
   //      sessions can't dispatch bundles anyway, no need to render).
   // Stops streaming = chips lock once the next assistant turn starts.
   //
-  // [v0.4 — Refresh-on-expiry] When `onSendMessage` is wired (the
-  // common case — `<UnifiedTimeline>` always passes
-  // `onSendMessage ?? engine.sendMessage`), we plumb a literal
-  // "refresh quote" turn through it as the chip's `onRefresh`. The
-  // backend's plan-context promotion (priorWriteVerbs ≥ 1 +
-  // PRIOR_PLAN_MARKER hit) catches that turn, promotes to Sonnet, and
-  // re-runs swap_quote + prepare_bundle from the prior plan in
-  // context. New `expects_confirm` event surfaces fresh chips below.
+  // [v0.5 — Refresh-on-expiry intent replay] When `onSendMessage` is
+  // wired (the common case — `<UnifiedTimeline>` always passes
+  // `onSendMessage ?? engine.sendMessage`), the Refresh chip replays
+  // the originating user intent verbatim. The SSE reducer captures
+  // it onto `payload.originatingUserText` at `expects_confirm` time;
+  // we fall back to a literal "refresh quote" only when the capture
+  // missed (legacy server / stream lifecycle edge). Replaying the
+  // original intent text deterministically re-runs swap_quote +
+  // prepare_bundle via plan-context promotion — fixes the
+  // production-observed gap where Sonnet read literal "refresh
+  // quote" as quote-only and skipped re-bundling (2026-05-04).
+  const refreshTargetText = message.expectsConfirm?.originatingUserText ?? 'refresh quote';
   const chipsBlock =
     message.expectsConfirm &&
     onChipDecision &&
@@ -158,7 +162,7 @@ export function ChatMessage({
       <ConfirmChips
         payload={message.expectsConfirm}
         onChipDecision={onChipDecision}
-        onRefresh={onSendMessage ? () => onSendMessage('refresh quote') : undefined}
+        onRefresh={onSendMessage ? () => onSendMessage(refreshTargetText) : undefined}
       />
     ) : null;
 

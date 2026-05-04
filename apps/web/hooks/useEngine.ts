@@ -915,10 +915,44 @@ export function useEngine({ address, jwt, onToolResult, contacts }: UseEngineOpt
           const expiresAt = typeof parsed.expiresAt === 'number' ? parsed.expiresAt : undefined;
           const msgId = streamingMsgRef.current;
           if (!msgId) return;
+
+          // [v0.5 — Refresh-on-expiry intent replay] Capture the user
+          // message that triggered this plan turn so the Refresh chip
+          // can replay it verbatim. Walking back from the streaming
+          // assistant message in `messagesRef.current` for the most
+          // recent `role: 'user'` entry — that's deterministically the
+          // turn whose response just emitted `expects_confirm` (the
+          // user message is `setMessages`-ed BEFORE the stream opens
+          // in both `sendMessage` and `sendChipDecision`). Falls back
+          // to `currentReplayTextRef.current` when the array walk
+          // misses (very early in stream lifecycle, before any user
+          // message has settled into the rendered list).
+          let originatingUserText: string | undefined;
+          for (let i = messagesRef.current.length - 1; i >= 0; i--) {
+            const m = messagesRef.current[i];
+            if (m.id === msgId) continue;
+            if (m.role === 'user' && typeof m.content === 'string' && m.content.length > 0) {
+              originatingUserText = m.content;
+              break;
+            }
+          }
+          if (!originatingUserText && currentReplayTextRef.current) {
+            originatingUserText = currentReplayTextRef.current;
+          }
+
           setMessages((prev) =>
             prev.map((m) =>
               m.id === msgId
-                ? { ...m, expectsConfirm: { variant, stashId, expiresAt, stepCount } }
+                ? {
+                    ...m,
+                    expectsConfirm: {
+                      variant,
+                      stashId,
+                      expiresAt,
+                      stepCount,
+                      originatingUserText,
+                    },
+                  }
                 : m,
             ),
           );
