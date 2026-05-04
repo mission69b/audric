@@ -1,13 +1,23 @@
 /**
- * Unit tests for `fast-path-bundle.ts` (SPEC 14 Phase 2).
+ * Unit tests for `fast-path-bundle.ts` (SPEC 14 Phase 2 + SPEC 15 v0.7
+ * follow-up #3 — single-source bundle composer).
  *
  * Two test surfaces:
- *   1. The internal builders (`__testOnly__.buildPendingActionFromProposal`,
- *      `__testOnly__.describeStep`) — pure shape assertions on
- *      constructed `PendingAction`s.
+ *   1. The internal adapter (`__testOnly__.buildPendingActionFromProposal`,
+ *      `__testOnly__.findContributingReadsFromHistory`) — pure shape
+ *      assertions on the `PendingAction` constructed by handing off to
+ *      the engine's canonical `composeBundleFromToolResults`.
  *   2. The orchestrator `tryConsumeFastPathBundle(opts)` — uses
  *      `vi.spyOn` on `consumeBundleProposal` to drive each skip path
  *      and the happy path; asserts the right telemetry fires.
+ *
+ * **Why use `getDefaultTools()` instead of fake tool stubs.** Pre-#3,
+ * the local composer didn't depend on the tool registry — it had a
+ * baked-in `describeStep` switch. Now the engine composer needs the
+ * registry for `describeAction` + `getModifiableFields` + the
+ * bundleable-flag defensive check. `getDefaultTools()` gives us the
+ * real production tools (with real flags + real descriptors) so the
+ * tests exercise the same code path the chat route hits at runtime.
  */
 
 import {
@@ -19,13 +29,26 @@ import {
   vi,
   type MockInstance,
 } from 'vitest';
-import type { Message } from '@t2000/engine';
+import type { Message, Tool } from '@t2000/engine';
+import { getDefaultTools } from '@t2000/engine';
 import {
   tryConsumeFastPathBundle,
   __testOnly__,
 } from '../fast-path-bundle';
 import * as store from '../bundle-proposal-store';
 import type { BundleProposal } from '../bundle-proposal-store';
+
+const ENGINE_TOOLS: ReadonlyArray<Tool> = getDefaultTools();
+
+/**
+ * Default `tools` baseline for all `tryConsumeFastPathBundle` calls
+ * in this file. Required because the post-#3 fast-path delegates to
+ * the engine's `composeBundleFromToolResults`, which throws if tools
+ * are missing. Tests that exit before composition (no_session,
+ * no_wallet, no_stash, etc.) tolerate it being unused; tests that
+ * compose require it. Adding it everywhere is the simplest invariant.
+ */
+const TOOLS_OPT = { tools: ENGINE_TOOLS } as const;
 
 // [SPEC 15 Phase 1.5] Helpers for plan-context override tests. The
 // fast-path admits a non-regex affirmative ("do it bro") only when the
@@ -57,7 +80,7 @@ const NO_PLAN_HISTORY: Message[] = [
   asstText('Your wallet has 10 USDC. Net worth: $10.'),
 ];
 
-const { buildPendingActionFromProposal, describeStep } = __testOnly__;
+const { buildPendingActionFromProposal } = __testOnly__;
 
 function makeProposal(overrides?: Partial<BundleProposal>): BundleProposal {
   return {
@@ -74,37 +97,10 @@ function makeProposal(overrides?: Partial<BundleProposal>): BundleProposal {
   };
 }
 
-describe('describeStep', () => {
-  it('produces a friendly withdraw description', () => {
-    expect(describeStep({ toolName: 'withdraw', input: { amount: 3, asset: 'USDC' } }))
-      .toBe('Withdraw 3 USDC from savings');
-  });
-  it('save_deposit with amount + asset', () => {
-    expect(describeStep({ toolName: 'save_deposit', input: { amount: 5, asset: 'USDsui' } }))
-      .toBe('Save 5 USDsui into lending');
-  });
-  it('save_deposit without amount falls back to "all"', () => {
-    expect(describeStep({ toolName: 'save_deposit', input: { asset: 'USDsui' } }))
-      .toBe('Save USDsui into lending');
-  });
-  it('swap_execute renders from → to', () => {
-    expect(describeStep({ toolName: 'swap_execute', input: { from: 'USDC', to: 'USDsui', amount: 3 } }))
-      .toBe('Swap 3 USDC → USDsui');
-  });
-  it('send_transfer renders recipient', () => {
-    expect(describeStep({ toolName: 'send_transfer', input: { amount: 1, asset: 'USDC', to: 'funkii.sui' } }))
-      .toBe('Send 1 USDC to funkii.sui');
-  });
-  it('unknown tool falls back to its name', () => {
-    expect(describeStep({ toolName: 'mystery_tool', input: {} }))
-      .toBe('mystery_tool');
-  });
-});
-
 describe('buildPendingActionFromProposal', () => {
   it('mirrors steps[0] into top-level fields', () => {
     const proposal = makeProposal();
-    const action = buildPendingActionFromProposal(proposal, 5);
+    const action = buildPendingActionFromProposal(proposal, 5, ENGINE_TOOLS);
     expect(action.toolName).toBe(action.steps?.[0].toolName);
     expect(action.toolUseId).toBe(action.steps?.[0].toolUseId);
     expect(action.input).toEqual(action.steps?.[0].input);
@@ -114,81 +110,89 @@ describe('buildPendingActionFromProposal', () => {
 
   it('stamps a UUID v4 attemptId per step', () => {
     const proposal = makeProposal();
-    const action = buildPendingActionFromProposal(proposal, 1);
+    const action = buildPendingActionFromProposal(proposal, 1, ENGINE_TOOLS);
     expect(action.steps).toHaveLength(2);
     for (const step of action.steps!) {
       expect(step.attemptId).toMatch(/^[0-9a-f-]{36}$/);
     }
-    // Distinct ids — no collisions
     expect(action.steps![0].attemptId).not.toBe(action.steps![1].attemptId);
   });
 
   it('uses fastpath_ prefix on toolUseId for log identifiability', () => {
     const proposal = makeProposal({ bundleId: 'abc-123' });
-    const action = buildPendingActionFromProposal(proposal, 0);
+    const action = buildPendingActionFromProposal(proposal, 0, ENGINE_TOOLS);
     expect(action.steps![0].toolUseId).toBe('fastpath_abc-123_0');
     expect(action.steps![1].toolUseId).toBe('fastpath_abc-123_1');
   });
 
-  it('preserves inputCoinFromStep on chained steps', () => {
+  // [SPEC 15 v0.7 follow-up #3 — single-source bundle composer,
+  // 2026-05-04] The engine composer derives `inputCoinFromStep` from
+  // `shouldChainCoin(producer, consumer)` rather than passing
+  // through whatever the proposal had. For asset-aligned whitelisted
+  // pairs, the composer wires chain-mode automatically. For non-
+  // whitelisted pairs, chain-mode stays off — even if the proposal
+  // had it set (which prepare_bundle would never do; it uses the
+  // same shouldChainCoin logic). Pre-#3 the local composer copied
+  // proposal.inputCoinFromStep verbatim, so this test changed shape:
+  // we now assert the asset-aligned pair (withdraw USDC →
+  // swap_execute from USDC) auto-wires.
+  it('auto-wires inputCoinFromStep for asset-aligned chained pairs', () => {
     const proposal = makeProposal({
       steps: [
         { toolName: 'withdraw', input: { asset: 'USDC', amount: 3 } },
-        { toolName: 'swap_execute', input: { from: 'USDC', to: 'USDsui', amount: 3 }, inputCoinFromStep: 0 },
-        { toolName: 'save_deposit', input: { asset: 'USDsui' }, inputCoinFromStep: 1 },
+        { toolName: 'swap_execute', input: { from: 'USDC', to: 'USDsui', amount: 3 } },
       ],
     });
-    const action = buildPendingActionFromProposal(proposal, 0);
-    expect(action.steps).toHaveLength(3);
+    const action = buildPendingActionFromProposal(proposal, 0, ENGINE_TOOLS);
+    expect(action.steps).toHaveLength(2);
     expect(action.steps![0].inputCoinFromStep).toBeUndefined();
+    // Engine composer wires chain-mode for `withdraw->swap_execute`
+    // when producer.asset === consumer.from.
     expect(action.steps![1].inputCoinFromStep).toBe(0);
-    expect(action.steps![2].inputCoinFromStep).toBe(1);
   });
 
-  it('omits inputCoinFromStep when undefined (no key vs key=undefined)', () => {
+  it('omits inputCoinFromStep on the first step (nothing to chain from)', () => {
     const proposal = makeProposal();
-    const action = buildPendingActionFromProposal(proposal, 0);
+    const action = buildPendingActionFromProposal(proposal, 0, ENGINE_TOOLS);
     expect('inputCoinFromStep' in action.steps![0]).toBe(false);
   });
 
   it('passes through turnIndex', () => {
     const proposal = makeProposal();
-    const action = buildPendingActionFromProposal(proposal, 42);
+    const action = buildPendingActionFromProposal(proposal, 42, ENGINE_TOOLS);
     expect(action.turnIndex).toBe(42);
   });
 
   it('returns empty assistantContent + completedResults (no LLM turn)', () => {
     const proposal = makeProposal();
-    const action = buildPendingActionFromProposal(proposal, 0);
+    const action = buildPendingActionFromProposal(proposal, 0, ENGINE_TOOLS);
     expect(action.assistantContent).toEqual([]);
     expect(action.completedResults).toEqual([]);
   });
 
-  // [SPEC 15 v0.7 follow-up #2 — fast-path regenerate, 2026-05-04]
-  // Pre-this-commit fast-path bundles always emitted
-  // canRegenerate=false, leaving bundle PermissionCards confirmed via
-  // the chip Confirm path with no Refresh-quote affordance even when
-  // a same-turn `swap_quote` ran before `prepare_bundle`. The fix:
-  // walk the prior assistant turn for tool_use blocks whose name is
-  // in REGENERATABLE_READ_TOOLS, populate canRegenerate +
-  // regenerateInput.toolUseIds + quoteAge.
+  // [SPEC 15 v0.7 follow-up #3 — single-source bundle composer,
+  // 2026-05-04] The engine composer ALWAYS emits canRegenerate as
+  // boolean (true/false), not optional. When no contributing reads
+  // are found, canRegenerate=false and regenerateInput is omitted.
+  // Pre-#3 (#2's local composer) the field was conditionally
+  // included; tests adjusted accordingly.
 
-  it('omits canRegenerate when no history is provided', () => {
+  it('emits canRegenerate=false when no history is provided', () => {
     const proposal = makeProposal();
-    const action = buildPendingActionFromProposal(proposal, 0);
-    expect(action.canRegenerate).toBeUndefined();
+    const action = buildPendingActionFromProposal(proposal, 0, ENGINE_TOOLS);
+    expect(action.canRegenerate).toBe(false);
     expect(action.regenerateInput).toBeUndefined();
     expect(action.quoteAge).toBeUndefined();
   });
 
-  it('omits canRegenerate when prior assistant turn has no regeneratable reads', () => {
+  it('emits canRegenerate=false when prior assistant turn has no regeneratable reads', () => {
     const proposal = makeProposal();
     const history: Message[] = [
       userText('what is my balance'),
       asstText('Your balance is $20.'),
     ];
-    const action = buildPendingActionFromProposal(proposal, 0, history);
-    expect(action.canRegenerate).toBeUndefined();
+    const action = buildPendingActionFromProposal(proposal, 0, ENGINE_TOOLS, history);
+    expect(action.canRegenerate).toBe(false);
     expect(action.regenerateInput).toBeUndefined();
   });
 
@@ -216,77 +220,114 @@ describe('buildPendingActionFromProposal', () => {
         ],
       },
     ];
-    const action = buildPendingActionFromProposal(proposal, 0, history);
+    const action = buildPendingActionFromProposal(proposal, 0, ENGINE_TOOLS, history);
     expect(action.canRegenerate).toBe(true);
     expect(action.regenerateInput?.toolUseIds).toEqual(['toolu_swap_quote_1']);
     expect(action.quoteAge).toBeGreaterThanOrEqual(11_000);
     expect(action.quoteAge).toBeLessThan(13_000);
   });
 
-  it('walks BACKWARDS — picks the most recent assistant turn, ignores earlier reads', () => {
+  // [SPEC 15 v0.7 follow-up #3 — multi-turn history walk, 2026-05-04]
+  // The pre-#3 walk only inspected the last assistant message, which
+  // missed `swap_quote` calls that landed in an EARLIER assistant
+  // message of the same agent turn (e.g. `swap_quote` in turn-step-1,
+  // `prepare_bundle` in turn-step-2). The fix walks ALL assistant
+  // messages between the most recent human user message and the end
+  // of history.
+  it('spans multiple assistant messages within the same agent turn (post-#3)', () => {
+    const proposal = makeProposal();
+    const history: Message[] = [
+      userText('swap 10 USDC for SUI then save 10 USDC'),
+      // Step 1 of agent loop — runs swap_quote.
+      {
+        role: 'assistant',
+        content: [
+          { type: 'tool_use', id: 'toolu_swap_quote_1', name: 'swap_quote', input: {} },
+        ],
+      },
+      // Synthetic tool_result echo from engine.
+      {
+        role: 'user',
+        content: [
+          { type: 'tool_result', toolUseId: 'toolu_swap_quote_1', content: '...', isError: false },
+        ],
+      },
+      // Step 2 of agent loop — runs prepare_bundle + final text.
+      {
+        role: 'assistant',
+        content: [
+          { type: 'tool_use', id: 'toolu_prepare_bundle_1', name: 'prepare_bundle', input: {} },
+          { type: 'text', text: "Here's your plan: …" },
+        ],
+      },
+    ];
+    const action = buildPendingActionFromProposal(proposal, 0, ENGINE_TOOLS, history);
+    expect(action.canRegenerate).toBe(true);
+    expect(action.regenerateInput?.toolUseIds).toEqual(['toolu_swap_quote_1']);
+  });
+
+  it('walks BACKWARDS — picks the most recent agent turn, ignores reads from prior agent turns', () => {
     const proposal = makeProposal();
     const history: Message[] = [
       userText('what is the rate'),
       {
         role: 'assistant',
         content: [
-          {
-            type: 'tool_use',
-            id: 'OLD_swap_quote',
-            name: 'swap_quote',
-            input: {},
-          },
+          { type: 'tool_use', id: 'OLD_swap_quote', name: 'swap_quote', input: {} },
         ],
       },
       userText('ok then bundle this'),
       {
         role: 'assistant',
         content: [
-          {
-            type: 'tool_use',
-            id: 'FRESH_swap_quote',
-            name: 'swap_quote',
-            input: {},
-          },
+          { type: 'tool_use', id: 'FRESH_swap_quote', name: 'swap_quote', input: {} },
         ],
       },
     ];
-    const action = buildPendingActionFromProposal(proposal, 0, history);
+    const action = buildPendingActionFromProposal(proposal, 0, ENGINE_TOOLS, history);
     expect(action.regenerateInput?.toolUseIds).toEqual(['FRESH_swap_quote']);
   });
 
-  it('filters out non-regeneratable read tools (e.g. prepare_bundle, balance_check tier-2 names)', () => {
+  it('filters out non-regeneratable read tools (e.g. prepare_bundle, web_search)', () => {
     const proposal = makeProposal();
     const history: Message[] = [
       userText('do it'),
       {
         role: 'assistant',
         content: [
-          {
-            type: 'tool_use',
-            id: 'toolu_prepare_bundle',
-            name: 'prepare_bundle',
-            input: {},
-          },
-          {
-            type: 'tool_use',
-            id: 'toolu_swap_quote',
-            name: 'swap_quote',
-            input: {},
-          },
-          {
-            type: 'tool_use',
-            id: 'toolu_some_unrelated_tool',
-            name: 'web_search',
-            input: {},
-          },
+          { type: 'tool_use', id: 'toolu_prepare_bundle', name: 'prepare_bundle', input: {} },
+          { type: 'tool_use', id: 'toolu_swap_quote', name: 'swap_quote', input: {} },
+          { type: 'tool_use', id: 'toolu_unrelated', name: 'web_search', input: {} },
         ],
       },
     ];
-    const action = buildPendingActionFromProposal(proposal, 0, history);
-    // Only swap_quote is in REGENERATABLE_READ_TOOLS; prepare_bundle
-    // and web_search are not.
+    const action = buildPendingActionFromProposal(proposal, 0, ENGINE_TOOLS, history);
     expect(action.regenerateInput?.toolUseIds).toEqual(['toolu_swap_quote']);
+  });
+
+  // [SPEC 15 v0.7 follow-up #3] Lurking bug fixed by the converge:
+  // chip-confirmed bundles were never carrying `modifiableFields`,
+  // because the local composer didn't call `getModifiableFields`.
+  // The engine composer does. Verify it now propagates.
+  it('populates modifiableFields on each step (engine composer behavior)', () => {
+    const proposal = makeProposal({
+      steps: [
+        { toolName: 'send_transfer', input: { asset: 'USDC', amount: 1, to: '0xdef' } },
+        { toolName: 'send_transfer', input: { asset: 'USDC', amount: 1, to: '0xabc' } },
+      ],
+    });
+    const action = buildPendingActionFromProposal(proposal, 0, ENGINE_TOOLS);
+    // send_transfer has modifiable amount + to fields per
+    // tool-modifiable-fields.ts.
+    expect(action.steps![0].modifiableFields?.length ?? 0).toBeGreaterThan(0);
+    expect(action.steps![1].modifiableFields?.length ?? 0).toBeGreaterThan(0);
+  });
+
+  it('throws when tools are missing (forces caller to plumb engine.getTools)', () => {
+    const proposal = makeProposal();
+    expect(() => buildPendingActionFromProposal(proposal, 0, undefined)).toThrow(
+      /tools.*required/i,
+    );
   });
 });
 
@@ -303,6 +344,7 @@ describe('tryConsumeFastPathBundle', () => {
 
   it('returns null when sessionId missing', async () => {
     const result = await tryConsumeFastPathBundle({
+      ...TOOLS_OPT,
       sessionId: undefined,
       walletAddress: '0xwallet',
       trimmedMessage: 'Confirm',
@@ -314,6 +356,7 @@ describe('tryConsumeFastPathBundle', () => {
 
   it('returns null when walletAddress missing', async () => {
     const result = await tryConsumeFastPathBundle({
+      ...TOOLS_OPT,
       sessionId: 's_1',
       walletAddress: undefined,
       trimmedMessage: 'Confirm',
@@ -325,6 +368,7 @@ describe('tryConsumeFastPathBundle', () => {
 
   it('returns null when message is not affirmative', async () => {
     const result = await tryConsumeFastPathBundle({
+      ...TOOLS_OPT,
       sessionId: 's_1',
       walletAddress: '0xwallet',
       trimmedMessage: 'How is the weather?',
@@ -337,6 +381,7 @@ describe('tryConsumeFastPathBundle', () => {
   it('returns null when no proposal stashed (steady state)', async () => {
     consumeSpy.mockResolvedValueOnce(null);
     const result = await tryConsumeFastPathBundle({
+      ...TOOLS_OPT,
       sessionId: 's_1',
       walletAddress: '0xwallet',
       trimmedMessage: 'Confirm',
@@ -349,6 +394,7 @@ describe('tryConsumeFastPathBundle', () => {
   it('returns null when stashed wallet does not match request wallet', async () => {
     consumeSpy.mockResolvedValueOnce(makeProposal({ walletAddress: '0xother' }));
     const result = await tryConsumeFastPathBundle({
+      ...TOOLS_OPT,
       sessionId: 's_1',
       walletAddress: '0xwallet',
       trimmedMessage: 'Confirm',
@@ -361,6 +407,7 @@ describe('tryConsumeFastPathBundle', () => {
     const proposal = makeProposal();
     consumeSpy.mockResolvedValueOnce(proposal);
     const result = await tryConsumeFastPathBundle({
+      ...TOOLS_OPT,
       sessionId: 's_1',
       walletAddress: '0xwallet',
       trimmedMessage: 'Confirm',
@@ -408,6 +455,7 @@ describe('tryConsumeFastPathBundle', () => {
   ])('treats "%s" as affirmative', async (msg) => {
     consumeSpy.mockResolvedValueOnce(makeProposal());
     const result = await tryConsumeFastPathBundle({
+      ...TOOLS_OPT,
       sessionId: 's_1',
       walletAddress: '0xwallet',
       trimmedMessage: msg,
@@ -426,6 +474,7 @@ describe('tryConsumeFastPathBundle', () => {
     'A very long message that goes on and on past the 30 character cap',
   ])('does NOT treat "%s" as affirmative', async (msg) => {
     const result = await tryConsumeFastPathBundle({
+      ...TOOLS_OPT,
       sessionId: 's_1',
       walletAddress: '0xwallet',
       trimmedMessage: msg,
@@ -481,6 +530,7 @@ describe('tryConsumeFastPathBundle — Phase 1.5 plan-context override', () => {
     it('dispatches "Confirm" with admitted_via=regex (legacy 108ms path)', async () => {
       consumeSpy.mockResolvedValueOnce(makeProposal());
       const result = await tryConsumeFastPathBundle({
+      ...TOOLS_OPT,
         sessionId: 's_1',
         walletAddress: '0xwallet',
         trimmedMessage: 'Confirm',
@@ -520,6 +570,7 @@ describe('tryConsumeFastPathBundle — Phase 1.5 plan-context override', () => {
     ])('admits "%s" via plan_context when prior turn is multi-write plan', async (msg) => {
       consumeSpy.mockResolvedValueOnce(makeProposal());
       const result = await tryConsumeFastPathBundle({
+      ...TOOLS_OPT,
         sessionId: 's_1',
         walletAddress: '0xwallet',
         trimmedMessage: msg,
@@ -549,6 +600,7 @@ describe('tryConsumeFastPathBundle — Phase 1.5 plan-context override', () => {
       'skip leg 3',
     ])('blocks "%s" even when plan-context is detected', async (msg) => {
       const result = await tryConsumeFastPathBundle({
+      ...TOOLS_OPT,
         sessionId: 's_1',
         walletAddress: '0xwallet',
         trimmedMessage: msg,
@@ -567,6 +619,7 @@ describe('tryConsumeFastPathBundle — Phase 1.5 plan-context override', () => {
   describe('no-plan-context skip (reason=no_plan_context)', () => {
     it('skips when prior turn is informational (not a plan)', async () => {
       const result = await tryConsumeFastPathBundle({
+      ...TOOLS_OPT,
         sessionId: 's_1',
         walletAddress: '0xwallet',
         trimmedMessage: 'do it bro',
@@ -585,6 +638,7 @@ describe('tryConsumeFastPathBundle — Phase 1.5 plan-context override', () => {
   describe('legacy not_affirmative skip (no history)', () => {
     it('falls back to not_affirmative when no history is provided', async () => {
       const result = await tryConsumeFastPathBundle({
+      ...TOOLS_OPT,
         sessionId: 's_1',
         walletAddress: '0xwallet',
         trimmedMessage: 'do it bro',
@@ -617,6 +671,7 @@ describe('tryConsumeFastPathBundle — Phase 1.5 plan-context override', () => {
       consumeSpy.mockResolvedValueOnce(proposal);
 
       const result = await tryConsumeFastPathBundle({
+      ...TOOLS_OPT,
         sessionId: 's_1',
         walletAddress: '0xwallet',
         trimmedMessage: 'do it bro',
@@ -656,6 +711,7 @@ describe('tryConsumeFastPathBundle — Phase 1.5 plan-context override', () => {
     it('admits chip click WITHOUT regex match or history', async () => {
       consumeSpy.mockResolvedValueOnce(makeProposal());
       const result = await tryConsumeFastPathBundle({
+      ...TOOLS_OPT,
         sessionId: 's_1',
         walletAddress: '0xwallet',
         // Chat route synthesizes message='yes' for telemetry, but
@@ -681,6 +737,7 @@ describe('tryConsumeFastPathBundle — Phase 1.5 plan-context override', () => {
       // forceAdmit semantics MUST hold.)
       consumeSpy.mockResolvedValueOnce(makeProposal());
       const result = await tryConsumeFastPathBundle({
+      ...TOOLS_OPT,
         sessionId: 's_1',
         walletAddress: '0xwallet',
         trimmedMessage: 'no wait',
@@ -697,6 +754,7 @@ describe('tryConsumeFastPathBundle — Phase 1.5 plan-context override', () => {
 
     it('chip + missing sessionId → no_session skip (session checks still run)', async () => {
       const result = await tryConsumeFastPathBundle({
+      ...TOOLS_OPT,
         sessionId: undefined,
         walletAddress: '0xwallet',
         trimmedMessage: 'yes',
@@ -713,6 +771,7 @@ describe('tryConsumeFastPathBundle — Phase 1.5 plan-context override', () => {
 
     it('chip + missing walletAddress → no_wallet skip', async () => {
       const result = await tryConsumeFastPathBundle({
+      ...TOOLS_OPT,
         sessionId: 's_1',
         walletAddress: undefined,
         trimmedMessage: 'yes',
@@ -730,6 +789,7 @@ describe('tryConsumeFastPathBundle — Phase 1.5 plan-context override', () => {
     it('chip + no stash → no_stash skip (stash existence still checked)', async () => {
       consumeSpy.mockResolvedValueOnce(null);
       const result = await tryConsumeFastPathBundle({
+      ...TOOLS_OPT,
         sessionId: 's_1',
         walletAddress: '0xwallet',
         trimmedMessage: 'yes',
@@ -747,6 +807,7 @@ describe('tryConsumeFastPathBundle — Phase 1.5 plan-context override', () => {
     it('chip + wallet mismatch → wallet_mismatch skip', async () => {
       consumeSpy.mockResolvedValueOnce(makeProposal({ walletAddress: '0xOTHER' }));
       const result = await tryConsumeFastPathBundle({
+      ...TOOLS_OPT,
         sessionId: 's_1',
         walletAddress: '0xwallet',
         trimmedMessage: 'yes',
@@ -802,6 +863,7 @@ describe('tryConsumeFastPathBundle — Phase 1.5 plan-context override', () => {
       consumeSpy.mockResolvedValueOnce(null);
 
       const result = await tryConsumeFastPathBundle({
+      ...TOOLS_OPT,
         sessionId: 's_1',
         walletAddress: '0xwallet',
         trimmedMessage: 'yes',
@@ -824,6 +886,7 @@ describe('tryConsumeFastPathBundle — Phase 1.5 plan-context override', () => {
       consumeSpy.mockResolvedValueOnce(null);
 
       const result = await tryConsumeFastPathBundle({
+      ...TOOLS_OPT,
         sessionId: 's_1',
         walletAddress: '0xwallet',
         trimmedMessage: 'arbitrary',

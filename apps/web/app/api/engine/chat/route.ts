@@ -557,6 +557,15 @@ export async function POST(request: NextRequest) {
               // forStashId. Skips intent gates inside the helper but
               // still runs session/stash/wallet checks.
               forceAdmit: useChipForceAdmit ? 'chip' : undefined,
+              // [SPEC 15 v0.7 follow-up #3 — single-source bundle
+              // composer, 2026-05-04] Engine tools required so the
+              // fast-path can call `composeBundleFromToolResults`
+              // (the canonical engine bundle composer). Without
+              // this, fast-path bundles ship without canRegenerate /
+              // modifiableFields / future bundle fields. The engine
+              // is constructed above (line ~317) so getTools is
+              // always populated by this point.
+              tools: engine.getTools(),
             });
             if (fastPath) {
               fastPathFired = true;

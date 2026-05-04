@@ -28,9 +28,12 @@
  *   - `app/api/engine/chat/route.ts` — the lone caller.
  */
 
-import { randomUUID } from 'node:crypto';
-import type { ContentBlock, Message, PendingAction, PendingActionStep } from '@t2000/engine';
-import { getTelemetrySink, REGENERATABLE_READ_TOOLS } from '@t2000/engine';
+import type { Message, PendingAction, PendingToolCall, Tool } from '@t2000/engine';
+import {
+  composeBundleFromToolResults,
+  getTelemetrySink,
+  REGENERATABLE_READ_TOOLS,
+} from '@t2000/engine';
 import {
   detectPriorPlanContext,
   isAffirmativeConfirmReply,
@@ -39,7 +42,6 @@ import {
 import {
   consumeBundleProposal,
   type BundleProposal,
-  type BundleProposalStep,
 } from './bundle-proposal-store';
 
 interface FastPathConsumeOpts {
@@ -77,6 +79,24 @@ interface FastPathConsumeOpts {
    * Tagged on the dispatch counter as `admitted_via='chip'`.
    */
   forceAdmit?: 'chip';
+  /**
+   * [SPEC 15 v0.7 follow-up #3 — single-source bundle composer,
+   * 2026-05-04] Engine tool registry passed through from the chat
+   * route's `engine` instance (`engine.getTools()`). Required so the
+   * fast-path can call the canonical
+   * `composeBundleFromToolResults(...)` helper exported from
+   * `@t2000/engine` ≥1.17.0 — that's the same function the engine's
+   * own agent loop uses to produce bundle PendingActions, so
+   * chip-confirmed bundles automatically inherit every field the
+   * engine bundles carry (canRegenerate, regenerateInput, quoteAge,
+   * modifiableFields, inputCoinFromStep re-wiring, etc.).
+   *
+   * Optional for backward-compat with tests + any pre-1.17 caller —
+   * when omitted, the fast-path falls through to a no-op (matches the
+   * pre-converge behavior of "no regenerate fields populated").
+   * Production chat route MUST pass this.
+   */
+  tools?: ReadonlyArray<Tool>;
 }
 
 /**
@@ -167,87 +187,73 @@ function recordSkip(reason: SkipReason): null {
 }
 
 /**
- * Per-step user-facing description. Mirrors `describeAction` in
- * `@t2000/engine/src/describe-action.ts` (which isn't exported from
- * the engine's public surface). Behavior MUST stay close to the
- * engine-side version — when the engine bumps to expose
- * `describeAction`, swap this for an import.
+ * [SPEC 15 v0.7 follow-up #3 — single-source bundle composer,
+ * 2026-05-04] Walk back through `history` to collect every
+ * regeneratable read `tool_use` block from the **prior agent turn**
+ * (every assistant message between the most recent human user
+ * message and the end of history). The fast-path bundle was
+ * assembled from those reads' outputs — `swap_quote` for the swap
+ * leg, `rates_info` for the save leg — and we need their toolUseIds
+ * threaded onto the dispatched `PendingAction` so the
+ * PermissionCard's `↻ Refresh quote` button can re-fire them.
  *
- * TODO(SPEC 14 Phase 3): switch to `import { describeAction } from
- * '@t2000/engine'` once engine ≥ 1.15 ships that export.
- */
-function describeStep(step: BundleProposalStep): string {
-  const i = step.input;
-  const amount = i.amount as number | string | undefined;
-  const asset = (i.asset as string | undefined) ?? 'USDC';
-  switch (step.toolName) {
-    case 'withdraw':
-      return amount !== undefined
-        ? `Withdraw ${amount} ${asset} from savings`
-        : `Withdraw all ${asset} from savings`;
-    case 'save_deposit':
-      return amount !== undefined
-        ? `Save ${amount} ${asset} into lending`
-        : `Save ${asset} into lending`;
-    case 'borrow':
-      return `Borrow ${amount ?? '?'} ${asset}`;
-    case 'repay_debt':
-      return `Repay ${amount ?? '?'} ${asset}`;
-    case 'send_transfer': {
-      const to = i.to as string | undefined;
-      return `Send ${amount ?? '?'} ${asset} to ${to ?? '?'}`;
-    }
-    case 'swap_execute': {
-      const from = i.from as string | undefined;
-      const to = i.to as string | undefined;
-      return `Swap ${amount ?? '?'} ${from ?? '?'} → ${to ?? '?'}`;
-    }
-    case 'claim_rewards':
-      return 'Claim NAVI rewards';
-    case 'volo_stake':
-      return `Stake ${amount ?? '?'} SUI → vSUI`;
-    case 'volo_unstake':
-      return `Unstake ${amount ?? '?'} vSUI → SUI`;
-    default:
-      return step.toolName;
-  }
-}
-
-/**
- * [SPEC 15 v0.7 follow-up #2 — fast-path regenerate, 2026-05-04]
- * Walk back through `history` to find the most recent assistant turn
- * (the `prepare_bundle` plan turn) and pull every `tool_use` block
- * whose name is in `REGENERATABLE_READ_TOOLS`. The fast-path bundle
- * was assembled from those reads' outputs (the LLM read `swap_quote`
- * results before stashing the bundle via `prepare_bundle`), so we
- * need their toolUseIds threaded onto the dispatched `PendingAction`
- * to enable PermissionCard regenerate.
+ * **Why "the prior agent turn" not "the last assistant message".**
+ * A multi-tool-step agent loop emits MULTIPLE assistant messages per
+ * user turn — one per loop iteration. Example for "swap 10 USDC for
+ * SUI then save 10 USDC":
  *
- * **Why scan history (vs. stashing in `BundleProposal`).** The stash
- * is created by the `prepare_bundle` tool, which doesn't have access
- * to same-turn read tool_use ids via `ToolContext`. Scanning the
- * history at consume-time is simpler than threading a new field
- * through the tool signature, and the data is already there: the
- * prepare_bundle turn's `tool_use` blocks live in
- * `engine.getMessages()`'s last assistant message.
+ *   user:      "swap 10 USDC for SUI then save 10 USDC"
+ *   assistant: tool_use(swap_quote) + tool_use(rates_info)
+ *   user:      tool_result(swap_quote) + tool_result(rates_info) ← synthetic
+ *   assistant: tool_use(prepare_bundle) + text("Here's your plan…")
  *
- * **Walks BACKWARDS** — stops at the first assistant message it
- * finds, so reads from earlier turns don't pollute the regenerate
- * set. (A user with a long session might have a stale `swap_quote`
- * from 4 turns ago that has nothing to do with this bundle.)
+ * The chip-Confirm fast-path admits AFTER the second assistant
+ * message lands. The pre-this-commit walk only inspected
+ * `history[history.length-1]` (the last assistant message), so it
+ * found `prepare_bundle` (not regeneratable) and missed `swap_quote`
+ * (regeneratable). Result: bundle shipped with `canRegenerate=false`,
+ * no Refresh button on the PermissionCard. **This is the bug.**
+ *
+ * **Why scan history (vs. stashing in `BundleProposal`).** The
+ * `prepare_bundle` tool doesn't have access to same-turn read tool_use
+ * ids via `ToolContext` — they're at the message level, not the tool
+ * level. Scanning history at consume-time is structurally simpler
+ * than threading a new field through every tool's signature, and the
+ * data is already there.
+ *
+ * **Synthetic-vs-human user message disambiguation.** Anthropic's API
+ * encodes both human-typed messages AND tool_result echoes as
+ * `role: 'user'`. A "synthetic" tool_result message is identified by
+ * having any `tool_result` content block. The walk stops at the first
+ * NON-synthetic user message it encounters (the actual prior
+ * human prompt) — assistant messages between it and the end of
+ * history are the prior agent turn.
  *
  * Returns null when no regeneratable reads are found in the prior
- * assistant turn — the bundle then ships with `canRegenerate: false`
- * (matching pre-this-commit behavior).
+ * agent turn — the bundle then ships with `canRegenerate: false`.
  */
 function findContributingReadsFromHistory(
   history: Message[] | undefined,
 ): Array<{ toolUseId: string; toolName: string }> | null {
   if (!history || history.length === 0) return null;
+
+  let priorUserIdx = -1;
   for (let i = history.length - 1; i >= 0; i--) {
     const msg = history[i];
+    if (msg.role !== 'user') continue;
+    const isSyntheticToolResult = msg.content.some(
+      (b) => b.type === 'tool_result',
+    );
+    if (!isSyntheticToolResult) {
+      priorUserIdx = i;
+      break;
+    }
+  }
+
+  const reads: Array<{ toolUseId: string; toolName: string }> = [];
+  for (let i = priorUserIdx + 1; i < history.length; i++) {
+    const msg = history[i];
     if (msg.role !== 'assistant') continue;
-    const reads: Array<{ toolUseId: string; toolName: string }> = [];
     for (const block of msg.content) {
       if (block.type !== 'tool_use') continue;
       const tu = block as { id: string; name: string };
@@ -255,92 +261,85 @@ function findContributingReadsFromHistory(
         reads.push({ toolUseId: tu.id, toolName: tu.name });
       }
     }
-    return reads.length > 0 ? reads : null;
   }
-  return null;
+  return reads.length > 0 ? reads : null;
 }
 
 /**
- * Construct a structurally-valid `PendingAction` from a stashed
- * proposal. Mirrors what `composeBundleFromToolResults` in the engine
- * produces for a multi-write bundle, minus the LLM-derived fields
- * (`assistantContent`, `completedResults`) — those are irrelevant
- * for the fast path because there was no LLM turn to regenerate from
- * a chat-mode perspective.
+ * [SPEC 15 v0.7 follow-up #3 — single-source bundle composer,
+ * 2026-05-04] Construct a `PendingAction` from a stashed proposal.
  *
- * **[SPEC 15 v0.7 follow-up #2 — 2026-05-04]** Now also stamps
- * `canRegenerate=true` + `regenerateInput.toolUseIds` + `quoteAge`
- * when `findContributingReadsFromHistory` returns reads from the
- * prepare_bundle turn. Pre-this-commit the fast-path always emitted
- * `canRegenerate=false`, leaving bundle PermissionCards confirmed
- * via the chip Confirm path with no Refresh-quote affordance even
- * though `swap_quote` (or `rates_info` etc.) had been re-fired-able
- * the entire time. `quoteAge` is approximated from
- * `proposal.validatedAt` (the moment `prepare_bundle` ran, which is
- * within ~hundreds of ms of the contributing reads landing).
+ * **Architecture: fast-path is now a thin adapter.** Pre-v1.17 this
+ * file maintained its own bundle composer (~200 lines: `describeStep`,
+ * step assembly, regenerate-fields derivation). It drifted from
+ * `composeBundleFromToolResults` in the engine three times in 24
+ * hours (no `canRegenerate`, no `modifiableFields`, slightly different
+ * step shape). Each drift surfaced as a production bug.
  *
- * Conventions matched:
- *   - `steps[i].toolUseId` uses a deterministic prefix `fastpath_` so
- *     log analysis can tell apart fast-path vs legacy bundles by
- *     prefix alone.
- *   - `steps[i].attemptId` is a fresh UUID v4 per step (engine spec).
- *   - Top-level `toolName/toolUseId/input/description/attemptId`
- *     mirror `steps[0]` (per SPEC 7 Layer 2 line 463).
+ * Now: convert `BundleProposal.steps` → `PendingToolCall[]`, build
+ * synthetic `readResults` from history, and call the engine's
+ * canonical `composeBundleFromToolResults(...)`. Future bundle-shape
+ * additions (new fields, new flags) propagate to fast-path bundles
+ * automatically — no audric-side change required.
+ *
+ * **The two non-trivial decisions in this adapter.**
+ *
+ *   1. **`toolUseId` carries a `fastpath_` prefix.** Engine bundles
+ *      use the LLM's tool_use ids (`toolu_…`); fast-path bundles use
+ *      `fastpath_<bundleId>_<i>`. Log analysis depends on the prefix
+ *      to tell the two paths apart, so we set it on each
+ *      `PendingToolCall.id` before handing off to the composer.
+ *
+ *   2. **`readResults[*].timestamp` uses `proposal.validatedAt`.**
+ *      The history walk extracts `tool_use` block ids but not their
+ *      execution timestamps (those aren't preserved on persisted
+ *      messages). `validatedAt` is the moment `prepare_bundle`
+ *      finished, which is within ~hundreds of ms of the contributing
+ *      reads landing. Good-enough for `quoteAge` UX (the value drives
+ *      a "QUOTE Ns OLD" badge — sub-second precision is irrelevant).
+ *
+ * Required `tools` for engine composer's tool lookup
+ * (`describeAction` + `getModifiableFields` + bundleable check). The
+ * caller MUST pass `engine.getTools()`. Falls back to a synthetic
+ * "tools missing" `PendingAction` only in test/dev scenarios — see
+ * the `tools` parameter on `FastPathConsumeOpts`.
  */
 function buildPendingActionFromProposal(
   proposal: BundleProposal,
   turnIndex: number,
+  tools: ReadonlyArray<Tool> | undefined,
   history?: Message[],
 ): PendingAction {
-  const steps: PendingActionStep[] = proposal.steps.map((s, i) => {
-    const step: PendingActionStep = {
-      toolName: s.toolName,
-      toolUseId: `fastpath_${proposal.bundleId}_${i}`,
-      attemptId: randomUUID(),
-      input: s.input,
-      description: describeStep(s),
-    };
-    if (s.inputCoinFromStep !== undefined) {
-      step.inputCoinFromStep = s.inputCoinFromStep;
-    }
-    return step;
-  });
+  if (!tools || tools.length === 0) {
+    throw new Error(
+      'fast-path-bundle: `tools` is required to compose a bundle ' +
+      '(pass `engine.getTools()` from the chat route). Without it ' +
+      'the engine composer cannot resolve tool descriptions or ' +
+      'modifiable-fields. SPEC 15 v0.7 follow-up #3.',
+    );
+  }
 
-  const first = steps[0];
-
-  // assistantContent on a real LLM-emitted bundle holds the LLM's
-  // tool_use blocks for each write. The fast path has no LLM turn, so
-  // we leave it empty. Downstream consumers (composeTx, the resume
-  // route) read `steps[]` directly — they don't depend on
-  // assistantContent.
-  const assistantContent: ContentBlock[] = [];
+  const pendingWrites: PendingToolCall[] = proposal.steps.map((s, i) => ({
+    id: `fastpath_${proposal.bundleId}_${i}`,
+    name: s.toolName,
+    input: s.input,
+  }));
 
   const contributingReads = findContributingReadsFromHistory(history);
-  const canRegenerate = contributingReads !== null;
-  const quoteAge = canRegenerate
-    ? Math.max(0, Date.now() - proposal.validatedAt)
-    : undefined;
+  const readResults = (contributingReads ?? []).map((r) => ({
+    toolUseId: r.toolUseId,
+    toolName: r.toolName,
+    timestamp: proposal.validatedAt,
+  }));
 
-  return {
-    toolName: first.toolName,
-    toolUseId: first.toolUseId,
-    input: first.input,
-    description: first.description,
-    assistantContent,
+  return composeBundleFromToolResults({
+    pendingWrites,
+    tools: [...tools],
+    readResults,
+    assistantContent: [],
     completedResults: [],
     turnIndex,
-    attemptId: first.attemptId,
-    steps,
-    ...(canRegenerate
-      ? {
-          canRegenerate: true,
-          regenerateInput: {
-            toolUseIds: contributingReads!.map((r) => r.toolUseId),
-          },
-          ...(quoteAge !== undefined ? { quoteAge } : {}),
-        }
-      : {}),
-  };
+  });
 }
 
 /**
@@ -427,6 +426,7 @@ export async function tryConsumeFastPathBundle(
   const action = buildPendingActionFromProposal(
     proposal,
     opts.turnIndex,
+    opts.tools,
     opts.history,
   );
 
@@ -461,5 +461,5 @@ export async function tryConsumeFastPathBundle(
 
 export const __testOnly__ = {
   buildPendingActionFromProposal,
-  describeStep,
+  findContributingReadsFromHistory,
 };
