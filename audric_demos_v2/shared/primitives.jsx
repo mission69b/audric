@@ -262,7 +262,7 @@ const PermissionCard = ({ title, subtitle, rows, footer, onApprove, approveLabel
       ) : executing ? (
         <div style={{flex:1,display:'flex',alignItems:'center',gap:10,color:'var(--blue)',position:'relative'}}>
           <span className="spin" style={{display:'inline-block'}}><Icon name="spinner" size={12}/></span>
-          <span className="mono pulse" style={{fontSize:10,letterSpacing:'.1em'}}>EXECUTING PAYMENT STREAM ON SUI MAINNET…</span>
+          <span className="mono pulse" style={{fontSize:10,letterSpacing:'.1em'}}>EXECUTING PAYMENT INTENT ON SUI MAINNET…</span>
         </div>
       ) : (
         <>
@@ -281,7 +281,7 @@ const PermissionCard = ({ title, subtitle, rows, footer, onApprove, approveLabel
 // "Why only Sui" callout — removed per UX direction. No-op so existing call sites keep working.
 const WhyOnlySui = () => null;
 
-// PtbCard — shows the compiled Payment Stream (PTB) before the permission card.
+// PtbCard — shows the compiled Payment Intent before the permission card.
 // calls: [{ vendor, desc, amount }]  total: string  (e.g. "$108")
 const PtbCard = ({ calls, total }) => (
   <ToolCard label="PAYMENT INTENT COMPILED" status="done" tokens={`${calls.length} CALLS · ATOMIC`}>
