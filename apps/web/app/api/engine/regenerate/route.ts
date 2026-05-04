@@ -10,6 +10,7 @@ import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { validateJwt, isValidSuiAddress } from '@/lib/auth';
 import { createEngine, getSessionStore } from '@/lib/engine/engine-factory';
 import { prisma } from '@/lib/prisma';
+import { emitQuoteRefreshFired } from '@/lib/engine/quote-refresh-metrics';
 
 /**
  * SPEC 7 P2.4b — POST /api/engine/regenerate
@@ -101,6 +102,14 @@ export async function POST(request: NextRequest) {
   // regenerates 5+ times in 30s — Allow it."
   const rl = rateLimit(`engine-regenerate:${ip}`, 30, 60_000);
   if (!rl.success) return rateLimitResponse(rl.retryAfterMs!);
+
+  // [SPEC 15 v0.6] Emit unified quote-refresh counter at click intent
+  // (after auth + rate-limit, before doing work). This is the
+  // top-of-funnel "user wanted a fresh quote" signal — separate from
+  // the existing `audric.harness.regenerate_count{outcome}` which
+  // counts round-trip outcomes. See `quote-refresh-metrics.ts` for
+  // the cross-surface rationale.
+  emitQuoteRefreshFired({ surface: 'permission_card' });
 
   const store = getSessionStore();
   const session = await store.get(sessionId);

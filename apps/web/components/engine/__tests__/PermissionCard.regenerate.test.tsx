@@ -76,7 +76,10 @@ describe('PermissionCard — regenerate slot (Quote-Refresh ReviewCard)', () => 
     expect(onRegenerate).toHaveBeenCalledTimes(1);
   });
 
-  it('shows "Regenerating…" and disables every button while in flight', () => {
+  it('shows "Refreshing…" and disables every button while in flight', () => {
+    // [SPEC 15 v0.6] In-flight copy unified with `<ConfirmChips />`'s
+    // refresh chip — "Refreshing…" reads consistently across both
+    // surfaces. Pre-v0.6 was "Regenerating…".
     const action = fakeBundle({
       canRegenerate: true,
       quoteAge: 1000,
@@ -91,7 +94,7 @@ describe('PermissionCard — regenerate slot (Quote-Refresh ReviewCard)', () => 
         regenerate={{ onRegenerate, isRegenerating: true }}
       />,
     );
-    const regenBtn = getByText(/Regenerating/i) as HTMLButtonElement;
+    const regenBtn = getByText(/Refreshing/i) as HTMLButtonElement;
     expect(regenBtn.disabled).toBe(true);
     const approveBtn = getByText('Approve') as HTMLButtonElement;
     const denyBtn = getByText('Deny') as HTMLButtonElement;

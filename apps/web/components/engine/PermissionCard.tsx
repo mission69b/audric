@@ -707,9 +707,9 @@ export function PermissionCard({
                   onClick={regenerate.onRegenerate}
                   disabled={regenerate.isRegenerating}
                   className="flex-1 rounded-lg border border-warning-border bg-warning-bg py-2 text-xs font-medium text-warning-solid hover:bg-warning-bg hover:border-warning-solid transition active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed"
-                  aria-label="Regenerate bundle with fresh quotes"
+                  aria-label="Refresh the quote and prepare a new plan"
                 >
-                  {regenerate.isRegenerating ? '↻ Regenerating…' : '↻ Refresh quote'}
+                  {regenerate.isRegenerating ? '↻ Refreshing…' : '↻ Refresh quote'}
                 </button>
               )}
               <button

@@ -87,6 +87,17 @@ interface ChatMessageProps {
    * even if `message.expectsConfirm` is set + the env flag is on.
    */
   onChipDecision?: (decision: { value: 'yes' | 'no'; forStashId: string }) => void;
+  /**
+   * [SPEC 15 v0.6 — Unified quote refresh] Refresh-chip click handler.
+   * Functionally identical to `onSendMessage(text)` but tags the
+   * server-side request with `refreshDecision: { via: 'chip' }` so
+   * the unified `audric.quote_refresh.fired{surface=chip}` counter
+   * fires. Wired up by `<UnifiedTimeline>` from
+   * `engine.sendRefreshClick`. Falls back to `onSendMessage` when
+   * omitted (legacy callers / unauth path) — same UX, just no chip
+   * surface attribution in telemetry.
+   */
+  onRefreshClick?: (text: string) => void;
 }
 
 export function ChatMessage({
@@ -101,6 +112,7 @@ export function ChatMessage({
   onRegenerate,
   regeneratingAttemptIds,
   onChipDecision,
+  onRefreshClick,
 }: ChatMessageProps) {
   if (message.role === 'user') {
     return (
@@ -153,7 +165,15 @@ export function ChatMessage({
   // prepare_bundle via plan-context promotion — fixes the
   // production-observed gap where Sonnet read literal "refresh
   // quote" as quote-only and skipped re-bundling (2026-05-04).
+  //
+  // [v0.6 — Unified telemetry] Prefer `onRefreshClick` when wired so
+  // the server-side `audric.quote_refresh.fired{surface=chip}`
+  // counter fires; falls back to `onSendMessage` for legacy callers
+  // / tests where the click was indistinguishable from a normal text
+  // turn. Both paths produce identical UX — the difference is purely
+  // observability.
   const refreshTargetText = message.expectsConfirm?.originatingUserText ?? 'refresh quote';
+  const refreshDispatcher = onRefreshClick ?? onSendMessage;
   const chipsBlock =
     message.expectsConfirm &&
     onChipDecision &&
@@ -162,7 +182,7 @@ export function ChatMessage({
       <ConfirmChips
         payload={message.expectsConfirm}
         onChipDecision={onChipDecision}
-        onRefresh={onSendMessage ? () => onSendMessage(refreshTargetText) : undefined}
+        onRefresh={refreshDispatcher ? () => refreshDispatcher(refreshTargetText) : undefined}
       />
     ) : null;
 

@@ -51,6 +51,7 @@ import {
   emitExpectsConfirmSet,
   emitConfirmFlowDispatch,
 } from '@/lib/engine/plan-context-metrics';
+import { emitQuoteRefreshFired } from '@/lib/engine/quote-refresh-metrics';
 import { env } from '@/lib/env';
 import {
   asHarnessVersion,
@@ -118,6 +119,19 @@ interface ChipDecision {
   forStashId: string;
 }
 
+/**
+ * [SPEC 15 v0.6 — Unified quote refresh] Optional body field set by
+ * the client when the chip's "Refresh quote" button is the source of
+ * the turn. The chat route still treats the request as a normal text
+ * turn (no early-return / no fast-path bypass) — the field is purely
+ * a telemetry signal so we can attribute the click to the chip
+ * surface in the unified `audric.quote_refresh.fired` counter. Bad
+ * shapes are silently ignored (treated as a normal text turn).
+ */
+interface RefreshDecision {
+  via: 'chip';
+}
+
 interface ChatRequestBody {
   message: string;
   address?: string;
@@ -125,6 +139,8 @@ interface ChatRequestBody {
   history?: HistoryMessage[];
   /** [SPEC 15 Phase 2] Chip click — see `ChipDecision`. */
   chipDecision?: ChipDecision;
+  /** [SPEC 15 v0.6] Refresh-chip click — see `RefreshDecision`. */
+  refreshDecision?: RefreshDecision;
 }
 
 function jsonError(message: string, status: number): Response {
@@ -142,7 +158,14 @@ export async function POST(request: NextRequest) {
     return jsonError('Invalid JSON body', 400);
   }
 
-  const { message, address, sessionId: requestedSessionId, history = [], chipDecision } = body;
+  const {
+    message,
+    address,
+    sessionId: requestedSessionId,
+    history = [],
+    chipDecision,
+    refreshDecision,
+  } = body;
 
   if (!message?.trim()) {
     return jsonError('message is required', 400);
@@ -160,6 +183,17 @@ export async function POST(request: NextRequest) {
     chipDecision.forStashId.length > 0
       ? chipDecision
       : undefined;
+
+  // [SPEC 15 v0.6] Defensive shape validation on refreshDecision.
+  // Same fall-through-on-bad-shape policy as chipDecision — the
+  // payload is telemetry-only, never gates routing logic. Bad
+  // shapes silently degrade to "no telemetry tag" rather than
+  // failing the turn.
+  const validRefreshDecision: RefreshDecision | undefined =
+    refreshDecision && refreshDecision.via === 'chip' ? refreshDecision : undefined;
+  if (validRefreshDecision) {
+    emitQuoteRefreshFired({ surface: 'chip' });
+  }
 
   const jwt = request.headers.get('x-zklogin-jwt');
   const isAuth = !!jwt && !!address;

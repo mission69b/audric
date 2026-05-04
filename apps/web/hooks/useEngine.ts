@@ -305,6 +305,75 @@ export function useEngine({ address, jwt, onToolResult, contacts }: UseEngineOpt
   );
 
   /**
+   * [SPEC 15 v0.6 — Unified quote refresh] Send the originating user
+   * intent text as a new chat turn, AND tag it with
+   * `refreshDecision: { via: 'chip' }` so the server can attribute
+   * the click to the chip surface in the unified
+   * `audric.quote_refresh.fired{surface=chip}` counter.
+   *
+   * Functionally identical to `sendMessage(text)` from the engine's
+   * point of view — the route does not branch on `refreshDecision`,
+   * it just emits the telemetry tag. We could have piggybacked on
+   * `sendMessage` with an opts arg, but a dedicated callback keeps
+   * the wire-format contract narrow + easy to audit (mirrors
+   * `sendChipDecision`).
+   */
+  const sendRefreshClick = useCallback(
+    async (text: string) => {
+      if (isAuth && (!address || !jwt)) return;
+      if (status === 'streaming' || status === 'connecting' || status === 'executing') return;
+      if (!text || !text.trim()) return;
+
+      setError(null);
+      lastFailedMessage.current = null;
+      retryCountRef.current = 0;
+      hasReceivedContent.current = false;
+      turnCompleteSeenRef.current = false;
+      pendingActionSeenRef.current = false;
+      currentReplayTextRef.current = text;
+
+      const userMsg: EngineChatMessage = {
+        id: nextMsgId(),
+        role: 'user',
+        content: text,
+        timestamp: Date.now(),
+      };
+      const assistantMsg: EngineChatMessage = {
+        id: nextMsgId(),
+        role: 'assistant',
+        content: '',
+        timestamp: Date.now(),
+        tools: [],
+        isStreaming: true,
+      };
+      streamingMsgRef.current = assistantMsg.id;
+      setMessages((prev) => [...prev, userMsg, assistantMsg]);
+
+      if (isAuth) {
+        await attemptStream('/api/engine/chat', {
+          message: text,
+          address,
+          sessionId: sessionId ?? undefined,
+          refreshDecision: { via: 'chip' },
+        });
+      } else {
+        // Unauth/demo path — refreshDecision is server-only telemetry,
+        // we still pass it but the unauth branch treats it as a normal
+        // text turn (no chipDecision routing applies, no session to
+        // emit against). Falls through cleanly.
+        const histSnapshot = buildHistory([...messagesRef.current, userMsg]);
+        await attemptStream('/api/engine/chat', {
+          message: text,
+          history: histSnapshot,
+          refreshDecision: { via: 'chip' },
+        });
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [address, jwt, sessionId, status, isAuth],
+  );
+
+  /**
    * Resume the engine after a pending action is resolved.
    * Opens a new SSE stream to /api/engine/resume with the tool result.
    */
@@ -1361,6 +1430,7 @@ export function useEngine({ address, jwt, onToolResult, contacts }: UseEngineOpt
     harnessVersion,
     sendMessage,
     sendChipDecision,
+    sendRefreshClick,
     resolveAction,
     cancel,
     retry,
