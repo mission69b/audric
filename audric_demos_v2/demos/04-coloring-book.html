@@ -25,7 +25,7 @@ const Demo4 = () => {
   const typed = useTyped(PROMPT, step===0, 26);
 
   useEffect(() => {
-    const delays = { 0: PROMPT.length*26+400, 1: 800, 2: 2300, 3: 4200, 4: 800 };
+    const delays = { 0: PROMPT.length*26+400, 1: 800, 2: 2800, 3: 5000, 4: 800 };
     const d = delays[step]; if (d == null) return;
     const t = setTimeout(()=>setStep(s=>Math.min(s+1, 5)), d);
     return ()=>clearTimeout(t);
@@ -53,10 +53,10 @@ const Demo4 = () => {
   const restart = () => { setStep(0); setRegenCount(0); };
 
   const tools = [
-    {glyph:'✦', label:'DALL-E · 12 PAGES',  finishAt: 1700, result:'line-art · $0.48'},
-    {glyph:'📄', label:'PDFSHIFT BIND',      finishAt: 2300, result:'24pp · A4 · $0.05'},
-    {glyph:'◇', label:'WALRUS UPLOAD',       finishAt: 3100, result:'permanent · $0.00'},
-    {glyph:'⊡', label:'MOVE · SUPPLY=100',   finishAt: 3900, result:'cap enforced on-chain'},
+    {glyph:'✦', label:'DALL-E · 12 PAGES',  finishAt: 2400, result:'line-art · $0.48'},
+    {glyph:'📄', label:'PDFSHIFT BIND',      finishAt: 3400, result:'24pp · A4 · $0.05'},
+    {glyph:'◇', label:'WALRUS UPLOAD',       finishAt: 4400, result:'permanent · $0.00'},
+    {glyph:'⊡', label:'MOVE · SUPPLY=100',   finishAt: 5600, result:'cap enforced on-chain'},
   ];
 
   return (

@@ -314,7 +314,7 @@
         </div>
         <div class="settled-title">$500 Sent</div>
         <div class="settled-sub">Payment confirmed on Sui mainnet.<br>Alex received $500.00 USDC.</div>
-        <div class="settled-meta">Settled in 0.8s · Free · Global · Instant</div>
+        <div class="settled-meta">Settled in 0.4s · Free · Global · Instant</div>
       </div>
     </div>
   </div>
@@ -416,19 +416,19 @@ setTimeout(()=>{
     let t=0; function at(ms,fn){ setTimeout(fn,ms); }
 
     let thinkEl;
-    at(t+=400, ()=>{ thinkEl=makeThinking(); append(thinkEl); });
-    at(t+=900, ()=>{
+    at(t+=500, ()=>{ thinkEl=makeThinking(); append(thinkEl); });
+    at(t+=1100, ()=>{
       const r=makeReasoningAcc('Alex wants a $500 payment link for a web design invoice. I\'ll call create_payment_link with no expiry — anyone with the URL can pay, no Audric account needed. Will generate a QR code and shareable link.','41 tokens');
       append(r);
     });
-    at(t+=1000, ()=>{
+    at(t+=1200, ()=>{
       fadeOut(thinkEl, ()=>{
         const acc=makeToolAcc('🔗','create_payment_link','','<div class="result-card"><div class="rc-header"><span>Payment link created</span></div><div class="rc-row"><span class="rc-label">Amount</span><span class="rc-value">500.00 USDC</span></div><div class="rc-row"><span class="rc-label">Link</span><span class="rc-link">audric.ai/pay/mK9xW2</span></div><div class="rc-row"><span class="rc-label">Expires</span><span class="rc-value">Never</span></div></div>');
         append(acc).then(()=> setTimeout(()=>acc.expand(),200));
       });
     });
-    at(t+=1700, ()=> append(makeAudricMsg('Payment link created — <strong>$500 USDC</strong>, no expiry. Share it anywhere. Your client doesn\'t need an account to pay.','36 tokens · 0.4s')));
-    at(t+=1000, ()=>{ $('pay-page').classList.add('show'); payReady=true; if(!isMobile) $('hint').classList.add('show'); setTimeout(doPay, 4600); });
+    at(t+=2000, ()=> append(makeAudricMsg('Payment link created — <strong>$500 USDC</strong>, no expiry. Share it anywhere. Your client doesn\'t need an account to pay.','36 tokens · 0.4s')));
+    at(t+=1200, ()=>{ $('pay-page').classList.add('show'); payReady=true; if(!isMobile) $('hint').classList.add('show'); setTimeout(doPay, 5500); });
   });
 }, 1500);
 </script>

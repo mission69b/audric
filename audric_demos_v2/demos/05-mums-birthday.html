@@ -27,7 +27,7 @@ const Demo5 = () => {
   const typed = useTyped(PROMPT, step===0, 22);
 
   useEffect(() => {
-    const delays = { 0: PROMPT.length*22+400, 1: 900, 2: null, 3: 800, 4: 2300, 5: 4800, 6: 800 };
+    const delays = { 0: PROMPT.length*22+400, 1: 900, 2: null, 3: 800, 4: 2800, 5: 5800, 6: 800 };
     const d = delays[step]; if (d == null) return;
     const t = setTimeout(()=>setStep(s=>Math.min(s+1, 7)), d);
     return ()=>clearTimeout(t);
@@ -48,11 +48,11 @@ const Demo5 = () => {
   }, [step]);
 
   const tools = [
-    {glyph:'📅', label:'RESOLVE DATE',   finishAt: 900,  result:'Sun Apr 27, 2026'},
-    {glyph:'⊞', label:'DISCOVER MPP',     finishAt: 1700, result:'40 svcs · 88 endpts'},
-    {glyph:'✦', label:'DALL-E DESIGN',    finishAt: 2700, result:'preview ready · $0.04'},
-    {glyph:'✉', label:'LOB PRINT QUOTE',  finishAt: 3500, result:'6×4 · ETA Fri · $1'},
-  {glyph:'✿', label:'TELEFLORA QUOTE',  finishAt: 4400, result:'12 stems Sun · $45'},
+    {glyph:'📅', label:'RESOLVE DATE',   finishAt: 1300,  result:'Sun Apr 27, 2026'},
+    {glyph:'⊞', label:'DISCOVER MPP',     finishAt: 2400, result:'40 svcs · 88 endpts'},
+    {glyph:'✦', label:'DALL-E DESIGN',    finishAt: 3800, result:'preview ready · $0.04'},
+    {glyph:'✉', label:'LOB PRINT QUOTE',  finishAt: 5000, result:'6×4 · ETA Fri · $1'},
+  {glyph:'✿', label:'TELEFLORA QUOTE',  finishAt: 6400, result:'12 stems Sun · $45'},
   ];
 
   return (

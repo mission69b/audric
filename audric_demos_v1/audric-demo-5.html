@@ -242,10 +242,10 @@ setTimeout(()=>{
     let t=0; function at(ms,fn){ setTimeout(fn,ms); }
 
     // Audric asks for delivery address
-    at(t+=900, ()=> append(makeAudricMsg('Got it! To arrange the flower delivery, I\'ll need your Mom\'s delivery address. What is it?','')));
+    at(t+=1100, ()=> append(makeAudricMsg('Got it! To arrange the flower delivery, I\'ll need your Mom\'s delivery address. What is it?','')));
 
     // User provides address
-    at(t+=2000, ()=>{
+    at(t+=2400, ()=>{
       typeChatInput(ADDR_RESP, ()=>{
         append(makeUserMsg(ADDR_RESP));
 
@@ -291,7 +291,7 @@ setTimeout(()=>{
             confirmBtnEl=document.getElementById('confirm-btn');
             confirmBtnEl.addEventListener('click', doConfirm);
             payReady=true; $('hint').classList.add('show');
-            setTimeout(doConfirm, 4600);
+            setTimeout(doConfirm, 5500);
           });
         });
       });

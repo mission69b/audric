@@ -291,23 +291,23 @@ setTimeout(()=>{
     let t=0; function at(ms,fn){ setTimeout(fn,ms); }
 
     let thinkEl;
-    at(t+=600, ()=>{ thinkEl=makeThinking(); append(thinkEl); });
-    at(t+=900, ()=>{
+    at(t+=700, ()=>{ thinkEl=makeThinking(); append(thinkEl); });
+    at(t+=1100, ()=>{
       const r=makeReasoningAcc('Jordan wants a lo-fi beat called "Midnight Rain" listed for $3. I\'ll call Suno via MPP to generate the track, DALL-E for album art, then upload permanently to Walrus and gate access with a Seal pay-to-unlock contract. Jordan keeps 92%.','58 tokens');
       append(r);
     });
-    at(t+=1000, ()=>{ fadeOut(thinkEl, ()=>{
+    at(t+=1200, ()=>{ fadeOut(thinkEl, ()=>{
       const a=makeToolAcc('🎵','mpp_call','Suno · $0.05','<div class="result-card"><div class="rc-header"><span>Track generated</span><span>2:34</span></div><div class="rc-row"><span class="rc-label">Title</span><span class="rc-value">Midnight Rain</span></div><div class="rc-row"><span class="rc-label">Style</span><span class="rc-value">lo-fi hip hop · 80bpm</span></div></div>');
       append(a).then(()=>setTimeout(()=>a.expand(),200));
     }); });
-    at(t+=1400, ()=>{ const a=makeToolAcc('🎨','mpp_call','DALL-E · $0.04','<div class="result-card"><div class="rc-header"><span>Album cover generated</span></div><div class="rc-row"><span class="rc-label">Prompt</span><span class="rc-value" style="font-size:12px">rainy night city skyline, lo-fi aesthetic</span></div></div>'); append(a).then(()=>setTimeout(()=>a.expand(),200)); });
-    at(t+=1300, ()=>{ const a=makeToolAcc('☁️','walrus_upload','','<div class="result-card"><div class="rc-header"><span>Uploaded to Walrus</span><span style="color:var(--green)">Permanent</span></div><div class="rc-row"><span class="rc-label">Storage</span><span class="rc-value">Decentralised · forever</span></div></div>'); append(a).then(()=>setTimeout(()=>a.expand(),200)); });
-    at(t+=1300, ()=>{ const a=makeToolAcc('🔒','seal_gate','','<div class="result-card"><div class="rc-header"><span>Pay-to-unlock enabled</span></div><div class="rc-row"><span class="rc-label">Unlock price</span><span class="rc-value">$3.00 USDC</span></div><div class="rc-row"><span class="rc-label">You receive</span><span class="rc-value green">$2.76 (92%)</span></div></div>'); append(a).then(()=>setTimeout(()=>a.expand(),200)); });
-    at(t+=1200, ()=> append(makeAudricMsg('Done. <strong>"Midnight Rain"</strong> is live on your Store — permanent on Walrus, pay-to-unlock via Seal.','$0.09 total · 34 tokens · 1.8s')));
+    at(t+=1700, ()=>{ const a=makeToolAcc('🎨','mpp_call','DALL-E · $0.04','<div class="result-card"><div class="rc-header"><span>Album cover generated</span></div><div class="rc-row"><span class="rc-label">Prompt</span><span class="rc-value" style="font-size:12px">rainy night city skyline, lo-fi aesthetic</span></div></div>'); append(a).then(()=>setTimeout(()=>a.expand(),200)); });
+    at(t+=1600, ()=>{ const a=makeToolAcc('☁️','walrus_upload','','<div class="result-card"><div class="rc-header"><span>Uploaded to Walrus</span><span style="color:var(--green)">Permanent</span></div><div class="rc-row"><span class="rc-label">Storage</span><span class="rc-value">Decentralised · forever</span></div></div>'); append(a).then(()=>setTimeout(()=>a.expand(),200)); });
+    at(t+=1600, ()=>{ const a=makeToolAcc('🔒','seal_gate','','<div class="result-card"><div class="rc-header"><span>Pay-to-unlock enabled</span></div><div class="rc-row"><span class="rc-label">Unlock price</span><span class="rc-value">$3.00 USDC</span></div><div class="rc-row"><span class="rc-label">You receive</span><span class="rc-value green">$2.76 (92%)</span></div></div>'); append(a).then(()=>setTimeout(()=>a.expand(),200)); });
+    at(t+=1400, ()=> append(makeAudricMsg('Done. <strong>"Midnight Rain"</strong> is live on your Store — permanent on Walrus, pay-to-unlock via Seal.','$0.09 total · 34 tokens · 1.8s')));
 
-    at(t+=900, ()=>{ const card=buildTrackCard(); append(card).then(()=>{ initWaveform(); }); $('s-tracks').textContent='1'; });
+    at(t+=1100, ()=>{ const card=buildTrackCard(); append(card).then(()=>{ initWaveform(); }); $('s-tracks').textContent='1'; });
 
-    at(t+=3900, ()=>{
+    at(t+=4700, ()=>{
       const notif=document.createElement('div'); notif.className='sale-notif';
       notif.innerHTML=`<div class="sn-top">Sale · +$2.76 received</div><div class="sn-body">Someone bought <strong>Midnight Rain</strong> — they now have permanent access on Sui. audric.ai/store/mR7k · 0.3s</div>`;
       append(notif); $('s-earned').textContent='$2.76'; $('bal-avail').textContent='Available $637.24';

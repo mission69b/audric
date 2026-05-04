@@ -561,9 +561,9 @@ function doApprove(){
         }, 200);
 
         setTimeout(()=>{
-          const result=makeToolAcc('⚡','payment_stream','settled in 0.6s',`
+          const result=makeToolAcc('⚡','payment_stream','settled in 0.4s',`
             <div class="result-card">
-              <div class="rc-header"><span>Stream settled</span><span>0.6s · 3 ops · TX 7bZfo2…iDfeBQ</span></div>
+              <div class="rc-header"><span>Stream settled</span><span>0.4s · 3 ops · TX 7bZfo2…iDfeBQ</span></div>
               <div class="rc-row"><span class="rc-label">Swapped</span><span class="rc-value">$200 USDC → 212.77 SUI</span></div>
               <div class="rc-row"><span class="rc-label">USDsui deposit</span><span class="rc-value green">$900 → NAVI 8.4%</span></div>
               <div class="rc-row"><span class="rc-label">Sent to Mom</span><span class="rc-value">$100 USDC</span></div>
@@ -576,7 +576,7 @@ function doApprove(){
         setTimeout(()=>{
           append(makeAudricMsg(
             'Done. Swapped $200 → 212.77 SUI. Saved $900 as USDsui on NAVI — earning <strong>$75.60/year at 8.4%</strong>. Sent $100 to Mom. Balance: $700 USDC + 212.77 SUI.',
-            '20 tokens · 0.6s'));
+            '20 tokens · 0.4s'));
           setTimeout(()=>{ append(makeSuggestionChips([
             {icon:'📊',label:'Activity Heatmap'},
             {icon:'📈',label:'Yield Projector'},
@@ -677,7 +677,7 @@ function runPassportSequence(onComplete){
                   // Fade out overlay → start demo
                   setTimeout(()=>{
                     overlay.classList.add('fade-out');
-                    setTimeout(onComplete, 500);
+                    setTimeout(onComplete, 600);
                   }, 1200);
                 }, 400);
               }, 900);
@@ -702,13 +702,13 @@ runPassportSequence(()=>{
 
     // Thinking
     let thinkEl;
-    at(t+=600, ()=>{
+    at(t+=700, ()=>{
       thinkEl=makeThinking();
       append(thinkEl);
     });
 
     // balance_check
-    at(t+=1200, ()=>{
+    at(t+=1400, ()=>{
       fadeOut(thinkEl, ()=>{
         const acc=makeToolAcc('💰','balance_check','','<div class="result-card"><div class="rc-header"><span>Balance</span><span>1 account</span></div><div class="rc-row"><span class="rc-label">USDC</span><span class="rc-value">$2,000.00</span></div></div>');
         append(acc).then(()=> setTimeout(()=>acc.expand(), 200));
@@ -716,7 +716,7 @@ runPassportSequence(()=>{
     });
 
     // Reasoning
-    at(t+=1800, ()=>{
+    at(t+=2200, ()=>{
       const r=makeReasoningAcc(
         'Three operations to chain: (1) swap $200 USDC → SUI via Cetus best-route. (2) Of the remaining $1,800 USDC, save half — swap $900 to USDsui and deposit into NAVI\'s 8.4% pool (higher yield than USDC). (3) Send $100 USDC to Mom (resolved from contacts → 0xa3f9…b27c). All three compile into one atomic Payment Intent — if any leg fails, none execute. Gas sponsored ~$0.005.',
         '368 tokens');
@@ -725,12 +725,12 @@ runPassportSequence(()=>{
 
     // 5 parallel reads
     let pg;
-    at(t+=800, ()=>{
+    at(t+=1000, ()=>{
       pg=makeParallelGroup(['💰  balance_check','⇆  cetus · sui route','📈  navi usdsui pool','👤  contact · "mom"','⊞  plan stream']);
       append(pg);
     });
 
-    at(t+=1200, ()=>{
+    at(t+=1400, ()=>{
       pg.complete();
 
       setTimeout(()=>{
@@ -765,12 +765,12 @@ runPassportSequence(()=>{
     });
 
     // Audric pre-perm response
-    at(t+=3800, ()=> append(makeAudricMsg(
+    at(t+=4600, ()=> append(makeAudricMsg(
       "Three operations chained: swap → save (USDsui, 8.4%) → send. Compiled into one Payment Intent — atomic, so if any leg fails, nothing executes. Confirm?",
       '5 tools · 1.1s · 368 tokens')));
 
     // Permission card
-    at(t+=1000, ()=>{
+    at(t+=1200, ()=>{
       const card=document.createElement('div'); card.className='perm-card'; card.id='perm-card-el';
       card.innerHTML=`
         <div class="perm-head">
@@ -825,7 +825,7 @@ runPassportSequence(()=>{
         startPermTimer();
         approveReady=true;
         $('hint').classList.add('show');
-        setTimeout(doApprove, 4600);
+        setTimeout(doApprove, 5500);
       });
     });
   });

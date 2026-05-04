@@ -32,7 +32,7 @@ const Demo6 = () => {
 
   // steps: 0 type · 1 sent · 2 thinking · 3 querying · 4 how-evaluated · 5 proactive-insight · 6 cart+line · 7 payment-intent · 8 permission · 9 executing · 10 done
   useEffect(() => {
-    const delays = { 0: PROMPT.length * 20 + 500, 1: 900, 2: 2300, 3: 6200, 4: 1000, 5: 1800, 6: 1300, 7: 1200 };
+    const delays = { 0: PROMPT.length * 20 + 500, 1: 900, 2: 2800, 3: 7400, 4: 1200, 5: 2200, 6: 1600, 7: 1400 };
     const d = delays[step]; if (d == null) return;
     const t = setTimeout(() => setStep(s => s + 1), d);
     return () => clearTimeout(t);
@@ -43,16 +43,16 @@ const Demo6 = () => {
 
   // Auto-confirm order after 3s (mirrors demo 03/04 review pattern)
   useEffect(() => {
-    if (step === 8) { const t = setTimeout(approve, 3900); return () => clearTimeout(t); }
+    if (step === 8) { const t = setTimeout(approve, 4700); return () => clearTimeout(t); }
   }, [step]);
 
   const tools = [
-    { glyph: '🎈', label: 'PARTY CITY MPP',  finishAt: 1200,  result: 'balloons × 20 + streamers · $20 · ships Sat' },
-    { glyph: '💡', label: 'AMAZON MPP',       finishAt: 2000, result: 'fairy lights 10m · $24 · Prime Sat' },
-    { glyph: '🎂', label: 'CAKEBOSS MPP',     finishAt: 3100, result: 'custom cake 10-inch · $55 · pickup Sat 10am' },
-    { glyph: '🎉', label: 'AMAZON MPP',       finishAt: 3900, result: '"Happy Birthday" banner · $9 · Prime Sat' },
-    { glyph: '🛒', label: 'WALMART MPP',       finishAt: 4700, result: 'Pepsi × 6, water × 6, cups + plates · $11 · same-day Sat' },
-    { glyph: '📦', label: 'DELIVERY CONFIRM', finishAt: 5800, result: 'all 4 vendors confirm Saturday ✓' },
+    { glyph: '🎈', label: 'PARTY CITY MPP',  finishAt: 1700,  result: 'balloons × 20 + streamers · $20 · ships Sat' },
+    { glyph: '💡', label: 'AMAZON MPP',       finishAt: 2900, result: 'fairy lights 10m · $24 · Prime Sat' },
+    { glyph: '🎂', label: 'CAKEBOSS MPP',     finishAt: 4400, result: 'custom cake 10-inch · $55 · pickup Sat 10am' },
+    { glyph: '🎉', label: 'AMAZON MPP',       finishAt: 5600, result: '"Happy Birthday" banner · $9 · Prime Sat' },
+    { glyph: '🛒', label: 'WALMART MPP',       finishAt: 6700, result: 'Pepsi × 6, water × 6, cups + plates · $11 · same-day Sat' },
+    { glyph: '📦', label: 'DELIVERY CONFIRM', finishAt: 8400, result: 'all 4 vendors confirm Saturday ✓' },
   ];
 
   return (
@@ -164,7 +164,7 @@ const Demo6 = () => {
           </div>
           <WhyOnlySui points={[
             "4 vendors, 1 Payment Intent. If Walmart can't deliver same-day, all four orders revert — no partial charges, ever.",
-            "USDC settles in 0.6s across all vendors. No card authorisation holds, no 2–3 day payment delays to merchants.",
+            "USDC settles in 0.4s across all vendors. No card authorisation holds, no 2–3 day payment delays to merchants.",
             "One on-chain receipt covers the whole order — from balloons to birthday cake to beverages. Permanent, auditable, owned by you.",
           ]}/>
         </>
