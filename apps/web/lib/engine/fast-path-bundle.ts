@@ -30,7 +30,7 @@
 
 import { randomUUID } from 'node:crypto';
 import type { ContentBlock, Message, PendingAction, PendingActionStep } from '@t2000/engine';
-import { getTelemetrySink } from '@t2000/engine';
+import { getTelemetrySink, REGENERATABLE_READ_TOOLS } from '@t2000/engine';
 import {
   detectPriorPlanContext,
   isAffirmativeConfirmReply,
@@ -214,12 +214,70 @@ function describeStep(step: BundleProposalStep): string {
 }
 
 /**
+ * [SPEC 15 v0.7 follow-up #2 — fast-path regenerate, 2026-05-04]
+ * Walk back through `history` to find the most recent assistant turn
+ * (the `prepare_bundle` plan turn) and pull every `tool_use` block
+ * whose name is in `REGENERATABLE_READ_TOOLS`. The fast-path bundle
+ * was assembled from those reads' outputs (the LLM read `swap_quote`
+ * results before stashing the bundle via `prepare_bundle`), so we
+ * need their toolUseIds threaded onto the dispatched `PendingAction`
+ * to enable PermissionCard regenerate.
+ *
+ * **Why scan history (vs. stashing in `BundleProposal`).** The stash
+ * is created by the `prepare_bundle` tool, which doesn't have access
+ * to same-turn read tool_use ids via `ToolContext`. Scanning the
+ * history at consume-time is simpler than threading a new field
+ * through the tool signature, and the data is already there: the
+ * prepare_bundle turn's `tool_use` blocks live in
+ * `engine.getMessages()`'s last assistant message.
+ *
+ * **Walks BACKWARDS** — stops at the first assistant message it
+ * finds, so reads from earlier turns don't pollute the regenerate
+ * set. (A user with a long session might have a stale `swap_quote`
+ * from 4 turns ago that has nothing to do with this bundle.)
+ *
+ * Returns null when no regeneratable reads are found in the prior
+ * assistant turn — the bundle then ships with `canRegenerate: false`
+ * (matching pre-this-commit behavior).
+ */
+function findContributingReadsFromHistory(
+  history: Message[] | undefined,
+): Array<{ toolUseId: string; toolName: string }> | null {
+  if (!history || history.length === 0) return null;
+  for (let i = history.length - 1; i >= 0; i--) {
+    const msg = history[i];
+    if (msg.role !== 'assistant') continue;
+    const reads: Array<{ toolUseId: string; toolName: string }> = [];
+    for (const block of msg.content) {
+      if (block.type !== 'tool_use') continue;
+      const tu = block as { id: string; name: string };
+      if (REGENERATABLE_READ_TOOLS.has(tu.name)) {
+        reads.push({ toolUseId: tu.id, toolName: tu.name });
+      }
+    }
+    return reads.length > 0 ? reads : null;
+  }
+  return null;
+}
+
+/**
  * Construct a structurally-valid `PendingAction` from a stashed
  * proposal. Mirrors what `composeBundleFromToolResults` in the engine
  * produces for a multi-write bundle, minus the LLM-derived fields
- * (assistantContent, completedResults, regenerateInput) — those are
- * irrelevant for the fast path because there was no LLM turn to
- * regenerate from and no read tool_use ids to track.
+ * (`assistantContent`, `completedResults`) — those are irrelevant
+ * for the fast path because there was no LLM turn to regenerate from
+ * a chat-mode perspective.
+ *
+ * **[SPEC 15 v0.7 follow-up #2 — 2026-05-04]** Now also stamps
+ * `canRegenerate=true` + `regenerateInput.toolUseIds` + `quoteAge`
+ * when `findContributingReadsFromHistory` returns reads from the
+ * prepare_bundle turn. Pre-this-commit the fast-path always emitted
+ * `canRegenerate=false`, leaving bundle PermissionCards confirmed
+ * via the chip Confirm path with no Refresh-quote affordance even
+ * though `swap_quote` (or `rates_info` etc.) had been re-fired-able
+ * the entire time. `quoteAge` is approximated from
+ * `proposal.validatedAt` (the moment `prepare_bundle` ran, which is
+ * within ~hundreds of ms of the contributing reads landing).
  *
  * Conventions matched:
  *   - `steps[i].toolUseId` uses a deterministic prefix `fastpath_` so
@@ -232,6 +290,7 @@ function describeStep(step: BundleProposalStep): string {
 function buildPendingActionFromProposal(
   proposal: BundleProposal,
   turnIndex: number,
+  history?: Message[],
 ): PendingAction {
   const steps: PendingActionStep[] = proposal.steps.map((s, i) => {
     const step: PendingActionStep = {
@@ -256,6 +315,12 @@ function buildPendingActionFromProposal(
   // assistantContent.
   const assistantContent: ContentBlock[] = [];
 
+  const contributingReads = findContributingReadsFromHistory(history);
+  const canRegenerate = contributingReads !== null;
+  const quoteAge = canRegenerate
+    ? Math.max(0, Date.now() - proposal.validatedAt)
+    : undefined;
+
   return {
     toolName: first.toolName,
     toolUseId: first.toolUseId,
@@ -266,6 +331,15 @@ function buildPendingActionFromProposal(
     turnIndex,
     attemptId: first.attemptId,
     steps,
+    ...(canRegenerate
+      ? {
+          canRegenerate: true,
+          regenerateInput: {
+            toolUseIds: contributingReads!.map((r) => r.toolUseId),
+          },
+          ...(quoteAge !== undefined ? { quoteAge } : {}),
+        }
+      : {}),
   };
 }
 
@@ -350,7 +424,11 @@ export async function tryConsumeFastPathBundle(
     return recordSkip('wallet_mismatch');
   }
 
-  const action = buildPendingActionFromProposal(proposal, opts.turnIndex);
+  const action = buildPendingActionFromProposal(
+    proposal,
+    opts.turnIndex,
+    opts.history,
+  );
 
   getTelemetrySink().counter('audric.bundle.fast_path_dispatched', {
     step_count: String(proposal.steps.length),

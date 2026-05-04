@@ -129,5 +129,44 @@ describe('ConfirmChips', () => {
       fireEvent.click(confirmBtn);
       expect(onChipDecision).not.toHaveBeenCalled();
     });
+
+    // [SPEC 15 v0.7 follow-up smoke test, 2026-05-04] Regression
+    // guard. Pre-this-commit the expiry interval kept ticking after
+    // the user clicked Confirm. The chips component stays mounted
+    // for several seconds while the next assistant turn streams in
+    // (PermissionCard render, narration, post-write reads), so if
+    // the expiry crossed during the stream the user saw "Quote
+    // expired — ask for a fresh one" appear next to the disabled
+    // Confirm spinner WHILE the actual PermissionCard for the
+    // dispatched bundle was rendering below — confusing UX.
+    // Post-fix: once `clicked !== null`, the interval stops AND
+    // both expiry/seconds-left labels stay hidden until unmount.
+    it('does NOT swap to "Quote expired" after the user clicks Confirm, even if expiresAt elapses mid-stream', () => {
+      const now = 1_700_000_000_000;
+      vi.setSystemTime(now);
+      const onChipDecision = vi.fn();
+      render(
+        <ConfirmChips
+          payload={{ ...stash, expiresAt: now + 5_000 }}
+          onChipDecision={onChipDecision}
+        />,
+      );
+      // User clicks Confirm well before expiry.
+      const confirmBtn = screen.getByRole('button', {
+        name: /Confirm the proposed plan/i,
+      });
+      fireEvent.click(confirmBtn);
+      expect(onChipDecision).toHaveBeenCalledTimes(1);
+      // Now simulate the multi-second streaming window — expiresAt
+      // elapses while the PermissionCard streams in.
+      act(() => {
+        vi.advanceTimersByTime(10_000);
+      });
+      // The expiry banner must NOT appear post-click — user already
+      // dispatched, the post-click row is "[Confirm spinner]
+      // [Cancel disabled]" until unmount.
+      expect(screen.queryByText(/Quote expired — ask for a fresh one/i)).toBeNull();
+      expect(screen.queryByText(/s left/i)).toBeNull();
+    });
   });
 });

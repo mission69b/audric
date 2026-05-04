@@ -60,14 +60,32 @@ export function ConfirmChips({
   // a `swap_execute` step (server stamps `expiresAt` then). Re-renders
   // every second; once past expiry the chips lock + show "Quote
   // expired — ask for a fresh one" so the user types the request again.
+  //
+  // [SPEC 15 v0.7 follow-up smoke test, 2026-05-04] Stop ticking once
+  // a chip has been clicked OR a parent-forced `disabled` is set. The
+  // post-click state is permanent (the chips component will unmount
+  // when the next assistant turn streams in), so continuing the
+  // interval past `clicked !== null` could only do harm — it could
+  // cross `expiresAt` mid-stream and swap the loading state ("Confirm"
+  // spinner) for a misleading "Quote expired — ask for a fresh one"
+  // banner next to the actual PermissionCard the user just dispatched.
+  // Gate both the `expired` check + the rendered banner on
+  // `clicked === null` so the post-click row is always
+  // `[Confirm spinner] [Cancel disabled]` until unmount.
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     if (!payload.expiresAt) return;
+    if (clicked !== null) return;
+    if (disabled) return;
     const id = setInterval(() => setNow(Date.now()), 1_000);
     return () => clearInterval(id);
-  }, [payload.expiresAt]);
+  }, [payload.expiresAt, clicked, disabled]);
 
-  const expired = payload.expiresAt !== undefined && now >= payload.expiresAt;
+  const expired =
+    clicked === null &&
+    !disabled &&
+    payload.expiresAt !== undefined &&
+    now >= payload.expiresAt;
   const secondsLeft =
     payload.expiresAt !== undefined
       ? Math.max(0, Math.ceil((payload.expiresAt - now) / 1000))
@@ -107,11 +125,11 @@ export function ConfirmChips({
       >
         Cancel
       </Button>
-      {expired ? (
+      {clicked === null && !disabled && expired ? (
         <span className="text-[11px] text-fg-muted font-mono uppercase tracking-[0.06em]">
           Quote expired — ask for a fresh one
         </span>
-      ) : secondsLeft !== null && secondsLeft <= 10 ? (
+      ) : clicked === null && !disabled && secondsLeft !== null && secondsLeft <= 10 ? (
         <span className="text-[11px] text-fg-muted font-mono uppercase tracking-[0.06em]">
           {secondsLeft}s left
         </span>

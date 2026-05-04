@@ -163,6 +163,131 @@ describe('buildPendingActionFromProposal', () => {
     expect(action.assistantContent).toEqual([]);
     expect(action.completedResults).toEqual([]);
   });
+
+  // [SPEC 15 v0.7 follow-up #2 — fast-path regenerate, 2026-05-04]
+  // Pre-this-commit fast-path bundles always emitted
+  // canRegenerate=false, leaving bundle PermissionCards confirmed via
+  // the chip Confirm path with no Refresh-quote affordance even when
+  // a same-turn `swap_quote` ran before `prepare_bundle`. The fix:
+  // walk the prior assistant turn for tool_use blocks whose name is
+  // in REGENERATABLE_READ_TOOLS, populate canRegenerate +
+  // regenerateInput.toolUseIds + quoteAge.
+
+  it('omits canRegenerate when no history is provided', () => {
+    const proposal = makeProposal();
+    const action = buildPendingActionFromProposal(proposal, 0);
+    expect(action.canRegenerate).toBeUndefined();
+    expect(action.regenerateInput).toBeUndefined();
+    expect(action.quoteAge).toBeUndefined();
+  });
+
+  it('omits canRegenerate when prior assistant turn has no regeneratable reads', () => {
+    const proposal = makeProposal();
+    const history: Message[] = [
+      userText('what is my balance'),
+      asstText('Your balance is $20.'),
+    ];
+    const action = buildPendingActionFromProposal(proposal, 0, history);
+    expect(action.canRegenerate).toBeUndefined();
+    expect(action.regenerateInput).toBeUndefined();
+  });
+
+  it('populates canRegenerate + regenerateInput + quoteAge when prior turn ran swap_quote', () => {
+    const proposal = makeProposal({
+      validatedAt: Date.now() - 12_000,
+    });
+    const history: Message[] = [
+      userText('swap 10 USDC for SUI then save 10 USDC'),
+      {
+        role: 'assistant',
+        content: [
+          {
+            type: 'tool_use',
+            id: 'toolu_swap_quote_1',
+            name: 'swap_quote',
+            input: { from: 'USDC', to: 'SUI', amount: 10 },
+          },
+          {
+            type: 'tool_use',
+            id: 'toolu_prepare_bundle_1',
+            name: 'prepare_bundle',
+            input: { steps: [] },
+          },
+        ],
+      },
+    ];
+    const action = buildPendingActionFromProposal(proposal, 0, history);
+    expect(action.canRegenerate).toBe(true);
+    expect(action.regenerateInput?.toolUseIds).toEqual(['toolu_swap_quote_1']);
+    expect(action.quoteAge).toBeGreaterThanOrEqual(11_000);
+    expect(action.quoteAge).toBeLessThan(13_000);
+  });
+
+  it('walks BACKWARDS — picks the most recent assistant turn, ignores earlier reads', () => {
+    const proposal = makeProposal();
+    const history: Message[] = [
+      userText('what is the rate'),
+      {
+        role: 'assistant',
+        content: [
+          {
+            type: 'tool_use',
+            id: 'OLD_swap_quote',
+            name: 'swap_quote',
+            input: {},
+          },
+        ],
+      },
+      userText('ok then bundle this'),
+      {
+        role: 'assistant',
+        content: [
+          {
+            type: 'tool_use',
+            id: 'FRESH_swap_quote',
+            name: 'swap_quote',
+            input: {},
+          },
+        ],
+      },
+    ];
+    const action = buildPendingActionFromProposal(proposal, 0, history);
+    expect(action.regenerateInput?.toolUseIds).toEqual(['FRESH_swap_quote']);
+  });
+
+  it('filters out non-regeneratable read tools (e.g. prepare_bundle, balance_check tier-2 names)', () => {
+    const proposal = makeProposal();
+    const history: Message[] = [
+      userText('do it'),
+      {
+        role: 'assistant',
+        content: [
+          {
+            type: 'tool_use',
+            id: 'toolu_prepare_bundle',
+            name: 'prepare_bundle',
+            input: {},
+          },
+          {
+            type: 'tool_use',
+            id: 'toolu_swap_quote',
+            name: 'swap_quote',
+            input: {},
+          },
+          {
+            type: 'tool_use',
+            id: 'toolu_some_unrelated_tool',
+            name: 'web_search',
+            input: {},
+          },
+        ],
+      },
+    ];
+    const action = buildPendingActionFromProposal(proposal, 0, history);
+    // Only swap_quote is in REGENERATABLE_READ_TOOLS; prepare_bundle
+    // and web_search are not.
+    expect(action.regenerateInput?.toolUseIds).toEqual(['toolu_swap_quote']);
+  });
 });
 
 describe('tryConsumeFastPathBundle', () => {
