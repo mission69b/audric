@@ -278,31 +278,13 @@ const PermissionCard = ({ title, subtitle, rows, footer, onApprove, approveLabel
   );
 };
 
-// "Why only Sui" callout — appears at bottom
-const WhyOnlySui = ({ points }) => (
-  <div className="appear" style={{
-    background:'var(--n900)',color:'#fff',
-    border:'1px solid var(--n700)',
-    borderRadius:8,padding:'14px 18px',marginTop:8
-  }}>
-    <div className="mono" style={{fontSize:10,letterSpacing:'.14em',color:'var(--n400)',marginBottom:10}}>
-      // WHY ONLY SUI
-    </div>
-    <div style={{display:'flex',flexDirection:'column',gap:8}}>
-      {points.map((p,i) => (
-        <div key={i} style={{display:'flex',gap:10,fontSize:13,color:'#fff',lineHeight:1.5}}>
-          <span style={{color:'var(--g400)'}}>—</span>
-          <span>{p}</span>
-        </div>
-      ))}
-    </div>
-  </div>
-);
+// "Why only Sui" callout — removed per UX direction. No-op so existing call sites keep working.
+const WhyOnlySui = () => null;
 
 // PtbCard — shows the compiled Payment Stream (PTB) before the permission card.
 // calls: [{ vendor, desc, amount }]  total: string  (e.g. "$108")
 const PtbCard = ({ calls, total }) => (
-  <ToolCard label="PAYMENT STREAM COMPILED · 1 PTB" status="done" tokens={`${calls.length} CALLS · ATOMIC`}>
+  <ToolCard label="PAYMENT INTENT COMPILED" status="done" tokens={`${calls.length} CALLS · ATOMIC`}>
     <div>
       {calls.map((call, i) => (
         <div key={i} style={{
