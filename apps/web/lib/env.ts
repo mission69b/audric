@@ -201,6 +201,32 @@ const clientSchema = z.object({
   NEXT_PUBLIC_INTERACTIVE_HARNESS: optionalString,
 
   /**
+   * [SPEC 15 Phase 2 / 2026-05-04] Frontend-render gate for confirm
+   * chips ("Confirm" / "Cancel" buttons under multi-write plan
+   * messages). When unset/empty, the plan UI behaves exactly like
+   * Phase 1+1.5 today (free-text input only). When set to "1" / "true",
+   * `<ConfirmChips />` renders below assistant turns whose SSE stream
+   * included an `expects_confirm` event.
+   *
+   * **Scope:** FRONTEND-RENDER ONLY. The backend (decorator, SSE
+   * emission, chip POST handling) ships unflagged so we collect
+   * baseline `audric.confirm_flow.expects_confirm_set` telemetry
+   * BEFORE the UI renders chips. That baseline tells us "how often
+   * WOULD chips have rendered" — pre-launch sanity check.
+   *
+   * Default OFF. Founder workflow:
+   *   Day 1 — set to "1" in dev / preview; verify chip renders + dispatches end-to-end
+   *   Day 2 — set to "1" in production; monitor `audric.confirm_flow.dispatch_count{via=chip}`
+   *   Rollback path: unset (falls back to free-text confirm).
+   *
+   * Per-session pinning is NOT done here — chips render based on the
+   * SSE event, which the server emits unconditionally. If the flag
+   * flips mid-session the next assistant turn shows the new behavior.
+   * That's intentional: chip render is stateless on the client.
+   */
+  NEXT_PUBLIC_CONFIRM_CHIPS_V1: optionalString,
+
+  /**
    * [SPEC 8 v0.5.1 B3.7] Graduated rollout percentage for the
    * interactive harness, evaluated ONLY when `NEXT_PUBLIC_INTERACTIVE_
    * HARNESS` is also set. Integer string in `0..100` (interpretation:
@@ -266,6 +292,7 @@ const runtimeEnv = {
   NEXT_PUBLIC_INTERACTIVE_HARNESS: process.env.NEXT_PUBLIC_INTERACTIVE_HARNESS,
   NEXT_PUBLIC_INTERACTIVE_HARNESS_ROLLOUT_PERCENT:
     process.env.NEXT_PUBLIC_INTERACTIVE_HARNESS_ROLLOUT_PERCENT,
+  NEXT_PUBLIC_CONFIRM_CHIPS_V1: process.env.NEXT_PUBLIC_CONFIRM_CHIPS_V1,
 } as const;
 
 // ─── Validate ──────────────────────────────────────────────────────────

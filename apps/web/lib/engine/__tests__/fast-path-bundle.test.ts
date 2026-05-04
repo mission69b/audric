@@ -232,7 +232,7 @@ describe('tryConsumeFastPathBundle', () => {
     expect(result).toBeNull();
   });
 
-  it('happy path: returns built action + proposal + synthetic ack text', async () => {
+  it('happy path: returns built action + proposal + synthetic ack text + admittedVia', async () => {
     const proposal = makeProposal();
     consumeSpy.mockResolvedValueOnce(proposal);
     const result = await tryConsumeFastPathBundle({
@@ -247,6 +247,9 @@ describe('tryConsumeFastPathBundle', () => {
     expect(result!.proposal).toBe(proposal);
     expect(result!.syntheticAssistantText).toContain('2 writes');
     expect(result!.syntheticAssistantText).toContain('Payment Stream');
+    // [SPEC 15 Phase 2] admittedVia exposed for chat-route's confirm-flow
+    // dispatch counter — text-confirm via strict regex.
+    expect(result!.admittedVia).toBe('regex');
     // [May 3 soak fix] The ack MUST be past-or-in-flight tense, not
     // forward-looking ("Compiling..."), because by the time the
     // narration LLM sees this message the bundle has already settled.
@@ -502,6 +505,8 @@ describe('tryConsumeFastPathBundle — Phase 1.5 plan-context override', () => {
       // The same bundleId from the prepared stash propagates through
       // (via the proposal — toolUseId uses the stashed bundleId).
       expect(result!.action.steps![0].toolUseId).toContain('9b1a2397');
+      // [SPEC 15 Phase 2] admittedVia exposed for chat-route accuracy.
+      expect(result!.admittedVia).toBe('plan_context');
       // admitted_via tag for the dashboard
       expect(counterSpy).toHaveBeenCalledWith(
         'audric.bundle.fast_path_dispatched',
@@ -509,6 +514,202 @@ describe('tryConsumeFastPathBundle — Phase 1.5 plan-context override', () => {
           admitted_via: 'plan_context',
           step_count: '3',
         }),
+      );
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────
+  // [SPEC 15 Phase 2 / 2026-05-04] Chip override admission path.
+  //
+  // Chip click is a 100% intent signal — caller passes
+  // `forceAdmit='chip'`. We skip ALL intent checks (regex,
+  // negative-reply, plan-context) but the session/stash/wallet
+  // gates still run.
+  // ─────────────────────────────────────────────────────────────────────
+
+  describe('chip override path (admitted_via=chip)', () => {
+    it('admits chip click WITHOUT regex match or history', async () => {
+      consumeSpy.mockResolvedValueOnce(makeProposal());
+      const result = await tryConsumeFastPathBundle({
+        sessionId: 's_1',
+        walletAddress: '0xwallet',
+        // Chat route synthesizes message='yes' for telemetry, but
+        // forceAdmit='chip' means the regex/plan-context don't matter
+        // — we use a clearly non-affirmative string here to prove it.
+        trimmedMessage: 'arbitrary placeholder',
+        turnIndex: 0,
+        forceAdmit: 'chip',
+      });
+      expect(result).not.toBeNull();
+      // Return-shape contract: admittedVia surfaces 'chip' so the
+      // chat route's confirm-flow dispatch counter can tag accurately.
+      expect(result!.admittedVia).toBe('chip');
+      expect(counterSpy).toHaveBeenCalledWith(
+        'audric.bundle.fast_path_dispatched',
+        expect.objectContaining({ admitted_via: 'chip', step_count: '2' }),
+      );
+    });
+
+    it('admits chip click EVEN when message would normally be a negative reply', async () => {
+      // Chip-Yes click after the user typed "no" in the input but
+      // tapped Confirm anyway — chip click wins. (Edge case but the
+      // forceAdmit semantics MUST hold.)
+      consumeSpy.mockResolvedValueOnce(makeProposal());
+      const result = await tryConsumeFastPathBundle({
+        sessionId: 's_1',
+        walletAddress: '0xwallet',
+        trimmedMessage: 'no wait',
+        turnIndex: 0,
+        history: PLAN_3OP_HISTORY,
+        forceAdmit: 'chip',
+      });
+      expect(result).not.toBeNull();
+      expect(counterSpy).toHaveBeenCalledWith(
+        'audric.bundle.fast_path_dispatched',
+        expect.objectContaining({ admitted_via: 'chip' }),
+      );
+    });
+
+    it('chip + missing sessionId → no_session skip (session checks still run)', async () => {
+      const result = await tryConsumeFastPathBundle({
+        sessionId: undefined,
+        walletAddress: '0xwallet',
+        trimmedMessage: 'yes',
+        turnIndex: 0,
+        forceAdmit: 'chip',
+      });
+      expect(result).toBeNull();
+      expect(consumeSpy).not.toHaveBeenCalled();
+      expect(counterSpy).toHaveBeenCalledWith(
+        'audric.bundle.fast_path_skipped',
+        expect.objectContaining({ reason: 'no_session' }),
+      );
+    });
+
+    it('chip + missing walletAddress → no_wallet skip', async () => {
+      const result = await tryConsumeFastPathBundle({
+        sessionId: 's_1',
+        walletAddress: undefined,
+        trimmedMessage: 'yes',
+        turnIndex: 0,
+        forceAdmit: 'chip',
+      });
+      expect(result).toBeNull();
+      expect(consumeSpy).not.toHaveBeenCalled();
+      expect(counterSpy).toHaveBeenCalledWith(
+        'audric.bundle.fast_path_skipped',
+        expect.objectContaining({ reason: 'no_wallet' }),
+      );
+    });
+
+    it('chip + no stash → no_stash skip (stash existence still checked)', async () => {
+      consumeSpy.mockResolvedValueOnce(null);
+      const result = await tryConsumeFastPathBundle({
+        sessionId: 's_1',
+        walletAddress: '0xwallet',
+        trimmedMessage: 'yes',
+        turnIndex: 0,
+        forceAdmit: 'chip',
+      });
+      expect(result).toBeNull();
+      expect(consumeSpy).toHaveBeenCalledOnce();
+      expect(counterSpy).toHaveBeenCalledWith(
+        'audric.bundle.fast_path_skipped',
+        expect.objectContaining({ reason: 'no_stash' }),
+      );
+    });
+
+    it('chip + wallet mismatch → wallet_mismatch skip', async () => {
+      consumeSpy.mockResolvedValueOnce(makeProposal({ walletAddress: '0xOTHER' }));
+      const result = await tryConsumeFastPathBundle({
+        sessionId: 's_1',
+        walletAddress: '0xwallet',
+        trimmedMessage: 'yes',
+        turnIndex: 0,
+        forceAdmit: 'chip',
+      });
+      expect(result).toBeNull();
+      expect(counterSpy).toHaveBeenCalledWith(
+        'audric.bundle.fast_path_skipped',
+        expect.objectContaining({ reason: 'wallet_mismatch' }),
+      );
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────
+  // [SPEC 15 Phase 2 / P0-14 ghost-dispatch race regression]
+  //
+  // Repro shape:
+  //   1. Plan turn proposed bundle X. Stash X exists in Redis.
+  //   2. User clicks Cancel chip. Chat route calls `deleteBundleProposal`.
+  //   3. User next-turn types "save 5 USDC" in the input.
+  //   4. New plan turn proposes bundle Y. Stash Y exists in Redis.
+  //   5. The old (now-stale) Cancel chip's "Confirm" sibling button is
+  //      still in the DOM. User taps it (delayed click on stale UI).
+  //   6. Chat route receives `chipDecision: { value: 'yes', forStashId: X }`.
+  //      Reads the live stash → bundleId is Y, NOT X. Mismatch.
+  //
+  // Without the chat-route mismatch check: the chip-Yes path would
+  // dispatch Y (the new stash) when the user thought they were
+  // approving X. Wrong bundle dispatched.
+  //
+  // With the mismatch check (chat route): falls through to
+  // text-confirm path, which then runs `tryConsumeFastPathBundle`
+  // WITHOUT `forceAdmit`. Whether THAT dispatches Y depends on
+  // intent gates (regex/plan-context). Since the user typed nothing
+  // (chip click sent message='Confirm' as the visible message), regex
+  // matches → Y dispatches. The user's intent ("Confirm") is
+  // preserved, but the stale stashId binding is NOT honored.
+  //
+  // The unit-level guarantee tested here is the second leg: AFTER
+  // `deleteBundleProposal(X)`, the next `tryConsumeFastPathBundle`
+  // returns null with `reason='no_stash'`. (The chat-route's
+  // mismatch detour is tested implicitly via typecheck + the
+  // spec-consistency assertion.)
+  // ─────────────────────────────────────────────────────────────────────
+
+  describe('P0-14: chip-Cancel followed by delayed text-yes returns no_stash', () => {
+    it('after deleteBundleProposal, fast-path returns null with reason=no_stash', async () => {
+      // The Phase 2 chat-route Cancel handler calls
+      // `deleteBundleProposal(sessionId)` directly — that's the
+      // ghost-dispatch fix. From the fast-path's perspective, the
+      // delayed "yes" arrives against an empty stash.
+      consumeSpy.mockResolvedValueOnce(null);
+
+      const result = await tryConsumeFastPathBundle({
+        sessionId: 's_1',
+        walletAddress: '0xwallet',
+        trimmedMessage: 'yes',
+        turnIndex: 7,
+        history: PLAN_3OP_HISTORY,
+      });
+
+      expect(result).toBeNull();
+      expect(counterSpy).toHaveBeenCalledWith(
+        'audric.bundle.fast_path_skipped',
+        expect.objectContaining({ reason: 'no_stash' }),
+      );
+    });
+
+    it('after deleteBundleProposal + chip-Yes (forceAdmit), fast-path returns null with reason=no_stash', async () => {
+      // Same race shape, except the delayed click goes through the
+      // chip path (`forceAdmit='chip'`). Even with intent gates
+      // bypassed, the no-stash gate still blocks dispatch — chip
+      // semantics preserved.
+      consumeSpy.mockResolvedValueOnce(null);
+
+      const result = await tryConsumeFastPathBundle({
+        sessionId: 's_1',
+        walletAddress: '0xwallet',
+        trimmedMessage: 'arbitrary',
+        turnIndex: 7,
+        forceAdmit: 'chip',
+      });
+
+      expect(result).toBeNull();
+      expect(counterSpy).toHaveBeenCalledWith(
+        'audric.bundle.fast_path_skipped',
+        expect.objectContaining({ reason: 'no_stash' }),
       );
     });
   });

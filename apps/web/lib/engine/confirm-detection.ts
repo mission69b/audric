@@ -68,7 +68,18 @@ const CONFIRM_PATTERN =
  */
 const WRITE_VERB_PATTERN = /\b(swap|withdraw|borrow|send|repay|save|deposit|stake|unstake|claim|pay)\b/gi;
 
-const PRIOR_PLAN_MARKER = /\b(confirm|proceed)\b/i;
+/**
+ * Marker regex for "this assistant message looks like a plan-confirm
+ * tail." Single source of truth: used by `detectBundleConfirm` and
+ * `detectPriorPlanContext` (Phase 1) to gate promotion AND by
+ * `expects-confirm-decorator.ts` (Phase 2) to gate chip rendering.
+ *
+ * Promoted to a top-level export so production code doesn't have to
+ * reach into `__testOnly__` to share the regex. Keeps Phase 1, 1.5,
+ * and 2 in lockstep — if the planner copy ever changes, this regex is
+ * the single edit point.
+ */
+export const PRIOR_PLAN_MARKER = /\b(confirm|proceed)\b/i;
 
 // [SPEC 15 Phase 1.5 / 2026-05-04] Tight pattern catching clearly-negative
 // short replies. Used by the fast-path bundle dispatcher to bail out of

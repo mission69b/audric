@@ -57,6 +57,26 @@ interface FastPathConsumeOpts {
    * legacy regex-only admission (no plan-context override).
    */
   history?: Message[];
+  /**
+   * [SPEC 15 Phase 2] Override the intent-check gates. Set by the chat
+   * route when the user clicked the Confirm chip — chip click is a
+   * 100% intent signal, so we skip the regex / plan-context / negative-
+   * reply checks entirely.
+   *
+   * **What this skips:** `isAffirmativeConfirmReply`,
+   * `looksLikeNegativeReply`, `detectPriorPlanContext`.
+   *
+   * **What this DOES NOT skip:** session-validity (sessionId,
+   * walletAddress), stash existence (`consumeBundleProposal` returning
+   * null → `no_stash`), wallet-mismatch (proposal.walletAddress vs
+   * request walletAddress). Chip is an intent signal but NOT a
+   * session-state signal — a chip click against an expired stash or
+   * a different wallet should still skip cleanly with the matching
+   * `recordSkip` reason.
+   *
+   * Tagged on the dispatch counter as `admitted_via='chip'`.
+   */
+  forceAdmit?: 'chip';
 }
 
 /**
@@ -70,8 +90,20 @@ interface FastPathConsumeOpts {
  *     "vamos" / voice transcripts / non-English confirms that the
  *     regex would otherwise drop into LLM re-planning (which
  *     decomposes bundles — see 04:31 prod regression report).
+ *   - 'chip': SPEC 15 Phase 2. The user clicked the Confirm chip.
+ *     Chip click is a 100% intent signal — no regex, no plan-context
+ *     match, no language guesswork. The chat route signals this via
+ *     `FastPathConsumeOpts.forceAdmit='chip'`. Session-validity, stash
+ *     existence, and wallet-match checks still run.
  */
-type AdmittedVia = 'regex' | 'plan_context';
+/**
+ * Exported (not just internal) so callers can tag downstream telemetry
+ * accurately. SPEC 15 Phase 2's chat-route emits
+ * `audric.confirm_flow.dispatch_count{admitted_via=...}` and needs the
+ * exact admission cause — without this export it would have to coarse-
+ * grain 'regex' / 'plan_context' as a single 'text' bucket.
+ */
+export type AdmittedVia = 'regex' | 'plan_context' | 'chip';
 
 interface FastPathHit {
   /** Constructed bundle, ready to enqueue as `pending_action` SSE. */
@@ -91,6 +123,16 @@ interface FastPathHit {
    * readable acknowledgment of the bundle.
    */
   syntheticAssistantText: string;
+  /**
+   * [SPEC 15 Phase 2] How this hit was admitted, surfaced so callers
+   * can tag the `audric.confirm_flow.dispatch_count` counter with the
+   * precise admission cause (chip / regex / plan_context). The
+   * function-internal counter (`audric.bundle.fast_path_dispatched`)
+   * already has this tag, but exposing it here lets the chat route
+   * avoid coarse-graining text dispatches when emitting the new
+   * confirm-flow counter.
+   */
+  admittedVia: AdmittedVia;
 }
 
 /**
@@ -231,17 +273,23 @@ function buildPendingActionFromProposal(
  * Try the fast path for the current chat turn. Returns null when:
  *   - sessionId or walletAddress is missing
  *   - the user's message is neither an affirmative confirm nor a
- *     plan-context-eligible reply (Phase 1.5)
+ *     plan-context-eligible reply (Phase 1.5) — UNLESS forceAdmit='chip'
+ *     overrides the intent gates (Phase 2)
  *   - no fresh proposal is stashed for this session
  *   - the stash's wallet doesn't match the current request's wallet
  *
- * Admission has two paths (in order):
+ * Admission has three paths (checked in order):
  *
- *   1. **Strict regex** (`isAffirmativeConfirmReply`): "yes" / "Confirm" /
+ *   1. **Chip override** (Phase 2): caller passes `forceAdmit='chip'`.
+ *      Skips intent checks entirely. Tag: `admitted_via=chip`.
+ *      Session/stash/wallet checks still run (a chip click against an
+ *      expired stash or wrong wallet should still skip cleanly).
+ *
+ *   2. **Strict regex** (`isAffirmativeConfirmReply`): "yes" / "Confirm" /
  *      "execute" / etc. Matches the 108 ms canonical happy path.
  *      Tag: `admitted_via=regex`.
  *
- *   2. **Plan-context override** (Phase 1.5): the regex missed, but the
+ *   3. **Plan-context override** (Phase 1.5): the regex missed, but the
  *      prior assistant turn is a multi-write Payment Stream plan AND
  *      the user's reply isn't clearly negative. Catches "do it bro" /
  *      "vamos" / voice transcripts / multilingual confirms that
@@ -260,7 +308,13 @@ export async function tryConsumeFastPathBundle(
   if (!opts.walletAddress) return recordSkip('no_wallet');
 
   let admittedVia: AdmittedVia | null = null;
-  if (isAffirmativeConfirmReply(opts.trimmedMessage)) {
+  if (opts.forceAdmit === 'chip') {
+    // [Phase 2] Chip override. Skip ALL intent gates — chip is a 100%
+    // signal. Session/stash/wallet gates below still apply (chip click
+    // against expired stash → no_stash; against wrong wallet →
+    // wallet_mismatch).
+    admittedVia = 'chip';
+  } else if (isAffirmativeConfirmReply(opts.trimmedMessage)) {
     admittedVia = 'regex';
   } else if (opts.history && opts.history.length > 0) {
     // [Phase 1.5] Plan-context override. Only fire when the prior
@@ -323,6 +377,7 @@ export async function tryConsumeFastPathBundle(
     // ~2,000 thinking chars per fast-path narration turn.
     syntheticAssistantText:
       `Confirmed. Bundle dispatched as one atomic Payment Stream (${proposal.steps.length} writes) — verifying on-chain outcome.`,
+    admittedVia,
   };
 }
 

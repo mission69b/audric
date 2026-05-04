@@ -6,7 +6,10 @@ import {
 } from '@t2000/engine';
 import {
   emitPlanContextPromoted,
+  emitExpectsConfirmSet,
+  emitConfirmFlowDispatch,
   bucketMessageLength,
+  bucketStepCount,
   detectLangHint,
 } from '../plan-context-metrics';
 
@@ -201,6 +204,179 @@ describe('emitPlanContextPromoted — wire shape', () => {
         message: 'yes',
         matchedRegex: true,
         priorWriteVerbCount: 2,
+      }),
+    ).not.toThrow();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// SPEC 15 Phase 2 — Confirm chips telemetry wire shape
+// ─────────────────────────────────────────────────────────────────────────
+
+describe('bucketStepCount', () => {
+  it.each<[number, '2' | '3' | '4']>([
+    [1, '2'], // floor: anything below 2 is treated as 2
+    [2, '2'],
+    [3, '3'],
+    [4, '4'],
+    [5, '4'], // ceiling: anything above 4 is treated as 4 (Phase 3a cap)
+  ])('bucket(%i) === %s', (n, expected) => {
+    expect(bucketStepCount(n)).toBe(expected);
+  });
+});
+
+describe('emitExpectsConfirmSet — wire shape', () => {
+  it('emits has_swap=true + step_count_bucket=3 for a 3-op swap-bearing bundle', () => {
+    const { sink, counter } = makeSpy();
+    setTelemetrySink(sink);
+
+    emitExpectsConfirmSet({ hasSwap: true, stepCount: 3 });
+
+    expect(counter).toHaveBeenCalledTimes(1);
+    expect(counter).toHaveBeenCalledWith('audric.confirm_flow.expects_confirm_set', {
+      has_swap: 'true',
+      step_count_bucket: '3',
+    });
+  });
+
+  it('emits has_swap=false for a non-swap bundle', () => {
+    const { sink, counter } = makeSpy();
+    setTelemetrySink(sink);
+
+    emitExpectsConfirmSet({ hasSwap: false, stepCount: 2 });
+
+    expect(counter).toHaveBeenCalledWith('audric.confirm_flow.expects_confirm_set', {
+      has_swap: 'false',
+      step_count_bucket: '2',
+    });
+  });
+
+  it('caps step_count_bucket at 4 (Phase 3a MAX_BUNDLE_OPS)', () => {
+    const { sink, counter } = makeSpy();
+    setTelemetrySink(sink);
+
+    emitExpectsConfirmSet({ hasSwap: true, stepCount: 4 });
+
+    expect(counter).toHaveBeenCalledWith(
+      'audric.confirm_flow.expects_confirm_set',
+      expect.objectContaining({ step_count_bucket: '4' }),
+    );
+  });
+
+  it('does not throw when the sink throws', () => {
+    const counter = vi.fn(() => {
+      throw new Error('telemetry sink down');
+    });
+    setTelemetrySink({ counter, gauge: vi.fn(), histogram: vi.fn() } as TelemetrySink);
+
+    expect(() => emitExpectsConfirmSet({ hasSwap: true, stepCount: 3 })).not.toThrow();
+  });
+});
+
+describe('emitConfirmFlowDispatch — wire shape', () => {
+  it('emits via=chip,outcome=dispatched,admitted_via=chip for a chip-Yes click', () => {
+    const { sink, counter } = makeSpy();
+    setTelemetrySink(sink);
+
+    emitConfirmFlowDispatch({
+      via: 'chip',
+      outcome: 'dispatched',
+      admittedVia: 'chip',
+      stepCount: 3,
+    });
+
+    expect(counter).toHaveBeenCalledWith('audric.confirm_flow.dispatch_count', {
+      via: 'chip',
+      outcome: 'dispatched',
+      admitted_via: 'chip',
+      step_count_bucket: '3',
+    });
+  });
+
+  it('emits via=chip,outcome=cancelled for a chip-No click', () => {
+    const { sink, counter } = makeSpy();
+    setTelemetrySink(sink);
+
+    emitConfirmFlowDispatch({
+      via: 'chip',
+      outcome: 'cancelled',
+      admittedVia: 'chip',
+      stepCount: 2,
+    });
+
+    expect(counter).toHaveBeenCalledWith(
+      'audric.confirm_flow.dispatch_count',
+      expect.objectContaining({ via: 'chip', outcome: 'cancelled' }),
+    );
+  });
+
+  it('emits via=text,admitted_via=regex for a typed "yes" caught by Fix 1 regex', () => {
+    const { sink, counter } = makeSpy();
+    setTelemetrySink(sink);
+
+    emitConfirmFlowDispatch({
+      via: 'text',
+      outcome: 'dispatched',
+      admittedVia: 'regex',
+      stepCount: 3,
+    });
+
+    expect(counter).toHaveBeenCalledWith(
+      'audric.confirm_flow.dispatch_count',
+      expect.objectContaining({ via: 'text', admitted_via: 'regex' }),
+    );
+  });
+
+  it('emits via=text,admitted_via=plan_context for a Phase 1.5 override', () => {
+    const { sink, counter } = makeSpy();
+    setTelemetrySink(sink);
+
+    emitConfirmFlowDispatch({
+      via: 'text',
+      outcome: 'dispatched',
+      admittedVia: 'plan_context',
+      stepCount: 4,
+    });
+
+    expect(counter).toHaveBeenCalledWith(
+      'audric.confirm_flow.dispatch_count',
+      expect.objectContaining({ via: 'text', admitted_via: 'plan_context', step_count_bucket: '4' }),
+    );
+  });
+
+  it('emits outcome=stash_mismatch for chip-Yes against stale bundleId (ghost-dispatch race)', () => {
+    const { sink, counter } = makeSpy();
+    setTelemetrySink(sink);
+
+    emitConfirmFlowDispatch({
+      via: 'chip',
+      outcome: 'stash_mismatch',
+      admittedVia: 'chip',
+      stepCount: 3,
+    });
+
+    expect(counter).toHaveBeenCalledWith(
+      'audric.confirm_flow.dispatch_count',
+      expect.objectContaining({
+        via: 'chip',
+        outcome: 'stash_mismatch',
+        admitted_via: 'chip',
+      }),
+    );
+  });
+
+  it('does not throw when the sink throws', () => {
+    const counter = vi.fn(() => {
+      throw new Error('telemetry sink down');
+    });
+    setTelemetrySink({ counter, gauge: vi.fn(), histogram: vi.fn() } as TelemetrySink);
+
+    expect(() =>
+      emitConfirmFlowDispatch({
+        via: 'chip',
+        outcome: 'dispatched',
+        admittedVia: 'chip',
+        stepCount: 3,
       }),
     ).not.toThrow();
   });

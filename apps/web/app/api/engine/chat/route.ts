@@ -41,6 +41,16 @@ import {
 
 import { sanitizeStreamErrorMessage } from '@/lib/engine/stream-errors';
 import { tryConsumeFastPathBundle } from '@/lib/engine/fast-path-bundle';
+// [SPEC 15 Phase 2] Confirm-flow chip routing.
+import {
+  readBundleProposal,
+  deleteBundleProposal,
+} from '@/lib/engine/bundle-proposal-store';
+import { expectsConfirmDecorator } from '@/lib/engine/expects-confirm-decorator';
+import {
+  emitExpectsConfirmSet,
+  emitConfirmFlowDispatch,
+} from '@/lib/engine/plan-context-metrics';
 import { env } from '@/lib/env';
 import {
   asHarnessVersion,
@@ -86,11 +96,35 @@ const MAX_MSG_LEN = 500;
  * card *before* the LLM even saw the message.
  */
 
+/**
+ * [SPEC 15 Phase 2] Chip-click decision payload. Set by the frontend
+ * `<ConfirmChips />` when the user taps Confirm or Cancel under a
+ * multi-write Payment Stream plan. Echoed `forStashId` is matched
+ * against the live Redis stash's `bundleId`:
+ *   - match → execute (Yes) or cancel (No) the current stash
+ *   - mismatch → ghost-dispatch race (cancel+new-stash, delayed click).
+ *     Yes-mismatch falls through to the regular text-confirm path
+ *     (treats the click like the user typed "Confirm"); No-mismatch
+ *     still cancels the CURRENT stash (intent is unambiguous).
+ *
+ * `forStashId` is NOT a capability token — server consumes the stash
+ * by `sessionId`. The mismatch path emits
+ * `audric.confirm_flow.dispatch_count{outcome='stash_mismatch'}`
+ * for visibility but never gates auth on the field.
+ */
+interface ChipDecision {
+  via: 'chip';
+  value: 'yes' | 'no';
+  forStashId: string;
+}
+
 interface ChatRequestBody {
   message: string;
   address?: string;
   sessionId?: string;
   history?: HistoryMessage[];
+  /** [SPEC 15 Phase 2] Chip click — see `ChipDecision`. */
+  chipDecision?: ChipDecision;
 }
 
 function jsonError(message: string, status: number): Response {
@@ -108,11 +142,24 @@ export async function POST(request: NextRequest) {
     return jsonError('Invalid JSON body', 400);
   }
 
-  const { message, address, sessionId: requestedSessionId, history = [] } = body;
+  const { message, address, sessionId: requestedSessionId, history = [], chipDecision } = body;
 
   if (!message?.trim()) {
     return jsonError('message is required', 400);
   }
+
+  // [SPEC 15 Phase 2] Defensive shape validation on chipDecision.
+  // Bad shapes are silently ignored (treat as a normal text turn) so
+  // a malformed client never bricks chat. We never want to surface a
+  // 400 for "your chip click was malformed" — fall back to text path.
+  const validChipDecision: ChipDecision | undefined =
+    chipDecision &&
+    chipDecision.via === 'chip' &&
+    (chipDecision.value === 'yes' || chipDecision.value === 'no') &&
+    typeof chipDecision.forStashId === 'string' &&
+    chipDecision.forStashId.length > 0
+      ? chipDecision
+      : undefined;
 
   const jwt = request.headers.get('x-zklogin-jwt');
   const isAuth = !!jwt && !!address;
@@ -359,37 +406,151 @@ export async function POST(request: NextRequest) {
           // LLM's stream so cards render immediately and metrics row is complete.
           const trimmedMessage = message.trim();
 
-          // [SPEC 14 Phase 2] Fast-path: if we have a fresh stashed
-          // bundle proposal for this session AND the user's reply is
-          // an affirmative confirm AND the wallet matches, yield the
-          // `pending_action` directly — bypass the LLM entirely.
+          // [SPEC 14 Phase 2 + SPEC 15 Phase 2] Pre-LLM short-circuits.
           //
-          // This decouples the bundle invariant from LLM emission
-          // timing (the load-bearing failure mode of `1.14.0 → 1.14.3`).
-          // The bundle was committed at PLAN time via the
-          // `prepare_bundle` tool call; the confirm turn just dispatches.
+          // Three mutually-exclusive paths fire BEFORE the engine stream:
           //
-          // On miss (no stash, expired, wallet mismatch, non-affirmative
-          // reply) the helper increments
-          // `audric.bundle.fast_path_skipped` with a `reason` label and
-          // returns null — we fall through to the legacy path below.
+          //   1. Chip-Cancel (`chipDecision.value === 'no'`):
+          //      Delete the stash, synthesize a tiny "Cancelled by user"
+          //      assistant turn, skip the LLM. Idempotent — chip-Cancel
+          //      against a no-stash session is a no-op + telemetry.
+          //
+          //   2. Chip-Yes (`chipDecision.value === 'yes'`):
+          //      Read stash, validate `forStashId` against `bundleId`.
+          //      On match → fast-path dispatch with `forceAdmit='chip'`
+          //      (skips intent gates). On mismatch → emit telemetry and
+          //      fall through to the regular text-confirm path (the
+          //      mismatched chip is treated like the user typed
+          //      "Confirm", which is exactly what the chip label says).
+          //
+          //   3. Text confirm (no `chipDecision` OR Yes-mismatch):
+          //      Existing Phase 1+1.5 fast-path — regex / plan-context
+          //      / wallet checks inside `tryConsumeFastPathBundle`.
+          //
+          // `fastPathFired` (and the new `chipCancelled`) gate the LLM
+          // submitMessage call below — same way Phase 1 already does.
           let fastPathFired = false;
-          if (saveSession && sessionId && address) {
+          let chipCancelled = false;
+
+          // ── Path 1: Chip-Cancel ──────────────────────────────────
+          if (
+            !fastPathFired &&
+            validChipDecision?.value === 'no' &&
+            saveSession &&
+            sessionId &&
+            address
+          ) {
+            // R7 ghost-dispatch fix: ALWAYS delete the stash on Cancel,
+            // even when the stashId mismatches. The user's intent is
+            // unambiguous — cancel the current plan — and leaving the
+            // stash live invites a delayed text "yes" to dispatch a
+            // bundle the user already cancelled.
+            const currentStash = await readBundleProposal(sessionId);
+            const stashIdMatched = currentStash?.bundleId === validChipDecision.forStashId;
+            const stepCountForTelemetry = currentStash?.steps.length ?? 0;
+            await deleteBundleProposal(sessionId);
+
+            // Synthetic assistant turn. Persisted in the engine ledger
+            // (so the next prompt sees "user just cancelled" in
+            // context — without it, the LLM might re-propose the same
+            // bundle 30 seconds later) AND streamed to SSE so the UI
+            // shows the cancellation acknowledgment.
+            const cancelText = 'Cancelled by user — keeping the plan unchanged.';
+            controller.enqueue(
+              encoder.encode(
+                serializeSSE({ type: 'text_delta', text: cancelText }),
+              ),
+            );
+            controller.enqueue(
+              encoder.encode(
+                serializeSSE({ type: 'turn_complete', stopReason: 'end_turn' }),
+              ),
+            );
+            const priorMessages = engine.getMessages();
+            engine.loadMessages([
+              ...priorMessages,
+              { role: 'user', content: [{ type: 'text', text: trimmedMessage }] },
+              { role: 'assistant', content: [{ type: 'text', text: cancelText }] },
+            ]);
+            narrationParts.push(cancelText);
+            turnCompleteSeen = true;
+            lastEventType = 'turn_complete';
+            chipCancelled = true;
+
+            // Both match + mismatch tag as `outcome='cancelled'` —
+            // semantically the user cancelled the current plan in
+            // both cases. Mismatch is logged via console.warn below
+            // for UI-bug visibility (the chip the user clicked was
+            // already stale).
+            emitConfirmFlowDispatch({
+              via: 'chip',
+              outcome: 'cancelled',
+              admittedVia: 'chip',
+              stepCount: stepCountForTelemetry > 0 ? stepCountForTelemetry : 2,
+            });
+
+            console.info('[chip-cancel] stash deleted', {
+              sessionId,
+              clientStashId: validChipDecision.forStashId,
+              currentStashId: currentStash?.bundleId ?? null,
+              stashIdMatched,
+            });
+          }
+
+          // ── Path 2 + 3: Yes-with-match (chip-fast-path) OR fall
+          //               through to regular text-fast-path ──────────
+          //
+          // `useChipForceAdmit` flips true ONLY when chipDecision is
+          // a Yes AND the forStashId matches the current bundleId. In
+          // all other cases (no chipDecision; chip Yes with mismatch;
+          // chip No — already handled above) we use the existing
+          // text-confirm semantics.
+          let useChipForceAdmit = false;
+          if (
+            !chipCancelled &&
+            validChipDecision?.value === 'yes' &&
+            saveSession &&
+            sessionId &&
+            address
+          ) {
+            const currentStash = await readBundleProposal(sessionId);
+            if (currentStash?.bundleId === validChipDecision.forStashId) {
+              useChipForceAdmit = true;
+            } else {
+              // Stash-mismatch ghost-dispatch race. Don't dispatch
+              // chip-fast-path against a stash the user didn't approve.
+              // Emit telemetry so the dashboard can spot stale clients,
+              // then fall through — the regular text-confirm path below
+              // will run. The user's intent ("Confirm") is preserved;
+              // we just don't honor the stale stashId binding.
+              emitConfirmFlowDispatch({
+                via: 'chip',
+                outcome: 'stash_mismatch',
+                admittedVia: 'chip',
+                stepCount: currentStash?.steps.length ?? 2,
+              });
+              console.warn('[chip-yes] stash mismatch — falling through to text-confirm', {
+                sessionId,
+                clientStashId: validChipDecision.forStashId,
+                currentStashId: currentStash?.bundleId ?? null,
+              });
+            }
+          }
+
+          if (!chipCancelled && saveSession && sessionId && address) {
             const fastPath = await tryConsumeFastPathBundle({
               sessionId,
               walletAddress: address,
               trimmedMessage,
               turnIndex,
-              // [SPEC 15 Phase 1.5 / 2026-05-04] History enables the
-              // plan-context override admission path: when the regex
-              // misses ("do it bro" / "vamos" / voice transcript) but
-              // the prior assistant turn was a multi-write plan AND
-              // the user isn't clearly negative, dispatch the stashed
-              // bundle anyway. Without this, Phase 1 promotion alone
-              // hands the turn to Sonnet which then RE-PLANS the
-              // bundle (decomposing it into multiple txes — the bug
-              // we shipped Phase 1.5 to fix).
+              // [SPEC 15 Phase 1.5] History enables the plan-context
+              // override admission path. Skipped when forceAdmit='chip'
+              // since the chip click bypasses intent gates.
               history: session?.messages ?? [],
+              // [SPEC 15 Phase 2] Set when chip-Yes with matching
+              // forStashId. Skips intent gates inside the helper but
+              // still runs session/stash/wallet checks.
+              forceAdmit: useChipForceAdmit ? 'chip' : undefined,
             });
             if (fastPath) {
               fastPathFired = true;
@@ -407,18 +568,12 @@ export async function POST(request: NextRequest) {
               // Mirror engine.ts behavior — emit turn_complete with
               // `stopReason: 'tool_use'` (same as the engine yields
               // when an agentLoop iteration ends on a pending_action).
-              // The host's stream-close instrumentation buckets this
-              // as `outcome: 'pending_action'` via the `pendingActionSeen`
-              // flag, not via `stopReason`.
               controller.enqueue(
                 encoder.encode(
                   serializeSSE({ type: 'turn_complete', stopReason: 'tool_use' }),
                 ),
               );
 
-              // Mirror the engine's collector bookkeeping that
-              // normally fires from the `case 'pending_action'`
-              // branch below.
               pendingAction = fastPath.action;
               pendingActionSeen = true;
               turnCompleteSeen = true;
@@ -431,13 +586,23 @@ export async function POST(request: NextRequest) {
                 emitBundleProposed(fastPath.action.steps);
               }
 
+              // [SPEC 15 Phase 2] Confirm-flow dispatch counter. Tag
+              // `via='chip'` when this dispatch came from a chip-Yes
+              // click, else `via='text'`. `admittedVia` is sourced
+              // from the fast-path's return value so the counter
+              // accurately splits text dispatches between regex
+              // (Phase 1) and plan_context (Phase 1.5) — no
+              // coarse-graining.
+              emitConfirmFlowDispatch({
+                via: fastPath.admittedVia === 'chip' ? 'chip' : 'text',
+                outcome: 'dispatched',
+                admittedVia: fastPath.admittedVia,
+                stepCount: fastPath.action.steps?.length ?? 2,
+              });
+
               // Append synthetic user + assistant messages to the
               // engine's ledger so the chat-history UI and the next
-              // LLM turn see a coherent transcript. Without this, the
-              // saved session would record the user's "Confirm" with
-              // no matching assistant turn — the next prompt would
-              // see a hanging plan turn. Both messages use the typed
-              // `ContentBlock[]` shape (single `text` block each).
+              // LLM turn see a coherent transcript.
               const priorMessages = engine.getMessages();
               engine.loadMessages([
                 ...priorMessages,
@@ -455,6 +620,7 @@ export async function POST(request: NextRequest) {
                 sessionId,
                 bundleId: fastPath.proposal.bundleId,
                 stepCount: fastPath.proposal.steps.length,
+                via: useChipForceAdmit ? 'chip' : 'text',
                 pairs: fastPath.proposal.steps
                   .slice(1)
                   .map((s, i) => `${fastPath.proposal.steps[i].toolName}->${s.toolName}`),
@@ -626,15 +792,16 @@ export async function POST(request: NextRequest) {
           // `harness_shape` event. The engine echo via `case 'harness_shape'`
           // below stays as a defensive last-write-wins.
           collector.onHarnessShape(engineMeta?.harnessShape);
-          // [SPEC 14 Phase 2] When the fast path fired we already
-          // emitted `pending_action` + `turn_complete` from the
-          // stashed proposal; skipping `engine.submitMessage` is what
-          // makes this path "fast" (zero LLM cost, ~10ms total).
-          // Falls through to the existing finally block which handles
-          // session save, TurnMetrics row, etc — those work
+          // [SPEC 14 Phase 2 + SPEC 15 Phase 2] When EITHER the fast
+          // path fired (text-confirm or chip-Yes) OR the chip-Cancel
+          // path fired we already emitted the SSE terminator events
+          // from the synthetic flow. Skipping `engine.submitMessage`
+          // is what makes those paths "fast" (zero LLM cost, ~10ms
+          // total). Falls through to the existing finally block which
+          // handles session save, TurnMetrics row, etc — those work
           // unchanged because we set the same state flags the legacy
           // path's `case 'pending_action'` would set.
-          if (!fastPathFired) for await (const event of engine.submitMessage(trimmedMessage, {
+          if (!fastPathFired && !chipCancelled) for await (const event of engine.submitMessage(trimmedMessage, {
             // [SPEC 8 v0.5.1 B3.2] Engine emits the one-shot `harness_shape`
             // event at turn start; host stashes the shape on the assistant
             // EngineChatMessage + on `TurnMetrics.harnessShape`. Falls back
@@ -722,6 +889,55 @@ export async function POST(request: NextRequest) {
                 // any pending `lastInterruption` from prior turns
                 // gets cleared on the metadata write below.
                 turnCompleteSeen = true;
+                // [SPEC 15 Phase 2] If the just-finished assistant turn
+                // called `prepare_bundle` AND a fresh stash exists AND
+                // the final text matches the plan-confirm marker, emit
+                // an `expects_confirm` SSE event so the frontend can
+                // render Confirm/Cancel chips. ORDER MATTERS — the
+                // event must precede the forwarded `turn_complete` so
+                // the client attaches it to the just-finished message
+                // before it transitions out of the streaming state.
+                //
+                // Stalls SSE for ~50–80ms on a Redis read; that's
+                // intentional. The decorator's gate on
+                // `preparedBundleThisTurn` short-circuits the read
+                // when no `prepare_bundle` tool ran (the steady state
+                // for narration / chitchat / read-only turns).
+                if (sessionId && saveSession) {
+                  try {
+                    const finalText = narrationParts.join('');
+                    const expectsConfirm = await expectsConfirmDecorator({
+                      sessionId,
+                      preparedBundleThisTurn: calledToolNames.includes('prepare_bundle'),
+                      finalText: finalText.length > 0 ? finalText : undefined,
+                    });
+                    if (expectsConfirm) {
+                      // Audric-only SSE event — encode manually (the
+                      // engine's `serializeSSE` only knows about
+                      // engine-emitted `SSEEvent` types). Mirrors the
+                      // pattern already used for the `session` event
+                      // emitted at stream start. Frontend SSE reducer
+                      // treats unknown event types as no-ops, so this
+                      // is non-breaking for stale clients.
+                      controller.enqueue(
+                        encoder.encode(
+                          `event: expects_confirm\ndata: ${JSON.stringify(expectsConfirm)}\n\n`,
+                        ),
+                      );
+                      emitExpectsConfirmSet({
+                        hasSwap: expectsConfirm.expiresAt !== undefined,
+                        stepCount: expectsConfirm.stepCount,
+                      });
+                    }
+                  } catch (decoratorErr) {
+                    // Telemetry / decorator failures must never block
+                    // the turn from completing. Log and move on.
+                    console.error(
+                      '[expects-confirm] decorator failed (non-fatal):',
+                      decoratorErr,
+                    );
+                  }
+                }
                 break;
               case 'pending_action':
                 // [v1.4.2 — Day 3 / Spec Item 3] Pass the engine-stamped

@@ -81,3 +81,118 @@ export function emitPlanContextPromoted(args: {
     // Telemetry must never block the request.
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// SPEC 15 Phase 2 — Confirm chips telemetry
+// ─────────────────────────────────────────────────────────────────────────
+//
+// Phase 2 adds two counters in the same `audric.confirm_flow.*` namespace.
+// Both ship in commit 1 (backend) so we collect baseline data BEFORE
+// chips render in the UI (commit 2 + flag flip). That way we can answer:
+//
+//   1. "How often WOULD chips have rendered?" (decorator firing rate) —
+//      via `expects_confirm_set`. Baseline expected to track ~1:1 with
+//      multi-write `prepare_bundle` calls in production.
+//
+//   2. "When chips ship, what's the via=chip vs via=text split?" — via
+//      `dispatch_count`. Phase 2 success criterion is chip adoption ≥ 60%
+//      within 14 days of full rollout.
+//
+// Both counters share the bucketing helpers above with the existing
+// `plan_context_promoted` counter so dashboards can join on identical
+// tag shapes.
+
+/**
+ * Bucket for `step_count` tag. Phase 3a's MAX_BUNDLE_OPS=4 caps the
+ * upper bound today; older payment streams may have ≤3.
+ */
+export type StepCountBucket = '2' | '3' | '4';
+
+export function bucketStepCount(count: number): StepCountBucket {
+  if (count <= 2) return '2';
+  if (count === 3) return '3';
+  return '4';
+}
+
+/**
+ * Fired by the audric chat route AFTER the decorator returns a non-null
+ * `ExpectsConfirmSseEvent`. Confirms that the assistant turn produced
+ * a chip-renderable confirmation point — backend signal regardless of
+ * whether the frontend renders chips (gated by env flag).
+ *
+ * Tags:
+ *   - `has_swap`: 'true' when at least one step is `swap_execute` (these
+ *     bundles carry `expiresAt`); 'false' otherwise. Splits the
+ *     quote-staleness population from non-quote-bearing bundles.
+ *   - `step_count_bucket`: '2' | '3' | '4' (Phase 3a cap).
+ */
+export function emitExpectsConfirmSet(args: {
+  hasSwap: boolean;
+  stepCount: number;
+}): void {
+  try {
+    getTelemetrySink().counter(`${NAMESPACE}.expects_confirm_set`, {
+      has_swap: args.hasSwap ? 'true' : 'false',
+      step_count_bucket: bucketStepCount(args.stepCount),
+    });
+  } catch {
+    // Telemetry must never block the request.
+  }
+}
+
+/**
+ * How a confirm-flow turn was resolved. Tagged on
+ * `audric.confirm_flow.dispatch_count`.
+ *
+ * - 'dispatched': bundle dispatched to the wallet (chip-Yes happy path
+ *   OR text-confirm regex/plan-context fast-path).
+ * - 'cancelled': user explicitly declined (chip-No click — text-no with
+ *   plan-context is counted under `audric.bundle.fast_path_skipped`
+ *   `reason='negative_reply'`, NOT here, to avoid double-counting).
+ * - 'stash_mismatch': chip-Yes click whose `forStashId` didn't match the
+ *   live `bundleId` — ghost-dispatch race repro. We DON'T dispatch the
+ *   stale stash binding, falling through to the regular text-confirm
+ *   path instead. Tracked separately so the dashboard can spot stale
+ *   clients (suggests a UI staleness bug or aggressive caching).
+ */
+export type DispatchVia = 'chip' | 'text';
+export type DispatchOutcome = 'dispatched' | 'cancelled' | 'stash_mismatch';
+/**
+ * Mirrors the fast-path's `AdmittedVia` for `via='text'` rows so a single
+ * dashboard query can split text-vs-chip AND tell which fast-path path
+ * caught the text confirm. For `via='chip'` rows, value is always 'chip'
+ * (no other admission path is possible from the chip POST).
+ */
+export type DispatchAdmittedVia = 'regex' | 'plan_context' | 'chip';
+
+/**
+ * Fired by the chat route when a confirm-flow turn resolves: either the
+ * bundle dispatched (chip-Yes or text-yes via fast-path) or the user
+ * cancelled (chip-No, or text-no caught by `looksLikeNegativeReply`).
+ *
+ * Two adoption ratios drive Phase 2 rollout decisions:
+ *   - chip adoption: dispatch_count{via=chip} / dispatch_count{*}
+ *   - cancel rate:   dispatch_count{outcome=cancelled,via=chip} /
+ *                    dispatch_count{via=chip}
+ *
+ * If chip adoption stays low (< 30%) with cancel rate > 15%, the chip
+ * UX is misfiring and we tighten the decorator heuristic. If chip
+ * adoption goes high (> 80%) with cancel rate < 5%, ship is healthy.
+ */
+export function emitConfirmFlowDispatch(args: {
+  via: DispatchVia;
+  outcome: DispatchOutcome;
+  admittedVia: DispatchAdmittedVia;
+  stepCount: number;
+}): void {
+  try {
+    getTelemetrySink().counter(`${NAMESPACE}.dispatch_count`, {
+      via: args.via,
+      outcome: args.outcome,
+      admitted_via: args.admittedVia,
+      step_count_bucket: bucketStepCount(args.stepCount),
+    });
+  } catch {
+    // Telemetry must never block the request.
+  }
+}

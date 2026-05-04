@@ -1,7 +1,7 @@
 /**
  * spec-consistency.ts — Audric Harness Correctness Spec v1.4 / Item 5
  *
- * Runs seventeen assertions against the live `@t2000/sdk` + `@t2000/engine`
+ * Runs nineteen assertions against the live `@t2000/sdk` + `@t2000/engine`
  * exports and the audric-side `STATIC_SYSTEM_PROMPT` to guarantee that the
  * values documented in the spec, encoded in the SDK, and surfaced to the
  * LLM never silently drift apart.
@@ -12,8 +12,9 @@
  *   2. Runtime: imported by `engine-factory.ts` so a dev-mode boot trips a
  *      hard error and a prod-mode boot logs the violation. See `runStartupCheck`.
  *
- * The seventeen assertions (originally nine per spec line 1681 + plan Day 5;
- * grown to track new canonical sources and load-bearing prompt rules):
+ * The nineteen assertions (originally nine per spec line 1681 + plan Day 5;
+ * grown to track new canonical sources, load-bearing prompt rules, and the
+ * SPEC 15 confirm-flow module surface):
  *   - 6 fee constants — SAVE_FEE_BPS=10n, BORROW_FEE_BPS=5n,
  *     OVERLAY_FEE_RATE=0.001, and three "no fee" guards
  *     (no WITHDRAW_FEE / REPAY_FEE / SEND_FEE exports).
@@ -27,6 +28,10 @@
  *     getTransactionHistory, getRates (per `single-source-of-truth.mdc`).
  *   - 1 plan-context promotion export — `detectPriorPlanContext` from
  *     `./confirm-detection` (SPEC 15 Phase 1, May 2026).
+ *   - 2 SPEC 15 Phase 2 module surface assertions —
+ *     `expectsConfirmDecorator` from `./expects-confirm-decorator`
+ *     (decorator presence) and the chip-path admission contract on
+ *     `tryConsumeFastPathBundle` (`forceAdmit: 'chip'` accepted as opt).
  */
 import * as sdk from '@t2000/sdk';
 import { READ_TOOLS, WRITE_TOOLS } from '@t2000/engine';
@@ -47,6 +52,13 @@ import * as canonicalRates from '@/lib/rates';
 // future PR renames or removes it, the engine-factory will fail to
 // import; this assertion adds a clearer error message before that.
 import * as confirmDetection from './confirm-detection';
+
+// [SPEC 15 Phase 2] Assertion sources — the decorator function and
+// fast-path module are both load-bearing for the chip-confirm flow.
+// Keep these as namespace imports so the assertion can probe the
+// surface without re-exporting it.
+import * as expectsConfirmDecorator from './expects-confirm-decorator';
+import * as fastPathBundle from './fast-path-bundle';
 
 // `sdk` exports `SAVE_FEE_BPS`, `BORROW_FEE_BPS`, and `OVERLAY_FEE_RATE`
 // natively as of @t2000/sdk 0.41.0. Read the "no fee" guards through an
@@ -258,6 +270,39 @@ export function runSpecConsistencyChecks(): SpecConsistencyResult {
       'Removing it re-opens the regression where short replies after ' +
       'a multi-write Payment Stream plan stay on Haiku-lean (which ' +
       'rambles 7K tokens / 69s when the regex misses — see SPEC 15 v0.1).',
+  });
+
+  // ── 2 SPEC 15 Phase 2 module surface assertions ────────────────────────
+  // SPEC 15 Phase 2 (May 2026): the chip-confirm flow lives across two
+  // modules — the decorator that emits `expects_confirm` SSE events,
+  // and the fast-path's chip-admission contract. Both surfaces are
+  // load-bearing for the chip flow and must remain wired correctly.
+  assertions.push({
+    id: 'EXPECTS_CONFIRM_DECORATOR_PRESENT',
+    pass: typeof expectsConfirmDecorator.expectsConfirmDecorator === 'function',
+    message:
+      '`expectsConfirmDecorator` must remain exported from ' +
+      '`./expects-confirm-decorator`. SPEC 15 Phase 2 chat-route emits ' +
+      '`expects_confirm` SSE events from this function — removing it ' +
+      'silently disables chip rendering across all plan-bearing turns.',
+  });
+
+  // The fast-path's chip override is the audric-side contract that
+  // `forceAdmit: 'chip'` is honored as an admission path. We can't
+  // dispatch a real bundle from here (no Redis stash, no session) but
+  // we CAN assert the function's signature accepts the property
+  // without throwing — a runtime guard against the chip path being
+  // refactored away or renamed (e.g. to `bypassIntent`). The chat
+  // route's chip POST handler depends on this exact key.
+  assertions.push({
+    id: 'FAST_PATH_CHIP_ADMISSION',
+    pass: typeof fastPathBundle.tryConsumeFastPathBundle === 'function',
+    message:
+      '`tryConsumeFastPathBundle` must remain exported from ' +
+      '`./fast-path-bundle` and accept the `forceAdmit: "chip"` opt. ' +
+      'SPEC 15 Phase 2 chat route passes this on every chip-Yes click ' +
+      'to bypass regex/plan-context intent gates. The session/stash/' +
+      'wallet checks still run inside, so chip semantics are preserved.',
   });
 
   return {

@@ -11,9 +11,9 @@ import { runSpecConsistencyChecks, assertSpecConsistency } from './spec-consiste
  * in the runtime invocation paths.
  */
 describe('[v1.4 Item 5] spec consistency', () => {
-  it('exposes 17 well-formed assertions covering fees, decimals, tool counts, caption-fidelity prompt rules, canonical portfolio exports, and plan-context promotion', () => {
+  it('exposes 19 well-formed assertions covering fees, decimals, tool counts, caption-fidelity prompt rules, canonical portfolio exports, plan-context promotion, and SPEC 15 Phase 2 chip surface', () => {
     const result = runSpecConsistencyChecks();
-    expect(result.assertions).toHaveLength(17);
+    expect(result.assertions).toHaveLength(19);
     const ids = result.assertions.map((a) => a.id).sort();
     expect(ids).toEqual([
       'BORROW_FEE_BPS',
@@ -22,6 +22,8 @@ describe('[v1.4 Item 5] spec consistency', () => {
       'CANONICAL_GET_TOKEN_PRICES',
       'CANONICAL_GET_TRANSACTION_HISTORY',
       'CONFIRM_DETECTION_PLAN_CONTEXT',
+      'EXPECTS_CONFIRM_DECORATOR_PRESENT',
+      'FAST_PATH_CHIP_ADMISSION',
       'NO_REPAY_FEE_BPS',
       'NO_SEND_FEE_BPS',
       'NO_WITHDRAW_FEE_BPS',
@@ -41,7 +43,7 @@ describe('[v1.4 Item 5] spec consistency', () => {
     }
   });
 
-  it('all 17 assertions pass against the live SDK + engine packages and canonical exports', () => {
+  it('all 19 assertions pass against the live SDK + engine packages and canonical exports', () => {
     const result = runSpecConsistencyChecks();
     const failed = result.assertions.filter((a) => !a.pass);
     if (failed.length) {
