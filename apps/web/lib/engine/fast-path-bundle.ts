@@ -29,9 +29,13 @@
  */
 
 import { randomUUID } from 'node:crypto';
-import type { ContentBlock, PendingAction, PendingActionStep } from '@t2000/engine';
+import type { ContentBlock, Message, PendingAction, PendingActionStep } from '@t2000/engine';
 import { getTelemetrySink } from '@t2000/engine';
-import { isAffirmativeConfirmReply } from './confirm-detection';
+import {
+  detectPriorPlanContext,
+  isAffirmativeConfirmReply,
+  looksLikeNegativeReply,
+} from './confirm-detection';
 import {
   consumeBundleProposal,
   type BundleProposal,
@@ -43,7 +47,31 @@ interface FastPathConsumeOpts {
   walletAddress: string | undefined;
   trimmedMessage: string;
   turnIndex: number;
+  /**
+   * [SPEC 15 Phase 1.5] Conversation history up to (but NOT including)
+   * the current user message. Used by `detectPriorPlanContext` to
+   * admit the fast path on plan-context-confirmed turns even when the
+   * strict regex (`isAffirmativeConfirmReply`) misses.
+   *
+   * Optional for backward-compat — when omitted, behavior is the
+   * legacy regex-only admission (no plan-context override).
+   */
+  history?: Message[];
 }
+
+/**
+ * How the fast path decided to admit this turn.
+ *
+ *   - 'regex': strict `CONFIRM_PATTERN` match (Phase 1 baseline).
+ *     Maintains the 108ms bypass on the canonical happy path.
+ *   - 'plan_context': regex missed, but the prior assistant turn was
+ *     a multi-write Payment Stream plan AND the user's reply isn't
+ *     clearly negative. SPEC 15 Phase 1.5 — catches "do it bro" /
+ *     "vamos" / voice transcripts / non-English confirms that the
+ *     regex would otherwise drop into LLM re-planning (which
+ *     decomposes bundles — see 04:31 prod regression report).
+ */
+type AdmittedVia = 'regex' | 'plan_context';
 
 interface FastPathHit {
   /** Constructed bundle, ready to enqueue as `pending_action` SSE. */
@@ -70,11 +98,24 @@ interface FastPathHit {
  * `audric.bundle.fast_path_skipped`. Helps us tell apart the
  * legitimate "no-stash" steady state from misuse cases (wallet
  * mismatch, expired) that need investigation.
+ *
+ * Phase 1.5 additions:
+ *   - 'negative_reply': user said something that looks negative (no /
+ *     wait / cancel / actually / change…). Plan-context was detected,
+ *     but the user is clearly not confirming. Skipping is correct —
+ *     LLM picks up the turn and handles modifications/cancellations.
+ *   - 'no_plan_context': regex missed AND prior turn isn't a
+ *     multi-write plan. Reduces ambiguity in dashboards by separating
+ *     "user typed gibberish on a plan turn" from "user typed
+ *     something on a non-plan turn" (the latter is the legit steady-
+ *     state of every non-confirm chat message).
  */
 type SkipReason =
   | 'no_session'
   | 'no_wallet'
   | 'not_affirmative'
+  | 'no_plan_context'
+  | 'negative_reply'
   | 'no_stash'
   | 'wallet_mismatch';
 
@@ -189,20 +230,62 @@ function buildPendingActionFromProposal(
 /**
  * Try the fast path for the current chat turn. Returns null when:
  *   - sessionId or walletAddress is missing
- *   - the user's message isn't an affirmative confirm
+ *   - the user's message is neither an affirmative confirm nor a
+ *     plan-context-eligible reply (Phase 1.5)
  *   - no fresh proposal is stashed for this session
  *   - the stash's wallet doesn't match the current request's wallet
  *
+ * Admission has two paths (in order):
+ *
+ *   1. **Strict regex** (`isAffirmativeConfirmReply`): "yes" / "Confirm" /
+ *      "execute" / etc. Matches the 108 ms canonical happy path.
+ *      Tag: `admitted_via=regex`.
+ *
+ *   2. **Plan-context override** (Phase 1.5): the regex missed, but the
+ *      prior assistant turn is a multi-write Payment Stream plan AND
+ *      the user's reply isn't clearly negative. Catches "do it bro" /
+ *      "vamos" / voice transcripts / multilingual confirms that
+ *      otherwise drop into LLM re-planning (which decomposes bundles —
+ *      the 04:31 prod regression). Tag: `admitted_via=plan_context`.
+ *
  * Each null path increments `audric.bundle.fast_path_skipped` with
  * a `reason` label. The successful path increments
- * `audric.bundle.fast_path_dispatched` with `step_count`.
+ * `audric.bundle.fast_path_dispatched` with `step_count` and
+ * `admitted_via` so dashboards can split by admission cause.
  */
 export async function tryConsumeFastPathBundle(
   opts: FastPathConsumeOpts,
 ): Promise<FastPathHit | null> {
   if (!opts.sessionId) return recordSkip('no_session');
   if (!opts.walletAddress) return recordSkip('no_wallet');
-  if (!isAffirmativeConfirmReply(opts.trimmedMessage)) {
+
+  let admittedVia: AdmittedVia | null = null;
+  if (isAffirmativeConfirmReply(opts.trimmedMessage)) {
+    admittedVia = 'regex';
+  } else if (opts.history && opts.history.length > 0) {
+    // [Phase 1.5] Plan-context override. Only fire when the prior
+    // assistant turn was a multi-write plan — never on a cold session.
+    if (looksLikeNegativeReply(opts.trimmedMessage)) {
+      // User clearly isn't confirming (typed "no" / "wait" / "cancel"
+      // / "actually let me reconsider" / etc). Skip — let the LLM
+      // handle the modification/cancellation. Plan-context promotion
+      // (Phase 1) ensures Sonnet gets the turn instead of Haiku-lean.
+      return recordSkip('negative_reply');
+    }
+    if (detectPriorPlanContext(opts.history).matched) {
+      admittedVia = 'plan_context';
+    }
+  }
+  if (admittedVia === null) {
+    // Either the regex missed AND no history was provided (legacy
+    // call site, would-be `not_affirmative` under Phase 1), OR the
+    // history shows no multi-write plan. Distinguishing the two
+    // makes dashboards easier to read — `not_affirmative` should be
+    // close-to-zero post-Phase-1.5; `no_plan_context` is the steady
+    // state for every non-confirm chat message.
+    if (opts.history && opts.history.length > 0) {
+      return recordSkip('no_plan_context');
+    }
     return recordSkip('not_affirmative');
   }
 
@@ -217,6 +300,7 @@ export async function tryConsumeFastPathBundle(
 
   getTelemetrySink().counter('audric.bundle.fast_path_dispatched', {
     step_count: String(proposal.steps.length),
+    admitted_via: admittedVia,
   });
 
   return {

@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import type { Message } from '@t2000/engine';
-import { detectBundleConfirm, detectPriorPlanContext, __testOnly__ } from '../confirm-detection';
+import {
+  detectBundleConfirm,
+  detectPriorPlanContext,
+  looksLikeNegativeReply,
+  __testOnly__,
+} from '../confirm-detection';
 
 const { CONFIRM_PATTERN, countDistinctWriteVerbs } = __testOnly__;
 
@@ -514,6 +519,127 @@ describe('detectPriorPlanContext', () => {
       ];
       expect(detectBundleConfirm('yes', noPlan).matched).toBe(false);
       expect(detectPriorPlanContext(noPlan).matched).toBe(false);
+    });
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// [SPEC 15 Phase 1.5 / 2026-05-04] looksLikeNegativeReply — the bail-out
+// gate for the fast-path plan-context override. False NEGATIVES (we miss
+// a negative, dispatch anyway) are bad; false POSITIVES (we see negative
+// where there isn't one) are recoverable. The pattern is intentionally
+// tight — anchored at message start, word-boundary terminated.
+// ─────────────────────────────────────────────────────────────────────────
+
+describe('looksLikeNegativeReply', () => {
+  describe('positive cases (should block fast-path plan-context override)', () => {
+    it.each([
+      // Bare denials
+      'no',
+      'No',
+      'NO',
+      'nope',
+      'nah',
+      // Pause / wait
+      'wait',
+      'Wait',
+      'hold on',
+      'hold-on',
+      'hold up',
+      // Cancel / abort family
+      'cancel',
+      'Cancel',
+      'cancel that',
+      'stop',
+      'Stop',
+      'abort',
+      'undo',
+      'revert',
+      // Reconsideration markers
+      'actually',
+      'Actually',
+      'actually let me think',
+      'nvm',
+      'NVM',
+      'nm',
+      'never mind',
+      'nevermind',
+      'never-mind',
+      // Modification requests
+      'change it',
+      'change leg 3',
+      'edit the amount',
+      'modify the recipient',
+      'update step 2',
+      'skip leg 3',
+      // Negative imperatives
+      "don't",
+      "Don't do it",
+      'do not',
+      'do not proceed',
+    ])('treats "%s" as negative', (msg) => {
+      expect(looksLikeNegativeReply(msg)).toBe(true);
+    });
+  });
+
+  describe('negative cases (should NOT block — dispatch via plan-context)', () => {
+    it.each([
+      // Affirmatives — even ones the regex would catch separately
+      'yes',
+      'Yes',
+      'Confirmed',
+      'execute',
+      'do it',
+      // Phase 1.5 target cases — non-regex affirmatives
+      'do it bro',
+      'send it',
+      "let's go",
+      'vamos',
+      'sí',
+      'fire',
+      // Voice-style filler that starts with affirmative
+      'yeah do it',
+      'yes please go ahead',
+      // Emoji-only
+      '👍',
+      '✅',
+      '🚀',
+      // Edge: empty string is not negative (caller decides)
+      '',
+      '   ',
+      // Word starting with "n" but NOT in the negative set
+      'now',
+      'nice',
+      'next',
+      // YES + modifier — starts with YES, so the modifier stays
+      // outside of negative classification. The fast-path will
+      // dispatch the original bundle; if the user wanted a tweak,
+      // they reject the permission card.
+      'yes but please change leg 3',
+      'yes go ahead',
+    ])('treats "%s" as NOT negative', (msg) => {
+      expect(looksLikeNegativeReply(msg)).toBe(false);
+    });
+  });
+
+  describe('boundary conditions', () => {
+    it('requires the negative word at the START of the message', () => {
+      // "wait" appearing later in a message doesn't make it negative.
+      // We're looking for clear leading intent.
+      expect(looksLikeNegativeReply('go ahead, no wait actually proceed')).toBe(false);
+    });
+
+    it('does NOT match "now" (NO is a prefix substring)', () => {
+      // The \b word boundary in NEGATIVE_PATTERN guards against this
+      // false positive. "now" starts with N-O but the third letter is
+      // a word character — `^no\b` doesn't match.
+      expect(looksLikeNegativeReply('now')).toBe(false);
+    });
+
+    it('does NOT match plain "n" followed by another word character', () => {
+      // "nice", "next", "north" — same reasoning as "now".
+      expect(looksLikeNegativeReply('nice')).toBe(false);
+      expect(looksLikeNegativeReply('next')).toBe(false);
     });
   });
 });

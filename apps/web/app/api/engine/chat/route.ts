@@ -380,6 +380,16 @@ export async function POST(request: NextRequest) {
               walletAddress: address,
               trimmedMessage,
               turnIndex,
+              // [SPEC 15 Phase 1.5 / 2026-05-04] History enables the
+              // plan-context override admission path: when the regex
+              // misses ("do it bro" / "vamos" / voice transcript) but
+              // the prior assistant turn was a multi-write plan AND
+              // the user isn't clearly negative, dispatch the stashed
+              // bundle anyway. Without this, Phase 1 promotion alone
+              // hands the turn to Sonnet which then RE-PLANS the
+              // bundle (decomposing it into multiple txes — the bug
+              // we shipped Phase 1.5 to fix).
+              history: session?.messages ?? [],
             });
             if (fastPath) {
               fastPathFired = true;

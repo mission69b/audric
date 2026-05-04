@@ -70,6 +70,28 @@ const WRITE_VERB_PATTERN = /\b(swap|withdraw|borrow|send|repay|save|deposit|stak
 
 const PRIOR_PLAN_MARKER = /\b(confirm|proceed)\b/i;
 
+// [SPEC 15 Phase 1.5 / 2026-05-04] Tight pattern catching clearly-negative
+// short replies. Used by the fast-path bundle dispatcher to bail out of
+// the plan-context override path when the user is OBVIOUSLY not
+// confirming. Must stay strict: false positives here mean a confirm-
+// shaped message ("do it bro") accidentally gets blocked from the fast
+// path, dropping us back to LLM re-planning (which decomposes bundles —
+// the bug we just shipped Phase 1.5 to fix). False negatives are cheap
+// (LLM handles modifications correctly under plan-context promotion).
+//
+// Anchored at `^...\b` to require the negative word at the START of the
+// message AND followed by a word boundary. Lets through cases where the
+// user types "yes but please change leg 3" (starts with "yes", not "no")
+// while blocking "no thanks" / "wait, change leg 3" / "actually let me
+// reconsider".
+//
+// `actually` is included because in conversational English it almost
+// always introduces a reversal ("actually, let me think more"). If we
+// see false positives on "actually go ahead", we can tighten — but
+// production logs to date show "actually" + plan-tail = reversal ~100%.
+const NEGATIVE_PATTERN =
+  /^(n|no|nope|nah|cancel|stop|wait|hold[-\s]?on|hold[-\s]?up|actually|nvm|nm|never[-\s]?mind|change|edit|modify|update|skip|abort|undo|revert|don'?t|do not)\b/i;
+
 interface PriorAssistantTextResult {
   text: string;
   /** Index of this message in the history array. */
@@ -200,6 +222,37 @@ export function isAffirmativeConfirmReply(message: string): boolean {
  * already 'low', so single-write replies and chitchat short-circuit
  * upstream).
  */
+/**
+ * [SPEC 15 Phase 1.5 / 2026-05-04] Companion to `detectPriorPlanContext`.
+ *
+ * Tight predicate for "is this user message clearly NEGATIVE / a
+ * modification request / a denial?". Used by the fast-path bundle
+ * dispatcher to gate the plan-context override path: when the strict
+ * regex (`isAffirmativeConfirmReply`) misses, we look at plan-context;
+ * but if the message looks negative, we bail out instead of dispatching.
+ *
+ * Bias is intentionally tight (false negatives > false positives):
+ *   - False negative (we miss a negative, dispatch the bundle anyway)
+ *     → bad. User wanted to cancel/modify, gets the original bundle.
+ *   - False positive (we see negative where there isn't one, block
+ *     fast-path) → annoying but recoverable. LLM picks up the turn
+ *     and handles correctly under plan-context promotion (Phase 1).
+ *
+ * So we'd rather be too narrow (let some negatives through to be
+ * caught by the LLM) than too broad (block legitimate "do it bro").
+ *
+ * The anchor `^...\b` requires the negative word at the START of the
+ * message — "no thanks" / "wait" / "actually" all match, but "yes but
+ * change leg 3" doesn't (because it starts with "yes"). The latter is
+ * a YES + modification, which the bundle dispatch will surface as a
+ * pending_action that the user can then refuse via the permission card.
+ */
+export function looksLikeNegativeReply(message: string): boolean {
+  const trimmed = message.trim();
+  if (trimmed.length === 0) return false;
+  return NEGATIVE_PATTERN.test(trimmed);
+}
+
 export function detectPriorPlanContext(history: Message[]): BundleConfirmDetection {
   if (history.length === 0) {
     return { matched: false, priorWriteVerbCount: 0, reason: 'no-history' };
@@ -226,6 +279,7 @@ export const __testOnly__ = {
   CONFIRM_PATTERN,
   WRITE_VERB_PATTERN,
   PRIOR_PLAN_MARKER,
+  NEGATIVE_PATTERN,
   countDistinctWriteVerbs,
   extractAssistantText,
 };
