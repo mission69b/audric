@@ -263,11 +263,11 @@ export async function POST(request: NextRequest) {
     // user's request never reached composeTx, so neither compose_error
     // nor sponsorship_failed semantically applies).
     if (env.PAYMENT_STREAM_DISABLE === '1' || env.PAYMENT_STREAM_DISABLE === 'true') {
-      console.warn('[prepare] Payment Stream disable flag is set — rejecting bundle');
+      console.warn('[prepare] Payment Intent disable flag is set — rejecting compiled intent');
       return NextResponse.json(
         {
           error:
-            'Payment Streams are temporarily disabled. Please cancel and ask again — I\'ll do these one at a time.',
+            'Payment Intents are temporarily disabled. Please cancel and ask again — I\'ll do these one at a time.',
         },
         { status: 503 },
       );

@@ -19,7 +19,7 @@ function fakeBundle(
     toolName: steps[0].toolName,
     toolUseId: steps[0].toolUseId ?? 'tool-use-1',
     input: steps[0].input,
-    description: 'Multi-write Payment Stream',
+    description: 'Multi-write Payment Intent',
     assistantContent: [],
     turnIndex: 0,
     attemptId: steps[0].attemptId ?? 'attempt-1',
@@ -33,14 +33,14 @@ function fakeBundle(
   };
 }
 
-describe('PermissionCard — bundle (multi-write Payment Stream)', () => {
-  it('renders the "N operations · 1 Payment Stream · Atomic" header', () => {
+describe('PermissionCard — bundle (multi-write Payment Intent)', () => {
+  it('renders the "N operations · 1 Payment Intent · Atomic" header', () => {
     const action = fakeBundle([
       { toolName: 'swap_execute', input: { from: 'USDC', to: 'SUI', amount: 200 } },
       { toolName: 'send_transfer', input: { to: '0xabc', amount: 100, asset: 'USDC' } },
     ]);
     const { getByText } = render(<PermissionCard action={action} onResolve={vi.fn()} />);
-    expect(getByText(/2 operations · 1 Payment Stream · Atomic/)).toBeTruthy();
+    expect(getByText(/2 operations · 1 Payment Intent · Atomic/)).toBeTruthy();
   });
 
   it('renders one row per non-clustered step with the correct protocol badge', () => {
@@ -68,7 +68,7 @@ describe('PermissionCard — bundle (multi-write Payment Stream)', () => {
 
     // Header still says "2 operations" (the engine emits 2 steps; the UI
     // only collapses the visual row).
-    expect(queryByText(/2 operations · 1 Payment Stream · Atomic/)).not.toBeNull();
+    expect(queryByText(/2 operations · 1 Payment Intent · Atomic/)).not.toBeNull();
     // Both badges render on the single clustered row.
     expect(getAllByText('CETUS')).toHaveLength(1);
     expect(getAllByText('NAVI')).toHaveLength(1);
@@ -108,8 +108,8 @@ describe('PermissionCard — bundle (multi-write Payment Stream)', () => {
     // Single-write path: shows the tool label ("Save deposit"), NOT the
     // multi-step header. Use exact-string matching to avoid colliding
     // with the fakeBundle's `description` field (also contains "Payment
-    // Stream" by design — the engine-emitted field would too).
-    expect(queryByText(/operations · 1 Payment Stream · Atomic/)).toBeNull();
+    // Intent" by design — the engine-emitted field would too).
+    expect(queryByText(/operations · 1 Payment Intent · Atomic/)).toBeNull();
     expect(getByText('Save deposit')).toBeTruthy();
   });
 

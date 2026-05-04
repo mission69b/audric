@@ -454,7 +454,7 @@ export async function tryConsumeFastPathBundle(
     // VERIFICATION reads. Now narrate the outcome." Empirically saves
     // ~2,000 thinking chars per fast-path narration turn.
     syntheticAssistantText:
-      `Confirmed. Bundle dispatched as one atomic Payment Stream (${proposal.steps.length} writes) — verifying on-chain outcome.`,
+      `Confirmed. Compiled into one atomic Payment Intent (${proposal.steps.length} writes) — verifying on-chain outcome.`,
     admittedVia,
   };
 }

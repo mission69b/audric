@@ -11,10 +11,11 @@ function block(stepCount: number): PlanStreamTimelineBlock {
 }
 
 describe('PlanStreamBlockView', () => {
-  it('renders PLAN STREAM with the bundle step count and ATOMIC tag', () => {
+  it('renders PLAN with the step count and ATOMIC tag (Payment Intent compiled, pre-execute)', () => {
     const { container } = render(<PlanStreamBlockView block={block(2)} />);
     const text = container.textContent ?? '';
-    expect(text).toContain('PLAN STREAM');
+    expect(text).toContain('PLAN');
+    expect(text).not.toContain('PLAN STREAM');
     expect(text).toContain('2 ops');
     expect(text).toContain('ATOMIC');
   });

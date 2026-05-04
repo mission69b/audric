@@ -418,7 +418,7 @@ describe('tryConsumeFastPathBundle', () => {
     expect(result!.action.turnIndex).toBe(7);
     expect(result!.proposal).toBe(proposal);
     expect(result!.syntheticAssistantText).toContain('2 writes');
-    expect(result!.syntheticAssistantText).toContain('Payment Stream');
+    expect(result!.syntheticAssistantText).toContain('Payment Intent');
     // [SPEC 15 Phase 2] admittedVia exposed for chat-route's confirm-flow
     // dispatch counter — text-confirm via strict regex.
     expect(result!.admittedVia).toBe('regex');

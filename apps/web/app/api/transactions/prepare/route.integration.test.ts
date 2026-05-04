@@ -357,7 +357,7 @@ describe('POST /api/transactions/prepare — SPEC 7 P2.7 break-glass disable', (
     }));
     expect(res.status).toBe(503);
     const body = await res.json();
-    expect(body.error).toMatch(/Payment Streams are temporarily disabled/);
+    expect(body.error).toMatch(/Payment Intents are temporarily disabled/);
     expect(body.error).toMatch(/one at a time/);
   });
 
@@ -373,7 +373,7 @@ describe('POST /api/transactions/prepare — SPEC 7 P2.7 break-glass disable', (
     // be the break-glass guidance message — that's the bundle-only path.
     const body = await res.json();
     if (res.status === 503) {
-      expect(body.error).not.toMatch(/Payment Streams are temporarily disabled/);
+      expect(body.error).not.toMatch(/Payment Intents are temporarily disabled/);
     }
   });
 
@@ -397,6 +397,6 @@ describe('POST /api/transactions/prepare — SPEC 7 P2.7 break-glass disable', (
     const body = await res.json();
     // Specifically NOT the break-glass message — the request reaches
     // composeTx / Enoki and fails for unrelated reasons in the test env.
-    expect(body.error ?? '').not.toMatch(/Payment Streams are temporarily disabled/);
+    expect(body.error ?? '').not.toMatch(/Payment Intents are temporarily disabled/);
   });
 });

@@ -461,6 +461,7 @@ describe('STATIC_SYSTEM_PROMPT — B3.6 budget gate', () => {
     //   - Post-SPEC 7 P2.8 / F13 ceiling: 10,000 tokens   ( +80 budget)
     //   - Post-F14-fix-2 ceiling:         10,200 tokens   ( +200 budget)
     //   - Post-failed-write-narration:    10,250 tokens   ( +50 budget)
+    //   - Post-fee-disclosure (May 2026): 10,300 tokens   ( +50 budget)
     //
     // B3.6 added the "Mid-flight narration & todos" section + the
     // `<eval_summary>` emission contract.
@@ -523,6 +524,22 @@ describe('STATIC_SYSTEM_PROMPT — B3.6 budget gate', () => {
     // assertion in `spec-consistency.ts` so a future prompt edit cannot
     // silently drop the rule.
     //
+    // fee-disclosure (May 2026 — production screenshot showed Audric
+    // replying "No — I don't take a cut. The 0.1% that came out is the
+    // Cetus protocol fee, which goes to the DEX. ... I'm here to execute,
+    // not extract." That is FACTUALLY WRONG: `OVERLAY_FEE_RATE = 0.001`
+    // (Cetus swap), `SAVE_FEE_BPS = 10n` (0.1% on save), `BORROW_FEE_BPS
+    // = 5n` (0.05% on borrow) — Audric DOES collect overlay fees. The
+    // existing "## Gas & fees" section only described gas-sponsorship,
+    // leaving the LLM to confabulate denials when asked about fees
+    // directly. Replaced the gas-only section with a unified one that
+    // (a) keeps the FULL-balance-on-"all" rule, (b) lists exact percentages
+    // per operation, (c) explicitly bans "no fees" / "all your value
+    // stays with you" phrases. Trimmed to ~50 tokens after three
+    // compression passes (started at ~145 tokens, took budget hits down
+    // to ~50 to fit). Founder-approved 2026-05-05 as a critical-trust
+    // fix; ceiling bumped +50 with the precedent of failed-write-narration.
+    //
     // Why a hard char ceiling instead of a delta:
     //   - Hardcoding the ceiling beats hardcoding both halves; the test
     //     trips on ANY future edit that pushes the prompt past the
@@ -535,7 +552,7 @@ describe('STATIC_SYSTEM_PROMPT — B3.6 budget gate', () => {
     //      a new entry in the ceiling-history table above.
     const { STATIC_SYSTEM_PROMPT } = await import('../engine-context');
     const tokens = Math.ceil(STATIC_SYSTEM_PROMPT.length / 4);
-    expect(tokens).toBeLessThanOrEqual(10_250);
+    expect(tokens).toBeLessThanOrEqual(10_300);
   });
 });
 

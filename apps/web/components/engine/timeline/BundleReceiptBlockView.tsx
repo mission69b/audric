@@ -6,8 +6,8 @@ import { CardShell, SuiscanLink } from '../cards/primitives';
 // ───────────────────────────────────────────────────────────────────────────
 // SPEC 7 P2.7 prep / Finding F6 — BundleReceiptBlockView
 //
-// Single receipt for an atomic Payment Stream PTB. Replaces the pre-fix
-// UX where each leg of an N-step bundle rendered as its own
+// Single receipt for an atomic Payment Intent. Replaces the pre-fix UX
+// where each leg of an N-step compiled intent rendered as its own
 // `TransactionReceiptCard` with a duplicate "View on Suiscan" link
 // pointing to the SAME on-chain digest. That violated the user's mental
 // model — they signed ONE thing, but saw N receipts and N links — and
@@ -17,14 +17,14 @@ import { CardShell, SuiscanLink } from '../cards/primitives';
 //   - One CardShell wrapper with N inline rows (one per leg). Keeps the
 //     "this is a receipt" framing consistent with the single-write
 //     `TransactionReceiptCard` while squashing the digest duplication.
-//   - Atomicity language ("ALL SUCCEED OR ALL REVERT") mirrors the
+//   - Atomicity language ("ALL SUCCEEDED / ALL FAILED") mirrors the
 //     pre-execution PermissionCard footer so the receipt feels like the
 //     "after" of the same thing the user approved.
 //   - Per-leg description comes from `BundleReceiptLeg.description` —
 //     identical to what the user saw on the PermissionCard's step row.
 //     No re-derivation, no risk of drift.
-//   - Reverted bundle (`block.isError === true`) flips the title to
-//     "PAYMENT STREAM REVERTED", drops the Suiscan link (no on-chain
+//   - Reverted intent (`block.isError === true`) flips the title to
+//     "PAYMENT INTENT REVERTED", drops the Suiscan link (no on-chain
 //     state to view), and marks every leg with ✗.
 // ───────────────────────────────────────────────────────────────────────────
 
@@ -34,7 +34,7 @@ interface BundleReceiptBlockViewProps {
 
 export function BundleReceiptBlockView({ block }: BundleReceiptBlockViewProps) {
   const opsLabel = `${block.legs.length} ${block.legs.length === 1 ? 'op' : 'ops'}`;
-  const titleVerb = block.isError ? 'PAYMENT STREAM REVERTED' : 'PAYMENT STREAM';
+  const titleVerb = block.isError ? 'PAYMENT INTENT REVERTED' : 'PAYMENT INTENT';
   const titleStatus = block.isError
     ? `${opsLabel} · ATOMICALLY FAILED`
     : `1 ATOMIC TX · ${opsLabel}`;
@@ -86,7 +86,7 @@ export function BundleReceiptBlockView({ block }: BundleReceiptBlockViewProps) {
         <SuiscanLink digest={block.txDigest} />
       ) : (
         <div className="pt-1.5 mt-1.5 border-t border-border-subtle font-mono text-[10px] text-fg-muted text-center">
-          NO ON-CHAIN STATE — BUNDLE REVERTED ATOMICALLY
+          NO ON-CHAIN STATE — INTENT REVERTED ATOMICALLY
         </div>
       )}
 

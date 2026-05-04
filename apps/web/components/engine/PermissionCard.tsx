@@ -241,7 +241,7 @@ function SendAddressBlock({
   );
 }
 
-// ─── SPEC 7 P2.4 Layer 3 — Multi-write Payment Stream rendering ────────────
+// ─── SPEC 7 P2.4 Layer 3 — Multi-write Payment Intent rendering ───────────
 
 /**
  * Protocol badge mapping per write tool. NAVI covers all lending ops
@@ -295,8 +295,8 @@ function bundleStepSummary(step: PendingActionStep): string {
     case 'volo_unstake':
       return inp.amount === 'all' ? 'Unstake all vSUI' : `Unstake ${amount ?? '?'} vSUI`;
     default:
-      // Defensive: bundleable tools should never hit this branch (engine
-      // recipe loader rejects non-bundleable tools at load time).
+      // Defensive: composable tools should never hit this branch (engine
+      // recipe loader rejects non-composable tools at load time).
       return `${step.toolName.replace(/_/g, ' ')} ${amount ?? ''}`.trim();
   }
 }
@@ -500,7 +500,7 @@ export function PermissionCard({
     }
   }, [action.attemptId]);
 
-  // [SPEC 7 P2.4 Layer 3] Multi-write Payment Stream rendering takes
+  // [SPEC 7 P2.4 Layer 3] Multi-write Payment Intent rendering takes
   // priority over the single-write layout when the engine emitted a
   // bundle. Falls back to single-write when `steps` is undefined or
   // contains exactly one step (1-step bundles still render as the
@@ -579,7 +579,7 @@ export function PermissionCard({
 
   const progress = secondsLeft / TIMEOUT_SEC;
 
-  // ─── Bundle render branch (multi-write Payment Stream) ─────────────────
+  // ─── Bundle render branch (multi-write Payment Intent) ────────────────
   if (isBundle && action.steps) {
     const stepCount = action.steps.length;
     // [SPEC 7 P2.4b] Quote-Refresh slot lives on the multi-write
@@ -624,7 +624,7 @@ export function PermissionCard({
       <div
         className="rounded-xl border border-border-subtle bg-surface-card p-3 space-y-2.5 shadow-[var(--shadow-flat)]"
         role="alertdialog"
-        aria-label={`Confirm ${stepCount}-step Payment Stream`}
+        aria-label={`Confirm ${stepCount}-step Payment Intent`}
         aria-describedby={`perm-desc-${action.toolUseId}`}
       >
         {/*
@@ -638,7 +638,7 @@ export function PermissionCard({
         */}
         <div className="flex items-center justify-between">
           <span className="text-xs font-medium text-fg-primary">
-            {stepCount} operations · 1 Payment Stream · Atomic
+            {stepCount} operations · 1 Payment Intent · Atomic
           </span>
           {!resolved && (
             <span

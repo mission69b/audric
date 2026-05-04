@@ -133,13 +133,17 @@ const serverSchema = z.object({
   SYNTHETIC_SESSION_PREFIXES: optionalString,
 
   /**
-   * [SPEC 7 P2.7] Break-glass disable for Payment Stream multi-write
-   * bundles. Set to "1" / "true" to make `/api/transactions/prepare`
-   * reject every `type: 'bundle'` request with a 503, forcing the
-   * client to error-out cleanly. The user sees a one-time message
-   * ("Payment Streams temporarily disabled — please retry one
-   * operation at a time") and can re-prompt the LLM, which will emit
-   * single-write `pending_action`s naturally on the next turn.
+   * [SPEC 7 P2.7] Break-glass disable for Payment Intent multi-write
+   * compiled transactions. Set to "1" / "true" to make
+   * `/api/transactions/prepare` reject every `type: 'bundle'` request
+   * with a 503, forcing the client to error-out cleanly. The user sees
+   * a one-time message ("Payment Intents temporarily disabled — please
+   * retry one operation at a time") and can re-prompt the LLM, which
+   * will emit single-write `pending_action`s naturally on the next turn.
+   *
+   * NOTE: env var name retained as `PAYMENT_STREAM_DISABLE` for operator
+   * compatibility (Vercel env var rename would require a coordinated
+   * dashboard + code change — operator-facing identifier, not user-facing).
    *
    * Server-side (NOT NEXT_PUBLIC_*) by design — Vercel's runtime env
    * for serverless functions takes effect on the next invocation

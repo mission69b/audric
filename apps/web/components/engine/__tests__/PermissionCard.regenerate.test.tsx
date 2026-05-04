@@ -32,7 +32,7 @@ function fakeBundle(opts: {
     toolName: steps[0].toolName,
     toolUseId: steps[0].toolUseId,
     input: steps[0].input,
-    description: 'Multi-write Payment Stream',
+    description: 'Multi-write Payment Intent',
     assistantContent: [],
     turnIndex: 0,
     attemptId: steps[0].attemptId,

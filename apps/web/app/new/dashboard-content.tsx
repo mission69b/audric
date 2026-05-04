@@ -33,6 +33,7 @@ import { useContacts } from '@/hooks/useContacts';
 import { useAgent } from '@/hooks/useAgent';
 import { COIN_REGISTRY } from '@/lib/token-registry';
 import { buildSwapDisplayData } from '@/lib/balance-changes';
+import { buildSuiPayUri } from '@/lib/sui-pay-uri';
 import { useActivityFeed } from '@/hooks/useActivityFeed';
 import { NewConversationView } from '@/components/dashboard/NewConversationView';
 import { TosBanner } from '@/components/dashboard/TosBanner';
@@ -512,15 +513,17 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
             title: 'Deposit Address',
             code: address ?? '',
             qr: true,
-            // Receive QR encodes the bare 0x address — NOT a sui:pay URI.
-            // Reason: the dominant scan path for receive QRs is wallet-to-wallet
-            // (Slush / Phantom / Suiet "Send → Scan QR" recipient picker), which
-            // parses the QR contents as a destination address and rejects URIs as
-            // invalid. The pay/invoice flow correctly uses sui:pay URIs because
-            // those are scanned from "scan to pay" intent-aware flows.
-            // Trade-off: phone-camera scans don't deep-link to a wallet app — but
-            // that path is the minority and matches every major wallet's receive
-            // convention (Cash App, Coinbase, Phantom, MetaMask all use bare).
+            // [2026-05-05] Receive QR now encodes a `sui:pay?recipient=…&coinType=…`
+            // deep-link URI so phone-camera scans open Slush / Phantom / Suiet
+            // directly with the address pre-filled, mirroring the Pay/invoice
+            // flow. Pre-fix the receive QR carried only the bare 0x address (so
+            // wallet-to-wallet "Send → Scan QR" recipient pickers parsed it as a
+            // destination, while phone-camera scans dead-ended in the gallery).
+            // The copyable text below still shows the bare 0x address (`code`)
+            // for CEX-withdrawal pasting (Binance / Coinbase forms reject
+            // `sui:pay?…` URIs as invalid addresses) — so both scan paths now
+            // work: phone-camera → Slush deep-link, and copy-paste → CEX form.
+            qrUri: address ? buildSuiPayUri({ recipient: address }) : undefined,
             meta: [
               { label: 'Network', value: 'Sui (mainnet)' },
               { label: 'Token', value: 'USDC' },
