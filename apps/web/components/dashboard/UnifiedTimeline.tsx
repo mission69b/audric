@@ -41,7 +41,7 @@ export type ExecuteActionFn = (
 ) => Promise<{ success: boolean; data: unknown }>;
 
 /**
- * [SPEC 7 P2.4 Layer 3] Multi-write Payment Stream executor. Caller
+ * [SPEC 7 P2.4 Layer 3] Multi-write Payment Intent executor. Caller
  * dispatches `sdk.executeBundle(steps)` and returns per-step results
  * mapped from the shared tx digest. Engine matches each step's
  * `toolUseId` to its result on resume and emits N tool_result blocks.
@@ -244,9 +244,9 @@ export function UnifiedTimeline({
       modifications?: Record<string, unknown>,
     ) => {
       // [SPEC 7 P2.4 Layer 3] Bundle vs single-write dispatch. The engine
-      // emits `action.steps` for multi-write Payment Streams (>=2
-      // bundleable confirm-tier writes resolved in the same turn). Single
-      // writes leave `steps` undefined.
+      // emits `action.steps` for multi-write Payment Intents (>=2
+      // confirm-tier writes with `bundleable: true` resolved in the same
+      // turn). Single writes leave `steps` undefined.
       const isBundle = Array.isArray(action.steps) && action.steps.length > 0;
 
       if (!approved) {

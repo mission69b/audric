@@ -933,7 +933,7 @@ describe('mergeBundleExecutionIntoTimeline (F6)', () => {
     expect(next[3].type).toBe('bundle-receipt');
   });
 
-  it('extracts shared txDigest from the first non-error leg (atomic PTB → one digest for all)', () => {
+  it('extracts shared txDigest from the first non-error leg (atomic Payment Intent → one digest for all)', () => {
     const seed: TimelineBlock[] = [
       { type: 'permission-card', payload: bundleAction, status: 'approved' },
     ];
@@ -953,7 +953,7 @@ describe('mergeBundleExecutionIntoTimeline (F6)', () => {
   it('handles `_bundleReverted` — every leg errored → isError=true, txDigest=undefined', () => {
     const revertedStepResults = bundleAction.steps!.map((step) => ({
       toolUseId: step.toolUseId,
-      result: { error: 'PTB reverted', _bundleReverted: true },
+      result: { error: 'Payment Intent reverted', _bundleReverted: true },
       isError: true,
     }));
     const seed: TimelineBlock[] = [
@@ -1305,7 +1305,7 @@ describe('applyEventToTimeline — P2.5b synthetic rows on pending_action (bundl
     // A `swap_execute → save_deposit` bundle's swap step has
     // `to: "USDC"` (target token), and the save step has no recipient.
     // Pre-fix this would have rendered "CONTACT · "USDC"" between the
-    // upstream reads and the PLAN STREAM row — wildly wrong.
+    // upstream reads and the PLAN row — wildly wrong.
     const swapAndSave = {
       attemptId: 'att-sas-1',
       toolName: 'swap_execute',

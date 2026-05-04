@@ -268,7 +268,7 @@ export function runSpecConsistencyChecks(): SpecConsistencyResult {
       'depends on this function; engine-factory.ts uses it for the ' +
       'Haiku → Sonnet promotion path independently of CONFIRM_PATTERN. ' +
       'Removing it re-opens the regression where short replies after ' +
-      'a multi-write Payment Stream plan stay on Haiku-lean (which ' +
+      'a multi-write Payment Intent plan stay on Haiku-lean (which ' +
       'rambles 7K tokens / 69s when the regex misses — see SPEC 15 v0.1).',
   });
 

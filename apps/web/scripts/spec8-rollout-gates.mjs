@@ -167,9 +167,9 @@ const SQL = `
     -- (2026-05-04): "planning signal" includes BOTH \`update_todo\`
     -- (the original SPEC 8 todo-list mechanism) AND \`prepare_bundle\`
     -- (the SPEC 14 plan-commit tool that supersedes update_todo for
-    -- multi-write Payment Stream proposals). Pre-fix the gate counted
+    -- multi-write Payment Intent proposals). Pre-fix the gate counted
     -- only update_todo and was firing at 32% on a 7d window because
-    -- every Sonnet bundle proposal calls prepare_bundle instead.
+    -- every Sonnet intent proposal calls prepare_bundle instead.
     -- Together they cover both planning surfaces the LLM uses when
     -- the recipe matcher fires it into RICH shape.
     (SELECT COUNT(*) FROM v2

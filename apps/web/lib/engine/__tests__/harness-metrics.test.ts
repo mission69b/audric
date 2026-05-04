@@ -466,14 +466,14 @@ describe('STATIC_SYSTEM_PROMPT — B3.6 budget gate', () => {
     // B3.6 added the "Mid-flight narration & todos" section + the
     // `<eval_summary>` emission contract.
     //
-    // SPEC 7 P2.5 (Layer 4) added the "## Payment Stream — compound write
+    // SPEC 7 P2.5 (Layer 4) added the "## Payment Intent — compound write
     // requests" section (spec line 825-827, mandatory). The block teaches
-    // the LLM to emit ALL bundleable write tool_use blocks in ONE turn
-    // for compound requests so the engine collapses them into one atomic
-    // PTB. Without it the LLM keeps emitting sequentially and bundles
-    // never form. The block was trimmed aggressively (bundleable list,
-    // pre-bundle reads pattern, narration framing) to keep the budget
-    // impact at +206 tokens — well under the 260-token allowance.
+    // the LLM to emit ALL composable write tool_use blocks in ONE turn
+    // for compound requests so the engine compiles them into one atomic
+    // Payment Intent. Without it the LLM keeps emitting sequentially and
+    // intents never form. The block was trimmed aggressively (composable
+    // list, pre-compile reads pattern, narration framing) to keep the
+    // budget impact at +206 tokens — well under the 260-token allowance.
     //
     // SPEC 7 P2.8 / F13 (2026-05-03) added two rules in response to a
     // production timeout incident (Vercel 60s budget exceeded twice on a

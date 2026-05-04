@@ -250,7 +250,7 @@ describe('audricPrepareBundleTool.call', () => {
   });
 
   // [Phase 3a / P0-10] Zero-chain bundle: two independent sends.
-  // Bundle composes; both legs run wallet-mode; atomic at the PTB
+  // Bundle composes; both legs run wallet-mode; atomic at the Payment Intent
   // level (both succeed or both revert).
   it('Phase 3a accepts zero-chain 2-op bundle (two independent sends — P0-10)', async () => {
     const result = await audricPrepareBundleTool.call!(

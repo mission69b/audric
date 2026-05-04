@@ -2,7 +2,7 @@
  * `prepare_bundle` — plan-time bundle commitment tool (SPEC 14)
  *
  * The LLM calls this ONCE during the plan turn for any multi-write
- * Payment Stream (N≥2 writes). The tool validates the typed steps and
+ * Payment Intent (N≥2 writes). The tool validates the typed steps and
  * stashes them in Redis with a 60s TTL. When the user later replies
  * affirmatively, the chat-route fast-path (SPEC 14 Phase 2) reads +
  * consumes the stash and yields a `pending_action_bundle` SSE event
@@ -108,7 +108,7 @@ type StepInput = z.infer<typeof stepSchema>;
  * union — the adjacency-whitelist rejection has been replaced by
  * DAG-aware semantics (whitelisted asset-aligned pairs auto-thread
  * via `inputCoinFromStep`; non-chained pairs run wallet-mode
- * independently inside the same atomic PTB). Plan-time rejection
+ * independently inside the same atomic Payment Intent). Plan-time rejection
  * paths reduce to `no_session` + `no_wallet`.
  */
 type PrepareBundleData =
@@ -265,7 +265,7 @@ export const audricPrepareBundleTool = buildTool({
     // chain-mode population below opportunistically wires
     // `inputCoinFromStep` for whitelisted asset-aligned pairs;
     // non-chained pairs run wallet-mode independently inside the same
-    // atomic PTB. The SDK's existing `T2000Error('NO_COINS_FOUND')`
+    // atomic Payment Intent. The SDK's existing `T2000Error('NO_COINS_FOUND')`
     // wallet-mode preflight surfaces any bad-shape failures at
     // /api/transactions/prepare time before the user signs.
     //

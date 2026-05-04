@@ -239,7 +239,7 @@ describe('executeToolAction — send_transfer SuiNS resolution', () => {
 
 // ─── SPEC 7 P2.4 Layer 3 — executeBundleAction ─────────────────────────────
 
-describe('executeBundleAction — multi-write Payment Stream dispatch', () => {
+describe('executeBundleAction — multi-write Payment Intent dispatch', () => {
   it('forwards minimal { toolName, input } step shape to sdk.executeBundle', async () => {
     const { executeBundleAction } = await import('./executeToolAction');
     const executeBundle = vi.fn().mockResolvedValue({ tx: '0xbundle' });

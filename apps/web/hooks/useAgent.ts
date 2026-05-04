@@ -74,8 +74,8 @@ export interface AgentActions {
   payService(params: { serviceId?: string; fields?: Record<string, string>; url?: string; rawBody?: Record<string, unknown> }): Promise<ServiceResult>;
   retryServiceDelivery(paymentDigest: string, meta: ServiceRetryMeta): Promise<ServiceResult>;
   /**
-   * [SPEC 7 P2.4] Multi-write Payment Stream. All steps execute atomically
-   * inside a single PTB sponsored by Enoki. The single tx digest + the
+   * [SPEC 7 P2.4] Multi-write Payment Intent. All steps execute atomically
+   * inside a single Payment Intent sponsored by Enoki. The single tx digest + the
    * combined `balanceChanges` are returned; the caller (executeToolAction)
    * is responsible for splitting balanceChanges back into per-step
    * `stepResults` shapes for the resume route.
@@ -218,10 +218,10 @@ export function useAgent() {
 
           async executeBundle(steps) {
             // [SPEC 7 P2.4 Layer 3] Forward steps verbatim to the prepare
-            // route; composeTx assembles them into one PTB. The shape is
-            // `{ steps: [{ toolName, input }] }` (type:'bundle' set by the
-            // sponsoredTransaction helper). All-succeed-or-all-revert is
-            // guaranteed on-chain by Sui PTB semantics.
+            // route; composeTx assembles them into one Payment Intent. The
+            // shape is `{ steps: [{ toolName, input }] }` (type:'bundle' set
+            // by the sponsoredTransaction helper). All-succeed-or-all-revert
+            // is guaranteed on-chain by Sui Programmable Tx semantics.
             return sponsoredTransaction('bundle', { steps });
           },
 

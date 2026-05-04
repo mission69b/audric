@@ -8,7 +8,7 @@ import type { ExpectsConfirmPayload } from '@/lib/engine-types';
 // SPEC 15 Phase 2 — Confirm chips
 //
 // One-tap UX replacement for typing "Confirm" / "Cancel" after a multi-
-// write Payment Stream plan. Chips POST to the same /api/engine/chat
+// write Payment Intent plan. Chips POST to the same /api/engine/chat
 // endpoint with `chipDecision: { via: 'chip', value: 'yes' | 'no',
 // forStashId }` — the chat route's chip-routing block (commit 1)
 // short-circuits the LLM:

@@ -4,7 +4,7 @@
  * Backs the `prepare_bundle` plan-time commitment by stashing typed
  * bundle steps in Redis with a TTL. The chat-route fast-path (SPEC 14
  * Phase 2) reads + atomically deletes from this store when the user
- * confirms a multi-write Payment Stream.
+ * confirms a multi-write Payment Intent.
  *
  * Key shape: `bundle:proposal:{sessionId}` — one slot per session. A
  * second `prepare_bundle` call from the same session OVERWRITES the

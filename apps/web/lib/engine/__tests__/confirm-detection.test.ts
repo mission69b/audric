@@ -39,7 +39,7 @@ const PLAN_2OP = [
 // detector — original pattern only matched "confirm" and silently missed
 // every plan with "Shall I proceed?" → wrong model on confirm turn.
 const PLAN_2OP_SHALL_PROCEED = [
-  'You have $4.66 USDC saved, so the withdrawal is fine. This is a whitelisted withdraw → send pair — I can compile both into one atomic Payment Stream.',
+  'You have $4.66 USDC saved, so the withdrawal is fine. This is a whitelisted withdraw → send pair — I can compile both into one atomic Payment Intent.',
   '',
   'Plan:',
   '1. Withdraw 3 USDC from NAVI savings',
@@ -170,7 +170,7 @@ describe('countDistinctWriteVerbs', () => {
 
 describe('detectBundleConfirm', () => {
   describe('positive cases (should promote to medium)', () => {
-    it('matches a 3-op Payment Stream plan + "Confirmed"', () => {
+    it('matches a 3-op Payment Intent plan + "Confirmed"', () => {
       const history: Message[] = [
         userText('withdraw 5 USDC, convert to USDsui, save it'),
         asstText(PLAN_3OP),

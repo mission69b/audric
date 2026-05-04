@@ -287,7 +287,7 @@ export async function executeToolAction(
   }
 }
 
-// ─── SPEC 7 P2.4 Layer 3 — Bundle (Payment Stream) executor ────────────────
+// ─── SPEC 7 P2.4 Layer 3 — Bundle (Payment Intent) executor ───────────────
 
 export interface BundleStepResult {
   toolUseId: string;
@@ -306,13 +306,14 @@ export interface ExecuteBundleResult {
 /**
  * [SPEC 7 P2.4 Layer 3] Per-step result mapping for a multi-write bundle.
  *
- * The PTB executes atomically server-side; we get back ONE tx digest and
- * ONE flattened balanceChanges array. For per-step `result` shapes that
- * the LLM can narrate, we echo each step's input + the shared tx digest
- * (mirroring the single-write per-tool shapes from executeToolAction).
+ * The Payment Intent executes atomically server-side; we get back ONE tx
+ * digest and ONE flattened balanceChanges array. For per-step `result`
+ * shapes that the LLM can narrate, we echo each step's input + the shared
+ * tx digest (mirroring the single-write per-tool shapes from
+ * executeToolAction).
  *
  * Why echo instead of parsing per-step:
- *   - PTB intermediate outputs (e.g. swap output → save input for the same
+ *   - Payment Intent intermediate outputs (e.g. swap output → save input for the same
  *     asset) don't appear in net balanceChanges — the asset comes in then
  *     goes out, netting to zero. Per-step parse can't recover them.
  *   - The LLM narration only needs the user's INTENT per step ("swapped X,
@@ -370,12 +371,12 @@ function buildStepResultFromInput(
 }
 
 /**
- * Execute a multi-write Payment Stream bundle.
+ * Execute a multi-write Payment Intent.
  *
  * Calls `sdk.executeBundle(steps)` — which posts to /api/transactions/prepare
- * with `type: 'bundle'`, gets a sponsored PTB back, signs locally, executes
- * via /api/transactions/execute. The whole bundle is one atomic tx
- * (all-succeed-or-all-revert by Sui PTB semantics).
+ * with `type: 'bundle'`, gets a sponsored Payment Intent back, signs locally,
+ * executes via /api/transactions/execute. The whole intent is one atomic tx
+ * (all-succeed-or-all-revert by Sui PTB semantics under the hood).
  *
  * On success, builds per-step results echoing each step's input + the
  * shared tx digest. On failure, returns N error results so the engine's
@@ -465,7 +466,7 @@ export async function executeBundleAction(
     return { success: true, txDigest: res.tx, stepResults };
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : 'Bundle execution failed';
-    // Atomic semantics: if the PTB reverts, every step failed. Surface a
+    // Atomic semantics: if the Payment Intent reverts, every step failed. Surface a
     // matching error result for each step so the engine's resume route
     // pushes N tool_result blocks back to the LLM with consistent reason.
     const stepResults = action.steps.map((step) => ({

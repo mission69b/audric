@@ -5,7 +5,7 @@ import { getTelemetrySink } from '@t2000/engine';
  * freshness telemetry for the post-write refresh path.
  *
  * Phase 3a expanded the bundle window: a single tap settles 2-4 writes
- * atomically in one PTB. The engine's `runPostWriteRefresh` clears caches
+ * atomically in one Payment Intent. The engine's `runPostWriteRefresh` clears caches
  * and waits 1500ms (Sui RPC indexer lag absorption) before re-running
  * `balance_check`. But BlockVision's internal indexer lags independently
  * of Sui's — meaning the post-write `balance_check` can return data

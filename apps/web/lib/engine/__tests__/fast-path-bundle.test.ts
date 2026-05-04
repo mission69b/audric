@@ -15,7 +15,7 @@
  * the local composer didn't depend on the tool registry — it had a
  * baked-in `describeStep` switch. Now the engine composer needs the
  * registry for `describeAction` + `getModifiableFields` + the
- * bundleable-flag defensive check. `getDefaultTools()` gives us the
+ * `bundleable: true` defensive flag check. `getDefaultTools()` gives us the
  * real production tools (with real flags + real descriptors) so the
  * tests exercise the same code path the chat route hits at runtime.
  */
@@ -52,7 +52,7 @@ const TOOLS_OPT = { tools: ENGINE_TOOLS } as const;
 
 // [SPEC 15 Phase 1.5] Helpers for plan-context override tests. The
 // fast-path admits a non-regex affirmative ("do it bro") only when the
-// PRIOR ASSISTANT TURN is a multi-write Payment Stream plan. These
+// PRIOR ASSISTANT TURN is a multi-write Payment Intent plan. These
 // builders construct that history shape.
 function asstText(text: string): Message {
   return { role: 'assistant', content: [{ type: 'text', text }] };
@@ -679,7 +679,7 @@ describe('tryConsumeFastPathBundle — Phase 1.5 plan-context override', () => {
         history: PLAN_3OP_HISTORY,
       });
 
-      // Bundle dispatched as ONE atomic PTB
+      // Bundle dispatched as ONE atomic Payment Intent
       expect(result).not.toBeNull();
       expect(result!.action.steps).toHaveLength(3);
       // The same bundleId from the prepared stash propagates through

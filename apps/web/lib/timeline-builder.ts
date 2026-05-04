@@ -54,9 +54,9 @@ import type {
 //     Engine-agnostic — purely host-side UX polish.
 //
 //   • `plan-stream` — when `pending_action.action.steps.length >= 2`
-//     (a Payment Stream bundle), inject a `PLAN STREAM` block as the
-//     FINAL row before the permission-card. Marks "the agent finished
-//     evaluating and compiled this into one atomic PTB". Single-write
+//     (a Payment Intent), inject a `PLAN` block as the FINAL row before
+//     the permission-card. Marks "the agent finished evaluating and
+//     compiled this into one atomic Payment Intent". Single-write
 //     confirms never get this row.
 //
 // Both are pure additions to the discriminated union; existing render
@@ -391,8 +391,8 @@ export function applyEventToTimeline(
             toolUseId: step.toolUseId,
           });
         }
-        // PLAN STREAM is the FINAL synthetic row before the card —
-        // declares the agent has compiled the plan into one atomic PTB.
+        // PLAN is the FINAL synthetic row before the card — declares
+        // the agent has compiled the plan into one atomic Payment Intent.
         synthetic.push({
           type: 'plan-stream',
           stepCount: action.steps?.length ?? 0,
@@ -610,7 +610,7 @@ export function mergeWriteExecutionIntoTimeline(
 // `useEngine.resolveAction` previously made (one per `action.steps[i]`)
 // for an approved bundle. Pre-fix, that produced N `tool` blocks → N
 // `TransactionReceiptCard`s → N "View on Suiscan" links pointing to the
-// SAME atomic-PTB digest, breaking the user's mental model ("I signed
+// SAME atomic Payment Intent digest, breaking the user's mental model ("I signed
 // one thing — why do I have three receipts?"). Now: one single
 // `bundle-receipt` block holding the per-leg outcomes inline.
 //
@@ -625,10 +625,10 @@ export function mergeWriteExecutionIntoTimeline(
 //     this fallback exists only for defense-in-depth).
 //
 // `txDigest` is extracted from the first non-error leg's result — every
-// leg shares the same digest under atomic PTB semantics, so the first
-// is canonical. When all legs errored (e.g. `_bundleReverted`),
+// leg shares the same digest under atomic Payment Intent semantics, so
+// the first is canonical. When all legs errored (e.g. `_bundleReverted`),
 // `txDigest` stays undefined and the receipt UI surfaces "Payment
-// Stream reverted" without a Suiscan link.
+// Intent reverted" without a Suiscan link.
 //
 // Idempotency: re-calling with the same attemptId no-ops if a
 // bundle-receipt already exists for that attemptId.

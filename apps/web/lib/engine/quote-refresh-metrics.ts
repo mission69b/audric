@@ -7,7 +7,7 @@ import { getTelemetrySink } from '@t2000/engine';
  * quote during a money-moving flow:
  *
  *   1. **`<ConfirmChips />` Refresh-quote chip** — appears below the
- *      Payment Stream plan when `expiresAt` passes BEFORE the user
+ *      Payment Intent plan when `expiresAt` passes BEFORE the user
  *      taps Confirm. Click → re-runs `swap_quote` + `prepare_bundle`
  *      via plan-context-promoted Sonnet (~5–8s round-trip). Required
  *      for auto-tier multi-write bundles where the bundle dispatches

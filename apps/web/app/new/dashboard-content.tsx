@@ -856,11 +856,11 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
     [agent, balanceQuery, contactsHook],
   );
 
-  // [SPEC 7 P2.4 Layer 3] Multi-write Payment Stream executor. Mirrors
+  // [SPEC 7 P2.4 Layer 3] Multi-write Payment Intent executor. Mirrors
   // `handleExecuteAction` for single-writes — dispatches the engine-emitted
-  // bundle through `executeBundleAction`, which posts to /api/transactions/
-  // prepare with `type: 'bundle'` and assembles the steps into one PTB
-  // server-side via composeTx. The whole bundle is one atomic tx
+  // intent through `executeBundleAction`, which posts to /api/transactions/
+  // prepare with `type: 'bundle'` and assembles the steps into one Payment
+  // Intent server-side via composeTx. The whole intent is one atomic tx
   // (all-succeed-or-all-revert).
   const handleExecuteBundle = useCallback(
     async (action: PendingAction) => {

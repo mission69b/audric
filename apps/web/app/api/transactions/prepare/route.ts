@@ -34,11 +34,11 @@ const OVERLAY_FEE_RATE = 0.001;
 // [SIMPLIFICATION DAYS 5+8] On-chain allowance billing is fully retired.
 // [SPEC 7 P2.2c, 2026-05-02] Migrated from a fat ~600-line route to a thin
 // dispatcher built on @t2000/sdk's `composeTx`. The SDK auto-derives the
-// `allowedAddresses` array from the assembled PTB's top-level
+// `allowedAddresses` array from the assembled Payment Intent's top-level
 // `transferObjects` commands, eliminating the PR-H1/H4 hand-maintained-
 // array bug class permanently. Fees stay an Audric concern (CLAUDE.md
 // rule #9): we pass `feeHooks` to inline `addFeeTransfer` for USDC saves
-// and borrows mid-PTB without leaking fee policy into the SDK.
+// and borrows mid-intent without leaking fee policy into the SDK.
 type SingleTxType =
   | 'send'
   | 'save'
@@ -68,11 +68,12 @@ interface SingleBuildRequest {
 }
 
 /**
- * [SPEC 7 P2.4 Layer 3] Multi-write Payment Stream bundle. The engine emits
- * a `pending_action` with `steps[]` when 2+ confirm-tier writes resolve in
+ * [SPEC 7 P2.4 Layer 3] Multi-write Payment Intent. The engine emits a
+ * `pending_action` with `steps[]` when 2+ confirm-tier writes resolve in
  * the same turn and all are `bundleable: true`. Host posts the steps array
- * here verbatim; we forward to `composeTx({ steps })` which assembles them
- * into a single PTB. All-succeed-or-all-revert atomicity is on-chain.
+ * here verbatim; we forward to `composeTx({ steps })` which compiles them
+ * into a single Payment Intent. All-succeed-or-all-revert atomicity is
+ * enforced on-chain.
  *
  * Per-step balance validation is skipped — the engine already ran preflight
  * on each step, and the Enoki dry-run is the last line of defense before
@@ -382,7 +383,7 @@ async function buildAndSponsor(params: BuildRequest, jwt: string | null): Promis
     // [SPEC 7 P2.7] composeTx threw locally before Enoki was contacted. This
     // is "our code is wrong" territory — wrong tool name, malformed input,
     // SDK regression, etc. Distinct from sponsorship_failed (Enoki dry-run
-    // rejected the assembled PTB). Re-throw to preserve the original
+    // rejected the assembled Payment Intent). Re-throw to preserve the original
     // try/catch semantics in the POST handler.
     if (isBundle) {
       const reason =
@@ -470,7 +471,7 @@ async function buildAndSponsor(params: BuildRequest, jwt: string | null): Promis
     } catch {}
 
     // [SPEC 7 P2.7] Enoki rejected the sponsor request. Most commonly this
-    // is a dry-run failure (the assembled PTB would have reverted on-chain
+    // is a dry-run failure (the assembled Payment Intent would have reverted on-chain
     // — `CommandArgumentError`, missing coin, allowance violation, etc.).
     // Distinct from compose_error (our SDK threw before Enoki was called).
     // Note: this is the same surface that caught Finding F7 during P2.6 —

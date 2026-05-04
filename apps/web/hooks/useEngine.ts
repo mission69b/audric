@@ -28,7 +28,7 @@ import { REGEN_ERROR_COPY } from '@/lib/engine/regen-error-copy';
 // import path: `import { executeToolAction } from '@/hooks/useEngine'`.
 //
 // [SPEC 7 P2.4 Layer 3] Bundle executor re-export. Hosts dispatching
-// multi-write Payment Streams import this alongside `executeToolAction`.
+// multi-write Payment Intents import this alongside `executeToolAction`.
 export {
   executeToolAction,
   executeBundleAction,
@@ -398,7 +398,7 @@ export function useEngine({ address, jwt, onToolResult, contacts }: UseEngineOpt
             // separate `tool` blocks. Pre-fix this loop synthesized
             // N tool blocks via `mergeWriteExecutionIntoTimeline`,
             // each rendering as its own `TransactionReceiptCard` with
-            // a duplicate "View on Suiscan" link. Atomic PTB ⇒ one
+            // a duplicate "View on Suiscan" link. Atomic Payment Intent ⇒ one
             // digest ⇒ one receipt is the correct mental model.
             // Single-step "bundles" (rare; `length === 1`) fall
             // through to the single-write branch below for parity.
@@ -480,7 +480,7 @@ export function useEngine({ address, jwt, onToolResult, contacts }: UseEngineOpt
           ? { executionDurationMs }
           : {}),
         // [SPEC 7 P2.4] Bundle resume — append per-step results when the
-        // caller approved a multi-write Payment Stream. Engine matches
+        // caller approved a multi-write Payment Intent. Engine matches
         // each step's `toolUseId` to its result and emits N `tool_result`
         // blocks back to the LLM (atomic semantics).
         ...(stepResults && stepResults.length > 0 ? { stepResults } : {}),

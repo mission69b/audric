@@ -1,10 +1,10 @@
 // ───────────────────────────────────────────────────────────────────────────
-// F7 / SPEC 12 — Contact + SuiNS resolution inside multi-write Payment Stream
+// F7 / SPEC 12 — Contact + SuiNS resolution inside multi-write Payment Intent
 //
 // Single-write `send_transfer` resolves contact names (and SuiNS) to on-chain
 // addresses before invoking the SDK. Pre-fix, bundles silently skipped this
 // step — the literal contact name (e.g. "funkii") flowed all the way to the
-// PTB build and Enoki rejected the dry-run with a non-obvious
+// Payment Intent build and Enoki rejected the dry-run with a non-obvious
 // `CommandArgumentError { arg_idx: 1, kind: ArgumentWithoutValue }`.
 //
 // These tests pin the symmetry: `executeBundleAction` MUST run the same

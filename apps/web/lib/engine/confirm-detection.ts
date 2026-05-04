@@ -2,7 +2,7 @@
  * Confirm-of-bundle detection
  * ---------------------------
  * Heuristic that decides whether a short user message ("Confirmed", "yes",
- * "go") is a confirmation of a multi-write Payment Stream that the assistant
+ * "go") is a confirmation of a multi-write Payment Intent that the assistant
  * proposed in the immediately prior turn.
  *
  * Why this exists (May 2026 / SPEC 13 Phase 2 soak):
@@ -27,7 +27,7 @@
  *      (1.14.2: original pattern only matched "confirm" and missed every
  *      "Shall I proceed?" plan tail in production logs.)
  *   3. The same assistant message mentions ≥ 2 distinct write verbs (the
- *      verbs the system prompt uses to describe Payment Stream legs).
+ *      verbs the system prompt uses to describe Payment Intent legs).
  *
  * False positives are cheap (Sonnet-medium for one extra turn), false
  * negatives are the status quo (Haiku as before). The bias is intentionally
@@ -62,7 +62,7 @@ const CONFIRM_PATTERN =
   /^(y|yes|yep|yeah|ok|okay|sure|confirm(ed|s)?|confimed|do it|go|proceed|approve(d)?|let'?s do it|sounds good|ship it|execute|exec|run|fire|launch|👍)[.!?]?$/i;
 
 /**
- * Write verbs the system prompt uses when describing a Payment Stream plan.
+ * Write verbs the system prompt uses when describing a Payment Intent plan.
  * Mirrors the tool surface (swap_execute, withdraw, send_transfer,
  * save_deposit, borrow, repay_debt, claim_rewards, volo_stake, pay_api).
  */
@@ -151,7 +151,7 @@ export interface BundleConfirmDetection {
 
 /**
  * Detects whether the current user message is a confirmation of a multi-
- * write Payment Stream proposed in the prior assistant turn.
+ * write Payment Intent proposed in the prior assistant turn.
  *
  * Pure function — no side effects, no LLM calls. Cheap to run on every turn.
  */
@@ -205,7 +205,7 @@ export function isAffirmativeConfirmReply(message: string): boolean {
  * the SHAPE OF THE PRIOR ASSISTANT TURN, not the user's message?
  *
  * Promotes whenever the most recent assistant message is a multi-write
- * Payment Stream plan (≥ 2 distinct write verbs + a "confirm"/"proceed"
+ * Payment Intent plan (≥ 2 distinct write verbs + a "confirm"/"proceed"
  * tail), regardless of what the user typed in response. The fast-path
  * bypass (`isAffirmativeConfirmReply`) handles the cheap happy-case in
  * 108 ms; this detector is the safety net for everything else —

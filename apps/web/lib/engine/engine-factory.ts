@@ -497,7 +497,7 @@ export async function createEngine(
 
   // [SPEC 14 Phase 1] `prepare_bundle` plan-time bundle commitment tool.
   // The LLM calls this once during the plan turn for any multi-write
-  // Payment Stream (N≥2 writes). The tool stashes the typed steps in
+  // Payment Intent (N≥2 writes). The tool stashes the typed steps in
   // Redis with a 60s TTL; the chat-route fast-path (Phase 2, not yet
   // wired) will read + consume the stash on user confirm and yield a
   // `pending_action_bundle` SSE event without re-emitting via the LLM.
@@ -586,7 +586,7 @@ export async function createEngine(
     : 'medium';
 
   // [SPEC 13 / 1.14.1] Confirm-of-bundle promotion. When the user replies
-  // "Confirmed" to a multi-write Payment Stream plan the base classifier
+  // "Confirmed" to a multi-write Payment Intent plan the base classifier
   // routes the short message to `low` → Haiku. Haiku then reliably emits
   // ONE write at a time, costing a guard-block + re-quote round-trip
   // before the atomic bundle lands. Promoting to `medium` (Sonnet) lets

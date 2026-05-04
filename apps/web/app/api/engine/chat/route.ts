@@ -99,7 +99,7 @@ const MAX_MSG_LEN = 500;
 /**
  * [SPEC 15 Phase 2] Chip-click decision payload. Set by the frontend
  * `<ConfirmChips />` when the user taps Confirm or Cancel under a
- * multi-write Payment Stream plan. Echoed `forStashId` is matched
+ * multi-write Payment Intent plan. Echoed `forStashId` is matched
  * against the live Redis stash's `bundleId`:
  *   - match → execute (Yes) or cancel (No) the current stash
  *   - mismatch → ghost-dispatch race (cancel+new-stash, delayed click).

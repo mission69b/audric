@@ -181,29 +181,32 @@ export interface ContactResolvedTimelineBlock {
 }
 
 /**
- * [SPEC 7 P2.5b Layer 5] Synthetic "PLAN STREAM" planning row that
- * appears as the FINAL row before a multi-step Payment Stream
+/**
+ * [SPEC 7 P2.5b Layer 5] Synthetic "PLAN" planning row that
+ * appears as the FINAL row before a multi-step Payment Intent
  * `permission-card` block. Indicates the agent has finished evaluating
  * the upstream reads / contact resolution / etc. and has compiled
- * everything into one atomic PTB. Pushed by `applyEventToTimeline` on
- * `pending_action` events whose action carries `steps.length >= 2`.
- * Single-write actions never get a plan-stream row (the existing
- * `pre-write` thinking + `<eval_summary>` already serve that purpose
- * for single-write confirms).
+ * everything into one atomic Payment Intent. Pushed by
+ * `applyEventToTimeline` on `pending_action` events whose action carries
+ * `steps.length >= 2`. Single-write actions never get a plan row (the
+ * existing `pre-write` thinking + `<eval_summary>` already serve that
+ * purpose for single-write confirms).
  *
  * Status is always `'done'` at emission time — by the moment the
- * engine yields `pending_action`, the planning IS the bundle. Modeling
+ * engine yields `pending_action`, the planning IS the intent. Modeling
  * this as a static row (not running → done) keeps the timeline
- * deterministic and avoids a hung "PLAN STREAM …" indicator if the
- * user navigates away mid-card. The row is purely a typed visual
- * separator that says "the agent compiled what comes next into one
- * atomic stream."
+ * deterministic and avoids a hung "PLAN …" indicator if the user
+ * navigates away mid-card. The row is purely a typed visual separator
+ * that says "the agent compiled what comes next into one atomic intent."
+ *
+ * (The interface name is preserved for type-import stability — only
+ * the user-facing label was renamed in 2026-05-05.)
  */
 export interface PlanStreamTimelineBlock {
   type: 'plan-stream';
-  /** Number of bundleable writes packaged into the stream (≥2). */
+  /** Number of composable writes packaged into the intent (≥2). */
   stepCount: number;
-  /** attemptId of the bundle this PLAN STREAM precedes. */
+  /** attemptId of the intent this PLAN row precedes. */
   attemptId: string;
 }
 
@@ -215,7 +218,7 @@ export interface PlanStreamTimelineBlock {
  * sponsored-tx flow (each leg's row in `executeBundleAction`'s
  * `stepResults`); the host extracts whatever per-leg detail it can
  * (e.g. a swap's destination amount) but the txDigest lives at the
- * parent level (atomic PTB ⇒ one digest for all legs).
+ * parent level (atomic Payment Intent ⇒ one digest for all legs).
  */
 export interface BundleReceiptLeg {
   toolName: string;
@@ -228,7 +231,7 @@ export interface BundleReceiptLeg {
 
 /**
  * [SPEC 7 P2.7 prep / Finding F6] Single receipt for a multi-leg
- * Payment Stream PTB. Replaces the pre-fix UX where N atomic legs
+ * Payment Intent. Replaces the pre-fix UX where N atomic legs
  * rendered N separate `tool` blocks → N `TransactionReceiptCard`s →
  * N "View on Suiscan" links pointing to the SAME digest. Now: ONE
  * `bundle-receipt` block, one Suiscan link, atomicity language
@@ -252,7 +255,7 @@ export interface BundleReceiptTimelineBlock {
   type: 'bundle-receipt';
   /** Mirrors the parent bundle's `attemptId` (top-level on PendingAction). */
   attemptId: string;
-  /** Shared PTB digest (set when the user-confirmation round-trip succeeds). */
+  /** Shared Payment Intent digest (set when the user-confirmation round-trip succeeds). */
   txDigest?: string;
   /** Per-leg outcomes; ordered to match the PermissionCard's step order. */
   legs: BundleReceiptLeg[];
@@ -261,7 +264,7 @@ export interface BundleReceiptTimelineBlock {
   endedAt: number;
   /**
    * `true` iff ANY leg's `isError` is true OR the executor returned
-   * `_bundleReverted`. Atomic PTB semantics ⇒ all-success or
+   * `_bundleReverted`. Atomic Payment Intent semantics ⇒ all-success or
    * all-failure on-chain, but the host's `executeBundleAction`
    * marks every leg `isError: true` on revert (see
    * `executeToolAction.ts`), so any single errored leg signals the
@@ -370,7 +373,7 @@ export interface EngineChatMessage {
   /**
    * [SPEC 15 Phase 2 commit 2 / 2026-05-04] Set when this assistant
    * turn's SSE stream included an audric-only `expects_confirm` event
-   * — i.e. the message proposed a multi-write Payment Stream plan
+   * — i.e. the message proposed a multi-write Payment Intent plan
    * AND a fresh stash exists in Redis AND the final text matches the
    * plan-confirm marker. `<ChatMessage>` reads this to decide whether
    * to render `<ConfirmChips />` underneath the message body.

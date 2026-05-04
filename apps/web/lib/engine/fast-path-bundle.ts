@@ -105,7 +105,7 @@ interface FastPathConsumeOpts {
  *   - 'regex': strict `CONFIRM_PATTERN` match (Phase 1 baseline).
  *     Maintains the 108ms bypass on the canonical happy path.
  *   - 'plan_context': regex missed, but the prior assistant turn was
- *     a multi-write Payment Stream plan AND the user's reply isn't
+ *     a multi-write Payment Intent plan AND the user's reply isn't
  *     clearly negative. SPEC 15 Phase 1.5 — catches "do it bro" /
  *     "vamos" / voice transcripts / non-English confirms that the
  *     regex would otherwise drop into LLM re-planning (which
@@ -363,7 +363,7 @@ function buildPendingActionFromProposal(
  *      Tag: `admitted_via=regex`.
  *
  *   3. **Plan-context override** (Phase 1.5): the regex missed, but the
- *      prior assistant turn is a multi-write Payment Stream plan AND
+ *      prior assistant turn is a multi-write Payment Intent plan AND
  *      the user's reply isn't clearly negative. Catches "do it bro" /
  *      "vamos" / voice transcripts / multilingual confirms that
  *      otherwise drop into LLM re-planning (which decomposes bundles —

@@ -267,7 +267,7 @@ describe('POST /api/transactions/prepare — parameter validation', () => {
   });
 });
 
-// ─── SPEC 7 P2.4 Layer 3 — Bundle (Payment Stream) parameter validation ───
+// ─── SPEC 7 P2.4 Layer 3 — Bundle (Payment Intent) parameter validation ───
 
 describe('POST /api/transactions/prepare — bundle requests', () => {
   let POST: (req: NextRequest) => Promise<Response>;

@@ -5,7 +5,7 @@ import { getTelemetrySink } from '@t2000/engine';
  *
  * Fires once per turn where `engine-factory.ts` promoted the LLM from
  * Haiku-low to Sonnet-medium based on plan-context detection (the prior
- * assistant turn was a multi-write Payment Stream plan).
+ * assistant turn was a multi-write Payment Intent plan).
  *
  * The load-bearing signal is `matched_regex`:
  *   - `'true'`  → Fix 1's `CONFIRM_PATTERN` would have caught the user's

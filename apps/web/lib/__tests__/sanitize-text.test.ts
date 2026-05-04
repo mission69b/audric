@@ -67,8 +67,8 @@ describe('stripEvalSummaryMarker', () => {
 // ───────────────────────────────────────────────────────────────────────────
 describe('stripThinkingTags', () => {
   it('returns input unchanged when no marker is present', () => {
-    expect(stripThinkingTags('Compiling into one Payment Stream')).toBe(
-      'Compiling into one Payment Stream',
+    expect(stripThinkingTags('Compiling into one Payment Intent')).toBe(
+      'Compiling into one Payment Intent',
     );
   });
 

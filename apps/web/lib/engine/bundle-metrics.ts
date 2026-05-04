@@ -5,7 +5,7 @@ import { getTelemetrySink } from '@t2000/engine';
  *
  * Three load-bearing metrics from `spec/SPEC_7_MULTI_WRITE_PTB.md` § "Suggested
  * next steps" P2.7 ramp note. Without these we can't tell whether a silent
- * regression has crept into Payment Stream production traffic — bundles are
+ * regression has crept into Payment Intent production traffic — intents are
  * already 100%-live (the spec'd `NEXT_PUBLIC_PAYMENT_STREAM_ENABLED` flag was
  * deferred during P2.2c because the migration was functionally equivalent),
  * so monitoring is the safety net the flag was supposed to provide.
@@ -16,7 +16,7 @@ import { getTelemetrySink } from '@t2000/engine';
  *
  * Why we stay in the `audric.harness.*` namespace (and not invent
  * `audric.spec7.*`): the harness dashboard already filters on this prefix
- * for `regenerate_count` + SPEC 8 metrics. Splitting Payment Stream into a
+ * for `regenerate_count` + SPEC 8 metrics. Splitting Payment Intent into a
  * sibling namespace would force a second dashboard or a wildcard query.
  * The spec mentioned `audric.spec7.*` aspirationally; nothing else uses it.
  */
@@ -108,7 +108,7 @@ export function emitBundleProposed(steps: ReadonlyArray<{ toolName: string }>): 
  *   - revert_rate > 5%   → break-glass disable (NEXT_PUBLIC_PAYMENT_STREAM_DISABLE)
  *
  * Breaking out `compose_error` vs `sponsorship_failed` matters because they
- * point at different failure surfaces — local PTB build (our code) vs
+ * point at different failure surfaces — local Payment Intent build (our code) vs
  * Enoki dry-run rejection (transaction would have reverted on-chain). A
  * spike in compose_error implicates a recent SDK change; a spike in
  * sponsorship_failed implicates Enoki, our `allowedAddresses` derivation,

@@ -79,7 +79,7 @@ export interface ExpectsConfirmSseEvent {
   expiresAt?: number;
   /**
    * Number of writes in the bundle (== `BundleProposal.steps.length`).
-   * Surfaced in the chip's a11y label: "Confirm Payment Stream — 3
+   * Surfaced in the chip's a11y label: "Confirm Payment Intent — 3
    * operations".
    */
   stepCount: number;

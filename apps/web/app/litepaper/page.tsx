@@ -221,7 +221,7 @@ export default function LitepaperPage() {
                 <tr><td>AI engine</td><td><code>@t2000/engine</code> — 34 tools, reasoning, guards, streaming</td></tr>
                 <tr><td>Core SDK</td><td><code>@t2000/sdk</code> — wallet, NAVI / Cetus / VOLO adapters</td></tr>
                 <tr><td>CLI + MCP</td><td><code>@t2000/cli</code> 29 commands · <code>@t2000/mcp</code> 29 tools for Claude, Cursor, Copilot</td></tr>
-                <tr><td>On-chain</td><td>Sui Move — atomic PTBs, sponsored gas, on-chain fee transfers to the treasury wallet</td></tr>
+                <tr><td>On-chain</td><td>Sui Move — atomic Payment Intents, sponsored gas, on-chain fee transfers to the treasury wallet</td></tr>
               </tbody>
             </table>
           </div>
