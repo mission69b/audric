@@ -1,13 +1,59 @@
 # Runbook: SPEC 8 Interactive Harness — production rollout
 
-> **Status:** Active. SPEC 8 v0.5.1 has shipped to `main` (B3.1–B3.6 complete, B3.7 scaffolding complete). This runbook is the founder playbook for flipping the production flag from 0% → 100% over 3 days.
+> **Status update (2026-05-04, post-S.58):** Rollout is **already at effective 100% admission since 2026-04-30**. The B3.7 ship landed both the dial mechanism AND `NEXT_PUBLIC_INTERACTIVE_HARNESS=1` in production env on the same commit. The percent var is unset, so per the runbook design ("absent var = all flag-on buckets admitted") every user has been on v2 for 5 days. **The Day 1/2/3 dial flip narrative below describes the design, not what actually happened — keep it as the canonical play for any future flag rollout, but for SPEC 8 the soak-watch playbook has shifted to: (a) verify gates trend correctly post-classifier-fix (S.58), (b) capture the acceptance artifact at 2026-05-11 (7d post-fix soak), (c) close out P3.7.** Production cohort over the first 5 days: 1,936 v2 turns, 0 user incidents, 0 `interrupted_messages`, 0 `pending_input_on_legacy`. System is stable.
+>
+> **Original (still-valid for future flag rollouts) status:** SPEC 8 v0.5.1 has shipped to `main` (B3.1–B3.6 complete, B3.7 scaffolding complete). This runbook is the founder playbook for flipping the production flag from 0% → 100% over 3 days.
 >
 > **Owner:** Founder. The eval pass + dial flips are async wall-time activities — no automation can replace eyeballs on `audric.ai` chat output.
 >
 > **Cross-references:**
 > - Spec — `t2000/spec/SPEC_8_INTERACTIVE_HARNESS.md` § "Acceptance gates" + § "Production telemetry signals"
 > - Eval corpus — `t2000/spec/SPEC_8_CORPUS.md` (30 prompts × 4 tiers)
-> - Build tracker — `t2000/audric-build-tracker.md` § "P3.7 / B3.7"
+> - Build tracker — `t2000/audric-build-tracker.md` § "P3.7 / B3.7" + § "S.58 (rollout reality-check + Gate 5/7 fixes)"
+
+---
+
+## Soak-watch playbook (post-S.58, the actually-relevant play for today)
+
+Since rollout is already at 100%, the founder's job today is **soak watching the post-S.58 fixes** until the acceptance artifact captures on **2026-05-11** (7 days post-fix).
+
+### Daily check (~5 min/day, 7 days)
+
+```bash
+cd /Users/funkii/dev/audric/apps/web
+node scripts/spec8-rollout-gates.mjs --hours=24
+```
+
+What "good" looks like each day:
+- **Gate 5 (LEAN never emits todos)** — should trend from `12/126 = 9.5%` toward `0/N` as new traffic with the classifier fix displaces historical violations. Target: 0 violations on a 24h window by 2026-05-08.
+- **Gate 6 (LEAN p95 thinking ≤ 1)** — must stay PASS.
+- **Gate 7 (RICH planning rate ≥ 50%)** — must stay PASS (post-fix it counts `update_todo` OR `prepare_bundle`).
+- **Gates 1/3/4** — expected to FAIL or transition to SKIP as legacy cohort ages out (~14d window). Not bugs; cohort-mix artifacts. Don't let them gate the rollback decision.
+- **`interrupted_messages = 0`** — must stay 0. >1% of v2 = rollback signal.
+- **`pending_input_on_legacy = 0`** — must stay 0. Non-zero = session-pinning regression.
+
+### Acceptance artifact capture (2026-05-11)
+
+After 7 days of post-fix soak:
+
+```bash
+cd /Users/funkii/dev/audric/apps/web
+node scripts/spec8-rollout-gates.mjs --hours=168 --json > spec8-acceptance-2026-05-11.json
+git add spec8-acceptance-2026-05-11.json
+git commit -m "📦 build(web): SPEC 8 v0.5.3 acceptance artifact (7d post-fix soak)"
+git push origin main
+```
+
+Then close out P3.7 in `audric-build-tracker.md` with a ✅ row referencing the artifact filename and the gate output excerpt (Gate 5 should be 0 violations; Gate 7 ≥ 50%; Gate 6 PASS; Gates 1/3/4 SKIP-or-cohort-mix-acknowledged).
+
+### When to abort the soak watch
+
+If at any point during the 7-day window:
+- Gate 5 violation rate **stops trending toward 0** (i.e. new violations land after the classifier fix is deployed) → the fix didn't land or there's a second cause. Investigate `audric/web/lib/engine/confirm-detection.ts` `detectPriorPlanContext` — does the new turn's history actually include the prior plan?
+- `interrupted_messages` > 0.5% on a 24h window → real UX regression. Roll back per the rollback section below.
+- `pending_input_on_legacy` > 0 → session-pinning regression. Roll back per the rollback section below.
+
+Otherwise: stay the course, capture the artifact 2026-05-11.
 
 ---
 

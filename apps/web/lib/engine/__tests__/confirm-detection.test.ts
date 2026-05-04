@@ -399,6 +399,27 @@ describe('detectPriorPlanContext', () => {
       ];
       expect(detectPriorPlanContext(history).matched).toBe(true);
     });
+
+    // [SPEC 8 v0.5.3 Gate 5 fix / 2026-05-04] Single-write proposals also
+    // promote on confirm reply. Original SPEC 15 Phase 1 lock used `≥ 2`
+    // verbs based on the assumption Haiku-lean handled single-write
+    // resumes fine. Production data over the next 5 days disproved it
+    // (12/126 LEAN turns over 7d emitted update_todo on swap resumes).
+    // Lowering to `≥ 1` lets the resume turn run as Sonnet-medium →
+    // standard shape → Gate 5 stops firing.
+    it('matches a single-write plan with confirm marker (Gate 5 regression fix)', () => {
+      const history: Message[] = [asstText(SINGLE_WRITE_PLAN)];
+      const result = detectPriorPlanContext(history);
+      expect(result.matched).toBe(true);
+      expect(result.priorWriteVerbCount).toBe(1);
+      expect(result.reason).toBe('matched');
+    });
+
+    it('matches a single-write plan with the "Shall I proceed?" sibling marker', () => {
+      const single = 'Ready to swap 1 USDC to ~1.27 SUI. Shall I proceed?';
+      const history: Message[] = [asstText(single)];
+      expect(detectPriorPlanContext(history).matched).toBe(true);
+    });
   });
 
   describe('negative cases (should NOT promote)', () => {
@@ -430,14 +451,6 @@ describe('detectPriorPlanContext', () => {
       ].join('\n');
       const history: Message[] = [asstText(planNoConfirm)];
       expect(detectPriorPlanContext(history).reason).toBe('no-confirm-marker');
-    });
-
-    it('rejects single-write plans (Haiku handles those fine)', () => {
-      const history: Message[] = [asstText(SINGLE_WRITE_PLAN)];
-      const result = detectPriorPlanContext(history);
-      expect(result.matched).toBe(false);
-      expect(result.reason).toBe('fewer-than-two-writes');
-      expect(result.priorWriteVerbCount).toBe(1);
     });
 
     it('rejects purely informational replies', () => {

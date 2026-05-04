@@ -139,7 +139,14 @@ export interface BundleConfirmDetection {
   /** Number of distinct write verbs found in the prior assistant message. */
   priorWriteVerbCount: number;
   /** Truncated current-message reason for telemetry/logging. */
-  reason: 'no-history' | 'not-short-confirm' | 'no-prior-assistant' | 'no-confirm-marker' | 'fewer-than-two-writes' | 'matched';
+  reason:
+    | 'no-history'
+    | 'not-short-confirm'
+    | 'no-prior-assistant'
+    | 'no-confirm-marker'
+    | 'fewer-than-two-writes'
+    | 'no-write-verbs'
+    | 'matched';
 }
 
 /**
@@ -279,8 +286,28 @@ export function detectPriorPlanContext(history: Message[]): BundleConfirmDetecti
   }
 
   const verbCount = countDistinctWriteVerbs(prior.text);
-  if (verbCount < 2) {
-    return { matched: false, priorWriteVerbCount: verbCount, reason: 'fewer-than-two-writes' };
+  // [SPEC 8 v0.5.3 Gate 5 fix / 2026-05-04] Threshold relaxed from `< 2`
+  // to `< 1`. The original ≥2 cap was set under the assumption "single-
+  // write resume turns are fine on Haiku-lean" (see SPEC 15 Phase 1 lock,
+  // 2026-05-04). Production data over the next 5 days disproved that:
+  // 12 LEAN-tier turns emitted `update_todo` over a 7d window — every
+  // single one was a single-write swap resume. The chain was:
+  //   user: "swap 1 USDC for SUI" → assistant: "I'll swap 1 USDC. Confirm?"
+  //   user: "yes"                 → classifyEffort returns 'low'
+  //   detectPriorPlanContext → verbCount=1 ('swap') → REJECTED
+  //   → effort stays 'low', model stays Haiku, harness stays 'lean'
+  //   → resume turn calls swap_execute (legit write) AND update_todo
+  //     (Haiku's reasonable response to a real write task)
+  //   → Gate 5 (LEAN never emits todos) violation.
+  // Lowering to `>= 1` promotes single-write confirm turns to Sonnet-
+  // medium (standard shape). False-positive cost: ~$0.03/turn for off-
+  // topic LOW replies after a single-write proposal — acceptable per
+  // the SPEC 15 Phase 1 liberal-promotion philosophy. The fast-path
+  // bundle dispatcher (`detectBundleConfirm` above) keeps the strict
+  // ≥2 threshold — bundle dispatch bypasses the LLM and must not fire
+  // on single-write contexts.
+  if (verbCount < 1) {
+    return { matched: false, priorWriteVerbCount: verbCount, reason: 'no-write-verbs' };
   }
 
   return { matched: true, priorWriteVerbCount: verbCount, reason: 'matched' };

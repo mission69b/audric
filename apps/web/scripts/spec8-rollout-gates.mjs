@@ -26,7 +26,9 @@
 //   4. Total latency p50 > legacy p50 × 1.20 (UX regression)
 //   5. LEAN todo_update  > 0   (LEAN must NEVER emit todos)
 //   6. LEAN thinking p95 > 1   (LEAN must hold ≤1 thinking block in 95%+)
-//   7. RICH harness-shape todo emission rate < 50% (todo discipline)
+//   7. RICH harness-shape planning-signal rate < 50% (update_todo OR
+//      prepare_bundle — see Gate 7 cohort note below for the SPEC 14
+//      reason both signals count)
 //
 // Gate 2 metric notes — both cohorts use `finalTextTokens` (the v0.5.1
 // B3.6 column that counts only post-tools narration). Pre-B3.6 legacy
@@ -39,7 +41,17 @@
 // `harnessShapeForEffort()` mapping makes `rich` ⟺ `effortLevel='high'`
 // (1:1), so this is the high-effort cohort where todo discipline matters.
 // MAX-shape turns (recipe-matched) are tracked in the corpus eval pass,
-// not in this gate. When the shape↔effort mapping changes, update the
+// not in this gate.
+//
+// SPEC 8 v0.5.3 update (2026-05-04) — "planning signal" now counts BOTH
+// `update_todo` AND `prepare_bundle` (the SPEC 14 plan-commit tool).
+// Original SPEC 8 v0.5.1 only counted update_todo, but post-SPEC-14
+// every multi-write Sonnet turn emits prepare_bundle instead — the
+// gate was firing at 32% on a 7d window because of spec drift, not
+// because the LLM was failing to plan. Both signals together cover
+// every planning surface a RICH turn uses.
+//
+// When the shape↔effort mapping changes, update the
 // SQL CTE + this comment together.
 // ───────────────────────────────────────────────────────────────────────────
 
@@ -151,9 +163,19 @@ const SQL = `
        FROM v2 WHERE "harnessShape" = 'lean')                         AS lean_thinking_p95,
 
     -- Gate 7 — RICH harness-shape rows (effort='high', 1:1 mapping)
-    -- must emit ≥1 todo_update on ≥50% of turns.
+    -- must emit a planning signal on ≥50% of turns. SPEC 8 v0.5.3 update
+    -- (2026-05-04): "planning signal" includes BOTH \`update_todo\`
+    -- (the original SPEC 8 todo-list mechanism) AND \`prepare_bundle\`
+    -- (the SPEC 14 plan-commit tool that supersedes update_todo for
+    -- multi-write Payment Stream proposals). Pre-fix the gate counted
+    -- only update_todo and was firing at 32% on a 7d window because
+    -- every Sonnet bundle proposal calls prepare_bundle instead.
+    -- Together they cover both planning surfaces the LLM uses when
+    -- the recipe matcher fires it into RICH shape.
     (SELECT COUNT(*) FROM v2
-       WHERE "harnessShape" = 'rich' AND "todoUpdateCount" >= 1)      AS rich_with_todo,
+       WHERE "harnessShape" = 'rich'
+         AND ("todoUpdateCount" >= 1
+              OR "toolsCalled" @> '[{"name": "prepare_bundle"}]'::jsonb))  AS rich_with_todo,
     (SELECT COUNT(*) FROM v2 WHERE "harnessShape" = 'rich')           AS rich_total,
 
     -- Telemetry-only signals (logged, not gated)
@@ -285,7 +307,7 @@ const richTotal = num(row.rich_total) ?? 0;
 const richTodoRate = richTotal > 0 ? richWithTodo / richTotal : null;
 gates.push({
   id: 7,
-  name: `RICH todo emission rate ≥ ${(GATES.richRecipeTodoMinRate * 100).toFixed(0)}%`,
+  name: `RICH planning-signal rate ≥ ${(GATES.richRecipeTodoMinRate * 100).toFixed(0)}% (update_todo OR prepare_bundle)`,
   pass: richTodoRate === null ? null : richTodoRate >= GATES.richRecipeTodoMinRate,
   value: richTodoRate,
   threshold: GATES.richRecipeTodoMinRate,
@@ -293,7 +315,7 @@ gates.push({
   note:
     richTodoRate === null
       ? 'no RICH turns yet'
-      : `${richWithTodo}/${richTotal} RICH turns emitted a todo = ${(richTodoRate * 100).toFixed(0)}%`,
+      : `${richWithTodo}/${richTotal} RICH turns emitted update_todo or prepare_bundle = ${(richTodoRate * 100).toFixed(0)}%`,
 });
 
 const failedGates = gates.filter((g) => g.pass === false);
