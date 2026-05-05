@@ -135,19 +135,41 @@ const serverSchema = z.object({
    * (`0xaca29165…23d11` per RUNBOOK §1). Loaded by `/api/identity/reserve`
    * to sign leaf-mint PTBs server-side; never leaves the route.
    *
-   * Optional in the env schema (env gate stays passing for builds where
-   * the key isn't yet uploaded to Vercel) but the consuming route
-   * fail-CLOSEs with 503 when missing — picker surfaces "verifier
-   * unavailable" rather than minting against a missing key.
+   * **Required as of S.69 follow-up (2026-05-05).** Promoted from
+   * `optionalString` after a 2-step diagnosis cycle confirmed:
+   *   1. The Vercel-stored value reaches Node runtime and decodes to
+   *      the correct custody address (verified via the temporary
+   *      `/api/internal/env-diagnostic` route, since deleted).
+   *   2. The first promotion attempt (commit b31e33f) failed at build
+   *      because the var was originally configured as a Vercel
+   *      "Sensitive" env var, which Vercel intentionally does NOT
+   *      inject into the BUILD container (only the runtime container).
+   *      Next.js's "Collecting page data" build phase imports every
+   *      route → triggers env.ts at module-init → `requiredString`
+   *      threw → build failed. Resolved by re-creating the var as a
+   *      regular (non-Sensitive) env var in Vercel, which gets injected
+   *      into both build and runtime containers like every other secret
+   *      in this schema.
    *
-   * Promote to `requiredString` in a follow-up commit once the key has
-   * been verified live in Vercel and the founder has confirmed the
-   * single-key custody copy is the canonical operational source of truth
-   * (per RUNBOOK §2 item 2). The promotion is intentionally a separate
-   * commit so the env-gate change is independently reversible if the
-   * Vercel value gets nuked / rotated incorrectly.
+   * Boot-fails the app at first import if the value is missing, empty,
+   * or whitespace — the same gate that catches the BlockVision
+   * empty-string class of bug. Recovery: if the Vercel value gets nuked
+   * or rotated incorrectly, the symptom is "audric won't boot" (operator
+   * sees env-gate error block immediately) rather than "feature silently
+   * degrades for 4 days" (the original incident class).
+   *
+   * **Operational rule for future secret-grade env vars** (parent NFT
+   * key, future signing keys, future custody artifacts): store as
+   * REGULAR env vars, not Sensitive. The marginal Sensitive protections
+   * (encrypted at rest, dashboard hide, log redaction) are real but
+   * small for a single-operator deployment, and they trade off against
+   * the env-gate model that catches misconfig at boot time. If a future
+   * "tighten secrets" pass moves toward Sensitive across the board,
+   * env.ts needs a `runtimeRequiredString` variant that's optional
+   * during `phase-production-build` but required at runtime — see
+   * audric-build-tracker.md S.69 follow-up for the design sketch.
    */
-  AUDRIC_PARENT_NFT_PRIVATE_KEY: optionalString,
+  AUDRIC_PARENT_NFT_PRIVATE_KEY: requiredString,
 
   /** Comma-separated session-id prefixes that mark synthetic/bot traffic. */
   SYNTHETIC_SESSION_PREFIXES: optionalString,
