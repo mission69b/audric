@@ -148,10 +148,13 @@ export function asHarnessVersion(v: unknown): HarnessVersion | undefined {
 
 /**
  * [SPEC 9 v0.1.3 P9.6] True when the SPEC 9 v0.1.1 rollout flag is on
- * — controls whether the `add_recipient` tool joins the engine roster
- * AND whether `<OpenGoalsSidebar>` mounts in the dashboard. The
- * `<proactive>` marker rendering and `pending_input` event handling
+ * — controls whether the `add_recipient` tool joins the engine roster.
+ * The `<proactive>` marker rendering and `pending_input` event handling
  * are always-on (flag-off doesn't break stale browser tabs).
+ *
+ * NOTE: P9.3 persistent cross-turn todos was REMOVED on 2026-05-05 (see
+ * audric-build-tracker.md S.64). The flag now gates only the P9.4
+ * `add_recipient` opt-in tool.
  *
  * Reads `env.NEXT_PUBLIC_HARNESS_V9` (string | undefined). Returns
  * false on undefined, empty string, or any value other than "1" /

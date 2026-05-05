@@ -189,15 +189,6 @@ export function useEngine({ address, jwt, onToolResult, contacts }: UseEngineOpt
     ReadonlySet<string>
   >(() => new Set());
 
-  // [SPEC 9 v0.1.3 P9.6] Refresh signal for the persistent-goals
-  // sidebar. Bumped each time a `todo_update` event lands carrying any
-  // item with `persist: true` — the LLM has just promoted (or modified)
-  // a long-lived goal in this turn, so the cross-session sidebar's
-  // /api/goals/list view is stale. Pure key — value content doesn't
-  // matter, only its identity. Consumers thread this into
-  // `<OpenGoalsSidebar refreshKey={goalRefreshKey} />`.
-  const [goalRefreshKey, setGoalRefreshKey] = useState(0);
-
   const messagesRef = useRef<EngineChatMessage[]>([]);
   messagesRef.current = messages;
 
@@ -1375,15 +1366,6 @@ export function useEngine({ address, jwt, onToolResult, contacts }: UseEngineOpt
               : m,
           ),
         );
-        // [SPEC 9 v0.1.3 P9.6] Bump the goals-sidebar refresh signal
-        // when the LLM has promoted (or modified) a long-lived goal in
-        // this turn. The engine surfaces `persist: true` on items the
-        // LLM marks for cross-session persistence; without `persist`,
-        // the item is a within-turn checklist row that doesn't write
-        // to the Goal table and shouldn't trigger a refetch.
-        if (event.items.some((it) => it.persist === true)) {
-          setGoalRefreshKey((k) => k + 1);
-        }
         break;
       }
 
@@ -1579,9 +1561,5 @@ export function useEngine({ address, jwt, onToolResult, contacts }: UseEngineOpt
     // handleRegenerate above, but for `<PendingInputBlockView>` and
     // its `onPendingInputSubmit` slot.
     handlePendingInputSubmit,
-    // [SPEC 9 v0.1.3 P9.6] Refresh signal for `<OpenGoalsSidebar>` —
-    // bumps every time a `todo_update` event arrives with at least
-    // one `persist: true` item (LLM-promoted long-lived goal).
-    goalRefreshKey,
   };
 }

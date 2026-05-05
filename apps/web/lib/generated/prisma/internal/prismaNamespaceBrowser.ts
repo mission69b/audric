@@ -57,7 +57,6 @@ export const ModelName = {
   SessionUsage: 'SessionUsage',
   ServicePurchase: 'ServicePurchase',
   SavingsGoal: 'SavingsGoal',
-  Goal: 'Goal',
   AppEvent: 'AppEvent',
   AdviceLog: 'AdviceLog',
   Payment: 'Payment',
@@ -171,20 +170,6 @@ export const SavingsGoalScalarFieldEnum = {
 } as const
 
 export type SavingsGoalScalarFieldEnum = (typeof SavingsGoalScalarFieldEnum)[keyof typeof SavingsGoalScalarFieldEnum]
-
-
-export const GoalScalarFieldEnum = {
-  id: 'id',
-  userId: 'userId',
-  content: 'content',
-  status: 'status',
-  sourceSessionId: 'sourceSessionId',
-  createdAt: 'createdAt',
-  updatedAt: 'updatedAt',
-  completedAt: 'completedAt'
-} as const
-
-export type GoalScalarFieldEnum = (typeof GoalScalarFieldEnum)[keyof typeof GoalScalarFieldEnum]
 
 
 export const AppEventScalarFieldEnum = {

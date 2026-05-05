@@ -20,7 +20,6 @@ import {
 } from '@/lib/engine/engine-factory';
 import { UpstashSessionStore } from '@/lib/engine/upstash-session-store';
 import { logSessionUsage } from '@/lib/engine/log-session-usage';
-import { handlePersistentTodos } from '@/lib/engine/handle-persistent-todos';
 import { getSessionSpend } from '@/lib/engine/session-spend';
 import {
   TurnMetricsCollector,
@@ -1106,14 +1105,6 @@ export async function POST(request: NextRequest) {
           if (saveSession && sessionId && address) {
             handleAdviceResults(address, sessionId, messages).catch((err) =>
               console.error('[engine/chat] advice log failed:', err),
-            );
-            // [SPEC 9 v0.1.3 P9.3] Persist any update_todo items flagged
-            // `persist: true` into the Goal table so they survive across
-            // sessions. Fire-and-forget — DB failure never surfaces to
-            // the user (the missed Goal write self-heals on the next
-            // turn the LLM re-emits via update_todo).
-            handlePersistentTodos(address, sessionId, messages).catch((err) =>
-              console.error('[engine/chat] persistent todo write failed:', err),
             );
           }
 
