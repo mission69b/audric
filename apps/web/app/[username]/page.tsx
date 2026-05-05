@@ -5,10 +5,10 @@ import { resolveSuinsViaRpc, SuinsRpcError } from '@t2000/engine';
 import { SuiPayQr } from '@/components/pay/SuiPayQr';
 import { AudricMark } from '@/components/ui/AudricMark';
 import { AddressCopyButton } from './AddressCopyButton';
+import { SendToHandleButton } from './SendToHandleButton';
 import { getSuiRpcUrl } from '@/lib/sui-rpc';
 import { isReserved } from '@/lib/identity/reserved-usernames';
 import { validateAudricLabel } from '@/lib/identity/validate-label';
-import { buildSuiPayUri } from '@/lib/sui-pay-uri';
 
 /**
  * SPEC 10 D.1 — Public profile page (stub) at `audric.ai/[username]`
@@ -22,11 +22,18 @@ import { buildSuiPayUri } from '@/lib/sui-pay-uri';
  *   - 404 on unresolved / invalid / reserved labels (Next `notFound()`)
  *   - Render a centered profile card with:
  *       • Audric mark + 🪪 emoji + full handle
- *       • Truncated + copyable address
  *       • SuiPayQr in open-receive mode (same wrapper + AudricMark logo +
- *         sui:pay deep-link as the receive flow + SPEC 10 success state)
- *       • "Open in Sui wallet" CTA (sui:pay deep-link button) — opens
- *         Slush/Phantom/Suiet directly on mobile
+ *         sui:pay deep-link as the receive flow + SPEC 10 success state) —
+ *         visitors with a phone wallet can scan
+ *       • Truncated address
+ *       • <SendToHandleButton> — dapp-kit ConnectModal + amount input +
+ *         direct USDC transfer (works on desktop browsers with Slush
+ *         extension; mirrors the `<PayButton>` pattern from /pay/[slug]).
+ *         REPLACED the original v1 `sui:pay?…` deep-link button which
+ *         silently no-op'd on desktop — see SendToHandleButton header
+ *         for the full rationale.
+ *       • Below a divider: <AddressCopyButton> for visitors who want to
+ *         paste into a CEX withdrawal form
  *       • "Powered by Audric Passport" footer + signup CTA
  *   - OpenGraph + Twitter card metadata for share previews
  *
@@ -121,7 +128,6 @@ export default async function UsernamePage({ params }: UsernamePageProps) {
   if (!resolved) notFound();
 
   const { handle, address } = resolved;
-  const deepLink = buildSuiPayUri({ recipient: address });
 
   return (
     <main className="min-h-screen bg-surface-page flex flex-col items-center justify-center px-4 py-12">
@@ -155,19 +161,18 @@ export default async function UsernamePage({ params }: UsernamePageProps) {
             </div>
           </div>
 
-          <div className="space-y-2">
-            <AddressCopyButton address={address} />
-            <a
-              href={deepLink}
-              className="block w-full rounded-md border border-border-strong bg-fg-primary px-4 py-2.5 text-center text-[12px] font-medium text-fg-inverse transition-opacity hover:opacity-90"
-            >
-              Open in Sui wallet
-            </a>
-          </div>
+          <SendToHandleButton recipientAddress={address} handle={handle} />
 
-          <p className="text-center text-[11px] text-fg-secondary">
-            Scan, copy, or tap to send {handle} USDC, SUI, or any token.
-          </p>
+          <div className="space-y-2 border-t border-border-subtle pt-4">
+            <p className="text-center text-[10px] uppercase tracking-[0.08em] text-fg-muted">
+              or send from another wallet
+            </p>
+            <AddressCopyButton address={address} />
+            <p className="text-center text-[11px] text-fg-secondary">
+              Scan the QR with your phone wallet, or paste this address into any Sui wallet or
+              exchange withdrawal form.
+            </p>
+          </div>
         </div>
 
         <div className="mt-6 text-center">
