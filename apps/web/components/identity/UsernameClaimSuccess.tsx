@@ -115,7 +115,7 @@ export function UsernameClaimSuccess({
   return (
     <div
       data-testid="username-claim-success"
-      className="space-y-5 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-5"
+      className="space-y-5 rounded-lg border border-success-border bg-success-bg p-5"
     >
       <div className="space-y-2 text-center">
         <div className="text-2xl" aria-hidden="true">
@@ -204,7 +204,7 @@ export function UsernameClaimSuccess({
             type="button"
             onClick={onContinue}
             data-testid="username-claim-success-continue"
-            className="inline-flex items-center justify-center rounded-md border border-border-strong bg-fg-primary px-4 py-2 text-[12px] font-medium text-bg-primary transition-opacity hover:opacity-90"
+            className="inline-flex items-center justify-center rounded-md border border-border-strong bg-fg-primary px-4 py-2 text-[12px] font-medium text-fg-inverse transition-opacity hover:opacity-90"
           >
             Continue to Audric
           </button>

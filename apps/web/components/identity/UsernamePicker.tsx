@@ -364,7 +364,7 @@ export function UsernamePicker({
             type="submit"
             disabled={!canSubmit}
             data-testid="username-picker-submit"
-            className="inline-flex items-center justify-center rounded-md border border-border-strong bg-fg-primary px-4 py-2 text-[12px] font-medium text-bg-primary transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex items-center justify-center rounded-md border border-border-strong bg-fg-primary px-4 py-2 text-[12px] font-medium text-fg-inverse transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {submitLabel}
           </button>
@@ -428,10 +428,11 @@ function StatusLine({ status, input }: StatusLineProps) {
   if (!message) {
     return <div id="username-picker-status" className="h-4" aria-hidden="true" />;
   }
+  // Semantic tokens (DS Rule 1): theme-flip via globals.css, never raw palette.
   const tone = isErrorStatus(status)
-    ? 'text-red-400'
+    ? 'text-error-fg'
     : status === 'available'
-      ? 'text-emerald-400'
+      ? 'text-success-fg'
       : 'text-fg-secondary';
   return (
     <div
@@ -519,14 +520,19 @@ function chipIndicator(s: UsernameCheckStatus): string {
 }
 
 function chipTone(s: UsernameCheckStatus): string {
+  // Semantic tokens (DS Rule 1): success-* / error-* theme-flip via globals.css.
+  // The available chip's hover bumps opacity slightly via opacity-90 → opacity-100
+  // pattern instead of a custom darker fill, since success-bg has different
+  // values per theme (g200 solid in light, rgba 0.14 in dark) and a custom
+  // hover fill would need to be defined per theme too.
   if (s === 'available') {
-    return 'border-emerald-500/40 bg-emerald-500/10 text-fg-primary hover:bg-emerald-500/20';
+    return 'border-success-border bg-success-bg text-success-fg hover:opacity-90';
   }
   if (s === 'checking') {
     return 'border-border-subtle bg-surface-page/60 text-fg-secondary';
   }
   // taken / reserved / error
-  return 'border-red-500/30 bg-red-500/5 text-fg-secondary opacity-70';
+  return 'border-error-border bg-error-bg text-fg-secondary opacity-70';
 }
 
 // ───────────────────────────────────────────────────────────────────────────

@@ -222,7 +222,7 @@ export function UsernameClaimGate({
         <div
           data-testid="username-claim-gate-error"
           role="alert"
-          className="rounded-md border border-red-500/30 bg-red-500/5 px-3 py-2 text-[12px] text-red-400"
+          className="rounded-md border border-error-border bg-error-bg px-3 py-2 text-[12px] text-error-fg"
         >
           {errorMessage}
         </div>
