@@ -6,8 +6,20 @@ import { buildSuiPayUri } from '@/lib/sui-pay-uri';
 
 interface SuiPayQrProps {
   recipientAddress: string;
+  /**
+   * Amount in token units (e.g. 5.50 USDC). `null` for open-receive
+   * mode ("send me whatever") — the QR encodes a bare `sui:pay?recipient=…`
+   * deep-link without an amount or nonce.
+   */
   amount: number | null;
-  nonce: string;
+  /**
+   * Required ONLY when `amount` is set (invoice mode). Open-receive mode
+   * (amount === null) ignores it — the URI has no nonce because there's
+   * no payment to deduplicate. Optional in the type so consumers like
+   * SPEC 10's UsernameClaimSuccess (open-receive only) don't have to
+   * pass a placeholder.
+   */
+  nonce?: string;
   label?: string | null;
   memo?: string | null;
   size?: number;

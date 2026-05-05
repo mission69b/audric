@@ -18,13 +18,22 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { UsernameClaimSuccess } from '../UsernameClaimSuccess';
 
-// Mock the QR code module — we don't care about the actual SVG render in
-// component tests (the QrCode module is tested elsewhere, and rendering
-// real QR canvas in jsdom would just slow tests down).
-vi.mock('@/components/dashboard/QrCode', () => ({
-  QrCode: ({ value, size }: { value: string; size?: number }) => (
-    <div data-testid="mock-qr-code" data-value={value} data-size={size}>
-      QR({value})
+// Mock the SuiPayQr wrapper — UsernameClaimSuccess consumes it directly
+// (since the v0.6 QR-consistency fix that brought the success state in
+// line with the rest of audric's receive flow). The mock surfaces the
+// recipient + amount via data-* attrs so we can assert open-receive
+// semantics (amount=null → bare sui:pay?recipient=… deep-link, no
+// invoice nonce). The underlying QrCode + AudricMark + buildSuiPayUri
+// stack is tested separately in their own test files.
+vi.mock('@/components/pay/SuiPayQr', () => ({
+  SuiPayQr: ({ recipientAddress, amount, size }: { recipientAddress: string; amount: number | null; size?: number }) => (
+    <div
+      data-testid="mock-sui-pay-qr"
+      data-recipient={recipientAddress}
+      data-amount={amount === null ? 'null' : String(amount)}
+      data-size={size}
+    >
+      SuiPayQr({recipientAddress})
     </div>
   ),
 }));
@@ -110,7 +119,7 @@ describe('UsernameClaimSuccess', () => {
   });
 
   describe('show QR toggle', () => {
-    it('expands to reveal QR + handle + truncated address', () => {
+    it('expands to reveal SuiPayQr + handle + truncated address', () => {
       render(
         <UsernameClaimSuccess
           label="alice"
@@ -123,11 +132,15 @@ describe('UsernameClaimSuccess', () => {
       fireEvent.click(screen.getByTestId('username-claim-success-qr-toggle'));
       const panel = screen.getByTestId('username-claim-success-qr-panel');
       expect(panel).toBeTruthy();
-      // QR encodes the bare 0x (per D8 wallet compat).
-      const qr = screen.getByTestId('mock-qr-code');
-      expect(qr.getAttribute('data-value')).toBe(
+      // SuiPayQr renders in open-receive mode (amount=null) with the
+      // user's address as the recipient. The actual deep-link payload
+      // (sui:pay?recipient=…) is built inside SuiPayQr — tested in
+      // payment-kit.test.ts. Here we only assert the contract.
+      const qr = screen.getByTestId('mock-sui-pay-qr');
+      expect(qr.getAttribute('data-recipient')).toBe(
         '0x40cd000000000000000000000000000000000000000000000000000000003e62',
       );
+      expect(qr.getAttribute('data-amount')).toBe('null');
       // Handle rendered above truncated address inside the panel.
       expect(panel.textContent).toContain('alice.audric.sui');
       expect(panel.textContent).toContain('0x40cd…3e62');

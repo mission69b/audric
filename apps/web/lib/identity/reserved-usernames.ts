@@ -64,6 +64,24 @@ const D3_BASELINE = [
   // low identity meaning, classic squat targets)
   'mom',
   'dad',
+
+  // Route-collision protection (added with SPEC 10 D.1 stub — S.74).
+  // These match top-level static routes under `app/`. Next.js prioritizes
+  // static segments over the `[username]` dynamic route, so claiming one
+  // of these would resolve to the static page (homepage, settings, etc.)
+  // instead of the user's profile — confusing for the would-be claimant
+  // and unfixable post-claim. Keep this list in sync with every new
+  // top-level static folder added to `app/`.
+  'new',
+  'chat',
+  'settings',
+  'auth',
+  'invoice',
+  'litepaper',
+  'privacy',
+  'terms',
+  'disclaimer',
+  'security',
 ] as const;
 
 /**

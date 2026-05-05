@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useState } from 'react';
-import { QrCode } from '@/components/dashboard/QrCode';
+import { SuiPayQr } from '@/components/pay/SuiPayQr';
 
 // ───────────────────────────────────────────────────────────────────────────
 // SPEC 10 Phase B.3 — UsernameClaimSuccess
@@ -27,14 +27,17 @@ import { QrCode } from '@/components/dashboard/QrCode';
 //      `alice.sui`); never copies the bare 0x (different sharing intent —
 //      bare 0x is for "send me USDC", the handle is for "this is me").
 //
-//   2. Show on QR — toggle that expands an inline QR. Per SPEC 10 D8 +
-//      C.4 the QR encodes the bare 0x address (cross-wallet compat —
-//      Slush, Phantom, Suiet all scan a 0x but not all parse a SuiNS
-//      handle). The full handle is rendered above the QR as the
-//      human-readable label so a person scanning still knows whose
-//      address it is. If `walletAddress` isn't provided (e.g. caller
-//      doesn't have it from the reserve response — currently they DO,
-//      but defensive), the QR section is hidden entirely rather than
+//   2. Show on QR — toggle that expands an inline QR. Uses <SuiPayQr> in
+//      open-receive mode (amount=null) for visual + payload consistency
+//      with the rest of audric's receive flow (FeedRenderer 'receipt'
+//      cards, PayClient's invoice QR — all share the same SuiPayQr
+//      wrapper with AudricMark center logo + sui:pay?recipient=…&coinType=…
+//      deep-link payload). Phone-camera scans open Slush/Phantom/Suiet
+//      directly with the address pre-filled. The full handle is rendered
+//      above the QR as the human-readable label so a person scanning still
+//      knows whose address it is. If `walletAddress` isn't provided (e.g.
+//      caller doesn't have it from the reserve response — currently they
+//      DO, but defensive), the QR section is hidden entirely rather than
 //      faking a QR with the handle.
 //
 //   3. Share to X — opens X (Twitter) compose intent in a new tab,
@@ -185,7 +188,7 @@ export function UsernameClaimSuccess({
           data-testid="username-claim-success-qr-panel"
           className="flex flex-col items-center gap-2 rounded-md bg-surface-page p-3"
         >
-          <QrCode value={walletAddress} size={180} />
+          <SuiPayQr recipientAddress={walletAddress} amount={null} size={180} />
           <div className="text-center">
             <div className="font-mono text-[12px] text-fg-primary">{fullHandle}</div>
             <div className="font-mono text-[10px] text-fg-secondary">
