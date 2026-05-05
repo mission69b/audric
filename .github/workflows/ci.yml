@@ -65,6 +65,10 @@ jobs:
       T2000_INTERNAL_KEY: ci-placeholder-t2000
       UPSTASH_REDIS_REST_URL: https://ci.upstash.io
       UPSTASH_REDIS_REST_TOKEN: ci-placeholder-redis
+      # SPEC 10 B.2 — required as of S.69 follow-up. Placeholder doesn't
+      # need to decode as a real Bech32 key; env-gate only enforces
+      # non-empty-string. Format-validation lives at the route boundary.
+      AUDRIC_PARENT_NFT_PRIVATE_KEY: ci-placeholder-suiprivkey
       NEXT_PUBLIC_GOOGLE_CLIENT_ID: ci-placeholder-google
       NEXT_PUBLIC_ENOKI_API_KEY: ci-placeholder-enoki-pub
     steps:
