@@ -1,7 +1,7 @@
 // ───────────────────────────────────────────────────────────────────────────
 // SPEC 9 v0.1.3 P9.4 — /api/engine/resume-with-input route helpers
 //
-// Covers the pure helpers exported via `__testables`:
+// Covers the pure helpers exported from `./route-helpers`:
 //   1. validateValues — schema-keyed defense-in-depth (Zod-style coercion)
 //   2. resolveRecipientField — sui-recipient polymorphic resolution
 //   3. persistAddRecipientContact — Contact upsert + dedupe
@@ -11,7 +11,11 @@
 // ───────────────────────────────────────────────────────────────────────────
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { __testables } from './route';
+import {
+  validateValues,
+  resolveRecipientField,
+  persistAddRecipientContact,
+} from './route-helpers';
 import type { FormSchema } from '@/lib/engine/sse-types';
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -52,8 +56,6 @@ vi.mock('@/lib/prisma', () => ({
 }));
 
 import { prisma } from '@/lib/prisma';
-
-const { validateValues, resolveRecipientField, persistAddRecipientContact } = __testables;
 
 // ───────────────────────────────────────────────────────────────────────────
 // validateValues
