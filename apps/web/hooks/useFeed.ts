@@ -19,6 +19,16 @@ export function useFeed() {
     setItems((prev) => prev.slice(0, -1));
   }, []);
 
+  /**
+   * Remove a feed item by id. Used by dismissable cards (e.g. the
+   * `contact-prompt` ContactToast Skip path) so the item leaves the
+   * feed instead of just fading to opacity-0 in place. No-op if the
+   * id isn't present (idempotent — multiple Skip clicks are safe).
+   */
+  const removeItem = useCallback((id: string) => {
+    setItems((prev) => prev.filter((it) => it.id !== id));
+  }, []);
+
   const updateLastItem = useCallback((updater: (data: FeedItemData) => FeedItemData) => {
     setItems((prev) => {
       if (prev.length === 0) return prev;
@@ -44,5 +54,5 @@ export function useFeed() {
     setItems([]);
   }, []);
 
-  return { items, addItem, addItems, removeLastItem, updateLastItem, updateLastOfType, clear, scrollRef };
+  return { items, addItem, addItems, removeLastItem, removeItem, updateLastItem, updateLastOfType, clear, scrollRef };
 }

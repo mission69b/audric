@@ -162,12 +162,20 @@ export function FeedItemCard({
   onChipClick,
   onCopy,
   onSaveContact,
+  onDismissItem,
   onConfirmResolve,
 }: {
   item: FeedItem;
   onChipClick: (flow: string) => void;
   onCopy?: (text: string) => void;
   onSaveContact?: (name: string, address: string) => void;
+  /**
+   * Remove an item from the feed by id. Wired into dismissable cards
+   * (currently `contact-prompt`'s Skip / 8s auto-dismiss path) so the
+   * card actually leaves the feed instead of just fading invisible
+   * and leaving an empty row of vertical space behind it.
+   */
+  onDismissItem?: (id: string) => void;
   onConfirmResolve?: (approved: boolean) => void;
 }) {
   const { data } = item;
@@ -433,8 +441,11 @@ export function FeedItemCard({
       return (
         <ContactToast
           address={data.address}
-          onSave={(name) => onSaveContact?.(name, data.address)}
-          onDismiss={() => {}}
+          onSave={(name) => {
+            onSaveContact?.(name, data.address);
+            onDismissItem?.(item.id);
+          }}
+          onDismiss={() => onDismissItem?.(item.id)}
         />
       );
 

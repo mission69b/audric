@@ -1728,6 +1728,7 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
               onChipClick={handleFeedChipClick}
               onCopy={handleCopy}
               onSaveContact={handleSaveContact}
+              onDismissItem={feed.removeItem}
               onExecuteAction={handleExecuteAction}
               onExecuteBundle={handleExecuteBundle}
               onValidateAction={validateAction}

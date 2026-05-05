@@ -68,6 +68,8 @@ interface UnifiedTimelineProps {
   onChipClick: (flow: string) => void;
   onCopy?: (text: string) => void;
   onSaveContact?: (name: string, address: string) => void;
+  /** Remove a feed item by id. Required for dismissable cards (contact-prompt). */
+  onDismissItem?: (id: string) => void;
   onConfirmResolve?: (approved: boolean) => void;
   onExecuteAction?: ExecuteActionFn;
   /**
@@ -129,6 +131,7 @@ export function UnifiedTimeline({
   onChipClick,
   onCopy,
   onSaveContact,
+  onDismissItem,
   onConfirmResolve,
   onExecuteAction,
   onExecuteBundle,
@@ -485,6 +488,7 @@ export function UnifiedTimeline({
             onChipClick={onChipClick}
             onCopy={onCopy}
             onSaveContact={onSaveContact}
+            onDismissItem={onDismissItem}
             onConfirmResolve={onConfirmResolve}
           />
         );
