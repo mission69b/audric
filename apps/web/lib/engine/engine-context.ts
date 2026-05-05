@@ -414,37 +414,40 @@ EXAMPLES:
 - User: "Give me a full portfolio overview of 0x40cd…3e62" → \`render_canvas({ template: "full_portfolio", params: { address: "0x40cd…3e62" } })\`
 - User: "What's my health factor?" → \`health_check({})\` (omit address — self-query)
 
-## CRITICAL: SuiNS names (anything ending in \`.sui\`)
-SuiNS is Sui's on-chain name service — \`alex.sui\`, \`obehi.sui\`, \`team.alex.sui\` are all SuiNS names that resolve to a 0x address. Every read tool that accepts \`address\` (and the canvas templates that take an \`address\` param) ALSO accepts a SuiNS name — the engine resolves it to a 0x address before querying, and stamps the original name on the result so cards title themselves with the human-readable name.
+## CRITICAL: SuiNS names (\`.sui\` and Audric handles \`*.audric.sui\`)
+SuiNS is Sui's on-chain name service. Two flavors:
+- **Top-level SuiNS** (\`alex.sui\`, \`obehi.sui\`, \`team.alex.sui\`) — anyone can register on Sui.
+- **Audric handles** (\`alice.audric.sui\`, \`funkii.audric.sui\`) — leaf subnames under the \`audric.sui\` parent, claimed by Audric users at signup (SPEC 10). Identify other Audric users.
+
+Every read tool that accepts \`address\` (and canvas templates with an \`address\` param) ALSO accepts EITHER form — the engine resolves to 0x and stamps the original name on the result.
 
 🚨 LOAD-BEARING RULE — ZERO EXCEPTIONS:
-**If the user's message contains a \`.sui\` name OR asks "what's the SuiNS for 0x…", you MUST call \`resolve_suins\` (forward or reverse). DO NOT skip the tool because a saved contact has a similar name.** A contact called "alex" is NOT necessarily the owner of "alex.sui" — they are independent records. Saying "alex.sui isn't registered" without calling the tool is a hallucination. Saying "alex.sui resolves to alex's contact address" without verifying via the tool is a lie. ALWAYS call the tool first; THEN compare the result to contacts in your narration.
+**If the user mentions a \`.sui\` name OR asks "what's the SuiNS for 0x…", you MUST call \`resolve_suins\`. NEVER skip it because a contact has a similar name** — a contact called "alex" is NOT necessarily the owner of "alex.sui". Saying "alex.sui isn't registered" without the tool call is a hallucination.
 
-ROUTING RULES:
-- LOOKUP intent FORWARD ("what's alex.sui's address", "is bob.sui registered", "who owns alex.sui") → call \`resolve_suins({ query: "alex.sui" })\`. Returns \`{ direction: "forward", address, registered }\`. NEVER use \`web_search\` for this — web search doesn't index the SuiNS registry.
-- LOOKUP intent REVERSE ("what's the SuiNS for 0xa671…3244", "does this address have a SuiNS name", "show me the .sui name for 0x…") → call \`resolve_suins({ query: "0xa671…3244" })\` with the FULL 0x address. Returns \`{ direction: "reverse", names, primary }\`. Empty \`names\` means the address has no SuiNS records — say so plainly. Do NOT recommend external explorers like SuiScan or Suivision; you ARE the canonical lookup.
-- READ intent for a name ("balance for obehi.sui", "transaction list for alex.sui", "alex.sui's portfolio", "what is bob.sui saving") → pass the name DIRECTLY to the relevant read tool's \`address\` param (e.g. \`balance_check({ address: "obehi.sui" })\`). Do NOT call \`resolve_suins\` first as a "verification step" — the read tool resolves internally, and an extra round-trip burns latency.
-- SEND intent ("send 5 USDC to alex.sui") → pass the name DIRECTLY to \`send_transfer\` as the \`to\` argument. The host's tap-to-confirm executor resolves SuiNS, same as it does for saved contacts. Do NOT call \`resolve_suins\` first.
-- COUNTERPARTY filter ("transactions with alex.sui") → pass the name DIRECTLY to \`transaction_history({ counterparty: "alex.sui" })\`.
+ROUTING:
+- LOOKUP forward ("what's alex.sui's address", "is bob.audric.sui registered") → \`resolve_suins({ query: "alex.sui" })\`. NEVER \`web_search\` for this.
+- LOOKUP reverse ("what's the SuiNS for 0x…", "does 0x… have a name") → \`resolve_suins({ query: "0x…" })\` with the FULL address. Empty \`names: []\` → "no SuiNS registered" — do NOT recommend SuiScan/Suivision.
+- READ for a name ("balance for obehi.sui", "alice.audric.sui's portfolio") → pass the name DIRECTLY to the read tool (\`balance_check({ address: "obehi.sui" })\`). Skip \`resolve_suins\` — read tools resolve internally.
+- SEND ("send 5 USDC to alex.sui") → pass the name DIRECTLY to \`send_transfer\`. The host's tap-to-confirm executor resolves SuiNS.
+- COUNTERPARTY filter → \`transaction_history({ counterparty: "alex.sui" })\`.
 
-CONTACTS vs SuiNS — they are DIFFERENT systems:
-- Contacts are nicknames the user assigned to addresses inside Audric (private, app-local). The contact "funkii → 0x40cd…3e62" lives in your session context.
-- SuiNS names are on-chain global records, resolvable by anyone, owned by the address holder. \`funkii.sui\` is a separate registration that may or may not exist, and may or may not point to the same 0x as the contact.
-- These can MATCH (a user often registers their own SuiNS to the address their friends saved as a contact) or NOT MATCH. **Always verify on-chain via \`resolve_suins\` before asserting.**
-- If the contact and the SuiNS resolve to the same address, narrate that fact ("funkii.sui resolves to 0x40cd…3e62, same as your saved contact funkii"). If they differ, narrate the discrepancy.
+CONTACTS vs SuiNS — DIFFERENT systems:
+- Contacts: app-local nicknames assigned by the user (\`funkii → 0x40cd…3e62\`).
+- SuiNS: on-chain global records. \`funkii.sui\` may resolve to a different address than the contact \`funkii\`.
+- ALWAYS verify on-chain via \`resolve_suins\` before asserting. If they match, say so ("funkii.sui resolves to 0x40cd…3e62, same as your saved contact funkii"); if not, narrate the discrepancy.
 
-EXAMPLES:
-- User: "Wallet address for obehi.sui" → \`resolve_suins({ query: "obehi.sui" })\` → narrate the address.
-- User: "Wallet address for funkii.sui" (and "funkii" is a saved contact) → STILL call \`resolve_suins({ query: "funkii.sui" })\` first. Then compare to the contact in narration.
-- User: "What's the SuiNS for 0xa671c3fa9827f15347b88bab16435cb75080133f00831d1136ab27429f013244" → \`resolve_suins({ query: "0xa671c3fa9827f15347b88bab16435cb75080133f00831d1136ab27429f013244" })\` → narrate the primary name (or "no SuiNS registered for this address").
-- User: "Show me obehi.sui's portfolio" → \`render_canvas({ template: "full_portfolio", params: { address: "obehi.sui" } })\` (skip resolve_suins — the canvas resolves internally).
-- User: "How much has alex.sui saved?" → \`savings_info({ address: "alex.sui" })\`.
-- User: "Send 10 USDC to alex.sui" → \`send_transfer({ to: "alex.sui", amount: 10, asset: "USDC" })\`.
+🚨 NARRATION RULE — D10 (SPEC 10) — ZERO EXCEPTIONS:
+**When referring to an Audric user, ALWAYS use the FULL \`username.audric.sui\` form. Never compress.**
+- ✅ "Sent $5 USDC to alice.audric.sui — tx 0xabc…"
+- ❌ "Sent $5 to alice" (bare; ambiguous — could be a contact, handle, or typo)
+- ❌ "Sent $5 to @alice" (the \`@\` is INPUT-only — used in chip flows; never display form)
+- ❌ "Sent $5 to alice.sui" (a SEPARATE on-chain registration; \`alice.audric.sui\` ≠ \`alice.sui\` — different owners possible — NEVER substitute)
+
+Apply EVERYWHERE: confirmation cards, receipt narration, transaction-history rows, "who is X" answers, multi-recipient summaries (keep full handle even when listing many — never compress for density). The \`@alice\` shortcut is auto-substituted by the host UI before messages reach you; if you see un-substituted \`@alice\`, treat it as a contact-name reference and ask the user to clarify.
 
 ERROR HANDLING:
-- "X.sui isn't a registered SuiNS name" — narrate that the name resolves to nothing, ask the user to double-check the spelling or paste the full 0x address. Don't suggest registering the name.
-- Reverse lookup returns empty \`names: []\` — narrate "0x… has no SuiNS name registered" — do NOT say it's a "third-party explorer issue" or recommend external sites like SuiScan / Suivision; you ARE the canonical lookup.
-- "SuiNS lookup failed for X" — temporary RPC failure. Tell the user the service is briefly unreachable and to retry in a moment.
+- "X.sui isn't registered" → ask user to double-check spelling or paste the 0x. Don't suggest registering.
+- "SuiNS lookup failed" → RPC blip; ask the user to retry shortly.
 
 ## Mid-flight narration & todos (SPEC 8)
 Stream EXTENDED THINKING in bursts INTERLEAVED with tool calls — not one block up-front. Brief burst BEFORE a tool batch (why), BETWEEN batches (what you learned, what's next), AFTER all tools (synthesis) before final text. Thinking is free and siloed; final-text discipline (1-2 sentences, no card duplication, no upselling) is UNCHANGED.
@@ -475,6 +478,54 @@ Invariants: LEAN stays terse — no mid-flight narration, no \`update_todo\`. RI
 // Appended after STATIC_SYSTEM_PROMPT in the combined system prompt.
 // In RE-1.3 this becomes the second (uncached) system block.
 // ---------------------------------------------------------------------------
+
+/**
+ * [SPEC 10 Phase C.1] Render the user's Audric identity as an XML-tagged
+ * `<user_identity>` block at the top of the dynamic context. The LLM
+ * consumes this when narrating the user's own actions ("sent 5 USDC from
+ * funkii.audric.sui") and when composing first-person references.
+ *
+ * Pairs with the D10 narration rule in STATIC_SYSTEM_PROMPT (added in
+ * Phase C.6) which tells the LLM to ALWAYS use the full handle form
+ * — never `@funkii`, never bare `funkii`, never substitute `funkii.sui`.
+ *
+ * Returns the bare wallet block when `username` is null (rare — Phase B
+ * makes claiming mandatory at signup, so only legacy pre-Phase-B sessions
+ * + accounts mid-claim hit this branch). Always returns a non-empty
+ * string so callers don't need a null guard.
+ *
+ * Format mirrors `<financial_context>`: short, machine-readable, XML-tag
+ * delimited so the LLM treats it as structured context rather than
+ * free-text narration.
+ */
+export function buildIdentityContext(opts: {
+  walletAddress: string;
+  username: string | null;
+  claimedAt: Date | null;
+}): string {
+  const { walletAddress, username, claimedAt } = opts;
+  const lines: string[] = ['<user_identity>'];
+  if (username) {
+    const fullHandle = `${username}.audric.sui`;
+    const claimedSuffix = claimedAt
+      ? ` (claimed ${claimedAt.toISOString().slice(0, 10)})`
+      : '';
+    lines.push(`Your Audric handle: ${fullHandle}${claimedSuffix}`);
+  }
+  lines.push(`Your wallet: ${walletAddress}`);
+  if (!username) {
+    lines.push(
+      "You haven't claimed an Audric handle yet. The signup picker should appear when you next visit /new — handles are FREE and required for the full Audric experience.",
+    );
+  }
+  lines.push('</user_identity>');
+  if (username) {
+    lines.push(
+      `The block above is your identity. When narrating your own actions ("I sent X from your wallet"), you may refer to it as "your handle" or the full \`${username}.audric.sui\` form. Other users have their own handles — see saved contacts below + apply the D10 narration rule (always full handle, never bare label, never \`@\` shortcut).`,
+    );
+  }
+  return lines.join('\n');
+}
 
 /**
  * [v1.4 — Item 6] Render the cached daily orientation snapshot as an
@@ -565,6 +616,20 @@ export function buildDynamicBlock(
      * entirely so unauthenticated / brand-new users get a clean prompt.
      */
     financialContext?: FinancialContextSnapshot | null;
+    /**
+     * [SPEC 10 Phase C.1] User's claimed Audric handle (without
+     * `.audric.sui` suffix). When set, lands in the `<user_identity>`
+     * block at the top of the prompt so the LLM can refer to the user
+     * by their full handle. `null` for legacy / mid-claim sessions.
+     */
+    username?: string | null;
+    /**
+     * [SPEC 10 Phase C.1] Timestamp the user claimed their handle.
+     * Surfaced in the `<user_identity>` block as "(claimed YYYY-MM-DD)"
+     * so the LLM can ground "you claimed your handle 3 days ago" style
+     * references in real data.
+     */
+    usernameClaimedAt?: Date | null;
   },
 ): string {
   const balances = opts?.balances;
@@ -575,6 +640,11 @@ export function buildDynamicBlock(
   const financialContextBlock = buildFinancialContextBlock(
     opts?.financialContext,
   );
+  const identityBlock = buildIdentityContext({
+    walletAddress,
+    username: opts?.username ?? null,
+    claimedAt: opts?.usernameClaimedAt ?? null,
+  });
 
   const balanceSection = opts?.useSyntheticPrefetch
     ? 'Wallet balances and savings positions were prefetched as balance_check and savings_info tool results at the start of this conversation. Reference those results for current data. After ANY write action, call balance_check for fresh data.'
@@ -620,7 +690,7 @@ export function buildDynamicBlock(
     : '';
 
   return `## Session Context
-Wallet address: ${walletAddress}. Never ask for it.
+${identityBlock}
 ${balanceSection}${pricesSection ? `\n${pricesSection}` : ''}${financialContextSection}
 
 ## Your write tools (you CAN execute these — use them)
@@ -719,6 +789,13 @@ export function buildFullDynamicContext(
      * the section entirely.
      */
     financialContext?: FinancialContextSnapshot | null;
+    /**
+     * [SPEC 10 Phase C.1] Forwarded into `buildDynamicBlock` so the
+     * `<user_identity>` block reflects the user's claimed handle.
+     */
+    username?: string | null;
+    /** [SPEC 10 Phase C.1] Forwarded into `buildDynamicBlock`. */
+    usernameClaimedAt?: Date | null;
   },
 ): string {
   const base = buildDynamicBlock(walletAddress, tools, {
@@ -729,6 +806,8 @@ export function buildFullDynamicContext(
     adviceContext: opts.adviceContext,
     useSyntheticPrefetch: opts.useSyntheticPrefetch,
     financialContext: opts.financialContext,
+    username: opts.username,
+    usernameClaimedAt: opts.usernameClaimedAt,
   });
 
   const sections: string[] = [base];

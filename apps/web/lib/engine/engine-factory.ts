@@ -294,7 +294,7 @@ export async function createEngine(
 
   const userRecord = await prisma.user.findUnique({
     where: { suiAddress: address },
-    select: { id: true },
+    select: { id: true, username: true, usernameClaimedAt: true },
   }).catch(() => null);
 
   const userId = userRecord?.id;
@@ -578,6 +578,8 @@ export async function createEngine(
     },
     useSyntheticPrefetch: isNewSession,
     financialContext,
+    username: userRecord?.username ?? null,
+    usernameClaimedAt: userRecord?.usernameClaimedAt ?? null,
   });
 
   const systemPrompt = buildCachedSystemPrompt([STATIC_SYSTEM_PROMPT], dynamicBlock);
