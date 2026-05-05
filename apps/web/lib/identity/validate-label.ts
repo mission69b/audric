@@ -10,15 +10,11 @@
  *      constraint, so it lives in audric not the SDK.
  *
  *   2. SuiNS protocol rules — lowercase ASCII + digits + hyphens, no
- *      leading/trailing/consecutive hyphens. These mirror
- *      `validateLabel()` in `@t2000/sdk`'s `protocols/suins-leaf.ts`.
- *      Currently inlined here because A.3 ships before the SDK release
- *      that exports `validateLabel` (committed in t2000 commit 28811e1e
- *      but not yet published to npm). When the SDK ships in B.2's
- *      release bump, replace this inlined check with a thin call to
- *      `validateLabel()` from `@t2000/sdk` — the protocol rules MUST
- *      stay byte-identical to the SDK's, since the SDK's `buildAddLeafTx`
- *      will throw if they diverge.
+ *      leading/trailing/consecutive hyphens. **Delegated to `validateLabel`
+ *      from `@t2000/sdk`** (since v1.22.0 / SPEC 10 Phase B.2). Single
+ *      source of truth lives in `packages/sdk/src/protocols/suins-leaf.ts`;
+ *      this file used to inline the regex while waiting for the SDK
+ *      release, but that duplication is now removed.
  *
  * Returns one of the SPEC 10 D3-defined `reason` codes that the
  * `/api/identity/check` route surfaces verbatim. Order matters — length
@@ -26,10 +22,10 @@
  * progressively rather than "invalid" the moment they type a hyphen.
  */
 
+import { validateLabel as validateSuinsLabel } from '@t2000/sdk';
+
 const LABEL_MIN = 3;
 const LABEL_MAX = 20;
-
-const LABEL_PATTERN = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/;
 
 export type LabelReason = 'invalid' | 'too-short' | 'too-long';
 
@@ -52,10 +48,8 @@ export function validateAudricLabel(raw: unknown): LabelValidation {
   if (label.length < LABEL_MIN) return { valid: false, reason: 'too-short' };
   if (label.length > LABEL_MAX) return { valid: false, reason: 'too-long' };
 
-  if (!LABEL_PATTERN.test(label)) {
-    return { valid: false, reason: 'invalid' };
-  }
-  if (label.includes('--')) {
+  const protocolCheck = validateSuinsLabel(label);
+  if (!protocolCheck.valid) {
     return { valid: false, reason: 'invalid' };
   }
 

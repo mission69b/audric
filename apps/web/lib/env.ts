@@ -129,6 +129,26 @@ const serverSchema = z.object({
   /** Override Sui RPC URL — defaults to BlockVision-routed mainnet. */
   SUI_RPC_URL: optionalString,
 
+  /**
+   * SPEC 10 Audric Passport custody keypair — Bech32-encoded suiprivkey
+   * for the address that owns the `audric.sui` parent NFT
+   * (`0xaca29165…23d11` per RUNBOOK §1). Loaded by `/api/identity/reserve`
+   * to sign leaf-mint PTBs server-side; never leaves the route.
+   *
+   * Optional in the env schema (env gate stays passing for builds where
+   * the key isn't yet uploaded to Vercel) but the consuming route
+   * fail-CLOSEs with 503 when missing — picker surfaces "verifier
+   * unavailable" rather than minting against a missing key.
+   *
+   * Promote to `requiredString` in a follow-up commit once the key has
+   * been verified live in Vercel and the founder has confirmed the
+   * single-key custody copy is the canonical operational source of truth
+   * (per RUNBOOK §2 item 2). The promotion is intentionally a separate
+   * commit so the env-gate change is independently reversible if the
+   * Vercel value gets nuked / rotated incorrectly.
+   */
+  AUDRIC_PARENT_NFT_PRIVATE_KEY: optionalString,
+
   /** Comma-separated session-id prefixes that mark synthetic/bot traffic. */
   SYNTHETIC_SESSION_PREFIXES: optionalString,
 
@@ -308,6 +328,7 @@ const runtimeEnv = {
   ELEVENLABS_VOICE_ID: process.env.ELEVENLABS_VOICE_ID,
   INTERNAL_API_KEY: process.env.INTERNAL_API_KEY,
   SUI_RPC_URL: process.env.SUI_RPC_URL,
+  AUDRIC_PARENT_NFT_PRIVATE_KEY: process.env.AUDRIC_PARENT_NFT_PRIVATE_KEY,
   SYNTHETIC_SESSION_PREFIXES: process.env.SYNTHETIC_SESSION_PREFIXES,
   PAYMENT_STREAM_DISABLE: process.env.PAYMENT_STREAM_DISABLE,
   NODE_ENV: process.env.NODE_ENV,
@@ -445,6 +466,7 @@ const SERVER_ONLY_KEYS = new Set([
   'ELEVENLABS_VOICE_ID',
   'INTERNAL_API_KEY',
   'SUI_RPC_URL',
+  'AUDRIC_PARENT_NFT_PRIVATE_KEY',
   'SYNTHETIC_SESSION_PREFIXES',
   'PAYMENT_STREAM_DISABLE',
   'NODE_ENV',
