@@ -37,6 +37,7 @@ import { buildSuiPayUri } from '@/lib/sui-pay-uri';
 import { useActivityFeed } from '@/hooks/useActivityFeed';
 import { NewConversationView } from '@/components/dashboard/NewConversationView';
 import { TosBanner } from '@/components/dashboard/TosBanner';
+import { UsernameClaimGate } from '@/components/identity/UsernameClaimGate';
 import { useUserStatus } from '@/hooks/useUserStatus';
 import { usePanel } from '@/hooks/usePanel';
 import { PortfolioPanel } from '@/components/panels/PortfolioPanel';
@@ -61,14 +62,33 @@ import { StorePanel } from '@/components/panels/StorePanel';
 // chip bar, chat input — and an inline HF widget when debt AND HF<2.0.
 
 function decodeJwtEmail(jwt: string | undefined): string | null {
+  return decodeJwtClaim(jwt, 'email');
+}
+
+// [SPEC 10 B-wiring] Same atob-based decoder as decodeJwtEmail but returns
+// the Google OIDC `name` claim — used to seed the username picker's smart
+// pre-fill suggestions. Lazy generic accessor avoids two near-identical
+// JSON.parse helpers when we'll likely need a third for `picture` later.
+function decodeJwtClaim(jwt: string | undefined, claim: 'email' | 'name'): string | null {
   if (!jwt) return null;
   try {
     const payload = jwt.split('.')[1];
     const decoded = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
-    return decoded.email ?? null;
+    const value = decoded[claim];
+    return typeof value === 'string' ? value : null;
   } catch {
     return null;
   }
+}
+
+// [SPEC 10 B-wiring] localStorage key for the per-address skip flag. Set
+// when the user clicks "Skip for now" in the picker so the gate doesn't
+// nag on subsequent dashboard loads (per SPEC 10 D2 — settings-page is
+// the safety valve for re-claim). Per-address (not per-device) so a user
+// who signs in on a fresh device gets one more nudge to claim before the
+// gate respects their skip — small re-engagement bonus, no UX cost.
+function usernameSkipStorageKey(address: string): string {
+  return `audric:username-skipped:${address}`;
 }
 
 function getGreeting(email: string | null): string {
@@ -283,6 +303,23 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
   const balanceQuery = useBalance(address);
   const activityFeed = useActivityFeed(address);
   const userStatus = useUserStatus(address, session?.jwt);
+  // [SPEC 10 B-wiring] Per-address localStorage skip flag for the username
+  // claim gate. Lazy initializer reads localStorage once on mount (SSR-safe
+  // via the typeof window guard); subsequent skip clicks update both state
+  // and storage so the same browser tab respects the dismissal across
+  // dashboard reloads. Settings page (D9) is the safety valve for re-claim.
+  const [usernameSkipped, setUsernameSkipped] = useState<boolean>(() => {
+    if (typeof window === 'undefined' || !address) return false;
+    return window.localStorage.getItem(usernameSkipStorageKey(address)) === '1';
+  });
+  // Address arrives from useZkLogin asynchronously, so the lazy initializer
+  // above can't always see it. This effect picks up the flag once we have
+  // an address — runs only when the address transitions from null → set.
+  useEffect(() => {
+    if (typeof window === 'undefined' || !address) return;
+    const stored = window.localStorage.getItem(usernameSkipStorageKey(address)) === '1';
+    setUsernameSkipped(stored);
+  }, [address]);
   const [agentBudget, setAgentBudget] = useState(0.50);
   // [v1.4 hotfix] Source of truth for the client-side permission tier gate
   // in <UnifiedTimeline>. Defaults to `balanced` when the user hasn't
@@ -1269,16 +1306,61 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
 
   if (!address || !session) return null;
   const email = decodeJwtEmail(session?.jwt);
+  const googleName = decodeJwtClaim(session?.jwt, 'name');
   const greeting = getGreeting(email);
 
   const tosBanner = !userStatus.loading && !userStatus.tosAccepted ? (
     <TosBanner onAccept={userStatus.acceptTos} />
   ) : null;
 
+  // [SPEC 10 B-wiring] Gate-render decision: only show the picker when
+  // we KNOW the user has no username AND hasn't dismissed via skip.
+  // `userStatus.loading` is checked explicitly so a freshly-arriving
+  // user never sees a flash of picker before status resolves (which
+  // would be a non-spec-compliant "uncontrolled" gate flash).
+  const shouldShowUsernameGate =
+    !userStatus.loading && userStatus.username === null && !usernameSkipped;
+
+  const handleUsernameClaimed = () => {
+    // Refetch userStatus so `userStatus.username` becomes non-null on
+    // the next render — gate hides naturally without a separate flag.
+    void userStatus.refetch();
+  };
+
+  const handleUsernameSkipped = () => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(usernameSkipStorageKey(address), '1');
+    }
+    setUsernameSkipped(true);
+  };
+
   const renderEmptyState = () => {
     const dailyYield = balance.savings > 0 && balance.savingsRate > 0
       ? (balance.savings * balance.savingsRate) / 365
       : 0;
+
+    // [SPEC 10 B-wiring] Picker takes over the empty state at signup. Per
+    // SPEC 10 D2, this is the "mandatory at signup with smart pre-fill"
+    // surface — the user MUST claim or explicitly skip before reaching
+    // the chat composer. The gate replaces (not overlays) the empty state
+    // so there's no input bar to type past — the only paths forward are
+    // claim or skip-link. Settings page (D9) is the safety valve.
+    if (shouldShowUsernameGate && session?.jwt) {
+      return (
+        <div className="flex-1 flex flex-col items-center overflow-y-auto px-4 sm:px-6 pt-12 pb-8">
+          <div className="w-full max-w-md mt-8">
+            <UsernameClaimGate
+              address={address}
+              jwt={session.jwt}
+              googleName={googleName}
+              googleEmail={email}
+              onClaimed={handleUsernameClaimed}
+              onSkipped={handleUsernameSkipped}
+            />
+          </div>
+        </div>
+      );
+    }
 
     return (
       <NewConversationView

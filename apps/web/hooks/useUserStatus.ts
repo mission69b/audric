@@ -22,6 +22,15 @@ interface UserStatus {
   sessionsUsed: number;
   sessionLimit: number;
   sessionWindowHours: number;
+  /**
+   * SPEC 10 — bare lowercased Audric username (e.g. `'alice'`), or `null`
+   * when the user hasn't claimed yet. Drives the dashboard's signup-page
+   * username gate (`<UsernameClaimGate>`). Reconstruct the full handle
+   * client-side as `${username}.audric.sui` (suffix is a brand constant).
+   */
+  username: string | null;
+  /** ISO timestamp when the user claimed; `null` when unclaimed. */
+  usernameClaimedAt: string | null;
 }
 
 export function useUserStatus(address: string | null, jwt: string | undefined) {
@@ -77,7 +86,17 @@ export function useUserStatus(address: string | null, jwt: string | undefined) {
     sessionsUsed: query.data?.sessionsUsed ?? 0,
     sessionLimit: query.data?.sessionLimit ?? 5,
     sessionWindowHours: query.data?.sessionWindowHours ?? 24,
+    // [SPEC 10 B-wiring] Default `null` while the query is loading — the
+    // dashboard treats `loading || username === null` as "don't show the
+    // gate yet" so a freshly-arriving user never sees a flash of picker
+    // before status resolves. Once status arrives, `null` triggers the
+    // gate; non-null hides it.
+    username: query.data?.username ?? null,
+    usernameClaimedAt: query.data?.usernameClaimedAt ?? null,
     acceptTos,
     markOnboarded,
+    // Exposed so the gate can call it after a successful claim — pulls
+    // the freshly-written username and removes the gate on next render.
+    refetch: query.refetch,
   };
 }

@@ -49,6 +49,16 @@ export async function GET(request: NextRequest) {
       update: {},
       select: {
         tosAcceptedAt: true,
+        // [SPEC 10 B-wiring] `username` (and the timestamp it was claimed)
+        // drive the signup-page username gate. The dashboard reads this to
+        // decide whether to render `<UsernameClaimGate>` over the empty
+        // state — `null` → user hasn't claimed → show picker; non-null →
+        // user already has a handle → render normal dashboard. The full
+        // `<label>.audric.sui` is reconstructed client-side because the
+        // `.audric.sui` suffix is a brand constant (no need to round-trip
+        // it on every status poll).
+        username: true,
+        usernameClaimedAt: true,
       },
     }),
     prisma.sessionUsage.groupBy({
@@ -69,5 +79,7 @@ export async function GET(request: NextRequest) {
     sessionsUsed: sessionCount,
     sessionLimit,
     sessionWindowHours: 24,
+    username: user.username,
+    usernameClaimedAt: user.usernameClaimedAt?.toISOString() ?? null,
   });
 }
