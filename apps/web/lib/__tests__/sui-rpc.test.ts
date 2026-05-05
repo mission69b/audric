@@ -20,6 +20,8 @@ const REQUIRED_BASE_ENV: Record<string, string> = {
   T2000_INTERNAL_KEY: 't2000-test',
   UPSTASH_REDIS_REST_URL: 'https://x.upstash.io',
   UPSTASH_REDIS_REST_TOKEN: 'redis-test',
+  // SPEC 10 B.2 — required as of S.69 follow-up.
+  AUDRIC_PARENT_NFT_PRIVATE_KEY: 'suiprivkey-test',
   NEXT_PUBLIC_GOOGLE_CLIENT_ID: 'google-test',
   NEXT_PUBLIC_ENOKI_API_KEY: 'enoki-pub-test',
   NEXT_PUBLIC_SUI_NETWORK: 'mainnet',
