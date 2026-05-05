@@ -8,6 +8,7 @@ import type {
   UsageData,
   EngineStatus,
   SSEEvent,
+  AudricSSEEvent,
   CanvasData,
   RegeneratedTimelineBlock,
   ToolTimelineBlock,
@@ -16,6 +17,7 @@ import type {
 import {
   applyEventToTimeline,
   markPermissionCardResolved,
+  markPendingInputStatus,
   markTimelineInterrupted,
   mergeWriteExecutionIntoTimeline,
   mergeBundleExecutionIntoTimeline,
@@ -499,6 +501,164 @@ export function useEngine({ address, jwt, onToolResult, contacts }: UseEngineOpt
    * double-tapping the button is a no-op while the round-trip is
    * still pending.
    */
+  // ─────────────────────────────────────────────────────────────────────
+  // [SPEC 9 v0.1.3 P9.4] handlePendingInputSubmit
+  //
+  // Wired into `<BlockRouter>` via the `onPendingInputSubmit` prop
+  // chain (UnifiedTimeline → ChatMessage → ReasoningTimeline → BlockRouter
+  // → PendingInputBlockView). When the user submits the inline form,
+  // this:
+  //
+  //   1. Locates the `pending-input` block by `inputId` (across all
+  //      timeline messages — the block lives on the assistant message
+  //      that yielded the pause).
+  //   2. Flips block.status → 'submitting' (form disables + spinner).
+  //   3. POSTs the FULL `PendingInput` payload + values to
+  //      `/api/engine/resume-with-input`.
+  //   4a. On 200: flips to 'submitted' + captures `submittedValues`.
+  //       SSE round-trip into the same assistant message ships in P9.6
+  //       (mirrors `handleRegenerate`'s timeline-merge pattern).
+  //   4b. On non-200: flips to 'error' with the server's errorMessage
+  //       so the form re-shows for re-submit.
+  //
+  // The block carries `assistantContent` + `completedResults` from the
+  // wire event so we can echo back the full payload — no server-side
+  // session storage needed for the pause state.
+  // ─────────────────────────────────────────────────────────────────────
+  const handlePendingInputSubmit = useCallback(
+    async (inputId: string, values: Record<string, unknown>) => {
+      if (!sessionId || !jwt || !address) return;
+
+      // Locate the pending-input block across all messages. There can
+      // be multiple paused inputs in theory; we match by stable inputId.
+      let foundBlock: import('@/lib/engine-types').PendingInputTimelineBlock | null = null;
+      let foundMsgId: string | null = null;
+      for (const m of messagesRef.current) {
+        const b = m.timeline?.find(
+          (b): b is import('@/lib/engine-types').PendingInputTimelineBlock =>
+            b.type === 'pending-input' && b.inputId === inputId,
+        );
+        if (b) {
+          foundBlock = b;
+          foundMsgId = m.id;
+          break;
+        }
+      }
+
+      if (!foundBlock || !foundMsgId) {
+        console.warn(`[useEngine.handlePendingInputSubmit] inputId not found: ${inputId}`);
+        return;
+      }
+
+      // Flip to 'submitting' so the form disables + shows the spinner.
+      setMessages((prev) =>
+        prev.map((m) => {
+          if (m.id !== foundMsgId) return m;
+          const next = markPendingInputStatus(m.timeline, inputId, { status: 'submitting' });
+          return next === m.timeline ? m : { ...m, timeline: next };
+        }),
+      );
+
+      try {
+        // Reconstruct the full PendingInput wire payload from the block
+        // — the engine expects the whole object back so it can pop
+        // assistantContent + completedResults onto the message history.
+        const pendingInput = {
+          type: 'pending_input' as const,
+          inputId: foundBlock.inputId,
+          toolName: foundBlock.toolName,
+          toolUseId: foundBlock.toolUseId,
+          schema: foundBlock.schema,
+          description: foundBlock.description,
+          assistantContent: foundBlock.assistantContent,
+          completedResults: foundBlock.completedResults,
+        };
+
+        const res = await fetch('/api/engine/resume-with-input', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-zklogin-jwt': jwt,
+          },
+          body: JSON.stringify({
+            address,
+            sessionId,
+            pendingInput,
+            values,
+          }),
+        });
+
+        if (!res.ok) {
+          const errBody = await res.json().catch(() => null) as
+            | { error?: string; fieldErrors?: Record<string, string> }
+            | null;
+          const errorMessage = errBody?.error
+            ? `${errBody.error}${
+                errBody.fieldErrors
+                  ? ` — ${Object.values(errBody.fieldErrors).join('; ')}`
+                  : ''
+              }`
+            : `HTTP ${res.status}`;
+          setMessages((prev) =>
+            prev.map((m) => {
+              if (m.id !== foundMsgId) return m;
+              const next = markPendingInputStatus(m.timeline, inputId, {
+                status: 'error',
+                errorMessage,
+              });
+              return next === m.timeline ? m : { ...m, timeline: next };
+            }),
+          );
+          return;
+        }
+
+        // [P9.4 host minimal] Mark submitted; the resumed-turn SSE
+        // round-trip wiring (stream the response into the same
+        // assistant message + flip to `done`) ships in P9.6 alongside
+        // the engine v1.18.0 release. For now, the form collapses to
+        // the confirmation row and the user can send a new chat
+        // message to nudge the agent.
+        //
+        // We still consume the response stream (closing it explicitly
+        // so the server can shut down its keep-alive) — just don't
+        // process events into the timeline yet.
+        try {
+          const reader = res.body?.getReader();
+          while (reader) {
+            const { done } = await reader.read();
+            if (done) break;
+          }
+        } catch {
+          /* swallow — stream-close is best-effort */
+        }
+
+        setMessages((prev) =>
+          prev.map((m) => {
+            if (m.id !== foundMsgId) return m;
+            const next = markPendingInputStatus(m.timeline, inputId, {
+              status: 'submitted',
+              submittedValues: values,
+            });
+            return next === m.timeline ? m : { ...m, timeline: next };
+          }),
+        );
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Network error';
+        setMessages((prev) =>
+          prev.map((m) => {
+            if (m.id !== foundMsgId) return m;
+            const next = markPendingInputStatus(m.timeline, inputId, {
+              status: 'error',
+              errorMessage,
+            });
+            return next === m.timeline ? m : { ...m, timeline: next };
+          }),
+        );
+      }
+    },
+    [sessionId, jwt, address],
+  );
+
   const handleRegenerate = useCallback(
     async (action: PendingAction) => {
       if (!sessionId || !jwt || !address) return;
@@ -936,9 +1096,14 @@ export function useEngine({ address, jwt, onToolResult, contacts }: UseEngineOpt
       return;
     }
 
-    let event: SSEEvent;
+    // [SPEC 9 v0.1.3 P9.4] Cast as `AudricSSEEvent` (engine SSE union
+    // ∪ audric-only events). The raw JSON shape from the wire matches
+    // the audric union by construction — engine-emitted events include
+    // the new typed `pending_input` shape (post-engine-fix; the npm
+    // 1.17.1 emits the older shape but the reducer no-ops on it).
+    let event: AudricSSEEvent;
     try {
-      event = JSON.parse(dataStr) as SSEEvent;
+      event = JSON.parse(dataStr) as AudricSSEEvent;
     } catch {
       return;
     }
@@ -1187,10 +1352,18 @@ export function useEngine({ address, jwt, onToolResult, contacts }: UseEngineOpt
       }
 
       case 'pending_input': {
+        // [SPEC 9 v0.1.3 P9.4] Legacy per-message accumulator. The v2
+        // timeline path consumes the same event via the
+        // `pending-input` TimelineBlock — this list is dual-write
+        // for any legacy renderer still reading `m.pendingInputs[]`.
+        // Round-trip fields stay engine-internal here (the timeline
+        // block carries them; this slim summary doesn't need them).
         const input = {
-          schema: event.schema,
           inputId: event.inputId,
-          prompt: event.prompt,
+          toolName: event.toolName,
+          toolUseId: event.toolUseId,
+          schema: event.schema,
+          description: event.description,
         };
         setMessages((prev) =>
           prev.map((m) =>
@@ -1349,5 +1522,9 @@ export function useEngine({ address, jwt, onToolResult, contacts }: UseEngineOpt
     // → `<PermissionCardBlockView>` (and the legacy path equivalent).
     handleRegenerate,
     regeneratingAttemptIds,
+    // [SPEC 9 v0.1.3 P9.4] Inline-form submit — same prop chain as
+    // handleRegenerate above, but for `<PendingInputBlockView>` and
+    // its `onPendingInputSubmit` slot.
+    handlePendingInputSubmit,
   };
 }

@@ -1,5 +1,9 @@
 import type { SSEEvent, PendingAction, TodoItem, EvaluationItem } from '@t2000/engine';
-import type { ProactiveTextSseEvent } from '@/lib/engine/sse-types';
+import type {
+  ProactiveTextSseEvent,
+  PendingInputSseEvent,
+  FormSchema,
+} from '@/lib/engine/sse-types';
 
 export type { SSEEvent, PendingAction, TodoItem, EvaluationItem };
 
@@ -8,12 +12,26 @@ export type { SSEEvent, PendingAction, TodoItem, EvaluationItem };
  * any audric-only events that ship ahead of an engine release. Currently:
  *   - `proactive_text` (SPEC 9 v0.1.1 P9.2 — promoted into @t2000/engine
  *     v1.18.0; type stays here as the wire shape until the bump lands)
+ *   - `pending_input` (SPEC 9 v0.1.3 P9.4 — typed override of the SPEC 8
+ *     v0.5.1 D2 reservation that shipped `schema: unknown`. The engine
+ *     locally has the typed shape now; the npm release in v1.18.0 will
+ *     promote it. We override the engine's loose union member with the
+ *     tight one via Exclude<...> so the reducer narrows correctly.)
  *
  * Reducer code (`timeline-builder.ts`, `useEngine.ts`) should accept
  * `AudricSSEEvent` rather than `SSEEvent` so TypeScript can narrow into
  * the audric-only cases without falling through to `never`.
  */
-export type AudricSSEEvent = SSEEvent | ProactiveTextSseEvent;
+export type AudricSSEEvent =
+  | Exclude<SSEEvent, { type: 'pending_input' }>
+  | PendingInputSseEvent
+  | ProactiveTextSseEvent;
+
+// Re-export the local pending_input wire types so consumers in
+// app/components don't depend on the @/lib/engine/sse-types path
+// directly. v1.18.0 swap-out replaces these with `import type
+// { FormSchema } from '@t2000/engine'`.
+export type { FormSchema } from '@/lib/engine/sse-types';
 
 export interface CanvasData {
   template: string;
@@ -147,17 +165,65 @@ export interface PermissionCardTimelineBlock {
 }
 
 /**
- * SPEC 9 v0.1.2 inline-form slot. SPEC 8 v0.5 (D2) reserved this so the
- * timeline has a typed home for the future. Engine doesn't emit
- * `pending_input` under SPEC 8; this block only appears once SPEC 9
- * lands. Today the variant exists to keep the discriminated union
- * complete (TS exhaustiveness checks B2.2's renderer).
+ * [SPEC 9 v0.1.3 P9.4] Inline-form timeline block.
+ *
+ * Created by `timeline-builder` when the engine yields a `pending_input`
+ * SSE event. `<PendingInputBlockView>` renders an inline form keyed on
+ * `schema.fields[].kind`, the user submits, the host POSTs values to
+ * `/api/engine/resume-with-input` keyed on `inputId`. The engine's
+ * `resumeWithInput()` then runs the paused tool with the validated
+ * values + continues the agent loop in a fresh SSE stream.
+ *
+ * Status field tracks the form's local UX state — distinct from the
+ * engine's pause-on-input state (which is on the wire `inputId`). When
+ * `status === 'submitting'` the form's submit button shows a spinner
+ * and the inputs disable; when `status === 'submitted'` the form
+ * collapses to a one-line confirmation row ("Submitted: Mom →
+ * mom.audric.sui") so the next assistant narration stays the focal
+ * point. `status === 'error'` re-shows the form with an inline error.
+ *
+ * Round-trip fields (`assistantContent` / `completedResults`) ride on
+ * the block so the resume POST can echo back the FULL `PendingInput`
+ * payload to the engine. Mirrors how `<PermissionCardBlockView>`
+ * carries the full `PendingAction` for its resume call. The renderer
+ * doesn't read them — they're host-only plumbing.
  */
 export interface PendingInputTimelineBlock {
   type: 'pending-input';
+  /** UUID v4 from the engine. The resume POST echoes this back. */
   inputId: string;
-  schema: unknown;
-  prompt?: string;
+  /** Tool that requested the input. */
+  toolName: string;
+  /** Original `tool_use_id` — round-trips back through the resume call. */
+  toolUseId: string;
+  /** Typed form schema (closed list of field kinds). */
+  schema: FormSchema;
+  /** Optional caption rendered above the form. */
+  description?: string;
+  /** Local UX state machine — independent of engine pause. */
+  status: 'pending' | 'submitting' | 'submitted' | 'error';
+  /** Inline error message when `status === 'error'` (resume failed). */
+  errorMessage?: string;
+  /**
+   * The submitted values, captured AFTER successful submit so the
+   * collapsed-confirmation row can render "Submitted: Mom →
+   * mom.audric.sui" without re-asking the form. Cleared on re-mount.
+   */
+  submittedValues?: Record<string, unknown>;
+  /**
+   * Round-trip state from the engine's pause snapshot — captured here
+   * so the resume POST can echo back the full `PendingInput` payload
+   * to `engine.resumeWithInput()`. Renderer ignores. Type-erased to
+   * `unknown[]` to mirror the engine's wire shape (no ContentBlock
+   * import dependency).
+   */
+  assistantContent: unknown[];
+  /** Tool results from earlier same-turn reads (for atomic resume). */
+  completedResults: Array<{
+    toolUseId: string;
+    content: string;
+    isError: boolean;
+  }>;
 }
 
 /**
@@ -335,10 +401,21 @@ export interface ToolProgressEvent {
   pct?: number;
 }
 
+/**
+ * [SPEC 9 v0.1.3 P9.4] Legacy shape used by the per-message
+ * `pendingInputs[]` accumulator on `EngineChatMessage`. Today the v2
+ * timeline path consumes `pending_input` directly via the
+ * `pending-input` TimelineBlock — this list survives only for legacy
+ * (pre-SPEC-8) renderers. Promoted from the SPEC 8 D2 reservation
+ * (`schema: unknown` + `prompt?: string`) to the typed shape so both
+ * paths share the same wire contract.
+ */
 export interface PendingInputEvent {
-  schema: unknown;
   inputId: string;
-  prompt?: string;
+  toolName: string;
+  toolUseId: string;
+  schema: FormSchema;
+  description?: string;
 }
 
 export interface EngineChatMessage {

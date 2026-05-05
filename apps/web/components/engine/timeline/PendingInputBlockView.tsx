@@ -1,33 +1,60 @@
 'use client';
 
+import { useCallback } from 'react';
 import type { PendingInputTimelineBlock } from '@/lib/engine-types';
+import { PendingInputForm } from './PendingInputForm';
 
 // ───────────────────────────────────────────────────────────────────────────
-// SPEC 8 v0.5.1 — PendingInputBlockView (B2.2)
+// SPEC 9 v0.1.3 P9.4 — PendingInputBlockView
 //
-// Reserved render slot for SPEC 9 v0.1.2's inline-form primitive. The
-// engine doesn't emit `pending_input` events under SPEC 8, so this
-// component renders nothing under normal operation. The placeholder
-// exists so:
-//   1. The TimelineBlock discriminated union stays exhaustive (BlockRouter
-//      compiles cleanly without a default case).
-//   2. SPEC 9 has a mounted target to fill in.
+// Hosts the inline form for a `pending_input` SSE event. Lifecycle:
 //
-// If a `pending-input` block ever appears in the timeline before SPEC 9
-// ships, we render a quiet diagnostic so the bug is visible to the
-// founder without crashing the page.
+//   1. Engine emits `pending_input` → reducer appends a `pending-input`
+//      block in `status: 'pending'`.
+//   2. User fills + submits → parent transitions to `status: 'submitting'`,
+//      POSTs to `/api/engine/resume-with-input`.
+//   3a. On 2xx → parent transitions to `status: 'submitted'`, the SSE stream
+//      from the resume endpoint extends the SAME timeline (the resumed
+//      tool_result arrives as a new tool block; the LLM narrates after).
+//   3b. On error → parent transitions to `status: 'error'` with an
+//      `errorMessage`, form re-shows so user can re-submit.
+//
+// Why we render even when `status !== 'pending'`:
+//   `'submitting'` shows the disabled/spinner state (form stays mounted).
+//   `'submitted'` shows the collapsed confirmation row (single line).
+//   `'error'` shows the form again with an inline error.
+//   Only `'pending'` mounts the editable form for the first time.
 // ───────────────────────────────────────────────────────────────────────────
 
 interface PendingInputBlockViewProps {
   block: PendingInputTimelineBlock;
+  /**
+   * Parent supplies the submit handler. Typical implementation:
+   *   1. Set block.status = 'submitting' (optimistic).
+   *   2. POST /api/engine/resume-with-input with { inputId, values }.
+   *   3. On 2xx, set status = 'submitted' + capture submittedValues, then
+   *      stream the resumed-turn SSE response into the same timeline.
+   *   4. On 4xx/5xx, set status = 'error' + errorMessage.
+   */
+  onSubmit: (inputId: string, values: Record<string, unknown>) => void;
 }
 
-export function PendingInputBlockView({ block }: PendingInputBlockViewProps) {
-  if (process.env.NODE_ENV === 'development') {
-    console.warn(
-      '[ReasoningTimeline] pending-input block received before SPEC 9 ships:',
-      block,
-    );
-  }
-  return null;
+export function PendingInputBlockView({ block, onSubmit }: PendingInputBlockViewProps) {
+  const handleSubmit = useCallback(
+    (values: Record<string, unknown>) => {
+      onSubmit(block.inputId, values);
+    },
+    [block.inputId, onSubmit],
+  );
+
+  return (
+    <PendingInputForm
+      schema={block.schema}
+      description={block.description}
+      status={block.status}
+      errorMessage={block.errorMessage}
+      submittedValues={block.submittedValues}
+      onSubmit={handleSubmit}
+    />
+  );
 }

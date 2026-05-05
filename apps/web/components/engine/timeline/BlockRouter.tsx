@@ -61,6 +61,15 @@ interface BlockRouterProps {
   onRegenerate?: (action: PendingAction) => void;
   regeneratingAttemptIds?: ReadonlySet<string>;
   /**
+   * [SPEC 9 v0.1.3 P9.4] Submit handler for `pending-input` blocks.
+   * Receives `(inputId, values)` where `inputId` is the engine-stamped
+   * UUID v4 and `values` is the typed result of the inline form. The
+   * parent (`useEngine.handlePendingInputSubmit`) flips the block's
+   * status, POSTs to `/api/engine/resume-with-input`, and streams the
+   * resumed-turn SSE response into the same timeline.
+   */
+  onPendingInputSubmit?: (inputId: string, values: Record<string, unknown>) => void;
+  /**
    * [B3.3 / G8] Controlled-mode expansion state for thinking blocks.
    * The parent (`<ReasoningTimeline>`) owns the per-message
    * `Map<blockIndex, ...>` and forwards the relevant slice to each
@@ -102,6 +111,7 @@ export function BlockRouter({
   spokenWordIndex,
   onRegenerate,
   regeneratingAttemptIds,
+  onPendingInputSubmit,
 }: BlockRouterProps) {
   switch (block.type) {
     case 'thinking':
@@ -147,7 +157,10 @@ export function BlockRouter({
       );
 
     case 'pending-input':
-      return <PendingInputBlockView block={block} />;
+      // Without a submit handler the form would be a no-op — fall back
+      // to null rather than rendering a half-broken UI.
+      if (!onPendingInputSubmit) return null;
+      return <PendingInputBlockView block={block} onSubmit={onPendingInputSubmit} />;
 
     case 'regenerated':
       return <RegeneratedBlockView block={block} />;

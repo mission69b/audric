@@ -87,6 +87,14 @@ interface ChatMessageProps {
    * even if `message.expectsConfirm` is set + the env flag is on.
    */
   onChipDecision?: (decision: { value: 'yes' | 'no'; forStashId: string }) => void;
+  /**
+   * [SPEC 9 v0.1.3 P9.4] Inline-form submit handler — wired up from
+   * `engine.handlePendingInputSubmit`. Forwarded to the v2
+   * `<ReasoningTimeline>` → `<BlockRouter>` → `<PendingInputBlockView>`.
+   * When omitted (legacy path / demo sessions), the form silently
+   * doesn't render (B3 layer handles that).
+   */
+  onPendingInputSubmit?: (inputId: string, values: Record<string, unknown>) => void;
 }
 
 export function ChatMessage({
@@ -101,6 +109,7 @@ export function ChatMessage({
   onRegenerate,
   regeneratingAttemptIds,
   onChipDecision,
+  onPendingInputSubmit,
 }: ChatMessageProps) {
   if (message.role === 'user') {
     return (
@@ -173,6 +182,7 @@ export function ChatMessage({
           shouldAutoApprove={shouldAutoApprove}
           onRegenerate={onRegenerate}
           regeneratingAttemptIds={regeneratingAttemptIds}
+          onPendingInputSubmit={onPendingInputSubmit}
         />
         {chipsBlock}
       </>
@@ -235,6 +245,7 @@ function ChatMessageV2({
   recentUserText,
   onRegenerate,
   regeneratingAttemptIds,
+  onPendingInputSubmit,
 }: ChatMessageV2Props) {
   const voice = useVoiceModeContext();
   const isBeingSpoken =
@@ -279,6 +290,7 @@ function ChatMessageV2({
         voiceContext={voiceContext}
         onRegenerate={onRegenerate}
         regeneratingAttemptIds={regeneratingAttemptIds}
+        onPendingInputSubmit={onPendingInputSubmit}
       />
 
       {message.usage && !message.isStreaming && (

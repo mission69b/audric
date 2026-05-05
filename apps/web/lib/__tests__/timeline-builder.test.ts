@@ -16,6 +16,7 @@ import {
 } from '@/lib/timeline-builder';
 import type {
   SSEEvent,
+  AudricSSEEvent,
   TimelineBlock,
   ThinkingTimelineBlock,
   TextTimelineBlock,
@@ -30,7 +31,7 @@ const T0 = 1_700_000_000_000;
 
 /** Apply a sequence of events starting from `seed`, returning the final timeline. */
 function applyAll(
-  events: SSEEvent[],
+  events: AudricSSEEvent[],
   seed: TimelineBlock[] = [],
   startNow = T0,
 ): TimelineBlock[] {
@@ -493,21 +494,41 @@ describe('applyEventToTimeline — slot blocks (canvas, permission-card, pending
     expect(tl[1]).toMatchObject({ type: 'permission-card', status: 'pending' });
   });
 
-  it('appends a pending-input block (SPEC 9 reservation)', () => {
+  it('appends a pending-input block in pending status with the typed form schema (SPEC 9 P9.4)', () => {
     const tl = applyAll([
       {
         type: 'pending_input',
         inputId: 'in1',
-        schema: { kind: 'address' },
-        prompt: 'recipient?',
+        toolName: 'add_recipient',
+        toolUseId: 'tc-1',
+        schema: {
+          fields: [
+            { name: 'name', label: 'Nickname', kind: 'text', required: true },
+            {
+              name: 'identifier',
+              label: 'Audric handle, SuiNS, or 0x',
+              kind: 'sui-recipient',
+              required: true,
+            },
+          ],
+        },
+        description: 'Add a new contact',
+        // Round-trip fields ride on the wire (used by resume route, not
+        // by the reducer). Reducer just ignores them.
+        assistantContent: [],
+        completedResults: [],
       },
     ]);
     expect(tl).toHaveLength(1);
     expect(tl[0]).toMatchObject({
       type: 'pending-input',
       inputId: 'in1',
-      prompt: 'recipient?',
+      toolName: 'add_recipient',
+      toolUseId: 'tc-1',
+      description: 'Add a new contact',
+      status: 'pending',
     });
+    expect((tl[0] as { schema: { fields: unknown[] } }).schema.fields).toHaveLength(2);
   });
 });
 

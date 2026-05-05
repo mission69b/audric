@@ -32,6 +32,7 @@ import type {
   ToolTimelineBlock,
   TodoTimelineBlock,
   PermissionCardTimelineBlock,
+  PendingInputTimelineBlock,
   ContactResolvedTimelineBlock,
   PlanStreamTimelineBlock,
   BundleReceiptTimelineBlock,
@@ -428,13 +429,28 @@ export function applyEventToTimeline(
     }
 
     case 'pending_input':
+      // [SPEC 9 v0.1.3 P9.4] Engine pauses the turn on a tool's
+      // preflight `needsInput` and yields this event. We append a
+      // `pending-input` block in `pending` status — `<PendingInputBlockView>`
+      // renders the form, transitions through `submitting → submitted`
+      // (or `error`) on the user's interaction with the resume endpoint.
+      //
+      // Round-trip fields (`assistantContent` / `completedResults`) are
+      // copied verbatim from the wire event so the resume POST can echo
+      // them back to `engine.resumeWithInput()`. Mirrors the
+      // `pending_action` round-trip pattern.
       return [
         ...current,
         {
           type: 'pending-input',
           inputId: event.inputId,
+          toolName: event.toolName,
+          toolUseId: event.toolUseId,
           schema: event.schema,
-          prompt: event.prompt,
+          description: event.description,
+          status: 'pending',
+          assistantContent: event.assistantContent,
+          completedResults: event.completedResults,
         },
       ];
 
@@ -546,6 +562,54 @@ export function markPermissionCardResolved(
   return current.map((b, i): TimelineBlock => {
     if (i !== idx || b.type !== 'permission-card') return b;
     return { ...b, status };
+  });
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// [SPEC 9 v0.1.3 P9.4] markPendingInputStatus
+//
+// Mutates a `pending-input` block's local UX state. Mirror of
+// `markPermissionCardResolved` — same returns-existing-array-on-no-op
+// invariant, same purity, same lookup-by-stable-id pattern. Keyed on
+// `inputId` (UUID v4 stamped by the engine, distinct from `toolUseId`
+// because in theory the same `tool_use_id` could yield input twice
+// after a v0.2 multi-step extension).
+//
+// The `submittedValues` payload is required when transitioning to
+// `submitted` (so the collapsed-row renderer has them) and ignored
+// otherwise. `errorMessage` is required for `error`.
+// ───────────────────────────────────────────────────────────────────────────
+
+export type PendingInputStatusUpdate =
+  | { status: 'pending' | 'submitting' }
+  | { status: 'submitted'; submittedValues: Record<string, unknown> }
+  | { status: 'error'; errorMessage: string };
+
+export function markPendingInputStatus(
+  timeline: TimelineBlock[] | undefined,
+  inputId: string,
+  update: PendingInputStatusUpdate,
+): TimelineBlock[] {
+  const current = timeline ?? [];
+
+  const idx = current.findIndex(
+    (b): b is PendingInputTimelineBlock =>
+      b.type === 'pending-input' && b.inputId === inputId,
+  );
+  if (idx === -1) return current;
+
+  return current.map((b, i): TimelineBlock => {
+    if (i !== idx || b.type !== 'pending-input') return b;
+    const next: PendingInputTimelineBlock = { ...b, status: update.status };
+    if (update.status === 'submitted') {
+      next.submittedValues = update.submittedValues;
+      next.errorMessage = undefined;
+    } else if (update.status === 'error') {
+      next.errorMessage = update.errorMessage;
+    } else {
+      next.errorMessage = undefined;
+    }
+    return next;
   });
 }
 

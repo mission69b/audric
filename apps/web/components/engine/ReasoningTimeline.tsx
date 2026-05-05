@@ -65,6 +65,12 @@ interface ReasoningTimelineProps {
   onRegenerate?: (action: PendingAction) => void;
   regeneratingAttemptIds?: ReadonlySet<string>;
   /**
+   * [SPEC 9 v0.1.3 P9.4] Inline-form submit handler — forwarded to
+   * `<PendingInputBlockView>` via `<BlockRouter>`. Receives
+   * `(inputId, values)` and is wired up by the parent (`useEngine.handlePendingInputSubmit`).
+   */
+  onPendingInputSubmit?: (inputId: string, values: Record<string, unknown>) => void;
+  /**
    * [B3.4 / Gap F] Voice playback context for THIS message. Set when:
    *   - `voice.state === 'speaking'`
    *   - `voice.speakingMessageId === message.id`
@@ -91,6 +97,7 @@ export function ReasoningTimeline({
   voiceContext,
   onRegenerate,
   regeneratingAttemptIds,
+  onPendingInputSubmit,
 }: ReasoningTimelineProps) {
   // [B3.3 / G8] Manual-state-preserved expansion map for thinking blocks.
   // Lazy-init from the blocks present at first mount (rehydration case)
@@ -179,6 +186,7 @@ export function ReasoningTimeline({
             shouldAutoApprove={shouldAutoApprove}
             onRegenerate={onRegenerate}
             regeneratingAttemptIds={regeneratingAttemptIds}
+            onPendingInputSubmit={onPendingInputSubmit}
             thinkingExpanded={
               block.type === 'thinking'
                 ? thinkingExpanded.get(block.blockIndex) ??
