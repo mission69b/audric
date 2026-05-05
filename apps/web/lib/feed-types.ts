@@ -43,6 +43,18 @@ export type FeedItemData =
        * "sui:pay?recipient=0x..." gibberish.
        */
       qrUri?: string;
+      /**
+       * [SPEC 10 Phase C.4 — D8 hybrid identity] Audric handle (full
+       * `username.audric.sui` form) for the address rendered in this
+       * receipt. When set, FeedRenderer surfaces it ABOVE the QR as
+       * `🪪 funkii.audric.sui · 0x40cd…3e62` so the visitor sees both
+       * the human-readable identity AND the bare address (the QR itself
+       * still encodes the bare 0x via the SuiPay deep-link, per D8).
+       *
+       * Optional — `null`/`undefined` for users who haven't claimed an
+       * Audric handle yet (and for receipts unrelated to identity).
+       */
+      handle?: string;
       meta: { label: string; value: string }[];
       instructions?: { title: string; steps: string[] }[];
     }

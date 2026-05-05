@@ -213,6 +213,29 @@ export function FeedItemCard({
             <p className="text-sm font-medium text-fg-primary">{data.title}</p>
           </div>
 
+          {/*
+            [SPEC 10 Phase C.4 — D8 hybrid identity] When the receipt
+            represents the user's own deposit address AND they have a
+            claimed Audric handle, surface it prominently ABOVE the QR.
+            Visitor scanning the QR sees both: the human-readable handle
+            (so they can verify "yes, this is funkii's account") AND the
+            bare address (so CEX withdrawal forms work via copy-paste,
+            since most CEX forms reject `sui:pay?…` URIs). The QR itself
+            still encodes the SuiPay deep-link (`qrUri`) for phone-camera
+            scans → Slush / Phantom / Suiet.
+          */}
+          {data.handle && data.code && (
+            <div className="flex flex-col items-center gap-1 px-4 pb-1">
+              <p className="text-[14px] font-mono text-fg-primary">
+                <span className="text-fg-secondary mr-1.5" aria-hidden="true">&#129706;</span>
+                {data.handle}
+              </p>
+              <p className="text-[11px] font-mono text-fg-muted">
+                {`${data.code.slice(0, 6)}…${data.code.slice(-4)}`}
+              </p>
+            </div>
+          )}
+
           {data.qr && (data.qrUri || data.code) && (
             <div className="flex justify-center py-4 px-4">
               <div className="relative p-3 rounded-lg border border-border-subtle bg-surface-page">

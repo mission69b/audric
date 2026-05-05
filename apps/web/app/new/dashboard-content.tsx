@@ -134,6 +134,19 @@ function getAmountPresets(flow: string, bal: { cash: number; savings: number; bo
   return [50, 100, 200];
 }
 
+/**
+ * [SPEC 10 Phase C.3] Result row from /api/identity/search. Mirrors the
+ * server's response shape; kept inline (rather than imported from a shared
+ * types module) because the SendRecipientInput is the only consumer right
+ * now and inlining keeps the dashboard-content surface honest.
+ */
+interface AudricUserSearchResult {
+  username: string;
+  fullHandle: string;
+  address: string;
+  claimedAt: string;
+}
+
 function SendRecipientInput({
   contacts,
   onSelectContact,
@@ -144,11 +157,80 @@ function SendRecipientInput({
   onSubmit: (input: string) => void;
 }) {
   const [value, setValue] = useState('');
+  const [searchResults, setSearchResults] = useState<AudricUserSearchResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
+
+  // [SPEC 10 Phase C.3] Detect the `@`-prefix typing pattern. The user's
+  // raw `@alice` input is the chip-flow shortcut for "find an Audric
+  // user". Per D10 (LOCKED), the `@` form is INPUT-ONLY — the moment
+  // the user picks a result the input value flips to the full
+  // `alice.audric.sui` handle. Bare `@` (length 0 query) hides the
+  // dropdown — start showing it once they type at least 1 char.
+  const isAtPrefix = value.startsWith('@');
+  const atQuery = isAtPrefix ? value.slice(1).trim().toLowerCase() : '';
+  const showDropdown = isAtPrefix && atQuery.length > 0;
+
+  // Debounced fetch: 200ms after the user stops typing. Fast enough to
+  // feel responsive, slow enough that typing "@al" → "@ali" → "@alic"
+  // → "@alice" doesn't fire 4 round-trips. Uses AbortController so a
+  // stale response can't race a fresh one (typing fast → out-of-order
+  // resolves).
+  useEffect(() => {
+    if (!showDropdown) {
+      setSearchResults([]);
+      setIsSearching(false);
+      abortRef.current?.abort();
+      return;
+    }
+    abortRef.current?.abort();
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
+    setIsSearching(true);
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `/api/identity/search?q=${encodeURIComponent(atQuery)}&limit=10`,
+          { signal: ctrl.signal },
+        );
+        if (!res.ok) {
+          setSearchResults([]);
+          setIsSearching(false);
+          return;
+        }
+        const body = (await res.json()) as { results?: AudricUserSearchResult[] };
+        if (ctrl.signal.aborted) return;
+        setSearchResults(body.results ?? []);
+      } catch {
+        // Network error / abort — silent. The dropdown stays empty;
+        // user can still paste a 0x address into the input.
+      } finally {
+        if (!ctrl.signal.aborted) setIsSearching(false);
+      }
+    }, 200);
+    return () => {
+      clearTimeout(t);
+      ctrl.abort();
+    };
+  }, [showDropdown, atQuery]);
 
   const handleSubmit = () => {
     const input = value.trim();
     if (!input) return;
+    // [SPEC 10 Phase C.3] If user submits while still on the `@query`
+    // form WITHOUT picking a result (e.g. presses Enter early), reject
+    // the bare `@` shortcut — they should pick a result so the engine
+    // gets the full handle. If they really meant to send to a literal
+    // string starting with `@`, they can prefix differently. This is
+    // load-bearing for D10 — the engine should never see `@alice`.
+    if (input.startsWith('@')) return;
     onSubmit(input);
+  };
+
+  const handlePickResult = (r: AudricUserSearchResult) => {
+    setValue(r.fullHandle);
+    setSearchResults([]);
+    onSubmit(r.fullHandle);
   };
 
   const handlePaste = async () => {
@@ -179,32 +261,70 @@ function SendRecipientInput({
           ))}
         </div>
       )}
-      <div className="flex gap-2">
-        <input
-          type="text"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          placeholder="Address (0x...) or contact name"
-          autoFocus
-          className="flex-1 rounded-lg border border-border-subtle bg-surface-page px-4 py-3 text-[14px] text-fg-primary placeholder:text-fg-muted outline-none focus:border-border-strong transition-colors"
-          onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit(); }}
-        />
-        {value.trim() ? (
-          <button
-            type="button"
-            onClick={handleSubmit}
-            className="bg-fg-primary rounded-lg px-4 py-2 font-mono text-[10px] tracking-[0.1em] uppercase font-medium text-fg-inverse transition hover:opacity-80 active:scale-[0.97]"
+      <div className="relative">
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            placeholder="@audric-handle, address (0x...), or contact"
+            autoFocus
+            className="flex-1 rounded-lg border border-border-subtle bg-surface-page px-4 py-3 text-[14px] text-fg-primary placeholder:text-fg-muted outline-none focus:border-border-strong transition-colors"
+            onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit(); }}
+            role="combobox"
+            aria-autocomplete="list"
+            aria-expanded={showDropdown}
+            aria-controls="send-recipient-handle-dropdown"
+          />
+          {value.trim() && !isAtPrefix ? (
+            <button
+              type="button"
+              onClick={handleSubmit}
+              className="bg-fg-primary rounded-lg px-4 py-2 font-mono text-[10px] tracking-[0.1em] uppercase font-medium text-fg-inverse transition hover:opacity-80 active:scale-[0.97]"
+            >
+              Go
+            </button>
+          ) : !isAtPrefix ? (
+            <button
+              type="button"
+              onClick={handlePaste}
+              className="rounded-lg border border-border-subtle bg-surface-page px-4 py-2 font-mono text-[10px] tracking-[0.1em] uppercase text-fg-secondary transition hover:text-fg-primary hover:border-border-strong hover:bg-surface-sunken active:scale-[0.97]"
+            >
+              Paste
+            </button>
+          ) : null}
+        </div>
+        {showDropdown && (
+          <div
+            id="send-recipient-handle-dropdown"
+            role="listbox"
+            data-testid="send-recipient-handle-dropdown"
+            className="absolute left-0 right-0 top-full mt-2 z-10 rounded-lg border border-border-subtle bg-surface-card shadow-[var(--shadow-flat)] overflow-hidden"
           >
-            Go
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={handlePaste}
-            className="rounded-lg border border-border-subtle bg-surface-page px-4 py-2 font-mono text-[10px] tracking-[0.1em] uppercase text-fg-secondary transition hover:text-fg-primary hover:border-border-strong hover:bg-surface-sunken active:scale-[0.97]"
-          >
-            Paste
-          </button>
+            {isSearching && searchResults.length === 0 && (
+              <p className="px-4 py-3 text-[12px] text-fg-secondary">Searching Audric users…</p>
+            )}
+            {!isSearching && searchResults.length === 0 && (
+              <p className="px-4 py-3 text-[12px] text-fg-secondary">
+                No Audric user matches <span className="font-mono">@{atQuery}</span>. Paste a 0x address or pick a contact above.
+              </p>
+            )}
+            {searchResults.map((r) => (
+              <button
+                key={r.address}
+                type="button"
+                role="option"
+                aria-selected="false"
+                onClick={() => handlePickResult(r)}
+                className="w-full px-4 py-2.5 text-left hover:bg-surface-sunken transition-colors flex items-center justify-between gap-3"
+              >
+                <span className="text-[13px] text-fg-primary font-mono">{r.fullHandle}</span>
+                <span className="text-[11px] text-fg-muted font-mono">
+                  {`${r.address.slice(0, 6)}…${r.address.slice(-4)}`}
+                </span>
+              </button>
+            ))}
+          </div>
         )}
       </div>
     </div>
@@ -570,6 +690,16 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
             // `sui:pay?…` URIs as invalid addresses) — so both scan paths now
             // work: phone-camera → Slush deep-link, and copy-paste → CEX form.
             qrUri: address ? buildSuiPayUri({ recipient: address }) : undefined,
+            // [SPEC 10 Phase C.4 — D8 hybrid identity] Surface the user's
+            // claimed Audric handle ABOVE the QR (rendered by FeedRenderer).
+            // Visitor sees `🪪 funkii.audric.sui · 0x40cd…3e62` over the
+            // QR — full handle for verification + truncated address for
+            // visual confirmation. Falls through to undefined when the
+            // user hasn't claimed (rare — Phase B makes claiming
+            // mandatory at signup).
+            handle: userStatus.username
+              ? `${userStatus.username}.audric.sui`
+              : undefined,
             meta: [
               { label: 'Network', value: 'Sui (mainnet)' },
               { label: 'Token', value: 'USDC' },
@@ -715,7 +845,7 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
           break;
       }
     },
-    [chipFlow, feed, address, balance, balanceQuery, flowContext, agent, contactsHook, fetchHistory],
+    [chipFlow, feed, address, balance, balanceQuery, flowContext, agent, contactsHook, fetchHistory, userStatus.username],
   );
 
   const handleChipClick = useCallback(
