@@ -38,6 +38,7 @@ import { useActivityFeed } from '@/hooks/useActivityFeed';
 import { NewConversationView } from '@/components/dashboard/NewConversationView';
 import { TosBanner } from '@/components/dashboard/TosBanner';
 import { UsernameClaimGate } from '@/components/identity/UsernameClaimGate';
+import { Spinner } from '@/components/ui/Spinner';
 import { useUserStatus } from '@/hooks/useUserStatus';
 import { usePanel } from '@/hooks/usePanel';
 import { PortfolioPanel } from '@/components/panels/PortfolioPanel';
@@ -320,6 +321,14 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
     const stored = window.localStorage.getItem(usernameSkipStorageKey(address)) === '1';
     setUsernameSkipped(stored);
   }, [address]);
+  // [SPEC 10 B-wiring / review-fix #2] Optimistic-claimed flag — set the
+  // moment the user clicks Continue on the success state, BEFORE the
+  // userStatus refetch resolves (~200-500ms RTT). Without this, the
+  // success card sits visible during the refetch and Continue feels
+  // laggy. Once refetch lands, `userStatus.username` is non-null and
+  // the gate stays hidden via the username-non-null path; the optimistic
+  // flag is harmless past that point.
+  const [usernameOptimisticallyClaimed, setUsernameOptimisticallyClaimed] = useState(false);
   const [agentBudget, setAgentBudget] = useState(0.50);
   // [v1.4 hotfix] Source of truth for the client-side permission tier gate
   // in <UnifiedTimeline>. Defaults to `balanced` when the user hasn't
@@ -1314,16 +1323,21 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
   ) : null;
 
   // [SPEC 10 B-wiring] Gate-render decision: only show the picker when
-  // we KNOW the user has no username AND hasn't dismissed via skip.
-  // `userStatus.loading` is checked explicitly so a freshly-arriving
-  // user never sees a flash of picker before status resolves (which
-  // would be a non-spec-compliant "uncontrolled" gate flash).
+  // we KNOW the user has no username AND hasn't dismissed via skip AND
+  // hasn't just claimed (optimistic flag covers the refetch round-trip).
   const shouldShowUsernameGate =
-    !userStatus.loading && userStatus.username === null && !usernameSkipped;
+    !userStatus.loading &&
+    userStatus.username === null &&
+    !usernameSkipped &&
+    !usernameOptimisticallyClaimed;
 
   const handleUsernameClaimed = () => {
-    // Refetch userStatus so `userStatus.username` becomes non-null on
-    // the next render — gate hides naturally without a separate flag.
+    // [review-fix #2] Optimistic flip BEFORE the refetch resolves so the
+    // Continue click feels instant. The refetch updates the canonical
+    // userStatus.username in the background; once it lands, the gate
+    // stays hidden via the username-non-null check, so the optimistic
+    // flag is structurally harmless past that point.
+    setUsernameOptimisticallyClaimed(true);
     void userStatus.refetch();
   };
 
@@ -1338,6 +1352,20 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
     const dailyYield = balance.savings > 0 && balance.savingsRate > 0
       ? (balance.savings * balance.savingsRate) / 365
       : 0;
+
+    // [SPEC 10 B-wiring / review-fix #1] While userStatus is loading on a
+    // first signed-in render, neither the gate nor the regular empty
+    // state can render correctly — picking either would flash the wrong
+    // surface for ~100-300ms before the data arrives. Show a centred
+    // spinner instead so the picker (or NewConversationView) materialises
+    // ONCE without a stale-state flash. Same Spinner pattern as AuthGuard.
+    if (userStatus.loading) {
+      return (
+        <div className="flex-1 flex items-center justify-center" data-testid="dashboard-empty-loading">
+          <Spinner size="md" />
+        </div>
+      );
+    }
 
     // [SPEC 10 B-wiring] Picker takes over the empty state at signup. Per
     // SPEC 10 D2, this is the "mandatory at signup with smart pre-fill"
