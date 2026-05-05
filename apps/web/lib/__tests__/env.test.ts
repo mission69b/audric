@@ -25,6 +25,10 @@ function setMinimumValidEnv() {
   process.env.T2000_INTERNAL_KEY = 't2000-test';
   process.env.UPSTASH_REDIS_REST_URL = 'https://x.upstash.io';
   process.env.UPSTASH_REDIS_REST_TOKEN = 'redis-test';
+  // SPEC 10 B.2: required as of S.69 follow-up. Format-validation lives at
+  // the route's `decodeSuiPrivateKey` boundary, not the env schema — the
+  // schema gate just enforces "non-empty string."
+  process.env.AUDRIC_PARENT_NFT_PRIVATE_KEY = 'suiprivkey-test';
   process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID = 'google-test';
   process.env.NEXT_PUBLIC_ENOKI_API_KEY = 'enoki-pub-test';
   process.env.NEXT_PUBLIC_SUI_NETWORK = 'mainnet';
@@ -111,6 +115,17 @@ describe('env validation', () => {
   it('REJECTS empty ENOKI_SECRET_KEY', async () => {
     setMinimumValidEnv();
     process.env.ENOKI_SECRET_KEY = '';
+    await expect(import('../env')).rejects.toThrow();
+  });
+
+  // SPEC 10 B.2 — promoted to required in the S.69 follow-up. Pins the
+  // contract so a future "let's relax this back to optional for testing
+  // convenience" PR is caught at CI rather than in prod (the symptom of
+  // a missing key is silent 503s on every signup attempt — exactly the
+  // class of bug the env-gate exists to surface at boot).
+  it('REJECTS empty AUDRIC_PARENT_NFT_PRIVATE_KEY', async () => {
+    setMinimumValidEnv();
+    process.env.AUDRIC_PARENT_NFT_PRIVATE_KEY = '';
     await expect(import('../env')).rejects.toThrow();
   });
 
