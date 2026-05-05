@@ -49,16 +49,13 @@ import type {
 // After side effects, the engine resumes the turn and the route streams
 // events back as SSE — same shape as /api/engine/chat and /api/engine/resume.
 //
-// ⚠️ Engine version note (P9.4 host pre-release)
+// ⚠️ Engine version note
 // ─────────────────────────────────────────────────
-// `engine.resumeWithInput()` ships in @t2000/engine v1.18.0 (P9.6
-// release). Audric pins to v1.17.1 today, which means this route's
-// `engine.resumeWithInput(...)` call site is annotated with
-// `@ts-expect-error` until the bump. The annotation auto-clears
-// (becomes a TS error) when v1.18.0 lands — the signal to remove it.
-// The route is ungated by env flag deliberately: it returns 404 to
-// stale clients (no `pending_input` = no `pendingInput` payload) and
-// only accepts wire shapes that v1.18.0 emits.
+// `engine.resumeWithInput()` ships in @t2000/engine v1.19.0 (P9.6
+// release — v1.18.0 was a no-op build). The route is ungated by env
+// flag deliberately: it returns 404 to stale clients (no
+// `pending_input` = no `pendingInput` payload) and only accepts wire
+// shapes that v1.19.0 emits.
 // ───────────────────────────────────────────────────────────────────────────
 
 interface ResumeWithInputBody {
@@ -430,12 +427,12 @@ export async function POST(request: NextRequest) {
       async start(controller) {
         const encoder = new TextEncoder();
         try {
-          // [P9.4 host pre-release] `engine.resumeWithInput()` ships in
-          // @t2000/engine v1.18.0 (P9.6 release). Audric pins to v1.17.1
-          // today; the @ts-expect-error annotation auto-clears (becomes a
-          // TS error) on the bump — that's our signal to remove it.
-          // @ts-expect-error — requires @t2000/engine v1.18.0+
           for await (const event of engine.resumeWithInput(pendingInput, finalValues)) {
+            // [chat-route parity] `compaction` is an `EngineEvent` member but
+            // NOT a `SSEEvent` member — host stashes the count then drops the
+            // frame so it never reaches the wire. Mirrors the chat route
+            // `case 'compaction': continue;` pattern.
+            if (event.type === 'compaction') continue;
             // Engine-internal microcompact dedup marker — never serialize.
             if (event.type === 'tool_result' && event.toolName === '__deduped__') continue;
             if (event.type === 'error') {

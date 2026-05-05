@@ -6,6 +6,7 @@ import {
   READ_TOOLS,
   WRITE_TOOLS,
   updateTodoTool,
+  addRecipientTool,
   adaptAllServerTools,
   buildCachedSystemPrompt,
   classifyEffort,
@@ -38,6 +39,7 @@ import { audricSaveContactTool, audricListContactsTool } from './contact-tools';
 import { audricPrepareBundleTool } from './prepare-bundle-tool';
 import { detectPriorPlanContext, isAffirmativeConfirmReply } from './confirm-detection';
 import { emitPlanContextPromoted } from './plan-context-metrics';
+import { isHarnessV9Enabled } from '@/lib/interactive-harness';
 import { prisma } from '@/lib/prisma';
 import { getPortfolio, getTokenPrices } from '@/lib/portfolio';
 import {
@@ -526,6 +528,14 @@ export async function createEngine(
   // this line, the LLM physically cannot comply with the prompt and Gate 7
   // (RICH todo emission ≥50%) hard-fails at 0%. See SPEC 8 v0.5.2 patch
   // notes in audric-build-tracker.md.
+  //
+  // [SPEC 9 v0.1.3 P9.6] `addRecipientTool` is gated by NEXT_PUBLIC_HARNESS_V9.
+  // The engine exports it as opt-in (engine/src/index.ts) — the LLM can only
+  // call it when this flag-on code path adds it to the roster. When the flag
+  // is off, the engine's `pending_input` event handling is still live (so a
+  // stale browser tab doesn't crash on a SPEC 9 session), but no tool can
+  // produce one.
+  const harnessV9Enabled = isHarnessV9Enabled();
   const allTools = applyToolFlags([
     ...filteredReads,
     ...filteredWrites,
@@ -535,6 +545,7 @@ export async function createEngine(
     ...ADVICE_TOOLS,
     ...mcpTools,
     updateTodoTool,
+    ...(harnessV9Enabled ? [addRecipientTool] : []),
   ]);
 
   console.log(`[engine-factory] tools=${allTools.length}: ${allTools.map(t => t.name).join(', ')}`);

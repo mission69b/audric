@@ -32,11 +32,10 @@ interface MessageLike {
   content?: unknown;
 }
 
-// [SPEC 9 v0.1.3 P9.3] Local extension of `@t2000/engine`'s `TodoItem` until
-// v1.18.0 ships with the `persist?: boolean` field on the canonical type.
-// Drop this alias and inline `EngineTodoItem` once audric pins
-// @t2000/engine@^1.18.0 (see SPEC 9 P9.6).
-type TodoItem = EngineTodoItem & { persist?: boolean };
+// [SPEC 9 v0.1.3 P9.3] `TodoItem` carries the optional `persist?: boolean`
+// field as of @t2000/engine v1.19.0 (P9.6 release). Local alias kept for
+// backward-compat with the rest of this file's call-sites.
+type TodoItem = EngineTodoItem;
 
 export async function handlePersistentTodos(
   address: string,

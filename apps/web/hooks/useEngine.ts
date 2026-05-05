@@ -189,6 +189,15 @@ export function useEngine({ address, jwt, onToolResult, contacts }: UseEngineOpt
     ReadonlySet<string>
   >(() => new Set());
 
+  // [SPEC 9 v0.1.3 P9.6] Refresh signal for the persistent-goals
+  // sidebar. Bumped each time a `todo_update` event lands carrying any
+  // item with `persist: true` — the LLM has just promoted (or modified)
+  // a long-lived goal in this turn, so the cross-session sidebar's
+  // /api/goals/list view is stale. Pure key — value content doesn't
+  // matter, only its identity. Consumers thread this into
+  // `<OpenGoalsSidebar refreshKey={goalRefreshKey} />`.
+  const [goalRefreshKey, setGoalRefreshKey] = useState(0);
+
   const messagesRef = useRef<EngineChatMessage[]>([]);
   messagesRef.current = messages;
 
@@ -625,24 +634,46 @@ export function useEngine({ address, jwt, onToolResult, contacts }: UseEngineOpt
           return;
         }
 
-        // [P9.4 host minimal] Mark submitted; the resumed-turn SSE
-        // round-trip wiring (stream the response into the same
-        // assistant message + flip to `done`) ships in P9.6 alongside
-        // the engine v1.18.0 release. For now, the form collapses to
-        // the confirmation row and the user can send a new chat
-        // message to nudge the agent.
-        //
-        // We still consume the response stream (closing it explicitly
-        // so the server can shut down its keep-alive) — just don't
-        // process events into the timeline yet.
+        // [SPEC 9 v0.1.3 P9.6] Stream the resumed-turn SSE response into
+        // the SAME assistant message that owns the pending_input. The
+        // route streams the engine's `resumeWithInput` events back: tool
+        // results from the resumed tool (e.g. `add_recipient` returning
+        // the canonical 0x address), additional `text_delta` for the
+        // narration, plus any chained `tool_use` / `tool_result` if the
+        // engine continues the turn. Routing them through the existing
+        // `processSSEChunk` reducer means the timeline rebuilds in-place
+        // with no duplicate rendering and no new "assistant message"
+        // bubble — the user just sees the form collapse and the
+        // agent continue talking.
+        streamingMsgRef.current = foundMsgId;
+        turnCompleteSeenRef.current = false;
+        pendingActionSeenRef.current = false;
+        hasReceivedContent.current = true;
+        setStatus('streaming');
+
         try {
           const reader = res.body?.getReader();
-          while (reader) {
-            const { done } = await reader.read();
-            if (done) break;
+          if (reader) {
+            const decoder = new TextDecoder();
+            let buffer = '';
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              buffer += decoder.decode(value, { stream: true });
+              const chunks = buffer.split('\n\n');
+              buffer = chunks.pop() ?? '';
+              for (const chunk of chunks) {
+                if (!chunk.trim()) continue;
+                processSSEChunk(chunk);
+              }
+            }
+            if (buffer.trim()) processSSEChunk(buffer);
           }
         } catch {
           /* swallow — stream-close is best-effort */
+        } finally {
+          setStatus('idle');
+          streamingMsgRef.current = null;
         }
 
         setMessages((prev) =>
@@ -1344,6 +1375,15 @@ export function useEngine({ address, jwt, onToolResult, contacts }: UseEngineOpt
               : m,
           ),
         );
+        // [SPEC 9 v0.1.3 P9.6] Bump the goals-sidebar refresh signal
+        // when the LLM has promoted (or modified) a long-lived goal in
+        // this turn. The engine surfaces `persist: true` on items the
+        // LLM marks for cross-session persistence; without `persist`,
+        // the item is a within-turn checklist row that doesn't write
+        // to the Goal table and shouldn't trigger a refetch.
+        if (event.items.some((it) => it.persist === true)) {
+          setGoalRefreshKey((k) => k + 1);
+        }
         break;
       }
 
@@ -1539,5 +1579,9 @@ export function useEngine({ address, jwt, onToolResult, contacts }: UseEngineOpt
     // handleRegenerate above, but for `<PendingInputBlockView>` and
     // its `onPendingInputSubmit` slot.
     handlePendingInputSubmit,
+    // [SPEC 9 v0.1.3 P9.6] Refresh signal for `<OpenGoalsSidebar>` —
+    // bumps every time a `todo_update` event arrives with at least
+    // one `persist: true` item (LLM-promoted long-lived goal).
+    goalRefreshKey,
   };
 }

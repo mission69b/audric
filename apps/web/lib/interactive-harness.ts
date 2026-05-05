@@ -145,3 +145,26 @@ export function currentHarnessVersion(bucketKey?: string): HarnessVersion {
 export function asHarnessVersion(v: unknown): HarnessVersion | undefined {
   return v === 'v2' || v === 'legacy' ? v : undefined;
 }
+
+/**
+ * [SPEC 9 v0.1.3 P9.6] True when the SPEC 9 v0.1.1 rollout flag is on
+ * — controls whether the `add_recipient` tool joins the engine roster
+ * AND whether `<OpenGoalsSidebar>` mounts in the dashboard. The
+ * `<proactive>` marker rendering and `pending_input` event handling
+ * are always-on (flag-off doesn't break stale browser tabs).
+ *
+ * Reads `env.NEXT_PUBLIC_HARNESS_V9` (string | undefined). Returns
+ * false on undefined, empty string, or any value other than "1" /
+ * "true" (case-insensitive).
+ *
+ * Unlike `isInteractiveHarnessEnabled()` there is no per-session
+ * pinning here — the gated affordances are entirely additive (no
+ * in-flight session can break when the dial moves), so a global
+ * env-var read is sufficient.
+ */
+export function isHarnessV9Enabled(): boolean {
+  const v = env.NEXT_PUBLIC_HARNESS_V9;
+  if (!v) return false;
+  const normalized = v.trim().toLowerCase();
+  return normalized === '1' || normalized === 'true';
+}

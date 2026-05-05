@@ -1,37 +1,24 @@
-import type { SSEEvent, PendingAction, TodoItem, EvaluationItem } from '@t2000/engine';
 import type {
-  ProactiveTextSseEvent,
-  PendingInputSseEvent,
+  SSEEvent,
+  PendingAction,
+  TodoItem,
+  EvaluationItem,
   FormSchema,
-} from '@/lib/engine/sse-types';
+} from '@t2000/engine';
 
-export type { SSEEvent, PendingAction, TodoItem, EvaluationItem };
+export type { SSEEvent, PendingAction, TodoItem, EvaluationItem, FormSchema };
 
 /**
- * Audric-extended SSE event union. Includes the engine's `SSEEvent` plus
- * any audric-only events that ship ahead of an engine release. Currently:
- *   - `proactive_text` (SPEC 9 v0.1.1 P9.2 — promoted into @t2000/engine
- *     v1.18.0; type stays here as the wire shape until the bump lands)
- *   - `pending_input` (SPEC 9 v0.1.3 P9.4 — typed override of the SPEC 8
- *     v0.5.1 D2 reservation that shipped `schema: unknown`. The engine
- *     locally has the typed shape now; the npm release in v1.18.0 will
- *     promote it. We override the engine's loose union member with the
- *     tight one via Exclude<...> so the reducer narrows correctly.)
+ * Audric-extended SSE event union.
  *
- * Reducer code (`timeline-builder.ts`, `useEngine.ts`) should accept
- * `AudricSSEEvent` rather than `SSEEvent` so TypeScript can narrow into
- * the audric-only cases without falling through to `never`.
+ * As of @t2000/engine v1.19.0 (P9.6 release) the `pending_input` and
+ * `proactive_text` events are native members of the engine's `SSEEvent`
+ * union with their fully-typed shapes. This alias is kept as the canonical
+ * type imported by reducers (`timeline-builder.ts`, `useEngine.ts`) so a
+ * future audric-only event can be added here without touching every
+ * call-site. Today it's a straight re-export.
  */
-export type AudricSSEEvent =
-  | Exclude<SSEEvent, { type: 'pending_input' }>
-  | PendingInputSseEvent
-  | ProactiveTextSseEvent;
-
-// Re-export the local pending_input wire types so consumers in
-// app/components don't depend on the @/lib/engine/sse-types path
-// directly. v1.18.0 swap-out replaces these with `import type
-// { FormSchema } from '@t2000/engine'`.
-export type { FormSchema } from '@/lib/engine/sse-types';
+export type AudricSSEEvent = SSEEvent;
 
 export interface CanvasData {
   template: string;

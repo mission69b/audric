@@ -256,6 +256,42 @@ const clientSchema = z.object({
    * Rollback path: set to "0" or unset `NEXT_PUBLIC_INTERACTIVE_HARNESS`.
    */
   NEXT_PUBLIC_INTERACTIVE_HARNESS_ROLLOUT_PERCENT: optionalString,
+
+  /**
+   * [SPEC 9 v0.1.3 P9.6] Master rollout flag for the SPEC 9 v0.1.1
+   * "today's-value" primitives:
+   *   - P9.2 proactive insight blocks (`<proactive>` markers in
+   *     assistant text → ✦ ADDED BY AUDRIC lockup)
+   *   - P9.3 persistent cross-turn todos (LLM-promoted goals via
+   *     `update_todo {persist: true}` → `<OpenGoalsSidebar>` mount)
+   *   - P9.4 `pending_input` inline forms (the `add_recipient`
+   *     tool — shows a typed inline form when the LLM doesn't have
+   *     enough input to construct a save_contact call)
+   *
+   * - "1" / "true" → all three primitives ARE wired:
+   *     • `addRecipientTool` joins the engine's tool roster
+   *     • `<OpenGoalsSidebar>` renders above the chat timeline
+   *     • LLM-emitted `<proactive>` markers render with the
+   *       sparkle lockup (rendering is always-on; gate covers
+   *       only the affordances above)
+   * - undefined / anything else → the engine still handles the
+   *   `pending_input` event types and `<proactive>` parsing (so
+   *   stale browser tabs don't crash on a session that pre-dates
+   *   the rollback), but the new tool + sidebar are dormant.
+   *
+   * Default OFF. Founder workflow:
+   *   Day 1 — set to "1" in dev / preview; verify all three flows
+   *   Day 2 — set to "1" in production; monitor the SPEC 9 telemetry
+   *           counters (proactive_text_emitted_count, todo_update with
+   *           persist:true, pending_input_emitted_count)
+   * Rollback path: unset the var. The DB rows + SSE event types stay
+   * intact; only the user-visible surface goes dark.
+   *
+   * Per-session pinning is NOT applied — this is a global flag because
+   * the gated affordances are entirely additive (no in-flight session
+   * can break when the dial moves).
+   */
+  NEXT_PUBLIC_HARNESS_V9: optionalString,
 });
 
 // ─── Runtime env (Next.js requires literal references) ────────────────
@@ -297,6 +333,7 @@ const runtimeEnv = {
   NEXT_PUBLIC_INTERACTIVE_HARNESS_ROLLOUT_PERCENT:
     process.env.NEXT_PUBLIC_INTERACTIVE_HARNESS_ROLLOUT_PERCENT,
   NEXT_PUBLIC_CONFIRM_CHIPS_V1: process.env.NEXT_PUBLIC_CONFIRM_CHIPS_V1,
+  NEXT_PUBLIC_HARNESS_V9: process.env.NEXT_PUBLIC_HARNESS_V9,
 } as const;
 
 // ─── Validate ──────────────────────────────────────────────────────────

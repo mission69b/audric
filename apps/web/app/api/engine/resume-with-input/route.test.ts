@@ -6,10 +6,8 @@
 //   2. resolveRecipientField — sui-recipient polymorphic resolution
 //   3. persistAddRecipientContact — Contact upsert + dedupe
 //
-// HTTP-layer + engine.resumeWithInput round-trip ride along with the P9.6
-// release wiring (engine v1.18.0 publish + audric flag flip). For now the
-// route's @ts-expect-error annotation marks the call site that v1.18.0
-// unblocks.
+// HTTP-layer + engine.resumeWithInput round-trip rides on the P9.6 release
+// wiring (engine v1.19.0 publish + audric flag flip).
 // ───────────────────────────────────────────────────────────────────────────
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';

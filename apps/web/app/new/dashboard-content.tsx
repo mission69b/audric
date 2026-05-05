@@ -37,6 +37,8 @@ import { buildSuiPayUri } from '@/lib/sui-pay-uri';
 import { useActivityFeed } from '@/hooks/useActivityFeed';
 import { NewConversationView } from '@/components/dashboard/NewConversationView';
 import { TosBanner } from '@/components/dashboard/TosBanner';
+import { OpenGoalsSidebar } from '@/components/dashboard/OpenGoalsSidebar';
+import { isHarnessV9Enabled } from '@/lib/interactive-harness';
 import { useUserStatus } from '@/hooks/useUserStatus';
 import { usePanel } from '@/hooks/usePanel';
 import { PortfolioPanel } from '@/components/panels/PortfolioPanel';
@@ -1423,6 +1425,24 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
                 banner, handled-for-you, scheduled-action proposals, upcoming
                 tasks, night-before reminders, milestone goals) have all been
                 removed. The chat timeline is the only surface left here. */}
+
+            {/* [SPEC 9 v0.1.3 P9.6] Open goals sidebar — renders above the
+                timeline when the user has any in-progress LLM-promoted
+                goals (`update_todo {persist: true}` items written to the
+                Goal table). Returns null when:
+                  - NEXT_PUBLIC_HARNESS_V9 is OFF (gate),
+                  - jwt is missing (the API requires auth),
+                  - or the user has zero in-progress goals.
+                Refreshes when `goalRefreshKey` bumps — `useEngine`
+                increments it whenever a `todo_update` event in the
+                stream carried at least one `persist: true` item. */}
+            {isHarnessV9Enabled() && address && (
+              <OpenGoalsSidebar
+                address={address}
+                jwt={session?.jwt ?? null}
+                refreshKey={engine.goalRefreshKey}
+              />
+            )}
 
             <UnifiedTimeline
               engine={engine}
