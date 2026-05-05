@@ -96,4 +96,81 @@ describe('TextBlockView', () => {
     );
     expect(container.querySelectorAll('span.transition-colors').length).toBe(0);
   });
+
+  // ─── SPEC 9 v0.1.1 P9.2 — proactive insight lockup styling ───────────────
+  describe('proactive insight lockup', () => {
+    const PROACTIVE_TEXT: TextTimelineBlock = {
+      type: 'text',
+      text: 'You have 1,200 USDC sitting idle. Saving it earns ~5% APY.',
+      status: 'done',
+      proactive: {
+        proactiveType: 'idle_balance',
+        subjectKey: 'USDC',
+        suppressed: false,
+      },
+    };
+
+    it('renders the lockup badge + dim border + italic body when proactive is set and not suppressed', () => {
+      const { container } = render(<TextBlockView block={PROACTIVE_TEXT} />);
+
+      // Lockup badge with the ✦ ADDED BY AUDRIC text + a11y label.
+      const badge = screen.getByLabelText('proactive insight');
+      expect(badge).toBeTruthy();
+      expect(badge.textContent).toContain('ADDED BY AUDRIC');
+
+      // Outer envelope owns the border-left accent.
+      const outer = container.firstElementChild as HTMLElement | null;
+      expect(outer?.className).toContain('border-l-2');
+      expect(outer?.className).toContain('border-info-solid/30');
+
+      // Body wrapper carries the italic class so the LLM's prose reads
+      // as narrative-aside rather than a plain answer line.
+      const italic = container.querySelector('.italic');
+      expect(italic).toBeTruthy();
+      expect(italic?.textContent).toContain('1,200 USDC');
+    });
+
+    it('renders as a plain text block (no lockup) when proactive is suppressed by cooldown', () => {
+      const { container } = render(
+        <TextBlockView
+          block={{
+            ...PROACTIVE_TEXT,
+            proactive: {
+              proactiveType: 'idle_balance',
+              subjectKey: 'USDC',
+              suppressed: true,
+            },
+          }}
+        />,
+      );
+
+      // No lockup badge.
+      expect(screen.queryByLabelText('proactive insight')).toBeNull();
+      // No border-left envelope.
+      const outer = container.firstElementChild as HTMLElement | null;
+      expect(outer?.className ?? '').not.toContain('border-l-2');
+      // No italic styling on the body.
+      expect(container.querySelector('.italic')).toBeNull();
+      // Narrative still flows.
+      expect(container.textContent).toContain('1,200 USDC');
+    });
+
+    it('strips a leaked <proactive> marker from streamed text (defensive)', () => {
+      // Race window: the closing `</proactive>` arrives in `text_delta`
+      // chunks before the engine emits `proactive_text`. We strip
+      // pre-emptively in render so the user never sees the wrapper.
+      const { container } = render(
+        <TextBlockView
+          block={{
+            type: 'text',
+            text: '<proactive type="hf_warning" subjectKey="1.45">HF dipped to 1.45 — consider repaying.</proactive>',
+            status: 'done',
+          }}
+        />,
+      );
+      expect(container.textContent).toContain('HF dipped to 1.45');
+      expect(container.textContent).not.toContain('<proactive');
+      expect(container.textContent).not.toContain('</proactive>');
+    });
+  });
 });

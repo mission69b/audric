@@ -312,6 +312,7 @@ export async function createEngine(
     profileRecord,
     memoryRecords,
     financialContext,
+    persistentGoalRows,
   ] = await Promise.all([
     ensureMcpConnected(),
     getPortfolio(address).catch((err) => {
@@ -352,6 +353,20 @@ export async function createEngine(
     // (degrade to Prisma), or Prisma errors (skip the section). Never
     // throws — `getUserFinancialContext` swallows transport failures.
     getUserFinancialContext(address),
+    // [SPEC 9 v0.1.3 P9.3] Top-5 in-progress persistent goals (the LLM-
+    // promoted `update_todo {persist: true}` items, distinct from
+    // SavingsGoal). Cap at 5 by `updatedAt DESC` per v0.1.2 risk #2 —
+    // bounded context cost. Empty array → `<open_goals>` block omitted
+    // entirely per v0.1.3 R4 cost-trim. Anonymous user (no userId) →
+    // empty (block omitted). Prisma error → empty (skip block).
+    userId
+      ? prisma.goal.findMany({
+          where: { userId, status: 'in_progress' },
+          orderBy: { updatedAt: 'desc' },
+          take: 5,
+          select: { content: true },
+        }).catch(() => [] as Array<{ content: string }>)
+      : Promise.resolve([] as Array<{ content: string }>),
   ]);
 
   // [SIMPLIFICATION DAY 5] Phase D pattern-detected proposals removed.
@@ -567,6 +582,13 @@ export async function createEngine(
     },
     useSyntheticPrefetch: isNewSession,
     financialContext,
+    // [SPEC 9 v0.1.3 P9.3 / R4] persistentGoals → renders the
+    // <open_goals> sub-section inside <financial_context>. When the
+    // array is empty, the sub-section is omitted entirely (saves
+    // ~150 tokens/turn for the majority of users without goals).
+    persistentGoals: persistentGoalRows.length > 0
+      ? { contents: persistentGoalRows.map((g) => g.content) }
+      : null,
   });
 
   const systemPrompt = buildCachedSystemPrompt([STATIC_SYSTEM_PROMPT], dynamicBlock);

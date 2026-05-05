@@ -462,6 +462,7 @@ describe('STATIC_SYSTEM_PROMPT — B3.6 budget gate', () => {
     //   - Post-F14-fix-2 ceiling:         10,200 tokens   ( +200 budget)
     //   - Post-failed-write-narration:    10,250 tokens   ( +50 budget)
     //   - Post-fee-disclosure (May 2026): 10,300 tokens   ( +50 budget)
+    //   - Post-SPEC 9 P9.2 (May 2026):    10,400 tokens   (+100 budget)
     //
     // B3.6 added the "Mid-flight narration & todos" section + the
     // `<eval_summary>` emission contract.
@@ -552,7 +553,7 @@ describe('STATIC_SYSTEM_PROMPT — B3.6 budget gate', () => {
     //      a new entry in the ceiling-history table above.
     const { STATIC_SYSTEM_PROMPT } = await import('../engine-context');
     const tokens = Math.ceil(STATIC_SYSTEM_PROMPT.length / 4);
-    expect(tokens).toBeLessThanOrEqual(10_300);
+    expect(tokens).toBeLessThanOrEqual(10_400);
   });
 });
 

@@ -139,6 +139,78 @@ describe('applyEventToTimeline — text', () => {
     expect(tl[1].type).toBe('tool');
     expect((tl[2] as TextTimelineBlock).text).toBe('post-tool');
   });
+
+  // ─── SPEC 9 v0.1.1 P9.2 — proactive_text event ─────────────────────────
+  it('strips the wrapper and stamps proactive metadata when proactive_text fires', () => {
+    const tl = applyEventToTimeline(
+      [
+        {
+          type: 'text',
+          text: '<proactive type="idle_balance" subjectKey="USDC">You have 1,200 USDC sitting idle.</proactive>',
+          status: 'done',
+        },
+      ],
+      {
+        type: 'proactive_text',
+        proactiveType: 'idle_balance',
+        subjectKey: 'USDC',
+        body: 'You have 1,200 USDC sitting idle.',
+        suppressed: false,
+        markerCount: 1,
+      },
+      T0,
+    );
+    expect(tl).toHaveLength(1);
+    expect(tl[0]).toMatchObject({
+      type: 'text',
+      text: 'You have 1,200 USDC sitting idle.',
+      proactive: {
+        proactiveType: 'idle_balance',
+        subjectKey: 'USDC',
+        suppressed: false,
+      },
+    });
+  });
+
+  it('passes the suppressed flag through to the timeline metadata', () => {
+    const tl = applyEventToTimeline(
+      [
+        {
+          type: 'text',
+          text: '<proactive type="hf_warning" subjectKey="1.45">HF dipped to 1.45.</proactive>',
+          status: 'done',
+        },
+      ],
+      {
+        type: 'proactive_text',
+        proactiveType: 'hf_warning',
+        subjectKey: '1.45',
+        body: 'HF dipped to 1.45.',
+        suppressed: true,
+        markerCount: 1,
+      },
+      T0,
+    );
+    const block = tl[0] as TextTimelineBlock;
+    expect(block.proactive?.suppressed).toBe(true);
+    expect(block.text).toBe('HF dipped to 1.45.');
+  });
+
+  it('returns the timeline unchanged when there is no text block to attach to', () => {
+    const tl = applyEventToTimeline(
+      [],
+      {
+        type: 'proactive_text',
+        proactiveType: 'apy_drift',
+        subjectKey: 'NAVI-USDC',
+        body: 'APY shifted from 5.1% to 4.7%.',
+        suppressed: false,
+        markerCount: 1,
+      },
+      T0,
+    );
+    expect(tl).toEqual([]);
+  });
 });
 
 describe('applyEventToTimeline — tools', () => {

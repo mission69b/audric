@@ -8,37 +8,38 @@ datasource db {
 }
 
 model User {
-  id               String    @id @default(cuid())
-  suiAddress       String    @unique
-  email            String?   @unique
-  emailVerified    Boolean   @default(false)
-  displayName      String?
-  timezoneOffset   Int       @default(0)
-  tosAcceptedAt    DateTime?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  id             String    @id @default(cuid())
+  suiAddress     String    @unique
+  email          String?   @unique
+  emailVerified  Boolean   @default(false)
+  displayName    String?
+  timezoneOffset Int       @default(0)
+  tosAcceptedAt  DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
-  preferences          UserPreferences?
-  conversationLogs     ConversationLog[]
-  savingsGoals         SavingsGoal[]
-  adviceLogs           AdviceLog[]
-  payments             Payment[]
-  watchAddresses       WatchAddress[]
-  portfolioSnapshots   PortfolioSnapshot[]
-  financialProfile     UserFinancialProfile?
-  memories             UserMemory[]
-  linkedWallets        LinkedWallet[]
+  preferences        UserPreferences?
+  conversationLogs   ConversationLog[]
+  savingsGoals       SavingsGoal[]
+  goals              Goal[]
+  adviceLogs         AdviceLog[]
+  payments           Payment[]
+  watchAddresses     WatchAddress[]
+  portfolioSnapshots PortfolioSnapshot[]
+  financialProfile   UserFinancialProfile?
+  memories           UserMemory[]
+  linkedWallets      LinkedWallet[]
 
   @@index([email])
   @@index([emailVerified, timezoneOffset])
 }
 
 model UserPreferences {
-  address      String   @id
-  contacts     Json     @default("[]")
-  limits       Json?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  address   String   @id
+  contacts  Json     @default("[]")
+  limits    Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   user   User?   @relation(fields: [userId], references: [id])
   userId String? @unique
@@ -92,34 +93,67 @@ model ServicePurchase {
 }
 
 model SavingsGoal {
-  id               String    @id @default(cuid())
-  userId           String
-  name             String
-  emoji            String    @default("🎯")
-  targetAmount     Float
-  deadline         DateTime?
-  status           String    @default("active")
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  id           String    @id @default(cuid())
+  userId       String
+  name         String
+  emoji        String    @default("🎯")
+  targetAmount Float
+  deadline     DateTime?
+  status       String    @default("active")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
-  user     User              @relation(fields: [userId], references: [id])
+  user       User        @relation(fields: [userId], references: [id])
   adviceLogs AdviceLog[]
 
   @@index([userId, status])
 }
 
+/// [SPEC 9 v0.1.3 P9.3] Persistent cross-session goal — promoted from a
+/// turn-scoped `update_todo` item via the `persist: true` flag. Distinct from
+/// `SavingsGoal` (which is a structured monetary target with deadline +
+/// emoji); a `Goal` is the LLM's free-form persistent todo ("save $500 by
+/// month-end", "research wstETH yields", "remind me to repay borrow when HF
+/// drops below 1.5"). The agent reads open goals from the daily
+/// `<financial_context>` block (top-5 by `updatedAt`, omitted entirely when
+/// count = 0 per v0.1.3 R4) so it can reference them naturally across
+/// sessions. Mutations are host-only (sidebar dismiss/complete buttons) —
+/// per v0.1.3 R5 there is NO `dismiss_goal` engine tool.
+///
+/// Status values:
+///   - `in_progress` — default; promoted via `update_todo {persist: true}`.
+///   - `completed`   — user clicked "complete" in `<OpenGoalsSidebar />`
+///                     (host API: POST /api/goals/complete).
+///   - `dismissed`   — user clicked "dismiss" in the sidebar (host API:
+///                     POST /api/goals/dismiss). Distinct from completed —
+///                     dismissed = "no longer relevant"; completed = "I did it".
+model Goal {
+  id              String    @id @default(cuid())
+  userId          String
+  content         String
+  status          String    @default("in_progress")
+  sourceSessionId String
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  completedAt     DateTime?
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, status])
+}
+
 model AppEvent {
-  id             String   @id @default(cuid())
-  address        String
-  type           String
-  title          String
-  details        Json?
-  digest         String?
-  adviceLogId    String?
-  goalId         String?
-  suiTxVerified  Boolean  @default(false)
-  source         String   @default("chat")
-  createdAt      DateTime @default(now())
+  id            String   @id @default(cuid())
+  address       String
+  type          String
+  title         String
+  details       Json?
+  digest        String?
+  adviceLogId   String?
+  goalId        String?
+  suiTxVerified Boolean  @default(false)
+  source        String   @default("chat")
+  createdAt     DateTime @default(now())
 
   @@index([address, createdAt])
   @@index([address, type, createdAt])
@@ -128,14 +162,14 @@ model AppEvent {
 }
 
 model AdviceLog {
-  id            String       @id @default(cuid())
-  userId        String
-  sessionId     String
-  adviceText    String
-  adviceType    String
-  targetAmount  Float?
-  goalId        String?
-  appEventId    String?
+  id           String   @id @default(cuid())
+  userId       String
+  sessionId    String
+  adviceText   String
+  adviceType   String
+  targetAmount Float?
+  goalId       String?
+  appEventId   String?
   /// [v1.4.2 — Day 3 / Spec §AdviceLog migration] Set to `true` when the
   /// user acts on the suggestion (e.g. confirms a recommended save / swap
   /// originated from the surfaced advice). Used by the daily financial-
@@ -143,49 +177,49 @@ model AdviceLog {
   /// `pendingAdvice` — without this flag the cron re-surfaces stale
   /// suggestions the user already followed. Default `false` covers all
   /// pre-migration rows correctly (treat as not yet acted on).
-  actedOn       Boolean      @default(false)
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  actedOn      Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  user           User           @relation(fields: [userId], references: [id])
-  goal           SavingsGoal?   @relation(fields: [goalId], references: [id])
+  user User         @relation(fields: [userId], references: [id])
+  goal SavingsGoal? @relation(fields: [goalId], references: [id])
 
   @@index([userId])
   @@index([createdAt])
 }
 
 model Payment {
-  id          String    @id @default(cuid())
-  slug        String    @unique
-  nonce       String    @default(uuid())
-  userId      String
-  suiAddress  String
+  id         String @id @default(cuid())
+  slug       String @unique
+  nonce      String @default(uuid())
+  userId     String
+  suiAddress String
 
-  type        String    @default("link")
-  status      String    @default("active")
-  amount      Float?
-  currency    String    @default("USDC")
-  label       String?
-  memo        String?
-  senderName  String?
+  type       String  @default("link")
+  status     String  @default("active")
+  amount     Float?
+  currency   String  @default("USDC")
+  label      String?
+  memo       String?
+  senderName String?
 
   // Invoice-specific (optional, ignored for type=link)
-  lineItems       Json?
-  dueDate         DateTime?
-  recipientName   String?
-  recipientEmail  String?
-  sentAt          DateTime?
-  reminderSentAt  DateTime?
+  lineItems      Json?
+  dueDate        DateTime?
+  recipientName  String?
+  recipientEmail String?
+  sentAt         DateTime?
+  reminderSentAt DateTime?
 
   // Payment tracking
-  paymentMethod   String?
-  paidAt          DateTime?
-  paidBy          String?
-  txDigest        String?    @unique
-  expiresAt       DateTime?
+  paymentMethod String?
+  paidAt        DateTime?
+  paidBy        String?
+  txDigest      String?   @unique
+  expiresAt     DateTime?
 
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id])
 
@@ -209,9 +243,9 @@ model WatchAddress {
 }
 
 model PortfolioSnapshot {
-  id              String   @id @default(cuid())
-  userId          String
-  date            DateTime @db.Date
+  id     String   @id @default(cuid())
+  userId String
+  date   DateTime @db.Date
 
   walletValueUsd  Float
   savingsValueUsd Float
@@ -235,21 +269,21 @@ model PortfolioSnapshot {
 }
 
 model UserFinancialProfile {
-  id                   String   @id @default(cuid())
-  userId               String   @unique
-  riskAppetite         String   @default("moderate")  // conservative | moderate | aggressive
-  financialLiteracy    String   @default("intermediate") // novice | intermediate | advanced
-  prefersBriefResponses Boolean @default(false)
-  prefersExplainers    Boolean @default(true)
-  currencyFraming      String  @default("usdc") // usdc | fiat
-  primaryGoals         String[] @default([])
-  knownPatterns        String[] @default([])
-  riskConfidence       Float   @default(0)
-  literacyConfidence   Float   @default(0)
-  inferenceVersion     Int     @default(1)
-  lastInferredAt       DateTime?
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  id                    String    @id @default(cuid())
+  userId                String    @unique
+  riskAppetite          String    @default("moderate") // conservative | moderate | aggressive
+  financialLiteracy     String    @default("intermediate") // novice | intermediate | advanced
+  prefersBriefResponses Boolean   @default(false)
+  prefersExplainers     Boolean   @default(true)
+  currencyFraming       String    @default("usdc") // usdc | fiat
+  primaryGoals          String[]  @default([])
+  knownPatterns         String[]  @default([])
+  riskConfidence        Float     @default(0)
+  literacyConfidence    Float     @default(0)
+  inferenceVersion      Int       @default(1)
+  lastInferredAt        DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
   user User @relation(fields: [userId], references: [id])
 
@@ -259,7 +293,7 @@ model UserFinancialProfile {
 model UserMemory {
   id              String    @id @default(cuid())
   userId          String
-  memoryType      String    // preference | fact | pattern | goal | concern
+  memoryType      String // preference | fact | pattern | goal | concern
   content         String
   originalQuote   String?
   confidence      Float     @default(0.8)
@@ -296,28 +330,28 @@ model LinkedWallet {
 /// chat route at turn close. Purely additive, fire-and-forget; failures
 /// must never block a chat response. Retention is 90 days via Vercel cron.
 model TurnMetrics {
-  id                   String   @id @default(cuid())
-  sessionId            String
-  userId               String
-  turnIndex            Int
-  effortLevel          String
-  modelUsed            String
-  wallTimeMs           Int
-  firstTokenMs         Int
-  toolsCalled          Json
-  guardsFired          Json
-  compactionTriggered  Boolean  @default(false)
-  contextTokensStart   Int
-  cacheHit             Boolean  @default(false)
-  cacheReadTokens      Int      @default(0)
-  cacheWriteTokens     Int      @default(0)
-  inputTokens          Int
-  outputTokens         Int
-  estimatedCostUsd     Float
-  pendingActionYielded Boolean  @default(false)
-  pendingActionOutcome String?
-  aciRefinements       Int      @default(0)
-  sessionSpendUsd      Float    @default(0)
+  id                         String   @id @default(cuid())
+  sessionId                  String
+  userId                     String
+  turnIndex                  Int
+  effortLevel                String
+  modelUsed                  String
+  wallTimeMs                 Int
+  firstTokenMs               Int
+  toolsCalled                Json
+  guardsFired                Json
+  compactionTriggered        Boolean  @default(false)
+  contextTokensStart         Int
+  cacheHit                   Boolean  @default(false)
+  cacheReadTokens            Int      @default(0)
+  cacheWriteTokens           Int      @default(0)
+  inputTokens                Int
+  outputTokens               Int
+  estimatedCostUsd           Float
+  pendingActionYielded       Boolean  @default(false)
+  pendingActionOutcome       String?
+  aciRefinements             Int      @default(0)
+  sessionSpendUsd            Float    @default(0)
   /// [v1.5.1] Drift signal for the `cacheable: false` invariant.
   /// Counts tools in `MUTABLE_TOOL_SET` (derived from the post-write
   /// refresh map) whose `resultDeduped` flag flipped true this turn.
@@ -326,7 +360,7 @@ model TurnMetrics {
   /// the engine's `Tool.cacheable: false` annotation was forgotten.
   /// Cheap audit: `SELECT id, modelUsed, mutableToolDedupes FROM
   /// "TurnMetrics" WHERE "mutableToolDedupes" > 0;`
-  mutableToolDedupes   Int      @default(0)
+  mutableToolDedupes         Int      @default(0)
   /// [v1.4.2 — Day 3 / Spec Item 3] Per-yield UUID emitted by the engine
   /// on `pending_action`. Nullable because (a) turns without a write
   /// never yield one and (b) pre-migration rows have no value. The
@@ -335,29 +369,29 @@ model TurnMetrics {
   /// false-resolution that pair allows when the same turn yields a
   /// second pending action (e.g. modifiable-field re-yield). Indexed
   /// because resume is a per-row lookup and the column is sparse.
-  attemptId            String?
+  attemptId                  String?
   /// [v1.4.2 — Day 3] `true` when this turn was driven by a
   /// pre-fetch / synthetic intent (e.g. resumed-session snapshot reads)
   /// rather than a user prompt. Lets dashboards exclude synthetic
   /// turns from latency / cost percentiles without losing the
   /// instrumentation row.
-  synthetic            Boolean  @default(false)
+  synthetic                  Boolean  @default(false)
   /// [v1.4.2 — Day 3] Wall-clock ms reported by the host for the
   /// client-side write tool execution (signing + broadcast +
   /// indexer-lag absorption). Written only on resume; null on the
   /// initial chat row that yielded the `pending_action`.
-  writeToolDurationMs  Int?
+  writeToolDurationMs        Int?
   /// [v1.4.2 — Day 3] Estimated USD savings from prompt-cache reads on
   /// this turn — `cacheReadTokens * (input_rate - cacheRead_rate)` per
   /// `costRatesForModel`. Reported separately from `estimatedCostUsd`
   /// so dashboards can attribute hit-rate value without subtraction.
-  cacheSavingsUsd      Float    @default(0)
+  cacheSavingsUsd            Float    @default(0)
   /// [v1.4.2 — Day 3] Phase of the turn that produced this row:
   /// `'initial'` for the chat-route close, `'resume'` for the row the
   /// resume-route close writes when the user resolves the pending
   /// action. Default `'initial'` is the safe value for backfilled
   /// pre-migration rows (none of them carried a resume row).
-  turnPhase            String   @default("initial")
+  turnPhase                  String   @default("initial")
   /// [SPEC 8 v0.5.1 B3.6 / Layer 6] One-shot per-turn shape declared by
   /// the engine `harness_shape` event: `'lean' | 'standard' | 'rich' |
   /// 'max'`. Null on rows that pre-date the engine event (engines
@@ -365,51 +399,51 @@ model TurnMetrics {
   /// catches LEAN-turn regressions (any non-zero `todoUpdateCount`
   /// or `thinkingBlockCount > 0` on a `harnessShape='lean'` row is a
   /// shape-contract violation worth investigating).
-  harnessShape         String?
+  harnessShape               String?
   /// [SPEC 8 v0.5.1 B3.6] Count of `thinking_done` events emitted this
   /// turn. Soft-capped per shape (lean=0, standard=3, rich=5, max=8).
-  thinkingBlockCount   Int      @default(0)
+  thinkingBlockCount         Int      @default(0)
   /// [SPEC 8 v0.5.1 B3.6] Count of `update_todo` tool calls this turn
   /// (one increment per `todo_update` engine event). Forbidden on
   /// `lean` shape; non-zero on `lean` rows is a regression signal.
-  todoUpdateCount      Int      @default(0)
+  todoUpdateCount            Int      @default(0)
   /// [SPEC 8 v0.5.1 B3.6] Time To First Visible Progress — ms from
   /// turn start to the first host-renderable event (`thinking_delta`,
   /// `tool_start`, `todo_update`, or `text_delta`, whichever first).
   /// Null when the turn produced no renderable events (rare error
   /// path). p50 ≤ 1500ms is the SPEC 8 v0.5.1 B3.7 rollout gate.
-  ttfvpMs              Int?
+  ttfvpMs                    Int?
   /// [SPEC 8 v0.5.1 B3.6] Output tokens for `text_delta` events only
   /// (excludes thinking + tool I/O). Approximated as
   /// `Math.ceil(charCount / 4)` to match `@t2000/engine` `estimateTokens`.
   /// Canonical terseness signal — p50 ≤ baseline + 50% is the
   /// final-text-discipline rollout gate.
-  finalTextTokens      Int      @default(0)
+  finalTextTokens            Int      @default(0)
   /// [SPEC 8 v0.5.1 B3.6 / G9] Raw count of `<eval_summary>` markers
   /// parsed by the engine (`thinking_done.summaryMode === true`).
   /// No quality judgment — dashboard derives the appropriately-emitted
   /// rate from `WHERE harnessShape >= 'standard'`. Should be 0 on lean.
-  evalSummaryEmittedCount Int   @default(0)
+  evalSummaryEmittedCount    Int      @default(0)
   /// [SPEC 8 v0.5.1 B3.6 / G9] Increments when `evalSummaryEmittedCount
   /// > 1` in the same turn (multiple markers — broken trust-card UX).
   /// Should be ~zero in steady state.
-  evalSummaryViolationsCount Int @default(0)
+  evalSummaryViolationsCount Int      @default(0)
   /// [SPEC 8 v0.5.1 B3.6 / D2] True when a `pending_input` event arrived
   /// on a session pinned to the legacy harness. Should ALWAYS be false
   /// in production under engine v1.5.0 (which doesn't emit
   /// `pending_input`); non-zero means session pinning broke or a SPEC
   /// 9 v0.1.2 emission leaked into a legacy session.
-  pendingInputSeenOnLegacy Boolean @default(false)
+  pendingInputSeenOnLegacy   Boolean  @default(false)
   /// [SPEC 8 v0.5.1 B3.6] Count of `tool_progress` events emitted by
   /// long-running tools this turn. Spec target: ≥80% of swap_execute
   /// turns emit at least one progress event once the wiring lands.
-  toolProgressEventCount Int   @default(0)
+  toolProgressEventCount     Int      @default(0)
   /// [SPEC 8 v0.5.1 B3.6 / Gap J] 1 when the turn ended without
   /// `turn_complete` AND without `pending_action` (interrupted —
   /// client abort, serverless timeout, network drop). Rollback gate:
   /// >1% over 24h triggers SPEC 8 v0.5.1 B3.7 flag rollback.
-  interruptedMessageCount Int  @default(0)
-  createdAt            DateTime @default(now())
+  interruptedMessageCount    Int      @default(0)
+  createdAt                  DateTime @default(now())
 
   @@index([userId, createdAt])
   @@index([sessionId])

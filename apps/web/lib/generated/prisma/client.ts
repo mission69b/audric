@@ -72,6 +72,28 @@ export type ServicePurchase = Prisma.ServicePurchaseModel
  */
 export type SavingsGoal = Prisma.SavingsGoalModel
 /**
+ * Model Goal
+ * [SPEC 9 v0.1.3 P9.3] Persistent cross-session goal — promoted from a
+ * turn-scoped `update_todo` item via the `persist: true` flag. Distinct from
+ * `SavingsGoal` (which is a structured monetary target with deadline +
+ * emoji); a `Goal` is the LLM's free-form persistent todo ("save $500 by
+ * month-end", "research wstETH yields", "remind me to repay borrow when HF
+ * drops below 1.5"). The agent reads open goals from the daily
+ * `<financial_context>` block (top-5 by `updatedAt`, omitted entirely when
+ * count = 0 per v0.1.3 R4) so it can reference them naturally across
+ * sessions. Mutations are host-only (sidebar dismiss/complete buttons) —
+ * per v0.1.3 R5 there is NO `dismiss_goal` engine tool.
+ * 
+ * Status values:
+ * - `in_progress` — default; promoted via `update_todo {persist: true}`.
+ * - `completed`   — user clicked "complete" in `<OpenGoalsSidebar />`
+ * (host API: POST /api/goals/complete).
+ * - `dismissed`   — user clicked "dismiss" in the sidebar (host API:
+ * POST /api/goals/dismiss). Distinct from completed —
+ * dismissed = "no longer relevant"; completed = "I did it".
+ */
+export type Goal = Prisma.GoalModel
+/**
  * Model AppEvent
  * 
  */

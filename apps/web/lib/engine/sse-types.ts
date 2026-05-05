@@ -84,3 +84,53 @@ export interface ExpectsConfirmSseEvent {
    */
   stepCount: number;
 }
+
+// ───────────────────────────────────────────────────────────────────────────
+// SPEC 9 v0.1.1 P9.2 — Proactive insight blocks
+//
+// Engine emits `proactive_text` AFTER the assistant's text deltas have
+// streamed when it parsed a `<proactive type="..." subjectKey="...">…</proactive>`
+// marker around the response body. The host's timeline-builder reducer
+// strips the wrapper from the latest `TextTimelineBlock.text` and stamps
+// `proactive` metadata onto it so `<TextBlockView>` can render the
+// `✦ ADDED BY AUDRIC` lockup styling.
+//
+// Lives here (audric-only) until @t2000/engine v1.18.0 promotes
+// `proactive_text` into the engine's `SSEEvent` union — at which point
+// this type and the local re-export below are deleted in favour of the
+// engine's canonical version. The wire shape MUST stay identical so the
+// promotion is a no-op for hosts.
+// ───────────────────────────────────────────────────────────────────────────
+
+export type ProactiveType =
+  | 'idle_balance'
+  | 'hf_warning'
+  | 'apy_drift'
+  | 'goal_progress';
+
+export interface ProactiveTextSseEvent {
+  type: 'proactive_text';
+  /** Closed list — see `ProactiveType` and the system prompt allow-list. */
+  proactiveType: ProactiveType;
+  /**
+   * Stable per-subject id chosen by the LLM (`USDC`, `1.45`, `save-500-by-may`).
+   * Same `(proactiveType, subjectKey)` pair won't fire twice in one session
+   * — the engine maintains a per-instance cooldown set keyed on this pair.
+   */
+  subjectKey: string;
+  /** Marker body (already stripped of the wrapper tags). */
+  body: string;
+  /**
+   * `true` when the cooldown set already contains the pair — host renders
+   * as a plain text block (no lockup, no italic, no border). `false` on
+   * the first sighting in a session — host renders with full lockup
+   * styling.
+   */
+  suppressed: boolean;
+  /**
+   * How many `<proactive>` markers the engine parsed in this text block.
+   * Should always be 1; >1 means the LLM violated the "max one block per
+   * turn" rule and the engine logged a violation counter.
+   */
+  markerCount: number;
+}

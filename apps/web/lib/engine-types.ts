@@ -1,6 +1,19 @@
 import type { SSEEvent, PendingAction, TodoItem, EvaluationItem } from '@t2000/engine';
+import type { ProactiveTextSseEvent } from '@/lib/engine/sse-types';
 
 export type { SSEEvent, PendingAction, TodoItem, EvaluationItem };
+
+/**
+ * Audric-extended SSE event union. Includes the engine's `SSEEvent` plus
+ * any audric-only events that ship ahead of an engine release. Currently:
+ *   - `proactive_text` (SPEC 9 v0.1.1 P9.2 — promoted into @t2000/engine
+ *     v1.18.0; type stays here as the wire shape until the bump lands)
+ *
+ * Reducer code (`timeline-builder.ts`, `useEngine.ts`) should accept
+ * `AudricSSEEvent` rather than `SSEEvent` so TypeScript can narrow into
+ * the audric-only cases without falling through to `never`.
+ */
+export type AudricSSEEvent = SSEEvent | ProactiveTextSseEvent;
 
 export interface CanvasData {
   template: string;
@@ -74,6 +87,27 @@ export interface TextTimelineBlock {
   type: 'text';
   text: string;
   status: BlockStatus;
+  /**
+   * [SPEC 9 v0.1.1 P9.2] Set when the engine emitted a `proactive_text`
+   * SSE event whose content overlaps this block — i.e. the LLM wrapped
+   * its response in a `<proactive type="..." subjectKey="...">…</proactive>`
+   * marker. When `suppressed === false`, render with the
+   * `✦ ADDED BY AUDRIC` lockup styling (italic body + dim border-left
+   * accent + lockup badge) to flag this as an unsolicited insight, not
+   * a direct answer to the user's question. When `suppressed === true`
+   * (per-session cooldown hit — same `(type, subjectKey)` already
+   * fired this session), strip the wrapper from `text` for display
+   * but render as a plain text block — narrative still flows, the
+   * lockup just doesn't fire twice.
+   *
+   * Telemetry counters are bumped engine-side via the `getTelemetrySink`
+   * pathway; the host's renderer is purely presentational here.
+   */
+  proactive?: {
+    proactiveType: 'idle_balance' | 'hf_warning' | 'apy_drift' | 'goal_progress';
+    subjectKey: string;
+    suppressed: boolean;
+  };
 }
 
 /**

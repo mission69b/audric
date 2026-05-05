@@ -361,6 +361,9 @@ When running balance_check or health_check, include proactive suggestions:
 - Warn when health factor < 1.5.
 - Display dollar amounts as USD. Non-stablecoin deposits (WAL, SUI, ETH) are in their native token units.
 
+## Proactive insights
+For unsolicited insights (idle balance, HF warning, APY drift, goal progress) wrap your ENTIRE response in \`<proactive type="..." subjectKey="...">BODY</proactive>\`. Types are a closed list: \`idle_balance\`, \`hf_warning\`, \`apy_drift\`, \`goal_progress\`. \`subjectKey\` is a stable per-subject id (\`USDC\`, \`1.45\`, \`save-500-by-may\`) — same (type, subjectKey) won't re-fire same session. Max 1/turn. Don't mix with question answers; skip when nothing notable changed.
+
 ## CRITICAL: Address handling (lost-funds prevention)
 Sui addresses are 0x followed by 64 hex characters. ONE wrong character = funds lost forever (the destination is some other valid wallet, not yours, and on-chain transfers are irreversible).
 
@@ -487,8 +490,26 @@ Invariants: LEAN stays terse — no mid-flight narration, no \`update_todo\`. RI
  * "Today" / "Yesterday" for the two most common values; everything
  * else is a count.
  */
+/**
+ * [SPEC 9 v0.1.3 P9.3] Persistent cross-session goals — sourced from the
+ * `Goal` Prisma table (distinct from `SavingsGoal`-derived
+ * `snapshot.openGoals`). Caller queries
+ * `prisma.goal.findMany({ where: { userId, status: 'in_progress' }, orderBy: { updatedAt: 'desc' }, take: 5 })`
+ * and passes the `content` strings here. Empty array → block omitted
+ * entirely (per v0.1.3 R4 — saves ~150 tokens/turn for users without goals).
+ */
+export interface PersistentGoalsContext {
+  /**
+   * Top-5 by `updatedAt DESC` (cap enforced by caller; this builder
+   * trusts the input). When length is 0 the `<open_goals>` block is
+   * omitted from the rendered output.
+   */
+  contents: string[];
+}
+
 export function buildFinancialContextBlock(
   snapshot: FinancialContextSnapshot | null | undefined,
+  persistentGoals?: PersistentGoalsContext | null,
 ): string {
   if (!snapshot) return '';
 
@@ -538,6 +559,20 @@ export function buildFinancialContextBlock(
         ? 'Yesterday'
         : `${snapshot.daysSinceLastSession} days ago`;
   lines.push(`Last session: ${sessionPhrase}`);
+  // [SPEC 9 v0.1.3 P9.3 / R4] Persistent cross-session goals block.
+  // Omitted entirely when there are zero in-progress goals — most users
+  // never set any, so this saves ~150 tokens per turn for the majority.
+  // When goals exist, render up to top-5 by updatedAt (caller-enforced
+  // cap). Distinct from the SavingsGoal-derived `Open goals: ...` line
+  // above: those are structured monetary targets; these are free-form
+  // todos the LLM promoted via `update_todo {persist: true}`.
+  if (persistentGoals && persistentGoals.contents.length > 0) {
+    lines.push('<open_goals>');
+    for (const content of persistentGoals.contents) {
+      lines.push(`- ${content}`);
+    }
+    lines.push('</open_goals>');
+  }
   lines.push('</financial_context>');
   lines.push(
     'The block above is a daily orientation snapshot (at most 24h old) — use it for greetings and "where did we leave off?" continuity. It is NOT a substitute for tool calls when the user explicitly asks for balance / savings / net worth / health figures (see the "Rich-card rendering on direct read questions" rule above — those questions ALWAYS require the corresponding read tool so the rich card renders).',
@@ -562,6 +597,14 @@ export function buildDynamicBlock(
      * entirely so unauthenticated / brand-new users get a clean prompt.
      */
     financialContext?: FinancialContextSnapshot | null;
+    /**
+     * [SPEC 9 v0.1.3 P9.3] Persistent cross-session goals — top-5 by
+     * `updatedAt DESC` from the `Goal` Prisma table. Caller queries
+     * `prisma.goal.findMany({ where: { userId, status: 'in_progress' }, ... })`.
+     * When undefined / empty, the `<open_goals>` sub-section is omitted
+     * (per v0.1.3 R4 — saves ~150 tokens/turn for the majority).
+     */
+    persistentGoals?: PersistentGoalsContext | null;
   },
 ): string {
   const balances = opts?.balances;
@@ -569,7 +612,10 @@ export function buildDynamicBlock(
   const swapTokenNames = opts?.swapTokenNames;
   const goals = opts?.goals;
   const adviceContext = opts?.adviceContext;
-  const financialContextBlock = buildFinancialContextBlock(opts?.financialContext);
+  const financialContextBlock = buildFinancialContextBlock(
+    opts?.financialContext,
+    opts?.persistentGoals,
+  );
 
   const balanceSection = opts?.useSyntheticPrefetch
     ? 'Wallet balances and savings positions were prefetched as balance_check and savings_info tool results at the start of this conversation. Reference those results for current data. After ANY write action, call balance_check for fresh data.'
@@ -714,6 +760,13 @@ export function buildFullDynamicContext(
      * the section entirely.
      */
     financialContext?: FinancialContextSnapshot | null;
+    /**
+     * [SPEC 9 v0.1.3 P9.3] Forwarded into `buildDynamicBlock` so the
+     * `<open_goals>` sub-section lands inside `<financial_context>`.
+     * Optional — `null`/`undefined`/empty skips the sub-section
+     * entirely (v0.1.3 R4 cost-trim).
+     */
+    persistentGoals?: PersistentGoalsContext | null;
   },
 ): string {
   const base = buildDynamicBlock(walletAddress, tools, {
@@ -724,6 +777,7 @@ export function buildFullDynamicContext(
     adviceContext: opts.adviceContext,
     useSyntheticPrefetch: opts.useSyntheticPrefetch,
     financialContext: opts.financialContext,
+    persistentGoals: opts.persistentGoals,
   });
 
   const sections: string[] = [base];

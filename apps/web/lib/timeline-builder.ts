@@ -25,7 +25,7 @@
 // ───────────────────────────────────────────────────────────────────────────
 
 import type {
-  SSEEvent,
+  AudricSSEEvent,
   TimelineBlock,
   ThinkingTimelineBlock,
   TextTimelineBlock,
@@ -38,6 +38,7 @@ import type {
   BundleReceiptLeg,
   PendingAction,
 } from '@/lib/engine-types';
+import { stripProactiveMarkers } from '@/lib/proactive-marker';
 
 // ───────────────────────────────────────────────────────────────────────────
 // SPEC 7 P2.5b Layer 5 — pre-bundle planning surface (contact + plan-stream).
@@ -156,7 +157,7 @@ export function detectResolvedContact(
  */
 export function applyEventToTimeline(
   timeline: TimelineBlock[] | undefined,
-  event: SSEEvent,
+  event: AudricSSEEvent,
   now: number,
   options?: ApplyEventOptions,
 ): TimelineBlock[] {
@@ -436,6 +437,39 @@ export function applyEventToTimeline(
           prompt: event.prompt,
         },
       ];
+
+    case 'proactive_text': {
+      // [SPEC 9 v0.1.1 P9.2] The engine emits this event AFTER the text
+      // block's deltas have already streamed (containing the raw
+      // `<proactive ...>...</proactive>` wrapper chars). Find the latest
+      // text block, strip the wrapper for clean display, and stamp the
+      // `proactive` metadata so `TextBlockView` can apply the
+      // `✦ ADDED BY AUDRIC` lockup styling.
+      //
+      // When `suppressed === true` (per-session cooldown hit), we still
+      // strip the wrapper but skip the lockup styling — narrative text
+      // flows normally; the visual treatment just doesn't fire twice for
+      // the same `(type, subjectKey)` in one session.
+      const idx = findLastIndex(
+        current,
+        (b): b is TextTimelineBlock => b.type === 'text',
+      );
+      if (idx === -1) return current;
+      return current.map((b, i): TimelineBlock => {
+        if (i !== idx || b.type !== 'text') return b;
+        const stripped = stripProactiveMarkers(b.text);
+        const next: TextTimelineBlock = {
+          ...b,
+          text: stripped,
+          proactive: {
+            proactiveType: event.proactiveType,
+            subjectKey: event.subjectKey,
+            suppressed: event.suppressed,
+          },
+        };
+        return next;
+      });
+    }
 
     case 'turn_complete': {
       let changed = false;
