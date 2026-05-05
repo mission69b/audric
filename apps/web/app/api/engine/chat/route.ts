@@ -33,6 +33,7 @@ import { emitBundleProposed } from '@/lib/engine/bundle-metrics';
 import { costRatesForModel } from '@/lib/engine/cost-rates';
 import { isSyntheticSessionId } from '@/lib/engine/synthetic-sessions';
 import { prisma, withPrismaRetry } from '@/lib/prisma';
+import { parseContactList } from '@/lib/identity/contact-schema';
 import {
   SESSION_LIMIT_VERIFIED,
   SESSION_WINDOW_MS,
@@ -263,7 +264,20 @@ export async function POST(request: NextRequest) {
         }).catch(() => [] as Array<{ sessionId: string }>),
       ]);
 
-      const contacts = Array.isArray(prefs?.contacts) ? prefs.contacts as Array<{ name: string; address: string }> : [];
+      // SPEC 10 v0.2.1 A.2 — normalize contacts through the unified Zod
+      // boundary, then project back to the {name, address} shape the engine
+      // ToolContext expects. This handles both legacy `{name, address}` rows
+      // (lifted to unified) AND P9.4 `add_recipient` rows (which already
+      // store identifier + resolvedAddress + addedAt: number). Without this
+      // normalization, P9.4-saved contacts would arrive at the engine as
+      // `{name, address: undefined}` (because the route used to read raw and
+      // cast to {name, address}, missing the `identifier`/`resolvedAddress`
+      // fields the unified shape uses) — breaking send-by-contact-name for
+      // every contact added via the picker.
+      const contacts = parseContactList(prefs?.contacts).map((c) => ({
+        name: c.name,
+        address: c.identifier,
+      }));
 
       // Continuing an existing session (already counted toward the user's
       // window) must never be blocked mid-conversation — only NEW sessions

@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import type { Prisma } from '@/lib/generated/prisma/client';
 import { PERMISSION_PRESETS, type UserPermissionConfig } from '@t2000/engine';
+import {
+  parseContactList,
+  serializeContactList,
+} from '@/lib/identity/contact-schema';
 
 /**
  * GET /api/user/preferences?address=0x...
@@ -14,6 +18,14 @@ import { PERMISSION_PRESETS, type UserPermissionConfig } from '@t2000/engine';
  * (which still hosts the financial profile + permission preset + agent
  * config — see `lib/engine/engine-context.ts`), and the inferred
  * `permissionPreset` for client-side display.
+ *
+ * [SPEC 10 v0.2.1 Phase A.2] `contacts` reads now pass through the unified
+ * Zod schema in `apps/web/lib/identity/contact-schema.ts` — handles legacy
+ * `{name, address}` rows transparently. The response shape is projected
+ * back to `{name, address}` here to preserve the existing client contract
+ * (`hooks/useContacts.ts` consumers). Phase C.3 will widen the response
+ * shape and update the picker UI to consume the richer fields
+ * (audricUsername, source, addedAt).
  */
 export async function GET(request: NextRequest) {
   const address = request.nextUrl.searchParams.get('address');
@@ -43,8 +55,16 @@ export async function GET(request: NextRequest) {
     : null;
   const permissionPreset = limitsObj?.permissionPreset ?? 'balanced';
 
+  // Project unified Contact[] back to the legacy {name, address} shape that
+  // hooks/useContacts.ts and existing UI consumers expect. Phase C.3 widens
+  // this shape; A.2 keeps it backward-compatible by construction.
+  const contactsForClient = parseContactList(prefs.contacts).map((c) => ({
+    name: c.name,
+    address: c.identifier,
+  }));
+
   return NextResponse.json({
-    contacts: prefs.contacts,
+    contacts: contactsForClient,
     limits: prefs.limits,
     permissionPreset,
   });
@@ -98,22 +118,42 @@ export async function POST(request: NextRequest) {
     mergedLimits = { ...prev, ...(limits as Record<string, unknown>) } as Prisma.InputJsonValue;
   }
 
+  // Normalize incoming contacts through the unified Zod boundary on write.
+  // Accepts legacy {name, address} payloads from existing clients (lifted to
+  // unified shape) AND new unified payloads (passthrough validation). Drops
+  // malformed rows silently — same posture as parseContactList on the read
+  // side. This is what makes the schema migration "behavior-preserving by
+  // construction" (per SPEC 10 build-plan addendum B-5).
+  let normalizedContacts: Prisma.InputJsonValue | undefined;
+  if (contacts !== undefined) {
+    const parsed = parseContactList(contacts);
+    const serialized = serializeContactList(parsed);
+    normalizedContacts = serialized as unknown as Prisma.InputJsonValue;
+  }
+
   const update: Prisma.UserPreferencesUpdateInput = {};
-  if (contacts !== undefined) update.contacts = contacts as Prisma.InputJsonValue;
+  if (normalizedContacts !== undefined) update.contacts = normalizedContacts;
   if (mergedLimits !== undefined) update.limits = mergedLimits;
 
   const prefs = await prisma.userPreferences.upsert({
     where: { address },
     create: {
       address,
-      contacts: (contacts ?? []) as Prisma.InputJsonValue,
+      contacts: (normalizedContacts ?? []) as Prisma.InputJsonValue,
       limits: (mergedLimits ?? limits) as Prisma.InputJsonValue | undefined,
     },
     update,
   });
 
+  // Project response back to legacy {name, address} shape (same reasoning
+  // as the GET handler — preserve the existing client contract).
+  const contactsForClient = parseContactList(prefs.contacts).map((c) => ({
+    name: c.name,
+    address: c.identifier,
+  }));
+
   return NextResponse.json({
-    contacts: prefs.contacts,
+    contacts: contactsForClient,
     limits: prefs.limits,
   });
 }

@@ -35,6 +35,7 @@ import { audricSaveContactTool, audricListContactsTool } from '../contact-tools'
 const WALLET = '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 const CONTACT_ADDR = '0x321987e5555037e281e5e83d311ec9e29eb6d6f2e99bf6068fe1b6e62f9e72d2';
 const OTHER_ADDR = '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
+const ADDR_ALICE = '0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc';
 
 // Use a sentinel for "no wallet" so the default-parameter trick doesn't
 // silently substitute the test wallet when callers pass `undefined`.
@@ -63,7 +64,7 @@ describe('audricSaveContactTool — declarative shape', () => {
 });
 
 describe('audricSaveContactTool.call — persistence', () => {
-  it('upserts a brand-new contact into Postgres', async () => {
+  it('upserts a brand-new contact into Postgres (unified shape on write)', async () => {
     mockUserPreferences.findUnique.mockResolvedValue({ contacts: [] });
     mockUserPreferences.upsert.mockResolvedValue({});
 
@@ -75,17 +76,26 @@ describe('audricSaveContactTool.call — persistence', () => {
     expect(mockUserPreferences.upsert).toHaveBeenCalledTimes(1);
     const args = mockUserPreferences.upsert.mock.calls[0][0];
     expect(args.where).toEqual({ address: WALLET });
-    expect(args.create.contacts).toEqual([
-      { name: 'Wallet1', address: CONTACT_ADDR },
-    ]);
-    expect(args.update.contacts).toEqual([
-      { name: 'Wallet1', address: CONTACT_ADDR },
-    ]);
-
-    expect((result.data as { action: string }).action).toBe('created');
+    // SPEC 10 v0.2.1 A.2 — writes emit unified Contact shape (not legacy).
+    // toMatchObject lets us assert the load-bearing fields without coupling
+    // to the addedAt timestamp (which is `new Date().toISOString()` at
+    // write time — would break the assertion otherwise).
+    expect(args.create.contacts).toHaveLength(1);
+    expect(args.create.contacts[0]).toMatchObject({
+      name: 'Wallet1',
+      identifier: CONTACT_ADDR,
+      resolvedAddress: CONTACT_ADDR.toLowerCase(),
+      audricUsername: null,
+      source: 'save_contact',
+    });
+    expect(args.create.contacts[0].addedAt).toBeDefined();
+    // The LLM-facing response surface is unchanged — still {name, address}.
+    expect((result.data as { action: string; address: string }).action).toBe('created');
+    expect((result.data as { action: string; address: string }).address).toBe(CONTACT_ADDR);
   });
 
-  it('preserves existing contacts when adding a new one', async () => {
+  it('preserves existing contacts when adding a new one (legacy + unified mix)', async () => {
+    // Existing data is in legacy shape (the realistic prod state at A.2 launch).
     mockUserPreferences.findUnique.mockResolvedValue({
       contacts: [{ name: 'Alex', address: OTHER_ADDR }],
     });
@@ -97,10 +107,23 @@ describe('audricSaveContactTool.call — persistence', () => {
     );
 
     const args = mockUserPreferences.upsert.mock.calls[0][0];
-    expect(args.update.contacts).toEqual([
-      { name: 'Alex', address: OTHER_ADDR },
-      { name: 'Wallet1', address: CONTACT_ADDR },
-    ]);
+    expect(args.update.contacts).toHaveLength(2);
+    // Legacy row was lifted to unified shape on read → re-serialized on write.
+    expect(args.update.contacts[0]).toMatchObject({
+      name: 'Alex',
+      identifier: OTHER_ADDR,
+      resolvedAddress: OTHER_ADDR.toLowerCase(),
+      audricUsername: null,
+      source: 'import',
+    });
+    // New row written in unified shape with save_contact source.
+    expect(args.update.contacts[1]).toMatchObject({
+      name: 'Wallet1',
+      identifier: CONTACT_ADDR,
+      resolvedAddress: CONTACT_ADDR.toLowerCase(),
+      audricUsername: null,
+      source: 'save_contact',
+    });
   });
 
   it('is a true no-op when the same name+address is saved twice', async () => {
@@ -129,9 +152,19 @@ describe('audricSaveContactTool.call — persistence', () => {
     );
 
     const args = mockUserPreferences.upsert.mock.calls[0][0];
-    expect(args.update.contacts).toEqual([
-      { name: 'NewName', address: CONTACT_ADDR },
-    ]);
+    // Rename preserves all fields except name (per Phase A.2 contract —
+    // identifier, audricUsername enrichment, addedAt, source all carry over).
+    expect(args.update.contacts).toHaveLength(1);
+    expect(args.update.contacts[0]).toMatchObject({
+      name: 'NewName',
+      identifier: CONTACT_ADDR,
+      resolvedAddress: CONTACT_ADDR.toLowerCase(),
+      // Source stays 'import' (the legacy row's lifted source) — even though
+      // the user renamed via save_contact, we don't overwrite the original
+      // source. This gives us better forensics ("when did this row enter the
+      // system?") than re-stamping on every edit.
+      source: 'import',
+    });
     expect((result.data as { action: string }).action).toBe('updated');
   });
 
@@ -176,7 +209,11 @@ describe('audricSaveContactTool.call — persistence', () => {
 });
 
 describe('audricListContactsTool', () => {
-  it('returns the user contact list from Postgres', async () => {
+  it('returns legacy {name, address} shape to LLM (preserves tool contract)', async () => {
+    // Storage may be in legacy or unified shape — the LLM-facing response
+    // must remain {name, address} until a future engine release widens the
+    // schema. Phase A.2 commits the host-side migration without breaking
+    // the LLM tool contract.
     mockUserPreferences.findUnique.mockResolvedValue({
       contacts: [
         { name: 'Wallet1', address: CONTACT_ADDR },
@@ -192,6 +229,27 @@ describe('audricListContactsTool', () => {
         { name: 'Alex', address: OTHER_ADDR },
       ],
       count: 2,
+    });
+  });
+
+  it('returns identifier-as-address for unified-shape rows (LLM contract holds across schema)', async () => {
+    mockUserPreferences.findUnique.mockResolvedValue({
+      contacts: [
+        {
+          name: 'Alice',
+          identifier: ADDR_ALICE,
+          resolvedAddress: ADDR_ALICE.toLowerCase(),
+          audricUsername: null,
+          source: 'save_contact',
+        },
+      ],
+    });
+
+    const result = await audricListContactsTool.call!({}, ctx());
+
+    expect(result.data).toEqual({
+      contacts: [{ name: 'Alice', address: ADDR_ALICE }],
+      count: 1,
     });
   });
 

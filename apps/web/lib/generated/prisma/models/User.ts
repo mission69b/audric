@@ -44,6 +44,10 @@ export type UserMinAggregateOutputType = {
   tosAcceptedAt: Date | null
   createdAt: Date | null
   updatedAt: Date | null
+  username: string | null
+  usernameClaimedAt: Date | null
+  usernameLastChangedAt: Date | null
+  usernameMintTxDigest: string | null
 }
 
 export type UserMaxAggregateOutputType = {
@@ -56,6 +60,10 @@ export type UserMaxAggregateOutputType = {
   tosAcceptedAt: Date | null
   createdAt: Date | null
   updatedAt: Date | null
+  username: string | null
+  usernameClaimedAt: Date | null
+  usernameLastChangedAt: Date | null
+  usernameMintTxDigest: string | null
 }
 
 export type UserCountAggregateOutputType = {
@@ -68,6 +76,10 @@ export type UserCountAggregateOutputType = {
   tosAcceptedAt: number
   createdAt: number
   updatedAt: number
+  username: number
+  usernameClaimedAt: number
+  usernameLastChangedAt: number
+  usernameMintTxDigest: number
   _all: number
 }
 
@@ -90,6 +102,10 @@ export type UserMinAggregateInputType = {
   tosAcceptedAt?: true
   createdAt?: true
   updatedAt?: true
+  username?: true
+  usernameClaimedAt?: true
+  usernameLastChangedAt?: true
+  usernameMintTxDigest?: true
 }
 
 export type UserMaxAggregateInputType = {
@@ -102,6 +118,10 @@ export type UserMaxAggregateInputType = {
   tosAcceptedAt?: true
   createdAt?: true
   updatedAt?: true
+  username?: true
+  usernameClaimedAt?: true
+  usernameLastChangedAt?: true
+  usernameMintTxDigest?: true
 }
 
 export type UserCountAggregateInputType = {
@@ -114,6 +134,10 @@ export type UserCountAggregateInputType = {
   tosAcceptedAt?: true
   createdAt?: true
   updatedAt?: true
+  username?: true
+  usernameClaimedAt?: true
+  usernameLastChangedAt?: true
+  usernameMintTxDigest?: true
   _all?: true
 }
 
@@ -213,6 +237,10 @@ export type UserGroupByOutputType = {
   tosAcceptedAt: Date | null
   createdAt: Date
   updatedAt: Date
+  username: string | null
+  usernameClaimedAt: Date | null
+  usernameLastChangedAt: Date | null
+  usernameMintTxDigest: string | null
   _count: UserCountAggregateOutputType | null
   _avg: UserAvgAggregateOutputType | null
   _sum: UserSumAggregateOutputType | null
@@ -248,6 +276,10 @@ export type UserWhereInput = {
   tosAcceptedAt?: Prisma.DateTimeNullableFilter<"User"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"User"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"User"> | Date | string
+  username?: Prisma.StringNullableFilter<"User"> | string | null
+  usernameClaimedAt?: Prisma.DateTimeNullableFilter<"User"> | Date | string | null
+  usernameLastChangedAt?: Prisma.DateTimeNullableFilter<"User"> | Date | string | null
+  usernameMintTxDigest?: Prisma.StringNullableFilter<"User"> | string | null
   preferences?: Prisma.XOR<Prisma.UserPreferencesNullableScalarRelationFilter, Prisma.UserPreferencesWhereInput> | null
   conversationLogs?: Prisma.ConversationLogListRelationFilter
   savingsGoals?: Prisma.SavingsGoalListRelationFilter
@@ -270,6 +302,10 @@ export type UserOrderByWithRelationInput = {
   tosAcceptedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  username?: Prisma.SortOrderInput | Prisma.SortOrder
+  usernameClaimedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  usernameLastChangedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  usernameMintTxDigest?: Prisma.SortOrderInput | Prisma.SortOrder
   preferences?: Prisma.UserPreferencesOrderByWithRelationInput
   conversationLogs?: Prisma.ConversationLogOrderByRelationAggregateInput
   savingsGoals?: Prisma.SavingsGoalOrderByRelationAggregateInput
@@ -286,6 +322,7 @@ export type UserWhereUniqueInput = Prisma.AtLeast<{
   id?: string
   suiAddress?: string
   email?: string
+  username?: string
   AND?: Prisma.UserWhereInput | Prisma.UserWhereInput[]
   OR?: Prisma.UserWhereInput[]
   NOT?: Prisma.UserWhereInput | Prisma.UserWhereInput[]
@@ -295,6 +332,9 @@ export type UserWhereUniqueInput = Prisma.AtLeast<{
   tosAcceptedAt?: Prisma.DateTimeNullableFilter<"User"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"User"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"User"> | Date | string
+  usernameClaimedAt?: Prisma.DateTimeNullableFilter<"User"> | Date | string | null
+  usernameLastChangedAt?: Prisma.DateTimeNullableFilter<"User"> | Date | string | null
+  usernameMintTxDigest?: Prisma.StringNullableFilter<"User"> | string | null
   preferences?: Prisma.XOR<Prisma.UserPreferencesNullableScalarRelationFilter, Prisma.UserPreferencesWhereInput> | null
   conversationLogs?: Prisma.ConversationLogListRelationFilter
   savingsGoals?: Prisma.SavingsGoalListRelationFilter
@@ -305,7 +345,7 @@ export type UserWhereUniqueInput = Prisma.AtLeast<{
   financialProfile?: Prisma.XOR<Prisma.UserFinancialProfileNullableScalarRelationFilter, Prisma.UserFinancialProfileWhereInput> | null
   memories?: Prisma.UserMemoryListRelationFilter
   linkedWallets?: Prisma.LinkedWalletListRelationFilter
-}, "id" | "suiAddress" | "email">
+}, "id" | "suiAddress" | "email" | "username">
 
 export type UserOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
@@ -317,6 +357,10 @@ export type UserOrderByWithAggregationInput = {
   tosAcceptedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  username?: Prisma.SortOrderInput | Prisma.SortOrder
+  usernameClaimedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  usernameLastChangedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  usernameMintTxDigest?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.UserCountOrderByAggregateInput
   _avg?: Prisma.UserAvgOrderByAggregateInput
   _max?: Prisma.UserMaxOrderByAggregateInput
@@ -337,6 +381,10 @@ export type UserScalarWhereWithAggregatesInput = {
   tosAcceptedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"User"> | Date | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"User"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"User"> | Date | string
+  username?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
+  usernameClaimedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"User"> | Date | string | null
+  usernameLastChangedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"User"> | Date | string | null
+  usernameMintTxDigest?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
 }
 
 export type UserCreateInput = {
@@ -349,6 +397,10 @@ export type UserCreateInput = {
   tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  username?: string | null
+  usernameClaimedAt?: Date | string | null
+  usernameLastChangedAt?: Date | string | null
+  usernameMintTxDigest?: string | null
   preferences?: Prisma.UserPreferencesCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogCreateNestedManyWithoutUserInput
   savingsGoals?: Prisma.SavingsGoalCreateNestedManyWithoutUserInput
@@ -371,6 +423,10 @@ export type UserUncheckedCreateInput = {
   tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  username?: string | null
+  usernameClaimedAt?: Date | string | null
+  usernameLastChangedAt?: Date | string | null
+  usernameMintTxDigest?: string | null
   preferences?: Prisma.UserPreferencesUncheckedCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogUncheckedCreateNestedManyWithoutUserInput
   savingsGoals?: Prisma.SavingsGoalUncheckedCreateNestedManyWithoutUserInput
@@ -393,6 +449,10 @@ export type UserUpdateInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  usernameClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  usernameLastChangedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  usernameMintTxDigest?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   preferences?: Prisma.UserPreferencesUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUpdateManyWithoutUserNestedInput
   savingsGoals?: Prisma.SavingsGoalUpdateManyWithoutUserNestedInput
@@ -415,6 +475,10 @@ export type UserUncheckedUpdateInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  usernameClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  usernameLastChangedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  usernameMintTxDigest?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   preferences?: Prisma.UserPreferencesUncheckedUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUncheckedUpdateManyWithoutUserNestedInput
   savingsGoals?: Prisma.SavingsGoalUncheckedUpdateManyWithoutUserNestedInput
@@ -437,6 +501,10 @@ export type UserCreateManyInput = {
   tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  username?: string | null
+  usernameClaimedAt?: Date | string | null
+  usernameLastChangedAt?: Date | string | null
+  usernameMintTxDigest?: string | null
 }
 
 export type UserUpdateManyMutationInput = {
@@ -449,6 +517,10 @@ export type UserUpdateManyMutationInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  usernameClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  usernameLastChangedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  usernameMintTxDigest?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type UserUncheckedUpdateManyInput = {
@@ -461,6 +533,10 @@ export type UserUncheckedUpdateManyInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  usernameClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  usernameLastChangedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  usernameMintTxDigest?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type UserCountOrderByAggregateInput = {
@@ -473,6 +549,10 @@ export type UserCountOrderByAggregateInput = {
   tosAcceptedAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  username?: Prisma.SortOrder
+  usernameClaimedAt?: Prisma.SortOrder
+  usernameLastChangedAt?: Prisma.SortOrder
+  usernameMintTxDigest?: Prisma.SortOrder
 }
 
 export type UserAvgOrderByAggregateInput = {
@@ -489,6 +569,10 @@ export type UserMaxOrderByAggregateInput = {
   tosAcceptedAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  username?: Prisma.SortOrder
+  usernameClaimedAt?: Prisma.SortOrder
+  usernameLastChangedAt?: Prisma.SortOrder
+  usernameMintTxDigest?: Prisma.SortOrder
 }
 
 export type UserMinOrderByAggregateInput = {
@@ -501,6 +585,10 @@ export type UserMinOrderByAggregateInput = {
   tosAcceptedAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  username?: Prisma.SortOrder
+  usernameClaimedAt?: Prisma.SortOrder
+  usernameLastChangedAt?: Prisma.SortOrder
+  usernameMintTxDigest?: Prisma.SortOrder
 }
 
 export type UserSumOrderByAggregateInput = {
@@ -697,6 +785,10 @@ export type UserCreateWithoutPreferencesInput = {
   tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  username?: string | null
+  usernameClaimedAt?: Date | string | null
+  usernameLastChangedAt?: Date | string | null
+  usernameMintTxDigest?: string | null
   conversationLogs?: Prisma.ConversationLogCreateNestedManyWithoutUserInput
   savingsGoals?: Prisma.SavingsGoalCreateNestedManyWithoutUserInput
   adviceLogs?: Prisma.AdviceLogCreateNestedManyWithoutUserInput
@@ -718,6 +810,10 @@ export type UserUncheckedCreateWithoutPreferencesInput = {
   tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  username?: string | null
+  usernameClaimedAt?: Date | string | null
+  usernameLastChangedAt?: Date | string | null
+  usernameMintTxDigest?: string | null
   conversationLogs?: Prisma.ConversationLogUncheckedCreateNestedManyWithoutUserInput
   savingsGoals?: Prisma.SavingsGoalUncheckedCreateNestedManyWithoutUserInput
   adviceLogs?: Prisma.AdviceLogUncheckedCreateNestedManyWithoutUserInput
@@ -755,6 +851,10 @@ export type UserUpdateWithoutPreferencesInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  usernameClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  usernameLastChangedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  usernameMintTxDigest?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   conversationLogs?: Prisma.ConversationLogUpdateManyWithoutUserNestedInput
   savingsGoals?: Prisma.SavingsGoalUpdateManyWithoutUserNestedInput
   adviceLogs?: Prisma.AdviceLogUpdateManyWithoutUserNestedInput
@@ -776,6 +876,10 @@ export type UserUncheckedUpdateWithoutPreferencesInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  usernameClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  usernameLastChangedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  usernameMintTxDigest?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   conversationLogs?: Prisma.ConversationLogUncheckedUpdateManyWithoutUserNestedInput
   savingsGoals?: Prisma.SavingsGoalUncheckedUpdateManyWithoutUserNestedInput
   adviceLogs?: Prisma.AdviceLogUncheckedUpdateManyWithoutUserNestedInput
@@ -797,6 +901,10 @@ export type UserCreateWithoutConversationLogsInput = {
   tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  username?: string | null
+  usernameClaimedAt?: Date | string | null
+  usernameLastChangedAt?: Date | string | null
+  usernameMintTxDigest?: string | null
   preferences?: Prisma.UserPreferencesCreateNestedOneWithoutUserInput
   savingsGoals?: Prisma.SavingsGoalCreateNestedManyWithoutUserInput
   adviceLogs?: Prisma.AdviceLogCreateNestedManyWithoutUserInput
@@ -818,6 +926,10 @@ export type UserUncheckedCreateWithoutConversationLogsInput = {
   tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  username?: string | null
+  usernameClaimedAt?: Date | string | null
+  usernameLastChangedAt?: Date | string | null
+  usernameMintTxDigest?: string | null
   preferences?: Prisma.UserPreferencesUncheckedCreateNestedOneWithoutUserInput
   savingsGoals?: Prisma.SavingsGoalUncheckedCreateNestedManyWithoutUserInput
   adviceLogs?: Prisma.AdviceLogUncheckedCreateNestedManyWithoutUserInput
@@ -855,6 +967,10 @@ export type UserUpdateWithoutConversationLogsInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  usernameClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  usernameLastChangedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  usernameMintTxDigest?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   preferences?: Prisma.UserPreferencesUpdateOneWithoutUserNestedInput
   savingsGoals?: Prisma.SavingsGoalUpdateManyWithoutUserNestedInput
   adviceLogs?: Prisma.AdviceLogUpdateManyWithoutUserNestedInput
@@ -876,6 +992,10 @@ export type UserUncheckedUpdateWithoutConversationLogsInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  usernameClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  usernameLastChangedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  usernameMintTxDigest?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   preferences?: Prisma.UserPreferencesUncheckedUpdateOneWithoutUserNestedInput
   savingsGoals?: Prisma.SavingsGoalUncheckedUpdateManyWithoutUserNestedInput
   adviceLogs?: Prisma.AdviceLogUncheckedUpdateManyWithoutUserNestedInput
@@ -897,6 +1017,10 @@ export type UserCreateWithoutSavingsGoalsInput = {
   tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  username?: string | null
+  usernameClaimedAt?: Date | string | null
+  usernameLastChangedAt?: Date | string | null
+  usernameMintTxDigest?: string | null
   preferences?: Prisma.UserPreferencesCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogCreateNestedManyWithoutUserInput
   adviceLogs?: Prisma.AdviceLogCreateNestedManyWithoutUserInput
@@ -918,6 +1042,10 @@ export type UserUncheckedCreateWithoutSavingsGoalsInput = {
   tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  username?: string | null
+  usernameClaimedAt?: Date | string | null
+  usernameLastChangedAt?: Date | string | null
+  usernameMintTxDigest?: string | null
   preferences?: Prisma.UserPreferencesUncheckedCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogUncheckedCreateNestedManyWithoutUserInput
   adviceLogs?: Prisma.AdviceLogUncheckedCreateNestedManyWithoutUserInput
@@ -955,6 +1083,10 @@ export type UserUpdateWithoutSavingsGoalsInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  usernameClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  usernameLastChangedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  usernameMintTxDigest?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   preferences?: Prisma.UserPreferencesUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUpdateManyWithoutUserNestedInput
   adviceLogs?: Prisma.AdviceLogUpdateManyWithoutUserNestedInput
@@ -976,6 +1108,10 @@ export type UserUncheckedUpdateWithoutSavingsGoalsInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  usernameClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  usernameLastChangedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  usernameMintTxDigest?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   preferences?: Prisma.UserPreferencesUncheckedUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUncheckedUpdateManyWithoutUserNestedInput
   adviceLogs?: Prisma.AdviceLogUncheckedUpdateManyWithoutUserNestedInput
@@ -997,6 +1133,10 @@ export type UserCreateWithoutAdviceLogsInput = {
   tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  username?: string | null
+  usernameClaimedAt?: Date | string | null
+  usernameLastChangedAt?: Date | string | null
+  usernameMintTxDigest?: string | null
   preferences?: Prisma.UserPreferencesCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogCreateNestedManyWithoutUserInput
   savingsGoals?: Prisma.SavingsGoalCreateNestedManyWithoutUserInput
@@ -1018,6 +1158,10 @@ export type UserUncheckedCreateWithoutAdviceLogsInput = {
   tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  username?: string | null
+  usernameClaimedAt?: Date | string | null
+  usernameLastChangedAt?: Date | string | null
+  usernameMintTxDigest?: string | null
   preferences?: Prisma.UserPreferencesUncheckedCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogUncheckedCreateNestedManyWithoutUserInput
   savingsGoals?: Prisma.SavingsGoalUncheckedCreateNestedManyWithoutUserInput
@@ -1055,6 +1199,10 @@ export type UserUpdateWithoutAdviceLogsInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  usernameClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  usernameLastChangedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  usernameMintTxDigest?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   preferences?: Prisma.UserPreferencesUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUpdateManyWithoutUserNestedInput
   savingsGoals?: Prisma.SavingsGoalUpdateManyWithoutUserNestedInput
@@ -1076,6 +1224,10 @@ export type UserUncheckedUpdateWithoutAdviceLogsInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  usernameClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  usernameLastChangedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  usernameMintTxDigest?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   preferences?: Prisma.UserPreferencesUncheckedUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUncheckedUpdateManyWithoutUserNestedInput
   savingsGoals?: Prisma.SavingsGoalUncheckedUpdateManyWithoutUserNestedInput
@@ -1097,6 +1249,10 @@ export type UserCreateWithoutPaymentsInput = {
   tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  username?: string | null
+  usernameClaimedAt?: Date | string | null
+  usernameLastChangedAt?: Date | string | null
+  usernameMintTxDigest?: string | null
   preferences?: Prisma.UserPreferencesCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogCreateNestedManyWithoutUserInput
   savingsGoals?: Prisma.SavingsGoalCreateNestedManyWithoutUserInput
@@ -1118,6 +1274,10 @@ export type UserUncheckedCreateWithoutPaymentsInput = {
   tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  username?: string | null
+  usernameClaimedAt?: Date | string | null
+  usernameLastChangedAt?: Date | string | null
+  usernameMintTxDigest?: string | null
   preferences?: Prisma.UserPreferencesUncheckedCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogUncheckedCreateNestedManyWithoutUserInput
   savingsGoals?: Prisma.SavingsGoalUncheckedCreateNestedManyWithoutUserInput
@@ -1155,6 +1315,10 @@ export type UserUpdateWithoutPaymentsInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  usernameClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  usernameLastChangedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  usernameMintTxDigest?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   preferences?: Prisma.UserPreferencesUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUpdateManyWithoutUserNestedInput
   savingsGoals?: Prisma.SavingsGoalUpdateManyWithoutUserNestedInput
@@ -1176,6 +1340,10 @@ export type UserUncheckedUpdateWithoutPaymentsInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  usernameClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  usernameLastChangedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  usernameMintTxDigest?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   preferences?: Prisma.UserPreferencesUncheckedUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUncheckedUpdateManyWithoutUserNestedInput
   savingsGoals?: Prisma.SavingsGoalUncheckedUpdateManyWithoutUserNestedInput
@@ -1197,6 +1365,10 @@ export type UserCreateWithoutWatchAddressesInput = {
   tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  username?: string | null
+  usernameClaimedAt?: Date | string | null
+  usernameLastChangedAt?: Date | string | null
+  usernameMintTxDigest?: string | null
   preferences?: Prisma.UserPreferencesCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogCreateNestedManyWithoutUserInput
   savingsGoals?: Prisma.SavingsGoalCreateNestedManyWithoutUserInput
@@ -1218,6 +1390,10 @@ export type UserUncheckedCreateWithoutWatchAddressesInput = {
   tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  username?: string | null
+  usernameClaimedAt?: Date | string | null
+  usernameLastChangedAt?: Date | string | null
+  usernameMintTxDigest?: string | null
   preferences?: Prisma.UserPreferencesUncheckedCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogUncheckedCreateNestedManyWithoutUserInput
   savingsGoals?: Prisma.SavingsGoalUncheckedCreateNestedManyWithoutUserInput
@@ -1255,6 +1431,10 @@ export type UserUpdateWithoutWatchAddressesInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  usernameClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  usernameLastChangedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  usernameMintTxDigest?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   preferences?: Prisma.UserPreferencesUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUpdateManyWithoutUserNestedInput
   savingsGoals?: Prisma.SavingsGoalUpdateManyWithoutUserNestedInput
@@ -1276,6 +1456,10 @@ export type UserUncheckedUpdateWithoutWatchAddressesInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  usernameClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  usernameLastChangedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  usernameMintTxDigest?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   preferences?: Prisma.UserPreferencesUncheckedUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUncheckedUpdateManyWithoutUserNestedInput
   savingsGoals?: Prisma.SavingsGoalUncheckedUpdateManyWithoutUserNestedInput
@@ -1297,6 +1481,10 @@ export type UserCreateWithoutPortfolioSnapshotsInput = {
   tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  username?: string | null
+  usernameClaimedAt?: Date | string | null
+  usernameLastChangedAt?: Date | string | null
+  usernameMintTxDigest?: string | null
   preferences?: Prisma.UserPreferencesCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogCreateNestedManyWithoutUserInput
   savingsGoals?: Prisma.SavingsGoalCreateNestedManyWithoutUserInput
@@ -1318,6 +1506,10 @@ export type UserUncheckedCreateWithoutPortfolioSnapshotsInput = {
   tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  username?: string | null
+  usernameClaimedAt?: Date | string | null
+  usernameLastChangedAt?: Date | string | null
+  usernameMintTxDigest?: string | null
   preferences?: Prisma.UserPreferencesUncheckedCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogUncheckedCreateNestedManyWithoutUserInput
   savingsGoals?: Prisma.SavingsGoalUncheckedCreateNestedManyWithoutUserInput
@@ -1355,6 +1547,10 @@ export type UserUpdateWithoutPortfolioSnapshotsInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  usernameClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  usernameLastChangedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  usernameMintTxDigest?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   preferences?: Prisma.UserPreferencesUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUpdateManyWithoutUserNestedInput
   savingsGoals?: Prisma.SavingsGoalUpdateManyWithoutUserNestedInput
@@ -1376,6 +1572,10 @@ export type UserUncheckedUpdateWithoutPortfolioSnapshotsInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  usernameClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  usernameLastChangedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  usernameMintTxDigest?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   preferences?: Prisma.UserPreferencesUncheckedUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUncheckedUpdateManyWithoutUserNestedInput
   savingsGoals?: Prisma.SavingsGoalUncheckedUpdateManyWithoutUserNestedInput
@@ -1397,6 +1597,10 @@ export type UserCreateWithoutFinancialProfileInput = {
   tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  username?: string | null
+  usernameClaimedAt?: Date | string | null
+  usernameLastChangedAt?: Date | string | null
+  usernameMintTxDigest?: string | null
   preferences?: Prisma.UserPreferencesCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogCreateNestedManyWithoutUserInput
   savingsGoals?: Prisma.SavingsGoalCreateNestedManyWithoutUserInput
@@ -1418,6 +1622,10 @@ export type UserUncheckedCreateWithoutFinancialProfileInput = {
   tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  username?: string | null
+  usernameClaimedAt?: Date | string | null
+  usernameLastChangedAt?: Date | string | null
+  usernameMintTxDigest?: string | null
   preferences?: Prisma.UserPreferencesUncheckedCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogUncheckedCreateNestedManyWithoutUserInput
   savingsGoals?: Prisma.SavingsGoalUncheckedCreateNestedManyWithoutUserInput
@@ -1455,6 +1663,10 @@ export type UserUpdateWithoutFinancialProfileInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  usernameClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  usernameLastChangedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  usernameMintTxDigest?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   preferences?: Prisma.UserPreferencesUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUpdateManyWithoutUserNestedInput
   savingsGoals?: Prisma.SavingsGoalUpdateManyWithoutUserNestedInput
@@ -1476,6 +1688,10 @@ export type UserUncheckedUpdateWithoutFinancialProfileInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  usernameClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  usernameLastChangedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  usernameMintTxDigest?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   preferences?: Prisma.UserPreferencesUncheckedUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUncheckedUpdateManyWithoutUserNestedInput
   savingsGoals?: Prisma.SavingsGoalUncheckedUpdateManyWithoutUserNestedInput
@@ -1497,6 +1713,10 @@ export type UserCreateWithoutMemoriesInput = {
   tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  username?: string | null
+  usernameClaimedAt?: Date | string | null
+  usernameLastChangedAt?: Date | string | null
+  usernameMintTxDigest?: string | null
   preferences?: Prisma.UserPreferencesCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogCreateNestedManyWithoutUserInput
   savingsGoals?: Prisma.SavingsGoalCreateNestedManyWithoutUserInput
@@ -1518,6 +1738,10 @@ export type UserUncheckedCreateWithoutMemoriesInput = {
   tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  username?: string | null
+  usernameClaimedAt?: Date | string | null
+  usernameLastChangedAt?: Date | string | null
+  usernameMintTxDigest?: string | null
   preferences?: Prisma.UserPreferencesUncheckedCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogUncheckedCreateNestedManyWithoutUserInput
   savingsGoals?: Prisma.SavingsGoalUncheckedCreateNestedManyWithoutUserInput
@@ -1555,6 +1779,10 @@ export type UserUpdateWithoutMemoriesInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  usernameClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  usernameLastChangedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  usernameMintTxDigest?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   preferences?: Prisma.UserPreferencesUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUpdateManyWithoutUserNestedInput
   savingsGoals?: Prisma.SavingsGoalUpdateManyWithoutUserNestedInput
@@ -1576,6 +1804,10 @@ export type UserUncheckedUpdateWithoutMemoriesInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  usernameClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  usernameLastChangedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  usernameMintTxDigest?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   preferences?: Prisma.UserPreferencesUncheckedUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUncheckedUpdateManyWithoutUserNestedInput
   savingsGoals?: Prisma.SavingsGoalUncheckedUpdateManyWithoutUserNestedInput
@@ -1597,6 +1829,10 @@ export type UserCreateWithoutLinkedWalletsInput = {
   tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  username?: string | null
+  usernameClaimedAt?: Date | string | null
+  usernameLastChangedAt?: Date | string | null
+  usernameMintTxDigest?: string | null
   preferences?: Prisma.UserPreferencesCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogCreateNestedManyWithoutUserInput
   savingsGoals?: Prisma.SavingsGoalCreateNestedManyWithoutUserInput
@@ -1618,6 +1854,10 @@ export type UserUncheckedCreateWithoutLinkedWalletsInput = {
   tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  username?: string | null
+  usernameClaimedAt?: Date | string | null
+  usernameLastChangedAt?: Date | string | null
+  usernameMintTxDigest?: string | null
   preferences?: Prisma.UserPreferencesUncheckedCreateNestedOneWithoutUserInput
   conversationLogs?: Prisma.ConversationLogUncheckedCreateNestedManyWithoutUserInput
   savingsGoals?: Prisma.SavingsGoalUncheckedCreateNestedManyWithoutUserInput
@@ -1655,6 +1895,10 @@ export type UserUpdateWithoutLinkedWalletsInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  usernameClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  usernameLastChangedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  usernameMintTxDigest?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   preferences?: Prisma.UserPreferencesUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUpdateManyWithoutUserNestedInput
   savingsGoals?: Prisma.SavingsGoalUpdateManyWithoutUserNestedInput
@@ -1676,6 +1920,10 @@ export type UserUncheckedUpdateWithoutLinkedWalletsInput = {
   tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  usernameClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  usernameLastChangedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  usernameMintTxDigest?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   preferences?: Prisma.UserPreferencesUncheckedUpdateOneWithoutUserNestedInput
   conversationLogs?: Prisma.ConversationLogUncheckedUpdateManyWithoutUserNestedInput
   savingsGoals?: Prisma.SavingsGoalUncheckedUpdateManyWithoutUserNestedInput
@@ -1791,6 +2039,10 @@ export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   tosAcceptedAt?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  username?: boolean
+  usernameClaimedAt?: boolean
+  usernameLastChangedAt?: boolean
+  usernameMintTxDigest?: boolean
   preferences?: boolean | Prisma.User$preferencesArgs<ExtArgs>
   conversationLogs?: boolean | Prisma.User$conversationLogsArgs<ExtArgs>
   savingsGoals?: boolean | Prisma.User$savingsGoalsArgs<ExtArgs>
@@ -1814,6 +2066,10 @@ export type UserSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   tosAcceptedAt?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  username?: boolean
+  usernameClaimedAt?: boolean
+  usernameLastChangedAt?: boolean
+  usernameMintTxDigest?: boolean
 }, ExtArgs["result"]["user"]>
 
 export type UserSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -1826,6 +2082,10 @@ export type UserSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   tosAcceptedAt?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  username?: boolean
+  usernameClaimedAt?: boolean
+  usernameLastChangedAt?: boolean
+  usernameMintTxDigest?: boolean
 }, ExtArgs["result"]["user"]>
 
 export type UserSelectScalar = {
@@ -1838,9 +2098,13 @@ export type UserSelectScalar = {
   tosAcceptedAt?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  username?: boolean
+  usernameClaimedAt?: boolean
+  usernameLastChangedAt?: boolean
+  usernameMintTxDigest?: boolean
 }
 
-export type UserOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "suiAddress" | "email" | "emailVerified" | "displayName" | "timezoneOffset" | "tosAcceptedAt" | "createdAt" | "updatedAt", ExtArgs["result"]["user"]>
+export type UserOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "suiAddress" | "email" | "emailVerified" | "displayName" | "timezoneOffset" | "tosAcceptedAt" | "createdAt" | "updatedAt" | "username" | "usernameClaimedAt" | "usernameLastChangedAt" | "usernameMintTxDigest", ExtArgs["result"]["user"]>
 export type UserInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   preferences?: boolean | Prisma.User$preferencesArgs<ExtArgs>
   conversationLogs?: boolean | Prisma.User$conversationLogsArgs<ExtArgs>
@@ -1881,6 +2145,10 @@ export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     tosAcceptedAt: Date | null
     createdAt: Date
     updatedAt: Date
+    username: string | null
+    usernameClaimedAt: Date | null
+    usernameLastChangedAt: Date | null
+    usernameMintTxDigest: string | null
   }, ExtArgs["result"]["user"]>
   composites: {}
 }
@@ -2323,6 +2591,10 @@ export interface UserFieldRefs {
   readonly tosAcceptedAt: Prisma.FieldRef<"User", 'DateTime'>
   readonly createdAt: Prisma.FieldRef<"User", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"User", 'DateTime'>
+  readonly username: Prisma.FieldRef<"User", 'String'>
+  readonly usernameClaimedAt: Prisma.FieldRef<"User", 'DateTime'>
+  readonly usernameLastChangedAt: Prisma.FieldRef<"User", 'DateTime'>
+  readonly usernameMintTxDigest: Prisma.FieldRef<"User", 'String'>
 }
     
 

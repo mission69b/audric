@@ -18,6 +18,21 @@ model User {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
+  // SPEC 10 (Audric Passport Identity) — 4 fields shipped in migration
+  // 20260505200000_spec10_add_username_to_user. `username` is the bare
+  // label (e.g. "alice"); the full handle is computed via `fullHandle()`
+  // from @t2000/sdk to give "alice.audric.sui". Unique on the DB side
+  // (PostgreSQL allows multiple NULLs, which is exactly what we want for
+  // unclaimed users); also unique on the SuiNS chain side (only one
+  // address can claim a given leaf under audric.sui). The DB unique
+  // index lets /api/identity/check fail-fast before hitting the chain.
+  // `usernameMintTxDigest` is the on-chain proof of the leaf creation
+  // tx — useful for support / audit / "show me when I claimed it" UX.
+  username              String?   @unique
+  usernameClaimedAt     DateTime?
+  usernameLastChangedAt DateTime?
+  usernameMintTxDigest  String?
+
   preferences        UserPreferences?
   conversationLogs   ConversationLog[]
   savingsGoals       SavingsGoal[]

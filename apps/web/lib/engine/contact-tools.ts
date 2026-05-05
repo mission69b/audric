@@ -3,6 +3,12 @@ import type { ToolContext } from '@t2000/engine';
 import { z } from 'zod';
 import type { Prisma } from '@/lib/generated/prisma/client';
 import { prisma } from '@/lib/prisma';
+import {
+  type Contact,
+  contactFromSaveInput,
+  parseContactList,
+  serializeContactList,
+} from '@/lib/identity/contact-schema';
 
 /**
  * Server-owned contact tools.
@@ -31,29 +37,32 @@ import { prisma } from '@/lib/prisma';
  * the `savings_goal_*` pattern (see goal-tools.ts) — Prisma-backed `call()`,
  * `permissionLevel: 'auto'` (no funds move, no need to gate), schema
  * validated by Zod.
+ *
+ * SPEC 10 v0.2.1 Phase A.2 — Contact persistence now goes through the
+ * unified Zod schema in `apps/web/lib/identity/contact-schema.ts`. Reads
+ * normalize legacy `{name, address}` rows into the unified shape on the
+ * fly; writes always emit the unified shape. Behavior preservation: the
+ * tool's input schema and external response shape are unchanged (the LLM
+ * still sees `{name, address}` round-trip). The unified internal shape is
+ * additive enrichment for downstream consumers (UI, profile pages, send
+ * autocomplete) — see SPEC 10 build-plan addendum B-5.
  */
 
 const ADDRESS_REGEX = /^0x[0-9a-fA-F]{64}$/;
 const MAX_CONTACTS = 100;
 const MAX_NAME_LENGTH = 50;
 
-interface StoredContact {
-  name: string;
-  address: string;
-}
-
 function normalizeAddress(addr: string): string {
   return addr.trim().toLowerCase();
 }
 
-function readStoredContacts(value: unknown): StoredContact[] {
-  if (!Array.isArray(value)) return [];
-  return value.flatMap((item): StoredContact[] => {
-    if (!item || typeof item !== 'object') return [];
-    const rec = item as Record<string, unknown>;
-    if (typeof rec.name !== 'string' || typeof rec.address !== 'string') return [];
-    return [{ name: rec.name, address: rec.address }];
-  });
+/**
+ * Project the unified Contact shape down to the `{name, address}` pair the
+ * `list_contacts` tool returns to the LLM. Done at the response boundary so
+ * the LLM-facing surface stays unchanged across the SPEC 10 schema migration.
+ */
+function projectToToolShape(c: Contact): { name: string; address: string } {
+  return { name: c.name, address: c.identifier };
 }
 
 export const audricSaveContactTool = buildTool({
@@ -99,11 +108,13 @@ export const audricSaveContactTool = buildTool({
       select: { contacts: true },
     });
 
-    const current = readStoredContacts(existingPrefs?.contacts);
+    // Reads pass through the unified Zod boundary — handles legacy
+    // {name, address} rows transparently (auto-migrated to unified shape).
+    const current = parseContactList(existingPrefs?.contacts);
 
     if (current.length >= MAX_CONTACTS) {
       const sameAddrIndex = current.findIndex(
-        (c) => normalizeAddress(c.address) === normalizedAddr,
+        (c) => c.resolvedAddress === normalizedAddr,
       );
       if (sameAddrIndex === -1) {
         throw new Error(
@@ -114,10 +125,10 @@ export const audricSaveContactTool = buildTool({
 
     let action: 'created' | 'updated' | 'unchanged';
     const sameAddrIndex = current.findIndex(
-      (c) => normalizeAddress(c.address) === normalizedAddr,
+      (c) => c.resolvedAddress === normalizedAddr,
     );
 
-    let next: StoredContact[];
+    let next: Contact[];
     if (sameAddrIndex >= 0) {
       const existing = current[sameAddrIndex];
       if (existing.name === trimmedName) {
@@ -125,24 +136,28 @@ export const audricSaveContactTool = buildTool({
         next = current;
       } else {
         action = 'updated';
-        next = current.map((c, i) =>
-          i === sameAddrIndex ? { name: trimmedName, address: existing.address } : c,
-        );
+        // Preserve everything except the name (identifier, resolvedAddress,
+        // audricUsername enrichment, addedAt, source all stay as-is).
+        next = current.map((c, i) => (i === sameAddrIndex ? { ...c, name: trimmedName } : c));
       }
     } else {
       action = 'created';
-      next = [...current, { name: trimmedName, address: input.address }];
+      next = [...current, contactFromSaveInput({ name: trimmedName, address: input.address })];
     }
 
     if (action !== 'unchanged') {
+      // serializeContactList re-validates every row going to disk — guards
+      // against programming errors elsewhere in the codebase silently
+      // writing malformed contacts.
+      const serialized = serializeContactList(next);
       await prisma.userPreferences.upsert({
         where: { address: walletAddress },
         create: {
           address: walletAddress,
-          contacts: next as unknown as Prisma.InputJsonValue,
+          contacts: serialized as unknown as Prisma.InputJsonValue,
         },
         update: {
-          contacts: next as unknown as Prisma.InputJsonValue,
+          contacts: serialized as unknown as Prisma.InputJsonValue,
         },
       });
     }
@@ -192,7 +207,12 @@ export const audricListContactsTool = buildTool({
       select: { contacts: true },
     });
 
-    const contacts = readStoredContacts(prefs?.contacts);
+    // Project the unified Contact shape down to the tool's stable
+    // {name, address} response shape — the LLM-facing surface stays
+    // backward-compatible across the SPEC 10 schema migration. The richer
+    // unified fields (audricUsername, source, addedAt) surface to UI
+    // consumers via /api/user/preferences instead.
+    const contacts = parseContactList(prefs?.contacts).map(projectToToolShape);
 
     return {
       data: {

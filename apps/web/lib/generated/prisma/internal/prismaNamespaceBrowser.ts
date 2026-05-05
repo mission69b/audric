@@ -94,7 +94,11 @@ export const UserScalarFieldEnum = {
   timezoneOffset: 'timezoneOffset',
   tosAcceptedAt: 'tosAcceptedAt',
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
+  updatedAt: 'updatedAt',
+  username: 'username',
+  usernameClaimedAt: 'usernameClaimedAt',
+  usernameLastChangedAt: 'usernameLastChangedAt',
+  usernameMintTxDigest: 'usernameMintTxDigest'
 } as const
 
 export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof UserScalarFieldEnum]
