@@ -135,18 +135,19 @@ const serverSchema = z.object({
    * (`0xaca29165…23d11` per RUNBOOK §1). Loaded by `/api/identity/reserve`
    * to sign leaf-mint PTBs server-side; never leaves the route.
    *
-   * **Required as of S.69 follow-up (2026-05-05).** Promoted from
-   * `optionalString` after a smoke test against `audric.ai` confirmed
-   * the Vercel-stored value passes `decodeSuiPrivateKey` and the route
-   * reaches the User-lookup step (no longer fail-CLOSEs to 503 on
-   * keypair load). Boot-fails the app at first import if the value is
-   * missing, empty, or whitespace — the same gate that catches the
-   * BlockVision empty-string class of bug. Recovery: if Vercel value
-   * gets nuked / rotated incorrectly, the symptom is "audric won't
-   * boot" rather than "feature silently degrades" — operator sees the
-   * env-gate error block immediately, not 4 days into a degraded prod.
+   * Optional in the env schema (env gate stays passing for builds where
+   * the key isn't yet uploaded to Vercel) but the consuming route
+   * fail-CLOSEs with 503 when missing — picker surfaces "verifier
+   * unavailable" rather than minting against a missing key.
+   *
+   * Promote to `requiredString` in a follow-up commit once the key has
+   * been verified live in Vercel and the founder has confirmed the
+   * single-key custody copy is the canonical operational source of truth
+   * (per RUNBOOK §2 item 2). The promotion is intentionally a separate
+   * commit so the env-gate change is independently reversible if the
+   * Vercel value gets nuked / rotated incorrectly.
    */
-  AUDRIC_PARENT_NFT_PRIVATE_KEY: requiredString,
+  AUDRIC_PARENT_NFT_PRIVATE_KEY: optionalString,
 
   /** Comma-separated session-id prefixes that mark synthetic/bot traffic. */
   SYNTHETIC_SESSION_PREFIXES: optionalString,
