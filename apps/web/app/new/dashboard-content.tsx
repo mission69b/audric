@@ -34,6 +34,7 @@ import { useAgent } from '@/hooks/useAgent';
 import { COIN_REGISTRY } from '@/lib/token-registry';
 import { buildSwapDisplayData } from '@/lib/balance-changes';
 import { buildSuiPayUri } from '@/lib/sui-pay-uri';
+import { looksLikeSuiNs, resolveSuiNs, SuinsResolutionError } from '@/lib/suins-resolver';
 import { useActivityFeed } from '@/hooks/useActivityFeed';
 import { NewConversationView } from '@/components/dashboard/NewConversationView';
 import { TosBanner } from '@/components/dashboard/TosBanner';
@@ -150,10 +151,20 @@ interface AudricUserSearchResult {
 function SendRecipientInput({
   contacts,
   onSelectContact,
+  onSelectAudricUser,
   onSubmit,
 }: {
   contacts: Array<{ name: string; address: string }>;
   onSelectContact: (address: string, name: string) => void;
+  /**
+   * [SPEC 10 Phase C.3 — bug fix] Dedicated handler for dropdown picks.
+   * Receives BOTH the resolved 0x address (from the search response)
+   * AND the full handle (for display). Without this, the original C.3
+   * implementation passed the bare handle as the recipient → the chip
+   * flow forwarded it to /api/transactions/prepare → 400 "Invalid
+   * recipient address" because the prepare route validates strict 0x.
+   */
+  onSelectAudricUser: (address: string, fullHandle: string) => void;
   onSubmit: (input: string) => void;
 }) {
   const [value, setValue] = useState('');
@@ -230,7 +241,10 @@ function SendRecipientInput({
   const handlePickResult = (r: AudricUserSearchResult) => {
     setValue(r.fullHandle);
     setSearchResults([]);
-    onSubmit(r.fullHandle);
+    // [SPEC 10 Phase C.3 — bug fix] Route through onSelectAudricUser so
+    // the chip flow's `recipient` is the resolved 0x address, not the
+    // bare handle. The handle becomes the display label (subFlow).
+    onSelectAudricUser(r.address, r.fullHandle);
   };
 
   const handlePaste = async () => {
@@ -569,6 +583,52 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
     }
   }, [address, feed]);
 
+  /**
+   * [SPEC 10 Phase C.3 — bug fix] Resolve a typed send-recipient string
+   * (whatever the user typed into SendRecipientInput, OR whatever the
+   * intent parser yielded as `intent.to` from chat) into the
+   * (recipient_address, display_label) pair the chip flow needs.
+   *
+   * Resolution order:
+   *   1. Saved contact name → use the contact's address.
+   *   2. SuiNS name (`*.sui`, including `*.audric.sui`) → call
+   *      /api/suins/resolve. On success, recipient = 0x address,
+   *      label = the typed name (so the user sees the friendly form
+   *      they typed). On failure, surface the SuinsResolutionError
+   *      message via chipFlow.setError — no chip-flow advance.
+   *   3. Anything else (assumed `0x...`) → pass through. The prepare
+   *      route validates strict 0x format and returns 400 if it's
+   *      garbage, which the chip flow already surfaces correctly.
+   *
+   * Why this lives at the parent (not inside SendRecipientInput): the
+   * same resolution applies to the chat-driven send path
+   * (executeIntent → 'send' → intent.to). Two call sites, one helper.
+   */
+  const resolveAndSelectSendRecipient = useCallback(
+    async (input: string, cash: number | undefined) => {
+      const contact = contactsHook.resolveContact(input);
+      if (contact) {
+        chipFlow.selectRecipient(contact, input, cash);
+        return;
+      }
+      if (looksLikeSuiNs(input)) {
+        try {
+          const address = await resolveSuiNs(input);
+          chipFlow.selectRecipient(address, input, cash);
+        } catch (err) {
+          const message =
+            err instanceof SuinsResolutionError
+              ? err.message
+              : `Couldn't resolve "${input}". Try again or paste a 0x address.`;
+          chipFlow.setError(message);
+        }
+        return;
+      }
+      chipFlow.selectRecipient(input, undefined, cash);
+    },
+    [chipFlow, contactsHook],
+  );
+
   const executeIntent = useCallback(
     (intent: ParsedIntent) => {
       if (!intent) return;
@@ -591,14 +651,16 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
             feed.addItem({ type: 'ai-text', text: 'No funds available to send right now.', chips: [{ label: 'Receive', flow: 'receive' }] });
           } else {
             chipFlow.startFlow('send', flowContext);
-            const resolved = contactsHook.resolveContact(intent.to);
-            if (resolved) {
-              chipFlow.selectRecipient(resolved, intent.to, flowContext.cash);
-            } else {
-              chipFlow.selectRecipient(intent.to, undefined, flowContext.cash);
-            }
+            // [SPEC 10 Phase C.3 — bug fix] Use the shared resolver so
+            // chat-driven `send 5 to alice.audric.sui` and chip-typed
+            // input go through the same SuiNS-aware path. Amount is
+            // set inside the .then callback so it lands AFTER the
+            // recipient resolves (chipFlow.selectAmount expects state
+            // to already have the recipient).
             const sendAmt = intent.amount === -1 ? cap : intent.amount > 0 ? Math.min(intent.amount, cap) : 0;
-            if (sendAmt > 0) chipFlow.selectAmount(sendAmt);
+            void resolveAndSelectSendRecipient(intent.to, flowContext.cash).then(() => {
+              if (sendAmt > 0) chipFlow.selectAmount(sendAmt);
+            });
           }
           break;
         }
@@ -845,7 +907,7 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
           break;
       }
     },
-    [chipFlow, feed, address, balance, balanceQuery, flowContext, agent, contactsHook, fetchHistory, userStatus.username],
+    [chipFlow, feed, address, balance, balanceQuery, flowContext, agent, fetchHistory, userStatus.username, resolveAndSelectSendRecipient],
   );
 
   const handleChipClick = useCallback(
@@ -1636,13 +1698,9 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
           <SendRecipientInput
             contacts={contactsHook.contacts}
             onSelectContact={(addr, name) => chipFlow.selectRecipient(addr, name, balance.cash)}
+            onSelectAudricUser={(addr, fullHandle) => chipFlow.selectRecipient(addr, fullHandle, balance.cash)}
             onSubmit={(input) => {
-              const resolved = contactsHook.resolveContact(input);
-              if (resolved) {
-                chipFlow.selectRecipient(resolved, input, balance.cash);
-              } else {
-                chipFlow.selectRecipient(input, undefined, balance.cash);
-              }
+              void resolveAndSelectSendRecipient(input, balance.cash);
             }}
           />
         )}
