@@ -9,6 +9,7 @@ import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { validateJwt, isValidSuiAddress } from '@/lib/auth';
 import { createEngine, getSessionStore } from '@/lib/engine/engine-factory';
 import { sanitizeStreamErrorMessage } from '@/lib/engine/stream-errors';
+import { getSessionSpend } from '@/lib/engine/session-spend';
 import { prisma } from '@/lib/prisma';
 import type {
   FormSchema,
@@ -253,11 +254,16 @@ async function persistAddRecipientContact(
   identifier: string,
   resolved: ResolvedRecipient,
 ): Promise<void> {
+  // [P9.4 host fix] Conditionally include audricUsername. If the
+  // current resolution didn't yield one (most identifiers won't), we
+  // must NOT spread `audricUsername: undefined` — on the dedupe-merge
+  // path below, the spread would clobber an existing audricUsername
+  // that an earlier resolution had captured.
   const newContact: UnifiedContactRow = {
     name,
     identifier,
     resolvedAddress: resolved.canonical,
-    audricUsername: resolved.audricUsername,
+    ...(resolved.audricUsername ? { audricUsername: resolved.audricUsername } : {}),
     addedAt: Date.now(),
     source: 'agent',
   };
@@ -364,9 +370,20 @@ export async function POST(request: NextRequest) {
     resolvedFrom[field.name] = resolution.value;
   }
 
+  // [P9.4 host fix] Fetch session BEFORE running side-effects. A 404
+  // session would otherwise leave a persisted contact for a request
+  // that can't actually resume — wasted DB write and a confusing
+  // "ghost contact" if the user logs back in later.
+  const store = getSessionStore();
+  const session = await store.get(sessionId);
+  if (!session) {
+    return jsonError('Session not found', 404);
+  }
+
   // Side-effect: persist the contact when the resumed tool is add_recipient.
   // Runs BEFORE engine resume so the resumed-turn's narration can reference
-  // the just-saved contact.
+  // the just-saved contact (and its `<financial_context>` snapshot if the
+  // host injects one).
   if (pendingInput.toolName === 'add_recipient') {
     const name = typeof finalValues.name === 'string' ? finalValues.name : null;
     const identifier =
@@ -387,23 +404,25 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const store = getSessionStore();
-  const session = await store.get(sessionId);
-  if (!session) {
-    return jsonError('Session not found', 404);
-  }
-
   const contacts = await prisma.userPreferences
     .findUnique({ where: { address }, select: { contacts: true } })
     .then((p) => (Array.isArray(p?.contacts) ? (p.contacts as Array<{ name: string; address: string }>) : []))
     .catch(() => []);
+
+  // [P9.4 host fix] Pass the actual cumulative session spend so the
+  // engine's USD-aware permission resolver enforces the daily cap on
+  // the resumed-turn's writes. Hardcoded `0` would leak the spend
+  // ceiling on any future `pending_input` tool that auto-executes a
+  // sub-threshold write (add_recipient itself doesn't spend, but
+  // SPEC 10+ may add tools that do).
+  const sessionSpendUsd = await getSessionSpend(sessionId);
 
   try {
     const engine = await createEngine({
       address,
       session,
       contacts,
-      sessionSpendUsd: 0,
+      sessionSpendUsd,
       sessionId,
     });
 

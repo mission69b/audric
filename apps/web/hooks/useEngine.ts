@@ -550,6 +550,19 @@ export function useEngine({ address, jwt, onToolResult, contacts }: UseEngineOpt
         return;
       }
 
+      // [P9.4 host] Re-entry guard. Rapid double-click (or a re-render
+      // that fires onClick twice) would otherwise POST twice to
+      // /api/engine/resume-with-input. Both calls would push the
+      // pendingInput.assistantContent onto the engine's history, and
+      // both would persist the contact. The form's `disabled={isSubmitting}`
+      // helps but isn't airtight (state batching gap between click →
+      // setMessages → re-render). Bail when we know a submission is
+      // in-flight or has already succeeded; allow re-tries from 'error'
+      // (user just saw the failure inline and clicked Submit again).
+      if (foundBlock.status === 'submitting' || foundBlock.status === 'submitted') {
+        return;
+      }
+
       // Flip to 'submitting' so the form disables + shows the spinner.
       setMessages((prev) =>
         prev.map((m) => {

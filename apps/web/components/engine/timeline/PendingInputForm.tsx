@@ -209,11 +209,24 @@ interface FormFieldRowProps {
 
 function FormFieldRow({ field, value, onChange, disabled, error }: FormFieldRowProps) {
   const inputId = `pending-input-${field.name}`;
+  // [P9.4 host a11y] Wire aria-describedby to the error/help message so
+  // screen readers announce them when the input is focused. Mark the
+  // asterisk aria-hidden — required state is already conveyed by
+  // aria-required on the input.
+  const describedById = error
+    ? `${inputId}-error`
+    : field.helpText
+      ? `${inputId}-help`
+      : undefined;
   return (
     <label htmlFor={inputId} className="flex flex-col gap-1">
       <span className="text-[11px] font-medium uppercase tracking-wide text-fg-secondary">
         {field.label}
-        {field.required && <span className="ml-1 text-red-400">*</span>}
+        {field.required && (
+          <span aria-hidden="true" className="ml-1 text-red-400">
+            *
+          </span>
+        )}
       </span>
       <FormFieldInput
         id={inputId}
@@ -221,14 +234,24 @@ function FormFieldRow({ field, value, onChange, disabled, error }: FormFieldRowP
         value={value}
         onChange={onChange}
         disabled={disabled}
+        required={!!field.required}
+        invalid={!!error}
+        describedBy={describedById}
       />
       {error && (
-        <span data-testid={`pending-input-field-error-${field.name}`} className="text-[11px] text-red-400">
+        <span
+          id={`${inputId}-error`}
+          role="alert"
+          data-testid={`pending-input-field-error-${field.name}`}
+          className="text-[11px] text-red-400"
+        >
           {error}
         </span>
       )}
       {field.helpText && !error && (
-        <span className="text-[11px] text-fg-tertiary">{field.helpText}</span>
+        <span id={`${inputId}-help`} className="text-[11px] text-fg-tertiary">
+          {field.helpText}
+        </span>
       )}
     </label>
   );
@@ -240,9 +263,21 @@ interface FormFieldInputProps {
   value: string;
   onChange: (value: string) => void;
   disabled: boolean;
+  required: boolean;
+  invalid: boolean;
+  describedBy?: string;
 }
 
-function FormFieldInput({ id, field, value, onChange, disabled }: FormFieldInputProps) {
+function FormFieldInput({
+  id,
+  field,
+  value,
+  onChange,
+  disabled,
+  required,
+  invalid,
+  describedBy,
+}: FormFieldInputProps) {
   // [Closed switch — adding a new FormFieldKind requires updating this AND
   // the engine's FormFieldKind union. TS will fail compile if a new
   // member is added to the union without a case here.]
@@ -257,6 +292,9 @@ function FormFieldInput({ id, field, value, onChange, disabled }: FormFieldInput
           value={value}
           onChange={(e) => onChange(e.target.value)}
           disabled={disabled}
+          aria-required={required}
+          aria-invalid={invalid || undefined}
+          aria-describedby={describedBy}
           className={baseClass}
         >
           <option value="" disabled>
@@ -279,6 +317,9 @@ function FormFieldInput({ id, field, value, onChange, disabled }: FormFieldInput
           onChange={(e) => onChange(e.target.value)}
           placeholder={field.placeholder}
           disabled={disabled}
+          aria-required={required}
+          aria-invalid={invalid || undefined}
+          aria-describedby={describedBy}
           className={`${baseClass} font-mono`}
         />
       );
@@ -293,6 +334,9 @@ function FormFieldInput({ id, field, value, onChange, disabled }: FormFieldInput
           onChange={(e) => onChange(e.target.value)}
           placeholder={field.placeholder}
           disabled={disabled}
+          aria-required={required}
+          aria-invalid={invalid || undefined}
+          aria-describedby={describedBy}
           className={`${baseClass} font-mono`}
         />
       );
@@ -315,6 +359,9 @@ function FormFieldInput({ id, field, value, onChange, disabled }: FormFieldInput
             onChange={(e) => onChange(e.target.value)}
             placeholder={field.placeholder ?? '0.00'}
             disabled={disabled}
+            aria-required={required}
+            aria-invalid={invalid || undefined}
+            aria-describedby={describedBy}
             className={`${baseClass} pl-6 font-mono`}
           />
         </div>
@@ -329,6 +376,9 @@ function FormFieldInput({ id, field, value, onChange, disabled }: FormFieldInput
           onChange={(e) => onChange(e.target.value)}
           placeholder={field.placeholder ?? '@alice  /  alex.sui  /  0x40cd…3e62'}
           disabled={disabled}
+          aria-required={required}
+          aria-invalid={invalid || undefined}
+          aria-describedby={describedBy}
           // monospace because addresses + handles have alignment/typo cost
           className={`${baseClass} font-mono`}
           autoComplete="off"
@@ -346,6 +396,9 @@ function FormFieldInput({ id, field, value, onChange, disabled }: FormFieldInput
           onChange={(e) => onChange(e.target.value)}
           placeholder={field.placeholder}
           disabled={disabled}
+          aria-required={required}
+          aria-invalid={invalid || undefined}
+          aria-describedby={describedBy}
           className={baseClass}
           autoComplete="off"
         />
