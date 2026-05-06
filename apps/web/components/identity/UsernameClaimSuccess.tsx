@@ -79,7 +79,11 @@ export function UsernameClaimSuccess({
     setShowQr((prev) => !prev);
   }, []);
 
-  const tweetText = `I just claimed ${fullHandle} — find me at ${profileUrl} 🪪`;
+  // [S.89] Tweet copy. The URL is load-bearing — X reads OG meta from
+  // `audric.ai/<label>` and renders the per-username 1200x630 hero card
+  // (see `app/[username]/opengraph-image.tsx`). Keep the URL on its own
+  // line so the inline card sits cleanly underneath the body copy.
+  const tweetText = `I just claimed my Audric Passport — ${fullHandle} 🪪\n\nPay me on Sui: ${profileUrl}`;
   const shareUrl = `https://x.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
 
   return (

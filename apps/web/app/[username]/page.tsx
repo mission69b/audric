@@ -243,6 +243,11 @@ export async function generateMetadata({ params }: UsernamePageProps): Promise<M
   }
   const { handle } = resolved;
   const description = `Send USDC, SUI, or any token to ${handle} on Sui via Audric.`;
+  // [S.89] `summary_large_image` so X / Discord / iMessage etc. render
+  // the per-username 1200x630 hero card from `./opengraph-image.tsx`
+  // (Next.js auto-discovers the sibling file). Without this card the
+  // shared link previews as a tiny square with a generic Audric image —
+  // doesn't read as "this is alice's passport" at a glance.
   return {
     title: `${handle} · Audric`,
     description,
@@ -253,7 +258,7 @@ export async function generateMetadata({ params }: UsernamePageProps): Promise<M
       type: 'profile',
     },
     twitter: {
-      card: 'summary',
+      card: 'summary_large_image',
       title: handle,
       description,
     },

@@ -183,8 +183,11 @@ describe('UsernameClaimSuccess', () => {
       // the encoded URL byte-for-byte.
       expect(href.startsWith('https://x.com/intent/tweet?text=')).toBe(true);
       const decoded = decodeURIComponent(href.replace('https://x.com/intent/tweet?text=', ''));
+      // [S.89] Tweet copy was tightened — leads with "Audric Passport"
+      // for narrative clarity and trails the URL on a separate line so
+      // X renders the per-username OG hero card cleanly underneath.
       expect(decoded).toBe(
-        'I just claimed alice.audric.sui — find me at https://audric.ai/alice 🪪',
+        'I just claimed my Audric Passport — alice.audric.sui 🪪\n\nPay me on Sui: https://audric.ai/alice',
       );
     });
 
