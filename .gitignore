@@ -41,7 +41,8 @@ pnpm-debug.log*
 .env.vercel-check
 
 # local-only redesign artifacts (kept out of the repo on purpose)
-design_handoff_audric*/
+# Covers any design handoff bundle (handoff_audric, handoff_username_flow, future bundles).
+design_handoff_*/
 scripts/
 # but track tooling under apps/web/scripts (canonical scan, shadow check, etc.)
 !apps/web/scripts/

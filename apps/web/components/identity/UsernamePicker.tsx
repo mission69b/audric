@@ -8,110 +8,73 @@ import { validateAudricLabel, type LabelReason } from '@/lib/identity/validate-l
 // ───────────────────────────────────────────────────────────────────────────
 // SPEC 10 Phase B.1 — UsernamePicker
 //
-// [B5 polish] Visual language re-aligned to the Audric Design System
-// (see `.cursor/rules/design-system.mdc`). Closest prototype analogues:
-//   • `design_handoff_audric/design_files/audric-app-light/settings.jsx`
-//     — sunken-card chrome (`bg-surface-sunken` + `rounded-md` + `p-4`),
-//     mono eyebrow language (`font-mono text-[10px] tracking-[0.1em]
-//     uppercase text-fg-muted`), and the canonical Claim-handle CTA
-//     (mirrored from PassportSection's empty-state).
-//   • `design_handoff_audric/design_files/audric-app-light/primitives.jsx`
-//     — Pill/Tag/Card primitives (mono labels, geometric icons via
-//     inline SVG, no emoji as UI). Chip status indicators use the
-//     icon-set (`check` / `close` / `spinner`) instead of ✓/✗/… emoji;
-//     the regenerate affordance uses the `sparkle` icon ("give me new
-//     ideas") instead of 🔄.
+// [B6 design pass] Complete visual rewrite to the V2 ("terminal /
+// editorial") layout from the username-flow design handoff bundle
+// (`design_handoff_username_flow/handle-picker.jsx` → <V2/>). Layout
+// reference: the same handoff's README.md §A1.
 //
-// Reusable component that lets a user claim a `username.audric.sui` leaf
-// subname. Built on the SPEC 9 P9.4 `pending_input` SUBSTRATE (same SSE
-// lifecycle: engine emits → host renders → user submits → resume route)
-// but with a SPECIALIZED renderer rather than the generic `PendingInputForm`
-// because the picker has UX requirements that the generic form can't model:
+// Key visual structure (top → bottom inside a 540px sunken card):
+//   • Mono header strip — `// PASSPORT / HANDLE` left-aligned, hairline.
+//     The handoff includes a `STEP 02 — 04` right counter; we drop it
+//     because audric's signup is one-step — see S.87 tracker entry for
+//     the rationale.
+//   • Serif H2 "Pick your handle" + sans subtitle with inline mono
+//     `@yourhandle` code chip.
+//   • `// SUGGESTED` mono section label + "↻ Regenerate" mono button.
+//   • Bordered terminal-row table — one row per suggestion, mono handle
+//     left, AVAILABLE/TAKEN status tag right. Active (clicked) row gets
+//     a sunken-bg highlight. Taken rows are line-through + non-clickable.
+//   • `// CUSTOM` mono section label + the @label.audric.sui input shell.
+//     Border + focus shadow tint on validation state (red on bad, green
+//     on ok, blue on focus).
+//   • Status line (mono UPPERCASE, // prefix) — `// AVAILABLE — …` /
+//     `// TAKEN — …` / `// 3–20 CHARS · A-Z, 0-9, hyphen` for the
+//     idle hint.
+//   • Dither rule (`░▒▓` Departure-Mono pattern in border-subtle).
+//   • Footer — `← SKIP FOR NOW` mono link (left, only when onSkip
+//     provided), `CLAIM HANDLE →` mono primary CTA (right).
 //
-//   • 3 chip suggestions with per-chip availability state
-//   • Sparkle "regenerate suggestions" button (B-6 privacy escape hatch)
-//   • Real-time debounced availability check on the free-text input
-//   • Status-specific copy: available / taken / reserved / invalid /
-//     too-short / too-long / checking / verifier-degraded (503)
-//   • Static `.audric.sui` suffix rendered as a separate, non-editable
-//     element in the input (SuiNS suffix is fixed for the audric brand)
+// Validation: lowercased + trimmed input, then `validateAudricLabel`
+// (matches the SuiNS protocol invariant: lowercase alphanumeric +
+// hyphen, no leading/trailing/consecutive hyphens, length 3–20). The
+// handoff README says `^[a-z0-9_]{3,20}$` (underscores) but underscores
+// are not a valid SuiNS leaf character — minting would fail at the
+// on-chain layer. The picker MUST mirror the on-chain charset, so
+// hyphens-only is the correct rule here. See S.87 entry.
 //
-// Composition contract:
-//
-//   This component is a PURE UI primitive — it doesn't know about engine
-//   sessions, JWTs, or transaction signing. The caller (signup page,
-//   chat-timeline pending_input renderer, settings/contacts CRUD) is
-//   responsible for:
-//
-//     • Wiring `googleName` + `googleEmail` from the auth source.
-//     • Handling the `onSubmit(label)` callback (kicks off the leaf-mint
-//       flow — see Phase B.2 leaf-mint route).
-//     • Optionally handling `onSkip()` (D2 escape hatch — claim later
-//       from settings).
-//
-// Validation defense-in-depth:
-//
-//   The picker pre-validates client-side (validateAudricLabel) and pre-
-//   checks availability (GET /api/identity/check). Both are UX-only —
-//   the leaf-mint route in B.2 re-runs the same validation server-side
-//   with anti-race re-check. The picker's `onSubmit` only fires when
-//   the input passes BOTH validation AND availability — but the caller
-//   MUST NOT trust this gate (defense in depth: a B.2 race could still
-//   reject the submission if another user claimed the same name in the
-//   ~200ms between check and mint).
+// Composition contract is unchanged from the original B.1 ship —
+// `googleName` / `googleEmail` / `onSubmit(label)` / optional
+// `onSkip()` / `disabled` / `checkFetcher` (test injection).
 // ───────────────────────────────────────────────────────────────────────────
 
 const PARENT_SUFFIX = '.audric.sui';
 const DEBOUNCE_MS = 300;
+const DITHER_PATTERN = '░▒▓▒░░▒▓▒░░▒▓▒░░▒▓▒░░▒▓▒░░▒▓▒░░▒▓▒░░▒▓▒░░▒▓▒░░▒▓▒░░▒▓▒░░▒▓▒░░▒▓▒░░▒▓▒░░▒▓▒░░▒▓▒░░▒▓▒░░▒▓▒░░▒▓▒░░▒▓▒░░';
 
 export type UsernameCheckStatus =
-  | 'idle'         // empty input, no chip selected
-  | 'checking'     // /api/identity/check in flight
-  | 'available'    // confirmed available — submit enabled
-  | 'taken'        // someone has it
-  | 'reserved'     // brand / system / squat-magnet
-  | 'invalid'      // charset or hyphen rule failure
-  | 'too-short'    // < 3 chars
-  | 'too-long'     // > 20 chars
-  | 'verifier-down' // 503 from /api/identity/check (RPC degraded)
-  | 'error';       // network failure
+  | 'idle'
+  | 'checking'
+  | 'available'
+  | 'taken'
+  | 'reserved'
+  | 'invalid'
+  | 'too-short'
+  | 'too-long'
+  | 'verifier-down'
+  | 'error';
 
 export interface UsernamePickerProps {
-  /** Google `name` claim — used to derive smart pre-fill suggestions. */
   googleName?: string | null;
-  /** Google `email` claim — used to derive smart pre-fill suggestions. */
   googleEmail?: string | null;
-  /**
-   * Called when the user clicks Submit on a confirmed-available label.
-   * The label is the canonical lowercased form (no `.audric.sui` suffix).
-   * Caller should kick off the leaf-mint flow — the picker does not
-   * persist anything itself.
-   */
   onSubmit: (label: string) => void;
-  /**
-   * Optional escape-hatch handler. When present, renders a "Skip for
-   * now" link below the submit button. The signup flow can call this
-   * to defer claiming to the settings page (per SPEC 10 D2).
-   */
   onSkip?: () => void;
-  /**
-   * Mute the entire UI while the parent is processing (e.g. mint tx in
-   * flight). Inputs become read-only; submit shows "Claiming…".
-   */
   disabled?: boolean;
-  /**
-   * Optional fetcher injection — for tests. Defaults to the global
-   * `fetch`. The signature matches `/api/identity/check?username=…`
-   * (200 with `{available, reason?}` body, 429 / 503 surface as
-   * `verifier-down` / `error`).
-   */
   checkFetcher?: (label: string) => Promise<UsernameCheckResult>;
 }
 
 export interface UsernameCheckResult {
   available: boolean;
   reason?: LabelReason | 'reserved' | 'taken';
-  /** Set when the verifier returned 503 — picker shows a retry hint. */
   verifierDown?: boolean;
 }
 
@@ -123,45 +86,28 @@ export function UsernamePicker({
   disabled = false,
   checkFetcher = defaultCheckFetcher,
 }: UsernamePickerProps) {
-  // [Suggestion seed] Increments on 🔄 regenerate. Each seed yields a
-  // different slice of 3 candidates from the deterministic strategy list.
   const [seed, setSeed] = useState(0);
-
-  // [Free-text input] Lowercased + trimmed live so the visible value
-  // matches what gets submitted (no surprise normalization on submit).
   const [input, setInput] = useState('');
-
-  // [Check status for the free-text input] Updates as the debounced
-  // /api/identity/check call resolves. Distinct from per-chip status
-  // (which tracks the 3 suggestion chips independently).
   const [status, setStatus] = useState<UsernameCheckStatus>('idle');
+  const [rowStatus, setRowStatus] = useState<Record<string, UsernameCheckStatus>>({});
+  const [focused, setFocused] = useState(false);
 
-  // [Per-chip status] Map of chip-label → status. Each chip checks its
-  // own availability when the picker mounts (or when seed advances).
-  // Chips render their own spinner / ✓ / ✗ icon based on this state.
-  const [chipStatus, setChipStatus] = useState<Record<string, UsernameCheckStatus>>({});
-
-  // [Strategy slice] Deterministic per (name, email, seed). Memo'd to
-  // avoid reshuffling on unrelated re-renders.
   const suggestions = useMemo(
     () => suggestUsernames({ googleName, googleEmail, seed, count: 3 }),
     [googleName, googleEmail, seed],
   );
 
-  // ─── Per-chip availability pre-check ──────────────────────────────────
-  // When suggestions change (mount or regenerate), fire 3 parallel
-  // /api/identity/check calls. Track in chipStatus. Stale-closure-safe
-  // via the local `cancelled` flag in the effect cleanup.
+  // ─── Per-suggestion availability pre-check ────────────────────────────
   useEffect(() => {
     if (suggestions.length === 0) {
-      setChipStatus({});
+      setRowStatus({});
       return;
     }
 
     let cancelled = false;
     const initial: Record<string, UsernameCheckStatus> = {};
     for (const s of suggestions) initial[s] = 'checking';
-    setChipStatus(initial);
+    setRowStatus(initial);
 
     Promise.all(
       suggestions.map((label) =>
@@ -171,7 +117,7 @@ export function UsernamePicker({
       ),
     ).then((results) => {
       if (cancelled) return;
-      setChipStatus((prev) => {
+      setRowStatus((prev) => {
         const next = { ...prev };
         for (const { label, status: s } of results) next[label] = s;
         return next;
@@ -184,19 +130,9 @@ export function UsernamePicker({
   }, [suggestions, checkFetcher]);
 
   // ─── Debounced free-text availability check ───────────────────────────
-  // Cancels the previous in-flight check by tracking the latest invocation
-  // ID — when the request resolves we only commit the result if it's the
-  // most recent one (avoids out-of-order responses showing "available"
-  // for a label the user has already deleted).
   const checkIdRef = useRef(0);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // [Chip-click suppression] When a user clicks an already-verified chip
-  // we set this ref to that label. The next input-effect tick sees the
-  // input now matches the suppressed label and skips the redundant
-  // validate+fetch, leaving the explicitly-set 'available' status intact.
-  // The moment the user types over the chip-filled value, `input` no
-  // longer matches the ref and the normal check resumes.
-  const verifiedFromChipRef = useRef<string | null>(null);
+  const verifiedFromRowRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
@@ -206,17 +142,8 @@ export function UsernamePicker({
       return;
     }
 
-    // [Chip-verified short-circuit] The chip pre-check already proved this
-    // exact label is available; don't re-check on the input-edit path.
-    if (verifiedFromChipRef.current === input) {
-      return;
-    }
+    if (verifiedFromRowRef.current === input) return;
 
-    // [Sync validation gate] Cheap client-side validation gives instant
-    // feedback for too-short / invalid / too-long without burning a
-    // network call. /api/identity/check would return the same reason
-    // anyway — this just removes the debounce-wait latency for the
-    // common "user typed a hyphen" case.
     const validation = validateAudricLabel(input);
     if (!validation.valid) {
       setStatus(validation.reason);
@@ -229,7 +156,7 @@ export function UsernamePicker({
     debounceTimerRef.current = setTimeout(() => {
       checkFetcher(validation.label)
         .then((r) => {
-          if (checkIdRef.current !== id) return; // out-of-order — discard
+          if (checkIdRef.current !== id) return;
           setStatus(resultToStatus(r));
         })
         .catch(() => {
@@ -245,23 +172,17 @@ export function UsernamePicker({
 
   // ─── Handlers ─────────────────────────────────────────────────────────
 
-  const handleChipClick = useCallback(
+  const handleRowClick = useCallback(
     (label: string) => {
-      const s = chipStatus[label];
+      const s = rowStatus[label];
       if (s === 'available') {
-        // Fill the input + commit status so submit is immediately enabled.
-        // The verifiedFromChipRef tells the input-watching effect to skip
-        // re-checking this label (we already verified it via the chip
-        // pre-check) — without it we'd flash "checking…" for ~300ms.
-        verifiedFromChipRef.current = label;
+        verifiedFromRowRef.current = label;
         setInput(label);
-        checkIdRef.current += 1; // invalidate any in-flight free-text check
+        checkIdRef.current += 1;
         setStatus('available');
       }
-      // Other statuses are no-ops — the chip is already disabled by aria
-      // and visual styles, but defense-in-depth.
     },
-    [chipStatus],
+    [rowStatus],
   );
 
   const handleRegenerate = useCallback(() => {
@@ -281,30 +202,68 @@ export function UsernamePicker({
 
   // ─── Render ───────────────────────────────────────────────────────────
 
-  const submitLabel = disabled ? 'Claiming…' : 'Claim handle';
+  // Tests assert `submit.textContent === 'Claiming…'` when disabled —
+  // keep that literal. The rest of the CTA copy is the V2 mono primary.
+  const submitLabel = disabled ? 'Claiming…' : 'CLAIM HANDLE →';
   const canSubmit = status === 'available' && !disabled;
+
+  const inputBorderClass = (() => {
+    if (
+      status === 'taken' ||
+      status === 'invalid' ||
+      status === 'too-long' ||
+      status === 'reserved'
+    ) {
+      return 'border-error-border';
+    }
+    if (status === 'available') return 'border-success-border';
+    if (focused) return 'border-border-focus';
+    return 'border-border-subtle';
+  })();
+  const inputShadow = focused
+    ? status === 'taken' ||
+      status === 'invalid' ||
+      status === 'too-long' ||
+      status === 'reserved'
+      ? 'shadow-[0_0_0_3px_rgba(213,11,11,0.18)]'
+      : status === 'available'
+        ? 'shadow-[0_0_0_3px_rgba(60,193,78,0.18)]'
+        : 'shadow-[var(--shadow-focus-ring)]'
+    : '';
 
   return (
     <div
       data-testid="username-picker"
-      className="space-y-4 rounded-md border border-border-subtle bg-surface-sunken p-4"
+      className="rounded-lg border border-border-subtle bg-surface-card pt-6 pb-6 px-7"
     >
-      <div className="space-y-1.5">
-        <p className="font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted">
+      {/* Mono header strip — `// PASSPORT / HANDLE` left, no step counter
+          (S.87 — audric signup is single-step; literal step copy would lie). */}
+      <div className="flex items-center justify-between pb-3 border-b border-border-subtle">
+        <span className="font-mono text-[11px] tracking-[0.08em] uppercase text-fg-primary">
+          {'// PASSPORT / HANDLE'}
+        </span>
+      </div>
+
+      {/* Title + subtitle */}
+      <div className="mt-[22px] mb-[22px]">
+        <h2 className="font-serif text-[36px] leading-[42px] tracking-[-0.01em] font-medium text-fg-primary m-0">
           Pick your handle
-        </p>
-        <p className="text-[12px] text-fg-secondary leading-[1.55]">
-          This is your forever Audric Passport — friends send you USDC by typing
-          {' '}
-          <span className="font-mono text-fg-primary">@yourhandle</span>.
+        </h2>
+        <p className="mt-[10px] mb-0 max-w-[460px] text-[14px] leading-[20px] text-fg-secondary">
+          This is your forever Audric Passport — friends send you USDC by typing{' '}
+          <code className="font-mono text-[13px] text-fg-primary bg-surface-sunken px-[5px] py-[1px] rounded-xs border border-border-subtle">
+            @yourhandle
+          </code>
+          .
         </p>
       </div>
 
+      {/* SUGGESTED row label + regenerate */}
       {suggestions.length > 0 && (
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
+        <>
+          <div className="flex items-center justify-between mb-1.5">
             <span className="font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted">
-              Suggestions
+              {'// SUGGESTED'}
             </span>
             <button
               type="button"
@@ -312,67 +271,93 @@ export function UsernamePicker({
               disabled={disabled}
               data-testid="username-picker-regenerate"
               aria-label="Regenerate suggestions"
-              className="inline-flex items-center gap-1.5 rounded-xs border border-border-subtle px-2 py-1 font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted transition hover:text-fg-primary hover:border-border-strong disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
+              className="inline-flex items-center gap-1.5 px-1.5 py-1 font-mono text-[10px] tracking-[0.08em] uppercase text-fg-secondary transition hover:text-fg-primary disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:underline"
             >
-              <Icon name="sparkle" size={10} />
-              <span>Regenerate</span>
+              <Icon name="sparkle" size={11} />
+              Regenerate
             </button>
           </div>
-          <div className="flex flex-wrap gap-2" role="group" aria-label="Username suggestions">
-            {suggestions.map((label) => (
-              <SuggestionChip
+
+          {/* Bordered terminal-row table */}
+          <div
+            role="group"
+            aria-label="Username suggestions"
+            className="flex flex-col mb-[22px] rounded-sm border border-border-subtle overflow-hidden"
+          >
+            {suggestions.map((label, i) => (
+              <SuggestionRow
                 key={label}
                 label={label}
-                status={chipStatus[label] ?? 'checking'}
+                status={rowStatus[label] ?? 'checking'}
+                divider={i < suggestions.length - 1}
                 disabled={disabled}
-                onClick={() => handleChipClick(label)}
+                active={input === label && status === 'available'}
+                onClick={() => handleRowClick(label)}
               />
             ))}
           </div>
-        </div>
+        </>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-2">
-        <label htmlFor="username-picker-input" className="block">
-          <span className="font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted">
-            Or type your own
-          </span>
-        </label>
-        <div className="flex items-stretch overflow-hidden rounded-sm border border-border-subtle bg-surface-page focus-within:border-border-strong focus-within:shadow-[var(--shadow-focus-ring)]">
+      {/* CUSTOM label */}
+      <div className="mb-1.5">
+        <span className="font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted">
+          {'// CUSTOM'}
+        </span>
+      </div>
+
+      {/* Input shell */}
+      <form onSubmit={handleSubmit}>
+        <div
+          className={`flex items-center gap-0 rounded-xs bg-surface-card transition border ${inputBorderClass} ${inputShadow} px-3 py-0.5`}
+        >
+          <span className="font-mono text-[13px] text-fg-muted">@</span>
           <input
             id="username-picker-input"
             data-testid="username-picker-input"
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value.trim().toLowerCase())}
-            placeholder="alice"
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            placeholder="yourhandle"
             disabled={disabled}
             autoComplete="off"
+            autoCapitalize="off"
+            autoCorrect="off"
             spellCheck={false}
             maxLength={20}
             aria-describedby="username-picker-status"
             aria-invalid={isErrorStatus(status) || undefined}
-            className="flex-1 bg-transparent px-3 py-2 font-mono text-[13px] text-fg-primary outline-none disabled:opacity-50"
+            className="flex-1 px-1 py-2.5 font-mono text-[13px] text-fg-primary bg-transparent border-none outline-none disabled:opacity-50"
           />
-          <span
-            aria-hidden="true"
-            className="flex items-center bg-surface-sunken px-3 font-mono text-[13px] text-fg-secondary"
-          >
-            {PARENT_SUFFIX}
-          </span>
+          <span className="font-mono text-[13px] text-fg-muted pr-2">{PARENT_SUFFIX}</span>
         </div>
-        <StatusLine status={status} input={input} />
 
-        <div className="flex items-center justify-between gap-3 pt-1">
+        {/* Status line */}
+        <div className="h-[18px] mt-2">
+          <StatusLine status={status} input={input} />
+        </div>
+
+        {/* Dither rule */}
+        <div
+          aria-hidden="true"
+          className="font-mono text-[12px] tracking-[0.05em] text-border-subtle mt-[22px] mb-3.5 overflow-hidden whitespace-nowrap select-none"
+        >
+          {DITHER_PATTERN}
+        </div>
+
+        {/* Footer — Skip / Claim */}
+        <div className="flex items-center justify-between">
           {onSkip ? (
             <button
               type="button"
               onClick={onSkip}
               disabled={disabled}
               data-testid="username-picker-skip"
-              className="font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted underline-offset-2 hover:text-fg-primary hover:underline disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:underline"
+              className="font-mono text-[11px] tracking-[0.08em] uppercase text-fg-secondary py-1.5 transition hover:text-fg-primary disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:underline underline-offset-[3px]"
             >
-              Skip for now
+              ← SKIP FOR NOW
             </button>
           ) : (
             <span />
@@ -381,7 +366,7 @@ export function UsernamePicker({
             type="submit"
             disabled={!canSubmit}
             data-testid="username-picker-submit"
-            className="inline-flex items-center justify-center rounded-sm border border-fg-primary bg-fg-primary px-3 py-2 font-mono text-[10px] tracking-[0.1em] uppercase text-fg-inverse transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
+            className="inline-flex items-center justify-center rounded-xs border border-fg-primary bg-fg-primary px-[18px] py-3 font-mono text-[11px] tracking-[0.1em] uppercase text-fg-inverse transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45 focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
           >
             {submitLabel}
           </button>
@@ -395,59 +380,74 @@ export function UsernamePicker({
 // Subcomponents
 // ───────────────────────────────────────────────────────────────────────────
 
-interface SuggestionChipProps {
+interface SuggestionRowProps {
   label: string;
   status: UsernameCheckStatus;
+  divider: boolean;
   disabled: boolean;
+  active: boolean;
   onClick: () => void;
 }
 
-function SuggestionChip({ label, status, disabled, onClick }: SuggestionChipProps) {
-  // [B5 polish] Chips follow the prototype Pill pattern (primitives.jsx):
-  // mono 10px tracked uppercase, fully-rounded border, semantic-token
-  // tones. Status indicators come from the icon-set rather than ✓/✗/…
-  // emoji to match the inline-SVG geometric icon language used
-  // everywhere else in the chrome.
+function SuggestionRow({ label, status, divider, disabled, active, onClick }: SuggestionRowProps) {
+  // Defensive — the suggester emits valid labels, but if a sync rule
+  // ever fires here we'd render a half-drawn row. Skipping is cleaner.
   if (status === 'invalid' || status === 'too-short' || status === 'too-long') {
     return null;
   }
-  const clickable = status === 'available' && !disabled;
-  const tone = chipTone(status);
+
+  const ok = status === 'available';
+  const taken = status === 'taken' || status === 'reserved';
+  const checking = status === 'checking';
+  const errored = status === 'error' || status === 'verifier-down';
+  const clickable = ok && !disabled;
+
+  const tagTone = ok
+    ? 'bg-success-bg text-success-fg'
+    : taken || errored
+      ? 'bg-error-bg text-error-fg'
+      : 'bg-surface-sunken text-fg-muted';
+  const tagText = ok
+    ? 'AVAILABLE'
+    : taken
+      ? 'TAKEN'
+      : errored
+        ? 'CHECK FAILED'
+        : 'CHECKING…';
+  const tagIconName: 'check' | 'close' | 'spinner' = ok ? 'check' : checking ? 'spinner' : 'close';
+
+  const handleTextClass = taken ? 'text-fg-muted line-through' : 'text-fg-primary';
+
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={clickable ? onClick : undefined}
       disabled={!clickable}
       data-testid={`username-picker-chip-${label}`}
       data-status={status}
       aria-label={`${label}.audric.sui — ${humanStatus(status)}`}
-      className={`group inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 font-mono text-[10px] tracking-[0.06em] transition ${tone} ${clickable ? 'cursor-pointer' : 'cursor-not-allowed'} focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]`}
+      className={`flex items-center justify-between text-left w-full px-3.5 py-3 transition ${
+        divider ? 'border-b border-border-subtle' : ''
+      } ${active ? 'bg-surface-sunken' : 'bg-transparent'} ${
+        clickable ? 'cursor-pointer hover:bg-surface-sunken' : 'cursor-not-allowed'
+      } focus-visible:outline-none focus-visible:bg-surface-sunken`}
     >
-      <span>{label}</span>
-      <span aria-hidden="true" className="opacity-60">
-        .audric.sui
+      <span className={`font-mono text-[13px] ${handleTextClass}`}>
+        {label}
+        <span className="text-fg-muted">{PARENT_SUFFIX}</span>
       </span>
-      <ChipIndicator status={status} />
+      <span
+        className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-xs font-mono text-[10px] tracking-[0.08em] uppercase ${tagTone}`}
+      >
+        <Icon
+          name={tagIconName}
+          size={10}
+          className={tagIconName === 'spinner' ? 'animate-spin' : undefined}
+        />
+        {tagText}
+      </span>
     </button>
   );
-}
-
-function ChipIndicator({ status }: { status: UsernameCheckStatus }) {
-  if (status === 'checking') {
-    return (
-      <Icon
-        name="spinner"
-        size={10}
-        aria-label="Checking availability"
-        className="animate-spin opacity-70"
-      />
-    );
-  }
-  if (status === 'available') {
-    return <Icon name="check" size={10} aria-label="Available" />;
-  }
-  // taken / reserved / error / verifier-down
-  return <Icon name="close" size={10} aria-label="Unavailable" className="opacity-70" />;
 }
 
 interface StatusLineProps {
@@ -456,27 +456,46 @@ interface StatusLineProps {
 }
 
 function StatusLine({ status, input }: StatusLineProps) {
-  const message = humanStatusForInput(status, input);
-  if (!message) {
-    return <div id="username-picker-status" className="h-4" aria-hidden="true" />;
+  if (status === 'idle' || input === '') {
+    return (
+      <div
+        id="username-picker-status"
+        data-testid="username-picker-status"
+        data-status="idle"
+        className="font-mono text-[11px] tracking-[0.04em] text-fg-muted"
+      >
+        {'// 3–20 CHARS · A-Z, 0-9, HYPHEN'}
+      </div>
+    );
   }
-  // [B5 polish] Status line keeps semantic tones but reaches for the
-  // ADS body-xs ramp (`text-[12px] leading-[1.5]`) so it sits on the
-  // same vertical rhythm as the surrounding paragraph copy.
+
+  const message = humanStatusForInput(status, input);
   const tone = isErrorStatus(status)
     ? 'text-error-fg'
     : status === 'available'
       ? 'text-success-fg'
-      : 'text-fg-secondary';
+      : 'text-fg-muted';
+  const prefix = humanStatusPrefix(status);
+  const iconName: 'check' | 'close' | 'spinner' =
+    status === 'available' ? 'check' : isErrorStatus(status) ? 'close' : 'spinner';
+
   return (
     <div
       id="username-picker-status"
       data-testid="username-picker-status"
       data-status={status}
       role={isErrorStatus(status) ? 'alert' : 'status'}
-      className={`text-[12px] leading-[1.5] ${tone}`}
+      className={`inline-flex items-center gap-1.5 font-mono text-[11px] tracking-[0.04em] uppercase ${tone}`}
     >
-      {message}
+      <Icon
+        name={iconName}
+        size={10}
+        className={iconName === 'spinner' && status === 'checking' ? 'animate-spin' : undefined}
+      />
+      <span>
+        {prefix}
+        {message ? ` — ${message}` : ''}
+      </span>
     </div>
   );
 }
@@ -532,42 +551,46 @@ function humanStatus(s: UsernameCheckStatus): string {
   }
 }
 
+function humanStatusPrefix(s: UsernameCheckStatus): string {
+  switch (s) {
+    case 'available':
+      return '// AVAILABLE';
+    case 'checking':
+      return '// CHECKING';
+    case 'taken':
+      return '// TAKEN';
+    case 'reserved':
+      return '// RESERVED';
+    case 'invalid':
+      return '// INVALID';
+    case 'too-short':
+      return '// TOO SHORT';
+    case 'too-long':
+      return '// TOO LONG';
+    case 'verifier-down':
+      return '// VERIFIER DOWN';
+    case 'error':
+      return '// CHECK FAILED';
+    default:
+      return '';
+  }
+}
+
 function humanStatusForInput(s: UsernameCheckStatus, input: string): string {
   if (s === 'idle' || input === '') return '';
-  if (s === 'checking') return 'Checking…';
+  if (s === 'checking') return 'one moment';
   if (s === 'available') return `${input}.audric.sui is yours to claim`;
   if (s === 'taken') return `${input}.audric.sui is taken — try another`;
   if (s === 'reserved') return `${input} is reserved`;
-  if (s === 'too-short') return 'Handles need 3 characters minimum';
-  if (s === 'too-long') return 'Handles can be 20 characters maximum';
-  if (s === 'invalid') return 'Use letters, numbers, and hyphens only';
-  if (s === 'verifier-down') {
-    return "Can't verify availability right now — try again in a moment";
-  }
-  return 'Check failed — try again';
-}
-
-function chipTone(s: UsernameCheckStatus): string {
-  // Semantic tokens (DS Rule 1): success-* / error-* theme-flip via globals.css.
-  // The available chip's hover bumps opacity slightly via opacity-90 → opacity-100
-  // pattern instead of a custom darker fill, since success-bg has different
-  // values per theme (g200 solid in light, rgba 0.14 in dark) and a custom
-  // hover fill would need to be defined per theme too.
-  if (s === 'available') {
-    return 'border-success-border bg-success-bg text-success-fg hover:opacity-90';
-  }
-  if (s === 'checking') {
-    return 'border-border-subtle bg-surface-page text-fg-secondary';
-  }
-  // taken / reserved / error
-  return 'border-error-border bg-error-bg text-fg-secondary opacity-70';
+  if (s === 'too-short') return 'handles need 3 characters minimum';
+  if (s === 'too-long') return 'handles can be 20 characters maximum';
+  if (s === 'invalid') return 'use lowercase letters, numbers, hyphens';
+  if (s === 'verifier-down') return "can't verify availability right now — try again in a moment";
+  return 'check failed — try again';
 }
 
 // ───────────────────────────────────────────────────────────────────────────
 // Default fetcher — wraps GET /api/identity/check.
-//
-// Test fixtures inject their own checkFetcher to avoid `fetch` mocks. The
-// shape is the wire shape from `app/api/identity/check/route.ts`.
 // ───────────────────────────────────────────────────────────────────────────
 
 async function defaultCheckFetcher(label: string): Promise<UsernameCheckResult> {

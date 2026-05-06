@@ -7,100 +7,52 @@ import { SuiPayQr } from '@/components/pay/SuiPayQr';
 // ───────────────────────────────────────────────────────────────────────────
 // SPEC 10 Phase B.3 — UsernameClaimSuccess
 //
-// [B5 polish] Visual chrome aligned to the Audric Design System
-// (see `.cursor/rules/design-system.mdc`). Closest prototype analogues:
-//   • `design_handoff_audric/design_files/audric-app-light/primitives.jsx`
-//     — `BalanceHeader` is the canonical "hero name in serif" pattern
-//     (`font-serif`, large size, tight tracking) reused here for the
-//     newly-claimed handle. Action buttons mirror the prototype's
-//     mono-uppercase outline-pill language.
-//   • `design_handoff_audric/design_files/audric-app-light/settings.jsx`
-//     — Sunken-card chrome wrapper (`bg-surface-sunken` + `rounded-md`
-//     + mono eyebrow language) replaces the previous full success-bg
-//     container. Success-bg moves to a small badge-strip across the
-//     top so the moment still reads as celebratory without consuming
-//     the whole frame in green.
+// [B6 design pass] Visual rewrite to the `<ClaimedSuccess/>` layout from
+// the username-flow handoff bundle (`design_handoff_username_flow/
+// claimed-success.jsx`). Layout reference: same handoff README §A2.
 //
-// Celebration + share surface rendered AFTER `<UsernamePicker>` submits and
-// `/api/identity/reserve` returns 200. Pure UI primitive — knows nothing
-// about JWTs, engine sessions, or how the caller transitions in/out.
-// Composition contract mirrors the picker (B.1):
+// Top-down structure:
+//   1. Top status strip — `✓ HANDLE CLAIMED` (left, success-fg on
+//      success-bg) + (the handoff also shows `STEP 04 / 04` right; we
+//      drop the step counter — see S.87).
+//   2. Hero band — `success-bg` background, hairline `success-border`
+//      bottom rule, dither bar `▓▒░  YOUR PASSPORT  ░▒▓` in mono +
+//      success-fg, big serif handle (was mono in the prototype, but we
+//      use the serif since it's our "hero name" pattern), and the
+//      tagline "Yours on Sui — recognized everywhere."
+//   3. Action row — three equal-flex outline buttons: Copy / Show QR /
+//      Share to X. All sans 13px, hairline, hover darkens border.
+//   4. Optional QR panel — collapsible, real `<SuiPayQr>` with the
+//      AudricMark watermark + sui:pay?recipient=… deep-link.
+//   5. Full-width primary CTA — "Continue to Audric →" — only when the
+//      caller passed `onContinue`.
 //
-//   The caller (signup page, chat-timeline pending_input renderer, settings/
-//   contacts CRUD page) is responsible for:
-//     • Calling /api/identity/reserve with the picker's submitted label
-//     • Switching from <UsernamePicker /> to <UsernameClaimSuccess /> on 200
-//     • Wiring the claimed `label` + optional `walletAddress` + `txDigest`
-//       from the reserve response into this component's props
-//     • Optionally handling `onContinue` (caller-defined "next step" — likely
-//       a redirect to /chat for the signup flow, a modal close for settings)
-//
-// Three share surfaces, all per SPEC 10 v0.2.1 B.3:
-//
-//   1. Copy — writes the full handle (`alice.audric.sui`) to clipboard.
-//      Per D10, NEVER copies just `alice` (independent namespace from
-//      `alice.sui`); never copies the bare 0x (different sharing intent —
-//      bare 0x is for "send me USDC", the handle is for "this is me").
-//
-//   2. Show on QR — toggle that expands an inline QR. Uses <SuiPayQr> in
-//      open-receive mode (amount=null) for visual + payload consistency
-//      with the rest of audric's receive flow (FeedRenderer 'receipt'
-//      cards, PayClient's invoice QR — all share the same SuiPayQr
-//      wrapper with AudricMark center logo + sui:pay?recipient=…&coinType=…
-//      deep-link payload). Phone-camera scans open Slush/Phantom/Suiet
-//      directly with the address pre-filled. The full handle is rendered
-//      above the QR as the human-readable label so a person scanning still
-//      knows whose address it is. If `walletAddress` isn't provided (e.g.
-//      caller doesn't have it from the reserve response — currently they
-//      DO, but defensive), the QR section is hidden entirely rather than
-//      faking a QR with the handle.
-//
-//   3. Share to X — opens X (Twitter) compose intent in a new tab,
-//      pre-filled with the spec-locked tweet template:
-//        "I just claimed alice.audric.sui — find me at audric.ai/alice 🪪"
-//      The URL is plain text so X auto-link-detects it for previews.
-//
-// Per the spec acceptance gates (lines 547–552), the success path needs
-// to feel like the moment of celebration, not a mechanical receipt — so
-// the visual hierarchy is: emoji headline > full handle > tagline > share
-// row > optional Continue.
+// Composition contract is unchanged from the original B.3 ship.
 // ───────────────────────────────────────────────────────────────────────────
 
 const PARENT_SUFFIX = '.audric.sui';
-// Public URL used in the share tweet text. Hardcoded to prod because the
-// tweet body is a sharable artifact — a preview deploy URL or localhost
-// link would be useless to anyone who clicks the resulting tweet. Kept
-// as a `const` (not env-var) because the canonical sharable surface IS
-// audric.ai regardless of where the user typed the share button.
 const PUBLIC_PROFILE_BASE = 'https://audric.ai';
 const COPIED_FEEDBACK_MS = 1500;
 
 export interface UsernameClaimSuccessProps {
   /**
-   * Canonical lowercased handle WITHOUT the `.audric.sui` suffix
-   * (e.g. `'alice'`). The component renders the full handle by
-   * appending the suffix — keeps the prop shape consistent with the
-   * picker's `onSubmit(label)` callback (label IS the bare slug).
+   * Canonical lowercased handle WITHOUT the `.audric.sui` suffix.
+   * Component appends the suffix for display + share targets.
    */
   label: string;
   /**
-   * Sui address that the leaf record points to (the user's wallet).
-   * Used as the QR payload per D8 (cross-wallet compat). When omitted,
-   * the "Show on QR" affordance is hidden — degraded but functional.
+   * Sui address the leaf record points to. When omitted, the QR
+   * affordance is hidden — degraded but functional.
    */
   walletAddress?: string;
   /**
    * Optional Sui tx digest from the leaf-mint. Reserved for a future
-   * "view on explorer" link; not rendered today (would be scope creep
-   * beyond the B.3 spec). Accepted in the props now so callers don't
-   * have to plumb it through twice.
+   * "view on explorer" link; not rendered today.
    */
   txDigest?: string;
   /**
-   * Optional CTA handler. When present, renders a "Continue to Audric"
-   * button below the share row. Caller decides what "continue" means —
-   * for the signup flow it's `router.push('/chat')`; for the settings
-   * picker it's `onClose()`.
+   * Optional CTA handler. When present, renders the full-width
+   * "Continue to Audric →" primary at the bottom.
    */
   onContinue?: () => void;
 }
@@ -133,70 +85,66 @@ export function UsernameClaimSuccess({
   return (
     <div
       data-testid="username-claim-success"
-      className="space-y-5 rounded-md border border-border-subtle bg-surface-sunken p-5"
+      className="overflow-hidden rounded-lg border border-border-subtle bg-surface-card shadow-[var(--shadow-flat)]"
     >
-      {/*
-        Celebration strip — small horizontal badge that reads as a "yes,
-        this happened" cue without consuming the whole card in green.
-        Uses success-bg for the cue + mono uppercase for the language;
-        same posture as the green Tag pattern in primitives.jsx.
-      */}
-      <div className="flex justify-center">
-        <span className="inline-flex items-center gap-1.5 rounded-xs border border-success-border bg-success-bg px-2 py-1 font-mono text-[10px] tracking-[0.1em] uppercase text-success-fg">
-          <Icon name="check" size={10} aria-hidden />
-          Claimed
+      {/* Top status strip — `✓ HANDLE CLAIMED` (left), no step counter
+          (S.87 — audric signup is single-step). */}
+      <div className="flex items-center justify-between border-b border-success-border bg-success-bg px-[18px] py-3">
+        <span className="inline-flex items-center gap-1.5 font-mono text-[10px] tracking-[0.12em] uppercase text-success-fg">
+          <Icon name="check" size={11} aria-hidden />
+          HANDLE CLAIMED
         </span>
       </div>
 
-      <div className="space-y-2 text-center">
-        <div className="text-2xl" aria-hidden="true">
-          🪪
+      {/* Hero band */}
+      <div className="border-b border-success-border bg-success-bg px-8 pt-10 pb-7 text-center">
+        <div className="mb-[18px] font-mono text-[11px] tracking-[0.12em] uppercase text-success-fg">
+          ▓▒░&nbsp;&nbsp;YOUR PASSPORT&nbsp;&nbsp;░▒▓
         </div>
         <div
           data-testid="username-claim-success-handle"
-          className="break-all font-serif text-[28px] leading-[1.15] tracking-[-0.01em] text-fg-primary"
+          className="break-all font-serif text-[30px] leading-[1.15] tracking-[-0.005em] text-fg-primary"
         >
           {fullHandle}
         </div>
-        <p className="text-[12px] leading-[1.5] text-fg-secondary">
+        <p className="mt-3 text-[14px] leading-[20px] text-fg-secondary">
           yours on Sui — recognized everywhere
         </p>
       </div>
 
-      <div className="flex flex-wrap items-center justify-center gap-2">
-        <button
-          type="button"
+      {/* Action row */}
+      <div className="flex gap-2 px-6 pt-[18px]">
+        <ActionButton
           onClick={handleCopy}
-          data-testid="username-claim-success-copy"
-          aria-label={copied ? 'Copied to clipboard' : `Copy ${fullHandle}`}
-          aria-live="polite"
-          className="inline-flex items-center gap-1.5 rounded-xs border border-border-subtle bg-surface-card px-3 py-1.5 font-mono text-[10px] tracking-[0.1em] uppercase text-fg-primary transition hover:border-border-strong focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
+          testId="username-claim-success-copy"
+          ariaLabel={copied ? 'Copied to clipboard' : `Copy ${fullHandle}`}
+          ariaLive="polite"
         >
           {copied ? (
             <>
-              <Icon name="check" size={10} aria-hidden className="text-success-solid" />
+              <Icon name="check" size={13} aria-hidden className="text-success-solid" />
               <span className="text-success-solid">Copied</span>
             </>
           ) : (
             <>
-              <Icon name="copy" size={10} aria-hidden />
+              <Icon name="copy" size={13} aria-hidden />
               <span>Copy</span>
             </>
           )}
-        </button>
+        </ActionButton>
 
         {walletAddress && (
-          <button
-            type="button"
+          <ActionButton
             onClick={handleToggleQr}
-            data-testid="username-claim-success-qr-toggle"
-            aria-expanded={showQr}
-            aria-controls="username-claim-success-qr-panel"
-            className="inline-flex items-center gap-1.5 rounded-xs border border-border-subtle bg-surface-card px-3 py-1.5 font-mono text-[10px] tracking-[0.1em] uppercase text-fg-primary transition hover:border-border-strong focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
+            testId="username-claim-success-qr-toggle"
+            ariaLabel={showQr ? 'Hide QR code' : 'Show QR code'}
+            ariaExpanded={showQr}
+            ariaControls="username-claim-success-qr-panel"
+            active={showQr}
           >
-            <Icon name={showQr ? 'chevron-up' : 'chevron-down'} size={10} aria-hidden />
+            <Icon name={showQr ? 'chevron-up' : 'chevron-down'} size={13} aria-hidden />
             <span>{showQr ? 'Hide QR' : 'Show QR'}</span>
-          </button>
+          </ActionButton>
         )}
 
         <a
@@ -205,45 +153,94 @@ export function UsernameClaimSuccess({
           rel="noreferrer noopener"
           data-testid="username-claim-success-share-x"
           aria-label={`Share ${fullHandle} on X`}
-          className="inline-flex items-center gap-1.5 rounded-xs border border-border-subtle bg-surface-card px-3 py-1.5 font-mono text-[10px] tracking-[0.1em] uppercase text-fg-primary transition hover:border-border-strong focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
+          className="flex flex-1 items-center justify-center gap-2 rounded-sm border border-border-subtle bg-surface-card px-3 py-2.5 text-[13px] font-medium text-fg-primary transition hover:border-border-strong focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
         >
-          <Icon name="external-link" size={10} aria-hidden />
+          <Icon name="external-link" size={13} aria-hidden />
           <span>Share to X</span>
         </a>
       </div>
 
+      {/* QR panel */}
       {showQr && walletAddress && (
-        <div
-          id="username-claim-success-qr-panel"
-          data-testid="username-claim-success-qr-panel"
-          className="flex flex-col items-center gap-2 rounded-sm border border-border-subtle bg-surface-card p-3"
-        >
-          <SuiPayQr recipientAddress={walletAddress} amount={null} size={180} />
-          <div className="text-center">
-            <div className="font-mono text-[12px] text-fg-primary">{fullHandle}</div>
-            <div className="font-mono text-[10px] text-fg-secondary">
-              {truncateAddress(walletAddress)}
+        <div className="px-6 pt-5">
+          <div
+            id="username-claim-success-qr-panel"
+            data-testid="username-claim-success-qr-panel"
+            className="mx-auto flex w-full max-w-[320px] flex-col items-center gap-3.5 rounded-lg border border-border-subtle bg-surface-card p-5"
+          >
+            <SuiPayQr recipientAddress={walletAddress} amount={null} size={200} />
+            <div className="text-center">
+              <div className="font-mono text-[13px] text-fg-primary">{fullHandle}</div>
+              <div className="mt-0.5 font-mono text-[11px] text-fg-muted">
+                {truncateAddress(walletAddress)}
+              </div>
             </div>
+            <p className="max-w-[240px] text-center text-[12px] leading-[1.5] text-fg-secondary">
+              Scan with any Sui wallet to send {fullHandle} USDC, SUI, or any token.
+            </p>
           </div>
-          <p className="max-w-[220px] text-center text-[11px] leading-[1.5] text-fg-secondary">
-            Scan with any Sui wallet to send {fullHandle} USDC, SUI, or any token
-          </p>
         </div>
       )}
 
+      {/* Continue CTA */}
       {onContinue && (
-        <div className="flex justify-center pt-1">
+        <div className="px-6 py-6">
           <button
             type="button"
             onClick={onContinue}
             data-testid="username-claim-success-continue"
-            className="inline-flex items-center justify-center rounded-sm border border-fg-primary bg-fg-primary px-3 py-2 font-mono text-[10px] tracking-[0.1em] uppercase text-fg-inverse transition hover:opacity-90 focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
+            className="w-full rounded-sm border border-fg-primary bg-fg-primary px-[18px] py-3 text-[14px] font-medium text-fg-inverse transition hover:opacity-90 focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
           >
-            Continue to Audric
+            Continue to Audric →
           </button>
         </div>
       )}
     </div>
+  );
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Subcomponents
+// ───────────────────────────────────────────────────────────────────────────
+
+interface ActionButtonProps {
+  onClick: () => void;
+  testId: string;
+  ariaLabel: string;
+  ariaLive?: 'polite' | 'off';
+  ariaExpanded?: boolean;
+  ariaControls?: string;
+  active?: boolean;
+  children: React.ReactNode;
+}
+
+function ActionButton({
+  onClick,
+  testId,
+  ariaLabel,
+  ariaLive,
+  ariaExpanded,
+  ariaControls,
+  active,
+  children,
+}: ActionButtonProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      data-testid={testId}
+      aria-label={ariaLabel}
+      aria-live={ariaLive}
+      aria-expanded={ariaExpanded}
+      aria-controls={ariaControls}
+      className={`flex flex-1 items-center justify-center gap-2 rounded-sm border px-3 py-2.5 text-[13px] font-medium text-fg-primary transition focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)] ${
+        active
+          ? 'border-border-strong bg-surface-sunken'
+          : 'border-border-subtle bg-surface-card hover:border-border-strong'
+      }`}
+    >
+      {children}
+    </button>
   );
 }
 

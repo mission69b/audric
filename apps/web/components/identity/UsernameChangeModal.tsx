@@ -8,56 +8,42 @@ import { isReserved } from '@/lib/identity/reserved-usernames';
 // ───────────────────────────────────────────────────────────────────────────
 // S.84 — UsernameChangeModal
 //
-// [B5 polish] Visual chrome aligned to the Audric Design System. Eyebrow
-// tracking normalised to the canonical `0.1em` (was `0.12em` — minor
-// drift from the original S.84 ship); close affordance switched to the
-// canonical `Icon name="close"` for parity with every other dismissable
-// surface. Reference: `design_handoff_audric/design_files/audric-app-light/
-// settings.jsx` for the sunken-card chrome and mono-eyebrow language.
+// [B6 design pass] Visual rewrite to the change-handle handoff layout
+// (`design_handoff_username_flow/change-handle.jsx` → `<ChangeHandleModal/>`
+// + `<HandleChangedModal/>`). Layout reference: same handoff README §B1+B2.
 //
-// Focused modal for the change-handle flow under Settings → Passport.
-// Distinct from `<UsernameClaimGate>` (which owns the first-time claim
-// machine for new signups). The change flow has different UX needs:
+// Single component, two visual modes — chosen because the spec defines
+// these as a tightly-coupled state machine (form → success → dismiss),
+// and they share the same mount + the same close handlers. Two siblings
+// would duplicate the scrim + Escape + click-outside wiring.
 //
-//   - User already has a handle — show it prominently as "current".
-//   - The action is irreversible-ish on-chain (the old leaf is revoked
-//     and someone else can grab it). Surface this as a warning, not
-//     hidden in fine print.
-//   - No smart pre-fill from Google name (the user has already chosen
-//     a handle once — we don't need to suggest defaults).
-//   - 3-state machine: idle → submitting → success(brief)→close.
-//     Errors return to idle with an inline message + the typed input
-//     preserved so the user can edit and retry.
+// Mode 1: form (520px card)
+//   • Mono header strip — `// CHANGE HANDLE` (left), close icon (right),
+//     hairline-bottom rule.
+//   • CURRENT field — mono uppercase label + read-only sunken well
+//     showing the existing handle.
+//   • NEW HANDLE field — mono uppercase label + input shell with focus
+//     shadow tinted on validation state (red on bad, green on ok, blue
+//     on focus).
+//   • Status line beneath input — `// AVAILABLE`, `// TAKEN — pick
+//     another`, idle hint `// 3–20 CHARS · LOWERCASE, DIGITS, HYPHEN`.
+//   • Warning callout — warning-bg + warning-border + colored dot
+//     indicator + "Changing your handle releases <current>.audric.sui …
+//     This action is final." copy.
+//   • Footer — Cancel (mono outline) + CHANGE HANDLE (mono primary,
+//     disabled when invalid).
 //
-// Composition contract:
+// Mode 2: success (460px card)
+//   • Centered green check (44px circle, success-bg + success-border).
+//   • Mono `HANDLE CHANGED` label.
+//   • Big serif new handle (22px equivalent — we use `font-serif` to
+//     match the hero-handle pattern in <UsernameClaimSuccess>).
+//   • Body copy: "It can take a few seconds to propagate everywhere."
+//   • Footer with hairline divider + single centered `DONE` mono
+//     primary. NO auto-close — explicit dismissal per design.
 //
-//   The modal is presentation only — it doesn't own the open/close
-//   state, the userStatus refetch, or the success transition. The
-//   parent (PassportSection) is responsible for:
-//     • Gating render on `open` (this modal short-circuits to null
-//       when closed; no layout impact when hidden).
-//     • Calling /api/identity/change with the submitted newLabel.
-//     • Dispatching a userStatus refetch on success so the rest of
-//       the app picks up the new handle (sidebar footer, greeting,
-//       chat narration via system-prompt).
-//     • Calling onClose() after the success window closes itself.
-//
-// Validation runs in two layers:
-//
-//   1. Pure (length / charset / reserved / unchanged) — synchronous,
-//      drives the inline status line below the input.
-//   2. Network (SuiNS RPC + DB unique pre-check + atomic PTB) — runs
-//      inside the API route. Failures map to typed reason codes that
-//      become user-visible copy via reasonToCopy().
-//
-// Why we don't pre-check on every keystroke (like the picker does):
-//
-//   The picker uses `/api/identity/check` to debounce-check availability
-//   while the user types because the new-signup happy path benefits
-//   from "this is taken" feedback BEFORE submit. The change flow is
-//   higher-trust (the user has already navigated through Settings) and
-//   the server does the pre-check anyway, so the keystroke chatter
-//   isn't worth the extra rate-limit pressure on the check route.
+// Composition contract is unchanged: `open` / `address` / `jwt` /
+// `currentLabel` / `onClose` / `onChanged` / optional `changeFetcher`.
 // ───────────────────────────────────────────────────────────────────────────
 
 const PARENT_SUFFIX = '.audric.sui';
@@ -88,25 +74,18 @@ interface ChangeErrorBody {
 
 export interface UsernameChangeModalProps {
   open: boolean;
-  /** Caller's Sui address — body of the POST. */
   address: string;
-  /** zkLogin JWT — passed via `x-zklogin-jwt` header. */
   jwt: string;
-  /** Caller's currently-claimed bare label (e.g. `'alice'`). */
   currentLabel: string;
-  /**
-   * Called after the success card closes itself (~1.2s post-success).
-   * Parent should also have refetched userStatus by this point so the
-   * rest of the app reflects the new handle.
-   */
+  /** Called when the user dismisses (Cancel, Esc, backdrop, or DONE on success). */
   onClose: () => void;
   /**
-   * Fired when the API returns 200. Parent should refetch userStatus
-   * here so the success card displays the new handle and downstream
-   * surfaces (sidebar, greeting, chat) update on next render.
+   * Fired when the API returns 200 (BEFORE the user clicks DONE).
+   * Parent should refetch userStatus here so downstream surfaces
+   * (sidebar, greeting, chat) update on next render. The modal stays
+   * open in success mode until the user dismisses.
    */
   onChanged: (newLabel: string, fullHandle: string) => void;
-  /** Optional fetcher injection for tests. */
   changeFetcher?: (newLabel: string) => Promise<ChangeSuccessBody>;
 }
 
@@ -134,28 +113,26 @@ export function UsernameChangeModal({
   const [value, setValue] = useState('');
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [successHandle, setSuccessHandle] = useState<string | null>(null);
+  const [focused, setFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const inputId = useId();
   const helpId = useId();
 
-  // Reset all state on open/close so a half-typed input doesn't bleed
-  // into the next session.
+  // Reset state on open so prior errors / typed values don't bleed across sessions.
   useEffect(() => {
     if (open) {
       setPhase('idle');
       setValue('');
       setSubmitError(null);
       setSuccessHandle(null);
-      // Microtask delay so the modal mounts before focus call — without
-      // it, autofocus loses to the modal's own mount-time focus reset.
+      setFocused(false);
       const t = setTimeout(() => inputRef.current?.focus(), 30);
       return () => clearTimeout(t);
     }
     return undefined;
   }, [open]);
 
-  // Escape closes the modal (unless mid-submit, which would orphan the
-  // request promise — let it land first).
+  // Escape closes (unless mid-submit, which would orphan the request promise).
   useEffect(() => {
     if (!open) return;
     const handler = (e: KeyboardEvent) => {
@@ -164,14 +141,6 @@ export function UsernameChangeModal({
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [open, phase, onClose]);
-
-  // Auto-close ~1.2s after success so the user sees the confirmation
-  // moment but isn't stuck dismissing a modal manually.
-  useEffect(() => {
-    if (phase !== 'success') return;
-    const t = setTimeout(() => onClose(), 1200);
-    return () => clearTimeout(t);
-  }, [phase, onClose]);
 
   const defaultFetcher = useCallback(
     async (newLabel: string): Promise<ChangeSuccessBody> => {
@@ -202,28 +171,48 @@ export function UsernameChangeModal({
 
   const fetcher = changeFetcher ?? defaultFetcher;
 
-  // Synchronous validation drives the status line + the disabled state
-  // on the submit button. Mirrors the picker's status-line semantics.
   const validation = useMemo(() => {
     const trimmed = value.trim();
     if (trimmed.length === 0) {
-      return { ok: false, hint: null as string | null, label: '' };
+      return {
+        ok: false,
+        status: 'idle' as const,
+        hint: null as string | null,
+        label: '',
+      };
     }
     const v = validateAudricLabel(trimmed);
     if (!v.valid) {
-      return { ok: false, hint: reasonToCopy(v.reason, trimmed), label: trimmed.toLowerCase() };
+      const hint = reasonToCopy(v.reason, trimmed);
+      return {
+        ok: false,
+        status: v.reason as 'invalid' | 'too-short' | 'too-long',
+        hint,
+        label: trimmed.toLowerCase(),
+      };
     }
     if (v.label === currentLabel) {
       return {
         ok: false,
+        status: 'unchanged' as const,
         hint: `That's your current handle — pick something different.`,
         label: v.label,
       };
     }
     if (isReserved(v.label)) {
-      return { ok: false, hint: reasonToCopy('reserved', v.label), label: v.label };
+      return {
+        ok: false,
+        status: 'reserved' as const,
+        hint: reasonToCopy('reserved', v.label),
+        label: v.label,
+      };
     }
-    return { ok: true, hint: null as string | null, label: v.label };
+    return {
+      ok: true,
+      status: 'ok' as const,
+      hint: null as string | null,
+      label: v.label,
+    };
   }, [value, currentLabel]);
 
   const handleSubmit = useCallback(
@@ -252,6 +241,41 @@ export function UsernameChangeModal({
   if (!open) return null;
 
   const currentFull = `${currentLabel}${PARENT_SUFFIX}`;
+  const isSuccess = phase === 'success' && successHandle !== null;
+  const isSubmitting = phase === 'submitting';
+
+  // Backdrop scrim — design spec: rgba(0,0,0,0.42).
+  const scrimClass = 'fixed inset-0 z-50 flex items-center justify-center bg-[rgba(0,0,0,0.42)] px-4';
+
+  // Per-state input shell tinting. Note: there's no `'taken'` branch
+  // because availability is verified server-side here (no debounced
+  // /check call like the picker). 409-taken comes back as a `submitError`
+  // after CHANGE HANDLE is pressed — handled below the input shell.
+  const inputBorderClass = (() => {
+    if (
+      validation.status === 'invalid' ||
+      validation.status === 'too-long' ||
+      validation.status === 'too-short' ||
+      validation.status === 'reserved' ||
+      validation.status === 'unchanged'
+    ) {
+      return 'border-error-border';
+    }
+    if (validation.status === 'ok') return 'border-success-border';
+    if (focused) return 'border-border-focus';
+    return 'border-border-subtle';
+  })();
+  const inputShadow = focused
+    ? validation.status === 'invalid' ||
+      validation.status === 'too-long' ||
+      validation.status === 'too-short' ||
+      validation.status === 'reserved' ||
+      validation.status === 'unchanged'
+      ? 'shadow-[0_0_0_3px_rgba(213,11,11,0.18)]'
+      : validation.status === 'ok'
+        ? 'shadow-[0_0_0_3px_rgba(60,193,78,0.18)]'
+        : 'shadow-[var(--shadow-focus-ring)]'
+    : '';
 
   return (
     <div
@@ -259,64 +283,99 @@ export function UsernameChangeModal({
       aria-modal="true"
       aria-labelledby="change-handle-title"
       data-testid="username-change-modal"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+      className={scrimClass}
       onClick={(e) => {
-        // Click outside closes (unless submitting).
-        if (e.target === e.currentTarget && phase !== 'submitting') onClose();
+        if (e.target === e.currentTarget && !isSubmitting) onClose();
       }}
     >
-      <div className="w-full max-w-[440px] rounded-md border border-border-strong bg-surface-page p-5 shadow-lg">
-        {phase === 'success' && successHandle ? (
-          <div
-            data-testid="username-change-modal-success"
-            className="flex flex-col items-center gap-3 py-4 text-center"
-          >
-            <div aria-hidden="true" className="text-2xl">
-              🪪
+      {isSuccess ? (
+        // ─── HandleChangedModal — 460px confirmation card ────────────────
+        <div
+          data-testid="username-change-modal-success"
+          className="w-full max-w-[460px] overflow-hidden rounded-lg border border-border-subtle bg-surface-card text-center shadow-[var(--shadow-modal)]"
+        >
+          <div className="px-8 pt-9 pb-7">
+            <div
+              aria-hidden="true"
+              className="mx-auto mb-[18px] flex h-11 w-11 items-center justify-center rounded-full border border-success-border bg-success-bg text-success-fg"
+            >
+              <Icon name="check" size={20} />
             </div>
-            <h2 id="change-handle-title" className="font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted">
-              Handle changed
-            </h2>
-            <p className="break-all font-mono text-[15px] text-fg-primary">{successHandle}</p>
-            <p className="text-[12px] text-fg-secondary">It can take a few seconds to propagate everywhere.</p>
+
+            <div
+              id="change-handle-title"
+              className="mb-3.5 font-mono text-[11px] tracking-[0.14em] uppercase text-fg-secondary"
+            >
+              HANDLE CHANGED
+            </div>
+
+            <div className="break-all font-serif text-[22px] leading-[1.15] tracking-[-0.005em] text-fg-primary">
+              {successHandle}
+            </div>
+
+            <p className="mx-auto mt-3.5 max-w-[320px] text-[13px] leading-[1.55] text-fg-secondary">
+              It can take a few seconds to propagate everywhere.
+            </p>
           </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="flex items-start justify-between">
-              <h2
-                id="change-handle-title"
-                className="font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted"
-              >
-                Change handle
-              </h2>
-              <button
-                type="button"
-                onClick={onClose}
-                disabled={phase === 'submitting'}
-                aria-label="Close"
-                className="-mt-1 -mr-1 inline-flex h-6 w-6 items-center justify-center rounded-sm text-fg-muted transition hover:bg-surface-sunken hover:text-fg-primary disabled:opacity-50 focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
-              >
-                <Icon name="close" size={12} aria-hidden />
-              </button>
+
+          <div className="flex justify-center border-t border-border-subtle py-3.5">
+            <button
+              type="button"
+              onClick={onClose}
+              data-testid="username-change-modal-done"
+              className="rounded-sm border border-fg-primary bg-fg-primary px-4 py-2.5 font-mono text-[11px] tracking-[0.1em] uppercase text-fg-inverse transition hover:opacity-90 focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
+            >
+              DONE
+            </button>
+          </div>
+        </div>
+      ) : (
+        // ─── ChangeHandleModal — 520px form card ─────────────────────────
+        <div
+          className="w-full max-w-[520px] overflow-hidden rounded-lg border border-border-subtle bg-surface-card shadow-[var(--shadow-modal)]"
+        >
+          {/* Mono header strip */}
+          <div className="flex items-center justify-between border-b border-border-subtle px-[18px] py-3.5">
+            <span
+              id="change-handle-title"
+              className="font-mono text-[11px] tracking-[0.1em] uppercase text-fg-primary"
+            >
+              {'// CHANGE HANDLE'}
+            </span>
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isSubmitting}
+              aria-label="Close"
+              className="inline-flex h-6 w-6 items-center justify-center rounded-sm text-fg-muted transition hover:bg-surface-sunken hover:text-fg-primary disabled:opacity-50 focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
+            >
+              <Icon name="close" size={12} />
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit} className="px-6 pb-6 pt-5">
+            {/* Current */}
+            <div className="mb-[18px]">
+              <div className="mb-1.5 font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted">
+                CURRENT
+              </div>
+              <div className="rounded-sm border border-border-subtle bg-surface-sunken px-3 py-2.5 font-mono text-[14px] text-fg-secondary">
+                {currentLabel}
+                <span className="text-fg-muted">{PARENT_SUFFIX}</span>
+              </div>
             </div>
 
-            <div className="rounded-sm border border-border-subtle bg-surface-sunken p-3">
-              <p className="font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted">
-                Current
-              </p>
-              <p className="mt-1 break-all font-mono text-[13px] text-fg-primary">
-                {currentFull}
-              </p>
-            </div>
-
+            {/* New handle */}
             <div>
               <label
                 htmlFor={inputId}
-                className="font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted"
+                className="mb-1.5 block font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted"
               >
-                New handle
+                NEW HANDLE
               </label>
-              <div className="mt-1.5 flex items-center gap-1">
+              <div
+                className={`flex items-center rounded-xs bg-surface-card transition border ${inputBorderClass} ${inputShadow} px-3 py-0.5`}
+              >
                 <input
                   ref={inputRef}
                   id={inputId}
@@ -326,7 +385,9 @@ export function UsernameChangeModal({
                     setValue(e.target.value);
                     setSubmitError(null);
                   }}
-                  disabled={phase === 'submitting'}
+                  onFocus={() => setFocused(true)}
+                  onBlur={() => setFocused(false)}
+                  disabled={isSubmitting}
                   placeholder="alice"
                   autoComplete="off"
                   autoCapitalize="off"
@@ -334,58 +395,84 @@ export function UsernameChangeModal({
                   spellCheck={false}
                   maxLength={20}
                   aria-describedby={helpId}
-                  className="flex-1 min-w-0 rounded-sm border border-border-strong bg-surface-page px-2.5 py-2 font-mono text-[13px] text-fg-primary placeholder:text-fg-muted focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)] disabled:opacity-50"
+                  aria-invalid={validation.status !== 'idle' && validation.status !== 'ok' || undefined}
+                  className="flex-1 min-w-0 px-1 py-2.5 font-mono text-[14px] text-fg-primary bg-transparent border-none outline-none placeholder:text-fg-muted disabled:opacity-50"
                 />
-                <span className="font-mono text-[13px] text-fg-secondary">{PARENT_SUFFIX}</span>
+                <span className="font-mono text-[14px] text-fg-muted pr-1">{PARENT_SUFFIX}</span>
               </div>
+
+              {/* Status line — mono UPPERCASE, // prefix; submit error overrides hint */}
               <p
                 id={helpId}
-                role={validation.hint || submitError ? 'alert' : undefined}
-                className={[
-                  'mt-1.5 text-[12px] leading-[1.5]',
+                role={validation.hint || submitError ? 'alert' : 'status'}
+                className={`mt-2 inline-flex items-start gap-1.5 font-mono text-[11px] tracking-[0.04em] uppercase ${
                   submitError
                     ? 'text-error-fg'
-                    : validation.hint
-                      ? 'text-fg-secondary'
-                      : 'text-fg-muted',
-                ].join(' ')}
+                    : validation.status === 'ok'
+                      ? 'text-success-fg'
+                      : validation.status === 'idle'
+                        ? 'text-fg-muted'
+                        : 'text-error-fg'
+                }`}
               >
-                {submitError ?? validation.hint ?? '3–20 characters · lowercase letters, digits, hyphens'}
+                {submitError ? (
+                  <>
+                    <Icon name="close" size={10} aria-hidden />
+                    <span>{submitError}</span>
+                  </>
+                ) : validation.status === 'ok' ? (
+                  <>
+                    <Icon name="check" size={10} aria-hidden />
+                    <span>{'// AVAILABLE'}</span>
+                  </>
+                ) : validation.status === 'idle' ? (
+                  <span>{'// 3–20 CHARS · LOWERCASE, DIGITS, HYPHEN'}</span>
+                ) : validation.hint ? (
+                  <>
+                    <Icon name="close" size={10} aria-hidden />
+                    <span>{validation.hint}</span>
+                  </>
+                ) : (
+                  <span>{'// 3–20 CHARS · LOWERCASE, DIGITS, HYPHEN'}</span>
+                )}
               </p>
             </div>
 
-            <div className="flex items-start gap-2 rounded-sm border border-warning-border bg-warning-bg px-3 py-2.5">
+            {/* Warning callout */}
+            <div className="mt-[18px] flex items-start gap-2 rounded-sm border border-warning-border bg-warning-bg px-3 py-2.5">
               <span
                 aria-hidden="true"
                 className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-warning-solid"
               />
-              <p className="text-[12px] leading-[1.55] text-warning-fg">
+              <p className="text-[12.5px] leading-[1.5] text-warning-fg">
                 Changing your handle releases <span className="font-mono">{currentFull}</span> on Sui.
-                Anyone can claim it after — including someone else. This action is final.
+                Anyone can claim it after — including someone else.{' '}
+                <strong className="font-semibold">This action is final.</strong>
               </p>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-1">
+            {/* Actions */}
+            <div className="mt-[22px] flex items-center justify-end gap-2">
               <button
                 type="button"
                 onClick={onClose}
-                disabled={phase === 'submitting'}
-                className="rounded-sm border border-border-strong bg-transparent px-3 py-2 font-mono text-[10px] tracking-[0.1em] uppercase text-fg-primary hover:bg-surface-sunken disabled:opacity-50 focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
+                disabled={isSubmitting}
+                className="rounded-sm border border-border-subtle bg-surface-card px-4 py-2.5 font-mono text-[11px] tracking-[0.08em] uppercase text-fg-primary transition hover:border-border-strong disabled:opacity-50 focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                disabled={!validation.ok || phase === 'submitting'}
+                disabled={!validation.ok || isSubmitting}
                 data-testid="username-change-modal-submit"
-                className="rounded-sm border border-fg-primary bg-fg-primary px-3 py-2 font-mono text-[10px] tracking-[0.1em] uppercase text-fg-inverse hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
+                className="rounded-sm border border-fg-primary bg-fg-primary px-4 py-2.5 font-mono text-[11px] tracking-[0.1em] uppercase text-fg-inverse transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45 focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
               >
-                {phase === 'submitting' ? 'Changing…' : 'Change handle'}
+                {isSubmitting ? 'Changing…' : 'CHANGE HANDLE'}
               </button>
             </div>
           </form>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

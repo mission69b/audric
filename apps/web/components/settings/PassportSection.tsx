@@ -127,12 +127,16 @@ export function PassportSection({
         </p>
       </div>
 
-      {/* [S.84] IDENTITY card — your Audric identity. Full `<label>.audric.sui`
-          form per D10 (never the bare label, never just `@label`). When
-          `username` is null the card collapses to an empty state pointing
-          back to the dashboard's claim gate.
+      {/* [S.84 / B6 design pass] IDENTITY card — your Audric identity.
+          Full `<label>.audric.sui` form per D10 (never the bare label,
+          never just `@label`). When `username` is null the card collapses
+          to an empty state with a CLAIM HANDLE primary CTA on the right.
+          Layout matches the username-flow handoff bundle's
+          `settings-backdrop.jsx` IDENTITY block: left-side identity stack
+          (label / handle / helper) and right-side action row (VIEW
+          PROFILE / COPY / CHANGE).
 
-          Eyebrow label is "Identity" (not "Audric handle"): we're already
+          Eyebrow label is "IDENTITY" (not "Audric handle"): we're already
           inside the Passport section, so prefixing with "Audric" reads as
           duplication, and "handle" was too literal — sounded like a
           username when the framing is "this is your identity." Functional
@@ -142,47 +146,51 @@ export function PassportSection({
         data-testid="passport-handle-card"
         className="rounded-md border border-border-subtle bg-surface-sunken p-4 mb-5"
       >
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <span aria-hidden="true">🪪</span>
-            <p className="font-mono text-[10px] tracking-[0.12em] uppercase text-fg-muted">
-              Identity
-            </p>
-          </div>
-          {fullHandle && (
-            <Link
-              href={`/${username}`}
-              className="font-mono text-[9px] tracking-[0.12em] uppercase text-fg-muted hover:text-fg-primary transition focus-visible:outline-none focus-visible:underline"
-            >
-              View profile →
-            </Link>
-          )}
-        </div>
         {fullHandle ? (
-          <div className="flex flex-wrap items-center justify-between gap-2 mt-1">
-            <p
-              data-testid="passport-handle-value"
-              className="break-all font-mono text-[14px] text-fg-primary"
-            >
-              {fullHandle}
-            </p>
-            <div className="flex items-center gap-1.5 shrink-0">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            {/* Identity stack — IDENTITY eyebrow / mono handle / helper */}
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <span aria-hidden="true">🪪</span>
+                <p className="font-mono text-[10px] tracking-[0.12em] uppercase text-fg-muted">
+                  IDENTITY
+                </p>
+              </div>
+              <p
+                data-testid="passport-handle-value"
+                className="mt-2 break-all font-mono text-[18px] leading-[1.2] text-fg-primary"
+              >
+                {fullHandle}
+              </p>
+              <p className="mt-1 text-[12px] leading-[1.5] text-fg-secondary">
+                Your handle on the Sui network.
+              </p>
+            </div>
+
+            {/* Action row — VIEW PROFILE → (ghost) / COPY (outlined) / CHANGE (primary) */}
+            <div className="flex shrink-0 items-center gap-1.5 pt-0.5">
+              <Link
+                href={`/${username}`}
+                className="font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted px-2 py-1 hover:text-fg-primary transition focus-visible:outline-none focus-visible:underline"
+              >
+                VIEW PROFILE →
+              </Link>
               <button
                 type="button"
                 onClick={handleHandleCopy}
-                className="font-mono text-[9px] tracking-[0.12em] uppercase text-fg-muted px-1.5 py-0.5 border border-border-subtle rounded-xs hover:text-fg-primary hover:border-border-strong transition focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
+                className="font-mono text-[10px] tracking-[0.1em] uppercase text-fg-secondary px-2 py-1 border border-border-subtle rounded-xs hover:text-fg-primary hover:border-border-strong transition focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
                 aria-label="Copy Audric handle"
               >
-                {handleCopied ? '\u2713 Copied' : 'Copy'}
+                {handleCopied ? '\u2713 COPIED' : 'COPY'}
               </button>
               <button
                 type="button"
                 onClick={() => setChangeOpen(true)}
                 disabled={!jwt || !address}
                 data-testid="passport-handle-change"
-                className="font-mono text-[9px] tracking-[0.12em] uppercase text-fg-muted px-1.5 py-0.5 border border-border-subtle rounded-xs hover:text-fg-primary hover:border-border-strong transition disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
+                className="font-mono text-[10px] tracking-[0.1em] uppercase text-fg-inverse bg-fg-primary px-2 py-1 border border-fg-primary rounded-xs hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
               >
-                Change
+                CHANGE
               </button>
             </div>
           </div>
@@ -195,19 +203,27 @@ export function PassportSection({
           // re-trigger the picker from anywhere. The modal here mounts
           // the same `<UsernameClaimGate>` the dashboard uses, sans
           // Skip button, and clears the dormant skip flag on success.
-          <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
-            <p className="text-[12px] text-fg-secondary leading-[1.55] flex-1 min-w-[200px]">
-              You haven&rsquo;t claimed your Audric handle yet &mdash; friends send you USDC by
-              typing <span className="font-mono text-fg-primary">@yourhandle</span>.
-            </p>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <span aria-hidden="true">🪪</span>
+                <p className="font-mono text-[10px] tracking-[0.12em] uppercase text-fg-muted">
+                  IDENTITY
+                </p>
+              </div>
+              <p className="mt-2 text-[12px] text-fg-secondary leading-[1.55]">
+                You haven&rsquo;t claimed your Audric handle yet &mdash; friends send you USDC by
+                typing <span className="font-mono text-fg-primary">@yourhandle</span>.
+              </p>
+            </div>
             <button
               type="button"
               onClick={() => setClaimOpen(true)}
               disabled={!jwt || !address}
               data-testid="passport-handle-claim"
-              className="font-mono text-[10px] tracking-[0.1em] uppercase text-fg-inverse bg-fg-primary border border-fg-primary px-3 py-2 rounded-sm hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
+              className="shrink-0 font-mono text-[10px] tracking-[0.1em] uppercase text-fg-inverse bg-fg-primary border border-fg-primary px-3 py-2 rounded-sm hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
             >
-              Claim handle
+              CLAIM HANDLE
             </button>
           </div>
         )}

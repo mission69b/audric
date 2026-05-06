@@ -70,9 +70,18 @@ describe('<UsernameChangeModal>', () => {
   it('renders dialog with current handle when open', () => {
     renderModal();
     expect(screen.getByTestId('username-change-modal')).not.toBeNull();
-    // Current handle appears in both the "Current" pill AND the warning
-    // callout — `getAllByText` asserts both render.
-    expect(screen.getAllByText('alice.audric.sui').length).toBeGreaterThanOrEqual(2);
+    // [B6] Current handle appears in both the "CURRENT" read-only well
+    // AND the warning callout. After the design pass the well renders
+    // `{label}<span>.audric.sui</span>` (suffix muted) instead of a
+    // single text node, so we match by inspecting any element whose
+    // text content contains the full handle string.
+    const matches = screen.getAllByText((_, el) =>
+      el?.textContent?.includes('alice.audric.sui') ?? false,
+    );
+    // The query yields multiple ancestor matches per occurrence (the
+    // text + every wrapping element). Two distinct VISIBLE occurrences
+    // → the modal contains the handle in at least two places.
+    expect(matches.length).toBeGreaterThanOrEqual(2);
   });
 
   it('disables submit when input is empty', () => {
@@ -112,7 +121,12 @@ describe('<UsernameChangeModal>', () => {
     expect(submit.disabled).toBe(false);
   });
 
-  it('on success: shows success card, fires onChanged, then onClose after timer', async () => {
+  it('on success: shows success card, fires onChanged, dismisses on DONE click', async () => {
+    // [B6] Success card now matches the HandleChangedModal design — explicit
+    // DONE button, no auto-close. The user reads the confirmation moment
+    // (centered green check + "HANDLE CHANGED" + the new handle in serif)
+    // and presses DONE to dismiss. Replaces the old 1.2s auto-close which
+    // would render the DONE button essentially invisible.
     const onChanged = vi.fn();
     const onClose = vi.fn();
     const fetcher = vi.fn().mockResolvedValue({
@@ -136,9 +150,10 @@ describe('<UsernameChangeModal>', () => {
     expect(onChanged).toHaveBeenCalledWith('bob', 'bob.audric.sui');
     expect(fetcher).toHaveBeenCalledWith('bob');
 
-    await act(async () => {
-      vi.advanceTimersByTime(1500);
-    });
+    // Modal stays open until DONE clicked — no auto-close.
+    expect(onClose).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByTestId('username-change-modal-done'));
     expect(onClose).toHaveBeenCalled();
   });
 
