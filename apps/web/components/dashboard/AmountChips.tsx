@@ -8,9 +8,36 @@ interface AmountChipsProps {
   onSelect: (amount: number) => void;
   message?: string;
   assetLabel?: string;
+  /**
+   * [B1 polish F2] Optional cancel affordance. When provided, renders a
+   * small "Cancel" link below the chip row that abandons the entire
+   * chip flow (parent wires this to `chipFlow.reset`). Without this the
+   * only way out of an L2 amount step was to mouse to a different panel
+   * — F1's global Esc handler covers keyboard, this covers the visible
+   * affordance for touch users.
+   */
+  onCancel?: () => void;
+  /**
+   * [B1 polish F3] Optional "Change <thing>" link rendered next to
+   * Cancel — used by the send flow to step back from amount → recipient
+   * picker without dropping the flow entirely. Mirrors the existing
+   * swap "Change target" link but inside the AmountChips footer.
+   */
+  onChangeUpstream?: () => void;
+  /** Label for the upstream change link, e.g. "Change recipient". */
+  changeUpstreamLabel?: string;
 }
 
-export function AmountChips({ amounts, allLabel, onSelect, message, assetLabel }: AmountChipsProps) {
+export function AmountChips({
+  amounts,
+  allLabel,
+  onSelect,
+  message,
+  assetLabel,
+  onCancel,
+  onChangeUpstream,
+  changeUpstreamLabel,
+}: AmountChipsProps) {
   const [custom, setCustom] = useState('');
   const [showCustom, setShowCustom] = useState(false);
 
@@ -43,12 +70,23 @@ export function AmountChips({ amounts, allLabel, onSelect, message, assetLabel }
             Go
           </button>
         </div>
-        <button
-          onClick={() => setShowCustom(false)}
-          className="text-xs text-fg-secondary hover:text-fg-primary transition"
-        >
-          ← Back to presets
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowCustom(false)}
+            className="text-xs text-fg-secondary hover:text-fg-primary transition"
+          >
+            ← Back to presets
+          </button>
+          {onCancel && (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted hover:text-fg-primary transition underline underline-offset-2 ml-auto"
+            >
+              Cancel
+            </button>
+          )}
+        </div>
       </div>
     );
   }
@@ -81,6 +119,28 @@ export function AmountChips({ amounts, allLabel, onSelect, message, assetLabel }
           Custom
         </button>
       </div>
+      {(onChangeUpstream || onCancel) && (
+        <div className="flex items-center gap-3 pt-1">
+          {onChangeUpstream && changeUpstreamLabel && (
+            <button
+              type="button"
+              onClick={onChangeUpstream}
+              className="font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted hover:text-fg-primary transition underline underline-offset-2"
+            >
+              {changeUpstreamLabel}
+            </button>
+          )}
+          {onCancel && (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted hover:text-fg-primary transition underline underline-offset-2 ml-auto"
+            >
+              Cancel
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -14,6 +14,15 @@ interface SwapAssetPickerProps {
   onChangeTarget?: () => void;
   /** Currently auto-selected target shown in the message area */
   autoTarget?: string;
+  /**
+   * [B1 polish F2] Optional cancel affordance. When provided, renders a
+   * small "Cancel" link at the bottom of the picker that abandons the
+   * swap flow (parent wires this to `chipFlow.reset`). Without this the
+   * only way out of the asset/toAsset L2 step was to mouse to a
+   * different panel — F1's global Esc handler covers keyboard, this
+   * covers the visible affordance for touch users.
+   */
+  onCancel?: () => void;
 }
 
 function fmtBalance(amount: number): string {
@@ -23,7 +32,14 @@ function fmtBalance(amount: number): string {
   return amount.toFixed(6);
 }
 
-export function SwapAssetPicker({ assets, onSelect, message, onChangeTarget, autoTarget }: SwapAssetPickerProps) {
+export function SwapAssetPicker({
+  assets,
+  onSelect,
+  message,
+  onChangeTarget,
+  autoTarget,
+  onCancel,
+}: SwapAssetPickerProps) {
   return (
     <div className="rounded-lg border border-border-subtle bg-surface-card p-4 space-y-3 feed-row shadow-[var(--shadow-flat)]">
       {message && (
@@ -60,6 +76,17 @@ export function SwapAssetPicker({ assets, onSelect, message, onChangeTarget, aut
       </div>
       {assets.length === 0 && (
         <p className="text-xs text-fg-muted">No assets available to swap.</p>
+      )}
+      {onCancel && (
+        <div className="flex justify-end pt-1">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted hover:text-fg-primary transition underline underline-offset-2"
+          >
+            Cancel
+          </button>
+        </div>
       )}
     </div>
   );

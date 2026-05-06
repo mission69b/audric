@@ -78,6 +78,34 @@ describe.skipIf(!renderHook)('useChipFlow', () => {
     expect(result.current.state.amount).toBe(25);
   });
 
+  // [B1 polish F3] clearRecipient steps back from "send → amount" to
+  // "send → recipient" — flow + phase stay intact (l2-chips), but
+  // recipient + amount + subFlow are reset to null. The render layer
+  // gates the recipient picker on `(phase === 'l2-chips' && flow ===
+  // 'send' && !recipient)`, so this is enough to flip the visible
+  // surface back. Without clearRecipient the user had to Cancel +
+  // restart from idle to fix a typo on the recipient.
+  it('clearRecipient steps back to recipient picker without dropping the flow', () => {
+    const { result } = renderHook(() => useChipFlow());
+    act(() => result.current.startFlow('send'));
+    act(() => result.current.selectRecipient('0x1234abcd', 'Alice'));
+    expect(result.current.state.phase).toBe('l2-chips');
+    expect(result.current.state.recipient).toBe('0x1234abcd');
+    expect(result.current.state.subFlow).toBe('Alice');
+    act(() => result.current.clearRecipient());
+    expect(result.current.state.flow).toBe('send'); // flow preserved
+    expect(result.current.state.phase).toBe('l2-chips'); // phase preserved
+    expect(result.current.state.recipient).toBeNull();
+    expect(result.current.state.amount).toBeNull();
+    expect(result.current.state.subFlow).toBeNull();
+    // After clearRecipient, the user can pick a fresh recipient and
+    // proceed through the flow normally — verified by re-running the
+    // sequence.
+    act(() => result.current.selectRecipient('0xdeadbeef', 'Bob'));
+    expect(result.current.state.recipient).toBe('0xdeadbeef');
+    expect(result.current.state.subFlow).toBe('Bob');
+  });
+
   it('can cancel at l2-chips and return to idle', () => {
     const { result } = renderHook(() => useChipFlow());
     act(() => result.current.startFlow('save'));

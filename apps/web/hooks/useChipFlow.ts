@@ -97,6 +97,22 @@ export function useChipFlow() {
     }));
   }, []);
 
+  // [B1 polish F3] Step back from "send → amount" to "send → recipient".
+  // Mirrors `clearToAsset` for swap. Without this, a typo on the recipient
+  // (e.g. picked the wrong @username) forced a full Cancel → re-Send →
+  // re-pick from scratch. Now: tap "Change recipient" and only the
+  // recipient + amount + subFlow reset; the flow stays in `send` so the
+  // user lands back on the recipient picker, not at idle.
+  const clearRecipient = useCallback(() => {
+    setState((prev) => ({
+      ...prev,
+      recipient: null,
+      amount: null,
+      subFlow: null,
+      message: 'Who do you want to send to?',
+    }));
+  }, []);
+
   const selectFromAsset = useCallback((asset: string, autoTarget?: string) => {
     setState((prev) => ({
       ...prev,
@@ -154,6 +170,7 @@ export function useChipFlow() {
     startFlow,
     selectAmount,
     selectRecipient,
+    clearRecipient,
     selectFromAsset,
     selectToAsset,
     setQuote,

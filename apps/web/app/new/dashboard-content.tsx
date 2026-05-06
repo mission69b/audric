@@ -142,6 +142,7 @@ function SendRecipientInput({
   onSubmit,
   isKnownAddress,
   onSaveAudricUser,
+  onCancel,
 }: {
   contacts: Array<{ name: string; address: string }>;
   onSelectContact: (address: string, name: string) => void;
@@ -165,6 +166,15 @@ function SendRecipientInput({
    */
   isKnownAddress: (addr: string) => boolean;
   onSaveAudricUser: (address: string, name: string) => Promise<void>;
+  /**
+   * [B1 polish F2] Cancel the entire send flow (parent wires this to
+   * `chipFlow.reset`). Without this, the recipient picker had no
+   * visible "back out" affordance — the user had to either click
+   * elsewhere in the dashboard or press Esc (which only cleared the
+   * search dropdown, not the chip flow). F1's global Esc handler now
+   * also routes here.
+   */
+  onCancel?: () => void;
 }) {
   const [value, setValue] = useState('');
   const [searchResults, setSearchResults] = useState<AudricUserSearchResult[]>([]);
@@ -395,6 +405,17 @@ function SendRecipientInput({
           </div>
         )}
       </div>
+      {onCancel && (
+        <div className="flex justify-end pt-1">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted hover:text-fg-primary transition underline underline-offset-2"
+          >
+            Cancel
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -1577,6 +1598,46 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
   const isInFlow = chipFlow.state.phase !== 'idle';
   const isEmpty = engine.messages.length === 0 && feed.items.length === 0 && !isInFlow;
 
+  // [B1 polish F1+F6] Global keyboard handler for the chip-flow surface:
+  //   - Escape       → cancels the entire flow (chipFlow.reset)
+  //   - Enter        → confirms when phase is `confirming` and we're not
+  //                    currently dispatching the tx (loading=true means
+  //                    the user already pressed once)
+  //
+  // Skipped when the user is typing into a contenteditable / input /
+  // textarea (otherwise hitting Esc inside SendRecipientInput's search
+  // would cancel the flow when they meant to clear the dropdown). The
+  // input components handle their own Enter / Esc inline; this handler
+  // is the BACKSTOP for keypresses outside any focused field — the case
+  // where the user has clicked in the chip surface but no input has
+  // focus.
+  // Slice the dependencies to the stable identities we actually use so
+  // the listener is added/removed only when the phase transitions, not
+  // on every chipFlow state mutation (subFlow / message / amount).
+  const chipPhase = chipFlow.state.phase;
+  const resetChipFlow = chipFlow.reset;
+  useEffect(() => {
+    if (chipPhase === 'idle' || chipPhase === 'executing') return;
+    const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const inField = !!target && (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.isContentEditable
+      );
+      if (inField) return;
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        resetChipFlow();
+      } else if (e.key === 'Enter' && chipPhase === 'confirming') {
+        e.preventDefault();
+        void handleConfirm();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [chipPhase, resetChipFlow, handleConfirm]);
+
   // [SIMPLIFICATION DAY 11] Greeting slide-out: keep <NewConversationView>
   // mounted for ~250ms after isEmpty flips false so we can run a fade-up
   // exit transition before swapping to the chat view. Without this, the
@@ -1735,6 +1796,7 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
             assets={getSwapFromAssets()}
             onSelect={handleSwapFromSelect}
             message={chipFlow.state.message ?? undefined}
+            onCancel={chipFlow.reset}
           />
         )}
 
@@ -1743,28 +1805,21 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
             assets={getSwapToAssets()}
             onSelect={(sym) => chipFlow.selectToAsset(sym)}
             message={chipFlow.state.message ?? undefined}
+            onCancel={chipFlow.reset}
           />
         )}
 
         {chipFlow.state.phase === 'l2-chips' && chipFlow.state.flow === 'swap' && chipFlow.state.asset && chipFlow.state.toAsset && (
-          <div className="space-y-2">
-            <AmountChips
-              amounts={getSwapAmountPresets()}
-              allLabel={`All ${getSwapHeldAmount() >= 0.01 ? getSwapHeldAmount().toFixed(2) : getSwapHeldAmount().toPrecision(3)} ${chipFlow.state.asset}`}
-              onSelect={handleSwapAmountSelect}
-              message={chipFlow.state.message ?? undefined}
-              assetLabel={chipFlow.state.asset}
-            />
-            <div className="flex justify-end px-1">
-              <button
-                type="button"
-                onClick={() => chipFlow.clearToAsset()}
-                className="font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted hover:text-fg-primary transition underline underline-offset-2"
-              >
-                Change target ({chipFlow.state.toAsset})
-              </button>
-            </div>
-          </div>
+          <AmountChips
+            amounts={getSwapAmountPresets()}
+            allLabel={`All ${getSwapHeldAmount() >= 0.01 ? getSwapHeldAmount().toFixed(2) : getSwapHeldAmount().toPrecision(3)} ${chipFlow.state.asset}`}
+            onSelect={handleSwapAmountSelect}
+            message={chipFlow.state.message ?? undefined}
+            assetLabel={chipFlow.state.asset}
+            onChangeUpstream={() => chipFlow.clearToAsset()}
+            changeUpstreamLabel={`Change target (${chipFlow.state.toAsset})`}
+            onCancel={chipFlow.reset}
+          />
         )}
 
         {chipFlow.state.phase === 'l2-chips' && chipFlow.state.flow && chipFlow.state.flow !== 'send' && chipFlow.state.flow !== 'swap' && (() => {
@@ -1781,6 +1836,7 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
               }
               onSelect={handleAmountSelect}
               message={chipFlow.state.message ?? undefined}
+              onCancel={chipFlow.reset}
             />
           );
         })()}
@@ -1795,6 +1851,7 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
             }}
             isKnownAddress={contactsHook.isKnownAddress}
             onSaveAudricUser={contactsHook.addContact}
+            onCancel={chipFlow.reset}
           />
         )}
 
@@ -1804,6 +1861,9 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
             allLabel={`All $${fmtDollar(balance.cash)}`}
             onSelect={handleAmountSelect}
             message={chipFlow.state.message ?? undefined}
+            onChangeUpstream={chipFlow.clearRecipient}
+            changeUpstreamLabel="Change recipient"
+            onCancel={chipFlow.reset}
           />
         )}
 
