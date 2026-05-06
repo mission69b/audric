@@ -30,14 +30,38 @@
  *   are silently skipped — `suggestUsernames` walks the strategy list
  *   until it has 3 valid candidates or runs out.
  *
+ * Reserved-base filtering (S.88, fix for the `admin@gmail.com` bug):
+ *
+ *   The original B.1 design left reserved-list filtering to the caller —
+ *   `/api/identity/check` returns `{available: false, reason: 'reserved'}`
+ *   for `admin`, and the picker renders that as TAKEN. That works for a
+ *   single suggestion but fails the full row when the BASE is reserved:
+ *   `admin@gmail.com` → suggestions `[admin, admin1, admin99]` → first
+ *   row TAKEN, the other two are squat-magnet derivatives we don't want
+ *   users claiming. Filtering at the source cuts the entire branch.
+ *
+ *   Two filter levels:
+ *     1. BRANCH FILTER — if the email local-part (post-strip) is
+ *        reserved, the entire email-derived branch (including numeric
+ *        variants like `admin1`, `admin99`) is skipped. Same for the
+ *        name-derived branch when `first` (no `last`) or `firstlast`
+ *        is reserved.
+ *     2. CANDIDATE FILTER — `push()` skips any candidate whose final
+ *        slug is in the reserved set. Catches edge cases like the
+ *        `first[0] + last` strategy producing `admin` from "Alex Min"
+ *        (a→admin... unlikely but covered for free).
+ *
+ *   Both filters call `isReserved()` from the canonical reserved set,
+ *   so any future addition to the reserved list propagates here for
+ *   free.
+ *
  * Out of scope:
  *
- *   - Reserved-list filtering (caller decides — the picker fires
- *     `/api/identity/check` for each suggestion which handles this).
  *   - Availability pre-checking (caller decides — see B.1 picker).
  *   - Personality / vibe-based generation (out of scope for v0.2.0).
  */
 
+import { isReserved } from './reserved-usernames';
 import { validateAudricLabel } from './validate-label';
 
 const LABEL_MIN = 3;
@@ -123,17 +147,35 @@ function generateAllCandidates(
   const emailLocal = parseEmailLocal(googleEmail);
   const nameParts = parseNameParts(googleName);
 
+  // [Branch filter — S.88] If the BASE for a strategy branch is reserved,
+  // skip the entire branch (including numeric variants). This prevents
+  // squat-magnet derivatives like `admin1`/`admin99` for `admin@gmail.com`
+  // — the user shouldn't have to skip past them to type a custom handle.
+  // See file header §"Reserved-base filtering".
+  const emailLocalStripped = emailLocal?.replace(/[._-]/g, '') ?? null;
+  const emailBranchAllowed =
+    !!emailLocal &&
+    !!emailLocalStripped &&
+    !isReservedSlug(emailLocal) &&
+    !isReservedSlug(emailLocalStripped);
+  const nameBranchAllowed =
+    !!nameParts &&
+    (nameParts.last
+      ? !isReservedSlug(nameParts.first + nameParts.last) &&
+        !isReservedSlug(nameParts.first)
+      : !isReservedSlug(nameParts.first));
+
   const out: string[] = [];
 
   // ─── Tier 1: email-derived (visible privacy footprint) ──────────────
-  if (emailLocal) {
+  if (emailBranchAllowed && emailLocal) {
     push(out, emailLocal);
     push(out, emailLocal.replace(/[._-]/g, '')); // strip separators
     push(out, emailLocal.replace(/[._]/g, '-')); // hyphen-style
   }
 
   // ─── Tier 2: name-derived (lower privacy footprint) ─────────────────
-  if (nameParts) {
+  if (nameBranchAllowed && nameParts) {
     const { first, last } = nameParts;
     if (last) {
       push(out, first + last); // johnsmith
@@ -149,7 +191,7 @@ function generateAllCandidates(
   // ─── Tier 3: numeric variants (privacy escape hatch — these are the
   //          farthest from the original email/name and surface AFTER
   //          the user clicks 🔄 a few times).
-  if (nameParts) {
+  if (nameBranchAllowed && nameParts) {
     const { first, last } = nameParts;
     if (last) {
       push(out, first + last + '1');
@@ -160,18 +202,32 @@ function generateAllCandidates(
       push(out, first + '7');
     }
   }
-  if (emailLocal) {
-    const stripped = emailLocal.replace(/[._-]/g, '');
-    push(out, stripped + '1');
-    push(out, stripped + '99');
+  if (emailBranchAllowed && emailLocalStripped) {
+    push(out, emailLocalStripped + '1');
+    push(out, emailLocalStripped + '99');
   }
 
   return out;
 }
 
 /**
- * Push `raw` into `out` after slugify + validate. Silently drops invalid
- * candidates (e.g. truncation lands on a hyphen, slug is empty).
+ * Slugified-aware reserved check. Mirrors the slug normalization that
+ * `push()` does so the branch filter and the candidate filter agree on
+ * what counts as "reserved". Without this, `Admin` (capitalized in the
+ * Google email's display form) would slip past the branch filter
+ * because `isReserved('Admin')` is true (it lowercases) but the BRANCH
+ * decision needs to apply to the post-slug form.
+ */
+function isReservedSlug(raw: string): boolean {
+  const slug = slugify(raw);
+  return slug.length > 0 && isReserved(slug);
+}
+
+/**
+ * Push `raw` into `out` after slugify + validate + reserved check.
+ * Silently drops invalid candidates (e.g. truncation lands on a hyphen,
+ * slug is empty) and reserved candidates (S.88 — defense-in-depth on
+ * top of the branch-level filter in `generateAllCandidates`).
  */
 function push(out: string[], raw: string): void {
   const slug = slugify(raw);
@@ -188,7 +244,14 @@ function push(out: string[], raw: string): void {
     truncated = (truncated + '00').slice(0, LABEL_MIN);
   }
   const v = validateAudricLabel(truncated);
-  if (v.valid) out.push(v.label);
+  if (!v.valid) return;
+  // Reserved-list check (S.88 candidate-level filter). The branch filter
+  // catches the common case (`admin@gmail.com` → all derivatives skipped);
+  // this catches edge cases where a non-reserved branch produces a
+  // reserved candidate via a strategy combination (e.g. first-initial +
+  // last accidentally spelling a reserved word).
+  if (isReserved(v.label)) return;
+  out.push(v.label);
 }
 
 /**

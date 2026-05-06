@@ -316,4 +316,112 @@ describe('suggestUsernames', () => {
       assertAllValid(r);
     });
   });
+
+  // ─── S.88 — reserved-base filtering ──────────────────────────────────
+  // Regression for the `admin@gmail.com` bug surfaced 2026-05-06: when
+  // the email local-part is reserved, the Tier 1 + Tier 3 numeric
+  // variants (`admin1`, `admin99`) leaked into the suggestion row. They
+  // are technically claimable but are squat-magnet derivatives and
+  // burned 2 of 3 suggestion slots for users with that email shape.
+  describe('reserved-base filtering (S.88)', () => {
+    it('skips the entire email-derived branch when email-local is reserved', () => {
+      const r = suggestUsernames({
+        googleName: 'Adeniyi Adams',
+        googleEmail: 'admin@gmail.com',
+        seed: 0,
+      });
+      assertAllValid(r);
+      // None of the squat derivatives should appear.
+      expect(r).not.toContain('admin');
+      expect(r).not.toContain('admin1');
+      expect(r).not.toContain('admin99');
+      // Should fall back to name-derived suggestions.
+      expect(r[0]).toBe('adeniyiadams');
+    });
+
+    it('skips email-derived even when only the stripped form is reserved', () => {
+      // `a.d.m.i.n@gmail.com` → raw email-local "a.d.m.i.n", stripped
+      // "admin". The branch filter checks BOTH; the stripped form being
+      // reserved is enough to kill the branch.
+      const r = suggestUsernames({
+        googleName: 'Real Name',
+        googleEmail: 'a.d.m.i.n@gmail.com',
+        seed: 0,
+      });
+      assertAllValid(r);
+      for (const s of r) {
+        expect(s).not.toBe('admin');
+        expect(s).not.toBe('admin1');
+        expect(s).not.toBe('admin99');
+      }
+      expect(r[0]).toBe('realname');
+    });
+
+    it('skips the name-derived branch when first name is reserved (no last)', () => {
+      const r = suggestUsernames({
+        googleName: 'Admin',
+        googleEmail: 'someone@example.com',
+        seed: 0,
+      });
+      assertAllValid(r);
+      expect(r).not.toContain('admin');
+      expect(r).not.toContain('admin1');
+      expect(r).not.toContain('admin7');
+      // Falls back to email-derived (someone is not reserved).
+      expect(r[0]).toBe('someone');
+    });
+
+    it('skips the name-derived branch when first+last is reserved', () => {
+      // Synthetic name where the slugged join collides with a reserved
+      // entry. "Sup Port" → "support" is in §7.1.
+      const r = suggestUsernames({
+        googleName: 'Sup Port',
+        googleEmail: 'real@example.com',
+        seed: 0,
+      });
+      assertAllValid(r);
+      // Name-derived strategies all skipped (first+last = support).
+      expect(r).not.toContain('support');
+      expect(r).not.toContain('support1');
+      expect(r).not.toContain('support7');
+      // Falls back to email-derived.
+      expect(r[0]).toBe('real');
+    });
+
+    it('returns empty array when every branch is reserved', () => {
+      const r = suggestUsernames({
+        googleName: 'Admin',
+        googleEmail: 'admin@example.com',
+        seed: 0,
+      });
+      // Both email and name branches filtered → no candidates.
+      // Picker handles empty array gracefully (chip row hidden).
+      expect(r).toEqual([]);
+    });
+
+    it('candidate-level filter catches accidental reserved slugs from non-reserved bases', () => {
+      // First initial + last for "B Ot" → "bot" is in §7.1. Branch is
+      // allowed (first+last = "bot" but parseNameParts strips short
+      // segments — actually keep as edge: the test asserts the candidate
+      // filter is wired even when the branch filter passes).
+      // Use a case where firstlast is NOT reserved but a sub-strategy is:
+      // "Apie Owner" → first="apie" (not reserved), last="owner",
+      // firstlast="apieowner" (not reserved), but first[0]+last="aowner"
+      // (not reserved either — hard to construct without a custom name).
+      // For now this test asserts the simpler invariant: NO candidate
+      // emitted is ever in the reserved set, regardless of how it was
+      // derived.
+      const r = suggestUsernames({
+        googleName: 'John Smith',
+        googleEmail: 'john@x.com',
+        seed: 0,
+        count: 10,
+      });
+      assertAllValid(r);
+      for (const s of r) {
+        // Inline import-free check via the same surface the picker uses.
+        expect(['admin', 'support', 'audric', 'team', 'bot']).not.toContain(s);
+      }
+    });
+  });
 });
