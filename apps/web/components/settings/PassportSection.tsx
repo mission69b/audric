@@ -186,54 +186,78 @@ export function PassportSection({
         )}
       </div>
 
-      <PassportRow label="Wallet address">
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-[13px] text-fg-primary">
-            {address ? truncateAddress(address) : '\u2014'}
-          </span>
-          <button
-            type="button"
-            onClick={handleCopy}
-            disabled={!address}
-            className="font-mono text-[9px] tracking-[0.12em] uppercase text-fg-muted px-1.5 py-0.5 border border-border-subtle rounded-xs hover:text-fg-primary hover:border-border-strong transition disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
-            aria-label="Copy wallet address"
-          >
-            {copied ? '\u2713 Copied' : 'Copy'}
-          </button>
-        </div>
-      </PassportRow>
+      {/* [S.84 polish v3] ACCOUNT card — wraps the four detail rows
+          (wallet address / network / sign-in email / sign-in session)
+          in a sunken card with a mono eyebrow, matching the visual
+          treatment of every other block in this section (intro card,
+          identity card, appearance card) AND of every sibling section
+          (Safety / Memory / Contacts all use sunken cards). Without
+          the wrapper the rows were visually orphaned in the middle of
+          the section — accidental drift from the original 3-zone
+          layout (intro / rows / buttons) introduced when Identity
+          (S.84) and Appearance (dark-mode Phase 4) cards were added
+          above and below it. The rows themselves are unchanged; only
+          the wrapper + eyebrow are new.
 
-      <PassportRow label="Network">
-        <span className="text-[13px] text-fg-primary capitalize">{network}</span>
-      </PassportRow>
-
-      {/* [S.84 polish v2] Sign-in email row — paired with the session
-          expiry row directly below it (auth identity + auth lifetime
-          read as a single unit). The intro card mentions Google login
-          but never says WHICH Google account; this row closes that
-          gap. Source = `decodeJwtClaim(jwt, 'email')` — the same
-          claim path the sidebar uses, so the value matches across
-          surfaces. Falls back to em-dash when JWT is unavailable
-          (e.g. transient session-load state). */}
-      <PassportRow label="Sign-in email">
-        <span className="text-[13px] text-fg-primary truncate max-w-[280px]">
-          {signInEmail ?? '\u2014'}
-        </span>
-      </PassportRow>
-
-      <PassportRow label="Sign-in session" last>
-        <div className="flex flex-col items-end gap-0.5">
-          <span className="text-[13px] text-fg-primary">
-            {expiryDate ? `Expires ${expiryDate.toLocaleDateString()} (${daysLeft}d)` : '\u2014'}
-          </span>
-          {expiringSoon && (
-            <span className="text-[11px] text-warning-fg flex items-center gap-1">
-              <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-warning-solid" />
-              Expiring soon
+          Why "Account" (not "Details" or "Session"): "Details" is
+          bland and makes no semantic claim; "Session" collides with
+          the Sign-in session row label inside the card. "Account" is
+          broad enough to cover all four (wallet = on-chain account,
+          network = where it lives, email = auth account, session =
+          this account's auth lifetime). */}
+      <div className="rounded-md border border-border-subtle bg-surface-sunken p-4 mb-5">
+        <p className="font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted">
+          Account
+        </p>
+        <PassportRow label="Wallet address">
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-[13px] text-fg-primary">
+              {address ? truncateAddress(address) : '\u2014'}
             </span>
-          )}
-        </div>
-      </PassportRow>
+            <button
+              type="button"
+              onClick={handleCopy}
+              disabled={!address}
+              className="font-mono text-[9px] tracking-[0.12em] uppercase text-fg-muted px-1.5 py-0.5 border border-border-subtle rounded-xs hover:text-fg-primary hover:border-border-strong transition disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
+              aria-label="Copy wallet address"
+            >
+              {copied ? '\u2713 Copied' : 'Copy'}
+            </button>
+          </div>
+        </PassportRow>
+
+        <PassportRow label="Network">
+          <span className="text-[13px] text-fg-primary capitalize">{network}</span>
+        </PassportRow>
+
+        {/* [S.84 polish v2] Sign-in email row — paired with the session
+            expiry row directly below it (auth identity + auth lifetime
+            read as a single unit). The intro card mentions Google login
+            but never says WHICH Google account; this row closes that
+            gap. Source = `decodeJwtClaim(jwt, 'email')` — the same
+            claim path the sidebar uses, so the value matches across
+            surfaces. Falls back to em-dash when JWT is unavailable
+            (e.g. transient session-load state). */}
+        <PassportRow label="Sign-in email">
+          <span className="text-[13px] text-fg-primary truncate max-w-[280px]">
+            {signInEmail ?? '\u2014'}
+          </span>
+        </PassportRow>
+
+        <PassportRow label="Sign-in session" last>
+          <div className="flex flex-col items-end gap-0.5">
+            <span className="text-[13px] text-fg-primary">
+              {expiryDate ? `Expires ${expiryDate.toLocaleDateString()} (${daysLeft}d)` : '\u2014'}
+            </span>
+            {expiringSoon && (
+              <span className="text-[11px] text-warning-fg flex items-center gap-1">
+                <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-warning-solid" />
+                Expiring soon
+              </span>
+            )}
+          </div>
+        </PassportRow>
+      </div>
 
       <div className="rounded-md border border-border-subtle bg-surface-sunken p-4 mt-5">
         <p className="font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted">

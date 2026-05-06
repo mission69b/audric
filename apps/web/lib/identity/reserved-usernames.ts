@@ -24,6 +24,10 @@
  *     primitives + §7.5 third-party brands (Tier A + Tier B) + §7.6
  *     regulators + §7.7 abuse magnets + §7.8 future-product / static-
  *     route extension. See RUNBOOK §7 for the per-category rationale.
+ *   - v4 (S.84 polish v3, +6 entries → 195) — founder audit found 2
+ *     real route-collision gaps (`activity`, `contacts` — both in
+ *     `PANEL_URL_MAP` but unreserved) + 4 defensive singular/plural
+ *     parity adds (`setting`, `goal`, `activities`, `bots`).
  */
 
 const RESERVED = [
@@ -56,6 +60,7 @@ const RESERVED = [
   'null',
   'undefined',
   'test',
+  'bots', // parity with `bot` (cf. `mod`/`mods`) — added S.84 polish v3
 
   // Audric product names (don't let users impersonate the products)
   'pay',
@@ -108,6 +113,7 @@ const RESERVED = [
   'dashboard',
   'account',
   'settings',
+  'setting', // defensive singular pair for `settings` — added S.84 polish v3
   'profile',
   'login',
   'signin',
@@ -285,9 +291,21 @@ const RESERVED = [
   'analytics',
   'wallets', // plural form of `wallet` (reserved in §7.4)
   'goals', // /api/user/goals → likely future /goals page
+  'goal', // defensive singular pair for `goals` — added S.84 polish v3
   'memories', // /api/user/memories → likely future /memories page
   'preferences',
   'watch', // /api/user/watch-addresses → likely future /watch page
+  // [S.84 polish v3] Panel routes — `PANEL_URL_MAP['activity']`,
+  // `PANEL_URL_MAP['contacts']` in `hooks/usePanel.ts`. Today the panel
+  // system pushes these URLs via `window.history.pushState`, so a refresh
+  // would resolve via `[username]/page.tsx` (the bug that "panel state
+  // doesn't survive refresh" is separate). Reserving the labels prevents
+  // a user from claiming `activity.audric.sui` / `contacts.audric.sui`
+  // and stealing the URL space if/when the panels get static `app/`
+  // routes — and short-circuits the lookup today either way.
+  'activity',
+  'activities', // defensive plural pair for `activity`
+  'contacts', // plural pair for `contact` (already in §7.8c)
 
   // ───────────────────────────────────────────────────────────────────────
   // §7.8c — Operator / brand pages (S.75, 24 entries)
@@ -345,9 +363,9 @@ const RESERVED = [
  * case-insensitive via `isReserved()` but the set itself stores the
  * canonical lowercase form.
  *
- * Total: 189 entries (§7.1: 35, §7.2: 12, §7.3: 16, §7.4: 16,
- * §7.5: 25 (Tier A 12 + Tier B 13), §7.6: 7, §7.7: 10, §7.8: 68
- * (a:14 + b:23 + c:24 + d:7)). Set size will dedupe any accidental
+ * Total: 195 entries (§7.1: 36, §7.2: 12, §7.3: 17, §7.4: 16,
+ * §7.5: 25 (Tier A 12 + Tier B 13), §7.6: 7, §7.7: 10, §7.8: 72
+ * (a:14 + b:27 + c:24 + d:7)). Set size will dedupe any accidental
  * cross-category overlap; the explicit categorization above is for
  * human auditors.
  */
