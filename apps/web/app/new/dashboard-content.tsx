@@ -1032,18 +1032,28 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
     [address, engine, panel, setPanel],
   );
 
-  // [SPEC 10 D.2] Global search → balance check. When the user picks a
-  // generic SuiNS or 0x result from the sidebar search, we route to the
-  // chat panel and dispatch a balance-check prompt; the engine's
-  // `balance_check` tool handles the actual fetch.
+  // [SPEC 10 D.2 + S.83 narration hotfix] Global search → balance check.
+  // When the user picks a generic SuiNS or 0x result from the sidebar
+  // search, route to chat and dispatch a kind-specific prompt:
+  //
+  //   - `suins`   → "Check the balance at 0x… — this address is the
+  //                 SuiNS name `funkii.sui`. This is NOT an Audric
+  //                 handle; do NOT narrate it as `funkii.audric.sui`."
+  //   - `address` → "Check the balance at 0x…."
+  //
+  // The explicit "NOT an Audric handle" clause is load-bearing: pre-S.83
+  // a permissive prompt let the agent expand `funkii.sui` into
+  // `funkii.audric.sui` (different on-chain entity, different owner).
+  // The system-prompt D10 rule was strengthened in the same hotfix.
   const handleSearchCheckBalance = useCallback(
-    (target: string, label: string) => {
+    (target: string, label: string, kind: 'suins' | 'address') => {
       if (!address) return;
       if (panel !== 'chat') setPanel('chat');
-      // Pass BOTH the canonical 0x address (for the tool) and the human
-      // label (for narration). System prompt already steers to
-      // `balance_check` for this phrasing.
-      engine.sendMessage(`Check the wallet balance for ${label} (${target}).`);
+      const prompt =
+        kind === 'suins'
+          ? `Check the wallet balance at address ${target}. This address is the SuiNS name \`${label}\`. This is NOT an Audric handle — do NOT narrate it as \`${label.replace(/\.sui$/, '.audric.sui')}\`. Refer to it strictly as \`${label}\` (the form the user typed) or as the address.`
+          : `Check the wallet balance at address ${target}.`;
+      engine.sendMessage(prompt);
     },
     [address, engine, panel, setPanel],
   );

@@ -20,9 +20,15 @@ interface AppShellProps {
    * [SPEC 10 D.2] Forwarded to AppSidebar's GlobalUsernameSearch. Fired
    * when the user picks a non-Audric search result (generic SuiNS or
    * 0x). Parent (DashboardContent) switches to chat panel and dispatches
-   * a balance-check prompt to the engine.
+   * a balance-check prompt to the engine. `kind` tag is used to compose
+   * a kind-specific prompt that prevents the agent from expanding
+   * generic SuiNS into Audric handles (S.83 narration hotfix).
    */
-  onSearchCheckBalance?: (address: string, label: string) => void;
+  onSearchCheckBalance?: (
+    address: string,
+    label: string,
+    kind: 'suins' | 'address',
+  ) => void;
   children: React.ReactNode;
 }
 

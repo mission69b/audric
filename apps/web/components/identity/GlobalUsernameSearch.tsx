@@ -64,10 +64,18 @@ interface GlobalUsernameSearchProps {
    * Fired when the user picks a non-Audric resolution (generic SuiNS or
    * 0x address). The parent should switch to the chat panel and dispatch
    * a balance-check prompt — see `dashboard-content.tsx` integration
-   * point. Passed the canonical 0x address (preferred for the agent) and
-   * a human-friendly label (suins name OR truncated 0x).
+   * point. Passed the canonical 0x address (preferred for the agent),
+   * a human-friendly label (suins name OR truncated 0x), and a `kind`
+   * tag so the dispatched prompt can disambiguate (an explicit "this
+   * is NOT an Audric handle" clause is what stops the agent from
+   * silently expanding `funkii.sui` into `funkii.audric.sui` — the two
+   * are different on-chain entities).
    */
-  onCheckBalance?: (address: string, label: string) => void;
+  onCheckBalance?: (
+    address: string,
+    label: string,
+    kind: 'suins' | 'address',
+  ) => void;
 }
 
 export function GlobalUsernameSearch({ onCheckBalance }: GlobalUsernameSearchProps) {
@@ -172,10 +180,10 @@ export function GlobalUsernameSearch({ onCheckBalance }: GlobalUsernameSearchPro
   );
 
   const handleBalance = useCallback(
-    (address: string, label: string) => {
+    (address: string, label: string, kind: 'suins' | 'address') => {
       setValue('');
       setOpen(false);
-      onCheckBalance?.(address, label);
+      onCheckBalance?.(address, label, kind);
     },
     [onCheckBalance],
   );
@@ -271,7 +279,7 @@ export function GlobalUsernameSearch({ onCheckBalance }: GlobalUsernameSearchPro
               type="button"
               role="option"
               aria-selected="false"
-              onClick={() => handleBalance(suinsHit.address, suinsHit.name)}
+              onClick={() => handleBalance(suinsHit.address, suinsHit.name, 'suins')}
               className="w-full px-3 py-2 text-left hover:bg-surface-sunken transition-colors flex items-center justify-between gap-2 border-t border-border-subtle"
             >
               <span className="flex items-center gap-1.5 min-w-0">
@@ -295,6 +303,7 @@ export function GlobalUsernameSearch({ onCheckBalance }: GlobalUsernameSearchPro
                 handleBalance(
                   trimmed,
                   `${trimmed.slice(0, 6)}…${trimmed.slice(-4)}`,
+                  'address',
                 )
               }
               className="w-full px-3 py-2 text-left hover:bg-surface-sunken transition-colors flex items-center justify-between gap-2 border-t border-border-subtle"

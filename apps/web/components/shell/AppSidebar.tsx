@@ -26,9 +26,16 @@ interface SidebarProps {
   /**
    * [SPEC 10 D.2] Triggered when the user picks a non-Audric search
    * result (generic SuiNS or 0x). Parent should switch to chat panel
-   * and dispatch a balance-check prompt to the engine.
+   * and dispatch a balance-check prompt to the engine. The `kind` tag
+   * lets the prompt template disambiguate generic SuiNS from raw 0x
+   * (S.83 hotfix — without it, the agent silently expanded
+   * `funkii.sui` into `funkii.audric.sui`).
    */
-  onSearchCheckBalance?: (address: string, label: string) => void;
+  onSearchCheckBalance?: (
+    address: string,
+    label: string,
+    kind: 'suins' | 'address',
+  ) => void;
 }
 
 interface NavEntry {
