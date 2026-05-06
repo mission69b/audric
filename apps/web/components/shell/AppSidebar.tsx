@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { NavItem, type BadgeVariant } from './NavItem';
 import { ConvoHistoryList } from './ConvoHistoryList';
 import { Tooltip } from '@/components/ui/Tooltip';
@@ -20,6 +21,15 @@ interface SidebarProps {
   address?: string;
   jwt?: string;
   email?: string | null;
+  /**
+   * [S.84] Bare Audric handle (e.g. `'alice'`), or `null` when the
+   * user hasn't claimed yet. When present, the footer renders the
+   * full `username.audric.sui` form as the primary identity row
+   * (clicks → `/[username]` profile). When absent, the footer falls
+   * back to the email + address chip exactly as before. This is
+   * Passport's identity layer surfaced in the chrome.
+   */
+  username?: string | null;
   activeSessionId?: string;
   onLoadSession?: (sessionId: string) => void;
   onNewConversation?: () => void;
@@ -85,6 +95,7 @@ export function AppSidebar({
   address,
   jwt,
   email: emailProp,
+  username,
   activeSessionId,
   onLoadSession,
   onNewConversation,
@@ -169,10 +180,18 @@ export function AppSidebar({
         </div>
 
         {/* Footer — profile only. Theme toggle removed; users switch themes
-            from Settings → Account → Appearance. */}
+            from Settings → Account → Appearance. [S.84] Tooltip prefers
+            the Audric handle when claimed (the user's primary identity). */}
         <div className="flex flex-col items-center gap-1.5 pb-3 pt-2 border-t border-border-subtle shrink-0 w-full">
-          {(email || address) && (
-            <Tooltip label={email || (address ? truncateAddr(address) : 'Settings')} side="right">
+          {(email || address || username) && (
+            <Tooltip
+              label={
+                username
+                  ? `${username}.audric.sui`
+                  : email || (address ? truncateAddr(address) : 'Settings')
+              }
+              side="right"
+            >
               <button
                 onClick={() => handleNav('settings')}
                 // Avatar pill is color-stable across themes (matches dark prototype's
@@ -276,9 +295,29 @@ export function AppSidebar({
         )}
       </nav>
 
-      {/* Footer — user info only. Theme toggle removed; users switch themes
-          from Settings → Account → Appearance. */}
-      <div className="shrink-0 border-t border-border-subtle px-3 py-3">
+      {/* Footer — user info. Theme toggle removed; users switch themes
+          from Settings → Account → Appearance.
+
+          [S.84] When the user has claimed an Audric handle, render a
+          🪪 handle row at the TOP of the footer (above email/address)
+          that links straight to their `/[username]` public profile. The
+          handle is the user's primary identity — surface it FIRST. The
+          email + truncated address still render below it as the
+          recovery / receiving identifiers. */}
+      <div className="shrink-0 border-t border-border-subtle px-3 py-3 space-y-1">
+        {username && (
+          <Link
+            href={`/${username}`}
+            data-testid="sidebar-handle-row"
+            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-sm hover:bg-surface-nav-hover transition-colors focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
+            title={`View your profile · ${username}.audric.sui`}
+          >
+            <span aria-hidden="true">🪪</span>
+            <span className="font-mono text-[11px] text-fg-primary truncate">
+              {username}.audric.sui
+            </span>
+          </Link>
+        )}
         {(email || address) && (
           <button
             onClick={() => handleNav('settings')}

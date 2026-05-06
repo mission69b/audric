@@ -27,6 +27,7 @@ import { AuthGuard } from '@/components/auth/AuthGuard';
 import { useZkLogin } from '@/components/auth/useZkLogin';
 import { useGoals, type SavingsGoal } from '@/hooks/useGoals';
 import { useBalance } from '@/hooks/useBalance';
+import { useUserStatus } from '@/hooks/useUserStatus';
 import { GoalCard } from '@/components/settings/GoalCard';
 import { GoalEditor } from '@/components/settings/GoalEditor';
 import { PassportSection } from '@/components/settings/PassportSection';
@@ -77,6 +78,11 @@ function SettingsContent() {
   const goalsHook = useGoals(address, jwt ?? undefined);
   const balanceQuery = useBalance(address);
   const savingsBalance = balanceQuery.data?.savings ?? 0;
+  // [S.84] Surface the user's claimed Audric handle in the Passport
+  // card. `useUserStatus` already drives the dashboard's claim-gate
+  // visibility, so the cache is warm by the time the user clicks into
+  // settings — no extra request in the common path.
+  const userStatus = useUserStatus(address, jwt ?? undefined);
   const [editingGoal, setEditingGoal] = useState<SavingsGoal | null>(null);
   const [showGoalEditor, setShowGoalEditor] = useState(false);
 
@@ -151,6 +157,11 @@ function SettingsContent() {
                   expiringSoon={expiringSoon}
                   onRefresh={refresh}
                   onLogout={logout}
+                  username={userStatus.username}
+                  jwt={jwt}
+                  onUsernameChanged={() => {
+                    void userStatus.refetch();
+                  }}
                 />
               )}
 

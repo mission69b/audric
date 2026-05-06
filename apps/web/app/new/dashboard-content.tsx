@@ -93,10 +93,15 @@ function usernameSkipStorageKey(address: string): string {
   return `audric:username-skipped:${address}`;
 }
 
-function getGreeting(email: string | null): string {
+// [S.84] Greeting now sources from the Audric handle, not the zkLogin
+// email-derived prefix. Pre-claim users see "Good morning" with no name
+// (rather than e.g. "Good morning, funkiirabu" leaking the email-local
+// part). Post-claim users see "Good morning, alice" — their chosen
+// identity, not their inbox. Aligns the composer header with D10's
+// "the handle is the user's identity" framing.
+function getGreeting(username: string | null | undefined): string {
   const hour = new Date().getHours();
-  const name = email?.split('@')[0] ?? '';
-  const nameStr = name ? `, ${name}` : '';
+  const nameStr = username ? `, ${username}` : '';
   if (hour < 12) return `Good morning${nameStr}`;
   if (hour < 18) return `Good afternoon${nameStr}`;
   return `Good evening${nameStr}`;
@@ -1595,7 +1600,7 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
   if (!address || !session) return null;
   const email = decodeJwtEmail(session?.jwt);
   const googleName = decodeJwtClaim(session?.jwt, 'name');
-  const greeting = getGreeting(email);
+  const greeting = getGreeting(userStatus.username);
 
   const tosBanner = !userStatus.loading && !userStatus.tosAccepted ? (
     <TosBanner onAccept={userStatus.acceptTos} />
@@ -2078,6 +2083,7 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
       <AppShell
         address={address}
         jwt={session.jwt}
+        username={userStatus.username}
         activeSessionId={engine.sessionId ?? undefined}
         onLoadSession={engine.loadSession}
         onNewConversation={handleNewConversation}

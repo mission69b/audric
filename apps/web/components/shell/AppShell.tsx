@@ -13,6 +13,14 @@ import { usePanel } from '@/hooks/usePanel';
 interface AppShellProps {
   address: string;
   jwt?: string;
+  /**
+   * [S.84] Bare Audric handle (e.g. `'alice'`), or `null` when the user
+   * hasn't claimed yet. Forwarded to AppSidebar so the footer can
+   * surface the handle as a tap-to-profile chip — Passport identity
+   * gets first-class billing in the navigation chrome, not just on the
+   * settings page.
+   */
+  username?: string | null;
   activeSessionId?: string;
   onLoadSession?: (sessionId: string) => void;
   onNewConversation?: () => void;
@@ -37,6 +45,7 @@ const LS_SIDEBAR_KEY = 'audric_sidebar_collapsed';
 export function AppShell({
   address,
   jwt,
+  username,
   activeSessionId,
   onLoadSession,
   onNewConversation,
@@ -73,6 +82,7 @@ export function AppShell({
           onToggleCollapse={toggleCollapse}
           address={address}
           jwt={jwt}
+          username={username}
           activeSessionId={activeSessionId}
           onLoadSession={onLoadSession}
           onNewConversation={onNewConversation}
@@ -99,6 +109,7 @@ export function AppShell({
               onClose={() => setMobileOpen(false)}
               address={address}
               jwt={jwt}
+              username={username}
               activeSessionId={activeSessionId}
               onLoadSession={onLoadSession}
               onNewConversation={onNewConversation}
