@@ -115,6 +115,19 @@ interface UnifiedTimelineProps {
   jwt?: string | null;
   /** Engine session id — used to dedup the InChatSurface card per session. */
   sessionId?: string | null;
+  /**
+   * [B3 polish G4] Read-only contacts check threaded into the
+   * transaction-history rows so incoming-from-stranger rows can render
+   * a save-sender `+` affordance.
+   */
+  isKnownAddress?: (addr: string) => boolean;
+  /**
+   * [B3 polish G4] Click handler for the save-sender affordance —
+   * parent (dashboard-content.tsx) spawns a `contact-prompt` feed
+   * item with the sender's address, reusing B4's ContactToast for
+   * the actual save UI.
+   */
+  onPromptSaveSender?: (address: string) => void;
 }
 
 function ConnectingSkeleton() {
@@ -144,6 +157,8 @@ export function UnifiedTimeline({
   address = null,
   jwt = null,
   sessionId = null,
+  isKnownAddress,
+  onPromptSaveSender,
 }: UnifiedTimelineProps) {
   const endRef = useRef<HTMLDivElement>(null);
   const lastCount = useRef(0);
@@ -490,6 +505,8 @@ export function UnifiedTimeline({
             onSaveContact={onSaveContact}
             onDismissItem={onDismissItem}
             onConfirmResolve={onConfirmResolve}
+            isKnownAddress={isKnownAddress}
+            onPromptSaveSender={onPromptSaveSender}
           />
         );
       })}

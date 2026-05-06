@@ -129,7 +129,26 @@ export function useContacts(userAddress: string | null) {
       );
       if (existing) return;
 
-      const updated = [...contacts, { name, address }];
+      // [B3 polish] Name-collision check. Without this, saving "Mom"
+      // again pointed at a different address silently produced two
+      // "Mom" rows in the list — confusing later when the user types
+      // "send to Mom" and `resolveContact` returns the FIRST match
+      // arbitrarily. Throwing here surfaces the conflict at save
+      // time (caller renders to the user) instead of letting it
+      // bake into the saved list. Match is case-insensitive +
+      // trimmed because users routinely type "Alice" then "alice"
+      // and don't expect those to be different contacts.
+      const trimmedName = name.trim();
+      const nameTaken = contacts.some(
+        (c) => c.name.trim().toLowerCase() === trimmedName.toLowerCase(),
+      );
+      if (nameTaken) {
+        throw new Error(
+          `You already have a contact named "${trimmedName}". Pick a different nickname.`,
+        );
+      }
+
+      const updated = [...contacts, { name: trimmedName, address }];
       // Optimistic; reverted on POST failure.
       setContacts(updated);
 
@@ -194,6 +213,20 @@ export function useContacts(userAddress: string | null) {
       const target = address.toLowerCase();
       const existing = contacts.find((c) => c.address.toLowerCase() === target);
       if (!existing) return;
+      // [B3 polish] Same name-collision check as addContact, but
+      // ignoring the row being renamed (otherwise renaming "Mom" → "Mom"
+      // would block itself). Catches the case where the user renames
+      // "Old Mom" → "Mom" while a different "Mom" already exists.
+      const nameTaken = contacts.some(
+        (c) =>
+          c.address.toLowerCase() !== target &&
+          c.name.trim().toLowerCase() === trimmed.toLowerCase(),
+      );
+      if (nameTaken) {
+        throw new Error(
+          `You already have another contact named "${trimmed}". Pick a different nickname.`,
+        );
+      }
       const updated = contacts.map((c) =>
         c.address.toLowerCase() === target ? { ...c, name: trimmed } : c,
       );

@@ -107,9 +107,32 @@ interface FeedRendererProps {
   onCopy?: (text: string) => void;
   onSaveContact?: (name: string, address: string) => void;
   onConfirmResolve?: (approved: boolean) => void;
+  /**
+   * [B3 polish] Read-only check used by `transaction-history` rows to
+   * decide whether to render the "save sender" `+` affordance on
+   * incoming-from-stranger rows. When omitted, the affordance is
+   * suppressed (defensive — no false positives in surfaces that
+   * don't have a contacts hook wired through).
+   */
+  isKnownAddress?: (addr: string) => boolean;
+  /**
+   * [B3 polish] Click handler for the save-sender affordance on
+   * incoming-from-stranger transaction-history rows. Parent should
+   * spawn a `contact-prompt` feed item with the sender's address —
+   * reuses B4's ContactToast for the actual save UI.
+   */
+  onPromptSaveSender?: (address: string) => void;
 }
 
-export function FeedRenderer({ items, onChipClick, onCopy, onSaveContact, onConfirmResolve }: FeedRendererProps) {
+export function FeedRenderer({
+  items,
+  onChipClick,
+  onCopy,
+  onSaveContact,
+  onConfirmResolve,
+  isKnownAddress,
+  onPromptSaveSender,
+}: FeedRendererProps) {
   if (items.length === 0) return null;
 
   return (
@@ -122,6 +145,8 @@ export function FeedRenderer({ items, onChipClick, onCopy, onSaveContact, onConf
           onCopy={onCopy}
           onSaveContact={onSaveContact}
           onConfirmResolve={onConfirmResolve}
+          isKnownAddress={isKnownAddress}
+          onPromptSaveSender={onPromptSaveSender}
         />
       ))}
     </div>
@@ -165,6 +190,8 @@ export function FeedItemCard({
   onSaveContact,
   onDismissItem,
   onConfirmResolve,
+  isKnownAddress,
+  onPromptSaveSender,
 }: {
   item: FeedItem;
   onChipClick: (flow: string) => void;
@@ -178,6 +205,8 @@ export function FeedItemCard({
    */
   onDismissItem?: (id: string) => void;
   onConfirmResolve?: (approved: boolean) => void;
+  isKnownAddress?: (addr: string) => boolean;
+  onPromptSaveSender?: (address: string) => void;
 }) {
   const { data } = item;
 
@@ -458,7 +487,14 @@ export function FeedItemCard({
       );
 
     case 'transaction-history':
-      return <TransactionHistoryCard transactions={data.transactions} network={data.network} />;
+      return (
+        <TransactionHistoryCard
+          transactions={data.transactions}
+          network={data.network}
+          isKnownAddress={isKnownAddress}
+          onPromptSaveSender={onPromptSaveSender}
+        />
+      );
 
     case 'agent-response':
       return <AgentResponseCard data={data} onAction={onChipClick} onConfirmResolve={onConfirmResolve} />;
@@ -676,9 +712,19 @@ function truncAddr(addr: string): string {
 function TransactionHistoryCard({
   transactions,
   network,
+  isKnownAddress,
+  onPromptSaveSender,
 }: {
   transactions: import('@/lib/feed-types').TxHistoryEntry[];
   network: string;
+  /**
+   * [B3 polish G4] When provided, incoming-from-stranger rows render
+   * a small `+` affordance that spawns a contact-prompt feed item
+   * for the sender. When omitted (or address-saved), the affordance
+   * is suppressed.
+   */
+  isKnownAddress?: (addr: string) => boolean;
+  onPromptSaveSender?: (address: string) => void;
 }) {
   const INITIAL_LIMIT = 5;
   const [expanded, setExpanded] = React.useState(false);
@@ -710,14 +756,31 @@ function TransactionHistoryCard({
           const label = ACTION_LABELS[key] ?? key;
           const isIn = tx.direction === 'in';
           const amountStr = tx.amount ? `${isIn ? '+' : '-'}$${tx.amount.toFixed(2)}` : '';
+          // [B3 polish G4] Show the save-sender + when this is an
+          // incoming tx from a non-contact, AND the parent has wired
+          // the contacts checks. The sender is `tx.counterparty` for
+          // direction === 'in' rows; outgoing rows render no +
+          // (would just be the user's own send-then-prompt path,
+          // which B4 already covers). The button sits as a sibling
+          // to the explorer-link <a> (not inside it — nested
+          // clickables are invalid HTML and confuse a11y tools).
+          const showSavePlus =
+            isIn &&
+            !!tx.counterparty &&
+            !!isKnownAddress &&
+            !!onPromptSaveSender &&
+            !isKnownAddress(tx.counterparty);
 
           return (
-            <a
+            <div
               key={tx.digest}
+              className="flex items-center -mx-1 px-1 rounded-lg group hover:bg-surface-page transition"
+            >
+            <a
               href={`${explorerBase}/${tx.digest}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center justify-between py-2.5 hover:bg-surface-page -mx-1 px-1 rounded-lg transition group"
+              className="flex flex-1 items-center justify-between py-2.5 min-w-0"
             >
               <div className="flex items-center gap-3 min-w-0">
                 <span className="text-base w-6 text-center shrink-0">{icon}</span>
@@ -742,6 +805,18 @@ function TransactionHistoryCard({
                 )}
               </div>
             </a>
+              {showSavePlus && (
+                <button
+                  type="button"
+                  onClick={() => onPromptSaveSender!(tx.counterparty!)}
+                  className="ml-2 shrink-0 px-2.5 py-1.5 font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted hover:text-fg-primary transition focus-visible:outline-none focus-visible:underline"
+                  title={`Save ${truncAddr(tx.counterparty!)} as a contact`}
+                  aria-label={`Save ${truncAddr(tx.counterparty!)} as a contact`}
+                >
+                  +
+                </button>
+              )}
+            </div>
           );
         })}
       </div>

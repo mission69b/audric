@@ -1253,6 +1253,23 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
     [contactsHook, feed],
   );
 
+  // [B3 polish G4] Save-sender from receipt. The TransactionHistoryCard
+  // renders a `+` on incoming-from-stranger rows; clicking it lands here.
+  // We spawn the same `contact-prompt` feed item B4 already shipped, so
+  // the toast UI and skip/save plumbing match the post-send happy path
+  // exactly (one ContactToast component, one save handler, one skip
+  // policy). Defensive: only fire if the address is genuinely unknown
+  // by the time the click lands (race-safe — user might've saved it
+  // via another surface in between).
+  const handlePromptSaveSender = useCallback(
+    (address: string) => {
+      if (contactsHook.isKnownAddress(address)) return;
+      if (isContactPromptSkipped(address)) return;
+      feed.addItem({ type: 'contact-prompt', address });
+    },
+    [contactsHook, feed],
+  );
+
   const handleAmountSelect = useCallback(
     (amount: number) => {
       const flow = chipFlow.state.flow ?? '';
@@ -1903,6 +1920,8 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
               address={address}
               jwt={session?.jwt ?? null}
               sessionId={engine.sessionId ?? null}
+              isKnownAddress={contactsHook.isKnownAddress}
+              onPromptSaveSender={handlePromptSaveSender}
               onConfirmResolve={(approved) => {
                 const resolver = confirmResolverRef.current;
                 if (resolver) {
