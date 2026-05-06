@@ -63,7 +63,20 @@ export type FeedItemData =
   | { type: 'image'; url: string; alt: string; cost?: string }
   | { type: 'audio'; url: string; title: string; cost?: string }
   | { type: 'error'; message: string; chips?: { label: string; flow: string }[] }
-  | { type: 'contact-prompt'; address: string }
+  | {
+      type: 'contact-prompt';
+      address: string;
+      /**
+       * [B4 polish] Pre-fill for the contact-name input. Set when the
+       * spawn site knows a canonical name for this recipient — today
+       * that means an Audric handle (`alice.audric.sui` → `'alice'`).
+       * For 0x-pasted recipients, leave undefined so the input renders
+       * empty as before. Eliminates the "what should I name this?"
+       * pause for the most common SPEC 10 happy path: paying an Audric
+       * user via @-autocomplete who then has nothing to type.
+       */
+      defaultName?: string;
+    }
   | { type: 'transaction-history'; transactions: TxHistoryEntry[]; network: string }
   | { type: 'agent-response'; steps: AgentStepData[]; text?: string; totalCost?: number; status: 'running' | 'done' | 'error'; error?: string; confirm?: { tool: string; cost: number; summary?: string } };
 

@@ -73,6 +73,7 @@ import {
   isUsernameSkipped,
   setUsernameSkipped as persistUsernameSkipped,
 } from '@/lib/identity/username-skip';
+import { isContactPromptSkipped } from '@/lib/identity/contact-prompt-skip';
 
 // [S.84] Greeting now sources from the Audric handle, not the zkLogin
 // email-derived prefix. Pre-claim users see "Good morning" with no name
@@ -1476,14 +1477,30 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
       balanceQuery.refetch();
       setTimeout(() => balanceQuery.refetch(), 3000);
 
+      // [B4 polish] Contact-prompt triggering policy. Originally the
+      // toast spawned after every send to a non-contact recipient; now
+      // we suppress for: (a) sub-$1 USDC sends (test transfers, dust
+      // splits — not worth nagging), (b) recipients the user has
+      // already explicitly Skipped before (sticky per-address flag in
+      // localStorage). We also pre-fill the name input from the
+      // resolved Audric handle when present (`subFlow` ends with
+      // `.audric.sui` → bare username) so the @-pick happy path is a
+      // one-tap save instead of "what name?" → type → tap.
       if (
         flow === 'send' &&
         chipFlow.state.recipient &&
-        !contactsHook.isKnownAddress(chipFlow.state.recipient)
+        !contactsHook.isKnownAddress(chipFlow.state.recipient) &&
+        !isContactPromptSkipped(chipFlow.state.recipient) &&
+        !(amount < 1)
       ) {
+        const subFlow = chipFlow.state.subFlow ?? '';
+        const defaultName = subFlow.endsWith('.audric.sui')
+          ? subFlow.slice(0, -'.audric.sui'.length)
+          : undefined;
         feed.addItem({
           type: 'contact-prompt',
           address: chipFlow.state.recipient,
+          defaultName,
         });
       }
     } catch (err) {

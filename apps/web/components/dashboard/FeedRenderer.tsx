@@ -4,6 +4,7 @@ import React, { useState, useCallback, useRef } from 'react';
 import type { FeedItem } from '@/lib/feed-types';
 import { QrCode } from './QrCode';
 import { ContactToast } from './ContactToast';
+import { setContactPromptSkipped } from '@/lib/identity/contact-prompt-skip';
 import { AgentMarkdown } from './AgentMarkdown';
 import { Spinner } from '@/components/ui/Spinner';
 import { AudricMark } from '@/components/ui/AudricMark';
@@ -441,10 +442,17 @@ export function FeedItemCard({
       return (
         <ContactToast
           address={data.address}
+          defaultName={data.defaultName}
           onSave={(name) => {
             onSaveContact?.(name, data.address);
             onDismissItem?.(item.id);
           }}
+          // [B4 polish] Explicit Skip → persist per-address flag so
+          // we don't re-prompt for this recipient on future sends.
+          // Auto-dismiss (8s timeout) does NOT fire onSkip — only
+          // onDismiss — preserving the future prompt for users who
+          // walked away from the toast rather than rejecting it.
+          onSkip={() => setContactPromptSkipped(data.address)}
           onDismiss={() => onDismissItem?.(item.id)}
         />
       );

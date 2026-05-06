@@ -6,11 +6,39 @@ interface ContactToastProps {
   address: string;
   onSave: (name: string) => void;
   onDismiss: () => void;
+  /**
+   * [B4 polish] Pre-fill for the contact-name input. Set when the
+   * spawn site knows a canonical name for this recipient (today:
+   * the bare Audric handle for `@username` recipients). Eliminates
+   * the typing step on the SPEC 10 happy path.
+   */
+  defaultName?: string;
+  /**
+   * [B4 polish] Fires only when the user EXPLICITLY clicks Skip
+   * (NOT on the 8s auto-dismiss timeout). Distinguishing the two
+   * matters: explicit Skip means "don't ask again for this address"
+   * (parent persists per-address skip flag); auto-dismiss means
+   * "user looked away" (parent does NOT persist the flag — they
+   * may want to save next time). Without this distinction, walking
+   * away from the toast would silently delete the future prompt.
+   */
+  onSkip?: () => void;
 }
 
-export function ContactToast({ address, onSave, onDismiss }: ContactToastProps) {
-  const [expanded, setExpanded] = useState(false);
-  const [name, setName] = useState('');
+export function ContactToast({
+  address,
+  onSave,
+  onDismiss,
+  defaultName,
+  onSkip,
+}: ContactToastProps) {
+  // [B4 polish] When defaultName is set we open in expanded form
+  // straight away — the user's only remaining action is Save (or
+  // edit-then-save), so a collapsed "Save … as a contact?" question
+  // would just add an extra tap before the editable name field
+  // appears. The Save button is now one tap, not two.
+  const [expanded, setExpanded] = useState(Boolean(defaultName));
+  const [name, setName] = useState(defaultName ?? '');
   const [visible, setVisible] = useState(true);
 
   useEffect(() => {
@@ -54,7 +82,10 @@ export function ContactToast({ address, onSave, onDismiss }: ContactToastProps) 
               Save
             </button>
             <button
-              onClick={() => setVisible(false)}
+              onClick={() => {
+                onSkip?.();
+                setVisible(false);
+              }}
               className="rounded-lg border border-border-subtle bg-surface-page px-3 py-1.5 text-xs font-medium text-fg-secondary hover:text-fg-primary transition"
             >
               Skip
