@@ -82,14 +82,82 @@ function jsonResponse(body: CheckResponse, status = 200): NextResponse {
   return NextResponse.json(body, { status });
 }
 
+// ---------------------------------------------------------------------------
+// [S.90] Structured request log shape.
+//
+// Emitted as a single console.log per request with the prefix
+// `[identity-check]` so Vercel log search can pull them with one filter.
+// JSON shape so future log-pipeline ingest (Logflare, Axiom, Datadog) can
+// parse without regex. Fields:
+//   - reqId — random 8-char hex; correlates concurrent picker fan-outs
+//     (3 parallel calls share the same `ip` + ~ms-aligned `t`).
+//   - ip — same key the rate-limiter uses (x-forwarded-for first hop or
+//     "local"); enables "this IP made N requests in window" queries.
+//   - label — the post-validation handle (or '?' when rejected at parse).
+//   - outcome — terminal status: rate_limited | bad_input | invalid |
+//     reserved | taken_db | taken_chain | available | rpc_error.
+//   - reason — only set when outcome ∈ {invalid, taken_db, taken_chain}
+//     to disambiguate validation failure modes (too-short / too-long /
+//     invalid charset).
+//   - ms — wall-clock total request duration (rate-limit check → response
+//     send), measured via performance.now().
+//   - dbMs — Postgres unique-check duration, only set when reached.
+//   - rpcMs — SuiNS RPC duration, only set when reached.
+//   - rpcError — the underlying RPC failure detail when outcome is
+//     rpc_error (truncated to 200 chars to bound log size).
+// ---------------------------------------------------------------------------
+type Outcome =
+  | 'rate_limited'
+  | 'bad_input'
+  | 'invalid'
+  | 'reserved'
+  | 'taken_db'
+  | 'taken_chain'
+  | 'available'
+  | 'rpc_error';
+
+interface RequestLog {
+  reqId: string;
+  ip: string;
+  label: string;
+  outcome: Outcome;
+  reason?: string;
+  ms: number;
+  dbMs?: number;
+  rpcMs?: number;
+  rpcError?: string;
+}
+
+function emitLog(log: RequestLog): void {
+  // Single-line JSON. Vercel captures stdout; downstream ingest (Logflare /
+  // Axiom / etc.) can filter on the prefix and JSON.parse the payload.
+  console.log(`[identity-check] ${JSON.stringify(log)}`);
+}
+
+function newReqId(): string {
+  // 8-char hex — enough to disambiguate within a 1-minute window of
+  // requests from the same IP without bloating the log line.
+  return Math.floor(Math.random() * 0xffffffff).toString(16).padStart(8, '0');
+}
+
 export async function GET(req: NextRequest): Promise<NextResponse> {
-  const limit = rateLimit(`identity-check:${ipKey(req)}`, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS);
+  // [S.90] Per-request timing + structured log. Captures the end-to-end
+  // budget AND the SuiNS RPC slice so the next "CHECK FAILED" report
+  // (cf. S.88) has data instead of guesses. See the RequestLog type
+  // comment above for field meanings.
+  const t0 = performance.now();
+  const reqId = newReqId();
+  const ip = ipKey(req);
+
+  const limit = rateLimit(`identity-check:${ip}`, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS);
   if (!limit.success) {
+    emitLog({ reqId, ip, label: '?', outcome: 'rate_limited', ms: performance.now() - t0 });
     return rateLimitResponse(limit.retryAfterMs ?? RATE_LIMIT_WINDOW_MS) as NextResponse;
   }
 
   const raw = req.nextUrl.searchParams.get('username');
   if (!raw) {
+    emitLog({ reqId, ip, label: '?', outcome: 'bad_input', ms: performance.now() - t0 });
     return NextResponse.json(
       { error: 'Missing username parameter' },
       { status: 400 },
@@ -100,23 +168,35 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   // the canonical lowercase/trimmed form on success; reuse it downstream.
   const validation = validateAudricLabel(raw);
   if (!validation.valid) {
+    emitLog({
+      reqId,
+      ip,
+      label: raw.slice(0, 20),
+      outcome: 'invalid',
+      reason: validation.reason,
+      ms: performance.now() - t0,
+    });
     return jsonResponse({ available: false, reason: validation.reason });
   }
   const label = validation.label;
 
   // Step 3: reserved list (audric-side product policy). Cheap Set lookup.
   if (isReserved(label)) {
+    emitLog({ reqId, ip, label, outcome: 'reserved', ms: performance.now() - t0 });
     return jsonResponse({ available: false, reason: 'reserved' });
   }
 
   // Step 4: Postgres unique check. Indexed; sub-ms in practice. Catches
   // every same-Audric collision and gives the picker fail-fast feedback
   // before the more expensive RPC call.
+  const dbT0 = performance.now();
   const existingUser = await prisma.user.findUnique({
     where: { username: label },
     select: { id: true },
   });
+  const dbMs = performance.now() - dbT0;
   if (existingUser) {
+    emitLog({ reqId, ip, label, outcome: 'taken_db', ms: performance.now() - t0, dbMs });
     return jsonResponse({ available: false, reason: 'taken' });
   }
 
@@ -130,18 +210,30 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   // Fail-CLOSED on RPC error: surface 503 so the picker can retry rather
   // than incorrectly tell the user "available" → mint → on-chain race.
   const handle = fullHandle(label);
+  const rpcT0 = performance.now();
   let onChainAddress: string | null;
   try {
     onChainAddress = await resolveSuinsViaRpc(handle, {
       suiRpcUrl: getSuiRpcUrl(),
     });
   } catch (err) {
+    const rpcMs = performance.now() - rpcT0;
     const detail =
       err instanceof SuinsRpcError
         ? err.message
         : err instanceof Error
           ? err.message
           : 'Unknown SuiNS RPC error';
+    emitLog({
+      reqId,
+      ip,
+      label,
+      outcome: 'rpc_error',
+      ms: performance.now() - t0,
+      dbMs,
+      rpcMs,
+      rpcError: detail.slice(0, 200),
+    });
     return NextResponse.json(
       {
         error: `SuiNS verification temporarily unavailable: ${detail}. Please retry shortly.`,
@@ -149,11 +241,30 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       { status: 503 },
     );
   }
+  const rpcMs = performance.now() - rpcT0;
 
   if (onChainAddress !== null) {
     // A leaf already resolves to an address on-chain — the name is taken.
+    emitLog({
+      reqId,
+      ip,
+      label,
+      outcome: 'taken_chain',
+      ms: performance.now() - t0,
+      dbMs,
+      rpcMs,
+    });
     return jsonResponse({ available: false, reason: 'taken' });
   }
 
+  emitLog({
+    reqId,
+    ip,
+    label,
+    outcome: 'available',
+    ms: performance.now() - t0,
+    dbMs,
+    rpcMs,
+  });
   return jsonResponse({ available: true });
 }
