@@ -4,19 +4,22 @@ import Link from 'next/link';
 import { resolveSuinsViaRpc, SuinsRpcError } from '@t2000/engine';
 import { SuiPayQr } from '@/components/pay/SuiPayQr';
 import { AudricMark } from '@/components/ui/AudricMark';
+import { PortfolioCard } from '@/components/engine/cards/PortfolioCard';
 import { AddressCopyButton } from './AddressCopyButton';
 import { SendToHandleButton } from './SendToHandleButton';
 import { getSuiRpcUrl } from '@/lib/sui-rpc';
 import { isReserved } from '@/lib/identity/reserved-usernames';
 import { validateAudricLabel } from '@/lib/identity/validate-label';
+import { getPortfolio, type Portfolio } from '@/lib/portfolio';
 
 /**
- * SPEC 10 D.1 — Public profile page (stub) at `audric.ai/[username]`
+ * SPEC 10 D.1 — Public profile page at `audric.ai/[username]`
  *
- * Minimum-viable shipment to unblock the SPEC 10 B.3 share-to-X URL
- * (`https://audric.ai/${label}` was 404'ing — see S.74 for context).
+ * Originally shipped as a minimal stub (S.74/S.75) to unblock the SPEC 10
+ * B.3 share-to-X URL (`https://audric.ai/${label}` was 404'ing). Expanded
+ * in S.81 with the public portfolio panel + Store empty-state per spec.
  *
- * What this stub does:
+ * What this page does:
  *   - Server-side SuiNS lookup of `<username>.audric.sui` via the existing
  *     `resolveSuinsViaRpc` engine helper (same one A.3's check route uses)
  *   - 404 on unresolved / invalid / reserved labels (Next `notFound()`)
@@ -34,18 +37,27 @@ import { validateAudricLabel } from '@/lib/identity/validate-label';
  *         for the full rationale.
  *       • Below a divider: <AddressCopyButton> for visitors who want to
  *         paste into a CEX withdrawal form
- *       • "Powered by Audric Passport" footer + signup CTA
+ *   - [S.81] Public portfolio panel (PortfolioCard) — server-fetched via
+ *     the canonical `getPortfolio()` (same SSOT every other audric surface
+ *     uses). Shows net worth + wallet/savings/DeFi/debt breakdown +
+ *     allocation bar. Hidden for new/empty wallets (netWorth < $0.01) to
+ *     avoid a "looks broken" $0 card. Insights are intentionally omitted
+ *     on public profiles — those are personal recommendations.
+ *   - [S.81] Store empty-state — "alice hasn't set up their store yet".
+ *     Static placeholder for v0.1; future Phase 5 will turn it into a
+ *     link to `audric.ai/[username]/store`.
  *   - OpenGraph + Twitter card metadata for share previews
  *
- * What the FULL D.1 (Phase D, deferred) will add on top:
- *   - Public portfolio reuse (the `audric.ai/report/[address]` panel from
- *     Phase E of Audric 2.0) — net worth, top holdings, recent activity
- *   - "Following" / "Followers" social signals (deferred to v0.3)
- *   - Empty-state link to user's Audric Store (Phase 5 / SPEC 9 v0.2)
+ * Privacy note: the portfolio panel surfaces data that is ALREADY public
+ * on Sui (every Sui address's balances + positions are queryable by
+ * anyone via SuiVision / Sui RPC). Showing it here makes existing public
+ * data more discoverable, not new info. Users who claim a handle are
+ * opting into this surface. A "hide portfolio from public profile"
+ * settings toggle is deferred to v0.3 if signal warrants it.
  *
- * URL slug stability: this stub uses the bare `<username>` path as the
- * permanent route shape, so any tweet shipped from B.3 today will keep
- * working when the full D.1 lands. URL migration risk = zero.
+ * URL slug stability: this page uses the bare `<username>` path as the
+ * permanent route shape, so any tweet shipped from B.3 today keeps
+ * working through D.1 expansion. URL migration risk = zero.
  *
  * Theming: this page is THEMED (follows the visitor's OS theme), not
  * LIGHT-ONLY. Profile pages are recipient-facing surfaces — visitors may
@@ -97,6 +109,132 @@ async function resolveHandle(rawUsername: string): Promise<ResolvedHandle | null
   }
 }
 
+// ---------------------------------------------------------------------------
+// [S.81 D.1] Public portfolio data fetch + PortfolioCard prop shape.
+//
+// Routes through the canonical `getPortfolio()` (same SSOT as
+// balance_check, portfolio_analysis, the daily snapshot cron, and every
+// other audric surface). Degrades silently to `null` on any failure —
+// the profile page is recipient-facing and a 5xx because BlockVision had
+// a hiccup would be an unacceptable cliff. Empty wallets (netWorth < 1¢)
+// also return null to suppress a "looks broken" $0 card on brand-new
+// claims.
+//
+// The PortfolioCard transformation mirrors the `portfolio_analysis`
+// engine tool's mapping (allocations from wallet coins + per-protocol
+// DeFi rows, sorted desc, dust-filtered). We deliberately do NOT
+// hand-tune insights on public profiles — those are personal
+// recommendations and surfacing them on someone else's URL would be
+// awkward at best.
+// ---------------------------------------------------------------------------
+
+const DUST_USD = 0.5;
+const STABLECOINS = new Set(['USDC', 'USDsui', 'USDT', 'USDe', 'AUSD']);
+
+interface PortfolioCardData {
+  totalValue: number;
+  walletValue: number;
+  savingsValue: number;
+  defiValue?: number;
+  defiSource?: 'blockvision' | 'partial' | 'partial-stale' | 'degraded';
+  debtValue: number;
+  healthFactor: number | null;
+  allocations: { symbol: string; amount: number; usdValue: number; percentage: number }[];
+  stablePercentage: number;
+  insights: { type: string; message: string }[];
+  savingsApy?: number;
+  dailyEarning?: number;
+  address?: string;
+  isSelfQuery?: boolean;
+  suinsName?: string | null;
+}
+
+function buildPortfolioCardData(
+  portfolio: Portfolio,
+  handle: string,
+): PortfolioCardData | null {
+  // Suppress empty wallets — visiting a brand-new claim with $0 should
+  // not render a card that looks like a rendering failure.
+  if (portfolio.netWorthUsd < 0.01 && portfolio.wallet.length === 0) {
+    return null;
+  }
+
+  const allocations: { symbol: string; amount: number; usdValue: number; percentage: number }[] = [];
+  let walletValue = 0;
+  for (const coin of portfolio.wallet) {
+    const amount = Number(coin.balance) / 10 ** coin.decimals;
+    if (!Number.isFinite(amount) || amount <= 0) continue;
+    const usdValue = coin.usdValue ?? (coin.price != null ? amount * coin.price : 0);
+    walletValue += usdValue;
+    if (usdValue >= DUST_USD) {
+      allocations.push({ symbol: coin.symbol, amount, usdValue, percentage: 0 });
+    }
+  }
+
+  // Per-spec "single aggregate DeFi row" treatment — the public profile
+  // doesn't surface per-protocol breakdowns (no DeFi positions endpoint
+  // exposed via the canonical fetcher today). One labelled row keeps
+  // the allocation pie honest about DeFi mass.
+  if (portfolio.defiValueUsd >= DUST_USD) {
+    allocations.push({
+      symbol: 'DeFi (aggregate)',
+      amount: 0,
+      usdValue: portfolio.defiValueUsd,
+      percentage: 0,
+    });
+  }
+
+  const totalValue = walletValue + portfolio.positions.savings + portfolio.defiValueUsd;
+  for (const a of allocations) {
+    a.percentage = totalValue > 0 ? (a.usdValue / totalValue) * 100 : 0;
+  }
+  allocations.sort((a, b) => b.usdValue - a.usdValue);
+
+  const stableValue =
+    allocations.filter((a) => STABLECOINS.has(a.symbol)).reduce((s, a) => s + a.usdValue, 0)
+    + portfolio.positions.savings;
+  const stablePercentage = totalValue > 0 ? (stableValue / totalValue) * 100 : 0;
+
+  const savingsApy =
+    portfolio.positions.savingsRate > 0 ? portfolio.positions.savingsRate : undefined;
+  const dailyEarning =
+    savingsApy && portfolio.positions.savings > 0
+      ? (portfolio.positions.savings * savingsApy) / 365
+      : undefined;
+
+  return {
+    totalValue: portfolio.netWorthUsd,
+    walletValue,
+    savingsValue: portfolio.positions.savings,
+    defiValue: portfolio.defiValueUsd > 0 ? portfolio.defiValueUsd : undefined,
+    defiSource: portfolio.defiValueUsd > 0 ? portfolio.defiSource : undefined,
+    debtValue: portfolio.positions.borrows,
+    healthFactor: portfolio.positions.healthFactor,
+    allocations: allocations.slice(0, 10),
+    stablePercentage,
+    insights: [], // suppressed on public profiles by design
+    savingsApy,
+    dailyEarning,
+    address: portfolio.address,
+    isSelfQuery: false, // always a watched-address read on profile pages
+    suinsName: handle,
+  };
+}
+
+async function fetchProfilePortfolio(
+  address: string,
+  handle: string,
+): Promise<PortfolioCardData | null> {
+  try {
+    const portfolio = await getPortfolio(address);
+    return buildPortfolioCardData(portfolio, handle);
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : 'unknown';
+    console.warn(`[/${handle}] portfolio fetch failed: ${detail}`);
+    return null;
+  }
+}
+
 export async function generateMetadata({ params }: UsernamePageProps): Promise<Metadata> {
   const { username } = await params;
   const resolved = await resolveHandle(username);
@@ -127,7 +265,13 @@ export default async function UsernamePage({ params }: UsernamePageProps) {
   const resolved = await resolveHandle(username);
   if (!resolved) notFound();
 
-  const { handle, address } = resolved;
+  const { label, handle, address } = resolved;
+
+  // Run the portfolio fetch in parallel with the rest of the render — it
+  // won't block 404s (resolveHandle already ran) but it may add ~200ms
+  // to first paint when BlockVision is healthy. Acceptable for an
+  // SSR'd surface where the panel is the value.
+  const portfolioCardData = await fetchProfilePortfolio(address, handle);
 
   return (
     <main className="min-h-screen bg-surface-page flex flex-col items-center justify-center px-4 py-12">
@@ -171,6 +315,31 @@ export default async function UsernamePage({ params }: UsernamePageProps) {
             <p className="text-center text-[11px] text-fg-secondary">
               Scan the QR with your phone wallet, or paste this address into any Sui wallet or
               exchange withdrawal form.
+            </p>
+          </div>
+        </div>
+
+        {portfolioCardData ? (
+          <div className="mt-4">
+            <PortfolioCard data={portfolioCardData} />
+          </div>
+        ) : null}
+
+        <div className="mt-4 rounded-md border border-border-subtle bg-surface-card overflow-hidden">
+          <div className="flex items-center justify-between px-3.5 py-2 border-b border-border-subtle bg-surface-sunken">
+            <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-fg-muted">
+              Store
+            </span>
+          </div>
+          <div className="px-3.5 py-4 text-center">
+            <div className="text-2xl mb-1.5" aria-hidden="true">
+              🛒
+            </div>
+            <p className="text-[12px] text-fg-secondary">
+              {label} hasn&rsquo;t set up their store yet.
+            </p>
+            <p className="mt-1 text-[10px] text-fg-muted">
+              Coming soon — Audric Store
             </p>
           </div>
         </div>

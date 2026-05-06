@@ -36,6 +36,7 @@ import { incrementSessionSpend } from './session-spend';
 import { GOAL_TOOLS } from './goal-tools';
 import { ADVICE_TOOLS } from './advice-tool';
 import { audricSaveContactTool, audricListContactsTool } from './contact-tools';
+import { lookupUserTool } from './lookup-user-tool';
 import { audricPrepareBundleTool } from './prepare-bundle-tool';
 import { detectPriorPlanContext, isAffirmativeConfirmReply } from './confirm-detection';
 import { emitPlanContextPromoted } from './plan-context-metrics';
@@ -528,6 +529,12 @@ export async function createEngine(
     ...audricBundleTools,
     ...GOAL_TOOLS,
     ...ADVICE_TOOLS,
+    // [SPEC 10 D.3] Audric-side user-directory lookup. Audric handles
+    // (`username.audric.sui`) live in the audric Postgres User table
+    // alongside `claimedAt` + `suiAddress`; the engine is intentionally
+    // unaware of the audric DB so the tool ships from the host. Sister
+    // tool to engine's `resolve_suins` (which handles generic SuiNS).
+    lookupUserTool,
     ...mcpTools,
     updateTodoTool,
     ...(harnessV9Enabled ? [addRecipientTool] : []),
