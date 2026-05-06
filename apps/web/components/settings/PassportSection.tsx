@@ -31,6 +31,7 @@ import { Tag } from '@/components/ui/Tag';
 import { truncateAddress } from '@/lib/format';
 import { useTheme, type Theme } from '@/components/providers/ThemeProvider';
 import { UsernameChangeModal } from '@/components/identity/UsernameChangeModal';
+import { decodeJwtClaim } from '@/lib/jwt-client';
 
 interface PassportSectionProps {
   address: string | null;
@@ -83,6 +84,11 @@ export function PassportSection({
     : 0;
 
   const fullHandle = username ? `${username}.audric.sui` : null;
+  // [S.84 polish v2] zkLogin email — closes the "which Google am I
+  // signed in with?" gap. Settings → Passport is the canonical home
+  // for the email; the sidebar footer references it as the muted
+  // secondary line under the handle.
+  const signInEmail = decodeJwtClaim(jwt, 'email');
 
   const handleCopy = () => {
     if (!address) return;
@@ -199,6 +205,20 @@ export function PassportSection({
 
       <PassportRow label="Network">
         <span className="text-[13px] text-fg-primary capitalize">{network}</span>
+      </PassportRow>
+
+      {/* [S.84 polish v2] Sign-in email row — paired with the session
+          expiry row directly below it (auth identity + auth lifetime
+          read as a single unit). The intro card mentions Google login
+          but never says WHICH Google account; this row closes that
+          gap. Source = `decodeJwtClaim(jwt, 'email')` — the same
+          claim path the sidebar uses, so the value matches across
+          surfaces. Falls back to em-dash when JWT is unavailable
+          (e.g. transient session-load state). */}
+      <PassportRow label="Sign-in email">
+        <span className="text-[13px] text-fg-primary truncate max-w-[280px]">
+          {signInEmail ?? '\u2014'}
+        </span>
       </PassportRow>
 
       <PassportRow label="Sign-in session" last>

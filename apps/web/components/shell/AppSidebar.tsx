@@ -10,6 +10,7 @@ import { Icon } from '@/components/ui/Icon';
 import type { IconName } from '@/lib/icons';
 import type { PanelId } from '@/hooks/usePanel';
 import { GlobalUsernameSearch } from '@/components/identity/GlobalUsernameSearch';
+import { decodeJwtClaim } from '@/lib/jwt-client';
 
 interface SidebarProps {
   activePanel: PanelId;
@@ -74,17 +75,6 @@ function truncateAddr(addr: string): string {
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
 }
 
-function decodeEmail(jwt: string | undefined): string | null {
-  if (!jwt) return null;
-  try {
-    const payload = jwt.split('.')[1];
-    const decoded = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
-    return decoded.email ?? null;
-  } catch {
-    return null;
-  }
-}
-
 export function AppSidebar({
   activePanel,
   onPanelChange,
@@ -114,7 +104,7 @@ export function AppSidebar({
     [onPanelChange, onClose, router],
   );
 
-  const email = emailProp ?? decodeEmail(jwt);
+  const email = emailProp ?? decodeJwtClaim(jwt, 'email');
   // [S.84 polish] Initial sources from the handle when claimed (`A` for
   // `alice`), otherwise falls back to the email-local-part / address.
   // The avatar is now identity-coloured at-a-glance.
@@ -322,21 +312,35 @@ export function AppSidebar({
 
       {/* Footer — single profile block.
 
-          [S.84 polish] Collapsed from the original two-row layout (handle
-          row + avatar/email block) into ONE block. Two stacked clickable
-          surfaces with two destinations was visually one cluster but
-          semantically two — confusing. Now:
+          [S.84 polish v2] Two-line identity layout, identical row count
+          pre/post claim:
 
-            • Avatar initial sources from the handle when claimed (was email).
-            • Primary line = `<username>.audric.sui` when claimed, else email
-              (preserves pre-claim layout exactly).
-            • Secondary line = truncated address; click still copies.
-            • Whole block click → `/[username]` profile when claimed,
-              else `/settings` (existing behavior preserved for unclaimed).
-            • Email demoted to the wrapper tooltip when claimed — recoverable
-              on hover but not screaming. Same posture as the greeting fix:
-              after the user has a handle, the email-derived label shouldn't
-              be the primary "you" identifier. */}
+            • Pre-claim:  email (primary) + truncated address (secondary, copy)
+            • Post-claim: handle (primary) + email (secondary, muted)
+
+          Why drop the address post-claim. `alice.audric.sui` IS the
+          address (SuiNS alias) — showing both reads as "Alice Smith
+          (Alice Smith)." The address has two better homes: the Receive
+          flow (where copy-address is the primary action) and Settings
+          → Passport → Wallet address row (canonical reference). The
+          sidebar footer's job is identity orientation ("which Google /
+          which handle?"), NOT copy-the-address.
+
+          Why email is the secondary line post-claim (not address). The
+          three Passport layers — email (zkLogin auth), handle (chosen
+          identity), address (cryptographic identity) — collapse to TWO
+          here because email is the dimension that's actually distinct.
+          Handle and address are the same identity in two forms;
+          handle and email are different identities entirely.
+
+          Why no 🪪 emoji on the primary line. The `.audric.sui` suffix
+          already screams identity in this surface; the emoji is
+          decorative noise in a tight footer. Kept on the Receive page
+          header, the Settings → Passport eyebrow, and public profile
+          pages where it carries weight as a section emblem.
+
+          Click target: `/[username]` profile when claimed, `/settings`
+          otherwise. */}
       <div className="shrink-0 border-t border-border-subtle px-3 py-3">
         {(email || address || username) && (
           <button
@@ -344,7 +348,7 @@ export function AppSidebar({
             data-testid="sidebar-profile-block"
             title={
               username
-                ? `View your profile · ${username}.audric.sui${email ? ` · ${email}` : ''}`
+                ? `View your profile · ${username}.audric.sui`
                 : email || undefined
             }
             className="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-sm hover:bg-surface-nav-hover transition-colors group focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
@@ -358,19 +362,24 @@ export function AppSidebar({
               {initial}
             </div>
             <div className="flex-1 min-w-0 text-left">
-              {/* Primary line — handle when claimed, email otherwise.
-                  The 🪪 marker is a quiet identity cue inline; reserved
-                  for the claimed branch so unclaimed users don't see a
-                  badge that doesn't apply to them. */}
+              {/* Primary line. */}
               {username ? (
                 <p className="font-mono text-[12px] text-fg-primary truncate">
-                  <span aria-hidden="true" className="mr-1">🪪</span>
                   {username}.audric.sui
                 </p>
               ) : email ? (
                 <p className="text-[12px] text-fg-secondary truncate">{email}</p>
               ) : null}
-              {address && (
+              {/* Secondary line. Post-claim: email (muted, view-only —
+                  the sidebar isn't where you copy your email). Pre-claim:
+                  truncated address (click to copy — the user has no
+                  handle yet, address is their only on-chain identifier
+                  and copy access matters). */}
+              {username && email ? (
+                <p className="text-[10px] text-fg-muted mt-0.5 truncate">
+                  {email}
+                </p>
+              ) : !username && address ? (
                 <p
                   className="font-mono text-[9px] tracking-[0.06em] uppercase text-fg-muted mt-0.5 hover:text-fg-secondary transition-colors"
                   onClick={(e) => { e.stopPropagation(); handleCopyAddress(); }}
@@ -378,7 +387,7 @@ export function AppSidebar({
                 >
                   {copied ? 'Copied!' : truncateAddr(address)}
                 </p>
-              )}
+              ) : null}
             </div>
           </button>
         )}

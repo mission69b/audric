@@ -42,6 +42,7 @@ import { UsernameClaimGate } from '@/components/identity/UsernameClaimGate';
 import { Spinner } from '@/components/ui/Spinner';
 import { useUserStatus } from '@/hooks/useUserStatus';
 import { usePanel } from '@/hooks/usePanel';
+import { decodeJwtClaim } from '@/lib/jwt-client';
 import { PortfolioPanel } from '@/components/panels/PortfolioPanel';
 import { ActivityPanel } from '@/components/panels/ActivityPanel';
 import { PayPanel } from '@/components/panels/PayPanel';
@@ -62,26 +63,6 @@ import { StorePanel } from '@/components/panels/StorePanel';
 // useDashboardInsights, useScheduledActions, AutomationsPanel, ReportsPanel.
 // What's left above the fold: balance header, greeting (empty only),
 // chip bar, chat input — and an inline HF widget when debt AND HF<2.0.
-
-function decodeJwtEmail(jwt: string | undefined): string | null {
-  return decodeJwtClaim(jwt, 'email');
-}
-
-// [SPEC 10 B-wiring] Same atob-based decoder as decodeJwtEmail but returns
-// the Google OIDC `name` claim — used to seed the username picker's smart
-// pre-fill suggestions. Lazy generic accessor avoids two near-identical
-// JSON.parse helpers when we'll likely need a third for `picture` later.
-function decodeJwtClaim(jwt: string | undefined, claim: 'email' | 'name'): string | null {
-  if (!jwt) return null;
-  try {
-    const payload = jwt.split('.')[1];
-    const decoded = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
-    const value = decoded[claim];
-    return typeof value === 'string' ? value : null;
-  } catch {
-    return null;
-  }
-}
 
 // [SPEC 10 B-wiring] localStorage key for the per-address skip flag. Set
 // when the user clicks "Skip for now" in the picker so the gate doesn't
@@ -1598,7 +1579,7 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
   }, [isEmpty, greetingMounted]);
 
   if (!address || !session) return null;
-  const email = decodeJwtEmail(session?.jwt);
+  const email = decodeJwtClaim(session?.jwt, 'email');
   const googleName = decodeJwtClaim(session?.jwt, 'name');
   const greeting = getGreeting(userStatus.username);
 
