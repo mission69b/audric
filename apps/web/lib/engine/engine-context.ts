@@ -5,7 +5,7 @@
  *
  * Three layers:
  *   STATIC_SYSTEM_PROMPT  — stable rules, tagged with cache_control in RE-1.3
- *   buildDynamicBlock()   — per-session data (balances, tools, contacts, goals, advice)
+ *   buildDynamicBlock()   — per-session data (balances, tools, contacts, advice)
  *   buildFullDynamicContext() — unified context assembly combining dynamic block
  *                               with intelligence layer (F2/F4/F5)
  *
@@ -59,15 +59,6 @@ export interface Contact {
   address: string;
 }
 
-export interface GoalSummary {
-  id: string;
-  name: string;
-  emoji: string;
-  targetAmount: number;
-  deadline: string | null;
-  status: string;
-}
-
 // ---------------------------------------------------------------------------
 // buildAdviceContext — moved from engine-factory.ts (2.5.1)
 // ---------------------------------------------------------------------------
@@ -77,9 +68,11 @@ export async function buildAdviceContext(userId: string): Promise<string> {
     // [SIMPLIFICATION DAY 5] AdviceLog lost outcomeStatus, actionTaken,
     // followUp* columns when the outcome-check + follow-up cron stack was
     // retired. Advice context now reads pure history (last 5 in 30d) without
-    // outcome filtering or "acted on / not yet acted on" annotations. Goal
-    // join still works via goalId — we just hydrate it via a separate lookup
-    // to avoid keeping the include in the type signature.
+    // outcome filtering or "acted on / not yet acted on" annotations.
+    // [SPEC 17 — 2026-05-07] AdviceLog.goalId column dropped along with the
+    // SavingsGoal table — the previous secondary lookup that hydrated
+    // "(toward {goalName})" annotations is gone, advice now renders as
+    // a pure date-prefixed line.
     const recentAdvice = await prisma.adviceLog.findMany({
       where: {
         userId,
@@ -91,20 +84,9 @@ export async function buildAdviceContext(userId: string): Promise<string> {
 
     if (recentAdvice.length === 0) return '';
 
-    const goalIds = recentAdvice.map((a) => a.goalId).filter((g): g is string => !!g);
-    const goals = goalIds.length
-      ? await prisma.savingsGoal.findMany({
-          where: { id: { in: goalIds } },
-          select: { id: true, name: true },
-        }).catch(() => [])
-      : [];
-    const goalNameById = new Map(goals.map((g) => [g.id, g.name]));
-
     const lines = recentAdvice.map((a) => {
       const daysAgo = Math.round((Date.now() - a.createdAt.getTime()) / 86_400_000);
-      const goalName = a.goalId ? goalNameById.get(a.goalId) : undefined;
-      const goalNote = goalName ? ` (toward ${goalName})` : '';
-      return `- ${daysAgo}d ago: ${a.adviceText}${goalNote}`;
+      return `- ${daysAgo}d ago: ${a.adviceText}`;
     });
 
     return [
@@ -122,7 +104,7 @@ export async function buildAdviceContext(userId: string): Promise<string> {
 // STATIC_SYSTEM_PROMPT — cacheable, build-time tool counts (2.5.2 + v1.4)
 //
 // Contains all stable rules and instructions. References to live data
-// (balances, tools, contacts, goals) use the phrase "session context"
+// (balances, tools, contacts) use the phrase "session context"
 // which maps to the dynamic block that follows this in the full prompt.
 //
 // Tool counts (TOTAL_COUNT, READ_COUNT, WRITE_COUNT) are interpolated from
@@ -489,7 +471,7 @@ Invariants: LEAN stays terse — no mid-flight narration, no \`update_todo\`. RI
 // buildDynamicBlock — per-session context, never cached (2.5.2)
 //
 // Contains everything that changes between sessions: wallet address,
-// balances, active write tools, contacts, goals, and advice memory.
+// balances, active write tools, contacts, and advice memory.
 // Appended after STATIC_SYSTEM_PROMPT in the combined system prompt.
 // In RE-1.3 this becomes the second (uncached) system block.
 // ---------------------------------------------------------------------------
@@ -593,9 +575,6 @@ export function buildFinancialContextBlock(
   if (snapshot.currentApy !== null) {
     lines.push(`Current savings APY: ${snapshot.currentApy.toFixed(2)}%`);
   }
-  if (snapshot.openGoals.length > 0) {
-    lines.push(`Open goals: ${snapshot.openGoals.join('; ')}`);
-  }
   if (snapshot.pendingAdvice) {
     lines.push(`Last advice (not yet acted on): ${snapshot.pendingAdvice}`);
   }
@@ -621,7 +600,6 @@ export function buildDynamicBlock(
     balances?: WalletBalanceSummary;
     contacts?: Contact[];
     swapTokenNames?: string[];
-    goals?: GoalSummary[];
     adviceContext?: string;
     useSyntheticPrefetch?: boolean;
     /**
@@ -650,7 +628,6 @@ export function buildDynamicBlock(
   const balances = opts?.balances;
   const contacts = opts?.contacts;
   const swapTokenNames = opts?.swapTokenNames;
-  const goals = opts?.goals;
   const adviceContext = opts?.adviceContext;
   const financialContextBlock = buildFinancialContextBlock(
     opts?.financialContext,
@@ -696,10 +673,6 @@ export function buildDynamicBlock(
     ? `Saved contacts: ${contacts.map((c) => `${c.name} → ${c.address}`).join(', ')}\n- When user says "send to <name>", resolve from contacts above and use send_transfer with the address.\n- When the user asks ONLY for a contact's address ("what's funkii's address", "what is X's wallet"), answer DIRECTLY from the list above. Do NOT call balance_check, savings_info, or any other tool — the address is already in this prompt. Just quote it.\n- When the user wants to inspect a contact's wallet (history, activity, portfolio), pass the contact's address explicitly — \`transaction_history({ address: "<contact_addr>" })\`, \`render_canvas({ template: "activity_heatmap", params: { address: "<contact_addr>" } })\`, etc. Do NOT default to the user's own wallet.`
     : 'No saved contacts yet.';
 
-  const goalsBlock = goals && goals.length > 0
-    ? `Active goals:\n${goals.map((g) => `- ${g.emoji} ${g.name}: $${g.targetAmount.toFixed(2)}${g.deadline ? ` by ${g.deadline}` : ''} (ID: ${g.id})`).join('\n')}\n- When mentioning progress, compare the total savings balance (from prefetched data or savings_info) against each goal's target.`
-    : 'No savings goals set.';
-
   const financialContextSection = financialContextBlock
     ? `\n\n## Daily orientation snapshot\n${financialContextBlock}`
     : '';
@@ -719,12 +692,6 @@ Supported swap tokens (swap_execute resolves these by name — NO search needed)
 ${contactsBlock}
 - To save a new contact, use the save_contact tool. Do NOT web-search for contacts.
 - If user says "save a contact" or "add a contact", ask for the name and Sui address, then call save_contact.
-
-## Savings goals
-${goalsBlock}
-- Users can create, list, update, and delete goals via savings_goal_* tools.
-- Goals track aspirational targets against the total savings balance — they are NOT separate allocated sub-accounts.
-- When a user deposits or withdraws, mention how it affects their goal progress if relevant.
 
 ## Advice memory
 ${adviceContext || 'No prior advice on record.'}`;
@@ -793,7 +760,6 @@ export function buildFullDynamicContext(
     balances?: WalletBalanceSummary;
     contacts?: Contact[];
     swapTokenNames?: string[];
-    goals?: GoalSummary[];
     adviceContext?: string;
     intelligence?: IntelligenceContext;
     useSyntheticPrefetch?: boolean;
@@ -817,7 +783,6 @@ export function buildFullDynamicContext(
     balances: opts.balances,
     contacts: opts.contacts,
     swapTokenNames: opts.swapTokenNames,
-    goals: opts.goals,
     adviceContext: opts.adviceContext,
     useSyntheticPrefetch: opts.useSyntheticPrefetch,
     financialContext: opts.financialContext,

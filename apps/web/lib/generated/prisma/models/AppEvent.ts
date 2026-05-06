@@ -31,7 +31,6 @@ export type AppEventMinAggregateOutputType = {
   title: string | null
   digest: string | null
   adviceLogId: string | null
-  goalId: string | null
   suiTxVerified: boolean | null
   source: string | null
   createdAt: Date | null
@@ -44,7 +43,6 @@ export type AppEventMaxAggregateOutputType = {
   title: string | null
   digest: string | null
   adviceLogId: string | null
-  goalId: string | null
   suiTxVerified: boolean | null
   source: string | null
   createdAt: Date | null
@@ -58,7 +56,6 @@ export type AppEventCountAggregateOutputType = {
   details: number
   digest: number
   adviceLogId: number
-  goalId: number
   suiTxVerified: number
   source: number
   createdAt: number
@@ -73,7 +70,6 @@ export type AppEventMinAggregateInputType = {
   title?: true
   digest?: true
   adviceLogId?: true
-  goalId?: true
   suiTxVerified?: true
   source?: true
   createdAt?: true
@@ -86,7 +82,6 @@ export type AppEventMaxAggregateInputType = {
   title?: true
   digest?: true
   adviceLogId?: true
-  goalId?: true
   suiTxVerified?: true
   source?: true
   createdAt?: true
@@ -100,7 +95,6 @@ export type AppEventCountAggregateInputType = {
   details?: true
   digest?: true
   adviceLogId?: true
-  goalId?: true
   suiTxVerified?: true
   source?: true
   createdAt?: true
@@ -187,7 +181,6 @@ export type AppEventGroupByOutputType = {
   details: runtime.JsonValue | null
   digest: string | null
   adviceLogId: string | null
-  goalId: string | null
   suiTxVerified: boolean
   source: string
   createdAt: Date
@@ -222,7 +215,6 @@ export type AppEventWhereInput = {
   details?: Prisma.JsonNullableFilter<"AppEvent">
   digest?: Prisma.StringNullableFilter<"AppEvent"> | string | null
   adviceLogId?: Prisma.StringNullableFilter<"AppEvent"> | string | null
-  goalId?: Prisma.StringNullableFilter<"AppEvent"> | string | null
   suiTxVerified?: Prisma.BoolFilter<"AppEvent"> | boolean
   source?: Prisma.StringFilter<"AppEvent"> | string
   createdAt?: Prisma.DateTimeFilter<"AppEvent"> | Date | string
@@ -236,7 +228,6 @@ export type AppEventOrderByWithRelationInput = {
   details?: Prisma.SortOrderInput | Prisma.SortOrder
   digest?: Prisma.SortOrderInput | Prisma.SortOrder
   adviceLogId?: Prisma.SortOrderInput | Prisma.SortOrder
-  goalId?: Prisma.SortOrderInput | Prisma.SortOrder
   suiTxVerified?: Prisma.SortOrder
   source?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -253,7 +244,6 @@ export type AppEventWhereUniqueInput = Prisma.AtLeast<{
   details?: Prisma.JsonNullableFilter<"AppEvent">
   digest?: Prisma.StringNullableFilter<"AppEvent"> | string | null
   adviceLogId?: Prisma.StringNullableFilter<"AppEvent"> | string | null
-  goalId?: Prisma.StringNullableFilter<"AppEvent"> | string | null
   suiTxVerified?: Prisma.BoolFilter<"AppEvent"> | boolean
   source?: Prisma.StringFilter<"AppEvent"> | string
   createdAt?: Prisma.DateTimeFilter<"AppEvent"> | Date | string
@@ -267,7 +257,6 @@ export type AppEventOrderByWithAggregationInput = {
   details?: Prisma.SortOrderInput | Prisma.SortOrder
   digest?: Prisma.SortOrderInput | Prisma.SortOrder
   adviceLogId?: Prisma.SortOrderInput | Prisma.SortOrder
-  goalId?: Prisma.SortOrderInput | Prisma.SortOrder
   suiTxVerified?: Prisma.SortOrder
   source?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -287,7 +276,6 @@ export type AppEventScalarWhereWithAggregatesInput = {
   details?: Prisma.JsonNullableWithAggregatesFilter<"AppEvent">
   digest?: Prisma.StringNullableWithAggregatesFilter<"AppEvent"> | string | null
   adviceLogId?: Prisma.StringNullableWithAggregatesFilter<"AppEvent"> | string | null
-  goalId?: Prisma.StringNullableWithAggregatesFilter<"AppEvent"> | string | null
   suiTxVerified?: Prisma.BoolWithAggregatesFilter<"AppEvent"> | boolean
   source?: Prisma.StringWithAggregatesFilter<"AppEvent"> | string
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"AppEvent"> | Date | string
@@ -301,7 +289,6 @@ export type AppEventCreateInput = {
   details?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   digest?: string | null
   adviceLogId?: string | null
-  goalId?: string | null
   suiTxVerified?: boolean
   source?: string
   createdAt?: Date | string
@@ -315,7 +302,6 @@ export type AppEventUncheckedCreateInput = {
   details?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   digest?: string | null
   adviceLogId?: string | null
-  goalId?: string | null
   suiTxVerified?: boolean
   source?: string
   createdAt?: Date | string
@@ -329,7 +315,6 @@ export type AppEventUpdateInput = {
   details?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   digest?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   adviceLogId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  goalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   suiTxVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
   source?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -343,7 +328,6 @@ export type AppEventUncheckedUpdateInput = {
   details?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   digest?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   adviceLogId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  goalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   suiTxVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
   source?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -357,7 +341,6 @@ export type AppEventCreateManyInput = {
   details?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   digest?: string | null
   adviceLogId?: string | null
-  goalId?: string | null
   suiTxVerified?: boolean
   source?: string
   createdAt?: Date | string
@@ -371,7 +354,6 @@ export type AppEventUpdateManyMutationInput = {
   details?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   digest?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   adviceLogId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  goalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   suiTxVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
   source?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -385,7 +367,6 @@ export type AppEventUncheckedUpdateManyInput = {
   details?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   digest?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   adviceLogId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  goalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   suiTxVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
   source?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -399,7 +380,6 @@ export type AppEventCountOrderByAggregateInput = {
   details?: Prisma.SortOrder
   digest?: Prisma.SortOrder
   adviceLogId?: Prisma.SortOrder
-  goalId?: Prisma.SortOrder
   suiTxVerified?: Prisma.SortOrder
   source?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -412,7 +392,6 @@ export type AppEventMaxOrderByAggregateInput = {
   title?: Prisma.SortOrder
   digest?: Prisma.SortOrder
   adviceLogId?: Prisma.SortOrder
-  goalId?: Prisma.SortOrder
   suiTxVerified?: Prisma.SortOrder
   source?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -425,7 +404,6 @@ export type AppEventMinOrderByAggregateInput = {
   title?: Prisma.SortOrder
   digest?: Prisma.SortOrder
   adviceLogId?: Prisma.SortOrder
-  goalId?: Prisma.SortOrder
   suiTxVerified?: Prisma.SortOrder
   source?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -441,7 +419,6 @@ export type AppEventSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs
   details?: boolean
   digest?: boolean
   adviceLogId?: boolean
-  goalId?: boolean
   suiTxVerified?: boolean
   source?: boolean
   createdAt?: boolean
@@ -455,7 +432,6 @@ export type AppEventSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exte
   details?: boolean
   digest?: boolean
   adviceLogId?: boolean
-  goalId?: boolean
   suiTxVerified?: boolean
   source?: boolean
   createdAt?: boolean
@@ -469,7 +445,6 @@ export type AppEventSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exte
   details?: boolean
   digest?: boolean
   adviceLogId?: boolean
-  goalId?: boolean
   suiTxVerified?: boolean
   source?: boolean
   createdAt?: boolean
@@ -483,13 +458,12 @@ export type AppEventSelectScalar = {
   details?: boolean
   digest?: boolean
   adviceLogId?: boolean
-  goalId?: boolean
   suiTxVerified?: boolean
   source?: boolean
   createdAt?: boolean
 }
 
-export type AppEventOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "address" | "type" | "title" | "details" | "digest" | "adviceLogId" | "goalId" | "suiTxVerified" | "source" | "createdAt", ExtArgs["result"]["appEvent"]>
+export type AppEventOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "address" | "type" | "title" | "details" | "digest" | "adviceLogId" | "suiTxVerified" | "source" | "createdAt", ExtArgs["result"]["appEvent"]>
 
 export type $AppEventPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "AppEvent"
@@ -502,7 +476,6 @@ export type $AppEventPayload<ExtArgs extends runtime.Types.Extensions.InternalAr
     details: runtime.JsonValue | null
     digest: string | null
     adviceLogId: string | null
-    goalId: string | null
     suiTxVerified: boolean
     source: string
     createdAt: Date
@@ -936,7 +909,6 @@ export interface AppEventFieldRefs {
   readonly details: Prisma.FieldRef<"AppEvent", 'Json'>
   readonly digest: Prisma.FieldRef<"AppEvent", 'String'>
   readonly adviceLogId: Prisma.FieldRef<"AppEvent", 'String'>
-  readonly goalId: Prisma.FieldRef<"AppEvent", 'String'>
   readonly suiTxVerified: Prisma.FieldRef<"AppEvent", 'Boolean'>
   readonly source: Prisma.FieldRef<"AppEvent", 'String'>
   readonly createdAt: Prisma.FieldRef<"AppEvent", 'DateTime'>

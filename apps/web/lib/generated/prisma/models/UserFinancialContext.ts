@@ -15,17 +15,23 @@ import type * as Prisma from "../internal/prismaNamespace"
 /**
  * Model UserFinancialContext
  * [v1.4.2 — Day 5 / Spec Item 6] Daily snapshot of every active user's
- * orientation block — savings / debt / wallet totals, health factor, open
- * goals, last unactioned advice, and a one-line "recent activity"
- * summary. Read by `engine-context.ts:buildDynamicBlock` at engine boot
- * to seed the `<financial_context>` system-prompt section so a returning
- * user gets a contextual greeting WITHOUT spending tool calls (and tokens)
+ * orientation block — savings / debt / wallet totals, health factor,
+ * last unactioned advice, and a one-line "recent activity" summary.
+ * Read by `engine-context.ts:buildDynamicBlock` at engine boot to seed
+ * the `<financial_context>` system-prompt section so a returning user
+ * gets a contextual greeting WITHOUT spending tool calls (and tokens)
  * re-deriving state every session.
  * 
  * Dual-key by design [v1.4 — B2]: callers in the engine path only know
  * the wallet `address` (no Prisma `User.id` cuid), but joins to
- * `AdviceLog` / `SavingsGoal` / `PortfolioSnapshot` need the cuid. The
- * cron writer populates BOTH on upsert so either lookup works.
+ * `AdviceLog` / `PortfolioSnapshot` need the cuid. The cron writer
+ * populates BOTH on upsert so either lookup works.
+ * 
+ * [SPEC 17 — 2026-05-07] `openGoals` Json column dropped — the
+ * SavingsGoal table + 4 engine tools + UI panel were retired in
+ * SPEC 17 (savings-goal layer wasn't producing observable agent
+ * behavior change). The `health_check` + `portfolio_overview` +
+ * `yield_summary` tools cover "track my savings progress" already.
  * 
  * Cached at `fin_ctx:${address}` in Upstash Redis with a 24h TTL that
  * matches the cron cadence. Invalidated synchronously after every
@@ -116,7 +122,6 @@ export type UserFinancialContextCountAggregateOutputType = {
   savingsUsdsui: number
   currentApy: number
   recentActivity: number
-  openGoals: number
   pendingAdvice: number
   daysSinceLastSession: number
   generatedAt: number
@@ -195,7 +200,6 @@ export type UserFinancialContextCountAggregateInputType = {
   savingsUsdsui?: true
   currentApy?: true
   recentActivity?: true
-  openGoals?: true
   pendingAdvice?: true
   daysSinceLastSession?: true
   generatedAt?: true
@@ -301,7 +305,6 @@ export type UserFinancialContextGroupByOutputType = {
   savingsUsdsui: number | null
   currentApy: number | null
   recentActivity: string
-  openGoals: runtime.JsonValue
   pendingAdvice: string | null
   daysSinceLastSession: number
   generatedAt: Date
@@ -343,7 +346,6 @@ export type UserFinancialContextWhereInput = {
   savingsUsdsui?: Prisma.FloatNullableFilter<"UserFinancialContext"> | number | null
   currentApy?: Prisma.FloatNullableFilter<"UserFinancialContext"> | number | null
   recentActivity?: Prisma.StringFilter<"UserFinancialContext"> | string
-  openGoals?: Prisma.JsonFilter<"UserFinancialContext">
   pendingAdvice?: Prisma.StringNullableFilter<"UserFinancialContext"> | string | null
   daysSinceLastSession?: Prisma.IntFilter<"UserFinancialContext"> | number
   generatedAt?: Prisma.DateTimeFilter<"UserFinancialContext"> | Date | string
@@ -362,7 +364,6 @@ export type UserFinancialContextOrderByWithRelationInput = {
   savingsUsdsui?: Prisma.SortOrderInput | Prisma.SortOrder
   currentApy?: Prisma.SortOrderInput | Prisma.SortOrder
   recentActivity?: Prisma.SortOrder
-  openGoals?: Prisma.SortOrder
   pendingAdvice?: Prisma.SortOrderInput | Prisma.SortOrder
   daysSinceLastSession?: Prisma.SortOrder
   generatedAt?: Prisma.SortOrder
@@ -384,7 +385,6 @@ export type UserFinancialContextWhereUniqueInput = Prisma.AtLeast<{
   savingsUsdsui?: Prisma.FloatNullableFilter<"UserFinancialContext"> | number | null
   currentApy?: Prisma.FloatNullableFilter<"UserFinancialContext"> | number | null
   recentActivity?: Prisma.StringFilter<"UserFinancialContext"> | string
-  openGoals?: Prisma.JsonFilter<"UserFinancialContext">
   pendingAdvice?: Prisma.StringNullableFilter<"UserFinancialContext"> | string | null
   daysSinceLastSession?: Prisma.IntFilter<"UserFinancialContext"> | number
   generatedAt?: Prisma.DateTimeFilter<"UserFinancialContext"> | Date | string
@@ -403,7 +403,6 @@ export type UserFinancialContextOrderByWithAggregationInput = {
   savingsUsdsui?: Prisma.SortOrderInput | Prisma.SortOrder
   currentApy?: Prisma.SortOrderInput | Prisma.SortOrder
   recentActivity?: Prisma.SortOrder
-  openGoals?: Prisma.SortOrder
   pendingAdvice?: Prisma.SortOrderInput | Prisma.SortOrder
   daysSinceLastSession?: Prisma.SortOrder
   generatedAt?: Prisma.SortOrder
@@ -430,7 +429,6 @@ export type UserFinancialContextScalarWhereWithAggregatesInput = {
   savingsUsdsui?: Prisma.FloatNullableWithAggregatesFilter<"UserFinancialContext"> | number | null
   currentApy?: Prisma.FloatNullableWithAggregatesFilter<"UserFinancialContext"> | number | null
   recentActivity?: Prisma.StringWithAggregatesFilter<"UserFinancialContext"> | string
-  openGoals?: Prisma.JsonWithAggregatesFilter<"UserFinancialContext">
   pendingAdvice?: Prisma.StringNullableWithAggregatesFilter<"UserFinancialContext"> | string | null
   daysSinceLastSession?: Prisma.IntWithAggregatesFilter<"UserFinancialContext"> | number
   generatedAt?: Prisma.DateTimeWithAggregatesFilter<"UserFinancialContext"> | Date | string
@@ -449,7 +447,6 @@ export type UserFinancialContextCreateInput = {
   savingsUsdsui?: number | null
   currentApy?: number | null
   recentActivity: string
-  openGoals: Prisma.JsonNullValueInput | runtime.InputJsonValue
   pendingAdvice?: string | null
   daysSinceLastSession: number
   generatedAt?: Date | string
@@ -468,7 +465,6 @@ export type UserFinancialContextUncheckedCreateInput = {
   savingsUsdsui?: number | null
   currentApy?: number | null
   recentActivity: string
-  openGoals: Prisma.JsonNullValueInput | runtime.InputJsonValue
   pendingAdvice?: string | null
   daysSinceLastSession: number
   generatedAt?: Date | string
@@ -487,7 +483,6 @@ export type UserFinancialContextUpdateInput = {
   savingsUsdsui?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   currentApy?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   recentActivity?: Prisma.StringFieldUpdateOperationsInput | string
-  openGoals?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   pendingAdvice?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   daysSinceLastSession?: Prisma.IntFieldUpdateOperationsInput | number
   generatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -506,7 +501,6 @@ export type UserFinancialContextUncheckedUpdateInput = {
   savingsUsdsui?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   currentApy?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   recentActivity?: Prisma.StringFieldUpdateOperationsInput | string
-  openGoals?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   pendingAdvice?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   daysSinceLastSession?: Prisma.IntFieldUpdateOperationsInput | number
   generatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -525,7 +519,6 @@ export type UserFinancialContextCreateManyInput = {
   savingsUsdsui?: number | null
   currentApy?: number | null
   recentActivity: string
-  openGoals: Prisma.JsonNullValueInput | runtime.InputJsonValue
   pendingAdvice?: string | null
   daysSinceLastSession: number
   generatedAt?: Date | string
@@ -544,7 +537,6 @@ export type UserFinancialContextUpdateManyMutationInput = {
   savingsUsdsui?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   currentApy?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   recentActivity?: Prisma.StringFieldUpdateOperationsInput | string
-  openGoals?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   pendingAdvice?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   daysSinceLastSession?: Prisma.IntFieldUpdateOperationsInput | number
   generatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -563,7 +555,6 @@ export type UserFinancialContextUncheckedUpdateManyInput = {
   savingsUsdsui?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   currentApy?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   recentActivity?: Prisma.StringFieldUpdateOperationsInput | string
-  openGoals?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   pendingAdvice?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   daysSinceLastSession?: Prisma.IntFieldUpdateOperationsInput | number
   generatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -582,7 +573,6 @@ export type UserFinancialContextCountOrderByAggregateInput = {
   savingsUsdsui?: Prisma.SortOrder
   currentApy?: Prisma.SortOrder
   recentActivity?: Prisma.SortOrder
-  openGoals?: Prisma.SortOrder
   pendingAdvice?: Prisma.SortOrder
   daysSinceLastSession?: Prisma.SortOrder
   generatedAt?: Prisma.SortOrder
@@ -661,7 +651,6 @@ export type UserFinancialContextSelect<ExtArgs extends runtime.Types.Extensions.
   savingsUsdsui?: boolean
   currentApy?: boolean
   recentActivity?: boolean
-  openGoals?: boolean
   pendingAdvice?: boolean
   daysSinceLastSession?: boolean
   generatedAt?: boolean
@@ -680,7 +669,6 @@ export type UserFinancialContextSelectCreateManyAndReturn<ExtArgs extends runtim
   savingsUsdsui?: boolean
   currentApy?: boolean
   recentActivity?: boolean
-  openGoals?: boolean
   pendingAdvice?: boolean
   daysSinceLastSession?: boolean
   generatedAt?: boolean
@@ -699,7 +687,6 @@ export type UserFinancialContextSelectUpdateManyAndReturn<ExtArgs extends runtim
   savingsUsdsui?: boolean
   currentApy?: boolean
   recentActivity?: boolean
-  openGoals?: boolean
   pendingAdvice?: boolean
   daysSinceLastSession?: boolean
   generatedAt?: boolean
@@ -718,14 +705,13 @@ export type UserFinancialContextSelectScalar = {
   savingsUsdsui?: boolean
   currentApy?: boolean
   recentActivity?: boolean
-  openGoals?: boolean
   pendingAdvice?: boolean
   daysSinceLastSession?: boolean
   generatedAt?: boolean
   updatedAt?: boolean
 }
 
-export type UserFinancialContextOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "address" | "savingsUsdc" | "debtUsdc" | "healthFactor" | "walletUsdc" | "walletUsdsui" | "savingsUsdsui" | "currentApy" | "recentActivity" | "openGoals" | "pendingAdvice" | "daysSinceLastSession" | "generatedAt" | "updatedAt", ExtArgs["result"]["userFinancialContext"]>
+export type UserFinancialContextOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "address" | "savingsUsdc" | "debtUsdc" | "healthFactor" | "walletUsdc" | "walletUsdsui" | "savingsUsdsui" | "currentApy" | "recentActivity" | "pendingAdvice" | "daysSinceLastSession" | "generatedAt" | "updatedAt", ExtArgs["result"]["userFinancialContext"]>
 
 export type $UserFinancialContextPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "UserFinancialContext"
@@ -751,7 +737,6 @@ export type $UserFinancialContextPayload<ExtArgs extends runtime.Types.Extension
     savingsUsdsui: number | null
     currentApy: number | null
     recentActivity: string
-    openGoals: runtime.JsonValue
     pendingAdvice: string | null
     daysSinceLastSession: number
     generatedAt: Date
@@ -1190,7 +1175,6 @@ export interface UserFinancialContextFieldRefs {
   readonly savingsUsdsui: Prisma.FieldRef<"UserFinancialContext", 'Float'>
   readonly currentApy: Prisma.FieldRef<"UserFinancialContext", 'Float'>
   readonly recentActivity: Prisma.FieldRef<"UserFinancialContext", 'String'>
-  readonly openGoals: Prisma.FieldRef<"UserFinancialContext", 'Json'>
   readonly pendingAdvice: Prisma.FieldRef<"UserFinancialContext", 'String'>
   readonly daysSinceLastSession: Prisma.FieldRef<"UserFinancialContext", 'Int'>
   readonly generatedAt: Prisma.FieldRef<"UserFinancialContext", 'DateTime'>

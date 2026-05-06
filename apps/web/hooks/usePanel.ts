@@ -7,12 +7,16 @@ import { usePathname } from 'next/navigation';
 // Both panels were no-ops since S.5; the sidebar entries are gone now.
 // Old deep-links (`/automations`, `/reports`) silently fall through to
 // chat via panelFromUrl()'s `URL_PANEL_MAP[pathname] ?? 'chat'` default.
+//
+// [SPEC 17 — 2026-05-07] Dropped 'goals' panel id along with the
+// SavingsGoal table + GoalsPanel surface. Old `/goals` deep-links fall
+// through to chat via the same `URL_PANEL_MAP[pathname] ?? 'chat'`
+// default — no 404, just a clean redirect to the dashboard.
 export type PanelId =
   | 'chat'
   | 'portfolio'
   | 'activity'
   | 'pay'
-  | 'goals'
   | 'contacts'
   | 'store'
   | 'settings';
@@ -22,7 +26,6 @@ const PANEL_URL_MAP: Record<PanelId, string> = {
   portfolio: '/portfolio',
   activity: '/activity',
   pay: '/pay',
-  goals: '/goals',
   contacts: '/contacts',
   store: '/store',
   settings: '/settings',

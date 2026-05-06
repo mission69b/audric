@@ -13,7 +13,6 @@ const AdviceItemSchema = z.object({
   ]),
   adviceText: z.string().max(500),
   targetAmount: z.number().optional(),
-  goalId: z.string().optional(),
   followUpDays: z.number().int().min(1).max(30).optional(),
 });
 
@@ -31,7 +30,6 @@ export const recordAdviceTool = buildTool({
     'DO NOT call: "Your balance is $312", "The APY is 5.0%", "You repaid $50 yesterday"',
     '',
     'Include all distinct pieces of advice from a single turn as separate items.',
-    'Set goalId when the advice relates to a specific savings goal.',
   ].join('\n'),
   inputSchema: InputSchema,
   jsonSchema: {
@@ -58,7 +56,6 @@ export const recordAdviceTool = buildTool({
             },
             adviceText: { type: 'string', maxLength: 500 },
             targetAmount: { type: 'number' },
-            goalId: { type: 'string' },
             followUpDays: { type: 'integer', minimum: 1, maximum: 30 },
           },
         },

@@ -33,7 +33,7 @@ pnpm --filter audric-web typecheck
 | Telemetry | `lib/engine/harness-metrics.ts` |
 | Cron snapshots | `app/api/internal/*` |
 | Pay flows | `app/api/payments/*` |
-| Engine tool writes | `lib/engine/{advice-tool,goal-tools,contact-tools}.ts` |
+| Engine tool writes | `lib/engine/{advice-tool,contact-tools}.ts` |
 
 If you find yourself reaching for `prisma.X.create` somewhere new, ask if an existing write site can absorb it. See `.cursor/rules/prisma-models-overview.mdc` for the full catalog.
 

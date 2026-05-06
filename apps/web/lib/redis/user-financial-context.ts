@@ -62,7 +62,6 @@ export interface FinancialContextSnapshot {
   healthFactor: number | null;
   currentApy: number | null;
   recentActivity: string;
-  openGoals: string[];
   pendingAdvice: string | null;
   daysSinceLastSession: number;
 }
@@ -124,11 +123,6 @@ export async function getUserFinancialContext(
     healthFactor: row.healthFactor,
     currentApy: row.currentApy,
     recentActivity: row.recentActivity,
-    openGoals: Array.isArray(row.openGoals)
-      ? (row.openGoals as unknown[]).filter(
-          (g): g is string => typeof g === 'string',
-        )
-      : [],
     pendingAdvice: row.pendingAdvice,
     daysSinceLastSession: row.daysSinceLastSession,
   };

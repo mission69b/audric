@@ -19,9 +19,13 @@ export const maxDuration = 300;
  *     `debtUsdc` / `healthFactor` / `currentApy` come from the
  *     canonical {@link Portfolio} for the user's primary wallet.
  *   - `recentActivity` is a 1–2 phrase delta vs the previous snapshot.
- *   - `openGoals` is up to 3 active SavingsGoal rows.
  *   - `pendingAdvice` is the most recent `AdviceLog` with `actedOn = false`.
  *   - `daysSinceLastSession` is `now - max(SessionUsage.createdAt) / 86_400_000`.
+ *
+ * [SPEC 17 — 2026-05-07] `openGoals` field removed along with the
+ * `SavingsGoal` table; the snapshot no longer queries goals. The
+ * "track my savings progress" job-to-be-done is served by the
+ * `health_check` + `portfolio_overview` + `yield_summary` tools.
  *
  * The cron is idempotent (`upsert by userId`) and per-user errors
  * are caught + counted so one bad user never aborts the loop.
@@ -70,16 +74,11 @@ export async function POST(request: NextRequest) {
 
   for (const user of users) {
     try {
-      const [previous, goals, pendingAdvice, lastSession, portfolio] = await Promise.all([
+      const [previous, pendingAdvice, lastSession, portfolio] = await Promise.all([
         prisma.portfolioSnapshot.findMany({
           where: { userId: user.id },
           orderBy: { date: 'desc' },
           take: 2,
-        }),
-        prisma.savingsGoal.findMany({
-          where: { userId: user.id, status: { not: 'completed' } },
-          orderBy: { createdAt: 'desc' },
-          take: 3,
         }),
         prisma.adviceLog.findFirst({
           where: { userId: user.id, actedOn: false },
@@ -100,10 +99,6 @@ export async function POST(request: NextRequest) {
       const daysSinceLastSession = lastSession
         ? Math.floor((Date.now() - lastSession.createdAt.getTime()) / 86_400_000)
         : 0;
-
-      const openGoals = goals.map(
-        (g) => `${g.name} — target $${g.targetAmount.toFixed(0)}`,
-      );
 
       // Per-asset stable breakouts derived from the canonical portfolio.
       // `walletAllocations` is a per-symbol amount map (USDC / USDsui /
@@ -129,7 +124,6 @@ export async function POST(request: NextRequest) {
         healthFactor: portfolio.positions.healthFactor,
         currentApy: portfolio.positions.savingsRate || null,
         recentActivity,
-        openGoals,
         pendingAdvice: pendingAdvice?.adviceText ?? null,
         daysSinceLastSession,
       };

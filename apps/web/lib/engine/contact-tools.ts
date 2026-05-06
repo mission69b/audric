@@ -33,8 +33,8 @@ import {
  *      available" and gave up.
  *
  * These tools eliminate both failures by making the server the single
- * authoritative writer/reader of `userPreferences.contacts`. They mirror
- * the `savings_goal_*` pattern (see goal-tools.ts) — Prisma-backed `call()`,
+ * authoritative writer/reader of `userPreferences.contacts`. They follow
+ * the standard server-tool pattern — Prisma-backed `call()`,
  * `permissionLevel: 'auto'` (no funds move, no need to gate), schema
  * validated by Zod.
  *

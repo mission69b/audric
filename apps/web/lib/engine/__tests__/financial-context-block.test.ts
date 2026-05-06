@@ -29,7 +29,6 @@ const baseSnapshot: FinancialContextSnapshot = {
   healthFactor: 2.456,
   currentApy: 4.234,
   recentActivity: 'Saved $100.00.',
-  openGoals: ['Emergency fund — target $5000', 'New laptop — target $2000'],
   pendingAdvice: 'Consider increasing your savings rate by 5%.',
   daysSinceLastSession: 3,
 };
@@ -72,21 +71,9 @@ describe('buildFinancialContextBlock', () => {
     expect(out).not.toContain('savings APY:');
   });
 
-  it('omits open goals when array is empty', () => {
-    const out = buildFinancialContextBlock({ ...baseSnapshot, openGoals: [] });
-    expect(out).not.toContain('Open goals:');
-  });
-
   it('omits pending advice when null', () => {
     const out = buildFinancialContextBlock({ ...baseSnapshot, pendingAdvice: null });
     expect(out).not.toContain('Last advice');
-  });
-
-  it('joins multiple goals with semicolon-space', () => {
-    const out = buildFinancialContextBlock(baseSnapshot);
-    expect(out).toContain(
-      'Open goals: Emergency fund — target $5000; New laptop — target $2000',
-    );
   });
 
   it('renders "Today" when daysSinceLastSession is 0', () => {

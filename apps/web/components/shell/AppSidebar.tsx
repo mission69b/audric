@@ -57,14 +57,17 @@ interface NavEntry {
 
 // [SIMPLIFICATION DAY 11] Dropped Automations + Reports nav entries — both
 // panels were deleted in S.5/S.6 and the chat-first dashboard owns those
-// surfaces now (goals + recurring deposits live behind goal/contact CRUD,
-// reports are answered live in chat by `report` / `transaction_history`).
+// surfaces now (recurring deposits live behind contact CRUD, reports are
+// answered live in chat by `report` / `transaction_history`).
+//
+// [SPEC 17 — 2026-05-07] Dropped Goals nav entry along with the SavingsGoal
+// table + GoalsPanel surface. The "track my savings progress" job-to-be-done
+// is served by `health_check` + `portfolio_overview` + `yield_summary` tools.
 const NAV_ITEMS: NavEntry[] = [
   { id: 'chat',      label: 'Dashboard', icon: 'dashboard' },
   { id: 'portfolio', label: 'Portfolio', icon: 'portfolio' },
   { id: 'activity',  label: 'Activity',  icon: 'activity', badge: 'dot' },
   { id: 'pay',       label: 'Pay',       icon: 'pay' },
-  { id: 'goals',     label: 'Goals',     icon: 'goals' },
   { id: 'contacts',  label: 'Contacts',  icon: 'contacts' },
   { id: 'store',     label: 'Store',     icon: 'store',    badge: 'soon' },
   { id: 'settings',  label: 'Settings',  icon: 'settings' },

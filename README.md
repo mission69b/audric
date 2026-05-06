@@ -70,7 +70,7 @@ Your money lives in a non-custodial wallet. Audric executes transactions, but yo
 
 `record_advice` tool writes `AdviceLog` rows; `buildAdviceContext()` hydrates last 30 days into every turn so the chat doesn't contradict itself across sessions. Episodic memory (`UserMemory`) and the full conversation log run alongside it for the future self-hosted model migration.
 
-> **What was deleted in the April 2026 simplification:** Copilot suggestions, scheduled actions / DCA, morning briefings, rate alerts, auto-compound, the features-budget allowance, the proactive-nudges pipeline, savings-goal milestone celebrations, follow-up queues, and the proposal pipeline behind `BehavioralPattern`. zkLogin can't sign without user presence — "autonomous" was reminders dressed up as agency. See the S.0–S.19 entries in [`audric-build-tracker.md`](https://github.com/mission69b/t2000/blob/main/audric-build-tracker.md) for the locked decisions on what we will not bring back.
+> **What was deleted in the April 2026 simplification:** Copilot suggestions, scheduled actions / DCA, morning briefings, rate alerts, auto-compound, the features-budget allowance, the proactive-nudges pipeline, savings-goal milestone celebrations, follow-up queues, and the proposal pipeline behind `BehavioralPattern`. zkLogin can't sign without user presence — "autonomous" was reminders dressed up as agency. **Update (S.103, May 2026):** the broader **savings-goal layer was fully retired in SPEC 17** — `SavingsGoal` Prisma table, 4 `savings_goal_*` engine tools, GoalsPanel UI, settings tab, and `openGoals` snapshot field all dropped. The "track my savings progress" job is now served by `health_check` + `portfolio_overview` + `yield_summary`. See the S.0–S.19 + S.103 entries in [`audric-build-tracker.md`](https://github.com/mission69b/t2000/blob/main/audric-build-tracker.md) for the locked decisions on what we will not bring back.
 
 ### What shipped recently — Spec 1 + Spec 2
 
@@ -93,7 +93,6 @@ Structured card types for tool results: balance, savings, health, staking, proto
 
 ### Additional Features
 
-- **Savings goals** — named goals with deadlines and progress tracking (silent — no notifications)
 - **Health Factor in chat** — surfaced prominently in `health_check` and `balance_check` cards. As of S.31 (2026-04-29) there are zero proactive surfaces; HF is shown when the user asks (and chat naturally surfaces it whenever they touch credit)
 - **Session pre-fetch** — balance + savings data injected at turn 0 for faster first responses
 - **Streaming tool dispatch** — read-only tools fire mid-stream before the LLM finishes

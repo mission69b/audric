@@ -186,6 +186,8 @@ Signed-in users can link up to 10 Sui addresses (e.g. a hardware wallet alongsid
 Backed by the `LinkedWallet` Prisma model (`userId`, `suiAddress`, `label`, `isPrimary`, `verifiedAt`).
 
 > **Removed in S.22 (April 2026):** the public `/report/[address]` wallet report (and its `PublicReport` cache). The "Audric would do" suggestions there were promoting features deleted in S.0–S.12 (24/7 alerts, recurring transactions, savings-goal automation), and a second standalone product surface contradicted the chat-first thesis. Heuristic portfolio analysis lives inside chat now via `portfolio_overview` + `health_check`.
+>
+> **Update (S.103, SPEC 17, May 2026):** the broader savings-goal layer is now fully removed — `SavingsGoal` Prisma table, 4 `savings_goal_*` engine tools, `GoalsPanel` settings/dashboard surface, `openGoals` snapshot field, and the heuristic prompt line that nudged "your goal is off-track". Conversational goals ("I want to save $500 by May") are still observable by the agent via memory + `goal_progress` proactive markers, but there is no structured persistence layer. Track savings progress via `health_check` + `portfolio_overview` + `yield_summary`.
 
 ---
 

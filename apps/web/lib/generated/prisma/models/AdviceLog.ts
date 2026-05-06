@@ -41,7 +41,6 @@ export type AdviceLogMinAggregateOutputType = {
   adviceText: string | null
   adviceType: string | null
   targetAmount: number | null
-  goalId: string | null
   appEventId: string | null
   actedOn: boolean | null
   createdAt: Date | null
@@ -55,7 +54,6 @@ export type AdviceLogMaxAggregateOutputType = {
   adviceText: string | null
   adviceType: string | null
   targetAmount: number | null
-  goalId: string | null
   appEventId: string | null
   actedOn: boolean | null
   createdAt: Date | null
@@ -69,7 +67,6 @@ export type AdviceLogCountAggregateOutputType = {
   adviceText: number
   adviceType: number
   targetAmount: number
-  goalId: number
   appEventId: number
   actedOn: number
   createdAt: number
@@ -93,7 +90,6 @@ export type AdviceLogMinAggregateInputType = {
   adviceText?: true
   adviceType?: true
   targetAmount?: true
-  goalId?: true
   appEventId?: true
   actedOn?: true
   createdAt?: true
@@ -107,7 +103,6 @@ export type AdviceLogMaxAggregateInputType = {
   adviceText?: true
   adviceType?: true
   targetAmount?: true
-  goalId?: true
   appEventId?: true
   actedOn?: true
   createdAt?: true
@@ -121,7 +116,6 @@ export type AdviceLogCountAggregateInputType = {
   adviceText?: true
   adviceType?: true
   targetAmount?: true
-  goalId?: true
   appEventId?: true
   actedOn?: true
   createdAt?: true
@@ -222,7 +216,6 @@ export type AdviceLogGroupByOutputType = {
   adviceText: string
   adviceType: string
   targetAmount: number | null
-  goalId: string | null
   appEventId: string | null
   actedOn: boolean
   createdAt: Date
@@ -259,13 +252,11 @@ export type AdviceLogWhereInput = {
   adviceText?: Prisma.StringFilter<"AdviceLog"> | string
   adviceType?: Prisma.StringFilter<"AdviceLog"> | string
   targetAmount?: Prisma.FloatNullableFilter<"AdviceLog"> | number | null
-  goalId?: Prisma.StringNullableFilter<"AdviceLog"> | string | null
   appEventId?: Prisma.StringNullableFilter<"AdviceLog"> | string | null
   actedOn?: Prisma.BoolFilter<"AdviceLog"> | boolean
   createdAt?: Prisma.DateTimeFilter<"AdviceLog"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"AdviceLog"> | Date | string
   user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
-  goal?: Prisma.XOR<Prisma.SavingsGoalNullableScalarRelationFilter, Prisma.SavingsGoalWhereInput> | null
 }
 
 export type AdviceLogOrderByWithRelationInput = {
@@ -275,13 +266,11 @@ export type AdviceLogOrderByWithRelationInput = {
   adviceText?: Prisma.SortOrder
   adviceType?: Prisma.SortOrder
   targetAmount?: Prisma.SortOrderInput | Prisma.SortOrder
-  goalId?: Prisma.SortOrderInput | Prisma.SortOrder
   appEventId?: Prisma.SortOrderInput | Prisma.SortOrder
   actedOn?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   user?: Prisma.UserOrderByWithRelationInput
-  goal?: Prisma.SavingsGoalOrderByWithRelationInput
 }
 
 export type AdviceLogWhereUniqueInput = Prisma.AtLeast<{
@@ -294,13 +283,11 @@ export type AdviceLogWhereUniqueInput = Prisma.AtLeast<{
   adviceText?: Prisma.StringFilter<"AdviceLog"> | string
   adviceType?: Prisma.StringFilter<"AdviceLog"> | string
   targetAmount?: Prisma.FloatNullableFilter<"AdviceLog"> | number | null
-  goalId?: Prisma.StringNullableFilter<"AdviceLog"> | string | null
   appEventId?: Prisma.StringNullableFilter<"AdviceLog"> | string | null
   actedOn?: Prisma.BoolFilter<"AdviceLog"> | boolean
   createdAt?: Prisma.DateTimeFilter<"AdviceLog"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"AdviceLog"> | Date | string
   user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
-  goal?: Prisma.XOR<Prisma.SavingsGoalNullableScalarRelationFilter, Prisma.SavingsGoalWhereInput> | null
 }, "id">
 
 export type AdviceLogOrderByWithAggregationInput = {
@@ -310,7 +297,6 @@ export type AdviceLogOrderByWithAggregationInput = {
   adviceText?: Prisma.SortOrder
   adviceType?: Prisma.SortOrder
   targetAmount?: Prisma.SortOrderInput | Prisma.SortOrder
-  goalId?: Prisma.SortOrderInput | Prisma.SortOrder
   appEventId?: Prisma.SortOrderInput | Prisma.SortOrder
   actedOn?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -332,7 +318,6 @@ export type AdviceLogScalarWhereWithAggregatesInput = {
   adviceText?: Prisma.StringWithAggregatesFilter<"AdviceLog"> | string
   adviceType?: Prisma.StringWithAggregatesFilter<"AdviceLog"> | string
   targetAmount?: Prisma.FloatNullableWithAggregatesFilter<"AdviceLog"> | number | null
-  goalId?: Prisma.StringNullableWithAggregatesFilter<"AdviceLog"> | string | null
   appEventId?: Prisma.StringNullableWithAggregatesFilter<"AdviceLog"> | string | null
   actedOn?: Prisma.BoolWithAggregatesFilter<"AdviceLog"> | boolean
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"AdviceLog"> | Date | string
@@ -350,7 +335,6 @@ export type AdviceLogCreateInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   user: Prisma.UserCreateNestedOneWithoutAdviceLogsInput
-  goal?: Prisma.SavingsGoalCreateNestedOneWithoutAdviceLogsInput
 }
 
 export type AdviceLogUncheckedCreateInput = {
@@ -360,7 +344,6 @@ export type AdviceLogUncheckedCreateInput = {
   adviceText: string
   adviceType: string
   targetAmount?: number | null
-  goalId?: string | null
   appEventId?: string | null
   actedOn?: boolean
   createdAt?: Date | string
@@ -378,7 +361,6 @@ export type AdviceLogUpdateInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneRequiredWithoutAdviceLogsNestedInput
-  goal?: Prisma.SavingsGoalUpdateOneWithoutAdviceLogsNestedInput
 }
 
 export type AdviceLogUncheckedUpdateInput = {
@@ -388,7 +370,6 @@ export type AdviceLogUncheckedUpdateInput = {
   adviceText?: Prisma.StringFieldUpdateOperationsInput | string
   adviceType?: Prisma.StringFieldUpdateOperationsInput | string
   targetAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  goalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   appEventId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   actedOn?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -402,7 +383,6 @@ export type AdviceLogCreateManyInput = {
   adviceText: string
   adviceType: string
   targetAmount?: number | null
-  goalId?: string | null
   appEventId?: string | null
   actedOn?: boolean
   createdAt?: Date | string
@@ -428,7 +408,6 @@ export type AdviceLogUncheckedUpdateManyInput = {
   adviceText?: Prisma.StringFieldUpdateOperationsInput | string
   adviceType?: Prisma.StringFieldUpdateOperationsInput | string
   targetAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  goalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   appEventId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   actedOn?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -452,7 +431,6 @@ export type AdviceLogCountOrderByAggregateInput = {
   adviceText?: Prisma.SortOrder
   adviceType?: Prisma.SortOrder
   targetAmount?: Prisma.SortOrder
-  goalId?: Prisma.SortOrder
   appEventId?: Prisma.SortOrder
   actedOn?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -470,7 +448,6 @@ export type AdviceLogMaxOrderByAggregateInput = {
   adviceText?: Prisma.SortOrder
   adviceType?: Prisma.SortOrder
   targetAmount?: Prisma.SortOrder
-  goalId?: Prisma.SortOrder
   appEventId?: Prisma.SortOrder
   actedOn?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -484,7 +461,6 @@ export type AdviceLogMinOrderByAggregateInput = {
   adviceText?: Prisma.SortOrder
   adviceType?: Prisma.SortOrder
   targetAmount?: Prisma.SortOrder
-  goalId?: Prisma.SortOrder
   appEventId?: Prisma.SortOrder
   actedOn?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -537,48 +513,6 @@ export type AdviceLogUncheckedUpdateManyWithoutUserNestedInput = {
   deleteMany?: Prisma.AdviceLogScalarWhereInput | Prisma.AdviceLogScalarWhereInput[]
 }
 
-export type AdviceLogCreateNestedManyWithoutGoalInput = {
-  create?: Prisma.XOR<Prisma.AdviceLogCreateWithoutGoalInput, Prisma.AdviceLogUncheckedCreateWithoutGoalInput> | Prisma.AdviceLogCreateWithoutGoalInput[] | Prisma.AdviceLogUncheckedCreateWithoutGoalInput[]
-  connectOrCreate?: Prisma.AdviceLogCreateOrConnectWithoutGoalInput | Prisma.AdviceLogCreateOrConnectWithoutGoalInput[]
-  createMany?: Prisma.AdviceLogCreateManyGoalInputEnvelope
-  connect?: Prisma.AdviceLogWhereUniqueInput | Prisma.AdviceLogWhereUniqueInput[]
-}
-
-export type AdviceLogUncheckedCreateNestedManyWithoutGoalInput = {
-  create?: Prisma.XOR<Prisma.AdviceLogCreateWithoutGoalInput, Prisma.AdviceLogUncheckedCreateWithoutGoalInput> | Prisma.AdviceLogCreateWithoutGoalInput[] | Prisma.AdviceLogUncheckedCreateWithoutGoalInput[]
-  connectOrCreate?: Prisma.AdviceLogCreateOrConnectWithoutGoalInput | Prisma.AdviceLogCreateOrConnectWithoutGoalInput[]
-  createMany?: Prisma.AdviceLogCreateManyGoalInputEnvelope
-  connect?: Prisma.AdviceLogWhereUniqueInput | Prisma.AdviceLogWhereUniqueInput[]
-}
-
-export type AdviceLogUpdateManyWithoutGoalNestedInput = {
-  create?: Prisma.XOR<Prisma.AdviceLogCreateWithoutGoalInput, Prisma.AdviceLogUncheckedCreateWithoutGoalInput> | Prisma.AdviceLogCreateWithoutGoalInput[] | Prisma.AdviceLogUncheckedCreateWithoutGoalInput[]
-  connectOrCreate?: Prisma.AdviceLogCreateOrConnectWithoutGoalInput | Prisma.AdviceLogCreateOrConnectWithoutGoalInput[]
-  upsert?: Prisma.AdviceLogUpsertWithWhereUniqueWithoutGoalInput | Prisma.AdviceLogUpsertWithWhereUniqueWithoutGoalInput[]
-  createMany?: Prisma.AdviceLogCreateManyGoalInputEnvelope
-  set?: Prisma.AdviceLogWhereUniqueInput | Prisma.AdviceLogWhereUniqueInput[]
-  disconnect?: Prisma.AdviceLogWhereUniqueInput | Prisma.AdviceLogWhereUniqueInput[]
-  delete?: Prisma.AdviceLogWhereUniqueInput | Prisma.AdviceLogWhereUniqueInput[]
-  connect?: Prisma.AdviceLogWhereUniqueInput | Prisma.AdviceLogWhereUniqueInput[]
-  update?: Prisma.AdviceLogUpdateWithWhereUniqueWithoutGoalInput | Prisma.AdviceLogUpdateWithWhereUniqueWithoutGoalInput[]
-  updateMany?: Prisma.AdviceLogUpdateManyWithWhereWithoutGoalInput | Prisma.AdviceLogUpdateManyWithWhereWithoutGoalInput[]
-  deleteMany?: Prisma.AdviceLogScalarWhereInput | Prisma.AdviceLogScalarWhereInput[]
-}
-
-export type AdviceLogUncheckedUpdateManyWithoutGoalNestedInput = {
-  create?: Prisma.XOR<Prisma.AdviceLogCreateWithoutGoalInput, Prisma.AdviceLogUncheckedCreateWithoutGoalInput> | Prisma.AdviceLogCreateWithoutGoalInput[] | Prisma.AdviceLogUncheckedCreateWithoutGoalInput[]
-  connectOrCreate?: Prisma.AdviceLogCreateOrConnectWithoutGoalInput | Prisma.AdviceLogCreateOrConnectWithoutGoalInput[]
-  upsert?: Prisma.AdviceLogUpsertWithWhereUniqueWithoutGoalInput | Prisma.AdviceLogUpsertWithWhereUniqueWithoutGoalInput[]
-  createMany?: Prisma.AdviceLogCreateManyGoalInputEnvelope
-  set?: Prisma.AdviceLogWhereUniqueInput | Prisma.AdviceLogWhereUniqueInput[]
-  disconnect?: Prisma.AdviceLogWhereUniqueInput | Prisma.AdviceLogWhereUniqueInput[]
-  delete?: Prisma.AdviceLogWhereUniqueInput | Prisma.AdviceLogWhereUniqueInput[]
-  connect?: Prisma.AdviceLogWhereUniqueInput | Prisma.AdviceLogWhereUniqueInput[]
-  update?: Prisma.AdviceLogUpdateWithWhereUniqueWithoutGoalInput | Prisma.AdviceLogUpdateWithWhereUniqueWithoutGoalInput[]
-  updateMany?: Prisma.AdviceLogUpdateManyWithWhereWithoutGoalInput | Prisma.AdviceLogUpdateManyWithWhereWithoutGoalInput[]
-  deleteMany?: Prisma.AdviceLogScalarWhereInput | Prisma.AdviceLogScalarWhereInput[]
-}
-
 export type NullableFloatFieldUpdateOperationsInput = {
   set?: number | null
   increment?: number
@@ -597,7 +531,6 @@ export type AdviceLogCreateWithoutUserInput = {
   actedOn?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
-  goal?: Prisma.SavingsGoalCreateNestedOneWithoutAdviceLogsInput
 }
 
 export type AdviceLogUncheckedCreateWithoutUserInput = {
@@ -606,7 +539,6 @@ export type AdviceLogUncheckedCreateWithoutUserInput = {
   adviceText: string
   adviceType: string
   targetAmount?: number | null
-  goalId?: string | null
   appEventId?: string | null
   actedOn?: boolean
   createdAt?: Date | string
@@ -649,63 +581,10 @@ export type AdviceLogScalarWhereInput = {
   adviceText?: Prisma.StringFilter<"AdviceLog"> | string
   adviceType?: Prisma.StringFilter<"AdviceLog"> | string
   targetAmount?: Prisma.FloatNullableFilter<"AdviceLog"> | number | null
-  goalId?: Prisma.StringNullableFilter<"AdviceLog"> | string | null
   appEventId?: Prisma.StringNullableFilter<"AdviceLog"> | string | null
   actedOn?: Prisma.BoolFilter<"AdviceLog"> | boolean
   createdAt?: Prisma.DateTimeFilter<"AdviceLog"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"AdviceLog"> | Date | string
-}
-
-export type AdviceLogCreateWithoutGoalInput = {
-  id?: string
-  sessionId: string
-  adviceText: string
-  adviceType: string
-  targetAmount?: number | null
-  appEventId?: string | null
-  actedOn?: boolean
-  createdAt?: Date | string
-  updatedAt?: Date | string
-  user: Prisma.UserCreateNestedOneWithoutAdviceLogsInput
-}
-
-export type AdviceLogUncheckedCreateWithoutGoalInput = {
-  id?: string
-  userId: string
-  sessionId: string
-  adviceText: string
-  adviceType: string
-  targetAmount?: number | null
-  appEventId?: string | null
-  actedOn?: boolean
-  createdAt?: Date | string
-  updatedAt?: Date | string
-}
-
-export type AdviceLogCreateOrConnectWithoutGoalInput = {
-  where: Prisma.AdviceLogWhereUniqueInput
-  create: Prisma.XOR<Prisma.AdviceLogCreateWithoutGoalInput, Prisma.AdviceLogUncheckedCreateWithoutGoalInput>
-}
-
-export type AdviceLogCreateManyGoalInputEnvelope = {
-  data: Prisma.AdviceLogCreateManyGoalInput | Prisma.AdviceLogCreateManyGoalInput[]
-  skipDuplicates?: boolean
-}
-
-export type AdviceLogUpsertWithWhereUniqueWithoutGoalInput = {
-  where: Prisma.AdviceLogWhereUniqueInput
-  update: Prisma.XOR<Prisma.AdviceLogUpdateWithoutGoalInput, Prisma.AdviceLogUncheckedUpdateWithoutGoalInput>
-  create: Prisma.XOR<Prisma.AdviceLogCreateWithoutGoalInput, Prisma.AdviceLogUncheckedCreateWithoutGoalInput>
-}
-
-export type AdviceLogUpdateWithWhereUniqueWithoutGoalInput = {
-  where: Prisma.AdviceLogWhereUniqueInput
-  data: Prisma.XOR<Prisma.AdviceLogUpdateWithoutGoalInput, Prisma.AdviceLogUncheckedUpdateWithoutGoalInput>
-}
-
-export type AdviceLogUpdateManyWithWhereWithoutGoalInput = {
-  where: Prisma.AdviceLogScalarWhereInput
-  data: Prisma.XOR<Prisma.AdviceLogUpdateManyMutationInput, Prisma.AdviceLogUncheckedUpdateManyWithoutGoalInput>
 }
 
 export type AdviceLogCreateManyUserInput = {
@@ -714,7 +593,6 @@ export type AdviceLogCreateManyUserInput = {
   adviceText: string
   adviceType: string
   targetAmount?: number | null
-  goalId?: string | null
   appEventId?: string | null
   actedOn?: boolean
   createdAt?: Date | string
@@ -731,7 +609,6 @@ export type AdviceLogUpdateWithoutUserInput = {
   actedOn?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  goal?: Prisma.SavingsGoalUpdateOneWithoutAdviceLogsNestedInput
 }
 
 export type AdviceLogUncheckedUpdateWithoutUserInput = {
@@ -740,7 +617,6 @@ export type AdviceLogUncheckedUpdateWithoutUserInput = {
   adviceText?: Prisma.StringFieldUpdateOperationsInput | string
   adviceType?: Prisma.StringFieldUpdateOperationsInput | string
   targetAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  goalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   appEventId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   actedOn?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -749,59 +625,6 @@ export type AdviceLogUncheckedUpdateWithoutUserInput = {
 
 export type AdviceLogUncheckedUpdateManyWithoutUserInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  sessionId?: Prisma.StringFieldUpdateOperationsInput | string
-  adviceText?: Prisma.StringFieldUpdateOperationsInput | string
-  adviceType?: Prisma.StringFieldUpdateOperationsInput | string
-  targetAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  goalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  appEventId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  actedOn?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-}
-
-export type AdviceLogCreateManyGoalInput = {
-  id?: string
-  userId: string
-  sessionId: string
-  adviceText: string
-  adviceType: string
-  targetAmount?: number | null
-  appEventId?: string | null
-  actedOn?: boolean
-  createdAt?: Date | string
-  updatedAt?: Date | string
-}
-
-export type AdviceLogUpdateWithoutGoalInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
-  sessionId?: Prisma.StringFieldUpdateOperationsInput | string
-  adviceText?: Prisma.StringFieldUpdateOperationsInput | string
-  adviceType?: Prisma.StringFieldUpdateOperationsInput | string
-  targetAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  appEventId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  actedOn?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  user?: Prisma.UserUpdateOneRequiredWithoutAdviceLogsNestedInput
-}
-
-export type AdviceLogUncheckedUpdateWithoutGoalInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
-  userId?: Prisma.StringFieldUpdateOperationsInput | string
-  sessionId?: Prisma.StringFieldUpdateOperationsInput | string
-  adviceText?: Prisma.StringFieldUpdateOperationsInput | string
-  adviceType?: Prisma.StringFieldUpdateOperationsInput | string
-  targetAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  appEventId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  actedOn?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-}
-
-export type AdviceLogUncheckedUpdateManyWithoutGoalInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
-  userId?: Prisma.StringFieldUpdateOperationsInput | string
   sessionId?: Prisma.StringFieldUpdateOperationsInput | string
   adviceText?: Prisma.StringFieldUpdateOperationsInput | string
   adviceType?: Prisma.StringFieldUpdateOperationsInput | string
@@ -821,13 +644,11 @@ export type AdviceLogSelect<ExtArgs extends runtime.Types.Extensions.InternalArg
   adviceText?: boolean
   adviceType?: boolean
   targetAmount?: boolean
-  goalId?: boolean
   appEventId?: boolean
   actedOn?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
-  goal?: boolean | Prisma.AdviceLog$goalArgs<ExtArgs>
 }, ExtArgs["result"]["adviceLog"]>
 
 export type AdviceLogSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -837,13 +658,11 @@ export type AdviceLogSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Ext
   adviceText?: boolean
   adviceType?: boolean
   targetAmount?: boolean
-  goalId?: boolean
   appEventId?: boolean
   actedOn?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
-  goal?: boolean | Prisma.AdviceLog$goalArgs<ExtArgs>
 }, ExtArgs["result"]["adviceLog"]>
 
 export type AdviceLogSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -853,13 +672,11 @@ export type AdviceLogSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Ext
   adviceText?: boolean
   adviceType?: boolean
   targetAmount?: boolean
-  goalId?: boolean
   appEventId?: boolean
   actedOn?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
-  goal?: boolean | Prisma.AdviceLog$goalArgs<ExtArgs>
 }, ExtArgs["result"]["adviceLog"]>
 
 export type AdviceLogSelectScalar = {
@@ -869,32 +686,27 @@ export type AdviceLogSelectScalar = {
   adviceText?: boolean
   adviceType?: boolean
   targetAmount?: boolean
-  goalId?: boolean
   appEventId?: boolean
   actedOn?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type AdviceLogOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "sessionId" | "adviceText" | "adviceType" | "targetAmount" | "goalId" | "appEventId" | "actedOn" | "createdAt" | "updatedAt", ExtArgs["result"]["adviceLog"]>
+export type AdviceLogOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "sessionId" | "adviceText" | "adviceType" | "targetAmount" | "appEventId" | "actedOn" | "createdAt" | "updatedAt", ExtArgs["result"]["adviceLog"]>
 export type AdviceLogInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
-  goal?: boolean | Prisma.AdviceLog$goalArgs<ExtArgs>
 }
 export type AdviceLogIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
-  goal?: boolean | Prisma.AdviceLog$goalArgs<ExtArgs>
 }
 export type AdviceLogIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
-  goal?: boolean | Prisma.AdviceLog$goalArgs<ExtArgs>
 }
 
 export type $AdviceLogPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "AdviceLog"
   objects: {
     user: Prisma.$UserPayload<ExtArgs>
-    goal: Prisma.$SavingsGoalPayload<ExtArgs> | null
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -903,7 +715,6 @@ export type $AdviceLogPayload<ExtArgs extends runtime.Types.Extensions.InternalA
     adviceText: string
     adviceType: string
     targetAmount: number | null
-    goalId: string | null
     appEventId: string | null
     /**
      * [v1.4.2 — Day 3 / Spec §AdviceLog migration] Set to `true` when the
@@ -1312,7 +1123,6 @@ readonly fields: AdviceLogFieldRefs;
 export interface Prisma__AdviceLogClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
   user<T extends Prisma.UserDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.UserDefaultArgs<ExtArgs>>): Prisma.Prisma__UserClient<runtime.Types.Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
-  goal<T extends Prisma.AdviceLog$goalArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.AdviceLog$goalArgs<ExtArgs>>): Prisma.Prisma__SavingsGoalClient<runtime.Types.Result.GetResult<Prisma.$SavingsGoalPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1348,7 +1158,6 @@ export interface AdviceLogFieldRefs {
   readonly adviceText: Prisma.FieldRef<"AdviceLog", 'String'>
   readonly adviceType: Prisma.FieldRef<"AdviceLog", 'String'>
   readonly targetAmount: Prisma.FieldRef<"AdviceLog", 'Float'>
-  readonly goalId: Prisma.FieldRef<"AdviceLog", 'String'>
   readonly appEventId: Prisma.FieldRef<"AdviceLog", 'String'>
   readonly actedOn: Prisma.FieldRef<"AdviceLog", 'Boolean'>
   readonly createdAt: Prisma.FieldRef<"AdviceLog", 'DateTime'>
@@ -1751,25 +1560,6 @@ export type AdviceLogDeleteManyArgs<ExtArgs extends runtime.Types.Extensions.Int
    * Limit how many AdviceLogs to delete.
    */
   limit?: number
-}
-
-/**
- * AdviceLog.goal
- */
-export type AdviceLog$goalArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  /**
-   * Select specific fields to fetch from the SavingsGoal
-   */
-  select?: Prisma.SavingsGoalSelect<ExtArgs> | null
-  /**
-   * Omit specific fields from the SavingsGoal
-   */
-  omit?: Prisma.SavingsGoalOmit<ExtArgs> | null
-  /**
-   * Choose, which related nodes to fetch as well
-   */
-  include?: Prisma.SavingsGoalInclude<ExtArgs> | null
-  where?: Prisma.SavingsGoalWhereInput
 }
 
 /**

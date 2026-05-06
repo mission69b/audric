@@ -46,7 +46,6 @@ import { decodeJwtClaim } from '@/lib/jwt-client';
 import { PortfolioPanel } from '@/components/panels/PortfolioPanel';
 import { ActivityPanel } from '@/components/panels/ActivityPanel';
 import { PayPanel } from '@/components/panels/PayPanel';
-import { GoalsPanel } from '@/components/panels/GoalsPanel';
 import { ContactsPanel } from '@/components/panels/ContactsPanel';
 import { StorePanel } from '@/components/panels/StorePanel';
 // [SIMPLIFICATION DAY 11] Final chat-first dashboard pass (Option A).
@@ -590,8 +589,9 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
 
   // [SIMPLIFICATION DAY 5] dashInsights / scheduledActions / goalsHook
   // milestone derivation removed — backed by dropped tables and retired
-  // dashboard surfaces. Goals still surface inside <GoalsPanel> via its
-  // own useGoals hook.
+  // dashboard surfaces.
+  // [SPEC 17 — 2026-05-07] GoalsPanel + useGoals hook removed entirely
+  // along with the SavingsGoal table.
 
   useEffect(() => {
     if (!address) return;
@@ -2104,10 +2104,6 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
             }}
           />
         );
-      case 'goals':
-        return session?.jwt ? (
-          <GoalsPanel address={address} jwt={session.jwt} onSendMessage={handleInputSubmit} />
-        ) : null;
       case 'contacts':
         return (
           <ContactsPanel

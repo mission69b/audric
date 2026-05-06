@@ -33,7 +33,6 @@ import { UpstashSessionStore } from './upstash-session-store';
 import { getRecipeRegistry } from './recipes';
 import { UpstashConversationStateStore } from './upstash-conversation-state-store';
 import { incrementSessionSpend } from './session-spend';
-import { GOAL_TOOLS } from './goal-tools';
 import { ADVICE_TOOLS } from './advice-tool';
 import { audricSaveContactTool, audricListContactsTool } from './contact-tools';
 import { lookupUserTool } from './lookup-user-tool';
@@ -49,7 +48,6 @@ import {
   STATIC_SYSTEM_PROMPT,
   type WalletBalanceSummary,
   type Contact,
-  type GoalSummary,
 } from './engine-context';
 import {
   getUserFinancialContext,
@@ -310,7 +308,6 @@ export async function createEngine(
     mgr,
     portfolio,
     swapTokenNames,
-    goals,
     adviceContext,
     profileRecord,
     memoryRecords,
@@ -322,17 +319,6 @@ export async function createEngine(
       return null;
     }),
     import('@t2000/sdk').then((m) => Object.keys(m.TOKEN_MAP)).catch(() => [] as string[]),
-    prisma.savingsGoal.findMany({
-      where: {
-        user: { suiAddress: address },
-        status: 'active',
-      },
-      orderBy: { createdAt: 'asc' },
-      select: { id: true, name: true, emoji: true, targetAmount: true, deadline: true, status: true },
-    }).then((gs) => gs.map((g) => ({
-      ...g,
-      deadline: g.deadline?.toISOString().slice(0, 10) ?? null,
-    }))).catch(() => [] as GoalSummary[]),
     userId ? buildAdviceContext(userId) : Promise.resolve(''),
     userId ? prisma.userFinancialProfile.findUnique({
       where: { userId },
@@ -527,7 +513,6 @@ export async function createEngine(
     ...filteredWrites,
     ...audricContactTools,
     ...audricBundleTools,
-    ...GOAL_TOOLS,
     ...ADVICE_TOOLS,
     // [SPEC 10 D.3] Audric-side user-directory lookup. Audric handles
     // (`username.audric.sui`) live in the audric Postgres User table
@@ -566,7 +551,6 @@ export async function createEngine(
     balances: balanceSummary,
     contacts: opts.contacts,
     swapTokenNames,
-    goals,
     adviceContext: adviceContext || undefined,
     intelligence: {
       profile,

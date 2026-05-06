@@ -311,9 +311,10 @@ const clientSchema = z.object({
    *
    * P9.3 persistent cross-turn todos was REMOVED on 2026-05-05 (see
    * audric-build-tracker.md S.64) after the smoke test showed the LLM
-   * correctly routes natural prompts to existing tools (`record_advice`,
-   * `savings_goal_create`) and the `Goal` table received zero
-   * meaningful writes.
+   * correctly routes natural prompts to existing tools (`record_advice`)
+   * and the `Goal` table received zero meaningful writes. SPEC 17
+   * (2026-05-07) subsequently retired the broader `savings_goal_*`
+   * tool family as well — see audric-build-tracker.md S.103.
    *
    * - "1" / "true" → `addRecipientTool` joins the engine's tool roster.
    * - undefined / anything else → the engine still handles

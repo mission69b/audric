@@ -52,7 +52,6 @@ const SAMPLE_SNAPSHOT: FinancialContextSnapshot = {
   healthFactor: 2.4,
   currentApy: 4.2,
   recentActivity: 'Saved $100.00.',
-  openGoals: ['Emergency fund — target $5000'],
   pendingAdvice: null,
   daysSinceLastSession: 1,
 };
@@ -154,7 +153,6 @@ describe('getUserFinancialContext', () => {
       healthFactor: SAMPLE_SNAPSHOT.healthFactor,
       currentApy: SAMPLE_SNAPSHOT.currentApy,
       recentActivity: SAMPLE_SNAPSHOT.recentActivity,
-      openGoals: SAMPLE_SNAPSHOT.openGoals,
       pendingAdvice: SAMPLE_SNAPSHOT.pendingAdvice,
       daysSinceLastSession: SAMPLE_SNAPSHOT.daysSinceLastSession,
       generatedAt: new Date(),
@@ -203,7 +201,6 @@ describe('getUserFinancialContext', () => {
       healthFactor: null,
       currentApy: null,
       recentActivity: 'No recent activity.',
-      openGoals: [],
       pendingAdvice: null,
       daysSinceLastSession: 0,
       generatedAt: new Date(),
@@ -221,7 +218,6 @@ describe('getUserFinancialContext', () => {
       healthFactor: null,
       currentApy: null,
       recentActivity: 'No recent activity.',
-      openGoals: [],
       pendingAdvice: null,
       daysSinceLastSession: 0,
     });
@@ -240,31 +236,6 @@ describe('getUserFinancialContext', () => {
     expect(setMock).not.toHaveBeenCalled();
   });
 
-  it('coerces a non-array openGoals JSON column into an empty array (defensive)', async () => {
-    getMock.mockResolvedValueOnce(null);
-    findUniqueMock.mockResolvedValueOnce({
-      id: 'cuid_3',
-      userId: 'user_3',
-      address: '0xbadgoals',
-      savingsUsdc: 1,
-      savingsUsdsui: null,
-      debtUsdc: 0,
-      walletUsdc: 0,
-      walletUsdsui: null,
-      healthFactor: null,
-      currentApy: null,
-      recentActivity: 'x',
-      openGoals: 'not-an-array',
-      pendingAdvice: null,
-      daysSinceLastSession: 0,
-      generatedAt: new Date(),
-      updatedAt: new Date(),
-    });
-
-    const result = await getUserFinancialContext('0xbadgoals');
-    expect(result?.openGoals).toEqual([]);
-  });
-
   it('does not propagate cache-write transport errors (fail-open writeback)', async () => {
     getMock.mockResolvedValueOnce(null);
     findUniqueMock.mockResolvedValueOnce({
@@ -279,7 +250,6 @@ describe('getUserFinancialContext', () => {
       healthFactor: null,
       currentApy: null,
       recentActivity: 'x',
-      openGoals: [],
       pendingAdvice: null,
       daysSinceLastSession: 0,
       generatedAt: new Date(),

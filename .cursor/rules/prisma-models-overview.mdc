@@ -1,12 +1,12 @@
 ---
-description: Prisma data model — what each of the 16 models is for, what owns it, when to read/write
+description: Prisma data model — what each of the 15 models is for, what owns it, when to read/write
 globs: "apps/web/prisma/**/*.prisma,apps/web/lib/prisma.ts,apps/web/app/api/**/*.ts,apps/web/lib/engine/**/*.ts"
 alwaysApply: false
 ---
 
 # Prisma Models Overview
 
-NeonDB Postgres with 16 Prisma models. Schema lives at `apps/web/prisma/schema.prisma`. Generated client output is `apps/web/lib/generated/prisma`.
+NeonDB Postgres with 15 Prisma models. Schema lives at `apps/web/prisma/schema.prisma`. Generated client output is `apps/web/lib/generated/prisma`.
 
 ## Model catalog
 
@@ -41,7 +41,8 @@ NeonDB Postgres with 16 Prisma models. Schema lives at `apps/web/prisma/schema.p
 | Model | What it stores | Owned by | Updated by |
 |---|---|---|---|
 | `Payment` | Sent payments, payment links, invoices (status, amount, recipient) | Pay flows | `/api/payments/*` |
-| `SavingsGoal` | Optional user-set goals ("$5k by Dec") — silent context only | User | `/api/goals`, `goal` tools |
+
+> **Removed in SPEC 17 (S.103, May 2026):** `SavingsGoal` model + 4 `savings_goal_*` engine tools + `/api/user/goals` routes + `GoalsPanel` UI + `openGoals` field on `UserFinancialContext`. The savings-goal layer wasn't producing observable agent behavior change. Track savings progress via `health_check` + `portfolio_overview` + `yield_summary`.
 
 ### Indexer / chain memory
 

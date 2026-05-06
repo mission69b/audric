@@ -35,7 +35,6 @@ model User {
 
   preferences        UserPreferences?
   conversationLogs   ConversationLog[]
-  savingsGoals       SavingsGoal[]
   adviceLogs         AdviceLog[]
   payments           Payment[]
   watchAddresses     WatchAddress[]
@@ -106,23 +105,6 @@ model ServicePurchase {
   @@index([address, createdAt])
 }
 
-model SavingsGoal {
-  id           String    @id @default(cuid())
-  userId       String
-  name         String
-  emoji        String    @default("🎯")
-  targetAmount Float
-  deadline     DateTime?
-  status       String    @default("active")
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-
-  user       User        @relation(fields: [userId], references: [id])
-  adviceLogs AdviceLog[]
-
-  @@index([userId, status])
-}
-
 model AppEvent {
   id            String   @id @default(cuid())
   address       String
@@ -131,7 +113,6 @@ model AppEvent {
   details       Json?
   digest        String?
   adviceLogId   String?
-  goalId        String?
   suiTxVerified Boolean  @default(false)
   source        String   @default("chat")
   createdAt     DateTime @default(now())
@@ -139,7 +120,6 @@ model AppEvent {
   @@index([address, createdAt])
   @@index([address, type, createdAt])
   @@index([adviceLogId])
-  @@index([goalId])
 }
 
 model AdviceLog {
@@ -149,7 +129,6 @@ model AdviceLog {
   adviceText   String
   adviceType   String
   targetAmount Float?
-  goalId       String?
   appEventId   String?
   /// [v1.4.2 — Day 3 / Spec §AdviceLog migration] Set to `true` when the
   /// user acts on the suggestion (e.g. confirms a recommended save / swap
@@ -162,8 +141,7 @@ model AdviceLog {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  user User         @relation(fields: [userId], references: [id])
-  goal SavingsGoal? @relation(fields: [goalId], references: [id])
+  user User @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@index([createdAt])
@@ -435,17 +413,23 @@ model TurnMetrics {
 }
 
 /// [v1.4.2 — Day 5 / Spec Item 6] Daily snapshot of every active user's
-/// orientation block — savings / debt / wallet totals, health factor, open
-/// goals, last unactioned advice, and a one-line "recent activity"
-/// summary. Read by `engine-context.ts:buildDynamicBlock` at engine boot
-/// to seed the `<financial_context>` system-prompt section so a returning
-/// user gets a contextual greeting WITHOUT spending tool calls (and tokens)
+/// orientation block — savings / debt / wallet totals, health factor,
+/// last unactioned advice, and a one-line "recent activity" summary.
+/// Read by `engine-context.ts:buildDynamicBlock` at engine boot to seed
+/// the `<financial_context>` system-prompt section so a returning user
+/// gets a contextual greeting WITHOUT spending tool calls (and tokens)
 /// re-deriving state every session.
 ///
 /// Dual-key by design [v1.4 — B2]: callers in the engine path only know
 /// the wallet `address` (no Prisma `User.id` cuid), but joins to
-/// `AdviceLog` / `SavingsGoal` / `PortfolioSnapshot` need the cuid. The
-/// cron writer populates BOTH on upsert so either lookup works.
+/// `AdviceLog` / `PortfolioSnapshot` need the cuid. The cron writer
+/// populates BOTH on upsert so either lookup works.
+///
+/// [SPEC 17 — 2026-05-07] `openGoals` Json column dropped — the
+/// SavingsGoal table + 4 engine tools + UI panel were retired in
+/// SPEC 17 (savings-goal layer wasn't producing observable agent
+/// behavior change). The `health_check` + `portfolio_overview` +
+/// `yield_summary` tools cover "track my savings progress" already.
 ///
 /// Cached at `fin_ctx:${address}` in Upstash Redis with a 24h TTL that
 /// matches the cron cadence. Invalidated synchronously after every
@@ -474,7 +458,6 @@ model UserFinancialContext {
   savingsUsdsui        Float?
   currentApy           Float?
   recentActivity       String
-  openGoals            Json
   pendingAdvice        String?
   daysSinceLastSession Int
   generatedAt          DateTime @default(now())

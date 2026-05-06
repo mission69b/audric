@@ -389,7 +389,6 @@ export const ModelName = {
   ConversationLog: 'ConversationLog',
   SessionUsage: 'SessionUsage',
   ServicePurchase: 'ServicePurchase',
-  SavingsGoal: 'SavingsGoal',
   AppEvent: 'AppEvent',
   AdviceLog: 'AdviceLog',
   Payment: 'Payment',
@@ -415,7 +414,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "userPreferences" | "conversationLog" | "sessionUsage" | "servicePurchase" | "savingsGoal" | "appEvent" | "adviceLog" | "payment" | "watchAddress" | "portfolioSnapshot" | "userFinancialProfile" | "userMemory" | "linkedWallet" | "turnMetrics" | "userFinancialContext"
+    modelProps: "user" | "userPreferences" | "conversationLog" | "sessionUsage" | "servicePurchase" | "appEvent" | "adviceLog" | "payment" | "watchAddress" | "portfolioSnapshot" | "userFinancialProfile" | "userMemory" | "linkedWallet" | "turnMetrics" | "userFinancialContext"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -786,80 +785,6 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.ServicePurchaseCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.ServicePurchaseCountAggregateOutputType> | number
-        }
-      }
-    }
-    SavingsGoal: {
-      payload: Prisma.$SavingsGoalPayload<ExtArgs>
-      fields: Prisma.SavingsGoalFieldRefs
-      operations: {
-        findUnique: {
-          args: Prisma.SavingsGoalFindUniqueArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$SavingsGoalPayload> | null
-        }
-        findUniqueOrThrow: {
-          args: Prisma.SavingsGoalFindUniqueOrThrowArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$SavingsGoalPayload>
-        }
-        findFirst: {
-          args: Prisma.SavingsGoalFindFirstArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$SavingsGoalPayload> | null
-        }
-        findFirstOrThrow: {
-          args: Prisma.SavingsGoalFindFirstOrThrowArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$SavingsGoalPayload>
-        }
-        findMany: {
-          args: Prisma.SavingsGoalFindManyArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$SavingsGoalPayload>[]
-        }
-        create: {
-          args: Prisma.SavingsGoalCreateArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$SavingsGoalPayload>
-        }
-        createMany: {
-          args: Prisma.SavingsGoalCreateManyArgs<ExtArgs>
-          result: BatchPayload
-        }
-        createManyAndReturn: {
-          args: Prisma.SavingsGoalCreateManyAndReturnArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$SavingsGoalPayload>[]
-        }
-        delete: {
-          args: Prisma.SavingsGoalDeleteArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$SavingsGoalPayload>
-        }
-        update: {
-          args: Prisma.SavingsGoalUpdateArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$SavingsGoalPayload>
-        }
-        deleteMany: {
-          args: Prisma.SavingsGoalDeleteManyArgs<ExtArgs>
-          result: BatchPayload
-        }
-        updateMany: {
-          args: Prisma.SavingsGoalUpdateManyArgs<ExtArgs>
-          result: BatchPayload
-        }
-        updateManyAndReturn: {
-          args: Prisma.SavingsGoalUpdateManyAndReturnArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$SavingsGoalPayload>[]
-        }
-        upsert: {
-          args: Prisma.SavingsGoalUpsertArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$SavingsGoalPayload>
-        }
-        aggregate: {
-          args: Prisma.SavingsGoalAggregateArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.AggregateSavingsGoal>
-        }
-        groupBy: {
-          args: Prisma.SavingsGoalGroupByArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.SavingsGoalGroupByOutputType>[]
-        }
-        count: {
-          args: Prisma.SavingsGoalCountArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.SavingsGoalCountAggregateOutputType> | number
         }
       }
     }
@@ -1718,21 +1643,6 @@ export const ServicePurchaseScalarFieldEnum = {
 export type ServicePurchaseScalarFieldEnum = (typeof ServicePurchaseScalarFieldEnum)[keyof typeof ServicePurchaseScalarFieldEnum]
 
 
-export const SavingsGoalScalarFieldEnum = {
-  id: 'id',
-  userId: 'userId',
-  name: 'name',
-  emoji: 'emoji',
-  targetAmount: 'targetAmount',
-  deadline: 'deadline',
-  status: 'status',
-  createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
-} as const
-
-export type SavingsGoalScalarFieldEnum = (typeof SavingsGoalScalarFieldEnum)[keyof typeof SavingsGoalScalarFieldEnum]
-
-
 export const AppEventScalarFieldEnum = {
   id: 'id',
   address: 'address',
@@ -1741,7 +1651,6 @@ export const AppEventScalarFieldEnum = {
   details: 'details',
   digest: 'digest',
   adviceLogId: 'adviceLogId',
-  goalId: 'goalId',
   suiTxVerified: 'suiTxVerified',
   source: 'source',
   createdAt: 'createdAt'
@@ -1757,7 +1666,6 @@ export const AdviceLogScalarFieldEnum = {
   adviceText: 'adviceText',
   adviceType: 'adviceType',
   targetAmount: 'targetAmount',
-  goalId: 'goalId',
   appEventId: 'appEventId',
   actedOn: 'actedOn',
   createdAt: 'createdAt',
@@ -1935,7 +1843,6 @@ export const UserFinancialContextScalarFieldEnum = {
   savingsUsdsui: 'savingsUsdsui',
   currentApy: 'currentApy',
   recentActivity: 'recentActivity',
-  openGoals: 'openGoals',
   pendingAdvice: 'pendingAdvice',
   daysSinceLastSession: 'daysSinceLastSession',
   generatedAt: 'generatedAt',
@@ -2175,7 +2082,6 @@ export type GlobalOmitConfig = {
   conversationLog?: Prisma.ConversationLogOmit
   sessionUsage?: Prisma.SessionUsageOmit
   servicePurchase?: Prisma.ServicePurchaseOmit
-  savingsGoal?: Prisma.SavingsGoalOmit
   appEvent?: Prisma.AppEventOmit
   adviceLog?: Prisma.AdviceLogOmit
   payment?: Prisma.PaymentOmit

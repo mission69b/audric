@@ -1343,7 +1343,6 @@ interface AdviceItem {
   adviceType: string;
   adviceText: string;
   targetAmount?: number;
-  goalId?: string;
   followUpDays?: number;
 }
 
@@ -1389,7 +1388,6 @@ async function handleAdviceResults(
           adviceText: advice.adviceText.slice(0, 500),
           adviceType: advice.adviceType,
           targetAmount: advice.targetAmount ?? null,
-          goalId: advice.goalId ?? null,
         },
       }),
       { label: 'handleAdviceResults:create' },

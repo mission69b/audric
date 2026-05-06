@@ -56,7 +56,6 @@ export const ModelName = {
   ConversationLog: 'ConversationLog',
   SessionUsage: 'SessionUsage',
   ServicePurchase: 'ServicePurchase',
-  SavingsGoal: 'SavingsGoal',
   AppEvent: 'AppEvent',
   AdviceLog: 'AdviceLog',
   Payment: 'Payment',
@@ -161,21 +160,6 @@ export const ServicePurchaseScalarFieldEnum = {
 export type ServicePurchaseScalarFieldEnum = (typeof ServicePurchaseScalarFieldEnum)[keyof typeof ServicePurchaseScalarFieldEnum]
 
 
-export const SavingsGoalScalarFieldEnum = {
-  id: 'id',
-  userId: 'userId',
-  name: 'name',
-  emoji: 'emoji',
-  targetAmount: 'targetAmount',
-  deadline: 'deadline',
-  status: 'status',
-  createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
-} as const
-
-export type SavingsGoalScalarFieldEnum = (typeof SavingsGoalScalarFieldEnum)[keyof typeof SavingsGoalScalarFieldEnum]
-
-
 export const AppEventScalarFieldEnum = {
   id: 'id',
   address: 'address',
@@ -184,7 +168,6 @@ export const AppEventScalarFieldEnum = {
   details: 'details',
   digest: 'digest',
   adviceLogId: 'adviceLogId',
-  goalId: 'goalId',
   suiTxVerified: 'suiTxVerified',
   source: 'source',
   createdAt: 'createdAt'
@@ -200,7 +183,6 @@ export const AdviceLogScalarFieldEnum = {
   adviceText: 'adviceText',
   adviceType: 'adviceType',
   targetAmount: 'targetAmount',
-  goalId: 'goalId',
   appEventId: 'appEventId',
   actedOn: 'actedOn',
   createdAt: 'createdAt',
@@ -378,7 +360,6 @@ export const UserFinancialContextScalarFieldEnum = {
   savingsUsdsui: 'savingsUsdsui',
   currentApy: 'currentApy',
   recentActivity: 'recentActivity',
-  openGoals: 'openGoals',
   pendingAdvice: 'pendingAdvice',
   daysSinceLastSession: 'daysSinceLastSession',
   generatedAt: 'generatedAt',
