@@ -1,11 +1,20 @@
 'use client';
 
 import { useEffect } from 'react';
+import { Icon } from '@/components/ui/Icon';
 import { UsernameClaimGate } from './UsernameClaimGate';
 import { clearUsernameSkip } from '@/lib/identity/username-skip';
 
 // ───────────────────────────────────────────────────────────────────────────
 // S.84 polish v4 — UsernameClaimModal
+//
+// [B5 polish] Visual chrome aligned to the Audric Design System
+// (`.cursor/rules/design-system.mdc`). Modal frame mirrors the Card
+// pattern from `design_handoff_audric/design_files/audric-app-light/
+// primitives.jsx` (`bg-surface-page` panel + `border-border-strong`
+// outline + tighter padding) and the close affordance uses the
+// canonical `Icon name="close"` instead of the ✕ glyph for parity
+// with every other dismissable surface in the chrome.
 //
 // The Settings → Passport safety valve. Wraps `<UsernameClaimGate>` in
 // a modal frame so a user who clicked "Skip for now" on the dashboard
@@ -109,7 +118,7 @@ export function UsernameClaimModal({
         <div className="flex items-start justify-between mb-4">
           <h2
             id="claim-handle-title"
-            className="font-mono text-[10px] tracking-[0.12em] uppercase text-fg-muted"
+            className="font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted"
           >
             Pick your handle
           </h2>
@@ -117,9 +126,9 @@ export function UsernameClaimModal({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="-mt-1 -mr-1 inline-flex h-6 w-6 items-center justify-center rounded-sm text-fg-muted hover:bg-surface-sunken hover:text-fg-primary"
+            className="-mt-1 -mr-1 inline-flex h-6 w-6 items-center justify-center rounded-sm text-fg-muted transition hover:bg-surface-sunken hover:text-fg-primary focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
           >
-            ✕
+            <Icon name="close" size={12} aria-hidden />
           </button>
         </div>
 

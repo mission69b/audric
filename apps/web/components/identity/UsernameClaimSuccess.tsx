@@ -1,10 +1,25 @@
 'use client';
 
 import { useCallback, useState } from 'react';
+import { Icon } from '@/components/ui/Icon';
 import { SuiPayQr } from '@/components/pay/SuiPayQr';
 
 // ───────────────────────────────────────────────────────────────────────────
 // SPEC 10 Phase B.3 — UsernameClaimSuccess
+//
+// [B5 polish] Visual chrome aligned to the Audric Design System
+// (see `.cursor/rules/design-system.mdc`). Closest prototype analogues:
+//   • `design_handoff_audric/design_files/audric-app-light/primitives.jsx`
+//     — `BalanceHeader` is the canonical "hero name in serif" pattern
+//     (`font-serif`, large size, tight tracking) reused here for the
+//     newly-claimed handle. Action buttons mirror the prototype's
+//     mono-uppercase outline-pill language.
+//   • `design_handoff_audric/design_files/audric-app-light/settings.jsx`
+//     — Sunken-card chrome wrapper (`bg-surface-sunken` + `rounded-md`
+//     + mono eyebrow language) replaces the previous full success-bg
+//     container. Success-bg moves to a small badge-strip across the
+//     top so the moment still reads as celebratory without consuming
+//     the whole frame in green.
 //
 // Celebration + share surface rendered AFTER `<UsernamePicker>` submits and
 // `/api/identity/reserve` returns 200. Pure UI primitive — knows nothing
@@ -118,19 +133,34 @@ export function UsernameClaimSuccess({
   return (
     <div
       data-testid="username-claim-success"
-      className="space-y-5 rounded-lg border border-success-border bg-success-bg p-5"
+      className="space-y-5 rounded-md border border-border-subtle bg-surface-sunken p-5"
     >
+      {/*
+        Celebration strip — small horizontal badge that reads as a "yes,
+        this happened" cue without consuming the whole card in green.
+        Uses success-bg for the cue + mono uppercase for the language;
+        same posture as the green Tag pattern in primitives.jsx.
+      */}
+      <div className="flex justify-center">
+        <span className="inline-flex items-center gap-1.5 rounded-xs border border-success-border bg-success-bg px-2 py-1 font-mono text-[10px] tracking-[0.1em] uppercase text-success-fg">
+          <Icon name="check" size={10} aria-hidden />
+          Claimed
+        </span>
+      </div>
+
       <div className="space-y-2 text-center">
         <div className="text-2xl" aria-hidden="true">
           🪪
         </div>
         <div
           data-testid="username-claim-success-handle"
-          className="break-all font-mono text-lg font-medium text-fg-primary"
+          className="break-all font-serif text-[28px] leading-[1.15] tracking-[-0.01em] text-fg-primary"
         >
           {fullHandle}
         </div>
-        <p className="text-[12px] text-fg-secondary">yours on Sui — recognized everywhere</p>
+        <p className="text-[12px] leading-[1.5] text-fg-secondary">
+          yours on Sui — recognized everywhere
+        </p>
       </div>
 
       <div className="flex flex-wrap items-center justify-center gap-2">
@@ -140,16 +170,16 @@ export function UsernameClaimSuccess({
           data-testid="username-claim-success-copy"
           aria-label={copied ? 'Copied to clipboard' : `Copy ${fullHandle}`}
           aria-live="polite"
-          className="inline-flex items-center gap-1.5 rounded-md border border-border-subtle bg-surface-page px-3 py-1.5 text-[12px] text-fg-primary transition-colors hover:border-border-strong"
+          className="inline-flex items-center gap-1.5 rounded-xs border border-border-subtle bg-surface-card px-3 py-1.5 font-mono text-[10px] tracking-[0.1em] uppercase text-fg-primary transition hover:border-border-strong focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
         >
           {copied ? (
             <>
-              <span aria-hidden="true">✓</span>
+              <Icon name="check" size={10} aria-hidden className="text-success-solid" />
               <span className="text-success-solid">Copied</span>
             </>
           ) : (
             <>
-              <span aria-hidden="true">📋</span>
+              <Icon name="copy" size={10} aria-hidden />
               <span>Copy</span>
             </>
           )}
@@ -162,9 +192,9 @@ export function UsernameClaimSuccess({
             data-testid="username-claim-success-qr-toggle"
             aria-expanded={showQr}
             aria-controls="username-claim-success-qr-panel"
-            className="inline-flex items-center gap-1.5 rounded-md border border-border-subtle bg-surface-page px-3 py-1.5 text-[12px] text-fg-primary transition-colors hover:border-border-strong"
+            className="inline-flex items-center gap-1.5 rounded-xs border border-border-subtle bg-surface-card px-3 py-1.5 font-mono text-[10px] tracking-[0.1em] uppercase text-fg-primary transition hover:border-border-strong focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
           >
-            <span aria-hidden="true">▢</span>
+            <Icon name={showQr ? 'chevron-up' : 'chevron-down'} size={10} aria-hidden />
             <span>{showQr ? 'Hide QR' : 'Show QR'}</span>
           </button>
         )}
@@ -175,9 +205,9 @@ export function UsernameClaimSuccess({
           rel="noreferrer noopener"
           data-testid="username-claim-success-share-x"
           aria-label={`Share ${fullHandle} on X`}
-          className="inline-flex items-center gap-1.5 rounded-md border border-border-subtle bg-surface-page px-3 py-1.5 text-[12px] text-fg-primary transition-colors hover:border-border-strong"
+          className="inline-flex items-center gap-1.5 rounded-xs border border-border-subtle bg-surface-card px-3 py-1.5 font-mono text-[10px] tracking-[0.1em] uppercase text-fg-primary transition hover:border-border-strong focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
         >
-          <span aria-hidden="true">𝕏</span>
+          <Icon name="external-link" size={10} aria-hidden />
           <span>Share to X</span>
         </a>
       </div>
@@ -186,7 +216,7 @@ export function UsernameClaimSuccess({
         <div
           id="username-claim-success-qr-panel"
           data-testid="username-claim-success-qr-panel"
-          className="flex flex-col items-center gap-2 rounded-md bg-surface-page p-3"
+          className="flex flex-col items-center gap-2 rounded-sm border border-border-subtle bg-surface-card p-3"
         >
           <SuiPayQr recipientAddress={walletAddress} amount={null} size={180} />
           <div className="text-center">
@@ -195,7 +225,7 @@ export function UsernameClaimSuccess({
               {truncateAddress(walletAddress)}
             </div>
           </div>
-          <p className="max-w-[220px] text-center text-[11px] text-fg-secondary">
+          <p className="max-w-[220px] text-center text-[11px] leading-[1.5] text-fg-secondary">
             Scan with any Sui wallet to send {fullHandle} USDC, SUI, or any token
           </p>
         </div>
@@ -207,7 +237,7 @@ export function UsernameClaimSuccess({
             type="button"
             onClick={onContinue}
             data-testid="username-claim-success-continue"
-            className="inline-flex items-center justify-center rounded-md border border-border-strong bg-fg-primary px-4 py-2 text-[12px] font-medium text-fg-inverse transition-opacity hover:opacity-90"
+            className="inline-flex items-center justify-center rounded-sm border border-fg-primary bg-fg-primary px-3 py-2 font-mono text-[10px] tracking-[0.1em] uppercase text-fg-inverse transition hover:opacity-90 focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
           >
             Continue to Audric
           </button>

@@ -1,11 +1,26 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Icon } from '@/components/ui/Icon';
 import { suggestUsernames } from '@/lib/identity/suggest-usernames';
 import { validateAudricLabel, type LabelReason } from '@/lib/identity/validate-label';
 
 // ───────────────────────────────────────────────────────────────────────────
 // SPEC 10 Phase B.1 — UsernamePicker
+//
+// [B5 polish] Visual language re-aligned to the Audric Design System
+// (see `.cursor/rules/design-system.mdc`). Closest prototype analogues:
+//   • `design_handoff_audric/design_files/audric-app-light/settings.jsx`
+//     — sunken-card chrome (`bg-surface-sunken` + `rounded-md` + `p-4`),
+//     mono eyebrow language (`font-mono text-[10px] tracking-[0.1em]
+//     uppercase text-fg-muted`), and the canonical Claim-handle CTA
+//     (mirrored from PassportSection's empty-state).
+//   • `design_handoff_audric/design_files/audric-app-light/primitives.jsx`
+//     — Pill/Tag/Card primitives (mono labels, geometric icons via
+//     inline SVG, no emoji as UI). Chip status indicators use the
+//     icon-set (`check` / `close` / `spinner`) instead of ✓/✗/… emoji;
+//     the regenerate affordance uses the `sparkle` icon ("give me new
+//     ideas") instead of 🔄.
 //
 // Reusable component that lets a user claim a `username.audric.sui` leaf
 // subname. Built on the SPEC 9 P9.4 `pending_input` SUBSTRATE (same SSE
@@ -14,7 +29,7 @@ import { validateAudricLabel, type LabelReason } from '@/lib/identity/validate-l
 // because the picker has UX requirements that the generic form can't model:
 //
 //   • 3 chip suggestions with per-chip availability state
-//   • 🔄 "regenerate suggestions" button (B-6 privacy escape hatch)
+//   • Sparkle "regenerate suggestions" button (B-6 privacy escape hatch)
 //   • Real-time debounced availability check on the free-text input
 //   • Status-specific copy: available / taken / reserved / invalid /
 //     too-short / too-long / checking / verifier-degraded (503)
@@ -272,11 +287,13 @@ export function UsernamePicker({
   return (
     <div
       data-testid="username-picker"
-      className="space-y-4 rounded-lg border border-border-subtle bg-surface-page/40 p-4"
+      className="space-y-4 rounded-md border border-border-subtle bg-surface-sunken p-4"
     >
-      <div className="space-y-1">
-        <h3 className="text-sm font-medium text-fg-primary">Pick your handle</h3>
-        <p className="text-[12px] text-fg-secondary">
+      <div className="space-y-1.5">
+        <p className="font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted">
+          Pick your handle
+        </p>
+        <p className="text-[12px] text-fg-secondary leading-[1.55]">
           This is your forever Audric Passport — friends send you USDC by typing
           {' '}
           <span className="font-mono text-fg-primary">@yourhandle</span>.
@@ -286,7 +303,7 @@ export function UsernamePicker({
       {suggestions.length > 0 && (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-medium uppercase tracking-wide text-fg-secondary">
+            <span className="font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted">
               Suggestions
             </span>
             <button
@@ -295,9 +312,9 @@ export function UsernamePicker({
               disabled={disabled}
               data-testid="username-picker-regenerate"
               aria-label="Regenerate suggestions"
-              className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-fg-secondary transition-colors hover:bg-surface-page hover:text-fg-primary disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-xs border border-border-subtle px-2 py-1 font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted transition hover:text-fg-primary hover:border-border-strong disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
             >
-              <span aria-hidden="true">🔄</span>
+              <Icon name="sparkle" size={10} />
               <span>Regenerate</span>
             </button>
           </div>
@@ -317,11 +334,11 @@ export function UsernamePicker({
 
       <form onSubmit={handleSubmit} className="space-y-2">
         <label htmlFor="username-picker-input" className="block">
-          <span className="text-[11px] font-medium uppercase tracking-wide text-fg-secondary">
+          <span className="font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted">
             Or type your own
           </span>
         </label>
-        <div className="flex items-stretch overflow-hidden rounded-md border border-border-subtle bg-surface-page focus-within:border-border-strong">
+        <div className="flex items-stretch overflow-hidden rounded-sm border border-border-subtle bg-surface-page focus-within:border-border-strong focus-within:shadow-[var(--shadow-focus-ring)]">
           <input
             id="username-picker-input"
             data-testid="username-picker-input"
@@ -335,11 +352,11 @@ export function UsernamePicker({
             maxLength={20}
             aria-describedby="username-picker-status"
             aria-invalid={isErrorStatus(status) || undefined}
-            className="flex-1 bg-transparent px-3 py-2 font-mono text-sm text-fg-primary outline-none disabled:opacity-50"
+            className="flex-1 bg-transparent px-3 py-2 font-mono text-[13px] text-fg-primary outline-none disabled:opacity-50"
           />
           <span
             aria-hidden="true"
-            className="flex items-center bg-surface-page/60 px-3 font-mono text-sm text-fg-secondary"
+            className="flex items-center bg-surface-sunken px-3 font-mono text-[13px] text-fg-secondary"
           >
             {PARENT_SUFFIX}
           </span>
@@ -353,7 +370,7 @@ export function UsernamePicker({
               onClick={onSkip}
               disabled={disabled}
               data-testid="username-picker-skip"
-              className="text-[12px] text-fg-secondary underline-offset-2 hover:text-fg-primary hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+              className="font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted underline-offset-2 hover:text-fg-primary hover:underline disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:underline"
             >
               Skip for now
             </button>
@@ -364,7 +381,7 @@ export function UsernamePicker({
             type="submit"
             disabled={!canSubmit}
             data-testid="username-picker-submit"
-            className="inline-flex items-center justify-center rounded-md border border-border-strong bg-fg-primary px-4 py-2 text-[12px] font-medium text-fg-inverse transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex items-center justify-center rounded-sm border border-fg-primary bg-fg-primary px-3 py-2 font-mono text-[10px] tracking-[0.1em] uppercase text-fg-inverse transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
           >
             {submitLabel}
           </button>
@@ -386,16 +403,15 @@ interface SuggestionChipProps {
 }
 
 function SuggestionChip({ label, status, disabled, onClick }: SuggestionChipProps) {
-  // Chips can be in 4 visual states:
-  //   • checking → grey border, spinner suffix
-  //   • available → green tint, ✓ suffix, clickable
-  //   • taken/reserved/error → red tint, ✗ suffix, disabled
-  //   • invalid (shouldn't happen post-validation but defensive) → hidden
+  // [B5 polish] Chips follow the prototype Pill pattern (primitives.jsx):
+  // mono 10px tracked uppercase, fully-rounded border, semantic-token
+  // tones. Status indicators come from the icon-set rather than ✓/✗/…
+  // emoji to match the inline-SVG geometric icon language used
+  // everywhere else in the chrome.
   if (status === 'invalid' || status === 'too-short' || status === 'too-long') {
     return null;
   }
   const clickable = status === 'available' && !disabled;
-  const indicator = chipIndicator(status);
   const tone = chipTone(status);
   return (
     <button
@@ -405,17 +421,33 @@ function SuggestionChip({ label, status, disabled, onClick }: SuggestionChipProp
       data-testid={`username-picker-chip-${label}`}
       data-status={status}
       aria-label={`${label}.audric.sui — ${humanStatus(status)}`}
-      className={`group inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[12px] font-mono transition-colors ${tone} ${clickable ? 'cursor-pointer' : 'cursor-not-allowed'}`}
+      className={`group inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 font-mono text-[10px] tracking-[0.06em] transition ${tone} ${clickable ? 'cursor-pointer' : 'cursor-not-allowed'} focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]`}
     >
       <span>{label}</span>
-      <span aria-hidden="true" className="opacity-70">
+      <span aria-hidden="true" className="opacity-60">
         .audric.sui
       </span>
-      <span aria-hidden="true" className="ml-0.5">
-        {indicator}
-      </span>
+      <ChipIndicator status={status} />
     </button>
   );
+}
+
+function ChipIndicator({ status }: { status: UsernameCheckStatus }) {
+  if (status === 'checking') {
+    return (
+      <Icon
+        name="spinner"
+        size={10}
+        aria-label="Checking availability"
+        className="animate-spin opacity-70"
+      />
+    );
+  }
+  if (status === 'available') {
+    return <Icon name="check" size={10} aria-label="Available" />;
+  }
+  // taken / reserved / error / verifier-down
+  return <Icon name="close" size={10} aria-label="Unavailable" className="opacity-70" />;
 }
 
 interface StatusLineProps {
@@ -428,7 +460,9 @@ function StatusLine({ status, input }: StatusLineProps) {
   if (!message) {
     return <div id="username-picker-status" className="h-4" aria-hidden="true" />;
   }
-  // Semantic tokens (DS Rule 1): theme-flip via globals.css, never raw palette.
+  // [B5 polish] Status line keeps semantic tones but reaches for the
+  // ADS body-xs ramp (`text-[12px] leading-[1.5]`) so it sits on the
+  // same vertical rhythm as the surrounding paragraph copy.
   const tone = isErrorStatus(status)
     ? 'text-error-fg'
     : status === 'available'
@@ -440,7 +474,7 @@ function StatusLine({ status, input }: StatusLineProps) {
       data-testid="username-picker-status"
       data-status={status}
       role={isErrorStatus(status) ? 'alert' : 'status'}
-      className={`text-[12px] ${tone}`}
+      className={`text-[12px] leading-[1.5] ${tone}`}
     >
       {message}
     </div>
@@ -513,12 +547,6 @@ function humanStatusForInput(s: UsernameCheckStatus, input: string): string {
   return 'Check failed — try again';
 }
 
-function chipIndicator(s: UsernameCheckStatus): string {
-  if (s === 'checking') return '…';
-  if (s === 'available') return '✓';
-  return '✗';
-}
-
 function chipTone(s: UsernameCheckStatus): string {
   // Semantic tokens (DS Rule 1): success-* / error-* theme-flip via globals.css.
   // The available chip's hover bumps opacity slightly via opacity-90 → opacity-100
@@ -529,7 +557,7 @@ function chipTone(s: UsernameCheckStatus): string {
     return 'border-success-border bg-success-bg text-success-fg hover:opacity-90';
   }
   if (s === 'checking') {
-    return 'border-border-subtle bg-surface-page/60 text-fg-secondary';
+    return 'border-border-subtle bg-surface-page text-fg-secondary';
   }
   // taken / reserved / error
   return 'border-error-border bg-error-bg text-fg-secondary opacity-70';

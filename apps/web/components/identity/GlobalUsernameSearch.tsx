@@ -3,6 +3,18 @@
 /**
  * SPEC 10 D.2 — Global username search bar.
  *
+ * [B5 polish] Visual chrome aligned to the Audric Design System
+ * (`.cursor/rules/design-system.mdc`). Row affordance labels ("Profile" /
+ * "Balance") use the canonical mono-uppercase eyebrow language
+ * (`font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted`) so
+ * they sit on the same vertical rhythm as every other right-aligned
+ * action label in the chrome (e.g. PassportSection's row CTAs). The
+ * theme-flipping `bg-surface-nav` on the input is preserved (DS Rule 2)
+ * so the field reads as "owned by the sidebar" in both themes. Reference
+ * for the listbox row pattern:
+ * `design_handoff_audric/design_files/audric-app-light/primitives.jsx`
+ * (NavRow + Pill mono-uppercase patterns).
+ *
  * Lives in `AppSidebar` (expanded state, just above the nav). Lets the
  * user jump to anyone's surface from anywhere in the app:
  *
@@ -275,7 +287,8 @@ export function GlobalUsernameSearch({
           className="absolute left-0 right-0 top-full mt-1.5 z-20 rounded-md border border-border-subtle bg-surface-card shadow-[var(--shadow-flat)] overflow-hidden max-h-[60vh] overflow-y-auto"
         >
           {searching && !showAnyRow && (
-            <div className="px-3 py-2 text-[11px] text-fg-muted">
+            <div className="flex items-center gap-2 px-3 py-2 font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted">
+              <Icon name="spinner" size={10} aria-hidden className="animate-spin opacity-70" />
               Searching{'\u2026'}
             </div>
           )}
@@ -287,15 +300,15 @@ export function GlobalUsernameSearch({
               role="option"
               aria-selected="false"
               onClick={() => handleProfile(r.username)}
-              className="w-full px-3 py-2 text-left hover:bg-surface-sunken transition-colors flex items-center justify-between gap-2"
+              className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left transition hover:bg-surface-sunken focus-visible:outline-none focus-visible:bg-surface-sunken"
             >
               <span className="flex items-center gap-1.5 min-w-0">
                 <span aria-hidden="true">🪪</span>
-                <span className="text-[12px] text-fg-primary font-mono truncate">
+                <span className="font-mono text-[12px] text-fg-primary truncate">
                   {r.fullHandle}
                 </span>
               </span>
-              <span className="text-[10px] text-fg-muted font-mono shrink-0">
+              <span className="font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted shrink-0">
                 Profile
               </span>
             </button>
@@ -307,15 +320,15 @@ export function GlobalUsernameSearch({
               role="option"
               aria-selected="false"
               onClick={() => handleBalance(suinsHit.address, suinsHit.name, 'suins')}
-              className="w-full px-3 py-2 text-left hover:bg-surface-sunken transition-colors flex items-center justify-between gap-2 border-t border-border-subtle"
+              className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left border-t border-border-subtle transition hover:bg-surface-sunken focus-visible:outline-none focus-visible:bg-surface-sunken"
             >
               <span className="flex items-center gap-1.5 min-w-0">
                 <Icon name="search" size={11} className="text-fg-muted" />
-                <span className="text-[12px] text-fg-primary font-mono truncate">
+                <span className="font-mono text-[12px] text-fg-primary truncate">
                   {suinsHit.name}
                 </span>
               </span>
-              <span className="text-[10px] text-fg-muted font-mono shrink-0">
+              <span className="font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted shrink-0">
                 Balance
               </span>
             </button>
@@ -333,22 +346,22 @@ export function GlobalUsernameSearch({
                   'address',
                 )
               }
-              className="w-full px-3 py-2 text-left hover:bg-surface-sunken transition-colors flex items-center justify-between gap-2 border-t border-border-subtle"
+              className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left border-t border-border-subtle transition hover:bg-surface-sunken focus-visible:outline-none focus-visible:bg-surface-sunken"
             >
               <span className="flex items-center gap-1.5 min-w-0">
                 <Icon name="search" size={11} className="text-fg-muted" />
-                <span className="text-[12px] text-fg-primary font-mono truncate">
+                <span className="font-mono text-[12px] text-fg-primary truncate">
                   {`${trimmed.slice(0, 10)}…${trimmed.slice(-6)}`}
                 </span>
               </span>
-              <span className="text-[10px] text-fg-muted font-mono shrink-0">
+              <span className="font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted shrink-0">
                 Balance
               </span>
             </button>
           )}
 
           {showEmptyState && (
-            <div className="px-3 py-2.5 text-[11px] text-fg-muted leading-relaxed">
+            <div className="px-3 py-2.5 text-[12px] leading-[1.5] text-fg-muted">
               No Audric user, SuiNS name, or address matches{' '}
               <span className="font-mono text-fg-secondary">{trimmed}</span>.
             </div>

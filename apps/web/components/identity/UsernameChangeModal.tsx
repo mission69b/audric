@@ -1,11 +1,19 @@
 'use client';
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { Icon } from '@/components/ui/Icon';
 import { validateAudricLabel } from '@/lib/identity/validate-label';
 import { isReserved } from '@/lib/identity/reserved-usernames';
 
 // ───────────────────────────────────────────────────────────────────────────
 // S.84 — UsernameChangeModal
+//
+// [B5 polish] Visual chrome aligned to the Audric Design System. Eyebrow
+// tracking normalised to the canonical `0.1em` (was `0.12em` — minor
+// drift from the original S.84 ship); close affordance switched to the
+// canonical `Icon name="close"` for parity with every other dismissable
+// surface. Reference: `design_handoff_audric/design_files/audric-app-light/
+// settings.jsx` for the sunken-card chrome and mono-eyebrow language.
 //
 // Focused modal for the change-handle flow under Settings → Passport.
 // Distinct from `<UsernameClaimGate>` (which owns the first-time claim
@@ -266,7 +274,7 @@ export function UsernameChangeModal({
             <div aria-hidden="true" className="text-2xl">
               🪪
             </div>
-            <h2 id="change-handle-title" className="font-mono text-[10px] tracking-[0.12em] uppercase text-fg-muted">
+            <h2 id="change-handle-title" className="font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted">
               Handle changed
             </h2>
             <p className="break-all font-mono text-[15px] text-fg-primary">{successHandle}</p>
@@ -277,7 +285,7 @@ export function UsernameChangeModal({
             <div className="flex items-start justify-between">
               <h2
                 id="change-handle-title"
-                className="font-mono text-[10px] tracking-[0.12em] uppercase text-fg-muted"
+                className="font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted"
               >
                 Change handle
               </h2>
@@ -286,14 +294,14 @@ export function UsernameChangeModal({
                 onClick={onClose}
                 disabled={phase === 'submitting'}
                 aria-label="Close"
-                className="-mt-1 -mr-1 inline-flex h-6 w-6 items-center justify-center rounded-sm text-fg-muted hover:bg-surface-sunken hover:text-fg-primary disabled:opacity-50"
+                className="-mt-1 -mr-1 inline-flex h-6 w-6 items-center justify-center rounded-sm text-fg-muted transition hover:bg-surface-sunken hover:text-fg-primary disabled:opacity-50 focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
               >
-                ✕
+                <Icon name="close" size={12} aria-hidden />
               </button>
             </div>
 
-            <div className="rounded-md border border-border-subtle bg-surface-sunken p-3">
-              <p className="font-mono text-[9px] tracking-[0.12em] uppercase text-fg-muted">
+            <div className="rounded-sm border border-border-subtle bg-surface-sunken p-3">
+              <p className="font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted">
                 Current
               </p>
               <p className="mt-1 break-all font-mono text-[13px] text-fg-primary">
@@ -304,7 +312,7 @@ export function UsernameChangeModal({
             <div>
               <label
                 htmlFor={inputId}
-                className="font-mono text-[9px] tracking-[0.12em] uppercase text-fg-muted"
+                className="font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted"
               >
                 New handle
               </label>
@@ -334,7 +342,7 @@ export function UsernameChangeModal({
                 id={helpId}
                 role={validation.hint || submitError ? 'alert' : undefined}
                 className={[
-                  'mt-1.5 text-[11px]',
+                  'mt-1.5 text-[12px] leading-[1.5]',
                   submitError
                     ? 'text-error-fg'
                     : validation.hint
@@ -346,9 +354,12 @@ export function UsernameChangeModal({
               </p>
             </div>
 
-            <div className="rounded-md border border-warning-border bg-warning-bg px-3 py-2.5">
-              <p className="text-[11px] leading-[1.55] text-warning-fg">
-                <span aria-hidden="true">⚠ </span>
+            <div className="flex items-start gap-2 rounded-sm border border-warning-border bg-warning-bg px-3 py-2.5">
+              <span
+                aria-hidden="true"
+                className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-warning-solid"
+              />
+              <p className="text-[12px] leading-[1.55] text-warning-fg">
                 Changing your handle releases <span className="font-mono">{currentFull}</span> on Sui.
                 Anyone can claim it after — including someone else. This action is final.
               </p>

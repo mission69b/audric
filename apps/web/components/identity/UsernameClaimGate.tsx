@@ -7,6 +7,15 @@ import { UsernameClaimSuccess } from './UsernameClaimSuccess';
 // ───────────────────────────────────────────────────────────────────────────
 // SPEC 10 Phase B-wiring — UsernameClaimGate
 //
+// [B5 polish] Visual chrome aligned to the Audric Design System
+// (`.cursor/rules/design-system.mdc`). The gate's only direct UI is
+// the inline error surface above the picker; styling mirrors the
+// canonical error treatment used elsewhere in the chrome — sunken
+// error-bg + error-border + body-xs copy on the same vertical
+// rhythm as the picker body. Closest prototype for that pattern is
+// the inline alert language inside
+// `design_handoff_audric/design_files/audric-app-light/settings.jsx`.
+//
 // The composition glue between B.1 (`<UsernamePicker>`), B.2 (the
 // `/api/identity/reserve` route), and B.3 (`<UsernameClaimSuccess>`).
 // Hosts a 3-state machine:
@@ -228,7 +237,7 @@ export function UsernameClaimGate({
         <div
           data-testid="username-claim-gate-error"
           role="alert"
-          className="rounded-md border border-error-border bg-error-bg px-3 py-2 text-[12px] text-error-fg"
+          className="rounded-sm border border-error-border bg-error-bg px-3 py-2 text-[12px] leading-[1.5] text-error-fg"
         >
           {errorMessage}
         </div>
