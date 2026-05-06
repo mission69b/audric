@@ -2,7 +2,6 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { NavItem, type BadgeVariant } from './NavItem';
 import { ConvoHistoryList } from './ConvoHistoryList';
 import { Tooltip } from '@/components/ui/Tooltip';
@@ -116,9 +115,19 @@ export function AppSidebar({
   );
 
   const email = emailProp ?? decodeEmail(jwt);
+  // [S.84 polish] Initial sources from the handle when claimed (`A` for
+  // `alice`), otherwise falls back to the email-local-part / address.
+  // The avatar is now identity-coloured at-a-glance.
   const initial = useMemo(
-    () => (email ? email[0].toUpperCase() : address ? address.slice(2, 3).toUpperCase() : '?'),
-    [email, address],
+    () =>
+      username
+        ? username[0].toUpperCase()
+        : email
+          ? email[0].toUpperCase()
+          : address
+            ? address.slice(2, 3).toUpperCase()
+            : '?',
+    [username, email, address],
   );
   const [copied, setCopied] = useState(false);
 
@@ -135,6 +144,18 @@ export function AppSidebar({
     onNewConversation?.();
     handleNav('chat');
   }, [onNewConversation, handleNav]);
+
+  // [S.84 polish] Profile nav target — claimed users land on their own
+  // public profile (`/[username]`); unclaimed users keep the legacy
+  // settings target so the click affordance never goes nowhere.
+  const handleProfileNav = useCallback(() => {
+    if (username) {
+      router.push(`/${username}`);
+    } else {
+      router.push('/settings');
+    }
+    onClose?.();
+  }, [username, router, onClose]);
 
   /* ─── COLLAPSED ─── */
   if (collapsed) {
@@ -180,8 +201,12 @@ export function AppSidebar({
         </div>
 
         {/* Footer — profile only. Theme toggle removed; users switch themes
-            from Settings → Account → Appearance. [S.84] Tooltip prefers
-            the Audric handle when claimed (the user's primary identity). */}
+            from Settings → Account → Appearance.
+
+            [S.84 polish] Avatar tooltip prefers the Audric handle when
+            claimed; click target routes to the user's public profile
+            (was Settings). The user's "you" surface should go to the
+            user's "you" page; Settings still has its own nav item. */}
         <div className="flex flex-col items-center gap-1.5 pb-3 pt-2 border-t border-border-subtle shrink-0 w-full">
           {(email || address || username) && (
             <Tooltip
@@ -193,7 +218,7 @@ export function AppSidebar({
               side="right"
             >
               <button
-                onClick={() => handleNav('settings')}
+                onClick={handleProfileNav}
                 // Avatar pill is color-stable across themes (matches dark prototype's
                 // `audric-app-dark/sidebar.jsx` line 78 — same green gradient + same
                 // white initial in light and dark). `text-white` is pinned, NOT
@@ -201,7 +226,7 @@ export function AppSidebar({
                 // would be unreadable against the dark-green stop of the gradient.
                 className="w-7 h-7 rounded-full shrink-0 flex items-center justify-center font-mono text-[11px] text-white focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
                 style={{ background: 'linear-gradient(135deg, var(--g500) 0%, var(--g700) 100%)' }}
-                aria-label="Settings"
+                aria-label={username ? `View profile · ${username}.audric.sui` : 'Settings'}
               >
                 {initial}
               </button>
@@ -295,32 +320,33 @@ export function AppSidebar({
         )}
       </nav>
 
-      {/* Footer — user info. Theme toggle removed; users switch themes
-          from Settings → Account → Appearance.
+      {/* Footer — single profile block.
 
-          [S.84] When the user has claimed an Audric handle, render a
-          🪪 handle row at the TOP of the footer (above email/address)
-          that links straight to their `/[username]` public profile. The
-          handle is the user's primary identity — surface it FIRST. The
-          email + truncated address still render below it as the
-          recovery / receiving identifiers. */}
-      <div className="shrink-0 border-t border-border-subtle px-3 py-3 space-y-1">
-        {username && (
-          <Link
-            href={`/${username}`}
-            data-testid="sidebar-handle-row"
-            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-sm hover:bg-surface-nav-hover transition-colors focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
-            title={`View your profile · ${username}.audric.sui`}
-          >
-            <span aria-hidden="true">🪪</span>
-            <span className="font-mono text-[11px] text-fg-primary truncate">
-              {username}.audric.sui
-            </span>
-          </Link>
-        )}
-        {(email || address) && (
+          [S.84 polish] Collapsed from the original two-row layout (handle
+          row + avatar/email block) into ONE block. Two stacked clickable
+          surfaces with two destinations was visually one cluster but
+          semantically two — confusing. Now:
+
+            • Avatar initial sources from the handle when claimed (was email).
+            • Primary line = `<username>.audric.sui` when claimed, else email
+              (preserves pre-claim layout exactly).
+            • Secondary line = truncated address; click still copies.
+            • Whole block click → `/[username]` profile when claimed,
+              else `/settings` (existing behavior preserved for unclaimed).
+            • Email demoted to the wrapper tooltip when claimed — recoverable
+              on hover but not screaming. Same posture as the greeting fix:
+              after the user has a handle, the email-derived label shouldn't
+              be the primary "you" identifier. */}
+      <div className="shrink-0 border-t border-border-subtle px-3 py-3">
+        {(email || address || username) && (
           <button
-            onClick={() => handleNav('settings')}
+            onClick={handleProfileNav}
+            data-testid="sidebar-profile-block"
+            title={
+              username
+                ? `View your profile · ${username}.audric.sui${email ? ` · ${email}` : ''}`
+                : email || undefined
+            }
             className="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-sm hover:bg-surface-nav-hover transition-colors group focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
           >
             <div
@@ -332,9 +358,18 @@ export function AppSidebar({
               {initial}
             </div>
             <div className="flex-1 min-w-0 text-left">
-              {email && (
+              {/* Primary line — handle when claimed, email otherwise.
+                  The 🪪 marker is a quiet identity cue inline; reserved
+                  for the claimed branch so unclaimed users don't see a
+                  badge that doesn't apply to them. */}
+              {username ? (
+                <p className="font-mono text-[12px] text-fg-primary truncate">
+                  <span aria-hidden="true" className="mr-1">🪪</span>
+                  {username}.audric.sui
+                </p>
+              ) : email ? (
                 <p className="text-[12px] text-fg-secondary truncate">{email}</p>
-              )}
+              ) : null}
               {address && (
                 <p
                   className="font-mono text-[9px] tracking-[0.06em] uppercase text-fg-muted mt-0.5 hover:text-fg-secondary transition-colors"

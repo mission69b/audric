@@ -111,10 +111,17 @@ export function PassportSection({
         </p>
       </div>
 
-      {/* [S.84] HANDLE card — your Audric identity. Full `<label>.audric.sui`
+      {/* [S.84] IDENTITY card — your Audric identity. Full `<label>.audric.sui`
           form per D10 (never the bare label, never just `@label`). When
           `username` is null the card collapses to an empty state pointing
-          back to the dashboard's claim gate. */}
+          back to the dashboard's claim gate.
+
+          Eyebrow label is "Identity" (not "Audric handle"): we're already
+          inside the Passport section, so prefixing with "Audric" reads as
+          duplication, and "handle" was too literal — sounded like a
+          username when the framing is "this is your identity." Functional
+          row-label form matches its neighbours (Wallet address, Network,
+          Sign-in session). */}
       <div
         data-testid="passport-handle-card"
         className="rounded-md border border-border-subtle bg-surface-sunken p-4 mb-5"
@@ -123,7 +130,7 @@ export function PassportSection({
           <div className="flex items-center gap-2">
             <span aria-hidden="true">🪪</span>
             <p className="font-mono text-[10px] tracking-[0.12em] uppercase text-fg-muted">
-              Audric handle
+              Identity
             </p>
           </div>
           {fullHandle && (
