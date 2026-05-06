@@ -285,7 +285,13 @@ function SendRecipientInput({
             type="text"
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            placeholder="@audric-handle, address (0x...), or contact"
+            // [B2 polish] Parallel noun structure (was: "@audric-handle,
+            // address (0x...), or contact" — mixed format, hyphenated
+            // jargon, parens). Three paths in canonical-noun form, with
+            // the new SPEC 10 dominant path (@username) first; "username"
+            // matches the noun used in sidebar / settings / picker /
+            // change modal / claim modal — no more "audric-handle".
+            placeholder="@username, contact name, or 0x address"
             autoFocus
             className="flex-1 rounded-lg border border-border-subtle bg-surface-page px-4 py-3 text-[14px] text-fg-primary placeholder:text-fg-muted outline-none focus:border-border-strong transition-colors"
             onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit(); }}
