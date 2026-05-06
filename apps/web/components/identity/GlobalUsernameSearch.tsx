@@ -76,9 +76,23 @@ interface GlobalUsernameSearchProps {
     label: string,
     kind: 'suins' | 'address',
   ) => void;
+  /**
+   * [S.84 polish v5] Imperative focus signal. The expanded sidebar
+   * mounts this component on render; when the user clicks the
+   * collapsed sidebar's Search icon, the parent expands the sidebar
+   * AND bumps this counter. The change-effect inside this component
+   * focuses the input on the next render, so the user lands directly
+   * in the search field instead of having to click again. Number (not
+   * boolean) so successive clicks re-focus even if the user moved
+   * focus away between clicks.
+   */
+  autoFocusTrigger?: number;
 }
 
-export function GlobalUsernameSearch({ onCheckBalance }: GlobalUsernameSearchProps) {
+export function GlobalUsernameSearch({
+  onCheckBalance,
+  autoFocusTrigger,
+}: GlobalUsernameSearchProps) {
   const router = useRouter();
   const [value, setValue] = useState('');
   const [audricHits, setAudricHits] = useState<AudricUserHit[]>([]);
@@ -86,6 +100,18 @@ export function GlobalUsernameSearch({ onCheckBalance }: GlobalUsernameSearchPro
   const [searching, setSearching] = useState(false);
   const [open, setOpen] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // [S.84 polish v5] Focus on every trigger bump. The microtask delay
+  // matches `<UsernameChangeModal>`'s focus-after-mount pattern — the
+  // sidebar may still be transitioning from collapsed→expanded width
+  // when the trigger fires, and synchronous focus loses to React's
+  // own mount-time focus reset.
+  useEffect(() => {
+    if (!autoFocusTrigger) return;
+    const t = setTimeout(() => inputRef.current?.focus(), 30);
+    return () => clearTimeout(t);
+  }, [autoFocusTrigger]);
 
   const trimmed = value.trim();
   const isBareAddress = SUI_ADDRESS_REGEX.test(trimmed);
@@ -217,6 +243,7 @@ export function GlobalUsernameSearch({ onCheckBalance }: GlobalUsernameSearchPro
           className="absolute left-2.5 top-1/2 -translate-y-1/2 text-fg-muted pointer-events-none"
         />
         <input
+          ref={inputRef}
           type="text"
           value={value}
           onChange={(e) => {

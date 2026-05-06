@@ -91,6 +91,15 @@ export function AppSidebar({
   onSearchCheckBalance,
 }: SidebarProps) {
   const router = useRouter();
+
+  // [S.84 polish v5] Counter that bumps when the user clicks the
+  // collapsed sidebar's Search icon. Passed to <GlobalUsernameSearch>
+  // (which only mounts in the expanded branch) — its change-effect
+  // focuses the input so the user lands directly in the search field
+  // after the expand animation. Number, not boolean, so a second
+  // collapsed-Search click still focuses (boolean would no-op when
+  // already true).
+  const [searchFocusTrigger, setSearchFocusTrigger] = useState(0);
   const handleNav = useCallback(
     (id: PanelId) => {
       if (id === 'settings') {
@@ -164,6 +173,26 @@ export function AppSidebar({
         <Tooltip label="Open sidebar" side="right">
           <button onClick={onToggleCollapse} className={iconBtnClass} aria-label="Open sidebar">
             <Icon name="panel-left" size={16} />
+          </button>
+        </Tooltip>
+
+        {/* [S.84 polish v5] Search — mirrors the expanded sidebar's
+            order (Search above New conversation). Click expands the
+            sidebar AND auto-focuses the search input via the
+            `searchFocusTrigger` bump → <GlobalUsernameSearch> effect.
+            Without this entry, the global search was unreachable in
+            collapsed mode (the search component only mounts in the
+            expanded branch). */}
+        <Tooltip label="Search" side="right">
+          <button
+            onClick={() => {
+              setSearchFocusTrigger((t) => t + 1);
+              onToggleCollapse?.();
+            }}
+            className={iconBtnClass}
+            aria-label="Search users, .sui, or addresses"
+          >
+            <Icon name="search" size={16} />
           </button>
         </Tooltip>
 
@@ -254,9 +283,15 @@ export function AppSidebar({
       </div>
 
       {/* [SPEC 10 D.2] Global search — Audric users → profile,
-          generic SuiNS / 0x → balance check via chat. */}
+          generic SuiNS / 0x → balance check via chat.
+          [S.84 polish v5] `autoFocusTrigger` lets the collapsed
+          sidebar's Search icon expand THIS surface and land focus
+          directly in the input on the next render. */}
       <div className="px-3 pb-2.5 shrink-0">
-        <GlobalUsernameSearch onCheckBalance={onSearchCheckBalance} />
+        <GlobalUsernameSearch
+          onCheckBalance={onSearchCheckBalance}
+          autoFocusTrigger={searchFocusTrigger}
+        />
       </div>
 
       {/* New conversation */}
