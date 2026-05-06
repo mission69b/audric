@@ -51,7 +51,7 @@ export function ContactsSection({ address }: ContactsSectionProps) {
       <p className="text-[13px] text-fg-secondary mb-4">
         Manage saved recipients &mdash; or{' '}
         <Link
-          href="/contacts"
+          href="/settings/contacts"
           className="text-fg-primary underline decoration-border-strong hover:decoration-fg-primary transition"
         >
           open the full Contacts screen

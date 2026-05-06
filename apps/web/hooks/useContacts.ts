@@ -2,9 +2,27 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+/**
+ * [SPEC 10 D.4] Widened Contact shape — now exposes the SPEC 10 D7
+ * unified fields: `audricUsername` (lazy reverse-SuiNS enrichment) +
+ * `resolvedAddress` (canonical lowercased 0x). `address` mirrors
+ * `identifier` for backward-compat with consumers (PermissionCard,
+ * ContactsPanel, SendRecipientInput) that read `c.address`.
+ *
+ * Tri-state for `audricUsername`:
+ *   - `string`  — confirmed Audric handle (e.g. `alice.audric.sui`)
+ *   - `null`    — checked, no Audric handle for this address
+ *   - `undefined` — never checked yet (transient; D.4 backfill will
+ *                   populate within ~250-500ms of useContacts mount)
+ */
 export interface Contact {
   name: string;
   address: string;
+  identifier?: string;
+  resolvedAddress?: string;
+  audricUsername?: string | null;
+  addedAt?: string | null;
+  source?: string | null;
 }
 
 /**
@@ -22,13 +40,21 @@ export interface Contact {
  * `refetch()` is exposed so the dashboard can resync after a chat turn that
  * called `save_contact`. Without it the contacts tab would stay stale until
  * the page reloaded.
+ *
+ * [SPEC 10 D.4] After the initial GET, if any contacts have
+ * `audricUsername === null` (= unchecked or previously checked-no-handle),
+ * fire `POST /api/user/preferences/contacts/backfill` once per session
+ * to enrich them. Latency-decoupled from GET so the contact list renders
+ * immediately and 🪪 badges populate ~250-500ms later.
  */
 export function useContacts(userAddress: string | null) {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loaded, setLoaded] = useState(false);
-  // Used to dedupe concurrent refetches and let callbacks read the freshest
-  // server snapshot without taking a stale `contacts` closure dep.
   const inFlightRef = useRef<Promise<Contact[]> | null>(null);
+  // Per-session debounce for the D.4 backfill — guarantees we only fire
+  // it once even if useContacts mounts multiple times (panel switch +
+  // dashboard nav re-mount). Resets on full page reload.
+  const backfillDoneRef = useRef(false);
 
   const fetchContacts = useCallback(async (): Promise<Contact[]> => {
     if (!userAddress) return [];
@@ -62,6 +88,38 @@ export function useContacts(userAddress: string | null) {
     void fetchContacts();
   }, [userAddress, fetchContacts]);
 
+  // [SPEC 10 D.4] Lazy reverse-SuiNS backfill, fired once per session
+  // after first GET if any contact lacks a confirmed audricUsername
+  // string. The endpoint persists results so subsequent sessions see
+  // pre-enriched contacts immediately.
+  useEffect(() => {
+    if (!userAddress || !loaded) return;
+    if (backfillDoneRef.current) return;
+    const needsBackfill = contacts.some((c) => typeof c.audricUsername !== 'string');
+    if (!needsBackfill) {
+      backfillDoneRef.current = true;
+      return;
+    }
+    backfillDoneRef.current = true;
+    void (async () => {
+      try {
+        const res = await fetch('/api/user/preferences/contacts/backfill', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ address: userAddress }),
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (Array.isArray(data.contacts) && data.changed) {
+          setContacts(data.contacts as Contact[]);
+        }
+      } catch {
+        // Backfill is best-effort. If RPC degrades or rate-limit hits,
+        // the next session retries automatically.
+      }
+    })();
+  }, [userAddress, loaded, contacts]);
+
   const addContact = useCallback(
     async (name: string, address: string) => {
       if (!userAddress) return;
@@ -82,10 +140,13 @@ export function useContacts(userAddress: string | null) {
           body: JSON.stringify({ address: userAddress, contacts: updated }),
         });
         if (!res.ok) {
-          // Roll back so the UI doesn't lie about persistence.
           setContacts(contacts);
           throw new Error(`Failed to save contact (HTTP ${res.status})`);
         }
+        // Re-trigger backfill for the new row on next render — clearing
+        // the per-session flag is safe because the backfill endpoint is
+        // idempotent and only RPCs unchecked rows.
+        backfillDoneRef.current = false;
       } catch (err) {
         setContacts(contacts);
         throw err;
@@ -120,6 +181,42 @@ export function useContacts(userAddress: string | null) {
     [userAddress, contacts],
   );
 
+  // [SPEC 10 D.5] Rename a saved contact — re-POSTs the entire list with
+  // the row's `name` updated. Match by address (case-insensitive). No-ops
+  // if the contact doesn't exist (defensive). The backend re-canonicalises
+  // through `parseContactList`, so ancillary fields (audricUsername,
+  // resolvedAddress, etc.) survive the round-trip.
+  const renameContact = useCallback(
+    async (address: string, newName: string) => {
+      if (!userAddress) return;
+      const trimmed = newName.trim();
+      if (!trimmed) throw new Error('Name cannot be empty');
+      const target = address.toLowerCase();
+      const existing = contacts.find((c) => c.address.toLowerCase() === target);
+      if (!existing) return;
+      const updated = contacts.map((c) =>
+        c.address.toLowerCase() === target ? { ...c, name: trimmed } : c,
+      );
+      const previous = contacts;
+      setContacts(updated);
+      try {
+        const res = await fetch('/api/user/preferences', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ address: userAddress, contacts: updated }),
+        });
+        if (!res.ok) {
+          setContacts(previous);
+          throw new Error(`Failed to rename contact (HTTP ${res.status})`);
+        }
+      } catch (err) {
+        setContacts(previous);
+        throw err;
+      }
+    },
+    [userAddress, contacts],
+  );
+
   const isKnownAddress = useCallback(
     (addr: string) =>
       contacts.some((c) => c.address.toLowerCase() === addr.toLowerCase()),
@@ -141,6 +238,7 @@ export function useContacts(userAddress: string | null) {
     loaded,
     addContact,
     removeContact,
+    renameContact,
     isKnownAddress,
     resolveContact,
     refetch: fetchContacts,

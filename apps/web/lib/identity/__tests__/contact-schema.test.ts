@@ -212,7 +212,11 @@ describe('contactFromSaveInput — engine save_contact boundary', () => {
     expect(c.name).toBe('Alice');
     expect(c.identifier).toBe(ADDR_A);
     expect(c.resolvedAddress).toBe(ADDR_A.toLowerCase());
-    expect(c.audricUsername).toBeNull();
+    // [SPEC 10 D.4] audricUsername is intentionally OMITTED at construction
+    // — the undefined value signals "never reverse-checked" to the lazy
+    // backfill in `contact-suins-backfill.ts`. Setting `null` here would
+    // mean "checked, no Audric leaf" and the backfill would skip it.
+    expect(c.audricUsername).toBeUndefined();
     expect(c.source).toBe('save_contact');
     expect(c.addedAt).toBeDefined();
     expect(() => new Date(c.addedAt!).toISOString()).not.toThrow();

@@ -153,6 +153,8 @@ function SendRecipientInput({
   onSelectContact,
   onSelectAudricUser,
   onSubmit,
+  isKnownAddress,
+  onSaveAudricUser,
 }: {
   contacts: Array<{ name: string; address: string }>;
   onSelectContact: (address: string, name: string) => void;
@@ -166,11 +168,27 @@ function SendRecipientInput({
    */
   onSelectAudricUser: (address: string, fullHandle: string) => void;
   onSubmit: (input: string) => void;
+  /**
+   * [SPEC 10 D.5] Inline-save support. `isKnownAddress` filters the
+   * `+` affordance off rows the user already has saved.
+   * `onSaveAudricUser` persists with the bare username as the default
+   * nickname (sensible default — the user can rename later in
+   * /settings/contacts). Returns a promise so the button can render
+   * a transient "Saving…" state.
+   */
+  isKnownAddress: (addr: string) => boolean;
+  onSaveAudricUser: (address: string, name: string) => Promise<void>;
 }) {
   const [value, setValue] = useState('');
   const [searchResults, setSearchResults] = useState<AudricUserSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+  // [SPEC 10 D.5] Per-row save state: tracks which dropdown-row save is
+  // currently in flight (or just succeeded) so we can render
+  // "Saving…" / "Saved ✓" without flipping the row out from under the
+  // user's tap target.
+  const [savingAddr, setSavingAddr] = useState<string | null>(null);
+  const [savedAddrs, setSavedAddrs] = useState<Set<string>>(() => new Set());
 
   // [SPEC 10 Phase C.3] Detect the `@`-prefix typing pattern. The user's
   // raw `@alice` input is the chip-flow shortcut for "find an Audric
@@ -323,21 +341,64 @@ function SendRecipientInput({
                 No Audric user matches <span className="font-mono">@{atQuery}</span>. Paste a 0x address or pick a contact above.
               </p>
             )}
-            {searchResults.map((r) => (
-              <button
-                key={r.address}
-                type="button"
-                role="option"
-                aria-selected="false"
-                onClick={() => handlePickResult(r)}
-                className="w-full px-4 py-2.5 text-left hover:bg-surface-sunken transition-colors flex items-center justify-between gap-3"
-              >
-                <span className="text-[13px] text-fg-primary font-mono">{r.fullHandle}</span>
-                <span className="text-[11px] text-fg-muted font-mono">
-                  {`${r.address.slice(0, 6)}…${r.address.slice(-4)}`}
-                </span>
-              </button>
-            ))}
+            {searchResults.map((r) => {
+              const known = isKnownAddress(r.address) || savedAddrs.has(r.address);
+              const saving = savingAddr === r.address;
+              const handleSave = async (e: React.MouseEvent) => {
+                e.stopPropagation();
+                if (saving || known) return;
+                setSavingAddr(r.address);
+                try {
+                  await onSaveAudricUser(r.address, r.username);
+                  setSavedAddrs((prev) => {
+                    const next = new Set(prev);
+                    next.add(r.address);
+                    return next;
+                  });
+                } finally {
+                  setSavingAddr(null);
+                }
+              };
+              return (
+                <div
+                  key={r.address}
+                  className="w-full flex items-center hover:bg-surface-sunken transition-colors"
+                >
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected="false"
+                    onClick={() => handlePickResult(r)}
+                    className="flex-1 min-w-0 px-4 py-2.5 text-left flex items-center justify-between gap-3"
+                  >
+                    <span className="text-[13px] text-fg-primary font-mono truncate">
+                      {r.fullHandle}
+                    </span>
+                    <span className="text-[11px] text-fg-muted font-mono shrink-0">
+                      {`${r.address.slice(0, 6)}…${r.address.slice(-4)}`}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => void handleSave(e)}
+                    disabled={saving || known}
+                    aria-label={
+                      known
+                        ? `${r.fullHandle} is already in your contacts`
+                        : `Save ${r.fullHandle} to contacts`
+                    }
+                    title={
+                      known
+                        ? 'Already in contacts'
+                        : `Save ${r.username} to contacts`
+                    }
+                    className="shrink-0 px-3 py-2.5 font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted hover:text-fg-primary disabled:opacity-50 disabled:cursor-default focus-visible:outline-none focus-visible:underline"
+                  >
+                    {known ? '\u2713' : saving ? '\u2026' : '+'}
+                  </button>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
@@ -967,6 +1028,22 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
         setPanel('chat');
       }
       engine.sendMessage(text);
+    },
+    [address, engine, panel, setPanel],
+  );
+
+  // [SPEC 10 D.2] Global search → balance check. When the user picks a
+  // generic SuiNS or 0x result from the sidebar search, we route to the
+  // chat panel and dispatch a balance-check prompt; the engine's
+  // `balance_check` tool handles the actual fetch.
+  const handleSearchCheckBalance = useCallback(
+    (target: string, label: string) => {
+      if (!address) return;
+      if (panel !== 'chat') setPanel('chat');
+      // Pass BOTH the canonical 0x address (for the tool) and the human
+      // label (for narration). System prompt already steers to
+      // `balance_check` for this phrasing.
+      engine.sendMessage(`Check the wallet balance for ${label} (${target}).`);
     },
     [address, engine, panel, setPanel],
   );
@@ -1702,6 +1779,8 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
             onSubmit={(input) => {
               void resolveAndSelectSendRecipient(input, balance.cash);
             }}
+            isKnownAddress={contactsHook.isKnownAddress}
+            onSaveAudricUser={contactsHook.addContact}
           />
         )}
 
@@ -1992,6 +2071,7 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
         activeSessionId={engine.sessionId ?? undefined}
         onLoadSession={engine.loadSession}
         onNewConversation={handleNewConversation}
+        onSearchCheckBalance={handleSearchCheckBalance}
       >
         {isChatLayout ? panelContent : (
           <div className="flex-1 overflow-y-auto">{panelContent}</div>

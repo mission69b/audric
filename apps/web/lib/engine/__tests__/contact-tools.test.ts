@@ -81,13 +81,17 @@ describe('audricSaveContactTool.call — persistence', () => {
     // to the addedAt timestamp (which is `new Date().toISOString()` at
     // write time — would break the assertion otherwise).
     expect(args.create.contacts).toHaveLength(1);
+    // [SPEC 10 D.4] `audricUsername` is intentionally omitted at creation
+    // — undefined signals "never reverse-checked" to the lazy backfill.
+    // Hard-setting `null` here would conflate "never checked" with
+    // "checked, no Audric leaf".
     expect(args.create.contacts[0]).toMatchObject({
       name: 'Wallet1',
       identifier: CONTACT_ADDR,
       resolvedAddress: CONTACT_ADDR.toLowerCase(),
-      audricUsername: null,
       source: 'save_contact',
     });
+    expect(args.create.contacts[0]).not.toHaveProperty('audricUsername');
     expect(args.create.contacts[0].addedAt).toBeDefined();
     // The LLM-facing response surface is unchanged — still {name, address}.
     expect((result.data as { action: string; address: string }).action).toBe('created');
@@ -117,13 +121,14 @@ describe('audricSaveContactTool.call — persistence', () => {
       source: 'import',
     });
     // New row written in unified shape with save_contact source.
+    // [SPEC 10 D.4] audricUsername omitted (see note above).
     expect(args.update.contacts[1]).toMatchObject({
       name: 'Wallet1',
       identifier: CONTACT_ADDR,
       resolvedAddress: CONTACT_ADDR.toLowerCase(),
-      audricUsername: null,
       source: 'save_contact',
     });
+    expect(args.update.contacts[1]).not.toHaveProperty('audricUsername');
   });
 
   it('is a true no-op when the same name+address is saved twice', async () => {

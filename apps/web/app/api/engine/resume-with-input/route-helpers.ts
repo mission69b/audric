@@ -15,6 +15,10 @@ import { normalizeAddressInput, resolveAddressToSuinsViaRpc } from '@t2000/engin
 import type { Prisma } from '@/lib/generated/prisma/client';
 import { prisma } from '@/lib/prisma';
 import type { FormSchema } from '@/lib/engine/sse-types';
+import {
+  isAudricHandle,
+  pickAudricHandleFromReverseNames,
+} from '@/lib/identity/audric-handle-helpers';
 
 // ───────────────────────────────────────────────────────────────────────────
 // validateValues — defense-in-depth schema coercion
@@ -124,15 +128,25 @@ export async function resolveRecipientField(
 ): Promise<{ ok: true; value: ResolvedRecipient } | { ok: false; error: string }> {
   try {
     const normalized = await normalizeAddressInput(raw);
-    let audricUsername: string | undefined = normalized.suinsName ?? undefined;
+    // [SPEC 10 D.4 fix] Both branches MUST filter to Audric leaves only —
+    // `normalized.suinsName` may be a generic SuiNS (e.g. `alex.sui`) when
+    // the user typed a top-level name; the reverse-lookup result may
+    // contain generic names ahead of the Audric leaf. Pre-fix, both
+    // branches blindly accepted any `.sui` name and persisted it as
+    // `audricUsername`, polluting contact rows with non-Audric handles.
+    let audricUsername: string | undefined =
+      normalized.suinsName && isAudricHandle(normalized.suinsName)
+        ? normalized.suinsName
+        : undefined;
     if (!audricUsername) {
       try {
         const reverse = await resolveAddressToSuinsViaRpc(normalized.address);
-        if (Array.isArray(reverse) && reverse.length > 0) {
-          audricUsername = reverse[0];
-        }
+        const picked = pickAudricHandleFromReverseNames(
+          Array.isArray(reverse) ? reverse : [],
+        );
+        if (picked) audricUsername = picked;
       } catch {
-        // swallow — backfill cron handles
+        // swallow — backfill on next contacts/backfill POST handles
       }
     }
     return {

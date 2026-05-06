@@ -16,6 +16,13 @@ interface AppShellProps {
   activeSessionId?: string;
   onLoadSession?: (sessionId: string) => void;
   onNewConversation?: () => void;
+  /**
+   * [SPEC 10 D.2] Forwarded to AppSidebar's GlobalUsernameSearch. Fired
+   * when the user picks a non-Audric search result (generic SuiNS or
+   * 0x). Parent (DashboardContent) switches to chat panel and dispatches
+   * a balance-check prompt to the engine.
+   */
+  onSearchCheckBalance?: (address: string, label: string) => void;
   children: React.ReactNode;
 }
 
@@ -27,6 +34,7 @@ export function AppShell({
   activeSessionId,
   onLoadSession,
   onNewConversation,
+  onSearchCheckBalance,
   children,
 }: AppShellProps) {
   const { panel, setPanel } = usePanel();
@@ -62,6 +70,7 @@ export function AppShell({
           activeSessionId={activeSessionId}
           onLoadSession={onLoadSession}
           onNewConversation={onNewConversation}
+          onSearchCheckBalance={onSearchCheckBalance}
         />
       </div>
 
@@ -87,6 +96,7 @@ export function AppShell({
               activeSessionId={activeSessionId}
               onLoadSession={onLoadSession}
               onNewConversation={onNewConversation}
+              onSearchCheckBalance={onSearchCheckBalance}
             />
           </div>
         </>

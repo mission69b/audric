@@ -60,8 +60,10 @@ describe('/api/user/preferences', () => {
   describe('GET', () => {
     it('returns contacts and limits for existing user (legacy storage shape)', async () => {
       // Storage in legacy {name, address} shape — represents existing prod
-      // data prior to A.2 migration. Response is projected back to the same
-      // shape (the client contract for hooks/useContacts.ts).
+      // data prior to A.2 migration. [SPEC 10 D.4] Response is widened to
+      // include audricUsername / resolvedAddress so the contacts page can
+      // surface 🪪 badges; `address` continues to mirror `identifier` for
+      // backward-compat with any consumer still on the old shape.
       const stored = [{ name: 'Alice', address: ADDR_ALICE }];
       mockFindUnique.mockResolvedValueOnce({ contacts: stored, limits: null });
 
@@ -69,11 +71,21 @@ describe('/api/user/preferences', () => {
       const body = await res.json();
 
       expect(res.status).toBe(200);
-      expect(body.contacts).toEqual(stored);
+      expect(body.contacts).toEqual([
+        {
+          name: 'Alice',
+          address: ADDR_ALICE,
+          identifier: ADDR_ALICE,
+          resolvedAddress: ADDR_ALICE.toLowerCase(),
+          audricUsername: null,
+          addedAt: null,
+          source: 'import',
+        },
+      ]);
       expect(body.limits).toBeNull();
     });
 
-    it('projects unified storage shape back to {name, address} for the client', async () => {
+    it('projects unified storage shape into widened client contract', async () => {
       const stored = [
         {
           name: 'Alice',
@@ -89,7 +101,17 @@ describe('/api/user/preferences', () => {
       const body = await res.json();
 
       expect(res.status).toBe(200);
-      expect(body.contacts).toEqual([{ name: 'Alice', address: ADDR_ALICE }]);
+      expect(body.contacts).toEqual([
+        {
+          name: 'Alice',
+          address: ADDR_ALICE,
+          identifier: ADDR_ALICE,
+          resolvedAddress: ADDR_ALICE.toLowerCase(),
+          audricUsername: null,
+          addedAt: null,
+          source: 'save_contact',
+        },
+      ]);
     });
 
     it('returns empty contacts for new user', async () => {
@@ -140,8 +162,20 @@ describe('/api/user/preferences', () => {
       const body = await res.json();
 
       expect(res.status).toBe(200);
-      // Response projects back to client {name, address} contract.
-      expect(body.contacts).toEqual([{ name: 'Bob', address: ADDR_BOB }]);
+      // [SPEC 10 D.4] Response projects unified rows into widened client
+      // contract (audricUsername / resolvedAddress surfaced to power
+      // 🪪 badges in /settings/contacts).
+      expect(body.contacts).toEqual([
+        {
+          name: 'Bob',
+          address: ADDR_BOB,
+          identifier: ADDR_BOB,
+          resolvedAddress: ADDR_BOB.toLowerCase(),
+          audricUsername: null,
+          addedAt: null,
+          source: 'import',
+        },
+      ]);
       expect(mockUpsert).toHaveBeenCalledOnce();
 
       // Verify the WRITE went out in unified shape (not legacy).

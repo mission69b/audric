@@ -175,9 +175,13 @@ export function serializeContactList(contacts: Contact[]): Contact[] {
  * by the engine `save_contact` tool to emit canonical-shape rows from the
  * minimal LLM-provided input.
  *
- * `audricUsername` is left null at construction time. Lazy-on-render
- * enrichment (per the SPEC 10 B-5 plan) populates it later via SuiNS reverse
- * lookup, without requiring a write here.
+ * [SPEC 10 D.4] `audricUsername` is intentionally OMITTED at construction
+ * time (rather than set to `null`). The omitted/`undefined` value signals
+ * "never reverse-checked" to the lazy backfill pass; if we hard-set `null`
+ * here we'd conflate "never checked" with "checked, no Audric leaf" and
+ * the backfill could skip new contacts. After the backfill runs, the
+ * field becomes either a leaf string (e.g. `alice.audric.sui`) or
+ * literal `null` (= checked, no Audric handle on this address).
  */
 export function contactFromSaveInput(input: {
   name: string;
@@ -187,7 +191,6 @@ export function contactFromSaveInput(input: {
     name: input.name.trim(),
     identifier: input.address,
     resolvedAddress: input.address.toLowerCase(),
-    audricUsername: null,
     addedAt: new Date().toISOString(),
     source: 'save_contact',
   });

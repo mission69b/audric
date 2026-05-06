@@ -55,12 +55,21 @@ export async function GET(request: NextRequest) {
     : null;
   const permissionPreset = limitsObj?.permissionPreset ?? 'balanced';
 
-  // Project unified Contact[] back to the legacy {name, address} shape that
-  // hooks/useContacts.ts and existing UI consumers expect. Phase C.3 widens
-  // this shape; A.2 keeps it backward-compatible by construction.
+  // [SPEC 10 D.4] Widen the response to include audricUsername (the lazy
+  // reverse-SuiNS enrichment field) and resolvedAddress (the canonical
+  // 0x). hooks/useContacts.ts now reads these fields to surface the
+  // 🪪 badge in /settings/contacts. The backfill itself is NOT done in
+  // GET — it's triggered by the client via POST /contacts/backfill so
+  // GET latency stays low. `address` continues to mirror `identifier`
+  // for backward-compat with any consumer still on the old shape.
   const contactsForClient = parseContactList(prefs.contacts).map((c) => ({
     name: c.name,
     address: c.identifier,
+    identifier: c.identifier,
+    resolvedAddress: c.resolvedAddress,
+    audricUsername: c.audricUsername ?? null,
+    addedAt: c.addedAt ?? null,
+    source: c.source ?? null,
   }));
 
   return NextResponse.json({
@@ -145,11 +154,16 @@ export async function POST(request: NextRequest) {
     update,
   });
 
-  // Project response back to legacy {name, address} shape (same reasoning
-  // as the GET handler — preserve the existing client contract).
+  // [SPEC 10 D.4] Widen response shape symmetrically with GET — same
+  // fields, same projection rule.
   const contactsForClient = parseContactList(prefs.contacts).map((c) => ({
     name: c.name,
     address: c.identifier,
+    identifier: c.identifier,
+    resolvedAddress: c.resolvedAddress,
+    audricUsername: c.audricUsername ?? null,
+    addedAt: c.addedAt ?? null,
+    source: c.source ?? null,
   }));
 
   return NextResponse.json({

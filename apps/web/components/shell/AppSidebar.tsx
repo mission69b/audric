@@ -9,6 +9,7 @@ import { Tag } from '@/components/ui/Tag';
 import { Icon } from '@/components/ui/Icon';
 import type { IconName } from '@/lib/icons';
 import type { PanelId } from '@/hooks/usePanel';
+import { GlobalUsernameSearch } from '@/components/identity/GlobalUsernameSearch';
 
 interface SidebarProps {
   activePanel: PanelId;
@@ -22,6 +23,12 @@ interface SidebarProps {
   activeSessionId?: string;
   onLoadSession?: (sessionId: string) => void;
   onNewConversation?: () => void;
+  /**
+   * [SPEC 10 D.2] Triggered when the user picks a non-Audric search
+   * result (generic SuiNS or 0x). Parent should switch to chat panel
+   * and dispatch a balance-check prompt to the engine.
+   */
+  onSearchCheckBalance?: (address: string, label: string) => void;
 }
 
 interface NavEntry {
@@ -74,6 +81,7 @@ export function AppSidebar({
   activeSessionId,
   onLoadSession,
   onNewConversation,
+  onSearchCheckBalance,
 }: SidebarProps) {
   const router = useRouter();
   const handleNav = useCallback(
@@ -202,6 +210,12 @@ export function AppSidebar({
             <Icon name="panel-left" size={14} />
           </button>
         )}
+      </div>
+
+      {/* [SPEC 10 D.2] Global search — Audric users → profile,
+          generic SuiNS / 0x → balance check via chat. */}
+      <div className="px-3 pb-2.5 shrink-0">
+        <GlobalUsernameSearch onCheckBalance={onSearchCheckBalance} />
       </div>
 
       {/* New conversation */}
