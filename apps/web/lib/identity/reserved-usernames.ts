@@ -28,6 +28,12 @@
  *     real route-collision gaps (`activity`, `contacts` — both in
  *     `PANEL_URL_MAP` but unreserved) + 4 defensive singular/plural
  *     parity adds (`setting`, `goal`, `activities`, `bots`).
+ *   - v5 (S.91, +11 entries → 206) — post-S.88 audit additions:
+ *     §7.4 +8 financial-flow primitives (fee/fees/refund/refunds/gas/
+ *     bridge/escrow/safe), §7.5 Tier A +1 (slush — Mysten Labs wallet),
+ *     §7.7 +2 fallback-state primitives (unknown/placeholder). All
+ *     match existing section intent (fund-routing impersonation +
+ *     ecosystem brand impersonation + null-state confusion).
  */
 
 const RESERVED = [
@@ -128,12 +134,18 @@ const RESERVED = [
   'news',
 
   // ───────────────────────────────────────────────────────────────────────
-  // §7.4 — Crypto primitives + financial verbs (16 entries)
+  // §7.4 — Crypto primitives + financial verbs (24 entries — original 16 +
+  //        S.91 expansion of 8 financial-flow primitives)
   //
   // If a user mints `treasury.audric.sui` and pretends to be Audric's
   // treasury wallet, victims sending fees/donations there lose funds.
   // Financial-verb handles (`stake`, `claim`, etc.) get socially-engineered
   // into "send to {verb}.audric.sui to {action}."
+  //
+  // S.91 additions extend the set with financial-flow primitives that
+  // were structural gaps — fee/refund/gas/bridge/escrow/safe all match
+  // the section's intent (fund-routing impersonation surface). See
+  // RUNBOOK §7.4 for per-entry rationale.
   // ───────────────────────────────────────────────────────────────────────
   'wallet',
   'treasury',
@@ -151,9 +163,18 @@ const RESERVED = [
   'deposit',
   'withdraw',
   'transfer',
+  // S.91 expansion — financial-flow primitives
+  'fee',
+  'fees',
+  'refund',
+  'refunds',
+  'gas',
+  'bridge',
+  'escrow',
+  'safe',
 
   // ───────────────────────────────────────────────────────────────────────
-  // §7.5 Tier A — Sui ecosystem brands (12 entries — high impersonation
+  // §7.5 Tier A — Sui ecosystem brands (13 entries — high impersonation
   // value, founders/users actively interact with these)
   //
   // Even though Audric isn't claiming to be these brands, having
@@ -161,6 +182,9 @@ const RESERVED = [
   // opportunities ("send your USDC to binance.audric.sui to deposit on
   // Binance"). Reserving is reversible via /api/admin/identity/release;
   // mint-then-recover is not.
+  //
+  // S.91 add: `slush` — Mysten Labs' new wallet brand (succeeding
+  // Suiet brand-wise). Active phishing target as adoption grows.
   // ───────────────────────────────────────────────────────────────────────
   'sui',
   'mysten',
@@ -174,6 +198,7 @@ const RESERVED = [
   'suiet',
   'phantom',
   'suins',
+  'slush', // S.91
 
   // ───────────────────────────────────────────────────────────────────────
   // §7.5 Tier B — Major crypto/exchange brands (13 entries — high
@@ -210,12 +235,17 @@ const RESERVED = [
   'fincen',
 
   // ───────────────────────────────────────────────────────────────────────
-  // §7.7 — Generic abuse magnets / footguns (10 entries)
+  // §7.7 — Generic abuse magnets / footguns (12 entries — original 10 +
+  //        S.91 expansion of 2 fallback-state primitives)
   //
   // Common JavaScript / database / null-state strings. If they ever
   // appear in error messages or fallback rendering paths ("Send to:
   // anonymous.audric.sui" when the actual recipient lookup failed) they
   // create confusion. Low-likelihood failure mode, cheap defense.
+  //
+  // S.91 adds: `unknown` (fallback state — "Unknown sender:
+  // unknown.audric.sui") and `placeholder` (debug fallback — UI
+  // placeholder text could leak as a literal handle reference).
   // ───────────────────────────────────────────────────────────────────────
   'none',
   'void',
@@ -227,6 +257,9 @@ const RESERVED = [
   'banned',
   'anonymous',
   'anon',
+  // S.91 expansion — fallback-state primitives
+  'unknown',
+  'placeholder',
 
   // ───────────────────────────────────────────────────────────────────────
   // §7.8a — Static-route sentinels (S.74 + S.75, 14 entries)
@@ -363,8 +396,8 @@ const RESERVED = [
  * case-insensitive via `isReserved()` but the set itself stores the
  * canonical lowercase form.
  *
- * Total: 195 entries (§7.1: 36, §7.2: 12, §7.3: 17, §7.4: 16,
- * §7.5: 25 (Tier A 12 + Tier B 13), §7.6: 7, §7.7: 10, §7.8: 72
+ * Total: 206 entries (§7.1: 36, §7.2: 12, §7.3: 17, §7.4: 24,
+ * §7.5: 26 (Tier A 13 + Tier B 13), §7.6: 7, §7.7: 12, §7.8: 72
  * (a:14 + b:27 + c:24 + d:7)). Set size will dedupe any accidental
  * cross-category overlap; the explicit categorization above is for
  * human auditors.
