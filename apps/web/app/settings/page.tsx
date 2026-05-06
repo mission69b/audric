@@ -35,6 +35,7 @@ import { SafetySection } from '@/components/settings/SafetySection';
 import { MemorySection } from '@/components/settings/MemorySection';
 import { ContactsSection } from '@/components/settings/ContactsSection';
 import { SUI_NETWORK } from '@/lib/constants';
+import { decodeJwtClaim } from '@/lib/jwt-client';
 
 // [SIMPLIFICATION DAY 10] Settings reorganised to the canonical 5 sections
 // from the simplification spec — Passport, Safety, Memory, Goals, Contacts.
@@ -159,6 +160,7 @@ function SettingsContent() {
                   onLogout={logout}
                   username={userStatus.username}
                   jwt={jwt}
+                  googleName={decodeJwtClaim(jwt, 'name')}
                   onUsernameChanged={() => {
                     void userStatus.refetch();
                   }}

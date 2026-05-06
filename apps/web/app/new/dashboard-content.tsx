@@ -64,15 +64,15 @@ import { StorePanel } from '@/components/panels/StorePanel';
 // What's left above the fold: balance header, greeting (empty only),
 // chip bar, chat input — and an inline HF widget when debt AND HF<2.0.
 
-// [SPEC 10 B-wiring] localStorage key for the per-address skip flag. Set
-// when the user clicks "Skip for now" in the picker so the gate doesn't
-// nag on subsequent dashboard loads (per SPEC 10 D2 — settings-page is
-// the safety valve for re-claim). Per-address (not per-device) so a user
-// who signs in on a fresh device gets one more nudge to claim before the
-// gate respects their skip — small re-engagement bonus, no UX cost.
-function usernameSkipStorageKey(address: string): string {
-  return `audric:username-skipped:${address}`;
-}
+// [SPEC 10 B-wiring] Skip-flag helpers extracted to `lib/identity/username-skip.ts`
+// in S.84 polish v4 — Settings → Passport (the safety valve per D2) needs
+// to clear the same flag after a re-claim, and an inline storage key
+// here would have drifted from the Settings consumer. See the module
+// header for the per-address rationale.
+import {
+  isUsernameSkipped,
+  setUsernameSkipped as persistUsernameSkipped,
+} from '@/lib/identity/username-skip';
 
 // [S.84] Greeting now sources from the Audric handle, not the zkLogin
 // email-derived prefix. Pre-claim users see "Good morning" with no name
@@ -490,17 +490,14 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
   // via the typeof window guard); subsequent skip clicks update both state
   // and storage so the same browser tab respects the dismissal across
   // dashboard reloads. Settings page (D9) is the safety valve for re-claim.
-  const [usernameSkipped, setUsernameSkipped] = useState<boolean>(() => {
-    if (typeof window === 'undefined' || !address) return false;
-    return window.localStorage.getItem(usernameSkipStorageKey(address)) === '1';
-  });
+  const [usernameSkipped, setUsernameSkipped] = useState<boolean>(() =>
+    isUsernameSkipped(address),
+  );
   // Address arrives from useZkLogin asynchronously, so the lazy initializer
   // above can't always see it. This effect picks up the flag once we have
   // an address — runs only when the address transitions from null → set.
   useEffect(() => {
-    if (typeof window === 'undefined' || !address) return;
-    const stored = window.localStorage.getItem(usernameSkipStorageKey(address)) === '1';
-    setUsernameSkipped(stored);
+    setUsernameSkipped(isUsernameSkipped(address));
   }, [address]);
   // [SPEC 10 B-wiring / review-fix #2] Optimistic-claimed flag — set the
   // moment the user clicks Continue on the success state, BEFORE the
@@ -1607,9 +1604,7 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
   };
 
   const handleUsernameSkipped = () => {
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem(usernameSkipStorageKey(address), '1');
-    }
+    persistUsernameSkipped(address);
     setUsernameSkipped(true);
   };
 

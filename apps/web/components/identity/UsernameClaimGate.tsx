@@ -99,8 +99,14 @@ export interface UsernameClaimGateProps {
    * Called when the user clicks "Skip for now" in the picker. Parent
    * should set the localStorage skip flag + force a re-render so the
    * gate hides. Settings page (D9) is the safety valve for re-claim.
+   *
+   * Optional. When omitted, the picker renders without a Skip button —
+   * intended for re-claim surfaces (e.g. Settings → Passport's safety-
+   * valve modal in S.84 polish v4) where "skip" makes no sense (the
+   * user has already navigated past the original skip moment to get
+   * here, and they can dismiss with the modal's Cancel/✕ instead).
    */
-  onSkipped: () => void;
+  onSkipped?: () => void;
   /**
    * Optional fetcher injection — for tests. Defaults to the global
    * `fetch` against /api/identity/reserve.

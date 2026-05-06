@@ -31,6 +31,7 @@ import { Tag } from '@/components/ui/Tag';
 import { truncateAddress } from '@/lib/format';
 import { useTheme, type Theme } from '@/components/providers/ThemeProvider';
 import { UsernameChangeModal } from '@/components/identity/UsernameChangeModal';
+import { UsernameClaimModal } from '@/components/identity/UsernameClaimModal';
 import { decodeJwtClaim } from '@/lib/jwt-client';
 
 interface PassportSectionProps {
@@ -53,11 +54,18 @@ interface PassportSectionProps {
    */
   jwt: string | null;
   /**
-   * [S.84] Called after a successful handle change. Parent should
-   * refetch userStatus so the Sidebar/Greeting/PassportSection all
-   * pick up the new handle on next render.
+   * [S.84] Called after a successful handle change OR re-claim from
+   * the safety-valve modal. Parent should refetch userStatus so the
+   * Sidebar/Greeting/PassportSection all pick up the new handle on
+   * next render.
    */
   onUsernameChanged?: () => void;
+  /**
+   * [S.84 polish v4] Google `name` claim — used for picker smart
+   * pre-fill when the user opens the safety-valve claim modal.
+   * Sourced from the same JWT decode the dashboard uses.
+   */
+  googleName?: string | null;
 }
 
 const THEME_ORDER: Theme[] = ['light', 'dark', 'system'];
@@ -72,10 +80,12 @@ export function PassportSection({
   username,
   jwt,
   onUsernameChanged,
+  googleName,
 }: PassportSectionProps) {
   const [copied, setCopied] = useState(false);
   const [handleCopied, setHandleCopied] = useState(false);
   const [changeOpen, setChangeOpen] = useState(false);
+  const [claimOpen, setClaimOpen] = useState(false);
   const { theme, setTheme } = useTheme();
 
   const expiryDate = expiresAt ? new Date(expiresAt) : null;
@@ -177,11 +187,28 @@ export function PassportSection({
             </div>
           </div>
         ) : (
-          <div className="mt-1">
-            <p className="text-[12px] text-fg-secondary leading-[1.55]">
-              You haven&rsquo;t claimed your Audric handle yet. Head back to the dashboard to pick
-              one &mdash; this is your identity layer.
+          // [S.84 polish v4] Empty-state CTA — opens the safety-valve
+          // claim modal in-place. Originally just a "head back to the
+          // dashboard" instruction, which was a dead-end: clicking
+          // "Skip for now" on the picker also persisted a localStorage
+          // flag that hid the dashboard gate, so the user couldn't
+          // re-trigger the picker from anywhere. The modal here mounts
+          // the same `<UsernameClaimGate>` the dashboard uses, sans
+          // Skip button, and clears the dormant skip flag on success.
+          <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-[12px] text-fg-secondary leading-[1.55] flex-1 min-w-[200px]">
+              You haven&rsquo;t claimed your Audric handle yet &mdash; friends send you USDC by
+              typing <span className="font-mono text-fg-primary">@yourhandle</span>.
             </p>
+            <button
+              type="button"
+              onClick={() => setClaimOpen(true)}
+              disabled={!jwt || !address}
+              data-testid="passport-handle-claim"
+              className="font-mono text-[10px] tracking-[0.1em] uppercase text-fg-inverse bg-fg-primary border border-fg-primary px-3 py-2 rounded-sm hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
+            >
+              Claim handle
+            </button>
           </div>
         )}
       </div>
@@ -317,6 +344,25 @@ export function PassportSection({
           currentLabel={username}
           onClose={() => setChangeOpen(false)}
           onChanged={() => {
+            onUsernameChanged?.();
+          }}
+        />
+      )}
+
+      {/* [S.84 polish v4] Safety-valve claim modal — only mounted when
+          the user has NO claimed handle yet AND we have the JWT/address
+          to drive the gate. Mirrors UsernameChangeModal's mount-guard
+          pattern; the boolean inversion is the key difference. */}
+      {!username && jwt && address && (
+        <UsernameClaimModal
+          open={claimOpen}
+          address={address}
+          jwt={jwt}
+          googleName={googleName}
+          googleEmail={signInEmail}
+          onClose={() => setClaimOpen(false)}
+          onClaimed={() => {
+            setClaimOpen(false);
             onUsernameChanged?.();
           }}
         />
