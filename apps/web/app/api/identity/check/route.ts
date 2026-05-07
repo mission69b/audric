@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { resolveSuinsViaRpc, SuinsRpcError } from '@t2000/engine';
+import { SuinsRpcError } from '@t2000/engine';
 import { prisma } from '@/lib/prisma';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { getSuiRpcUrl } from '@/lib/sui-rpc';
+import { resolveSuinsCached } from '@/lib/suins-cache';
 import { isReserved } from '@/lib/identity/reserved-usernames';
 import { validateAudricLabel } from '@/lib/identity/validate-label';
 
@@ -213,7 +214,12 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const rpcT0 = performance.now();
   let onChainAddress: string | null;
   try {
-    onChainAddress = await resolveSuinsViaRpc(handle, {
+    // [S18-F12] Use the Upstash-shared cached resolver — picker debounce
+    // typically fires 3 checks per typed handle (debounce 300ms), and a
+    // claimed handle's reverse-resolve doesn't change second-to-second.
+    // Cache hits cut RPC volume by ~90%+ during the picker dance and
+    // share the warm entry with /[username] page renders + reserve.
+    onChainAddress = await resolveSuinsCached(handle, {
       suiRpcUrl: getSuiRpcUrl(),
     });
   } catch (err) {

@@ -58,6 +58,13 @@ describe('/api/identity/check', () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
+    // [S18-F12] The check route now goes through `lib/suins-cache.ts`
+    // which holds a process-scoped Map of resolved handles. Tests reuse
+    // the same handles ("alice") across cases — without this reset, the
+    // FIRST test's mockResolvedValueOnce gets cached and subsequent
+    // tests' mockResolvedValueOnce never gets called → wrong outcome.
+    const { _resetSuinsCacheForTests } = await import('@/lib/suins-cache');
+    _resetSuinsCacheForTests();
     const mod = await import('./route');
     GET = mod.GET as unknown as (req: NextRequest) => Promise<Response>;
   });
