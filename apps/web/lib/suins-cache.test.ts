@@ -1,25 +1,33 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-// Mock @t2000/engine BEFORE importing suins-cache so the module under test
-// picks up the mocked function. Using vi.hoisted so the mock object is
-// created before vi.mock processes the factory.
 const mocks = vi.hoisted(() => ({
   resolveSuinsViaRpc: vi.fn<(handle: string, opts: { suiRpcUrl: string }) => Promise<string | null>>(),
 }));
 
-vi.mock('@t2000/engine', () => ({
-  resolveSuinsViaRpc: mocks.resolveSuinsViaRpc,
-  SuinsRpcError: class SuinsRpcError extends Error {
-    constructor(handle: string, detail: string) {
-      super(`SuiNS lookup failed for "${handle}" (${detail}). Try again, or paste the full Sui address.`);
-      this.name = 'SuinsRpcError';
-    }
-  },
-}));
+vi.mock('@t2000/engine', async () => {
+  const actual = await vi.importActual<typeof import('@t2000/engine')>('@t2000/engine');
+  return {
+    ...actual,
+    resolveSuinsViaRpc: mocks.resolveSuinsViaRpc,
+    SuinsRpcError: class SuinsRpcError extends Error {
+      constructor(handle: string, detail: string) {
+        super(`SuiNS lookup failed for "${handle}" (${detail}). Try again, or paste the full Sui address.`);
+        this.name = 'SuinsRpcError';
+      }
+    },
+  };
+});
 
-import { resolveSuinsCached, _resetSuinsCacheForTests, SuinsRpcError } from './suins-cache';
+import {
+  resolveSuinsCached,
+  _resetSuinsCacheForTests,
+  setSuinsCacheStore,
+  resetSuinsCacheStore,
+  SuinsRpcError,
+  type SuinsCacheStore,
+} from './suins-cache';
 
-describe('resolveSuinsCached', () => {
+describe('resolveSuinsCached (default in-memory store)', () => {
   beforeEach(() => {
     _resetSuinsCacheForTests();
     mocks.resolveSuinsViaRpc.mockReset();
@@ -54,9 +62,7 @@ describe('resolveSuinsCached', () => {
   });
 
   it('returns different results for different handles (no key collision)', async () => {
-    mocks.resolveSuinsViaRpc
-      .mockResolvedValueOnce('0xaaa')
-      .mockResolvedValueOnce('0xbbb');
+    mocks.resolveSuinsViaRpc.mockResolvedValueOnce('0xaaa').mockResolvedValueOnce('0xbbb');
 
     const a = await resolveSuinsCached('alice.audric.sui', { suiRpcUrl: 'https://x' });
     const b = await resolveSuinsCached('bob.audric.sui', { suiRpcUrl: 'https://x' });
@@ -75,57 +81,98 @@ describe('resolveSuinsCached', () => {
       'HTTP 429',
     );
 
-    // Second call re-fetches — error was NOT cached.
     const result = await resolveSuinsCached('test.audric.sui', { suiRpcUrl: 'https://x' });
     expect(result).toBe('0xrecovered');
     expect(mocks.resolveSuinsViaRpc).toHaveBeenCalledTimes(2);
   });
+});
 
-  it('expires positive entries after 5 minutes', async () => {
-    mocks.resolveSuinsViaRpc
-      .mockResolvedValueOnce('0xfirst')
-      .mockResolvedValueOnce('0xsecond');
-
-    const dateNow = vi.spyOn(Date, 'now');
-    dateNow.mockReturnValue(1_000_000);
-
-    const a = await resolveSuinsCached('expiry-test.audric.sui', { suiRpcUrl: 'https://x' });
-    expect(a).toBe('0xfirst');
-
-    // 4:59 later — still cached.
-    dateNow.mockReturnValue(1_000_000 + (4 * 60 + 59) * 1000);
-    const b = await resolveSuinsCached('expiry-test.audric.sui', { suiRpcUrl: 'https://x' });
-    expect(b).toBe('0xfirst');
-    expect(mocks.resolveSuinsViaRpc).toHaveBeenCalledTimes(1);
-
-    // 5:01 later — expired, re-fetch.
-    dateNow.mockReturnValue(1_000_000 + (5 * 60 + 1) * 1000);
-    const c = await resolveSuinsCached('expiry-test.audric.sui', { suiRpcUrl: 'https://x' });
-    expect(c).toBe('0xsecond');
-    expect(mocks.resolveSuinsViaRpc).toHaveBeenCalledTimes(2);
+describe('resolveSuinsCached — degradation under cache failure (S18-F12)', () => {
+  beforeEach(() => {
+    mocks.resolveSuinsViaRpc.mockReset();
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
   });
 
-  it('expires negative entries after 30 seconds (much shorter than positive)', async () => {
-    mocks.resolveSuinsViaRpc
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce('0xnewlyminted');
+  afterEach(() => {
+    resetSuinsCacheStore();
+    vi.restoreAllMocks();
+  });
 
-    const dateNow = vi.spyOn(Date, 'now');
-    dateNow.mockReturnValue(2_000_000);
+  it('falls through to live RPC when store.get throws (cache infra down)', async () => {
+    const failingStore: SuinsCacheStore = {
+      get: vi.fn().mockRejectedValue(new Error('Upstash 503')),
+      set: vi.fn().mockResolvedValue(undefined),
+      delete: vi.fn().mockResolvedValue(undefined),
+      clear: vi.fn().mockResolvedValue(undefined),
+    };
+    setSuinsCacheStore(failingStore);
+    mocks.resolveSuinsViaRpc.mockResolvedValueOnce('0xfallback');
 
-    const a = await resolveSuinsCached('newhandle.audric.sui', { suiRpcUrl: 'https://x' });
-    expect(a).toBeNull();
+    const result = await resolveSuinsCached('test.audric.sui', { suiRpcUrl: 'https://x' });
 
-    // 29s later — still cached.
-    dateNow.mockReturnValue(2_000_000 + 29_000);
-    const b = await resolveSuinsCached('newhandle.audric.sui', { suiRpcUrl: 'https://x' });
-    expect(b).toBeNull();
+    expect(result).toBe('0xfallback');
     expect(mocks.resolveSuinsViaRpc).toHaveBeenCalledTimes(1);
+    expect(failingStore.set).toHaveBeenCalledTimes(1);
+  });
 
-    // 31s later — expired, re-fetch picks up the newly-minted handle.
-    dateNow.mockReturnValue(2_000_000 + 31_000);
-    const c = await resolveSuinsCached('newhandle.audric.sui', { suiRpcUrl: 'https://x' });
-    expect(c).toBe('0xnewlyminted');
-    expect(mocks.resolveSuinsViaRpc).toHaveBeenCalledTimes(2);
+  it('returns the live RPC result when store.set throws (does NOT propagate)', async () => {
+    const partiallyFailingStore: SuinsCacheStore = {
+      get: vi.fn().mockResolvedValue(null),
+      set: vi.fn().mockRejectedValue(new Error('Upstash write timeout')),
+      delete: vi.fn().mockResolvedValue(undefined),
+      clear: vi.fn().mockResolvedValue(undefined),
+    };
+    setSuinsCacheStore(partiallyFailingStore);
+    mocks.resolveSuinsViaRpc.mockResolvedValueOnce('0xok');
+
+    const result = await resolveSuinsCached('test.audric.sui', { suiRpcUrl: 'https://x' });
+
+    expect(result).toBe('0xok');
+    expect(partiallyFailingStore.set).toHaveBeenCalledTimes(1);
+  });
+
+  it('uses correct TTL for positive vs negative entries (asserted via store.set call)', async () => {
+    const trackingStore: SuinsCacheStore = {
+      get: vi.fn().mockResolvedValue(null),
+      set: vi.fn().mockResolvedValue(undefined),
+      delete: vi.fn().mockResolvedValue(undefined),
+      clear: vi.fn().mockResolvedValue(undefined),
+    };
+    setSuinsCacheStore(trackingStore);
+    mocks.resolveSuinsViaRpc
+      .mockResolvedValueOnce('0xabc') // positive
+      .mockResolvedValueOnce(null); // negative
+
+    await resolveSuinsCached('a.audric.sui', { suiRpcUrl: 'https://x' });
+    await resolveSuinsCached('b.audric.sui', { suiRpcUrl: 'https://x' });
+
+    expect(trackingStore.set).toHaveBeenNthCalledWith(
+      1,
+      'a.audric.sui',
+      expect.objectContaining({ result: '0xabc' }),
+      300, // 5 min
+    );
+    expect(trackingStore.set).toHaveBeenNthCalledWith(
+      2,
+      'b.audric.sui',
+      expect.objectContaining({ result: null }),
+      30, // 30s
+    );
+  });
+
+  it('reads cached value (no live RPC) when store returns a hit', async () => {
+    const hitStore: SuinsCacheStore = {
+      get: vi.fn().mockResolvedValue({ result: '0xcached', cachedAt: Date.now() }),
+      set: vi.fn().mockResolvedValue(undefined),
+      delete: vi.fn().mockResolvedValue(undefined),
+      clear: vi.fn().mockResolvedValue(undefined),
+    };
+    setSuinsCacheStore(hitStore);
+
+    const result = await resolveSuinsCached('test.audric.sui', { suiRpcUrl: 'https://x' });
+
+    expect(result).toBe('0xcached');
+    expect(mocks.resolveSuinsViaRpc).not.toHaveBeenCalled();
+    expect(hitStore.set).not.toHaveBeenCalled();
   });
 });

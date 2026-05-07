@@ -48,6 +48,10 @@ import {
   setTxHistoryCacheStore,
   UpstashTxHistoryCacheStore,
 } from '@/lib/upstash-tx-history-cache';
+import {
+  setSuinsCacheStore,
+  UpstashSuinsCacheStore,
+} from '@/lib/suins-cache';
 
 let initialized = false;
 
@@ -116,6 +120,15 @@ export function initEngineStores(): void {
   // bursts on `client.queryTransactionBlocks` (observed in Vercel logs
   // 2026-04-28). Coalesces with `awaitOrFetch` over the existing PR 2 lock.
   setTxHistoryCacheStore(new UpstashTxHistoryCacheStore());
+
+  // [S18-F12 — May 2026] SuiNS handle resolution cache — 5min positive,
+  // 30s negative TTL. Promoted from per-Lambda in-memory (S18-F9) to
+  // Upstash so the entire fleet shares one cache, eliminating the
+  // cold-Lambda RPC penalty during launch bursts (100-1000 concurrent
+  // signups was the trigger). Used by `/[username]/page.tsx` (public
+  // profile renders) + `/api/identity/reserve` (pre-mint check) +
+  // `/api/identity/check` (claim availability).
+  setSuinsCacheStore(new UpstashSuinsCacheStore());
 }
 
 // Side-effect — run on import. Safe because `initEngineStores` is

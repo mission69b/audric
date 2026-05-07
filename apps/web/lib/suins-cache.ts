@@ -1,112 +1,223 @@
-import { resolveSuinsViaRpc, SuinsRpcError } from '@t2000/engine';
+import { resolveSuinsViaRpc, SuinsRpcError, getTelemetrySink } from '@t2000/engine';
+import { Redis } from '@upstash/redis';
 
 /**
- * In-memory cache for SuiNS handle → address resolution.
+ * Cross-Lambda cache for SuiNS handle → address resolution.
  *
- * ## Why this exists (S18-F9 / vercel-logs L8 — May 2026)
+ * ## Why this exists (S18-F9 — May 2026, Upstash-promoted in S18-F12)
  *
- * The 12h Vercel log triage surfaced 77 SuiNS lookup failures for ONE
- * handle (`adeniyi.audric.sui`) in `/[username]/page.tsx` server renders.
- * One popular profile (or scraper) was driving repeated RPC calls per page
- * hit, periodically hitting BlockVision's per-IP rate limit. Each 429
- * degraded the page render to 404 (per the `notFound()` fallback) until
- * the burst cleared — so a real popular profile would intermittently
- * appear "deleted" to its own visitors during traffic spikes.
+ * Original problem (S18-F9, vercel-logs L8): one popular profile
+ * (`adeniyi.audric.sui`) was hit 77 times in 12h on `/[username]/page.tsx`
+ * server renders. Each hit was a fresh `resolveSuinsViaRpc` call →
+ * periodic 429 bursts → page intermittently 404'd its own visitors.
  *
- * ## Cache policy
+ * The S18-F9 fix shipped a per-Lambda in-memory cache that solved the
+ * problem at observed scale (~30 DAU) but had a known ceiling: at
+ * 100-1000 DAU with autoscaling spinning up many concurrent Lambda
+ * containers, each cold container's first request still hits live RPC.
+ * S18-F12 promotes the cache to Upstash so the entire fleet shares one
+ * authoritative cache — cold Lambdas hit a warm Redis entry instead of
+ * a live RPC.
  *
- * - Positive entries (handle → address): cached for {@link POSITIVE_TTL_MS}.
+ * ## Cache policy (unchanged from S18-F9)
+ *
+ * - Positive entries (handle → address): cached for {@link POSITIVE_TTL_SEC}.
  *   SuiNS leaf resolutions are stable on the order of days unless the user
  *   explicitly revokes / re-mints, so a 5-minute window is conservative.
  *
  * - Negative entries (handle → null, "not found"): cached for
- *   {@link NEGATIVE_TTL_MS}. Shorter window so a newly-minted handle
+ *   {@link NEGATIVE_TTL_SEC}. Shorter window so a newly-minted handle
  *   appears within ~30s of mint, without forcing a deploy. Tradeoff: the
  *   `/api/identity/reserve` route can't synchronously invalidate the cache
- *   for the new handle (no shared cross-Lambda cache), but the 30s ceiling
- *   means any visitor hitting the page before then sees a 404 → reload →
- *   resolves. Acceptable UX.
+ *   for the new handle, but the 30s ceiling means any visitor hitting the
+ *   page before then sees a 404 → reload → resolves. Acceptable UX.
  *
  * - Error entries (RPC threw): NOT cached. The caller treats them like
  *   `null`, but on the next request we'll re-attempt the lookup (in case
  *   it was a transient blip). Caching errors would mask real outages.
  *
- * ## What this is NOT
+ * ## Store pattern
  *
- * - Not a Redis / Vercel KV cache — strictly per-Lambda-instance. Vercel
- *   Lambdas can be warm for ~15min so cache hit rate is bounded by the
- *   container's lifetime + traffic distribution. Acceptable for popular-
- *   profile burst absorption (the original problem); not designed to
- *   eliminate ALL RPC calls.
- *
- * - Not invalidated by the reserve / change-username routes. Handle
- *   ownership flips are infrequent and a 5-minute window self-corrects.
- *   Adding cross-Lambda invalidation would require Redis / KV — out of
- *   scope for the demo-eve surgical fix.
- *
- * - Not used by any client-facing reads (browser → Sui RPC). This module
- *   only wraps the SERVER-SIDE call from `app/[username]/page.tsx` and
- *   `app/api/identity/reserve/route.ts`'s pre-mint check.
+ * Mirrors the existing `upstash-tx-history-cache.ts` / `upstash-wallet-
+ * cache.ts` / `upstash-defi-cache.ts` pattern: a `SuinsCacheStore`
+ * interface with two implementations (Upstash for production, in-memory
+ * for tests), plus a module-level injection slot wired by
+ * `init-engine-stores.ts`.
  */
 
-const POSITIVE_TTL_MS = 5 * 60 * 1000; // 5 minutes
-const NEGATIVE_TTL_MS = 30 * 1000; // 30 seconds
+const POSITIVE_TTL_SEC = 5 * 60; // 5 minutes
+const NEGATIVE_TTL_SEC = 30; // 30 seconds
+const PREFIX = 'suins:';
 
 interface CacheEntry {
   /** Resolved address, or `null` for "checked, no leaf". */
   result: string | null;
-  /** ms timestamp when the entry expires. */
-  expiresAt: number;
+  /** ms timestamp when the entry was cached. */
+  cachedAt: number;
 }
 
 /**
- * Module-scoped cache. Per-Lambda-instance — Vercel Lambdas keep state in
- * memory while warm, so consecutive requests within the same container
- * share the cache.
+ * Pluggable interface so tests inject in-memory and production injects
+ * Upstash. Same shape as `TxHistoryCacheStore` / `WalletCacheStore`.
  */
-const cache = new Map<string, CacheEntry>();
+export interface SuinsCacheStore {
+  get(handle: string): Promise<CacheEntry | null>;
+  set(handle: string, entry: CacheEntry, ttlSec: number): Promise<void>;
+  delete(handle: string): Promise<void>;
+  clear(): Promise<void>;
+}
+
+export class UpstashSuinsCacheStore implements SuinsCacheStore {
+  private readonly redis: Redis;
+  private readonly prefix: string;
+
+  constructor(opts?: { redis?: Redis; prefix?: string }) {
+    this.redis = opts?.redis ?? Redis.fromEnv();
+    this.prefix = opts?.prefix ?? PREFIX;
+  }
+
+  private k(handle: string): string {
+    return `${this.prefix}${handle}`;
+  }
+
+  async get(handle: string): Promise<CacheEntry | null> {
+    getTelemetrySink().counter('upstash.requests', { op: 'get', prefix: PREFIX });
+    const value = await this.redis.get<CacheEntry>(this.k(handle));
+    return value ?? null;
+  }
+
+  async set(handle: string, entry: CacheEntry, ttlSec: number): Promise<void> {
+    getTelemetrySink().counter('upstash.requests', { op: 'set', prefix: PREFIX });
+    await this.redis.set(this.k(handle), entry, { ex: ttlSec });
+  }
+
+  async delete(handle: string): Promise<void> {
+    getTelemetrySink().counter('upstash.requests', { op: 'del', prefix: PREFIX });
+    await this.redis.del(this.k(handle));
+  }
+
+  async clear(): Promise<void> {
+    let cursor: string | number = 0;
+    do {
+      getTelemetrySink().counter('upstash.requests', { op: 'scan', prefix: PREFIX });
+      const result: [string | number, string[]] = await this.redis.scan(cursor, {
+        match: `${this.prefix}*`,
+        count: 100,
+      });
+      const [next, keys] = result;
+      if (keys.length > 0) {
+        await this.redis.del(...keys);
+      }
+      cursor = next;
+    } while (cursor !== 0 && cursor !== '0');
+  }
+}
+
+class InMemorySuinsCacheStore implements SuinsCacheStore {
+  private readonly map = new Map<string, { entry: CacheEntry; expiry: number }>();
+
+  async get(handle: string): Promise<CacheEntry | null> {
+    const hit = this.map.get(handle);
+    if (!hit) return null;
+    if (hit.expiry < Date.now()) {
+      this.map.delete(handle);
+      return null;
+    }
+    return hit.entry;
+  }
+
+  async set(handle: string, entry: CacheEntry, ttlSec: number): Promise<void> {
+    this.map.set(handle, { entry, expiry: Date.now() + ttlSec * 1000 });
+  }
+
+  async delete(handle: string): Promise<void> {
+    this.map.delete(handle);
+  }
+
+  async clear(): Promise<void> {
+    this.map.clear();
+  }
+}
+
+let activeStore: SuinsCacheStore = new InMemorySuinsCacheStore();
+
+export function setSuinsCacheStore(store: SuinsCacheStore): void {
+  activeStore = store;
+}
+
+export function getSuinsCacheStore(): SuinsCacheStore {
+  return activeStore;
+}
+
+export function resetSuinsCacheStore(): void {
+  activeStore = new InMemorySuinsCacheStore();
+}
 
 /**
- * Cached wrapper around `resolveSuinsViaRpc`. Same signature as the
- * underlying function except it returns a tagged result so the caller can
- * distinguish "checked, no leaf" (`null`) from "RPC threw" (`undefined`).
+ * Cached wrapper around `resolveSuinsViaRpc`. Same signature except the
+ * caller can distinguish "checked, no leaf" (`null`) from "RPC threw"
+ * (propagates the SuinsRpcError).
  *
- * @returns
- *   - `string` — resolved address (cached positive)
- *   - `null`   — handle resolved to no-leaf (cached negative)
- *   - throws   — propagates the SuinsRpcError so the caller can render an
- *                appropriate error state (matches uncached behavior)
+ * Cache miss path:
+ *   1. Try the active store (Upstash in prod).
+ *   2. On miss/expiry → live RPC.
+ *   3. Stash result in the store with TTL based on positive/negative.
+ *   4. On RPC throw → propagate, do NOT cache the failure.
+ *
+ * The store-level `get()` failure (e.g. Upstash down) degrades to a cache
+ * miss — we log + fall through to the live RPC. The cache is purely
+ * additive; we never want it to BREAK reads that would otherwise succeed.
  */
 export async function resolveSuinsCached(
   handle: string,
   opts: { suiRpcUrl: string },
 ): Promise<string | null> {
-  const now = Date.now();
-  const cached = cache.get(handle);
-  if (cached && cached.expiresAt > now) {
+  const store = getSuinsCacheStore();
+
+  let cached: CacheEntry | null = null;
+  try {
+    cached = await store.get(handle);
+  } catch (err) {
+    // Cache infrastructure failure — log + continue as cache miss. NEVER
+    // surface as a user-facing failure; the live RPC below is authoritative.
+    console.warn(
+      `[suins-cache] store.get failed for "${handle}", falling through to live RPC:`,
+      err instanceof Error ? err.message : err,
+    );
+  }
+
+  if (cached) {
     return cached.result;
   }
 
-  // Cache miss OR expired — re-fetch. Do NOT catch errors here; the caller
-  // (page render or pre-mint check) needs to know if the RPC failed vs.
-  // returned a clean null.
+  // Live RPC — propagate errors so the caller can render an appropriate
+  // error state (matches uncached behavior).
   const result = await resolveSuinsViaRpc(handle, { suiRpcUrl: opts.suiRpcUrl });
 
-  cache.set(handle, {
-    result,
-    expiresAt: now + (result === null ? NEGATIVE_TTL_MS : POSITIVE_TTL_MS),
-  });
+  // Best-effort write — same degradation policy as get(). A failed write
+  // means the next request will re-RPC, but never breaks the current one.
+  try {
+    await store.set(
+      handle,
+      { result, cachedAt: Date.now() },
+      result === null ? NEGATIVE_TTL_SEC : POSITIVE_TTL_SEC,
+    );
+  } catch (err) {
+    console.warn(
+      `[suins-cache] store.set failed for "${handle}":`,
+      err instanceof Error ? err.message : err,
+    );
+  }
 
   return result;
 }
 
 /**
- * Test-only: clear the in-memory cache. Exposed for unit tests; do NOT
- * call from production code paths.
+ * Test-only: clear the in-memory cache. Production code should NOT call
+ * this — use the store interface directly if you need targeted invalidation.
  */
 export function _resetSuinsCacheForTests(): void {
-  cache.clear();
+  resetSuinsCacheStore();
 }
 
-// Re-export the error class so callers don't need a separate import.
 export { SuinsRpcError };
