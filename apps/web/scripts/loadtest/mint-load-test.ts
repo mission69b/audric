@@ -169,54 +169,88 @@ async function seedTestUser(prisma: PrismaClient, wallet: Wallet): Promise<void>
   });
 }
 
+// [S18-F16] Simulate real user behavior on admission control 503s:
+// front-end displays "we're busy, retrying in Ns" and auto-retries up to
+// MAX_503_RETRIES times. Without this, the load test reports admission
+// rejections as failures even though they're a working back-pressure
+// mechanism. Real users see successful mints after the system drains.
+const MAX_503_RETRIES = 6; // ~30s of patience max if all 6 wait 5s
+const FALLBACK_RETRY_AFTER_SEC = 5;
+
 async function reserveOne(wallet: Wallet, jwt: string): Promise<ReserveResult> {
   const start = performance.now();
-  let res: Response;
-  try {
-    res = await fetch(`${TARGET}/api/identity/reserve`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-zklogin-jwt': jwt,
-        'user-agent': `audric-mint-loadtest/${RUN_TAG}`,
-      },
-      body: JSON.stringify({
-        label: wallet.handle,
+  let attempt = 0;
+  let total503s = 0;
+
+  while (true) {
+    attempt += 1;
+    let res: Response;
+    try {
+      res = await fetch(`${TARGET}/api/identity/reserve`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-zklogin-jwt': jwt,
+          'user-agent': `audric-mint-loadtest/${RUN_TAG}`,
+        },
+        body: JSON.stringify({
+          label: wallet.handle,
+          address: wallet.address,
+        }),
+      });
+    } catch (err) {
+      return {
+        idx: wallet.idx,
+        handle: wallet.handle,
         address: wallet.address,
-      }),
-    });
-  } catch (err) {
+        status: 0,
+        ms: Math.round(performance.now() - start),
+        ok: false,
+        txDigest: null,
+        error: err instanceof Error ? err.message : String(err),
+      };
+    }
+
+    // Admission control 503 → wait Retry-After, then retry. Cap at
+    // MAX_503_RETRIES to bound test duration; real users have unlimited
+    // patience but the test should fail-loud if the system is stuck.
+    if (res.status === 503 && total503s < MAX_503_RETRIES) {
+      total503s += 1;
+      const retryAfter = Number.parseInt(res.headers.get('retry-after') ?? '', 10);
+      const waitSec =
+        Number.isFinite(retryAfter) && retryAfter > 0
+          ? retryAfter
+          : FALLBACK_RETRY_AFTER_SEC;
+      // Drain the body so the connection can be reused.
+      try {
+        await res.text();
+      } catch {
+        // ignore
+      }
+      await new Promise((r) => setTimeout(r, waitSec * 1000));
+      continue;
+    }
+
+    const ms = Math.round(performance.now() - start);
+    let body: { success?: boolean; txDigest?: string; error?: string; reason?: string } | null = null;
+    try {
+      body = (await res.json()) as typeof body;
+    } catch {
+      body = { error: '<unparseable response>' };
+    }
+
     return {
       idx: wallet.idx,
       handle: wallet.handle,
       address: wallet.address,
-      status: 0,
-      ms: Math.round(performance.now() - start),
-      ok: false,
-      txDigest: null,
-      error: err instanceof Error ? err.message : String(err),
+      status: res.status,
+      ms,
+      ok: res.status === 200 && body?.success === true,
+      txDigest: body?.txDigest ?? null,
+      error: body?.success ? null : body?.error ?? `HTTP ${res.status}`,
+      reason: body?.reason ?? null,
     };
   }
-
-  const ms = Math.round(performance.now() - start);
-  let body: { success?: boolean; txDigest?: string; error?: string; reason?: string } | null = null;
-  try {
-    body = (await res.json()) as typeof body;
-  } catch {
-    body = { error: '<unparseable response>' };
-  }
-
-  return {
-    idx: wallet.idx,
-    handle: wallet.handle,
-    address: wallet.address,
-    status: res.status,
-    ms,
-    ok: res.status === 200 && body?.success === true,
-    txDigest: body?.txDigest ?? null,
-    error: body?.success ? null : body?.error ?? `HTTP ${res.status}`,
-    reason: body?.reason ?? null,
-  };
 }
 
 function pct(arr: number[], p: number): number {

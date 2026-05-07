@@ -58,6 +58,20 @@ describe('isTransientSuiError', () => {
     (err as { cause?: unknown }).cause = new Error('read ECONNRESET');
     expect(isTransientSuiError(err)).toBe(true);
   });
+
+  it('matches validator equivocation rejection (S18-F17 — observed in May 7 burst-50)', () => {
+    expect(
+      isTransientSuiError(
+        new Error(
+          'Failed to mint leaf: Transaction is rejected as invalid by more than 1/3 of validators by stake (non-retriable). Non-retriable errors: [Equivocation detected on shared object 0x070456e283ec988b6302bdd6cc5172bbdcb709998cf116586fb98d19b0870198]',
+        ),
+      ),
+    ).toBe(true);
+  });
+
+  it('matches "equivocated" string', () => {
+    expect(isTransientSuiError(new Error('the transaction equivocated'))).toBe(true);
+  });
 });
 
 describe('withSuiRetry', () => {
@@ -80,7 +94,7 @@ describe('withSuiRetry', () => {
     expect(fn).toHaveBeenCalledTimes(1);
   });
 
-  it('retries up to 3 times by default on transient errors', async () => {
+  it('retries up to 5 times by default on transient errors (S18-F17 bumped from 3)', async () => {
     const fn = vi
       .fn()
       .mockRejectedValueOnce(new Error('Unexpected status code: 429'))
@@ -91,10 +105,10 @@ describe('withSuiRetry', () => {
     expect(fn).toHaveBeenCalledTimes(3);
   });
 
-  it('rethrows the last transient error after all attempts fail', async () => {
+  it('rethrows the last transient error after all 5 attempts fail (S18-F17)', async () => {
     const fn = vi.fn().mockRejectedValue(new Error('Unexpected status code: 429'));
     await expect(withSuiRetry(fn)).rejects.toThrow('Unexpected status code: 429');
-    expect(fn).toHaveBeenCalledTimes(3);
+    expect(fn).toHaveBeenCalledTimes(5);
   });
 
   it('does NOT retry non-transient errors (re-throws on first attempt)', async () => {
@@ -118,7 +132,7 @@ describe('withSuiRetry', () => {
     await withSuiRetry(fn, { label: 'reserve:mint' });
     expect(warnSpy).toHaveBeenCalledTimes(1);
     expect(warnSpy.mock.calls[0][0]).toContain('[sui-retry:reserve:mint]');
-    expect(warnSpy.mock.calls[0][0]).toContain('attempt 1/3');
+    expect(warnSpy.mock.calls[0][0]).toContain('attempt 1/5');
   });
 
   it('mixes transient + non-transient correctly (rethrows immediately on non-transient)', async () => {

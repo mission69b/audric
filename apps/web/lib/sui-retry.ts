@@ -57,7 +57,20 @@
  *   its own retry/backoff inside the Enoki client).
  */
 
-const DEFAULT_ATTEMPTS = 3;
+// [S18-F17 — May 2026] Bumped from 3 → 5 attempts with longer backoffs.
+// 3 attempts × (50ms + 250ms + 1250ms) = 1.55s of patience was insufficient
+// under burst load: the May 7 burst-50 test (25 concurrent mints) showed
+// 8/50 wallets still hitting "Transaction needs to be rebuilt" after the
+// S18-F16 in-closure rebuild fix. Sui shared-object contention can take
+// seconds to drain when 25 transactions race for the same registry — the
+// SDK rebuilds correctly each attempt, but the new build STILL races
+// against the next batch of concurrent mints in the same checkpoint window.
+//
+// New schedule: attempt → 250ms → 1s → 3s → 5s → attempt = 5 attempts
+// over ~9.25s of patience + ~5×2s execution time = ~20s max per mint.
+// Bounded by Vercel's 60s function timeout with comfortable headroom.
+const DEFAULT_ATTEMPTS = 5;
+const BACKOFF_MS = [250, 1000, 3000, 5000]; // backoff[i] is between attempt i and attempt i+1
 
 /**
  * Returns true if the error is a transient Sui RPC / SuiNS / shared-object
@@ -78,6 +91,13 @@ export function isTransientSuiError(err: unknown): boolean {
     /Too Many Requests/i.test(msg) ||
     /Transaction needs to be rebuilt/i.test(msg) ||
     /already locked by a different transaction/i.test(msg) ||
+    // [S18-F17] Validator rejection on equivocation detection. When two
+    // concurrent transactions reference the same shared object at the same
+    // version, validators reject one as a double-spend candidate. The fix
+    // is identical to stale-version: rebuild against the new chain view
+    // and resubmit. Empirically observed: 9/50 burst-50 failures = this.
+    /Transaction is rejected as invalid by more than 1\/3 of validators/i.test(msg) ||
+    /equivocated/i.test(msg) ||
     /ECONNRESET/i.test(msg) ||
     /ETIMEDOUT/i.test(msg) ||
     /EPIPE/i.test(msg) ||
@@ -114,7 +134,9 @@ export async function withSuiRetry<T>(
       if (i === attempts - 1 || !isTransientSuiError(err)) {
         throw err;
       }
-      const backoff = 50 * Math.pow(5, i); // 50ms, 250ms, 1250ms
+      // Use the explicit BACKOFF_MS table; if attempts is bumped beyond
+      // the table size, fall back to the last value.
+      const backoff = BACKOFF_MS[Math.min(i, BACKOFF_MS.length - 1)];
       console.warn(
         `[sui-retry${opts.label ? `:${opts.label}` : ''}] transient error attempt ${i + 1}/${attempts} — retrying in ${backoff}ms:`,
         err instanceof Error ? err.message : err,
