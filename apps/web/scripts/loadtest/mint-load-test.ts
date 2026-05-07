@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env tsx
 /**
  * Mainnet mint load test for /api/identity/reserve.
  *
@@ -6,10 +6,9 @@
  * ----------------------------------------------------------
  * The READ-SIDE k6 test (`identity-check.k6.js`) hits a stateless route
  * that doesn't touch chain state. It validates the SuiNS RPC + cache
- * funnel, but tells us NOTHING about what we actually care about for
- * a 100-1000 user signup burst: whether the audric registry shared
- * object can absorb concurrent mints without dropping requests on the
- * floor.
+ * funnel, but tells us NOTHING about what we actually care about for a
+ * 100-1000 user signup burst: whether the audric registry shared object
+ * can absorb concurrent mints without dropping requests on the floor.
  *
  * This script answers that question with REAL on-chain data:
  *   1. Generate N throwaway Ed25519 keypairs locally
@@ -27,7 +26,7 @@
  * (~$0.008 at SUI ≈ $2.50). 200 mints = ~$1.60. Failed mints cost
  * nothing (gas is only burned on successful execution).
  *
- * After the test, run `mint-cleanup.mjs <audit-file>` to:
+ * After the test, run `mint-cleanup.ts <audit-file>` to:
  *   - Revoke each minted leaf (another ~$1.60 in gas) — OR leave them
  *     as identifiable garbage (handles are `lt-*` prefixed, won't
  *     collide with real users)
@@ -35,13 +34,12 @@
  *
  * Safety guards (no real-user impact)
  * -----------------------------------
- *   - All handles use the `lt-<runTag>-<i>` prefix — no real user would
- *     pick this format (audric-side validation allows it but real users
- *     would pick `alice` not `lt-r3k8x-001`)
+ *   - All handles use the `lt-<runTag>-NNN` prefix — no real user would
+ *     pick this format
  *   - All test User rows have a synthetic `suiAddress` (random keypair,
  *     no real funds, never receives a transfer)
- *   - User rows are tagged via `usernameMintTxDigest` containing the
- *     runTag so the cleanup script can find them deterministically
+ *   - User rows are tagged via `googleSub: LOADTEST_<runTag>_<i>` so
+ *     the cleanup script can find them deterministically
  *   - The route's per-address rate limit (5/24h) means each test wallet
  *     can only attempt once — no double-spend risk
  *
@@ -49,42 +47,54 @@
  * -----
  *   # Tiny smoke test — 5 wallets, 2 concurrent
  *   AUDRIC_BASE_URL=https://audric.ai PROFILE=smoke \
- *     node apps/web/scripts/loadtest/mint-load-test.mjs
+ *     pnpm tsx apps/web/scripts/loadtest/mint-load-test.ts
  *
  *   # Realistic 100-user burst
  *   AUDRIC_BASE_URL=https://audric.ai PROFILE=burst-100 \
- *     node apps/web/scripts/loadtest/mint-load-test.mjs
+ *     pnpm tsx apps/web/scripts/loadtest/mint-load-test.ts
  *
- *   # Find-the-cliff 200-user burst (highest cost, ~$1.60)
+ *   # Find-the-cliff 200-user burst
  *   AUDRIC_BASE_URL=https://audric.ai PROFILE=burst-200 \
- *     node apps/web/scripts/loadtest/mint-load-test.mjs
+ *     pnpm tsx apps/web/scripts/loadtest/mint-load-test.ts
  *
- * Required env (loaded from apps/web/.env.local automatically by
- * `node --env-file`):
- *   DATABASE_URL — prod Postgres URL (already in .env.local)
+ * Required env (loaded via dotenv from apps/web/.env.local):
+ *   DATABASE_URL — prod Postgres URL
  */
 
-import { setTimeout as sleep } from 'node:timers/promises';
-import { randomUUID, randomBytes } from 'node:crypto';
+/* eslint-disable no-console */
+
+import { randomBytes } from 'node:crypto';
 import { writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { config as loadEnv } from 'dotenv';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
-import { PrismaClient } from '../../lib/generated/prisma/client/index.js';
+import { PrismaNeon } from '@prisma/adapter-neon';
+import { PrismaClient } from '../../lib/generated/prisma/client';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
+// Load .env.local explicitly — tsx scripts don't inherit Next.js env loading.
+const here = dirname(fileURLToPath(import.meta.url));
+loadEnv({ path: join(here, '../../.env.local') });
+
 const TARGET = process.env.AUDRIC_BASE_URL || 'https://audric.ai';
 const PROFILE = process.env.PROFILE || 'smoke';
 
-const PROFILES = {
+interface Profile {
+  wallets: number;
+  concurrency: number;
+  label: string;
+}
+
+const PROFILES: Record<string, Profile> = {
   smoke: { wallets: 5, concurrency: 2, label: 'Smoke (5 wallets, 2 concurrent)' },
   'burst-50': { wallets: 50, concurrency: 25, label: '50-user burst (25 concurrent)' },
   'burst-100': { wallets: 100, concurrency: 50, label: '100-user burst (50 concurrent)' },
   'burst-200': { wallets: 200, concurrency: 100, label: '200-user burst (100 concurrent)' },
-  // Worst-case: every wallet fires simultaneously, no batching. Maximum
-  // contention on the audric registry shared object — measures the
-  // ABSOLUTE failure cliff vs. realistic burst.
-  'all-at-once': { wallets: 100, concurrency: 100, label: 'All-at-once (100 wallets fire simultaneously)' },
+  'all-at-once': {
+    wallets: 100,
+    concurrency: 100,
+    label: 'All-at-once (100 wallets fire simultaneously — worst-case contention)',
+  },
 };
 
 const cfg = PROFILES[PROFILE];
@@ -95,15 +105,35 @@ if (!cfg) {
 
 const RUN_TAG = `r${randomBytes(3).toString('hex')}`;
 const RUN_STARTED_AT = new Date();
-const AUDIT_DIR = join(__dirname, 'runs');
-const AUDIT_FILE = join(AUDIT_DIR, `mint-loadtest-${RUN_STARTED_AT.toISOString().replace(/[:.]/g, '-')}-${RUN_TAG}.json`);
+const AUDIT_DIR = join(here, 'runs');
+const AUDIT_FILE = join(
+  AUDIT_DIR,
+  `mint-loadtest-${RUN_STARTED_AT.toISOString().replace(/[:.]/g, '-')}-${RUN_TAG}.json`,
+);
 
 if (!existsSync(AUDIT_DIR)) mkdirSync(AUDIT_DIR, { recursive: true });
 
-// validateJwt() in apps/web/lib/auth.ts is shape-only (header.payload.sig
-// base64-decoded). Same trick as stress-test-prisma-69.mjs.
-function mintFakeJwt(addr) {
-  const b64 = (obj) => Buffer.from(JSON.stringify(obj)).toString('base64url');
+interface Wallet {
+  idx: number;
+  address: string;
+  handle: string;
+  keypair: Ed25519Keypair;
+}
+
+interface ReserveResult {
+  idx: number;
+  handle: string;
+  address: string;
+  status: number;
+  ms: number;
+  ok: boolean;
+  txDigest: string | null;
+  error: string | null;
+  reason?: string | null;
+}
+
+function mintFakeJwt(addr: string): string {
+  const b64 = (obj: unknown) => Buffer.from(JSON.stringify(obj)).toString('base64url');
   return [
     b64({ alg: 'none', typ: 'JWT', kid: RUN_TAG }),
     b64({
@@ -117,35 +147,29 @@ function mintFakeJwt(addr) {
   ].join('.');
 }
 
-function makeWallet(idx) {
+function makeWallet(idx: number): Wallet {
   const keypair = Ed25519Keypair.generate();
   const address = keypair.toSuiAddress();
   const handle = `lt-${RUN_TAG}-${String(idx).padStart(3, '0')}`;
   return { idx, address, handle, keypair };
 }
 
-async function seedTestUser(prisma, wallet) {
-  // Match the audric User schema. We stash the runTag in a field that
-  // makes the row identifiable for cleanup. Per CLAUDE.md, audric uses
-  // `username` + `usernameClaimedAt` + `usernameMintTxDigest` as the
-  // claim columns — at seed time we leave them empty (route fills them
-  // on success). We MUST provide whatever fields are required NOT NULL
-  // in the schema — easiest to just omit username/email/etc. and let
-  // defaults fire.
-  return prisma.user.create({
+async function seedTestUser(prisma: PrismaClient, wallet: Wallet): Promise<void> {
+  // Tag via displayName so the cleanup script can find LOADTEST rows by
+  // a `startsWith` query. User schema (apps/web/prisma/schema.prisma)
+  // has no dedicated tagging field — displayName is the cheapest non-
+  // unique optional column we can hijack for this.
+  await prisma.user.create({
     data: {
       suiAddress: wallet.address,
-      // Tag this row clearly as load-test so the cleanup script can
-      // find it via a single WHERE clause.
-      googleSub: `LOADTEST_${RUN_TAG}_${wallet.idx}`,
+      displayName: `LOADTEST_${RUN_TAG}_${wallet.idx}`,
     },
-    select: { id: true, suiAddress: true },
   });
 }
 
-async function reserveOne(wallet, jwt) {
+async function reserveOne(wallet: Wallet, jwt: string): Promise<ReserveResult> {
   const start = performance.now();
-  let res;
+  let res: Response;
   try {
     res = await fetch(`${TARGET}/api/identity/reserve`, {
       method: 'POST',
@@ -168,16 +192,16 @@ async function reserveOne(wallet, jwt) {
       ms: Math.round(performance.now() - start),
       ok: false,
       txDigest: null,
-      error: err?.message ?? String(err),
+      error: err instanceof Error ? err.message : String(err),
     };
   }
 
   const ms = Math.round(performance.now() - start);
-  let body = null;
+  let body: { success?: boolean; txDigest?: string; error?: string; reason?: string } | null = null;
   try {
-    body = await res.json();
+    body = (await res.json()) as typeof body;
   } catch {
-    body = { raw: await res.text().catch(() => '<unreadable>') };
+    body = { error: '<unparseable response>' };
   }
 
   return {
@@ -193,19 +217,22 @@ async function reserveOne(wallet, jwt) {
   };
 }
 
-function pct(arr, p) {
+function pct(arr: number[], p: number): number {
   if (arr.length === 0) return 0;
   const sorted = [...arr].sort((a, b) => a - b);
   return sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * p))];
 }
 
-async function runConcurrent(wallets, concurrency) {
-  const results = new Array(wallets.length);
+async function runConcurrent(
+  wallets: Wallet[],
+  concurrency: number,
+): Promise<ReserveResult[]> {
+  const results = new Array(wallets.length) as ReserveResult[];
   let nextIdx = 0;
   let completed = 0;
 
-  async function worker() {
-    while (nextIdx < wallets.length) {
+  async function worker(): Promise<void> {
+    while (true) {
       const myIdx = nextIdx;
       nextIdx += 1;
       if (myIdx >= wallets.length) return;
@@ -223,12 +250,13 @@ async function runConcurrent(wallets, concurrency) {
     }
   }
 
-  const workers = Array.from({ length: Math.min(concurrency, wallets.length) }, () => worker());
-  await Promise.all(workers);
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, wallets.length) }, () => worker()),
+  );
   return results;
 }
 
-async function main() {
+async function main(): Promise<void> {
   const t0 = Date.now();
   console.log('━'.repeat(70));
   console.log(`MINT LOAD TEST — ${cfg.label}`);
@@ -246,7 +274,14 @@ async function main() {
   const wallets = Array.from({ length: cfg.wallets }, (_, i) => makeWallet(i));
 
   console.log(`[step 1/3] Seeding ${wallets.length} test users in DB...`);
-  const prisma = new PrismaClient();
+  const dbUrl = process.env.DATABASE_URL;
+  if (!dbUrl) {
+    console.error('DATABASE_URL missing from env (expected in apps/web/.env.local).');
+    process.exit(1);
+  }
+  const prisma = new PrismaClient({
+    adapter: new PrismaNeon({ connectionString: dbUrl }),
+  });
   const seedT0 = Date.now();
   let seeded = 0;
   for (const w of wallets) {
@@ -254,7 +289,8 @@ async function main() {
       await seedTestUser(prisma, w);
       seeded += 1;
     } catch (err) {
-      console.error(`  ✗ failed to seed ${w.handle}:`, err.message?.slice(0, 100));
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`  ✗ failed to seed ${w.handle}:`, msg.slice(0, 120));
     }
   }
   console.log(`  → ${seeded}/${wallets.length} users seeded in ${Date.now() - seedT0}ms\n`);
@@ -269,8 +305,8 @@ async function main() {
 
   const ok = results.filter((r) => r.ok);
   const failed = results.filter((r) => !r.ok);
-  const byStatus = {};
-  const byReason = {};
+  const byStatus: Record<number, number> = {};
+  const byReason: Record<string, number> = {};
   for (const r of failed) {
     byStatus[r.status] = (byStatus[r.status] || 0) + 1;
     if (r.reason) byReason[r.reason] = (byReason[r.reason] || 0) + 1;
@@ -292,8 +328,18 @@ async function main() {
       failed: failed.length,
       successRate: results.length > 0 ? ok.length / results.length : 0,
       latencyMs: {
-        ok: { p50: pct(okLatencies, 0.5), p95: pct(okLatencies, 0.95), p99: pct(okLatencies, 0.99), max: Math.max(0, ...okLatencies) },
-        all: { p50: pct(allLatencies, 0.5), p95: pct(allLatencies, 0.95), p99: pct(allLatencies, 0.99), max: Math.max(0, ...allLatencies) },
+        ok: {
+          p50: pct(okLatencies, 0.5),
+          p95: pct(okLatencies, 0.95),
+          p99: pct(okLatencies, 0.99),
+          max: Math.max(0, ...okLatencies),
+        },
+        all: {
+          p50: pct(allLatencies, 0.5),
+          p95: pct(allLatencies, 0.95),
+          p99: pct(allLatencies, 0.99),
+          max: Math.max(0, ...allLatencies),
+        },
       },
       failedByStatus: byStatus,
       failedByReason: byReason,
@@ -311,7 +357,9 @@ async function main() {
   console.log('━'.repeat(70));
   console.log('RESULTS');
   console.log('━'.repeat(70));
-  console.log(`Successful mints:  ${ok.length}/${results.length} (${((ok.length / results.length) * 100).toFixed(1)}%)`);
+  console.log(
+    `Successful mints:  ${ok.length}/${results.length} (${((ok.length / results.length) * 100).toFixed(1)}%)`,
+  );
   console.log(`Failed:            ${failed.length}/${results.length}`);
   if (failed.length > 0) {
     console.log(`  By HTTP status: ${JSON.stringify(byStatus)}`);
@@ -325,14 +373,18 @@ async function main() {
   }
   console.log('');
   console.log(`Latency (successful mints):`);
-  console.log(`  p50: ${audit.summary.latencyMs.ok.p50}ms  p95: ${audit.summary.latencyMs.ok.p95}ms  p99: ${audit.summary.latencyMs.ok.p99}ms  max: ${audit.summary.latencyMs.ok.max}ms`);
+  console.log(
+    `  p50: ${audit.summary.latencyMs.ok.p50}ms  p95: ${audit.summary.latencyMs.ok.p95}ms  p99: ${audit.summary.latencyMs.ok.p99}ms  max: ${audit.summary.latencyMs.ok.max}ms`,
+  );
   console.log(`Throughput:`);
   console.log(`  ${audit.summary.throughput.requestsPerSec.toFixed(2)} req/sec total`);
-  console.log(`  ${audit.summary.throughput.successfulMintsPerSec.toFixed(2)} successful mints/sec (theoretical Sui ceiling: ~4/sec)`);
+  console.log(
+    `  ${audit.summary.throughput.successfulMintsPerSec.toFixed(2)} successful mints/sec (theoretical Sui ceiling: ~4/sec)`,
+  );
   console.log('');
   console.log(`Cost estimate: ~$${(ok.length * 0.008).toFixed(2)} in SUI gas`);
   console.log('');
-  console.log(`Cleanup: node apps/web/scripts/loadtest/mint-cleanup.mjs ${AUDIT_FILE}`);
+  console.log(`Cleanup: pnpm tsx apps/web/scripts/loadtest/mint-cleanup.ts ${AUDIT_FILE}`);
   console.log('━'.repeat(70));
 
   await prisma.$disconnect();

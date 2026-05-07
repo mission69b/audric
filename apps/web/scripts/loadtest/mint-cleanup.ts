@@ -1,9 +1,9 @@
-#!/usr/bin/env node
+#!/usr/bin/env tsx
 /**
- * Companion cleanup for mint-load-test.mjs.
+ * Companion cleanup for mint-load-test.ts.
  *
  * Reads the audit JSON written by the load test and:
- *   1. Deletes the test User rows from the prod DB (identified by
+ *   1. Deletes test User rows from the prod DB (identified by
  *      googleSub LIKE "LOADTEST_<runTag>_*" — a tag the seed step
  *      stamped on each row, deterministic per run)
  *   2. (OPTIONAL) Revokes each successfully-minted leaf via
@@ -14,8 +14,8 @@
  * ----------------------
  * The mint-load-test handles use the `lt-<runTag>-NNN` prefix so a
  * real user would never collide. Revoking costs another ~$0.008 per
- * leaf in gas. For a 200-mint test, that's ~$1.60 to clean up vs
- * $0 to leave them as identifiable on-chain garbage.
+ * leaf in gas. For a 200-mint test, that's ~$1.60 to clean up vs $0
+ * to leave them as identifiable on-chain garbage.
  *
  * Recommended: skip revoke after small smoke runs, do revoke after
  * any 50+ mint run to keep the registry tidy.
@@ -23,27 +23,49 @@
  * Usage
  * -----
  *   # Just delete DB rows (fast, free)
- *   node apps/web/scripts/loadtest/mint-cleanup.mjs <audit-file>
+ *   pnpm tsx apps/web/scripts/loadtest/mint-cleanup.ts <audit-file>
  *
  *   # Delete DB rows AND revoke on-chain leaves (slow, costs gas)
- *   REVOKE=1 node apps/web/scripts/loadtest/mint-cleanup.mjs <audit-file>
+ *   REVOKE=1 pnpm tsx apps/web/scripts/loadtest/mint-cleanup.ts <audit-file>
  */
 
+/* eslint-disable no-console */
+
 import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { config as loadEnv } from 'dotenv';
 import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { decodeSuiPrivateKey } from '@mysten/sui/cryptography';
 import { SuinsClient } from '@mysten/suins';
 import { buildRevokeLeafTx } from '@t2000/sdk';
-import { PrismaClient } from '../../lib/generated/prisma/client/index.js';
+import { PrismaNeon } from '@prisma/adapter-neon';
+import { PrismaClient } from '../../lib/generated/prisma/client';
+
+const here = dirname(fileURLToPath(import.meta.url));
+loadEnv({ path: join(here, '../../.env.local') });
 
 const auditPath = process.argv[2];
 if (!auditPath) {
-  console.error('Usage: mint-cleanup.mjs <audit-file>');
+  console.error('Usage: mint-cleanup.ts <audit-file>');
   process.exit(1);
 }
 
-const audit = JSON.parse(readFileSync(auditPath, 'utf-8'));
+interface AuditFile {
+  runTag: string;
+  profile: string;
+  results: Array<{
+    handle: string;
+    ok: boolean;
+    txDigest: string | null;
+  }>;
+  summary: {
+    successful: number;
+  };
+}
+
+const audit = JSON.parse(readFileSync(auditPath, 'utf-8')) as AuditFile;
 const REVOKE = process.env.REVOKE === '1' || process.env.REVOKE === 'true';
 
 console.log('━'.repeat(70));
@@ -54,21 +76,23 @@ console.log(`Revoke on-chain?            ${REVOKE ? 'YES' : 'NO (set REVOKE=1 to
 console.log('━'.repeat(70));
 console.log('');
 
-async function main() {
-  const prisma = new PrismaClient();
+async function main(): Promise<void> {
+  const dbUrl = process.env.DATABASE_URL;
+  if (!dbUrl) {
+    console.error('DATABASE_URL missing from env (expected in apps/web/.env.local).');
+    process.exit(1);
+  }
+  const prisma = new PrismaClient({
+    adapter: new PrismaNeon({ connectionString: dbUrl }),
+  });
 
-  // Step 1 — delete DB rows. Always runs. Identified by the googleSub
-  // tag the seed step stamped on each row.
   console.log(`[1/2] Deleting test User rows tagged LOADTEST_${audit.runTag}_*...`);
   const dbT0 = Date.now();
   const deleted = await prisma.user.deleteMany({
-    where: {
-      googleSub: { startsWith: `LOADTEST_${audit.runTag}_` },
-    },
+    where: { displayName: { startsWith: `LOADTEST_${audit.runTag}_` } },
   });
   console.log(`  → deleted ${deleted.count} rows in ${Date.now() - dbT0}ms\n`);
 
-  // Step 2 — optional on-chain revoke.
   if (!REVOKE) {
     console.log('[2/2] Skipping on-chain revoke (set REVOKE=1 to revoke).');
     console.log(`  Note: ${audit.summary.successful} leaves remain on-chain as identifiable garbage`);
@@ -79,7 +103,9 @@ async function main() {
 
   const rawKey = process.env.AUDRIC_PARENT_NFT_PRIVATE_KEY;
   if (!rawKey) {
-    console.error('REVOKE=1 set but AUDRIC_PARENT_NFT_PRIVATE_KEY missing from env. Aborting revoke step.');
+    console.error(
+      'REVOKE=1 set but AUDRIC_PARENT_NFT_PRIVATE_KEY missing from env. Aborting revoke step.',
+    );
     await prisma.$disconnect();
     process.exit(1);
   }
@@ -92,10 +118,10 @@ async function main() {
   }
   const keypair = Ed25519Keypair.fromSecretKey(secretKey);
 
-  const network = process.env.NEXT_PUBLIC_SUI_NETWORK || 'mainnet';
+  const network = (process.env.NEXT_PUBLIC_SUI_NETWORK || 'mainnet') as 'mainnet' | 'testnet' | 'devnet' | 'localnet';
   const suiRpcUrl = process.env.SUI_RPC_URL || getJsonRpcFullnodeUrl(network);
   const suiClient = new SuiJsonRpcClient({ url: suiRpcUrl, network });
-  const suinsClient = new SuinsClient({ client: suiClient, network });
+  const suinsClient = new SuinsClient({ client: suiClient as never, network });
 
   const successful = audit.results.filter((r) => r.ok);
   console.log(`[2/2] Revoking ${successful.length} on-chain leaves...`);
@@ -106,19 +132,20 @@ async function main() {
   let failed = 0;
   for (const r of successful) {
     try {
-      // Strip the .audric.sui suffix to get just the label
-      const label = r.handle;
-      const tx = buildRevokeLeafTx(suinsClient, { label });
+      const tx = buildRevokeLeafTx(suinsClient, { label: r.handle });
       await suiClient.signAndExecuteTransaction({
         signer: keypair,
         transaction: tx,
         options: { showEffects: false },
       });
       revoked += 1;
-      console.log(`  [${revoked + failed}/${successful.length}] ✓ revoked ${label}`);
+      console.log(`  [${revoked + failed}/${successful.length}] ✓ revoked ${r.handle}`);
     } catch (err) {
       failed += 1;
-      console.log(`  [${revoked + failed}/${successful.length}] ✗ revoke failed for ${r.handle}: ${err.message?.slice(0, 80)}`);
+      const msg = err instanceof Error ? err.message : String(err);
+      console.log(
+        `  [${revoked + failed}/${successful.length}] ✗ revoke failed for ${r.handle}: ${msg.slice(0, 80)}`,
+      );
     }
   }
 
