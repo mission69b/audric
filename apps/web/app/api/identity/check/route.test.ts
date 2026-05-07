@@ -243,13 +243,18 @@ describe('/api/identity/check', () => {
   });
 
   describe('rate limiting', () => {
-    it('returns 429 after exceeding 30 requests / 60s from the same IP', async () => {
+    it('returns 429 after exceeding 60 requests / 60s from the same IP (S18-F19 calibration)', async () => {
+      // [S18-F19, 2026-05-08 post-launch] Bumped 30 → 60. The 2026-05-08
+      // launch showed real users tripping the previous 30/min limit by
+      // typing fast (picker fan-out + debounced free-text checks easily
+      // exceed 30 in a minute on a name-shopping flow). 60 still stops
+      // scripts cold; the endpoint is cheap (DB sub-ms + cached RPC).
       mockUserFindUnique.mockResolvedValue(null);
       mockResolveSuinsViaRpc.mockResolvedValue(null);
 
       const ip = '10.99.99.99'; // dedicated IP for this test
       let lastRes: Response | undefined;
-      for (let i = 0; i < 31; i++) {
+      for (let i = 0; i < 61; i++) {
         lastRes = await GET(
           buildRequest(`alice${i.toString().padStart(2, '0')}`, { 'x-forwarded-for': ip }),
         );

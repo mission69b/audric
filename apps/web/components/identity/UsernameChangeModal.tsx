@@ -4,6 +4,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { Icon } from '@/components/ui/Icon';
 import { validateAudricLabel } from '@/lib/identity/validate-label';
 import { isReserved } from '@/lib/identity/reserved-usernames';
+import { fetchIdentityCheck } from '@/lib/identity/check-fetcher';
 
 // ───────────────────────────────────────────────────────────────────────────
 // S.84 — UsernameChangeModal
@@ -236,18 +237,11 @@ export function UsernameChangeModal({
   // Same pattern as UsernamePicker.tsx: 300ms debounce, last-write-wins
   // via checkIdRef, only fires when local validation passes (so we don't
   // burn server checks on syntactically invalid input).
-  const defaultCheckFetcher = useCallback(
-    async (label: string): Promise<{ available: boolean; reason?: string; verifierDown?: boolean }> => {
-      const res = await fetch(`/api/identity/check?username=${encodeURIComponent(label)}`, {
-        method: 'GET',
-      });
-      if (res.status === 503) return { available: false, verifierDown: true };
-      if (!res.ok) throw new Error(`identity-check ${res.status}`);
-      const body = (await res.json()) as { available: boolean; reason?: string };
-      return { available: body.available, reason: body.reason };
-    },
-    [],
-  );
+  // [S18-F19] HTTP-status mapping (incl. 503 + 429 → verifierDown) is
+  // owned by `lib/identity/check-fetcher.ts` so the modal and the
+  // signup picker stay aligned. Wrapped in useCallback to keep the
+  // existing `liveCheck` dependency contract for `useEffect`.
+  const defaultCheckFetcher = useCallback(fetchIdentityCheck, []);
   const liveCheck = checkFetcher ?? defaultCheckFetcher;
 
   const checkIdRef = useRef(0);

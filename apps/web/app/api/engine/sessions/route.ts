@@ -18,7 +18,14 @@ export async function GET(request: NextRequest) {
 
   const ip =
     request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
-  const rl = rateLimit(`engine-sessions:${ip}`, 10, 60_000);
+  // [S18-F19, 2026-05-08 post-launch] Bumped 10 → 30 / 60s after the
+  // showcase 48h window showed normal browsing patterns tripping the
+  // limit. The sidebar history list is fetched by `ConvoHistoryList`
+  // on every dashboard-shell mount; a user navigating dashboard →
+  // /pay → back → /<handle> → back can re-mount 5+ times in a minute
+  // without abuse intent. The endpoint is read-only (Upstash list +
+  // per-id GETs); cheap. 30/min still rate-limits scripted scraping.
+  const rl = rateLimit(`engine-sessions:${ip}`, 30, 60_000);
   if (!rl.success) return rateLimitResponse(rl.retryAfterMs!);
 
   const store = getSessionStore();

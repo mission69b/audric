@@ -53,11 +53,22 @@ export const runtime = 'nodejs';
  * SuiNS), and authentication would add friction during the signup flow
  * where the user doesn't have a Sui address yet (the picker runs BEFORE
  * the first leaf mint claims their Audric Passport identity). IP rate
- * limit prevents abuse: 30 requests / 60s — generous enough for typing-
- * debounced "checking..." flows but bounded enough to stop a script.
+ * limit prevents abuse but is sized for real typing speeds — see
+ * RATE_LIMIT_MAX comment below for the post-launch calibration.
  */
 
-const RATE_LIMIT_MAX = 30;
+// [S18-F19, 2026-05-08 post-launch] Bumped 30 → 60 / 60s after the
+// showcase 48h window showed legitimate fast-typers tripping the limit.
+// The picker fans out 3 parallel suggestion pre-checks on mount, then
+// the user's debounced free-text checks fire on every keystroke that
+// passes local validation; a normal "type a name + tab to claim" flow
+// can land 8–12 requests inside the same minute, and a name-shopping
+// user (`adeniyi` → `adeniyi-eth` → `adeniyi-1` → ...) can easily
+// double that. The endpoint is cheap — DB unique-check is sub-ms
+// indexed, SuiNS RPC is Upstash-cached at 5min positive / 10s negative.
+// 60/min still stops scripts cold but accommodates the real burst
+// pattern observed under the 530-signups-in-48h load.
+const RATE_LIMIT_MAX = 60;
 const RATE_LIMIT_WINDOW_MS = 60_000;
 
 const AUDRIC_PARENT_NAME = 'audric.sui';

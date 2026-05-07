@@ -1,0 +1,78 @@
+{
+  "summary": {
+    "windowHours": 168,
+    "v2Count": 1301,
+    "legacyCount": 45,
+    "passed": 5,
+    "failed": 1,
+    "skipped": 1,
+    "evalSummaryViolations": 6,
+    "interruptedCount": 0,
+    "pendingInputOnLegacy": 0
+  },
+  "gates": [
+    {
+      "id": 1,
+      "name": "TTFVP p50 ≤ 4000ms (v0.5.4 — empirical p75 calibration)",
+      "pass": true,
+      "value": 2565,
+      "threshold": 4000,
+      "unit": "ms",
+      "note": "v2 cohort: 1301 rows · p50 2565ms"
+    },
+    {
+      "id": 2,
+      "name": "Final-text p50 ≤ legacy × 1.5",
+      "pass": null,
+      "value": null,
+      "threshold": 1.5,
+      "unit": "ratio",
+      "note": "need both cohorts populated — both use finalTextTokens (post-B3.6 only; pre-B3.6 NULL rows excluded)"
+    },
+    {
+      "id": 3,
+      "name": "Total cost p50 ≤ legacy × 1.25",
+      "pass": true,
+      "value": 0.7047474190420913,
+      "threshold": 1.25,
+      "unit": "ratio",
+      "note": "v2 $0.02192 vs legacy $0.03110 = 0.70×"
+    },
+    {
+      "id": 4,
+      "name": "Total latency p50 ≤ legacy × 1.2",
+      "pass": true,
+      "value": 1.0081287325812873,
+      "threshold": 1.2,
+      "unit": "ratio",
+      "note": "v2 6077ms vs legacy 6028ms = 1.01×"
+    },
+    {
+      "id": 5,
+      "name": "LEAN never emits todo_update",
+      "pass": false,
+      "value": 14,
+      "threshold": 0,
+      "unit": "turns",
+      "note": "14/776 LEAN turns emitted a todo (must be 0)"
+    },
+    {
+      "id": 6,
+      "name": "LEAN p95 thinking blocks ≤ 1",
+      "pass": true,
+      "value": 0,
+      "threshold": 1,
+      "unit": "blocks",
+      "note": "776 LEAN turns · p95 0.0 thinking blocks"
+    },
+    {
+      "id": 7,
+      "name": "RICH multi-step planning-signal rate ≥ 80% (v0.5.4 — single-write RICH exempt)",
+      "pass": true,
+      "value": 0.9672131147540983,
+      "threshold": 0.8,
+      "unit": "rate",
+      "note": "59/61 multi-step RICH turns emitted update_todo or prepare_bundle = 97% · 124 single-write RICH turns exempt (RICH total: 185)"
+    }
+  ]
+}

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import { suggestUsernames } from '@/lib/identity/suggest-usernames';
 import { validateAudricLabel, type LabelReason } from '@/lib/identity/validate-label';
+import { fetchIdentityCheck } from '@/lib/identity/check-fetcher';
 
 // ───────────────────────────────────────────────────────────────────────────
 // SPEC 10 Phase B.1 — UsernamePicker
@@ -594,19 +595,13 @@ function humanStatusForInput(s: UsernameCheckStatus, input: string): string {
 // ───────────────────────────────────────────────────────────────────────────
 
 async function defaultCheckFetcher(label: string): Promise<UsernameCheckResult> {
-  const res = await fetch(
-    `/api/identity/check?username=${encodeURIComponent(label)}`,
-    { method: 'GET' },
-  );
-  if (res.status === 503) {
-    return { available: false, verifierDown: true };
-  }
-  if (!res.ok) {
-    throw new Error(`identity-check ${res.status}`);
-  }
-  const body = (await res.json()) as { available: boolean; reason?: string };
+  // [S18-F19] HTTP-status mapping (incl. 503 + 429 → verifierDown) is
+  // owned by `lib/identity/check-fetcher.ts` so the picker and the
+  // settings change-handle modal stay aligned.
+  const r = await fetchIdentityCheck(label);
   return {
-    available: body.available,
-    reason: body.reason as UsernameCheckResult['reason'],
+    available: r.available,
+    reason: r.reason as UsernameCheckResult['reason'],
+    verifierDown: r.verifierDown,
   };
 }
