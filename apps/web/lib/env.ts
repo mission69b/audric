@@ -171,6 +171,15 @@ const serverSchema = z.object({
    */
   AUDRIC_PARENT_NFT_PRIVATE_KEY: requiredString,
 
+  /**
+   * [S18-F14] Optional cap on concurrent /api/identity/reserve mints.
+   * See `lib/identity/admission-control.ts` for derivation. Defaults to 5
+   * if unset or invalid. Tunable via Vercel env without redeploy:
+   *   - Loosen (e.g. 10) when 503s spike but on-chain reverts stay low
+   *   - Tighten (e.g. 3) if BlockVision RPC 429s reappear under burst
+   */
+  AUDRIC_MINT_CONCURRENCY_LIMIT: optionalString,
+
   /** Comma-separated session-id prefixes that mark synthetic/bot traffic. */
   SYNTHETIC_SESSION_PREFIXES: optionalString,
 
@@ -352,6 +361,7 @@ const runtimeEnv = {
   INTERNAL_API_KEY: process.env.INTERNAL_API_KEY,
   SUI_RPC_URL: process.env.SUI_RPC_URL,
   AUDRIC_PARENT_NFT_PRIVATE_KEY: process.env.AUDRIC_PARENT_NFT_PRIVATE_KEY,
+  AUDRIC_MINT_CONCURRENCY_LIMIT: process.env.AUDRIC_MINT_CONCURRENCY_LIMIT,
   SYNTHETIC_SESSION_PREFIXES: process.env.SYNTHETIC_SESSION_PREFIXES,
   PAYMENT_STREAM_DISABLE: process.env.PAYMENT_STREAM_DISABLE,
   NODE_ENV: process.env.NODE_ENV,

@@ -76,7 +76,9 @@ import { PrismaClient } from '../../lib/generated/prisma/client';
 const here = dirname(fileURLToPath(import.meta.url));
 loadEnv({ path: join(here, '../../.env.local') });
 
+// eslint-disable-next-line no-restricted-syntax -- PROCESS-ENV-BYPASS: standalone CLI script invoked outside Next.js runtime; env.ts schema would force validation of unrelated production vars.
 const TARGET = process.env.AUDRIC_BASE_URL || 'https://audric.ai';
+// eslint-disable-next-line no-restricted-syntax -- PROCESS-ENV-BYPASS: standalone CLI script invoked outside Next.js runtime.
 const PROFILE = process.env.PROFILE || 'smoke';
 
 interface Profile {
@@ -274,6 +276,7 @@ async function main(): Promise<void> {
   const wallets = Array.from({ length: cfg.wallets }, (_, i) => makeWallet(i));
 
   console.log(`[step 1/3] Seeding ${wallets.length} test users in DB...`);
+  // eslint-disable-next-line no-restricted-syntax -- PROCESS-ENV-BYPASS: standalone CLI script; PrismaClient needs DATABASE_URL outside the Next.js env-gate.
   const dbUrl = process.env.DATABASE_URL;
   if (!dbUrl) {
     console.error('DATABASE_URL missing from env (expected in apps/web/.env.local).');

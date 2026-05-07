@@ -6,11 +6,16 @@ import { decodeSuiPrivateKey } from '@mysten/sui/cryptography';
 import { isValidSuiAddress, normalizeSuiAddress } from '@mysten/sui/utils';
 import { SuinsClient, SuinsTransaction } from '@mysten/suins';
 import { AUDRIC_PARENT_NAME, AUDRIC_PARENT_NFT_ID, fullHandle } from '@t2000/sdk';
-import { resolveSuinsViaRpc, SuinsRpcError } from '@t2000/engine';
+import { SuinsRpcError } from '@t2000/engine';
 import { Prisma } from '@/lib/generated/prisma/client';
 import { prisma } from '@/lib/prisma';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { getSuiRpcUrl } from '@/lib/sui-rpc';
+import {
+  resolveSuinsCached,
+  invalidateAndWarmSuins,
+  invalidateRevokedSuins,
+} from '@/lib/suins-cache';
 import { isReserved } from '@/lib/identity/reserved-usernames';
 import { validateAudricLabel } from '@/lib/identity/validate-label';
 import { validateJwt } from '@/lib/auth';
@@ -263,7 +268,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   let onChainAddress: string | null;
   try {
-    onChainAddress = await resolveSuinsViaRpc(handle, { suiRpcUrl });
+    // [S18-F13] Switched from resolveSuinsViaRpc → resolveSuinsCached
+    // for parity with /api/identity/check + /api/identity/reserve.
+    // Without this the change route was ALWAYS hitting live RPC,
+    // contributing to the suix_resolveNameServiceAddress 11k req/24h
+    // load on BlockVision (May 7 2026 stats).
+    onChainAddress = await resolveSuinsCached(handle, { suiRpcUrl });
   } catch (err) {
     const detail =
       err instanceof SuinsRpcError
@@ -368,6 +378,19 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       500,
     );
   }
+
+  // [S18-F13 — May 2026] Write-through both cache entries. The atomic
+  // PTB simultaneously created NEW + revoked OLD, so:
+  //   - newLabel.audric.sui is now claimed → cache as positive entry
+  //   - oldLabel.audric.sui is now unclaimed → cache as fresh negative
+  //     (otherwise the previous positive entry would linger 5 min)
+  // Both calls are best-effort; failures degrade to cache-miss on next
+  // read, not user-facing breakage.
+  const oldHandle = fullHandle(oldLabel);
+  await Promise.all([
+    invalidateAndWarmSuins(handle, callerAddress),
+    invalidateRevokedSuins(oldHandle),
+  ]);
 
   return NextResponse.json({
     success: true,

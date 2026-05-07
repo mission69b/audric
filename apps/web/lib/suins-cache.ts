@@ -46,7 +46,25 @@ import { Redis } from '@upstash/redis';
  */
 
 const POSITIVE_TTL_SEC = 5 * 60; // 5 minutes
-const NEGATIVE_TTL_SEC = 30; // 30 seconds
+// [S18-F13 — May 2026] Negative TTL reduced from 30s → 10s after the
+// false-AVAILABLE picker bug surfaced (May 7 2026 founder report). The
+// 30s window was the primary contributor to "picker says available, but
+// reserve fails with 409" inconsistency:
+//
+//   T+0s   user A's picker check `funkii.audric.sui` → null cached 30s
+//   T+5s   user A actually claims, OR funkii was already on-chain (orphan)
+//   T+5s   user B's picker check → cache hit (stale null) → "AVAILABLE"
+//   T+30s  cache entry expires
+//   T+31s  user B re-checks (or different VU) → live RPC → real address
+//          → "ALREADY CLAIMED" (the inconsistency in the bug screenshots)
+//
+// Lowering to 10s narrows the bug window 3x. Combined with the
+// invalidateAndWarmSuins() write-through (called from reserve + change
+// routes on successful mint), most real-world inconsistencies are
+// eliminated. The remaining 10s window only affects orphan handles
+// (on-chain leaves that audric's reserve flow never wrote to DB) where
+// we have no write-side hook to invalidate.
+const NEGATIVE_TTL_SEC = 10;
 const PREFIX = 'suins:';
 
 interface CacheEntry {
@@ -210,6 +228,74 @@ export async function resolveSuinsCached(
   }
 
   return result;
+}
+
+/**
+ * Write-through cache update for the freshly-minted positive resolution.
+ *
+ * Call this from any route that just MUTATED on-chain SuiNS state for a
+ * given handle (currently /api/identity/reserve and /api/identity/change).
+ *
+ * Why write-through (not just delete)
+ * -----------------------------------
+ * After a successful mint, three things compete:
+ *   1. The picker may have just cached a NEGATIVE entry for `handle` (NTL
+ *      is short but non-zero). Without invalidation, the next picker
+ *      check reads the stale null → renders "AVAILABLE" (false).
+ *   2. The /<username> public page render for the freshly-claimed handle
+ *      will hit live RPC on first visit. With write-through, it's a cache
+ *      hit immediately.
+ *   3. The next picker check from ANY user (typing the same name in their
+ *      "is this taken?" debounce) gets the correct positive answer with
+ *      zero RPC cost.
+ *
+ * Pure delete-on-mint would solve (1) but force the next reader to hit
+ * live RPC. Write-through covers all three at the cost of one extra
+ * Upstash SET (~10ms).
+ *
+ * Failure mode: best-effort. A failed write-through means the next reader
+ * pays for one live RPC call (the cache simply degrades to its uncached
+ * behaviour for that handle). Never throws.
+ */
+export async function invalidateAndWarmSuins(
+  handle: string,
+  newAddress: string,
+): Promise<void> {
+  try {
+    await getSuinsCacheStore().set(
+      handle,
+      { result: newAddress, cachedAt: Date.now() },
+      POSITIVE_TTL_SEC,
+    );
+  } catch (err) {
+    console.warn(
+      `[suins-cache] write-through warm-up failed for "${handle}":`,
+      err instanceof Error ? err.message : err,
+    );
+  }
+}
+
+/**
+ * Write-through cache invalidation for a handle whose chain leaf was
+ * REVOKED. Used by /api/identity/change after the atomic PTB lands —
+ * the OLD handle is now unclaimed on-chain, so the cache should reflect
+ * that as a fresh negative entry instead of holding a stale positive.
+ *
+ * Same best-effort policy as invalidateAndWarmSuins.
+ */
+export async function invalidateRevokedSuins(handle: string): Promise<void> {
+  try {
+    await getSuinsCacheStore().set(
+      handle,
+      { result: null, cachedAt: Date.now() },
+      NEGATIVE_TTL_SEC,
+    );
+  } catch (err) {
+    console.warn(
+      `[suins-cache] revoke-invalidation failed for "${handle}":`,
+      err instanceof Error ? err.message : err,
+    );
+  }
 }
 
 /**

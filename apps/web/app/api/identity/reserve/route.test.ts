@@ -98,6 +98,41 @@ vi.mock('@mysten/suins', () => ({
   },
 }));
 
+// [S18-F14] Passthrough admission control — these tests focus on the
+// mint pipeline correctness, not the admission counter. The mock is a
+// plain function (not vi.fn) so `vi.resetAllMocks()` in beforeEach can't
+// strip the implementation; tests can still override via assignment.
+let mockTryAdmitMintImpl: () => Promise<{
+  admitted: boolean;
+  inFlight: number;
+  retryAfterSec?: number;
+  release: () => Promise<void>;
+}> = async () => ({
+  admitted: true,
+  inFlight: 1,
+  release: async () => undefined,
+});
+vi.mock('@/lib/identity/admission-control', () => ({
+  tryAdmitMint: () => mockTryAdmitMintImpl(),
+  admissionRejectedResponse: (retryAfter: number) =>
+    new Response(JSON.stringify({ error: 'capacity', reason: 'capacity' }), {
+      status: 503,
+      headers: { 'Retry-After': String(retryAfter) },
+    }),
+}));
+
+// Same write-through mock as the change route test — write-through helpers
+// are exercised in lib/suins-cache.test.ts.
+vi.mock('@/lib/suins-cache', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/suins-cache')>(
+    '@/lib/suins-cache',
+  );
+  return {
+    ...actual,
+    invalidateAndWarmSuins: vi.fn().mockResolvedValue(undefined),
+  };
+});
+
 // vi.mock factories are hoisted ABOVE module-level statements, so any
 // reference to the top-level Ed25519Keypair import would be undefined
 // when the factory runs. Importing inside the async factory closes the
@@ -386,6 +421,59 @@ describe('/api/identity/reserve', () => {
         lastStatus = res.status;
       }
       expect(lastStatus).toBe(429);
+    });
+  });
+
+  describe('admission control (S18-F14)', () => {
+    it('returns 503 with Retry-After when admission rejects', async () => {
+      const addr = freshAddr();
+      mockUserFindUnique.mockResolvedValueOnce({ id: 'u1', username: null });
+      // Override the admission mock to reject this single request.
+      const originalImpl = mockTryAdmitMintImpl;
+      mockTryAdmitMintImpl = async () => ({
+        admitted: false,
+        inFlight: 6,
+        retryAfterSec: 4,
+        release: async () => undefined,
+      });
+      try {
+        const res = await POST(buildRequest({ label: 'alice', address: addr }));
+        expect(res.status).toBe(503);
+        expect(res.headers.get('Retry-After')).toBe('4');
+        expect((await res.json()).reason).toBe('capacity');
+        // SuiNS RPC + signAndExecute MUST NOT have been called when admission
+        // rejected — the whole point is to short-circuit before BlockVision.
+        expect(mockResolveSuinsViaRpc).not.toHaveBeenCalled();
+        expect(mockSignAndExecute).not.toHaveBeenCalled();
+      } finally {
+        mockTryAdmitMintImpl = originalImpl;
+      }
+    });
+
+    it('admission release fires even when on-chain mint reverts', async () => {
+      const addr = freshAddr();
+      mockUserFindUnique.mockResolvedValueOnce({ id: 'u1', username: null });
+      mockResolveSuinsViaRpc.mockResolvedValueOnce(null);
+      mockSignAndExecute.mockResolvedValueOnce({
+        effects: { status: { status: 'failure', error: 'CommandArgumentError' } },
+      });
+
+      let releaseCalls = 0;
+      const originalImpl = mockTryAdmitMintImpl;
+      mockTryAdmitMintImpl = async () => ({
+        admitted: true,
+        inFlight: 1,
+        release: async () => {
+          releaseCalls += 1;
+        },
+      });
+      try {
+        const res = await POST(buildRequest({ label: 'alice', address: addr }));
+        expect(res.status).toBe(502);
+        expect(releaseCalls).toBe(1);
+      } finally {
+        mockTryAdmitMintImpl = originalImpl;
+      }
     });
   });
 });

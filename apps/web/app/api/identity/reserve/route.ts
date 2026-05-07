@@ -6,7 +6,8 @@ import { isValidSuiAddress, normalizeSuiAddress } from '@mysten/sui/utils';
 import { SuinsClient } from '@mysten/suins';
 import { buildAddLeafTx, buildRevokeLeafTx, fullHandle } from '@t2000/sdk';
 import { SuinsRpcError } from '@t2000/engine';
-import { resolveSuinsCached } from '@/lib/suins-cache';
+import { resolveSuinsCached, invalidateAndWarmSuins } from '@/lib/suins-cache';
+import { tryAdmitMint, admissionRejectedResponse } from '@/lib/identity/admission-control';
 import { Prisma } from '@/lib/generated/prisma/client';
 import { prisma } from '@/lib/prisma';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
@@ -206,6 +207,55 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const handle = fullHandle(label);
   const suiRpcUrl = getSuiRpcUrl();
 
+  // [S18-F14 — May 2026] Admission control. Cap concurrent in-flight mints
+  // at 5 (env-tunable) to prevent BlockVision Sui RPC 429 cascades observed
+  // in the May 7 mainnet load test (25 concurrent → 4% success). Admit AFTER
+  // cheap rejections (auth/rate-limit/reserved/user-lookup) so we don't burn
+  // counter slots on requests that would have been rejected anyway. Always
+  // release in `finally` so abandoned slots can't leak.
+  const admission = await tryAdmitMint();
+  if (!admission.admitted) {
+    console.warn(
+      `[reserve] admission rejected — in-flight=${admission.inFlight}, retry-after=${admission.retryAfterSec}s`,
+    );
+    return admissionRejectedResponse(admission.retryAfterSec ?? 5) as NextResponse;
+  }
+
+  try {
+    return await reserveAfterAdmission({
+      handle,
+      label,
+      callerAddress,
+      keypair,
+      suiRpcUrl,
+      callerUserId: callerUser.id,
+    });
+  } finally {
+    await admission.release();
+  }
+}
+
+/**
+ * The mint pipeline once a request has cleared admission control. Extracted
+ * so the parent POST handler's `finally` can guarantee `admission.release()`
+ * fires on EVERY exit path (success, error, throw) without threading the
+ * release call through every early-return branch.
+ */
+async function reserveAfterAdmission({
+  handle,
+  label,
+  callerAddress,
+  keypair,
+  suiRpcUrl,
+  callerUserId,
+}: {
+  handle: string;
+  label: string;
+  callerAddress: string;
+  keypair: Ed25519Keypair;
+  suiRpcUrl: string;
+  callerUserId: string;
+}): Promise<NextResponse> {
   let onChainAddress: string | null;
   try {
     // [S18-F6 / vercel-logs L4] Wrap in withSuiRetry to absorb sub-second
@@ -300,7 +350,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const claimedAt = new Date();
   try {
     await prisma.user.update({
-      where: { id: callerUser.id },
+      where: { id: callerUserId },
       data: {
         username: label,
         usernameClaimedAt: claimedAt,
@@ -337,6 +387,17 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       500,
     );
   }
+
+  // [S18-F13 — May 2026] Write-through cache update so the freshly-
+  // claimed handle is visible to subsequent picker checks IMMEDIATELY,
+  // not after the negative TTL expires. Pre-fix: a picker check from
+  // user B in the 10–30s after user A's mint would read a stale
+  // negative cache entry → render "AVAILABLE" → user B's reserve would
+  // then 409 with "Username was claimed by another user moments ago"
+  // (correct on the chain side, infuriating on the UX side).
+  // Best-effort — a failed cache write means the next reader pays for
+  // one live RPC call, never breaks the response we just succeeded on.
+  await invalidateAndWarmSuins(handle, callerAddress);
 
   return NextResponse.json({
     success: true,

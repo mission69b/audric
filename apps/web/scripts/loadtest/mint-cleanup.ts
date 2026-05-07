@@ -66,6 +66,7 @@ interface AuditFile {
 }
 
 const audit = JSON.parse(readFileSync(auditPath, 'utf-8')) as AuditFile;
+// eslint-disable-next-line no-restricted-syntax -- PROCESS-ENV-BYPASS: standalone CLI script invoked outside Next.js runtime; env.ts schema would force validation of unrelated production vars.
 const REVOKE = process.env.REVOKE === '1' || process.env.REVOKE === 'true';
 
 console.log('━'.repeat(70));
@@ -77,6 +78,7 @@ console.log('━'.repeat(70));
 console.log('');
 
 async function main(): Promise<void> {
+  // eslint-disable-next-line no-restricted-syntax -- PROCESS-ENV-BYPASS: standalone CLI script.
   const dbUrl = process.env.DATABASE_URL;
   if (!dbUrl) {
     console.error('DATABASE_URL missing from env (expected in apps/web/.env.local).');
@@ -101,6 +103,7 @@ async function main(): Promise<void> {
     return;
   }
 
+  // eslint-disable-next-line no-restricted-syntax -- PROCESS-ENV-BYPASS: standalone CLI script.
   const rawKey = process.env.AUDRIC_PARENT_NFT_PRIVATE_KEY;
   if (!rawKey) {
     console.error(
@@ -118,7 +121,9 @@ async function main(): Promise<void> {
   }
   const keypair = Ed25519Keypair.fromSecretKey(secretKey);
 
+  // eslint-disable-next-line no-restricted-syntax -- PROCESS-ENV-BYPASS: standalone CLI script.
   const network = (process.env.NEXT_PUBLIC_SUI_NETWORK || 'mainnet') as 'mainnet' | 'testnet' | 'devnet' | 'localnet';
+  // eslint-disable-next-line no-restricted-syntax -- PROCESS-ENV-BYPASS: standalone CLI script.
   const suiRpcUrl = process.env.SUI_RPC_URL || getJsonRpcFullnodeUrl(network);
   const suiClient = new SuiJsonRpcClient({ url: suiRpcUrl, network });
   const suinsClient = new SuinsClient({ client: suiClient as never, network });

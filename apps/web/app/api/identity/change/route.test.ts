@@ -70,6 +70,18 @@ vi.mock('@t2000/engine', async () => {
   };
 });
 
+// [S18-F13] After the change route was switched from `resolveSuinsViaRpc`
+// (engine, uncached) to `resolveSuinsCached` (audric, cached), this test
+// suite mocks the cached helper to delegate to the same `mockResolveSuinsViaRpc`
+// spy so existing test scenarios continue to behave as if the chain
+// returned that value. The two write-through helpers (`invalidateAndWarmSuins`,
+// `invalidateRevokedSuins`) are no-ops here — exercised in suins-cache.test.ts.
+vi.mock('@/lib/suins-cache', () => ({
+  resolveSuinsCached: (...args: unknown[]) => mockResolveSuinsViaRpc(...args),
+  invalidateAndWarmSuins: vi.fn().mockResolvedValue(undefined),
+  invalidateRevokedSuins: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock('@/lib/sui-rpc', () => ({
   getSuiRpcUrl: () => 'http://test-rpc.invalid',
 }));
