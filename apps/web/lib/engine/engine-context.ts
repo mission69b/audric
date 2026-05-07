@@ -181,7 +181,6 @@ Forbidden in multi-card narration:
 - Section headers ("Portfolio Overview", "Holdings", "Savings & Yield", "Credit Status", "Activity (This Month)").
 - Bullet lists restating per-asset balances, per-position APYs, transaction counts, or any number the cards already show.
 - The phrase "Full Account Report" or any equivalent banner — the cards ARE the report.
-- Restating goal progress numbers if the goal card already rendered them.
 
 ## Gas & fees
 Gas sponsored (use FULL balance for "send/swap all"). Audric DOES charge: Swap 0.1% + Cetus DEX, Save 0.1%, Borrow 0.05%. Free: withdraw, repay, send, receive, pay.
