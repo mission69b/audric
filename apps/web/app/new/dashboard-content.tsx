@@ -252,6 +252,28 @@ function SendRecipientInput({
   const atQuery = isAtPrefix ? value.slice(1).trim().toLowerCase() : '';
   const showDropdown = isAtPrefix && atQuery.length > 0;
 
+  // [CHIP Review #2.5 PR2.5-11] Inline format-recognition hint. The four
+  // input formats each have a different affordance:
+  //   - `@username`  → dropdown (covers itself, no hint needed)
+  //   - contact name → contact pills above (but typing one is silent —
+  //                    confirm the match)
+  //   - `.sui` name  → no other affordance, confirm we recognise it so
+  //                    users don't worry the typed name will be sent
+  //                    as a literal string
+  //   - `0x` address → no other affordance, confirm format
+  // Empty / `@` cases stay silent to avoid hint noise.
+  const trimmedValue = value.trim();
+  const formatHint = (() => {
+    if (!trimmedValue || trimmedValue.startsWith('@')) return null;
+    if (trimmedValue.startsWith('0x')) return 'Sui address (0x…) — tap Go to send';
+    if (looksLikeSuiNs(trimmedValue)) return 'SuiNS .sui name — we’ll resolve when you tap Go';
+    const contactMatch = contacts.find(
+      (c) => c.name.toLowerCase() === trimmedValue.toLowerCase(),
+    );
+    if (contactMatch) return `Contact match: ${contactMatch.name}`;
+    return null;
+  })();
+
   // Debounced fetch: 200ms after the user stops typing. Fast enough to
   // feel responsive, slow enough that typing "@al" → "@ali" → "@alic"
   // → "@alice" doesn't fire 4 round-trips. Uses AbortController so a
@@ -351,13 +373,15 @@ function SendRecipientInput({
             type="text"
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            // [B2 polish] Parallel noun structure (was: "@audric-handle,
-            // address (0x...), or contact" — mixed format, hyphenated
-            // jargon, parens). Three paths in canonical-noun form, with
-            // the new SPEC 10 dominant path (@username) first; "username"
-            // matches the noun used in sidebar / settings / picker /
-            // change modal / claim modal — no more "audric-handle".
-            placeholder="@username, contact name, or 0x address"
+            // [CHIP Review #2.5 PR2.5-11] Add `.sui name` to the
+            // advertised input formats. The component ALREADY supports
+            // SuiNS resolution server-side (looksLikeSuiNs → resolveSuiNs
+            // in the parent), but the prior placeholder didn't tell
+            // users that path existed — discoverability gap surfaced
+            // during CHIP Review #2.5. Order matches the rendering
+            // affordances: contacts pills (top), @ dropdown (mid), .sui
+            // hint (below input), 0x as the catch-all final option.
+            placeholder="@username, contact, .sui name, or 0x address"
             autoFocus
             className="flex-1 rounded-lg border border-border-subtle bg-surface-page px-4 py-3 text-[14px] text-fg-primary placeholder:text-fg-muted outline-none focus:border-border-strong transition-colors"
             onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit(); }}
@@ -384,6 +408,14 @@ function SendRecipientInput({
             </button>
           ) : null}
         </div>
+        {formatHint && (
+          <p
+            data-testid="send-recipient-format-hint"
+            className="mt-1.5 px-1 font-mono text-[10px] tracking-[0.05em] text-fg-muted"
+          >
+            {formatHint}
+          </p>
+        )}
         {showDropdown && (
           <div
             id="send-recipient-handle-dropdown"
