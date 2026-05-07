@@ -5,7 +5,8 @@ import { decodeSuiPrivateKey } from '@mysten/sui/cryptography';
 import { isValidSuiAddress, normalizeSuiAddress } from '@mysten/sui/utils';
 import { SuinsClient } from '@mysten/suins';
 import { buildAddLeafTx, buildRevokeLeafTx, fullHandle } from '@t2000/sdk';
-import { resolveSuinsViaRpc, SuinsRpcError } from '@t2000/engine';
+import { SuinsRpcError } from '@t2000/engine';
+import { resolveSuinsCached } from '@/lib/suins-cache';
 import { Prisma } from '@/lib/generated/prisma/client';
 import { prisma } from '@/lib/prisma';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
@@ -210,8 +211,16 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     // [S18-F6 / vercel-logs L4] Wrap in withSuiRetry to absorb sub-second
     // SuiNS rate-limit blips. Pre-fix: 18 production failures / 12h from a
     // single 429 → user got 503 + had to manually retry.
+    //
+    // [S18-F9 / vercel-logs L8] Use the cached resolver — pre-mint check
+    // for a never-claimed handle returns null (negative cache: 30s), and a
+    // claimed handle's address (positive cache: 5min). Cache hits skip the
+    // RPC call entirely. The cache is also shared with the public profile
+    // page lookup, so a `/<username>` page render warm-up halves the RPC
+    // cost of any subsequent `/api/identity/check` + `/api/identity/reserve`
+    // for the same handle.
     onChainAddress = await withSuiRetry(
-      () => resolveSuinsViaRpc(handle, { suiRpcUrl }),
+      () => resolveSuinsCached(handle, { suiRpcUrl }),
       { label: 'reserve:premint-check' },
     );
   } catch (err) {

@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { resolveSuinsViaRpc, SuinsRpcError } from '@t2000/engine';
+import { SuinsRpcError } from '@t2000/engine';
+import { resolveSuinsCached } from '@/lib/suins-cache';
 import { SuiPayQr } from '@/components/pay/SuiPayQr';
 import { AudricMark } from '@/components/ui/AudricMark';
 import { PortfolioCard } from '@/components/engine/cards/PortfolioCard';
@@ -95,7 +96,12 @@ async function resolveHandle(rawUsername: string): Promise<ResolvedHandle | null
 
   const handle = `${label}.${AUDRIC_PARENT_NAME}`;
   try {
-    const address = await resolveSuinsViaRpc(handle, { suiRpcUrl: getSuiRpcUrl() });
+    // [S18-F9 / vercel-logs L8] Cached lookup: positive 5min TTL, negative
+    // 30s. Pre-fix one popular profile (`/adeniyi`) was hit 77 times in 12h
+    // → 77 live RPC calls → periodic 429 bursts → page intermittently 404'd
+    // its own visitors. Cache cuts ~95% of repeat lookups inside the
+    // Lambda's warm window.
+    const address = await resolveSuinsCached(handle, { suiRpcUrl: getSuiRpcUrl() });
     if (!address) return null;
     return { label, handle, address };
   } catch (err) {

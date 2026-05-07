@@ -134,6 +134,14 @@ describe('/api/identity/reserve', () => {
     // surface as e.g. a spurious 503 when the actual code path expected a
     // null resolution. (Caught the first time these tests ran.)
     vi.resetAllMocks();
+    // [S18-F9] The reserve route now goes through `lib/suins-cache.ts`
+    // which holds a process-scoped Map of resolved handles. Tests reuse
+    // the same handle ('alice.audric.sui') across cases — without this
+    // reset, the FIRST test's `mockResolveSuinsViaRpc.mockResolvedValueOnce`
+    // resolution gets cached, and SUBSEQUENT tests' `mockResolvedValueOnce`
+    // never gets called → wrong outcome.
+    const { _resetSuinsCacheForTests } = await import('@/lib/suins-cache');
+    _resetSuinsCacheForTests();
     mockBuildAddLeafTx.mockReturnValue({ __mockTx: 'add' });
     mockBuildRevokeLeafTx.mockReturnValue({ __mockTx: 'revoke' });
     const mod = await import('./route');
