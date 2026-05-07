@@ -6,13 +6,12 @@ import { decodeSuiPrivateKey } from '@mysten/sui/cryptography';
 import { isValidSuiAddress, normalizeSuiAddress } from '@mysten/sui/utils';
 import { SuinsClient, SuinsTransaction } from '@mysten/suins';
 import { AUDRIC_PARENT_NAME, AUDRIC_PARENT_NFT_ID, fullHandle } from '@t2000/sdk';
-import { SuinsRpcError } from '@t2000/engine';
+import { SuinsRpcError, resolveSuinsViaRpc } from '@t2000/engine';
 import { Prisma } from '@/lib/generated/prisma/client';
 import { prisma } from '@/lib/prisma';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { getSuiRpcUrl } from '@/lib/sui-rpc';
 import {
-  resolveSuinsCached,
   invalidateAndWarmSuins,
   invalidateRevokedSuins,
 } from '@/lib/suins-cache';
@@ -268,12 +267,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   let onChainAddress: string | null;
   try {
-    // [S18-F13] Switched from resolveSuinsViaRpc → resolveSuinsCached
-    // for parity with /api/identity/check + /api/identity/reserve.
-    // Without this the change route was ALWAYS hitting live RPC,
-    // contributing to the suix_resolveNameServiceAddress 11k req/24h
-    // load on BlockVision (May 7 2026 stats).
-    onChainAddress = await resolveSuinsCached(handle, { suiRpcUrl });
+    // [S18-F15 — May 2026] Always-live RPC at mint time (NOT cached).
+    // See reserve/route.ts S18-F15 comment for rationale: the cache
+    // belongs in /api/identity/check (picker debounce burst absorption);
+    // the gate at change-time MUST be ground-truth so a stale-negative
+    // cache entry can't drive an on-chain createLeafSubName revert.
+    // Cost of one BlockVision RPC per change attempt is trivial — change
+    // is rate-limited to 3/24h per address and gated by admission control.
+    onChainAddress = await resolveSuinsViaRpc(handle, { suiRpcUrl });
   } catch (err) {
     const detail =
       err instanceof SuinsRpcError
@@ -288,6 +289,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     );
   }
   if (onChainAddress !== null) {
+    // [S18-F15] Self-heal picker cache (see reserve/route.ts comment).
+    await invalidateAndWarmSuins(handle, onChainAddress);
     return errorResponse('Username already claimed on-chain', 409, 'taken');
   }
 

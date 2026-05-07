@@ -5,8 +5,8 @@ import { decodeSuiPrivateKey } from '@mysten/sui/cryptography';
 import { isValidSuiAddress, normalizeSuiAddress } from '@mysten/sui/utils';
 import { SuinsClient } from '@mysten/suins';
 import { buildAddLeafTx, buildRevokeLeafTx, fullHandle } from '@t2000/sdk';
-import { SuinsRpcError } from '@t2000/engine';
-import { resolveSuinsCached, invalidateAndWarmSuins } from '@/lib/suins-cache';
+import { SuinsRpcError, resolveSuinsViaRpc } from '@t2000/engine';
+import { invalidateAndWarmSuins } from '@/lib/suins-cache';
 import { tryAdmitMint, admissionRejectedResponse } from '@/lib/identity/admission-control';
 import { Prisma } from '@/lib/generated/prisma/client';
 import { prisma } from '@/lib/prisma';
@@ -262,15 +262,21 @@ async function reserveAfterAdmission({
     // SuiNS rate-limit blips. Pre-fix: 18 production failures / 12h from a
     // single 429 → user got 503 + had to manually retry.
     //
-    // [S18-F9 / vercel-logs L8] Use the cached resolver — pre-mint check
-    // for a never-claimed handle returns null (negative cache: 30s), and a
-    // claimed handle's address (positive cache: 5min). Cache hits skip the
-    // RPC call entirely. The cache is also shared with the public profile
-    // page lookup, so a `/<username>` page render warm-up halves the RPC
-    // cost of any subsequent `/api/identity/check` + `/api/identity/reserve`
-    // for the same handle.
+    // [S18-F15 — May 2026] Always-live RPC (NOT the cached resolver) at
+    // mint time. Background: with a cached pre-mint check, a stale-negative
+    // cache entry (10s window for orphan handles, see S18-F13) would
+    // wrongly admit the mint → on-chain createLeafSubName reverts because
+    // the leaf already exists → user sees confusing 502 instead of clean
+    // 409 "taken." The cache stays in /api/identity/check (picker debounce
+    // burst absorption); the gate at mint time MUST be ground-truth.
+    //
+    // Cost: ONE extra BlockVision RPC per mint attempt. With admission
+    // control capping concurrency at 5 (S18-F14), peak load is 5 RPC/s
+    // even during the worst burst — trivially below BlockVision's per-key
+    // limits. The cache savings stay intact for the read-side picker
+    // debounce (~95% of all SuiNS RPC volume).
     onChainAddress = await withSuiRetry(
-      () => resolveSuinsCached(handle, { suiRpcUrl }),
+      () => resolveSuinsViaRpc(handle, { suiRpcUrl }),
       { label: 'reserve:premint-check' },
     );
   } catch (err) {
@@ -287,6 +293,12 @@ async function reserveAfterAdmission({
     );
   }
   if (onChainAddress !== null) {
+    // [S18-F15] Self-heal the picker cache. The live check just discovered
+    // an on-chain leaf that the cache may not know about (orphan handles,
+    // stale negative entries, etc.). Warm the cache with the correct
+    // positive entry so subsequent picker checks don't re-flap to
+    // "AVAILABLE" before the negative TTL expires.
+    await invalidateAndWarmSuins(handle, onChainAddress);
     return errorResponse('Username already claimed on-chain', 409, 'taken');
   }
 

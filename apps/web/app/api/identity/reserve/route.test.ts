@@ -121,17 +121,15 @@ vi.mock('@/lib/identity/admission-control', () => ({
     }),
 }));
 
-// Same write-through mock as the change route test — write-through helpers
-// are exercised in lib/suins-cache.test.ts.
-vi.mock('@/lib/suins-cache', async () => {
-  const actual = await vi.importActual<typeof import('@/lib/suins-cache')>(
-    '@/lib/suins-cache',
-  );
-  return {
-    ...actual,
-    invalidateAndWarmSuins: vi.fn().mockResolvedValue(undefined),
-  };
-});
+// [S18-F15] Reserve now uses raw resolveSuinsViaRpc (engine, always-live)
+// at mint time. The existing @t2000/engine mock covers that path. The
+// write-through helper stays mocked out (exercised in suins-cache.test.ts).
+// _resetSuinsCacheForTests is also exposed because some tests still call
+// it for legacy isolation hygiene (no-op now that the route bypasses cache).
+vi.mock('@/lib/suins-cache', () => ({
+  invalidateAndWarmSuins: vi.fn().mockResolvedValue(undefined),
+  _resetSuinsCacheForTests: vi.fn(),
+}));
 
 // vi.mock factories are hoisted ABOVE module-level statements, so any
 // reference to the top-level Ed25519Keypair import would be undefined
@@ -448,6 +446,23 @@ describe('/api/identity/reserve', () => {
       } finally {
         mockTryAdmitMintImpl = originalImpl;
       }
+    });
+
+    it('S18-F15: returns 409 with clear "taken" reason when live RPC finds an on-chain leaf (no 502 revert)', async () => {
+      // The bug-fix scenario: cache may have stale negative for "funkii"
+      // (orphan handle), but the live RPC at mint time finds the actual
+      // on-chain leaf. Pre-S18-F15, the cached check would have said null,
+      // proceeded to mint, and reverted on-chain (502 + confusing error).
+      // Post-S18-F15, live RPC catches it cleanly with a 409 + "taken".
+      const addr = freshAddr();
+      mockUserFindUnique.mockResolvedValueOnce({ id: 'u1', username: null });
+      mockResolveSuinsViaRpc.mockResolvedValueOnce(
+        '0x7f2059fb1c395f4800809b4b97ed8e661535c8c55f89b1379b6b9d0208d2f6dc',
+      );
+      const res = await POST(buildRequest({ label: 'funkii', address: addr }));
+      expect(res.status).toBe(409);
+      expect(await res.json()).toMatchObject({ reason: 'taken' });
+      expect(mockSignAndExecute).not.toHaveBeenCalled();
     });
 
     it('admission release fires even when on-chain mint reverts', async () => {
