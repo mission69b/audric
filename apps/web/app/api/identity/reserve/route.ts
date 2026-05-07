@@ -313,15 +313,6 @@ async function reserveAfterAdmission({
   const suiClient = new SuiJsonRpcClient({ url: suiRpcUrl, network: SUI_NETWORK });
   const suinsClient = new SuinsClient({ client: suiClient, network: SUI_NETWORK });
 
-  let tx;
-  try {
-    tx = buildAddLeafTx(suinsClient, { label, targetAddress: callerAddress });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Failed to build mint PTB';
-    console.error('[reserve] buildAddLeafTx threw:', message);
-    return errorResponse('Failed to build mint transaction', 500);
-  }
-
   let txDigest: string;
   try {
     // [S18-F6 / vercel-logs L1+L2+L3] Wrap in withSuiRetry to absorb:
@@ -329,22 +320,34 @@ async function reserveAfterAdmission({
     //   - Shared-object stale-version contention on the audric registry
     //     ("Transaction needs to be rebuilt..." — 7 failures / 12h pre-fix)
     //   - Shared-object lock contention (2 failures / 12h pre-fix)
-    // The audric registry is a single Sui shared object — concurrent claims
-    // race for the same version. Sui checkpoint cadence (~250ms) advances the
-    // version; signAndExecuteTransaction internally re-resolves the latest
-    // version on each call, so retrying after a small backoff resolves
-    // contention without manual tx rebuild.
+    //
+    // [S18-F16 — May 2026] CRITICAL: rebuild `tx` INSIDE the retry closure.
+    // Pre-fix, the closure captured a tx built once outside; the Sui SDK's
+    // Transaction class caches built bytes after the first `signAndExecute`
+    // call, so retries replayed the SAME stale-version shared-object
+    // reference and failed identically. Empirically observed in the May 7
+    // smoke load test (tag r5038a8): 2/5 wallets returned 502 with
+    // "object … version 0x33ca7488 unavailable, current 0x33ca7489" — the
+    // checkpoint had advanced ONE version between build and execute, but
+    // the retries kept hammering the stale-cached bytes. Rebuilding from
+    // scratch each attempt forces the SDK to re-resolve shared objects
+    // against the current RPC view.
     //
     // On-chain reverts (Move aborts, insufficient gas) are NOT transient —
     // we throw them inside the closure so withSuiRetry's matcher rejects
     // them on the first attempt and the caller surfaces the real error.
     const result = await withSuiRetry(
-      () =>
-        suiClient.signAndExecuteTransaction({
+      () => {
+        const freshTx = buildAddLeafTx(suinsClient, {
+          label,
+          targetAddress: callerAddress,
+        });
+        return suiClient.signAndExecuteTransaction({
           signer: keypair,
-          transaction: tx,
+          transaction: freshTx,
           options: { showEffects: true },
-        }),
+        });
+      },
       { label: 'reserve:mint' },
     );
     if (result.effects?.status?.status !== 'success') {
@@ -375,12 +378,21 @@ async function reserveAfterAdmission({
         `[reserve] Race lost on DB unique for "${label}" after on-chain mint ${txDigest}. Revoking leaf.`,
       );
       try {
-        const revokeTx = buildRevokeLeafTx(suinsClient, { label });
-        await suiClient.signAndExecuteTransaction({
-          signer: keypair,
-          transaction: revokeTx,
-          options: { showEffects: false },
-        });
+        // [S18-F16] Same withSuiRetry + rebuild-inside-closure pattern.
+        // The revoke MUST land — if it fails the user is in an orphan
+        // state where the leaf points to a wallet whose User row was
+        // claimed by someone else.
+        await withSuiRetry(
+          () => {
+            const freshRevokeTx = buildRevokeLeafTx(suinsClient, { label });
+            return suiClient.signAndExecuteTransaction({
+              signer: keypair,
+              transaction: freshRevokeTx,
+              options: { showEffects: false },
+            });
+          },
+          { label: 'reserve:revoke' },
+        );
       } catch (revokeErr) {
         console.error(
           `[reserve] ORPHAN: leaf ${handle} → ${callerAddress} minted at ${txDigest} but DB write lost race AND revoke failed:`,

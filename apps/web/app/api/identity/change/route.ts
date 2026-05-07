@@ -15,6 +15,7 @@ import {
   invalidateAndWarmSuins,
   invalidateRevokedSuins,
 } from '@/lib/suins-cache';
+import { withSuiRetry } from '@/lib/sui-retry';
 import { isReserved } from '@/lib/identity/reserved-usernames';
 import { validateAudricLabel } from '@/lib/identity/validate-label';
 import { validateJwt } from '@/lib/auth';
@@ -305,26 +306,30 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const suiClient = new SuiJsonRpcClient({ url: suiRpcUrl, network: SUI_NETWORK });
   const suinsClient = new SuinsClient({ client: suiClient, network: SUI_NETWORK });
 
-  let tx: Transaction;
-  try {
-    tx = buildAtomicChangeTx(suinsClient, {
-      oldLabel,
-      newLabel,
-      targetAddress: callerAddress,
-    });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Failed to build change PTB';
-    console.error('[change] buildAtomicChangeTx threw:', message);
-    return errorResponse('Failed to build change transaction', 500);
-  }
-
   let txDigest: string;
   try {
-    const result = await suiClient.signAndExecuteTransaction({
-      signer: keypair,
-      transaction: tx,
-      options: { showEffects: true },
-    });
+    // [S18-F16 — May 2026] Wrap in withSuiRetry AND rebuild tx inside the
+    // retry closure. Same dual-fix as reserve route: (a) absorb transient
+    // 429s + shared-object stale-version contention; (b) force a fresh
+    // build on each retry because the Sui SDK caches built bytes after
+    // the first signAndExecute call. Pre-fix: change route had NO retry
+    // wrapping at all (just one signAndExecute call), so any transient
+    // SuiNS / Sui RPC blip wedged the user's handle change with a 502.
+    const result = await withSuiRetry(
+      () => {
+        const freshTx = buildAtomicChangeTx(suinsClient, {
+          oldLabel,
+          newLabel,
+          targetAddress: callerAddress,
+        });
+        return suiClient.signAndExecuteTransaction({
+          signer: keypair,
+          transaction: freshTx,
+          options: { showEffects: true },
+        });
+      },
+      { label: 'change:atomic' },
+    );
     if (result.effects?.status?.status !== 'success') {
       throw new Error(
         `Change tx reverted on-chain: ${result.effects?.status?.error ?? 'unknown reason'}`,
@@ -353,16 +358,24 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         `[change] Race lost on DB unique for "${newLabel}" after on-chain change ${txDigest}. Rolling back leaf.`,
       );
       try {
-        const rollbackTx = buildRollbackTx(suinsClient, {
-          oldLabel,
-          newLabel,
-          targetAddress: callerAddress,
-        });
-        await suiClient.signAndExecuteTransaction({
-          signer: keypair,
-          transaction: rollbackTx,
-          options: { showEffects: false },
-        });
+        // [S18-F16] Same withSuiRetry + rebuild-inside-closure pattern.
+        // The rollback PTB MUST land — if it fails the user is in an
+        // orphan state where DB has old handle but chain has new handle.
+        await withSuiRetry(
+          () => {
+            const freshRollbackTx = buildRollbackTx(suinsClient, {
+              oldLabel,
+              newLabel,
+              targetAddress: callerAddress,
+            });
+            return suiClient.signAndExecuteTransaction({
+              signer: keypair,
+              transaction: freshRollbackTx,
+              options: { showEffects: false },
+            });
+          },
+          { label: 'change:rollback' },
+        );
       } catch (rollbackErr) {
         console.error(
           `[change] ORPHAN: change ${oldLabel} → ${newLabel} (${callerAddress}) landed at ${txDigest} but DB lost race AND rollback failed:`,
