@@ -47,7 +47,13 @@ import { fetchIdentityCheck } from '@/lib/identity/check-fetcher';
 // `currentLabel` / `onClose` / `onChanged` / optional `changeFetcher`.
 // ───────────────────────────────────────────────────────────────────────────
 
-const PARENT_SUFFIX = '.audric.sui';
+// [S.118 / 2026-05-08] Display switched from `.audric.sui` (full
+// on-chain handle) to `@audric` (SuiNS V2 short-form alias). Both
+// forms resolve to the same address; this is purely a render-layer
+// choice. The on-chain NFT name is still `<label>.audric.sui` (see
+// `lib/identity/change` route + the SDK's `fullHandle()`).
+const PARENT_SUFFIX = '@audric';
+const PARENT_SUFFIX_ONCHAIN = '.audric.sui'; // kept for ARIA labels referencing the on-chain object
 const CHECK_DEBOUNCE_MS = 300;
 
 type Phase = 'idle' | 'submitting' | 'success';
@@ -293,7 +299,11 @@ export function UsernameChangeModal({
       setSubmitError(null);
       try {
         const body = await fetcher(validation.label);
-        setSuccessHandle(body.fullHandle);
+        // [S.118] Render the @audric display form on the success card
+        // even though the API returns the on-chain `<label>.audric.sui`
+        // form. The display form is the user-facing identity; the
+        // on-chain form is technical / for SuiNS RPC calls.
+        setSuccessHandle(`${body.newLabel}${PARENT_SUFFIX}`);
         setPhase('success');
         onChanged(body.newLabel, body.fullHandle);
       } catch (err) {

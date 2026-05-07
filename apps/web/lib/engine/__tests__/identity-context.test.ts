@@ -51,13 +51,18 @@ describe('buildIdentityContext', () => {
     expect(unclaimed).toContain(`Your wallet: ${WALLET}`);
   });
 
-  it('renders the full handle + claimed date when username is set', () => {
+  it('S.118: renders the @audric display handle + claimed date + on-chain reference when username is set', () => {
     const out = buildIdentityContext({
       walletAddress: WALLET,
       username: 'funkii',
       claimedAt: new Date('2026-05-05T12:00:00Z'),
     });
-    expect(out).toContain('Your Audric handle: funkii.audric.sui (claimed 2026-05-05)');
+    // [S.118 D10 reversal] The display handle (@audric) is what the LLM
+    // narrates; the on-chain SuiNS NFT name (.audric.sui) is included as
+    // a parenthetical for context but the LLM is told not to write it
+    // back to the user.
+    expect(out).toContain('Your Audric handle: funkii@audric (claimed 2026-05-05)');
+    expect(out).toContain('On-chain SuiNS NFT name: funkii.audric.sui');
     expect(out).toContain('apply the D10 narration rule');
   });
 
@@ -83,8 +88,11 @@ describe('buildIdentityContext', () => {
       username: 'funkii',
       claimedAt: null,
     });
-    expect(out).toContain('Your Audric handle: funkii.audric.sui');
-    expect(out).not.toContain('(claimed');
+    // [S.118] Display handle is `funkii@audric`; on-chain handle still
+    // appears for technical reference but no `(claimed …)` suffix.
+    expect(out).toContain('Your Audric handle: funkii@audric');
+    expect(out).not.toContain('Your Audric handle: funkii@audric (claimed');
+    expect(out).not.toContain('Your Audric handle: funkii.audric.sui');
   });
 
   it('formats the claimed date as ISO YYYY-MM-DD (no time component)', () => {

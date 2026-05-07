@@ -937,15 +937,15 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
             // `sui:pay?…` URIs as invalid addresses) — so both scan paths now
             // work: phone-camera → Slush deep-link, and copy-paste → CEX form.
             qrUri: address ? buildSuiPayUri({ recipient: address }) : undefined,
-            // [SPEC 10 Phase C.4 — D8 hybrid identity] Surface the user's
-            // claimed Audric handle ABOVE the QR (rendered by FeedRenderer).
-            // Visitor sees `🪪 funkii.audric.sui · 0x40cd…3e62` over the
-            // QR — full handle for verification + truncated address for
-            // visual confirmation. Falls through to undefined when the
-            // user hasn't claimed (rare — Phase B makes claiming
-            // mandatory at signup).
+            // [SPEC 10 Phase C.4 — D8 hybrid identity, updated S.118]
+            // Surface the user's claimed Audric handle ABOVE the QR
+            // (rendered by FeedRenderer). Visitor sees `🪪 funkii@audric ·
+            // 0x40cd…3e62` over the QR — display @ form + truncated
+            // address for visual confirmation. Falls through to
+            // undefined when the user hasn't claimed (rare — Phase B
+            // makes claiming mandatory at signup).
             handle: userStatus.username
-              ? `${userStatus.username}.audric.sui`
+              ? `${userStatus.username}@audric`
               : undefined,
             meta: [
               { label: 'Network', value: 'Sui (mainnet)' },
@@ -1176,20 +1176,24 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
   //
   //   - `suins`   → "Check the balance at 0x… — this address is the
   //                 SuiNS name `funkii.sui`. This is NOT an Audric
-  //                 handle; do NOT narrate it as `funkii.audric.sui`."
+  //                 handle; do NOT narrate it as `funkii@audric` or
+  //                 `funkii.audric.sui`."
   //   - `address` → "Check the balance at 0x…."
   //
   // The explicit "NOT an Audric handle" clause is load-bearing: pre-S.83
-  // a permissive prompt let the agent expand `funkii.sui` into
-  // `funkii.audric.sui` (different on-chain entity, different owner).
-  // The system-prompt D10 rule was strengthened in the same hotfix.
+  // a permissive prompt let the agent expand `funkii.sui` into the
+  // Audric form (different on-chain entity, different owner). The
+  // system-prompt D10 rule was strengthened in the same hotfix; S.118
+  // updates the disambiguation to also block expansion to the new
+  // `@audric` display form.
   const handleSearchCheckBalance = useCallback(
     (target: string, label: string, kind: 'suins' | 'address') => {
       if (!address) return;
       if (panel !== 'chat') setPanel('chat');
+      const bareLabel = label.replace(/\.sui$/, '');
       const prompt =
         kind === 'suins'
-          ? `Check the wallet balance at address ${target}. This address is the SuiNS name \`${label}\`. This is NOT an Audric handle — do NOT narrate it as \`${label.replace(/\.sui$/, '.audric.sui')}\`. Refer to it strictly as \`${label}\` (the form the user typed) or as the address.`
+          ? `Check the wallet balance at address ${target}. This address is the SuiNS name \`${label}\`. This is NOT an Audric handle — do NOT narrate it as \`${bareLabel}@audric\` or \`${bareLabel}.audric.sui\`. Refer to it strictly as \`${label}\` (the form the user typed) or as the address.`
           : `Check the wallet balance at address ${target}.`;
       engine.sendMessage(prompt);
     },

@@ -48,7 +48,14 @@ import { fetchIdentityCheck } from '@/lib/identity/check-fetcher';
 // `onSkip()` / `disabled` / `checkFetcher` (test injection).
 // ───────────────────────────────────────────────────────────────────────────
 
-const PARENT_SUFFIX = '.audric.sui';
+// [S.118 / 2026-05-08] Display form switched from `.audric.sui` (full
+// on-chain handle) to `@audric` (SuiNS V2 short-form alias). Both
+// resolve to the same address via SuiNS RPC — this is purely a
+// render-layer choice. The on-chain NFT name is still
+// `<label>.audric.sui` (see `lib/identity/reserve` route + the SDK's
+// `fullHandle()`); only display-side strings flip to the @ form.
+const PARENT_SUFFIX = '@audric';
+const PARENT_SUFFIX_ONCHAIN = '.audric.sui'; // kept for ARIA labels referencing the on-chain object
 const DEBOUNCE_MS = 300;
 const DITHER_PATTERN = '░▒▓▒░░▒▓▒░░▒▓▒░░▒▓▒░░▒▓▒░░▒▓▒░░▒▓▒░░▒▓▒░░▒▓▒░░▒▓▒░░▒▓▒░░▒▓▒░░▒▓▒░░▒▓▒░░▒▓▒░░▒▓▒░░▒▓▒░░▒▓▒░░▒▓▒░░▒▓▒░░';
 
@@ -426,7 +433,7 @@ function SuggestionRow({ label, status, divider, disabled, active, onClick }: Su
       disabled={!clickable}
       data-testid={`username-picker-chip-${label}`}
       data-status={status}
-      aria-label={`${label}.audric.sui — ${humanStatus(status)}`}
+      aria-label={`${label}@audric — ${humanStatus(status)}`}
       className={`flex items-center justify-between text-left w-full px-3.5 py-3 transition ${
         divider ? 'border-b border-border-subtle' : ''
       } ${active ? 'bg-surface-sunken' : 'bg-transparent'} ${
@@ -580,8 +587,8 @@ function humanStatusPrefix(s: UsernameCheckStatus): string {
 function humanStatusForInput(s: UsernameCheckStatus, input: string): string {
   if (s === 'idle' || input === '') return '';
   if (s === 'checking') return 'one moment';
-  if (s === 'available') return `${input}.audric.sui is yours to claim`;
-  if (s === 'taken') return `${input}.audric.sui is taken — try another`;
+  if (s === 'available') return `${input}@audric is yours to claim`;
+  if (s === 'taken') return `${input}@audric is taken — try another`;
   if (s === 'reserved') return `${input} is reserved`;
   if (s === 'too-short') return 'handles need 3 characters minimum';
   if (s === 'too-long') return 'handles can be 20 characters maximum';

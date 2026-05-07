@@ -84,7 +84,18 @@ interface UsernamePageProps {
 
 interface ResolvedHandle {
   label: string;
+  /**
+   * On-chain SuiNS NFT name — `<label>.audric.sui`. Used for SuiNS RPC
+   * lookups and any technical/on-chain reference. NOT for display.
+   */
   handle: string;
+  /**
+   * [S.118] Display form — `<label>@audric`. Used for the page title,
+   * h1, OG metadata, share-to-X copy, and any user-facing surface. The
+   * SuiNS V2 short-form alias resolves to the same address as `handle`
+   * via SuiNS RPC, but reads cleaner in marketing / consumer copy.
+   */
+  displayHandle: string;
   address: string;
 }
 
@@ -95,6 +106,7 @@ async function resolveHandle(rawUsername: string): Promise<ResolvedHandle | null
   if (isReserved(label)) return null;
 
   const handle = `${label}.${AUDRIC_PARENT_NAME}`;
+  const displayHandle = `${label}@${AUDRIC_PARENT_NAME.replace(/\.sui$/, '')}`;
   try {
     // [S18-F9 / vercel-logs L8] Cached lookup: positive 5min TTL, negative
     // 30s. Pre-fix one popular profile (`/adeniyi`) was hit 77 times in 12h
@@ -103,7 +115,7 @@ async function resolveHandle(rawUsername: string): Promise<ResolvedHandle | null
     // Lambda's warm window.
     const address = await resolveSuinsCached(handle, { suiRpcUrl: getSuiRpcUrl() });
     if (!address) return null;
-    return { label, handle, address };
+    return { label, handle, displayHandle, address };
   } catch (err) {
     // SuiNS RPC degraded — log and treat as not-found rather than 5xx.
     // Visitors retrying in a moment will succeed. The profile-page UX
@@ -247,25 +259,29 @@ export async function generateMetadata({ params }: UsernamePageProps): Promise<M
   if (!resolved) {
     return { title: 'Not found · Audric', robots: { index: false } };
   }
-  const { handle } = resolved;
-  const description = `Send USDC, SUI, or any token to ${handle} on Sui via Audric.`;
+  // [S.118] Use the @audric display form for OG metadata + share previews —
+  // it's what users see when the link is shared on X / iMessage / etc.
+  // The on-chain `handle` (`<label>.audric.sui`) stays available for any
+  // technical surface that needs it.
+  const { displayHandle } = resolved;
+  const description = `Send USDC, SUI, or any token to ${displayHandle} on Sui via Audric.`;
   // [S.89] `summary_large_image` so X / Discord / iMessage etc. render
   // the per-username 1200x630 hero card from `./opengraph-image.tsx`
   // (Next.js auto-discovers the sibling file). Without this card the
   // shared link previews as a tiny square with a generic Audric image —
   // doesn't read as "this is alice's passport" at a glance.
   return {
-    title: `${handle} · Audric`,
+    title: `${displayHandle} · Audric`,
     description,
     openGraph: {
-      title: handle,
+      title: displayHandle,
       description,
       siteName: 'Audric',
       type: 'profile',
     },
     twitter: {
       card: 'summary_large_image',
-      title: handle,
+      title: displayHandle,
       description,
     },
   };
@@ -276,12 +292,15 @@ export default async function UsernamePage({ params }: UsernamePageProps) {
   const resolved = await resolveHandle(username);
   if (!resolved) notFound();
 
-  const { label, handle, address } = resolved;
+  const { label, handle, displayHandle, address } = resolved;
 
   // Run the portfolio fetch in parallel with the rest of the render — it
   // won't block 404s (resolveHandle already ran) but it may add ~200ms
   // to first paint when BlockVision is healthy. Acceptable for an
   // SSR'd surface where the panel is the value.
+  // [S.118] Pass the on-chain `handle` to the canonical fetcher (it
+  // logs against the on-chain identity); display surfaces below use
+  // `displayHandle` instead.
   const portfolioCardData = await fetchProfilePortfolio(address, handle);
 
   return (
@@ -301,7 +320,7 @@ export default async function UsernamePage({ params }: UsernamePageProps) {
                 🪪
               </div>
               <h1 className="break-all font-mono text-lg font-medium text-fg-primary">
-                {handle}
+                {displayHandle}
               </h1>
               <p className="text-[12px] text-fg-secondary">
                 yours on Sui — recognized everywhere
@@ -316,7 +335,7 @@ export default async function UsernamePage({ params }: UsernamePageProps) {
             </div>
           </div>
 
-          <SendToHandleButton recipientAddress={address} handle={handle} />
+          <SendToHandleButton recipientAddress={address} handle={displayHandle} />
 
           <div className="space-y-2 border-t border-border-subtle pt-4">
             <p className="text-center text-[10px] uppercase tracking-[0.08em] text-fg-muted">

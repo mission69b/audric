@@ -234,7 +234,7 @@ export function AppSidebar({
             <Tooltip
               label={
                 username
-                  ? `${username}.audric.sui`
+                  ? `${username}@audric`
                   : email || (address ? truncateAddr(address) : 'Settings')
               }
               side="right"
@@ -248,7 +248,7 @@ export function AppSidebar({
                 // would be unreadable against the dark-green stop of the gradient.
                 className="w-7 h-7 rounded-full shrink-0 flex items-center justify-center font-mono text-[11px] text-white focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
                 style={{ background: 'linear-gradient(135deg, var(--g500) 0%, var(--g700) 100%)' }}
-                aria-label={username ? `View profile · ${username}.audric.sui` : 'Settings'}
+                aria-label={username ? `View profile · ${username}@audric` : 'Settings'}
               >
                 {initial}
               </button>
@@ -386,7 +386,7 @@ export function AppSidebar({
             data-testid="sidebar-profile-block"
             title={
               username
-                ? `View your profile · ${username}.audric.sui`
+                ? `View your profile · ${username}@audric`
                 : email || undefined
             }
             className="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-sm hover:bg-surface-nav-hover transition-colors group focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
@@ -403,7 +403,7 @@ export function AppSidebar({
               {/* Primary line. */}
               {username ? (
                 <p className="font-mono text-[12px] text-fg-primary truncate">
-                  {username}.audric.sui
+                  {username}@audric
                 </p>
               ) : email ? (
                 <p className="text-[12px] text-fg-secondary truncate">{email}</p>

@@ -102,14 +102,16 @@ describe('UsernamePicker', () => {
       expect(screen.getByTestId('username-picker-skip')).toBeTruthy();
     });
 
-    it('renders the .audric.sui suffix as a non-editable element', () => {
+    it('S.118: renders the @audric suffix as a non-editable element', () => {
       const { fn } = makeFetcher();
       render(<UsernamePicker onSubmit={vi.fn()} checkFetcher={fn} />);
-      // Suffix is rendered as a sibling <span>, not part of the input.
+      // [S.118] D10 reversal — suffix display switched from `.audric.sui`
+      // to `@audric`. Both forms resolve to the same address via SuiNS
+      // RPC; this is purely a render-layer change.
       const input = screen.getByTestId('username-picker-input') as HTMLInputElement;
       expect(input.value).toBe('');
       const inputWrap = input.parentElement!;
-      expect(within(inputWrap).getByText('.audric.sui')).toBeTruthy();
+      expect(within(inputWrap).getByText('@audric')).toBeTruthy();
     });
   });
 

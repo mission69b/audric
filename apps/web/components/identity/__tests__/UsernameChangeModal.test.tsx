@@ -91,13 +91,13 @@ describe('<UsernameChangeModal>', () => {
   it('renders dialog with current handle when open', () => {
     renderModal();
     expect(screen.getByTestId('username-change-modal')).not.toBeNull();
-    // [B6] Current handle appears in both the "CURRENT" read-only well
-    // AND the warning callout. After the design pass the well renders
-    // `{label}<span>.audric.sui</span>` (suffix muted) instead of a
-    // single text node, so we match by inspecting any element whose
-    // text content contains the full handle string.
+    // [B6, S.118 update] Current handle appears in both the "CURRENT"
+    // read-only well AND the warning callout. After the S.118 D10 reversal
+    // the well renders `{label}<span>@audric</span>` (suffix muted) instead
+    // of `{label}.audric.sui`. We still match by inspecting any element
+    // whose text content contains the full handle string.
     const matches = screen.getAllByText((_, el) =>
-      el?.textContent?.includes('alice.audric.sui') ?? false,
+      el?.textContent?.includes('alice@audric') ?? false,
     );
     // The query yields multiple ancestor matches per occurrence (the
     // text + every wrapping element). Two distinct VISIBLE occurrences
@@ -158,7 +158,8 @@ describe('<UsernameChangeModal>', () => {
       await vi.advanceTimersByTimeAsync(400);
     });
     await waitFor(() => {
-      expect(screen.getByText(/funkii\.audric\.sui is already claimed/i)).not.toBeNull();
+      // [S.118] Display switched from `.audric.sui` to `@audric`.
+      expect(screen.getByText(/funkii@audric is already claimed/i)).not.toBeNull();
     });
     const submit = screen.getByTestId('username-change-modal-submit') as HTMLButtonElement;
     expect(submit.disabled).toBe(true);
