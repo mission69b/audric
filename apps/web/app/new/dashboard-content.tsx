@@ -94,22 +94,78 @@ function fmtDollar(n: number): string {
   return '0';
 }
 
-function capForFlow(
-  flow: string,
-  bal: { cash: number; savings: number; borrows: number; maxBorrow: number; sui: number; usdc: number; assetBalances: Record<string, number> },
+/**
+ * [CHIP_REVIEW_2 F-1/F-2/F-3 / 2026-05-07] Per-asset debt amount lookup
+ * for the Repay flow. Sourced from `balance.borrowsBreakdown` which mirrors
+ * the canonical `positions.borrowsDetail`. Returns 0 when no debt of that
+ * asset exists (caller should treat that as "this asset is not eligible
+ * for repay").
+ */
+function debtForAsset(
+  bal: { borrowsBreakdown: Array<{ asset: string; amountUsd: number }> },
+  asset: string,
 ): number {
+  const upper = asset.toUpperCase();
+  const match = bal.borrowsBreakdown.find((b) => b.asset.toUpperCase() === upper);
+  return match?.amountUsd ?? 0;
+}
+
+interface CapBalance {
+  cash: number;
+  savings: number;
+  borrows: number;
+  maxBorrow: number;
+  sui: number;
+  usdc: number;
+  assetBalances: Record<string, number>;
+  borrowsBreakdown: Array<{ asset: string; amountUsd: number }>;
+}
+
+/**
+ * [CHIP_REVIEW_2 F-1/F-2/F-3 / 2026-05-07] Asset-aware cap. Replaces the
+ * pre-fix behavior where `send` capped at `bal.cash` (silently letting SUI
+ * back-fill an over-USDC amount) and `save` always returned `bal.usdc`
+ * (USDsui-blind). Now every write that supports multiple assets caps at
+ * the SELECTED asset's balance/debt:
+ *
+ * - `save`     → wallet balance of the selected stable (USDC or USDsui)
+ * - `send`     → wallet balance of the selected asset (any held coin)
+ * - `repay`    → debt amount of the selected stable
+ * - `borrow`   → max safe borrow (asset-agnostic; NAVI ltv * collateral)
+ * - `withdraw` → savings (no asset picker — fix scope only covers writes)
+ *
+ * `asset` is `null` during the brief moment between flow start and asset
+ * picker resolution. In that window we return 0 so the amount picker
+ * shows no presets (the asset picker is what's rendered anyway).
+ */
+function capForFlow(flow: string, bal: CapBalance, asset?: string | null): number {
   switch (flow) {
-    case 'save': return bal.usdc;
-    case 'send': return bal.cash;
+    case 'save': {
+      if (!asset) return 0;
+      const u = asset.toUpperCase();
+      if (u === 'USDC') return bal.usdc;
+      if (u === 'USDSUI') return bal.assetBalances.USDsui ?? bal.assetBalances.USDSUI ?? 0;
+      return 0;
+    }
+    case 'send': {
+      if (!asset) return 0;
+      const u = asset.toUpperCase();
+      if (u === 'USDC') return bal.usdc;
+      if (u === 'SUI') return bal.sui;
+      return bal.assetBalances[asset] ?? bal.assetBalances[u] ?? 0;
+    }
     case 'withdraw': return bal.savings;
-    case 'repay': return bal.borrows;
+    case 'repay': {
+      if (!asset) return bal.borrows;
+      return debtForAsset(bal, asset);
+    }
     case 'borrow': return bal.maxBorrow;
     default: return bal.cash;
   }
 }
 
-function getAmountPresets(flow: string, bal: { cash: number; savings: number; borrows: number; maxBorrow: number; sui: number; usdc: number; assetBalances: Record<string, number> }): number[] {
-  const rawCap = capForFlow(flow, bal);
+function getAmountPresets(flow: string, bal: CapBalance, asset?: string | null): number[] {
+  const rawCap = capForFlow(flow, bal, asset);
   if (rawCap <= 0) return [];
 
   const cap = Math.floor(rawCap);
@@ -563,6 +619,10 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
     bestSaveRate: balanceQuery.data?.bestSaveRate ?? null,
     currentRate: balanceQuery.data?.currentRate ?? 0,
     savingsBreakdown: balanceQuery.data?.savingsBreakdown ?? [],
+    // [CHIP_REVIEW_2 F-3 / 2026-05-07] Per-asset debt breakdown — drives the
+    // Repay chip's L1.5 picker (USDC vs USDsui) and the asset-aware
+    // capForFlow('repay'). Empty array when the user has no debts.
+    borrowsBreakdown: balanceQuery.data?.borrowsBreakdown ?? [],
     sui: balanceQuery.data?.sui ?? 0,
     suiUsd: balanceQuery.data?.suiUsd ?? 0,
     suiPrice: balanceQuery.data?.suiPrice ?? 0,
@@ -619,6 +679,10 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
   const flowContext: FlowContext = useMemo(() => ({
     cash: balance.cash,
     usdc: balance.usdc,
+    // [CHIP_REVIEW_2 F-2 / 2026-05-07] USDsui balance — drives the Save chip
+    // asset picker auto-skip (USDC-only / USDsui-only wallets see no extra
+    // step; users with both stables get the L1.5 picker).
+    usdsui: balance.assetBalances?.USDsui ?? 0,
     savings: balance.savings,
     borrows: balance.borrows,
     savingsRate: balance.savingsRate,
@@ -705,24 +769,37 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
     (intent: ParsedIntent) => {
       if (!intent) return;
 
+      // [CHIP_REVIEW_2 F-1/F-2/F-3 / 2026-05-07] Chat-driven intents always
+      // default to USDC. The chat parser doesn't carry an `asset` field, so
+      // "save 10" / "send 50 to alice" / "borrow 25" / "repay 5" all mean
+      // "USDC" here. Passing `asset: 'USDC'` in flowContext makes the chip
+      // flow state start with `state.asset='USDC'`, which auto-skips the
+      // L1.5 asset picker (the picker only renders when state.asset is
+      // null). Users who want a non-USDC asset specify it in chat (the
+      // engine's tool path) — the chat parser doesn't reach this fast path.
       switch (intent.action) {
         case 'save': {
-          const cap = capForFlow('save', balance);
+          const cap = capForFlow('save', balance, 'USDC');
           if (cap <= 0) {
             feed.addItem({ type: 'ai-text', text: 'No USDC available to save right now.', chips: [{ label: 'Receive', flow: 'receive' }] });
           } else {
-            chipFlow.startFlow('save', flowContext);
+            chipFlow.startFlow('save', { ...flowContext, asset: 'USDC' });
             const amt = intent.amount === -1 ? cap : intent.amount > 0 ? Math.min(intent.amount, cap) : 0;
             if (amt > 0) chipFlow.selectAmount(amt);
           }
           break;
         }
         case 'send': {
-          const cap = capForFlow('send', balance);
+          // [CHIP_REVIEW_2 F-1] Chat-driven send caps at USDC balance ONLY,
+          // not `bal.cash`. The pre-fix behavior silently back-filled with
+          // SUI when the user requested more USDC than they held — that's
+          // the deceptive substitution we deleted. If the user really wants
+          // to send SUI, they say "send 5 SUI to alice" in chat.
+          const cap = capForFlow('send', balance, 'USDC');
           if (cap <= 0) {
-            feed.addItem({ type: 'ai-text', text: 'No funds available to send right now.', chips: [{ label: 'Receive', flow: 'receive' }] });
+            feed.addItem({ type: 'ai-text', text: 'No USDC available to send right now. Try "send 5 SUI to ..." for a non-USDC asset, or receive some USDC first.', chips: [{ label: 'Receive', flow: 'receive' }] });
           } else {
-            chipFlow.startFlow('send', flowContext);
+            chipFlow.startFlow('send', { ...flowContext, asset: 'USDC' });
             // [SPEC 10 Phase C.3 — bug fix] Use the shared resolver so
             // chat-driven `send 5 to alice.audric.sui` and chip-typed
             // input go through the same SuiNS-aware path. Amount is
@@ -750,11 +827,11 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
           }
           break;
         case 'borrow': {
-          const cap = capForFlow('borrow', balance);
+          const cap = capForFlow('borrow', balance, 'USDC');
           if (cap <= 0) {
             feed.addItem({ type: 'ai-text', text: 'Nothing available to borrow. You need savings deposited as collateral first.', chips: [{ label: 'Save', flow: 'save' }] });
           } else {
-            chipFlow.startFlow('borrow', flowContext);
+            chipFlow.startFlow('borrow', { ...flowContext, asset: 'USDC' });
             const amt = intent.amount === -1 ? cap : intent.amount > 0 ? Math.min(intent.amount, cap) : 0;
             if (amt > 0) chipFlow.selectAmount(amt);
           }
@@ -768,7 +845,7 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
               chips: [{ label: 'Borrow', flow: 'borrow' }],
             });
           } else {
-            chipFlow.startFlow('repay', flowContext);
+            chipFlow.startFlow('repay', { ...flowContext, asset: 'USDC' });
             const amt = intent.amount === -1 ? balance.borrows : intent.amount > 0 ? Math.min(intent.amount, balance.borrows) : 0;
             if (amt > 0) chipFlow.selectAmount(amt);
           }
@@ -996,7 +1073,9 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
       if (flow === 'charts') { chipFlow.reset(); engine.sendMessage('Show me my activity heatmap and a yield projector'); return; }
 
       if (flow === 'save-all') {
-        chipFlow.startFlow('save', flowContext);
+        // [CHIP_REVIEW_2 F-2 / 2026-05-07] "Save all $X USDC" sub-action
+        // explicitly says USDC; default the asset so the picker auto-skips.
+        chipFlow.startFlow('save', { ...flowContext, asset: 'USDC' });
         chipFlow.selectAmount(balance.usdc);
         return;
       }
@@ -1273,7 +1352,11 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
   const handleAmountSelect = useCallback(
     (amount: number) => {
       const flow = chipFlow.state.flow ?? '';
-      const cap = capForFlow(flow, balance);
+      // [CHIP_REVIEW_2 F-1/F-2/F-3] cap is asset-aware; pass the selected
+      // asset so the "All" preset matches the asset's actual balance, not
+      // the legacy `bal.cash` (which over-counted for USDC sends and
+      // under-counted for USDsui saves).
+      const cap = capForFlow(flow, balance, chipFlow.state.asset);
 
       if (amount === -1) {
         chipFlow.selectAmount(cap);
@@ -1388,11 +1471,123 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
     [chipFlow],
   );
 
+  // [CHIP_REVIEW_2 F-1/F-2/F-3 / 2026-05-07] Eligible-asset helpers for the
+  // L1.5 asset picker. Each returns the candidate `SwapAsset[]` for a given
+  // chip-flow; the dashboard renders the picker when `length > 1`,
+  // auto-selects when `length === 1` (via the auto-skip useEffect below),
+  // and falls back to a "no eligible asset" empty state when `length === 0`.
+
+  // Save accepts USDC + USDsui per `usdc-only-saves.mdc` (v0.51 strategic
+  // exception). Other holdings (GOLD, SUI, USDT, etc.) are NOT saveable —
+  // assertAllowedAsset('save', ...) in the SDK enforces this.
+  const getSaveableAssets = useCallback((): SwapAsset[] => {
+    const out: SwapAsset[] = [];
+    if (balance.usdc > 0) out.push({ symbol: 'USDC', amount: balance.usdc, usdValue: balance.usdc });
+    const usdsui = balance.assetBalances?.USDsui ?? 0;
+    const usdsuiUsd = balance.assetUsdValues?.USDsui ?? usdsui; // USDsui is ~$1
+    if (usdsui > 0) out.push({ symbol: 'USDsui', amount: usdsui, usdValue: usdsuiUsd });
+    return out;
+  }, [balance]);
+
+  // Send accepts ANY held coin. The L1.5 picker shows USDC/SUI plus every
+  // tradeable with non-zero balance, sorted by USD value descending so the
+  // user's biggest stack lands first (USDC for most users today).
+  const getSendableAssets = useCallback((): SwapAsset[] => {
+    const out: SwapAsset[] = [];
+    const seen = new Set<string>();
+    const allSymbols = ['USDC', 'SUI', ...Object.keys(balance.assetBalances ?? {})];
+    for (const sym of allSymbols) {
+      const key = sym.toUpperCase();
+      if (seen.has(key)) continue;
+      const amt = heldAmount(sym);
+      const usd = heldUsd(sym);
+      if (amt <= 0.000001 || usd < 0.01) continue;
+      out.push({ symbol: key === 'USDC' || key === 'SUI' ? key : sym, amount: amt, usdValue: usd });
+      seen.add(key);
+    }
+    out.sort((a, b) => (b.usdValue ?? 0) - (a.usdValue ?? 0));
+    return out;
+  }, [balance, heldAmount, heldUsd]);
+
+  // Borrow always offers BOTH USDC and USDsui — they're the only two
+  // borrowable stables on NAVI per `usdc-only-saves.mdc`. Eligibility
+  // depends on having collateral (`maxBorrow > 0`), not on what the user
+  // holds — so both options always appear when the chip flow is reachable.
+  const getBorrowableAssets = useCallback((): SwapAsset[] => {
+    return [{ symbol: 'USDC' }, { symbol: 'USDsui' }];
+  }, []);
+
+  // Repay's eligible set is the user's ACTIVE debts. If they only owe USDC,
+  // only USDC is offered (auto-skipped). If they owe both, picker asks. The
+  // SDK rejects cross-asset repays per `usdc-only-saves.mdc` line 29 ("a
+  // USDsui debt MUST be repaid with USDsui"), so honoring eligibility here
+  // prevents the chip from trying a guaranteed-fail repay.
+  const getRepayableAssets = useCallback((): SwapAsset[] => {
+    const out: SwapAsset[] = [];
+    for (const debt of balance.borrowsBreakdown ?? []) {
+      const sym = debt.asset.toUpperCase();
+      if (debt.amountUsd > 0 && (sym === 'USDC' || sym === 'USDSUI')) {
+        out.push({
+          symbol: sym === 'USDSUI' ? 'USDsui' : 'USDC',
+          amount: debt.amountUsd,
+          usdValue: debt.amountUsd,
+        });
+      }
+    }
+    return out;
+  }, [balance]);
+
+  // [CHIP_REVIEW_2 F-1/F-2/F-3] Auto-skip the asset picker when there's only
+  // ONE eligible asset for the current flow. The user sees no extra step
+  // (USDC-only wallet → save/send/repay flow goes straight to amount picker
+  // with asset implicitly USDC; USDsui-only wallet → goes to amount picker
+  // with asset='USDsui' silently). Multi-asset wallets see the picker.
+  //
+  // Runs as an effect so it fires AFTER the picker would render — that one
+  // wasted render cycle is invisible (React batches the re-render before
+  // commit). Cheaper than computing eligibility synchronously inside the
+  // render path because the eligible-asset helpers are themselves memoized.
+  useEffect(() => {
+    if (chipFlow.state.phase !== 'l2-chips') return;
+    if (chipFlow.state.asset !== null) return;
+    const flow = chipFlow.state.flow;
+    if (flow !== 'save' && flow !== 'send' && flow !== 'borrow' && flow !== 'repay') return;
+    // Send: we only auto-resolve asset AFTER recipient has been picked
+    // (the picker step lives between recipient and amount).
+    if (flow === 'send' && !chipFlow.state.recipient) return;
+
+    let eligible: SwapAsset[] = [];
+    if (flow === 'save') eligible = getSaveableAssets();
+    else if (flow === 'send') eligible = getSendableAssets();
+    else if (flow === 'borrow') eligible = getBorrowableAssets();
+    else if (flow === 'repay') eligible = getRepayableAssets();
+
+    if (eligible.length === 1) {
+      chipFlow.selectAsset(eligible[0].symbol);
+    }
+  }, [
+    chipFlow,
+    chipFlow.state.phase,
+    chipFlow.state.flow,
+    chipFlow.state.asset,
+    chipFlow.state.recipient,
+    getSaveableAssets,
+    getSendableAssets,
+    getBorrowableAssets,
+    getRepayableAssets,
+  ]);
+
   const handleConfirm = useCallback(async () => {
     chipFlow.confirm();
 
     const flow = chipFlow.state.flow;
-    const cap = capForFlow(flow ?? '', balance);
+    // [CHIP_REVIEW_2 F-1/F-2/F-3] Cap respects the SELECTED asset. The pre-fix
+    // capForFlow always returned bal.cash for send (allowing silent SUI
+    // substitution) and bal.usdc for save (USDsui-blind). Now both honor
+    // the asset the user picked in the L1.5 picker (or the default the
+    // chat parser stamped — always 'USDC' for chat-driven).
+    const flowAsset = chipFlow.state.asset ?? undefined;
+    const cap = capForFlow(flow ?? '', balance, flowAsset);
     const rawAmount = chipFlow.state.amount ?? 0;
     const amount = Math.min(rawAmount, cap);
 
@@ -1402,28 +1597,53 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
 
       let txDigest = '';
       let flowLabel = '';
+      // [CHIP_REVIEW_2 F-1] Captured asset for the result toast — when set,
+      // appears in parens after the dollar amount ("Saved $30 (USDsui)" /
+      // "Sent 9.7 SUI to alice"). Defaults to undefined for USDC writes
+      // (where the bare dollar amount is unambiguous).
+      let resultAsset: string | undefined;
+      let resultUnitAmount: number | undefined;
 
       const protocol = chipFlow.state.protocol ?? undefined;
 
       switch (flow) {
         case 'save': {
-          const res = await sdk.save({ amount, protocol });
+          // [CHIP_REVIEW_2 F-2] asset is now ALWAYS bound (auto-USDC for
+          // chat-driven, picker-resolved for chip-driven). Pass it through
+          // so USDsui saves route to the USDsui pool per `usdc-only-saves.mdc`.
+          const res = await sdk.save({ amount, asset: flowAsset, protocol });
           txDigest = res.tx;
           flowLabel = 'Saved';
+          if (flowAsset && flowAsset.toUpperCase() !== 'USDC') {
+            resultAsset = flowAsset;
+          }
           break;
         }
         case 'send': {
           const recipient = chipFlow.state.recipient;
           if (!recipient) throw new Error('No recipient specified');
-          let sendAsset: string | undefined;
-          let sendAmount = amount;
-          if (amount > balance.usdc && balance.sui > 0) {
-            sendAsset = 'SUI';
-            sendAmount = balance.suiPrice > 0 ? amount / balance.suiPrice : 0;
-          }
-          const res = await sdk.send({ to: recipient, amount: sendAmount, asset: sendAsset });
+          // [CHIP_REVIEW_2 F-1 / 2026-05-07] DELETED the silent SUI
+          // back-fill. Pre-fix: when `amount > balance.usdc && balance.sui > 0`
+          // we silently rewrote `asset='SUI'` and converted the dollar amount
+          // to SUI units via `suiPrice`. The chip's "Send USDC" label and
+          // confirm-card "Amount: $30" lied about what was actually sent.
+          // Now: the asset comes from the chip flow's L1.5 picker (or 'USDC'
+          // for chat-driven), capForFlow caps at THAT asset's balance, and
+          // the SDK rejects with a clean "insufficient balance" if the
+          // amount exceeds the asset's holdings.
+          const sendAsset = flowAsset ?? 'USDC';
+          const isUsdc = sendAsset.toUpperCase() === 'USDC';
+          // For non-USDC sends, the amount is already in token units
+          // (capForFlow returned the held token amount, not USD value) — we
+          // pass it straight to sdk.send. For USDC, amount is in dollars
+          // (USDC is 1:1 with USD). No conversion either way.
+          const res = await sdk.send({ to: recipient, amount, asset: sendAsset });
           txDigest = res.tx;
           flowLabel = 'Sent';
+          if (!isUsdc) {
+            resultAsset = sendAsset;
+            resultUnitAmount = amount;
+          }
           break;
         }
         case 'withdraw': {
@@ -1443,15 +1663,27 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
           break;
         }
         case 'borrow': {
-          const res = await sdk.borrow({ amount, protocol });
+          // [CHIP_REVIEW_2 F-3] asset is bound (USDC for chat, picker for chip).
+          // Pass through so USDsui borrows route to the USDsui pool.
+          const res = await sdk.borrow({ amount, asset: flowAsset, protocol });
           txDigest = res.tx;
           flowLabel = 'Borrowed';
+          if (flowAsset && flowAsset.toUpperCase() !== 'USDC') {
+            resultAsset = flowAsset;
+          }
           break;
         }
         case 'repay': {
-          const res = await sdk.repay({ amount, protocol });
+          // [CHIP_REVIEW_2 F-3] asset must match the debt currency per
+          // `usdc-only-saves.mdc`: "a USDsui debt MUST be repaid with USDsui".
+          // The L1.5 picker auto-skips when the user has only one debt
+          // currency and asks when both exist.
+          const res = await sdk.repay({ amount, asset: flowAsset, protocol });
           txDigest = res.tx;
           flowLabel = 'Repaid';
+          if (flowAsset && flowAsset.toUpperCase() !== 'USDC') {
+            resultAsset = flowAsset;
+          }
           break;
         }
         case 'swap': {
@@ -1494,9 +1726,26 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
         ? 'https://suiscan.xyz/testnet/tx'
         : 'https://suiscan.xyz/mainnet/tx';
       const txUrl = txDigest ? `${explorerBase}/${txDigest}` : undefined;
+      // [CHIP_REVIEW_2 F-1/F-2/F-3] Asset-disclosing title:
+      //   USDC (default):     "Saved $30"
+      //   non-USDC stable:    "Saved $30 (USDsui)"
+      //   non-USDC token send: "Sent 9.7 SUI"  (token amount, not dollar)
+      let title: string;
+      if (resultAsset && resultUnitAmount != null) {
+        const fmtUnits = resultUnitAmount >= 100
+          ? resultUnitAmount.toFixed(2)
+          : resultUnitAmount >= 1
+            ? resultUnitAmount.toFixed(4)
+            : resultUnitAmount.toFixed(6);
+        title = `${flowLabel} ${fmtUnits} ${resultAsset}`;
+      } else if (resultAsset) {
+        title = `${flowLabel} $${amount.toFixed(2)} (${resultAsset})`;
+      } else {
+        title = `${flowLabel} $${amount.toFixed(2)}`;
+      }
       const result: ChipFlowResult = {
         success: true,
-        title: `${flowLabel} $${amount.toFixed(2)}`,
+        title,
         details: txDigest
           ? `Tx: ${txDigest.slice(0, 8)}...${txDigest.slice(-6)}`
           : 'Transaction confirmed on-chain.',
@@ -1574,7 +1823,32 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
       };
     }
 
-    details.push({ label: 'Amount', value: `$${amount.toFixed(2)}` });
+    // [CHIP_REVIEW_2 F-1/F-2/F-3 / 2026-05-07] Asset disclosure on every
+    // confirm card. Pre-fix, send/save/borrow/repay confirm cards showed
+    // only `Amount: $30` — opaque about which asset the SDK would actually
+    // move. Now the asset row sits ABOVE the amount (both for visibility
+    // and because non-USDC token sends show their amount in token units,
+    // not dollars — context first, then the number).
+    const flowAsset = chipFlow.state.asset;
+    const flowAssetUpper = flowAsset?.toUpperCase();
+    const isNonUsdcSend = flow === 'send' && flowAsset && flowAssetUpper !== 'USDC';
+
+    if (flow === 'send' || flow === 'save' || flow === 'borrow' || flow === 'repay') {
+      // Always show asset row when the chip flow has an asset bound (which
+      // is always true post-fix — chat-driven defaults to USDC, chip-driven
+      // resolves via picker).
+      if (flowAsset) {
+        details.push({ label: 'Asset', value: flowAsset });
+      }
+    }
+
+    if (isNonUsdcSend) {
+      // Non-USDC send: amount is in token units (e.g. 9.7 SUI), not dollars.
+      const fmtUnits = amount >= 100 ? amount.toFixed(2) : amount >= 1 ? amount.toFixed(4) : amount.toFixed(6);
+      details.push({ label: 'Amount', value: `${fmtUnits} ${flowAsset}` });
+    } else {
+      details.push({ label: 'Amount', value: `$${amount.toFixed(2)}` });
+    }
 
     if (flow === 'withdraw') {
       const primary = balance.savingsBreakdown.length > 0
@@ -1605,11 +1879,24 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
 
     details.push({ label: 'Gas', value: 'Sponsored' });
 
-    return {
-      title: `${flow?.charAt(0).toUpperCase()}${flow?.slice(1)} $${amount.toFixed(2)}`,
-      confirmLabel: `${flow?.charAt(0).toUpperCase()}${flow?.slice(1)} $${amount.toFixed(2)}`,
-      details,
-    };
+    // Title also reflects the asset for transparency. Non-USDC sends show
+    // token-units; non-USDC saves/borrows/repays show dollars + asset tag.
+    const verb = flow ? `${flow.charAt(0).toUpperCase()}${flow.slice(1)}` : '';
+    let title: string;
+    let confirmLabel: string;
+    if (isNonUsdcSend) {
+      const fmtUnits = amount >= 100 ? amount.toFixed(2) : amount >= 1 ? amount.toFixed(4) : amount.toFixed(6);
+      title = `${verb} ${fmtUnits} ${flowAsset}`;
+      confirmLabel = title;
+    } else if (flowAsset && flowAssetUpper !== 'USDC') {
+      title = `${verb} $${amount.toFixed(2)} (${flowAsset})`;
+      confirmLabel = title;
+    } else {
+      title = `${verb} $${amount.toFixed(2)}`;
+      confirmLabel = title;
+    }
+
+    return { title, confirmLabel, details };
   };
 
   const isInFlow = chipFlow.state.phase !== 'idle';
@@ -1839,20 +2126,76 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
           />
         )}
 
-        {chipFlow.state.phase === 'l2-chips' && chipFlow.state.flow && chipFlow.state.flow !== 'send' && chipFlow.state.flow !== 'swap' && (() => {
+        {/* [CHIP_REVIEW_2 F-2 / 2026-05-07] Save L1.5 — asset picker (USDC vs
+            USDsui) when both stables are held with non-zero balance. Auto-skipped
+            for single-stable wallets via the useEffect above. */}
+        {chipFlow.state.phase === 'l2-chips' && chipFlow.state.flow === 'save' && !chipFlow.state.asset && getSaveableAssets().length > 1 && (
+          <SwapAssetPicker
+            assets={getSaveableAssets()}
+            onSelect={(sym) => chipFlow.selectAsset(sym)}
+            message={chipFlow.state.message ?? undefined}
+            onCancel={chipFlow.reset}
+          />
+        )}
+
+        {/* [CHIP_REVIEW_2 F-3] Borrow L1.5 — always offer USDC + USDsui.
+            Auto-skip not applicable (always 2 options). */}
+        {chipFlow.state.phase === 'l2-chips' && chipFlow.state.flow === 'borrow' && !chipFlow.state.asset && (
+          <SwapAssetPicker
+            assets={getBorrowableAssets()}
+            onSelect={(sym) => chipFlow.selectAsset(sym)}
+            message={chipFlow.state.message ?? undefined}
+            onCancel={chipFlow.reset}
+          />
+        )}
+
+        {/* [CHIP_REVIEW_2 F-3] Repay L1.5 — picker when 2+ debt currencies,
+            auto-skipped when one. Empty case handled by capForFlow→0 fallback. */}
+        {chipFlow.state.phase === 'l2-chips' && chipFlow.state.flow === 'repay' && !chipFlow.state.asset && getRepayableAssets().length > 1 && (
+          <SwapAssetPicker
+            assets={getRepayableAssets()}
+            onSelect={(sym) => chipFlow.selectAsset(sym)}
+            message={chipFlow.state.message ?? undefined}
+            onCancel={chipFlow.reset}
+          />
+        )}
+
+        {/* Amount picker for save/withdraw/borrow/repay. Gated on asset
+            being resolved for asset-aware flows; withdraw is asset-agnostic
+            (always USDC out, source asset auto-converted). */}
+        {chipFlow.state.phase === 'l2-chips' && chipFlow.state.flow && chipFlow.state.flow !== 'send' && chipFlow.state.flow !== 'swap' && (chipFlow.state.flow === 'withdraw' || chipFlow.state.asset) && (() => {
           const f = chipFlow.state.flow!;
+          const a = chipFlow.state.asset;
+          // [CHIP_REVIEW_2 F-1/F-2/F-3] allLabel reflects the SELECTED asset's
+          // cap. Pre-fix used `bal.usdc` for save (wrong for USDsui saves) and
+          // `bal.borrows` for repay (wrong when only one stable's debt is being
+          // repaid). The new capForFlow returns the asset-scoped value.
+          const cap = capForFlow(f, balance, a);
+          // Borrow displays "Max $X" because the on-screen number is a
+          // health-factor-bounded ceiling, not a held balance.
+          const allText = f === 'borrow' && cap > 0
+            ? `Max $${fmtDollar(cap)}`
+            : cap > 0
+              ? `All $${fmtDollar(cap)}`
+              : undefined;
+          // Show "Change asset" upstream link when the user came through the
+          // L1.5 picker (i.e. 2+ assets were eligible). Withdraw skips this
+          // because it has no asset picker step.
+          const showChangeAsset = a && f !== 'withdraw' && (
+            (f === 'save' && getSaveableAssets().length > 1) ||
+            (f === 'borrow') ||
+            (f === 'repay' && getRepayableAssets().length > 1)
+          );
           return (
             <AmountChips
-              amounts={getAmountPresets(f, balance)}
-              allLabel={
-                f === 'withdraw' ? `All $${fmtDollar(balance.savings)}` :
-                f === 'save' ? `All $${fmtDollar(balance.usdc)}` :
-                f === 'repay' ? `All $${fmtDollar(balance.borrows)}` :
-                f === 'borrow' && balance.maxBorrow > 0 ? `Max $${fmtDollar(balance.maxBorrow)}` :
-                undefined
-              }
+              amounts={getAmountPresets(f, balance, a)}
+              allLabel={allText}
               onSelect={handleAmountSelect}
               message={chipFlow.state.message ?? undefined}
+              {...(showChangeAsset ? {
+                onChangeUpstream: chipFlow.clearAsset,
+                changeUpstreamLabel: `Change asset (${a})`,
+              } : {})}
               onCancel={chipFlow.reset}
             />
           );
@@ -1872,17 +2215,47 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
           />
         )}
 
-        {chipFlow.state.phase === 'l2-chips' && chipFlow.state.flow === 'send' && chipFlow.state.recipient && (
-          <AmountChips
-            amounts={getAmountPresets('send', balance)}
-            allLabel={`All $${fmtDollar(balance.cash)}`}
-            onSelect={handleAmountSelect}
+        {/* [CHIP_REVIEW_2 F-1] Send L1.5 — asset picker when 2+ sendable assets
+            held. Auto-skipped silently for single-asset wallets (USDC-only is
+            the common case). DELETED the silent SUI back-fill that previously
+            substituted asset='SUI' inside handleConfirm when amount > USDC. */}
+        {chipFlow.state.phase === 'l2-chips' && chipFlow.state.flow === 'send' && chipFlow.state.recipient && !chipFlow.state.asset && getSendableAssets().length > 1 && (
+          <SwapAssetPicker
+            assets={getSendableAssets()}
+            onSelect={(sym) => chipFlow.selectAsset(sym)}
             message={chipFlow.state.message ?? undefined}
-            onChangeUpstream={chipFlow.clearRecipient}
-            changeUpstreamLabel="Change recipient"
+            onChangeTarget={chipFlow.clearRecipient}
+            autoTarget={chipFlow.state.subFlow ?? undefined}
             onCancel={chipFlow.reset}
           />
         )}
+
+        {/* Send amount picker — gated on both recipient AND asset being set.
+            Cap and "All" label are asset-aware (USDC dollars, SUI tokens, etc). */}
+        {chipFlow.state.phase === 'l2-chips' && chipFlow.state.flow === 'send' && chipFlow.state.recipient && chipFlow.state.asset && (() => {
+          const a = chipFlow.state.asset!;
+          const cap = capForFlow('send', balance, a);
+          const isUsdc = a.toUpperCase() === 'USDC';
+          const allLabel = isUsdc
+            ? `All $${fmtDollar(cap)}`
+            : `All ${cap >= 0.01 ? cap.toFixed(2) : cap.toPrecision(3)} ${a}`;
+          // Multi-asset wallets get a "Change asset" affordance; single-asset
+          // wallets (auto-skipped picker) only see "Change recipient" — no
+          // point offering to change to an asset they don't hold.
+          const multiAsset = getSendableAssets().length > 1;
+          return (
+            <AmountChips
+              amounts={getAmountPresets('send', balance, a)}
+              allLabel={allLabel}
+              assetLabel={isUsdc ? undefined : a}
+              onSelect={handleAmountSelect}
+              message={chipFlow.state.message ?? undefined}
+              onChangeUpstream={multiAsset ? chipFlow.clearAsset : chipFlow.clearRecipient}
+              changeUpstreamLabel={multiAsset ? `Change asset (${a})` : 'Change recipient'}
+              onCancel={chipFlow.reset}
+            />
+          );
+        })()}
 
         {!isInFlow && (
           <>

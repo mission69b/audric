@@ -60,6 +60,13 @@ const INITIAL_STATE: ChipFlowState = {
 export interface FlowContext {
   cash?: number;
   usdc?: number;
+  /**
+   * [CHIP_REVIEW_2 F-2 / 2026-05-07] USDsui wallet balance — drives the
+   * Save/Send asset picker's auto-skip path. When `usdc > 0 && usdsui > 0`
+   * the L1.5 picker renders; when only one is non-zero the picker
+   * silently auto-defaults so USDC-only wallets see no extra step.
+   */
+  usdsui?: number;
   savings?: number;
   borrows?: number;
   savingsRate?: number;
@@ -85,6 +92,58 @@ export function useChipFlow() {
 
   const selectAmount = useCallback((amount: number) => {
     setState((prev) => ({ ...prev, amount, phase: 'confirming' }));
+  }, []);
+
+  /**
+   * [CHIP_REVIEW_2 F-1/F-2/F-3 / 2026-05-07] Select an asset for save / send
+   * / borrow / repay. The asset picker is L1.5 — we stay in `l2-chips`
+   * phase but populate `state.asset`, which advances the dashboard's render
+   * logic to the amount picker. A separate setter from `selectFromAsset`
+   * (which is swap-specific and also writes `toAsset`) so the call sites
+   * are unambiguous about which flow they're in.
+   *
+   * USDsui-aware message (save case): when the user picks a non-USDC
+   * stable, the amount picker should advertise the right symbol so the
+   * "$X available" text doesn't lie.
+   */
+  const selectAsset = useCallback((asset: string) => {
+    setState((prev) => {
+      let nextMessage = prev.message;
+      if (prev.flow === 'save') {
+        nextMessage = `Save ${asset} to earn interest.\nChoose an amount:`;
+      } else if (prev.flow === 'send') {
+        nextMessage = prev.subFlow ? `How much ${asset} to ${prev.subFlow}?` : `How much ${asset} to send?`;
+      } else if (prev.flow === 'borrow') {
+        nextMessage = `Borrow ${asset} against your savings.\nChoose an amount:`;
+      } else if (prev.flow === 'repay') {
+        nextMessage = `Repay your ${asset} debt.\nChoose an amount:`;
+      }
+      return { ...prev, asset, message: nextMessage };
+    });
+  }, []);
+
+  /**
+   * [CHIP_REVIEW_2 F-1/F-2/F-3] Step back from the amount picker to the
+   * asset picker. Mirrors `clearToAsset` for swap. Without this, picking
+   * the wrong asset (e.g. USDsui when you meant USDC) forced a full
+   * Cancel → re-start. Now the user can step back without losing their
+   * recipient (in the send case) or their flow context.
+   */
+  const clearAsset = useCallback(() => {
+    setState((prev) => ({
+      ...prev,
+      asset: null,
+      amount: null,
+      message: prev.flow === 'send'
+        ? `What asset do you want to send${prev.subFlow ? ` to ${prev.subFlow}` : ''}?`
+        : prev.flow === 'save'
+          ? 'Which stable do you want to save?'
+          : prev.flow === 'borrow'
+            ? 'Which stable do you want to borrow?'
+            : prev.flow === 'repay'
+              ? 'Which debt do you want to repay?'
+              : 'Pick an asset:',
+    }));
   }, []);
 
   const selectRecipient = useCallback((recipient: string, label?: string, cash?: number) => {
@@ -169,6 +228,8 @@ export function useChipFlow() {
     state,
     startFlow,
     selectAmount,
+    selectAsset,
+    clearAsset,
     selectRecipient,
     clearRecipient,
     selectFromAsset,
@@ -201,8 +262,22 @@ function getFlowMessage(flow: string, ctx?: FlowContext): string {
           ? ctx.savingsRate
           : null;
       const rateStr = rate ? ` ${(rate * 100).toFixed(1)}%` : '';
-      const saveableUsdc = ctx?.usdc ?? ctx?.cash;
-      const avail = saveableUsdc ? ` You have ${fmtAmount(saveableUsdc)} USDC available.` : '';
+      // [CHIP_REVIEW_2 F-2 / 2026-05-07] When the user holds BOTH USDC and
+      // USDsui, the dashboard renders an L1.5 picker (this `getFlowMessage`
+      // text gets replaced by `selectAsset`'s asset-specific message once
+      // they choose). For USDC-only / USDsui-only wallets, the picker
+      // auto-skips and we go straight to the amount step — show the
+      // appropriate "available" hint up front so the message isn't blank.
+      const usdc = ctx?.usdc ?? 0;
+      const usdsui = ctx?.usdsui ?? 0;
+      if (usdc > 0 && usdsui > 0) {
+        return `Save to earn${rateStr}.\nWhich stable do you want to save?`;
+      }
+      const saveableAmt = usdc > 0 ? usdc : usdsui;
+      const saveableSym = usdc > 0 ? 'USDC' : usdsui > 0 ? 'USDsui' : 'USDC';
+      const fallback = ctx?.cash;
+      const displayAmt = saveableAmt > 0 ? saveableAmt : (fallback ?? 0);
+      const avail = displayAmt > 0 ? ` You have ${fmtAmount(displayAmt)} ${saveableSym} available.` : '';
       return `Save to earn${rateStr}.${avail}\nChoose an amount:`;
     }
     case 'send': return 'Who do you want to send to?';
@@ -211,12 +286,20 @@ function getFlowMessage(flow: string, ctx?: FlowContext): string {
       return `Withdraw from savings.${saved}\nChoose an amount:`;
     }
     case 'borrow': {
-      const max = ctx?.maxBorrow ? ` You can borrow up to ${fmtAmount(ctx.maxBorrow)}.` : '';
-      return `Borrow against your savings.${max}\nChoose an amount:`;
+      // [CHIP_REVIEW_2 F-3 / 2026-05-07] Borrow chip ALWAYS routes through
+      // the asset picker (USDC vs USDsui) — both are saveable per v0.51,
+      // and the choice carries an interest-rate consequence the user
+      // should make explicitly. The L1.5 picker overrides this message
+      // immediately, so the wording here is short.
+      return 'Which stable do you want to borrow?';
     }
     case 'repay': {
       const debt = ctx?.borrows ? ` Outstanding debt: ${fmtAmount(ctx.borrows)}.` : '';
-      return `Repay your loan.${debt}\nChoose an amount:`;
+      // [CHIP_REVIEW_2 F-3 / 2026-05-07] Repay routes through the picker
+      // when the user has BOTH USDC and USDsui debts (the dashboard
+      // computes eligibility from `borrowsBreakdown`). With one debt
+      // currency, the picker auto-skips and the amount step shows.
+      return `Repay your loan.${debt}\nWhich debt do you want to repay?`;
     }
     case 'swap':
       return 'What do you want to swap?\nSelect an asset:';

@@ -6,8 +6,29 @@ export interface SuggestedActionItem {
   prompt: string;
 }
 
+/**
+ * Best-effort shape for tool result `data` consumed by ChipBuilders.
+ * Every field is optional — extractResultData returns `{}` if the tool
+ * didn't include a `data` envelope or the field is missing. Builders
+ * MUST handle the missing-field case so a malformed tool response never
+ * crashes the chip row.
+ *
+ * Field origins:
+ * - `toToken`           — `swap_execute` (input echoed in result)
+ * - `direction`/`query`/`address`/`primary` — `resolve_suins`
+ * - `url`/`label`/`slug` — `create_payment_link` / `create_invoice`
+ * - `name`              — `save_contact`
+ */
 interface ToolResultData {
   toToken?: string;
+  direction?: 'forward' | 'reverse';
+  query?: string;
+  address?: string | null;
+  primary?: string | null;
+  url?: string;
+  label?: string | null;
+  slug?: string;
+  name?: string;
 }
 
 type ChipBuilder = (data: ToolResultData) => SuggestedActionItem[];
@@ -96,6 +117,96 @@ const TOOL_CHIPS: Record<string, SuggestedActionItem[] | ChipBuilder> = {
   claim_rewards: [
     { icon: '💰', label: 'CHECK BALANCE', prompt: 'What is my balance now?' },
     { icon: '🏦', label: 'SAVE REWARDS', prompt: 'Save my claimed rewards' },
+  ],
+  // ── CHIP_REVIEW_2 F-4 / F-5 backfill (2026-05-07) ─────────────────
+  // Audric Passport (SPEC 10) — resolved a SuiNS handle to an address (or vice versa).
+  // The natural follow-ups are: send to that user, save them as a contact.
+  resolve_suins: (data) => {
+    const handle = data.direction === 'forward' ? data.query : data.primary;
+    if (handle) {
+      return [
+        { icon: '💸', label: 'SEND TO THIS USER', prompt: `Send USDC to ${handle}` },
+        { icon: '💾', label: 'SAVE AS CONTACT', prompt: `Save ${handle} as a contact` },
+      ];
+    }
+    // Reverse with no .sui name OR forward with no resolved address — offer
+    // a generic "look up another" handoff rather than a misleading send chip.
+    return [
+      { icon: '🔍', label: 'LOOK UP ANOTHER', prompt: 'Resolve another SuiNS name or address' },
+      { icon: '💰', label: 'CHECK BALANCE', prompt: 'What is my balance?' },
+    ];
+  },
+  // Audric Pay — payment links / invoices. Post-create, COPY LINK and SHARE
+  // are the two universal next actions. Cancel + list flows offer their
+  // counterparts so the user can stay in the receive-money mental loop.
+  create_payment_link: (data) => {
+    const url = data.url;
+    return [
+      { icon: '📋', label: 'COPY LINK', prompt: url ? `Copy this payment link: ${url}` : 'Copy the payment link to my clipboard' },
+      { icon: '📤', label: 'SHARE LINK', prompt: url ? `Share this payment link: ${url}` : 'Share the payment link' },
+    ];
+  },
+  create_invoice: (data) => {
+    const url = data.url;
+    return [
+      { icon: '📋', label: 'COPY INVOICE', prompt: url ? `Copy this invoice URL: ${url}` : 'Copy the invoice URL to my clipboard' },
+      { icon: '📤', label: 'SHARE INVOICE', prompt: url ? `Share this invoice: ${url}` : 'Share the invoice' },
+    ];
+  },
+  list_payment_links: [
+    { icon: '➕', label: 'NEW LINK', prompt: 'Create a new payment link' },
+    { icon: '📑', label: 'INVOICES', prompt: 'Show my invoices too' },
+  ],
+  list_invoices: [
+    { icon: '➕', label: 'NEW INVOICE', prompt: 'Create a new invoice' },
+    { icon: '🔗', label: 'PAYMENT LINKS', prompt: 'Show my payment links too' },
+  ],
+  cancel_payment_link: [
+    { icon: '🔗', label: 'REMAINING LINKS', prompt: 'Show my remaining payment links' },
+    { icon: '➕', label: 'NEW LINK', prompt: 'Create a new payment link' },
+  ],
+  cancel_invoice: [
+    { icon: '📑', label: 'REMAINING INVOICES', prompt: 'Show my remaining invoices' },
+    { icon: '➕', label: 'NEW INVOICE', prompt: 'Create a new invoice' },
+  ],
+  // Contacts — after saving, the natural next move is to send to them. After
+  // listing isn't a tool yet (no list_contacts in the engine); skip.
+  save_contact: (data) => {
+    const name = data.name;
+    return [
+      { icon: '💸', label: name ? `SEND TO ${name.toUpperCase()}` : 'SEND TO THIS CONTACT', prompt: name ? `Send USDC to ${name}` : 'Send USDC to my contact' },
+      { icon: '💰', label: 'CHECK BALANCE', prompt: 'What is my balance?' },
+    ];
+  },
+  // Read-only research tools — no canonical "next move", so offer a tight
+  // pair of relevant follow-ups instead of leaving DEFAULT_ACTIONS to fire.
+  mpp_services: [
+    { icon: '⚡', label: 'USE A SERVICE', prompt: 'Pick a service from the list and use it' },
+    { icon: '🔍', label: 'SEARCH SERVICES', prompt: 'Search MPP for a different service' },
+  ],
+  web_search: [
+    { icon: '🔄', label: 'REFINE SEARCH', prompt: 'Search for something more specific' },
+    { icon: '💰', label: 'CHECK BALANCE', prompt: 'What is my balance?' },
+  ],
+  explain_tx: [
+    { icon: '📜', label: 'TX HISTORY', prompt: 'Show my recent transaction history' },
+    { icon: '💰', label: 'CHECK BALANCE', prompt: 'What is my balance now?' },
+  ],
+  portfolio_analysis: [
+    { icon: '🏦', label: 'ACT ON THIS', prompt: 'Recommend the best action based on this analysis' },
+    { icon: '📊', label: 'FULL PORTFOLIO', prompt: 'Show my full portfolio' },
+  ],
+  protocol_deep_dive: [
+    { icon: '🏦', label: 'SAVE INTO IT', prompt: 'Save USDC into this protocol' },
+    { icon: '📈', label: 'COMPARE RATES', prompt: 'Compare rates across protocols' },
+  ],
+  token_prices: [
+    { icon: '🔄', label: 'SWAP NOW', prompt: 'Swap tokens at current prices' },
+    { icon: '💰', label: 'CHECK BALANCE', prompt: 'What is my balance?' },
+  ],
+  volo_stats: [
+    { icon: '🥩', label: 'STAKE SUI', prompt: 'Stake my SUI with Volo' },
+    { icon: '🏦', label: 'COMPARE TO NAVI', prompt: 'Compare Volo vs NAVI for my SUI' },
   ],
 };
 

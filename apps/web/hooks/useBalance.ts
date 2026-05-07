@@ -44,6 +44,13 @@ export interface BalanceData {
   currentRate: number;
   /** Per-protocol savings breakdown */
   savingsBreakdown: SavingsBreakdownEntry[];
+  /**
+   * [CHIP_REVIEW_2 F-3 / 2026-05-07] Per-asset debt breakdown — needed by
+   * the Repay chip flow to default to (or pick between) USDC vs USDsui
+   * debts when both exist. Mirrors `savingsBreakdown` but for the borrow
+   * side. Sourced verbatim from `/api/portfolio` → `positions.borrowsDetail`.
+   */
+  borrowsBreakdown: Array<{ protocol: string; protocolId: string; asset: string; amountUsd: number; apy: number }>;
   /** Raw token balances for tradeable assets (every non-SUI/USDC coin) */
   assetBalances: Record<string, number>;
   /** USD values for tradeable assets */
@@ -215,6 +222,7 @@ export function useBalance(address: string | null) {
         bestSaveRate,
         currentRate,
         savingsBreakdown,
+        borrowsBreakdown: positions.borrowsDetail ?? [],
         assetBalances,
         assetUsdValues,
         loading: false,
@@ -240,6 +248,7 @@ const EMPTY_BALANCE: BalanceData = {
   bestSaveRate: null,
   currentRate: 0,
   savingsBreakdown: [],
+  borrowsBreakdown: [],
   assetBalances: {},
   assetUsdValues: {},
   loading: false,
