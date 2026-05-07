@@ -13,9 +13,15 @@
 //   • "YOUR LISTINGS" section (only when listings > 0) — preserves the
 //     real-data path
 //   • "CREATE NEW — AVAILABLE NOW" eyebrow + product list (each row:
-//     emoji, title, sub, chevron, hairline divider). Dashed
-//     "Automate store content" card directly below.
+//     emoji, title, sub, chevron, hairline divider).
 //   • "COMING PHASE 5 — ASYNC GENERATION" eyebrow + soon list (opacity
+//
+// [CHIP-Review-2.5 PR2.5-7 — 2026-05-07] Removed the dashed "Automate
+// store content / Generate + list on a schedule · trust ladder applies"
+// card. Two dead-feature refs in one widget: scheduled actions (S.7) and
+// trust ladder (S.7).
+// [CHIP-Review-2.5 PR2.5-6 — 2026-05-07] Dropped "count toward your
+// Goals" from the earnings callout — Goals retired in SPEC 17.
 //     0.55, mono SOON badge per row).
 //
 // Behavior preserved:
@@ -208,9 +214,8 @@ export function StorePanel({
 
           <div className="rounded-md border border-success-border/40 bg-success-bg px-3 py-2.5 text-[11px] text-fg-secondary leading-[1.7]">
             Store earnings land in your wallet as USDC &mdash; same as any payment received. They
-            show in <strong className="text-fg-primary">Activity → Store</strong>, count toward your{' '}
-            <strong className="text-fg-primary">Goals</strong>, and appear in your{' '}
-            <strong className="text-fg-primary">weekly income report</strong>.
+            show in <strong className="text-fg-primary">Activity &rarr; Store</strong> and appear in
+            your <strong className="text-fg-primary">weekly income report</strong>.
             <button
               type="button"
               onClick={handleComingSoon}
@@ -260,22 +265,6 @@ export function StorePanel({
               onClick={handleComingSoon}
             />
           ))}
-
-          <button
-            type="button"
-            onClick={handleComingSoon}
-            className="w-full flex items-center gap-3 px-3.5 py-3.5 rounded-md border border-dashed border-border-strong text-left mt-1.5 hover:bg-surface-sunken transition focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
-          >
-            <span aria-hidden="true" className="shrink-0 w-7 text-center text-[16px] text-fg-muted">
-              ✦
-            </span>
-            <div className="flex-1 min-w-0">
-              <div className="text-[14px] text-fg-primary">Automate store content</div>
-              <div className="text-[11px] text-fg-muted mt-0.5">
-                Generate + list on a schedule &middot; trust ladder applies
-              </div>
-            </div>
-          </button>
         </div>
       </section>
 

@@ -14,7 +14,7 @@ const SIDEBAR_TOP = [
   { glyph: '◉', label: 'Portfolio' },
   { glyph: '◎', label: 'Activity', dot: true },
   { glyph: '◈', label: 'Pay' },
-  { glyph: '◇', label: 'Goals' },
+  { glyph: '◇', label: 'Store' },
 ];
 
 const QUICK_CHIPS = ['Save', 'Send', 'Swap', 'Credit', 'Receive', 'Charts'];

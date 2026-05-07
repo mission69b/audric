@@ -5,7 +5,7 @@
 // Visual language now matches `design_handoff_audric/.../portfolio.jsx`:
 //   • <BalanceHero> at top (large serif total + AVAILABLE / EARNING eyebrow)
 //   • Centered 4-tab nav (OVERVIEW / TIMELINE / ACTIVITY / SIMULATE)
-//   • 4-up "panel-2" stat cards (SAVINGS / HEALTH / ACTIVITY / SPENDING)
+//   • 4-up "panel-2" stat cards (SAVINGS / HEALTH / ACTIVITY / API SPEND)
 //     rendered as full-card <button>s so the entire surface is the click
 //     target (matches the engine-routing behavior from the previous panel)
 //   • 8px allocation bar with hover dim-out (legend mirrors the bar)
@@ -29,7 +29,6 @@ interface PortfolioPanelProps {
   address: string;
   balance: BalanceHeaderData;
   onSendMessage: (text: string) => void;
-  goals?: Array<{ name: string; targetAmount: number; currentAmount: number; deadline?: string }>;
   activityCount?: number;
   activityHasMore?: boolean;
 }
@@ -112,11 +111,11 @@ export function PortfolioPanel({ balance, onSendMessage, activityCount, activity
       prompt: 'Show my on-chain activity heatmap for the past year',
     },
     {
-      label: 'Spending',
+      label: 'API spend',
       drill: 'Breakdown',
-      value: '\u2014',
-      sub: '40+ services',
-      trend: 'This month',
+      value: '$0.00',
+      sub: 'no MPP services this month',
+      trend: undefined,
       prompt: 'Show my API spending breakdown by category',
     },
   ];
@@ -345,7 +344,7 @@ export function PortfolioPanel({ balance, onSendMessage, activityCount, activity
                   Full portfolio overview
                 </span>
                 <span className="block text-[12px] text-fg-muted leading-tight mt-0.5">
-                  4-panel canvas: savings, health, activity, spending
+                  4-panel canvas: savings, health, activity, API spend
                 </span>
               </div>
               <span aria-hidden="true" className="font-mono text-[18px] text-fg-disabled ml-4">

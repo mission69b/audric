@@ -20,8 +20,14 @@
 //   • The "Save it →" badge is a clickable Tag-styled <button> wired to the
 //     same prompt that the previous pill button fired (e.stopPropagation so
 //     it doesn't double-trigger the row click)
-//   • The recurring-invoice upsell row stays — not in design but it's a real
-//     entry point that was wired before; preserved per "no behavior change".
+//
+// [CHIP-Review-2.5 PR2.5-4 — 2026-05-07] Removed the dashed "Automate
+// recurring invoice" upsell row at the bottom of the recent list. Two
+// dead-feature refs in one widget: (a) the row's prompt fired the removed
+// scheduled-actions feature (S.7 simplification), and (b) the sub-line
+// said "trust ladder applies" — also retired in S.7. The row was preserved
+// per Phase 7 "no behavior change" but the rule has a half-life and the
+// underlying feature is gone now.
 
 import { useState, useEffect, useMemo } from 'react';
 import { BalanceHero } from '@/components/ui/BalanceHero';
@@ -219,8 +225,8 @@ export function PayPanel({ address, jwt, balance, onSendMessage, onShowAddress }
         />
         <StatCard
           label="API SPEND"
-          value="—"
-          sub="today · 40+ services"
+          value="$0.00"
+          sub="no MPP services this month"
           onClick={() => onSendMessage('Show me my API spending breakdown — what services have I paid for today?')}
         />
       </div>
@@ -243,10 +249,8 @@ export function PayPanel({ address, jwt, balance, onSendMessage, onShowAddress }
             Where your income goes
           </h3>
           <p className="text-[13px] text-fg-secondary leading-[1.5] mb-3.5">
-            Every payment received adds to{' '}
-            <span className="font-mono text-fg-primary">balance.available</span> immediately. Audric
-            then offers to save it, direct it to a goal, or leave it as working capital &mdash; your
-            choice, one tap.
+            Every payment received lands in your wallet immediately. Audric then offers to save it,
+            send it onward, or hold it as working capital &mdash; your choice, one tap.
           </p>
           <div className="flex flex-wrap gap-2">
             <button
@@ -258,10 +262,10 @@ export function PayPanel({ address, jwt, balance, onSendMessage, onShowAddress }
             </button>
             <button
               type="button"
-              onClick={() => onSendMessage(`Apply my ${fmtUsd(stats.received)} received payment toward my goal`)}
+              onClick={() => onSendMessage(`Send my ${fmtUsd(stats.received)} received payment onward to a contact or wallet`)}
               className="inline-flex items-center font-mono text-[10px] tracking-[0.1em] uppercase text-fg-primary bg-transparent border border-border-subtle rounded-pill px-3.5 py-2 hover:bg-surface-card hover:border-border-strong transition focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
             >
-              Goal &rsaquo;
+              Send &rsaquo;
             </button>
             <button
               type="button"
@@ -348,25 +352,6 @@ export function PayPanel({ address, jwt, balance, onSendMessage, onShowAddress }
                 </div>
               </div>
             ))}
-
-            {/* Recurring-invoice upsell row — not in the new design but a
-                real entry point in the previous skin. Kept per "no behavior
-                change" and re-styled to the new dashed-card pattern. */}
-            <button
-              type="button"
-              onClick={() => onSendMessage('Set up a recurring invoice \u2014 send $500 to my client on the 1st of every month')}
-              className="flex items-center gap-3 px-4 py-3.5 rounded-md border border-dashed border-border-subtle bg-transparent text-left hover:border-border-strong hover:bg-surface-sunken transition focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
-            >
-              <span aria-hidden="true" className="shrink-0 inline-flex items-center justify-center w-4 text-fg-muted">
-                &#8634;
-              </span>
-              <div className="min-w-0">
-                <div className="text-[14px] text-fg-secondary">Automate recurring invoice</div>
-                <div className="font-mono text-[10px] tracking-[0.06em] text-fg-muted mt-1">
-                  Monthly client billing &middot; trust ladder applies
-                </div>
-              </div>
-            </button>
           </div>
         )}
       </section>
