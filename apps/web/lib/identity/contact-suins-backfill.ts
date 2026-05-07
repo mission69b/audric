@@ -6,23 +6,27 @@ import { pickAudricHandleFromReverseNames } from './audric-handle-helpers';
  * SPEC 10 D.4 — Lazy reverse-SuiNS backfill for the audricUsername field.
  *
  * For each contact whose `audricUsername` field is unset (undefined) OR
- * `null` (previously checked with no Audric leaf — re-check is cheap and
- * self-corrects if a SuiNS leaf was registered after our last pass), do
- * a reverse SuiNS lookup against `resolvedAddress` and pick the first
- * `*.audric.sui` leaf if any.
+ * `null` AND hasn't been checked in the last 24h, do a reverse SuiNS
+ * lookup against `resolvedAddress` and pick the first `*.audric.sui`
+ * leaf if any. The 24h re-check window covers the "user registered an
+ * Audric handle after we last looked" case while bounding the noise
+ * floor.
  *
  * Persistence: if any contact's `audricUsername` value changed (string
- * appeared, string changed, or string→null on a leaf release), the
+ * appeared, string changed, or string→null on a leaf release), OR the
+ * `audricUsernameCheckedAt` timestamp was stamped on this pass, the
  * caller should write the result back. Stable rows (e.g. null → null
- * after recheck) don't trigger persistence.
+ * after a check, with the same checkedAt window) don't re-RPC at all.
  *
  * Concurrency: 4 parallel RPC calls per batch — empirical sweet spot
  * for Sui RPC providers. Tested at this rate against BlockVision
  * without throttling. Bumping higher risks 429s under multi-user load.
  *
- * Error policy: per-row failures are caught (logged + left untouched).
- * One bad address must not block the rest of the list. The next
- * GET/backfill triggers a retry.
+ * Error policy: per-row failures are caught (logged + leaf STAMPED with
+ * a checkedAt timestamp + audricUsername=null so the next 24h's worth
+ * of backfill calls SKIP this row — single-warning-per-day instead of
+ * single-warning-per-session). One bad address must not block the rest
+ * of the list.
  *
  * NOT a cron — runs on demand via `POST /api/user/preferences/contacts/
  * backfill`. The hook (`useContacts`) triggers it once per session
@@ -30,12 +34,12 @@ import { pickAudricHandleFromReverseNames } from './audric-handle-helpers';
  * low (preferences don't block on N RPC calls); the badges populate
  * ~250-500ms after page load.
  *
- * Why no `audricUsernameCheckedAt` field: stale-recheck of `null` rows
- * costs ~50ms per RPC × ~5 contacts = ~250ms per backfill call. With
- * one backfill per session, the cost is acceptable. Adding a checkedAt
- * marker would save those 250ms but requires a schema field + write-on-
- * recheck. Defer until per-user contact counts grow large enough that
- * the cost matters.
+ * [S18-F8 / vercel-logs L6] The 24h re-check window was added to
+ * eliminate "Name has expired" log noise — pre-fix, every session
+ * re-RPC'd every null/errored contact and emitted the same console.warn
+ * for addresses with expired old SuiNS handles. 30+ identical warnings
+ * over 12h for the same handle was typical. Post-fix, the same address
+ * generates at most 1 warning per 24h window per user.
  */
 
 interface BackfillOpts {
@@ -59,10 +63,34 @@ interface BackfillResult {
 
 const DEFAULT_CONCURRENCY = 4;
 
+/**
+ * [S18-F8] How long a `null` (or errored) check is considered fresh
+ * before we re-RPC. 24h balances "newly-registered Audric handles
+ * appear within a day" vs "stop re-checking expired addresses every
+ * session". Sized to roughly match a typical user's session cadence.
+ */
+const RECHECK_TTL_MS = 24 * 60 * 60 * 1000;
+
 function needsCheck(c: Contact): boolean {
-  // Never checked (undefined) OR previously checked with no result (null).
-  // String values are skipped — once we've matched a leaf, don't re-RPC.
-  return typeof c.audricUsername !== 'string';
+  // Confirmed match — never re-RPC. The handle could in theory release,
+  // but reverse-SuiNS releases are rare and the cost of a stale string
+  // (one bad badge) is much lower than the cost of re-checking every
+  // confirmed contact every session.
+  if (typeof c.audricUsername === 'string') return false;
+
+  // [S18-F8] Within the 24h re-check window AND we previously got a
+  // clean result (null) or a stamped error (also null) — skip. The
+  // checkedAt timestamp is set on EVERY backfill outcome (success, no
+  // result, OR error), so any contact with a stamp is in this window.
+  if (c.audricUsernameCheckedAt) {
+    const checkedAt = Date.parse(c.audricUsernameCheckedAt);
+    if (Number.isFinite(checkedAt) && Date.now() - checkedAt < RECHECK_TTL_MS) {
+      return false;
+    }
+  }
+
+  // Never checked (undefined) OR stale window expired — recheck.
+  return true;
 }
 
 export async function backfillAudricUsernames(
@@ -100,6 +128,12 @@ export async function backfillAudricUsernames(
       }),
     );
 
+    // [S18-F8] checkedAt is stamped on EVERY outcome (success, no-result,
+    // OR error) so the next backfill within RECHECK_TTL_MS skips this row.
+    // Errored rows are stamped with audricUsername=null (same shape as
+    // "checked, no result") — semantically: "we tried, no leaf for now".
+    const checkedAtNow = new Date().toISOString();
+
     for (const r of results) {
       if (r.status === 'fulfilled') {
         const { idx, handle } = r.value;
@@ -109,8 +143,17 @@ export async function backfillAudricUsernames(
         // schema serializer keeps the field present — distinguishes
         // "checked, none" from "never checked" on the next GET.
         const newVal: string | null = handle ?? null;
+        // Always update checkedAt; only set audricUsername if changed.
+        next[idx] = {
+          ...next[idx],
+          audricUsername: newVal,
+          audricUsernameCheckedAt: checkedAtNow,
+        };
         if (prev !== newVal) {
-          next[idx] = { ...next[idx], audricUsername: newVal };
+          changed = true;
+        } else {
+          // Even if audricUsername didn't change, the checkedAt stamp did
+          // — caller needs to persist so we don't re-RPC next session.
           changed = true;
         }
       } else {
@@ -121,7 +164,21 @@ export async function backfillAudricUsernames(
             : r.reason instanceof Error
               ? r.reason.message
               : 'unknown';
+        // Find the contact index from the failed promise — promises are
+        // returned in the same order as the batch array.
+        const failedBatchIdx = results.indexOf(r);
+        const contactIdx = batch[failedBatchIdx];
         console.warn(`[contact-backfill] reverse-SuiNS failed: ${detail}`);
+        // [S18-F8] Stamp checkedAt + null audricUsername for errored rows
+        // so the next 24h's worth of backfills skip this address. Without
+        // the stamp we re-RPC'd every session and re-emitted the same warn
+        // (30+ "Name has expired" warns / 12h for the same handle pre-fix).
+        next[contactIdx] = {
+          ...next[contactIdx],
+          audricUsername: null,
+          audricUsernameCheckedAt: checkedAtNow,
+        };
+        changed = true;
       }
     }
   }

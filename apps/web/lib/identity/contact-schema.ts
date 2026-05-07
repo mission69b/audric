@@ -94,6 +94,20 @@ export const UnifiedContactSchema = z.object({
   identifier: z.string().trim().min(1),
   resolvedAddress: z.string().regex(SUI_ADDRESS_REGEX),
   audricUsername: z.string().nullable().optional(),
+  /**
+   * [S18-F8 / SPEC 10 D.4 amendment] ISO datetime stamped by the lazy
+   * reverse-SuiNS backfill on EACH check (success, no-result, OR error).
+   * Used by `needsCheck()` to skip re-RPC of `null` / errored rows within
+   * a 24h TTL — eliminates the per-session re-check noise (12h log triage
+   * surfaced 30+ "Name has expired" warnings for the same address). The
+   * 24h window self-corrects when a previously-expired SuiNS leaf gets
+   * renewed — re-RPC happens at most once per day per address.
+   *
+   * Legacy contacts (pre-S18-F8) lack this field; `needsCheck()` treats
+   * absent as "stale" and runs the check on the next backfill, which then
+   * stamps it. Forward-only migration.
+   */
+  audricUsernameCheckedAt: z.string().datetime().optional(),
   addedAt: AddedAtSchema.optional(),
   source: ContactSourceSchema.optional(),
 });
