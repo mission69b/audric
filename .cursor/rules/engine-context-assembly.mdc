@@ -78,7 +78,7 @@ A 1-line reminder for the agent to check its own answer before sending. Lightwei
 Context assembly should target **< 4k tokens** of system-prompt overhead per turn. Breakdown:
 - Profile + Memory + AdviceLog: ~2k cap (`buildAdviceContext` already truncates)
 - `<financial_context>`: ~500 tokens
-- Tool definitions (34 tools): ~1.5k
+- Tool definitions (35 tools): ~1.5k
 
 If a new layer pushes total > 6k, it's too much. Compact, summarize, or move to a tool the agent can call on-demand.
 

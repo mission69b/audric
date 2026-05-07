@@ -41,7 +41,7 @@ audric/
 | Product | What it is | Implementation | Status |
 |---------|-----------|----------------|--------|
 | 🪪 **Audric Passport** | Trust layer — zkLogin via Google, non-custodial Sui wallet, tap-to-confirm consent on every write, sponsored gas. Wraps every other product. | `@t2000/sdk` + Enoki + `@mysten/dapp-kit` | Live |
-| 🧠 **Audric Intelligence** | Brain (the moat) — 5 systems orchestrate every money decision. Engineering-facing brand; users experience it as "Audric just understood me." | `@t2000/engine` (34 tools, reasoning, guards, recipes) + audric-side `record_advice` + silent context (`engine-context.ts`, `<financial_context>` daily snapshot from `UserFinancialContext`) | Live |
+| 🧠 **Audric Intelligence** | Brain (the moat) — 5 systems orchestrate every money decision. Engineering-facing brand; users experience it as "Audric just understood me." | `@t2000/engine` (35 tools, reasoning, guards, recipes) + audric-side `record_advice` + silent context (`engine-context.ts`, `<financial_context>` daily snapshot from `UserFinancialContext`) | Live |
 | 💰 **Audric Finance** | Manage your money on Sui — Save (NAVI lend, 3–8% APY USDC), Credit (NAVI borrow, health factor), Swap (Cetus aggregator, 20+ DEXs, 0.1% fee), Charts (yield/health/portfolio viz). Every write taps to confirm via Passport. | `@t2000/sdk` NAVI builders + `cetus-swap.ts` + `@t2000/engine` chart canvas templates + audric `/api/internal/*` read endpoints | Live |
 | 💸 **Audric Pay** | Money primitive — send USDC, receive via payment links / invoices / QR. Free, global, instant on Sui. | `@t2000/sdk` direct Sui tx + payment-link contract + invoice flows | Live |
 | 🛒 **Audric Store** | Creator marketplace at `audric.ai/username`. AI-generated music/art/ebooks sold in USDC. 92% to creator. | `@t2000/sdk` + Walrus + payment links | Coming soon (Phase 5) |
@@ -119,7 +119,7 @@ audric/
 User types message
   → POST /api/engine/chat (SSE stream) — daily-free billing gate (5 unverified / 20 verified per rolling 24h)
   → engine-context.ts: buildFullDynamicContext() → injects profile, memory, advice log, chain facts (all silent)
-  → engine-factory.ts: QueryEngine → AnthropicProvider → Claude with 34 tools (23 read + 11 write, BlockVision-backed pricing via `token_prices` / `balance_check` / `portfolio_analysis`)
+  → engine-factory.ts: QueryEngine → AnthropicProvider → Claude with 35 tools (24 read + 11 write, BlockVision-backed pricing via `token_prices` / `balance_check` / `portfolio_analysis`)
   → Read tools (balance, savings, health, analytics) → auto-executed server-side
   → Write tools (save, withdraw, send) → pending_action event
   → Client displays confirmation card

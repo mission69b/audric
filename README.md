@@ -15,7 +15,7 @@ Audric is exactly five products. Everything you can do is one of them. (S.18 rev
 | Product | Description |
 |---------|-------------|
 | 🪪 **Audric Passport** | Trust layer — sign in with Google, non-custodial Sui wallet in 3 seconds, every write taps to confirm, sponsored gas. Wraps every other product. |
-| 🧠 **Audric Intelligence** | The brain (the moat) — 5 systems: Agent Harness (34 tools), Reasoning Engine (14 guards, 6 skill recipes), Silent Profile, Chain Memory, AdviceLog. Engineering-facing brand; users experience it as "Audric just understood me." |
+| 🧠 **Audric Intelligence** | The brain (the moat) — 5 systems: Agent Harness (35 tools), Reasoning Engine (14 guards, 6 skill recipes), Silent Profile, Chain Memory, AdviceLog. Engineering-facing brand; users experience it as "Audric just understood me." |
 | 💰 **Audric Finance** | Manage your money on Sui — Save (NAVI lend, 3–8% APY on USDC or USDsui — strategic exception added in v0.51.0), Credit (NAVI borrow USDC or USDsui against your savings, health factor visible — repay must use the same asset as the borrow), Swap (Cetus aggregator across 20+ DEXs, 0.1% fee), Charts (interactive yield/health/portfolio viz from chat). Every write taps to confirm via Passport. |
 | 💸 **Audric Pay** | Money primitive — send USDC to anyone, receive via payment links / invoices / QR. Free, global, instant on Sui. No bank, no borders, no fees. |
 | 🛒 **Audric Store** | Creator marketplace at `audric.ai/username`. Sell AI-generated music, art, ebooks in USDC. **Coming soon (Phase 5).** |
@@ -35,8 +35,8 @@ Your money lives in a non-custodial wallet. Audric executes transactions, but yo
 | Framework | Next.js 15 (App Router) |
 | Auth | zkLogin via Enoki (Google OAuth → Sui wallet) |
 | Gas | Enoki sponsored transactions (zero gas for users) |
-| AI | `@t2000/engine` — 34 tools, reasoning engine, extended thinking, canvas |
-| Database | NeonDB (Prisma) — 16 models (users, profiles, memories, financial context, goals, advice log, conversation log, session usage, payments, contacts, watch addresses, linked wallets, portfolio snapshots, turn metrics, app events, service purchases) |
+| AI | `@t2000/engine` — 35 tools, reasoning engine, extended thinking, canvas |
+| Database | NeonDB (Prisma) — 15 models (users, user preferences, profiles, memories, financial context, advice log, conversation log, session usage, payments, watch addresses, linked wallets, portfolio snapshots, turn metrics, app events, service purchases) |
 | Sessions | Upstash Redis (KV) |
 | Styling | Tailwind CSS v4, Agentic Design System |
 | Hosting | Vercel |
@@ -45,9 +45,9 @@ Your money lives in a non-custodial wallet. Audric executes transactions, but yo
 
 > **Not a chatbot. A financial agent.** Five systems work together to understand your money, reason about decisions, and get smarter over time. Every action still waits on Audric Passport's tap-to-confirm.
 
-### 🎛️ Agent Harness — 34 tools, one agent
+### 🎛️ Agent Harness — 35 tools, one agent
 
-23 read tools + 11 write tools covering balance checks, savings (`save_deposit`, `withdraw`), lending (`borrow`, `repay_debt`), swaps (`swap_quote`, `swap_execute`), liquid staking (`volo_stake`, `volo_unstake`), payments (`send_transfer`, `pay_api`), payment links / invoices, on-chain analytics, and BlockVision-backed pricing (`token_prices`). Read tools execute in parallel; write tools require user Passport confirmation and execute sequentially under a transaction mutex (`TxMutex`).
+24 read tools + 11 write tools covering balance checks, savings (`save_deposit`, `withdraw`), lending (`borrow`, `repay_debt`), swaps (`swap_quote`, `swap_execute`), liquid staking (`volo_stake`, `volo_unstake`), payments (`send_transfer`, `pay_api`), payment links / invoices, on-chain analytics, BlockVision-backed pricing (`token_prices`), and SuiNS resolution (`resolve_suins`). Read tools execute in parallel; write tools require user Passport confirmation and execute sequentially under a transaction mutex (`TxMutex`).
 
 ### ⚡ Reasoning Engine — thinks before it acts
 
@@ -105,7 +105,7 @@ Structured card types for tool results: balance, savings, health, staking, proto
 
 ```
 audric.ai (this repo)
-├── @t2000/engine    ← Agent engine (34 tools, reasoning, MCP, streaming)
+├── @t2000/engine    ← Agent engine (35 tools, reasoning, MCP, streaming)
 ├── @t2000/sdk       ← Core SDK (wallet, balance, transactions)
 ├── @suimpp/mpp      ← MPP payment client (Sui USDC)
 └── @mysten/sui      ← Sui blockchain client
