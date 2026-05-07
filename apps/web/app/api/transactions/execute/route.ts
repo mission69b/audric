@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { env } from '@/lib/env';
+import {
+  parseEnokiErrorBody,
+  isExpiredSessionError,
+  SESSION_EXPIRED_USER_MESSAGE,
+  SESSION_EXPIRED_RESPONSE_CODE,
+} from '@/lib/enoki-error';
 
 const ENOKI_SECRET_KEY = env.ENOKI_SECRET_KEY;
 const ENOKI_BASE = 'https://api.enoki.mystenlabs.com/v1';
@@ -59,33 +65,19 @@ export async function POST(request: NextRequest) {
       const errorBody = await res.text().catch(() => '');
       console.error(`[execute] Enoki error (${res.status}):`, errorBody);
 
-      // Enoki error envelope is `{ errors: [{ code, message }] }`. The
-      // pre-S18-F2 code parsed `parsed.message` (always undefined) and fell
-      // back to a generic "Execution failed (400)" — the engine had nothing
-      // useful to narrate, so the agent confabulated "NAVI returned a 400".
-      let enokiCode: string | undefined;
-      let enokiMessage: string | undefined;
-      try {
-        const parsed = JSON.parse(errorBody) as {
-          errors?: Array<{ code?: string; message?: string }>;
-          message?: string;
-        };
-        enokiCode = parsed.errors?.[0]?.code;
-        enokiMessage = parsed.errors?.[0]?.message ?? parsed.message;
-      } catch {}
+      // [S18-F2 + S18-F7] Enoki's `code: 'expired'` and `code: 'jwt_error'`
+      // both indicate a dead zkLogin session — surface as 401 + actionable
+      // copy so the chat surface narrates the recovery path instead of
+      // "NAVI 400" or "no applicable key found in the JSON Web Key Set".
+      // Detection logic + copy live in `lib/enoki-error.ts` (shared with
+      // the prepare route — single source of truth for both surfaces).
+      const enoki = parseEnokiErrorBody(errorBody);
 
-      // [S18-F2] Enoki's `code: 'expired'` is misleading — the message reads
-      // "Sponsored transaction has expired", but in practice it fires when
-      // the `zklogin-jwt` header on the prior `/sponsor` request was stale.
-      // Time between prepare + execute is < 2s in our flow (well under any
-      // reasonable sponsorship-blob TTL), and a fresh sign-in immediately
-      // succeeds with the same code. Return 401 + actionable copy so the
-      // chat surface narrates the recovery path instead of "NAVI 400".
-      if (enokiCode === 'expired') {
+      if (isExpiredSessionError(enoki)) {
         return NextResponse.json(
           {
-            error: 'Your sign-in session has expired. Please sign out and sign back in to continue.',
-            code: 'session_expired',
+            error: SESSION_EXPIRED_USER_MESSAGE,
+            code: SESSION_EXPIRED_RESPONSE_CODE,
           },
           { status: 401 },
         );
@@ -99,7 +91,7 @@ export async function POST(request: NextRequest) {
       }
 
       return NextResponse.json(
-        { error: enokiMessage ?? `Execution failed (${res.status})` },
+        { error: enoki.message ?? `Execution failed (${res.status})` },
         { status: res.status >= 500 ? 502 : res.status },
       );
     }

@@ -23,6 +23,12 @@ import {
   emitBundleOutcome,
   emitSwapComposeDuration,
 } from '@/lib/engine/bundle-metrics';
+import {
+  parseEnokiErrorBody,
+  isExpiredSessionError,
+  SESSION_EXPIRED_USER_MESSAGE,
+  SESSION_EXPIRED_RESPONSE_CODE,
+} from '@/lib/enoki-error';
 
 export const runtime = 'nodejs';
 
@@ -310,8 +316,12 @@ export async function POST(request: NextRequest) {
           { status: 429 },
         );
       }
+      // [S18-F7] Session-expired carries a `code` so the client can
+      // programmatically detect + trigger re-auth. Other errors omit it.
+      const body: { error: string; code?: string } = { error: result.error };
+      if (result.code) body.code = result.code;
       return NextResponse.json(
-        { error: result.error },
+        body,
         { status: result.status >= 500 ? 502 : result.status },
       );
     }
@@ -327,7 +337,7 @@ export async function POST(request: NextRequest) {
 
 type SponsorResult =
   | { ok: true; bytes: string; digest: string }
-  | { ok: false; status: number; error: string };
+  | { ok: false; status: number; error: string; code?: string };
 
 async function buildAndSponsor(params: BuildRequest, jwt: string | null): Promise<SponsorResult> {
   console.log(`[prepare] composing ${params.type}...`);
@@ -463,12 +473,33 @@ async function buildAndSponsor(params: BuildRequest, jwt: string | null): Promis
     const errorBody = await sponsorRes.text().catch(() => '');
     console.error(`[sponsor] Enoki error (${sponsorRes.status}):`, errorBody);
 
-    let errorMsg = `Sponsorship failed (${sponsorRes.status})`;
-    try {
-      const parsed = JSON.parse(errorBody);
-      const enokiMsg = parsed?.errors?.[0]?.message ?? parsed?.message;
-      if (enokiMsg) errorMsg = enokiMsg;
-    } catch {}
+    const enoki = parseEnokiErrorBody(errorBody);
+    const errorMsg = enoki.message ?? `Sponsorship failed (${sponsorRes.status})`;
+
+    // [S18-F7 / vercel-logs L5] Enoki's `code: 'jwt_error'` ("no applicable
+    // key found in the JSON Web Key Set") fires when Google rotates a JWK
+    // and the user's JWT was signed by the now-removed key. Same recovery
+    // path as `code: 'expired'` (S18-F2 in the execute route): sign out +
+    // sign back in. Surface as 401 + actionable copy via the shared helper
+    // so the chat narrates the recovery flow instead of the cryptic raw
+    // Enoki message. The POST handler maps `code: SESSION_EXPIRED_RESPONSE_CODE`
+    // → 401 + `{ error, code }` body.
+    if (isExpiredSessionError(enoki)) {
+      if (isBundle) {
+        emitBundleOutcome({
+          outcome: 'sponsorship_failed',
+          stepCount: steps.length,
+          statusCode: 401,
+          reason: 'session_expired',
+        });
+      }
+      return {
+        ok: false,
+        status: 401,
+        error: SESSION_EXPIRED_USER_MESSAGE,
+        code: SESSION_EXPIRED_RESPONSE_CODE,
+      };
+    }
 
     // [SPEC 7 P2.7] Enoki rejected the sponsor request. Most commonly this
     // is a dry-run failure (the assembled Payment Intent would have reverted on-chain
