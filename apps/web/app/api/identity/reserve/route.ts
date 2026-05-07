@@ -10,6 +10,7 @@ import { Prisma } from '@/lib/generated/prisma/client';
 import { prisma } from '@/lib/prisma';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { getSuiRpcUrl } from '@/lib/sui-rpc';
+import { withSuiRetry } from '@/lib/sui-retry';
 import { isReserved } from '@/lib/identity/reserved-usernames';
 import { validateAudricLabel } from '@/lib/identity/validate-label';
 import { validateJwt } from '@/lib/auth';
@@ -206,7 +207,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   let onChainAddress: string | null;
   try {
-    onChainAddress = await resolveSuinsViaRpc(handle, { suiRpcUrl });
+    // [S18-F6 / vercel-logs L4] Wrap in withSuiRetry to absorb sub-second
+    // SuiNS rate-limit blips. Pre-fix: 18 production failures / 12h from a
+    // single 429 → user got 503 + had to manually retry.
+    onChainAddress = await withSuiRetry(
+      () => resolveSuinsViaRpc(handle, { suiRpcUrl }),
+      { label: 'reserve:premint-check' },
+    );
   } catch (err) {
     const detail =
       err instanceof SuinsRpcError
@@ -246,11 +253,29 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   let txDigest: string;
   try {
-    const result = await suiClient.signAndExecuteTransaction({
-      signer: keypair,
-      transaction: tx,
-      options: { showEffects: true },
-    });
+    // [S18-F6 / vercel-logs L1+L2+L3] Wrap in withSuiRetry to absorb:
+    //   - Sui RPC 429s (34 failures / 12h pre-fix)
+    //   - Shared-object stale-version contention on the audric registry
+    //     ("Transaction needs to be rebuilt..." — 7 failures / 12h pre-fix)
+    //   - Shared-object lock contention (2 failures / 12h pre-fix)
+    // The audric registry is a single Sui shared object — concurrent claims
+    // race for the same version. Sui checkpoint cadence (~250ms) advances the
+    // version; signAndExecuteTransaction internally re-resolves the latest
+    // version on each call, so retrying after a small backoff resolves
+    // contention without manual tx rebuild.
+    //
+    // On-chain reverts (Move aborts, insufficient gas) are NOT transient —
+    // we throw them inside the closure so withSuiRetry's matcher rejects
+    // them on the first attempt and the caller surfaces the real error.
+    const result = await withSuiRetry(
+      () =>
+        suiClient.signAndExecuteTransaction({
+          signer: keypair,
+          transaction: tx,
+          options: { showEffects: true },
+        }),
+      { label: 'reserve:mint' },
+    );
     if (result.effects?.status?.status !== 'success') {
       throw new Error(
         `Mint tx reverted on-chain: ${result.effects?.status?.error ?? 'unknown reason'}`,
