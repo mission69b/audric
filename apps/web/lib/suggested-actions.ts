@@ -16,6 +16,7 @@ export interface SuggestedActionItem {
  * Field origins:
  * - `toToken`           — `swap_execute` (input echoed in result)
  * - `direction`/`query`/`address`/`primary` — `resolve_suins`
+ * - `found`/`username`/`fullHandle`/`profileUrl` — `lookup_user` (audric Passport)
  * - `url`/`label`/`slug` — `create_payment_link` / `create_invoice`
  * - `name`              — `save_contact`
  */
@@ -25,6 +26,10 @@ interface ToolResultData {
   query?: string;
   address?: string | null;
   primary?: string | null;
+  found?: boolean;
+  username?: string;
+  fullHandle?: string;
+  profileUrl?: string;
   url?: string;
   label?: string | null;
   slug?: string;
@@ -119,8 +124,36 @@ const TOOL_CHIPS: Record<string, SuggestedActionItem[] | ChipBuilder> = {
     { icon: '🏦', label: 'SAVE REWARDS', prompt: 'Save my claimed rewards' },
   ],
   // ── CHIP_REVIEW_2 F-4 / F-5 backfill (2026-05-07) ─────────────────
-  // Audric Passport (SPEC 10) — resolved a SuiNS handle to an address (or vice versa).
-  // The natural follow-ups are: send to that user, save them as a contact.
+  // Audric Passport (SPEC 10) — `lookup_user` is the audric-specific tool
+  // that resolves Audric handles. (The engine's `resolve_suins` is for
+  // generic SuiNS — covered separately below.) Live walkthrough caught
+  // that we'd registered `resolve_suins` chips but the agent on audric/web
+  // calls `lookup_user` instead, so generic fallback chips were rendering.
+  lookup_user: (data) => {
+    if (data.found && data.fullHandle) {
+      const handle = data.fullHandle;
+      const username = data.username ?? handle;
+      const profileUrl = data.profileUrl;
+      const sendChip = { icon: '💸', label: `SEND TO ${username.toUpperCase()}`, prompt: `Send USDC to ${handle}` };
+      const saveChip = { icon: '💾', label: 'SAVE AS CONTACT', prompt: `Save ${handle} as a contact` };
+      if (profileUrl) {
+        return [
+          sendChip,
+          { icon: '🪪', label: 'VIEW PROFILE', prompt: `Open ${profileUrl}` },
+          saveChip,
+        ];
+      }
+      return [sendChip, saveChip];
+    }
+    // Miss (handle not registered, or a generic .sui name) — offer the
+    // SuiNS fallback rather than a confusing send chip to a non-Audric
+    // handle. `resolve_suins` covers generic SuiNS lookups.
+    return [
+      { icon: '🔍', label: 'TRY SUINS', prompt: 'Look this up via SuiNS instead' },
+      { icon: '💰', label: 'CHECK BALANCE', prompt: 'What is my balance?' },
+    ];
+  },
+  // Generic SuiNS lookup (engine tool — non-Audric .sui names).
   resolve_suins: (data) => {
     const handle = data.direction === 'forward' ? data.query : data.primary;
     if (handle) {
@@ -136,6 +169,11 @@ const TOOL_CHIPS: Record<string, SuggestedActionItem[] | ChipBuilder> = {
       { icon: '💰', label: 'CHECK BALANCE', prompt: 'What is my balance?' },
     ];
   },
+  // Contacts list — natural next moves are to send or add a new one.
+  list_contacts: [
+    { icon: '➕', label: 'ADD CONTACT', prompt: 'Save a new contact' },
+    { icon: '💸', label: 'SEND TO CONTACT', prompt: 'Send USDC to one of my contacts' },
+  ],
   // Audric Pay — payment links / invoices. Post-create, COPY LINK and SHARE
   // are the two universal next actions. Cancel + list flows offer their
   // counterparts so the user can stay in the receive-money mental loop.
