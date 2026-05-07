@@ -804,6 +804,14 @@ function buildSyntheticPrefetch(
   }
 
   if (positions && (positions.savings > 0 || positions.borrows > 0)) {
+    // [CHIP-Review-2 F-11b — May 2026] Pre-format APY decimals as percent
+    // strings BEFORE serialising into the prefetch payload. The LLM was
+    // reading the raw `savingsRate: 0.0787` field and faithfully echoing it
+    // back as "0.079%" instead of multiplying by 100. Pre-formatting to
+    // "7.87%" removes the ambiguity at the source — the model can only
+    // copy the correctly-formatted string. Field names use the `Percent`
+    // suffix so the model can't confuse them with decimal-valued fields.
+    const fmtPct = (decimal: number) => `${(decimal * 100).toFixed(2)}%`;
     toolUses.push({
       type: 'tool_use',
       id: 'prefetch_sav',
@@ -816,12 +824,24 @@ function buildSyntheticPrefetch(
       content: JSON.stringify({
         totalSavings: positions.savings,
         totalBorrows: positions.borrows,
-        savingsRate: positions.savingsRate,
+        savingsRatePercent: fmtPct(positions.savingsRate),
         healthFactor: positions.healthFactor,
         maxBorrow: positions.maxBorrow,
         pendingRewards: positions.pendingRewards,
-        supplies: positions.supplies,
-        borrows: positions.borrows_detail,
+        supplies: positions.supplies.map((s) => ({
+          asset: s.asset,
+          amount: s.amount,
+          amountUsd: s.amountUsd,
+          apyPercent: fmtPct(s.apy),
+          protocol: s.protocol,
+        })),
+        borrows: positions.borrows_detail.map((b) => ({
+          asset: b.asset,
+          amount: b.amount,
+          amountUsd: b.amountUsd,
+          apyPercent: fmtPct(b.apy),
+          protocol: b.protocol,
+        })),
       }),
     });
   }
