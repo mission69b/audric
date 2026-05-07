@@ -633,7 +633,11 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
     error: balanceQuery.isError,
   }), [balanceQuery.data, balanceQuery.isLoading, balanceQuery.isError]);
 
-  const chipExpand = useChipExpand({ idleUsdc: balance.usdc, currentApy: balance.savingsRate });
+  const chipExpand = useChipExpand({
+    idleUsdc: balance.usdc,
+    idleUsdsui: balance.assetBalances?.USDsui ?? 0,
+    currentApy: balance.savingsRate,
+  });
 
   // [v0.56 receive-toast] Stamped right before EVERY user-initiated write
   // tool runs (in handleExecuteAction). useReceiveToast reads it to
@@ -1078,6 +1082,17 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
         // explicitly says USDC; default the asset so the picker auto-skips.
         chipFlow.startFlow('save', { ...flowContext, asset: 'USDC' });
         chipFlow.selectAmount(balance.usdc);
+        return;
+      }
+      if (flow === 'save-all-usdsui') {
+        // [CHIP_REVIEW_2 FU-1+FU-3 / 2026-05-07] Mirror of `save-all` for the
+        // USDsui-only-idle case. Surfaced when the user holds USDsui but no
+        // idle USDC — the chip-bar's first action says "Save all $X USDsui"
+        // and tapping it auto-execs the save with asset preselected (picker
+        // auto-skips because only USDsui is saveable in this state).
+        const usdsui = balance.assetBalances?.USDsui ?? 0;
+        chipFlow.startFlow('save', { ...flowContext, asset: 'USDsui' });
+        chipFlow.selectAmount(usdsui);
         return;
       }
       if (flow === 'risk-explain') {
@@ -2050,7 +2065,11 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
         onSend={handleInputSubmit}
         onChipClick={handleChipClick}
         activeFlow={chipFlow.state.flow}
-        prefetch={{ idleUsdc: balance.usdc, currentApy: balance.savingsRate }}
+        prefetch={{
+          idleUsdc: balance.usdc,
+          idleUsdsui: balance.assetBalances?.USDsui ?? 0,
+          currentApy: balance.savingsRate,
+        }}
         voiceMode={{
           enabled: voiceStatus.enabled,
           state: voice.state,
@@ -2364,7 +2383,11 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
                       onPrompt={(prompt) => engine.sendMessage(prompt)}
                       activeFlow={chipFlow.state.flow}
                       disabled={chipFlow.state.phase === 'executing'}
-                      prefetch={{ idleUsdc: balance.usdc, currentApy: balance.savingsRate }}
+                      prefetch={{
+                        idleUsdc: balance.usdc,
+                        idleUsdsui: balance.assetBalances?.USDsui ?? 0,
+                        currentApy: balance.savingsRate,
+                      }}
                       expandedChip={chipExpand.expandedChip}
                       onExpandedChange={chipExpand.setExpandedChip}
                     />
@@ -2390,7 +2413,11 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
                 </div>
                 {chipExpand.activeConfig && chipExpand.expandedChip === 'save' && (
                   <SaveDrawer
-                    prefetch={{ idleUsdc: balance.usdc, currentApy: balance.savingsRate }}
+                    prefetch={{
+                      idleUsdc: balance.usdc,
+                      idleUsdsui: balance.assetBalances?.USDsui ?? 0,
+                      currentApy: balance.savingsRate,
+                    }}
                     onSelect={(prompt) => {
                       chipExpand.close();
                       engine.sendMessage(prompt);

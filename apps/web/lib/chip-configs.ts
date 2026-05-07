@@ -14,13 +14,64 @@ export interface ChipConfig {
 
 export interface ChipPrefetchData {
   idleUsdc: number;
+  /**
+   * [CHIP_REVIEW_2 FU-1+FU-3 / 2026-05-07] Idle USDsui balance (saveable per
+   * the v0.51 strategic exception). Drives the SAVE chip's L2 first action:
+   * when BOTH USDC + USDsui are idle, the auto-action becomes "Save my
+   * stables" → flow: 'save' (no preselected asset → the L1.5 picker shows).
+   * When only one stable is idle, the chip auto-execs that one. Without
+   * this field the picker infrastructure (F-2 work) is unreachable from
+   * the chip-bar.
+   */
+  idleUsdsui?: number;
   currentApy: number;
 }
 
 export function buildChipConfigs(prefetch?: ChipPrefetchData): ChipConfig[] {
   const idleUsdc = prefetch?.idleUsdc ?? 0;
+  const idleUsdsui = prefetch?.idleUsdsui ?? 0;
   const currentApy = prefetch?.currentApy ?? 0;
   const apyStr = currentApy > 0 ? `${(currentApy * 100).toFixed(1)}%` : '~5%';
+
+  // [CHIP_REVIEW_2 FU-1+FU-3 / 2026-05-07] Save auto-action picker. Three cases:
+  // (1) Both stables idle (>$1 each) → "Save my stables ($total)" routes to
+  //     flow: 'save' WITHOUT a preselected asset; the dashboard's L1.5
+  //     picker auto-skip effect renders the USDC-vs-USDsui picker because
+  //     `getSaveableAssets()` returns length===2. User taps to pick.
+  // (2) Only USDC idle → keep the original `save-all` auto-execute (USDC).
+  // (3) Only USDsui idle → mirror auto-execute as `save-all-usdsui`.
+  // (4) Neither → generic "Save USDC" prompt.
+  let saveAction: ChipAction;
+  if (idleUsdc > 1 && idleUsdsui > 1) {
+    const total = Math.floor(idleUsdc + idleUsdsui);
+    saveAction = {
+      label: `Save my stables ($${total})`,
+      sublabel: `${Math.floor(idleUsdc)} USDC + ${Math.floor(idleUsdsui)} USDsui → pick which`,
+      prompt: 'Save my idle stables',
+      flow: 'save',
+    };
+  } else if (idleUsdc > 1) {
+    saveAction = {
+      label: `Save all $${Math.floor(idleUsdc)} USDC`,
+      sublabel: 'idle balance → NAVI',
+      prompt: 'Save all my idle USDC',
+      flow: 'save-all',
+    };
+  } else if (idleUsdsui > 1) {
+    saveAction = {
+      label: `Save all $${Math.floor(idleUsdsui)} USDsui`,
+      sublabel: 'idle balance → NAVI',
+      prompt: 'Save all my idle USDsui',
+      flow: 'save-all-usdsui',
+    };
+  } else {
+    saveAction = {
+      label: 'Save',
+      sublabel: 'pick stable → amount → confirm',
+      prompt: 'Save into NAVI savings',
+      flow: 'save',
+    };
+  }
 
   return [
     // ── Audric Finance ────────────────────────────────────────
@@ -28,12 +79,7 @@ export function buildChipConfigs(prefetch?: ChipPrefetchData): ChipConfig[] {
       id: 'save',
       label: 'Save',
       actions: [
-        {
-          label: idleUsdc > 1 ? `Save all $${Math.floor(idleUsdc)} USDC` : 'Save USDC',
-          sublabel: idleUsdc > 1 ? 'idle balance → NAVI' : 'pick amount → confirm → done',
-          prompt: idleUsdc > 1 ? 'Save all my idle USDC' : 'Save USDC into savings',
-          flow: idleUsdc > 1 ? 'save-all' : 'save',
-        },
+        saveAction,
         {
           label: 'Check savings rate',
           sublabel: `live NAVI APY · ${apyStr}`,
@@ -59,7 +105,15 @@ export function buildChipConfigs(prefetch?: ChipPrefetchData): ChipConfig[] {
       id: 'borrow',
       label: 'Credit',
       actions: [
-        { label: 'Borrow USDC', sublabel: 'pick amount → confirm', prompt: 'Borrow USDC', flow: 'borrow' },
+        // [CHIP_REVIEW_2 FU-2 / 2026-05-07] Was "Borrow USDC". The flow already
+        // routes through the F-3 L1.5 picker (USDC vs USDsui — both are
+        // borrowable stables on NAVI per `usdc-only-saves.mdc` v0.51), so
+        // the "USDC" qualifier on the label was misleading. Now matches the
+        // Send chip pattern: generic verb + sublabel that names the picker
+        // step. Prompt narrowed to just "Borrow" so the flow handler
+        // (chipFlow.startFlow with no preselected asset) is the path of
+        // truth, not a USDC-biased prompt string.
+        { label: 'Borrow', sublabel: 'pick stable → amount → confirm', prompt: 'Borrow', flow: 'borrow' },
         { label: 'Repay debt', sublabel: 'pick amount → wipe debt', prompt: 'Repay all my debt', flow: 'repay' },
         { label: 'Health factor check', sublabel: 'liquidation risk analysis', prompt: 'What is my health factor and am I at risk of liquidation?' },
       ],

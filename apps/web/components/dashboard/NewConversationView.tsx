@@ -41,7 +41,7 @@ interface NewConversationViewProps {
   onSend: (prompt: string) => void;
   onChipClick: (flow: string) => void;
   activeFlow: string | null;
-  prefetch?: { idleUsdc: number; currentApy: number };
+  prefetch?: { idleUsdc: number; idleUsdsui?: number; currentApy: number };
   /** Optional voice-mode wiring (forwarded to <InputBar>). */
   voiceMode?: ComponentProps<typeof InputBar>['voiceMode'];
 }
