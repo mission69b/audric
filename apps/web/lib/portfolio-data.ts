@@ -101,7 +101,20 @@ export async function fetchPositions(address: string): Promise<PositionSummary> 
   const healthFactor = finiteHFs.length > 0
     ? Math.min(...finiteHFs.map((h) => h.healthFactor))
     : null;
-  const maxBorrow = validHealths.reduce((sum, h) => sum + (h.maxBorrow ?? 0), 0);
+  // [CHIP_REVIEW_2 F-7 / P0 fix 2026-05-07] Apply MIN_HEALTH_FACTOR=1.5 safety
+  // divisor here so EVERY consumer (chip-flow `capForFlow('borrow')`, balance
+  // hook, HealthCard "Max Borrow" detail row, engine `health_check` tool's
+  // hosted maxBorrow) reports the same SAFE max. Prior to this fix, adapter
+  // `getHealth().maxBorrow` returned `supplied × 0.75 − borrowed` — the raw
+  // on-chain maximum that lands HF at exactly 1.0 (liquidation knife-edge).
+  // The chip-flow's "Borrow Max" preset used that raw value, letting users
+  // tap-borrow into liquidation territory while bypassing the engine's
+  // 1.5-HF guard (chip writes go through /api/transactions/prepare which
+  // calls `addBorrowToTx` directly, NOT `t2000.borrow` → `maxBorrowAmount`).
+  // Symmetric with the SDK's authoritative `maxBorrowAmount` formula at
+  // `packages/sdk/src/protocols/navi.ts:599`. See `single-source-of-truth.mdc`.
+  const MIN_HEALTH_FACTOR = 1.5;
+  const maxBorrow = validHealths.reduce((sum, h) => sum + (h.maxBorrow ?? 0), 0) / MIN_HEALTH_FACTOR;
 
   type RewardResult = Awaited<ReturnType<NonNullable<typeof lendingAdapters[0]['getPendingRewards']>>>;
   const pendingRewards = rewardResults
