@@ -47,8 +47,17 @@ import { isReserved } from '@/lib/identity/reserved-usernames';
 // ───────────────────────────────────────────────────────────────────────────
 
 const PARENT_SUFFIX = '.audric.sui';
+const CHECK_DEBOUNCE_MS = 300;
 
 type Phase = 'idle' | 'submitting' | 'success';
+
+// [S18-F18] Live availability state — mirrors UsernamePicker's pattern.
+// Pre-fix the modal only did local syntax validation and showed AVAILABLE
+// for any well-formed handle, so users could type a known-taken name
+// (e.g. funkii) and see "// AVAILABLE" until they clicked CHANGE HANDLE
+// and got the 409 surprise. The picker has been doing it right since
+// SPEC 10 Phase B.1; the change modal just never got the same treatment.
+type Availability = 'idle' | 'checking' | 'available' | 'taken' | 'verifier-down' | 'error';
 
 type ChangeReason =
   | 'invalid'
@@ -87,6 +96,11 @@ export interface UsernameChangeModalProps {
    */
   onChanged: (newLabel: string, fullHandle: string) => void;
   changeFetcher?: (newLabel: string) => Promise<ChangeSuccessBody>;
+  /**
+   * [S18-F18] Optional live-availability fetcher. Defaults to
+   * GET /api/identity/check?username=<label>. Tests inject a stub.
+   */
+  checkFetcher?: (label: string) => Promise<{ available: boolean; reason?: string; verifierDown?: boolean }>;
 }
 
 export class ChangeError extends Error {
@@ -108,12 +122,14 @@ export function UsernameChangeModal({
   onClose,
   onChanged,
   changeFetcher,
+  checkFetcher,
 }: UsernameChangeModalProps) {
   const [phase, setPhase] = useState<Phase>('idle');
   const [value, setValue] = useState('');
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [successHandle, setSuccessHandle] = useState<string | null>(null);
   const [focused, setFocused] = useState(false);
+  const [availability, setAvailability] = useState<Availability>('idle');
   const inputRef = useRef<HTMLInputElement>(null);
   const inputId = useId();
   const helpId = useId();
@@ -126,6 +142,7 @@ export function UsernameChangeModal({
       setSubmitError(null);
       setSuccessHandle(null);
       setFocused(false);
+      setAvailability('idle');
       const t = setTimeout(() => inputRef.current?.focus(), 30);
       return () => clearTimeout(t);
     }
@@ -215,10 +232,69 @@ export function UsernameChangeModal({
     };
   }, [value, currentLabel]);
 
+  // [S18-F18] Live availability check — debounced GET /api/identity/check.
+  // Same pattern as UsernamePicker.tsx: 300ms debounce, last-write-wins
+  // via checkIdRef, only fires when local validation passes (so we don't
+  // burn server checks on syntactically invalid input).
+  const defaultCheckFetcher = useCallback(
+    async (label: string): Promise<{ available: boolean; reason?: string; verifierDown?: boolean }> => {
+      const res = await fetch(`/api/identity/check?username=${encodeURIComponent(label)}`, {
+        method: 'GET',
+      });
+      if (res.status === 503) return { available: false, verifierDown: true };
+      if (!res.ok) throw new Error(`identity-check ${res.status}`);
+      const body = (await res.json()) as { available: boolean; reason?: string };
+      return { available: body.available, reason: body.reason };
+    },
+    [],
+  );
+  const liveCheck = checkFetcher ?? defaultCheckFetcher;
+
+  const checkIdRef = useRef(0);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+
+    // Only check when local validation passes — avoids burning server
+    // calls on too-short / invalid charset / reserved / unchanged input,
+    // each of which already shows the right error inline.
+    if (!validation.ok) {
+      setAvailability('idle');
+      return;
+    }
+
+    setAvailability('checking');
+    const id = ++checkIdRef.current;
+
+    debounceTimerRef.current = setTimeout(() => {
+      liveCheck(validation.label)
+        .then((r) => {
+          if (checkIdRef.current !== id) return;
+          if (r.verifierDown) setAvailability('verifier-down');
+          else if (r.available) setAvailability('available');
+          else if (r.reason === 'taken' || r.reason === 'reserved') setAvailability('taken');
+          else setAvailability('error');
+        })
+        .catch(() => {
+          if (checkIdRef.current !== id) return;
+          setAvailability('error');
+        });
+    }, CHECK_DEBOUNCE_MS);
+
+    return () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    };
+  }, [validation, liveCheck]);
+
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
+      // [S18-F18] Block submit unless live check confirmed available.
+      // verifier-down is permitted (server has its own check; we don't
+      // want to wedge the user when SuiNS is degraded).
       if (!validation.ok || phase === 'submitting') return;
+      if (availability === 'taken' || availability === 'checking') return;
       setPhase('submitting');
       setSubmitError(null);
       try {
@@ -235,7 +311,7 @@ export function UsernameChangeModal({
         setPhase('idle');
       }
     },
-    [validation, phase, fetcher, onChanged],
+    [validation, phase, availability, fetcher, onChanged],
   );
 
   if (!open) return null;
@@ -247,32 +323,29 @@ export function UsernameChangeModal({
   // Backdrop scrim — design spec: rgba(0,0,0,0.42).
   const scrimClass = 'fixed inset-0 z-50 flex items-center justify-center bg-[rgba(0,0,0,0.42)] px-4';
 
-  // Per-state input shell tinting. Note: there's no `'taken'` branch
-  // because availability is verified server-side here (no debounced
-  // /check call like the picker). 409-taken comes back as a `submitError`
-  // after CHANGE HANDLE is pressed — handled below the input shell.
+  // [S18-F18] Per-state input shell tinting now incorporates the live
+  // availability check. Local validation errors (invalid charset, too
+  // short, etc.) tint red. A passed-validation handle that came back
+  // 'taken' from /api/identity/check ALSO tints red. Only an explicit
+  // 'available' from the live check turns the shell green and unlocks
+  // the submit button.
+  const isLocalError =
+    validation.status === 'invalid' ||
+    validation.status === 'too-long' ||
+    validation.status === 'too-short' ||
+    validation.status === 'reserved' ||
+    validation.status === 'unchanged';
+  const isAvailabilityError = availability === 'taken' || availability === 'error';
   const inputBorderClass = (() => {
-    if (
-      validation.status === 'invalid' ||
-      validation.status === 'too-long' ||
-      validation.status === 'too-short' ||
-      validation.status === 'reserved' ||
-      validation.status === 'unchanged'
-    ) {
-      return 'border-error-border';
-    }
-    if (validation.status === 'ok') return 'border-success-border';
+    if (isLocalError || isAvailabilityError) return 'border-error-border';
+    if (availability === 'available') return 'border-success-border';
     if (focused) return 'border-border-focus';
     return 'border-border-subtle';
   })();
   const inputShadow = focused
-    ? validation.status === 'invalid' ||
-      validation.status === 'too-long' ||
-      validation.status === 'too-short' ||
-      validation.status === 'reserved' ||
-      validation.status === 'unchanged'
+    ? isLocalError || isAvailabilityError
       ? 'shadow-[0_0_0_3px_rgba(213,11,11,0.18)]'
-      : validation.status === 'ok'
+      : availability === 'available'
         ? 'shadow-[0_0_0_3px_rgba(60,193,78,0.18)]'
         : 'shadow-[var(--shadow-focus-ring)]'
     : '';
@@ -401,18 +474,19 @@ export function UsernameChangeModal({
                 <span className="font-mono text-[14px] text-fg-muted pr-1">{PARENT_SUFFIX}</span>
               </div>
 
-              {/* Status line — mono UPPERCASE, // prefix; submit error overrides hint */}
+              {/* [S18-F18] Status line — submit error first, then local
+                  validation errors, then live availability state. The
+                  availability tier only renders when local validation
+                  passes (validation.status === 'ok'). */}
               <p
                 id={helpId}
-                role={validation.hint || submitError ? 'alert' : 'status'}
+                role={submitError || validation.hint || isAvailabilityError ? 'alert' : 'status'}
                 className={`mt-2 inline-flex items-start gap-1.5 font-mono text-[11px] tracking-[0.04em] uppercase ${
-                  submitError
+                  submitError || isLocalError || isAvailabilityError
                     ? 'text-error-fg'
-                    : validation.status === 'ok'
+                    : availability === 'available'
                       ? 'text-success-fg'
-                      : validation.status === 'idle'
-                        ? 'text-fg-muted'
-                        : 'text-error-fg'
+                      : 'text-fg-muted'
                 }`}
               >
                 {submitError ? (
@@ -420,17 +494,37 @@ export function UsernameChangeModal({
                     <Icon name="close" size={10} aria-hidden />
                     <span>{submitError}</span>
                   </>
-                ) : validation.status === 'ok' ? (
+                ) : isLocalError && validation.hint ? (
+                  <>
+                    <Icon name="close" size={10} aria-hidden />
+                    <span>{validation.hint}</span>
+                  </>
+                ) : validation.status === 'idle' ? (
+                  <span>{'// 3–20 CHARS · LOWERCASE, DIGITS, HYPHEN'}</span>
+                ) : availability === 'checking' ? (
+                  <>
+                    <Icon name="spinner" size={10} aria-hidden className="animate-spin" />
+                    <span>{'// CHECKING'}</span>
+                  </>
+                ) : availability === 'available' ? (
                   <>
                     <Icon name="check" size={10} aria-hidden />
                     <span>{'// AVAILABLE'}</span>
                   </>
-                ) : validation.status === 'idle' ? (
-                  <span>{'// 3–20 CHARS · LOWERCASE, DIGITS, HYPHEN'}</span>
-                ) : validation.hint ? (
+                ) : availability === 'taken' ? (
                   <>
                     <Icon name="close" size={10} aria-hidden />
-                    <span>{validation.hint}</span>
+                    <span>{`// TAKEN — ${validation.label}${PARENT_SUFFIX} is already claimed`}</span>
+                  </>
+                ) : availability === 'verifier-down' ? (
+                  <>
+                    <Icon name="close" size={10} aria-hidden />
+                    <span>{"// VERIFIER DOWN — can't check right now, try again"}</span>
+                  </>
+                ) : availability === 'error' ? (
+                  <>
+                    <Icon name="close" size={10} aria-hidden />
+                    <span>{'// CHECK FAILED — try again'}</span>
                   </>
                 ) : (
                   <span>{'// 3–20 CHARS · LOWERCASE, DIGITS, HYPHEN'}</span>
@@ -463,7 +557,18 @@ export function UsernameChangeModal({
               </button>
               <button
                 type="submit"
-                disabled={!validation.ok || isSubmitting}
+                /* [S18-F18] Submit unlocks only when local validation passes
+                   AND the live check confirmed the handle is available
+                   (verifier-down is permitted — server has its own gate
+                   per S18-F15). */
+                disabled={
+                  !validation.ok ||
+                  isSubmitting ||
+                  availability === 'checking' ||
+                  availability === 'taken' ||
+                  availability === 'error' ||
+                  availability === 'idle'
+                }
                 data-testid="username-change-modal-submit"
                 className="rounded-sm border border-fg-primary bg-fg-primary px-4 py-2.5 font-mono text-[11px] tracking-[0.1em] uppercase text-fg-inverse transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45 focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
               >

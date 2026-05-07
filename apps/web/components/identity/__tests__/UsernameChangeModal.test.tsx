@@ -36,9 +36,16 @@ const ADDR = '0x' + 'a'.repeat(64);
 const JWT = 'header.payload.signature';
 const CURRENT = 'alice';
 
+// [S18-F18] After adding the live availability check, the submit button
+// stays disabled until /api/identity/check returns. Tests that exercise
+// the submit path inject a check fetcher that resolves to "available"
+// immediately, then await `awaitAvailable` to flush the 300ms debounce.
+const DEFAULT_CHECK_FETCHER = () => Promise.resolve({ available: true });
+
 interface RenderOpts {
   open?: boolean;
   changeFetcher?: Parameters<typeof UsernameChangeModal>[0]['changeFetcher'];
+  checkFetcher?: Parameters<typeof UsernameChangeModal>[0]['checkFetcher'];
   onChanged?: ReturnType<typeof vi.fn>;
   onClose?: ReturnType<typeof vi.fn>;
   currentLabel?: string;
@@ -56,9 +63,23 @@ function renderModal(opts: RenderOpts = {}) {
       onClose={onClose}
       onChanged={onChanged}
       changeFetcher={opts.changeFetcher}
+      checkFetcher={opts.checkFetcher ?? DEFAULT_CHECK_FETCHER}
     />,
   );
   return { ...utils, onChanged, onClose };
+}
+
+// Type input + advance debounce + wait for the live check to resolve so
+// the submit button is enabled. Use this in any test that clicks submit.
+async function awaitAvailable(label: string) {
+  fireEvent.change(screen.getByLabelText(/new handle/i), { target: { value: label } });
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(400);
+  });
+  await waitFor(() => {
+    const submit = screen.getByTestId('username-change-modal-submit') as HTMLButtonElement;
+    expect(submit.disabled).toBe(false);
+  });
 }
 
 describe('<UsernameChangeModal>', () => {
@@ -114,9 +135,46 @@ describe('<UsernameChangeModal>', () => {
     expect(submit.disabled).toBe(true);
   });
 
-  it('enables submit for valid distinct input', () => {
+  it('enables submit for valid distinct input after live check returns available', async () => {
+    renderModal();
+    await awaitAvailable('bob');
+    const submit = screen.getByTestId('username-change-modal-submit') as HTMLButtonElement;
+    expect(submit.disabled).toBe(false);
+  });
+
+  it('S18-F18: keeps submit disabled while live check is in flight', async () => {
     renderModal();
     fireEvent.change(screen.getByLabelText(/new handle/i), { target: { value: 'bob' } });
+    // Debounce hasn't fired yet — availability still 'idle'.
+    const submit = screen.getByTestId('username-change-modal-submit') as HTMLButtonElement;
+    expect(submit.disabled).toBe(true);
+  });
+
+  it('S18-F18: shows TAKEN status + disables submit when live check returns taken', async () => {
+    const checkFetcher = vi.fn().mockResolvedValue({ available: false, reason: 'taken' });
+    renderModal({ checkFetcher });
+    fireEvent.change(screen.getByLabelText(/new handle/i), { target: { value: 'funkii' } });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(400);
+    });
+    await waitFor(() => {
+      expect(screen.getByText(/funkii\.audric\.sui is already claimed/i)).not.toBeNull();
+    });
+    const submit = screen.getByTestId('username-change-modal-submit') as HTMLButtonElement;
+    expect(submit.disabled).toBe(true);
+    expect(checkFetcher).toHaveBeenCalledWith('funkii');
+  });
+
+  it('S18-F18: surfaces verifier-down state but still allows submit (server has its own gate)', async () => {
+    const checkFetcher = vi.fn().mockResolvedValue({ available: false, verifierDown: true });
+    renderModal({ checkFetcher });
+    fireEvent.change(screen.getByLabelText(/new handle/i), { target: { value: 'bob' } });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(400);
+    });
+    await waitFor(() => {
+      expect(screen.getByText(/verifier down/i)).not.toBeNull();
+    });
     const submit = screen.getByTestId('username-change-modal-submit') as HTMLButtonElement;
     expect(submit.disabled).toBe(false);
   });
@@ -139,7 +197,7 @@ describe('<UsernameChangeModal>', () => {
     });
     renderModal({ changeFetcher: fetcher, onChanged, onClose });
 
-    fireEvent.change(screen.getByLabelText(/new handle/i), { target: { value: 'bob' } });
+    await awaitAvailable('bob');
     await act(async () => {
       fireEvent.click(screen.getByTestId('username-change-modal-submit'));
     });
@@ -163,7 +221,7 @@ describe('<UsernameChangeModal>', () => {
     );
     renderModal({ changeFetcher: fetcher });
 
-    fireEvent.change(screen.getByLabelText(/new handle/i), { target: { value: 'bob' } });
+    await awaitAvailable('bob');
     await act(async () => {
       fireEvent.click(screen.getByTestId('username-change-modal-submit'));
     });
@@ -182,7 +240,7 @@ describe('<UsernameChangeModal>', () => {
     );
     renderModal({ changeFetcher: fetcher });
 
-    fireEvent.change(screen.getByLabelText(/new handle/i), { target: { value: 'bob' } });
+    await awaitAvailable('bob');
     await act(async () => {
       fireEvent.click(screen.getByTestId('username-change-modal-submit'));
     });
@@ -198,7 +256,7 @@ describe('<UsernameChangeModal>', () => {
     );
     renderModal({ changeFetcher: fetcher });
 
-    fireEvent.change(screen.getByLabelText(/new handle/i), { target: { value: 'bob' } });
+    await awaitAvailable('bob');
     await act(async () => {
       fireEvent.click(screen.getByTestId('username-change-modal-submit'));
     });
@@ -212,7 +270,7 @@ describe('<UsernameChangeModal>', () => {
     const fetcher = vi.fn().mockRejectedValue(new Error('Network failure'));
     renderModal({ changeFetcher: fetcher });
 
-    fireEvent.change(screen.getByLabelText(/new handle/i), { target: { value: 'bob' } });
+    await awaitAvailable('bob');
     await act(async () => {
       fireEvent.click(screen.getByTestId('username-change-modal-submit'));
     });
@@ -254,7 +312,7 @@ describe('<UsernameChangeModal>', () => {
     const onClose = vi.fn();
     renderModal({ changeFetcher: fetcher, onClose });
 
-    fireEvent.change(screen.getByLabelText(/new handle/i), { target: { value: 'bob' } });
+    await awaitAvailable('bob');
     fireEvent.click(screen.getByTestId('username-change-modal-submit'));
 
     fireEvent.keyDown(window, { key: 'Escape' });
