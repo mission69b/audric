@@ -913,7 +913,7 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
               : undefined,
             meta: [
               { label: 'Network', value: 'Sui (mainnet)' },
-              { label: 'Token', value: 'USDC' },
+              { label: 'Saveable', value: 'USDC + USDsui' },
             ],
             instructions: [
               {
@@ -937,7 +937,8 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
               {
                 title: 'From any Sui wallet',
                 steps: [
-                  'Send USDC to the address above',
+                  'Send **USDC** or **USDsui** to the address above (both earn yield via NAVI)',
+                  'Other Sui assets (SUI, USDT, GOLD) are also accepted but only USDC and USDsui can be saved',
                 ],
               },
               // [Option A / 2026-04-30] Card on-ramp via Mercuryo. This is the

@@ -295,7 +295,7 @@ export function FullPortfolioCanvas({ data, onAction }: Props) {
         >
           <div className="font-mono text-sm text-fg-primary font-medium">${fmtUsd(savings)}</div>
           {apy > 0 && (
-            <div className="font-mono text-[10px] text-success-solid">{apy.toFixed(2)}% APY</div>
+            <div className="font-mono text-[10px] text-success-solid">{(apy * 100).toFixed(2)}% APY</div>
           )}
         </PanelCard>
 
@@ -337,7 +337,7 @@ export function FullPortfolioCanvas({ data, onAction }: Props) {
         </PanelCard>
 
         <PanelCard
-          title="Spending"
+          title="API Spend"
           onClick={() => onAction?.('Show my spending breakdown')}
         >
           {loading ? (
@@ -348,7 +348,10 @@ export function FullPortfolioCanvas({ data, onAction }: Props) {
               <div className="font-mono text-[10px] text-fg-muted">{panelData.spending.requestCount} requests</div>
             </>
           ) : (
-            <div className="font-mono text-xs text-fg-muted">$0.00</div>
+            <>
+              <div className="font-mono text-sm text-fg-primary font-medium">$0.00</div>
+              <div className="font-mono text-[10px] text-fg-muted">no MPP services this month</div>
+            </>
           )}
         </PanelCard>
       </div>

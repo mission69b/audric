@@ -343,7 +343,7 @@ export function FeedItemCard({
                 </div>
               ))}
               <p className="text-[10px] font-mono text-fg-muted leading-relaxed pt-1">
-                Only send <span className="text-fg-primary font-medium">USDC on the Sui network</span>. Other tokens or networks may result in lost funds.
+                Only send tokens on the <span className="text-fg-primary font-medium">Sui network</span>. Tokens on other networks (Ethereum, Solana, Polygon) may result in lost funds.
               </p>
             </div>
           )}

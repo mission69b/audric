@@ -463,6 +463,7 @@ describe('STATIC_SYSTEM_PROMPT — B3.6 budget gate', () => {
     //   - Post-failed-write-narration:    10,250 tokens   ( +50 budget)
     //   - Post-fee-disclosure (May 2026): 10,300 tokens   ( +50 budget)
     //   - Post-SPEC 9 P9.2 (May 2026):    10,400 tokens   (+100 budget)
+    //   - Post-CHIP-Review-2 F-11b APY:   10,425 tokens   ( +25 budget)
     //
     // B3.6 added the "Mid-flight narration & todos" section + the
     // `<eval_summary>` emission contract.
@@ -525,6 +526,16 @@ describe('STATIC_SYSTEM_PROMPT — B3.6 budget gate', () => {
     // assertion in `spec-consistency.ts` so a future prompt edit cannot
     // silently drop the rule.
     //
+    // CHIP-Review-2 F-11b APY (May 2026 — live walkthrough caught a 100x
+    // user-visible APY display bug: dashboard hero correctly showed "7.9%"
+    // but chat narration and FullPortfolioCanvas surfaced "0.079%" /
+    // "0.08%" because the LLM and one canvas template were rendering raw
+    // decimal `data.apy` (e.g. 0.0787) with a "%" suffix instead of
+    // multiplying by 100. The canvas was patched in-place; the prompt
+    // needed a unit-rule clarification appended to the existing
+    // "Present amounts as $1,234.56..." line. Trimmed maximally to ~12
+    // tokens — the +25 ceiling is the smallest bump in history.
+    //
     // fee-disclosure (May 2026 — production screenshot showed Audric
     // replying "No — I don't take a cut. The 0.1% that came out is the
     // Cetus protocol fee, which goes to the DEX. ... I'm here to execute,
@@ -553,7 +564,7 @@ describe('STATIC_SYSTEM_PROMPT — B3.6 budget gate', () => {
     //      a new entry in the ceiling-history table above.
     const { STATIC_SYSTEM_PROMPT } = await import('../engine-context');
     const tokens = Math.ceil(STATIC_SYSTEM_PROMPT.length / 4);
-    expect(tokens).toBeLessThanOrEqual(10_400);
+    expect(tokens).toBeLessThanOrEqual(10_425);
   });
 });
 
