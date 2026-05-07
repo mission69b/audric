@@ -19,7 +19,7 @@ const PILLARS: Pillar[] = [
   {
     title: 'Identity',
     body:
-      'Sign in with Google. Your Passport is a cryptographic wallet, created in 3 seconds. No seed phrase. Yours forever.',
+      'Sign in with Google. Claim your username — you.audric.sui. Your Passport is your identity and your wallet, created in 3 seconds. No seed phrase. Yours forever.',
     glyph: (
       <svg width="30" height="30" viewBox="0 0 30 30" fill="none" aria-hidden="true">
         <rect x="3" y="6" width="24" height="18" rx="2" className="fill-fg-primary" />

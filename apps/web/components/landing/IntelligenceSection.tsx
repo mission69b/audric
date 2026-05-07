@@ -18,7 +18,7 @@ interface Pillar {
 const PILLARS: Pillar[] = [
   {
     title: 'Agent Harness',
-    italic: '34 tools. One agent.',
+    italic: '35 tools. One agent.',
     body:
       'The runtime that manages your money: balances, DeFi, analytics, payments — all orchestrated by a single conversation.',
     glyph: (

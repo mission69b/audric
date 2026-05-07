@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+Allow: /litepaper
+Allow: /pay/
+Allow: /invoice/
+Disallow: /api/
+Disallow: /auth/
+Disallow: /chat/
+Disallow: /new/
+Disallow: /settings/
+
+Sitemap: https://audric.ai/sitemap.xml
