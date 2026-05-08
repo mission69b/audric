@@ -94,6 +94,13 @@ interface BlockRouterProps {
    * `localSpokenWordIndex(slice, idx)`.
    */
   spokenWordIndex?: number;
+  /**
+   * [S.123 v0.55.x] Self-healing zkLogin recovery handler. Wired to
+   * `useZkLogin.refresh` (logout + login) at the dashboard. Forwarded
+   * to `BundleReceiptBlockView` which renders an inline "Sign back in"
+   * button when a bundle's `sessionExpired === true`.
+   */
+  onSignBackIn?: () => void;
 }
 
 export function BlockRouter({
@@ -112,6 +119,7 @@ export function BlockRouter({
   onRegenerate,
   regeneratingAttemptIds,
   onPendingInputSubmit,
+  onSignBackIn,
 }: BlockRouterProps) {
   switch (block.type) {
     case 'thinking':
@@ -172,6 +180,6 @@ export function BlockRouter({
       return <PlanStreamBlockView block={block} />;
 
     case 'bundle-receipt':
-      return <BundleReceiptBlockView block={block} />;
+      return <BundleReceiptBlockView block={block} onSignBackIn={onSignBackIn} />;
   }
 }

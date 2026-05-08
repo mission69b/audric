@@ -37,9 +37,20 @@ import { CardShell, SuiscanLink } from '../cards/primitives';
 
 interface BundleReceiptBlockViewProps {
   block: BundleReceiptTimelineBlock;
+  /**
+   * [S.123 v0.55.x] Wired to `useZkLogin.refresh` (logout + login) when the
+   * block is in the `sessionExpired === true` state. Renders an inline
+   * "Sign back in" button so the user can recover with one tap instead of
+   * being told to "logout and sign back in via the avatar menu" (which
+   * doesn't actually work today — see Teo's report in S.123).
+   *
+   * Optional: when omitted (e.g. testing, demo paths), the button is
+   * hidden but the rest of the session-expired UI still renders.
+   */
+  onSignBackIn?: () => void;
 }
 
-export function BundleReceiptBlockView({ block }: BundleReceiptBlockViewProps) {
+export function BundleReceiptBlockView({ block, onSignBackIn }: BundleReceiptBlockViewProps) {
   const opsLabel = `${block.legs.length} ${block.legs.length === 1 ? 'op' : 'ops'}`;
   const isSessionExpired = block.sessionExpired === true;
   const titleVerb = isSessionExpired
@@ -113,6 +124,25 @@ export function BundleReceiptBlockView({ block }: BundleReceiptBlockViewProps) {
           {footnoteText}
         </div>
       )}
+
+      {/* [S.123 v0.55.x] Inline "Sign back in" recovery button.
+          Pre-S.123, the only recovery path on a session-expired bundle was
+          for the LLM to tell the user to "logout and sign back in via the
+          avatar menu" — which didn't work because the chat-side "logout"
+          command was hallucinated and didn't clear the zkLogin session
+          (Teo / Mysten Labs bug, S.123). The button below short-circuits
+          that whole loop: one tap → useZkLogin.refresh() → fresh JWT →
+          user can resend the bundle. */}
+      {isSessionExpired && onSignBackIn ? (
+        <button
+          type="button"
+          onClick={onSignBackIn}
+          className="mt-2 w-full rounded-md border border-border-strong bg-bg-secondary px-3 py-2 font-mono text-xs uppercase tracking-wide text-fg-primary transition-colors hover:bg-bg-tertiary focus:outline-none focus:ring-2 focus:ring-accent-solid"
+          aria-label="Sign back in to refresh your session and resend"
+        >
+          ↻ Sign back in
+        </button>
+      ) : null}
 
       <div className="pt-1.5 mt-1 flex items-center justify-between font-mono text-[10px] uppercase tracking-wide text-fg-muted">
         <span>GAS · SPONSORED</span>

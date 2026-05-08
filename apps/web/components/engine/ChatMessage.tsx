@@ -95,6 +95,13 @@ interface ChatMessageProps {
    * doesn't render (B3 layer handles that).
    */
   onPendingInputSubmit?: (inputId: string, values: Record<string, unknown>) => void;
+  /**
+   * [S.123 v0.55.x] Forwarded to `<ReasoningTimeline>` →
+   * `<BundleReceiptBlockView>` for the inline "Sign back in" recovery
+   * button on session-expired bundle receipts. Wired to
+   * `useZkLogin.refresh` at the dashboard.
+   */
+  onSignBackIn?: () => void;
 }
 
 export function ChatMessage({
@@ -110,6 +117,7 @@ export function ChatMessage({
   regeneratingAttemptIds,
   onChipDecision,
   onPendingInputSubmit,
+  onSignBackIn,
 }: ChatMessageProps) {
   if (message.role === 'user') {
     return (
@@ -183,6 +191,7 @@ export function ChatMessage({
           onRegenerate={onRegenerate}
           regeneratingAttemptIds={regeneratingAttemptIds}
           onPendingInputSubmit={onPendingInputSubmit}
+          onSignBackIn={onSignBackIn}
         />
         {chipsBlock}
       </>
@@ -246,6 +255,7 @@ function ChatMessageV2({
   onRegenerate,
   regeneratingAttemptIds,
   onPendingInputSubmit,
+  onSignBackIn,
 }: ChatMessageV2Props) {
   const voice = useVoiceModeContext();
   const isBeingSpoken =
@@ -291,6 +301,7 @@ function ChatMessageV2({
         onRegenerate={onRegenerate}
         regeneratingAttemptIds={regeneratingAttemptIds}
         onPendingInputSubmit={onPendingInputSubmit}
+        onSignBackIn={onSignBackIn}
       />
 
       {message.usage && !message.isStreaming && (

@@ -25,6 +25,7 @@ import {
 import { asHarnessVersion, type HarnessVersion } from '@/lib/interactive-harness';
 import type { RegenerateTimelineEvent, RegenerateFailure } from '@t2000/engine';
 import { REGEN_ERROR_COPY } from '@/lib/engine/regen-error-copy';
+import { detectAuthIntent } from './auth-intent';
 
 // [v1.4] Re-export the pure executor so consumers and tests can use a single
 // import path: `import { executeToolAction } from '@/hooks/useEngine'`.
@@ -84,6 +85,23 @@ interface UseEngineOptions {
    * re-render of the contacts hook (which fires on add/edit/delete).
    */
   contacts?: ReadonlyArray<{ name: string; address: string }>;
+  /**
+   * [S.123 v0.55.x] Authentication intent handler. Wired to
+   * `useZkLogin.logout` / `login` (or `refresh`) by the dashboard.
+   *
+   * `sendMessage` runs a pre-LLM regex check on the user's text. If it
+   * matches a logout/login intent, this callback fires INSTEAD of
+   * dispatching to the engine. This is the structural fix for the bug
+   * where the LLM hallucinated "you're logged out" responses without
+   * actually clearing the zkLogin session — the LLM has no logout tool,
+   * so any response it gave was a confident lie. See S.123 in the build
+   * tracker for the Teo / Mysten Labs bug report that surfaced it.
+   *
+   * If omitted, the intent detector still runs but only synthesizes a
+   * "tap the avatar in top-right" assistant message; no actual auth
+   * action is taken (degraded but safe).
+   */
+  onAuthIntent?: (intent: { type: 'logout' | 'login' }) => void | Promise<void>;
 }
 
 function buildHistory(messages: EngineChatMessage[]): { role: 'user' | 'assistant'; content: string }[] {
@@ -137,7 +155,7 @@ function updateTimelineForRegenerate(
   return next;
 }
 
-export function useEngine({ address, jwt, onToolResult, contacts }: UseEngineOptions) {
+export function useEngine({ address, jwt, onToolResult, contacts, onAuthIntent }: UseEngineOptions) {
   // Hold the latest callback in a ref so the SSE handler doesn't re-bind
   // (and risk dropping events) when the parent re-renders with a new fn.
   const onToolResultRef = useRef(onToolResult);
@@ -197,6 +215,54 @@ export function useEngine({ address, jwt, onToolResult, contacts }: UseEngineOpt
       if (isAuth && (!address || !jwt)) return;
       if (status === 'streaming' || status === 'connecting' || status === 'executing') return;
 
+      // [S.123 v0.55.x] Pre-LLM auth intent detection.
+      //
+      // The engine has NO logout/login tool. Before this fix, typing "logout"
+      // in chat caused the LLM to hallucinate a successful response ("You're
+      // logged out, see you next time, teo@audric") without actually clearing
+      // the zkLogin session — leaving users stuck in an expired-session loop.
+      //
+      // We intercept the command BEFORE dispatching to the engine, fire the
+      // real auth callback, and synthesize a deterministic assistant message
+      // so the UI never narrates a fake state change. The engine never sees
+      // these commands.
+      const intent = detectAuthIntent(text);
+      if (intent) {
+        const userMsg: EngineChatMessage = {
+          id: nextMsgId(),
+          role: 'user',
+          content: text,
+          timestamp: Date.now(),
+        };
+        const ackContent =
+          intent.type === 'logout'
+            ? isAuth
+              ? 'Signing you out…'
+              : 'You are not signed in.'
+            : isAuth
+              ? 'You are already signed in. To switch accounts, sign out first via the avatar menu (top-right).'
+              : 'Tap **Sign In with Google** in the top-right to sign in.';
+        const ackMsg: EngineChatMessage = {
+          id: nextMsgId(),
+          role: 'assistant',
+          content: ackContent,
+          timestamp: Date.now(),
+        };
+        setMessages((prev) => [...prev, userMsg, ackMsg]);
+
+        // Fire the actual auth action ONLY when authenticated for logout, or
+        // unauthenticated for login. Wrong state → no-op (the ack message
+        // above already covers it).
+        if (onAuthIntent && ((intent.type === 'logout' && isAuth) || (intent.type === 'login' && !isAuth))) {
+          try {
+            await onAuthIntent(intent);
+          } catch (err) {
+            console.error('[useEngine] auth intent handler threw', err);
+          }
+        }
+        return;
+      }
+
       setError(null);
       lastFailedMessage.current = null;
       retryCountRef.current = 0;
@@ -236,7 +302,7 @@ export function useEngine({ address, jwt, onToolResult, contacts }: UseEngineOpt
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [address, jwt, sessionId, status, isAuth],
+    [address, jwt, sessionId, status, isAuth, onAuthIntent],
   );
 
   /**

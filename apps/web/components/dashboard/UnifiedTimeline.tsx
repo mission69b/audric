@@ -128,6 +128,16 @@ interface UnifiedTimelineProps {
    * the actual save UI.
    */
   onPromptSaveSender?: (address: string) => void;
+  /**
+   * [S.123 v0.55.x] Self-healing zkLogin recovery — wired to
+   * `useZkLogin.refresh` at the dashboard. Forwarded down to
+   * `<BundleReceiptBlockView>` for its inline "Sign back in" button on
+   * session-expired bundle receipts. Without this, users hit by an
+   * expired JWT mid-bundle had no way to recover except telling the
+   * agent to "logout" — which was hallucinated (no real logout tool)
+   * and left them stuck (Teo / Mysten Labs report).
+   */
+  onSignBackIn?: () => void;
 }
 
 function ConnectingSkeleton() {
@@ -159,6 +169,7 @@ export function UnifiedTimeline({
   sessionId = null,
   isKnownAddress,
   onPromptSaveSender,
+  onSignBackIn,
 }: UnifiedTimelineProps) {
   const endRef = useRef<HTMLDivElement>(null);
   const lastCount = useRef(0);
@@ -492,6 +503,7 @@ export function UnifiedTimeline({
                 regeneratingAttemptIds={engine.regeneratingAttemptIds}
                 onChipDecision={engine.sendChipDecision}
                 onPendingInputSubmit={engine.handlePendingInputSubmit}
+                onSignBackIn={onSignBackIn}
               />
             </div>
           );

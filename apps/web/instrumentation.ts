@@ -31,5 +31,40 @@ export async function register() {
     // instrumentation is skipped (e.g. Edge runtime, custom function
     // bundles). See `init-engine-stores.ts` for the full rationale.
     await import('./lib/engine/init-engine-stores');
+
+    // [S.123 v0.55.x] Process-level safety net for unhandled rejections
+    // and uncaught exceptions.
+    //
+    // Without this, Vercel/Node 20+ default `--unhandled-rejections=throw`
+    // calls `process.exit(128)` on any rejected promise that isn't observed
+    // within the same microtask queue drain. That kills EVERY in-flight
+    // request on the serverless instance — not just the one that triggered
+    // the rejection.
+    //
+    // The engine already ships its own structural fix (S.123 v1.24.7
+    // `early-dispatcher.ts` `.catch` attached at dispatch time), but tools
+    // can be wired through other paths (cron jobs, background scripts,
+    // future code) that don't go through the dispatcher. This handler is
+    // the last line of defense — log loudly so we get an alert, but DO NOT
+    // crash the process.
+    //
+    // If a future bug introduces a frequent unhandled rejection, the noise
+    // here will be visible in Vercel logs / Sentry — that's the signal to
+    // fix the actual bug. Silent survival is intentional: a serverless
+    // instance carrying 50 concurrent users should not die because one of
+    // them tripped a misconfigured Brave Search request.
+    process.on('unhandledRejection', (reason, promise) => {
+      console.error('[S.123 unhandledRejection] Process survived rejection:', {
+        reason: reason instanceof Error ? { message: reason.message, stack: reason.stack } : reason,
+        promise: String(promise),
+      });
+    });
+
+    process.on('uncaughtException', (err) => {
+      console.error('[S.123 uncaughtException] Process survived exception:', {
+        message: err.message,
+        stack: err.stack,
+      });
+    });
   }
 }

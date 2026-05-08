@@ -512,7 +512,7 @@ export interface DashboardContentProps {
 }
 
 export function DashboardContent({ initialSessionId }: DashboardContentProps = {}) {
-  const { address, session, refresh } = useZkLogin();
+  const { address, session, refresh, logout, login } = useZkLogin();
   const { panel, setPanel } = usePanel();
 
   const chipFlow = useChipFlow();
@@ -535,6 +535,18 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
     // it can inject synthetic `CONTACT · "<name>"` rows when a tool /
     // bundle input references a known contact name.
     contacts: contactsHook.contacts,
+    // [S.123 v0.55.x] Wire auth-intent handler so chat-side "logout" /
+    // "login" commands actually call useZkLogin (instead of being
+    // hallucinated by the LLM). See useEngine.detectAuthIntent + the
+    // S.123 entry in audric-build-tracker.md for the Teo / Mysten Labs
+    // bug report that surfaced this.
+    onAuthIntent: async (intent) => {
+      if (intent.type === 'logout') {
+        logout();
+      } else if (intent.type === 'login') {
+        await login();
+      }
+    },
   });
 
   // ─── Voice mode (Claude-style continuous loop) ────────────────────
@@ -2351,6 +2363,7 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
               sessionId={engine.sessionId ?? null}
               isKnownAddress={contactsHook.isKnownAddress}
               onPromptSaveSender={handlePromptSaveSender}
+              onSignBackIn={refresh}
               onConfirmResolve={(approved) => {
                 const resolver = confirmResolverRef.current;
                 if (resolver) {

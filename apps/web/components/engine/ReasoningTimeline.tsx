@@ -83,6 +83,12 @@ interface ReasoningTimelineProps {
     spans: WordSpan[];
     spokenWordIndex: number;
   };
+  /**
+   * [S.123 v0.55.x] Forwarded to `BundleReceiptBlockView` (via BlockRouter)
+   * for the inline "Sign back in" recovery button on session-expired
+   * receipts. Wired to `useZkLogin.refresh` at the dashboard.
+   */
+  onSignBackIn?: () => void;
 }
 
 export function ReasoningTimeline({
@@ -98,6 +104,7 @@ export function ReasoningTimeline({
   onRegenerate,
   regeneratingAttemptIds,
   onPendingInputSubmit,
+  onSignBackIn,
 }: ReasoningTimelineProps) {
   // [B3.3 / G8] Manual-state-preserved expansion map for thinking blocks.
   // Lazy-init from the blocks present at first mount (rehydration case)
@@ -187,6 +194,7 @@ export function ReasoningTimeline({
             onRegenerate={onRegenerate}
             regeneratingAttemptIds={regeneratingAttemptIds}
             onPendingInputSubmit={onPendingInputSubmit}
+            onSignBackIn={onSignBackIn}
             thinkingExpanded={
               block.type === 'thinking'
                 ? thinkingExpanded.get(block.blockIndex) ??
