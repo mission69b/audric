@@ -1,0 +1,150 @@
+name: Swap Regression
+
+# [S.124] Catches the next SSUI-class incident before users see it.
+#
+# Tier A (this workflow): 41 quote scenarios via @t2000/sdk's getSwapQuote.
+# No on-chain mutation. Cost: $0. Runs on every push/PR + nightly.
+# Failures BLOCK merge — they indicate either a Cetus aggregator pair
+# dropped, a registry/decimals drift, or the S.123 structured-error
+# contract regressed.
+#
+# Tier B (separate file `regression-swaps-execute.yml`, added Phase 8):
+# 5 round-trip swaps via Enoki against a pre-funded test wallet. Runs
+# nightly cron + manual dispatch only — never on PRs (would burn gas
+# on every push from forks).
+#
+# See: apps/web/scripts/regression-swaps/README.md
+
+on:
+  push:
+    branches: [main]
+    paths:
+      # Run when anything that could plausibly affect swap routing changes:
+      # the harness itself, the audric prepare/route, or the t2000 packages
+      # bumped via package.json. Skip on docs-only / unrelated edits to
+      # avoid spending Cetus quote budget on no-op pushes.
+      - 'apps/web/scripts/regression-swaps/**'
+      - 'apps/web/app/api/transactions/prepare/**'
+      - 'apps/web/lib/swap-*.ts'
+      - 'apps/web/package.json'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/regression-swaps.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'apps/web/scripts/regression-swaps/**'
+      - 'apps/web/app/api/transactions/prepare/**'
+      - 'apps/web/lib/swap-*.ts'
+      - 'apps/web/package.json'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/regression-swaps.yml'
+  schedule:
+    # 03:00 UTC daily — catches Cetus aggregator drift even when no
+    # commits land. Time chosen for low cron contention with other repos.
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+    inputs:
+      concurrency:
+        description: 'Parallel scenarios (default 4; drop to 2 if Cetus rate-limits)'
+        required: false
+        default: '4'
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  tier-a-quotes:
+    name: Tier A — quote regression (41 scenarios)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Validate scenario inventory + reporter classifier
+        run: pnpm --filter web exec vitest run scripts/regression-swaps
+
+      - name: Run Tier A quote regression
+        id: tier_a
+        env:
+          CONCURRENCY: ${{ github.event.inputs.concurrency || '4' }}
+          RUN_TAG: ${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          set +e
+          pnpm --filter web exec tsx scripts/regression-swaps/run-quotes.ts | tee tier-a-output.txt
+          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+          exit ${PIPESTATUS[0]}
+
+      - name: Upload run artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: swap-regression-tier-a-${{ github.run_id }}-${{ github.run_attempt }}
+          path: apps/web/scripts/regression-swaps/runs/*.json
+          retention-days: 30
+
+      - name: Comment summary on PR
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        env:
+          EXIT_CODE: ${{ steps.tier_a.outputs.exit_code }}
+        with:
+          script: |
+            const fs = require('fs');
+            const exit = process.env.EXIT_CODE;
+            const out = fs.readFileSync('tier-a-output.txt', 'utf8').slice(-3500);
+            const status = exit === '0' ? 'PASS' : exit === '1' ? 'FAIL — happy-path regression (BLOCK MERGE)' : 'FAIL — error-path regression (BLOCK MERGE)';
+            const body = [
+              `## Swap Regression — Tier A (quote)`,
+              ``,
+              `**Status:** ${status}`,
+              ``,
+              `<details><summary>Output</summary>`,
+              ``,
+              '```',
+              out,
+              '```',
+              ``,
+              `</details>`,
+              ``,
+              `<sub>S.124 swap regression harness · run ${context.runId}.${context.runAttempt}</sub>`,
+            ].join('\n');
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });
+
+      - name: Discord alert on failure (push/cron only)
+        if: failure() && github.event_name != 'pull_request'
+        env:
+          WEBHOOK_URL: ${{ secrets.DISCORD_DEVLOG_WEBHOOK }}
+          EXIT_CODE: ${{ steps.tier_a.outputs.exit_code }}
+        run: |
+          [ -z "$WEBHOOK_URL" ] && { echo "no webhook secret; skipping"; exit 0; }
+          if [ "$EXIT_CODE" = "1" ]; then
+            COLOR=15548997  # red — happy-path regression
+            LABEL="happy-path regression"
+          elif [ "$EXIT_CODE" = "2" ]; then
+            COLOR=15105570  # orange — error-path regression
+            LABEL="error-path regression (defensive structure)"
+          else
+            COLOR=10181046  # purple — harness internal error
+            LABEL="harness internal error"
+          fi
+          RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          jq -n \
+            --arg title "Swap Regression FAIL — $LABEL" \
+            --arg url "$RUN_URL" \
+            --argjson color "$COLOR" \
+            --arg trigger "${{ github.event_name }} on ${{ github.ref_name }}" \
+            --arg footer "S.124 · run ${{ github.run_id }}.${{ github.run_attempt }}" \
+            --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            '{embeds: [{title: $title, url: $url, color: $color, fields: [{name: "Trigger", value: $trigger, inline: true}], footer: {text: $footer}, timestamp: $ts}]}' \
+          | curl -s -H "Content-Type: application/json" -d @- "$WEBHOOK_URL"
