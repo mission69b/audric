@@ -13,6 +13,7 @@ import {
   USDC_TYPE,
   SAVE_FEE_BPS,
   BORROW_FEE_BPS,
+  SUPPORTED_ASSETS,
   T2000_OVERLAY_FEE_WALLET,
   type WriteStep,
   type SupportedAsset,
@@ -418,15 +419,24 @@ async function buildAndSponsor(params: BuildRequest, jwt: string | null): Promis
         ? { rate: OVERLAY_FEE_RATE, receiver: T2000_OVERLAY_FEE_WALLET }
         : undefined,
       feeHooks: {
+        // [v1.24.3 / S.120 follow-up] Charge SAVE_FEE_BPS regardless of
+        // stable asset. USDC + USDsui are both saveable per
+        // savings-usdc-only.mdc. Pre-fix: hook short-circuited on
+        // `asset !== 'USDC'`, so USDsui saves were silently fee-free.
+        // Treasury already accepts multi-currency inflows from Cetus swap
+        // overlays (which take fees in the swap output coin), so adding
+        // USDsui costs nothing in treasury-management surface area.
+        // Decimals derived from SUPPORTED_ASSETS so this stays correct if
+        // a future saveable asset ships with non-6 decimals.
         save_deposit: ({ tx, coin, input }) => {
-          if (input.asset === 'USDC' || input.asset === undefined) {
-            addFeeTransfer(tx, coin, SAVE_FEE_BPS, T2000_OVERLAY_FEE_WALLET, input.amount);
-          }
+          const asset = input.asset ?? 'USDC';
+          const decimals = SUPPORTED_ASSETS[asset].decimals;
+          addFeeTransfer(tx, coin, SAVE_FEE_BPS, T2000_OVERLAY_FEE_WALLET, input.amount, decimals);
         },
         borrow: ({ tx, coin, input }) => {
-          if (input.asset === 'USDC' || input.asset === undefined) {
-            addFeeTransfer(tx, coin, BORROW_FEE_BPS, T2000_OVERLAY_FEE_WALLET, input.amount);
-          }
+          const asset = input.asset ?? 'USDC';
+          const decimals = SUPPORTED_ASSETS[asset].decimals;
+          addFeeTransfer(tx, coin, BORROW_FEE_BPS, T2000_OVERLAY_FEE_WALLET, input.amount, decimals);
         },
       },
     });

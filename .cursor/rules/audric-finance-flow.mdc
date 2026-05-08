@@ -12,11 +12,13 @@ Manage your money on Sui. The product that owns save / credit / swap / charts. E
 
 | Operation | UI surface | Engine tool | Backed by |
 |---|---|---|---|
-| Save USDC | Save chip + chat | `save_deposit` (USDC only) | NAVI lending |
+| Save | Save chip + chat | `save_deposit` (USDC + USDsui — strategic exception, see t2000 `savings-usdc-only.mdc`) | NAVI lending |
 | Withdraw savings | Withdraw chip + chat | `withdraw` | NAVI |
-| Borrow against savings | Credit chip + chat | `borrow` | NAVI |
-| Repay borrow | Repay chip + chat | `repay_debt` | NAVI |
-| Claim NAVI rewards | Auto-suggested | `claim_rewards` | NAVI |
+| Borrow against savings | Credit chip + chat | `borrow` (USDC + USDsui) | NAVI |
+| Repay borrow | Repay chip + chat | `repay_debt` (must repay with the same asset as the borrow) | NAVI |
+| Preview pending NAVI rewards | Auto-suggested | `pending_rewards` (read-only — does NOT trigger a claim) | NAVI |
+| Claim NAVI rewards as-is | "JUST CLAIM" chip after pending_rewards | `claim_rewards` | NAVI |
+| Harvest NAVI rewards into savings | "HARVEST ALL" chip after pending_rewards + Harvest dashboard chip | `harvest_rewards` (compound: claim → swap each non-USDC reward to USDC → deposit merged USDC into NAVI savings, single PTB) | NAVI + Cetus aggregator |
 | Swap (any Tier 2 → any Tier 2) | Swap chip + chat | `swap_execute` | Cetus aggregator |
 | Charts (yield, health, portfolio viz) | Inline canvas in chat | `render_canvas` | Engine canvas templates |
 | Stake SUI → vSUI | Save chip → SUI option | `volo_stake` | Volo (LST) |
