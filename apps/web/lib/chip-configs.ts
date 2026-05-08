@@ -30,8 +30,10 @@ export interface ChipPrefetchData {
 export function buildChipConfigs(prefetch?: ChipPrefetchData): ChipConfig[] {
   const idleUsdc = prefetch?.idleUsdc ?? 0;
   const idleUsdsui = prefetch?.idleUsdsui ?? 0;
-  const currentApy = prefetch?.currentApy ?? 0;
-  const apyStr = currentApy > 0 ? `${(currentApy * 100).toFixed(1)}%` : '~5%';
+  // [Track B / 2026-05-08] `currentApy` was used by the now-removed
+  // "Check savings rate" chip. Field stays on `ChipPrefetchData` for
+  // backward compat with callers (dashboard, NewConversationView,
+  // engine-context, etc.) and as a slot for any future APY-aware chip.
 
   // [CHIP_REVIEW_2 FU-1+FU-3 / 2026-05-07] Save auto-action picker. Three cases:
   // (1) Both stables idle (>$1 each) → "Save my stables ($total)" routes to
@@ -80,10 +82,21 @@ export function buildChipConfigs(prefetch?: ChipPrefetchData): ChipConfig[] {
       label: 'Save',
       actions: [
         saveAction,
+        // [Track B / 2026-05-08] Replaces "Check savings rate" — the APY
+        // is already in the dashboard header ("EARNING $X/DAY · Y% APY"),
+        // so the chip slot is better spent on a real action than a
+        // re-fetch. Harvest is the natural compound move for users with
+        // pending rewards: claim → swap each non-USDC reward to USDC →
+        // deposit into NAVI savings, all in ONE confirm tap (atomic
+        // PTB). When no rewards are pending, the LLM narrates "nothing
+        // to harvest" honestly via the prepare route's empty-plan 400.
+        // The prompt nudges the LLM to inspect via `pending_rewards`
+        // first so the user sees exactly what's claimable BEFORE the
+        // confirm card opens.
         {
-          label: 'Check savings rate',
-          sublabel: `live NAVI APY · ${apyStr}`,
-          prompt: 'What is my current savings APY?',
+          label: 'Harvest rewards',
+          sublabel: 'claim → swap → save in 1 tap',
+          prompt: 'Show what NAVI rewards I can harvest, then bundle them into savings',
         },
         {
           label: 'Withdraw from savings',
