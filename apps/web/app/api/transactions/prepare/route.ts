@@ -383,11 +383,20 @@ async function buildAndSponsor(params: BuildRequest, jwt: string | null): Promis
   // metrics); only multi-step bundles need the new instrumentation.
   const isBundle = params.type === 'bundle' && steps.length >= 2;
 
-  // Overlay fee applies whenever the bundle contains a swap_execute step.
-  // composeTx forwards `overlayFee` to every swap step it encounters, so
-  // multi-swap bundles bill the fee per-swap (matching today's per-tx
-  // single-swap behavior).
-  const hasSwap = steps.some((s) => s.toolName === 'swap_execute');
+  // Overlay fee applies whenever a step's PTB will contain a Cetus swap —
+  // either a top-level `swap_execute`, or the implicit per-leg swaps that
+  // `harvest_rewards` performs internally to convert non-USDC rewards.
+  // composeTx forwards `overlayFee` into both appenders; harvest's macro
+  // (`addHarvestToTx`) then propagates it into every internal `addSwapToTx`
+  // call so each swap leg charges the overlay (parity with single-op swap).
+  // Without harvest in this predicate, the macro saw `overlayFee=undefined`
+  // and every swap leg ran fee-free — observed in production 2026-05-08
+  // (S.120 in the build tracker). The save fee on the deposit leg is wired
+  // separately via `feeHooks.save_deposit` below — the harvest macro reuses
+  // the same hook the single-op `save` path uses.
+  const needsOverlayFee = steps.some(
+    (s) => s.toolName === 'swap_execute' || s.toolName === 'harvest_rewards',
+  );
 
   // [Backlog 2a-bis / 2026-05-04] Time `composeTx` whenever a step is
   // `swap_execute` (single-step OR bundled). The engine-side
@@ -396,7 +405,7 @@ async function buildAndSponsor(params: BuildRequest, jwt: string | null): Promis
   // bypassing the engine tool's `call()` method. Capture the latency here
   // so the Backlog 2b decision gate has data for the dominant single-swap
   // shape, not just bundles.
-  const composeStartedAt = isBundle || hasSwap ? Date.now() : 0;
+  const composeStartedAt = isBundle || needsOverlayFee ? Date.now() : 0;
 
   let composed;
   try {
@@ -405,7 +414,7 @@ async function buildAndSponsor(params: BuildRequest, jwt: string | null): Promis
       client: getClient(),
       sponsoredContext: true,
       steps,
-      overlayFee: hasSwap
+      overlayFee: needsOverlayFee
         ? { rate: OVERLAY_FEE_RATE, receiver: T2000_OVERLAY_FEE_WALLET }
         : undefined,
       feeHooks: {
@@ -438,7 +447,7 @@ async function buildAndSponsor(params: BuildRequest, jwt: string | null): Promis
         reason,
       });
     }
-    if (hasSwap) {
+    if (needsOverlayFee) {
       emitSwapComposeDuration({
         stepCount: steps.length,
         durationMs: Date.now() - composeStartedAt,
@@ -451,7 +460,7 @@ async function buildAndSponsor(params: BuildRequest, jwt: string | null): Promis
   if (isBundle) {
     emitBundleComposeDuration(steps.length, Date.now() - composeStartedAt);
   }
-  if (hasSwap) {
+  if (needsOverlayFee) {
     emitSwapComposeDuration({
       stepCount: steps.length,
       durationMs: Date.now() - composeStartedAt,
