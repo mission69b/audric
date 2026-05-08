@@ -275,7 +275,18 @@ export const lookupUserTool = buildTool({
 
     return {
       data: hit,
-      displayText: `${hit.fullHandle} → \`${hit.address.slice(0, 10)}…${hit.address.slice(-6)}\``,
+      // [S.121 Option C] Nudge the LLM to pass the FULL HANDLE (e.g.
+      // `funkii.audric.sui`) to send_transfer rather than the resolved
+      // 0x address. Both work — the SDK's contact resolver handles the
+      // handle, and the engine's address-source guard now trusts the
+      // resolved 0x because the user-typed identifier landed in the
+      // trustedAddresses set — but passing the handle keeps the confirm
+      // card showing the human-readable name and avoids the LLM-side
+      // failure mode where it transcribes the address with one digit off.
+      displayText:
+        `${hit.fullHandle} → \`${hit.address.slice(0, 10)}…${hit.address.slice(-6)}\`. ` +
+        `For send_transfer, pass \`to: "${hit.fullHandle}"\` (engine resolves it via the contact path) — ` +
+        `the truncated 0x is shown only for human verification.`,
     };
   },
 });

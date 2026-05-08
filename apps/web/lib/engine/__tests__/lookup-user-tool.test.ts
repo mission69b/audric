@@ -134,6 +134,17 @@ describe('lookupUserTool — forward (label) hit', () => {
     expect(result.displayText).toContain(ALICE_ADDR.slice(0, 10));
     expect(result.displayText).toContain(ALICE_ADDR.slice(-6));
   });
+
+  it('[S.121] nudges the LLM to pass the fullHandle to send_transfer', async () => {
+    // Closes the UX inconsistency where the LLM sometimes passed the
+    // resolved 0x address (which previously failed the address-source
+    // guard for users not in the contacts list). The nudge tells the LLM
+    // to use the human-readable handle so the SDK's contact-resolver
+    // path runs and the confirm card shows a name instead of a hash.
+    const result = await lookupUserTool.call({ query: 'alice' }, ctx);
+    expect(result.displayText).toContain('send_transfer');
+    expect(result.displayText).toContain('alice.audric.sui');
+  });
 });
 
 describe('lookupUserTool — reverse (address) hit', () => {
