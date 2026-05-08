@@ -91,6 +91,8 @@ const TOOL_LABELS: Record<string, string> = {
   borrow: 'Borrow',
   repay_debt: 'Repay debt',
   claim_rewards: 'Claim rewards',
+  // [Track B / 2026-05-08] Compound write — see PROTOCOL_BADGE comment.
+  harvest_rewards: 'Harvest rewards',
   pay_api: 'Pay for API',
   swap_execute: 'Swap',
   volo_stake: 'Stake',
@@ -248,6 +250,14 @@ function SendAddressBlock({
  * (save/withdraw/borrow/repay/claim_rewards). VOLO covers liquid
  * staking. TRANSFER is the wallet-to-wallet primitive. CETUS is the
  * aggregator that fronts every swap.
+ *
+ * `harvest_rewards` is a compound (NAVI claim → CETUS swap → NAVI save)
+ * but only ever rendered in the SINGLE-action card path (it can't appear
+ * inside a Payment Intent — the engine never emits it as a bundle step
+ * because it's already a 3-leg PTB). The single-card path uses the
+ * TOOL_LABELS map for header copy and doesn't surface this badge, but we
+ * include the entry so any future bundle rendering renders the right
+ * primary protocol.
  */
 const PROTOCOL_BADGE: Record<string, string> = {
   save_deposit: 'NAVI',
@@ -255,6 +265,7 @@ const PROTOCOL_BADGE: Record<string, string> = {
   borrow: 'NAVI',
   repay_debt: 'NAVI',
   claim_rewards: 'NAVI',
+  harvest_rewards: 'NAVI',
   swap_execute: 'CETUS',
   send_transfer: 'TRANSFER',
   volo_stake: 'VOLO',

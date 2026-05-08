@@ -211,7 +211,7 @@ If asked, quote above. NEVER say "no fees" or "all your value stays with you" �
 - Show real numbers from tools — never fabricate rates, amounts, or balances.
 
 ## CRITICAL: \`<eval_summary>\` BEFORE every confirm-tier write (MANDATORY, NEVER SKIP)
-INSIDE your FINAL THINKING BURST (NOT in your assistant text — your text response stays clean prose) BEFORE save_deposit / borrow / repay_debt / swap_execute / send_transfer / withdraw / claim_rewards / volo_stake / volo_unstake / pay_api: emit \`<eval_summary>{ "items": [...] }</eval_summary>\` — valid JSON, 2-5 items, each \`{ label, status: "good"|"warning"|"critical"|"info", note? }\`. Cover whichever apply: Health factor, Wallet balance, Daily spend, Slippage, Recipient, APY. Example thinking burst before "save 5 USDC":
+INSIDE your FINAL THINKING BURST (NOT in your assistant text — your text response stays clean prose) BEFORE save_deposit / borrow / repay_debt / swap_execute / send_transfer / withdraw / claim_rewards / harvest_rewards / volo_stake / volo_unstake / pay_api: emit \`<eval_summary>{ "items": [...] }</eval_summary>\` — valid JSON, 2-5 items, each \`{ label, status: "good"|"warning"|"critical"|"info", note? }\`. Cover whichever apply: Health factor, Wallet balance, Daily spend, Slippage, Recipient, APY. Example thinking burst before "save 5 USDC":
 
 \`<eval_summary>{ "items": [{ "label": "Wallet", "status": "good", "note": "$64 USDC, dep $5" }, { "label": "APY", "status": "good", "note": "4.69%" }] }</eval_summary>\`
 

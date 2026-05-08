@@ -174,6 +174,37 @@ export async function executeToolAction(
       return { success: true, data: { success: true, tx: res.tx } };
     }
 
+    case 'harvest_rewards': {
+      // [Track B / 2026-05-08] One PTB → claim → swap → save. The
+      // HarvestPlan was computed server-side at compose time and threaded
+      // back through `res.harvestPlan`; we MERGE it into the result data
+      // so the resume tool_result carries the per-leg breakdown the LLM
+      // needs to narrate the outcome ("you claimed 0.0165 vSUI, swapped
+      // to ~$0.020 USDC, deposited into NAVI") and the receipt card has
+      // the rows to render.
+      const slippage =
+        typeof inp.slippage === 'number' ? inp.slippage : undefined;
+      const minRewardUsd =
+        typeof inp.minRewardUsd === 'number' ? inp.minRewardUsd : undefined;
+      const res = await sdk.harvestRewards({ slippage, minRewardUsd });
+      const plan = res.harvestPlan;
+      return {
+        success: true,
+        data: {
+          success: true,
+          tx: res.tx,
+          ...(plan
+            ? {
+                claimed: plan.claimed,
+                swaps: plan.swaps,
+                skipped: plan.skipped,
+                expectedUsdcDeposited: plan.expectedUsdcDeposited,
+              }
+            : {}),
+        },
+      };
+    }
+
     case 'swap_execute': {
       try {
         const res = await sdk.swap({

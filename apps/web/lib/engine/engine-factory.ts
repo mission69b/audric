@@ -100,6 +100,13 @@ export const POST_WRITE_REFRESH_MAP: Record<string, string[]> = {
 
   // Claim rewards — adds tokens to wallet, may also clear NAVI rewards
   claim_rewards: ['balance_check', 'savings_info'],
+
+  // [Track B / 2026-05-08] Compound — claims clear rewards (savings_info),
+  // swap leg moves wallet balances (balance_check), final deposit adds
+  // to NAVI USDC pool (savings_info), AND it can affect health factor
+  // since collateral changed (health_check). Refresh all three so the
+  // narration after settlement reflects ground truth.
+  harvest_rewards: ['balance_check', 'savings_info', 'health_check'],
 };
 
 /**

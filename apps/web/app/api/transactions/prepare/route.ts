@@ -52,6 +52,7 @@ type SingleTxType =
   | 'borrow'
   | 'repay'
   | 'claim-rewards'
+  | 'harvest'
   | 'swap'
   | 'volo-stake'
   | 'volo-unstake';
@@ -71,6 +72,11 @@ interface SingleBuildRequest {
   to?: string;
   slippage?: number;
   byAmountIn?: boolean;
+  /**
+   * [Track B / 2026-05-08] `harvest`-only. USD floor below which rewards
+   * skip the swap leg and transfer to wallet instead. Default $0.01.
+   */
+  minRewardUsd?: number;
 }
 
 /**
@@ -138,6 +144,18 @@ function buildStepFromRequest(body: SingleBuildRequest): WriteStep {
       };
     case 'claim-rewards':
       return { toolName: 'claim_rewards', input: {} };
+    case 'harvest':
+      // [Track B / 2026-05-08] Compound write — claim → swap → save in
+      // one PTB. `slippage` and `minRewardUsd` are forwarded to the SDK
+      // appender (`addHarvestToTx`); the rest of the harvest plan is
+      // derived from on-chain rewards at compose time.
+      return {
+        toolName: 'harvest_rewards',
+        input: {
+          ...(slippage !== undefined ? { slippage } : {}),
+          ...(body.minRewardUsd !== undefined ? { minRewardUsd: body.minRewardUsd } : {}),
+        },
+      };
     case 'swap':
       if (!from || !to) throw new Error('from and to tokens are required');
       return {
@@ -281,7 +299,10 @@ export async function POST(request: NextRequest) {
     }
   } else {
     const { amount, recipient } = body;
-    const skipAmountCheck = type === 'claim-rewards' || type === 'volo-unstake';
+    // `harvest` is amount-less for the same reason `claim-rewards` is —
+    // the value comes from on-chain pending rewards, not user input.
+    const skipAmountCheck =
+      type === 'claim-rewards' || type === 'volo-unstake' || type === 'harvest';
     if (!skipAmountCheck && (!amount || amount <= 0)) {
       return NextResponse.json({ error: 'Invalid amount' }, { status: 400 });
     }
@@ -326,7 +347,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({ bytes: result.bytes, digest: result.digest });
+    // [Track B / 2026-05-08] For harvest, surface the HarvestPlan back to
+    // the client so it can attach the per-leg breakdown to the resume
+    // tool_result. Without this, the LLM only sees the tx hash and can't
+    // narrate "you claimed 0.0165 vSUI → ~$0.020 USDC into savings".
+    const responseBody: { bytes: string; digest: string; harvestPlan?: unknown } = {
+      bytes: result.bytes,
+      digest: result.digest,
+    };
+    if (result.harvestPlan !== undefined) {
+      responseBody.harvestPlan = result.harvestPlan;
+    }
+    return NextResponse.json(responseBody);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Transaction build failed';
     const stack = err instanceof Error ? err.stack : '';
@@ -336,7 +368,7 @@ export async function POST(request: NextRequest) {
 }
 
 type SponsorResult =
-  | { ok: true; bytes: string; digest: string }
+  | { ok: true; bytes: string; digest: string; harvestPlan?: unknown }
   | { ok: false; status: number; error: string; code?: string };
 
 async function buildAndSponsor(params: BuildRequest, jwt: string | null): Promise<SponsorResult> {
@@ -434,6 +466,33 @@ async function buildAndSponsor(params: BuildRequest, jwt: string | null): Promis
     }
   }
 
+  let harvestPlan: unknown | undefined;
+  if (params.type === 'harvest') {
+    // [Track B / 2026-05-08] Two empty-plan failure modes:
+    //  1. NAVI returned zero pending rewards → claimed[] is empty →
+    //     building the PTB would emit a no-op claim. Bail before the
+    //     user signs anything.
+    //  2. NAVI was degraded at compose time → addHarvestToTx falls
+    //     through to the same empty-claim shape. Surface the same 400
+    //     so the chat narrates "Nothing to harvest" honestly.
+    const preview = composed.perStepPreviews[0];
+    if (preview.toolName === 'harvest_rewards') {
+      if (preview.claimed.length === 0) {
+        return { ok: false, status: 400, error: 'No rewards available to harvest' };
+      }
+      // Stash the plan to forward back to the client. The plan shape is
+      // the SDK's StepPreview for harvest_rewards (claimed / swaps /
+      // skipped / expectedUsdcDeposited); the client merges it into the
+      // resume tool_result so the LLM can narrate the per-leg breakdown.
+      harvestPlan = {
+        claimed: preview.claimed,
+        swaps: preview.swaps,
+        skipped: preview.skipped,
+        expectedUsdcDeposited: preview.expectedUsdcDeposited,
+      };
+    }
+  }
+
   const moveCallTargets = extractMoveCallTargets(composed.tx);
   if (moveCallTargets.length > 0) {
     console.log('[prepare]', String(params.type), 'targets:', moveCallTargets);
@@ -521,7 +580,7 @@ async function buildAndSponsor(params: BuildRequest, jwt: string | null): Promis
   }
 
   const { data } = await sponsorRes.json();
-  return { ok: true, bytes: data.bytes, digest: data.digest };
+  return { ok: true, bytes: data.bytes, digest: data.digest, harvestPlan };
 }
 
 function extractMoveCallTargets(tx: import('@mysten/sui/transactions').Transaction): string[] {

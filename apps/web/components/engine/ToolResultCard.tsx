@@ -23,7 +23,10 @@ import { PriceCard } from './cards/PriceCard';
 
 const WRITE_TOOL_NAMES = new Set([
   'save_deposit', 'withdraw', 'send_transfer', 'swap_execute',
-  'volo_stake', 'volo_unstake', 'borrow', 'repay_debt', 'claim_rewards', 'pay_api',
+  'volo_stake', 'volo_unstake', 'borrow', 'repay_debt', 'claim_rewards',
+  // [Track B / 2026-05-08] Compound write — atomic claim+swap+save in one PTB.
+  'harvest_rewards',
+  'pay_api',
 ]);
 
 /**

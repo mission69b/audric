@@ -46,6 +46,27 @@ interface TxReceiptData {
     estimatedValueUsd?: number;
   }[];
   totalValueUsd?: number | null;
+  /**
+   * [Track B / 2026-05-08] `harvest_rewards`-only fields. Plan rows from
+   * the SDK's `HarvestPlan`, surfaced in the receipt so the user can see
+   * exactly what was claimed, swapped, and deposited.
+   */
+  claimed?: {
+    symbol?: string;
+    amount: number;
+    estimatedValueUsd?: number;
+  }[];
+  swaps?: {
+    fromSymbol: string;
+    inputAmount: number;
+    expectedOutputUsdc: number;
+  }[];
+  skipped?: {
+    symbol?: string;
+    amount: number;
+    reason: 'untradeable' | 'dust' | 'no-route';
+  }[];
+  expectedUsdcDeposited?: number;
   memo?: string;
   serviceName?: string;
   serviceEndpoint?: string;
@@ -171,6 +192,62 @@ function getHeroLines(data: TxReceiptData, toolName: string): HeroLine[] {
 
     if (rewards.length === 0) {
       lines.push({ label: 'Claimed', value: 'No pending rewards', emphasis: 'neutral' });
+    }
+
+    return lines;
+  }
+
+  if (toolName === 'harvest_rewards') {
+    // [Track B / 2026-05-08] Receipt for the compound flow. Show:
+    //  - per-claim row (e.g. "Claimed 0.0165 vSUI")
+    //  - per-swap row (e.g. "Swapped vSUI → ~0.016 USDC")
+    //  - the deposit total ("Deposited ~$1.20 USDC")
+    //  - skipped legs ("Untradeable: 0.0001 WEIRD" or similar)
+    // When everything is empty (degraded compose), fall through to the
+    // generic placeholder so the card still renders the tx hash row.
+    const claimed = (data.claimed ?? []).filter((r) => Number.isFinite(r.amount) && r.amount > 0);
+    const swaps = (data.swaps ?? []).filter((s) => Number.isFinite(s.expectedOutputUsdc));
+    const skipped = data.skipped ?? [];
+    const deposited = data.expectedUsdcDeposited ?? 0;
+
+    for (const c of claimed) {
+      const symbol = c.symbol ?? 'REWARD';
+      lines.push({
+        label: 'Claimed',
+        value: `${fmtAmt(c.amount, 4)} ${symbol}`,
+        emphasis: 'positive',
+      });
+    }
+
+    for (const s of swaps) {
+      lines.push({
+        label: 'Swapped',
+        value: `${s.fromSymbol} → ~${fmtAmt(s.expectedOutputUsdc, 4)} USDC`,
+      });
+    }
+
+    if (deposited > 0) {
+      lines.push({
+        label: 'Deposited',
+        value: `~$${fmtAmt(deposited)} USDC`,
+        emphasis: 'positive',
+      });
+    }
+
+    for (const sk of skipped) {
+      const symbol = sk.symbol ?? 'token';
+      const reasonLabel =
+        sk.reason === 'dust' ? 'Sent to wallet (dust)' :
+        sk.reason === 'no-route' ? 'Sent to wallet (no swap route)' :
+        'Sent to wallet (untradeable)';
+      lines.push({
+        label: reasonLabel,
+        value: `${fmtAmt(sk.amount, 4)} ${symbol}`,
+      });
+    }
+
+    if (claimed.length === 0 && swaps.length === 0 && deposited === 0 && skipped.length === 0) {
+      lines.push({ label: 'Harvested', value: 'No rewards available', emphasis: 'neutral' });
     }
 
     return lines;

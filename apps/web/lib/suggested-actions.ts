@@ -123,6 +123,21 @@ const TOOL_CHIPS: Record<string, SuggestedActionItem[] | ChipBuilder> = {
     { icon: '💰', label: 'CHECK BALANCE', prompt: 'What is my balance now?' },
     { icon: '🏦', label: 'SAVE REWARDS', prompt: 'Save my claimed rewards' },
   ],
+  // [Track B / 2026-05-08] `pending_rewards` is the read-only inspector
+  // (S18-F20). After surfacing what's claimable, the two natural next
+  // moves are: (1) harvest everything → USDC → savings in one PTB, or
+  // (2) just claim into the wallet (use when the user wants the reward
+  // token, e.g. NAVX or vSUI, NOT auto-converted).
+  pending_rewards: [
+    { icon: '🌾', label: 'HARVEST ALL', prompt: 'Harvest all my rewards into savings' },
+    { icon: '🎁', label: 'JUST CLAIM', prompt: 'Claim my rewards to my wallet' },
+  ],
+  // Mirror chip for harvest_rewards itself — once the harvest lands, the
+  // user usually wants to verify the new savings balance / yield.
+  harvest_rewards: [
+    { icon: '📊', label: 'MY SAVINGS', prompt: 'Show my savings positions' },
+    { icon: '💰', label: 'CHECK BALANCE', prompt: 'What is my balance now?' },
+  ],
   // ── CHIP_REVIEW_2 F-4 / F-5 backfill (2026-05-07) ─────────────────
   // Audric Passport (SPEC 10) — `lookup_user` is the audric-specific tool
   // that resolves Audric handles. (The engine's `resolve_suins` is for

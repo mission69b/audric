@@ -18,6 +18,7 @@ function fakeAgent(overrides: Partial<AgentActions>): AgentActions {
     borrow: vi.fn(),
     repay: vi.fn(),
     claimRewards: vi.fn(),
+    harvestRewards: vi.fn(),
     swap: vi.fn(),
     stakeVSui: vi.fn(),
     unstakeVSui: vi.fn(),

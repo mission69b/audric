@@ -36,7 +36,25 @@ export interface BalanceChange {
   owner?: unknown;
 }
 
-export type TxResult = { tx: string; balanceChanges?: BalanceChange[] };
+/**
+ * [Track B / 2026-05-08] `harvestPlan` is populated only by `harvestRewards()`.
+ * Carries the per-leg breakdown (claimed/swaps/skipped/expectedUsdcDeposited)
+ * computed server-side at compose time, so the resume tool_result can carry
+ * the data the LLM needs to narrate the outcome. Other write actions leave
+ * it undefined.
+ */
+export interface HarvestPlanLite {
+  claimed: Array<{ symbol?: string; amount: number; estimatedValueUsd?: number }>;
+  swaps: Array<{ fromSymbol: string; inputAmount: number; expectedOutputUsdc: number }>;
+  skipped: Array<{ symbol?: string; amount: number; reason: 'untradeable' | 'dust' | 'no-route' }>;
+  expectedUsdcDeposited: number;
+}
+
+export type TxResult = {
+  tx: string;
+  balanceChanges?: BalanceChange[];
+  harvestPlan?: HarvestPlanLite;
+};
 
 /**
  * [SPEC 7 P2.4 Layer 3] Minimal bundle-step shape sent over the wire.
@@ -68,6 +86,17 @@ export interface AgentActions {
   borrow(params: { amount: number; asset?: string; protocol?: string }): Promise<TxResult>;
   repay(params: { amount: number; asset?: string; protocol?: string }): Promise<TxResult>;
   claimRewards(): Promise<TxResult>;
+  /**
+   * [Track B / 2026-05-08] Compound write — claim NAVI rewards, swap each
+   * non-USDC reward to USDC inline, deposit the merged USDC into NAVI
+   * savings. ALL legs settle in one Programmable Transaction Block; either
+   * every leg lands or none of them do (atomic). Untradeable / dust
+   * rewards transfer to the wallet so nothing is lost.
+   *
+   * Routed through `/api/transactions/prepare?type=harvest`, which builds
+   * the PTB via the SDK's `addHarvestToTx` and sponsors it via Enoki.
+   */
+  harvestRewards(params: { slippage?: number; minRewardUsd?: number }): Promise<TxResult>;
   swap(params: { from: string; to: string; amount: number; slippage?: number; byAmountIn?: boolean }): Promise<TxResult>;
   stakeVSui(params: { amount: number }): Promise<TxResult>;
   unstakeVSui(params: { amount: number }): Promise<TxResult>;
@@ -114,7 +143,11 @@ export function useAgent() {
         async function sponsoredTransaction(
           txType: string,
           params: Record<string, unknown>,
-        ): Promise<{ tx: string; balanceChanges?: Array<{ coinType: string; amount: string; owner?: unknown }> }> {
+        ): Promise<{
+          tx: string;
+          balanceChanges?: Array<{ coinType: string; amount: string; owner?: unknown }>;
+          harvestPlan?: HarvestPlanLite;
+        }> {
           const prepareHeaders: Record<string, string> = {
             'Content-Type': 'application/json',
           };
@@ -138,7 +171,7 @@ export function useAgent() {
             throw new Error(`[PREPARE_${prepareRes.status}] ${(err as Record<string, string>).error ?? 'Unknown prepare error'}`);
           }
 
-          const { bytes, digest } = await prepareRes.json();
+          const { bytes, digest, harvestPlan } = await prepareRes.json();
 
           let signature: string;
           try {
@@ -166,7 +199,11 @@ export function useAgent() {
           }
 
           const result = await executeRes.json();
-          return { tx: result.digest, balanceChanges: result.balanceChanges };
+          return {
+            tx: result.digest,
+            balanceChanges: result.balanceChanges,
+            ...(harvestPlan ? { harvestPlan: harvestPlan as HarvestPlanLite } : {}),
+          };
         }
 
         return {
@@ -202,6 +239,17 @@ export function useAgent() {
 
           async claimRewards() {
             return sponsoredTransaction('claim-rewards', { amount: 0 });
+          },
+
+          async harvestRewards({ slippage, minRewardUsd } = {}) {
+            // [Track B / 2026-05-08] One-PTB compound. The amount field is
+            // a placeholder — the route uses pending NAVI rewards, not a
+            // user-supplied amount.
+            return sponsoredTransaction('harvest', {
+              amount: 0,
+              ...(slippage !== undefined ? { slippage } : {}),
+              ...(minRewardUsd !== undefined ? { minRewardUsd } : {}),
+            });
           },
 
           async swap({ from, to, amount, slippage, byAmountIn }) {
