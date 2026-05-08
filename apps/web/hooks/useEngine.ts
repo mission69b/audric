@@ -447,6 +447,51 @@ export function useEngine({ address, jwt, onToolResult, contacts }: UseEngineOpt
         isStreaming: true,
       };
 
+      // [S.122] Session-expired short-circuit — when the SDK threw
+      // `EnokiSessionExpiredError` upstream, executeToolAction +
+      // executeBundleAction emit a `_sessionExpired: true` sentinel on
+      // the executionResult / stepResults. We DON'T call /api/engine/
+      // resume in that case — the resume route would push the
+      // session-expired tool_results back to Anthropic to narrate, and
+      // Anthropic 4xxs the request (observed 2026-05-08, 2 occurrences),
+      // surfacing the cryptic "rejected by Anthropic, please retry"
+      // banner to the user. Instead we render a static re-auth message
+      // so the user can sign back in and try again. The bundle/single
+      // receipt cards already render the `_sessionExpired` flag as a
+      // distinct "session expired" state (NOT "Payment Intent reverted"
+      // — nothing reached chain).
+      const looksSessionExpired =
+        (executionResult &&
+          typeof executionResult === 'object' &&
+          (executionResult as Record<string, unknown>)._sessionExpired === true) ||
+        (Array.isArray(stepResults) &&
+          stepResults.length > 0 &&
+          stepResults.every(
+            (sr) =>
+              sr.result &&
+              typeof sr.result === 'object' &&
+              (sr.result as Record<string, unknown>)._sessionExpired === true,
+          ));
+      if (looksSessionExpired) {
+        // No /api/engine/resume call — we already updated the timeline
+        // above to mark the pending action resolved with the session-
+        // expired sentinel, so the timeline renders the re-auth state
+        // and a separate "Sign back in" banner will surface from the
+        // dashboard (see `useZkLogin().signOut` wiring in
+        // dashboard-content.tsx). Push a single static assistant message
+        // (NOT a streaming message — there's nothing to stream) so the
+        // chat reads coherently and the user has a clear next step.
+        const reauthMsg: EngineChatMessage = {
+          id: nextMsgId(),
+          role: 'assistant',
+          content:
+            'Your sign-in session expired before this could be sent. Tap "Sign back in" below — your funds are safe (nothing reached the chain).',
+          timestamp: Date.now(),
+        };
+        setMessages((prev) => [...prev, reauthMsg]);
+        return;
+      }
+
       streamingMsgRef.current = resumeMsg.id;
       setMessages((prev) => [...prev, resumeMsg]);
 

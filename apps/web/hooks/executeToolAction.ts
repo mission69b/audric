@@ -1,7 +1,22 @@
 import { parseActualAmount, buildSwapDisplayData } from '@/lib/balance-changes';
-import { ServiceDeliveryError, type AgentActions, type BundleStep } from '@/hooks/useAgent';
+import {
+  EnokiSessionExpiredError,
+  ServiceDeliveryError,
+  type AgentActions,
+  type BundleStep,
+} from '@/hooks/useAgent';
 import { looksLikeSuiNs } from '@/lib/suins-resolver';
 import type { PendingAction, PendingActionStep } from '@t2000/engine';
+
+/**
+ * [S.122] Sentinel returned to the caller when the SDK throws an
+ * EnokiSessionExpiredError — bypasses the resume → Anthropic narration
+ * path (which 4xxs Anthropic with the wrong-shape message ledger) and
+ * lets the dashboard render the re-auth banner directly. Mirrors the
+ * `_bundleReverted` sentinel for atomic on-chain reverts.
+ */
+export const SESSION_EXPIRED_USER_MESSAGE =
+  'Your sign-in session has expired. Please sign back in to continue. Your funds are safe — nothing was submitted on-chain.';
 
 /**
  * Side-effect callbacks the pure helper needs from React land.
@@ -21,7 +36,16 @@ export interface ExecuteToolActionEffects {
   resolveSuiNs?: (rawName: string) => Promise<string>;
 }
 
-export type ExecuteToolActionResult = { success: boolean; data: unknown };
+export type ExecuteToolActionResult = {
+  success: boolean;
+  data: unknown;
+  /**
+   * [S.122] Mirrors {@link ExecuteBundleResult.sessionExpired}. Set when
+   * the SDK threw `EnokiSessionExpiredError`; the dashboard renders the
+   * re-auth banner + skips the resume → Anthropic call.
+   */
+  sessionExpired?: boolean;
+};
 
 /**
  * Pure executor for write-tool actions confirmed in the chat UI.
@@ -33,6 +57,36 @@ export type ExecuteToolActionResult = { success: boolean; data: unknown };
  * matching what save_deposit / withdraw / send_transfer already do.
  */
 export async function executeToolAction(
+  sdk: AgentActions,
+  toolName: string,
+  input: unknown,
+  effects: ExecuteToolActionEffects = {},
+): Promise<ExecuteToolActionResult> {
+  // [S.122] Session-expired wrapper — every write tool below dispatches
+  // through `sdk.X(...)` which can throw `EnokiSessionExpiredError`. Wrap
+  // the whole switch so any tool that fails on Enoki sponsorship surfaces
+  // the typed sentinel without each branch having to repeat the catch.
+  // pay_api goes through `/api/services/prepare` (separate sponsor path),
+  // so it never throws this class — the wrapper is a safe no-op there.
+  try {
+    return await executeToolActionImpl(sdk, toolName, input, effects);
+  } catch (err) {
+    if (err instanceof EnokiSessionExpiredError) {
+      return {
+        success: false,
+        sessionExpired: true,
+        data: {
+          success: false,
+          error: SESSION_EXPIRED_USER_MESSAGE,
+          _sessionExpired: true,
+        },
+      };
+    }
+    throw err;
+  }
+}
+
+async function executeToolActionImpl(
   sdk: AgentActions,
   toolName: string,
   input: unknown,
@@ -234,6 +288,11 @@ export async function executeToolAction(
           },
         };
       } catch (swapErr) {
+        // [S.122] Re-throw session-expired so the outer wrapper sees it
+        // and emits the typed sentinel — without this rethrow the
+        // session-expired would be swallowed into a generic error and
+        // the dashboard would route through the resume → Anthropic path.
+        if (swapErr instanceof EnokiSessionExpiredError) throw swapErr;
         const msg = swapErr instanceof Error ? swapErr.message : String(swapErr);
         return {
           success: false,
@@ -332,6 +391,15 @@ export interface ExecuteBundleResult {
   txDigest?: string;
   stepResults: BundleStepResult[];
   error?: string;
+  /**
+   * [S.122] True iff the failure was an Enoki session-expired (zkLogin JWT
+   * past `exp` or signed by a now-rotated Google JWK). Distinct from
+   * `_bundleReverted` (on-chain Payment Intent revert) — when true, the
+   * bundle never reached chain so the dashboard renders a re-auth banner
+   * + skips the resume → Anthropic call entirely (which silently rejects
+   * the post-failure narration request).
+   */
+  sessionExpired?: boolean;
 }
 
 /**
@@ -496,6 +564,32 @@ export async function executeBundleAction(
     );
     return { success: true, txDigest: res.tx, stepResults };
   } catch (err) {
+    // [S.122] Session-expired path — distinct sentinel so the dashboard
+    // skips the resume → Anthropic call (which silently rejects with
+    // "rejected by Anthropic, please retry") and renders the re-auth
+    // banner immediately. The bundle never reached chain — Enoki refused
+    // to sponsor — so it's NOT semantically `_bundleReverted` (which
+    // implies on-chain revert). Every step gets the same flag so the
+    // bundle UI renders one unified "session expired" state, not N
+    // separate revert rows.
+    if (err instanceof EnokiSessionExpiredError) {
+      const stepResults = action.steps.map((step) => ({
+        toolUseId: step.toolUseId,
+        attemptId: step.attemptId,
+        result: {
+          success: false,
+          error: SESSION_EXPIRED_USER_MESSAGE,
+          _sessionExpired: true,
+        },
+        isError: true,
+      }));
+      return {
+        success: false,
+        error: SESSION_EXPIRED_USER_MESSAGE,
+        sessionExpired: true,
+        stepResults,
+      };
+    }
     const errorMsg = err instanceof Error ? err.message : 'Bundle execution failed';
     // Atomic semantics: if the Payment Intent reverts, every step failed. Surface a
     // matching error result for each step so the engine's resume route

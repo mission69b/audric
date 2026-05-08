@@ -30,6 +30,39 @@ export class ServiceDeliveryError extends Error {
   }
 }
 
+/**
+ * [v0.55.x / S.122] Typed error for Enoki session-expired (`code: 'expired'`
+ * or `code: 'jwt_error'` — both classified as `session_expired` by
+ * `lib/enoki-error.ts`). Thrown by the `sponsoredTransaction` helper when
+ * `/api/transactions/prepare` or `/api/transactions/execute` returns 401
+ * + body `{ code: 'session_expired' }`.
+ *
+ * Why a typed class (vs a string-prefix on a generic Error):
+ * - `executeBundleAction` + `executeToolAction` need to detect this error
+ *   class to mark stepResults / executionResult with `_sessionExpired:
+ *   true` so the UI renders the re-auth state (NOT "Payment Intent
+ *   reverted") and the resume route short-circuits the Anthropic call.
+ * - The pre-fix path threw `Error('[PREPARE_401] message')`; the `code:
+ *   'session_expired'` field returned by the server was discarded and
+ *   downstream had no programmatic signal to differentiate "session
+ *   died" from "Enoki rejected for any other reason." Surfaced
+ *   2026-05-08 (8 production failures / 12h) when the user saw
+ *   "Payment Intent reverted atomically" + "rejected by Anthropic"
+ *   instead of "your sign-in expired, please sign back in" — the
+ *   underlying tx never even reached chain.
+ */
+export class EnokiSessionExpiredError extends Error {
+  readonly code = 'session_expired' as const;
+  /** 'prepare' or 'execute' — which route surfaced the 401. */
+  readonly stage: 'prepare' | 'execute';
+
+  constructor(message: string, stage: 'prepare' | 'execute') {
+    super(message);
+    this.name = 'EnokiSessionExpiredError';
+    this.stage = stage;
+  }
+}
+
 export interface BalanceChange {
   coinType: string;
   amount: string;
@@ -167,8 +200,18 @@ export function useAgent() {
           }
 
           if (!prepareRes.ok) {
-            const err = await prepareRes.json().catch(() => ({}));
-            throw new Error(`[PREPARE_${prepareRes.status}] ${(err as Record<string, string>).error ?? 'Unknown prepare error'}`);
+            const err = (await prepareRes.json().catch(() => ({}))) as Record<string, string>;
+            // [S.122] Typed throw on session-expired so executeToolAction +
+            // executeBundleAction can short-circuit the resume → Anthropic
+            // path. Generic 401s (code missing or different) keep the legacy
+            // string-prefixed Error for back-compat.
+            if (prepareRes.status === 401 && err.code === 'session_expired') {
+              throw new EnokiSessionExpiredError(
+                err.error ?? 'Your sign-in session has expired. Please sign back in to continue.',
+                'prepare',
+              );
+            }
+            throw new Error(`[PREPARE_${prepareRes.status}] ${err.error ?? 'Unknown prepare error'}`);
           }
 
           const { bytes, digest, harvestPlan } = await prepareRes.json();
@@ -194,8 +237,15 @@ export function useAgent() {
           }
 
           if (!executeRes.ok) {
-            const err = await executeRes.json().catch(() => ({}));
-            throw new Error(`[EXECUTE_${executeRes.status}] ${(err as Record<string, string>).error ?? 'Unknown execute error'}`);
+            const err = (await executeRes.json().catch(() => ({}))) as Record<string, string>;
+            // [S.122] See parallel branch in the prepare path above.
+            if (executeRes.status === 401 && err.code === 'session_expired') {
+              throw new EnokiSessionExpiredError(
+                err.error ?? 'Your sign-in session has expired. Please sign back in to continue.',
+                'execute',
+              );
+            }
+            throw new Error(`[EXECUTE_${executeRes.status}] ${err.error ?? 'Unknown execute error'}`);
           }
 
           const result = await executeRes.json();

@@ -114,6 +114,55 @@ export async function POST(request: NextRequest) {
     return jsonError('Invalid Sui address', 400);
   }
 
+  // [S.122] Defense layer — short-circuit when the executionResult /
+  // stepResults all carry the `_sessionExpired` sentinel. Without this,
+  // the engine pushes a tool_result block carrying "Your sign-in session
+  // has expired..." back to Claude, and Claude rejects the request with
+  // "rejected by Anthropic, please retry" (observed 2026-05-08, 2
+  // production occurrences). The user sees the cryptic Anthropic error
+  // instead of a clean "sign back in" prompt. The client-side
+  // useEngine.resolveAction short-circuit is the primary fix; this is
+  // the belt-and-suspenders for legacy clients still in the deploy
+  // window OR for any future caller that bypasses the client helper.
+  // Emits a static SSE stream (text_delta + turn_complete) and returns
+  // 200 — Anthropic is NOT called.
+  const sessionExpiredFromExecution =
+    executionResult &&
+    typeof executionResult === 'object' &&
+    (executionResult as Record<string, unknown>)._sessionExpired === true;
+  const sessionExpiredFromSteps =
+    Array.isArray(stepResults) &&
+    stepResults.length > 0 &&
+    stepResults.every(
+      (sr) =>
+        sr.result &&
+        typeof sr.result === 'object' &&
+        (sr.result as Record<string, unknown>)._sessionExpired === true,
+    );
+  if (approved && (sessionExpiredFromExecution || sessionExpiredFromSteps)) {
+    const text =
+      'Your sign-in session expired before this could be sent. Tap "Sign back in" — your funds are safe (nothing reached the chain).';
+    const stream = new ReadableStream({
+      start(controller) {
+        const encoder = new TextEncoder();
+        controller.enqueue(
+          encoder.encode(serializeSSE({ type: 'text_delta', text })),
+        );
+        controller.enqueue(
+          encoder.encode(serializeSSE({ type: 'turn_complete', stopReason: 'end_turn' })),
+        );
+        controller.close();
+      },
+    });
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache, no-transform',
+        Connection: 'keep-alive',
+      },
+    });
+  }
+
   const jwt = request.headers.get('x-zklogin-jwt');
   const jwtResult = validateJwt(jwt);
   if ('error' in jwtResult) return jwtResult.error;

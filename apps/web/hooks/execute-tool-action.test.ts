@@ -406,3 +406,103 @@ describe('executeBundleAction — multi-write Payment Intent dispatch', () => {
     await expect(executeBundleAction(sdk, action)).rejects.toThrow(/no steps/);
   });
 });
+
+describe('[S.122] EnokiSessionExpiredError → _sessionExpired sentinel', () => {
+  it('single write: surfaces sessionExpired flag + _sessionExpired in data', async () => {
+    const { EnokiSessionExpiredError } = await import('./useAgent');
+    const sdk = fakeAgent({
+      send: vi.fn().mockRejectedValue(
+        new EnokiSessionExpiredError(
+          'Your sign-in session has expired. Please sign back in to continue.',
+          'prepare',
+        ),
+      ),
+    });
+
+    const out = await executeToolAction(sdk, 'send_transfer', {
+      to: '0xdef',
+      amount: 5,
+      asset: 'USDC',
+    });
+    expect(out.success).toBe(false);
+    expect(out.sessionExpired).toBe(true);
+    const data = out.data as Record<string, unknown>;
+    expect(data._sessionExpired).toBe(true);
+    expect(data.error).toMatch(/sign-in session/i);
+  });
+
+  it('swap_execute: re-throws EnokiSessionExpiredError past the inner catch', async () => {
+    // Regression for the swap_execute branch which has its own try/catch
+    // that pre-fix would swallow EnokiSessionExpiredError into a generic
+    // {success:false, data:{...}}. Rethrow guarantees the outer wrapper
+    // emits the typed sentinel so the bundle/single UI renders the
+    // re-auth state, not "swap failed: jwt_error".
+    const { EnokiSessionExpiredError } = await import('./useAgent');
+    const sdk = fakeAgent({
+      swap: vi.fn().mockRejectedValue(
+        new EnokiSessionExpiredError('session dead', 'prepare'),
+      ),
+    });
+
+    const out = await executeToolAction(sdk, 'swap_execute', {
+      from: 'USDC',
+      to: 'SUI',
+      amount: 10,
+    });
+    expect(out.sessionExpired).toBe(true);
+    expect((out.data as Record<string, unknown>)._sessionExpired).toBe(true);
+  });
+
+  it('bundle: marks every leg with _sessionExpired and surfaces top-level sessionExpired', async () => {
+    const { EnokiSessionExpiredError } = await import('./useAgent');
+    const { executeBundleAction } = await import('./executeToolAction');
+
+    const sdk = fakeAgent({
+      executeBundle: vi.fn().mockRejectedValue(
+        new EnokiSessionExpiredError('session dead', 'prepare'),
+      ),
+    });
+
+    const action = {
+      toolName: 'bundle',
+      toolUseId: 'bundle-1',
+      input: {},
+      description: '',
+      assistantContent: [],
+      turnIndex: 0,
+      attemptId: 'a1',
+      steps: [
+        {
+          toolName: 'swap_execute',
+          toolUseId: 't1',
+          attemptId: 'a-t1',
+          input: { from: 'USDC', to: 'USDsui', amount: 99.53 },
+          description: 'Swap 99.53 USDC for USDsui',
+        },
+        {
+          toolName: 'save_deposit',
+          toolUseId: 't2',
+          attemptId: 'a-t2',
+          input: { amount: 99.4, asset: 'USDsui' },
+          description: 'Save 99.4 USDsui into lending',
+        },
+      ],
+    } as never;
+
+    const out = await executeBundleAction(sdk, action);
+
+    expect(out.success).toBe(false);
+    expect(out.sessionExpired).toBe(true);
+    expect(out.txDigest).toBeUndefined();
+    expect(out.stepResults).toHaveLength(2);
+    for (const sr of out.stepResults) {
+      expect(sr.isError).toBe(true);
+      const r = sr.result as Record<string, unknown>;
+      expect(r._sessionExpired).toBe(true);
+      // Critical: NOT _bundleReverted — this distinguishes the
+      // session-expired path from on-chain reverts so the timeline
+      // renderer surfaces the right framing.
+      expect(r._bundleReverted).toBeUndefined();
+    }
+  });
+});

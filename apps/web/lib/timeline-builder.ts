@@ -786,6 +786,24 @@ export function mergeBundleExecutionIntoTimeline(
     return undefined;
   })();
 
+  // [S.122] Detect the session-expired sentinel emitted by
+  // `executeBundleAction` when Enoki refused to sponsor the intent
+  // (zkLogin JWT past `exp` or signed by a now-rotated Google JWK).
+  // Every leg carries the same flag; we hoist it to the receipt so the
+  // renderer can switch to "SESSION EXPIRED · NOT SUBMITTED" framing
+  // (the bundle never reached chain — calling it "Payment Intent
+  // reverted atomically" misleads the user into thinking we tried to
+  // send a tx that failed).
+  const sessionExpired = legs.every((l) => {
+    const r = l.result;
+    return (
+      l.isError &&
+      !!r &&
+      typeof r === 'object' &&
+      (r as Record<string, unknown>)._sessionExpired === true
+    );
+  });
+
   const synthesized: BundleReceiptTimelineBlock = {
     type: 'bundle-receipt',
     attemptId: action.attemptId,
@@ -794,6 +812,7 @@ export function mergeBundleExecutionIntoTimeline(
     startedAt: now,
     endedAt: now,
     isError: legs.some((l) => l.isError),
+    ...(sessionExpired ? { sessionExpired: true } : {}),
   };
 
   const cardIdx = current.findIndex(

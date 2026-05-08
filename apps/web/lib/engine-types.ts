@@ -358,6 +358,18 @@ export interface BundleReceiptTimelineBlock {
    * whole bundle reverted.
    */
   isError: boolean;
+  /**
+   * [S.122] True iff the bundle failed because the user's zkLogin session
+   * expired (Enoki sponsor returned 401 with `code: 'session_expired'`).
+   * Distinct from `isError` (on-chain Payment Intent revert): nothing
+   * reached chain so the receipt UI surfaces "SESSION EXPIRED · NOT
+   * SUBMITTED" + a "Sign back in" CTA, NOT "PAYMENT INTENT REVERTED ·
+   * ATOMICALLY FAILED" (which incorrectly implied to the user that we
+   * tried to send a tx that then failed). The `isError` flag is also
+   * true when this is set (so legacy renderers still show the failure
+   * state); session-expired just refines WHAT to show.
+   */
+  sessionExpired?: boolean;
 }
 
 export type TimelineBlock =

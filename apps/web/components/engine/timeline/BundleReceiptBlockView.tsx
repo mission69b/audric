@@ -26,6 +26,13 @@ import { CardShell, SuiscanLink } from '../cards/primitives';
 //   - Reverted intent (`block.isError === true`) flips the title to
 //     "PAYMENT INTENT REVERTED", drops the Suiscan link (no on-chain
 //     state to view), and marks every leg with ✗.
+//   - [S.122] Session-expired (`block.sessionExpired === true`) flips the
+//     title to "SESSION EXPIRED · NOT SUBMITTED" — distinct from
+//     "PAYMENT INTENT REVERTED" because Enoki refused to sponsor before
+//     anything reached chain. Calling that path "Payment Intent
+//     reverted atomically" misleads the user into thinking we sent a
+//     tx that failed; the truthful framing is "your sign-in expired,
+//     nothing was submitted, please sign back in."
 // ───────────────────────────────────────────────────────────────────────────
 
 interface BundleReceiptBlockViewProps {
@@ -34,10 +41,25 @@ interface BundleReceiptBlockViewProps {
 
 export function BundleReceiptBlockView({ block }: BundleReceiptBlockViewProps) {
   const opsLabel = `${block.legs.length} ${block.legs.length === 1 ? 'op' : 'ops'}`;
-  const titleVerb = block.isError ? 'PAYMENT INTENT REVERTED' : 'PAYMENT INTENT';
-  const titleStatus = block.isError
-    ? `${opsLabel} · ATOMICALLY FAILED`
-    : `1 ATOMIC TX · ${opsLabel}`;
+  const isSessionExpired = block.sessionExpired === true;
+  const titleVerb = isSessionExpired
+    ? 'SESSION EXPIRED'
+    : block.isError
+      ? 'PAYMENT INTENT REVERTED'
+      : 'PAYMENT INTENT';
+  const titleStatus = isSessionExpired
+    ? `${opsLabel} · NOT SUBMITTED`
+    : block.isError
+      ? `${opsLabel} · ATOMICALLY FAILED`
+      : `1 ATOMIC TX · ${opsLabel}`;
+  const footerStatus = isSessionExpired
+    ? 'NOT SUBMITTED'
+    : block.isError
+      ? 'ALL FAILED'
+      : 'ALL SUCCEEDED';
+  const footnoteText = isSessionExpired
+    ? 'NEVER REACHED CHAIN — SIGN BACK IN TO RESEND'
+    : 'NO ON-CHAIN STATE — INTENT REVERTED ATOMICALLY';
 
   return (
     <CardShell
@@ -48,9 +70,11 @@ export function BundleReceiptBlockView({ block }: BundleReceiptBlockViewProps) {
             block.isError ? 'text-error-solid' : 'text-success-solid'
           }`}
           aria-label={
-            block.isError
-              ? 'All legs reverted atomically'
-              : 'All legs settled in one atomic transaction'
+            isSessionExpired
+              ? 'Sign-in session expired before submission'
+              : block.isError
+                ? 'All legs reverted atomically'
+                : 'All legs settled in one atomic transaction'
           }
         >
           {block.isError ? '✗' : '✓'} {titleStatus}
@@ -86,13 +110,13 @@ export function BundleReceiptBlockView({ block }: BundleReceiptBlockViewProps) {
         <SuiscanLink digest={block.txDigest} />
       ) : (
         <div className="pt-1.5 mt-1.5 border-t border-border-subtle font-mono text-[10px] text-fg-muted text-center">
-          NO ON-CHAIN STATE — INTENT REVERTED ATOMICALLY
+          {footnoteText}
         </div>
       )}
 
       <div className="pt-1.5 mt-1 flex items-center justify-between font-mono text-[10px] uppercase tracking-wide text-fg-muted">
         <span>GAS · SPONSORED</span>
-        <span>{block.isError ? 'ALL FAILED' : 'ALL SUCCEEDED'}</span>
+        <span>{footerStatus}</span>
       </div>
     </CardShell>
   );
