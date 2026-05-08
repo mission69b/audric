@@ -70,7 +70,13 @@ import { UsernameClaimSuccess } from './UsernameClaimSuccess';
 //   retry-by-pressing-claim affordance, no confusing typed reason.
 // ───────────────────────────────────────────────────────────────────────────
 
-const PARENT_SUFFIX = '.audric.sui';
+// [S.118 follow-up 2026-05-08] Display switched to the `@audric` short-form
+// alias for inline error narration ("alice@audric is reserved"). The
+// on-chain NFT name (returned in `body.fullHandle` by the API mint route
+// and forwarded via `onClaimed`) is still `<label>.audric.sui` — both
+// forms resolve to the same address via SuiNS RPC. Only the user-facing
+// inline-error copy flips here.
+const PARENT_SUFFIX = '@audric';
 
 type Phase = 'picking' | 'claiming' | 'success';
 

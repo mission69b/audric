@@ -174,7 +174,11 @@ describe('UsernameClaimGate', () => {
     });
     const error = screen.getByTestId('username-claim-gate-error');
     expect(error.textContent).toContain('Someone else just claimed');
-    expect(error.textContent).toContain('.audric.sui');
+    // [S.118 follow-up] Inline error copy now uses the `@audric` display form.
+    // The on-chain `fullHandle` (`alice.audric.sui`) is still passed via
+    // `onClaimed` for downstream API + DB references; only the user-visible
+    // inline error renders the @ form.
+    expect(error.textContent).toContain('@audric');
     // Gate is back in picking phase, not stuck on claiming.
     expect(screen.getByTestId('username-claim-gate').getAttribute('data-phase')).toBe('picking');
   });

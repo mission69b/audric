@@ -34,7 +34,10 @@ export const alt = 'Audric Passport';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
-const PARENT_SUFFIX = '.audric.sui';
+// [S.118 follow-up 2026-05-08] Display switched to the `@audric` short-form
+// alias. The on-chain NFT name is still `<label>.audric.sui` (handled by
+// the API routes); only the user-facing share-card hero flips to `@`.
+const PARENT_SUFFIX = '@audric';
 
 const DIAMOND: [number, number][] = [
   [0, 2],
@@ -65,9 +68,12 @@ export default async function Image({ params }: ImageProps) {
 
   // Adjust hero font size to fit longer handles within the card width.
   // 64px is comfortable up to ~16 chars; longer handles (e.g.
-  // `verylonghandle.audric.sui` = 24 chars) need shrinking. Cap at 36px
-  // for the hard-floor 20-char-label case — `aaaaaaaaaaaaaaaaaaaa.audric.sui`
-  // = 31 chars total fits at 56px.
+  // `verylonghandle@audric` = 21 chars) need shrinking. Cap at 50px for
+  // the hard-floor 20-char-label case — `aaaaaaaaaaaaaaaaaaaa@audric`
+  // = 27 chars total fits at 60px. (Previously sized for the `.audric.sui`
+  // suffix — the new `@audric` form is 4 chars shorter, so existing
+  // breakpoints have headroom; values kept conservative to preserve
+  // visual rhythm.)
   const heroSize = !fullHandle
     ? 88
     : fullHandle.length <= 18

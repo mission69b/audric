@@ -5,7 +5,8 @@
 //
 // Layout:
 //   • Intro card (sunken bg) with ZKLOGIN tag + headline + paragraph
-//   • [S.84] HANDLE card — Audric handle (full `username.audric.sui`) +
+//   • [S.84 / S.118 follow-up] HANDLE card — Audric handle (display form
+//     `username@audric`, the SuiNS V2 short-form alias) +
 //     COPY + CHANGE buttons + "View profile →" link. Empty-state pill
 //     when the user hasn't claimed yet (rare in production — the signup
 //     gate handles first-time claim — but defensive for users who
@@ -93,7 +94,12 @@ export function PassportSection({
     ? Math.max(0, Math.ceil((expiresAt - Date.now()) / (24 * 60 * 60 * 1000)))
     : 0;
 
-  const fullHandle = username ? `${username}.audric.sui` : null;
+  // [S.118 follow-up 2026-05-08] Display switched to the SuiNS V2 short-form
+  // alias `<label>@audric` (was `<label>.audric.sui`). The COPY button now
+  // writes the @ form to the clipboard — matches what users SEE on the card.
+  // Both forms resolve to the same address via SuiNS RPC; the on-chain NFT
+  // name is unchanged.
+  const fullHandle = username ? `${username}@audric` : null;
   // [S.84 polish v2] zkLogin email — closes the "which Google am I
   // signed in with?" gap. Settings → Passport is the canonical home
   // for the email; the sidebar footer references it as the muted
@@ -127,9 +133,11 @@ export function PassportSection({
         </p>
       </div>
 
-      {/* [S.84 / B6 design pass] IDENTITY card — your Audric identity.
-          Full `<label>.audric.sui` form per D10 (never the bare label,
-          never just `@label`). When `username` is null the card collapses
+      {/* [S.84 / B6 design pass / S.118 follow-up] IDENTITY card — your
+          Audric identity. Display form is `<label>@audric` (S.118 reversed
+          the original D10 universal-`.audric.sui` rule for user-facing UI;
+          the on-chain NFT name remains `.audric.sui`). When `username` is
+          null the card collapses
           to an empty state with a CLAIM HANDLE primary CTA on the right.
           Layout matches the username-flow handoff bundle's
           `settings-backdrop.jsx` IDENTITY block: left-side identity stack

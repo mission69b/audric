@@ -66,7 +66,12 @@ const USDC_DECIMALS = 6;
 
 interface SendToHandleButtonProps {
   recipientAddress: string;
-  /** Full handle (e.g. `alice.audric.sui`) — shown in the success toast + memo. */
+  /**
+   * Display handle (e.g. `alice@audric`) — shown in the success toast + memo.
+   * The parent page resolves the on-chain `<label>.audric.sui` form to the
+   * SuiNS V2 short-form display via `displayHandle()` (S.118 follow-up,
+   * 2026-05-08) before passing it down. The on-chain NFT name is unchanged.
+   */
   handle: string;
 }
 

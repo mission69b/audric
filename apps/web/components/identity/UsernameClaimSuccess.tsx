@@ -30,13 +30,18 @@ import { SuiPayQr } from '@/components/pay/SuiPayQr';
 // Composition contract is unchanged from the original B.3 ship.
 // ───────────────────────────────────────────────────────────────────────────
 
-const PARENT_SUFFIX = '.audric.sui';
+// [S.118 follow-up 2026-05-08] Display + clipboard + share-card hero now use
+// the SuiNS V2 short-form alias `<label>@audric` (was `<label>.audric.sui`).
+// Both forms resolve to the same on-chain leaf record via SuiNS RPC; only
+// the user-facing render flips. The on-chain NFT name remains
+// `<label>.audric.sui` (unchanged in the API routes / SDK `fullHandle()`).
+const PARENT_SUFFIX = '@audric';
 const PUBLIC_PROFILE_BASE = 'https://audric.ai';
 const COPIED_FEEDBACK_MS = 1500;
 
 export interface UsernameClaimSuccessProps {
   /**
-   * Canonical lowercased handle WITHOUT the `.audric.sui` suffix.
+   * Canonical lowercased handle WITHOUT the `@audric` suffix.
    * Component appends the suffix for display + share targets.
    */
   label: string;

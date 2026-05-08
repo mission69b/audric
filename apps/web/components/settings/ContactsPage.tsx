@@ -277,11 +277,15 @@ function AddContactForm({ isKnownAddress, onAdd }: AddContactFormProps) {
           const v = e.target.value.trim();
           if (!v) setHint(null);
           else if (v.startsWith('0x')) setHint('Sui address');
-          else if (v.endsWith('.audric.sui')) setHint('Audric handle');
+          // [S.118 follow-up 2026-05-08] Detect both `<label>@audric` (the
+          // SuiNS V2 short-form display) AND legacy `<label>.audric.sui`
+          // (still accepted as input — the API parser canonicalises both
+          // to the same on-chain handle).
+          else if (v.endsWith('@audric') || v.endsWith('.audric.sui')) setHint('Audric handle');
           else if (v.endsWith('.sui')) setHint('SuiNS name');
           else setHint('Audric handle');
         }}
-        placeholder="alice, alice.audric.sui, alex.sui, or 0x..."
+        placeholder="alice@audric, alex.sui, or 0x..."
         disabled={resolving}
         className="bg-surface-input border border-border-subtle rounded px-2.5 py-2 text-[13px] text-fg-primary placeholder:text-fg-muted font-mono focus:outline-none focus:border-border-strong"
       />

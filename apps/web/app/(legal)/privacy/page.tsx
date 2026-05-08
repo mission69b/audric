@@ -57,7 +57,7 @@ export default function PrivacyPage() {
               <strong className="text-fg-primary">Audric username</strong>{' '}
               &mdash; The handle you claim during onboarding (e.g.{' '}
               <code className="font-mono text-[12px] text-fg-primary">
-                you.audric.sui
+                you@audric
               </code>
               ). Stored in our database, linked to your wallet address. Used
               as the public-facing identity layer of your Passport.

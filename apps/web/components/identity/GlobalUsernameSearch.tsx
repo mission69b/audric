@@ -127,11 +127,28 @@ export function GlobalUsernameSearch({
 
   const trimmed = value.trim();
   const isBareAddress = SUI_ADDRESS_REGEX.test(trimmed);
-  // Strip a leading @ so the user can type `@alice` natively.
-  const queryForDirectory = trimmed.startsWith('@')
-    ? trimmed.slice(1).toLowerCase()
+  // Normalise input to a bare label for the Audric directory prefix match:
+  //   • `@alice`            → `alice`  (legacy leading-@ shortcut)
+  //   • `alice@audric`      → `alice`  (S.118 SuiNS V2 short-form alias)
+  //   • `alice.audric.sui`  → `alice`  (legacy on-chain full handle)
+  //   • `alice`             → `alice`
+  // [S.118 follow-up 2026-05-08] Without the `@audric` strip, a user pasting
+  // `funkii@audric` from a share card got 0 directory hits even though the
+  // profile exists — the directory keys on bare labels.
+  const queryForDirectory = (() => {
+    let q = trimmed.toLowerCase();
+    if (q.startsWith('@')) q = q.slice(1);
+    if (q.endsWith('@audric')) q = q.slice(0, -'@audric'.length);
+    else if (q.endsWith('.audric.sui')) q = q.slice(0, -'.audric.sui'.length);
+    return q;
+  })();
+  // SuiNS forward lookup needs the full on-chain form. Both `<label>@audric`
+  // (V2 short-form) and `<label>.audric.sui` resolve via SuiNS RPC, but the
+  // resolver's allow-list (`looksLikeSuiNs`) checks for `.sui` suffix, so
+  // we canonicalise the @ form to `.audric.sui` before forwarding.
+  const queryForSuins = trimmed.toLowerCase().endsWith('@audric')
+    ? `${trimmed.toLowerCase().slice(0, -'@audric'.length)}.audric.sui`
     : trimmed.toLowerCase();
-  const queryForSuins = trimmed.toLowerCase();
 
   useEffect(() => {
     abortRef.current?.abort();
