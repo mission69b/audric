@@ -24,6 +24,7 @@ import {
   type ConversationState,
   type UserFinancialProfile,
   type UserPermissionConfig,
+  type ThinkingEffort,
 } from '@t2000/engine';
 import { SUPPORTED_ASSETS } from '@t2000/sdk';
 import { env } from '@/lib/env';
@@ -619,9 +620,17 @@ export async function createEngine(
   ).length ?? 0;
 
   const model = MODEL_OVERRIDE ?? SONNET_MODEL;
-  const baseEffort = opts.message
+  const classifierEffort = opts.message
     ? classifyEffort(model, opts.message, matchedRecipe, sessionWriteCount)
     : 'medium';
+  const clamp = clampProposalEffort({
+    classifierEffort,
+    matchedRecipe,
+    message: opts.message,
+    sessionWriteCount,
+  });
+  let baseEffort = clamp.effort;
+  const proposalEffortClamped = clamp.clamped;
 
   // [SPEC 13 / 1.14.1] Confirm-of-bundle promotion. When the user replies
   // "Confirmed" to a multi-write Payment Intent plan the base classifier
@@ -675,7 +684,7 @@ export async function createEngine(
 
   const routedModel = MODEL_OVERRIDE ?? (effort === 'low' ? HAIKU_MODEL : SONNET_MODEL);
   console.log(
-    `[engine-factory] model=${routedModel} effort=${effort} thinking=${!routedModel.includes('haiku')}${confirmPromoted ? ' confirm_promoted=true' : ''}${postWriteDemoted ? ' post_write_demoted=true' : ''}`,
+    `[engine-factory] model=${routedModel} effort=${effort} thinking=${!routedModel.includes('haiku')}${confirmPromoted ? ' confirm_promoted=true' : ''}${postWriteDemoted ? ' post_write_demoted=true' : ''}${proposalEffortClamped ? ' proposal_effort_clamped=high→medium' : ''}`,
   );
 
   // [SPEC 8 v0.5.1 B3.2] Adaptive harness shape — derived from the same
@@ -688,6 +697,8 @@ export async function createEngine(
     ? `post-write resume narrate → demoted to lean (S.126 Tier 2c)`
     : confirmPromoted
     ? `plan-context promoted low → medium`
+    : proposalEffortClamped
+    ? `write proposal in active session → clamped high → medium (S.126 Tier 2f)`
     : buildHarnessRationale({
         effort,
         matchedRecipeName: matchedRecipe?.name,
@@ -920,6 +931,45 @@ function buildSyntheticPrefetch(
 
 export function generateSessionId(): string {
   return `s_${Date.now()}_${crypto.randomUUID().replace(/-/g, '').slice(0, 12)}`;
+}
+
+// ---------------------------------------------------------------------------
+// [S.126 Tier 2f / 2026-05-09] Clamp the engine classifier's
+// `sessionWriteCount > 0 && write-verb → high` promotion down to `medium`.
+//
+// Smoke data on bundle + repeat-swap proposals showed Sonnet+thinking-high
+// adds ~3-4.5s of latency without measurably improving proposal quality:
+//   - Tier 2a prompt rules (turn budget ≤3, combined plan+prepare_bundle,
+//     single update_todo) already constrain proposal SHAPE.
+//   - The 14 engine guards (Safety > Financial > UX) catch safety issues
+//     at preflight + dispatch regardless of effort.
+//   - Recipe-driven complex writes (`safe_borrow`, `bulk_mail`, any recipe
+//     with ≥3 steps) still route to `high` via the engine classifier's
+//     recipe-match path (lines 26-27 of classify-effort.ts) — those bypass
+//     this clamp because `matchedRecipe` is set.
+//
+// Audric-side clamp (vs an engine change) avoids an engine npm publish +
+// audric bump for a deployment-tuning decision. If the engine classifier
+// evolves to encode this natively (e.g., a per-host `effortCap` config),
+// this helper becomes a no-op and can be deleted.
+// ---------------------------------------------------------------------------
+export function clampProposalEffort(args: {
+  classifierEffort: ThinkingEffort;
+  matchedRecipe: { name: string } | null;
+  message: string | undefined;
+  sessionWriteCount: number;
+}): { effort: ThinkingEffort; clamped: boolean } {
+  const { classifierEffort, matchedRecipe, message, sessionWriteCount } = args;
+  if (
+    classifierEffort === 'high' &&
+    !matchedRecipe &&
+    message !== undefined &&
+    /\b(borrow|withdraw|send|swap)\b/i.test(message) &&
+    sessionWriteCount > 0
+  ) {
+    return { effort: 'medium', clamped: true };
+  }
+  return { effort: classifierEffort, clamped: false };
 }
 
 // ---------------------------------------------------------------------------
