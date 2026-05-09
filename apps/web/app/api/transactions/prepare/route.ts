@@ -18,6 +18,7 @@ import {
   type WriteStep,
   type SupportedAsset,
 } from '@t2000/sdk';
+import { validateAndDecodeCetusRoute } from '@/lib/cetus-route-validator';
 import { env } from '@/lib/env';
 import {
   emitBundleComposeDuration,
@@ -82,6 +83,16 @@ interface SingleBuildRequest {
    * skip the swap leg and transfer to wallet instead. Default $0.01.
    */
   minRewardUsd?: number;
+  /**
+   * [SPEC 20.2 / D-1 (a)] Engine-emitted serialized Cetus route forwarded
+   * by the audric client (sponsoredTransaction in useAgent.ts). Only
+   * meaningful for `type: 'swap'`. When present + valid (D-2 coin-type
+   * match + D-3 freshness), composeTx skips the ~400-500ms findSwapRoute()
+   * re-discovery. Validation lives in `validateAndDecodeCetusRoute`;
+   * stale / mismatched / malformed routes are silently dropped (legacy
+   * fallback per D-5).
+   */
+  cetusRoute?: unknown;
 }
 
 /**
@@ -97,13 +108,49 @@ interface SingleBuildRequest {
  * on-chain. Adding host-side per-step validation would duplicate engine
  * logic without raising the safety floor.
  */
+/**
+ * Per-step shape posted by the audric client. Mirrors `WriteStep` but
+ * tolerates an extra top-level `cetusRoute` field (per-step engine-emitted
+ * Cetus route for swap_execute legs). The route handler validates +
+ * injects it as `input.precomputedRoute` before forwarding to `composeTx`.
+ */
+type BundleStepRequest = WriteStep & { cetusRoute?: unknown };
+
 interface BundleBuildRequest {
   type: 'bundle';
   address: string;
-  steps: WriteStep[];
+  steps: BundleStepRequest[];
 }
 
 type BuildRequest = SingleBuildRequest | BundleBuildRequest;
+
+/**
+ * [SPEC 20.2 / D-1 (a)] Normalize a bundle step posted by the audric
+ * client. Strips the wire-only `cetusRoute` top-level field and, for
+ * `swap_execute` legs, validates + injects it as `input.precomputedRoute`
+ * so `composeTx`'s appender uses the fast-path. Non-swap steps + steps
+ * without a route pass through unchanged. Stale / malformed routes drop
+ * to `undefined` (legacy fallback per D-5). Validation lives in
+ * `lib/cetus-route-validator.ts` (single source of truth for both
+ * single-swap + bundle paths).
+ */
+function normalizeBundleStep(s: BundleStepRequest): WriteStep {
+  const { cetusRoute, ...rest } = s;
+  if (rest.toolName !== 'swap_execute') {
+    return rest as WriteStep;
+  }
+  const input = rest.input;
+  const from = String(input.from ?? '');
+  const to = String(input.to ?? '');
+  const precomputedRoute = validateAndDecodeCetusRoute(cetusRoute, from, to);
+  if (!precomputedRoute) {
+    return rest as WriteStep;
+  }
+  return {
+    ...rest,
+    input: { ...input, precomputedRoute },
+  } as WriteStep;
+}
 
 /**
  * Map a host-shaped {@link BuildRequest} to the SDK's typed `WriteStep`.
@@ -161,12 +208,24 @@ function buildStepFromRequest(body: SingleBuildRequest): WriteStep {
           ...(body.minRewardUsd !== undefined ? { minRewardUsd: body.minRewardUsd } : {}),
         },
       };
-    case 'swap':
+    case 'swap': {
       if (!from || !to) throw new Error('from and to tokens are required');
+      // [SPEC 20.2 / D-1 (a)] Decode the engine-emitted route. `undefined`
+      // when missing/stale/mismatched/malformed → composeTx falls back to
+      // findSwapRoute() (legacy path, ~+400-500ms but still correct).
+      const precomputedRoute = validateAndDecodeCetusRoute(body.cetusRoute, from, to);
       return {
         toolName: 'swap_execute',
-        input: { from, to, amount, slippage, byAmountIn },
+        input: {
+          from,
+          to,
+          amount,
+          slippage,
+          byAmountIn,
+          ...(precomputedRoute ? { precomputedRoute } : {}),
+        },
       };
+    }
     case 'volo-stake':
       return { toolName: 'volo_stake', input: { amountSui: amount } };
     case 'volo-unstake':
@@ -421,7 +480,9 @@ async function buildAndSponsor(params: BuildRequest, jwt: string | null): Promis
   console.log(`[prepare] composing ${params.type}...`);
 
   const steps: WriteStep[] =
-    params.type === 'bundle' ? params.steps : [buildStepFromRequest(params)];
+    params.type === 'bundle'
+      ? params.steps.map((s) => normalizeBundleStep(s))
+      : [buildStepFromRequest(params)];
 
   // [SPEC 7 P2.7] Whether this request is a multi-step bundle. Used to gate
   // the three bundle-specific metrics. Single-step pending_actions are

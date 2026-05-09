@@ -607,7 +607,18 @@ export async function POST(request: NextRequest) {
               pendingActionSeen = true;
               turnCompleteSeen = true;
               lastEventType = 'turn_complete';
-              collector.onPendingAction(fastPath.action.attemptId);
+              collector.onPendingAction(
+                fastPath.action.attemptId,
+                // [SPEC 20.2 / D-1 (a)] Bundle path: thread the first
+                // matching swap step's cetusRoute onto TurnMetrics. For
+                // single-step fast-paths (the common case for chip
+                // dispatch) the top-level mirror covers the swap_execute.
+                fastPath.action.cetusRoute ??
+                  fastPath.action.steps?.find(
+                    (s: { toolName: string; cetusRoute?: unknown }) =>
+                      s.toolName === 'swap_execute' && s.cetusRoute,
+                  )?.cetusRoute,
+              );
               if (
                 Array.isArray(fastPath.action.steps) &&
                 fastPath.action.steps.length >= 2
@@ -975,7 +986,19 @@ export async function POST(request: NextRequest) {
                 // attemptId }` to write the per-attempt outcome onto the
                 // exact row this turn produced (instead of the ambiguous
                 // `(sessionId, turnIndex)` pair that v1.3 used).
-                collector.onPendingAction(event.action.attemptId);
+                //
+                // [SPEC 20.2 / D-1 (a)] Also pass the engine-emitted
+                // `cetusRoute` (top-level for single-write swap_execute,
+                // first matching swap step's route for bundles). Used by
+                // the resume route + prepare route as the fast-path.
+                collector.onPendingAction(
+                  event.action.attemptId,
+                  event.action.cetusRoute ??
+                    event.action.steps?.find(
+                      (s: { toolName: string; cetusRoute?: unknown }) =>
+                        s.toolName === 'swap_execute' && s.cetusRoute,
+                    )?.cetusRoute,
+                );
                 pendingAction = event.action;
                 // [SPEC 7 P2.7] Measure LLM bundle-proposal rate. Single-
                 // step pending_actions are no-op'd inside the helper —

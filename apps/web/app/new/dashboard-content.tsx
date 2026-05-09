@@ -1297,7 +1297,15 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
   // [v1.4] Pure SDK-call logic lives in executeToolAction (apps/web/hooks/executeToolAction.ts);
   // this wrapper adds React-side effects (balance refetch, contact resolution).
   const handleExecuteAction = useCallback(
-    async (toolName: string, input: unknown): Promise<{ success: boolean; data: unknown }> => {
+    async (
+      toolName: string,
+      input: unknown,
+      // [SPEC 20.2 / D-1 (a)] Forwarded from `UnifiedTimeline` (which reads
+      // `action.cetusRoute`). Threaded down through executeToolAction →
+      // sdk.swap → /api/transactions/prepare → composeTx → addSwapToTx
+      // as the fast-path. Undefined for non-swap actions / legacy sessions.
+      cetusRoute?: unknown,
+    ): Promise<{ success: boolean; data: unknown }> => {
       if (!agent) throw new Error('Not authenticated');
 
       // [S.125 Tier 4.3] Pre-flight session-expiry gate.
@@ -1337,6 +1345,8 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
           const { resolveSuiNs } = await import('@/lib/suins-resolver');
           return resolveSuiNs(raw);
         },
+        // [SPEC 20.2 / D-1 (a)] Forward cetusRoute to the SDK's swap call.
+        cetusRoute,
       });
 
       // Side effects after a successful execution. Refetch balance for any

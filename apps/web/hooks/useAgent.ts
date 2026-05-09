@@ -109,6 +109,16 @@ export interface BundleStep {
    * consumer pairs.
    */
   inputCoinFromStep?: number;
+  /**
+   * [SPEC 20.2 / D-1 (a)] Engine-captured Cetus route from the matching
+   * `swap_quote` for THIS step. Only meaningful when `toolName ===
+   * 'swap_execute'`; ignored for other tools. Forwarded as `cetusRoute`
+   * to `/api/transactions/prepare?type=bundle`, where the route validates
+   * (D-2 coin match + D-3 freshness) and injects it as
+   * `step.input.precomputedRoute` for `composeTx`. Undefined → legacy
+   * fallback (correct, just slower; D-5 dual-path).
+   */
+  cetusRoute?: unknown;
 }
 
 export interface AgentActions {
@@ -130,7 +140,21 @@ export interface AgentActions {
    * the PTB via the SDK's `addHarvestToTx` and sponsors it via Enoki.
    */
   harvestRewards(params: { slippage?: number; minRewardUsd?: number }): Promise<TxResult>;
-  swap(params: { from: string; to: string; amount: number; slippage?: number; byAmountIn?: boolean }): Promise<TxResult>;
+  swap(params: {
+    from: string;
+    to: string;
+    amount: number;
+    slippage?: number;
+    byAmountIn?: boolean;
+    /**
+     * [SPEC 20.2 / D-1 (a)] Engine-emitted Cetus route from the matching
+     * `swap_quote` in the same turn. Forwarded into /api/transactions/
+     * prepare body so the route handler can use it as the fast-path
+     * (skips ~400-500ms findSwapRoute()). Undefined → legacy fallback
+     * (correct, just slower; see D-5 dual-path).
+     */
+    cetusRoute?: unknown;
+  }): Promise<TxResult>;
   stakeVSui(params: { amount: number }): Promise<TxResult>;
   unstakeVSui(params: { amount: number }): Promise<TxResult>;
   payService(params: { serviceId?: string; fields?: Record<string, string>; url?: string; rawBody?: Record<string, unknown> }): Promise<ServiceResult>;
@@ -302,8 +326,18 @@ export function useAgent() {
             });
           },
 
-          async swap({ from, to, amount, slippage, byAmountIn }) {
-            return sponsoredTransaction('swap', { amount, from, to, slippage, byAmountIn });
+          async swap({ from, to, amount, slippage, byAmountIn, cetusRoute }) {
+            return sponsoredTransaction('swap', {
+              amount,
+              from,
+              to,
+              slippage,
+              byAmountIn,
+              // [SPEC 20.2 / D-1 (a)] Forward to /api/transactions/prepare.
+              // The route handler validates D-2 (coin-type match) + D-3
+              // (freshness) before using as the fast-path.
+              ...(cetusRoute !== undefined ? { cetusRoute } : {}),
+            });
           },
 
           async stakeVSui({ amount }) {

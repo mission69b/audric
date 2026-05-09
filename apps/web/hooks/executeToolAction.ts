@@ -34,6 +34,15 @@ export const SESSION_EXPIRED_USER_MESSAGE =
 export interface ExecuteToolActionEffects {
   resolveContact?: (raw: string) => string | null;
   resolveSuiNs?: (rawName: string) => Promise<string>;
+  /**
+   * [SPEC 20.2 / D-1 (a)] Optional engine-emitted Cetus route, threaded
+   * down from `pending_action.cetusRoute` by the dashboard caller. When
+   * present, `swap_execute` passes it to `sdk.swap(...)` which forwards
+   * to `/api/transactions/prepare` as a fast-path (skips the ~400-500ms
+   * Cetus findSwapRoute() re-discovery). Undefined for non-swap tools and
+   * pre-SPEC-20.2 sessions (legacy fallback per D-5).
+   */
+  cetusRoute?: unknown;
 }
 
 export type ExecuteToolActionResult = {
@@ -267,6 +276,10 @@ async function executeToolActionImpl(
           amount: Number(inp.amount),
           slippage: inp.slippage ? Number(inp.slippage) : undefined,
           byAmountIn: inp.byAmountIn as boolean | undefined,
+          // [SPEC 20.2 / D-1 (a)] Forward the engine-captured route to the
+          // SDK so /api/transactions/prepare can skip findSwapRoute().
+          // Undefined → legacy fallback (correct, just slower).
+          cetusRoute: effects.cetusRoute,
         });
         const swap = buildSwapDisplayData(
           res.balanceChanges,
@@ -552,6 +565,11 @@ export async function executeBundleAction(
     toolName: s.toolName,
     input: s.input,
     ...(s.inputCoinFromStep !== undefined ? { inputCoinFromStep: s.inputCoinFromStep } : {}),
+    // [SPEC 20.2 / D-1 (a)] For swap_execute steps, forward the engine-
+    // captured route. Server validates + injects as input.precomputedRoute
+    // before `composeTx`. Non-swap steps never carry a cetusRoute (engine
+    // only emits it for swap_execute) so this is a no-op for them.
+    ...(s.cetusRoute !== undefined ? { cetusRoute: s.cetusRoute } : {}),
   }));
 
   try {

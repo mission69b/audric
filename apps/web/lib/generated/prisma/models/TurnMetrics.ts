@@ -197,6 +197,7 @@ export type TurnMetricsCountAggregateOutputType = {
   pendingInputSeenOnLegacy: number
   toolProgressEventCount: number
   interruptedMessageCount: number
+  cetusRoute: number
   createdAt: number
   _all: number
 }
@@ -371,6 +372,7 @@ export type TurnMetricsCountAggregateInputType = {
   pendingInputSeenOnLegacy?: true
   toolProgressEventCount?: true
   interruptedMessageCount?: true
+  cetusRoute?: true
   createdAt?: true
   _all?: true
 }
@@ -500,6 +502,7 @@ export type TurnMetricsGroupByOutputType = {
   pendingInputSeenOnLegacy: boolean
   toolProgressEventCount: number
   interruptedMessageCount: number
+  cetusRoute: runtime.JsonValue | null
   createdAt: Date
   _count: TurnMetricsCountAggregateOutputType | null
   _avg: TurnMetricsAvgAggregateOutputType | null
@@ -565,6 +568,7 @@ export type TurnMetricsWhereInput = {
   pendingInputSeenOnLegacy?: Prisma.BoolFilter<"TurnMetrics"> | boolean
   toolProgressEventCount?: Prisma.IntFilter<"TurnMetrics"> | number
   interruptedMessageCount?: Prisma.IntFilter<"TurnMetrics"> | number
+  cetusRoute?: Prisma.JsonNullableFilter<"TurnMetrics">
   createdAt?: Prisma.DateTimeFilter<"TurnMetrics"> | Date | string
 }
 
@@ -607,6 +611,7 @@ export type TurnMetricsOrderByWithRelationInput = {
   pendingInputSeenOnLegacy?: Prisma.SortOrder
   toolProgressEventCount?: Prisma.SortOrder
   interruptedMessageCount?: Prisma.SortOrder
+  cetusRoute?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
 
@@ -652,6 +657,7 @@ export type TurnMetricsWhereUniqueInput = Prisma.AtLeast<{
   pendingInputSeenOnLegacy?: Prisma.BoolFilter<"TurnMetrics"> | boolean
   toolProgressEventCount?: Prisma.IntFilter<"TurnMetrics"> | number
   interruptedMessageCount?: Prisma.IntFilter<"TurnMetrics"> | number
+  cetusRoute?: Prisma.JsonNullableFilter<"TurnMetrics">
   createdAt?: Prisma.DateTimeFilter<"TurnMetrics"> | Date | string
 }, "id">
 
@@ -694,6 +700,7 @@ export type TurnMetricsOrderByWithAggregationInput = {
   pendingInputSeenOnLegacy?: Prisma.SortOrder
   toolProgressEventCount?: Prisma.SortOrder
   interruptedMessageCount?: Prisma.SortOrder
+  cetusRoute?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   _count?: Prisma.TurnMetricsCountOrderByAggregateInput
   _avg?: Prisma.TurnMetricsAvgOrderByAggregateInput
@@ -744,6 +751,7 @@ export type TurnMetricsScalarWhereWithAggregatesInput = {
   pendingInputSeenOnLegacy?: Prisma.BoolWithAggregatesFilter<"TurnMetrics"> | boolean
   toolProgressEventCount?: Prisma.IntWithAggregatesFilter<"TurnMetrics"> | number
   interruptedMessageCount?: Prisma.IntWithAggregatesFilter<"TurnMetrics"> | number
+  cetusRoute?: Prisma.JsonNullableWithAggregatesFilter<"TurnMetrics">
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"TurnMetrics"> | Date | string
 }
 
@@ -786,6 +794,7 @@ export type TurnMetricsCreateInput = {
   pendingInputSeenOnLegacy?: boolean
   toolProgressEventCount?: number
   interruptedMessageCount?: number
+  cetusRoute?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
 }
 
@@ -828,6 +837,7 @@ export type TurnMetricsUncheckedCreateInput = {
   pendingInputSeenOnLegacy?: boolean
   toolProgressEventCount?: number
   interruptedMessageCount?: number
+  cetusRoute?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
 }
 
@@ -870,6 +880,7 @@ export type TurnMetricsUpdateInput = {
   pendingInputSeenOnLegacy?: Prisma.BoolFieldUpdateOperationsInput | boolean
   toolProgressEventCount?: Prisma.IntFieldUpdateOperationsInput | number
   interruptedMessageCount?: Prisma.IntFieldUpdateOperationsInput | number
+  cetusRoute?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -912,6 +923,7 @@ export type TurnMetricsUncheckedUpdateInput = {
   pendingInputSeenOnLegacy?: Prisma.BoolFieldUpdateOperationsInput | boolean
   toolProgressEventCount?: Prisma.IntFieldUpdateOperationsInput | number
   interruptedMessageCount?: Prisma.IntFieldUpdateOperationsInput | number
+  cetusRoute?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -954,6 +966,7 @@ export type TurnMetricsCreateManyInput = {
   pendingInputSeenOnLegacy?: boolean
   toolProgressEventCount?: number
   interruptedMessageCount?: number
+  cetusRoute?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
 }
 
@@ -996,6 +1009,7 @@ export type TurnMetricsUpdateManyMutationInput = {
   pendingInputSeenOnLegacy?: Prisma.BoolFieldUpdateOperationsInput | boolean
   toolProgressEventCount?: Prisma.IntFieldUpdateOperationsInput | number
   interruptedMessageCount?: Prisma.IntFieldUpdateOperationsInput | number
+  cetusRoute?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -1038,6 +1052,7 @@ export type TurnMetricsUncheckedUpdateManyInput = {
   pendingInputSeenOnLegacy?: Prisma.BoolFieldUpdateOperationsInput | boolean
   toolProgressEventCount?: Prisma.IntFieldUpdateOperationsInput | number
   interruptedMessageCount?: Prisma.IntFieldUpdateOperationsInput | number
+  cetusRoute?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -1080,6 +1095,7 @@ export type TurnMetricsCountOrderByAggregateInput = {
   pendingInputSeenOnLegacy?: Prisma.SortOrder
   toolProgressEventCount?: Prisma.SortOrder
   interruptedMessageCount?: Prisma.SortOrder
+  cetusRoute?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
 
@@ -1262,6 +1278,7 @@ export type TurnMetricsSelect<ExtArgs extends runtime.Types.Extensions.InternalA
   pendingInputSeenOnLegacy?: boolean
   toolProgressEventCount?: boolean
   interruptedMessageCount?: boolean
+  cetusRoute?: boolean
   createdAt?: boolean
 }, ExtArgs["result"]["turnMetrics"]>
 
@@ -1304,6 +1321,7 @@ export type TurnMetricsSelectCreateManyAndReturn<ExtArgs extends runtime.Types.E
   pendingInputSeenOnLegacy?: boolean
   toolProgressEventCount?: boolean
   interruptedMessageCount?: boolean
+  cetusRoute?: boolean
   createdAt?: boolean
 }, ExtArgs["result"]["turnMetrics"]>
 
@@ -1346,6 +1364,7 @@ export type TurnMetricsSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.E
   pendingInputSeenOnLegacy?: boolean
   toolProgressEventCount?: boolean
   interruptedMessageCount?: boolean
+  cetusRoute?: boolean
   createdAt?: boolean
 }, ExtArgs["result"]["turnMetrics"]>
 
@@ -1388,10 +1407,11 @@ export type TurnMetricsSelectScalar = {
   pendingInputSeenOnLegacy?: boolean
   toolProgressEventCount?: boolean
   interruptedMessageCount?: boolean
+  cetusRoute?: boolean
   createdAt?: boolean
 }
 
-export type TurnMetricsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "sessionId" | "userId" | "turnIndex" | "effortLevel" | "modelUsed" | "wallTimeMs" | "firstTokenMs" | "toolsCalled" | "guardsFired" | "compactionTriggered" | "contextTokensStart" | "cacheHit" | "cacheReadTokens" | "cacheWriteTokens" | "inputTokens" | "outputTokens" | "estimatedCostUsd" | "pendingActionYielded" | "pendingActionOutcome" | "aciRefinements" | "sessionSpendUsd" | "mutableToolDedupes" | "attemptId" | "synthetic" | "writeToolDurationMs" | "cacheSavingsUsd" | "turnPhase" | "harnessShape" | "thinkingBlockCount" | "todoUpdateCount" | "ttfvpMs" | "finalTextTokens" | "evalSummaryEmittedCount" | "evalSummaryViolationsCount" | "pendingInputSeenOnLegacy" | "toolProgressEventCount" | "interruptedMessageCount" | "createdAt", ExtArgs["result"]["turnMetrics"]>
+export type TurnMetricsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "sessionId" | "userId" | "turnIndex" | "effortLevel" | "modelUsed" | "wallTimeMs" | "firstTokenMs" | "toolsCalled" | "guardsFired" | "compactionTriggered" | "contextTokensStart" | "cacheHit" | "cacheReadTokens" | "cacheWriteTokens" | "inputTokens" | "outputTokens" | "estimatedCostUsd" | "pendingActionYielded" | "pendingActionOutcome" | "aciRefinements" | "sessionSpendUsd" | "mutableToolDedupes" | "attemptId" | "synthetic" | "writeToolDurationMs" | "cacheSavingsUsd" | "turnPhase" | "harnessShape" | "thinkingBlockCount" | "todoUpdateCount" | "ttfvpMs" | "finalTextTokens" | "evalSummaryEmittedCount" | "evalSummaryViolationsCount" | "pendingInputSeenOnLegacy" | "toolProgressEventCount" | "interruptedMessageCount" | "cetusRoute" | "createdAt", ExtArgs["result"]["turnMetrics"]>
 
 export type $TurnMetricsPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "TurnMetrics"
@@ -1542,6 +1562,18 @@ export type $TurnMetricsPayload<ExtArgs extends runtime.Types.Extensions.Interna
      * >1% over 24h triggers SPEC 8 v0.5.1 B3.7 flag rollback.
      */
     interruptedMessageCount: number
+    /**
+     * [SPEC 20.2 / D-1 (a)] Serialized Cetus route captured at swap_quote
+     * time and threaded through pending_action.cetusRoute. Persisted here
+     * so the resume route can rehydrate it onto the rebuilt PendingAction
+     * (audric's session store is in-memory; this column is the durable
+     * snapshot). Audric's prepare-route uses it as the fast-path: skips
+     * the ~400-500ms Cetus findSwapRoute() re-discovery when fresh + coin
+     * types match, falls back to fresh discovery on mismatch / staleness
+     * (D-2 verification + D-3 TTL re-validation). Null on rows from non-
+     * swap turns and on pre-SPEC-20.2 sessions (D-5 dual-path fallback).
+     */
+    cetusRoute: runtime.JsonValue | null
     createdAt: Date
   }, ExtArgs["result"]["turnMetrics"]>
   composites: {}
@@ -2004,6 +2036,7 @@ export interface TurnMetricsFieldRefs {
   readonly pendingInputSeenOnLegacy: Prisma.FieldRef<"TurnMetrics", 'Boolean'>
   readonly toolProgressEventCount: Prisma.FieldRef<"TurnMetrics", 'Int'>
   readonly interruptedMessageCount: Prisma.FieldRef<"TurnMetrics", 'Int'>
+  readonly cetusRoute: Prisma.FieldRef<"TurnMetrics", 'Json'>
   readonly createdAt: Prisma.FieldRef<"TurnMetrics", 'DateTime'>
 }
     

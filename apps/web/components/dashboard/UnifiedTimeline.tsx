@@ -38,6 +38,15 @@ type TimelineEntry =
 export type ExecuteActionFn = (
   toolName: string,
   input: unknown,
+  /**
+   * [SPEC 20.2 / D-1 (a)] Optional precomputed Cetus route attached to
+   * this pending_action by the engine. When present, the prepare-route
+   * uses it as the fast-path (skips ~400-500ms findSwapRoute()). Audric
+   * passes `action.cetusRoute` through unchanged; the SDK + prepare route
+   * own the freshness + structural verification (D-2 + D-3). Pre-SPEC-20.2
+   * sessions (or non-swap actions) leave this undefined → legacy fallback.
+   */
+  cetusRoute?: unknown,
 ) => Promise<{ success: boolean; data: unknown }>;
 
 /**
@@ -382,7 +391,11 @@ export function UnifiedTimeline({
       // outcome, which is what dashboard p95s want.
       const executionStart = Date.now();
       try {
-        const result = await onExecuteAction(action.toolName, effectiveInput);
+        // [SPEC 20.2 / D-1 (a)] Forward the engine-emitted cetusRoute so
+        // the prepare-route can use it as the fast-path (skip Cetus route
+        // discovery). Undefined for non-swap actions and pre-SPEC-20.2
+        // sessions (legacy dual-path fallback per D-5).
+        const result = await onExecuteAction(action.toolName, effectiveInput, action.cetusRoute);
         const executionDurationMs = Date.now() - executionStart;
         engine.resolveAction(
           action,

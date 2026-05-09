@@ -330,7 +330,19 @@ export async function POST(request: NextRequest) {
                 // [v1.3.1 — G13] Capture for the existing finally-block
                 // setConversationState transition + session store write
                 // — replaces the regex-extraction path used pre-Day-4.
-                collector.onPendingAction(event.action.attemptId);
+                //
+                // [SPEC 20.2 / D-1 (a)] Pass cetusRoute through so the
+                // resume turn's TurnMetrics row also carries it (rare —
+                // resume turns rarely yield a fresh swap pending_action,
+                // but the wiring is symmetric with the chat route).
+                collector.onPendingAction(
+                  event.action.attemptId,
+                  event.action.cetusRoute ??
+                    event.action.steps?.find(
+                      (s: { toolName: string; cetusRoute?: unknown }) =>
+                        s.toolName === 'swap_execute' && s.cetusRoute,
+                    )?.cetusRoute,
+                );
                 pendingAction = event.action;
                 break;
               default:

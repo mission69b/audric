@@ -10,6 +10,7 @@
  */
 
 import type { HarnessShape, TelemetrySink } from '@t2000/engine';
+import { Prisma } from '@/lib/generated/prisma/client';
 import { MUTABLE_TOOL_SET } from './engine-factory';
 import { costRatesForModel } from './cost-rates';
 
@@ -93,6 +94,15 @@ export class TurnMetricsCollector {
    * silently on falsy input rather than throwing).
    */
   private _pendingAttemptId: string | null = null;
+  /**
+   * [SPEC 20.2 / D-1 (a)] Serialized Cetus route captured from
+   * `pending_action.cetusRoute` (or the first matching `step.cetusRoute`
+   * for bundles). Persisted to `TurnMetrics.cetusRoute` so the resume
+   * route can rehydrate it onto the rebuilt `PendingAction` and the
+   * prepare route can use it as the fast-path. `null` for non-swap
+   * pending actions and pre-SPEC-20.2 sessions (D-5 dual-path fallback).
+   */
+  private _pendingCetusRoute: unknown = null;
 
   // ---------------------------------------------------------------------
   // [SPEC 8 v0.5.1 B3.6 / Layer 6] Per-turn harness telemetry state.
@@ -341,9 +351,15 @@ export class TurnMetricsCollector {
    * invariant for instrumentation. A null/empty id keeps the legacy
    * sessionId+turnIndex fallback path working in the resume route.
    */
-  onPendingAction(attemptId?: string): void {
+  onPendingAction(attemptId?: string, cetusRoute?: unknown): void {
     this._pendingActionYielded = true;
     if (attemptId) this._pendingAttemptId = attemptId;
+    // [SPEC 20.2 / D-1 (a)] Caller passes the engine-emitted
+    // `pending_action.cetusRoute` (or `steps[0].cetusRoute` for bundles —
+    // mirroring the `attemptId` convention). Stored verbatim for
+    // persistence; null/undefined is fine and produces the legacy
+    // dual-path fallback in audric's prepare route.
+    if (cetusRoute !== undefined && cetusRoute !== null) this._pendingCetusRoute = cetusRoute;
   }
 
   build(context: {
@@ -431,6 +447,20 @@ export class TurnMetricsCollector {
       mutableToolDedupes,
       // [v1.4.2 — Day 3 / Spec Item 3] New TurnMetrics columns.
       attemptId: this._pendingAttemptId,
+      // [SPEC 20.2 / D-1 (a)] Persist the engine-emitted Cetus route so
+      // the resume route can rehydrate it (Prisma stores Json as JSONB).
+      // The cast is safe — the value originates from the engine's
+      // `serializeCetusRoute` helper which produces JSON-serializable
+      // primitives (strings, numbers, booleans, plain objects, arrays).
+      // Pre-SPEC-20.2 callers (no `cetusRoute` arg) leave this as `null`
+      // — we serialize that to Prisma's `DbNull` sentinel so the column
+      // stores SQL NULL instead of the JSON literal `null`. Either way
+      // resume rehydrates `undefined`, which the dual-path treats as a
+      // legacy session.
+      cetusRoute:
+        this._pendingCetusRoute === null
+          ? Prisma.DbNull
+          : (this._pendingCetusRoute as Prisma.InputJsonValue),
       synthetic: context.synthetic ?? false,
       cacheSavingsUsd,
       turnPhase: context.turnPhase ?? 'initial',

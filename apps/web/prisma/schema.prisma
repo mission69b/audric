@@ -402,6 +402,16 @@ model TurnMetrics {
   /// client abort, serverless timeout, network drop). Rollback gate:
   /// >1% over 24h triggers SPEC 8 v0.5.1 B3.7 flag rollback.
   interruptedMessageCount    Int      @default(0)
+  /// [SPEC 20.2 / D-1 (a)] Serialized Cetus route captured at swap_quote
+  /// time and threaded through pending_action.cetusRoute. Persisted here
+  /// so the resume route can rehydrate it onto the rebuilt PendingAction
+  /// (audric's session store is in-memory; this column is the durable
+  /// snapshot). Audric's prepare-route uses it as the fast-path: skips
+  /// the ~400-500ms Cetus findSwapRoute() re-discovery when fresh + coin
+  /// types match, falls back to fresh discovery on mismatch / staleness
+  /// (D-2 verification + D-3 TTL re-validation). Null on rows from non-
+  /// swap turns and on pre-SPEC-20.2 sessions (D-5 dual-path fallback).
+  cetusRoute                 Json?
   createdAt                  DateTime @default(now())
 
   @@index([userId, createdAt])
