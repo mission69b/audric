@@ -1,4 +1,17 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
+const counterSpy = vi.fn();
+const histogramSpy = vi.fn();
+const gaugeSpy = vi.fn();
+
+vi.mock('@t2000/engine', () => ({
+  getTelemetrySink: () => ({
+    counter: counterSpy,
+    histogram: histogramSpy,
+    gauge: gaugeSpy,
+  }),
+}));
+
 import { withSuiRetry, isTransientSuiError } from './sui-retry';
 
 describe('isTransientSuiError', () => {
@@ -81,6 +94,9 @@ describe('withSuiRetry', () => {
       return 0 as unknown as ReturnType<typeof globalThis.setTimeout>;
     }) as typeof globalThis.setTimeout);
     vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    counterSpy.mockClear();
+    histogramSpy.mockClear();
+    gaugeSpy.mockClear();
   });
 
   afterEach(() => {
@@ -142,5 +158,81 @@ describe('withSuiRetry', () => {
       .mockRejectedValueOnce(new Error('Insufficient gas'));
     await expect(withSuiRetry(fn)).rejects.toThrow('Insufficient gas');
     expect(fn).toHaveBeenCalledTimes(2);
+  });
+});
+
+// [SPEC 19 Phase F / S.135] external.retry_count telemetry
+describe('withSuiRetry — external.retry_count telemetry', () => {
+  beforeEach(() => {
+    vi.spyOn(globalThis, 'setTimeout').mockImplementation(((fn: () => void) => {
+      fn();
+      return 0 as unknown as ReturnType<typeof globalThis.setTimeout>;
+    }) as typeof globalThis.setTimeout);
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    counterSpy.mockClear();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('emits first_try outcome on immediate success (attempts=1)', async () => {
+    const fn = vi.fn().mockResolvedValue('ok');
+    await withSuiRetry(fn);
+    expect(counterSpy).toHaveBeenCalledWith('external.retry_count', {
+      vendor: 'sui',
+      outcome: 'first_try',
+      attempts: '1',
+    });
+  });
+
+  it('emits retried_success outcome when recovered after retries (attempts=N)', async () => {
+    const fn = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('HTTP 429'))
+      .mockRejectedValueOnce(new Error('HTTP 429'))
+      .mockResolvedValueOnce('ok');
+    await withSuiRetry(fn);
+    expect(counterSpy).toHaveBeenCalledWith('external.retry_count', {
+      vendor: 'sui',
+      outcome: 'retried_success',
+      attempts: '3',
+    });
+  });
+
+  it('emits exhausted outcome when all transient attempts fail (attempts=5)', async () => {
+    const fn = vi.fn().mockRejectedValue(new Error('HTTP 429'));
+    await expect(withSuiRetry(fn)).rejects.toThrow();
+    expect(counterSpy).toHaveBeenCalledWith('external.retry_count', {
+      vendor: 'sui',
+      outcome: 'exhausted',
+      attempts: '5',
+    });
+  });
+
+  it('emits first_try outcome when non-transient error fails on first attempt (no retry done)', async () => {
+    // A non-transient error means the layer correctly chose NOT to retry —
+    // no retries were burned, so outcome=first_try (semantic: the layer's
+    // retry intent was not exercised). The error itself surfaces to the
+    // caller and is observable via console.warn / Vercel error logs.
+    const fn = vi.fn().mockRejectedValue(new Error('Insufficient gas'));
+    await expect(withSuiRetry(fn)).rejects.toThrow();
+    expect(counterSpy).toHaveBeenCalledWith('external.retry_count', {
+      vendor: 'sui',
+      outcome: 'first_try',
+      attempts: '1',
+    });
+  });
+
+  it('emits exactly once per call (no double-emission)', async () => {
+    const fn = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('HTTP 429'))
+      .mockResolvedValueOnce('ok');
+    await withSuiRetry(fn);
+    const retryCallCount = counterSpy.mock.calls.filter(
+      ([name]) => name === 'external.retry_count',
+    ).length;
+    expect(retryCallCount).toBe(1);
   });
 });

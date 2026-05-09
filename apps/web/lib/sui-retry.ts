@@ -1,3 +1,5 @@
+import { getTelemetrySink } from '@t2000/engine';
+
 /**
  * Retry helper for transient Sui RPC + SuiNS errors.
  *
@@ -73,6 +75,43 @@ const DEFAULT_ATTEMPTS = 5;
 const BACKOFF_MS = [250, 1000, 3000, 5000]; // backoff[i] is between attempt i and attempt i+1
 
 /**
+ * [SPEC 19 Phase F / S.135 — 2026-05-09] Unified retry telemetry.
+ *
+ * Emits `external.retry_count` with `vendor=sui`. The metric describes the
+ * RETRY LAYER's behavior, not the call's success/failure:
+ *
+ *   - first_try        : no retry happened (succeeded on first call OR failed
+ *                        with a non-transient error — the layer correctly
+ *                        chose not to retry).
+ *   - retried_success  : at least one retry happened, call eventually succeeded.
+ *   - exhausted        : at least one retry happened, layer gave up (max
+ *                        attempts hit on transient errors).
+ *
+ * Discriminator is `attempt > 0` (= retries actually happened), not success.
+ * Symmetric to BV (`vendor=bv`) and Anthropic (`vendor=anthropic`) so ops
+ * dashboards can sum across vendors meaningfully.
+ *
+ * Defensive: telemetry must never break the retry path, wrapped in try/catch.
+ */
+function emitTerminalRetry(attemptZeroIndexed: number, success: boolean): void {
+  const retried = attemptZeroIndexed > 0;
+  const outcome = !retried
+    ? 'first_try'
+    : success
+      ? 'retried_success'
+      : 'exhausted';
+  try {
+    getTelemetrySink().counter('external.retry_count', {
+      vendor: 'sui',
+      outcome,
+      attempts: String(attemptZeroIndexed + 1),
+    });
+  } catch {
+    // Telemetry failure must not break the retry helper.
+  }
+}
+
+/**
  * Returns true if the error is a transient Sui RPC / SuiNS / shared-object
  * failure that's likely to succeed on a retry within ~1 second.
  *
@@ -128,10 +167,13 @@ export async function withSuiRetry<T>(
 
   for (let i = 0; i < attempts; i++) {
     try {
-      return await fn();
+      const result = await fn();
+      emitTerminalRetry(i, true);
+      return result;
     } catch (err) {
       lastErr = err;
       if (i === attempts - 1 || !isTransientSuiError(err)) {
+        emitTerminalRetry(i, false);
         throw err;
       }
       // Use the explicit BACKOFF_MS table; if attempts is bumped beyond

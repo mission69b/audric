@@ -1,0 +1,112 @@
+---
+description: External-call retry policy — what retries, how many times, with what backoff, why
+globs: "apps/web/lib/sui-retry.ts,apps/web/app/api/transactions/prepare/route.ts,apps/web/app/api/transactions/execute/route.ts,packages/engine/src/blockvision-prices.ts,packages/engine/src/providers/anthropic.ts"
+alwaysApply: false
+---
+
+# External-Call Retry Policy
+
+> **Locked:** SPEC 19 Phase F (S.135, 2026-05-09). Audited every external call site in t2000-engine + audric/web. Documents what's already shipped + what we deliberately don't retry.
+
+## D-5 contract (the lock)
+
+| Class | Attempts | Retry on | NEVER retry on | Why asymmetric |
+|---|---|---|---|---|
+| **Reads** (BV, Anthropic, Sui RPC queries, SuiNS) | **3** baseline (extends to 5 for shared-object burst contention) | 5xx, 429, network err (ECONNRESET/ETIMEDOUT/EPIPE/HeadersTimeout), AbortError from upstream timeout | 4xx other than 429 (client error — won't change), AbortError from caller (caller cancelled — respect) | Reads are idempotent. Re-trying a successful-on-retry read costs only latency, not money or state. |
+| **Writes** (Enoki sponsor, Enoki execute, Sui submit) | **1** | (none — surface error to user) | (everything) | Re-submitting a write risks double-spend. Idempotency keys could enable safe retries; not worth the complexity at current scale. |
+| **Wait/poll** (Sui `waitForTransaction`) | **1** outer retry; SDK handles internal RPC polling | (delegated to SDK) | (delegated to SDK) | The poll IS the retry — wrapping it in another retry layer would amplify backoff. |
+
+**Anything that doesn't fit one of these three classes** → no retry by default; document the reason if added later.
+
+## The audit (every external call site, 2026-05-09)
+
+| # | Site | Vendor | Class | Attempts | Backoff | Telemetry | Compliant? |
+|---|---|---|---|---|---|---|---|
+| 1 | `fetchBlockVisionWithRetry` (engine) | BlockVision | Read | 3 | 250 → 750ms exp + ±25% jitter, honors `Retry-After` (cap 5s); circuit breaker opens for 30s after 10×429 in 5s | `bv.requests{status, attempt}`, `bv.cb_open` gauge, `external.retry_count{vendor=bv, outcome, attempts}` | ✅ |
+| 2 | `withSuiRetry` (audric) | Sui RPC + SuiNS | Read | **5** (extends baseline) | 250 → 1000 → 3000 → 5000ms | `external.retry_count{vendor=sui, outcome, attempts}` | ✅ — extension justified by S18-F17 (May 2026): shared-object contention on the Audric registry under burst-50 mints needed >3 attempts to drain |
+| 3 | `AnthropicProvider.chat` (engine) | Anthropic | Read (LLM stream) | 3 | 1000 × 2^(n-1) capped 8000ms | `external.retry_count{vendor=anthropic, outcome, attempts}` | ✅ — only retries when no tokens have streamed yet (mid-stream retry would corrupt engine state) |
+| 4 | `prepare/route.ts` Enoki sponsor | Enoki | Write | 1 | N/A | `audric.txn.enoki_sponsor_ms{ok}`, `audric.txn.prepare_outcome_count` | ✅ |
+| 5 | `execute/route.ts` Enoki execute | Enoki | Write | 1 | N/A | `audric.txn.enoki_execute_ms{ok}`, `audric.txn.execute_outcome_count` | ✅ |
+| 6 | `execute/route.ts` Sui `waitForTransaction` | Sui RPC | Wait/poll | 1 (SDK polls internally) | (delegated) | `audric.txn.sui_wait_ms{ok}` | ✅ |
+| 7 | `engine/sui/rpc.ts` `fetchWalletCoins` | Sui RPC public | Read (cold fallback) | 1 | N/A | None | ⚠️ Not retried by design — only fires when BV is already degraded; failure is silent fallback to empty array, NOT a user-blocking error. Re-trying a 5xx public RPC during a BV outage cascade would amplify load on a free RPC; degrade gracefully is the better trade. |
+| 8 | `engine/sui/address.ts` `resolveAddress` | Sui RPC + SuiNS | Read | 1 | N/A | None | ⚠️ Not retried by design — read tool the LLM invokes; if it fails, the LLM naturally re-asks the user or calls `lookup_user`. Adding retry here would slow down the common-case (resolved on first try) for the rare case. |
+| 9 | `engine/audric-api.ts` (advice + history reads) | Audric internal | Read (intra-app) | 1 | N/A | None | ⚠️ Not retried by design — same-region intra-Vercel calls; failure is rare and the engine surfaces a tool result with `isError: true` that the LLM handles via natural language. |
+| 10 | Various engine read tools (`mpp-services`, `web-search`, `volo-stats`, etc.) | Various | Read | 1 | N/A | Per-tool counters | ⚠️ Not retried by design — LLM-tier read tools where the LLM auto-retries via natural language ("hmm that failed, let me try a different one"). Adding retry here would inflate per-tool latency without measurable user benefit. |
+
+## Telemetry: `external.retry_count`
+
+Unified counter for every retried path. One emission per terminal state. Engine-namespaced (no `audric.` prefix) because this lives at the resilience-layer abstraction, not the audric product layer — same convention as `bv.requests`, `cetus.find_route_ms`. Vendor tag handles attribution.
+
+```typescript
+external.retry_count{
+  vendor: 'bv' | 'anthropic' | 'sui',
+  outcome: 'first_try' | 'retried_success' | 'exhausted',
+  attempts: '1' | '2' | '3' | '4' | '5'
+}
+```
+
+The metric describes the **retry layer's behavior**, not the underlying call's success/failure. Errors are tracked separately via existing per-vendor counters (`bv.requests{status}`, `audric.txn.*_outcome_count`, etc.).
+
+- `first_try` — **no retry was burned**. Either the call succeeded on attempt 0, OR the call failed with a non-retriable error on attempt 0 (e.g. BV 4xx, Sui non-transient error). The layer correctly chose not to retry.
+- `retried_success` — the layer retried at least once and the call eventually succeeded.
+- `exhausted` — the layer retried at least once and gave up (max attempts hit OR circuit breaker tripped on a transient error path the layer wanted to retry).
+
+Why this semantic: the metric answers *"is the retry layer earning its keep?"* (high `retried_success` = yes; low both = silent vendor; high `exhausted` = vendor degraded). Non-retriable failures are not noise in this signal — they're correctly suppressed.
+
+**Vercel Observability query for "what % of BV reads need a retry?":**
+```
+sum(external.retry_count{vendor:bv, outcome:retried_success}) /
+sum(external.retry_count{vendor:bv})
+```
+
+**Vercel Observability query for "is BV degraded right now?":**
+```
+sum(external.retry_count{vendor:bv, outcome:exhausted}) over last 5m
+```
+
+Healthy production target: < 5% retried_success rate, < 0.1% exhausted rate. Alarm above either.
+
+## What MUST NOT happen
+
+```typescript
+// ❌ Don't add retry to a write. Use the user as the retry mechanism (re-tap to confirm).
+async function executeTransfer() {
+  for (let i = 0; i < 3; i++) {
+    try { return await enokiExecute(...); } catch (e) { /* retry */ }
+  }
+}
+
+// ❌ Don't catch a 4xx and retry. Client errors don't get better with patience.
+if (res.status === 400) { await sleep(1000); return retry(); }
+
+// ❌ Don't retry mid-stream on Anthropic. Engine state would double-count tokens.
+if (yieldedAnything && isRetriable(err)) { return retry(); }
+
+// ❌ Don't add a 4th retry layer on top of an already-retried path.
+async function over_engineered() {
+  for (let i = 0; i < 3; i++) {
+    try { return await fetchBlockVisionWithRetry(url, init); } catch (e) { /* DOUBLED */ }
+  }
+}
+
+// ❌ Don't silently swallow `exhausted` outcomes. Surface as a user-actionable error.
+try { await readWithRetry(); } catch { /* ignore — degrade silently */ }
+```
+
+## When to extend retry to a NOT-retried site
+
+Extension is allowed when ALL of:
+1. The site fires on a USER-blocking path (LLM tool result that gates a write, not a background read).
+2. Production telemetry shows ≥ 1% transient-failure rate over a 7d window.
+3. The vendor's failure mode is documented and time-bounded (not "occasionally returns 503 forever").
+4. You can prove the work is idempotent (a retry that lands twice doesn't double-charge / double-write).
+
+If any condition fails, don't add retry. Document why in the audit table above.
+
+## Cross-references
+
+- The audit + locks → SPEC 19 Phase F (S.135 in `audric-build-tracker.md`)
+- BlockVision resilience details (circuit breaker, jitter rationale) → `t2000/.cursor/rules/blockvision-resilience.mdc`
+- Sui RPC retry rationale → `apps/web/lib/sui-retry.ts` (header comment)
+- Anthropic retry rationale → `packages/engine/src/providers/anthropic.ts` (lines 18–24)
+- Engine-side retry policy mirror → t2000 `engineering-principles.mdc` Principle 5 (which layer owns the retry)
