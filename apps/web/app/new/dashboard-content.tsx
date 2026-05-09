@@ -19,6 +19,7 @@ import { AppShell } from '@/components/shell/AppShell';
 import { useChipFlow, type ChipFlowResult, type FlowContext } from '@/hooks/useChipFlow';
 import { useFeed } from '@/hooks/useFeed';
 import { useEngine, executeToolAction, executeBundleAction } from '@/hooks/useEngine';
+import { makeExpiredSingleResult, makeExpiredBundleResult } from '@/hooks/sessionExpiredResults';
 import type { PendingAction } from '@/lib/engine-types';
 import { useVoiceMode } from '@/hooks/useVoiceMode';
 import { useVoiceStatus } from '@/hooks/useVoiceStatus';
@@ -512,7 +513,7 @@ export interface DashboardContentProps {
 }
 
 export function DashboardContent({ initialSessionId }: DashboardContentProps = {}) {
-  const { address, session, refresh, logout, login } = useZkLogin();
+  const { address, session, refresh, logout, login, status: zkStatus } = useZkLogin();
   const { panel, setPanel } = usePanel();
 
   const chipFlow = useChipFlow();
@@ -1298,6 +1299,24 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
   const handleExecuteAction = useCallback(
     async (toolName: string, input: unknown): Promise<{ success: boolean; data: unknown }> => {
       if (!agent) throw new Error('Not authenticated');
+
+      // [S.125 Tier 4.3] Pre-flight session-expiry gate.
+      // `useZkLogin` flips `status → 'expired'` when the local epoch fetch
+      // detects the session's `maxEpoch` has been crossed. Normally `AuthGuard`
+      // redirects on this — but there's a small race between epoch detection
+      // and the redirect's `useEffect` firing where the user can tap a confirm
+      // chip. Without this gate, that tap goes through `executeToolAction` →
+      // `/api/transactions/prepare` → Enoki 401 → `EnokiSessionExpiredError`
+      // (slow, ~500ms wasted RTT + a wasted Anthropic resume turn). Catching
+      // it here short-circuits to the same `_sessionExpired` shape the SDK
+      // catch path returns, so the bundle receipt + "Sign back in" UX
+      // (Tier 4.1, S.123) renders identically without the round-trip waste.
+      // The shape is built by `sessionExpiredResults.ts` so the SDK error
+      // path AND the pre-flight path can never drift.
+      if (zkStatus === 'expired') {
+        return makeExpiredSingleResult();
+      }
+
       const sdk = await agent.getInstance();
 
       // [v0.56 receive-toast] Stamp the user-action timestamp BEFORE running
@@ -1332,7 +1351,7 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
 
       return result;
     },
-    [agent, balanceQuery, contactsHook],
+    [agent, balanceQuery, contactsHook, zkStatus],
   );
 
   // [SPEC 7 P2.4 Layer 3] Multi-write Payment Intent executor. Mirrors
@@ -1344,6 +1363,17 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
   const handleExecuteBundle = useCallback(
     async (action: PendingAction) => {
       if (!agent) throw new Error('Not authenticated');
+
+      // [S.125 Tier 4.3] Pre-flight session-expiry gate (mirrors
+      // `handleExecuteAction` above). Returns the same N-step `_sessionExpired`
+      // shape that `executeBundleAction` synthesizes when the SDK throws
+      // `EnokiSessionExpiredError` (executeToolAction.ts:575-592), so
+      // BundleReceiptBlockView's "session expired" surface + Sign back in
+      // button render identically — without the wasted prepare round-trip.
+      if (zkStatus === 'expired') {
+        return makeExpiredBundleResult(action);
+      }
+
       const sdk = await agent.getInstance();
 
       lastUserActionAtRef.current = Date.now();
@@ -1382,7 +1412,7 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
 
       return result;
     },
-    [agent, balanceQuery, contactsHook],
+    [agent, balanceQuery, contactsHook, zkStatus],
   );
 
   const handleSaveContact = useCallback(

@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { useVersionCheck } from '@/hooks/useVersionCheck';
+import { useExpirySoonToast } from '@/hooks/useExpirySoonToast';
 
 const RELOADED_FLAG = 't2000:chunk-reloaded-at';
 const RELOAD_COOLDOWN_MS = 60_000; // never auto-reload more than once a minute
@@ -32,9 +33,17 @@ const RELOAD_COOLDOWN_MS = 60_000; // never auto-reload more than once a minute
  *
  * This component renders nothing — it's a hook host. It also calls
  * `useVersionCheck` so we only have one mount point to reason about.
+ *
+ * [S.125] Also hosts `useExpirySoonToast` — the proactive zkLogin
+ * session-expiry warning. Same rationale as `useVersionCheck`: a
+ * page-load-scoped toast that should fire anywhere the user is
+ * (not just `/new`), so the global app-shell host is the right home.
+ * The hook self-gates on `status === 'authenticated'`, so it's a
+ * no-op on the landing page / sign-in flow.
  */
 export function ChunkErrorReloader() {
   useVersionCheck();
+  useExpirySoonToast();
 
   useEffect(() => {
     function isChunkLoadError(value: unknown): boolean {
