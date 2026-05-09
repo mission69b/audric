@@ -89,10 +89,65 @@ return Response.json(...);
 4. Backfill if it's meaningful for past sessions (run a one-off migration).
 5. Document the dashboard query.
 
+## SLOs (Service Level Objectives) — published 2026-05-09 (SPEC 19 Phase D, S.135)
+
+These are the v1.24.13 baselines + targets for the agent's hot path. The targets are anchored to current measured p95 with ~20% headroom (per D-4 in SPEC 19); any breach triggers an alert. Re-evaluate every quarter and tighten as the baseline improves.
+
+### Latency SLOs
+
+| Metric | p50 baseline | p95 baseline | p50 target | p95 target | Alert threshold |
+|---|---|---|---|---|---|
+| `audric.engine.resume_stream_duration_ms` (standalone write) | 1.4s | 2.2s | < 1.8s | < 2.7s | p95 > 3.0s for 5min |
+| `audric.engine.resume_stream_duration_ms` (bundle, 2 ops) | 2.4s | 2.6s | < 2.7s | < 3.2s | p95 > 3.5s for 5min |
+| `audric.engine.chat_stream_duration_ms` (first turn, cache write) | 2.2s | n/a | < 2.5s | < 3.0s | p95 > 3.5s for 5min |
+| `audric.txn.prepare_duration_ms` | 350ms | 800ms | < 500ms | < 1.0s | p95 > 1.5s for 5min |
+| `audric.txn.execute_duration_ms` | 700ms | 1.5s | < 900ms | < 2.0s | p95 > 2.5s for 5min |
+| `engine.pwr.total_ms` (standalone, cache hit) | 30ms | 90ms | < 50ms | < 150ms | p95 > 300ms for 5min |
+| `engine.pwr.total_ms` (bundle, 2-tool refresh) | 730ms | 1.1s | < 850ms | < 1.4s | p95 > 2.0s for 5min |
+| `anthropic.latency_ms` (Haiku, low effort, no thinking) | 1.4s | 2.0s | < 1.8s | < 2.5s | p95 > 4.0s for 5min |
+
+### Reliability SLOs
+
+| Metric | Baseline | Target | Alert threshold |
+|---|---|---|---|
+| `external.retry_count{vendor:bv, outcome:retried_success}` rate | < 2% | < 5% | > 10% over 15min |
+| `external.retry_count{vendor:bv, outcome:exhausted}` rate | < 0.05% | < 0.1% | > 0.5% over 15min |
+| `external.retry_count{vendor:anthropic, outcome:retried_success}` rate | < 0.5% | < 2% | > 5% over 15min |
+| `external.retry_count{vendor:anthropic, outcome:exhausted}` rate | ~0% | < 0.1% | > 0.3% over 15min |
+| `external.retry_count{vendor:sui, outcome:retried_success}` rate | n/a (low traffic) | < 5% | > 15% over 15min |
+| `external.retry_count{vendor:sui, outcome:exhausted}` rate | ~0% | < 0.1% | > 0.5% over 15min |
+| `audric.harness.bundle_outcome_count{outcome:executed}` rate (of all bundles) | 100% (sample=5) | > 98% | < 95% over 1h |
+| `audric.harness.post_write_refresh_outcome{outcome:ok}` rate | 100% (sample=11) | > 99% | < 97% over 1h |
+| `bv.cb_open` gauge (BlockVision circuit breaker) | 0 | 0 (transient OK) | open > 3 times per hour |
+
+### Cost SLOs (per the 5/20 daily-free billing gate)
+
+| Metric | Target | Alert threshold |
+|---|---|---|
+| `SessionUsage.costUsd` per session p95 | < $0.10 | p95 > $0.20 over 24h |
+| `SessionUsage.costUsd` daily total | < $50 (current scale) | day-on-day +50% |
+| `audric.tokens` (cumulative input) per turn | < 25k tokens | p95 > 40k over 24h |
+
+### Cache health SLOs
+
+| Metric | Target | Alert threshold |
+|---|---|---|
+| `wallet.cache_hit{freshness:fresh}` rate | > 70% | < 50% over 1h |
+| `defi.cache_hit{freshness:fresh}` rate | > 80% | < 60% over 1h |
+| `defi.cache_hit{freshness:stale-served}` rate | < 5% (steady state) | > 15% over 15min (BV degradation signal) |
+
+### How SLOs are observed
+
+- **Vercel Observability dashboard** (read-only mode): filter by metric `name`, group by tag, chart 7-day p50/p95/p99.
+- **Alerts** are wired via Vercel Observability monitor rules. Each alert is paged to the on-call channel; thresholds above match the table.
+- **Quarterly tightening** (per D-4 in SPEC 19): re-snapshot baselines from production, narrow targets if p95 has dropped > 20%. Document the new baseline + the change date inline in this table.
+
 ## Cross-references
 
 - Spec 1 → `t2000/AUDRIC_HARNESS_CORRECTNESS_SPEC_v1.3.md` (local-only)
+- SPEC 19 phases (where these SLOs come from) → `t2000/spec/SPEC_19_PERFORMANCE_RELIABILITY_SWEEP.md` (local-only)
 - Pending action protocol (where attemptId comes from) → `write-tool-pending-action.mdc`
+- External-call retry policy (defines `external.retry_count` outcomes) → `external-call-retries.mdc`
 - t2000-side metrics rule → `t2000/.cursor/rules/metrics-and-monitoring.mdc`
 - Prisma models → `prisma-models-overview.mdc`
 - Cost rates → `apps/web/lib/engine/cost-rates.ts`
