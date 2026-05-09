@@ -28,12 +28,19 @@
  *   - `app/api/engine/chat/route.ts` — the lone caller.
  */
 
-import type { Message, PendingAction, PendingToolCall, Tool } from '@t2000/engine';
+import type {
+  Message,
+  PendingAction,
+  PendingToolCall,
+  SwapQuoteReadEntry,
+  Tool,
+} from '@t2000/engine';
 import {
   composeBundleFromToolResults,
   getTelemetrySink,
   REGENERATABLE_READ_TOOLS,
 } from '@t2000/engine';
+import type { SerializedCetusRoute } from '@t2000/sdk';
 import {
   detectPriorPlanContext,
   isAffirmativeConfirmReply,
@@ -266,6 +273,164 @@ function findContributingReadsFromHistory(
 }
 
 /**
+ * [SPEC 20.2 / D-1 (a) bundle gap fix — 2026-05-10] Walk persisted
+ * `history` to recover same-agent-turn `swap_quote` results so the
+ * fast-path bundle composer can thread `step.cetusRoute` for
+ * `swap_execute` legs.
+ *
+ * **Why this exists.** The pre-fix `buildPendingActionFromProposal`
+ * called `composeBundleFromToolResults(...)` WITHOUT `swapQuoteReads`,
+ * so the engine composer's per-step `findMatchingCetusRoute` never
+ * fired. Result: every bundled swap shipped with `cetusRoute:
+ * undefined` → audric's chat-route extractor had nothing to mirror
+ * onto `TurnMetrics.cetusRoute` → the SPEC 20.2 fast-path on
+ * `/api/transactions/prepare` couldn't fire → bundles paid the full
+ * Cetus aggregator round-trip at confirm time. Production smoke (n=3
+ * bundles, 0/3 captured) confirmed the regression.
+ *
+ * **The data is already in `history`.** The engine emits each
+ * tool_result with `content: JSON.stringify(result)` (engine.ts
+ * line ~1503). For successful `swap_quote` calls, the result
+ * contains the `serializedRoute` either at the top level or under
+ * `data.serializedRoute` (engine.ts line ~1483-1497 handles both
+ * shapes). We mirror that defensive parsing here so the fast-path
+ * sees what the engine's own bundle composition path sees.
+ *
+ * **Why not stash routes in `BundleProposal`.** The `prepare_bundle`
+ * tool only receives its own input + `ToolContext` — it does NOT
+ * see the same-turn `swap_quote` results. Threading those through a
+ * new `ToolContext` field would require a new engine API surface
+ * and a Redis schema migration. History walking reuses the existing
+ * persisted ledger for zero new state. (See `findContributingReads
+ * FromHistory` above for the same pattern applied to regenerate-
+ * field derivation.)
+ *
+ * **Same-turn discipline.** Stops scanning at the most recent
+ * non-synthetic user message, identically to
+ * `findContributingReadsFromHistory`. A `swap_quote` from a prior
+ * agent turn (different user prompt) is intentionally ignored —
+ * routes go stale fast and `findMatchingCetusRoute` would
+ * inadvertently match on stale identity-equal inputs.
+ *
+ * **`timestamp: 0` is intentional.** The engine composer uses
+ * `swapQuoteReads[*].timestamp` for nothing — `findMatchingCetusRoute`
+ * matches on `(from, to, amount, byAmountIn)` only and ignores
+ * timestamps. The freshness/stale gate lives downstream in
+ * `validateAndDecodeCetusRoute` (D-3), keyed on the route's own
+ * `discoveredAt` field. Setting timestamp=0 here documents that
+ * fact rather than synthesizing a bogus value.
+ *
+ * Returns `[]` (empty array, not null) when nothing matched — the
+ * engine composer treats undefined/empty identically (`if
+ * (input.swapQuoteReads)` guard at compose-bundle.ts ~line 363).
+ */
+function findSwapQuoteReadsFromHistory(
+  history: Message[] | undefined,
+): SwapQuoteReadEntry[] {
+  if (!history || history.length === 0) return [];
+
+  let priorUserIdx = -1;
+  for (let i = history.length - 1; i >= 0; i--) {
+    const msg = history[i];
+    if (msg.role !== 'user') continue;
+    const isSyntheticToolResult = msg.content.some(
+      (b) => b.type === 'tool_result',
+    );
+    if (!isSyntheticToolResult) {
+      priorUserIdx = i;
+      break;
+    }
+  }
+
+  // Pass 1: index every `swap_quote` tool_use block in the current
+  // agent turn (toolUseId → typed input). Defensive shape check —
+  // skip blocks whose input doesn't have the expected fields rather
+  // than letting a downstream `findMatchingCetusRoute` throw on
+  // `.toLowerCase()` of a non-string.
+  const swapQuoteInputs = new Map<
+    string,
+    { from: string; to: string; amount: number; byAmountIn?: boolean }
+  >();
+  for (let i = priorUserIdx + 1; i < history.length; i++) {
+    const msg = history[i];
+    if (msg.role !== 'assistant') continue;
+    for (const block of msg.content) {
+      if (block.type !== 'tool_use') continue;
+      const tu = block as { id: string; name: string; input: unknown };
+      if (tu.name !== 'swap_quote') continue;
+      const inp = tu.input as {
+        from?: unknown;
+        to?: unknown;
+        amount?: unknown;
+        byAmountIn?: unknown;
+      } | null;
+      if (
+        !inp ||
+        typeof inp.from !== 'string' ||
+        typeof inp.to !== 'string' ||
+        typeof inp.amount !== 'number'
+      ) {
+        continue;
+      }
+      swapQuoteInputs.set(tu.id, {
+        from: inp.from,
+        to: inp.to,
+        amount: inp.amount,
+        ...(typeof inp.byAmountIn === 'boolean' ? { byAmountIn: inp.byAmountIn } : {}),
+      });
+    }
+  }
+  if (swapQuoteInputs.size === 0) return [];
+
+  // Pass 2: walk forward, find each tool_result whose toolUseId
+  // matches a swap_quote tool_use we indexed, parse the JSON
+  // content, extract `serializedRoute` (top-level OR under `data.`),
+  // pair with the captured input.
+  const reads: SwapQuoteReadEntry[] = [];
+  for (let i = priorUserIdx + 1; i < history.length; i++) {
+    const msg = history[i];
+    if (msg.role !== 'user') continue;
+    for (const block of msg.content) {
+      if (block.type !== 'tool_result') continue;
+      const tr = block as {
+        toolUseId: string;
+        content: unknown;
+        isError?: boolean;
+      };
+      if (tr.isError) continue;
+      const input = swapQuoteInputs.get(tr.toolUseId);
+      if (!input) continue;
+      if (typeof tr.content !== 'string') continue;
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(tr.content);
+      } catch {
+        continue;
+      }
+      const r = parsed as
+        | { serializedRoute?: unknown; data?: { serializedRoute?: unknown } | null }
+        | null;
+      const fromData =
+        r?.data && typeof r.data === 'object'
+          ? (r.data as { serializedRoute?: unknown })
+          : null;
+      const serializedRoute = (r?.serializedRoute ?? fromData?.serializedRoute) as
+        | SerializedCetusRoute
+        | undefined;
+      if (!serializedRoute) continue;
+      reads.push({
+        toolUseId: tr.toolUseId,
+        input,
+        result: { serializedRoute },
+        timestamp: 0,
+      });
+    }
+  }
+
+  return reads;
+}
+
+/**
  * [SPEC 15 v0.7 follow-up #3 — single-source bundle composer,
  * 2026-05-04] Construct a `PendingAction` from a stashed proposal.
  *
@@ -332,10 +497,18 @@ function buildPendingActionFromProposal(
     timestamp: proposal.validatedAt,
   }));
 
+  // [SPEC 20.2 / D-1 (a) bundle gap fix — 2026-05-10] Recover same-
+  // turn `swap_quote` results from history so the engine composer
+  // can thread `step.cetusRoute` for `swap_execute` legs. Empty
+  // array is fine — composer's `if (input.swapQuoteReads)` guard
+  // tolerates it identically to undefined.
+  const swapQuoteReads = findSwapQuoteReadsFromHistory(history);
+
   return composeBundleFromToolResults({
     pendingWrites,
     tools: [...tools],
     readResults,
+    swapQuoteReads,
     assistantContent: [],
     completedResults: [],
     turnIndex,
@@ -462,4 +635,5 @@ export async function tryConsumeFastPathBundle(
 export const __testOnly__ = {
   buildPendingActionFromProposal,
   findContributingReadsFromHistory,
+  findSwapQuoteReadsFromHistory,
 };

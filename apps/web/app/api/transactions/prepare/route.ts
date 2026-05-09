@@ -143,6 +143,21 @@ function normalizeBundleStep(s: BundleStepRequest): WriteStep {
   const from = String(input.from ?? '');
   const to = String(input.to ?? '');
   const precomputedRoute = validateAndDecodeCetusRoute(cetusRoute, from, to);
+  // [SPEC 20.2 / G20.2.2] Structured fast-path observability. Emit
+  // exactly one line per swap leg so production smoke can grep:
+  //   vercel logs --since=10m | grep -E "usedPrecomputedRoute|cetusRouteValidation"
+  // `usedPrecomputedRoute=true` confirms the SPEC 20.2 fast-path
+  // fired (saved ~400-500ms findSwapRoute round-trip);
+  // `usedPrecomputedRoute=false` with `routePresent=true` indicates
+  // a route was sent but failed validation (`validateAndDecode
+  // CetusRoute` already logs the specific reason — coin-mismatch /
+  // stale / decode-failed). `routePresent=false` is the legacy
+  // path (client / engine pre-1.25.0).
+  console.log(
+    `[prepare] usedPrecomputedRoute=${precomputedRoute ? 'true' : 'false'} ` +
+    `path=bundle from=${from} to=${to} ` +
+    `routePresent=${cetusRoute !== null && cetusRoute !== undefined}`,
+  );
   if (!precomputedRoute) {
     return rest as WriteStep;
   }
@@ -214,6 +229,14 @@ function buildStepFromRequest(body: SingleBuildRequest): WriteStep {
       // when missing/stale/mismatched/malformed → composeTx falls back to
       // findSwapRoute() (legacy path, ~+400-500ms but still correct).
       const precomputedRoute = validateAndDecodeCetusRoute(body.cetusRoute, from, to);
+      // [SPEC 20.2 / G20.2.2] See `normalizeBundleStep` for the grep
+      // contract. `path=single` lets dashboards split single vs bundle
+      // fast-path hit rates without a separate counter.
+      console.log(
+        `[prepare] usedPrecomputedRoute=${precomputedRoute ? 'true' : 'false'} ` +
+        `path=single from=${from} to=${to} ` +
+        `routePresent=${body.cetusRoute !== null && body.cetusRoute !== undefined}`,
+      );
       return {
         toolName: 'swap_execute',
         input: {

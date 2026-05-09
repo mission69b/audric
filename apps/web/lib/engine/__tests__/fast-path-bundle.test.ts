@@ -329,6 +329,418 @@ describe('buildPendingActionFromProposal', () => {
       /tools.*required/i,
     );
   });
+
+  // ───────────────────────────────────────────────────────────────────────
+  // [SPEC 20.2 / D-1 (a) bundle gap fix — 2026-05-10]
+  //
+  // Pre-fix smoking gun: bundle confirms persisted `cetusRoute` 0/3 times
+  // while single swaps captured 11/12 (NeonDB query in HANDOFF §6).
+  //
+  // Root cause: the fast-path adapter called
+  // `composeBundleFromToolResults(...)` WITHOUT `swapQuoteReads`, so the
+  // engine composer's per-step `findMatchingCetusRoute` never fired and
+  // every `swap_execute` step shipped with `cetusRoute: undefined`. The
+  // chat-route extractor then had nothing to mirror onto TurnMetrics.
+  //
+  // Fix: walk `history` at consume-time (same pattern as the existing
+  // `findContributingReadsFromHistory`) to recover swap_quote results
+  // (input + serializedRoute) from the persisted message ledger and pass
+  // them as `swapQuoteReads`. The data is already in `history` — engine
+  // emits `tool_result.content = JSON.stringify(result)` and the result
+  // contains `serializedRoute` (top-level OR under `data.`) per
+  // engine.ts swap_quote capture path.
+  // ───────────────────────────────────────────────────────────────────────
+
+  describe('cetusRoute threading from history (SPEC 20.2 bundle gap)', () => {
+    /**
+     * Construct a minimal serialized Cetus route. Only fields we assert
+     * on need realistic values; the rest exist to satisfy the type.
+     */
+    function makeRoute(
+      overrides?: Partial<{ amountIn: string; amountOut: string; pathId: string }>,
+    ): {
+      routerData: {
+        amountIn: string;
+        amountOut: string;
+        byAmountIn: boolean;
+        paths: Array<{
+          id: string;
+          direction: boolean;
+          provider: string;
+          from: string;
+          target: string;
+          feeRate: number;
+          amountIn: string;
+          amountOut: string;
+        }>;
+        insufficientLiquidity: boolean;
+        deviationRatio: number;
+      };
+      amountIn: string;
+      amountOut: string;
+      byAmountIn: boolean;
+      priceImpact: number;
+      insufficientLiquidity: boolean;
+      discoveredAt: number;
+      fromCoinType: string;
+      toCoinType: string;
+    } {
+      const amountIn = overrides?.amountIn ?? '500000';
+      const amountOut = overrides?.amountOut ?? '473615';
+      return {
+        routerData: {
+          amountIn,
+          amountOut,
+          byAmountIn: true,
+          paths: [
+            {
+              id: overrides?.pathId ?? 'p1',
+              direction: true,
+              provider: 'CETUS',
+              from: '0xa',
+              target: '0xb',
+              feeRate: 30,
+              amountIn,
+              amountOut,
+            },
+          ],
+          insufficientLiquidity: false,
+          deviationRatio: 0.001,
+        },
+        amountIn,
+        amountOut,
+        byAmountIn: true,
+        priceImpact: -0.00006,
+        insufficientLiquidity: false,
+        discoveredAt: Date.now(),
+        fromCoinType: '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC',
+        toCoinType: '0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI',
+      };
+    }
+
+    /**
+     * Build a realistic plan-turn history shaped like the engine emits
+     * it: assistant runs swap_quote → user message echoes the synthetic
+     * tool_result (content = JSON.stringify(result)) → assistant runs
+     * prepare_bundle + writes a text plan. This is what gets persisted
+     * via `engine.getMessages()` between the plan request and the
+     * confirm request.
+     */
+    function historyWithSwapQuote(
+      input: { from: string; to: string; amount: number; byAmountIn?: boolean },
+      route: ReturnType<typeof makeRoute>,
+      opts?: { resultShape?: 'top' | 'data'; toolUseId?: string },
+    ): Message[] {
+      const toolUseId = opts?.toolUseId ?? 'toolu_swap_quote_1';
+      const resultObj =
+        opts?.resultShape === 'top'
+          ? { serializedRoute: route, displayText: 'quote ok' }
+          : { data: { serializedRoute: route }, displayText: 'quote ok' };
+      return [
+        userText(`swap ${input.amount} ${input.from} to ${input.to} then save`),
+        {
+          role: 'assistant',
+          content: [
+            {
+              type: 'tool_use',
+              id: toolUseId,
+              name: 'swap_quote',
+              input,
+            },
+          ],
+        },
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'tool_result',
+              toolUseId,
+              content: JSON.stringify(resultObj),
+              isError: false,
+            },
+          ],
+        },
+        {
+          role: 'assistant',
+          content: [
+            {
+              type: 'tool_use',
+              id: 'toolu_prepare_bundle_1',
+              name: 'prepare_bundle',
+              input: { steps: [] },
+            },
+            { type: 'text', text: "Here's your plan…" },
+          ],
+        },
+      ];
+    }
+
+    it('threads cetusRoute onto step[0] when history contains matching swap_quote', () => {
+      const route = makeRoute({ pathId: 'matched', amountOut: '473615' });
+      const proposal = makeProposal({
+        steps: [
+          { toolName: 'swap_execute', input: { from: 'USDC', to: 'SUI', amount: 0.5 } },
+          { toolName: 'save_deposit', input: { asset: 'USDC', amount: 1 } },
+        ],
+      });
+      const history = historyWithSwapQuote(
+        { from: 'USDC', to: 'SUI', amount: 0.5 },
+        route,
+      );
+      const action = buildPendingActionFromProposal(proposal, 0, ENGINE_TOOLS, history);
+      expect(action.steps?.[0].cetusRoute).toBeDefined();
+      expect(action.steps?.[0].cetusRoute?.amountOut).toBe('473615');
+      expect(action.steps?.[0].cetusRoute?.routerData.paths[0].id).toBe('matched');
+    });
+
+    it('mirrors step[0].cetusRoute to top-level action.cetusRoute (backward compat)', () => {
+      const route = makeRoute({ pathId: 'mirror' });
+      const proposal = makeProposal({
+        steps: [
+          { toolName: 'swap_execute', input: { from: 'USDC', to: 'SUI', amount: 0.5 } },
+          { toolName: 'save_deposit', input: { asset: 'USDC', amount: 1 } },
+        ],
+      });
+      const history = historyWithSwapQuote(
+        { from: 'USDC', to: 'SUI', amount: 0.5 },
+        route,
+      );
+      const action = buildPendingActionFromProposal(proposal, 0, ENGINE_TOOLS, history);
+      expect(action.cetusRoute).toBeDefined();
+      expect(action.cetusRoute?.routerData.paths[0].id).toBe('mirror');
+    });
+
+    it('parses top-level serializedRoute shape (no `data` wrapper)', () => {
+      const route = makeRoute({ pathId: 'top-level' });
+      const proposal = makeProposal({
+        steps: [
+          { toolName: 'swap_execute', input: { from: 'USDC', to: 'SUI', amount: 0.5 } },
+          { toolName: 'save_deposit', input: { asset: 'USDC', amount: 1 } },
+        ],
+      });
+      const history = historyWithSwapQuote(
+        { from: 'USDC', to: 'SUI', amount: 0.5 },
+        route,
+        { resultShape: 'top' },
+      );
+      const action = buildPendingActionFromProposal(proposal, 0, ENGINE_TOOLS, history);
+      expect(action.steps?.[0].cetusRoute?.routerData.paths[0].id).toBe('top-level');
+    });
+
+    it('does NOT thread a route when amount differs (input mismatch)', () => {
+      const route = makeRoute();
+      const proposal = makeProposal({
+        steps: [
+          { toolName: 'swap_execute', input: { from: 'USDC', to: 'SUI', amount: 0.5 } },
+          { toolName: 'save_deposit', input: { asset: 'USDC', amount: 1 } },
+        ],
+      });
+      const history = historyWithSwapQuote(
+        { from: 'USDC', to: 'SUI', amount: 0.999 },
+        route,
+      );
+      const action = buildPendingActionFromProposal(proposal, 0, ENGINE_TOOLS, history);
+      expect(action.steps?.[0].cetusRoute).toBeUndefined();
+      expect(action.cetusRoute).toBeUndefined();
+    });
+
+    it('picks the most recent matching swap_quote when multiple are present', () => {
+      const stale = makeRoute({ pathId: 'stale', amountOut: '111' });
+      const fresh = makeRoute({ pathId: 'fresh', amountOut: '222' });
+      const proposal = makeProposal({
+        steps: [
+          { toolName: 'swap_execute', input: { from: 'USDC', to: 'SUI', amount: 0.5 } },
+          { toolName: 'save_deposit', input: { asset: 'USDC', amount: 1 } },
+        ],
+      });
+      const history: Message[] = [
+        userText('swap 0.5 USDC to SUI then save 1 USDC'),
+        {
+          role: 'assistant',
+          content: [
+            { type: 'tool_use', id: 'tu_stale', name: 'swap_quote', input: { from: 'USDC', to: 'SUI', amount: 0.5 } },
+          ],
+        },
+        {
+          role: 'user',
+          content: [
+            { type: 'tool_result', toolUseId: 'tu_stale', content: JSON.stringify({ data: { serializedRoute: stale } }), isError: false },
+          ],
+        },
+        {
+          role: 'assistant',
+          content: [
+            { type: 'tool_use', id: 'tu_fresh', name: 'swap_quote', input: { from: 'USDC', to: 'SUI', amount: 0.5 } },
+          ],
+        },
+        {
+          role: 'user',
+          content: [
+            { type: 'tool_result', toolUseId: 'tu_fresh', content: JSON.stringify({ data: { serializedRoute: fresh } }), isError: false },
+          ],
+        },
+        {
+          role: 'assistant',
+          content: [
+            { type: 'tool_use', id: 'toolu_prepare_bundle_1', name: 'prepare_bundle', input: { steps: [] } },
+          ],
+        },
+      ];
+      const action = buildPendingActionFromProposal(proposal, 0, ENGINE_TOOLS, history);
+      expect(action.steps?.[0].cetusRoute?.amountOut).toBe('222');
+      expect(action.steps?.[0].cetusRoute?.routerData.paths[0].id).toBe('fresh');
+    });
+
+    it('ignores swap_quote tool_results from PRIOR agent turns (only walks current turn)', () => {
+      const oldRoute = makeRoute({ pathId: 'old' });
+      const proposal = makeProposal({
+        steps: [
+          { toolName: 'swap_execute', input: { from: 'USDC', to: 'SUI', amount: 0.5 } },
+          { toolName: 'save_deposit', input: { asset: 'USDC', amount: 1 } },
+        ],
+      });
+      const history: Message[] = [
+        // Prior turn — irrelevant.
+        userText('what is the rate'),
+        {
+          role: 'assistant',
+          content: [
+            { type: 'tool_use', id: 'OLD_swap_quote', name: 'swap_quote', input: { from: 'USDC', to: 'SUI', amount: 0.5 } },
+          ],
+        },
+        {
+          role: 'user',
+          content: [
+            { type: 'tool_result', toolUseId: 'OLD_swap_quote', content: JSON.stringify({ data: { serializedRoute: oldRoute } }), isError: false },
+          ],
+        },
+        // Current turn — no swap_quote.
+        userText('ok then bundle this'),
+        {
+          role: 'assistant',
+          content: [
+            { type: 'tool_use', id: 'toolu_prepare_bundle_1', name: 'prepare_bundle', input: { steps: [] } },
+          ],
+        },
+      ];
+      const action = buildPendingActionFromProposal(proposal, 0, ENGINE_TOOLS, history);
+      expect(action.steps?.[0].cetusRoute).toBeUndefined();
+    });
+
+    it('skips tool_results without serializedRoute (legacy / non-Cetus quotes)', () => {
+      const proposal = makeProposal({
+        steps: [
+          { toolName: 'swap_execute', input: { from: 'USDC', to: 'SUI', amount: 0.5 } },
+          { toolName: 'save_deposit', input: { asset: 'USDC', amount: 1 } },
+        ],
+      });
+      const history: Message[] = [
+        userText('swap 0.5 USDC to SUI then save 1 USDC'),
+        {
+          role: 'assistant',
+          content: [
+            { type: 'tool_use', id: 'tu_legacy', name: 'swap_quote', input: { from: 'USDC', to: 'SUI', amount: 0.5 } },
+          ],
+        },
+        {
+          role: 'user',
+          content: [
+            { type: 'tool_result', toolUseId: 'tu_legacy', content: JSON.stringify({ data: { displayText: 'legacy quote, no route' } }), isError: false },
+          ],
+        },
+        {
+          role: 'assistant',
+          content: [
+            { type: 'tool_use', id: 'toolu_prepare_bundle_1', name: 'prepare_bundle', input: { steps: [] } },
+          ],
+        },
+      ];
+      const action = buildPendingActionFromProposal(proposal, 0, ENGINE_TOOLS, history);
+      expect(action.steps?.[0].cetusRoute).toBeUndefined();
+    });
+
+    it('skips error tool_results (failed swap_quote calls)', () => {
+      const route = makeRoute();
+      const proposal = makeProposal({
+        steps: [
+          { toolName: 'swap_execute', input: { from: 'USDC', to: 'SUI', amount: 0.5 } },
+          { toolName: 'save_deposit', input: { asset: 'USDC', amount: 1 } },
+        ],
+      });
+      const history: Message[] = [
+        userText('swap 0.5 USDC to SUI then save 1 USDC'),
+        {
+          role: 'assistant',
+          content: [
+            { type: 'tool_use', id: 'tu_err', name: 'swap_quote', input: { from: 'USDC', to: 'SUI', amount: 0.5 } },
+          ],
+        },
+        {
+          role: 'user',
+          content: [
+            { type: 'tool_result', toolUseId: 'tu_err', content: JSON.stringify({ data: { serializedRoute: route } }), isError: true },
+          ],
+        },
+        {
+          role: 'assistant',
+          content: [
+            { type: 'tool_use', id: 'toolu_prepare_bundle_1', name: 'prepare_bundle', input: { steps: [] } },
+          ],
+        },
+      ];
+      const action = buildPendingActionFromProposal(proposal, 0, ENGINE_TOOLS, history);
+      expect(action.steps?.[0].cetusRoute).toBeUndefined();
+    });
+
+    it('threads independent routes onto multiple swap_execute steps in a bundle', () => {
+      const routeA = makeRoute({ pathId: 'A', amountOut: '111' });
+      const routeB = makeRoute({ pathId: 'B', amountOut: '222' });
+      const proposal = makeProposal({
+        steps: [
+          { toolName: 'swap_execute', input: { from: 'USDC', to: 'SUI', amount: 0.3 } },
+          { toolName: 'swap_execute', input: { from: 'USDC', to: 'USDsui', amount: 0.5 } },
+        ],
+      });
+      const history: Message[] = [
+        userText('swap two legs'),
+        {
+          role: 'assistant',
+          content: [
+            { type: 'tool_use', id: 'tu_a', name: 'swap_quote', input: { from: 'USDC', to: 'SUI', amount: 0.3 } },
+            { type: 'tool_use', id: 'tu_b', name: 'swap_quote', input: { from: 'USDC', to: 'USDsui', amount: 0.5 } },
+          ],
+        },
+        {
+          role: 'user',
+          content: [
+            { type: 'tool_result', toolUseId: 'tu_a', content: JSON.stringify({ data: { serializedRoute: routeA } }), isError: false },
+            { type: 'tool_result', toolUseId: 'tu_b', content: JSON.stringify({ data: { serializedRoute: routeB } }), isError: false },
+          ],
+        },
+        {
+          role: 'assistant',
+          content: [
+            { type: 'tool_use', id: 'toolu_prepare_bundle_1', name: 'prepare_bundle', input: { steps: [] } },
+          ],
+        },
+      ];
+      const action = buildPendingActionFromProposal(proposal, 0, ENGINE_TOOLS, history);
+      expect(action.steps?.[0].cetusRoute?.routerData.paths[0].id).toBe('A');
+      expect(action.steps?.[1].cetusRoute?.routerData.paths[0].id).toBe('B');
+    });
+
+    it('emits no cetusRoute when history is omitted (back-compat with pre-fix callers)', () => {
+      const proposal = makeProposal({
+        steps: [
+          { toolName: 'swap_execute', input: { from: 'USDC', to: 'SUI', amount: 0.5 } },
+          { toolName: 'save_deposit', input: { asset: 'USDC', amount: 1 } },
+        ],
+      });
+      const action = buildPendingActionFromProposal(proposal, 0, ENGINE_TOOLS);
+      expect(action.steps?.[0].cetusRoute).toBeUndefined();
+      expect(action.cetusRoute).toBeUndefined();
+    });
+  });
 });
 
 describe('tryConsumeFastPathBundle', () => {
