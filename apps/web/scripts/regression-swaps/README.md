@@ -21,17 +21,25 @@ catches the NEXT class-of-bug before it ships:
 - A new SDK code path throws an unhandled rejection
 - The S.123 structured-error contract gets accidentally reverted to generic Error
 
-## Two tiers
+## Two tiers + manual
 
 | Tier | What it covers | Frequency | Cost | Status |
 |---|---|---|---|---|
-| **A — Quote** | 41 scenarios via `getSwapQuote()`. No on-chain mutation. | Every push + PR + nightly cron | $0 | LIVE |
-| **B — Execute** | 5 round-trip swaps via Enoki against pre-funded test wallet | Nightly cron + manual dispatch | ~$0.50/day | TODO (Phase 7+) |
+| **A — Quote** | 41 scenarios via `getSwapQuote()`. No on-chain mutation. | Every push + PR + nightly cron 03:00 UTC | $0 | LIVE |
+| **B — Execute (SDK direct)** | 5 round-trip swaps via `agent.swap()` against a pre-funded test wallet | Nightly cron 04:00 UTC + manual dispatch | ~$0.012/round-trip × 5/night ≈ $0.06/night ≈ $1.80/mo | LIVE (gated on `REGRESSION_TEST_WALLET_PRIVKEY` secret) |
+| **Manual — Enoki sponsorship** | One swap (e.g. `swap 0.10 USDC for SUI`) on production audric.ai chat | When Tier B alerts (Discord) | $0.0001 | Founder workflow — not automated |
+
+Tier B uses `T2000.fromPrivateKey(privkey)` and signs directly with the test
+wallet's keypair — it does NOT go through Enoki sponsorship. That's intentional:
+it tests the SDK swap path that Audric depends on without inventing a
+zkLogin/Google OAuth automation. The Enoki path is exercised every time a real
+user signs in; when Tier B alerts, the natural follow-up is one manual swap on
+prod to confirm the sponsored flow still works.
 
 Tier C (`harvest_rewards` compound bundle) is a documented gap — the tool
 needs an actual NAVI position with claimable rewards, which can't be
-deterministically simulated. Revisit once we have a stable test wallet with a
-known reward stream.
+deterministically simulated. Revisit once the Tier B test wallet has a stable
+reward stream.
 
 ## Tier A coverage matrix (41 scenarios)
 
@@ -51,15 +59,54 @@ auto-generates.
 
 ## Usage
 
+### Tier A — quote regression
+
 ```bash
-# Tier A — runs locally in ~2.5s
+# Runs locally in ~2.5s. No env required.
 pnpm --filter web exec tsx scripts/regression-swaps/run-quotes.ts
 
 # With custom concurrency (default 4; drop to 2 if Cetus rate-limits)
 CONCURRENCY=2 pnpm --filter web exec tsx scripts/regression-swaps/run-quotes.ts
-
-# Tier B — TODO (Phase 7+)
 ```
+
+### Tier B — execute regression
+
+```bash
+# Requires a funded test wallet. Generate once:
+pnpm --filter web exec tsx scripts/regression-swaps/gen-test-wallet.ts
+# → prints address + privkey + funding instructions. Save the privkey somewhere.
+
+# Pre-flight check only (verify wallet has balance, no swaps executed):
+REGRESSION_TEST_WALLET_PRIVKEY=suiprivkey... \
+  pnpm --filter web exec tsx scripts/regression-swaps/run-executes.ts --dry-run
+
+# Real run (5 round trips, ~$0.06 spent on slippage+fees+gas):
+REGRESSION_TEST_WALLET_PRIVKEY=suiprivkey... \
+  pnpm --filter web exec tsx scripts/regression-swaps/run-executes.ts
+
+# Drain wallet (sweep all USDC + SUI to a recovery address):
+REGRESSION_TEST_WALLET_PRIVKEY=suiprivkey... \
+DRAIN_TO_ADDRESS=0x... \
+  pnpm --filter web exec tsx scripts/regression-swaps/run-executes.ts --drain
+```
+
+### Tier B exit codes
+
+| Exit | Meaning | CI action |
+|---|---|---|
+| `0` | All 5 round trips passed | Discord PASS message |
+| `1` | At least one round trip regressed | Discord FAIL alert (red); founder runs manual Enoki smoke test |
+| `3` | Pre-flight failed (no privkey, drained wallet, or RPC unreachable) | Discord PRE-FLIGHT alert (orange); founder refills wallet |
+| `4` | Drain succeeded (special — not a failure) | No alert |
+
+### Test wallet setup (one-time)
+
+1. Run `gen-test-wallet.ts` — prints a fresh Sui address + Bech32 private key
+2. Send `$5 USDC` + `$2 SUI` to the address (covers ~3 months of nightly runs)
+3. Add the privkey as a GitHub Actions secret named `REGRESSION_TEST_WALLET_PRIVKEY`
+4. Verify with `--dry-run` locally (pre-flight should pass)
+5. First real run with `pnpm tsx run-executes.ts` (~$0.06 spent)
+6. Done. Nightly cron at 04:00 UTC takes over.
 
 Output:
 
@@ -124,12 +171,14 @@ On failure:
 ```
 scripts/regression-swaps/
 ├── README.md             ← you are here
-├── scenarios.ts          ← 41 Tier A scenarios + 5 Tier B (data only, no logic)
+├── scenarios.ts          ← 41 Tier A + 5 Tier B scenarios (data only)
 ├── scenarios.test.ts     ← inventory shape validators (10 tests)
 ├── reporter.ts           ← summary + JSON artifact + exit code classifier
 ├── reporter.test.ts      ← classifier semantics (9 tests)
-├── run-quotes.ts         ← Tier A entry point (every push + nightly)
-└── runs/                 ← gitignored output JSONs
+├── run-quotes.ts         ← Tier A entry point (every push + nightly cron 03:00)
+├── run-executes.ts       ← Tier B entry point (nightly cron 04:00 + dispatch)
+├── gen-test-wallet.ts    ← one-shot wallet generator + funding instructions
+└── runs/                 ← gitignored output JSONs (30d retention in CI)
 ```
 
 ## Cross-references

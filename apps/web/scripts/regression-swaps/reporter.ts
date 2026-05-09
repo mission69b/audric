@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url';
 
 export interface ScenarioResult {
   id: string;
-  category: 'tier12' | 'legacy' | 'cross-tier' | 'error';
+  category: 'tier12' | 'legacy' | 'cross-tier' | 'error' | 'execute';
   from: string;
   to: string;
   amount: number;
@@ -36,6 +36,14 @@ export interface ScenarioResult {
   errorMessage?: string;
   /** Reason the scenario failed (set only when pass=false). */
   failureReason?: string;
+  /** Tier B only — first leg tx digest. */
+  txDigestOut?: string;
+  /** Tier B only — second leg tx digest. */
+  txDigestBack?: string;
+  /** Tier B only — total gas spent in SUI for the round trip. */
+  gasCostSui?: number;
+  /** Tier B only — USDC balance change across the round trip (negative = drift). */
+  usdcDelta?: number;
 }
 
 export interface RunSummary {

@@ -1,0 +1,125 @@
+name: Swap Regression — Tier B (execute)
+
+# [S.124 Tier B] Nightly on-chain smoke test against a pre-funded test wallet.
+# Catches regressions Tier A can't (Cetus quote/exec contract mismatch, balance
+# change parsing breakage, fee collection per-asset). Cost: ~$0.50/day.
+#
+# Triggers ONLY on cron + workflow_dispatch. Never on push/PR — would burn
+# real gas on every fork push, and a regression here doesn't block merge
+# (the regression is in production code, not the PR — block-merge would
+# punish the wrong PR). Block-merge stays on Tier A; Tier B alerts via
+# Discord and surfaces in the daily run history.
+#
+# Required secrets (set under repo Settings → Secrets and variables → Actions):
+#   REGRESSION_TEST_WALLET_PRIVKEY — Bech32 private key (suiprivkey...) for
+#                                    the pre-funded test wallet
+#   DISCORD_DEVLOG_WEBHOOK         — already configured for other workflows
+#
+# Setup: see `apps/web/scripts/regression-swaps/README.md` Tier B section.
+# Wallet generator: `pnpm tsx apps/web/scripts/regression-swaps/gen-test-wallet.ts`
+
+on:
+  schedule:
+    # 04:00 UTC daily — 1 hour after Tier A cron to avoid Cetus rate-limit
+    # overlap. Both tiers can run side-by-side without contention but
+    # spacing them out keeps the daily run history easier to read.
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Run mode'
+        required: true
+        default: 'live'
+        type: choice
+        options:
+          - live
+          - dry-run
+          - drain
+      drain_to_address:
+        description: 'Recovery address (REQUIRED if mode=drain)'
+        required: false
+        default: ''
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  tier-b-executes:
+    name: Tier B — execute regression (5 round trips)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Run Tier B execute regression
+        id: tier_b
+        env:
+          REGRESSION_TEST_WALLET_PRIVKEY: ${{ secrets.REGRESSION_TEST_WALLET_PRIVKEY }}
+          DRAIN_TO_ADDRESS: ${{ github.event.inputs.drain_to_address }}
+          RUN_TAG: ${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          set +e
+          MODE="${{ github.event.inputs.mode || 'live' }}"
+          if [ "$MODE" = "dry-run" ]; then
+            FLAGS="--dry-run"
+          elif [ "$MODE" = "drain" ]; then
+            FLAGS="--drain"
+          else
+            FLAGS=""
+          fi
+          pnpm --filter web exec tsx scripts/regression-swaps/run-executes.ts $FLAGS | tee tier-b-output.txt
+          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+          exit ${PIPESTATUS[0]}
+
+      - name: Upload run artifact
+        if: always() && steps.tier_b.outputs.exit_code != '4'
+        uses: actions/upload-artifact@v4
+        with:
+          name: swap-regression-tier-b-${{ github.run_id }}-${{ github.run_attempt }}
+          path: apps/web/scripts/regression-swaps/runs/*.json
+          retention-days: 30
+
+      - name: Discord alert
+        if: always() && steps.tier_b.outputs.exit_code != '4'
+        env:
+          WEBHOOK_URL: ${{ secrets.DISCORD_DEVLOG_WEBHOOK }}
+          EXIT_CODE: ${{ steps.tier_b.outputs.exit_code }}
+        run: |
+          [ -z "$WEBHOOK_URL" ] && { echo "no webhook secret; skipping"; exit 0; }
+          if [ "$EXIT_CODE" = "0" ]; then
+            COLOR=5763719   # green — clean
+            LABEL="PASS — 5/5 round-trips clean"
+            TITLE="Swap Regression Tier B — PASS"
+          elif [ "$EXIT_CODE" = "1" ]; then
+            COLOR=15548997  # red — happy-path regression
+            LABEL="FAIL — at least one round-trip regressed (manual Audric smoke test recommended)"
+            TITLE="Swap Regression Tier B — FAIL"
+          elif [ "$EXIT_CODE" = "3" ]; then
+            COLOR=15105570  # orange — pre-flight failed, operator action needed
+            LABEL="PRE-FLIGHT FAIL — wallet needs refill"
+            TITLE="Swap Regression Tier B — wallet drained or unreachable"
+          else
+            COLOR=10181046  # purple — harness internal error
+            LABEL="harness internal error (exit $EXIT_CODE)"
+            TITLE="Swap Regression Tier B — harness fault"
+          fi
+          # Tail of stdout — covers per-scenario PASS/FAIL lines + summary.
+          BODY=$(tail -c 1500 tier-b-output.txt | jq -Rs .)
+          RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          jq -n \
+            --arg title "$TITLE" \
+            --arg url "$RUN_URL" \
+            --argjson color "$COLOR" \
+            --arg label "$LABEL" \
+            --arg trigger "${{ github.event_name }}" \
+            --argjson body "$BODY" \
+            --arg footer "S.124 Tier B · run ${{ github.run_id }}.${{ github.run_attempt }}" \
+            --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            '{embeds: [{title: $title, url: $url, color: $color, description: $label, fields: [{name: "Output (tail)", value: ("```\n" + $body + "\n```")}, {name: "Trigger", value: $trigger, inline: true}], footer: {text: $footer}, timestamp: $ts}]}' \
+          | curl -s -H "Content-Type: application/json" -d @- "$WEBHOOK_URL"
