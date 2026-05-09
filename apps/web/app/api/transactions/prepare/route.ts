@@ -25,6 +25,10 @@ import {
   emitSwapComposeDuration,
 } from '@/lib/engine/bundle-metrics';
 import {
+  emitPrepareDuration,
+  emitEnokiSponsorDuration,
+} from '@/lib/engine/txn-metrics';
+import {
   parseEnokiErrorBody,
   isExpiredSessionError,
   SESSION_EXPIRED_USER_MESSAGE,
@@ -243,35 +247,61 @@ async function validateBalance(
  * 3. Returns { bytes, digest } for client-side signing
  */
 export async function POST(request: NextRequest) {
+  // [S.126 Tier 1] Stamp request entry timestamp BEFORE any work — we want
+  // to measure the full route handler from request-received to response-sent.
+  // `txType` is set after we parse the body; before that, any early-exit
+  // gets tagged 'unknown' (rare — only env misconfig + auth failures).
+  const startedAt = Date.now();
+  let txTypeForMetric: string = 'unknown';
+  const finish = (outcome: Parameters<typeof emitPrepareDuration>[0]['outcome']) => {
+    emitPrepareDuration({
+      txType: txTypeForMetric,
+      durationMs: Date.now() - startedAt,
+      outcome,
+    });
+  };
+
   if (!ENOKI_SECRET_KEY) {
+    finish('compose_error');
     return NextResponse.json({ error: 'Sponsorship service not configured' }, { status: 500 });
   }
 
   const jwt = request.headers.get('x-zklogin-jwt');
   const jwtResult = validateJwt(jwt);
-  if ('error' in jwtResult) return jwtResult.error;
+  if ('error' in jwtResult) {
+    finish('compose_error');
+    return jwtResult.error;
+  }
 
   let body: BuildRequest;
   try {
     body = await request.json();
   } catch {
+    finish('compose_error');
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
+  txTypeForMetric = String(body.type ?? 'unknown');
 
   const { type, address } = body;
 
   if (!address || !isValidSuiAddress(address)) {
+    finish('compose_error');
     return NextResponse.json({ error: 'Invalid address' }, { status: 400 });
   }
 
   const rl = rateLimit(`tx:${address}`, 10, 60_000);
-  if (!rl.success) return rateLimitResponse(rl.retryAfterMs!);
+  if (!rl.success) {
+    finish('compose_error');
+    return rateLimitResponse(rl.retryAfterMs!);
+  }
 
   if (type === 'bundle') {
     if (!Array.isArray(body.steps) || body.steps.length === 0) {
+      finish('compose_error');
       return NextResponse.json({ error: 'Bundle requires non-empty steps array' }, { status: 400 });
     }
     if (body.steps.length > 10) {
+      finish('compose_error');
       return NextResponse.json({ error: 'Bundle exceeds 10-step limit' }, { status: 400 });
     }
     // [SPEC 7 P2.7] Break-glass disable. When the 48h soak metrics show
@@ -290,6 +320,7 @@ export async function POST(request: NextRequest) {
     // nor sponsorship_failed semantically applies).
     if (env.PAYMENT_STREAM_DISABLE === '1' || env.PAYMENT_STREAM_DISABLE === 'true') {
       console.warn('[prepare] Payment Intent disable flag is set — rejecting compiled intent');
+      finish('compose_error');
       return NextResponse.json(
         {
           error:
@@ -305,24 +336,29 @@ export async function POST(request: NextRequest) {
     const skipAmountCheck =
       type === 'claim-rewards' || type === 'volo-unstake' || type === 'harvest';
     if (!skipAmountCheck && (!amount || amount <= 0)) {
+      finish('compose_error');
       return NextResponse.json({ error: 'Invalid amount' }, { status: 400 });
     }
     if (!skipAmountCheck && type !== 'swap' && type !== 'volo-stake') {
       const amountCheck = validateAmount(type, amount);
       if (!amountCheck.valid) {
+        finish('compose_error');
         return NextResponse.json({ error: amountCheck.reason }, { status: 400 });
       }
     }
     if (recipient && !isValidSuiAddress(recipient)) {
+      finish('compose_error');
       return NextResponse.json({ error: 'Invalid recipient address' }, { status: 400 });
     }
 
     if (!skipAmountCheck && amount > 0) {
       if (type === 'send' && (!recipient || !recipient.startsWith('0x'))) {
+        finish('compose_error');
         return NextResponse.json({ error: 'Invalid or missing recipient address' }, { status: 400 });
       }
       const balanceError = await validateBalance(type, address, amount, body);
       if (balanceError) {
+        finish('compose_error');
         return NextResponse.json({ error: balanceError }, { status: 400 });
       }
     }
@@ -332,6 +368,13 @@ export async function POST(request: NextRequest) {
     const result = await buildAndSponsor(body, jwt);
 
     if (!result.ok) {
+      // Map sponsor failures to the closest TxnOutcome category so the
+      // metric tells us WHY prepare failed at a glance.
+      const outcome: Parameters<typeof emitPrepareDuration>[0]['outcome'] =
+        result.code === SESSION_EXPIRED_RESPONSE_CODE
+          ? 'session_expired'
+          : 'sponsor_error';
+      finish(outcome);
       if (result.status === 429) {
         return NextResponse.json(
           { error: 'Too many transactions. Please try again shortly.' },
@@ -359,11 +402,13 @@ export async function POST(request: NextRequest) {
     if (result.harvestPlan !== undefined) {
       responseBody.harvestPlan = result.harvestPlan;
     }
+    finish('success');
     return NextResponse.json(responseBody);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Transaction build failed';
     const stack = err instanceof Error ? err.stack : '';
     console.error('[prepare] Error:', message, stack);
+    finish('compose_error');
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
@@ -541,10 +586,19 @@ async function buildAndSponsor(params: BuildRequest, jwt: string | null): Promis
   );
   sponsorBody.allowedAddresses = allowedAddresses;
 
+  // [S.126 Tier 1] Measure just the Enoki sponsor round-trip. This isolates
+  // Enoki's contribution to prepare latency from our compose / validate
+  // costs (already measured via swap_compose_duration_ms / bundle_compose_duration_ms).
+  const sponsorStartedAt = Date.now();
   const sponsorRes = await fetch(`${ENOKI_BASE}/transaction-blocks/sponsor`, {
     method: 'POST',
     headers: sponsorHeaders,
     body: JSON.stringify(sponsorBody),
+  });
+  emitEnokiSponsorDuration({
+    txType: String(params.type),
+    durationMs: Date.now() - sponsorStartedAt,
+    ok: sponsorRes.ok,
   });
 
   if (!sponsorRes.ok) {
