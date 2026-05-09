@@ -209,6 +209,15 @@ export async function POST(request: NextRequest) {
       // (rare but real — chained writes in a resume turn re-trigger
       // the same guard chain as the initial turn).
       onGuardFired: (guard) => collector.onGuardFired(guard),
+      // [S.126 Tier 2c / 2026-05-09] This route handles ONLY post-write
+      // resume narrate (single write or atomic bundle settlement). The
+      // engine factory uses this signal to demote effort → 'low' and
+      // route to Haiku-no-thinking, saving ~2-3s of LLM latency vs the
+      // prior Sonnet+thinking-medium default. See `CreateEngineOpts.
+      // isPostWriteResume` JSDoc for the safety analysis. The chat
+      // route does NOT set this flag — chat-route writes are confirm-
+      // tier pending_action emission and DO need planner reasoning.
+      isPostWriteResume: true,
     });
     const priorMsgCount = engine.getMessages().length;
 

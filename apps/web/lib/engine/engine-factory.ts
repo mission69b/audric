@@ -280,6 +280,33 @@ export interface CreateEngineOpts {
     action: 'allow' | 'warn' | 'block';
     injectionAdded: boolean;
   }) => void;
+  /**
+   * [S.126 Tier 2c / 2026-05-09] Set true ONLY when this engine is built
+   * for the post-write narrate stream (resume route). Forces effort →
+   * `low` and routes to Haiku-no-thinking, skipping the plan-context
+   * promotion entirely. Saves ~2-3s of LLM latency on every write
+   * settlement vs Sonnet+thinking-medium.
+   *
+   * Safe because:
+   *   - Audric writes settle as atomic Sui PTBs (single tx hash) —
+   *     by the time resume fires, ALL legs are already on-chain. The
+   *     resume turn's job is (1) parse the engine-injected post-write
+   *     refresh tool_results, (2) narrate the receipt. No reasoning,
+   *     no chained writes to emit.
+   *   - The post-write refresh injects fresh balance_check / savings_info
+   *     before narrate — Haiku has authoritative numbers to cite, can't
+   *     hallucinate. Receipt narration is exactly the small-fact-pattern
+   *     Haiku-lean is best at.
+   *   - Sequential-path bundles (≥5 ops, rare) DO emit chained writes
+   *     in resume; if the demotion regresses those, harness-metrics
+   *     `audric.harness.bundle_outcome_count` would show it. Mitigation
+   *     would be a future post-MAX_BUNDLE_OPS gate (don't demote when
+   *     pending action carried a sequential plan).
+   *
+   * Not set by the chat route — chat-route writes are confirm-tier
+   * pending_action emission, which DOES need the planner's reasoning.
+   */
+  isPostWriteResume?: boolean;
 }
 
 export async function createEngine(
@@ -615,7 +642,20 @@ export async function createEngine(
   // over a 24h window quantifies what Phase 1 catches that Fix 1 misses.
   let effort = baseEffort;
   let confirmPromoted = false;
-  if (baseEffort === 'low' && opts.session?.messages) {
+  let postWriteDemoted = false;
+  // [S.126 Tier 2c / 2026-05-09] Post-write resume narrate skips both
+  // effort classification and plan-context promotion. The resume turn
+  // narrates receipt of an already-settled atomic write — no reasoning
+  // needed, just narration. Demote to Haiku-low-no-thinking. Saves
+  // ~2-3s of LLM latency vs Sonnet+thinking-medium on every write.
+  // See `CreateEngineOpts.isPostWriteResume` JSDoc for the full
+  // safety analysis (atomicity guarantee + post-write refresh injection
+  // make Haiku narration safe; sequential-bundle case is the bounded
+  // risk and would show up in `audric.harness.bundle_outcome_count`).
+  if (opts.isPostWriteResume) {
+    effort = 'low';
+    postWriteDemoted = true;
+  } else if (baseEffort === 'low' && opts.session?.messages) {
     const detection = detectPriorPlanContext(opts.session.messages);
     if (detection.matched) {
       effort = 'medium';
@@ -635,7 +675,7 @@ export async function createEngine(
 
   const routedModel = MODEL_OVERRIDE ?? (effort === 'low' ? HAIKU_MODEL : SONNET_MODEL);
   console.log(
-    `[engine-factory] model=${routedModel} effort=${effort} thinking=${!routedModel.includes('haiku')}${confirmPromoted ? ' confirm_promoted=true' : ''}`,
+    `[engine-factory] model=${routedModel} effort=${effort} thinking=${!routedModel.includes('haiku')}${confirmPromoted ? ' confirm_promoted=true' : ''}${postWriteDemoted ? ' post_write_demoted=true' : ''}`,
   );
 
   // [SPEC 8 v0.5.1 B3.2] Adaptive harness shape — derived from the same
@@ -644,7 +684,9 @@ export async function createEngine(
   // signals that actually drove the classifier's decision so a Datadog
   // operator skimming a turn can see WHY without re-running classify.
   const harnessShape = harnessShapeForEffort(effort);
-  const harnessRationale = confirmPromoted
+  const harnessRationale = postWriteDemoted
+    ? `post-write resume narrate → demoted to lean (S.126 Tier 2c)`
+    : confirmPromoted
     ? `plan-context promoted low → medium`
     : buildHarnessRationale({
         effort,
