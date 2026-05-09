@@ -152,11 +152,46 @@ export async function getPortfolio(address: string): Promise<Portfolio> {
   // shape on failure rather than throwing, so the canonical fetcher
   // never crashes a caller because one upstream is down. balance_check
   // uses the same allSettled-then-zero pattern.
+  //
+  // [Phase 20.1 Step 1 / SPEC 20 — 2026-05-10] Per-sub-fetch latency
+  // instrumentation. Pre-instrumentation we knew `getPortfolio` was
+  // already parallel (three Promise.allSettled-d sub-fetches) but had
+  // no production-grade data on which sub-fetch dominates wall time
+  // OR whether any consumer's call-site latency is high enough to
+  // justify slice-aware fetchers (`getPortfolio({ include: { ... } })`).
+  // The handoff's original Phase 20.1 framing — "redesign for
+  // parallel" — turned out to be wrong (already parallel); Step 1
+  // collects 24h of cold/warm timings before deciding the next move.
+  //
+  // Grep contract:
+  //   vercel logs --since=24h | grep -E "^\[portfolio\] "
+  //
+  // Wall time is captured per sub-fetch via Date.now() bookends
+  // pushed onto each promise. Cache-hit signal is implicit in the
+  // latency bucket (sub-50ms = warm via @t2000/engine in-process
+  // cache; >100ms = cold or network-bound). Total time is `max(...)`
+  // since the three run in parallel.
+  const t0 = Date.now();
+  let walletMs = -1;
+  let positionsMs = -1;
+  let defiMs = -1;
   const [walletResult, positionsResult, defiResult] = await Promise.allSettled([
-    fetchAddressPortfolio(address, BLOCKVISION_API_KEY, getSuiRpcUrl()),
-    fetchPositions(address),
-    fetchAddressDefiPortfolio(address, BLOCKVISION_API_KEY),
+    fetchAddressPortfolio(address, BLOCKVISION_API_KEY, getSuiRpcUrl())
+      .finally(() => { walletMs = Date.now() - t0; }),
+    fetchPositions(address)
+      .finally(() => { positionsMs = Date.now() - t0; }),
+    fetchAddressDefiPortfolio(address, BLOCKVISION_API_KEY)
+      .finally(() => { defiMs = Date.now() - t0; }),
   ]);
+  const totalMs = Date.now() - t0;
+  console.log(
+    `[portfolio] address=${address} ` +
+    `wallet_ms=${walletMs} positions_ms=${positionsMs} defi_ms=${defiMs} ` +
+    `total_ms=${totalMs} ` +
+    `wallet_ok=${walletResult.status === 'fulfilled'} ` +
+    `positions_ok=${positionsResult.status === 'fulfilled'} ` +
+    `defi_ok=${defiResult.status === 'fulfilled'}`,
+  );
 
   const walletPortfolio: AddressPortfolio = walletResult.status === 'fulfilled'
     ? walletResult.value
