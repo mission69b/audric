@@ -1,10 +1,9 @@
 import { NextRequest } from 'next/server';
-import { serializeSSE, getTelemetrySink, pollForIndexerCatchup } from '@t2000/engine';
-import type { PendingAction, PostWritePollResult } from '@t2000/engine';
+import { serializeSSE, getTelemetrySink } from '@t2000/engine';
+import type { PendingAction } from '@t2000/engine';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { validateJwt, isValidSuiAddress } from '@/lib/auth';
 import { createEngine, getSessionStore, setConversationState } from '@/lib/engine/engine-factory';
-import { getSuiRpcUrl } from '@/lib/sui-rpc';
 import { logSessionUsage } from '@/lib/engine/log-session-usage';
 import { getSessionSpend, incrementSessionSpend } from '@/lib/engine/session-spend';
 import { applyModificationsToAction, resolveOutcome } from '@/lib/engine/apply-modifications';
@@ -173,36 +172,15 @@ export async function POST(request: NextRequest) {
   const rl = rateLimit(`engine-resume:${ip}`, 20, 60_000);
   if (!rl.success) return rateLimitResponse(rl.retryAfterMs!);
 
-  // [SPEC 19 Phase B / 2026-05-09] Fire the indexer-catchup poll IMMEDIATELY,
-  // before any of the serial Redis/Prisma reads that block engine boot. The
-  // poll's only inputs (suiRpcUrl + address) are both available right now;
-  // by awaiting its result inside `runPostWriteRefresh` (via the engine's
-  // `indexerCatchupPromise` opt) the ~500-1500ms wait overlaps with engine
-  // boot and disappears from the post-write critical path. Skipped on
-  // declined writes — there's no on-chain state to wait for. The aborter
-  // is wired through but never fired in the happy path; `pollForIndexerCatchup`
-  // tolerates a still-pending Promise being awaited in the fallback branch.
-  const indexerPollAbort = new AbortController();
-  const indexerCatchupPromise: Promise<PostWritePollResult> | undefined = approved
-    ? pollForIndexerCatchup({
-        suiRpcUrl: getSuiRpcUrl(),
-        address,
-        ceilingMs: 1500,
-        pollIntervalMs: 250,
-        signal: indexerPollAbort.signal,
-      }).catch((err) => {
-        // The engine handles a rejected Promise (logs warn + falls back to
-        // a fresh poll). We catch + rethrow so the unhandled-rejection
-        // listener doesn't fire if the engine never gets to await it
-        // (e.g. session-not-found short-circuit below).
-        console.warn('[engine/resume] pre-warm indexer poll failed:', err);
-        throw err;
-      })
-    : undefined;
-
   // [SPEC 19 Phase B / 2026-05-09] Parallelize the 3 serial pre-engine
   // reads — they're independent. Saves ~80-150ms vs the prior serial
   // chain (store.get → prisma.contacts → getSessionSpend).
+  //
+  // [SPEC 19 Option 3 / v1.24.12 / 2026-05-09] Phase B's pre-warmed
+  // indexer-catchup poll is removed. The engine no longer waits on the
+  // Sui RPC owned-coin index post-write (Option 3 — see
+  // `engine.ts::runPostWriteRefresh`); pre-firing the poll added zero
+  // value once the wait itself was eliminated.
   const store = getSessionStore();
   const [session, contacts, sessionSpendUsd] = await Promise.all([
     store.get(sessionId),
@@ -220,10 +198,6 @@ export async function POST(request: NextRequest) {
   ]);
 
   if (!session) {
-    // Pre-warm poll is now orphaned — abort it so it doesn't keep polling
-    // after we've returned 404. Failure to abort is non-fatal (poll has
-    // its own ceiling) but cleanest to do explicitly.
-    if (indexerCatchupPromise) indexerPollAbort.abort();
     return jsonError('Session not found', 404);
   }
 
@@ -241,12 +215,6 @@ export async function POST(request: NextRequest) {
       contacts,
       sessionSpendUsd,
       sessionId,
-      // [SPEC 19 Phase B / 2026-05-09] Forward the pre-warmed indexer
-      // catchup poll. Engine awaits this inside `runPostWriteRefresh`
-      // instead of starting its own poll — by the time the engine reaches
-      // the refresh, this Promise is typically already resolved (boot
-      // wall-clock ≥ poll wall-clock), so the poll wait drops to ~0ms.
-      indexerCatchupPromise,
       // [v1.4.2 — Day 4 / Spec M3] Capture routing decisions for the
       // resume-row's effortLevel/modelUsed columns. Fired exactly once
       // after engine construction.

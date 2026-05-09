@@ -25,7 +25,6 @@ import {
   type UserFinancialProfile,
   type UserPermissionConfig,
   type ThinkingEffort,
-  type PostWritePollResult,
 } from '@t2000/engine';
 import { SUPPORTED_ASSETS } from '@t2000/sdk';
 import { env } from '@/lib/env';
@@ -309,18 +308,6 @@ export interface CreateEngineOpts {
    * pending_action emission, which DOES need the planner's reasoning.
    */
   isPostWriteResume?: boolean;
-  /**
-   * [SPEC 19 Phase B / 2026-05-09] Pre-warmed indexer-catchup poll
-   * Promise. Resume route fires `pollForIndexerCatchup` immediately on
-   * request entry (in parallel with the rest of the boot sequence) and
-   * passes the Promise here. The engine awaits it inside
-   * `runPostWriteRefresh` instead of starting a fresh poll, so the
-   * ~500-1500ms wait overlaps with engine boot. Forwarded verbatim
-   * to `QueryEngine.indexerCatchupPromise`.
-   *
-   * Chat route does NOT set this — chat turns aren't post-write resumes.
-   */
-  indexerCatchupPromise?: Promise<PostWritePollResult>;
 }
 
 export async function createEngine(
@@ -813,11 +800,6 @@ export async function createEngine(
     // successful write so post-write narration cites real numbers. See
     // `POST_WRITE_REFRESH_MAP` above.
     postWriteRefresh: POST_WRITE_REFRESH_MAP,
-    // [SPEC 19 Phase B / 2026-05-09] Forward host-fired indexer-catchup
-    // poll. Resume route fires this immediately on request entry; engine
-    // awaits it inside `runPostWriteRefresh` so the ~500-1500ms wait
-    // overlaps with engine boot. Undefined for chat-route engines.
-    indexerCatchupPromise: opts.indexerCatchupPromise,
     ...(!routedModel.includes('haiku') && {
       thinking: { type: 'adaptive' as const },
       outputConfig: { effort },
