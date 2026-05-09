@@ -274,9 +274,8 @@ function findContributingReadsFromHistory(
 
 /**
  * [SPEC 20.2 / D-1 (a) bundle gap fix — 2026-05-10] Walk persisted
- * `history` to recover same-agent-turn `swap_quote` results so the
- * fast-path bundle composer can thread `step.cetusRoute` for
- * `swap_execute` legs.
+ * `history` to recover `swap_quote` results so the fast-path bundle
+ * composer can thread `step.cetusRoute` for `swap_execute` legs.
  *
  * **Why this exists.** The pre-fix `buildPendingActionFromProposal`
  * called `composeBundleFromToolResults(...)` WITHOUT `swapQuoteReads`,
@@ -285,8 +284,7 @@ function findContributingReadsFromHistory(
  * undefined` → audric's chat-route extractor had nothing to mirror
  * onto `TurnMetrics.cetusRoute` → the SPEC 20.2 fast-path on
  * `/api/transactions/prepare` couldn't fire → bundles paid the full
- * Cetus aggregator round-trip at confirm time. Production smoke (n=3
- * bundles, 0/3 captured) confirmed the regression.
+ * Cetus aggregator round-trip at confirm time.
  *
  * **The data is already in `history`.** The engine emits each
  * tool_result with `content: JSON.stringify(result)` (engine.ts
@@ -305,20 +303,44 @@ function findContributingReadsFromHistory(
  * FromHistory` above for the same pattern applied to regenerate-
  * field derivation.)
  *
- * **Same-turn discipline.** Stops scanning at the most recent
- * non-synthetic user message, identically to
- * `findContributingReadsFromHistory`. A `swap_quote` from a prior
- * agent turn (different user prompt) is intentionally ignored —
- * routes go stale fast and `findMatchingCetusRoute` would
- * inadvertently match on stale identity-equal inputs.
+ * **Why scan FULL history (not just same agent turn) — 2026-05-10
+ * follow-on fix.** The first cut of this walker stopped at the most
+ * recent non-synthetic user message, on the theory that "stale
+ * cross-turn routes shouldn't match." Production smoke disproved
+ * that. The engine's `microcompact` (engine.ts line ~1267) runs
+ * every agent loop and DEDUPLICATES identical `swap_quote` calls —
+ * the second call's `tool_result.content` is replaced with
+ * `[Same result as call #N — swap_quote with identical inputs.
+ * Result unchanged.]`. That placeholder lands in `session.messages`
+ * because the engine writes its post-microcompact `this.messages`
+ * back to the store after the turn.
+ *
+ * Concrete prod trace: a single swap (USDC→SUI, 0.5) in turn 1, then
+ * a bundle plan ("swap 0.5 USDC then save the rest") in turn 4 that
+ * re-quotes the same pair. By the time fast-path fires on "Confirm",
+ * the bundle-turn `tool_result` is the placeholder string —
+ * `JSON.parse` rejects it, walker returns `[]`, `step.cetusRoute`
+ * stays undefined, prepare-route logs `routePresent=false path=bundle`.
+ *
+ * Walking FULL history finds the un-deduped FIRST call's
+ * tool_result (msg [6] in the prod trace), parses out its
+ * `serializedRoute`, and threads it onto the step. Safety: audric
+ * prepare-route runs `validateAndDecodeCetusRoute` which calls
+ * `isCetusRouteFresh` (30s default, on the route's own
+ * `discoveredAt` field). Routes older than that are silently dropped
+ * and the legacy `findSwapRoute()` fallback runs — same correctness,
+ * just slower. So worst case = baseline behavior; common case = fast
+ * path fires.
+ *
+ * Long-term cleaner fix: set `cacheable: false` on `swap_quote` in
+ * `@t2000/engine` so microcompact never dedupes quote results. Quote
+ * results legitimately vary per call (pool reserves, slippage
+ * windows). Tracked separately — until then, this walker handles it.
  *
  * **`timestamp: 0` is intentional.** The engine composer uses
  * `swapQuoteReads[*].timestamp` for nothing — `findMatchingCetusRoute`
  * matches on `(from, to, amount, byAmountIn)` only and ignores
- * timestamps. The freshness/stale gate lives downstream in
- * `validateAndDecodeCetusRoute` (D-3), keyed on the route's own
- * `discoveredAt` field. Setting timestamp=0 here documents that
- * fact rather than synthesizing a bogus value.
+ * timestamps. The freshness gate lives downstream as described above.
  *
  * Returns `[]` (empty array, not null) when nothing matched — the
  * engine composer treats undefined/empty identically (`if
@@ -329,21 +351,8 @@ function findSwapQuoteReadsFromHistory(
 ): SwapQuoteReadEntry[] {
   if (!history || history.length === 0) return [];
 
-  let priorUserIdx = -1;
-  for (let i = history.length - 1; i >= 0; i--) {
-    const msg = history[i];
-    if (msg.role !== 'user') continue;
-    const isSyntheticToolResult = msg.content.some(
-      (b) => b.type === 'tool_result',
-    );
-    if (!isSyntheticToolResult) {
-      priorUserIdx = i;
-      break;
-    }
-  }
-
-  // Pass 1: index every `swap_quote` tool_use block in the current
-  // agent turn (toolUseId → typed input). Defensive shape check —
+  // Pass 1: index every `swap_quote` tool_use block across ALL
+  // history (toolUseId → typed input). Defensive shape check —
   // skip blocks whose input doesn't have the expected fields rather
   // than letting a downstream `findMatchingCetusRoute` throw on
   // `.toLowerCase()` of a non-string.
@@ -351,7 +360,7 @@ function findSwapQuoteReadsFromHistory(
     string,
     { from: string; to: string; amount: number; byAmountIn?: boolean }
   >();
-  for (let i = priorUserIdx + 1; i < history.length; i++) {
+  for (let i = 0; i < history.length; i++) {
     const msg = history[i];
     if (msg.role !== 'assistant') continue;
     for (const block of msg.content) {
@@ -382,12 +391,16 @@ function findSwapQuoteReadsFromHistory(
   }
   if (swapQuoteInputs.size === 0) return [];
 
-  // Pass 2: walk forward, find each tool_result whose toolUseId
-  // matches a swap_quote tool_use we indexed, parse the JSON
-  // content, extract `serializedRoute` (top-level OR under `data.`),
-  // pair with the captured input.
+  // Pass 2: walk ALL history forward, find each tool_result whose
+  // toolUseId matches a swap_quote tool_use we indexed, parse the
+  // JSON content, extract `serializedRoute` (top-level OR under
+  // `data.`), pair with the captured input. Microcompact placeholders
+  // fail JSON.parse and are silently skipped — the corresponding
+  // un-deduped earlier call (if any) is collected instead.
+  // Chronological append order means `findMatchingCetusRoute`'s
+  // reverse iteration prefers the most recent matching route.
   const reads: SwapQuoteReadEntry[] = [];
-  for (let i = priorUserIdx + 1; i < history.length; i++) {
+  for (let i = 0; i < history.length; i++) {
     const msg = history[i];
     if (msg.role !== 'user') continue;
     for (const block of msg.content) {

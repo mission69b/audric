@@ -591,8 +591,17 @@ describe('buildPendingActionFromProposal', () => {
       expect(action.steps?.[0].cetusRoute?.routerData.paths[0].id).toBe('fresh');
     });
 
-    it('ignores swap_quote tool_results from PRIOR agent turns (only walks current turn)', () => {
-      const oldRoute = makeRoute({ pathId: 'old' });
+    it('threads cetusRoute from a PRIOR-turn swap_quote (dedup workaround)', () => {
+      // [SPEC 20.2 / D-1 (a) follow-on, 2026-05-10] After the production
+      // smoke uncovered that microcompact replaces same-input swap_quote
+      // tool_results with `[Same result as call #N — swap_quote with
+      // identical inputs. Result unchanged.]` placeholders, the walker
+      // was changed to scan FULL history. The earlier un-deduped call
+      // becomes the source of the route. Audric prepare-route's
+      // `validateAndDecodeCetusRoute` (30s freshness gate) is the safety
+      // net for cross-turn staleness. See findSwapQuoteReadsFromHistory
+      // doc-block for the full lesson.
+      const oldRoute = makeRoute({ pathId: 'reused' });
       const proposal = makeProposal({
         steps: [
           { toolName: 'swap_execute', input: { from: 'USDC', to: 'SUI', amount: 0.5 } },
@@ -600,7 +609,7 @@ describe('buildPendingActionFromProposal', () => {
         ],
       });
       const history: Message[] = [
-        // Prior turn — irrelevant.
+        // Prior turn — un-deduped swap_quote with full content.
         userText('what is the rate'),
         {
           role: 'assistant',
@@ -614,7 +623,7 @@ describe('buildPendingActionFromProposal', () => {
             { type: 'tool_result', toolUseId: 'OLD_swap_quote', content: JSON.stringify({ data: { serializedRoute: oldRoute } }), isError: false },
           ],
         },
-        // Current turn — no swap_quote.
+        // Current turn — no swap_quote, just prepare_bundle.
         userText('ok then bundle this'),
         {
           role: 'assistant',
@@ -624,7 +633,80 @@ describe('buildPendingActionFromProposal', () => {
         },
       ];
       const action = buildPendingActionFromProposal(proposal, 0, ENGINE_TOOLS, history);
-      expect(action.steps?.[0].cetusRoute).toBeUndefined();
+      expect(action.steps?.[0].cetusRoute).toBeDefined();
+      expect(action.steps?.[0].cetusRoute?.routerData.paths[0].id).toBe('reused');
+    });
+
+    it('falls back to earlier un-deduped swap_quote when microcompact replaced the most recent with a placeholder', () => {
+      // [SPEC 20.2 / D-1 (a) follow-on, 2026-05-10] Reproduces the
+      // production smoke trace that uncovered the dedup gap:
+      //   turn 1: swap_quote(USDC→SUI, 0.5) → full content
+      //   turn 4: swap_quote(USDC→SUI, 0.5) → microcompact replaces
+      //           tool_result.content with the placeholder string
+      //           (engine.ts ~line 1267 microcompact + line 1268
+      //           this.messages = microcompacted; persisted to session)
+      //   turn 5: user "Confirm" → fast-path runs, walker sees the
+      //           placeholder on the recent call, falls back to the
+      //           un-deduped earlier call.
+      //
+      // Before the full-history scan, the walker stopped at the most
+      // recent non-synthetic user message and never saw turn 1's call.
+      // Result: bundle shipped with `cetusRoute: undefined` →
+      // `[prepare] usedPrecomputedRoute=false routePresent=false` in
+      // production logs. This test pins the regression closed.
+      const route = makeRoute({ pathId: 'undeduped' });
+      const proposal = makeProposal({
+        steps: [
+          { toolName: 'swap_execute', input: { from: 'USDC', to: 'SUI', amount: 0.5 } },
+          { toolName: 'save_deposit', input: { asset: 'USDC', amount: 1 } },
+        ],
+      });
+      const history: Message[] = [
+        // Turn 1 — un-deduped first call (prior to bundle plan).
+        userText('swap 0.5 USDC to SUI'),
+        {
+          role: 'assistant',
+          content: [
+            { type: 'tool_use', id: 'tu_first_quote', name: 'swap_quote', input: { from: 'USDC', to: 'SUI', amount: 0.5 } },
+          ],
+        },
+        {
+          role: 'user',
+          content: [
+            { type: 'tool_result', toolUseId: 'tu_first_quote', content: JSON.stringify({ data: { serializedRoute: route } }), isError: false },
+          ],
+        },
+        // Turn 4 — bundle plan. swap_quote re-fired with same input;
+        // microcompact replaced its result with the placeholder.
+        userText('swap 0.5 USDC to SUI then save the rest'),
+        {
+          role: 'assistant',
+          content: [
+            { type: 'tool_use', id: 'tu_bundle_quote', name: 'swap_quote', input: { from: 'USDC', to: 'SUI', amount: 0.5 } },
+          ],
+        },
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'tool_result',
+              toolUseId: 'tu_bundle_quote',
+              content: '[Same result as call #1 — swap_quote with identical inputs. Result unchanged.]',
+              isError: false,
+            },
+          ],
+        },
+        {
+          role: 'assistant',
+          content: [
+            { type: 'tool_use', id: 'toolu_prepare_bundle_1', name: 'prepare_bundle', input: { steps: [] } },
+            { type: 'text', text: "Here's your plan…" },
+          ],
+        },
+      ];
+      const action = buildPendingActionFromProposal(proposal, 0, ENGINE_TOOLS, history);
+      expect(action.steps?.[0].cetusRoute).toBeDefined();
+      expect(action.steps?.[0].cetusRoute?.routerData.paths[0].id).toBe('undeduped');
     });
 
     it('skips tool_results without serializedRoute (legacy / non-Cetus quotes)', () => {
