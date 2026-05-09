@@ -59,6 +59,11 @@ auto-generates.
 
 ## Usage
 
+> **NOTE on paths:** `pnpm --filter web exec ...` runs in the `apps/web`
+> workspace directory. So the script paths are relative to `apps/web` — use
+> `scripts/regression-swaps/...`, NOT `apps/web/scripts/regression-swaps/...`
+> (the latter resolves to `apps/web/apps/web/...` and 404s).
+
 ### Tier A — quote regression
 
 ```bash
@@ -80,7 +85,7 @@ pnpm --filter web exec tsx scripts/regression-swaps/gen-test-wallet.ts
 REGRESSION_TEST_WALLET_PRIVKEY=suiprivkey... \
   pnpm --filter web exec tsx scripts/regression-swaps/run-executes.ts --dry-run
 
-# Real run (5 round trips, ~$0.06 spent on slippage+fees+gas):
+# Real run (5 round trips, ~$0.03 spent on slippage+fees+gas):
 REGRESSION_TEST_WALLET_PRIVKEY=suiprivkey... \
   pnpm --filter web exec tsx scripts/regression-swaps/run-executes.ts
 
