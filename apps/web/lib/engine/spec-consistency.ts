@@ -1,7 +1,7 @@
 /**
  * spec-consistency.ts — Audric Harness Correctness Spec v1.4 / Item 5
  *
- * Runs nineteen assertions against the live `@t2000/sdk` + `@t2000/engine`
+ * Runs twenty-one assertions against the live `@t2000/sdk` + `@t2000/engine`
  * exports and the audric-side `STATIC_SYSTEM_PROMPT` to guarantee that the
  * values documented in the spec, encoded in the SDK, and surfaced to the
  * LLM never silently drift apart.
@@ -12,7 +12,7 @@
  *   2. Runtime: imported by `engine-factory.ts` so a dev-mode boot trips a
  *      hard error and a prod-mode boot logs the violation. See `runStartupCheck`.
  *
- * The nineteen assertions (originally nine per spec line 1681 + plan Day 5;
+ * The twenty-one assertions (originally nine per spec line 1681 + plan Day 5;
  * grown to track new canonical sources, load-bearing prompt rules, and the
  * SPEC 15 confirm-flow module surface):
  *   - 6 fee constants — SAVE_FEE_BPS=10n, BORROW_FEE_BPS=5n,
@@ -32,6 +32,10 @@
  *     `expectsConfirmDecorator` from `./expects-confirm-decorator`
  *     (decorator presence) and the chip-path admission contract on
  *     `tryConsumeFastPathBundle` (`forceAdmit: 'chip'` accepted as opt).
+ *   - 2 S.126 Tier 2a bundle-proposal latency rules —
+ *     BUNDLE_COMPILE_TURN_BUDGET (≤ 3 turns) and UPDATE_TODO_ONCE_PER_TURN
+ *     (no mid-batch re-narration). Together they cap bundle PROPOSAL latency
+ *     at ~6-8s vs the ~16s baseline observed in the May 2026 smoke trace.
  */
 import * as sdk from '@t2000/sdk';
 import { READ_TOOLS, WRITE_TOOLS } from '@t2000/engine';
@@ -212,6 +216,38 @@ export function runSpecConsistencyChecks(): SpecConsistencyResult {
       'returns _bundleReverted: true — implying the user should wait for ' +
       'something that will never happen. Sui PTBs are atomic; the rule ' +
       'must teach the LLM there is no in-flight state to wait for.',
+  });
+
+  // ── 2 bundle-proposal latency rules (S.126 Tier 2a) ────────────────────
+  // S.126 Tier 1 telemetry surfaced that the bundle PROPOSAL phase ate
+  // ~12s of the user-perceived "30s on writes" tail — 5 LLM round-trips
+  // (initial update_todo → quotes → re-narrate update_todo → prepare_bundle
+  // → final update_todo → plan text) at ~3s each on Sonnet+thinking+high.
+  // The fix (Tier 2a) is a system-prompt change, not engine code: cap the
+  // Compile path at 3 turns AND forbid mid-batch update_todo re-narration.
+  // These two assertions guard both rules. If a future prompt refactor
+  // drops either anchor string, this assertion fails before the engine
+  // boots — preventing the regression from re-shipping silently.
+  assertions.push({
+    id: 'STATIC_SYSTEM_PROMPT_BUNDLE_COMPILE_TURN_BUDGET',
+    pass: STATIC_SYSTEM_PROMPT.includes('TURN BUDGET ≤ 3 (S.126 Tier 2a)'),
+    message:
+      'STATIC_SYSTEM_PROMPT must contain the "Compile path … TURN BUDGET ' +
+      '≤ 3 (S.126 Tier 2a)" rule under § Payment Intent. Without it the ' +
+      'LLM emits prepare_bundle and the plan text in separate turns, ' +
+      'wasting a ~3s round-trip per bundle proposal. The rule must teach ' +
+      'the LLM to combine plan-text-then-prepare_bundle in ONE response.',
+  });
+  assertions.push({
+    id: 'STATIC_SYSTEM_PROMPT_UPDATE_TODO_ONCE_PER_TURN',
+    pass: STATIC_SYSTEM_PROMPT.includes('EMIT AT MOST ONCE PER TURN'),
+    message:
+      'STATIC_SYSTEM_PROMPT must contain the "EMIT AT MOST ONCE PER TURN" ' +
+      'rule under § Mid-flight narration & todos. Without it the LLM ' +
+      're-narrates update_todo after each tool batch lands, costing ~3s ' +
+      'per re-call. The rule must teach the LLM to declare the full plan ' +
+      'upfront with realistic statuses and forbid mid-batch re-narration ' +
+      '(harness timeline already shows tool progress).',
   });
 
   // ── 4 canonical-portfolio export assertions ────────────────────────────

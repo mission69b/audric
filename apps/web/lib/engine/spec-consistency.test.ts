@@ -11,9 +11,9 @@ import { runSpecConsistencyChecks, assertSpecConsistency } from './spec-consiste
  * in the runtime invocation paths.
  */
 describe('[v1.4 Item 5] spec consistency', () => {
-  it('exposes 19 well-formed assertions covering fees, decimals, tool counts, caption-fidelity prompt rules, canonical portfolio exports, plan-context promotion, and SPEC 15 Phase 2 chip surface', () => {
+  it('exposes 21 well-formed assertions covering fees, decimals, tool counts, caption-fidelity prompt rules, canonical portfolio exports, plan-context promotion, SPEC 15 Phase 2 chip surface, and S.126 Tier 2a bundle-proposal latency rules', () => {
     const result = runSpecConsistencyChecks();
-    expect(result.assertions).toHaveLength(19);
+    expect(result.assertions).toHaveLength(21);
     const ids = result.assertions.map((a) => a.id).sort();
     expect(ids).toEqual([
       'BORROW_FEE_BPS',
@@ -29,10 +29,12 @@ describe('[v1.4 Item 5] spec consistency', () => {
       'NO_WITHDRAW_FEE_BPS',
       'OVERLAY_FEE_RATE',
       'SAVE_FEE_BPS',
+      'STATIC_SYSTEM_PROMPT_BUNDLE_COMPILE_TURN_BUDGET',
       'STATIC_SYSTEM_PROMPT_DEFI_UNAVAILABLE_RULE',
       'STATIC_SYSTEM_PROMPT_FAILED_WRITE_NARRATION_RULE',
       'STATIC_SYSTEM_PROMPT_NEVER_CONTRADICT_CARD',
       'STATIC_SYSTEM_PROMPT_TOOL_COUNTS',
+      'STATIC_SYSTEM_PROMPT_UPDATE_TODO_ONCE_PER_TURN',
       'SUI_DECIMALS',
       'USDC_DECIMALS',
     ]);
@@ -43,7 +45,7 @@ describe('[v1.4 Item 5] spec consistency', () => {
     }
   });
 
-  it('all 19 assertions pass against the live SDK + engine packages and canonical exports', () => {
+  it('all 21 assertions pass against the live SDK + engine packages and canonical exports', () => {
     const result = runSpecConsistencyChecks();
     const failed = result.assertions.filter((a) => !a.pass);
     if (failed.length) {

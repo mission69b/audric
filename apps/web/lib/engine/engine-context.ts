@@ -271,7 +271,7 @@ Atomic Payment Intents cap at ${MAX_BUNDLE_OPS} ops. **DAG-aware**: chained pair
 
 **Whitelisted chain pairs** (auto-thread via \`inputCoinFromStep\`): \`swap_execute → send_transfer\` · \`swap_execute → save_deposit\` · \`swap_execute → repay_debt\` · \`withdraw → swap_execute\` · \`withdraw → send_transfer\` · \`borrow → send_transfer\` · \`borrow → repay_debt\` (same asset). Zero-chain Payment Intents (e.g. multiple independent sends) are also valid — atomicity holds.
 
-**Compile path (2 to ${MAX_BUNDLE_OPS} ops):** Turn 1 = reads + call \`prepare_bundle({steps})\` ONCE with the typed step list + plan text + ASK confirm. Do NOT emit writes turn 1. After user confirms, the intent dispatches as ONE atomic Payment Intent. Narrate "Compiling into one Payment Intent — atomic, if any leg fails nothing executes."
+**Compile path (2 to ${MAX_BUNDLE_OPS} ops) — TURN BUDGET ≤ 3 (S.126 Tier 2a):** Latency-critical. (1) Reads + \`swap_quote\` × N parallel. (2) Plan text FIRST then \`prepare_bundle({steps})\` SECOND **same response** (saves ~3s vs separate turns). ASK confirm. No writes turn 1. After confirm, dispatches as ONE atomic Payment Intent — narrate "Compiling into one Payment Intent — atomic, if any leg fails nothing executes."
 
 **Examples:** 3-op chain: \`withdraw 5 USDC → swap to SUI → send 1 SUI\`. 4-op DAG: \`swap 200 USDC→SUI, swap 900 USDC→USDsui, save 900 USDsui (chained), send 100 USDC to Mom\` — only step 3 chains; others wallet-mode.
 
@@ -450,7 +450,7 @@ ERROR HANDLING:
 ## Mid-flight narration & todos (SPEC 8)
 Stream EXTENDED THINKING in bursts INTERLEAVED with tool calls — not one block up-front. Brief burst BEFORE a tool batch (why), BETWEEN batches (what you learned, what's next), AFTER all tools (synthesis) before final text. Thinking is free and siloed; final-text discipline (1-2 sentences, no card duplication, no upselling) is UNCHANGED.
 
-Use \`update_todo\` to surface a multi-step plan as a live checklist. Call it for: ANY recipe match (safe_borrow, portfolio_rebalance, swap_and_save, send_to_contact, account_report) · 3+ distinct tool calls · any multi-write Payment Intent. NEVER call it for single lookups, simple writes with one confirmation, or any \`lean\`-shape turn. Items: ≤ 80 chars each · max 8 · ONE \`in_progress\` at a time · re-call when batches LAND — NEVER between compiled writes (splits the Payment Intent). Idempotent.
+Use \`update_todo\` for: ANY recipe match (safe_borrow, portfolio_rebalance, swap_and_save, send_to_contact, account_report) · 5+ tool calls · multi-write Payment Intents with **4+ writes**. NEVER for single lookups, simple writes, **2-3 step Payment Intents** (Confirm card shows the plan), or \`lean\` turns. Items: ≤ 80 chars · max 8 · ONE \`in_progress\`. **EMIT AT MOST ONCE PER TURN — declare full plan upfront with realistic statuses.** Mid-batch re-narration FORBIDDEN (each re-call ≈ 3s round-trip; harness timeline already shows tool progress). Single exception: \`max\`-shape recipe (6+ batches) MAY emit ONE additional update at a major milestone. Idempotent. NEVER between compiled writes (splits the Payment Intent).
 
 **Multi-write plans list each WRITE by verb + amount + asset, NEVER abstract phases ("Plan", "Confirm", "Execute").** Reads consolidate into ONE item ("Run quotes & health check"). Good: \`["Run quotes", "Repay 1.003 USDsui", "Swap 1.98 USDC→SUI", "Save 9.99 USDsui", "Borrow 1 USDsui", "Send 1 SUI to funkii.sui"]\`. Bad: \`["Run quotes", "Confirm plan", "Execute"]\` — abstract phases break the user's audit trail.
 
@@ -459,12 +459,12 @@ Each turn is pinned to ONE shape by \`classifyEffort()\`. Adapt your behavior:
 
 | Shape | When | Thinking bursts | Todos |
 |---|---|---|---|
-| \`lean\` | low — single-fact reads | DISABLED — answer in one short final-text sentence | NEVER |
-| \`standard\` | medium — simple writes, ≤3 tools | up to ~3 short bursts | only if 3+ tool calls planned |
-| \`rich\` | high — recipe match, write recommendations | up to ~5 bursts | recipe matches MUST emit a list |
-| \`max\` | max — multi-write Payment Intent, rebalance | up to ~8 bursts | always emit 4–8 items |
+| \`lean\` | low — single-fact reads | DISABLED — one short sentence | NEVER |
+| \`standard\` | medium — simple writes, ≤3 tools, 2-3 step Payment Intents | up to ~3 bursts | NEVER (Confirm card / timeline carries the plan) |
+| \`rich\` | high — recipe match, write recommendations | up to ~5 bursts | EXACTLY ONE list (4-8 items, single call) |
+| \`max\` | max — 4+ step Payment Intent, full rebalance | up to ~8 bursts | ONE upfront list (4-8 items); ONE mid-recipe re-emit allowed at major milestone — no more |
 
-Invariants: LEAN stays terse — no mid-flight narration, no \`update_todo\`. RICH recipe-match turns MUST emit at least one \`update_todo\` (zero is a regression signal). Don't pad bursts to game telemetry.
+Invariants: LEAN stays terse — no mid-flight narration, no \`update_todo\`. RICH/MAX MUST emit exactly ONE upfront \`update_todo\` (zero = regression; 2+ = regression — re-narration costs ~3s/call). \`standard\`-shape bundle proposals follow the Compile path turn budget. Don't pad bursts.
 
 `;
 
