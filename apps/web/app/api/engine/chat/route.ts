@@ -42,6 +42,7 @@ import {
 
 import { sanitizeStreamErrorMessage } from '@/lib/engine/stream-errors';
 import { tryConsumeFastPathBundle } from '@/lib/engine/fast-path-bundle';
+import { buildPostWriteAnchorBlock } from '@/lib/engine/post-write-anchor';
 // [SPEC 15 Phase 2] Confirm-flow chip routing.
 import {
   readBundleProposal,
@@ -841,7 +842,25 @@ export async function POST(request: NextRequest) {
           // handles session save, TurnMetrics row, etc — those work
           // unchanged because we set the same state flags the legacy
           // path's `case 'pending_action'` would set.
-          if (!fastPathFired && !chipCancelled) for await (const event of engine.submitMessage(trimmedMessage, {
+          // [SPEC 21.2.b — 2026-05-10] Post-Write Balance Anchor.
+          // Walk the engine's ledger; if any write executed earlier in
+          // this session, prepend a `<post_write_anchor>` directive
+          // block to the user's message text so the LLM is grounded on
+          // the freshest balance_check tool_result instead of drifting
+          // back to a `<eval_summary>` figure cited in a prior turn.
+          // Mirrors the H1 canonical_route pattern (engine.ts D-4 (a))
+          // but on the chat-forward path. Only fires when not already
+          // short-circuited by fast-path-bundle / chip-cancel, since
+          // those paths skip the LLM entirely. See post-write-anchor.ts
+          // for the production smoke trace + design rationale.
+          const postWriteAnchor = !fastPathFired && !chipCancelled
+            ? buildPostWriteAnchorBlock(engine.getMessages())
+            : null;
+          const engineSubmitMessage = postWriteAnchor
+            ? `${postWriteAnchor}\n\n${trimmedMessage}`
+            : trimmedMessage;
+
+          if (!fastPathFired && !chipCancelled) for await (const event of engine.submitMessage(engineSubmitMessage, {
             // [SPEC 8 v0.5.1 B3.2] Engine emits the one-shot `harness_shape`
             // event at turn start; host stashes the shape on the assistant
             // EngineChatMessage + on `TurnMetrics.harnessShape`. Falls back
