@@ -3,6 +3,10 @@ import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { validateJwt, isValidSuiAddress } from '@/lib/auth';
 import { getSessionStore } from '@/lib/engine/engine-factory';
 import { UpstashSessionStore } from '@/lib/engine/upstash-session-store';
+import {
+  SESSION_BOOTSTRAP_SENTINEL,
+  stripLlmDirectives,
+} from '@/lib/engine/strip-llm-directives';
 
 export const runtime = 'nodejs';
 
@@ -50,7 +54,15 @@ export async function GET(request: NextRequest) {
       //     emitted by buildSyntheticPrefetch and runtime tool execution),
       //   - the `[session bootstrap]` sentinel inserted by
       //     buildSyntheticPrefetch to satisfy Anthropic's
-      //     "first message must be user" invariant.
+      //     "first message must be user" invariant,
+      //   - user messages whose entire text is just LLM-only
+      //     meta-directives (`<post_write_anchor>`, `<canonical_route>`,
+      //     `<bundle_reverted>`) — those messages exist in the ledger
+      //     because the engine needs them, but they're not user
+      //     utterances. Today the first non-bootstrap user message is
+      //     always a real prompt (no prefixes), so this defense-in-depth
+      //     branch is unreachable in production. It's here so a future
+      //     change can't regress preview cleanliness.
       let preview = 'Conversation';
       const userMessages =
         data.messages?.filter((m) => m.role === 'user') ?? [];
@@ -61,8 +73,10 @@ export async function GET(request: NextRequest) {
           | { type: 'text'; text: string }
           | undefined;
         if (!textBlock?.text) continue;
-        if (textBlock.text === '[session bootstrap]') continue;
-        preview = textBlock.text.slice(0, 80);
+        if (textBlock.text === SESSION_BOOTSTRAP_SENTINEL) continue;
+        const cleaned = stripLlmDirectives(textBlock.text);
+        if (cleaned.length === 0) continue;
+        preview = cleaned.slice(0, 80);
         break;
       }
       return {

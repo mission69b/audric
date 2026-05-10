@@ -4,6 +4,10 @@ import { validateJwt } from '@/lib/auth';
 import { getSessionStore } from '@/lib/engine/engine-factory';
 import { UpstashSessionStore } from '@/lib/engine/upstash-session-store';
 import { asHarnessVersion } from '@/lib/interactive-harness';
+import {
+  SESSION_BOOTSTRAP_SENTINEL,
+  stripLlmDirectives,
+} from '@/lib/engine/strip-llm-directives';
 
 export const runtime = 'nodejs';
 
@@ -59,7 +63,10 @@ function isLastInterruption(v: unknown): v is LastInterruption {
   );
 }
 
-function convertSessionMessages(messages: SessionMessage[], createdAt: number): ChatMessage[] {
+export function convertSessionMessages(
+  messages: SessionMessage[],
+  createdAt: number,
+): ChatMessage[] {
   const result: ChatMessage[] = [];
   let idx = 0;
 
@@ -70,10 +77,23 @@ function convertSessionMessages(messages: SessionMessage[], createdAt: number): 
       const textBlocks = msg.content.filter((b) => b.type === 'text');
       if (textBlocks.length === 0) continue;
 
+      // [spec_session_refresh_chat_divergence / 2026-05-11] Strip
+      // LLM-only meta-directives that audric + the engine prepend to
+      // the user message text for grounding. The live SSE stream
+      // never echoes these blocks back; rehydrate must match the
+      // live surface or the user sees `<post_write_anchor>...` and
+      // `<canonical_route>...` rendered verbatim. See the helper for
+      // the full list of stripped tags + the bootstrap-sentinel
+      // handling rationale.
+      const rawText = textBlocks.map((b) => b.text ?? '').join('\n').trim();
+      if (rawText === SESSION_BOOTSTRAP_SENTINEL) continue;
+      const cleanedText = stripLlmDirectives(rawText);
+      if (cleanedText.length === 0) continue;
+
       result.push({
         id: `hist_${idx++}`,
         role: 'user',
-        content: textBlocks.map((b) => b.text ?? '').join('\n'),
+        content: cleanedText,
         timestamp: createdAt + i * 1000,
       });
     } else if (msg.role === 'assistant') {
