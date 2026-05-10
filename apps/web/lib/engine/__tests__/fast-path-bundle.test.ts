@@ -30,6 +30,7 @@ import {
   type MockInstance,
 } from 'vitest';
 import type { Message, Tool } from '@t2000/engine';
+import type { SerializedCetusRoute } from '@t2000/sdk';
 import { getDefaultTools } from '@t2000/engine';
 import {
   tryConsumeFastPathBundle,
@@ -821,6 +822,224 @@ describe('buildPendingActionFromProposal', () => {
       const action = buildPendingActionFromProposal(proposal, 0, ENGINE_TOOLS);
       expect(action.steps?.[0].cetusRoute).toBeUndefined();
       expect(action.cetusRoute).toBeUndefined();
+    });
+  });
+
+  // ───────────────────────────────────────────────────────────────────────
+  // [SPEC 22.4 — 2026-05-10] Plan-time route stash overrides history walk
+  //
+  // `prepare_bundle` now calls `getSwapQuote()` at plan-commitment time
+  // and stashes the resulting `serializedRoute` on
+  // `BundleProposalStep.cetusRoute`. The fast-path adapter must:
+  //   1. Synthesize a `SwapQuoteReadEntry` from each stashed route.
+  //   2. APPEND it after history-walked reads so the engine composer's
+  //      `findMatchingCetusRoute` (last-match wins) prefers the fresher
+  //      plan-time route over older history-walked routes.
+  //   3. Tolerate missing stash routes (fall back to history walk).
+  //
+  // Why these assertions matter: the stash route's `discoveredAt` is
+  // ~14s closer to the user's confirm tap than `swap_quote`'s, so the
+  // confirm-time `isCetusRouteFresh(30s)` gate has 14s extra headroom.
+  // The v5 smoke had a 32s-old route rejected; with this change the same
+  // trace would have an 18s-old route → fast path admits.
+  // ───────────────────────────────────────────────────────────────────────
+
+  describe('cetusRoute threading from stash (SPEC 22.4 plan-time route)', () => {
+    function makeRoute(pathId: string, amountOut = '473615'): SerializedCetusRoute {
+      return {
+        routerData: {
+          amountIn: '500000',
+          amountOut,
+          byAmountIn: true,
+          paths: [
+            {
+              id: pathId,
+              direction: true,
+              provider: 'CETUS',
+              from: '0xa::usdc::USDC',
+              target: '0xb::sui::SUI',
+              feeRate: 1,
+              amountIn: '500000',
+              amountOut,
+            },
+          ],
+          insufficientLiquidity: false,
+          deviationRatio: 0,
+        },
+        amountIn: '500000',
+        amountOut,
+        byAmountIn: true,
+        priceImpact: 0.001,
+        insufficientLiquidity: false,
+        discoveredAt: Date.now(),
+        fromCoinType: '0xa::usdc::USDC',
+        toCoinType: '0xb::sui::SUI',
+      };
+    }
+
+    it('threads cetusRoute from stash when proposal carries plan-time route', () => {
+      const stashRoute = makeRoute('plan-time-fresh');
+      const proposal = makeProposal({
+        steps: [
+          {
+            toolName: 'swap_execute',
+            input: { from: 'USDC', to: 'SUI', amount: 0.5 },
+            cetusRoute: stashRoute,
+          },
+          { toolName: 'save_deposit', input: { asset: 'USDC', amount: 1 } },
+        ],
+      });
+      // No history → only stash route can possibly match. Proves
+      // stash path works in isolation.
+      const action = buildPendingActionFromProposal(proposal, 0, ENGINE_TOOLS, []);
+      expect(action.steps?.[0].cetusRoute).toBeDefined();
+      expect(action.steps?.[0].cetusRoute?.routerData.paths[0].id).toBe('plan-time-fresh');
+    });
+
+    it('stash route OVERRIDES history-walked route (last-match wins, stash is fresher)', () => {
+      const stashRoute = makeRoute('plan-time-newer', '999999');
+      const proposal = makeProposal({
+        steps: [
+          {
+            toolName: 'swap_execute',
+            input: { from: 'USDC', to: 'SUI', amount: 0.5 },
+            cetusRoute: stashRoute,
+          },
+          { toolName: 'save_deposit', input: { asset: 'USDC', amount: 1 } },
+        ],
+      });
+      // History contains an OLDER swap_quote with a different amountOut
+      // — proves the stash override took precedence.
+      const history: Message[] = [
+        userText('swap 0.5 USDC for SUI'),
+        {
+          role: 'assistant',
+          content: [
+            {
+              type: 'tool_use',
+              id: 'toolu_history_quote',
+              name: 'swap_quote',
+              input: { from: 'USDC', to: 'SUI', amount: 0.5 },
+            },
+          ],
+        },
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'tool_result',
+              toolUseId: 'toolu_history_quote',
+              content: JSON.stringify({
+                serializedRoute: makeRoute('history-older', '111111'),
+              }),
+            },
+          ],
+        },
+      ];
+      const action = buildPendingActionFromProposal(proposal, 0, ENGINE_TOOLS, history);
+      // amountOut '999999' belongs to the stash route — confirms stash
+      // appeared LATER in the swapQuoteReads array than history, so
+      // composer's reverse-iteration `findMatchingCetusRoute` picked it.
+      expect(action.steps?.[0].cetusRoute?.amountOut).toBe('999999');
+      expect(action.steps?.[0].cetusRoute?.routerData.paths[0].id).toBe('plan-time-newer');
+    });
+
+    it('falls back to history walk when stash route missing (graceful degrade)', () => {
+      const proposal = makeProposal({
+        steps: [
+          {
+            toolName: 'swap_execute',
+            input: { from: 'USDC', to: 'SUI', amount: 0.5 },
+            // No `cetusRoute` field — simulates plan-time getSwapQuote
+            // failure (Cetus 5xx). History walk MUST still recover.
+          },
+          { toolName: 'save_deposit', input: { asset: 'USDC', amount: 1 } },
+        ],
+      });
+      const history: Message[] = [
+        userText('swap 0.5 USDC for SUI'),
+        {
+          role: 'assistant',
+          content: [
+            {
+              type: 'tool_use',
+              id: 'toolu_history_quote',
+              name: 'swap_quote',
+              input: { from: 'USDC', to: 'SUI', amount: 0.5 },
+            },
+          ],
+        },
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'tool_result',
+              toolUseId: 'toolu_history_quote',
+              content: JSON.stringify({
+                serializedRoute: makeRoute('history-fallback'),
+              }),
+            },
+          ],
+        },
+      ];
+      const action = buildPendingActionFromProposal(proposal, 0, ENGINE_TOOLS, history);
+      expect(action.steps?.[0].cetusRoute?.routerData.paths[0].id).toBe('history-fallback');
+    });
+
+    it('multi-swap bundle threads stash routes onto each swap step independently', () => {
+      const proposal = makeProposal({
+        steps: [
+          {
+            toolName: 'swap_execute',
+            input: { from: 'USDC', to: 'SUI', amount: 0.5 },
+            cetusRoute: makeRoute('stash-step-0'),
+          },
+          {
+            toolName: 'swap_execute',
+            input: { from: 'USDC', to: 'USDsui', amount: 1 },
+            cetusRoute: makeRoute('stash-step-1'),
+          },
+        ],
+      });
+      const action = buildPendingActionFromProposal(proposal, 0, ENGINE_TOOLS, []);
+      expect(action.steps?.[0].cetusRoute?.routerData.paths[0].id).toBe('stash-step-0');
+      expect(action.steps?.[1].cetusRoute?.routerData.paths[0].id).toBe('stash-step-1');
+    });
+
+    it('non-swap step with cetusRoute field is ignored (defensive — should never happen)', () => {
+      const proposal = makeProposal({
+        steps: [
+          {
+            toolName: 'withdraw',
+            input: { asset: 'USDC', amount: 5 },
+            cetusRoute: makeRoute('should-be-ignored'),
+          },
+          { toolName: 'send_transfer', input: { asset: 'USDC', amount: 1, to: '0xa' } },
+        ],
+      });
+      const action = buildPendingActionFromProposal(proposal, 0, ENGINE_TOOLS, []);
+      // Both steps are non-swap — neither should have cetusRoute set
+      // even though the proposal carries one (defensive: the synth
+      // loop only emits SwapQuoteReadEntry for swap_execute steps).
+      expect(action.steps?.[0].cetusRoute).toBeUndefined();
+      expect(action.steps?.[1].cetusRoute).toBeUndefined();
+    });
+
+    it('skips stash route synthesis when step input has wrong shape (defensive)', () => {
+      const proposal = makeProposal({
+        steps: [
+          {
+            toolName: 'swap_execute',
+            // Missing required `from` — defensive against schema drift.
+            input: { to: 'SUI', amount: 0.5 } as Record<string, unknown>,
+            cetusRoute: makeRoute('would-be-orphan'),
+          },
+          { toolName: 'send_transfer', input: { asset: 'USDC', amount: 1, to: '0xa' } },
+        ],
+      });
+      // Should NOT throw; should just leave cetusRoute undefined.
+      const action = buildPendingActionFromProposal(proposal, 0, ENGINE_TOOLS, []);
+      expect(action.steps?.[0].cetusRoute).toBeUndefined();
     });
   });
 });

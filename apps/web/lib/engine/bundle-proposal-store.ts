@@ -15,6 +15,7 @@
  */
 
 import { Redis } from '@upstash/redis';
+import type { SerializedCetusRoute } from '@t2000/sdk';
 
 const TTL_SEC = 60;
 const KEY_PREFIX = 'bundle:proposal:';
@@ -25,11 +26,32 @@ const KEY_PREFIX = 'bundle:proposal:';
  * to a specific SDK version's discriminated-union types. The actual
  * downstream consumers (`composeTx`, the prepare route) re-validate
  * `toolName` + `input` shape at execute time.
+ *
+ * **`cetusRoute` (SPEC 22.4 / SPEC 20.2 final option B — 2026-05-10).**
+ * For `swap_execute` steps, `prepare_bundle` calls `getSwapQuote` at
+ * plan-commitment time and stashes the freshly-discovered Cetus route
+ * here. The fast-path-bundle dispatcher synthesises a
+ * `SwapQuoteReadEntry` from this and threads it through the engine
+ * composer, so the bundle's `step.cetusRoute` carries a route whose
+ * `discoveredAt` is `prepare_bundle` time (~few hundred ms before
+ * confirm) instead of `swap_quote` time (~14s before confirm in the
+ * v5 trace). Eliminates the 14s read→render window that previously
+ * caused freshness-gate skips on the SPEC 20.2 fast-path.
+ *
+ * Optional because:
+ *   1. Non-`swap_execute` steps don't have routes (`borrow`, `save_deposit`, …).
+ *   2. If `getSwapQuote` itself fails at plan time (rare — Cetus 5xx),
+ *      `prepare_bundle` ships the bundle without the route field and
+ *      the existing fast-path history walk takes over (graceful degrade).
+ *   3. Backward-compat: pre-22.4 stashes already in Redis won't have
+ *      this field; the consumer treats absence identically to the
+ *      legacy "no stash route" path.
  */
 export interface BundleProposalStep {
   toolName: string;
   input: Record<string, unknown>;
   inputCoinFromStep?: number;
+  cetusRoute?: SerializedCetusRoute;
 }
 
 export interface BundleProposal {

@@ -14,8 +14,9 @@
  * design + rationale.
  */
 
-import { buildTool, MAX_BUNDLE_OPS, VALID_PAIRS } from '@t2000/engine';
+import { buildTool, MAX_BUNDLE_OPS, VALID_PAIRS, getTelemetrySink } from '@t2000/engine';
 import type { ToolContext, ToolResult } from '@t2000/engine';
+import { getSwapQuote, type SerializedCetusRoute } from '@t2000/sdk';
 import { z } from 'zod';
 import { randomUUID } from 'node:crypto';
 import {
@@ -169,6 +170,160 @@ function readSessionId(context: ToolContext): string | null {
   return typeof sid === 'string' && sid.length > 0 ? sid : null;
 }
 
+// ---------------------------------------------------------------------------
+// [SPEC 22.4 / SPEC 20.2 final option B — 2026-05-10] Plan-time route
+// pre-fetch for swap_execute steps.
+//
+// Why this exists
+// ---------------
+// Pre-22.4: `swap_quote` runs early in the plan turn; ~14s later
+// `prepare_bundle` runs and stashes typed steps; the user reads the
+// plan + clicks Confirm anywhere from 5-30+ seconds after that. By the
+// time the bundle confirm-fast-path kicks in, the `swap_quote` route's
+// `discoveredAt` is often >30s old → audric's `isCetusRouteFresh(30000)`
+// gate rejects it → fast path skipped → bundle pays the full ~675ms
+// `findSwapRoute()` round-trip at /api/transactions/prepare time.
+//
+// Post-22.4: `prepare_bundle` itself calls `getSwapQuote()` (parallel
+// for each swap_execute step) at plan-commitment time and stashes the
+// `serializedRoute` on the proposal. This pulls the route's
+// `discoveredAt` ~14s closer to the user's confirm tap, giving the
+// fast-path freshness gate ~14 extra seconds of headroom.
+//
+// Trade-off
+// ---------
+// Adds ~400-500ms to `prepare_bundle` execution (one Cetus aggregator
+// round-trip per swap_execute step, parallelised). Worth it because:
+//   1. Recovers ~675ms at confirm time (the round-trip moves earlier).
+//   2. Confirm becomes more reliably instant — UX win is bigger than
+//      the equivalent latency cost spread across plan generation.
+//   3. Fast-path admission rate increases significantly — the v5 smoke
+//      had a 32s-old route rejected by the freshness gate; with this
+//      change the same trace would have an 18s-old route → fresh.
+//
+// Failure mode
+// ------------
+// If `getSwapQuote` throws (Cetus 5xx, ASSET_NOT_SUPPORTED, etc.), we
+// log + continue without the route field. The fast-path history-walk
+// fallback (`findSwapQuoteReadsFromHistory` in fast-path-bundle.ts)
+// takes over and recovers the original `swap_quote` route. Net effect:
+// graceful degrade to pre-22.4 behavior, never a bundle-block.
+//
+// Telemetry
+// ---------
+// `audric.bundle.plan_time_route_fetch{outcome:success|failure|skipped}`
+// — measured at fan-out level (one event per swap_execute step) so we
+// can chart per-deploy fast-path admission rate vs route freshness.
+// `audric.bundle.plan_time_route_fetch_ms` histogram — wall-clock
+// latency for each fetch (drives the trade-off justification post-soak).
+// ---------------------------------------------------------------------------
+
+interface SwapExecuteStepInput {
+  amount: number;
+  from: string;
+  to: string;
+  byAmountIn?: boolean;
+}
+
+function isSwapExecuteInput(input: unknown): input is SwapExecuteStepInput {
+  if (typeof input !== 'object' || input === null) return false;
+  const i = input as Record<string, unknown>;
+  return (
+    typeof i.amount === 'number' &&
+    typeof i.from === 'string' &&
+    typeof i.to === 'string'
+  );
+}
+
+/**
+ * Fetch a fresh Cetus route for one swap_execute step. Returns null
+ * (never throws) on any failure — the caller treats null identically
+ * to "no plan-time route" and falls back to the history-walk
+ * recovery path at confirm time.
+ */
+async function fetchPlanTimeRouteForStep(
+  walletAddress: string,
+  stepIndex: number,
+  input: unknown,
+): Promise<SerializedCetusRoute | null> {
+  const sink = getTelemetrySink();
+
+  if (!isSwapExecuteInput(input)) {
+    sink.counter('audric.bundle.plan_time_route_fetch', {
+      outcome: 'skipped',
+      reason: 'invalid_input',
+      step_index: String(stepIndex),
+    });
+    return null;
+  }
+
+  const start = Date.now();
+  try {
+    const quote = await getSwapQuote({
+      walletAddress,
+      from: input.from,
+      to: input.to,
+      amount: input.amount,
+      byAmountIn: input.byAmountIn,
+    });
+    const elapsed = Date.now() - start;
+    sink.histogram('audric.bundle.plan_time_route_fetch_ms', elapsed, {
+      step_index: String(stepIndex),
+    });
+
+    if (!quote.serializedRoute) {
+      sink.counter('audric.bundle.plan_time_route_fetch', {
+        outcome: 'skipped',
+        reason: 'no_route_in_quote',
+        step_index: String(stepIndex),
+      });
+      return null;
+    }
+
+    sink.counter('audric.bundle.plan_time_route_fetch', {
+      outcome: 'success',
+      step_index: String(stepIndex),
+    });
+    return quote.serializedRoute;
+  } catch (err) {
+    const elapsed = Date.now() - start;
+    sink.histogram('audric.bundle.plan_time_route_fetch_ms', elapsed, {
+      step_index: String(stepIndex),
+    });
+    sink.counter('audric.bundle.plan_time_route_fetch', {
+      outcome: 'failure',
+      step_index: String(stepIndex),
+    });
+    // Cetus aggregator hiccup OR resolveTokenType rejection —
+    // intentionally swallowed. Fast-path history walk handles recovery.
+    console.warn(
+      `[prepare_bundle] plan-time route fetch failed for step ${stepIndex}:`,
+      err,
+    );
+    return null;
+  }
+}
+
+/**
+ * Fetch fresh Cetus routes for every `swap_execute` step in the
+ * proposal in parallel. Non-swap steps get `null` (the consumer
+ * tolerates that). Returns an array indexed by step position.
+ *
+ * Parallel — adds at most ~500ms regardless of step count. Empirical:
+ * a 2-swap bundle should still finish in ~500ms (max of the two
+ * Cetus calls), not 1000ms (sum).
+ */
+async function fetchPlanTimeRoutes(
+  walletAddress: string,
+  steps: ReadonlyArray<{ toolName: string; input: Record<string, unknown> }>,
+): Promise<Array<SerializedCetusRoute | null>> {
+  const promises = steps.map((step, i) => {
+    if (step.toolName !== 'swap_execute') return Promise.resolve(null);
+    return fetchPlanTimeRouteForStep(walletAddress, i, step.input);
+  });
+  return Promise.all(promises);
+}
+
 export const audricPrepareBundleTool = buildTool({
   name: 'prepare_bundle',
   description:
@@ -296,6 +451,21 @@ export const audricPrepareBundleTool = buildTool({
       }
       return out;
     });
+
+    // [SPEC 22.4 — 2026-05-10] Plan-time route pre-fetch. For every
+    // `swap_execute` step, fetch a fresh Cetus route (parallel) and
+    // attach to the proposal. The fast-path bundle dispatcher prefers
+    // these over history-walked routes because they have a tighter
+    // `discoveredAt` → `confirm` window. Failures are swallowed
+    // (returns null) and the history-walk fallback in
+    // `fast-path-bundle.ts` recovers gracefully.
+    const planTimeRoutes = await fetchPlanTimeRoutes(walletAddress, wiredSteps);
+    for (let i = 0; i < wiredSteps.length; i++) {
+      const route = planTimeRoutes[i];
+      if (route) {
+        wiredSteps[i].cetusRoute = route;
+      }
+    }
 
     const validatedChain = wiredSteps.some((s) => s.inputCoinFromStep !== undefined);
 

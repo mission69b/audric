@@ -13,9 +13,45 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi, type MockInstance } from 'vitest';
 import { MAX_BUNDLE_OPS, type ToolContext } from '@t2000/engine';
+import type { SerializedCetusRoute } from '@t2000/sdk';
 import { audricPrepareBundleTool, __testOnly__ } from '../prepare-bundle-tool';
 import * as store from '../bundle-proposal-store';
 import type { BundleProposal } from '../bundle-proposal-store';
+
+// [SPEC 22.4 — 2026-05-10] `prepare_bundle` now calls `getSwapQuote`
+// at plan time for every `swap_execute` step. The SDK is ESM and its
+// exports are non-configurable, so `vi.spyOn` doesn't work — we use
+// `vi.mock` to stub out the entire `@t2000/sdk` module surface this
+// suite touches.
+//
+// `getSwapQuoteMock` is exposed as a top-level `vi.fn()` so individual
+// tests can `mockImplementationOnce` for failure/latency cases. The
+// default implementation returns a deterministic stub route whose
+// path id encodes (from, to, amount) so assertions can prove a given
+// route originated from THIS specific call.
+const getSwapQuoteMock = vi.fn();
+vi.mock('@t2000/sdk', async (orig) => {
+  const actual = await orig<typeof import('@t2000/sdk')>();
+  return {
+    ...actual,
+    getSwapQuote: (...args: Parameters<typeof actual.getSwapQuote>) =>
+      getSwapQuoteMock(...args),
+  };
+});
+
+function makeStubRoute(id: string): SerializedCetusRoute {
+  return {
+    routerData: {
+      paths: [{ id, provider: 'CETUS' }],
+    },
+    amountIn: '1000000',
+    amountOut: '500000000',
+    priceImpact: 0.001,
+    discoveredAt: Date.now(),
+    fromCoinType: '0xa::usdc::USDC',
+    toCoinType: '0xb::sui::SUI',
+  } as unknown as SerializedCetusRoute;
+}
 
 const {
   inferProducerOutputAsset,
@@ -171,6 +207,19 @@ describe('audricPrepareBundleTool.call', () => {
       .mockImplementation(async (sessionId: string, proposal: BundleProposal) => {
         await redis.set(`bundle:proposal:${sessionId}`, proposal, { ex: 60 });
       });
+    // Reset `getSwapQuote` mock to a successful stub by default. Each
+    // `swap_execute` step in a tested bundle gets a route whose path
+    // id encodes the input — proves provenance in assertions.
+    getSwapQuoteMock.mockReset();
+    getSwapQuoteMock.mockImplementation(async (params: { from: string; to: string; amount: number }) => ({
+      fromToken: params.from,
+      toToken: params.to,
+      fromAmount: params.amount,
+      toAmount: params.amount * 2,
+      priceImpact: 0.001,
+      route: 'CETUS',
+      serializedRoute: makeStubRoute(`${params.from}-${params.to}-${params.amount}`),
+    }));
   });
 
   afterEach(() => {
@@ -418,5 +467,157 @@ describe('audricPrepareBundleTool.call', () => {
     expect(result.data).toMatchObject({ ok: true, validatedChain: false });
     const stashed = writeSpy.mock.calls[0][1] as BundleProposal;
     expect(stashed.steps[1].inputCoinFromStep).toBeUndefined();
+  });
+
+  // -------------------------------------------------------------------
+  // [SPEC 22.4 — 2026-05-10] Plan-time route pre-fetch
+  //
+  // Pin: every swap_execute step in a stashed bundle MUST receive a
+  // freshly-fetched Cetus route (when the fetch succeeds), so the
+  // confirm-time fast-path picks up `step.cetusRoute` and skips the
+  // ~675ms `findSwapRoute()` round-trip.
+  // -------------------------------------------------------------------
+
+  it('SPEC 22.4: stashes a fresh cetusRoute on swap_execute steps', async () => {
+    await audricPrepareBundleTool.call!(
+      {
+        steps: [
+          { toolName: 'withdraw', input: { asset: 'USDC', amount: 3 } },
+          { toolName: 'swap_execute', input: { from: 'USDC', to: 'SUI', amount: 0.5 } },
+        ],
+      },
+      makeContext(),
+    );
+    const stashed = writeSpy.mock.calls[0][1] as BundleProposal;
+    expect(stashed.steps[0].cetusRoute).toBeUndefined();
+    expect(stashed.steps[1].cetusRoute).toBeDefined();
+    // Sanity: the stashed route's path id encodes the input we asked
+    // for, proving it came from THIS getSwapQuote call (not cross-
+    // pollination from another step or test).
+    expect(
+      (stashed.steps[1].cetusRoute as SerializedCetusRoute).routerData.paths[0].id,
+    ).toBe('USDC-SUI-0.5');
+    expect(getSwapQuoteMock).toHaveBeenCalledTimes(1);
+    expect(getSwapQuoteMock).toHaveBeenCalledWith({
+      walletAddress: '0xwallet',
+      from: 'USDC',
+      to: 'SUI',
+      amount: 0.5,
+      byAmountIn: undefined,
+    });
+  });
+
+  it('SPEC 22.4: only fetches routes for swap_execute steps (skips withdraw, save, send)', async () => {
+    await audricPrepareBundleTool.call!(
+      {
+        steps: [
+          { toolName: 'withdraw', input: { asset: 'USDC', amount: 5 } },
+          { toolName: 'send_transfer', input: { asset: 'USDC', amount: 1, to: '0xa' } },
+          { toolName: 'save_deposit', input: { asset: 'USDC', amount: 2 } },
+        ],
+      },
+      makeContext(),
+    );
+    expect(getSwapQuoteMock).not.toHaveBeenCalled();
+    const stashed = writeSpy.mock.calls[0][1] as BundleProposal;
+    expect(stashed.steps.every((s) => s.cetusRoute === undefined)).toBe(true);
+  });
+
+  it('SPEC 22.4: fetches routes in PARALLEL for multi-swap bundles (withdraw → swap → swap)', async () => {
+    // Make each getSwapQuote take 50ms — if they ran serially the
+    // bundle would take 100ms+; in parallel it should finish in ~50ms.
+    // Use vi.useFakeTimers? No — keep this real-timer to verify the
+    // implementation path. Cap at 200ms so a regression to serial is
+    // visible without making the test flaky.
+    getSwapQuoteMock.mockImplementation(async (params: { from: string; to: string; amount: number }) => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      return {
+        fromToken: params.from,
+        toToken: params.to,
+        fromAmount: params.amount,
+        toAmount: params.amount * 2,
+        priceImpact: 0.001,
+        route: 'CETUS',
+        serializedRoute: makeStubRoute(`${params.from}-${params.to}-${params.amount}`),
+      };
+    });
+
+    const start = Date.now();
+    await audricPrepareBundleTool.call!(
+      {
+        steps: [
+          { toolName: 'withdraw', input: { asset: 'USDC', amount: 5 } },
+          { toolName: 'swap_execute', input: { from: 'USDC', to: 'SUI', amount: 0.5 } },
+          { toolName: 'swap_execute', input: { from: 'USDC', to: 'USDsui', amount: 1 } },
+        ],
+      },
+      makeContext(),
+    );
+    const elapsed = Date.now() - start;
+    expect(getSwapQuoteMock).toHaveBeenCalledTimes(2);
+    // Parallel: ~50ms. Serial would be 100ms+. Allow generous slack
+    // (CI jitter, beforeEach overhead) — assert under 150ms which
+    // would still fail a serial regression (100ms + ~30ms jitter).
+    expect(elapsed).toBeLessThan(150);
+  });
+
+  it('SPEC 22.4: graceful degrade — getSwapQuote failure leaves cetusRoute undefined but still stashes bundle', async () => {
+    getSwapQuoteMock.mockRejectedValue(new Error('Cetus aggregator 503'));
+
+    const result = await audricPrepareBundleTool.call!(
+      {
+        steps: [
+          { toolName: 'withdraw', input: { asset: 'USDC', amount: 5 } },
+          { toolName: 'swap_execute', input: { from: 'USDC', to: 'SUI', amount: 0.5 } },
+        ],
+      },
+      makeContext(),
+    );
+    // Bundle MUST still stash — failures are swallowed, history-walk
+    // fallback in `fast-path-bundle.ts` handles route recovery at
+    // confirm time (or `findSwapRoute()` at prepare time).
+    expect(result.data).toMatchObject({ ok: true, stepCount: 2 });
+    const stashed = writeSpy.mock.calls[0][1] as BundleProposal;
+    expect(stashed.steps[1].cetusRoute).toBeUndefined();
+  });
+
+  it('SPEC 22.4: passes byAmountIn through to getSwapQuote when set', async () => {
+    await audricPrepareBundleTool.call!(
+      {
+        steps: [
+          { toolName: 'withdraw', input: { asset: 'USDC', amount: 5 } },
+          {
+            toolName: 'swap_execute',
+            input: { from: 'USDC', to: 'SUI', amount: 0.5, byAmountIn: false },
+          },
+        ],
+      },
+      makeContext(),
+    );
+    expect(getSwapQuoteMock).toHaveBeenCalledWith({
+      walletAddress: '0xwallet',
+      from: 'USDC',
+      to: 'SUI',
+      amount: 0.5,
+      byAmountIn: false,
+    });
+  });
+
+  it('SPEC 22.4: skips swap_execute steps with malformed input (no fetch, no crash)', async () => {
+    await audricPrepareBundleTool.call!(
+      {
+        steps: [
+          { toolName: 'withdraw', input: { asset: 'USDC', amount: 5 } },
+          // Intentionally missing required `from` — typed signature
+          // forbids this in production but defensive parsing matters
+          // because the tool input is `z.record(z.unknown())`.
+          { toolName: 'swap_execute', input: { to: 'SUI', amount: 0.5 } },
+        ],
+      },
+      makeContext(),
+    );
+    expect(getSwapQuoteMock).not.toHaveBeenCalled();
+    const stashed = writeSpy.mock.calls[0][1] as BundleProposal;
+    expect(stashed.steps[1].cetusRoute).toBeUndefined();
   });
 });

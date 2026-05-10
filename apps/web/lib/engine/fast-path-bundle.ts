@@ -515,7 +515,53 @@ function buildPendingActionFromProposal(
   // can thread `step.cetusRoute` for `swap_execute` legs. Empty
   // array is fine — composer's `if (input.swapQuoteReads)` guard
   // tolerates it identically to undefined.
-  const swapQuoteReads = findSwapQuoteReadsFromHistory(history);
+  const historyReads = findSwapQuoteReadsFromHistory(history);
+
+  // [SPEC 22.4 — 2026-05-10] Plan-time route stash override. For each
+  // proposal step with a `cetusRoute` (set by `prepare_bundle`'s plan-
+  // time `getSwapQuote` call), synthesize a `SwapQuoteReadEntry` that
+  // matches the step's input. APPENDED after history reads so the
+  // engine composer's `findMatchingCetusRoute` (reverse iteration —
+  // last match wins) prefers the fresher plan-time route over any
+  // older history-walked route.
+  //
+  // Why append vs. replace: a plan-time fetch failure leaves
+  // `step.cetusRoute` undefined; the history-walk fallback still has
+  // a chance to match. Both arrays coexisting is the graceful-degrade
+  // shape (if both miss, audric prepare-route runs `findSwapRoute()`
+  // — same as pre-22.4 behavior).
+  const stashReads: SwapQuoteReadEntry[] = [];
+  for (let i = 0; i < proposal.steps.length; i++) {
+    const step = proposal.steps[i];
+    if (step.toolName !== 'swap_execute' || !step.cetusRoute) continue;
+    const stepInput = step.input as {
+      from?: unknown;
+      to?: unknown;
+      amount?: unknown;
+      byAmountIn?: unknown;
+    };
+    if (
+      typeof stepInput.from !== 'string' ||
+      typeof stepInput.to !== 'string' ||
+      typeof stepInput.amount !== 'number'
+    ) {
+      continue;
+    }
+    stashReads.push({
+      toolUseId: `fastpath_${proposal.bundleId}_${i}_quote`,
+      input: {
+        from: stepInput.from,
+        to: stepInput.to,
+        amount: stepInput.amount,
+        ...(typeof stepInput.byAmountIn === 'boolean'
+          ? { byAmountIn: stepInput.byAmountIn }
+          : {}),
+      },
+      result: { serializedRoute: step.cetusRoute },
+      timestamp: proposal.validatedAt,
+    });
+  }
+  const swapQuoteReads = [...historyReads, ...stashReads];
 
   return composeBundleFromToolResults({
     pendingWrites,
