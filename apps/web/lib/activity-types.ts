@@ -90,6 +90,14 @@ export const ACTIVITY_FILTERS: { id: ActivityFilter; label: string }[] = [
   { id: 'all', label: 'All' },
   { id: 'savings', label: 'Savings' },
   { id: 'send', label: 'Send' },
+  // [Receive chip / 2026-05-10] Slotted next to Send so the verbs read
+  // as a pair. Filters chain rows whose `recordToActivityItem`
+  // rebrands `type` to `'receive'` (incoming P2P transfer where the
+  // user is the recipient, not the signer) AND `pay_received`
+  // AppEvent rows (incoming payment-link receipts). The pay-link
+  // receipt also still appears under the Pay chip — money-came-in is
+  // a valid lens regardless of channel.
+  { id: 'receive', label: 'Receive' },
   { id: 'swap', label: 'Swap' },
   { id: 'pay', label: 'Pay' },
   { id: 'store', label: 'Store' },

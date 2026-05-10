@@ -49,6 +49,27 @@ const APP_EVENT_TYPE_MAP: Record<string, string[]> = {
 };
 
 /**
+ * Allowlist of `AppEvent.type` values that are emitted by live code
+ * paths today. Any other type in the table is stale data from a
+ * retired feature (Suggestions, Schedules, Auto-compound, Patterns —
+ * all retired in S.7 / April 2026) and MUST NOT render in the feed.
+ *
+ * Live writers (audited 2026-05-10):
+ *   - `pay`         — `app/api/services/{prepare,complete}/route.ts`
+ *                     (MPP API service usage, outgoing)
+ *   - `pay_received` — `app/api/payments/[slug]/verify/route.ts`
+ *                     (incoming payment-link receipt)
+ *
+ * This allowlist is the route's defense-in-depth against stale rows
+ * still in the DB. The companion one-shot purge script
+ * (`scripts/purge-stale-app-events.mjs`) actually deletes them; this
+ * filter is what protects the user during the window between deploy
+ * and purge, and what protects against any future ECS write that
+ * resurrects a retired type.
+ */
+const LIVE_APP_EVENT_TYPES = ['pay', 'pay_received'] as const;
+
+/**
  * GET /api/activity?address=0x...&type=all&cursor=<ms-timestamp>&limit=20
  *
  * Merges on-chain transaction history (via the canonical
@@ -177,10 +198,22 @@ async function fetchAppEvents(
     where.createdAt = { lt: new Date(cursorMs) };
   }
 
-  if (filterType !== 'all') {
+  if (filterType === 'all') {
+    // Defense-in-depth: stale-feature rows ('suggestion_*',
+    // 'schedule_*', 'compound_*', 'follow_up', 'pattern_*', 'alert')
+    // never surface even before the one-shot purge runs.
+    where.type = { in: [...LIVE_APP_EVENT_TYPES] };
+  } else {
     const types = APP_EVENT_TYPE_MAP[filterType];
     if (!types || types.length === 0) return [];
-    where.type = { in: types };
+    // Per-filter mappings already only contain live types, but
+    // intersect with the allowlist defensively in case a future
+    // mapping accidentally re-adds a retired type.
+    const allowed = types.filter((t) =>
+      (LIVE_APP_EVENT_TYPES as readonly string[]).includes(t),
+    );
+    if (allowed.length === 0) return [];
+    where.type = { in: allowed };
   }
 
   const events = await prisma.appEvent.findMany({
