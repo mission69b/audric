@@ -133,29 +133,43 @@ describe('installVersionDriftHandler', () => {
     installVersionDriftHandler();
 
     await window.fetch('/api/anything');
-    vi.advanceTimersByTime(31_000);
+    Object.defineProperty(document, 'visibilityState', {
+      value: 'hidden',
+      configurable: true,
+    });
+    document.dispatchEvent(new Event('visibilitychange'));
     expect(reloadMock).not.toHaveBeenCalled();
   });
 
-  it('schedules reload when X-App-Version differs from built id', async () => {
+  it('does NOT auto-reload while tab is focused (no hard timeout)', async () => {
     const { installVersionDriftHandler } = await importWithDeploymentId('dpl_built_v1');
     const response = makeResponse({ 'X-App-Version': 'dpl_new_v2' });
     window.fetch = vi.fn().mockResolvedValue(response) as typeof fetch;
     installVersionDriftHandler();
+
+    Object.defineProperty(document, 'visibilityState', {
+      value: 'visible',
+      configurable: true,
+    });
 
     await window.fetch('/api/anything');
+    // Even after a long wait, no reload while tab stays focused.
+    // Active users keep their UI state; the toast fallback handles
+    // long-focused sessions.
+    vi.advanceTimersByTime(60 * 60_000);
     expect(reloadMock).not.toHaveBeenCalled();
-
-    vi.advanceTimersByTime(30_001);
-    expect(reloadMock).toHaveBeenCalledTimes(1);
   });
 
-  it('reloads on visibilitychange→hidden before defer timeout fires', async () => {
+  it('reloads on visibilitychange→hidden after drift detected', async () => {
     const { installVersionDriftHandler } = await importWithDeploymentId('dpl_built_v1');
     const response = makeResponse({ 'X-App-Version': 'dpl_new_v2' });
     window.fetch = vi.fn().mockResolvedValue(response) as typeof fetch;
     installVersionDriftHandler();
 
+    Object.defineProperty(document, 'visibilityState', {
+      value: 'visible',
+      configurable: true,
+    });
     await window.fetch('/api/anything');
     expect(reloadMock).not.toHaveBeenCalled();
 
@@ -166,22 +180,76 @@ describe('installVersionDriftHandler', () => {
     document.dispatchEvent(new Event('visibilitychange'));
 
     expect(reloadMock).toHaveBeenCalledTimes(1);
-
-    vi.advanceTimersByTime(30_001);
-    expect(reloadMock).toHaveBeenCalledTimes(1);
   });
 
-  it('only schedules ONE reload across multiple drift-detected fetches', async () => {
+  it('reloads immediately when tab is already hidden at drift detection', async () => {
     const { installVersionDriftHandler } = await importWithDeploymentId('dpl_built_v1');
     const response = makeResponse({ 'X-App-Version': 'dpl_new_v2' });
     window.fetch = vi.fn().mockResolvedValue(response) as typeof fetch;
     installVersionDriftHandler();
 
+    // User backgrounded the tab before our SSE response arrived.
+    Object.defineProperty(document, 'visibilityState', {
+      value: 'hidden',
+      configurable: true,
+    });
+
+    await window.fetch('/api/anything');
+    expect(reloadMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('subsequent visibility cycles after one reload do not double-fire', async () => {
+    const { installVersionDriftHandler } = await importWithDeploymentId('dpl_built_v1');
+    const response = makeResponse({ 'X-App-Version': 'dpl_new_v2' });
+    window.fetch = vi.fn().mockResolvedValue(response) as typeof fetch;
+    installVersionDriftHandler();
+
+    Object.defineProperty(document, 'visibilityState', {
+      value: 'visible',
+      configurable: true,
+    });
+    await window.fetch('/api/anything');
+
+    Object.defineProperty(document, 'visibilityState', {
+      value: 'hidden',
+      configurable: true,
+    });
+    document.dispatchEvent(new Event('visibilitychange'));
+    expect(reloadMock).toHaveBeenCalledTimes(1);
+
+    // Toggle visibility again — listener was removed, no double-fire.
+    Object.defineProperty(document, 'visibilityState', {
+      value: 'visible',
+      configurable: true,
+    });
+    document.dispatchEvent(new Event('visibilitychange'));
+    Object.defineProperty(document, 'visibilityState', {
+      value: 'hidden',
+      configurable: true,
+    });
+    document.dispatchEvent(new Event('visibilitychange'));
+    expect(reloadMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('only schedules ONE listener across multiple drift-detected fetches', async () => {
+    const { installVersionDriftHandler } = await importWithDeploymentId('dpl_built_v1');
+    const response = makeResponse({ 'X-App-Version': 'dpl_new_v2' });
+    window.fetch = vi.fn().mockResolvedValue(response) as typeof fetch;
+    installVersionDriftHandler();
+
+    Object.defineProperty(document, 'visibilityState', {
+      value: 'visible',
+      configurable: true,
+    });
     await window.fetch('/api/a');
     await window.fetch('/api/b');
     await window.fetch('/api/c');
 
-    vi.advanceTimersByTime(30_001);
+    Object.defineProperty(document, 'visibilityState', {
+      value: 'hidden',
+      configurable: true,
+    });
+    document.dispatchEvent(new Event('visibilitychange'));
     expect(reloadMock).toHaveBeenCalledTimes(1);
   });
 
@@ -196,8 +264,17 @@ describe('installVersionDriftHandler', () => {
     window.fetch = vi.fn().mockResolvedValue(response) as typeof fetch;
     installVersionDriftHandler();
 
+    Object.defineProperty(document, 'visibilityState', {
+      value: 'visible',
+      configurable: true,
+    });
     await window.fetch('/api/anything');
-    vi.advanceTimersByTime(30_001);
+
+    Object.defineProperty(document, 'visibilityState', {
+      value: 'hidden',
+      configurable: true,
+    });
+    document.dispatchEvent(new Event('visibilitychange'));
 
     expect(reloadMock).not.toHaveBeenCalled();
   });

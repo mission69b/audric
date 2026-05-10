@@ -23,12 +23,18 @@
  * 1. We monkey-patch `window.fetch` once. Idempotent via module flag.
  *    Every fetch call site goes through this — no need to refactor
  *    consumers.
- * 2. Reload is deferred to the next `visibilitychange → hidden` OR
- *    a 30s safety timeout, whichever fires first. This way the user's
- *    current action completes and renders before the page reloads;
- *    if they switch tabs, they come back to a fresh build with no
- *    flicker. If they stay active, we still reload after 30s to bound
- *    the staleness.
+ * 2. Reload is deferred to the next `visibilitychange → hidden` —
+ *    i.e. when the user switches tabs, minimizes the window, locks
+ *    their device, etc. We deliberately do NOT use a hard timeout
+ *    (e.g. "reload after 30s regardless") because it would yank an
+ *    active user mid-action. For a financial app where the user
+ *    might be reading a chart, drafting a confirmation, or waiting
+ *    on a transaction receipt, losing UI state to a forced reload is
+ *    worse than running on a slightly-stale build for a few extra
+ *    minutes. The pre-existing 5-minute polling toast
+ *    (`useVersionCheck`) is the fallback for users who keep the tab
+ *    focused indefinitely — they get an actionable "Refresh" button
+ *    instead of a yank.
  * 3. SessionStorage cooldown (60s) prevents reload loops if a deploy
  *    is genuinely broken and the new build also returns mismatched
  *    headers (shouldn't happen, but defense-in-depth).
@@ -44,7 +50,6 @@ import { env } from '@/lib/env';
 const BUILT_WITH_ID = env.NEXT_PUBLIC_DEPLOYMENT_ID || 'local-dev';
 const RELOAD_COOLDOWN_KEY = 't2000:version-drift-reloaded-at';
 const RELOAD_COOLDOWN_MS = 60_000;
-const RELOAD_DEFER_MS = 30_000;
 
 let installed = false;
 let reloadScheduled = false;
@@ -82,32 +87,30 @@ function scheduleReload(driftedTo: string): void {
   reloadScheduled = true;
 
   console.warn(
-    `[version-drift] new build detected (built=${BUILT_WITH_ID} → live=${driftedTo}); scheduling auto-reload`,
+    `[version-drift] new build detected (built=${BUILT_WITH_ID} → live=${driftedTo}); will auto-reload on next visibility-hidden`,
   );
 
-  let timeoutId: number | null = null;
-
-  function cleanup(): void {
-    document.removeEventListener('visibilitychange', onVisibility);
-    if (timeoutId !== null) {
-      window.clearTimeout(timeoutId);
-      timeoutId = null;
-    }
-  }
-
+  // [SPEC 22.5 — 2026-05-10] Visibility-only deferral. See file header
+  // notes (2). We attach the listener and leave it attached until the
+  // tab loses focus exactly once. For the rare always-focused tab,
+  // the existing `useVersionCheck` 5-min poll surfaces a toast.
   function onVisibility(): void {
     if (document.visibilityState === 'hidden') {
-      cleanup();
+      document.removeEventListener('visibilitychange', onVisibility);
       performReload('visibility-hidden');
     }
   }
 
-  document.addEventListener('visibilitychange', onVisibility);
+  // Already-hidden case (tab was background when drift was detected
+  // — possible if the user backgrounded mid-stream and the response
+  // arrived later). Reload immediately; no need to wait for a future
+  // visibilitychange event that may not come for a while.
+  if (document.visibilityState === 'hidden') {
+    performReload('already-hidden');
+    return;
+  }
 
-  timeoutId = window.setTimeout(() => {
-    cleanup();
-    performReload('defer-timeout');
-  }, RELOAD_DEFER_MS);
+  document.addEventListener('visibilitychange', onVisibility);
 }
 
 function checkResponse(response: Response): void {
