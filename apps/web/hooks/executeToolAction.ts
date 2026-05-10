@@ -19,6 +19,59 @@ export const SESSION_EXPIRED_USER_MESSAGE =
   'Your sign-in session has expired. Please sign back in to continue. Your funds are safe — nothing was submitted on-chain.';
 
 /**
+ * [Bug B fix / 2026-05-10] Build the error string that gets JSON-stringified
+ * into each `_bundleReverted` stepResult.result.error and fed to the LLM
+ * as `tool_result.content` on the resume turn.
+ *
+ * **Why a strong inline directive (not just a system-prompt rule).**
+ * The system prompt at `engine-context.ts:123` already says "Failed write
+ * (atomic = no settlement delay): isError: true or _bundleReverted: true
+ * means the tx did NOT execute..." — that lives ~24k cached tokens deep
+ * and the LLM activates it opportunistically. Production smoke 2026-05-10
+ * (Bug B) showed the LLM ignored this rule and narrated "Bundle executed.
+ * Swapped 5 USDC → SUI..." even though every stepResult carried
+ * `isError: true`, `_bundleReverted: true`, and the post-write
+ * `balance_check` showed unchanged balances.
+ *
+ * The fix: embed the narration directive INLINE in the error text the
+ * LLM is asked to narrate from. Inline tool_result content is much harder
+ * to ignore than abstract system-prompt rules.
+ *
+ * **Format choices.**
+ * - Lead with `BUNDLE REVERTED — NOTHING EXECUTED ON-CHAIN.` (no soft
+ *   verbs like "may have failed" or "appears to have"). The all-caps
+ *   prefix mirrors the pattern from S.122 `SESSION_EXPIRED_USER_MESSAGE`
+ *   that's been working in production for ~5 days.
+ * - State the atomic semantics explicitly so the LLM can't speculate
+ *   about partial settlement.
+ * - Tell the user what's true RIGHT NOW (balances unchanged) — anchors
+ *   the LLM on observable on-chain state vs. its own running tally.
+ * - Echo the cause string so users get the "why" (sometimes it's
+ *   actionable: slippage too tight, insufficient balance, etc.).
+ * - Close with explicit forbidden phrases — the LLM is trained to obey
+ *   "do NOT say X" prompts more reliably than "you MUST do Y" prompts.
+ *
+ * **What this does NOT do.**
+ * - Doesn't change the UI (BundleReceiptBlockView already shows
+ *   "PAYMENT INTENT REVERTED" via timeline-builder.ts:1046 detection).
+ * - Doesn't add an engine-side guard. This is a content fix, not a
+ *   structural enforcement. The post-write balance_check still fires;
+ *   the LLM is still free to narrate. We're just making "narrate
+ *   correctly" the path of least resistance.
+ */
+export function buildBundleRevertedError(rawError: string): string {
+  return [
+    'BUNDLE REVERTED — NOTHING EXECUTED ON-CHAIN.',
+    'Atomic Sui Payment Intent semantics: the entire bundle reverted before any leg settled.',
+    'Wallet balances are unchanged from before the user tapped Confirm.',
+    `Cause: ${rawError}`,
+    'Narration rule: tell the user clearly that the bundle reverted and nothing executed.',
+    'Do NOT claim ANY operation succeeded.',
+    'Do NOT say "settling", "in progress", or "confirming" — atomic semantics make it final immediately.',
+  ].join(' ');
+}
+
+/**
  * Side-effect callbacks the pure helper needs from React land.
  * Kept optional and explicit so the helper stays testable without RTL.
  *
@@ -553,7 +606,7 @@ export async function executeBundleAction(
       attemptId: step.attemptId,
       result: {
         success: false,
-        error: errorMsg,
+        error: buildBundleRevertedError(errorMsg),
         _bundleReverted: true,
       },
       isError: true,
@@ -612,12 +665,19 @@ export async function executeBundleAction(
     // Atomic semantics: if the Payment Intent reverts, every step failed. Surface a
     // matching error result for each step so the engine's resume route
     // pushes N tool_result blocks back to the LLM with consistent reason.
+    //
+    // [Bug B fix / 2026-05-10] Wrap errorMsg with `buildBundleRevertedError`
+    // so the LLM can't confabulate success on this turn. The narration
+    // directive is embedded inline in the error string the LLM is asked
+    // to narrate from — much harder to ignore than the abstract system-
+    // prompt rule at engine-context.ts:123 (which got ignored in
+    // production smoke 2026-05-10 when Bug A surfaced).
     const stepResults = action.steps.map((step) => ({
       toolUseId: step.toolUseId,
       attemptId: step.attemptId,
       result: {
         success: false,
-        error: errorMsg,
+        error: buildBundleRevertedError(errorMsg),
         _bundleReverted: true,
       },
       isError: true,

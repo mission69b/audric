@@ -389,6 +389,90 @@ describe('executeBundleAction — multi-write Payment Intent dispatch', () => {
     }
   });
 
+  // [Bug B fix / 2026-05-10] Production smoke 2026-05-10 (S.142) showed
+  // the LLM narrating "Bundle executed. Swapped 5 USDC → SUI..." even
+  // though every stepResult carried `isError: true` and
+  // `_bundleReverted: true`. The system-prompt rule at
+  // engine-context.ts:123 ("Failed write... means the tx did NOT
+  // execute") got ignored. Fix: embed the narration directive INLINE
+  // in the error string so it lives in the tool_result content the
+  // LLM is asked to narrate from — much harder to ignore than an
+  // abstract system-prompt rule. These tests pin the new error
+  // format so a future "let's just use the raw error" refactor
+  // doesn't regress the protection.
+  it('on revert, error content contains the BUNDLE REVERTED narration directive (Bug B)', async () => {
+    const { executeBundleAction } = await import('./executeToolAction');
+    const sdk = fakeAgent({
+      executeBundle: vi.fn().mockRejectedValue(new Error('Cannot use GasCoin as a transaction argument')),
+    });
+    const action = {
+      toolName: 'save_deposit',
+      toolUseId: 'tool-use-1',
+      input: {},
+      description: '',
+      assistantContent: [],
+      turnIndex: 0,
+      attemptId: 'a1',
+      steps: [
+        {
+          toolName: 'swap_execute',
+          toolUseId: 't1',
+          attemptId: 'a-t1',
+          input: { from: 'USDC', to: 'SUI', amount: 5 },
+          description: '',
+        },
+        {
+          toolName: 'swap_execute',
+          toolUseId: 't2',
+          attemptId: 'a-t2',
+          input: { from: 'USDC', to: 'GOLD', amount: 3 },
+          description: '',
+        },
+        {
+          toolName: 'save_deposit',
+          toolUseId: 't3',
+          attemptId: 'a-t3',
+          input: { amount: 2, asset: 'USDC' },
+          description: '',
+        },
+      ],
+    } as never;
+
+    const out = await executeBundleAction(sdk, action);
+
+    expect(out.success).toBe(false);
+    // Top-level out.error stays raw (used by UI for receipt rendering).
+    expect(out.error).toBe('Cannot use GasCoin as a transaction argument');
+
+    // Per-step result.error MUST be wrapped with the narration directive.
+    // These exact phrases are the load-bearing anti-confabulation
+    // instructions — assert each one explicitly so a refactor that
+    // shortens the message can't silently drop them.
+    expect(out.stepResults).toHaveLength(3);
+    for (const sr of out.stepResults) {
+      const wrappedError = (sr.result as Record<string, unknown>).error as string;
+      expect(wrappedError).toContain('BUNDLE REVERTED — NOTHING EXECUTED ON-CHAIN');
+      expect(wrappedError).toContain('Atomic Sui Payment Intent semantics');
+      expect(wrappedError).toContain('Wallet balances are unchanged');
+      // Echoes the underlying cause so users get the "why".
+      expect(wrappedError).toContain('Cause: Cannot use GasCoin as a transaction argument');
+      // Forbidden-phrase guards that previously got ignored as
+      // system-prompt rules — embedding them inline catches more.
+      expect(wrappedError).toContain('Do NOT claim ANY operation succeeded');
+      expect(wrappedError).toContain('Do NOT say "settling"');
+      // The marker the post-write-anchor walker keys on.
+      expect((sr.result as Record<string, unknown>)._bundleReverted).toBe(true);
+    }
+  });
+
+  it('buildBundleRevertedError exports the helper for cross-file reuse (UnifiedTimeline + tests)', async () => {
+    const { buildBundleRevertedError } = await import('./executeToolAction');
+    const out = buildBundleRevertedError('test cause');
+    expect(out).toContain('BUNDLE REVERTED');
+    expect(out).toContain('Cause: test cause');
+    expect(out).toContain('Do NOT claim ANY operation succeeded');
+  });
+
   it('throws when called with no steps (host-bug guard)', async () => {
     const { executeBundleAction } = await import('./executeToolAction');
     const sdk = fakeAgent({});

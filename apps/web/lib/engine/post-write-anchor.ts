@@ -88,6 +88,18 @@ interface AnchorWalkResult {
   lastFreshBalanceIndex: number;
   /** Approximate "turn number" of the freshest balance_check (= history index, 0-based). */
   freshBalanceTurnLabel: number;
+  /**
+   * [Bug B fix / 2026-05-10] Index of the most recent message whose user
+   * tool_result content contains the `_bundleReverted: true` JSON marker.
+   * -1 if none. When this is greater than every successful-write
+   * indicator (no successful confirmed write has happened SINCE the last
+   * revert), the chat-route anchor switches from the "write executed →
+   * trust freshest balance" directive to a "bundle reverted → nothing
+   * moved on-chain" directive. This is the defense-in-depth layer for
+   * the inline-error-string fix in executeToolAction.ts; it stops the
+   * NEXT chat turn from doubling down on a confabulated success.
+   */
+  lastBundleRevertedIndex: number;
 }
 
 /**
@@ -99,6 +111,7 @@ interface AnchorWalkResult {
 export function walkForAnchorState(history: readonly Message[]): AnchorWalkResult {
   let lastWriteIndex = -1;
   let lastFreshBalanceIndex = -1;
+  let lastBundleRevertedIndex = -1;
 
   // Build a lookup of toolUseId → toolName so tool_result blocks (which
   // only carry the toolUseId, not the name) can be classified.
@@ -154,6 +167,28 @@ export function walkForAnchorState(history: readonly Message[]): AnchorWalkResul
           lastFreshBalanceIndex = i;
         }
       }
+
+      // [Bug B fix / 2026-05-10] Bundle-revert detection. The engine's
+      // `resumeWithToolResult` stringifies each `stepResult.result` into
+      // the tool_result's `content` field. When `executeBundleAction`'s
+      // catch path fires (Enoki rejection / SuiNS resolution failure /
+      // SDK throw), every step's result carries `_bundleReverted: true`
+      // — we can detect this by substring match on the JSON-encoded
+      // content. Cheap, robust to engine internal changes, and false-
+      // positive-safe (the substring is specific enough that no other
+      // tool_result would emit it). We don't gate on `block.isError`
+      // because the inline-error-string fix in executeToolAction.ts
+      // ALSO embeds the `_bundleReverted` marker into the error string
+      // — so even if a future engine change alters how isError flows
+      // through, the substring detection still fires.
+      if (
+        msg.role === 'user' &&
+        block.type === 'tool_result' &&
+        typeof block.content === 'string' &&
+        block.content.includes('"_bundleReverted":true')
+      ) {
+        lastBundleRevertedIndex = i;
+      }
     }
   }
 
@@ -161,6 +196,7 @@ export function walkForAnchorState(history: readonly Message[]): AnchorWalkResul
     lastWriteIndex,
     lastFreshBalanceIndex,
     freshBalanceTurnLabel: lastFreshBalanceIndex,
+    lastBundleRevertedIndex,
   };
 }
 
@@ -187,13 +223,64 @@ export function walkForAnchorState(history: readonly Message[]): AnchorWalkResul
  *      pointed-at result.
  */
 export function buildPostWriteAnchorBlock(history: readonly Message[]): string | null {
-  const { lastWriteIndex, lastFreshBalanceIndex, freshBalanceTurnLabel } =
-    walkForAnchorState(history);
+  const {
+    lastWriteIndex,
+    lastFreshBalanceIndex,
+    freshBalanceTurnLabel,
+    lastBundleRevertedIndex,
+  } = walkForAnchorState(history);
 
   // No write has happened yet in this session. The session bootstrap
   // balance is still the source of truth and the LLM hasn't had a
   // chance to drift on stale post-write data — skip injection.
-  if (lastWriteIndex < 0) return null;
+  //
+  // [Bug B fix / 2026-05-10] A bundle-revert tool_result also counts
+  // as a "write attempt happened" signal. Bundles route through
+  // `prepare_bundle` (a planning tool, intentionally NOT in
+  // `WRITE_TOOL_NAMES`) — when they revert at the sponsor stage,
+  // there's no write tool_use in LLM-visible history AND no
+  // `<canonical_route>` injection (which only fires on success). The
+  // _bundleReverted tool_results are the only signal a confirmed
+  // bundle attempt happened. Without this OR-guard, the next chat
+  // turn after a reverted bundle gets no anchor at all.
+  if (lastWriteIndex < 0 && lastBundleRevertedIndex < 0) return null;
+
+  // [Bug B fix / 2026-05-10] When the most recent write attempt was a
+  // reverted bundle (no successful write since), inject the
+  // `<bundle_reverted>` directive instead of `<post_write_anchor>`.
+  // The condition `lastBundleRevertedIndex >= lastWriteIndex` triggers
+  // when a revert tool_result is the freshest write-related signal —
+  // including the case where the same turn produced both the write
+  // tool_use and the revert tool_result (bundle confirmed → executed
+  // → reverted in one turn).
+  //
+  // Why this matters: even though the inline error string in the
+  // tool_result content already grounds the resume-turn narration
+  // (see `buildBundleRevertedError` in executeToolAction.ts), the
+  // NEXT chat turn starts fresh and walks history through a different
+  // lens. Without this branch, the standard `<post_write_anchor>`
+  // would tell the LLM "a write executed earlier in this session" —
+  // wrong, the write reverted. The LLM might cite the pre-bundle
+  // intended outcome ("you swapped 5 USDC to SUI yesterday") even
+  // though no swap settled.
+  //
+  // Production smoke trace (S.142, 2026-05-10): the LLM narrated
+  // "Bundle executed. Swapped 5 USDC → SUI..." even though every
+  // stepResult carried `isError: true` and the auto-injected
+  // post-write `balance_check` showed unchanged balances. This anchor
+  // change is the defense-in-depth backstop for that class of drift
+  // on the FOLLOW-UP turn.
+  if (lastBundleRevertedIndex >= lastWriteIndex && lastBundleRevertedIndex >= 0) {
+    const balanceClause =
+      lastFreshBalanceIndex >= 0
+        ? `The freshest balance_check / savings_info result is at turn ${freshBalanceTurnLabel} — it reflects the unchanged on-chain state. Cite that, not any pre-bundle "expected outcome" the user or you discussed before they tapped Confirm.`
+        : 'There is no balance_check result in your visible history. If the user asks anything about balances or whether the bundle worked, call balance_check FIRST this turn.';
+    return [
+      '<bundle_reverted>',
+      `The user's most recent confirmed bundle reverted on-chain (atomic Sui Payment Intent semantics). Nothing executed. All balances are unchanged from before they tapped Confirm. ${balanceClause} If they ask "did that work?" / "what happened?" / "is it done?", answer truthfully: the bundle reverted, no operations completed. Do NOT claim any leg succeeded. Do NOT say "settling" / "in progress" / "still confirming" — atomic semantics make the revert final immediately.`,
+      '</bundle_reverted>',
+    ].join('\n');
+  }
 
   // Defensive: a write happened but we can't find any fresh balance
   // result in history (shouldn't happen in production — PWR is

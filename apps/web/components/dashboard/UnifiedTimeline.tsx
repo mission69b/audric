@@ -20,6 +20,7 @@ import {
   DEFAULT_PERMISSION_CONFIG,
   type UserPermissionConfig,
 } from '@/lib/engine/permission-tiers-client';
+import { buildBundleRevertedError } from '@/hooks/executeToolAction';
 
 type EngineInstance = ReturnType<typeof useEngine>;
 type FeedInstance = ReturnType<typeof useFeed>;
@@ -336,10 +337,16 @@ export function UnifiedTimeline({
           // semantics). Mirrors executeBundleAction's catch path for
           // when the executor itself throws synchronously before the
           // SDK call lands.
+          //
+          // [Bug B fix / 2026-05-10] Use buildBundleRevertedError to
+          // prefix the error with strong inline narration directives —
+          // matches the executeBundleAction primary path so the LLM
+          // gets a uniform "BUNDLE REVERTED — NOTHING EXECUTED" anchor
+          // regardless of which catch branch fires.
           const errorResults = action.steps!.map((s) => ({
             toolUseId: s.toolUseId,
             attemptId: s.attemptId,
-            result: { success: false, error: errorMsg, _bundleReverted: true },
+            result: { success: false, error: buildBundleRevertedError(errorMsg), _bundleReverted: true },
             isError: true,
           }));
           engine.resolveAction(
