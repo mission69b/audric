@@ -253,7 +253,7 @@ export function StorePanel({
 
       <section>
         <div className="font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted mb-2.5">
-          Create new &mdash; available now
+          Create new &mdash; available soon
         </div>
         <div className="flex flex-col">
           {SYNC_PRODUCTS.map((p) => (
