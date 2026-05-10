@@ -196,6 +196,42 @@ describe('buildTitle', () => {
     expect(title).toBe('Sent 5 USDC to 0xaaaa...aaaa');
   });
 
+  it('renders send with resolved counterparty label (saved contact)', () => {
+    const sendLeg: ActivityLeg = { ...USDC, amount: 5, usdValue: 5 };
+    const title = buildTitle('send', [sendLeg], undefined, '0x' + 'a'.repeat(64), 'Mom');
+    expect(title).toBe('Sent 5 USDC to Mom');
+  });
+
+  it('renders send with resolved counterparty label (Audric handle)', () => {
+    const sendLeg: ActivityLeg = { ...USDC, amount: 5, usdValue: 5 };
+    const title = buildTitle(
+      'send',
+      [sendLeg],
+      undefined,
+      '0x' + 'a'.repeat(64),
+      'alice.audric.sui',
+    );
+    expect(title).toBe('Sent 5 USDC to alice.audric.sui');
+  });
+
+  it('renders receive with resolved counterparty label', () => {
+    const recvLeg: ActivityLeg = { ...USDC, direction: 'in', amount: 1, usdValue: 1 };
+    const title = buildTitle(
+      'receive',
+      [recvLeg],
+      undefined,
+      '0x' + 'b'.repeat(64),
+      'alice.audric.sui',
+    );
+    expect(title).toBe('Received 1 USDC from alice.audric.sui');
+  });
+
+  it('falls back to truncated address when label is undefined', () => {
+    const sendLeg: ActivityLeg = { ...USDC, amount: 5, usdValue: 5 };
+    const title = buildTitle('send', [sendLeg], undefined, '0x' + 'c'.repeat(64), undefined);
+    expect(title).toBe('Sent 5 USDC to 0xcccc...cccc');
+  });
+
   it('renders pay with token amount', () => {
     expect(buildTitle('pay', [USDC], undefined, undefined)).toBe('Paid 1 USDC for service');
   });

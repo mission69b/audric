@@ -87,12 +87,20 @@ export function detectBundle(
  * rebuild this method did `$${amount.toFixed(2)} ${asset}` for
  * everything, producing "Swapped $987.60 MANIFEST" for a 1 USDC →
  * 987.60 MANIFEST swap (the user actually paid $1, not $987).
+ *
+ * `counterpartyLabel` is the resolved display name for the
+ * counterparty (saved contact name, Audric handle, etc.). When
+ * provided it is rendered as-is; when absent we fall back to
+ * `truncAddr(counterparty)`. The route resolves these via
+ * `resolveCounterpartyDisplayMap` once per page so this helper stays
+ * pure (no DB / RPC).
  */
 export function buildTitle(
   type: string,
   legs: ActivityLeg[],
   bundleOpCount: number | undefined,
   counterparty: string | undefined,
+  counterpartyLabel?: string,
 ): string {
   if (type === 'bundle') {
     return bundleOpCount && bundleOpCount > 0
@@ -114,12 +122,15 @@ export function buildTitle(
     return type === 'contract' ? 'Contract call' : 'Transaction';
   }
   const amtTok = `${formatTokenAmount(principal.amount, principal.decimals)} ${principal.asset}`;
+  const counterpartyDisplay = counterparty
+    ? counterpartyLabel ?? truncAddr(counterparty)
+    : undefined;
   switch (type) {
     case 'send':
-      return counterparty ? `Sent ${amtTok} to ${truncAddr(counterparty)}` : `Sent ${amtTok}`;
+      return counterpartyDisplay ? `Sent ${amtTok} to ${counterpartyDisplay}` : `Sent ${amtTok}`;
     case 'receive':
-      return counterparty
-        ? `Received ${amtTok} from ${truncAddr(counterparty)}`
+      return counterpartyDisplay
+        ? `Received ${amtTok} from ${counterpartyDisplay}`
         : `Received ${amtTok}`;
     case 'lending':
       if (principal.direction === 'out') return `Saved ${amtTok} into NAVI`;

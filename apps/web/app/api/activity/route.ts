@@ -13,6 +13,10 @@ import {
   bundleSubtitle,
   detectBundle,
 } from '@/lib/activity-formatting';
+import {
+  resolveCounterpartyDisplayMap,
+  type CounterpartyDisplayMap,
+} from '@/lib/activity-counterparty';
 
 export const runtime = 'nodejs';
 
@@ -121,19 +125,38 @@ async function fetchChainActivity(
       }
     }
   }
-  const priceMap =
+  // Collect counterparty addresses for display-label resolution
+  // (saved contact name + Audric handle). Skips MPP_TREASURY since
+  // it's a system address — `recordToActivityItem` rebrands it as
+  // type `'pay'` and shows "Paid 1 USDC for service" instead of
+  // "Sent ... to <treasury>".
+  const counterpartyAddrs = new Set<string>();
+  for (const r of records) {
+    if (r.counterparty && r.counterparty !== MPP_TREASURY) {
+      counterpartyAddrs.add(r.counterparty);
+    }
+  }
+
+  const [priceMap, counterpartyMap] = await Promise.all([
     priceableCoinTypes.size > 0
-      ? await getTokenPrices([...priceableCoinTypes]).catch((err) => {
+      ? getTokenPrices([...priceableCoinTypes]).catch((err) => {
           console.warn('[activity] price fetch failed (degrading to no-USD):', err);
           return {} as Record<string, { price: number }>;
         })
-      : ({} as Record<string, { price: number }>);
+      : Promise.resolve({} as Record<string, { price: number }>),
+    counterpartyAddrs.size > 0
+      ? resolveCounterpartyDisplayMap([...counterpartyAddrs], address).catch((err) => {
+          console.warn('[activity] counterparty resolve failed (degrading to truncated 0x):', err);
+          return {} as CounterpartyDisplayMap;
+        })
+      : Promise.resolve({} as CounterpartyDisplayMap),
+  ]);
 
   const items: ActivityItem[] = [];
   const allowedTypes = filterType !== 'all' ? TYPE_FILTER_MAP[filterType] ?? null : null;
 
   for (const r of records) {
-    const item = recordToActivityItem(r, priceMap);
+    const item = recordToActivityItem(r, priceMap, counterpartyMap);
     if (!item) continue;
     if (allowedTypes && !allowedTypes.includes(item.type)) continue;
     items.push(item);
@@ -206,6 +229,7 @@ async function fetchAppEvents(
 function recordToActivityItem(
   r: ChainTxRecord,
   priceMap: Record<string, { price: number }>,
+  counterpartyMap: CounterpartyDisplayMap,
 ): ActivityItem | null {
   const legs: ActivityLeg[] = r.legs.map((leg) => {
     const isStable = STABLE_SYMBOLS.has(leg.asset);
@@ -236,7 +260,16 @@ function recordToActivityItem(
     }
   }
 
-  const title = buildTitle(type, legs, bundle.opCount || undefined, counterparty);
+  const counterpartyLabel = counterparty
+    ? counterpartyMap[counterparty.toLowerCase()]
+    : undefined;
+  const title = buildTitle(
+    type,
+    legs,
+    bundle.opCount || undefined,
+    counterparty,
+    counterpartyLabel,
+  );
 
   return {
     id: r.digest,
