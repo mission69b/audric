@@ -63,11 +63,11 @@ importers:
         specifier: ^0.3.1
         version: 0.3.1(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@3.25.76))
       '@t2000/engine':
-        specifier: 1.27.0
-        version: 1.27.0(axios@1.16.0)(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@3.25.76))
+        specifier: 1.27.1
+        version: 1.27.1(axios@1.16.0)(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@3.25.76))
       '@t2000/sdk':
-        specifier: 1.25.3
-        version: 1.25.3(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(axios@1.16.0)(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@3.25.76))
+        specifier: 1.27.1
+        version: 1.27.1(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(axios@1.16.0)(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@3.25.76))
       '@tanstack/react-query':
         specifier: ^5.95.2
         version: 5.96.1(react@19.2.4)
@@ -1479,14 +1479,11 @@ packages:
   '@swc/helpers@0.5.15':
     resolution: {integrity: sha512-JQ5TuMi45Owi4/BIMAJBoSQoOJu12oOk/gADqlcUL9JEdHB8vyjUSsxqeNXnmXHjYKMi2WcYtezGEEhqUI/E2g==}
 
-  '@t2000/engine@1.27.0':
-    resolution: {integrity: sha512-eJitQV4JTwidK8ZVk+ras0DjoFWCHgsCxuYEgBf99ZYmoAJAFk7hiGY/6Mi82mP+QnHoUIMwnzsCsdWrx9616g==}
+  '@t2000/engine@1.27.1':
+    resolution: {integrity: sha512-D+H/FmPc1Y3GYIf4w6TyM1V3gGW++lka2CBYnRFbjjQRY1Wx78Za+LIV2kS7sddfgTmg3NPkfel9r6uyS0tWFQ==}
 
-  '@t2000/sdk@1.25.3':
-    resolution: {integrity: sha512-jqfqpSeWPMkpl4KOa2QcvX8OTL4ucee+hUycU4EM/56N/OvRR7jlWaWovlDhHrN+ql3RwHrnypyNmvQYY+tpZw==}
-
-  '@t2000/sdk@1.27.0':
-    resolution: {integrity: sha512-AEezvpuZTozFTUcSG//XlWX45LE7q+8LXXPUTL+DHAePtrBl9GfAnGLk2skgF/IeJWh0oG/BPUyoLsrAkXhl4Q==}
+  '@t2000/sdk@1.27.1':
+    resolution: {integrity: sha512-53M1maHeJSkunXvcwOSeR7/DQE1cOP3WW4wiBbMXPCDC+dkEenc7+USZkHRKHz5bLAkqMD2ttmiC8tfPQYr8CA==}
 
   '@tailwindcss/node@4.2.2':
     resolution: {integrity: sha512-pXS+wJ2gZpVXqFaUEjojq7jzMpTGf8rU6ipJz5ovJV6PUGmlJ+jvIwGrzdHdQ80Sg+wmQxUFuoW1UAAwHNEdFA==}
@@ -5708,11 +5705,11 @@ snapshots:
     dependencies:
       tslib: 2.8.1
 
-  '@t2000/engine@1.27.0(axios@1.16.0)(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@3.25.76))':
+  '@t2000/engine@1.27.1(axios@1.16.0)(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@3.25.76))':
     dependencies:
       '@anthropic-ai/sdk': 0.39.0
       '@modelcontextprotocol/sdk': 1.29.0(zod@3.25.76)
-      '@t2000/sdk': 1.27.0(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(axios@1.16.0)(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@3.25.76))
+      '@t2000/sdk': 1.27.1(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(axios@1.16.0)(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@3.25.76))
       js-yaml: 4.1.1
       zod: 3.25.76
     transitivePeerDependencies:
@@ -5730,35 +5727,7 @@ snapshots:
       - typescript
       - viem
 
-  '@t2000/sdk@1.25.3(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(axios@1.16.0)(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@3.25.76))':
-    dependencies:
-      '@cetusprotocol/aggregator-sdk': 1.4.8(axios@1.16.0)(typescript@5.9.3)
-      '@mysten/payment-kit': 0.1.6(@mysten/sui@2.14.1(typescript@5.9.3))
-      '@mysten/sui': 2.14.1(typescript@5.9.3)
-      '@mysten/suins': 1.1.1(@mysten/sui@2.14.1(typescript@5.9.3))
-      '@mysten/zklogin': 0.8.1(typescript@5.9.3)
-      '@naviprotocol/lending': 1.4.0(patch_hash=f5361914099eac610a549dc571b1248d29f6a1f4195ed0179d9a1065b3af2400)(@mysten/sui@2.14.1(typescript@5.9.3))(axios@1.16.0)(typescript@5.9.3)
-      '@pythnetwork/pyth-sui-js': 2.4.0(axios@1.16.0)(typescript@5.9.3)
-      '@suimpp/mpp': 0.3.1(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@3.25.76))
-      bn.js: 5.2.3
-      eventemitter3: 5.0.4
-      mppx: 0.4.12(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@3.25.76))
-    transitivePeerDependencies:
-      - '@cfworker/json-schema'
-      - '@gql.tada/svelte-support'
-      - '@gql.tada/vue-support'
-      - '@modelcontextprotocol/sdk'
-      - axios
-      - debug
-      - elysia
-      - express
-      - hono
-      - openapi-types
-      - supports-color
-      - typescript
-      - viem
-
-  '@t2000/sdk@1.27.0(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(axios@1.16.0)(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@3.25.76))':
+  '@t2000/sdk@1.27.1(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(axios@1.16.0)(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@3.25.76))':
     dependencies:
       '@cetusprotocol/aggregator-sdk': 1.4.8(axios@1.16.0)(typescript@5.9.3)
       '@mysten/payment-kit': 0.1.6(@mysten/sui@2.14.1(typescript@5.9.3))
