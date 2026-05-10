@@ -103,9 +103,14 @@ export function buildTitle(
   counterpartyLabel?: string,
 ): string {
   if (type === 'bundle') {
+    // User-facing copy is "Payment Intent" (Title Case) per the
+    // product's canonical Sui Payment Intent term — used in receipt
+    // cards, the system prompt, the bundle revert anchor, etc. The
+    // internal `type: 'bundle'` discriminator stays as-is to avoid
+    // churn across UI / route / test surfaces.
     return bundleOpCount && bundleOpCount > 0
-      ? `Bundle (${bundleOpCount} ops)`
-      : 'Bundle';
+      ? `Payment Intent (${bundleOpCount} ops)`
+      : 'Payment Intent';
   }
   if (type === 'swap') {
     const out = legs.find((l) => l.direction === 'out');

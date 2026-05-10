@@ -33,7 +33,7 @@ describe('resolveCounterpartyDisplayMap', () => {
     expect(prisma.user.findMany).not.toHaveBeenCalled();
   });
 
-  it('returns Audric handles when no contacts are saved', async () => {
+  it('returns Audric handles in @audric form when no contacts are saved', async () => {
     vi.mocked(prisma.userPreferences.findUnique).mockResolvedValue(asResolved(null));
     vi.mocked(prisma.user.findMany).mockResolvedValue(
       asResolved([
@@ -44,8 +44,8 @@ describe('resolveCounterpartyDisplayMap', () => {
 
     const map = await resolveCounterpartyDisplayMap([ALICE, BOB], ME);
     expect(map).toEqual({
-      [ALICE.toLowerCase()]: 'alice.audric.sui',
-      [BOB.toLowerCase()]: 'bob.audric.sui',
+      [ALICE.toLowerCase()]: 'alice@audric',
+      [BOB.toLowerCase()]: 'bob@audric',
     });
   });
 
@@ -77,7 +77,7 @@ describe('resolveCounterpartyDisplayMap', () => {
             name: 'Best Friend',
             identifier: ALICE,
             resolvedAddress: ALICE.toLowerCase(),
-            audricUsername: 'alice.audric.sui',
+            audricUsername: 'alice@audric',
             source: 'manual',
           },
         ],
@@ -111,7 +111,7 @@ describe('resolveCounterpartyDisplayMap', () => {
 
     const map = await resolveCounterpartyDisplayMap([ALICE, BOB, CHARLIE], ME);
     expect(map[ALICE.toLowerCase()]).toBe('Mom');
-    expect(map[BOB.toLowerCase()]).toBe('bob.audric.sui');
+    expect(map[BOB.toLowerCase()]).toBe('bob@audric');
     expect(map[CHARLIE.toLowerCase()]).toBeUndefined();
   });
 
@@ -137,7 +137,7 @@ describe('resolveCounterpartyDisplayMap', () => {
     );
 
     const map = await resolveCounterpartyDisplayMap([ALICE], ME);
-    expect(map[ALICE.toLowerCase()]).toBe('alice.audric.sui');
+    expect(map[ALICE.toLowerCase()]).toBe('alice@audric');
   });
 
   it('degrades silently when user query fails', async () => {

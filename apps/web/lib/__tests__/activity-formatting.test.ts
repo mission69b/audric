@@ -163,12 +163,14 @@ describe('detectBundle', () => {
 });
 
 describe('buildTitle', () => {
-  it('renders bundle title with op count', () => {
-    expect(buildTitle('bundle', [USDC, SUI_LEG, GOLD_LEG], 3, undefined)).toBe('Bundle (3 ops)');
+  it('renders bundle title with op count using Payment Intent copy', () => {
+    expect(buildTitle('bundle', [USDC, SUI_LEG, GOLD_LEG], 3, undefined)).toBe(
+      'Payment Intent (3 ops)',
+    );
   });
 
   it('renders bundle title without op count when zero', () => {
-    expect(buildTitle('bundle', [], undefined, undefined)).toBe('Bundle');
+    expect(buildTitle('bundle', [], undefined, undefined)).toBe('Payment Intent');
   });
 
   it('renders swap with BOTH legs (the bug fix)', () => {
@@ -202,16 +204,16 @@ describe('buildTitle', () => {
     expect(title).toBe('Sent 5 USDC to Mom');
   });
 
-  it('renders send with resolved counterparty label (Audric handle)', () => {
+  it('renders send with resolved counterparty label (Audric handle uses @audric form)', () => {
     const sendLeg: ActivityLeg = { ...USDC, amount: 5, usdValue: 5 };
     const title = buildTitle(
       'send',
       [sendLeg],
       undefined,
       '0x' + 'a'.repeat(64),
-      'alice.audric.sui',
+      'alice@audric',
     );
-    expect(title).toBe('Sent 5 USDC to alice.audric.sui');
+    expect(title).toBe('Sent 5 USDC to alice@audric');
   });
 
   it('renders receive with resolved counterparty label', () => {
@@ -221,9 +223,9 @@ describe('buildTitle', () => {
       [recvLeg],
       undefined,
       '0x' + 'b'.repeat(64),
-      'alice.audric.sui',
+      'alice@audric',
     );
-    expect(title).toBe('Received 1 USDC from alice.audric.sui');
+    expect(title).toBe('Received 1 USDC from alice@audric');
   });
 
   it('falls back to truncated address when label is undefined', () => {

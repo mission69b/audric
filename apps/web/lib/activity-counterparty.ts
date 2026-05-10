@@ -72,9 +72,15 @@ export async function resolveCounterpartyDisplayMap(
       }),
   ]);
 
+  // Display format `username@audric` (NOT `username.audric.sui`). The
+  // SuiNS leaf form is the under-the-hood identifier used by SDK / send
+  // tools, but in user-facing surfaces (activity rows, notifications)
+  // we render the friendlier `@audric` form per founder direction.
+  // Forward-resolution call sites (send modal, lookup_user tool) still
+  // accept the SuiNS form so this is purely a display transform.
   for (const u of audricUsers) {
     if (!u.username) continue;
-    map[u.suiAddress.toLowerCase()] = `${u.username}.audric.sui`;
+    map[u.suiAddress.toLowerCase()] = `${u.username}@audric`;
   }
 
   for (const c of contactList) {
