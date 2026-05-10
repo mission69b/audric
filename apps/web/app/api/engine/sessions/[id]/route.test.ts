@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { convertSessionMessages } from './route';
+import { convertSessionMessages } from './route-helpers';
 
 const T0 = 1_700_000_000_000;
 
