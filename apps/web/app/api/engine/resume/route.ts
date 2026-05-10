@@ -9,6 +9,7 @@ import { logSessionUsage } from '@/lib/engine/log-session-usage';
 import { getSessionSpend, incrementSessionSpend } from '@/lib/engine/session-spend';
 import { applyModificationsToAction, resolveOutcome } from '@/lib/engine/apply-modifications';
 import { sanitizeStreamErrorMessage } from '@/lib/engine/stream-errors';
+import { startSseHeartbeat } from '@/lib/sse-heartbeat';
 import {
   resolveUsdValue,
   toolNameToOperation,
@@ -269,6 +270,12 @@ export async function POST(request: NextRequest) {
       async start(controller) {
         const encoder = new TextEncoder();
         let pendingAction: PendingAction | null = null;
+
+        // [SPEC 22.2 — 2026-05-10] SSE heartbeat. See chat/route.ts for
+        // the full rationale; in resume's case the long server-side
+        // wait is typically the post-write refresh + LLM continuation
+        // narration that lands on top of a fresh balance/savings read.
+        const stopHeartbeat = startSseHeartbeat(controller, encoder);
 
         try {
           // [v1.4.2 — Day 4 / Spec G3] Switch from `engineToSSE` (which
@@ -754,6 +761,9 @@ export async function POST(request: NextRequest) {
             console.error('[engine/resume] stream-close log failed (non-fatal):', logErr);
           }
 
+          // [SPEC 22.2 — 2026-05-10] Always stop the heartbeat before
+          // closing the controller to release the interval timer.
+          stopHeartbeat();
           controller.close();
         }
       },

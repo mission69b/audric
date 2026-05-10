@@ -4,6 +4,7 @@ import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { validateJwt, isValidSuiAddress } from '@/lib/auth';
 import { createEngine, getSessionStore } from '@/lib/engine/engine-factory';
 import { sanitizeStreamErrorMessage } from '@/lib/engine/stream-errors';
+import { startSseHeartbeat } from '@/lib/sse-heartbeat';
 import { getSessionSpend } from '@/lib/engine/session-spend';
 import { prisma } from '@/lib/prisma';
 import type { PendingInputSseEvent } from '@/lib/engine/sse-types';
@@ -214,6 +215,11 @@ export async function POST(request: NextRequest) {
     const stream = new ReadableStream({
       async start(controller) {
         const encoder = new TextEncoder();
+        // [SPEC 22.2 — 2026-05-10] SSE heartbeat to keep edge proxies
+        // from idling out the connection during long server-side waits.
+        // See `lib/sse-heartbeat.ts` and `chat/route.ts` for full
+        // rationale.
+        const stopHeartbeat = startSseHeartbeat(controller, encoder);
         try {
           for await (const event of engine.resumeWithInput(pendingInput, finalValues)) {
             // [chat-route parity] `compaction` is an `EngineEvent` member but
@@ -261,6 +267,8 @@ export async function POST(request: NextRequest) {
           } catch (err) {
             console.error('[engine/resume-with-input] session save failed:', err);
           }
+          // [SPEC 22.2 — 2026-05-10] Stop heartbeat before closing.
+          stopHeartbeat();
           controller.close();
         }
       },

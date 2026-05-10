@@ -44,6 +44,7 @@ import { sanitizeStreamErrorMessage } from '@/lib/engine/stream-errors';
 import { tryConsumeFastPathBundle } from '@/lib/engine/fast-path-bundle';
 import { buildPostWriteAnchorBlock } from '@/lib/engine/post-write-anchor';
 import { prewarmPortfolio } from '@/lib/portfolio';
+import { startSseHeartbeat } from '@/lib/sse-heartbeat';
 // [SPEC 15 Phase 2] Confirm-flow chip routing.
 import {
   readBundleProposal,
@@ -414,6 +415,16 @@ export async function POST(request: NextRequest) {
       async start(controller) {
         const encoder = new TextEncoder();
         let pendingAction: PendingAction | null = null;
+
+        // [SPEC 22.2 — 2026-05-10] SSE heartbeat. Emits `:hb\n\n` every
+        // 5s so Vercel's edge proxy (and any intermediary) sees bytes
+        // flowing during long server-side waits (LLM streaming silence,
+        // 6s slow-portfolio fetches, multi-second tool execution). The
+        // comment line is ignored by the client's SSE parser
+        // (`processSSEChunk` in `useEngine.ts` skips lines that don't
+        // start with `event:` or `data:`). Stopped in `finally` below
+        // so the interval is always cleared, even on error paths.
+        const stopHeartbeat = startSseHeartbeat(controller, encoder);
 
         try {
           if (sessionId) {
@@ -1348,6 +1359,11 @@ export async function POST(request: NextRequest) {
             console.error('[engine/chat] stream-close log failed (non-fatal):', logErr);
           }
 
+          // [SPEC 22.2 — 2026-05-10] Always stop the heartbeat before
+          // closing the controller so we don't leak the interval timer
+          // (which would also start throwing on `enqueue` once the
+          // controller is closed).
+          stopHeartbeat();
           controller.close();
         }
       },
