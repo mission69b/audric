@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useVersionCheck } from '@/hooks/useVersionCheck';
 import { useExpirySoonToast } from '@/hooks/useExpirySoonToast';
+import { installVersionDriftHandler } from '@/lib/version-drift-check';
 
 const RELOADED_FLAG = 't2000:chunk-reloaded-at';
 const RELOAD_COOLDOWN_MS = 60_000; // never auto-reload more than once a minute
@@ -44,6 +45,17 @@ const RELOAD_COOLDOWN_MS = 60_000; // never auto-reload more than once a minute
 export function ChunkErrorReloader() {
   useVersionCheck();
   useExpirySoonToast();
+
+  // [SPEC 22.5 — 2026-05-10] Eager version-drift detector. Monkey-
+  // patches `window.fetch` once on mount; every API response carrying
+  // `X-App-Version` (set by `middleware.ts`) is compared to the
+  // build-time bundle id. On mismatch the next idle moment auto-
+  // reloads the tab — no toast required. See `lib/version-drift-
+  // check.ts` for the deferral strategy (visibilitychange OR 30s
+  // timeout) and the 60s sessionStorage cooldown.
+  useEffect(() => {
+    installVersionDriftHandler();
+  }, []);
 
   useEffect(() => {
     function isChunkLoadError(value: unknown): boolean {
