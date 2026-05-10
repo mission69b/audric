@@ -43,6 +43,7 @@ import {
 import { sanitizeStreamErrorMessage } from '@/lib/engine/stream-errors';
 import { tryConsumeFastPathBundle } from '@/lib/engine/fast-path-bundle';
 import { buildPostWriteAnchorBlock } from '@/lib/engine/post-write-anchor';
+import { prewarmPortfolio } from '@/lib/portfolio';
 // [SPEC 15 Phase 2] Confirm-flow chip routing.
 import {
   readBundleProposal,
@@ -191,6 +192,26 @@ export async function POST(request: NextRequest) {
     if (history.length > MAX_HISTORY) return jsonError(`History too long (max ${MAX_HISTORY})`, 400);
     const rl = rateLimit(`demo:${ip}`, 30, 600_000);
     if (!rl.success) return rateLimitResponse(rl.retryAfterMs!);
+  }
+
+  // [SPEC 22.3 — 2026-05-10] Cold-cache TTFVP optimisation. Fire the
+  // canonical portfolio fetch eagerly — right after auth + rate-limit
+  // pass — so it overlaps with the serial Prisma + session-store +
+  // spend-lookup work that runs before `createEngine()`. Engine factory
+  // calls `getPortfolio(address)` itself a few hundred ms later; the
+  // in-flight dedup map in `lib/portfolio.ts` (SPEC 22.3) returns the
+  // SAME Promise so we don't double-fetch.
+  //
+  // Saves ~300-500ms of cold TTFVP on a typical session (the time spent
+  // on Prisma + Redis lookups previously ran serially BEFORE the
+  // portfolio fetch even started). On a worst-case 6.5s scallop timeout
+  // (v5 smoke), this cuts user-visible TTFVP by ~10%; on a normal
+  // 1-2s portfolio cold fetch, ~25-30%.
+  //
+  // Unauth path skips this — `createUnauthEngine` doesn't fetch
+  // portfolio at all, and we don't have an address anyway.
+  if (isAuth && address) {
+    prewarmPortfolio(address);
   }
 
   try {

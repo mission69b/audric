@@ -4,6 +4,7 @@ import type { PendingAction } from '@t2000/engine';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { validateJwt, isValidSuiAddress } from '@/lib/auth';
 import { createEngine, getSessionStore, setConversationState } from '@/lib/engine/engine-factory';
+import { prewarmPortfolio } from '@/lib/portfolio';
 import { logSessionUsage } from '@/lib/engine/log-session-usage';
 import { getSessionSpend, incrementSessionSpend } from '@/lib/engine/session-spend';
 import { applyModificationsToAction, resolveOutcome } from '@/lib/engine/apply-modifications';
@@ -113,6 +114,17 @@ export async function POST(request: NextRequest) {
   if (!isValidSuiAddress(address)) {
     return jsonError('Invalid Sui address', 400);
   }
+
+  // [SPEC 22.3 — 2026-05-10] Cold-cache TTFVP optimisation. Same shape
+  // as chat/route.ts — fire `getPortfolio(address)` eagerly so it
+  // overlaps with the serial Prisma + session-store + spend-lookup
+  // work that runs before `createEngine()`. The in-flight dedup map in
+  // `lib/portfolio.ts` returns the same Promise to engine-factory's
+  // own `getPortfolio` call. Even on the resume path the portfolio
+  // typically needs a fresh fetch (the wallet-cache invalidation
+  // post-write fires before the resume turn boots a new engine), so
+  // the pre-warm wins are real here too.
+  prewarmPortfolio(address);
 
   // [S.122] Defense layer — short-circuit when the executionResult /
   // stepResults all carry the `_sessionExpired` sentinel. Without this,

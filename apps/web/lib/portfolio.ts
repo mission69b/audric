@@ -127,6 +127,29 @@ export interface WalletSnapshot {
 // Canonical fetchers
 // ---------------------------------------------------------------------------
 
+// [SPEC 22.3 — 2026-05-10] In-flight Promise dedup. The chat route fires
+// `getPortfolio(address)` early (right after auth) to overlap with the
+// serial Prisma + session-store + spend-lookup work that runs before
+// `createEngine()`. When `engine-factory.ts` then calls `getPortfolio`
+// itself a few hundred ms later, this map serves the SAME in-flight
+// Promise — no duplicate sub-fetches against BlockVision / NAVI / DeFi
+// endpoints.
+//
+// Cleared on settle (resolve OR reject) so a failed first call doesn't
+// poison subsequent calls. Address-keyed because every other property
+// of the request is irrelevant — the underlying fetchAddressPortfolio,
+// fetchPositions, and fetchAddressDefiPortfolio are all (address)-arity.
+//
+// Why not a TTL'd cache here: the underlying sub-fetchers already have
+// their own caches (60s wallet, 60s DeFi, 60s positions). This map is
+// strictly a "request collapsing" layer for the chat-turn boot path.
+// Once a getPortfolio call resolves, future calls go straight to the
+// sub-fetchers and pick up their cached/fresh state cleanly.
+//
+// Memory bound: < numUniqueAddressesInFlightAtOnce × 1 Promise. In
+// practice ≤10 in-flight calls per Vercel instance.
+const inflightPortfolioFetches = new Map<string, Promise<Portfolio>>();
+
 /**
  * Fetch the canonical portfolio snapshot for a Sui wallet.
  *
@@ -146,8 +169,56 @@ export interface WalletSnapshot {
  * Errors are caught and surfaced as empty defaults rather than
  * thrown — same degradation strategy `fetchPortfolio` had pre-rewrite,
  * so cron loops and prompt seeding don't crash on one bad RPC call.
+ *
+ * **In-flight dedup (SPEC 22.3)**: concurrent calls for the same
+ * address share a single underlying fetch. Used by the chat route to
+ * pre-warm the portfolio while auth/Prisma/session-store work runs
+ * serially before `createEngine()` — see `prewarmPortfolio()`.
  */
-export async function getPortfolio(address: string): Promise<Portfolio> {
+export function getPortfolio(address: string): Promise<Portfolio> {
+  // NOTE: this function is intentionally NOT `async`. Marking it async
+  // would wrap the in-flight Promise in a fresh outer Promise on every
+  // call, breaking reference equality and silently degrading dedup —
+  // two concurrent callers would see two different Promise objects
+  // (both resolving to the same value, but downstream code that uses
+  // identity-comparison on Promises would be confused). Returning the
+  // inflight Promise directly preserves identity so `getPortfolio(addr)
+  // === getPortfolio(addr)` while a fetch is in flight.
+  const inflight = inflightPortfolioFetches.get(address);
+  if (inflight) return inflight;
+
+  const promise = doGetPortfolio(address).finally(() => {
+    inflightPortfolioFetches.delete(address);
+  });
+  inflightPortfolioFetches.set(address, promise);
+  return promise;
+}
+
+/**
+ * [SPEC 22.3 — 2026-05-10] Hint to start the portfolio fetch eagerly.
+ * Returns `void` immediately (the underlying Promise lives in the
+ * inflight map and is reused by the next `getPortfolio(address)`
+ * call). Errors are intentionally swallowed — a pre-warm failure
+ * means the subsequent real call also fails, with the SAME error
+ * surfaced to the SAME caller.
+ *
+ * Call this from request entry points BEFORE doing slow synchronous-
+ * looking work (Prisma queries, JWT decode, Redis reads). The chat
+ * route saves ~300-500ms of cold TTFVP this way: the portfolio fan-
+ * out (~1-3s typical, up to 6s on a slow protocol) runs in parallel
+ * with everything else instead of after it.
+ *
+ * Safe to call multiple times — second call hits the inflight map
+ * dedup. Safe to call without awaiting — the Promise won't be
+ * garbage-collected because the inflight map retains it.
+ */
+export function prewarmPortfolio(address: string): void {
+  void getPortfolio(address).catch(() => {
+    // Swallow — the real consumer sees the same error.
+  });
+}
+
+async function doGetPortfolio(address: string): Promise<Portfolio> {
   // Three independent reads in parallel. Each degrades to an empty/zero
   // shape on failure rather than throwing, so the canonical fetcher
   // never crashes a caller because one upstream is down. balance_check
