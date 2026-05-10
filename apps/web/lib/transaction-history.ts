@@ -38,6 +38,7 @@ import {
   extractTxSender,
   parseSuiRpcTx,
   type SuiRpcTxBlock,
+  type TransactionLeg,
   type TransactionRecord,
   type TxDirection,
 } from '@t2000/sdk';
@@ -75,11 +76,18 @@ export interface ChainTxRecord {
   direction?: TxDirection;
   amount?: number;
   asset?: string;
+  /**
+   * All non-zero user balance legs for this transaction (added in the
+   * activity rebuild / 2026-05-10). Length 1 for single-write txs, 2
+   * for swaps, >2 for bundles. The activity route prices these via
+   * `getTokenPrices` to render swap + bundle rows truthfully.
+   */
+  legs: TransactionLeg[];
   /** Resolved counterparty (recipient on outflows, sender on inflows from others). */
   counterparty?: string;
   timestamp: number;
   gasCost?: number;
-  /** First Move call target on the tx (used for legacy-package filtering). */
+  /** Every Move call target on the tx (used for legacy-package filtering + bundle detection). */
   moveCallTargets: string[];
 }
 
@@ -228,6 +236,7 @@ async function fetchTransactionHistoryFresh(
         direction: record.direction,
         amount: record.amount,
         asset: record.asset,
+        legs: record.legs,
         counterparty,
         timestamp: record.timestamp,
         gasCost: record.gasCost,
@@ -240,6 +249,7 @@ async function fetchTransactionHistoryFresh(
         action: 'transaction',
         isUserTx: false,
         timestamp: Number(tx.timestampMs ?? 0),
+        legs: [],
         moveCallTargets: [],
       });
     }

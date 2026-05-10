@@ -1,36 +1,37 @@
 'use client';
 
-// [PHASE 6] ActivityCard — re-skinned to match the design's single-row layout.
+// ActivityCard — single-row layout for the activity feed.
 //
-// Layout (per `design_handoff_audric/.../activity.jsx`):
-//   [28px round avatar]  [title]                                [amount]
-//                        [time mono]
+// Layout:
+//   [28px round avatar]  [title]                                [right]
+//                        [subtitle (USD today + relative time)]
+//                        [bundle leg breakdown — bundles only]
 //                        [EXPLAIN ›   SUISCAN ↗]
 //
 // Surface uses `bg-surface-sunken` + `border-border-subtle` + `rounded-md`.
-// Avatar is a 28px round neutral chip (`bg-border-subtle`) with the kind
-// glyph drawn in a semantic color. Inline mono links sit below the time.
-// Right column shows the signed amount in mono — error tone for outflows,
-// success for inflows, accent for pending schedule confirms.
+// Avatar is a 28px round neutral chip with the kind glyph drawn in a
+// semantic color. Right column shows the signed USD for chain rows
+// (computed from `legs[].usdValue`) — error tone for outflows, success
+// for inflows, accent for pending schedule confirms.
 //
-// Behavior preserved: digest → suiscan link uses the network from the feed
-// hook; schedule_confirm rows still surface the "Confirm in Automations →"
-// link that routes via `onAction('automations')`. Two no-op inline buttons
-// from the previous skin ("Save it →", "Reverse →") were removed because
-// their onClick was `() => {}` — they had no behavior to preserve.
+// [Activity rebuild / 2026-05-10] Pre-rebuild this component prefixed
+// `$` to a token amount, producing `+$987.60 MANIFEST` for a 1 USDC →
+// 987.60 MANIFEST swap (off by ~340x). Now we read `item.legs[]` (which
+// the route prices via `getTokenPrices`) and render USD only when it
+// represents real dollars. Token amounts are shown separately in the
+// title (`Swapped 1.00 USDC for 987.60 MANIFEST`).
 
-import type { ActivityItem } from '@/lib/activity-types';
+import type { ActivityItem, ActivityLeg } from '@/lib/activity-types';
 
 const KIND_GLYPHS: Record<string, { glyph: string; color: string }> = {
   send: { glyph: '\u2197', color: 'var(--info-solid)' },
   receive: { glyph: '\u2193', color: 'var(--success-solid)' },
   lending: { glyph: '\u2191', color: 'var(--success-solid)' },
   swap: { glyph: '\u21C6', color: 'var(--info-solid)' },
+  bundle: { glyph: '\u2630', color: 'var(--accent-primary)' },
   pay: { glyph: '\u25CE', color: 'var(--info-solid)' },
   store_sale: { glyph: '\u25C6', color: 'var(--color-purple)' },
   pay_received: { glyph: '\u2193', color: 'var(--success-solid)' },
-  autonomous: { glyph: '\u2726', color: 'var(--success-solid)' },
-  alert: { glyph: '!', color: 'var(--warning-solid)' },
   contract: { glyph: '\u25A1', color: 'var(--fg-secondary)' },
   transaction: { glyph: '\u25A1', color: 'var(--fg-secondary)' },
   follow_up: { glyph: '\u2026', color: 'var(--fg-secondary)' },
@@ -39,10 +40,6 @@ const KIND_GLYPHS: Record<string, { glyph: string; color: string }> = {
   schedule_reminder: { glyph: '\u23F0', color: 'var(--color-purple)' },
   compound_available: { glyph: '\u2726', color: 'var(--success-solid)' },
   auto_compound: { glyph: '\u2726', color: 'var(--success-solid)' },
-  // [PHASE 6] suggestion rows are mocked in `lib/mocks/activity.ts` —
-  // glyph matches the design's `'\u270E'` (pencil) on muted neutral.
-  suggestion_confirmed: { glyph: '\u270E', color: 'var(--fg-muted)' },
-  suggestion_snoozed: { glyph: '\u270E', color: 'var(--fg-muted)' },
 };
 
 const DEFAULT_GLYPH = { glyph: '\u25A1', color: 'var(--fg-secondary)' };
@@ -59,30 +56,112 @@ function relativeTime(ts: number): string {
   return new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
+function formatTokenAmount(amount: number, decimals: number): string {
+  const dp = amount >= 1 ? 4 : amount >= 0.01 ? 6 : Math.min(decimals, 9);
+  return amount.toFixed(dp).replace(/\.?0+$/, '');
+}
+
+function formatUsdSigned(value: number, sign: '+' | '-' | ''): string {
+  if (value >= 1) return `${sign}$${value.toFixed(2)}`;
+  if (value >= 0.01) return `${sign}$${value.toFixed(3)}`;
+  return `${sign}<$0.01`;
+}
+
 interface ActivityCardProps {
   item: ActivityItem;
   network: string;
   onAction?: (flow: string) => void;
   // [Bug 3 / 2026-04-27] Wire EXPLAIN to engine.sendMessage(`Explain transaction ${digest}`).
-  // Pre-v1.1 EXPLAIN was a stub <button onClick={() => {}}>; the v1.1 reskin made it a <span>
-  // and dropped even the affordance. This handler restores the click path.
   onExplainTx?: (digest: string) => void;
+}
+
+/**
+ * Compute the signed USD figure for the right-side amount column.
+ * Returns the magnitude + the sign. For chain rows, derives from
+ * `legs[].usdValue`; for app rows (which don't have legs), falls
+ * back to the old `amount`/`direction` shape.
+ *
+ * Returns `null` when there's no USD value to show (degraded prices,
+ * unknown long-tail tokens, or rows that intentionally omit the
+ * column like `schedule_reminder`).
+ */
+function computeRightUsd(item: ActivityItem): { amount: number; sign: '+' | '-' | '' } | null {
+  // Schedule confirms render their own pending pill, not a USD.
+  if (item.type === 'schedule_confirm') return null;
+
+  if (item.legs && item.legs.length > 0) {
+    // For chain rows: net OUT USD (what the user spent) is the
+    // primary number. For pure inflow rows (withdraw, borrow,
+    // receive), show net IN USD as a +.
+    const outs = item.legs.filter((l) => l.direction === 'out');
+    if (outs.length > 0) {
+      const total = outs.reduce((s, l) => s + (l.usdValue ?? 0), 0);
+      if (total > 0) return { amount: total, sign: '-' };
+    }
+    const ins = item.legs.filter((l) => l.direction === 'in');
+    const totalIn = ins.reduce((s, l) => s + (l.usdValue ?? 0), 0);
+    if (totalIn > 0) return { amount: totalIn, sign: '+' };
+    return null;
+  }
+
+  // App-event row (no legs) — use the back-compat amount + direction.
+  if (item.amount == null) return null;
+  const isPayReceived = item.type === 'pay_received';
+  const isIn = item.direction === 'in' || isPayReceived;
+  const sign: '+' | '-' | '' = isIn ? '+' : item.direction === 'self' ? '' : '-';
+  return { amount: item.amount, sign };
+}
+
+/**
+ * Per-leg breakdown for a bundle's expanded view. Renders each leg
+ * inline (single line), e.g. `-5.00 USDC · +4.443 SUI · +0.000639 GOLD`.
+ * Stables get just the token amount; non-stables show `(usd today)`
+ * after the symbol so the user can spot the 1-USDC-for-987-MANIFEST
+ * pattern without doing math.
+ */
+function BundleLegBreakdown({ legs }: { legs: ActivityLeg[] }) {
+  if (legs.length === 0) return null;
+  return (
+    <div className="font-mono text-[10px] tracking-[0.04em] text-fg-secondary mt-1.5 flex flex-wrap gap-x-2.5 gap-y-1">
+      {legs.map((leg, i) => {
+        const sign = leg.direction === 'out' ? '-' : '+';
+        const tokenStr = formatTokenAmount(leg.amount, leg.decimals);
+        const usdSuffix =
+          leg.usdValue != null && !leg.isStable
+            ? ` (~${formatUsdSigned(leg.usdValue, '').replace(/^[+-]/, '')})`
+            : '';
+        return (
+          <span key={`${leg.coinType}-${i}`} className={leg.direction === 'out' ? 'text-error-fg' : 'text-success-solid'}>
+            {sign}
+            {tokenStr} {leg.asset}
+            {usdSuffix}
+          </span>
+        );
+      })}
+    </div>
+  );
 }
 
 export function ActivityCard({ item, network, onAction, onExplainTx }: ActivityCardProps) {
   const isScheduleConfirm = item.type === 'schedule_confirm';
   const isPayReceived = item.type === 'pay_received';
+  const isBundle = item.type === 'bundle';
   const glyphData = KIND_GLYPHS[item.type] ?? DEFAULT_GLYPH;
   const isIn = item.direction === 'in' || isPayReceived;
-  const sign = isScheduleConfirm ? '' : isIn ? '+' : item.direction === 'self' ? '' : '-';
-  const amountStr = isScheduleConfirm
-    ? (item.amount != null ? `$${item.amount.toFixed(2)} pending` : null)
-    : (item.amount != null ? `${sign}$${item.amount.toFixed(2)}` : null);
-  const amountColor = isScheduleConfirm
+
+  const rightUsd = computeRightUsd(item);
+  const rightStr = isScheduleConfirm
+    ? item.amount != null
+      ? `$${item.amount.toFixed(2)} pending`
+      : null
+    : rightUsd
+      ? formatUsdSigned(rightUsd.amount, rightUsd.sign)
+      : null;
+  const rightColor = isScheduleConfirm
     ? 'text-accent-primary'
-    : isIn
+    : rightUsd?.sign === '+' || (isIn && !isBundle)
       ? 'text-success-solid'
-      : item.direction === 'out'
+      : rightUsd?.sign === '-'
         ? 'text-error-fg'
         : 'text-fg-primary';
 
@@ -94,12 +173,12 @@ export function ActivityCard({ item, network, onAction, onExplainTx }: ActivityC
   return (
     <div
       className={[
-        'flex items-center gap-3.5 px-4 py-3.5 rounded-md border bg-surface-sunken',
+        'flex items-start gap-3.5 px-4 py-3.5 rounded-md border bg-surface-sunken',
         isScheduleConfirm ? 'border-accent-primary/30' : 'border-border-subtle',
       ].join(' ')}
     >
       <div
-        className="shrink-0 w-7 h-7 rounded-full bg-border-subtle grid place-items-center text-sm"
+        className="shrink-0 w-7 h-7 mt-0.5 rounded-full bg-border-subtle grid place-items-center text-sm"
         style={{ color: glyphData.color }}
         aria-hidden="true"
       >
@@ -112,6 +191,7 @@ export function ActivityCard({ item, network, onAction, onExplainTx }: ActivityC
           {item.subtitle && <span>{item.subtitle} &middot; </span>}
           {relativeTime(item.timestamp).toUpperCase()}
         </div>
+        {isBundle && item.legs && <BundleLegBreakdown legs={item.legs} />}
         <div className="font-mono text-[9px] tracking-[0.1em] uppercase text-fg-muted mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
           {isScheduleConfirm ? (
             <button
@@ -144,9 +224,9 @@ export function ActivityCard({ item, network, onAction, onExplainTx }: ActivityC
         </div>
       </div>
 
-      {amountStr && (
-        <div className={`shrink-0 font-mono text-[13px] ${amountColor}`}>
-          {amountStr}
+      {rightStr && (
+        <div className={`shrink-0 mt-0.5 font-mono text-[13px] ${rightColor}`}>
+          {rightStr}
         </div>
       )}
     </div>

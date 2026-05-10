@@ -1,25 +1,23 @@
 'use client';
 
-// [PHASE 6] ActivityFeed — re-skinned section header + day group spacing to
-// match `design_handoff_audric/.../activity.jsx`.
+// ActivityFeed — section header + day group rendering for the activity panel.
 //
-// Section header now matches the prototype: mono uppercase day label · flex-1
-// hairline divider · mono `N TXN` count. Rows render via the re-skinned
-// <ActivityCard>. Empty state and load-more button use the new mono /
-// surface-card visual language.
+// Section header: mono uppercase day label · flex-1 hairline divider · mono
+// `N TXN` count. Rows render via <ActivityCard>. Empty state and load-more
+// button use the surface-card visual language.
 //
-// Per Hard Rule 10 (typed mock stub for unsourced design rows), the
-// "Suggestion confirmed / Suggestion snoozed" rows from the design are
-// merged in from `getMockSuggestionItems()` when filter === 'all'. The
-// underlying `useActivityFeed` data flow is untouched — `feed.dateGroups`
-// stays read-only; we re-group the merged list locally for display.
+// [Activity rebuild / 2026-05-10] The "Suggestion confirmed / Suggestion
+// snoozed" mock-suggestion-row injection (formerly under "Hard Rule 10")
+// was removed — the autonomy stack that would have written real
+// suggestion events was retired and the mocks were misleading users
+// into thinking they had taken actions they hadn't. `getMockSuggestionItems`
+// + `lib/mocks/activity.ts` were deleted in the same change.
 
-import { useEffect, useMemo } from 'react';
+import { useEffect } from 'react';
 import { FilterChips } from './FilterChips';
 import { ActivityCard, ActivityCardSkeleton } from './ActivityCard';
 import type { useActivityFeed } from '@/hooks/useActivityFeed';
 import type { ActivityFilter, ActivityItem } from '@/lib/activity-types';
-import { getMockSuggestionItems } from '@/lib/mocks/activity';
 
 type FeedState = ReturnType<typeof useActivityFeed>;
 
@@ -37,40 +35,11 @@ const EMPTY_STATES: Record<ActivityFilter, { message: string; cta: string; flow:
   swap: { message: 'No swaps yet.', cta: 'Swap tokens', flow: 'swap' },
   pay: { message: 'No API calls yet.', cta: 'Ask Audric anything', flow: 'help' },
   store: { message: 'No store activity yet.', cta: 'Open the store', flow: 'store' },
-  autonomous: { message: 'No autonomous actions yet.', cta: 'Save USDC', flow: 'save' },
 };
 
 interface DateGroup {
   label: string;
   items: ActivityItem[];
-}
-
-function groupByDate(items: ActivityItem[]): DateGroup[] {
-  const now = new Date();
-  const todayStr = now.toDateString();
-  const yesterday = new Date(now);
-  yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayStr = yesterday.toDateString();
-
-  const groups: Map<string, ActivityItem[]> = new Map();
-  const order: string[] = [];
-
-  for (const item of items) {
-    const d = new Date(item.timestamp);
-    const ds = d.toDateString();
-    let label: string;
-    if (ds === todayStr) label = 'TODAY';
-    else if (ds === yesterdayStr) label = 'YESTERDAY';
-    else label = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase();
-
-    if (!groups.has(label)) {
-      groups.set(label, []);
-      order.push(label);
-    }
-    groups.get(label)!.push(item);
-  }
-
-  return order.map((label) => ({ label, items: groups.get(label)! }));
 }
 
 export function ActivityFeed({ feed, onAction, onExplainTx }: ActivityFeedProps) {
@@ -83,17 +52,14 @@ export function ActivityFeed({ feed, onAction, onExplainTx }: ActivityFeedProps)
     markSeen();
   }, [markSeen]);
 
-  const displayGroups = useMemo<DateGroup[]>(() => {
-    if (feed.filter !== 'all') {
-      // Re-uppercase the existing labels so they match the new section header
-      // styling. (`feed.dateGroups` returns "Today" / "Yesterday" / "Fri, Apr 17").
-      return feed.dateGroups.map((g) => ({ label: g.label.toUpperCase(), items: g.items }));
-    }
-    const merged = [...feed.items, ...getMockSuggestionItems()].sort(
-      (a, b) => b.timestamp - a.timestamp,
-    );
-    return groupByDate(merged);
-  }, [feed.dateGroups, feed.items, feed.filter]);
+  // Re-uppercase the existing labels so they match the section header
+  // styling. (`feed.dateGroups` returns "Today" / "Yesterday" / "Fri, Apr 17".)
+  // [Activity rebuild / 2026-05-10] Removed the `filter === 'all'` mock
+  // injection branch — see the file-header comment.
+  const displayGroups: DateGroup[] = feed.dateGroups.map((g) => ({
+    label: g.label.toUpperCase(),
+    items: g.items,
+  }));
 
   return (
     <div className="space-y-4">
