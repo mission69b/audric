@@ -46,6 +46,25 @@ interface ThinkingBlockViewProps {
    * mode (the component manages its own state).
    */
   onToggle?: () => void;
+  /**
+   * [SPEC 21.3] Render-time similarity collapse. When the parent
+   * (`<ReasoningTimeline>` via `<BlockRouter>`) has determined that this
+   * thinking block's content is ≈ identical to a recent prior turn's
+   * thinking (Jaccard > threshold + matching 3-token prefix), it passes
+   * `{ collapse: true, similarTurnIndex }` so we render a single-line
+   * `THINKING — same as turn N (click to expand)` row instead of the
+   * full reasoning stream. Click-to-expand restores the full view via
+   * the same `expanded` / `onToggle` controlled-mode pair.
+   *
+   * Undefined → render normally (no similarity check applied).
+   * `{ collapse: false }` → also renders normally; included so the
+   * compute helper can return a single shape.
+   *
+   * The actual collapse decision lives in `lib/thinking-similarity.ts`
+   * (`computeThinkingCollapse`). Carve-outs (first turn, error
+   * recovery, ambiguous input, multi-step planning) are applied there.
+   */
+  collapseInfo?: { collapse: boolean; similarTurnIndex?: number };
 }
 
 const STATUS_DOT: Record<EvaluationItem['status'], string> = {
@@ -66,6 +85,7 @@ export function ThinkingBlockView({
   block,
   expanded: controlledExpanded,
   onToggle: controlledOnToggle,
+  collapseInfo,
 }: ThinkingBlockViewProps) {
   const isStreaming = block.status === 'streaming';
   // Uncontrolled fallback: only used when the parent did not provide
@@ -93,6 +113,38 @@ export function ThinkingBlockView({
   // clean prose right up to the moment the trust card swaps in.
   const displayText = stripEvalSummaryMarker(block.text);
   if (!displayText) return null;
+
+  // [SPEC 21.3] Similarity collapse. The collapsed view is a single
+  // disclosure-button row that swaps in for the entire ThinkingHeader +
+  // ReasoningStream pair. It honors the `expanded` controlled-mode prop
+  // — click to restore the full view (the underlying text is preserved,
+  // just hidden behind the collapsed label). When NOT expanded AND
+  // `collapseInfo.collapse === true`, we render the compact row. Streaming
+  // blocks are NEVER collapsed (the user is watching reasoning happen
+  // live; collapsing mid-stream would break the reveal animation).
+  const shouldCollapse =
+    collapseInfo?.collapse === true && !isStreaming && !expanded;
+
+  if (shouldCollapse) {
+    const turnLabel = collapseInfo!.similarTurnIndex
+      ? `same as turn ${collapseInfo!.similarTurnIndex}`
+      : 'same as a recent turn';
+    return (
+      <div className="pl-1 mb-1.5">
+        <button
+          type="button"
+          onClick={handleToggle}
+          className="flex items-center gap-2 font-mono text-[10px] tracking-[0.16em] uppercase text-fg-muted hover:text-fg-secondary transition-colors"
+          data-testid="thinking-collapsed"
+          data-similar-turn={collapseInfo!.similarTurnIndex ?? ''}
+          aria-label={`Thinking — ${turnLabel}, click to expand`}
+        >
+          <span aria-hidden="true">▸</span>
+          <span>THINKING — {turnLabel} (click to expand)</span>
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="pl-1 mb-1.5">

@@ -80,6 +80,17 @@ interface BlockRouterProps {
   thinkingExpanded?: boolean;
   onToggleThinking?: () => void;
   /**
+   * [SPEC 21.3] Per-block similarity-collapse decision computed by the
+   * parent (`<ReasoningTimeline>`, which has access to the current
+   * message's prior thinking blocks AND the carve-out flags from
+   * `<UnifiedTimeline>`'s precomputed map). When undefined or
+   * `{ collapse: false }`, the thinking block renders normally. When
+   * `{ collapse: true }`, ThinkingBlockView swaps in the compact
+   * `THINKING — same as turn N` row. Only meaningful for
+   * `block.type === 'thinking'`; other block types ignore the prop.
+   */
+  thinkingCollapseInfo?: { collapse: boolean; similarTurnIndex?: number };
+  /**
    * [B3.4 / Gap F] Voice slice for THIS block (only meaningful when
    * `block.type === 'text'` and TTS is active for the message). The
    * parent computes one slice per text block via
@@ -114,6 +125,7 @@ export function BlockRouter({
   shouldAutoApprove,
   thinkingExpanded,
   onToggleThinking,
+  thinkingCollapseInfo,
   voiceSlice,
   spokenWordIndex,
   onRegenerate,
@@ -128,6 +140,7 @@ export function BlockRouter({
           block={block}
           expanded={thinkingExpanded}
           onToggle={onToggleThinking}
+          collapseInfo={thinkingCollapseInfo}
         />
       );
 

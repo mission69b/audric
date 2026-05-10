@@ -336,6 +336,27 @@ const clientSchema = z.object({
    * in-flight session can break when the dial moves).
    */
   NEXT_PUBLIC_HARNESS_V9: optionalString,
+
+  /**
+   * [SPEC 21.1] Streaming choreography flag — enables the `<TransitionChip>`
+   * that animates through `routing → quoting → confirming → settling →
+   * done` states during a write turn. Per SPEC 21 D-3 lock = staged
+   * rollout: engine ALWAYS emits the underlying `stream_state` SSE
+   * events; this flag ONLY gates the visual chip render.
+   *
+   * - "1" / "true" → render the TransitionChip on every assistant turn
+   *   that carries a non-null `transitionState`.
+   * - undefined / anything else → don't render. Existing static
+   *   "TASK INITIATED → silence → giant block" UX is preserved.
+   *
+   * Default OFF. Founder enables on production after engine 1.26.0
+   * is live. Rollback path: unset this var.
+   *
+   * Per-session pinning NOT applied — chip rendering is stateless and
+   * driven entirely by stream events. Mid-session flip means the next
+   * write turn's chip shows under the new behavior.
+   */
+  NEXT_PUBLIC_HARNESS_TRANSITIONS_V1: optionalString,
 });
 
 // ─── Runtime env (Next.js requires literal references) ────────────────
@@ -380,6 +401,7 @@ const runtimeEnv = {
     process.env.NEXT_PUBLIC_INTERACTIVE_HARNESS_ROLLOUT_PERCENT,
   NEXT_PUBLIC_CONFIRM_CHIPS_V1: process.env.NEXT_PUBLIC_CONFIRM_CHIPS_V1,
   NEXT_PUBLIC_HARNESS_V9: process.env.NEXT_PUBLIC_HARNESS_V9,
+  NEXT_PUBLIC_HARNESS_TRANSITIONS_V1: process.env.NEXT_PUBLIC_HARNESS_TRANSITIONS_V1,
 } as const;
 
 // ─── Validate ──────────────────────────────────────────────────────────

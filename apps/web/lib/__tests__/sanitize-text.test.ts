@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { stripEvalSummaryMarker, stripThinkingTags } from '../sanitize-text';
+import {
+  stripEvalSummaryMarker,
+  stripThinkingTags,
+  shortenRawTxHashes,
+} from '../sanitize-text';
 
 describe('stripEvalSummaryMarker', () => {
   it('returns input unchanged when no marker is present', () => {
@@ -111,5 +115,65 @@ describe('stripThinkingTags', () => {
     const input =
       '<thinking>\n\nThe guard is checking that swap_quote was called IMMEDIATELY before swap_execute in the same turn. I called swap_quote twice earlier, then moved to update_todo and plan narration, then the user said "yes". Now when I try to execute, the guard has timed out or doesn\'t consider those old quotes fresh anymore.\n\nI need to call swap_quote again to refresh the quotes before executing. Let me re-quote both swaps.\n\n</thinking>';
     expect(stripThinkingTags(input)).toBe('');
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────
+// SPEC 21.2 D-4a — shortenRawTxHashes (UI defense-in-depth)
+// ───────────────────────────────────────────────────────────────────────────
+describe('shortenRawTxHashes', () => {
+  // A real-shape Sui tx digest sample (44 chars, base58 alphabet).
+  const SAMPLE_HASH = '5cFhP9TjqZxGfVwXabcDEFghijKLMNopqrsTUVwxyz12';
+
+  it('returns input unchanged when no hash is present', () => {
+    expect(shortenRawTxHashes('Saved 10 USDC into NAVI.')).toBe(
+      'Saved 10 USDC into NAVI.',
+    );
+  });
+
+  it('returns empty string unchanged', () => {
+    expect(shortenRawTxHashes('')).toBe('');
+  });
+
+  it('shortens a bare tx digest in prose to first6…last4', () => {
+    const input = `I executed tx ${SAMPLE_HASH} successfully.`;
+    expect(shortenRawTxHashes(input)).toBe(
+      `I executed tx ${SAMPLE_HASH.slice(0, 6)}…${SAMPLE_HASH.slice(-4)} successfully.`,
+    );
+  });
+
+  it('preserves URLs containing a tx digest (suivision explorer link)', () => {
+    const url = `https://suivision.xyz/txblock/${SAMPLE_HASH}`;
+    const input = `View at ${url} or skip.`;
+    expect(shortenRawTxHashes(input)).toBe(input);
+  });
+
+  it('preserves markdown link labels containing a tx digest', () => {
+    const input = `[${SAMPLE_HASH}](https://suivision.xyz/txblock/${SAMPLE_HASH})`;
+    // Both the label (preceded by `[`, followed by `]`) AND the URL fragment
+    // (preceded by `/`) must be preserved so the markdown renders correctly.
+    expect(shortenRawTxHashes(input)).toBe(input);
+  });
+
+  it('does NOT touch base58 strings shorter than 40 chars (object IDs, names)', () => {
+    const input = 'short id 5cFhP9TjqZxGfVwXabc12 is 22 chars.';
+    expect(shortenRawTxHashes(input)).toBe(input);
+  });
+
+  it('shortens multiple bare hashes in the same line', () => {
+    // Both digests use only base58 chars (no 0/O/I/l).
+    const a = '5cFhP9TjqZxGfVwXabcDEFghijKLMNopqrsTUVwxyz12';
+    const b = 'JKqXYZ123456789aBcDeFgHiJkLmNopqRsTuVwXyZ12X';
+    const out = shortenRawTxHashes(`First ${a} and second ${b}.`);
+    expect(out).toBe(
+      `First ${a.slice(0, 6)}…${a.slice(-4)} and second ${b.slice(0, 6)}…${b.slice(-4)}.`,
+    );
+  });
+
+  it('is idempotent — running twice produces the same result', () => {
+    const input = `tx ${SAMPLE_HASH} done.`;
+    const once = shortenRawTxHashes(input);
+    const twice = shortenRawTxHashes(once);
+    expect(twice).toBe(once);
   });
 });

@@ -7,9 +7,11 @@ import { ReasoningTimeline } from './ReasoningTimeline';
 import { LegacyReasoningRender } from './LegacyReasoningRender';
 import { RetryInterruptedTurn } from './RetryInterruptedTurn';
 import { ConfirmChips } from './ConfirmChips';
+import { TransitionChip, type TransitionState } from './timeline/primitives/TransitionChip';
 import type { DenyReason } from './PermissionCard';
 import { currentHarnessVersion, type HarnessVersion } from '@/lib/interactive-harness';
 import { isConfirmChipsEnabled } from '@/lib/confirm-chips';
+import { isTransitionChipEnabled } from '@/lib/harness-transitions';
 import { useVoiceModeContext } from '@/components/dashboard/VoiceModeContext';
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -102,6 +104,19 @@ interface ChatMessageProps {
    * `useZkLogin.refresh` at the dashboard.
    */
   onSignBackIn?: () => void;
+  /**
+   * [SPEC 21.3] Last 3 assistant turns' thinking text content from
+   * earlier messages in the session — passed down to ReasoningTimeline
+   * for the similarity-collapse decision. Computed once per render in
+   * `<UnifiedTimeline>` from the message graph. Default: undefined →
+   * no collapse comparison data → render normally.
+   */
+  priorThinkingTexts?: ReadonlyArray<string>;
+  /**
+   * [SPEC 21.3] First-turn carve-out flag — true when this is the first
+   * assistant message in the session. Default: undefined → false.
+   */
+  isFirstAssistantTurn?: boolean;
 }
 
 export function ChatMessage({
@@ -118,6 +133,8 @@ export function ChatMessage({
   onChipDecision,
   onPendingInputSubmit,
   onSignBackIn,
+  priorThinkingTexts,
+  isFirstAssistantTurn,
 }: ChatMessageProps) {
   if (message.role === 'user') {
     return (
@@ -192,6 +209,8 @@ export function ChatMessage({
           regeneratingAttemptIds={regeneratingAttemptIds}
           onPendingInputSubmit={onPendingInputSubmit}
           onSignBackIn={onSignBackIn}
+          priorThinkingTexts={priorThinkingTexts}
+          isFirstAssistantTurn={isFirstAssistantTurn}
         />
         {chipsBlock}
       </>
@@ -256,6 +275,8 @@ function ChatMessageV2({
   regeneratingAttemptIds,
   onPendingInputSubmit,
   onSignBackIn,
+  priorThinkingTexts,
+  isFirstAssistantTurn,
 }: ChatMessageV2Props) {
   const voice = useVoiceModeContext();
   const isBeingSpoken =
@@ -277,8 +298,25 @@ function ChatMessageV2({
     [isBeingSpoken, voice.currentSpans, voice.spokenWordIndex],
   );
 
+  // [SPEC 21.1] Pull the chip flag at render time. Stateless — flipping
+  // mid-session takes effect on the next assistant turn that emits a
+  // stream_state event. `transitionState` is set by useEngine.ts in
+  // response to engine-emitted `routing` / `quoting` and audric-emitted
+  // `confirming` / `settling` / `done`.
+  const transitionsEnabled = isTransitionChipEnabled();
+  const transitionState = (message.transitionState ?? null) as TransitionState | null;
+
   return (
     <div className="space-y-2" role="log" aria-label="Audric response">
+      {/* [SPEC 21.1] Animated state chip — renders ABOVE the timeline so
+          it sits at the top of the assistant message body, replacing the
+          old "TASK INITIATED → silence → giant block" pattern with a
+          single morphing chip that crossfades through routing → quoting
+          → confirming → settling → done. */}
+      {transitionsEnabled && transitionState && (
+        <TransitionChip state={transitionState} />
+      )}
+
       {/* Same "thinking-only" spinner as the legacy path — the timeline
           doesn't render anything until the first SSE event arrives, so
           we still need a "Audric is thinking" hint for early frames. */}
@@ -302,6 +340,8 @@ function ChatMessageV2({
         regeneratingAttemptIds={regeneratingAttemptIds}
         onPendingInputSubmit={onPendingInputSubmit}
         onSignBackIn={onSignBackIn}
+        priorThinkingTexts={priorThinkingTexts}
+        isFirstAssistantTurn={isFirstAssistantTurn}
       />
 
       {message.usage && !message.isStreaming && (

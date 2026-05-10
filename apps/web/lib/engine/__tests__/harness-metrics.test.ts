@@ -552,6 +552,22 @@ describe('STATIC_SYSTEM_PROMPT — B3.6 budget gate', () => {
     // to ~50 to fit). Founder-approved 2026-05-05 as a critical-trust
     // fix; ceiling bumped +50 with the precedent of failed-write-narration.
     //
+    // SPEC 21.3 meta-observations ban (May 2026 — S.137 acceptance smoke
+    // recorded the LLM narrating "Same request as before" / "Same pattern
+    // again" on bundle saturation turns 8/9/10 — visually noisy, semantically
+    // empty, the worst of "the LLM apologising for its own cadence"
+    // pattern.) Added one Response-rule bullet forbidding meta-observation
+    // narration ("Same request", "Same pattern", "As last time") with one
+    // safety-callout exception ("tightening slippage after revert"). Trimmed
+    // to ~75 tokens after compression (started at ~210 tokens with full
+    // examples and bundle-saturation context; trimmed examples to the
+    // three most-leaked phrases and dropped the saturation-history aside).
+    // Pairs with `lib/thinking-similarity.ts` render-time Jaccard collapse
+    // as the SPEC 21.3 two-layer fix — system prompt forbids emission,
+    // UI suppresses anything that slips through. Founder-approved
+    // 2026-05-10 as part of the SPEC 21 ship; ceiling bumped +75
+    // (10_425 → 10_500).
+    //
     // Why a hard char ceiling instead of a delta:
     //   - Hardcoding the ceiling beats hardcoding both halves; the test
     //     trips on ANY future edit that pushes the prompt past the
@@ -564,7 +580,7 @@ describe('STATIC_SYSTEM_PROMPT — B3.6 budget gate', () => {
     //      a new entry in the ceiling-history table above.
     const { STATIC_SYSTEM_PROMPT } = await import('../engine-context');
     const tokens = Math.ceil(STATIC_SYSTEM_PROMPT.length / 4);
-    expect(tokens).toBeLessThanOrEqual(10_425);
+    expect(tokens).toBeLessThanOrEqual(10_500);
   });
 });
 

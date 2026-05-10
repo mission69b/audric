@@ -1335,6 +1335,16 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
       // poll might already be in flight.
       lastUserActionAtRef.current = Date.now();
 
+      // [SPEC 21.1] Layer in `confirming` → `done` choreography events
+      // around the sponsored-tx flow. Engine emits `routing` / `quoting`
+      // automatically (see `withStreamState`); the audric side owns
+      // `confirming` (here, before the SDK call) and `done` (after).
+      // `settling` is intentionally skipped on v0.1 — it would require
+      // SDK progress hooks to know when sponsorship returned vs when
+      // settlement is in flight; routing/quoting/confirming/done already
+      // unblock the "TASK INITIATED → silence → giant block" UX pain.
+      // Tracked in spec_21_1_settling_phase placeholder.
+      engine.setLatestTransitionState('confirming');
       const result = await executeToolAction(sdk, toolName, input, {
         resolveContact: (raw) => contactsHook.resolveContact(raw),
         // [v0.55 Fix 3] Real SuiNS resolution. Async, server-routed via
@@ -1348,6 +1358,13 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
         // [SPEC 20.2 / D-1 (a)] Forward cetusRoute to the SDK's swap call.
         cetusRoute,
       });
+      // [SPEC 21.1] After the SDK call returns (success OR failure),
+      // flip to `done`. The chip stays visible until the next user
+      // message creates a fresh assistant message (natural reset).
+      // On failure paths the chip still flips — the SDK threw or
+      // returned an error shape; the user sees "DONE" briefly and
+      // then the receipt-error card explains what happened.
+      engine.setLatestTransitionState('done');
 
       // Side effects after a successful execution. Refetch balance for any
       // tool that moves funds. Tools with longer settlement (swap, volo)
@@ -1361,7 +1378,14 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
 
       return result;
     },
-    [agent, balanceQuery, contactsHook, zkStatus],
+    // [SPEC 21.1] `engine` added to deps so `setLatestTransitionState`
+    // is in scope. The `useEngine` return object recreates each render
+    // but the inner `setLatestTransitionState` callback is stable
+    // (created with `useCallback(..., [])`), so the only practical
+    // effect of the new dep is `handleExecuteAction` rebuilding on
+    // every render — fine, no children depend on its identity for
+    // memoization.
+    [agent, balanceQuery, contactsHook, zkStatus, engine],
   );
 
   // [SPEC 7 P2.4 Layer 3] Multi-write Payment Intent executor. Mirrors
@@ -1395,6 +1419,10 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
       // the dry-run with a non-obvious CommandArgumentError. Symmetry
       // with single-write means saved contacts work consistently in
       // both flows.
+      // [SPEC 21.1] Bundle path mirrors the single-write path —
+      // `confirming` before sponsor RTT, `done` after settlement. The
+      // bundle takes the same Enoki-sponsored route under the hood.
+      engine.setLatestTransitionState('confirming');
       const result = await executeBundleAction(sdk, action, {
         resolveContact: (raw) => contactsHook.resolveContact(raw),
         resolveSuiNs: async (raw) => {
@@ -1402,6 +1430,7 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
           return resolveSuiNs(raw);
         },
       });
+      engine.setLatestTransitionState('done');
 
       // Refetch balance once for the whole bundle (vs per-step). Bundles
       // typically contain a swap or volo step → schedule a delayed
@@ -1422,7 +1451,10 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
 
       return result;
     },
-    [agent, balanceQuery, contactsHook, zkStatus],
+    // [SPEC 21.1] Same rationale as handleExecuteAction above —
+    // `engine` is a fresh object each render but
+    // `setLatestTransitionState` inside is stable.
+    [agent, balanceQuery, contactsHook, zkStatus, engine],
   );
 
   const handleSaveContact = useCallback(

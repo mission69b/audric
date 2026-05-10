@@ -83,3 +83,45 @@ export function stripThinkingTags(text: string): string {
 
   return cleaned;
 }
+
+// ───────────────────────────────────────────────────────────────────────────
+// SPEC 21.2 D-4a · 2026-05-10 — UI defense-in-depth for raw tx hashes
+//
+// The system prompt (engine-context.ts) already tells the LLM:
+//   "Never emit a raw transaction hash in prose. The receipt card shows the
+//    hash and the explorer link. If you must reference the tx, link it as
+//    [view tx](https://suivision.xyz/txblock/<hash>)."
+//
+// This UI helper is a defense-in-depth fallback for the case where the LLM
+// ignores the rule and emits a bare base58 digest in narration. We shorten
+// it to a 6-char-prefix … 4-char-suffix form so:
+//   1. The user still sees a recognisable tx fingerprint (matches the
+//      explorer card the receipt block already renders).
+//   2. The wall-of-base58 visual noise is gone (avg compaction: 50 chars
+//      → 11 chars).
+//   3. Markdown links and URL fragments are preserved unchanged (so a
+//      `[abc…123](https://suivision.xyz/txblock/<hash>)` link keeps both
+//      the human-readable label and the working href).
+//
+// Pattern: 40–60 char base58 strings (Sui tx digests are 43–44 chars; the
+// looser bound catches truncated quotes from logs etc) NOT adjacent to
+// word chars, slashes, or markdown brackets. The negative lookarounds
+// preserve:
+//   - `https://...txblock/<hash>`  (preceded by `/`)
+//   - `[<hash>](url)` markdown labels (preceded by `[`, followed by `]`)
+//   - identifier-like tokens (preceded/followed by word chars)
+//
+// ⚠️ Limitation: a hash glued to ASCII punctuation like a parenthesis
+// (`(5cFhP…)`) IS shortened, which we judge correct — the parens are
+// prose decoration, not a markdown / URL container.
+// ───────────────────────────────────────────────────────────────────────────
+
+const RAW_TX_HASH_REGEX = /(?<![\w/\[])([A-HJ-NP-Za-km-z1-9]{40,60})(?![\w/\]])/g;
+
+export function shortenRawTxHashes(text: string): string {
+  if (!text) return text;
+  return text.replace(RAW_TX_HASH_REGEX, (match) => {
+    if (match.length <= 12) return match;
+    return `${match.slice(0, 6)}…${match.slice(-4)}`;
+  });
+}

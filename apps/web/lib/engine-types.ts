@@ -498,6 +498,28 @@ export interface EngineChatMessage {
    * (`acknowledge`, `choice`); v1 only emits `'commit'`.
    */
   expectsConfirm?: ExpectsConfirmPayload;
+  /**
+   * [SPEC 21.1] Current stream-state for the choreography chip.
+   * Driven by:
+   *  - Engine-emitted `routing` (before swap_quote) and `quoting`
+   *    (after swap_quote returns) — see `withStreamState` in
+   *    `@t2000/engine`.
+   *  - Audric-emitted `confirming` (client posts to /prepare),
+   *    `settling` (sponsor returned, awaiting waitForTransaction),
+   *    `done` (tx confirmed) — set by `executeToolAction`.
+   *
+   * Reset to `null` on `turn_complete` (and on the next user message
+   * — handled implicitly because new assistant messages start with
+   * the field unset).
+   *
+   * Rendered by `<TransitionChip>` ONLY when
+   * `NEXT_PUBLIC_HARNESS_TRANSITIONS_V1` is set (D-3 lock = staged
+   * rollout). Older clients ignore the field; the chip never renders.
+   *
+   * Typed as the literal union (not imported from `@t2000/engine`)
+   * to avoid a type-import cycle in this leaf type module.
+   */
+  transitionState?: 'routing' | 'quoting' | 'confirming' | 'settling' | 'done' | null;
 }
 
 /**

@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { serializeSSE, getTelemetrySink } from '@t2000/engine';
+import { serializeSSE, getTelemetrySink, withStreamState } from '@t2000/engine';
 import type { PendingAction } from '@t2000/engine';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { validateJwt, isValidSuiAddress } from '@/lib/auth';
@@ -289,7 +289,12 @@ export async function POST(request: NextRequest) {
           const permissionResponse = stepResults && stepResults.length > 0
             ? { approved, stepResults }
             : { approved, executionResult };
-          for await (const event of engine.resumeWithToolResult(action, permissionResponse)) {
+          // [SPEC 21.1] Wrap with withStreamState so engine-emitted
+          // `routing` / `quoting` events fire on the resume turn too
+          // (rare — resume turns rarely re-route, but the wrapper is
+          // a no-op when there's no swap_quote tool, so it's safe to
+          // apply unconditionally).
+          for await (const event of withStreamState(engine.resumeWithToolResult(action, permissionResponse))) {
             // [Phase 0 / SPEC 13] Track every event for stream-close log.
             lastEventType = event.type;
             if (event.type === 'pending_action') pendingActionSeen = true;

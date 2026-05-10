@@ -26,6 +26,10 @@ import { asHarnessVersion, type HarnessVersion } from '@/lib/interactive-harness
 import type { RegenerateTimelineEvent, RegenerateFailure } from '@t2000/engine';
 import { REGEN_ERROR_COPY } from '@/lib/engine/regen-error-copy';
 import { detectAuthIntent } from './auth-intent';
+// [SPEC 21.1] Pure mutation helper extracted from `setLatestTransitionState`
+// so the search-and-update logic can be unit-tested without spinning up the
+// entire `useEngine` hook (which requires auth, address, jwt, SSE mocks).
+import { applyTransitionStateToLatest } from '@/lib/transition-state-utils';
 
 // [v1.4] Re-export the pure executor so consumers and tests can use a single
 // import path: `import { executeToolAction } from '@/hooks/useEngine'`.
@@ -1542,6 +1546,23 @@ export function useEngine({ address, jwt, onToolResult, contacts, onAuthIntent }
         );
         break;
       }
+
+      // [SPEC 21.1] Stream-state choreography. Engine emits `routing` and
+      // `quoting` automatically via `withStreamState` in `@t2000/engine`
+      // (>= 1.26.0). Audric layers in `confirming` / `settling` / `done`
+      // from `executeToolAction`'s sponsor flow.
+      //
+      // We just stash the latest state on the message — `<TransitionChip>`
+      // (gated on `NEXT_PUBLIC_HARNESS_TRANSITIONS_V1`) reads it and
+      // animates the crossfade. NO auto-clear on `turn_complete`: each
+      // new user message creates a fresh assistant message with
+      // `transitionState` undefined, which is the natural reset.
+      case 'stream_state': {
+        setMessages((prev) =>
+          prev.map((m) => (m.id === msgId ? { ...m, transitionState: event.state } : m)),
+        );
+        break;
+      }
     }
 
     // [SPEC 8 v0.5.1 B2.1] Dual-write to the chronological timeline.
@@ -1604,6 +1625,22 @@ export function useEngine({ address, jwt, onToolResult, contacts, onAuthIntent }
     setHarnessVersion(null);
     lastFailedMessage.current = null;
   }, []);
+
+  // [SPEC 21.1] Set transitionState on the latest assistant message.
+  // Used by `dashboard-content.handleExecuteAction` to layer in
+  // `confirming` / `settling` / `done` events from the sponsored-tx
+  // flow (engine never emits these — they happen after pending_action
+  // has been yielded and before resume). We update the LATEST assistant
+  // message because that's by definition the message that owns the
+  // active pending_action being confirmed.
+  //
+  // Stable reference (no deps) — useCallback is enough.
+  const setLatestTransitionState = useCallback(
+    (state: 'confirming' | 'settling' | 'done' | null) => {
+      setMessages((prev) => applyTransitionStateToLatest(prev, state));
+    },
+    [],
+  );
 
   const loadSession = useCallback(
     async (id: string) => {
@@ -1672,5 +1709,12 @@ export function useEngine({ address, jwt, onToolResult, contacts, onAuthIntent }
     // handleRegenerate above, but for `<PendingInputBlockView>` and
     // its `onPendingInputSubmit` slot.
     handlePendingInputSubmit,
+    // [SPEC 21.1] Audric-side state injector. The dashboard's
+    // `handleExecuteAction` calls this around the sponsored-tx flow
+    // to layer in `confirming` / `settling` / `done` events on top of
+    // the engine-emitted `routing` / `quoting`. Updates the LATEST
+    // assistant message because that's by definition the message that
+    // owns the active pending_action being confirmed.
+    setLatestTransitionState,
   };
 }

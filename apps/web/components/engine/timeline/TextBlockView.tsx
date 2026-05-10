@@ -10,7 +10,7 @@ import {
   localSpokenWordIndex,
   type TextBlockVoiceSlice,
 } from '@/lib/voice/timeline-voice-slices';
-import { stripEvalSummaryMarker, stripThinkingTags } from '@/lib/sanitize-text';
+import { stripEvalSummaryMarker, stripThinkingTags, shortenRawTxHashes } from '@/lib/sanitize-text';
 
 // ───────────────────────────────────────────────────────────────────────────
 // SPEC 8 v0.5.1 — TextBlockView (B2.2 + B3.4 + B3.5)
@@ -71,8 +71,15 @@ export function TextBlockView({ block, voiceSlice, spokenWordIndex }: TextBlockV
   // here for cleaner streaming UX. After turn_complete the timeline-builder
   // has already stripped them; calling stripProactiveMarkers a second time is
   // a no-op (idempotent).
-  const displayText = stripProactiveMarkers(
-    stripThinkingTags(stripEvalSummaryMarker(block.text)),
+  // [SPEC 21.2 D-4a / 2026-05-10] Defense-in-depth: shorten raw base58
+  // tx hashes in prose. The system prompt forbids the LLM from emitting
+  // bare digests (the receipt card carries the explorer link), but if
+  // it slips through we shorten "5cFhP9TjqZxGfV...long base58..." to a
+  // recognisable "5cFhP9…N1aB" preview. URLs and markdown link labels
+  // are preserved (negative lookarounds in the regex). See
+  // `shortenRawTxHashes` JSDoc in `sanitize-text.ts` for the full rule.
+  const displayText = shortenRawTxHashes(
+    stripProactiveMarkers(stripThinkingTags(stripEvalSummaryMarker(block.text))),
   );
   if (!displayText) return null;
 

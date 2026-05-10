@@ -8,6 +8,10 @@ import { computeTextBlockVoiceSlices } from '@/lib/voice/timeline-voice-slices';
 import { groupTimelineBlocks } from '@/lib/timeline-groups';
 import { BlockRouter } from './timeline/BlockRouter';
 import { ParallelToolsGroup } from './timeline/ParallelToolsGroup';
+import {
+  computeThinkingCollapse,
+  type ThinkingCollapseResult,
+} from '@/lib/thinking-similarity';
 
 // ───────────────────────────────────────────────────────────────────────────
 // SPEC 8 v0.5.1 — ReasoningTimeline (B2.2 + B3.3 + B3.5)
@@ -89,6 +93,21 @@ interface ReasoningTimelineProps {
    * receipts. Wired to `useZkLogin.refresh` at the dashboard.
    */
   onSignBackIn?: () => void;
+  /**
+   * [SPEC 21.3] Last 3 assistant turns' thinking text content (oldest →
+   * newest), excluding this message. Computed once per render in
+   * `<UnifiedTimeline>` and passed down. ReasoningTimeline calls
+   * `computeThinkingCollapse` per thinking block to decide whether to
+   * render the collapsed "same as turn N" row. Default: empty array
+   * (no comparison data → no collapse → render normally).
+   */
+  priorThinkingTexts?: ReadonlyArray<string>;
+  /**
+   * [SPEC 21.3] First-turn carve-out flag. True when this is the first
+   * assistant message in the session — thinking always renders fully
+   * to set user expectations. Default: false.
+   */
+  isFirstAssistantTurn?: boolean;
 }
 
 export function ReasoningTimeline({
@@ -105,6 +124,8 @@ export function ReasoningTimeline({
   regeneratingAttemptIds,
   onPendingInputSubmit,
   onSignBackIn,
+  priorThinkingTexts,
+  isFirstAssistantTurn,
 }: ReasoningTimelineProps) {
   // [B3.3 / G8] Manual-state-preserved expansion map for thinking blocks.
   // Lazy-init from the blocks present at first mount (rehydration case)
@@ -155,6 +176,39 @@ export function ReasoningTimeline({
     [blocks, voiceContext],
   );
 
+  // [SPEC 21.3] Pre-compute per-thinking-block collapse decisions so the
+  // render below is a pure lookup. Carve-outs that depend on the IMMEDIATELY
+  // preceding block (error recovery — prior `tool` block is `isError`) are
+  // detected by walking the blocks array once. Cross-message comparisons use
+  // `priorThinkingTexts` (computed by `<UnifiedTimeline>` from the message
+  // graph). Streaming blocks never collapse — the helper itself doesn't gate
+  // on streaming, so the gate lives in `<ThinkingBlockView>` (it inspects
+  // `block.status === 'streaming'`).
+  const thinkingCollapseByBlockIndex = useMemo(() => {
+    const map = new Map<number, ThinkingCollapseResult>();
+    if (!blocks) return map;
+    const priors = priorThinkingTexts ?? [];
+    for (let i = 0; i < blocks.length; i += 1) {
+      const block = blocks[i];
+      if (block.type !== 'thinking') continue;
+      // Error-recovery flag: the IMMEDIATELY preceding block is a tool
+      // block whose result errored. The user is watching the LLM regroup
+      // — that's high-signal thinking, never collapse it.
+      const prior = i > 0 ? blocks[i - 1] : undefined;
+      const isErrorRecovery =
+        prior?.type === 'tool' && prior.status === 'done' && prior.isError === true;
+      const result = computeThinkingCollapse(block.text, priors, {
+        isFirstTurn: isFirstAssistantTurn,
+        isErrorRecovery,
+        // `isAmbiguousInput` is a possible future extension — would
+        // require the engine to surface a `clarification_needed` flag
+        // on the tool result. Out of scope for v0.1.
+      });
+      map.set(block.blockIndex, result);
+    }
+    return map;
+  }, [blocks, priorThinkingTexts, isFirstAssistantTurn]);
+
   if (!blocks || blocks.length === 0) return null;
 
   const items = groupTimelineBlocks(blocks);
@@ -204,6 +258,11 @@ export function ReasoningTimeline({
             onToggleThinking={
               block.type === 'thinking'
                 ? () => toggleThinking(block.blockIndex)
+                : undefined
+            }
+            thinkingCollapseInfo={
+              block.type === 'thinking'
+                ? thinkingCollapseByBlockIndex.get(block.blockIndex)
                 : undefined
             }
             voiceSlice={voiceSlice}

@@ -1,0 +1,117 @@
+---
+description: Agent harness narration — card-vs-prose contract, forbidden patterns, defense layers
+alwaysApply: true
+---
+
+# Agent Harness Narration Contract
+
+The card-vs-prose contract codified by SPEC 21.4 (May 2026). Pairs with `engine-context.ts` "## Response rules" and "## CRITICAL: Never duplicate card data in chat text" sections — those are the LLM-facing rules; this is the **engineering-facing reference** for anyone touching the harness UI, system prompt, or telemetry.
+
+If you're modifying:
+- `engine-context.ts` (system prompt) → read this rule + the SPEC 21 doc.
+- `lib/sanitize-text.ts` / `TextBlockView.tsx` (render-time strips) → read this rule + the existing JSDocs.
+- `lib/thinking-similarity.ts` (Jaccard collapse) → read this rule + the SPEC 21.3 entry.
+- `lib/__tests__/narration-contract.test.ts` (lint) → read this rule + the test docstring.
+
+---
+
+## The contract — what goes WHERE
+
+| Channel | Owner | What lives here | What does NOT |
+|---|---|---|---|
+| **Card** (`PermissionCardBlockView`, `BundleReceiptBlockView`, the per-tool cards in `timeline/`) | The engine tool's structured `result` payload | All on-chain data the user might want: tx digest, address, amounts, route, receipt link, fees, slippage, balance changes. The card is the source of truth. | Narrative tone, contextual reasoning, "what just happened in plain English". |
+| **Prose** (the `text` content blocks rendered by `TextBlockView`) | The LLM's narration | ONE short sentence (≤80 chars soft, ≤200 chars hard) that ties cards together OR surfaces a single insight OR a single risk callout. | Anything the card already shows. Raw tx hashes. Raw addresses. Wall-of-base58. Markdown tables of card data. Re-statements of card numbers. |
+| **Thinking** (native thinking content blocks rendered by `ThinkingBlockView`) | The LLM's extended-thinking burst | The reasoning trail — useful on first turn, error recovery, ambiguous input, multi-step planning. | "Same request as before". "Same pattern". "As last time". Any meta-observation about repetition. |
+
+**The mental model:** the card is the artifact, the prose is the colour commentary, the thinking is the commentator's notes — and the commentator NEVER reads the play-by-play out of their own notes.
+
+---
+
+## Forbidden narration patterns
+
+These are blocked in three layers (defense in depth — no single layer is enough):
+
+| Pattern | Layer 1 (system prompt) | Layer 2 (UI strip) | Layer 3 (lint test) |
+|---|---|---|---|
+| `<thinking>…</thinking>` literal in text | Implicit (extended thinking is its own channel) | `stripThinkingTags` in `sanitize-text.ts` + engine `stripPseudoThinking` (paired + orphan closer) | `narration-contract.test.ts` snapshot scan |
+| Bare base58 ≥40 chars (raw tx hash in prose) | "Do NOT repeat the transaction hash" rule in `engine-context.ts` Response rules | `shortenRawTxHashes` in `sanitize-text.ts` (preserves URLs + markdown link labels) | `narration-contract.test.ts` snapshot scan |
+| Meta-observations: "Same request as before", "Same pattern", "As last time" | "META-OBSERVATIONS BAN (SPEC 21.3)" rule in Response rules | `computeThinkingCollapse` Jaccard 0.7 collapse (compresses thinking, not prose, but suppresses the visual noise) | `narration-contract.test.ts` snapshot scan |
+| `<eval_summary>{…}</eval_summary>` leaked into final text | Implicit (the marker belongs in thinking) | `stripEvalSummaryMarker` in `sanitize-text.ts` | (covered by snapshot scan as a side effect) |
+| Re-listing per-asset balances / per-tx history / per-pool rates after a card | "## CRITICAL: Never duplicate card data" full section in system prompt | (no UI strip — the LLM has to comply) | (no lint — surfaces in QA smoke) |
+
+The lint test (Layer 3) catches Layer 1/2 regressions so a future system-prompt edit can't silently re-open the gap.
+
+---
+
+## Soft + hard prose budget
+
+Prose narration on assistant turns:
+- **Soft cap: 80 chars** — the 1-sentence-ack contract. Most turns hit this. Multi-card turns (full account report) get up to ~3 short bullets totalling ~200 chars.
+- **Hard cap: 200 chars** — anything past this is a regression. The lint test fails on prose blocks > 200 chars.
+
+These caps DON'T apply to:
+- Direct read-question answers where there's no card to defer to.
+- Error narration (the LLM needs to explain what went wrong).
+- Extended thinking blocks (separate channel, no length cap).
+
+---
+
+## Five render layers (top → bottom)
+
+When debugging a narration issue, walk the stack:
+
+1. **System prompt** (`engine-context.ts`) — first defense. If the LLM is doing something forbidden, the rule may be missing or weakened. Token budget enforced by `harness-metrics.test.ts`.
+2. **Engine post-process** (`stripPseudoThinking` in `strip-pseudo-thinking.ts`) — strips paired + orphan `<thinking>` tags from persisted assistant text BEFORE the next turn's history is sent to the LLM. Prevents pollution of cache-read context.
+3. **SSE serialization** (`engineToSSE`) — the wire is always honest; no stripping happens here. `stream_state` events are layered in by `withStreamState` (SPEC 21.1).
+4. **Client deserialization** (`useEngine` + `timeline-builder.ts`) — events become `TimelineBlock`s + message-level metadata.
+5. **Render-time strips** (`TextBlockView` + `ThinkingBlockView`) — `shortenRawTxHashes`, `stripThinkingTags`, `stripEvalSummaryMarker`, `computeThinkingCollapse`. Last line of defense.
+
+The lint test asserts each layer is doing its job. Don't move strips between layers without updating the test.
+
+---
+
+## How NOT to fix a narration regression
+
+```
+// ❌ BAD — adds a "we should also accept this format" exception in
+//          the strip regex. Now the strip is correct AND wrong, and
+//          the lint test starts permitting the bad pattern.
+const RAW_TX_HASH_REGEX = /(?<![\w/\[])([A-HJ-NP-Za-km-z1-9]{40,60})(?![\w/\]])/g;
+// "Sometimes the LLM puts hashes inside parens, let's allow that":
+const RAW_TX_HASH_REGEX = /(?<![\w/\[\(])([A-HJ-NP-Za-km-z1-9]{40,60})(?![\w/\]\)])/g;
+
+// ✅ GOOD — the strip catches it. The lint test catches it. The
+//          system prompt is the load-bearing layer; if the LLM is
+//          emitting hashes inside parens, tighten the prompt.
+```
+
+```
+// ❌ BAD — render the wall-of-base58 because "the user wants the full hash".
+{message.text}
+
+// ✅ GOOD — the receipt card has the full hash + a copy button + an
+//          explorer link. Prose just shows the shortened preview.
+shortenRawTxHashes(message.text)
+```
+
+```
+// ❌ BAD — silently truncate prose after 80 chars during render.
+//          Hides the regression instead of fixing the source.
+text.slice(0, 80)
+
+// ✅ GOOD — let the prose render in full; the lint test fails the
+//          build; the system prompt rule needs strengthening.
+text
+```
+
+---
+
+## Cross-references
+
+- SPEC 21 spec doc → `t2000/spec/SPEC_21_AGENT_HARNESS_UX_POLISH.md`
+- SPEC 21 entry in build tracker → `audric-build-tracker.md` S.142 (closeout) + S.139 (lock)
+- System prompt → `apps/web/lib/engine/engine-context.ts`
+- Strip helpers → `apps/web/lib/sanitize-text.ts` + `packages/engine/src/strip-pseudo-thinking.ts`
+- Jaccard collapse → `apps/web/lib/thinking-similarity.ts`
+- Lint test → `apps/web/lib/__tests__/narration-contract.test.ts`
+- Token budget gate → `apps/web/lib/engine/__tests__/harness-metrics.test.ts`

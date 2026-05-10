@@ -464,6 +464,52 @@ export function UnifiedTimeline({
   const showSkeleton = isConnecting && lastEngineMsg?.role === 'assistant' && !lastEngineMsg.content;
 
   const hasMessages = engine.messages.length > 0;
+
+  // [SPEC 21.3] Pre-compute, per assistant message in the session, the
+  // last-3 thinking-text strings drawn from EARLIER assistant messages
+  // (so the current message's own thinking isn't compared against itself).
+  // This map is the input to ReasoningTimeline's per-block similarity
+  // collapse decision. Computed once per render; cheap because it walks
+  // the messages array once and only inspects timeline blocks of type
+  // 'thinking'. Cross-message comparison is the only state needed —
+  // intra-message error-recovery is detected inside ReasoningTimeline
+  // by inspecting the IMMEDIATELY preceding block.
+  const priorThinkingTextsByMessageId = useMemo(() => {
+    const map = new Map<string, ReadonlyArray<string>>();
+    const allAssistantThinkingTextsInOrder: string[] = [];
+    let firstAssistantSeen = false;
+    for (const msg of engine.messages) {
+      if (msg.role !== 'assistant') continue;
+      const isFirstAssistant = !firstAssistantSeen;
+      firstAssistantSeen = true;
+      // Snapshot the priors BEFORE pushing this message's thinking — keep
+      // the last 3 (oldest→newest within the window) so the helper has a
+      // bounded comparison set per the SPEC 21.3 contract.
+      map.set(msg.id, allAssistantThinkingTextsInOrder.slice(-3));
+      // First-turn carve-out is plumbed via a parallel map below; this
+      // map only carries the prior texts.
+      void isFirstAssistant;
+      // Append THIS message's thinking text(s) so the next iteration sees
+      // them as priors. A message may contain ≥1 thinking blocks; we
+      // include each as a separate entry — they're emitted at distinct
+      // turn boundaries from the LLM's perspective.
+      if (Array.isArray(msg.timeline)) {
+        for (const block of msg.timeline) {
+          if (block.type === 'thinking' && block.text.trim().length > 0) {
+            allAssistantThinkingTextsInOrder.push(block.text);
+          }
+        }
+      }
+    }
+    return map;
+  }, [engine.messages]);
+  // Companion map: which assistant messages are the FIRST-OF-SESSION carve-out.
+  const firstAssistantMessageId = useMemo(() => {
+    for (const msg of engine.messages) {
+      if (msg.role === 'assistant') return msg.id;
+    }
+    return null;
+  }, [engine.messages]);
   // [F15 / 2026-05-03] Suppress chips when the assistant just asked a
   // question — the answer is yes/no/clarification, not a new prompt.
   // See `endsWithQuestion` JSDoc in `lib/suggested-actions.ts` for the
@@ -517,6 +563,13 @@ export function UnifiedTimeline({
                 onChipDecision={engine.sendChipDecision}
                 onPendingInputSubmit={engine.handlePendingInputSubmit}
                 onSignBackIn={onSignBackIn}
+                // [SPEC 21.3] Cross-message thinking-similarity inputs.
+                // priorThinkingTexts is the last 3 turns' thinking text
+                // (drawn from earlier assistant messages); the first
+                // assistant message of the session gets the carve-out
+                // flag so its thinking always renders fully.
+                priorThinkingTexts={priorThinkingTextsByMessageId.get(entry.msg.id)}
+                isFirstAssistantTurn={entry.msg.id === firstAssistantMessageId}
               />
             </div>
           );

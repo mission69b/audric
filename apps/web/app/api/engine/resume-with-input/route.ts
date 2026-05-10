@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { serializeSSE } from '@t2000/engine';
+import { serializeSSE, withStreamState } from '@t2000/engine';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { validateJwt, isValidSuiAddress } from '@/lib/auth';
 import { createEngine, getSessionStore } from '@/lib/engine/engine-factory';
@@ -221,7 +221,9 @@ export async function POST(request: NextRequest) {
         // rationale.
         const stopHeartbeat = startSseHeartbeat(controller, encoder);
         try {
-          for await (const event of engine.resumeWithInput(pendingInput, finalValues)) {
+          // [SPEC 21.1] Wrap with withStreamState — same rationale as
+          // /api/engine/resume. No-op when no swap_quote tool runs.
+          for await (const event of withStreamState(engine.resumeWithInput(pendingInput, finalValues))) {
             // [chat-route parity] `compaction` is an `EngineEvent` member but
             // NOT a `SSEEvent` member — host stashes the count then drops the
             // frame so it never reaches the wire. Mirrors the chat route

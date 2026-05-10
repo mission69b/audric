@@ -511,7 +511,15 @@ export function applyEventToTimeline(
     // event; it produces no timeline block of its own. The host stashes
     // the shape on `EngineChatMessage.harnessShape` (handled in
     // useEngine.processSSEChunk), and the timeline stays unchanged.
+    //
+    // [SPEC 21.1] `stream_state` is the choreography signal — also a
+    // message-level metadata event consumed by useEngine to set
+    // `EngineChatMessage.transitionState`, then rendered by
+    // `<TransitionChip>` ABOVE the timeline. The timeline itself
+    // stays unchanged so the chip sits cleanly above the existing
+    // reasoning rows without injecting a synthetic block.
     case 'harness_shape':
+    case 'stream_state':
     case 'usage':
     case 'error':
       return current;

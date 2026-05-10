@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { serializeSSE } from '@t2000/engine';
+import { serializeSSE, withStreamState } from '@t2000/engine';
 import type { PendingAction, ContentBlock, EngineEvent } from '@t2000/engine';
 import {
   classifyReadIntents,
@@ -892,7 +892,11 @@ export async function POST(request: NextRequest) {
             ? `${postWriteAnchor}\n\n${trimmedMessage}`
             : trimmedMessage;
 
-          if (!fastPathFired && !chipCancelled) for await (const event of engine.submitMessage(engineSubmitMessage, {
+          // [SPEC 21.1] withStreamState wraps the engine event stream and
+          // inlines `routing` (before swap_quote tool_start) + `quoting`
+          // (after swap_quote tool_result success). The new events fall
+          // through this switch's `default` and serialize at line 1087.
+          if (!fastPathFired && !chipCancelled) for await (const event of withStreamState(engine.submitMessage(engineSubmitMessage, {
             // [SPEC 8 v0.5.1 B3.2] Engine emits the one-shot `harness_shape`
             // event at turn start; host stashes the shape on the assistant
             // EngineChatMessage + on `TurnMetrics.harnessShape`. Falls back
@@ -900,7 +904,7 @@ export async function POST(request: NextRequest) {
             // (shouldn't happen in production — defensive default).
             harnessShape: engineMeta?.harnessShape ?? 'standard',
             harnessRationale: engineMeta?.harnessRationale,
-          })) {
+          }))) {
             // [Phase 0 / SPEC 13] Track every event for stream-close log.
             lastEventType = event.type;
             if (event.type === 'pending_action') pendingActionSeen = true;
