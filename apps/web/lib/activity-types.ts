@@ -71,37 +71,12 @@ export interface ActivityItem {
   bundleOpCount?: number;
 }
 
-// [Activity rebuild / 2026-05-10] Removed the `'autonomous'` filter
-// (autonomy stack retired; the server-side TYPE_FILTER_MAP didn't even
-// have an entry for it, so the chip was a UX no-op showing all chain
-// txs with no app events). `'store'` stays as a forward-looking
-// placeholder for the unshipped Audric Store product (Phase 5 per
-// CLAUDE.md roadmap).
-export type ActivityFilter =
-  | 'all'
-  | 'savings'
-  | 'send'
-  | 'receive'
-  | 'swap'
-  | 'pay'
-  | 'store';
-
-export const ACTIVITY_FILTERS: { id: ActivityFilter; label: string }[] = [
-  { id: 'all', label: 'All' },
-  { id: 'savings', label: 'Savings' },
-  { id: 'send', label: 'Send' },
-  // [Receive chip / 2026-05-10] Slotted next to Send so the verbs read
-  // as a pair. Filters chain rows whose `recordToActivityItem`
-  // rebrands `type` to `'receive'` (incoming P2P transfer where the
-  // user is the recipient, not the signer) AND `pay_received`
-  // AppEvent rows (incoming payment-link receipts). The pay-link
-  // receipt also still appears under the Pay chip — money-came-in is
-  // a valid lens regardless of channel.
-  { id: 'receive', label: 'Receive' },
-  { id: 'swap', label: 'Swap' },
-  { id: 'pay', label: 'Pay' },
-  { id: 'store', label: 'Store' },
-];
+// [Filter chips removal / 2026-05-10] `ActivityFilter` /
+// `ACTIVITY_FILTERS` were removed alongside the chip row in
+// `<ActivityFeed>`. Audric is chat-first — the agent IS the filter
+// ("show me my swaps this week" surfaces a richer answer than any
+// chip would). The route no longer accepts `?type=` and the cache
+// no longer keys on filter.
 
 export interface ActivityPage {
   items: ActivityItem[];

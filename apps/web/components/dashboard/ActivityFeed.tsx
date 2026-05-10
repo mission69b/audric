@@ -12,12 +12,20 @@
 // suggestion events was retired and the mocks were misleading users
 // into thinking they had taken actions they hadn't. `getMockSuggestionItems`
 // + `lib/mocks/activity.ts` were deleted in the same change.
+//
+// [Filter chips removal / 2026-05-10] The horizontal filter chip row
+// (All / Savings / Send / Receive / Swap / Pay / Store) was deleted.
+// Audric is chat-first — the agent IS the filter ("show me my swaps
+// this week" → richer than any chip would surface). Chips were
+// duplicating the sidebar's product-tour role, multiplying empty
+// states (one per filter), and forcing every new feature class to
+// make a chip-taxonomy decision. Activity is now a single
+// chronological stream.
 
 import { useEffect } from 'react';
-import { FilterChips } from './FilterChips';
 import { ActivityCard, ActivityCardSkeleton } from './ActivityCard';
 import type { useActivityFeed } from '@/hooks/useActivityFeed';
-import type { ActivityFilter, ActivityItem } from '@/lib/activity-types';
+import type { ActivityItem } from '@/lib/activity-types';
 
 type FeedState = ReturnType<typeof useActivityFeed>;
 
@@ -26,16 +34,6 @@ interface ActivityFeedProps {
   onAction: (flow: string) => void;
   onExplainTx?: (digest: string) => void;
 }
-
-const EMPTY_STATES: Record<ActivityFilter, { message: string; cta: string; flow: string }> = {
-  all: { message: 'No activity yet.', cta: 'Make your first transaction', flow: 'save' },
-  savings: { message: 'No savings activity yet.', cta: 'Save USDC', flow: 'save' },
-  send: { message: 'No sends yet.', cta: 'Send USDC', flow: 'send' },
-  receive: { message: 'No incoming transfers yet.', cta: 'Share your address', flow: 'receive' },
-  swap: { message: 'No swaps yet.', cta: 'Swap tokens', flow: 'swap' },
-  pay: { message: 'No API calls yet.', cta: 'Ask Audric anything', flow: 'help' },
-  store: { message: 'No store activity yet.', cta: 'Open the store', flow: 'store' },
-};
 
 interface DateGroup {
   label: string;
@@ -54,8 +52,6 @@ export function ActivityFeed({ feed, onAction, onExplainTx }: ActivityFeedProps)
 
   // Re-uppercase the existing labels so they match the section header
   // styling. (`feed.dateGroups` returns "Today" / "Yesterday" / "Fri, Apr 17".)
-  // [Activity rebuild / 2026-05-10] Removed the `filter === 'all'` mock
-  // injection branch — see the file-header comment.
   const displayGroups: DateGroup[] = feed.dateGroups.map((g) => ({
     label: g.label.toUpperCase(),
     items: g.items,
@@ -63,8 +59,6 @@ export function ActivityFeed({ feed, onAction, onExplainTx }: ActivityFeedProps)
 
   return (
     <div className="space-y-4">
-      <FilterChips active={feed.filter} onChange={feed.setFilter} />
-
       {feed.isLoading && (
         <div className="space-y-2">
           {Array.from({ length: 5 }).map((_, i) => (
@@ -73,9 +67,7 @@ export function ActivityFeed({ feed, onAction, onExplainTx }: ActivityFeedProps)
         </div>
       )}
 
-      {!feed.isLoading && displayGroups.length === 0 && (
-        <EmptyState filter={feed.filter} onAction={onAction} />
-      )}
+      {!feed.isLoading && displayGroups.length === 0 && <EmptyState onAction={onAction} />}
 
       {!feed.isLoading && displayGroups.length > 0 && (
         <div className="space-y-5">
@@ -119,23 +111,16 @@ export function ActivityFeed({ feed, onAction, onExplainTx }: ActivityFeedProps)
   );
 }
 
-function EmptyState({
-  filter,
-  onAction,
-}: {
-  filter: ActivityFilter;
-  onAction: (flow: string) => void;
-}) {
-  const state = EMPTY_STATES[filter];
+function EmptyState({ onAction }: { onAction: (flow: string) => void }) {
   return (
     <div className="rounded-md border border-border-subtle bg-surface-sunken p-6 text-center space-y-3">
-      <p className="text-sm text-fg-secondary">{state.message}</p>
+      <p className="text-sm text-fg-secondary">No activity yet.</p>
       <button
         type="button"
-        onClick={() => onAction(state.flow)}
+        onClick={() => onAction('save')}
         className="inline-flex items-center gap-1.5 h-[30px] px-3.5 rounded-pill border border-border-subtle bg-transparent font-mono text-[10px] leading-[14px] tracking-[0.1em] uppercase text-fg-secondary hover:bg-surface-card hover:border-border-strong hover:text-fg-primary transition focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
       >
-        {state.cta} &rsaquo;
+        Make your first transaction &rsaquo;
       </button>
     </div>
   );

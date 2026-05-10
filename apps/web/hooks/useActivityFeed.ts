@@ -1,8 +1,15 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+// useActivityFeed — paginated activity stream backed by /api/activity.
+//
+// [Filter chips removal / 2026-05-10] Dropped the `filter` / `setFilter`
+// state and the `type` query param. Activity is a single chronological
+// stream — agents are the filter ("show me my swaps this week"). The
+// query key no longer needs a filter dimension; the cache is flat.
+
+import { useCallback, useMemo } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
-import type { ActivityFilter, ActivityItem, ActivityPage } from '@/lib/activity-types';
+import type { ActivityItem, ActivityPage } from '@/lib/activity-types';
 
 const LS_LAST_SEEN_PREFIX = 'audric:activity-last-seen:';
 
@@ -56,10 +63,8 @@ function groupByDate(items: ActivityItem[]): DateGroup[] {
 }
 
 export function useActivityFeed(address: string | null) {
-  const [filter, setFilter] = useState<ActivityFilter>('all');
-
   const query = useInfiniteQuery<ActivityPage, Error, { pages: ActivityPage[]; pageParams: (string | undefined)[] }, string[], string | undefined>({
-    queryKey: ['activity-feed', address ?? '', filter],
+    queryKey: ['activity-feed', address ?? ''],
     enabled: !!address,
     staleTime: 30_000,
     refetchInterval: 60_000,
@@ -67,7 +72,6 @@ export function useActivityFeed(address: string | null) {
     queryFn: async ({ pageParam }) => {
       const params = new URLSearchParams({
         address: address!,
-        type: filter,
         limit: '20',
       });
       if (pageParam) params.set('cursor', pageParam);
@@ -94,8 +98,6 @@ export function useActivityFeed(address: string | null) {
   return {
     items,
     dateGroups,
-    filter,
-    setFilter,
     isLoading: query.isLoading,
     hasNextPage: query.hasNextPage ?? false,
     fetchNextPage: query.fetchNextPage,
