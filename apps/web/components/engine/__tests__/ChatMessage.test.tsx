@@ -1,15 +1,14 @@
 // ───────────────────────────────────────────────────────────────────────────
-// SPEC 8 v0.5.1 B3.3 — ChatMessage gate (`pinnedHarnessVersion`)
+// SPEC 23A-P0 (2026-05-11) — ChatMessage rendering (post-rip)
 //
-// The renderer-selector at the heart of B3.3:
-//   - User messages render a bubble (no version logic).
-//   - Assistant messages with `pinnedHarnessVersion='v2'` AND a populated
-//     timeline render <ReasoningTimeline>.
-//   - Otherwise (legacy pin OR empty timeline) → <LegacyReasoningRender>.
-//   - When `pinnedHarnessVersion` is `null`, fall back to the env-var.
+// Pre-rip this file gated tests by `pinnedHarnessVersion` to drive the
+// v2-vs-legacy renderer choice. Post-rip the gate is gone and every
+// assistant turn renders via `<ReasoningTimeline>` (when there's a
+// timeline) or the defensive bare-text fallback (when there isn't).
 //
-// Voice-mode context falls back gracefully when no provider is present
-// (see VoiceModeContext.tsx) — we don't need to wrap test renders.
+// The `pinnedHarnessVersion` prop stays on the interface for one
+// release cycle so the upstream `<UnifiedTimeline>` doesn't need a
+// coordinated edit. Tests confirm the prop is now a no-op.
 // ───────────────────────────────────────────────────────────────────────────
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -17,9 +16,9 @@ import { render } from '@testing-library/react';
 
 const mockEnv = {
   NEXT_PUBLIC_INTERACTIVE_HARNESS: undefined as string | undefined,
-  // The full env type is large; only the key we care about is read by
-  // `interactive-harness.ts`. Other reads in unrelated modules are not
-  // exercised by these renders.
+  // The full env type is large; only the keys actually read by the
+  // modules-under-test matter here. Other env reads route through
+  // unrelated modules that are not exercised by these renders.
 };
 
 vi.mock('@/lib/env', () => ({
@@ -45,7 +44,7 @@ const ASSISTANT_WITH_TIMELINE: EngineChatMessage = {
   ],
 };
 
-describe('ChatMessage — gate behavior (B3.3)', () => {
+describe('ChatMessage — rendering (post-SPEC-23A-P0)', () => {
   beforeEach(() => {
     mockEnv.NEXT_PUBLIC_INTERACTIVE_HARNESS = undefined;
   });
@@ -64,8 +63,7 @@ describe('ChatMessage — gate behavior (B3.3)', () => {
     expect(getByLabelText('Your message')).toBeTruthy();
   });
 
-  it('pinnedHarnessVersion="v2" + populated timeline → renders ReasoningTimeline path', () => {
-    // Flag is OFF — proves the pinned value wins over the env-var.
+  it('assistant + populated timeline → renders the v2 timeline path', () => {
     mockEnv.NEXT_PUBLIC_INTERACTIVE_HARNESS = '0';
     const { container } = render(
       <ChatMessage
@@ -73,15 +71,13 @@ describe('ChatMessage — gate behavior (B3.3)', () => {
         pinnedHarnessVersion="v2"
       />,
     );
-    // Timeline renders with the role="log" wrapper from ChatMessage.
     expect(container.querySelector('[aria-label="Audric response"]')).not.toBeNull();
-    // The text-block path renders the assistant text.
     expect(container.textContent).toContain('Here is your balance.');
   });
 
-  it('pinnedHarnessVersion="legacy" → uses legacy renderer even when env-var is on', () => {
-    // Flag is ON, but the session was pinned to legacy at creation. The
-    // renderer must respect the pin and never flip mid-session.
+  it('pinnedHarnessVersion="legacy" is now ignored — still renders v2 (no legacy renderer left)', () => {
+    // Pre-rip this would have routed to <LegacyReasoningRender>. Post-rip
+    // the prop is a no-op; the v2 timeline renders regardless.
     mockEnv.NEXT_PUBLIC_INTERACTIVE_HARNESS = '1';
     const { container } = render(
       <ChatMessage
@@ -89,18 +85,11 @@ describe('ChatMessage — gate behavior (B3.3)', () => {
         pinnedHarnessVersion="legacy"
       />,
     );
-    // Both renderers wrap in role="log". We check for the structural
-    // marker that's unique to legacy: the ReasoningAccordion / tools tree
-    // doesn't include a `<ReasoningTimeline>` node, but text always
-    // shows. The presence of the text confirms a render happened; the
-    // absence of any timeline-only marker (we use the ReasoningTimeline's
-    // `space-y-2` group of grouped tools doesn't help here, but the
-    // absence of a streaming-text wrapper does — legacy uses `pl-1
-    // text-sm` with a green ✦ glyph).
+    expect(container.querySelector('[aria-label="Audric response"]')).not.toBeNull();
     expect(container.textContent).toContain('Here is your balance.');
   });
 
-  it('pinnedHarnessVersion=null → falls back to env-var (legacy when off)', () => {
+  it('pinnedHarnessVersion=null is now ignored — still renders v2', () => {
     mockEnv.NEXT_PUBLIC_INTERACTIVE_HARNESS = undefined;
     const { container } = render(
       <ChatMessage
@@ -108,14 +97,15 @@ describe('ChatMessage — gate behavior (B3.3)', () => {
         pinnedHarnessVersion={null}
       />,
     );
-    // Body still rendered (whichever path).
     expect(container.textContent).toContain('Here is your balance.');
   });
 
-  it('empty timeline + v2 pin → falls through to legacy (B2.2 invariant)', () => {
-    // A v2-pinned session with an empty `timeline[]` must NOT render the
-    // new path — there's nothing to render. Legacy handles the
-    // "thinking-only" pre-stream case via its own ThinkingState fallback.
+  it('empty timeline → defensive bare-text fallback renders message.content', () => {
+    // Post-rip: when message.timeline is empty/missing the renderer
+    // falls back to a minimal <div> with message.content. Engine
+    // ≥1.4.0 always emits a timeline, so this branch is unreachable
+    // in production today (Upstash sessions all aged out within 24h),
+    // but kept as a defensive surface so we never silently drop output.
     mockEnv.NEXT_PUBLIC_INTERACTIVE_HARNESS = '1';
     const noTimelineMsg: EngineChatMessage = { ...ASSISTANT_BASE, timeline: [] };
     const { container } = render(

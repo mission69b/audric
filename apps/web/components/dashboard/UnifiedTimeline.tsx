@@ -203,9 +203,10 @@ export function UnifiedTimeline({
   // `steps` in the type, callers can silently strip it at the callsite
   // (the bug we just fixed in `PermissionCardBlockView.tsx:74`) and the
   // gate degrades to single-step (step[0]-only) semantics. Mirrors the
-  // tightened prop types on `PermissionCardBlockView` and
-  // `LegacyReasoningRender` so the type system catches a regression at
-  // every consumer.
+  // tightened prop types on `PermissionCardBlockView` so the type
+  // system catches a regression at every consumer.
+  // [SPEC 23A-P0 2026-05-11] `LegacyReasoningRender` was deleted in
+  // the legacy harness rip; only the v2 path's prop type remains here.
   const shouldAutoApprove = useCallback(
     (action: Pick<PendingAction, 'toolName' | 'input' | 'steps'>) =>
       shouldClientAutoApprove(

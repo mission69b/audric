@@ -4,30 +4,35 @@ import { useMemo } from 'react';
 import type { EngineChatMessage, PendingAction } from '@/lib/engine-types';
 import { ThinkingState } from './ThinkingState';
 import { ReasoningTimeline } from './ReasoningTimeline';
-import { LegacyReasoningRender } from './LegacyReasoningRender';
 import { RetryInterruptedTurn } from './RetryInterruptedTurn';
 import { ConfirmChips } from './ConfirmChips';
 import { TransitionChip, type TransitionState } from './timeline/primitives/TransitionChip';
 import type { DenyReason } from './PermissionCard';
-import { currentHarnessVersion, type HarnessVersion } from '@/lib/interactive-harness';
+import type { HarnessVersion } from '@/lib/interactive-harness';
 import { isConfirmChipsEnabled } from '@/lib/confirm-chips';
 import { isTransitionChipEnabled } from '@/lib/harness-transitions';
 import { useVoiceModeContext } from '@/components/dashboard/VoiceModeContext';
 
 // ───────────────────────────────────────────────────────────────────────────
-// SPEC 8 v0.5.1 B3.3 — ChatMessage gate
+// SPEC 23A-P0 (2026-05-11) — Legacy harness rip
 //
-// ChatMessage is now a thin renderer-selector. It:
-//   1. Handles the user-bubble path (shared between v2 and legacy).
-//   2. Picks between the new <ReasoningTimeline> (v2) and
-//      <LegacyReasoningRender> (legacy) based on the per-session
-//      pinned harness version.
+// ChatMessage was a renderer-selector that gated between v2's
+// `<ReasoningTimeline>` and the pre-B2 `<LegacyReasoningRender>` based
+// on a per-session pinned `harnessVersion`. Post-rip there is ONE
+// renderer: v2. The component now:
+//   1. Handles the user-bubble path (no version gating, no change).
+//   2. Renders `<ReasoningTimeline>` for every assistant turn that
+//      has a populated `message.timeline[]`.
+//   3. Falls back to a minimal text block when `message.timeline` is
+//      empty/undefined — a defensive surface for any rehydrated
+//      message that pre-dates the engine's timeline dual-write
+//      (engine ≥1.4.0 always emits a timeline; sessions older than
+//      24h have aged out via Upstash TTL, so this is dead code in
+//      practice, but cheaper to keep than to chase).
 //
-// All assistant-side rendering logic (tools, canvases, thinking,
-// permission-card, voice-mode highlighting, final text) lives in the
-// chosen child. ChatMessage itself does not call any of the rendering
-// hooks — keeping the per-render hook tree of v2 and legacy paths
-// fully independent.
+// The `pinnedHarnessVersion` prop is preserved on the interface for
+// one release cycle so `<UnifiedTimeline>` doesn't need a coordinated
+// edit; it's now ignored at the gate.
 // ───────────────────────────────────────────────────────────────────────────
 
 interface ChatMessageProps {
@@ -61,23 +66,21 @@ interface ChatMessageProps {
    *  "Address from your message" badge. */
   recentUserText?: string;
   /**
-   * [SPEC 8 v0.5.1 B3.3 / G4] Per-session harness version pinned by the
-   * server (via the `session` SSE event / sessions GET response). When
-   * provided, the renderer trusts this value over the `NEXT_PUBLIC_*`
-   * env-var; this is what prevents a flag flip mid-rollout from
-   * changing how a session that started under "legacy" gets rendered
-   * partway through.
-   *
-   * `null` (the unauth/demo path or pre-server-announce moment) falls
-   * back to `currentHarnessVersion()` which reads the env-var.
+   * [SPEC 8 v0.5.1 B3.3 → SPEC 23A-P0, 2026-05-11] Per-session pinned
+   * harness version. Pre-rip this gated between v2 and legacy renderers;
+   * post-rip the legacy branch was deleted and the prop is ignored at
+   * the gate. Kept on the interface for one release cycle so
+   * `<UnifiedTimeline>` (which still passes it from `engine.harnessVersion`)
+   * doesn't need a coordinated edit. Removes in the next minor along
+   * with the `useEngine` state and the rest of the `HarnessVersion`
+   * type chain.
    */
   pinnedHarnessVersion?: HarnessVersion | null;
   /**
    * [SPEC 7 P2.4b] Quote-Refresh handler — forwarded to the
-   * `<PermissionCard>` slot in both the v2 (`<ReasoningTimeline>`) and
-   * legacy (`<LegacyReasoningRender>`) render paths. When omitted, no
-   * Regenerate button appears even on bundles that support it (parent
-   * has opted out of the feature).
+   * `<PermissionCard>` slot in `<ReasoningTimeline>`. When omitted,
+   * no Regenerate button appears even on bundles that support it
+   * (parent has opted out of the feature).
    */
   onRegenerate?: (action: PendingAction) => void;
   regeneratingAttemptIds?: ReadonlySet<string>;
@@ -91,10 +94,8 @@ interface ChatMessageProps {
   onChipDecision?: (decision: { value: 'yes' | 'no'; forStashId: string }) => void;
   /**
    * [SPEC 9 v0.1.3 P9.4] Inline-form submit handler — wired up from
-   * `engine.handlePendingInputSubmit`. Forwarded to the v2
+   * `engine.handlePendingInputSubmit`. Forwarded to
    * `<ReasoningTimeline>` → `<BlockRouter>` → `<PendingInputBlockView>`.
-   * When omitted (legacy path / demo sessions), the form silently
-   * doesn't render (B3 layer handles that).
    */
   onPendingInputSubmit?: (inputId: string, values: Record<string, unknown>) => void;
   /**
@@ -127,7 +128,10 @@ export function ChatMessage({
   contacts,
   walletAddress,
   recentUserText,
-  pinnedHarnessVersion,
+  // pinnedHarnessVersion is intentionally ignored post-SPEC-23A-P0 —
+  // see the prop doc-comment. Destructured here only so callers don't
+  // get `unknown prop` warnings during the deprecation cycle.
+  pinnedHarnessVersion: _pinnedHarnessVersion,
   onRegenerate,
   regeneratingAttemptIds,
   onChipDecision,
@@ -156,20 +160,7 @@ export function ChatMessage({
     );
   }
 
-  // [SPEC 8 v0.5.1 B3.3 / G4] Pinned per-session decision wins over the
-  // env-var. Falls back to `currentHarnessVersion()` for the unauth/
-  // demo path and the brief moment before the server's `session` event
-  // arrives. The empty-timeline guard remains: B2.1 dual-writes the
-  // timeline for every engine ≥1.4.0 message, but a "legacy"-pinned
-  // session never gets the new renderer regardless of timeline contents.
-  const effectiveVersion = pinnedHarnessVersion ?? currentHarnessVersion();
-  const useNewTimeline =
-    effectiveVersion === 'v2' &&
-    message.timeline !== undefined &&
-    message.timeline.length > 0;
-
-  // [SPEC 15 Phase 2 commit 2] Chip render is shared across v2 and
-  // legacy assistant render paths. Three gates, all required:
+  // [SPEC 15 Phase 2 commit 2] Chip render. Three gates, all required:
   //   1. Server emitted `expects_confirm` for this message → payload set.
   //   2. Frontend env flag NEXT_PUBLIC_CONFIRM_CHIPS_V1 is "1"/"true".
   //   3. Caller wired up `onChipDecision` (auth/demo split — unauth
@@ -179,8 +170,7 @@ export function ChatMessage({
   // [v0.7 — Refresh chip removed, 2026-05-04] On expiry the chip
   // shows "Quote expired — ask for a fresh one" and the user retypes.
   // PermissionCard regenerate covers post-dispatch quote refresh on
-  // confirm-tier writes. See `SPEC_15_PHASE2_DESIGN.md` v0.7 for the
-  // production-driven rationale.
+  // confirm-tier writes. See `SPEC_15_PHASE2_DESIGN.md` v0.7.
   const chipsBlock =
     message.expectsConfirm &&
     onChipDecision &&
@@ -192,13 +182,15 @@ export function ChatMessage({
       />
     ) : null;
 
-  if (useNewTimeline) {
-    const hasTools = message.tools && message.tools.length > 0;
+  const hasTimeline = !!(message.timeline && message.timeline.length > 0);
+  const hasTools = !!(message.tools && message.tools.length > 0);
+
+  if (hasTimeline) {
     return (
       <>
         <ChatMessageV2
           message={message}
-          hasTools={!!hasTools}
+          hasTools={hasTools}
           onActionResolve={onActionResolve}
           onSendMessage={onSendMessage}
           contacts={contacts}
@@ -217,26 +209,25 @@ export function ChatMessage({
     );
   }
 
+  // Defensive: assistant message with no timeline. Engine ≥1.4.0 dual-
+  // writes a timeline for every message, and Upstash sessions all aged
+  // out within 24h, so this branch is unreachable in practice. Render
+  // the bare text content + retry pill so we never silently drop
+  // output if the invariant ever breaks.
   return (
     <>
-      <LegacyReasoningRender
-        message={message}
-        onActionResolve={onActionResolve}
-        shouldAutoApprove={shouldAutoApprove}
-        onSendMessage={onSendMessage}
-        contacts={contacts}
-        walletAddress={walletAddress}
-        recentUserText={recentUserText}
-        onRegenerate={onRegenerate}
-        regeneratingAttemptIds={regeneratingAttemptIds}
-      />
-      {/* [B3.4 / Gap J] Legacy path: render the same retry pill so a
-          flag-OFF session that gets cut off still has an obvious
-          recovery affordance. The legacy renderer doesn't own
-          `<RetryInterruptedTurn>` itself — extracting from
-          `LegacyReasoningRender` would force every test fixture to
-          add a voice-mode provider, and ChatMessage already owns the
-          `onSendMessage` callback. */}
+      <div className="space-y-2" role="log" aria-label="Audric response">
+        {message.isThinking && !message.content && !hasTools && (
+          <div className="pl-1">
+            <ThinkingState status="thinking" intensity="active" />
+          </div>
+        )}
+        {message.content && (
+          <div className="pl-1 text-sm text-fg-default whitespace-pre-wrap">
+            {message.content}
+          </div>
+        )}
+      </div>
       {message.interrupted && message.interruptedReplayText && onSendMessage && (
         <RetryInterruptedTurn
           replayText={message.interruptedReplayText}
@@ -252,10 +243,11 @@ export function ChatMessage({
 // SPEC 8 v0.5.1 B3.4 — v2 assistant render branch (audit Gap F)
 //
 // Extracted into a sub-component so the voice-mode hook only runs on
-// the v2 path. The legacy branch already calls `useVoiceModeContext`
-// inside `<LegacyReasoningRender>`, so each render path consults the
-// context independently and the React hook tree stays stable per
-// branch.
+// the v2 path. Pre-SPEC-23A-P0 the legacy branch had its own
+// `useVoiceModeContext` call inside `<LegacyReasoningRender>`; the
+// extraction kept the React hook tree stable per branch. Post-rip
+// there's only one branch but we keep the sub-component split to
+// avoid churning the voice-mode test fixtures.
 // ───────────────────────────────────────────────────────────────────────────
 
 interface ChatMessageV2Props extends Omit<ChatMessageProps, 'pinnedHarnessVersion'> {
@@ -317,9 +309,9 @@ function ChatMessageV2({
         <TransitionChip state={transitionState} />
       )}
 
-      {/* Same "thinking-only" spinner as the legacy path — the timeline
-          doesn't render anything until the first SSE event arrives, so
-          we still need a "Audric is thinking" hint for early frames. */}
+      {/* Same "thinking-only" spinner the renderer falls back to before
+          the first SSE event arrives (timeline doesn't render anything
+          until the first event lands). */}
       {message.isThinking && !message.content && !hasTools && message.timeline!.length === 0 && (
         <div className="pl-1">
           <ThinkingState status="thinking" intensity="active" />

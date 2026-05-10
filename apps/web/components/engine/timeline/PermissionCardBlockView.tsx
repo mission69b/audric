@@ -104,8 +104,9 @@ export function PermissionCardBlockView({
   // because `@t2000/engine` ≥1.16.0 now populates `canRegenerate`
   // on single-write confirm-tier actions whose composition
   // consumed a same-turn regeneratable read (e.g. a $50
-  // swap_execute that referenced a prior `swap_quote`). Same shape
-  // change applied in `LegacyReasoningRender.tsx`.
+  // swap_execute that referenced a prior `swap_quote`).
+  // [SPEC 23A-P0 2026-05-11] `LegacyReasoningRender` was deleted in
+  // the legacy harness rip; this is the only consumer of the shape now.
   const showRegenerate = Boolean(
     onRegenerate &&
       block.payload.canRegenerate &&

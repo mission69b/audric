@@ -247,11 +247,21 @@ const clientSchema = z.object({
   NEXT_PUBLIC_DEPLOYMENT_ID: optionalString,
 
   /**
-   * [SPEC 8 v0.5.1 B2] Feature flag for the new ReasoningTimeline UX.
-   * - "1" / "true" → render the chronological timeline (B2.2 renderer)
-   * - undefined / anything else → render today's ReasoningAccordion
-   * Default OFF. Per-session pinning lands in B3 (harnessVersion on the
-   * Upstash session record); B2 uses a global flag for staged rollout.
+   * [SPEC 23A-P0, 2026-05-11] Reserved kill-switch for the interactive
+   * harness ("v2" ReasoningTimeline). Now the only renderer post-rip;
+   * the legacy `LegacyReasoningRender` path was removed after the
+   * Upstash audit confirmed 0 sessions still pinned to legacy.
+   *
+   * Not consulted by any rendering path post-rip — kept as a symbolic
+   * kill-switch for ≥2 release cycles. If v2 ever regresses, the real
+   * escape hatch is "redeploy a previous commit"; this var sits here
+   * so we can wire it back up if needed without re-adding the env
+   * schema entry.
+   *
+   * Pre-rip history: SPEC 8 v0.5.1 B2 introduced this as a per-session
+   * pinned global flag; B3.7 added the rollout-percent companion
+   * (`NEXT_PUBLIC_INTERACTIVE_HARNESS_ROLLOUT_PERCENT`, removed in this
+   * rip).
    */
   NEXT_PUBLIC_INTERACTIVE_HARNESS: optionalString,
 
@@ -280,33 +290,6 @@ const clientSchema = z.object({
    * That's intentional: chip render is stateless on the client.
    */
   NEXT_PUBLIC_CONFIRM_CHIPS_V1: optionalString,
-
-  /**
-   * [SPEC 8 v0.5.1 B3.7] Graduated rollout percentage for the
-   * interactive harness, evaluated ONLY when `NEXT_PUBLIC_INTERACTIVE_
-   * HARNESS` is also set. Integer string in `0..100` (interpretation:
-   * "X% of distinct user buckets see v2; the remainder stay on legacy").
-   *
-   * - undefined (default) → behave as today: flag-on means EVERY new
-   *   session gets v2 (i.e. effective 100% rollout once flag is on)
-   * - "10" → 10% of distinct user-address buckets see v2
-   * - "50" → 50% — etc.
-   * - "100" → equivalent to undefined (every bucket admitted)
-   *
-   * Bucketing is a deterministic FNV-1a hash of the user's
-   * Sui address (or session id for unauth) modulo 100. Same user
-   * always lands in the same bucket so dashboard aggregations don't
-   * see a user flipping shapes mid-week. Per-session pinning (B3.3)
-   * still applies — once a session is admitted, it stays v2 for its
-   * lifetime even if the dial moves back later.
-   *
-   * Founder workflow:
-   *   Day 1 — set to "10", monitor TurnMetrics 24h
-   *   Day 2 — set to "50", monitor 24h
-   *   Day 3 — set to "100" (or unset entirely)
-   * Rollback path: set to "0" or unset `NEXT_PUBLIC_INTERACTIVE_HARNESS`.
-   */
-  NEXT_PUBLIC_INTERACTIVE_HARNESS_ROLLOUT_PERCENT: optionalString,
 
   /**
    * [SPEC 9 v0.1.3 P9.6] Master rollout flag for the SPEC 9 v0.1.1
@@ -397,8 +380,6 @@ const runtimeEnv = {
   NEXT_PUBLIC_GATEWAY_URL: process.env.NEXT_PUBLIC_GATEWAY_URL,
   NEXT_PUBLIC_DEPLOYMENT_ID: process.env.NEXT_PUBLIC_DEPLOYMENT_ID,
   NEXT_PUBLIC_INTERACTIVE_HARNESS: process.env.NEXT_PUBLIC_INTERACTIVE_HARNESS,
-  NEXT_PUBLIC_INTERACTIVE_HARNESS_ROLLOUT_PERCENT:
-    process.env.NEXT_PUBLIC_INTERACTIVE_HARNESS_ROLLOUT_PERCENT,
   NEXT_PUBLIC_CONFIRM_CHIPS_V1: process.env.NEXT_PUBLIC_CONFIRM_CHIPS_V1,
   NEXT_PUBLIC_HARNESS_V9: process.env.NEXT_PUBLIC_HARNESS_V9,
   NEXT_PUBLIC_HARNESS_TRANSITIONS_V1: process.env.NEXT_PUBLIC_HARNESS_TRANSITIONS_V1,

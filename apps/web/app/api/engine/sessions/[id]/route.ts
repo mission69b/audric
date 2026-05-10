@@ -80,13 +80,14 @@ export async function GET(
     }
   }
 
-  // [B3.3 / G4] Surface the pinned harness version so the client can
-  // gate <ChatMessage> on a stable per-session value when re-loading
-  // an existing session (instead of re-evaluating the env var, which
-  // could mid-rollout differ from the value the session was opened
-  // under). Pre-B3.3 sessions return `undefined`; the client falls
-  // back to the env-var read in that case.
-  const harnessVersion = asHarnessVersion(data.metadata?.harnessVersion);
+  // [SPEC 23A-P0, 2026-05-11] Surface the pinned harness version on
+  // session reload. Post-rip only `'v2'` is reachable in production;
+  // the defensive auto-flip guard below ensures any stale `'legacy'`
+  // pin (e.g. from a restored backup or manual store edit during the
+  // deprecation cycle) deserialises as `'v2'` so the client never
+  // tries to render a non-existent renderer.
+  const rawPin = asHarnessVersion(data.metadata?.harnessVersion);
+  const harnessVersion = rawPin === 'legacy' ? 'v2' : rawPin;
 
   return NextResponse.json({
     id: data.id,
