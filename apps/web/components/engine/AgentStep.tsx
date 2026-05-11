@@ -28,10 +28,14 @@ interface AgentStepProps {
 //   mpp_services (DISCOVER)    → '⊞' (demo 05)
 //   save_contact (CONTACT row) → '👤' (demo 01)
 //
-// Per-MPP-service `pay_api` glyphs (✦ DALL-E, ♪ Suno, ✉ Lob, ✿ Teleflora,
-// 🛒 Walmart, 🎂 Cake, ◇ Walrus, ⊡ Move/Seal etc.) are SPEC 23B territory —
-// they swap on the *underlying service slug* not on the engine tool name,
-// so they live in the per-tool result surface, not this generic fallback.
+// SPEC 24 F4 (2026-05-11) — per-vendor `pay_api` glyphs ship NOW via the
+// `getPayApiGlyph(input)` helper below. The 8 vendor-specific glyphs
+// (✦ DALL-E, 🎙️ Whisper, 💬 GPT-4o, 🎤 ElevenLabs TTS, 🎶 ElevenLabs SFX,
+// 📄 PDFShift, ✉ Lob, 📧 Resend) are dispatched by inspecting the call's
+// URL — covers the locked 5-service supported set per SPEC_24_GATEWAY_INVENTORY.md
+// §8. The base STEP_ICONS map keeps `pay_api: '⚡'` as the fallback for
+// anything else (unsupported vendors, unknown URLs, no input — all rare
+// given the system prompt teaches the LLM to stick to the supported set).
 const STEP_ICONS: Record<string, string> = {
   balance_check: '💰',
   savings_info: '📊',
@@ -116,7 +120,69 @@ const STEP_LABELS: Record<string, string> = {
   update_todo: 'UPDATING PLAN',
 };
 
-export function getStepIcon(toolName: string): string {
+/**
+ * SPEC 24 F4 (locked 2026-05-11) — per-vendor `pay_api` glyph dispatch.
+ *
+ * The base `STEP_ICONS['pay_api']` is `'⚡'` — a generic API-call glyph that
+ * fires for any pay_api tool call regardless of vendor. F4 introduces vendor-
+ * specific glyphs (✦ DALL-E, 🎙️ Whisper, etc.) by inspecting the call's URL,
+ * which is the only field on `pay_api` input that distinguishes one MPP
+ * service from another (the engine tool itself is generic).
+ *
+ * Covers the locked 5-service supported set (11 endpoints) per
+ * SPEC_24_GATEWAY_INVENTORY.md §8:
+ *
+ *   openai      ✦ images / 🎙️ transcription / 💬 chat
+ *   elevenlabs  🎤 TTS / 🎶 sound-generation
+ *   pdfshift    📄
+ *   lob         ✉ (postcards / letters / address-verify all share the icon)
+ *   resend      📧 (transactional + batch email share the icon)
+ *
+ * Falls back to `'⚡'` (the generic pay_api glyph) for:
+ *   - undefined / non-object input (engine state where input hasn't streamed yet)
+ *   - input.url present but no vendor pattern matches (dropped service the
+ *     prompt should have prevented — telemetry surfaces these as a signal)
+ *
+ * To add a vendor (after re-enabling via the SPEC_24_GATEWAY_INVENTORY.md §8
+ * add-back recipe), add ONE `if (url.includes('/<vendor>')) return '<glyph>';`
+ * line below. No type changes, no test rewrites — pin the new glyph with a
+ * single test asserting the case.
+ */
+export function getPayApiGlyph(input: unknown): string {
+  if (typeof input !== 'object' || input === null) return '⚡';
+  const url = (input as { url?: unknown }).url;
+  if (typeof url !== 'string') return '⚡';
+
+  // OpenAI — endpoint-aware (3 supported endpoints)
+  if (url.includes('/openai/v1/images')) return '✦';                  // DALL-E
+  if (url.includes('/openai/v1/audio/transcriptions')) return '🎙️';  // Whisper
+  if (url.includes('/openai/v1/chat')) return '💬';                   // GPT-4o
+  // ElevenLabs — endpoint-aware (2 supported endpoints)
+  if (url.includes('/elevenlabs/v1/text-to-speech')) return '🎤';     // premium TTS
+  if (url.includes('/elevenlabs/v1/sound-generation')) return '🎶';   // sound effects
+  // Single-icon services (multiple endpoints, but glyph doesn't differentiate)
+  if (url.includes('/pdfshift')) return '📄';
+  if (url.includes('/lob')) return '✉';
+  if (url.includes('/resend')) return '📧';
+  // Unsupported vendor (post-SPEC-24 the system prompt should keep the LLM
+  // from getting here — telemetry surfaces fall-throughs as a signal that
+  // the prompt isn't doing its job).
+  return '⚡';
+}
+
+/**
+ * SPEC 24 F4 — `getStepIcon` extended to accept optional `input` so callers
+ * with access to a tool's input (every callsite today: ToolBlockView /
+ * ParallelToolsGroup / PostWriteRefreshSurface) can opt into vendor-aware
+ * `pay_api` glyphs without a call-site if/else. Other tools ignore `input`.
+ *
+ * Backward compatible: callers that don't pass `input` get the same glyph
+ * map lookup they got pre-F4 (pay_api → '⚡').
+ */
+export function getStepIcon(toolName: string, input?: unknown): string {
+  if (toolName === 'pay_api' && input !== undefined) {
+    return getPayApiGlyph(input);
+  }
   return STEP_ICONS[toolName] ?? '⚙️';
 }
 

@@ -106,7 +106,7 @@ export function ToolBlockView({ block, isStreaming, headerless, variant }: ToolB
     <div className="space-y-1">
       {!headerless && (
         <AgentStep
-          icon={getStepIcon(block.toolName)}
+          icon={getStepIcon(block.toolName, block.input)}
           label={getStepLabel(block.toolName)}
           status={stepStatus}
           meta={headerMeta}

@@ -171,7 +171,7 @@ export function ParallelToolsGroup({ tools, isStreaming }: ParallelToolsGroupPro
         {tools.map((tool, i) => (
           <ParallelToolsRow
             key={tool.toolUseId}
-            glyph={getStepIcon(tool.toolName)}
+            glyph={getStepIcon(tool.toolName, tool.input)}
             label={getStepLabel(tool.toolName)}
             sub={rowSub(tool)}
             status={toRowStatus(tool.status)}

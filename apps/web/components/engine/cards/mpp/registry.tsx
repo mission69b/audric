@@ -1,46 +1,59 @@
 /**
- * SPEC 23B-MPP1 — MPP service renderer registry.
+ * SPEC 23B-MPP1 + SPEC 24 F3 — MPP service renderer registry.
  *
- * The `pay_api` engine tool can route to ~40 different MPP gateway services
- * (DALL-E, Suno, ElevenLabs, PDFShift, Lob, Teleflora, CakeBoss, Amazon, …).
- * Pre-MPP1 every service shared one generic 3-line "Service / Cost / Delivery"
- * receipt — the lowest-fidelity surface in the entire harness despite being
- * the moat for the Audric Store launch.
+ * The `pay_api` engine tool routes to MPP gateway services. Pre-SPEC-24,
+ * the audric registry carried 12 vendor entries — but the Phase 1 audit
+ * (see `spec/SPEC_24_GATEWAY_INVENTORY.md` §4) found that 7 of those were
+ * DEAD (services not actually deployed on the gateway: suno, teleflora,
+ * cakeboss, amazon, walmart, partycity, party-city) and 2 were misnamed
+ * aliases (dalle, dall-e — actual gateway slug is `openai`).
  *
- * MPP1 (this file) defines the dispatch shape ONLY. It does NOT wire into
- * the consuming card — that is B-MPP2's job (one-line callsite swap).
- * Splitting the dispatch from the wiring keeps MPP1 pure-additive: zero
- * risk to the existing pay_api receipt while the per-service primitives
- * land + iterate.
+ * SPEC 24 F3 (this rewrite, locked 2026-05-11) prunes the registry to the
+ * **5 services Audric officially supports** (per SPEC_24_GATEWAY_INVENTORY.md
+ * §8). Every other gateway service falls through to `<GenericMppReceipt>` —
+ * but that path should be RARE, because the system prompt (engine 1.29.0,
+ * SPEC 24 F1) teaches the LLM to decline honestly for unsupported vendors
+ * instead of routing through pay_api hoping the result will render.
  *
- * Architecture:
- *   1. PayApiResult — the shape `executeToolAction.pay_api` returns to the
- *      timeline. Mirrors `ServiceResult` from `hooks/useAgent.ts`. Note:
- *      ServiceResult does NOT carry a `tx` field — only `paymentDigest` —
- *      so `TransactionReceiptCard`'s `if (!data.tx) return null` rejects
- *      every pay_api result today (its `getHeroLines.pay_api` branch is
- *      dead code that has never executed in production). Legacy fields
- *      (serviceName / amount / deliveryEstimate) are kept for migration
- *      symmetry — only `<GenericMppReceipt>` reads them now.
- *   2. MppServiceRenderer — `(data: PayApiResult) => ReactNode`. Pure fn,
- *      no hooks, no side effects. Each renderer extracts its own fields
- *      defensively from `data.result` (vendor-specific shape).
+ * Locked supported set:
+ *
+ *   openai      — endpoint-aware: DALL-E → CardPreview, Whisper/chat → VendorReceipt
+ *   elevenlabs  — TrackPlayer (TTS + sound-gen both audio)
+ *   pdfshift    — BookCover (HTML/URL → PDF)
+ *   lob         — VendorReceipt (postcards / letters / address-verify)
+ *   resend      — VendorReceipt (transactional + batch email)
+ *
+ * Add-back recipe (when a dropped service comes back online — e.g. Fal Recraft
+ * for Audric Store creators wanting branded vector art, or Suno when Phase 5
+ * deploys it):
+ *
+ *   1. Add ONE line to `MPP_SERVICE_RENDERERS` below:
+ *        fal: (data) => <CardPreview data={data} />,
+ *
+ *   2. Add ONE line to `getPayApiGlyph` in `AgentStep.tsx` (SPEC 24 F4):
+ *        if (url.includes('/fal/')) return '✦';
+ *
+ *   3. Add ONE line to the system prompt's § MPP services block:
+ *        fal — image gen $0.03 (Flux Dev / Pro / Recraft / Realism)
+ *
+ *   4. Add ONE smoke-harness test in `apps/web/scripts/smoke-mpp.ts` (Phase 3).
+ *
+ * Total cost per add-back: ~5 min. Documented here so the operator who needs
+ * to re-enable a service can do it without re-reading SPEC 24.
+ *
+ * Architecture (unchanged from MPP1):
+ *   1. PayApiResult — mirrors `ServiceResult` from `hooks/useAgent.ts`.
+ *      No `tx` field, only `paymentDigest`.
+ *   2. MppServiceRenderer — `(data: PayApiResult) => ReactNode`. Pure fn.
  *   3. MPP_SERVICE_RENDERERS — map keyed on the normalised vendor slug
  *      (first path segment of `serviceId`).
  *   4. renderMppService(data) — dispatch fn with fallback to
- *      <GenericMppReceipt>.
+ *      `<GenericMppReceipt>`.
  *
- * B-MPP2 wiring path (planned): add `pay_api: (result) => renderMppService(result.data)`
- * to the `CARD_RENDERERS` map in `ToolResultCard.tsx`. This bypasses the
- * dead `TransactionReceiptCard.pay_api` branch entirely. Each primitive is
- * therefore SELF-CONTAINED — it owns its chrome AND its `<SuiscanLink>`
+ * Wiring (unchanged from MPP2): `CARD_RENDERERS['pay_api']` in
+ * `ToolResultCard.tsx` calls `renderMppService(extractData(result))`.
+ * Each primitive is self-contained — owns its chrome AND its `<SuiscanLink>`
  * (rendered automatically by `<MppCardShell txDigest={data.paymentDigest}>`).
- *
- * Slug source of truth: `serviceId` from `ServiceResult` (the audric host
- * sets this to the gateway path, e.g. `fal/fal-ai/flux/dev`,
- * `elevenlabs/v1/text-to-speech/...`, `lob/v1/postcards`). NeonDB's
- * `ServicePurchase.serviceId` confirms this shape across the 5 services
- * actually called in production over the last 30d.
  */
 
 import type { ReactNode } from 'react';
@@ -110,46 +123,44 @@ export function normaliseServiceSlug(serviceId: string | undefined | null): stri
 }
 
 /**
- * Vendor-slug → renderer map. Add entries here as new MPP services come
- * online. Order doesn't matter (key-based lookup).
+ * SPEC 24 F3 — endpoint-aware OpenAI dispatch.
  *
- * Keys cover the 5 services confirmed in NeonDB last 30d (anthropic, fal,
- * elevenlabs, lob, openweather) plus the demo bar references (suno,
- * pdfshift, teleflora, cakeboss, amazon, walmart, partycity).
+ * The `openai` vendor exposes 3 supported endpoints (DALL-E images,
+ * Whisper transcription, GPT-4o chat — see `SERVICE_PRICES` in the engine
+ * `pay.ts` for pricing). Each endpoint produces a different result shape:
+ *   - images/generations  → returns image URL → CardPreview
+ *   - audio/transcriptions → returns transcript text → VendorReceipt
+ *   - chat/completions    → returns completion text → VendorReceipt
  *
- * Aliases: some vendors fan out across multiple gateway names (e.g. the
- * legacy `dalle` slug for what is now `fal/fal-ai/flux/dev`). Both keys
- * route to the same renderer so historical data still pretty-prints.
+ * Dispatch on `serviceId` substring (which equals the gateway path with the
+ * `https://mpp.t2000.ai/` prefix stripped; e.g. `openai/v1/images/generations`).
+ * Fall-through returns VendorReceipt for any future supported openai endpoint.
+ */
+function renderOpenai(data: PayApiResult): ReactNode {
+  const serviceId = data.serviceId ?? '';
+  if (serviceId.includes('/v1/images/generations')) {
+    return <CardPreview data={data} />;
+  }
+  // Whisper transcription, GPT-4o chat, and any future text-result endpoint
+  // render as an OpenAI vendor receipt (vendor tag tells the user which
+  // vendor was billed, the cost line tells them how much).
+  return <VendorReceipt data={data} vendor="OpenAI" />;
+}
+
+/**
+ * Vendor-slug → renderer map. SPEC 24 F3 (locked 2026-05-11): pruned to the
+ * 5 supported services. Every other vendor falls through to
+ * `<GenericMppReceipt>` (the catch-all path should be RARE — system prompt
+ * keeps the LLM in the supported set).
+ *
+ * Adding a vendor back: see the add-back recipe in the file header.
  */
 export const MPP_SERVICE_RENDERERS: Record<string, MppServiceRenderer> = {
-  // Image generation → CardPreview
-  fal: (data) => <CardPreview data={data} />,
-  dalle: (data) => <CardPreview data={data} />,
-  'dall-e': (data) => <CardPreview data={data} />,
-
-  // Audio generation → TrackPlayer
-  suno: (data) => <TrackPlayer data={data} />,
+  openai: renderOpenai,
   elevenlabs: (data) => <TrackPlayer data={data} />,
-
-  // PDF / book binding → BookCover
   pdfshift: (data) => <BookCover data={data} />,
-
-  // Physical-fulfilment vendors → VendorReceipt
   lob: (data) => <VendorReceipt data={data} vendor="Lob" />,
-  teleflora: (data) => <VendorReceipt data={data} vendor="Teleflora" />,
-  cakeboss: (data) => <VendorReceipt data={data} vendor="CakeBoss" />,
-  amazon: (data) => <VendorReceipt data={data} vendor="Amazon" />,
-  walmart: (data) => <VendorReceipt data={data} vendor="Walmart" />,
-  partycity: (data) => <VendorReceipt data={data} vendor="Party City" />,
-  'party-city': (data) => <VendorReceipt data={data} vendor="Party City" />,
-
-  // Data / structured-response vendors → VendorReceipt (default vendor)
-  // These ARE called in production but produce text/JSON output that
-  // doesn't warrant a bespoke surface. Render as a vendor receipt so
-  // the user sees the cost + status without the dead-generic 3-line
-  // fallback firing.
-  openweather: (data) => <VendorReceipt data={data} vendor="OpenWeather" />,
-  anthropic: (data) => <VendorReceipt data={data} vendor="Anthropic" />,
+  resend: (data) => <VendorReceipt data={data} vendor="Resend" />,
 };
 
 /**
