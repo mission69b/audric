@@ -464,6 +464,8 @@ describe('STATIC_SYSTEM_PROMPT — B3.6 budget gate', () => {
     //   - Post-fee-disclosure (May 2026): 10,300 tokens   ( +50 budget)
     //   - Post-SPEC 9 P9.2 (May 2026):    10,400 tokens   (+100 budget)
     //   - Post-CHIP-Review-2 F-11b APY:   10,425 tokens   ( +25 budget)
+    //   - Post-SPEC 21.3 meta-obs ban:    10,500 tokens   ( +75 budget)
+    //   - Post-SPEC 24 MPP rewrite:       10,700 tokens   (+200 budget)
     //
     // B3.6 added the "Mid-flight narration & todos" section + the
     // `<eval_summary>` emission contract.
@@ -568,6 +570,33 @@ describe('STATIC_SYSTEM_PROMPT — B3.6 budget gate', () => {
     // 2026-05-10 as part of the SPEC 21 ship; ceiling bumped +75
     // (10_425 → 10_500).
     //
+    // SPEC 24 MPP integration audit (May 2026 — pre-founder-smoke audit
+    // discovered audric's STATIC_SYSTEM_PROMPT was completely overriding
+    // the engine's `DEFAULT_SYSTEM_PROMPT`, so the SPEC 24 F1 + G1/G2/G3
+    // prompt rewrite shipped in `@t2000/engine@1.29.0` and `1.29.1` was
+    // dead-on-arrival in production. Audric's prompt was still teaching
+    // the LLM to call DROPPED gateway vendors (deepl, openweather, fal,
+    // brave) as quick-references, which would silently fail or fall
+    // through to GenericMppReceipt during founder smoke. Replaced the
+    // pre-SPEC-24 "## MPP services (40+ real-world APIs)" block with the
+    // locked 5-service set (openai/elevenlabs/pdfshift/lob/resend) +
+    // intent map + G1 (GPT-4o gating: native default, paid only on
+    // explicit request) + G2 (list-only-5-services constraint, never
+    // enumerate full catalog) + G3 (decline-honestly vs CAN-do-natively
+    // split, with translation/summarization correctly classified as
+    // native) + DALL-E-based postcard flow (Fal Flux dropped). Rewrote
+    // the postcard step 4 to point at mpp_services for the full lob body
+    // schema instead of inlining the 570-char JSON, recovering ~430
+    // chars vs the pre-SPEC-24 baseline. Net add was ~200 tokens after
+    // compression (started at +853 tokens after the literal port,
+    // trimmed Multi-step compositions paragraph + dense paragraph form
+    // for CANNOT/CAN-do lists + intent-map one-liner). Pinned by new
+    // `lib/engine/__tests__/engine-context.test.ts` (12 tests) so a
+    // future prompt edit cannot silently re-introduce dropped vendors,
+    // drop the G1/G2/G3 wording, or revert the postcard flow to Fal.
+    // Founder-approved 2026-05-12 as the only path to unblock founder
+    // smoke; ceiling bumped +200 (10_500 → 10_700).
+    //
     // Why a hard char ceiling instead of a delta:
     //   - Hardcoding the ceiling beats hardcoding both halves; the test
     //     trips on ANY future edit that pushes the prompt past the
@@ -580,7 +609,7 @@ describe('STATIC_SYSTEM_PROMPT — B3.6 budget gate', () => {
     //      a new entry in the ceiling-history table above.
     const { STATIC_SYSTEM_PROMPT } = await import('../engine-context');
     const tokens = Math.ceil(STATIC_SYSTEM_PROMPT.length / 4);
-    expect(tokens).toBeLessThanOrEqual(10_500);
+    expect(tokens).toBeLessThanOrEqual(10_700);
   });
 });
 
