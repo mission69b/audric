@@ -268,12 +268,11 @@ function getHeroLines(data: TxReceiptData, toolName: string): HeroLine[] {
     return lines;
   }
 
-  if (toolName === 'pay_api') {
-    if (data.serviceName) lines.push({ label: 'Service', value: data.serviceName });
-    if (data.amount != null) lines.push({ label: 'Cost', value: `$${fmtAmt(data.amount)}` });
-    if (data.deliveryEstimate) lines.push({ label: 'Delivery', value: data.deliveryEstimate });
-    return lines;
-  }
+  // Note: `pay_api` is intentionally absent here. SPEC 23B-MPP2 routes it
+  // through `ToolResultCard.CARD_RENDERERS['pay_api']` → `renderMppService()`
+  // (per-vendor surface). The pre-MPP2 branch here was dead code anyway —
+  // ServiceResult has no `tx` field, so the outer `if (!data.tx) return null`
+  // guard rejected every pay_api result before this branch could execute.
 
   if (data.amount != null) {
     lines.push({ label: 'Amount', value: `${fmtAmt(data.amount)} ${data.asset ?? 'USDC'}` });

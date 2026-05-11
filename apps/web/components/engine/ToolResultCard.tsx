@@ -21,13 +21,17 @@ import { StakingCard } from './cards/StakingCard';
 import { ProtocolCard } from './cards/ProtocolCard';
 import { PriceCard } from './cards/PriceCard';
 import { ConfirmationChip } from './cards/ConfirmationChip';
+import { renderMppService, type PayApiResult } from './cards/mpp';
 
 const WRITE_TOOL_NAMES = new Set([
   'save_deposit', 'withdraw', 'send_transfer', 'swap_execute',
   'volo_stake', 'volo_unstake', 'borrow', 'repay_debt', 'claim_rewards',
   // [Track B / 2026-05-08] Compound write — atomic claim+swap+save in one PTB.
   'harvest_rewards',
-  'pay_api',
+  // pay_api is intentionally absent from this list. ServiceResult has no
+  // `tx` field (only `paymentDigest`), so the WRITE_TOOL_NAMES fallback
+  // (which gates on `'tx' in data`) would always reject it. SPEC 23B-MPP2
+  // routes pay_api through CARD_RENDERERS below — see the `pay_api` entry.
 ]);
 
 /**
@@ -168,6 +172,24 @@ const CARD_RENDERERS: Record<string, CardRenderer> = {
     const data = extractData(result);
     if (!Array.isArray(data)) return null;
     return <PriceCard data={data as Parameters<typeof PriceCard>[0]['data']} />;
+  },
+  // ─── SPEC 23B-MPP2 — pay_api per-vendor surface dispatch ──────────────────
+  // The `pay_api` engine tool is the user-facing front of the MPP gateway
+  // (40+ services: DALL-E, Suno, ElevenLabs, PDFShift, Lob, Teleflora,
+  // Amazon, …). Pre-MPP2 the result fell through to TransactionReceiptCard
+  // → `'tx' in data` check → null (because ServiceResult only carries
+  // `paymentDigest`, not `tx`) — i.e. every successful pay_api call rendered
+  // NOTHING in chat. MPP2 routes the result through `renderMppService`
+  // which dispatches to the per-vendor primitive (image preview, audio
+  // player, PDF cover, etc.) registered in `cards/mpp/registry.tsx`.
+  //
+  // Shape: host's `executeToolAction.pay_api` returns
+  //   `{ success: true, data: { success, paymentDigest, price, serviceId, result } }`
+  // → `extractData` unwraps `.data` → directly usable as `PayApiResult`.
+  pay_api: (result) => {
+    const data = extractData(result);
+    if (!data || typeof data !== 'object') return null;
+    return <>{renderMppService(data as PayApiResult)}</>;
   },
   // ─── SPEC 23B — N1 / N2 / N6 — confirmation chips for no-tx-receipt writes ──
   // These three tools don't produce on-chain transactions, so they bypass
