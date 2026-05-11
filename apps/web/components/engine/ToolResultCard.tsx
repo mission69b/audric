@@ -21,6 +21,7 @@ import { StakingCard } from './cards/StakingCard';
 import { ProtocolCard } from './cards/ProtocolCard';
 import { PriceCard } from './cards/PriceCard';
 import { ConfirmationChip } from './cards/ConfirmationChip';
+import { SuinsResolution } from './cards/SuinsResolution';
 import { renderMppService, type PayApiResult } from './cards/mpp';
 
 const WRITE_TOOL_NAMES = new Set([
@@ -236,6 +237,36 @@ const CARD_RENDERERS: Record<string, CardRenderer> = {
         label="CONTACT SAVED"
         detail={detail}
         tone="success"
+      />
+    );
+  },
+  // ─── SPEC 23B — N4 — resolve_suins inline bidirectional surface ──────────
+  // Pre-N4 the tool fell through to `null` — the user only saw the LLM's
+  // prose with no UI confirmation of which way the lookup ran or whether
+  // the name was actually registered. SuinsResolution renders the same
+  // inline-chip chrome as N1/N2/N6 (ConfirmationChip) but with a bi-token
+  // arrow shape (source → target) and a verified / +N more / not registered
+  // status indicator. See SuinsResolution.tsx for the four render states.
+  resolve_suins: (result) => {
+    const data = extractData(result);
+    if (!data || typeof data !== 'object') return null;
+    const r = data as Partial<{
+      direction: 'forward' | 'reverse';
+      query: string;
+      address: string | null;
+      registered: boolean;
+      primary: string | null;
+      names: string[];
+    }>;
+    if (!r.direction || !r.query) return null;
+    return (
+      <SuinsResolution
+        direction={r.direction}
+        query={r.query}
+        address={r.address}
+        registered={r.registered}
+        primary={r.primary}
+        names={r.names}
       />
     );
   },
