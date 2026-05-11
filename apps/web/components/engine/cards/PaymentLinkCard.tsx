@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { CardShell, MonoLabel, fmtUsd } from './primitives';
+import { QrCode } from '@/components/dashboard/QrCode';
 
 interface PaymentLink {
   slug: string;
@@ -75,14 +76,22 @@ export function PaymentLinkCard({ data }: { data: unknown }) {
         </CardShell>
       );
     }
+    // [SPEC 23B-W2] List density: tightened row padding (py-2 → py-1.5),
+    // collapsed gap (space-y-2 → space-y-1.5), and removed the
+    // double-rendered slug — pre-W2 the slug appeared both inside the
+    // label (`Link ${slug.slice(0,6)}` when no label) AND below as its
+    // own row, doubling the apparent slug surface and pushing the actual
+    // copyable URL out of view in a 5-link list. Now: label takes
+    // precedence ("Receipt for Mom" or similar), slug appears once
+    // below as the canonical short-id.
     return (
       <CardShell title="Payment Links">
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           {d.links.map((l) => (
-            <div key={l.slug} className="py-2 border-b border-border-subtle last:border-0">
+            <div key={l.slug} className="py-1.5 border-b border-border-subtle last:border-0">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-sm text-fg-primary truncate">{l.label ?? `Link ${l.slug.slice(0, 6)}`}</p>
+                  <p className="text-sm text-fg-primary truncate">{l.label ?? 'Payment Link'}</p>
                   <span className="font-mono text-[11px] text-fg-muted">
                     {l.amount != null ? fmtUsd(l.amount) : 'Open amount'} · {new Date(l.createdAt).toLocaleDateString()}
                   </span>
@@ -103,6 +112,12 @@ export function PaymentLinkCard({ data }: { data: unknown }) {
   const link = d as PaymentLink;
   const amountStr = link.amount != null ? fmtUsd(link.amount) : 'Open amount';
 
+  // [SPEC 23B-W2] QR snippet on single-link branch — every payment link
+  // resolves to a real `audric.ai/...` URL, so a 96px QR is all the
+  // user (or their counterparty) needs to scan from another device.
+  // Only renders on the single-create branch — list rows would be too
+  // noisy with one QR per row. Placed AFTER the URL+copy block so the
+  // primary copy CTA stays at the top of the action zone.
   return (
     <CardShell title="Payment Link Created">
       <div className="space-y-3">
@@ -130,6 +145,12 @@ export function PaymentLinkCard({ data }: { data: unknown }) {
             {link.url}
           </div>
           <CopyButton text={link.url} />
+        </div>
+        <div className="flex flex-col items-center gap-2 pt-2 border-t border-border-subtle">
+          <div className="bg-surface-card p-2 rounded-md border border-border-subtle">
+            <QrCode value={link.url} size={96} />
+          </div>
+          <MonoLabel>Scan to pay</MonoLabel>
         </div>
       </div>
     </CardShell>

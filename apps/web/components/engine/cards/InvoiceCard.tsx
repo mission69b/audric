@@ -1,6 +1,7 @@
 'use client';
 
 import { CardShell, MonoLabel, fmtUsd } from './primitives';
+import { QrCode } from '@/components/dashboard/QrCode';
 
 interface Invoice {
   slug: string;
@@ -63,11 +64,17 @@ export function InvoiceCard({ data }: { data: unknown }) {
         </CardShell>
       );
     }
+    // [SPEC 23B-W2] List density: tightened row padding (py-2 → py-1.5)
+    // and gap (space-y-2 → space-y-1.5) to match the PaymentLinkCard
+    // list. Invoice list entries already had a non-redundant slug/label
+    // split (label is required on Invoice, optional on PaymentLink), so
+    // no double-render to fix here — the change is purely vertical
+    // density.
     return (
       <CardShell title="Invoices">
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           {d.invoices.map((inv) => (
-            <div key={inv.slug} className="py-2 border-b border-border-subtle last:border-0">
+            <div key={inv.slug} className="py-1.5 border-b border-border-subtle last:border-0">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-sm text-fg-primary truncate">{inv.label}</p>
@@ -88,6 +95,10 @@ export function InvoiceCard({ data }: { data: unknown }) {
 
   const inv = d as Invoice;
 
+  // [SPEC 23B-W2] QR snippet on single-invoice branch — same shape as
+  // PaymentLinkCard. Caption is "Scan to pay" because every audric
+  // invoice URL resolves to a payable surface (the invoice IS the
+  // payment request).
   return (
     <CardShell title="Invoice Created">
       <div className="space-y-3">
@@ -113,6 +124,12 @@ export function InvoiceCard({ data }: { data: unknown }) {
             {inv.url}
           </div>
           <CopyButton text={inv.url} />
+        </div>
+        <div className="flex flex-col items-center gap-2 pt-2 border-t border-border-subtle">
+          <div className="bg-surface-card p-2 rounded-md border border-border-subtle">
+            <QrCode value={inv.url} size={96} />
+          </div>
+          <MonoLabel>Scan to pay</MonoLabel>
         </div>
       </div>
     </CardShell>
