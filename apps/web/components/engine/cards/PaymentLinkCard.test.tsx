@@ -57,6 +57,39 @@ describe('PaymentLinkCard (single branch)', () => {
     expect(copyIdx).toBeGreaterThan(urlIdx);
     expect(scanIdx).toBeGreaterThan(copyIdx);
   });
+
+  it('renders the memo row when memo is present (and skips it when null)', () => {
+    // [W2 audit] Pre-existing render path — pinning so a future "tidy
+    // up the conditional rows" refactor can't silently drop the memo.
+    const withMemo = { ...single, memo: 'For Tuesday lunch at Tartine' };
+    const { container, rerender } = render(<PaymentLinkCard data={withMemo} />);
+    expect(container.textContent).toContain('Memo');
+    expect(container.textContent).toContain('For Tuesday lunch at Tartine');
+    rerender(<PaymentLinkCard data={single} />);
+    expect(container.textContent).not.toContain('Memo');
+  });
+
+  it('renders the expires row when expiresAt is present (and skips it when null)', () => {
+    // [W2 audit] Same defensive contract as memo. Date-format assertion
+    // is loose (`Expires` label only) because `toLocaleDateString()`
+    // output is locale-dependent and the unit test runs under whatever
+    // node default the CI runner picks.
+    const withExpiry = { ...single, expiresAt: '2026-12-31T23:59:59Z' };
+    const { container, rerender } = render(<PaymentLinkCard data={withExpiry} />);
+    expect(container.textContent).toContain('Expires');
+    rerender(<PaymentLinkCard data={single} />);
+    expect(container.textContent).not.toContain('Expires');
+  });
+
+  it('renders "Open amount" when amount is null (open-amount payment link)', () => {
+    // [W2 audit] PaymentLink supports `amount: null` (user-decides at
+    // pay-time). The renderer collapses to "Open amount" instead of
+    // formatting `null` as `$NaN` or "$0.00". Pin the contract.
+    const openAmount = { ...single, amount: null };
+    const { container } = render(<PaymentLinkCard data={openAmount} />);
+    expect(container.textContent).toContain('Open amount');
+    expect(container.textContent).not.toContain('$NaN');
+  });
 });
 
 describe('PaymentLinkCard (list branch)', () => {
@@ -117,6 +150,19 @@ describe('PaymentLinkCard (list branch)', () => {
     const text = container.textContent ?? '';
     expect(text).toContain('Active');
     expect(text).toContain('Paid');
+  });
+
+  it('renders the Copy button only on rows with status "active" (not on paid rows)', () => {
+    // [W2 audit] Copy is a per-row write; gating it to active links
+    // prevents users from re-sharing a paid/cancelled link by accident.
+    // Pin the gating contract — pre-W2 behavior preserved.
+    const { container } = render(<PaymentLinkCard data={list} />);
+    const copyButtons = container.querySelectorAll('button');
+    // Exactly ONE Copy button across two rows (the active one).
+    const copyTextButtons = Array.from(copyButtons).filter((b) =>
+      (b.textContent ?? '').includes('Copy link'),
+    );
+    expect(copyTextButtons).toHaveLength(1);
   });
 
   it('handles the empty list (no QR, no row, just empty-state copy)', () => {

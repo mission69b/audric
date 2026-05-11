@@ -56,6 +56,28 @@ describe('InvoiceCard (single branch)', () => {
     expect(copyIdx).toBeGreaterThan(urlIdx);
     expect(scanIdx).toBeGreaterThan(copyIdx);
   });
+
+  it('renders the memo row when memo is present (and skips it when null)', () => {
+    // [W2 audit] Parity with PaymentLinkCard's memo test — pin the
+    // conditional row so a future refactor can't drop it.
+    const withMemo = { ...single, memo: 'Net-30 terms, ACH preferred' };
+    const { container, rerender } = render(<InvoiceCard data={withMemo} />);
+    expect(container.textContent).toContain('Memo');
+    expect(container.textContent).toContain('Net-30 terms');
+    rerender(<InvoiceCard data={single} />);
+    expect(container.textContent).not.toContain('Memo');
+  });
+
+  it('renders the due date row when dueDate is present (and skips it when null)', () => {
+    // [W2 audit] Parity with PaymentLinkCard's expiresAt test. Loose
+    // assertion on label only — toLocaleDateString output is locale-
+    // dependent in CI.
+    const withDue = { ...single, dueDate: '2026-12-31T00:00:00Z' };
+    const { container, rerender } = render(<InvoiceCard data={withDue} />);
+    expect(container.textContent).toContain('Due date');
+    rerender(<InvoiceCard data={single} />);
+    expect(container.textContent).not.toContain('Due date');
+  });
 });
 
 describe('InvoiceCard (list branch)', () => {
@@ -104,6 +126,17 @@ describe('InvoiceCard (list branch)', () => {
     const text = container.textContent ?? '';
     expect(text).toContain('Paid');
     expect(text).toContain('Pending');
+  });
+
+  it('renders the row dueDate inline when present (and omits it when null)', () => {
+    // [W2 audit] Pre-existing inline `· Due <date>` segment under the
+    // amount line — pin so a refactor can't silently drop it. List
+    // rows in this card don't have a separate `Due date` label like
+    // the single branch — instead it's a `·`-joined part of the
+    // sub-line. Assertion: when dueDate present, " · Due " substring
+    // appears in the row text.
+    const { container } = render(<InvoiceCard data={list} />);
+    expect(container.textContent ?? '').toContain('Due');
   });
 
   it('handles the empty list (no QR, no row, just empty-state copy)', () => {
