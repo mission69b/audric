@@ -7,6 +7,64 @@ import {
   ParallelToolsRow,
   type ParallelRowStatus,
 } from './primitives/ParallelToolsRow';
+import { getResultPreview } from './result-preview';
+
+// ───────────────────────────────────────────────────────────────────────────
+// SPEC 23A-A2 — anticipatory header copy registry (2026-05-11).
+//
+// Demos pick a header per tool composition (sourced from
+// `audric_demos_v2/demos/*.html`):
+//
+//   01 (5 reads)              → "DISPATCHING 5 READS · PARALLEL"
+//   03/04 (4 mpp pay_api)     → "DISPATCHING 4 MPP CALLS"
+//   05 (5 mpp_services + pay) → "DISPATCHING 5 MPP CALLS · DISCOVERY + QUOTES"
+//   06 (4 mpp_services)       → "QUERYING 4 VENDORS IN PARALLEL · MPP DISCOVERY"
+//   07 (5 web_search)         → custom-domain header (out-of-scope for
+//                               registry — falls through to READS · PARALLEL)
+//
+// Registry chooses the closest demo bucket from the actual tool name
+// composition. Pre-A2 the header was hardcoded "Running tasks in parallel"
+// for every group regardless of what fired.
+// ───────────────────────────────────────────────────────────────────────────
+
+/** Tool-name buckets the header registry routes by. */
+type HeaderBucket = 'mpp_pay' | 'mpp_discovery' | 'mpp_mixed' | 'reads';
+
+function bucketForTool(toolName: string): HeaderBucket {
+  if (toolName === 'pay_api') return 'mpp_pay';
+  if (toolName === 'mpp_services') return 'mpp_discovery';
+  return 'reads';
+}
+
+/**
+ * Pick the demo-style header label for a parallel group.
+ * Exported for direct unit-testing — see ParallelToolsGroup.test.ts.
+ */
+export function getParallelHeaderLabel(tools: ReadonlyArray<{ toolName: string }>): string {
+  if (tools.length === 0) return 'RUNNING TASKS IN PARALLEL';
+
+  const buckets = new Set(tools.map((t) => bucketForTool(t.toolName)));
+  const n = tools.length;
+
+  // All pay_api → "DISPATCHING N MPP CALLS" (demos 03, 04)
+  if (buckets.size === 1 && buckets.has('mpp_pay')) {
+    return `DISPATCHING ${n} MPP CALLS`;
+  }
+  // All mpp_services → "QUERYING N VENDORS IN PARALLEL · MPP DISCOVERY" (demo 06)
+  if (buckets.size === 1 && buckets.has('mpp_discovery')) {
+    return `QUERYING ${n} VENDORS IN PARALLEL · MPP DISCOVERY`;
+  }
+  // Mix of pay_api + mpp_services → "DISPATCHING N MPP CALLS · DISCOVERY + QUOTES" (demo 05)
+  if (
+    buckets.has('mpp_pay') &&
+    buckets.has('mpp_discovery') &&
+    !buckets.has('reads')
+  ) {
+    return `DISPATCHING ${n} MPP CALLS · DISCOVERY + QUOTES`;
+  }
+  // Default: read tools (demo 01) or any mixed bucket including reads.
+  return `DISPATCHING ${n} READS · PARALLEL`;
+}
 
 // ───────────────────────────────────────────────────────────────────────────
 // SPEC 8 v0.5.1 — ParallelToolsGroup (B2.2 + B3.5)
@@ -51,17 +109,24 @@ function toRowStatus(s: ToolTimelineBlock['status']): ParallelRowStatus {
   }
 }
 
-/** Build the "fetched X" / "fetching…" sub-line for a row. We don't have
- *  rich per-tool result previews wired in yet (the cards below carry the
- *  full payload), so the v2 demo's evocative sub-text is approximated
- *  with the tool's progress message while running and a generic "ran in
- *  Ns" once settled. The cards below will still carry the actual result. */
+/** Build the "fetched X" / "fetching…" sub-line for a row.
+ *
+ *  - running  → `tool.progress.message ?? "querying…"`
+ *  - error    → `"failed"`
+ *  - interrupted → `"interrupted"`
+ *  - done     → SPEC 23A-A1 per-tool preview from `getResultPreview` (e.g.
+ *               `"$200 → 212.77 SUI · 0.03%"`); falls back to `"ran in Ns"`
+ *               when no fitter exists for the tool OR the payload didn't
+ *               match the expected shape. The cards below still carry the
+ *               full payload — this is the at-a-glance sub-line. */
 function rowSub(tool: ToolTimelineBlock): string {
   if (tool.status === 'streaming' || tool.status === 'running') {
     return tool.progress?.message ?? 'querying…';
   }
   if (tool.status === 'interrupted') return 'interrupted';
   if (tool.status === 'error') return 'failed';
+  const preview = getResultPreview(tool.toolName, tool.result);
+  if (preview) return preview;
   if (tool.startedAt !== undefined && tool.endedAt !== undefined) {
     const seconds = Math.max(0, (tool.endedAt - tool.startedAt) / 1000);
     return `ran in ${seconds.toFixed(1)}s`;
@@ -77,6 +142,7 @@ export function ParallelToolsGroup({ tools, isStreaming }: ParallelToolsGroupPro
   ).length;
   const total = tools.length;
   const allDone = doneCount === total;
+  const headerLabel = getParallelHeaderLabel(tools);
 
   return (
     <div className="space-y-1">
@@ -84,8 +150,11 @@ export function ParallelToolsGroup({ tools, isStreaming }: ParallelToolsGroupPro
         <span className="text-[12px] text-fg-muted" aria-hidden="true">
           ⊞
         </span>
-        <span className="font-mono text-[10px] tracking-[0.14em] uppercase text-fg-secondary">
-          Running tasks in parallel
+        {/* SPEC 23A-A7 — 0.12em letter-spacing matches the demo
+            PermissionCard label (`letterSpacing: '.12em'` on 10px mono),
+            tighter than audric's prior 0.14em default. */}
+        <span className="font-mono text-[10px] tracking-[0.12em] uppercase text-fg-secondary">
+          {headerLabel}
         </span>
         <span
           className="ml-auto font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted tabular-nums"

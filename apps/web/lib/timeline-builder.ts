@@ -232,6 +232,12 @@ export function applyEventToTimeline(
         input: event.input,
         status: 'running',
         startedAt: now,
+        // [SPEC 23A-A6] engine 1.28+ stamps 'pwr' on post-write refresh
+        // injections, 'user' on regen re-fires, 'llm' on default LLM
+        // dispatches. timeline-groups.ts uses this to fold consecutive
+        // PWR tool blocks under <PostWriteRefreshSurface>. Older engines
+        // omit it — `undefined` is treated as 'llm' downstream.
+        ...(event.source !== undefined ? { source: event.source } : {}),
       };
       // [SPEC 7 P2.5b Layer 5] Inject `contact-resolved` row BEFORE the
       // tool block when the input carries a contact-name reference.

@@ -85,6 +85,20 @@ export interface ToolTimelineBlock {
   // Latest tool_progress event for this tool, if any.
   progress?: { message: string; pct?: number };
   attemptCount?: number;
+  /**
+   * [SPEC 23A-A6 / engine 1.28+] Origin of this tool dispatch:
+   *   - 'llm'  — LLM-initiated (the default for read tools the agent ran)
+   *   - 'pwr'  — engine-injected post-write refresh (balance + savings reads
+   *              the engine fires AFTER a write so the next narration sees
+   *              fresh state).
+   *   - 'user' — re-fired during a Quote-Refresh regenerate round-trip.
+   *
+   * Driven by the engine's `event.source` field on `tool_start` /
+   * `tool_result`. Older engines (< 1.28) omit `source` and the field
+   * defaults to `undefined` — the renderer treats undefined as "llm-style"
+   * for backward compat, so legacy turns still render correctly.
+   */
+  source?: 'pwr' | 'llm' | 'user';
 }
 
 /** Final assistant text run. Today: 1 per turn (rare to have 2+). */

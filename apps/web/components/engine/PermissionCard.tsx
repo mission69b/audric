@@ -327,6 +327,102 @@ interface BundleClusterRow {
   detail?: string;
 }
 
+/**
+ * SPEC 23A-A4 — sub-text per bundle row.
+ *
+ * Demo 5's `BundleStepsList` renders a one-line sub-text under every
+ * row (e.g. `"Cetus best-route · 0.03% slippage · 212.77 SUI"`,
+ * `"50% of remaining · NAVI 8.4% APY"`). Pre-A4 audric declared
+ * `BundleClusterRow.detail` but the producer (`clusterBundleSteps`)
+ * left it `undefined` in every branch.
+ *
+ * The helper derives the sub-text from `step.input` alone (no
+ * cross-step lookup of prior quote results) — anything richer needs
+ * SPEC 23B per-tool surfaces. Returns `undefined` for tools where
+ * we have nothing meaningful to say at input time; the row then
+ * renders without a sub-line (same as today).
+ *
+ * Exported for direct unit testing — see PermissionCard.test.ts.
+ */
+export function bundleStepDetail(step: PendingActionStep): string | undefined {
+  const inp = (step.input ?? {}) as Record<string, unknown>;
+  const asset = typeof inp.asset === 'string' ? inp.asset : 'USDC';
+
+  switch (step.toolName) {
+    case 'swap_execute': {
+      const slippage =
+        typeof inp.maxSlippage === 'number'
+          ? inp.maxSlippage
+          : typeof inp.slippage === 'number'
+            ? inp.slippage
+            : undefined;
+      if (slippage !== undefined) {
+        return `Cetus best-route · ${(slippage * 100).toFixed(2)}% max slippage`;
+      }
+      return 'Cetus best-route';
+    }
+    case 'save_deposit':
+      return `Into NAVI lending pool · ${asset} earns variable APY`;
+    case 'withdraw':
+      return 'From NAVI lending pool';
+    case 'borrow':
+      return `NAVI lending · ${asset} drawn against collateral`;
+    case 'repay_debt':
+      return `Reduces NAVI ${asset} debt`;
+    case 'send_transfer': {
+      // The agent's `to` can be a 0x address, a SuiNS name (`alex.sui`),
+      // or a contact name (`Mom`). Surface "to <recipient>" in every
+      // case — short-form 0x for addresses, verbatim for the others.
+      // Demo bar reads "to Mom" / "to alex.sui" (see demo 01).
+      const to = typeof inp.to === 'string' ? inp.to.trim() : '';
+      if (!to) return undefined;
+      if (to.startsWith('0x') && to.length > 12) {
+        return `to ${to.slice(0, 6)}…${to.slice(-4)}`;
+      }
+      return `to ${to}`;
+    }
+    case 'volo_stake':
+      return 'Liquid staking · receive vSUI';
+    case 'volo_unstake':
+      return 'Unstake liquid vSUI back to SUI';
+    case 'claim_rewards':
+      return 'NAVI accrued rewards';
+    case 'harvest_rewards':
+      return 'Claim → swap → re-save (1 PTB)';
+    case 'pay_api': {
+      const url = typeof inp.url === 'string' ? inp.url : null;
+      if (!url) return undefined;
+      return url.replace('https://mpp.t2000.ai/', '');
+    }
+    default:
+      return undefined;
+  }
+}
+
+/**
+ * SPEC 23A-A5(a) — pick the dominant asset for the bundle subtitle.
+ * Demo 5 uses `subtitle="ATOMIC · USDC"` because every step in that
+ * bundle moves USDC. We mirror by collecting the per-step `asset`
+ * field (and `from` for swaps) and surfacing the symbol when there's
+ * a single dominant one. Falls back to `null` (callers omit the
+ * subtitle entirely) when steps span multiple assets.
+ */
+function primaryBundleAsset(
+  steps: ReadonlyArray<PendingActionStep>,
+): string | null {
+  const symbols = new Set<string>();
+  for (const step of steps) {
+    const inp = (step.input ?? {}) as Record<string, unknown>;
+    if (typeof inp.asset === 'string') symbols.add(inp.asset);
+    if (step.toolName === 'swap_execute' && typeof inp.from === 'string') {
+      symbols.add(resolveSymbol(inp.from));
+    }
+  }
+  if (symbols.size === 1) return Array.from(symbols)[0];
+  if (symbols.has('USDC')) return 'USDC';
+  return null;
+}
+
 function clusterBundleSteps(steps: ReadonlyArray<PendingActionStep>): BundleClusterRow[] {
   const rows: BundleClusterRow[] = [];
   let i = 0;
@@ -349,6 +445,8 @@ function clusterBundleSteps(steps: ReadonlyArray<PendingActionStep>): BundleClus
           steps: [current, next],
           summary: `Swap ${swapInp.amount ?? '?'} ${resolveSymbol(swapInp.from)} → ${swapTo} + save`,
           badges: ['CETUS', 'NAVI'],
+          // SPEC 23A-A4 — combined sub-text for the clustered swap+save row.
+          detail: `Cetus best-route → NAVI ${saveAsset} pool`,
         });
         i += 2;
         continue;
@@ -360,6 +458,7 @@ function clusterBundleSteps(steps: ReadonlyArray<PendingActionStep>): BundleClus
       steps: [current],
       summary: bundleStepSummary(current),
       badges: [PROTOCOL_BADGE[current.toolName] ?? current.toolName.toUpperCase()],
+      detail: bundleStepDetail(current),
     });
     i += 1;
   }
@@ -593,6 +692,8 @@ export function PermissionCard({
   // ─── Bundle render branch (multi-write Payment Intent) ────────────────
   if (isBundle && action.steps) {
     const stepCount = action.steps.length;
+    // SPEC 23A-A5(a) — "ATOMIC · USDC" subtitle, derived from the bundle.
+    const bundleAsset = primaryBundleAsset(action.steps);
     // [SPEC 7 P2.4b] Quote-Refresh slot lives on the multi-write
     // bundle UI only (single-writes don't carry `quoteAge` /
     // `canRegenerate` / `regenerateInput`).
@@ -647,10 +748,17 @@ export function PermissionCard({
           (below) where its meaning is unambiguous: "this quote is X
           seconds old → tap Refresh to regenerate."
         */}
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-fg-primary">
-            {stepCount} operations · 1 Payment Intent · Atomic
-          </span>
+        <div className="flex items-start justify-between">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-xs font-medium text-fg-primary">
+              {stepCount} operations · 1 Payment Intent · Atomic
+            </span>
+            {bundleAsset && (
+              <span className="text-[10px] font-mono uppercase tracking-[0.12em] text-fg-tertiary">
+                ATOMIC · {bundleAsset}
+              </span>
+            )}
+          </div>
           {!resolved && (
             <span
               className={`text-[10px] font-mono tabular-nums ${secondsLeft <= 10 ? 'text-error-solid' : 'text-fg-tertiary'}`}
@@ -676,8 +784,12 @@ export function PermissionCard({
 
         <BundleStepsList steps={action.steps} />
 
+        {/* SPEC 23A-A5(b) — bolt prefix matches demo footer (`<Icon name="bolt"/>`). */}
         <div className="flex items-center justify-between pt-1 text-[10px] font-mono uppercase tracking-wide text-fg-secondary">
-          <span>GAS · SPONSORED</span>
+          <span className="flex items-center gap-1">
+            <span aria-hidden="true">⚡</span>
+            GAS · SPONSORED
+          </span>
           <span>ALL SUCCEED OR ALL REVERT</span>
         </div>
 

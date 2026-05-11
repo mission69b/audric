@@ -8,6 +8,7 @@ import { computeTextBlockVoiceSlices } from '@/lib/voice/timeline-voice-slices';
 import { groupTimelineBlocks } from '@/lib/timeline-groups';
 import { BlockRouter } from './timeline/BlockRouter';
 import { ParallelToolsGroup } from './timeline/ParallelToolsGroup';
+import { PostWriteRefreshSurface } from './timeline/PostWriteRefreshSurface';
 import {
   computeThinkingCollapse,
   type ThinkingCollapseResult,
@@ -226,6 +227,15 @@ export function ReasoningTimeline({
           return (
             <ParallelToolsGroup
               key={`group-${i}-${item.tools[0].toolUseId}`}
+              tools={item.tools}
+              isStreaming={isStreaming}
+            />
+          );
+        }
+        if (item.kind === 'pwr-group') {
+          return (
+            <PostWriteRefreshSurface
+              key={`pwr-${i}-${item.tools[0].toolUseId}`}
               tools={item.tools}
               isStreaming={isStreaming}
             />

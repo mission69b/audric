@@ -461,6 +461,19 @@
 /* ============================================================
    TYPE RAMP — semantic classes mirror the Typography page in
    `colors_and_type.css`. New components reach for these.
+
+   SPEC 23A-A7 typography audit (2026-05-11):
+   Audited against `audric_demos_v2/shared/colors_and_type.css`.
+   Every `.ads-*` class below matches the demo verbatim
+   (sizes / line-heights / letter-spacing / font-weights / colors).
+   Differences vs demo: audric resolves --font-* via next/font
+   (variable fonts) where the demo uses self-hosted .otf @font-face
+   rules — same families, same fallback chain order.
+
+   Per-component letter-spacing micro-tweaks (e.g. PermissionCard
+   subtitle `0.12em` at 10px mono) live inline in the consuming
+   component, mirroring the demo's per-PermissionCard inline style
+   `letterSpacing:'.12em'`. The ramp itself stays canonical.
    ============================================================ */
 
 .ads-h1 {

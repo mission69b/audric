@@ -141,3 +141,94 @@ describe('groupTimelineBlocks', () => {
     if (out[1].kind === 'group') expect(out[1].tools).toHaveLength(3);
   });
 });
+
+// ───────────────────────────────────────────────────────────────────────────
+// SPEC 23A-A6 — post-write-refresh grouping
+// ───────────────────────────────────────────────────────────────────────────
+
+function pwr(id: string, startedAt: number, name = 'balance_check'): ToolTimelineBlock {
+  return { ...tool(id, startedAt, name), source: 'pwr' };
+}
+
+describe('groupTimelineBlocks — post-write refresh (SPEC 23A-A6)', () => {
+  it('groups two consecutive PWR tools as a pwr-group', () => {
+    const blocks: TimelineBlock[] = [pwr('a', 0, 'balance_check'), pwr('b', 30, 'savings_info')];
+    const out = groupTimelineBlocks(blocks);
+    expect(out).toHaveLength(1);
+    expect(out[0].kind).toBe('pwr-group');
+    if (out[0].kind === 'pwr-group') expect(out[0].tools.map((t) => t.toolUseId)).toEqual(['a', 'b']);
+  });
+
+  it('renders a single PWR tool as a pwr-group (framing IS the surface)', () => {
+    const blocks: TimelineBlock[] = [pwr('a', 0)];
+    const out = groupTimelineBlocks(blocks);
+    expect(out).toHaveLength(1);
+    expect(out[0].kind).toBe('pwr-group');
+    if (out[0].kind === 'pwr-group') expect(out[0].tools).toHaveLength(1);
+  });
+
+  it('PWR rule wins over timing — a PWR tool never collapses into an LLM parallel run', () => {
+    // Two LLM tools at 0/30 (would normally group), then a PWR at 50.
+    // The PWR closes the LLM group and opens its own surface.
+    const blocks: TimelineBlock[] = [
+      tool('a', 0),
+      tool('b', 30),
+      pwr('c', 50),
+    ];
+    const out = groupTimelineBlocks(blocks);
+    expect(out).toHaveLength(2);
+    expect(out[0].kind).toBe('group');
+    expect(out[1].kind).toBe('pwr-group');
+    if (out[0].kind === 'group') expect(out[0].tools.map((t) => t.toolUseId)).toEqual(['a', 'b']);
+    if (out[1].kind === 'pwr-group') expect(out[1].tools.map((t) => t.toolUseId)).toEqual(['c']);
+  });
+
+  it('non-tool blocks close PWR runs the same way they close parallel runs', () => {
+    const blocks: TimelineBlock[] = [
+      pwr('a', 0),
+      pwr('b', 30),
+      text('Refreshed your wallet — here\'s the latest…'),
+      pwr('c', 60),
+    ];
+    const out = groupTimelineBlocks(blocks);
+    expect(out).toHaveLength(3);
+    expect(out[0].kind).toBe('pwr-group');
+    expect(out[1].kind).toBe('single');
+    expect(out[2].kind).toBe('pwr-group');
+  });
+
+  it('LLM tools after a PWR run open a new parallel/single run (no cross-source contamination)', () => {
+    const blocks: TimelineBlock[] = [
+      pwr('a', 0),
+      pwr('b', 10),
+      tool('c', 20), // LLM, immediately after PWR — must NOT join the pwr-group
+    ];
+    const out = groupTimelineBlocks(blocks);
+    expect(out).toHaveLength(2);
+    expect(out[0].kind).toBe('pwr-group');
+    if (out[0].kind === 'pwr-group') expect(out[0].tools.map((t) => t.toolUseId)).toEqual(['a', 'b']);
+    expect(out[1].kind).toBe('single');
+  });
+
+  it('models a realistic post-write turn: write receipt → PWR refresh → narration', () => {
+    // Simulates: bundle-receipt → balance_check (pwr) → savings_info (pwr) → text
+    // Engine 1.28+ stamps both reads with source: 'pwr'.
+    const blocks: TimelineBlock[] = [
+      pwr('a', 100, 'balance_check'),
+      pwr('b', 105, 'savings_info'),
+      text('Saved. Your USDC balance is now $1,985.'),
+    ];
+    const out = groupTimelineBlocks(blocks);
+    expect(out).toHaveLength(2);
+    expect(out[0].kind).toBe('pwr-group');
+    if (out[0].kind === 'pwr-group') expect(out[0].tools).toHaveLength(2);
+    expect(out[1].kind).toBe('single');
+  });
+
+  it('user-source (regen) tools do NOT trigger pwr-group (only pwr does)', () => {
+    const userTool: ToolTimelineBlock = { ...tool('a', 0), source: 'user' };
+    const out = groupTimelineBlocks([userTool]);
+    expect(out).toHaveLength(1);
+    expect(out[0].kind).toBe('single');
+  });
+});

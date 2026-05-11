@@ -21,6 +21,17 @@ interface AgentStepProps {
   meta?: string;
 }
 
+// SPEC 23A-A3 — glyph audit against `audric_demos_v2/demos/*.html` (2026-05-11).
+//
+// Demo equivalents discovered + applied:
+//   swap (Cetus row)           → '⇆' (demo 01)
+//   mpp_services (DISCOVER)    → '⊞' (demo 05)
+//   save_contact (CONTACT row) → '👤' (demo 01)
+//
+// Per-MPP-service `pay_api` glyphs (✦ DALL-E, ♪ Suno, ✉ Lob, ✿ Teleflora,
+// 🛒 Walmart, 🎂 Cake, ◇ Walrus, ⊡ Move/Seal etc.) are SPEC 23B territory —
+// they swap on the *underlying service slug* not on the engine tool name,
+// so they live in the per-tool result surface, not this generic fallback.
 const STEP_ICONS: Record<string, string> = {
   balance_check: '💰',
   savings_info: '📊',
@@ -36,17 +47,17 @@ const STEP_ICONS: Record<string, string> = {
   harvest_rewards: '🌾',
   pending_rewards: '🎁',
   pay_api: '⚡',
-  swap_execute: '🔄',
+  swap_execute: '⇆',
   volo_stake: '🥩',
   volo_unstake: '🥩',
   volo_stats: '📊',
-  mpp_services: '🔍',
+  mpp_services: '⊞',
   token_prices: '💲',
   web_search: '🔍',
   explain_tx: '🔎',
   portfolio_analysis: '📊',
   protocol_deep_dive: '🛡️',
-  save_contact: '📇',
+  save_contact: '👤',
   render_canvas: '🖼️',
   create_payment_link: '🔗',
   list_payment_links: '🔗',
@@ -55,7 +66,7 @@ const STEP_ICONS: Record<string, string> = {
   list_invoices: '📄',
   cancel_invoice: '📄',
   spending_analytics: '💸',
-  swap_quote: '🔄',
+  swap_quote: '⇆',
   yield_summary: '📈',
   activity_summary: '📋',
   record_advice: '📝',
