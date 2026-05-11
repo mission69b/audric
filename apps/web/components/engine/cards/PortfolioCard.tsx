@@ -1,6 +1,6 @@
 'use client';
 
-import { AddressBadge, CardShell, DetailRow, Gauge, MiniBar, StatusBadge, TrendIndicator, fmtUsd } from './primitives';
+import { AddressBadge, CardShell, DetailRow, Gauge, MiniBar, StatusBadge, TrendIndicator, fmtUsd, fmtYield } from './primitives';
 
 interface PortfolioData {
   totalValue: number;
@@ -92,7 +92,13 @@ export function PortfolioCard({ data }: { data: PortfolioData }) {
           {data.savingsApy ? (
             <span className="text-fg-muted ml-1 text-[10px]">
               {fmtApy(data.savingsApy)}
-              {data.dailyEarning ? ` · $${data.dailyEarning.toFixed(4)}/day` : ''}
+              {/*
+                [SPEC 23B-polish, 2026-05-11] Use shared fmtYield for sub-cent
+                floor. Pre-fix this rendered "$0.0000/day" for sub-$0.01
+                yields. fmtYield returns "< $0.01" matching YieldEarningsCard
+                + SavingsCard.
+              */}
+              {data.dailyEarning ? ` · ${fmtYield(data.dailyEarning)}/day` : ''}
             </span>
           ) : null}
         </DetailRow>

@@ -238,6 +238,23 @@ export function fmtUsd(n: number): string {
   return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+/**
+ * [SPEC 23B-polish, 2026-05-11] Yield-formatting helper. Floors any
+ * positive sub-cent value to `< $0.01` instead of rendering `$0.00` /
+ * `$0.0000`, which is misleading (looks like nothing was earned). Negative
+ * values fall through to the standard `$N.NN` format. Use this for any
+ * yield / per-day / projected-earning number that the user reads as a
+ * delta — `dailyEarning`, `today`, `thisWeek`, `thisMonth`, `allTime`,
+ * `projectedYear` etc. Originally lived in `YieldEarningsCard.tsx`;
+ * hoisted here so `SavingsCard` + `PortfolioCard` (both of which were
+ * silently rendering `$0.0000` for sub-cent daily earnings) can share
+ * the same floor.
+ */
+export function fmtYield(val: number): string {
+  if (val > 0 && fmtUsd(val) === '0.00') return '< $0.01';
+  return `$${fmtUsd(val)}`;
+}
+
 export function fmtPct(n: number): string {
   return (n * 100).toFixed(2);
 }

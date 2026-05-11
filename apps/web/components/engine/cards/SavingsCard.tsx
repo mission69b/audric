@@ -1,6 +1,6 @@
 'use client';
 
-import { AddressBadge, CardShell, fmtUsd } from './primitives';
+import { AddressBadge, CardShell, fmtUsd, fmtYield } from './primitives';
 
 interface SavingsPosition {
   symbol: string;
@@ -93,7 +93,14 @@ export function SavingsCard({ data }: { data: SavingsData }) {
           </div>
           <div>
             <span className="text-fg-muted block text-[10px]">Daily</span>
-            <span className="text-fg-primary">${data.earnings.dailyEarning.toFixed(4)}</span>
+            {/*
+              [SPEC 23B-polish, 2026-05-11] Use shared fmtYield for sub-cent
+              floor. Pre-fix this rendered $0.0000 for a sub-$0.01 daily
+              yield (e.g. $0.000412 on a small USDC position), which read as
+              "no earnings" instead of "earning, but tiny". fmtYield drops
+              to "< $0.01" matching YieldEarningsCard + PortfolioCard.
+            */}
+            <span className="text-fg-primary">{fmtYield(data.earnings.dailyEarning)}</span>
           </div>
         </div>
       )}

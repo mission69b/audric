@@ -1,6 +1,6 @@
 'use client';
 
-import { CardShell, DetailRow, fmtUsd } from './primitives';
+import { CardShell, DetailRow, fmtUsd, fmtYield } from './primitives';
 
 interface YieldData {
   today: number;
@@ -35,11 +35,6 @@ function Sparkline({ data }: { data: number[] }) {
 function fmtApy(rate: number): string {
   const pct = rate < 1 ? rate * 100 : rate;
   return `${pct.toFixed(2)}%`;
-}
-
-function fmtYield(val: number): string {
-  if (val > 0 && fmtUsd(val) === '0.00') return '< $0.01';
-  return `$${fmtUsd(val)}`;
 }
 
 export function YieldEarningsCard({ data }: { data: YieldData }) {

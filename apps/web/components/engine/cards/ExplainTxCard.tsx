@@ -13,12 +13,21 @@ interface TxExplanation {
 }
 
 export function ExplainTxCard({ data }: { data: TxExplanation }) {
+  // [SPEC 23B-polish, 2026-05-11] Normalize status case before comparison.
+  // Engine + future tools may emit `'success'` / `'Success'` / `'SUCCESS'`
+  // / `'Failure'` / etc. Pre-fix only an exact-lowercase `'success'` got
+  // the green-success styling; any other casing fell through to the warning
+  // branch and rendered visually as a partial failure even when the tx
+  // had succeeded. The display text preserves whatever case the engine
+  // sent (capitalize-as-given), only the tone-routing decision is
+  // case-insensitive.
+  const isSuccess = (data.status ?? '').toLowerCase() === 'success';
   return (
     <CardShell title="Transaction">
       <div className="space-y-1 font-mono text-[11px]">
         <div className="flex justify-between">
           <span className="text-fg-muted">Status</span>
-          <span className={data.status === 'success' ? 'text-success-solid' : 'text-warning-solid'}>{data.status}</span>
+          <span className={isSuccess ? 'text-success-solid' : 'text-warning-solid'}>{data.status}</span>
         </div>
         <div className="flex justify-between">
           <span className="text-fg-muted">Gas</span>
