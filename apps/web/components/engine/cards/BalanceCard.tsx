@@ -123,6 +123,12 @@ export function BalanceCard({ data, variant = 'default' }: BalanceCardProps) {
 
   const hasHoldings = !isPostWrite && data.holdings && data.holdings.filter((h) => h.usdValue >= 0.01).length > 0;
   const isWatched = data.isSelfQuery === false && !!data.address;
+  // NOTE: `badge` is intentionally dropped in post-write — see CardShell's
+  // `noHeader` JSDoc. Post-write clusters only fire on the signed-in user's
+  // own wallet (writes can't sign on watched addresses), so `isWatched` is
+  // always false here in production. If that invariant ever changes, the
+  // badge will silently disappear — switch to a floating-badge layout in
+  // CardShell at that point.
   const badge = isWatched ? <AddressBadge address={data.address!} suinsName={data.suinsName} /> : undefined;
   // Post-write: skip the "Balance" title bar entirely — the surface header
   // above the cluster already communicates "AFTER YOUR APPROVAL · REFRESHING

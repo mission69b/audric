@@ -10,6 +10,16 @@ import React from 'react';
  * title bar 4px below it is wasted vertical space. With `noHeader: true`
  * the card collapses to just the body — wrapped in the same border/radius/
  * background so it still reads as a card, just unframed at the top.
+ *
+ * IMPORTANT — `badge` is silently dropped when `noHeader: true` because
+ * the badge slot lives inside the header chrome that's being skipped. This
+ * is intentional and acceptable for the W1 use case: post-write refresh
+ * clusters only fire after the user signs a write on their own wallet, so
+ * `BalanceCard` in the PWR cluster always renders self-wallet data
+ * (`isSelfQuery !== false`) and therefore has no badge to render. If a
+ * future change wires watched-address reads into the PWR flow, callers
+ * MUST surface the watched-address chip somewhere outside the body
+ * themselves (the floating-badge layout would belong here).
  */
 export function CardShell({
   title,

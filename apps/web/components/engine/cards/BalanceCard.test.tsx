@@ -72,6 +72,42 @@ describe('BalanceCard — default variant (standalone)', () => {
     expect(document.body.textContent).toContain('DeFi');
     expect(document.body.textContent).toContain('—');
   });
+
+  it('renders the watched-address badge when isSelfQuery === false', () => {
+    render(
+      <BalanceCard
+        data={{
+          ...baseData,
+          isSelfQuery: false,
+          address:
+            '0xabcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789',
+          suinsName: 'alex.sui',
+        }}
+      />,
+    );
+    // AddressBadge renders the SuiNS name when present. Confirms badge slot
+    // is wired through CardShell's header chrome.
+    expect(document.body.textContent).toContain('alex.sui');
+  });
+
+  it('renders DeFi cached suffix for partial-stale source with positive value', () => {
+    const fiveMinAgo = Date.now() - 5 * 60_000;
+    render(
+      <BalanceCard
+        data={{
+          ...baseData,
+          defi: 18.5,
+          defiSource: 'partial-stale',
+          defiPricedAt: fiveMinAgo,
+        }}
+      />,
+    );
+    const text = document.body.textContent ?? '';
+    expect(text).toContain('DeFi');
+    expect(text).toContain('$18.50');
+    // "5m" cached suffix — Math.round((Date.now() - fiveMinAgo) / 60_000)
+    expect(text).toMatch(/\$18\.50\s·\s5m/);
+  });
 });
 
 describe('BalanceCard — post-write variant', () => {
@@ -197,6 +233,87 @@ describe('BalanceCard — post-write variant', () => {
     // acceptable; the parent surface header already tells the user something
     // happened, and an empty card is preferable to a runtime crash.
     expect(container.firstChild).not.toBeNull();
+  });
+
+  it('still renders DeFi cached suffix for partial-stale source with positive value', () => {
+    // post-write should NOT skip a real cached value — the partial-stale
+    // suffix communicates real provenance, not a placeholder. Only the
+    // `defi: 0 + non-blockvision` placeholder branch is skipped.
+    const fiveMinAgo = Date.now() - 5 * 60_000;
+    render(
+      <BalanceCard
+        data={{
+          ...baseData,
+          defi: 18.5,
+          defiSource: 'partial-stale',
+          defiPricedAt: fiveMinAgo,
+        }}
+        variant="post-write"
+      />,
+    );
+    const text = document.body.textContent ?? '';
+    expect(text).toContain('DeFi');
+    expect(text).toContain('$18.50');
+    expect(text).toMatch(/\$18\.50\s·\s5m/);
+  });
+
+  it('intentionally drops watched-address badge in post-write (documented limitation)', () => {
+    // See CardShell `noHeader` JSDoc + the comment in BalanceCard above the
+    // `badge` declaration. Production never hits this path (PWR clusters
+    // only fire on the signed-in user's own wallet), but the test pins the
+    // current behavior so a future change that wires watched-address PWR
+    // doesn't silently lose the badge.
+    render(
+      <BalanceCard
+        data={{
+          ...baseData,
+          isSelfQuery: false,
+          address:
+            '0xabcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789',
+          suinsName: 'alex.sui',
+        }}
+        variant="post-write"
+      />,
+    );
+    expect(document.body.textContent).not.toContain('alex.sui');
+  });
+});
+
+describe('CardShell — noHeader extension', () => {
+  it('renders the title chrome by default (backward-compat for all 22 existing consumers)', async () => {
+    const { CardShell } = await import('./primitives');
+    const { container } = render(
+      <CardShell title="MY CARD">
+        <div>body</div>
+      </CardShell>,
+    );
+    expect(container.querySelector('.bg-surface-sunken')).not.toBeNull();
+    expect(document.body.textContent).toContain('MY CARD');
+  });
+
+  it('skips the title chrome entirely when noHeader is true', async () => {
+    const { CardShell } = await import('./primitives');
+    const { container } = render(
+      <CardShell title="MY CARD" noHeader>
+        <div>body</div>
+      </CardShell>,
+    );
+    expect(container.querySelector('.bg-surface-sunken')).toBeNull();
+    expect(document.body.textContent).not.toContain('MY CARD');
+    expect(document.body.textContent).toContain('body');
+  });
+
+  it('noPadding still works alongside noHeader', async () => {
+    const { CardShell } = await import('./primitives');
+    const { container } = render(
+      <CardShell title="X" noHeader noPadding>
+        <div className="custom-body">body</div>
+      </CardShell>,
+    );
+    // Without noPadding the body is wrapped in `px-3.5 py-2.5 text-xs` —
+    // verify that wrapper is absent.
+    expect(container.querySelector('.px-3\\.5')).toBeNull();
+    expect(container.querySelector('.custom-body')).not.toBeNull();
   });
 });
 
