@@ -20,6 +20,7 @@ import { ActivitySummaryCard } from './cards/ActivitySummaryCard';
 import { StakingCard } from './cards/StakingCard';
 import { ProtocolCard } from './cards/ProtocolCard';
 import { PriceCard } from './cards/PriceCard';
+import { ConfirmationChip } from './cards/ConfirmationChip';
 
 const WRITE_TOOL_NAMES = new Set([
   'save_deposit', 'withdraw', 'send_transfer', 'swap_execute',
@@ -149,6 +150,54 @@ const CARD_RENDERERS: Record<string, (result: unknown) => React.ReactNode | null
     const data = extractData(result);
     if (!Array.isArray(data)) return null;
     return <PriceCard data={data as Parameters<typeof PriceCard>[0]['data']} />;
+  },
+  // ─── SPEC 23B — N1 / N2 / N6 — confirmation chips for no-tx-receipt writes ──
+  // These three tools don't produce on-chain transactions, so they bypass
+  // TransactionReceiptCard entirely and render a single-line ConfirmationChip
+  // instead. Pre-23B all three fell through to `null` (silent — the user
+  // saw only the LLM narration "I cancelled it" with no UI confirmation).
+  cancel_payment_link: (result) => {
+    const data = extractData(result);
+    if (!data || typeof data !== 'object') return null;
+    const slug = (data as { slug?: string }).slug;
+    return (
+      <ConfirmationChip
+        label="PAYMENT LINK CANCELLED"
+        detail={slug}
+        tone="neutral"
+      />
+    );
+  },
+  cancel_invoice: (result) => {
+    const data = extractData(result);
+    if (!data || typeof data !== 'object') return null;
+    const slug = (data as { slug?: string }).slug;
+    return (
+      <ConfirmationChip
+        label="INVOICE CANCELLED"
+        detail={slug}
+        tone="neutral"
+      />
+    );
+  },
+  save_contact: (result) => {
+    const data = extractData(result);
+    if (!data || typeof data !== 'object') return null;
+    const { name, address } = data as { name?: string; address?: string };
+    if (!name) return null;
+    // Detail format: `funkii · 0xab12…cd34` — name + chunked address so
+    // the user can verify what was saved without expanding the contact list.
+    const truncatedAddr = address && address.length > 12
+      ? `${address.slice(0, 6)}…${address.slice(-4)}`
+      : address ?? '';
+    const detail = truncatedAddr ? `${name} · ${truncatedAddr}` : name;
+    return (
+      <ConfirmationChip
+        label="CONTACT SAVED"
+        detail={detail}
+        tone="success"
+      />
+    );
   },
 };
 
