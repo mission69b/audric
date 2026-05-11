@@ -1,6 +1,6 @@
 'use client';
 
-import { CardShell, DetailRow, fmtUsd, fmtYield } from './primitives';
+import { CardShell, DetailRow, fmtYield } from './primitives';
 
 interface YieldData {
   today: number;
@@ -62,8 +62,18 @@ export function YieldEarningsCard({ data }: { data: YieldData }) {
 
       <div className="mt-2 pt-2 border-t border-border-subtle/50 space-y-1 font-mono text-[11px]">
         <DetailRow label="Current APY">{fmtApy(data.currentApy)}</DetailRow>
-        <DetailRow label="Deposited">{data.deposited > 0 && data.deposited < 0.01 ? '< $0.01' : `$${fmtUsd(data.deposited)}`}</DetailRow>
-        <DetailRow label="Projected / Year">{data.projectedYear > 0 && data.projectedYear < 0.01 ? '< $0.01' : `$${fmtUsd(data.projectedYear)}`}</DetailRow>
+        {/*
+          [SPEC 23B-polish audit, 2026-05-11] Migrated from inline `val < 0.01`
+          floor to shared `fmtYield`. Pre-fix the inline branch used a strict
+          threshold (`val < 0.01` → "< $0.01") while the sibling rows above
+          use `fmtYield` (rounding-based: `fmtUsd === '0.00'` → "< $0.01").
+          For values in [0.005, 0.01) the inline branch printed "< $0.01"
+          while the same value on Today/Week/Month/AllTime rendered "$0.01" —
+          a within-card inconsistency. fmtYield unifies both rows on the
+          rounding-based floor and removes the duplicate logic.
+        */}
+        <DetailRow label="Deposited">{fmtYield(data.deposited)}</DetailRow>
+        <DetailRow label="Projected / Year">{fmtYield(data.projectedYear)}</DetailRow>
       </div>
     </CardShell>
   );
