@@ -8,24 +8,33 @@
  * the moat for the Audric Store launch.
  *
  * MPP1 (this file) defines the dispatch shape ONLY. It does NOT wire into
- * `TransactionReceiptCard` — that is B-MPP2's job (one-line callsite swap).
+ * the consuming card — that is B-MPP2's job (one-line callsite swap).
  * Splitting the dispatch from the wiring keeps MPP1 pure-additive: zero
  * risk to the existing pay_api receipt while the per-service primitives
  * land + iterate.
  *
  * Architecture:
  *   1. PayApiResult — the shape `executeToolAction.pay_api` returns to the
- *      timeline. Mirrors `ServiceResult` from `hooks/useAgent.ts` plus the
- *      legacy passthrough fields (serviceName / amount / deliveryEstimate)
- *      that the current TransactionReceiptCard branch already reads.
+ *      timeline. Mirrors `ServiceResult` from `hooks/useAgent.ts`. Note:
+ *      ServiceResult does NOT carry a `tx` field — only `paymentDigest` —
+ *      so `TransactionReceiptCard`'s `if (!data.tx) return null` rejects
+ *      every pay_api result today (its `getHeroLines.pay_api` branch is
+ *      dead code that has never executed in production). Legacy fields
+ *      (serviceName / amount / deliveryEstimate) are kept for migration
+ *      symmetry — only `<GenericMppReceipt>` reads them now.
  *   2. MppServiceRenderer — `(data: PayApiResult) => ReactNode`. Pure fn,
  *      no hooks, no side effects. Each renderer extracts its own fields
  *      defensively from `data.result` (vendor-specific shape).
  *   3. MPP_SERVICE_RENDERERS — map keyed on the normalised vendor slug
  *      (first path segment of `serviceId`).
  *   4. renderMppService(data) — dispatch fn with fallback to
- *      <GenericMppReceipt>. This is what B-MPP2 will call from
- *      TransactionReceiptCard.
+ *      <GenericMppReceipt>.
+ *
+ * B-MPP2 wiring path (planned): add `pay_api: (result) => renderMppService(result.data)`
+ * to the `CARD_RENDERERS` map in `ToolResultCard.tsx`. This bypasses the
+ * dead `TransactionReceiptCard.pay_api` branch entirely. Each primitive is
+ * therefore SELF-CONTAINED — it owns its chrome AND its `<SuiscanLink>`
+ * (rendered automatically by `<MppCardShell txDigest={data.paymentDigest}>`).
  *
  * Slug source of truth: `serviceId` from `ServiceResult` (the audric host
  * sets this to the gateway path, e.g. `fal/fal-ai/flux/dev`,
@@ -43,10 +52,10 @@ import { GenericMppReceipt } from './GenericMppReceipt';
 
 /**
  * Shape passed to every renderer. Mirrors `ServiceResult` (returned by
- * `executeToolAction.pay_api`) PLUS the legacy passthrough fields that
- * `TransactionReceiptCard.getHeroLines.pay_api` already reads. All fields
- * optional — every renderer must be defensive against the absent/null
- * shapes (engine errors, in-flight states, vendor schema drift).
+ * `executeToolAction.pay_api`) PLUS the legacy passthrough fields kept for
+ * `<GenericMppReceipt>` graceful-degradation. All fields optional — every
+ * renderer must be defensive against the absent/null shapes (engine
+ * errors, in-flight states, vendor schema drift).
  */
 export interface PayApiResult {
   /** Sui digest of the on-chain USDC payment leg. Used for SuiscanLink. */
@@ -65,10 +74,11 @@ export interface PayApiResult {
   result?: unknown;
 
   // ─────────────────────────────────────────────────────────────────────
-  // Legacy fields that the current TransactionReceiptCard.pay_api branch
-  // reads directly. Kept here for migration symmetry — once B-MPP2 lands,
-  // GenericMppReceipt is the only consumer that touches these and even
-  // there only as a graceful-degradation path.
+  // Legacy fields kept for `<GenericMppReceipt>` graceful-degradation.
+  // ServiceResult never sets these — they're remnants of an older shape
+  // assumed by the dead `TransactionReceiptCard.getHeroLines.pay_api`
+  // branch. Safe to remove once GenericMppReceipt's display logic stops
+  // reading them.
   // ─────────────────────────────────────────────────────────────────────
   serviceName?: string;
   amount?: number;
@@ -143,11 +153,11 @@ export const MPP_SERVICE_RENDERERS: Record<string, MppServiceRenderer> = {
 };
 
 /**
- * Dispatch entry point. B-MPP2 will call this from
- * `TransactionReceiptCard.getHeroLines.pay_api` to swap the generic
- * 3-line render for a per-vendor surface. Returns the GenericMppReceipt
- * fallback when the slug isn't in the registry, so unknown vendors still
- * render a passable card (better than the pre-MPP1 generic chrome).
+ * Dispatch entry point. B-MPP2 will register this in `CARD_RENDERERS` of
+ * `ToolResultCard.tsx` (`pay_api: (result) => renderMppService(result.data)`),
+ * bypassing the dead `TransactionReceiptCard.pay_api` branch. Returns the
+ * `<GenericMppReceipt>` fallback when the slug isn't in the registry, so
+ * unknown vendors still render a passable card.
  */
 export function renderMppService(data: PayApiResult): ReactNode {
   const slug = normaliseServiceSlug(data.serviceId);

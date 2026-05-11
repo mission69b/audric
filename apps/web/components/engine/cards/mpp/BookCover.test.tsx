@@ -158,4 +158,25 @@ describe('BookCover', () => {
     );
     expect(container.textContent).toContain('Bound PDF');
   });
+
+  it('renders SuiscanLink when paymentDigest present', () => {
+    const { container } = render(
+      <BookCover
+        data={{
+          serviceId: 'pdfshift',
+          price: '0.05',
+          result: { url: 'x' },
+          paymentDigest: 'ABCDEF1234567890ABCDEF1234567890ABCD',
+        }}
+      />,
+    );
+    expect(container.textContent).toContain('Suiscan');
+  });
+
+  it('does not render SuiscanLink when paymentDigest absent', () => {
+    const { container } = render(
+      <BookCover data={{ serviceId: 'pdfshift', price: '0.05', result: { url: 'x' } }} />,
+    );
+    expect(container.textContent).not.toContain('Suiscan');
+  });
 });

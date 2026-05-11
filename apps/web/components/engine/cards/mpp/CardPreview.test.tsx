@@ -122,4 +122,25 @@ describe('CardPreview', () => {
     );
     expect(container.textContent).toContain('AI-generated');
   });
+
+  it('renders SuiscanLink when paymentDigest present', () => {
+    const { container } = render(
+      <CardPreview
+        data={{
+          serviceId: 'fal',
+          price: '0.04',
+          result: { url: 'x' },
+          paymentDigest: 'ABCDEF1234567890ABCDEF1234567890ABCD',
+        }}
+      />,
+    );
+    expect(container.textContent).toContain('Suiscan');
+  });
+
+  it('does not render SuiscanLink when paymentDigest absent', () => {
+    const { container } = render(
+      <CardPreview data={{ serviceId: 'fal', price: '0.04', result: { url: 'x' } }} />,
+    );
+    expect(container.textContent).not.toContain('Suiscan');
+  });
 });

@@ -71,6 +71,7 @@ export function CardPreview({ data }: { data: PayApiResult }) {
   return (
     <MppCardShell
       bodyNoPadding
+      txDigest={data.paymentDigest}
       header={
         <MppHeader
           caption={vendorLabel(data.serviceId)}

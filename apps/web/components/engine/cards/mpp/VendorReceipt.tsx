@@ -18,9 +18,7 @@
  * no image, no audio, no PDF. The vendor tag IS the visual identity.
  */
 
-import { CardShell } from '../primitives';
-import { MppTag, fmtMppPrice } from './chrome';
-import { SuiscanLink } from '../primitives';
+import { MppCardShell, MppHeader, MppTag, fmtMppPrice } from './chrome';
 import type { PayApiResult } from './registry';
 
 interface VendorReceiptProps {
@@ -83,13 +81,19 @@ export function VendorReceipt({ data, vendor }: VendorReceiptProps) {
   const vendorLabel = defaultVendorLabel(data, vendor);
 
   return (
-    <CardShell title={`${vendorLabel} · MPP`}>
+    <MppCardShell
+      txDigest={data.paymentDigest}
+      header={
+        <MppHeader
+          showSparkle={false}
+          caption={`${vendorLabel} · MPP`}
+          right={fmtMppPrice(data.price)}
+        />
+      }
+    >
       <div className="space-y-2">
         <div className="flex items-baseline gap-3">
           <MppTag tone="dark">{vendorLabel}</MppTag>
-          <span className="ml-auto font-serif text-base text-fg-primary tabular-nums">
-            {fmtMppPrice(data.price)}
-          </span>
         </div>
 
         <div className="text-sm text-fg-primary leading-snug">{delivery.description}</div>
@@ -99,9 +103,7 @@ export function VendorReceipt({ data, vendor }: VendorReceiptProps) {
             ✓ {delivery.status}
           </div>
         )}
-
-        {data.paymentDigest && <SuiscanLink digest={data.paymentDigest} />}
       </div>
-    </CardShell>
+    </MppCardShell>
   );
 }

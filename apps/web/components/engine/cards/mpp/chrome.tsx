@@ -24,8 +24,9 @@
  * shell itself is just the rounded border + background + overflow guard.
  */
 
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { cn } from '@/lib/cn';
+import { SuiscanLink } from '../primitives';
 
 interface MppCardShellProps {
   /** Optional header slot (typically `<MppHeader>`). */
@@ -47,9 +48,28 @@ interface MppCardShellProps {
    * Default false → standard 16px body padding.
    */
   bodyNoPadding?: boolean;
+  /**
+   * Sui digest of the on-chain payment leg (`paymentDigest` from
+   * ServiceResult). When present, renders a `<SuiscanLink>` strip below
+   * the footer so the user can click through to verify the receipt
+   * on-chain. The strip lives INSIDE the shell so the link stays visually
+   * tied to the card it receipts.
+   *
+   * Required for `pay_api` consumers — every successful pay_api turn has
+   * a paymentDigest and the user MUST be able to click through (audric
+   * convention: every on-chain action surfaces its Suiscan link).
+   */
+  txDigest?: string;
 }
 
-export function MppCardShell({ header, footer, children, className, bodyNoPadding }: MppCardShellProps) {
+export function MppCardShell({
+  header,
+  footer,
+  children,
+  className,
+  bodyNoPadding,
+  txDigest,
+}: MppCardShellProps) {
   return (
     <div
       className={cn(
@@ -60,6 +80,16 @@ export function MppCardShell({ header, footer, children, className, bodyNoPaddin
       {header}
       <div className={bodyNoPadding ? '' : 'px-4 py-3'}>{children}</div>
       {footer}
+      {/*
+        SuiscanLink already brings its own `border-t` (see primitives.tsx),
+        so the wrapper just provides horizontal padding + a small bottom
+        gap. Adding `border-t` here would double-draw the separator.
+      */}
+      {txDigest && (
+        <div className="px-3 pb-2">
+          <SuiscanLink digest={txDigest} />
+        </div>
+      )}
     </div>
   );
 }
@@ -112,10 +142,33 @@ export function MppFooter({ meta, tag }: MppFooterProps) {
 
 /**
  * Pill primitive used for per-vendor / per-tier tags (e.g. "AI-DESIGNED",
- * "PRIME", "100 EVER"). Tone-aware: defaults to a subtle dark pill;
- * `tone="purple"` for AI/generated tags, `tone="green"` for success state,
- * `tone="dark"` for vendor labels.
+ * "PRIME", "100 EVER"). Defaults to `tone="dark"` (subtle vendor label).
+ *
+ * Tone palette resolution:
+ *   - dark / green / blue use Tailwind utilities backed by tokens defined
+ *     in `globals.css` `@theme inline`.
+ *   - purple uses inline `var(--color-purple*)` because audric's Tailwind
+ *     v4 theme exposes `--color-purple` as a SINGLE token (no -400/-500
+ *     ramp), so utility classes like `bg-purple-500/10` would silently
+ *     no-op. The inline-style path resolves through the same token both
+ *     light + dark themes already shift (line 211–213 vs 322–323 of
+ *     globals.css).
+ *
+ * If you add a new tone, prefer Tailwind utilities. Use inline styles only
+ * when the design system token doesn't have a shade ramp.
  */
+const TONE_CLASS: Record<'dark' | 'green' | 'blue', string> = {
+  dark: 'bg-surface-sunken text-fg-muted border border-border-subtle',
+  green: 'bg-success-solid/10 text-success-solid border border-success-solid/20',
+  blue: 'bg-info-solid/10 text-info-solid border border-info-solid/20',
+};
+
+const PURPLE_INLINE_STYLE: CSSProperties = {
+  background: 'var(--color-purple-bg)',
+  color: 'var(--color-purple)',
+  border: '1px solid var(--color-purple)',
+};
+
 export function MppTag({
   children,
   tone = 'dark',
@@ -123,22 +176,16 @@ export function MppTag({
   children: ReactNode;
   tone?: 'dark' | 'purple' | 'green' | 'blue';
 }) {
-  const toneClass: Record<string, string> = {
-    dark: 'bg-surface-sunken text-fg-muted border border-border-subtle',
-    purple: 'bg-purple-500/10 text-purple-400 border border-purple-500/20',
-    green: 'bg-success-solid/10 text-success-solid border border-success-solid/20',
-    blue: 'bg-info-solid/10 text-info-solid border border-info-solid/20',
-  };
-  return (
-    <span
-      className={cn(
-        'inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-mono uppercase tracking-[0.12em] shrink-0',
-        toneClass[tone],
-      )}
-    >
-      {children}
-    </span>
-  );
+  const baseClass =
+    'inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-mono uppercase tracking-[0.12em] shrink-0';
+  if (tone === 'purple') {
+    return (
+      <span className={baseClass} style={PURPLE_INLINE_STYLE}>
+        {children}
+      </span>
+    );
+  }
+  return <span className={cn(baseClass, TONE_CLASS[tone])}>{children}</span>;
 }
 
 /**

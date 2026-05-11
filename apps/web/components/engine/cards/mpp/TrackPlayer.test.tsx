@@ -157,4 +157,25 @@ describe('TrackPlayer', () => {
     );
     expect(container.textContent).toContain('Generated Audio');
   });
+
+  it('renders SuiscanLink when paymentDigest present', () => {
+    const { container } = render(
+      <TrackPlayer
+        data={{
+          serviceId: 'suno',
+          price: '0.05',
+          result: { audio_url: 'https://cdn/x.mp3' },
+          paymentDigest: 'ABCDEF1234567890ABCDEF1234567890ABCD',
+        }}
+      />,
+    );
+    expect(container.textContent).toContain('Suiscan');
+  });
+
+  it('does not render SuiscanLink when paymentDigest absent', () => {
+    const { container } = render(
+      <TrackPlayer data={{ serviceId: 'suno', price: '0.05', result: { audio_url: 'https://cdn/x.mp3' } }} />,
+    );
+    expect(container.textContent).not.toContain('Suiscan');
+  });
 });

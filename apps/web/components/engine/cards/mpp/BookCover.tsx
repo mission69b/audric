@@ -61,6 +61,7 @@ export function BookCover({ data }: { data: PayApiResult }) {
   return (
     <MppCardShell
       bodyNoPadding
+      txDigest={data.paymentDigest}
       header={
         <MppHeader
           caption="PDFSHIFT · BOUND"

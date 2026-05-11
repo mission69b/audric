@@ -16,9 +16,7 @@
  * the per-vendor primitives.
  */
 
-import { CardShell } from '../primitives';
-import { MppTag, fmtMppPrice } from './chrome';
-import { SuiscanLink } from '../primitives';
+import { MppCardShell, MppHeader, MppTag, fmtMppPrice } from './chrome';
 import type { PayApiResult } from './registry';
 
 function vendorFromServiceId(serviceId: string | undefined): string | null {
@@ -33,15 +31,23 @@ function vendorFromServiceId(serviceId: string | undefined): string | null {
 export function GenericMppReceipt({ data }: { data: PayApiResult }) {
   const vendor =
     data.serviceName ?? vendorFromServiceId(data.serviceId) ?? 'MPP Service';
+  const priceText =
+    data.amount != null ? `$${data.amount.toFixed(2)}` : fmtMppPrice(data.price);
 
   return (
-    <CardShell title={`${vendor.toUpperCase()} · MPP`}>
+    <MppCardShell
+      txDigest={data.paymentDigest}
+      header={
+        <MppHeader
+          showSparkle={false}
+          caption={`${vendor.toUpperCase()} · MPP`}
+          right={priceText}
+        />
+      }
+    >
       <div className="space-y-2">
         <div className="flex items-baseline gap-3">
           <MppTag tone="dark">{vendor.toUpperCase()}</MppTag>
-          <span className="ml-auto font-serif text-base text-fg-primary tabular-nums">
-            {data.amount != null ? `$${data.amount.toFixed(2)}` : fmtMppPrice(data.price)}
-          </span>
         </div>
 
         {(data.deliveryEstimate || data.serviceId) && (
@@ -49,9 +55,7 @@ export function GenericMppReceipt({ data }: { data: PayApiResult }) {
             {data.deliveryEstimate ?? `Service call: ${data.serviceId}`}
           </div>
         )}
-
-        {data.paymentDigest && <SuiscanLink digest={data.paymentDigest} />}
       </div>
-    </CardShell>
+    </MppCardShell>
   );
 }

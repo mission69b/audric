@@ -114,6 +114,7 @@ export function TrackPlayer({ data }: { data: PayApiResult }) {
     <MppCardShell
       bodyNoPadding
       className="border-0"
+      txDigest={data.paymentDigest}
       header={
         <MppHeader caption={vendorLabel(data.serviceId)} right={fmtMppPrice(data.price)} />
       }
