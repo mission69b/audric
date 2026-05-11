@@ -144,8 +144,20 @@ export function BundleReceiptBlockView({ block, onSignBackIn }: BundleReceiptBlo
         </button>
       ) : null}
 
+      {/* [SPEC 23B-W5, 2026-05-11] ⚡ bolt prefix on `GAS · SPONSORED`.
+          Mirrors A5's PermissionCard footer (the pre-tap card) so the
+          pre/post-tap pair reads as one visual family — the bolt was
+          shipped pre-tap, but the receipt was lagging the visual rhyme.
+          Bolt renders uniformly across all 3 footer states (success /
+          atomic-revert / session-expired): the framing is "this WAS a
+          sponsored intent" — a property of the intent type, not the
+          execution outcome — so it's accurate even when execution
+          failed or never reached chain. */}
       <div className="pt-1.5 mt-1 flex items-center justify-between font-mono text-[10px] uppercase tracking-wide text-fg-muted">
-        <span>GAS · SPONSORED</span>
+        <span className="flex items-center gap-1">
+          <span aria-hidden="true">⚡</span>
+          GAS · SPONSORED
+        </span>
         <span>{footerStatus}</span>
       </div>
     </CardShell>
