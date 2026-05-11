@@ -133,7 +133,10 @@ export function PostWriteRefreshSurface({
       {/* Cards rendered chronologically below the surface, only after
           the message has finished streaming. ToolBlockView's `headerless`
           mode skips the AgentStep header (already shown in the row above)
-          and emits only the result card. */}
+          and emits only the result card. `variant="post-write"` opts
+          renderers like BalanceCard into a tighter 2-3 col + no-holdings
+          presentation that fits inline below the receipt without dragging
+          another ~80px of duplicated context onto the page. */}
       {!isStreaming &&
         tools.map((tool) =>
           tool.status === 'done' || tool.status === 'error' ? (
@@ -142,6 +145,7 @@ export function PostWriteRefreshSurface({
               block={tool}
               isStreaming={false}
               headerless
+              variant="post-write"
             />
           ) : null,
         )}

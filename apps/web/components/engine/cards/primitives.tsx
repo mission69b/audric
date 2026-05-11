@@ -2,13 +2,36 @@
 
 import React from 'react';
 
-export function CardShell({ title, badge, children, noPadding }: { title: string; badge?: React.ReactNode; children: React.ReactNode; noPadding?: boolean }) {
+/**
+ * [SPEC 23B-W1] `noHeader` skips the title chrome entirely. Used by the
+ * post-write `BalanceCard` variant: the parent surface
+ * (`<PostWriteRefreshSurface>`) already shows
+ * "↻ AFTER YOUR APPROVAL · REFRESHING STATE", so a duplicate "Balance"
+ * title bar 4px below it is wasted vertical space. With `noHeader: true`
+ * the card collapses to just the body — wrapped in the same border/radius/
+ * background so it still reads as a card, just unframed at the top.
+ */
+export function CardShell({
+  title,
+  badge,
+  children,
+  noPadding,
+  noHeader,
+}: {
+  title: string;
+  badge?: React.ReactNode;
+  children: React.ReactNode;
+  noPadding?: boolean;
+  noHeader?: boolean;
+}) {
   return (
     <div className="my-1.5 rounded-md overflow-hidden border border-border-subtle bg-surface-card">
-      <div className="flex items-center justify-between px-3.5 py-2 border-b border-border-subtle bg-surface-sunken">
-        <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-fg-muted">{title}</span>
-        {badge}
-      </div>
+      {!noHeader && (
+        <div className="flex items-center justify-between px-3.5 py-2 border-b border-border-subtle bg-surface-sunken">
+          <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-fg-muted">{title}</span>
+          {badge}
+        </div>
+      )}
       {noPadding ? children : <div className="px-3.5 py-2.5 text-xs">{children}</div>}
     </div>
   );

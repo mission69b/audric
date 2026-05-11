@@ -47,16 +47,34 @@ function isRefinementPayload(data: unknown): boolean {
   return !!data && typeof data === 'object' && '_refine' in (data as Record<string, unknown>);
 }
 
-const CARD_RENDERERS: Record<string, (result: unknown) => React.ReactNode | null> = {
+/**
+ * [SPEC 23B-W1] `variant` lets the caller request a tighter post-write
+ * presentation. Today only `balance_check` consumes it; other renderers
+ * accept the arg for API symmetry but ignore it. When extending, only opt
+ * in tools whose card materially changes shape post-write — most read
+ * cards look identical in both contexts.
+ */
+type CardVariant = 'default' | 'post-write';
+type CardRenderer = (
+  result: unknown,
+  variant?: CardVariant,
+) => React.ReactNode | null;
+
+const CARD_RENDERERS: Record<string, CardRenderer> = {
   rates_info: (result) => {
     const data = extractData(result);
     if (!data || typeof data !== 'object') return null;
     return <RatesCard data={data as Record<string, { saveApy: number; borrowApy: number }>} />;
   },
-  balance_check: (result) => {
+  balance_check: (result, variant) => {
     const data = extractData(result);
     if (!data || typeof data !== 'object') return null;
-    return <BalanceCard data={data as Parameters<typeof BalanceCard>[0]['data']} />;
+    return (
+      <BalanceCard
+        data={data as Parameters<typeof BalanceCard>[0]['data']}
+        variant={variant}
+      />
+    );
   },
   savings_info: (result) => {
     const data = extractData(result);
@@ -201,13 +219,23 @@ const CARD_RENDERERS: Record<string, (result: unknown) => React.ReactNode | null
   },
 };
 
-export function ToolResultCard({ tool }: { tool: ToolExecution }) {
+export function ToolResultCard({
+  tool,
+  variant,
+}: {
+  tool: ToolExecution;
+  /** [SPEC 23B-W1] Request a tighter post-write presentation when the card
+   *  is being rendered as part of a post-write refresh cluster
+   *  (`<PostWriteRefreshSurface>`). Most renderers ignore this; the
+   *  ones that materially change shape opt in via `CARD_RENDERERS`. */
+  variant?: CardVariant;
+}) {
   if (tool.status !== 'done' || !tool.result || tool.isError) return null;
 
   const renderer = CARD_RENDERERS[tool.toolName];
   if (renderer) {
     try {
-      return <>{renderer(tool.result)}</>;
+      return <>{renderer(tool.result, variant)}</>;
     } catch {
       return null;
     }

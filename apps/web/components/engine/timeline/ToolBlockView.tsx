@@ -36,6 +36,11 @@ interface ToolBlockViewProps {
   /** Skip the AgentStep header — used by ParallelToolsGroup which
    *  renders a unified group header above the per-tool cards. */
   headerless?: boolean;
+  /** [SPEC 23B-W1] Forward to `<ToolResultCard>` so consumers like
+   *  `<PostWriteRefreshSurface>` can request a tighter post-write
+   *  presentation (e.g. the 2-3 col `BalanceCard` instead of the full
+   *  3-5 col + holdings card). Defaults to `'default'`. */
+  variant?: 'default' | 'post-write';
 }
 
 /** Map TimelineBlock status (5 states) to the run status the renderers
@@ -55,7 +60,7 @@ function toRunStatus(s: ToolTimelineBlock['status']): RunStatus {
   }
 }
 
-export function ToolBlockView({ block, isStreaming, headerless }: ToolBlockViewProps) {
+export function ToolBlockView({ block, isStreaming, headerless, variant }: ToolBlockViewProps) {
   const stepStatus = toRunStatus(block.status);
   const isSettled = block.status === 'done' || block.status === 'error';
 
@@ -118,7 +123,7 @@ export function ToolBlockView({ block, isStreaming, headerless }: ToolBlockViewP
       )}
 
       {isSettled && !isStreaming && (
-        <ToolResultCard tool={execution} />
+        <ToolResultCard tool={execution} variant={variant} />
       )}
     </div>
   );

@@ -48,9 +48,46 @@ interface BalanceData {
   suinsName?: string | null;
 }
 
-export function BalanceCard({ data }: { data: BalanceData }) {
+// ───────────────────────────────────────────────────────────────────────────
+// SPEC 23B-W1 — post-write variant (2026-05-11)
+//
+// `default`    → 3-5 cols + holdings footer (the always-on standalone card the
+//                user gets when they ask "what's my balance"). Unchanged.
+//
+// `post-write` → 2-3 cols, no holdings footer, tighter padding. Rendered by
+//                <PostWriteRefreshSurface> below a save/withdraw/swap+save
+//                receipt to communicate "here's what changed" without
+//                duplicating the full standalone card 80px below the
+//                receipt.
+//
+// Why drop "Total" + holdings in post-write? After a write, the user already
+// knows what just happened (the receipt above shows the action, the bundle
+// row shows the route). What they want next is "where's my money now" —
+// Wallet vs Savings vs DeFi. The total is a derived sum the eye computes;
+// the holdings list is high-density context for "what do I own", not "what
+// did this write change". Dropping both buys back ~50px of vertical space
+// without losing the post-write signal.
+//
+// Demo bar: `audric_demos_v2/demos/01-save-50.html` step 5 — 3-col grid
+// (`AVAILABLE · USDC` / `EARNING · USDsui` / `HELD · SUI`) inline below the
+// receipt. We use the canonical engine columns rather than per-write custom
+// labels so this works for save / withdraw / swap+save without bespoke
+// per-tool wiring (W1 stays narrow; per-tool labels are deferred to a
+// future spec item if/when the founder asks for it).
+// ───────────────────────────────────────────────────────────────────────────
+
+interface BalanceCardProps {
+  data: BalanceData;
+  variant?: 'default' | 'post-write';
+}
+
+export function BalanceCard({ data, variant = 'default' }: BalanceCardProps) {
+  const isPostWrite = variant === 'post-write';
+
   const cols: { label: string; value: string; color?: string }[] = [];
-  if (data.total != null) cols.push({ label: 'Total', value: `$${fmtUsd(data.total)}` });
+  // Total: skip in post-write (the receipt above already shows the delta;
+  // the user can sum the columns themselves if they want the total).
+  if (!isPostWrite && data.total != null) cols.push({ label: 'Total', value: `$${fmtUsd(data.total)}` });
   // [v0.55 Fix 2] "Wallet" instead of "Cash" — the value here aggregates every
   // priced wallet asset (USDC + SUI + tradeables), not just stables, so "Cash"
   // mismatched the user's mental model (e.g. SUI showing under "Cash" surprised
@@ -73,21 +110,27 @@ export function BalanceCard({ data }: { data: BalanceData }) {
     } else {
       cols.push({ label: 'DeFi', value: `$${fmtUsd(data.defi!)}`, color: 'text-success-solid' });
     }
-  } else if (data.defiSource && data.defiSource !== 'blockvision') {
+  } else if (!isPostWrite && data.defiSource && data.defiSource !== 'blockvision') {
     // [v0.53.4] Surface unavailability rather than silently hiding the
     // column for ANY non-blockvision source with $0 total. `partial`
     // and `degraded` are both "we don't know" states — see the
     // `defiSource` JSDoc on `BalanceData` above for the bug rationale.
+    // Skip this in post-write: a "—" column adds noise without changing
+    // anything the write touched. The standalone card surfaces it.
     cols.push({ label: 'DeFi', value: '—', color: 'text-fg-muted' });
   }
   if ((data.debt ?? 0) > 0) cols.push({ label: 'Debt', value: `$${fmtUsd(data.debt!)}`, color: 'text-warning-solid' });
 
-  const hasHoldings = data.holdings && data.holdings.filter((h) => h.usdValue >= 0.01).length > 0;
+  const hasHoldings = !isPostWrite && data.holdings && data.holdings.filter((h) => h.usdValue >= 0.01).length > 0;
   const isWatched = data.isSelfQuery === false && !!data.address;
   const badge = isWatched ? <AddressBadge address={data.address!} suinsName={data.suinsName} /> : undefined;
+  // Post-write: skip the "Balance" title bar entirely — the surface header
+  // above the cluster already communicates "AFTER YOUR APPROVAL · REFRESHING
+  // STATE", so a duplicate "Balance" title 4px below it is noise.
+  const cellPad = isPostWrite ? 'px-2.5 py-1.5' : 'px-3 py-2';
 
   return (
-    <CardShell title="Balance" badge={badge} noPadding>
+    <CardShell title="Balance" badge={badge} noPadding noHeader={isPostWrite}>
       <div
         className="grid"
         style={{ gridTemplateColumns: `repeat(${cols.length}, 1fr)` }}
@@ -95,11 +138,11 @@ export function BalanceCard({ data }: { data: BalanceData }) {
         {cols.map((col, i) => (
           <div
             key={col.label}
-            className="px-3 py-2"
+            className={cellPad}
             style={i < cols.length - 1 ? { borderRight: '0.5px solid var(--border-subtle)' } : undefined}
           >
-            <div className="text-[11px] text-fg-muted mb-1">{col.label}</div>
-            <div className={`font-mono text-[15px] font-medium ${col.color ?? 'text-fg-primary'}`}>{col.value}</div>
+            <div className={`text-fg-muted mb-1 ${isPostWrite ? 'text-[10px]' : 'text-[11px]'}`}>{col.label}</div>
+            <div className={`font-mono font-medium ${isPostWrite ? 'text-[13px]' : 'text-[15px]'} ${col.color ?? 'text-fg-primary'}`}>{col.value}</div>
           </div>
         ))}
       </div>
