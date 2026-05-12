@@ -28,10 +28,10 @@ export default function LitepaperPage() {
 
         {/* Hero */}
         <div className={s.hero}>
-          <div className={s.eyebrow}>Litepaper · May 2026</div>
-          <h1>Your money,<br /><em>handled.</em></h1>
+          <div className={s.eyebrow}>The interface is changing · May 2026</div>
+          <h1>Talk to<br /><em>your money.</em></h1>
           <p className={s.heroLede}>
-            Conversational finance on Sui. 1,000+ users. Send money in 0.4 seconds. Earn yield on idle cash. An agent that already knows your finances — before you type a word.
+            Claude is good at tasks. It can&apos;t manage your money or move it. Audric fills that gap — conversational finance on Sui. 35 tools run silently behind every conversation. 1,000+ users. Sub-second finality.
           </p>
           <div className={s.heroMeta}>t2000 AFI &nbsp;·&nbsp; Delaware &nbsp;·&nbsp; audric.ai</div>
         </div>
@@ -39,9 +39,52 @@ export default function LitepaperPage() {
         {/* Problem */}
         <section className={s.sec}>
           <div className={s.secLabel}>The Problem</div>
-          <h2>Your money apps don&apos;t<br /><em>understand money.</em></h2>
-          <p>Your bank charges $25 for a wire. Your savings earns 0.1%. PayPal takes a cut. Five apps that don&apos;t talk to each other — and none of them know you. Not your history, your goals, what you asked last month.</p>
-          <p>AI got good at answering questions. It doesn&apos;t move money. Nobody built the agent that understands your finances <em>and</em> acts on them. Until now.</p>
+          <h2>Seven steps. Four apps.<br /><em>One wrong move.</em></h2>
+          <p>Before you can send $1 in crypto today:</p>
+
+          <ul className={s.frictionList}>
+            <li className={s.frictionItem}>
+              <span className={s.frictionNum}>01</span>
+              <span className={s.frictionText}>Find a wallet app. Search the store. Hope it&apos;s not a clone.</span>
+              <span className={`${s.frictionTag} ${s.frictionTagRed}`}>3,000+ fake apps removed in 2023</span>
+            </li>
+            <li className={s.frictionItem}>
+              <span className={s.frictionNum}>02</span>
+              <span className={s.frictionText}>Verify the download. Check the developer, the reviews, the URL. Manually.</span>
+              <span className={s.frictionTag}>&nbsp;</span>
+            </li>
+            <li className={s.frictionItem}>
+              <span className={s.frictionNum}>03</span>
+              <span className={s.frictionText}>Write down your seed phrase. 24 words. On paper. Don&apos;t lose it.</span>
+              <span className={`${s.frictionTag} ${s.frictionTagRed}`}>lose this = lose everything</span>
+            </li>
+            <li className={s.frictionItem}>
+              <span className={s.frictionNum}>04</span>
+              <span className={s.frictionText}>Buy a gas token separately. You need ETH to send USDC. Different app.</span>
+              <span className={s.frictionTag}>another exchange, another KYC</span>
+            </li>
+            <li className={s.frictionItem}>
+              <span className={s.frictionNum}>05</span>
+              <span className={s.frictionText}>Find a bridge or DEX. Wrong chain? Bridge it. Hope the liquidity is there.</span>
+              <span className={`${s.frictionTag} ${s.frictionTagRed}`}>bridge hacks: $2.5B lost in 2022</span>
+            </li>
+            <li className={s.frictionItem}>
+              <span className={s.frictionNum}>06</span>
+              <span className={s.frictionText}>Approve the contract, set slippage, confirm. Three transactions. Three fees.</span>
+              <span className={s.frictionTag}>pray the price didn&apos;t move</span>
+            </li>
+            <li className={s.frictionItem}>
+              <span className={s.frictionNum}>07</span>
+              <span className={s.frictionText}>Copy-paste a 42-character address. One wrong character and it&apos;s gone. Forever.</span>
+              <span className={`${s.frictionTag} ${s.frictionTagRed}`}>irreversible</span>
+            </li>
+          </ul>
+          <div className={s.frictionTotal}>
+            <span>Total friction</span><span>3 min + 3 days settlement</span>
+          </div>
+
+          <p style={{ marginTop: '32px' }}>I didn&apos;t set out to build a finance app. I set out to remove every reason someone gives up on crypto. Turns out that meant rebuilding the interface from scratch.</p>
+          <p>AI got good at answering financial questions. Claude can explain a borrow position. It can&apos;t execute one. Nobody built the agent that understands your finances <em>and</em> acts on them. Audric fills that gap.</p>
         </section>
 
         {/* Solution */}
@@ -63,6 +106,25 @@ export default function LitepaperPage() {
           </div>
 
           <p>Three actions. Three different apps normally. The agent already knew your idle balance from your wallet history and the profile it built from your past conversations. One tap to confirm. Non-custodial. Sponsored gas. Sub-second finality.</p>
+
+          <div className={s.statRow}>
+            <div className={s.statCell}>
+              <div className={s.statVal}>1</div>
+              <div className={s.statLabel}>sentence with Audric</div>
+            </div>
+            <div className={s.statCell}>
+              <div className={`${s.statVal} ${s.statValGreen}`}>$0</div>
+              <div className={s.statLabel}>in fees</div>
+            </div>
+            <div className={s.statCell}>
+              <div className={`${s.statVal} ${s.statValGreen}`}>~0.4s</div>
+              <div className={s.statLabel}>to land</div>
+            </div>
+            <div className={s.statCell}>
+              <div className={`${s.statVal} ${s.statValGreen}`}>100%</div>
+              <div className={s.statLabel}>focus on what matters</div>
+            </div>
+          </div>
         </section>
 
         {/* Products */}
@@ -202,7 +264,11 @@ export default function LitepaperPage() {
         <section className={s.sec}>
           <div className={s.secLabel}>Audric Intelligence</div>
           <h2>The moat runs before<br /><em>you type a word.</em></h2>
-          <p>Five systems assemble your financial profile, load your on-chain history, and recall past advice — silently, every turn. Users experience it as &ldquo;Audric already knew.&rdquo;</p>
+
+          <p className={s.pullQuote}>&ldquo;Agentic doesn&apos;t mean autonomous. It means intelligent.&rdquo;</p>
+
+          <p>Memory, advice log, chain facts, portfolio context — all assembled before you finish typing. The agent harness compiles it into a single intent. That&apos;s what agentic finance actually is.</p>
+          <p>Five systems assemble your financial profile, load your on-chain history, and recall past advice — silently, every turn. Users experience it as &ldquo;Audric already knew.&rdquo; The agent only acts when you&apos;re present. Tap to confirm, every time.</p>
           <p>The agent isn&apos;t just reactive. Shopping for a house party: Audric noticed the user hadn&apos;t added beverages to the list, found drinks within the remaining budget, and included them before asking. That&apos;s the Reasoning Engine going beyond the literal request — reasoning from context, not hallucinating.</p>
 
           <div className={s.gridBorder}>
@@ -223,6 +289,15 @@ export default function LitepaperPage() {
           </div>
 
           <p className={s.secNote}>The moat compounds. Every turn sharpens the profile. Every logged recommendation makes the next answer more consistent. Every on-chain fact is context no cold-start chatbot will ever have.</p>
+        </section>
+
+        {/* Positioning */}
+        <section className={s.sec}>
+          <div className={s.secLabel}>Positioning</div>
+          <h2>No other product<br /><em>is near it.</em></h2>
+          <p>Every competitor sits in one of two failure modes: complex UX (MetaMask, Uniswap, Kraken) or slow settlement (PayPal, traditional bank, Revolut). No other product sits at the intersection of simple and fast — Audric occupies that space alone.</p>
+          <p className={s.pullQuote}>&ldquo;Most fintech adds features. We removed them. The product gets better every time we cut something.&rdquo;</p>
+          <p>Seven steps to send money. Or one sentence. The interface is the product. Sui is the infrastructure. The agent is the moat.</p>
         </section>
 
         {/* Business Model */}
@@ -368,7 +443,7 @@ export default function LitepaperPage() {
             <div>
               <div className={s.teamName}>Funkii</div>
               <div className={s.teamRole}>Founder · t2000 AFI</div>
-              <div className={s.teamBio}>15+ years infrastructure at IBM, Telstra, Optus. Solo founder. CLI, SDK, engine, MCP server, MPP gateway, smart contracts, and consumer app — every line, one person. First 1,000 users acquired without paid acquisition.</div>
+              <div className={s.teamBio}>15+ years infrastructure at IBM, Telstra, Optus. Solo founder. CLI, SDK, engine, MCP server, MPP gateway, smart contracts, and consumer app — every line, one person. First 1,000 users without paid acquisition.<br /><br />The hardest part wasn&apos;t the AI. It was making something that felt seamless — like it should have always worked this way. Sui made that possible.</div>
             </div>
           </div>
         </section>

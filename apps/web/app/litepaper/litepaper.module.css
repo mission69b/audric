@@ -448,6 +448,111 @@
   color: var(--n400);
 }
 
+/* ── Pull quote ── */
+.pullQuote {
+  font-family: var(--font-serif);
+  font-size: clamp(22px, 3vw, 30px);
+  font-weight: 500;
+  font-style: italic;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: var(--n800);
+  border-left: 2px solid var(--n300);
+  padding-left: 24px;
+  margin: 32px 0;
+}
+
+/* ── Friction list ── */
+.frictionList {
+  list-style: none;
+  padding: 0;
+  margin: 32px 0;
+  border: 1px solid var(--border-default);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.frictionItem {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  gap: 12px;
+  align-items: baseline;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border-default);
+  font-size: 14px;
+}
+.frictionItem:last-child {
+  border-bottom: none;
+}
+.frictionNum {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--n400);
+  letter-spacing: 0.06em;
+}
+.frictionText {
+  color: var(--n700);
+}
+.frictionTag {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  padding: 3px 8px;
+  border-radius: 3px;
+  background: var(--n200);
+  color: var(--n500);
+  white-space: nowrap;
+}
+.frictionTagRed {
+  background: #fee2e2;
+  color: #991b1b;
+}
+.frictionTotal {
+  display: flex;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-top: 1px solid var(--border-default);
+  background: var(--n100);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--n800);
+}
+
+/* ── Stat row ── */
+.statRow {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border: 1px solid var(--border-default);
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 24px 0;
+}
+.statCell {
+  padding: 18px 20px;
+  border-right: 1px solid var(--border-default);
+  background: var(--surface-card);
+}
+.statCell:last-child {
+  border-right: none;
+}
+.statVal {
+  font-family: var(--font-serif);
+  font-size: 24px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: var(--n900);
+  margin-bottom: 4px;
+}
+.statValGreen {
+  color: var(--g600, #16a34a);
+}
+.statLabel {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--n500);
+}
+
 /* ── Responsive ── */
 @media (max-width: 680px) {
   .nav {
