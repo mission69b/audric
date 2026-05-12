@@ -109,6 +109,20 @@ interface ReasoningTimelineProps {
    * to set user expectations. Default: false.
    */
   isFirstAssistantTurn?: boolean;
+  /**
+   * [SPEC 23B-MPP6-fastpath / 2026-05-12] Forwarded down through
+   * `<BlockRouter>` → `<ToolBlockView>` → `<ToolResultCard>` → MPP
+   * renderer → `<ReviewCard>` so the Regenerate button can dispatch
+   * the fastpath re-fire of the original `pay_api` call (bypasses
+   * LLM round-trip). Wired from
+   * `dashboard-content.tsx:handleRegenerateToolCall`.
+   *
+   * NOTE: distinct from `onRegenerate` above (SPEC 7 P2.4b
+   * Quote-Refresh handler that takes a `PendingAction`). Both coexist
+   * because they cover orthogonal regen use cases — see BlockRouter
+   * for the same naming distinction.
+   */
+  onRegenerateToolCall?: (toolUseId: string) => Promise<void>;
 }
 
 export function ReasoningTimeline({
@@ -127,6 +141,7 @@ export function ReasoningTimeline({
   onSignBackIn,
   priorThinkingTexts,
   isFirstAssistantTurn,
+  onRegenerateToolCall,
 }: ReasoningTimelineProps) {
   // [B3.3 / G8] Manual-state-preserved expansion map for thinking blocks.
   // Lazy-init from the blocks present at first mount (rehydration case)
@@ -230,6 +245,7 @@ export function ReasoningTimeline({
               tools={item.tools}
               isStreaming={isStreaming}
               onSendMessage={onSendMessage}
+              onRegenerateToolCall={onRegenerateToolCall}
             />
           );
         }
@@ -260,6 +276,7 @@ export function ReasoningTimeline({
             regeneratingAttemptIds={regeneratingAttemptIds}
             onPendingInputSubmit={onPendingInputSubmit}
             onSignBackIn={onSignBackIn}
+            onRegenerateToolCall={onRegenerateToolCall}
             thinkingExpanded={
               block.type === 'thinking'
                 ? thinkingExpanded.get(block.blockIndex) ??

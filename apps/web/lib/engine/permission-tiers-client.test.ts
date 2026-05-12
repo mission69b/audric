@@ -73,6 +73,23 @@ describe('resolveUsdValue (client mirror)', () => {
       resolveUsdValue('send_transfer', { amount: 1, asset: 'WAL' }, PRICES),
     ).toBe(Infinity);
   });
+
+  // [SPEC 23B-MPP6-fastpath audit / 2026-05-12] Pin field-name parity
+  // with the engine. Pre-fix this read `maxCost ?? price`; both fields
+  // are absent from the pay_api schema (which declares `maxPrice`) so
+  // resolution always returned 0 → tier=auto regardless of preset, AND
+  // session-spend incrementing was a no-op. Post-fix honors `maxPrice`.
+  it('pay_api honors maxPrice when set (matches pay_api schema)', () => {
+    expect(resolveUsdValue('pay_api', { maxPrice: 2 }, PRICES)).toBe(2);
+  });
+
+  it('pay_api returns 0 when maxPrice is omitted (the common case — gateway price is the truth)', () => {
+    expect(resolveUsdValue('pay_api', { url: 'https://example.com' }, PRICES)).toBe(0);
+  });
+
+  it('pay_api does NOT honor legacy maxCost typo', () => {
+    expect(resolveUsdValue('pay_api', { maxCost: 2 }, PRICES)).toBe(0);
+  });
 });
 
 describe('shouldClientAutoApprove', () => {

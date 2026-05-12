@@ -112,6 +112,20 @@ interface BlockRouterProps {
    * button when a bundle's `sessionExpired === true`.
    */
   onSignBackIn?: () => void;
+  /**
+   * [SPEC 23B-MPP6-fastpath / 2026-05-12] Async callback for the
+   * `<ReviewCard>`'s Regenerate button (fastpath path — bypasses LLM).
+   * Receives the toolUseId of the original `pay_api` call. Threaded
+   * down through `<ToolBlockView>` which binds the toolUseId at the
+   * call site so renderers see a no-arg closure.
+   *
+   * NOTE: distinct from `onRegenerate` above (which is the SPEC 7
+   * P2.4b Quote-Refresh handler that takes a `PendingAction`). Both
+   * coexist because they cover orthogonal regeneration use cases:
+   * Quote-Refresh re-fires read tools to update a stale pending
+   * action; this fires write tools to replay a settled pay_api call.
+   */
+  onRegenerateToolCall?: (toolUseId: string) => Promise<void>;
 }
 
 export function BlockRouter({
@@ -132,6 +146,7 @@ export function BlockRouter({
   regeneratingAttemptIds,
   onPendingInputSubmit,
   onSignBackIn,
+  onRegenerateToolCall,
 }: BlockRouterProps) {
   switch (block.type) {
     case 'thinking':
@@ -150,6 +165,7 @@ export function BlockRouter({
           block={block}
           isStreaming={isStreaming}
           onSendMessage={onSendMessage}
+          onRegenerateToolCall={onRegenerateToolCall}
         />
       );
 

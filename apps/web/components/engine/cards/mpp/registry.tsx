@@ -124,14 +124,24 @@ export interface PayApiResult {
 /**
  * [SPEC 23B-MPP6] `onSendMessage` lets a renderer compose a `<ReviewCard>`
  * (or any other "send a chat message via button" surface) below the per-
- * vendor primitive. Threaded from `ToolResultCard.pay_api` →
- * `renderMppService(data, onSendMessage)` → renderer. Optional: most
- * renderers (Lob, Resend, generic fallback) ignore it because they're
- * terminal services with no regen affordance.
+ * vendor primitive. Used by ReviewCard's Cancel button (synthesized
+ * cancellation message) AND as the legacy fallback path for Regenerate
+ * when `onRegenerate` is undefined.
+ *
+ * [SPEC 23B-MPP6-fastpath / 2026-05-12] `onRegenerate` is the
+ * already-toolUseId-bound async closure for the fastpath Regenerate
+ * path — bypasses the LLM round-trip via direct `executeToolAction.pay_api`
+ * dispatch (see `handleRegenerateToolCall` in `app/new/dashboard-content.tsx`).
+ * Threaded from `<ToolBlockView>` which performs the toolUseId binding
+ * at the call site so the renderer doesn't need to know about toolUseIds.
+ *
+ * Both are optional: terminal renderers (Lob, Resend, generic fallback)
+ * ignore them because they have no regen affordance.
  */
 export type MppServiceRenderer = (
   data: PayApiResult,
   onSendMessage?: (text: string) => void,
+  onRegenerate?: () => Promise<void>,
 ) => ReactNode;
 
 /**
@@ -173,18 +183,25 @@ export function normaliseServiceSlug(serviceId: string | undefined | null): stri
 function renderOpenai(
   data: PayApiResult,
   onSendMessage?: (text: string) => void,
+  onRegenerate?: () => Promise<void>,
 ): ReactNode {
   const serviceId = data.serviceId ?? '';
   if (serviceId.includes('/v1/images/generations')) {
     // SPEC 23B-MPP6: previewable + regenerable → append ReviewCard. The
-    // ReviewCard renders disabled if onSendMessage is undefined (e.g.
-    // unauth / demo session) — preview still visible, action unavailable.
+    // ReviewCard renders Regenerate-disabled if BOTH callbacks are
+    // undefined (unauth / demo session). Cancel disables when
+    // onSendMessage is undefined.
+    // [SPEC 23B-MPP6-fastpath / 2026-05-12] When `onRegenerate` is set,
+    // ReviewCard uses the client-driven fastpath (bypasses LLM
+    // round-trip). When unset, falls back to the legacy Option C
+    // synthesized "Regenerate the {noun}" via `onSendMessage`.
     return (
       <>
         <CardPreview data={data} />
         <ReviewCard
           price={data.price}
           artifactNoun="image"
+          onRegenerate={onRegenerate}
           onSendMessage={onSendMessage}
         />
       </>
@@ -208,12 +225,13 @@ export const MPP_SERVICE_RENDERERS: Record<string, MppServiceRenderer> = {
   // SPEC 23B-MPP6: previewable + regenerable → append ReviewCard. Same
   // pattern as DALL-E. PDFShift skipped (deprecating to fallback per
   // spec_native_content_tools), Lob/Resend skipped (terminal).
-  elevenlabs: (data, onSendMessage) => (
+  elevenlabs: (data, onSendMessage, onRegenerate) => (
     <>
       <TrackPlayer data={data} />
       <ReviewCard
         price={data.price}
         artifactNoun="audio clip"
+        onRegenerate={onRegenerate}
         onSendMessage={onSendMessage}
       />
     </>
@@ -246,6 +264,7 @@ export const MPP_SERVICE_RENDERERS: Record<string, MppServiceRenderer> = {
 export function renderMppService(
   data: PayApiResult,
   onSendMessage?: (text: string) => void,
+  onRegenerate?: () => Promise<void>,
 ): ReactNode {
   // [B-MPP6 v1.1] Error envelope short-circuits dispatch. We check the
   // explicit `success: false` flag stamped by `executeToolAction.pay_api`
@@ -257,6 +276,6 @@ export function renderMppService(
 
   const slug = normaliseServiceSlug(data.serviceId);
   const renderer = MPP_SERVICE_RENDERERS[slug];
-  if (renderer) return renderer(data, onSendMessage);
+  if (renderer) return renderer(data, onSendMessage, onRegenerate);
   return <GenericMppReceipt data={data} />;
 }

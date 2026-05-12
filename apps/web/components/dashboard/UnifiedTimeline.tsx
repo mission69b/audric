@@ -148,6 +148,19 @@ interface UnifiedTimelineProps {
    * and left them stuck (Teo / Mysten Labs report).
    */
   onSignBackIn?: () => void;
+  /**
+   * [SPEC 23B-MPP6-fastpath / 2026-05-12] Forwarded down through every
+   * `<ChatMessage>` so `<ReviewCard>` instances on previewable MPP
+   * receipts (DALL-E images, ElevenLabs audio) can dispatch the
+   * fastpath Regenerate path (bypasses LLM round-trip via direct
+   * `executeToolAction.pay_api`). Wired at the dashboard from
+   * `handleRegenerateToolCall`.
+   *
+   * NOTE: distinct from `engine.handleRegenerate` (SPEC 7 P2.4b
+   * Quote-Refresh). Both coexist because they cover orthogonal regen
+   * use cases.
+   */
+  onRegenerateToolCall?: (toolUseId: string) => Promise<void>;
 }
 
 function ConnectingSkeleton() {
@@ -180,6 +193,7 @@ export function UnifiedTimeline({
   isKnownAddress,
   onPromptSaveSender,
   onSignBackIn,
+  onRegenerateToolCall,
 }: UnifiedTimelineProps) {
   const endRef = useRef<HTMLDivElement>(null);
   const lastCount = useRef(0);
@@ -578,6 +592,7 @@ export function UnifiedTimeline({
                 // flag so its thinking always renders fully.
                 priorThinkingTexts={priorThinkingTextsByMessageId.get(entry.msg.id)}
                 isFirstAssistantTurn={entry.msg.id === firstAssistantMessageId}
+                onRegenerateToolCall={onRegenerateToolCall}
               />
             </div>
           );

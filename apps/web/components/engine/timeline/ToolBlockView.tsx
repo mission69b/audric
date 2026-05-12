@@ -47,6 +47,14 @@ interface ToolBlockViewProps {
    *  user message via the engine. Threaded the same way `CanvasBlockView`
    *  receives `onSendMessage` for canvas-internal `onAction` handlers. */
   onSendMessage?: (text: string) => void;
+  /** [SPEC 23B-MPP6-fastpath / 2026-05-12] Async callback invoked by
+   *  `<ReviewCard>`'s Regenerate button (fastpath path). Receives the
+   *  toolUseId of the original `pay_api` call to re-dispatch. This view
+   *  binds `block.toolUseId` into the closure passed to `<ToolResultCard>`
+   *  so renderers see a no-arg `() => Promise<void>` and don't need to
+   *  thread toolUseIds themselves. Wired from
+   *  `dashboard-content.tsx:handleRegenerateToolCall`. */
+  onRegenerateToolCall?: (toolUseId: string) => Promise<void>;
 }
 
 /** Map TimelineBlock status (5 states) to the run status the renderers
@@ -72,6 +80,7 @@ export function ToolBlockView({
   headerless,
   variant,
   onSendMessage,
+  onRegenerateToolCall,
 }: ToolBlockViewProps) {
   const stepStatus = toRunStatus(block.status);
   const isSettled = block.status === 'done' || block.status === 'error';
@@ -135,7 +144,16 @@ export function ToolBlockView({
       )}
 
       {isSettled && !isStreaming && (
-        <ToolResultCard tool={execution} variant={variant} onSendMessage={onSendMessage} />
+        <ToolResultCard
+          tool={execution}
+          variant={variant}
+          onSendMessage={onSendMessage}
+          onRegenerate={
+            onRegenerateToolCall
+              ? () => onRegenerateToolCall(block.toolUseId)
+              : undefined
+          }
+        />
       )}
     </div>
   );

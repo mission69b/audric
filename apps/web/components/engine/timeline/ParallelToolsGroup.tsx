@@ -108,6 +108,15 @@ interface ParallelToolsGroupProps {
    * one cluster, so the fix is in-scope for the same batch.
    */
   onSendMessage?: (text: string) => void;
+  /**
+   * [SPEC 23B-MPP6-fastpath / 2026-05-12] Forwarded to each per-tool
+   * `<ToolBlockView>` (and to `<MppReceiptGrid>` on the all-pay_api
+   * branch) so `<ReviewCard>`'s Regenerate button can dispatch the
+   * fastpath re-fire of the original `pay_api` call (bypasses LLM).
+   * Threaded the same way as `onSendMessage` above. Wired from
+   * `dashboard-content.tsx:handleRegenerateToolCall`.
+   */
+  onRegenerateToolCall?: (toolUseId: string) => Promise<void>;
 }
 
 function toRowStatus(s: ToolTimelineBlock['status']): ParallelRowStatus {
@@ -153,6 +162,7 @@ export function ParallelToolsGroup({
   tools,
   isStreaming,
   onSendMessage,
+  onRegenerateToolCall,
 }: ParallelToolsGroupProps) {
   if (tools.length === 0) return null;
 
@@ -222,6 +232,7 @@ export function ParallelToolsGroup({
           tools={tools}
           isStreaming={isStreaming}
           onSendMessage={onSendMessage}
+          onRegenerateToolCall={onRegenerateToolCall}
         />
       ) : (
         !isStreaming &&
@@ -233,6 +244,7 @@ export function ParallelToolsGroup({
               isStreaming={false}
               headerless
               onSendMessage={onSendMessage}
+              onRegenerateToolCall={onRegenerateToolCall}
             />
           ) : null,
         )

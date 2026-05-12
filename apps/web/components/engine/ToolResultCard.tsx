@@ -69,11 +69,19 @@ type CardVariant = 'default' | 'post-write';
  * buttons fire a synthesized user message via `engine.sendMessage`.
  * Most card renderers ignore it; opt in only when the card needs a
  * "send a chat message via button click" affordance.
+ *
+ * [SPEC 23B-MPP6-fastpath / 2026-05-12] `onRegenerate` is the optional
+ * fourth arg — a toolUseId-bound async closure for the fastpath
+ * Regenerate path (bypasses LLM round-trip via direct
+ * `executeToolAction.pay_api`). The toolUseId binding is performed at
+ * the `<ToolBlockView>` call site so renderers don't need to know
+ * about toolUseIds.
  */
 type CardRenderer = (
   result: unknown,
   variant?: CardVariant,
   onSendMessage?: (text: string) => void,
+  onRegenerate?: () => Promise<void>,
 ) => React.ReactNode | null;
 
 const CARD_RENDERERS: Record<string, CardRenderer> = {
@@ -203,10 +211,10 @@ const CARD_RENDERERS: Record<string, CardRenderer> = {
   // Shape: host's `executeToolAction.pay_api` returns
   //   `{ success: true, data: { success, paymentDigest, price, serviceId, result } }`
   // → `extractData` unwraps `.data` → directly usable as `PayApiResult`.
-  pay_api: (result, _variant, onSendMessage) => {
+  pay_api: (result, _variant, onSendMessage, onRegenerate) => {
     const data = extractData(result);
     if (!data || typeof data !== 'object') return null;
-    return <>{renderMppService(data as PayApiResult, onSendMessage)}</>;
+    return <>{renderMppService(data as PayApiResult, onSendMessage, onRegenerate)}</>;
   },
   // ─── SPEC 23B — N1 / N2 / N6 — confirmation chips for no-tx-receipt writes ──
   // These three tools don't produce on-chain transactions, so they bypass
@@ -328,6 +336,7 @@ export function ToolResultCard({
   tool,
   variant,
   onSendMessage,
+  onRegenerate,
 }: {
   tool: ToolExecution;
   /** [SPEC 23B-W1] Request a tighter post-write presentation when the card
@@ -340,13 +349,19 @@ export function ToolResultCard({
    *  ElevenLabs branches use it (via `<ReviewCard>`). Threaded the same
    *  way `<CanvasBlockView>` already receives `onSendMessage`. */
   onSendMessage?: (text: string) => void;
+  /** [SPEC 23B-MPP6-fastpath / 2026-05-12] Already-toolUseId-bound async
+   *  closure for the fastpath Regenerate path. The toolUseId binding is
+   *  performed in `<ToolBlockView>` so this card doesn't need to know
+   *  about toolUseIds. Forwarded to `pay_api` renderer (DALL-E +
+   *  ElevenLabs paths use it via `<ReviewCard>`). */
+  onRegenerate?: () => Promise<void>;
 }) {
   if (tool.status !== 'done' || !tool.result || tool.isError) return null;
 
   const renderer = CARD_RENDERERS[tool.toolName];
   if (renderer) {
     try {
-      return <>{renderer(tool.result, variant, onSendMessage)}</>;
+      return <>{renderer(tool.result, variant, onSendMessage, onRegenerate)}</>;
     } catch {
       return null;
     }

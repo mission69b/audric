@@ -118,6 +118,18 @@ interface ChatMessageProps {
    * assistant message in the session. Default: undefined → false.
    */
   isFirstAssistantTurn?: boolean;
+  /**
+   * [SPEC 23B-MPP6-fastpath / 2026-05-12] Forwarded down through
+   * `<ReasoningTimeline>` → `<BlockRouter>` → `<ToolBlockView>` →
+   * `<ToolResultCard>` → MPP renderer → `<ReviewCard>` so the
+   * Regenerate button can dispatch the fastpath re-fire of the
+   * original `pay_api` call (bypasses LLM round-trip). Wired from
+   * `dashboard-content.tsx:handleRegenerateToolCall`.
+   *
+   * NOTE: distinct from `onRegenerate` above (SPEC 7 P2.4b
+   * Quote-Refresh). See BlockRouter for the same naming distinction.
+   */
+  onRegenerateToolCall?: (toolUseId: string) => Promise<void>;
 }
 
 export function ChatMessage({
@@ -139,6 +151,7 @@ export function ChatMessage({
   onSignBackIn,
   priorThinkingTexts,
   isFirstAssistantTurn,
+  onRegenerateToolCall,
 }: ChatMessageProps) {
   if (message.role === 'user') {
     return (
@@ -203,6 +216,7 @@ export function ChatMessage({
           onSignBackIn={onSignBackIn}
           priorThinkingTexts={priorThinkingTexts}
           isFirstAssistantTurn={isFirstAssistantTurn}
+          onRegenerateToolCall={onRegenerateToolCall}
         />
         {chipsBlock}
       </>
@@ -269,6 +283,7 @@ function ChatMessageV2({
   onSignBackIn,
   priorThinkingTexts,
   isFirstAssistantTurn,
+  onRegenerateToolCall,
 }: ChatMessageV2Props) {
   const voice = useVoiceModeContext();
   const isBeingSpoken =
@@ -334,6 +349,7 @@ function ChatMessageV2({
         onSignBackIn={onSignBackIn}
         priorThinkingTexts={priorThinkingTexts}
         isFirstAssistantTurn={isFirstAssistantTurn}
+        onRegenerateToolCall={onRegenerateToolCall}
       />
 
       {message.usage && !message.isStreaming && (

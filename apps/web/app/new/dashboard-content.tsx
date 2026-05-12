@@ -14,7 +14,11 @@ import { AmountChips } from '@/components/dashboard/AmountChips';
 import { SwapAssetPicker, type SwapAsset } from '@/components/dashboard/SwapAssetPicker';
 import { resolveFlow } from '@/components/dashboard/AgentMarkdown';
 import { UnifiedTimeline } from '@/components/dashboard/UnifiedTimeline';
-import { getPresetConfig } from '@/lib/engine/permission-tiers-client';
+import {
+  getPresetConfig,
+  resolvePermissionTier,
+  resolveUsdValue,
+} from '@/lib/engine/permission-tiers-client';
 import { AppShell } from '@/components/shell/AppShell';
 import { useChipFlow, type ChipFlowResult, type FlowContext } from '@/hooks/useChipFlow';
 import { useFeed } from '@/hooks/useFeed';
@@ -81,6 +85,45 @@ import { isContactPromptSkipped } from '@/lib/identity/contact-prompt-skip';
 // part). Post-claim users see "Good morning, alice" — their chosen
 // identity, not their inbox. Aligns the composer header with D10's
 // "the handle is the user's identity" framing.
+// [SPEC 23B-MPP6-fastpath / 2026-05-12] Locate a previously executed
+// tool call by `toolUseId` across the engine message ledger. Used by
+// `handleRegenerateToolCall` to recover the original `pay_api` input
+// (url + body) so the regen can fire with the same parameters as the
+// LLM-driven first call.
+//
+// Returns BOTH the matching tool AND the parent assistant message id —
+// the messageId is needed to anchor the optimistic upsert into the
+// SAME conversational turn that produced the original (otherwise old-
+// card regens render at the bottom of the chat instead of next to the
+// original; see useEngine.upsertToolBlock JSDoc for the full story).
+//
+// Returns null when no message in scope holds the tool (e.g. session
+// truncated, race against rehydration, or the toolUseId came from a
+// stale render). Searches from newest-to-oldest because regens are
+// usually on recent cards — order doesn't affect correctness, only
+// hot-path latency.
+function findToolByToolUseId(
+  messages: Array<{
+    id: string;
+    role: 'user' | 'assistant';
+    tools?: Array<{ toolUseId: string; toolName: string; input: unknown; result?: unknown }>;
+  }>,
+  toolUseId: string,
+): {
+  tool: { toolUseId: string; toolName: string; input: unknown; result?: unknown };
+  messageId: string;
+} | null {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const msg = messages[i];
+    if (msg.role !== 'assistant') continue;
+    const tools = msg.tools;
+    if (!tools) continue;
+    const found = tools.find((t) => t.toolUseId === toolUseId);
+    if (found) return { tool: found, messageId: msg.id };
+  }
+  return null;
+}
+
 function getGreeting(username: string | null | undefined): string {
   const hour = new Date().getHours();
   const nameStr = username ? `, ${username}` : '';
@@ -1388,6 +1431,203 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
     [agent, balanceQuery, contactsHook, zkStatus, engine],
   );
 
+  // [SPEC 23B-MPP6-fastpath / 2026-05-12] Client-driven `pay_api` regen.
+  // Wired to `<ReviewCard>`'s Regenerate button via the
+  // `onRegenerateToolCall` prop chain (UnifiedTimeline → ChatMessage →
+  // ReasoningTimeline → BlockRouter → ToolBlockView → ToolResultCard →
+  // MPP renderer → ReviewCard).
+  //
+  // Flow (kept linear; comments are claims, not narration):
+  //   1. Recover the original pay_api { input, parent messageId } from
+  //      the message ledger so the regen reuses the same params and
+  //      anchors the optimistic block in the original turn.
+  //   2. Re-resolve permission tier from the original gateway-quoted
+  //      cost (truth) with the LLM's optional `maxPrice` as a fallback.
+  //      If not `auto`, throw so ReviewCard's error chip surfaces.
+  //   3. Optimistically render a `running` tool block in the SAME
+  //      assistant message that contained the original.
+  //   4. Dispatch via executeToolAction.pay_api — same path as the
+  //      LLM-driven first call (SDK + sponsored-tx + gateway).
+  //   5. Update the optimistic block to its terminal state.
+  //   6. Refresh wallet balance (regen charges USDC; mirror engine PWR).
+  //   7. Best-effort persist to /api/engine/regen-append so post-refresh
+  //      rehydration recovers the regen and next-turn LLM context sees
+  //      it. Persist failure does NOT block the user — the result is
+  //      already on screen.
+  //   8. On dispatch error, rethrow so ReviewCard resets its latch and
+  //      shows the error chip.
+  const handleRegenerateToolCall = useCallback(
+    async (toolUseId: string): Promise<void> => {
+      if (!agent) throw new Error('Not authenticated');
+      if (!engine.sessionId) throw new Error('No active session');
+      if (!session?.jwt) throw new Error('Missing JWT');
+
+      // 1. Locate.
+      const found = findToolByToolUseId(engine.messages, toolUseId);
+      if (!found) {
+        throw new Error(`Original tool ${toolUseId} not found in current messages`);
+      }
+      const { tool: originalTool, messageId: originalMessageId } = found;
+      if (originalTool.toolName !== 'pay_api') {
+        throw new Error(`Tool ${toolUseId} is ${originalTool.toolName}, not pay_api`);
+      }
+      const originalInput = originalTool.input as
+        | { url?: string; body?: string; maxPrice?: number }
+        | undefined;
+      if (!originalInput?.url) {
+        throw new Error('Original pay_api input missing url');
+      }
+      const regenInput = {
+        url: originalInput.url,
+        body: originalInput.body,
+        maxPrice: originalInput.maxPrice,
+      };
+
+      // 2. Tier. Original gateway-quoted cost is the source of truth
+      // (because pay_api inputs rarely carry maxPrice — the LLM omits
+      // it). When the original lacks a recorded cost (e.g. it errored
+      // before charge), fall back to the input-derived `usdValue` from
+      // resolveUsdValue (matches today's auto-execution behavior — 0 →
+      // auto for pay_api, which is fine because the gateway enforces
+      // its own price). We don't read sessionSpend — no client-side
+      // getter, and v1 trades the daily-cap safety net for one less
+      // round-trip. The cost footer + click latch are the soft brakes.
+      const priceCache = new Map<string, number>();
+      priceCache.set('USDC', 1);
+      priceCache.set('USDT', 1);
+      if (balance.suiPrice > 0) priceCache.set('SUI', balance.suiPrice);
+      const usdValueFromInput = resolveUsdValue(
+        'pay_api',
+        regenInput as Record<string, unknown>,
+        priceCache,
+      );
+      const originalResult = originalTool.result as { cost?: number } | undefined;
+      const originalCost = typeof originalResult?.cost === 'number' ? originalResult.cost : 0;
+      const usdValue = Math.max(usdValueFromInput, originalCost);
+      const tier = resolvePermissionTier(
+        'pay',
+        usdValue,
+        getPresetConfig(permissionPreset),
+      );
+      if (tier === 'explicit') {
+        throw new Error(`Regen requires manual prompt above $${usdValue.toFixed(2)}`);
+      }
+      if (tier === 'confirm') {
+        throw new Error(
+          `Regen requires confirmation at $${usdValue.toFixed(2)} — change preset or re-prompt`,
+        );
+      }
+
+      // 3. Optimistic upsert into the original turn (NOT the latest).
+      const newToolUseId = `regen_${crypto.randomUUID()}`;
+      engine.upsertToolBlock(
+        {
+          type: 'tool',
+          toolUseId: newToolUseId,
+          toolName: 'pay_api',
+          input: regenInput,
+          status: 'running',
+          startedAt: Date.now(),
+          source: 'user',
+        },
+        originalMessageId,
+      );
+
+      // 4. Dispatch via the same SDK path as the LLM-driven first call.
+      const sdk = await agent.getInstance();
+      lastUserActionAtRef.current = Date.now();
+      let dispatchResult: { success: boolean; data: unknown };
+      try {
+        dispatchResult = await executeToolAction(sdk, 'pay_api', regenInput, {
+          resolveContact: (raw) => contactsHook.resolveContact(raw),
+          resolveSuiNs: async (raw) => {
+            const { resolveSuiNs } = await import('@/lib/suins-resolver');
+            return resolveSuiNs(raw);
+          },
+        });
+      } catch (err) {
+        engine.upsertToolBlock(
+          {
+            type: 'tool',
+            toolUseId: newToolUseId,
+            toolName: 'pay_api',
+            input: regenInput,
+            status: 'error',
+            startedAt: Date.now() - 100,
+            endedAt: Date.now(),
+            isError: true,
+            source: 'user',
+          },
+          originalMessageId,
+        );
+        throw err;
+      }
+
+      const isError = !dispatchResult.success;
+
+      // 5. Terminal state.
+      engine.upsertToolBlock(
+        {
+          type: 'tool',
+          toolUseId: newToolUseId,
+          toolName: 'pay_api',
+          input: regenInput,
+          status: isError ? 'error' : 'done',
+          startedAt: Date.now() - 100,
+          endedAt: Date.now(),
+          result: dispatchResult.data,
+          isError,
+          source: 'user',
+        },
+        originalMessageId,
+      );
+
+      // 6. Wallet refresh (mirror engine PWR).
+      if (!isError) {
+        balanceQuery.refetch();
+      }
+
+      // 7. Best-effort persist. Use the actual gateway-quoted cost from
+      // the dispatch result when present (most accurate); fall back to
+      // tier-resolved usdValue.
+      const dispatchCost = (dispatchResult.data as { cost?: number } | undefined)?.cost;
+      const costUsd = typeof dispatchCost === 'number' && dispatchCost > 0 ? dispatchCost : usdValue;
+      try {
+        const persistRes = await fetch('/api/engine/regen-append', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-zklogin-jwt': session.jwt,
+          },
+          body: JSON.stringify({
+            address,
+            sessionId: engine.sessionId,
+            originalToolUseId: toolUseId,
+            newToolUseId,
+            newAttemptId: crypto.randomUUID(),
+            input: regenInput,
+            result: dispatchResult.data,
+            isError,
+            costUsd,
+          }),
+        });
+        if (!persistRes.ok) {
+          const errText = await persistRes.text().catch(() => '');
+          console.error('[regenerateToolCall] regen-append failed:', persistRes.status, errText);
+        }
+      } catch (persistErr) {
+        console.error('[regenerateToolCall] regen-append POST threw:', persistErr);
+      }
+
+      // 8. Surface dispatch error to ReviewCard's latch + chip.
+      if (isError) {
+        const data = dispatchResult.data as { error?: string } | undefined;
+        throw new Error(data?.error ?? 'Regen failed');
+      }
+    },
+    [agent, address, balance.suiPrice, balanceQuery, contactsHook, engine, permissionPreset, session?.jwt],
+  );
+
   // [SPEC 7 P2.4 Layer 3] Multi-write Payment Intent executor. Mirrors
   // `handleExecuteAction` for single-writes — dispatches the engine-emitted
   // intent through `executeBundleAction`, which posts to /api/transactions/
@@ -2429,6 +2669,7 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
                 return m;
               })()}
               onSendMessage={engine.sendMessage}
+              onRegenerateToolCall={handleRegenerateToolCall}
               contacts={contactsHook.contacts}
               address={address}
               jwt={session?.jwt ?? null}

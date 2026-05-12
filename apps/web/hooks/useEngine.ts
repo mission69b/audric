@@ -1693,6 +1693,92 @@ export function useEngine({ address, jwt, onToolResult, contacts, onAuthIntent }
     setMessages((prev) => [...prev, msg]);
   }, []);
 
+  /**
+   * [SPEC 23B-MPP6-fastpath / 2026-05-12] Upsert a tool block into the
+   * LATEST assistant message's `timeline` AND `tools` arrays. Used by
+   * `<ReviewCard>`'s client-driven regeneration path (see
+   * `handleRegenerateToolCall` in `app/new/dashboard-content.tsx`).
+   *
+   * Why this lives in useEngine: the regen flow needs to:
+   *   1. Optimistically append a `running` tool block before SDK dispatch
+   *      so the UI shows "Regenerating…" without a perceived freeze.
+   *   2. Update the same block to `done` (or `error`) once SDK returns.
+   *   3. Keep `tools[]` in sync so persistence (server-side regen-append)
+   *      and rehydration (post-refresh synthesizeTimelineFromMessage)
+   *      both surface the new tool block correctly.
+   *
+   * Match strategy: by `toolUseId`. Existing block → replace. New
+   * toolUseId → append.
+   *
+   * Targeting (`messageId` parameter):
+   *   - When provided → append/replace within THAT specific assistant
+   *     message. Used by the regen flow: the new tool block belongs in
+   *     the SAME conversational turn as the original it's regenerating,
+   *     not at the bottom of the chat. Without this, clicking Regenerate
+   *     on a ReviewCard from N turns ago would render the new block at
+   *     the bottom of the conversation pre-refresh, then jump back to
+   *     the correct position post-refresh (because server-side
+   *     regen-append correctly anchors).
+   *   - When omitted → falls back to the LAST assistant message. Kept
+   *     for any future caller that wants "append to the active turn"
+   *     semantics.
+   *
+   * No-op when:
+   *   - messages is empty (no message to attach to)
+   *   - target message doesn't exist OR isn't an assistant message
+   *     (contract violation; surface as silent no-op rather than a hard
+   *     throw because the latch in <ReviewCard> already prevents this
+   *     case in normal flows)
+   */
+  const upsertToolBlock = useCallback((block: ToolTimelineBlock, messageId?: string) => {
+    setMessages((prev) => {
+      if (prev.length === 0) return prev;
+      const targetIdx = messageId
+        ? prev.findIndex((m) => m.id === messageId)
+        : prev.length - 1;
+      if (targetIdx < 0) return prev;
+      const targetMsg = prev[targetIdx];
+      if (targetMsg.role !== 'assistant') return prev;
+
+      const currentTimeline = targetMsg.timeline ?? [];
+      const existingTimelineIdx = currentTimeline.findIndex(
+        (b) => b.type === 'tool' && b.toolUseId === block.toolUseId,
+      );
+      const nextTimeline: TimelineBlock[] =
+        existingTimelineIdx >= 0
+          ? currentTimeline.map((b, i) => (i === existingTimelineIdx ? block : b))
+          : [...currentTimeline, block];
+
+      const currentTools = targetMsg.tools ?? [];
+      const existingToolIdx = currentTools.findIndex(
+        (t) => t.toolUseId === block.toolUseId,
+      );
+      const toolExecution: ToolExecution = {
+        toolName: block.toolName,
+        toolUseId: block.toolUseId,
+        input: block.input,
+        status: block.status === 'running' ? 'running' : block.status === 'error' ? 'error' : 'done',
+        result: block.result,
+        isError: block.isError,
+      };
+      const nextTools =
+        existingToolIdx >= 0
+          ? currentTools.map((t, i) => (i === existingToolIdx ? toolExecution : t))
+          : [...currentTools, toolExecution];
+
+      const updatedMsg: EngineChatMessage = {
+        ...targetMsg,
+        timeline: nextTimeline,
+        tools: nextTools,
+      };
+      return [
+        ...prev.slice(0, targetIdx),
+        updatedMsg,
+        ...prev.slice(targetIdx + 1),
+      ];
+    });
+  }, []);
+
   return {
     messages,
     status,
@@ -1711,6 +1797,11 @@ export function useEngine({ address, jwt, onToolResult, contacts, onAuthIntent }
     clearMessages,
     loadSession,
     injectMessage,
+    // [SPEC 23B-MPP6-fastpath / 2026-05-12] Helper used by the
+    // dashboard's `handleRegenerateToolCall` to optimistically append
+    // and update the regen tool block in the latest assistant message's
+    // timeline + tools arrays. See the JSDoc above for full semantics.
+    upsertToolBlock,
     canRetry: !!lastFailedMessage.current,
     isStreaming: status === 'streaming' || status === 'connecting' || status === 'executing',
     // [SPEC 7 P2.4b] Quote-Refresh — `<UnifiedTimeline>` threads these

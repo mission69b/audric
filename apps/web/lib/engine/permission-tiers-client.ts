@@ -160,7 +160,13 @@ export function resolveUsdValue(
     }
 
     case 'pay_api':
-      return safeNum(input.maxCost ?? input.price);
+      // [SPEC 23B-MPP6-fastpath audit / 2026-05-12] Field name fix.
+      // Mirror of `packages/engine/src/permission-rules.ts:213`. See
+      // that comment for the full story; tl;dr the `pay_api` schema
+      // declares `maxPrice`, not `maxCost ?? price`. Both sides MUST
+      // stay in sync — this rule is enforced by the canonical-portfolio
+      // ESLint rule + the spec consistency runner.
+      return safeNum(input.maxPrice);
 
     case 'volo_stake':
     case 'volo_unstake': {

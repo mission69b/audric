@@ -91,6 +91,14 @@ interface MppReceiptGridProps {
    * `<ReviewCard>`.
    */
   onSendMessage?: (text: string) => void;
+  /**
+   * [SPEC 23B-MPP6-fastpath / 2026-05-12] Forwarded to each
+   * `<ToolBlockView>` so per-cell `<ReviewCard>` instances can dispatch
+   * the fastpath Regenerate path (bypasses LLM round-trip via
+   * client-side `executeToolAction.pay_api`). Threaded the same way as
+   * `onSendMessage` above.
+   */
+  onRegenerateToolCall?: (toolUseId: string) => Promise<void>;
 }
 
 export function MppReceiptGrid({
@@ -98,6 +106,7 @@ export function MppReceiptGrid({
   isStreaming,
   subtitle,
   onSendMessage,
+  onRegenerateToolCall,
 }: MppReceiptGridProps) {
   if (tools.length === 0) return null;
 
@@ -138,6 +147,7 @@ export function MppReceiptGrid({
                 isStreaming={false}
                 headerless
                 onSendMessage={onSendMessage}
+                onRegenerateToolCall={onRegenerateToolCall}
               />
             </div>
           ))}
