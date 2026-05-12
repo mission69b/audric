@@ -82,9 +82,6 @@ export default function LitepaperPage() {
           <div className={s.frictionTotal}>
             <span>Total friction</span><span>3 min + 3 days settlement</span>
           </div>
-
-          <p style={{ marginTop: '32px' }}>I didn&apos;t set out to build a finance app. I set out to remove every reason someone gives up on crypto. Turns out that meant rebuilding the interface from scratch.</p>
-          <p>AI got good at answering financial questions. Claude can explain a borrow position. It can&apos;t execute one. Nobody built the agent that understands your finances <em>and</em> acts on them. Audric fills that gap.</p>
         </section>
 
         {/* Solution */}
@@ -99,13 +96,13 @@ export default function LitepaperPage() {
             </div>
             <div className={s.chatBody}>
               <div className={`${s.bubble} ${s.bubbleUser}`}>Send $30 to alex, save the rest of my idle cash, and make a payment link for dinner tonight</div>
-              <div className={`${s.bubble} ${s.bubbleAgent}`}>I see $284 idle. Sending $30 to alex (free, 0.4s). Saving $250 to NAVI at 6.2% APY — that&apos;s $15.50/year. Payment link: <b>audric.ai/pay/mK9Xz · $65 USDC</b>. Confirm all three?</div>
+              <div className={`${s.bubble} ${s.bubbleAgent}`}>Sending $30 to Alex (free, 0.4s). Saving $250 at 6.2% APY. Payment link ready: <b>audric.ai/pay/mK9Xz</b>. Confirm all three?</div>
               <div className={`${s.bubble} ${s.bubbleUser}`}>Yes</div>
-              <div className={`${s.bubble} ${s.bubbleAgent}`}>Done. $30 sent to alex. $249.75 saved. Payment link live — share it anywhere.</div>
+              <div className={`${s.bubble} ${s.bubbleAgent}`}>Done. ✓</div>
             </div>
           </div>
 
-          <p>Three actions. Three different apps normally. The agent already knew your idle balance from your wallet history and the profile it built from your past conversations. One tap to confirm. Non-custodial. Sponsored gas. Sub-second finality.</p>
+          <p>Three actions. Three different apps normally. One sentence. One tap. Done.</p>
 
           <div className={s.statRow}>
             <div className={s.statCell}>
@@ -136,25 +133,25 @@ export default function LitepaperPage() {
             <div className={`${s.gridRow} ${s.cols3}`}>
               <div className={s.gridCell}>
                 <div className={s.cellTitle}>Passport</div>
-                <div className={s.cellBody}>Sign in with Google. Non-custodial wallet in 3 seconds. Every action taps to confirm. Sponsored gas — you never pay network fees.</div>
+                <div className={s.cellBody}>Google sign-in → non-custodial wallet in 3s. No seed phrase. No gas fees.</div>
               </div>
               <div className={s.gridCell}>
                 <div className={s.cellTitle}>Intelligence</div>
-                <div className={s.cellBody}>35 tools. 14 safety guards. Knows your risk profile, your history, and what it told you last month — silently, before you ask.</div>
+                <div className={s.cellBody}>35 tools, 14 guards. Knows your finances before you ask.</div>
               </div>
               <div className={s.gridCell}>
                 <div className={s.cellTitle}>Finance</div>
-                <div className={s.cellBody}>Save at 3–8% APY. Borrow against savings. Swap across 20+ DEXs. Harvest yield in one atomic transaction. Charts from chat.</div>
+                <div className={s.cellBody}>Save 3–8% APY. Borrow. Swap. Compound. All from chat.</div>
               </div>
             </div>
             <div className={`${s.gridRow} ${s.cols3}`}>
               <div className={s.gridCell}>
                 <div className={s.cellTitle}>Pay</div>
-                <div className={s.cellBody}>Send USDC to anyone. Payment links, invoices, QR. Free. Global. 0.4 seconds. No fees, no bank, no limits.</div>
+                <div className={s.cellBody}>Send USDC free in 0.4s. Payment links, QR, invoices.</div>
               </div>
               <div className={s.gridCell}>
                 <div className={s.cellTitle}>Store</div>
-                <div className={s.cellBody}>Creator marketplace at <code>audric.ai/username</code>. AI creates, Walrus stores forever, Seal gates access. 92% to the creator. Phase 5.</div>
+                <div className={s.cellBody}>AI creates, Walrus stores, Seal gates. 92% to creator. Phase 5.</div>
               </div>
               <div className={`${s.gridCell} ${s.gridCellFaded}`} />
             </div>
