@@ -448,6 +448,28 @@
   color: var(--n400);
 }
 
+/* ── Demo link ── */
+.demoLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-secondary);
+  text-decoration: none;
+  border: 1px solid var(--border-default);
+  padding: 7px 14px;
+  border-radius: 4px;
+  margin-top: 20px;
+  transition: color 0.15s, border-color 0.15s;
+}
+.demoLink:hover {
+  color: var(--fg-primary);
+  border-color: var(--border-strong);
+}
+
 /* ── Slide image ── */
 .slideImg {
   width: 100%;

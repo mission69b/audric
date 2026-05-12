@@ -64,6 +64,7 @@ export default function LitepaperPage() {
           </div>
 
           <p>Three actions. Three different apps normally. One sentence. One tap. Done.</p>
+          <a href="https://audric-v2-demos.vercel.app/demos/01-save-50.html" className={s.demoLink} target="_blank" rel="noopener noreferrer">→ Demo 01 · Swap, Save &amp; Send in one sentence</a>
 
           <div className={s.statRow}>
             <div className={s.statCell}>
@@ -137,6 +138,7 @@ export default function LitepaperPage() {
           </div>
 
           <p>Buyers need no wallet, no SUI, no prior account. Google sign-in creates their wallet on the spot. Settles in 0.4 seconds. Multi-vendor atomic payments — one sentence, one signature, everything or nothing.</p>
+          <a href="https://audric-v2-demos.vercel.app/demos/02-payment-link.html" className={s.demoLink} target="_blank" rel="noopener noreferrer">→ Demo 02 · Pay with no wallet, no SUI</a>
         </section>
 
         {/* Audric Store */}
@@ -156,6 +158,7 @@ export default function LitepaperPage() {
           </div>
 
           <p>Spotify pays <strong>$0.003 per stream</strong>. Audric pays <strong>$4.60 on a $5 sale</strong>. Total cost to create a lo-fi beat + cover art on Sui: <strong>$0.09</strong>. On Ethereum, gas alone exceeds the sale price.</p>
+          <a href="https://audric-v2-demos.vercel.app/demos/03-make-a-beat.html" className={s.demoLink} target="_blank" rel="noopener noreferrer">→ Demo 03 · Make a beat &amp; sell it for $5</a>
         </section>
 
         {/* Why Sui */}
@@ -310,6 +313,8 @@ export default function LitepaperPage() {
             </div>
           </div>
 
+          <a href="https://audric-v2-demos.vercel.app/demos/05-mums-birthday.html" className={s.demoLink} target="_blank" rel="noopener noreferrer">→ Demo 05 · Three services, one sentence, one payment — MPP in action</a>
+
           <div className={s.tblWrap}>
             <table>
               <thead>
@@ -428,6 +433,7 @@ export default function LitepaperPage() {
           <div className={s.secLabel}>Links</div>
           <div className={s.linkRow}>
             <a className={s.linkChip} href="https://audric.ai">audric.ai</a>
+            <a className={s.linkChip} href="https://audric-v2-demos.vercel.app">Demo Playbook</a>
             <a className={s.linkChip} href="https://t2000.ai">t2000.ai</a>
             <a className={s.linkChip} href="https://mpp.t2000.ai">mpp.t2000.ai</a>
             <a className={s.linkChip} href="https://x.com/audricai">X · @audricai</a>
