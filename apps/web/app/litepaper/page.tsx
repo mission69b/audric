@@ -301,6 +301,33 @@ export default function LitepaperPage() {
           </div>
         </section>
 
+        {/* Roadmap */}
+        <section className={s.sec}>
+          <div className={s.secLabel}>Roadmap</div>
+          <h2>Where we&apos;re going.</h2>
+
+          <div className={s.gridBorder}>
+            <div className={`${s.gridRow} ${s.cols4}`}>
+              <div className={s.gridCell}>
+                <div className={s.cellTitle}>Now · Live</div>
+                <div className={s.cellBody}>Finance, Pay, Passport, Intelligence. 1,000+ users on Sui mainnet. Zero paid acquisition.</div>
+              </div>
+              <div className={s.gridCell}>
+                <div className={s.cellTitle}>Q3 2026</div>
+                <div className={s.cellBody}>USDC onramp in chat. Cross-chain USDC. Mobile-optimised flows.</div>
+              </div>
+              <div className={s.gridCell}>
+                <div className={s.cellTitle}>Q4 2026</div>
+                <div className={s.cellBody}>Audric Store Phase 1. Creator marketplace live. Agentic Commerce expansion.</div>
+              </div>
+              <div className={s.gridCell}>
+                <div className={s.cellTitle}>2027</div>
+                <div className={s.cellBody}>T2000 TGE. Revenue sharing begins. 10,000+ active users.</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* Token */}
         <section className={s.sec}>
           <div className={s.secLabel}>T2000 Token</div>
@@ -354,7 +381,6 @@ export default function LitepaperPage() {
             </table>
           </div>
 
-          <p className={s.secNote}>18-month milestones: USDC onramp in chat &nbsp;·&nbsp; cross-chain USDC &nbsp;·&nbsp; Audric Store Phase 1 &nbsp;·&nbsp; T2000 TGE-ready &nbsp;·&nbsp; 10,000+ active users</p>
         </section>
 
         {/* Team */}
