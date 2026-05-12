@@ -116,6 +116,20 @@ export function TrackPlayer({ data }: { data: PayApiResult }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const effectiveDuration = audio?.duration ?? runtimeDuration;
 
+  // [UX polish followup #3 / 2026-05-12] Ref-mirror the latest audio
+  // + result so the onError handler can dump the failing shape
+  // without putting `audio.url` / `data.result` in the useEffect deps
+  // array. Putting them in deps would re-attach all listeners every
+  // render (wasteful — the listeners only need to attach once per
+  // mount). Putting nothing in deps and reading from closure made
+  // the linter (correctly) flag stale-closure risk and broke CI on
+  // c3fd291. Refs give us the "fresh value, stable effect" combo.
+  const diagnosticRef = useRef<{ audioUrl?: string; result: unknown }>({
+    audioUrl: audio?.url,
+    result: data.result,
+  });
+  diagnosticRef.current = { audioUrl: audio?.url, result: data.result };
+
   // Sync the play/pause state with the actual <audio> element so external
   // events (track ends, browser cancels playback, user uses media keys)
   // don't desync the visual state.
@@ -155,15 +169,15 @@ export function TrackPlayer({ data }: { data: PayApiResult }) {
       // diagnose from a single console paste rather than another
       // smoke round-trip. Strip the base64 body to keep the log
       // compact (the prefix tells us what we need).
-      // eslint-disable-next-line no-console
+      const { audioUrl, result } = diagnosticRef.current;
       console.error('[TrackPlayer] audio error', {
         code,
-        srcType: typeof audio?.url,
-        srcLength: audio?.url?.length,
-        srcPrefix: typeof audio?.url === 'string' ? audio.url.slice(0, 80) : null,
-        resultType: typeof data.result,
-        resultKeys: data.result && typeof data.result === 'object'
-          ? Object.keys(data.result as object).slice(0, 10)
+        srcType: typeof audioUrl,
+        srcLength: audioUrl?.length,
+        srcPrefix: typeof audioUrl === 'string' ? audioUrl.slice(0, 80) : null,
+        resultType: typeof result,
+        resultKeys: result && typeof result === 'object'
+          ? Object.keys(result as object).slice(0, 10)
           : null,
         elementError: el.error?.message,
       });
@@ -201,7 +215,6 @@ export function TrackPlayer({ data }: { data: PayApiResult }) {
       setPlaying(false);
       const msg = err instanceof Error ? err.message : 'Playback failed';
       setPlayError(msg);
-      // eslint-disable-next-line no-console
       console.error('[TrackPlayer] play() rejected:', err);
     });
   };
