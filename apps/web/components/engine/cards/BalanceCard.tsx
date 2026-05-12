@@ -1,6 +1,7 @@
 'use client';
 
 import { AddressBadge, CardShell, fmtUsd } from './primitives';
+import { NumberTicker } from '../motion/NumberTicker';
 
 interface BalanceData {
   available?: number;
@@ -84,17 +85,44 @@ interface BalanceCardProps {
 export function BalanceCard({ data, variant = 'default' }: BalanceCardProps) {
   const isPostWrite = variant === 'post-write';
 
-  const cols: { label: string; value: string; color?: string }[] = [];
-  // Total: skip in post-write (the receipt above already shows the delta;
-  // the user can sum the columns themselves if they want the total).
-  if (!isPostWrite && data.total != null) cols.push({ label: 'Total', value: `$${fmtUsd(data.total)}` });
+  // [SPEC 23C C3] When `numericValue` is set, render via <NumberTicker>
+  // for the count-up tween. When absent (e.g. the "—" placeholder or
+  // the cached-Nm-ago suffix), fall back to the static `value` string.
+  // Columns where the value is a single number are tickerable; columns
+  // with composite text (price + age suffix, em-dash) are not.
+  const cols: {
+    label: string;
+    value: string;
+    numericValue?: number;
+    color?: string;
+  }[] = [];
+  if (!isPostWrite && data.total != null) {
+    cols.push({
+      label: 'Total',
+      value: `$${fmtUsd(data.total)}`,
+      numericValue: data.total,
+    });
+  }
   // [v0.55 Fix 2] "Wallet" instead of "Cash" — the value here aggregates every
   // priced wallet asset (USDC + SUI + tradeables), not just stables, so "Cash"
   // mismatched the user's mental model (e.g. SUI showing under "Cash" surprised
   // testers who expected only USDC/USDsui). The internal property name stays
   // `available` / `cash` to avoid a wider rename — labels are user-facing only.
-  if (data.available != null) cols.push({ label: 'Wallet', value: `$${fmtUsd(data.available)}` });
-  if ((data.savings ?? 0) > 0) cols.push({ label: 'Savings', value: `$${fmtUsd(data.savings!)}`, color: 'text-success-solid' });
+  if (data.available != null) {
+    cols.push({
+      label: 'Wallet',
+      value: `$${fmtUsd(data.available)}`,
+      numericValue: data.available,
+    });
+  }
+  if ((data.savings ?? 0) > 0) {
+    cols.push({
+      label: 'Savings',
+      value: `$${fmtUsd(data.savings!)}`,
+      numericValue: data.savings,
+      color: 'text-success-solid',
+    });
+  }
   if ((data.defi ?? 0) > 0) {
     // [v0.54] partial-stale: render the cached value with provenance so
     // the user can tell the difference between fresh and sticky data.
@@ -102,13 +130,20 @@ export function BalanceCard({ data, variant = 'default' }: BalanceCardProps) {
     // failed on this turn, so we're showing what we knew Nm ago.
     if (data.defiSource === 'partial-stale' && data.defiPricedAt) {
       const ageMin = Math.max(0, Math.round((Date.now() - data.defiPricedAt) / 60_000));
+      // No numericValue here — composite "$X · Nm" text isn't tickerable
+      // in a useful way (the suffix would jiggle alongside the dollar).
       cols.push({
         label: 'DeFi',
         value: `$${fmtUsd(data.defi!)} · ${ageMin}m`,
         color: 'text-warning-solid',
       });
     } else {
-      cols.push({ label: 'DeFi', value: `$${fmtUsd(data.defi!)}`, color: 'text-success-solid' });
+      cols.push({
+        label: 'DeFi',
+        value: `$${fmtUsd(data.defi!)}`,
+        numericValue: data.defi,
+        color: 'text-success-solid',
+      });
     }
   } else if (!isPostWrite && data.defiSource && data.defiSource !== 'blockvision') {
     // [v0.53.4] Surface unavailability rather than silently hiding the
@@ -119,7 +154,14 @@ export function BalanceCard({ data, variant = 'default' }: BalanceCardProps) {
     // anything the write touched. The standalone card surfaces it.
     cols.push({ label: 'DeFi', value: '—', color: 'text-fg-muted' });
   }
-  if ((data.debt ?? 0) > 0) cols.push({ label: 'Debt', value: `$${fmtUsd(data.debt!)}`, color: 'text-warning-solid' });
+  if ((data.debt ?? 0) > 0) {
+    cols.push({
+      label: 'Debt',
+      value: `$${fmtUsd(data.debt!)}`,
+      numericValue: data.debt,
+      color: 'text-warning-solid',
+    });
+  }
 
   const hasHoldings = !isPostWrite && data.holdings && data.holdings.filter((h) => h.usdValue >= 0.01).length > 0;
   const isWatched = data.isSelfQuery === false && !!data.address;
@@ -148,7 +190,16 @@ export function BalanceCard({ data, variant = 'default' }: BalanceCardProps) {
             style={i < cols.length - 1 ? { borderRight: '0.5px solid var(--border-subtle)' } : undefined}
           >
             <div className={`text-fg-muted mb-1 ${isPostWrite ? 'text-[10px]' : 'text-[11px]'}`}>{col.label}</div>
-            <div className={`font-mono font-medium ${isPostWrite ? 'text-[13px]' : 'text-[15px]'} ${col.color ?? 'text-fg-primary'}`}>{col.value}</div>
+            <div className={`font-mono font-medium ${isPostWrite ? 'text-[13px]' : 'text-[15px]'} ${col.color ?? 'text-fg-primary'}`}>
+              {col.numericValue != null ? (
+                <NumberTicker
+                  value={col.numericValue}
+                  format={(n) => `$${fmtUsd(n)}`}
+                />
+              ) : (
+                col.value
+              )}
+            </div>
           </div>
         ))}
       </div>
