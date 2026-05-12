@@ -22,6 +22,7 @@ import { ProtocolCard } from './cards/ProtocolCard';
 import { PriceCard } from './cards/PriceCard';
 import { ConfirmationChip } from './cards/ConfirmationChip';
 import { SuinsResolution } from './cards/SuinsResolution';
+import { PendingRewardsCard } from './cards/PendingRewardsCard';
 import { renderMppService, type PayApiResult } from './cards/mpp';
 
 const WRITE_TOOL_NAMES = new Set([
@@ -237,6 +238,42 @@ const CARD_RENDERERS: Record<string, CardRenderer> = {
         label="CONTACT SAVED"
         detail={detail}
         tone="success"
+      />
+    );
+  },
+  // ─── SPEC 23B — N5 — pending_rewards card ────────────────────────────────
+  // Pre-N5 the tool fell through to `null` — the user only saw the LLM's
+  // prose ("you have 0.0165 vSUI ≈ $0.04 pending") with no visual breakdown.
+  // PendingRewardsCard renders 3 states: healthy+claimable (rewards table +
+  // total), healthy+empty (quiet "No claimable rewards yet"), and degraded
+  // (warning). The "🌾 HARVEST ALL" / "🎁 JUST CLAIM" CTAs already exist
+  // via lib/suggested-actions.ts:131-134 chips below the assistant turn —
+  // see PendingRewardsCard.tsx header for the data-only design rationale.
+  pending_rewards: (result) => {
+    const data = extractData(result);
+    if (!data || typeof data !== 'object') return null;
+    const r = data as Partial<{
+      rewards: Array<{
+        protocol: string;
+        asset: string;
+        coinType: string;
+        symbol: string;
+        amount: number;
+        estimatedValueUsd: number;
+      }>;
+      totalValueUsd: number;
+      degraded: boolean;
+      degradationReason: string | null;
+    }>;
+    if (!Array.isArray(r.rewards)) return null;
+    return (
+      <PendingRewardsCard
+        data={{
+          rewards: r.rewards,
+          totalValueUsd: r.totalValueUsd ?? 0,
+          degraded: r.degraded ?? false,
+          degradationReason: r.degradationReason ?? null,
+        }}
       />
     );
   },
