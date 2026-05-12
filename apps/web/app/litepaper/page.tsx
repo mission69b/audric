@@ -264,23 +264,48 @@ export default function LitepaperPage() {
             <div className={`${s.gridRow} ${s.cols4}`}>
               <div className={`${s.gridCell} ${s.gridCellCenter}`}>
                 <div className={s.cellLabel}>Users</div>
-                <div className={s.cellValue}>1k+</div>
+                <div className={s.cellValue}>1,000+</div>
                 <div className={`${s.cellBody} ${s.cellBodyXs}`}>zero paid acquisition</div>
               </div>
               <div className={`${s.gridCell} ${s.gridCellCenter}`}>
-                <div className={s.cellLabel}>Agent tools</div>
-                <div className={s.cellValue}>35</div>
-                <div className={`${s.cellBody} ${s.cellBodyXs}`}>24 read + 11 write</div>
+                <div className={s.cellLabel}>On-chain txs</div>
+                <div className={s.cellValue}>500+</div>
+                <div className={`${s.cellBody} ${s.cellBodyXs}`}>Sui mainnet</div>
               </div>
               <div className={`${s.gridCell} ${s.gridCellCenter}`}>
-                <div className={s.cellLabel}>MPP endpoints</div>
-                <div className={s.cellValue}>88</div>
-                <div className={`${s.cellBody} ${s.cellBodyXs}`}>40+ services</div>
+                <div className={s.cellLabel}>Tool calls</div>
+                <div className={s.cellValue}>4.6K</div>
+                <div className={`${s.cellBody} ${s.cellBodyXs}`}>agent harness</div>
               </div>
               <div className={`${s.gridCell} ${s.gridCellCenter}`}>
-                <div className={s.cellLabel}>npm packages</div>
-                <div className={s.cellValue}>4</div>
-                <div className={`${s.cellBody} ${s.cellBodyXs}`}>engine, sdk, cli, mcp</div>
+                <div className={s.cellLabel}>Tokens processed</div>
+                <div className={s.cellValue}>220M+</div>
+                <div className={`${s.cellBody} ${s.cellBodyXs}`}>across all turns</div>
+              </div>
+            </div>
+          </div>
+
+          <div className={s.gridBorder} style={{ marginTop: '16px' }}>
+            <div className={`${s.gridRow} ${s.cols4}`}>
+              <div className={`${s.gridCell} ${s.gridCellCenter}`}>
+                <div className={s.cellLabel}>MPP payments</div>
+                <div className={s.cellValue}>575</div>
+                <div className={`${s.cellBody} ${s.cellBodyXs}`}>mpp.t2000.ai</div>
+              </div>
+              <div className={`${s.gridCell} ${s.gridCellCenter}`}>
+                <div className={s.cellLabel}>USDC settled</div>
+                <div className={s.cellValue}>$82</div>
+                <div className={`${s.cellBody} ${s.cellBodyXs}`}>growing</div>
+              </div>
+              <div className={`${s.gridCell} ${s.gridCellCenter}`}>
+                <div className={s.cellLabel}>Services</div>
+                <div className={s.cellValue}>40</div>
+                <div className={`${s.cellBody} ${s.cellBodyXs}`}>AI APIs</div>
+              </div>
+              <div className={`${s.gridCell} ${s.gridCellCenter}`}>
+                <div className={s.cellLabel}>Settlement</div>
+                <div className={s.cellValue}>~400ms</div>
+                <div className={`${s.cellBody} ${s.cellBodyXs}`}>per payment</div>
               </div>
             </div>
           </div>
@@ -314,15 +339,15 @@ export default function LitepaperPage() {
               </div>
               <div className={s.gridCell}>
                 <div className={s.cellTitle}>Q3 2026</div>
-                <div className={s.cellBody}>USDC onramp in chat. Cross-chain USDC. Mobile-optimised flows.</div>
+                <div className={s.cellBody}>USDC onramp in chat. Offramp to 75+ country bank accounts. Cross-chain USDC.</div>
               </div>
               <div className={s.gridCell}>
                 <div className={s.cellTitle}>Q4 2026</div>
-                <div className={s.cellBody}>Audric Store Phase 1. Creator marketplace live. Agentic Commerce expansion.</div>
+                <div className={s.cellBody}>Audric Store Phase 1. t2000 Agent Marketplace — Agentic Commerce. 10,000+ users.</div>
               </div>
               <div className={s.gridCell}>
                 <div className={s.cellTitle}>2027</div>
-                <div className={s.cellBody}>T2000 TGE. Revenue sharing begins. 10,000+ active users.</div>
+                <div className={s.cellBody}>T2000 TGE. Self-hosted LLM — finance models, Audric as first customer. Revenue sharing begins.</div>
               </div>
             </div>
           </div>
@@ -354,15 +379,15 @@ export default function LitepaperPage() {
         {/* Raise */}
         <section className={s.sec}>
           <div className={s.secLabel}>The Raise</div>
-          <h2>$500k pre-seed.<br />t2000 AFI (Delaware).</h2>
-          <p>Raising into <strong>t2000 AFI</strong> — a Delaware C-Corp, majority-owned by Funkii, subsidiary of Mission69b Capital Limited (BVI). Investors get equity in t2000 AFI only, ring-fenced from Mission69b&apos;s other ventures. t2000 AFI holds the Audric and t2000 IP.</p>
+          <h2>$1m pre-seed.<br />t2000 AFI Inc.</h2>
+          <p>Raising into <strong>t2000 AFI Inc.</strong> — a Delaware C-Corp, majority-owned by Funkii, subsidiary of Mission69b Capital Limited (BVI). Investors get equity in t2000 AFI Inc. only, ring-fenced from Mission69b&apos;s other ventures. t2000 AFI Inc. holds the Audric and t2000 IP.</p>
 
           <div className={s.params}>
-            <div className={s.param}><div className={s.paramLabel}>Raising entity</div><div className={s.paramValue}>t2000 AFI (Delaware)</div></div>
+            <div className={s.param}><div className={s.paramLabel}>Raising entity</div><div className={s.paramValue}>t2000 AFI Inc. (Delaware)</div></div>
             <div className={s.param}><div className={s.paramLabel}>Instrument</div><div className={s.paramValue}>SAFE + Token Warrant</div></div>
-            <div className={s.param}><div className={s.paramLabel}>Target</div><div className={s.paramValue}>$500,000</div></div>
+            <div className={s.param}><div className={s.paramLabel}>Target</div><div className={s.paramValue}>$1,000,000</div></div>
             <div className={s.param}><div className={s.paramLabel}>Minimum cheque</div><div className={s.paramValue}>$25,000</div></div>
-            <div className={s.param}><div className={s.paramLabel}>Valuation cap</div><div className={s.paramValue}>$12,000,000</div></div>
+            <div className={s.param}><div className={s.paramLabel}>Valuation cap</div><div className={s.paramValue}>$24,000,000</div></div>
             <div className={s.param}><div className={s.paramLabel}>Runway</div><div className={s.paramValue}>18 months</div></div>
           </div>
 
@@ -372,11 +397,11 @@ export default function LitepaperPage() {
                 <tr><th>Allocation</th><th>%</th><th>Amount</th></tr>
               </thead>
               <tbody>
-                <tr><td>Engineering + runway</td><td>50%</td><td>$250k</td></tr>
-                <tr><td>Anthropic / AI API</td><td>14%</td><td>$70k</td></tr>
-                <tr><td>Legal + entity setup</td><td>10%</td><td>$50k</td></tr>
-                <tr><td>Smart contract audit</td><td>8%</td><td>$40k</td></tr>
-                <tr><td>Marketing + growth</td><td>18%</td><td>$90k</td></tr>
+                <tr><td>Engineering + runway</td><td>50%</td><td>$500k</td></tr>
+                <tr><td>Anthropic / AI API</td><td>14%</td><td>$140k</td></tr>
+                <tr><td>Legal + entity setup</td><td>10%</td><td>$100k</td></tr>
+                <tr><td>Smart contract audit</td><td>8%</td><td>$80k</td></tr>
+                <tr><td>Marketing + growth</td><td>18%</td><td>$180k</td></tr>
               </tbody>
             </table>
           </div>
@@ -392,7 +417,7 @@ export default function LitepaperPage() {
             <div className={s.teamAvatar}>F</div>
             <div>
               <div className={s.teamName}>Funkii</div>
-              <div className={s.teamRole}>Founder · t2000 AFI</div>
+              <div className={s.teamRole}>Founder · t2000 AFI Inc.</div>
               <div className={s.teamBio}>15+ years infrastructure at IBM, Telstra, Optus. Solo founder. CLI, SDK, engine, MCP server, MPP gateway, smart contracts, and consumer app — every line, one person. First 1,000 users without paid acquisition.<br /><br />The hardest part wasn&apos;t the AI. It was making something that felt seamless — like it should have always worked this way. Sui made that possible.</div>
             </div>
           </div>
@@ -415,7 +440,7 @@ export default function LitepaperPage() {
           <p className={s.footerLegal}>
             Audric facilitates on-chain transactions the user explicitly approves. It does not provide financial advice, manage assets on behalf of users, or hold custody of funds. This document is for informational purposes only and does not constitute an offer or solicitation to invest. Participation involves smart contract risk, market risk, and potential loss of funds.
           </p>
-          <div className={s.footerMeta}>t2000 AFI (Delaware) &nbsp;·&nbsp; Subsidiary of Mission69b Capital Limited (BVI) &nbsp;·&nbsp; Litepaper · May 2026</div>
+          <div className={s.footerMeta}>t2000 AFI Inc. (Delaware) &nbsp;·&nbsp; Subsidiary of Mission69b Capital Limited (BVI) &nbsp;·&nbsp; Litepaper · May 2026</div>
         </div>
 
       </div>
