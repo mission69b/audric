@@ -2,6 +2,7 @@
 
 import { AudricMark } from '@/components/ui/AudricMark';
 import { Spinner } from '@/components/ui/Spinner';
+import { TypingDots } from './motion/TypingDots';
 
 export type ThinkingStatus =
   | 'awakening'
@@ -64,6 +65,15 @@ export function ThinkingState({ status, intensity = 'active' }: ThinkingStatePro
       <span className="font-mono text-xs tracking-wider uppercase text-fg-muted">
         {config.label}
       </span>
+      {/* SPEC 23C C5 — typing-dots wave during the LLM TTFVP gap.
+       *  Scoped to status === 'thinking' (the "composing the reply"
+       *  moment) — other states (priming, delivering, awakening, etc.)
+       *  have their own semantic affordances and don't need dots on
+       *  top. The wave reads as "actively typing" which is the right
+       *  signal here; it's intentionally redundant with the AudricMark
+       *  animation so the user has both identity and liveness signals
+       *  during the TTFVP window. */}
+      {status === 'thinking' && <TypingDots />}
     </div>
   );
 }
