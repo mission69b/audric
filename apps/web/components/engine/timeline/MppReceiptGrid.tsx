@@ -3,21 +3,43 @@
 /**
  * SPEC 23B-MPP5 — MppReceiptGrid (2026-05-12).
  *
+ * ⚠️ DORMANT TODAY — TRIGGERS ONLY WHEN SPEC 16 BUNDLES SHIP.
+ *
  * Visual wrapper that renders 2-N pay_api receipts side-by-side as a CSS
  * grid instead of the default vertical stack. Used by `<ParallelToolsGroup>`
- * when all settled tools in a parallel cluster are `pay_api` (e.g. the LLM
- * dispatched DALL-E + ElevenLabs in parallel under sub-threshold auto-tier).
+ * when all settled tools in a parallel cluster are `pay_api`.
  *
- * Why a grid and not a stack?
+ * Why dormant: `pay_api` is a write tool. The engine orchestrator
+ * (`packages/engine/src/orchestration.ts` Phase 2) executes write tools
+ * **serially under TxMutex** — only `isReadOnly && isConcurrencySafe`
+ * tools fire in Phase 1 via `Promise.allSettled`. Two `pay_api` calls
+ * in the same turn therefore land sequentially, ~hundreds of ms apart,
+ * and the timeline-grouping heuristic (`startedAt` within 50ms) never
+ * clusters them. `shouldUseMppGrid` cannot fire today.
+ *
+ * The intended trigger is SPEC 16 ATOMIC PAYMENT INTENT: one user prompt
+ * → one PTB bundling N pay_api legs → all legs settle in the same on-chain
+ * tx → the timeline emits them as one parallel cluster → grid renders.
+ * Until SPEC 16 ships, this surface is dead code.
+ *
+ * Why ship it dormant: the grid + the header bucket
+ * ("DISPATCHING N MPP CALLS") + the subtitle slot are the demo-locked
+ * design surface for the SPEC 16 receipt cluster. Building it now means
+ * SPEC 16 only needs to wire the bundle dispatch path — the receipt
+ * surface is already test-covered (15 visual + 10 detection-rule + 2
+ * fix1 regression tests) and demo-quality. Removing it now would just
+ * cost a re-implementation when SPEC 16 lands.
+ *
+ * Why a grid and not a stack (when SPEC 16 lands):
  *   - MPP receipts are full-bleed media surfaces (image previews, audio
  *     players, PDF covers). Stacking 2-4 of them vertically puts the user
  *     into a 600-1200px scroll wall just to see the cluster.
  *   - Side-by-side reads as "one parallel batch landed" matching the
  *     header copy ("DISPATCHING N MPP CALLS"). The vertical stack reads
  *     as "N independent things happened in sequence" which is wrong for
- *     this composition.
+ *     a single atomic-intent bundle.
  *   - Audric demos 03/04/05 (the locked design references) show MPP cards
- *     in 2-col grids when the same turn produced multiple receipts.
+ *     in 2-col grids when one prompt produced multiple receipts.
  *
  * Responsive layout:
  *   - `auto-fit, minmax(280px, 1fr)` collapses to 1 col on narrow viewports
@@ -26,15 +48,13 @@
  *     280px is chosen to keep image/audio previews legible — narrower
  *     than that and DALL-E's 4:5 thumb starts looking like a stamp.
  *
- * SPEC 16 future-proofing — `subtitle`:
- *   When SPEC 16 ATOMIC PAYMENT INTENT lands, multi-pay_api turns will
- *   carry an "intent" label (e.g. "ATOMIC PAYMENT INTENT · 4 services ·
- *   $0.20 total") communicating that the cluster is one logical
- *   transaction rather than N independent payments. The grid surfaces a
- *   subtitle slot above the cards so SPEC 16 can drop the label in
- *   without re-engineering this surface. When undefined (today), no
- *   subtitle row renders — the grid sits cleanly under
- *   ParallelToolsGroup's existing header.
+ * SPEC 16 wiring slot — `subtitle`:
+ *   When SPEC 16 ATOMIC PAYMENT INTENT lands, the bundle layer will pass
+ *   a label (e.g. "ATOMIC PAYMENT INTENT · 4 SERVICES · $0.20 TOTAL")
+ *   communicating that the cluster is one logical transaction. The grid
+ *   surfaces a subtitle slot above the cards so SPEC 16 only has to set
+ *   this prop — no re-engineering. Undefined today (and on every render
+ *   path until SPEC 16) means no subtitle row renders.
  */
 
 import type { ToolTimelineBlock } from '@/lib/engine-types';

@@ -207,11 +207,16 @@ export function ParallelToolsGroup({
           [SPEC 23B-MPP5 / 2026-05-12] When the cluster is all pay_api
           AND has 2+ tools, route the cards through `<MppReceiptGrid>`
           (CSS grid, side-by-side, responsive auto-fit) instead of the
-          chronological vertical stack. Stacking 2-4 full-bleed media
-          receipts vertically creates a 600-1200px scroll wall; the grid
-          collapses that to one glanceable cluster. The header bucket
-          ("DISPATCHING N MPP CALLS") already framed it as one parallel
-          batch — the grid renders that framing. */}
+          chronological vertical stack.
+
+          ⚠️ DORMANT TODAY: pay_api is a write tool and write tools
+          serialize under TxMutex (see orchestration.ts Phase 2). The
+          `shouldUseMppGrid` branch below cannot fire in production
+          today — the grid is shipped pre-built for SPEC 16 ATOMIC
+          PAYMENT INTENT bundles. Until SPEC 16 ships, every parallel
+          cluster routes through the chronological card stack
+          (`tools.map → ToolBlockView`) below. See `MppReceiptGrid.tsx`
+          file header for the full rationale. */}
       {!isStreaming && shouldUseMppGrid(tools) ? (
         <MppReceiptGrid
           tools={tools}
