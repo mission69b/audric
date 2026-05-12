@@ -105,16 +105,23 @@ interface ReviewCardProps {
 // [SPEC 23B-MPP6-fastpath UX polish / 2026-05-12]
 //   'regenerating' — fastpath dispatch in-flight (latched, button reads "Regenerating…")
 //   'regenerated'  — fastpath dispatch resolved successfully (terminal state). The
-//                    component returns null in this state (entire footer collapses) —
-//                    the `↻ Regenerated` chip ABOVE the card (rendered by ToolBlockView,
-//                    not by ReviewCard) is the only post-success signal. Pre-collapse
-//                    this state rendered "↻ Regenerated · See above" status text + a
-//                    disabled "↻ Regenerated" button + a disabled Cancel button,
-//                    triple-stacking the same label and offering a meaningless action
-//                    (Cancel-after-success has no effect — the successor card already
-//                    exists). The 'regenerated' value still exists in the state machine
-//                    so the latch logic in handleRegenerate remains symmetric with
-//                    'cancelled' and the test suite can assert the state transition.
+//                    component returns null in this state (entire footer collapses).
+//                    Post-success the user understands "this card produced its
+//                    successor" via:
+//                      (a) the successor card itself, which appears next to (cluster
+//                          mode) or below (sequential mode) this one with a fully
+//                          interactive footer of its own
+//                      (b) THIS card's collapsed footer — no Review label, no buttons,
+//                          no cost subtitle — clearly signaling "this is no longer the
+//                          active option"
+//                    A "↻ Regenerated" chip used to render ABOVE the card (in
+//                    ToolBlockView, not here) but was removed 2026-05-12 ~19:45 AEST
+//                    after founder smoke caught a layout-shift bug it caused. See
+//                    ToolBlockView.tsx near `block.source === 'user'` for the full
+//                    rationale. The 'regenerated' state value still exists in the
+//                    state machine so the latch logic in handleRegenerate stays
+//                    symmetric with 'cancelled' and the test suite can assert the
+//                    state transition.
 //   'cancelled'    — Cancel button fired; card surrenders to the LLM acknowledgement turn.
 //   null           — interactive (no click yet, or error reset).
 type ClickedState = 'regenerating' | 'regenerated' | 'cancelled' | null;
@@ -177,21 +184,25 @@ export function ReviewCard({
 
   // [UX polish / 2026-05-12] When the card has produced a successor
   // (clicked === 'regenerated'), collapse the footer entirely. The
-  // `↻ Regenerated` chip rendered ABOVE the card by ToolBlockView is the
-  // signal — repeating "Regenerated" three times (chip + status row +
-  // disabled button) was redundant noise, and Cancel-after-success is
-  // semantically meaningless (you can't cancel something whose successor
-  // already exists). Founder smoke 2026-05-12 caught this in the
-  // side-by-side cluster grid where the cramped 2-column layout amplified
-  // the redundancy. Interactive state (clicked === null) still renders
-  // the full footer with text buttons — text reads fine when the row has
-  // its full width.
+  // successor card (next to this one in cluster mode, or below it in
+  // sequential mode) carries its own fully-interactive footer; THIS
+  // card's collapsed footer is the signal that it's no longer the
+  // active option. Pre-collapse this state rendered "↻ Regenerated ·
+  // See above" status text + a disabled "↻ Regenerated" button + a
+  // disabled Cancel button — three labels saying the same thing plus
+  // a meaningless action (Cancel-after-success has no effect; the
+  // successor already exists). Founder smoke 2026-05-12 caught the
+  // resulting clutter in the side-by-side cluster grid where the
+  // cramped 2-column layout amplified the redundancy. Interactive
+  // state (clicked === null) still renders the full footer with text
+  // buttons — text reads fine when the row has its full width.
   //
-  // Cancelled state is intentionally left rendering its status row + the
-  // latched buttons — Cancel is a synchronous LLM-round-trip that produces
-  // its own ack turn, and the latched-disabled buttons reinforce "this
-  // card is no longer an option" while the LLM is responding. If founder
-  // surfaces clutter on Cancelled we can apply the same collapse there.
+  // Cancelled state is intentionally left rendering its status row +
+  // the latched buttons — Cancel is a synchronous LLM-round-trip that
+  // produces its own ack turn, and the latched-disabled buttons
+  // reinforce "this card is no longer an option" while the LLM is
+  // responding. If founder surfaces clutter on Cancelled we can apply
+  // the same collapse there.
   if (clicked === 'regenerated') {
     return null;
   }
