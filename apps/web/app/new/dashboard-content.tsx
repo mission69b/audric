@@ -97,6 +97,20 @@ import { isContactPromptSkipped } from '@/lib/identity/contact-prompt-skip';
 // card regens render at the bottom of the chat instead of next to the
 // original; see useEngine.upsertToolBlock JSDoc for the full story).
 //
+// Source of truth: `message.timeline[]` is the canonical store for the
+// tool's input. The legacy `message.tools[]` array stores
+// `input: {}` (empty object) for confirm-tier writes like `pay_api`
+// because the engine never emits a `tool_start` for them — only
+// `pending_action` (with input on the action), then `tool_result`
+// (no input). The `useEngine` reducer at L1370-1380 creates the
+// `tools[]` row with `input: {}` when the matching `tool_start` is
+// missing. The TIMELINE path is correct because
+// `mergeWriteExecutionIntoTimeline` (called from `resolveAction` at
+// L485-492) synthesizes the tool block with the proper `action.input`.
+// We prefer timeline → fall back to tools[] for read-only cache-miss
+// tools that DO have a tool_start (those populate tools[].input
+// correctly).
+//
 // Returns null when no message in scope holds the tool (e.g. session
 // truncated, race against rehydration, or the toolUseId came from a
 // stale render). Searches from newest-to-oldest because regens are
@@ -107,6 +121,13 @@ function findToolByToolUseId(
     id: string;
     role: 'user' | 'assistant';
     tools?: Array<{ toolUseId: string; toolName: string; input: unknown; result?: unknown }>;
+    timeline?: Array<{
+      type: string;
+      toolUseId?: string;
+      toolName?: string;
+      input?: unknown;
+      result?: unknown;
+    }>;
   }>,
   toolUseId: string,
 ): {
@@ -116,10 +137,26 @@ function findToolByToolUseId(
   for (let i = messages.length - 1; i >= 0; i--) {
     const msg = messages[i];
     if (msg.role !== 'assistant') continue;
-    const tools = msg.tools;
-    if (!tools) continue;
-    const found = tools.find((t) => t.toolUseId === toolUseId);
-    if (found) return { tool: found, messageId: msg.id };
+
+    // Prefer timeline (correct input for ALL tools, including confirm-tier).
+    const timelineMatch = msg.timeline?.find(
+      (b) => b.type === 'tool' && b.toolUseId === toolUseId,
+    );
+    if (timelineMatch?.toolName !== undefined) {
+      return {
+        tool: {
+          toolUseId,
+          toolName: timelineMatch.toolName,
+          input: timelineMatch.input ?? {},
+          result: timelineMatch.result,
+        },
+        messageId: msg.id,
+      };
+    }
+
+    // Fall back to tools[] (correct input for read-only cache-miss tools).
+    const toolsMatch = msg.tools?.find((t) => t.toolUseId === toolUseId);
+    if (toolsMatch) return { tool: toolsMatch, messageId: msg.id };
   }
   return null;
 }

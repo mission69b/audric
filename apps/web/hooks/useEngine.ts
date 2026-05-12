@@ -1367,6 +1367,22 @@ export function useEngine({ address, jwt, onToolResult, contacts, onAuthIntent }
               );
               return { ...m, tools };
             }
+            // [SPEC 23B-MPP6-fastpath audit / 2026-05-12] `input: {}`
+            // is correct here but lossy. This branch fires when a
+            // `tool_result` arrives WITHOUT a matching prior `tool_start`,
+            // which happens for:
+            //   1. Cache-hit dedup tools (engine emits result, no start)
+            //   2. Confirm-tier writes resolved client-side (engine emits
+            //      `pending_action` then `tool_result`; never `tool_start`)
+            // The engine doesn't include input on `tool_result` events,
+            // and `m.pendingAction` was already cleared by `resolveAction`
+            // before this fires, so we have no input to recover here.
+            //
+            // Consumers needing the original input (e.g.
+            // `findToolByToolUseId` in dashboard-content.tsx for the
+            // B-MPP6-fastpath regen flow) must read from `m.timeline[]`
+            // instead — the timeline path correctly stores `action.input`
+            // via `mergeWriteExecutionIntoTimeline` during `resolveAction`.
             return {
               ...m,
               tools: [...existing, {
