@@ -901,3 +901,167 @@ function findLastIndex<T, S extends T>(
   }
   return -1;
 }
+
+// ───────────────────────────────────────────────────────────────────────────
+// SPEC 23B-rehydration / 2026-05-12 — synthesizeTimelineFromMessage
+//
+// Companion to `applyEventToTimeline`. Rebuilds a `TimelineBlock[]` from a
+// rehydrated `EngineChatMessage` (the flat shape returned by
+// `/api/engine/sessions/[id]` after `convertSessionMessages` collapses the
+// engine's Anthropic-shaped ledger). Live SSE incrementally builds
+// `timeline[]` via `applyEventToTimeline`; refresh restores `messages[]`
+// only — `timeline[]` is never persisted, so `<ChatMessage>` falls back to
+// raw text rendering (`message.content`) and rich cards (CardPreview,
+// ReviewCard, ErrorReceipt, TransactionReceiptCard, BalanceCard, etc.)
+// disappear.
+//
+// This helper synthesizes the missing `timeline[]` from the data that DID
+// survive persistence: `thinking`, `content`, `tools` (with parsed
+// `result`), and any `__canvas`-shaped tool results (the engine's
+// canvas signal; see `packages/engine/src/tools/canvas.ts`).
+//
+// What you LOSE vs live SSE (acceptable trade-offs for a half-day fix):
+//   - Interleaving: live SSE preserves `text → tool → text → tool` order
+//     per LLM emission; the persisted ledger collapses into a single
+//     joined `content` string + a `tools[]` array. Synthesis emits
+//     `thinking → text → [tool, canvas?]*` which renders all cards but
+//     loses fine-grained text/tool interleaving. Adequate for receipt /
+//     image / chart histories — the use case this fix targets.
+//   - `startedAt` / `endedAt`: stamped as 0 (not preserved). Per-tool
+//     `attempt N · 1.4s` headers won't show on rehydrated tools.
+//   - `pendingAction` / permission-card / bundle-receipt blocks: not
+//     synthesized today — those need API + state changes (separate
+//     follow-up). Confirms in-flight on refresh stay broken.
+//   - `progress`, `attemptCount`, `proactive` markers: not preserved.
+//
+// What you GET (the 80% that matters):
+//   - Image gallery: DALL-E `<CardPreview>` cards back.
+//   - ReviewCards: Accept / Regenerate / Cancel buttons functional.
+//   - ErrorReceipts: B-MPP6 v1.1 vendor-named error cards back.
+//   - Transaction receipts: TransactionReceiptCard for save/borrow/
+//     swap/volo back.
+//   - Post-write refresh cards: BalanceCard / SavingsCard / HealthCard
+//     in their post-write variants.
+//   - Canvas: `render_canvas` outputs render via CanvasBlockView again.
+//
+// Pure function. Same input → same output. No side effects.
+// ───────────────────────────────────────────────────────────────────────────
+
+import type { EngineChatMessage } from '@/lib/engine-types';
+
+interface CanvasShapedResult {
+  __canvas: true;
+  template: string;
+  title: string;
+  templateData: unknown;
+}
+
+/**
+ * Detect the `__canvas` signal stamped by `render_canvas` (engine
+ * `tools/canvas.ts`). Live SSE fires a separate `canvas` event when
+ * this signal is present; the synthesizer emits a `canvas` block
+ * directly from the persisted tool result.
+ */
+function isCanvasShapedResult(result: unknown): result is CanvasShapedResult {
+  if (typeof result !== 'object' || result === null) return false;
+  const r = result as Record<string, unknown>;
+  return (
+    r.__canvas === true &&
+    typeof r.template === 'string' &&
+    typeof r.title === 'string'
+  );
+}
+
+/**
+ * Build a `TimelineBlock[]` for one rehydrated `EngineChatMessage`.
+ *
+ * Emission order (best-effort match to live SSE for the common case):
+ *   1. `thinking` block (status: 'done') — if `message.thinking` is set
+ *   2. `text` block (status: 'done') — if `message.content` is non-empty
+ *   3. For each tool in `message.tools`:
+ *      a. `tool` block (status: 'done' or 'error')
+ *      b. `canvas` block — if the tool result has the `__canvas` signal
+ *
+ * Returns an empty array when nothing is synthesizable. The caller
+ * (`useEngine.loadSession`) should fall back to existing rendering when
+ * the result is empty.
+ */
+export function synthesizeTimelineFromMessage(
+  message: EngineChatMessage,
+): TimelineBlock[] {
+  const blocks: TimelineBlock[] = [];
+
+  if (message.thinking && message.thinking.length > 0) {
+    blocks.push({
+      type: 'thinking',
+      blockIndex: 0,
+      text: message.thinking,
+      status: 'done',
+    });
+  }
+
+  if (message.content && message.content.length > 0) {
+    blocks.push({
+      type: 'text',
+      text: message.content,
+      status: 'done',
+    });
+  }
+
+  if (message.tools && message.tools.length > 0) {
+    for (const tool of message.tools) {
+      const isErrored = tool.isError === true || tool.status === 'error';
+      const toolBlock: ToolTimelineBlock = {
+        type: 'tool',
+        toolName: tool.toolName,
+        toolUseId: tool.toolUseId,
+        input: tool.input,
+        status: isErrored ? 'error' : 'done',
+        startedAt: 0,
+        endedAt: 0,
+        result: tool.result,
+        isError: isErrored,
+      };
+      blocks.push(toolBlock);
+
+      // [SPEC 23B-rehydration] Canvas blocks normally arrive via a
+      // separate SSE `canvas` event. On rehydration the event is gone
+      // but the engine's `__canvas` signal survives in the tool result,
+      // so we emit the canvas block right after its source tool.
+      if (isCanvasShapedResult(tool.result)) {
+        blocks.push({
+          type: 'canvas',
+          toolUseId: tool.toolUseId,
+          template: tool.result.template,
+          title: tool.result.title,
+          data: tool.result.templateData,
+        });
+      }
+    }
+  }
+
+  return blocks;
+}
+
+/**
+ * Convenience wrapper for the common case: map a list of rehydrated
+ * messages, synthesizing `timeline[]` for any assistant message that
+ * doesn't already have one. User messages and assistant messages that
+ * already carry a `timeline` (e.g. live-streamed entries) pass through
+ * unchanged. Returns a new array — does not mutate `messages`.
+ *
+ * Usage:
+ *   const data = await fetch('/api/engine/sessions/...').then(r => r.json());
+ *   setMessages(rehydrateTimelineForMessages(data.messages));
+ */
+export function rehydrateTimelineForMessages(
+  messages: EngineChatMessage[],
+): EngineChatMessage[] {
+  return messages.map((m) => {
+    if (m.role !== 'assistant') return m;
+    if (m.timeline && m.timeline.length > 0) return m;
+    const synthesized = synthesizeTimelineFromMessage(m);
+    if (synthesized.length === 0) return m;
+    return { ...m, timeline: synthesized };
+  });
+}

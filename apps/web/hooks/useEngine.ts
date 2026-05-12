@@ -21,6 +21,7 @@ import {
   markTimelineInterrupted,
   mergeWriteExecutionIntoTimeline,
   mergeBundleExecutionIntoTimeline,
+  rehydrateTimelineForMessages,
 } from '@/lib/timeline-builder';
 import { asHarnessVersion, type HarnessVersion } from '@/lib/interactive-harness';
 import type { RegenerateTimelineEvent, RegenerateFailure } from '@t2000/engine';
@@ -1661,7 +1662,19 @@ export function useEngine({ address, jwt, onToolResult, contacts, onAuthIntent }
         if (!res.ok) return;
         const data = await res.json();
         if (data.messages?.length) {
-          setMessages(data.messages as EngineChatMessage[]);
+          // [SPEC 23B-rehydration / 2026-05-12] Synthesize `timeline[]`
+          // from the rehydrated tools/content/thinking before pushing
+          // into React state. The persisted ledger doesn't carry the
+          // timeline (only live SSE writes it), so without this step
+          // every assistant message's `timeline` is empty and
+          // <ChatMessage> falls back to plain text — losing all rich
+          // cards (CardPreview, ReviewCard, ErrorReceipt, receipts,
+          // canvas). See `synthesizeTimelineFromMessage` in
+          // `lib/timeline-builder.ts` for the synthesis contract +
+          // what's preserved vs lost vs live SSE.
+          setMessages(
+            rehydrateTimelineForMessages(data.messages as EngineChatMessage[]),
+          );
         }
         // [B3.3 / G4] Pre-B3.3 sessions return `undefined`; leave the
         // pin null so the renderer falls back to the env-var. The next
