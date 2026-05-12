@@ -256,8 +256,12 @@ describe('groupTimelineBlocks — regen-cluster (SPEC 23B-MPP6 UX polish)', () =
     const blocks: TimelineBlock[] = [payApi('orig', 0, 'llm'), payApi('regen', 30_000, 'user')];
     const out = groupTimelineBlocks(blocks);
     expect(out).toHaveLength(1);
-    expect(out[0].kind).toBe('group');
-    if (out[0].kind === 'group') {
+    // [UX polish followup #2 / 2026-05-12] Was 'group' →
+    // 'regen-group'. Distinct kind so ReasoningTimeline routes the
+    // cluster directly to MppReceiptGrid (no header / no per-tool
+    // stub rows above the cards). See timeline-groups.ts header.
+    expect(out[0].kind).toBe('regen-group');
+    if (out[0].kind === 'regen-group') {
       expect(out[0].tools.map((t) => t.toolUseId)).toEqual(['orig', 'regen']);
     }
   });
@@ -270,7 +274,7 @@ describe('groupTimelineBlocks — regen-cluster (SPEC 23B-MPP6 UX polish)', () =
     ];
     const out = groupTimelineBlocks(blocks);
     expect(out).toHaveLength(1);
-    if (out[0].kind === 'group') expect(out[0].tools).toHaveLength(3);
+    if (out[0].kind === 'regen-group') expect(out[0].tools).toHaveLength(3);
   });
 
   it('does NOT trigger regen-cluster for a single pay_api (existing single-emit path)', () => {
@@ -299,8 +303,8 @@ describe('groupTimelineBlocks — regen-cluster (SPEC 23B-MPP6 UX polish)', () =
     expect(out[0].kind).toBe('single');
     if (out[0].kind === 'single') expect(out[0].block.type).toBe('text');
     // [1] regen cluster (both pay_apis)
-    expect(out[1].kind).toBe('group');
-    if (out[1].kind === 'group') {
+    expect(out[1].kind).toBe('regen-group');
+    if (out[1].kind === 'regen-group') {
       expect(out[1].tools.map((t) => t.toolUseId)).toEqual(['orig', 'regen']);
     }
     // [2] post-pay_api narration text — emitted before the PWR because
@@ -326,7 +330,7 @@ describe('groupTimelineBlocks — regen-cluster (SPEC 23B-MPP6 UX polish)', () =
     expect(out).toHaveLength(5);
     expect(out[0].kind).toBe('single'); // thinking
     expect(out[1].kind).toBe('single'); // intro text
-    expect(out[2].kind).toBe('group'); // cluster
+    expect(out[2].kind).toBe('regen-group'); // cluster
     expect(out[3].kind).toBe('single'); // 'between' text (deferred)
     expect(out[4].kind).toBe('single'); // 'outro' text
   });
@@ -344,15 +348,15 @@ describe('groupTimelineBlocks — regen-cluster (SPEC 23B-MPP6 UX polish)', () =
     expect(out).toHaveLength(2);
     expect(out[0].kind).toBe('pwr-group');
     if (out[0].kind === 'pwr-group') expect(out[0].tools.map((t) => t.toolUseId)).toEqual(['bal-old', 'sav-old']);
-    expect(out[1].kind).toBe('group');
-    if (out[1].kind === 'group') expect(out[1].tools.map((t) => t.toolUseId)).toEqual(['orig', 'regen']);
+    expect(out[1].kind).toBe('regen-group');
+    if (out[1].kind === 'regen-group') expect(out[1].tools.map((t) => t.toolUseId)).toEqual(['orig', 'regen']);
   });
 
   it('empty before/after partitions emit nothing extra (cluster only)', () => {
     const blocks: TimelineBlock[] = [payApi('a', 0, 'llm'), payApi('b', 30_000, 'user')];
     const out = groupTimelineBlocks(blocks);
     expect(out).toHaveLength(1);
-    expect(out[0].kind).toBe('group');
+    expect(out[0].kind).toBe('regen-group');
   });
 
   it('does NOT bypass regen-cluster when one pay_api is interleaved with non-pay_api tools', () => {
@@ -366,8 +370,8 @@ describe('groupTimelineBlocks — regen-cluster (SPEC 23B-MPP6 UX polish)', () =
     ];
     const out = groupTimelineBlocks(blocks);
     expect(out).toHaveLength(2);
-    expect(out[0].kind).toBe('group');
-    if (out[0].kind === 'group') {
+    expect(out[0].kind).toBe('regen-group');
+    if (out[0].kind === 'regen-group') {
       expect(out[0].tools.map((t) => t.toolUseId)).toEqual(['orig', 'regen']);
     }
     // The balance_check (non-PWR, just a regular tool) renders as a single after the cluster

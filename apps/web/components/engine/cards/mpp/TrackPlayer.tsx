@@ -147,6 +147,26 @@ export function TrackPlayer({ data }: { data: PayApiResult }) {
       };
       setPlayError(code ? map[code] ?? `Playback failed (code ${code})` : 'Playback failed');
       setPlaying(false);
+      // [UX polish followup #2 diagnostic / 2026-05-12] Founder smoke
+      // surfaced "code 4 — Audio format not supported" with the player
+      // visible. Means extractAudio returned a dataUri but the browser
+      // can't decode it (wrong MIME prefix, malformed base64, empty
+      // payload). Dump the result shape + dataUri prefix so we can
+      // diagnose from a single console paste rather than another
+      // smoke round-trip. Strip the base64 body to keep the log
+      // compact (the prefix tells us what we need).
+      // eslint-disable-next-line no-console
+      console.error('[TrackPlayer] audio error', {
+        code,
+        srcType: typeof audio?.url,
+        srcLength: audio?.url?.length,
+        srcPrefix: typeof audio?.url === 'string' ? audio.url.slice(0, 80) : null,
+        resultType: typeof data.result,
+        resultKeys: data.result && typeof data.result === 'object'
+          ? Object.keys(data.result as object).slice(0, 10)
+          : null,
+        elementError: el.error?.message,
+      });
     };
     el.addEventListener('play', onPlay);
     el.addEventListener('pause', onPause);

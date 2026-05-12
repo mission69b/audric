@@ -176,10 +176,42 @@ async function callGateway(
     const mimeType = contentType.split(';')[0].trim();
     const mediaType = contentType.startsWith('image/') ? 'image' : 'audio';
     result = { type: mediaType, dataUri: `data:${mimeType};base64,${base64}` };
+    // [UX polish followup #2 diagnostic / 2026-05-12] Founder smoke
+    // surfaced "Audio format not supported" in the browser even
+    // though we built a dataUri. Log the raw bytes length + MIME so
+    // we can see if the gateway is returning empty / undersized
+    // audio bodies. Vercel function logs surface this for diagnosis.
+    if (mediaType === 'audio') {
+      console.log(
+        `[services/complete] audio response: mime=${mimeType} bytes=${buffer.byteLength} base64Len=${base64.length} status=${serviceResponse.status}`,
+      );
+    }
   } else if (contentType.includes('application/json')) {
     result = await serviceResponse.json();
+    // [UX polish followup #2 diagnostic / 2026-05-12] If a TTS endpoint
+    // is being proxied through a JSON envelope (e.g. some gateways do
+    // this for binary services) we'd see `result.audio` /
+    // `result.data` / similar — not the dataUri shape the renderer
+    // expects. Log the top-level keys so we can diagnose this case
+    // without another smoke round-trip.
+    if (meta.serviceId?.includes('audio/speech') || meta.serviceId?.includes('audio/transcriptions')) {
+      const keys = result && typeof result === 'object' ? Object.keys(result as object) : null;
+      console.log(
+        `[services/complete] audio service returned JSON envelope: serviceId=${meta.serviceId} keys=${JSON.stringify(keys)} status=${serviceResponse.status}`,
+      );
+    }
   } else {
     result = await serviceResponse.text();
+    // [UX polish followup #2 diagnostic / 2026-05-12] Same as above —
+    // log if an audio-expecting endpoint returned plain text so we
+    // know whether the gateway misset the content-type vs returned
+    // an actual error string.
+    if (meta.serviceId?.includes('audio/speech') || meta.serviceId?.includes('audio/transcriptions')) {
+      const preview = typeof result === 'string' ? result.slice(0, 200) : '(non-string)';
+      console.log(
+        `[services/complete] audio service returned non-JSON text: serviceId=${meta.serviceId} contentType="${contentType}" preview=${JSON.stringify(preview)} status=${serviceResponse.status}`,
+      );
+    }
   }
 
   if (!serviceResponse.ok && serviceResponse.status !== 402) {

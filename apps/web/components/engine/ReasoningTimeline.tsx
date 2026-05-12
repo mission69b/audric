@@ -9,6 +9,7 @@ import { groupTimelineBlocks } from '@/lib/timeline-groups';
 import { BlockRouter } from './timeline/BlockRouter';
 import { ParallelToolsGroup } from './timeline/ParallelToolsGroup';
 import { PostWriteRefreshSurface } from './timeline/PostWriteRefreshSurface';
+import { MppReceiptGrid } from './timeline/MppReceiptGrid';
 import {
   computeThinkingCollapse,
   type ThinkingCollapseResult,
@@ -242,6 +243,27 @@ export function ReasoningTimeline({
           return (
             <ParallelToolsGroup
               key={`group-${i}-${item.tools[0].toolUseId}`}
+              tools={item.tools}
+              isStreaming={isStreaming}
+              onSendMessage={onSendMessage}
+              onRegenerateToolCall={onRegenerateToolCall}
+            />
+          );
+        }
+        if (item.kind === 'regen-group') {
+          // [UX polish followup #2 / 2026-05-12] Regen-cluster
+          // → render MppReceiptGrid DIRECTLY, no
+          // "DISPATCHING N CALLS" header, no per-tool stub rows.
+          // Reasoning: a regen cluster is the user's
+          // tap-to-Regenerate semantic group, NOT a parallel
+          // dispatch — the cards already carry vendor / price /
+          // tx hash, and the parallel chrome was misleading
+          // ("they didn't dispatch in parallel; the user pressed
+          // Regenerate") + visually noisy. See
+          // `lib/timeline-groups.ts` regen-group rationale.
+          return (
+            <MppReceiptGrid
+              key={`regen-${i}-${item.tools[0].toolUseId}`}
               tools={item.tools}
               isStreaming={isStreaming}
               onSendMessage={onSendMessage}

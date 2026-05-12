@@ -42,11 +42,26 @@ import type { TimelineBlock, ToolTimelineBlock } from './engine-types';
 
 const PARALLEL_THRESHOLD_MS = 50;
 
-/** A single block, a parallel-tool run, or a post-write-refresh run. */
+/** A single block, a parallel-tool run, a post-write-refresh run,
+ *  or (UX polish followup #2 / 2026-05-12) a regen cluster.
+ *
+ *  `regen-group` is distinct from `group`:
+ *    - `group` = real parallel dispatch → renders ParallelToolsGroup
+ *      with the "DISPATCHING N CALLS" header + per-tool stub rows
+ *      ABOVE the cards. Useful when the user needs the timing /
+ *      progress signal that "these N tools are all running now".
+ *    - `regen-group` = original + N regens of the same MPP call →
+ *      renders MppReceiptGrid DIRECTLY with no header / no stubs.
+ *      The receipts ARE the comparison; a "DISPATCHING N CALLS"
+ *      header above them is misleading (they didn't dispatch in
+ *      parallel — the user clicked Regenerate seconds apart) and
+ *      the per-tool stubs duplicate the card metadata.
+ */
 export type TimelineRenderItem =
   | { kind: 'single'; block: TimelineBlock }
   | { kind: 'group'; tools: ToolTimelineBlock[] }
-  | { kind: 'pwr-group'; tools: ToolTimelineBlock[] };
+  | { kind: 'pwr-group'; tools: ToolTimelineBlock[] }
+  | { kind: 'regen-group'; tools: ToolTimelineBlock[] };
 
 const isPwr = (b: ToolTimelineBlock): boolean => b.source === 'pwr';
 const isPayApi = (b: TimelineBlock): b is ToolTimelineBlock =>
@@ -183,7 +198,17 @@ function groupRegenCluster(
 
   return [
     ...groupTimelineBlocks(beforeCluster),
-    { kind: 'group', tools: payApiBlocks },
+    // [UX polish followup #2 / 2026-05-12] Was `kind: 'group'` →
+    // `kind: 'regen-group'`. Founder smoke surfaced the cluster
+    // rendering with "DISPATCHING 2 MPP CALLS" header + per-tool
+    // stub rows ABOVE the side-by-side cards (because
+    // ParallelToolsGroup wraps every group with that chrome). For
+    // a regen cluster the chrome is pure noise — the user pressed
+    // Regenerate seconds apart, no parallel-dispatch signal is
+    // needed, and the cards already carry the vendor / price /
+    // tx-hash metadata. The new `regen-group` kind routes
+    // directly to MppReceiptGrid with no header.
+    { kind: 'regen-group', tools: payApiBlocks },
     ...groupTimelineBlocks(afterCluster),
   ];
 }
