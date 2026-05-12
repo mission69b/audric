@@ -287,10 +287,89 @@ const emphasisClass: Record<string, string> = {
   neutral: '',
 };
 
+// ───────────────────────────────────────────────────────────────────────────
+// SPEC 23B StakingCard polish — volo write receipt grid hero (2026-05-12)
+//
+// Mirror of W1 BalanceCard's post-write grid: 2-3 col layout with
+// per-cell label (10px caps) + mono value (13px), tighter padding
+// (px-2.5 py-1.5). For volo_stake / volo_unstake, the receipt's hero
+// rows (Staked / Received / APY for stake; Unstaked / Received for
+// unstake) are dense numerical info that reads better as glanceable
+// columns than as a vertical label/value list.
+//
+// Why volo specifically (and not save / borrow / send)?
+//   - save / borrow / repay → only 1-2 hero rows (label + dollar value),
+//     a grid would be bloat.
+//   - send_transfer → recipient address dominates the receipt (uses
+//     `variant: 'address'`), grid wouldn't fit it.
+//   - swap_execute → 2-3 hero rows but the natural reading order is
+//     vertical (Sold → Received → Impact tells a story), grid loses
+//     the directional flow.
+//   - volo writes → 2-3 hero rows that ARE peer datapoints (staked
+//     amount + received amount + APY), no directional flow. Grid wins.
+//
+// Add-back recipe: if a future write tool wants the grid hero, add
+// its name to USE_GRID_HERO_TOOLS below. Cost: 1 line. The render
+// path automatically handles 1-N columns via `grid-template-columns:
+// repeat(N, 1fr)`. Empty `lines` falls through to the SuiscanLink-only
+// render (no grid drawn), same as the legacy path.
+// ───────────────────────────────────────────────────────────────────────────
+
+const USE_GRID_HERO_TOOLS = new Set(['volo_stake', 'volo_unstake']);
+
 export function TransactionReceiptCard({ data, toolName }: { data: TxReceiptData; toolName: string }) {
   if (!data.tx) return null;
 
   const lines = getHeroLines(data, toolName);
+  const useGridHero = USE_GRID_HERO_TOOLS.has(toolName) && lines.length > 0;
+
+  if (useGridHero) {
+    return (
+      <CardShell title="Transaction" noPadding>
+        <div
+          className="grid"
+          style={{ gridTemplateColumns: `repeat(${lines.length}, 1fr)` }}
+        >
+          {lines.map((line, idx) => (
+            <div
+              key={`${line.label}-${idx}`}
+              className="px-2.5 py-1.5"
+              style={
+                idx < lines.length - 1
+                  ? { borderRight: '0.5px solid var(--border-subtle)' }
+                  : undefined
+              }
+            >
+              <div className="text-fg-muted mb-1 text-[10px] uppercase tracking-wider">
+                {line.label}
+              </div>
+              <div
+                className={`font-mono font-medium text-[13px] ${
+                  line.emphasis ? emphasisClass[line.emphasis] : 'text-fg-primary'
+                }`}
+              >
+                {line.value}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {data.gasCost != null && data.gasCost > 0 && (
+          <div
+            className="flex items-center justify-between px-3 py-2 text-[13px]"
+            style={{ borderTop: '0.5px solid var(--border-subtle)' }}
+          >
+            <span className="text-fg-secondary">Gas</span>
+            <span className="font-mono text-fg-primary">{data.gasCost.toFixed(4)} SUI</span>
+          </div>
+        )}
+
+        <div className="px-3 py-2">
+          <SuiscanLink digest={data.tx} />
+        </div>
+      </CardShell>
+    );
+  }
 
   return (
     <CardShell title="Transaction" noPadding>
