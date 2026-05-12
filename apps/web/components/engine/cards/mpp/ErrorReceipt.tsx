@@ -42,6 +42,7 @@
 import { MppCardShell, MppHeader, MppTag, fmtMppPrice } from './chrome';
 import { normaliseServiceSlug } from './registry';
 import type { PayApiResult } from './registry';
+import { ReceiptChoreography } from '../../motion/ReceiptChoreography';
 
 /**
  * Vendor-slug → display label. Same set as the registry's supported
@@ -80,32 +81,34 @@ export function ErrorReceipt({ data }: { data: PayApiResult }) {
     : `No charge · safe to retry`;
 
   return (
-    <MppCardShell
-      // Only render Suiscan link when the payment actually went on-chain.
-      // Unpaid errors have no digest to link to.
-      txDigest={wasCharged ? data.paymentDigest : undefined}
-      header={
-        <MppHeader
-          showSparkle={false}
-          caption={`${vendor.toUpperCase()} · MPP · FAILED`}
-          right={priceText}
-        />
-      }
-    >
-      <div className="space-y-2">
-        <div className="flex items-baseline gap-3">
-          <MppTag tone="dark">{vendor.toUpperCase()}</MppTag>
-          <span className="font-mono text-[8px] uppercase tracking-[0.12em] text-warning-solid shrink-0">
-            ⚠ Error
-          </span>
-        </div>
+    <ReceiptChoreography tone="error">
+      <MppCardShell
+        // Only render Suiscan link when the payment actually went on-chain.
+        // Unpaid errors have no digest to link to.
+        txDigest={wasCharged ? data.paymentDigest : undefined}
+        header={
+          <MppHeader
+            showSparkle={false}
+            caption={`${vendor.toUpperCase()} · MPP · FAILED`}
+            right={priceText}
+          />
+        }
+      >
+        <div className="space-y-2">
+          <div className="flex items-baseline gap-3">
+            <MppTag tone="dark">{vendor.toUpperCase()}</MppTag>
+            <span className="font-mono text-[8px] uppercase tracking-[0.12em] text-warning-solid shrink-0">
+              ⚠ Error
+            </span>
+          </div>
 
-        <div className="text-sm text-fg-primary leading-snug">{errorMsg}</div>
+          <div className="text-sm text-fg-primary leading-snug">{errorMsg}</div>
 
-        <div className="font-mono text-[9px] uppercase tracking-[0.12em] text-warning-solid">
-          ⚠ {statusLine}
+          <div className="font-mono text-[9px] uppercase tracking-[0.12em] text-warning-solid">
+            ⚠ {statusLine}
+          </div>
         </div>
-      </div>
-    </MppCardShell>
+      </MppCardShell>
+    </ReceiptChoreography>
   );
 }

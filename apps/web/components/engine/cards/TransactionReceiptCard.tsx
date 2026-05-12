@@ -3,6 +3,7 @@
 import { CardShell, SuiscanLink, fmtAmt } from './primitives';
 import { isSuiAddress } from '@/lib/sui-address';
 import { ChunkedAddress } from '../ChunkedAddress';
+import { ReceiptChoreography } from '../motion/ReceiptChoreography';
 
 interface TxReceiptData {
   tx: string;
@@ -325,6 +326,7 @@ export function TransactionReceiptCard({ data, toolName }: { data: TxReceiptData
 
   if (useGridHero) {
     return (
+      <ReceiptChoreography tone="success">
       <CardShell title="Transaction" noPadding>
         <div
           className="grid"
@@ -368,10 +370,12 @@ export function TransactionReceiptCard({ data, toolName }: { data: TxReceiptData
           <SuiscanLink digest={data.tx} />
         </div>
       </CardShell>
+      </ReceiptChoreography>
     );
   }
 
   return (
+    <ReceiptChoreography tone="success">
     <CardShell title="Transaction" noPadding>
       {lines.map((line, idx) => {
         if (line.variant === 'address') {
@@ -431,5 +435,6 @@ export function TransactionReceiptCard({ data, toolName }: { data: TxReceiptData
         <SuiscanLink digest={data.tx} />
       </div>
     </CardShell>
+    </ReceiptChoreography>
   );
 }
