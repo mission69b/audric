@@ -78,6 +78,7 @@ import {
   setUsernameSkipped as persistUsernameSkipped,
 } from '@/lib/identity/username-skip';
 import { isContactPromptSkipped } from '@/lib/identity/contact-prompt-skip';
+import { findToolByToolUseId } from './find-tool-by-id';
 
 // [S.84] Greeting now sources from the Audric handle, not the zkLogin
 // email-derived prefix. Pre-claim users see "Good morning" with no name
@@ -85,81 +86,10 @@ import { isContactPromptSkipped } from '@/lib/identity/contact-prompt-skip';
 // part). Post-claim users see "Good morning, alice" — their chosen
 // identity, not their inbox. Aligns the composer header with D10's
 // "the handle is the user's identity" framing.
-// [SPEC 23B-MPP6-fastpath / 2026-05-12] Locate a previously executed
-// tool call by `toolUseId` across the engine message ledger. Used by
-// `handleRegenerateToolCall` to recover the original `pay_api` input
-// (url + body) so the regen can fire with the same parameters as the
-// LLM-driven first call.
 //
-// Returns BOTH the matching tool AND the parent assistant message id —
-// the messageId is needed to anchor the optimistic upsert into the
-// SAME conversational turn that produced the original (otherwise old-
-// card regens render at the bottom of the chat instead of next to the
-// original; see useEngine.upsertToolBlock JSDoc for the full story).
-//
-// Source of truth: `message.timeline[]` is the canonical store for the
-// tool's input. The legacy `message.tools[]` array stores
-// `input: {}` (empty object) for confirm-tier writes like `pay_api`
-// because the engine never emits a `tool_start` for them — only
-// `pending_action` (with input on the action), then `tool_result`
-// (no input). The `useEngine` reducer at L1370-1380 creates the
-// `tools[]` row with `input: {}` when the matching `tool_start` is
-// missing. The TIMELINE path is correct because
-// `mergeWriteExecutionIntoTimeline` (called from `resolveAction` at
-// L485-492) synthesizes the tool block with the proper `action.input`.
-// We prefer timeline → fall back to tools[] for read-only cache-miss
-// tools that DO have a tool_start (those populate tools[].input
-// correctly).
-//
-// Returns null when no message in scope holds the tool (e.g. session
-// truncated, race against rehydration, or the toolUseId came from a
-// stale render). Searches from newest-to-oldest because regens are
-// usually on recent cards — order doesn't affect correctness, only
-// hot-path latency.
-function findToolByToolUseId(
-  messages: Array<{
-    id: string;
-    role: 'user' | 'assistant';
-    tools?: Array<{ toolUseId: string; toolName: string; input: unknown; result?: unknown }>;
-    timeline?: Array<{
-      type: string;
-      toolUseId?: string;
-      toolName?: string;
-      input?: unknown;
-      result?: unknown;
-    }>;
-  }>,
-  toolUseId: string,
-): {
-  tool: { toolUseId: string; toolName: string; input: unknown; result?: unknown };
-  messageId: string;
-} | null {
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const msg = messages[i];
-    if (msg.role !== 'assistant') continue;
-
-    // Prefer timeline (correct input for ALL tools, including confirm-tier).
-    const timelineMatch = msg.timeline?.find(
-      (b) => b.type === 'tool' && b.toolUseId === toolUseId,
-    );
-    if (timelineMatch?.toolName !== undefined) {
-      return {
-        tool: {
-          toolUseId,
-          toolName: timelineMatch.toolName,
-          input: timelineMatch.input ?? {},
-          result: timelineMatch.result,
-        },
-        messageId: msg.id,
-      };
-    }
-
-    // Fall back to tools[] (correct input for read-only cache-miss tools).
-    const toolsMatch = msg.tools?.find((t) => t.toolUseId === toolUseId);
-    if (toolsMatch) return { tool: toolsMatch, messageId: msg.id };
-  }
-  return null;
-}
+// [SPEC 23B-MPP6-fastpath / 2026-05-12] `findToolByToolUseId` extracted
+// to `./find-tool-by-id.ts` for testability — see that file for the
+// full triple-source priority rationale.
 
 function getGreeting(username: string | null | undefined): string {
   const hour = new Date().getHours();

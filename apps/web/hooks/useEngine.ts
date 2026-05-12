@@ -204,6 +204,32 @@ export function useEngine({ address, jwt, onToolResult, contacts, onAuthIntent }
   // replay it even if the user types more in between.
   const currentReplayTextRef = useRef<string | null>(null);
 
+  // [SPEC 23B-MPP6-fastpath / 2026-05-12 root fix] Stash for confirm-tier
+  // write tool inputs so `tool_result` can recover them.
+  //
+  // The bug it fixes: confirm-tier write tools (`pay_api`, anything that
+  // goes through `pending_action`) never receive a `tool_start` SSE event
+  // — the engine emits `pending_action` (with `action.input`) then later
+  // `tool_result` (no input). The reducer in `processSSEChunk` at
+  // L1370-1395 used to default `tools[].input = {}` when no matching
+  // `tool_start` was seen. By then `m.pendingAction` was already cleared
+  // by `resolveAction`. Result: `tools[].input` was `{}` for every
+  // pay_api call, and downstream consumers (the regen `findToolByToolUseId`
+  // helper, future SPEC 16 bundle consumers, anything else that needs
+  // the original input) silently broke with "missing url" errors.
+  //
+  // Solution: when `pending_action` arrives, snapshot `action.input`
+  // keyed by `action.toolUseId` here. When the matching `tool_result`
+  // arrives, the reducer reads from this ref to populate
+  // `tools[].input` correctly. Cleared on `turn_complete`/`error` to
+  // prevent unbounded growth across long sessions.
+  //
+  // This is the canonical "stop the bleed at the source" fix. The
+  // `findToolByToolUseId` timeline-priority patch (303c6b3) is now a
+  // belt-and-suspenders extra layer — both have to fail for a regen to
+  // break.
+  const pendingInputsRef = useRef<Map<string, unknown>>(new Map());
+
   // [SPEC 7 P2.4b] Set of `attemptId`s currently mid-flight on the
   // regenerate endpoint. Renders as the spinner-state Regenerate button
   // on the matching PermissionCard. Maintained as state (not ref) so
@@ -1367,28 +1393,39 @@ export function useEngine({ address, jwt, onToolResult, contacts, onAuthIntent }
               );
               return { ...m, tools };
             }
-            // [SPEC 23B-MPP6-fastpath audit / 2026-05-12] `input: {}`
-            // is correct here but lossy. This branch fires when a
-            // `tool_result` arrives WITHOUT a matching prior `tool_start`,
-            // which happens for:
-            //   1. Cache-hit dedup tools (engine emits result, no start)
+            // [SPEC 23B-MPP6-fastpath / 2026-05-12 root fix] This branch
+            // fires when a `tool_result` arrives WITHOUT a matching prior
+            // `tool_start`, which happens for:
+            //   1. Cache-hit dedup tools (engine emits result, no start) —
+            //      the original tool_use was never sent because the cache
+            //      served it; no input to recover (input: {} is fine).
             //   2. Confirm-tier writes resolved client-side (engine emits
-            //      `pending_action` then `tool_result`; never `tool_start`)
-            // The engine doesn't include input on `tool_result` events,
-            // and `m.pendingAction` was already cleared by `resolveAction`
-            // before this fires, so we have no input to recover here.
+            //      `pending_action` with input, then `tool_result` without
+            //      input; never `tool_start`). pay_api falls in this
+            //      bucket.
             //
-            // Consumers needing the original input (e.g.
-            // `findToolByToolUseId` in dashboard-content.tsx for the
-            // B-MPP6-fastpath regen flow) must read from `m.timeline[]`
-            // instead — the timeline path correctly stores `action.input`
-            // via `mergeWriteExecutionIntoTimeline` during `resolveAction`.
+            // For case 2, we recover the input from `pendingInputsRef`
+            // which `pending_action` populated above. This makes
+            // `tools[].input` correct for confirm-tier writes (parity
+            // with the timeline[] path that mergeWriteExecutionIntoTimeline
+            // already populated correctly). Without this, regen lookup
+            // (`findToolByToolUseId` in dashboard-content.tsx) and any
+            // future consumer that reads `tools[].input` for write tools
+            // breaks with "missing url" errors.
+            //
+            // For case 1, the ref lookup returns undefined and we fall
+            // back to {} — which is the correct behavior since cache-hit
+            // tools have no input to begin with.
+            const recoveredInput = pendingInputsRef.current.get(event.toolUseId);
+            if (recoveredInput !== undefined) {
+              pendingInputsRef.current.delete(event.toolUseId);
+            }
             return {
               ...m,
               tools: [...existing, {
                 toolName: event.toolName,
                 toolUseId: event.toolUseId,
-                input: {},
+                input: recoveredInput ?? {},
                 status: event.isError ? 'error' as const : 'done' as const,
                 result: event.result,
                 isError: event.isError,
@@ -1405,6 +1442,15 @@ export function useEngine({ address, jwt, onToolResult, contacts, onAuthIntent }
         // signal, not an interruption. The flagInterrupted cleanup
         // paths skip the message when this ref is set.
         pendingActionSeenRef.current = true;
+        // [SPEC 23B-MPP6-fastpath / 2026-05-12 root fix] Stash the
+        // action's input keyed by toolUseId so the matching
+        // `tool_result` event can recover it (engine doesn't include
+        // input on tool_result; pendingAction is cleared by
+        // resolveAction before tool_result fires). See pendingInputsRef
+        // declaration above for the full rationale.
+        if (event.action?.toolUseId) {
+          pendingInputsRef.current.set(event.action.toolUseId, event.action.input);
+        }
         setStatus('executing');
         setMessages((prev) =>
           prev.map((m) =>
@@ -1442,6 +1488,11 @@ export function useEngine({ address, jwt, onToolResult, contacts, onAuthIntent }
 
       case 'error':
         setError(event.message);
+        // [SPEC 23B-MPP6-fastpath / 2026-05-12 root fix] Defensive
+        // cleanup so a turn that errors mid-flight (after pending_action,
+        // before tool_result) doesn't leak entries forever. tool_result
+        // already deletes its own entry on success.
+        pendingInputsRef.current.clear();
         setMessages((prev) =>
           prev.map((m) =>
             m.id === msgId
@@ -1459,6 +1510,13 @@ export function useEngine({ address, jwt, onToolResult, contacts, onAuthIntent }
         // streaming blocks to `done` here, so the timeline is left in
         // a clean state.
         turnCompleteSeenRef.current = true;
+        // [SPEC 23B-MPP6-fastpath / 2026-05-12 root fix] By
+        // turn_complete every confirm-tier write should have resolved
+        // (tool_result fired and deleted its own entry above). Anything
+        // still in the ref is leaked from a malformed/cancelled flow —
+        // clear defensively so the ref doesn't grow across long
+        // sessions.
+        pendingInputsRef.current.clear();
         setMessages((prev) =>
           prev.map((m) =>
             m.id === msgId ? { ...m, isStreaming: false } : m,
