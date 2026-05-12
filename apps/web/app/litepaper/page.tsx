@@ -3,10 +3,10 @@ import s from './litepaper.module.css';
 
 export const metadata: Metadata = {
   title: 'Audric — Litepaper',
-  description: 'Conversational finance on Sui. Your money, handled.',
+  description: 'Agentic finance on Sui. Manage and move money globally. 1,000+ users.',
   openGraph: {
-    title: 'Audric Litepaper',
-    description: 'Conversational finance on Sui. 1,000+ users. Send money in 0.4 seconds. Earn yield on idle cash.',
+    title: 'Audric — Agentic Finance on Sui',
+    description: 'Manage and move money globally. One sentence. Sub-second settlement. 35 tools. 1,000+ users.',
     type: 'article',
   },
 };
@@ -28,10 +28,10 @@ export default function LitepaperPage() {
 
         {/* Hero */}
         <div className={s.hero}>
-          <div className={s.eyebrow}>The interface is changing · May 2026</div>
+          <div className={s.eyebrow}>Agentic Finance on Sui · May 2026</div>
           <h1>Talk to<br /><em>your money.</em></h1>
           <p className={s.heroLede}>
-            Claude is good at tasks. It can&apos;t manage your money or move it. Audric fills that gap — conversational finance on Sui. 35 tools run silently behind every conversation. 1,000+ users. Sub-second finality.
+            Manage and move money globally. One sentence. Sub-second settlement. 35 tools run silently behind every conversation — memory, advice log, chain facts, portfolio context, all assembled before you finish typing. 1,000+ users on Sui mainnet.
           </p>
           <div className={s.heroMeta}>t2000 AFI &nbsp;·&nbsp; Delaware &nbsp;·&nbsp; audric.ai</div>
         </div>
@@ -39,49 +39,10 @@ export default function LitepaperPage() {
         {/* Problem */}
         <section className={s.sec}>
           <div className={s.secLabel}>The Problem</div>
-          <h2>Seven steps. Four apps.<br /><em>One wrong move.</em></h2>
-          <p>Before you can send $1 in crypto today:</p>
-
-          <ul className={s.frictionList}>
-            <li className={s.frictionItem}>
-              <span className={s.frictionNum}>01</span>
-              <span className={s.frictionText}>Find a wallet app. Search the store. Hope it&apos;s not a clone.</span>
-              <span className={`${s.frictionTag} ${s.frictionTagRed}`}>3,000+ fake apps removed in 2023</span>
-            </li>
-            <li className={s.frictionItem}>
-              <span className={s.frictionNum}>02</span>
-              <span className={s.frictionText}>Verify the download. Check the developer, the reviews, the URL. Manually.</span>
-              <span className={s.frictionTag}>&nbsp;</span>
-            </li>
-            <li className={s.frictionItem}>
-              <span className={s.frictionNum}>03</span>
-              <span className={s.frictionText}>Write down your seed phrase. 24 words. On paper. Don&apos;t lose it.</span>
-              <span className={`${s.frictionTag} ${s.frictionTagRed}`}>lose this = lose everything</span>
-            </li>
-            <li className={s.frictionItem}>
-              <span className={s.frictionNum}>04</span>
-              <span className={s.frictionText}>Buy a gas token separately. You need ETH to send USDC. Different app.</span>
-              <span className={s.frictionTag}>another exchange, another KYC</span>
-            </li>
-            <li className={s.frictionItem}>
-              <span className={s.frictionNum}>05</span>
-              <span className={s.frictionText}>Find a bridge or DEX. Wrong chain? Bridge it. Hope the liquidity is there.</span>
-              <span className={`${s.frictionTag} ${s.frictionTagRed}`}>bridge hacks: $2.5B lost in 2022</span>
-            </li>
-            <li className={s.frictionItem}>
-              <span className={s.frictionNum}>06</span>
-              <span className={s.frictionText}>Approve the contract, set slippage, confirm. Three transactions. Three fees.</span>
-              <span className={s.frictionTag}>pray the price didn&apos;t move</span>
-            </li>
-            <li className={s.frictionItem}>
-              <span className={s.frictionNum}>07</span>
-              <span className={s.frictionText}>Copy-paste a 42-character address. One wrong character and it&apos;s gone. Forever.</span>
-              <span className={`${s.frictionTag} ${s.frictionTagRed}`}>irreversible</span>
-            </li>
-          </ul>
-          <div className={s.frictionTotal}>
-            <span>Total friction</span><span>3 min + 3 days settlement</span>
-          </div>
+          <h2>Finance is broken<br /><em>at the interface.</em></h2>
+          <p>Traditional banking: slow, expensive, stops at borders. Crypto fixed the rails but broke the experience. AI arrived and still can&apos;t manage or move your money. The gap has always been the interface.</p>
+          <img src="/litepaper/slide-maze.png" alt="Finance as a maze vs a conversation" className={s.slideImg} />
+          <img src="/litepaper/slide-seven-steps.png" alt="Seven steps or one sentence" className={s.slideImg} />
         </section>
 
         {/* Solution */}
@@ -175,8 +136,7 @@ export default function LitepaperPage() {
             </div>
           </div>
 
-          <p>The buyer needs no prior wallet, no SUI, no Audric account. A Google sign-in creates their wallet on the spot. They pay. It settles in 0.4 seconds. Audric is the distribution layer on both ends.</p>
-          <p>The same agent handles multi-vendor payments atomically — &ldquo;buy everything for my party&rdquo; queries 4 vendors in parallel, compiles a cart, and pays all of them in one Programmable Transaction Block. One signature. One USDC payment. Everything or nothing.</p>
+          <p>Buyers need no wallet, no SUI, no prior account. Google sign-in creates their wallet on the spot. Settles in 0.4 seconds. Multi-vendor atomic payments — one sentence, one signature, everything or nothing.</p>
         </section>
 
         {/* Audric Store */}
@@ -195,37 +155,7 @@ export default function LitepaperPage() {
             </div>
           </div>
 
-          <p>Spotify pays <strong>$0.003 per stream</strong>. Audric pays <strong>$4.60 on a $5 sale</strong>.</p>
-          <p>One sentence creates, permanently stores, gates access, and publishes. Walrus stores content on Sui forever — no IPFS, no CDN, no link rot. Seal enforces pay-to-unlock on-chain, trustlessly. Supply caps (&ldquo;100 copies max&rdquo;) are enforced on-chain forever, not by a database anyone can edit.</p>
-          <p>Total cost to create a lo-fi beat + cover art: <strong>$0.09</strong>. On Ethereum, gas alone exceeds the sale price.</p>
-
-          <div className={s.gridBorder}>
-            <div className={`${s.gridRow} ${s.cols3}`}>
-              <div className={s.gridCell}>
-                <div className={s.cellTitle}>AI creation</div>
-                <div className={s.cellBody}>Music, art, ebooks, coloring books. One sentence to publish.</div>
-              </div>
-              <div className={s.gridCell}>
-                <div className={s.cellTitle}>Permanent storage</div>
-                <div className={s.cellBody}>Walrus — decentralised, forever on Sui. No link rot.</div>
-              </div>
-              <div className={s.gridCell}>
-                <div className={s.cellTitle}>Pay-to-unlock</div>
-                <div className={s.cellBody}>Seal — on-chain access control. Trustless. Supply caps enforced forever.</div>
-              </div>
-            </div>
-            <div className={`${s.gridRow} ${s.cols3}`}>
-              <div className={s.gridCell}>
-                <div className={s.cellTitle}>92% to creator</div>
-                <div className={s.cellBody}>Instant USDC settlement. No payout delays, no payment processor.</div>
-              </div>
-              <div className={s.gridCell}>
-                <div className={s.cellTitle}>Buyer UX</div>
-                <div className={s.cellBody}>Pay with Google account. No wallet setup. No SUI needed.</div>
-              </div>
-              <div className={`${s.gridCell} ${s.gridCellFaded}`} />
-            </div>
-          </div>
+          <p>Spotify pays <strong>$0.003 per stream</strong>. Audric pays <strong>$4.60 on a $5 sale</strong>. Total cost to create a lo-fi beat + cover art on Sui: <strong>$0.09</strong>. On Ethereum, gas alone exceeds the sale price.</p>
         </section>
 
         {/* Why Sui */}
@@ -264,9 +194,8 @@ export default function LitepaperPage() {
 
           <p className={s.pullQuote}>&ldquo;Agentic doesn&apos;t mean autonomous. It means intelligent.&rdquo;</p>
 
-          <p>Memory, advice log, chain facts, portfolio context — all assembled before you finish typing. The agent harness compiles it into a single intent. That&apos;s what agentic finance actually is.</p>
-          <p>Five systems assemble your financial profile, load your on-chain history, and recall past advice — silently, every turn. Users experience it as &ldquo;Audric already knew.&rdquo; The agent only acts when you&apos;re present. Tap to confirm, every time.</p>
-          <p>The agent isn&apos;t just reactive. Shopping for a house party: Audric noticed the user hadn&apos;t added beverages to the list, found drinks within the remaining budget, and included them before asking. That&apos;s the Reasoning Engine going beyond the literal request — reasoning from context, not hallucinating.</p>
+          <p>Memory, advice log, chain facts, portfolio context — all assembled before you finish typing. The agent only acts when you&apos;re present. Tap to confirm, every time.</p>
+          <p>The agent isn&apos;t just reactive. Shopping for a house party: Audric noticed the user hadn&apos;t added beverages, found drinks within budget, and included them before asking. Reasoning from context — not hallucinating.</p>
 
           <div className={s.gridBorder}>
             <div className={`${s.gridRow} ${s.cols3}`}>
@@ -292,9 +221,8 @@ export default function LitepaperPage() {
         <section className={s.sec}>
           <div className={s.secLabel}>Positioning</div>
           <h2>No other product<br /><em>is near it.</em></h2>
-          <p>Every competitor sits in one of two failure modes: complex UX (MetaMask, Uniswap, Kraken) or slow settlement (PayPal, traditional bank, Revolut). No other product sits at the intersection of simple and fast — Audric occupies that space alone.</p>
+          <img src="/litepaper/slide-positioning.png" alt="Audric competitive positioning — simple UX, sub-second settlement" className={s.slideImg} />
           <p className={s.pullQuote}>&ldquo;Most fintech adds features. We removed them. The product gets better every time we cut something.&rdquo;</p>
-          <p>Seven steps to send money. Or one sentence. The interface is the product. Sui is the infrastructure. The agent is the moat.</p>
         </section>
 
         {/* Business Model */}
@@ -323,9 +251,8 @@ export default function LitepaperPage() {
             </div>
           </div>
 
-          <p>Fees are collected inline within the same transaction — atomic with the user&apos;s action, no separate settlement step. Revenue scales with volume. No subscription, no data product, no token required to transact.</p>
-          <p>Send, withdraw, and receive are free. Harvest (compound yield) carries a composite ~0.2% across its swap and save legs.</p>
-          <p>Secondary: the MPP gateway (<code>mpp.t2000.ai</code>) — 40+ paid APIs, 88 endpoints, open to any AI agent building on Sui.</p>
+          <p>Fees collected inline — atomic with the transaction, no separate settlement. Revenue scales with volume. No subscription. Send, receive, and withdraw are free.</p>
+          <p>Secondary: <code>mpp.t2000.ai</code> — 40+ paid APIs, 88 endpoints, pay-per-request in USDC. Open to any AI agent building on Sui.</p>
         </section>
 
         {/* Traction */}

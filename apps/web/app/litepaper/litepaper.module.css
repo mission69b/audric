@@ -448,6 +448,16 @@
   color: var(--n400);
 }
 
+/* ── Slide image ── */
+.slideImg {
+  width: 100%;
+  border-radius: 6px;
+  border: 1px solid var(--border-default);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+  margin: 28px 0;
+  display: block;
+}
+
 /* ── Pull quote ── */
 .pullQuote {
   font-family: var(--font-serif);
