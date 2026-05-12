@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Spinner } from '@/components/ui/Spinner';
 import { fmtMppPrice } from './chrome';
 
@@ -183,37 +184,70 @@ export function ReviewCard({
   const priceLabel = fmtMppPrice(price);
   const showCostFooter = priceLabel !== '—' && clicked === null && !regenError && (canRegenerate || canCancel);
 
-  // [UX polish / 2026-05-12] When the card has produced a successor
-  // (clicked === 'regenerated'), collapse the footer entirely. The
-  // successor card (next to this one in cluster mode, or below it in
-  // sequential mode) carries its own fully-interactive footer; THIS
-  // card's collapsed footer is the signal that it's no longer the
-  // active option. Pre-collapse this state rendered "↻ Regenerated ·
-  // See above" status text + a disabled "↻ Regenerated" button + a
-  // disabled Cancel button — three labels saying the same thing plus
-  // a meaningless action (Cancel-after-success has no effect; the
-  // successor already exists). Founder smoke 2026-05-12 caught the
-  // resulting clutter in the side-by-side cluster grid where the
-  // cramped 2-column layout amplified the redundancy. Interactive
-  // state (clicked === null) still renders the full footer with text
-  // buttons — text reads fine when the row has its full width.
+  // [SPEC 23C C10 / 2026-05-12] Footer collapse height transition.
+  //
+  // When the card has produced a successor (clicked === 'regenerated'),
+  // the footer collapses entirely. Pre-C10 this was a hard cut via
+  // `if (clicked === 'regenerated') return null;` — the buttons would
+  // vanish instantaneously, which read as a layout snap especially in
+  // the side-by-side cluster grid where you could see the sibling
+  // card's footer cleanly while this one's just disappeared.
+  //
+  // C10 wraps the footer in <AnimatePresence> + <motion.div> so the
+  // exit animates over ~200ms (height + opacity + the my-1.5 vertical
+  // margin all collapse to 0). The element stays mounted during the
+  // exit, then unmounts after the animation completes.
+  //
+  // Reduced-motion path (Framer Motion's useReducedMotion() hook reads
+  // window.matchMedia('(prefers-reduced-motion: reduce)')):
+  //   - In production with reduced-motion preference: transition
+  //     duration is 0 → instant unmount → preserves the original
+  //     accessibility-correct hard cut. C8's reduced-motion sweep is
+  //     satisfied for C10 by construction.
+  //   - In tests: vitest.setup.ts mocks matchMedia to return matches:
+  //     true for reduced-motion → transitions are 0-duration → exit
+  //     completes synchronously → existing waitFor-based tests that
+  //     assert post-resolve absence still work without timeout hangs.
+  //
+  // Why the rationale comments now reference C10 instead of repeating
+  // the redundancy reasoning from `32b1e4e`: the redundancy fix
+  // (collapse-to-null) is the previous commit. C10 is the motion
+  // polish on top. The user-facing semantics are unchanged: regen
+  // success collapses the footer. Only the timing/feel changes.
   //
   // Cancelled state is intentionally left rendering its status row +
   // the latched buttons — Cancel is a synchronous LLM-round-trip that
   // produces its own ack turn, and the latched-disabled buttons
   // reinforce "this card is no longer an option" while the LLM is
   // responding. If founder surfaces clutter on Cancelled we can apply
-  // the same collapse there.
-  if (clicked === 'regenerated') {
-    return null;
-  }
+  // the same collapse pattern there with a similar AnimatePresence
+  // wrapper.
+  const reduceMotion = useReducedMotion();
+  const showFooter = clicked !== 'regenerated';
 
   return (
-    <div
-      className="my-1.5 rounded-lg border border-border-subtle bg-surface-card overflow-hidden"
-      role="group"
-      aria-label={`Review the generated ${artifactNoun}`}
-    >
+    <AnimatePresence initial={false}>
+      {showFooter && (
+        <motion.div
+          key="review-footer"
+          exit={{
+            opacity: 0,
+            height: 0,
+            marginTop: 0,
+            marginBottom: 0,
+            paddingTop: 0,
+            paddingBottom: 0,
+          }}
+          transition={
+            reduceMotion
+              ? { duration: 0 }
+              : { duration: 0.2, ease: 'easeOut' }
+          }
+          style={{ overflow: 'hidden' }}
+          className="my-1.5 rounded-lg border border-border-subtle bg-surface-card overflow-hidden"
+          role="group"
+          aria-label={`Review the generated ${artifactNoun}`}
+        >
       <div className="px-4 py-2.5 flex items-center justify-between gap-2">
         <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-fg-muted">
           {clicked === 'regenerating'
@@ -288,7 +322,9 @@ export function ReviewCard({
           </span>
         </div>
       )}
-    </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
 

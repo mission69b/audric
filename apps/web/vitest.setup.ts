@@ -36,3 +36,42 @@ const TEST_ENV: Record<string, string> = {
 for (const [k, v] of Object.entries(TEST_ENV)) {
   if (!process.env[k]) process.env[k] = v;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// matchMedia mock — jsdom doesn't implement `window.matchMedia`. Components
+// that read `prefers-reduced-motion` (Framer Motion's `useReducedMotion()`,
+// our own a11y helpers) would either throw or get `undefined`. We default
+// the mock to `matches: true` for `(prefers-reduced-motion: reduce)` so that:
+//
+//   1. Framer Motion's `useReducedMotion()` returns `true` in tests, which
+//      causes <motion.*> components with reduced-motion-aware transitions
+//      to skip their animations and jump to end-state synchronously. This
+//      matters because AnimatePresence exit animations otherwise NEVER tick
+//      in jsdom (no real raf-driven tweens) — see the explanatory comment
+//      in `components/engine/timeline/primitives/__tests__/TransitionChip.test.tsx`
+//      around the deliberately-not-tested rerender behavior. With this mock
+//      in place, any `transition: { duration: reduceMotion ? 0 : 0.2 }`
+//      branch resolves to 0 in tests → exit completes synchronously →
+//      `await waitFor(() => expect(...).toBeNull())` works as expected on
+//      conditionally-rendered <motion.div> children.
+//
+//   2. Tests that genuinely want to verify motion behavior (none today; if
+//      a SPEC 23C item adds one, it can stub matchMedia inside the test
+//      file to return `matches: false`).
+//
+// Default is conservative: assume reduced motion in tests so animation
+// instrumentation never causes hangs or flakes. Founder smoke catches the
+// real motion behavior in the browser.
+// ─────────────────────────────────────────────────────────────────────────────
+if (typeof window !== 'undefined' && !window.matchMedia) {
+  window.matchMedia = (query: string) => ({
+    matches: query.includes('prefers-reduced-motion: reduce'),
+    media: query,
+    onchange: null,
+    addListener: () => {}, // deprecated but Framer Motion still calls it
+    removeListener: () => {}, // deprecated but Framer Motion still calls it
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => false,
+  });
+}
