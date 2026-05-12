@@ -56,12 +56,28 @@ function extractImage(result: unknown): ExtractedImage | null {
   return null;
 }
 
+// [SPEC 23B-MPP6 UX polish / 2026-05-12] Vendor + artifact naming.
+//
+// `serviceId` is the post-gateway slug — e.g. `openai/v1/images/generations`,
+// `fal-ai/flux-pro`, `stability-ai/v1/generate`. Map URL patterns to a
+// "VENDOR · ARTIFACT" label so the user always knows WHICH model produced
+// the image. Falls back to plain "IMAGE" (NOT "IMAGE PREVIEW" — these
+// cards ARE the final artifact, not previews).
+//
+// Scales: same pattern applies to AUDIO / MUSIC / VIDEO surfaces — see
+// `vendorLabel` siblings in any future audio/video card primitives.
 function vendorLabel(serviceId: string | undefined): string {
-  if (!serviceId) return 'IMAGE PREVIEW';
-  if (serviceId.toLowerCase().includes('flux')) return 'FAL FLUX · GENERATED';
-  if (serviceId.toLowerCase().includes('dall')) return 'DALL-E · GENERATED';
-  if (serviceId.toLowerCase().startsWith('fal')) return 'FAL · GENERATED';
-  return 'IMAGE PREVIEW';
+  if (!serviceId) return 'IMAGE';
+  const lc = serviceId.toLowerCase();
+  if (lc.includes('openai') && lc.includes('image')) return 'DALL-E · IMAGE';
+  if (lc.includes('flux-pro')) return 'FAL FLUX PRO · IMAGE';
+  if (lc.includes('flux-realism')) return 'FAL FLUX REALISM · IMAGE';
+  if (lc.includes('flux')) return 'FAL FLUX · IMAGE';
+  if (lc.includes('recraft')) return 'FAL RECRAFT · IMAGE';
+  if (lc.includes('stability') || lc.startsWith('stability-ai')) return 'STABILITY · IMAGE';
+  if (lc.includes('together') && lc.includes('image')) return 'TOGETHER · IMAGE';
+  if (lc.startsWith('fal-ai') || lc.startsWith('fal.ai') || lc.startsWith('fal/')) return 'FAL · IMAGE';
+  return 'IMAGE';
 }
 
 export function CardPreview({ data }: { data: PayApiResult }) {

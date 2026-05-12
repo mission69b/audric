@@ -58,11 +58,17 @@ function extractAudio(result: unknown): ExtractedAudio | null {
   return null;
 }
 
+// [SPEC 23B-MPP6 UX polish / 2026-05-12] Vendor + artifact naming.
+// Drops "PREVIEW" — this card IS the final audio artifact, not a preview.
+// Pairs with `CardPreview.vendorLabel` to keep the naming convention
+// consistent across image/audio/music/video surfaces.
 function vendorLabel(serviceId: string | undefined): string {
-  if (!serviceId) return 'AUDIO PREVIEW';
-  if (serviceId.toLowerCase().startsWith('suno')) return 'SUNO · GENERATED';
-  if (serviceId.toLowerCase().startsWith('elevenlabs')) return 'ELEVENLABS · TTS';
-  return 'AUDIO PREVIEW';
+  if (!serviceId) return 'AUDIO';
+  const lc = serviceId.toLowerCase();
+  if (lc.startsWith('suno')) return 'SUNO · MUSIC';
+  if (lc.startsWith('elevenlabs')) return 'ELEVENLABS · AUDIO';
+  if (lc.includes('openai') && (lc.includes('audio') || lc.includes('speech'))) return 'OPENAI · AUDIO';
+  return 'AUDIO';
 }
 
 function fmtDuration(seconds: number | undefined): string {

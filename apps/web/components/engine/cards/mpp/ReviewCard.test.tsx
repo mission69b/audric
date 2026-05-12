@@ -155,12 +155,22 @@ describe('ReviewCard primitive (v2) — fastpath path (onRegenerate)', () => {
     expect(onRegenerate).toHaveBeenCalledTimes(1);
     expect(onSendMessage).not.toHaveBeenCalled();
 
-    // Wait for the promise to resolve
+    // [SPEC 23B-MPP6 UX polish / 2026-05-12] After the promise resolves,
+    // the latch transitions to the terminal 'regenerated' state — the
+    // label changes from "Regenerating…" to "↻ Regenerated · See above"
+    // (and the button text becomes "↻ Regenerated"). Pre-fix this stayed
+    // on "Regenerating…" forever, which read as "still in progress" —
+    // a stuck-state visual bug that the founder caught in smoke. Now the
+    // terminal state is distinct from the in-flight state.
     await waitFor(() => {
-      // Latch stays latched on success — the new tool block appears
-      // in the timeline above; this card is now historic.
-      expect(container.textContent).toContain('Regenerating…');
+      expect(container.textContent).toContain('Regenerated');
+      expect(container.textContent).not.toContain('Regenerating…');
     });
+
+    // Latch stays engaged — buttons remain disabled so the user can't
+    // double-regen this card (the new card above is the latest result).
+    expect(screen.getByRole('button', { name: 'Regenerate this image' }).hasAttribute('disabled')).toBe(true);
+    expect(screen.getByRole('button', { name: 'Cancel and discard this image' }).hasAttribute('disabled')).toBe(true);
   });
 
   it('FASTPATH: Regenerate latches buttons during in-flight (Cancel disabled too)', async () => {

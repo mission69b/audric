@@ -102,7 +102,18 @@ interface ReviewCardProps {
   onSendMessage?: (text: string) => void;
 }
 
-type ClickedState = 'regenerating' | 'cancelled' | null;
+// [SPEC 23B-MPP6-fastpath UX polish / 2026-05-12]
+//   'regenerating' — fastpath dispatch in-flight (latched, button reads "Regenerating…")
+//   'regenerated'  — fastpath dispatch resolved successfully (latched terminal state,
+//                    button reads "Regenerated"). Pre-fix this stayed at 'regenerating'
+//                    forever, which read as "still in progress" instead of "this card
+//                    produced its successor — see new card above". The latch INTENT
+//                    was right (no double-regen on the same card), but the COPY was
+//                    wrong. New 'regenerated' state surfaces the terminal-success
+//                    distinct from the in-flight state.
+//   'cancelled'    — Cancel button fired; card surrenders to the LLM acknowledgement turn.
+//   null           — interactive (no click yet, or error reset).
+type ClickedState = 'regenerating' | 'regenerated' | 'cancelled' | null;
 type RegenError = { full: string; truncated: string } | null;
 
 export function ReviewCard({
@@ -126,9 +137,11 @@ export function ReviewCard({
     if (onRegenerate) {
       try {
         await onRegenerate();
-        // Success — keep the latch. The new tool block is appearing in
-        // the timeline above. This card is now historic; subsequent
-        // regens happen on the NEW card.
+        // [UX polish / 2026-05-12] Transition to terminal 'regenerated'
+        // state so the label reads "Regenerated" instead of staying on
+        // "Regenerating…" forever. Latch stays engaged — subsequent
+        // regens happen on the NEW card that just appeared above.
+        setClicked('regenerated');
       } catch (err) {
         const full = (err instanceof Error ? err.message : 'Try again').trim();
         setRegenError({ full, truncated: truncateError(full) });
@@ -168,11 +181,13 @@ export function ReviewCard({
         <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-fg-muted">
           {clicked === 'regenerating'
             ? 'Regenerating…'
-            : clicked === 'cancelled'
-              ? 'Cancelled'
-              : regenError
-                ? 'Regen failed'
-                : 'Review'}
+            : clicked === 'regenerated'
+              ? '↻ Regenerated · See above'
+              : clicked === 'cancelled'
+                ? 'Cancelled'
+                : regenError
+                  ? 'Regen failed'
+                  : 'Review'}
         </span>
         <div className="flex items-center gap-1.5">
           {regenError && (
@@ -193,11 +208,17 @@ export function ReviewCard({
             className={`text-[11px] font-mono uppercase tracking-[0.06em] border rounded px-2.5 py-1 transition-colors ${
               clicked === 'regenerating'
                 ? 'text-info-fg border-info-border bg-info-bg'
-                : 'text-fg-secondary border-border-subtle hover:text-fg-primary hover:border-border-strong disabled:opacity-40 disabled:hover:text-fg-secondary disabled:hover:border-border-subtle disabled:cursor-not-allowed'
+                : clicked === 'regenerated'
+                  ? 'text-fg-muted border-border-subtle bg-surface-subtle opacity-60 cursor-not-allowed'
+                  : 'text-fg-secondary border-border-subtle hover:text-fg-primary hover:border-border-strong disabled:opacity-40 disabled:hover:text-fg-secondary disabled:hover:border-border-subtle disabled:cursor-not-allowed'
             }`}
             aria-label={`Regenerate this ${artifactNoun}`}
           >
-            {clicked === 'regenerating' ? 'Regenerating…' : '↻ Regenerate'}
+            {clicked === 'regenerating'
+              ? 'Regenerating…'
+              : clicked === 'regenerated'
+                ? '↻ Regenerated'
+                : '↻ Regenerate'}
           </button>
           <button
             type="button"

@@ -76,30 +76,54 @@ describe('CardPreview', () => {
     expect(container.textContent).toContain('Preview unavailable');
   });
 
-  it('uses "FAL FLUX · GENERATED" caption for fal/flux/* serviceId', () => {
+  // [SPEC 23B-MPP6 UX polish / 2026-05-12] Vendor + artifact naming.
+  // Drops "PREVIEW"/"GENERATED" suffix — these cards ARE the final
+  // artifact, not a preview. Pattern: "VENDOR · IMAGE".
+  it('uses "DALL-E · IMAGE" caption for openai/v1/images/generations', () => {
+    const { container } = render(
+      <CardPreview
+        data={{
+          serviceId: 'openai/v1/images/generations',
+          price: '0.05',
+          result: { data: [{ url: 'x' }] },
+        }}
+      />,
+    );
+    expect(container.textContent).toContain('DALL-E · IMAGE');
+  });
+
+  it('uses "FAL FLUX · IMAGE" caption for fal/fal-ai/flux/dev serviceId', () => {
     const { container } = render(
       <CardPreview data={{ serviceId: 'fal/fal-ai/flux/dev', price: '0.04', result: { url: 'x' } }} />,
     );
-    expect(container.textContent).toContain('FAL FLUX');
+    expect(container.textContent).toContain('FAL FLUX · IMAGE');
   });
 
-  it('uses "DALL-E · GENERATED" caption when serviceId contains "dall"', () => {
+  it('uses "FAL FLUX PRO · IMAGE" caption for flux-pro variant', () => {
     const { container } = render(
-      <CardPreview data={{ serviceId: 'dalle/v1/generate', price: '0.04', result: { url: 'x' } }} />,
+      <CardPreview data={{ serviceId: 'fal/fal-ai/flux-pro', price: '0.05', result: { url: 'x' } }} />,
     );
-    expect(container.textContent).toContain('DALL-E');
+    expect(container.textContent).toContain('FAL FLUX PRO · IMAGE');
   });
 
-  it('uses "FAL · GENERATED" caption for non-flux fal services', () => {
+  it('uses "STABILITY · IMAGE" caption for stability-ai serviceId', () => {
+    const { container } = render(
+      <CardPreview data={{ serviceId: 'stability-ai/v1/generate', price: '0.03', result: { url: 'x' } }} />,
+    );
+    expect(container.textContent).toContain('STABILITY · IMAGE');
+  });
+
+  it('uses "FAL · IMAGE" caption for non-flux fal services', () => {
     const { container } = render(
       <CardPreview data={{ serviceId: 'fal/other', price: '0.04', result: { url: 'x' } }} />,
     );
-    expect(container.textContent).toContain('FAL · GENERATED');
+    expect(container.textContent).toContain('FAL · IMAGE');
   });
 
-  it('uses generic caption when serviceId is missing', () => {
+  it('uses generic "IMAGE" caption when serviceId is missing (no longer "IMAGE PREVIEW")', () => {
     const { container } = render(<CardPreview data={{ result: { url: 'x' } }} />);
-    expect(container.textContent).toContain('IMAGE PREVIEW');
+    expect(container.textContent).toContain('IMAGE');
+    expect(container.textContent).not.toContain('IMAGE PREVIEW');
   });
 
   it('renders price in header', () => {

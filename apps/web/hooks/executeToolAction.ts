@@ -420,7 +420,15 @@ async function executeToolActionImpl(
           url: serviceUrl as string,
           rawBody: inp.body ? JSON.parse(String(inp.body)) : undefined,
         });
-        return { success: true, data: serviceResult };
+        // [SPEC 23B-MPP6 UX polish / 2026-05-12] Stamp serviceId on success
+        // too. Pre-fix only the error path attached serviceId, so DALL-E /
+        // ElevenLabs / etc. successes fell back to the generic
+        // "IMAGE PREVIEW" header in CardPreview.vendorLabel because
+        // `data.serviceId` was undefined. Now both success + error paths
+        // carry the same serviceId so the vendor-aware header always
+        // resolves correctly. Spread first so the gateway response wins
+        // for any field the SDK already populates.
+        return { success: true, data: { ...(serviceResult as object), serviceId } };
       } catch (payErr) {
         if (payErr instanceof ServiceDeliveryError) {
           const price = (payErr.meta as { price?: string | number } | undefined)?.price;
