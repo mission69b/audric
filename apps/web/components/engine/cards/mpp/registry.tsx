@@ -207,6 +207,26 @@ function renderOpenai(
       </>
     );
   }
+  // [SPEC 23B-MPP6 UX polish followup / 2026-05-12] OpenAI TTS
+  // (`/v1/audio/speech`) returns binary audio that
+  // /api/services/complete wraps as { type:'audio', dataUri }.
+  // Pre-fix this fell through to VendorReceipt → no audio player and
+  // the LLM hallucinated "audio file is embedded above" while the user
+  // had nothing to play. Pair with TrackPlayer.extractAudio's dataUri
+  // branch (HANDOFF Bug 1).
+  if (serviceId.includes('/v1/audio/speech')) {
+    return (
+      <>
+        <TrackPlayer data={data} />
+        <ReviewCard
+          price={data.price}
+          artifactNoun="voiceover"
+          onRegenerate={onRegenerate}
+          onSendMessage={onSendMessage}
+        />
+      </>
+    );
+  }
   // Whisper transcription, GPT-4o chat, and any future text-result endpoint
   // render as an OpenAI vendor receipt — these are terminal (no regen).
   return <VendorReceipt data={data} vendor="OpenAI" />;

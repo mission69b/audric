@@ -10,7 +10,12 @@ import {
   localSpokenWordIndex,
   type TextBlockVoiceSlice,
 } from '@/lib/voice/timeline-voice-slices';
-import { stripEvalSummaryMarker, stripThinkingTags, shortenRawTxHashes } from '@/lib/sanitize-text';
+import {
+  stripEvalSummaryMarker,
+  stripThinkingTags,
+  shortenRawTxHashes,
+  stripRenderedMediaMarkdown,
+} from '@/lib/sanitize-text';
 
 // ───────────────────────────────────────────────────────────────────────────
 // SPEC 8 v0.5.1 — TextBlockView (B2.2 + B3.4 + B3.5)
@@ -78,8 +83,16 @@ export function TextBlockView({ block, voiceSlice, spokenWordIndex }: TextBlockV
   // recognisable "5cFhP9…N1aB" preview. URLs and markdown link labels
   // are preserved (negative lookarounds in the regex). See
   // `shortenRawTxHashes` JSDoc in `sanitize-text.ts` for the full rule.
+  // [SPEC 23B-MPP6 UX polish followup / 2026-05-12] Also strip every
+  // `![alt](url)` markdown image. Audric renders ALL visual artifacts
+  // through pay_api cards / render_canvas — there is no legitimate
+  // inline markdown image. The system prompt forbids it but Sonnet's
+  // training prior is too strong to rely on; strip defensively.
+  // See HANDOFF Bug 2.
   const displayText = shortenRawTxHashes(
-    stripProactiveMarkers(stripThinkingTags(stripEvalSummaryMarker(block.text))),
+    stripRenderedMediaMarkdown(
+      stripProactiveMarkers(stripThinkingTags(stripEvalSummaryMarker(block.text))),
+    ),
   );
   if (!displayText) return null;
 

@@ -3,6 +3,7 @@ import {
   stripEvalSummaryMarker,
   stripThinkingTags,
   shortenRawTxHashes,
+  stripRenderedMediaMarkdown,
 } from '../sanitize-text';
 
 describe('stripEvalSummaryMarker', () => {
@@ -174,6 +175,64 @@ describe('shortenRawTxHashes', () => {
     const input = `tx ${SAMPLE_HASH} done.`;
     const once = shortenRawTxHashes(input);
     const twice = shortenRawTxHashes(once);
+    expect(twice).toBe(once);
+  });
+});
+
+describe('stripRenderedMediaMarkdown', () => {
+  it('returns input unchanged when no markdown image is present', () => {
+    expect(stripRenderedMediaMarkdown('Image generated. Charged $0.05.')).toBe(
+      'Image generated. Charged $0.05.',
+    );
+  });
+
+  it('returns empty string unchanged', () => {
+    expect(stripRenderedMediaMarkdown('')).toBe('');
+  });
+
+  it('strips a single image markdown after pay_api narration (sunset case)', () => {
+    const input =
+      '![sunset mountains](https://oaidalleapiprodscus.blob.core.windows.net/private/abc.png)\n\nImage generated and charged $0.05 USDC.';
+    expect(stripRenderedMediaMarkdown(input)).toBe(
+      'Image generated and charged $0.05 USDC.',
+    );
+  });
+
+  it('strips a markdown image with empty alt text', () => {
+    expect(stripRenderedMediaMarkdown('![](https://x/y.png) Done.')).toBe('Done.');
+  });
+
+  it('strips multiple markdown images in the same string', () => {
+    const input =
+      '![one](https://a.png)\n![two](https://b.png)\nBoth generated.';
+    expect(stripRenderedMediaMarkdown(input)).toBe('Both generated.');
+  });
+
+  it('PRESERVES regular markdown links (no leading !)', () => {
+    const input =
+      '[view tx](https://suivision.xyz/txblock/abc) and [docs](https://docs.io)';
+    expect(stripRenderedMediaMarkdown(input)).toBe(input);
+  });
+
+  it('PRESERVES bracketed text that is NOT a markdown image', () => {
+    const input = 'Saved [10 USDC] into NAVI.';
+    expect(stripRenderedMediaMarkdown(input)).toBe(input);
+  });
+
+  it('strips audio/video URLs in image syntax (defensive — Sonnet sometimes uses ! for non-image URLs)', () => {
+    const input = '![voiceover](https://cdn/audio.mp3) Generated.';
+    expect(stripRenderedMediaMarkdown(input)).toBe('Generated.');
+  });
+
+  it('collapses 3+ consecutive newlines after stripping into double newline', () => {
+    const input = 'Before.\n\n![alt](url)\n\n\n\nAfter.';
+    expect(stripRenderedMediaMarkdown(input)).toBe('Before.\n\nAfter.');
+  });
+
+  it('is idempotent — running twice produces the same result', () => {
+    const input = '![a](b) Done. ![c](d)';
+    const once = stripRenderedMediaMarkdown(input);
+    const twice = stripRenderedMediaMarkdown(once);
     expect(twice).toBe(once);
   });
 });

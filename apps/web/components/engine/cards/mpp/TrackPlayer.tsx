@@ -55,6 +55,24 @@ function extractAudio(result: unknown): ExtractedAudio | null {
     };
   }
 
+  // [SPEC 23B-MPP6 UX polish followup / 2026-05-12] Audric's
+  // /api/services/complete route converts binary audio responses
+  // (OpenAI TTS, ElevenLabs raw bytes) to a base64 data URI:
+  //   { type: 'audio', dataUri: 'data:audio/mpeg;base64,...' }
+  // The native <audio> element accepts data: URIs directly, so we
+  // surface it through the same `url` field as the http(s) cases.
+  // Pre-fix this branch missed → renderOpenai fell back to
+  // VendorReceipt with no audio player AND the LLM hallucinated
+  // "the audio file is embedded above" while the user had nothing
+  // to play. See HANDOFF Bug 1.
+  if (r.type === 'audio' && typeof r.dataUri === 'string') {
+    return {
+      url: r.dataUri,
+      duration: typeof r.duration === 'number' ? r.duration : undefined,
+      title: typeof r.title === 'string' ? r.title : undefined,
+    };
+  }
+
   return null;
 }
 

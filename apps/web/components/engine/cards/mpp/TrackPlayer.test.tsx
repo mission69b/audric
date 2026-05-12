@@ -178,4 +178,23 @@ describe('TrackPlayer', () => {
     );
     expect(container.textContent).not.toContain('Suiscan');
   });
+
+  it('extracts audio from { type: "audio", dataUri } shape (OpenAI TTS via /api/services/complete)', () => {
+    const { container } = render(
+      <TrackPlayer
+        data={{
+          serviceId: 'openai/v1/audio/speech',
+          price: '0.02',
+          result: {
+            type: 'audio',
+            dataUri: 'data:audio/mpeg;base64,SUQzAwAAAAAA',
+          },
+        }}
+      />,
+    );
+    const audioEl = container.querySelector('audio');
+    expect(audioEl).not.toBeNull();
+    expect(audioEl?.getAttribute('src')).toContain('data:audio/mpeg;base64,');
+    expect(container.textContent).not.toContain('Audio unavailable');
+  });
 });

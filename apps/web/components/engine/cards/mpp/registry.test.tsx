@@ -109,6 +109,24 @@ describe('[SPEC 24 F3] renderMppService — locked 5-service supported set', () 
       expect(container.textContent).toContain('OPENAI');
     });
 
+    it('TTS (audio/speech) → TrackPlayer with audio element + ReviewCard', () => {
+      const { container } = render(
+        <>
+          {renderMppService({
+            serviceId: 'openai/v1/audio/speech',
+            price: '0.02',
+            result: {
+              type: 'audio',
+              dataUri: 'data:audio/mpeg;base64,SUQzAwAA',
+            },
+          })}
+        </>,
+      );
+      expect(container.querySelector('audio')).not.toBeNull();
+      expect(container.textContent).toContain('OPENAI · AUDIO');
+      expect(container.textContent).toContain('Regenerate');
+    });
+
     it('openai with missing serviceId still routes via the openai key (defensive)', () => {
       const { container } = render(
         <>

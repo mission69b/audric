@@ -37,6 +37,7 @@ import { incrementSessionSpend } from './session-spend';
 import { ADVICE_TOOLS } from './advice-tool';
 import { audricSaveContactTool, audricListContactsTool } from './contact-tools';
 import { lookupUserTool } from './lookup-user-tool';
+import { audricMppServicesTool } from './mpp-services-tool';
 import { audricPrepareBundleTool } from './prepare-bundle-tool';
 import { detectPriorPlanContext, isAffirmativeConfirmReply } from './confirm-detection';
 import { emitPlanContextPromoted } from './plan-context-metrics';
@@ -507,8 +508,17 @@ export async function createEngine(
   // guardSwapPreview). Without an on-chain quote the LLM can only estimate
   // from prices, which is fine for "how much is X token" but misses route +
   // price impact for actual trades. Quoting is read-only and fast.
-  const EXCLUDED_TOOLS = new Set<string>();
+  // [SPEC 23B-MPP6 UX polish followup / 2026-05-12] Replace the engine's
+  // generic mpp_services (returns full ~40-service gateway catalog) with
+  // an audric-side override that filters to the 5 supported services
+  // (openai, elevenlabs, pdfshift, lob, resend). Pre-fix the LLM was told
+  // by the system prompt to use only the 5, but the discover-services
+  // CARD shown to the user displayed all 40 — confusing because the user
+  // could see services Audric would refuse to use. See
+  // `mpp-services-tool.ts` header for the full rationale.
+  const EXCLUDED_TOOLS = new Set<string>(['mpp_services']);
   const filteredReads = READ_TOOLS.filter((t) => !EXCLUDED_TOOLS.has(t.name));
+  const audricMppTools: Tool[] = [audricMppServicesTool];
 
   // Replace the engine's stub `save_contact` (no-op call returning
   // `{saved:true}`) with a Prisma-backed override that actually persists,
@@ -546,6 +556,7 @@ export async function createEngine(
   const allTools = applyToolFlags([
     ...filteredReads,
     ...filteredWrites,
+    ...audricMppTools,
     ...audricContactTools,
     ...audricBundleTools,
     ...ADVICE_TOOLS,

@@ -125,3 +125,37 @@ export function shortenRawTxHashes(text: string): string {
     return `${match.slice(0, 6)}…${match.slice(-4)}`;
   });
 }
+
+// ───────────────────────────────────────────────────────────────────────────
+// SPEC 23B-MPP6 UX polish followup · 2026-05-12 — defensive markdown image strip
+//
+// The system prompt (engine-context.ts) tells the LLM "never embed
+// `![](url)` for image/audio/video — the card renders it." Sonnet's
+// training prior is strong here: image-generation tool results
+// near-always get echoed back as `![alt](url)` markdown, regardless
+// of system-prompt directives. Founder smoke 2026-05-12 caught two
+// instances (sunset image + birthday postcard) where the LLM emitted
+// `![birthday postcard design](https://oaidalleapi…)` after the
+// pay_api card already rendered the same image — the user saw the
+// alt text bleed through as plain prose AND the image rendered twice.
+//
+// Defense-in-depth: strip every `![alt](url)` from rendered text.
+// Audric's UX rule is that visual artifacts ALWAYS come from a
+// pay_api card or a render_canvas surface, never inline markdown.
+// There is no legitimate use of `![](url)` in assistant prose today.
+//
+// Markdown LINKS (`[label](url)`) are PRESERVED — those are
+// legitimate text references (Suiscan links, docs, etc.).
+//
+// Pattern: leading `!`, then `[anything-but-bracket]`, then
+// `(anything-but-paren)`. Matches the standard CommonMark image
+// syntax. Greedy on URL — markdown disallows raw `)` inside URLs
+// without escaping, and Sonnet doesn't escape, so this is safe.
+// ───────────────────────────────────────────────────────────────────────────
+
+const MARKDOWN_IMAGE_REGEX = /!\[[^\]]*\]\([^)]+\)/g;
+
+export function stripRenderedMediaMarkdown(text: string): string {
+  if (!text || !text.includes('![')) return text;
+  return text.replace(MARKDOWN_IMAGE_REGEX, '').replace(/\n{3,}/g, '\n\n').trim();
+}
