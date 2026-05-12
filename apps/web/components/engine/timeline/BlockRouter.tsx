@@ -145,7 +145,13 @@ export function BlockRouter({
       );
 
     case 'tool':
-      return <ToolBlockView block={block} isStreaming={isStreaming} />;
+      return (
+        <ToolBlockView
+          block={block}
+          isStreaming={isStreaming}
+          onSendMessage={onSendMessage}
+        />
+      );
 
     case 'text':
       return (

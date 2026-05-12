@@ -61,9 +61,18 @@ function isRefinementPayload(data: unknown): boolean {
  * cards look identical in both contexts.
  */
 type CardVariant = 'default' | 'post-write';
+/**
+ * [SPEC 23B-MPP6] `onSendMessage` is the optional third arg threaded
+ * through from `<ToolBlockView>` so per-vendor MPP renderers (DALL-E,
+ * ElevenLabs) can render a `<ReviewCard>` whose Regenerate / Cancel
+ * buttons fire a synthesized user message via `engine.sendMessage`.
+ * Most card renderers ignore it; opt in only when the card needs a
+ * "send a chat message via button click" affordance.
+ */
 type CardRenderer = (
   result: unknown,
   variant?: CardVariant,
+  onSendMessage?: (text: string) => void,
 ) => React.ReactNode | null;
 
 const CARD_RENDERERS: Record<string, CardRenderer> = {
@@ -188,10 +197,10 @@ const CARD_RENDERERS: Record<string, CardRenderer> = {
   // Shape: host's `executeToolAction.pay_api` returns
   //   `{ success: true, data: { success, paymentDigest, price, serviceId, result } }`
   // → `extractData` unwraps `.data` → directly usable as `PayApiResult`.
-  pay_api: (result) => {
+  pay_api: (result, _variant, onSendMessage) => {
     const data = extractData(result);
     if (!data || typeof data !== 'object') return null;
-    return <>{renderMppService(data as PayApiResult)}</>;
+    return <>{renderMppService(data as PayApiResult, onSendMessage)}</>;
   },
   // ─── SPEC 23B — N1 / N2 / N6 — confirmation chips for no-tx-receipt writes ──
   // These three tools don't produce on-chain transactions, so they bypass
@@ -312,6 +321,7 @@ const CARD_RENDERERS: Record<string, CardRenderer> = {
 export function ToolResultCard({
   tool,
   variant,
+  onSendMessage,
 }: {
   tool: ToolExecution;
   /** [SPEC 23B-W1] Request a tighter post-write presentation when the card
@@ -319,13 +329,18 @@ export function ToolResultCard({
    *  (`<PostWriteRefreshSurface>`). Most renderers ignore this; the
    *  ones that materially change shape opt in via `CARD_RENDERERS`. */
   variant?: CardVariant;
+  /** [SPEC 23B-MPP6] Forwarded to renderers that need a "send chat
+   *  message via button" affordance — today only `pay_api`'s DALL-E +
+   *  ElevenLabs branches use it (via `<ReviewCard>`). Threaded the same
+   *  way `<CanvasBlockView>` already receives `onSendMessage`. */
+  onSendMessage?: (text: string) => void;
 }) {
   if (tool.status !== 'done' || !tool.result || tool.isError) return null;
 
   const renderer = CARD_RENDERERS[tool.toolName];
   if (renderer) {
     try {
-      return <>{renderer(tool.result, variant)}</>;
+      return <>{renderer(tool.result, variant, onSendMessage)}</>;
     } catch {
       return null;
     }

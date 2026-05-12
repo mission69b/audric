@@ -62,6 +62,7 @@ import { TrackPlayer } from './TrackPlayer';
 import { BookCover } from './BookCover';
 import { VendorReceipt } from './VendorReceipt';
 import { GenericMppReceipt } from './GenericMppReceipt';
+import { ReviewCard } from './ReviewCard';
 
 /**
  * Shape passed to every renderer. Mirrors `ServiceResult` (returned by
@@ -98,7 +99,18 @@ export interface PayApiResult {
   deliveryEstimate?: string;
 }
 
-export type MppServiceRenderer = (data: PayApiResult) => ReactNode;
+/**
+ * [SPEC 23B-MPP6] `onSendMessage` lets a renderer compose a `<ReviewCard>`
+ * (or any other "send a chat message via button" surface) below the per-
+ * vendor primitive. Threaded from `ToolResultCard.pay_api` →
+ * `renderMppService(data, onSendMessage)` → renderer. Optional: most
+ * renderers (Lob, Resend, generic fallback) ignore it because they're
+ * terminal services with no regen affordance.
+ */
+export type MppServiceRenderer = (
+  data: PayApiResult,
+  onSendMessage?: (text: string) => void,
+) => ReactNode;
 
 /**
  * Normalise a `serviceId` to a vendor slug.
@@ -136,14 +148,28 @@ export function normaliseServiceSlug(serviceId: string | undefined | null): stri
  * `https://mpp.t2000.ai/` prefix stripped; e.g. `openai/v1/images/generations`).
  * Fall-through returns VendorReceipt for any future supported openai endpoint.
  */
-function renderOpenai(data: PayApiResult): ReactNode {
+function renderOpenai(
+  data: PayApiResult,
+  onSendMessage?: (text: string) => void,
+): ReactNode {
   const serviceId = data.serviceId ?? '';
   if (serviceId.includes('/v1/images/generations')) {
-    return <CardPreview data={data} />;
+    // SPEC 23B-MPP6: previewable + regenerable → append ReviewCard. The
+    // ReviewCard renders disabled if onSendMessage is undefined (e.g.
+    // unauth / demo session) — preview still visible, action unavailable.
+    return (
+      <>
+        <CardPreview data={data} />
+        <ReviewCard
+          price={data.price}
+          artifactNoun="image"
+          onSendMessage={onSendMessage}
+        />
+      </>
+    );
   }
   // Whisper transcription, GPT-4o chat, and any future text-result endpoint
-  // render as an OpenAI vendor receipt (vendor tag tells the user which
-  // vendor was billed, the cost line tells them how much).
+  // render as an OpenAI vendor receipt — these are terminal (no regen).
   return <VendorReceipt data={data} vendor="OpenAI" />;
 }
 
@@ -157,7 +183,19 @@ function renderOpenai(data: PayApiResult): ReactNode {
  */
 export const MPP_SERVICE_RENDERERS: Record<string, MppServiceRenderer> = {
   openai: renderOpenai,
-  elevenlabs: (data) => <TrackPlayer data={data} />,
+  // SPEC 23B-MPP6: previewable + regenerable → append ReviewCard. Same
+  // pattern as DALL-E. PDFShift skipped (deprecating to fallback per
+  // spec_native_content_tools), Lob/Resend skipped (terminal).
+  elevenlabs: (data, onSendMessage) => (
+    <>
+      <TrackPlayer data={data} />
+      <ReviewCard
+        price={data.price}
+        artifactNoun="audio clip"
+        onSendMessage={onSendMessage}
+      />
+    </>
+  ),
   pdfshift: (data) => <BookCover data={data} />,
   lob: (data) => <VendorReceipt data={data} vendor="Lob" />,
   resend: (data) => <VendorReceipt data={data} vendor="Resend" />,
@@ -170,9 +208,12 @@ export const MPP_SERVICE_RENDERERS: Record<string, MppServiceRenderer> = {
  * `<GenericMppReceipt>` fallback when the slug isn't in the registry, so
  * unknown vendors still render a passable card.
  */
-export function renderMppService(data: PayApiResult): ReactNode {
+export function renderMppService(
+  data: PayApiResult,
+  onSendMessage?: (text: string) => void,
+): ReactNode {
   const slug = normaliseServiceSlug(data.serviceId);
   const renderer = MPP_SERVICE_RENDERERS[slug];
-  if (renderer) return renderer(data);
+  if (renderer) return renderer(data, onSendMessage);
   return <GenericMppReceipt data={data} />;
 }

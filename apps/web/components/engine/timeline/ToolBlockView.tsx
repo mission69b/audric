@@ -41,6 +41,12 @@ interface ToolBlockViewProps {
    *  presentation (e.g. the 2-3 col `BalanceCard` instead of the full
    *  3-5 col + holdings card). Defaults to `'default'`. */
   variant?: 'default' | 'post-write';
+  /** [SPEC 23B-MPP6] Forwarded to `<ToolResultCard>` so per-vendor MPP
+   *  renderers (DALL-E, ElevenLabs) can render a `<ReviewCard>` that
+   *  fires a synthesized "Regenerate the preview" / "Cancel — discard…"
+   *  user message via the engine. Threaded the same way `CanvasBlockView`
+   *  receives `onSendMessage` for canvas-internal `onAction` handlers. */
+  onSendMessage?: (text: string) => void;
 }
 
 /** Map TimelineBlock status (5 states) to the run status the renderers
@@ -60,7 +66,13 @@ function toRunStatus(s: ToolTimelineBlock['status']): RunStatus {
   }
 }
 
-export function ToolBlockView({ block, isStreaming, headerless, variant }: ToolBlockViewProps) {
+export function ToolBlockView({
+  block,
+  isStreaming,
+  headerless,
+  variant,
+  onSendMessage,
+}: ToolBlockViewProps) {
   const stepStatus = toRunStatus(block.status);
   const isSettled = block.status === 'done' || block.status === 'error';
 
@@ -123,7 +135,7 @@ export function ToolBlockView({ block, isStreaming, headerless, variant }: ToolB
       )}
 
       {isSettled && !isStreaming && (
-        <ToolResultCard tool={execution} variant={variant} />
+        <ToolResultCard tool={execution} variant={variant} onSendMessage={onSendMessage} />
       )}
     </div>
   );
