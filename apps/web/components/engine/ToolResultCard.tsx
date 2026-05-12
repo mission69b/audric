@@ -55,10 +55,11 @@ function isRefinementPayload(data: unknown): boolean {
 
 /**
  * [SPEC 23B-W1] `variant` lets the caller request a tighter post-write
- * presentation. Today only `balance_check` consumes it; other renderers
- * accept the arg for API symmetry but ignore it. When extending, only opt
- * in tools whose card materially changes shape post-write — most read
- * cards look identical in both contexts.
+ * presentation. `balance_check` (W1) and `health_check` (HealthSummary,
+ * 2026-05-12) consume it; other renderers accept the arg for API
+ * symmetry but ignore it. When extending, only opt in tools whose card
+ * materially changes shape post-write — most read cards look identical
+ * in both contexts.
  */
 type CardVariant = 'default' | 'post-write';
 /**
@@ -106,10 +107,15 @@ const CARD_RENDERERS: Record<string, CardRenderer> = {
     if (!data || typeof data !== 'object') return null;
     return <ExplainTxCard data={data as Parameters<typeof ExplainTxCard>[0]['data']} />;
   },
-  health_check: (result) => {
+  health_check: (result, variant) => {
     const data = extractData(result);
     if (!data || typeof data !== 'object') return null;
-    return <HealthCard data={data as Parameters<typeof HealthCard>[0]['data']} />;
+    return (
+      <HealthCard
+        data={data as Parameters<typeof HealthCard>[0]['data']}
+        variant={variant}
+      />
+    );
   },
   transaction_history: (result) => {
     const data = extractData(result);

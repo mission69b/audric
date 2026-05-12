@@ -66,10 +66,97 @@ export function formatHf(
   return { display: hf.toFixed(2), gaugeValue: hf };
 }
 
-export function HealthCard({ data }: { data: HealthData }) {
+// ───────────────────────────────────────────────────────────────────────────
+// SPEC 23B HealthSummary — post-write variant (2026-05-12)
+//
+// `default`    → 2xl HF hero + Gauge + 4-row detail (Supplied / Borrowed /
+//                Max Borrow / Liq. Threshold) + "Health Factor" title +
+//                StatusBadge. Unchanged. Always-on standalone card the
+//                user gets when they ask "what's my health?".
+//
+// `post-write` → 3-col grid (HF · Supplied · Borrowed) with a status pill
+//                in the HF cell. No gauge, no Max Borrow / Liq.
+//                Threshold rows, no title bar, tighter padding. Rendered
+//                by `<PostWriteRefreshSurface>` below a borrow / repay /
+//                harvest receipt to communicate "where your collateral
+//                & debt landed" without duplicating the full standalone
+//                card 100px below the receipt.
+//
+// Why drop the gauge in post-write? The gauge eats ~50px of vertical
+// space and re-renders the same number that's also in the HF cell.
+// Inline below a receipt that already shows the action (borrow / repay)
+// + the Suiscan link, the gauge becomes noise. The status pill carries
+// the "are you safe?" signal; the columns carry the actual numbers.
+//
+// Why drop Max Borrow + Liq. Threshold? Both are "what's possible
+// next" data points — useful when the user is exploring borrow
+// capacity, useless after a write that just changed exactly those
+// numbers. The user already saw the action; what they want is "did it
+// land where I expected?" — and HF / Supplied / Borrowed answers that.
+//
+// Mirrors W1 BalanceCard's post-write contract: same grid pattern,
+// same `noHeader`, same tighter cell padding (px-2.5 py-1.5), same
+// smaller value typography (text-[13px] vs text-[15px]).
+// ───────────────────────────────────────────────────────────────────────────
+
+interface HealthCardProps {
+  data: HealthData;
+  variant?: 'default' | 'post-write';
+}
+
+export function HealthCard({ data, variant = 'default' }: HealthCardProps) {
   const status = getHfStatus(data.healthFactor, data.borrowed);
   const { display, gaugeValue } = formatHf(data.healthFactor, data.borrowed);
+  const isPostWrite = variant === 'post-write';
   const isWatched = data.isSelfQuery === false && !!data.address;
+
+  if (isPostWrite) {
+    // Post-write: 3-col grid mirroring BalanceCard W1. The status pill
+    // sits in the HF column header (same row as the "HF" label) so the
+    // user reads "HF · Healthy · 4.21" as one coherent unit. Watched-
+    // address badge intentionally dropped (writes can't sign on watched
+    // addresses; isWatched is always false here in production — same
+    // invariant as BalanceCard W1).
+    return (
+      <CardShell title="Health Factor" noPadding noHeader>
+        <div className="grid grid-cols-3">
+          <div
+            className="px-2.5 py-1.5"
+            style={{ borderRight: '0.5px solid var(--border-subtle)' }}
+          >
+            <div className="flex items-center gap-1.5 mb-1">
+              <span className="text-fg-muted text-[10px]">HF</span>
+              <StatusBadge status={status} />
+            </div>
+            <div className="font-mono font-medium text-[13px] text-fg-primary">
+              {display}
+            </div>
+          </div>
+          <div
+            className="px-2.5 py-1.5"
+            style={{ borderRight: '0.5px solid var(--border-subtle)' }}
+          >
+            <div className="text-fg-muted mb-1 text-[10px]">Supplied</div>
+            <div className="font-mono font-medium text-[13px] text-fg-primary">
+              ${fmtUsd(data.supplied)}
+            </div>
+          </div>
+          <div className="px-2.5 py-1.5">
+            <div className="text-fg-muted mb-1 text-[10px]">Borrowed</div>
+            <div
+              className={`font-mono font-medium text-[13px] ${
+                data.borrowed > DEBT_DUST_USD
+                  ? 'text-warning-solid'
+                  : 'text-fg-primary'
+              }`}
+            >
+              ${fmtUsd(data.borrowed)}
+            </div>
+          </div>
+        </div>
+      </CardShell>
+    );
+  }
 
   // CardShell only accepts a single ReactNode for `badge`; on watched
   // reads we surface the chip alongside the status pip so the user can
