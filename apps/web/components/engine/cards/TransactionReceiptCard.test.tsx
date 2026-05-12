@@ -270,19 +270,27 @@ describe('TransactionReceiptCard — grid hero path (volo writes)', () => {
 });
 
 describe('TransactionReceiptCard — grid hero degraded paths', () => {
-  it('volo_stake with no hero data falls back to the row path (still renders SuiscanLink)', () => {
-    // No amount / vSuiReceived → getHeroLines returns 0 lines for volo_stake
-    // (the legacy `Staked: 0 SUI` would still render — verify the actual
-    // behavior matches what users see).
+  it('volo_stake with no hero data still renders the grid (single "Staked: 0.00 SUI" cell + SuiscanLink)', () => {
+    // `getHeroLines` for volo_stake unconditionally pushes a "Staked"
+    // row (defaulting to 0 SUI when amountSui/amount are both undefined),
+    // so `lines.length >= 1` and the grid path stays active. The render
+    // collapses to a 1-column grid containing a single "Staked: 0.00 SUI"
+    // cell + the SuiscanLink footer. This is a defensive edge case —
+    // production preflight rejects volo_stake with no amount upstream,
+    // so users never see this state, but rendering it as 1-cell instead
+    // of crashing is the correct degraded behavior.
     const { container } = render(
       <TransactionReceiptCard
         data={{ tx: SUI_DIGEST }}
         toolName="volo_stake"
       />,
     );
-    // Even with no hero data, getHeroLines pushes a Staked: "0.00 SUI" row,
-    // so the grid path still renders with 1 column. SuiscanLink visible.
+    expect(container.querySelector('.grid')).not.toBeNull();
     const links = container.querySelectorAll('a[href*="suiscan"]');
     expect(links.length).toBeGreaterThan(0);
+    // Single-column hero cell carries the default "Staked: 0.00 SUI"
+    const text = container.textContent ?? '';
+    expect(text).toContain('Staked');
+    expect(text).toContain('0.00 SUI');
   });
 });

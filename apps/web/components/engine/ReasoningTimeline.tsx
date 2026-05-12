@@ -229,6 +229,7 @@ export function ReasoningTimeline({
               key={`group-${i}-${item.tools[0].toolUseId}`}
               tools={item.tools}
               isStreaming={isStreaming}
+              onSendMessage={onSendMessage}
             />
           );
         }

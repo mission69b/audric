@@ -94,6 +94,20 @@ interface ParallelToolsGroupProps {
   /** Same isStreaming gate as ToolBlockView — hide cards while the
    *  message is still streaming so we don't pop in half-results. */
   isStreaming?: boolean;
+  /**
+   * [B-MPP5 fix1 / 2026-05-12] Forwarded to each per-tool `<ToolBlockView>`
+   * (and to `<MppReceiptGrid>` on the all-pay_api branch) so the per-cell
+   * MPP card can render `<ReviewCard>` Regenerate / Cancel buttons.
+   *
+   * Pre-fix this prop didn't exist — `<ParallelToolsGroup>` constructed
+   * `<ToolBlockView>` without `onSendMessage`, so any `<ReviewCard>` inside
+   * a parallel cluster (DALL-E + DALL-E, DALL-E + ElevenLabs, etc.) had
+   * non-functional Regenerate buttons. Single-block `<BlockRouter>` was
+   * unaffected because it forwards `onSendMessage` directly. The grid render
+   * path (B-MPP5) made the bug more visible by surfacing 2-N receipts in
+   * one cluster, so the fix is in-scope for the same batch.
+   */
+  onSendMessage?: (text: string) => void;
 }
 
 function toRowStatus(s: ToolTimelineBlock['status']): ParallelRowStatus {
@@ -135,7 +149,11 @@ function rowSub(tool: ToolTimelineBlock): string {
   return 'done';
 }
 
-export function ParallelToolsGroup({ tools, isStreaming }: ParallelToolsGroupProps) {
+export function ParallelToolsGroup({
+  tools,
+  isStreaming,
+  onSendMessage,
+}: ParallelToolsGroupProps) {
   if (tools.length === 0) return null;
 
   const doneCount = tools.filter(
@@ -195,7 +213,11 @@ export function ParallelToolsGroup({ tools, isStreaming }: ParallelToolsGroupPro
           ("DISPATCHING N MPP CALLS") already framed it as one parallel
           batch — the grid renders that framing. */}
       {!isStreaming && shouldUseMppGrid(tools) ? (
-        <MppReceiptGrid tools={tools} isStreaming={isStreaming} />
+        <MppReceiptGrid
+          tools={tools}
+          isStreaming={isStreaming}
+          onSendMessage={onSendMessage}
+        />
       ) : (
         !isStreaming &&
         tools.map((tool) =>
@@ -205,6 +227,7 @@ export function ParallelToolsGroup({ tools, isStreaming }: ParallelToolsGroupPro
               block={tool}
               isStreaming={false}
               headerless
+              onSendMessage={onSendMessage}
             />
           ) : null,
         )

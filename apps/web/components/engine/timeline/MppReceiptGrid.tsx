@@ -56,12 +56,28 @@ interface MppReceiptGridProps {
    * undefined (today), no row renders.
    */
   subtitle?: string;
+  /**
+   * [B-MPP5 fix1 / 2026-05-12] Forwarded to each `<ToolBlockView>` so
+   * the per-cell MPP card (DALL-E preview, ElevenLabs player, …) can
+   * render `<ReviewCard>` Regenerate / Cancel buttons that fire a
+   * synthesized user message via the engine. Without this, parallel
+   * pay_api clusters had non-functional Regenerate buttons (the same
+   * latent bug that the chronological-stack path also exhibited; the
+   * grid just made it more visible by surfacing 2-N receipts at once).
+   *
+   * Threaded through identically to the single-block path:
+   * `<ReasoningTimeline>` → `<ParallelToolsGroup>` → here →
+   * `<ToolBlockView>` → `<ToolResultCard>` → MPP renderer →
+   * `<ReviewCard>`.
+   */
+  onSendMessage?: (text: string) => void;
 }
 
 export function MppReceiptGrid({
   tools,
   isStreaming,
   subtitle,
+  onSendMessage,
 }: MppReceiptGridProps) {
   if (tools.length === 0) return null;
 
@@ -97,7 +113,12 @@ export function MppReceiptGrid({
         {!isStreaming &&
           settled.map((tool) => (
             <div key={`mpp-grid-${tool.toolUseId}`} className="min-w-0">
-              <ToolBlockView block={tool} isStreaming={false} headerless />
+              <ToolBlockView
+                block={tool}
+                isStreaming={false}
+                headerless
+                onSendMessage={onSendMessage}
+              />
             </div>
           ))}
       </div>

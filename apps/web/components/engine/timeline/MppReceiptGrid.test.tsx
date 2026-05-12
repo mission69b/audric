@@ -21,9 +21,21 @@ import type { ToolTimelineBlock } from '@/lib/engine-types';
 
 // Mock ToolBlockView so we don't have to set up a full tool result render
 // stack. The grid's job is layout; per-cell content is the renderer's job.
+// `data-has-on-send-message` lets the B-MPP5-fix1 regression assert that
+// `onSendMessage` is threaded through to each per-cell ToolBlockView.
 vi.mock('./ToolBlockView', () => ({
-  ToolBlockView: ({ block }: { block: ToolTimelineBlock }) => (
-    <div data-testid="tool-block" data-tool-use-id={block.toolUseId}>
+  ToolBlockView: ({
+    block,
+    onSendMessage,
+  }: {
+    block: ToolTimelineBlock;
+    onSendMessage?: (text: string) => void;
+  }) => (
+    <div
+      data-testid="tool-block"
+      data-tool-use-id={block.toolUseId}
+      data-has-on-send-message={onSendMessage ? 'true' : 'false'}
+    >
       {block.toolName}
     </div>
   ),
@@ -172,6 +184,33 @@ describe('MppReceiptGrid — SPEC 16 subtitle slot', () => {
     expect(subtitle.className).toContain('font-mono');
     expect(subtitle.className).toContain('uppercase');
     expect(subtitle.className).toContain('tracking-[0.12em]');
+  });
+});
+
+describe('MppReceiptGrid — onSendMessage prop drilling (B-MPP5 fix1)', () => {
+  it('threads onSendMessage to every per-cell ToolBlockView when set', () => {
+    const onSendMessage = vi.fn();
+    const { getAllByTestId } = render(
+      <MppReceiptGrid
+        tools={[mockTool('a'), mockTool('b')]}
+        onSendMessage={onSendMessage}
+      />,
+    );
+    const blocks = getAllByTestId('tool-block');
+    expect(blocks.length).toBe(2);
+    for (const block of blocks) {
+      expect(block.getAttribute('data-has-on-send-message')).toBe('true');
+    }
+  });
+
+  it('per-cell onSendMessage is undefined when caller does not pass it (matches pre-fix behavior for non-pay_api callers)', () => {
+    const { getAllByTestId } = render(
+      <MppReceiptGrid tools={[mockTool('a'), mockTool('b')]} />,
+    );
+    const blocks = getAllByTestId('tool-block');
+    for (const block of blocks) {
+      expect(block.getAttribute('data-has-on-send-message')).toBe('false');
+    }
   });
 });
 
