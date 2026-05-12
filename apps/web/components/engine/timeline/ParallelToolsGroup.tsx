@@ -3,6 +3,7 @@
 import type { ToolTimelineBlock } from '@/lib/engine-types';
 import { getStepIcon, getStepLabel } from '../AgentStep';
 import { ToolBlockView } from './ToolBlockView';
+import { MppReceiptGrid } from './MppReceiptGrid';
 import {
   ParallelToolsRow,
   type ParallelRowStatus,
@@ -180,11 +181,23 @@ export function ParallelToolsGroup({ tools, isStreaming }: ParallelToolsGroupPro
         ))}
       </div>
 
-      {/* Cards rendered chronologically below the group, only after the
-          message has finished streaming. ToolBlockView's `headerless`
-          mode skips the AgentStep header (already shown in the group
-          row above) and emits only the result card. */}
-      {!isStreaming &&
+      {/* Cards rendered below the group, only after the message has
+          finished streaming. ToolBlockView's `headerless` mode skips the
+          AgentStep header (already shown in the group row above) and
+          emits only the result card.
+
+          [SPEC 23B-MPP5 / 2026-05-12] When the cluster is all pay_api
+          AND has 2+ tools, route the cards through `<MppReceiptGrid>`
+          (CSS grid, side-by-side, responsive auto-fit) instead of the
+          chronological vertical stack. Stacking 2-4 full-bleed media
+          receipts vertically creates a 600-1200px scroll wall; the grid
+          collapses that to one glanceable cluster. The header bucket
+          ("DISPATCHING N MPP CALLS") already framed it as one parallel
+          batch — the grid renders that framing. */}
+      {!isStreaming && shouldUseMppGrid(tools) ? (
+        <MppReceiptGrid tools={tools} isStreaming={isStreaming} />
+      ) : (
+        !isStreaming &&
         tools.map((tool) =>
           tool.status === 'done' || tool.status === 'error' ? (
             <ToolBlockView
@@ -194,7 +207,27 @@ export function ParallelToolsGroup({ tools, isStreaming }: ParallelToolsGroupPro
               headerless
             />
           ) : null,
-        )}
+        )
+      )}
     </div>
   );
+}
+
+/**
+ * [SPEC 23B-MPP5] Detection rule for the MppReceiptGrid render path.
+ *
+ *   - At least 2 settled tools (single pay_api still renders inline).
+ *   - ALL settled tools are pay_api (mixed-tool clusters keep the
+ *     vertical stack — e.g. pay_api + balance_check shouldn't crowd
+ *     into a grid; the balance_check card is wider + has different
+ *     visual weight than an MPP receipt).
+ *
+ * Exported for unit testing — see ParallelToolsGroup.test.ts.
+ */
+export function shouldUseMppGrid(tools: ToolTimelineBlock[]): boolean {
+  const settled = tools.filter(
+    (t) => t.status === 'done' || t.status === 'error',
+  );
+  if (settled.length < 2) return false;
+  return settled.every((t) => t.toolName === 'pay_api');
 }
