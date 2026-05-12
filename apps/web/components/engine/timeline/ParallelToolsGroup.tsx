@@ -9,6 +9,7 @@ import {
   type ParallelRowStatus,
 } from './primitives/ParallelToolsRow';
 import { getResultPreview } from './result-preview';
+import { MountAnimate } from '../motion/MountAnimate';
 
 // ───────────────────────────────────────────────────────────────────────────
 // SPEC 23A-A2 — anticipatory header copy registry (2026-05-11).
@@ -236,18 +237,24 @@ export function ParallelToolsGroup({
         />
       ) : (
         !isStreaming &&
-        tools.map((tool) =>
-          tool.status === 'done' || tool.status === 'error' ? (
-            <ToolBlockView
-              key={`card-${tool.toolUseId}`}
-              block={tool}
-              isStreaming={false}
-              headerless
-              onSendMessage={onSendMessage}
-              onRegenerateToolCall={onRegenerateToolCall}
-            />
-          ) : null,
-        )
+        // [SPEC 23C C1] Filter to settled tools FIRST, then map with
+        // staggerIndex — keeps the cascade tight (no gaps from null
+        // children for still-running tools, which never happens here
+        // anyway because !isStreaming guards the whole block, but the
+        // pattern is more legible this way).
+        tools
+          .filter((t) => t.status === 'done' || t.status === 'error')
+          .map((tool, i) => (
+            <MountAnimate key={`card-${tool.toolUseId}`} staggerIndex={i}>
+              <ToolBlockView
+                block={tool}
+                isStreaming={false}
+                headerless
+                onSendMessage={onSendMessage}
+                onRegenerateToolCall={onRegenerateToolCall}
+              />
+            </MountAnimate>
+          ))
       )}
     </div>
   );

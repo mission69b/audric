@@ -10,6 +10,7 @@ import { BlockRouter } from './timeline/BlockRouter';
 import { ParallelToolsGroup } from './timeline/ParallelToolsGroup';
 import { PostWriteRefreshSurface } from './timeline/PostWriteRefreshSurface';
 import { MppReceiptGrid } from './timeline/MppReceiptGrid';
+import { MountAnimate } from './motion/MountAnimate';
 import {
   computeThinkingCollapse,
   type ThinkingCollapseResult,
@@ -241,13 +242,14 @@ export function ReasoningTimeline({
       {items.map((item, i) => {
         if (item.kind === 'group') {
           return (
-            <ParallelToolsGroup
-              key={`group-${i}-${item.tools[0].toolUseId}`}
-              tools={item.tools}
-              isStreaming={isStreaming}
-              onSendMessage={onSendMessage}
-              onRegenerateToolCall={onRegenerateToolCall}
-            />
+            <MountAnimate key={`group-${i}-${item.tools[0].toolUseId}`}>
+              <ParallelToolsGroup
+                tools={item.tools}
+                isStreaming={isStreaming}
+                onSendMessage={onSendMessage}
+                onRegenerateToolCall={onRegenerateToolCall}
+              />
+            </MountAnimate>
           );
         }
         if (item.kind === 'regen-group') {
@@ -261,63 +263,85 @@ export function ReasoningTimeline({
           // ("they didn't dispatch in parallel; the user pressed
           // Regenerate") + visually noisy. See
           // `lib/timeline-groups.ts` regen-group rationale.
+          //
+          // [SPEC 23C C1] Outer MountAnimate handles the cluster's
+          // own entrance; per-cell intra-cluster stagger lives inside
+          // <MppReceiptGrid> so each receipt cascades 30ms apart.
           return (
-            <MppReceiptGrid
-              key={`regen-${i}-${item.tools[0].toolUseId}`}
-              tools={item.tools}
-              isStreaming={isStreaming}
-              onSendMessage={onSendMessage}
-              onRegenerateToolCall={onRegenerateToolCall}
-            />
+            <MountAnimate key={`regen-${i}-${item.tools[0].toolUseId}`}>
+              <MppReceiptGrid
+                tools={item.tools}
+                isStreaming={isStreaming}
+                onSendMessage={onSendMessage}
+                onRegenerateToolCall={onRegenerateToolCall}
+              />
+            </MountAnimate>
           );
         }
         if (item.kind === 'pwr-group') {
+          // [SPEC 23C C1] PWR refreshes use 'subtle' intensity — they're
+          // engine-injected ambient bookkeeping, not deliberate user
+          // actions, so motion reads as background activity.
           return (
-            <PostWriteRefreshSurface
+            <MountAnimate
               key={`pwr-${i}-${item.tools[0].toolUseId}`}
-              tools={item.tools}
-              isStreaming={isStreaming}
-            />
+              intensity="subtle"
+            >
+              <PostWriteRefreshSurface
+                tools={item.tools}
+                isStreaming={isStreaming}
+              />
+            </MountAnimate>
           );
         }
         const block = item.block;
         const voiceSlice =
           block.type === 'text' && voiceSlices ? voiceSlices.get(block) : undefined;
+        // [SPEC 23C C1] Source-aware intensity for single-block tools.
+        // Single tool blocks with source === 'pwr' are rare (PWR usually
+        // groups), but defensive — if the engine ever emits a lone PWR
+        // tool, treat it as ambient like a pwr-group.
+        const blockIntensity: 'full' | 'subtle' =
+          block.type === 'tool' && block.source === 'pwr' ? 'subtle' : 'full';
         return (
-          <BlockRouter
+          <MountAnimate
             key={`block-${i}-${blockKey(block)}`}
-            block={block}
-            isStreaming={isStreaming}
-            onActionResolve={onActionResolve}
-            onSendMessage={onSendMessage}
-            contacts={contacts}
-            walletAddress={walletAddress}
-            recentUserText={recentUserText}
-            shouldAutoApprove={shouldAutoApprove}
-            onRegenerate={onRegenerate}
-            regeneratingAttemptIds={regeneratingAttemptIds}
-            onPendingInputSubmit={onPendingInputSubmit}
-            onSignBackIn={onSignBackIn}
-            onRegenerateToolCall={onRegenerateToolCall}
-            thinkingExpanded={
-              block.type === 'thinking'
-                ? thinkingExpanded.get(block.blockIndex) ??
-                  block.status === 'streaming'
-                : undefined
-            }
-            onToggleThinking={
-              block.type === 'thinking'
-                ? () => toggleThinking(block.blockIndex)
-                : undefined
-            }
-            thinkingCollapseInfo={
-              block.type === 'thinking'
-                ? thinkingCollapseByBlockIndex.get(block.blockIndex)
-                : undefined
-            }
-            voiceSlice={voiceSlice}
-            spokenWordIndex={voiceContext?.spokenWordIndex}
-          />
+            intensity={blockIntensity}
+          >
+            <BlockRouter
+              block={block}
+              isStreaming={isStreaming}
+              onActionResolve={onActionResolve}
+              onSendMessage={onSendMessage}
+              contacts={contacts}
+              walletAddress={walletAddress}
+              recentUserText={recentUserText}
+              shouldAutoApprove={shouldAutoApprove}
+              onRegenerate={onRegenerate}
+              regeneratingAttemptIds={regeneratingAttemptIds}
+              onPendingInputSubmit={onPendingInputSubmit}
+              onSignBackIn={onSignBackIn}
+              onRegenerateToolCall={onRegenerateToolCall}
+              thinkingExpanded={
+                block.type === 'thinking'
+                  ? thinkingExpanded.get(block.blockIndex) ??
+                    block.status === 'streaming'
+                  : undefined
+              }
+              onToggleThinking={
+                block.type === 'thinking'
+                  ? () => toggleThinking(block.blockIndex)
+                  : undefined
+              }
+              thinkingCollapseInfo={
+                block.type === 'thinking'
+                  ? thinkingCollapseByBlockIndex.get(block.blockIndex)
+                  : undefined
+              }
+              voiceSlice={voiceSlice}
+              spokenWordIndex={voiceContext?.spokenWordIndex}
+            />
+          </MountAnimate>
         );
       })}
     </div>

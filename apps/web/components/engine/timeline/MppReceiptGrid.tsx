@@ -59,6 +59,7 @@
 
 import type { ToolTimelineBlock } from '@/lib/engine-types';
 import { ToolBlockView } from './ToolBlockView';
+import { MountAnimate } from '../motion/MountAnimate';
 
 interface MppReceiptGridProps {
   /** The pay_api tools to render side-by-side. Should all be settled
@@ -140,8 +141,22 @@ export function MppReceiptGrid({
         aria-label="MPP receipt cluster"
       >
         {!isStreaming &&
-          settled.map((tool) => (
-            <div key={`mpp-grid-${tool.toolUseId}`} className="min-w-0">
+          settled.map((tool, i) => (
+            // [SPEC 23C C1] Intra-cluster stagger — siblings cascade
+            // 30ms apart so the grid feels like a coordinated batch
+            // landing rather than a simultaneous slam. The outer
+            // <ReasoningTimeline> already wraps the whole grid in its
+            // own MountAnimate; this nested wrap is intentional —
+            // outer = grid container entrance, inner = per-cell stagger.
+            // (Per MountAnimate's "don't double-wrap" guidance, the
+            // outer wrap uses a non-staggered base mount and the inner
+            // wraps add the cascade — net effect is one entrance + one
+            // cascade, not two compounding fades.)
+            <MountAnimate
+              key={`mpp-grid-${tool.toolUseId}`}
+              staggerIndex={i}
+              className="min-w-0"
+            >
               <ToolBlockView
                 block={tool}
                 isStreaming={false}
@@ -149,7 +164,7 @@ export function MppReceiptGrid({
                 onSendMessage={onSendMessage}
                 onRegenerateToolCall={onRegenerateToolCall}
               />
-            </div>
+            </MountAnimate>
           ))}
       </div>
     </div>
