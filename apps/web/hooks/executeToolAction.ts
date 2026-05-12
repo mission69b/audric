@@ -400,31 +400,58 @@ async function executeToolActionImpl(
     case 'pay_api': {
       // [v1.4 wrap] Always returns wrapped { success, data } for shape parity;
       // ServiceDeliveryError carries the don't-retry signal in `data`.
+      // [B-MPP6 v1.1 / 2026-05-12] Error envelope now ALSO preserves
+      // `serviceId`, `price`, and stamps `success: false` on the inner
+      // data so `renderMppService` can dispatch to a vendor-named error
+      // surface (`<ErrorReceipt>`) instead of falling through to the
+      // generic `<GenericMppReceipt>`. Pre-fix, the error envelope only
+      // carried `error` + `paymentConfirmed` + `paymentDigest`, so the
+      // host-side renderer couldn't tell which vendor had failed and
+      // rendered "MPP SERVICE · MPP" with a `—` price (the
+      // `bug_audric_error_receipt_shape` from HANDOFF §8). The url is
+      // always available on `inp.url` (engine-validated upstream), so
+      // serviceId is recoverable for free.
+      const serviceUrl = inp.url as string | undefined;
+      const serviceId = serviceUrl
+        ? serviceUrl.replace(/^https?:\/\/[^/]+\//, '')
+        : undefined;
       try {
         const serviceResult = await sdk.payService({
-          url: inp.url as string,
+          url: serviceUrl as string,
           rawBody: inp.body ? JSON.parse(String(inp.body)) : undefined,
         });
         return { success: true, data: serviceResult };
       } catch (payErr) {
         if (payErr instanceof ServiceDeliveryError) {
-          const price = (payErr.meta as { price?: string | number } | undefined)?.price ?? '?';
+          const price = (payErr.meta as { price?: string | number } | undefined)?.price;
+          const priceLabel = price ?? '?';
           return {
             success: false,
             data: {
+              success: false,
               error: payErr.message,
               paymentConfirmed: true,
               paymentDigest: payErr.paymentDigest,
               doNotRetry: true,
+              serviceId,
+              price: price != null ? String(price) : undefined,
               warning:
                 'Payment was already charged on-chain. DO NOT call pay_api again for this request. ' +
-                `Tell the user the service failed and their payment of $${price} was charged. ` +
+                `Tell the user the service failed and their payment of $${priceLabel} was charged. ` +
                 'They can contact support for a refund.',
             },
           };
         }
         const msg = payErr instanceof Error ? payErr.message : String(payErr);
-        return { success: false, data: { error: msg } };
+        return {
+          success: false,
+          data: {
+            success: false,
+            error: msg,
+            paymentConfirmed: false,
+            serviceId,
+          },
+        };
       }
     }
 

@@ -62,6 +62,7 @@ import { TrackPlayer } from './TrackPlayer';
 import { BookCover } from './BookCover';
 import { VendorReceipt } from './VendorReceipt';
 import { GenericMppReceipt } from './GenericMppReceipt';
+import { ErrorReceipt } from './ErrorReceipt';
 import { ReviewCard } from './ReviewCard';
 
 /**
@@ -97,6 +98,27 @@ export interface PayApiResult {
   serviceName?: string;
   amount?: number;
   deliveryEstimate?: string;
+
+  // ─────────────────────────────────────────────────────────────────────
+  // [B-MPP6 v1.1 / 2026-05-12] Error envelope fields.
+  //
+  // When `executeToolAction.pay_api` catches a ServiceDeliveryError or
+  // network failure, the inner `data` envelope carries these fields
+  // instead of the success-shape (`result`, `serviceName`, etc.). The
+  // dispatcher (`renderMppService`) checks `success === false` first
+  // and routes to `<ErrorReceipt>` so the user sees a vendor-named
+  // failure surface that distinguishes "paid but service errored"
+  // (refund pending) from "no payment, network failure" (retry safe).
+  //
+  // Pre-fix, only `error` + `paymentConfirmed` + `paymentDigest` were
+  // preserved → renderer dispatch fell to GenericMppReceipt with `—`
+  // price + "MPP SERVICE · MPP" generic chrome (the
+  // `bug_audric_error_receipt_shape` tracked in HANDOFF §8).
+  // ─────────────────────────────────────────────────────────────────────
+  error?: string;
+  paymentConfirmed?: boolean;
+  doNotRetry?: boolean;
+  warning?: string;
 }
 
 /**
@@ -202,16 +224,37 @@ export const MPP_SERVICE_RENDERERS: Record<string, MppServiceRenderer> = {
 };
 
 /**
- * Dispatch entry point. B-MPP2 will register this in `CARD_RENDERERS` of
- * `ToolResultCard.tsx` (`pay_api: (result) => renderMppService(result.data)`),
- * bypassing the dead `TransactionReceiptCard.pay_api` branch. Returns the
- * `<GenericMppReceipt>` fallback when the slug isn't in the registry, so
- * unknown vendors still render a passable card.
+ * Dispatch entry point. Registered in `CARD_RENDERERS['pay_api']` of
+ * `ToolResultCard.tsx`. Three-way dispatch:
+ *
+ *   1. Error envelope (`success === false`) → `<ErrorReceipt>`
+ *      [B-MPP6 v1.1, 2026-05-12] Detected first so failed calls never
+ *      fall through to the per-vendor renderer (which would render
+ *      empty/broken state — no `result` field) or to GenericMppReceipt
+ *      (which would silently drop the error context). The ErrorReceipt
+ *      shows the vendor name + the error message + payment-state-aware
+ *      messaging (paid vs unpaid).
+ *
+ *   2. Vendor renderer match → per-vendor primitive (CardPreview,
+ *      TrackPlayer, BookCover, VendorReceipt) optionally with
+ *      `<ReviewCard>` appended.
+ *
+ *   3. Fallback → `<GenericMppReceipt>` for unknown vendors. This path
+ *      should be RARE — system prompt (engine 1.29.0, SPEC 24 F1) keeps
+ *      the LLM in the supported set.
  */
 export function renderMppService(
   data: PayApiResult,
   onSendMessage?: (text: string) => void,
 ): ReactNode {
+  // [B-MPP6 v1.1] Error envelope short-circuits dispatch. We check the
+  // explicit `success: false` flag stamped by `executeToolAction.pay_api`
+  // (NOT presence of `error` alone — successful results may carry
+  // metadata that happens to include an error-shaped subfield).
+  if (data.success === false) {
+    return <ErrorReceipt data={data} />;
+  }
+
   const slug = normaliseServiceSlug(data.serviceId);
   const renderer = MPP_SERVICE_RENDERERS[slug];
   if (renderer) return renderer(data, onSendMessage);

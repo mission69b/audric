@@ -274,6 +274,103 @@ describe('[SPEC 24 F3] renderMppService — dropped vendors fall through to Gene
   );
 });
 
+describe('[B-MPP6 v1.1] renderMppService — error envelope dispatches to ErrorReceipt', () => {
+  // The dispatcher checks `success === false` FIRST so failed pay_api
+  // calls never reach the per-vendor renderer (which would render
+  // empty/broken state — no `result` field) or fall through to
+  // GenericMppReceipt (which would silently drop the error context).
+  // These tests pin the dispatch — pre-fix, the error envelope routed
+  // to GenericMppReceipt rendering "MPP SERVICE · MPP" with `—` price
+  // (the `bug_audric_error_receipt_shape` from HANDOFF §8).
+
+  it('routes paid-but-failed envelope to ErrorReceipt (not the elevenlabs renderer)', () => {
+    const { container } = render(
+      <>
+        {renderMppService({
+          success: false,
+          serviceId: 'elevenlabs/v1/text-to-speech/voice',
+          price: '0.05',
+          paymentConfirmed: true,
+          paymentDigest: '2bfGJnSyAbCdEfGh1234567Mnopqr8jry81',
+          error: 'Service unavailable (503)',
+        })}
+      </>,
+    );
+    // Should render ErrorReceipt headline, NOT a TrackPlayer audio element
+    expect(container.textContent).toContain('ELEVENLABS · MPP · FAILED');
+    expect(container.textContent).toContain('Payment charged');
+    expect(container.querySelector('audio')).toBeNull();
+  });
+
+  it('routes unpaid-failure envelope to ErrorReceipt (not the openai renderer)', () => {
+    const { container } = render(
+      <>
+        {renderMppService({
+          success: false,
+          serviceId: 'openai/v1/images/generations',
+          paymentConfirmed: false,
+          error: 'Network timeout',
+        })}
+      </>,
+    );
+    expect(container.textContent).toContain('OPENAI · MPP · FAILED');
+    expect(container.textContent).toContain('No charge');
+    // Should NOT render the DALL-E preview <img>
+    expect(container.querySelector('img')).toBeNull();
+  });
+
+  it('routes error envelope with unknown vendor to ErrorReceipt (not GenericMppReceipt)', () => {
+    const { container } = render(
+      <>
+        {renderMppService({
+          success: false,
+          serviceId: 'somefutureservice/v1/foo',
+          paymentConfirmed: false,
+          error: 'Unknown service',
+        })}
+      </>,
+    );
+    // ErrorReceipt humanises unknown vendor slug — would NOT include
+    // GenericMppReceipt's "MPP SERVICE" generic label
+    expect(container.textContent).toContain('SOMEFUTURESERVICE · MPP · FAILED');
+  });
+
+  it('does NOT route success: true envelopes to ErrorReceipt (success path unchanged)', () => {
+    // Pin: only `success === false` triggers ErrorReceipt. Successful
+    // results with no explicit success field still route normally.
+    const { container } = render(
+      <>
+        {renderMppService({
+          success: true,
+          serviceId: 'openai/v1/images/generations',
+          price: '0.05',
+          result: { data: [{ url: 'https://example.com/img.png' }] },
+        })}
+      </>,
+    );
+    // Should render the DALL-E CardPreview <img>, NOT ErrorReceipt
+    expect(container.querySelector('img')).not.toBeNull();
+    expect(container.textContent).not.toContain('FAILED');
+  });
+
+  it('does NOT route undefined success to ErrorReceipt (defensive)', () => {
+    // Old result shapes without an explicit success field should still
+    // render via the per-vendor path (they're successful by absence of
+    // the false marker). This is the legacy compatibility check.
+    const { container } = render(
+      <>
+        {renderMppService({
+          serviceId: 'openai/v1/images/generations',
+          price: '0.05',
+          result: { data: [{ url: 'https://example.com/img.png' }] },
+        })}
+      </>,
+    );
+    expect(container.querySelector('img')).not.toBeNull();
+    expect(container.textContent).not.toContain('FAILED');
+  });
+});
+
 describe('[SPEC 24 F3] GenericMppReceipt — defensive fall-through', () => {
   it('falls back to GenericMppReceipt for completely unknown vendors', () => {
     const { container } = render(
