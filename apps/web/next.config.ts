@@ -44,11 +44,28 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
       "img-src 'self' data: https:",
-      // `media-src 'self' blob:` so the voice mode HTMLAudioElement can
-      // play the ElevenLabs MP3 we serve as an in-memory Blob URL.
-      // Without `blob:`, CSP rejects the audio source with no console
-      // hint that's easy to spot.
-      "media-src 'self' blob:",
+      // `media-src 'self' blob: data:` covers two distinct flows:
+      //   - `blob:` — voice mode HTMLAudioElement plays an in-memory
+      //     Blob URL streamed from ElevenLabs (the original reason
+      //     `blob:` was added).
+      //   - `data:` — MPP `pay_api` audio results (OpenAI TTS today,
+      //     other vendors later) are returned by `/api/services/
+      //     complete` as `data:audio/mpeg;base64,...` URIs; the
+      //     TrackPlayer card binds them to `<audio src=...>`. Without
+      //     `data:` here, CSP rejects the source with a console
+      //     warning ("Loading media from 'data:audio/mpeg;...'
+      //     violates CSP directive media-src 'self' blob:") and
+      //     `play()` throws NotSupportedError ("The element has no
+      //     supported sources"). Founder smoke 2026-05-12 surfaced
+      //     this — looked like a decode failure, was actually a CSP
+      //     block.
+      //
+      // Future improvement: convert base64 → Blob → URL.create­Object­URL
+      // on the client so we only need `blob:`. Saves ~30% memory
+      // (no base64 string + decoded Blob both held), faster decode,
+      // and keeps the CSP tighter. Tracked in the HANDOFF as a
+      // followup; the data: allow is the immediate unblock.
+      "media-src 'self' blob: data:",
       "connect-src 'self' https://fullnode.mainnet.sui.io:443 https://fullnode.testnet.sui.io:443 https://api.enoki.mystenlabs.com https://prover.mystenlabs.com https://prover-dev.mystenlabs.com https://accounts.google.com https://*.googleapis.com https://*.upstash.io https://open-api.naviprotocol.io https://mpp.t2000.ai https://*.mvr.mystenlabs.com",
       "frame-src https://accounts.google.com",
       "base-uri 'self'",
