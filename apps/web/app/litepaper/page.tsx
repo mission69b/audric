@@ -42,7 +42,6 @@ export default function LitepaperPage() {
           <h2>Finance is broken<br /><em>at the interface.</em></h2>
           <p>Traditional banking: slow, expensive, stops at borders. Crypto fixed the rails but broke the experience. AI arrived and still can&apos;t manage or move your money. The gap has always been the interface.</p>
           <img src="/litepaper/slide-maze.png" alt="Finance as a maze vs a conversation" className={s.slideImg} />
-          <img src="/litepaper/slide-seven-steps.png" alt="Seven steps or one sentence" className={s.slideImg} />
         </section>
 
         {/* Solution */}
@@ -384,15 +383,13 @@ export default function LitepaperPage() {
         {/* Raise */}
         <section className={s.sec}>
           <div className={s.secLabel}>The Raise</div>
-          <h2>$1m pre-seed.<br />t2000 AFI Inc.</h2>
+          <h2>Pre-seed round.<br />t2000 AFI Inc.</h2>
           <p>Raising into <strong>t2000 AFI Inc.</strong> — a Delaware C-Corp, majority-owned by Funkii, subsidiary of Mission69b Capital Limited (BVI). Investors get equity in t2000 AFI Inc. only, ring-fenced from Mission69b&apos;s other ventures. t2000 AFI Inc. holds the Audric and t2000 IP.</p>
 
           <div className={s.params}>
             <div className={s.param}><div className={s.paramLabel}>Raising entity</div><div className={s.paramValue}>t2000 AFI Inc. (Delaware)</div></div>
             <div className={s.param}><div className={s.paramLabel}>Instrument</div><div className={s.paramValue}>SAFE + Token Warrant</div></div>
-            <div className={s.param}><div className={s.paramLabel}>Target</div><div className={s.paramValue}>$1,000,000</div></div>
             <div className={s.param}><div className={s.paramLabel}>Minimum cheque</div><div className={s.paramValue}>$25,000</div></div>
-            <div className={s.param}><div className={s.paramLabel}>Valuation cap</div><div className={s.paramValue}>$24,000,000</div></div>
             <div className={s.param}><div className={s.paramLabel}>Runway</div><div className={s.paramValue}>18 months</div></div>
           </div>
 
