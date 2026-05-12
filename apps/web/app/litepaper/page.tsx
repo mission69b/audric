@@ -20,7 +20,7 @@ export default function LitepaperPage() {
           <a href="https://audric.ai" className={s.hideMob}>Product</a>
           <a href="https://t2000.ai" className={s.hideMob}>Infrastructure</a>
           <a href="https://discord.gg/qE95FPt6Z5" className={`${s.navCta} ${s.hideMob}`}>Discord</a>
-          <a href="https://t.me/funkiirabu" className={s.navCta}>Telegram</a>
+          <a href="https://x.com/audricai" className={s.navCta}>X</a>
         </div>
       </nav>
 
@@ -405,8 +405,8 @@ export default function LitepaperPage() {
             <a className={s.linkChip} href="https://audric.ai">audric.ai</a>
             <a className={s.linkChip} href="https://t2000.ai">t2000.ai</a>
             <a className={s.linkChip} href="https://mpp.t2000.ai">mpp.t2000.ai</a>
+            <a className={s.linkChip} href="https://x.com/audricai">X · @audricai</a>
             <a className={s.linkChip} href="https://discord.gg/qE95FPt6Z5">Discord</a>
-            <a className={s.linkChip} href="https://t.me/funkiirabu">Telegram</a>
             <a className={s.linkChip} href="https://www.npmjs.com/package/@t2000/engine">@t2000/engine</a>
           </div>
         </section>
