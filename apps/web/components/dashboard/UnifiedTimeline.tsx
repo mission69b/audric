@@ -10,6 +10,7 @@ import { FeedItemCard } from '@/components/dashboard/FeedRenderer';
 // Copilot stack. The render tree was already short-circuited in S.3 — the
 // imports are now removed.
 import { deriveSuggestedActions, endsWithQuestion } from '@/lib/suggested-actions';
+import { smoothScrollIntoView } from '@/lib/scroll/smoothScrollIntoView';
 import type { useEngine } from '@/hooks/useEngine';
 import type { useFeed } from '@/hooks/useFeed';
 import type { FeedItem } from '@/lib/feed-types';
@@ -267,8 +268,11 @@ export function UnifiedTimeline({
 
   useEffect(() => {
     if (totalCount > lastCount.current) {
+      // [SPEC 23C C4] smoothScrollIntoView wraps native scrollIntoView
+      // with prefers-reduced-motion handling — reduce-motion users get
+      // an instant snap instead of an unexpected scroll animation.
       requestAnimationFrame(() => {
-        endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        smoothScrollIntoView(endRef.current);
       });
       lastCount.current = totalCount;
     }
@@ -277,7 +281,7 @@ export function UnifiedTimeline({
   const lastMsgContentLen = engine.messages[engine.messages.length - 1]?.content.length;
   useEffect(() => {
     if (engine.isStreaming) {
-      endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      smoothScrollIntoView(endRef.current);
     }
   }, [engine.isStreaming, lastMsgContentLen]);
 

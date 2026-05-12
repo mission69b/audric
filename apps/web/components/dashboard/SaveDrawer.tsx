@@ -17,6 +17,7 @@ import { Tooltip } from '@/components/ui/Tooltip';
 import { Icon } from '@/components/ui/Icon';
 import { Tag } from '@/components/ui/Tag';
 import { buildChipConfigs, type ChipPrefetchData } from '@/lib/chip-configs';
+import { smoothScrollIntoView } from '@/lib/scroll/smoothScrollIntoView';
 
 interface SaveDrawerProps {
   prefetch?: ChipPrefetchData;
@@ -29,7 +30,9 @@ export function SaveDrawer({ prefetch, onSelect, onFlowSelect, onClose }: SaveDr
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    ref.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    // [SPEC 23C C4] Reduced-motion-aware scroll. 'nearest' so an
+    // already-visible drawer doesn't trigger an unnecessary scroll.
+    smoothScrollIntoView(ref.current, { block: 'nearest' });
   }, []);
 
   const saveConfig = buildChipConfigs(prefetch).find((c) => c.id === 'save');

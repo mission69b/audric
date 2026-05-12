@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import { Tag } from '@/components/ui/Tag';
 import type { ChipAction } from '@/lib/chip-configs';
+import { smoothScrollIntoView } from '@/lib/scroll/smoothScrollIntoView';
 
 interface ChipExpandProps {
   actions: ChipAction[];
@@ -17,7 +18,10 @@ export function ChipExpand({ actions, chipLabel, onSelect, onFlowSelect, onClose
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    ref.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    // [SPEC 23C C4] Reduced-motion-aware scroll. Default block is
+    // 'end' but here we want 'nearest' so an already-visible chip
+    // doesn't trigger an unnecessary scroll.
+    smoothScrollIntoView(ref.current, { block: 'nearest' });
   }, []);
 
   return (
