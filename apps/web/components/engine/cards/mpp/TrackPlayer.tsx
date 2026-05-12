@@ -100,7 +100,21 @@ export function TrackPlayer({ data }: { data: PayApiResult }) {
   const audio = extractAudio(data.result);
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
+  // [SPEC 23B-MPP6 UX polish followup #2 / 2026-05-12] Track loaded
+  // duration locally — pre-fix the duration came ONLY from the
+  // gateway response (`audio?.duration`). OpenAI TTS returns binary
+  // audio with NO duration field, so the player rendered "0:00 /
+  // 0:00" forever even after the file loaded. Listen for
+  // `loadedmetadata` + `durationchange` and surface the runtime
+  // duration when the gateway didn't carry one.
+  const [runtimeDuration, setRuntimeDuration] = useState<number | undefined>(undefined);
+  // [Same fix] Surface playback errors to the user. Pre-fix the
+  // togglePlay's `.play().catch(() => setPlaying(false))` swallowed
+  // the error silently — founder smoke saw the Play button do
+  // nothing with no explanation. Now we render an inline message.
+  const [playError, setPlayError] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const effectiveDuration = audio?.duration ?? runtimeDuration;
 
   // Sync the play/pause state with the actual <audio> element so external
   // events (track ends, browser cancels playback, user uses media keys)
@@ -108,30 +122,68 @@ export function TrackPlayer({ data }: { data: PayApiResult }) {
   useEffect(() => {
     const el = audioRef.current;
     if (!el) return;
-    const onPlay = () => setPlaying(true);
+    const onPlay = () => {
+      setPlaying(true);
+      setPlayError(null);
+    };
     const onPause = () => setPlaying(false);
     const onEnded = () => {
       setPlaying(false);
       setCurrentTime(0);
     };
     const onTime = () => setCurrentTime(el.currentTime);
+    const onMeta = () => {
+      if (Number.isFinite(el.duration) && el.duration > 0) {
+        setRuntimeDuration(el.duration);
+      }
+    };
+    const onError = () => {
+      const code = el.error?.code;
+      const map: Record<number, string> = {
+        1: 'Playback aborted',
+        2: 'Network error',
+        3: 'Decode error',
+        4: 'Audio format not supported',
+      };
+      setPlayError(code ? map[code] ?? `Playback failed (code ${code})` : 'Playback failed');
+      setPlaying(false);
+    };
     el.addEventListener('play', onPlay);
     el.addEventListener('pause', onPause);
     el.addEventListener('ended', onEnded);
     el.addEventListener('timeupdate', onTime);
+    el.addEventListener('loadedmetadata', onMeta);
+    el.addEventListener('durationchange', onMeta);
+    el.addEventListener('error', onError);
     return () => {
       el.removeEventListener('play', onPlay);
       el.removeEventListener('pause', onPause);
       el.removeEventListener('ended', onEnded);
       el.removeEventListener('timeupdate', onTime);
+      el.removeEventListener('loadedmetadata', onMeta);
+      el.removeEventListener('durationchange', onMeta);
+      el.removeEventListener('error', onError);
     };
   }, []);
 
   const togglePlay = () => {
     const el = audioRef.current;
-    if (!el) return;
-    if (playing) el.pause();
-    else void el.play().catch(() => setPlaying(false));
+    if (!el) {
+      setPlayError('Player not ready');
+      return;
+    }
+    if (playing) {
+      el.pause();
+      return;
+    }
+    setPlayError(null);
+    void el.play().catch((err: unknown) => {
+      setPlaying(false);
+      const msg = err instanceof Error ? err.message : 'Playback failed';
+      setPlayError(msg);
+      // eslint-disable-next-line no-console
+      console.error('[TrackPlayer] play() rejected:', err);
+    });
   };
 
   return (
@@ -183,7 +235,7 @@ export function TrackPlayer({ data }: { data: PayApiResult }) {
             {audio?.title ?? 'Generated Audio'}
           </div>
           <div className="font-mono text-[9px] uppercase tracking-[0.12em] text-white/50 mt-0.5">
-            {fmtDuration(audio?.duration)} · {vendorLabel(data.serviceId).split(' · ')[0]}
+            {fmtDuration(effectiveDuration)} · {vendorLabel(data.serviceId).split(' · ')[0]}
           </div>
 
           {audio?.url ? (
@@ -213,24 +265,37 @@ export function TrackPlayer({ data }: { data: PayApiResult }) {
                 <div
                   className="h-full rounded-full bg-white transition-all"
                   style={{
-                    width: audio.duration && audio.duration > 0
-                      ? `${Math.min((currentTime / audio.duration) * 100, 100)}%`
+                    width: effectiveDuration && effectiveDuration > 0
+                      ? `${Math.min((currentTime / effectiveDuration) * 100, 100)}%`
                       : '0%',
                   }}
                 />
               </div>
               <div className="font-mono text-[10px] text-white/70 tabular-nums">
-                {fmtDuration(currentTime)} / {fmtDuration(audio.duration)}
+                {fmtDuration(currentTime)} / {fmtDuration(effectiveDuration)}
               </div>
               {/*
-                Hidden native audio element — drives the play/pause + timeupdate
-                events that sync the visual state above. preload="none" keeps
-                bandwidth down until the user actually taps play.
+                Hidden native audio element — drives the play/pause +
+                timeupdate + loadedmetadata events that sync the visual
+                state above. `preload="metadata"` (was "none") loads
+                duration eagerly — for data: URIs this is free (audio
+                is already in memory as base64) and for http(s) URLs
+                it's a tiny range-request. Without this the seekbar
+                read "0:00 / 0:00" until the user clicked Play.
               */}
-              <audio ref={audioRef} src={audio.url} preload="none" className="hidden" />
+              <audio ref={audioRef} src={audio.url} preload="metadata" className="hidden" />
             </div>
           ) : (
             <div className="font-mono text-[10px] text-white/50 mt-3">Audio unavailable</div>
+          )}
+          {playError && (
+            <div
+              className="font-mono text-[10px] uppercase tracking-[0.12em] text-error-fg mt-2"
+              role="alert"
+              aria-live="polite"
+            >
+              ⚠ {playError}
+            </div>
           )}
         </div>
       </div>

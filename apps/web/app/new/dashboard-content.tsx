@@ -1424,17 +1424,26 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
   //   8. On dispatch error, rethrow so ReviewCard resets its latch and
   //      shows the error chip.
   const handleRegenerateToolCall = useCallback(
-    async (toolUseId: string): Promise<void> => {
+    async (toolUseId: string, explicitMessageId?: string): Promise<void> => {
       if (!agent) throw new Error('Not authenticated');
       if (!engine.sessionId) throw new Error('No active session');
       if (!session?.jwt) throw new Error('Missing JWT');
 
-      // 1. Locate.
+      // 1. Locate the original tool block (for input + sanity check).
+      // [SPEC 23B-MPP6 UX polish followup #2 / 2026-05-12] Prefer the
+      // `explicitMessageId` threaded by ChatMessageV2 over the
+      // search-derived `found.messageId`. The search is still required
+      // for the original `input` (we can't re-derive that from
+      // messageId alone), but the upsert TARGET must use the
+      // render-time messageId — pre-fix `found.messageId` raced
+      // against engine resume-message creation and sometimes pointed
+      // at the wrong message, breaking the regen-cluster grouping.
       const found = findToolByToolUseId(engine.messages, toolUseId);
       if (!found) {
         throw new Error(`Original tool ${toolUseId} not found in current messages`);
       }
-      const { tool: originalTool, messageId: originalMessageId } = found;
+      const { tool: originalTool } = found;
+      const originalMessageId = explicitMessageId ?? found.messageId;
       if (originalTool.toolName !== 'pay_api') {
         throw new Error(`Tool ${toolUseId} is ${originalTool.toolName}, not pay_api`);
       }

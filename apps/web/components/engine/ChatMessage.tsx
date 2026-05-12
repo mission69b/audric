@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import type { EngineChatMessage, PendingAction } from '@/lib/engine-types';
 import { ThinkingState } from './ThinkingState';
 import { ReasoningTimeline } from './ReasoningTimeline';
@@ -128,8 +128,20 @@ interface ChatMessageProps {
    *
    * NOTE: distinct from `onRegenerate` above (SPEC 7 P2.4b
    * Quote-Refresh). See BlockRouter for the same naming distinction.
+   *
+   * [SPEC 23B-MPP6 UX polish followup #2 / 2026-05-12] Now accepts an
+   * optional `messageId` second arg. ChatMessageV2 wraps the parent's
+   * handler with `message.id` baked in via closure so the Regenerate
+   * dispatch always targets the canonical message that contains the
+   * original tool block. Pre-fix `useEngine.upsertToolBlock` had to
+   * search `engine.messages` at click time via
+   * `findToolByToolUseId`, which raced against engine resume-message
+   * creation and sometimes returned the wrong message — the regen
+   * card landed in the resume message N+1 instead of the original
+   * message N, breaking the regen-cluster grouping. Threading the
+   * messageId via render-time closure removes the race entirely.
    */
-  onRegenerateToolCall?: (toolUseId: string) => Promise<void>;
+  onRegenerateToolCall?: (toolUseId: string, messageId?: string) => Promise<void>;
 }
 
 export function ChatMessage({
@@ -313,6 +325,23 @@ function ChatMessageV2({
   const transitionsEnabled = isTransitionChipEnabled();
   const transitionState = (message.transitionState ?? null) as TransitionState | null;
 
+  // [SPEC 23B-MPP6 UX polish followup #2 / 2026-05-12] Bake message.id
+  // into the regen handler at render time. This is the proper fix for
+  // the regen-cluster bug — pre-fix `useEngine.upsertToolBlock`
+  // searched `engine.messages` for the right target via
+  // `findToolByToolUseId`, which raced against engine resume-message
+  // creation. Now the click handler dispatches with the canonical
+  // messageId already in closure, no search required. See
+  // `find-tool-by-id.ts` and `dashboard-content.tsx
+  // :handleRegenerateToolCall`.
+  const onRegenerateForThisMessage = useCallback(
+    (toolUseId: string) => {
+      if (!onRegenerateToolCall) return Promise.resolve();
+      return onRegenerateToolCall(toolUseId, message.id);
+    },
+    [onRegenerateToolCall, message.id],
+  );
+
   return (
     <div className="space-y-2" role="log" aria-label="Audric response">
       {/* [SPEC 21.1] Animated state chip — renders ABOVE the timeline so
@@ -349,7 +378,7 @@ function ChatMessageV2({
         onSignBackIn={onSignBackIn}
         priorThinkingTexts={priorThinkingTexts}
         isFirstAssistantTurn={isFirstAssistantTurn}
-        onRegenerateToolCall={onRegenerateToolCall}
+        onRegenerateToolCall={onRegenerateForThisMessage}
       />
 
       {message.usage && !message.isStreaming && (

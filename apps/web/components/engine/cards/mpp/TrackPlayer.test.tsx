@@ -38,7 +38,13 @@ describe('TrackPlayer', () => {
     const audio = container.querySelector('audio');
     expect(audio).not.toBeNull();
     expect(audio?.getAttribute('src')).toBe('https://cdn/track.mp3');
-    expect(audio?.getAttribute('preload')).toBe('none');
+    // [SPEC 23B-MPP6 UX polish followup #2 / 2026-05-12] Was 'none'
+    // pre-fix; switched to 'metadata' so duration loads eagerly. For
+    // data: URIs this is free (audio is already in memory as base64);
+    // for http(s) URLs it's a tiny range request. Without this the
+    // seekbar reads "0:00 / 0:00" until the user clicks Play, which
+    // founder smoke surfaced as "audio card renders but won't play".
+    expect(audio?.getAttribute('preload')).toBe('metadata');
   });
 
   it('extracts generic shorthand ({ url, duration, title })', () => {

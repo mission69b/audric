@@ -11,27 +11,28 @@ import { z } from 'zod';
  * consumers want this — they may use any service the gateway hosts.
  *
  * Audric is the deliberate exception. The system prompt teaches the
- * LLM to use ONLY 5 specific services (openai, elevenlabs, pdfshift,
- * lob, resend) and decline everything else as "Phase 5 / not yet
- * supported". But the discover-services CARD that the user sees
- * was rendering all 40 services with a "7 total · 15 endpoints"
- * footer — confusing because the user could see services Audric
- * would refuse to use.
+ * LLM to use ONLY OpenAI's 4 endpoints (DALL-E images, Whisper
+ * transcription, GPT-4o chat, TTS) and decline everything else as
+ * "coming soon via dedicated tools" — see `spec_native_content_tools`
+ * for the planned PDF / postcard / email replacements.
  *
- * Founder smoke 2026-05-12 surfaced the divergence three times
- * (image gen + voiceover + postcard probes all showed "7 total" or
- * "4 total" with the full catalog dump in the discover card).
+ * Founder smoke 2026-05-12 (round 2) explicitly requested stripping
+ * the catalog further: "Might aswell remove elevenlabs also just keep
+ * openai for Images, whisper transcription and gpt 4o chat , text to
+ * speech. I think simple is better no? less is more." ElevenLabs was
+ * also broken at the gateway (payment-charged-but-service-failed)
+ * which made the second-tier vendor option a UX trap.
  *
- * The fix is to filter the gateway response to the same allow-list
- * the system prompt uses, so what the LLM sees in the tool result
- * matches what the user sees in the card AND what Audric will
- * actually call via pay_api.
+ * Round 1 (2026-05-12 morning): allow-list was {openai, elevenlabs,
+ * pdfshift, lob, resend} — 5 services. Round 2 (founder direct
+ * request, this commit): collapsed to {openai} only. spec_native_
+ * content_tools will add native compose_pdf / send_letter / send_email
+ * tools to replace pdfshift / lob / resend with deterministic
+ * Audric-owned tools that don't need the discover-services card
+ * (they'll surface as regular tools in the LLM's tool list).
  *
- * Allow-list is the SAME set documented in `audric-roadmap.md`'s
- * "5 supported services" block + the engine-context.ts § MPP services
- * section. If we add a 6th service (e.g. Suno when Phase 5 lands),
- * update both this file AND the system prompt — they MUST stay in
- * sync.
+ * If we add a 6th service (e.g. Suno when Phase 5 lands), update
+ * both this file AND the system prompt — they MUST stay in sync.
  *
  * Behavioral preservation: input schema, output shape, error paths,
  * and 0-result `_refine` payload are all UNCHANGED from the engine's
@@ -44,13 +45,10 @@ const MPP_GATEWAY = 'https://mpp.t2000.ai';
 const CATALOG_URL = `${MPP_GATEWAY}/api/services`;
 const CACHE_TTL = 120_000;
 
-const SUPPORTED_SERVICE_IDS = new Set([
-  'openai',
-  'elevenlabs',
-  'pdfshift',
-  'lob',
-  'resend',
-]);
+// [Round 2 / 2026-05-12] OpenAI-only. ElevenLabs / PDFShift / Lob /
+// Resend stripped per founder direct request — see header for the
+// rationale + spec_native_content_tools migration plan.
+const SUPPORTED_SERVICE_IDS = new Set(['openai']);
 
 interface GatewayEndpoint {
   method: string;
@@ -111,7 +109,7 @@ function matchesQuery(service: GatewayService, q: string): boolean {
 export const audricMppServicesTool = buildTool({
   name: 'mpp_services',
   description:
-    'Discover available MPP gateway services. Returns service names, descriptions, endpoints with required parameters, and pricing. Use BEFORE calling pay_api. With no args, returns the FULL catalog of 5 Audric-supported services as a single card. Use `query` to keyword-search ("postcard", "voice", "pdf"). Use `category` to filter to one category. Use `mode: "summary"` only if you want a category-counts overview without the full list.',
+    'Discover available MPP gateway services. Returns service names, descriptions, endpoints with required parameters, and pricing. Use BEFORE calling pay_api. Audric currently supports OpenAI only (DALL-E images, Whisper transcription, GPT-4o chat, TTS). With no args, returns the OpenAI service catalog as a single card. Use `query` to keyword-search ("voice", "image", "transcribe"). Use `category` to filter (only "ai" today). Use `mode: "summary"` only if you want a category-counts overview without the full list.',
   inputSchema: z.object({
     query: z
       .string()
