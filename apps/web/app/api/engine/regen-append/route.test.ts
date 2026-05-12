@@ -10,7 +10,7 @@
 
 import { describe, it, expect } from 'vitest';
 import type { Message } from '@t2000/engine';
-import { appendRegenToMessages } from './route';
+import { appendRegenToMessages } from './helper';
 
 function makeBaseSession(): Message[] {
   return [
