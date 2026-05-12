@@ -201,6 +201,50 @@ describe('ReviewCard primitive (v2) — fastpath path (onRegenerate)', () => {
     resolveFn?.();
   });
 
+  it('[SPEC 23C C9] FASTPATH: in-flight regen shows the brand spinner alongside "Regenerating…" text', async () => {
+    // Founder smoke 2026-05-12 caught that the text-only "Regenerating…"
+    // button label during the ~3s on-chain payment + service round-trip
+    // reads as too quiet ("is anything happening?"). The brand spinner —
+    // canonical <Spinner size="sm" /> from ThinkingState and other engine
+    // surfaces — makes the in-flight state read as alive. This test
+    // asserts the spinner is in the DOM while the onRegenerate promise
+    // is pending and goes away after it resolves (terminal 'regenerated'
+    // state collapses the entire footer to null per audric `32b1e4e`).
+    let resolveFn: (() => void) | undefined;
+    const onRegenerate = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveFn = resolve;
+        }),
+    );
+    const { container } = render(
+      <ReviewCard
+        price="0.04"
+        artifactNoun="image"
+        onRegenerate={onRegenerate}
+        onSendMessage={vi.fn()}
+      />,
+    );
+
+    // Pre-click: spinner not in DOM (no role="status" element exists)
+    expect(container.querySelector('[role="status"][aria-label="Loading"]')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Regenerate this image' }));
+
+    // In-flight: spinner present + paired with "Regenerating…" text
+    const spinner = container.querySelector('[role="status"][aria-label="Loading"]');
+    expect(spinner).not.toBeNull();
+    expect(container.textContent).toContain('Regenerating…');
+
+    // Resolve and confirm the post-success collapse removes the spinner
+    // (entire footer collapses to null per the 'regenerated' state)
+    resolveFn?.();
+    await waitFor(() => {
+      expect(container.querySelector('[role="status"][aria-label="Loading"]')).toBeNull();
+      expect(container.textContent).not.toContain('Regenerating…');
+    });
+  });
+
   it('FASTPATH: onRegenerate REJECT resets latch and shows inline error chip', async () => {
     const onRegenerate = vi.fn().mockRejectedValue(new Error('Gateway timeout'));
     const onSendMessage = vi.fn();

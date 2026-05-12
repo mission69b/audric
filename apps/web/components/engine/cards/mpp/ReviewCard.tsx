@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Spinner } from '@/components/ui/Spinner';
 import { fmtMppPrice } from './chrome';
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -246,7 +247,24 @@ export function ReviewCard({
             }`}
             aria-label={`Regenerate this ${artifactNoun}`}
           >
-            {clicked === 'regenerating' ? 'Regenerating…' : '↻ Regenerate'}
+            {clicked === 'regenerating' ? (
+              // [SPEC 23C C9 / 2026-05-12] In-flight spinner alongside the text.
+              // The button already swaps copy to "Regenerating…" + recolors to
+              // info-tier on click latch, but the founder smoke caught that the
+              // text-only feedback during the ~3s on-chain payment + service
+              // round-trip is too quiet — reads as "is anything happening?".
+              // The brand spinner (canonical `<Spinner size="sm" />` from
+              // `ThinkingState` and other engine surfaces) makes the in-flight
+              // state read as alive without introducing a new motion primitive.
+              // Card-local — no engine surgery; the existing
+              // `clicked === 'regenerating'` state already drives this branch.
+              <span className="inline-flex items-center gap-1.5">
+                <Spinner size="sm" />
+                <span>Regenerating…</span>
+              </span>
+            ) : (
+              '↻ Regenerate'
+            )}
           </button>
           <button
             type="button"
