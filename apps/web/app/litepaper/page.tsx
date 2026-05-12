@@ -405,8 +405,9 @@ export default function LitepaperPage() {
                 <tr><td>Engineering + runway</td><td>50%</td><td>$500k</td></tr>
                 <tr><td>Anthropic / AI API</td><td>14%</td><td>$140k</td></tr>
                 <tr><td>Legal + entity setup</td><td>10%</td><td>$100k</td></tr>
-                <tr><td>Smart contract audit</td><td>8%</td><td>$80k</td></tr>
-                <tr><td>Marketing + growth</td><td>18%</td><td>$180k</td></tr>
+                <tr><td>Infrastructure &amp; servers</td><td>13%</td><td>$130k</td></tr>
+                <tr><td>Smart contract audit</td><td>4%</td><td>$40k</td></tr>
+                <tr><td>Marketing + growth</td><td>9%</td><td>$90k</td></tr>
               </tbody>
             </table>
           </div>
