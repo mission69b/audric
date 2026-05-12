@@ -155,22 +155,24 @@ describe('ReviewCard primitive (v2) — fastpath path (onRegenerate)', () => {
     expect(onRegenerate).toHaveBeenCalledTimes(1);
     expect(onSendMessage).not.toHaveBeenCalled();
 
-    // [SPEC 23B-MPP6 UX polish / 2026-05-12] After the promise resolves,
-    // the latch transitions to the terminal 'regenerated' state — the
-    // label changes from "Regenerating…" to "↻ Regenerated · See above"
-    // (and the button text becomes "↻ Regenerated"). Pre-fix this stayed
-    // on "Regenerating…" forever, which read as "still in progress" —
-    // a stuck-state visual bug that the founder caught in smoke. Now the
-    // terminal state is distinct from the in-flight state.
+    // [UX polish / 2026-05-12] After the promise resolves, the latched
+    // 'regenerated' state collapses the footer entirely — the chip above
+    // the card (rendered by ToolBlockView, NOT by ReviewCard) is the only
+    // post-success signal. Pre-collapse, the footer triple-stacked
+    // "↻ Regenerated" (status row + chip + disabled button) which was
+    // redundant noise in the side-by-side cluster grid. Cancel-after-
+    // success is also semantically meaningless (the new card already
+    // exists above), so removing it here is correct.
     await waitFor(() => {
-      expect(container.textContent).toContain('Regenerated');
       expect(container.textContent).not.toContain('Regenerating…');
+      expect(container.textContent).not.toContain('Regenerated');
+      expect(container.textContent).not.toContain('Cancel');
+      expect(container.textContent).not.toContain('Each regeneration');
     });
 
-    // Latch stays engaged — buttons remain disabled so the user can't
-    // double-regen this card (the new card above is the latest result).
-    expect(screen.getByRole('button', { name: 'Regenerate this image' }).hasAttribute('disabled')).toBe(true);
-    expect(screen.getByRole('button', { name: 'Cancel and discard this image' }).hasAttribute('disabled')).toBe(true);
+    // Buttons no longer in the DOM — the entire footer collapsed.
+    expect(screen.queryByRole('button', { name: 'Regenerate this image' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Cancel and discard this image' })).toBeNull();
   });
 
   it('FASTPATH: Regenerate latches buttons during in-flight (Cancel disabled too)', async () => {

@@ -104,13 +104,17 @@ interface ReviewCardProps {
 
 // [SPEC 23B-MPP6-fastpath UX polish / 2026-05-12]
 //   'regenerating' — fastpath dispatch in-flight (latched, button reads "Regenerating…")
-//   'regenerated'  — fastpath dispatch resolved successfully (latched terminal state,
-//                    button reads "Regenerated"). Pre-fix this stayed at 'regenerating'
-//                    forever, which read as "still in progress" instead of "this card
-//                    produced its successor — see new card above". The latch INTENT
-//                    was right (no double-regen on the same card), but the COPY was
-//                    wrong. New 'regenerated' state surfaces the terminal-success
-//                    distinct from the in-flight state.
+//   'regenerated'  — fastpath dispatch resolved successfully (terminal state). The
+//                    component returns null in this state (entire footer collapses) —
+//                    the `↻ Regenerated` chip ABOVE the card (rendered by ToolBlockView,
+//                    not by ReviewCard) is the only post-success signal. Pre-collapse
+//                    this state rendered "↻ Regenerated · See above" status text + a
+//                    disabled "↻ Regenerated" button + a disabled Cancel button,
+//                    triple-stacking the same label and offering a meaningless action
+//                    (Cancel-after-success has no effect — the successor card already
+//                    exists). The 'regenerated' value still exists in the state machine
+//                    so the latch logic in handleRegenerate remains symmetric with
+//                    'cancelled' and the test suite can assert the state transition.
 //   'cancelled'    — Cancel button fired; card surrenders to the LLM acknowledgement turn.
 //   null           — interactive (no click yet, or error reset).
 type ClickedState = 'regenerating' | 'regenerated' | 'cancelled' | null;
@@ -171,6 +175,27 @@ export function ReviewCard({
   const priceLabel = fmtMppPrice(price);
   const showCostFooter = priceLabel !== '—' && clicked === null && !regenError && (canRegenerate || canCancel);
 
+  // [UX polish / 2026-05-12] When the card has produced a successor
+  // (clicked === 'regenerated'), collapse the footer entirely. The
+  // `↻ Regenerated` chip rendered ABOVE the card by ToolBlockView is the
+  // signal — repeating "Regenerated" three times (chip + status row +
+  // disabled button) was redundant noise, and Cancel-after-success is
+  // semantically meaningless (you can't cancel something whose successor
+  // already exists). Founder smoke 2026-05-12 caught this in the
+  // side-by-side cluster grid where the cramped 2-column layout amplified
+  // the redundancy. Interactive state (clicked === null) still renders
+  // the full footer with text buttons — text reads fine when the row has
+  // its full width.
+  //
+  // Cancelled state is intentionally left rendering its status row + the
+  // latched buttons — Cancel is a synchronous LLM-round-trip that produces
+  // its own ack turn, and the latched-disabled buttons reinforce "this
+  // card is no longer an option" while the LLM is responding. If founder
+  // surfaces clutter on Cancelled we can apply the same collapse there.
+  if (clicked === 'regenerated') {
+    return null;
+  }
+
   return (
     <div
       className="my-1.5 rounded-lg border border-border-subtle bg-surface-card overflow-hidden"
@@ -181,13 +206,11 @@ export function ReviewCard({
         <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-fg-muted">
           {clicked === 'regenerating'
             ? 'Regenerating…'
-            : clicked === 'regenerated'
-              ? '↻ Regenerated · See above'
-              : clicked === 'cancelled'
-                ? 'Cancelled'
-                : regenError
-                  ? 'Regen failed'
-                  : 'Review'}
+            : clicked === 'cancelled'
+              ? 'Cancelled'
+              : regenError
+                ? 'Regen failed'
+                : 'Review'}
         </span>
         <div className="flex items-center gap-1.5">
           {regenError && (
@@ -208,17 +231,11 @@ export function ReviewCard({
             className={`text-[11px] font-mono uppercase tracking-[0.06em] border rounded px-2.5 py-1 transition-colors ${
               clicked === 'regenerating'
                 ? 'text-info-fg border-info-border bg-info-bg'
-                : clicked === 'regenerated'
-                  ? 'text-fg-muted border-border-subtle bg-surface-subtle opacity-60 cursor-not-allowed'
-                  : 'text-fg-secondary border-border-subtle hover:text-fg-primary hover:border-border-strong disabled:opacity-40 disabled:hover:text-fg-secondary disabled:hover:border-border-subtle disabled:cursor-not-allowed'
+                : 'text-fg-secondary border-border-subtle hover:text-fg-primary hover:border-border-strong disabled:opacity-40 disabled:hover:text-fg-secondary disabled:hover:border-border-subtle disabled:cursor-not-allowed'
             }`}
             aria-label={`Regenerate this ${artifactNoun}`}
           >
-            {clicked === 'regenerating'
-              ? 'Regenerating…'
-              : clicked === 'regenerated'
-                ? '↻ Regenerated'
-                : '↻ Regenerate'}
+            {clicked === 'regenerating' ? 'Regenerating…' : '↻ Regenerate'}
           </button>
           <button
             type="button"
