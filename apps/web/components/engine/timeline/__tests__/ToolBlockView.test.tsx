@@ -162,4 +162,69 @@ describe('ToolBlockView', () => {
     const { queryByText } = render(<ToolBlockView block={settled} headerless />);
     expect(queryByText(/attempt 2/)).toBeNull();
   });
+
+  // ───────────────────────────────────────────────────────────────────────
+  // [SPEC 23C C2] Skeleton-first render
+  // ───────────────────────────────────────────────────────────────────────
+
+  it('renders a skeleton card while the tool is running (reserves card geometry)', () => {
+    const { container } = render(<ToolBlockView block={BASE} />);
+    // balance_check → 'wide' variant per skeleton-variants.ts
+    expect(container.querySelector('[data-skeleton="wide"]')).toBeTruthy();
+  });
+
+  it('replaces the skeleton with the real result card once the tool settles', () => {
+    const settled: ToolTimelineBlock = {
+      ...BASE,
+      status: 'done',
+      endedAt: 1000,
+      result: { data: { walletValueUsd: 100 } },
+      isError: false,
+    };
+    const { container } = render(<ToolBlockView block={settled} />);
+    // No skeleton in the settled DOM (state is mutually exclusive).
+    expect(container.querySelector('[data-skeleton]')).toBeNull();
+  });
+
+  it('skips the skeleton in headerless mode (parallel group owns the loading affordance)', () => {
+    const { container } = render(<ToolBlockView block={BASE} headerless />);
+    expect(container.querySelector('[data-skeleton]')).toBeNull();
+  });
+
+  it('skips the skeleton for tools with no card surface (e.g. spending_analytics)', () => {
+    const { container } = render(
+      <ToolBlockView block={{ ...BASE, toolName: 'spending_analytics' }} />,
+    );
+    expect(container.querySelector('[data-skeleton]')).toBeNull();
+  });
+
+  it('routes pay_api with image URL → media-image skeleton', () => {
+    const { container } = render(
+      <ToolBlockView
+        block={{
+          ...BASE,
+          toolName: 'pay_api',
+          input: {
+            url: 'https://mpp.t2000.ai/openai/v1/images/generations',
+          },
+        }}
+      />,
+    );
+    expect(container.querySelector('[data-skeleton="media-image"]')).toBeTruthy();
+  });
+
+  it('routes pay_api with audio URL → media-audio skeleton', () => {
+    const { container } = render(
+      <ToolBlockView
+        block={{
+          ...BASE,
+          toolName: 'pay_api',
+          input: {
+            url: 'https://mpp.t2000.ai/openai/v1/audio/speech',
+          },
+        }}
+      />,
+    );
+    expect(container.querySelector('[data-skeleton="media-audio"]')).toBeTruthy();
+  });
 });

@@ -3,6 +3,8 @@
 import type { ToolTimelineBlock, ToolExecution } from '@/lib/engine-types';
 import { AgentStep, getStepIcon, getStepLabel } from '../AgentStep';
 import { ToolResultCard } from '../ToolResultCard';
+import { SkeletonCard } from '../cards/SkeletonCard';
+import { getSkeletonVariant } from '../cards/skeleton-variants';
 
 /** Subset of StepStatus this mapping ever returns — also compatible
  *  with ToolExecution.status which doesn't have 'pending'. */
@@ -170,6 +172,26 @@ export function ToolBlockView({
           <span>{block.progress.message}</span>
         </div>
       )}
+
+      {/* SPEC 23C C2 — skeleton-first render. While the tool is running,
+       *  reserve the eventual card's geometry so the real card slides in
+       *  without layout shift. Skipped when:
+       *  - `headerless` (parallel group) — ParallelToolsGroup renders its
+       *    own grouped placeholder; double-rendering would stack two
+       *    skeletons.
+       *  - The tool has no card surface (skeletonVariant === null) —
+       *    eventually no card will render either, so showing a skeleton
+       *    would be a lie. */}
+      {stepStatus === 'running' && !headerless && (() => {
+        const skeletonVariant = getSkeletonVariant(block.toolName, block.input);
+        if (!skeletonVariant) return null;
+        return (
+          <SkeletonCard
+            variant={skeletonVariant}
+            ariaLabel={`Loading ${getStepLabel(block.toolName)}`}
+          />
+        );
+      })()}
 
       {isSettled && !isStreaming && (
         <ToolResultCard
