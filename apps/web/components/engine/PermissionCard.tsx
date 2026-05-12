@@ -13,6 +13,7 @@ import {
   quoteAgeSeverity,
   type QuoteAgeSeverity,
 } from '@/lib/format-quote-age';
+import { ApprovingIndicator } from './motion/ApprovingIndicator';
 
 /**
  * [v1.4 Item 6] Single editable input rendered inside a `PermissionCard`.
@@ -854,7 +855,7 @@ export function PermissionCard({
             </div>
           </div>
         ) : (
-          <div className="text-xs text-fg-secondary text-center py-1">Approving…</div>
+          <ApprovingIndicator label="Approving…" className="text-center" />
         )}
       </div>
     );
@@ -1018,7 +1019,7 @@ export function PermissionCard({
           </div>
         </div>
       ) : (
-        <div className="text-xs text-fg-secondary text-center py-1">Processing...</div>
+        <ApprovingIndicator label="Processing…" className="text-center" />
       )}
     </div>
   );
