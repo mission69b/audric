@@ -158,6 +158,61 @@ describe('DownloadableArtifact — image kind', () => {
   });
 });
 
+describe('DownloadableArtifact — snapshot disclaimer (Bug B / 2026-05-13)', () => {
+  it('renders the snapshot disclaimer chip on PDF artifacts', () => {
+    const { getByTestId } = render(
+      <DownloadableArtifact
+        data={{
+          kind: 'pdf',
+          url: 'https://x/a.pdf',
+          filename: 'a.pdf',
+          sizeKb: 5,
+          pageCount: 1,
+        }}
+      />,
+    );
+    const chip = getByTestId('snapshot-disclaimer');
+    expect(chip.textContent).toMatch(/Snapshot/);
+    expect(chip.textContent).toMatch(/re-run the prompt/i);
+  });
+
+  it('renders the snapshot disclaimer chip on image artifacts', () => {
+    const { getByTestId } = render(
+      <DownloadableArtifact
+        data={{
+          kind: 'image',
+          url: 'https://x/g.webp',
+          filename: 'g.webp',
+          sizeKb: 30,
+          width: 512,
+          height: 512,
+        }}
+      />,
+    );
+    const chip = getByTestId('snapshot-disclaimer');
+    expect(chip.textContent).toMatch(/Snapshot/);
+  });
+
+  it('renders the disclaimer exactly once per card', () => {
+    // Defends against a regression where the chip was inadvertently
+    // rendered both inside the metadata column AND in a footer row.
+    const { container } = render(
+      <DownloadableArtifact
+        data={{
+          kind: 'pdf',
+          url: 'https://x/a.pdf',
+          filename: 'a.pdf',
+          sizeKb: 5,
+          pageCount: 1,
+        }}
+      />,
+    );
+    expect(
+      container.querySelectorAll('[data-testid="snapshot-disclaimer"]').length,
+    ).toBe(1);
+  });
+});
+
 describe('DownloadableArtifact — formatting helpers', () => {
   it('formats sub-1MB sizes as KB', () => {
     const { container } = render(

@@ -21,18 +21,31 @@ import { env } from '@/lib/env';
  * server-side for free.
  *
  * ## Layout
- * `'auto'` (default) picks by image count:
+ * `'auto'` (default) picks the most-square layout by image count:
  *
- * | N images | layout |
- * |----------|--------|
- * |    2     |   2x1  |
- * |   3-4    |   2x2  |
- * |   5-6    |   3x2  |
- * |   7-9    |   3x3  |
+ * | N images | auto layout |
+ * |----------|-------------|
+ * |    2     |     2x1     |
+ * |   3-4    |     2x2     |
+ * |   5-6    |     3x2     |
+ * |   7-9    |     3x3     |
+ *
+ * Naming convention: `'cols x rows'`. So `'2x1'` is 2 columns × 1 row
+ * (a side-by-side pair); `'3x1'` is 3 columns × 1 row (a horizontal
+ * row of 3); `'2x2'` is 2 columns × 2 rows (a square 4-tile grid).
  *
  * Empty cells (e.g. 3 images in a 2x2 layout) are filled with white.
  * Grid cells are square; source images are resized with `fit: 'cover'`
  * to fill the cell without letterboxing.
+ *
+ * ## Single-row layouts (added 2026-05-13 SPEC 23C smoke followup)
+ * `'3x1'` and `'4x1'` were added when the founder smoked
+ * "3-column grid" with 3 images and got `'2x2'` with a blank cell —
+ * `pickAutoLayout` picks the most-square arrangement by default,
+ * which is wrong for explicit row prompts. The LLM picks `'3x1'` /
+ * `'4x1'` when the user asks for "row" / "3-column" / "side-by-side"
+ * phrasing; auto-pick still favors square layouts because that's the
+ * better default for a "make me a collage of N images" prompt.
  *
  * ## Why sharp
  * Industry-standard Node image processing. Native binary (~5MB)
@@ -52,14 +65,26 @@ const DEFAULT_FORMAT = 'webp' as const;
 const EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
 const IMAGE_FETCH_TIMEOUT_MS = 15_000;
 
-type Layout = '2x1' | '2x2' | '3x2' | '3x3';
+type Layout = '2x1' | '3x1' | '4x1' | '2x2' | '3x2' | '3x3';
 
 const LAYOUT_CAPACITY: Record<Layout, { cols: number; rows: number; max: number }> = {
   '2x1': { cols: 2, rows: 1, max: 2 },
+  '3x1': { cols: 3, rows: 1, max: 3 },
+  '4x1': { cols: 4, rows: 1, max: 4 },
   '2x2': { cols: 2, rows: 2, max: 4 },
   '3x2': { cols: 3, rows: 2, max: 6 },
   '3x3': { cols: 3, rows: 3, max: 9 },
 };
+
+const LAYOUT_VALUES: readonly (Layout | 'auto')[] = [
+  '2x1',
+  '3x1',
+  '4x1',
+  '2x2',
+  '3x2',
+  '3x3',
+  'auto',
+] as const;
 
 function pickAutoLayout(n: number): Layout {
   if (n <= 2) return '2x1';
@@ -71,11 +96,16 @@ function pickAutoLayout(n: number): Layout {
 export const composeImageGridTool = buildTool({
   name: 'compose_image_grid',
   description:
-    'Compose 2-9 images into a single grid image (2x1, 2x2, 3x2, or 3x3 layout). ' +
+    'Compose 2-9 images into a single grid image. Available layouts: ' +
+    "'2x1' (side-by-side pair), '3x1' (row of 3), '4x1' (row of 4), " +
+    "'2x2' (square 4-tile), '3x2' (3-col, 2-row), '3x3' (square 9-tile), " +
+    "or 'auto' (default — picks the most-square layout by image count). " +
+    'Naming is cols x rows. ' +
+    "Use '3x1' / '4x1' when the user explicitly asks for 'row', 'N-column', " +
+    "or 'side-by-side'. Use 'auto' (or omit) for collage / grid prompts. " +
     'Use when the user wants images side-by-side or in a collage rather than bound ' +
-    "into a PDF. FREE, server-side. Returns a Vercel Blob URL valid for 7 days. " +
-    "Default layout is 'auto' (picks by image count). Default format is webp (smaller " +
-    'than png, universal browser support).',
+    'into a PDF. FREE, server-side. Returns a Vercel Blob URL valid for 7 days. ' +
+    "Default format is webp (smaller than png, universal browser support).",
   inputSchema: z.object({
     images: z
       .array(
@@ -87,10 +117,11 @@ export const composeImageGridTool = buildTool({
       .max(MAX_IMAGES, `images cannot exceed ${MAX_IMAGES} URLs`)
       .describe('Ordered list of 2-9 image URLs to composite into a grid'),
     layout: z
-      .enum(['2x2', '3x2', '3x3', 'auto'])
+      .enum(['2x1', '3x1', '4x1', '2x2', '3x2', '3x3', 'auto'])
       .optional()
       .describe(
-        "Grid layout. 'auto' (default) picks by image count: 2→2x1, 3-4→2x2, 5-6→3x2, 7-9→3x3.",
+        "Grid layout (cols x rows). 'auto' (default) picks the most-square arrangement: 2→2x1, 3-4→2x2, 5-6→3x2, 7-9→3x3. " +
+          "Pick '3x1' or '4x1' explicitly for 'row' / 'N-column' / 'side-by-side' prompts.",
       ),
     format: z
       .enum(['png', 'webp'])
@@ -106,7 +137,7 @@ export const composeImageGridTool = buildTool({
         minItems: MIN_IMAGES,
         maxItems: MAX_IMAGES,
       },
-      layout: { type: 'string', enum: ['2x2', '3x2', '3x3', 'auto'] },
+      layout: { type: 'string', enum: [...LAYOUT_VALUES] },
       format: { type: 'string', enum: ['png', 'webp'] },
     },
     required: ['images'],

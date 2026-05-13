@@ -241,6 +241,86 @@ describe('composeImageGridTool.call — auto layout (D-4)', () => {
   });
 });
 
+// ─── Single-row layouts (Bug C — 2026-05-13 SPEC 23C smoke followup) ─
+
+describe('composeImageGridTool.call — single-row layouts (3x1, 4x1)', () => {
+  it("schema accepts '3x1'", () => {
+    const parsed = composeImageGridTool.inputSchema.safeParse({
+      images: ['https://x.com/a.png', 'https://x.com/b.png', 'https://x.com/c.png'],
+      layout: '3x1',
+    });
+    expect(parsed.success).toBe(true);
+  });
+
+  it("schema accepts '4x1'", () => {
+    const parsed = composeImageGridTool.inputSchema.safeParse({
+      images: Array.from({ length: 4 }, (_, i) => `https://x.com/${i}.png`),
+      layout: '4x1',
+    });
+    expect(parsed.success).toBe(true);
+  });
+
+  it("'3x1' renders 3 images in a single 1536×512 row (the founder smoke prompt)", async () => {
+    const result = await composeImageGridTool.call!(
+      {
+        images: ['https://x.com/a.png', 'https://x.com/b.png', 'https://x.com/c.png'],
+        layout: '3x1',
+      },
+      ctx(),
+    );
+
+    const data = result.data as { layout: string; width: number; height: number };
+    expect(data.layout).toBe('3x1');
+    expect(data.width).toBe(1536);
+    expect(data.height).toBe(512);
+
+    // Round-trip the uploaded bytes through sharp to confirm dimensions.
+    const uploaded = mockPut.mock.calls[0][1] as Buffer;
+    const meta = await sharp(uploaded).metadata();
+    expect(meta.width).toBe(1536);
+    expect(meta.height).toBe(512);
+  });
+
+  it("'4x1' renders 4 images in a single 2048×512 row", async () => {
+    const result = await composeImageGridTool.call!(
+      {
+        images: Array.from({ length: 4 }, (_, i) => `https://x.com/${i}.png`),
+        layout: '4x1',
+      },
+      ctx(),
+    );
+
+    const data = result.data as { layout: string; width: number; height: number };
+    expect(data.layout).toBe('4x1');
+    expect(data.width).toBe(2048);
+    expect(data.height).toBe(512);
+  });
+
+  it("'3x1' rejects a 4-image input (too many for the row)", async () => {
+    await expect(
+      composeImageGridTool.call!(
+        {
+          images: Array.from({ length: 4 }, (_, i) => `https://x.com/${i}.png`),
+          layout: '3x1',
+        },
+        ctx(),
+      ),
+    ).rejects.toThrow(/cells/i);
+  });
+
+  it("auto-pick still favors square layouts — N=3 stays on '2x2', not '3x1'", async () => {
+    // Documents the explicit decision: auto = most-square (collage
+    // aesthetic); '3x1' is opt-in for "row" / "side-by-side" prompts.
+    const result = await composeImageGridTool.call!(
+      {
+        images: ['https://x.com/a.png', 'https://x.com/b.png', 'https://x.com/c.png'],
+      },
+      ctx(),
+    );
+    expect((result.data as { layout: string }).layout).toBe('2x2');
+  });
+});
+
 // ─── Explicit layout overrides ───────────────────────────────────────
 
 describe('composeImageGridTool.call — explicit layout', () => {

@@ -39,6 +39,22 @@ import { CardShell } from './primitives';
  * 124 KB)." with a link — they have to click to see the result.
  * With a preview, the result is the message; the click is just to
  * download or share. UX win for the dominant use case.
+ *
+ * ## Snapshot disclaimer (Bug B / 2026-05-13)
+ * Every artifact rendered here is a STATIC snapshot of its inputs at
+ * the moment the composition tool ran. If the user regenerates an
+ * upstream MPP image (say, the cover that fed into a `compose_pdf`),
+ * THIS card will not auto-refresh — they need to re-run the prompt
+ * that built it. The footer carries a one-line "Snapshot — re-run the
+ * prompt to refresh." chip to set that expectation up-front.
+ *
+ * Why a footer chip and not a behaviour change: a true cascading
+ * regen requires a multi-leg dependency graph (image → grid → PDF)
+ * that doesn't exist today and is being scoped under SPEC 27
+ * (EBOOK_WORKFLOW). Until that lands, the smallest honest fix is to
+ * tell the user the limitation in plain text. Cheap to ship, costs
+ * nothing if/when the architecture catches up — the chip just goes
+ * away when re-runs become automatic.
  */
 
 export interface DownloadableArtifactData {
@@ -156,6 +172,23 @@ export function DownloadableArtifact({ data }: { data: DownloadableArtifactData 
           >
             {isImage ? 'OPEN' : 'DOWNLOAD'}
           </a>
+        </div>
+
+        {/*
+         * Snapshot disclaimer (Bug B / 2026-05-13). Renders below the
+         * action row so it doesn't crowd the filename / download chip.
+         * Tone: muted, lowercase italic — informational, not a warning
+         * (no error chrome, no icon). The user already pressed "go" on
+         * this artifact; the chip just sets expectations for what
+         * happens after they regenerate an upstream input.
+         */}
+        <div
+          className="px-3.5 py-1.5 border-t border-border-subtle bg-surface-sunken/60"
+          data-testid="snapshot-disclaimer"
+        >
+          <span className="font-mono text-[9px] tracking-[0.04em] text-fg-muted italic">
+            Snapshot — re-run the prompt to refresh.
+          </span>
         </div>
       </div>
     </CardShell>
