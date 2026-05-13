@@ -114,3 +114,109 @@ describe('ChatMessage — rendering (post-SPEC-23A-P0)', () => {
     expect(container.textContent).toContain('Here is your balance.');
   });
 });
+
+// ───────────────────────────────────────────────────────────────────────────
+// SPEC 23C C10 Step B / 2026-05-13 — orphan ThinkingStatus wiring
+//
+// Pins the new chip surfaces for `failed` and `interrupted`. These are
+// the two of the four "orphan" statuses that have a real engine-state
+// trigger today (the other two — `timed_out` and `queued` — stay as
+// future-ready stubs documented in ThinkingState.tsx).
+// ───────────────────────────────────────────────────────────────────────────
+
+describe('ChatMessage — SPEC 23C C10 Step B chip wiring', () => {
+  beforeEach(() => {
+    mockEnv.NEXT_PUBLIC_INTERACTIVE_HARNESS = undefined;
+  });
+
+  it('renders the FAILED chip when message.failed === true (legacy bare-text fallback path)', () => {
+    // Hard-fail flow: the SSE stream errored BEFORE any timeline blocks
+    // landed, so the message has no timeline — only `content` carries
+    // the error reason and `failed=true` flags it. ChatMessage routes
+    // this through the legacy bare-text fallback (the "empty timeline →
+    // defensive fallback" branch above), where the FAILED chip renders
+    // ABOVE the error text.
+    mockEnv.NEXT_PUBLIC_INTERACTIVE_HARNESS = '0';
+    const failedMsg: EngineChatMessage = {
+      ...ASSISTANT_BASE,
+      timeline: [],
+      content: 'Authentication expired.',
+      failed: true,
+    };
+    const { container } = render(
+      <ChatMessage message={failedMsg} pinnedHarnessVersion="v2" />,
+    );
+    const chip = container.querySelector('[aria-label="FAILED"]');
+    expect(chip).not.toBeNull();
+    expect(container.textContent).toContain('Authentication expired.');
+  });
+
+  it('renders the FAILED chip on the v2 timeline path too (failure after partial output)', () => {
+    // Edge case: the stream emitted some text, then errored. Engine
+    // wraps it as `interrupted` rather than `failed`, but if a future
+    // path sets `failed=true` on a message with a timeline, the v2
+    // path's chip rendering must still fire. The v2 branch's gate is
+    // `message.failed && !message.interrupted`.
+    mockEnv.NEXT_PUBLIC_INTERACTIVE_HARNESS = '0';
+    const failedWithTimeline: EngineChatMessage = {
+      ...ASSISTANT_WITH_TIMELINE,
+      failed: true,
+    };
+    const { container } = render(
+      <ChatMessage message={failedWithTimeline} pinnedHarnessVersion="v2" />,
+    );
+    const chip = container.querySelector('[aria-label="FAILED"]');
+    expect(chip).not.toBeNull();
+  });
+
+  it('renders the INTERRUPTED chip alongside RetryInterruptedTurn when interrupted', () => {
+    mockEnv.NEXT_PUBLIC_INTERACTIVE_HARNESS = '0';
+    const interruptedMsg: EngineChatMessage = {
+      ...ASSISTANT_WITH_TIMELINE,
+      interrupted: true,
+      interruptedReplayText: 'show my balance',
+    };
+    const { container } = render(
+      <ChatMessage
+        message={interruptedMsg}
+        pinnedHarnessVersion="v2"
+        onSendMessage={() => {}}
+      />,
+    );
+    const chip = container.querySelector('[aria-label="INTERRUPTED"]');
+    expect(chip).not.toBeNull();
+    // Existing retry pill still renders too — the chip names the state,
+    // the pill is the action verb.
+    expect(container.textContent).toMatch(/retry/i);
+  });
+
+  it('does NOT render FAILED chip when message has no failed flag (success path)', () => {
+    mockEnv.NEXT_PUBLIC_INTERACTIVE_HARNESS = '0';
+    const { container } = render(
+      <ChatMessage message={ASSISTANT_WITH_TIMELINE} pinnedHarnessVersion="v2" />,
+    );
+    expect(container.querySelector('[aria-label="FAILED"]')).toBeNull();
+  });
+
+  it('does NOT render FAILED chip when interrupted is also true (mutually exclusive surfaces)', () => {
+    // Defensive: if both flags somehow get set, prefer the interrupted
+    // surface (which has a recovery path) over the failed surface (which
+    // doesn't). v2 path's `!message.interrupted` gate covers this.
+    mockEnv.NEXT_PUBLIC_INTERACTIVE_HARNESS = '0';
+    const bothMsg: EngineChatMessage = {
+      ...ASSISTANT_WITH_TIMELINE,
+      interrupted: true,
+      interruptedReplayText: 'show my balance',
+      failed: true,
+    };
+    const { container } = render(
+      <ChatMessage
+        message={bothMsg}
+        pinnedHarnessVersion="v2"
+        onSendMessage={() => {}}
+      />,
+    );
+    expect(container.querySelector('[aria-label="INTERRUPTED"]')).not.toBeNull();
+    expect(container.querySelector('[aria-label="FAILED"]')).toBeNull();
+  });
+});

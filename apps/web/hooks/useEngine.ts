@@ -1127,7 +1127,16 @@ export function useEngine({ address, jwt, onToolResult, contacts, onAuthIntent }
           setMessages((prev) =>
             prev.map((m) =>
               m.id === streamingMsgRef.current
-                ? { ...m, isStreaming: false, content: m.content || 'Cancelled.' }
+                ? {
+                    ...m,
+                    isStreaming: false,
+                    content: m.content || 'Cancelled.',
+                    // [SPEC 23C C10 Step B] Cancelled-while-pending isn't a
+                    // hard failure (the user chose to cancel); leave `failed`
+                    // unset so no FAILED chip renders. The "Cancelled."
+                    // content reads as the user's own action, not a system
+                    // error.
+                  }
                 : m,
             ),
           );
@@ -1143,7 +1152,15 @@ export function useEngine({ address, jwt, onToolResult, contacts, onAuthIntent }
         setMessages((prev) =>
           prev.map((m) =>
             m.id === streamingMsgRef.current
-              ? { ...m, isStreaming: false, content: 'Authentication expired.' }
+              ? {
+                  ...m,
+                  isStreaming: false,
+                  content: 'Authentication expired.',
+                  // [SPEC 23C C10 Step B] Hard-fail: no automatic retry,
+                  // user must re-authenticate. Surface FAILED chip above
+                  // the message text.
+                  failed: true,
+                }
               : m,
           ),
         );
@@ -1178,7 +1195,16 @@ export function useEngine({ address, jwt, onToolResult, contacts, onAuthIntent }
         setMessages((prev) =>
           prev.map((m) =>
             m.id === streamingMsgRef.current
-              ? { ...m, isStreaming: false, content: m.content || errorMsg }
+              ? {
+                  ...m,
+                  isStreaming: false,
+                  content: m.content || errorMsg,
+                  // [SPEC 23C C10 Step B] Hard-fail: retries exhausted,
+                  // no partial output to recover. Distinct from the
+                  // hasReceivedContent branch above which flags
+                  // `interrupted` (partial output exists, retry possible).
+                  failed: true,
+                }
               : m,
           ),
         );

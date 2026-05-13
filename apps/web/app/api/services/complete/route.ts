@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
 import { Credential, Method } from 'mppx';
 import { suiCharge } from '@suimpp/mpp/client';
@@ -120,8 +120,33 @@ export async function POST(request: NextRequest) {
     const gatewayResult = await callGateway(confirmedPaymentDigest!, meta);
 
     if (gatewayResult.status === 200 && meta.address) {
-      recordPurchase(meta.address, meta.serviceId, parseFloat(meta.price), confirmedPaymentDigest!).catch((err) =>
-        console.error('[services/complete] recordPurchase failed:', err),
+      // [Step C / 2026-05-13] Was a fire-and-forget `.catch()` call. Two
+      // problems surfaced in the founder's frog-image smoke (~38s OpenAI
+      // hold → P2028 "Unable to start a transaction in the given time"):
+      //
+      //   1) `prisma.$transaction([...])` has a 2000ms tx-startup
+      //      `maxWait`. After Vercel had been holding ports open for
+      //      ~38s on the upstream OpenAI fetch, Prisma couldn't grab a
+      //      tx slot in time. Audit rows (servicePurchase + appEvent)
+      //      don't actually need atomicity — see recordPurchase docstring.
+      //      Now split into independent inserts via Promise.allSettled.
+      //
+      //   2) `.catch()` fire-and-forget is unsafe on Vercel serverless.
+      //      The function lifecycle ends with the response, killing any
+      //      pending awaits — meaning even when Prisma's failure path
+      //      WAS the right answer, the log line itself sometimes never
+      //      flushed. Wrapped in `after()` from next/server: the writes
+      //      run AFTER the response is sent (zero impact on user-perceived
+      //      latency) but the function lifecycle is extended via Vercel's
+      //      `waitUntil` so the writes are guaranteed to complete or log.
+      const address = meta.address;
+      const serviceId = meta.serviceId;
+      const amountUsd = parseFloat(meta.price);
+      const digest = confirmedPaymentDigest!;
+      after(() =>
+        recordPurchase(address, serviceId, amountUsd, digest).catch((err) =>
+          console.error('[services/complete] recordPurchase failed:', err),
+        ),
       );
     }
 
@@ -259,6 +284,28 @@ async function backfillDigest(address: string, digest: string): Promise<void> {
   }
 }
 
+// [Step C / 2026-05-13] Records a successful service purchase as two
+// audit rows: `servicePurchase` (the canonical purchase row) and
+// `appEvent` (the activity-feed pay event). Was a `prisma.$transaction`
+// — switched to independent `Promise.allSettled` inserts because:
+//
+//   - Atomicity isn't required. Both rows are audit/analytics surfaces.
+//     A partial write produces a slightly inconsistent activity feed
+//     (purchase shows in spending analytics but missing from the activity
+//     feed, or vice versa) — annoying but not catastrophic, and easily
+//     recoverable by a one-shot backfill. The previous transactional
+//     behavior gave us all-or-nothing at the cost of P2028 errors that
+//     dropped BOTH rows under load — strictly worse for the audit
+//     surface than independent inserts.
+//
+//   - Independent inserts skip Prisma's tx-startup maxWait (default
+//     2000ms), which was the root cause of the P2028 in the founder's
+//     2026-05-13 frog-image smoke after the 38s OpenAI hold.
+//
+// Per-row failures are logged with the row identity so a backfill can
+// target only the missing rows. The function itself never throws — the
+// caller's `after()` wrapper expects best-effort completion and only
+// logs uncaught rejections (which Promise.allSettled prevents).
 async function recordPurchase(
   address: string,
   serviceId: string,
@@ -266,7 +313,7 @@ async function recordPurchase(
   paymentDigest: string,
 ): Promise<void> {
   const label = serviceId.replace(/[-_]/g, ' ');
-  await prisma.$transaction([
+  const results = await Promise.allSettled([
     prisma.servicePurchase.create({
       data: { address, serviceId, amountUsd },
     }),
@@ -280,6 +327,16 @@ async function recordPurchase(
       },
     }),
   ]);
+
+  const labels = ['servicePurchase', 'appEvent'] as const;
+  results.forEach((r, i) => {
+    if (r.status === 'rejected') {
+      console.error(
+        `[services/complete] recordPurchase: ${labels[i]} insert failed (digest=${paymentDigest}, address=${address}, service=${serviceId}):`,
+        r.reason,
+      );
+    }
+  });
 }
 
 async function logToGateway(serviceId: string, amount: string, digest: string): Promise<void> {

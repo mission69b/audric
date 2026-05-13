@@ -248,17 +248,35 @@ export function ChatMessage({
             <ThinkingState status="thinking" intensity="active" />
           </div>
         )}
+        {/* [SPEC 23C C10 Step B] FAILED chip — hard-fail state (AuthError /
+            exhausted retries with no partial output). Renders ABOVE the
+            error text so the user reads the labelled icon first, then the
+            reason. Distinct from `interrupted` (partial output exists,
+            retry pill below). */}
+        {message.failed && (
+          <div className="pl-1">
+            <ThinkingState status="failed" intensity="active" />
+          </div>
+        )}
         {message.content && (
           <div className="pl-1 text-sm text-fg-default whitespace-pre-wrap">
             {message.content}
           </div>
         )}
       </div>
+      {/* [SPEC 23C C10 Step B] INTERRUPTED chip — paired with the existing
+          retry pill so the user gets a labelled-icon status BEFORE the
+          action button. The chip names the state; the pill is the verb. */}
       {message.interrupted && message.interruptedReplayText && onSendMessage && (
-        <RetryInterruptedTurn
-          replayText={message.interruptedReplayText}
-          onRetry={onSendMessage}
-        />
+        <>
+          <div className="pl-1">
+            <ThinkingState status="interrupted" intensity="active" />
+          </div>
+          <RetryInterruptedTurn
+            replayText={message.interruptedReplayText}
+            onRetry={onSendMessage}
+          />
+        </>
       )}
       {chipsBlock}
     </>
@@ -397,12 +415,31 @@ function ChatMessageV2({
           flagged this turn as interrupted. The replay click reopens
           the SSE stream with the original user message; React will
           then unmount this component as soon as the new turn writes
-          a fresh assistant message. */}
+          a fresh assistant message.
+
+          [SPEC 23C C10 Step B / 2026-05-13] Paired with a
+          `<ThinkingState status="interrupted">` chip ABOVE the pill so
+          the user gets a labelled-icon status before the action button. */}
       {message.interrupted && message.interruptedReplayText && onSendMessage && (
-        <RetryInterruptedTurn
-          replayText={message.interruptedReplayText}
-          onRetry={onSendMessage}
-        />
+        <>
+          <div className="pl-1">
+            <ThinkingState status="interrupted" intensity="active" />
+          </div>
+          <RetryInterruptedTurn
+            replayText={message.interruptedReplayText}
+            onRetry={onSendMessage}
+          />
+        </>
+      )}
+
+      {/* [SPEC 23C C10 Step B / 2026-05-13] FAILED chip on the v2 path.
+          Rendered AFTER the timeline (below partial output, if any)
+          and ABOVE any error text content. Hard-fail state only —
+          `interrupted` covers the recoverable-with-retry branch above. */}
+      {message.failed && !message.interrupted && (
+        <div className="pl-1">
+          <ThinkingState status="failed" intensity="active" />
+        </div>
       )}
     </div>
   );

@@ -488,6 +488,22 @@ export interface EngineChatMessage {
    */
   interruptedReplayText?: string;
   /**
+   * [SPEC 23C C10 followup Step B / 2026-05-13] Set when this assistant
+   * turn ended in a HARD failure that no automatic retry can recover —
+   * AuthError (zkLogin session expired), exhausted-retry connection
+   * failures with no partial output, or a pre-stream HTTP error. The
+   * `m.content` carries the human-readable reason and `<ChatMessage>`
+   * uses this flag to surface a `<ThinkingState status="failed">` chip
+   * ABOVE the error text (so the user sees a clear FAILED labelled icon
+   * before reading the message). Distinct from `interrupted` — that
+   * flag means "partial output exists, retry to continue"; `failed`
+   * means "no output, the whole turn died and the user has to start
+   * over". Mutually exclusive in practice (the engine doesn't set both
+   * on the same message). Undefined = "did not hard-fail" (the common
+   * case, including success and `interrupted` paths).
+   */
+  failed?: boolean;
+  /**
    * [SPEC 8 v0.5.1 B3.2] 1-line human-readable rationale for the shape
    * decision (e.g. "matched recipe portfolio_rebalance → max"). Used in
    * Datadog logs + dashboard tooltips to explain WHY a turn picked its
