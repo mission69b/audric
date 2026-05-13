@@ -421,8 +421,35 @@ export function useAgent() {
             });
 
             if (!prepareRes.ok) {
-              const err = await prepareRes.json();
-              throw new Error(err.error ?? 'Failed to prepare service payment');
+              const err = (await prepareRes.json().catch(() => ({}))) as Record<string, unknown>;
+              // [SPEC 26 P5.2 / 2026-05-13] Mirror the SettleNoDeliveryError
+              // throw from the complete-response branch below. The prepare
+              // route now classifies the gateway's 402 settle-no-delivery
+              // response BEFORE attempting the mppx Challenge parse and
+              // returns the same shape (`paymentConfirmed: false` +
+              // `settleVerdict` + `settleReason`). Without this branch the
+              // settle metadata is dropped on the floor at the prepare
+              // boundary, the LLM sees a generic "challenge could not be
+              // parsed" error, and D-8 retry decisions become vibes-based.
+              //
+              // For prepare-side settle-no-delivery `paymentDigest` is
+              // always null because no on-chain transfer has happened yet —
+              // unlike the complete-side equivalent where the Sui transfer
+              // already settled and the digest is the bookkeeping handle for
+              // the deferred refund(digest) flow.
+              if (
+                prepareRes.status === 402 &&
+                err.paymentConfirmed === false &&
+                typeof err.settleVerdict === 'string'
+              ) {
+                throw new SettleNoDeliveryError(
+                  typeof err.error === 'string' ? err.error : 'Upstream rejected; no charge.',
+                  err.settleVerdict,
+                  typeof err.settleReason === 'string' ? err.settleReason : 'unknown',
+                  typeof err.paymentDigest === 'string' ? err.paymentDigest : null,
+                );
+              }
+              throw new Error(typeof err.error === 'string' ? err.error : 'Failed to prepare service payment');
             }
 
             const prepareData = await prepareRes.json();

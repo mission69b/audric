@@ -13,6 +13,8 @@ import { validateJwt, isValidSuiAddress } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { composeTx, USDC_TYPE } from '@t2000/sdk';
 import { env } from '@/lib/env';
+import { classifyGatewayResponse } from '../complete/classify-gateway-response';
+import { extractVendorErrorMessage } from '../complete/extract-vendor-error-message';
 
 export const runtime = 'nodejs';
 
@@ -330,6 +332,41 @@ async function handleStandardMpp(
     return NextResponse.json(
       { error: `Gateway error (${challengeRes.status})` },
       { status: challengeRes.status },
+    );
+  }
+
+  // [SPEC 26 P5.2 — 2026-05-13] Detect settle-on-success refundable verdict
+  // BEFORE attempting `Challenge.fromResponse`. Pre-SPEC-26 every 402 was a
+  // payment challenge envelope (mppx Challenge JSON). SPEC 26 added a second
+  // 402 shape: gateway probed upstream, upstream rejected, gateway returns
+  // 402 + `x-settle-verdict: refundable` + the upstream error body. That body
+  // is NOT a Challenge → `Challenge.fromResponse` throws → user saw a cryptic
+  // "challenge could not be parsed" 502 + the chain dropped settleVerdict /
+  // settleReason that the engine D-8 paragraph relies on.
+  //
+  // The early-failure case is actually the BEST case: no Sui USDC has moved
+  // (we haven't even built `composeAndSponsor` yet), so `paymentDigest: null`
+  // is honest and the SPEC 26 O-4 caveat (deferred refund(digest)) does not
+  // apply at this stage. Mirrors the shape returned by `services/complete`
+  // for late-failure settle-no-delivery so `useAgent.payService` can use a
+  // single typed-error throw branch.
+  const classification = classifyGatewayResponse(challengeRes.clone());
+  if (classification.kind === 'settle-no-delivery') {
+    const upstreamBody = await challengeRes.json().catch(() => null);
+    const errMsg = extractVendorErrorMessage(upstreamBody, classification.reason);
+    console.log(
+      `[services/prepare] settle-no-delivery for ${serviceId}: verdict=${classification.verdict} reason=${classification.reason}`,
+    );
+    return NextResponse.json(
+      {
+        error: errMsg,
+        serviceStatus: 402,
+        paymentConfirmed: false,
+        settleVerdict: classification.verdict,
+        settleReason: classification.reason,
+        paymentDigest: null,
+      },
+      { status: 402 },
     );
   }
 
