@@ -13,7 +13,7 @@ import {
   quoteAgeSeverity,
   type QuoteAgeSeverity,
 } from '@/lib/format-quote-age';
-import { ApprovingIndicator } from './motion/ApprovingIndicator';
+import { WorkingState } from './motion/WorkingState';
 
 /**
  * [v1.4 Item 6] Single editable input rendered inside a `PermissionCard`.
@@ -855,7 +855,16 @@ export function PermissionCard({
             </div>
           </div>
         ) : (
-          <ApprovingIndicator label="Approving…" className="text-center" />
+          <WorkingState
+            // Bundle path — the action's top-level toolName is a
+            // bundle wrapper, not a useful phase key. Drop into the
+            // generic FALLBACK_PHASES so the sub-label reads
+            // "Confirming on-chain… → Working… → Almost done…"
+            // without lying about which leg we're on.
+            toolName={undefined}
+            label="WORKING"
+            className="text-center"
+          />
         )}
       </div>
     );
@@ -1019,7 +1028,15 @@ export function PermissionCard({
           </div>
         </div>
       ) : (
-        <ApprovingIndicator label="Processing…" className="text-center" />
+        <WorkingState
+          // Single-write path — feed the actual toolName so the
+          // sub-label reflects the work-in-progress (e.g. "Working
+          // with vendor…" for pay_api, "Routing through DEXes…"
+          // for swap_execute, "Depositing to NAVI…" for save_deposit).
+          toolName={action.toolName}
+          label="WORKING"
+          className="text-center"
+        />
       )}
     </div>
   );
