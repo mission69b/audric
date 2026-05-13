@@ -121,26 +121,33 @@ export function MppReceiptGrid({
 
   if (settled.length === 0) return null;
 
-  // [SPEC 23C C10 / 2026-05-13] Identify the LATEST settled pay_api by
-  // startedAt — every other cell is "superseded" and renders with its
-  // ReviewCard footer collapsed. This derives the supersede state from
-  // sibling data so it survives the BlockRouter→MppReceiptGrid mount-
-  // path change on regen-cluster formation (the production C10 bug
-  // where the original card's footer reappeared after regen because
-  // local React state was lost on remount). See ReviewCard.tsx C10
-  // props docstring for the full rationale.
+  // [SPEC 23C C10 / 2026-05-13] Identify the LATEST settled pay_api —
+  // every other cell is "superseded" and renders with its ReviewCard
+  // footer collapsed. This derives the supersede state from sibling
+  // data so it survives the BlockRouter→MppReceiptGrid mount-path
+  // change on regen-cluster formation (the production C10 bug where
+  // the original card's footer reappeared after regen because local
+  // React state was lost on remount). See ReviewCard.tsx C10 props
+  // docstring for the full rationale.
   //
-  // Tie-breaking: stable on (startedAt, toolUseId). When two tools
-  // share startedAt (rare — clock skew or test mocks), the higher
-  // toolUseId wins; both being early dispatches, neither would be the
-  // user-visible "active" card anyway, so the choice is cosmetic.
-  const latestId = settled.reduce((acc, t) => {
-    const tStarted = t.startedAt ?? 0;
-    const accStarted = acc.startedAt ?? 0;
-    if (tStarted > accStarted) return t;
-    if (tStarted === accStarted && t.toolUseId > acc.toolUseId) return t;
-    return acc;
-  }, settled[0]).toolUseId;
+  // [C10 followup / 2026-05-13] Was a `(startedAt, toolUseId)` reduce.
+  // Founder smoke after page-refresh caught the layout drift bug:
+  // `synthesizeTimelineFromMessage` (the rehydration path) stamps
+  // `startedAt: 0` on every block — so on page refresh, every settled
+  // tool has the same startedAt, the reduce ties on 0, falls back to
+  // toolUseId lexical compare (random nanoid), and picks the wrong
+  // card as "latest" ~50% of the time → footer attached to the LEFT
+  // (original) card instead of the RIGHT (regen) card.
+  //
+  // Fix: trust the array's chronological order. `settled[]` is filtered
+  // from `tools[]` which is ordered by upstream callers:
+  //   - Live path: timeline-builder appends tool blocks in dispatch
+  //     order as `tool_use` events arrive. Last element = latest.
+  //   - Rehydrated path: synthesizeTimelineFromMessage iterates
+  //     `m.tools[]` in array order (which the storage layer preserves
+  //     in dispatch order). Last element = latest.
+  // Both paths agree on `settled[length - 1]` being the latest.
+  const latestId = settled[settled.length - 1].toolUseId;
 
   return (
     <div className="space-y-1.5">

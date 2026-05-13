@@ -201,15 +201,23 @@ describe('ReviewCard primitive (v2) — fastpath path (onRegenerate)', () => {
     resolveFn?.();
   });
 
-  it('[SPEC 23C C9] FASTPATH: in-flight regen shows the brand spinner alongside "Regenerating…" text', async () => {
+  it('[SPEC 23C C9 + C10 followup] FASTPATH: in-flight regen shows the brand AudricMark alongside "Regenerating…" text', async () => {
     // Founder smoke 2026-05-12 caught that the text-only "Regenerating…"
     // button label during the ~3s on-chain payment + service round-trip
-    // reads as too quiet ("is anything happening?"). The brand spinner —
-    // canonical <Spinner size="sm" /> from ThinkingState and other engine
-    // surfaces — makes the in-flight state read as alive. This test
-    // asserts the spinner is in the DOM while the onRegenerate promise
-    // is pending and goes away after it resolves (terminal 'regenerated'
-    // state collapses the entire footer to null per audric `32b1e4e`).
+    // reads as too quiet — C9 originally landed a <Spinner size="sm" />.
+    // Founder smoke 2026-05-13 (after the C10 ship) caught that the
+    // generic spinner here read as inconsistent with the new
+    // <AudricMark animate /> brand mark in <WorkingState> + the
+    // <TransitionChip> CONFIRMING surface — every other "we're working"
+    // state showed the brand mark, this one didn't. Swapped to AudricMark
+    // for the same brand-liveness signal across all three gap surfaces.
+    //
+    // Test now asserts the AudricMark <svg> is in the DOM while
+    // onRegenerate is pending and goes away after it resolves (terminal
+    // 'regenerated' state collapses the entire footer to null per
+    // audric `32b1e4e`). The previous role="status"/aria-label="Loading"
+    // assertion was for the old Spinner; AudricMark renders an svg with
+    // aria-hidden, so we count the svg directly inside the regen button.
     let resolveFn: (() => void) | undefined;
     const onRegenerate = vi.fn(
       () =>
@@ -226,21 +234,26 @@ describe('ReviewCard primitive (v2) — fastpath path (onRegenerate)', () => {
       />,
     );
 
-    // Pre-click: spinner not in DOM (no role="status" element exists)
-    expect(container.querySelector('[role="status"][aria-label="Loading"]')).toBeNull();
+    // Pre-click: AudricMark <svg> not in DOM (no svg lives in the
+    // pre-click footer; the only svg in this card is the AudricMark
+    // mounted inside the in-flight regen button branch)
+    const regenButton = screen.getByRole('button', { name: 'Regenerate this image' });
+    expect(regenButton.querySelector('svg')).toBeNull();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Regenerate this image' }));
+    fireEvent.click(regenButton);
 
-    // In-flight: spinner present + paired with "Regenerating…" text
-    const spinner = container.querySelector('[role="status"][aria-label="Loading"]');
-    expect(spinner).not.toBeNull();
+    // In-flight: AudricMark svg present inside the regen button +
+    // paired with "Regenerating…" text
+    const buttonAfterClick = screen.getByRole('button', { name: 'Regenerate this image' });
+    expect(buttonAfterClick.querySelector('svg')).not.toBeNull();
     expect(container.textContent).toContain('Regenerating…');
 
-    // Resolve and confirm the post-success collapse removes the spinner
+    // Resolve and confirm the post-success collapse removes the svg
     // (entire footer collapses to null per the 'regenerated' state)
     resolveFn?.();
     await waitFor(() => {
-      expect(container.querySelector('[role="status"][aria-label="Loading"]')).toBeNull();
+      // The whole regen button is gone in the terminal 'regenerated'
+      // state — assert via text since the button no longer matches by name.
       expect(container.textContent).not.toContain('Regenerating…');
     });
   });

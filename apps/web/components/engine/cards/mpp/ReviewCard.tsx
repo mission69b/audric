@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { Spinner } from '@/components/ui/Spinner';
+import { AudricMark } from '@/components/ui/AudricMark';
 import { fmtMppPrice } from './chrome';
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -312,18 +312,24 @@ export function ReviewCard({
             aria-label={`Regenerate this ${artifactNoun}`}
           >
             {clicked === 'regenerating' ? (
-              // [SPEC 23C C9 / 2026-05-12] In-flight spinner alongside the text.
-              // The button already swaps copy to "Regenerating…" + recolors to
-              // info-tier on click latch, but the founder smoke caught that the
-              // text-only feedback during the ~3s on-chain payment + service
-              // round-trip is too quiet — reads as "is anything happening?".
-              // The brand spinner (canonical `<Spinner size="sm" />` from
-              // `ThinkingState` and other engine surfaces) makes the in-flight
-              // state read as alive without introducing a new motion primitive.
+              // [SPEC 23C C9 + C10 followup / 2026-05-13] In-flight brand
+              // mark alongside the text. C9 originally landed a generic
+              // `<Spinner size="sm" />` here; founder's 2026-05-13 frog
+              // smoke after the C10 ship caught the inconsistency — the
+              // CONFIRMING and post-approve gaps now show the animated
+              // <AudricMark> (the diamond favicon mark with the center-out
+              // pulse), but this regenerate path was still on the generic
+              // spinner. Swapped here for the same brand-liveness signal,
+              // unifying every "we're working" surface in the harness.
+              // Reduced-motion: mark renders static via useReducedMotion.
               // Card-local — no engine surgery; the existing
               // `clicked === 'regenerating'` state already drives this branch.
               <span className="inline-flex items-center gap-1.5">
-                <Spinner size="sm" />
+                <AudricMark
+                  size={14}
+                  animate={reduceMotion !== true}
+                  className="text-current shrink-0"
+                />
                 <span>Regenerating…</span>
               </span>
             ) : (

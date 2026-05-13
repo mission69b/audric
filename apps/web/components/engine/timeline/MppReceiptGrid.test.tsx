@@ -254,15 +254,25 @@ describe('MppReceiptGrid — supersede threading (C10 regression)', () => {
     expect(map.get('c')).toBe('false');
   });
 
-  it('the latest is determined by startedAt, not by array order', () => {
-    // Newest dispatched is in array slot 0 — supersede must still pick
-    // it correctly via startedAt comparison.
+  // [SPEC 23C C10 followup / 2026-05-13] Was "the latest is determined
+  // by startedAt, not by array order". Founder smoke caught the layout
+  // drift bug: synthesizeTimelineFromMessage stamps startedAt=0 on
+  // every block during rehydration, so on page refresh the startedAt
+  // reduce ties on 0, falls back to lexical toolUseId compare (random
+  // nanoid), and picks the wrong card as latest ~50% of the time.
+  // Fix: trust array position, which IS the chronological order in
+  // both live (dispatch-order append) and rehydrated (m.tools[] iter)
+  // paths. The renamed test below pins the new contract.
+  it('the latest is determined by array position (last cell wins)', () => {
+    // Caller's responsibility to pass tools in chronological order.
+    // Both live and rehydrated paths uphold this — see the latestId
+    // comment in MppReceiptGrid.tsx for the per-path proof.
     const { getAllByTestId } = render(
       <MppReceiptGrid
         tools={[
-          mockTool('newest', 'done', 9000),
-          mockTool('oldest', 'done', 1000),
-          mockTool('middle', 'done', 5000),
+          mockTool('first', 'done', 1000),
+          mockTool('second', 'done', 2000),
+          mockTool('latest-by-position', 'done', 3000),
         ]}
       />,
     );
@@ -272,9 +282,41 @@ describe('MppReceiptGrid — supersede threading (C10 regression)', () => {
         b.getAttribute('data-superseded')!,
       ]),
     );
-    expect(map.get('newest')).toBe('false');
-    expect(map.get('oldest')).toBe('true');
-    expect(map.get('middle')).toBe('true');
+    expect(map.get('first')).toBe('true');
+    expect(map.get('second')).toBe('true');
+    expect(map.get('latest-by-position')).toBe('false');
+  });
+
+  // [SPEC 23C C10 followup / 2026-05-13 — the actual regression]
+  // Pin the rehydration scenario: synthesizeTimelineFromMessage stamps
+  // startedAt=0 on every rehydrated block. The pre-fix reduce tied on
+  // 0 and fell back to a lexical toolUseId compare (random nanoid),
+  // which picked the wrong card ~50% of the time. The new array-
+  // position contract MUST work even when every startedAt is 0,
+  // including when the lexically-larger toolUseId sits in the
+  // non-latest slot (the failing case that surfaced the bug).
+  it('rehydrated path (all startedAt=0): array position decides, not lexical toolUseId', () => {
+    // Lexically: "z-original" > "a-regen". Pre-fix would have picked
+    // "z-original" as latest because the reduce's tie-break chose the
+    // higher toolUseId. Post-fix: array position wins, "a-regen" (last
+    // in the array → chronologically latest by storage order) is the
+    // active card.
+    const { getAllByTestId } = render(
+      <MppReceiptGrid
+        tools={[
+          mockTool('z-original', 'done', 0),
+          mockTool('a-regen', 'done', 0),
+        ]}
+      />,
+    );
+    const map = new Map(
+      getAllByTestId('tool-block').map((b) => [
+        b.getAttribute('data-tool-use-id')!,
+        b.getAttribute('data-superseded')!,
+      ]),
+    );
+    expect(map.get('z-original')).toBe('true');
+    expect(map.get('a-regen')).toBe('false');
   });
 
   it('single-tool cluster: the only cell is NOT superseded', () => {
