@@ -26,11 +26,19 @@ describe('STATIC_SYSTEM_PROMPT — OpenAI-only locked set (post UX polish #2)', 
   });
 
   it('enumerates exactly the 4 OpenAI endpoints with their costs', () => {
-    // 2026-05-14: openai images line was `DALL-E images $0.05` — updated to
-    // `image generation (gpt-image-1) $0.05` after the dall-e-* shutdown
-    // (2026-05-12) and to stop the LLM narrating "DALL-E" to users.
+    // 2026-05-14 (initial): line was `DALL-E images $0.05` until the
+    // dall-e-* shutdown 2026-05-12. Renamed to `image generation
+    // (gpt-image-1) $0.05` for clarity.
+    // 2026-05-14 (B3.6 budget fix): tightened to `images $0.05` because
+    // the more verbose form pushed STATIC_SYSTEM_PROMPT past the 10_700
+    // token ceiling (10714 vs 10700 — see the budget gate test below).
+    // The `gpt-image-1` model name is still in pay_api's tool description
+    // (engine v1.30.2), the discover-services card (mpp_services tool),
+    // and the model-guidance paragraph in pay.ts — so the LLM has 3 other
+    // surfaces telling it which model to call. Saving 24 chars on the
+    // pricing line buys us back the budget headroom without losing info.
     expect(STATIC_SYSTEM_PROMPT).toContain('openai');
-    expect(STATIC_SYSTEM_PROMPT).toContain('image generation (gpt-image-1) $0.05');
+    expect(STATIC_SYSTEM_PROMPT).toContain('images $0.05');
     expect(STATIC_SYSTEM_PROMPT).toContain('Whisper transcription $0.01');
     expect(STATIC_SYSTEM_PROMPT).toContain('GPT-4o chat $0.01');
     expect(STATIC_SYSTEM_PROMPT).toContain('TTS $0.02');
