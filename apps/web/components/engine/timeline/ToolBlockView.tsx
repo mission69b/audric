@@ -67,6 +67,20 @@ interface ToolBlockViewProps {
    *  — single tools can't be superseded by definition.
    */
   isSuperseded?: boolean;
+  /**
+   * [SPEC 23C C10 followup #3 / 2026-05-13] True when this tool block
+   *  is the LATEST settled pay_api in a cluster that ALSO contains a
+   *  non-terminal pay_api block (running / streaming) — i.e. the user
+   *  just tapped Regenerate on this card and the new dispatch is in
+   *  flight. Computed by `<MppReceiptGrid>` and forwarded down to
+   *  `<ToolResultCard>` → renderer → `<ReviewCard forceRegenerating>`.
+   *  See ReviewCard.tsx forceRegenerating props docstring for the
+   *  remount-loses-state rationale. Always undefined on the single-block
+   *  (BlockRouter) path — there's no sibling running tool to derive
+   *  from on that path; the local `clicked='regenerating'` state
+   *  covers the pre-cluster window.
+   */
+  isRegenerating?: boolean;
 }
 
 /** Map TimelineBlock status (5 states) to the run status the renderers
@@ -94,6 +108,7 @@ export function ToolBlockView({
   onSendMessage,
   onRegenerateToolCall,
   isSuperseded,
+  isRegenerating,
 }: ToolBlockViewProps) {
   const stepStatus = toRunStatus(block.status);
   const isSettled = block.status === 'done' || block.status === 'error';
@@ -215,6 +230,7 @@ export function ToolBlockView({
               : undefined
           }
           isSuperseded={isSuperseded}
+          isRegenerating={isRegenerating}
         />
       )}
     </div>

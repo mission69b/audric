@@ -151,6 +151,19 @@ export type MppServiceRenderer = (
    * false (or undefined) for the single-block render path.
    */
   isSuperseded?: boolean,
+  /**
+   * [SPEC 23C C10 followup #3 / 2026-05-13] True when this rendering
+   * belongs to the LATEST settled pay_api in a cluster that ALSO
+   * contains a non-terminal (running / streaming) pay_api — i.e. the
+   * user just tapped Regenerate on this card and the new pay_api
+   * dispatch is in flight. Renderers that wrap a `<ReviewCard>` MUST
+   * forward this as `forceRegenerating` so the AudricMark + "Regenerating…"
+   * UI survives the single-card → cluster remount. Always false (or
+   * undefined) for the single-block render path AND for superseded
+   * cells (a superseded card's footer is collapsed, which takes
+   * priority).
+   */
+  isRegenerating?: boolean,
 ) => ReactNode;
 
 /**
@@ -194,6 +207,7 @@ function renderOpenai(
   onSendMessage?: (text: string) => void,
   onRegenerate?: () => Promise<void>,
   isSuperseded?: boolean,
+  isRegenerating?: boolean,
 ): ReactNode {
   const serviceId = data.serviceId ?? '';
   if (serviceId.includes('/v1/images/generations')) {
@@ -214,6 +228,7 @@ function renderOpenai(
           onRegenerate={onRegenerate}
           onSendMessage={onSendMessage}
           forceCollapsed={isSuperseded}
+          forceRegenerating={isRegenerating}
         />
       </>
     );
@@ -235,6 +250,7 @@ function renderOpenai(
           onRegenerate={onRegenerate}
           onSendMessage={onSendMessage}
           forceCollapsed={isSuperseded}
+          forceRegenerating={isRegenerating}
         />
       </>
     );
@@ -257,7 +273,7 @@ export const MPP_SERVICE_RENDERERS: Record<string, MppServiceRenderer> = {
   // SPEC 23B-MPP6: previewable + regenerable → append ReviewCard. Same
   // pattern as DALL-E. PDFShift skipped (deprecating to fallback per
   // spec_native_content_tools), Lob/Resend skipped (terminal).
-  elevenlabs: (data, onSendMessage, onRegenerate, isSuperseded) => (
+  elevenlabs: (data, onSendMessage, onRegenerate, isSuperseded, isRegenerating) => (
     <>
       <TrackPlayer data={data} />
       <ReviewCard
@@ -266,6 +282,7 @@ export const MPP_SERVICE_RENDERERS: Record<string, MppServiceRenderer> = {
         onRegenerate={onRegenerate}
         onSendMessage={onSendMessage}
         forceCollapsed={isSuperseded}
+        forceRegenerating={isRegenerating}
       />
     </>
   ),
@@ -299,6 +316,7 @@ export function renderMppService(
   onSendMessage?: (text: string) => void,
   onRegenerate?: () => Promise<void>,
   isSuperseded?: boolean,
+  isRegenerating?: boolean,
 ): ReactNode {
   // [B-MPP6 v1.1] Error envelope short-circuits dispatch. We check the
   // explicit `success: false` flag stamped by `executeToolAction.pay_api`
@@ -310,6 +328,6 @@ export function renderMppService(
 
   const slug = normaliseServiceSlug(data.serviceId);
   const renderer = MPP_SERVICE_RENDERERS[slug];
-  if (renderer) return renderer(data, onSendMessage, onRegenerate, isSuperseded);
+  if (renderer) return renderer(data, onSendMessage, onRegenerate, isSuperseded, isRegenerating);
   return <GenericMppReceipt data={data} />;
 }

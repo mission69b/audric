@@ -92,6 +92,18 @@ type CardRenderer = (
    * remount-loses-state rationale.
    */
   isSuperseded?: boolean,
+  /**
+   * [SPEC 23C C10 followup #3 / 2026-05-13] True when the tool block
+   * being rendered is the LATEST settled pay_api in a cluster that ALSO
+   * contains a non-terminal pay_api block (running / streaming) — i.e.
+   * a regen of THIS card is in flight. Only the `pay_api` renderer
+   * reads this. Threaded down to `<ReviewCard>` as `forceRegenerating`
+   * so the AudricMark + "Regenerating…" UI survives the single-card →
+   * cluster remount. Mutually exclusive with `isSuperseded` in
+   * practice (a superseded card's regen has already completed —
+   * there's a later settled card that's now the active one).
+   */
+  isRegenerating?: boolean,
 ) => React.ReactNode | null;
 
 const CARD_RENDERERS: Record<string, CardRenderer> = {
@@ -221,10 +233,20 @@ const CARD_RENDERERS: Record<string, CardRenderer> = {
   // Shape: host's `executeToolAction.pay_api` returns
   //   `{ success: true, data: { success, paymentDigest, price, serviceId, result } }`
   // → `extractData` unwraps `.data` → directly usable as `PayApiResult`.
-  pay_api: (result, _variant, onSendMessage, onRegenerate, isSuperseded) => {
+  pay_api: (result, _variant, onSendMessage, onRegenerate, isSuperseded, isRegenerating) => {
     const data = extractData(result);
     if (!data || typeof data !== 'object') return null;
-    return <>{renderMppService(data as PayApiResult, onSendMessage, onRegenerate, isSuperseded)}</>;
+    return (
+      <>
+        {renderMppService(
+          data as PayApiResult,
+          onSendMessage,
+          onRegenerate,
+          isSuperseded,
+          isRegenerating,
+        )}
+      </>
+    );
   },
   // ─── SPEC native_content_tools P5 / 2026-05-13 ──────────────────────────
   // Server-side composition tools (compose_pdf, compose_image_grid) return
@@ -401,6 +423,7 @@ export function ToolResultCard({
   onSendMessage,
   onRegenerate,
   isSuperseded,
+  isRegenerating,
 }: {
   tool: ToolExecution;
   /** [SPEC 23B-W1] Request a tighter post-write presentation when the card
@@ -425,13 +448,32 @@ export function ToolResultCard({
    *  vendor-specific renderer → `<ReviewCard forceCollapsed>`.
    *  See ReviewCard.tsx C10 props docstring. */
   isSuperseded?: boolean;
+  /** [SPEC 23C C10 followup #3 / 2026-05-13] True when this tool block
+   *  is the LATEST settled pay_api in a cluster that ALSO contains a
+   *  non-terminal pay_api block (running / streaming) — i.e. a regen
+   *  is in flight. Forwarded to the `pay_api` renderer →
+   *  `renderMppService` → vendor-specific renderer → `<ReviewCard
+   *  forceRegenerating>`. See ReviewCard.tsx forceRegenerating props
+   *  docstring for the remount-loses-state rationale. */
+  isRegenerating?: boolean;
 }) {
   if (tool.status !== 'done' || !tool.result || tool.isError) return null;
 
   const renderer = CARD_RENDERERS[tool.toolName];
   if (renderer) {
     try {
-      return <>{renderer(tool.result, variant, onSendMessage, onRegenerate, isSuperseded)}</>;
+      return (
+        <>
+          {renderer(
+            tool.result,
+            variant,
+            onSendMessage,
+            onRegenerate,
+            isSuperseded,
+            isRegenerating,
+          )}
+        </>
+      );
     } catch {
       return null;
     }

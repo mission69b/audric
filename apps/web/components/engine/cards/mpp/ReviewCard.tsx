@@ -122,6 +122,36 @@ interface ReviewCardProps {
    * never receive this prop — they can't be superseded by definition.
    */
   forceCollapsed?: boolean;
+  /**
+   * [SPEC 23C C10 followup #3 / 2026-05-13] Force the footer to render
+   * its in-flight `Regenerating…` state regardless of local `clicked`
+   * state. Set true by `<MppReceiptGrid>` for the LATEST settled card
+   * when ANY tool in the cluster has a non-terminal status (running /
+   * streaming) — i.e. the user just tapped Regenerate and the new
+   * pay_api block is in flight.
+   *
+   * Why this exists (the "first regen on the large image has no
+   * feedback" bug): when the user taps Regenerate on a single card,
+   * local `clicked='regenerating'` shows the AudricMark for ~50ms.
+   * Then `regenerateToolCall` upserts the new pay_api block at
+   * status='running', `groupTimelineBlocks` flips the kind from
+   * `single` to `regen-group`, ReviewCard unmounts from BlockRouter,
+   * remounts inside MppReceiptGrid → local `clicked` state lost →
+   * AudricMark gone for the rest of the 38s vendor wait. The user
+   * sees ZERO feedback for the entire wait.
+   *
+   * Fix: same supersede pattern. Derive from sibling data — the
+   * presence of a non-settled pay_api in the cluster means a regen is
+   * in flight, and the latest settled card is its source. Pass that
+   * answer down via this prop and the AudricMark stays visible across
+   * the remount.
+   *
+   * Default false. ReviewCards on the single-block (BlockRouter) path
+   * never receive this prop — by definition there's no sibling running
+   * tool to derive from on that path; the local `clicked='regenerating'`
+   * state covers the pre-cluster window.
+   */
+  forceRegenerating?: boolean;
 }
 
 // [SPEC 23B-MPP6-fastpath UX polish / 2026-05-12]
@@ -155,11 +185,22 @@ export function ReviewCard({
   onRegenerate,
   onSendMessage,
   forceCollapsed,
+  forceRegenerating,
 }: ReviewCardProps) {
   const [clicked, setClicked] = useState<ClickedState>(null);
   const [regenError, setRegenError] = useState<RegenError>(null);
 
-  const isLatched = clicked !== null;
+  // [SPEC 23C C10 followup #3 / 2026-05-13] Effective regenerating
+  // state — true when EITHER local React state was set by a click in
+  // this mount session (the pre-cluster window) OR the parent forced
+  // it via sibling-derived signal (the post-remount window). Single
+  // source of truth for every "is the regen in flight?" UI branch
+  // below — the header label, the Regenerate button latch, the
+  // AudricMark + Regenerating… copy, the disabled state, and the
+  // Cancel button latch all consult this. Without the parent override
+  // the cluster-formation remount drops the AudricMark mid-wait.
+  const isRegeneratingNow = clicked === 'regenerating' || forceRegenerating === true;
+  const isLatched = clicked !== null || forceRegenerating === true;
   const canRegenerate = Boolean(onRegenerate) || Boolean(onSendMessage);
   const canCancel = Boolean(onSendMessage);
 
@@ -280,7 +321,7 @@ export function ReviewCard({
         >
       <div className="px-4 py-2.5 flex items-center justify-between gap-2">
         <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-fg-muted">
-          {clicked === 'regenerating'
+          {isRegeneratingNow
             ? 'Regenerating…'
             : clicked === 'cancelled'
               ? 'Cancelled'
@@ -305,13 +346,13 @@ export function ReviewCard({
             onClick={handleRegenerate}
             disabled={isLatched || !canRegenerate}
             className={`text-[11px] font-mono uppercase tracking-[0.06em] border rounded px-2.5 py-1 transition-colors ${
-              clicked === 'regenerating'
+              isRegeneratingNow
                 ? 'text-info-fg border-info-border bg-info-bg'
                 : 'text-fg-secondary border-border-subtle hover:text-fg-primary hover:border-border-strong disabled:opacity-40 disabled:hover:text-fg-secondary disabled:hover:border-border-subtle disabled:cursor-not-allowed'
             }`}
             aria-label={`Regenerate this ${artifactNoun}`}
           >
-            {clicked === 'regenerating' ? (
+            {isRegeneratingNow ? (
               // [SPEC 23C C9 + C10 followup / 2026-05-13] In-flight brand
               // mark alongside the text. C9 originally landed a generic
               // `<Spinner size="sm" />` here; founder's 2026-05-13 frog
@@ -322,8 +363,10 @@ export function ReviewCard({
               // spinner. Swapped here for the same brand-liveness signal,
               // unifying every "we're working" surface in the harness.
               // Reduced-motion: mark renders static via useReducedMotion.
-              // Card-local — no engine surgery; the existing
-              // `clicked === 'regenerating'` state already drives this branch.
+              // [followup #3 / 2026-05-13] Branch driven by
+              // `isRegeneratingNow = clicked === 'regenerating' ||
+              // forceRegenerating` so the AudricMark survives the
+              // single-card → cluster remount that drops local state.
               <span className="inline-flex items-center gap-1.5">
                 <AudricMark
                   size={14}

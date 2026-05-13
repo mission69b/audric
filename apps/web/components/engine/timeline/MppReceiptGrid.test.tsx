@@ -28,16 +28,19 @@ vi.mock('./ToolBlockView', () => ({
     block,
     onSendMessage,
     isSuperseded,
+    isRegenerating,
   }: {
     block: ToolTimelineBlock;
     onSendMessage?: (text: string) => void;
     isSuperseded?: boolean;
+    isRegenerating?: boolean;
   }) => (
     <div
       data-testid="tool-block"
       data-tool-use-id={block.toolUseId}
       data-has-on-send-message={onSendMessage ? 'true' : 'false'}
       data-superseded={isSuperseded ? 'true' : 'false'}
+      data-regenerating={isRegenerating ? 'true' : 'false'}
     >
       {block.toolName}
     </div>
@@ -352,6 +355,140 @@ describe('MppReceiptGrid — supersede threading (C10 regression)', () => {
     );
     expect(map.get('original')).toBe('true');
     expect(map.get('regen-failed')).toBe('false');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────
+// SPEC 23C C10 followup #3 / 2026-05-13 — `isRegenerating` derivation
+//
+// Founder smoke 2026-05-13 ~16:30 AEST after the c5c9a3f + 7c1d12d
+// ships caught: when the user taps Regenerate on a SINGLE pay_api card
+// (before the cluster forms), the AudricMark + "Regenerating…" UI
+// shows for ~50ms then disappears for the entire 38s vendor wait.
+//
+// Root cause: regenerateToolCall step 3 upserts the new pay_api block
+// at status='running' → groupTimelineBlocks flips the kind from
+// 'single' to 'regen-group' → ReviewCard unmounts from BlockRouter,
+// remounts inside MppReceiptGrid → local clicked='regenerating' state
+// is lost → AudricMark gone.
+//
+// Fix: same supersede pattern. Derive "regen-in-flight" from sibling
+// data — if the cluster contains a non-settled pay_api block, the
+// latest settled card is the regen source. Pass that signal down via
+// a new `isRegenerating` prop chain (MppReceiptGrid → ToolBlockView
+// → ToolResultCard → renderMppService → ReviewCard.forceRegenerating).
+// ─────────────────────────────────────────────────────────────────────
+
+describe('MppReceiptGrid — isRegenerating threading (followup #3 regression)', () => {
+  it('marks the latest settled cell as isRegenerating=true when a sibling is running', () => {
+    // Simulates the exact moment after the user taps Regenerate on a
+    // single card: regenerateToolCall has called upsertToolBlock with
+    // status='running' for the new pay_api, and the timeline now has
+    // [original (done), new-regen (running)]. The ORIGINAL is the
+    // latest settled → it gets isRegenerating=true so the AudricMark
+    // survives the remount that just happened.
+    const { getAllByTestId } = render(
+      <MppReceiptGrid
+        tools={[
+          mockTool('original-done', 'done', 1000),
+          mockTool('regen-in-flight', 'running', 2000),
+        ]}
+      />,
+    );
+    // Only settled cells render; the running cell is filtered out.
+    const blocks = getAllByTestId('tool-block');
+    expect(blocks.length).toBe(1);
+    const original = blocks[0];
+    expect(original.getAttribute('data-tool-use-id')).toBe('original-done');
+    expect(original.getAttribute('data-regenerating')).toBe('true');
+    // Latest settled → not superseded.
+    expect(original.getAttribute('data-superseded')).toBe('false');
+  });
+
+  it('flips isRegenerating back to false once the regen settles', () => {
+    // After ~38s the new pay_api lands. tools=[original (done), regen
+    // (done)]. settled.length === tools.length → regenInFlight=false.
+    // Original becomes superseded; new regen becomes the latest with
+    // a fully-interactive footer (no isRegenerating override needed).
+    const { getAllByTestId } = render(
+      <MppReceiptGrid
+        tools={[
+          mockTool('original-done', 'done', 1000),
+          mockTool('regen-settled', 'done', 2000),
+        ]}
+      />,
+    );
+    const map = new Map(
+      getAllByTestId('tool-block').map((b) => [
+        b.getAttribute('data-tool-use-id')!,
+        {
+          superseded: b.getAttribute('data-superseded'),
+          regenerating: b.getAttribute('data-regenerating'),
+        },
+      ]),
+    );
+    expect(map.get('original-done')).toEqual({
+      superseded: 'true',
+      regenerating: 'false',
+    });
+    expect(map.get('regen-settled')).toEqual({
+      superseded: 'false',
+      regenerating: 'false',
+    });
+  });
+
+  it('handles 3-card cluster mid-regen — only the latest settled gets isRegenerating', () => {
+    // User regen'd the original, then immediately regen'd the regen.
+    // tools=[original (done), regen-1 (done), regen-2 (running)].
+    // settled=[original, regen-1]. latestId=regen-1. regenInFlight=true.
+    // Original is superseded. Regen-1 is the latest settled AND is the
+    // source of the in-flight regen-2 → AudricMark.
+    const { getAllByTestId } = render(
+      <MppReceiptGrid
+        tools={[
+          mockTool('original', 'done', 1000),
+          mockTool('regen-1', 'done', 2000),
+          mockTool('regen-2-in-flight', 'running', 3000),
+        ]}
+      />,
+    );
+    const map = new Map(
+      getAllByTestId('tool-block').map((b) => [
+        b.getAttribute('data-tool-use-id')!,
+        {
+          superseded: b.getAttribute('data-superseded'),
+          regenerating: b.getAttribute('data-regenerating'),
+        },
+      ]),
+    );
+    expect(map.get('original')).toEqual({
+      superseded: 'true',
+      regenerating: 'false',
+    });
+    expect(map.get('regen-1')).toEqual({
+      superseded: 'false',
+      regenerating: 'true',
+    });
+    // running cell is not in the rendered set
+    expect(map.has('regen-2-in-flight')).toBe(false);
+  });
+
+  it('streaming sibling also triggers isRegenerating=true (not just running)', () => {
+    // Defensive — engine status enum has both 'streaming' and 'running'
+    // for non-terminal pay_api dispatches. Both should trigger the
+    // regen-in-flight derivation. The current pay_api flow uses
+    // 'running' but text-result MPP tools may use 'streaming' if the
+    // result streams in chunks. The derivation must not silently skip.
+    const { getAllByTestId } = render(
+      <MppReceiptGrid
+        tools={[
+          mockTool('original-done', 'done', 1000),
+          mockTool('regen-streaming', 'streaming', 2000),
+        ]}
+      />,
+    );
+    const original = getAllByTestId('tool-block')[0];
+    expect(original.getAttribute('data-regenerating')).toBe('true');
   });
 });
 

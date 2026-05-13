@@ -479,3 +479,115 @@ describe('ReviewCard — forceCollapsed (C10 regression)', () => {
     expect(container.textContent).not.toContain('Cancel');
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────
+// SPEC 23C C10 followup #3 / 2026-05-13 — `forceRegenerating` prop
+//
+// Founder smoke after the c5c9a3f + 7c1d12d ships caught the "first
+// regen on the large image has no feedback" bug. Root cause: the
+// single-card → cluster transition unmounts the original ReviewCard
+// from BlockRouter and remounts it inside MppReceiptGrid → local
+// `clicked='regenerating'` state is lost → AudricMark gone for the
+// entire 38s vendor wait.
+//
+// Fix: same supersede pattern. Parent (MppReceiptGrid) derives
+// "regen-in-flight" from sibling data (presence of any non-settled
+// pay_api block) and passes `forceRegenerating=true` to the latest
+// settled card's ReviewCard. The AudricMark + "Regenerating…" UI
+// survives the remount.
+// ─────────────────────────────────────────────────────────────────────
+
+describe('ReviewCard — forceRegenerating (followup #3 regression)', () => {
+  it('forceRegenerating=true shows the AudricMark + "Regenerating…" without any user click', () => {
+    // The exact post-remount state: fresh mount (local clicked === null),
+    // but parent forces the in-flight UI via forceRegenerating=true.
+    // Pre-fix: button reads "↻ Regenerate" + footer label "Review" =
+    // zero feedback that the regen is mid-flight.
+    // Post-fix: button reads "[AudricMark] Regenerating…" + footer
+    // label "Regenerating…" + button is disabled.
+    const { container } = render(
+      <ReviewCard
+        price="0.05"
+        artifactNoun="image"
+        onRegenerate={vi.fn().mockResolvedValue(undefined)}
+        onSendMessage={vi.fn()}
+        forceRegenerating
+      />,
+    );
+
+    // Footer status label flips to "Regenerating…"
+    expect(container.textContent).toContain('Regenerating…');
+
+    // AudricMark <svg> rendered inside the regen button
+    const regenButton = screen.getByRole('button', { name: 'Regenerate this image' });
+    expect(regenButton.querySelector('svg')).not.toBeNull();
+
+    // Buttons disabled — the cluster has a regen in flight already;
+    // a second click would race the dispatch.
+    expect(regenButton.hasAttribute('disabled')).toBe(true);
+    const cancelButton = screen.getByRole('button', { name: 'Cancel and discard this image' });
+    expect(cancelButton.hasAttribute('disabled')).toBe(true);
+  });
+
+  it('forceRegenerating=false (default) renders the normal interactive footer', () => {
+    const { container } = render(
+      <ReviewCard
+        price="0.05"
+        artifactNoun="image"
+        onRegenerate={vi.fn().mockResolvedValue(undefined)}
+        onSendMessage={vi.fn()}
+      />,
+    );
+
+    expect(container.textContent).toContain('Review');
+    expect(container.textContent).not.toContain('Regenerating…');
+
+    const regenButton = screen.getByRole('button', { name: 'Regenerate this image' });
+    expect(regenButton.querySelector('svg')).toBeNull();
+    expect(regenButton.hasAttribute('disabled')).toBe(false);
+  });
+
+  it('forceCollapsed wins over forceRegenerating (collapsed > regenerating)', () => {
+    // Defensive: if both flags are true (shouldn't happen in practice
+    // since they're mutually exclusive at the MppReceiptGrid derivation
+    // — superseded cells get forceCollapsed=true, latest settled gets
+    // forceRegenerating=true), the collapsed path wins. This matches
+    // how the new derivation works: `isRegenerating={tool.toolUseId ===
+    // latestId && regenInFlight}` is exclusive of `isSuperseded`.
+    const { container } = render(
+      <ReviewCard
+        price="0.05"
+        artifactNoun="image"
+        onRegenerate={vi.fn().mockResolvedValue(undefined)}
+        onSendMessage={vi.fn()}
+        forceCollapsed
+        forceRegenerating
+      />,
+    );
+
+    // Entire footer collapsed → no Regenerating… label, no AudricMark.
+    expect(container.textContent).not.toContain('Regenerating…');
+    expect(screen.queryByRole('button', { name: /regenerate/i })).toBeNull();
+  });
+
+  it('forceRegenerating + a user click does not re-fire onRegenerate (already latched)', async () => {
+    // Once the parent says "regen is in flight", the buttons are
+    // disabled — clicking should be a no-op even if the user manages
+    // to fire the event somehow (e.g. keyboard, debug tooling).
+    const onRegenerate = vi.fn().mockResolvedValue(undefined);
+    render(
+      <ReviewCard
+        price="0.05"
+        artifactNoun="image"
+        onRegenerate={onRegenerate}
+        onSendMessage={vi.fn()}
+        forceRegenerating
+      />,
+    );
+    const regenButton = screen.getByRole('button', { name: 'Regenerate this image' });
+    fireEvent.click(regenButton);
+    // Disabled buttons in HTML5 don't fire onClick at all, so this is
+    // belt-and-suspenders verification.
+    expect(onRegenerate).toHaveBeenCalledTimes(0);
+  });
+});

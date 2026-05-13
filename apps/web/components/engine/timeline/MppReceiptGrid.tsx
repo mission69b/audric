@@ -149,6 +149,33 @@ export function MppReceiptGrid({
   // Both paths agree on `settled[length - 1]` being the latest.
   const latestId = settled[settled.length - 1].toolUseId;
 
+  // [SPEC 23C C10 followup #3 / 2026-05-13] Detect "regen in flight"
+  // by sibling data: if the cluster contains ANY non-settled tool
+  // (status running / streaming), the user just tapped Regenerate on
+  // the latest settled card and the new pay_api dispatch is mid-flight.
+  // Pass `isRegenerating=true` to the latest settled card's <ReviewCard>
+  // so its AudricMark + "Regenerating…" footer survives the single-card
+  // → cluster remount that drops local React state.
+  //
+  // Why derive from the cluster `tools[]` (not `settled[]`): the new
+  // running pay_api block IS in `tools[]` (added by upsertToolBlock
+  // step 3 in `handleRegenerateToolCall`) but filtered out of
+  // `settled[]` since its status is 'running'. So `tools.length >
+  // settled.length` is the cleanest "is there a pending sibling?"
+  // test. Once the new dispatch settles (status flips to done/error),
+  // the gap closes, supersede flips, and the original card's footer
+  // collapses normally — `isRegenerating` becomes false (no more
+  // pending siblings), `isSuperseded` becomes true (the now-latest is
+  // the new card).
+  //
+  // Live path AND rehydrated path both reach this code with the same
+  // semantics: rehydrated clusters never have running tools (the
+  // engine only persists settled blocks), so `isRegenerating` is
+  // always false on rehydration. That's correct — there's no in-flight
+  // regen to surface after a page refresh; the footer-position bug
+  // (followup #2 above) is the only rehydrate-path concern.
+  const regenInFlight = tools.length > settled.length;
+
   return (
     <div className="space-y-1.5">
       {subtitle && (
@@ -192,6 +219,7 @@ export function MppReceiptGrid({
                 onSendMessage={onSendMessage}
                 onRegenerateToolCall={onRegenerateToolCall}
                 isSuperseded={tool.toolUseId !== latestId}
+                isRegenerating={tool.toolUseId === latestId && regenInFlight}
               />
             </MountAnimate>
           ))}
