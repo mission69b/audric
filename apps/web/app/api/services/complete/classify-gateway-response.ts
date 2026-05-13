@@ -27,6 +27,17 @@
  *
  *   Until then, the route preserves `paymentDigest` in the response so a
  *   future support / refund flow can locate the orphaned on-chain transfer.
+ *   The full chain that delivers settleVerdict / settleReason / paymentDigest
+ *   to the LLM is:
+ *     route.ts (this file's classification)
+ *       → 402 body { paymentConfirmed: false, settleVerdict, settleReason, paymentDigest }
+ *       → useAgent.payService throws SettleNoDeliveryError carrying all 3 fields
+ *       → executeToolAction.pay_api catches into { status: 402, paymentConfirmed: false,
+ *           settleVerdict, settleReason, paymentDigest, hint }
+ *       → resume-with-input persists into TurnMetrics, LLM reads on next turn
+ *       → engine pay.ts D-8 prompt tells LLM how to interpret the fields.
+ *   See SPEC_26_MPP_SETTLE_ON_SUCCESS.md §6 + audric `hooks/useAgent.ts`
+ *   `SettleNoDeliveryError` for the typed-error contract.
  *
  * The helper is intentionally a pure function over `Response`. It performs
  * no I/O, no logging, no policy decisions — just inspects status + headers

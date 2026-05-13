@@ -87,6 +87,101 @@ describe('executeToolAction — pay_api wraps ServiceDeliveryError into doNotRet
   });
 });
 
+describe('executeToolAction — pay_api wraps SettleNoDeliveryError into free-retry shape (SPEC 26)', () => {
+  it('returns success=false with paymentConfirmed=false + status=402 + settleVerdict + settleReason', async () => {
+    const { SettleNoDeliveryError } = await import('./useAgent');
+
+    const sdk = fakeAgent({
+      payService: vi.fn().mockRejectedValue(
+        new SettleNoDeliveryError(
+          'OpenAI 400 — Invalid model',
+          'refundable',
+          'invalid model: dall-e-3',
+          '0xpredigest',
+        ),
+      ),
+    });
+
+    const out = await executeToolAction(sdk, 'pay_api', {
+      url: 'https://mpp.t2000.ai/openai/v1/images/generations',
+    });
+
+    // Top-level wrapper signals "tool ran but service NOT delivered + NOT charged".
+    expect(out.success).toBe(false);
+
+    const data = out.data as {
+      success: boolean;
+      error: string;
+      status: number;
+      paymentConfirmed: boolean;
+      settleVerdict: string;
+      settleReason: string;
+      paymentDigest: string | null;
+      serviceId?: string;
+      hint: string;
+    };
+    expect(data.success).toBe(false);
+    expect(data.error).toContain('Invalid model');
+
+    // The four fields the engine D-8 prompt depends on must be present.
+    expect(data.status).toBe(402);
+    expect(data.paymentConfirmed).toBe(false);
+    expect(data.settleVerdict).toBe('refundable');
+    expect(data.settleReason).toBe('invalid model: dall-e-3');
+
+    // Bookkeeping handle for SPEC 26 O-4 deferred refund(digest) flow.
+    expect(data.paymentDigest).toBe('0xpredigest');
+
+    // serviceId derived from the URL so vendor-aware UI surfaces still resolve.
+    expect(data.serviceId).toBe('openai/v1/images/generations');
+
+    // Hint text is what the LLM reads to pick transient-vs-correctable.
+    expect(data.hint).toContain('Free retry');
+    expect(data.hint).toContain('settleReason');
+  });
+
+  it('preserves paymentDigest=null when the gateway response lacked one', async () => {
+    const { SettleNoDeliveryError } = await import('./useAgent');
+
+    const sdk = fakeAgent({
+      payService: vi.fn().mockRejectedValue(
+        new SettleNoDeliveryError('upstream 502', 'charge-failed', 'Sui rpc 503', null),
+      ),
+    });
+
+    const out = await executeToolAction(sdk, 'pay_api', { url: 'https://mpp.t2000.ai/x/y' });
+    const data = out.data as { paymentDigest: string | null; settleVerdict: string };
+    expect(data.paymentDigest).toBeNull();
+    expect(data.settleVerdict).toBe('charge-failed');
+  });
+
+  it('discriminates SettleNoDeliveryError BEFORE ServiceDeliveryError (no charge ≠ already charged)', async () => {
+    // Regression guard: the catch order in executeToolAction matters.
+    // SettleNoDeliveryError extends Error (not ServiceDeliveryError), so a
+    // mis-ordered instanceof check would mis-route this into the
+    // "paymentConfirmed: true, doNotRetry: true" branch — exactly the
+    // wrong message to send the user / LLM.
+    const { SettleNoDeliveryError } = await import('./useAgent');
+
+    const sdk = fakeAgent({
+      payService: vi.fn().mockRejectedValue(
+        new SettleNoDeliveryError('upstream 400', 'refundable', 'invalid prompt', '0xdig'),
+      ),
+    });
+
+    const out = await executeToolAction(sdk, 'pay_api', { url: 'https://mpp.t2000.ai/x/y' });
+    const data = out.data as {
+      paymentConfirmed: boolean;
+      doNotRetry?: boolean;
+      warning?: string;
+    };
+    // Must NOT be the doNotRetry branch's payload.
+    expect(data.paymentConfirmed).toBe(false);
+    expect(data.doNotRetry).toBeUndefined();
+    expect(data.warning).toBeUndefined();
+  });
+});
+
 describe('executeToolAction — volo_stake exposes vSuiReceived from balance changes', () => {
   it('returns vSuiReceived parsed from positive vSUI delta', async () => {
     const sdk = fakeAgent({

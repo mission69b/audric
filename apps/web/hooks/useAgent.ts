@@ -31,6 +31,51 @@ export class ServiceDeliveryError extends Error {
 }
 
 /**
+ * [SPEC 26 P5 review remediation / 2026-05-13] Typed error for the
+ * gateway's settle-on-success "no delivery, no charge" path.
+ *
+ * Why a typed class (vs reusing `ServiceDeliveryError` or throwing
+ * generic `Error`):
+ *
+ *   - `ServiceDeliveryError` semantically means "you WERE charged but
+ *     the service failed" — its UI surface (`<ErrorReceipt>`) tells the
+ *     user "payment of $X confirmed; contact support for refund." That
+ *     is the OPPOSITE of what SPEC 26 settle-on-success communicates
+ *     ("you were NOT charged, free to retry").
+ *   - Pre-this-fix, `payService` threw a generic `Error` for SPEC 26
+ *     402s, which `executeToolAction` then wrapped into `{
+ *     paymentConfirmed: false }` — correct top-line signal but the
+ *     `settleVerdict` / `settleReason` / 402-status fields the LLM
+ *     prompt's D-8 paragraph relies on were dropped on the floor.
+ *
+ * Carries the `paymentDigest` because audric pre-settles USDC on-chain
+ * via Enoki BEFORE the gateway is called (SPEC 26 O-4 architectural
+ * caveat) — the digest is the bookkeeping handle for the deferred
+ * `refund(digest)` flow once the MPP refund primitive ships.
+ */
+export class SettleNoDeliveryError extends Error {
+  /** SPEC 26 verdict from the gateway: 'refundable' | 'charge-failed' (and any future verdict). */
+  settleVerdict: string;
+  /** Operator-facing reason from the gateway's `x-settle-reason` header. */
+  settleReason: string;
+  /** Sui digest of the on-chain pre-settlement transfer (audric pre-charges before calling the gateway). */
+  paymentDigest: string | null;
+
+  constructor(
+    message: string,
+    settleVerdict: string,
+    settleReason: string,
+    paymentDigest: string | null,
+  ) {
+    super(message);
+    this.name = 'SettleNoDeliveryError';
+    this.settleVerdict = settleVerdict;
+    this.settleReason = settleReason;
+    this.paymentDigest = paymentDigest;
+  }
+}
+
+/**
  * [v0.55.x / S.122] Typed error for Enoki session-expired (`code: 'expired'`
  * or `code: 'jwt_error'` — both classified as `session_expired` by
  * `lib/enoki-error.ts`). Thrown by the `sponsoredTransaction` helper when
@@ -399,6 +444,27 @@ export function useAgent() {
 
             if (!completeRes.ok) {
               const err = await completeRes.json();
+              // [SPEC 26 P5 review remediation / 2026-05-13] If audric's
+              // services/complete classified the gateway response as
+              // settle-no-delivery (`paymentConfirmed: false` + `serviceStatus:
+              // 402` + a `settleVerdict` field), throw the typed error so
+              // executeToolAction can preserve verdict + reason for the LLM
+              // (D-8 prompt depends on settleReason for retry decisions).
+              // Order matters: this branch runs BEFORE the legacy
+              // `paymentConfirmed: true` branch so the discriminator can never
+              // collide.
+              if (
+                completeRes.status === 402 &&
+                err.paymentConfirmed === false &&
+                typeof err.settleVerdict === 'string'
+              ) {
+                throw new SettleNoDeliveryError(
+                  err.error ?? 'Upstream rejected; no charge.',
+                  err.settleVerdict,
+                  typeof err.settleReason === 'string' ? err.settleReason : 'unknown',
+                  typeof err.paymentDigest === 'string' ? err.paymentDigest : null,
+                );
+              }
               if (err.paymentConfirmed && err.paymentDigest) {
                 throw new ServiceDeliveryError(
                   err.error ?? 'Service delivery failed after payment',

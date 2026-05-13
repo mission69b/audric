@@ -2,6 +2,7 @@ import { parseActualAmount, buildSwapDisplayData } from '@/lib/balance-changes';
 import {
   EnokiSessionExpiredError,
   ServiceDeliveryError,
+  SettleNoDeliveryError,
   type AgentActions,
   type BundleStep,
 } from '@/hooks/useAgent';
@@ -430,6 +431,33 @@ async function executeToolActionImpl(
         // for any field the SDK already populates.
         return { success: true, data: { ...(serviceResult as object), serviceId } };
       } catch (payErr) {
+        // [SPEC 26 P5 review remediation / 2026-05-13] SettleNoDeliveryError
+        // discriminates BEFORE ServiceDeliveryError because the two errors
+        // mean OPPOSITE things (no-charge-free-retry vs charged-don't-retry).
+        // The LLM-facing payload mirrors `pay.ts` D-8 prompt — `status: 402`
+        // + `paymentConfirmed: false` + `settleVerdict` + `settleReason` so
+        // the LLM can pick "retry as-is" (transient) vs "fix params then
+        // retry" (correctable). `paymentDigest` is preserved as a bookkeeping
+        // handle for the deferred refund(digest) primitive (SPEC 26 O-4).
+        if (payErr instanceof SettleNoDeliveryError) {
+          return {
+            success: false,
+            data: {
+              success: false,
+              error: payErr.message,
+              status: 402,
+              paymentConfirmed: false,
+              settleVerdict: payErr.settleVerdict,
+              settleReason: payErr.settleReason,
+              paymentDigest: payErr.paymentDigest,
+              serviceId,
+              hint:
+                'Free retry — the gateway probed upstream and chose NOT to consume the payment receipt. ' +
+                'Use settleReason to decide: transient (rate-limit, 5xx) → retry as-is; correctable ' +
+                '(invalid model / size / prompt) → fix the param then retry.',
+            },
+          };
+        }
         if (payErr instanceof ServiceDeliveryError) {
           const price = (payErr.meta as { price?: string | number } | undefined)?.price;
           const priceLabel = price ?? '?';
