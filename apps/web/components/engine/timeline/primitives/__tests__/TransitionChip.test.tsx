@@ -42,7 +42,10 @@ describe('TransitionChip', () => {
 
   it('flanks the label with two aria-hidden em-rules (matches TaskInitiated shape)', () => {
     const { container } = render(<TransitionChip state="quoting" />);
-    const rules = container.querySelectorAll('[aria-hidden="true"]');
+    // Scope to the em-rule divs specifically — since SPEC 23C C10 the
+    // AudricMark also carries aria-hidden, so the prior `[aria-hidden]`
+    // bare selector started counting it too.
+    const rules = container.querySelectorAll('div[aria-hidden="true"]');
     expect(rules.length).toBe(2);
   });
 
@@ -59,4 +62,28 @@ describe('TransitionChip', () => {
   // Production behavior is exercised by the smoke gate (G21-1) instead, and
   // the per-state render tests above already cover the state-driven copy
   // contract for every TransitionState value.
+
+  // ─── SPEC 23C C10 follow-up — AudricMark for in-progress states ────
+  //
+  // The brand AudricMark renders next to the label for every state
+  // EXCEPT `done` (terminal — no longer in progress, so the animated
+  // mark would lie about activity). `done` shows the label alone.
+  //
+  // We assert presence/absence via the `<svg>` AudricMark renders;
+  // no other svg lives inside this primitive, so the count is a clean
+  // proxy for "is the mark there?".
+
+  const IN_PROGRESS: TransitionState[] = ['routing', 'quoting', 'confirming', 'settling'];
+
+  it.each(IN_PROGRESS)('renders the AudricMark <svg> for in-progress state="%s"', (state) => {
+    const { container } = render(<TransitionChip state={state} />);
+    const svgs = container.querySelectorAll('svg');
+    expect(svgs.length).toBe(1);
+  });
+
+  it('does NOT render the AudricMark for state="done" (terminal state)', () => {
+    const { container } = render(<TransitionChip state="done" />);
+    const svgs = container.querySelectorAll('svg');
+    expect(svgs.length).toBe(0);
+  });
 });
