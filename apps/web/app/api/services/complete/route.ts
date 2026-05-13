@@ -7,6 +7,7 @@ import { GATEWAY_BASE } from '@/lib/service-gateway';
 import { prisma } from '@/lib/prisma';
 import { env } from '@/lib/env';
 import { extractVendorErrorMessage } from './extract-vendor-error-message';
+import { classifyGatewayResponse } from './classify-gateway-response';
 
 export const runtime = 'nodejs';
 
@@ -240,7 +241,43 @@ async function callGateway(
     }
   }
 
-  if (!serviceResponse.ok && serviceResponse.status !== 402) {
+  const classification = classifyGatewayResponse(serviceResponse);
+
+  if (classification.kind === 'settle-no-delivery') {
+    // SPEC 26 settle-on-success path. Gateway probed upstream, classified the
+    // response, and decided NOT to consume the payment receipt — so the LLM
+    // should treat this as a free-retry-eligible failure (mirrors the D-8
+    // paragraph in `packages/engine/src/tools/pay.ts`).
+    //
+    // CAVEAT (revisit when SPEC 26 O-4 `refund(digest)` ships post-Audric-Store):
+    // in audric's flow the on-chain Sui transfer to treasury has ALREADY happened
+    // by the time this route hands off to the gateway (Enoki-sponsored execute
+    // happened above). A 'refundable' verdict means the gateway didn't credit
+    // the receipt, so the USDC sits in treasury orphaned until the deferred
+    // refund primitive ships. We surface `paymentConfirmed: false` because that
+    // produces correct LLM behavior (offer a free retry to the user) — but we
+    // also preserve `paymentDigest` so a future support / refund flow can locate
+    // the orphaned transfer. See `classify-gateway-response.ts` for the full
+    // architectural note.
+    const errMsg = extractVendorErrorMessage(result, classification.reason);
+    console.warn(
+      `[services/complete] SPEC 26 settle 402 (verdict=${classification.verdict}): ${errMsg} digest=${paymentDigest}`,
+    );
+    return NextResponse.json(
+      {
+        error: errMsg,
+        serviceStatus: 402,
+        paymentConfirmed: false,
+        settleVerdict: classification.verdict,
+        settleReason: classification.reason,
+        paymentDigest,
+        meta,
+      },
+      { status: 402 },
+    );
+  }
+
+  if (classification.kind === 'paid-but-failed') {
     // Vendor error shapes vary — OpenAI returns `{ error: { code, message, type } }`
     // (object), gateway/MPP return `{ error: "string" }` (string), others sometimes
     // return `{ message: "string" }`. Pre-fix this block trusted that `.error` was a
