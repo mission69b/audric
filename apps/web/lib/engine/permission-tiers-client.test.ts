@@ -510,3 +510,106 @@ describe('aggressive preset (F14)', () => {
     ).toBe(false);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────
+// [F19 / 2026-05-13] borrow MUST never bypass into auto via agentBudget.
+//
+// Production smoke (SPEC 23C smoke report Issue #2) caught a $0.50
+// borrow auto-executing on funkii's account. Root cause: dashboard-content
+// defaults `agentBudget = 0.50` for every new session AND the
+// `agentBudget` fast-path in resolveStepTier ran BEFORE the tier
+// resolver, so any borrow ≤ $0.50 short-circuited to 'auto' and skipped
+// the always-confirm invariant in safeguards-defense-in-depth.mdc.
+//
+// The fix excludes 'borrow' from the agentBudget fast-path. Other ops
+// (save / swap / send / pay / repay / withdraw) keep the convenience.
+// ─────────────────────────────────────────────────────────────────────
+
+describe('shouldClientAutoApprove — borrow + agentBudget (F19)', () => {
+  // Each preset × multiple borrow amounts × multiple agentBudget values.
+  // The Cartesian product is the complete safety surface: borrow must
+  // ALWAYS surface the card, no matter how the user has tuned their
+  // session bypass.
+  it('borrow at any amount with any agentBudget never auto-approves (every preset)', () => {
+    for (const [presetName, config] of Object.entries(PERMISSION_PRESETS)) {
+      for (const amount of [0.01, 0.5, 1, 5, 25]) {
+        for (const agentBudget of [0, 0.5, 1, 5, 100]) {
+          expect(
+            shouldClientAutoApprove(
+              { toolName: 'borrow', input: { amount, asset: 'USDC' } },
+              config,
+              0,
+              PRICES,
+              agentBudget,
+            ),
+            `${presetName} preset / borrow $${amount} / agentBudget $${agentBudget} must NOT auto`,
+          ).toBe(false);
+        }
+      }
+    }
+  });
+
+  it('reproduces the exact production bug: conservative + borrow $0.50 + agentBudget $0.50 → confirm', () => {
+    // funkii's account at smoke time. agentBudget was the default
+    // useState(0.50) in dashboard-content.tsx; preset was conservative.
+    expect(
+      shouldClientAutoApprove(
+        { toolName: 'borrow', input: { amount: 0.5, asset: 'USDC' } },
+        PERMISSION_PRESETS.conservative,
+        0,
+        PRICES,
+        0.5,
+      ),
+    ).toBe(false);
+  });
+
+  it('agentBudget still bypasses save/swap/send/repay (other ops are unchanged)', () => {
+    // Sanity — the fix must not regress the agentBudget convenience for
+    // non-borrow ops. A $5 save with agentBudget=$10 should still auto.
+    expect(
+      shouldClientAutoApprove(
+        { toolName: 'save_deposit', input: { amount: 5, asset: 'USDC' } },
+        PERMISSION_PRESETS.conservative,
+        0,
+        PRICES,
+        10,
+      ),
+    ).toBe(true);
+    expect(
+      shouldClientAutoApprove(
+        { toolName: 'swap_execute', input: { fromAmount: 5, fromAsset: 'USDC', toAsset: 'SUI' } },
+        PERMISSION_PRESETS.conservative,
+        0,
+        PRICES,
+        10,
+      ),
+    ).toBe(true);
+    expect(
+      shouldClientAutoApprove(
+        { toolName: 'repay_debt', input: { amount: 5, asset: 'USDC' } },
+        PERMISSION_PRESETS.conservative,
+        0,
+        PRICES,
+        10,
+      ),
+    ).toBe(true);
+  });
+
+  it('bundle with a borrow leg always surfaces the card, even if every leg is sub-agentBudget', () => {
+    // 4-op bundle, all legs at $0.30, agentBudget = $1. Without the
+    // borrow exception every leg would fast-path to auto; with the
+    // exception the borrow leg forces the worst-tier propagation in
+    // shouldClientAutoApprove and the card surfaces.
+    const bundle = {
+      toolName: 'repay_debt',
+      input: { amount: 0.3, asset: 'USDC' },
+      steps: [
+        { toolName: 'repay_debt', toolUseId: 'a', attemptId: 'a', input: { amount: 0.3 }, description: '' },
+        { toolName: 'swap_execute', toolUseId: 'b', attemptId: 'b', input: { fromAmount: 0.3, fromAsset: 'USDC', toAsset: 'SUI' }, description: '' },
+        { toolName: 'borrow', toolUseId: 'c', attemptId: 'c', input: { amount: 0.3, asset: 'USDC' }, description: '' },
+        { toolName: 'save_deposit', toolUseId: 'd', attemptId: 'd', input: { amount: 0.3 }, description: '' },
+      ],
+    };
+    expect(shouldClientAutoApprove(bundle, PERMISSION_PRESETS.aggressive, 0, PRICES, 1, [])).toBe(false);
+  });
+});

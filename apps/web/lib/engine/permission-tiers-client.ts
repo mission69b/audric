@@ -309,7 +309,22 @@ function resolveStepTier(
     }
   }
 
-  if (agentBudget > 0 && Number.isFinite(usdValue) && usdValue <= agentBudget) {
+  // [F19 / 2026-05-13] borrow is excluded from the agentBudget fast-path.
+  // The defense-in-depth invariant in safeguards-defense-in-depth.mdc is
+  // "borrow always confirms (autoBelow: 0 across every preset) — debt is
+  // too consequential to silently take on." Pre-F19 the agentBudget
+  // fast-path bypassed that invariant: dashboard-content.tsx defaulted
+  // `agentBudget = 0.50` for every new session, so any borrow ≤ $0.50
+  // resolved to `auto` and the PermissionCard never rendered. Caught
+  // during the SPEC 23C smoke run on funkii's account (Issue #2 in
+  // SPEC_23C_SMOKE_REPORT.md). Only `borrow` is excluded; save / swap /
+  // send / pay / repay / withdraw still get the agentBudget convenience.
+  if (
+    operation !== 'borrow' &&
+    agentBudget > 0 &&
+    Number.isFinite(usdValue) &&
+    usdValue <= agentBudget
+  ) {
     return 'auto';
   }
 
@@ -337,6 +352,10 @@ function resolveStepTier(
  *      regression we're closing (the lost-funds incident was $13.53).
  *   3. `agentBudget` fast path — explicit per-session ceiling that the
  *      user set in the dashboard. Independent of the safety preset.
+ *      EXCEPT `borrow`: debt always confirms (autoBelow: 0 invariant
+ *      from safeguards-defense-in-depth.mdc). The agentBudget bypass
+ *      cannot weaken the borrow rule — see F19 (2026-05-13) repro of
+ *      the silent $0.50 borrow window the default agentBudget opened.
  *   4. Tier resolver against the user's preset, with `sessionSpendUsd`
  *      enforcing the daily autonomous cap and the contact-aware send
  *      rule.
