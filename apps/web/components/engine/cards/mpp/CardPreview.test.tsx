@@ -79,7 +79,13 @@ describe('CardPreview', () => {
   // [SPEC 23B-MPP6 UX polish / 2026-05-12] Vendor + artifact naming.
   // Drops "PREVIEW"/"GENERATED" suffix — these cards ARE the final
   // artifact, not a preview. Pattern: "VENDOR · IMAGE".
-  it('uses "DALL-E · IMAGE" caption for openai/v1/images/generations', () => {
+  //
+  // [2026-05-14] Caption was `'DALL-E · IMAGE'` until the dall-e-* shutdown
+  // 2026-05-12 made the brand name wrong. Now `'OPENAI · IMAGE'` —
+  // vendor-level (matches the existing `'OPENAI · MPP · FAILED'` failure
+  // card pattern), future-proof against further model churn, and the
+  // literal "DALL-E" never appears in user-facing chrome again.
+  it('uses "OPENAI · IMAGE" caption for openai/v1/images/generations', () => {
     const { container } = render(
       <CardPreview
         data={{
@@ -89,7 +95,9 @@ describe('CardPreview', () => {
         }}
       />,
     );
-    expect(container.textContent).toContain('DALL-E · IMAGE');
+    expect(container.textContent).toContain('OPENAI · IMAGE');
+    // Hard guard: the literal "DALL-E" must NEVER reappear in this caption.
+    expect(container.textContent).not.toMatch(/DALL-E/i);
   });
 
   it('uses "FAL FLUX · IMAGE" caption for fal/fal-ai/flux/dev serviceId', () => {

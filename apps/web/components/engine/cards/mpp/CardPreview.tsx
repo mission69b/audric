@@ -56,7 +56,7 @@ function extractImage(result: unknown): ExtractedImage | null {
   return null;
 }
 
-// [SPEC 23B-MPP6 UX polish / 2026-05-12] Vendor + artifact naming.
+// [SPEC 23B-MPP6 UX polish / 2026-05-12 → updated 2026-05-14] Vendor + artifact naming.
 //
 // `serviceId` is the post-gateway slug — e.g. `openai/v1/images/generations`,
 // `fal-ai/flux-pro`, `stability-ai/v1/generate`. Map URL patterns to a
@@ -64,12 +64,19 @@ function extractImage(result: unknown): ExtractedImage | null {
 // the image. Falls back to plain "IMAGE" (NOT "IMAGE PREVIEW" — these
 // cards ARE the final artifact, not previews).
 //
+// 2026-05-14 update: openai images label was `'DALL-E · IMAGE'` — wrong since
+// 2026-05-12 when OpenAI shut down dall-e-3 + dall-e-2 and the only valid
+// model on this endpoint became gpt-image-1. Switched to `'OPENAI · IMAGE'`
+// (vendor-level, consistent with existing `OPENAI · MPP · FAILED` failure
+// card, future-proof against further model churn). The literal string
+// "DALL-E" never reappears in user-facing chrome.
+//
 // Scales: same pattern applies to AUDIO / MUSIC / VIDEO surfaces — see
 // `vendorLabel` siblings in any future audio/video card primitives.
 function vendorLabel(serviceId: string | undefined): string {
   if (!serviceId) return 'IMAGE';
   const lc = serviceId.toLowerCase();
-  if (lc.includes('openai') && lc.includes('image')) return 'DALL-E · IMAGE';
+  if (lc.includes('openai') && lc.includes('image')) return 'OPENAI · IMAGE';
   if (lc.includes('flux-pro')) return 'FAL FLUX PRO · IMAGE';
   if (lc.includes('flux-realism')) return 'FAL FLUX REALISM · IMAGE';
   if (lc.includes('flux')) return 'FAL FLUX · IMAGE';

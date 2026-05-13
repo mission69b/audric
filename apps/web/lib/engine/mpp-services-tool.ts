@@ -11,8 +11,8 @@ import { z } from 'zod';
  * consumers want this — they may use any service the gateway hosts.
  *
  * Audric is the deliberate exception. The system prompt teaches the
- * LLM to use ONLY OpenAI's 4 endpoints (DALL-E images, Whisper
- * transcription, GPT-4o chat, TTS) and decline everything else as
+ * LLM to use ONLY OpenAI's 4 endpoints (image generation via gpt-image-1,
+ * Whisper transcription, GPT-4o chat, TTS) and decline everything else as
  * "coming soon via dedicated tools" — see `spec_native_content_tools`
  * for the planned PDF / postcard / email replacements.
  *
@@ -109,7 +109,7 @@ function matchesQuery(service: GatewayService, q: string): boolean {
 export const audricMppServicesTool = buildTool({
   name: 'mpp_services',
   description:
-    'Discover available MPP gateway services. Returns service names, descriptions, endpoints with required parameters, and pricing. Use BEFORE calling pay_api. Audric currently supports OpenAI only (DALL-E images, Whisper transcription, GPT-4o chat, TTS). With no args, returns the OpenAI service catalog as a single card. Use `query` to keyword-search ("voice", "image", "transcribe"). Use `category` to filter (only "ai" today). Use `mode: "summary"` only if you want a category-counts overview without the full list.',
+    'Discover available MPP gateway services. Returns service names, descriptions, endpoints with required parameters, and pricing. Use BEFORE calling pay_api. Audric currently supports OpenAI only (image generation via gpt-image-1, Whisper transcription, GPT-4o chat, TTS). With no args, returns the OpenAI service catalog as a single card. Use `query` to keyword-search ("voice", "image", "transcribe"). Use `category` to filter (only "ai" today). Use `mode: "summary"` only if you want a category-counts overview without the full list.',
   inputSchema: z.object({
     query: z
       .string()

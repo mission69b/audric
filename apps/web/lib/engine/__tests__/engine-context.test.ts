@@ -26,11 +26,22 @@ describe('STATIC_SYSTEM_PROMPT — OpenAI-only locked set (post UX polish #2)', 
   });
 
   it('enumerates exactly the 4 OpenAI endpoints with their costs', () => {
+    // 2026-05-14: openai images line was `DALL-E images $0.05` — updated to
+    // `image generation (gpt-image-1) $0.05` after the dall-e-* shutdown
+    // (2026-05-12) and to stop the LLM narrating "DALL-E" to users.
     expect(STATIC_SYSTEM_PROMPT).toContain('openai');
-    expect(STATIC_SYSTEM_PROMPT).toContain('DALL-E images $0.05');
+    expect(STATIC_SYSTEM_PROMPT).toContain('image generation (gpt-image-1) $0.05');
     expect(STATIC_SYSTEM_PROMPT).toContain('Whisper transcription $0.01');
     expect(STATIC_SYSTEM_PROMPT).toContain('GPT-4o chat $0.01');
     expect(STATIC_SYSTEM_PROMPT).toContain('TTS $0.02');
+  });
+
+  it('does NOT mention DALL-E anywhere in STATIC_SYSTEM_PROMPT (post-shutdown brand cleanup)', () => {
+    // [2026-05-14] DALL-E was shut down 2026-05-12; gpt-image-1 is the only
+    // valid image model. The LLM was narrating "Image generation via DALL-E
+    // is $0.05" to users because the prompt taught it that brand. Hard
+    // assertion: the prompt must not mention DALL-E in any case.
+    expect(STATIC_SYSTEM_PROMPT).not.toMatch(/DALL-E|DALLE|dall-e|dalle/i);
   });
 
   it('does NOT recommend removed vendors as pay_api targets', () => {
@@ -122,7 +133,10 @@ describe('STATIC_SYSTEM_PROMPT — OpenAI-only locked set (post UX polish #2)', 
   });
 
   it('Tool usage section mentions the OpenAI-only catalog, not dropped vendors', () => {
-    expect(STATIC_SYSTEM_PROMPT).toMatch(/For image generation \(DALL-E\), audio transcription \(Whisper\), content generation \(GPT-4o, on explicit ask only\), or text-to-speech \(OpenAI TTS\), use pay_api/);
+    // 2026-05-14: removed the "(DALL-E)" parenthetical from the image-gen
+    // bullet. Same intent — teach the LLM that pay_api covers image / audio
+    // / content / TTS — without leaking the retired DALL-E brand name.
+    expect(STATIC_SYSTEM_PROMPT).toMatch(/For image generation, audio transcription \(Whisper\), content generation \(GPT-4o, on explicit ask only\), or text-to-speech \(OpenAI TTS\), use pay_api/);
     expect(STATIC_SYSTEM_PROMPT).not.toMatch(/For weather, translation, image gen, postcards, email, and other real-world services/);
   });
 
