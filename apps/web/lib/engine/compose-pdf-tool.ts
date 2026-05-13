@@ -74,6 +74,7 @@ const TEXT_FONT_SIZE = 11;
 const TITLE_FONT_SIZE = 16;
 const CAPTION_FONT_SIZE = 9;
 const LINE_HEIGHT = 14;
+const IMAGE_FETCH_TIMEOUT_MS = 15_000;
 
 // Vercel Blob `put` returns a permanent URL. SPEC § D-2 lock: 7-day
 // expiry. We surface this in the `expiresAt` field so the LLM can warn
@@ -311,7 +312,24 @@ async function renderImagePage(
   // No allow-list — the v0.1 spec rejected gating on host because the
   // realistic source set is too broad (OpenAI CDN, Replicate, Walrus,
   // etc.) and a deny-list is no better than browser SOP.
-  const res = await fetch(page.url);
+  //
+  // 15s per-image timeout. Without this, a hung vendor CDN blocks until
+  // Vercel's serverless function limit (60s on Pro) and the user gets
+  // an opaque 504 instead of a clean "image fetch timed out" message.
+  // 15s aligns with the audric pattern for non-critical-path vendor
+  // fetches; BlockVision uses 3s on its critical path because that's
+  // what its SLO budget allows.
+  let res: Response;
+  try {
+    res = await fetch(page.url, { signal: AbortSignal.timeout(IMAGE_FETCH_TIMEOUT_MS) });
+  } catch (err) {
+    const isTimeout = err instanceof DOMException && err.name === 'TimeoutError';
+    throw new Error(
+      isTimeout
+        ? `Image fetch timed out after ${IMAGE_FETCH_TIMEOUT_MS / 1000}s: ${page.url}`
+        : `Failed to fetch image at ${page.url}: ${(err as Error).message}`,
+    );
+  }
   if (!res.ok) {
     throw new Error(
       `Failed to fetch image at ${page.url}: ${res.status} ${res.statusText}`,
@@ -470,8 +488,6 @@ function renderMarkdownPage(
     f: import('pdf-lib').PDFFont,
     indentPx: number,
   ): void {
-    const indented = ' '.repeat(0); // visual indent applied via x-offset, not whitespace prefix
-    void indented;
     const lines = wrapText(text, f, size, maxLineWidth - indentPx);
     for (const line of lines) {
       ensureSpace(LINE_HEIGHT);

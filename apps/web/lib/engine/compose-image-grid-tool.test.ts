@@ -380,6 +380,40 @@ describe('composeImageGridTool.call — fetch error paths', () => {
       ),
     ).rejects.toThrow(/sharp/i);
   });
+
+  it('surfaces a clean per-image timeout message when one fetch hangs past 15s', async () => {
+    // Same pattern as the compose_pdf timeout test: synthesize the
+    // DOMException('TimeoutError') that AbortSignal.timeout throws so
+    // we exercise the catch branch without waiting 15s. The error
+    // message identifies WHICH image timed out (i+1 from the parallel
+    // fetch loop) — important UX because the user can re-issue with a
+    // narrower image set.
+    let callCount = 0;
+    const goodPng = await syntheticPng({ r: 0, g: 255, b: 0 });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        callCount++;
+        if (callCount === 2) {
+          throw new DOMException('aborted', 'TimeoutError');
+        }
+        return {
+          ok: true,
+          status: 200,
+          statusText: 'OK',
+          arrayBuffer: async () =>
+            goodPng.buffer.slice(goodPng.byteOffset, goodPng.byteOffset + goodPng.byteLength),
+        };
+      }),
+    );
+
+    await expect(
+      composeImageGridTool.call!(
+        { images: ['https://x.com/a.png', 'https://slow.example.com/b.png'] },
+        ctx(),
+      ),
+    ).rejects.toThrow(/image 2.*timed out after 15s/i);
+  });
 });
 
 // ─── Result shape (D-2 expiry) ───────────────────────────────────────

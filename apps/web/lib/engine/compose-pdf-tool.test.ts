@@ -339,6 +339,28 @@ describe('composePdfTool.call — image pages', () => {
     ).rejects.toThrow(/Failed to fetch image/i);
   });
 
+  it('surfaces a clean timeout message when the image fetch hangs past the 15s cap', async () => {
+    // The tool wraps each fetch in `AbortSignal.timeout(15_000)`; when
+    // that fires, fetch throws a DOMException with name 'TimeoutError'.
+    // We don't actually wait 15s in the test — we synthesize the
+    // exception directly so the catch branch's "timed out after 15s"
+    // message gets exercised. This pins the user-facing copy so a
+    // future timeout-cap change doesn't silently regress the error UX.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        throw new DOMException('aborted', 'TimeoutError');
+      }),
+    );
+
+    await expect(
+      composePdfTool.call!(
+        { pages: [{ type: 'image', url: 'https://slow-vendor.example.com/x.png' }] },
+        ctx(),
+      ),
+    ).rejects.toThrow(/timed out after 15s/i);
+  });
+
   it('renders an image page with a caption (no throw)', async () => {
     const result = await composePdfTool.call!(
       {

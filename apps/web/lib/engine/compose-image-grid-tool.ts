@@ -50,6 +50,7 @@ const MAX_IMAGES = 9;
 const CELL_PX = 512; // each grid cell is 512x512 → max output 1536x1536 (3x3)
 const DEFAULT_FORMAT = 'webp' as const;
 const EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
+const IMAGE_FETCH_TIMEOUT_MS = 15_000;
 
 type Layout = '2x1' | '2x2' | '3x2' | '3x3';
 
@@ -168,9 +169,25 @@ export const composeImageGridTool = buildTool({
     // Fetch + resize each source image to CELL_PX × CELL_PX. We do this
     // in parallel because each fetch is independent. `fit: 'cover'`
     // crops to fill the square cell without letterboxing.
+    //
+    // 15s per-image timeout. With Promise.all + a hung CDN, the whole
+    // grid would otherwise block until Vercel's serverless function
+    // limit. Per-image timeout means a single slow URL fails fast and
+    // surfaces a clean "image N timed out" error to the LLM instead of
+    // an opaque function-level 504.
     const cells = await Promise.all(
       input.images.map(async (url, i) => {
-        const res = await fetch(url);
+        let res: Response;
+        try {
+          res = await fetch(url, { signal: AbortSignal.timeout(IMAGE_FETCH_TIMEOUT_MS) });
+        } catch (err) {
+          const isTimeout = err instanceof DOMException && err.name === 'TimeoutError';
+          throw new Error(
+            isTimeout
+              ? `Image ${i + 1} fetch timed out after ${IMAGE_FETCH_TIMEOUT_MS / 1000}s: ${url}`
+              : `Failed to fetch image ${i + 1} at ${url}: ${(err as Error).message}`,
+          );
+        }
         if (!res.ok) {
           throw new Error(
             `Failed to fetch image ${i + 1} at ${url}: ${res.status} ${res.statusText}`,
