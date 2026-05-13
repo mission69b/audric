@@ -250,6 +250,96 @@ describe('POST /api/services/prepare — SPEC 26 settle-no-delivery short-circui
     expect(body.paymentDigest).toBeNull();
   });
 
+  it('passes through gateway 4xx error message verbatim (SPEC 26 v1.0.2)', async () => {
+    // [2026-05-14 06:35 smoke] LLM emitted quality=standard for image-gen,
+    // gateway's pre-charge validate hook returned `{ error: "Quality \"standard\"
+    // is not currently supported. Valid qualities: low, medium, high, auto. ..." }`
+    // with HTTP 400. Pre-fix, audric replaced that with a generic
+    // `Gateway error (400)` and the LLM looped on the same bad params.
+    // Post-fix, the actual message threads through so the LLM sees what to
+    // change.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            error:
+              'Quality "standard" is not currently supported. Valid qualities: low, medium, high, auto. Note: "standard" / "hd" were DALL-E 3 values rejected by gpt-image-*.',
+          }),
+          {
+            status: 400,
+            headers: { 'content-type': 'application/json' },
+          },
+        ),
+      ),
+    );
+
+    const res = await POST(
+      buildRequest({
+        address: VALID_ADDR,
+        url: 'openai/v1/images/generations',
+        rawBody: { prompt: 'a frog', quality: 'standard' },
+      }),
+    );
+
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    // The actual gateway error message threads through — NOT the generic
+    // "Gateway error (400)" placeholder that pre-fix swallowed it with.
+    expect(body.error).toMatch(/Quality "standard" is not currently supported/);
+    expect(body.error).toMatch(/Valid qualities: low, medium, high, auto/);
+  });
+
+  it('falls back to generic message when 4xx body is not JSON', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response('Plain text 502 from upstream', {
+          status: 502,
+          headers: { 'content-type': 'text/plain' },
+        }),
+      ),
+    );
+
+    const res = await POST(
+      buildRequest({
+        address: VALID_ADDR,
+        url: 'openai/v1/images/generations',
+        rawBody: { prompt: 'a frog' },
+      }),
+    );
+
+    expect(res.status).toBe(502);
+    const body = await res.json();
+    // Non-JSON body falls back to the raw text (capped at 500 chars) so
+    // operators can still see what came through.
+    expect(body.error).toMatch(/Plain text 502 from upstream/);
+  });
+
+  it('falls back to "Gateway error (status)" when 4xx body is empty', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response('', {
+          status: 503,
+          headers: { 'content-type': 'application/json' },
+        }),
+      ),
+    );
+
+    const res = await POST(
+      buildRequest({
+        address: VALID_ADDR,
+        url: 'openai/v1/images/generations',
+        rawBody: { prompt: 'a frog' },
+      }),
+    );
+
+    expect(res.status).toBe(503);
+    const body = await res.json();
+    expect(body.error).toBe('Gateway error (503)');
+  });
+
   it('does NOT short-circuit on a regular x402 challenge (no x-settle-verdict header)', async () => {
     // Emulates the legacy bare 402 mppx Challenge that prepare used to handle
     // exclusively. Without the header, classifyGatewayResponse returns

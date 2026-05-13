@@ -327,10 +327,31 @@ async function handleStandardMpp(
         result,
       });
     }
+    // [SPEC 26 v1.0.2 / 2026-05-14] Pass through the gateway's actual error
+    // message so the LLM sees actionable context. The gateway's pre-charge
+    // validate hook returns `{ error: "Quality 'standard' is not currently
+    // supported. Valid qualities: low, medium, high, auto. ..." }` with HTTP
+    // 400 — pre-fix, audric replaced that with a generic `Gateway error
+    // (400)` which the LLM read as "prompt parsing issue" and looped on the
+    // same bad params (2026-05-14 06:35 smoke). Reuse `extractVendorErrorMessage`
+    // which already handles `{ error: string }` + `{ error: { message } }` +
+    // `{ message: string }` shapes (same helper used on the settle-no-delivery
+    // path so 4xx gateway errors and 402 settle-no-delivery errors render
+    // identically to the LLM).
     const errText = await challengeRes.text().catch(() => '');
-    console.error(`[services/prepare] Gateway returned ${challengeRes.status}:`, errText);
+    let parsedBody: unknown = null;
+    try {
+      parsedBody = JSON.parse(errText);
+    } catch {
+      // Not JSON — keep the raw text via the fallback path below.
+    }
+    const fallback = errText.trim().length > 0
+      ? errText.slice(0, 500)
+      : `Gateway error (${challengeRes.status})`;
+    const errMsg = extractVendorErrorMessage(parsedBody, fallback);
+    console.error(`[services/prepare] Gateway returned ${challengeRes.status}:`, errMsg);
     return NextResponse.json(
-      { error: `Gateway error (${challengeRes.status})` },
+      { error: errMsg },
       { status: challengeRes.status },
     );
   }
