@@ -145,6 +145,36 @@ export async function POST(request: NextRequest) {
   }
 }
 
+/**
+ * Pulls a human-readable error message out of a vendor error envelope.
+ * Handles the three shapes seen in the wild:
+ *   - `{ error: "string" }`           → MPP gateway, OpenAI 400 pre-charge etc.
+ *   - `{ error: { message, code, type } }` → OpenAI ≥ 2024 standard error shape
+ *   - `{ message: "string" }`         → some gateway fallthroughs
+ * Falls back to `JSON.stringify(error)` so the user at least sees structured
+ * detail instead of "[object Object]".
+ */
+export function extractVendorErrorMessage(result: unknown, fallback: string): string {
+  if (!result || typeof result !== 'object') return fallback;
+  const obj = result as Record<string, unknown>;
+
+  const err = obj.error;
+  if (typeof err === 'string' && err.trim().length > 0) return err;
+  if (err && typeof err === 'object') {
+    const inner = err as Record<string, unknown>;
+    if (typeof inner.message === 'string' && inner.message.trim().length > 0) return inner.message;
+    try {
+      return JSON.stringify(err);
+    } catch {
+      return fallback;
+    }
+  }
+
+  if (typeof obj.message === 'string' && obj.message.trim().length > 0) return obj.message;
+
+  return fallback;
+}
+
 async function callGateway(
   paymentDigest: string,
   meta: { serviceId: string; gatewayUrl: string; serviceBody: string; price: string },
@@ -215,11 +245,14 @@ async function callGateway(
   }
 
   if (!serviceResponse.ok && serviceResponse.status !== 402) {
-    const errMsg = typeof result === 'object' && result && 'error' in result
-      ? (result as { error: string }).error
-      : typeof result === 'object' && result && 'message' in result
-        ? (result as { message: string }).message
-        : 'Service request failed';
+    // Vendor error shapes vary — OpenAI returns `{ error: { code, message, type } }`
+    // (object), gateway/MPP return `{ error: "string" }` (string), others sometimes
+    // return `{ message: "string" }`. Pre-fix this block trusted that `.error` was a
+    // string and the cast lied → the object propagated through to ServiceDeliveryError
+    // → Error coerced it via String() → user saw "[object Object]" in the receipt.
+    // Fix: walk the envelope, prefer string forms, fall back to JSON for the object
+    // case so the user at least sees the upstream code.
+    const errMsg = extractVendorErrorMessage(result, 'Service request failed');
     console.error(
       `[services/complete] Gateway error (${serviceResponse.status}):`,
       errMsg,
