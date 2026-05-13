@@ -126,6 +126,28 @@ const serverSchema = z.object({
   /** Internal API key for service gateway auth — only needed for the MPP services route. */
   INTERNAL_API_KEY: optionalString,
 
+  /**
+   * [SPEC native_content_tools / 2026-05-13] Vercel Blob read+write token.
+   * Powers `compose_pdf` + `compose_image_grid` artifact upload. Auto-injected
+   * by Vercel on Blob-enabled projects (Project → Storage → Blob → Connect).
+   *
+   * **Optional for now** — mirrors the OPENAI_API_KEY / ELEVENLABS_API_KEY
+   * pattern: feature works if set, returns a clear "Blob storage not
+   * configured" error if unset. Once a P7 production smoke confirms the
+   * Vercel Blob integration is wired and stable, promote to `requiredString`
+   * and add to SERVER_ONLY_KEYS proper. The gradual ramp avoids the failure
+   * mode where a missing Blob connection boot-fails every other audric/web
+   * route the founder hasn't touched yet.
+   *
+   * Promotion checklist (after P7 smoke):
+   *   1. Verify `vercel blob ls` returns the test artifacts
+   *   2. Move this declaration up to the required-string section
+   *   3. Add `BLOB_READ_WRITE_TOKEN` to SERVER_ONLY_KEYS (already pre-staged)
+   *   4. Update the `compose_pdf` tool error path — change "configured?" hint
+   *      to "operator misconfig — boot should have caught this"
+   */
+  BLOB_READ_WRITE_TOKEN: optionalString,
+
   /** Override Sui RPC URL — defaults to BlockVision-routed mainnet. */
   SUI_RPC_URL: optionalString,
 
@@ -355,6 +377,7 @@ const runtimeEnv = {
   T2000_INTERNAL_KEY: process.env.T2000_INTERNAL_KEY,
   UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
   UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
+  BLOB_READ_WRITE_TOKEN: process.env.BLOB_READ_WRITE_TOKEN,
   AGENT_MODEL: process.env.AGENT_MODEL,
   AUDRIC_INTERNAL_API_URL: process.env.AUDRIC_INTERNAL_API_URL,
   BRAVE_API_KEY: process.env.BRAVE_API_KEY,
@@ -493,6 +516,7 @@ const SERVER_ONLY_KEYS = new Set([
   'T2000_INTERNAL_KEY',
   'UPSTASH_REDIS_REST_URL',
   'UPSTASH_REDIS_REST_TOKEN',
+  'BLOB_READ_WRITE_TOKEN',
   'AGENT_MODEL',
   'AUDRIC_INTERNAL_API_URL',
   'BRAVE_API_KEY',

@@ -55,17 +55,39 @@ describe('STATIC_SYSTEM_PROMPT — OpenAI-only locked set (post UX polish #2)', 
     expect(STATIC_SYSTEM_PROMPT).not.toMatch(/pay_api POST https:\/\/mpp\.t2000\.ai\/(deepl|openweather|fal|brave)\//);
   });
 
-  it('declines PDF / postcards / email / premium TTS as "cannot do today"', () => {
+  it('declines postcards / email / premium TTS as "cannot do today"', () => {
+    // [SPEC native_content_tools P6 / 2026-05-13] PDF generation was
+    // promoted out of "cannot do" — compose_pdf now covers it natively.
+    // The remaining declines are the unrelated MPP gaps (Lob/Resend/
+    // ElevenLabs not wired) and the explicit narrow case "HTML→PDF
+    // with custom CSS" (which would still need a chromium renderer).
     const cannotSection = STATIC_SYSTEM_PROMPT.split('What we CANNOT do')[1]
       ?.split('What Audric CAN do natively')[0] ?? '';
-    expect(cannotSection).toMatch(/PDF generation/i);
+    expect(cannotSection).not.toMatch(/^.*\bPDF generation\b/m);
     expect(cannotSection).toMatch(/postcards\/letters/i);
     expect(cannotSection).toMatch(/transactional email/i);
     expect(cannotSection).toMatch(/premium TTS via ElevenLabs/i);
+    // The narrow exception that survives the promotion.
+    expect(cannotSection).toMatch(/HTML→PDF rendering with custom CSS/);
   });
 
-  it('points users to dedicated tools (not gateway vendors) for the future PDF/postcard/email path', () => {
-    expect(STATIC_SYSTEM_PROMPT).toMatch(/PDF \/ postcard \/ email come back as dedicated tools/i);
+  it('points users to dedicated tools for postcard / email path (PDF promoted out)', () => {
+    // Pre-P6: "PDF / postcard / email come back as dedicated tools".
+    // Post-P6: PDF is now compose_pdf — only postcard / email are still
+    // "future release". Assertion narrows to the surviving copy.
+    expect(STATIC_SYSTEM_PROMPT).toMatch(/Postcard \/ email come back as dedicated tools/i);
+    expect(STATIC_SYSTEM_PROMPT).not.toMatch(/PDF \/ postcard \/ email come back as dedicated tools/i);
+  });
+
+  it('teaches compose_pdf + compose_image_grid as native-and-free options (P6)', () => {
+    // Tool usage section: explicit guidance that compose_* runs first.
+    expect(STATIC_SYSTEM_PROMPT).toMatch(/compose_pdf/);
+    expect(STATIC_SYSTEM_PROMPT).toMatch(/compose_image_grid/);
+    expect(STATIC_SYSTEM_PROMPT).toMatch(/FREE, server-side, native — always preferred over gateway transforms/);
+
+    // Native-abilities section: both tools listed as audric-can-do.
+    expect(STATIC_SYSTEM_PROMPT).toMatch(/PDF composition \(compose_pdf\)/);
+    expect(STATIC_SYSTEM_PROMPT).toMatch(/image-grid composition \(compose_image_grid\)/);
   });
 
   it('G1: GPT-4o is gated to explicit user requests; default is native Claude', () => {

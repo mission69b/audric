@@ -289,3 +289,122 @@ describe('ToolResultCard — pay_api defensive paths (unchanged from MPP2)', () 
     expect(container.querySelector('img')).not.toBeNull();
   });
 });
+
+// ─── SPEC native_content_tools P5 / 2026-05-13 ─────────────────────────
+// `compose_pdf` and `compose_image_grid` route to the generic
+// <DownloadableArtifact> primitive. These tests assert the dispatch and
+// the prop shape; <DownloadableArtifact> visual behavior is exercised
+// in its own test file.
+
+describe('ToolResultCard — compose_pdf dispatch (P5)', () => {
+  function composePdfTool(payload: unknown): ToolExecution {
+    return {
+      toolName: 'compose_pdf',
+      toolUseId: 'toolu_01ComposePdfTest',
+      input: { pages: [] },
+      status: 'done',
+      result: { success: true, data: payload },
+    };
+  }
+
+  it('routes a valid compose_pdf result to <DownloadableArtifact> with PDF kind', () => {
+    const { container, queryAllByText } = render(
+      <ToolResultCard
+        tool={composePdfTool({
+          url: 'https://blob.vercel-storage.com/audric-test.pdf',
+          filename: 'audric-test.pdf',
+          pageCount: 3,
+          sizeKb: 124,
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        })}
+      />,
+    );
+
+    // PDF placeholder (not <img>); the header label + body placeholder
+    // both contain "PDF" so assert ≥1 match rather than exactly one.
+    expect(container.querySelector('img')).toBeNull();
+    expect(queryAllByText('PDF').length).toBeGreaterThanOrEqual(1);
+    // Page count + size visible
+    expect(container.textContent).toMatch(/3 pages/);
+    expect(container.textContent).toMatch(/124 KB/);
+    // Download chip
+    const link = container.querySelector('a');
+    expect(link).not.toBeNull();
+    expect(link!.getAttribute('href')).toBe(
+      'https://blob.vercel-storage.com/audric-test.pdf',
+    );
+  });
+
+  it('returns null for compose_pdf result missing required fields (defensive)', () => {
+    const { container } = render(
+      <ToolResultCard
+        tool={composePdfTool({ url: 'https://x/a.pdf' /* missing filename + sizeKb */ })}
+      />,
+    );
+    expect(container.firstChild).toBeNull();
+  });
+});
+
+describe('ToolResultCard — compose_image_grid dispatch (P5)', () => {
+  function composeGridTool(payload: unknown): ToolExecution {
+    return {
+      toolName: 'compose_image_grid',
+      toolUseId: 'toolu_01ComposeGridTest',
+      input: { images: [] },
+      status: 'done',
+      result: { success: true, data: payload },
+    };
+  }
+
+  it('routes a valid compose_image_grid result to <DownloadableArtifact> with image kind', () => {
+    const { container, queryByText } = render(
+      <ToolResultCard
+        tool={composeGridTool({
+          url: 'https://blob.vercel-storage.com/grid.webp',
+          layout: '2x2',
+          width: 1024,
+          height: 1024,
+          sizeKb: 56,
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        })}
+      />,
+    );
+
+    // Image renders inline
+    const img = container.querySelector('img');
+    expect(img).not.toBeNull();
+    expect(img!.getAttribute('src')).toBe(
+      'https://blob.vercel-storage.com/grid.webp',
+    );
+    // Header label
+    expect(queryByText('IMAGE GRID')).not.toBeNull();
+    // Dimensions visible
+    expect(container.textContent).toMatch(/1024×1024/);
+    // OPEN chip (not DOWNLOAD)
+    expect(container.textContent).toMatch(/OPEN/);
+  });
+
+  it('synthesizes a filename from the layout for display purposes', () => {
+    const { container } = render(
+      <ToolResultCard
+        tool={composeGridTool({
+          url: 'https://blob.vercel-storage.com/g.webp',
+          layout: '3x3',
+          width: 1536,
+          height: 1536,
+          sizeKb: 200,
+        })}
+      />,
+    );
+    expect(container.textContent).toMatch(/audric-grid-3x3\.webp/);
+  });
+
+  it('returns null for compose_image_grid result missing required fields', () => {
+    const { container } = render(
+      <ToolResultCard
+        tool={composeGridTool({ width: 512 /* missing url + sizeKb */ })}
+      />,
+    );
+    expect(container.firstChild).toBeNull();
+  });
+});

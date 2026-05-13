@@ -23,6 +23,7 @@ import { PriceCard } from './cards/PriceCard';
 import { ConfirmationChip } from './cards/ConfirmationChip';
 import { SuinsResolution } from './cards/SuinsResolution';
 import { PendingRewardsCard } from './cards/PendingRewardsCard';
+import { DownloadableArtifact } from './cards/DownloadableArtifact';
 import { renderMppService, type PayApiResult } from './cards/mpp';
 
 const WRITE_TOOL_NAMES = new Set([
@@ -224,6 +225,59 @@ const CARD_RENDERERS: Record<string, CardRenderer> = {
     const data = extractData(result);
     if (!data || typeof data !== 'object') return null;
     return <>{renderMppService(data as PayApiResult, onSendMessage, onRegenerate, isSuperseded)}</>;
+  },
+  // ─── SPEC native_content_tools P5 / 2026-05-13 ──────────────────────────
+  // Server-side composition tools (compose_pdf, compose_image_grid) return
+  // a hosted artifact URL. Both flow through the generic
+  // <DownloadableArtifact> primitive — see its header for the rationale on
+  // not extending the MPP renderer chain instead.
+  compose_pdf: (result) => {
+    const data = extractData(result);
+    if (!data || typeof data !== 'object') return null;
+    const d = data as { url?: string; filename?: string; pageCount?: number; sizeKb?: number; expiresAt?: string };
+    if (!d.url || !d.filename || typeof d.sizeKb !== 'number') return null;
+    return (
+      <DownloadableArtifact
+        data={{
+          kind: 'pdf',
+          url: d.url,
+          filename: d.filename,
+          sizeKb: d.sizeKb,
+          pageCount: d.pageCount,
+          expiresAt: d.expiresAt,
+        }}
+      />
+    );
+  },
+  compose_image_grid: (result) => {
+    const data = extractData(result);
+    if (!data || typeof data !== 'object') return null;
+    const d = data as {
+      url?: string;
+      width?: number;
+      height?: number;
+      sizeKb?: number;
+      expiresAt?: string;
+      layout?: string;
+    };
+    if (!d.url || typeof d.sizeKb !== 'number') return null;
+    // The image-grid tool doesn't return a filename; synthesize one from
+    // the layout for display purposes (the actual Vercel Blob URL has
+    // its own random-suffixed filename).
+    const filename = `audric-grid-${d.layout ?? 'composed'}.webp`;
+    return (
+      <DownloadableArtifact
+        data={{
+          kind: 'image',
+          url: d.url,
+          filename,
+          sizeKb: d.sizeKb,
+          width: d.width,
+          height: d.height,
+          expiresAt: d.expiresAt,
+        }}
+      />
+    );
   },
   // ─── SPEC 23B — N1 / N2 / N6 — confirmation chips for no-tx-receipt writes ──
   // These three tools don't produce on-chain transactions, so they bypass

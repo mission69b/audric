@@ -39,6 +39,8 @@ import { audricSaveContactTool, audricListContactsTool } from './contact-tools';
 import { lookupUserTool } from './lookup-user-tool';
 import { audricMppServicesTool } from './mpp-services-tool';
 import { audricPrepareBundleTool } from './prepare-bundle-tool';
+import { composePdfTool } from './compose-pdf-tool';
+import { composeImageGridTool } from './compose-image-grid-tool';
 import { detectPriorPlanContext, isAffirmativeConfirmReply } from './confirm-detection';
 import { emitPlanContextPromoted } from './plan-context-metrics';
 import { isHarnessV9Enabled } from '@/lib/interactive-harness';
@@ -539,6 +541,21 @@ export async function createEngine(
   // the legacy path is intentional. See SPEC 14 for the full design.
   const audricBundleTools: Tool[] = [audricPrepareBundleTool];
 
+  // [SPEC native_content_tools P2-P4 / 2026-05-13] Server-side
+  // composition tools.
+  //
+  // - `composePdfTool`: replaces `pay_api(pdfshift/...)` for the
+  //   "compose what we already have" use case (DALL-E images,
+  //   LLM-authored text, markdown). Free, no gateway, can't fail with
+  //   a vendor 400. See `compose-pdf-tool.ts` header for the rationale
+  //   and the SPEC 24 whale-book smoke that motivated it.
+  //
+  // - `composeImageGridTool`: 2-9 image grid composition (collages),
+  //   server-side via sharp. Use case: "compile these 4 DALL-E
+  //   generations into a 2x2 grid" — previously the user got 4
+  //   separate single-image cards.
+  const audricCompositionTools: Tool[] = [composePdfTool, composeImageGridTool];
+
   // [SPEC 8 v0.5.1 hotfix] Register the host-side `update_todo` tool that
   // the system prompt teaches RICH / recipe-match turns to call. The engine
   // exports it as opt-in (see packages/engine/src/index.ts ~226-228); without
@@ -559,6 +576,7 @@ export async function createEngine(
     ...audricMppTools,
     ...audricContactTools,
     ...audricBundleTools,
+    ...audricCompositionTools,
     ...ADVICE_TOOLS,
     // [SPEC 10 D.3] Audric-side user-directory lookup. Audric handles
     // (`username.audric.sui`) live in the audric Postgres User table
