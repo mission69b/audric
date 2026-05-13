@@ -16,7 +16,7 @@
  */
 import { describe, it, expect } from 'vitest';
 
-import { extractVendorErrorMessage } from './route';
+import { extractVendorErrorMessage } from './extract-vendor-error-message';
 
 describe('extractVendorErrorMessage', () => {
   const FALLBACK = 'Service request failed';

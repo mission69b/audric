@@ -6,6 +6,7 @@ import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { GATEWAY_BASE } from '@/lib/service-gateway';
 import { prisma } from '@/lib/prisma';
 import { env } from '@/lib/env';
+import { extractVendorErrorMessage } from './extract-vendor-error-message';
 
 export const runtime = 'nodejs';
 
@@ -143,36 +144,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ error: message }, { status: 500 });
   }
-}
-
-/**
- * Pulls a human-readable error message out of a vendor error envelope.
- * Handles the three shapes seen in the wild:
- *   - `{ error: "string" }`           → MPP gateway, OpenAI 400 pre-charge etc.
- *   - `{ error: { message, code, type } }` → OpenAI ≥ 2024 standard error shape
- *   - `{ message: "string" }`         → some gateway fallthroughs
- * Falls back to `JSON.stringify(error)` so the user at least sees structured
- * detail instead of "[object Object]".
- */
-export function extractVendorErrorMessage(result: unknown, fallback: string): string {
-  if (!result || typeof result !== 'object') return fallback;
-  const obj = result as Record<string, unknown>;
-
-  const err = obj.error;
-  if (typeof err === 'string' && err.trim().length > 0) return err;
-  if (err && typeof err === 'object') {
-    const inner = err as Record<string, unknown>;
-    if (typeof inner.message === 'string' && inner.message.trim().length > 0) return inner.message;
-    try {
-      return JSON.stringify(err);
-    } catch {
-      return fallback;
-    }
-  }
-
-  if (typeof obj.message === 'string' && obj.message.trim().length > 0) return obj.message;
-
-  return fallback;
 }
 
 async function callGateway(
