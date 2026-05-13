@@ -82,6 +82,15 @@ type CardRenderer = (
   variant?: CardVariant,
   onSendMessage?: (text: string) => void,
   onRegenerate?: () => Promise<void>,
+  /**
+   * [SPEC 23C C10 / 2026-05-13] True when the tool block being rendered
+   * has been superseded by a later regen in the same MppReceiptGrid
+   * cluster. Only the `pay_api` renderer reads this — every other
+   * renderer ignores it. Threaded down to `<ReviewCard>` as
+   * `forceCollapsed`. See ReviewCard.tsx C10 props docstring for the
+   * remount-loses-state rationale.
+   */
+  isSuperseded?: boolean,
 ) => React.ReactNode | null;
 
 const CARD_RENDERERS: Record<string, CardRenderer> = {
@@ -211,10 +220,10 @@ const CARD_RENDERERS: Record<string, CardRenderer> = {
   // Shape: host's `executeToolAction.pay_api` returns
   //   `{ success: true, data: { success, paymentDigest, price, serviceId, result } }`
   // → `extractData` unwraps `.data` → directly usable as `PayApiResult`.
-  pay_api: (result, _variant, onSendMessage, onRegenerate) => {
+  pay_api: (result, _variant, onSendMessage, onRegenerate, isSuperseded) => {
     const data = extractData(result);
     if (!data || typeof data !== 'object') return null;
-    return <>{renderMppService(data as PayApiResult, onSendMessage, onRegenerate)}</>;
+    return <>{renderMppService(data as PayApiResult, onSendMessage, onRegenerate, isSuperseded)}</>;
   },
   // ─── SPEC 23B — N1 / N2 / N6 — confirmation chips for no-tx-receipt writes ──
   // These three tools don't produce on-chain transactions, so they bypass
@@ -337,6 +346,7 @@ export function ToolResultCard({
   variant,
   onSendMessage,
   onRegenerate,
+  isSuperseded,
 }: {
   tool: ToolExecution;
   /** [SPEC 23B-W1] Request a tighter post-write presentation when the card
@@ -355,13 +365,19 @@ export function ToolResultCard({
    *  about toolUseIds. Forwarded to `pay_api` renderer (DALL-E +
    *  ElevenLabs paths use it via `<ReviewCard>`). */
   onRegenerate?: () => Promise<void>;
+  /** [SPEC 23C C10 / 2026-05-13] True when this tool block has been
+   *  superseded by a later regen in the same MppReceiptGrid cluster.
+   *  Forwarded to the `pay_api` renderer → `renderMppService` →
+   *  vendor-specific renderer → `<ReviewCard forceCollapsed>`.
+   *  See ReviewCard.tsx C10 props docstring. */
+  isSuperseded?: boolean;
 }) {
   if (tool.status !== 'done' || !tool.result || tool.isError) return null;
 
   const renderer = CARD_RENDERERS[tool.toolName];
   if (renderer) {
     try {
-      return <>{renderer(tool.result, variant, onSendMessage, onRegenerate)}</>;
+      return <>{renderer(tool.result, variant, onSendMessage, onRegenerate, isSuperseded)}</>;
     } catch {
       return null;
     }

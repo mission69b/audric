@@ -27,14 +27,17 @@ vi.mock('./ToolBlockView', () => ({
   ToolBlockView: ({
     block,
     onSendMessage,
+    isSuperseded,
   }: {
     block: ToolTimelineBlock;
     onSendMessage?: (text: string) => void;
+    isSuperseded?: boolean;
   }) => (
     <div
       data-testid="tool-block"
       data-tool-use-id={block.toolUseId}
       data-has-on-send-message={onSendMessage ? 'true' : 'false'}
+      data-superseded={isSuperseded ? 'true' : 'false'}
     >
       {block.toolName}
     </div>
@@ -44,6 +47,7 @@ vi.mock('./ToolBlockView', () => ({
 function mockTool(
   toolUseId: string,
   status: ToolTimelineBlock['status'] = 'done',
+  startedAt = 0,
 ): ToolTimelineBlock {
   return {
     type: 'tool',
@@ -53,8 +57,8 @@ function mockTool(
     status,
     result: { paymentDigest: '0xabc' },
     isError: false,
-    startedAt: 0,
-    endedAt: 100,
+    startedAt,
+    endedAt: startedAt + 100,
   } as ToolTimelineBlock;
 }
 
@@ -211,6 +215,101 @@ describe('MppReceiptGrid — onSendMessage prop drilling (B-MPP5 fix1)', () => {
     for (const block of blocks) {
       expect(block.getAttribute('data-has-on-send-message')).toBe('false');
     }
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────
+// [SPEC 23C C10 production regression / 2026-05-13]
+//
+// Production smoke caught BOTH original and regen ReviewCards rendering
+// full footers after a TTS regen. Root cause (in ReviewCard.test.tsx):
+// the tool block re-parents from BlockRouter to MppReceiptGrid on
+// regen-cluster formation, losing local `clicked: 'regenerated'`
+// state.
+//
+// Fix: derive supersede state from sibling data and forward through
+// ToolBlockView → ToolResultCard → renderer → ReviewCard. The latest
+// pay_api in the cluster (highest startedAt) stays interactive; every
+// earlier one is superseded → `isSuperseded={true}`.
+// ─────────────────────────────────────────────────────────────────────
+
+describe('MppReceiptGrid — supersede threading (C10 regression)', () => {
+  it('marks every cell except the latest as isSuperseded=true', () => {
+    const { getAllByTestId } = render(
+      <MppReceiptGrid
+        tools={[
+          mockTool('a', 'done', 1000),
+          mockTool('b', 'done', 2000),
+          mockTool('c', 'done', 3000),
+        ]}
+      />,
+    );
+    const blocks = getAllByTestId('tool-block');
+    expect(blocks.length).toBe(3);
+    const map = new Map(
+      blocks.map((b) => [b.getAttribute('data-tool-use-id')!, b.getAttribute('data-superseded')!]),
+    );
+    expect(map.get('a')).toBe('true');
+    expect(map.get('b')).toBe('true');
+    expect(map.get('c')).toBe('false');
+  });
+
+  it('the latest is determined by startedAt, not by array order', () => {
+    // Newest dispatched is in array slot 0 — supersede must still pick
+    // it correctly via startedAt comparison.
+    const { getAllByTestId } = render(
+      <MppReceiptGrid
+        tools={[
+          mockTool('newest', 'done', 9000),
+          mockTool('oldest', 'done', 1000),
+          mockTool('middle', 'done', 5000),
+        ]}
+      />,
+    );
+    const map = new Map(
+      getAllByTestId('tool-block').map((b) => [
+        b.getAttribute('data-tool-use-id')!,
+        b.getAttribute('data-superseded')!,
+      ]),
+    );
+    expect(map.get('newest')).toBe('false');
+    expect(map.get('oldest')).toBe('true');
+    expect(map.get('middle')).toBe('true');
+  });
+
+  it('single-tool cluster: the only cell is NOT superseded', () => {
+    // Defensive — single-pay_api clusters rarely route through
+    // MppReceiptGrid in production (the regen-cluster pre-pass triggers
+    // on >=2 pay_api blocks) but the logic must still be correct.
+    const { getAllByTestId } = render(
+      <MppReceiptGrid tools={[mockTool('only', 'done', 1000)]} />,
+    );
+    const blocks = getAllByTestId('tool-block');
+    expect(blocks.length).toBe(1);
+    expect(blocks[0].getAttribute('data-superseded')).toBe('false');
+  });
+
+  it('errored tool can still be the latest (supersede ignores status)', () => {
+    // If the user regenerated and the regen errored, the errored card
+    // is still the latest dispatch — the original is still superseded.
+    // (The errored card surfaces its own retry chip via ReviewCard's
+    // existing error path; that's orthogonal to supersede.)
+    const { getAllByTestId } = render(
+      <MppReceiptGrid
+        tools={[
+          mockTool('original', 'done', 1000),
+          mockTool('regen-failed', 'error', 2000),
+        ]}
+      />,
+    );
+    const map = new Map(
+      getAllByTestId('tool-block').map((b) => [
+        b.getAttribute('data-tool-use-id')!,
+        b.getAttribute('data-superseded')!,
+      ]),
+    );
+    expect(map.get('original')).toBe('true');
+    expect(map.get('regen-failed')).toBe('false');
   });
 });
 

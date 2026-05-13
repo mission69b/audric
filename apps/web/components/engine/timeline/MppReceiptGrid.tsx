@@ -121,6 +121,27 @@ export function MppReceiptGrid({
 
   if (settled.length === 0) return null;
 
+  // [SPEC 23C C10 / 2026-05-13] Identify the LATEST settled pay_api by
+  // startedAt — every other cell is "superseded" and renders with its
+  // ReviewCard footer collapsed. This derives the supersede state from
+  // sibling data so it survives the BlockRouter→MppReceiptGrid mount-
+  // path change on regen-cluster formation (the production C10 bug
+  // where the original card's footer reappeared after regen because
+  // local React state was lost on remount). See ReviewCard.tsx C10
+  // props docstring for the full rationale.
+  //
+  // Tie-breaking: stable on (startedAt, toolUseId). When two tools
+  // share startedAt (rare — clock skew or test mocks), the higher
+  // toolUseId wins; both being early dispatches, neither would be the
+  // user-visible "active" card anyway, so the choice is cosmetic.
+  const latestId = settled.reduce((acc, t) => {
+    const tStarted = t.startedAt ?? 0;
+    const accStarted = acc.startedAt ?? 0;
+    if (tStarted > accStarted) return t;
+    if (tStarted === accStarted && t.toolUseId > acc.toolUseId) return t;
+    return acc;
+  }, settled[0]).toolUseId;
+
   return (
     <div className="space-y-1.5">
       {subtitle && (
@@ -163,6 +184,7 @@ export function MppReceiptGrid({
                 headerless
                 onSendMessage={onSendMessage}
                 onRegenerateToolCall={onRegenerateToolCall}
+                isSuperseded={tool.toolUseId !== latestId}
               />
             </MountAnimate>
           ))}

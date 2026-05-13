@@ -102,6 +102,26 @@ interface ReviewCardProps {
    * provided (which doesn't depend on `onSendMessage`).
    */
   onSendMessage?: (text: string) => void;
+  /**
+   * [SPEC 23C C10 production regression / 2026-05-13] Force the footer
+   * to collapse regardless of local `clicked` state. Set true by
+   * `<MppReceiptGrid>` for every cell that's not the latest pay_api in
+   * the cluster (computed by `startedAt` comparison).
+   *
+   * Why this exists: when the user regenerates, `groupTimelineBlocks`
+   * re-categorizes the original tool from `kind: 'single'` (BlockRouter
+   * path) to `kind: 'regen-group'` (MppReceiptGrid path). React
+   * remounts the original ReviewCard under the new parent and local
+   * `clicked: 'regenerated'` state is lost — the footer reappears.
+   * Deriving "is this card superseded?" from sibling data (and pushing
+   * the answer down via this prop) makes the collapsed-footer state
+   * survive remounts AND page refreshes (rehydration produces the same
+   * tool blocks → same supersede computation).
+   *
+   * Default false. ReviewCards on the single-block (BlockRouter) path
+   * never receive this prop — they can't be superseded by definition.
+   */
+  forceCollapsed?: boolean;
 }
 
 // [SPEC 23B-MPP6-fastpath UX polish / 2026-05-12]
@@ -134,6 +154,7 @@ export function ReviewCard({
   artifactNoun = 'preview',
   onRegenerate,
   onSendMessage,
+  forceCollapsed,
 }: ReviewCardProps) {
   const [clicked, setClicked] = useState<ClickedState>(null);
   const [regenError, setRegenError] = useState<RegenError>(null);
@@ -223,7 +244,16 @@ export function ReviewCard({
   // the same collapse pattern there with a similar AnimatePresence
   // wrapper.
   const reduceMotion = useReducedMotion();
-  const showFooter = clicked !== 'regenerated';
+  // [SPEC 23C C10 production regression / 2026-05-13] forceCollapsed
+  // takes priority over local `clicked` state — see prop docstring for
+  // the remount-loses-state rationale. AnimatePresence's exit animation
+  // fires the same way whether the collapse came from local state or
+  // from a fresh mount with forceCollapsed=true (Framer animates from
+  // the AnimatePresence's recorded "previous mounted" state, which is
+  // either the prior render's mounted footer or — on first mount with
+  // initial={false} — nothing to animate from, so the footer just isn't
+  // there).
+  const showFooter = !forceCollapsed && clicked !== 'regenerated';
 
   return (
     <AnimatePresence initial={false}>

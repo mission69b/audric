@@ -142,6 +142,15 @@ export type MppServiceRenderer = (
   data: PayApiResult,
   onSendMessage?: (text: string) => void,
   onRegenerate?: () => Promise<void>,
+  /**
+   * [SPEC 23C C10 / 2026-05-13] True when this rendering belongs to a
+   * pay_api block that has been superseded by a later regen in the same
+   * cluster. Renderers that wrap a `<ReviewCard>` MUST forward this as
+   * `forceCollapsed` so the original card's footer stays collapsed
+   * across the BlockRouter→MppReceiptGrid mount-path change. Always
+   * false (or undefined) for the single-block render path.
+   */
+  isSuperseded?: boolean,
 ) => ReactNode;
 
 /**
@@ -184,6 +193,7 @@ function renderOpenai(
   data: PayApiResult,
   onSendMessage?: (text: string) => void,
   onRegenerate?: () => Promise<void>,
+  isSuperseded?: boolean,
 ): ReactNode {
   const serviceId = data.serviceId ?? '';
   if (serviceId.includes('/v1/images/generations')) {
@@ -203,6 +213,7 @@ function renderOpenai(
           artifactNoun="image"
           onRegenerate={onRegenerate}
           onSendMessage={onSendMessage}
+          forceCollapsed={isSuperseded}
         />
       </>
     );
@@ -223,6 +234,7 @@ function renderOpenai(
           artifactNoun="voiceover"
           onRegenerate={onRegenerate}
           onSendMessage={onSendMessage}
+          forceCollapsed={isSuperseded}
         />
       </>
     );
@@ -245,7 +257,7 @@ export const MPP_SERVICE_RENDERERS: Record<string, MppServiceRenderer> = {
   // SPEC 23B-MPP6: previewable + regenerable → append ReviewCard. Same
   // pattern as DALL-E. PDFShift skipped (deprecating to fallback per
   // spec_native_content_tools), Lob/Resend skipped (terminal).
-  elevenlabs: (data, onSendMessage, onRegenerate) => (
+  elevenlabs: (data, onSendMessage, onRegenerate, isSuperseded) => (
     <>
       <TrackPlayer data={data} />
       <ReviewCard
@@ -253,6 +265,7 @@ export const MPP_SERVICE_RENDERERS: Record<string, MppServiceRenderer> = {
         artifactNoun="audio clip"
         onRegenerate={onRegenerate}
         onSendMessage={onSendMessage}
+        forceCollapsed={isSuperseded}
       />
     </>
   ),
@@ -285,6 +298,7 @@ export function renderMppService(
   data: PayApiResult,
   onSendMessage?: (text: string) => void,
   onRegenerate?: () => Promise<void>,
+  isSuperseded?: boolean,
 ): ReactNode {
   // [B-MPP6 v1.1] Error envelope short-circuits dispatch. We check the
   // explicit `success: false` flag stamped by `executeToolAction.pay_api`
@@ -296,6 +310,6 @@ export function renderMppService(
 
   const slug = normaliseServiceSlug(data.serviceId);
   const renderer = MPP_SERVICE_RENDERERS[slug];
-  if (renderer) return renderer(data, onSendMessage, onRegenerate);
+  if (renderer) return renderer(data, onSendMessage, onRegenerate, isSuperseded);
   return <GenericMppReceipt data={data} />;
 }

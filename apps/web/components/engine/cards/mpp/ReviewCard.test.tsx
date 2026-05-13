@@ -393,3 +393,76 @@ describe('ReviewCard primitive (v2) — legacy fallback (no onRegenerate)', () =
     expect(screen.getByRole('button', { name: 'Cancel and discard this image' }).hasAttribute('disabled')).toBe(true);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────
+// [SPEC 23C C10 production regression / 2026-05-13]
+//
+// Production smoke (SPEC_23C_SMOKE_REPORT Issue #1) caught BOTH the
+// original AND the regenerated ReviewCard rendering full Regenerate +
+// Cancel footers after a TTS regen. Root cause: when the regen lands,
+// `groupTimelineBlocks` switches the original tool from `kind: 'single'`
+// (rendered via BlockRouter) to `kind: 'regen-group'` (rendered via
+// MppReceiptGrid). React unmounts the original ReviewCard from
+// BlockRouter and remounts it under MppReceiptGrid — local React state
+// (`clicked: 'regenerated'`) is lost on the new mount, so the footer
+// re-appears.
+//
+// Fix: derive supersede state from sibling data (the regen IS the
+// evidence that the original is superseded) and pass it through as
+// `forceCollapsed`. Survives remounts AND page refreshes.
+// ─────────────────────────────────────────────────────────────────────
+
+describe('ReviewCard — forceCollapsed (C10 regression)', () => {
+  it('forceCollapsed=true collapses footer entirely (no buttons, no cost row, no group)', () => {
+    const { container } = render(
+      <ReviewCard
+        price="0.04"
+        artifactNoun="image"
+        forceCollapsed
+        onRegenerate={vi.fn().mockResolvedValue(undefined)}
+        onSendMessage={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByRole('button', { name: /regenerate/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /cancel/i })).toBeNull();
+    expect(container.textContent).not.toContain('Each regeneration');
+    expect(container.textContent).not.toContain('Review');
+    expect(screen.queryByRole('group')).toBeNull();
+  });
+
+  it('forceCollapsed=false keeps the default interactive footer', () => {
+    const { container } = render(
+      <ReviewCard
+        price="0.04"
+        artifactNoun="image"
+        forceCollapsed={false}
+        onRegenerate={vi.fn().mockResolvedValue(undefined)}
+        onSendMessage={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'Regenerate this image' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Cancel and discard this image' })).toBeTruthy();
+    expect(container.textContent).toContain('Review');
+  });
+
+  it('forceCollapsed wins over a fresh local state (the production scenario)', () => {
+    // The exact production repro: a fresh ReviewCard mounts (local
+    // `clicked === null`) but the parent says "this card is superseded
+    // by a later one in the same cluster" via forceCollapsed=true.
+    // Pre-fix the footer would render because `clicked === null`.
+    const { container } = render(
+      <ReviewCard
+        price="0.04"
+        artifactNoun="audio clip"
+        forceCollapsed
+        onRegenerate={vi.fn().mockResolvedValue(undefined)}
+        onSendMessage={vi.fn()}
+      />,
+    );
+
+    expect(container.textContent).not.toContain('Regenerate');
+    expect(container.textContent).not.toContain('Cancel');
+  });
+});

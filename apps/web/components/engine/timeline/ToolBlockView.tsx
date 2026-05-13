@@ -57,6 +57,16 @@ interface ToolBlockViewProps {
    *  thread toolUseIds themselves. Wired from
    *  `dashboard-content.tsx:handleRegenerateToolCall`. */
   onRegenerateToolCall?: (toolUseId: string) => Promise<void>;
+  /**
+   * [SPEC 23C C10 / 2026-05-13] True when this tool block has been
+   *  superseded by a later regen in the same MppReceiptGrid cluster.
+   *  Computed by `<MppReceiptGrid>` and forwarded down to
+   *  `<ToolResultCard>` → renderer → `<ReviewCard forceCollapsed>`.
+   *  See ReviewCard.tsx C10 props docstring for the remount-loses-state
+   *  rationale. Always undefined on the single-block (BlockRouter) path
+   *  — single tools can't be superseded by definition.
+   */
+  isSuperseded?: boolean;
 }
 
 /** Map TimelineBlock status (5 states) to the run status the renderers
@@ -83,6 +93,7 @@ export function ToolBlockView({
   variant,
   onSendMessage,
   onRegenerateToolCall,
+  isSuperseded,
 }: ToolBlockViewProps) {
   const stepStatus = toRunStatus(block.status);
   const isSettled = block.status === 'done' || block.status === 'error';
@@ -203,6 +214,7 @@ export function ToolBlockView({
               ? () => onRegenerateToolCall(block.toolUseId)
               : undefined
           }
+          isSuperseded={isSuperseded}
         />
       )}
     </div>
