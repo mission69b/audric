@@ -109,6 +109,46 @@ export function isSessionExpired(session: ZkLoginSession, currentEpoch: number):
   return currentEpoch >= session.maxEpoch;
 }
 
+/**
+ * SPEC 30 Phase 1A.7 — JWT-exp expiry check (independent of Sui-epoch
+ * expiry).
+ *
+ * The zkLogin session blob has TWO expiry clocks:
+ *   - `maxEpoch` (Sui-side, ~7 epochs ≈ 7 days on mainnet)
+ *   - The Google OIDC JWT's `exp` claim (~1 hour)
+ *
+ * Pre-Phase-1A.5/1A.6, route handlers used `decodeJwt` (no signature
+ * check, no `exp` enforcement) so the JWT-side expiry was silently
+ * tolerated. Phase 1A.5/1A.6 swapped to `jose.jwtVerify` which DOES
+ * enforce `exp` — instantly 401-ing every authenticated user whose
+ * Google JWT was older than 1h, while AuthGuard's `useZkLogin` hook
+ * still saw the session as valid (because it only checked Sui-epoch
+ * expiry).
+ *
+ * This helper closes the gap: parse the JWT payload (no signature
+ * check needed — we're only reading `exp`, and tampering would make
+ * `verifyJwt` reject anyway) and return `true` once `Date.now()` is
+ * past the JWT's `exp` (with a 60s skew tolerance so we don't fire
+ * mid-request). Used by `useZkLogin` to set status `'expired'`,
+ * which AuthGuard reads to redirect to `/` for re-login.
+ */
+export function isJwtExpired(session: ZkLoginSession, nowMs: number = Date.now()): boolean {
+  try {
+    const parts = session.jwt.split('.');
+    if (parts.length !== 3) return true; // malformed → treat as expired (force re-login)
+    const payload = JSON.parse(
+      atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')),
+    ) as { exp?: number };
+    if (typeof payload.exp !== 'number') return true; // no exp → treat as expired
+    // 60s skew tolerance — don't fire 'expired' on a request already in
+    // flight whose JWT will be valid for the route's verify but reaches
+    // the threshold milliseconds before the client-side check.
+    return nowMs >= (payload.exp * 1000) - 60_000;
+  } catch {
+    return true; // any parse failure → re-login
+  }
+}
+
 // ~24 hours before maxEpoch is reached, we warn. Each epoch is ~24h on mainnet.
 export function isSessionExpiringSoon(session: ZkLoginSession, currentEpoch: number): boolean {
   return session.maxEpoch - currentEpoch <= 1;

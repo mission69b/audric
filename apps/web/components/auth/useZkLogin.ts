@@ -10,6 +10,7 @@ import {
   completeLogin,
   isSessionExpired,
   isSessionExpiringSoon,
+  isJwtExpired,
 } from '@/lib/zklogin';
 
 export type ZkLoginStatus =
@@ -48,12 +49,18 @@ export function useZkLogin(): UseZkLoginReturn {
   const [error, setError] = useState<string | null>(null);
   const [currentEpoch, setCurrentEpoch] = useState<number>(0);
 
-  // On mount: check for existing session
+  // On mount: check for existing session.
+  //
+  // SPEC 30 Phase 1A.7 — also gate on the underlying Google JWT's
+  // `exp` claim, not just the Sui-epoch `maxEpoch`. Routes secured in
+  // 1A/1A.5/1A.6 use `jose.jwtVerify` which enforces `exp` (1h on
+  // Google's side) — without this check the dashboard happily renders
+  // for a user whose JWT expired hours ago, then every API call 401s.
   useEffect(() => {
     const existing = loadSession();
     if (existing) {
       setSession(existing);
-      setStatus('authenticated');
+      setStatus(isJwtExpired(existing) ? 'expired' : 'authenticated');
     } else {
       setStatus('unauthenticated');
     }
@@ -73,11 +80,30 @@ export function useZkLogin(): UseZkLoginReturn {
     return () => { cancelled = true; };
   }, [client, status]);
 
-  // Check if session is expired
+  // Check if session is expired (Sui-epoch OR JWT exp).
+  //
+  // SPEC 30 Phase 1A.7 — tick the JWT-exp check every 60s so a session
+  // that crosses the 1h Google-OIDC TTL during an active tab gets
+  // flipped to 'expired' and AuthGuard redirects to re-login, instead
+  // of leaving the user on a dashboard whose API calls all 401.
   useEffect(() => {
-    if (session && currentEpoch > 0 && isSessionExpired(session, currentEpoch)) {
-      setStatus('expired');
-    }
+    if (!session) return;
+
+    const check = () => {
+      if (currentEpoch > 0 && isSessionExpired(session, currentEpoch)) {
+        setStatus('expired');
+        return true;
+      }
+      if (isJwtExpired(session)) {
+        setStatus('expired');
+        return true;
+      }
+      return false;
+    };
+
+    if (check()) return;
+    const id = window.setInterval(check, 60_000);
+    return () => window.clearInterval(id);
   }, [session, currentEpoch]);
 
   const expiringSoon = useMemo(() => {
