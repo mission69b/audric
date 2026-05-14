@@ -41,6 +41,7 @@ import {
 } from '@/lib/billing';
 
 import { sanitizeStreamErrorMessage } from '@/lib/engine/stream-errors';
+import { redactPII } from '@/lib/log-redact';
 import { tryConsumeFastPathBundle } from '@/lib/engine/fast-path-bundle';
 import { buildPostWriteAnchorBlock } from '@/lib/engine/post-write-anchor';
 import { prewarmPortfolio } from '@/lib/portfolio';
@@ -331,11 +332,14 @@ export async function POST(request: NextRequest) {
       // table so support can manually bump those users to the 20-session
       // tier (per simplification spec §B.4).
       if (!emailVerified) {
-        console.warn('[email-verified-false]', {
+        // [SPEC 30 1B.5 follow-up — 2026-05-14] `redactPII` truncates
+        // wallet addresses + redacts JWTs before logging. See
+        // `lib/log-redact.ts` for the threat model.
+        console.warn('[email-verified-false]', redactPII({
           address,
           limit,
           recentSessions: recentSessions.length,
-        });
+        }));
       }
 
       if (recentSessions.length >= limit && !continuingExistingSession) {
@@ -1362,14 +1366,17 @@ export async function POST(request: NextRequest) {
               },
             );
             if (streamClosedSilently) {
-              console.error('[engine/chat] STREAM_CLOSED_SILENTLY', {
+              // [SPEC 30 1B.5 follow-up — 2026-05-14] redactPII truncates
+              // `address` to 8-leading + 4-trailing for log safety. See
+              // `lib/log-redact.ts` for the threat model.
+              console.error('[engine/chat] STREAM_CLOSED_SILENTLY', redactPII({
                 sessionId: sessionId ?? null,
                 address: address ?? null,
                 turnIndex,
                 lastEventType,
                 durationMs: Date.now() - streamStartMs,
                 priorMsgCount,
-              });
+              }));
             }
           } catch (logErr) {
             console.error('[engine/chat] stream-close log failed (non-fatal):', logErr);

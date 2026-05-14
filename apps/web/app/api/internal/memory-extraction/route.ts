@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { validateInternalKey } from '@/lib/internal-auth';
 import Anthropic from '@anthropic-ai/sdk';
 import { env } from '@/lib/env';
+import { redactPII } from '@/lib/log-redact';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -171,7 +172,10 @@ export async function POST(request: NextRequest) {
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.error(`[memory-extraction] Anthropic API error for ${userId}: ${msg}`);
+    // [SPEC 30 1B.5 follow-up — 2026-05-14] Truncate `userId` for log
+    // safety. See `lib/log-redact.ts` for the threat model.
+    const { userId: redactedUserId } = redactPII({ userId });
+    console.error(`[memory-extraction] Anthropic API error for ${redactedUserId}: ${msg}`);
     return NextResponse.json({ error: 'Anthropic API error', detail: msg }, { status: 502 });
   }
 

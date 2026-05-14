@@ -7,6 +7,7 @@ import { GATEWAY_BASE } from '@/lib/service-gateway';
 import { prisma } from '@/lib/prisma';
 import { env } from '@/lib/env';
 import { sanitizeForLog } from '@/lib/log-sanitize';
+import { redactAddress } from '@/lib/log-redact';
 import { extractVendorErrorMessage } from './extract-vendor-error-message';
 import { classifyGatewayResponse } from './classify-gateway-response';
 
@@ -366,11 +367,14 @@ async function recordPurchase(
     }),
   ]);
 
-  // [SPEC 30 Phase 1B.5 — 2026-05-14] CodeQL js/tainted-format-string:
-  // paymentDigest / address / serviceId are all user-controlled inputs
-  // — sanitize before logging to prevent CRLF log-injection.
+  // [SPEC 30 Phase 1B.5 + follow-up — 2026-05-14] Two layered defenses:
+  //   - `sanitizeForLog` closes log-injection (CRLF). CodeQL
+  //     js/tainted-format-string class.
+  //   - `redactAddress` truncates the wallet identifier to
+  //     8-leading + 4-trailing for log content safety. See
+  //     `lib/log-redact.ts` for the threat model.
   const safeDigest = sanitizeForLog(paymentDigest);
-  const safeAddress = sanitizeForLog(address);
+  const safeAddress = sanitizeForLog(redactAddress(address));
   const safeServiceId = sanitizeForLog(serviceId);
   const labels = ['servicePurchase', 'appEvent'] as const;
   results.forEach((r, i) => {

@@ -37,6 +37,7 @@ import {
 import { env } from '@/lib/env';
 import { getSuiRpcUrl } from '@/lib/sui-rpc';
 import { sanitizeForLog } from '@/lib/log-sanitize';
+import { redactAddress } from '@/lib/log-redact';
 
 const BLOCKVISION_API_KEY = env.BLOCKVISION_API_KEY;
 
@@ -256,8 +257,12 @@ async function doGetPortfolio(address: string): Promise<Portfolio> {
       .finally(() => { defiMs = Date.now() - t0; }),
   ]);
   const totalMs = Date.now() - t0;
+  // [SPEC 30 Phase 1B.5 — 2026-05-14] `redactAddress` truncates the
+  // wallet identifier to 8-leading + 4-trailing — enough to disambiguate
+  // in a multi-user log tail without leaking the full identifier into
+  // operational logs. See `lib/log-redact.ts` for the threat model.
   console.log(
-    `[portfolio] address=${address} ` +
+    `[portfolio] address=${redactAddress(address)} ` +
     `wallet_ms=${walletMs} positions_ms=${positionsMs} defi_ms=${defiMs} ` +
     `total_ms=${totalMs} ` +
     `wallet_ok=${walletResult.status === 'fulfilled'} ` +
@@ -286,10 +291,16 @@ async function doGetPortfolio(address: string): Promise<Portfolio> {
     ? defiResult.value
     : { totalUsd: 0, perProtocol: {}, pricedAt: Date.now(), source: 'degraded' };
 
-  // [SPEC 30 Phase 1B.5 — 2026-05-14] CodeQL js/tainted-format-string:
-  // `address` is user-controlled (HTTP query/body); inlining into the
-  // log template enables CRLF injection. Sanitize once.
-  const safeAddress = sanitizeForLog(address);
+  // [SPEC 30 Phase 1B.5 — 2026-05-14] Two layered defenses:
+  //   - `sanitizeForLog` closes log-injection (CRLF). Required when the
+  //     value flows into a template literal. CodeQL js/tainted-format-string.
+  //   - `redactAddress` closes the content leak (full address into Vercel
+  //     logs). See `lib/log-redact.ts` for the threat model.
+  //
+  // We compose: redact first (returns a safe truncated form), then
+  // sanitize (CRLF defense applies even to the truncated form because
+  // a bug-class change could re-introduce it).
+  const safeAddress = sanitizeForLog(redactAddress(address));
   if (walletResult.status === 'rejected') {
     console.error(`[portfolio] wallet fetch failed for ${safeAddress}:`, walletResult.reason);
   }
