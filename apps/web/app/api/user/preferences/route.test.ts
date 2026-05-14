@@ -12,7 +12,7 @@ const mockUpsert = vi.fn();
 // the account-age gate. Default to a long-tenured user (1y old) so
 // existing tests stay unaffected; the D-13 path is exercised by the
 // dedicated tests at the bottom of this file.
-const mockUserFindUnique = vi.fn(() =>
+const mockUserFindUnique = vi.fn<(...args: unknown[]) => Promise<{ createdAt: Date } | null>>(() =>
   Promise.resolve({ createdAt: new Date(Date.now() - 365 * 86_400_000) }),
 );
 

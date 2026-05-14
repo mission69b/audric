@@ -133,6 +133,13 @@ export async function POST(request: NextRequest) {
         memoryType: f.type === 'deposit_pattern' || f.type === 'borrow_behavior' ? 'pattern' : 'fact',
         content: f.fact,
         confidence: f.confidence,
+        // [SPEC 30 D-12 — 2026-05-14] Same default-expiry rule as
+        // chat-extracted memories: 365d default unless confidence
+        // > 0.9. Chain-extracted facts are typically lower-confidence
+        // pattern observations (e.g. "deposits ~$100/wk on Tuesdays")
+        // — bounded retention prevents the table growing unbounded
+        // as users transact over months/years.
+        expiresAt: f.confidence > 0.9 ? null : new Date(Date.now() + 365 * 86_400_000),
         active: true,
         source: 'chain',
       })),

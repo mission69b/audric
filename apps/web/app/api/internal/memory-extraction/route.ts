@@ -220,9 +220,19 @@ export async function POST(request: NextRequest) {
         content: m.content,
         originalQuote: m.originalQuote ?? null,
         confidence: m.confidence,
+        // [SPEC 30 D-12 — 2026-05-14] Default `expiresAt` enforcement.
+        // Per the D-12 lock: "UserMemory: enforce default 365d
+        // expiresAt, explicit no-expiry only when confidence > 0.9
+        // (high-conviction extracted facts)." When the LLM provides
+        // an explicit `expiresInDays`, honor it. When no explicit
+        // expiry AND confidence ≤ 0.9, default to 365d. When no
+        // explicit expiry AND confidence > 0.9, leave null (the
+        // memory persists until the user deletes it manually).
         expiresAt: m.expiresInDays
           ? new Date(Date.now() + m.expiresInDays * 86_400_000)
-          : null,
+          : m.confidence > 0.9
+            ? null
+            : new Date(Date.now() + 365 * 86_400_000),
         active: true,
       })),
     });

@@ -7,6 +7,14 @@
     {
       "path": "/api/cron/turn-metrics-pending-sweep",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/conversation-log-retention",
+      "schedule": "30 3 * * *"
+    },
+    {
+      "path": "/api/cron/user-memory-retention",
+      "schedule": "45 3 * * *"
     }
   ]
 }

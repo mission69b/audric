@@ -2,6 +2,11 @@
  * [v1.4 Item 4] TurnMetrics retention — runs daily at 03:00 UTC via
  * `vercel.json` cron. Deletes rows older than 90 days.
  *
+ * [SPEC 30 D-12 — 2026-05-14] Now ALSO prunes AdviceLog at the same
+ * 90d TTL. Per D-12 lock: "AdviceLog 90d (matches TurnMetrics; one
+ * cron handles both)". One handler, two deletes — keeps cron count
+ * low (Vercel cron pricing) and the TTLs in lockstep.
+ *
  * Authenticated with the standard `CRON_SECRET` bearer header so only
  * Vercel's cron infrastructure can invoke it. Returns a count for log
  * visibility; failures bubble as 500 so cron retries kick in.
@@ -27,12 +32,17 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   }
 
   const cutoff = new Date(Date.now() - RETENTION_DAYS * 24 * 60 * 60 * 1000);
-  const deleted = await prisma.turnMetrics.deleteMany({
-    where: { createdAt: { lt: cutoff } },
-  });
+
+  const [turnDeleted, adviceDeleted] = await Promise.all([
+    prisma.turnMetrics.deleteMany({ where: { createdAt: { lt: cutoff } } }),
+    prisma.adviceLog.deleteMany({ where: { createdAt: { lt: cutoff } } }),
+  ]);
 
   console.log(
-    `[TurnMetricsCleanup] Deleted ${deleted.count} rows older than ${RETENTION_DAYS} days`,
+    `[RetentionCleanup] Deleted ${turnDeleted.count} TurnMetrics + ${adviceDeleted.count} AdviceLog rows older than ${RETENTION_DAYS}d`,
   );
-  return NextResponse.json({ deleted: deleted.count });
+  return NextResponse.json({
+    turnMetricsDeleted: turnDeleted.count,
+    adviceLogDeleted: adviceDeleted.count,
+  });
 }
