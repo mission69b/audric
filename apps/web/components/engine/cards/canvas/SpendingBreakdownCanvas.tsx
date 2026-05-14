@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { fmtUsd } from '../primitives';
+import { authFetch } from '@/lib/auth-fetch';
 
 interface SpendingData {
   available: true;
@@ -98,7 +99,7 @@ export function SpendingBreakdownCanvas({ data, onAction }: Props) {
   useEffect(() => {
     if (!address) return;
     setLoading(true);
-    fetch(`/api/analytics/spending?period=${periodValue}`, { headers: { 'x-sui-address': address } })
+    authFetch(`/api/analytics/spending?period=${periodValue}&address=${address}`)
       .then((r) => r.json())
       .then((d) => setResponse(d))
       .catch(() => setResponse({ period: periodValue, totalSpent: 0, requestCount: 0, serviceCount: 0, byService: [] }))

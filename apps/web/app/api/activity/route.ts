@@ -17,6 +17,7 @@ import {
   resolveCounterpartyDisplayMap,
   type CounterpartyDisplayMap,
 } from '@/lib/activity-counterparty';
+import { authenticateRequest, assertOwnsOrWatched } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 
@@ -45,6 +46,7 @@ const LIVE_APP_EVENT_TYPES = ['pay', 'pay_received'] as const;
 
 /**
  * GET /api/activity?address=0x...&cursor=<ms-timestamp>&limit=20
+ * Header: x-zklogin-jwt (required — SPEC 30 Phase 1A.5)
  *
  * Merges on-chain transaction history (via the canonical
  * `getTransactionHistory()`) with AppEvent rows (NeonDB). Supports
@@ -58,6 +60,12 @@ const LIVE_APP_EVENT_TYPES = ['pay', 'pay_received'] as const;
  * `Payment Intent (3 ops) · -$10` for multi-op PTBs — instead of the
  * old single-leg picker that produced `Swapped $987.60 MANIFEST`
  * (treating token quantity as USD).
+ *
+ * SPEC 30 Phase 1A.5: caller must hold a valid zkLogin JWT. The
+ * `?address=` parameter must either equal the caller's own address or
+ * be in their `WatchAddress` watchlist — pre-fix this endpoint
+ * accepted `?address=anyone` with no auth and exposed the user's
+ * private `AppEvent` rows.
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
@@ -68,6 +76,11 @@ export async function GET(request: NextRequest) {
   if (!address || !address.startsWith('0x')) {
     return NextResponse.json({ error: 'Invalid address' }, { status: 400 });
   }
+
+  const auth = await authenticateRequest(request);
+  if ('error' in auth) return auth.error;
+  const ownership = await assertOwnsOrWatched(auth.verified, address);
+  if (ownership) return ownership;
 
   try {
     const [chainItems, appItems] = await Promise.all([

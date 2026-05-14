@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { fmtUsd } from '../primitives';
+import { authFetch } from '@/lib/auth-fetch';
 
 interface WatchAddressData {
   available: true;
@@ -57,7 +58,7 @@ export function WatchAddressCanvas({ data, onAction }: Props) {
     setSavingsUsd(0);
     setDebtUsd(0);
     setLoading(true);
-    fetch(`/api/portfolio?address=${address}`)
+    authFetch(`/api/portfolio?address=${address}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (!d) return;

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { env } from '@/lib/env';
+import { authenticateRequest, assertOwnsOrWatched } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 
@@ -8,24 +9,34 @@ const INTERNAL_KEY = env.T2000_INTERNAL_KEY;
 
 /**
  * GET /api/analytics/weekly-summary?address=0x...
+ * Header: x-internal-key (for the t2000 cron) OR x-zklogin-jwt (for users)
  *
  * Returns a 7-day summary for the weekly briefing email (FI-3).
- * Called by the t2000 cron job via internal key auth or by
- * authenticated users via x-sui-address header.
+ * Called by the t2000 cron job via internal-key auth, or by
+ * authenticated users via verified zkLogin JWT.
+ *
+ * SPEC 30 Phase 1A.5: user-facing branch hardened — was forgeable
+ * `x-sui-address` header equality check, now full JWT verify +
+ * `assertOwnsOrWatched` (so a user can pull a saved-contact's summary
+ * but not arbitrary addresses).
  */
 export async function GET(request: NextRequest) {
   const internalKey = request.headers.get('x-internal-key');
-  const address = request.nextUrl.searchParams.get('address') ?? request.headers.get('x-sui-address');
+  const isInternal = internalKey != null && internalKey === INTERNAL_KEY;
 
-  if (!address) {
-    return NextResponse.json({ error: 'Missing address' }, { status: 400 });
-  }
-
-  if (!internalKey || internalKey !== INTERNAL_KEY) {
-    const headerAddr = request.headers.get('x-sui-address');
-    if (!headerAddr || headerAddr !== address) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  let address: string;
+  if (isInternal) {
+    const queryAddr = request.nextUrl.searchParams.get('address');
+    if (!queryAddr) {
+      return NextResponse.json({ error: 'Missing address' }, { status: 400 });
     }
+    address = queryAddr;
+  } else {
+    const auth = await authenticateRequest(request);
+    if ('error' in auth) return auth.error;
+    address = request.nextUrl.searchParams.get('address') ?? auth.verified.suiAddress;
+    const ownership = await assertOwnsOrWatched(auth.verified, address);
+    if (ownership) return ownership;
   }
 
   try {

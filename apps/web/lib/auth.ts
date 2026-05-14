@@ -267,6 +267,51 @@ export function assertOwns(verified: VerifiedJwt, claimedAddress: string): NextR
   return null;
 }
 
+/**
+ * Like `assertOwns`, but also accepts the case where the caller has
+ * `targetAddress` in their `WatchAddress` watch-list (saved contact /
+ * watched wallet). This is the right gate for READ-ONLY analytics +
+ * portfolio routes that legitimately serve a watched address — the
+ * `v0.49 universal address-aware reads` flag in those routes.
+ *
+ * SPEC 30 Phase 1A.5 — closes the unauthenticated-read class. Pre-fix
+ * those routes accepted `?address=anyone` with no auth; this helper
+ * is the structural fix.
+ *
+ * Returns `null` on success. Returns 400 when the address is
+ * malformed, 403 when the caller doesn't own the target AND it isn't
+ * in their watchlist.
+ *
+ * Performance: the watch-list check is a single indexed Prisma lookup
+ * (~5-15ms) and runs only when ownership doesn't already match — so
+ * for the common "user reads their own data" path the cost is zero.
+ */
+export async function assertOwnsOrWatched(
+  verified: VerifiedJwt,
+  targetAddress: string,
+): Promise<NextResponse | null> {
+  if (typeof targetAddress !== 'string' || !isValidSuiAddress(targetAddress)) {
+    return NextResponse.json({ error: 'Invalid address' }, { status: 400 });
+  }
+  if (verified.suiAddress === targetAddress) return null;
+
+  // Lazy import: most routes that call this helper are read-heavy and
+  // the Prisma client is already eagerly imported by their data path.
+  const { prisma } = await import('./prisma');
+  const user = await prisma.user.findUnique({
+    where: { suiAddress: verified.suiAddress },
+    select: {
+      id: true,
+      watchAddresses: { where: { address: targetAddress }, select: { id: true } },
+    },
+  });
+
+  if (!user || user.watchAddresses.length === 0) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+  return null;
+}
+
 // ─── Legacy helpers (preserved for callers not migrated to verifyJwt) ──
 // Routes that DON'T take an `address` parameter still gain protection
 // from the middleware-level JWT verify. These helpers stay so we don't

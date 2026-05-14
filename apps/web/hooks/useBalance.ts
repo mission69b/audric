@@ -2,6 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import type { PortfolioCoin } from '@t2000/engine';
+import { authFetch } from '@/lib/auth-fetch';
 
 const SUI_TYPE = '0x2::sui::SUI';
 const USDC_TYPE_LONG =
@@ -110,7 +111,7 @@ export function useBalance(address: string | null) {
       if (!address) throw new Error('No address');
 
       const [portfolioResp, ratesResp] = await Promise.all([
-        fetch(`/api/portfolio?address=${address}`)
+        authFetch(`/api/portfolio?address=${address}`)
           .then((r) => (r.ok ? (r.json() as Promise<PortfolioRouteResponse>) : null))
           .catch(() => null),
         fetch('/api/rates')

@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getPortfolio } from '@/lib/portfolio';
+import { authenticateRequest, assertOwnsOrWatched } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 
 /**
  * GET /api/analytics/yield-summary?address=0x...
- * Header: x-sui-address (caller identity — required)
+ * Header: x-zklogin-jwt (required — SPEC 30 Phase 1A.5)
  * Query: address (read target — optional; defaults to caller)
  *
  * Returns yield earnings breakdown: today, week, month, all-time,
@@ -22,14 +23,18 @@ export const runtime = 'nodejs';
  * registry — yieldToday/Week/Month/AllTime stay 0 for non-Audric
  * users (we have no record of past yield), but currentApy + deposited
  * + projectedYear come straight from the live position.
+ *
+ * SPEC 30 Phase 1A.5: caller identity now proven via verified zkLogin
+ * JWT (was forgeable `x-sui-address` header). Watched-address reads
+ * still allowed when the target is in the caller's `WatchAddress`
+ * watchlist.
  */
 export async function GET(request: NextRequest) {
-  const callerAddress = request.headers.get('x-sui-address');
-  const queryAddress = request.nextUrl.searchParams.get('address');
-  if (!callerAddress) {
-    return NextResponse.json({ error: 'Missing x-sui-address header' }, { status: 401 });
-  }
-  const address = queryAddress ?? callerAddress;
+  const auth = await authenticateRequest(request);
+  if ('error' in auth) return auth.error;
+  const address = request.nextUrl.searchParams.get('address') ?? auth.verified.suiAddress;
+  const ownership = await assertOwnsOrWatched(auth.verified, address);
+  if (ownership) return ownership;
 
   try {
     const user = await prisma.user.findUnique({

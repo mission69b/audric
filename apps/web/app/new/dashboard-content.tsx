@@ -35,6 +35,7 @@ import { useReceiveToast } from '@/hooks/useReceiveToast';
 import { parseIntent, type ParsedIntent } from '@/lib/intent-parser';
 import { mapError } from '@/lib/errors';
 import { SUI_NETWORK } from '@/lib/constants';
+import { authFetch } from '@/lib/auth-fetch';
 import { useContacts } from '@/hooks/useContacts';
 import { useAgent } from '@/hooks/useAgent';
 import { COIN_REGISTRY } from '@/lib/token-registry';
@@ -780,7 +781,7 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
     if (!address) return;
     feed.addItem({ type: 'ai-text', text: 'Loading transaction history...' });
     try {
-      const res = await fetch(`/api/history?address=${address}&limit=20`);
+      const res = await authFetch(`/api/history?address=${address}&limit=20`);
       const data = await res.json();
       feed.removeLastItem();
       if (data.items && data.items.length > 0) {
@@ -1776,7 +1777,7 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
       const toAsset = chipFlow.state.toAsset;
       if (!toAsset || !address) return;
       if (actual <= 0) return;
-      fetch(`/api/swap/quote?from=${encodeURIComponent(from)}&to=${encodeURIComponent(toAsset)}&amount=${actual}&address=${address}`)
+      authFetch(`/api/swap/quote?from=${encodeURIComponent(from)}&to=${encodeURIComponent(toAsset)}&amount=${actual}&address=${address}`)
         .then((r) => r.json())
         .then((q) => {
           if (q.error) throw new Error(q.error);

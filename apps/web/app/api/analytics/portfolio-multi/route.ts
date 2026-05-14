@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { isValidSuiAddress } from '@/lib/auth';
+import { authenticateRequest } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { getPortfolio, type Portfolio } from '@/lib/portfolio';
 
@@ -14,19 +14,23 @@ interface WalletPortfolio extends Portfolio {
 
 /**
  * GET /api/analytics/portfolio-multi
- * Header: x-sui-address (primary wallet for auth)
+ * Header: x-zklogin-jwt (required — SPEC 30 Phase 1A.5)
  *
  * Returns the canonical {@link Portfolio} for the primary wallet plus
  * every linked wallet, plus an aggregated total. Thin adapter around
  * `getPortfolio()` — every per-wallet number comes from the canonical
  * fetcher, so totals on this endpoint always match what
  * `/api/portfolio` returns for each individual wallet.
+ *
+ * SPEC 30 Phase 1A.5: caller's primary wallet is the verified zkLogin
+ * JWT subject — no caller-supplied address. The route always reads
+ * the caller's own user record + linked wallets, so no `assertOwns`
+ * gate is needed; the JWT verify alone is sufficient.
  */
 export async function GET(request: NextRequest) {
-  const address = request.headers.get('x-sui-address');
-  if (!address || !isValidSuiAddress(address)) {
-    return NextResponse.json({ error: 'Invalid address' }, { status: 400 });
-  }
+  const auth = await authenticateRequest(request);
+  if ('error' in auth) return auth.error;
+  const address = auth.verified.suiAddress;
 
   const user = await prisma.user.findUnique({
     where: { suiAddress: address },

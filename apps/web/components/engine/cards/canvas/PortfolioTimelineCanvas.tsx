@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { fmtUsd } from '../primitives';
+import { authFetch } from '@/lib/auth-fetch';
 
 interface TimelineData {
   available: true;
@@ -114,9 +115,7 @@ export function PortfolioTimelineCanvas({ data, onAction }: Props) {
   useEffect(() => {
     if (!address) return;
     setLoading(true);
-    fetch(`/api/analytics/portfolio-history?days=${period.days}`, {
-      headers: { 'x-sui-address': address },
-    })
+    authFetch(`/api/analytics/portfolio-history?days=${period.days}&address=${address}`)
       .then((r) => r.json())
       .then((d) => setResponse(d))
       .catch(() => setResponse({ snapshots: [], change: { period: `${period.days}d`, absoluteUsd: 0, percentChange: 0 } }))

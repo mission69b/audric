@@ -6,6 +6,7 @@ import {
   verifyJwt,
   AuthError,
   assertOwns,
+  assertOwnsOrWatched,
   __testHelpers,
   type VerifiedJwt,
 } from './auth';
@@ -204,6 +205,75 @@ describe('assertOwns', () => {
     // "client tried to impersonate."
     const response = assertOwns(verified, 'a'.repeat(66));
     expect(response?.status).toBe(400);
+  });
+});
+
+describe('assertOwnsOrWatched', () => {
+  // Phase 1A.5: closes the unauthenticated-read class. Asserts:
+  //   1. Same-address path bypasses Prisma entirely (zero DB cost on
+  //      the hot path).
+  //   2. Watched-address path queries WatchAddress and allows when a
+  //      row exists for (caller, target).
+  //   3. Non-watched non-owned address returns 403.
+  //   4. Malformed address returns 400 BEFORE any DB query.
+
+  const verified: VerifiedJwt = {
+    payload: { sub: 'test-sub' },
+    suiAddress: VALID_ADDRESS,
+    emailVerified: true,
+  };
+
+  const findUniqueMock = vi.fn();
+
+  beforeEach(() => {
+    findUniqueMock.mockReset();
+    vi.doMock('./prisma', () => ({
+      prisma: { user: { findUnique: findUniqueMock } },
+    }));
+  });
+
+  afterEach(() => {
+    vi.doUnmock('./prisma');
+  });
+
+  it('returns null without hitting the DB when caller owns the target', async () => {
+    const response = await assertOwnsOrWatched(verified, VALID_ADDRESS);
+    expect(response).toBeNull();
+    expect(findUniqueMock).not.toHaveBeenCalled();
+  });
+
+  it('returns null when target is in caller watch-list', async () => {
+    findUniqueMock.mockResolvedValue({
+      id: 'user-1',
+      watchAddresses: [{ id: 'wa-1' }],
+    });
+    const response = await assertOwnsOrWatched(verified, OTHER_ADDRESS);
+    expect(response).toBeNull();
+    expect(findUniqueMock).toHaveBeenCalledWith({
+      where: { suiAddress: VALID_ADDRESS },
+      select: {
+        id: true,
+        watchAddresses: { where: { address: OTHER_ADDRESS }, select: { id: true } },
+      },
+    });
+  });
+
+  it('returns 403 when target is neither owned nor watched', async () => {
+    findUniqueMock.mockResolvedValue({ id: 'user-1', watchAddresses: [] });
+    const response = await assertOwnsOrWatched(verified, OTHER_ADDRESS);
+    expect(response?.status).toBe(403);
+  });
+
+  it('returns 403 when caller is not a registered Audric user', async () => {
+    findUniqueMock.mockResolvedValue(null);
+    const response = await assertOwnsOrWatched(verified, OTHER_ADDRESS);
+    expect(response?.status).toBe(403);
+  });
+
+  it('returns 400 for malformed address WITHOUT touching the DB', async () => {
+    const response = await assertOwnsOrWatched(verified, 'not-an-address');
+    expect(response?.status).toBe(400);
+    expect(findUniqueMock).not.toHaveBeenCalled();
   });
 });
 

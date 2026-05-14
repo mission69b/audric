@@ -1,24 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { authenticateRequest, assertOwnsOrWatched } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 
 /**
  * GET /api/analytics/spending?period=month
- * Header: x-sui-address (also accepts ?address= for backward compatibility)
+ * Header: x-zklogin-jwt (required — SPEC 30 Phase 1A.5)
+ * Query: address (read target — optional; defaults to caller)
  *
  * Aggregates AppEvent + ServicePurchase data to show spending by service/category.
  * Period: "week" | "month" | "year" | "all"
+ *
+ * SPEC 30 Phase 1A.5: caller must hold a valid zkLogin JWT. The
+ * `?address=` parameter must either equal the caller's own address or
+ * be in their `WatchAddress` watchlist — pre-fix this endpoint
+ * accepted `x-sui-address` header (forgeable) or `?address=` (none),
+ * exposing private `ServicePurchase` + `AppEvent` rows.
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
-  const address = request.headers.get('x-sui-address')
-    ?? searchParams.get('address');
   const period = searchParams.get('period') ?? 'month';
 
-  if (!address || !address.startsWith('0x')) {
+  const auth = await authenticateRequest(request);
+  if ('error' in auth) return auth.error;
+
+  const address = searchParams.get('address') ?? auth.verified.suiAddress;
+  if (!address.startsWith('0x')) {
     return NextResponse.json({ error: 'Invalid address' }, { status: 400 });
   }
+
+  const ownership = await assertOwnsOrWatched(auth.verified, address);
+  if (ownership) return ownership;
 
   const since = periodToDate(period);
 

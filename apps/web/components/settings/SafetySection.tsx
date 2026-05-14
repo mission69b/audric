@@ -25,6 +25,7 @@
 //     POST same route persists it. Both routes already shipped on main.
 
 import { useEffect, useState, useCallback } from 'react';
+import { authFetch } from '@/lib/auth-fetch';
 
 type PermissionPreset = 'conservative' | 'balanced' | 'aggressive';
 
@@ -149,9 +150,7 @@ export function SafetySection({ address }: SafetySectionProps) {
   const fetchSpending = useCallback(async () => {
     if (!address) return;
     try {
-      const res = await fetch(`/api/analytics/spending?period=month`, {
-        headers: { 'x-sui-address': address },
-      });
+      const res = await authFetch(`/api/analytics/spending?period=month&address=${address}`);
       if (res.ok) {
         const data = await res.json();
         if (data && typeof data.totalSpent === 'number') setSpending(data);

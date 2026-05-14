@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { authFetch } from '@/lib/auth-fetch';
 
 interface HeatmapData {
   available: true;
@@ -107,7 +108,7 @@ export function ActivityHeatmapCanvas({ data, onAction }: Props) {
   useEffect(() => {
     if (!address) return;
     setLoading(true);
-    fetch(`/api/analytics/activity-heatmap?days=365`, { headers: { 'x-sui-address': address } })
+    authFetch(`/api/analytics/activity-heatmap?days=365&address=${address}`)
       .then((r) => r.json())
       .then((d) => setResponse(d))
       .catch(() => setResponse({ buckets: [], summary: { totalEvents: 0, activeDays: 0, maxCount: 0, periodDays: 365 } }))

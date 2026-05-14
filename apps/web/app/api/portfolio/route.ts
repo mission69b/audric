@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isValidSuiAddress } from '@mysten/sui/utils';
 import { getPortfolio } from '@/lib/portfolio';
+import { authenticateRequest, assertOwnsOrWatched } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 
 /**
  * GET /api/portfolio?address=0x...
+ * Header: x-zklogin-jwt (required — SPEC 30 Phase 1A.5)
  *
  * Single source of truth for "what is this wallet worth right now".
  * Thin adapter around `getPortfolio()` (see [/Users/funkii/dev/audric/apps/web/lib/portfolio.ts]).
@@ -13,12 +15,22 @@ export const runtime = 'nodejs';
  * Returns the canonical {@link Portfolio} shape directly — wallet
  * coins (priced), per-symbol allocations, NAVI positions, derived net
  * worth, estimated daily yield, source flag, and price timestamp.
+ *
+ * SPEC 30 Phase 1A.5: caller must hold a valid zkLogin JWT. The
+ * `?address=` parameter must either equal the caller's own address or
+ * be in their `WatchAddress` watchlist — pre-fix this endpoint accepted
+ * `?address=anyone` with no auth (unauthenticated-read class).
  */
 export async function GET(request: NextRequest) {
   const address = request.nextUrl.searchParams.get('address');
   if (!address || !isValidSuiAddress(address)) {
     return NextResponse.json({ error: 'Invalid address' }, { status: 400 });
   }
+
+  const auth = await authenticateRequest(request);
+  if ('error' in auth) return auth.error;
+  const ownership = await assertOwnsOrWatched(auth.verified, address);
+  if (ownership) return ownership;
 
   try {
     const portfolio = await getPortfolio(address);

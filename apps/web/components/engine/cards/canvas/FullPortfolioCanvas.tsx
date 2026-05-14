@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { fmtUsd } from '../primitives';
+import { authFetch } from '@/lib/auth-fetch';
 
 interface FullPortfolioData {
   available: true;
@@ -115,23 +116,20 @@ export function FullPortfolioCanvas({ data, onAction }: Props) {
     if (!address) return;
     setLoading(true);
 
-    const hdrs = { 'x-sui-address': address };
-    // [Bug — 2026-04-27] Canonical wallet/savings/debt/net-worth comes
-    // from `/api/portfolio?address=...` (single source of truth, backed
-    // by fetchPortfolio()). Activity + spending are separate concerns
-    // so they stay on their own routes. Pre-fix we summed `/api/balances`
-    // USDC + raw SUI tokens (broken: SUI is in tokens, not USD) and
-    // relied on engine-seeded `currentSavings` which is hardcoded to 0
-    // for watched addresses.
+    // [SPEC 30 Phase 1A.5] Migrated from `x-sui-address` (forgeable)
+    // header to `authFetch` (mandatory zkLogin JWT). Canonical
+    // wallet/savings/debt/net-worth comes from `/api/portfolio?address=...`
+    // (single source of truth, backed by fetchPortfolio()). Activity
+    // + spending stay on their own routes.
     Promise.all([
-      fetch(`/api/analytics/activity-heatmap?days=30`, { headers: hdrs })
+      authFetch(`/api/analytics/activity-heatmap?days=30&address=${address}`)
         .then((r) => r.json())
         .then((d) => d.summary ?? null)
         .catch(() => null),
-      fetch(`/api/analytics/spending?period=month`, { headers: hdrs })
+      authFetch(`/api/analytics/spending?period=month&address=${address}`)
         .then((r) => r.json())
         .catch(() => null),
-      fetch(`/api/portfolio?address=${address}`)
+      authFetch(`/api/portfolio?address=${address}`)
         .then((r) => r.ok ? r.json() : null)
         .then((d): CanonicalPortfolio | null =>
           d && typeof d.netWorthUsd === 'number'
@@ -156,7 +154,7 @@ export function FullPortfolioCanvas({ data, onAction }: Props) {
             : null,
         )
         .catch(() => null),
-      fetch(`/api/analytics/portfolio-multi`, { headers: hdrs })
+      authFetch(`/api/analytics/portfolio-multi`)
         .then((r) => r.ok ? r.json() : null)
         .catch(() => null),
     ])

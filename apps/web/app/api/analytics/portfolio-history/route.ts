@@ -1,28 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getPortfolio } from '@/lib/portfolio';
+import { authenticateRequest, assertOwnsOrWatched } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 
 /**
  * GET /api/analytics/portfolio-history?days=30&address=0x...
+ * Header: x-zklogin-jwt (required — SPEC 30 Phase 1A.5)
  *
  * Returns daily portfolio snapshots for the requested address plus
  * period change calculations. Falls back to a single live data point
  * (via the canonical `getPortfolio()`) when no historical snapshot
  * row exists for today (e.g. cron hasn't run, or the target is a
  * watched address that isn't a registered Audric user).
+ *
+ * SPEC 30 Phase 1A.5: caller identity now proven via verified zkLogin
+ * JWT (was forgeable `x-sui-address` header). Watched-address reads
+ * still allowed when the target is in the caller's `WatchAddress`
+ * watchlist.
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const days = Math.min(parseInt(searchParams.get('days') ?? '30', 10), 365);
 
-  const callerAddress = request.headers.get('x-sui-address');
-  const queryAddress = searchParams.get('address');
-  if (!callerAddress) {
-    return NextResponse.json({ error: 'Missing x-sui-address header' }, { status: 401 });
-  }
-  const address = queryAddress ?? callerAddress;
+  const auth = await authenticateRequest(request);
+  if ('error' in auth) return auth.error;
+  const address = searchParams.get('address') ?? auth.verified.suiAddress;
+  const ownership = await assertOwnsOrWatched(auth.verified, address);
+  if (ownership) return ownership;
 
   try {
     const user = await prisma.user.findUnique({

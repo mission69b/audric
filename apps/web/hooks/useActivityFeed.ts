@@ -10,6 +10,7 @@
 import { useCallback, useMemo } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import type { ActivityItem, ActivityPage } from '@/lib/activity-types';
+import { authFetch } from '@/lib/auth-fetch';
 
 const LS_LAST_SEEN_PREFIX = 'audric:activity-last-seen:';
 
@@ -75,7 +76,7 @@ export function useActivityFeed(address: string | null) {
         limit: '20',
       });
       if (pageParam) params.set('cursor', pageParam);
-      const res = await fetch(`/api/activity?${params}`);
+      const res = await authFetch(`/api/activity?${params}`);
       return res.json();
     },
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
