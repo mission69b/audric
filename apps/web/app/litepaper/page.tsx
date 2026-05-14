@@ -91,21 +91,28 @@ export default function LitepaperPage() {
           <h2>Three brands.<br /><em>One stack.</em></h2>
 
           <div className={s.gridBorder}>
-            <div className={`${s.gridRow} ${s.cols3}`}>
+            <div className={`${s.gridRow} ${s.cols2}`}>
               <div className={s.gridCell}>
                 <div className={s.cellLabel}>Protocol</div>
                 <div className={s.cellTitle}>suimpp.dev</div>
-                <div className={s.cellBody}>The open standard for machine payments on Sui. Ecosystem registry. Any agent, any app.</div>
+                <div className={s.cellBody}>Open standard for machine payments on Sui. Ecosystem registry. Any agent, any app can implement MPP.</div>
               </div>
               <div className={s.gridCell}>
-                <div className={s.cellLabel}>Infrastructure</div>
+                <div className={s.cellLabel}>Agentic Finance Infrastructure</div>
                 <div className={s.cellTitle}>t2000.ai</div>
-                <div className={s.cellBody}>SDK, engine, CLI, MCP server — five npm packages. Plus <strong>mpp.t2000.ai</strong>: 40+ AI-payable APIs, 88 endpoints, pay-per-request in USDC. Open to any AI agent.</div>
+                <div className={s.cellBody}>@t2000/sdk, @t2000/engine, @t2000/cli, @t2000/mcp — five npm packages. Wallet, DeFi, 35 tools, streaming, guards. Open-source. Fee-free by design.</div>
+              </div>
+            </div>
+            <div className={`${s.gridRow} ${s.cols2}`}>
+              <div className={s.gridCell}>
+                <div className={s.cellLabel}>Agentic Commerce</div>
+                <div className={s.cellTitle}>mpp.t2000.ai</div>
+                <div className={s.cellBody}>40+ AI APIs, 88 endpoints. OpenAI, Anthropic, ElevenLabs, fal.ai and more. Pay per request in USDC. Any agent. Any app.</div>
               </div>
               <div className={s.gridCell}>
                 <div className={s.cellLabel}>Consumer Product</div>
                 <div className={s.cellTitle}>audric.ai</div>
-                <div className={s.cellBody}>Conversational finance built on t2000 infrastructure. 1,000+ users. Five products. One interface.</div>
+                <div className={s.cellBody}>Conversational finance on top of the full t2000 stack. 1,000+ users. Five products. One interface.</div>
               </div>
             </div>
           </div>
