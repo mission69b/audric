@@ -408,29 +408,6 @@ export default function LitepaperPage() {
           </div>
         </section>
 
-        {/* Token */}
-        <section className={s.sec}>
-          <div className={s.secLabel}>T2000 Token</div>
-          <h2>Stake. Govern. Earn fees.</h2>
-          <p>Not part of this raise. Investors receive a token warrant alongside the SAFE — a contractual right to T2000 tokens at TGE, after consistent fee revenue and legal review (~3–6 months post-raise).</p>
-
-          <div className={s.tblWrap}>
-            <table>
-              <thead>
-                <tr><th>Parameter</th><th>Design</th></tr>
-              </thead>
-              <tbody>
-                <tr><td>Chain</td><td>Sui (Move)</td></tr>
-                <tr><td>Supply</td><td>Fixed cap — no inflation</td></tr>
-                <tr><td>Revenue sharing</td><td>Stake T2000 → earn pro-rata USDC treasury fees weekly</td></tr>
-                <tr><td>Governance</td><td>Vote on fee parameters, protocol upgrades</td></tr>
-                <tr><td>Utility</td><td>Pay protocol fees in T2000 at a discount (portion burned)</td></tr>
-                <tr><td>Vesting</td><td>4-year vest, 1-year cliff</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
-
         {/* Raise */}
         <section className={s.sec}>
           <div className={s.secLabel}>The Raise</div>
