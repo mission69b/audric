@@ -130,7 +130,15 @@ function isThirdPartyAsk(message: string): boolean {
     new RegExp(`\\b${FINANCIAL_NOUN_GROUP}\\s+(?:of|for)\\s+([\\w'\u2019.@-]+)`, 'i'),
   );
   if (ofForMatch) {
-    const target = ofForMatch[1].toLowerCase().replace(/[.,?!'"]+$/g, '');
+    // [SPEC 30 Phase 1B.5 — 2026-05-14] CodeQL js/polynomial-redos
+    // flagged `/[.,?!'"]+$/g` as backtracking on long `!`-runs in
+    // user input. Replaced with a constant-time charwise loop:
+    // O(N) trim regardless of input shape; no regex backtracking.
+    const lower = ofForMatch[1].toLowerCase();
+    const PUNCT = '.,?!\'"';
+    let end = lower.length;
+    while (end > 0 && PUNCT.includes(lower[end - 1])) end--;
+    const target = lower.slice(0, end);
     if (!SELF_TARGETS.has(target)) return true;
   }
 

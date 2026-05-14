@@ -6,6 +6,7 @@ import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { GATEWAY_BASE } from '@/lib/service-gateway';
 import { prisma } from '@/lib/prisma';
 import { env } from '@/lib/env';
+import { sanitizeForLog } from '@/lib/log-sanitize';
 import { extractVendorErrorMessage } from './extract-vendor-error-message';
 import { classifyGatewayResponse } from './classify-gateway-response';
 
@@ -365,11 +366,17 @@ async function recordPurchase(
     }),
   ]);
 
+  // [SPEC 30 Phase 1B.5 — 2026-05-14] CodeQL js/tainted-format-string:
+  // paymentDigest / address / serviceId are all user-controlled inputs
+  // — sanitize before logging to prevent CRLF log-injection.
+  const safeDigest = sanitizeForLog(paymentDigest);
+  const safeAddress = sanitizeForLog(address);
+  const safeServiceId = sanitizeForLog(serviceId);
   const labels = ['servicePurchase', 'appEvent'] as const;
   results.forEach((r, i) => {
     if (r.status === 'rejected') {
       console.error(
-        `[services/complete] recordPurchase: ${labels[i]} insert failed (digest=${paymentDigest}, address=${address}, service=${serviceId}):`,
+        `[services/complete] recordPurchase: ${labels[i]} insert failed (digest=${safeDigest}, address=${safeAddress}, service=${safeServiceId}):`,
         r.reason,
       );
     }

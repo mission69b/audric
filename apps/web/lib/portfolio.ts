@@ -36,6 +36,7 @@ import {
 } from '@/lib/portfolio-data';
 import { env } from '@/lib/env';
 import { getSuiRpcUrl } from '@/lib/sui-rpc';
+import { sanitizeForLog } from '@/lib/log-sanitize';
 
 const BLOCKVISION_API_KEY = env.BLOCKVISION_API_KEY;
 
@@ -285,14 +286,18 @@ async function doGetPortfolio(address: string): Promise<Portfolio> {
     ? defiResult.value
     : { totalUsd: 0, perProtocol: {}, pricedAt: Date.now(), source: 'degraded' };
 
+  // [SPEC 30 Phase 1B.5 — 2026-05-14] CodeQL js/tainted-format-string:
+  // `address` is user-controlled (HTTP query/body); inlining into the
+  // log template enables CRLF injection. Sanitize once.
+  const safeAddress = sanitizeForLog(address);
   if (walletResult.status === 'rejected') {
-    console.error(`[portfolio] wallet fetch failed for ${address}:`, walletResult.reason);
+    console.error(`[portfolio] wallet fetch failed for ${safeAddress}:`, walletResult.reason);
   }
   if (positionsResult.status === 'rejected') {
-    console.error(`[portfolio] positions fetch failed for ${address}:`, positionsResult.reason);
+    console.error(`[portfolio] positions fetch failed for ${safeAddress}:`, positionsResult.reason);
   }
   if (defiResult.status === 'rejected') {
-    console.error(`[portfolio] defi fetch failed for ${address}:`, defiResult.reason);
+    console.error(`[portfolio] defi fetch failed for ${safeAddress}:`, defiResult.reason);
   }
 
   // Per-symbol allocations map for backwards-compat with consumers that
