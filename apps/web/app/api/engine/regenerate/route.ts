@@ -7,7 +7,7 @@ import {
   type PendingAction,
 } from '@t2000/engine';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
-import { validateJwt, isValidSuiAddress } from '@/lib/auth';
+import { authenticateRequest, assertOwns, isValidSuiAddress } from '@/lib/auth';
 import { createEngine, getSessionStore } from '@/lib/engine/engine-factory';
 import { prisma } from '@/lib/prisma';
 import { emitQuoteRefreshFired } from '@/lib/engine/quote-refresh-metrics';
@@ -91,9 +91,12 @@ export async function POST(request: NextRequest) {
     return jsonError('Invalid Sui address', 400);
   }
 
-  const jwt = request.headers.get('x-zklogin-jwt');
-  const jwtResult = validateJwt(jwt);
-  if ('error' in jwtResult) return jwtResult.error;
+  // [SPEC 30 Phase 1A.3] Verify JWT signature AND bind to body.address.
+  // Same IDOR class as engine/chat + engine/resume.
+  const auth = await authenticateRequest(request);
+  if ('error' in auth) return auth.error;
+  const ownership = assertOwns(auth.verified, address);
+  if (ownership) return ownership;
 
   const ip =
     request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';

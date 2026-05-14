@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { validateJwt, isValidSuiAddress } from '@/lib/auth';
+import { authenticateRequest, assertOwns, isValidSuiAddress } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
 export const runtime = 'nodejs';
@@ -10,9 +10,12 @@ export const runtime = 'nodejs';
  * Stamps tosAcceptedAt on the user record (idempotent).
  */
 export async function POST(request: NextRequest) {
-  const jwt = request.headers.get('x-zklogin-jwt');
-  const jwtResult = validateJwt(jwt);
-  if ('error' in jwtResult) return jwtResult.error;
+  // [SPEC 30 Phase 1A.3] Verify JWT signature AND bind body.address.
+  // Pre-Phase-1A any verified-JWT holder could stamp tosAcceptedAt on
+  // any user account. Idempotent + low impact, but the IDOR class fix
+  // applies uniformly across every JWT-bearing route.
+  const auth = await authenticateRequest(request);
+  if ('error' in auth) return auth.error;
 
   let body: { address?: string };
   try {
@@ -25,6 +28,9 @@ export async function POST(request: NextRequest) {
   if (!address || !isValidSuiAddress(address)) {
     return NextResponse.json({ error: 'Invalid address' }, { status: 400 });
   }
+
+  const ownership = assertOwns(auth.verified, address);
+  if (ownership) return ownership;
 
   const user = await prisma.user.findUnique({
     where: { suiAddress: address },

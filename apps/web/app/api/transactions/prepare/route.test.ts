@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 function fakeJwt(payload: Record<string, unknown> = { sub: '123', email: 'a@b.com' }): string {
   const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
@@ -8,6 +8,33 @@ function fakeJwt(payload: Record<string, unknown> = { sub: '123', email: 'a@b.co
 }
 
 const TEST_JWT = fakeJwt();
+const TEST_VERIFIED_ADDR = '0x' + 'a'.repeat(64);
+
+// [SPEC 30 Phase 1A.4] Stub authenticateRequest so existing param-validation
+// tests don't need real Google JWKS roundtrips. The mock returns a verified
+// identity bound to TEST_VERIFIED_ADDR — tests that exercise the IDOR fix
+// (claimed address ≠ verified address) override this stub per-case.
+vi.mock('@/lib/auth', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/auth')>('@/lib/auth');
+  return {
+    ...actual,
+    authenticateRequest: vi.fn(async (request: NextRequest) => {
+      const jwt = request.headers.get('x-zklogin-jwt');
+      if (!jwt) {
+        return {
+          error: NextResponse.json({ error: 'Authentication required' }, { status: 401 }),
+        };
+      }
+      return {
+        verified: {
+          payload: { sub: 'test-sub' },
+          suiAddress: TEST_VERIFIED_ADDR,
+          emailVerified: true,
+        },
+      };
+    }),
+  };
+});
 
 function buildRequest(body: unknown, jwt: string = TEST_JWT): NextRequest {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };

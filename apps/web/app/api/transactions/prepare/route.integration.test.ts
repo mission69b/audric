@@ -4,7 +4,7 @@
  * without hitting real Sui RPC or Enoki.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 // The "happy path past validation" tests below (allow-list passers, swap
 // missing-tokens, save-without-asset, claim-rewards) deliberately don't
@@ -28,6 +28,34 @@ function fakeJwt(payload: Record<string, unknown> = { sub: '123', email: 'test@t
 
 const TEST_JWT = fakeJwt();
 const VALID_ADDR = '0x' + 'a'.repeat(64);
+
+// [SPEC 30 Phase 1A.4] Stub authenticateRequest so the route's IDOR
+// gate doesn't need real Google JWKS verification in tests. Mock
+// returns a verified identity bound to VALID_ADDR — every test in
+// this file uses VALID_ADDR for its `address` field, so assertOwns
+// passes. Param-validation behaviour (address format, amount bounds,
+// allow-list, etc.) is unaffected.
+vi.mock('@/lib/auth', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/auth')>('@/lib/auth');
+  return {
+    ...actual,
+    authenticateRequest: vi.fn(async (request: NextRequest) => {
+      const jwt = request.headers.get('x-zklogin-jwt');
+      if (!jwt) {
+        return {
+          error: NextResponse.json({ error: 'Authentication required' }, { status: 401 }),
+        };
+      }
+      return {
+        verified: {
+          payload: { sub: 'test-sub' },
+          suiAddress: VALID_ADDR,
+          emailVerified: true,
+        },
+      };
+    }),
+  };
+});
 
 function buildRequest(body: unknown, jwt: string = TEST_JWT): NextRequest {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };

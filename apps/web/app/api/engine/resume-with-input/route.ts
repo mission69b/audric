@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { serializeSSE, withStreamState } from '@t2000/engine';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
-import { validateJwt, isValidSuiAddress } from '@/lib/auth';
+import { authenticateRequest, assertOwns, isValidSuiAddress } from '@/lib/auth';
 import { createEngine, getSessionStore } from '@/lib/engine/engine-factory';
 import { sanitizeStreamErrorMessage } from '@/lib/engine/stream-errors';
 import { startSseHeartbeat } from '@/lib/sse-heartbeat';
@@ -94,6 +94,14 @@ function jsonError(message: string, status: number): Response {
 // ───────────────────────────────────────────────────────────────────────────
 
 export async function POST(request: NextRequest) {
+  // [SPEC 30 Phase 1A.3] Auth FIRST. Same IDOR class as engine/chat +
+  // engine/resume — bind body.address to the verified JWT identity to
+  // prevent attacker-controlled session mutation under a victim's
+  // address. JWT verification only needs the header so it runs before
+  // the body parse.
+  const auth = await authenticateRequest(request);
+  if ('error' in auth) return auth.error;
+
   let body: ResumeWithInputBody;
   try {
     body = await request.json();
@@ -116,9 +124,8 @@ export async function POST(request: NextRequest) {
     return jsonError('Invalid pendingInput.schema', 400);
   }
 
-  const jwt = request.headers.get('x-zklogin-jwt');
-  const jwtResult = validateJwt(jwt);
-  if ('error' in jwtResult) return jwtResult.error;
+  const ownership = assertOwns(auth.verified, address);
+  if (ownership) return ownership;
 
   const ip =
     request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';

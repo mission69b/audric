@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
-import { validateJwt, isValidSuiAddress } from '@/lib/auth';
+import { authenticateRequest, assertOwns, isValidSuiAddress } from '@/lib/auth';
 import { getSessionStore } from '@/lib/engine/engine-factory';
 import { UpstashSessionStore } from '@/lib/engine/upstash-session-store';
 import {
@@ -11,14 +11,22 @@ import {
 export const runtime = 'nodejs';
 
 export async function GET(request: NextRequest) {
-  const jwt = request.headers.get('x-zklogin-jwt');
-  const jwtResult = validateJwt(jwt);
-  if ('error' in jwtResult) return jwtResult.error;
+  // [SPEC 30 Phase 1A.3] Verify JWT signature AND bind ?address to the
+  // verified JWT identity. Pre-Phase-1A this route accepted any
+  // (decode-valid JWT, arbitrary address) pair — an attacker could list
+  // a victim's session ids by passing the victim's address. The session
+  // contents are protected by the per-id route's ownership check, but
+  // listing the ids alone is still a confidentiality leak.
+  const auth = await authenticateRequest(request);
+  if ('error' in auth) return auth.error;
 
   const address = request.nextUrl.searchParams.get('address');
   if (!address || !isValidSuiAddress(address)) {
     return NextResponse.json({ error: 'Valid address required' }, { status: 400 });
   }
+
+  const ownership = assertOwns(auth.verified, address);
+  if (ownership) return ownership;
 
   const ip =
     request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';

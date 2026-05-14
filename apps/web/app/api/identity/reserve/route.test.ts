@@ -59,6 +59,35 @@ vi.mock('@/lib/prisma', () => ({
   },
 }));
 
+// [SPEC 30 Phase 1A.3] Stub authenticateRequest. The real impl performs
+// full jose.jwtVerify against Google JWKS — these tests don't ship a
+// real Google-signed JWT, so we stub auth to "pass present-JWT" and
+// stub assertOwns to "always own". The IDOR ownership gate is covered
+// by the dedicated regression suite at __tests__/spec30-idor-regression.test.ts.
+vi.mock('@/lib/auth', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/auth')>('@/lib/auth');
+  const { NextResponse } = await import('next/server');
+  return {
+    ...actual,
+    authenticateRequest: async (req: Request) => {
+      const jwt = req.headers.get('x-zklogin-jwt');
+      if (!jwt) {
+        return { error: NextResponse.json({ error: 'Authentication required' }, { status: 401 }) };
+      }
+      return {
+        verified: {
+          sub: 'test-sub',
+          email: 'test@example.com',
+          emailVerified: true,
+          suiAddress: '__test_wildcard__',
+          raw: jwt,
+        },
+      };
+    },
+    assertOwns: () => undefined,
+  };
+});
+
 vi.mock('@t2000/engine', async () => {
   const actual = await vi.importActual<typeof import('@t2000/engine')>('@t2000/engine');
   return {
