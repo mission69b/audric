@@ -152,6 +152,38 @@ export default function SecurityPage() {
         </div>
       </section>
 
+      {/* Recent Advisories */}
+      <section className="mb-12">
+        <h2 className="text-fg-primary font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
+          Recent Advisories
+        </h2>
+        <div className="border border-border-subtle rounded-lg p-5 space-y-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="space-y-1.5">
+              <p className="font-sans text-[14px] font-medium text-fg-primary">
+                2026-05 — IDOR + cache + JWT-expiry class
+              </p>
+              <p className="text-xs text-fg-secondary font-mono leading-relaxed">
+                Server-side auth missing on read routes; forgeable header on
+                user-namespace routes; CDN cache-poisoning on portfolio.
+                Resolved 2026-05-14. No exploitation observed.
+              </p>
+            </div>
+            <span className="px-2 py-1 font-mono text-[10px] tracking-[0.1em] uppercase border rounded-xs text-success-fg bg-success-bg border-success-border/40 shrink-0">
+              Resolved
+            </span>
+          </div>
+          <a
+            href={`${AUDRIC_GITHUB}/blob/main/apps/web/SECURITY_ADVISORY_2026-05-IDOR.md`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-block text-sm text-fg-primary font-mono underline underline-offset-2 hover:opacity-70"
+          >
+            Read full advisory &rarr;
+          </a>
+        </div>
+      </section>
+
       {/* Responsible Disclosure */}
       <section className="mb-12">
         <h2 className="text-fg-primary font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
