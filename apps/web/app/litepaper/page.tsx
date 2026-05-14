@@ -190,26 +190,24 @@ export default function LitepaperPage() {
             </div>
           </div>
 
-          <p>One sentence. AI creates the content. Walrus stores it permanently on Sui — no CDN, no link rot, no server that goes down. Seal gates access on-chain: pay to unlock, supply caps enforced forever. The buyer needs no wallet — they sign in with Google, pay in USDC, and download instantly.</p>
-
           <div className={s.gridBorder}>
             <div className={`${s.gridRow} ${s.cols3}`}>
               <div className={s.gridCell}>
                 <div className={s.cellTitle}>Create</div>
-                <div className={s.cellBody}>Music, art, ebooks, coloring books. One sentence — AI does the rest. No tools, no uploads, no design skills.</div>
+                <div className={s.cellBody}>Music, art, ebooks. One sentence — AI does the rest.</div>
               </div>
               <div className={s.gridCell}>
                 <div className={s.cellTitle}>Store &amp; Gate</div>
-                <div className={s.cellBody}>Walrus: permanent storage on Sui. Seal: pay-to-unlock, on-chain. Supply caps (&ldquo;100 copies max&rdquo;) enforced by the blockchain, not a database.</div>
+                <div className={s.cellBody}>Walrus: permanent on Sui. Seal: pay-to-unlock, on-chain supply caps.</div>
               </div>
               <div className={s.gridCell}>
                 <div className={s.cellTitle}>Earn</div>
-                <div className={s.cellBody}>92% to the creator. Instant USDC. No payout delays, no payment processor. Buyers pay with Google — no wallet setup.</div>
+                <div className={s.cellBody}>92% to creator. Instant USDC. Buyers pay with Google — no wallet.</div>
               </div>
             </div>
           </div>
 
-          <p>Spotify pays <strong>$0.003 per stream</strong>. Audric pays <strong>$4.60 on a $5 sale</strong>. Total cost to create + publish on Sui: <strong>$0.09</strong>. On Ethereum, gas alone exceeds the sale price.</p>
+          <p>Spotify: <strong>$0.003 per stream</strong>. Audric: <strong>$4.60 on a $5 sale</strong>. Cost to create + publish: <strong>$0.09</strong>.</p>
           <a href="https://audric-v2-demos.vercel.app/demos/03-make-a-beat.html" className={s.demoLink} target="_blank" rel="noopener noreferrer">→ Demo 03 · Make a beat &amp; sell it for $5</a>
         </section>
 
