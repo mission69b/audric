@@ -85,6 +85,32 @@ export default function LitepaperPage() {
           </div>
         </section>
 
+        {/* Brand Architecture */}
+        <section className={s.sec}>
+          <div className={s.secLabel}>Brand Architecture</div>
+          <h2>Three brands.<br /><em>One stack.</em></h2>
+
+          <div className={s.gridBorder}>
+            <div className={`${s.gridRow} ${s.cols3}`}>
+              <div className={s.gridCell}>
+                <div className={s.cellLabel}>Protocol</div>
+                <div className={s.cellTitle}>suimpp.dev</div>
+                <div className={s.cellBody}>The open standard for machine payments on Sui. Ecosystem registry. Any agent, any app.</div>
+              </div>
+              <div className={s.gridCell}>
+                <div className={s.cellLabel}>Infrastructure</div>
+                <div className={s.cellTitle}>t2000.ai</div>
+                <div className={s.cellBody}>SDK, engine, CLI, MCP server — five npm packages. Plus <strong>mpp.t2000.ai</strong>: 40+ AI-payable APIs, 88 endpoints, pay-per-request in USDC. Open to any AI agent.</div>
+              </div>
+              <div className={s.gridCell}>
+                <div className={s.cellLabel}>Consumer Product</div>
+                <div className={s.cellTitle}>audric.ai</div>
+                <div className={s.cellBody}>Conversational finance built on t2000 infrastructure. 1,000+ users. Five products. One interface.</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* Products */}
         <section className={s.sec}>
           <div className={s.secLabel}>AI-native finance engine</div>
@@ -137,6 +163,7 @@ export default function LitepaperPage() {
           </div>
 
           <p>Buyers need no wallet, no SUI, no prior account. Google sign-in creates their wallet on the spot. Settles in 0.4 seconds. Multi-vendor atomic payments — one sentence, one signature, everything or nothing.</p>
+          <p>Coming Q3: USDC onramp from any bank card, and offramp to real bank accounts in 70+ countries. Send USDC anywhere in the world. Cash out anywhere.</p>
           <a href="https://audric-v2-demos.vercel.app/demos/02-payment-link.html" className={s.demoLink} target="_blank" rel="noopener noreferrer">→ Demo 02 · Pay with no wallet, no SUI</a>
         </section>
 
@@ -156,7 +183,26 @@ export default function LitepaperPage() {
             </div>
           </div>
 
-          <p>Spotify pays <strong>$0.003 per stream</strong>. Audric pays <strong>$4.60 on a $5 sale</strong>. Total cost to create a lo-fi beat + cover art on Sui: <strong>$0.09</strong>. On Ethereum, gas alone exceeds the sale price.</p>
+          <p>One sentence. AI creates the content. Walrus stores it permanently on Sui — no CDN, no link rot, no server that goes down. Seal gates access on-chain: pay to unlock, supply caps enforced forever. The buyer needs no wallet — they sign in with Google, pay in USDC, and download instantly.</p>
+
+          <div className={s.gridBorder}>
+            <div className={`${s.gridRow} ${s.cols3}`}>
+              <div className={s.gridCell}>
+                <div className={s.cellTitle}>Create</div>
+                <div className={s.cellBody}>Music, art, ebooks, coloring books. One sentence — AI does the rest. No tools, no uploads, no design skills.</div>
+              </div>
+              <div className={s.gridCell}>
+                <div className={s.cellTitle}>Store &amp; Gate</div>
+                <div className={s.cellBody}>Walrus: permanent storage on Sui. Seal: pay-to-unlock, on-chain. Supply caps (&ldquo;100 copies max&rdquo;) enforced by the blockchain, not a database.</div>
+              </div>
+              <div className={s.gridCell}>
+                <div className={s.cellTitle}>Earn</div>
+                <div className={s.cellBody}>92% to the creator. Instant USDC. No payout delays, no payment processor. Buyers pay with Google — no wallet setup.</div>
+              </div>
+            </div>
+          </div>
+
+          <p>Spotify pays <strong>$0.003 per stream</strong>. Audric pays <strong>$4.60 on a $5 sale</strong>. Total cost to create + publish on Sui: <strong>$0.09</strong>. On Ethereum, gas alone exceeds the sale price.</p>
           <a href="https://audric-v2-demos.vercel.app/demos/03-make-a-beat.html" className={s.demoLink} target="_blank" rel="noopener noreferrer">→ Demo 03 · Make a beat &amp; sell it for $5</a>
         </section>
 
