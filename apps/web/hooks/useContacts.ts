@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { authFetch } from '@/lib/auth-fetch';
 
 /**
  * [SPEC 10 D.4] Widened Contact shape — now exposes the SPEC 10 D7
@@ -62,7 +63,7 @@ export function useContacts(userAddress: string | null) {
 
     const promise = (async () => {
       try {
-        const res = await fetch(`/api/user/preferences?address=${userAddress}`);
+        const res = await authFetch(`/api/user/preferences?address=${userAddress}`);
         if (!res.ok) return contacts;
         const data = await res.json();
         const next: Contact[] = Array.isArray(data.contacts) ? (data.contacts as Contact[]) : [];
@@ -103,7 +104,7 @@ export function useContacts(userAddress: string | null) {
     backfillDoneRef.current = true;
     void (async () => {
       try {
-        const res = await fetch('/api/user/preferences/contacts/backfill', {
+        const res = await authFetch('/api/user/preferences/contacts/backfill', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ address: userAddress }),
@@ -153,7 +154,7 @@ export function useContacts(userAddress: string | null) {
       setContacts(updated);
 
       try {
-        const res = await fetch('/api/user/preferences', {
+        const res = await authFetch('/api/user/preferences', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ address: userAddress, contacts: updated }),
@@ -183,7 +184,7 @@ export function useContacts(userAddress: string | null) {
       const previous = contacts;
       setContacts(updated);
       try {
-        const res = await fetch('/api/user/preferences', {
+        const res = await authFetch('/api/user/preferences', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ address: userAddress, contacts: updated }),
@@ -233,7 +234,7 @@ export function useContacts(userAddress: string | null) {
       const previous = contacts;
       setContacts(updated);
       try {
-        const res = await fetch('/api/user/preferences', {
+        const res = await authFetch('/api/user/preferences', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ address: userAddress, contacts: updated }),

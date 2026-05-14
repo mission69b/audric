@@ -19,6 +19,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Tag, type TagTone } from '@/components/ui/Tag';
+import { authFetch } from '@/lib/auth-fetch';
 
 interface MemorySectionProps {
   address: string | null;
@@ -65,7 +66,7 @@ export function MemorySection({ address }: MemorySectionProps) {
     if (!address) return;
     setMemoriesLoading(true);
     try {
-      const res = await fetch(`/api/user/memories?address=${address}`);
+      const res = await authFetch(`/api/user/memories?address=${address}`);
       if (res.ok) {
         const data = await res.json();
         setMemories(data.memories ?? []);
@@ -80,7 +81,7 @@ export function MemorySection({ address }: MemorySectionProps) {
   useEffect(() => {
     if (!address) return;
     setProfileLoading(true);
-    fetch(`/api/user/preferences?address=${address}`)
+    authFetch(`/api/user/preferences?address=${address}`)
       .then((r) => r.json())
       .then((data: { limits?: Record<string, unknown> | null }) => {
         const fp = data.limits?.financialProfile as { style: string; notes: string } | null;
@@ -95,7 +96,7 @@ export function MemorySection({ address }: MemorySectionProps) {
     if (!address) return;
     setDeletingMemory(id);
     try {
-      const res = await fetch(`/api/user/memories/${id}?address=${address}`, { method: 'DELETE' });
+      const res = await authFetch(`/api/user/memories/${id}?address=${address}`, { method: 'DELETE' });
       if (res.ok) {
         setMemories((prev) => prev.filter((m) => m.id !== id));
       }
@@ -110,7 +111,7 @@ export function MemorySection({ address }: MemorySectionProps) {
     if (!address) return;
     setClearingMemories(true);
     try {
-      const res = await fetch(`/api/user/memories?address=${address}`, { method: 'DELETE' });
+      const res = await authFetch(`/api/user/memories?address=${address}`, { method: 'DELETE' });
       if (res.ok) {
         setMemories([]);
       }

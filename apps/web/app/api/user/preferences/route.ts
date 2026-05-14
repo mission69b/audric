@@ -6,6 +6,7 @@ import {
   parseContactList,
   serializeContactList,
 } from '@/lib/identity/contact-schema';
+import { authenticateRequest, assertOwns } from '@/lib/auth';
 
 /**
  * GET /api/user/preferences?address=0x...
@@ -28,11 +29,21 @@ import {
  * (audricUsername, source, addedAt).
  */
 export async function GET(request: NextRequest) {
+  // [SPEC 30 Phase 1A.6 — 2026-05-14] Bind JWT to ?address. Pre-fix
+  // this route was wide-open by `?address=` — any caller could read
+  // any user's contacts, financial profile, daily limits, permission
+  // preset, and account-age via simple URL substitution.
+  const auth = await authenticateRequest(request);
+  if ('error' in auth) return auth.error;
+
   const address = request.nextUrl.searchParams.get('address');
 
   if (!address || !address.startsWith('0x')) {
     return NextResponse.json({ error: 'Missing or invalid address' }, { status: 400 });
   }
+
+  const ownership = assertOwns(auth.verified, address);
+  if (ownership) return ownership;
 
   // Register address with indexer so on-chain transactions get tracked in stats.
   // Fire-and-forget — table may not exist if DB hasn't been shared yet.
@@ -113,6 +124,16 @@ export async function GET(request: NextRequest) {
  * without wiping others.
  */
 export async function POST(request: NextRequest) {
+  // [SPEC 30 Phase 1A.6 — 2026-05-14] Bind JWT to body.address.
+  // CRITICAL pre-fix: this route was wide-open and accepted
+  // `permissionPreset` in the body — anyone could mutate any user's
+  // permission preset to `aggressive`, which raises auto-execute
+  // thresholds. Combined with the engine's `permissionConfig` read
+  // path, this turned into a silent money-loss vector: the next chat
+  // session would auto-execute writes the victim never opted into.
+  const auth = await authenticateRequest(request);
+  if ('error' in auth) return auth.error;
+
   let body: {
     address?: string;
     contacts?: unknown;
@@ -136,6 +157,9 @@ export async function POST(request: NextRequest) {
   if (!address || typeof address !== 'string' || !address.startsWith('0x')) {
     return NextResponse.json({ error: 'Missing or invalid address' }, { status: 400 });
   }
+
+  const ownership = assertOwns(auth.verified, address);
+  if (ownership) return ownership;
 
   // Merge incoming limits with existing so callers don't accidentally wipe keys.
   let mergedLimits: Prisma.InputJsonValue | undefined;

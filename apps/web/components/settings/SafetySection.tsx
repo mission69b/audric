@@ -19,10 +19,13 @@
 //
 // Behavior preserved:
 //   • `address` prop unchanged
-//   • `fetch('/api/analytics/spending?period=month')` data shape untouched
+//   • `/api/analytics/spending?period=month` data shape untouched
 //   • Daily-budget onBlur POST to `/api/user/preferences` untouched
-//   • New: GET `/api/user/preferences?address=...` reads `permissionPreset`,
+//   • GET `/api/user/preferences?address=...` reads `permissionPreset`,
 //     POST same route persists it. Both routes already shipped on main.
+//   • SPEC 30 Phase 1A.5/1A.6: every fetch above goes through `authFetch`
+//     (auto-attaches `x-zklogin-jwt` from localStorage). The backend
+//     routes now require a verified JWT + ownership of `?address=`.
 
 import { useEffect, useState, useCallback } from 'react';
 import { authFetch } from '@/lib/auth-fetch';
@@ -163,7 +166,7 @@ export function SafetySection({ address }: SafetySectionProps) {
   const fetchPreset = useCallback(async () => {
     if (!address) return;
     try {
-      const res = await fetch(`/api/user/preferences?address=${address}`);
+      const res = await authFetch(`/api/user/preferences?address=${address}`);
       if (res.ok) {
         const data = await res.json();
         if (data?.permissionPreset && PRESET_ORDER.includes(data.permissionPreset)) {
@@ -186,7 +189,7 @@ export function SafetySection({ address }: SafetySectionProps) {
     setPreset(next);
     setPresetSaving(true);
     try {
-      const res = await fetch('/api/user/preferences', {
+      const res = await authFetch('/api/user/preferences', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ address, permissionPreset: next }),
@@ -347,7 +350,7 @@ export function SafetySection({ address }: SafetySectionProps) {
               const val = parseFloat(e.target.value);
               if (isNaN(val) || val < 0) return;
               try {
-                await fetch('/api/user/preferences', {
+                await authFetch('/api/user/preferences', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ address, limits: { dailyApiBudget: val } }),

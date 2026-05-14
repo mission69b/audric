@@ -29,17 +29,65 @@ vi.mock('@/lib/prisma', () => ({
   },
 }));
 
-function buildGetRequest(address?: string): NextRequest {
+// [SPEC 30 Phase 1A.6 — 2026-05-14] Stub `authenticateRequest` /
+// `assertOwns`. Pre-1A.6 this route was wide-open by `?address=` —
+// any caller could read or overwrite any user's preferences /
+// permissionPreset. Tests now exercise the auth gate via the same
+// stub pattern used by SPEC 30 Phase 1A.3 routes (e.g. /api/identity/
+// reserve/route.test.ts):
+//   • Missing JWT → 401 (auth helper rejects).
+//   • Present JWT + ownership match → 200 (assertOwns returns
+//     `undefined`).
+// Cross-route IDOR (verified caller, victim address) coverage lives
+// in the dedicated regression suite at
+// __tests__/spec30-idor-regression.test.ts so we don't bloat the
+// per-route happy/sad-path file here.
+vi.mock('@/lib/auth', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/auth')>('@/lib/auth');
+  const { NextResponse } = await import('next/server');
+  return {
+    ...actual,
+    authenticateRequest: async (req: Request) => {
+      const jwt = req.headers.get('x-zklogin-jwt');
+      if (!jwt) {
+        return { error: NextResponse.json({ error: 'Authentication required' }, { status: 401 }) };
+      }
+      return {
+        verified: {
+          payload: { sub: 'test-sub' },
+          suiAddress: '__test_wildcard__',
+          emailVerified: true,
+        },
+      };
+    },
+    assertOwns: () => null,
+  };
+});
+
+const VALID_JWT =
+  'eyJhbGciOiJSUzI1NiIsImtpZCI6InRlc3QifQ.' +
+  Buffer.from(
+    JSON.stringify({ sub: 'test-user', exp: Date.now() / 1000 + 3600 }),
+  ).toString('base64url') +
+  '.signature';
+
+function buildGetRequest(address?: string, opts?: { jwt?: string | null }): NextRequest {
   const url = address
     ? `http://localhost/api/user/preferences?address=${address}`
     : 'http://localhost/api/user/preferences';
-  return new NextRequest(url, { method: 'GET' });
+  const jwt = opts?.jwt === null ? null : (opts?.jwt ?? VALID_JWT);
+  const headers: Record<string, string> = {};
+  if (jwt) headers['x-zklogin-jwt'] = jwt;
+  return new NextRequest(url, { method: 'GET', headers });
 }
 
-function buildPostRequest(body: unknown): NextRequest {
+function buildPostRequest(body: unknown, opts?: { jwt?: string | null }): NextRequest {
+  const jwt = opts?.jwt === null ? null : (opts?.jwt ?? VALID_JWT);
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (jwt) headers['x-zklogin-jwt'] = jwt;
   return new NextRequest('http://localhost/api/user/preferences', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify(body),
   });
 }
@@ -147,6 +195,14 @@ describe('/api/user/preferences', () => {
       const res = await GET(buildGetRequest('not-an-address'));
       expect(res.status).toBe(400);
     });
+
+    // [SPEC 30 Phase 1A.6 — 2026-05-14] Pre-fix this returned 200
+    // with the victim's contacts/limits/profile when caller had no
+    // JWT — full unauthenticated read class.
+    it('returns 401 when the JWT header is missing', async () => {
+      const res = await GET(buildGetRequest(WALLET_ADDR, { jwt: null }));
+      expect(res.status).toBe(401);
+    });
   });
 
   describe('POST', () => {
@@ -252,7 +308,7 @@ describe('/api/user/preferences', () => {
     it('returns 400 for invalid JSON body', async () => {
       const req = new NextRequest('http://localhost/api/user/preferences', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-zklogin-jwt': VALID_JWT },
         body: 'not-json',
       });
 
@@ -261,6 +317,24 @@ describe('/api/user/preferences', () => {
 
       const body = await res.json();
       expect(body.error).toContain('Invalid JSON');
+    });
+
+    // [SPEC 30 Phase 1A.6 — 2026-05-14] CRITICAL pre-fix: this route
+    // accepted `permissionPreset` mutations from any caller. An
+    // attacker could POST `{address: <victim>, permissionPreset:
+    // "aggressive"}` to raise the victim's auto-execute thresholds —
+    // a silent money-loss vector via the next chat session. The 401
+    // gate kills that class.
+    it('returns 401 when the JWT header is missing', async () => {
+      const res = await POST(
+        buildPostRequest(
+          { address: WALLET_ADDR, permissionPreset: 'aggressive' },
+          { jwt: null },
+        ),
+      );
+      expect(res.status).toBe(401);
+      // Critically, the upsert is NEVER called when auth fails.
+      expect(mockUpsert).not.toHaveBeenCalled();
     });
   });
 

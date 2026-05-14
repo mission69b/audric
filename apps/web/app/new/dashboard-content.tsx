@@ -724,7 +724,7 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
 
   useEffect(() => {
     if (!address) return;
-    fetch(`/api/user/preferences?address=${address}`)
+    authFetch(`/api/user/preferences?address=${address}`)
       .then((r) => r.json())
       .then((data) => {
         const budget = data.limits?.agentBudget;

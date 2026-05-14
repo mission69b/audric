@@ -548,6 +548,49 @@ describe('SPEC 30 Phase 1A.4 — IDOR regression smoke (additional routes)', () 
       url: 'http://localhost/api/user/tos-accept',
       body: { address: VICTIM_ADDR },
     },
+    // [SPEC 30 Phase 1A.6 — 2026-05-14] Six /api/user/* routes that
+    // were either wide-open by ?address= (5 routes) or used the
+    // forgeable `x-sui-address` header (1 route — watch-addresses).
+    // The 401-on-missing-JWT smoke locks each gate.
+    {
+      name: 'GET /api/user/preferences (Phase 1A.6)',
+      importPath: '../app/api/user/preferences/route',
+      method: 'GET',
+      url: `http://localhost/api/user/preferences?address=${VICTIM_ADDR}`,
+    },
+    {
+      name: 'POST /api/user/preferences (Phase 1A.6)',
+      importPath: '../app/api/user/preferences/route',
+      method: 'POST',
+      url: 'http://localhost/api/user/preferences',
+      body: { address: VICTIM_ADDR, permissionPreset: 'aggressive' },
+    },
+    {
+      name: 'POST /api/user/preferences/contacts/backfill (Phase 1A.6)',
+      importPath: '../app/api/user/preferences/contacts/backfill/route',
+      method: 'POST',
+      url: 'http://localhost/api/user/preferences/contacts/backfill',
+      body: { address: VICTIM_ADDR },
+    },
+    {
+      name: 'GET /api/user/memories (Phase 1A.6)',
+      importPath: '../app/api/user/memories/route',
+      method: 'GET',
+      url: `http://localhost/api/user/memories?address=${VICTIM_ADDR}`,
+    },
+    {
+      name: 'POST /api/user/financial-profile (Phase 1A.6)',
+      importPath: '../app/api/user/financial-profile/route',
+      method: 'POST',
+      url: 'http://localhost/api/user/financial-profile',
+      body: { address: VICTIM_ADDR, style: 'aggressive', notes: 'pwn' },
+    },
+    {
+      name: 'GET /api/user/watch-addresses (Phase 1A.6)',
+      importPath: '../app/api/user/watch-addresses/route',
+      method: 'GET',
+      url: 'http://localhost/api/user/watch-addresses',
+    },
   ];
 
   beforeEach(() => {

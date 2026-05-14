@@ -8,6 +8,7 @@ import {
 import { backfillAudricUsernames } from '@/lib/identity/contact-suins-backfill';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { getSuiRpcUrl } from '@/lib/sui-rpc';
+import { authenticateRequest, assertOwns } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 
@@ -31,9 +32,10 @@ export const runtime = 'nodejs';
  * Triggered from `useContacts` once per session if the initial GET
  * shows any contacts with `audricUsername === null`.
  *
- * Auth: matches the existing `/api/user/preferences` POST — wide-open by
- * address (pre-existing pattern, not introduced here). IP-throttled to
- * 10 backfills per minute to bound RPC fan-out under hostile load.
+ * Auth: zkLogin JWT (header `x-zklogin-jwt`) + `assertOwns(body.address)`.
+ * SPEC 30 Phase 1A.6 closed the prior wide-open-by-address posture
+ * (which let any caller fan out RPC traffic on any user's contact
+ * list). IP rate-limit (10/min) is preserved as a second layer.
  *
  * Body: { address: string }
  * Response: { contacts: [...widened shape], changed, attempted, hits, errored }
@@ -47,6 +49,11 @@ function ipKey(req: NextRequest): string {
 }
 
 export async function POST(req: NextRequest) {
+  // [SPEC 30 Phase 1A.6 — 2026-05-14] Auth gate ahead of rate limit
+  // so anonymous traffic doesn't poison the IP-keyed bucket.
+  const auth = await authenticateRequest(req);
+  if ('error' in auth) return auth.error;
+
   const limit = rateLimit(
     `contacts-backfill:${ipKey(req)}`,
     RATE_LIMIT_MAX,
@@ -69,6 +76,9 @@ export async function POST(req: NextRequest) {
   if (!address || typeof address !== 'string' || !address.startsWith('0x')) {
     return NextResponse.json({ error: 'Missing or invalid address' }, { status: 400 });
   }
+
+  const ownership = assertOwns(auth.verified, address);
+  if (ownership) return ownership;
 
   const prefs = await prisma.userPreferences.findUnique({
     where: { address },

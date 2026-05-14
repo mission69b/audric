@@ -9,7 +9,8 @@
 // Usage:
 //   node scripts/portfolio-shadow-check.mjs \
 //     --base https://staging.audric.ai \
-//     --address 0x40cd...
+//     --address 0x40cd... \
+//     --jwt eyJhbGc...     # required since SPEC 30 Phase 1A.5
 //
 // Exits 0 on match, 1 on divergence.
 //
@@ -19,6 +20,13 @@
 //   3. /api/balances (if present)    → matches portfolio.walletAllocations
 //   4. /api/rates                    → consistent USDC save rate
 //   5. /api/history?limit=10         → returns at least 0 rows (smoke check)
+//
+// [SPEC 30 Phase 1A.5 — 2026-05-14] Most of these routes (portfolio,
+// positions, history) now require a verified zkLogin JWT and that the
+// `?address=` parameter either equals the JWT-derived address or is
+// in the caller's WatchAddress watchlist. Pass the JWT via `--jwt`
+// (or `AUDRIC_SHADOW_JWT` env). The script no longer works against a
+// post-1A.5 deployment without it.
 //
 // The contract test at lib/__tests__/portfolio-contract.test.ts pins
 // the expected SHAPE; this script pins the live VALUES across surfaces
@@ -34,11 +42,16 @@ const args = Object.fromEntries(
 
 const BASE = (args.base ?? process.env.AUDRIC_SHADOW_BASE ?? '').replace(/\/$/, '');
 const ADDRESS = args.address ?? process.env.AUDRIC_SHADOW_ADDRESS;
+const JWT = args.jwt ?? process.env.AUDRIC_SHADOW_JWT ?? null;
 const TOLERANCE_USD = Number(args.tolerance ?? '0.01');
 
 if (!BASE || !ADDRESS) {
-  console.error('Usage: node scripts/portfolio-shadow-check.mjs --base <url> --address <0x...> [--tolerance 0.01]');
+  console.error('Usage: node scripts/portfolio-shadow-check.mjs --base <url> --address <0x...> --jwt <zklogin-jwt> [--tolerance 0.01]');
   process.exit(2);
+}
+
+if (!JWT) {
+  console.warn('[shadow-check] WARN: no --jwt supplied. Routes secured by SPEC 30 Phase 1A.5 (portfolio, positions, history) will return 401.');
 }
 
 const fmt = (n) => (typeof n === 'number' ? n.toFixed(4) : String(n));
@@ -46,7 +59,9 @@ const close = (a, b) => Math.abs((a ?? 0) - (b ?? 0)) <= TOLERANCE_USD;
 
 async function get(path) {
   const url = `${BASE}${path}`;
-  const res = await fetch(url, { headers: { Accept: 'application/json' } });
+  const headers = { Accept: 'application/json' };
+  if (JWT) headers['x-zklogin-jwt'] = JWT;
+  const res = await fetch(url, { headers });
   if (!res.ok) {
     throw new Error(`${url} → HTTP ${res.status}`);
   }
