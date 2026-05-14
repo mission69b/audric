@@ -1,0 +1,10 @@
+# audric.ai security disclosure
+# RFC 9116: https://www.rfc-editor.org/rfc/rfc9116
+# Last updated: 2026-05-14
+
+Contact: mailto:security@t2000.ai
+Contact: https://github.com/mission69b/audric/security/advisories/new
+Expires: 2027-05-14T00:00:00.000Z
+Preferred-Languages: en
+Canonical: https://audric.ai/.well-known/security.txt
+Policy: https://audric.ai/security

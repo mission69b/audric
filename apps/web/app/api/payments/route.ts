@@ -24,6 +24,20 @@ export async function POST(request: NextRequest) {
   if ('error' in auth) return auth.error;
   const address = auth.verified.suiAddress;
 
+  // [SPEC 30 D-10 lock — 2026-05-14] Per-IP rate limit (10/hr/IP).
+  // Defense-in-depth on top of the per-address limit below: catches the
+  // "spammer registers 10 fake accounts from one IP and creates an
+  // invoice from each" pattern that a per-address limit alone wouldn't
+  // catch. Mirrors the IP-extraction pattern already used by
+  // `/api/voice/transcribe`. 10/hr is a conservative starter — legit
+  // users rarely exceed 1–2 invoices/hr; revisit if false-positives
+  // surface in Vercel logs.
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
+  if (ip !== 'unknown') {
+    const ipRl = rateLimit(`pay:ip:${ip}`, 10, 3_600_000);
+    if (!ipRl.success) return rateLimitResponse(ipRl.retryAfterMs!);
+  }
+
   const rl = rateLimit(`pay:${address}`, 20, 60_000);
   if (!rl.success) return rateLimitResponse(rl.retryAfterMs!);
 
