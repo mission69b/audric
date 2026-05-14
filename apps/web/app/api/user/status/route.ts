@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { validateJwt, isValidSuiAddress, isJwtEmailVerified } from '@/lib/auth';
+import {
+  authenticateRequest,
+  assertOwns,
+  isValidSuiAddress,
+  isJwtEmailVerified,
+} from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import {
   SESSION_WINDOW_MS,
@@ -33,14 +38,24 @@ export const runtime = 'nodejs';
  * column stays for legacy / debugging but is no longer authoritative.
  */
 export async function GET(request: NextRequest) {
-  const jwt = request.headers.get('x-zklogin-jwt');
-  const jwtResult = validateJwt(jwt);
-  if ('error' in jwtResult) return jwtResult.error;
+  // [SPEC 30 Phase 1A.3] Bind the JWT identity to the requested
+  // address. Pre-Phase-1A this route accepted any (valid JWT, arbitrary
+  // address) pair → an attacker could swap `?address=0x<victim>` and
+  // upsert a User row for the victim. authenticateRequest verifies the
+  // JWT signature against Google's JWKS + derives the canonical zkLogin
+  // address; assertOwns rejects when the address doesn't match.
+  const auth = await authenticateRequest(request);
+  if ('error' in auth) return auth.error;
 
   const address = request.nextUrl.searchParams.get('address');
   if (!address || !isValidSuiAddress(address)) {
     return NextResponse.json({ error: 'Invalid address' }, { status: 400 });
   }
+
+  const ownership = assertOwns(auth.verified, address);
+  if (ownership) return ownership;
+
+  const jwt = request.headers.get('x-zklogin-jwt');
 
   const [user, sessionCount] = await Promise.all([
     prisma.user.upsert({

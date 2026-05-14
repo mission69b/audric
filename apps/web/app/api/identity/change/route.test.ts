@@ -62,6 +62,34 @@ vi.mock('@/lib/prisma', () => ({
   },
 }));
 
+// [SPEC 30 Phase 1A.3] Stub authenticateRequest. See identity/reserve
+// route.test.ts for the rationale — IDOR ownership gate is covered by
+// __tests__/spec30-idor-regression.test.ts, this suite focuses on the
+// per-route business logic.
+vi.mock('@/lib/auth', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/auth')>('@/lib/auth');
+  const { NextResponse } = await import('next/server');
+  return {
+    ...actual,
+    authenticateRequest: async (req: Request) => {
+      const jwt = req.headers.get('x-zklogin-jwt');
+      if (!jwt) {
+        return { error: NextResponse.json({ error: 'Authentication required' }, { status: 401 }) };
+      }
+      return {
+        verified: {
+          sub: 'test-sub',
+          email: 'test@example.com',
+          emailVerified: true,
+          suiAddress: '__test_wildcard__',
+          raw: jwt,
+        },
+      };
+    },
+    assertOwns: () => undefined,
+  };
+});
+
 vi.mock('@t2000/engine', async () => {
   const actual = await vi.importActual<typeof import('@t2000/engine')>('@t2000/engine');
   return {

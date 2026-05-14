@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
-import { validateJwt } from '@/lib/auth';
+import { authenticateRequest } from '@/lib/auth';
 import { getSessionStore } from '@/lib/engine/engine-factory';
 import { UpstashSessionStore } from '@/lib/engine/upstash-session-store';
 import { asHarnessVersion } from '@/lib/interactive-harness';
@@ -10,6 +10,22 @@ import {
 } from './route-helpers';
 
 export const runtime = 'nodejs';
+
+/**
+ * [SPEC 30 Phase 1A.3] Resource-keyed binding for session-id routes.
+ *
+ * Sessions are keyed by an opaque id; the IDOR-relevant address is
+ * stored in `session.metadata.address`. We deliberately collapse
+ * "session not found" and "session not owned" into the same 404
+ * response so an enumeration attacker cannot distinguish "session id
+ * exists for someone else" from "session id doesn't exist anywhere"
+ * (otherwise the response status would leak existence + ownership).
+ */
+function ownsSession(verifiedAddress: string, metadata: unknown): boolean {
+  if (!metadata || typeof metadata !== 'object') return false;
+  const ownerAddress = (metadata as { address?: unknown }).address;
+  return typeof ownerAddress === 'string' && ownerAddress === verifiedAddress;
+}
 
 interface LastInterruption {
   turnIndex: number;
@@ -31,9 +47,8 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const jwt = request.headers.get('x-zklogin-jwt');
-  const jwtResult = validateJwt(jwt);
-  if ('error' in jwtResult) return jwtResult.error;
+  const auth = await authenticateRequest(request);
+  if ('error' in auth) return auth.error;
 
   const ip =
     request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
@@ -47,7 +62,11 @@ export async function GET(
 
   const { id } = await params;
   const data = await store.get(id);
-  if (!data) {
+  if (!data || !ownsSession(auth.verified.suiAddress, data.metadata)) {
+    // [SPEC 30 Phase 1A.3] Collapse "not found" + "not owned" → 404 to
+    // prevent session-id enumeration. Pre-Phase-1A this route returned
+    // chat history for any session id the caller could guess; the
+    // reporter PoC named this as the wallet-access leak vector.
     return NextResponse.json({ error: 'Session not found' }, { status: 404 });
   }
 
@@ -102,9 +121,8 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const jwt = request.headers.get('x-zklogin-jwt');
-  const jwtResult = validateJwt(jwt);
-  if ('error' in jwtResult) return jwtResult.error;
+  const auth = await authenticateRequest(request);
+  if ('error' in auth) return auth.error;
 
   const ip =
     request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
@@ -117,6 +135,12 @@ export async function DELETE(
   }
 
   const { id } = await params;
+  // [SPEC 30 Phase 1A.3] Verify ownership BEFORE delete. Same 404
+  // collapse rule as GET — don't leak existence to non-owners.
+  const existing = await store.get(id);
+  if (!existing || !ownsSession(auth.verified.suiAddress, existing.metadata)) {
+    return NextResponse.json({ error: 'Session not found' }, { status: 404 });
+  }
   await store.delete(id);
 
   return NextResponse.json({ deleted: true });

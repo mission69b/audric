@@ -39,11 +39,56 @@ export type ZkLoginStep = 'jwt' | 'salt' | 'proof' | 'done';
 
 // --- Session persistence ---
 
+/**
+ * Persist a zkLogin session to the browser's localStorage.
+ *
+ * **Trust model (SPEC 30 Phase 1B — addresses CodeQL alert
+ * `js/clear-text-storage-of-sensitive-data`):**
+ *
+ * The persisted blob contains:
+ *   - The ephemeral `Ed25519` keypair (single Sui epoch ≈ 24h lifetime).
+ *   - The Google OIDC JWT (~1h Google-side; 7-epoch maxEpoch on Sui).
+ *   - The Mysten-issued ZK proof (validity bound to maxEpoch).
+ *   - The user's salt + derived Sui address (public-by-design).
+ *
+ * **Why localStorage is the canonical storage location for zkLogin:**
+ *
+ *   1. **No server-side encryption key exists.** The whole zkLogin
+ *      proposition is "no server holds your private material." Encrypting
+ *      the blob with a server-side key would re-introduce custodial risk;
+ *      encrypting with a client-side key just shifts the storage problem
+ *      to where to put THAT key.
+ *
+ *   2. **Time-bounded blast radius.** The ephemeral key expires at the
+ *      next Sui epoch (~24h on mainnet). The JWT expires at `exp` (~1h on
+ *      Google's side). After expiry the persisted blob signs nothing.
+ *
+ *   3. **Mysten's reference implementation** uses localStorage
+ *      (https://docs.sui.io/concepts/cryptography/zklogin); deviating
+ *      makes our tooling incompatible with the documented pattern.
+ *
+ * **Residual risk: cross-origin XSS.** An XSS exploit on `audric.ai`
+ * could read this blob and sign transactions as the user until the
+ * ephemeral key expires. Defense in depth lives at:
+ *
+ *   - SPEC 30 Phase 9 — CSP hardening (`'unsafe-inline'` removal, nonces).
+ *   - SPEC 30 Phase 8 — dependency-hygiene (block supply-chain XSS via
+ *     compromised npm packages).
+ *   - The 24h ephemeral-key expiry caps the worst case.
+ *
+ * Future hardening tracked in `audric-build-tracker.md`:
+ *   - Move ephemeral keypair to `sessionStorage` (tab-scoped) — accepts
+ *     the UX cost of re-signing-in on tab close; not yet ranked above
+ *     other Phase 9 hardening tasks.
+ *   - Encrypted IndexedDB via Web Crypto-derived key — same UX trade-off.
+ *
+ * The CodeQL alert is acknowledged + documented + retained as a tracking
+ * artefact for future hardening review.
+ */
 export function saveSession(session: ZkLoginSession): void {
-  // Security: ephemeral keys are short-lived (one Sui epoch ≈ 24h) and
-  // worthless after expiry. Browser localStorage is the standard approach
-  // for Sui zkLogin — no server-side encryption key is available.
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(session)); // lgtm[js/clear-text-storage-of-sensitive-data]
+  // codeql[js/clear-text-storage-of-sensitive-data]: zkLogin canonical pattern; trust model documented in JSDoc above.
+  // lgtm[js/clear-text-storage-of-sensitive-data]
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
 }
 
 export function loadSession(): ZkLoginSession | null {

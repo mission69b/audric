@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { createRemoteJWKSet, jwtVerify } from 'jose';
 
 // [SIMPLIFICATION DAY 12.5] Dropped /automations + /reports rewrites and the
 // /settings/automations redirect. Both panels were retired in S.11; the dashboard
@@ -34,7 +35,94 @@ const APP_VERSION =
   process.env.VERCEL_GIT_COMMIT_SHA ||
   'local-dev';
 
-export function middleware(request: NextRequest) {
+// [SPEC 30 Phase 1A.2 — 2026-05-14] Edge-runtime JWT verification (PERMISSIVE).
+//
+// Behaviour: when an `x-zklogin-jwt` header IS present, verify its
+// signature against Google's JWKS. On verify-success, stamp the
+// downstream request with `x-auth-verified-sub: <jwt.sub>` so route
+// handlers can trust the JWT is real without re-running the signature
+// check. On verify-FAILURE, reject with HTTP 401 (we don't allow
+// invalid JWTs to flow through — that's the structural fix vs. the
+// pre-Phase-1A behaviour where `decodeJwt` accepted any base64
+// payload).
+//
+// **PERMISSIVE rationale (SPEC 30 Phase 1A.2 trade-off):** when the
+// JWT header is ABSENT, the middleware passes the request through
+// instead of rejecting. ~60 client fetch sites currently send no JWT
+// at all (portfolio canvas, activity feed, analytics dashboards,
+// settings memory section, etc.); rejecting those would require a
+// monorepo-wide migration to a centralised `authFetch` wrapper, which
+// is Phase 1A.5's scope. Phase 1A's hot-patch lane closes the
+// reporter's demonstrated exploit (address-swap on JWT-bearing
+// requests) via `assertOwns` per-route — middleware here proves the
+// JWT is real, per-route bindings prove the JWT identity owns the
+// resource. Together they close the demonstrated IDOR class.
+//
+// **Phase 1A.5 (own SPEC at founder triage):** add `authFetch` wrapper,
+// migrate the ~50 remaining fetch sites, tighten this middleware to
+// require JWT on all non-allow-listed routes. That diff is too large
+// to bundle inside Phase 1A's 3-4d budget without regression risk.
+//
+// **Routes with their own auth gate (skipped here, not even
+// permissive-checked):**
+//   - /api/internal/**     (x-internal-key, internal cron callers)
+//   - /api/cron/**         (CRON_SECRET, Vercel cron)
+//   - /api/services/complete (sponsor-tx execute leg, sig-bound)
+//   - /api/services/retry    (sponsor-tx retry leg, sig-bound)
+//   - /api/transactions/execute (sponsor-tx execute, sig-bound)
+
+const SEPARATE_AUTH_PREFIXES = [
+  '/api/internal/',
+  '/api/cron/',
+  '/api/services/complete',
+  '/api/services/retry',
+  '/api/transactions/execute',
+];
+
+// `jose` JWKS handle (lazy + module-scoped). Edge runtime uses Web
+// Crypto under the hood. Bundle cost is ~80KB but it's used once per
+// middleware cold-start, then warm in-memory thereafter.
+const GOOGLE_JWKS_URL = 'https://www.googleapis.com/oauth2/v3/certs';
+const googleJwks = createRemoteJWKSet(new URL(GOOGLE_JWKS_URL), {
+  cooldownDuration: 30_000,
+  cacheMaxAge: 600_000,
+});
+
+// eslint-disable-next-line no-restricted-syntax -- PROCESS-ENV-BYPASS: middleware runs in edge runtime; lib/env.ts proxy adds ~50KB.
+const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+
+function hasSeparateAuth(pathname: string): boolean {
+  return SEPARATE_AUTH_PREFIXES.some((p) => pathname.startsWith(p));
+}
+
+function jsonError(status: number, message: string): NextResponse {
+  return NextResponse.json(
+    { error: message },
+    { status, headers: { 'X-App-Version': APP_VERSION } },
+  );
+}
+
+async function verifyJwtSignature(jwt: string): Promise<{ sub: string } | null> {
+  if (!GOOGLE_CLIENT_ID) {
+    // Fail closed in production. In local dev where the var is unset,
+    // returning null makes middleware reject the request — which is the
+    // correct behavior even in dev (the bug is in env config, not the
+    // request).
+    return null;
+  }
+  try {
+    const { payload } = await jwtVerify(jwt, googleJwks, {
+      issuer: ['https://accounts.google.com', 'accounts.google.com'],
+      audience: GOOGLE_CLIENT_ID,
+    });
+    if (typeof payload.sub !== 'string' || payload.sub.length === 0) return null;
+    return { sub: payload.sub };
+  } catch {
+    return null;
+  }
+}
+
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (PANEL_PATHS.has(pathname)) {
@@ -44,6 +132,40 @@ export function middleware(request: NextRequest) {
     const response = NextResponse.rewrite(url);
     response.headers.set('X-App-Version', APP_VERSION);
     return response;
+  }
+
+  // [SPEC 30 Phase 1A.2 — 2026-05-14] JWT enforcement gate (PERMISSIVE).
+  // Only API paths flow through this branch; the matcher excludes
+  // statics so we don't waste edge CPU on PNGs. Routes with their own
+  // auth (internal-key, cron-secret, sig-bound execute) skip entirely.
+  if (pathname.startsWith('/api/') && !hasSeparateAuth(pathname)) {
+    const jwt = request.headers.get('x-zklogin-jwt');
+    if (jwt) {
+      const verified = await verifyJwtSignature(jwt);
+      if (!verified) {
+        // JWT WAS sent but signature failed — reject. Pre-Phase-1A,
+        // `decodeJwt` accepted any base64 payload as valid. Now any
+        // route that opts into JWT auth gets free signature verification.
+        return jsonError(401, 'Invalid authentication token');
+      }
+      // Stamp the verified `sub` so route handlers can trust the JWT
+      // is real without re-running the signature check. Routes that
+      // take an `address` parameter MUST still call `assertOwns` to
+      // enforce the address binding — middleware only proves the JWT
+      // itself is real.
+      const response = NextResponse.next({
+        request: {
+          headers: new Headers({
+            ...Object.fromEntries(request.headers),
+            'x-auth-verified-sub': verified.sub,
+          }),
+        },
+      });
+      response.headers.set('X-App-Version', APP_VERSION);
+      return response;
+    }
+    // No JWT header → fall through to default path (Phase 1A.5 will
+    // tighten this to mandate JWT on all non-allow-listed routes).
   }
 
   // [SPEC 22.5 — 2026-05-10] Stamp every API response with the running
@@ -80,7 +202,8 @@ export const config = {
     '/goals',
     '/contacts',
     '/store',
-    // Every API route — the X-App-Version header lives here.
+    // Every API route — the X-App-Version header lives here AND
+    // SPEC 30 Phase 1A.2 JWT enforcement runs here.
     '/api/:path*',
   ],
 };

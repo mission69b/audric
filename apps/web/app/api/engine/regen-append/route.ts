@@ -47,7 +47,7 @@
 import { NextRequest } from 'next/server';
 import type { SessionData } from '@t2000/engine';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
-import { validateJwt, isValidSuiAddress } from '@/lib/auth';
+import { authenticateRequest, assertOwns, isValidSuiAddress } from '@/lib/auth';
 import { getSessionStore } from '@/lib/engine/engine-factory';
 import { incrementSessionSpend } from '@/lib/engine/session-spend';
 import { appendRegenToMessages } from './helper';
@@ -150,9 +150,13 @@ export async function POST(request: NextRequest) {
     return jsonError('Invalid Sui address', 400);
   }
 
-  const jwt = request.headers.get('x-zklogin-jwt');
-  const jwtResult = validateJwt(jwt);
-  if ('error' in jwtResult) return jwtResult.error;
+  // [SPEC 30 Phase 1A.3] Verify JWT signature AND bind to body.address.
+  // Same IDOR class as engine/chat — append-after-regenerate writes to
+  // the victim's session if address is spoofed.
+  const auth = await authenticateRequest(request);
+  if ('error' in auth) return auth.error;
+  const ownership = assertOwns(auth.verified, address);
+  if (ownership) return ownership;
 
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
   const rl = rateLimit(`engine-regen-append:${ip}`, 30, 60_000);

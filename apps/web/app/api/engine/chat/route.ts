@@ -8,7 +8,7 @@ import {
 } from '@/lib/engine/intent-dispatcher';
 import { buildDispatchIntents } from '@/lib/engine/dispatch-intents';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
-import { validateJwt, isValidSuiAddress, isJwtEmailVerified } from '@/lib/auth';
+import { authenticateRequest, assertOwns, isValidSuiAddress, isJwtEmailVerified } from '@/lib/auth';
 import {
   createEngine,
   createUnauthEngine,
@@ -178,8 +178,17 @@ export async function POST(request: NextRequest) {
     if (!isValidSuiAddress(address)) {
       return jsonError('Invalid Sui address', 400);
     }
-    const jwtResult = validateJwt(jwt);
-    if ('error' in jwtResult) return jwtResult.error;
+    // [SPEC 30 Phase 1A.3] Verify JWT signature AND bind to body.address.
+    // Pre-Phase-1A this route accepted any (decode-valid JWT, arbitrary
+    // address) pair — the reporter's PoC could swap `address` to a
+    // victim's wallet and have the engine append turns / AdviceLog
+    // entries / chain memory rows under the victim's identity, plus
+    // expose the victim's silent financial profile in the response
+    // stream. Demo mode (no JWT) is unaffected.
+    const auth = await authenticateRequest(request);
+    if ('error' in auth) return auth.error;
+    const ownership = assertOwns(auth.verified, address);
+    if (ownership) return ownership;
   }
 
   const ip =

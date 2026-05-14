@@ -9,7 +9,11 @@ import {
 } from '@/lib/service-gateway';
 import type { GatewayMapping } from '@/lib/service-gateway';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
-import { validateJwt, isValidSuiAddress } from '@/lib/auth';
+import {
+  authenticateRequest,
+  assertOwns,
+  isValidSuiAddress,
+} from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { composeTx, USDC_TYPE } from '@t2000/sdk';
 import { env } from '@/lib/env';
@@ -63,9 +67,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Sponsorship service not configured' }, { status: 500 });
   }
 
-  const jwt = request.headers.get('x-zklogin-jwt');
-  const jwtResult = validateJwt(jwt);
-  if ('error' in jwtResult) return jwtResult.error;
+  // [SPEC 30 Phase 1A.3] Verify JWT and bind to body.address. Pre-fix
+  // this route accepted any (decode-valid JWT, arbitrary address) pair
+  // → an attacker could mint sponsored MPP service transactions for
+  // any wallet they pleased.
+  const auth = await authenticateRequest(request);
+  if ('error' in auth) return auth.error;
+  const jwt = request.headers.get('x-zklogin-jwt')!;
 
   let body: {
     serviceId?: string;
@@ -85,6 +93,9 @@ export async function POST(request: NextRequest) {
   if (!address || !isValidSuiAddress(address)) {
     return NextResponse.json({ error: 'Invalid address' }, { status: 400 });
   }
+
+  const ownership = assertOwns(auth.verified, address);
+  if (ownership) return ownership;
 
   const rl = rateLimit(`svc:${address}`, 5, 60_000);
   if (!rl.success) return rateLimitResponse(rl.retryAfterMs!);

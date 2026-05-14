@@ -18,7 +18,7 @@ import {
 import { withSuiRetry } from '@/lib/sui-retry';
 import { isReserved } from '@/lib/identity/reserved-usernames';
 import { validateAudricLabel } from '@/lib/identity/validate-label';
-import { validateJwt } from '@/lib/auth';
+import { authenticateRequest, assertOwns } from '@/lib/auth';
 import { env } from '@/lib/env';
 
 export const runtime = 'nodejs';
@@ -207,9 +207,15 @@ function buildRollbackTx(
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  const jwt = req.headers.get('x-zklogin-jwt');
-  const jwtResult = validateJwt(jwt);
-  if ('error' in jwtResult) return jwtResult.error;
+  // [SPEC 30 Phase 1A.3] Pre-Phase-1A this route trusted the body.address
+  // field after only structurally decoding the JWT. The reporter's PoC
+  // could swap `address` to a victim's wallet and cause Audric to revoke
+  // the victim's existing leaf + mint a new attacker-controlled label
+  // pointing to the same wallet — griefing the victim's handle and
+  // burning Audric's gas pre-fund. Bind body.address to the verified
+  // JWT identity.
+  const auth = await authenticateRequest(req);
+  if ('error' in auth) return auth.error;
 
   let body: { newLabel?: unknown; address?: unknown };
   try {
@@ -222,6 +228,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return errorResponse('Invalid address', 400);
   }
   const callerAddress = normalizeSuiAddress(body.address);
+
+  const ownership = assertOwns(auth.verified, callerAddress);
+  if (ownership) return ownership;
 
   const validation = validateAudricLabel(body.newLabel);
   if (!validation.valid) {

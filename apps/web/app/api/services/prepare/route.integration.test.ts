@@ -11,7 +11,7 @@
  * regression guard. This file is the regression baseline.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 vi.setConfig({ testTimeout: 15000 });
 
@@ -23,6 +23,29 @@ function fakeJwt(payload: Record<string, unknown> = { sub: '123', email: 'test@t
 
 const TEST_JWT = fakeJwt();
 const VALID_ADDR = '0x' + 'a'.repeat(64);
+
+// [SPEC 30 Phase 1A.4] Stub authenticateRequest — see route.test.ts notes.
+vi.mock('@/lib/auth', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/auth')>('@/lib/auth');
+  return {
+    ...actual,
+    authenticateRequest: vi.fn(async (request: NextRequest) => {
+      const jwt = request.headers.get('x-zklogin-jwt');
+      if (!jwt) {
+        return {
+          error: NextResponse.json({ error: 'Authentication required' }, { status: 401 }),
+        };
+      }
+      return {
+        verified: {
+          payload: { sub: 'test-sub' },
+          suiAddress: VALID_ADDR,
+          emailVerified: true,
+        },
+      };
+    }),
+  };
+});
 
 function buildRequest(body: unknown, jwt: string = TEST_JWT): NextRequest {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };

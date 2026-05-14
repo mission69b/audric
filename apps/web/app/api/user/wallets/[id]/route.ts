@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { validateJwt, isValidSuiAddress } from '@/lib/auth';
+import {
+  authenticateRequest,
+  assertOwns,
+  isValidSuiAddress,
+} from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
 export const runtime = 'nodejs';
@@ -13,15 +17,18 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const jwt = request.headers.get('x-zklogin-jwt');
-  const jwtResult = validateJwt(jwt);
-  if ('error' in jwtResult) return jwtResult.error;
+  // [SPEC 30 Phase 1A.3] Bind JWT identity to ?address before mutating.
+  const auth = await authenticateRequest(request);
+  if ('error' in auth) return auth.error;
 
   const { id } = await params;
   const address = request.nextUrl.searchParams.get('address');
   if (!address || !isValidSuiAddress(address)) {
     return NextResponse.json({ error: 'Invalid address' }, { status: 400 });
   }
+
+  const ownership = assertOwns(auth.verified, address);
+  if (ownership) return ownership;
 
   const user = await prisma.user.findUnique({
     where: { suiAddress: address },

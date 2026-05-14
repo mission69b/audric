@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { validateJwt, isValidSuiAddress } from '@/lib/auth';
+import {
+  authenticateRequest,
+  assertOwns,
+  isValidSuiAddress,
+} from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
 export const runtime = 'nodejs';
@@ -12,14 +16,19 @@ const MAX_LINKED_WALLETS = 10;
  * Query: address (primary Sui address)
  */
 export async function GET(request: NextRequest) {
-  const jwt = request.headers.get('x-zklogin-jwt');
-  const jwtResult = validateJwt(jwt);
-  if ('error' in jwtResult) return jwtResult.error;
+  // [SPEC 30 Phase 1A.3] Bind JWT identity to ?address. LinkedWallets
+  // are management-side only — anyone listing them must be the primary
+  // owner.
+  const auth = await authenticateRequest(request);
+  if ('error' in auth) return auth.error;
 
   const address = request.nextUrl.searchParams.get('address');
   if (!address || !isValidSuiAddress(address)) {
     return NextResponse.json({ error: 'Invalid address' }, { status: 400 });
   }
+
+  const ownership = assertOwns(auth.verified, address);
+  if (ownership) return ownership;
 
   const user = await prisma.user.findUnique({
     where: { suiAddress: address },
@@ -48,9 +57,11 @@ export async function GET(request: NextRequest) {
  * Body: { address (primary), suiAddress (to link), label? }
  */
 export async function POST(request: NextRequest) {
-  const jwt = request.headers.get('x-zklogin-jwt');
-  const jwtResult = validateJwt(jwt);
-  if ('error' in jwtResult) return jwtResult.error;
+  // [SPEC 30 Phase 1A.3] Bind JWT identity to body.address. Pre-fix,
+  // any verified caller could plant a linked wallet on any user's
+  // account simply by setting `address` to the victim's wallet.
+  const auth = await authenticateRequest(request);
+  if ('error' in auth) return auth.error;
 
   let body: Record<string, unknown>;
   try {
@@ -68,6 +79,9 @@ export async function POST(request: NextRequest) {
   if (!address || !isValidSuiAddress(address)) {
     return NextResponse.json({ error: 'Invalid primary address' }, { status: 400 });
   }
+
+  const ownership = assertOwns(auth.verified, address);
+  if (ownership) return ownership;
 
   if (!suiAddress || !isValidSuiAddress(suiAddress)) {
     return NextResponse.json({ error: 'Invalid wallet address to link' }, { status: 400 });

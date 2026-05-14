@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
-import { validateJwt, isValidSuiAddress } from '@/lib/auth';
+import { authenticateRequest, assertOwns, isValidSuiAddress } from '@/lib/auth';
 import { env } from '@/lib/env';
 
 /**
@@ -46,6 +46,11 @@ function jsonError(message: string, status: number): Response {
 }
 
 export async function POST(request: NextRequest) {
+  // [SPEC 30 Phase 1A.3] Auth FIRST. See voice/synthesize/route.ts for
+  // rationale.
+  const auth = await authenticateRequest(request);
+  if ('error' in auth) return auth.error;
+
   const apiKey = env.OPENAI_API_KEY;
   if (!apiKey) {
     return jsonError('Voice mode is not configured on this deployment', 503);
@@ -55,15 +60,6 @@ export async function POST(request: NextRequest) {
     request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
   const rl = rateLimit(`voice-stt:${ip}`, 60, 60_000);
   if (!rl.success) return rateLimitResponse(rl.retryAfterMs!);
-
-  // Auth: zkLogin JWT (header) + Sui address (form field). Mirrors the
-  // engine chat route convention: JWT lives in `x-zklogin-jwt` header,
-  // `address` in the request body. Voice mode is auth-only — we don't
-  // expose it to anonymous demo users to keep the abuse surface narrow.
-  const jwt = request.headers.get('x-zklogin-jwt');
-  if (!jwt) return jsonError('Authentication required', 401);
-  const jwtResult = validateJwt(jwt);
-  if ('error' in jwtResult) return jwtResult.error;
 
   let formData: FormData;
   try {
@@ -76,6 +72,9 @@ export async function POST(request: NextRequest) {
   if (typeof address !== 'string' || !isValidSuiAddress(address)) {
     return jsonError('Invalid Sui address', 400);
   }
+
+  const ownership = assertOwns(auth.verified, address);
+  if (ownership) return ownership;
 
   const audio = formData.get('audio');
   if (!(audio instanceof Blob)) {

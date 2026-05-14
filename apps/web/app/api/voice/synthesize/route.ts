@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
-import { validateJwt, isValidSuiAddress } from '@/lib/auth';
+import { authenticateRequest, assertOwns, isValidSuiAddress } from '@/lib/auth';
 import { env } from '@/lib/env';
 
 /**
@@ -49,6 +49,15 @@ function jsonError(message: string, status: number): Response {
 }
 
 export async function POST(request: NextRequest) {
+  // [SPEC 30 Phase 1A.3] Auth FIRST — verify JWT signature AND bind
+  // body.address to the verified JWT identity. Pre-Phase-1A an attacker
+  // could spoof body.address to bill voice quota against a victim.
+  // Auth runs before the env / rate-limit checks so anonymous callers
+  // can't probe deployment configuration ("voice not configured" 503
+  // vs "rate limited" 429 used to be a tiny info leak).
+  const auth = await authenticateRequest(request);
+  if ('error' in auth) return auth.error;
+
   const apiKey = env.ELEVENLABS_API_KEY;
   if (!apiKey) {
     return jsonError('Voice mode is not configured on this deployment', 503);
@@ -58,11 +67,6 @@ export async function POST(request: NextRequest) {
     request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
   const rl = rateLimit(`voice-tts:${ip}`, 60, 60_000);
   if (!rl.success) return rateLimitResponse(rl.retryAfterMs!);
-
-  const jwt = request.headers.get('x-zklogin-jwt');
-  if (!jwt) return jsonError('Authentication required', 401);
-  const jwtResult = validateJwt(jwt);
-  if ('error' in jwtResult) return jwtResult.error;
 
   let body: { text?: unknown; address?: unknown };
   try {
@@ -74,6 +78,9 @@ export async function POST(request: NextRequest) {
   if (typeof body.address !== 'string' || !isValidSuiAddress(body.address)) {
     return jsonError('Invalid Sui address', 400);
   }
+
+  const ownership = assertOwns(auth.verified, body.address);
+  if (ownership) return ownership;
 
   const text = typeof body.text === 'string' ? body.text.trim() : '';
   if (!text) return jsonError('`text` is required', 400);

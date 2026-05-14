@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { validateJwt, isValidSuiAddress } from '@/lib/auth';
+import { authenticateRequest } from '@/lib/auth';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { generateSlug } from '@/lib/slug';
 import { env } from '@/lib/env';
@@ -18,14 +18,11 @@ interface LineItem {
  * Body must include { type: 'link' | 'invoice' }.
  */
 export async function POST(request: NextRequest) {
-  const jwt = request.headers.get('x-zklogin-jwt');
-  const jwtResult = validateJwt(jwt);
-  if ('error' in jwtResult) return jwtResult.error;
-
-  const address = request.headers.get('x-sui-address');
-  if (!address || !isValidSuiAddress(address)) {
-    return NextResponse.json({ error: 'Missing or invalid address' }, { status: 400 });
-  }
+  // [SPEC 30 Phase 1A.3] Replace `x-sui-address` header (Burp-swappable
+  // per reporter PoC) with verified JWT-derived identity.
+  const auth = await authenticateRequest(request);
+  if ('error' in auth) return auth.error;
+  const address = auth.verified.suiAddress;
 
   const rl = rateLimit(`pay:${address}`, 20, 60_000);
   if (!rl.success) return rateLimitResponse(rl.retryAfterMs!);
@@ -150,14 +147,12 @@ export async function POST(request: NextRequest) {
  * Query params: ?type=link|invoice (optional filter)
  */
 export async function GET(request: NextRequest) {
-  const jwt = request.headers.get('x-zklogin-jwt');
-  const jwtResult = validateJwt(jwt);
-  if ('error' in jwtResult) return jwtResult.error;
-
-  const address = request.headers.get('x-sui-address');
-  if (!address || !isValidSuiAddress(address)) {
-    return NextResponse.json({ error: 'Missing or invalid address' }, { status: 400 });
-  }
+  // [SPEC 30 Phase 1A.3] List ONLY the verified caller's payments.
+  // Pre-Phase-1A this took `x-sui-address` from headers — an attacker
+  // could swap to enumerate any user's payment list.
+  const auth = await authenticateRequest(request);
+  if ('error' in auth) return auth.error;
+  const address = auth.verified.suiAddress;
 
   const user = await prisma.user.findUnique({ where: { suiAddress: address } });
   if (!user) {

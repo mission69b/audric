@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { toBase64 } from '@mysten/sui/utils';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
-import { validateJwt, isValidSuiAddress, validateAmount } from '@/lib/auth';
+import {
+  authenticateRequest,
+  assertOwns,
+  isValidSuiAddress,
+  validateAmount,
+} from '@/lib/auth';
 import { getClient } from '@/lib/protocol-registry';
 import { getPortfolio } from '@/lib/portfolio';
 import {
@@ -348,11 +353,19 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Sponsorship service not configured' }, { status: 500 });
   }
 
-  const jwt = request.headers.get('x-zklogin-jwt');
-  const jwtResult = validateJwt(jwt);
-  if ('error' in jwtResult) {
+  // [SPEC 30 Phase 1A.3] Verify the JWT signature (jose+JWKS) AND bind
+  // the JWT identity to the request body's `address` field. Pre-Phase-1A
+  // this route accepted any (decode-valid JWT, arbitrary address) pair
+  // — an attacker could swap `address` to a victim's wallet and have
+  // Enoki sponsor a transaction querying their balance + building a tx
+  // for their account. The on-chain ephemeral-key signature still bounds
+  // the execute leg, but the prepare-side balance leak (and the cost of
+  // burning Enoki sponsor budget on victim addresses) is the concrete
+  // vector the reporter demonstrated.
+  const auth = await authenticateRequest(request);
+  if ('error' in auth) {
     finish('compose_error');
-    return jwtResult.error;
+    return auth.error;
   }
 
   let body: BuildRequest;
@@ -370,6 +383,14 @@ export async function POST(request: NextRequest) {
     finish('compose_error');
     return NextResponse.json({ error: 'Invalid address' }, { status: 400 });
   }
+
+  const ownership = assertOwns(auth.verified, address);
+  if (ownership) {
+    finish('compose_error');
+    return ownership;
+  }
+
+  const jwt = request.headers.get('x-zklogin-jwt');
 
   const rl = rateLimit(`tx:${address}`, 10, 60_000);
   if (!rl.success) {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { validateJwt, isValidSuiAddress } from '@/lib/auth';
+import { authenticateRequest } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 
@@ -75,14 +75,13 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     return NextResponse.json({ error: 'Only status=cancelled is supported' }, { status: 400 });
   }
 
-  const jwt = request.headers.get('x-zklogin-jwt');
-  const jwtResult = validateJwt(jwt);
-  if ('error' in jwtResult) return jwtResult.error;
-
-  const address = request.headers.get('x-sui-address');
-  if (!address || !isValidSuiAddress(address)) {
-    return NextResponse.json({ error: 'Missing or invalid address' }, { status: 400 });
-  }
+  // [SPEC 30 Phase 1A.3] Pre-Phase-1A this route trusted the
+  // `x-sui-address` header — the EXACT class of input the reporter PoC
+  // demonstrated swapping via Burp. Replace with the verified JWT
+  // identity so the address can no longer be spoofed.
+  const auth = await authenticateRequest(request);
+  if ('error' in auth) return auth.error;
+  const address = auth.verified.suiAddress;
 
   const payment = await prisma.payment.findUnique({ where: { slug } });
   if (!payment) {
@@ -90,7 +89,10 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   }
 
   if (address !== payment.suiAddress) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    // [SPEC 30 Phase 1A.3] Collapse "not yours" → 404 to prevent
+    // payment-slug enumeration. Pre-Phase-1A this returned 403 which
+    // confirmed the slug existed but belonged to someone else.
+    return NextResponse.json({ error: 'Payment not found' }, { status: 404 });
   }
 
   if (payment.status === 'paid') {
@@ -118,21 +120,15 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 export async function DELETE(request: NextRequest, { params }: Params) {
   const { slug } = await params;
 
-  const jwt = request.headers.get('x-zklogin-jwt');
-  const jwtResult = validateJwt(jwt);
-  if ('error' in jwtResult) return jwtResult.error;
-
-  const address = request.headers.get('x-sui-address');
-  if (!address || !isValidSuiAddress(address)) {
-    return NextResponse.json({ error: 'Missing address' }, { status: 400 });
-  }
+  const auth = await authenticateRequest(request);
+  if ('error' in auth) return auth.error;
+  const address = auth.verified.suiAddress;
 
   const payment = await prisma.payment.findUnique({ where: { slug } });
-  if (!payment) {
+  if (!payment || payment.suiAddress !== address) {
+    // Same 404-collapse rule as PATCH: "not yours" === "not found"
+    // for slug enumeration safety.
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
-  }
-  if (payment.suiAddress !== address) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
   }
 
   await prisma.payment.delete({ where: { slug } });
