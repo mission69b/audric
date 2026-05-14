@@ -72,7 +72,13 @@ export async function GET(request: NextRequest) {
         source: portfolio.source,
         pricedAt: portfolio.pricedAt,
       },
-      { headers: { 'Cache-Control': 'public, s-maxage=15, stale-while-revalidate=30' } },
+      // SPEC 30 Phase 1A.8 — `private` (NOT `public`). Pre-fix this used
+      // `public, s-maxage=15` which let Vercel's CDN serve a cached
+      // portfolio response from any authenticated query to ANY caller
+      // for 15s — completely bypassing the `assertOwnsOrWatched` gate
+      // above. `private, max-age=15` keeps the per-tab perf benefit while
+      // forbidding shared caches (CDN / proxy) from storing per-user data.
+      { headers: { 'Cache-Control': 'private, max-age=15, stale-while-revalidate=30' } },
     );
   } catch (err) {
     console.error('[portfolio] Error:', err instanceof Error ? err.message : err);
