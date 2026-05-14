@@ -34,6 +34,7 @@ import { UpstashSessionStore } from './upstash-session-store';
 import { getRecipeRegistry } from './recipes';
 import { UpstashConversationStateStore } from './upstash-conversation-state-store';
 import { incrementSessionSpend } from './session-spend';
+import { applyAccountAgeGate, computeAccountAgeDays } from './account-age-gate';
 import { ADVICE_TOOLS } from './advice-tool';
 import { audricSaveContactTool, audricListContactsTool } from './contact-tools';
 import { lookupUserTool } from './lookup-user-tool';
@@ -331,10 +332,14 @@ export async function createEngine(
 
   const userRecord = await prisma.user.findUnique({
     where: { suiAddress: address },
-    select: { id: true, username: true, usernameClaimedAt: true },
+    select: { id: true, username: true, usernameClaimedAt: true, createdAt: true },
   }).catch(() => null);
 
   const userId = userRecord?.id;
+  // [SPEC 30 D-13 — 2026-05-14] Account-age gate input. Floored days
+  // since createdAt; null when user record missing (engine treats as
+  // legacy fail-open). Consumed below at `permissionConfig` build.
+  const accountAgeDays = computeAccountAgeDays(userRecord?.createdAt ?? null);
 
   // [single-source-of-truth — Apr 2026] One canonical `getPortfolio()`
   // call replaces the previous `fetchServerPositions` + `fetchWalletCoins`
@@ -493,8 +498,13 @@ export async function createEngine(
     where: { address },
     select: { limits: true },
   }).catch(() => null);
-  const permissionConfig: UserPermissionConfig =
+  const rawPermissionConfig: UserPermissionConfig =
     (userPrefs?.limits as UserPermissionConfig | null) ?? DEFAULT_PERMISSION_CONFIG;
+  // [SPEC 30 D-13 — 2026-05-14] Account-age gate: < 7d accounts get
+  // every `autoBelow` zeroed → no auto-tier writes can fire. Closes
+  // takeover-while-onboarding drain class. After Day 7 the gate is a
+  // no-op (returns the input config unchanged).
+  const permissionConfig = applyAccountAgeGate(rawPermissionConfig, accountAgeDays);
 
   const MCP_ALLOWLIST = new Set([
     'navi_sui_get_transaction',

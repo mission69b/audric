@@ -42,12 +42,34 @@ export async function GET(request: NextRequest) {
     ON CONFLICT (address) DO NOTHING
   `.catch(() => {});
 
-  const prefs = await prisma.userPreferences.findUnique({
-    where: { address },
-  });
+  // [SPEC 30 D-13 — 2026-05-14] Read User.createdAt alongside prefs so
+  // the client-side `shouldClientAutoApprove` mirror can apply the
+  // <7d account-age gate. Without this leg, the server-side gate is
+  // bypassable: server emits `pending_action` (tier=confirm), but the
+  // client's `shouldClientAutoApprove` returns `true` (no gate
+  // awareness) → auto-resolves the card → server executes the write.
+  // Both legs MUST be in lockstep for the gate to be effective.
+  const [prefs, userRecord] = await Promise.all([
+    prisma.userPreferences.findUnique({ where: { address } }),
+    prisma.user.findUnique({
+      where: { suiAddress: address },
+      select: { createdAt: true },
+    }),
+  ]);
+
+  // Floored days since createdAt; null when user record missing
+  // (treated as legacy fail-open by the client gate).
+  const accountAgeDays = userRecord?.createdAt
+    ? Math.floor((Date.now() - userRecord.createdAt.getTime()) / 86_400_000)
+    : null;
 
   if (!prefs) {
-    return NextResponse.json({ contacts: [], limits: null, permissionPreset: 'balanced' });
+    return NextResponse.json({
+      contacts: [],
+      limits: null,
+      permissionPreset: 'balanced',
+      accountAgeDays,
+    });
   }
 
   const limitsObj = (prefs.limits && typeof prefs.limits === 'object' && !Array.isArray(prefs.limits))
@@ -76,6 +98,7 @@ export async function GET(request: NextRequest) {
     contacts: contactsForClient,
     limits: prefs.limits,
     permissionPreset,
+    accountAgeDays,
   });
 }
 

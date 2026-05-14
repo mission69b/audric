@@ -19,6 +19,7 @@ import {
   resolvePermissionTier,
   resolveUsdValue,
 } from '@/lib/engine/permission-tiers-client';
+import { applyAccountAgeGate } from '@/lib/engine/account-age-gate';
 import { AppShell } from '@/components/shell/AppShell';
 import { useChipFlow, type ChipFlowResult, type FlowContext } from '@/hooks/useChipFlow';
 import { useFeed } from '@/hooks/useFeed';
@@ -651,6 +652,14 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
   // explicitly set a preset; settings UI persists this via
   // POST /api/user/preferences { permissionPreset }.
   const [permissionPreset, setPermissionPreset] = useState<'conservative' | 'balanced' | 'aggressive'>('balanced');
+  // [SPEC 30 D-13 — 2026-05-14] Days since User.createdAt, fed by
+  // /api/user/preferences GET. `null` = unknown (legacy fail-open).
+  // < 7 = client-side `shouldClientAutoApprove` mirror tightens every
+  // `autoBelow` to 0 → all writes route through tap-to-confirm. After
+  // Day 7 the gate is a no-op. Mirrors the server-side gate in
+  // engine-factory.ts; both legs MUST be in lockstep or the server
+  // gate is bypassable via client auto-resolve.
+  const [accountAgeDays, setAccountAgeDays] = useState<number | null>(null);
 
   // [PR-B2] EmailCaptureModal + verify-link round-trip removed. The
   // session-tier (5 vs 20 sessions/day) now reads `email_verified` off
@@ -726,11 +735,29 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
         if (preset === 'conservative' || preset === 'balanced' || preset === 'aggressive') {
           setPermissionPreset(preset);
         }
+        // [SPEC 30 D-13 — 2026-05-14] Account age drives the
+        // <7d auto-tier gate. null = unknown (legacy fail-open).
+        if (typeof data.accountAgeDays === 'number' || data.accountAgeDays === null) {
+          setAccountAgeDays(data.accountAgeDays);
+        }
       })
       .catch(() => {});
   }, [address]);
 
   const confirmResolverRef = useRef<((approved: boolean) => void) | null>(null);
+
+  // [SPEC 30 D-13 — 2026-05-14] Gated permission config — applies the
+  // <7d account-age gate to the user's preset. After Day 7 (or when
+  // accountAgeDays is null/legacy) this returns the preset config
+  // unchanged, so non-new users see no behavior change. Consumed by
+  // (a) `<UnifiedTimeline permissionConfig={...}>` for client-side
+  // auto-resolve gating, and (b) the regenerate-tool-call path below
+  // for re-issuing pay_api calls. Server-side mirror lives in
+  // `engine-factory.ts` — both legs MUST be in lockstep.
+  const gatedPermissionConfig = useMemo(
+    () => applyAccountAgeGate(getPresetConfig(permissionPreset), accountAgeDays),
+    [permissionPreset, accountAgeDays],
+  );
 
   // Same memoization rationale as `balance` above — flowContext is included
   // in chip handler useCallback deps; recreating it every render churned
@@ -1483,7 +1510,7 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
       const tier = resolvePermissionTier(
         'pay',
         usdValue,
-        getPresetConfig(permissionPreset),
+        gatedPermissionConfig,
       );
       if (tier === 'explicit') {
         throw new Error(`Regen requires manual prompt above $${usdValue.toFixed(2)}`);
@@ -1601,7 +1628,7 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
         throw new Error(data?.error ?? 'Regen failed');
       }
     },
-    [agent, address, balance.suiPrice, balanceQuery, contactsHook, engine, permissionPreset, session?.jwt],
+    [agent, address, balance.suiPrice, balanceQuery, contactsHook, engine, gatedPermissionConfig, session?.jwt],
   );
 
   // [SPEC 7 P2.4 Layer 3] Multi-write Payment Intent executor. Mirrors
@@ -2632,7 +2659,7 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
               onExecuteBundle={handleExecuteBundle}
               onValidateAction={validateAction}
               agentBudget={agentBudget}
-              permissionConfig={getPresetConfig(permissionPreset)}
+              permissionConfig={gatedPermissionConfig}
               priceCache={(() => {
                 // [v1.4 hotfix] symbol → USD price for client tier
                 // resolution. SUI from the live balance, USDC/USDT pinned

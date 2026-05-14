@@ -8,12 +8,22 @@ import { NextRequest } from 'next/server';
 
 const mockFindUnique = vi.fn();
 const mockUpsert = vi.fn();
+// [SPEC 30 D-13 — 2026-05-14] route now also queries User.createdAt for
+// the account-age gate. Default to a long-tenured user (1y old) so
+// existing tests stay unaffected; the D-13 path is exercised by the
+// dedicated tests at the bottom of this file.
+const mockUserFindUnique = vi.fn(() =>
+  Promise.resolve({ createdAt: new Date(Date.now() - 365 * 86_400_000) }),
+);
 
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     userPreferences: {
       findUnique: (...args: unknown[]) => mockFindUnique(...args),
       upsert: (...args: unknown[]) => mockUpsert(...args),
+    },
+    user: {
+      findUnique: (...args: unknown[]) => mockUserFindUnique(...args),
     },
     $executeRaw: () => Promise.resolve(0),
   },
@@ -251,6 +261,50 @@ describe('/api/user/preferences', () => {
 
       const body = await res.json();
       expect(body.error).toContain('Invalid JSON');
+    });
+  });
+
+  // [SPEC 30 D-13 — 2026-05-14] Account-age field is the input the
+  // client-side `shouldClientAutoApprove` mirror needs to apply the
+  // <7d gate. Without these tests the field could regress silently.
+  describe('GET — accountAgeDays (SPEC 30 D-13)', () => {
+    it('returns the floored day count for an existing user', async () => {
+      mockFindUnique.mockResolvedValueOnce({ contacts: [], limits: null });
+      // 3.7 days ago → floored to 3.
+      mockUserFindUnique.mockResolvedValueOnce({
+        createdAt: new Date(Date.now() - 3.7 * 86_400_000),
+      });
+
+      const res = await GET(buildGetRequest(WALLET_ADDR));
+      const body = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(body.accountAgeDays).toBe(3);
+    });
+
+    it('returns null when the user record is missing (legacy fail-open)', async () => {
+      mockFindUnique.mockResolvedValueOnce({ contacts: [], limits: null });
+      mockUserFindUnique.mockResolvedValueOnce(null);
+
+      const res = await GET(buildGetRequest(WALLET_ADDR));
+      const body = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(body.accountAgeDays).toBeNull();
+    });
+
+    it('returns accountAgeDays alongside an empty preferences fallback', async () => {
+      mockFindUnique.mockResolvedValueOnce(null);
+      mockUserFindUnique.mockResolvedValueOnce({
+        createdAt: new Date(Date.now() - 1 * 86_400_000),
+      });
+
+      const res = await GET(buildGetRequest(WALLET_ADDR));
+      const body = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(body.permissionPreset).toBe('balanced');
+      expect(body.accountAgeDays).toBe(1);
     });
   });
 });
