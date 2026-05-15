@@ -870,6 +870,11 @@ export async function createEngine(
         return new AISDKEngine({
           ...(sharedEngineConfig as Omit<AISDKEngineConfig, 'anthropicApiKey'>),
           anthropicApiKey: ANTHROPIC_API_KEY,
+          // [SPEC 37 v0.7a Phase 2 Day 13 / engine 1.33.2] mcpManager
+          // is back on AISDKEngineConfig — local smoke caught that
+          // NAVI-MCP-backed read tools (rates_info, savings_info,
+          // health_check) failed without it.
+          mcpManager: mgr,
         }) as unknown as QueryEngine;
       })()
     : new QueryEngine({
@@ -1096,9 +1101,18 @@ export async function createUnauthEngine(history: HistoryMessage[]): Promise<Que
   // Reuse the shared MCP connection for real-time NAVI rates (no wallet needed)
   const mgr = await ensureMcpConnected();
 
-  const engine = new QueryEngine({
-    provider: new AISDKAnthropicProvider({ apiKey: ANTHROPIC_API_KEY }),
-    mcpManager: mgr,
+  // [SPEC 37 v0.7a Phase 2 Day 13 / 2026-05-16] Mirror the auth-path
+  // engine selection so the demo / unauth flow exercises the SAME
+  // `AISDKEngine` codepath when the flag is on. Pre-Day-13 the unauth
+  // path always instantiated `QueryEngine` regardless of the flag,
+  // which (a) made local smoke impossible (Google OAuth blocks
+  // localhost) and (b) meant prod demo traffic skipped the new engine
+  // even when 100% of auth traffic was on it. Same model (Haiku),
+  // same tool subset, same budget — only the engine class swaps.
+  const useAiSdkNativeEngine =
+    env.USE_AI_SDK_NATIVE_ENGINE === '1' || env.USE_AI_SDK_NATIVE_ENGINE === 'true';
+
+  const sharedConfig = {
     tools: readTools,
     systemPrompt: prompt,
     model: HAIKU_MODEL,
@@ -1107,7 +1121,24 @@ export async function createUnauthEngine(history: HistoryMessage[]): Promise<Que
     costTracker: {
       budgetLimitUsd: 0.15,
     },
-  });
+  };
+
+  const engine = useAiSdkNativeEngine
+    ? (() => {
+        console.log('[engine-factory] using AISDKEngine (unauth/demo path — SPEC 37 v0.7a Phase 2)');
+        return new AISDKEngine({
+          ...sharedConfig,
+          anthropicApiKey: ANTHROPIC_API_KEY,
+          // [SPEC 37 v0.7a Phase 2 Day 13 / engine 1.33.2] mcpManager
+          // restored — see auth-path engine-factory branch above.
+          mcpManager: mgr,
+        } as AISDKEngineConfig) as unknown as QueryEngine;
+      })()
+    : new QueryEngine({
+        ...sharedConfig,
+        provider: new AISDKAnthropicProvider({ apiKey: ANTHROPIC_API_KEY }),
+        mcpManager: mgr,
+      });
 
   if (history.length > 0) {
     const messages: Message[] = history.map((m) => ({
