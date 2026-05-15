@@ -1,9 +1,11 @@
 'use client';
 
 import type { ToolExecution } from '@/lib/engine-types';
+import { env } from '@/lib/env';
 import { extractData } from './cards/primitives';
 import { RatesCard } from './cards/RatesCard';
 import { BalanceCard } from './cards/BalanceCard';
+import { BalanceCardV2 } from './cards/BalanceCardV2';
 import { SavingsCard } from './cards/SavingsCard';
 import { PortfolioCard } from './cards/PortfolioCard';
 import { ExplainTxCard } from './cards/ExplainTxCard';
@@ -115,6 +117,23 @@ const CARD_RENDERERS: Record<string, CardRenderer> = {
   balance_check: (result, variant) => {
     const data = extractData(result);
     if (!data || typeof data !== 'object') return null;
+    // [SPEC 37 v0.7a Phase 2 Day 10-11] BalanceCardV2 rollout flag.
+    // V2 renders the design-baseline shape (wallet section list +
+    // savings section + APY hints) using shared primitives. V1 keeps
+    // shipping by default + stays the only renderer for the post-write
+    // variant (PostWriteRefreshSurface) because V2 doesn't ship the
+    // post-write shape — see the BalanceCardV2 header for what V2
+    // intentionally drops.
+    const useV2 =
+      env.NEXT_PUBLIC_BALANCE_CARD_V2 === '1' ||
+      env.NEXT_PUBLIC_BALANCE_CARD_V2 === 'true';
+    if (useV2 && variant !== 'post-write') {
+      return (
+        <BalanceCardV2
+          data={data as Parameters<typeof BalanceCardV2>[0]['data']}
+        />
+      );
+    }
     return (
       <BalanceCard
         data={data as Parameters<typeof BalanceCard>[0]['data']}

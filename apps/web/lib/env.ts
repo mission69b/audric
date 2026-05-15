@@ -362,6 +362,29 @@ const clientSchema = z.object({
    * write turn's chip shows under the new behavior.
    */
   NEXT_PUBLIC_HARNESS_TRANSITIONS_V1: optionalString,
+
+  /**
+   * [SPEC 37 v0.7a Phase 2 Day 10-11] BalanceCard V2 rollout flag.
+   *
+   * When set ("1" / "true"), `ToolResultCard` routes `balance_check`
+   * results to `BalanceCardV2` (built from the Day 6-9 shared primitives:
+   * AssetAmountBlock + APYBlock + the new wallet/savings section
+   * layout per TOOL_UX_DESIGN_v07a.md). Default OFF → existing
+   * BalanceCard renders unchanged for every user.
+   *
+   * Why a flag (not a hard cutover): the existing BalanceCard ships
+   * the post-write variant + watched-address badge + NumberTicker
+   * animation that the V2 layout intentionally drops in favor of the
+   * design-baseline shape. Founder reviews V2 side-by-side via the flag
+   * before the cutover lands; that switch happens in the Day 27-28
+   * release window (engine v2.0.0) once all 10 high-value tool V2s
+   * are built and reviewed together.
+   *
+   * Rollback: unset the var. Zero-risk because the flag-gated render
+   * is purely additive — same engine data, different presentation
+   * layer; no API contract change.
+   */
+  NEXT_PUBLIC_BALANCE_CARD_V2: optionalString,
 });
 
 // ─── Runtime env (Next.js requires literal references) ────────────────
@@ -406,6 +429,7 @@ const runtimeEnv = {
   NEXT_PUBLIC_CONFIRM_CHIPS_V1: process.env.NEXT_PUBLIC_CONFIRM_CHIPS_V1,
   NEXT_PUBLIC_HARNESS_V9: process.env.NEXT_PUBLIC_HARNESS_V9,
   NEXT_PUBLIC_HARNESS_TRANSITIONS_V1: process.env.NEXT_PUBLIC_HARNESS_TRANSITIONS_V1,
+  NEXT_PUBLIC_BALANCE_CARD_V2: process.env.NEXT_PUBLIC_BALANCE_CARD_V2,
 } as const;
 
 // ─── Validate ──────────────────────────────────────────────────────────
