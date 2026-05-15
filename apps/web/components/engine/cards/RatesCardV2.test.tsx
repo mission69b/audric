@@ -18,8 +18,10 @@ import { RatesCardV2 } from './RatesCardV2';
 
 describe('RatesCardV2 — header', () => {
   it('renders "Lending rates" title + Supply / Borrow column labels', () => {
+    // Engine emit shape: decimal (0.0462 = 4.62%) per
+    // packages/engine/src/navi/transforms.ts.
     const { container } = render(
-      <RatesCardV2 data={{ USDC: { saveApy: 4.62, borrowApy: 5.2 } }} />,
+      <RatesCardV2 data={{ USDC: { saveApy: 0.0462, borrowApy: 0.052 } }} />,
     );
     const text = container.textContent ?? '';
     expect(text).toContain('Lending rates');
@@ -29,9 +31,10 @@ describe('RatesCardV2 — header', () => {
 });
 
 describe('RatesCardV2 — per-asset rows', () => {
-  it('renders APYBlock with supply rate for USDC', () => {
+  it('renders APYBlock with supply rate for USDC (engine decimal emit)', () => {
+    // Realistic engine shape: saveApy is a decimal.
     const { container } = render(
-      <RatesCardV2 data={{ USDC: { saveApy: 4.62, borrowApy: 5.2 } }} />,
+      <RatesCardV2 data={{ USDC: { saveApy: 0.0462, borrowApy: 0.052 } }} />,
     );
     const text = container.textContent ?? '';
     expect(text).toContain('USDC');
@@ -39,7 +42,9 @@ describe('RatesCardV2 — per-asset rows', () => {
     expect(text).toContain('5.20%');
   });
 
-  it('converts raw percentage (e.g. 4.62) to APYBlock bps format correctly', () => {
+  it('handles a raw-percentage upstream (defensive heuristic)', () => {
+    // If an upstream surface ever passes raw percentages instead of decimals,
+    // the < 1 ? decimal : raw heuristic should still display the correct number.
     const { container } = render(
       <RatesCardV2 data={{ USDC: { saveApy: 7.5, borrowApy: 9.25 } }} />,
     );
@@ -48,39 +53,58 @@ describe('RatesCardV2 — per-asset rows', () => {
     expect(text).toContain('9.25%');
   });
 
-  it('renders multiple assets in order (sorted by saveApy desc)', () => {
+  it('renders correctly across the realistic decimal range (0.001–0.25)', () => {
     const { container } = render(
       <RatesCardV2
         data={{
-          USDC: { saveApy: 4.62, borrowApy: 5.2 },
-          USDsui: { saveApy: 6.1, borrowApy: 7.0 },
-          SUI: { saveApy: 3.2, borrowApy: 4.8 },
+          A: { saveApy: 0.001, borrowApy: 0.005 }, // 0.10% / 0.50%
+          B: { saveApy: 0.082, borrowApy: 0.142 }, // 8.20% / 14.20%
+          C: { saveApy: 0.25, borrowApy: 0.32 }, // 25.00% / 32.00%
         }}
       />,
     );
     const text = container.textContent ?? '';
-    const idxUsdsui = text.indexOf('USDsui');
+    expect(text).toContain('0.10%');
+    expect(text).toContain('0.50%');
+    expect(text).toContain('8.20%');
+    expect(text).toContain('14.20%');
+    expect(text).toContain('25.00%');
+    expect(text).toContain('32.00%');
+  });
+
+  it('renders multiple assets in order (sorted by saveApy desc)', () => {
+    // Use non-overlapping symbols so substring-search reliably anchors the row.
+    // Pre-fix this test used USDC/USDsui/SUI — but `text.indexOf('SUI')` finds
+    // the "SUI" substring INSIDE "USDsui" first (offset +3 from the USDsui row),
+    // making the sort assertion trivially true regardless of actual order.
+    const { container } = render(
+      <RatesCardV2
+        data={{
+          USDC: { saveApy: 0.0462, borrowApy: 0.052 },
+          USDT: { saveApy: 0.061, borrowApy: 0.07 },
+          ETH: { saveApy: 0.032, borrowApy: 0.048 },
+        }}
+      />,
+    );
+    const text = container.textContent ?? '';
+    const idxUsdt = text.indexOf('USDT');
     const idxUsdc = text.indexOf('USDC');
-    const idxSui = text.indexOf('SUI');
-    expect(idxUsdsui).toBeGreaterThan(-1);
+    const idxEth = text.indexOf('ETH');
+    expect(idxUsdt).toBeGreaterThan(-1);
     expect(idxUsdc).toBeGreaterThan(-1);
-    expect(idxSui).toBeGreaterThan(-1);
-    // USDsui (6.1) > USDC (4.62) > SUI (3.2)
-    // Note: USDsui contains "USDC" substring? No — USDC index will match first "USDC" token.
-    // Use the trailing labels in section header to anchor — Supply appears once,
-    // so USDsui comes after Supply. Order assertion below uses standalone occurrences.
-    // Fall back to checking row count.
-    expect(idxUsdsui).toBeLessThan(idxSui);
-    expect(idxUsdc).toBeLessThan(idxSui);
+    expect(idxEth).toBeGreaterThan(-1);
+    // USDT (6.1%) > USDC (4.62%) > ETH (3.2%)
+    expect(idxUsdt).toBeLessThan(idxUsdc);
+    expect(idxUsdc).toBeLessThan(idxEth);
   });
 
   it('filters out rows without numeric saveApy', () => {
     const { container } = render(
       <RatesCardV2
         data={{
-          USDC: { saveApy: 4.62, borrowApy: 5.2 },
+          USDC: { saveApy: 0.0462, borrowApy: 0.052 },
           // @ts-expect-error — testing defensive filter
-          BROKEN: { saveApy: 'not-a-number', borrowApy: 5.0 },
+          BROKEN: { saveApy: 'not-a-number', borrowApy: 0.05 },
         }}
       />,
     );
@@ -112,7 +136,7 @@ describe('RatesCardV2 — empty state', () => {
 describe('RatesCardV2 — defensive APY handling', () => {
   it('clamps negative borrow rate to 0% (no crash)', () => {
     const { container } = render(
-      <RatesCardV2 data={{ USDC: { saveApy: 4.62, borrowApy: -1 } }} />,
+      <RatesCardV2 data={{ USDC: { saveApy: 0.0462, borrowApy: -1 } }} />,
     );
     const text = container.textContent ?? '';
     expect(text).toContain('4.62%');

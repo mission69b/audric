@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { SAVE_FEE_BPS, BORROW_FEE_BPS } from '@t2000/sdk';
 import {
   AssetAmountBlock,
   APYBlock,
@@ -37,6 +38,28 @@ import { fmtUsd } from '@/components/engine/cards/primitives';
 //   - save_deposit / withdraw / borrow / repay_debt: { amount, asset? }
 //   - harvest_rewards:                                 { slippage?, minRewardUsd? }
 //
+// FEE ACCURACY (post-audit fix, 2026-05-16):
+//   Fee constants are imported from @t2000/sdk to match the actual fees
+//   charged in `audric/apps/web/app/api/transactions/prepare/route.ts`:
+//     - save_deposit: SAVE_FEE_BPS    (10 bps, 0.10%) — wired in feeHooks.save
+//     - borrow:       BORROW_FEE_BPS  (5 bps,  0.05%) — wired in feeHooks.borrow
+//     - withdraw:     NO FEE — prepare route returns directly without a hook
+//     - repay_debt:   NO FEE — prepare route returns directly without a hook
+//     - harvest_rewards: per-leg description (10 bps Cetus + 10 bps NAVI save)
+//   Pre-fix V2 displayed "0.10% NAVI overlay" on borrow/withdraw/repay —
+//   the borrow row was 2× inflated and the withdraw/repay rows invented
+//   fees that don't exist. spec-consistency.ts:19-20 documents the
+//   no-WITHDRAW_FEE / no-REPAY_FEE invariant explicitly.
+//
+// APY ACCURACY (post-audit fix, 2026-05-16):
+//   save_deposit + withdraw render the supply APY correctly (it's the same
+//   pool APY the user is depositing into / forgoing). borrow + repay_debt
+//   intentionally OMIT the APY row — the engine doesn't thread borrow APY
+//   onto the PendingAction today, and showing the supply APY as the borrow
+//   rate is misleading (NAVI borrow rates are typically 1–2 percentage
+//   points HIGHER than supply rates). When engine adds `borrowApyBps` to
+//   the PendingAction (Week 4 cleanup), the row slots back in.
+//
 // What the previews INTENTIONALLY do NOT cover (deferred until engine
 // extends PendingAction shape):
 //   - HF projection (current → projected) for borrow/withdraw/repay —
@@ -55,11 +78,22 @@ import { fmtUsd } from '@/components/engine/cards/primitives';
 // (462 bps), USDsui pool ~5.20% (520 bps). Same long-running ballpark
 // values; per-card overrides flow in via the body's optional
 // rates-override prop when an upstream rates_info turn is hot.
+//
+// usdValue=amount assumption: save/borrow/repay/withdraw assets are
+// constrained to USDC | USDsui by the SDK allow-list (see
+// .cursor/rules/savings-usdc-only.mdc). Both stables peg to ~$1, so
+// `usdValue = amount` is correct. If the saveable allow-list ever
+// expands beyond stables, this assumption breaks — but the same SDK
+// guard would have to relax first, so the constraint is naturally
+// load-bearing.
 // ───────────────────────────────────────────────────────────────────────────
 
 const DEFAULT_USDC_APY_BPS = 462;
 const DEFAULT_USDSUI_APY_BPS = 520;
-const DEFAULT_OVERLAY_FEE_BPS = 10;
+
+// SDK exports fee constants as bigint — convert once at module scope.
+const SAVE_FEE_BPS_NUM = Number(SAVE_FEE_BPS);
+const BORROW_FEE_BPS_NUM = Number(BORROW_FEE_BPS);
 
 const SECTION_LABEL =
   'text-[9px] font-mono uppercase tracking-[0.14em] text-fg-muted';
@@ -116,11 +150,16 @@ function APYRow({ asset, apyBps, label }: APYRowProps) {
   );
 }
 
+function feeChip(feeBps: number): { label: string; usdFor(amount: number): number } {
+  return {
+    label: `${(feeBps / 100).toFixed(2)}% NAVI overlay`,
+    usdFor: (amount: number) => (amount * feeBps) / 10_000,
+  };
+}
+
 interface PreviewBodyProps {
   input: Record<string, unknown>;
   ratesOverride?: { usdcApyBps?: number; usdsuiApyBps?: number };
-  /** Overlay fee applied to the operation, in basis points. Defaults to 10 (0.10%). */
-  overlayFeeBps?: number;
 }
 
 // ─── Per-tool bodies ──────────────────────────────────────────────────────
@@ -128,13 +167,11 @@ interface PreviewBodyProps {
 export function SaveDepositPreviewBody({
   input,
   ratesOverride,
-  overlayFeeBps = DEFAULT_OVERLAY_FEE_BPS,
 }: PreviewBodyProps): ReactNode {
   const amount = typeof input.amount === 'number' ? input.amount : 0;
   const asset = resolveAsset(input as BasePreviewInput, 'USDC');
   const apyBps = resolveApyBpsForAsset(asset, ratesOverride);
-  const feePct = (overlayFeeBps / 100).toFixed(2);
-  const feeUsd = (amount * overlayFeeBps) / 10_000;
+  const fee = feeChip(SAVE_FEE_BPS_NUM);
 
   return (
     <div className="space-y-3">
@@ -145,7 +182,7 @@ export function SaveDepositPreviewBody({
         label="Deposit"
       />
       <APYRow asset={asset} apyBps={apyBps} label="Pool APY" />
-      <FeeRow label={`${feePct}% NAVI overlay`} usdValue={feeUsd} />
+      <FeeRow label={fee.label} usdValue={fee.usdFor(amount)} />
     </div>
   );
 }
@@ -153,14 +190,11 @@ export function SaveDepositPreviewBody({
 export function WithdrawPreviewBody({
   input,
   ratesOverride,
-  overlayFeeBps = DEFAULT_OVERLAY_FEE_BPS,
 }: PreviewBodyProps): ReactNode {
   const amount = typeof input.amount === 'number' ? input.amount : 0;
   const asset = resolveAsset(input as BasePreviewInput, 'USDC');
   const apyBps = resolveApyBpsForAsset(asset, ratesOverride);
-  const feePct = (overlayFeeBps / 100).toFixed(2);
-  const feeUsd = (amount * overlayFeeBps) / 10_000;
-
+  // No fee row — withdraw is fee-free per audric prepare route.
   return (
     <div className="space-y-3">
       <AssetAmountBlock
@@ -170,25 +204,18 @@ export function WithdrawPreviewBody({
         label="Withdraw"
       />
       <APYRow asset={asset} apyBps={apyBps} label="Yield foregone" />
-      <FeeRow label={`${feePct}% NAVI overlay`} usdValue={feeUsd} />
     </div>
   );
 }
 
 export function BorrowPreviewBody({
   input,
-  ratesOverride,
-  overlayFeeBps = DEFAULT_OVERLAY_FEE_BPS,
 }: PreviewBodyProps): ReactNode {
   const amount = typeof input.amount === 'number' ? input.amount : 0;
   const asset = resolveAsset(input as BasePreviewInput, 'USDC');
-  // Borrow APY isn't the same as save APY but engine doesn't thread it
-  // onto the PendingAction today. Default to the supply APY as a
-  // ballpark — when engine adds `borrowApyBps`, this swaps trivially.
-  const apyBps = resolveApyBpsForAsset(asset, ratesOverride);
-  const feePct = (overlayFeeBps / 100).toFixed(2);
-  const feeUsd = (amount * overlayFeeBps) / 10_000;
-
+  const fee = feeChip(BORROW_FEE_BPS_NUM);
+  // No APY row — engine doesn't thread borrow rate onto PendingAction.
+  // Showing the supply rate would lie about the actual borrow cost.
   return (
     <div className="space-y-3">
       <AssetAmountBlock
@@ -197,23 +224,21 @@ export function BorrowPreviewBody({
         usdValue={amount}
         label="Borrow"
       />
-      <APYRow asset={asset} apyBps={apyBps} label="Borrow rate" />
-      <FeeRow label={`${feePct}% NAVI overlay`} usdValue={feeUsd} />
+      <div className="text-[10px] text-fg-muted italic pt-1">
+        Variable rate — locked at execute time.
+      </div>
+      <FeeRow label={fee.label} usdValue={fee.usdFor(amount)} />
     </div>
   );
 }
 
 export function RepayPreviewBody({
   input,
-  ratesOverride,
-  overlayFeeBps = DEFAULT_OVERLAY_FEE_BPS,
 }: PreviewBodyProps): ReactNode {
   const amount = typeof input.amount === 'number' ? input.amount : 0;
   const asset = resolveAsset(input as BasePreviewInput, 'USDC');
-  const apyBps = resolveApyBpsForAsset(asset, ratesOverride);
-  const feePct = (overlayFeeBps / 100).toFixed(2);
-  const feeUsd = (amount * overlayFeeBps) / 10_000;
-
+  // No fee row — repay is fee-free per audric prepare route.
+  // No APY row — engine doesn't thread borrow rate onto PendingAction.
   return (
     <div className="space-y-3">
       <AssetAmountBlock
@@ -222,8 +247,9 @@ export function RepayPreviewBody({
         usdValue={amount}
         label="Repay"
       />
-      <APYRow asset={asset} apyBps={apyBps} label="Borrow rate cleared" />
-      <FeeRow label={`${feePct}% NAVI overlay`} usdValue={feeUsd} />
+      <div className="text-[10px] text-fg-muted italic pt-1">
+        Clears principal at the current variable borrow rate.
+      </div>
     </div>
   );
 }
@@ -295,13 +321,16 @@ const PREVIEW_BODIES: Record<
  * Returns a V2 preview body for the given write tool, or `null` if the
  * tool isn't covered (caller falls back to the legacy `inputSummary`
  * single-line text).
+ *
+ * Per-tool fee bps are sourced from `@t2000/sdk` (SAVE_FEE_BPS,
+ * BORROW_FEE_BPS) — no override needed; the canonical fee values
+ * are single-source-of-truth in the SDK constants.
  */
 export function renderPreviewBody(
   toolName: string,
   input: Record<string, unknown>,
   options?: {
     ratesOverride?: { usdcApyBps?: number; usdsuiApyBps?: number };
-    overlayFeeBps?: number;
   },
 ): ReactNode | null {
   const Body = PREVIEW_BODIES[toolName];
@@ -310,7 +339,6 @@ export function renderPreviewBody(
     <Body
       input={input}
       ratesOverride={options?.ratesOverride}
-      overlayFeeBps={options?.overlayFeeBps}
     />
   );
 }

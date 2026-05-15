@@ -32,7 +32,7 @@ function rb(node: ReturnType<typeof renderPreviewBody>) {
 }
 
 describe('SaveDepositPreviewBody', () => {
-  it('renders Deposit row + Pool APY for default USDC', () => {
+  it('renders Deposit row + Pool APY + 0.10% SAVE_FEE_BPS overlay for default USDC', () => {
     const { container } = render(
       <SaveDepositPreviewBody input={{ amount: 50 }} />,
     );
@@ -42,8 +42,8 @@ describe('SaveDepositPreviewBody', () => {
     expect(text).toContain('50.00');
     expect(text).toContain('Pool APY');
     expect(text).toContain('4.62%');
+    // SAVE_FEE_BPS = 10n → 0.10%, fee USD = 50 * 0.001 = $0.05
     expect(text).toContain('0.10% NAVI overlay');
-    // Fee math: 50 * 0.001 = 0.05
     expect(text).toContain('$0.05');
   });
 
@@ -68,7 +68,7 @@ describe('SaveDepositPreviewBody', () => {
 });
 
 describe('WithdrawPreviewBody', () => {
-  it('renders Withdraw row + Yield foregone label', () => {
+  it('renders Withdraw row + Yield foregone label, NO fee row', () => {
     const { container } = render(
       <WithdrawPreviewBody input={{ amount: 25 }} />,
     );
@@ -77,6 +77,9 @@ describe('WithdrawPreviewBody', () => {
     expect(text).toContain('25.00');
     expect(text).toContain('Yield foregone');
     expect(text).toContain('4.62%');
+    // Withdraw is fee-free per audric prepare route — no fee row.
+    expect(text).not.toContain('NAVI overlay');
+    expect(text).not.toContain('overlay');
   });
 
   it('routes USDsui asset', () => {
@@ -88,36 +91,44 @@ describe('WithdrawPreviewBody', () => {
 });
 
 describe('BorrowPreviewBody', () => {
-  it('renders Borrow row + Borrow rate label', () => {
+  it('renders Borrow row + 0.05% BORROW_FEE_BPS overlay, NO APY row', () => {
     const { container } = render(
       <BorrowPreviewBody input={{ amount: 100 }} />,
     );
     const text = container.textContent ?? '';
     expect(text).toContain('Borrow');
     expect(text).toContain('100.00');
-    expect(text).toContain('Borrow rate');
+    // BORROW_FEE_BPS = 5n → 0.05%, fee USD = 100 * 0.0005 = $0.05
+    expect(text).toContain('0.05% NAVI overlay');
+    expect(text).toContain('$0.05');
+    // No APY row — engine doesn't thread borrow APY onto PendingAction.
+    expect(text).not.toContain('Borrow rate ·');
+    // Caption explains why the rate is omitted.
+    expect(text).toContain('Variable rate');
+    expect(text).toContain('locked at execute time');
   });
 
-  it('honors overlayFeeBps override', () => {
+  it('routes USDsui asset', () => {
     const { container } = render(
-      <BorrowPreviewBody input={{ amount: 100 }} overlayFeeBps={25} />,
+      <BorrowPreviewBody input={{ amount: 100, asset: 'USDsui' }} />,
     );
-    const text = container.textContent ?? '';
-    expect(text).toContain('0.25% NAVI overlay');
-    // 100 * 0.0025 = 0.25
-    expect(text).toContain('$0.25');
+    expect(container.textContent ?? '').toContain('USDsui');
   });
 });
 
 describe('RepayPreviewBody', () => {
-  it('renders Repay row + Borrow rate cleared label', () => {
+  it('renders Repay row, NO APY row, NO fee row', () => {
     const { container } = render(
       <RepayPreviewBody input={{ amount: 50, asset: 'USDC' }} />,
     );
     const text = container.textContent ?? '';
     expect(text).toContain('Repay');
     expect(text).toContain('50.00');
-    expect(text).toContain('Borrow rate cleared');
+    // No fee — repay is fee-free per audric prepare route.
+    expect(text).not.toContain('NAVI overlay');
+    // No APY — engine doesn't thread borrow rate. Caption explains.
+    expect(text).not.toContain('Borrow rate cleared');
+    expect(text).toContain('current variable borrow rate');
   });
 });
 
@@ -185,16 +196,34 @@ describe('renderPreviewBody dispatcher', () => {
     expect(out!.container.textContent).toContain('7.00%');
   });
 
-  it('threads overlayFeeBps through to the body', () => {
-    const node = renderPreviewBody(
-      'save_deposit',
-      { amount: 100 },
-      { overlayFeeBps: 50 },
-    );
+  it('uses canonical SDK fee bps for save_deposit (no override accepted)', () => {
+    // Fee bps come from @t2000/sdk SAVE_FEE_BPS — no per-render override
+    // surface; if the SDK constant changes, every consumer updates together.
+    const node = renderPreviewBody('save_deposit', { amount: 100 });
     const out = rb(node);
     const text = out!.container.textContent ?? '';
-    expect(text).toContain('0.50% NAVI overlay');
-    expect(text).toContain('$0.50');
+    expect(text).toContain('0.10% NAVI overlay');
+    // 100 * 0.001 = $0.10
+    expect(text).toContain('$0.10');
+  });
+
+  it('uses canonical SDK fee bps for borrow', () => {
+    const node = renderPreviewBody('borrow', { amount: 200 });
+    const out = rb(node);
+    const text = out!.container.textContent ?? '';
+    expect(text).toContain('0.05% NAVI overlay');
+    // 200 * 0.0005 = $0.10
+    expect(text).toContain('$0.10');
+  });
+
+  it('omits fees for withdraw + repay_debt (none charged on-chain)', () => {
+    for (const tool of ['withdraw', 'repay_debt']) {
+      const node = renderPreviewBody(tool, { amount: 100 });
+      const out = rb(node);
+      const text = out!.container.textContent ?? '';
+      expect(text).not.toContain('NAVI overlay');
+      expect(text).not.toContain('overlay');
+    }
   });
 
   it('lists all 5 supported tools', () => {

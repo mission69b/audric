@@ -40,10 +40,16 @@ import { APYBlock } from './shared';
 //   - "Render whatever the engine sends" — no hardcoded topN cap
 //   - Asset-symbol display from the data key (NAVI ticker style)
 //
-// Note on input shape: engine emits `{ saveApy, borrowApy }` as raw
-// percentages (NOT basis points) — e.g. 4.62 for 4.62%. APYBlock takes
-// basis points, so V2 multiplies by 100 to convert (4.62 → 462 bps)
-// when handing to APYBlock.
+// Note on input shape: engine emits `saveApy` / `borrowApy` as DECIMALS
+// (e.g. `0.0462` for 4.62%) — sourced from `transformRates()` in
+// `packages/engine/src/navi/transforms.ts:169` (`toNum(pool.supplyApy) / 100`)
+// and consumed by V1 RatesCard via `fmtPct(rate * 100)`.
+//
+// `apyToBps` defensively handles both formats (decimal AND raw percentage)
+// to match `PortfolioCardV2.apyToBps` — when the engine path emits a
+// decimal, multiply by 10_000; when an upstream surface emits a raw
+// percentage, multiply by 100. The `< 1` heuristic is safe because
+// no NAVI pool exceeds 100% APY (the realistic tail is 0–25%).
 // ───────────────────────────────────────────────────────────────────────────
 
 interface RateEntry {
@@ -56,9 +62,9 @@ interface RateEntry {
 const SECTION_LABEL =
   'text-[9px] font-mono uppercase tracking-[0.14em] text-fg-muted';
 
-function pctToBps(pct: number): number {
-  if (!Number.isFinite(pct) || pct < 0) return 0;
-  return Math.round(pct * 100);
+function apyToBps(rate: number): number {
+  if (!Number.isFinite(rate) || rate <= 0) return 0;
+  return rate < 1 ? Math.round(rate * 10_000) : Math.round(rate * 100);
 }
 
 export function RatesCardV2({ data }: { data: Record<string, RateEntry> }) {
@@ -80,8 +86,8 @@ export function RatesCardV2({ data }: { data: Record<string, RateEntry> }) {
             key={symbol}
             className="grid grid-cols-2 gap-2 items-baseline"
           >
-            <APYBlock asset={symbol} apyBps={pctToBps(rate.saveApy)} />
-            <APYBlock asset={symbol} apyBps={pctToBps(rate.borrowApy)} />
+            <APYBlock asset={symbol} apyBps={apyToBps(rate.saveApy)} />
+            <APYBlock asset={symbol} apyBps={apyToBps(rate.borrowApy)} />
           </div>
         ))}
       </div>
