@@ -408,6 +408,29 @@ const clientSchema = z.object({
    * Rollback: unset the var.
    */
   NEXT_PUBLIC_SWAP_QUOTE_CARD_V2: optionalString,
+
+  /**
+   * [SPEC 37 v0.7a Phase 2 Day 14-15] HealthCard V2 rollout flag.
+   *
+   * Same flag-gated rollout pattern as `NEXT_PUBLIC_BALANCE_CARD_V2`
+   * (Day 10-11) and `NEXT_PUBLIC_SWAP_QUOTE_CARD_V2` (Day 12-13).
+   * When set ("1" / "true"), `ToolResultCard` routes `health_check`
+   * results to `HealthCardV2` (HFGauge as hero + 2-col Collateral/
+   * Debt grid + borrowing-capacity-remaining footer when maxBorrow
+   * is supplied). Default OFF → existing HealthCard renders unchanged.
+   *
+   * V2 honors v1's ∞ semantics for un-debted accounts and surfaces
+   * the same warning color when borrowed > $0.01 (DEBT_DUST_USD
+   * threshold mirrors v1).
+   *
+   * V2 INTENTIONALLY does NOT cover the post-write variant — the
+   * existing HealthCard's 3-col post-write grid + status pill in
+   * the HF cell stays in PostWriteRefreshSurface. The flag check in
+   * ToolResultCard guards against routing post-write calls to V2.
+   *
+   * Rollback: unset the var.
+   */
+  NEXT_PUBLIC_HEALTH_CARD_V2: optionalString,
 });
 
 // ─── Runtime env (Next.js requires literal references) ────────────────
@@ -454,6 +477,7 @@ const runtimeEnv = {
   NEXT_PUBLIC_HARNESS_TRANSITIONS_V1: process.env.NEXT_PUBLIC_HARNESS_TRANSITIONS_V1,
   NEXT_PUBLIC_BALANCE_CARD_V2: process.env.NEXT_PUBLIC_BALANCE_CARD_V2,
   NEXT_PUBLIC_SWAP_QUOTE_CARD_V2: process.env.NEXT_PUBLIC_SWAP_QUOTE_CARD_V2,
+  NEXT_PUBLIC_HEALTH_CARD_V2: process.env.NEXT_PUBLIC_HEALTH_CARD_V2,
 } as const;
 
 // ─── Validate ──────────────────────────────────────────────────────────

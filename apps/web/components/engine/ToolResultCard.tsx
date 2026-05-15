@@ -7,6 +7,7 @@ import { RatesCard } from './cards/RatesCard';
 import { BalanceCard } from './cards/BalanceCard';
 import { BalanceCardV2 } from './cards/BalanceCardV2';
 import { SwapQuoteCardV2 } from './cards/SwapQuoteCardV2';
+import { HealthCardV2 } from './cards/HealthCardV2';
 import { SavingsCard } from './cards/SavingsCard';
 import { PortfolioCard } from './cards/PortfolioCard';
 import { ExplainTxCard } from './cards/ExplainTxCard';
@@ -160,6 +161,22 @@ const CARD_RENDERERS: Record<string, CardRenderer> = {
   health_check: (result, variant) => {
     const data = extractData(result);
     if (!data || typeof data !== 'object') return null;
+    // [SPEC 37 v0.7a Phase 2 Day 14-15] HealthCardV2 rollout flag.
+    // V2 renders HFGauge as hero + Collateral/Debt 2-col + borrowing
+    // capacity. Default OFF until founder flips
+    // NEXT_PUBLIC_HEALTH_CARD_V2. Post-write variant is excluded —
+    // PostWriteRefreshSurface keeps consuming v1's 3-col grid +
+    // status pill in HF cell.
+    const useV2 =
+      env.NEXT_PUBLIC_HEALTH_CARD_V2 === '1' ||
+      env.NEXT_PUBLIC_HEALTH_CARD_V2 === 'true';
+    if (useV2 && variant !== 'post-write') {
+      return (
+        <HealthCardV2
+          data={data as Parameters<typeof HealthCardV2>[0]['data']}
+        />
+      );
+    }
     return (
       <HealthCard
         data={data as Parameters<typeof HealthCard>[0]['data']}
