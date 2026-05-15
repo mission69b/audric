@@ -385,6 +385,29 @@ const clientSchema = z.object({
    * layer; no API contract change.
    */
   NEXT_PUBLIC_BALANCE_CARD_V2: optionalString,
+
+  /**
+   * [SPEC 37 v0.7a Phase 2 Day 12-13] SwapQuoteCard V2 rollout flag.
+   *
+   * Same flag-gated rollout pattern as `NEXT_PUBLIC_BALANCE_CARD_V2`
+   * (Day 10-11 sibling). When set ("1" / "true"), `ToolResultCard`
+   * routes `swap_quote` results to `SwapQuoteCardV2` (built from the
+   * Day 6-9 shared primitives: AssetAmountBlock for both legs +
+   * RouteDiagram for multi-hop routes when `routeSteps` are emitted
+   * by the engine). Default OFF → existing SwapQuoteCard renders
+   * unchanged for every user.
+   *
+   * V2 intentionally degrades gracefully: when the engine doesn't
+   * emit the new optional fields (`routeSteps`, `fromUsdValue`,
+   * `toUsdValue`, `slippage`, `totalFeeBps`), V2 falls back to the
+   * v1-equivalent shape rendered with shared primitives. This means
+   * V2 can ship before the engine swap_quote tool is updated to emit
+   * the richer payload (the engine update is deferred to the Week 4
+   * cleanup batch per the same rationale as BalanceCardV2).
+   *
+   * Rollback: unset the var.
+   */
+  NEXT_PUBLIC_SWAP_QUOTE_CARD_V2: optionalString,
 });
 
 // ─── Runtime env (Next.js requires literal references) ────────────────
@@ -430,6 +453,7 @@ const runtimeEnv = {
   NEXT_PUBLIC_HARNESS_V9: process.env.NEXT_PUBLIC_HARNESS_V9,
   NEXT_PUBLIC_HARNESS_TRANSITIONS_V1: process.env.NEXT_PUBLIC_HARNESS_TRANSITIONS_V1,
   NEXT_PUBLIC_BALANCE_CARD_V2: process.env.NEXT_PUBLIC_BALANCE_CARD_V2,
+  NEXT_PUBLIC_SWAP_QUOTE_CARD_V2: process.env.NEXT_PUBLIC_SWAP_QUOTE_CARD_V2,
 } as const;
 
 // ─── Validate ──────────────────────────────────────────────────────────

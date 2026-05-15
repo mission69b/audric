@@ -6,6 +6,7 @@ import { extractData } from './cards/primitives';
 import { RatesCard } from './cards/RatesCard';
 import { BalanceCard } from './cards/BalanceCard';
 import { BalanceCardV2 } from './cards/BalanceCardV2';
+import { SwapQuoteCardV2 } from './cards/SwapQuoteCardV2';
 import { SavingsCard } from './cards/SavingsCard';
 import { PortfolioCard } from './cards/PortfolioCard';
 import { ExplainTxCard } from './cards/ExplainTxCard';
@@ -175,6 +176,22 @@ const CARD_RENDERERS: Record<string, CardRenderer> = {
   swap_quote: (result) => {
     const data = extractData(result);
     if (!data || typeof data !== 'object') return null;
+    // [SPEC 37 v0.7a Phase 2 Day 12-13] SwapQuoteCardV2 rollout flag.
+    // V2 renders the design-baseline shape (Pay/Receive AssetAmountBlock
+    // pair + RouteDiagram for multi-hop + slippage + fee breakdown).
+    // Falls back to v1-equivalent shape when engine doesn't emit the
+    // richer optional fields. Default OFF until founder flips
+    // NEXT_PUBLIC_SWAP_QUOTE_CARD_V2.
+    const useV2 =
+      env.NEXT_PUBLIC_SWAP_QUOTE_CARD_V2 === '1' ||
+      env.NEXT_PUBLIC_SWAP_QUOTE_CARD_V2 === 'true';
+    if (useV2) {
+      return (
+        <SwapQuoteCardV2
+          data={data as Parameters<typeof SwapQuoteCardV2>[0]['data']}
+        />
+      );
+    }
     return <SwapQuoteCard data={data as Parameters<typeof SwapQuoteCard>[0]['data']} />;
   },
   mpp_services: (result) => {
