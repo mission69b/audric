@@ -2,13 +2,32 @@ import { NextRequest } from 'next/server';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { authenticateRequest, assertOwns, isValidSuiAddress } from '@/lib/auth';
 import { env } from '@/lib/env';
+import { createOpenAI, type OpenAITranscriptionModelOptions } from '@ai-sdk/openai';
+import { experimental_transcribe as transcribe, NoTranscriptGeneratedError } from 'ai';
 
 /**
  * POST /api/voice/transcribe
  *
- * Speech-to-text via OpenAI Whisper. Body is multipart/form-data with a
- * single `audio` field containing the recorded audio blob (webm/opus from
- * MediaRecorder, or any format Whisper accepts).
+ * Speech-to-text via OpenAI Whisper through the Vercel AI SDK
+ * (`experimental_transcribe` from `ai` + `@ai-sdk/openai`).
+ *
+ * [SPEC 37 v0.7a Phase 1 — R3 voice transcribe migration, 2026-05-15]
+ * Migrated from a hand-rolled multipart fetch against
+ * `https://api.openai.com/v1/audio/transcriptions` to the AI SDK's
+ * unified transcription surface. Behaviour preserved verbatim:
+ *   - Same Whisper model (`whisper-1`)
+ *   - Same `prompt` vocabulary biasing (PROMPT_HINTS below — feeds via
+ *     `providerOptions.openai.prompt`)
+ *   - Same 25s upstream timeout via `abortSignal: AbortSignal.timeout(25_000)`
+ *   - Same client contract (multipart/form-data with `audio` + `address`,
+ *     returns `{ text: string }`)
+ *
+ * Sister route `/api/voice/synthesize` (ElevenLabs TTS via the
+ * `with-timestamps` endpoint) is intentionally NOT migrated. The AI SDK's
+ * `experimental_generateSpeech` returns audio only — no per-character
+ * alignment timestamps, which the Claude-style word-highlight UX in
+ * `useVoiceMode.ts` depends on. Re-evaluate when AI SDK adds alignment
+ * support, or fold into the v0.7c voice UI rebuild.
  *
  * Why server-side: keeps the OPENAI_API_KEY out of the browser. Whisper
  * is also significantly better than the browser's Web Speech API at
@@ -17,11 +36,6 @@ import { env } from '@/lib/env';
  *
  * Auth + rate limit mirror the engine chat route so abuse is bounded
  * — 60 requests / minute / IP, plus zkLogin JWT verification.
- *
- * The route deliberately accepts a `prompt` field so callers can pass
- * domain-specific terms ("USDC, vSUI, haSUI, NAVI, t2000") that bias
- * Whisper toward correct spelling. We seed it with the Audric token
- * registry by default — see PROMPT_HINTS below.
  */
 
 export const runtime = 'nodejs';
@@ -87,61 +101,42 @@ export async function POST(request: NextRequest) {
     return jsonError(`Audio too large (max ${MAX_AUDIO_BYTES} bytes)`, 413);
   }
 
-  // Re-pack into a Whisper-friendly form submission. Browser MediaRecorder
-  // typically emits `audio/webm;codecs=opus` which Whisper accepts.
-  const whisperForm = new FormData();
-  // Whisper requires a filename to infer the format — without it the
-  // upload is rejected with a 400. Keep the list aligned with the
-  // MIME types MediaRecorder advertises across browsers (Chrome &
-  // Firefox: webm/opus, Safari iOS17+: mp4, Firefox legacy: ogg).
-  const audioType = (audio.type ?? '').toLowerCase();
-  const filename =
-    audioType.includes('mp4') ? 'audio.mp4' :
-    audioType.includes('mpeg') || audioType.includes('mp3') ? 'audio.mp3' :
-    audioType.includes('wav') ? 'audio.wav' :
-    audioType.includes('ogg') ? 'audio.ogg' :
-    audioType.includes('flac') ? 'audio.flac' :
-    audioType.includes('m4a') ? 'audio.m4a' :
-    'audio.webm';
-  whisperForm.append('file', audio, filename);
-  whisperForm.append('model', 'whisper-1');
-  whisperForm.append('prompt', PROMPT_HINTS);
-  whisperForm.append('response_format', 'json');
-  // Don't constrain language — Whisper auto-detects, supporting users
-  // who code-switch between English and other languages mid-sentence.
+  // The AI SDK's `experimental_transcribe` accepts a Uint8Array directly —
+  // it forwards to Whisper as multipart with the right MIME inferred from
+  // the model. Browsers send `audio/webm;codecs=opus` from MediaRecorder
+  // which Whisper accepts without us having to fake a filename like the
+  // pre-migration path did.
+  const audioBytes = new Uint8Array(await audio.arrayBuffer());
 
-  let response: Response;
+  const openai = createOpenAI({ apiKey });
+
   try {
-    response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${apiKey}` },
-      body: whisperForm,
-      signal: AbortSignal.timeout(25_000),
+    const result = await transcribe({
+      model: openai.transcription('whisper-1'),
+      audio: audioBytes,
+      providerOptions: {
+        openai: {
+          prompt: PROMPT_HINTS,
+          // Don't constrain language — Whisper auto-detects, supporting
+          // users who code-switch between English and other languages
+          // mid-sentence.
+        } satisfies OpenAITranscriptionModelOptions,
+      },
+      abortSignal: AbortSignal.timeout(25_000),
+    });
+
+    return new Response(JSON.stringify({ text: result.text.trim() }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
     });
   } catch (err) {
-    console.warn('[voice/transcribe] Whisper fetch failed', err);
+    if (NoTranscriptGeneratedError.isInstance(err)) {
+      console.warn('[voice/transcribe] Whisper produced no transcript', {
+        cause: err.cause,
+      });
+      return jsonError('Transcription failed', 502);
+    }
+    console.warn('[voice/transcribe] transcribe call failed', err);
     return jsonError('Transcription service unavailable', 502);
   }
-
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => '');
-    console.warn('[voice/transcribe] Whisper returned non-2xx', {
-      status: response.status,
-      body: errorText.slice(0, 500),
-    });
-    return jsonError('Transcription failed', 502);
-  }
-
-  const result = (await response.json().catch(() => null)) as
-    | { text?: string }
-    | null;
-
-  if (!result || typeof result.text !== 'string') {
-    return jsonError('Malformed transcription response', 502);
-  }
-
-  return new Response(JSON.stringify({ text: result.text.trim() }), {
-    status: 200,
-    headers: { 'Content-Type': 'application/json' },
-  });
 }

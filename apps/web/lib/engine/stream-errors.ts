@@ -1,9 +1,11 @@
 /**
  * Defense-in-depth sanitizer for SSE error events.
  *
- * The t2000 engine's AnthropicProvider already converts known provider errors
- * (overloaded, rate-limited, network) into clean user-facing strings before
- * throwing. This module exists so the chat/resume routes have a final
+ * The t2000 engine's LLM provider (AISDKAnthropicProvider as of engine
+ * 1.31.0; AnthropicProvider before that) already converts known provider
+ * errors (overloaded, rate-limited, network) into clean user-facing strings
+ * via `friendlyErrorMessage` before throwing. This module exists so the
+ * chat/resume routes have a final
  * gatekeeper: if any other layer ever leaks a raw Anthropic JSON payload or
  * other technical message into err.message, we map it here so the chat UI
  * never renders raw JSON to the user.

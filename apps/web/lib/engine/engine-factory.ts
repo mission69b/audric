@@ -1,6 +1,14 @@
 import {
   QueryEngine,
-  AnthropicProvider,
+  // [SPEC 37 v0.7a Phase 1 / 2026-05-15] Migrated from hand-rolled
+  // `AnthropicProvider` (engine ≤1.30.x) to AI SDK-backed
+  // `AISDKAnthropicProvider` (engine 1.31.0+). Drop-in `LLMProvider`
+  // implementation — same constructor signature `{ apiKey }`, same
+  // event stream contract (`ProviderEvent`), same retry-before-first-
+  // token semantics + same `external.retry_count` telemetry. The legacy
+  // provider stays exported as `@deprecated` for one soak window so we
+  // can revert without an engine bump if anything regresses.
+  AISDKAnthropicProvider,
   McpClientManager,
   NAVI_MCP_CONFIG,
   READ_TOOLS,
@@ -747,7 +755,7 @@ export async function createEngine(
   opts.onMeta?.({ effortLevel: effort, modelUsed: routedModel, harnessShape, harnessRationale });
 
   const engine = new QueryEngine({
-    provider: new AnthropicProvider({ apiKey: ANTHROPIC_API_KEY }),
+    provider: new AISDKAnthropicProvider({ apiKey: ANTHROPIC_API_KEY }),
     mcpManager: mgr,
     walletAddress: address,
     suiRpcUrl: SUI_RPC_URL,
@@ -1064,7 +1072,7 @@ export async function createUnauthEngine(history: HistoryMessage[]): Promise<Que
   const mgr = await ensureMcpConnected();
 
   const engine = new QueryEngine({
-    provider: new AnthropicProvider({ apiKey: ANTHROPIC_API_KEY }),
+    provider: new AISDKAnthropicProvider({ apiKey: ANTHROPIC_API_KEY }),
     mcpManager: mgr,
     tools: readTools,
     systemPrompt: prompt,
