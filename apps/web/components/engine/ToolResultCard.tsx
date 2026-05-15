@@ -4,6 +4,7 @@ import type { ToolExecution } from '@/lib/engine-types';
 import { env } from '@/lib/env';
 import { extractData } from './cards/primitives';
 import { RatesCard } from './cards/RatesCard';
+import { RatesCardV2 } from './cards/RatesCardV2';
 import { BalanceCard } from './cards/BalanceCard';
 import { BalanceCardV2 } from './cards/BalanceCardV2';
 import { SwapQuoteCardV2 } from './cards/SwapQuoteCardV2';
@@ -11,6 +12,7 @@ import { HealthCardV2 } from './cards/HealthCardV2';
 import { PendingRewardsCardV2 } from './cards/PendingRewardsCardV2';
 import { SavingsCard } from './cards/SavingsCard';
 import { PortfolioCard } from './cards/PortfolioCard';
+import { PortfolioCardV2 } from './cards/PortfolioCardV2';
 import { ExplainTxCard } from './cards/ExplainTxCard';
 import { TransactionReceiptCard } from './cards/TransactionReceiptCard';
 import { HealthCard } from './cards/HealthCard';
@@ -115,6 +117,12 @@ const CARD_RENDERERS: Record<string, CardRenderer> = {
   rates_info: (result) => {
     const data = extractData(result);
     if (!data || typeof data !== 'object') return null;
+    const useV2 =
+      env.NEXT_PUBLIC_RATES_CARD_V2 === '1' ||
+      env.NEXT_PUBLIC_RATES_CARD_V2 === 'true';
+    if (useV2) {
+      return <RatesCardV2 data={data as Record<string, { saveApy: number; borrowApy: number }>} />;
+    }
     return <RatesCard data={data as Record<string, { saveApy: number; borrowApy: number }>} />;
   },
   balance_check: (result, variant) => {
@@ -152,6 +160,12 @@ const CARD_RENDERERS: Record<string, CardRenderer> = {
   portfolio_analysis: (result) => {
     const data = extractData(result);
     if (!data || typeof data !== 'object') return null;
+    const useV2 =
+      env.NEXT_PUBLIC_PORTFOLIO_CARD_V2 === '1' ||
+      env.NEXT_PUBLIC_PORTFOLIO_CARD_V2 === 'true';
+    if (useV2) {
+      return <PortfolioCardV2 data={data as Parameters<typeof PortfolioCardV2>[0]['data']} />;
+    }
     return <PortfolioCard data={data as Parameters<typeof PortfolioCard>[0]['data']} />;
   },
   explain_tx: (result) => {

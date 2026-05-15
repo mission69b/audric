@@ -489,6 +489,41 @@ const clientSchema = z.object({
    * Rollback: unset the var.
    */
   NEXT_PUBLIC_WRITE_PREVIEWS_V2: optionalString,
+
+  /**
+   * [SPEC 37 v0.7a Phase 2 Day 23] RatesCardV2 rollout flag.
+   *
+   * When set ("1" / "true"), `ToolResultCard` renders the new
+   * `RatesCardV2` (Day 9 APYBlock × N rows) for `rates_info` results.
+   * Otherwise falls back to the v1 `RatesCard` (table layout).
+   *
+   * V2 ADDS: APYBlock per cell (consistent rendering across cards).
+   * V2 PRESERVES: engine-side ordering (sorted by saveApy desc),
+   *               "render whatever the engine sends" no-cap rule.
+   *
+   * Rollback: unset the var.
+   */
+  NEXT_PUBLIC_RATES_CARD_V2: optionalString,
+
+  /**
+   * [SPEC 37 v0.7a Phase 2 Day 24] PortfolioCardV2 rollout flag.
+   *
+   * When set ("1" / "true"), `ToolResultCard` renders the new
+   * `PortfolioCardV2` (Day 6 AssetAmountBlock × N rows + Day 7 HFGauge
+   * + Day 9 APYBlock for savings APY) for `portfolio_analysis` results.
+   * Otherwise falls back to the v1 `PortfolioCard`.
+   *
+   * V2 ADDS: AssetAmountBlock per allocation (instead of comma-list),
+   *          APYBlock for savings APY (consistent with rates_info /
+   *          save_deposit), HFGauge for the debt section (instead of
+   *          generic Gauge with manual status badge).
+   * V2 PRESERVES: hero total + week trend, MiniBar allocation
+   *               breakdown, DeFi row with `partial` provenance,
+   *               insights callout, watched-address badge, net worth.
+   *
+   * Rollback: unset the var.
+   */
+  NEXT_PUBLIC_PORTFOLIO_CARD_V2: optionalString,
 });
 
 // ─── Runtime env (Next.js requires literal references) ────────────────
@@ -538,6 +573,8 @@ const runtimeEnv = {
   NEXT_PUBLIC_HEALTH_CARD_V2: process.env.NEXT_PUBLIC_HEALTH_CARD_V2,
   NEXT_PUBLIC_PENDING_REWARDS_CARD_V2: process.env.NEXT_PUBLIC_PENDING_REWARDS_CARD_V2,
   NEXT_PUBLIC_WRITE_PREVIEWS_V2: process.env.NEXT_PUBLIC_WRITE_PREVIEWS_V2,
+  NEXT_PUBLIC_RATES_CARD_V2: process.env.NEXT_PUBLIC_RATES_CARD_V2,
+  NEXT_PUBLIC_PORTFOLIO_CARD_V2: process.env.NEXT_PUBLIC_PORTFOLIO_CARD_V2,
 } as const;
 
 // ─── Validate ──────────────────────────────────────────────────────────
