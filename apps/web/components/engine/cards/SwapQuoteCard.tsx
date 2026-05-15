@@ -11,15 +11,32 @@ interface SwapQuoteData {
   route?: string;
 }
 
+/**
+ * [Days 10-16 audit V1 follow-up / 2026-05-16] The engine emits
+ * `priceImpact` as a DECIMAL (Cetus' `deviationRatio` semantics) —
+ * `0.0042` means 0.42%, NOT `0.42`. Pre-fix V1 read it as if it
+ * were already a percentage, so every realistic swap rendered as
+ * "0.00% impact" and the warning/error colour tiers (>1%, >3%)
+ * never fired. Heuristic mirrors RatesCardV2's `apyToBps`:
+ * `< 1` → multiply by 100 (engine canonical decimal),
+ * `>= 1` → already-percentage (defensive against any historical
+ * raw-percentage payload).
+ */
+function priceImpactToPct(rawImpact: unknown): number {
+  const v = Number(rawImpact);
+  if (!Number.isFinite(v) || v < 0) return 0;
+  return v < 1 ? v * 100 : v;
+}
+
 export function SwapQuoteCard({ data }: { data: SwapQuoteData }) {
   const rate = data.fromAmount > 0 ? data.toAmount / data.fromAmount : 0;
   // Defensive: Cetus's `deviationRatio` is typed as number but occasionally
   // arrives as a string ("0.001234"). The SDK now coerces, but we still
   // normalize here so a single bad payload can never crash the chat (which
   // happens because .toFixed throws on a string and the React error boundary
-  // tears down the whole conversation).
-  const impactPct = Number(data.priceImpact);
-  const safeImpact = Number.isFinite(impactPct) ? impactPct : 0;
+  // tears down the whole conversation). Decimal→percentage conversion is
+  // handled by `priceImpactToPct` above.
+  const safeImpact = priceImpactToPct(data.priceImpact);
   const impactColor = safeImpact > 3 ? 'text-error-solid' : safeImpact > 1 ? 'text-warning-solid' : 'text-fg-primary';
 
   return (

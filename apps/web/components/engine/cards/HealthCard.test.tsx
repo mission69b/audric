@@ -88,6 +88,27 @@ describe('HealthCard — default variant (standalone)', () => {
     );
     expect(document.body.textContent).toContain('alex.sui');
   });
+
+  // [Days 10-16 audit V1 follow-up / 2026-05-16] Engine emits
+  // `liquidationThreshold: 0` from its positionFetcher path (audric
+  // production today, see `health.ts:122`) as a sentinel for "unknown" —
+  // NOT as a real threshold. Pre-fix V1 rendered "Liq. Threshold · 0.00"
+  // on every health check.
+  it('hides the Liq. Threshold row when liquidationThreshold is 0 (engine "unknown" sentinel)', () => {
+    const sentinelData = { ...baseData, liquidationThreshold: 0 };
+    render(<HealthCard data={sentinelData} />);
+    const text = document.body.textContent ?? '';
+    expect(text).not.toContain('Liq. Threshold');
+    // Sanity: rest of the card still renders.
+    expect(text).toContain('Health Factor');
+    expect(text).toContain('Supplied');
+  });
+
+  it('hides the Liq. Threshold row when liquidationThreshold is negative (defensive)', () => {
+    const negativeData = { ...baseData, liquidationThreshold: -0.5 };
+    render(<HealthCard data={negativeData} />);
+    expect(document.body.textContent ?? '').not.toContain('Liq. Threshold');
+  });
 });
 
 describe('HealthCard — post-write variant', () => {

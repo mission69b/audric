@@ -194,7 +194,13 @@ export function HealthCard({ data, variant = 'default' }: HealthCardProps) {
         {data.maxBorrow != null && (
           <DetailRow label="Max Borrow">${fmtUsd(data.maxBorrow)}</DetailRow>
         )}
-        {data.liquidationThreshold != null && (
+        {/* [Days 10-16 audit V1 follow-up / 2026-05-16] The engine emits
+            `liquidationThreshold: 0` from its positionFetcher path
+            (audric production today, see `health.ts:122`) as a sentinel
+            for "unknown" — NOT as a real threshold. Pre-fix V1 rendered
+            "Liq. Threshold · 0.00" on every health check. Treat any
+            value ≤ 0 as the unknown sentinel and hide the row. */}
+        {data.liquidationThreshold != null && data.liquidationThreshold > 0 && (
           <DetailRow label="Liq. Threshold">{data.liquidationThreshold.toFixed(2)}</DetailRow>
         )}
       </div>
