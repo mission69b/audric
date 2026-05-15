@@ -454,6 +454,41 @@ const clientSchema = z.object({
    * Rollback: unset the var.
    */
   NEXT_PUBLIC_PENDING_REWARDS_CARD_V2: optionalString,
+
+  /**
+   * [SPEC 37 v0.7a Phase 2 Day 17-22] Write-tool preview bodies V2 flag.
+   *
+   * When set ("1" / "true"), `PermissionCard` replaces the single-line
+   * `inputSummary` text body with the corresponding per-tool preview
+   * body (AssetAmountBlock + APYBlock + fee row, sourced from the
+   * Day 6-9 shared primitives) for these 5 write tools:
+   *
+   *   - save_deposit       (Deposit row + Pool APY + NAVI overlay fee)
+   *   - withdraw           (Withdraw row + Yield foregone APY + fee)
+   *   - borrow             (Borrow row + Borrow rate + fee)
+   *   - repay_debt         (Repay row + Borrow rate cleared + fee)
+   *   - harvest_rewards    (Compound description + slippage + threshold)
+   *
+   * One flag turns on all 5 because they share the same UX shape and
+   * are reviewed together (consistent write-tool preview language).
+   *
+   * V2 PRESERVES every existing PermissionCard behavior:
+   *   - countdown timer + auto-deny on expiry
+   *   - Deny / Approve / Refresh-quote button row
+   *   - Modifiable-field inputs (amount edits, address edits)
+   *   - Guard-injection hints
+   *   - WorkingState transition after approve
+   *   - SendAddressBlock for send_transfer (NOT in this V2 batch —
+   *     stays the v1 path)
+   *
+   * Body components do NOT yet render HF projection (current → after)
+   * because the engine PendingAction shape doesn't carry currentHF
+   * today. Once the engine adds it (Week 4 cleanup batch), bodies
+   * gain the HFGauge projection row trivially via the Day 7 primitive.
+   *
+   * Rollback: unset the var.
+   */
+  NEXT_PUBLIC_WRITE_PREVIEWS_V2: optionalString,
 });
 
 // ─── Runtime env (Next.js requires literal references) ────────────────
@@ -502,6 +537,7 @@ const runtimeEnv = {
   NEXT_PUBLIC_SWAP_QUOTE_CARD_V2: process.env.NEXT_PUBLIC_SWAP_QUOTE_CARD_V2,
   NEXT_PUBLIC_HEALTH_CARD_V2: process.env.NEXT_PUBLIC_HEALTH_CARD_V2,
   NEXT_PUBLIC_PENDING_REWARDS_CARD_V2: process.env.NEXT_PUBLIC_PENDING_REWARDS_CARD_V2,
+  NEXT_PUBLIC_WRITE_PREVIEWS_V2: process.env.NEXT_PUBLIC_WRITE_PREVIEWS_V2,
 } as const;
 
 // ─── Validate ──────────────────────────────────────────────────────────

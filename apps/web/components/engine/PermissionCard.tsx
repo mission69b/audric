@@ -14,6 +14,8 @@ import {
   type QuoteAgeSeverity,
 } from '@/lib/format-quote-age';
 import { WorkingState } from './motion/WorkingState';
+import { env } from '@/lib/env';
+import { renderPreviewBody } from './preview-bodies';
 
 /**
  * [v1.4 Item 6] Single editable input rendered inside a `PermissionCard`.
@@ -932,9 +934,33 @@ export function PermissionCard({
         <p className="text-xs text-fg-secondary" id={`perm-desc-${action.toolUseId}`}>{action.description}</p>
       )}
 
-      {inputSummary && (
-        <p className="text-sm font-mono text-fg-primary">{inputSummary}</p>
-      )}
+      {/*
+        [SPEC 37 v0.7a Phase 2 Day 17-22] Write-tool preview bodies V2.
+        When the env flag is on AND this tool has a registered preview
+        body (save_deposit, withdraw, borrow, repay_debt, harvest_rewards),
+        render the rich body using shared primitives (AssetAmountBlock +
+        APYBlock + fee row). Otherwise fall back to v1's single-line
+        font-mono inputSummary string.
+
+        The chrome around the body — header, timer, modifiable inputs,
+        guard injections, deny/approve/refresh buttons, working state —
+        is intentionally untouched. V2 swaps ONLY the body slot.
+      */}
+      {(() => {
+        const useV2 =
+          env.NEXT_PUBLIC_WRITE_PREVIEWS_V2 === '1' ||
+          env.NEXT_PUBLIC_WRITE_PREVIEWS_V2 === 'true';
+        if (useV2) {
+          const v2Body = renderPreviewBody(
+            action.toolName,
+            modifiedInput,
+          );
+          if (v2Body) return v2Body;
+        }
+        return inputSummary ? (
+          <p className="text-sm font-mono text-fg-primary">{inputSummary}</p>
+        ) : null;
+      })()}
 
       {sendTo && (
         <SendAddressBlock
