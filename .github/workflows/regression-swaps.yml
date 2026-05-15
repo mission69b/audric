@@ -91,7 +91,7 @@ jobs:
 
       - name: Upload run artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: swap-regression-tier-a-${{ github.run_id }}-${{ github.run_attempt }}
           path: apps/web/scripts/regression-swaps/runs/*.json
