@@ -118,9 +118,55 @@ const verified = isJwtEmailVerified(jwt);  // false for null / malformed / missi
 
 Signed-in users can link up to 10 Sui addresses (e.g. a hardware wallet alongside their zkLogin wallet) via `/api/user/wallets`. Linked wallets are read-only — Audric doesn't sign for them. Aggregated portfolio views are computed via `/api/analytics/portfolio-multi`.
 
+## v0.7a engine-refactor invariants (added 2026-05-15 — SPEC 37 R9)
+
+The v0.7a engine drain (Vercel AI SDK + MemWal Path C migration of `@t2000/engine` internals) refactors hot paths across 8 phases. These Passport invariants MUST hold across every phase release. If any phase PR is suspected of touching one of these, run the 5-user smoke baseline (below) before merging.
+
+1. **Identity binding is non-negotiable.** Every route that scopes data or transactions by `address` pairs `authenticateRequest()` (full JWT verify + Enoki-derived `suiAddress`) with `assertOwns()` (writes / privileged ops) or `assertOwnsOrWatched()` (explicit read-only watchlist only). Both helpers live in `apps/web/lib/auth.ts`. Never trust `address` from the request body or query string alone — that's the IDOR class the May 2026 advisory was about.
+
+2. **`x-zklogin-jwt` header on every authenticated API.** Engine chat (`/api/engine/*`), `/api/transactions/prepare`, user routes, portfolio reads, and analytics all expect it. Prefer the canonical `authFetch` helper from `apps/web/lib/auth-fetch.ts` so the storage key (`t2000:zklogin:session`) and header name stay aligned with `lib/zklogin.ts`. v0.7a engine-side refactors must not change the header contract — clients send it, the route validates it.
+
+3. **The engine never holds a key, never signs.** `@t2000/engine` orchestrates the LLM loop and emits `PendingAction` events. The client signs with the browser-resident `ZkLoginSigner` (`@t2000/sdk/browser`). The server NEVER receives or persists the ephemeral private key. v0.7a phases that touch the provider, tools, or streaming layers must not introduce any "for convenience" key-passing. If a phase PR adds a new field to `PendingAction` or `EngineEvent`, verify it doesn't accidentally surface key material.
+
+4. **Sponsored tx pipeline shape is fixed.** Every Audric write uses the exact 3-leg pattern: client builds intent → POST `/api/transactions/prepare` (with `x-zklogin-jwt`, server validates + asks Enoki to sponsor + returns `{sponsoredTxBytes, sponsoredSig}`) → client signs with `ZkLoginSigner.signTransaction(txBytes)` → POST `/api/transactions/execute` (sig + digest only, NO `x-zklogin-jwt` — middleware excludes this path via `SEPARATE_AUTH_PREFIXES`) → server returns `{tx, balanceChanges}`. Engine refactors must NOT bypass this with direct SDK calls — the engine emits a `PendingAction`, the host (audric/web) drives the 3-leg sponsorship.
+
+5. **`attemptId` resume must survive every refactor.** After a confirmed write, the host calls `/api/engine/resume` with `{attemptId, txDigest, balanceChanges}` so engine `TurnMetrics` and `PendingAction` outcomes stay consistent. v0.7a Phase 1 (provider migration), Phase 3 (engine loop replacement), and Phase 5 (streaming wire-format) all touch the layer that emits `attemptId` — verify the UUID v4 round-trips byte-for-byte through whatever new translation layer lands. The bridge layer at `packages/engine/src/bridge/` already preserves `attemptId` through the AI SDK v6 `data-pending-action` UIMessageChunk part (verified by wire-byte equivalence test on 6 fixture turns).
+
+6. **Dual expiry — JWT `exp` (~1h) AND Sui `maxEpoch` (~48h).** Server routes enforce JWT validity via `jose` against Google JWKS. Client must not present a session that has a "valid epoch" but an expired OIDC JWT — `useZkLogin` + `isJwtExpired` already check both. v0.7a engine refactors don't touch this layer, but be aware: if a phase PR adds a "long-running session" feature, it must respect both clocks.
+
+7. **Middleware is permissive — route handlers are the gate.** `apps/web/middleware.ts` validates `x-zklogin-jwt` only when present and stamps `x-auth-verified-sub` for downstream consumption. JWT-absent requests still reach the route handler. **Do not rely on middleware alone for authorization.** Every privileged route handler must call `authenticateRequest()` itself. v0.7a engine refactors in audric/web are limited to `voice/transcribe/route.ts` (R3) — that route, like every other privileged route, calls `authenticateRequest()` directly.
+
+## 5-user smoke baseline (founder action — runs per phase release)
+
+The audit found NO existing scripted multi-user zkLogin smoke test (the closest is `apps/web/scripts/loadtest/mint-load-test.ts` which uses synthetic JWTs / keypairs for identity-reserve load testing — useful, but doesn't exercise the Google OAuth + Enoki + ZkLoginSigner pipeline end-to-end).
+
+**The procedure (manual, ~15 min per phase release):**
+
+For each phase 1–8 release, the founder runs this 5-user smoke against the audric.ai production deployment **after** Vercel finishes deploying the bumped `@t2000/engine` version:
+
+| Step | Action | Expected | Failure surface |
+|---|---|---|---|
+| 1 | Sign in with **5 distinct Google accounts** (use 5 separate browser profiles or incognito sessions). For each: confirm the derived Sui address is the SAME as on the previous phase release (record addresses in a private notes file). | All 5 addresses unchanged. | Address drift = `aud` (`NEXT_PUBLIC_GOOGLE_CLIENT_ID`) regression. STOP — block merge. |
+| 2 | For each user, run a **read flow**: open the dashboard, ask the agent "what's my portfolio?". | Engine responds with portfolio breakdown via `portfolio_analysis` tool; values match BlockVision UI. | Wrong values = read-tool regression OR canonical fetcher regression. |
+| 3 | For each user, run a **write flow** (sub-threshold for auto-execute, ~$1 USDC): "save 1 USDC". | Auto-execute path fires; `attemptId` stamped in TurnMetrics; tx digest returned; receipt rendered. | Missing `attemptId` = engine S44 regression. Failed receipt = sponsored-tx 3-leg regression. |
+| 4 | For each user, run a **confirm-tier write** (~$50 USDC): "save 50 USDC". | PermissionCard renders; user taps confirm; sponsored-tx pipeline executes; receipt + `/api/engine/resume` POST observed in network tab. | Missing PermissionCard = pending_action C43 regression. Resume failure = `attemptId` round-trip regression. |
+| 5 | For 1 of the 5 users, run a **voice flow** (Phase 1+ only — voice/transcribe is R3 in v0.7a): use the mic input, ask the agent something, confirm voice-to-text round-trips and the agent responds. | Voice transcription returns text in <2s; agent responds normally. | Failure = R3 regression — block Phase 1 merge. |
+
+Each step's PASS/FAIL gets recorded in `audric-build-tracker.md` under the phase release entry. If any step fails, roll back the phase release before debugging.
+
+**Pre-conditions:**
+- 5 Google accounts available (founder has these set up across browser profiles).
+- Each account has at least 100 USDC + 0.05 SUI on Sui mainnet (for write tests; sponsored gas covers tx fees but not asset transfers).
+- Anthropic + BlockVision + Enoki keys live in production env.
+
+**This is a manual smoke test by design.** Automating it requires either (a) a captcha-resilient OAuth bot (significant effort, anti-pattern), or (b) maintaining 5 long-lived test JWTs (defeats the deterministic-address property — JWTs expire). The manual cost is acceptable: 15 min per phase release × 8 phases = ~2hrs total, in exchange for catching every Passport regression class before users see it.
+
 ## Cross-references
 
 - Implementation → `apps/web/lib/zklogin.ts`
-- Server-side auth → `apps/web/lib/auth.ts` (decodes JWT + `isJwtEmailVerified` helper)
+- Server-side auth → `apps/web/lib/auth.ts` (`authenticateRequest`, `assertOwns`, `assertOwnsOrWatched`, `isJwtEmailVerified`)
 - Sponsored tx flow → `audric-transaction-flow.mdc`
 - Constants (CLIENT_ID etc.) → ALWAYS via `env.X` from `lib/env.ts`. See `env-validation-gate.mdc`.
+- Engine harness contract (`attemptId`, `modifiableFields`, `onAutoExecuted`) → `agent-harness-spec.mdc` (in t2000 repo)
+- v0.7a engine bridge layer → `packages/engine/src/bridge/README.md` (in t2000 repo)
+- v0.7a behavior catalogue → `packages/engine/__tests__/v0.7a-behavior-catalogue.md` (in t2000 repo) — see invariants I1, I5

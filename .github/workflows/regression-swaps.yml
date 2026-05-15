@@ -52,6 +52,15 @@ on:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
+# SPEC 37 v0.7a Phase 0 deliverable 7 (2026-05-15): cancel previous Tier
+# A quote regressions on the SAME PR when a new commit lands. Main
+# pushes + nightly cron get unique groups (per-ref) and never cancel
+# each other. Tier A is quote-only (no on-chain mutation, $0 cost) — safe
+# to cancel mid-flight.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   tier-a-quotes:
     name: Tier A — quote regression (41 scenarios)
