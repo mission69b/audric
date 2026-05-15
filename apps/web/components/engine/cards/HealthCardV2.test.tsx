@@ -156,6 +156,32 @@ describe('HealthCardV2 — liquidation threshold row', () => {
     expect(text).toContain('Liquidation threshold');
     expect(text).toContain('0.85');
   });
+
+  // [Days 10-16 audit fix / 2026-05-16] Engine emits `liquidationThreshold:
+  // 0` from its positionFetcher path (audric production today, see
+  // `health.ts:122-123`) as a sentinel for "unknown" — NOT as a real
+  // threshold. Pre-fix V2 rendered both a confusing "Liquidation threshold ·
+  // 0.00" row AND drew the gauge marker at HF=0. Both bugs are now hidden.
+  it('hides the row when liquidationThreshold is 0 (engine "unknown" sentinel)', () => {
+    const sentinelLiq: HealthCardV2Data = {
+      ...baseData,
+      liquidationThreshold: 0,
+    };
+    const { container } = render(<HealthCardV2 data={sentinelLiq} />);
+    expect(container.textContent ?? '').not.toContain('Liquidation threshold');
+    // Sanity: the rest of the card still renders
+    expect(container.textContent ?? '').toContain('Health factor');
+    expect(container.textContent ?? '').toContain('Collateral');
+  });
+
+  it('hides the row when liquidationThreshold is negative (defensive)', () => {
+    const negativeLiq: HealthCardV2Data = {
+      ...baseData,
+      liquidationThreshold: -0.5,
+    };
+    const { container } = render(<HealthCardV2 data={negativeLiq} />);
+    expect(container.textContent ?? '').not.toContain('Liquidation threshold');
+  });
 });
 
 describe('HealthCardV2 — watched-address badge', () => {

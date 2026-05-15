@@ -107,14 +107,36 @@ function impactColor(impactPct: number): string {
   return 'text-fg-primary';
 }
 
+/**
+ * [Days 10-16 audit fix / 2026-05-16] Convert the engine's `priceImpact`
+ * value into a percentage. The engine emits price impact as a DECIMAL
+ * (Cetus' `deviationRatio` semantics) — `0.0042` means 0.42%. The
+ * engine's own displayText uses `(priceImpact * 100).toFixed(2)` and
+ * SDK fixtures consistently set values like `0.0019` / `0.001`.
+ *
+ * The `< 1` heuristic protects against any historical payload that
+ * already shipped as a raw percentage (treated as already-percentage),
+ * matching the same defensive shape used by RatesCardV2's `apyToBps`.
+ *
+ * Pre-fix V2 read `priceImpact` directly as if it were a percentage,
+ * so a real 0.42% trade rendered as "0.00%" and the warning/error
+ * colour tiers never fired. The same bug exists in V1 SwapQuoteCard
+ * (production) and is flagged in BENEFITS_SPEC for a separate decision.
+ */
+function priceImpactToPct(rawImpact: unknown): number {
+  const v = Number(rawImpact);
+  if (!Number.isFinite(v) || v < 0) return 0;
+  return v < 1 ? v * 100 : v;
+}
+
 export function SwapQuoteCardV2({ data }: SwapQuoteCardV2Props) {
   const rate = data.fromAmount > 0 ? data.toAmount / data.fromAmount : 0;
   // Defensive normalisation — Cetus's `deviationRatio` field has shipped
   // as a string in some upstream payloads; the SDK now coerces but keep
   // the guard so a single bad payload never crashes the chat error
-  // boundary (mirrors v1's defense in BalanceCard).
-  const impactPct = Number(data.priceImpact);
-  const safeImpact = Number.isFinite(impactPct) ? impactPct : 0;
+  // boundary (mirrors v1's defense in BalanceCard). Decimal→percentage
+  // conversion handled by `priceImpactToPct` above.
+  const safeImpact = priceImpactToPct(data.priceImpact);
   const slippagePct =
     typeof data.slippage === 'number' ? data.slippage * 100 : null;
   const totalFeeBps = data.totalFeeBps ?? 10;

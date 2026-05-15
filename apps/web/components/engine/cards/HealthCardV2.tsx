@@ -90,7 +90,20 @@ function resolveHFForGauge(
 
 export function HealthCardV2({ data }: HealthCardV2Props) {
   const hfForGauge = resolveHFForGauge(data.healthFactor, data.borrowed);
-  const liqThreshold = data.liquidationThreshold ?? 1.0;
+  // [Days 10-16 audit fix / 2026-05-16] The engine emits
+  // `liquidationThreshold: 0` from its `positionFetcher` path
+  // (audric production today — see `health.ts:122-123`) as a
+  // sentinel meaning "unknown" rather than "actually 0". Pre-fix
+  // V2 read `data.liquidationThreshold ?? 1.0` (nullish-coalescing
+  // keeps 0) and rendered both a confusing "Liquidation threshold ·
+  // 0.00" row AND drew the HFGauge marker at HF=0. Treat 0 (and any
+  // other ≤0 value) as the unknown sentinel: hide the row, fall back
+  // to the NAVI-canonical 1.0 threshold for the gauge marker.
+  const liqThreshold =
+    data.liquidationThreshold != null && data.liquidationThreshold > 0
+      ? data.liquidationThreshold
+      : null;
+  const liqThresholdForGauge = liqThreshold ?? 1.0;
   const isWatched = data.isSelfQuery === false && !!data.address;
   const badge = isWatched ? (
     <AddressBadge address={data.address!} suinsName={data.suinsName} />
@@ -109,7 +122,7 @@ export function HealthCardV2({ data }: HealthCardV2Props) {
         {/* HERO — HFGauge */}
         <HFGauge
           healthFactor={hfForGauge}
-          liquidationThreshold={liqThreshold}
+          liquidationThreshold={liqThresholdForGauge}
         />
 
         {/* COLLATERAL / DEBT 2-COL */}
@@ -142,12 +155,15 @@ export function HealthCardV2({ data }: HealthCardV2Props) {
           </div>
         )}
 
-        {/* LIQUIDATION THRESHOLD — only when explicitly provided + not the default 1.0 */}
-        {data.liquidationThreshold != null && data.liquidationThreshold !== 1.0 && (
+        {/* LIQUIDATION THRESHOLD — only when known (engine emits 0 as
+            an "unknown" sentinel; we hide the row in that case) AND
+            not the NAVI default 1.0 (which would be redundant with the
+            HFGauge's liquidation marker). */}
+        {liqThreshold != null && liqThreshold !== 1.0 && (
           <div className="flex items-baseline justify-between text-[11px]">
             <span className={SECTION_LABEL}>Liquidation threshold</span>
             <span className="text-fg-muted font-mono tabular-nums">
-              {data.liquidationThreshold.toFixed(2)}
+              {liqThreshold.toFixed(2)}
             </span>
           </div>
         )}

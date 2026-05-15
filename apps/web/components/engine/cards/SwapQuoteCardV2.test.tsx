@@ -14,6 +14,14 @@
  *   - Defensive: priceImpact as string still renders without crashing
  *   - Slippage row hidden when slippage prop is absent
  *   - Total fee bps default (10) and override
+ *
+ * IMPORTANT — engine emit shape: `priceImpact` is a DECIMAL (Cetus
+ * `deviationRatio` semantics) — `0.0042` means 0.42%, NOT `0.42`.
+ * Pre-audit fixtures used raw percentages (`0.42`) which let V2 silently
+ * misinterpret real engine values. Days 10-16 audit fix landed
+ * `priceImpactToPct()` heuristic + rewrites these fixtures to match
+ * real engine emit shape. See `swap-quote.ts:138` (engine displayText)
+ * and `cetus-swap.test.ts` (SDK fixtures consistently `0.0019` / `0.001`).
  */
 
 import { describe, it, expect } from 'vitest';
@@ -25,7 +33,7 @@ const baseData: SwapQuoteV2Data = {
   toToken: 'USDC',
   fromAmount: 10,
   toAmount: 13.7,
-  priceImpact: 0.42,
+  priceImpact: 0.0042, // ENGINE EMIT SHAPE: decimal (= 0.42%)
 };
 
 describe('SwapQuoteCardV2 — header', () => {
@@ -122,32 +130,50 @@ describe('SwapQuoteCardV2 — details', () => {
     expect(text).toContain('1 SUI = 1.3700 USDC');
   });
 
-  it('renders impact percentage with primary color when < 1%', () => {
+  it('renders impact percentage with primary color when < 1% (engine decimal)', () => {
     const { container } = render(<SwapQuoteCardV2 data={baseData} />);
+    // baseData.priceImpact = 0.0042 (decimal) → 0.42% rendered
     expect(container.textContent ?? '').toContain('0.42%');
-    // No warning/error span — impact text should NOT have those colors
     expect(container.querySelector('.text-error-solid')).toBeNull();
     expect(container.querySelector('.text-warning-solid')).toBeNull();
   });
 
-  it('renders impact in warning tone when 1-3%', () => {
+  it('renders impact in warning tone when 1-3% (engine decimal)', () => {
     const { container } = render(
-      <SwapQuoteCardV2 data={{ ...baseData, priceImpact: 1.8 }} />,
+      <SwapQuoteCardV2 data={{ ...baseData, priceImpact: 0.018 }} />, // 1.8%
     );
+    expect(container.textContent ?? '').toContain('1.80%');
     expect(container.querySelector('.text-warning-solid')).not.toBeNull();
   });
 
-  it('renders impact in error tone when > 3%', () => {
+  it('renders impact in error tone when > 3% (engine decimal)', () => {
     const { container } = render(
-      <SwapQuoteCardV2 data={{ ...baseData, priceImpact: 5.2 }} />,
+      <SwapQuoteCardV2 data={{ ...baseData, priceImpact: 0.052 }} />, // 5.2%
     );
+    expect(container.textContent ?? '').toContain('5.20%');
     expect(container.querySelector('.text-error-solid')).not.toBeNull();
+  });
+
+  it('honors the >=1 fallback when a historical raw-percentage payload arrives', () => {
+    // Defensive: if some upstream path ships a raw percentage like `1.8`
+    // instead of the engine's canonical decimal `0.018`, the heuristic
+    // treats values >= 1 as already-percentage and renders them verbatim.
+    const { container } = render(
+      <SwapQuoteCardV2 data={{ ...baseData, priceImpact: 1.8 }} />,
+    );
+    expect(container.textContent ?? '').toContain('1.80%');
+    expect(container.querySelector('.text-warning-solid')).not.toBeNull();
   });
 
   it('does NOT crash when priceImpact arrives as a non-numeric string (defensive)', () => {
     const bad = { ...baseData, priceImpact: 'oops' as unknown as number };
     const { container } = render(<SwapQuoteCardV2 data={bad} />);
-    // Falls back to 0.00% — chat error boundary stays intact.
+    expect(container.textContent ?? '').toContain('0.00%');
+  });
+
+  it('clamps negative priceImpact to 0%', () => {
+    const negative = { ...baseData, priceImpact: -0.001 };
+    const { container } = render(<SwapQuoteCardV2 data={negative} />);
     expect(container.textContent ?? '').toContain('0.00%');
   });
 
