@@ -431,6 +431,29 @@ const clientSchema = z.object({
    * Rollback: unset the var.
    */
   NEXT_PUBLIC_HEALTH_CARD_V2: optionalString,
+
+  /**
+   * [SPEC 37 v0.7a Phase 2 Day 16] PendingRewardsCard V2 rollout flag.
+   *
+   * Same flag-gated rollout pattern as the prior V2 cards (Day 10-15).
+   * When set ("1" / "true"), `ToolResultCard` routes `pending_rewards`
+   * results to `PendingRewardsCardV2` (AssetAmountBlock per reward,
+   * sorted by USD desc, optional protocol eyebrow when multi-protocol,
+   * "Total claimable" footer chip). Default OFF → existing
+   * PendingRewardsCard renders unchanged.
+   *
+   * V2 preserves v1's three render states (degraded warning / empty
+   * quiet line / list of claimable rewards) and v1's CTA decision
+   * (data-only — the suggested-action chips below the assistant turn
+   * provide HARVEST ALL / JUST CLAIM, not the card itself).
+   *
+   * The companion `harvest_rewards` write-tool preview migration is
+   * deferred to Day 18-22 (the natural batch for write-tool
+   * PermissionCard touches — saves one shared-component touch).
+   *
+   * Rollback: unset the var.
+   */
+  NEXT_PUBLIC_PENDING_REWARDS_CARD_V2: optionalString,
 });
 
 // ─── Runtime env (Next.js requires literal references) ────────────────
@@ -478,6 +501,7 @@ const runtimeEnv = {
   NEXT_PUBLIC_BALANCE_CARD_V2: process.env.NEXT_PUBLIC_BALANCE_CARD_V2,
   NEXT_PUBLIC_SWAP_QUOTE_CARD_V2: process.env.NEXT_PUBLIC_SWAP_QUOTE_CARD_V2,
   NEXT_PUBLIC_HEALTH_CARD_V2: process.env.NEXT_PUBLIC_HEALTH_CARD_V2,
+  NEXT_PUBLIC_PENDING_REWARDS_CARD_V2: process.env.NEXT_PUBLIC_PENDING_REWARDS_CARD_V2,
 } as const;
 
 // ─── Validate ──────────────────────────────────────────────────────────

@@ -8,6 +8,7 @@ import { BalanceCard } from './cards/BalanceCard';
 import { BalanceCardV2 } from './cards/BalanceCardV2';
 import { SwapQuoteCardV2 } from './cards/SwapQuoteCardV2';
 import { HealthCardV2 } from './cards/HealthCardV2';
+import { PendingRewardsCardV2 } from './cards/PendingRewardsCardV2';
 import { SavingsCard } from './cards/SavingsCard';
 import { PortfolioCard } from './cards/PortfolioCard';
 import { ExplainTxCard } from './cards/ExplainTxCard';
@@ -427,16 +428,23 @@ const CARD_RENDERERS: Record<string, CardRenderer> = {
       degradationReason: string | null;
     }>;
     if (!Array.isArray(r.rewards)) return null;
-    return (
-      <PendingRewardsCard
-        data={{
-          rewards: r.rewards,
-          totalValueUsd: r.totalValueUsd ?? 0,
-          degraded: r.degraded ?? false,
-          degradationReason: r.degradationReason ?? null,
-        }}
-      />
-    );
+    const normalized = {
+      rewards: r.rewards,
+      totalValueUsd: r.totalValueUsd ?? 0,
+      degraded: r.degraded ?? false,
+      degradationReason: r.degradationReason ?? null,
+    };
+    // [SPEC 37 v0.7a Phase 2 Day 16] PendingRewardsCardV2 rollout flag.
+    // V2 renders AssetAmountBlock per reward (sorted by USD desc) +
+    // optional protocol eyebrow + total claimable footer. Default OFF
+    // until founder flips NEXT_PUBLIC_PENDING_REWARDS_CARD_V2.
+    const useV2 =
+      env.NEXT_PUBLIC_PENDING_REWARDS_CARD_V2 === '1' ||
+      env.NEXT_PUBLIC_PENDING_REWARDS_CARD_V2 === 'true';
+    if (useV2) {
+      return <PendingRewardsCardV2 data={normalized} />;
+    }
+    return <PendingRewardsCard data={normalized} />;
   },
   // ─── SPEC 23B — N4 — resolve_suins inline bidirectional surface ──────────
   // Pre-N4 the tool fell through to `null` — the user only saw the LLM's
