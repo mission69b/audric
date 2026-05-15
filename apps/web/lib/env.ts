@@ -230,6 +230,42 @@ const serverSchema = z.object({
    */
   PAYMENT_STREAM_DISABLE: optionalString,
 
+  /**
+   * [SPEC 37 v0.7a Phase 2 Day 10-12 / 2026-05-16] Per-route opt-in for
+   * the AI-SDK-native engine (`AISDKEngine` from `@t2000/engine/v2`).
+   *
+   * When set ("1" / "true"), `engine-factory.ts` instantiates
+   * `AISDKEngine` instead of the legacy `QueryEngine`. The new engine
+   * wraps Vercel AI SDK v6's `streamText` directly and is the v0.7a
+   * end-state runtime; the legacy `QueryEngine` (~21,800 LoC of custom
+   * orchestration) gets deleted in the Week 6 cleanup pass once the
+   * soak window proves stable.
+   *
+   * The new engine yields BYTE-COMPATIBLE `EngineEvent`s via the R8
+   * bridge layer (`packages/engine/src/bridge/event-bridge.ts`), so
+   * audric's chat / resume / resume-with-input / regenerate routes
+   * consume the stream unchanged. Drop-in surface (getTools, getUsage,
+   * invokeReadTool) was added in Day 10-12 to match the legacy
+   * `QueryEngine` public API exactly. The flag is the rollback path
+   * if anything regresses during the soak.
+   *
+   * Server-side (NOT NEXT_PUBLIC_*) — engine selection happens
+   * server-side inside `engine-factory.ts`. Vercel runtime env takes
+   * effect on the next invocation (~30s), no redeploy needed.
+   *
+   * Default OFF. Founder workflow:
+   *   Day 1 — set in dev / `.env.local`; smoke chat + resume manually
+   *   Day 2 — set in Vercel preview; run R9 smoke
+   *   Day 3 — set in Vercel production for 1% of traffic via per-route gate
+   *   Week 3 — flip on for 100% if metrics hold
+   *   Week 6 — delete the flag + legacy `QueryEngine` import path
+   *
+   * Rollback: unset the var. Zero-risk because the flag-gated branch
+   * is purely additive — same `EngineEvent` stream, same session-store
+   * persistence, same TurnMetrics shape.
+   */
+  USE_AI_SDK_NATIVE_ENGINE: optionalString,
+
   // ── Vercel / runtime managed (always present in production, optional locally) ─
   /** NODE_ENV — Next.js sets this. */
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
@@ -553,6 +589,7 @@ const runtimeEnv = {
   AUDRIC_MINT_CONCURRENCY_LIMIT: process.env.AUDRIC_MINT_CONCURRENCY_LIMIT,
   SYNTHETIC_SESSION_PREFIXES: process.env.SYNTHETIC_SESSION_PREFIXES,
   PAYMENT_STREAM_DISABLE: process.env.PAYMENT_STREAM_DISABLE,
+  USE_AI_SDK_NATIVE_ENGINE: process.env.USE_AI_SDK_NATIVE_ENGINE,
   NODE_ENV: process.env.NODE_ENV,
   VERCEL_DEPLOYMENT_ID: process.env.VERCEL_DEPLOYMENT_ID,
   VERCEL_GIT_COMMIT_SHA: process.env.VERCEL_GIT_COMMIT_SHA,
@@ -698,6 +735,7 @@ const SERVER_ONLY_KEYS = new Set([
   'AUDRIC_PARENT_NFT_PRIVATE_KEY',
   'SYNTHETIC_SESSION_PREFIXES',
   'PAYMENT_STREAM_DISABLE',
+  'USE_AI_SDK_NATIVE_ENGINE',
   'NODE_ENV',
   'VERCEL_DEPLOYMENT_ID',
   'VERCEL_GIT_COMMIT_SHA',

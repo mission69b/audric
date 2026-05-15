@@ -9,6 +9,13 @@ import {
   // provider stays exported as `@deprecated` for one soak window so we
   // can revert without an engine bump if anything regresses.
   AISDKAnthropicProvider,
+  // [SPEC 37 v0.7a Phase 2 Day 10-12 / 2026-05-16] AI-SDK-native engine.
+  // When `env.USE_AI_SDK_NATIVE_ENGINE === '1'` we instantiate this
+  // class instead of `QueryEngine`. Yields BYTE-COMPATIBLE `EngineEvent`s
+  // via the R8 bridge layer so audric's chat / resume routes consume
+  // the stream unchanged. See engine factory below for the branch.
+  AISDKEngine,
+  type AISDKEngineConfig,
   McpClientManager,
   NAVI_MCP_CONFIG,
   READ_TOOLS,
@@ -754,9 +761,28 @@ export async function createEngine(
       });
   opts.onMeta?.({ effortLevel: effort, modelUsed: routedModel, harnessShape, harnessRationale });
 
-  const engine = new QueryEngine({
-    provider: new AISDKAnthropicProvider({ apiKey: ANTHROPIC_API_KEY }),
-    mcpManager: mgr,
+  // [SPEC 37 v0.7a Phase 2 Day 10-12 / 2026-05-16] Engine selection.
+  //
+  // `engineConfig` is the shared config bag both engines accept. When
+  // the AI-SDK-native flag is set we strip the legacy-only fields
+  // (`provider`, `mcpManager`) and substitute `anthropicApiKey`
+  // directly for AISDKEngine. Both engines yield byte-compatible
+  // `EngineEvent`s + share the public surface (loadMessages /
+  // getMessages / submitMessage / getUsage / getTools /
+  // invokeReadTool / abort), so the rest of the route is unchanged.
+  //
+  // Cast to `QueryEngine` at the boundary preserves typing for
+  // every audric call site without forcing a shared interface
+  // change today. Day 27-28 cleanup introduces a proper `EngineLike`
+  // type once the soak window proves the v2 path stable.
+  const useAiSdkNativeEngine =
+    env.USE_AI_SDK_NATIVE_ENGINE === '1' || env.USE_AI_SDK_NATIVE_ENGINE === 'true';
+
+  // Shared config bag — every field common to both engines. The two
+  // construction calls below add the engine-specific bits
+  // (`provider` + `mcpManager` for QueryEngine; `anthropicApiKey` for
+  // AISDKEngine) and call `new` on the right class.
+  const sharedEngineConfig = {
     walletAddress: address,
     suiRpcUrl: SUI_RPC_URL,
     serverPositions: positions,
@@ -781,10 +807,8 @@ export async function createEngine(
     },
     maxTurns: 10,
     maxTokens: effort === 'high' || effort === 'max' ? 16384 : 8192,
-    toolChoice: 'auto',
-    costTracker: {
-      budgetLimitUsd: 0.50,
-    },
+    toolChoice: 'auto' as const,
+    costTracker: { budgetLimitUsd: 0.50 },
     guards: DEFAULT_GUARD_CONFIG,
     recipes: recipeRegistry,
     priceCache,
@@ -809,11 +833,6 @@ export async function createEngine(
     //      the cached orientation snapshot at `fin_ctx:${address}`
     //      so the next chat boot reads fresh DB state instead of the
     //      pre-write cron snapshot.
-    // No `engine.invalidateBalanceCache()` call — there is no engine-
-    // side balance cache (`postWriteRefresh` covers in-session balance
-    // freshness; `balance_check` is `cacheable: false`). Both calls
-    // are fail-open — failures surface to console.warn but never
-    // propagate, mirroring confirm-tier behavior in `resume/route.ts`.
     onAutoExecuted: opts.sessionId
       ? async ({ usdValue, walletAddress }: { usdValue: number; walletAddress?: string }) => {
           await incrementSessionSpend(opts.sessionId!, usdValue);
@@ -826,14 +845,6 @@ export async function createEngine(
     // carries a balance + HF snapshot." Pre-fix, every first-turn write
     // fired redundant "Balance not checked / Health factor not checked"
     // hints despite the LLM having both numbers in its context window.
-    // The seed flips `BalanceTracker.hasEverRead()` to true and seeds
-    // `lastHealthFactor` for users with known HF.
-    //
-    // For zero-debt users (`healthFactor: null` in the snapshot), seed
-    // with `+Infinity` — the guard's `< blockBelow` / `< warnBelow`
-    // checks both pass trivially, and the hint stays silent. For
-    // users whose snapshot lacks HF altogether, leave it `null` so
-    // the hint correctly fires (legitimate "we don't know" state).
     financialContextSeed: financialContext
       ? {
           balanceAt: Date.now(),
@@ -851,7 +862,21 @@ export async function createEngine(
       thinking: { type: 'adaptive' as const },
       outputConfig: { effort },
     }),
-  });
+  };
+
+  const engine = useAiSdkNativeEngine
+    ? (() => {
+        console.log('[engine-factory] using AISDKEngine (SPEC 37 v0.7a Phase 2 — v0.7a end-state)');
+        return new AISDKEngine({
+          ...(sharedEngineConfig as Omit<AISDKEngineConfig, 'anthropicApiKey'>),
+          anthropicApiKey: ANTHROPIC_API_KEY,
+        }) as unknown as QueryEngine;
+      })()
+    : new QueryEngine({
+        ...sharedEngineConfig,
+        provider: new AISDKAnthropicProvider({ apiKey: ANTHROPIC_API_KEY }),
+        mcpManager: mgr,
+      });
 
   if (isNewSession) {
     const prefetch = buildSyntheticPrefetch(balanceSummary, positions);
