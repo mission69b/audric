@@ -9,4 +9,5 @@ declare module '@t2000/sdk/browser' {
   export { toBase64, fromBase64 } from '@t2000/sdk';
   export { calculateFee, addFeeTransfer } from '@t2000/sdk';
   export type { ProtocolFeeInfo, FeeOperation } from '@t2000/sdk';
+  export { SAVE_FEE_BPS, BORROW_FEE_BPS } from '@t2000/sdk';
 }

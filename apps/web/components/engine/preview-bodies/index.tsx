@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { SAVE_FEE_BPS, BORROW_FEE_BPS } from '@t2000/sdk';
+import { SAVE_FEE_BPS, BORROW_FEE_BPS } from '@t2000/sdk/browser';
 import {
   AssetAmountBlock,
   APYBlock,
