@@ -266,6 +266,46 @@ const serverSchema = z.object({
    */
   USE_AI_SDK_NATIVE_ENGINE: optionalString,
 
+  /**
+   * [SPEC 37 v0.7a Phase 2 Day 13 / 2026-05-16] Per-wallet allowlist for
+   * the AI-SDK-native engine — opt-in by Sui address.
+   *
+   * Comma-separated list of normalised Sui addresses (case-insensitive,
+   * leading `0x` required, 64 hex chars). When the authenticated chat
+   * request's `body.address` matches an entry in the allowlist, the
+   * engine factory instantiates `AISDKEngine` regardless of the global
+   * `USE_AI_SDK_NATIVE_ENGINE` flag.
+   *
+   * Example:
+   *   USE_AI_SDK_NATIVE_ENGINE_WALLETS=0x91b88d0e7eaf45e3252a06ad57f6b9c79b1e7f8d3e0a6c1d2b3c4d5e6f7a8b9c,0xabc...
+   *
+   * Why this exists: writes / resume / the auth-path engine-factory
+   * branch can't be smoked locally (Google OAuth blocks localhost). The
+   * global flag is the all-or-nothing kill-switch; the allowlist is the
+   * surgical instrument — flip on for the founder's wallet first,
+   * dogfood with real on-chain data, then add 5-10 alpha-tester wallets
+   * before opening the gate via the global flag (or a future percentage
+   * gate).
+   *
+   * Resolution order in `engine-factory.ts`:
+   *   1. Address in `USE_AI_SDK_NATIVE_ENGINE_WALLETS` → AISDKEngine.
+   *   2. `USE_AI_SDK_NATIVE_ENGINE === '1'` → AISDKEngine.
+   *   3. Default → legacy QueryEngine.
+   *
+   * The unauth/demo path always honours #2 only (no address available).
+   *
+   * Server-side (NOT NEXT_PUBLIC_*) — same Vercel-runtime-env semantics
+   * as the global flag. Empty/whitespace = no allowlist (default OFF).
+   * Invalid addresses (failing isValidSuiAddress) get filtered out and
+   * a `[engine-factory] dropped invalid wallet from allowlist` warning
+   * logs at first read; doesn't fail boot.
+   *
+   * Rollback: remove your wallet from the CSV (or unset entirely).
+   * Zero-risk — the allowlist branch is the same additive code path as
+   * the global flag, just gated on address match instead of `=== '1'`.
+   */
+  USE_AI_SDK_NATIVE_ENGINE_WALLETS: optionalString,
+
   // ── Vercel / runtime managed (always present in production, optional locally) ─
   /** NODE_ENV — Next.js sets this. */
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
@@ -590,6 +630,7 @@ const runtimeEnv = {
   SYNTHETIC_SESSION_PREFIXES: process.env.SYNTHETIC_SESSION_PREFIXES,
   PAYMENT_STREAM_DISABLE: process.env.PAYMENT_STREAM_DISABLE,
   USE_AI_SDK_NATIVE_ENGINE: process.env.USE_AI_SDK_NATIVE_ENGINE,
+  USE_AI_SDK_NATIVE_ENGINE_WALLETS: process.env.USE_AI_SDK_NATIVE_ENGINE_WALLETS,
   NODE_ENV: process.env.NODE_ENV,
   VERCEL_DEPLOYMENT_ID: process.env.VERCEL_DEPLOYMENT_ID,
   VERCEL_GIT_COMMIT_SHA: process.env.VERCEL_GIT_COMMIT_SHA,
@@ -736,6 +777,7 @@ const SERVER_ONLY_KEYS = new Set([
   'SYNTHETIC_SESSION_PREFIXES',
   'PAYMENT_STREAM_DISABLE',
   'USE_AI_SDK_NATIVE_ENGINE',
+  'USE_AI_SDK_NATIVE_ENGINE_WALLETS',
   'NODE_ENV',
   'VERCEL_DEPLOYMENT_ID',
   'VERCEL_GIT_COMMIT_SHA',

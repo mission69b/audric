@@ -50,6 +50,7 @@ import { getRecipeRegistry } from './recipes';
 import { UpstashConversationStateStore } from './upstash-conversation-state-store';
 import { incrementSessionSpend } from './session-spend';
 import { applyAccountAgeGate, computeAccountAgeDays } from './account-age-gate';
+import { isAddressAllowlisted } from './wallet-allowlist';
 import { ADVICE_TOOLS } from './advice-tool';
 import { audricSaveContactTool, audricListContactsTool } from './contact-tools';
 import { lookupUserTool } from './lookup-user-tool';
@@ -775,8 +776,21 @@ export async function createEngine(
   // every audric call site without forcing a shared interface
   // change today. Day 27-28 cleanup introduces a proper `EngineLike`
   // type once the soak window proves the v2 path stable.
+  //
+  // Day 13 (2026-05-16): two opt-in paths are now honoured:
+  //   1. Per-wallet allowlist (CSV in USE_AI_SDK_NATIVE_ENGINE_WALLETS).
+  //      Surgical opt-in for founder dogfood + alpha testers. The
+  //      address check fires first so an allowlisted wallet hits the
+  //      new engine even when the global flag is OFF — every other
+  //      user stays on legacy.
+  //   2. Global flag (USE_AI_SDK_NATIVE_ENGINE === '1' | 'true').
+  //      All-or-nothing kill-switch. Used for emergency rollback
+  //      ("unset and we're back on legacy") and eventual 100% rollout.
+  // Both can run concurrently — address check just resolves first.
   const useAiSdkNativeEngine =
-    env.USE_AI_SDK_NATIVE_ENGINE === '1' || env.USE_AI_SDK_NATIVE_ENGINE === 'true';
+    isAddressAllowlisted(address, env.USE_AI_SDK_NATIVE_ENGINE_WALLETS) ||
+    env.USE_AI_SDK_NATIVE_ENGINE === '1' ||
+    env.USE_AI_SDK_NATIVE_ENGINE === 'true';
 
   // Shared config bag — every field common to both engines. The two
   // construction calls below add the engine-specific bits
@@ -866,7 +880,13 @@ export async function createEngine(
 
   const engine = useAiSdkNativeEngine
     ? (() => {
-        console.log('[engine-factory] using AISDKEngine (SPEC 37 v0.7a Phase 2 — v0.7a end-state)');
+        // Log WHICH gate fired so prod-soak telemetry can correlate
+        // engine-version errors with the rollout dial. Address check
+        // wins when both fire (allowlist always > global flag).
+        const reason = isAddressAllowlisted(address, env.USE_AI_SDK_NATIVE_ENGINE_WALLETS)
+          ? 'wallet allowlist'
+          : 'global flag';
+        console.log(`[engine-factory] using AISDKEngine (auth path — ${reason})`);
         return new AISDKEngine({
           ...(sharedEngineConfig as Omit<AISDKEngineConfig, 'anthropicApiKey'>),
           anthropicApiKey: ANTHROPIC_API_KEY,
