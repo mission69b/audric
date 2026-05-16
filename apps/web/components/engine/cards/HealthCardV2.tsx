@@ -31,16 +31,14 @@ import { HFGauge } from './shared';
 //   │ Liquidation threshold · NN%                 │ (optional)
 //   └─────────────────────────────────────────────┘
 //
-// Design baseline calls for AssetAmountBlock for collateral/debt — that
-// primitive renders one ASSET row (e.g. "13.72 USDC · $13.71"). The
-// engine `health_check` tool today emits aggregated USD totals only
-// (`supplied: number`, `borrowed: number`) without the per-asset
-// breakdown that AssetAmountBlock expects. V2 honors the design intent
-// (clean labeled USD totals as a 2-col grid) while degrading gracefully
-// — once the engine emits per-asset arrays (deferred to Week 4 cleanup
-// batch alongside the buildTool→tool() migration), V2 can swap the
-// inline rows for AssetAmountBlock × N. The component API is stable
-// across that future change.
+// [Day 14b / 2026-05-16] Per-asset breakdown landed. Engine
+// `health_check` now emits `suppliedAssets` + `borrowedAssets` (engine
+// 1.34.11+). When the arrays are present + non-empty V2 renders
+// per-asset rows underneath each aggregate USD total (so the user can
+// see "USDsui $9.18 / USDC $13.49" instead of just "$22.67"). When
+// absent (degraded transports, SDK fallback, pre-1.34.11 engine), V2
+// silently falls back to the aggregate-only layout — the design intent
+// is preserved either way.
 //
 // What V2 INTENTIONALLY does NOT cover (deferred):
 //   - post-write variant (PostWriteRefreshSurface keeps consuming v1's
@@ -58,6 +56,17 @@ import { HFGauge } from './shared';
 
 const DEBT_DUST_USD = 0.01;
 
+/**
+ * [Day 14b] Per-asset row matching the engine's `HealthPositionAsset`
+ * shape (transforms.ts). Optional on `HealthCardV2Data` so older engines
+ * and the SDK fallback path degrade to aggregate-only without crashing.
+ */
+export interface HealthAssetRow {
+  symbol: string;
+  amount: number;
+  valueUsd: number;
+}
+
 export interface HealthCardV2Data {
   /** HF value. null/undefined/non-finite when no debt → renders ∞. */
   healthFactor: number | null | undefined;
@@ -68,6 +77,10 @@ export interface HealthCardV2Data {
   address?: string;
   isSelfQuery?: boolean;
   suinsName?: string | null;
+  /** [Day 14b] Per-asset supply rows. Renders beneath aggregate when present. */
+  suppliedAssets?: HealthAssetRow[];
+  /** [Day 14b] Per-asset borrow rows. Renders beneath aggregate when present. */
+  borrowedAssets?: HealthAssetRow[];
 }
 
 interface HealthCardV2Props {
@@ -125,13 +138,28 @@ export function HealthCardV2({ data }: HealthCardV2Props) {
           liquidationThreshold={liqThresholdForGauge}
         />
 
-        {/* COLLATERAL / DEBT 2-COL */}
+        {/* COLLATERAL / DEBT 2-COL — aggregate USD up top, per-asset
+            rows underneath when arrays present (Day 14b). Empty arrays
+            ([]) and absent arrays both fall back to aggregate-only. */}
         <div className="grid grid-cols-2 pt-2 border-t border-border-subtle">
           <div className="pr-3">
             <div className={`${SECTION_LABEL} mb-1`}>Collateral</div>
             <div className="text-fg-primary font-mono text-sm tabular-nums">
               ${fmtUsd(data.supplied)}
             </div>
+            {data.suppliedAssets && data.suppliedAssets.length > 0 && (
+              <div className="mt-1 space-y-0.5">
+                {data.suppliedAssets.map((row) => (
+                  <div
+                    key={`supply-${row.symbol}`}
+                    className="font-mono text-[10px] tabular-nums text-fg-muted flex items-baseline justify-between"
+                  >
+                    <span>{row.symbol}</span>
+                    <span>${fmtUsd(row.valueUsd)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
           <div className="pl-3 border-l border-border-subtle">
             <div className={`${SECTION_LABEL} mb-1`}>Debt</div>
@@ -142,6 +170,19 @@ export function HealthCardV2({ data }: HealthCardV2Props) {
             >
               ${fmtUsd(data.borrowed)}
             </div>
+            {data.borrowedAssets && data.borrowedAssets.length > 0 && (
+              <div className="mt-1 space-y-0.5">
+                {data.borrowedAssets.map((row) => (
+                  <div
+                    key={`borrow-${row.symbol}`}
+                    className="font-mono text-[10px] tabular-nums text-fg-muted flex items-baseline justify-between"
+                  >
+                    <span>{row.symbol}</span>
+                    <span>${fmtUsd(row.valueUsd)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 

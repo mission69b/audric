@@ -184,6 +184,124 @@ describe('HealthCardV2 — liquidation threshold row', () => {
   });
 });
 
+// ───────────────────────────────────────────────────────────────────────────
+// Day 14b — per-asset Collateral/Debt rows (Week 4 cleanup slice #3)
+//
+// Engine 1.34.11+ emits `suppliedAssets` + `borrowedAssets` arrays on
+// `health_check` results. When present + non-empty, V2 renders per-asset
+// rows underneath each aggregate USD total. When absent (older engine,
+// SDK fallback path) OR empty ([]) V2 silently falls back to the
+// aggregate-only layout — every pre-Day-14b test above still passes.
+// ───────────────────────────────────────────────────────────────────────────
+
+describe('HealthCardV2 — Day 14b per-asset rows', () => {
+  const withPerAsset: HealthCardV2Data = {
+    healthFactor: 3.72,
+    supplied: 22.67,
+    borrowed: 5.01,
+    maxBorrow: 12.34,
+    liquidationThreshold: 1.0,
+    suppliedAssets: [
+      { symbol: 'USDsui', amount: 9.18, valueUsd: 9.18 },
+      { symbol: 'USDC', amount: 13.49, valueUsd: 13.49 },
+    ],
+    borrowedAssets: [
+      { symbol: 'USDC', amount: 5.01, valueUsd: 5.01 },
+    ],
+  };
+
+  it('renders per-asset rows beneath aggregate Collateral when suppliedAssets present', () => {
+    const { container } = render(<HealthCardV2 data={withPerAsset} />);
+    const text = container.textContent ?? '';
+    expect(text).toContain('$22.67');
+    expect(text).toContain('USDsui');
+    expect(text).toContain('$9.18');
+    expect(text).toContain('USDC');
+    expect(text).toContain('$13.49');
+  });
+
+  it('renders per-asset rows beneath aggregate Debt when borrowedAssets present', () => {
+    const { container } = render(<HealthCardV2 data={withPerAsset} />);
+    const text = container.textContent ?? '';
+    expect(text).toContain('$5.01');
+    expect(text).toContain('USDC');
+  });
+
+  it('preserves the aggregate USD totals (per-asset is additive, not replacement)', () => {
+    const { container } = render(<HealthCardV2 data={withPerAsset} />);
+    const text = container.textContent ?? '';
+    expect(text).toContain('Collateral');
+    expect(text).toContain('$22.67');
+    expect(text).toContain('Debt');
+    expect(text).toContain('$5.01');
+  });
+
+  it('falls back to aggregate-only when arrays absent (older engine, SDK fallback)', () => {
+    const noArrays: HealthCardV2Data = {
+      healthFactor: 3.72,
+      supplied: 22.67,
+      borrowed: 5.01,
+    };
+    const { container } = render(<HealthCardV2 data={noArrays} />);
+    const text = container.textContent ?? '';
+    expect(text).toContain('$22.67');
+    expect(text).toContain('$5.01');
+    expect(text).not.toContain('USDsui');
+    // Per-asset rows use the unique `tabular-nums.text-[10px]` combo
+    // (the card title chrome shares `text-[10px]` but uses `uppercase`,
+    // not `tabular-nums`). When arrays are absent, zero such rows.
+    expect(container.querySelectorAll('.tabular-nums.text-\\[10px\\]').length).toBe(0);
+  });
+
+  it('falls back to aggregate-only when arrays are empty ([], not undefined)', () => {
+    const emptyArrays: HealthCardV2Data = {
+      healthFactor: 3.72,
+      supplied: 22.67,
+      borrowed: 5.01,
+      suppliedAssets: [],
+      borrowedAssets: [],
+    };
+    const { container } = render(<HealthCardV2 data={emptyArrays} />);
+    const text = container.textContent ?? '';
+    expect(text).toContain('$22.67');
+    expect(text).toContain('$5.01');
+    expect(container.querySelectorAll('.tabular-nums.text-\\[10px\\]').length).toBe(0);
+  });
+
+  it('renders only the side with data when one array is empty (e.g. supplied-only)', () => {
+    const supplyOnly: HealthCardV2Data = {
+      healthFactor: null,
+      supplied: 22.67,
+      borrowed: 0,
+      suppliedAssets: [
+        { symbol: 'USDsui', amount: 9.18, valueUsd: 9.18 },
+        { symbol: 'USDC', amount: 13.49, valueUsd: 13.49 },
+      ],
+      borrowedAssets: [],
+    };
+    const { container } = render(<HealthCardV2 data={supplyOnly} />);
+    const text = container.textContent ?? '';
+    expect(text).toContain('USDsui');
+    expect(text).toContain('USDC');
+    expect(text).toContain('$9.18');
+  });
+
+  it('renders a single-asset row (no special-casing for length === 1)', () => {
+    const singleAsset: HealthCardV2Data = {
+      healthFactor: null,
+      supplied: 13.49,
+      borrowed: 0,
+      suppliedAssets: [
+        { symbol: 'USDC', amount: 13.49, valueUsd: 13.49 },
+      ],
+    };
+    const { container } = render(<HealthCardV2 data={singleAsset} />);
+    const text = container.textContent ?? '';
+    expect(text).toContain('USDC');
+    expect(text).toContain('$13.49');
+  });
+});
+
 describe('HealthCardV2 — watched-address badge', () => {
   it('renders the badge when isSelfQuery=false + address present', () => {
     const watched: HealthCardV2Data = {
