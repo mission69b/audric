@@ -130,7 +130,12 @@ export function HealthCardV2({ data }: HealthCardV2Props) {
     : null;
 
   return (
-    <CardShell title="Health factor" badge={badge}>
+    // [Day 14b polish / 2026-05-16] Title intentionally omitted — HFGauge's
+    // own internal "Health factor" label is the hero, and the chat-surface
+    // chrome already renders "🛡️ HEALTH CHECK" above the card. Pre-fix
+    // production rendered "Health factor" twice (CardShell title + HFGauge
+    // internal label) which read as visual stutter.
+    <CardShell badge={badge}>
       <div className="space-y-3">
         {/* HERO — HFGauge */}
         <HFGauge
