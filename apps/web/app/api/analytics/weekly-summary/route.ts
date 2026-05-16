@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { env } from '@/lib/env';
-import { authenticateRequest, assertOwnsOrWatched } from '@/lib/auth';
+import { authenticateAnalyticsRequest } from '@/lib/internal-auth';
 
 export const runtime = 'nodejs';
-
-const INTERNAL_KEY = env.T2000_INTERNAL_KEY;
 
 /**
  * GET /api/analytics/weekly-summary?address=0x...
@@ -19,25 +16,16 @@ const INTERNAL_KEY = env.T2000_INTERNAL_KEY;
  * `x-sui-address` header equality check, now full JWT verify +
  * `assertOwnsOrWatched` (so a user can pull a saved-contact's summary
  * but not arbitrary addresses).
+ *
+ * Day 20d: this route was the original canonical example of the
+ * dual-auth pattern (inline); now consolidated through
+ * `authenticateAnalyticsRequest()` so the 5 analytics routes share
+ * one implementation.
  */
 export async function GET(request: NextRequest) {
-  const internalKey = request.headers.get('x-internal-key');
-  const isInternal = internalKey != null && internalKey === INTERNAL_KEY;
-
-  let address: string;
-  if (isInternal) {
-    const queryAddr = request.nextUrl.searchParams.get('address');
-    if (!queryAddr) {
-      return NextResponse.json({ error: 'Missing address' }, { status: 400 });
-    }
-    address = queryAddr;
-  } else {
-    const auth = await authenticateRequest(request);
-    if ('error' in auth) return auth.error;
-    address = request.nextUrl.searchParams.get('address') ?? auth.verified.suiAddress;
-    const ownership = await assertOwnsOrWatched(auth.verified, address);
-    if (ownership) return ownership;
-  }
+  const auth = await authenticateAnalyticsRequest(request);
+  if ('error' in auth) return auth.error;
+  const { address } = auth;
 
   try {
     const user = await prisma.user.findUnique({

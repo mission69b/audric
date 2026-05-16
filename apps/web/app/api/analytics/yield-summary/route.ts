@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getPortfolio } from '@/lib/portfolio';
-import { authenticateRequest, assertOwnsOrWatched } from '@/lib/auth';
+import { authenticateAnalyticsRequest } from '@/lib/internal-auth';
 
 export const runtime = 'nodejs';
 
 /**
  * GET /api/analytics/yield-summary?address=0x...
- * Header: x-zklogin-jwt (required — SPEC 30 Phase 1A.5)
- * Query: address (read target — optional; defaults to caller)
+ * Header: x-internal-key (engine + cron) OR x-zklogin-jwt (browser)
+ * Query: address (read target — required for internal-key path;
+ *                 optional for JWT path where it defaults to caller)
  *
  * Returns yield earnings breakdown: today, week, month, all-time,
  * current APY, deposited amount, projected yearly, and monthly sparkline.
@@ -24,17 +25,19 @@ export const runtime = 'nodejs';
  * users (we have no record of past yield), but currentApy + deposited
  * + projectedYear come straight from the live position.
  *
- * SPEC 30 Phase 1A.5: caller identity now proven via verified zkLogin
+ * SPEC 30 Phase 1A.5: caller identity is proven via verified zkLogin
  * JWT (was forgeable `x-sui-address` header). Watched-address reads
  * still allowed when the target is in the caller's `WatchAddress`
  * watchlist.
+ *
+ * Day 20d: dual-auth via `authenticateAnalyticsRequest()` so the
+ * engine's `yield_summary` tool can pull this server-side. See
+ * `lib/internal-auth.ts` for the helper + security rationale.
  */
 export async function GET(request: NextRequest) {
-  const auth = await authenticateRequest(request);
+  const auth = await authenticateAnalyticsRequest(request);
   if ('error' in auth) return auth.error;
-  const address = request.nextUrl.searchParams.get('address') ?? auth.verified.suiAddress;
-  const ownership = await assertOwnsOrWatched(auth.verified, address);
-  if (ownership) return ownership;
+  const { address } = auth;
 
   try {
     const user = await prisma.user.findUnique({

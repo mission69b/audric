@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { authenticateRequest, assertOwnsOrWatched } from '@/lib/auth';
+import { authenticateAnalyticsRequest } from '@/lib/internal-auth';
 
 export const runtime = 'nodejs';
 
 /**
  * GET /api/analytics/spending?period=month
- * Header: x-zklogin-jwt (required — SPEC 30 Phase 1A.5)
- * Query: address (read target — optional; defaults to caller)
+ * Header: x-internal-key (engine + cron) OR x-zklogin-jwt (browser)
+ * Query: address (read target — required for internal-key path;
+ *                 optional for JWT path where it defaults to caller)
  *
  * Aggregates AppEvent + ServicePurchase data to show spending by service/category.
  * Period: "week" | "month" | "year" | "all"
@@ -17,21 +18,18 @@ export const runtime = 'nodejs';
  * be in their `WatchAddress` watchlist — pre-fix this endpoint
  * accepted `x-sui-address` header (forgeable) or `?address=` (none),
  * exposing private `ServicePurchase` + `AppEvent` rows.
+ *
+ * Day 20d: dual-auth via `authenticateAnalyticsRequest()` so the
+ * engine's `spending_analytics` tool can pull this server-side. See
+ * `lib/internal-auth.ts` for the helper + security rationale.
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const period = searchParams.get('period') ?? 'month';
 
-  const auth = await authenticateRequest(request);
+  const auth = await authenticateAnalyticsRequest(request);
   if ('error' in auth) return auth.error;
-
-  const address = searchParams.get('address') ?? auth.verified.suiAddress;
-  if (!address.startsWith('0x')) {
-    return NextResponse.json({ error: 'Invalid address' }, { status: 400 });
-  }
-
-  const ownership = await assertOwnsOrWatched(auth.verified, address);
-  if (ownership) return ownership;
+  const { address } = auth;
 
   const since = periodToDate(period);
 
