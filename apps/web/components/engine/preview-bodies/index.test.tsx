@@ -238,3 +238,142 @@ describe('renderPreviewBody dispatcher', () => {
     );
   });
 });
+
+// ─── Day 14a — borrowApyBps + currentHF (engine 1.34.10+) ─────────────────
+
+describe('Day 14a: borrowApyBps wires APY row, falls back to italic disclaimer', () => {
+  it('BorrowPreviewBody renders APY row when borrowApyBps is present', () => {
+    const node = renderPreviewBody(
+      'borrow',
+      { amount: 100, asset: 'USDC' },
+      { borrowApyBps: 467 },
+    );
+    const out = rb(node);
+    const text = out!.container.textContent ?? '';
+    expect(text).toContain('4.67%');
+    expect(text).toContain('Borrow rate');
+    // Italic disclaimer must NOT appear when the engine threaded the rate.
+    expect(text).not.toContain('Variable rate');
+  });
+
+  it('BorrowPreviewBody falls back to italic disclaimer when borrowApyBps is undefined', () => {
+    const node = renderPreviewBody('borrow', { amount: 100, asset: 'USDC' });
+    const out = rb(node);
+    const text = out!.container.textContent ?? '';
+    expect(text).toContain('Variable rate');
+    expect(text).toContain('locked at execute time');
+  });
+
+  it('RepayPreviewBody renders APY row when borrowApyBps is present', () => {
+    const node = renderPreviewBody(
+      'repay_debt',
+      { amount: 50, asset: 'USDC' },
+      { borrowApyBps: 467 },
+    );
+    const out = rb(node);
+    const text = out!.container.textContent ?? '';
+    expect(text).toContain('4.67%');
+    expect(text).toContain('Borrow rate cleared');
+    expect(text).not.toContain('current variable borrow rate');
+  });
+
+  it('RepayPreviewBody falls back to italic disclaimer when borrowApyBps is undefined', () => {
+    const node = renderPreviewBody('repay_debt', { amount: 50, asset: 'USDC' });
+    const out = rb(node);
+    const text = out!.container.textContent ?? '';
+    expect(text).toContain('current variable borrow rate');
+  });
+
+  it('USDsui borrow with USDsui-pool APY (319 bps = 3.19%) renders correctly', () => {
+    const node = renderPreviewBody(
+      'borrow',
+      { amount: 10, asset: 'USDsui' },
+      { borrowApyBps: 319 },
+    );
+    const out = rb(node);
+    const text = out!.container.textContent ?? '';
+    expect(text).toContain('3.19%');
+    expect(text).toContain('USDsui');
+  });
+});
+
+describe('Day 14a: currentHF renders Health factor row on relevant cards', () => {
+  it('BorrowPreviewBody renders HF row when currentHF is present', () => {
+    const node = renderPreviewBody(
+      'borrow',
+      { amount: 5 },
+      { currentHF: 3.8 },
+    );
+    const out = rb(node);
+    const text = out!.container.textContent ?? '';
+    expect(text).toContain('Health factor');
+    expect(text).toContain('3.80');
+  });
+
+  it('SaveDepositPreviewBody renders HF row when currentHF is present', () => {
+    const node = renderPreviewBody(
+      'save_deposit',
+      { amount: 10 },
+      { currentHF: 2.5 },
+    );
+    const out = rb(node);
+    const text = out!.container.textContent ?? '';
+    expect(text).toContain('Health factor');
+    expect(text).toContain('2.50');
+  });
+
+  it('WithdrawPreviewBody renders HF row when currentHF is present', () => {
+    const node = renderPreviewBody(
+      'withdraw',
+      { amount: 20 },
+      { currentHF: 1.45 },
+    );
+    const out = rb(node);
+    const text = out!.container.textContent ?? '';
+    expect(text).toContain('Health factor');
+    expect(text).toContain('1.45');
+  });
+
+  it('RepayPreviewBody renders HF row when currentHF is present', () => {
+    const node = renderPreviewBody(
+      'repay_debt',
+      { amount: 5 },
+      { currentHF: 1.2 },
+    );
+    const out = rb(node);
+    const text = out!.container.textContent ?? '';
+    expect(text).toContain('Health factor');
+    expect(text).toContain('1.20');
+  });
+
+  it('Health factor ≥ 99 renders as ∞ (no open debt)', () => {
+    const node = renderPreviewBody(
+      'save_deposit',
+      { amount: 10 },
+      { currentHF: 999 },
+    );
+    const out = rb(node);
+    const text = out!.container.textContent ?? '';
+    expect(text).toContain('∞');
+  });
+
+  it('omits Health factor row when currentHF is undefined', () => {
+    const node = renderPreviewBody('borrow', { amount: 5 });
+    const out = rb(node);
+    const text = out!.container.textContent ?? '';
+    expect(text).not.toContain('Health factor');
+  });
+
+  it('does not render HF row on harvest_rewards (not a HF-affecting write)', () => {
+    const node = renderPreviewBody(
+      'harvest_rewards',
+      {},
+      // currentHF would be threaded by mistake — harvest_rewards is not
+      // in the engine's HF_TOOLS set, so the engine would never send it.
+      // But this asserts the body doesn't accidentally start rendering it.
+      { currentHF: 3.5 },
+    );
+    const out = rb(node);
+    expect(out!.container.textContent ?? '').not.toContain('Health factor');
+  });
+});

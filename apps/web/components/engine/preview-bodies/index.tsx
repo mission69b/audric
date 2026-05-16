@@ -7,6 +7,7 @@ import {
   APYBlock,
 } from '@/components/engine/cards/shared';
 import { fmtUsd } from '@/components/engine/cards/primitives';
+import { cn } from '@/lib/cn';
 
 // ───────────────────────────────────────────────────────────────────────────
 // SPEC 37 v0.7a Phase 2 Day 17-22 — Write-tool preview bodies
@@ -51,26 +52,30 @@ import { fmtUsd } from '@/components/engine/cards/primitives';
 //   fees that don't exist. spec-consistency.ts:19-20 documents the
 //   no-WITHDRAW_FEE / no-REPAY_FEE invariant explicitly.
 //
-// APY ACCURACY (post-audit fix, 2026-05-16):
-//   save_deposit + withdraw render the supply APY correctly (it's the same
-//   pool APY the user is depositing into / forgoing). borrow + repay_debt
-//   intentionally OMIT the APY row — the engine doesn't thread borrow APY
-//   onto the PendingAction today, and showing the supply APY as the borrow
-//   rate is misleading (NAVI borrow rates are typically 1–2 percentage
-//   points HIGHER than supply rates). When engine adds `borrowApyBps` to
-//   the PendingAction (Week 4 cleanup), the row slots back in.
+// APY ACCURACY (post-audit fix, 2026-05-16; updated Day 14a, 2026-05-16):
+//   save_deposit + withdraw render the supply APY correctly (it's the
+//   same pool APY the user is depositing into / forgoing). borrow +
+//   repay_debt take their APY from the engine's `borrowApyBps` field on
+//   the PendingAction (SPEC 37 Week 4 cleanup, engine 1.34.10+). When
+//   the field is absent (NAVI MCP unavailable / engine < 1.34.10), the
+//   bodies fall back to the pre-Week-4 italic disclaimer — honest
+//   degradation, no fabricated rates.
 //
-// What the previews INTENTIONALLY do NOT cover (deferred until engine
-// extends PendingAction shape):
-//   - HF projection (current → projected) for borrow/withdraw/repay —
-//     engine doesn't thread current HF onto the PendingAction today.
-//     Once the engine adds `currentHF` (Week 4 cleanup batch alongside
-//     buildTool→tool() migration), the body components add HFGauge
-//     trivially using the Day 7 primitive that already supports
-//     projection. Component API is stable across that future change.
+// HF ROW (added Day 14a, 2026-05-16):
+//   borrow / repay_debt / withdraw / save_deposit now render the user's
+//   current health factor inline when the engine threads `currentHF` on
+//   the PendingAction (engine 1.34.10+). Just the current value — no
+//   projection. Projection requires additional NAVI position data
+//   (supplied / borrowed / liquidationThreshold) that the engine does
+//   not currently thread; when it does, the bodies upgrade to the
+//   HFGauge primitive's projection mode trivially.
+//
+// What the previews INTENTIONALLY do NOT cover yet:
+//   - HF projection (current → projected) — needs engine to thread the
+//     supplied/borrowed/ltv NAVI numbers OR a precomputed projected HF.
 //   - Per-swap-leg RouteDiagram for harvest_rewards — the engine's
 //     PendingAction for harvest_rewards doesn't currently include the
-//     planned-route preview (the route is computed at execute-time
+//     planned-route preview (route is computed at execute-time
 //     post-approval). When that ships, harvest body slots in
 //     RouteDiagram via the Day 8 primitive.
 //
@@ -150,6 +155,33 @@ function APYRow({ asset, apyBps, label }: APYRowProps) {
   );
 }
 
+// [Day 14a / 2026-05-16] Compact health-factor row for confirm cards.
+// Uses the same SECTION_LABEL styling as APYRow / FeeRow so the
+// preview body reads as a single ledger. Renders ∞ when HF > 99 (no
+// open debt) to match HFGauge's primitive convention.
+function HFRow({ healthFactor }: { healthFactor: number }) {
+  const display =
+    !Number.isFinite(healthFactor) || healthFactor >= 99
+      ? '∞'
+      : healthFactor.toFixed(2);
+  // Match HFGauge's threshold palette so the inline row carries the
+  // same tier semantics as the full gauge.
+  const color =
+    healthFactor < 1.1
+      ? 'text-error-solid'
+      : healthFactor < 1.5
+        ? 'text-warning-solid'
+        : 'text-success-solid';
+  return (
+    <div className="flex justify-between items-baseline">
+      <span className={SECTION_LABEL}>Health factor</span>
+      <span className={cn('font-mono tabular-nums text-[12px]', color)}>
+        {display}
+      </span>
+    </div>
+  );
+}
+
 function feeChip(feeBps: number): { label: string; usdFor(amount: number): number } {
   return {
     label: `${(feeBps / 100).toFixed(2)}% NAVI overlay`,
@@ -160,6 +192,20 @@ function feeChip(feeBps: number): { label: string; usdFor(amount: number): numbe
 interface PreviewBodyProps {
   input: Record<string, unknown>;
   ratesOverride?: { usdcApyBps?: number; usdsuiApyBps?: number };
+  /**
+   * [Day 14a / 2026-05-16] Live borrow APY in basis points from the
+   * engine's PendingAction (1.34.10+). Drives the borrow/repay APY row
+   * when present; bodies fall back to the italic disclaimer when
+   * undefined (NAVI MCP unavailable / engine < 1.34.10).
+   */
+  borrowApyBps?: number;
+  /**
+   * [Day 14a / 2026-05-16] Current health factor from the engine's
+   * PendingAction (1.34.10+). Drives the HF row on borrow / repay /
+   * withdraw / save_deposit when present. No projection — engine does
+   * not yet thread the supplied/borrowed/ltv needed to compute one.
+   */
+  currentHF?: number;
 }
 
 // ─── Per-tool bodies ──────────────────────────────────────────────────────
@@ -167,6 +213,7 @@ interface PreviewBodyProps {
 export function SaveDepositPreviewBody({
   input,
   ratesOverride,
+  currentHF,
 }: PreviewBodyProps): ReactNode {
   const amount = typeof input.amount === 'number' ? input.amount : 0;
   const asset = resolveAsset(input as BasePreviewInput, 'USDC');
@@ -182,6 +229,7 @@ export function SaveDepositPreviewBody({
         label="Deposit"
       />
       <APYRow asset={asset} apyBps={apyBps} label="Pool APY" />
+      {currentHF !== undefined && <HFRow healthFactor={currentHF} />}
       <FeeRow label={fee.label} usdValue={fee.usdFor(amount)} />
     </div>
   );
@@ -190,6 +238,7 @@ export function SaveDepositPreviewBody({
 export function WithdrawPreviewBody({
   input,
   ratesOverride,
+  currentHF,
 }: PreviewBodyProps): ReactNode {
   const amount = typeof input.amount === 'number' ? input.amount : 0;
   const asset = resolveAsset(input as BasePreviewInput, 'USDC');
@@ -204,18 +253,19 @@ export function WithdrawPreviewBody({
         label="Withdraw"
       />
       <APYRow asset={asset} apyBps={apyBps} label="Yield foregone" />
+      {currentHF !== undefined && <HFRow healthFactor={currentHF} />}
     </div>
   );
 }
 
 export function BorrowPreviewBody({
   input,
+  borrowApyBps,
+  currentHF,
 }: PreviewBodyProps): ReactNode {
   const amount = typeof input.amount === 'number' ? input.amount : 0;
   const asset = resolveAsset(input as BasePreviewInput, 'USDC');
   const fee = feeChip(BORROW_FEE_BPS_NUM);
-  // No APY row — engine doesn't thread borrow rate onto PendingAction.
-  // Showing the supply rate would lie about the actual borrow cost.
   return (
     <div className="space-y-3">
       <AssetAmountBlock
@@ -224,9 +274,14 @@ export function BorrowPreviewBody({
         usdValue={amount}
         label="Borrow"
       />
-      <div className="text-[10px] text-fg-muted italic pt-1">
-        Variable rate — locked at execute time.
-      </div>
+      {borrowApyBps !== undefined ? (
+        <APYRow asset={asset} apyBps={borrowApyBps} label="Borrow rate" />
+      ) : (
+        <div className="text-[10px] text-fg-muted italic pt-1">
+          Variable rate — locked at execute time.
+        </div>
+      )}
+      {currentHF !== undefined && <HFRow healthFactor={currentHF} />}
       <FeeRow label={fee.label} usdValue={fee.usdFor(amount)} />
     </div>
   );
@@ -234,11 +289,12 @@ export function BorrowPreviewBody({
 
 export function RepayPreviewBody({
   input,
+  borrowApyBps,
+  currentHF,
 }: PreviewBodyProps): ReactNode {
   const amount = typeof input.amount === 'number' ? input.amount : 0;
   const asset = resolveAsset(input as BasePreviewInput, 'USDC');
   // No fee row — repay is fee-free per audric prepare route.
-  // No APY row — engine doesn't thread borrow rate onto PendingAction.
   return (
     <div className="space-y-3">
       <AssetAmountBlock
@@ -247,9 +303,14 @@ export function RepayPreviewBody({
         usdValue={amount}
         label="Repay"
       />
-      <div className="text-[10px] text-fg-muted italic pt-1">
-        Clears principal at the current variable borrow rate.
-      </div>
+      {borrowApyBps !== undefined ? (
+        <APYRow asset={asset} apyBps={borrowApyBps} label="Borrow rate cleared" />
+      ) : (
+        <div className="text-[10px] text-fg-muted italic pt-1">
+          Clears principal at the current variable borrow rate.
+        </div>
+      )}
+      {currentHF !== undefined && <HFRow healthFactor={currentHF} />}
     </div>
   );
 }
@@ -331,6 +392,10 @@ export function renderPreviewBody(
   input: Record<string, unknown>,
   options?: {
     ratesOverride?: { usdcApyBps?: number; usdsuiApyBps?: number };
+    /** [Day 14a] Live borrow APY (bps) from PendingAction. */
+    borrowApyBps?: number;
+    /** [Day 14a] Current health factor from PendingAction. */
+    currentHF?: number;
   },
 ): ReactNode | null {
   const Body = PREVIEW_BODIES[toolName];
@@ -339,6 +404,8 @@ export function renderPreviewBody(
     <Body
       input={input}
       ratesOverride={options?.ratesOverride}
+      borrowApyBps={options?.borrowApyBps}
+      currentHF={options?.currentHF}
     />
   );
 }

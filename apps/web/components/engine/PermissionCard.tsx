@@ -954,6 +954,15 @@ export function PermissionCard({
           const v2Body = renderPreviewBody(
             action.toolName,
             modifiedInput,
+            {
+              // [Day 14a / 2026-05-16] Thread engine-1.34.10+ live NAVI
+              // data so borrow/repay/withdraw/save preview bodies render
+              // the real APY + current HF instead of italic disclaimers.
+              // Both fields fall back to undefined if the engine is
+              // pinned older or NAVI MCP was unavailable at emit-time.
+              borrowApyBps: action.borrowApyBps,
+              currentHF: action.currentHF,
+            },
           );
           if (v2Body) return v2Body;
         }
