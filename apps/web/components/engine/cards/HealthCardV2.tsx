@@ -130,13 +130,17 @@ export function HealthCardV2({ data }: HealthCardV2Props) {
     : null;
 
   return (
-    // [Day 14b polish / 2026-05-16] Title intentionally omitted — HFGauge's
-    // own internal "Health factor" label is the hero, and the chat-surface
-    // chrome already renders "🛡️ HEALTH CHECK" above the card. Pre-fix
-    // production rendered "Health factor" twice (CardShell title + HFGauge
-    // internal label) which read as visual stutter.
-    <CardShell badge={badge}>
+    // [Day 14b polish / 2026-05-16] `noHeader` skips the CardShell title
+    // chrome — HFGauge's own internal "Health factor" label is the hero,
+    // and the chat-surface chrome already renders "🛡️ HEALTH CHECK"
+    // above the card. Pre-fix production rendered "Health factor" twice
+    // (CardShell title + HFGauge internal label) which read as visual
+    // stutter. `noHeader` also drops the badge slot (per primitives.tsx
+    // JSDoc), so we re-render the watched-address badge inline above the
+    // gauge — symmetric layout for self vs watched queries.
+    <CardShell title="Health factor" noHeader>
       <div className="space-y-3">
+        {badge && <div className="flex justify-end">{badge}</div>}
         {/* HERO — HFGauge */}
         <HFGauge
           healthFactor={hfForGauge}
