@@ -1,8 +1,8 @@
-import { z } from 'zod';
-import { buildTool } from '@t2000/engine';
-import { prisma } from '@/lib/prisma';
-import { validateAudricLabel } from '@/lib/identity/validate-label';
-import { isReserved } from '@/lib/identity/reserved-usernames';
+import { z } from "zod";
+import { defineTool } from "@t2000/engine";
+import { prisma } from "@/lib/prisma";
+import { validateAudricLabel } from "@/lib/identity/validate-label";
+import { isReserved } from "@/lib/identity/reserved-usernames";
 
 /**
  * SPEC 10 D.3 — `lookup_user` engine tool.
@@ -51,16 +51,16 @@ import { isReserved } from '@/lib/identity/reserved-usernames';
  * leak anything that isn't already publicly resolvable.
  */
 
-const AUDRIC_PARENT_SUFFIX = '.audric.sui';
+const AUDRIC_PARENT_SUFFIX = ".audric.sui";
 const SUI_ADDRESS_REGEX = /^0x[a-f0-9]{64}$/;
-const PROFILE_BASE_URL = 'https://audric.ai';
+const PROFILE_BASE_URL = "https://audric.ai";
 
 type LookupReason =
-  | 'no-such-user'
-  | 'invalid-label'
-  | 'reserved-label'
-  | 'not-audric-suins'
-  | 'invalid-address';
+  | "no-such-user"
+  | "invalid-label"
+  | "reserved-label"
+  | "not-audric-suins"
+  | "invalid-address";
 
 interface LookupUserHit {
   found: true;
@@ -87,7 +87,7 @@ type LookupUserResult = LookupUserHit | LookupUserMiss;
 // ---------------------------------------------------------------------------
 
 interface NormalisedQuery {
-  kind: 'label' | 'address';
+  kind: "label" | "address";
   value: string;
 }
 
@@ -99,26 +99,26 @@ interface NormaliseError {
 function normaliseQuery(raw: string): NormalisedQuery | NormaliseError {
   const trimmed = raw.trim();
   if (!trimmed) {
-    return { reason: 'invalid-label', hint: 'empty query' };
+    return { reason: "invalid-label", hint: "empty query" };
   }
 
-  if (trimmed.toLowerCase().startsWith('0x')) {
+  if (trimmed.toLowerCase().startsWith("0x")) {
     const lower = trimmed.toLowerCase();
     if (!SUI_ADDRESS_REGEX.test(lower)) {
       return {
-        reason: 'invalid-address',
-        hint: 'address must be 0x followed by 64 hex chars',
+        reason: "invalid-address",
+        hint: "address must be 0x followed by 64 hex chars",
       };
     }
-    return { kind: 'address', value: lower };
+    return { kind: "address", value: lower };
   }
 
   let candidate = trimmed.toLowerCase();
-  if (candidate.startsWith('@')) candidate = candidate.slice(1);
+  if (candidate.startsWith("@")) candidate = candidate.slice(1);
 
-  if (candidate.endsWith('.sui') && !candidate.endsWith(AUDRIC_PARENT_SUFFIX)) {
+  if (candidate.endsWith(".sui") && !candidate.endsWith(AUDRIC_PARENT_SUFFIX)) {
     return {
-      reason: 'not-audric-suins',
+      reason: "not-audric-suins",
       hint:
         `"${trimmed}" is a SuiNS name but not an Audric handle. ` +
         `Call resolve_suins for generic SuiNS lookups.`,
@@ -132,24 +132,24 @@ function normaliseQuery(raw: string): NormalisedQuery | NormaliseError {
   const validation = validateAudricLabel(candidate);
   if (!validation.valid) {
     return {
-      reason: 'invalid-label',
+      reason: "invalid-label",
       hint:
-        validation.reason === 'too-short'
-          ? 'label must be at least 3 characters'
-          : validation.reason === 'too-long'
-            ? 'label must be at most 20 characters'
-            : 'label has invalid characters (allowed: a-z 0-9 hyphen)',
+        validation.reason === "too-short"
+          ? "label must be at least 3 characters"
+          : validation.reason === "too-long"
+            ? "label must be at most 20 characters"
+            : "label has invalid characters (allowed: a-z 0-9 hyphen)",
     };
   }
 
   if (isReserved(validation.label)) {
     return {
-      reason: 'reserved-label',
+      reason: "reserved-label",
       hint: `"${validation.label}" is reserved and cannot be claimed by users`,
     };
   }
 
-  return { kind: 'label', value: validation.label };
+  return { kind: "label", value: validation.label };
 }
 
 // ---------------------------------------------------------------------------
@@ -161,55 +161,43 @@ const InputSchema = z.object({
     .string()
     .min(1)
     .describe(
-      'An Audric user identifier in any of these forms: ' +
+      "An Audric user identifier in any of these forms: " +
         '"@alice" / "alice" / "alice.audric.sui" / a 0x address. ' +
         'For top-level SuiNS names (e.g. "alex.sui"), use resolve_suins instead.',
     ),
 });
 
-export const lookupUserTool = buildTool({
-  name: 'lookup_user',
+export const lookupUserTool = defineTool({
+  name: "lookup_user",
   description:
-    'Look up a registered Audric user by handle or address. Returns the ' +
+    "Look up a registered Audric user by handle or address. Returns the " +
     "user's Audric username, full `username.audric.sui` handle, 0x wallet address, " +
-    'claim date, and `audric.ai/{username}` profile URL. ' +
+    "claim date, and `audric.ai/{username}` profile URL. " +
     '\n\nUse this WHENEVER the user asks "who is X", "do you know @alice", ' +
     '"is this person on Audric", or wants to check if a handle / address belongs ' +
-    'to an Audric user. Accepts: `@alice`, bare `alice`, full `alice.audric.sui`, ' +
-    'or a 0x address (reverse lookup). ' +
-    '\n\nReturns `{ found: true, username, fullHandle, address, claimedAt, profileUrl }` ' +
-    'on a hit, or `{ found: false, reason }` on a miss. ' +
-    '\n\nWhen narrating a hit, ALWAYS use the full `username.audric.sui` form (D10 narration ' +
-    'rule). When narrating a miss, you can suggest searching SuiNS via `resolve_suins` if the ' +
-    'user passed a generic `.sui` name (the tool tells you when this is the case via ' +
+    "to an Audric user. Accepts: `@alice`, bare `alice`, full `alice.audric.sui`, " +
+    "or a 0x address (reverse lookup). " +
+    "\n\nReturns `{ found: true, username, fullHandle, address, claimedAt, profileUrl }` " +
+    "on a hit, or `{ found: false, reason }` on a miss. " +
+    "\n\nWhen narrating a hit, ALWAYS use the full `username.audric.sui` form (D10 narration " +
+    "rule). When narrating a miss, you can suggest searching SuiNS via `resolve_suins` if the " +
+    "user passed a generic `.sui` name (the tool tells you when this is the case via " +
     '`reason: "not-audric-suins"`). ' +
-    '\n\nThis tool only knows about Audric users — for generic SuiNS lookups (e.g. `alex.sui`, ' +
-    '`team.alex.sui`) call `resolve_suins` instead.',
+    "\n\nThis tool only knows about Audric users — for generic SuiNS lookups (e.g. `alex.sui`, " +
+    "`team.alex.sui`) call `resolve_suins` instead.",
   inputSchema: InputSchema,
-  jsonSchema: {
-    type: 'object',
-    required: ['query'],
-    properties: {
-      query: {
-        type: 'string',
-        minLength: 1,
-        description:
-          'An Audric user identifier (@alice / alice / alice.audric.sui / 0x address).',
-      },
-    },
-  },
   isReadOnly: true,
   cacheable: true,
   preflight: (input) => {
-    const trimmed = (input.query ?? '').trim();
-    if (!trimmed) return { valid: false, error: 'query is required' };
+    const trimmed = (input.query ?? "").trim();
+    if (!trimmed) return { valid: false, error: "query is required" };
     return { valid: true };
   },
   async call(input): Promise<{ data: LookupUserResult; displayText: string }> {
     const original = input.query.trim();
     const normalised = normaliseQuery(original);
 
-    if ('reason' in normalised) {
+    if ("reason" in normalised) {
       const miss: LookupUserMiss = {
         found: false,
         query: original,
@@ -219,14 +207,14 @@ export const lookupUserTool = buildTool({
       return {
         data: miss,
         displayText:
-          normalised.reason === 'not-audric-suins'
+          normalised.reason === "not-audric-suins"
             ? `${original} is a SuiNS name but not an Audric handle.`
             : `Couldn't look up "${original}": ${normalised.hint ?? normalised.reason}.`,
       };
     }
 
     const where =
-      normalised.kind === 'label'
+      normalised.kind === "label"
         ? { username: normalised.value }
         : { suiAddress: normalised.value };
 
@@ -248,15 +236,17 @@ export const lookupUserTool = buildTool({
       const miss: LookupUserMiss = {
         found: false,
         query: original,
-        reason: 'no-such-user',
-        ...(normalised.kind === 'address'
-          ? { hint: 'no Audric user has claimed this address as their wallet' }
-          : { hint: `no Audric user with handle "${normalised.value}.audric.sui"` }),
+        reason: "no-such-user",
+        ...(normalised.kind === "address"
+          ? { hint: "no Audric user has claimed this address as their wallet" }
+          : {
+              hint: `no Audric user with handle "${normalised.value}.audric.sui"`,
+            }),
       };
       return {
         data: miss,
         displayText:
-          normalised.kind === 'address'
+          normalised.kind === "address"
             ? `\`${normalised.value.slice(0, 10)}…${normalised.value.slice(-6)}\` isn't an Audric user.`
             : `${normalised.value}.audric.sui isn't a registered Audric handle.`,
       };

@@ -1,10 +1,10 @@
-import { buildTool } from '@t2000/engine';
-import type { ToolContext } from '@t2000/engine';
-import { z } from 'zod';
-import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
-import { put } from '@vercel/blob';
-import MarkdownIt from 'markdown-it';
-import { env } from '@/lib/env';
+import { defineTool } from "@t2000/engine";
+import type { ToolContext } from "@t2000/engine";
+import { z } from "zod";
+import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import { put } from "@vercel/blob";
+import MarkdownIt from "markdown-it";
+import { env } from "@/lib/env";
 
 /**
  * # `compose_pdf` — server-side PDF composition tool
@@ -83,122 +83,83 @@ const IMAGE_FETCH_TIMEOUT_MS = 15_000;
 // cleanup cron is the spec-pdfshift-deprecation follow-up's problem.
 const EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
 
-const pageSchema = z.discriminatedUnion('type', [
+const pageSchema = z.discriminatedUnion("type", [
   z.object({
-    type: z.literal('image'),
+    type: z.literal("image"),
     url: z
       .string()
-      .url('Image URL must be a fully-qualified http(s):// URL')
-      .describe('Fully-qualified image URL (e.g. from a prior pay_api(openai/.../images) call)'),
+      .url("Image URL must be a fully-qualified http(s):// URL")
+      .describe(
+        "Fully-qualified image URL (e.g. from a prior pay_api(openai/.../images) call)",
+      ),
     caption: z
       .string()
       .max(200)
       .optional()
-      .describe('Optional caption shown below the image'),
+      .describe("Optional caption shown below the image"),
   }),
   z.object({
-    type: z.literal('text'),
+    type: z.literal("text"),
     content: z
       .string()
-      .min(1, 'Text content cannot be empty')
-      .max(20_000, 'Text content per page max 20,000 chars')
-      .describe('Plain text body of the page'),
+      .min(1, "Text content cannot be empty")
+      .max(20_000, "Text content per page max 20,000 chars")
+      .describe("Plain text body of the page"),
     title: z
       .string()
       .max(200)
       .optional()
-      .describe('Optional bold title rendered above the body'),
+      .describe("Optional bold title rendered above the body"),
   }),
   z.object({
-    type: z.literal('markdown'),
+    type: z.literal("markdown"),
     content: z
       .string()
-      .min(1, 'Markdown content cannot be empty')
-      .max(20_000, 'Markdown content per page max 20,000 chars')
+      .min(1, "Markdown content cannot be empty")
+      .max(20_000, "Markdown content per page max 20,000 chars")
       .describe(
-        'Markdown source text. Supports headings (#, ##, ###), paragraphs, ' +
-          'and bullet lists (-, *). Bold/italic emphasis and inline code render ' +
-          'as plain text. Tables, code blocks, and images are NOT rendered — ' +
-          'use a separate text/image page for those.',
+        "Markdown source text. Supports headings (#, ##, ###), paragraphs, " +
+          "and bullet lists (-, *). Bold/italic emphasis and inline code render " +
+          "as plain text. Tables, code blocks, and images are NOT rendered — " +
+          "use a separate text/image page for those.",
       ),
   }),
 ]);
 
-export const composePdfTool = buildTool({
-  name: 'compose_pdf',
+export const composePdfTool = defineTool({
+  name: "compose_pdf",
   description:
-    'Compose a PDF from artifacts you already have — images from prior pay_api(openai/.../images) calls, ' +
-    'plain text, markdown documents, or a mix. FREE, server-side, no gateway fees. ' +
-    'Use this BEFORE reaching for pay_api(pdfshift/...) — PDFShift only makes sense when the source is HTML ' +
-    'requiring a browser to render. Markdown supports headings, paragraphs, and bullet lists ' +
-    '(tables/code blocks/embedded images render as plain text). Returns a Vercel Blob URL valid for 7 days.',
+    "Compose a PDF from artifacts you already have — images from prior pay_api(openai/.../images) calls, " +
+    "plain text, markdown documents, or a mix. FREE, server-side, no gateway fees. " +
+    "Use this BEFORE reaching for pay_api(pdfshift/...) — PDFShift only makes sense when the source is HTML " +
+    "requiring a browser to render. Markdown supports headings, paragraphs, and bullet lists " +
+    "(tables/code blocks/embedded images render as plain text). Returns a Vercel Blob URL valid for 7 days.",
   inputSchema: z.object({
     pages: z
       .array(pageSchema)
-      .min(1, 'pages must contain at least 1 entry')
+      .min(1, "pages must contain at least 1 entry")
       .max(MAX_PAGES, `pages cannot exceed ${MAX_PAGES} entries`)
-      .describe('Ordered list of pages to bind into the PDF'),
+      .describe("Ordered list of pages to bind into the PDF"),
     filename: z
       .string()
       .min(1)
       .max(MAX_FILENAME_LENGTH)
       .optional()
-      .describe('Optional filename (default: audric-<timestamp>.pdf)'),
+      .describe("Optional filename (default: audric-<timestamp>.pdf)"),
     pageSize: z
-      .enum(['A4', 'Letter'])
+      .enum(["A4", "Letter"])
       .optional()
-      .describe('Page size — A4 (default, international) or Letter (US)'),
+      .describe("Page size — A4 (default, international) or Letter (US)"),
   }),
-  jsonSchema: {
-    type: 'object',
-    properties: {
-      pages: {
-        type: 'array',
-        items: {
-          type: 'object',
-          oneOf: [
-            {
-              properties: {
-                type: { type: 'string', enum: ['image'] },
-                url: { type: 'string' },
-                caption: { type: 'string' },
-              },
-              required: ['type', 'url'],
-            },
-            {
-              properties: {
-                type: { type: 'string', enum: ['text'] },
-                content: { type: 'string' },
-                title: { type: 'string' },
-              },
-              required: ['type', 'content'],
-            },
-            {
-              properties: {
-                type: { type: 'string', enum: ['markdown'] },
-                content: { type: 'string' },
-              },
-              required: ['type', 'content'],
-            },
-          ],
-        },
-        minItems: 1,
-        maxItems: MAX_PAGES,
-      },
-      filename: { type: 'string' },
-      pageSize: { type: 'string', enum: ['A4', 'Letter'] },
-    },
-    required: ['pages'],
-  },
   isReadOnly: false,
-  permissionLevel: 'auto',
+  permissionLevel: "auto",
   cacheable: false,
   maxResultSizeChars: 2_000,
 
   preflight: (rawInput) => {
     const input = rawInput as { pages?: unknown[]; filename?: string };
     if (!Array.isArray(input.pages) || input.pages.length === 0) {
-      return { valid: false, error: 'pages must be a non-empty array' };
+      return { valid: false, error: "pages must be a non-empty array" };
     }
     if (input.pages.length > MAX_PAGES) {
       return {
@@ -220,20 +181,21 @@ export const composePdfTool = buildTool({
 
     if (!env.BLOB_READ_WRITE_TOKEN) {
       throw new Error(
-        'PDF storage not configured (BLOB_READ_WRITE_TOKEN unset). ' +
-          'Operator: connect Vercel Blob to the project (Project → Storage → Blob → Connect).',
+        "PDF storage not configured (BLOB_READ_WRITE_TOKEN unset). " +
+          "Operator: connect Vercel Blob to the project (Project → Storage → Blob → Connect).",
       );
     }
 
-    const pageDimensions = input.pageSize === 'Letter' ? PAGE_SIZE_LETTER : PAGE_SIZE_A4;
+    const pageDimensions =
+      input.pageSize === "Letter" ? PAGE_SIZE_LETTER : PAGE_SIZE_A4;
     const pdfDoc = await PDFDocument.create();
     const helv = await pdfDoc.embedFont(StandardFonts.Helvetica);
     const helvBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
     for (const page of input.pages) {
-      if (page.type === 'image') {
+      if (page.type === "image") {
         await renderImagePage(pdfDoc, page, pageDimensions, helv);
-      } else if (page.type === 'markdown') {
+      } else if (page.type === "markdown") {
         renderMarkdownPage(pdfDoc, page, pageDimensions, helv, helvBold);
       } else {
         renderTextPage(pdfDoc, page, pageDimensions, helv, helvBold);
@@ -244,7 +206,9 @@ export const composePdfTool = buildTool({
     const sizeKb = Math.ceil(pdfBytes.length / 1024);
 
     const filename = input.filename ?? `audric-${Date.now()}.pdf`;
-    const safeFilename = filename.endsWith('.pdf') ? filename : `${filename}.pdf`;
+    const safeFilename = filename.endsWith(".pdf")
+      ? filename
+      : `${filename}.pdf`;
 
     // Vercel Blob upload. `addRandomSuffix: true` avoids name collisions
     // across users — two users requesting `report.pdf` get distinct
@@ -260,24 +224,20 @@ export const composePdfTool = buildTool({
     // Casting via `as unknown as Buffer` keeps the runtime semantics (raw
     // Uint8Array stream) and avoids the Buffer.from() copy that, in
     // testing, interfered with pdf-lib re-parsing the captured mock arg.
-    const uploaded = await put(
-      safeFilename,
-      pdfBytes as unknown as Buffer,
-      {
-        access: 'public',
-        contentType: 'application/pdf',
-        addRandomSuffix: true,
-      },
-    );
+    const uploaded = await put(safeFilename, pdfBytes as unknown as Buffer, {
+      access: "public",
+      contentType: "application/pdf",
+      addRandomSuffix: true,
+    });
 
     const expiresAt = new Date(Date.now() + EXPIRY_MS).toISOString();
 
     console.log({
-      kind: 'compose_pdf',
+      kind: "compose_pdf",
       pageCount: input.pages.length,
       sizeKb,
       filename: safeFilename,
-      pageSize: input.pageSize ?? 'A4',
+      pageSize: input.pageSize ?? "A4",
     });
 
     const displayText = `Generated ${input.pages.length}-page PDF "${safeFilename}" (${sizeKb} KB). Available for 7 days.`;
@@ -299,9 +259,9 @@ export const composePdfTool = buildTool({
 
 async function renderImagePage(
   pdfDoc: PDFDocument,
-  page: { type: 'image'; url: string; caption?: string },
+  page: { type: "image"; url: string; caption?: string },
   pageDims: [number, number],
-  font: import('pdf-lib').PDFFont,
+  font: import("pdf-lib").PDFFont,
 ): Promise<void> {
   const [pageWidth, pageHeight] = pageDims;
   const pdfPage = pdfDoc.addPage([pageWidth, pageHeight]);
@@ -321,9 +281,12 @@ async function renderImagePage(
   // what its SLO budget allows.
   let res: Response;
   try {
-    res = await fetch(page.url, { signal: AbortSignal.timeout(IMAGE_FETCH_TIMEOUT_MS) });
+    res = await fetch(page.url, {
+      signal: AbortSignal.timeout(IMAGE_FETCH_TIMEOUT_MS),
+    });
   } catch (err) {
-    const isTimeout = err instanceof DOMException && err.name === 'TimeoutError';
+    const isTimeout =
+      err instanceof DOMException && err.name === "TimeoutError";
     throw new Error(
       isTimeout
         ? `Image fetch timed out after ${IMAGE_FETCH_TIMEOUT_MS / 1000}s: ${page.url}`
@@ -342,7 +305,7 @@ async function renderImagePage(
   // be cleaner but vendors lie about it (OpenAI returns
   // `application/octet-stream` for some image responses); the
   // try/catch is robust against that.
-  let embedded: import('pdf-lib').PDFImage;
+  let embedded: import("pdf-lib").PDFImage;
   try {
     embedded = await pdfDoc.embedPng(buf);
   } catch {
@@ -382,10 +345,10 @@ async function renderImagePage(
 
 function renderTextPage(
   pdfDoc: PDFDocument,
-  page: { type: 'text'; content: string; title?: string },
+  page: { type: "text"; content: string; title?: string },
   pageDims: [number, number],
-  font: import('pdf-lib').PDFFont,
-  fontBold: import('pdf-lib').PDFFont,
+  font: import("pdf-lib").PDFFont,
+  fontBold: import("pdf-lib").PDFFont,
 ): void {
   const [pageWidth, pageHeight] = pageDims;
   let pdfPage = pdfDoc.addPage([pageWidth, pageHeight]);
@@ -459,10 +422,10 @@ const md = new MarkdownIt({ html: false });
  */
 function renderMarkdownPage(
   pdfDoc: PDFDocument,
-  page: { type: 'markdown'; content: string },
+  page: { type: "markdown"; content: string },
   pageDims: [number, number],
-  font: import('pdf-lib').PDFFont,
-  fontBold: import('pdf-lib').PDFFont,
+  font: import("pdf-lib").PDFFont,
+  fontBold: import("pdf-lib").PDFFont,
 ): void {
   const [pageWidth, pageHeight] = pageDims;
   let pdfPage = pdfDoc.addPage([pageWidth, pageHeight]);
@@ -485,7 +448,7 @@ function renderMarkdownPage(
   function drawLines(
     text: string,
     size: number,
-    f: import('pdf-lib').PDFFont,
+    f: import("pdf-lib").PDFFont,
     indentPx: number,
   ): void {
     const lines = wrapText(text, f, size, maxLineWidth - indentPx);
@@ -505,11 +468,11 @@ function renderMarkdownPage(
   for (let i = 0; i < tokens.length; i++) {
     const tok = tokens[i];
 
-    if (tok.type === 'heading_open') {
+    if (tok.type === "heading_open") {
       const level = Number(tok.tag.slice(1)) || 3; // h1..h6 → 1..6
       const size = level === 1 ? 18 : level === 2 ? 14 : 12;
       const inline = tokens[i + 1];
-      const text = inline?.content ?? '';
+      const text = inline?.content ?? "";
       ensureSpace(size + LINE_HEIGHT);
       // Add a small extra gap before headings to delineate sections,
       // but only if we're not at the top of the page.
@@ -517,32 +480,36 @@ function renderMarkdownPage(
       drawLines(text, size, fontBold, 0);
       i += 2; // skip the inline + heading_close tokens
       y -= 4; // gap after heading
-    } else if (tok.type === 'paragraph_open') {
+    } else if (tok.type === "paragraph_open") {
       const inline = tokens[i + 1];
-      const text = inline?.content ?? '';
+      const text = inline?.content ?? "";
       drawLines(text, TEXT_FONT_SIZE, font, listDepth * 16);
       i += 2;
       if (listDepth === 0) y -= 4; // paragraph spacing only outside lists
-    } else if (tok.type === 'bullet_list_open') {
+    } else if (tok.type === "bullet_list_open") {
       listDepth++;
       orderedListCounters.push(0); // 0 means "unordered" at this depth
-    } else if (tok.type === 'ordered_list_open') {
+    } else if (tok.type === "ordered_list_open") {
       listDepth++;
       orderedListCounters.push(1);
-    } else if (tok.type === 'bullet_list_close' || tok.type === 'ordered_list_close') {
+    } else if (
+      tok.type === "bullet_list_close" ||
+      tok.type === "ordered_list_close"
+    ) {
       listDepth = Math.max(0, listDepth - 1);
       orderedListCounters.pop();
       y -= 4; // small gap after list
-    } else if (tok.type === 'list_item_open') {
+    } else if (tok.type === "list_item_open") {
       // Look ahead for the inline content of the first paragraph in
       // this item. The next tokens are typically:
       //   list_item_open → paragraph_open → inline → paragraph_close → list_item_close
       const para = tokens[i + 1];
       const inline = tokens[i + 2];
-      if (para?.type === 'paragraph_open' && inline?.type === 'inline') {
+      if (para?.type === "paragraph_open" && inline?.type === "inline") {
         const counter = orderedListCounters[orderedListCounters.length - 1];
-        const prefix = counter > 0 ? `${counter}. ` : '• ';
-        if (counter > 0) orderedListCounters[orderedListCounters.length - 1] = counter + 1;
+        const prefix = counter > 0 ? `${counter}. ` : "• ";
+        if (counter > 0)
+          orderedListCounters[orderedListCounters.length - 1] = counter + 1;
 
         const indentPx = (listDepth - 1) * 16;
         const fullText = `${prefix}${inline.content}`;
@@ -551,15 +518,15 @@ function renderMarkdownPage(
         // and list_item_close tokens we just consumed.
         i += 4;
       }
-    } else if (tok.type === 'fence' || tok.type === 'code_block') {
+    } else if (tok.type === "fence" || tok.type === "code_block") {
       // Code blocks render as plain text (no monospace font embedded).
-      drawLines(tok.content.replace(/\n$/, ''), TEXT_FONT_SIZE, font, 0);
+      drawLines(tok.content.replace(/\n$/, ""), TEXT_FONT_SIZE, font, 0);
       y -= 4;
-    } else if (tok.type === 'blockquote_open') {
+    } else if (tok.type === "blockquote_open") {
       // Look ahead for the paragraph content; render with "> " prefix.
       const para = tokens[i + 1];
       const inline = tokens[i + 2];
-      if (para?.type === 'paragraph_open' && inline?.type === 'inline') {
+      if (para?.type === "paragraph_open" && inline?.type === "inline") {
         drawLines(`> ${inline.content}`, TEXT_FONT_SIZE, font, 0);
         // Skip past paragraph_open, inline, paragraph_close, blockquote_close.
         i += 4;
@@ -588,18 +555,18 @@ function renderMarkdownPage(
  */
 function wrapText(
   text: string,
-  font: import('pdf-lib').PDFFont,
+  font: import("pdf-lib").PDFFont,
   size: number,
   maxWidth: number,
 ): string[] {
   const result: string[] = [];
-  for (const paragraph of text.split('\n')) {
+  for (const paragraph of text.split("\n")) {
     if (paragraph.length === 0) {
-      result.push('');
+      result.push("");
       continue;
     }
     const words = paragraph.split(/\s+/).filter((w) => w.length > 0);
-    let current = '';
+    let current = "";
     for (const word of words) {
       const candidate = current.length === 0 ? word : `${current} ${word}`;
       const width = font.widthOfTextAtSize(candidate, size);
@@ -611,7 +578,7 @@ function wrapText(
         // wise. Pathological case (an unbroken 800-char URL); ugly but
         // never crashes.
         if (font.widthOfTextAtSize(word, size) > maxWidth) {
-          let chunk = '';
+          let chunk = "";
           for (const ch of word) {
             const next = chunk + ch;
             if (font.widthOfTextAtSize(next, size) > maxWidth) {

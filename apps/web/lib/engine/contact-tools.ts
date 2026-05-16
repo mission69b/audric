@@ -1,14 +1,14 @@
-import { buildTool } from '@t2000/engine';
-import type { ToolContext } from '@t2000/engine';
-import { z } from 'zod';
-import type { Prisma } from '@/lib/generated/prisma/client';
-import { prisma } from '@/lib/prisma';
+import { defineTool } from "@t2000/engine";
+import type { ToolContext } from "@t2000/engine";
+import { z } from "zod";
+import type { Prisma } from "@/lib/generated/prisma/client";
+import { prisma } from "@/lib/prisma";
 import {
   type Contact,
   contactFromSaveInput,
   parseContactList,
   serializeContactList,
-} from '@/lib/identity/contact-schema';
+} from "@/lib/identity/contact-schema";
 
 /**
  * Server-owned contact tools.
@@ -65,13 +65,13 @@ function projectToToolShape(c: Contact): { name: string; address: string } {
   return { name: c.name, address: c.identifier };
 }
 
-export const audricSaveContactTool = buildTool({
-  name: 'save_contact',
+export const audricSaveContactTool = defineTool({
+  name: "save_contact",
   description:
-    'Save a Sui address as a named contact in the user\'s address book. ' +
-    'After saving, the user can send to them by name in future requests ' +
+    "Save a Sui address as a named contact in the user's address book. " +
+    "After saving, the user can send to them by name in future requests " +
     '(e.g. "send 5 USDC to Alex"). Idempotent on address — a second call ' +
-    'with the same address updates the existing contact\'s name.',
+    "with the same address updates the existing contact's name.",
   inputSchema: z.object({
     name: z
       .string()
@@ -80,26 +80,18 @@ export const audricSaveContactTool = buildTool({
       .describe('Friendly name for the contact (e.g. "Alex", "Mom")'),
     address: z
       .string()
-      .regex(ADDRESS_REGEX, 'Must be a 0x-prefixed 64-hex Sui address')
-      .describe('Full Sui address (0x followed by 64 hex chars)'),
+      .regex(ADDRESS_REGEX, "Must be a 0x-prefixed 64-hex Sui address")
+      .describe("Full Sui address (0x followed by 64 hex chars)"),
   }),
-  jsonSchema: {
-    type: 'object',
-    properties: {
-      name: { type: 'string', description: 'Friendly name for the contact' },
-      address: { type: 'string', description: 'Full Sui address (0x...)' },
-    },
-    required: ['name', 'address'],
-  },
   isReadOnly: false,
-  permissionLevel: 'auto',
+  permissionLevel: "auto",
 
   call: async (input, context: ToolContext) => {
     const walletAddress = context.walletAddress;
-    if (!walletAddress) throw new Error('No wallet address in tool context');
+    if (!walletAddress) throw new Error("No wallet address in tool context");
 
     const trimmedName = input.name.trim();
-    if (!trimmedName) throw new Error('Contact name cannot be empty');
+    if (!trimmedName) throw new Error("Contact name cannot be empty");
 
     const normalizedAddr = normalizeAddress(input.address);
 
@@ -123,7 +115,7 @@ export const audricSaveContactTool = buildTool({
       }
     }
 
-    let action: 'created' | 'updated' | 'unchanged';
+    let action: "created" | "updated" | "unchanged";
     const sameAddrIndex = current.findIndex(
       (c) => c.resolvedAddress === normalizedAddr,
     );
@@ -132,20 +124,25 @@ export const audricSaveContactTool = buildTool({
     if (sameAddrIndex >= 0) {
       const existing = current[sameAddrIndex];
       if (existing.name === trimmedName) {
-        action = 'unchanged';
+        action = "unchanged";
         next = current;
       } else {
-        action = 'updated';
+        action = "updated";
         // Preserve everything except the name (identifier, resolvedAddress,
         // audricUsername enrichment, addedAt, source all stay as-is).
-        next = current.map((c, i) => (i === sameAddrIndex ? { ...c, name: trimmedName } : c));
+        next = current.map((c, i) =>
+          i === sameAddrIndex ? { ...c, name: trimmedName } : c,
+        );
       }
     } else {
-      action = 'created';
-      next = [...current, contactFromSaveInput({ name: trimmedName, address: input.address })];
+      action = "created";
+      next = [
+        ...current,
+        contactFromSaveInput({ name: trimmedName, address: input.address }),
+      ];
     }
 
-    if (action !== 'unchanged') {
+    if (action !== "unchanged") {
       // serializeContactList re-validates every row going to disk — guards
       // against programming errors elsewhere in the codebase silently
       // writing malformed contacts.
@@ -163,9 +160,9 @@ export const audricSaveContactTool = buildTool({
     }
 
     const friendlyMsg =
-      action === 'created'
+      action === "created"
         ? `Saved "${trimmedName}" as a contact. You can now send to them by name.`
-        : action === 'updated'
+        : action === "updated"
           ? `Updated contact name to "${trimmedName}".`
           : `"${trimmedName}" is already saved — no change.`;
 
@@ -183,24 +180,19 @@ export const audricSaveContactTool = buildTool({
   },
 });
 
-export const audricListContactsTool = buildTool({
-  name: 'list_contacts',
+export const audricListContactsTool = defineTool({
+  name: "list_contacts",
   description:
-    'List all the contacts the user has saved in their address book. ' +
+    "List all the contacts the user has saved in their address book. " +
     'Use when the user asks "show me my contacts", "who do I have saved", ' +
-    'or before suggesting a recipient. Returns name + address pairs.',
+    "or before suggesting a recipient. Returns name + address pairs.",
   inputSchema: z.object({}),
-  jsonSchema: {
-    type: 'object',
-    properties: {},
-    required: [],
-  },
   isReadOnly: true,
-  permissionLevel: 'auto',
+  permissionLevel: "auto",
 
   call: async (_input, context: ToolContext) => {
     const walletAddress = context.walletAddress;
-    if (!walletAddress) throw new Error('No wallet address in tool context');
+    if (!walletAddress) throw new Error("No wallet address in tool context");
 
     const prefs = await prisma.userPreferences.findUnique({
       where: { address: walletAddress },

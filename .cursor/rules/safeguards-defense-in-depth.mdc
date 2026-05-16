@@ -78,7 +78,7 @@ Loud failures are fine. **Silent successes after a guard fail are not.**
 
 ```typescript
 // ❌ Skip preflight to "speed things up"
-buildTool({ /* no preflight */ });
+defineTool({ /* no preflight */ });
 
 // ❌ Bypass guards because "the LLM won't get it wrong"
 runEngine({ guards: [] });

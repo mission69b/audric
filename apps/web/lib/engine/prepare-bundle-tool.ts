@@ -14,27 +14,32 @@
  * design + rationale.
  */
 
-import { buildTool, MAX_BUNDLE_OPS, VALID_PAIRS, getTelemetrySink } from '@t2000/engine';
-import type { ToolContext, ToolResult } from '@t2000/engine';
-import { getSwapQuote, type SerializedCetusRoute } from '@t2000/sdk';
-import { z } from 'zod';
-import { randomUUID } from 'node:crypto';
+import {
+  defineTool,
+  MAX_BUNDLE_OPS,
+  VALID_PAIRS,
+  getTelemetrySink,
+} from "@t2000/engine";
+import type { ToolContext, ToolResult } from "@t2000/engine";
+import { getSwapQuote, type SerializedCetusRoute } from "@t2000/sdk";
+import { z } from "zod";
+import { randomUUID } from "node:crypto";
 import {
   writeBundleProposal,
   type BundleProposal,
   type BundleProposalStep,
-} from './bundle-proposal-store';
+} from "./bundle-proposal-store";
 
 const KNOWN_WRITE_TOOLS = [
-  'save_deposit',
-  'withdraw',
-  'borrow',
-  'repay_debt',
-  'send_transfer',
-  'swap_execute',
-  'claim_rewards',
-  'volo_stake',
-  'volo_unstake',
+  "save_deposit",
+  "withdraw",
+  "borrow",
+  "repay_debt",
+  "send_transfer",
+  "swap_execute",
+  "claim_rewards",
+  "volo_stake",
+  "volo_unstake",
 ] as const;
 
 /**
@@ -48,31 +53,37 @@ const KNOWN_WRITE_TOOLS = [
  * TODO(SPEC 14 Phase 3): switch to `import { inferProducerOutputAsset }
  * from '@t2000/engine'` once engine ≥ 1.15 ships those exports.
  */
-function inferProducerOutputAsset(toolName: string, input: unknown): string | null {
-  if (typeof input !== 'object' || input === null) return null;
+function inferProducerOutputAsset(
+  toolName: string,
+  input: unknown,
+): string | null {
+  if (typeof input !== "object" || input === null) return null;
   const i = input as Record<string, unknown>;
-  if (toolName === 'swap_execute') {
-    return typeof i.to === 'string' ? i.to.toLowerCase() : null;
+  if (toolName === "swap_execute") {
+    return typeof i.to === "string" ? i.to.toLowerCase() : null;
   }
-  if (toolName === 'withdraw' || toolName === 'borrow') {
-    return typeof i.asset === 'string' ? i.asset.toLowerCase() : 'usdc';
+  if (toolName === "withdraw" || toolName === "borrow") {
+    return typeof i.asset === "string" ? i.asset.toLowerCase() : "usdc";
   }
   return null;
 }
 
 /** See `inferProducerOutputAsset` JSDoc — same retirement plan. */
-function inferConsumerInputAsset(toolName: string, input: unknown): string | null {
-  if (typeof input !== 'object' || input === null) return null;
+function inferConsumerInputAsset(
+  toolName: string,
+  input: unknown,
+): string | null {
+  if (typeof input !== "object" || input === null) return null;
   const i = input as Record<string, unknown>;
   if (
-    toolName === 'send_transfer' ||
-    toolName === 'save_deposit' ||
-    toolName === 'repay_debt'
+    toolName === "send_transfer" ||
+    toolName === "save_deposit" ||
+    toolName === "repay_debt"
   ) {
-    return typeof i.asset === 'string' ? i.asset.toLowerCase() : 'usdc';
+    return typeof i.asset === "string" ? i.asset.toLowerCase() : "usdc";
   }
-  if (toolName === 'swap_execute') {
-    return typeof i.from === 'string' ? i.from.toLowerCase() : null;
+  if (toolName === "swap_execute") {
+    return typeof i.from === "string" ? i.from.toLowerCase() : null;
   }
   return null;
 }
@@ -123,7 +134,7 @@ type PrepareBundleData =
     }
   | {
       ok: false;
-      reason: 'no_session' | 'no_wallet';
+      reason: "no_session" | "no_wallet";
       details: string;
     };
 
@@ -136,27 +147,27 @@ type PrepareBundleData =
 function summarizeBundle(steps: StepInput[]): string {
   const parts = steps.map((s) => {
     const i = s.input;
-    if (s.toolName === 'withdraw') {
-      return `withdraw ${i.amount ?? '?'} ${(i.asset as string | undefined) ?? 'USDC'}`;
+    if (s.toolName === "withdraw") {
+      return `withdraw ${i.amount ?? "?"} ${(i.asset as string | undefined) ?? "USDC"}`;
     }
-    if (s.toolName === 'save_deposit') {
-      return `save ${i.amount ?? '?'} ${(i.asset as string | undefined) ?? 'USDC'}`;
+    if (s.toolName === "save_deposit") {
+      return `save ${i.amount ?? "?"} ${(i.asset as string | undefined) ?? "USDC"}`;
     }
-    if (s.toolName === 'borrow') {
-      return `borrow ${i.amount ?? '?'} ${(i.asset as string | undefined) ?? 'USDC'}`;
+    if (s.toolName === "borrow") {
+      return `borrow ${i.amount ?? "?"} ${(i.asset as string | undefined) ?? "USDC"}`;
     }
-    if (s.toolName === 'repay_debt') {
-      return `repay ${i.amount ?? '?'} ${(i.asset as string | undefined) ?? 'USDC'}`;
+    if (s.toolName === "repay_debt") {
+      return `repay ${i.amount ?? "?"} ${(i.asset as string | undefined) ?? "USDC"}`;
     }
-    if (s.toolName === 'send_transfer') {
-      return `send ${i.amount ?? '?'} ${(i.asset as string | undefined) ?? 'USDC'}`;
+    if (s.toolName === "send_transfer") {
+      return `send ${i.amount ?? "?"} ${(i.asset as string | undefined) ?? "USDC"}`;
     }
-    if (s.toolName === 'swap_execute') {
-      return `swap ${i.amount ?? '?'} ${i.from ?? '?'} → ${i.to ?? '?'}`;
+    if (s.toolName === "swap_execute") {
+      return `swap ${i.amount ?? "?"} ${i.from ?? "?"} → ${i.to ?? "?"}`;
     }
     return s.toolName;
   });
-  return parts.join(' → ');
+  return parts.join(" → ");
 }
 
 /**
@@ -167,7 +178,7 @@ function summarizeBundle(steps: StepInput[]): string {
  */
 function readSessionId(context: ToolContext): string | null {
   const sid = context.env?.SESSION_ID;
-  return typeof sid === 'string' && sid.length > 0 ? sid : null;
+  return typeof sid === "string" && sid.length > 0 ? sid : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -226,12 +237,12 @@ interface SwapExecuteStepInput {
 }
 
 function isSwapExecuteInput(input: unknown): input is SwapExecuteStepInput {
-  if (typeof input !== 'object' || input === null) return false;
+  if (typeof input !== "object" || input === null) return false;
   const i = input as Record<string, unknown>;
   return (
-    typeof i.amount === 'number' &&
-    typeof i.from === 'string' &&
-    typeof i.to === 'string'
+    typeof i.amount === "number" &&
+    typeof i.from === "string" &&
+    typeof i.to === "string"
   );
 }
 
@@ -249,9 +260,9 @@ async function fetchPlanTimeRouteForStep(
   const sink = getTelemetrySink();
 
   if (!isSwapExecuteInput(input)) {
-    sink.counter('audric.bundle.plan_time_route_fetch', {
-      outcome: 'skipped',
-      reason: 'invalid_input',
+    sink.counter("audric.bundle.plan_time_route_fetch", {
+      outcome: "skipped",
+      reason: "invalid_input",
       step_index: String(stepIndex),
     });
     return null;
@@ -267,31 +278,31 @@ async function fetchPlanTimeRouteForStep(
       byAmountIn: input.byAmountIn,
     });
     const elapsed = Date.now() - start;
-    sink.histogram('audric.bundle.plan_time_route_fetch_ms', elapsed, {
+    sink.histogram("audric.bundle.plan_time_route_fetch_ms", elapsed, {
       step_index: String(stepIndex),
     });
 
     if (!quote.serializedRoute) {
-      sink.counter('audric.bundle.plan_time_route_fetch', {
-        outcome: 'skipped',
-        reason: 'no_route_in_quote',
+      sink.counter("audric.bundle.plan_time_route_fetch", {
+        outcome: "skipped",
+        reason: "no_route_in_quote",
         step_index: String(stepIndex),
       });
       return null;
     }
 
-    sink.counter('audric.bundle.plan_time_route_fetch', {
-      outcome: 'success',
+    sink.counter("audric.bundle.plan_time_route_fetch", {
+      outcome: "success",
       step_index: String(stepIndex),
     });
     return quote.serializedRoute;
   } catch (err) {
     const elapsed = Date.now() - start;
-    sink.histogram('audric.bundle.plan_time_route_fetch_ms', elapsed, {
+    sink.histogram("audric.bundle.plan_time_route_fetch_ms", elapsed, {
       step_index: String(stepIndex),
     });
-    sink.counter('audric.bundle.plan_time_route_fetch', {
-      outcome: 'failure',
+    sink.counter("audric.bundle.plan_time_route_fetch", {
+      outcome: "failure",
       step_index: String(stepIndex),
     });
     // Cetus aggregator hiccup OR resolveTokenType rejection —
@@ -318,87 +329,62 @@ async function fetchPlanTimeRoutes(
   steps: ReadonlyArray<{ toolName: string; input: Record<string, unknown> }>,
 ): Promise<Array<SerializedCetusRoute | null>> {
   const promises = steps.map((step, i) => {
-    if (step.toolName !== 'swap_execute') return Promise.resolve(null);
+    if (step.toolName !== "swap_execute") return Promise.resolve(null);
     return fetchPlanTimeRouteForStep(walletAddress, i, step.input);
   });
   return Promise.all(promises);
 }
 
-export const audricPrepareBundleTool = buildTool({
-  name: 'prepare_bundle',
+export const audricPrepareBundleTool = defineTool({
+  name: "prepare_bundle",
   description:
     `Pre-commit a multi-write Payment Intent (${MAX_BUNDLE_OPS}-op cap) at PLAN time. ` +
-    'Call this ONCE in the plan turn with the full typed step list, then write your text plan ' +
-    'and ask the user to confirm. When the user replies affirmatively, the intent executes ' +
-    'as one atomic Sui transaction without re-emitting the writes. ' +
-    'For single writes (N=1), DO NOT call this — emit the write tool directly. ' +
-    'Validates: (a) 2≤N≤cap. ' +
-    'Chain-mode (auto-populates `inputCoinFromStep`) for whitelisted asset-aligned pairs: ' +
-    'swap_execute→send_transfer, swap_execute→save_deposit, swap_execute→repay_debt, ' +
-    'withdraw→swap_execute, withdraw→send_transfer, borrow→send_transfer, borrow→repay_debt. ' +
-    'Non-chained adjacent steps (e.g. two independent sends) run wallet-mode in the same atomic Payment Intent.',
+    "Call this ONCE in the plan turn with the full typed step list, then write your text plan " +
+    "and ask the user to confirm. When the user replies affirmatively, the intent executes " +
+    "as one atomic Sui transaction without re-emitting the writes. " +
+    "For single writes (N=1), DO NOT call this — emit the write tool directly. " +
+    "Validates: (a) 2≤N≤cap. " +
+    "Chain-mode (auto-populates `inputCoinFromStep`) for whitelisted asset-aligned pairs: " +
+    "swap_execute→send_transfer, swap_execute→save_deposit, swap_execute→repay_debt, " +
+    "withdraw→swap_execute, withdraw→send_transfer, borrow→send_transfer, borrow→repay_debt. " +
+    "Non-chained adjacent steps (e.g. two independent sends) run wallet-mode in the same atomic Payment Intent.",
   inputSchema: z.object({
     steps: z
       .array(stepSchema)
-      .min(2, 'Bundle requires at least 2 writes; for single writes emit the tool directly.')
-      .max(MAX_BUNDLE_OPS, `Bundle cap is ${MAX_BUNDLE_OPS} writes — split longer flows.`)
-      .describe('Ordered list of writes. First step runs first.'),
+      .min(
+        2,
+        "Bundle requires at least 2 writes; for single writes emit the tool directly.",
+      )
+      .max(
+        MAX_BUNDLE_OPS,
+        `Bundle cap is ${MAX_BUNDLE_OPS} writes — split longer flows.`,
+      )
+      .describe("Ordered list of writes. First step runs first."),
     reason: z
       .string()
       .max(200)
       .optional()
-      .describe('Optional 1-line rationale shown on the confirm card.'),
+      .describe("Optional 1-line rationale shown on the confirm card."),
   }),
-  jsonSchema: {
-    type: 'object',
-    properties: {
-      steps: {
-        type: 'array',
-        minItems: 2,
-        maxItems: MAX_BUNDLE_OPS,
-        items: {
-          type: 'object',
-          properties: {
-            toolName: {
-              type: 'string',
-              enum: [...KNOWN_WRITE_TOOLS],
-              description: 'Write tool to execute as part of the bundle.',
-            },
-            input: {
-              type: 'object',
-              description: 'Input args for the write tool. Same shape as if calling the tool directly.',
-            },
-            inputCoinFromStep: {
-              type: 'integer',
-              minimum: 0,
-              description:
-                'Optional. Index of a prior step whose output coin should feed this step\'s input. ' +
-                'When omitted, audric auto-populates this for whitelisted asset-aligned pairs.',
-            },
-          },
-          required: ['toolName', 'input'],
-        },
-        description: 'Ordered list of writes for the atomic bundle.',
-      },
-      reason: { type: 'string', description: 'Optional 1-line rationale.' },
-    },
-    required: ['steps'],
-  },
   isReadOnly: true,
-  permissionLevel: 'auto',
+  permissionLevel: "auto",
 
-  call: async (input, context: ToolContext): Promise<ToolResult<PrepareBundleData>> => {
+  call: async (
+    input,
+    context: ToolContext,
+  ): Promise<ToolResult<PrepareBundleData>> => {
     const sessionId = readSessionId(context);
     if (!sessionId) {
       return {
         data: {
           ok: false,
-          reason: 'no_session',
+          reason: "no_session",
           details:
-            'prepare_bundle was called outside an active session. ' +
-            'This is an internal error — fall back to emitting the writes directly.',
+            "prepare_bundle was called outside an active session. " +
+            "This is an internal error — fall back to emitting the writes directly.",
         },
-        displayText: 'Bundle preparation failed (no session). Emit writes directly.',
+        displayText:
+          "Bundle preparation failed (no session). Emit writes directly.",
       };
     }
 
@@ -407,10 +393,10 @@ export const audricPrepareBundleTool = buildTool({
       return {
         data: {
           ok: false,
-          reason: 'no_wallet',
-          details: 'No wallet in tool context. Cannot prepare bundle.',
+          reason: "no_wallet",
+          details: "No wallet in tool context. Cannot prepare bundle.",
         },
-        displayText: 'Bundle preparation failed (no wallet).',
+        displayText: "Bundle preparation failed (no wallet).",
       };
     }
 
@@ -467,7 +453,9 @@ export const audricPrepareBundleTool = buildTool({
       }
     }
 
-    const validatedChain = wiredSteps.some((s) => s.inputCoinFromStep !== undefined);
+    const validatedChain = wiredSteps.some(
+      (s) => s.inputCoinFromStep !== undefined,
+    );
 
     const bundleId = randomUUID();
     const now = Date.now();
