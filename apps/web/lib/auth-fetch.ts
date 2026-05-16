@@ -62,10 +62,50 @@ function readSessionJwt(): string | null {
 }
 
 /**
+ * Custom event name fired by `authFetch` when the server returns HTTP
+ * 401. `useZkLogin` listens for this and immediately flips status to
+ * `'expired'`, which `AuthGuard` reads to redirect to `/` for re-login.
+ *
+ * Why an event (not a direct setState):
+ *   - `authFetch` is a plain function used from canvas components, hooks,
+ *     and one-off fetches across the app — it has no React-context handle
+ *     to call setState on.
+ *   - `useZkLogin` is the canonical owner of session lifecycle state.
+ *     A `window`-scoped CustomEvent keeps the producer/consumer decoupled
+ *     and lets multiple `useZkLogin` instances (rare, but defensible)
+ *     hear the same signal.
+ *
+ * Why we still need this even though `useZkLogin` polls every 60s:
+ *   - The 60s poll uses the JWT's `exp` claim (client-side decode). It
+ *     misses two real cases:
+ *       a) Clock skew — server's `jose.jwtVerify` is stricter than the
+ *          client's 60s tolerance, so a JWT can be "valid" client-side
+ *          but rejected by the server.
+ *       b) Race — canvas fetches that fire in the 60s window between
+ *          actual expiry and the next poll tick will 401 silently
+ *          without expiring the session.
+ *   - Server-confirmed 401 is the authoritative signal that the session
+ *     can no longer authenticate. Reacting to it immediately is the only
+ *     race-free way to keep client state in sync with server reality.
+ */
+export const ZKLOGIN_EXPIRED_EVENT = 'zklogin:expired';
+
+export interface ZkLoginExpiredDetail {
+  /** URL of the request that returned 401 (helpful for telemetry / debug). */
+  url: string;
+}
+
+/**
  * Drop-in replacement for `fetch` that automatically attaches the
  * caller's zkLogin JWT (`x-zklogin-jwt` header). Same signature as the
  * native `fetch`. Use this for ANY API request that targets a route
  * gated by `authenticateRequest` / `assertOwns` / `assertOwnsOrWatched`.
+ *
+ * Detects HTTP 401 responses (server says "JWT invalid / expired") and
+ * fires a `'zklogin:expired'` window event so `useZkLogin` can flip
+ * status to `'expired'` and `AuthGuard` can redirect to re-login. This
+ * runs side-by-side with the original promise — callers receive the
+ * unchanged `Response` and can still handle 401 themselves if they want.
  *
  * Example:
  * ```ts
@@ -79,5 +119,30 @@ export function authFetch(input: RequestInfo | URL, init?: RequestInit): Promise
   if (jwt && !headers.has('x-zklogin-jwt')) {
     headers.set('x-zklogin-jwt', jwt);
   }
-  return fetch(input, { ...init, headers });
+  const promise = fetch(input, { ...init, headers });
+
+  // Fire-and-forget 401 detector. We attach to a `.then` that runs in
+  // parallel with whatever the caller does with the promise — the
+  // caller still receives the original `Response` reference. Network
+  // errors are intentionally swallowed (a thrown fetch is NOT an auth
+  // failure; let the caller's `.catch` handle them as before).
+  if (typeof window !== 'undefined') {
+    promise.then(
+      (res) => {
+        if (res.status === 401) {
+          const url = typeof input === 'string' ? input : input instanceof URL ? input.href : String(input);
+          window.dispatchEvent(
+            new CustomEvent<ZkLoginExpiredDetail>(ZKLOGIN_EXPIRED_EVENT, {
+              detail: { url },
+            }),
+          );
+        }
+      },
+      () => {
+        /* network error — irrelevant for expiry detection */
+      },
+    );
+  }
+
+  return promise;
 }

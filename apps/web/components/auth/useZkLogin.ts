@@ -12,6 +12,7 @@ import {
   isSessionExpiringSoon,
   isJwtExpired,
 } from '@/lib/zklogin';
+import { ZKLOGIN_EXPIRED_EVENT } from '@/lib/auth-fetch';
 
 export type ZkLoginStatus =
   | 'loading'       // checking localStorage for existing session
@@ -105,6 +106,20 @@ export function useZkLogin(): UseZkLoginReturn {
     const id = window.setInterval(check, 60_000);
     return () => window.clearInterval(id);
   }, [session, currentEpoch]);
+
+  // SPEC 30 followup — server-confirmed 401 from any `authFetch` call
+  // immediately flips status to 'expired'. This closes the race where
+  // a canvas / hook fetch fires in the gap between actual JWT expiry
+  // and the next 60s poll tick — without this, the user sees broken
+  // canvases and stale data instead of getting redirected to re-login.
+  //
+  // See `lib/auth-fetch.ts` for the producer side.
+  useEffect(() => {
+    if (!session) return;
+    const handleExpired = () => setStatus('expired');
+    window.addEventListener(ZKLOGIN_EXPIRED_EVENT, handleExpired);
+    return () => window.removeEventListener(ZKLOGIN_EXPIRED_EVENT, handleExpired);
+  }, [session]);
 
   const expiringSoon = useMemo(() => {
     if (!session || currentEpoch === 0) return false;
