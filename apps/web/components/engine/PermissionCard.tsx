@@ -962,6 +962,10 @@ export function PermissionCard({
               // pinned older or NAVI MCP was unavailable at emit-time.
               borrowApyBps: action.borrowApyBps,
               currentHF: action.currentHF,
+              // [Day 14c / 2026-05-16] projectedHF — engine 1.34.13+
+              // computes the HF AFTER the write executes. HFRow renders
+              // "current → projected" when present.
+              projectedHF: action.projectedHF,
             },
           );
           if (v2Body) return v2Body;

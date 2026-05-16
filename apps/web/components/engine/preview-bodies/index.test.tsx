@@ -377,3 +377,100 @@ describe('Day 14a: currentHF renders Health factor row on relevant cards', () =>
     expect(out!.container.textContent ?? '').not.toContain('Health factor');
   });
 });
+
+// ─── Day 14c — projectedHF renders "current → projected" ──────────────────
+
+describe('Day 14c: projectedHF renders HF impact preview', () => {
+  it('BorrowPreviewBody renders "current → projected" when projectedHF present', () => {
+    const node = renderPreviewBody(
+      'borrow',
+      { amount: 5 },
+      { borrowApyBps: 467, currentHF: 4.25, projectedHF: 3.4 },
+    );
+    const out = rb(node);
+    const text = out!.container.textContent ?? '';
+    expect(text).toContain('Health factor');
+    expect(text).toContain('4.25');
+    expect(text).toContain('→');
+    expect(text).toContain('3.40');
+  });
+
+  it('SaveDepositPreviewBody renders "current → projected"', () => {
+    const node = renderPreviewBody(
+      'save_deposit',
+      { amount: 50 },
+      { currentHF: 4.25, projectedHF: 6.375 },
+    );
+    const out = rb(node);
+    const text = out!.container.textContent ?? '';
+    expect(text).toContain('4.25');
+    expect(text).toContain('→');
+    expect(text).toContain('6.38');
+  });
+
+  it('WithdrawPreviewBody renders "current → projected"', () => {
+    const node = renderPreviewBody(
+      'withdraw',
+      { amount: 25 },
+      { currentHF: 4.25, projectedHF: 3.1875 },
+    );
+    const out = rb(node);
+    const text = out!.container.textContent ?? '';
+    expect(text).toContain('4.25');
+    expect(text).toContain('→');
+    expect(text).toContain('3.19');
+  });
+
+  it('RepayPreviewBody renders "current → projected" ending at ∞ when fully cleared', () => {
+    const node = renderPreviewBody(
+      'repay_debt',
+      { amount: 20 },
+      { borrowApyBps: 467, currentHF: 4.25, projectedHF: null },
+    );
+    const out = rb(node);
+    const text = out!.container.textContent ?? '';
+    expect(text).toContain('4.25');
+    expect(text).toContain('→');
+    expect(text).toContain('∞');
+  });
+
+  it('null currentHF + finite projectedHF renders "∞ → finite" (∞ before borrow case)', () => {
+    const node = renderPreviewBody(
+      'borrow',
+      { amount: 5 },
+      { borrowApyBps: 467, currentHF: null, projectedHF: 17 },
+    );
+    const out = rb(node);
+    const text = out!.container.textContent ?? '';
+    expect(text).toContain('∞');
+    expect(text).toContain('→');
+    expect(text).toContain('17.00');
+  });
+
+  it('falls back to single value when projectedHF is undefined (engine < 1.34.13)', () => {
+    const node = renderPreviewBody(
+      'borrow',
+      { amount: 5 },
+      { borrowApyBps: 467, currentHF: 3.8 },
+    );
+    const out = rb(node);
+    const text = out!.container.textContent ?? '';
+    expect(text).toContain('Health factor');
+    expect(text).toContain('3.80');
+    expect(text).not.toContain('→');
+  });
+
+  it('uses PROJECTED HF for color tier (worst-case post-write state)', () => {
+    // current=4.25 (success), projected=1.0 (error tier). The color
+    // must reflect projected — that's what the user is approving INTO.
+    const node = renderPreviewBody(
+      'borrow',
+      { amount: 100 },
+      { borrowApyBps: 467, currentHF: 4.25, projectedHF: 1.0 },
+    );
+    const out = rb(node);
+    const html = out!.container.innerHTML;
+    // The outer HFRow span carries the error tier color when projected < 1.1
+    expect(html).toContain('text-error-solid');
+  });
+});

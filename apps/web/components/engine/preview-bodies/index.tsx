@@ -155,28 +155,56 @@ function APYRow({ asset, apyBps, label }: APYRowProps) {
   );
 }
 
-// [Day 14a / 2026-05-16] Compact health-factor row for confirm cards.
-// Uses the same SECTION_LABEL styling as APYRow / FeeRow so the
-// preview body reads as a single ledger. Renders ∞ when HF > 99 (no
-// open debt) to match HFGauge's primitive convention.
-function HFRow({ healthFactor }: { healthFactor: number }) {
-  const display =
-    !Number.isFinite(healthFactor) || healthFactor >= 99
-      ? '∞'
-      : healthFactor.toFixed(2);
-  // Match HFGauge's threshold palette so the inline row carries the
-  // same tier semantics as the full gauge.
-  const color =
-    healthFactor < 1.1
-      ? 'text-error-solid'
-      : healthFactor < 1.5
-        ? 'text-warning-solid'
-        : 'text-success-solid';
+// [Day 14a / 2026-05-16, extended Day 14c / 2026-05-16]
+// Compact health-factor row for confirm cards. Uses the same
+// SECTION_LABEL styling as APYRow / FeeRow so the preview body reads
+// as a single ledger.
+//
+// HF wire semantics (Day 14c, engine 1.34.13+):
+//   - number → finite HF (real debt)
+//   - null   → ∞ sentinel (no debt = infinitely safe)
+//   - undefined → row hides entirely
+//
+// When `projectedHF` is present, renders "current → projected" so the
+// user sees the HF impact before approving. Color tier always reflects
+// the WORST of the two (projection-after, almost always) — that's the
+// state they're approving into.
+function formatHF(hf: number | null): string {
+  if (hf === null || !Number.isFinite(hf) || hf >= 99) return '∞';
+  return hf.toFixed(2);
+}
+
+function hfColor(hf: number | null): string {
+  if (hf === null) return 'text-success-solid';
+  if (hf < 1.1) return 'text-error-solid';
+  if (hf < 1.5) return 'text-warning-solid';
+  return 'text-success-solid';
+}
+
+function HFRow({
+  healthFactor,
+  projected,
+}: {
+  healthFactor: number | null;
+  projected?: number | null;
+}) {
+  const hasProjection = projected !== undefined;
+  const tierTarget = hasProjection ? projected : healthFactor;
+  const color = hfColor(tierTarget);
+
   return (
     <div className="flex justify-between items-baseline">
       <span className={SECTION_LABEL}>Health factor</span>
       <span className={cn('font-mono tabular-nums text-[12px]', color)}>
-        {display}
+        {hasProjection ? (
+          <>
+            <span className="text-fg-muted">{formatHF(healthFactor)}</span>
+            <span className="text-fg-muted px-1">→</span>
+            <span>{formatHF(projected)}</span>
+          </>
+        ) : (
+          formatHF(healthFactor)
+        )}
       </span>
     </div>
   );
@@ -200,12 +228,21 @@ interface PreviewBodyProps {
    */
   borrowApyBps?: number;
   /**
-   * [Day 14a / 2026-05-16] Current health factor from the engine's
-   * PendingAction (1.34.10+). Drives the HF row on borrow / repay /
-   * withdraw / save_deposit when present. No projection — engine does
-   * not yet thread the supplied/borrowed/ltv needed to compute one.
+   * [Day 14a / 2026-05-16, extended Day 14c / 2026-05-16] Current
+   * health factor from the engine's PendingAction (1.34.10+). Drives
+   * the HF row on borrow / repay / withdraw / save_deposit when
+   * present. `null` is the deliberate ∞ sentinel (no debt =
+   * infinitely safe); `undefined` hides the row entirely.
    */
-  currentHF?: number;
+  currentHF?: number | null;
+  /**
+   * [Day 14c / 2026-05-16] Projected health factor AFTER the write
+   * executes. Engine 1.34.13+ computes this in
+   * enrichPendingActionWithLiveData from live NAVI position data +
+   * the input amount. Same `number | null | undefined` semantics as
+   * `currentHF`. When present, HFRow renders "current → projected".
+   */
+  projectedHF?: number | null;
 }
 
 // ─── Per-tool bodies ──────────────────────────────────────────────────────
@@ -214,6 +251,7 @@ export function SaveDepositPreviewBody({
   input,
   ratesOverride,
   currentHF,
+  projectedHF,
 }: PreviewBodyProps): ReactNode {
   const amount = typeof input.amount === 'number' ? input.amount : 0;
   const asset = resolveAsset(input as BasePreviewInput, 'USDC');
@@ -229,7 +267,9 @@ export function SaveDepositPreviewBody({
         label="Deposit"
       />
       <APYRow asset={asset} apyBps={apyBps} label="Pool APY" />
-      {currentHF !== undefined && <HFRow healthFactor={currentHF} />}
+      {currentHF !== undefined && (
+        <HFRow healthFactor={currentHF} projected={projectedHF} />
+      )}
       <FeeRow label={fee.label} usdValue={fee.usdFor(amount)} />
     </div>
   );
@@ -239,11 +279,11 @@ export function WithdrawPreviewBody({
   input,
   ratesOverride,
   currentHF,
+  projectedHF,
 }: PreviewBodyProps): ReactNode {
   const amount = typeof input.amount === 'number' ? input.amount : 0;
   const asset = resolveAsset(input as BasePreviewInput, 'USDC');
   const apyBps = resolveApyBpsForAsset(asset, ratesOverride);
-  // No fee row — withdraw is fee-free per audric prepare route.
   return (
     <div className="space-y-3">
       <AssetAmountBlock
@@ -253,7 +293,9 @@ export function WithdrawPreviewBody({
         label="Withdraw"
       />
       <APYRow asset={asset} apyBps={apyBps} label="Yield foregone" />
-      {currentHF !== undefined && <HFRow healthFactor={currentHF} />}
+      {currentHF !== undefined && (
+        <HFRow healthFactor={currentHF} projected={projectedHF} />
+      )}
     </div>
   );
 }
@@ -262,6 +304,7 @@ export function BorrowPreviewBody({
   input,
   borrowApyBps,
   currentHF,
+  projectedHF,
 }: PreviewBodyProps): ReactNode {
   const amount = typeof input.amount === 'number' ? input.amount : 0;
   const asset = resolveAsset(input as BasePreviewInput, 'USDC');
@@ -281,7 +324,9 @@ export function BorrowPreviewBody({
           Variable rate — locked at execute time.
         </div>
       )}
-      {currentHF !== undefined && <HFRow healthFactor={currentHF} />}
+      {currentHF !== undefined && (
+        <HFRow healthFactor={currentHF} projected={projectedHF} />
+      )}
       <FeeRow label={fee.label} usdValue={fee.usdFor(amount)} />
     </div>
   );
@@ -291,10 +336,10 @@ export function RepayPreviewBody({
   input,
   borrowApyBps,
   currentHF,
+  projectedHF,
 }: PreviewBodyProps): ReactNode {
   const amount = typeof input.amount === 'number' ? input.amount : 0;
   const asset = resolveAsset(input as BasePreviewInput, 'USDC');
-  // No fee row — repay is fee-free per audric prepare route.
   return (
     <div className="space-y-3">
       <AssetAmountBlock
@@ -310,7 +355,9 @@ export function RepayPreviewBody({
           Clears principal at the current variable borrow rate.
         </div>
       )}
-      {currentHF !== undefined && <HFRow healthFactor={currentHF} />}
+      {currentHF !== undefined && (
+        <HFRow healthFactor={currentHF} projected={projectedHF} />
+      )}
     </div>
   );
 }
@@ -394,8 +441,10 @@ export function renderPreviewBody(
     ratesOverride?: { usdcApyBps?: number; usdsuiApyBps?: number };
     /** [Day 14a] Live borrow APY (bps) from PendingAction. */
     borrowApyBps?: number;
-    /** [Day 14a] Current health factor from PendingAction. */
-    currentHF?: number;
+    /** [Day 14a] Current health factor from PendingAction. `null` = ∞. */
+    currentHF?: number | null;
+    /** [Day 14c] Projected health factor from PendingAction. `null` = ∞. */
+    projectedHF?: number | null;
   },
 ): ReactNode | null {
   const Body = PREVIEW_BODIES[toolName];
@@ -406,6 +455,7 @@ export function renderPreviewBody(
       ratesOverride={options?.ratesOverride}
       borrowApyBps={options?.borrowApyBps}
       currentHF={options?.currentHF}
+      projectedHF={options?.projectedHF}
     />
   );
 }
