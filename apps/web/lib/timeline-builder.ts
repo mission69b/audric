@@ -526,6 +526,14 @@ export function applyEventToTimeline(
     // reasoning rows without injecting a synthetic block.
     case 'harness_shape':
     case 'stream_state':
+    // [@t2000/engine v2.2.0 / SPEC 37 v0.7a Phase 5 Slice C] stream_started
+    // is a correlation-id event emitted FIRST when the engine is wired with
+    // `EngineConfig.streamCheckpointStore` — pure plumbing, no timeline
+    // surface. Audric (today) does NOT wire a checkpoint store, so this
+    // case is currently unreachable; the no-op here is the forward-compat
+    // landing pad so a future audric-side store wire-up doesn't break
+    // exhaustiveness.
+    case 'stream_started':
     case 'usage':
     case 'error':
       return current;
