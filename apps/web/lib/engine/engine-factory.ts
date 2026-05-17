@@ -54,6 +54,7 @@ import { audricMppServicesTool } from './mpp-services-tool';
 import { audricPrepareBundleTool } from './prepare-bundle-tool';
 import { composePdfTool } from './compose-pdf-tool';
 import { composeImageGridTool } from './compose-image-grid-tool';
+import { isMemoryPathEnabled } from './memory-path-flag';
 import { detectPriorPlanContext, isAffirmativeConfirmReply } from './confirm-detection';
 import { emitPlanContextPromoted } from './plan-context-metrics';
 import { isHarnessV9Enabled } from '@/lib/interactive-harness';
@@ -664,9 +665,15 @@ export async function createEngine(
   // below) always returns [] from recall — so layer 3 is empty until
   // MemWal is wired. Default OFF means production traffic stays on the
   // legacy single-string-system path.
-  const memoryPathEnabled =
-    env.ENGINE_MEMORY_PATH_ENABLED === '1' ||
-    env.ENGINE_MEMORY_PATH_ENABLED?.toLowerCase() === 'true';
+  //
+  // [S.154 / B6-1 mitigation — 2026-05-18] Flag-parsing logic extracted
+  // to `isMemoryPathEnabled()` in `./memory-path-flag` so it's unit-tested
+  // independently of `createEngine` (the original inline parse had no
+  // direct test coverage — only the operator-side `[memory-path] enabled`
+  // log served as verification).
+  const memoryPathEnabled = isMemoryPathEnabled(
+    env.ENGINE_MEMORY_PATH_ENABLED,
+  );
 
   // Shared dynamic context inputs — used by both legacy and memory paths.
   const dynamicContextInputs = {
