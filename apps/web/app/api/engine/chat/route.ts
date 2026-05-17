@@ -692,7 +692,37 @@ export async function POST(request: NextRequest) {
               // Append synthetic user + assistant messages to the
               // engine's ledger so the chat-history UI and the next
               // LLM turn see a coherent transcript.
+              //
+              // [@t2000/engine v2.0.5 / 2026-05-17] CRITICAL — the
+              // assistant message MUST include a `tool_use` block for
+              // every step in the fast-path bundle, with IDs matching
+              // `fastPath.action.steps[i].toolUseId`. Without these,
+              // the engine's bundle-resume `user(tool_results)` push
+              // (engine.ts:resumeWithToolResult) orphans every result
+              // by Anthropic's "tool_result must follow matching
+              // tool_use in the prior message" contract, and
+              // Anthropic rejects EVERY subsequent turn in the
+              // session with:
+              //
+              //   messages.N.content.M: unexpected `tool_use_id`
+              //   found in `tool_result` blocks: fastpath_...
+              //
+              // Production trace 2026-05-17, session
+              // s_1778993279816_47a9814c835d. Engine v2.0.5 also
+              // ports a `validateHistory` safety net that strips
+              // these blocks before sending to Anthropic, but the
+              // fix at the SOURCE is here — keeping history valid by
+              // construction is better than relying on a downstream
+              // sanitizer.
               const priorMessages = engine.getMessages();
+              const syntheticToolUses = (fastPath.action.steps ?? []).map(
+                (step) => ({
+                  type: 'tool_use' as const,
+                  id: step.toolUseId,
+                  name: step.toolName,
+                  input: step.input,
+                }),
+              );
               engine.loadMessages([
                 ...priorMessages,
                 {
@@ -701,7 +731,10 @@ export async function POST(request: NextRequest) {
                 },
                 {
                   role: 'assistant',
-                  content: [{ type: 'text', text: fastPath.syntheticAssistantText }],
+                  content: [
+                    { type: 'text', text: fastPath.syntheticAssistantText },
+                    ...syntheticToolUses,
+                  ],
                 },
               ]);
 
