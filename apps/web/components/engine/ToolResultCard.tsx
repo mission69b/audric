@@ -2,7 +2,12 @@
 
 import type { ToolExecution } from '@/lib/engine-types';
 import { extractData } from './cards/primitives';
-import { RatesCard } from './cards/RatesCard';
+// [v2.0.3 cleanup / 2026-05-17] V1 RatesCard / SwapQuoteCard /
+// PendingRewardsCard / PortfolioCard deleted after V2 became the
+// default across all card surfaces (commit removing the
+// NEXT_PUBLIC_*_CARD_V2 flags). V1 BalanceCard + HealthCard stay
+// imported below — they're still the renderer for the post-write
+// surface variant (different data shape than the read-tool V2 cards).
 import { RatesCardV2 } from './cards/RatesCardV2';
 import { BalanceCard } from './cards/BalanceCard';
 import { BalanceCardV2 } from './cards/BalanceCardV2';
@@ -10,13 +15,11 @@ import { SwapQuoteCardV2 } from './cards/SwapQuoteCardV2';
 import { HealthCardV2 } from './cards/HealthCardV2';
 import { PendingRewardsCardV2 } from './cards/PendingRewardsCardV2';
 import { SavingsCard } from './cards/SavingsCard';
-import { PortfolioCard } from './cards/PortfolioCard';
 import { PortfolioCardV2 } from './cards/PortfolioCardV2';
 import { ExplainTxCard } from './cards/ExplainTxCard';
 import { TransactionReceiptCard } from './cards/TransactionReceiptCard';
 import { HealthCard } from './cards/HealthCard';
 import { TransactionHistoryCard } from './cards/TransactionHistoryCard';
-import { SwapQuoteCard } from './cards/SwapQuoteCard';
 import { PaymentLinkCard } from './cards/PaymentLinkCard';
 import { InvoiceCard } from './cards/InvoiceCard';
 import { ServiceCatalogCard } from './cards/ServiceCatalogCard';
@@ -28,7 +31,6 @@ import { ProtocolCard } from './cards/ProtocolCard';
 import { PriceCard } from './cards/PriceCard';
 import { ConfirmationChip } from './cards/ConfirmationChip';
 import { SuinsResolution } from './cards/SuinsResolution';
-import { PendingRewardsCard } from './cards/PendingRewardsCard';
 import { DownloadableArtifact } from './cards/DownloadableArtifact';
 import { renderMppService, type PayApiResult } from './cards/mpp';
 

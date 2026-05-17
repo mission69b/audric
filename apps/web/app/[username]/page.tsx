@@ -5,7 +5,7 @@ import { SuinsRpcError } from '@t2000/engine';
 import { resolveSuinsCached } from '@/lib/suins-cache';
 import { SuiPayQr } from '@/components/pay/SuiPayQr';
 import { AudricMark } from '@/components/ui/AudricMark';
-import { PortfolioCard } from '@/components/engine/cards/PortfolioCard';
+import { PortfolioCardV2 } from '@/components/engine/cards/PortfolioCardV2';
 import { AddressCopyButton } from './AddressCopyButton';
 import { SendToHandleButton } from './SendToHandleButton';
 import { getSuiRpcUrl } from '@/lib/sui-rpc';
@@ -351,7 +351,7 @@ export default async function UsernamePage({ params }: UsernamePageProps) {
 
         {portfolioCardData ? (
           <div className="mt-4">
-            <PortfolioCard data={portfolioCardData} />
+            <PortfolioCardV2 data={portfolioCardData} />
           </div>
         ) : null}
 
