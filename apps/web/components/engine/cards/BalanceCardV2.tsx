@@ -114,7 +114,31 @@ export function BalanceCardV2({
   defaultUsdsuiApyBps = 520,
 }: BalanceCardV2Props) {
   const holdings = pickHoldings(data);
-  const walletUsd = data.available ?? 0;
+
+  // [v2.0.3 / 2026-05-17] Wallet header fallback for rehydration paths.
+  //
+  // Prefer `data.available` when the producer sent one (the engine's
+  // `balance_check` tool always does). Fall back to summing the visible
+  // breakdown rows when it's missing.
+  //
+  // The fallback fixes audric's session-rehydration bug: the synthetic
+  // balance_check prefetch in `engine-factory.ts` ships
+  // `holdings + savings + total` but omits `available`. Pre-fix,
+  // `data.available ?? 0` defaulted to $0, rendering "Wallet $0.00"
+  // above a $15 holdings breakdown — visibly inconsistent and reading
+  // like a data load failure.
+  //
+  // We do NOT use the holdings sum when `available > 0` is explicitly
+  // set, because the engine's `available` is gas-reserved (subtracts
+  // ~0.5 SUI worth) and may also include dust holdings the V2 card's
+  // 6-row + $0.01 dust cap doesn't render; using `available` keeps the
+  // header consistent with the engine's contract on the happy path.
+  const holdingsSumUsd = holdings.reduce((sum, h) => sum + h.usdValue, 0);
+  const walletUsd =
+    data.available != null && data.available > 0
+      ? data.available
+      : holdingsSumUsd;
+
   const savingsUsd = data.savings ?? 0;
   const debtUsd = data.debt ?? 0;
   const totalUsd =
