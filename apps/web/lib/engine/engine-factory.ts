@@ -19,7 +19,6 @@ import {
   applyToolFlags,
   DEFAULT_GUARD_CONFIG,
   DEFAULT_PERMISSION_CONFIG,
-  RecipeRegistry,
   type AddressPortfolio,
   type SessionData,
   type SessionStore,
@@ -36,7 +35,7 @@ import { env } from '@/lib/env';
 import { getSuiRpcUrl } from '@/lib/sui-rpc';
 import './init-engine-stores';
 import { UpstashSessionStore } from './upstash-session-store';
-import { getRecipeRegistry } from './recipes';
+import { UpstashStreamCheckpointStore } from './upstash-stream-checkpoint-store';
 import { UpstashConversationStateStore } from './upstash-conversation-state-store';
 import { incrementSessionSpend } from './session-spend';
 import { applyAccountAgeGate, computeAccountAgeDays } from './account-age-gate';
@@ -317,6 +316,12 @@ export interface CreateEngineOpts {
    * pending_action emission, which DOES need the planner's reasoning.
    */
   isPostWriteResume?: boolean;
+  /**
+   * [SPEC 37 v0.7a Phase 5.5 / engine v2.2.0] Replay a checkpointed live
+   * stream from `streamCheckpointStore` (Upstash) before closing. Chat
+   * route passes this on reconnect/resume POSTs with an empty `message`.
+   */
+  resumeStreamId?: string;
 }
 
 export async function createEngine(
@@ -572,7 +577,7 @@ export async function createEngine(
   const audricCompositionTools: Tool[] = [composePdfTool, composeImageGridTool];
 
   // [SPEC 8 v0.5.1 hotfix] Register the host-side `update_todo` tool that
-  // the system prompt teaches RICH / recipe-match turns to call. The engine
+  // the system prompt teaches RICH / skill-intent turns to call. The engine
   // exports it as opt-in (see packages/engine/src/index.ts ~226-228); without
   // this line, the LLM physically cannot comply with the prompt and Gate 7
   // (RICH todo emission ≥50%) hard-fails at 0%. See SPEC 8 v0.5.2 patch
@@ -654,10 +659,11 @@ export async function createEngine(
 
   const systemPrompt = buildCachedSystemPrompt([STATIC_SYSTEM_PROMPT], dynamicBlock);
 
-  // RE-1.2: Classify effort level based on message content + matched recipe
-  const recipeRegistry = getRecipeRegistry();
-  const matchedRecipe = opts.message ? recipeRegistry.match(opts.message) : null;
-
+  // RE-1.2: Classify effort level based on message content + session writes
+  // SPEC v0.7a Phase 6 (D-4 a) — recipes deleted; engine `classifyEffort`
+  // dropped its `matchedRecipe` arg. Recipe-name boost paths absorbed into
+  // engine message regex (see classify-effort.ts) and the audric clamp
+  // (RICH_INTENT exclusion below).
   const sessionWriteCount = opts.session?.messages?.filter(
     (m) => m.role === 'assistant' && Array.isArray(m.content) &&
       m.content.some((b: { type: string }) => b.type === 'tool_use'),
@@ -665,11 +671,10 @@ export async function createEngine(
 
   const model = MODEL_OVERRIDE ?? SONNET_MODEL;
   const classifierEffort = opts.message
-    ? classifyEffort(model, opts.message, matchedRecipe, sessionWriteCount)
+    ? classifyEffort(model, opts.message, sessionWriteCount)
     : 'medium';
   const clamp = clampProposalEffort({
     classifierEffort,
-    matchedRecipe,
     message: opts.message,
     sessionWriteCount,
   });
@@ -745,7 +750,6 @@ export async function createEngine(
     ? `write proposal in active session → clamped high → medium (S.126 Tier 2f)`
     : buildHarnessRationale({
         effort,
-        matchedRecipeName: matchedRecipe?.name,
         sessionWriteCount,
         message: opts.message,
       });
@@ -796,7 +800,6 @@ export async function createEngine(
     toolChoice: 'auto' as const,
     costTracker: { budgetLimitUsd: 0.50 },
     guards: DEFAULT_GUARD_CONFIG,
-    recipes: recipeRegistry,
     priceCache,
     permissionConfig,
     // Saved contacts thread into both `guardAddressSource` (treats a
@@ -840,6 +843,18 @@ export async function createEngine(
         }
       : undefined,
     onGuardFired: opts.onGuardFired,
+    // [SPEC 37 v0.7a Phase 5.5 / v2.2.0] Redis checkpoint log for live
+    // SSE reconnect (session-scoped). Omit on post-write resume narrate
+    // streams — those are short Haiku-only turns that should not pay
+    // append I/O or allocate streamIds.
+    ...(opts.sessionId && !opts.isPostWriteResume
+      ? {
+          streamCheckpointStore: new UpstashStreamCheckpointStore({
+            namespace: opts.sessionId,
+          }),
+        }
+      : {}),
+    ...(opts.resumeStreamId ? { resumeStreamId: opts.resumeStreamId } : {}),
     // [v1.5] Auto-inject fresh balance/savings/health reads after every
     // successful write so post-write narration cites real numbers. See
     // `POST_WRITE_REFRESH_MAP` above.
@@ -995,29 +1010,44 @@ export function generateSessionId(): string {
 //     single update_todo) already constrain proposal SHAPE.
 //   - The 14 engine guards (Safety > Financial > UX) catch safety issues
 //     at preflight + dispatch regardless of effort.
-//   - Recipe-driven complex writes (`safe_borrow`, `bulk_mail`, any recipe
-//     with ≥3 steps) still route to `high` via the engine classifier's
-//     recipe-match path (lines 26-27 of classify-effort.ts) — those bypass
-//     this clamp because `matchedRecipe` is set.
+//   - Rich-intent writes (rebalance / safe-borrow / emergency-withdraw /
+//     account-report / swap-and-save) still route to `high` via the
+//     engine classifier's message-regex paths. The RICH_INTENT guard
+//     below preserves that by excluding rich-intent messages from the clamp.
+//
+// SPEC v0.7a Phase 6 (D-4 a / 2026-05-17) — `matchedRecipe` arg removed;
+// recipes deleted in Phase 6 6E. The previous `!matchedRecipe` exclusion
+// is replaced by the `!RICH_INTENT.test(message)` exclusion — same intent,
+// keyed on message text instead of a deleted runtime registry.
 //
 // Audric-side clamp (vs an engine change) avoids an engine npm publish +
 // audric bump for a deployment-tuning decision. If the engine classifier
 // evolves to encode this natively (e.g., a per-host `effortCap` config),
 // this helper becomes a no-op and can be deleted.
 // ---------------------------------------------------------------------------
+// IMPORTANT — this MUST stay in lockstep with the `high`-tier patterns in
+// `@t2000/engine`'s `classify-effort.ts`. Any high-tier intent that contains
+// a write verb (borrow/withdraw/send/swap) AND is missing here will be
+// silently demoted from `high` → `medium` by the clamp below, defeating the
+// engine's adaptive thinking allocation. The probe in `audit-6` of the
+// Phase 6 review traced one such bug: pre-fix `RICH_INTENT` missed
+// `bulk\s+(send|mail|transfer)`, causing "bulk send USDC to my contacts"
+// (engine → high) to be clamped to medium because `send` is a write verb.
+const RICH_INTENT =
+  /\b(rebalance|reallocate|full\s+report|account\s+(summary|report)|safe(ly)?\s+borrow|borrow\s+against|swap\s+\w+\s+(and|then)\s+save|swap\s+and\s+save|convert\s+\w+\s+(and|then)\s+deposit|emergency\s+withdraw|withdraw\s+(all|everything)|close\s+(my\s+)?position|bulk\s+(send|mail|transfer))\b/i;
+
 export function clampProposalEffort(args: {
   classifierEffort: ThinkingEffort;
-  matchedRecipe: { name: string } | null;
   message: string | undefined;
   sessionWriteCount: number;
 }): { effort: ThinkingEffort; clamped: boolean } {
-  const { classifierEffort, matchedRecipe, message, sessionWriteCount } = args;
+  const { classifierEffort, message, sessionWriteCount } = args;
   if (
     classifierEffort === 'high' &&
-    !matchedRecipe &&
     message !== undefined &&
     /\b(borrow|withdraw|send|swap)\b/i.test(message) &&
-    sessionWriteCount > 0
+    sessionWriteCount > 0 &&
+    !RICH_INTENT.test(message)
   ) {
     return { effort: 'medium', clamped: true };
   }
@@ -1027,20 +1057,26 @@ export function clampProposalEffort(args: {
 // ---------------------------------------------------------------------------
 // [SPEC 8 v0.5.1 B3.2] Build a 1-line `harness_shape.rationale` string
 // summarising why this turn landed in this shape. Mirrors the precedence
-// in `classifyEffort()` (recipe match > write-history keyword > vocab
-// heuristic > default) so a Datadog operator can skim turn metrics
-// without re-running the classifier.
+// in `classifyEffort()` (skill-intent regex > write-history keyword >
+// vocab heuristic > default) so a Datadog operator can skim turn metrics
+// without re-running the classifier. SPEC v0.7a Phase 6 (D-4 a) — was
+// `recipe match > write-history > ...` before the recipe runtime was
+// deleted; same precedence semantics, regex-keyed now.
 // ---------------------------------------------------------------------------
 
 function buildHarnessRationale(args: {
   effort: 'low' | 'medium' | 'high' | 'max';
-  matchedRecipeName?: string;
   sessionWriteCount: number;
   message?: string;
 }): string {
-  const { effort, matchedRecipeName, sessionWriteCount, message } = args;
-  if (matchedRecipeName) {
-    return `matched recipe ${matchedRecipeName} → ${effort}`;
+  const { effort, sessionWriteCount, message } = args;
+  // SPEC v0.7a Phase 6 (D-4 a) — `matchedRecipe` path removed; recipe boost
+  // semantics moved to message regex in engine `classifyEffort`. Reuses
+  // RICH_INTENT (defined above) so the rationale string and the clamp's
+  // exclusion logic can never drift again — the audit-6 probe in the Phase
+  // 6 review caught two copies of this regex falling out of sync.
+  if (message && RICH_INTENT.test(message)) {
+    return `skill-intent keyword in message → ${effort}`;
   }
   if (sessionWriteCount > 0 && message && /borrow|withdraw|send|swap/i.test(message)) {
     return `session has prior writes + write-keyword → ${effort}`;
@@ -1109,7 +1145,7 @@ export async function createUnauthEngine(history: HistoryMessage[]): Promise<AIS
 function buildUnauthPrompt(tools: Tool[]): string {
   const toolList = tools.map((t) => `- ${t.name}: ${t.description}`).join('\n');
 
-  return `You are Audric, a financial agent on Sui. Audric is exactly five products: Audric Passport (Google sign-in, non-custodial Sui wallet, tap-to-confirm, sponsored gas — wraps every other product), Audric Intelligence (you — the 5-system brain: Agent Harness ${tools.length} tools, Reasoning Engine 14 guards + 6 skill recipes, Silent Profile, Chain Memory, AdviceLog), Audric Finance (manage money on Sui — Save via NAVI lending at 3-8% APY USDC, Credit via NAVI borrowing with health factor, Swap via Cetus aggregator across 20+ DEXs at 0.1% fee, Charts for yield/health/portfolio viz), Audric Pay (move money — send USDC, receive via payment links / invoices / QR — free, global, instant on Sui), and Audric Store (creator marketplace, ships Phase 5 — say "coming soon" if asked). Operation→product mapping: save, swap, borrow, repay, withdraw, charts → Audric Finance. send, receive, payment-link, invoice, QR → Audric Pay. You can also call 5 paid APIs (image generation, transcription, content generation, premium audio, PDF binding, physical mail, transactional email) via MPP micropayments using pay_api — this is an internal capability, not a promoted product. The user is not signed in — you have read-only research tools.
+  return `You are Audric, a financial agent on Sui. Audric is exactly five products: Audric Passport (Google sign-in, non-custodial Sui wallet, tap-to-confirm, sponsored gas — wraps every other product), Audric Intelligence (you — the 5-system brain: Agent Harness ${tools.length} tools, Reasoning Engine 14 guards, Silent Profile, Chain Memory, AdviceLog), Audric Finance (manage money on Sui — Save via NAVI lending at 3-8% APY USDC, Credit via NAVI borrowing with health factor, Swap via Cetus aggregator across 20+ DEXs at 0.1% fee, Charts for yield/health/portfolio viz), Audric Pay (move money — send USDC, receive via payment links / invoices / QR — free, global, instant on Sui), and Audric Store (creator marketplace, ships Phase 5 — say "coming soon" if asked). Operation→product mapping: save, swap, borrow, repay, withdraw, charts → Audric Finance. send, receive, payment-link, invoice, QR → Audric Pay. You can also call 5 paid APIs (image generation, transcription, content generation, premium audio, PDF binding, physical mail, transactional email) via MPP micropayments using pay_api — this is an internal capability, not a promoted product. The user is not signed in — you have read-only research tools.
 
 ## Your tools
 ${toolList}

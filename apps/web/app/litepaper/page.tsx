@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   description: 'Agentic finance on Sui. Manage and move money globally. 1,000+ users.',
   openGraph: {
     title: 'Audric — Agentic Finance on Sui',
-    description: 'Manage and move money globally. One sentence. Sub-second settlement. 35 tools. 1,000+ users.',
+    description: 'Manage and move money globally. One sentence. Sub-second settlement. 37 tools. 1,000+ users.',
     type: 'article',
   },
 };
@@ -31,7 +31,7 @@ export default function LitepaperPage() {
           <div className={s.eyebrow}>Agentic Finance on Sui · May 2026</div>
           <h1>Talk to<br /><em>your money.</em></h1>
           <p className={s.heroLede}>
-            Manage and move money globally. One sentence. Sub-second settlement. 35 tools run silently behind every conversation — memory, advice log, chain facts, portfolio context, all assembled before you finish typing. 1,000+ users on Sui mainnet.
+            Manage and move money globally. One sentence. Sub-second settlement. 37 tools run silently behind every conversation — memory, advice log, chain facts, portfolio context, all assembled before you finish typing. 1,000+ users on Sui mainnet.
           </p>
           <div className={s.heroMeta}>t2000 AFI &nbsp;·&nbsp; Delaware &nbsp;·&nbsp; audric.ai</div>
         </div>
@@ -100,7 +100,7 @@ export default function LitepaperPage() {
               <div className={s.gridCell}>
                 <div className={s.cellLabel}>Agentic Finance Infrastructure</div>
                 <div className={s.cellTitle}>t2000.ai</div>
-                <div className={s.cellBody}>@t2000/sdk, @t2000/engine, @t2000/cli, @t2000/mcp — five npm packages. Wallet, DeFi, 35 tools, streaming, guards. Open-source. Fee-free by design.</div>
+                <div className={s.cellBody}>@t2000/sdk, @t2000/engine, @t2000/cli, @t2000/mcp — five npm packages. Wallet, DeFi, 37 tools, 14 skills, streaming, guards. Open-source. Fee-free by design.</div>
               </div>
             </div>
             <div className={`${s.gridRow} ${s.cols2}`}>
@@ -131,7 +131,7 @@ export default function LitepaperPage() {
               </div>
               <div className={s.gridCell}>
                 <div className={s.cellTitle}>Intelligence</div>
-                <div className={s.cellBody}>35 tools, 14 guards. Knows your finances before you ask.</div>
+                <div className={s.cellBody}>37 tools, 14 guards. Knows your finances before you ask.</div>
               </div>
               <div className={s.gridCell}>
                 <div className={s.cellTitle}>Finance</div>
@@ -254,11 +254,11 @@ export default function LitepaperPage() {
             <div className={`${s.gridRow} ${s.cols3}`}>
               <div className={s.gridCell}>
                 <div className={s.cellTitle}>Agent Harness</div>
-                <div className={s.cellBody}>35 tools. Reads fan out in parallel. Writes wait for Passport confirmation and execute atomically under a transaction mutex.</div>
+                <div className={s.cellBody}>37 tools. Reads fan out in parallel. Writes wait for Passport confirmation and execute atomically under a transaction mutex.</div>
               </div>
               <div className={s.gridCell}>
                 <div className={s.cellTitle}>Reasoning Engine</div>
-                <div className={s.cellBody}>14 guards across 3 priority tiers. 6 skill recipes for multi-step flows. Adaptive model routing — fast for simple, extended thinking for complex.</div>
+                <div className={s.cellBody}>14 guards across 3 priority tiers. 14 skills (markdown playbooks) for multi-step flows. Adaptive model routing — fast for simple, extended thinking for complex.</div>
               </div>
               <div className={s.gridCell}>
                 <div className={s.cellTitle}>Silent Profile + Memory</div>
@@ -372,7 +372,7 @@ export default function LitepaperPage() {
               </thead>
               <tbody>
                 <tr><td>Consumer app</td><td>audric.ai — Next.js 15, Vercel, 1,000+ users</td></tr>
-                <tr><td>AI engine</td><td><code>@t2000/engine</code> — 35 tools, reasoning, guards, canvas</td></tr>
+                <tr><td>AI engine</td><td><code>@t2000/engine</code> — 37 tools, reasoning, guards, canvas (skills via @t2000/mcp)</td></tr>
                 <tr><td>Core SDK</td><td><code>@t2000/sdk</code> — wallet, NAVI / Cetus / VOLO adapters</td></tr>
                 <tr><td>CLI + MCP</td><td><code>@t2000/cli</code> 29 commands · <code>@t2000/mcp</code> 29 tools for Claude, Cursor, Windsurf</td></tr>
                 <tr><td>On-chain</td><td>Sui mainnet — atomic PTBs, inline fee collection, USDC treasury</td></tr>
