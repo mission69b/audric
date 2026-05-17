@@ -26,6 +26,7 @@ import {
 import { asHarnessVersion, type HarnessVersion } from '@/lib/interactive-harness';
 import type { RegenerateTimelineEvent, RegenerateFailure } from '@t2000/engine';
 import { REGEN_ERROR_COPY } from '@/lib/engine/regen-error-copy';
+import { detectLiveStreamIdClobber } from '@/lib/engine/live-stream-clobber-detection';
 import { detectAuthIntent } from './auth-intent';
 // [SPEC 21.1] Pure mutation helper extracted from `setLatestTransitionState`
 // so the search-and-update logic can be unit-tested without spinning up the
@@ -272,9 +273,27 @@ export function useEngine({ address, jwt, onToolResult, contacts, onAuthIntent }
 
   const writeLiveStreamId = useCallback(
     (sid: string, streamId: string) => {
+      // [S.152 — 2026-05-18] Detect and warn on streamId clobbers. Pure
+      // observation only — we still write the new value. The warning gives
+      // us Vercel-log telemetry to confirm whether the rare tab-duplication
+      // / rapid-second-turn clobber edge case actually fires in production.
+      // See `lib/engine/live-stream-clobber-detection.ts` for the rationale.
       try {
+        const previous = sessionStorage.getItem(liveStreamStorageKey(sid));
+        const detection = detectLiveStreamIdClobber(previous, streamId, sid);
+        if (detection.shouldWarn && detection.reason) {
+          console.warn(detection.reason);
+        }
         sessionStorage.setItem(liveStreamStorageKey(sid), streamId);
       } catch {
+        // sessionStorage unavailable (private mode / quota / SSR) — also
+        // check the in-memory fallback for the clobber signal so the same
+        // edge cases are observable when sessionStorage is blocked.
+        const previous = liveStreamFallbackRef.current.get(sid) ?? null;
+        const detection = detectLiveStreamIdClobber(previous, streamId, sid);
+        if (detection.shouldWarn && detection.reason) {
+          console.warn(detection.reason);
+        }
         liveStreamFallbackRef.current.set(sid, streamId);
       }
     },
