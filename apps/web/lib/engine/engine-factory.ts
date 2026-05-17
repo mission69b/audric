@@ -6,6 +6,13 @@ import {
   // factory time.
   AISDKEngine,
   type AISDKEngineConfig,
+  // [S.153 / engine v2.7.0 dry-run — 2026-05-18] Phase 7 memory path
+  // opt-in via env.ENGINE_MEMORY_PATH_ENABLED. The mock store always
+  // returns `[]` from recall (audric never calls remember() in the
+  // dry-run), so layer 3 of the F-4 system prompt is empty. The point
+  // is to exercise the prepareStep wiring + layer 2 (financial_context)
+  // extraction in production BEFORE MemWal stabilizes.
+  InMemoryMemoryStore,
   McpClientManager,
   NAVI_MCP_CONFIG,
   READ_TOOLS,
@@ -55,6 +62,7 @@ import { getPortfolio, getTokenPrices } from '@/lib/portfolio';
 import {
   buildAdviceContext,
   buildFullDynamicContext,
+  buildFullDynamicContextSeparated,
   STATIC_SYSTEM_PROMPT,
   type WalletBalanceSummary,
   type Contact,
@@ -648,8 +656,20 @@ export async function createEngine(
 
   const isNewSession = !opts.session?.messages?.length;
 
-  // RE-1.3: Build system prompt using cache-optimized blocks
-  const dynamicBlock = buildFullDynamicContext(address, allTools, {
+  // [S.153 / engine v2.7.0 dry-run — 2026-05-18] Phase 7 memory path
+  // opt-in. When ENGINE_MEMORY_PATH_ENABLED is "1" / "true", the engine
+  // takes its prepareStep 5-layer F-4 assembly path and receives the
+  // financial_context as a typed config field rather than inline in the
+  // system prompt. The mock memoryStore (added to sharedEngineConfig
+  // below) always returns [] from recall — so layer 3 is empty until
+  // MemWal is wired. Default OFF means production traffic stays on the
+  // legacy single-string-system path.
+  const memoryPathEnabled =
+    env.ENGINE_MEMORY_PATH_ENABLED === '1' ||
+    env.ENGINE_MEMORY_PATH_ENABLED?.toLowerCase() === 'true';
+
+  // Shared dynamic context inputs — used by both legacy and memory paths.
+  const dynamicContextInputs = {
     balances: balanceSummary,
     contacts: opts.contacts,
     swapTokenNames,
@@ -673,9 +693,31 @@ export async function createEngine(
     financialContext,
     username: userRecord?.username ?? null,
     usernameClaimedAt: userRecord?.usernameClaimedAt ?? null,
-  });
+  } as const;
 
-  const systemPrompt = buildCachedSystemPrompt([STATIC_SYSTEM_PROMPT], dynamicBlock);
+  let systemPrompt: ReturnType<typeof buildCachedSystemPrompt>;
+  let extractedFinancialContextBlock: string | undefined;
+
+  if (memoryPathEnabled) {
+    const { baseDynamic, financialContextBlock: extracted } =
+      buildFullDynamicContextSeparated(address, allTools, dynamicContextInputs);
+    systemPrompt = buildCachedSystemPrompt([STATIC_SYSTEM_PROMPT], baseDynamic);
+    // Engine consumes this at prepareStep layer 2. Empty string when
+    // there's no daily orientation snapshot — engine's `.filter(l =>
+    // l.length > 0)` skips the layer entirely, so we still pass it but
+    // the layer is dropped from the assembled prompt.
+    extractedFinancialContextBlock = extracted;
+    // Single-line operator telemetry — confirms the memory path is live
+    // in production. Read with `vercel logs | grep '[memory-path]'`.
+    console.log('[memory-path] enabled', {
+      hasFinancialBlock: extracted.length > 0,
+      address,
+      sessionId: opts.sessionId,
+    });
+  } else {
+    const dynamicBlock = buildFullDynamicContext(address, allTools, dynamicContextInputs);
+    systemPrompt = buildCachedSystemPrompt([STATIC_SYSTEM_PROMPT], dynamicBlock);
+  }
 
   // RE-1.2: Classify effort level based on message content + session writes
   // SPEC v0.7a Phase 6 (D-4 a) — recipes deleted; engine `classifyEffort`
@@ -879,6 +921,23 @@ export async function createEngine(
     // need to evaluate Path A (silent in-flight re-execution) without
     // production guesswork.
     ...(opts.onStreamResume ? { onStreamResume: opts.onStreamResume } : {}),
+    // [S.153 / engine v2.7.0 dry-run — 2026-05-18] Phase 7 memory path.
+    // When the env flag is ON:
+    //   - `memoryStore: new InMemoryMemoryStore()` — mock that always
+    //     returns [] from recall(). Engine's prepareStep fires recall
+    //     once per turn, gets [], renders empty layer 3. Verifies the
+    //     wiring without MemWal infra.
+    //   - `financialContextBlock` — pre-extracted XML for layer 2.
+    //     Engine joins it between base (layer 1) and memory (layer 3,
+    //     empty in dry-run) on every step via prepareStep.
+    // When the env flag is OFF (default), neither field is passed and
+    // the engine takes its legacy static-`system:` path verbatim.
+    ...(memoryPathEnabled
+      ? {
+          memoryStore: new InMemoryMemoryStore(),
+          financialContextBlock: extractedFinancialContextBlock,
+        }
+      : {}),
     // [v1.5] Auto-inject fresh balance/savings/health reads after every
     // successful write so post-write narration cites real numbers. See
     // `POST_WRITE_REFRESH_MAP` above.

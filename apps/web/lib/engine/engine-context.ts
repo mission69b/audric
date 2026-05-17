@@ -839,3 +839,68 @@ export function buildFullDynamicContext(
 
   return sections.join('\n\n---\n\n');
 }
+
+// ---------------------------------------------------------------------------
+// [S.153 / engine v2.7.0 dry-run] buildFullDynamicContextSeparated
+// ---------------------------------------------------------------------------
+//
+// Variant of `buildFullDynamicContext` for the Phase 7 memory path
+// (gated behind `env.ENGINE_MEMORY_PATH_ENABLED`). Splits the
+// `<financial_context>` XML block OUT of the dynamic prompt so it can
+// be passed as `EngineConfig.financialContextBlock` and re-assembled
+// by the engine's `prepareStep` hook at layer 2 of the F-4 order:
+//
+//   1. base systemPrompt (STATIC + this fn's `baseDynamic`)
+//   2. <financial_context> (from this fn's `financialContextBlock`)
+//   3. <memory_recall> (from MemoryStore.recall, populated when MemWal
+//      is wired; empty in dry-run with InMemoryMemoryStore mock)
+//   4. skill recipe (not used in audric today)
+//   5. user message
+//
+// **Equivalent prompt content invariant.** In the dry-run state (mock
+// store, no skill recipe), the assembled prompt LLM sees must be
+// substantively identical to the legacy single-string path. The only
+// differences are:
+//
+//   - The legacy "## Daily orientation snapshot\n<financial_context>"
+//     heading is dropped; the engine emits the raw XML at layer 2.
+//     (Claude does not rely on the heading — the XML wrapper carries
+//     the semantic meaning.)
+//   - Layer ordering is enforced by the engine's prepareStep rather
+//     than this function's string concat. Same content, different
+//     assembly mechanism.
+//
+// The dry-run's whole purpose is to validate THAT (and prompt-caching
+// behavior, token usage, latency) before MemWal stabilization makes
+// the migration mandatory.
+// ---------------------------------------------------------------------------
+export function buildFullDynamicContextSeparated(
+  walletAddress: string,
+  tools: Tool[],
+  opts: {
+    balances?: WalletBalanceSummary;
+    contacts?: Contact[];
+    swapTokenNames?: string[];
+    adviceContext?: string;
+    intelligence?: IntelligenceContext;
+    useSyntheticPrefetch?: boolean;
+    financialContext?: FinancialContextSnapshot | null;
+    username?: string | null;
+    usernameClaimedAt?: Date | null;
+  },
+): { baseDynamic: string; financialContextBlock: string } {
+  // Build the dynamic block WITHOUT financial_context inline by passing
+  // `financialContext: null` — `buildDynamicBlock` skips the section
+  // entirely. Then call `buildFinancialContextBlock` separately to get
+  // the raw XML for layer 2 delivery.
+  const baseDynamic = buildFullDynamicContext(walletAddress, tools, {
+    ...opts,
+    financialContext: null,
+  });
+
+  const financialContextBlock = buildFinancialContextBlock(
+    opts.financialContext,
+  );
+
+  return { baseDynamic, financialContextBlock };
+}

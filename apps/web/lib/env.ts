@@ -230,6 +230,37 @@ const serverSchema = z.object({
    */
   PAYMENT_STREAM_DISABLE: optionalString,
 
+  /**
+   * [S.153 / engine v2.7.0 dry-run — 2026-05-18] Opt-in flag for the
+   * engine's Phase 7 memory path. When `"1"` / `"true"`, the engine
+   * factory passes:
+   *
+   *   - `memoryStore: new InMemoryMemoryStore()` (zero-record mock,
+   *     ALWAYS returns `[]` from recall — layer 3 is empty)
+   *   - `financialContextBlock: <financial_context XML extracted from
+   *     the dynamic block>` (so layer 2 is non-empty when the daily
+   *     orientation snapshot is loaded)
+   *   - `systemPrompt` = STATIC_SYSTEM_PROMPT + dynamicBlockWithoutFinancial
+   *     (financial removed; engine re-injects at layer 2)
+   *
+   * Engine then takes its `prepareStep` 5-layer F-4 assembly path:
+   * `base → financial_context → memory (empty) → skill (undefined) → user`.
+   *
+   * **Why opt-in:** changes the streamText wire shape (static `system:` ⇒
+   * prepareStep return value). Behavior should be identical when memory
+   * recall returns `[]` and skill is undefined, but prompt-caching could
+   * subtly differ. Default OFF means production traffic stays on the
+   * legacy path; staging / canary flip the flag ON to verify.
+   *
+   * **When to promote to default ON:** after staging + canary observe
+   * ≥1 week of stable token usage + cache-hit rates with the flag ON.
+   *
+   * **When to remove the flag entirely:** when audric ships
+   * `MemWalMemoryStore` and the prepareStep path becomes the only path
+   * (Phase 7 production cutover).
+   */
+  ENGINE_MEMORY_PATH_ENABLED: optionalString,
+
   // [v2.0.0 — 2026-05-17] USE_AI_SDK_NATIVE_ENGINE +
   // USE_AI_SDK_NATIVE_ENGINE_WALLETS deleted. Engine v2.0.0 removed the
   // legacy QueryEngine entirely, so there's no longer a choice for the
@@ -405,6 +436,7 @@ const runtimeEnv = {
   AUDRIC_MINT_CONCURRENCY_LIMIT: process.env.AUDRIC_MINT_CONCURRENCY_LIMIT,
   SYNTHETIC_SESSION_PREFIXES: process.env.SYNTHETIC_SESSION_PREFIXES,
   PAYMENT_STREAM_DISABLE: process.env.PAYMENT_STREAM_DISABLE,
+  ENGINE_MEMORY_PATH_ENABLED: process.env.ENGINE_MEMORY_PATH_ENABLED,
   NODE_ENV: process.env.NODE_ENV,
   VERCEL_DEPLOYMENT_ID: process.env.VERCEL_DEPLOYMENT_ID,
   VERCEL_GIT_COMMIT_SHA: process.env.VERCEL_GIT_COMMIT_SHA,
@@ -543,6 +575,7 @@ const SERVER_ONLY_KEYS = new Set([
   'AUDRIC_PARENT_NFT_PRIVATE_KEY',
   'SYNTHETIC_SESSION_PREFIXES',
   'PAYMENT_STREAM_DISABLE',
+  'ENGINE_MEMORY_PATH_ENABLED',
   'NODE_ENV',
   'VERCEL_DEPLOYMENT_ID',
   'VERCEL_GIT_COMMIT_SHA',
