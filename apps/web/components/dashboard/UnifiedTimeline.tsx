@@ -579,7 +579,7 @@ export function UnifiedTimeline({
                 message={entry.msg}
                 onActionResolve={handleActionResolve}
                 shouldAutoApprove={shouldAutoApprove}
-                onSendMessage={onSendMessage ?? engine.sendMessage}
+                onSendMessage={onSendMessage ?? engine.retryInterruptedTurn ?? engine.sendMessage}
                 contacts={contacts}
                 walletAddress={address}
                 recentUserText={recentUserText}

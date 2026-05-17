@@ -184,7 +184,14 @@ const eslintConfig = [
     // file then triggers a "Unused eslint-disable directive" warning.
     // Ignoring the whole tree is the right call — generated code
     // shouldn't drive our lint output.
-    ignores: ["lib/generated/**"],
+    //
+    // `.next/**` is the Next.js build output. Locally `next build` /
+    // `next dev` can leave compiled chunks behind and lint then picks
+    // up minified vendored code (e.g. a `react/display-name` error in
+    // `edge-chunks/*.js`). Vercel CI skips this dir by default but
+    // local `pnpm lint` runs after a build would fail without the
+    // exclusion. Added during SPEC 37 v0.7a Phase 5.5 close-out.
+    ignores: ["lib/generated/**", ".next/**"],
   },
   {
     // PR-H3 (2026-04-30) bumped this from `warn` (Next.js default) to

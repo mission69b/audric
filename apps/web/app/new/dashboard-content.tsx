@@ -2672,7 +2672,7 @@ export function DashboardContent({ initialSessionId }: DashboardContentProps = {
                 if (balance.suiPrice > 0) m.set('SUI', balance.suiPrice);
                 return m;
               })()}
-              onSendMessage={engine.sendMessage}
+              onSendMessage={engine.retryInterruptedTurn}
               onRegenerateToolCall={handleRegenerateToolCall}
               contacts={contactsHook.contacts}
               address={address}

@@ -241,6 +241,69 @@ export function useEngine({ address, jwt, onToolResult, contacts, onAuthIntent }
   const messagesRef = useRef<EngineChatMessage[]>([]);
   messagesRef.current = messages;
 
+  // ---------------------------------------------------------------------------
+  // [engine v2.2.0 Phase 5.5] Live SSE stream id storage (page-reload resume)
+  // ---------------------------------------------------------------------------
+  //
+  // Audric persists the engine-emitted `streamId` (yielded as `stream_started`
+  // — the first event of every fresh stream when the host has wired
+  // `streamCheckpointStore`) into `sessionStorage` under
+  // `audric:liveStream:<sessionId>`. On a page-reload / Vercel cold-start /
+  // mobile-tab swap mid-stream, we POST the id back to `/api/engine/chat` as
+  // `resumeStreamId` and the engine replays the Upstash-checkpointed events
+  // into the same assistant bubble instead of re-running the LLM.
+  //
+  // The id is cleared on `turn_complete`, on `error`, when the user starts a
+  // fresh turn, and on `clearMessages`. If `sessionStorage` is unavailable
+  // (Safari private mode, quota exceeded), an in-memory fallback `Map`
+  // preserves the id for the current page session so resume still works
+  // before the user reloads — degraded but not broken.
+  // ---------------------------------------------------------------------------
+  /** SessionStorage key for the live stream id, per audric session id. */
+  const liveStreamStorageKey = useCallback((sid: string) => `audric:liveStream:${sid}`, []);
+
+  /**
+   * In-memory fallback used when `sessionStorage` throws (Safari private
+   * mode / quota exceeded). Survives the current page session only — a
+   * true page reload zeros it, in which case resume gracefully degrades
+   * to "fresh send" via `sendMessage`.
+   */
+  const liveStreamFallbackRef = useRef<Map<string, string>>(new Map());
+
+  const writeLiveStreamId = useCallback(
+    (sid: string, streamId: string) => {
+      try {
+        sessionStorage.setItem(liveStreamStorageKey(sid), streamId);
+      } catch {
+        liveStreamFallbackRef.current.set(sid, streamId);
+      }
+    },
+    [liveStreamStorageKey],
+  );
+
+  const readLiveStreamId = useCallback(
+    (sid: string): string | null => {
+      try {
+        const v = sessionStorage.getItem(liveStreamStorageKey(sid));
+        if (v) return v;
+      } catch {
+        /* fall through to in-memory */
+      }
+      return liveStreamFallbackRef.current.get(sid) ?? null;
+    },
+    [liveStreamStorageKey],
+  );
+
+  const clearLiveStreamId = useCallback(() => {
+    if (!sessionId) return;
+    try {
+      sessionStorage.removeItem(liveStreamStorageKey(sessionId));
+    } catch {
+      /* private mode / quota */
+    }
+    liveStreamFallbackRef.current.delete(sessionId);
+  }, [sessionId, liveStreamStorageKey]);
+
   const sendMessage = useCallback(
     async (text: string) => {
       if (isAuth && (!address || !jwt)) return;
@@ -301,6 +364,7 @@ export function useEngine({ address, jwt, onToolResult, contacts, onAuthIntent }
       turnCompleteSeenRef.current = false;
       pendingActionSeenRef.current = false;
       currentReplayTextRef.current = text;
+      clearLiveStreamId();
 
       const userMsg: EngineChatMessage = {
         id: nextMsgId(),
@@ -333,7 +397,111 @@ export function useEngine({ address, jwt, onToolResult, contacts, onAuthIntent }
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [address, jwt, sessionId, status, isAuth, onAuthIntent],
+    [address, jwt, sessionId, status, isAuth, onAuthIntent, clearLiveStreamId],
+  );
+
+  /**
+   * [engine v2.2.0 Phase 5.5] Retry handler for the "interrupted turn" pill.
+   *
+   * Resume contract (engine side, locked at SPEC 37 v0.7a Phase 5 Slice C):
+   * 1. Engine yields `stream_started { streamId }` as the FIRST event whenever
+   *    `streamCheckpointStore` is configured server-side. We catch it in
+   *    `processSSEChunk` and persist `streamId` into `sessionStorage` via
+   *    `writeLiveStreamId`.
+   * 2. Engine appends every subsequent event to the Upstash-backed checkpoint
+   *    store (fire-and-forget) until `turn_complete` clears it.
+   * 3. When the live stream drops mid-turn (network blip, mobile-tab swap,
+   *    Vercel cold-start, page-reload), the streamId stays in storage AND the
+   *    assistant message picks up the `interrupted: true` flag from
+   *    `attemptStream`'s stream-end cleanup.
+   * 4. The user taps the retry pill → this callback fires. We POST
+   *    `{ message: '', sessionId, resumeStreamId }` to `/api/engine/chat`.
+   *    The engine replays the checkpointed `EngineEvent` sequence back into
+   *    the SAME assistant bubble without re-running the LLM (no extra cost,
+   *    no narration drift). If a tool was in-flight when the original stream
+   *    dropped, the engine emits Path B error and we fall back to fresh send.
+   *
+   * Resume scope = LIVE LLM stream only. The user-confirm-then-resume flow
+   * (after `pending_action`) is unchanged — it still goes through
+   * `/api/engine/resume` keyed on `attemptId` via `resolveAction`.
+   *
+   * Fallback: if no checkpoint id is found (turn already completed cleanly,
+   * checkpoint expired after the 5-min TTL, host bug, or sessionStorage
+   * wedged), defer to a fresh `sendMessage(replayText)` so the user always
+   * gets a response.
+   */
+  const retryInterruptedTurn = useCallback(
+    async (replayText: string) => {
+      if (!isAuth || !address || !jwt) return;
+      if (status === 'streaming' || status === 'connecting' || status === 'executing') return;
+
+      const streamId = sessionId ? readLiveStreamId(sessionId) : null;
+
+      if (streamId && sessionId) {
+        const interrupted = [...messagesRef.current].reverse().find(
+          (m) => m.role === 'assistant' && m.interrupted,
+        );
+        if (interrupted) {
+          setError(null);
+          lastFailedMessage.current = null;
+          retryCountRef.current = 0;
+          hasReceivedContent.current = false;
+          turnCompleteSeenRef.current = false;
+          pendingActionSeenRef.current = false;
+          currentReplayTextRef.current = replayText;
+
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === interrupted.id
+                ? {
+                    ...m,
+                    content: '',
+                    tools: [],
+                    timeline: undefined,
+                    canvases: undefined,
+                    todoUpdates: undefined,
+                    toolProgress: undefined,
+                    usage: undefined,
+                    expectsConfirm: undefined,
+                    transitionState: undefined,
+                    harnessShape: undefined,
+                    harnessRationale: undefined,
+                    interrupted: false,
+                    interruptedReplayText: undefined,
+                    failed: undefined,
+                    pendingAction: undefined,
+                    pendingInputs: undefined,
+                    isStreaming: true,
+                    isThinking: false,
+                    thinking: undefined,
+                  }
+                : m,
+            ),
+          );
+          streamingMsgRef.current = interrupted.id;
+
+          await attemptStream('/api/engine/chat', {
+            message: '',
+            address,
+            sessionId,
+            resumeStreamId: streamId,
+          });
+          return;
+        }
+      }
+
+      await sendMessage(replayText);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      address,
+      jwt,
+      isAuth,
+      sessionId,
+      status,
+      sendMessage,
+      readLiveStreamId,
+    ],
   );
 
   /**
@@ -367,6 +535,7 @@ export function useEngine({ address, jwt, onToolResult, contacts, onAuthIntent }
       hasReceivedContent.current = false;
       turnCompleteSeenRef.current = false;
       pendingActionSeenRef.current = false;
+      clearLiveStreamId();
 
       const messageText = decision.value === 'yes' ? 'Confirm' : 'Cancel';
       currentReplayTextRef.current = messageText;
@@ -833,6 +1002,7 @@ export function useEngine({ address, jwt, onToolResult, contacts, onAuthIntent }
         );
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [sessionId, jwt, address],
   );
 
@@ -1001,7 +1171,6 @@ export function useEngine({ address, jwt, onToolResult, contacts, onAuthIntent }
     // streaming, parser) not the engine. When this fires AND the server
     // log ALSO shows STREAM_CLOSED_SILENTLY, the gap is upstream.
     try {
-      // eslint-disable-next-line no-console
       console.warn('[useEngine] INTERRUPTED_TURN_DETECTED', {
         msgId,
         turnCompleteSeen: turnCompleteSeenRef.current,
@@ -1315,6 +1484,15 @@ export function useEngine({ address, jwt, onToolResult, contacts, onAuthIntent }
     if (!msgId) return;
 
     switch (event.type) {
+      case 'stream_started':
+        // [engine v2.2.0 Phase 5.5] First event of every fresh stream when
+        // the engine has a `streamCheckpointStore` configured. Persist the
+        // streamId so `retryInterruptedTurn` can replay if the live stream
+        // drops mid-turn. See the JSDoc on `retryInterruptedTurn` for the
+        // full resume contract.
+        if (sessionId) writeLiveStreamId(sessionId, event.streamId);
+        break;
+
       case 'thinking_delta':
         setMessages((prev) =>
           prev.map((m) =>
@@ -1519,6 +1697,14 @@ export function useEngine({ address, jwt, onToolResult, contacts, onAuthIntent }
         // before tool_result) doesn't leak entries forever. tool_result
         // already deletes its own entry on success.
         pendingInputsRef.current.clear();
+        // [engine v2.2.0 Phase 5.5] Clear the live stream id on error too.
+        // Without this, a Path B mid-tool resume that surfaces as `error`
+        // would leave the stale streamId in sessionStorage and the retry
+        // pill would re-attempt resume against the SAME bad checkpoint
+        // forever. Engine's Path B keeps its server-side checkpoint
+        // intentionally (so a debug retry can still observe it), but the
+        // CLIENT must move past it.
+        clearLiveStreamId();
         setMessages((prev) =>
           prev.map((m) =>
             m.id === msgId
@@ -1543,6 +1729,7 @@ export function useEngine({ address, jwt, onToolResult, contacts, onAuthIntent }
         // clear defensively so the ref doesn't grow across long
         // sessions.
         pendingInputsRef.current.clear();
+        clearLiveStreamId();
         setMessages((prev) =>
           prev.map((m) =>
             m.id === msgId ? { ...m, isStreaming: false } : m,
@@ -1717,6 +1904,13 @@ export function useEngine({ address, jwt, onToolResult, contacts, onAuthIntent }
   }, [sendMessage]);
 
   const clearMessages = useCallback(() => {
+    try {
+      if (sessionId) {
+        sessionStorage.removeItem(liveStreamStorageKey(sessionId));
+      }
+    } catch {
+      /* private mode */
+    }
     setMessages([]);
     setSessionId(null);
     setUsage(null);
@@ -1725,7 +1919,7 @@ export function useEngine({ address, jwt, onToolResult, contacts, onAuthIntent }
     // next session's first turn evaluates the env-var fresh.
     setHarnessVersion(null);
     lastFailedMessage.current = null;
-  }, []);
+  }, [sessionId, liveStreamStorageKey]);
 
   // [SPEC 21.1] Set transitionState on the latest assistant message.
   // Used by `dashboard-content.handleExecuteAction` to layer in
@@ -1782,11 +1976,43 @@ export function useEngine({ address, jwt, onToolResult, contacts, onAuthIntent }
         // return it on subsequent loads).
         const v = asHarnessVersion(data.harnessVersion);
         if (v) setHarnessVersion(v);
+
+        // [engine v2.2.0 Phase 5.5] Cold page-reload auto-resume. If we
+        // still have a live stream id in sessionStorage for this session
+        // (i.e. the previous tab dropped mid-stream — page reload,
+        // Vercel cold-start, mobile-tab swap), kick off a resume into a
+        // fresh streaming assistant bubble. The engine replays the
+        // Upstash-checkpointed events without re-running the LLM. A
+        // clean turn-complete clears the id from storage as normal; a
+        // Path B mid-tool error clears it too (via the `case 'error'`
+        // handler in processSSEChunk). A clean turn or expired
+        // checkpoint = no resume, no-op (defensive against double-fire).
+        const resumeStreamId = readLiveStreamId(id);
+        if (resumeStreamId && address) {
+          const resumeBubble: EngineChatMessage = {
+            id: nextMsgId(),
+            role: 'assistant',
+            content: '',
+            timestamp: Date.now(),
+            tools: [],
+            isStreaming: true,
+          };
+          streamingMsgRef.current = resumeBubble.id;
+          setMessages((prev) => [...prev, resumeBubble]);
+          // Fire-and-forget — caller doesn't await session-restore stream.
+          void attemptStream('/api/engine/chat', {
+            message: '',
+            address,
+            sessionId: id,
+            resumeStreamId,
+          });
+        }
       } catch {
         // session loads silently
       }
     },
-    [jwt],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [jwt, address, readLiveStreamId],
   );
 
   const injectMessage = useCallback((msg: EngineChatMessage) => {
@@ -1890,6 +2116,7 @@ export function useEngine({ address, jwt, onToolResult, contacts, onAuthIntent }
     // via `<UnifiedTimeline>`) prefer this over the raw env-var read.
     harnessVersion,
     sendMessage,
+    retryInterruptedTurn,
     sendChipDecision,
     resolveAction,
     cancel,

@@ -130,6 +130,11 @@ interface ChatRequestBody {
   history?: HistoryMessage[];
   /** [SPEC 15 Phase 2] Chip click — see `ChipDecision`. */
   chipDecision?: ChipDecision;
+  /**
+   * [SPEC 37 v0.7a Phase 5.5 / engine v2.2.0] Reconnect to a checkpointed
+   * live stream. When set (non-empty), `message` may be empty.
+   */
+  resumeStreamId?: string;
 }
 
 function jsonError(message: string, status: number): Response {
@@ -153,10 +158,19 @@ export async function POST(request: NextRequest) {
     sessionId: requestedSessionId,
     history = [],
     chipDecision,
+    resumeStreamId: resumeStreamIdBody,
   } = body;
 
-  if (!message?.trim()) {
+  const resumeStreamId =
+    typeof resumeStreamIdBody === 'string' ? resumeStreamIdBody.trim() : '';
+  const isStreamResume = resumeStreamId.length > 0;
+
+  if (!message?.trim() && !isStreamResume) {
     return jsonError('message is required', 400);
+  }
+
+  if (isStreamResume && !requestedSessionId) {
+    return jsonError('sessionId is required for stream resume', 400);
   }
 
   // [SPEC 15 Phase 2] Defensive shape validation on chipDecision.
@@ -174,6 +188,10 @@ export async function POST(request: NextRequest) {
 
   const jwt = request.headers.get('x-zklogin-jwt');
   const isAuth = !!jwt && !!address;
+
+  if (isStreamResume && !isAuth) {
+    return jsonError('stream resume requires authentication', 400);
+  }
 
   if (isAuth) {
     if (!isValidSuiAddress(address)) {
@@ -375,6 +393,7 @@ export async function POST(request: NextRequest) {
         conversationState,
         sessionSpendUsd: sessionSpendUsdAtStart,
         sessionId,
+        resumeStreamId: isStreamResume ? resumeStreamId : undefined,
         onMeta: (meta) => { engineMeta = meta; },
         onGuardFired: (guard) => collector.onGuardFired(guard),
       });
@@ -504,6 +523,7 @@ export async function POST(request: NextRequest) {
           // ── Path 1: Chip-Cancel ──────────────────────────────────
           if (
             !fastPathFired &&
+            !isStreamResume &&
             validChipDecision?.value === 'no' &&
             saveSession &&
             sessionId &&
@@ -577,6 +597,7 @@ export async function POST(request: NextRequest) {
           let useChipForceAdmit = false;
           if (
             !chipCancelled &&
+            !isStreamResume &&
             validChipDecision?.value === 'yes' &&
             saveSession &&
             sessionId &&
@@ -606,7 +627,7 @@ export async function POST(request: NextRequest) {
             }
           }
 
-          if (!chipCancelled && saveSession && sessionId && address) {
+          if (!chipCancelled && !isStreamResume && saveSession && sessionId && address) {
             const fastPath = await tryConsumeFastPathBundle({
               sessionId,
               walletAddress: address,
@@ -934,10 +955,13 @@ export async function POST(request: NextRequest) {
           // short-circuited by fast-path-bundle / chip-cancel, since
           // those paths skip the LLM entirely. See post-write-anchor.ts
           // for the production smoke trace + design rationale.
-          const postWriteAnchor = !fastPathFired && !chipCancelled
-            ? buildPostWriteAnchorBlock(engine.getMessages())
-            : null;
-          const engineSubmitMessage = postWriteAnchor
+          const postWriteAnchor =
+            !fastPathFired && !chipCancelled && !isStreamResume
+              ? buildPostWriteAnchorBlock(engine.getMessages())
+              : null;
+          const engineSubmitMessage = isStreamResume
+            ? ''
+            : postWriteAnchor
             ? `${postWriteAnchor}\n\n${trimmedMessage}`
             : trimmedMessage;
 
