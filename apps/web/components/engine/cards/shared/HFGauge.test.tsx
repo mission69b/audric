@@ -26,13 +26,31 @@ describe('HFGauge — healthy', () => {
     expect(text).toContain('Liquidation');
   });
 
-  it('renders ∞ for un-debted positions (HF >= 99)', () => {
+  it('renders ∞ for un-debted positions (HF === Infinity)', () => {
     const { container } = render(
       <HFGauge healthFactor={Number.POSITIVE_INFINITY} liquidationThreshold={1.0} />,
     );
     const text = container.textContent ?? '';
     expect(text).toContain('∞');
     expect(text).not.toContain('Infinity');
+  });
+
+  // [v2.0.4 / 2026-05-17] Threshold raised from >= 99 to >= 9999 to fix
+  // the borrow-preview "∞ → ∞" symptom where small test borrows against
+  // modest collateral produced finite HF > 99 that got incorrectly
+  // clamped to ∞. Numeric HFs up to 9998 now render as numbers.
+  it('renders a finite numeric HF that would have clamped under the old 99 threshold', () => {
+    const { container } = render(
+      <HFGauge healthFactor={150} liquidationThreshold={1.0} />,
+    );
+    expect(container.textContent ?? '').toContain('150.00');
+  });
+
+  it('still clamps truly-absurd HFs (>= 9999) to ∞', () => {
+    const { container } = render(
+      <HFGauge healthFactor={15000} liquidationThreshold={1.0} />,
+    );
+    expect(container.textContent ?? '').toContain('∞');
   });
 });
 

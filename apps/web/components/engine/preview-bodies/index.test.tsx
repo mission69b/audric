@@ -346,7 +346,22 @@ describe('Day 14a: currentHF renders Health factor row on relevant cards', () =>
     expect(text).toContain('1.20');
   });
 
-  it('Health factor ≥ 99 renders as ∞ (no open debt)', () => {
+  // [v2.0.4 / 2026-05-17] Threshold raised from >= 99 to >= 9999.
+  // Pre-2.0.4 this test asserted HF=999 → ∞; the bug was that small
+  // borrows against modest collateral easily produced HF > 99 that got
+  // incorrectly clamped to ∞, breaking the borrow preview.
+  it('Health factor ≥ 9999 renders as ∞ (no open debt sentinel)', () => {
+    const node = renderPreviewBody(
+      'save_deposit',
+      { amount: 10 },
+      { currentHF: 9999 },
+    );
+    const out = rb(node);
+    const text = out!.container.textContent ?? '';
+    expect(text).toContain('∞');
+  });
+
+  it('Finite HF below 9999 renders as a number (no ∞ clamp)', () => {
     const node = renderPreviewBody(
       'save_deposit',
       { amount: 10 },
@@ -354,7 +369,9 @@ describe('Day 14a: currentHF renders Health factor row on relevant cards', () =>
     );
     const out = rb(node);
     const text = out!.container.textContent ?? '';
-    expect(text).toContain('∞');
+    // Pre-2.0.4 this would have rendered as ∞ because of the 99 clamp.
+    expect(text).toContain('999.00');
+    expect(text).not.toContain('∞');
   });
 
   it('omits Health factor row when currentHF is undefined', () => {

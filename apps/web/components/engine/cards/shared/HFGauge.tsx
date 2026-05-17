@@ -48,7 +48,11 @@ interface HFGaugeProps {
 }
 
 function formatHF(hf: number): string {
-  if (!Number.isFinite(hf) || hf >= 99) return '∞';
+  // [v2.0.4 / 2026-05-17] Threshold raised from 99 → 9999 for consistency
+  // with the same primitive in `preview-bodies/index.tsx` and the
+  // "no debt · safe" sentinel in `timeline/result-preview.ts`. See the
+  // formatHF comment in preview-bodies for the broader root-cause note.
+  if (!Number.isFinite(hf) || hf >= 9999) return '∞';
   return hf.toFixed(2);
 }
 

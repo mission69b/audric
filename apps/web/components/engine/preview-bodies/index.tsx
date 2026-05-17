@@ -169,8 +169,20 @@ function APYRow({ asset, apyBps, label }: APYRowProps) {
 // user sees the HF impact before approving. Color tier always reflects
 // the WORST of the two (projection-after, almost always) — that's the
 // state they're approving into.
+//
+// [v2.0.4 / 2026-05-17] Threshold raised from 99 → 9999 to match the
+// `result-preview.ts` "no debt · safe" sentinel. Pre-fix, the 99 clamp
+// rendered any borrow with collateral >124× the borrow amount as
+// "∞ → ∞" — common when a user runs a small test borrow ($0.50)
+// against modest collateral ($16+), because (16 × 0.85) / 0.5 = 27 — wait,
+// 27 < 99 so that case ALONE shouldn't have tripped. The clamp is
+// suspect when supplied is much larger OR liquidationThreshold is
+// reported in a higher unit than fraction. Bumping the threshold
+// removes formatHF as a candidate root cause regardless; the
+// `enrich-hf-debug` logs (still firing in engine v2.0.1+) will pin
+// the real cause and v2.0.5 patches it at the source.
 function formatHF(hf: number | null): string {
-  if (hf === null || !Number.isFinite(hf) || hf >= 99) return '∞';
+  if (hf === null || !Number.isFinite(hf) || hf >= 9999) return '∞';
   return hf.toFixed(2);
 }
 
