@@ -147,8 +147,13 @@ Engine emits render_canvas tool_result with HTML
 ### Engine imports
 
 ```ts
-import { QueryEngine, AnthropicProvider, getDefaultTools } from '@t2000/engine';
-import { serializeSSE, parseSSE, engineToSSE } from '@t2000/engine';
+import { AISDKEngine, getDefaultTools } from '@t2000/engine';
+// [engine v2.2.0 / SPEC 37 v0.7a Phase 5 Slice A] `engineToSSE` removed —
+// chat + resume routes iterate EngineEvent raw and call `serializeSSE`
+// per event (the v1.4.2 / Spec G3 pattern, now the only pattern). Hosts
+// that want SPEC 21.1 routing/quoting/etc → stream_state choreography
+// wrap with `withStreamState` directly.
+import { serializeSSE, parseSSE, withStreamState } from '@t2000/engine';
 import { McpClientManager, NAVI_MCP_CONFIG } from '@t2000/engine';
 import { classifyEffort, ContextBudget, RecipeRegistry } from '@t2000/engine';
 import { runGuards, applyToolFlags, buildProfileContext, buildMemoryContext } from '@t2000/engine';

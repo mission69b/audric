@@ -62,7 +62,7 @@ When debugging a narration issue, walk the stack:
 
 1. **System prompt** (`engine-context.ts`) — first defense. If the LLM is doing something forbidden, the rule may be missing or weakened. Token budget enforced by `harness-metrics.test.ts`.
 2. **Engine post-process** (`stripPseudoThinking` in `strip-pseudo-thinking.ts`) — strips paired + orphan `<thinking>` tags from persisted assistant text BEFORE the next turn's history is sent to the LLM. Prevents pollution of cache-read context.
-3. **SSE serialization** (`engineToSSE`) — the wire is always honest; no stripping happens here. `stream_state` events are layered in by `withStreamState` (SPEC 21.1).
+3. **SSE serialization** (raw `EngineEvent` iteration → `serializeSSE` per event in `app/api/engine/{chat,resume}/route.ts` since v1.4.2 / Spec G3; the pre-v2.2.0 `engineToSSE` adapter was deleted in `@t2000/engine@2.2.0`) — the wire is always honest; no stripping happens here. `stream_state` events are layered in by `withStreamState` (SPEC 21.1), applied around the EngineEvent generator in the same route.
 4. **Client deserialization** (`useEngine` + `timeline-builder.ts`) — events become `TimelineBlock`s + message-level metadata.
 5. **Render-time strips** (`TextBlockView` + `ThinkingBlockView`) — `shortenRawTxHashes`, `stripThinkingTags`, `stripEvalSummaryMarker`, `computeThinkingCollapse`. Last line of defense.
 
