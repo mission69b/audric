@@ -1,0 +1,26 @@
+-- [S.155 / D-4 / 2026-05-18] Add `streamResumeOutcome` JSONB column to
+-- TurnMetrics. Companion to the structured `[stream-resume]` Vercel log:
+-- the log is the first defense for ops (greppable, no DB), the column is
+-- the durable signal for dashboarding the trigger evaluation for Path A
+-- (silent in-flight tool re-execution) — Decision 6 in SPEC 37 v0.7a
+-- Phase 5 Slice C.
+--
+-- Stores `@t2000/engine`'s `StreamResumeOutcome` discriminated union
+-- (5 variants: clean / synthesized_terminal / mid_tool / empty /
+-- replay_error). Null on the overwhelming majority of rows — only set
+-- when the chat route was invoked with `resumeStreamId` (page-reload
+-- mid-stream recovery path).
+--
+-- Sample analytic query (Path A trigger evaluation, ≥7d window):
+--   SELECT "streamResumeOutcome"->>'outcome' AS outcome, COUNT(*)
+--   FROM "TurnMetrics"
+--   WHERE "streamResumeOutcome" IS NOT NULL
+--     AND "createdAt" > NOW() - INTERVAL '7 days'
+--   GROUP BY 1 ORDER BY 2 DESC;
+--
+-- Sample tool histogram (which tool dominates mid_tool resumes):
+--   SELECT "streamResumeOutcome"->>'toolName' AS tool, COUNT(*)
+--   FROM "TurnMetrics"
+--   WHERE "streamResumeOutcome"->>'outcome' = 'mid_tool'
+--   GROUP BY 1 ORDER BY 2 DESC;
+ALTER TABLE "TurnMetrics" ADD COLUMN "streamResumeOutcome" JSONB;

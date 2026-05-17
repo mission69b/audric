@@ -9,10 +9,58 @@
  * is fail-soft, and the `build(...)` call cannot throw.
  */
 
-import type { HarnessShape, TelemetrySink } from '@t2000/engine';
+import type { HarnessShape, StreamResumeOutcome, TelemetrySink } from '@t2000/engine';
 import { Prisma } from '@/lib/generated/prisma/client';
 import { MUTABLE_TOOL_SET } from './engine-factory';
 import { costRatesForModel } from './cost-rates';
+
+/**
+ * [S.155 / D-4 / 2026-05-18] JSON-safe shape of `StreamResumeOutcome`
+ * persisted to `TurnMetrics.streamResumeOutcome`. Mirrors the engine's
+ * discriminated union BUT flattens `replay_error.error: Error` to
+ * `errorMessage: string` because `JSON.stringify(new Error('...'))`
+ * returns `{}` (Error properties are non-enumerable). Matches the
+ * normalization the `[stream-resume]` console.log already applies in
+ * `app/api/engine/chat/route.ts`.
+ */
+export type StreamResumeOutcomePersisted =
+  | { outcome: 'clean'; streamId: string; eventsReplayed: number }
+  | {
+      outcome: 'synthesized_terminal';
+      streamId: string;
+      eventsReplayed: number;
+    }
+  | {
+      outcome: 'mid_tool';
+      streamId: string;
+      eventsReplayed: number;
+      toolUseId: string;
+      toolName: string;
+    }
+  | { outcome: 'empty'; streamId: string }
+  | { outcome: 'replay_error'; streamId: string; errorMessage: string };
+
+/**
+ * [S.155 / D-4 / 2026-05-18] Normalize the engine's `StreamResumeOutcome`
+ * (which carries an `Error` instance in the `replay_error` variant) into
+ * a JSON-safe shape suitable for Prisma `Json?` persistence. Other
+ * variants pass through unchanged.
+ *
+ * Exported for direct unit testing — the route uses it indirectly via
+ * `TurnMetricsCollector.onStreamResume`.
+ */
+export function normalizeStreamResumeOutcome(
+  info: StreamResumeOutcome,
+): StreamResumeOutcomePersisted {
+  if (info.outcome === 'replay_error') {
+    return {
+      outcome: 'replay_error',
+      streamId: info.streamId,
+      errorMessage: info.error.message,
+    };
+  }
+  return info;
+}
 
 /**
  * [SPEC 8 v0.5.1 B3.6 / Layer 6] `chars / 4` mirrors @t2000/engine's
@@ -103,6 +151,21 @@ export class TurnMetricsCollector {
    * pending actions and pre-SPEC-20.2 sessions (D-5 dual-path fallback).
    */
   private _pendingCetusRoute: unknown = null;
+
+  /**
+   * [S.155 / D-4 / 2026-05-18] Normalized `StreamResumeOutcome` from the
+   * engine v2.5.0 `onStreamResume` callback. Set ONCE per turn — only
+   * non-null when the chat route was invoked with `resumeStreamId`
+   * (page-reload mid-stream recovery). Persisted to
+   * `TurnMetrics.streamResumeOutcome` (JSONB) at `build()` time.
+   *
+   * Companion to the structured `[stream-resume]` console.log already
+   * fired by the route — the log is the first defense for ops
+   * (greppable, no DB), this column is the durable signal for
+   * dashboarding the Path A trigger evaluation (Decision 6 in SPEC 37
+   * v0.7a Phase 5 Slice C).
+   */
+  private _streamResumeOutcome: StreamResumeOutcomePersisted | null = null;
 
   // ---------------------------------------------------------------------
   // [SPEC 8 v0.5.1 B3.6 / Layer 6] Per-turn harness telemetry state.
@@ -362,6 +425,23 @@ export class TurnMetricsCollector {
     if (cetusRoute !== undefined && cetusRoute !== null) this._pendingCetusRoute = cetusRoute;
   }
 
+  /**
+   * [S.155 / D-4 / 2026-05-18] Stamp the engine v2.5.0 `onStreamResume`
+   * outcome onto the per-turn collector. Fires exactly once per resume
+   * call (engine guarantees one invocation per `submitMessage({
+   * resumeStreamId })`). Last-write-wins is irrelevant in practice — a
+   * single turn cannot resume twice — but defended idempotently anyway
+   * for parity with `onHarnessShape`'s "engine invariant + collector
+   * defense" pattern.
+   *
+   * Normalizes the engine's `Error`-carrying `replay_error` variant via
+   * `normalizeStreamResumeOutcome` so the value is JSON-safe at
+   * Prisma-write time.
+   */
+  onStreamResume(info: StreamResumeOutcome): void {
+    this._streamResumeOutcome = normalizeStreamResumeOutcome(info);
+  }
+
   build(context: {
     sessionId: string;
     userId: string;
@@ -461,6 +541,16 @@ export class TurnMetricsCollector {
         this._pendingCetusRoute === null
           ? Prisma.DbNull
           : (this._pendingCetusRoute as Prisma.InputJsonValue),
+      // [S.155 / D-4 / 2026-05-18] Persist the engine v2.5.0
+      // `onStreamResume` outcome (normalized to a JSON-safe shape via
+      // `normalizeStreamResumeOutcome`). Null on the overwhelming
+      // majority of rows — only set when the chat route was invoked
+      // with `resumeStreamId`. Maps to `Prisma.DbNull` for SQL NULL
+      // semantics matching the existing `cetusRoute` convention.
+      streamResumeOutcome:
+        this._streamResumeOutcome === null
+          ? Prisma.DbNull
+          : (this._streamResumeOutcome as unknown as Prisma.InputJsonValue),
       synthetic: context.synthetic ?? false,
       cacheSavingsUsd,
       turnPhase: context.turnPhase ?? 'initial',

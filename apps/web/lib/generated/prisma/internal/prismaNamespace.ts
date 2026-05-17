@@ -1826,6 +1826,7 @@ export const TurnMetricsScalarFieldEnum = {
   toolProgressEventCount: 'toolProgressEventCount',
   interruptedMessageCount: 'interruptedMessageCount',
   cetusRoute: 'cetusRoute',
+  streamResumeOutcome: 'streamResumeOutcome',
   createdAt: 'createdAt'
 } as const
 

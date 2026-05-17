@@ -1,11 +1,13 @@
 import { describe, it, expect, vi } from 'vitest';
-import type { TelemetrySink } from '@t2000/engine';
+import type { StreamResumeOutcome, TelemetrySink } from '@t2000/engine';
+import { Prisma } from '@/lib/generated/prisma/client';
 import {
   detectRefinement,
   detectTruncation,
   containsMarkdownTable,
   detectNarrationTableDump,
   emitHarnessTelemetry,
+  normalizeStreamResumeOutcome,
   TurnMetricsCollector,
   CARD_RENDERING_TOOLS,
 } from '../harness-metrics';
@@ -610,6 +612,180 @@ describe('STATIC_SYSTEM_PROMPT — B3.6 budget gate', () => {
     const { STATIC_SYSTEM_PROMPT } = await import('../engine-context');
     const tokens = Math.ceil(STATIC_SYSTEM_PROMPT.length / 4);
     expect(tokens).toBeLessThanOrEqual(10_700);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// [S.155 / D-4 / 2026-05-18] normalizeStreamResumeOutcome — JSON-safe
+// shape conversion for `TurnMetrics.streamResumeOutcome` persistence
+// ---------------------------------------------------------------------------
+
+describe('normalizeStreamResumeOutcome', () => {
+  it('passes through `clean` outcomes unchanged', () => {
+    const input: StreamResumeOutcome = {
+      outcome: 'clean',
+      streamId: 'sid_1',
+      eventsReplayed: 7,
+    };
+    expect(normalizeStreamResumeOutcome(input)).toEqual(input);
+  });
+
+  it('passes through `synthesized_terminal` outcomes unchanged', () => {
+    const input: StreamResumeOutcome = {
+      outcome: 'synthesized_terminal',
+      streamId: 'sid_2',
+      eventsReplayed: 12,
+    };
+    expect(normalizeStreamResumeOutcome(input)).toEqual(input);
+  });
+
+  it('passes through `mid_tool` outcomes unchanged (carries toolUseId + toolName)', () => {
+    const input: StreamResumeOutcome = {
+      outcome: 'mid_tool',
+      streamId: 'sid_3',
+      eventsReplayed: 4,
+      toolUseId: 'tu_abc',
+      toolName: 'swap_execute',
+    };
+    expect(normalizeStreamResumeOutcome(input)).toEqual(input);
+  });
+
+  it('passes through `empty` outcomes unchanged', () => {
+    const input: StreamResumeOutcome = { outcome: 'empty', streamId: 'sid_4' };
+    expect(normalizeStreamResumeOutcome(input)).toEqual(input);
+  });
+
+  it('FLATTENS `replay_error.error: Error` → `errorMessage: string` (JSON-safe)', () => {
+    // CRITICAL: JSON.stringify(new Error('boom')) returns '{}' because Error
+    // properties are non-enumerable. Persisting the raw outcome to Prisma
+    // would lose the error message. This is the same bug class that the
+    // route-side `[stream-resume]` console.log already handles.
+    const err = new Error('upstash unreachable: ETIMEDOUT');
+    const input: StreamResumeOutcome = {
+      outcome: 'replay_error',
+      streamId: 'sid_5',
+      error: err,
+    };
+    const normalized = normalizeStreamResumeOutcome(input);
+    expect(normalized).toEqual({
+      outcome: 'replay_error',
+      streamId: 'sid_5',
+      errorMessage: 'upstash unreachable: ETIMEDOUT',
+    });
+    // Round-trip JSON.stringify proves the shape is actually JSON-safe.
+    const roundTripped = JSON.parse(JSON.stringify(normalized));
+    expect(roundTripped.errorMessage).toBe('upstash unreachable: ETIMEDOUT');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// [S.155 / D-4 / 2026-05-18] TurnMetricsCollector.onStreamResume — persists
+// the engine v2.5.0 outcome to `TurnMetrics.streamResumeOutcome` JSONB
+// ---------------------------------------------------------------------------
+
+describe('TurnMetricsCollector — streamResumeOutcome persistence (D-4)', () => {
+  it('produces Prisma.DbNull when no resume happened (the overwhelming majority of turns)', () => {
+    const c = new TurnMetricsCollector();
+    const built = c.build(buildContext);
+    expect(built.streamResumeOutcome).toBe(Prisma.DbNull);
+  });
+
+  it('persists a `clean` outcome on the built row', () => {
+    const c = new TurnMetricsCollector();
+    c.onStreamResume({
+      outcome: 'clean',
+      streamId: 'sid_clean',
+      eventsReplayed: 9,
+    });
+    const built = c.build(buildContext);
+    expect(built.streamResumeOutcome).toEqual({
+      outcome: 'clean',
+      streamId: 'sid_clean',
+      eventsReplayed: 9,
+    });
+  });
+
+  it('persists a `mid_tool` outcome with toolName for Path A trigger evaluation', () => {
+    const c = new TurnMetricsCollector();
+    c.onStreamResume({
+      outcome: 'mid_tool',
+      streamId: 'sid_mt',
+      eventsReplayed: 3,
+      toolUseId: 'tu_swap_001',
+      toolName: 'swap_execute',
+    });
+    const built = c.build(buildContext);
+    expect(built.streamResumeOutcome).toMatchObject({
+      outcome: 'mid_tool',
+      toolName: 'swap_execute',
+    });
+  });
+
+  it('normalizes a `replay_error` outcome (flattens Error → errorMessage)', () => {
+    const c = new TurnMetricsCollector();
+    c.onStreamResume({
+      outcome: 'replay_error',
+      streamId: 'sid_re',
+      error: new Error('redis down'),
+    });
+    const built = c.build(buildContext);
+    expect(built.streamResumeOutcome).toEqual({
+      outcome: 'replay_error',
+      streamId: 'sid_re',
+      errorMessage: 'redis down',
+    });
+  });
+
+  it('persists an `empty` outcome (expired or unknown streamId)', () => {
+    const c = new TurnMetricsCollector();
+    c.onStreamResume({ outcome: 'empty', streamId: 'sid_empty' });
+    const built = c.build(buildContext);
+    expect(built.streamResumeOutcome).toEqual({
+      outcome: 'empty',
+      streamId: 'sid_empty',
+    });
+  });
+
+  it('last-write-wins is irrelevant in practice but defended idempotently', () => {
+    // Engine guarantees ONE onStreamResume invocation per resume call.
+    // A second call shouldn't happen in production, but if it does, the
+    // collector takes the latest value — matches the `onHarnessShape`
+    // "engine invariant + collector defense" pattern.
+    const c = new TurnMetricsCollector();
+    c.onStreamResume({
+      outcome: 'mid_tool',
+      streamId: 'first',
+      eventsReplayed: 1,
+      toolUseId: 'tu_1',
+      toolName: 'tool_a',
+    });
+    c.onStreamResume({
+      outcome: 'clean',
+      streamId: 'second',
+      eventsReplayed: 2,
+    });
+    const built = c.build(buildContext);
+    expect(built.streamResumeOutcome).toEqual({
+      outcome: 'clean',
+      streamId: 'second',
+      eventsReplayed: 2,
+    });
+  });
+
+  it('does not interfere with other build() fields when both fire on the same turn', () => {
+    // Defensive — ensure the new field is additive, not destructive.
+    const c = new TurnMetricsCollector();
+    c.onHarnessShape('lean');
+    c.onPendingAction('attempt_xyz');
+    c.onStreamResume({
+      outcome: 'clean',
+      streamId: 'sid_combo',
+      eventsReplayed: 5,
+    });
+    const built = c.build(buildContext);
+    expect(built.harnessShape).toBe('lean');
+    expect(built.attemptId).toBe('attempt_xyz');
+    expect(built.streamResumeOutcome).toMatchObject({ outcome: 'clean' });
   });
 });
 

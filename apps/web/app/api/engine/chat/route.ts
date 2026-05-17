@@ -401,6 +401,16 @@ export async function POST(request: NextRequest) {
         // (mid-tool resume) fires per tool. Used to decide whether Path A
         // (silent in-flight re-execution) is worth building in a future
         // engine minor. Tag is greppable: `[stream-resume]`.
+        //
+        // [S.155 / D-4 / 2026-05-18] Also persists the outcome to
+        // `TurnMetrics.streamResumeOutcome` (JSONB) via
+        // `collector.onStreamResume(info)`. The collector applies the
+        // same `Error → errorMessage` normalization through
+        // `normalizeStreamResumeOutcome`, so the column shape matches the
+        // log payload (minus the `sessionId` field which is redundant
+        // with the TurnMetrics row's own `sessionId`). Dashboards query
+        // the column for Path A trigger evaluation; the log stays for
+        // ops greppability.
         onStreamResume: (info) => {
           try {
             // Build a JSON-safe payload. `replay_error.error` is an Error
@@ -418,6 +428,11 @@ export async function POST(request: NextRequest) {
             console.log('[stream-resume]', JSON.stringify(payload));
           } catch {
             /* telemetry never blocks the response */
+          }
+          try {
+            collector.onStreamResume(info);
+          } catch {
+            /* collector failures never block the response — analytics row will simply omit the column */
           }
         },
       });

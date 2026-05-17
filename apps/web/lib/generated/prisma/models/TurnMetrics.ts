@@ -198,6 +198,7 @@ export type TurnMetricsCountAggregateOutputType = {
   toolProgressEventCount: number
   interruptedMessageCount: number
   cetusRoute: number
+  streamResumeOutcome: number
   createdAt: number
   _all: number
 }
@@ -373,6 +374,7 @@ export type TurnMetricsCountAggregateInputType = {
   toolProgressEventCount?: true
   interruptedMessageCount?: true
   cetusRoute?: true
+  streamResumeOutcome?: true
   createdAt?: true
   _all?: true
 }
@@ -503,6 +505,7 @@ export type TurnMetricsGroupByOutputType = {
   toolProgressEventCount: number
   interruptedMessageCount: number
   cetusRoute: runtime.JsonValue | null
+  streamResumeOutcome: runtime.JsonValue | null
   createdAt: Date
   _count: TurnMetricsCountAggregateOutputType | null
   _avg: TurnMetricsAvgAggregateOutputType | null
@@ -569,6 +572,7 @@ export type TurnMetricsWhereInput = {
   toolProgressEventCount?: Prisma.IntFilter<"TurnMetrics"> | number
   interruptedMessageCount?: Prisma.IntFilter<"TurnMetrics"> | number
   cetusRoute?: Prisma.JsonNullableFilter<"TurnMetrics">
+  streamResumeOutcome?: Prisma.JsonNullableFilter<"TurnMetrics">
   createdAt?: Prisma.DateTimeFilter<"TurnMetrics"> | Date | string
 }
 
@@ -612,6 +616,7 @@ export type TurnMetricsOrderByWithRelationInput = {
   toolProgressEventCount?: Prisma.SortOrder
   interruptedMessageCount?: Prisma.SortOrder
   cetusRoute?: Prisma.SortOrderInput | Prisma.SortOrder
+  streamResumeOutcome?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
 
@@ -658,6 +663,7 @@ export type TurnMetricsWhereUniqueInput = Prisma.AtLeast<{
   toolProgressEventCount?: Prisma.IntFilter<"TurnMetrics"> | number
   interruptedMessageCount?: Prisma.IntFilter<"TurnMetrics"> | number
   cetusRoute?: Prisma.JsonNullableFilter<"TurnMetrics">
+  streamResumeOutcome?: Prisma.JsonNullableFilter<"TurnMetrics">
   createdAt?: Prisma.DateTimeFilter<"TurnMetrics"> | Date | string
 }, "id">
 
@@ -701,6 +707,7 @@ export type TurnMetricsOrderByWithAggregationInput = {
   toolProgressEventCount?: Prisma.SortOrder
   interruptedMessageCount?: Prisma.SortOrder
   cetusRoute?: Prisma.SortOrderInput | Prisma.SortOrder
+  streamResumeOutcome?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   _count?: Prisma.TurnMetricsCountOrderByAggregateInput
   _avg?: Prisma.TurnMetricsAvgOrderByAggregateInput
@@ -752,6 +759,7 @@ export type TurnMetricsScalarWhereWithAggregatesInput = {
   toolProgressEventCount?: Prisma.IntWithAggregatesFilter<"TurnMetrics"> | number
   interruptedMessageCount?: Prisma.IntWithAggregatesFilter<"TurnMetrics"> | number
   cetusRoute?: Prisma.JsonNullableWithAggregatesFilter<"TurnMetrics">
+  streamResumeOutcome?: Prisma.JsonNullableWithAggregatesFilter<"TurnMetrics">
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"TurnMetrics"> | Date | string
 }
 
@@ -795,6 +803,7 @@ export type TurnMetricsCreateInput = {
   toolProgressEventCount?: number
   interruptedMessageCount?: number
   cetusRoute?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  streamResumeOutcome?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
 }
 
@@ -838,6 +847,7 @@ export type TurnMetricsUncheckedCreateInput = {
   toolProgressEventCount?: number
   interruptedMessageCount?: number
   cetusRoute?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  streamResumeOutcome?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
 }
 
@@ -881,6 +891,7 @@ export type TurnMetricsUpdateInput = {
   toolProgressEventCount?: Prisma.IntFieldUpdateOperationsInput | number
   interruptedMessageCount?: Prisma.IntFieldUpdateOperationsInput | number
   cetusRoute?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  streamResumeOutcome?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -924,6 +935,7 @@ export type TurnMetricsUncheckedUpdateInput = {
   toolProgressEventCount?: Prisma.IntFieldUpdateOperationsInput | number
   interruptedMessageCount?: Prisma.IntFieldUpdateOperationsInput | number
   cetusRoute?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  streamResumeOutcome?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -967,6 +979,7 @@ export type TurnMetricsCreateManyInput = {
   toolProgressEventCount?: number
   interruptedMessageCount?: number
   cetusRoute?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  streamResumeOutcome?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
 }
 
@@ -1010,6 +1023,7 @@ export type TurnMetricsUpdateManyMutationInput = {
   toolProgressEventCount?: Prisma.IntFieldUpdateOperationsInput | number
   interruptedMessageCount?: Prisma.IntFieldUpdateOperationsInput | number
   cetusRoute?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  streamResumeOutcome?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -1053,6 +1067,7 @@ export type TurnMetricsUncheckedUpdateManyInput = {
   toolProgressEventCount?: Prisma.IntFieldUpdateOperationsInput | number
   interruptedMessageCount?: Prisma.IntFieldUpdateOperationsInput | number
   cetusRoute?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  streamResumeOutcome?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -1096,6 +1111,7 @@ export type TurnMetricsCountOrderByAggregateInput = {
   toolProgressEventCount?: Prisma.SortOrder
   interruptedMessageCount?: Prisma.SortOrder
   cetusRoute?: Prisma.SortOrder
+  streamResumeOutcome?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
 
@@ -1279,6 +1295,7 @@ export type TurnMetricsSelect<ExtArgs extends runtime.Types.Extensions.InternalA
   toolProgressEventCount?: boolean
   interruptedMessageCount?: boolean
   cetusRoute?: boolean
+  streamResumeOutcome?: boolean
   createdAt?: boolean
 }, ExtArgs["result"]["turnMetrics"]>
 
@@ -1322,6 +1339,7 @@ export type TurnMetricsSelectCreateManyAndReturn<ExtArgs extends runtime.Types.E
   toolProgressEventCount?: boolean
   interruptedMessageCount?: boolean
   cetusRoute?: boolean
+  streamResumeOutcome?: boolean
   createdAt?: boolean
 }, ExtArgs["result"]["turnMetrics"]>
 
@@ -1365,6 +1383,7 @@ export type TurnMetricsSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.E
   toolProgressEventCount?: boolean
   interruptedMessageCount?: boolean
   cetusRoute?: boolean
+  streamResumeOutcome?: boolean
   createdAt?: boolean
 }, ExtArgs["result"]["turnMetrics"]>
 
@@ -1408,10 +1427,11 @@ export type TurnMetricsSelectScalar = {
   toolProgressEventCount?: boolean
   interruptedMessageCount?: boolean
   cetusRoute?: boolean
+  streamResumeOutcome?: boolean
   createdAt?: boolean
 }
 
-export type TurnMetricsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "sessionId" | "userId" | "turnIndex" | "effortLevel" | "modelUsed" | "wallTimeMs" | "firstTokenMs" | "toolsCalled" | "guardsFired" | "compactionTriggered" | "contextTokensStart" | "cacheHit" | "cacheReadTokens" | "cacheWriteTokens" | "inputTokens" | "outputTokens" | "estimatedCostUsd" | "pendingActionYielded" | "pendingActionOutcome" | "aciRefinements" | "sessionSpendUsd" | "mutableToolDedupes" | "attemptId" | "synthetic" | "writeToolDurationMs" | "cacheSavingsUsd" | "turnPhase" | "harnessShape" | "thinkingBlockCount" | "todoUpdateCount" | "ttfvpMs" | "finalTextTokens" | "evalSummaryEmittedCount" | "evalSummaryViolationsCount" | "pendingInputSeenOnLegacy" | "toolProgressEventCount" | "interruptedMessageCount" | "cetusRoute" | "createdAt", ExtArgs["result"]["turnMetrics"]>
+export type TurnMetricsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "sessionId" | "userId" | "turnIndex" | "effortLevel" | "modelUsed" | "wallTimeMs" | "firstTokenMs" | "toolsCalled" | "guardsFired" | "compactionTriggered" | "contextTokensStart" | "cacheHit" | "cacheReadTokens" | "cacheWriteTokens" | "inputTokens" | "outputTokens" | "estimatedCostUsd" | "pendingActionYielded" | "pendingActionOutcome" | "aciRefinements" | "sessionSpendUsd" | "mutableToolDedupes" | "attemptId" | "synthetic" | "writeToolDurationMs" | "cacheSavingsUsd" | "turnPhase" | "harnessShape" | "thinkingBlockCount" | "todoUpdateCount" | "ttfvpMs" | "finalTextTokens" | "evalSummaryEmittedCount" | "evalSummaryViolationsCount" | "pendingInputSeenOnLegacy" | "toolProgressEventCount" | "interruptedMessageCount" | "cetusRoute" | "streamResumeOutcome" | "createdAt", ExtArgs["result"]["turnMetrics"]>
 
 export type $TurnMetricsPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "TurnMetrics"
@@ -1574,6 +1594,38 @@ export type $TurnMetricsPayload<ExtArgs extends runtime.Types.Extensions.Interna
      * swap turns and on pre-SPEC-20.2 sessions (D-5 dual-path fallback).
      */
     cetusRoute: runtime.JsonValue | null
+    /**
+     * [S.155 / D-4 / 2026-05-18] Persisted `StreamResumeOutcome` payload
+     * from the engine v2.5.0 `onStreamResume` callback. Discriminated-union
+     * JSON shape mirroring `@t2000/engine`'s `StreamResumeOutcome` type:
+     * 
+     * - `{ outcome: 'clean', streamId, eventsReplayed }`
+     * - `{ outcome: 'synthesized_terminal', streamId, eventsReplayed }`
+     * - `{ outcome: 'mid_tool', streamId, eventsReplayed, toolUseId, toolName }`
+     * - `{ outcome: 'empty', streamId }`
+     * - `{ outcome: 'replay_error', streamId, errorMessage }`
+     * (note: `Error` objects don't `JSON.stringify` cleanly, so the
+     * `replay_error` variant flattens to `errorMessage: string` — same
+     * normalization the `[stream-resume]` console.log applies in
+     * `app/api/engine/chat/route.ts`.)
+     * 
+     * `null` on the overwhelming majority of rows — only set when the chat
+     * route was invoked with `resumeStreamId` (page-reload mid-stream
+     * recovery path). Companion to the structured `[stream-resume]` Vercel
+     * log: the log is the first defense for ops (greppable, no DB needed),
+     * the column is the durable signal for dashboarding (`SELECT
+     * "streamResumeOutcome"->>'outcome' AS outcome, COUNT(*) FROM
+     * "TurnMetrics" WHERE "streamResumeOutcome" IS NOT NULL GROUP BY 1`).
+     * 
+     * Used to evaluate the trigger for Path A (silent in-flight tool re-
+     * execution) — Decision 6 in SPEC 37 v0.7a Phase 5 Slice C lock. Path A
+     * builds if `mid_tool` resumes exceed ~5% of total resumes over 7d
+     * AND a specific tool dominates the toolName histogram (`SELECT
+     * "streamResumeOutcome"->>'toolName' AS tool, COUNT(*) FROM
+     * "TurnMetrics" WHERE "streamResumeOutcome"->>'outcome' = 'mid_tool'
+     * GROUP BY 1 ORDER BY 2 DESC`).
+     */
+    streamResumeOutcome: runtime.JsonValue | null
     createdAt: Date
   }, ExtArgs["result"]["turnMetrics"]>
   composites: {}
@@ -2037,6 +2089,7 @@ export interface TurnMetricsFieldRefs {
   readonly toolProgressEventCount: Prisma.FieldRef<"TurnMetrics", 'Int'>
   readonly interruptedMessageCount: Prisma.FieldRef<"TurnMetrics", 'Int'>
   readonly cetusRoute: Prisma.FieldRef<"TurnMetrics", 'Json'>
+  readonly streamResumeOutcome: Prisma.FieldRef<"TurnMetrics", 'Json'>
   readonly createdAt: Prisma.FieldRef<"TurnMetrics", 'DateTime'>
 }
     

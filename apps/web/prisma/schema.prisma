@@ -412,6 +412,36 @@ model TurnMetrics {
   /// (D-2 verification + D-3 TTL re-validation). Null on rows from non-
   /// swap turns and on pre-SPEC-20.2 sessions (D-5 dual-path fallback).
   cetusRoute                 Json?
+  /// [S.155 / D-4 / 2026-05-18] Persisted `StreamResumeOutcome` payload
+  /// from the engine v2.5.0 `onStreamResume` callback. Discriminated-union
+  /// JSON shape mirroring `@t2000/engine`'s `StreamResumeOutcome` type:
+  ///
+  ///   - `{ outcome: 'clean', streamId, eventsReplayed }`
+  ///   - `{ outcome: 'synthesized_terminal', streamId, eventsReplayed }`
+  ///   - `{ outcome: 'mid_tool', streamId, eventsReplayed, toolUseId, toolName }`
+  ///   - `{ outcome: 'empty', streamId }`
+  ///   - `{ outcome: 'replay_error', streamId, errorMessage }`
+  ///     (note: `Error` objects don't `JSON.stringify` cleanly, so the
+  ///     `replay_error` variant flattens to `errorMessage: string` — same
+  ///     normalization the `[stream-resume]` console.log applies in
+  ///     `app/api/engine/chat/route.ts`.)
+  ///
+  /// `null` on the overwhelming majority of rows — only set when the chat
+  /// route was invoked with `resumeStreamId` (page-reload mid-stream
+  /// recovery path). Companion to the structured `[stream-resume]` Vercel
+  /// log: the log is the first defense for ops (greppable, no DB needed),
+  /// the column is the durable signal for dashboarding (`SELECT
+  /// "streamResumeOutcome"->>'outcome' AS outcome, COUNT(*) FROM
+  /// "TurnMetrics" WHERE "streamResumeOutcome" IS NOT NULL GROUP BY 1`).
+  ///
+  /// Used to evaluate the trigger for Path A (silent in-flight tool re-
+  /// execution) — Decision 6 in SPEC 37 v0.7a Phase 5 Slice C lock. Path A
+  /// builds if `mid_tool` resumes exceed ~5% of total resumes over 7d
+  /// AND a specific tool dominates the toolName histogram (`SELECT
+  /// "streamResumeOutcome"->>'toolName' AS tool, COUNT(*) FROM
+  /// "TurnMetrics" WHERE "streamResumeOutcome"->>'outcome' = 'mid_tool'
+  /// GROUP BY 1 ORDER BY 2 DESC`).
+  streamResumeOutcome        Json?
   createdAt                  DateTime @default(now())
 
   @@index([userId, createdAt])
