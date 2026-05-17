@@ -369,167 +369,13 @@ const clientSchema = z.object({
    */
   NEXT_PUBLIC_HARNESS_TRANSITIONS_V1: optionalString,
 
-  /**
-   * [SPEC 37 v0.7a Phase 2 Day 10-11] BalanceCard V2 rollout flag.
-   *
-   * When set ("1" / "true"), `ToolResultCard` routes `balance_check`
-   * results to `BalanceCardV2` (built from the Day 6-9 shared primitives:
-   * AssetAmountBlock + APYBlock + the new wallet/savings section
-   * layout per TOOL_UX_DESIGN_v07a.md). Default OFF → existing
-   * BalanceCard renders unchanged for every user.
-   *
-   * Why a flag (not a hard cutover): the existing BalanceCard ships
-   * the post-write variant + watched-address badge + NumberTicker
-   * animation that the V2 layout intentionally drops in favor of the
-   * design-baseline shape. Founder reviews V2 side-by-side via the flag
-   * before the cutover lands; that switch happens in the Day 27-28
-   * release window (engine v2.0.0) once all 10 high-value tool V2s
-   * are built and reviewed together.
-   *
-   * Rollback: unset the var. Zero-risk because the flag-gated render
-   * is purely additive — same engine data, different presentation
-   * layer; no API contract change.
-   */
-  NEXT_PUBLIC_BALANCE_CARD_V2: optionalString,
-
-  /**
-   * [SPEC 37 v0.7a Phase 2 Day 12-13] SwapQuoteCard V2 rollout flag.
-   *
-   * Same flag-gated rollout pattern as `NEXT_PUBLIC_BALANCE_CARD_V2`
-   * (Day 10-11 sibling). When set ("1" / "true"), `ToolResultCard`
-   * routes `swap_quote` results to `SwapQuoteCardV2` (built from the
-   * Day 6-9 shared primitives: AssetAmountBlock for both legs +
-   * RouteDiagram for multi-hop routes when `routeSteps` are emitted
-   * by the engine). Default OFF → existing SwapQuoteCard renders
-   * unchanged for every user.
-   *
-   * V2 intentionally degrades gracefully: when the engine doesn't
-   * emit the new optional fields (`routeSteps`, `fromUsdValue`,
-   * `toUsdValue`, `slippage`, `totalFeeBps`), V2 falls back to the
-   * v1-equivalent shape rendered with shared primitives. This means
-   * V2 can ship before the engine swap_quote tool is updated to emit
-   * the richer payload (the engine update is deferred to the Week 4
-   * cleanup batch per the same rationale as BalanceCardV2).
-   *
-   * Rollback: unset the var.
-   */
-  NEXT_PUBLIC_SWAP_QUOTE_CARD_V2: optionalString,
-
-  /**
-   * [SPEC 37 v0.7a Phase 2 Day 14-15] HealthCard V2 rollout flag.
-   *
-   * Same flag-gated rollout pattern as `NEXT_PUBLIC_BALANCE_CARD_V2`
-   * (Day 10-11) and `NEXT_PUBLIC_SWAP_QUOTE_CARD_V2` (Day 12-13).
-   * When set ("1" / "true"), `ToolResultCard` routes `health_check`
-   * results to `HealthCardV2` (HFGauge as hero + 2-col Collateral/
-   * Debt grid + borrowing-capacity-remaining footer when maxBorrow
-   * is supplied). Default OFF → existing HealthCard renders unchanged.
-   *
-   * V2 honors v1's ∞ semantics for un-debted accounts and surfaces
-   * the same warning color when borrowed > $0.01 (DEBT_DUST_USD
-   * threshold mirrors v1).
-   *
-   * V2 INTENTIONALLY does NOT cover the post-write variant — the
-   * existing HealthCard's 3-col post-write grid + status pill in
-   * the HF cell stays in PostWriteRefreshSurface. The flag check in
-   * ToolResultCard guards against routing post-write calls to V2.
-   *
-   * Rollback: unset the var.
-   */
-  NEXT_PUBLIC_HEALTH_CARD_V2: optionalString,
-
-  /**
-   * [SPEC 37 v0.7a Phase 2 Day 16] PendingRewardsCard V2 rollout flag.
-   *
-   * Same flag-gated rollout pattern as the prior V2 cards (Day 10-15).
-   * When set ("1" / "true"), `ToolResultCard` routes `pending_rewards`
-   * results to `PendingRewardsCardV2` (AssetAmountBlock per reward,
-   * sorted by USD desc, optional protocol eyebrow when multi-protocol,
-   * "Total claimable" footer chip). Default OFF → existing
-   * PendingRewardsCard renders unchanged.
-   *
-   * V2 preserves v1's three render states (degraded warning / empty
-   * quiet line / list of claimable rewards) and v1's CTA decision
-   * (data-only — the suggested-action chips below the assistant turn
-   * provide HARVEST ALL / JUST CLAIM, not the card itself).
-   *
-   * The companion `harvest_rewards` write-tool preview migration is
-   * deferred to Day 18-22 (the natural batch for write-tool
-   * PermissionCard touches — saves one shared-component touch).
-   *
-   * Rollback: unset the var.
-   */
-  NEXT_PUBLIC_PENDING_REWARDS_CARD_V2: optionalString,
-
-  /**
-   * [SPEC 37 v0.7a Phase 2 Day 17-22] Write-tool preview bodies V2 flag.
-   *
-   * When set ("1" / "true"), `PermissionCard` replaces the single-line
-   * `inputSummary` text body with the corresponding per-tool preview
-   * body (AssetAmountBlock + APYBlock + fee row, sourced from the
-   * Day 6-9 shared primitives) for these 5 write tools:
-   *
-   *   - save_deposit       (Deposit row + Pool APY + NAVI overlay fee)
-   *   - withdraw           (Withdraw row + Yield foregone APY + fee)
-   *   - borrow             (Borrow row + Borrow rate + fee)
-   *   - repay_debt         (Repay row + Borrow rate cleared + fee)
-   *   - harvest_rewards    (Compound description + slippage + threshold)
-   *
-   * One flag turns on all 5 because they share the same UX shape and
-   * are reviewed together (consistent write-tool preview language).
-   *
-   * V2 PRESERVES every existing PermissionCard behavior:
-   *   - countdown timer + auto-deny on expiry
-   *   - Deny / Approve / Refresh-quote button row
-   *   - Modifiable-field inputs (amount edits, address edits)
-   *   - Guard-injection hints
-   *   - WorkingState transition after approve
-   *   - SendAddressBlock for send_transfer (NOT in this V2 batch —
-   *     stays the v1 path)
-   *
-   * Body components do NOT yet render HF projection (current → after)
-   * because the engine PendingAction shape doesn't carry currentHF
-   * today. Once the engine adds it (Week 4 cleanup batch), bodies
-   * gain the HFGauge projection row trivially via the Day 7 primitive.
-   *
-   * Rollback: unset the var.
-   */
-  NEXT_PUBLIC_WRITE_PREVIEWS_V2: optionalString,
-
-  /**
-   * [SPEC 37 v0.7a Phase 2 Day 23] RatesCardV2 rollout flag.
-   *
-   * When set ("1" / "true"), `ToolResultCard` renders the new
-   * `RatesCardV2` (Day 9 APYBlock × N rows) for `rates_info` results.
-   * Otherwise falls back to the v1 `RatesCard` (table layout).
-   *
-   * V2 ADDS: APYBlock per cell (consistent rendering across cards).
-   * V2 PRESERVES: engine-side ordering (sorted by saveApy desc),
-   *               "render whatever the engine sends" no-cap rule.
-   *
-   * Rollback: unset the var.
-   */
-  NEXT_PUBLIC_RATES_CARD_V2: optionalString,
-
-  /**
-   * [SPEC 37 v0.7a Phase 2 Day 24] PortfolioCardV2 rollout flag.
-   *
-   * When set ("1" / "true"), `ToolResultCard` renders the new
-   * `PortfolioCardV2` (Day 6 AssetAmountBlock × N rows + Day 7 HFGauge
-   * + Day 9 APYBlock for savings APY) for `portfolio_analysis` results.
-   * Otherwise falls back to the v1 `PortfolioCard`.
-   *
-   * V2 ADDS: AssetAmountBlock per allocation (instead of comma-list),
-   *          APYBlock for savings APY (consistent with rates_info /
-   *          save_deposit), HFGauge for the debt section (instead of
-   *          generic Gauge with manual status badge).
-   * V2 PRESERVES: hero total + week trend, MiniBar allocation
-   *               breakdown, DeFi row with `partial` provenance,
-   *               insights callout, watched-address badge, net worth.
-   *
-   * Rollback: unset the var.
-   */
-  NEXT_PUBLIC_PORTFOLIO_CARD_V2: optionalString,
+  // [v2.0.1 — 2026-05-17] The 7 NEXT_PUBLIC_*_CARD_V2 + WRITE_PREVIEWS_V2
+  // flags were removed once the V2 rollout completed. V2 cards (Balance,
+  // Swap, Health, Pending Rewards, Rates, Portfolio) + V2 write previews
+  // are now the default; V1 BalanceCard + HealthCard stay only for the
+  // post-write refresh surface (which V2 intentionally never covered).
+  // Setting these vars in Vercel after the cleanup deploy is a no-op;
+  // safe to remove from the env panel.
 });
 
 // ─── Runtime env (Next.js requires literal references) ────────────────
@@ -574,13 +420,6 @@ const runtimeEnv = {
   NEXT_PUBLIC_CONFIRM_CHIPS_V1: process.env.NEXT_PUBLIC_CONFIRM_CHIPS_V1,
   NEXT_PUBLIC_HARNESS_V9: process.env.NEXT_PUBLIC_HARNESS_V9,
   NEXT_PUBLIC_HARNESS_TRANSITIONS_V1: process.env.NEXT_PUBLIC_HARNESS_TRANSITIONS_V1,
-  NEXT_PUBLIC_BALANCE_CARD_V2: process.env.NEXT_PUBLIC_BALANCE_CARD_V2,
-  NEXT_PUBLIC_SWAP_QUOTE_CARD_V2: process.env.NEXT_PUBLIC_SWAP_QUOTE_CARD_V2,
-  NEXT_PUBLIC_HEALTH_CARD_V2: process.env.NEXT_PUBLIC_HEALTH_CARD_V2,
-  NEXT_PUBLIC_PENDING_REWARDS_CARD_V2: process.env.NEXT_PUBLIC_PENDING_REWARDS_CARD_V2,
-  NEXT_PUBLIC_WRITE_PREVIEWS_V2: process.env.NEXT_PUBLIC_WRITE_PREVIEWS_V2,
-  NEXT_PUBLIC_RATES_CARD_V2: process.env.NEXT_PUBLIC_RATES_CARD_V2,
-  NEXT_PUBLIC_PORTFOLIO_CARD_V2: process.env.NEXT_PUBLIC_PORTFOLIO_CARD_V2,
 } as const;
 
 // ─── Validate ──────────────────────────────────────────────────────────

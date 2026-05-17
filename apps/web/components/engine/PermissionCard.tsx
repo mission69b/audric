@@ -14,7 +14,6 @@ import {
   type QuoteAgeSeverity,
 } from '@/lib/format-quote-age';
 import { WorkingState } from './motion/WorkingState';
-import { env } from '@/lib/env';
 import { renderPreviewBody } from './preview-bodies';
 
 /**
@@ -935,41 +934,35 @@ export function PermissionCard({
       )}
 
       {/*
-        [SPEC 37 v0.7a Phase 2 Day 17-22] Write-tool preview bodies V2.
-        When the env flag is on AND this tool has a registered preview
-        body (save_deposit, withdraw, borrow, repay_debt, harvest_rewards),
-        render the rich body using shared primitives (AssetAmountBlock +
-        APYBlock + fee row). Otherwise fall back to v1's single-line
-        font-mono inputSummary string.
+        Write-tool preview bodies (V2). For tools with a registered
+        preview body (save_deposit, withdraw, borrow, repay_debt,
+        harvest_rewards), render the rich body using shared primitives
+        (AssetAmountBlock + APYBlock + fee row). Otherwise fall back to
+        the single-line font-mono inputSummary string.
 
         The chrome around the body — header, timer, modifiable inputs,
         guard injections, deny/approve/refresh buttons, working state —
         is intentionally untouched. V2 swaps ONLY the body slot.
       */}
       {(() => {
-        const useV2 =
-          env.NEXT_PUBLIC_WRITE_PREVIEWS_V2 === '1' ||
-          env.NEXT_PUBLIC_WRITE_PREVIEWS_V2 === 'true';
-        if (useV2) {
-          const v2Body = renderPreviewBody(
-            action.toolName,
-            modifiedInput,
-            {
-              // [Day 14a / 2026-05-16] Thread engine-1.34.10+ live NAVI
-              // data so borrow/repay/withdraw/save preview bodies render
-              // the real APY + current HF instead of italic disclaimers.
-              // Both fields fall back to undefined if the engine is
-              // pinned older or NAVI MCP was unavailable at emit-time.
-              borrowApyBps: action.borrowApyBps,
-              currentHF: action.currentHF,
-              // [Day 14c / 2026-05-16] projectedHF — engine 1.34.13+
-              // computes the HF AFTER the write executes. HFRow renders
-              // "current → projected" when present.
-              projectedHF: action.projectedHF,
-            },
-          );
-          if (v2Body) return v2Body;
-        }
+        const v2Body = renderPreviewBody(
+          action.toolName,
+          modifiedInput,
+          {
+            // Live NAVI data threaded from engine 1.34.10+ so
+            // borrow/repay/withdraw/save preview bodies render the
+            // real APY + current HF instead of italic disclaimers.
+            // Both fields fall back to undefined if the engine is
+            // pinned older or NAVI MCP was unavailable at emit-time.
+            borrowApyBps: action.borrowApyBps,
+            currentHF: action.currentHF,
+            // projectedHF — engine 1.34.13+ computes the HF AFTER the
+            // write executes. HFRow renders "current → projected" when
+            // present.
+            projectedHF: action.projectedHF,
+          },
+        );
+        if (v2Body) return v2Body;
         return inputSummary ? (
           <p className="text-sm font-mono text-fg-primary">{inputSummary}</p>
         ) : null;

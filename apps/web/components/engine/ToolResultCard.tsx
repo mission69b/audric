@@ -1,7 +1,6 @@
 'use client';
 
 import type { ToolExecution } from '@/lib/engine-types';
-import { env } from '@/lib/env';
 import { extractData } from './cards/primitives';
 import { RatesCard } from './cards/RatesCard';
 import { RatesCardV2 } from './cards/RatesCardV2';
@@ -117,28 +116,16 @@ const CARD_RENDERERS: Record<string, CardRenderer> = {
   rates_info: (result) => {
     const data = extractData(result);
     if (!data || typeof data !== 'object') return null;
-    const useV2 =
-      env.NEXT_PUBLIC_RATES_CARD_V2 === '1' ||
-      env.NEXT_PUBLIC_RATES_CARD_V2 === 'true';
-    if (useV2) {
-      return <RatesCardV2 data={data as Record<string, { saveApy: number; borrowApy: number }>} />;
-    }
-    return <RatesCard data={data as Record<string, { saveApy: number; borrowApy: number }>} />;
+    return <RatesCardV2 data={data as Record<string, { saveApy: number; borrowApy: number }>} />;
   },
   balance_check: (result, variant) => {
     const data = extractData(result);
     if (!data || typeof data !== 'object') return null;
-    // [SPEC 37 v0.7a Phase 2 Day 10-11] BalanceCardV2 rollout flag.
     // V2 renders the design-baseline shape (wallet section list +
-    // savings section + APY hints) using shared primitives. V1 keeps
-    // shipping by default + stays the only renderer for the post-write
-    // variant (PostWriteRefreshSurface) because V2 doesn't ship the
-    // post-write shape — see the BalanceCardV2 header for what V2
-    // intentionally drops.
-    const useV2 =
-      env.NEXT_PUBLIC_BALANCE_CARD_V2 === '1' ||
-      env.NEXT_PUBLIC_BALANCE_CARD_V2 === 'true';
-    if (useV2 && variant !== 'post-write') {
+    // savings section + APY hints). V1 BalanceCard stays as the only
+    // renderer for the post-write variant (PostWriteRefreshSurface)
+    // because V2 intentionally drops the collapsed post-write shape.
+    if (variant !== 'post-write') {
       return (
         <BalanceCardV2
           data={data as Parameters<typeof BalanceCardV2>[0]['data']}
@@ -160,13 +147,7 @@ const CARD_RENDERERS: Record<string, CardRenderer> = {
   portfolio_analysis: (result) => {
     const data = extractData(result);
     if (!data || typeof data !== 'object') return null;
-    const useV2 =
-      env.NEXT_PUBLIC_PORTFOLIO_CARD_V2 === '1' ||
-      env.NEXT_PUBLIC_PORTFOLIO_CARD_V2 === 'true';
-    if (useV2) {
-      return <PortfolioCardV2 data={data as Parameters<typeof PortfolioCardV2>[0]['data']} />;
-    }
-    return <PortfolioCard data={data as Parameters<typeof PortfolioCard>[0]['data']} />;
+    return <PortfolioCardV2 data={data as Parameters<typeof PortfolioCardV2>[0]['data']} />;
   },
   explain_tx: (result) => {
     const data = extractData(result);
@@ -176,16 +157,10 @@ const CARD_RENDERERS: Record<string, CardRenderer> = {
   health_check: (result, variant) => {
     const data = extractData(result);
     if (!data || typeof data !== 'object') return null;
-    // [SPEC 37 v0.7a Phase 2 Day 14-15] HealthCardV2 rollout flag.
-    // V2 renders HFGauge as hero + Collateral/Debt 2-col + borrowing
-    // capacity. Default OFF until founder flips
-    // NEXT_PUBLIC_HEALTH_CARD_V2. Post-write variant is excluded —
-    // PostWriteRefreshSurface keeps consuming v1's 3-col grid +
-    // status pill in HF cell.
-    const useV2 =
-      env.NEXT_PUBLIC_HEALTH_CARD_V2 === '1' ||
-      env.NEXT_PUBLIC_HEALTH_CARD_V2 === 'true';
-    if (useV2 && variant !== 'post-write') {
+    // V2 renders HFGauge hero + Collateral/Debt 2-col + borrowing
+    // capacity. Post-write variant is excluded — PostWriteRefreshSurface
+    // keeps consuming v1's 3-col grid + status pill in HF cell.
+    if (variant !== 'post-write') {
       return (
         <HealthCardV2
           data={data as Parameters<typeof HealthCardV2>[0]['data']}
@@ -208,23 +183,11 @@ const CARD_RENDERERS: Record<string, CardRenderer> = {
   swap_quote: (result) => {
     const data = extractData(result);
     if (!data || typeof data !== 'object') return null;
-    // [SPEC 37 v0.7a Phase 2 Day 12-13] SwapQuoteCardV2 rollout flag.
-    // V2 renders the design-baseline shape (Pay/Receive AssetAmountBlock
-    // pair + RouteDiagram for multi-hop + slippage + fee breakdown).
-    // Falls back to v1-equivalent shape when engine doesn't emit the
-    // richer optional fields. Default OFF until founder flips
-    // NEXT_PUBLIC_SWAP_QUOTE_CARD_V2.
-    const useV2 =
-      env.NEXT_PUBLIC_SWAP_QUOTE_CARD_V2 === '1' ||
-      env.NEXT_PUBLIC_SWAP_QUOTE_CARD_V2 === 'true';
-    if (useV2) {
-      return (
-        <SwapQuoteCardV2
-          data={data as Parameters<typeof SwapQuoteCardV2>[0]['data']}
-        />
-      );
-    }
-    return <SwapQuoteCard data={data as Parameters<typeof SwapQuoteCard>[0]['data']} />;
+    return (
+      <SwapQuoteCardV2
+        data={data as Parameters<typeof SwapQuoteCardV2>[0]['data']}
+      />
+    );
   },
   mpp_services: (result) => {
     const data = extractData(result);
@@ -448,17 +411,7 @@ const CARD_RENDERERS: Record<string, CardRenderer> = {
       degraded: r.degraded ?? false,
       degradationReason: r.degradationReason ?? null,
     };
-    // [SPEC 37 v0.7a Phase 2 Day 16] PendingRewardsCardV2 rollout flag.
-    // V2 renders AssetAmountBlock per reward (sorted by USD desc) +
-    // optional protocol eyebrow + total claimable footer. Default OFF
-    // until founder flips NEXT_PUBLIC_PENDING_REWARDS_CARD_V2.
-    const useV2 =
-      env.NEXT_PUBLIC_PENDING_REWARDS_CARD_V2 === '1' ||
-      env.NEXT_PUBLIC_PENDING_REWARDS_CARD_V2 === 'true';
-    if (useV2) {
-      return <PendingRewardsCardV2 data={normalized} />;
-    }
-    return <PendingRewardsCard data={normalized} />;
+    return <PendingRewardsCardV2 data={normalized} />;
   },
   // ─── SPEC 23B — N4 — resolve_suins inline bidirectional surface ──────────
   // Pre-N4 the tool fell through to `null` — the user only saw the LLM's
