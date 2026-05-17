@@ -1,19 +1,9 @@
 import {
-  QueryEngine,
-  // [SPEC 37 v0.7a Phase 1 / 2026-05-15] Migrated from hand-rolled
-  // `AnthropicProvider` (engine ≤1.30.x) to AI SDK-backed
-  // `AISDKAnthropicProvider` (engine 1.31.0+). Drop-in `LLMProvider`
-  // implementation — same constructor signature `{ apiKey }`, same
-  // event stream contract (`ProviderEvent`), same retry-before-first-
-  // token semantics + same `external.retry_count` telemetry. The legacy
-  // provider stays exported as `@deprecated` for one soak window so we
-  // can revert without an engine bump if anything regresses.
-  AISDKAnthropicProvider,
-  // [SPEC 37 v0.7a Phase 2 Day 10-12 / 2026-05-16] AI-SDK-native engine.
-  // When `env.USE_AI_SDK_NATIVE_ENGINE === '1'` we instantiate this
-  // class instead of `QueryEngine`. Yields BYTE-COMPATIBLE `EngineEvent`s
-  // via the R8 bridge layer so audric's chat / resume routes consume
-  // the stream unchanged. See engine factory below for the branch.
+  // [v2.0.0 — 2026-05-17] AISDKEngine is the only engine. Legacy
+  // QueryEngine + AnthropicProvider deleted upstream in engine v2.0.0.
+  // The wallet-allowlist + USE_AI_SDK_NATIVE_ENGINE* env vars are gone
+  // with them — audric no longer has an engine choice to make at
+  // factory time.
   AISDKEngine,
   type AISDKEngineConfig,
   McpClientManager,
@@ -50,7 +40,6 @@ import { getRecipeRegistry } from './recipes';
 import { UpstashConversationStateStore } from './upstash-conversation-state-store';
 import { incrementSessionSpend } from './session-spend';
 import { applyAccountAgeGate, computeAccountAgeDays } from './account-age-gate';
-import { isAddressAllowlisted } from './wallet-allowlist';
 import { ADVICE_TOOLS } from './advice-tool';
 import { audricSaveContactTool, audricListContactsTool } from './contact-tools';
 import { lookupUserTool } from './lookup-user-tool';
@@ -334,7 +323,7 @@ export async function createEngine(
   addressOrOpts: string | CreateEngineOpts,
   session?: SessionData | null,
   contacts?: Contact[],
-): Promise<QueryEngine> {
+): Promise<AISDKEngine> {
   // Support both the old (address, session, contacts) signature and the new opts object
   const opts: CreateEngineOpts = typeof addressOrOpts === 'string'
     ? { address: addressOrOpts, session, contacts }
@@ -767,35 +756,18 @@ export async function createEngine(
   // `engineConfig` is the shared config bag both engines accept. When
   // the AI-SDK-native flag is set we strip the legacy-only fields
   // (`provider`, `mcpManager`) and substitute `anthropicApiKey`
-  // directly for AISDKEngine. Both engines yield byte-compatible
-  // `EngineEvent`s + share the public surface (loadMessages /
-  // getMessages / submitMessage / getUsage / getTools /
-  // invokeReadTool / abort), so the rest of the route is unchanged.
+  // [v2.0.0 — 2026-05-17] AISDKEngine is the only engine. The
+  // useAiSdkNativeEngine ternary, the QueryEngine import, the
+  // AISDKAnthropicProvider import, and the wallet-allowlist gate are
+  // all deleted — engine v2.0.0 removed the QueryEngine class entirely,
+  // so there's no second branch to choose.
   //
-  // Cast to `QueryEngine` at the boundary preserves typing for
-  // every audric call site without forcing a shared interface
-  // change today. Day 27-28 cleanup introduces a proper `EngineLike`
-  // type once the soak window proves the v2 path stable.
-  //
-  // Day 13 (2026-05-16): two opt-in paths are now honoured:
-  //   1. Per-wallet allowlist (CSV in USE_AI_SDK_NATIVE_ENGINE_WALLETS).
-  //      Surgical opt-in for founder dogfood + alpha testers. The
-  //      address check fires first so an allowlisted wallet hits the
-  //      new engine even when the global flag is OFF — every other
-  //      user stays on legacy.
-  //   2. Global flag (USE_AI_SDK_NATIVE_ENGINE === '1' | 'true').
-  //      All-or-nothing kill-switch. Used for emergency rollback
-  //      ("unset and we're back on legacy") and eventual 100% rollout.
-  // Both can run concurrently — address check just resolves first.
-  const useAiSdkNativeEngine =
-    isAddressAllowlisted(address, env.USE_AI_SDK_NATIVE_ENGINE_WALLETS) ||
-    env.USE_AI_SDK_NATIVE_ENGINE === '1' ||
-    env.USE_AI_SDK_NATIVE_ENGINE === 'true';
-
-  // Shared config bag — every field common to both engines. The two
-  // construction calls below add the engine-specific bits
-  // (`provider` + `mcpManager` for QueryEngine; `anthropicApiKey` for
-  // AISDKEngine) and call `new` on the right class.
+  // History: Day 10-13 (engine 1.33.x) ran both engines side-by-side
+  // behind USE_AI_SDK_NATIVE_ENGINE_WALLETS (CSV allowlist) +
+  // USE_AI_SDK_NATIVE_ENGINE=1 (global flag). The founder smoke at
+  // engine 1.38.5 (https://audric.ai/chat/s_1778986144942_5b3858f588fe)
+  // confirmed AISDKEngine handles 100% of prod traffic correctly with
+  // zero engine errors. v2.0.0 ships the deletion.
   const sharedEngineConfig = {
     walletAddress: address,
     suiRpcUrl: SUI_RPC_URL,
@@ -878,30 +850,13 @@ export async function createEngine(
     }),
   };
 
-  const engine = useAiSdkNativeEngine
-    ? (() => {
-        // Log WHICH gate fired so prod-soak telemetry can correlate
-        // engine-version errors with the rollout dial. Address check
-        // wins when both fire (allowlist always > global flag).
-        const reason = isAddressAllowlisted(address, env.USE_AI_SDK_NATIVE_ENGINE_WALLETS)
-          ? 'wallet allowlist'
-          : 'global flag';
-        console.log(`[engine-factory] using AISDKEngine (auth path — ${reason})`);
-        return new AISDKEngine({
-          ...(sharedEngineConfig as Omit<AISDKEngineConfig, 'anthropicApiKey'>),
-          anthropicApiKey: ANTHROPIC_API_KEY,
-          // [SPEC 37 v0.7a Phase 2 Day 13 / engine 1.33.2] mcpManager
-          // is back on AISDKEngineConfig — local smoke caught that
-          // NAVI-MCP-backed read tools (rates_info, savings_info,
-          // health_check) failed without it.
-          mcpManager: mgr,
-        }) as unknown as QueryEngine;
-      })()
-    : new QueryEngine({
-        ...sharedEngineConfig,
-        provider: new AISDKAnthropicProvider({ apiKey: ANTHROPIC_API_KEY }),
-        mcpManager: mgr,
-      });
+  const engine = new AISDKEngine({
+    ...(sharedEngineConfig as Omit<AISDKEngineConfig, 'anthropicApiKey'>),
+    anthropicApiKey: ANTHROPIC_API_KEY,
+    // [Engine 1.33.2] mcpManager is on AISDKEngineConfig — NAVI-MCP-backed
+    // read tools (rates_info, savings_info, health_check) need it.
+    mcpManager: mgr,
+  });
 
   if (isNewSession) {
     const prefetch = buildSyntheticPrefetch(balanceSummary, positions);
@@ -1101,7 +1056,7 @@ export interface HistoryMessage {
   content: string;
 }
 
-export async function createUnauthEngine(history: HistoryMessage[]): Promise<QueryEngine> {
+export async function createUnauthEngine(history: HistoryMessage[]): Promise<AISDKEngine> {
   if (!ANTHROPIC_API_KEY) {
     throw new Error('ANTHROPIC_API_KEY not configured');
   }
@@ -1121,17 +1076,8 @@ export async function createUnauthEngine(history: HistoryMessage[]): Promise<Que
   // Reuse the shared MCP connection for real-time NAVI rates (no wallet needed)
   const mgr = await ensureMcpConnected();
 
-  // [SPEC 37 v0.7a Phase 2 Day 13 / 2026-05-16] Mirror the auth-path
-  // engine selection so the demo / unauth flow exercises the SAME
-  // `AISDKEngine` codepath when the flag is on. Pre-Day-13 the unauth
-  // path always instantiated `QueryEngine` regardless of the flag,
-  // which (a) made local smoke impossible (Google OAuth blocks
-  // localhost) and (b) meant prod demo traffic skipped the new engine
-  // even when 100% of auth traffic was on it. Same model (Haiku),
-  // same tool subset, same budget — only the engine class swaps.
-  const useAiSdkNativeEngine =
-    env.USE_AI_SDK_NATIVE_ENGINE === '1' || env.USE_AI_SDK_NATIVE_ENGINE === 'true';
-
+  // [v2.0.0 — 2026-05-17] AISDKEngine is the only engine. See
+  // createEngine() above for the deletion rationale.
   const sharedConfig = {
     tools: readTools,
     systemPrompt: prompt,
@@ -1143,22 +1089,11 @@ export async function createUnauthEngine(history: HistoryMessage[]): Promise<Que
     },
   };
 
-  const engine = useAiSdkNativeEngine
-    ? (() => {
-        console.log('[engine-factory] using AISDKEngine (unauth/demo path — SPEC 37 v0.7a Phase 2)');
-        return new AISDKEngine({
-          ...sharedConfig,
-          anthropicApiKey: ANTHROPIC_API_KEY,
-          // [SPEC 37 v0.7a Phase 2 Day 13 / engine 1.33.2] mcpManager
-          // restored — see auth-path engine-factory branch above.
-          mcpManager: mgr,
-        } as AISDKEngineConfig) as unknown as QueryEngine;
-      })()
-    : new QueryEngine({
-        ...sharedConfig,
-        provider: new AISDKAnthropicProvider({ apiKey: ANTHROPIC_API_KEY }),
-        mcpManager: mgr,
-      });
+  const engine = new AISDKEngine({
+    ...sharedConfig,
+    anthropicApiKey: ANTHROPIC_API_KEY,
+    mcpManager: mgr,
+  } as AISDKEngineConfig);
 
   if (history.length > 0) {
     const messages: Message[] = history.map((m) => ({

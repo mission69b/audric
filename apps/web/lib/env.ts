@@ -230,81 +230,11 @@ const serverSchema = z.object({
    */
   PAYMENT_STREAM_DISABLE: optionalString,
 
-  /**
-   * [SPEC 37 v0.7a Phase 2 Day 10-12 / 2026-05-16] Per-route opt-in for
-   * the AI-SDK-native engine (`AISDKEngine` from `@t2000/engine/v2`).
-   *
-   * When set ("1" / "true"), `engine-factory.ts` instantiates
-   * `AISDKEngine` instead of the legacy `QueryEngine`. The new engine
-   * wraps Vercel AI SDK v6's `streamText` directly and is the v0.7a
-   * end-state runtime; the legacy `QueryEngine` (~21,800 LoC of custom
-   * orchestration) gets deleted in the Week 6 cleanup pass once the
-   * soak window proves stable.
-   *
-   * The new engine yields BYTE-COMPATIBLE `EngineEvent`s via the R8
-   * bridge layer (`packages/engine/src/bridge/event-bridge.ts`), so
-   * audric's chat / resume / resume-with-input / regenerate routes
-   * consume the stream unchanged. Drop-in surface (getTools, getUsage,
-   * invokeReadTool) was added in Day 10-12 to match the legacy
-   * `QueryEngine` public API exactly. The flag is the rollback path
-   * if anything regresses during the soak.
-   *
-   * Server-side (NOT NEXT_PUBLIC_*) — engine selection happens
-   * server-side inside `engine-factory.ts`. Vercel runtime env takes
-   * effect on the next invocation (~30s), no redeploy needed.
-   *
-   * Default OFF. Founder workflow:
-   *   Day 1 — set in dev / `.env.local`; smoke chat + resume manually
-   *   Day 2 — set in Vercel preview; run R9 smoke
-   *   Day 3 — set in Vercel production for 1% of traffic via per-route gate
-   *   Week 3 — flip on for 100% if metrics hold
-   *   Week 6 — delete the flag + legacy `QueryEngine` import path
-   *
-   * Rollback: unset the var. Zero-risk because the flag-gated branch
-   * is purely additive — same `EngineEvent` stream, same session-store
-   * persistence, same TurnMetrics shape.
-   */
-  USE_AI_SDK_NATIVE_ENGINE: optionalString,
-
-  /**
-   * [SPEC 37 v0.7a Phase 2 Day 13 / 2026-05-16] Per-wallet allowlist for
-   * the AI-SDK-native engine — opt-in by Sui address.
-   *
-   * Comma-separated list of normalised Sui addresses (case-insensitive,
-   * leading `0x` required, 64 hex chars). When the authenticated chat
-   * request's `body.address` matches an entry in the allowlist, the
-   * engine factory instantiates `AISDKEngine` regardless of the global
-   * `USE_AI_SDK_NATIVE_ENGINE` flag.
-   *
-   * Example:
-   *   USE_AI_SDK_NATIVE_ENGINE_WALLETS=0x91b88d0e7eaf45e3252a06ad57f6b9c79b1e7f8d3e0a6c1d2b3c4d5e6f7a8b9c,0xabc...
-   *
-   * Why this exists: writes / resume / the auth-path engine-factory
-   * branch can't be smoked locally (Google OAuth blocks localhost). The
-   * global flag is the all-or-nothing kill-switch; the allowlist is the
-   * surgical instrument — flip on for the founder's wallet first,
-   * dogfood with real on-chain data, then add 5-10 alpha-tester wallets
-   * before opening the gate via the global flag (or a future percentage
-   * gate).
-   *
-   * Resolution order in `engine-factory.ts`:
-   *   1. Address in `USE_AI_SDK_NATIVE_ENGINE_WALLETS` → AISDKEngine.
-   *   2. `USE_AI_SDK_NATIVE_ENGINE === '1'` → AISDKEngine.
-   *   3. Default → legacy QueryEngine.
-   *
-   * The unauth/demo path always honours #2 only (no address available).
-   *
-   * Server-side (NOT NEXT_PUBLIC_*) — same Vercel-runtime-env semantics
-   * as the global flag. Empty/whitespace = no allowlist (default OFF).
-   * Invalid addresses (failing isValidSuiAddress) get filtered out and
-   * a `[engine-factory] dropped invalid wallet from allowlist` warning
-   * logs at first read; doesn't fail boot.
-   *
-   * Rollback: remove your wallet from the CSV (or unset entirely).
-   * Zero-risk — the allowlist branch is the same additive code path as
-   * the global flag, just gated on address match instead of `=== '1'`.
-   */
-  USE_AI_SDK_NATIVE_ENGINE_WALLETS: optionalString,
+  // [v2.0.0 — 2026-05-17] USE_AI_SDK_NATIVE_ENGINE +
+  // USE_AI_SDK_NATIVE_ENGINE_WALLETS deleted. Engine v2.0.0 removed the
+  // legacy QueryEngine entirely, so there's no longer a choice for the
+  // factory to make. Setting these vars in Vercel after the v2.0.0
+  // deploy is a no-op; safe to remove from the env panel.
 
   // ── Vercel / runtime managed (always present in production, optional locally) ─
   /** NODE_ENV — Next.js sets this. */
@@ -629,8 +559,6 @@ const runtimeEnv = {
   AUDRIC_MINT_CONCURRENCY_LIMIT: process.env.AUDRIC_MINT_CONCURRENCY_LIMIT,
   SYNTHETIC_SESSION_PREFIXES: process.env.SYNTHETIC_SESSION_PREFIXES,
   PAYMENT_STREAM_DISABLE: process.env.PAYMENT_STREAM_DISABLE,
-  USE_AI_SDK_NATIVE_ENGINE: process.env.USE_AI_SDK_NATIVE_ENGINE,
-  USE_AI_SDK_NATIVE_ENGINE_WALLETS: process.env.USE_AI_SDK_NATIVE_ENGINE_WALLETS,
   NODE_ENV: process.env.NODE_ENV,
   VERCEL_DEPLOYMENT_ID: process.env.VERCEL_DEPLOYMENT_ID,
   VERCEL_GIT_COMMIT_SHA: process.env.VERCEL_GIT_COMMIT_SHA,
@@ -776,8 +704,6 @@ const SERVER_ONLY_KEYS = new Set([
   'AUDRIC_PARENT_NFT_PRIVATE_KEY',
   'SYNTHETIC_SESSION_PREFIXES',
   'PAYMENT_STREAM_DISABLE',
-  'USE_AI_SDK_NATIVE_ENGINE',
-  'USE_AI_SDK_NATIVE_ENGINE_WALLETS',
   'NODE_ENV',
   'VERCEL_DEPLOYMENT_ID',
   'VERCEL_GIT_COMMIT_SHA',
