@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type { TxDirection } from '@t2000/sdk';
 import { getTransactionHistory, getSuiNetwork } from '@/lib/transaction-history';
-import { authenticateRequest, assertOwnsOrWatched } from '@/lib/auth';
+import { authenticateAnalyticsRequest } from '@/lib/internal-auth';
 
 export const runtime = 'nodejs';
 
@@ -23,7 +23,7 @@ export interface TxHistoryItem {
 
 /**
  * GET /api/history?address=0x...&limit=20
- * Header: x-zklogin-jwt (required — SPEC 30 Phase 1A.5)
+ * Header: x-internal-key (engine + cron) OR x-zklogin-jwt (browser)
  *
  * Returns on-chain transaction history with parsed actions and balance
  * changes. Thin adapter around `getTransactionHistory()` — projects
@@ -33,19 +33,19 @@ export interface TxHistoryItem {
  * SPEC 30 Phase 1A.5: caller must hold a valid zkLogin JWT. The
  * `?address=` parameter must either equal the caller's own address or
  * be in their `WatchAddress` watchlist.
+ *
+ * Day 20e: dual-auth via `authenticateAnalyticsRequest()` — the engine's
+ * `transaction_history` tool authenticates with `x-internal-key`
+ * server-side. Pre-fix the engine silently 401'd here and fell back to
+ * the direct Sui-RPC path, bypassing the canonical
+ * `getTransactionHistory()` SSOT (the parser used by the dashboard).
  */
 export async function GET(request: NextRequest) {
-  const address = request.nextUrl.searchParams.get('address');
   const limit = Math.min(parseInt(request.nextUrl.searchParams.get('limit') ?? '20', 10), 50);
 
-  if (!address || !address.startsWith('0x')) {
-    return NextResponse.json({ error: 'Invalid address' }, { status: 400 });
-  }
-
-  const auth = await authenticateRequest(request);
+  const auth = await authenticateAnalyticsRequest(request);
   if ('error' in auth) return auth.error;
-  const ownership = await assertOwnsOrWatched(auth.verified, address);
-  if (ownership) return ownership;
+  const { address } = auth;
 
   try {
     const records = await getTransactionHistory(address, { limit });
