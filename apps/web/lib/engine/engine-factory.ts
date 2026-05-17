@@ -29,6 +29,7 @@ import {
   type UserFinancialProfile,
   type UserPermissionConfig,
   type ThinkingEffort,
+  type StreamResumeOutcome,
 } from '@t2000/engine';
 import { SUPPORTED_ASSETS } from '@t2000/sdk';
 import { env } from '@/lib/env';
@@ -305,7 +306,7 @@ export interface CreateEngineOpts {
    * (silent in-flight tool re-execution) in a future engine minor.
    * Vercel log search: `[stream-resume] {"outcome":"mid_tool",…}`.
    */
-  onStreamResume?: (info: import('@t2000/engine').StreamResumeOutcome) => void;
+  onStreamResume?: (info: StreamResumeOutcome) => void;
   /**
    * [S.126 Tier 2c / 2026-05-09] Set true ONLY when this engine is built
    * for the post-write narrate stream (resume route). Forces effort →
