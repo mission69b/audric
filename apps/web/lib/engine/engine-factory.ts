@@ -290,6 +290,23 @@ export interface CreateEngineOpts {
     injectionAdded: boolean;
   }) => void;
   /**
+   * [engine v2.5.0 / Phase 5 5e-3] Per-resume telemetry hook forwarded
+   * directly to the engine's `onStreamResume`. Fires exactly ONCE per
+   * `submitMessage({ resumeStreamId })` call with the matching outcome:
+   *
+   * - `clean` — replay log had a natural terminal (turn_complete / pending_action)
+   * - `synthesized_terminal` — engine synthesised one because the slice lacked it
+   * - `mid_tool` — Path B fired (carries toolUseId + toolName)
+   * - `empty` — checkpoint store had nothing (expired / wrong id)
+   * - `replay_error` — store.replay() threw
+   *
+   * The chat route wires this to a structured `[stream-resume]` console
+   * log so we get the production signal needed to evaluate Path A
+   * (silent in-flight tool re-execution) in a future engine minor.
+   * Vercel log search: `[stream-resume] {"outcome":"mid_tool",…}`.
+   */
+  onStreamResume?: (info: import('@t2000/engine').StreamResumeOutcome) => void;
+  /**
    * [S.126 Tier 2c / 2026-05-09] Set true ONLY when this engine is built
    * for the post-write narrate stream (resume route). Forces effort →
    * `low` and routes to Haiku-no-thinking, skipping the plan-context
@@ -855,6 +872,12 @@ export async function createEngine(
         }
       : {}),
     ...(opts.resumeStreamId ? { resumeStreamId: opts.resumeStreamId } : {}),
+    // [engine v2.5.0 / Phase 5 5e-3] Subscribe to per-resume telemetry
+    // when the host wired a callback. Engine fires it exactly once per
+    // resume call with one of 5 outcome variants — feeds the data we
+    // need to evaluate Path A (silent in-flight re-execution) without
+    // production guesswork.
+    ...(opts.onStreamResume ? { onStreamResume: opts.onStreamResume } : {}),
     // [v1.5] Auto-inject fresh balance/savings/health reads after every
     // successful write so post-write narration cites real numbers. See
     // `POST_WRITE_REFRESH_MAP` above.

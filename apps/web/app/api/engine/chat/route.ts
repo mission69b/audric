@@ -396,6 +396,30 @@ export async function POST(request: NextRequest) {
         resumeStreamId: isStreamResume ? resumeStreamId : undefined,
         onMeta: (meta) => { engineMeta = meta; },
         onGuardFired: (guard) => collector.onGuardFired(guard),
+        // [engine v2.5.0 / Phase 5 5e-3] Structured Vercel log of the
+        // resume outcome so we get production signal on how often Path B
+        // (mid-tool resume) fires per tool. Used to decide whether Path A
+        // (silent in-flight re-execution) is worth building in a future
+        // engine minor. Tag is greppable: `[stream-resume]`.
+        onStreamResume: (info) => {
+          try {
+            // Build a JSON-safe payload. `replay_error.error` is an Error
+            // instance — `JSON.stringify(new Error(...))` returns `{}`,
+            // so extract the message explicitly and omit the Error object.
+            const payload =
+              info.outcome === 'replay_error'
+                ? {
+                    outcome: info.outcome,
+                    streamId: info.streamId,
+                    errorMessage: info.error.message,
+                    sessionId: sessionId ?? null,
+                  }
+                : { ...info, sessionId: sessionId ?? null };
+            console.log('[stream-resume]', JSON.stringify(payload));
+          } catch {
+            /* telemetry never blocks the response */
+          }
+        },
       });
     } else {
       engine = await createUnauthEngine(history);
