@@ -8,46 +8,47 @@
 
 ## Active SPEC
 
-[`spec/active/BENEFITS_SPEC_v07c.md`](../t2000/spec/active/BENEFITS_SPEC_v07c.md) — v1.0 LOCKED 2026-05-18. **Phase 0 + 1 + Phase 2 FULLY CLOSED 2026-05-19** — Day 2c++ Batch 1 shipped + live smoke green + Day 2d D-14 LOCKED (defer intent-dispatcher port to Phase 4 alongside `<financial_context>` injection). All 19 D-questions founder-locked. Phase 3 (Slice D `save_deposit` per-write canary) or optional Phase 2e (`Agent` + OTel composition per D-15/D-18) is next.
+[`spec/active/BENEFITS_SPEC_v07c.md`](../t2000/spec/active/BENEFITS_SPEC_v07c.md) — v1.0 LOCKED 2026-05-18. **Phase 0 + 1 + Phase 2 FULLY CLOSED — ALL FIVE DAYS SHIPPED (2a/2b/2c/2c++/2d/2e).** Day 2e closed the last open slice via Path B full Agent migration — route now composes via `new Experimental_Agent({...}).stream({messages})` instead of `engine.submitMessage()`; TelemetryIntegration consumes `TextStreamPart` chunks directly. All 19 D-questions founder-locked. Phase 3 (Slice D `save_deposit` per-write canary) is next.
 
 | Phase | Status | Notes |
 |---|---|---|
 | Phase 0 — Baseline + setup | ✅ CLOSED | G1 closed 2026-05-18 PM. F-12 (prompt cache) + F-13 (extended thinking) regressions found + shipped at engine v2.7.2; F-14 (classifier accuracy) shipped at engine v2.7.3. |
 | Phase 1 — Side-by-side stand-up + template fork + Auth eviction | ✅ CLOSED (Day 1a/1b/1c/1d CLOSED + post-Day-1d audit CLOSED, G2 + G3 CLOSED, baseline typecheck + lint + production build all at 0 errors) | Day 1a (blank scaffold) ✅. Day 1b (template fork, pinned SHA `107a43a`) ✅. Day 1c (Auth.js eviction + zkLogin stub) ✅. Day 1d (baseline cleanup: F-17 + F-18 fixed, 38 files auto-fixed) ✅. **Post-Day-1d audit**: added `pnpm build` as third standing gate (PASSES); closed 4 P0 residue gaps. See S.167. |
-| Phase 2 — First read-tool round-trip + AI Gateway + telemetry + matrix audit + Batch 1 simplifications + D-14 lock | ✅ **FULLY CLOSED 2026-05-19** (Day 2a + 2b + 2c + 2c++ matrix + Batch 1 SHIPPED + LIVE SMOKE GREEN + Day 2d D-14 LOCKED) | **Day 2a (S.168)** + **Day 2b (S.169)** + **Day 2c (S.170)** + **Day 2c++ matrix (S.171)** + **Day 2c++ Batch 1 (S.172)** as previously documented (engine v2.7.0 → v2.10.0 shipped, AI Gateway live, AI Elements adopted, perplexity_search wired). **Day 2d (S.173): D-14 LOCKED — defer intent-dispatcher port to Phase 4** alongside `<financial_context>` injection. Structural finding: dispatcher solves LLM skip-rate pathology that only manifests with cached `<financial_context>` data; web-v2 has none today, so the dispatcher has nothing to subsume. Phase 4 ports both `STATIC_SYSTEM_PROMPT` + `<financial_context>` + `intent-dispatcher.ts` byte-for-byte. Net LoC delta ≈ 0 (NOT the SPEC's headline −458). All 19 D-questions now founder-locked. |
+| Phase 2 — First read-tool round-trip + AI Gateway + telemetry + matrix audit + Batch 1 simplifications + D-14 lock + Day 2e Agent migration | ✅ **FULLY CLOSED 2026-05-19** (ALL FIVE DAYS: 2a + 2b + 2c + 2c++ matrix + Batch 1 + Day 2d D-14 + Day 2e Agent migration SHIPPED) | **Day 2a–2c++ Batch 1** (S.168–S.172) + **Day 2d D-14** (S.173). **Day 2e (S.174): full Path B Agent migration shipped.** Route refactored from `engine.submitMessage()` to `new Experimental_Agent({...}).stream({messages})`; TelemetryIntegration refactored to consume `TextStreamPart` chunks. Engine v2.11.0 published with `toAISDKTools` + `buildToolContext` + `buildInternalContext` host-side composition helpers. Live smoke green: balance_check + perplexity_search both fired through Agent path with `cacheHit=true`; TurnMetrics rows shape-identical to S.172. |
 | Phase 3 onward | ⏳ PENDING | See SPEC. |
 
 ---
 
-## 🎯 Immediate next session — Phase 2e OR Phase 3 (founder choice)
+## 🎯 Immediate next session — Phase 3 (Slice D `save_deposit` per-write canary)
 
-Phase 2 fully closed 2026-05-19 (all 19 D-questions locked). Two viable next steps:
+Phase 2 fully closed 2026-05-19 (all 19 D-questions locked; ALL FIVE DAYS shipped). Phase 3 is the next workstream.
 
-### Option (a) — Phase 2e: `Agent` + OTel composition (~1 day)
-
-Per D-15 + D-18 locks. Compose `audricAgent = new Agent({ model: gateway(...), tools, system, stopWhen, experimental_telemetry: {...} })`; verify `audricAgent.stream({ messages })` returns the same shape `streamText` does today; verify OTel traces land in Vercel AI Gateway dashboard. Cleans up the route's composition before write tools land in Phase 3. Risk: ~zero (additive composition, backward compatible). Becomes the natural mount point for Phase 5.5's `wrapLanguageModel` middleware per D-17.
-
-### Option (b) — Phase 3: Slice D first write tool (`save_deposit` per-write canary, ~4 days)
+### Phase 3 — first write tool via Slice D (~4 days)
 
 Per D-13 lock. Wire `save_deposit` end-to-end through web-v2:
-1. Engine emits `pending_action` for confirm-tier tool (already supported in `gatewayTools` + native tool merger).
-2. Audric-side sponsored tx flow (zkLogin signature → Enoki gas sponsorship → on-chain commit).
-3. Client confirms via `useChat({ onToolCall, addToolResult })` round-trip — first use of AI SDK v6 native HITL pattern (Slice D — the U-1 win of v0.7c).
-4. TurnMetrics row carries `attemptId` for the resume path (preserved per `agent-harness-spec.mdc`).
-5. Verify against acceptance: `save_deposit` matches production audric/web `save_deposit` behavior byte-for-byte (same tx shape, same fee deduction, same NAVI deposit).
+1. **Engine side:** `save_deposit` already `defineTool`'d as confirm-tier. The `wrapLegacyTool` bridge (engine v2.11) sets `needsApproval` on write tools automatically — Phase 3 inherits this from Day 2e's Agent composition.
+2. **Approval transport:** route the approval through `experimental_providerMetadata: { audric: pendingAction }` per D-8 lock — NOT through the legacy `pending_action` EngineEvent (which the Day 2e refactor deprecated for the audric/web-v2 path).
+3. **Audric-side sponsored tx flow:** zkLogin signature → Enoki gas sponsorship → on-chain commit (port from `apps/web/lib/sponsored-tx.ts`).
+4. **Client confirms** via `useChat({ onToolCall, addToolApprovalResponse })` round-trip — first use of AI SDK v6 native HITL pattern (Slice D — the U-1 win of v0.7c).
+5. **TurnMetrics row** carries `attemptId` for the resume path (preserved per `agent-harness-spec.mdc`).
+6. **Acceptance:** `save_deposit` matches production audric/web `save_deposit` behavior byte-for-byte (same tx shape, same fee deduction, same NAVI deposit).
 
-Risk: medium (first time `addToolResult` is wired through web-v2; HITL semantics on sponsored tx are load-bearing). Reference implementation for all other 11 writes.
+**Risk:** medium. First time HITL semantics fire under the new Agent path; sponsored tx + zkLogin signing under client-side execution model is load-bearing. Becomes the reference implementation for all other 11 writes.
 
-### Recommendation
+### Critical Phase 3 inheritance from Day 2e
 
-**Phase 2e first (~1 day), then Phase 3.** Rationale: `Agent` composition is purely additive and de-risks Phase 3 by providing a single source of truth for the engine config. Phase 3 then composes against `audricAgent` instead of reconstructing the config inline. But Phase 3 directly is also reasonable — `Agent` can ship later without re-architecting Phase 3's canary.
+- ✅ **Agent composition baseline.** `save_deposit` builds on `agent.stream({...})`, NOT on `engine.submitMessage()`.
+- ✅ **`wrapLegacyTool` bridge already sets `needsApproval`** on write-tier tools — engine v2.11 ships this verbatim.
+- ✅ **Phase 5.5 LMM mount point exposed.** `const model: LanguageModel = useGateway ? gateway(...) : createAnthropic(...)(...)` in `apps/web-v2/app/(chat)/api/audric-chat/route.ts` — Phase 5.5 just wraps with `wrapLanguageModel(model, [...])`.
+- ✅ **SPEC 40 (Batch 3) inheritance.** Phase 3's Agent path means SPEC 40 collapses into "extend Phase 3's pattern to 11 more writes" instead of "migrate two parallel systems."
 
-### Downstream batches (queued behind Phase 2)
+### Downstream batches (queued behind Phase 3)
 
-After Phase 2e + Phase 3 close:
+After Phase 3 closes:
 - **Batch 2 (SPEC 39 MCP remote migration)** — needs a formal `spec/active/SPEC_39_MCP_REMOTE_MIGRATION.md` draft first. ~1 week.
 - **Phase 4 (mechanical write tool migration + `<financial_context>` + `intent-dispatcher.ts` port from D-14 S.173 directive)** — ports `STATIC_SYSTEM_PROMPT` byte-for-byte, wires `<financial_context>`, ports `intent-dispatcher.ts` byte-for-byte alongside. ~5 days.
 - **Phase 4.5 (D-16 `generateObject` classifiers + D-14 re-eval)** — migrate 8+ classifiers to `generateObject({ schema })`; decide whether to KEEP regex dispatcher + ADD `generateObject` secondary classifier (recommended) or REPLACE regex entirely (likely rejected — regex is deterministic). ~2 days.
+- **Phase 5.5 (D-17 LMM middleware)** — wrap `model` with `wrapLanguageModel(model, [audricGuardsMiddleware, preflightMiddleware, piiRedactionMiddleware, telemetryMiddleware])` at the mount point Day 2e already exposed. ~3 days.
 - **Batch 3 + 4** — see "Downstream batches" table below.
 
 ---
