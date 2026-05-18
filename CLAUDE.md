@@ -93,7 +93,13 @@ audric/
 | Document | What it covers | Read before |
 |----------|---------------|-------------|
 | `apps/web/lib/env.ts` | Zod env schema + typed proxy. Single gate for every `process.env` read | Adding/changing env vars |
-| `PORTFOLIO_REGRESSION_MATRIX.md` | Manual SSOT verification checklist across surfaces | Post-merge SSOT verification |
+| `apps/web/docs/PORTFOLIO_REGRESSION_MATRIX.md` (local-only) | Manual SSOT verification checklist across surfaces | Post-merge SSOT verification |
+| `apps/web/docs/AUDIT_FINDINGS.md` | Reusable audit findings + post-mortem patterns | Reading audit history |
+| `apps/web/docs/POST_MORTEM_2026-05-IDOR.md` | SPEC 30 IDOR post-mortem | SPEC 30 context |
+| `apps/web/docs/SECURITY_ADVISORY_2026-05-IDOR.md` | Public-facing IDOR advisory | Linking from `/security` |
+| `apps/web/docs/runbooks/RUNBOOK_incident_response.md` | Incident response runbook (SPEC 30 Phase 1C) | Production incident |
+| `apps/web/docs/runbooks/RUNBOOK_scaling_alerts.md` | Scaling alert handling | Production scaling |
+| `apps/web/docs/runbooks/RUNBOOK_spec8_rollout.md` | SPEC 8 (interactive harness) rollout playbook | Reference for new rollouts |
 | `.cursor/rules/audric-transaction-flow.mdc` | Sponsored tx vs SDK direct — which path runs when, attemptId resume contract | Any write/receipt bug |
 | `.cursor/rules/audric-canonical-portfolio.mdc` | Always go through `getCanonicalPortfolio` | Portfolio/wallet/positions read |
 | `.cursor/rules/env-validation-gate.mdc` | The S.25 lesson — env via Zod, never raw `process.env` | Wiring a new env var |
