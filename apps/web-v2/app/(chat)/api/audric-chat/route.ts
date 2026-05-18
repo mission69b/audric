@@ -1,80 +1,82 @@
 /**
  * Audric chat route — engine-backed POST /api/audric-chat.
  *
- * --- WHY THIS FILE EXISTS (v0.7c Phase 2 Day 2a) ---
+ * --- WHY THIS FILE EXISTS (v0.7c Phase 2) ---
  *
  * SPEC §"Phase 2 — First end-to-end round-trip":
- *   "Replace template's default chat route with audric chat route
- *    reading from `@t2000/engine.submitMessage()`; emit
- *    `result.toUIMessageStreamResponse()` instead of engine `engineToSSE`."
- *
- * Day 2a is the MINIMUM round-trip — JWT in → engine.submitMessage →
- * text streams back through AI SDK v6's native `createUIMessageStream`.
- * Tools, guards, persistence, harness-metrics, intent-dispatcher, AI
- * Gateway routing, and Agent composition all land in subsequent days
- * (2b through 2e).
+ *   - Day 2a: replace template's default chat route with an audric route
+ *     reading from `@t2000/engine.submitMessage()`; emit
+ *     `result.toUIMessageStreamResponse()` instead of engine `engineToSSE`.
+ *   - Day 2b: wire `balance_check` end-to-end + minimal renderer + verify
+ *     TurnMetrics row shape matches production (G4 acceptance).
  *
  * **Why a new path (`/api/audric-chat`) instead of overwriting
  * `/api/chat`:** the template's `/api/chat` is wired into the existing
- * chat UI (`useChat({ api: '/api/chat' })`) AND into the Day 1d smoke
- * baseline (POST /api/chat returns 400 without a JWT-shaped body,
- * verifying auth + validation). Day 2b will swap the UI over to this
- * new route once a minimal renderer can consume the
- * `result.toUIMessageStream()` parts; until then the template route
- * stays intact to preserve baseline behavior.
+ * chat UI (`useChat({ api: '/api/chat' })`) AND the Day 1d baseline
+ * smoke; rewiring to this route happens incrementally per phase.
  *
- * --- DAY 2a SCOPE (acceptance: curl POST returns streaming text delta) ---
+ * --- DAY 2b SCOPE (acceptance: G4 — first read-tool round-trip) ---
  *
  * What this route DOES:
- *  1. Auth gate via `getCurrentUser()` (verified zkLogin JWT chain;
- *     no JWT → 401, invalid JWT → 401, valid JWT → Sui address bound
- *     to `session.user.id`).
+ *  1. Auth gate via `getCurrentUser()` (verified zkLogin JWT chain).
  *  2. Parse a minimal `{ messages: [{ role, content }] }` body.
- *  3. Construct a minimal `AISDKEngine` (no tools, no system prompt,
- *     no MCP, no portfolioCache — just Anthropic + the engine's bare
- *     submitMessage path).
+ *  3. Construct an `AISDKEngine` with `balanceCheckTool` registered +
+ *     minimal `ToolContext` fields (`walletAddress`, `suiRpcUrl`,
+ *     `blockvisionApiKey`, `portfolioCache`) + 5-line Day 2b system
+ *     prompt mentioning `balance_check`.
  *  4. Iterate `engine.submitMessage(prompt)` and translate engine
- *     events to AI SDK v6 UIMessageStream parts via
- *     `createUIMessageStream({ execute })`.
- *  5. Return `createUIMessageStreamResponse({ stream })`.
+ *     events to AI SDK v6 UIMessageStream parts:
+ *      - `text_delta` → `text-delta`
+ *      - `tool_start` → `tool-input-available` (audric tool surface)
+ *      - `tool_result` → `tool-output-available`
+ *      - `usage` → collector hook only (not user-facing)
+ *      - `error` → text-delta with `[engine error]` prefix
+ *  5. After `turn_complete`, build the full 41-field TurnMetrics row
+ *     shape per the Day 2b (c') decision and `prisma.turnMetrics.create`.
  *
  * What this route DOES NOT do (yet):
- *  - Persistence: no `saveChat` / `saveMessages` calls. Day 2b adds
- *    TurnMetrics emission; chat / message persistence comes when we
- *    rewire the UI to this path (later in Phase 2 / Phase 3).
- *  - Tools: no `getDefaultTools()` wired. Day 2b first read-tool
- *    round-trip wires `balance_check`.
- *  - System prompt: no `<financial_context>` block; LLM responds with
- *    its bare model knowledge. Day 2b / Day 2c add the audric system
- *    prompt + AI Gateway routing.
- *  - Guards / preflight / harness-metrics: all engine pipeline pieces
- *    that the legacy `apps/web/app/api/engine/chat/route.ts` wires
- *    over ~1700 LoC. We add them incrementally per Phase 2 days; the
- *    audricAgent composition in Day 2e brings them in via the new
- *    `Agent` interface + middleware (D-15 / D-17 locks).
+ *  - AI Gateway routing (Day 2c).
+ *  - Intent-dispatcher pre-fetch (Day 2d per D-14 spike).
+ *  - `audricAgent = new Agent({...})` composition (Day 2e per D-15/D-18).
+ *  - `<financial_context>` injection (Phase 4).
+ *  - Real `STATIC_SYSTEM_PROMPT` port (Phase 4).
+ *  - Guards / preflight / harness-metrics shape detection (Phase 4).
+ *  - Other 24+ read tools — `balance_check` alone proves G4.
+ *  - `ConversationLog` persistence — SPEC's Day 2b text calls out
+ *    TurnMetrics only; ConversationLog is the multi-turn context
+ *    history surface, not Day 2b's smoke contract.
+ *  - Resume route consolidation (D-3 lock — chat+resume merge at Phase 3).
  *
- * Traceability: BENEFITS_SPEC_v07c.md §"Phase 2 Day 2a" + audric-build-tracker.md row 7t.
+ * Traceability: BENEFITS_SPEC_v07c.md §"Phase 2 Day 2b" + tracker S.169.
  */
 
-import { AISDKEngine, type AISDKEngineConfig } from "@t2000/engine";
+import {
+  type AddressPortfolio,
+  AISDKEngine,
+  type AISDKEngineConfig,
+  balanceCheckTool,
+  type EngineEvent,
+} from "@t2000/engine";
 import {
   createUIMessageStream,
   createUIMessageStreamResponse,
   generateId,
 } from "ai";
 import { z } from "zod";
+import { ensureNaviMcpConnected } from "@/lib/audric/navi-mcp";
+import { buildAudricDay2bSystemPrompt } from "@/lib/audric/system-prompt";
+import { MinimalTurnMetricsCollector } from "@/lib/audric/turn-metrics";
 import { getCurrentUser } from "@/lib/audric-auth";
 import { env } from "@/lib/env";
+import { prisma } from "@/lib/prisma";
+import { getSuiRpcUrl } from "@/lib/sui-rpc";
+import { Prisma } from "../../../../../web/lib/generated/prisma/client";
 
 export const maxDuration = 60;
 
 // -----------------------------------------------------------------------------
-// Request body schema — minimal Day 2a shape
+// Request body schema — minimal Day 2a/2b shape
 // -----------------------------------------------------------------------------
-// The template's full shape carries id / message / messages / model / etc.
-// Day 2a accepts the AI-SDK-native useChat() POST shape (`{ messages: [...] }`)
-// so a future Day 2b UI rewire can use `useChat({ api: '/api/audric-chat' })`
-// with zero body adapter.
 
 const messageRoleSchema = z.enum(["user", "assistant", "system"]);
 
@@ -88,6 +90,18 @@ const bodySchema = z.object({
     .array(messageSchema)
     .min(1, "messages must contain at least one entry")
     .max(100, "messages list capped at 100 entries"),
+  /**
+   * Optional session id. Day 2b client can pass a stable id for
+   * multi-turn TurnMetrics grouping; absent → route generates a fresh
+   * UUID per request. (Production audric/web stamps session ids via
+   * the chat-list flow; web-v2 wires that in Phase 3.)
+   */
+  sessionId: z.string().min(1).max(120).optional(),
+  /**
+   * Optional turn index (0-based). Day 2b client tracks this; absent →
+   * derived from `messages.length` so single-shot smoke requests work.
+   */
+  turnIndex: z.number().int().min(0).optional(),
 });
 
 // -----------------------------------------------------------------------------
@@ -103,6 +117,7 @@ export async function POST(request: Request) {
       headers: { "content-type": "application/json" },
     });
   }
+  const walletAddress = session.user.id;
 
   // 2. Parse body
   let body: z.infer<typeof bodySchema>;
@@ -119,9 +134,6 @@ export async function POST(request: Request) {
     );
   }
 
-  // The latest user-authored message becomes the prompt the engine
-  // consumes via submitMessage(). Prior assistant/user turns get loaded
-  // into engine history so multi-turn context works.
   const latestUser = [...body.messages]
     .reverse()
     .find((m) => m.role === "user");
@@ -144,20 +156,37 @@ export async function POST(request: Request) {
     );
   }
 
-  // 3. Construct minimal engine
+  const sessionId = body.sessionId ?? `web-v2-${crypto.randomUUID()}`;
+  const turnIndex =
+    body.turnIndex ?? Math.max(0, Math.floor(body.messages.length / 2));
+  const collector = new MinimalTurnMetricsCollector();
+  const contextTokensStart = estimateContextTokens(body.messages);
+
+  // 3. Construct engine with balance_check + minimal ToolContext
+  //
+  // NAVI MCP is REQUIRED for balance_check on web-v2: the tool has two
+  // execution paths, and the SDK fallback requires a `T2000` agent
+  // instance (= signing keypair), which we deliberately don't wire for
+  // read-only Day 2b. The MCP path is what audric/web uses in
+  // production anyway. `ensureNaviMcpConnected` is a module-scoped
+  // singleton so subsequent requests reuse the connection.
+  const mcpManager = await ensureNaviMcpConnected();
+
   const engineConfig: AISDKEngineConfig = {
     anthropicApiKey: env.ANTHROPIC_API_KEY,
-    // Intentionally empty: no tools, no system prompt, no MCP, no
-    // portfolioCache. Subsequent Phase 2 days wire each piece.
+    tools: [balanceCheckTool],
+    systemPrompt: buildAudricDay2bSystemPrompt(walletAddress),
+    walletAddress,
+    suiRpcUrl: getSuiRpcUrl(),
+    blockvisionApiKey: env.BLOCKVISION_API_KEY,
+    mcpManager,
+    // Per-request portfolio cache so balance_check + future read tools
+    // in the same turn share a single BlockVision response (avoids
+    // 200–500ms RTT amplification per the agent-harness-spec rule).
+    portfolioCache: new Map<string, AddressPortfolio>(),
   };
   const engine = new AISDKEngine(engineConfig);
 
-  // Load prior context so multi-turn works. Engine's `Message` only
-  // accepts `'user' | 'assistant'`; system messages live in the
-  // engine config's `systemPrompt` field (Day 2b wires that). Drop
-  // any client-supplied system entries for Day 2a — accepting them
-  // would be a security smell anyway (clients should never inject
-  // their own system prompt).
   const history = body.messages
     .slice(0, -1)
     .filter(
@@ -174,46 +203,20 @@ export async function POST(request: Request) {
 
   // 4. Translate EngineEvent generator → UIMessageStream parts
   const messageId = generateId();
+  let turnCompleted = false;
+
   const stream = createUIMessageStream({
     execute: async ({ writer }) => {
-      // `start` opens an assistant message in the AI SDK UI ledger.
       writer.write({ type: "start", messageId });
       writer.write({ type: "start-step" });
       writer.write({ type: "text-start", id: messageId });
 
       try {
         for await (const ev of engine.submitMessage(latestUser.content)) {
-          switch (ev.type) {
-            case "text_delta":
-              if (typeof ev.text === "string" && ev.text.length > 0) {
-                writer.write({
-                  type: "text-delta",
-                  id: messageId,
-                  delta: ev.text,
-                });
-              }
-              break;
-            case "error":
-              // Surface engine errors to the UI as a recoverable
-              // text-delta line so the user sees what failed. Phase 2
-              // post-Day-2a can elevate to a typed error part.
-              writer.write({
-                type: "text-delta",
-                id: messageId,
-                delta: `\n\n[engine error] ${ev.error.message}`,
-              });
-              break;
-            case "turn_complete":
-              // Engine signals end-of-turn; let the AI SDK finish
-              // helpers close the stream via the finally block.
-              break;
-            // All other event types (thinking_delta, tool_start,
-            // tool_result, pending_action, canvas, todo_update,
-            // harness_shape, transition_state, stream_started, etc.)
-            // are intentionally NOT translated yet — Day 2a is text-
-            // only. Subsequent days wire them through.
-            default:
-              break;
+          collector.observe(ev);
+          translateEvent(ev, writer, messageId);
+          if (ev.type === "turn_complete") {
+            turnCompleted = true;
           }
         }
       } finally {
@@ -223,7 +226,158 @@ export async function POST(request: Request) {
       }
     },
     generateId,
+    onFinish: () => {
+      // 5. Persist TurnMetrics row (fire-and-forget; never blocks the
+      // response). Matches the production fire-and-forget pattern in
+      // `audric/web/app/api/engine/chat/route.ts` ~L1390.
+      if (!turnCompleted) {
+        collector.markInterrupted();
+      }
+      const payload = collector.build({
+        sessionId,
+        userId: walletAddress,
+        turnIndex,
+        effortLevel: "medium", // Day 2b hardcoded; Phase 4.5 wires classifier
+        modelUsed: DEFAULT_MODEL_USED,
+        contextTokensStart,
+        sessionSpendUsd: 0, // Day 2b doesn't track session spend
+        synthetic: false,
+        turnPhase: "initial",
+      });
+      const dataForCreate = {
+        ...payload,
+        // JSONB columns: Prisma distinguishes `null` from `Prisma.DbNull`.
+        // Passing `Prisma.DbNull` writes SQL NULL (matches production
+        // convention in audric/web/lib/engine/harness-metrics.ts L540-553).
+        cetusRoute: Prisma.DbNull,
+        streamResumeOutcome: Prisma.DbNull,
+        // toolsCalled + guardsFired are Json columns — round-trip
+        // through JSON.parse(JSON.stringify(...)) so Prisma sees plain
+        // objects rather than class instances (production pattern at
+        // audric/web/app/api/engine/chat/route.ts L1385-1387).
+        toolsCalled: JSON.parse(
+          JSON.stringify(payload.toolsCalled)
+        ) as Prisma.InputJsonValue,
+        guardsFired: JSON.parse(
+          JSON.stringify(payload.guardsFired)
+        ) as Prisma.InputJsonValue,
+      };
+      prisma.turnMetrics
+        .create({ data: dataForCreate })
+        .catch((err: unknown) => {
+          console.error(
+            "[web-v2 audric-chat] TurnMetrics write failed (non-fatal):",
+            err
+          );
+        });
+    },
   });
 
   return createUIMessageStreamResponse({ stream });
+}
+
+// -----------------------------------------------------------------------------
+// EngineEvent → UIMessageStream translator (Day 2b: text + tools + usage)
+// -----------------------------------------------------------------------------
+//
+// AI SDK v6 tool parts use the type `tool-<toolName>` with state-based
+// payloads (`input-available`, `output-available`). The renderer in
+// `components/audric/tool-part.tsx` switches on `part.type` and
+// pattern-matches the `tool-` prefix.
+
+function translateEvent(
+  ev: EngineEvent,
+  writer: Parameters<
+    Parameters<typeof createUIMessageStream>[0]["execute"]
+  >[0]["writer"],
+  messageId: string
+): void {
+  switch (ev.type) {
+    case "text_delta": {
+      if (typeof ev.text === "string" && ev.text.length > 0) {
+        writer.write({ type: "text-delta", id: messageId, delta: ev.text });
+      }
+      break;
+    }
+    case "tool_start": {
+      // AI SDK v6 wire format: `tool-input-available` carries the
+      // toolName + input; client assembler converts this into a
+      // `tool-${toolName}` part on the rendered UIMessage.
+      writer.write({
+        type: "tool-input-available",
+        toolCallId: ev.toolUseId,
+        toolName: ev.toolName,
+        input: ev.input,
+      });
+      break;
+    }
+    case "tool_result": {
+      // `tool-output-available` is keyed by toolCallId (no toolName field)
+      // — the client matches it to the prior `tool-input-available` chunk.
+      if (ev.isError) {
+        writer.write({
+          type: "tool-output-error",
+          toolCallId: ev.toolUseId,
+          errorText: safeErrorText(ev.result),
+        });
+      } else {
+        writer.write({
+          type: "tool-output-available",
+          toolCallId: ev.toolUseId,
+          output: ev.result,
+        });
+      }
+      break;
+    }
+    case "error": {
+      writer.write({
+        type: "text-delta",
+        id: messageId,
+        delta: `\n\n[engine error] ${ev.error.message}`,
+      });
+      break;
+    }
+    case "usage":
+    case "turn_complete":
+      // Collected by the collector; not surfaced to the UI.
+      break;
+    default:
+      // Other engine events (`thinking_delta`, `pending_action`,
+      // `canvas`, `todo_update`, `harness_shape`, `tool_progress`,
+      // `pending_input`, etc.) are not yet translated. Subsequent
+      // Phase 2/3/4 days wire them through.
+      break;
+  }
+}
+
+function safeErrorText(result: unknown): string {
+  if (typeof result === "string") {
+    return result;
+  }
+  try {
+    return JSON.stringify(result);
+  } catch {
+    return "Tool error";
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Helpers
+// -----------------------------------------------------------------------------
+
+/**
+ * Day 2b default model — Sonnet 4.6 matches audric/web production's
+ * routing for `'medium'` effort. Phase 4.5 wires real classifier-driven
+ * model routing via `classifyEffort()` + `routedModel`.
+ */
+const DEFAULT_MODEL_USED = "claude-sonnet-4-5";
+
+/**
+ * Rough token estimate of the conversation history (4 chars/token).
+ * Used for `TurnMetrics.contextTokensStart`. Production's
+ * `estimateTokens()` helper does the same crude approximation.
+ */
+function estimateContextTokens(messages: Array<{ content: string }>): number {
+  const totalChars = messages.reduce((n, m) => n + m.content.length, 0);
+  return Math.ceil(totalChars / 4);
 }

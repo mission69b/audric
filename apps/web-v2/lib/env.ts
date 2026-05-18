@@ -69,6 +69,19 @@ const serverSchema = z.object({
    * the route opts into the `gateway()` wrapper. Optional in Day 2a
    * (direct Anthropic). */
   AI_GATEWAY_API_KEY: optionalString,
+
+  /** BlockVision Pro Indexer REST API key (Day 2b+). Required for the
+   * `balance_check` read tool: backs both Sui RPC routing (paid
+   * private endpoint) AND the portfolio fetcher (`fetchAddressPortfolio`).
+   * `BLOCKVISION_API_KEY=""` in audric/web prod silently degraded every
+   * BlockVision feature for 4 days (April 2026) — empty-string is
+   * invalid here, hence `requiredString` semantics. */
+  BLOCKVISION_API_KEY: requiredString,
+
+  /** Optional Sui RPC URL override — defaults to BlockVision-routed
+   * mainnet via `getSuiRpcUrl()`. Set this only to point at a custom
+   * fullnode (testnet / devnet / self-hosted). */
+  SUI_RPC_URL: optionalString,
 });
 
 // ─── Client schema ────────────────────────────────────────────────────
@@ -83,6 +96,12 @@ const clientSchema = z.object({
    * publishable key by Enoki — safe to ship to clients. Used server-
    * side too for `deriveAddressFromEnoki`. */
   NEXT_PUBLIC_ENOKI_API_KEY: requiredString,
+
+  /** Sui network identifier — `mainnet` / `testnet` / `devnet`. Used
+   * by `getSuiRpcUrl()` to build the BlockVision-routed RPC URL.
+   * Required so the client-side wallet provider (Phase 3) can target
+   * the same network as the server-side reads. */
+  NEXT_PUBLIC_SUI_NETWORK: requiredString,
 });
 
 // ─── Runtime ──────────────────────────────────────────────────────────
@@ -91,8 +110,11 @@ const runtimeEnv = {
   DATABASE_URL: process.env.DATABASE_URL,
   ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
   AI_GATEWAY_API_KEY: process.env.AI_GATEWAY_API_KEY,
+  BLOCKVISION_API_KEY: process.env.BLOCKVISION_API_KEY,
+  SUI_RPC_URL: process.env.SUI_RPC_URL,
   NEXT_PUBLIC_GOOGLE_CLIENT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
   NEXT_PUBLIC_ENOKI_API_KEY: process.env.NEXT_PUBLIC_ENOKI_API_KEY,
+  NEXT_PUBLIC_SUI_NETWORK: process.env.NEXT_PUBLIC_SUI_NETWORK,
 };
 
 const isServer =
