@@ -47,6 +47,9 @@ scripts/
 # but track tooling under apps/web/scripts (canonical scan, shadow check, etc.)
 !apps/web/scripts/
 !apps/web/scripts/**
+# and tooling under apps/web-v2/scripts (g6 smoke verifier, etc.)
+!apps/web-v2/scripts/
+!apps/web-v2/scripts/**
 # ...except local-only one-offs (audit logs, baseline runners, stress tests)
 apps/web/scripts/.*-sent.json
 apps/web/scripts/run-turn-metrics-baseline.mjs

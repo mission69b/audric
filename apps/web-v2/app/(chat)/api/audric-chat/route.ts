@@ -9,6 +9,12 @@
  *     `result.toUIMessageStreamResponse()` instead of engine `engineToSSE`.
  *   - Day 2b: wire `balance_check` end-to-end + minimal renderer + verify
  *     TurnMetrics row shape matches production (G4 acceptance).
+ *   - Day 2c: wrap engine model with `gateway('anthropic/claude-sonnet-4-5')`
+ *     (D-6 lock) + enable `experimental_telemetry` (D-18 lock) so OTel
+ *     spans land in the Vercel AI Gateway dashboard. G6 verifies 5-feature
+ *     passthrough (cache, multi-block thinking, signed thinking, structured
+ *     output, system prompt). Falls back to direct Anthropic when
+ *     `AI_GATEWAY_API_KEY` is absent — same code path otherwise.
  *
  * **Why a new path (`/api/audric-chat`) instead of overwriting
  * `/api/chat`:** the template's `/api/chat` is wired into the existing
@@ -35,7 +41,6 @@
  *     shape per the Day 2b (c') decision and `prisma.turnMetrics.create`.
  *
  * What this route DOES NOT do (yet):
- *  - AI Gateway routing (Day 2c).
  *  - Intent-dispatcher pre-fetch (Day 2d per D-14 spike).
  *  - `audricAgent = new Agent({...})` composition (Day 2e per D-15/D-18).
  *  - `<financial_context>` injection (Phase 4).
@@ -60,7 +65,10 @@ import {
 import {
   createUIMessageStream,
   createUIMessageStreamResponse,
+  gateway,
   generateId,
+  type LanguageModel,
+  type TelemetrySettings,
 } from "ai";
 import { z } from "zod";
 import { ensureNaviMcpConnected } from "@/lib/audric/navi-mcp";
@@ -146,11 +154,16 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!env.ANTHROPIC_API_KEY) {
+  // Day 2c: either `AI_GATEWAY_API_KEY` (preferred — D-6 lock) OR
+  // `ANTHROPIC_API_KEY` (fallback) must be set. The gateway path picks
+  // up `AI_GATEWAY_API_KEY` from the AI SDK's auto-discovery; the
+  // fallback path uses the engine's internal `createAnthropic` with
+  // `ANTHROPIC_API_KEY`.
+  if (!env.AI_GATEWAY_API_KEY && !env.ANTHROPIC_API_KEY) {
     return new Response(
       JSON.stringify({
         error:
-          "ANTHROPIC_API_KEY is not set — Day 2c will switch to AI_GATEWAY_API_KEY",
+          "Neither AI_GATEWAY_API_KEY (preferred, D-6) nor ANTHROPIC_API_KEY (fallback) is set",
       }),
       { status: 500, headers: { "content-type": "application/json" } }
     );
@@ -172,8 +185,79 @@ export async function POST(request: Request) {
   // singleton so subsequent requests reuse the connection.
   const mcpManager = await ensureNaviMcpConnected();
 
+  // [Day 2c / D-6] When `AI_GATEWAY_API_KEY` is set, route through the
+  // Vercel AI Gateway with `gateway('anthropic/<model>')`. AI SDK's
+  // gateway provider auto-picks up the env var. When absent, leave
+  // `modelInstance` undefined and the engine falls back to its
+  // internal `createAnthropic({apiKey})` path (the pre-2.8.0 behavior).
+  //
+  // Model id `claude-sonnet-4-6` mirrors audric/web production's
+  // `SONNET_MODEL` constant. Adaptive thinking + signed thinking are
+  // supported on 4.6 but NOT on 4.5 (gateway smoke during Day 2c
+  // surfaced "adaptive thinking is not supported on this model" when
+  // we tried sonnet-4-5; engine v2.8.0's `'claude-sonnet-4-5'` default
+  // is a safety baseline for hosts that don't pass a model — every
+  // production-bound consumer should set this explicitly to 4-6 to
+  // unlock the engine's thinking + adaptive-effort features).
+  const modelInstance: LanguageModel | undefined = env.AI_GATEWAY_API_KEY
+    ? gateway("anthropic/claude-sonnet-4-6")
+    : undefined;
+  console.log(
+    `[audric-chat] sessionId=${sessionId} turn=${turnIndex} model=${
+      modelInstance === undefined
+        ? "direct-anthropic-fallback[claude-sonnet-4-6]"
+        : "vercel-ai-gateway[anthropic/claude-sonnet-4-6]"
+    } telemetry=enabled`
+  );
+
+  // [Day 2c / D-18] OTel telemetry settings. `functionId` groups spans
+  // in the Vercel AI Gateway dashboard; metadata is attached as span
+  // attributes so we can filter by session in Vercel's observability UI.
+  // `recordInputs`/`recordOutputs` default true (we want them for now;
+  // PII redaction will land in Phase 5.5 middleware per D-17).
+  //
+  // CRITICAL: do NOT include `turnIndex` (or any per-turn-varying field)
+  // in `metadata` — Vercel's AI Gateway includes telemetry metadata in
+  // its cache key computation, so a per-turn metadata field invalidates
+  // the cache on every turn (empirically observed during Day 2c++ smoke:
+  // identical prompts wrote `cacheCreationInputTokens=1542` each turn
+  // but never read from cache when `turnIndex` was in metadata).
+  const experimentalTelemetry: TelemetrySettings = {
+    isEnabled: true,
+    functionId: "audric-chat-day2c",
+    metadata: {
+      sessionId,
+      userId: walletAddress,
+    },
+  };
+
   const engineConfig: AISDKEngineConfig = {
-    anthropicApiKey: env.ANTHROPIC_API_KEY,
+    ...(modelInstance === undefined
+      ? { anthropicApiKey: env.ANTHROPIC_API_KEY }
+      : { modelInstance }),
+    experimentalTelemetry,
+    // [Day 2c++ G6 F-5 / D-6 audit] Vercel AI Gateway's `caching: 'auto'`
+    // auto-injects `cache_control` breakpoints for Anthropic so prompt
+    // caching fires WITHOUT the engine needing typed SystemBlock[]
+    // markers — see https://vercel.com/docs/ai-gateway/models-and-providers/automatic-caching.
+    // The breakpoint is placed at the end of static content; the
+    // Anthropic 1024-token minimum still applies. Only meaningful when
+    // routing through the gateway (when `modelInstance` is undefined,
+    // the direct-Anthropic fallback ignores this field).
+    ...(modelInstance === undefined
+      ? {}
+      : { gatewayProviderOptions: { caching: "auto" as const } }),
+    // [Day 2c G6] Match audric/web production's model + thinking
+    // pairing. `model: 'claude-sonnet-4-6'` is required for adaptive
+    // thinking to work (4-5 doesn't support it per a Day 2c gateway
+    // smoke). The engine reads `config.model` for the legacy string
+    // path; when `modelInstance` is set (gateway branch), `config.model`
+    // is informational-only (the injected model is self-describing)
+    // BUT the TurnMetrics writer downstream reads `DEFAULT_MODEL_USED`
+    // for accurate per-turn pricing — keep all three (gateway model id,
+    // config.model, DEFAULT_MODEL_USED) in lockstep at 4-6.
+    model: "claude-sonnet-4-6",
+    thinking: { type: "adaptive" },
     tools: [balanceCheckTool],
     systemPrompt: buildAudricDay2bSystemPrompt(walletAddress),
     walletAddress,
@@ -341,11 +425,30 @@ function translateEvent(
     case "turn_complete":
       // Collected by the collector; not surfaced to the UI.
       break;
+    case "thinking_delta": {
+      // [Day 2c G6] Log thinking events so the smoke can verify F-2
+      // (multi-block thinking) + F-3 (signed thinking) pass through
+      // the gateway. Rendering thinking to the UI is Phase 4+ scope.
+      if (typeof ev.text === "string" && ev.text.length > 0) {
+        console.log(`[audric-chat] thinking_delta (+${ev.text.length} chars)`);
+      }
+      break;
+    }
+    case "thinking_done": {
+      // [Day 2c G6 F-3] Anthropic signed-thinking signature lives at
+      // `providerMetadata.anthropic.signature`; the engine bridge
+      // re-emits it on `thinking_done.signature`. Logging presence +
+      // length verifies the signature survives the gateway hop.
+      const sigLen = ev.signature?.length ?? 0;
+      console.log(
+        `[audric-chat] thinking_done block=${ev.blockIndex} signature_len=${sigLen}`
+      );
+      break;
+    }
     default:
-      // Other engine events (`thinking_delta`, `pending_action`,
-      // `canvas`, `todo_update`, `harness_shape`, `tool_progress`,
-      // `pending_input`, etc.) are not yet translated. Subsequent
-      // Phase 2/3/4 days wire them through.
+      // Other engine events (`pending_action`, `canvas`, `todo_update`,
+      // `harness_shape`, `tool_progress`, `pending_input`, etc.) are
+      // not yet translated. Subsequent Phase 2/3/4 days wire them through.
       break;
   }
 }
@@ -366,11 +469,13 @@ function safeErrorText(result: unknown): string {
 // -----------------------------------------------------------------------------
 
 /**
- * Day 2b default model — Sonnet 4.6 matches audric/web production's
- * routing for `'medium'` effort. Phase 4.5 wires real classifier-driven
- * model routing via `classifyEffort()` + `routedModel`.
+ * Day 2c default model — `claude-sonnet-4-6` matches audric/web
+ * production's `SONNET_MODEL` constant and is the only Sonnet variant
+ * that supports adaptive thinking (4-5 rejects it per the Day 2c
+ * gateway smoke). Phase 4.5 wires real classifier-driven model routing
+ * via `classifyEffort()` + `routedModel`.
  */
-const DEFAULT_MODEL_USED = "claude-sonnet-4-5";
+const DEFAULT_MODEL_USED = "claude-sonnet-4-6";
 
 /**
  * Rough token estimate of the conversation history (4 chars/token).
