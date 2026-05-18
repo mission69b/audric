@@ -73,7 +73,7 @@ import {
 import { z } from "zod";
 import { ensureNaviMcpConnected } from "@/lib/audric/navi-mcp";
 import { buildAudricDay2bSystemPrompt } from "@/lib/audric/system-prompt";
-import { MinimalTurnMetricsCollector } from "@/lib/audric/turn-metrics";
+import { TelemetryIntegration } from "@/lib/audric/telemetry-integration";
 import { getCurrentUser } from "@/lib/audric-auth";
 import { env } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
@@ -88,12 +88,46 @@ export const maxDuration = 60;
 
 const messageRoleSchema = z.enum(["user", "assistant", "system"]);
 
-const messageSchema = z.object({
+// AI SDK v6 `useChat` sends messages in `UIMessage` shape: `{id, role,
+// parts: Array<UIMessagePart>}`. Direct curl callers send the simpler
+// `{role, content}` shape. The route's downstream code is written
+// against `{role, content: string}`, so we accept both shapes at the
+// edge and normalise to the legacy shape before it hits anything
+// internal.
+const partSchema = z
+  .object({
+    type: z.string(),
+    text: z.string().optional(),
+  })
+  .passthrough();
+
+const legacyMessageSchema = z.object({
   role: messageRoleSchema,
   content: z.string().min(1, "content must be a non-empty string"),
 });
 
+const uiMessageSchema = z
+  .object({
+    id: z.string().optional(),
+    role: messageRoleSchema,
+    parts: z.array(partSchema).min(1, "parts must contain at least one entry"),
+  })
+  .transform((m) => ({
+    role: m.role,
+    content: m.parts
+      .filter((p) => p.type === "text" && typeof p.text === "string")
+      .map((p) => p.text as string)
+      .join(""),
+  }))
+  .refine(
+    (m) => m.content.length > 0,
+    "message must contain at least one non-empty text part"
+  );
+
+const messageSchema = z.union([uiMessageSchema, legacyMessageSchema]);
+
 const bodySchema = z.object({
+  id: z.string().optional(),
   messages: z
     .array(messageSchema)
     .min(1, "messages must contain at least one entry")
@@ -172,7 +206,7 @@ export async function POST(request: Request) {
   const sessionId = body.sessionId ?? `web-v2-${crypto.randomUUID()}`;
   const turnIndex =
     body.turnIndex ?? Math.max(0, Math.floor(body.messages.length / 2));
-  const collector = new MinimalTurnMetricsCollector();
+  const collector = new TelemetryIntegration();
   const contextTokensStart = estimateContextTokens(body.messages);
 
   // 3. Construct engine with balance_check + minimal ToolContext
@@ -247,6 +281,24 @@ export async function POST(request: Request) {
     ...(modelInstance === undefined
       ? {}
       : { gatewayProviderOptions: { caching: "auto" as const } }),
+    // [Day 2c++ Batch 1 / engine v2.10] Gateway-managed search tool —
+    // `gateway.tools.perplexitySearch()` is a drop-in replacement for the
+    // engine's Brave `web_search` tool when routing through Vercel AI
+    // Gateway ($5/1k requests, no API key plumbing, no maintenance).
+    // Only wired when the gateway is active — direct-Anthropic fallback
+    // gets no search tool today (the engine's Brave `webSearchTool` stays
+    // available for non-gateway hosts like the CLI + MCP server). Engine
+    // `gatewayTools` merges this verbatim into the AI SDK `ToolSet`
+    // alongside `balance_check`; engine-native tools take precedence on
+    // name collision so an engine `web_search` (when wired) would
+    // override any `web_search` gateway tool key automatically.
+    ...(modelInstance === undefined
+      ? {}
+      : {
+          gatewayTools: {
+            perplexity_search: gateway.tools.perplexitySearch(),
+          },
+        }),
     // [Day 2c G6] Match audric/web production's model + thinking
     // pairing. `model: 'claude-sonnet-4-6'` is required for adaptive
     // thinking to work (4-5 doesn't support it per a Day 2c gateway
@@ -365,9 +417,10 @@ export async function POST(request: Request) {
 // -----------------------------------------------------------------------------
 //
 // AI SDK v6 tool parts use the type `tool-<toolName>` with state-based
-// payloads (`input-available`, `output-available`). The renderer in
-// `components/audric/tool-part.tsx` switches on `part.type` and
-// pattern-matches the `tool-` prefix.
+// payloads (`input-available`, `output-available`). The client renderer
+// (`app/audric-chat/audric-chat-client.tsx`) switches on `part.type` and
+// hands tool parts to AI Elements `<Tool>` (Day 2c++ Batch 1 swap from
+// the original `<AudricToolPart>` — S.172).
 
 function translateEvent(
   ev: EngineEvent,
