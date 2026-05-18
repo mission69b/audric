@@ -8,36 +8,46 @@
 
 ## Active SPEC
 
-[`spec/active/BENEFITS_SPEC_v07c.md`](../t2000/spec/active/BENEFITS_SPEC_v07c.md) — v1.0 LOCKED 2026-05-18. **Phase 0 + 1 CLOSED; Phase 2 Day 2a/2b/2c/2c++ Batch 1 SHIPPED + LIVE SMOKE GREEN 2026-05-19 (engine v2.10.0 published; web-v2 changes committed; balance_check + perplexity_search end-to-end verified).** Day 2d (D-14 intent-dispatcher fate measurement) is next.
+[`spec/active/BENEFITS_SPEC_v07c.md`](../t2000/spec/active/BENEFITS_SPEC_v07c.md) — v1.0 LOCKED 2026-05-18. **Phase 0 + 1 + Phase 2 FULLY CLOSED 2026-05-19** — Day 2c++ Batch 1 shipped + live smoke green + Day 2d D-14 LOCKED (defer intent-dispatcher port to Phase 4 alongside `<financial_context>` injection). All 19 D-questions founder-locked. Phase 3 (Slice D `save_deposit` per-write canary) or optional Phase 2e (`Agent` + OTel composition per D-15/D-18) is next.
 
 | Phase | Status | Notes |
 |---|---|---|
 | Phase 0 — Baseline + setup | ✅ CLOSED | G1 closed 2026-05-18 PM. F-12 (prompt cache) + F-13 (extended thinking) regressions found + shipped at engine v2.7.2; F-14 (classifier accuracy) shipped at engine v2.7.3. |
 | Phase 1 — Side-by-side stand-up + template fork + Auth eviction | ✅ CLOSED (Day 1a/1b/1c/1d CLOSED + post-Day-1d audit CLOSED, G2 + G3 CLOSED, baseline typecheck + lint + production build all at 0 errors) | Day 1a (blank scaffold) ✅. Day 1b (template fork, pinned SHA `107a43a`) ✅. Day 1c (Auth.js eviction + zkLogin stub) ✅. Day 1d (baseline cleanup: F-17 + F-18 fixed, 38 files auto-fixed) ✅. **Post-Day-1d audit**: added `pnpm build` as third standing gate (PASSES); closed 4 P0 residue gaps. See S.167. |
-| Phase 2 — First read-tool round-trip + AI Gateway + telemetry + matrix audit + Batch 1 simplifications | ✅ **CLOSED 2026-05-19 — Day 2a + 2b + 2c + 2c++ matrix + Batch 1 SHIPPED + LIVE SMOKE GREEN** | **Day 2a (S.168)**: `verifyJwt` + Google JWKS + Enoki address; `lib/prisma.ts` Neon WS adapter; new `/api/audric-chat` POST handler. **Day 2b (S.169)**: +3 env vars; vendored `sui-rpc.ts` + `cost-rates.ts`; new `system-prompt.ts` + `navi-mcp.ts` + `turn-metrics.ts` (`MinimalTurnMetricsCollector` 41-field row shape); end-to-end smoke verified (real $5,025.13 net worth via `tool-output-available` wire chunk; TurnMetrics row byte-for-byte production parity). **Day 2c (S.170)**: D-6 AI Gateway routing live via engine v2.9.0 → web-v2 `gateway('anthropic/claude-sonnet-4-6')` + `providerOptions.gateway.caching: 'auto'`; D-18 `experimental_telemetry` enabled; G6 5-feature smoke 3/5 ✓ live (F-1, F-2, F-5 prompt cache verified). **Day 2c++ matrix (S.171)**: read-only audit + 4-batch plan approved by founder. **Day 2c++ Batch 1 (S.172)**: TelemetryIntegration (replaces MinimalTurnMetricsCollector) + AI Elements `<Tool>` (replaces `<AudricToolPart>`) + `gateway.tools.perplexitySearch()` wired via new engine `gatewayTools` config + engine v2.10.0 published. **Live smoke 2026-05-19 04:30 AEST: balance_check + perplexity_search end-to-end GREEN via UI; total $5,020.12 verified; AI Elements `<Tool>` UI confirmed; POST → `/api/audric-chat` 200 on both turns; TurnMetrics rows persisted to NeonDB with intact 41-field shape.** Two pre-existing Day 2b client bugs (schema `content` vs `parts` mismatch + `useChat` non-reactive transport) surfaced during browser smoke and fixed inline. |
+| Phase 2 — First read-tool round-trip + AI Gateway + telemetry + matrix audit + Batch 1 simplifications + D-14 lock | ✅ **FULLY CLOSED 2026-05-19** (Day 2a + 2b + 2c + 2c++ matrix + Batch 1 SHIPPED + LIVE SMOKE GREEN + Day 2d D-14 LOCKED) | **Day 2a (S.168)** + **Day 2b (S.169)** + **Day 2c (S.170)** + **Day 2c++ matrix (S.171)** + **Day 2c++ Batch 1 (S.172)** as previously documented (engine v2.7.0 → v2.10.0 shipped, AI Gateway live, AI Elements adopted, perplexity_search wired). **Day 2d (S.173): D-14 LOCKED — defer intent-dispatcher port to Phase 4** alongside `<financial_context>` injection. Structural finding: dispatcher solves LLM skip-rate pathology that only manifests with cached `<financial_context>` data; web-v2 has none today, so the dispatcher has nothing to subsume. Phase 4 ports both `STATIC_SYSTEM_PROMPT` + `<financial_context>` + `intent-dispatcher.ts` byte-for-byte. Net LoC delta ≈ 0 (NOT the SPEC's headline −458). All 19 D-questions now founder-locked. |
 | Phase 3 onward | ⏳ PENDING | See SPEC. |
 
 ---
 
-## 🎯 Immediate next session — Day 2d (D-14 intent-dispatcher fate measurement)
+## 🎯 Immediate next session — Phase 2e OR Phase 3 (founder choice)
 
-> **Batch 1 fully closed:** live smoke green 2026-05-19 04:30 AEST, audric changes committed. Move to Day 2d per the v0.7c plan.
+Phase 2 fully closed 2026-05-19 (all 19 D-questions locked). Two viable next steps:
 
-### Day 2d brief — D-14 intent-dispatcher fate measurement
+### Option (a) — Phase 2e: `Agent` + OTel composition (~1 day)
 
-Per [`spec/active/BENEFITS_SPEC_v07c.md`](../t2000/spec/active/BENEFITS_SPEC_v07c.md) D-14 (TBD pending Phase 2 spike): the production `IntentDispatcher` in `audric/web` pre-fetches read-tool inputs (e.g. `balance_check`, `transaction_history`) BEFORE the LLM round-trip starts, on a heuristic match of the latest user message. The spec leaves D-14 as a measurement gate: **is the intent-dispatcher's net latency win still meaningful once we have `experimental_telemetry` + streaming tool dispatch?** If yes, port it to web-v2 in Phase 4. If no, sunset it.
+Per D-15 + D-18 locks. Compose `audricAgent = new Agent({ model: gateway(...), tools, system, stopWhen, experimental_telemetry: {...} })`; verify `audricAgent.stream({ messages })` returns the same shape `streamText` does today; verify OTel traces land in Vercel AI Gateway dashboard. Cleans up the route's composition before write tools land in Phase 3. Risk: ~zero (additive composition, backward compatible). Becomes the natural mount point for Phase 5.5's `wrapLanguageModel` middleware per D-17.
 
-**Concrete tasks for Day 2d:**
+### Option (b) — Phase 3: Slice D first write tool (`save_deposit` per-write canary, ~4 days)
 
-1. **Measure baseline (no dispatcher).** Capture 10 production-grade turns through `web-v2`'s `/api/audric-chat` (currently has NO dispatcher) and record per-turn `firstTokenMs`, `wallTimeMs`, `toolsCalled[0].latencyMs` from the TurnMetrics rows that just landed in NeonDB.
-2. **Measure with dispatcher (legacy audric/web).** Capture 10 equivalent turns through `audric/web`'s `/api/engine/chat` route (which has the dispatcher) using the same wallet + same prompts. Pull the matching TurnMetrics rows.
-3. **Statistical comparison.** Median + p95 of `firstTokenMs` and `wallTimeMs` across both cohorts. If web-v2 baseline beats legacy-with-dispatcher OR is within ~200ms — sunset the dispatcher. If legacy-with-dispatcher beats web-v2 baseline by >500ms — port the dispatcher in Phase 4.
-4. **Capture findings** in `audric-build-tracker.md` S.173 + lock D-14 in the SPEC.
+Per D-13 lock. Wire `save_deposit` end-to-end through web-v2:
+1. Engine emits `pending_action` for confirm-tier tool (already supported in `gatewayTools` + native tool merger).
+2. Audric-side sponsored tx flow (zkLogin signature → Enoki gas sponsorship → on-chain commit).
+3. Client confirms via `useChat({ onToolCall, addToolResult })` round-trip — first use of AI SDK v6 native HITL pattern (Slice D — the U-1 win of v0.7c).
+4. TurnMetrics row carries `attemptId` for the resume path (preserved per `agent-harness-spec.mdc`).
+5. Verify against acceptance: `save_deposit` matches production audric/web `save_deposit` behavior byte-for-byte (same tx shape, same fee deduction, same NAVI deposit).
 
-### Downstream batches
+Risk: medium (first time `addToolResult` is wired through web-v2; HITL semantics on sponsored tx are load-bearing). Reference implementation for all other 11 writes.
 
-After Day 2d closes:
+### Recommendation
+
+**Phase 2e first (~1 day), then Phase 3.** Rationale: `Agent` composition is purely additive and de-risks Phase 3 by providing a single source of truth for the engine config. Phase 3 then composes against `audricAgent` instead of reconstructing the config inline. But Phase 3 directly is also reasonable — `Agent` can ship later without re-architecting Phase 3's canary.
+
+### Downstream batches (queued behind Phase 2)
+
+After Phase 2e + Phase 3 close:
 - **Batch 2 (SPEC 39 MCP remote migration)** — needs a formal `spec/active/SPEC_39_MCP_REMOTE_MIGRATION.md` draft first. ~1 week.
+- **Phase 4 (mechanical write tool migration + `<financial_context>` + `intent-dispatcher.ts` port from D-14 S.173 directive)** — ports `STATIC_SYSTEM_PROMPT` byte-for-byte, wires `<financial_context>`, ports `intent-dispatcher.ts` byte-for-byte alongside. ~5 days.
+- **Phase 4.5 (D-16 `generateObject` classifiers + D-14 re-eval)** — migrate 8+ classifiers to `generateObject({ schema })`; decide whether to KEEP regex dispatcher + ADD `generateObject` secondary classifier (recommended) or REPLACE regex entirely (likely rejected — regex is deterministic). ~2 days.
 - **Batch 3 + 4** — see "Downstream batches" table below.
 
 ---
