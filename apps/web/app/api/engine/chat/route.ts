@@ -897,6 +897,15 @@ export async function POST(request: NextRequest) {
                 continue;
               }
 
+              // [F-5 / 2026-05-18 founder smoke] Emit the unwrapped tool
+              // output (NOT `{ data: result.data }`) so the synthetic
+              // tool_result shape matches what the engine's tool wrapper
+              // emits for LLM-issued calls (packages/engine/src/v2/
+              // tool-wrapper.ts:148 returns `result.data`). Pre-fix the
+              // envelope mismatch made microcompact dedupe miss → the LLM
+              // re-issued the same call after the dispatcher already ran it,
+              // doubling RTT on every bootstrap-eligible read (`balance_check`,
+              // `health_check`, etc.) for ~200-300ms per turn.
               syntheticToolUses.push({
                 type: 'tool_use',
                 id: callId,
@@ -906,7 +915,7 @@ export async function POST(request: NextRequest) {
               syntheticToolResults.push({
                 type: 'tool_result',
                 toolUseId: callId,
-                content: JSON.stringify({ data: result.data }),
+                content: JSON.stringify(result.data),
               });
 
               const startEvent: EngineEvent = {
@@ -919,7 +928,7 @@ export async function POST(request: NextRequest) {
                 type: 'tool_result',
                 toolName: intent.toolName,
                 toolUseId: callId,
-                result: { data: result.data },
+                result: result.data,
                 isError: false,
                 wasEarlyDispatched: true,
               };
@@ -933,7 +942,7 @@ export async function POST(request: NextRequest) {
               collector.onToolResult(
                 callId,
                 intent.toolName,
-                { data: result.data },
+                result.data,
                 {
                   wasTruncated: false,
                   wasEarlyDispatched: true,
