@@ -1,6 +1,6 @@
 {
   "name": "@audric/web-v2",
-  "version": "0.1.0-phase1-day1d",
+  "version": "0.2.0-phase2-day2a-prereq",
   "private": true,
   "description": "audric chat shell, vendored from vercel/ai-chatbot@107a43a. See ../HANDOFF_NEXT_AGENT.md.",
   "scripts": {
@@ -24,6 +24,10 @@
   "dependencies": {
     "@ai-sdk/provider": "^3.0.3",
     "@ai-sdk/react": "3.0.118",
+    "@neondatabase/serverless": "^1.1.0",
+    "@prisma/adapter-neon": "^7.8.0",
+    "@prisma/client": "^7.5.0",
+    "@t2000/engine": "2.7.3",
     "@codemirror/lang-python": "^6.1.6",
     "@codemirror/state": "^6.5.0",
     "@codemirror/theme-one-dark": "^6.1.2",

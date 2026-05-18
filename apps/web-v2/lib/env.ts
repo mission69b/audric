@@ -1,0 +1,162 @@
+/**
+ * # Validated environment configuration — single source of truth.
+ *
+ * **Why this file exists.** Per the t2000 monorepo `env-validation-gate`
+ * rule, every app in `apps/*` MUST validate its env contract at boot
+ * via a Zod schema and expose values through a typed proxy. The Apr
+ * 2026 BLOCKVISION_API_KEY=="" incident (4-day silent degradation in
+ * audric/web prod) is the reason the rule exists.
+ *
+ * ## Scope for v0.7c Phase 2 P2.0a
+ *
+ * This module currently validates ONLY the env vars web-v2's *new*
+ * code (Day 1c + Phase 2 ports) reads. The vendored template still has
+ * ~25 `process.env.X` reads scattered across components / hooks /
+ * routes (mostly `NEXT_PUBLIC_BASE_PATH ?? ""` no-op fallbacks). Those
+ * are pre-existing template baseline and get folded through the gate
+ * incrementally as each surface gets touched in later Phase 2 days.
+ * See F-19 in `HANDOFF_NEXT_AGENT.md` for the cleanup follow-up.
+ *
+ * ## Rules
+ * 1. Every NEW server-side `process.env.X` access goes through `env.X`.
+ * 2. Required vars throw at module load if missing, empty, or
+ *    whitespace-only. Error lists every misconfigured var (not just
+ *    the first) plus the Vercel env settings URL.
+ * 3. NEXT_PUBLIC_* vars use literal `process.env.NEXT_PUBLIC_X` in the
+ *    `runtimeEnv` map so Next.js's static replacement works.
+ * 4. Schema runs at first import. Trigger from `instrumentation.ts`
+ *    `register()` hook so misconfigured deploys fail loudly at boot.
+ *
+ * ## Adding a new env var
+ * 1. Add to `serverSchema` or `clientSchema` with a doc comment.
+ * 2. Add to `runtimeEnv` with a literal `process.env.X` reference.
+ * 3. Use `env.X` everywhere. Never `process.env.X`.
+ */
+
+import { z } from "zod";
+
+const requiredString = z
+  .string()
+  .trim()
+  .min(1, "must be a non-empty string (Vercel may have stored an empty value)");
+
+const optionalString = z
+  .string()
+  .optional()
+  .transform((v) => {
+    if (v === undefined) {
+      return;
+    }
+    const trimmed = v.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+  });
+
+// ─── Server schema ────────────────────────────────────────────────────
+// These vars MUST NEVER be referenced from client components. The
+// proxy at the bottom of this file throws if a client-side read is
+// attempted.
+const serverSchema = z.object({
+  /** Postgres connection string for Prisma — points at the same NeonDB
+   * as audric/web in Phase 2. P2.0c wires Prisma. */
+  DATABASE_URL: requiredString,
+
+  /** Anthropic Claude API key — powers every LLM call. Day 2a uses
+   * this directly; Day 2c wraps via AI Gateway and switches to
+   * AI_GATEWAY_API_KEY. */
+  ANTHROPIC_API_KEY: optionalString,
+
+  /** Vercel AI Gateway API key — powers Day 2c+. Required only when
+   * the route opts into the `gateway()` wrapper. Optional in Day 2a
+   * (direct Anthropic). */
+  AI_GATEWAY_API_KEY: optionalString,
+});
+
+// ─── Client schema ────────────────────────────────────────────────────
+// NEXT_PUBLIC_* vars are statically replaced into client bundles. The
+// schema validates at server boot AND at first import in the browser.
+const clientSchema = z.object({
+  /** Google OAuth client id for zkLogin. Used by `verifyJwt` to check
+   * the JWT audience claim. */
+  NEXT_PUBLIC_GOOGLE_CLIENT_ID: requiredString,
+
+  /** Enoki public API key (zkLogin + gas sponsorship). Treated as a
+   * publishable key by Enoki — safe to ship to clients. Used server-
+   * side too for `deriveAddressFromEnoki`. */
+  NEXT_PUBLIC_ENOKI_API_KEY: requiredString,
+});
+
+// ─── Runtime ──────────────────────────────────────────────────────────
+// Literal references — Next.js static replacement requires this:
+const runtimeEnv = {
+  DATABASE_URL: process.env.DATABASE_URL,
+  ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
+  AI_GATEWAY_API_KEY: process.env.AI_GATEWAY_API_KEY,
+  NEXT_PUBLIC_GOOGLE_CLIENT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+  NEXT_PUBLIC_ENOKI_API_KEY: process.env.NEXT_PUBLIC_ENOKI_API_KEY,
+};
+
+const isServer =
+  typeof process !== "undefined" &&
+  (typeof process.versions?.node === "string" ||
+    process.env?.NEXT_RUNTIME === "edge");
+
+const fullSchema = z.object({
+  ...serverSchema.shape,
+  ...clientSchema.shape,
+});
+
+const schemaToValidate = isServer ? fullSchema : clientSchema;
+const parsed = schemaToValidate.safeParse(runtimeEnv);
+
+if (!parsed.success) {
+  const issues = parsed.error.issues
+    .map((i) => `  - ${i.path.join(".")}: ${i.message}`)
+    .join("\n");
+  throw new Error(
+    [
+      "",
+      "═══════════════════════════════════════════════════════════════",
+      "  Environment configuration is invalid.",
+      "═══════════════════════════════════════════════════════════════",
+      "",
+      issues,
+      "",
+      "Fix in Vercel settings (Production / Preview):",
+      "  https://vercel.com/dashboard → Project → Settings → Environment Variables",
+      "",
+      "Or locally in `apps/web-v2/.env.local`.",
+      "═══════════════════════════════════════════════════════════════",
+      "",
+    ].join("\n")
+  );
+}
+
+// Type assertion: on the client, server-only keys are stripped to
+// `undefined` by Next.js's bundler before Zod sees them, so they're
+// absent at runtime. The proxy guard below makes any client-side read
+// throw before the undefined can leak into business logic. Asserting
+// to FullEnv lets server callsites (route handlers, instrumentation,
+// `lib/prisma.ts`) see the full type without TS narrowing them to the
+// client schema.
+type FullEnv = z.infer<typeof fullSchema>;
+const parsedData = parsed.data as FullEnv;
+
+const SERVER_ONLY_KEYS = new Set<string>(Object.keys(serverSchema.shape));
+
+/**
+ * Validated, strongly-typed env handle. Server-only vars throw on
+ * client-side access (Next.js's bundler strips them to `undefined`,
+ * so the silent-undefined failure mode is the bug this guard prevents).
+ */
+export const env = new Proxy(parsedData, {
+  get(target, prop) {
+    if (!isServer && SERVER_ONLY_KEYS.has(prop as string)) {
+      throw new Error(
+        `[env] Cannot access server-only var '${String(prop)}' from the client.`
+      );
+    }
+    return target[prop as keyof typeof target];
+  },
+}) as FullEnv;
+
+export type Env = FullEnv;

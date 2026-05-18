@@ -12,6 +12,9 @@
   "files": {
     "includes": [
       "**/*",
+      "!.next",
+      "!.turbo",
+      "!node_modules",
       "!components/ai-elements",
       "!components/elements",
       "!components/ui",

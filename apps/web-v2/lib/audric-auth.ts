@@ -1,18 +1,18 @@
 /**
- * audric-auth (server) — thin adapter that replaces next-auth's server
- * surface for the v0.7c fork.
+ * audric-auth (server) — verified zkLogin session adapter.
  *
  * Companion file: `lib/audric-auth-client.ts` (carries `'use client'`).
  *
- * --- WHY THIS FILE EXISTS (BENEFITS_SPEC v0.7c Phase 1 Day 1c, 2026-05-18) ---
+ * --- WHY THIS FILE EXISTS (BENEFITS_SPEC v0.7c) ---
  *
  * The vendored vercel/ai-chatbot template (`107a43a`) used next-auth for
  * server-side `auth()` calls (route handlers + server actions + server
  * layouts). Audric does NOT use next-auth — it uses zkLogin, where
  * identity is established CLIENT-SIDE (Google OIDC id_token → Enoki →
  * Sui address, blob stored in `localStorage`) and reaches the server as
- * the `x-zklogin-jwt` header verified per-request via `jose` (see
- * `apps/web/lib/auth.ts`, `apps/web/middleware.ts`).
+ * the `x-zklogin-jwt` header verified per-request via `jose` (the
+ * canonical audric/web pattern from `apps/web/lib/auth.ts` +
+ * `apps/web/middleware.ts`).
  *
  * Audric has NO cookie-based session and NO httpOnly session. Server
  * Components do NOT have a "current user" context the way next-auth
@@ -20,33 +20,35 @@
  * `useZkLogin()`. This adapter mirrors that architectural choice in
  * web-v2.
  *
- * --- DAY 1c SCOPE ---
+ * --- PHASE 1 DAY 1c → PHASE 2 P2.0a ---
  *
- * What this file delivers TODAY (Day 1c):
- *  - **Types**: `AudricUserType`, `AudricSessionUser`, `AudricSession` —
- *    drop-in shape replacement for next-auth's `Session` / `User`.
- *  - **Server stub**: `getCurrentUser()` — reads `x-zklogin-jwt` from
- *    `headers()` and decodes the JWT payload to surface `sub` / `email`.
- *    DOES NOT YET verify the JWT signature (Phase 2 wires the real
- *    `jose.jwtVerify` + Google JWKS path from `apps/web/lib/auth.ts`).
- *    Returns `null` when no JWT header is present.
+ * Day 1c shipped a decode-only stub. P2.0a (this file post-port) wires
+ * the full verification path from `apps/web/lib/auth.ts`:
+ *  1. **Signature** — `jose.jwtVerify` against Google's JWKS. Catches
+ *     forged tokens, expired signatures, wrong-issuer tokens.
+ *  2. **Address derivation** — the canonical Sui address is
+ *     deterministically derived from `(jwt.sub, jwt.aud, salt)` where
+ *     the salt is held by Enoki. Module-scoped LRU caches `sub → address`
+ *     per JWT lifetime so warm hits are zero-RTT.
+ *  3. **Session shape** — `AudricSession.user.id` is now the canonical
+ *     Sui address (Phase 2 contract), not the raw JWT `sub` (Day 1c
+ *     placeholder).
  *
- * What this file DOES NOT do (deferred to Phase 2):
- *  - JWT signature verification (currently decode-only — SAFE because
- *    no Day 1c route is wired into a production audric backend; the
- *    moment a real handler accepts authenticated input, Phase 2's
- *    `verifyJwt()` must replace the decode).
- *  - Enoki address derivation (currently uses the JWT `sub` directly,
- *    NOT the canonical Sui address). Phase 2 wires `deriveAddressFromEnoki`.
+ * What this file STILL doesn't do (Phase 2+):
+ *  - `authenticateRequest()` / `assertOwns()` / `assertOwnsOrWatched()`
+ *    helpers — required when Phase 3 wires the first write tool with
+ *    a body `address` field that needs ownership binding (IDOR gate).
+ *    Port from `apps/web/lib/auth.ts` at that time, not now.
  *
- * Traceability: BENEFITS_SPEC_v07c.md §"Phase 1 Day 1c" + audric-build-tracker.md row 7t.
+ * Traceability: BENEFITS_SPEC_v07c.md §"Phase 2 P2.0a" + audric-build-tracker.md row 7t.
  * D-7 (b) "vendor-first, then strip" + D-15 ("audric-side composition layer").
  */
 
-import { decodeJwt } from "jose";
+import { createRemoteJWKSet, type JWTVerifyResult, jwtVerify } from "jose";
+import { env } from "./env";
 
 // -----------------------------------------------------------------------------
-// Types (drop-in shape replacement for next-auth Session / User)
+// Types
 // -----------------------------------------------------------------------------
 
 /**
@@ -56,17 +58,13 @@ import { decodeJwt } from "jose";
 export type AudricUserType = "guest" | "regular";
 
 /**
- * Drop-in shape for the template's `Session.user`. The template's `id`
- * field was a Drizzle User-table primary key; here `id` is the Sui
- * address (canonical audric product identity per `apps/web/lib/auth.ts`).
+ * Drop-in shape for the template's `Session.user`. `id` is the canonical
+ * Sui address per the audric/web pattern (post-P2.0a — Day 1c temporarily
+ * used jwt.sub as a placeholder).
  */
 export interface AudricSessionUser {
   email: string | null;
-  /**
-   * Sui address (zkLogin-derived) for `type: 'regular'`.
-   * For `type: 'guest'`, a stable synthetic id (`guest:<jwt.sub>`) so
-   * Drizzle FKs don't collapse onto the same row.
-   */
+  /** Canonical Sui address (zkLogin-derived). */
   id: string;
   type: AudricUserType;
 }
@@ -75,23 +73,198 @@ export interface AudricSession {
   user: AudricSessionUser;
 }
 
+interface JwtPayload {
+  aud?: string;
+  email?: string;
+  email_verified?: boolean;
+  exp?: number;
+  iss?: string;
+  name?: string;
+  picture?: string;
+  sub?: string;
+}
+
+/**
+ * A JWT that has passed the full verification chain — signature,
+ * issuer, audience, expiry — AND has a derived Sui address.
+ */
+export interface VerifiedJwt {
+  emailVerified: boolean;
+  payload: JwtPayload & { sub: string };
+  /** Canonical zkLogin Sui address derived from `(sub, aud, salt)`. */
+  suiAddress: string;
+}
+
+/**
+ * Typed error thrown by `verifyJwt` when the JWT can't be verified or
+ * the address can't be derived. `status` is the HTTP-equivalent code.
+ */
+export class AuthError extends Error {
+  readonly status: 401 | 403 | 502;
+  readonly publicMessage: string;
+
+  constructor(status: 401 | 403 | 502, publicMessage: string) {
+    super(publicMessage);
+    this.status = status;
+    this.publicMessage = publicMessage;
+    this.name = "AuthError";
+  }
+}
+
 // -----------------------------------------------------------------------------
-// Server: getCurrentUser() — replaces next-auth's `await auth()`
+// jose JWKS handle (lazy + module-scoped)
+// -----------------------------------------------------------------------------
+// `createRemoteJWKSet` returns a function that lazily fetches + caches
+// JWKS responses. Module-scoped so all requests share the cache.
+// Google rotates keys ~weekly; the JWKS helper handles cache-control
+// headers automatically.
+
+const GOOGLE_JWKS_URL = "https://www.googleapis.com/oauth2/v3/certs";
+const googleJwks = createRemoteJWKSet(new URL(GOOGLE_JWKS_URL), {
+  cooldownDuration: 30_000,
+  cacheMaxAge: 600_000,
+});
+
+// -----------------------------------------------------------------------------
+// In-memory address cache
+// -----------------------------------------------------------------------------
+// Maps `jwt.sub` → derived Sui address. Entry expires when the JWT
+// expires. Process-scoped — Vercel serverless cold starts blow it away,
+// and that's fine: a cold start costs one Enoki round-trip per active
+// user. Warm hits are zero-RTT.
+
+interface AddressCacheEntry {
+  address: string;
+  expiresAt: number;
+}
+const subToAddressCache = new Map<string, AddressCacheEntry>();
+
+const ENOKI_BASE_URL = "https://api.enoki.mystenlabs.com/v1";
+
+// -----------------------------------------------------------------------------
+// verifyJwt — full verification + address derivation
 // -----------------------------------------------------------------------------
 
 /**
- * Server-side current-user resolver. Mirrors the audric/web pattern:
- * read `x-zklogin-jwt` from the incoming request headers and decode the
- * JWT payload to surface identity.
+ * Verify a zkLogin JWT signature against Google's JWKS, then derive the
+ * canonical Sui address (cached or via Enoki). Throws `AuthError` on
+ * any failure.
  *
- * DAY 1c IS DECODE-ONLY: no signature verification, no Enoki address
- * derivation. PHASE 2 replaces with the verified path from
- * `apps/web/lib/auth.ts` (jose + Google JWKS + Enoki).
+ * @param jwt The raw JWT string from the `x-zklogin-jwt` header.
+ * @throws `AuthError(401)` when JWT is missing/invalid/expired/wrong-issuer.
+ * @throws `AuthError(502)` when Enoki is unreachable on cache miss.
+ */
+export async function verifyJwt(
+  jwt: string | null | undefined
+): Promise<VerifiedJwt> {
+  if (!jwt) {
+    throw new AuthError(401, "Authentication required");
+  }
+
+  let result: JWTVerifyResult;
+  try {
+    result = await jwtVerify(jwt, googleJwks, {
+      // Google issues both with and without trailing `https://`. Accept both.
+      issuer: ["https://accounts.google.com", "accounts.google.com"],
+      audience: env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+    });
+  } catch {
+    // Generic message — never leak the specific reason (expired vs
+    // wrong-aud vs bad-sig) to avoid giving attackers a probe oracle.
+    throw new AuthError(401, "Invalid authentication token");
+  }
+
+  const payload = result.payload as JwtPayload;
+  const sub = typeof payload.sub === "string" ? payload.sub : null;
+  if (!sub) {
+    throw new AuthError(401, "Invalid authentication token");
+  }
+
+  const cached = subToAddressCache.get(sub);
+  let suiAddress: string;
+  if (cached && cached.expiresAt > Date.now()) {
+    suiAddress = cached.address;
+  } else {
+    suiAddress = await deriveAddressFromEnoki(jwt);
+    const expiresAtMs =
+      (payload.exp ?? Math.floor(Date.now() / 1000) + 3600) * 1000;
+    subToAddressCache.set(sub, { address: suiAddress, expiresAt: expiresAtMs });
+  }
+
+  const emailVerified = payload.email_verified === true;
+
+  return {
+    payload: { ...payload, sub },
+    suiAddress,
+    emailVerified,
+  };
+}
+
+/**
+ * Server-side address derivation via Enoki's salt holder. Called only
+ * on cache misses. Failures throw `AuthError(502)` so middleware can
+ * distinguish transient Enoki outages from auth failures.
+ */
+async function deriveAddressFromEnoki(jwt: string): Promise<string> {
+  let res: Response;
+  try {
+    res = await fetch(`${ENOKI_BASE_URL}/zklogin`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${env.NEXT_PUBLIC_ENOKI_API_KEY}`,
+        "zklogin-jwt": jwt,
+      },
+    });
+  } catch {
+    throw new AuthError(502, "Address derivation service unavailable");
+  }
+
+  if (!res.ok) {
+    throw new AuthError(502, "Address derivation service unavailable");
+  }
+
+  let body: { data?: { address?: unknown } };
+  try {
+    body = await res.json();
+  } catch {
+    throw new AuthError(502, "Address derivation service unavailable");
+  }
+
+  const address = body?.data?.address;
+  if (typeof address !== "string" || !isValidSuiAddress(address)) {
+    throw new AuthError(502, "Address derivation service unavailable");
+  }
+  return address;
+}
+
+/**
+ * Validate a Sui address format (0x followed by 64 hex chars).
+ */
+export function isValidSuiAddress(address: string): boolean {
+  return /^0x[a-fA-F0-9]{64}$/.test(address);
+}
+
+// -----------------------------------------------------------------------------
+// getCurrentUser — drop-in replacement for next-auth's `auth()`
+// -----------------------------------------------------------------------------
+
+/**
+ * Server-side current-user resolver. Reads `x-zklogin-jwt` from the
+ * incoming request headers, runs the full `verifyJwt` chain, and
+ * returns an `AudricSession` whose `user.id` is the canonical Sui
+ * address (NOT the raw JWT `sub` — that was the Day 1c placeholder).
  *
- * Returns `null` when the header is absent → template's route handlers
- * surface 401 (`ChatbotError("unauthorized:chat").toResponse()`); the
- * sidebar layout renders the "Login to save and revisit previous chats"
- * empty state.
+ * Returns `null` for any auth failure (missing header / invalid JWT /
+ * Enoki unreachable). This preserves the template's nullable session
+ * contract — route handlers' existing `if (!session?.user)` gates work
+ * verbatim; they surface 401 via `ChatbotError("unauthorized:chat")`.
+ *
+ * Note: This intentionally does NOT throw on `AuthError(502)` (Enoki
+ * outage). The route-level layer can re-call `verifyJwt` directly if
+ * it wants the typed error (e.g. to distinguish "your auth is bad"
+ * from "our auth service is down"). Most route handlers care only
+ * about "is there a user or not", so returning `null` is the right
+ * default.
  */
 export async function getCurrentUser(): Promise<AudricSession | null> {
   // [Next 15+ / App Router] `headers()` works in Server Components, Route
@@ -106,19 +279,14 @@ export async function getCurrentUser(): Promise<AudricSession | null> {
   }
 
   try {
-    const payload = decodeJwt(jwt);
-    const sub = typeof payload.sub === "string" ? payload.sub : null;
-    if (!sub) {
-      return null;
-    }
-
-    const email = typeof payload.email === "string" ? payload.email : null;
-
+    const verified = await verifyJwt(jwt);
+    const email =
+      typeof verified.payload.email === "string"
+        ? verified.payload.email
+        : null;
     return {
       user: {
-        // Day 1c: use `sub` as a placeholder id. Phase 2 swaps to the
-        // Enoki-derived Sui address (the canonical audric identity).
-        id: sub,
+        id: verified.suiAddress,
         email,
         type: "regular",
       },
@@ -127,3 +295,13 @@ export async function getCurrentUser(): Promise<AudricSession | null> {
     return null;
   }
 }
+
+// -----------------------------------------------------------------------------
+// Test seam — Vitest tests can override the address cache or pre-seed it.
+// -----------------------------------------------------------------------------
+
+export const __testHelpers = {
+  clearAddressCache: () => subToAddressCache.clear(),
+  seedAddressCache: (sub: string, address: string, expiresAtMs: number) =>
+    subToAddressCache.set(sub, { address, expiresAt: expiresAtMs }),
+};
