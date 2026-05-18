@@ -1,5 +1,5 @@
 import { tool, type UIMessageStreamWriter } from "ai";
-import type { Session } from "next-auth";
+import type { AudricSession as Session } from "@/lib/audric-auth";
 import { z } from "zod";
 import {
   artifactKinds,

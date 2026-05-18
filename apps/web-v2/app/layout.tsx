@@ -4,7 +4,10 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 import "./globals.css";
-import { SessionProvider } from "next-auth/react";
+// [v0.7c Day 1c] `<SessionProvider>` (next-auth/react) → `<ZkLoginProvider>`
+// (audric stub). Day 1c provider is children-passthrough; Phase 2 swaps
+// in the full @mysten/dapp-kit WalletProvider tree.
+import { ZkLoginProvider } from "@/lib/audric-auth-client";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://chat.vercel.ai"),
@@ -74,11 +77,9 @@ export default function RootLayout({
           disableTransitionOnChange
           enableSystem
         >
-          <SessionProvider
-            basePath={`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/auth`}
-          >
+          <ZkLoginProvider>
             <TooltipProvider>{children}</TooltipProvider>
-          </SessionProvider>
+          </ZkLoginProvider>
         </ThemeProvider>
       </body>
     </html>

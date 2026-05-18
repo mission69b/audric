@@ -1,4 +1,4 @@
-import { auth } from "@/app/(auth)/auth";
+import { getCurrentUser } from "@/lib/audric-auth";
 import { getSuggestionsByDocumentId } from "@/lib/db/queries";
 import { ChatbotError } from "@/lib/errors";
 
@@ -13,7 +13,7 @@ export async function GET(request: Request) {
     ).toResponse();
   }
 
-  const session = await auth();
+  const session = await getCurrentUser();
 
   if (!session?.user) {
     return new ChatbotError("unauthorized:suggestions").toResponse();

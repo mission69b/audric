@@ -10,7 +10,7 @@ import {
 import { checkBotId } from "botid/server";
 import { after } from "next/server";
 import { createResumableStreamContext } from "resumable-stream";
-import { auth, type UserType } from "@/app/(auth)/auth";
+import { type AudricUserType, getCurrentUser } from "@/lib/audric-auth";
 import { entitlementsByUserType } from "@/lib/ai/entitlements";
 import {
   allowedModelIds,
@@ -73,7 +73,7 @@ export async function POST(request: Request) {
 
     const [, session] = await Promise.all([
       checkBotId().catch(() => null),
-      auth(),
+      getCurrentUser(),
     ]);
 
     if (!session?.user) {
@@ -86,7 +86,7 @@ export async function POST(request: Request) {
 
     await checkIpRateLimit(ipAddress(request));
 
-    const userType: UserType = session.user.type;
+    const userType: AudricUserType = session.user.type;
 
     const messageCount = await getMessageCountByUserId({
       id: session.user.id,
@@ -350,7 +350,7 @@ export async function DELETE(request: Request) {
     return new ChatbotError("bad_request:api").toResponse();
   }
 
-  const session = await auth();
+  const session = await getCurrentUser();
 
   if (!session?.user) {
     return new ChatbotError("unauthorized:chat").toResponse();

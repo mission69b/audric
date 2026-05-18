@@ -1,4 +1,4 @@
-import { auth } from "@/app/(auth)/auth";
+import { getCurrentUser } from "@/lib/audric-auth";
 import { getChatById, getMessagesByChatId } from "@/lib/db/queries";
 import { convertToUIMessages } from "@/lib/utils";
 
@@ -11,7 +11,7 @@ export async function GET(request: Request) {
   }
 
   const [session, chat, messages] = await Promise.all([
-    auth(),
+    getCurrentUser(),
     getChatById({ id: chatId }),
     getMessagesByChatId({ id: chatId }),
   ]);

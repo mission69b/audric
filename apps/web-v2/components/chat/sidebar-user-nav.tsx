@@ -2,8 +2,11 @@
 
 import { ChevronUp } from "lucide-react";
 import { useRouter } from "next/navigation";
-import type { User } from "next-auth";
-import { signOut, useSession } from "next-auth/react";
+import type { AudricSessionUser as User } from "@/lib/audric-auth";
+import {
+  signOutAudric as signOut,
+  useAudricSession as useSession,
+} from "@/lib/audric-auth-client";
 import { useTheme } from "next-themes";
 import {
   DropdownMenu,

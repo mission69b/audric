@@ -3,7 +3,7 @@
 import { isToday, isYesterday, subMonths, subWeeks } from "date-fns";
 import { motion } from "framer-motion";
 import { usePathname, useRouter } from "next/navigation";
-import type { User } from "next-auth";
+import type { AudricSessionUser as User } from "@/lib/audric-auth";
 import { useState } from "react";
 import { toast } from "sonner";
 import useSWRInfinite from "swr/infinite";

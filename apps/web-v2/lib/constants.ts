@@ -1,5 +1,3 @@
-import { generateDummyPassword } from "./db/utils";
-
 export const isProductionEnvironment = process.env.NODE_ENV === "production";
 export const isDevelopmentEnvironment = process.env.NODE_ENV === "development";
 export const isTestEnvironment = Boolean(
@@ -8,9 +6,11 @@ export const isTestEnvironment = Boolean(
     process.env.CI_PLAYWRIGHT
 );
 
+// [v0.7c Day 1c] Pattern preserved for guest-vs-regular email detection
+// in `sidebar-user-nav.tsx`. The audric stub `getCurrentUser()` does not
+// yet emit `guest-*` emails; Phase 2 may wire the demo path if/when an
+// audric guest flow lands.
 export const guestRegex = /^guest-\d+$/;
-
-export const DUMMY_PASSWORD = generateDummyPassword();
 
 export const suggestions = [
   "What are the advantages of using Next.js?",

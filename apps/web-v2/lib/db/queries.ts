@@ -31,11 +31,16 @@ import {
   user,
   vote,
 } from "./schema";
-import { generateHashedPassword } from "./utils";
 
 const client = postgres(process.env.POSTGRES_URL ?? "");
 const db = drizzle(client);
 
+// [v0.7c Day 1c, 2026-05-18] `createUser` + `createGuestUser` were
+// deleted alongside `app/(auth)` and `lib/db/utils.ts` (bcrypt-ts +
+// password hashing) — they were only consumed by the next-auth login /
+// register / guest routes. `getUser` is retained because chat history
+// queries still join the `User` table; D-9 Phase 2 swaps drizzle for
+// prisma and revisits this query surface end-to-end.
 export async function getUser(email: string): Promise<User[]> {
   try {
     return await db.select().from(user).where(eq(user.email, email));
@@ -43,33 +48,6 @@ export async function getUser(email: string): Promise<User[]> {
     throw new ChatbotError(
       "bad_request:database",
       "Failed to get user by email"
-    );
-  }
-}
-
-export async function createUser(email: string, password: string) {
-  const hashedPassword = generateHashedPassword(password);
-
-  try {
-    return await db.insert(user).values({ email, password: hashedPassword });
-  } catch (_error) {
-    throw new ChatbotError("bad_request:database", "Failed to create user");
-  }
-}
-
-export async function createGuestUser() {
-  const email = `guest-${Date.now()}`;
-  const password = generateHashedPassword(generateUUID());
-
-  try {
-    return await db.insert(user).values({ email, password }).returning({
-      id: user.id,
-      email: user.email,
-    });
-  } catch (_error) {
-    throw new ChatbotError(
-      "bad_request:database",
-      "Failed to create guest user"
     );
   }
 }

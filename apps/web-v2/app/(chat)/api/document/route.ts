@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { auth } from "@/app/(auth)/auth";
+import { getCurrentUser } from "@/lib/audric-auth";
 import type { ArtifactKind } from "@/components/chat/artifact";
 import {
   deleteDocumentsByIdAfterTimestamp,
@@ -27,7 +27,7 @@ export async function GET(request: Request) {
     ).toResponse();
   }
 
-  const session = await auth();
+  const session = await getCurrentUser();
 
   if (!session?.user) {
     return new ChatbotError("unauthorized:document").toResponse();
@@ -59,7 +59,7 @@ export async function POST(request: Request) {
     ).toResponse();
   }
 
-  const session = await auth();
+  const session = await getCurrentUser();
 
   if (!session?.user) {
     return new ChatbotError("not_found:document").toResponse();
@@ -128,7 +128,7 @@ export async function DELETE(request: Request) {
     ).toResponse();
   }
 
-  const session = await auth();
+  const session = await getCurrentUser();
 
   if (!session?.user) {
     return new ChatbotError("unauthorized:document").toResponse();
