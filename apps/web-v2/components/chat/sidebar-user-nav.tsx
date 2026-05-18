@@ -2,11 +2,6 @@
 
 import { ChevronUp } from "lucide-react";
 import { useRouter } from "next/navigation";
-import type { AudricSessionUser as User } from "@/lib/audric-auth";
-import {
-  signOutAudric as signOut,
-  useAudricSession as useSession,
-} from "@/lib/audric-auth-client";
 import { useTheme } from "next-themes";
 import {
   DropdownMenu,
@@ -20,6 +15,11 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import type { AudricSessionUser as User } from "@/lib/audric-auth";
+import {
+  signOutAudric as signOut,
+  useAudricSession as useSession,
+} from "@/lib/audric-auth-client";
 import { guestRegex } from "@/lib/constants";
 import { LoaderIcon } from "./icons";
 import { toast } from "./toast";

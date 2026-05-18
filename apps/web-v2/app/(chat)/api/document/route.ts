@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { getCurrentUser } from "@/lib/audric-auth";
 import type { ArtifactKind } from "@/components/chat/artifact";
+import { getCurrentUser } from "@/lib/audric-auth";
 import {
   deleteDocumentsByIdAfterTimestamp,
   getDocumentsById,

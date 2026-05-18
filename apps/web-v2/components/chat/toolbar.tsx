@@ -252,29 +252,27 @@ export const Tools = ({
   sendMessage: UseChatHelpers<ChatMessage>["sendMessage"];
   isAnimating: boolean;
   tools: ArtifactToolbarItem[];
-}) => {
-  return (
-    <motion.div
-      animate={{ opacity: 1, scale: 1 }}
-      className="flex flex-col gap-1.5"
-      exit={{ opacity: 0, scale: 0.95 }}
-      initial={{ opacity: 0, scale: 0.95 }}
-    >
-      {[...tools].reverse().map((tool) => (
-        <Tool
-          description={tool.description}
-          icon={tool.icon}
-          isAnimating={isAnimating}
-          key={tool.description}
-          onClick={tool.onClick}
-          selectedTool={selectedTool}
-          sendMessage={sendMessage}
-          setSelectedTool={setSelectedTool}
-        />
-      ))}
-    </motion.div>
-  );
-};
+}) => (
+  <motion.div
+    animate={{ opacity: 1, scale: 1 }}
+    className="flex flex-col gap-1.5"
+    exit={{ opacity: 0, scale: 0.95 }}
+    initial={{ opacity: 0, scale: 0.95 }}
+  >
+    {[...tools].reverse().map((tool) => (
+      <Tool
+        description={tool.description}
+        icon={tool.icon}
+        isAnimating={isAnimating}
+        key={tool.description}
+        onClick={tool.onClick}
+        selectedTool={selectedTool}
+        sendMessage={sendMessage}
+        setSelectedTool={setSelectedTool}
+      />
+    ))}
+  </motion.div>
+);
 
 const createFixErrorTool = (
   consoleOutput: string,
@@ -321,12 +319,20 @@ const PureToolbar = ({
   onClose?: () => void;
 }) => {
   const toolbarRef = useRef<HTMLDivElement>(null);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  // [v0.7c Day 1d F-17c] React 19 requires an explicit initial value for
+  // `useRef`. Use `null` to match the rest of the codebase's pattern.
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [selectedTool, setSelectedTool] = useState<string | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
 
-  useOnClickOutside(toolbarRef, () => {
+  // [v0.7c Day 1d F-17c] usehooks-ts' `useOnClickOutside` typed its ref
+  // pre-React-19 as `RefObject<HTMLElement>` (without null), while
+  // `useRef<HTMLDivElement>(null)` now produces `RefObject<HTMLDivElement
+  // | null>`. The runtime contract is unchanged (the hook null-checks
+  // internally) — cast to keep the call site clean until `usehooks-ts`
+  // ships a React-19-aligned type.
+  useOnClickOutside(toolbarRef as React.RefObject<HTMLElement>, () => {
     setIsToolbarVisible(false);
     setSelectedTool(null);
   });
@@ -348,13 +354,14 @@ const PureToolbar = ({
     }
   };
 
-  useEffect(() => {
-    return () => {
+  useEffect(
+    () => () => {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
-    };
-  }, []);
+    },
+    []
+  );
 
   useEffect(() => {
     if (status === "streaming") {

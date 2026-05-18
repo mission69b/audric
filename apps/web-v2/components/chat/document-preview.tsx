@@ -159,7 +159,10 @@ const PureHitboxLayer = ({
   result,
   setArtifact,
 }: {
-  hitboxRef: React.RefObject<HTMLDivElement>;
+  // [v0.7c Day 1d F-17b] React 19 narrows `useRef<T>(null)` to
+  // `RefObject<T | null>` rather than the pre-R19 implicit `RefObject<T>`.
+  // Align the prop type accordingly.
+  hitboxRef: React.RefObject<HTMLDivElement | null>;
   result?: Partial<DocumentToolOutput>;
   setArtifact: (
     updaterFn: UIArtifact | ((currentArtifact: UIArtifact) => UIArtifact)

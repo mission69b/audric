@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * audric-auth-client — client-only adapter that replaces next-auth's
@@ -27,15 +27,15 @@
  *    `apps/web/components/auth/useZkLogin.ts`.
  */
 
-import { decodeJwt } from 'jose';
-import type { ReactNode } from 'react';
-import { useEffect, useState } from 'react';
-import type { AudricSession } from './audric-auth';
+import { decodeJwt } from "jose";
+import type { ReactNode } from "react";
+import { useEffect, useState } from "react";
+import type { AudricSession } from "./audric-auth";
 
 export type AudricSessionStatus =
-  | 'loading'
-  | 'authenticated'
-  | 'unauthenticated';
+  | "loading"
+  | "authenticated"
+  | "unauthenticated";
 
 export interface AudricSessionHookResult {
   data: AudricSession | null;
@@ -56,15 +56,17 @@ export interface AudricSessionHookResult {
 export function useAudricSession(): AudricSessionHookResult {
   const [state, setState] = useState<AudricSessionHookResult>({
     data: null,
-    status: 'loading',
+    status: "loading",
   });
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === "undefined") {
+      return;
+    }
     try {
-      const raw = window.localStorage.getItem('t2000:zklogin:session');
+      const raw = window.localStorage.getItem("t2000:zklogin:session");
       if (!raw) {
-        setState({ data: null, status: 'unauthenticated' });
+        setState({ data: null, status: "unauthenticated" });
         return;
       }
       const blob = JSON.parse(raw) as {
@@ -73,27 +75,27 @@ export function useAudricSession(): AudricSessionHookResult {
         expiresAt?: number;
       };
       if (!blob.jwt || !blob.address) {
-        setState({ data: null, status: 'unauthenticated' });
+        setState({ data: null, status: "unauthenticated" });
         return;
       }
-      if (typeof blob.expiresAt === 'number' && Date.now() > blob.expiresAt) {
-        setState({ data: null, status: 'unauthenticated' });
+      if (typeof blob.expiresAt === "number" && Date.now() > blob.expiresAt) {
+        setState({ data: null, status: "unauthenticated" });
         return;
       }
       const payload = decodeJwt(blob.jwt);
-      const email = typeof payload.email === 'string' ? payload.email : null;
+      const email = typeof payload.email === "string" ? payload.email : null;
       setState({
         data: {
           user: {
             id: blob.address,
             email,
-            type: 'regular',
+            type: "regular",
           },
         },
-        status: 'authenticated',
+        status: "authenticated",
       });
     } catch {
-      setState({ data: null, status: 'unauthenticated' });
+      setState({ data: null, status: "unauthenticated" });
     }
   }, []);
 
@@ -108,16 +110,23 @@ export function useAudricSession(): AudricSessionHookResult {
 export async function signOutAudric(opts?: {
   redirectTo?: string;
 }): Promise<void> {
-  if (typeof window === 'undefined') return;
+  // Async signature preserved to match next-auth's `signOut()` so the
+  // existing call sites (`await signOut({ redirectTo: "/" })`) work
+  // verbatim. The body is synchronous (localStorage clears + window
+  // navigation) so this is just contract fidelity, not real I/O.
+  await Promise.resolve();
+  if (typeof window === "undefined") {
+    return;
+  }
   try {
-    window.localStorage.removeItem('t2000:zklogin:session');
-    window.sessionStorage.removeItem('t2000:zklogin:pending');
+    window.localStorage.removeItem("t2000:zklogin:session");
+    window.sessionStorage.removeItem("t2000:zklogin:pending");
   } catch {
     // localStorage / sessionStorage access can throw in private-browsing
     // mode; swallow because the redirect below is the load-bearing
     // sign-out signal.
   }
-  const target = opts?.redirectTo ?? '/';
+  const target = opts?.redirectTo ?? "/";
   window.location.assign(target);
 }
 

@@ -43,7 +43,7 @@
  * D-7 (b) "vendor-first, then strip" + D-15 ("audric-side composition layer").
  */
 
-import { decodeJwt } from 'jose';
+import { decodeJwt } from "jose";
 
 // -----------------------------------------------------------------------------
 // Types (drop-in shape replacement for next-auth Session / User)
@@ -53,7 +53,7 @@ import { decodeJwt } from 'jose';
  * `'guest'` = no valid zkLogin session attached (anonymous / demo path).
  * `'regular'` = JWT verified, Sui address derived, real user.
  */
-export type AudricUserType = 'guest' | 'regular';
+export type AudricUserType = "guest" | "regular";
 
 /**
  * Drop-in shape for the template's `Session.user`. The template's `id`
@@ -61,13 +61,13 @@ export type AudricUserType = 'guest' | 'regular';
  * address (canonical audric product identity per `apps/web/lib/auth.ts`).
  */
 export interface AudricSessionUser {
+  email: string | null;
   /**
    * Sui address (zkLogin-derived) for `type: 'regular'`.
    * For `type: 'guest'`, a stable synthetic id (`guest:<jwt.sub>`) so
    * Drizzle FKs don't collapse onto the same row.
    */
   id: string;
-  email: string | null;
   type: AudricUserType;
 }
 
@@ -97,18 +97,22 @@ export async function getCurrentUser(): Promise<AudricSession | null> {
   // [Next 15+ / App Router] `headers()` works in Server Components, Route
   // Handlers, and Server Actions. Dynamic import keeps the bundle graph
   // honest — this module is consumed from both server and client code.
-  const { headers } = await import('next/headers');
+  const { headers } = await import("next/headers");
   const headerList = await headers();
-  const jwt = headerList.get('x-zklogin-jwt');
+  const jwt = headerList.get("x-zklogin-jwt");
 
-  if (!jwt) return null;
+  if (!jwt) {
+    return null;
+  }
 
   try {
     const payload = decodeJwt(jwt);
-    const sub = typeof payload.sub === 'string' ? payload.sub : null;
-    if (!sub) return null;
+    const sub = typeof payload.sub === "string" ? payload.sub : null;
+    if (!sub) {
+      return null;
+    }
 
-    const email = typeof payload.email === 'string' ? payload.email : null;
+    const email = typeof payload.email === "string" ? payload.email : null;
 
     return {
       user: {
@@ -116,7 +120,7 @@ export async function getCurrentUser(): Promise<AudricSession | null> {
         // Enoki-derived Sui address (the canonical audric identity).
         id: sub,
         email,
-        type: 'regular',
+        type: "regular",
       },
     };
   } catch {

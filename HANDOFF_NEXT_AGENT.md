@@ -8,13 +8,13 @@
 
 ## Active SPEC
 
-[`spec/active/BENEFITS_SPEC_v07c.md`](../t2000/spec/active/BENEFITS_SPEC_v07c.md) — v1.0 LOCKED 2026-05-18. Phase 0 closed; Phase 1 Day 1a/1b/1c closed (G2 + G3 closed); Day 1d (baseline cleanup) READY.
+[`spec/active/BENEFITS_SPEC_v07c.md`](../t2000/spec/active/BENEFITS_SPEC_v07c.md) — v1.0 LOCKED 2026-05-18. Phase 0 closed; Phase 1 Day 1a/1b/1c/1d closed (G2 + G3 closed; baseline `pnpm typecheck` + `pnpm lint` both at 0 errors); Phase 2 READY.
 
 | Phase | Status | Notes |
 |---|---|---|
 | Phase 0 — Baseline + setup | ✅ CLOSED | G1 closed 2026-05-18 PM. F-12 (prompt cache) + F-13 (extended thinking) regressions found + shipped at engine v2.7.2; F-14 (classifier accuracy) shipped at engine v2.7.3. |
-| Phase 1 — Side-by-side stand-up + template fork + Auth eviction | 🟡 IN PROGRESS (Day 1a/1b/1c CLOSED, G2 + G3 CLOSED, Day 1d READY) | Day 1a (blank scaffold) ✅. Day 1b (template fork, pinned SHA `107a43a`) ✅. Day 1c (Auth.js eviction + zkLogin stub: `lib/audric-auth.ts` + `lib/audric-auth-client.ts`; 11 server callsites + 5 lib types + 3 client components rewired; `next-auth` + `bcrypt-ts` removed; `GET /` flipped from 307→MissingSecret to 200) ✅. Day 1d (F-15 + F-16 baseline cleanup: 5 pre-existing template TS errors + biome.jsonc config drift). |
-| Phase 2 — First read-tool round-trip + AI Gateway + intent-dispatcher spike + Agent + OTel | ⏳ PENDING | Starts after Day 1d closes (baseline at 0 errors). Includes Phase 2 hardening of the Day 1c auth stub — full `verifyJwt` + Google JWKS + Enoki address derivation port from `apps/web/lib/auth.ts`. |
+| Phase 1 — Side-by-side stand-up + template fork + Auth eviction | ✅ CLOSED (Day 1a/1b/1c/1d CLOSED, G2 + G3 CLOSED, baseline typecheck + lint both at 0 errors) | Day 1a (blank scaffold) ✅. Day 1b (template fork, pinned SHA `107a43a`) ✅. Day 1c (Auth.js eviction + zkLogin stub: `lib/audric-auth.ts` + `lib/audric-auth-client.ts`; 11 server callsites + 5 lib types + 3 client components rewired; `next-auth` + `bcrypt-ts` removed; `GET /` flipped from 307→MissingSecret to 200) ✅. **Day 1d (baseline cleanup): F-17 fixed (5 template TS errors in 4 files — React 19 ref narrowing + Streamdown spread + DataUIPart cast); F-18 fixed (Biome 2.3.11 → 2.4.15 to match ultracite@7.7.0's declared peer); 38 files auto-fixed by Biome (pure formatting); `pnpm typecheck` + `pnpm lint` both at 0 errors; boot smoke still GREEN) ✅.** |
+| Phase 2 — First read-tool round-trip + AI Gateway + intent-dispatcher spike + Agent + OTel | 🟢 **READY** | Phase 1 fully closed; baseline is clean (typecheck + lint both at 0 errors). Phase 2 must (a) harden the Day 1c auth stub — full `verifyJwt` + Google JWKS + Enoki address derivation port from `apps/web/lib/auth.ts` — before any handler accepts authenticated user input; (b) harden `ZkLoginProvider` (children passthrough → full `@mysten/dapp-kit` `WalletProvider` + Enoki client tree); (c) execute D-9 Drizzle → Prisma swap; (d) wire `/api/chat` to the audric engine via AI Gateway (D-6). |
 | Phase 3 onward | ⏳ PENDING | See SPEC. |
 
 ---
@@ -66,8 +66,8 @@ If a future SPEC bumps the template baseline:
 
 - **F-15** — Audric-wide Next 15 → 16 bump (separate SPEC; not v0.7c scope).
 - **F-16** — Vendor-template refresh script (write only if we ever rebase off a newer template SHA mid-fork).
-- **F-17** — Template baseline TS errors (Day 1c finding): 5 errors in 4 files we never touched — `components/ai-elements/reasoning.tsx` (streamdown `dir` type), `components/chat/document-preview.tsx` (React 19 `RefObject<HTMLDivElement \| null>` narrowing), `components/chat/toolbar.tsx` (React 19 ref + arg-count), `hooks/use-active-chat.tsx` (`DataUIPart` union narrowing). Phase 1 Day 1d cleanup before Phase 2 starts.
-- **F-18** — Vendored `biome.jsonc` references unknown rule names (`noDuplicateClasses`, `useSortedInterfaceMembers`) per the installed Biome version. Align config or pin Biome. Phase 1 Day 1d.
+- ~~**F-17** — Template baseline TS errors~~ ✅ **CLOSED Day 1d.** All 5 errors fixed across the 4 files (`reasoning.tsx` dropped unsafe spread; `document-preview.tsx` updated ref-prop nullability; `toolbar.tsx` added explicit `null` initializer + cast for `useOnClickOutside`; `use-active-chat.tsx` cast `dataPart` to the narrow `DataUIPart<CustomUIDataTypes>` union). Each fix carries a `[v0.7c Day 1d F-17{a,b,c,d}]` comment with the architectural reason.
+- ~~**F-18** — Vendored `biome.jsonc` references unknown rule names~~ ✅ **CLOSED Day 1d.** Root cause was Biome version mismatch — `ultracite@7.7.0` declares `@biomejs/biome@2.4.15` as its peer; template pinned 2.3.11. Bumped to 2.4.15. Lint runs clean.
 - **Phase 2 hardening of Day 1c stub** — `lib/audric-auth.ts` currently decode-only (no signature verify, no Enoki address derivation). Phase 2 must port the full `verifyJwt` + Google JWKS + `deriveAddressFromEnoki` from `apps/web/lib/auth.ts` before any web-v2 handler accepts authenticated user input. Comments in `lib/audric-auth.ts` flag the exact load-bearing TODOs.
 
 ---

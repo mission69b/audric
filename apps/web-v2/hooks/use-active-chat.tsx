@@ -2,6 +2,7 @@
 
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { useChat } from "@ai-sdk/react";
+import type { DataUIPart } from "ai";
 import { DefaultChatTransport } from "ai";
 import { usePathname } from "next/navigation";
 import {
@@ -25,7 +26,7 @@ import { useAutoResume } from "@/hooks/use-auto-resume";
 import { DEFAULT_CHAT_MODEL } from "@/lib/ai/models";
 import type { Vote } from "@/lib/db/schema";
 import { ChatbotError } from "@/lib/errors";
-import type { ChatMessage } from "@/lib/types";
+import type { ChatMessage, CustomUIDataTypes } from "@/lib/types";
 import { fetcher, fetchWithErrorHandlers, generateUUID } from "@/lib/utils";
 
 type ActiveChatContextValue = {
@@ -152,7 +153,16 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
       },
     }),
     onData: (dataPart) => {
-      setDataStream((ds) => (ds ? [...ds, dataPart] : []));
+      // [v0.7c Day 1d F-17d] AI SDK's `onData` callback types the
+      // streamed part as the broad `{ type: `data-${string}`; data:
+      // unknown }`, but `setDataStream` is parameterized by the narrow
+      // `DataUIPart<CustomUIDataTypes>` discriminated union. The
+      // runtime values flow from our own `dataStream.write(...)` calls
+      // in server tools (see `lib/ai/tools/create-document.ts` etc.) so
+      // the cast is sound — we control both sides of the wire.
+      setDataStream((ds) =>
+        ds ? [...ds, dataPart as unknown as DataUIPart<CustomUIDataTypes>] : []
+      );
     },
     onFinish: () => {
       mutate(unstable_serialize(getChatHistoryPaginationKey));

@@ -1,9 +1,9 @@
 import type { UIMessageStreamWriter } from "ai";
-import type { AudricSession as Session } from "@/lib/audric-auth";
 import { codeDocumentHandler } from "@/artifacts/code/server";
 import { sheetDocumentHandler } from "@/artifacts/sheet/server";
 import { textDocumentHandler } from "@/artifacts/text/server";
 import type { ArtifactKind } from "@/components/chat/artifact";
+import type { AudricSession as Session } from "@/lib/audric-auth";
 import { saveDocument } from "../db/queries";
 import type { Document } from "../db/schema";
 import type { ChatMessage } from "../types";
