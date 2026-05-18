@@ -1,74 +1,101 @@
 /**
- * Audric chat route — engine-backed POST /api/audric-chat.
+ * Audric chat route — Agent-backed POST /api/audric-chat.
  *
  * --- WHY THIS FILE EXISTS (v0.7c Phase 2) ---
  *
  * SPEC §"Phase 2 — First end-to-end round-trip":
  *   - Day 2a: replace template's default chat route with an audric route
- *     reading from `@t2000/engine.submitMessage()`; emit
- *     `result.toUIMessageStreamResponse()` instead of engine `engineToSSE`.
+ *     reading from engine; emit `result.toUIMessageStreamResponse()`.
  *   - Day 2b: wire `balance_check` end-to-end + minimal renderer + verify
  *     TurnMetrics row shape matches production (G4 acceptance).
- *   - Day 2c: wrap engine model with `gateway('anthropic/claude-sonnet-4-5')`
+ *   - Day 2c: wrap engine model with `gateway('anthropic/<model>')`
  *     (D-6 lock) + enable `experimental_telemetry` (D-18 lock) so OTel
  *     spans land in the Vercel AI Gateway dashboard. G6 verifies 5-feature
  *     passthrough (cache, multi-block thinking, signed thinking, structured
- *     output, system prompt). Falls back to direct Anthropic when
- *     `AI_GATEWAY_API_KEY` is absent — same code path otherwise.
+ *     output, system prompt).
+ *   - Day 2c++ Batch 1 (S.172): TelemetryIntegration replaces the legacy
+ *     MinimalTurnMetricsCollector; AI Elements `Tool` replaces the custom
+ *     tool-part renderer; perplexity_search via `gateway.tools.*` replaces
+ *     the engine's Brave web_search tool.
+ *   - **Day 2e (S.174) — THIS REFACTOR:** Compose via AI SDK's
+ *     `Experimental_Agent` (the concrete `ToolLoopAgent` class) instead
+ *     of `AISDKEngine.submitMessage()`. Per D-15 lock — engine internals
+ *     stay on `streamText`; audric-side adopts `Agent` for cleaner
+ *     composition + native middleware mount points (Phase 5.5 wraps the
+ *     model with `wrapLanguageModel` here; D-17). Per D-18 lock —
+ *     `experimental_telemetry` continues to ship OTel traces to the
+ *     Vercel AI Gateway dashboard (verified at Day 2c; preserved here).
  *
  * **Why a new path (`/api/audric-chat`) instead of overwriting
  * `/api/chat`:** the template's `/api/chat` is wired into the existing
  * chat UI (`useChat({ api: '/api/chat' })`) AND the Day 1d baseline
  * smoke; rewiring to this route happens incrementally per phase.
  *
- * --- DAY 2b SCOPE (acceptance: G4 — first read-tool round-trip) ---
+ * --- DAY 2e ARCHITECTURE ---
  *
- * What this route DOES:
- *  1. Auth gate via `getCurrentUser()` (verified zkLogin JWT chain).
- *  2. Parse a minimal `{ messages: [{ role, content }] }` body.
- *  3. Construct an `AISDKEngine` with `balanceCheckTool` registered +
- *     minimal `ToolContext` fields (`walletAddress`, `suiRpcUrl`,
- *     `blockvisionApiKey`, `portfolioCache`) + 5-line Day 2b system
- *     prompt mentioning `balance_check`.
- *  4. Iterate `engine.submitMessage(prompt)` and translate engine
- *     events to AI SDK v6 UIMessageStream parts:
- *      - `text_delta` → `text-delta`
- *      - `tool_start` → `tool-input-available` (audric tool surface)
- *      - `tool_result` → `tool-output-available`
- *      - `usage` → collector hook only (not user-facing)
- *      - `error` → text-delta with `[engine error]` prefix
- *  5. After `turn_complete`, build the full 41-field TurnMetrics row
- *     shape per the Day 2b (c') decision and `prisma.turnMetrics.create`.
+ * `new Experimental_Agent({ model, tools, instructions, stopWhen,
+ * experimental_telemetry, experimental_context, providerOptions })`
+ * builds the composition. `agent.stream({ messages })` returns a
+ * `StreamTextResult<TOOLS, OUTPUT>` — same shape `streamText` returns
+ * (verified by the AI SDK type — `agent.stream` literally calls
+ * `streamText` internally).
  *
- * What this route DOES NOT do (yet):
- *  - Intent-dispatcher pre-fetch (Day 2d per D-14 spike).
- *  - `audricAgent = new Agent({...})` composition (Day 2e per D-15/D-18).
- *  - `<financial_context>` injection (Phase 4).
- *  - Real `STATIC_SYSTEM_PROMPT` port (Phase 4).
- *  - Guards / preflight / harness-metrics shape detection (Phase 4).
- *  - Other 24+ read tools — `balance_check` alone proves G4.
- *  - `ConversationLog` persistence — SPEC's Day 2b text calls out
- *    TurnMetrics only; ConversationLog is the multi-turn context
- *    history surface, not Day 2b's smoke contract.
- *  - Resume route consolidation (D-3 lock — chat+resume merge at Phase 3).
+ * The route then iterates `result.fullStream` (AI SDK `TextStreamPart`
+ * chunks) and:
+ *  1. Feeds each chunk to `collector.observeChunk()` for the 41-field
+ *     TurnMetrics row (preserves Day 2b G4 acceptance).
+ *  2. Translates each chunk to a UIMessage part via `translateChunk()`
+ *     and writes through the createUIMessageStream writer.
  *
- * Traceability: BENEFITS_SPEC_v07c.md §"Phase 2 Day 2b" + tracker S.169.
+ * The engine's tool-wrapping (guards + preflight + USD-aware permissions
+ * + result budgeting) is preserved via `toAISDKTools(legacyTools)` —
+ * the same wrapper `AISDKEngine.submitMessage` uses internally. The
+ * `experimental_context` envelope is built via `buildInternalContext()`
+ * (also from `@t2000/engine` — exposed in v2.11 for host-side composition).
+ *
+ * What the engine WAS doing that this refactor preserves:
+ *  - Wrapping legacy tools with the AI SDK Tool() shape (toAISDKTools)
+ *  - Wiring guards/preflight/USD permissions into `needsApproval` and
+ *    `tool.execute` via the InternalContext envelope (buildInternalContext)
+ *  - OTel telemetry via `experimental_telemetry`
+ *  - Prompt caching via `providerOptions.gateway.caching: 'auto'`
+ *
+ * What the engine WAS doing that this refactor DOES NOT preserve
+ * (deferred to Phase 3+ or absent from Day 2b/2c++ scope anyway):
+ *  - `microcompact()` dedupe of identical tool calls across turn history
+ *    (Phase 3+ re-adds via `experimental_transform` if multi-turn smokes
+ *    show lazy-answering; current single-turn web-v2 doesn't need it)
+ *  - StreamCheckpointStore / resume-on-reload (Day 2b never wired)
+ *  - `pending_action` EngineEvent emission (replaced by AI SDK's native
+ *    `needsApproval` round-trip via experimental_providerMetadata per D-8;
+ *    Phase 3 wires the first write tool through this path — SPEC 40 Batch 3
+ *    is the canonical migration of all 12 writes)
+ *  - `turn_complete` semantic event (replaced by AI SDK's `finish` chunk)
+ *  - `stream_started` event (Day 2b never wired)
+ *
+ * Traceability: BENEFITS_SPEC_v07c.md §"Phase 2 Day 2e" + tracker S.174.
  */
 
+import { createAnthropic } from "@ai-sdk/anthropic";
 import {
   type AddressPortfolio,
-  AISDKEngine,
-  type AISDKEngineConfig,
   balanceCheckTool,
-  type EngineEvent,
+  buildInternalContext,
+  type ToolContext,
+  toAISDKTools,
 } from "@t2000/engine";
 import {
+  Experimental_Agent as Agent,
   createUIMessageStream,
   createUIMessageStreamResponse,
   gateway,
   generateId,
   type LanguageModel,
+  stepCountIs,
   type TelemetrySettings,
+  type TextStreamPart,
+  type ToolSet,
+  type UIMessageStreamWriter,
 } from "ai";
 import { z } from "zod";
 import { ensureNaviMcpConnected } from "@/lib/audric/navi-mcp";
@@ -81,6 +108,18 @@ import { getSuiRpcUrl } from "@/lib/sui-rpc";
 import { Prisma } from "../../../../../web/lib/generated/prisma/client";
 
 export const maxDuration = 60;
+
+// -----------------------------------------------------------------------------
+// Constants
+// -----------------------------------------------------------------------------
+
+const DEFAULT_MODEL_USED = "claude-sonnet-4-6";
+const DEFAULT_MAX_TURNS = 10;
+// AI SDK doesn't expose a token estimator publicly; this is a coarse
+// heuristic matching the engine's estimateTokens (chars / 4). Used only
+// to seed `TurnMetrics.contextTokensStart` for warehouse parity — not
+// load-bearing for any runtime decision.
+const CHARS_PER_TOKEN_ESTIMATE = 4;
 
 // -----------------------------------------------------------------------------
 // Request body schema — minimal Day 2a/2b shape
@@ -188,12 +227,12 @@ export async function POST(request: Request) {
     );
   }
 
-  // Day 2c: either `AI_GATEWAY_API_KEY` (preferred — D-6 lock) OR
+  // Day 2e: either `AI_GATEWAY_API_KEY` (preferred — D-6 lock) OR
   // `ANTHROPIC_API_KEY` (fallback) must be set. The gateway path picks
   // up `AI_GATEWAY_API_KEY` from the AI SDK's auto-discovery; the
-  // fallback path uses the engine's internal `createAnthropic` with
+  // fallback path uses `@ai-sdk/anthropic`'s `createAnthropic` with
   // `ANTHROPIC_API_KEY`.
-  if (!env.AI_GATEWAY_API_KEY && !env.ANTHROPIC_API_KEY) {
+  if (!(env.AI_GATEWAY_API_KEY || env.ANTHROPIC_API_KEY)) {
     return new Response(
       JSON.stringify({
         error:
@@ -209,109 +248,47 @@ export async function POST(request: Request) {
   const collector = new TelemetryIntegration();
   const contextTokensStart = estimateContextTokens(body.messages);
 
-  // 3. Construct engine with balance_check + minimal ToolContext
-  //
-  // NAVI MCP is REQUIRED for balance_check on web-v2: the tool has two
-  // execution paths, and the SDK fallback requires a `T2000` agent
-  // instance (= signing keypair), which we deliberately don't wire for
-  // read-only Day 2b. The MCP path is what audric/web uses in
-  // production anyway. `ensureNaviMcpConnected` is a module-scoped
-  // singleton so subsequent requests reuse the connection.
+  // 3. NAVI MCP singleton — same as Day 2b. Required for `balance_check`
+  // since its SDK fallback wants a signing keypair (read-only Day 2b
+  // doesn't wire one); the MCP path is what audric/web production uses.
   const mcpManager = await ensureNaviMcpConnected();
 
-  // [Day 2c / D-6] When `AI_GATEWAY_API_KEY` is set, route through the
-  // Vercel AI Gateway with `gateway('anthropic/<model>')`. AI SDK's
-  // gateway provider auto-picks up the env var. When absent, leave
-  // `modelInstance` undefined and the engine falls back to its
-  // internal `createAnthropic({apiKey})` path (the pre-2.8.0 behavior).
-  //
-  // Model id `claude-sonnet-4-6` mirrors audric/web production's
-  // `SONNET_MODEL` constant. Adaptive thinking + signed thinking are
-  // supported on 4.6 but NOT on 4.5 (gateway smoke during Day 2c
-  // surfaced "adaptive thinking is not supported on this model" when
-  // we tried sonnet-4-5; engine v2.8.0's `'claude-sonnet-4-5'` default
-  // is a safety baseline for hosts that don't pass a model — every
-  // production-bound consumer should set this explicitly to 4-6 to
-  // unlock the engine's thinking + adaptive-effort features).
-  const modelInstance: LanguageModel | undefined = env.AI_GATEWAY_API_KEY
-    ? gateway("anthropic/claude-sonnet-4-6")
-    : undefined;
+  // 4. Resolve the language model (gateway preferred; direct-Anthropic
+  // fallback when AI_GATEWAY_API_KEY is absent).
+  const useGateway = Boolean(env.AI_GATEWAY_API_KEY);
+  const model: LanguageModel = useGateway
+    ? gateway(`anthropic/${DEFAULT_MODEL_USED}`)
+    : createAnthropic({ apiKey: env.ANTHROPIC_API_KEY ?? "" })(
+        DEFAULT_MODEL_USED
+      );
   console.log(
     `[audric-chat] sessionId=${sessionId} turn=${turnIndex} model=${
-      modelInstance === undefined
-        ? "direct-anthropic-fallback[claude-sonnet-4-6]"
-        : "vercel-ai-gateway[anthropic/claude-sonnet-4-6]"
-    } telemetry=enabled`
+      useGateway
+        ? `vercel-ai-gateway[anthropic/${DEFAULT_MODEL_USED}]`
+        : `direct-anthropic-fallback[${DEFAULT_MODEL_USED}]`
+    } telemetry=enabled composition=Experimental_Agent`
   );
 
-  // [Day 2c / D-18] OTel telemetry settings. `functionId` groups spans
-  // in the Vercel AI Gateway dashboard; metadata is attached as span
-  // attributes so we can filter by session in Vercel's observability UI.
-  // `recordInputs`/`recordOutputs` default true (we want them for now;
-  // PII redaction will land in Phase 5.5 middleware per D-17).
-  //
-  // CRITICAL: do NOT include `turnIndex` (or any per-turn-varying field)
-  // in `metadata` — Vercel's AI Gateway includes telemetry metadata in
-  // its cache key computation, so a per-turn metadata field invalidates
-  // the cache on every turn (empirically observed during Day 2c++ smoke:
-  // identical prompts wrote `cacheCreationInputTokens=1542` each turn
-  // but never read from cache when `turnIndex` was in metadata).
-  const experimentalTelemetry: TelemetrySettings = {
-    isEnabled: true,
-    functionId: "audric-chat-day2c",
-    metadata: {
-      sessionId,
-      userId: walletAddress,
-    },
-  };
+  // 5. Build the tool set: legacy engine tools wrapped via `toAISDKTools`
+  // (preserves guards / preflight / USD permissions / result budgeting),
+  // merged with gateway-managed tools when the gateway is active.
+  // Engine-native tools take precedence on key collision (same rule as
+  // engine v2.10 buildToolSet at v2/engine.ts L1594).
+  const engineTools = toAISDKTools([balanceCheckTool]);
+  const tools: ToolSet = useGateway
+    ? ({
+        perplexity_search: gateway.tools.perplexitySearch(),
+        ...engineTools,
+      } as ToolSet)
+    : (engineTools as ToolSet);
 
-  const engineConfig: AISDKEngineConfig = {
-    ...(modelInstance === undefined
-      ? { anthropicApiKey: env.ANTHROPIC_API_KEY }
-      : { modelInstance }),
-    experimentalTelemetry,
-    // [Day 2c++ G6 F-5 / D-6 audit] Vercel AI Gateway's `caching: 'auto'`
-    // auto-injects `cache_control` breakpoints for Anthropic so prompt
-    // caching fires WITHOUT the engine needing typed SystemBlock[]
-    // markers — see https://vercel.com/docs/ai-gateway/models-and-providers/automatic-caching.
-    // The breakpoint is placed at the end of static content; the
-    // Anthropic 1024-token minimum still applies. Only meaningful when
-    // routing through the gateway (when `modelInstance` is undefined,
-    // the direct-Anthropic fallback ignores this field).
-    ...(modelInstance === undefined
-      ? {}
-      : { gatewayProviderOptions: { caching: "auto" as const } }),
-    // [Day 2c++ Batch 1 / engine v2.10] Gateway-managed search tool —
-    // `gateway.tools.perplexitySearch()` is a drop-in replacement for the
-    // engine's Brave `web_search` tool when routing through Vercel AI
-    // Gateway ($5/1k requests, no API key plumbing, no maintenance).
-    // Only wired when the gateway is active — direct-Anthropic fallback
-    // gets no search tool today (the engine's Brave `webSearchTool` stays
-    // available for non-gateway hosts like the CLI + MCP server). Engine
-    // `gatewayTools` merges this verbatim into the AI SDK `ToolSet`
-    // alongside `balance_check`; engine-native tools take precedence on
-    // name collision so an engine `web_search` (when wired) would
-    // override any `web_search` gateway tool key automatically.
-    ...(modelInstance === undefined
-      ? {}
-      : {
-          gatewayTools: {
-            perplexity_search: gateway.tools.perplexitySearch(),
-          },
-        }),
-    // [Day 2c G6] Match audric/web production's model + thinking
-    // pairing. `model: 'claude-sonnet-4-6'` is required for adaptive
-    // thinking to work (4-5 doesn't support it per a Day 2c gateway
-    // smoke). The engine reads `config.model` for the legacy string
-    // path; when `modelInstance` is set (gateway branch), `config.model`
-    // is informational-only (the injected model is self-describing)
-    // BUT the TurnMetrics writer downstream reads `DEFAULT_MODEL_USED`
-    // for accurate per-turn pricing — keep all three (gateway model id,
-    // config.model, DEFAULT_MODEL_USED) in lockstep at 4-6.
-    model: "claude-sonnet-4-6",
-    thinking: { type: "adaptive" },
-    tools: [balanceCheckTool],
-    systemPrompt: buildAudricDay2bSystemPrompt(walletAddress),
+  // 6. Build the InternalContext envelope threaded through every
+  // tool.execute() + needsApproval + step-finish callback via
+  // `experimental_context`. Day 2b/2c++/2e wires the minimum surface
+  // (no guards, no contacts, no callbacks); Phase 3+ writes pass
+  // permission preset + onAutoExecuted + postWriteRefresh through this.
+  const abortController = new AbortController();
+  const toolContext: ToolContext = {
     walletAddress,
     suiRpcUrl: getSuiRpcUrl(),
     blockvisionApiKey: env.BLOCKVISION_API_KEY,
@@ -320,24 +297,72 @@ export async function POST(request: Request) {
     // in the same turn share a single BlockVision response (avoids
     // 200–500ms RTT amplification per the agent-harness-spec rule).
     portfolioCache: new Map<string, AddressPortfolio>(),
+    signal: abortController.signal,
+    retryStats: { attemptCount: 1 },
   };
-  const engine = new AISDKEngine(engineConfig);
+  const internalContext = buildInternalContext({
+    toolContext,
+    walletAddress,
+    // No guards / no contacts / no callbacks in Day 2e scope.
+  });
 
-  const history = body.messages
-    .slice(0, -1)
+  // 7. OTel telemetry settings (D-18). functionId groups spans in the
+  // Vercel AI Gateway dashboard; metadata is attached as span attributes
+  // so we can filter by session. CRITICAL: do NOT include `turnIndex`
+  // (or any per-turn-varying field) in metadata — Vercel's AI Gateway
+  // includes telemetry metadata in its cache key computation, so a
+  // per-turn metadata field invalidates the cache on every turn
+  // (Day 2c++ smoke verified this; sessionId is per-conversation so
+  // it caches correctly).
+  const experimentalTelemetry: TelemetrySettings = {
+    isEnabled: true,
+    functionId: "audric-chat-day2e",
+    metadata: {
+      sessionId,
+      userId: walletAddress,
+    },
+  };
+
+  // 8. Compose the Agent. Per D-15: audric-side `Agent` for clean
+  // composition + native middleware mount points (Phase 5.5 wraps
+  // `model` with `wrapLanguageModel(model, [audricGuardsMiddleware,
+  // preflightMiddleware, piiRedactionMiddleware, telemetryMiddleware])`
+  // here per D-17). Per D-6: gateway-routed when `AI_GATEWAY_API_KEY`
+  // is set, direct-Anthropic otherwise.
+  const audricAgent = new Agent({
+    model,
+    tools,
+    instructions: buildAudricDay2bSystemPrompt(walletAddress),
+    stopWhen: stepCountIs(DEFAULT_MAX_TURNS),
+    experimental_telemetry: experimentalTelemetry,
+    experimental_context: internalContext,
+    // [Day 2c++ G6 F-5 / D-6 audit] Vercel AI Gateway's `caching: 'auto'`
+    // auto-injects `cache_control` breakpoints for Anthropic so prompt
+    // caching fires WITHOUT typed SystemBlock[] markers. Only meaningful
+    // when routing through the gateway; the direct-Anthropic fallback
+    // ignores this field.
+    ...(useGateway
+      ? {
+          providerOptions: {
+            gateway: { caching: "auto" as const },
+          },
+        }
+      : {}),
+  });
+
+  // 9. Build the messages array for agent.stream(). AI SDK accepts
+  // `{role, content}` directly (no need for the engine's prior
+  // `loadMessages([{role, content: [{type, text}]}])` shape — Agent
+  // does that normalization internally).
+  const aiSdkMessages = body.messages
     .filter(
       (m): m is { role: "user" | "assistant"; content: string } =>
-        m.role !== "system"
+        m.role !== "system" && m.content.length > 0
     )
-    .map((m) => ({
-      role: m.role,
-      content: [{ type: "text" as const, text: m.content }],
-    }));
-  if (history.length > 0) {
-    engine.loadMessages(history);
-  }
+    .map((m) => ({ role: m.role, content: m.content }));
 
-  // 4. Translate EngineEvent generator → UIMessageStream parts
+  // 10. Stream the agent and translate AI SDK chunks → UIMessage parts.
+  const result = await audricAgent.stream({ messages: aiSdkMessages });
   const messageId = generateId();
   let turnCompleted = false;
 
@@ -348,10 +373,10 @@ export async function POST(request: Request) {
       writer.write({ type: "text-start", id: messageId });
 
       try {
-        for await (const ev of engine.submitMessage(latestUser.content)) {
-          collector.observe(ev);
-          translateEvent(ev, writer, messageId);
-          if (ev.type === "turn_complete") {
+        for await (const chunk of result.fullStream) {
+          collector.observeChunk(chunk);
+          translateChunk(chunk, writer, messageId);
+          if (chunk.type === "finish") {
             turnCompleted = true;
           }
         }
@@ -363,7 +388,7 @@ export async function POST(request: Request) {
     },
     generateId,
     onFinish: () => {
-      // 5. Persist TurnMetrics row (fire-and-forget; never blocks the
+      // 11. Persist TurnMetrics row (fire-and-forget; never blocks the
       // response). Matches the production fire-and-forget pattern in
       // `audric/web/app/api/engine/chat/route.ts` ~L1390.
       if (!turnCompleted) {
@@ -389,8 +414,7 @@ export async function POST(request: Request) {
         streamResumeOutcome: Prisma.DbNull,
         // toolsCalled + guardsFired are Json columns — round-trip
         // through JSON.parse(JSON.stringify(...)) so Prisma sees plain
-        // objects rather than class instances (production pattern at
-        // audric/web/app/api/engine/chat/route.ts L1385-1387).
+        // objects rather than class instances.
         toolsCalled: JSON.parse(
           JSON.stringify(payload.toolsCalled)
         ) as Prisma.InputJsonValue,
@@ -413,105 +437,120 @@ export async function POST(request: Request) {
 }
 
 // -----------------------------------------------------------------------------
-// EngineEvent → UIMessageStream translator (Day 2b: text + tools + usage)
+// AI SDK chunk → UIMessageStream part translator (Day 2e — chunks, not events)
 // -----------------------------------------------------------------------------
 //
 // AI SDK v6 tool parts use the type `tool-<toolName>` with state-based
 // payloads (`input-available`, `output-available`). The client renderer
 // (`app/audric-chat/audric-chat-client.tsx`) switches on `part.type` and
-// hands tool parts to AI Elements `<Tool>` (Day 2c++ Batch 1 swap from
-// the original `<AudricToolPart>` — S.172).
+// hands tool parts to AI Elements `<Tool>` (S.172) — unchanged by Day 2e.
+//
+// AI SDK chunk semantics:
+//   - `text-delta` → write `text-delta` part (assistant prose).
+//   - `tool-call` → write `tool-input-available` (the validated input is
+//     available; tool-input-start/end/delta are streaming-input events
+//     we don't surface in Day 2e).
+//   - `tool-result` → write `tool-output-available` (the tool's
+//     successful return value).
+//   - `tool-error` → write `tool-output-error` (the tool threw / guard
+//     blocked / preflight rejected).
+//   - `error` → write `text-delta` with `[engine error]` prefix so the
+//     user sees the failure.
+//   - `reasoning-*` → log only (thinking visualization is Phase 4+).
+//
+// Chunks NOT translated (silently ignored — collector consumes them):
+//   - `start`, `start-step`, `finish-step` (lifecycle markers we wrap
+//     our own UIMessageStream framing around).
+//   - `finish` (terminal — `turnCompleted` flag is set in the loop).
+//   - `text-start`/`text-end`, `tool-input-start/end/delta` (chunk-level
+//     framing the UIMessage assembler doesn't need at Day 2e granularity).
+//   - `source`/`file`/`raw`/`tool-output-denied`/`tool-approval-request`/
+//     `abort` — wired through in Phase 3+ as needed.
 
-function translateEvent(
-  ev: EngineEvent,
-  writer: Parameters<
-    Parameters<typeof createUIMessageStream>[0]["execute"]
-  >[0]["writer"],
+function translateChunk(
+  chunk: TextStreamPart<ToolSet>,
+  writer: UIMessageStreamWriter,
   messageId: string
 ): void {
-  switch (ev.type) {
-    case "text_delta": {
-      if (typeof ev.text === "string" && ev.text.length > 0) {
-        writer.write({ type: "text-delta", id: messageId, delta: ev.text });
+  switch (chunk.type) {
+    case "text-delta": {
+      if (typeof chunk.text === "string" && chunk.text.length > 0) {
+        writer.write({ type: "text-delta", id: messageId, delta: chunk.text });
       }
       break;
     }
-    case "tool_start": {
-      // AI SDK v6 wire format: `tool-input-available` carries the
-      // toolName + input; client assembler converts this into a
-      // `tool-${toolName}` part on the rendered UIMessage.
+    case "tool-call": {
       writer.write({
         type: "tool-input-available",
-        toolCallId: ev.toolUseId,
-        toolName: ev.toolName,
-        input: ev.input,
+        toolCallId: chunk.toolCallId,
+        toolName: chunk.toolName,
+        input: chunk.input,
       });
       break;
     }
-    case "tool_result": {
-      // `tool-output-available` is keyed by toolCallId (no toolName field)
-      // — the client matches it to the prior `tool-input-available` chunk.
-      if (ev.isError) {
-        writer.write({
-          type: "tool-output-error",
-          toolCallId: ev.toolUseId,
-          errorText: safeErrorText(ev.result),
-        });
-      } else {
-        writer.write({
-          type: "tool-output-available",
-          toolCallId: ev.toolUseId,
-          output: ev.result,
-        });
-      }
+    case "tool-result": {
+      writer.write({
+        type: "tool-output-available",
+        toolCallId: chunk.toolCallId,
+        output: chunk.output,
+      });
+      break;
+    }
+    case "tool-error": {
+      writer.write({
+        type: "tool-output-error",
+        toolCallId: chunk.toolCallId,
+        errorText: safeErrorText(chunk.error),
+      });
       break;
     }
     case "error": {
       writer.write({
         type: "text-delta",
         id: messageId,
-        delta: `\n\n[engine error] ${ev.error.message}`,
+        delta: `\n\n[engine error] ${
+          chunk.error instanceof Error
+            ? chunk.error.message
+            : String(chunk.error)
+        }`,
       });
       break;
     }
-    case "usage":
-    case "turn_complete":
-      // Collected by the collector; not surfaced to the UI.
-      break;
-    case "thinking_delta": {
+    case "reasoning-delta": {
       // [Day 2c G6] Log thinking events so the smoke can verify F-2
       // (multi-block thinking) + F-3 (signed thinking) pass through
       // the gateway. Rendering thinking to the UI is Phase 4+ scope.
-      if (typeof ev.text === "string" && ev.text.length > 0) {
-        console.log(`[audric-chat] thinking_delta (+${ev.text.length} chars)`);
+      if (typeof chunk.text === "string" && chunk.text.length > 0) {
+        console.log(
+          `[audric-chat] reasoning_delta (+${chunk.text.length} chars)`
+        );
       }
       break;
     }
-    case "thinking_done": {
-      // [Day 2c G6 F-3] Anthropic signed-thinking signature lives at
-      // `providerMetadata.anthropic.signature`; the engine bridge
-      // re-emits it on `thinking_done.signature`. Logging presence +
-      // length verifies the signature survives the gateway hop.
-      const sigLen = ev.signature?.length ?? 0;
-      console.log(
-        `[audric-chat] thinking_done block=${ev.blockIndex} signature_len=${sigLen}`
-      );
+    case "reasoning-end": {
+      console.log(`[audric-chat] reasoning_end id=${chunk.id}`);
       break;
     }
     default:
-      // Other engine events (`pending_action`, `canvas`, `todo_update`,
-      // `harness_shape`, `tool_progress`, `pending_input`, etc.) are
-      // not yet translated. Subsequent Phase 2/3/4 days wire them through.
+      // Other chunks (`start`, `start-step`, `finish-step`, `finish`,
+      // `text-start`, `text-end`, `tool-input-*`, `source`, `file`,
+      // `raw`, `tool-output-denied`, `tool-approval-request`, `abort`,
+      // `reasoning-start`) are not translated. Subsequent Phase 3+
+      // wires them through (especially `tool-approval-request` →
+      // PendingAction transport per D-8).
       break;
   }
 }
 
-function safeErrorText(result: unknown): string {
-  if (typeof result === "string") {
-    return result;
+function safeErrorText(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  if (typeof error === "string") {
+    return error;
   }
   try {
-    return JSON.stringify(result);
+    return JSON.stringify(error);
   } catch {
     return "Tool error";
   }
@@ -522,20 +561,15 @@ function safeErrorText(result: unknown): string {
 // -----------------------------------------------------------------------------
 
 /**
- * Day 2c default model — `claude-sonnet-4-6` matches audric/web
- * production's `SONNET_MODEL` constant and is the only Sonnet variant
- * that supports adaptive thinking (4-5 rejects it per the Day 2c
- * gateway smoke). Phase 4.5 wires real classifier-driven model routing
- * via `classifyEffort()` + `routedModel`.
+ * Coarse token estimate for seeding `TurnMetrics.contextTokensStart`.
+ * Not load-bearing — used only for warehouse parity with audric/web's
+ * `harnessShape.contextTokensStart` field. AI SDK doesn't expose a
+ * tokenizer publicly; chars-divided-by-4 matches the engine's prior
+ * estimateTokens heuristic at packages/engine/src/context.ts.
  */
-const DEFAULT_MODEL_USED = "claude-sonnet-4-6";
-
-/**
- * Rough token estimate of the conversation history (4 chars/token).
- * Used for `TurnMetrics.contextTokensStart`. Production's
- * `estimateTokens()` helper does the same crude approximation.
- */
-function estimateContextTokens(messages: Array<{ content: string }>): number {
-  const totalChars = messages.reduce((n, m) => n + m.content.length, 0);
-  return Math.ceil(totalChars / 4);
+function estimateContextTokens(
+  messages: Array<{ role: string; content: string }>
+): number {
+  const totalChars = messages.reduce((acc, m) => acc + m.content.length, 0);
+  return Math.ceil(totalChars / CHARS_PER_TOKEN_ESTIMATE);
 }
