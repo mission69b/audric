@@ -79,7 +79,7 @@ audric/
 
 | Package | Purpose |
 |---------|---------|
-| `@t2000/engine` | Agent engine — QueryEngine, tools, streaming, MCP |
+| `@t2000/engine` | Agent engine — AISDKEngine (wraps Vercel AI SDK v6 `streamText`), tools, streaming, MCP |
 | `@t2000/sdk` | Core SDK — wallet, balance, transactions, adapters |
 | `@suimpp/mpp` | MPP payment client (Sui USDC) |
 | `@mysten/sui` | Sui blockchain client |

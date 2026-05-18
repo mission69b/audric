@@ -6,7 +6,7 @@ How audric/web consumes `@t2000/engine`. Read alongside `.cursor/rules/engine-co
 
 | File | Purpose |
 |---|---|
-| `lib/engine/engine-factory.ts` | `createEngine(opts)` — builds `QueryEngine` per request with the right tools, model, context |
+| `lib/engine/engine-factory.ts` | `createEngine(opts)` — builds `AISDKEngine` per request with the right tools, model, context |
 | `lib/engine/engine-context.ts` | `buildFullDynamicContext(...)` — assembles silent context (profile, memory, advice, chain facts, financial_context) |
 | `lib/engine/init-engine-stores.ts` | Side-effect — injects Upstash DeFi cache store into the engine globals |
 | `lib/engine/harness-metrics.ts` | TurnMetrics writers (chat-time + resume) |
