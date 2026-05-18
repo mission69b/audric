@@ -1,7 +1,6 @@
 "use client";
 
 import { ChevronUp } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import {
   DropdownMenu,
@@ -33,7 +32,6 @@ function emailToHue(email: string): number {
 }
 
 export function SidebarUserNav({ user }: { user: User }) {
-  const router = useRouter();
   const { data, status } = useSession();
   const { setTheme, resolvedTheme } = useTheme();
 
@@ -104,7 +102,17 @@ export function SidebarUserNav({ user }: { user: User }) {
                   }
 
                   if (isGuest) {
-                    router.push("/login");
+                    // [v0.7c Day 1d audit] The template's `/login` and
+                    // `/register` pages were removed in Day 1c (Auth.js
+                    // eviction). Phase 2 wires the zkLogin Google
+                    // OAuth flow here via `@mysten/dapp-kit` + Enoki
+                    // (port from `apps/web/components/auth/useZkLogin.ts`).
+                    // Until then, surface intent honestly rather than
+                    // 404 the user.
+                    toast({
+                      type: "error",
+                      description: "Sign-in is wired in Phase 2.",
+                    });
                   } else {
                     signOut({
                       redirectTo: "/",
