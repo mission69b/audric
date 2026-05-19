@@ -113,6 +113,11 @@ import {
   wrapLanguageModel,
 } from "ai";
 import { z } from "zod";
+import {
+  dispatchIntentsToParts,
+  synthesizeAssistantToolMessage,
+} from "@/lib/audric/dispatch-intents";
+import { getFinancialContextBlock } from "@/lib/audric/financial-context";
 import { redactAddressesInText, redactPII } from "@/lib/audric/log-redact";
 import { audricObservabilityMiddleware } from "@/lib/audric/middleware/observability";
 import { ensureNaviMcpConnected } from "@/lib/audric/navi-mcp";
@@ -120,7 +125,7 @@ import {
   extractResumeOutcomes,
   type ResumeOutcome,
 } from "@/lib/audric/resume-outcome";
-import { buildAudricDay2bSystemPrompt } from "@/lib/audric/system-prompt";
+import { buildAudricSystemPrompt } from "@/lib/audric/system-prompt";
 import { TelemetryIntegration } from "@/lib/audric/telemetry-integration";
 import { getCurrentUser } from "@/lib/audric-auth";
 import { env } from "@/lib/env";
@@ -577,6 +582,30 @@ export async function POST(request: Request) {
     },
   };
 
+  // 7.5 [v0.7c Phase 6 prep] Fetch the daily orientation snapshot for
+  // layer 2 of the F-4 5-layer system-prompt assembly. Returns "" when
+  // the snapshot is missing OR older than 48h — the prompt assembly
+  // drops layer 2 cleanly and the LLM falls back to fresh tool calls
+  // (which the intent-dispatcher at step 9.5 helps with). Never throws.
+  //
+  // Pre-Phase-6-prep this layer was silently absent: web-v2 shipped
+  // through Day 2c++/2e/Phase 3/4/4b/5/5.5 with the Day 2b 5-line stub
+  // and no `<financial_context>` injection. Closing it before Session 5
+  // cutover avoids regressing silent intelligence at the same diff that
+  // retires apps/web.
+  const financialContextBlock = await getFinancialContextBlock(walletAddress);
+
+  // 7.6 [v0.7c Phase 6 prep] Assemble the F-4 5-layer system prompt.
+  // Layer 5 (user message) is owned by AI SDK's `messages` argument —
+  // this function never touches it. Memory (layer 3) + skill recipe
+  // (layer 4) are v0.7d gates; `skillRecipeBlock: undefined` keeps
+  // them empty + drop-filtered cleanly.
+  const systemInstructions = buildAudricSystemPrompt({
+    walletAddress,
+    financialContext: financialContextBlock,
+    skillRecipeBlock: undefined, // v0.7d gate — McpPromptAdapter not wired yet
+  });
+
   // 8. Compose the Agent. Per D-15: audric-side `Agent` for clean
   // composition + native middleware mount points (Phase 5.5 wraps
   // `model` with `wrapLanguageModel(model, [audricGuardsMiddleware,
@@ -586,7 +615,7 @@ export async function POST(request: Request) {
   const audricAgent = new Agent({
     model,
     tools,
-    instructions: buildAudricDay2bSystemPrompt(walletAddress),
+    instructions: systemInstructions,
     stopWhen: stepCountIs(DEFAULT_MAX_TURNS),
     experimental_telemetry: experimentalTelemetry,
     experimental_context: internalContext,
@@ -674,6 +703,51 @@ export async function POST(request: Request) {
       return { role: m.role, content: blocks };
     });
 
+  // 9.5 [v0.7c Phase 6 prep] Run the intent-dispatcher on the latest
+  // user message text. Per D-14 lock: deterministic regex pre-fire of
+  // direct-read questions ("what's my balance?") to counter the ~30%
+  // skip-rate pathology where the LLM lazy-answers from cached
+  // `<financial_context>` instead of calling fresh tools.
+  //
+  // The dispatcher only earns its cost AFTER `<financial_context>` is
+  // wired (otherwise the skip-rate pathology doesn't exist) — which is
+  // why these three artifacts ship as one coupled slice.
+  //
+  // We only dispatch when the LAST message in `normalized` is a fresh
+  // user turn (skip on HITL resume turns where the tail is an assistant
+  // message with tool-output-available parts). Mirrors the legacy
+  // route's `trimmedMessage` extraction pattern: empty string → no
+  // intents matched → no dispatch (zero cost).
+  //
+  // Web-v2 today only wires `balance_check` as a read tool. The registry
+  // lets the dispatcher gracefully skip intents whose tool isn't wired
+  // (logs + continues). When later slices wire `health_check`,
+  // `transaction_history`, `mpp_services`, `activity_summary`,
+  // `yield_summary` as read tools, just extend this registry — the
+  // dispatcher rules already cover all 8 intent patterns.
+  const readToolRegistry = new Map<string, Tool>([
+    [balanceCheckTool.name, balanceCheckTool],
+  ]);
+  const latestUserText = extractLatestUserText(normalized);
+  const dispatchedReadParts = latestUserText
+    ? await dispatchIntentsToParts({
+        message: latestUserText,
+        toolContext,
+        registry: readToolRegistry,
+        turnIndex,
+      })
+    : [];
+
+  // Inject the synthetic assistant message carrying pre-fired tool
+  // results AT THE END of the normalized array. `convertToModelMessages`
+  // translates the `output-available` tool parts into the canonical
+  // Anthropic [tool_use, tool_result] ModelMessage pair so the LLM
+  // sees the pre-fired results as already-done history + narrates
+  // around them without re-calling the tool.
+  if (dispatchedReadParts.length > 0) {
+    normalized.push(synthesizeAssistantToolMessage(dispatchedReadParts));
+  }
+
   let aiSdkMessages: ModelMessage[];
   try {
     aiSdkMessages = await convertToModelMessages(normalized);
@@ -697,6 +771,30 @@ export async function POST(request: Request) {
       writer.write({ type: "start", messageId });
       writer.write({ type: "start-step" });
       writer.write({ type: "text-start", id: messageId });
+
+      // [v0.7c Phase 6 prep] Replay pre-fired read tool parts to the
+      // client BEFORE the LLM stream starts. This is the AI SDK v6
+      // equivalent of the legacy chat route's synthetic SSE event
+      // emission. Each call produces a `tool-input-available` then
+      // a `tool-output-available` part — the client's
+      // `<ToolResultRouter>` renders the rich card immediately
+      // (without waiting for the LLM to narrate). The LLM still
+      // sees the pre-fired results in the messages array (via the
+      // synthetic assistant message injected at step 9.5 above)
+      // and narrates around them in the streaming text.
+      for (const p of dispatchedReadParts) {
+        writer.write({
+          type: "tool-input-available",
+          toolCallId: p.toolCallId,
+          toolName: p.toolName,
+          input: p.input,
+        });
+        writer.write({
+          type: "tool-output-available",
+          toolCallId: p.toolCallId,
+          output: p.output,
+        });
+      }
 
       // [Phase 5e] Step-boundary buffer for atomic bundle marker
       // emission. Captures confirm-tier `tool-call` +
@@ -1399,6 +1497,41 @@ function safeErrorText(error: unknown): string {
 // -----------------------------------------------------------------------------
 // Helpers
 // -----------------------------------------------------------------------------
+
+/**
+ * [v0.7c Phase 6 prep] Extract the last user-authored text from the
+ * normalized UIMessage history. Used by the intent-dispatcher to
+ * decide whether to pre-fire any read tools on this turn.
+ *
+ * Returns "" when:
+ *   - The last message isn't a user turn (HITL resume turn — tail is
+ *     an assistant message with tool-output-available parts; we don't
+ *     re-dispatch on resume).
+ *   - The user's parts contain no text (e.g. file-only message, unlikely
+ *     in audric today but defensive).
+ *
+ * Mirrors the legacy `trimmedMessage` extraction pattern in
+ * `audric/apps/web/app/api/engine/chat/route.ts` — empty string falls
+ * through to `classifyReadIntents("")` which returns `[]` (zero cost,
+ * zero side effects).
+ */
+function extractLatestUserText(normalized: Omit<UIMessage, "id">[]): string {
+  if (normalized.length === 0) {
+    return "";
+  }
+  const last = normalized.at(-1);
+  if (!last || last.role !== "user") {
+    return "";
+  }
+  const textPart = [...last.parts]
+    .reverse()
+    .find(
+      (p): p is { type: "text"; text: string } =>
+        (p as { type?: string }).type === "text" &&
+        typeof (p as { text?: unknown }).text === "string"
+    );
+  return textPart ? textPart.text.trim() : "";
+}
 
 /**
  * Coarse token estimate for seeding `TurnMetrics.contextTokensStart`.

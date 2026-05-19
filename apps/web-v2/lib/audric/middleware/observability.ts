@@ -28,10 +28,10 @@
  * --- WHAT THIS MIDDLEWARE DOES NOT DO ---
  *
  * Does NOT redact the prompt sent to the model. The user's own wallet
- * address (in the system prompt via `buildAudricDay2bSystemPrompt`)
- * and recipient addresses in user text are load-bearing for tool
- * intent extraction — redacting them would break the agent. The
- * model SEES addresses; we just don't LOG them.
+ * address (in the system prompt via `buildAudricSystemPrompt`) and
+ * recipient addresses in user text are load-bearing for tool intent
+ * extraction — redacting them would break the agent. The model SEES
+ * addresses; we just don't LOG them.
  *
  * Does NOT short-circuit, cache, or transform the request/response.
  * Pure-observation middleware. Caching is the AI Gateway's job
