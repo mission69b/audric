@@ -7,6 +7,7 @@ import {
   type ReasoningUIPart,
   type ToolUIPart,
 } from "ai";
+import { Loader2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import {
   Conversation,
@@ -109,18 +110,61 @@ interface AudricBundleMarkerData {
 export function AudricChatClient() {
   const { status, session, error, login, logout } = useZkLogin();
 
-  if (status === "loading") {
+  // Splash-B (v0.7c §4.7.E) — centered `audric.` wordmark + small
+  // spinner during both initial localStorage hydration and the Google
+  // OAuth redirect. Replaces the bare gray "Loading…" / "Redirecting
+  // to Google…" text that shipped with the Phase 3 canary.
+  if (status === "loading" || status === "redirecting") {
     return (
-      <div className="flex min-h-screen items-center justify-center text-sm text-zinc-400">
-        Loading…
+      <div className="flex min-h-screen items-center justify-center gap-3">
+        <p className="font-medium font-serif text-[36px] text-foreground tracking-[-0.02em]">
+          audric.
+        </p>
+        <Loader2 className="size-5 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
-  if (status === "redirecting") {
+  // Splash-B pre-auth — mirror of the marketing hero lockup
+  // (`apps/web/components/landing/HeroSection.tsx`). Replaces the
+  // Phase 3 canary header + bare "Sign in with Google to start
+  // chatting" text. Same copy, button, eyebrow as the marketing site
+  // so users arriving from the landing page see continuity.
+  if (status !== "authenticated" || !session) {
     return (
-      <div className="flex min-h-screen items-center justify-center text-sm text-zinc-400">
-        Redirecting to Google…
+      <div className="mx-auto flex min-h-screen max-w-4xl flex-col items-center justify-center px-6 text-center">
+        <p className="mb-5 font-mono text-[11px] text-muted-foreground uppercase tracking-[0.08em]">
+          Conversational finance
+        </p>
+        <h1 className="mb-6 font-medium font-serif text-[56px] text-foreground leading-[1] tracking-[-0.035em] sm:text-[64px]">
+          Your money,
+          <br />
+          <em className="font-medium italic">handled.</em>
+        </h1>
+        <p className="mb-9 max-w-[420px] text-[17px] text-muted-foreground leading-relaxed">
+          Sign in with Google. Chat with your money. Earn yield, send USDC,
+          borrow — all by conversation. No seed phrase.
+        </p>
+        {status === "expired" && (
+          <div className="mb-6 rounded border border-amber-700 bg-amber-950 p-3 text-amber-200 text-sm">
+            Your session has expired. Please sign in again to continue.
+          </div>
+        )}
+        {error && (
+          <div className="mb-6 rounded border border-red-700 bg-red-950 p-3 text-red-200 text-sm">
+            {error}
+          </div>
+        )}
+        <Button
+          onClick={() => {
+            login().catch((err) => {
+              console.error("[audric-chat] login failed:", err);
+            });
+          }}
+          size="lg"
+        >
+          Continue with Google →
+        </Button>
       </div>
     );
   }
@@ -128,55 +172,15 @@ export function AudricChatClient() {
   return (
     <div className="mx-auto flex min-h-screen max-w-3xl flex-col gap-4 p-6 text-zinc-100">
       <header className="flex items-center justify-between border-zinc-700 border-b pb-4">
-        <div>
-          <h1 className="font-semibold text-2xl">audric-chat</h1>
-          <p className="mt-1 text-sm text-zinc-400">
-            Phase 3 canary — save_deposit via AI SDK HITL.{" "}
-            {session && (
-              <span className="font-mono text-xs">
-                {session.address.slice(0, 8)}…{session.address.slice(-6)}
-              </span>
-            )}
-          </p>
-        </div>
-        {session ? (
-          <Button onClick={logout} variant="outline">
-            Sign out
-          </Button>
-        ) : null}
+        <span className="font-mono text-xs text-zinc-400">
+          {session.address.slice(0, 8)}…{session.address.slice(-6)}
+        </span>
+        <Button onClick={logout} variant="outline">
+          Sign out
+        </Button>
       </header>
 
-      {status === "expired" && (
-        <div className="rounded border border-amber-700 bg-amber-950 p-3 text-amber-200 text-sm">
-          Your session has expired. Please sign in again to continue.
-        </div>
-      )}
-
-      {error && (
-        <div className="rounded border border-red-700 bg-red-950 p-3 text-red-200 text-sm">
-          {error}
-        </div>
-      )}
-
-      {status === "authenticated" && session ? (
-        <AudricChatPanel key={session.address} session={session} />
-      ) : (
-        <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
-          <p className="text-sm text-zinc-400">
-            Sign in with Google to start chatting with Audric.
-          </p>
-          <Button
-            onClick={() => {
-              login().catch((err) => {
-                console.error("[audric-chat] login failed:", err);
-              });
-            }}
-            size="lg"
-          >
-            Continue with Google
-          </Button>
-        </div>
-      )}
+      <AudricChatPanel key={session.address} session={session} />
     </div>
   );
 }

@@ -21,6 +21,7 @@ import type { Attachment, ChatMessage } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Artifact } from "./artifact";
 import { ChatHeader } from "./chat-header";
+import { ChipBar } from "./chip-bar";
 import { DataStreamHandler } from "./data-stream-handler";
 import { submitEditedMessage } from "./message-editor";
 import { Messages } from "./messages";
@@ -107,43 +108,70 @@ export function ChatShell() {
               votes={votes}
             />
 
-            <div className="sticky bottom-0 z-1 mx-auto flex w-full max-w-4xl gap-2 border-t-0 bg-background px-2 pb-3 md:px-4 md:pb-4">
+            <div className="sticky bottom-0 z-1 flex w-full flex-col bg-background">
               {!isReadonly && (
-                <MultimodalInput
-                  attachments={attachments}
-                  chatId={chatId}
-                  editingMessage={editingMessage}
-                  input={input}
-                  isLoading={isLoading}
-                  messages={messages}
-                  onCancelEdit={() => {
-                    setEditingMessage(null);
-                    setInput("");
-                  }}
-                  onModelChange={setCurrentModelId}
-                  selectedModelId={currentModelId}
-                  selectedVisibilityType={visibilityType}
-                  sendMessage={
-                    editingMessage
-                      ? async () => {
-                          const msg = editingMessage;
-                          setEditingMessage(null);
-                          await submitEditedMessage({
-                            message: msg,
-                            text: input,
-                            setMessages,
-                            regenerate,
-                          });
-                          setInput("");
+                <>
+                  <div className="mx-auto flex w-full max-w-4xl gap-2 border-t-0 px-2 md:px-4">
+                    <MultimodalInput
+                      attachments={attachments}
+                      chatId={chatId}
+                      editingMessage={editingMessage}
+                      input={input}
+                      isLoading={isLoading}
+                      messages={messages}
+                      onCancelEdit={() => {
+                        setEditingMessage(null);
+                        setInput("");
+                      }}
+                      onModelChange={setCurrentModelId}
+                      selectedModelId={currentModelId}
+                      selectedVisibilityType={visibilityType}
+                      sendMessage={
+                        editingMessage
+                          ? async () => {
+                              const msg = editingMessage;
+                              setEditingMessage(null);
+                              await submitEditedMessage({
+                                message: msg,
+                                text: input,
+                                setMessages,
+                                regenerate,
+                              });
+                              setInput("");
+                            }
+                          : sendMessage
+                      }
+                      setAttachments={setAttachments}
+                      setInput={setInput}
+                      setMessages={setMessages}
+                      status={status}
+                      stop={stop}
+                    />
+                  </div>
+                  <ChipBar
+                    hidden={status === "streaming" || status === "submitted"}
+                    onChipClick={(prompt) => {
+                      setInput(prompt);
+                      // Defer focus until React applies the new input value
+                      // — without the rAF, .focus() lands on the textarea
+                      // BEFORE React re-renders, the caret jumps to the
+                      // start of the old value, and the user's first
+                      // keystroke clobbers the chip prompt.
+                      requestAnimationFrame(() => {
+                        const ta = document.querySelector<HTMLTextAreaElement>(
+                          '[data-testid="multimodal-input"]'
+                        );
+                        if (ta) {
+                          ta.focus();
+                          ta.setSelectionRange(
+                            ta.value.length,
+                            ta.value.length
+                          );
                         }
-                      : sendMessage
-                  }
-                  setAttachments={setAttachments}
-                  setInput={setInput}
-                  setMessages={setMessages}
-                  status={status}
-                  stop={stop}
-                />
+                      });
+                    }}
+                  />
+                </>
               )}
             </div>
           </div>
