@@ -1,0 +1,13 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    {
+      "source": "/api/identity/:path*",
+      "destination": "https://audric.ai/api/identity/:path*"
+    },
+    {
+      "source": "/api/user/:path*",
+      "destination": "https://audric.ai/api/user/:path*"
+    }
+  ]
+}

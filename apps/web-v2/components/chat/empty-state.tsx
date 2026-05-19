@@ -26,13 +26,25 @@
  */
 
 import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
 import { useZkLogin } from "@/components/auth/use-zklogin";
 import { BalanceHero } from "@/components/ui/balance-hero";
 import { usePortfolio } from "@/hooks/use-portfolio";
 import { decodeJwtClaim } from "@/lib/jwt-client";
 
-function getTimeOfDay(): "morning" | "afternoon" | "evening" {
-  const hour = new Date().getHours();
+/**
+ * Time-of-day greeting deferred to client-mount.
+ *
+ * `new Date().getHours()` returns the *server* hour during SSR (Vercel
+ * edge = UTC) and the *client* hour during hydration (user's local TZ).
+ * Computing the greeting at render time produces a UTC-vs-local
+ * mismatch and triggers React #418. We defer the calculation to a
+ * post-mount `useEffect` so the SSR + first client render both produce
+ * the neutral fallback ("Hello"), then upgrade to the time-of-day
+ * greeting after hydration completes.
+ */
+function getTimeOfDay(date: Date): "morning" | "afternoon" | "evening" {
+  const hour = date.getHours();
   if (hour < 12) {
     return "morning";
   }
@@ -65,10 +77,15 @@ export function EmptyState() {
   const { address, session } = useZkLogin();
   const { data: portfolio } = usePortfolio(address);
   const firstName = getFirstName(session?.jwt ?? null);
-  const timeOfDay = getTimeOfDay();
-  const greeting = firstName
-    ? `Good ${timeOfDay}, ${firstName}`
-    : `Good ${timeOfDay}`;
+
+  const [mountedDate, setMountedDate] = useState<Date | null>(null);
+  useEffect(() => {
+    setMountedDate(new Date());
+  }, []);
+
+  const timeOfDay = mountedDate ? getTimeOfDay(mountedDate) : null;
+  const greetingBase = timeOfDay ? `Good ${timeOfDay}` : "Hello";
+  const greeting = firstName ? `${greetingBase}, ${firstName}` : greetingBase;
 
   const subStats: string[] = [];
   if (portfolio?.estimatedDailyYield && portfolio.estimatedDailyYield > 0) {
