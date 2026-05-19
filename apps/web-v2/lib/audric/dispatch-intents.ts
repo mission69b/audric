@@ -17,6 +17,41 @@
  * regex match + pre-fire + tool-result injection sidesteps that
  * probability cliff.
  *
+ * --- ALTERNATIVES RULED OUT (D-14 / D-16 reconciliation) ---
+ *
+ * The "all-in on Vercel" question keeps coming up — here's the
+ * boundary. v0.7d Phase 4 (BENEFITS_SPEC_v07d.md §E-4 + §D-7) DOES
+ * migrate the 8+ existing LLM-call classifiers to `generateObject`.
+ * THIS file is different — it's a PRE-LLM regex pre-fire layer whose
+ * job is to AVOID an LLM call entirely. The 4 Vercel-native
+ * alternatives we considered:
+ *
+ *   1. `generateObject({ schema })` for intent classification
+ *      → REJECTED: adds a SECOND LLM call BEFORE the main
+ *        agent.stream() (+300-500ms latency + +cost per turn);
+ *        regex is sub-100µs and 0% miss rate on the 8 known patterns.
+ *
+ *   2. `toolChoice: { type: 'tool', toolName: ... }` (force-call)
+ *      → REJECTED: can't decide WHICH tool to force without
+ *        classifying intent first → same problem kicked one step
+ *        earlier (back to regex or LLM-classifier).
+ *
+ *   3. `useChat`'s `onToolCall` to pre-fire
+ *      → REJECTED: fires AFTER the LLM decides to call a tool,
+ *        which is exactly the skip path we're countering.
+ *
+ *   4. Rely on AI SDK's parallel tool dispatch
+ *      → REJECTED: parallelises tools the LLM CHOOSES to call;
+ *        orthogonal to the skip problem.
+ *
+ * v0.7d Phase 4 introduces `generateObject` as a SECONDARY classifier
+ * for COMPOUND / UNMATCHED queries the 8 regex rules don't catch (per
+ * BENEFITS_SPEC_v07d.md §E-4 line 146 — "+80 LoC ADDED for
+ * unmatched-pattern fallback"). The 8 deterministic rules below stay
+ * regex; only the fallback path becomes generateObject. That's the
+ * full Vercel-native posture: use the primitive where it earns its
+ * cost; don't use it where regex is structurally superior.
+ *
  * web-v2 today only wires `balance_check` as a read tool (Phase 4
  * scope is the 11 confirm-tier writes). The dispatcher module ports
  * all 8 rules byte-for-byte for forward-compatibility — when later
