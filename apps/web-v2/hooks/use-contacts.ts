@@ -1,86 +1,63 @@
 "use client";
 
 /**
- * `useContacts` — port from `apps/web/hooks/useContacts.ts`.
+ * `useContacts` — SWR-backed reader/writer for the user's address book.
  *
- * Reads contacts from apps/web's `/api/user/preferences` (cross-app
- * fetch until v0.7e migration) and writes back to the same route.
- * Save_contact tool persists via the engine path; this hook is the
- * reader for settings + manual-add UI.
+ * Reads come from the canonical `usePreferences` cache (one shared slot
+ * for `/api/user/preferences`). Writes post a PARTIAL payload (`contacts`
+ * only) and optimistically patch the shared cache, so the safety preset
+ * sitting in the same slot stays untouched.
  *
- * Two diffs from legacy:
- *   - URLs go through `audricWebUrl()` for cross-app preview testing
- *   - Adds use eslint-disable for the intentional `contacts` omit
+ * Replaces the raw `useState/useEffect/useRef` port from `apps/web/hooks/
+ * useContacts.ts`. The in-flight-promise dedup the original used via a
+ * `useRef` is now provided by SWR's `dedupingInterval`.
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback } from "react";
 import { audricWebUrl } from "@/lib/audric-web-url";
 import { authFetch } from "@/lib/auth-fetch";
+import { type Contact, usePreferences } from "@/lib/swr/user-preferences";
 
-export interface Contact {
-  addedAt?: string | null;
-  address: string;
-  audricUsername?: string | null;
-  identifier?: string;
-  name: string;
-  resolvedAddress?: string;
-  source?: string | null;
-}
+export type { Contact } from "@/lib/swr/user-preferences";
 
 export function useContacts(userAddress: string | null) {
-  const [contacts, setContacts] = useState<Contact[]>([]);
-  const [loaded, setLoaded] = useState(false);
-  const inFlightRef = useRef<Promise<Contact[]> | null>(null);
+  const { data, isLoading, mutate } = usePreferences(userAddress);
+  const contacts = data?.contacts ?? [];
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: `contacts` is an intentional fallback returned only when the network request fails; not a state-driven dep
-  const fetchContacts = useCallback((): Promise<Contact[]> => {
-    if (!userAddress) {
-      return Promise.resolve([]);
-    }
-    if (inFlightRef.current) {
-      return inFlightRef.current;
-    }
-
-    const promise = (async () => {
-      try {
-        const res = await authFetch(
-          audricWebUrl(`/api/user/preferences?address=${userAddress}`)
-        );
-        if (!res.ok) {
-          return contacts;
-        }
-        const data = await res.json();
-        const next: Contact[] = Array.isArray(data.contacts)
-          ? (data.contacts as Contact[])
-          : [];
-        setContacts(next);
-        setLoaded(true);
-        return next;
-      } catch {
-        setLoaded(true);
-        return contacts;
-      } finally {
-        inFlightRef.current = null;
-      }
-    })();
-    inFlightRef.current = promise;
-    return promise;
-  }, [userAddress]);
-
-  useEffect(() => {
-    if (!userAddress) {
-      return;
-    }
-    fetchContacts().catch(() => {
-      // best-effort hydration; failures are surfaced via the hook's `loaded` flag
-    });
-  }, [userAddress, fetchContacts]);
-
-  const addContact = useCallback(
-    async (name: string, address: string) => {
+  const writeContacts = useCallback(
+    async (next: Contact[], rollbackErrorMsg: string) => {
       if (!userAddress) {
         return;
       }
+      await mutate(
+        async (current) => {
+          const res = await authFetch(audricWebUrl("/api/user/preferences"), {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ address: userAddress, contacts: next }),
+          });
+          if (!res.ok) {
+            throw new Error(`${rollbackErrorMsg} (HTTP ${res.status})`);
+          }
+          return current
+            ? { ...current, contacts: next }
+            : { contacts: next, permissionPreset: "balanced" as const };
+        },
+        {
+          optimisticData: (current) =>
+            current
+              ? { ...current, contacts: next }
+              : { contacts: next, permissionPreset: "balanced" as const },
+          rollbackOnError: true,
+          revalidate: false,
+        }
+      );
+    },
+    [userAddress, mutate]
+  );
+
+  const addContact = useCallback(
+    async (name: string, address: string) => {
       const existing = contacts.find(
         (c) => c.address.toLowerCase() === address.toLowerCase()
       );
@@ -98,60 +75,26 @@ export function useContacts(userAddress: string | null) {
         );
       }
 
-      const updated = [...contacts, { name: trimmedName, address }];
-      setContacts(updated);
-
-      try {
-        const res = await authFetch(audricWebUrl("/api/user/preferences"), {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ address: userAddress, contacts: updated }),
-        });
-        if (!res.ok) {
-          setContacts(contacts);
-          throw new Error(`Failed to save contact (HTTP ${res.status})`);
-        }
-      } catch (err) {
-        setContacts(contacts);
-        throw err;
-      }
+      await writeContacts(
+        [...contacts, { name: trimmedName, address }],
+        "Failed to save contact"
+      );
     },
-    [userAddress, contacts]
+    [contacts, writeContacts]
   );
 
   const removeContact = useCallback(
     async (addressToRemove: string) => {
-      if (!userAddress) {
-        return;
-      }
-      const updated = contacts.filter(
+      const next = contacts.filter(
         (c) => c.address.toLowerCase() !== addressToRemove.toLowerCase()
       );
-      const previous = contacts;
-      setContacts(updated);
-      try {
-        const res = await authFetch(audricWebUrl("/api/user/preferences"), {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ address: userAddress, contacts: updated }),
-        });
-        if (!res.ok) {
-          setContacts(previous);
-          throw new Error(`Failed to remove contact (HTTP ${res.status})`);
-        }
-      } catch (err) {
-        setContacts(previous);
-        throw err;
-      }
+      await writeContacts(next, "Failed to remove contact");
     },
-    [userAddress, contacts]
+    [contacts, writeContacts]
   );
 
   const renameContact = useCallback(
     async (address: string, newName: string) => {
-      if (!userAddress) {
-        return;
-      }
       const trimmed = newName.trim();
       if (!trimmed) {
         throw new Error("Name cannot be empty");
@@ -172,35 +115,20 @@ export function useContacts(userAddress: string | null) {
           `You already have another contact named "${trimmed}". Pick a different nickname.`
         );
       }
-      const updated = contacts.map((c) =>
+      const next = contacts.map((c) =>
         c.address.toLowerCase() === target ? { ...c, name: trimmed } : c
       );
-      const previous = contacts;
-      setContacts(updated);
-      try {
-        const res = await authFetch(audricWebUrl("/api/user/preferences"), {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ address: userAddress, contacts: updated }),
-        });
-        if (!res.ok) {
-          setContacts(previous);
-          throw new Error(`Failed to rename contact (HTTP ${res.status})`);
-        }
-      } catch (err) {
-        setContacts(previous);
-        throw err;
-      }
+      await writeContacts(next, "Failed to rename contact");
     },
-    [userAddress, contacts]
+    [contacts, writeContacts]
   );
 
   return {
     contacts,
-    loaded,
+    loaded: !isLoading && data !== undefined,
     addContact,
     removeContact,
     renameContact,
-    refetch: fetchContacts,
+    refetch: mutate,
   };
 }

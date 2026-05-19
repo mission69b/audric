@@ -9,8 +9,11 @@
  *   - NO API usage card (pay_api verification deferred to v0.7d)
  *   - NO Daily API budget input (same reason)
  *
- * Backing route: `POST /api/user/preferences` on apps/web (cross-app
- * fetch via `audricWebUrl()` until v0.7e migration).
+ * Reads + writes go through the shared `usePreferences` SWR cache slot
+ * (Session 4.7.A) — same slot as `useContacts`, so navigating between
+ * settings tabs only fires ONE network read. Writes post a PARTIAL
+ * payload (`permissionPreset` only) and optimistically patch the cache;
+ * a failure rolls back without touching the contacts field.
  *
  * Permission constants come from `@t2000/engine/presets` — a client-safe
  * subpath export (added in engine v2.11.1, v0.7c Session 4.6 fix #3)
@@ -20,11 +23,12 @@
  */
 
 import { PERMISSION_PRESETS } from "@t2000/engine/presets";
-import { useCallback, useEffect, useState } from "react";
 import { audricWebUrl } from "@/lib/audric-web-url";
 import { authFetch } from "@/lib/auth-fetch";
-
-type PermissionPreset = keyof typeof PERMISSION_PRESETS;
+import {
+  type PermissionPreset,
+  usePreferences,
+} from "@/lib/swr/user-preferences";
 
 const OPERATIONS: Array<{ key: string; label: string }> = [
   { key: "save", label: "save / repay" },
@@ -77,58 +81,36 @@ interface SafetySectionProps {
 }
 
 export function SafetySection({ address }: SafetySectionProps) {
-  const [preset, setPreset] = useState<PermissionPreset>("balanced");
-  const [presetSaving, setPresetSaving] = useState(false);
-
-  const fetchPreset = useCallback(async () => {
-    if (!address) {
-      return;
-    }
-    try {
-      const res = await authFetch(
-        audricWebUrl(`/api/user/preferences?address=${address}`)
-      );
-      if (res.ok) {
-        const data = await res.json();
-        if (
-          data?.permissionPreset &&
-          PRESET_ORDER.includes(data.permissionPreset)
-        ) {
-          setPreset(data.permissionPreset);
-        }
-      }
-    } catch {
-      // best-effort
-    }
-  }, [address]);
-
-  useEffect(() => {
-    fetchPreset().catch(() => {
-      // best-effort — silent failure is acceptable for preset hydration
-    });
-  }, [fetchPreset]);
+  const { data, isValidating, mutate } = usePreferences(address);
+  const preset: PermissionPreset = data?.permissionPreset ?? "balanced";
 
   const updatePreset = async (next: PermissionPreset) => {
-    if (!address || next === preset || presetSaving) {
+    if (!address || next === preset || isValidating) {
       return;
     }
-    const previous = preset;
-    setPreset(next);
-    setPresetSaving(true);
-    try {
-      const res = await authFetch(audricWebUrl("/api/user/preferences"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ address, permissionPreset: next }),
-      });
-      if (!res.ok) {
-        setPreset(previous);
+    await mutate(
+      async (current) => {
+        const res = await authFetch(audricWebUrl("/api/user/preferences"), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ address, permissionPreset: next }),
+        });
+        if (!res.ok) {
+          throw new Error(`Failed to update preset (HTTP ${res.status})`);
+        }
+        return current
+          ? { ...current, permissionPreset: next }
+          : { contacts: [], permissionPreset: next };
+      },
+      {
+        optimisticData: (current) =>
+          current
+            ? { ...current, permissionPreset: next }
+            : { contacts: [], permissionPreset: next },
+        rollbackOnError: true,
+        revalidate: false,
       }
-    } catch {
-      setPreset(previous);
-    } finally {
-      setPresetSaving(false);
-    }
+    );
   };
 
   return (
@@ -164,7 +146,7 @@ export function SafetySection({ address }: SafetySectionProps) {
                     ? "border-fg-primary bg-fg-primary text-fg-inverse"
                     : "border-border-strong bg-surface-card text-fg-secondary hover:border-fg-primary hover:text-fg-primary",
                 ].join(" ")}
-                disabled={!address || presetSaving}
+                disabled={!address || isValidating}
                 key={p}
                 onClick={() => updatePreset(p)}
                 role="radio"

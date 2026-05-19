@@ -1,16 +1,27 @@
 "use client";
 
 /**
- * `useUserStatus` — port from `apps/web/hooks/useUserStatus.ts`.
+ * `useUserStatus` — SWR-backed reader for `/api/user/status` on apps/web.
+ *
+ * Migrated from `@tanstack/react-query` to SWR in v0.7c Session 4.7.A as
+ * part of the data-fetching standardization. `react-query` remains in the
+ * dependency tree only as plumbing for `@mysten/dapp-kit`'s internal
+ * state — no user-written code uses it directly anymore.
  *
  * Settings → Passport reads `userStatus.username` for the IDENTITY card.
  * The route stays on apps/web until v0.7e; uses `audricWebUrl()` to
  * resolve to either same-origin (post-cutover) or cross-origin
  * (pre-cutover preview testing via NEXT_PUBLIC_AUDRIC_WEB_URL).
+ *
+ * `acceptTos()` posts to `/api/user/tos-accept` and optimistically
+ * patches the cache via SWR's `mutate(updater, { revalidate: false })`.
+ * No revalidation needed — the server returns no body, the only change
+ * is the boolean `tosAccepted` flag, and the optimistic patch is the
+ * authoritative new state.
  */
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
+import useSWR from "swr";
 import { audricWebUrl } from "@/lib/audric-web-url";
 
 interface UserStatus {
@@ -25,66 +36,78 @@ interface UserStatus {
   usernameClaimedAt: string | null;
 }
 
-export function useUserStatus(address: string | null, jwt: string | undefined) {
-  const queryClient = useQueryClient();
+const DEFAULT_STATUS: UserStatus = {
+  emailVerified: false,
+  sessionLimit: 5,
+  sessionsUsed: 0,
+  sessionWindowHours: 24,
+  tosAccepted: false,
+  username: null,
+  usernameClaimedAt: null,
+};
 
-  const query = useQuery<UserStatus>({
-    queryKey: ["user-status", address],
-    enabled: !!address && !!jwt,
-    staleTime: 5 * 60 * 1000,
-    queryFn: async () => {
+export function useUserStatus(address: string | null, jwt: string | undefined) {
+  const swrKey = address && jwt ? `user-status:${address}` : null;
+
+  const { data, isLoading, mutate } = useSWR<UserStatus>(
+    swrKey,
+    async () => {
       const res = await fetch(
         audricWebUrl(`/api/user/status?address=${address}`),
-        {
-          headers: { "x-zklogin-jwt": jwt as string },
-        }
+        { headers: { "x-zklogin-jwt": jwt as string } }
       );
       if (!res.ok) {
         throw new Error("Failed to fetch user status");
       }
       return res.json();
     },
-  });
+    {
+      // 5min cache; user-status changes infrequently (TOS accept, username
+      // claim) and both update paths optimistically patch the cache.
+      dedupingInterval: 5 * 60 * 1000,
+      revalidateOnFocus: false,
+    }
+  );
 
   const acceptTos = useCallback(async () => {
     if (!address || !jwt) {
       return;
     }
-    await fetch(audricWebUrl("/api/user/tos-accept"), {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-zklogin-jwt": jwt,
+    await mutate(
+      async (current) => {
+        await fetch(audricWebUrl("/api/user/tos-accept"), {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-zklogin-jwt": jwt,
+          },
+          body: JSON.stringify({ address }),
+        });
+        return current
+          ? { ...current, tosAccepted: true }
+          : { ...DEFAULT_STATUS, tosAccepted: true };
       },
-      body: JSON.stringify({ address }),
-    });
-    queryClient.setQueryData(
-      ["user-status", address],
-      (old: UserStatus | undefined) =>
-        old
-          ? { ...old, tosAccepted: true }
-          : {
-              tosAccepted: true,
-              emailVerified: false,
-              sessionsUsed: 0,
-              sessionLimit: 5,
-              sessionWindowHours: 24,
-              username: null,
-              usernameClaimedAt: null,
-            }
+      {
+        optimisticData: (current) =>
+          current
+            ? { ...current, tosAccepted: true }
+            : { ...DEFAULT_STATUS, tosAccepted: true },
+        rollbackOnError: true,
+        revalidate: false,
+      }
     );
-  }, [address, jwt, queryClient]);
+  }, [address, jwt, mutate]);
 
   return {
-    loading: query.isLoading,
-    tosAccepted: query.data?.tosAccepted ?? true,
-    emailVerified: query.data?.emailVerified ?? false,
-    sessionsUsed: query.data?.sessionsUsed ?? 0,
-    sessionLimit: query.data?.sessionLimit ?? 5,
-    sessionWindowHours: query.data?.sessionWindowHours ?? 24,
-    username: query.data?.username ?? null,
-    usernameClaimedAt: query.data?.usernameClaimedAt ?? null,
+    loading: isLoading,
+    tosAccepted: data?.tosAccepted ?? true,
+    emailVerified: data?.emailVerified ?? false,
+    sessionsUsed: data?.sessionsUsed ?? 0,
+    sessionLimit: data?.sessionLimit ?? 5,
+    sessionWindowHours: data?.sessionWindowHours ?? 24,
+    username: data?.username ?? null,
+    usernameClaimedAt: data?.usernameClaimedAt ?? null,
     acceptTos,
-    refetch: query.refetch,
+    refetch: mutate,
   };
 }
