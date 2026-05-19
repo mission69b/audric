@@ -37,6 +37,15 @@ import { PrismaNeon } from "@prisma/adapter-neon";
 import { PrismaClient } from "../../web/lib/generated/prisma/client";
 import { env } from "./env";
 
+/**
+ * Re-export the Prisma namespace so consumers can access type helpers
+ * (e.g. `Prisma.InputJsonValue`) without reaching into the generated
+ * client directly. Same "intentional + temporary cross-package coupling"
+ * rationale as the `PrismaClient` import above — v0.7c Phase 6 cutover
+ * collapses the schema + generated client into web-v2.
+ */
+export { Prisma } from "../../web/lib/generated/prisma/client";
+
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };

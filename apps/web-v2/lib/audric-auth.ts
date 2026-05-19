@@ -297,6 +297,155 @@ export async function getCurrentUser(): Promise<AudricSession | null> {
 }
 
 // -----------------------------------------------------------------------------
+// Route-level helpers (Session 4.5 / 2026-05-19)
+// -----------------------------------------------------------------------------
+// Ported from `apps/web/lib/auth.ts` (per Session 4.5 lock — extend
+// `audric-auth.ts` in place rather than mirror a separate `lib/auth.ts`).
+// These helpers compose `verifyJwt` into route-handler ergonomics:
+//
+//   - `authenticateRequest(request)` — verify the `x-zklogin-jwt` header
+//     and return either `{ verified }` or `{ error: NextResponse }`. Used
+//     by every `?address=`-shaped read route.
+//   - `assertOwns(verified, claimed)` — second leg of defense in depth.
+//     Middleware proves "the JWT is real and belongs to address X";
+//     `assertOwns` proves "the resource being touched also belongs to
+//     address X". Returns `null` on success.
+//   - `assertOwnsOrWatched(verified, target)` — like `assertOwns` but
+//     also accepts the case where `target` is in the caller's
+//     `WatchAddress` watchlist. The right gate for READ-ONLY analytics
+//     + portfolio routes (cf. v0.49 universal address-aware reads).
+//   - `authErrorResponse(err)` — central `AuthError → NextResponse`
+//     mapping so error shape stays consistent across routes.
+//
+// Legacy helpers from apps/web/lib/auth.ts (`decodeJwt`, `validateJwt`,
+// `isJwtEmailVerified`, `validateAmount`) were NOT ported — none of the
+// Session 4.5 routes use them. If a future route in web-v2 needs them,
+// port-as-needed.
+
+import type { NextRequest, NextResponse } from "next/server";
+import { NextResponse as NextResponseImpl } from "next/server";
+
+/**
+ * Convenience helper for route handlers: verify the request's JWT
+ * (`x-zklogin-jwt` header) and return either the verified user or a
+ * pre-built error response.
+ *
+ * ```ts
+ * const auth = await authenticateRequest(request);
+ * if ('error' in auth) return auth.error;
+ * const ownership = assertOwns(auth.verified, address);
+ * if (ownership) return ownership;
+ * // … proceed with auth.verified.suiAddress as the trusted identity
+ * ```
+ */
+export async function authenticateRequest(
+  request: NextRequest
+): Promise<{ verified: VerifiedJwt } | { error: NextResponse }> {
+  const jwt = request.headers.get("x-zklogin-jwt");
+  try {
+    const verified = await verifyJwt(jwt);
+    return { verified };
+  } catch (err) {
+    if (err instanceof AuthError) {
+      return { error: authErrorResponse(err) };
+    }
+    return {
+      error: NextResponseImpl.json(
+        { error: "Authentication failed" },
+        { status: 500 }
+      ),
+    };
+  }
+}
+
+/**
+ * Build a `NextResponse` from an `AuthError`. Centralised here so error
+ * shape stays consistent across all routes.
+ */
+export function authErrorResponse(err: AuthError): NextResponse {
+  return NextResponseImpl.json(
+    { error: err.publicMessage },
+    { status: err.status }
+  );
+}
+
+/**
+ * Reject the request with HTTP 403 when the verified caller does not
+ * own the address being acted on. Returns `null` on success so the
+ * call site reads `if (assertOwns(...)) return ...; // proceed`.
+ *
+ * This is the second leg of defense in depth (D-2 lock): middleware
+ * proves "the JWT is real and belongs to address X"; per-route
+ * `assertOwns` proves "the resource being touched also belongs to
+ * address X". Both must hold for an IDOR-class request to succeed.
+ */
+export function assertOwns(
+  verified: VerifiedJwt,
+  claimedAddress: string
+): NextResponse | null {
+  if (
+    typeof claimedAddress !== "string" ||
+    !isValidSuiAddress(claimedAddress)
+  ) {
+    return NextResponseImpl.json({ error: "Invalid address" }, { status: 400 });
+  }
+  if (verified.suiAddress !== claimedAddress) {
+    return NextResponseImpl.json({ error: "Forbidden" }, { status: 403 });
+  }
+  return null;
+}
+
+/**
+ * Like `assertOwns`, but also accepts the case where the caller has
+ * `targetAddress` in their `WatchAddress` watch-list (saved contact /
+ * watched wallet). This is the right gate for READ-ONLY analytics +
+ * portfolio routes that legitimately serve a watched address — the
+ * `v0.49 universal address-aware reads` flag in those routes.
+ *
+ * SPEC 30 Phase 1A.5 — closes the unauthenticated-read class. Pre-fix
+ * those routes accepted `?address=anyone` with no auth; this helper
+ * is the structural fix.
+ *
+ * Returns `null` on success. Returns 400 when the address is
+ * malformed, 403 when the caller doesn't own the target AND it isn't
+ * in their watchlist.
+ *
+ * Performance: the watch-list check is a single indexed Prisma lookup
+ * (~5-15ms) and runs only when ownership doesn't already match — so
+ * for the common "user reads their own data" path the cost is zero.
+ */
+export async function assertOwnsOrWatched(
+  verified: VerifiedJwt,
+  targetAddress: string
+): Promise<NextResponse | null> {
+  if (typeof targetAddress !== "string" || !isValidSuiAddress(targetAddress)) {
+    return NextResponseImpl.json({ error: "Invalid address" }, { status: 400 });
+  }
+  if (verified.suiAddress === targetAddress) {
+    return null;
+  }
+
+  // Lazy import: most routes that call this helper are read-heavy and
+  // the Prisma client is already eagerly imported by their data path.
+  const { prisma } = await import("./prisma");
+  const user = await prisma.user.findUnique({
+    where: { suiAddress: verified.suiAddress },
+    select: {
+      id: true,
+      watchAddresses: {
+        where: { address: targetAddress },
+        select: { id: true },
+      },
+    },
+  });
+
+  if (!user || user.watchAddresses.length === 0) {
+    return NextResponseImpl.json({ error: "Forbidden" }, { status: 403 });
+  }
+  return null;
+}
+
+// -----------------------------------------------------------------------------
 // Test seam — Vitest tests can override the address cache or pre-seed it.
 // -----------------------------------------------------------------------------
 

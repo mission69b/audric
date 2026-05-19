@@ -82,6 +82,26 @@ const serverSchema = z.object({
    * mainnet via `getSuiRpcUrl()`. Set this only to point at a custom
    * fullnode (testnet / devnet / self-hosted). */
   SUI_RPC_URL: optionalString,
+
+  /** Enoki secret key (server-only) — sponsors gas for every user
+   * transaction. Used by `/api/transactions/prepare` to assemble the
+   * sponsored tx block via Enoki's `transaction-blocks/sponsor` endpoint
+   * and by `/api/transactions/execute` to co-sign + submit after the
+   * client signs. Phase 3 Day 3b ports both routes from legacy
+   * `audric/web`; this is the unblocking env var. NEVER expose to
+   * clients — they only get `NEXT_PUBLIC_ENOKI_API_KEY` (the
+   * publishable equivalent). */
+  ENOKI_SECRET_KEY: requiredString,
+
+  /** Shared cross-app internal-key for trusted server-side reads against
+   * apps/web. Session 3 (Phase 6) uses it to fetch the public-profile
+   * portfolio panel via apps/web's `/api/portfolio` endpoint
+   * (`authenticateAnalyticsRequest` dual-auth path). Same value as
+   * apps/web's `T2000_INTERNAL_KEY` — Vercel env vars are shared across
+   * deploys in the same project. Optional because pre-cutover preview
+   * deploys may not have it set yet; when absent the profile page
+   * degrades silently (portfolio panel hidden). */
+  T2000_INTERNAL_KEY: optionalString,
 });
 
 // ─── Client schema ────────────────────────────────────────────────────
@@ -102,6 +122,16 @@ const clientSchema = z.object({
    * Required so the client-side wallet provider (Phase 3) can target
    * the same network as the server-side reads. */
   NEXT_PUBLIC_SUI_NETWORK: requiredString,
+
+  /** Optional cross-app base URL for fetching apps/web APIs from
+   * web-v2 during the v0.7c migration window. When set, the
+   * `audricWebUrl()` helper prefixes cross-app paths with it. Empty /
+   * unset means same-origin (works post-cutover when audric.ai serves
+   * both apps via Vercel rewrites). Example values:
+   *   `https://audric.ai` (prod testing pre-cutover from preview)
+   *   `https://audric.ai` (post-cutover same-origin fallback)
+   *   `` (unset → same-origin) */
+  NEXT_PUBLIC_AUDRIC_WEB_URL: optionalString,
 });
 
 // ─── Runtime ──────────────────────────────────────────────────────────
@@ -112,9 +142,12 @@ const runtimeEnv = {
   AI_GATEWAY_API_KEY: process.env.AI_GATEWAY_API_KEY,
   BLOCKVISION_API_KEY: process.env.BLOCKVISION_API_KEY,
   SUI_RPC_URL: process.env.SUI_RPC_URL,
+  ENOKI_SECRET_KEY: process.env.ENOKI_SECRET_KEY,
+  T2000_INTERNAL_KEY: process.env.T2000_INTERNAL_KEY,
   NEXT_PUBLIC_GOOGLE_CLIENT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
   NEXT_PUBLIC_ENOKI_API_KEY: process.env.NEXT_PUBLIC_ENOKI_API_KEY,
   NEXT_PUBLIC_SUI_NETWORK: process.env.NEXT_PUBLIC_SUI_NETWORK,
+  NEXT_PUBLIC_AUDRIC_WEB_URL: process.env.NEXT_PUBLIC_AUDRIC_WEB_URL,
 };
 
 const isServer =

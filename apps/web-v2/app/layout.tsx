@@ -4,10 +4,14 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 import "./globals.css";
-// [v0.7c Day 1c] `<SessionProvider>` (next-auth/react) → `<ZkLoginProvider>`
-// (audric stub). Day 1c provider is children-passthrough; Phase 2 swaps
-// in the full @mysten/dapp-kit WalletProvider tree.
-import { ZkLoginProvider } from "@/lib/audric-auth-client";
+// [v0.7c Day 1c → Phase 3 Day 3c] Day 1c shipped a stub passthrough
+// (`ZkLoginProvider` in `lib/audric-auth-client.ts`); Phase 3 swaps in
+// the FULL `@mysten/dapp-kit` provider tree (`SuiClientProvider` +
+// `WalletProvider` + `QueryClientProvider`) so `useZkLogin()` can read
+// the current Sui epoch for session expiry checks. The stub
+// `ZkLoginProvider` is now unused but kept exported for back-compat
+// with any caller still importing it from `audric-auth-client`.
+import { ZkLoginProviders } from "@/components/auth/zklogin-providers";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://chat.vercel.ai"),
@@ -77,9 +81,9 @@ export default function RootLayout({
           disableTransitionOnChange
           enableSystem
         >
-          <ZkLoginProvider>
+          <ZkLoginProviders>
             <TooltipProvider>{children}</TooltipProvider>
-          </ZkLoginProvider>
+          </ZkLoginProviders>
         </ThemeProvider>
       </body>
     </html>

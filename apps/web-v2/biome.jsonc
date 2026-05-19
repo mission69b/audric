@@ -18,6 +18,7 @@
       "!components/ai-elements",
       "!components/elements",
       "!components/ui",
+      "!components/audric/cards",
       "!lib/utils.ts",
       "!hooks/use-mobile.ts"
     ]

@@ -79,26 +79,47 @@
 import { createAnthropic } from "@ai-sdk/anthropic";
 import {
   type AddressPortfolio,
+  applyToolFlags,
   balanceCheckTool,
   buildInternalContext,
+  composeBundleFromToolResults,
+  DEFAULT_GUARD_CONFIG,
+  DEFAULT_PERMISSION_CONFIG,
+  getModifiableFields,
+  getToolPolicy,
+  isBundleableTool,
+  type PendingAction,
+  type PendingToolCall,
+  type Tool,
   type ToolContext,
   toAISDKTools,
+  WRITE_TOOLS,
 } from "@t2000/engine";
 import {
   Experimental_Agent as Agent,
+  convertToModelMessages,
   createUIMessageStream,
   createUIMessageStreamResponse,
   gateway,
   generateId,
   type LanguageModel,
+  type ModelMessage,
   stepCountIs,
   type TelemetrySettings,
   type TextStreamPart,
   type ToolSet,
+  type UIMessage,
   type UIMessageStreamWriter,
+  wrapLanguageModel,
 } from "ai";
 import { z } from "zod";
+import { redactAddressesInText, redactPII } from "@/lib/audric/log-redact";
+import { audricObservabilityMiddleware } from "@/lib/audric/middleware/observability";
 import { ensureNaviMcpConnected } from "@/lib/audric/navi-mcp";
+import {
+  extractResumeOutcomes,
+  type ResumeOutcome,
+} from "@/lib/audric/resume-outcome";
 import { buildAudricDay2bSystemPrompt } from "@/lib/audric/system-prompt";
 import { TelemetryIntegration } from "@/lib/audric/telemetry-integration";
 import { getCurrentUser } from "@/lib/audric-auth";
@@ -115,6 +136,52 @@ export const maxDuration = 60;
 
 const DEFAULT_MODEL_USED = "claude-sonnet-4-6";
 const DEFAULT_MAX_TURNS = 10;
+
+// [Phase 5e — 2026-05-19] Custom UIMessageStream data part type for the
+// bundle marker. AI SDK supports `data-*` custom parts via the writer;
+// the client reads them off `m.parts` and folds the referenced
+// `tool-*` parts under a single bundle PermissionCard. The type
+// string MUST start with `data-` per AI SDK's part type contract.
+const BUNDLE_MARKER_TYPE = "data-audric-bundle" as const;
+
+/**
+ * [Phase 5e] Bundle marker payload — emitted as a `data-audric-bundle`
+ * UIMessageStream part at the `finish-step` boundary when the LLM
+ * produced ≥2 confirm-tier bundleable writes in one step. The client
+ * reads this off `m.parts` to render ONE PermissionCard for the whole
+ * bundle (instead of N cards for N approval-requests), dispatch ONE
+ * sponsored `bundle` transaction (atomic PTB), then fan-out N
+ * `addToolApprovalResponse` + N `addToolOutput` calls so AI SDK's
+ * state machine sees individual resolutions.
+ *
+ * The `steps[]` shape mirrors the engine's `PendingActionStep[]` for
+ * the fields the renderer needs (`toolName`, `input`, `description`,
+ * `modifiableFields`), plus the AI SDK identity fields the client
+ * needs to dispatch back to AI SDK (`toolCallId`, `approvalId`). One
+ * payload per bundle; the original `tool-input-available` +
+ * `tool-approval-request` chunks still emit individually after the
+ * marker so AI SDK's part state machine stays consistent — the client
+ * just hides them via `toolCallId ∈ bundle.toolCallIds`.
+ */
+export interface AudricBundleMarker {
+  /**
+   * Per-step rendering payload. Carries everything the bundle
+   * PermissionCard needs to display the steps list + dispatch back
+   * to AI SDK on Approve/Deny without re-resolving anything.
+   */
+  steps: Array<{
+    toolCallId: string;
+    approvalId: string;
+    toolName: string;
+    input: Record<string, unknown>;
+    description: string;
+    modifiableFields: Array<{
+      name: string;
+      kind: string;
+      asset?: string;
+    }>;
+  }>;
+}
 // AI SDK doesn't expose a token estimator publicly; this is a coarse
 // heuristic matching the engine's estimateTokens (chars / 4). Used only
 // to seed `TurnMetrics.contextTokensStart` for warehouse parity — not
@@ -129,14 +196,22 @@ const messageRoleSchema = z.enum(["user", "assistant", "system"]);
 
 // AI SDK v6 `useChat` sends messages in `UIMessage` shape: `{id, role,
 // parts: Array<UIMessagePart>}`. Direct curl callers send the simpler
-// `{role, content}` shape. The route's downstream code is written
-// against `{role, content: string}`, so we accept both shapes at the
-// edge and normalise to the legacy shape before it hits anything
-// internal.
+// `{role, content}` shape. Both shapes are accepted at the edge and
+// normalised below before being fed to `Agent.stream`.
+//
+// [Phase 3 Day 3a / S.175] The earlier Day 2b shape extracted just
+// `text` parts and rejected messages with no text — that worked for
+// the user-only smoke but BREAKS the HITL resume turn. After the user
+// approves a tool call, `useChat` fires the next request with an
+// assistant message whose parts are tool-only (`tool-<name>` in state
+// `output-available`) and NO text. Rejecting that message kills the
+// LLM narration. We now keep the raw `parts` array and delegate the
+// UI → ModelMessage translation to AI SDK's `convertToModelMessages`,
+// which understands tool calls, tool results, tool approvals, and
+// tool denials natively.
 const partSchema = z
   .object({
     type: z.string(),
-    text: z.string().optional(),
   })
   .passthrough();
 
@@ -145,23 +220,11 @@ const legacyMessageSchema = z.object({
   content: z.string().min(1, "content must be a non-empty string"),
 });
 
-const uiMessageSchema = z
-  .object({
-    id: z.string().optional(),
-    role: messageRoleSchema,
-    parts: z.array(partSchema).min(1, "parts must contain at least one entry"),
-  })
-  .transform((m) => ({
-    role: m.role,
-    content: m.parts
-      .filter((p) => p.type === "text" && typeof p.text === "string")
-      .map((p) => p.text as string)
-      .join(""),
-  }))
-  .refine(
-    (m) => m.content.length > 0,
-    "message must contain at least one non-empty text part"
-  );
+const uiMessageSchema = z.object({
+  id: z.string().optional(),
+  role: messageRoleSchema,
+  parts: z.array(partSchema).min(1, "parts must contain at least one entry"),
+});
 
 const messageSchema = z.union([uiMessageSchema, legacyMessageSchema]);
 
@@ -215,10 +278,13 @@ export async function POST(request: Request) {
     );
   }
 
-  const latestUser = [...body.messages]
-    .reverse()
-    .find((m) => m.role === "user");
-  if (!latestUser) {
+  // [Phase 3 Day 3a / S.175] At least one user-authored entry must
+  // exist. After the HITL handshake the resume turn carries a prior
+  // user message AND an assistant message with tool-only parts — the
+  // latter is valid; the user check guards against bots / curl
+  // hitting the chat route with assistant-only history.
+  const hasUserMessage = body.messages.some((m) => m.role === "user");
+  if (!hasUserMessage) {
     return new Response(
       JSON.stringify({
         error: "messages must contain at least one user-authored entry",
@@ -248,6 +314,44 @@ export async function POST(request: Request) {
   const collector = new TelemetryIntegration();
   const contextTokensStart = estimateContextTokens(body.messages);
 
+  // [Phase 3 outcome-update slice / 2026-05-19] Cross-turn outcome
+  // resolution — the v0.7c rewrite folds the legacy `/api/engine/resume`
+  // route's `updateMany` logic into the chat route (per D-3 (c)).
+  //
+  // When the user approves (or denies) a HITL tool call, `useChat`
+  // auto-fires the resume turn to `/api/audric-chat`. The request
+  // body's LAST assistant message carries the resolved tool parts:
+  // `state: 'output-available'` for confirmed (with the client-
+  // measured `writeToolDurationMs` in `output`) or `state: 'output-
+  // error'` for denied / failed. We walk that message via
+  // `extractResumeOutcomes(...)`, then run a Prisma `updateMany`
+  // keyed on `attemptId` (== AI SDK `approvalId`, per harness Spec
+  // §Item 3a) for each outcome.
+  //
+  // Fire-and-forget: never blocks the response stream. Idempotent —
+  // multi-turn history has the same tool part on every subsequent
+  // turn; subsequent `updateMany` calls overwrite with the same
+  // value. We only walk the LAST assistant message so we don't keep
+  // re-updating older HITL rows from earlier in the conversation.
+  const resumeOutcomes = extractResumeOutcomes(body.messages);
+  if (resumeOutcomes.length > 0) {
+    console.log(
+      `[audric-chat] resume-turn detected: ${resumeOutcomes.length} HITL outcome(s) — ${resumeOutcomes
+        .map(
+          (o) =>
+            `attemptId=${o.attemptId.slice(0, 8)} outcome=${o.outcome}${
+              o.writeToolDurationMs === null
+                ? ""
+                : ` ms=${o.writeToolDurationMs}`
+            }`
+        )
+        .join(", ")}`
+    );
+    for (const o of resumeOutcomes) {
+      persistResumeOutcome(o);
+    }
+  }
+
   // 3. NAVI MCP singleton — same as Day 2b. Required for `balance_check`
   // since its SDK fallback wants a signing keypair (read-only Day 2b
   // doesn't wire one); the MCP path is what audric/web production uses.
@@ -255,14 +359,52 @@ export async function POST(request: Request) {
 
   // 4. Resolve the language model (gateway preferred; direct-Anthropic
   // fallback when AI_GATEWAY_API_KEY is absent).
+  //
+  // [Phase 5.5 / D-17 / G8.5 — 2026-05-19] Wrap the underlying model in
+  // `wrapLanguageModel` with the audric observability middleware.
+  // The middleware emits a redacted per-call telemetry line to console
+  // (provider/model/prompt-tokens/first-byte-latency/last-user-text-PII-scrubbed)
+  // so operators can grep `vercel logs` for individual LLM calls
+  // without trawling OTel spans. PURE-OBSERVATION — does not mutate
+  // params, never short-circuits, never replaces the response.
+  //
+  // Architectural reasoning for what we did NOT wrap:
+  //  - Guards / preflight live INSIDE tool.execute() via the engine's
+  //    `toAISDKTools` (the dispatched tool name is in scope there;
+  //    model middleware fires BEFORE tool dispatch so it can't gate
+  //    per-tool decisions). Activated above via `guards: DEFAULT_GUARD_CONFIG`.
+  //  - PII redaction sits at the logging layer (`log-redact.ts`).
+  //    Redacting addresses at the prompt boundary would break the
+  //    agent — the user's wallet address is load-bearing in the
+  //    system prompt and recipient addresses are load-bearing in
+  //    `send_transfer.to`. We let the model SEE addresses; we just
+  //    don't LOG them.
+  //  - Retry/failover is the AI Gateway's job (provider failover
+  //    ladder configured via Vercel).
+  //
+  // See `lib/audric/middleware/observability.ts` for the full
+  // architectural note on why this is the honest D-17 close for
+  // web-v2 (the SPEC's "delete 400-600 LoC of decorator boilerplate"
+  // benefit applied to legacy audric/web; the fork sits on engine
+  // helpers that already removed it).
   const useGateway = Boolean(env.AI_GATEWAY_API_KEY);
-  const model: LanguageModel = useGateway
+  const rawModel: LanguageModel = useGateway
     ? gateway(`anthropic/${DEFAULT_MODEL_USED}`)
     : createAnthropic({ apiKey: env.ANTHROPIC_API_KEY ?? "" })(
         DEFAULT_MODEL_USED
       );
+  const model: LanguageModel = wrapLanguageModel({
+    model: rawModel,
+    middleware: audricObservabilityMiddleware,
+  });
+  // [Phase 5.5 / D-17] Redact sessionId before logging. Today the client
+  // passes a non-PII session UUID, but defense-in-depth: if a future
+  // intake ever sets sessionId to a wallet address, this scans for
+  // embedded address substrings and collapses them to the truncated
+  // form before they hit Vercel's multi-week log retention. Non-address
+  // strings pass through unchanged.
   console.log(
-    `[audric-chat] sessionId=${sessionId} turn=${turnIndex} model=${
+    `[audric-chat] sessionId=${redactAddressesInText(sessionId)} turn=${turnIndex} model=${
       useGateway
         ? `vercel-ai-gateway[anthropic/${DEFAULT_MODEL_USED}]`
         : `direct-anthropic-fallback[${DEFAULT_MODEL_USED}]`
@@ -274,7 +416,46 @@ export async function POST(request: Request) {
   // merged with gateway-managed tools when the gateway is active.
   // Engine-native tools take precedence on key collision (same rule as
   // engine v2.10 buildToolSet at v2/engine.ts L1594).
-  const engineTools = toAISDKTools([balanceCheckTool]);
+  //
+  // [Phase 3 Day 3a → Phase 4 → Phase 4b 2026-05-19] Wrap 11 of the 12
+  // legacy write tools via `toAISDKTools`. The wrapper sets AI SDK's
+  // native `needsApproval` callback via `buildNeedsApproval`; because
+  // web-v2's `toolContext` has no `agent` (we use client-signed
+  // sponsored-tx flow, not server-side signing), `need-approval.ts`
+  // L113-115 returns `true` unconditionally for any confirm-tier tool
+  // → AI SDK pauses on `tool-approval-request`.
+  //
+  // Tools wrapped (via `WRITE_TOOLS` filter):
+  //   save_deposit, withdraw, send_transfer, borrow, repay_debt,
+  //   claim_rewards, harvest_rewards, swap_execute, volo_stake,
+  //   volo_unstake, save_contact.
+  //
+  // **`pay_api` is intentionally EXCLUDED from the web-v2 tool set
+  // (Phase 4b deferral 2026-05-19).** The legacy 3-leg services flow
+  // (`/api/services/{prepare,complete,retry}` + `service-gateway.ts`)
+  // is ~1.5k LoC of MPP-gateway plumbing that doesn't yet have a
+  // product home in audric's 5-product taxonomy (Passport,
+  // Intelligence, Finance, Pay, Store). The Agentic Commerce spec
+  // (`spec/active/AGENTIC_COMMERCE_SPEC_DRAFT.md`, drafted alongside
+  // this deferral) defines the use cases that justify bringing
+  // pay_api back:
+  //   - "Make me a beat and sell it for $5" (Audric Store creator side)
+  //   - "Buy everything for my house party" (multi-vendor commerce)
+  //   - "Order flowers and a card for mom" (single-intent multi-leg)
+  // Until that spec ships its first phase, the LLM never sees
+  // `pay_api` in web-v2 → never proposes it → no fragile fail-loud
+  // surface for the user.
+  //
+  // Legacy `apps/web` continues to ship pay_api unchanged.
+  //
+  // Client-side dispatch (audric-chat-client.tsx) routes Approve
+  // taps to:
+  //   - sponsoredTx({type, params, session}) for the 9 sponsored
+  //     writes (save / withdraw / borrow / repay / send / swap /
+  //     claim-rewards / harvest / volo-stake / volo-unstake)
+  //   - POST /api/contacts/save for save_contact (Prisma-only)
+  const writeToolsForWebV2 = WRITE_TOOLS.filter((t) => t.name !== "pay_api");
+  const engineTools = toAISDKTools([balanceCheckTool, ...writeToolsForWebV2]);
   const tools: ToolSet = useGateway
     ? ({
         perplexity_search: gateway.tools.perplexitySearch(),
@@ -299,11 +480,84 @@ export async function POST(request: Request) {
     portfolioCache: new Map<string, AddressPortfolio>(),
     signal: abortController.signal,
     retryStats: { attemptCount: 1 },
+    // [Phase 3 Day 3a] USD-aware permission resolver inputs. In web-v2
+    // these are forward-looking: `need-approval.ts` L113-115 forces
+    // `needsApproval = true` UNCONDITIONALLY when `toolContext.agent`
+    // is unset (audric's client-signed sponsored flow), so the USD
+    // resolver below never gates Phase 3's `save_deposit` canary.
+    // Wiring them now (a) matches the engine's ToolContext contract
+    // for forward compatibility when audric eventually adds a
+    // sub-threshold auto-execute path (NOT Phase 3 scope), and (b)
+    // documents the intended preset.
+    //
+    // `priceCache` is intentionally empty at request start — future
+    // read tools (token_prices, portfolio_analysis) populate it inline
+    // so subsequent same-turn USD resolves get cached values without
+    // re-fetching. Empty map → `resolveUsdValue` returns 0 → small
+    // amounts that WOULD auto-execute (if agent were set) get rejected
+    // by the L117 fallback that forces approval when priceCache is
+    // empty. Conservative-by-construction.
+    permissionConfig: DEFAULT_PERMISSION_CONFIG,
+    priceCache: new Map<string, number>(),
+    sessionSpendUsd: 0,
   };
+  // [Phase 5.5 / D-17 / G8.5 — 2026-05-19; shape-fix 2026-05-19 review]
+  // Mutable holder for the normalized message history. The guard
+  // pipeline's `getMessages` closure (passed to `buildInternalContext`
+  // below) reads off this ref. We populate it AFTER `convertToModelMessages`
+  // resolves (~L580); by then any tool dispatch — and therefore any
+  // guard call — has the latest history available.
+  //
+  // CONTENT SHAPE — load-bearing: `extractConversationText` in
+  // `packages/engine/src/guards.ts` (L1247-1259) walks `msg.content`
+  // ONLY when it is `Array.isArray(...)` and pulls `{type:'text', text}`
+  // blocks. Anything else (including raw `string` content) is silently
+  // skipped, which silently NO-OPs every guard that reads conversation
+  // text (`guardAddressSource`, `guardAddressScope`, `guardAssetIntent`,
+  // `guardSlippage`, `guardIrreversibility`, `guardCostWarning`). The
+  // canonical test fixture is `guard-address-scope.test.ts` L191-207
+  // (`{ role: 'user', content: [{ type: 'text', text: '...' }] }`).
+  const guardMessagesRef: {
+    current: Array<{
+      role: string;
+      content: Array<{ type: string; text: string }>;
+    }>;
+  } = { current: [] };
+
   const internalContext = buildInternalContext({
     toolContext,
     walletAddress,
-    // No guards / no contacts / no callbacks in Day 2e scope.
+    // [Phase 5.5 / D-17 / G8.5 — 2026-05-19] Activate the 14-guard
+    // pipeline by passing `DEFAULT_GUARD_CONFIG`. Without this, the
+    // engine's `runGuardsForTool` returns `{ allowed: true }` immediately
+    // (see `packages/engine/src/v2/guard-runner.ts` L92) and the 14
+    // Safety/Financial/UX-tier guards are NO-OPs. The wrapper plumbing
+    // has been in place since Phase 3 (`toAISDKTools` runs guards inside
+    // every wrapped tool's `execute()`); only the config was missing.
+    //
+    // Default config thresholds (engine `guards.ts` L139-154):
+    //   - Health Factor warn < 2.0, BLOCK < 1.5
+    //   - Large transfer warn > $50, strong warn > $500
+    //   - All other guards on (balance / slippage / stale data /
+    //     irreversibility / cost / retry / input validation /
+    //     address-source / asset-intent / swap-preview / address-scope).
+    //
+    // Architectural note: guards live INSIDE tool.execute() (after the
+    // model picks a tool, before legacy call), NOT in model middleware.
+    // Model middleware runs BEFORE tool dispatch — at that point you
+    // don't know which tool to gate on. The SPEC's "convert guards to
+    // middleware adapters" framing matched legacy audric/web's
+    // decorator-wrapped streamText; web-v2's fork sits on engine
+    // helpers that already do the right thing.
+    guards: DEFAULT_GUARD_CONFIG,
+    // Day 2e web-v2 has no contacts surface; pass empty.
+    contacts: [],
+    // `getMessages` lets guards inspect the latest history for the
+    // address-source / asset-intent / address-scope scans. Reads
+    // through the mutable ref populated below so the closure resolves
+    // cleanly at construction time but still surfaces the latest
+    // history at guard-dispatch time.
+    getMessages: () => guardMessagesRef.current,
   });
 
   // 7. OTel telemetry settings (D-18). functionId groups spans in the
@@ -350,16 +604,88 @@ export async function POST(request: Request) {
       : {}),
   });
 
-  // 9. Build the messages array for agent.stream(). AI SDK accepts
-  // `{role, content}` directly (no need for the engine's prior
-  // `loadMessages([{role, content: [{type, text}]}])` shape — Agent
-  // does that normalization internally).
-  const aiSdkMessages = body.messages
-    .filter(
-      (m): m is { role: "user" | "assistant"; content: string } =>
-        m.role !== "system" && m.content.length > 0
-    )
-    .map((m) => ({ role: m.role, content: m.content }));
+  // 9. Build the messages array for agent.stream().
+  //
+  // Two intake shapes are accepted at the edge:
+  //   (a) Legacy `{role, content: string}` — direct curl / smoke tests.
+  //   (b) AI SDK v6 `UIMessage` `{role, parts: [...]}` — produced by
+  //       `useChat` in the browser. After the HITL handshake the parts
+  //       array carries tool-call / tool-result / tool-approval-request
+  //       / tool-approval-response / tool-output-denied entries that
+  //       MUST be passed to the LLM (otherwise the resume turn has no
+  //       context for the just-executed write).
+  //
+  // We hand the UI shape to AI SDK's `convertToModelMessages`, which
+  // emits the canonical `ModelMessage[]` (system / user / assistant /
+  // tool) including tool-call + tool-result pairs in the order the
+  // model provider expects. Legacy `{role, content}` entries are
+  // promoted to the UI shape with a single text part so the same
+  // converter handles both — keeps the downstream path single-shape.
+  const normalized: Omit<UIMessage, "id">[] = body.messages
+    .filter((m) => m.role !== "system")
+    .map((m) => {
+      if ("content" in m) {
+        return {
+          role: m.role,
+          parts: [{ type: "text", text: m.content }],
+        } as Omit<UIMessage, "id">;
+      }
+      return {
+        role: m.role,
+        parts: m.parts as UIMessage["parts"],
+      } as Omit<UIMessage, "id">;
+    });
+
+  // [Phase 5.5 / D-17; shape-fix 2026-05-19 review] Populate the
+  // guard-pipeline message ref. Guards read this via the `getMessages`
+  // closure passed to `buildInternalContext` above so
+  // `guardAddressSource`, `guardAssetIntent`, and `guardAddressScope`
+  // (plus `guardSlippage` / `guardIrreversibility` / `guardCostWarning`
+  // for their `lastAssistantText` / `fullText` reads) can scan the
+  // user's recent text.
+  //
+  // SHAPE: `extractConversationText` in `packages/engine/src/guards.ts`
+  // ONLY consumes `content` arrays of `{type:'text', text}` blocks —
+  // raw string content is silently skipped (L1248 `!Array.isArray →
+  // continue`). System messages are filtered out (they live in the
+  // agent system prompt; not part of the guard's natural-language
+  // window). Per-text-block granularity matters: `currentUserText`
+  // is the LAST text block in the LAST user message (not a join), so
+  // UI messages with multiple text parts get emitted as multiple
+  // blocks, not concatenated.
+  guardMessagesRef.current = body.messages
+    .filter((m) => m.role !== "system")
+    .map((m) => {
+      if ("content" in m) {
+        return {
+          role: m.role,
+          content: [{ type: "text", text: String(m.content) }],
+        };
+      }
+      const blocks = m.parts
+        .map((p) => {
+          const part = p as { type?: string; text?: string };
+          if (part.type === "text" && typeof part.text === "string") {
+            return { type: "text", text: part.text };
+          }
+          return null;
+        })
+        .filter((b): b is { type: string; text: string } => b !== null);
+      return { role: m.role, content: blocks };
+    });
+
+  let aiSdkMessages: ModelMessage[];
+  try {
+    aiSdkMessages = await convertToModelMessages(normalized);
+  } catch (err) {
+    return new Response(
+      JSON.stringify({
+        error: "Failed to convert UIMessages → ModelMessages",
+        detail: err instanceof Error ? err.message : String(err),
+      }),
+      { status: 400, headers: { "content-type": "application/json" } }
+    );
+  }
 
   // 10. Stream the agent and translate AI SDK chunks → UIMessage parts.
   const result = await audricAgent.stream({ messages: aiSdkMessages });
@@ -372,15 +698,44 @@ export async function POST(request: Request) {
       writer.write({ type: "start-step" });
       writer.write({ type: "text-start", id: messageId });
 
+      // [Phase 5e] Step-boundary buffer for atomic bundle marker
+      // emission. Captures confirm-tier `tool-call` +
+      // `tool-approval-request` chunks within each step; at
+      // `finish-step` decides bundle vs single-write and emits a
+      // `data-audric-bundle` marker if ≥2 writes are bundleable.
+      const bundleBuffer = new BundleBuffer();
+
       try {
         for await (const chunk of result.fullStream) {
           collector.observeChunk(chunk);
+
+          // Step lifecycle: reset buffer on start, flush on finish.
+          // These chunks are intentionally NOT passed to translateChunk
+          // (the existing route wraps its own UIMessageStream framing).
+          if (chunk.type === "start-step") {
+            bundleBuffer.reset();
+            continue;
+          }
+          if (chunk.type === "finish-step") {
+            bundleBuffer.flush(writer, messageId);
+            continue;
+          }
+
+          // Defer eligible chunks; pass through everything else.
+          if (bundleBuffer.tryBufferChunk(chunk)) {
+            continue;
+          }
+
           translateChunk(chunk, writer, messageId);
           if (chunk.type === "finish") {
             turnCompleted = true;
           }
         }
       } finally {
+        // Defensive: flush any chunks still buffered if the stream
+        // exits mid-step (error / abort). Without this, a partial
+        // bundle would be lost from the UI.
+        bundleBuffer.flush(writer, messageId);
         writer.write({ type: "text-end", id: messageId });
         writer.write({ type: "finish-step" });
         writer.write({ type: "finish" });
@@ -425,9 +780,13 @@ export async function POST(request: Request) {
       prisma.turnMetrics
         .create({ data: dataForCreate })
         .catch((err: unknown) => {
+          // [Phase 5.5 / D-17] Scrub embedded addresses from Prisma error
+          // payloads. Prisma errors generally don't contain row values
+          // but `meta.target` / unique-constraint violations can echo
+          // back input fields including walletAddress.
           console.error(
             "[web-v2 audric-chat] TurnMetrics write failed (non-fatal):",
-            err
+            redactPII(err)
           );
         });
     },
@@ -441,19 +800,38 @@ export async function POST(request: Request) {
 // -----------------------------------------------------------------------------
 //
 // AI SDK v6 tool parts use the type `tool-<toolName>` with state-based
-// payloads (`input-available`, `output-available`). The client renderer
-// (`app/audric-chat/audric-chat-client.tsx`) switches on `part.type` and
-// hands tool parts to AI Elements `<Tool>` (S.172) — unchanged by Day 2e.
+// payloads (`input-available`, `approval-requested`, `output-available`,
+// `output-error`). The client renderer (`app/audric-chat/audric-chat-client.tsx`)
+// switches on `part.type` + `part.state`; AI Elements `<Tool>` handles
+// read tools, `<PermissionCard>` handles approval-requested writes.
 //
 // AI SDK chunk semantics:
 //   - `text-delta` → write `text-delta` part (assistant prose).
-//   - `tool-call` → write `tool-input-available` (the validated input is
-//     available; tool-input-start/end/delta are streaming-input events
-//     we don't surface in Day 2e).
+//   - `tool-call` → write `tool-input-available`. For confirm-tier tools
+//     we attach `providerMetadata.audric = { description, modifiableFields,
+//     attemptId }` so the client can render an approval card without
+//     hardcoding tool-name → description mapping (the engine's
+//     `describeAction` + `TOOL_MODIFIABLE_FIELDS` registry is the SSOT —
+//     mirrored here per Phase 3 D-8 PendingAction transport).
+//   - `tool-approval-request` → write `tool-approval-request` UI part.
+//     The client's `useChat` assembler joins it with the prior
+//     `tool-input-available` via `toolCallId`, transitioning the tool UI
+//     part state to `'approval-requested'`. The client renders
+//     `<PermissionCard>`, which on Approve runs the sponsored-tx flow
+//     (prepare → sign → execute) then calls `addToolOutput`; on Deny
+//     calls `addToolApprovalResponse({approved: false})`.
 //   - `tool-result` → write `tool-output-available` (the tool's
-//     successful return value).
+//     successful return value). For confirm-tier writes in web-v2 the
+//     server-side execute is never reached (no agent → needsApproval=true);
+//     the client populates this part via `addToolOutput` after the
+//     sponsored-tx round-trip.
 //   - `tool-error` → write `tool-output-error` (the tool threw / guard
 //     blocked / preflight rejected).
+//   - `tool-output-denied` → fires when the user denies approval via
+//     `addToolApprovalResponse({approved: false})`. We translate to a
+//     `tool-output-error` UI part with a clear "user denied" message so
+//     the LLM's next-step continuation sees a structured rejection it
+//     can narrate around.
 //   - `error` → write `text-delta` with `[engine error]` prefix so the
 //     user sees the failure.
 //   - `reasoning-*` → log only (thinking visualization is Phase 4+).
@@ -464,8 +842,264 @@ export async function POST(request: Request) {
 //   - `finish` (terminal — `turnCompleted` flag is set in the loop).
 //   - `text-start`/`text-end`, `tool-input-start/end/delta` (chunk-level
 //     framing the UIMessage assembler doesn't need at Day 2e granularity).
-//   - `source`/`file`/`raw`/`tool-output-denied`/`tool-approval-request`/
-//     `abort` — wired through in Phase 3+ as needed.
+//   - `source`/`file`/`raw`/`abort` — wired through in later phases as
+//     specific features land.
+
+// -----------------------------------------------------------------------------
+// [Phase 5e — 2026-05-19] BundleBuffer — step-boundary bundle marker
+// -----------------------------------------------------------------------------
+//
+// When the LLM emits ≥2 confirm-tier bundleable writes in a single
+// assistant step, AI SDK fires N separate `tool-call` + `tool-approval-
+// request` chunks. Without intervention, the client renders N
+// PermissionCards → N signatures → no atomicity.
+//
+// This buffer captures those chunks between `start-step` and
+// `finish-step`. At `finish-step` it decides:
+//
+//   - If ≥2 buffered confirm-tier writes ARE all bundleable: call the
+//     canonical `composeBundleFromToolResults` helper (same one v0.7a
+//     orchestration + audric fast-path use) to assemble a `PendingAction`
+//     with `steps[]`, emit a `data-audric-bundle` marker carrying the
+//     per-step renderer payload, THEN flush the original chunks
+//     individually so AI SDK's part state machine sees each `tool-call`
+//     and `tool-approval-request` independently. The client folds the
+//     marked toolCallIds into one bundle PermissionCard.
+//
+//   - If <2 confirm-tier OR any non-bundleable: flush each buffered
+//     chunk individually (single-write paths, unchanged behaviour).
+//
+// Other chunks (text-delta, reasoning, read tool-call/tool-result)
+// pass through directly without buffering — text streaming is
+// preserved; only the confirm-tier writes get held back briefly until
+// the step boundary.
+//
+// The helper requires `tool.flags?.bundleable === true` on each tool
+// to pass the defensive check; we apply `applyToolFlags(WRITE_TOOLS)`
+// once and cache the result. This is the same flag set
+// `getDefaultTools()` produces.
+const FLAGGED_WRITE_TOOLS: Tool[] = applyToolFlags(WRITE_TOOLS);
+
+interface BufferedToolCall {
+  /**
+   * The original AI SDK chunk — replayed via `translateChunk` after
+   * marker emission so the part state machine sees each call.
+   */
+  chunk: TextStreamPart<ToolSet>;
+  input: Record<string, unknown>;
+  toolCallId: string;
+  toolName: string;
+}
+
+interface BufferedApprovalRequest {
+  approvalId: string;
+  chunk: TextStreamPart<ToolSet>;
+  toolCallId: string;
+}
+
+class BundleBuffer {
+  private toolCalls: BufferedToolCall[] = [];
+  private approvalRequests: BufferedApprovalRequest[] = [];
+
+  /**
+   * Drop all buffered state. Called at every `start-step` so a
+   * multi-step turn (e.g. resume after HITL) starts fresh per step.
+   */
+  reset(): void {
+    this.toolCalls = [];
+    this.approvalRequests = [];
+  }
+
+  /**
+   * Try to capture `chunk` into the per-step buffer. Returns `true`
+   * when buffered (caller skips immediate translation); `false`
+   * otherwise (caller translates normally).
+   *
+   * We buffer ONLY:
+   *   - confirm-tier `tool-call` chunks (read tools + auto writes
+   *     pass through immediately so streaming UX stays snappy)
+   *   - `tool-approval-request` chunks (these only fire for
+   *     confirm-tier tools by construction)
+   */
+  tryBufferChunk(chunk: TextStreamPart<ToolSet>): boolean {
+    if (chunk.type === "tool-call") {
+      const policy = safeToolPolicy(chunk.toolName);
+      if (policy?.permissionLevel === "confirm") {
+        this.toolCalls.push({
+          toolName: chunk.toolName,
+          toolCallId: chunk.toolCallId,
+          input: (chunk.input ?? {}) as Record<string, unknown>,
+          chunk,
+        });
+        return true;
+      }
+      return false;
+    }
+    if (chunk.type === "tool-approval-request") {
+      this.approvalRequests.push({
+        approvalId: chunk.approvalId,
+        toolCallId: chunk.toolCall.toolCallId,
+        chunk,
+      });
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Flush at `finish-step`. Decides bundle vs single, emits the
+   * bundle marker if applicable, then replays each buffered chunk
+   * via `translateChunk` so the part state machine stays consistent
+   * regardless of bundling.
+   */
+  flush(writer: UIMessageStreamWriter, messageId: string): void {
+    const N = this.toolCalls.length;
+    if (N === 0) {
+      // Nothing to flush. Approval requests can't arrive without a
+      // prior tool-call, so this branch covers turns with no writes.
+      this.reset();
+      return;
+    }
+
+    // Decide bundle eligibility. Three gates:
+    //   1. N ≥ 2 confirm-tier writes
+    //   2. Every write is bundleable (engine `tool-flags.ts`)
+    //   3. Every write has a matching approval request (defensive —
+    //      a confirm-tier tool MUST yield an approval request)
+    const allBundleable = this.toolCalls.every((c) =>
+      isBundleableTool(c.toolName)
+    );
+    const approvalsByToolCallId = new Map(
+      this.approvalRequests.map((a) => [a.toolCallId, a.approvalId])
+    );
+    const everyHasApproval = this.toolCalls.every((c) =>
+      approvalsByToolCallId.has(c.toolCallId)
+    );
+    const isBundle = N >= 2 && allBundleable && everyHasApproval;
+
+    if (isBundle) {
+      try {
+        const marker = buildBundleMarker(this.toolCalls, approvalsByToolCallId);
+        writer.write({
+          type: BUNDLE_MARKER_TYPE,
+          // AI SDK requires data parts carry a `data` field. The marker
+          // shape is `AudricBundleMarker` (typed at the top of this
+          // module + parsed at the client).
+          data: marker,
+        });
+      } catch (err) {
+        // The helper throws on any validation failure (unknown tool,
+        // non-bundleable, malformed input). Log + fall through to
+        // individual rendering — the user sees N PermissionCards
+        // instead of one bundle, which is the same UX as pre-Phase-5e.
+        console.warn(
+          "[audric-chat] Bundle marker emission failed (falling back to N individual cards):",
+          err instanceof Error ? err.message : String(err)
+        );
+      }
+    }
+
+    // Replay buffered chunks in original order via translateChunk.
+    // The state machine sees each part — only the client render
+    // layer hides claimed parts via the marker's toolCallIds set.
+    for (const c of this.toolCalls) {
+      translateChunk(c.chunk, writer, messageId);
+    }
+    for (const a of this.approvalRequests) {
+      translateChunk(a.chunk, writer, messageId);
+    }
+
+    this.reset();
+  }
+}
+
+/**
+ * [Phase 5e] Build the `data-audric-bundle` marker payload from the
+ * buffered tool-calls + approval-requests. Calls the canonical
+ * `composeBundleFromToolResults` helper to derive each step's
+ * `description` + `modifiableFields` (same path v0.7a orchestration
+ * + audric fast-path-bundle use, no drift on field semantics).
+ *
+ * Throws if the helper rejects (unknown tool, non-bundleable). Caller
+ * catches + falls back to individual rendering.
+ */
+function buildBundleMarker(
+  buffered: BufferedToolCall[],
+  approvalsByToolCallId: Map<string, string>
+): AudricBundleMarker {
+  const pendingWrites: PendingToolCall[] = buffered.map((c) => {
+    const tool = FLAGGED_WRITE_TOOLS.find((t) => t.name === c.toolName);
+    if (!tool) {
+      throw new Error(
+        `Unknown tool '${c.toolName}' in bundle marker assembly (not in WRITE_TOOLS)`
+      );
+    }
+    return {
+      name: c.toolName,
+      input: c.input,
+      id: c.toolCallId,
+      tool,
+    };
+  });
+
+  const composed: PendingAction = composeBundleFromToolResults({
+    pendingWrites,
+    tools: FLAGGED_WRITE_TOOLS,
+    // [Phase 5e MVP] Read-result tracking + swap-quote matching are
+    // Phase 5d-deferred features (PermissionCard's quote-refresh +
+    // guard-injection chrome aren't wired through `toolMetadata` in
+    // v0.7c yet). Empty inputs here mean: no `canRegenerate`, no
+    // `regenerateInput`, no per-step `cetusRoute`. The bundle still
+    // composes correctly + renders correctly; the per-step swap
+    // appender falls back to fresh `findSwapRoute()` at execute time
+    // (+150-200ms per swap leg vs the v1 fast path — acceptable for
+    // MVP and recoverable in Phase 6+).
+    readResults: [],
+    swapQuoteReads: undefined,
+    assistantContent: [],
+    completedResults: [],
+    turnIndex: 0,
+  });
+
+  // Compose-bundle ALWAYS populates `steps[]` for N≥2 (its first line
+  // throws otherwise). Defensive narrowing keeps TS strict.
+  if (!composed.steps || composed.steps.length === 0) {
+    throw new Error(
+      "composeBundleFromToolResults returned no steps[] — should be unreachable"
+    );
+  }
+
+  // Map composed steps → marker payload. Each marker step carries the
+  // AI SDK identifiers (toolCallId, approvalId from the buffered
+  // tool-approval-request) instead of compose-bundle's stamped UUIDs.
+  // The compose helper's `step.attemptId` is the harness-spec resume id;
+  // we don't surface it on the marker (client uses AI SDK's approvalId
+  // for `addToolApprovalResponse` + toolCallId for `addToolOutput`).
+  const steps: AudricBundleMarker["steps"] = composed.steps.map((s) => {
+    const approvalId = approvalsByToolCallId.get(s.toolUseId);
+    if (!approvalId) {
+      // Should be unreachable — we gated on `everyHasApproval` before
+      // calling this helper. Throw to surface any logic regression.
+      throw new Error(
+        `Bundle step ${s.toolUseId} has no matching approval request`
+      );
+    }
+    return {
+      toolCallId: s.toolUseId,
+      approvalId,
+      toolName: s.toolName,
+      input: (s.input ?? {}) as Record<string, unknown>,
+      description: s.description,
+      modifiableFields: (s.modifiableFields ?? []).map((f) => ({
+        name: f.name,
+        kind: f.kind,
+        ...(f.asset ? { asset: f.asset } : {}),
+      })),
+    };
+  });
+
+  return { steps };
+}
 
 function translateChunk(
   chunk: TextStreamPart<ToolSet>,
@@ -480,11 +1114,63 @@ function translateChunk(
       break;
     }
     case "tool-call": {
+      // [Phase 3 Day 3a] Attach audric metadata for confirm-tier writes
+      // via AI SDK's `toolMetadata?: JSONObject` field (dedicated tool-
+      // call metadata carrier; `providerMetadata` is reserved for
+      // upstream provider injections like Anthropic cache control).
+      // The client (`audric-chat-client.tsx`) reads `part.toolMetadata`
+      // when state transitions to `'approval-requested'` and renders
+      // `<PermissionCard>` without hardcoding the tool→description map.
+      // Read-only tools (TOOL_POLICY.permissionLevel === 'auto') don't
+      // get metadata — they render via AI Elements `<Tool>` without an
+      // approval card.
+      //
+      // The metadata's `attemptId` field carries the toolCallId as a
+      // UI-only client-side hint. The PERSISTED correlation id (used
+      // for cross-turn `updateMany` on `TurnMetrics.attemptId`) is the
+      // AI SDK `approvalId` from the subsequent `tool-approval-request`
+      // chunk — `approvalId` is a freshly-generated UUID, NOT equal to
+      // `toolCallId`. Per harness Spec §Item 3a, `attemptId` ===
+      // `approvalId` by construction in the v0.7c rewrite; the
+      // telemetry collector at `lib/audric/telemetry-integration.ts`
+      // handles the persistence side of that contract.
+      const policy = safeToolPolicy(chunk.toolName);
+      const isConfirmTier = policy?.permissionLevel === "confirm";
+      const audricMetadata = isConfirmTier
+        ? buildAudricToolMetadata(chunk.toolName, chunk.input, chunk.toolCallId)
+        : undefined;
       writer.write({
         type: "tool-input-available",
         toolCallId: chunk.toolCallId,
         toolName: chunk.toolName,
         input: chunk.input,
+        // `toolMetadata` is typed as `JSONObject` (= `Record<string,
+        // JSONValue | undefined>`) imported from `@ai-sdk/provider`.
+        // The audric shape IS structurally a JSONObject (strings +
+        // arrays of {string,string,string?} objects) but TS can't
+        // infer the index signature from a typed-property record
+        // literal — the inline-import cast below is the standard AI
+        // SDK pattern for adapter-injected metadata. No new runtime
+        // dep: `@ai-sdk/provider` is a transitive dep of `ai`.
+        ...(audricMetadata
+          ? {
+              toolMetadata:
+                audricMetadata as unknown as import("@ai-sdk/provider").JSONObject,
+            }
+          : {}),
+      });
+      break;
+    }
+    case "tool-approval-request": {
+      // [Phase 3 Day 3a / D-8] AI SDK's native HITL handshake. The
+      // chunk's `approvalId` is the addToolApprovalResponse correlation
+      // id; the chunk's `toolCall.toolCallId` matches the prior
+      // `tool-input-available`'s id so `useChat` joins them and
+      // transitions the tool part to state='approval-requested'.
+      writer.write({
+        type: "tool-approval-request",
+        approvalId: chunk.approvalId,
+        toolCallId: chunk.toolCall.toolCallId,
       });
       break;
     }
@@ -501,6 +1187,22 @@ function translateChunk(
         type: "tool-output-error",
         toolCallId: chunk.toolCallId,
         errorText: safeErrorText(chunk.error),
+      });
+      break;
+    }
+    case "tool-output-denied": {
+      // [Phase 3 Day 3a] User denied approval client-side via
+      // `addToolApprovalResponse({approved: false})`. AI SDK surfaces
+      // this as a `tool-output-denied` chunk; we map it to a structured
+      // error so the LLM sees a clean rejection in its tool-result
+      // slot and can narrate around it ("OK, I won't proceed with the
+      // save — anything else I can help with?"). Without translation
+      // the LLM would see no tool-result for the call → next-step
+      // confusion.
+      writer.write({
+        type: "tool-output-error",
+        toolCallId: chunk.toolCallId,
+        errorText: "User denied the action.",
       });
       break;
     }
@@ -534,11 +1236,149 @@ function translateChunk(
     default:
       // Other chunks (`start`, `start-step`, `finish-step`, `finish`,
       // `text-start`, `text-end`, `tool-input-*`, `source`, `file`,
-      // `raw`, `tool-output-denied`, `tool-approval-request`, `abort`,
-      // `reasoning-start`) are not translated. Subsequent Phase 3+
-      // wires them through (especially `tool-approval-request` →
-      // PendingAction transport per D-8).
+      // `raw`, `abort`, `reasoning-start`) are not translated.
       break;
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Audric metadata builders (Phase 3 Day 3a)
+// -----------------------------------------------------------------------------
+//
+// Mirror of the engine's `describeAction` + `TOOL_MODIFIABLE_FIELDS`
+// registry, scoped to the tools wired into web-v2 today. We could
+// import `describeAction` directly, but it's currently NOT exported
+// from `@t2000/engine`'s barrel (private to the legacy v1 `pending_action`
+// emit path). Mirroring inline here keeps Phase 3 a host-only change —
+// the engine release is unchanged.
+//
+// Phase 4 (G7) extends this for the remaining 11 writes following the
+// same pattern. If the registry grows past ~6 entries, promote
+// `describeAction` to a public engine export instead.
+
+// The client (`audric-chat-client.tsx`) parses `part.toolMetadata` with
+// a small Zod schema before reading fields. AI SDK's `JSONObject` is
+// `{ [key: string]: JSONValue | undefined }`; the shape below structurally
+// matches but is declared with a permissive index signature so values
+// constructed inline don't need an `as JSONObject` cast at the writer
+// callsite.
+type AudricToolMetadata = {
+  description: string;
+  modifiableFields: Array<{
+    name: string;
+    kind: string;
+    asset?: string;
+  }>;
+  attemptId: string;
+};
+
+function buildAudricToolMetadata(
+  toolName: string,
+  input: unknown,
+  toolCallId: string
+): AudricToolMetadata | undefined {
+  const description = describeAudricAction(toolName, input);
+  if (!description) {
+    return;
+  }
+  const fields = getModifiableFields(toolName) ?? [];
+  // Strip `readonly` + spread to a plain object so AI SDK's structural
+  // `JSONObject` check passes (readonly arrays don't satisfy `JSONValue`).
+  const modifiableFields = fields.map((f) => ({
+    name: f.name,
+    kind: f.kind,
+    ...(f.asset ? { asset: f.asset } : {}),
+  }));
+  return {
+    description,
+    modifiableFields,
+    attemptId: toolCallId,
+  };
+}
+
+function describeAudricAction(
+  toolName: string,
+  input: unknown
+): string | undefined {
+  const obj = (input ?? {}) as Record<string, unknown>;
+  switch (toolName) {
+    case "save_deposit": {
+      // Mirrors `describe-action.ts` L21-28 (engine). Defaults to USDC
+      // to match the SDK's `assertAllowedAsset('save', ...)` default.
+      const amount = obj.amount;
+      const asset = (obj.asset as string | undefined) ?? "USDC";
+      return `Save ${amount} ${asset} into lending`;
+    }
+    case "withdraw": {
+      const amount = obj.amount;
+      const asset = (obj.asset as string | undefined) ?? "USDC";
+      return `Withdraw ${amount} ${asset} from lending`;
+    }
+    case "borrow": {
+      const amount = obj.amount;
+      const asset = (obj.asset as string | undefined) ?? "USDC";
+      return `Borrow ${amount} ${asset} against your savings`;
+    }
+    case "repay_debt": {
+      const amount = obj.amount;
+      const asset = (obj.asset as string | undefined) ?? "USDC";
+      return `Repay ${amount} ${asset} of debt`;
+    }
+    case "send_transfer": {
+      const amount = obj.amount;
+      const asset = (obj.asset as string | undefined) ?? "USDC";
+      const to = obj.to as string | undefined;
+      const shortTo = to ? `${to.slice(0, 6)}…${to.slice(-4)}` : "recipient";
+      return `Send ${amount} ${asset} to ${shortTo}`;
+    }
+    case "swap_execute": {
+      const amount = obj.amount;
+      const from = (obj.from as string | undefined) ?? "?";
+      const to = (obj.to as string | undefined) ?? "?";
+      return `Swap ${amount} ${from} → ${to}`;
+    }
+    case "claim_rewards":
+      return "Claim NAVI rewards";
+    case "harvest_rewards":
+      return "Harvest rewards (claim → swap to USDC → save)";
+    case "volo_stake": {
+      const amount = obj.amountSui ?? obj.amount;
+      return `Stake ${amount} SUI on Volo`;
+    }
+    case "volo_unstake": {
+      const raw = obj.amountVSui ?? obj.amount;
+      const display =
+        raw === "all" || raw === 0 || raw === undefined
+          ? "all vSUI"
+          : `${raw} vSUI`;
+      return `Unstake ${display} from Volo`;
+    }
+    case "save_contact": {
+      const name = (obj.name as string | undefined) ?? "contact";
+      const addr = obj.address as string | undefined;
+      const shortAddr = addr
+        ? `${addr.slice(0, 6)}…${addr.slice(-4)}`
+        : "address";
+      return `Save contact "${name}" (${shortAddr})`;
+    }
+    default:
+      // [Phase 4b 2026-05-19] `pay_api` is intentionally EXCLUDED from
+      // web-v2's tool set (see comment near `writeToolsForWebV2`).
+      // No description case needed because the LLM never sees the tool.
+      return;
+  }
+}
+
+function safeToolPolicy(
+  toolName: string
+): { permissionLevel: string } | undefined {
+  try {
+    return getToolPolicy(toolName);
+  } catch {
+    // `getToolPolicy` throws for unknown tools — that's expected for
+    // gateway-managed tools like `perplexity_search` (not in TOOL_POLICY).
+    // Treat as auto (no approval card).
+    return;
   }
 }
 
@@ -568,8 +1408,58 @@ function safeErrorText(error: unknown): string {
  * estimateTokens heuristic at packages/engine/src/context.ts.
  */
 function estimateContextTokens(
-  messages: Array<{ role: string; content: string }>
+  messages: Array<
+    | { role: string; content: string }
+    | { role: string; parts: Array<{ type: string; text?: string }> }
+  >
 ): number {
-  const totalChars = messages.reduce((acc, m) => acc + m.content.length, 0);
+  const totalChars = messages.reduce((acc, m) => {
+    if ("content" in m) {
+      return acc + m.content.length;
+    }
+    const partChars = m.parts.reduce((sum, p) => {
+      if (p.type === "text" && typeof p.text === "string") {
+        return sum + p.text.length;
+      }
+      return sum;
+    }, 0);
+    return acc + partChars;
+  }, 0);
   return Math.ceil(totalChars / CHARS_PER_TOKEN_ESTIMATE);
+}
+
+/**
+ * [Phase 3 outcome-update slice] Update Turn 1's TurnMetrics row with
+ * the resolved HITL outcome from the resume turn. Mirrors the legacy
+ * `/api/engine/resume` route's pattern at audric/apps/web/app/api/
+ * engine/resume/route.ts (L120-150) — fire-and-forget, idempotent.
+ *
+ * The `where: { attemptId }` filter targets the SINGLE Turn 1 row
+ * that stamped this `attemptId` when the engine emitted
+ * `tool-approval-request`. Subsequent resume turns may re-run the
+ * same updateMany; Prisma treats it as a noop overwrite.
+ */
+function persistResumeOutcome(outcome: ResumeOutcome): void {
+  prisma.turnMetrics
+    .updateMany({
+      where: { attemptId: outcome.attemptId },
+      data: {
+        pendingActionOutcome: outcome.outcome,
+        // Only confirmed outcomes carry a populated duration. The
+        // helper returns `null` for denied / failed; passing null to
+        // Prisma writes SQL NULL, matching the legacy resume route's
+        // contract (denied + failed rows show NULL ms in NeonDB).
+        writeToolDurationMs: outcome.writeToolDurationMs,
+      },
+    })
+    .catch((err: unknown) => {
+      // [Phase 5.5 / D-17] Scrub embedded addresses from Prisma error
+      // payloads. `attemptId.slice(0, 8)` is already pre-truncated;
+      // `redactPII` handles any wallet address Prisma echoes back in
+      // its `meta.target` or constraint violation envelope.
+      console.error(
+        `[web-v2 audric-chat] resume-outcome updateMany failed (non-fatal) attemptId=${outcome.attemptId.slice(0, 8)}:`,
+        redactPII(err)
+      );
+    });
 }

@@ -98,6 +98,22 @@ export class TelemetryIntegration {
   private cacheWriteTokens = 0;
   private finalTextChars = 0;
   private interrupted = false;
+  // [Phase 3 Day 3a / S.175] HITL correlation state. AI SDK emits a
+  // `tool-approval-request` chunk when a confirm-tier tool pauses; the
+  // chunk's `approvalId` is the correlation id the host persists on
+  // `TurnMetrics` for the canonical "find this row again when the
+  // approval resolves" pattern (`updateMany({where: {attemptId}})`).
+  // Per agent-harness-spec.mdc §Item 3 + §Item 3a, attemptId === approvalId
+  // by construction — we treat the AI SDK approvalId AS the engine's
+  // attemptId for the v0.7c rewrite (the engine no longer emits its own
+  // pending_action events under AI SDK orchestration).
+  //
+  // NOTE: approvalId is NOT equal to toolCallId. AI SDK generates a
+  // fresh UUID via `generateId()` for the approval and pairs it with the
+  // toolCallId in a Map server-side. We persist `approvalId` here, NOT
+  // `toolCallId`.
+  private pendingApprovalId: string | null = null;
+  private pendingActionYielded = false;
 
   observeChunk(chunk: AnyChunk): void {
     switch (chunk.type) {
@@ -142,6 +158,18 @@ export class TelemetryIntegration {
           latencyMs: Date.now() - start,
           resultSizeChars: safeStringify(chunk.error).length,
         });
+        break;
+      }
+      case "tool-approval-request": {
+        // [Phase 3 Day 3a / S.175] AI SDK pauses the loop on a confirm-
+        // tier tool. Persist the approvalId so `TurnMetrics.attemptId`
+        // carries the correlation id the future resume turn can use to
+        // `updateMany` the row. Multiple approvals per turn are possible
+        // in theory; we keep the LAST one (matches engine's prior
+        // pending_action emit pattern — the legacy `attemptId` was
+        // overwritten on every yield within a turn).
+        this.pendingApprovalId = chunk.approvalId;
+        this.pendingActionYielded = true;
         break;
       }
       case "finish": {
@@ -203,7 +231,15 @@ export class TelemetryIntegration {
       sessionId: context.sessionId,
       userId: context.userId,
       turnIndex: context.turnIndex,
-      attemptId: null,
+      // [Phase 3 Day 3a / S.175] Stamp the AI SDK `approvalId` (== the
+      // engine's `attemptId` per agent-harness-spec.mdc §Item 3a) so
+      // the resume turn — or a future audric/web `/api/engine/resume`
+      // back-port — can `updateMany({where: {attemptId}})`.
+      attemptId: this.pendingApprovalId,
+      // The outcome is resolved on the NEXT turn (when the host sees
+      // the approved tool-output-available / denied tool-output-denied
+      // in the request body). Phase 3 leaves this `null` on Turn 1;
+      // Phase 4 wires the cross-turn updateMany.
       pendingActionOutcome: null,
       synthetic: context.synthetic ?? false,
       // `id` + `createdAt` server-managed by Prisma — omitted; stamped per @default.
@@ -223,7 +259,7 @@ export class TelemetryIntegration {
       inputTokens: this.inputTokens,
       outputTokens: this.outputTokens,
       estimatedCostUsd,
-      pendingActionYielded: false,
+      pendingActionYielded: this.pendingActionYielded,
       aciRefinements: 0,
       sessionSpendUsd: context.sessionSpendUsd,
       mutableToolDedupes: 0,

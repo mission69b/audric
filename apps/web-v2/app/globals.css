@@ -44,6 +44,51 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+
+  /* ----------------------------------------------------------
+     Audric Design System utility mapping (Phase 5a.0).
+     Generates tailwind utilities like `bg-surface-card`,
+     `text-fg-muted`, `border-border-subtle`,
+     `text-success-solid`, etc. for the renderer port.
+     ---------------------------------------------------------- */
+
+  /* Surface */
+  --color-surface-page: var(--surface-page);
+  --color-surface-card: var(--surface-card);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-surface-inverse: var(--surface-inverse);
+
+  /* Foreground */
+  --color-fg-primary: var(--fg-primary);
+  --color-fg-secondary: var(--fg-secondary);
+  --color-fg-muted: var(--fg-muted);
+  --color-fg-disabled: var(--fg-disabled);
+  --color-fg-inverse: var(--fg-inverse);
+
+  /* Border */
+  --color-border-default: var(--border-default);
+  --color-border-subtle: var(--border-subtle);
+  --color-border-strong: var(--border-strong);
+  --color-border-focus: var(--border-focus);
+
+  /* Status (success / warning / error / info × fg / bg / border / solid) */
+  --color-success-fg: var(--success-fg);
+  --color-success-bg: var(--success-bg);
+  --color-success-border: var(--success-border);
+  --color-success-solid: var(--success-solid);
+  --color-warning-fg: var(--warning-fg);
+  --color-warning-bg: var(--warning-bg);
+  --color-warning-border: var(--warning-border);
+  --color-warning-solid: var(--warning-solid);
+  --color-error-fg: var(--error-fg);
+  --color-error-bg: var(--error-bg);
+  --color-error-border: var(--error-border);
+  --color-error-solid: var(--error-solid);
+  --color-info-fg: var(--info-fg);
+  --color-info-bg: var(--info-bg);
+  --color-info-border: var(--info-border);
+  --color-info-solid: var(--info-solid);
 }
 
 :root {
@@ -94,6 +139,128 @@
   --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* ============================================================
+   AUDRIC DESIGN SYSTEM v1.2 — light-theme tokens
+   Ported into web-v2 by Phase 5a.0 (renderer migration sweep,
+   2026-05-19) per D-10 lock. Cards / canvas / timeline renderers
+   under `components/audric/*` consume these. Coexists with the
+   shadcn / ai-chatbot tokens above (no name collisions except
+   chart-1..4 — see comment below).
+
+   Traceability:
+     - Legacy source: apps/web/app/globals.css lines 1-220
+     - Phase 5 SPEC: BENEFITS_SPEC_v07c.md §"Phase 5 — Renderer
+       migration sweep" + D-10 (theme re-port).
+     - Pink / teal / purple / orange hue scales NOT ported —
+       cards don't reference them. Add piecemeal if a future
+       card needs them.
+   ============================================================ */
+
+:root {
+  /* Neutrals (9 steps) — semantic aliases compose from these. */
+  --n100: #ffffff;
+  --n200: #f7f7f7;
+  --n300: #e5e5e5;
+  --n400: #cccccc;
+  --n500: #8f8f8f;
+  --n600: #707070;
+  --n700: #363636;
+  --n800: #191919;
+  --n900: #000000;
+
+  /* Status hue scales (red / green / yellow / blue) — status semantic
+     tokens compose from these. Keeping all 8 steps because dark theme
+     promotes solids one step up. */
+  --r100: #fff5f5;
+  --r200: #ffeded;
+  --r300: #ffa0a0;
+  --r400: #ff5c5c;
+  --r500: #f02d2d;
+  --r600: #d50b0b;
+  --r700: #570303;
+  --r800: #2a0303;
+
+  --g100: #f6fef6;
+  --g200: #e0fae0;
+  --g300: #a6f0a5;
+  --g400: #4ce160;
+  --g500: #3cc14e;
+  --g600: #288034;
+  --g700: #1b561a;
+  --g800: #0c310d;
+
+  --y100: #fffff5;
+  --y200: #fff8d5;
+  --y300: #ffe58a;
+  --y400: #ffbd14;
+  --y500: #eebb04;
+  --y600: #855f00;
+  --y700: #553606;
+  --y800: #312102;
+
+  --o400: #ff8806;
+  --o500: #ec7303;
+
+  --b100: #f5f9ff;
+  --b200: #d4e5fe;
+  --b300: #84b4fb;
+  --b400: #4d93fc;
+  --b500: #0968f6;
+  --b600: #0049b8;
+  --b700: #002a69;
+  --b800: #19133a;
+
+  /* Surface */
+  --surface-page: var(--n200);
+  --surface-card: var(--n100);
+  --surface-sunken: var(--n200);
+  --surface-elevated: var(--n300);
+  --surface-inverse: var(--n800);
+
+  /* Foreground */
+  --fg-primary: var(--n800);
+  --fg-secondary: var(--n600);
+  --fg-muted: var(--n500);
+  --fg-disabled: var(--n400);
+  --fg-inverse: var(--n100);
+
+  /* Border */
+  --border-default: var(--n300);
+  --border-subtle: #e0e0e0;
+  --border-strong: var(--n400);
+  --border-focus: var(--b500);
+
+  /* Status — success / warning / error / info (full set of fg / bg / border / solid) */
+  --success-fg: var(--g700);
+  --success-bg: var(--g200);
+  --success-border: var(--g400);
+  --success-solid: var(--g600);
+
+  --warning-fg: var(--y700);
+  --warning-bg: var(--y200);
+  --warning-border: var(--y400);
+  --warning-solid: var(--o500);
+
+  --error-fg: var(--r700);
+  --error-bg: var(--r200);
+  --error-border: var(--r400);
+  --error-solid: var(--r600);
+
+  --info-fg: var(--b700);
+  --info-bg: var(--b200);
+  --info-border: var(--b400);
+  --info-solid: var(--b500);
+
+  /* Chart segments — sequential greys (light: dark→light reversed).
+     COLLIDES intentionally with the ai-chatbot template's --chart-1..5;
+     cards expect Audric's monochrome grey scale. --chart-5 falls through
+     to the template's default (preserves any non-card consumer). */
+  --chart-1: var(--n400);
+  --chart-2: var(--n500);
+  --chart-3: var(--n600);
+  --chart-4: var(--n700);
+}
+
 .dark {
   --background: oklch(0.195 0 0);
   --foreground: oklch(0.94 0 0);
@@ -138,6 +305,63 @@
   --shadow-composer-focus:
     0 0 0 1px oklch(1 0 0 / 0.1), 0 4px 16px -4px oklch(0 0 0 / 0.3),
     inset 0 1px 0 oklch(1 0 0 / 0.04);
+}
+
+/* ============================================================
+   AUDRIC DESIGN SYSTEM v1.2 — dark-theme overrides
+   Ported alongside the light tokens (Phase 5a.0, 2026-05-19).
+   Mirrors the legacy `[data-theme="dark"]` block but uses `.dark`
+   to match web-v2's existing class-based dark-mode toggle.
+   ============================================================ */
+
+.dark {
+  /* Surface — flipped per dark spec (panel-2 inverts vs light) */
+  --surface-page: #141414;
+  --surface-card: #1f1f1f;
+  --surface-sunken: #0a0a0a;
+  --surface-elevated: #2a2a2a;
+  --surface-inverse: var(--n100);
+
+  /* Foreground */
+  --fg-primary: #f5f5f5;
+  --fg-secondary: #b0b0b0;
+  --fg-muted: #808080;
+  --fg-disabled: #5a5a5a;
+  --fg-inverse: #0a0a0a;
+
+  /* Border */
+  --border-default: #2a2a2a;
+  --border-subtle: #2a2a2a;
+  --border-strong: #3d3d3d;
+  --border-focus: var(--b400);
+
+  /* Status — solids promoted to 400 step for dark-bg legibility;
+     -bg becomes alpha tint of the 400 solid */
+  --success-fg: var(--g400);
+  --success-bg: rgba(76, 225, 96, 0.14);
+  --success-border: var(--g500);
+  --success-solid: var(--g400);
+
+  --warning-fg: var(--y400);
+  --warning-bg: rgba(255, 189, 20, 0.18);
+  --warning-border: var(--y500);
+  --warning-solid: var(--y400);
+
+  --error-fg: var(--r400);
+  --error-bg: rgba(255, 92, 92, 0.14);
+  --error-border: var(--r500);
+  --error-solid: var(--r400);
+
+  --info-fg: var(--b400);
+  --info-bg: rgba(77, 147, 252, 0.14);
+  --info-border: var(--b500);
+  --info-solid: var(--b400);
+
+  /* Chart segments — reversed for dark (medium→light) */
+  --chart-1: var(--n600);
+  --chart-2: var(--n500);
+  --chart-3: var(--n400);
+  --chart-4: var(--n300);
 }
 
 @layer base {
