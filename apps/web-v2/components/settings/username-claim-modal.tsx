@@ -1,23 +1,23 @@
 "use client";
 
 /**
- * Username claim modal (safety-valve) — port from `apps/web/components/
- * identity/UsernameClaimModal.tsx`.
- *
- * Diffs from legacy:
- *   - Icon `close` → XIcon from lucide-react
- *   - `clearUsernameSkip` cross-app-imported from
- *     `apps/web/lib/identity/username-skip` so the localStorage skip
- *     flag is shared between v2-settings and legacy-dashboard surfaces.
+ * Username claim modal (safety-valve) — Session 4.7.C rebuild.
  *
  * Mounted from the Passport section when the user has no claimed
  * handle (rare in production — the signup gate handles first-time
  * claim — but defensive for users who skipped via the "Skip for now"
  * affordance).
+ *
+ * Diffs from the Session 2 port:
+ *   - Bespoke scrim + manual ESC keydown listener REPLACED by shadcn
+ *     `<Dialog>` + `<DialogContent>`. Same UX, free focus trap +
+ *     proper ARIA dialog semantics + portal rendering.
+ *   - 102 LoC → ~40 LoC. The wrapping component is now structural;
+ *     the actual claim UX lives in `<UsernameClaimGate>` (a content
+ *     slot) and is unchanged.
  */
 
-import { XIcon } from "lucide-react";
-import { useEffect } from "react";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { clearUsernameSkip } from "@/lib/identity/username-skip";
 import { UsernameClaimGate } from "./username-claim-gate";
 
@@ -32,60 +32,27 @@ export interface UsernameClaimModalProps {
 }
 
 export function UsernameClaimModal({
-  open,
   address,
-  jwt,
-  googleName,
   googleEmail,
+  googleName,
+  jwt,
   onClaimed,
   onClose,
+  open,
 }: UsernameClaimModalProps) {
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        onClose();
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [open, onClose]);
-
-  if (!open) {
-    return null;
-  }
-
   return (
-    // biome-ignore lint/a11y/noNoninteractiveElementInteractions: dialog scrim — Escape handled via global keydown listener in useEffect above
-    // biome-ignore lint/a11y/useKeyWithClickEvents: scrim click is a click-out-to-close pattern; keyboard equivalent is Escape (handled in useEffect)
-    <div
-      aria-labelledby="claim-handle-title"
-      aria-modal="true"
-      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[rgba(0,0,0,0.42)] px-4 py-8"
-      data-testid="username-claim-modal"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) {
+    <Dialog
+      onOpenChange={(next) => {
+        if (!next) {
           onClose();
         }
       }}
-      role="dialog"
+      open={open}
     >
-      <div className="relative w-full max-w-[540px]">
-        <h2 className="sr-only" id="claim-handle-title">
-          Pick your handle
-        </h2>
-
-        <button
-          aria-label="Close"
-          className="absolute top-5 right-5 z-10 inline-flex h-7 w-7 items-center justify-center rounded-sm text-fg-muted transition hover:bg-surface-sunken hover:text-fg-primary focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none"
-          onClick={onClose}
-          type="button"
-        >
-          <XIcon size={14} />
-        </button>
-
+      <DialogContent
+        className="overflow-hidden bg-transparent p-0 shadow-none ring-0 sm:max-w-[560px]"
+        data-testid="username-claim-modal"
+      >
         <UsernameClaimGate
           address={address}
           googleEmail={googleEmail}
@@ -96,7 +63,7 @@ export function UsernameClaimModal({
             onClaimed(label, fullHandle);
           }}
         />
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

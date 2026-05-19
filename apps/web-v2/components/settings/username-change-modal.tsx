@@ -1,24 +1,28 @@
 "use client";
 
 /**
- * Username change modal — port from `apps/web/components/identity/
- * UsernameChangeModal.tsx`.
+ * Username change modal — Session 4.7.C rebuild.
  *
- * Two diffs from legacy:
- *   - Icon usage swapped for lucide-react equivalents
- *     (`check` → CheckIcon, `close` → XIcon, `spinner` → LoaderIcon)
- *   - `/api/identity/change` fetch goes through `audricWebUrl()`
- *   - lib helpers (validateAudricLabel, isReserved) cross-app-imported
- *     from `apps/web/lib/identity/*` — matches the contact-schema
- *     pattern already established in `app/api/contacts/save/route.ts`.
+ * UX/behavior parity with the Session 2 port:
+ *   - Live availability check (300ms debounce, 503/429 → verifier-down)
+ *   - Warning callout on "this action is final"
+ *   - Success card with serif new-handle + DONE dismissal
  *
- * UX/behavior parity: live availability check (300ms debounce, 503/429
- * → verifier-down state), warning callout on "this action is final",
- * success card with serif new-handle and DONE dismissal.
+ * Diffs from Session 2:
+ *   - Bespoke scrim + manual ESC keydown listener REPLACED by shadcn
+ *     `<Dialog>` + `<DialogContent>`. Brings free focus trap, proper
+ *     ARIA dialog semantics, portal rendering, animated overlay, and
+ *     correct focus restoration on close.
+ *   - LoC is roughly unchanged — the win here is plumbing modernity +
+ *     accessibility, not size. The form logic, status messaging,
+ *     warning callout, and success card layout stay verbatim because
+ *     they're the brand-aligned UX (serif lockup, mono captions, error
+ *     and success color tokens) that's the deliverable of the Audric
+ *     Passport surface. See PRAGMATIC scope decision in
+ *     RUNBOOK_v07c_phase_6_cutover.md §4.7.C.
  *
- * Traceability: BENEFITS_SPEC_v07c.md §"Phase 6 Session 2 — Settings
- * rebuild"; legacy reference: apps/web/components/identity/
- * UsernameChangeModal.tsx (S.84 / S.118 follow-up / S18-F18 / S18-F19).
+ * Traceability: BENEFITS_SPEC_v07c.md §"Phase 6 Session 4.7.B-C";
+ * legacy reference: apps/web/components/identity/UsernameChangeModal.tsx.
  */
 
 import { CheckIcon, LoaderIcon, XIcon } from "lucide-react";
@@ -30,6 +34,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { audricWebUrl } from "@/lib/audric-web-url";
 import { fetchIdentityCheck } from "@/lib/identity/check-fetcher";
 import { isReserved } from "@/lib/identity/reserved-usernames";
@@ -102,14 +107,14 @@ export class ChangeError extends Error {
 }
 
 export function UsernameChangeModal({
-  open,
   address,
-  jwt,
-  currentLabel,
-  onClose,
-  onChanged,
   changeFetcher,
   checkFetcher,
+  currentLabel,
+  jwt,
+  onChanged,
+  onClose,
+  open,
 }: UsernameChangeModalProps) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [value, setValue] = useState("");
@@ -121,6 +126,8 @@ export function UsernameChangeModal({
   const inputId = useId();
   const helpId = useId();
 
+  // Reset state on each open so a previous error / success state
+  // doesn't leak into the next session.
   useEffect(() => {
     if (open) {
       setPhase("idle");
@@ -129,24 +136,8 @@ export function UsernameChangeModal({
       setSuccessHandle(null);
       setFocused(false);
       setAvailability("idle");
-      const t = setTimeout(() => inputRef.current?.focus(), 30);
-      return () => clearTimeout(t);
     }
-    return;
   }, [open]);
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && phase !== "submitting") {
-        onClose();
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [open, phase, onClose]);
 
   const defaultFetcher = useCallback(
     async (newLabel: string): Promise<ChangeSuccessBody> => {
@@ -300,16 +291,9 @@ export function UsernameChangeModal({
     [validation, phase, availability, fetcher, onChanged]
   );
 
-  if (!open) {
-    return null;
-  }
-
   const currentFull = `${currentLabel}${PARENT_SUFFIX}`;
   const isSuccess = phase === "success" && successHandle !== null;
   const isSubmitting = phase === "submitting";
-
-  const scrimClass =
-    "fixed inset-0 z-50 flex items-center justify-center bg-[rgba(0,0,0,0.42)] px-4";
 
   const isLocalError =
     validation.status === "invalid" ||
@@ -340,240 +324,296 @@ export function UsernameChangeModal({
     : "";
 
   return (
-    // biome-ignore lint/a11y/noNoninteractiveElementInteractions: dialog scrim — Escape handled via global keydown listener in useEffect above
-    // biome-ignore lint/a11y/useKeyWithClickEvents: scrim click is a click-out-to-close pattern; keyboard equivalent is Escape (handled in useEffect)
-    <div
-      aria-labelledby="change-handle-title"
-      aria-modal="true"
-      className={scrimClass}
-      data-testid="username-change-modal"
-      onClick={(e) => {
-        if (e.target === e.currentTarget && !isSubmitting) {
+    <Dialog
+      onOpenChange={(next) => {
+        if (!(next || isSubmitting)) {
           onClose();
         }
       }}
-      role="dialog"
+      open={open}
     >
-      {isSuccess ? (
-        <div
-          className="w-full max-w-[460px] overflow-hidden rounded-lg border border-border-subtle bg-surface-card text-center shadow-[var(--shadow-modal)]"
-          data-testid="username-change-modal-success"
-        >
-          <div className="px-8 pt-9 pb-7">
-            <div
-              aria-hidden="true"
-              className="mx-auto mb-[18px] flex h-11 w-11 items-center justify-center rounded-full border border-success-border bg-success-bg text-success-fg"
-            >
-              <CheckIcon size={20} />
-            </div>
-
-            <div
-              className="mb-3.5 font-mono text-[11px] uppercase tracking-[0.14em] text-fg-secondary"
-              id="change-handle-title"
-            >
-              HANDLE CHANGED
-            </div>
-
-            <div className="break-all font-serif text-[22px] leading-[1.15] tracking-[-0.005em] text-fg-primary">
-              {successHandle}
-            </div>
-
-            <p className="mx-auto mt-3.5 max-w-[320px] text-[13px] leading-[1.55] text-fg-secondary">
-              It can take a few seconds to propagate everywhere.
-            </p>
-          </div>
-
-          <div className="flex justify-center border-t border-border-subtle py-3.5">
-            <button
-              className="rounded-sm border border-fg-primary bg-fg-primary px-4 py-2.5 font-mono text-[11px] uppercase tracking-[0.1em] text-fg-inverse transition hover:opacity-90 focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none"
-              data-testid="username-change-modal-done"
-              onClick={onClose}
-              type="button"
-            >
-              DONE
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div className="w-full max-w-[520px] overflow-hidden rounded-lg border border-border-subtle bg-surface-card shadow-[var(--shadow-modal)]">
-          <div className="flex items-center justify-between border-b border-border-subtle px-[18px] py-3.5">
-            <span
-              className="font-mono text-[11px] uppercase tracking-[0.1em] text-fg-primary"
-              id="change-handle-title"
-            >
-              {"// CHANGE HANDLE"}
-            </span>
-            <button
-              aria-label="Close"
-              className="inline-flex h-6 w-6 items-center justify-center rounded-sm text-fg-muted transition hover:bg-surface-sunken hover:text-fg-primary focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none disabled:opacity-50"
-              disabled={isSubmitting}
-              onClick={onClose}
-              type="button"
-            >
-              <XIcon size={12} />
-            </button>
-          </div>
-
-          <form className="px-6 pt-5 pb-6" onSubmit={handleSubmit}>
-            <div className="mb-[18px]">
-              <div className="mb-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-fg-muted">
-                CURRENT
-              </div>
-              <div className="rounded-sm border border-border-subtle bg-surface-sunken px-3 py-2.5 font-mono text-[14px] text-fg-secondary">
-                {currentLabel}
-                <span className="text-fg-muted">{PARENT_SUFFIX}</span>
-              </div>
-            </div>
-
-            <div>
-              <label
-                className="mb-1.5 block font-mono text-[10px] uppercase tracking-[0.1em] text-fg-muted"
-                htmlFor={inputId}
-              >
-                NEW HANDLE
-              </label>
-              <div
-                className={`flex items-center rounded-xs bg-surface-card transition border ${inputBorderClass} ${inputShadow} px-3 py-0.5`}
-              >
-                <input
-                  aria-describedby={helpId}
-                  aria-invalid={
-                    (validation.status !== "idle" &&
-                      validation.status !== "ok") ||
-                    undefined
-                  }
-                  autoCapitalize="off"
-                  autoComplete="off"
-                  autoCorrect="off"
-                  className="min-w-0 flex-1 border-none bg-transparent px-1 py-2.5 font-mono text-[14px] text-fg-primary outline-none placeholder:text-fg-muted disabled:opacity-50"
-                  disabled={isSubmitting}
-                  id={inputId}
-                  maxLength={20}
-                  onBlur={() => setFocused(false)}
-                  onChange={(e) => {
-                    setValue(e.target.value);
-                    setSubmitError(null);
-                  }}
-                  onFocus={() => setFocused(true)}
-                  placeholder="alice"
-                  ref={inputRef}
-                  spellCheck={false}
-                  type="text"
-                  value={value}
-                />
-                <span className="pr-1 font-mono text-[14px] text-fg-muted">
-                  {PARENT_SUFFIX}
-                </span>
-              </div>
-
-              <p
-                className={`mt-2 inline-flex items-start gap-1.5 font-mono text-[11px] uppercase tracking-[0.04em] ${
-                  submitError || isLocalError || isAvailabilityError
-                    ? "text-error-fg"
-                    : availability === "available"
-                      ? "text-success-fg"
-                      : "text-fg-muted"
-                }`}
-                id={helpId}
-                role={
-                  submitError || validation.hint || isAvailabilityError
-                    ? "alert"
-                    : "status"
-                }
-              >
-                {submitError ? (
-                  <>
-                    <XIcon aria-hidden="true" size={10} />
-                    <span>{submitError}</span>
-                  </>
-                ) : isLocalError && validation.hint ? (
-                  <>
-                    <XIcon aria-hidden="true" size={10} />
-                    <span>{validation.hint}</span>
-                  </>
-                ) : validation.status === "idle" ? (
-                  <span>{"// 3–20 CHARS · LOWERCASE, DIGITS, HYPHEN"}</span>
-                ) : availability === "checking" ? (
-                  <>
-                    <LoaderIcon
-                      aria-hidden="true"
-                      className="animate-spin"
-                      size={10}
-                    />
-                    <span>{"// CHECKING"}</span>
-                  </>
-                ) : availability === "available" ? (
-                  <>
-                    <CheckIcon aria-hidden="true" size={10} />
-                    <span>{"// AVAILABLE"}</span>
-                  </>
-                ) : availability === "taken" ? (
-                  <>
-                    <XIcon aria-hidden="true" size={10} />
-                    <span>
-                      {`// TAKEN — ${validation.label}${PARENT_SUFFIX} is already claimed`}
-                    </span>
-                  </>
-                ) : availability === "verifier-down" ? (
-                  <>
-                    <XIcon aria-hidden="true" size={10} />
-                    <span>
-                      {"// VERIFIER DOWN — can't check right now, try again"}
-                    </span>
-                  </>
-                ) : availability === "error" ? (
-                  <>
-                    <XIcon aria-hidden="true" size={10} />
-                    <span>{"// CHECK FAILED — try again"}</span>
-                  </>
-                ) : (
-                  <span>{"// 3–20 CHARS · LOWERCASE, DIGITS, HYPHEN"}</span>
-                )}
-              </p>
-            </div>
-
-            <div className="mt-[18px] flex items-start gap-2 rounded-sm border border-warning-border bg-warning-bg px-3 py-2.5">
-              <span
-                aria-hidden="true"
-                className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-warning-solid"
-              />
-              <p className="text-[12.5px] leading-[1.5] text-warning-fg">
-                Changing your handle releases{" "}
-                <span className="font-mono">{currentFull}</span> on Sui. Anyone
-                can claim it after — including someone else.{" "}
-                <strong className="font-semibold">This action is final.</strong>
-              </p>
-            </div>
-
-            <div className="mt-[22px] flex items-center justify-end gap-2">
+      <DialogContent
+        className="overflow-hidden bg-surface-card p-0 ring-1 ring-border-subtle sm:max-w-[520px]"
+        data-testid="username-change-modal"
+        onOpenAutoFocus={(e) => {
+          // Pre-focus the input field so the user can start typing
+          // immediately. shadcn focuses the close button by default.
+          e.preventDefault();
+          setTimeout(() => inputRef.current?.focus(), 0);
+        }}
+        showCloseButton={false}
+      >
+        {isSuccess ? (
+          <SuccessCard fullHandle={successHandle} onDone={onClose} />
+        ) : (
+          <>
+            <div className="flex items-center justify-between border-b border-border-subtle px-[18px] py-3.5">
+              <DialogTitle className="font-mono text-[11px] text-fg-primary uppercase tracking-[0.1em]">
+                {"// CHANGE HANDLE"}
+              </DialogTitle>
               <button
-                className="rounded-sm border border-border-subtle bg-surface-card px-4 py-2.5 font-mono text-[11px] uppercase tracking-[0.08em] text-fg-primary transition hover:border-border-strong focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none disabled:opacity-50"
+                aria-label="Close"
+                className="inline-flex h-6 w-6 items-center justify-center rounded-sm text-fg-muted transition hover:bg-surface-sunken hover:text-fg-primary focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none disabled:opacity-50"
                 disabled={isSubmitting}
                 onClick={onClose}
                 type="button"
               >
-                Cancel
-              </button>
-              <button
-                className="rounded-sm border border-fg-primary bg-fg-primary px-4 py-2.5 font-mono text-[11px] uppercase tracking-[0.1em] text-fg-inverse transition hover:opacity-90 focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-45"
-                data-testid="username-change-modal-submit"
-                disabled={
-                  !validation.ok ||
-                  isSubmitting ||
-                  availability === "checking" ||
-                  availability === "taken" ||
-                  availability === "error" ||
-                  availability === "idle"
-                }
-                type="submit"
-              >
-                {isSubmitting ? "Changing…" : "CHANGE HANDLE"}
+                <XIcon size={12} />
               </button>
             </div>
-          </form>
-        </div>
-      )}
+
+            <form className="px-6 pt-5 pb-6" onSubmit={handleSubmit}>
+              <div className="mb-[18px]">
+                <div className="mb-1.5 font-mono text-[10px] text-fg-muted uppercase tracking-[0.1em]">
+                  CURRENT
+                </div>
+                <div className="rounded-sm border border-border-subtle bg-surface-sunken px-3 py-2.5 font-mono text-[14px] text-fg-secondary">
+                  {currentLabel}
+                  <span className="text-fg-muted">{PARENT_SUFFIX}</span>
+                </div>
+              </div>
+
+              <div>
+                <label
+                  className="mb-1.5 block font-mono text-[10px] text-fg-muted uppercase tracking-[0.1em]"
+                  htmlFor={inputId}
+                >
+                  NEW HANDLE
+                </label>
+                <div
+                  className={`flex items-center rounded-xs bg-surface-card transition border ${inputBorderClass} ${inputShadow} px-3 py-0.5`}
+                >
+                  <input
+                    aria-describedby={helpId}
+                    aria-invalid={
+                      (validation.status !== "idle" &&
+                        validation.status !== "ok") ||
+                      undefined
+                    }
+                    autoCapitalize="off"
+                    autoComplete="off"
+                    autoCorrect="off"
+                    className="min-w-0 flex-1 border-none bg-transparent px-1 py-2.5 font-mono text-[14px] text-fg-primary outline-none placeholder:text-fg-muted disabled:opacity-50"
+                    disabled={isSubmitting}
+                    id={inputId}
+                    maxLength={20}
+                    onBlur={() => setFocused(false)}
+                    onChange={(e) => {
+                      setValue(e.target.value);
+                      setSubmitError(null);
+                    }}
+                    onFocus={() => setFocused(true)}
+                    placeholder="alice"
+                    ref={inputRef}
+                    spellCheck={false}
+                    type="text"
+                    value={value}
+                  />
+                  <span className="pr-1 font-mono text-[14px] text-fg-muted">
+                    {PARENT_SUFFIX}
+                  </span>
+                </div>
+
+                <StatusLine
+                  availability={availability}
+                  helpId={helpId}
+                  isAvailabilityError={isAvailabilityError}
+                  isLocalError={isLocalError}
+                  label={validation.label}
+                  status={validation.status}
+                  submitError={submitError}
+                  validationHint={validation.hint}
+                />
+              </div>
+
+              <div className="mt-[18px] flex items-start gap-2 rounded-sm border border-warning-border bg-warning-bg px-3 py-2.5">
+                <span
+                  aria-hidden="true"
+                  className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-warning-solid"
+                />
+                <p className="text-[12.5px] text-warning-fg leading-[1.5]">
+                  Changing your handle releases{" "}
+                  <span className="font-mono">{currentFull}</span> on Sui.
+                  Anyone can claim it after — including someone else.{" "}
+                  <strong className="font-semibold">
+                    This action is final.
+                  </strong>
+                </p>
+              </div>
+
+              <div className="mt-[22px] flex items-center justify-end gap-2">
+                <button
+                  className="rounded-sm border border-border-subtle bg-surface-card px-4 py-2.5 font-mono text-[11px] text-fg-primary uppercase tracking-[0.08em] transition hover:border-border-strong focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none disabled:opacity-50"
+                  disabled={isSubmitting}
+                  onClick={onClose}
+                  type="button"
+                >
+                  Cancel
+                </button>
+                <button
+                  className="rounded-sm border border-fg-primary bg-fg-primary px-4 py-2.5 font-mono text-[11px] text-fg-inverse uppercase tracking-[0.1em] transition hover:opacity-90 focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-45"
+                  data-testid="username-change-modal-submit"
+                  disabled={
+                    !validation.ok ||
+                    isSubmitting ||
+                    availability === "checking" ||
+                    availability === "taken" ||
+                    availability === "error" ||
+                    availability === "idle"
+                  }
+                  type="submit"
+                >
+                  {isSubmitting ? "Changing…" : "CHANGE HANDLE"}
+                </button>
+              </div>
+            </form>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+interface SuccessCardProps {
+  fullHandle: string;
+  onDone: () => void;
+}
+
+function SuccessCard({ fullHandle, onDone }: SuccessCardProps) {
+  return (
+    <div
+      className="px-8 pt-9 pb-3.5 text-center"
+      data-testid="username-change-modal-success"
+    >
+      <div
+        aria-hidden="true"
+        className="mx-auto mb-[18px] flex h-11 w-11 items-center justify-center rounded-full border border-success-border bg-success-bg text-success-fg"
+      >
+        <CheckIcon size={20} />
+      </div>
+      <DialogTitle className="mb-3.5 font-mono text-[11px] text-fg-secondary uppercase tracking-[0.14em]">
+        HANDLE CHANGED
+      </DialogTitle>
+      <div className="break-all font-medium font-serif text-[22px] text-fg-primary leading-[1.15] tracking-[-0.005em]">
+        {fullHandle}
+      </div>
+      <p className="mx-auto mt-3.5 max-w-[320px] text-[13px] text-fg-secondary leading-[1.55]">
+        It can take a few seconds to propagate everywhere.
+      </p>
+      <div className="mt-7 border-t border-border-subtle pt-3.5">
+        <button
+          className="rounded-sm border border-fg-primary bg-fg-primary px-4 py-2.5 font-mono text-[11px] text-fg-inverse uppercase tracking-[0.1em] transition hover:opacity-90 focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none"
+          data-testid="username-change-modal-done"
+          onClick={onDone}
+          type="button"
+        >
+          DONE
+        </button>
+      </div>
     </div>
+  );
+}
+
+interface StatusLineProps {
+  availability: Availability;
+  helpId: string;
+  isAvailabilityError: boolean;
+  isLocalError: boolean;
+  label: string;
+  status: string;
+  submitError: string | null;
+  validationHint: string | null;
+}
+
+function StatusLine({
+  availability,
+  helpId,
+  isAvailabilityError,
+  isLocalError,
+  label,
+  status,
+  submitError,
+  validationHint,
+}: StatusLineProps) {
+  const tone =
+    submitError || isLocalError || isAvailabilityError
+      ? "text-error-fg"
+      : availability === "available"
+        ? "text-success-fg"
+        : "text-fg-muted";
+  const role =
+    submitError || validationHint || isAvailabilityError ? "alert" : "status";
+  const content = (() => {
+    if (submitError) {
+      return (
+        <>
+          <XIcon aria-hidden="true" size={10} />
+          <span>{submitError}</span>
+        </>
+      );
+    }
+    if (isLocalError && validationHint) {
+      return (
+        <>
+          <XIcon aria-hidden="true" size={10} />
+          <span>{validationHint}</span>
+        </>
+      );
+    }
+    if (status === "idle") {
+      return <span>{"// 3–20 CHARS · LOWERCASE, DIGITS, HYPHEN"}</span>;
+    }
+    if (availability === "checking") {
+      return (
+        <>
+          <LoaderIcon aria-hidden="true" className="animate-spin" size={10} />
+          <span>{"// CHECKING"}</span>
+        </>
+      );
+    }
+    if (availability === "available") {
+      return (
+        <>
+          <CheckIcon aria-hidden="true" size={10} />
+          <span>{"// AVAILABLE"}</span>
+        </>
+      );
+    }
+    if (availability === "taken") {
+      return (
+        <>
+          <XIcon aria-hidden="true" size={10} />
+          <span>{`// TAKEN — ${label}${PARENT_SUFFIX} is already claimed`}</span>
+        </>
+      );
+    }
+    if (availability === "verifier-down") {
+      return (
+        <>
+          <XIcon aria-hidden="true" size={10} />
+          <span>{"// VERIFIER DOWN — can't check right now, try again"}</span>
+        </>
+      );
+    }
+    if (availability === "error") {
+      return (
+        <>
+          <XIcon aria-hidden="true" size={10} />
+          <span>{"// CHECK FAILED — try again"}</span>
+        </>
+      );
+    }
+    return <span>{"// 3–20 CHARS · LOWERCASE, DIGITS, HYPHEN"}</span>;
+  })();
+
+  return (
+    <p
+      className={`mt-2 inline-flex items-start gap-1.5 font-mono text-[11px] uppercase tracking-[0.04em] ${tone}`}
+      id={helpId}
+      role={role}
+    >
+      {content}
+    </p>
   );
 }
 

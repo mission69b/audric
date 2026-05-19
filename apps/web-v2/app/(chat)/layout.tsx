@@ -3,8 +3,9 @@ import Script from "next/script";
 import { Suspense } from "react";
 import { Toaster } from "sonner";
 import { AppSidebar } from "@/components/chat/app-sidebar";
+import { ChatGate } from "@/components/chat/chat-gate";
 import { DataStreamProvider } from "@/components/chat/data-stream-provider";
-import { ChatShell } from "@/components/chat/shell";
+import { UsernamePaletteRoot } from "@/components/chat/username-palette-root";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { ActiveChatProvider } from "@/hooks/use-active-chat";
 import { getCurrentUser } from "@/lib/audric-auth";
@@ -46,7 +47,8 @@ async function SidebarShell({ children }: { children: React.ReactNode }) {
         />
         <Suspense fallback={<div className="flex h-dvh" />}>
           <ActiveChatProvider>
-            <ChatShell />
+            <ChatGate />
+            <UsernamePaletteRoot />
           </ActiveChatProvider>
         </Suspense>
         {children}
