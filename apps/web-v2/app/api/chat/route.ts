@@ -154,6 +154,7 @@ import { selectResponseMessageId } from "@/lib/audric/select-response-message-id
 import { sanitizeStreamErrorMessage } from "@/lib/audric/stream-errors";
 import { buildAudricSystemPrompt } from "@/lib/audric/system-prompt";
 import { TelemetryIntegration } from "@/lib/audric/telemetry-integration";
+import { validateModelMessages } from "@/lib/audric/validate-model-messages";
 import { getCurrentUser } from "@/lib/audric-auth";
 import { env } from "@/lib/env";
 import { getPortfolio, prewarmPortfolio } from "@/lib/portfolio";
@@ -1295,6 +1296,26 @@ export async function POST(request: Request) {
         detail: err instanceof Error ? err.message : String(err),
       }),
       { status: 400, headers: { "content-type": "application/json" } }
+    );
+  }
+
+  // [S.213 — 2026-05-21] Anthropic strict-shape safety net. Strips
+  // orphan tool-call / tool-result blocks before the prompt reaches the
+  // provider. Catches the class of corruption documented in
+  // `lib/audric/validate-model-messages.ts` — e.g. a tool part stuck in
+  // `state: 'input-available'` because its `tool-output-available`
+  // chunk never arrived (stream truncation, browser disconnect,
+  // network blip mid-turn). Without this gate the next POST round-trips
+  // the orphan tool_use to Anthropic → 400, and the rejection persists
+  // for every subsequent turn until the corrupt blocks are removed.
+  //
+  // Mirrors the legacy engine's `validateHistory` defense (engine
+  // v2.0.5, audric session s_1778993279816_47a9814c835d incident).
+  const beforeCount = aiSdkMessages.length;
+  aiSdkMessages = validateModelMessages(aiSdkMessages);
+  if (aiSdkMessages.length !== beforeCount) {
+    console.warn(
+      `[audric-chat] validateModelMessages stripped ${beforeCount - aiSdkMessages.length} corrupt message(s) before agent.stream`
     );
   }
 
