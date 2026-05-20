@@ -24,10 +24,30 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import type { AudricSessionUser as User } from "@/lib/audric-auth";
+import { authFetch } from "@/lib/auth-fetch";
 import type { Chat } from "@/lib/db/schema";
-import { fetcher } from "@/lib/utils";
+import { ChatbotError, type ErrorCode } from "@/lib/errors";
 import { LoaderIcon } from "./icons";
 import { ChatItem } from "./sidebar-history-item";
+
+/**
+ * [S.208 — 2026-05-20] JWT-bearing SWR fetcher.
+ *
+ * The vanilla template's `fetcher` from `lib/utils` uses bare `fetch`
+ * (designed for next-auth cookie-bound sessions). Audric uses zkLogin
+ * via the `x-zklogin-jwt` header, so `/api/history` 401s without it.
+ * `authFetch` reads the JWT out of localStorage and attaches the
+ * header — same pattern every canvas + tool route uses (see
+ * `lib/auth-fetch.ts`).
+ */
+const historyFetcher = async (url: string) => {
+  const response = await authFetch(url);
+  if (!response.ok) {
+    const { code, cause } = await response.json();
+    throw new ChatbotError(code as ErrorCode, cause);
+  }
+  return response.json();
+};
 
 type GroupedChats = {
   today: Chat[];
@@ -111,7 +131,7 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
     mutate,
   } = useSWRInfinite<ChatHistory>(
     user ? getChatHistoryPaginationKey : () => null,
-    fetcher,
+    historyFetcher,
     { fallbackData: [], revalidateOnFocus: false }
   );
 
@@ -146,7 +166,7 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
       }
     });
 
-    fetch(
+    authFetch(
       `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/chat?id=${chatToDelete}`,
       { method: "DELETE" }
     );

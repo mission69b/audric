@@ -30,11 +30,13 @@
  */
 
 import { ChevronUp } from "lucide-react";
+import Link from "next/link";
 import { useZkLogin } from "@/components/auth/use-zklogin";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -153,6 +155,24 @@ export function SidebarUserNav() {
                 {truncateAddress(address)}
               </DropdownMenuItem>
             )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild data-testid="user-nav-item-contacts">
+              <Link
+                className="w-full cursor-pointer text-[13px]"
+                href="/settings/contacts"
+              >
+                Contacts
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild data-testid="user-nav-item-settings">
+              <Link
+                className="w-full cursor-pointer text-[13px]"
+                href="/settings/passport"
+              >
+                Settings
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem asChild data-testid="user-nav-item-auth">
               <button
                 className="w-full cursor-pointer text-[13px]"

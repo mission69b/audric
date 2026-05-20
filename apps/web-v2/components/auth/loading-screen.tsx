@@ -101,7 +101,7 @@ export function LoadingScreen({ step, error, onRetry }: LoadingScreenProps) {
 
   if (error) {
     return (
-      <main className="flex flex-1 flex-col items-center justify-center bg-surface-page px-6">
+      <main className="flex min-h-dvh flex-col items-center justify-center bg-surface-page px-6">
         <div className="w-full max-w-sm space-y-6 text-center">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-error-bg text-error-solid">
             <ErrorIcon />
@@ -126,7 +126,7 @@ export function LoadingScreen({ step, error, onRetry }: LoadingScreenProps) {
 
   if (showDone) {
     return (
-      <main className="flex flex-1 flex-col items-center justify-center bg-surface-page px-6">
+      <main className="flex min-h-dvh flex-col items-center justify-center bg-surface-page px-6">
         <div className="space-y-3 text-center">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-success-bg text-success-solid">
             <CheckIcon size={28} />
@@ -140,7 +140,7 @@ export function LoadingScreen({ step, error, onRetry }: LoadingScreenProps) {
   }
 
   return (
-    <main className="flex flex-1 flex-col items-center justify-center bg-surface-page px-6">
+    <main className="flex min-h-dvh flex-col items-center justify-center bg-surface-page px-6">
       <div className="w-full max-w-sm space-y-7">
         <h2 className="text-center font-serif text-[28px] text-fg-primary leading-[1.15] tracking-[-0.01em]">
           Signing you in…
