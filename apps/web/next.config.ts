@@ -74,12 +74,94 @@ const securityHeaders = [
   },
 ];
 
+// ---------------------------------------------------------------------------
+// v0.7c Phase 6 Session 5 — Vercel rewrites flip (founder Option A lock,
+// 2026-05-20).
+//
+// apps/web is the public-facing audric.ai domain. Each rewrite below
+// shifts one surface from apps/web → web-v2 transparently to the user
+// (same URL, different origin server-side). Rewrites land BEFORE the
+// chat-shell cutover (Session 6) so the supporting surfaces (Pay /
+// Store / Settings / Internal-API) flip first; chat (`/new`,
+// `/chat/:path*`, `/api/audric-chat`, `/api/transactions/*`) flips in
+// Session 6 as the founder-owned ops step.
+//
+// Rollback granularity is per-rewrite: comment out any block + redeploy
+// to fall back to apps/web for that path alone. See
+// `spec/runbooks/RUNBOOK_v07c_phase_6_cutover.md` §8.2.
+//
+// Memory note: `/settings/memory` IS rewritten to web-v2 — web-v2
+// renders a v0.7d deferral signpost card (S.188). Legacy
+// `/api/user/memories` on apps/web stays operational for direct calls.
+//
+// `/auth/callback` is INTENTIONALLY excluded from rewrites — both apps
+// host their own callback page. Sign-ins originating from apps/web
+// resolve on apps/web; sign-ins originating from web-v2 resolve on
+// web-v2. The chat cutover (Session 6) will route post-auth users to
+// `/new` which IS rewritten to web-v2.
+// ---------------------------------------------------------------------------
+const WEB_V2 = 'https://audric-web-v2.vercel.app';
+
 const nextConfig: NextConfig = {
   async headers() {
     return [
       {
         source: '/(.*)',
         headers: securityHeaders,
+      },
+    ];
+  },
+  async rewrites() {
+    return [
+      // ── Pay (Session 4 ship) ────────────────────────────────────────
+      { source: '/pay/:slug', destination: `${WEB_V2}/pay/:slug` },
+      { source: '/api/payments/:slug', destination: `${WEB_V2}/api/payments/:slug` },
+      { source: '/api/payments/:slug/verify', destination: `${WEB_V2}/api/payments/:slug/verify` },
+      // Legacy invoice slug — redirect-equivalent via rewrite so the
+      // 10-LoC apps/web/app/invoice/[slug]/page.tsx can delete with the
+      // chat shell in Session 9d. Web-v2's /pay/[slug] renders the
+      // invoice union case (line items + due date) inline.
+      { source: '/invoice/:slug', destination: `${WEB_V2}/pay/:slug` },
+
+      // ── Settings (Session 2 ship) ───────────────────────────────────
+      // Catch-all routes /settings, /settings/passport, /settings/safety,
+      // /settings/contacts, AND /settings/memory (signpost card — S.188).
+      { source: '/settings', destination: `${WEB_V2}/settings` },
+      { source: '/settings/:path*', destination: `${WEB_V2}/settings/:path*` },
+
+      // ── Internal-API (Session 4.5 ship) ─────────────────────────────
+      // The 6 routes engine tools call via AUDRIC_INTERNAL_API_URL. After
+      // the Vercel env-var flip (manual, founder-owned), engine tools
+      // bound to audric.ai paths route to web-v2 directly; these
+      // rewrites belt-and-braces the same flip for any caller that
+      // hard-codes audric.ai (e.g. the manual operator curl in
+      // `RUNBOOK_v07c_phase_6_cutover.md` §5.4).
+      { source: '/api/internal/payments', destination: `${WEB_V2}/api/internal/payments` },
+      { source: '/api/portfolio', destination: `${WEB_V2}/api/portfolio` },
+      { source: '/api/analytics/portfolio-history', destination: `${WEB_V2}/api/analytics/portfolio-history` },
+      { source: '/api/analytics/yield-summary', destination: `${WEB_V2}/api/analytics/yield-summary` },
+      { source: '/api/analytics/activity-summary', destination: `${WEB_V2}/api/analytics/activity-summary` },
+      { source: '/api/analytics/spending', destination: `${WEB_V2}/api/analytics/spending` },
+
+      // ── Audric Store (Session 3 ship) ───────────────────────────────
+      // Catch-all `/[username]` with negative lookahead — every other
+      // top-level URL segment that resolves to a NON-username surface
+      // MUST appear in the exclusion list. Order doesn't matter inside
+      // the lookahead; the leading `(?!...)` rejects the match before
+      // the trailing `.*` consumes anything.
+      //
+      // Exclusions (in alphabetical groups):
+      //   • Framework / static: _next, api, favicon.ico, icon, opengraph-image, robots.txt, sitemap
+      //   • Apps/web KEEP-IN-WEB: admin (internal), auth, disclaimer,
+      //     litepaper, privacy, security, terms
+      //   • Apps/web sources that have their own rewrites above:
+      //     chat, invoice, new, pay, settings
+      //
+      // If you add a new top-level surface to apps/web, append its
+      // segment here BEFORE shipping.
+      {
+        source: '/:username((?!_next|admin|api|auth|chat|disclaimer|favicon\\.ico|icon|invoice|litepaper|new|opengraph-image|pay|privacy|robots\\.txt|security|settings|sitemap|terms).*)',
+        destination: `${WEB_V2}/:username`,
       },
     ];
   },

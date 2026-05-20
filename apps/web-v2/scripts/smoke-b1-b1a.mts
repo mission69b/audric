@@ -239,10 +239,7 @@ const fresh = () => {
 
 // (a) Initial turn — tail is a user message → generate a fresh id.
 factoryCalls = 0;
-const initialId = selectResponseMessageId(
-  [{ id: "u-1", role: "user" }],
-  fresh
-);
+const initialId = selectResponseMessageId([{ id: "u-1", role: "user" }], fresh);
 assert(
   initialId === "fresh-id-generated" && factoryCalls === 1,
   "initial turn (tail=user) → generates a fresh id"
