@@ -88,7 +88,6 @@ import {
   type AddressPortfolio,
   applyToolFlags,
   buildInternalContext,
-  clampThinkingForEffort,
   classifyEffort,
   composeBundleFromToolResults,
   DEFAULT_GUARD_CONFIG,
@@ -961,13 +960,38 @@ export async function POST(request: Request) {
     walletAddress,
   });
 
-  // 7.7 [S.210 — 2026-05-21] Effort classification + thinking budget.
-  // MUST run before the Agent constructor so the resulting budget can
-  // be threaded into `providerOptions.anthropic.thinking`. Pre-S.210
-  // this lived ~150 lines down (next to `harnessShape` for telemetry
-  // wiring) and never reached the agent — Claude ran with the default
-  // (no extended thinking), so the `<Reasoning>` accordion stayed empty
-  // even on Tier 2 / Tier 3 prompts.
+  // 7.7 [S.210 — 2026-05-21; S.211 — 2026-05-21] Effort classification
+  // + thinking provider options. MUST run before the Agent constructor
+  // so the resulting bag can be threaded into `providerOptions.anthropic`.
+  //
+  // Pre-S.210 this lived ~150 lines down (next to `harnessShape` for
+  // telemetry wiring) and never reached the agent — Claude ran with no
+  // extended thinking config, so the `<Reasoning>` accordion stayed
+  // empty even on Tier 2 / Tier 3 prompts.
+  //
+  // S.210 wired `{ type: 'enabled', budgetTokens: N }` via
+  // `clampThinkingForEffort`. Live test post-merge: 609 reasoning
+  // tokens were billed by the AI Gateway (Claude WAS thinking) but
+  // ZERO `reasoning-delta` chunks reached the wire — UI still showed
+  // no accordion.
+  //
+  // Root cause: the @ai-sdk/anthropic provider only honors the
+  // `display` field when `thinking.type === 'adaptive'` (see
+  // `anthropic-messages-language-model.ts` L381-384: `thinkingDisplay
+  // = thinkingType === 'adaptive' ? ... : undefined`). With our
+  // `type: 'enabled'` config, `display` was silently dropped, and the
+  // Vercel AI Gateway defaults to `display: 'omitted'` for Claude 4.6+
+  // — Anthropic STILL ran extended thinking (hence the billed
+  // reasoning tokens) but the summarized thinking text was suppressed
+  // before reaching the gateway stream. No `thinking_delta` events →
+  // no `reasoning-delta` chunks → no UI accordion.
+  //
+  // S.211 fix: switch to `{ type: 'adaptive', display: 'summarized' }`
+  // + pass effort via `providerOptions.anthropic.effort`. This is
+  // Anthropic's recommended mode for Sonnet 4.6+ AND it makes
+  // `display: 'summarized'` actually flow through. The model still
+  // dynamically scales effort (low / medium / high — Sonnet doesn't
+  // support `max`, that's Opus-only; we clamp `max → high`).
   //
   // `latestUserText` extraction is inlined (vs the helper at L2238
   // which works on the post-normalize array — that array is built
@@ -976,20 +1000,6 @@ export async function POST(request: Request) {
   // or `content` (legacy shape) into a single string. Empty when the
   // last message isn't a user turn (e.g. HITL resume) — classifier
   // defaults to `medium` in that case.
-  //
-  // Budget caps come from the engine's canonical `EFFORT_THINKING_
-  // BUDGET_CAPS`. Pass a ceiling-sized config (32K = max) and let
-  // `clampThinkingForEffort` clamp per-effort:
-  //   low    → disabled    (no thinking — simple lookups stay fast)
-  //   medium → 8K tokens
-  //   high   → 16K tokens
-  //   max    → 32K tokens
-  //
-  // Matches `packages/engine/src/v2/engine.ts` L1146 (which calls
-  // `buildAnthropicProviderOptions(thinkingConfig, outputConfig)` from
-  // the engine's canonical builder) — same provider-options shape,
-  // same clamping logic, just inlined here because web-v2 uses
-  // `Experimental_Agent` directly per D-15 instead of AISDKEngine.
   const latestUserTextForEffort = (() => {
     for (let i = body.messages.length - 1; i >= 0; i--) {
       const m = body.messages[i];
@@ -1014,24 +1024,29 @@ export async function POST(request: Request) {
         sessionWriteCount
       )
     : ("medium" as const);
-  const clampedThinking = clampThinkingForEffort(
-    { type: "enabled", budgetTokens: 32_000 },
-    effortLevel
-  );
-  // `clampThinkingForEffort` returns `ThinkingConfig | undefined`. The
-  // undefined branch only fires when `config` itself is undefined —
-  // which can't happen here (we pass a literal). Narrow defensively so
-  // TS is happy AND a future maintainer who passes a maybe-undefined
-  // config doesn't silently lose the thinking block.
-  const thinkingProviderOption =
-    clampedThinking && clampedThinking.type === "enabled"
-      ? {
-          thinking: {
-            type: "enabled" as const,
-            budgetTokens: clampedThinking.budgetTokens,
-          },
-        }
-      : undefined;
+
+  // Map our 4-level engine effort to Anthropic's 3-level effort.
+  // Sonnet 4.6 only supports low/medium/high (high is the default;
+  // `max` is Opus-only and would 400 on Sonnet). `low` lets Claude
+  // skip thinking entirely on trivial prompts — the model decides,
+  // which gets us the same "skip thinking on greetings" outcome as
+  // the old `clampThinkingForEffort('low') → disabled` path, just
+  // model-driven instead of host-driven.
+  const anthropicEffort: "low" | "medium" | "high" =
+    effortLevel === "max" ? "high" : effortLevel;
+
+  // Adaptive thinking is supported on Claude Sonnet 4.6 + Opus 4.6+.
+  // `display: 'summarized'` is the only knob that surfaces thinking
+  // text on the Vercel AI Gateway path (the gateway defaults to
+  // 'omitted'). Both fields are required for the `<Reasoning>`
+  // accordion to render.
+  const thinkingProviderOption = {
+    thinking: {
+      type: "adaptive" as const,
+      display: "summarized" as const,
+    },
+    effort: anthropicEffort,
+  };
 
   // 8. Compose the Agent. Per D-15: audric-side `Agent` for clean
   // composition + native middleware mount points (Phase 5.5 wraps
@@ -1040,20 +1055,20 @@ export async function POST(request: Request) {
   // here per D-17). Per D-6: gateway-routed when `AI_GATEWAY_API_KEY`
   // is set, direct-Anthropic otherwise.
   //
-  // [S.210 — 2026-05-21] `providerOptions` now merges TWO bags:
+  // [S.210 — 2026-05-21; S.211 — 2026-05-21] `providerOptions` merges
+  // TWO bags:
   //   - `gateway.caching: 'auto'` (when on the gateway path) — pre-S.210
   //     behavior, preserves auto cache_control injection
-  //   - `anthropic.thinking` (when effort ≥ medium) — NEW, enables
-  //     extended thinking + signed-thinking emission so the route's
-  //     `translateChunk` reasoning forwarders actually have chunks
-  //     to forward
-  // Spread guards keep the keys absent when either side has nothing.
-  const providerOptionsForAgent: Record<string, unknown> = {};
+  //   - `anthropic.thinking` + `anthropic.effort` — adaptive thinking
+  //     with `display: 'summarized'` so the route's `translateChunk`
+  //     reasoning forwarders actually have chunks to forward (the
+  //     gateway omits thinking text by default; only `summarized`
+  //     surfaces it as `reasoning-delta` stream chunks)
+  const providerOptionsForAgent: Record<string, unknown> = {
+    anthropic: thinkingProviderOption,
+  };
   if (useGateway) {
     providerOptionsForAgent.gateway = { caching: "auto" as const };
-  }
-  if (thinkingProviderOption) {
-    providerOptionsForAgent.anthropic = thinkingProviderOption;
   }
   const audricAgent = new Agent({
     model,
@@ -1064,15 +1079,13 @@ export async function POST(request: Request) {
     experimental_context: internalContext,
     // ProviderOptions has a strict `JSONObject`-indexed shape in AI SDK
     // v6; our typed bag (with `as const` literals from `caching: 'auto'`
-    // / `type: 'enabled'`) is JSON-structurally identical but doesn't
+    // / `type: 'adaptive'`) is JSON-structurally identical but doesn't
     // satisfy the index signature without a cast. Mirrors the same
     // bridge `packages/engine/src/v2/engine.ts` L1202 uses
     // (`as unknown as any` with an eslint-disable). Keeping the cast
     // localised here so the `as any` doesn't leak into the wider scope.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ...(Object.keys(providerOptionsForAgent).length > 0
-      ? { providerOptions: providerOptionsForAgent as unknown as any }
-      : {}),
+    providerOptions: providerOptionsForAgent as unknown as any,
   });
 
   // 9. Build the messages array for agent.stream().
