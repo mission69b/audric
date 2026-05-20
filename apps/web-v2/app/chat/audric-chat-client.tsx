@@ -8,7 +8,7 @@ import {
   type ToolUIPart,
 } from "ai";
 import { Loader2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   Conversation,
   ConversationContent,
@@ -31,14 +31,23 @@ import {
 } from "@/components/audric/permission-card";
 import { ToolResultRouter } from "@/components/audric/tool-result-router";
 import { useZkLogin } from "@/components/auth/use-zklogin";
+import { UsernameClaimGate } from "@/components/settings/username-claim-gate";
 import { Button } from "@/components/ui/button";
+import { useUserStatus } from "@/hooks/use-user-status";
+import { redactAddressesInText } from "@/lib/audric/log-redact";
 import {
   type SponsoredTxBundleStep,
   type SponsoredTxRequest,
   type SponsoredTxResult,
   sponsoredTx,
 } from "@/lib/audric/sponsored-tx";
+import { sanitizeStreamErrorMessage } from "@/lib/audric/stream-errors";
 import { authFetch } from "@/lib/auth-fetch";
+import {
+  isUsernameSkipped,
+  setUsernameSkipped as persistUsernameSkipped,
+} from "@/lib/identity/username-skip";
+import { decodeJwtClaim } from "@/lib/jwt-client";
 import type { ZkLoginSession } from "@/lib/zklogin";
 
 /**
@@ -169,13 +178,126 @@ export function AudricChatClient() {
     );
   }
 
+  return <AuthenticatedChat onLogout={logout} session={session} />;
+}
+
+/**
+ * Authenticated chat — sits behind the username-claim gate.
+ *
+ * [Phase 6.5 / SPEC_V07C_PHASE_6_5_CHAT_PARITY A.4 / S.198 — 2026-05-20]
+ *
+ * Pre-A.4 web-v2 dropped newly-signed-up users directly onto the chat
+ * composer without ever asking them to claim a handle. That's a P0
+ * onboarding gap — `/{username}` profile routing, contact lookup, and
+ * payment-link surfaces all assume a claimed username. The legacy
+ * surface (`apps/web/components/identity/UsernameClaimGate.tsx`)
+ * gates `<DashboardContent>`; we mirror the same state machine here
+ * for the audric-v2 chat surface.
+ *
+ * State machine (identical to legacy + `(chat)/layout.tsx`'s
+ * `<ChatGate>` mount):
+ *
+ *   userStatus.loading        → centered spinner (no flash)
+ *   username !== null         → render `<AudricChatPanel />`
+ *   skipped via localStorage  → render `<AudricChatPanel />`
+ *   optimisticallyClaimed     → render `<AudricChatPanel />` (covers
+ *                                the userStatus refetch round-trip)
+ *   otherwise                 → render the centered claim gate
+ *
+ * Skip is preserved (legacy behavior). The settings safety-valve
+ * (`<UsernameClaimModal>` in Passport settings) is the path back if
+ * the user changes their mind.
+ *
+ * Why this lives here and not in `<ChatGate>` from
+ * `components/chat/chat-gate.tsx`: that component wraps the
+ * template's `<ChatShell />` (mounted from `(chat)/layout.tsx`); this
+ * page lives OUTSIDE the `(chat)` route group (see `app/chat/page.tsx`
+ * comment header) so it never inherits that layout's gate. The
+ * `(chat)/` route group deletes in Session 9a; this inline gate is the
+ * cutover-safe home.
+ */
+function AuthenticatedChat({
+  session,
+  onLogout,
+}: {
+  session: ZkLoginSession;
+  onLogout: () => void;
+}) {
+  const userStatus = useUserStatus(session.address, session.jwt);
+
+  // Lazy initializer reads from localStorage exactly once on mount.
+  // Subsequent renders use the in-memory `skipped` state (matches the
+  // dashboard-content.tsx + ChatGate pattern; avoids re-reading
+  // storage on every render).
+  const [skipped, setSkipped] = useState<boolean>(() =>
+    isUsernameSkipped(session.address)
+  );
+
+  // Optimistic flag — lets the gate disappear instantly on a
+  // successful Continue click before userStatus refetch lands. Once
+  // userStatus resolves with `username !== null` the structural check
+  // takes over, and the optimistic flag becomes harmless dead state.
+  const [optimisticallyClaimed, setOptimisticallyClaimed] = useState(false);
+
+  const handleClaimed = useCallback(() => {
+    setOptimisticallyClaimed(true);
+    userStatus.refetch().catch(() => {
+      // Refetch is best-effort; optimistic flag covers the UX. The
+      // next focused surface will trigger a fresh read.
+    });
+  }, [userStatus]);
+
+  const handleSkipped = useCallback(() => {
+    persistUsernameSkipped(session.address);
+    setSkipped(true);
+  }, [session.address]);
+
+  // Prevent the empty-state ↔ gate flash. Match the legacy pattern
+  // (centered spinner) so the chat surface materialises ONCE without
+  // a stale-state flash on first signed-in render.
+  if (userStatus.loading) {
+    return (
+      <div
+        className="flex h-dvh w-full flex-1 items-center justify-center bg-background"
+        data-testid="chat-claim-gate-loading"
+      >
+        <Loader2 className="size-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  const shouldShowGate =
+    userStatus.username === null && !(skipped || optimisticallyClaimed);
+
+  if (shouldShowGate) {
+    const googleName = decodeJwtClaim(session.jwt, "name") ?? null;
+    const googleEmail = decodeJwtClaim(session.jwt, "email") ?? null;
+    return (
+      <div
+        className="flex h-dvh w-full flex-1 flex-col items-center overflow-y-auto bg-background px-4 pt-12 pb-8 sm:px-6"
+        data-testid="chat-claim-gate"
+      >
+        <div className="mt-8 w-full max-w-md">
+          <UsernameClaimGate
+            address={session.address}
+            googleEmail={googleEmail}
+            googleName={googleName}
+            jwt={session.jwt}
+            onClaimed={handleClaimed}
+            onSkipped={handleSkipped}
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto flex min-h-screen max-w-3xl flex-col gap-4 p-6 text-zinc-100">
       <header className="flex items-center justify-between border-zinc-700 border-b pb-4">
         <span className="font-mono text-xs text-zinc-400">
           {session.address.slice(0, 8)}…{session.address.slice(-6)}
         </span>
-        <Button onClick={logout} variant="outline">
+        <Button onClick={onLogout} variant="outline">
           Sign out
         </Button>
       </header>
@@ -392,7 +514,19 @@ function AudricChatPanel({ session }: { session: ZkLoginSession }) {
 
       {error && (
         <div className="rounded border border-red-700 bg-red-950 p-3 text-red-200 text-sm">
-          {error.message}
+          {/*
+           * [Phase 6.5 / SPEC_V07C_PHASE_6_5_CHAT_PARITY C.3 / S.198
+           * — 2026-05-20] Defense-in-depth: even though the server
+           * route runs the same `sanitizeStreamErrorMessage` +
+           * `redactAddressesInText` pipeline on `tool-output-error`
+           * / `error` chunks before they cross the wire, `useChat`'s
+           * `error` field can also surface client-thrown
+           * `ChatbotError`s (rate-limit, network, etc.) that never
+           * touched the route. Apply the same pipeline at display
+           * time so the user-visible string is sanitized regardless
+           * of origin.
+           */}
+          {sanitizeStreamErrorMessage(redactAddressesInText(error.message))}
         </div>
       )}
     </>

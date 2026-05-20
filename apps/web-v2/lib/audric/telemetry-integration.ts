@@ -36,6 +36,22 @@
 
 import type { TextStreamPart, ToolSet } from "ai";
 
+/**
+ * [Phase 6.5 / SPEC_V07C_PHASE_6_5_CHAT_PARITY C.2 / S.198 — 2026-05-20]
+ * Structural shape of a guard fire — mirrors the engine's internal
+ * `GuardMetric` type at `packages/engine/src/guards.ts` L63-68. Defined
+ * locally (matches `apps/web/lib/engine/harness-metrics.ts` L92) because
+ * the engine's `GuardMetric` is not re-exported from `@t2000/engine`'s
+ * index; structural compatibility is sufficient for the
+ * `onGuardFired` callback signature.
+ */
+export interface GuardMetric {
+  action: "allow" | "warn" | "block";
+  injectionAdded: boolean;
+  name: string;
+  tier: "safety" | "financial" | "ux";
+}
+
 const FINAL_TEXT_CHARS_PER_TOKEN = 4;
 
 // Per-million-token Anthropic rates (late 2025). Cache reads bill at
@@ -114,6 +130,13 @@ export class TelemetryIntegration {
   // `toolCallId`.
   private pendingApprovalId: string | null = null;
   private pendingActionYielded = false;
+  // [Phase 6.5 / SPEC_V07C_PHASE_6_5_CHAT_PARITY C.2 / S.198 — 2026-05-20]
+  // GuardMetric rows are pushed here by the engine's `onGuardFired` hook
+  // (wired via `buildInternalContext({ onGuardFired })`). One entry per
+  // guard fire — same shape as `apps/web/lib/engine/harness-metrics.ts`
+  // L344 (`onGuardFired` method). Used in `build()` to populate the
+  // `guardsFired` column on the TurnMetrics row.
+  private readonly _guardsFired: GuardMetric[] = [];
 
   observeChunk(chunk: AnyChunk): void {
     switch (chunk.type) {
@@ -194,11 +217,31 @@ export class TelemetryIntegration {
     this.interrupted = true;
   }
 
+  /**
+   * [Phase 6.5 / SPEC_V07C_PHASE_6_5_CHAT_PARITY C.2 / S.198 — 2026-05-20]
+   * Engine hook — invoked once per guard fire from inside the engine's
+   * `runGuardsForTool` pipeline (see `packages/engine/src/v2/guard-
+   * runner.ts` L104). Wired host-side via
+   * `buildInternalContext({ onGuardFired: (g) => collector.onGuardFired(g) })`.
+   *
+   * Mirrors `apps/web/lib/engine/harness-metrics.ts` L344.
+   */
+  onGuardFired(guard: GuardMetric): void {
+    this._guardsFired.push(guard);
+  }
+
   build(context: {
     sessionId: string;
     userId: string;
     turnIndex: number;
     effortLevel: string;
+    /**
+     * [Phase 6.5 C.2] Host-computed harness shape via
+     * `harnessShapeForEffort(effortLevel)`. Replaces the hardcoded
+     * `null` shipped pre-C.2 so dashboards segmented by shape stay alive
+     * after the chat-flip.
+     */
+    harnessShape?: string | null;
     modelUsed: string;
     contextTokensStart: number;
     sessionSpendUsd: number;
@@ -250,7 +293,7 @@ export class TelemetryIntegration {
       wallTimeMs,
       firstTokenMs,
       toolsCalled: this.toolMetrics,
-      guardsFired: [],
+      guardsFired: this._guardsFired,
       compactionTriggered: false,
       contextTokensStart: context.contextTokensStart,
       cacheHit: this.cacheReadTokens > 0,
@@ -266,7 +309,7 @@ export class TelemetryIntegration {
       writeToolDurationMs: null,
       cacheSavingsUsd,
       turnPhase: context.turnPhase ?? "initial",
-      harnessShape: null,
+      harnessShape: context.harnessShape ?? null,
       thinkingBlockCount: 0,
       todoUpdateCount: 0,
       ttfvpMs,
