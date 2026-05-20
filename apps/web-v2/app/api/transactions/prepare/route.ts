@@ -576,16 +576,32 @@ export async function POST(request: NextRequest) {
 function extractMoveCallTargets(
   tx: Awaited<ReturnType<typeof composeTx>>["tx"]
 ): string[] {
+  // Sui PTB command shape (per `@mysten/sui` v2 internal type):
+  //   { $kind: 'MoveCall', MoveCall: { package, module, function, ... } }
+  // The `target` form (`package::module::function`) is the convention Enoki's
+  // `allowedMoveCallTargets` allow-list expects — construct it ourselves.
   const targets = new Set<string>();
   const data = (
-    tx as unknown as { getData?: () => { commands?: unknown[] } }
+    tx as unknown as {
+      getData?: () => {
+        commands?: Array<{
+          $kind?: string;
+          MoveCall?: { package?: string; module?: string; function?: string };
+        }>;
+      };
+    }
   ).getData?.();
   const commands = Array.isArray(data?.commands) ? data.commands : [];
-  for (const c of commands) {
-    const cmd = c as { MoveCall?: { target?: string } };
-    const target = cmd?.MoveCall?.target;
-    if (typeof target === "string") {
-      targets.add(target);
+  for (const cmd of commands) {
+    if (
+      cmd?.$kind === "MoveCall" &&
+      cmd.MoveCall?.package &&
+      cmd.MoveCall.module &&
+      cmd.MoveCall.function
+    ) {
+      targets.add(
+        `${cmd.MoveCall.package}::${cmd.MoveCall.module}::${cmd.MoveCall.function}`
+      );
     }
   }
   return Array.from(targets);
