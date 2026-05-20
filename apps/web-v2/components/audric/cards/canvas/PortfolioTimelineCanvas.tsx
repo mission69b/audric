@@ -106,9 +106,12 @@ export function PortfolioTimelineCanvas({ data, onAction }: Props) {
   const [loading, setLoading] = useState(false);
   const [periodIdx, setPeriodIdx] = useState(1);
 
-  const address = "available" in data && data.available ? data.address : null;
+  const address =
+    data && typeof data === "object" && "available" in data && data.available
+      ? data.address
+      : null;
   const isSelfRender =
-    "available" in data && data.available
+    data && typeof data === "object" && "available" in data && data.available
       ? (data.isSelfRender ?? true)
       : true;
   const period = PERIODS[periodIdx];
@@ -152,7 +155,12 @@ export function PortfolioTimelineCanvas({ data, onAction }: Props) {
   const latest =
     snapshots.length > 0 ? snapshots[snapshots.length - 1] : null;
 
-  if (!("available" in data) || !data.available) {
+  if (
+    !data ||
+    typeof data !== "object" ||
+    !("available" in data) ||
+    !data.available
+  ) {
     return (
       <div className="flex flex-col items-center justify-center space-y-2 py-10 text-center">
         <span className="text-3xl">📈</span>
@@ -160,7 +168,10 @@ export function PortfolioTimelineCanvas({ data, onAction }: Props) {
           Portfolio Timeline
         </p>
         <p className="max-w-xs text-fg-secondary text-xs leading-relaxed">
-          {"message" in data && data.message
+          {data &&
+          typeof data === "object" &&
+          "message" in data &&
+          data.message
             ? data.message
             : "Portfolio timeline will be available once portfolio snapshot history is collected."}
         </p>

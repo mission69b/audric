@@ -41,8 +41,12 @@ export function WatchAddressCanvas({ data, onAction }: Props) {
   const [savingsUsd, setSavingsUsd] = useState(0);
   const [debtUsd, setDebtUsd] = useState(0);
 
-  const address = "available" in data && data.available ? data.address : null;
-  const label = "label" in data ? data.label : undefined;
+  const address =
+    data && typeof data === "object" && "available" in data && data.available
+      ? data.address
+      : null;
+  const label =
+    data && typeof data === "object" && "label" in data ? data.label : undefined;
 
   useEffect(() => {
     if (!address) {
@@ -110,13 +114,21 @@ export function WatchAddressCanvas({ data, onAction }: Props) {
       .finally(() => setLoading(false));
   }, [address]);
 
-  if (!("available" in data) || !data.available) {
+  if (
+    !data ||
+    typeof data !== "object" ||
+    !("available" in data) ||
+    !data.available
+  ) {
     return (
       <div className="flex flex-col items-center justify-center space-y-2 py-10 text-center">
         <span className="text-3xl">👁</span>
         <p className="font-medium text-fg-primary text-sm">Watch Address</p>
         <p className="max-w-xs text-fg-secondary text-xs leading-relaxed">
-          {"message" in data && data.message
+          {data &&
+          typeof data === "object" &&
+          "message" in data &&
+          data.message
             ? data.message
             : "Provide a Sui address to watch."}
         </p>

@@ -94,10 +94,27 @@ function renderCard(
     ) {
       return null;
     }
+    // [S.205 — 2026-05-20] Canvas data MUST be a plain object so the
+    // canvas components' `"available" in data` discriminator doesn't
+    // crash on the `in` operator. The engine's `render_canvas` tool
+    // *usually* returns `{ available: true, address, ... }` or
+    // `{ available: false, message }`, but an upstream tool failure can
+    // surface `data: undefined`. Coerce to the safe `available: false`
+    // sentinel so the existing "not available" fallback paints instead
+    // of throwing the runtime "Cannot use 'in' operator on undefined".
+    const safeData: unknown =
+      canvasOutput.data &&
+      typeof canvasOutput.data === "object" &&
+      !Array.isArray(canvasOutput.data)
+        ? canvasOutput.data
+        : {
+            available: false as const,
+            message: "Canvas data was not returned by the tool.",
+          };
     const canvas: CanvasData = {
       template: canvasOutput.template,
       title: canvasOutput.title,
-      data: canvasOutput.data,
+      data: safeData,
       toolUseId: toolCallId,
     };
     return <CanvasCard canvas={canvas} onSendMessage={onSendMessage} />;
