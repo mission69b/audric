@@ -157,6 +157,50 @@ const serverSchema = z.object({
    * See doc on that var for full context. Optional for same reasons:
    * absence means degraded-but-safe (session-spend ledger returns 0). */
   UPSTASH_REDIS_REST_TOKEN: optionalString,
+
+  /** MemWal delegate-key Ed25519 private key (hex). Auth for the MemWal
+   * SDK to act on behalf of a MemWalAccount on Sui. v0.7d Phase 1
+   * (S.215, 2026-05-21) wires the audric `MemWalMemoryStore` adapter
+   * against this credential.
+   *
+   * **Phase 1 scope (founder-locked 2026-05-21):** ONE founder-owned
+   * MemWal account + per-user namespace strings for the initial smoke.
+   * Phase 1.5 / Phase 2 adds per-user MemWal account provisioning
+   * (one MemWalAccount per audric user, true crypto-isolation between
+   * users — matches Mysten's `MystenLabs/MemWal/apps/chatbot` reference).
+   * The transition from "founder-owned single account" to "per-user
+   * accounts" is invisible at this env-var layer; only the construction
+   * site in `lib/memwal.ts` changes from a singleton to a factory.
+   *
+   * **Why OPTIONAL (not required):** v0.7d Phase 1 ships the wire WITH
+   * the env vars unset in Vercel by default. The chat route checks for
+   * client presence and conditionally injects `EngineConfig.memoryStore`
+   * (Day 1b); absence means the engine takes the legacy path (no
+   * `<memory_recall>` block, falls back to fresh tools — same posture
+   * as v0.7c). This pattern (same as `UPSTASH_REDIS_REST_URL` above)
+   * means Vercel deploys never break on missing MemWal config, and the
+   * founder can flip the switch by adding the env var when ready to
+   * activate memory recall in prod.
+   *
+   * **Founder ops (Vercel project: `audric-web-v2`):** create a MemWal
+   * account via `app.memwal.com`, copy the delegate key + accountId
+   * into `MEMWAL_PRIVATE_KEY` + `MEMWAL_ACCOUNT_ID` (Production +
+   * Preview environments). Server URL defaults to
+   * `https://relayer.memwal.ai/` when MEMWAL_SERVER_URL unset. */
+  MEMWAL_PRIVATE_KEY: optionalString,
+
+  /** MemWal account object ID on Sui (e.g. `0x...`). Pairs with
+   * MEMWAL_PRIVATE_KEY — see doc on that var for full context. Optional
+   * for same reasons: absence → `lib/memwal.ts` exports `null` →
+   * `MemWalMemoryStore` not constructed → engine takes the no-memory
+   * path (degraded-but-safe). */
+  MEMWAL_ACCOUNT_ID: optionalString,
+
+  /** MemWal relayer server URL. Defaults to `https://relayer.memwal.ai/`
+   * (the Mysten-operated production relayer) when unset. Set this only
+   * for testing against a non-production MemWal deploy (e.g. local Rust
+   * server during dev, or Mysten-hosted staging). */
+  MEMWAL_SERVER_URL: optionalString,
 });
 
 // ─── Client schema ────────────────────────────────────────────────────
@@ -202,6 +246,9 @@ const runtimeEnv = {
   AUDRIC_INTERNAL_API_URL: process.env.AUDRIC_INTERNAL_API_URL,
   UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
   UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
+  MEMWAL_PRIVATE_KEY: process.env.MEMWAL_PRIVATE_KEY,
+  MEMWAL_ACCOUNT_ID: process.env.MEMWAL_ACCOUNT_ID,
+  MEMWAL_SERVER_URL: process.env.MEMWAL_SERVER_URL,
   NEXT_PUBLIC_GOOGLE_CLIENT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
   NEXT_PUBLIC_ENOKI_API_KEY: process.env.NEXT_PUBLIC_ENOKI_API_KEY,
   NEXT_PUBLIC_SUI_NETWORK: process.env.NEXT_PUBLIC_SUI_NETWORK,
