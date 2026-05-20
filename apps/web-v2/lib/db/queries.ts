@@ -16,6 +16,7 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import type { ArtifactKind } from "@/components/chat/artifact";
 import type { VisibilityType } from "@/components/chat/visibility-selector";
+import { env } from "@/lib/env";
 import { ChatbotError } from "../errors";
 import {
   type Chat,
@@ -31,7 +32,18 @@ import {
   vote,
 } from "./schema";
 
-const client = postgres(process.env.POSTGRES_URL ?? "");
+// [S.214 follow-on / 2026-05-21] Fixed the template-debris env var
+// reference. Template scaffolded against `POSTGRES_URL` (Vercel
+// Postgres convention); web-v2 deploys against Neon and uses
+// `DATABASE_URL` everywhere else. `POSTGRES_URL` was unset in
+// `audric-web-v2`'s Vercel env, so the `postgres()` client got `""`,
+// failed lazily at query time, and the `catch {}` blocks below
+// swallowed the underlying error — `/api/history` produced 3 500s
+// per chat-page load. Routing through `env.DATABASE_URL` (the typed
+// proxy) means (a) misconfig fails at boot per env-validation-gate,
+// (b) drizzle + prisma point at the same Neon DB (correct), and
+// (c) no more silent-empty-string failures.
+const client = postgres(env.DATABASE_URL);
 const db = drizzle(client);
 
 // [v0.7c Day 1c, 2026-05-18] `createUser` + `createGuestUser` were
@@ -193,7 +205,18 @@ export async function getChatsByUserId({
       chats: hasMore ? filteredChats.slice(0, limit) : filteredChats,
       hasMore,
     };
-  } catch {
+  } catch (err) {
+    // [S.214 follow-on / 2026-05-21] Log the underlying error before
+    // re-wrapping into ChatbotError. Pre-fix the bare `catch {}` swallowed
+    // the postgres error completely; every `/api/history` 500 had the
+    // same generic message with no signal about WHAT failed. The wrapped
+    // `ChatbotError` shape is preserved for the route handler's response
+    // contract; the `console.error` makes the actual cause greppable in
+    // Vercel logs.
+    console.error(
+      `[db.getChatsByUserId] userId=${id} limit=${limit}: ${err instanceof Error ? err.message : String(err)}`,
+      err instanceof Error ? err.stack : undefined
+    );
     throw new ChatbotError(
       "bad_request:database",
       "Failed to get chats by user id"
