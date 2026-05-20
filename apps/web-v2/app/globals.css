@@ -89,6 +89,21 @@
   --color-info-bg: var(--info-bg);
   --color-info-border: var(--info-border);
   --color-info-solid: var(--info-solid);
+
+  /* [S.204+ P1] Bubble tokens — used by user/assistant chat message
+     surfaces. Composed from --fg-primary / --fg-inverse so they flip
+     correctly per theme without per-component dark variants. */
+  --color-bubble-user-bg: var(--bubble-user-bg);
+  --color-bubble-user-fg: var(--bubble-user-fg);
+
+  /* [S.204+ P1] Typography stacks — semantic Tailwind utilities
+     (font-serif / font-sans / font-mono) resolve to NewYork +
+     Geist + DepartureMono. Matches `apps/web/app/globals.css`
+     to keep both surfaces visually aligned during the cross-app
+     migration window. */
+  --font-serif: var(--font-serif);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
 }
 
 :root {
@@ -259,6 +274,40 @@
   --chart-2: var(--n500);
   --chart-3: var(--n600);
   --chart-4: var(--n700);
+
+  /* ========================================================
+     [S.204+ P1] Chat bubble — user message surface.
+     ========================================================
+     Composes from --fg-primary / --fg-inverse so it stays
+     near-black with white text in BOTH themes (matches Figma
+     chat frame). Lives at this layer because a single Tailwind
+     utility couldn't express the cross-theme flip via the
+     canonical surface tokens — see apps/web/app/globals.css
+     comment block for the original rationale. */
+  --bubble-user-bg: var(--fg-primary);
+  --bubble-user-fg: var(--fg-inverse);
+
+  /* ========================================================
+     [S.204+ P1] Typography stacks.
+     ========================================================
+     The font-loader vars (--font-ny-display, --font-ny-large,
+     --font-ny-medium, --font-departure-mono, --font-geist,
+     --font-geist-mono) are injected by next/font on <html> in
+     app/layout.tsx. Compose into three semantic stacks here
+     so Tailwind utilities resolve to design-system fonts.
+
+     Note: v2's Geist loader uses --font-geist (the template's
+     name). v1's stack references --font-geist-sans. We expose
+     the alias in the stack itself so both names resolve. */
+  --font-serif:
+    var(--font-ny-display), var(--font-ny-large), var(--font-ny-medium),
+    "PT Serif", "Times New Roman", ui-serif, Georgia, serif;
+  --font-sans:
+    var(--font-geist), -apple-system, BlinkMacSystemFont, "SF Pro Display",
+    Helvetica, Arial, sans-serif;
+  --font-mono:
+    var(--font-departure-mono), var(--font-geist-mono), "IBM Plex Mono",
+    ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
 .dark {
@@ -362,6 +411,14 @@
   --chart-2: var(--n500);
   --chart-3: var(--n400);
   --chart-4: var(--n300);
+
+  /* [S.204+ P1] Bubble tokens — dark.
+     Per v1 dark spec: user bubble sits at --surface-sunken (#0A0A0A),
+     text uses --fg-primary (near-white). Same near-black/white visual
+     as light theme — the surface is unchanged, only the source token
+     re-aliases for the dark-theme value graph. */
+  --bubble-user-bg: var(--surface-sunken);
+  --bubble-user-fg: var(--fg-primary);
 }
 
 @layer base {
@@ -563,6 +620,19 @@ textarea:focus-visible {
   to {
     transform: translateY(-1px);
     box-shadow: var(--shadow-float);
+  }
+}
+
+/* [S.204+ P2] Spinner arc — used by LoadingScreen + ThinkingState.
+   Matches `apps/web` keyframe exactly (0.8s linear infinite, full
+   360° rotation). v1 references this via `animate-[spin-arc_...]`
+   and `Tailwind v4` arbitrary-value class compilation. */
+@keyframes spin-arc {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
   }
 }
 

@@ -8,7 +8,7 @@ import {
   type ToolUIPart,
 } from "ai";
 import { Loader2 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import {
   Conversation,
   ConversationContent,
@@ -23,12 +23,14 @@ import {
   ReasoningContent,
   ReasoningTrigger,
 } from "@/components/ai-elements/reasoning";
+import { ChatDivider } from "@/components/audric/chat-divider";
 import {
   BundlePermissionCard,
   type BundlePermissionCardStep,
   PermissionCard,
   type PermissionCardModifiableField,
 } from "@/components/audric/permission-card";
+import { ThinkingState } from "@/components/audric/thinking-state";
 import { ToolResultRouter } from "@/components/audric/tool-result-router";
 import { useZkLogin } from "@/components/auth/use-zklogin";
 import { ChipBar } from "@/components/chat/chip-bar";
@@ -52,6 +54,7 @@ import {
   setUsernameSkipped as persistUsernameSkipped,
 } from "@/lib/identity/username-skip";
 import { decodeJwtClaim } from "@/lib/jwt-client";
+import { cn } from "@/lib/utils";
 import type { ZkLoginSession } from "@/lib/zklogin";
 
 /**
@@ -361,9 +364,28 @@ function AudricChatPanel({ session }: { session: ZkLoginSession }) {
   // Streaming reasoning parts ONLY appear in the last assistant message,
   // so we gate per-message: `Reasoning`'s auto-open/duration logic flips
   // on the trailing message and stays settled on every prior one.
-  const lastMessageId = messages.at(-1)?.id;
+  const lastMessage = messages.at(-1);
+  const lastMessageId = lastMessage?.id;
   const isTurnStreaming = status === "streaming";
   const isEmpty = messages.length === 0;
+
+  // [S.204+ Phase 6.7] ThinkingState placement — derive everything from
+  // AI SDK's `status` field (pure Vercel AI pattern; no per-event tracking).
+  // Render the phantom AWAKENING/THINKING badge when:
+  //   - status === "submitted" (request out, no events yet), OR
+  //   - status === "streaming" AND the trailing assistant hasn't emitted
+  //     any text yet (still tool-calling or composing).
+  // Once text starts streaming, the indicator disappears — the streaming
+  // text itself becomes the liveness signal (matches v1's DELIVERING
+  // semantic, which the dark-on-dark text bubble doesn't need a badge
+  // for).
+  const lastAssistantHasText =
+    lastMessage?.role === "assistant" &&
+    lastMessage.parts.some(
+      (p) => p.type === "text" && p.text.trim().length > 0
+    );
+  const showThinking =
+    status === "submitted" || (isTurnStreaming && !lastAssistantHasText);
 
   // [Session 5.6 / S.202 — 2026-05-20] Chip tap handler. Mirrors the
   // template ChatShell pattern from `components/chat/shell.tsx`: fill the
@@ -468,105 +490,137 @@ function AudricChatPanel({ session }: { session: ZkLoginSession }) {
             }
 
             return (
-              <Message from={m.role} key={m.id}>
-                <MessageContent>
-                  {m.parts.map((part, i) => {
-                    if (part.type === "text") {
-                      return (
-                        <MessageResponse
-                          // biome-ignore lint/suspicious/noArrayIndexKey: parts are positionally stable per message
-                          key={`${m.id}-${i}`}
-                        >
-                          {part.text}
-                        </MessageResponse>
-                      );
-                    }
-                    if (part.type === "reasoning") {
-                      const reasoningPart = part as ReasoningUIPart;
-                      // The part is streaming only when (a) the turn is in
-                      // flight, (b) it's on the trailing message, and (c)
-                      // the part itself hasn't been marked done.
-                      const partStreaming =
-                        isTurnStreaming &&
-                        isLast &&
-                        reasoningPart.state !== "done";
-                      return (
-                        <Reasoning
-                          isStreaming={partStreaming}
-                          // biome-ignore lint/suspicious/noArrayIndexKey: parts are positionally stable per message
-                          key={`${m.id}-${i}`}
-                        >
-                          <ReasoningTrigger />
-                          <ReasoningContent>
-                            {reasoningPart.text}
-                          </ReasoningContent>
-                        </Reasoning>
-                      );
-                    }
-                    // [Phase 5e] Bundle marker → ONE bundle card.
-                    if (part.type === "data-audric-bundle") {
-                      const marker = parseAudricBundleMarker(
-                        (part as { data?: unknown }).data
-                      );
-                      if (!marker || marker.steps.length < 2) {
-                        // Malformed marker — render nothing; the
-                        // individual `tool-*` parts will render
-                        // separately because they're NOT in
-                        // bundleClaimedIds (the set is empty when
-                        // parse fails for ALL markers).
-                        return null;
-                      }
-                      return (
-                        <BundleForMarker
-                          addToolApprovalResponse={addToolApprovalResponse}
-                          addToolOutput={addToolOutput}
-                          // biome-ignore lint/suspicious/noArrayIndexKey: parts are positionally stable per message
-                          key={`${m.id}-${i}`}
-                          marker={marker}
-                          session={session}
-                        />
-                      );
-                    }
-                    if (part.type.startsWith("tool-")) {
-                      const toolPart = part as ToolUIPart;
-                      // [Phase 5e] Skip tool parts that a bundle marker
-                      // claimed — the BundlePermissionCard handles
-                      // them. AI SDK's state machine still tracks
-                      // each part's approval-requested → output-*
-                      // lifecycle independently (the parent's
-                      // bundle approve handler fires N
-                      // `addToolApprovalResponse` + N `addToolOutput`
-                      // to keep each part's state in sync).
-                      if (bundleClaimedIds.has(toolPart.toolCallId)) {
-                        return null;
-                      }
-                      if (toolPart.state === "approval-requested") {
+              <Fragment key={m.id}>
+                {/* [S.204+ Phase 6.7] TASK INITIATED divider — visually
+                    delineates each user-initiated turn. Renders before
+                    every user message (including the first) so multi-turn
+                    sessions stay scannable. Matches v1's UnifiedTimeline
+                    pattern. */}
+                {m.role === "user" && <ChatDivider />}
+                <Message from={m.role}>
+                  <MessageContent
+                    // [S.204+ Phase 6.7] Dark user bubble — asymmetric
+                    // border-radius (16/16/4/16) puts a small notch in
+                    // the bottom-right corner, matching the Figma chat
+                    // frame + v1's `--bubble-user-bg / --bubble-user-fg`
+                    // tokens (near-black/white in both themes). Assistant
+                    // messages stay un-bubbled (free-flow on the page
+                    // background) — only user messages get the pill.
+                    className={cn(
+                      m.role === "user" &&
+                        "max-w-[80%] rounded-2xl rounded-br-[4px] bg-bubble-user-bg px-4 py-2.5 text-bubble-user-fg [&_*]:text-bubble-user-fg"
+                    )}
+                  >
+                    {m.parts.map((part, i) => {
+                      if (part.type === "text") {
                         return (
-                          <PermissionForToolPart
+                          <MessageResponse
+                            // biome-ignore lint/suspicious/noArrayIndexKey: parts are positionally stable per message
+                            key={`${m.id}-${i}`}
+                          >
+                            {part.text}
+                          </MessageResponse>
+                        );
+                      }
+                      if (part.type === "reasoning") {
+                        const reasoningPart = part as ReasoningUIPart;
+                        // The part is streaming only when (a) the turn is in
+                        // flight, (b) it's on the trailing message, and (c)
+                        // the part itself hasn't been marked done.
+                        const partStreaming =
+                          isTurnStreaming &&
+                          isLast &&
+                          reasoningPart.state !== "done";
+                        return (
+                          <Reasoning
+                            isStreaming={partStreaming}
+                            // biome-ignore lint/suspicious/noArrayIndexKey: parts are positionally stable per message
+                            key={`${m.id}-${i}`}
+                          >
+                            <ReasoningTrigger />
+                            <ReasoningContent>
+                              {reasoningPart.text}
+                            </ReasoningContent>
+                          </Reasoning>
+                        );
+                      }
+                      // [Phase 5e] Bundle marker → ONE bundle card.
+                      if (part.type === "data-audric-bundle") {
+                        const marker = parseAudricBundleMarker(
+                          (part as { data?: unknown }).data
+                        );
+                        if (!marker || marker.steps.length < 2) {
+                          // Malformed marker — render nothing; the
+                          // individual `tool-*` parts will render
+                          // separately because they're NOT in
+                          // bundleClaimedIds (the set is empty when
+                          // parse fails for ALL markers).
+                          return null;
+                        }
+                        return (
+                          <BundleForMarker
                             addToolApprovalResponse={addToolApprovalResponse}
                             addToolOutput={addToolOutput}
                             // biome-ignore lint/suspicious/noArrayIndexKey: parts are positionally stable per message
                             key={`${m.id}-${i}`}
+                            marker={marker}
                             session={session}
-                            toolPart={toolPart}
                           />
                         );
                       }
-                      return (
-                        <ToolResultRouter
-                          // biome-ignore lint/suspicious/noArrayIndexKey: parts are positionally stable per message
-                          key={`${m.id}-${i}`}
-                          onSendMessage={(text) => sendMessage({ text })}
-                          part={toolPart}
-                        />
-                      );
-                    }
-                    return null;
-                  })}
-                </MessageContent>
-              </Message>
+                      if (part.type.startsWith("tool-")) {
+                        const toolPart = part as ToolUIPart;
+                        // [Phase 5e] Skip tool parts that a bundle marker
+                        // claimed — the BundlePermissionCard handles
+                        // them. AI SDK's state machine still tracks
+                        // each part's approval-requested → output-*
+                        // lifecycle independently (the parent's
+                        // bundle approve handler fires N
+                        // `addToolApprovalResponse` + N `addToolOutput`
+                        // to keep each part's state in sync).
+                        if (bundleClaimedIds.has(toolPart.toolCallId)) {
+                          return null;
+                        }
+                        if (toolPart.state === "approval-requested") {
+                          return (
+                            <PermissionForToolPart
+                              addToolApprovalResponse={addToolApprovalResponse}
+                              addToolOutput={addToolOutput}
+                              // biome-ignore lint/suspicious/noArrayIndexKey: parts are positionally stable per message
+                              key={`${m.id}-${i}`}
+                              session={session}
+                              toolPart={toolPart}
+                            />
+                          );
+                        }
+                        return (
+                          <ToolResultRouter
+                            // biome-ignore lint/suspicious/noArrayIndexKey: parts are positionally stable per message
+                            key={`${m.id}-${i}`}
+                            onSendMessage={(text) => sendMessage({ text })}
+                            part={toolPart}
+                          />
+                        );
+                      }
+                      return null;
+                    })}
+                  </MessageContent>
+                </Message>
+              </Fragment>
             );
           })}
+          {/* [S.204+ Phase 6.7] AWAKENING/THINKING badge — phantom
+              message rendered during the in-flight gap between user
+              send and first text-delta. Status-driven (no custom state
+              tracking), unmounts when text starts streaming so the
+              indicator never blocks the actual answer. */}
+          {showThinking && (
+            <Message from="assistant">
+              <MessageContent>
+                <ThinkingState hasText={lastAssistantHasText} status={status} />
+              </MessageContent>
+            </Message>
+          )}
         </ConversationContent>
       </Conversation>
 
