@@ -158,12 +158,12 @@ export function AudricChatClient() {
           borrow — all by conversation. No seed phrase.
         </p>
         {status === "expired" && (
-          <div className="mb-6 rounded border border-amber-700 bg-amber-950 p-3 text-amber-200 text-sm">
+          <div className="mb-6 rounded border border-warning-border bg-warning-bg p-3 text-sm text-warning-fg">
             Your session has expired. Please sign in again to continue.
           </div>
         )}
         {error && (
-          <div className="mb-6 rounded border border-red-700 bg-red-950 p-3 text-red-200 text-sm">
+          <div className="mb-6 rounded border border-error-border bg-error-bg p-3 text-error-fg text-sm">
             {error}
           </div>
         )}
@@ -421,7 +421,7 @@ function AudricChatPanel({ session }: { session: ZkLoginSession }) {
         <EmptyState />
         <div className="w-full max-w-2xl">{composerBlock}</div>
         {error && (
-          <div className="w-full max-w-2xl rounded border border-red-700 bg-red-950 p-3 text-red-200 text-sm">
+          <div className="w-full max-w-2xl rounded border border-error-border bg-error-bg p-3 text-error-fg text-sm">
             {sanitizeStreamErrorMessage(redactAddressesInText(error.message))}
           </div>
         )}
@@ -576,7 +576,7 @@ function AudricChatPanel({ session }: { session: ZkLoginSession }) {
         </div>
         {error && (
           <div className="mx-auto w-full max-w-2xl px-4 pb-3">
-            <div className="rounded border border-red-700 bg-red-950 p-3 text-red-200 text-sm">
+            <div className="rounded border border-error-border bg-error-bg p-3 text-error-fg text-sm">
               {sanitizeStreamErrorMessage(redactAddressesInText(error.message))}
             </div>
           </div>
@@ -615,7 +615,7 @@ function PermissionForToolPart(props: PermissionForToolPartProps) {
     // server route — but render a graceful fallback so the user can
     // still deny if metadata went missing for any reason.
     return (
-      <div className="my-3 rounded-lg border border-amber-700 bg-amber-950 p-4 text-amber-200 text-sm">
+      <div className="my-3 rounded-lg border border-warning-border bg-warning-bg p-4 text-sm text-warning-fg">
         Tool {toolName} requested approval but no metadata was attached.{" "}
         <Button
           onClick={() => {
