@@ -1313,18 +1313,6 @@ function translateChunk(
       const audricMetadata = isConfirmTier
         ? buildAudricToolMetadata(chunk.toolName, chunk.input, chunk.toolCallId)
         : undefined;
-      // [Bug B1 diagnostic 2026-05-20] Log metadata attachment outcome
-      // for confirm-tier writes. The "no metadata attached" client
-      // fallback fires when `toolPart.toolMetadata` arrives undefined;
-      // this log lets us see exactly what the server wrote to the wire
-      // (toolName, policy tier, metadata-built decision, description
-      // length). Once B1 is closed in production, this log can stay —
-      // it's a single line per confirm-tier write, observable cost.
-      if (isConfirmTier) {
-        console.log(
-          `[web-v2 audric-chat] tool-call wire-write toolName=${chunk.toolName} toolCallId=${chunk.toolCallId.slice(0, 8)} hasMetadata=${audricMetadata !== undefined} description=${audricMetadata?.description ?? "<none>"} fieldCount=${audricMetadata?.modifiableFields?.length ?? 0}`
-        );
-      }
       writer.write({
         type: "tool-input-available",
         toolCallId: chunk.toolCallId,

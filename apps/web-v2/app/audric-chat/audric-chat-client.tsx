@@ -218,25 +218,6 @@ function AudricChatPanel({ session }: { session: ZkLoginSession }) {
     // to type a follow-up message to get the LLM's narration of the
     // save result. AI SDK ships the canonical predicate.
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
-    // [Bug B1 diagnostic 2026-05-20] Log the EXACT chunk shape AI SDK
-    // hands us after schema parsing — this fires BEFORE updateToolPart
-    // attaches the chunk's fields to the rendered part. If the chunk
-    // here has toolMetadata but the rendered part doesn't, the bug is
-    // in updateToolPart / state cloning. If the chunk here is ALREADY
-    // missing toolMetadata, the bug is in schema parsing or the wire.
-    onToolCall: ({ toolCall }) => {
-      if (typeof window !== "undefined") {
-        const tc = toolCall as unknown as Record<string, unknown>;
-        console.warn("[B1 DIAG] onToolCall chunk arrived", {
-          toolName: tc.toolName,
-          toolCallId: tc.toolCallId,
-          chunkKeys: Object.keys(tc),
-          hasToolMetadata: tc.toolMetadata !== undefined,
-          toolMetadata: tc.toolMetadata,
-          fullChunk: tc,
-        });
-      }
-    },
   });
 
   const canSend = status === "ready" && input.trim().length > 0;
@@ -443,26 +424,6 @@ function PermissionForToolPart(props: PermissionForToolPartProps) {
 
   const metadata = parseAudricMetadata(toolPart.toolMetadata);
   if (!metadata) {
-    // [Bug B1 diagnostic 2026-05-20] Log the EXACT toolPart shape so
-    // we can see what arrived from the wire when the fallback fires.
-    // Pair with the server-side log in route.ts L1311-1318. Together
-    // they pinpoint where the metadata is dropping (server-side write
-    // vs. wire vs. AI SDK assembler vs. parser).
-    if (typeof window !== "undefined") {
-      console.error("[B1 DIAG] no-metadata fallback fired", {
-        toolName,
-        toolCallId: toolPart.toolCallId,
-        state: toolPart.state,
-        hasToolMetadata: toolPart.toolMetadata !== undefined,
-        toolMetadataType: typeof toolPart.toolMetadata,
-        toolMetadataKeys:
-          toolPart.toolMetadata && typeof toolPart.toolMetadata === "object"
-            ? Object.keys(toolPart.toolMetadata)
-            : null,
-        toolMetadata: toolPart.toolMetadata,
-        toolPartFullDump: JSON.parse(JSON.stringify(toolPart)),
-      });
-    }
     // Shouldn't happen for any confirm-tier tool wired through the
     // server route — but render a graceful fallback so the user can
     // still deny if metadata went missing for any reason.
