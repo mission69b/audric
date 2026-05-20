@@ -381,7 +381,7 @@ async function UsernameContent({ params }: UsernamePageProps) {
             —{" "}
             <Link
               className="text-fg-primary underline-offset-2 hover:underline"
-              href="/audric-chat"
+              href="/chat"
             >
               claim your handle
             </Link>

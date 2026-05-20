@@ -2,7 +2,7 @@
   "name": "@audric/web-v2",
   "version": "0.2.0-phase2-day2a-prereq",
   "private": true,
-  "description": "audric chat shell, vendored from vercel/ai-chatbot@107a43a. See ../HANDOFF_NEXT_AGENT.md.",
+  "description": "Audric — web app for audric.ai. AI agent for money on Sui (chat + Pay receipt + Store profile + Settings).",
   "scripts": {
     "dev": "next dev --turbo --port 3001",
     "build": "next build",

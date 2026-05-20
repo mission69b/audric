@@ -40,7 +40,7 @@ export default function AuthCallbackPage() {
 
   useEffect(() => {
     if (status === "authenticated") {
-      const timer = setTimeout(() => router.replace("/audric-chat"), 1200);
+      const timer = setTimeout(() => router.replace("/chat"), 1200);
       return () => clearTimeout(timer);
     }
   }, [status, router]);

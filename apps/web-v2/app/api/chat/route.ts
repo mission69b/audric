@@ -1,5 +1,5 @@
 /**
- * Audric chat route — Agent-backed POST /api/audric-chat.
+ * Audric chat route — Agent-backed POST /api/chat.
  *
  * --- WHY THIS FILE EXISTS (v0.7c Phase 2) ---
  *
@@ -26,10 +26,17 @@
  *     `experimental_telemetry` continues to ship OTel traces to the
  *     Vercel AI Gateway dashboard (verified at Day 2c; preserved here).
  *
- * **Why a new path (`/api/audric-chat`) instead of overwriting
- * `/api/chat`:** the template's `/api/chat` is wired into the existing
- * chat UI (`useChat({ api: '/api/chat' })`) AND the Day 1d baseline
- * smoke; rewiring to this route happens incrementally per phase.
+ * **Naming history (S.197b, v0.7c Session 5.5, 2026-05-20):** this file
+ * previously lived at `app/(chat)/api/audric-chat/route.ts` (URL
+ * `/api/audric-chat`). The `audric-chat` naming was template-debris —
+ * the file had to dodge the template's pre-existing `/api/chat` route
+ * during the Phase 2 incremental wire-up. S.197a Path A lock (chat
+ * cutover targets THIS Audric file, NOT the template's) made the
+ * template route dead code; S.197b deleted the template + renamed
+ * this file to its natural URL `/api/chat` (matching `useChat({
+ * api: '/api/chat' })` in `app/chat/audric-chat-client.tsx`). The
+ * route group `(chat)` continues to die in Session 9a alongside the
+ * remaining template-debris files.
  *
  * --- DAY 2e ARCHITECTURE ---
  *
@@ -135,7 +142,7 @@ import { env } from "@/lib/env";
 import { getPortfolio, prewarmPortfolio } from "@/lib/portfolio";
 import { prisma } from "@/lib/prisma";
 import { getSuiRpcUrl } from "@/lib/sui-rpc";
-import { Prisma } from "../../../../../web/lib/generated/prisma/client";
+import { Prisma } from "../../../../web/lib/generated/prisma/client";
 
 export const maxDuration = 60;
 

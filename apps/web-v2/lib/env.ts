@@ -102,6 +102,23 @@ const serverSchema = z.object({
    * deploys may not have it set yet; when absent the profile page
    * degrades silently (portfolio panel hidden). */
   T2000_INTERNAL_KEY: optionalString,
+
+  /** Internal-API base URL for engine tools' cross-app fetches. Threaded
+   * through `ToolContext.env.AUDRIC_INTERNAL_API_URL` so engine
+   * helpers (`audric-api.ts:getAudricApiBase`) resolve canonical
+   * `/api/portfolio` + `/api/history` + `/api/analytics/*` URLs.
+   *
+   * v0.7c Phase 6 Session 5 flip (founder-owned, Vercel UI):
+   *   pre-cutover: `https://audric.ai` (engine routes to apps/web)
+   *   post-flip:   `https://audric-web-v2.vercel.app` (engine routes to web-v2)
+   *
+   * Optional because the engine itself falls back to
+   * `process.env.AUDRIC_INTERNAL_API_URL` → `process.env.NEXT_PUBLIC_APP_URL`
+   * → `null` when this is absent. Validating here catches the
+   * empty-string-in-Vercel-UI bug class (S.20 / Apr 2026
+   * BlockVision incident) BEFORE the engine fails over to a stale
+   * fallback. */
+  AUDRIC_INTERNAL_API_URL: optionalString,
 });
 
 // ─── Client schema ────────────────────────────────────────────────────
@@ -144,6 +161,7 @@ const runtimeEnv = {
   SUI_RPC_URL: process.env.SUI_RPC_URL,
   ENOKI_SECRET_KEY: process.env.ENOKI_SECRET_KEY,
   T2000_INTERNAL_KEY: process.env.T2000_INTERNAL_KEY,
+  AUDRIC_INTERNAL_API_URL: process.env.AUDRIC_INTERNAL_API_URL,
   NEXT_PUBLIC_GOOGLE_CLIENT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
   NEXT_PUBLIC_ENOKI_API_KEY: process.env.NEXT_PUBLIC_ENOKI_API_KEY,
   NEXT_PUBLIC_SUI_NETWORK: process.env.NEXT_PUBLIC_SUI_NETWORK,

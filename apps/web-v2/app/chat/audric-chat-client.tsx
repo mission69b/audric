@@ -198,7 +198,7 @@ function AudricChatPanel({ session }: { session: ZkLoginSession }) {
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
-        api: "/api/audric-chat",
+        api: "/api/chat",
         headers: { "x-zklogin-jwt": session.jwt },
       }),
     [session.jwt]

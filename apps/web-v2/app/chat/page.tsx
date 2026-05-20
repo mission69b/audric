@@ -1,10 +1,13 @@
 /**
- * Day 2b minimal audric chat surface — `/audric-chat`.
+ * Audric chat surface — `/chat`.
  *
  * Lives OUTSIDE the template's `(chat)` route group so the template's
- * sidebar / chrome / auth-guard chrome can't interfere with the
- * minimum-viable smoke. Phase 6 cutover deletes this page (the
- * template's chat surface gets rewired to `/api/audric-chat`).
+ * sidebar / chrome / auth-guard chrome can't interfere. Previously at
+ * `/audric-chat` (template-debris naming to dodge the pre-existing
+ * `/chat/[id]` template route); S.197b (v0.7c Session 5.5, 2026-05-20)
+ * deleted the template route + renamed this page to its natural URL
+ * `/chat`. The `(chat)` route group itself + the remaining template
+ * chrome delete in Session 9a.
  *
  * **JWT input pattern:** the Day 1c zkLogin stub adapter is server-
  * side decode-only. Phase 3 wires the real `ZkLoginProvider` with
