@@ -88,6 +88,7 @@ import {
   type AddressPortfolio,
   applyToolFlags,
   buildInternalContext,
+  clampThinkingForEffort,
   classifyEffort,
   composeBundleFromToolResults,
   DEFAULT_GUARD_CONFIG,
@@ -960,12 +961,100 @@ export async function POST(request: Request) {
     walletAddress,
   });
 
+  // 7.7 [S.210 — 2026-05-21] Effort classification + thinking budget.
+  // MUST run before the Agent constructor so the resulting budget can
+  // be threaded into `providerOptions.anthropic.thinking`. Pre-S.210
+  // this lived ~150 lines down (next to `harnessShape` for telemetry
+  // wiring) and never reached the agent — Claude ran with the default
+  // (no extended thinking), so the `<Reasoning>` accordion stayed empty
+  // even on Tier 2 / Tier 3 prompts.
+  //
+  // `latestUserText` extraction is inlined (vs the helper at L2238
+  // which works on the post-normalize array — that array is built
+  // later in §9). We walk backwards through `body.messages` for the
+  // last user message, then collapse its `parts[]` (UIMessage shape)
+  // or `content` (legacy shape) into a single string. Empty when the
+  // last message isn't a user turn (e.g. HITL resume) — classifier
+  // defaults to `medium` in that case.
+  //
+  // Budget caps come from the engine's canonical `EFFORT_THINKING_
+  // BUDGET_CAPS`. Pass a ceiling-sized config (32K = max) and let
+  // `clampThinkingForEffort` clamp per-effort:
+  //   low    → disabled    (no thinking — simple lookups stay fast)
+  //   medium → 8K tokens
+  //   high   → 16K tokens
+  //   max    → 32K tokens
+  //
+  // Matches `packages/engine/src/v2/engine.ts` L1146 (which calls
+  // `buildAnthropicProviderOptions(thinkingConfig, outputConfig)` from
+  // the engine's canonical builder) — same provider-options shape,
+  // same clamping logic, just inlined here because web-v2 uses
+  // `Experimental_Agent` directly per D-15 instead of AISDKEngine.
+  const latestUserTextForEffort = (() => {
+    for (let i = body.messages.length - 1; i >= 0; i--) {
+      const m = body.messages[i];
+      if (m.role !== "user") {
+        continue;
+      }
+      if ("content" in m) {
+        return typeof m.content === "string" ? m.content : "";
+      }
+      return m.parts
+        .filter((p): p is { type: "text"; text: string } => p.type === "text")
+        .map((p) => p.text)
+        .join(" ");
+    }
+    return "";
+  })();
+  const sessionWriteCount = countWriteToolsInHistory(body.messages);
+  const effortLevel = latestUserTextForEffort
+    ? classifyEffort(
+        DEFAULT_MODEL_USED,
+        latestUserTextForEffort,
+        sessionWriteCount
+      )
+    : ("medium" as const);
+  const clampedThinking = clampThinkingForEffort(
+    { type: "enabled", budgetTokens: 32_000 },
+    effortLevel
+  );
+  // `clampThinkingForEffort` returns `ThinkingConfig | undefined`. The
+  // undefined branch only fires when `config` itself is undefined —
+  // which can't happen here (we pass a literal). Narrow defensively so
+  // TS is happy AND a future maintainer who passes a maybe-undefined
+  // config doesn't silently lose the thinking block.
+  const thinkingProviderOption =
+    clampedThinking && clampedThinking.type === "enabled"
+      ? {
+          thinking: {
+            type: "enabled" as const,
+            budgetTokens: clampedThinking.budgetTokens,
+          },
+        }
+      : undefined;
+
   // 8. Compose the Agent. Per D-15: audric-side `Agent` for clean
   // composition + native middleware mount points (Phase 5.5 wraps
   // `model` with `wrapLanguageModel(model, [audricGuardsMiddleware,
   // preflightMiddleware, piiRedactionMiddleware, telemetryMiddleware])`
   // here per D-17). Per D-6: gateway-routed when `AI_GATEWAY_API_KEY`
   // is set, direct-Anthropic otherwise.
+  //
+  // [S.210 — 2026-05-21] `providerOptions` now merges TWO bags:
+  //   - `gateway.caching: 'auto'` (when on the gateway path) — pre-S.210
+  //     behavior, preserves auto cache_control injection
+  //   - `anthropic.thinking` (when effort ≥ medium) — NEW, enables
+  //     extended thinking + signed-thinking emission so the route's
+  //     `translateChunk` reasoning forwarders actually have chunks
+  //     to forward
+  // Spread guards keep the keys absent when either side has nothing.
+  const providerOptionsForAgent: Record<string, unknown> = {};
+  if (useGateway) {
+    providerOptionsForAgent.gateway = { caching: "auto" as const };
+  }
+  if (thinkingProviderOption) {
+    providerOptionsForAgent.anthropic = thinkingProviderOption;
+  }
   const audricAgent = new Agent({
     model,
     tools,
@@ -973,17 +1062,16 @@ export async function POST(request: Request) {
     stopWhen: stepCountIs(DEFAULT_MAX_TURNS),
     experimental_telemetry: experimentalTelemetry,
     experimental_context: internalContext,
-    // [Day 2c++ G6 F-5 / D-6 audit] Vercel AI Gateway's `caching: 'auto'`
-    // auto-injects `cache_control` breakpoints for Anthropic so prompt
-    // caching fires WITHOUT typed SystemBlock[] markers. Only meaningful
-    // when routing through the gateway; the direct-Anthropic fallback
-    // ignores this field.
-    ...(useGateway
-      ? {
-          providerOptions: {
-            gateway: { caching: "auto" as const },
-          },
-        }
+    // ProviderOptions has a strict `JSONObject`-indexed shape in AI SDK
+    // v6; our typed bag (with `as const` literals from `caching: 'auto'`
+    // / `type: 'enabled'`) is JSON-structurally identical but doesn't
+    // satisfy the index signature without a cast. Mirrors the same
+    // bridge `packages/engine/src/v2/engine.ts` L1202 uses
+    // (`as unknown as any` with an eslint-disable). Keeping the cast
+    // localised here so the `as any` doesn't leak into the wider scope.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ...(Object.keys(providerOptionsForAgent).length > 0
+      ? { providerOptions: providerOptionsForAgent as unknown as any }
       : {}),
   });
 
@@ -1098,25 +1186,16 @@ export async function POST(request: Request) {
   );
   const latestUserText = extractLatestUserText(normalized);
 
-  // [Phase 6.5 / SPEC_V07C_PHASE_6_5_CHAT_PARITY C.2 / S.198 — 2026-05-20]
-  // Classify thinking effort for this turn. Matches `apps/web/lib/
-  // engine/engine-factory.ts` L745-748 (canonical apps/web pattern).
-  // `sessionWriteCount` is a session-history feature in the legacy
-  // path; web-v2 doesn't track it cross-turn yet — counting tool-parts
-  // in the current request body's message history covers the same
-  // "user has been making writes this session" signal cheaply.
-  //
-  // The classifier output drives `TurnMetrics.effortLevel` +
-  // `harnessShape`. The engine's `outputConfig.effort` (used by the
-  // AISDKEngine path to pass thinking budget to Anthropic) is NOT
-  // currently threaded through web-v2's `Agent.stream({...})` call —
-  // that's a v0.7c→v0.7d migration (D-7 in BENEFITS_SPEC_v07d). For
-  // now classification is dashboard-only; the model still runs at its
-  // default thinking budget.
-  const sessionWriteCount = countWriteToolsInHistory(body.messages);
-  const effortLevel = latestUserText
-    ? classifyEffort(DEFAULT_MODEL_USED, latestUserText, sessionWriteCount)
-    : ("medium" as const);
+  // [S.210 — 2026-05-21] `effortLevel` is now computed BEFORE the
+  // Agent constructor (see L963 region) so the resulting thinking
+  // budget can flow into `providerOptions.anthropic.thinking` at
+  // agent construction. Pre-S.210 effort was classified HERE for
+  // telemetry only; the model ran without extended thinking. Now
+  // the classifier output drives BOTH (a) `providerOptions.anthropic.
+  // thinking.budgetTokens` for the Anthropic call AND (b)
+  // `TurnMetrics.effortLevel` + `harnessShape` for telemetry — same
+  // classification, two consumers, single computation. Matches
+  // `packages/engine/src/v2/engine.ts` L1146 single-classify pattern.
   const harnessShape = harnessShapeForEffort(effortLevel);
 
   const intentDispatchedParts = latestUserText
@@ -1898,25 +1977,52 @@ function translateChunk(
       });
       break;
     }
+    case "reasoning-start": {
+      // [S.210 — 2026-05-21] Forward reasoning lifecycle to the wire.
+      // Pre-S.210 the Day 2c G6 path logged reasoning chunks server-side
+      // and STOPPED — the comment claimed "Rendering thinking to the UI
+      // is Phase 4+ scope". Phase 6.5 wired the `<Reasoning>` accordion
+      // in `audric-chat-client.tsx` (S.207 P4) but no one re-checked
+      // this translateChunk gate, so Claude's extended-thinking chunks
+      // landed in stdout instead of the UI.
+      //
+      // The UIMessageStreamWriter accepts the same `reasoning-start /
+      // reasoning-delta / reasoning-end` part types AI SDK v6 emits
+      // from `streamText` (see `ai/dist/index.d.ts` L2089-2100). The
+      // client assembler folds the three streaming parts into a single
+      // `reasoning` UIMessagePart with `text` + `state`, which is what
+      // `<Reasoning>` reads.
+      writer.write({ type: "reasoning-start", id: chunk.id });
+      break;
+    }
     case "reasoning-delta": {
-      // [Day 2c G6] Log thinking events so the smoke can verify F-2
-      // (multi-block thinking) + F-3 (signed thinking) pass through
-      // the gateway. Rendering thinking to the UI is Phase 4+ scope.
+      // [S.210 — 2026-05-21] Forward reasoning text deltas to the wire
+      // (previously log-only). Each delta increments the trailing
+      // `reasoning` part's text by `chunk.text`. The client's <Reasoning>
+      // collapsible auto-opens during streaming and auto-closes 1s after
+      // the matching `reasoning-end` lands. Empty deltas suppressed to
+      // avoid spurious wire frames.
       if (typeof chunk.text === "string" && chunk.text.length > 0) {
-        console.log(
-          `[audric-chat] reasoning_delta (+${chunk.text.length} chars)`
-        );
+        writer.write({
+          type: "reasoning-delta",
+          id: chunk.id,
+          delta: chunk.text,
+        });
       }
       break;
     }
     case "reasoning-end": {
-      console.log(`[audric-chat] reasoning_end id=${chunk.id}`);
+      // [S.210 — 2026-05-21] Forward reasoning end to the wire. Closes
+      // the streaming reasoning part on the client — flips `state` to
+      // 'done' so the <Reasoning> accordion knows to stop the shimmer
+      // and start the auto-close countdown.
+      writer.write({ type: "reasoning-end", id: chunk.id });
       break;
     }
     default:
       // Other chunks (`start`, `start-step`, `finish-step`, `finish`,
       // `text-start`, `text-end`, `tool-input-*`, `source`, `file`,
-      // `raw`, `abort`, `reasoning-start`) are not translated.
+      // `raw`, `abort`) are not translated.
       break;
   }
 }
