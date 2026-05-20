@@ -57,7 +57,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                 className="size-8 !px-0 items-center justify-center group-data-[collapsible=icon]:group-hover/logo:opacity-0"
                 tooltip="Audric"
               >
-                <Link href="/audric-chat" onClick={() => setOpenMobile(false)}>
+                <Link href="/chat" onClick={() => setOpenMobile(false)}>
                   <AudricMark
                     className="text-sidebar-foreground/70"
                     size={16}
@@ -93,7 +93,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                   className="h-8 rounded-lg border border-sidebar-border text-[13px] text-sidebar-foreground/70 transition-colors duration-150 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
                   onClick={() => {
                     setOpenMobile(false);
-                    router.push("/audric-chat");
+                    router.push("/chat");
                   }}
                   tooltip="New chat"
                 >
