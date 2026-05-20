@@ -86,6 +86,7 @@ import {
 } from "@t2000/sdk";
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { extractMoveCallTargets } from "@/lib/audric/extract-move-call-targets";
 import { redactAddressesInText, redactPII } from "@/lib/audric/log-redact";
 import { getCurrentUser } from "@/lib/audric-auth";
 import { env } from "@/lib/env";
@@ -572,40 +573,6 @@ export async function POST(request: NextRequest) {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-function extractMoveCallTargets(
-  tx: Awaited<ReturnType<typeof composeTx>>["tx"]
-): string[] {
-  // Sui PTB command shape (per `@mysten/sui` v2 internal type):
-  //   { $kind: 'MoveCall', MoveCall: { package, module, function, ... } }
-  // The `target` form (`package::module::function`) is the convention Enoki's
-  // `allowedMoveCallTargets` allow-list expects — construct it ourselves.
-  const targets = new Set<string>();
-  const data = (
-    tx as unknown as {
-      getData?: () => {
-        commands?: Array<{
-          $kind?: string;
-          MoveCall?: { package?: string; module?: string; function?: string };
-        }>;
-      };
-    }
-  ).getData?.();
-  const commands = Array.isArray(data?.commands) ? data.commands : [];
-  for (const cmd of commands) {
-    if (
-      cmd?.$kind === "MoveCall" &&
-      cmd.MoveCall?.package &&
-      cmd.MoveCall.module &&
-      cmd.MoveCall.function
-    ) {
-      targets.add(
-        `${cmd.MoveCall.package}::${cmd.MoveCall.module}::${cmd.MoveCall.function}`
-      );
-    }
-  }
-  return Array.from(targets);
-}
 
 function parseEnokiError(body: string, status: number): string {
   try {

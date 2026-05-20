@@ -115,6 +115,7 @@ import {
 } from "ai";
 import { z } from "zod";
 import {
+  argsFingerprint,
   dispatchIntentsToParts,
   synthesizeAssistantToolMessage,
 } from "@/lib/audric/dispatch-intents";
@@ -879,6 +880,30 @@ export async function POST(request: Request) {
       // `data-audric-bundle` marker if ≥2 writes are bundleable.
       const bundleBuffer = new BundleBuffer();
 
+      // [v0.7c Phase 6 — B2 fix (2026-05-20)] Server-side microcompact
+      // equivalent for the AI SDK Agent path. When the LLM re-issues a
+      // read tool whose (name + input fingerprint) matches a pre-fired
+      // tool already emitted in step 0, suppress the duplicate
+      // tool-input-available / tool-output-available wire writes. Without
+      // this, "what's my balance?" renders 2 cards (pre-fired + LLM-issued)
+      // because the agent's stream still executes the LLM's call and emits
+      // both events even though the result is already in context.
+      //
+      // The legacy `apps/web` engine path uses `microcompact()` in
+      // `packages/engine/src/v2/engine.ts` to dedupe at the engine layer.
+      // The Experimental_Agent path used by web-v2 has no equivalent
+      // dedup, so we add it on the wire. Note this only suppresses the
+      // CLIENT render — the agent still incurs the tool's execution cost
+      // internally; preventing that requires hooking into the tool's
+      // execute() function, which is a v0.7d optimization.
+      const preFiredFingerprints = new Set(
+        dispatchedReadParts.map(
+          (p) =>
+            `${p.toolName}:${argsFingerprint(p.input as Record<string, unknown>)}`
+        )
+      );
+      const suppressedToolCallIds = new Set<string>();
+
       try {
         for await (const chunk of result.fullStream) {
           collector.observeChunk(chunk);
@@ -892,6 +917,28 @@ export async function POST(request: Request) {
           }
           if (chunk.type === "finish-step") {
             bundleBuffer.flush(writer, messageId);
+            continue;
+          }
+
+          // [B2 fix] Suppress LLM-issued duplicates of pre-fired reads.
+          // Tracks `toolCallId`s so the matching `tool-result` chunk is
+          // suppressed too (otherwise the wire emits an orphan
+          // tool-output-available for a tool the client never saw an
+          // input for).
+          if (chunk.type === "tool-call" && preFiredFingerprints.size > 0) {
+            const fp = `${chunk.toolName}:${argsFingerprint((chunk.input ?? {}) as Record<string, unknown>)}`;
+            if (preFiredFingerprints.has(fp)) {
+              suppressedToolCallIds.add(chunk.toolCallId);
+              console.log(
+                `[audric-chat] B2 dedup: suppressed LLM-issued ${chunk.toolName} (matches pre-fired)`
+              );
+              continue;
+            }
+          }
+          if (
+            (chunk.type === "tool-result" || chunk.type === "tool-error") &&
+            suppressedToolCallIds.has(chunk.toolCallId)
+          ) {
             continue;
           }
 
