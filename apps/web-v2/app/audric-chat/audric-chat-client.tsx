@@ -424,6 +424,24 @@ function PermissionForToolPart(props: PermissionForToolPartProps) {
 
   const metadata = parseAudricMetadata(toolPart.toolMetadata);
   if (!metadata) {
+    // [Bug B1 diagnostic 2026-05-20] Log the EXACT toolPart shape so
+    // we can see what arrived from the wire when the fallback fires.
+    // Pair with the server-side log in route.ts L1311-1318. Together
+    // they pinpoint where the metadata is dropping (server-side write
+    // vs. wire vs. AI SDK assembler vs. parser).
+    if (typeof window !== "undefined") {
+      console.log("[web-v2 audric-chat-client] no-metadata fallback fired:", {
+        toolName,
+        toolCallId: toolPart.toolCallId,
+        state: toolPart.state,
+        hasToolMetadata: toolPart.toolMetadata !== undefined,
+        toolMetadataKeys:
+          toolPart.toolMetadata && typeof toolPart.toolMetadata === "object"
+            ? Object.keys(toolPart.toolMetadata)
+            : null,
+        toolMetadata: toolPart.toolMetadata,
+      });
+    }
     // Shouldn't happen for any confirm-tier tool wired through the
     // server route — but render a graceful fallback so the user can
     // still deny if metadata went missing for any reason.
