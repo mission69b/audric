@@ -151,6 +151,7 @@ import {
   type ResumeOutcome,
 } from "@/lib/audric/resume-outcome";
 import { selectResponseMessageId } from "@/lib/audric/select-response-message-id";
+import { getSessionSpend } from "@/lib/audric/session-spend";
 import { sanitizeStreamErrorMessage } from "@/lib/audric/stream-errors";
 import { buildAudricSystemPrompt } from "@/lib/audric/system-prompt";
 import { TelemetryIntegration } from "@/lib/audric/telemetry-integration";
@@ -677,6 +678,27 @@ export async function POST(request: Request) {
   // through to `process.env.NEXT_PUBLIC_APP_URL` → null → tools
   // gracefully return empty/null with a "not available" `displayText`
   // (see engine `audric-api.ts:38-53`).
+  // [Group E READ-side — 2026-05-21 / S.214 follow-on] Read the
+  // session's cumulative auto-executed USD spend from the Upstash
+  // ledger (`lib/audric/session-spend.ts`). This feeds the daily-cap
+  // downgrade rule in `resolvePermissionTier` (engine
+  // `permission-rules.ts` — cumulative > autonomousDailyLimit → any
+  // auto-tier write downgrades to confirm-tier).
+  //
+  // Failure mode: fail-OPEN (returns 0 if Upstash is down). Acceptable
+  // because (a) web-v2 has zero auto-tier writes today (all
+  // confirm-tier), (b) per-call tier checks remain in effect even with
+  // a 0 reading, and (c) the alternative (failing the chat turn for an
+  // infra blip) is strictly worse UX.
+  //
+  // The INCREMENT side (`incrementSessionSpend` after a successful
+  // auto-executed write) is wired in apps/web's engine factory via
+  // `EngineConfig.onAutoExecuted`; web-v2 uses `Experimental_Agent`
+  // directly so that hook path doesn't apply. When v0.7d Phase 1+
+  // activates auto-tier writes, wire the increment in the
+  // `translateChunk` → `tool-result` case (see TODO marker there).
+  const sessionSpendUsdAtStart = await getSessionSpend(sessionId);
+
   const toolContext: ToolContext = {
     walletAddress,
     suiRpcUrl: getSuiRpcUrl(),
@@ -775,7 +797,7 @@ export async function POST(request: Request) {
     // before the flip).
     permissionConfig: permissionConfigForTurn,
     priceCache: new Map<string, number>(),
-    sessionSpendUsd: 0,
+    sessionSpendUsd: sessionSpendUsdAtStart,
   };
   // [Phase 5.5 / D-17 / G8.5 — 2026-05-19; shape-fix 2026-05-19 review]
   // Mutable holder for the normalized message history. The guard
@@ -1523,12 +1545,19 @@ export async function POST(request: Request) {
         harnessShape,
         modelUsed: DEFAULT_MODEL_USED,
         contextTokensStart,
-        // sessionSpendUsd: wired in E.2 (Redis-backed session-spend
-        // ledger). Until E.2 lands, daily-cap downgrade rule in
-        // `resolvePermissionTier` never triggers — acceptable since
-        // web-v2 has no auto-tier writes in production today (all
-        // confirm-tier; user always taps).
-        sessionSpendUsd: 0,
+        // [Group E READ-side — 2026-05-21 / S.214 follow-on] Replaced
+        // the `sessionSpendUsd: 0` placeholder with the real value
+        // read at chat-start (~L680). This matches the value flowing
+        // into `ToolContext.sessionSpendUsd` for the same turn so
+        // TurnMetrics rows and the engine see the same accumulated
+        // spend.
+        //
+        // Note: the increment side is still deferred (see
+        // `lib/audric/session-spend.ts` header). When auto-tier writes
+        // activate post-Phase-1, the TurnMetrics row should record the
+        // POST-increment value via the same `getSessionSpend` call at
+        // turn END. For now the value is stable across the turn.
+        sessionSpendUsd: sessionSpendUsdAtStart,
         synthetic: false,
         turnPhase: "initial",
       });
@@ -2003,6 +2032,25 @@ function translateChunk(
       break;
     }
     case "tool-result": {
+      // [Group E INCREMENT-side TODO — 2026-05-21 / S.214 follow-on]
+      // When v0.7d Phase 1+ activates auto-tier writes (today every
+      // write is confirm-tier; user always taps), call
+      // `incrementSessionSpend(sessionId, usdValue)` here for tool
+      // calls that were resolved to auto-tier. Apps/web's engine
+      // factory wires this via `EngineConfig.onAutoExecuted`; web-v2
+      // uses `Experimental_Agent` directly so the equivalent post-
+      // write hook needs to land here. Inputs needed: (a) the
+      // resolved tier from `resolvePermissionTier` for `chunk.toolName`
+      // + the call's input — we'd need to thread that state from
+      // `needsApproval` callback OR re-resolve it here against the
+      // turn's `ToolContext.priceCache`. (b) the USD value from
+      // `resolveUsdValue` against the same priceCache.
+      //
+      // Deferring because: web-v2 has zero auto-tier writes in
+      // production today, so the increment never fires. The READ side
+      // (`getSessionSpend` at chat-start, ~L680) feeds the daily-cap
+      // downgrade rule and is what actually unblocks the safety net
+      // when auto-tier flips on.
       writer.write({
         type: "tool-output-available",
         toolCallId: chunk.toolCallId,

@@ -119,6 +119,44 @@ const serverSchema = z.object({
    * BlockVision incident) BEFORE the engine fails over to a stale
    * fallback. */
   AUDRIC_INTERNAL_API_URL: optionalString,
+
+  /** Upstash Redis REST URL — backs the per-session spend ledger that
+   * feeds `resolvePermissionTier`'s daily-cap downgrade rule (engine
+   * v2.7.0+ `ToolContext.sessionSpendUsd`). Same Upstash instance as
+   * apps/web (shared Vercel env vars across project deploys).
+   *
+   * **Why OPTIONAL (not required):** the daily-cap downgrade rule is
+   * a SECOND line of defense — the engine's per-call
+   * `resolvePermissionTier(operation, amountUsd, config)` runs every
+   * write either way. The cumulative session-spend accumulator is the
+   * runtime safety net for the rare "user makes 50 sub-threshold
+   * writes in one session and crosses autonomousDailyLimit" case.
+   * Today web-v2 has zero auto-tier writes in production (all
+   * confirm-tier; user always taps), so the accumulator never fires.
+   * Making it OPTIONAL means web-v2 boots cleanly during local dev /
+   * preview deploys / the v0.7c soak window even if Upstash isn't yet
+   * configured. Production deploys MUST set both vars (paired with
+   * UPSTASH_REDIS_REST_TOKEN); absent → `lib/upstash.ts` exports
+   * `null` → `getSessionSpend` short-circuits to 0 → daily-cap rule
+   * reads 0 → degraded-but-safe.
+   *
+   * Group E wired 2026-05-21 (S.214 follow-on) — pre-Phase-1 polish
+   * carry-over from v0.7c §6.5.E (Phase 6.5 scope-locked at Option B+,
+   * Group E was on the cutting-room floor). Lights up real plumbing so
+   * Phase 1's auto-tier writes (if/when activated) have a working
+   * accumulator without further integration work.
+   *
+   * **Founder ops (Vercel project: `audric-web-v2`):** copy
+   * `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` from the
+   * `audric-web` project's Vercel env (Production + Preview). Same
+   * Upstash database; key namespace shared. Setting them is what
+   * activates the safety net; absence is degraded-but-safe. */
+  UPSTASH_REDIS_REST_URL: optionalString,
+
+  /** Upstash Redis REST token — paired with `UPSTASH_REDIS_REST_URL`.
+   * See doc on that var for full context. Optional for same reasons:
+   * absence means degraded-but-safe (session-spend ledger returns 0). */
+  UPSTASH_REDIS_REST_TOKEN: optionalString,
 });
 
 // ─── Client schema ────────────────────────────────────────────────────
@@ -162,6 +200,8 @@ const runtimeEnv = {
   ENOKI_SECRET_KEY: process.env.ENOKI_SECRET_KEY,
   T2000_INTERNAL_KEY: process.env.T2000_INTERNAL_KEY,
   AUDRIC_INTERNAL_API_URL: process.env.AUDRIC_INTERNAL_API_URL,
+  UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
+  UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
   NEXT_PUBLIC_GOOGLE_CLIENT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
   NEXT_PUBLIC_ENOKI_API_KEY: process.env.NEXT_PUBLIC_ENOKI_API_KEY,
   NEXT_PUBLIC_SUI_NETWORK: process.env.NEXT_PUBLIC_SUI_NETWORK,
