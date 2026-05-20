@@ -2,6 +2,12 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import {
+  departureMono,
+  newYorkDisplay,
+  newYorkLarge,
+  newYorkMedium,
+} from "./fonts";
 
 import "./globals.css";
 // [v0.7c Day 1c → Phase 3 Day 3c] Day 1c shipped a stub passthrough
@@ -82,7 +88,10 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      className={`${geist.variable} ${geistMono.variable}`}
+      // S.204+ — chain the local NewYork serif + DepartureMono
+      // variables alongside Geist so `--font-serif` / `--font-mono`
+      // stacks in `globals.css` resolve to real OTF assets.
+      className={`${geist.variable} ${geistMono.variable} ${newYorkDisplay.variable} ${newYorkLarge.variable} ${newYorkMedium.variable} ${departureMono.variable}`}
       lang="en"
       suppressHydrationWarning
     >

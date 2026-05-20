@@ -8,33 +8,25 @@
  * coupled to next-auth's `user.email`; Audric uses zkLogin where
  * identity is the Sui address (derived from Google OIDC sub + Enoki).
  *
- * Why the rewrite (not a new file):
- *   - This was the SINGLE consumer of `SidebarUserNav` (only AppSidebar
- *     imported it). Replacing in-place removes a layer of indirection
- *     vs adding an `AudricSidebarUserNav` sibling.
- *   - The user-feedback principle from S.203 ("don't reinvent") applies
- *     here too — the template's shadcn primitive set (SidebarMenuButton,
- *     DropdownMenu, etc.) is correct; only the IDENTITY SOURCE needed to
- *     change.
- *   - AppSidebar's footer becomes `<SidebarUserNav />` (no prop). The
- *     component reads `useZkLogin()` directly.
+ * [S.204+ Phase 6.7 — 2026-05-20] Identity display upgraded to prefer
+ * the claimed Audric handle (`alice@audric`) over the raw wallet
+ * address. Falls back to truncated address when the handle hasn't been
+ * claimed yet — matches v1's `AppSidebar` footer behavior exactly.
+ * Source: `useUserStatus()` hook (SWR-cached, 5min dedup).
  *
- * Identity display:
- *   - Primary label: truncated wallet address (font-mono, the canonical
- *     Audric identifier).
- *   - Avatar gradient: hashed from email (preserves the deterministic
- *     per-user color from the template — same gradient across sessions).
- *   - Dropdown reveals the email (disabled — read-only) above the
- *     Sign out item, for cases where the user wants to confirm they're
- *     signed in as the right Google account before signing out.
+ * Identity display rules (priority order):
+ *   1. `username@audric` (claimed Audric handle) — primary text
+ *   2. truncated wallet address (pre-claim users) — primary text
+ *   - Email shown as SECONDARY line below the primary (post-claim).
+ *   - Email shown inside the dropdown only (pre-claim) — sidebar isn't
+ *     where the user reads their email day-to-day.
  *
- * Sign-out:
- *   - `useZkLogin().logout` clears `t2000:zklogin:session` from
- *     localStorage + `t2000:zklogin:pending` from sessionStorage +
- *     navigates to "/" (the marketing root, which redirects to /chat
- *     for re-auth). Same net behavior as the legacy `signOutAudric`
- *     call site; we use `useZkLogin` for consistency with the rest of
- *     `/chat/audric-chat-client.tsx`.
+ * Avatar gradient: hashed from email (preserves deterministic per-user
+ * color from the template — same gradient across sessions).
+ *
+ * Sign-out: `useZkLogin().logout` clears localStorage + sessionStorage
+ * and navigates to "/" (marketing root, which redirects to /chat for
+ * re-auth).
  */
 
 import { ChevronUp } from "lucide-react";
@@ -50,6 +42,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { useUserStatus } from "@/hooks/use-user-status";
 import { decodeJwtClaim } from "@/lib/jwt-client";
 
 function truncateAddress(address: string): string {
@@ -69,10 +62,11 @@ function emailToHue(email: string): number {
 
 export function SidebarUserNav() {
   const { session, address, logout } = useZkLogin();
+  const { username } = useUserStatus(address, session?.jwt);
 
   // Render nothing until the zkLogin session hydrates. The sidebar
   // footer is purely identity-display — there's no skeleton state to
-  // animate. The wider `AppSidebar` lays out around an absent footer
+  // animate. The wider AppSidebar lays out around an absent footer
   // (SidebarRail + SidebarContent fill the gap) so this conditional
   // doesn't shift the layout.
   if (!(session && address)) {
@@ -82,29 +76,54 @@ export function SidebarUserNav() {
   const email = decodeJwtClaim(session.jwt, "email");
   const hue = email ? emailToHue(email) : 220;
 
+  // S.204+ — prefer Audric handle when claimed. The `@audric` suffix
+  // matches v1's footer convention and disambiguates from
+  // `username.audric.sui` (which is the on-chain form; this is the
+  // user-facing short form per S.118 SuiNS V2).
+  const primaryLabel = username
+    ? `${username}@audric`
+    : truncateAddress(address);
+  // Tooltip uses the full address — clicking opens the dropdown, but
+  // the address is the canonical identifier worth surfacing on hover.
+  const tooltipLabel = username
+    ? `${username}@audric · ${truncateAddress(address)}`
+    : truncateAddress(address);
+
   return (
     <SidebarMenu>
       <SidebarMenuItem>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton
-              className="h-8 rounded-lg bg-transparent px-2 text-sidebar-foreground/70 transition-colors duration-150 hover:text-sidebar-foreground data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+              className="h-9 rounded-lg bg-transparent px-2 text-sidebar-foreground/70 transition-colors duration-150 hover:text-sidebar-foreground data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
               data-testid="user-nav-button"
-              tooltip={truncateAddress(address)}
+              tooltip={tooltipLabel}
             >
               <div
-                className="size-5 shrink-0 rounded-full ring-1 ring-sidebar-border/50"
+                className="size-6 shrink-0 rounded-full ring-1 ring-sidebar-border/50"
                 style={{
                   background: `linear-gradient(135deg, oklch(0.35 0.08 ${hue}), oklch(0.25 0.05 ${hue + 40}))`,
                 }}
               />
-              <span
-                className="truncate font-mono text-[12px]"
-                data-testid="user-wallet-address"
-              >
-                {truncateAddress(address)}
-              </span>
-              <ChevronUp className="ml-auto size-3.5 text-sidebar-foreground/50" />
+              <div className="flex min-w-0 flex-1 flex-col items-start text-left">
+                <span
+                  className={[
+                    "truncate text-[12px]",
+                    username
+                      ? "font-mono text-sidebar-foreground"
+                      : "font-mono",
+                  ].join(" ")}
+                  data-testid="user-wallet-address"
+                >
+                  {primaryLabel}
+                </span>
+                {username && email && (
+                  <span className="truncate text-[10px] text-sidebar-foreground/50">
+                    {email}
+                  </span>
+                )}
+              </div>
+              <ChevronUp className="ml-auto size-3.5 shrink-0 text-sidebar-foreground/50" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent
@@ -112,12 +131,26 @@ export function SidebarUserNav() {
             data-testid="user-nav-menu"
             side="top"
           >
+            {/* Always show email in dropdown — it's the second identity
+                dimension (zkLogin auth) regardless of claim status. */}
             {email && (
               <DropdownMenuItem
                 className="cursor-default text-[12px] text-muted-foreground"
                 disabled
               >
                 {email}
+              </DropdownMenuItem>
+            )}
+            {/* For pre-claim users, also surface the address in the
+                dropdown — it's their on-chain identifier until they
+                claim a handle. Post-claim users get the address in the
+                tooltip; the dropdown stays focused on auth identity. */}
+            {!username && (
+              <DropdownMenuItem
+                className="cursor-default font-mono text-[11px] text-muted-foreground"
+                disabled
+              >
+                {truncateAddress(address)}
               </DropdownMenuItem>
             )}
             <DropdownMenuItem asChild data-testid="user-nav-item-auth">
