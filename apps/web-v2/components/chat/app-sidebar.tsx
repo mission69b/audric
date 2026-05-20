@@ -2,7 +2,7 @@
 
 import { PanelLeftIcon, PenSquareIcon } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { SidebarUserNav } from "@/components/chat/sidebar-user-nav";
 import { AudricMark } from "@/components/ui/audric-mark";
 import {
@@ -19,6 +19,7 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { dispatchNewChat } from "@/lib/audric/new-chat-event";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 
 // [v0.7c Session 5.5] AppSidebar trimmed to its essential chrome:
@@ -49,7 +50,24 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 
 export function AppSidebar() {
   const router = useRouter();
+  const pathname = usePathname();
   const { setOpenMobile, toggleSidebar } = useSidebar();
+
+  // [S.205 — 2026-05-20] "New chat" handler: dispatch the new-chat
+  // signal so the AudricChatPanel re-mounts its `useChat()` instance
+  // (clears the messages array, returns to the empty-state hero).
+  // When the user is somewhere OTHER than /chat, also push to /chat so
+  // the button doubles as navigation. The dispatch always fires —
+  // harmless on first mount (no listeners yet, the panel hasn't
+  // attached) and load-bearing when we're already on /chat (where
+  // router.push to the same path is a no-op).
+  const handleNewChat = () => {
+    setOpenMobile(false);
+    dispatchNewChat();
+    if (pathname !== "/chat") {
+      router.push("/chat");
+    }
+  };
 
   return (
     <Sidebar collapsible="icon">
@@ -96,10 +114,7 @@ export function AppSidebar() {
               <SidebarMenuItem>
                 <SidebarMenuButton
                   className="h-8 rounded-lg border border-sidebar-border text-[13px] text-sidebar-foreground/70 transition-colors duration-150 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-                  onClick={() => {
-                    setOpenMobile(false);
-                    router.push("/chat");
-                  }}
+                  onClick={handleNewChat}
                   tooltip="New chat"
                 >
                   <PenSquareIcon className="size-4" />

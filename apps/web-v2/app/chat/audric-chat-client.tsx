@@ -8,7 +8,7 @@ import {
   type ToolUIPart,
 } from "ai";
 import { Loader2 } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Conversation,
   ConversationContent,
@@ -38,6 +38,7 @@ import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useUserStatus } from "@/hooks/use-user-status";
 import { redactAddressesInText } from "@/lib/audric/log-redact";
+import { subscribeNewChat } from "@/lib/audric/new-chat-event";
 import {
   type SponsoredTxBundleStep,
   type SponsoredTxRequest,
@@ -236,6 +237,15 @@ function AuthenticatedChat({ session }: { session: ZkLoginSession }) {
   // takes over, and the optimistic flag becomes harmless dead state.
   const [optimisticallyClaimed, setOptimisticallyClaimed] = useState(false);
 
+  // [S.205 — 2026-05-20] "New chat" nonce. Bumps when the sidebar
+  // dispatches `audric:new-chat`. Woven into AudricChatPanel's mount
+  // key so the panel re-mounts → `useChat()` resets messages to []
+  // → empty-state hero re-renders. Lives at AuthenticatedChat-scope
+  // (not deeper) so the panel itself doesn't have to know about the
+  // event — it just re-mounts when the key changes.
+  const [chatNonce, setChatNonce] = useState(0);
+  useEffect(() => subscribeNewChat(() => setChatNonce((n) => n + 1)), []);
+
   const handleClaimed = useCallback(() => {
     setOptimisticallyClaimed(true);
     userStatus.refetch().catch(() => {
@@ -302,7 +312,10 @@ function AuthenticatedChat({ session }: { session: ZkLoginSession }) {
       <header className="flex h-12 items-center px-3 md:hidden">
         <SidebarTrigger className="text-foreground/60 hover:text-foreground" />
       </header>
-      <AudricChatPanel key={session.address} session={session} />
+      <AudricChatPanel
+        key={`${session.address}-${chatNonce}`}
+        session={session}
+      />
     </div>
   );
 }

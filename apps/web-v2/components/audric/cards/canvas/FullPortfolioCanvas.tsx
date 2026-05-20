@@ -79,7 +79,10 @@ export function FullPortfolioCanvas({ data, onAction }: Props) {
   const [multiData, setMultiData] = useState<MultiWalletData | null>(null);
   const [activeTab, setActiveTab] = useState<WalletTab>("primary");
 
-  const address = "available" in data && data.available ? data.address : null;
+  const address =
+    data && typeof data === "object" && "available" in data && data.available
+      ? data.address
+      : null;
   const hasMultiWallet = !!multiData && multiData.wallets.length > 1;
 
   useEffect(() => {
@@ -131,13 +134,21 @@ export function FullPortfolioCanvas({ data, onAction }: Props) {
       .finally(() => setLoading(false));
   }, [address]);
 
-  if (!("available" in data) || !data.available) {
+  if (
+    !data ||
+    typeof data !== "object" ||
+    !("available" in data) ||
+    !data.available
+  ) {
     return (
       <div className="flex flex-col items-center justify-center space-y-2 py-10 text-center">
         <span className="text-3xl">📋</span>
         <p className="font-medium text-fg-primary text-sm">Full Portfolio</p>
         <p className="max-w-xs text-fg-secondary text-xs leading-relaxed">
-          {"message" in data && data.message
+          {data &&
+          typeof data === "object" &&
+          "message" in data &&
+          data.message
             ? data.message
             : "Full portfolio overview is not yet available."}
         </p>
