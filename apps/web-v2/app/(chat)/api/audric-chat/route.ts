@@ -90,6 +90,7 @@ import {
   isBundleableTool,
   type PendingAction,
   type PendingToolCall,
+  type ServerPositionData,
   type Tool,
   type ToolContext,
   toAISDKTools,
@@ -129,6 +130,7 @@ import { buildAudricSystemPrompt } from "@/lib/audric/system-prompt";
 import { TelemetryIntegration } from "@/lib/audric/telemetry-integration";
 import { getCurrentUser } from "@/lib/audric-auth";
 import { env } from "@/lib/env";
+import { getPortfolio, prewarmPortfolio } from "@/lib/portfolio";
 import { prisma } from "@/lib/prisma";
 import { getSuiRpcUrl } from "@/lib/sui-rpc";
 import { Prisma } from "../../../../../web/lib/generated/prisma/client";
@@ -267,6 +269,16 @@ export async function POST(request: Request) {
     });
   }
   const walletAddress = session.user.id;
+
+  // [Bug fix 2026-05-20] Pre-warm the canonical portfolio fetch so the
+  // engine's `balance_check` positionFetcher call below shares the
+  // in-flight Promise instead of issuing a duplicate fan-out. Pattern
+  // mirrors `audric/apps/web/lib/engine/engine-factory.ts` (legacy).
+  // Returns void immediately; the underlying Promise is retained in
+  // `getPortfolio`'s inflight map and reused by the next call. Errors
+  // are swallowed here — the consumer (positionFetcher / direct call)
+  // surfaces the same error.
+  prewarmPortfolio(walletAddress);
 
   // 2. Parse body
   let body: z.infer<typeof bodySchema>;
@@ -483,6 +495,50 @@ export async function POST(request: Request) {
     // in the same turn share a single BlockVision response (avoids
     // 200–500ms RTT amplification per the agent-harness-spec rule).
     portfolioCache: new Map<string, AddressPortfolio>(),
+    // [Bug fix 2026-05-20] Wire `positionFetcher` so `balance_check`
+    // (and any future read tool that needs NAVI positions) routes
+    // through the canonical `getPortfolio()` reader instead of falling
+    // back to NAVI MCP's `GET_POSITIONS` path.
+    //
+    // **Why this matters:** the NAVI MCP fallback in `balance_check`
+    // pipes through `transformPositions()` in the engine, which
+    // multiplies `valueUSD` by 1000 for the "newer-pool" symbols
+    // (USDsui / USDe / suiUSDT — see
+    // `packages/engine/src/navi/transforms.ts:225-242`). That factor
+    // is a workaround for an old NAVI MCP bug where amounts were
+    // returned 1000× too small for 6-decimal stablecoins in newer
+    // pools; NAVI MCP's behaviour has since drifted, and the
+    // workaround now over-counts USDsui savings by 1000× on production
+    // smoke (a $9.19 USDsui supply renders as $9194.66). The canonical
+    // `fetchPositions()` reader (in `lib/portfolio-data.ts`) reads from
+    // the SDK's protocol-registry NAVI adapter directly — no factor,
+    // no drift — which is the SSOT every audric surface already uses.
+    //
+    // Per `.cursor/rules/single-source-of-truth.mdc` Item 4: when the
+    // engine runs server-side inside an audric host, it MUST go through
+    // the canonical `getPortfolio()` so the LLM, the dashboard hero,
+    // the profile portfolio card, and the daily cron all read identical
+    // numbers. The `prewarmPortfolio()` call right after auth above
+    // overlaps the canonical fetch with the rest of route setup so the
+    // engine sees an in-flight Promise (free dedup) by the time it
+    // dispatches `balance_check`.
+    //
+    // Shape conversion: `Portfolio.positions.borrowsDetail`
+    // (canonical reader) → `ServerPositionData.borrows_detail` (engine).
+    // Same fields, just snake_case.
+    positionFetcher: async (addr: string): Promise<ServerPositionData> => {
+      const portfolio = await getPortfolio(addr);
+      return {
+        savings: portfolio.positions.savings,
+        borrows: portfolio.positions.borrows,
+        savingsRate: portfolio.positions.savingsRate,
+        healthFactor: portfolio.positions.healthFactor,
+        maxBorrow: portfolio.positions.maxBorrow,
+        pendingRewards: portfolio.positions.pendingRewards,
+        supplies: portfolio.positions.supplies,
+        borrows_detail: portfolio.positions.borrowsDetail,
+      };
+    },
     signal: abortController.signal,
     retryStats: { attemptCount: 1 },
     // [Phase 3 Day 3a] USD-aware permission resolver inputs. In web-v2
