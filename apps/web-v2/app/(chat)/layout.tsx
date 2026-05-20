@@ -1,5 +1,4 @@
 import { cookies } from "next/headers";
-import Script from "next/script";
 import { Suspense } from "react";
 import { Toaster } from "sonner";
 import { AppSidebar } from "@/components/chat/app-sidebar";
@@ -10,19 +9,18 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { ActiveChatProvider } from "@/hooks/use-active-chat";
 import { getCurrentUser } from "@/lib/audric-auth";
 
+// [v0.7c Session 5.5] Pyodide CDN <Script> removed — the template
+// loaded a 10MB+ Python-in-browser runtime from jsdelivr for its
+// code-artifact execution feature, which Audric does not use. The
+// whole (chat) route group deletes in Session 9a; this removal is the
+// last brand/perf surface remaining at root.
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <>
-      <Script
-        src="https://cdn.jsdelivr.net/pyodide/v0.23.4/full/pyodide.js"
-        strategy="lazyOnload"
-      />
-      <DataStreamProvider>
-        <Suspense fallback={<div className="flex h-dvh bg-sidebar" />}>
-          <SidebarShell>{children}</SidebarShell>
-        </Suspense>
-      </DataStreamProvider>
-    </>
+    <DataStreamProvider>
+      <Suspense fallback={<div className="flex h-dvh bg-sidebar" />}>
+        <SidebarShell>{children}</SidebarShell>
+      </Suspense>
+    </DataStreamProvider>
   );
 }
 

@@ -14,9 +14,29 @@ import "./globals.css";
 import { ZkLoginProviders } from "@/components/auth/zklogin-providers";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://chat.vercel.ai"),
-  title: "Next.js Chatbot Template",
-  description: "Next.js chatbot template using the AI SDK.",
+  metadataBase: new URL("https://audric.ai"),
+  title: {
+    default: "Audric — Your AI agent for money on Sui",
+    template: "%s · Audric",
+  },
+  description:
+    "Audric is your AI agent for money on Sui. Save, send, swap, borrow — non-custodial, sponsored gas, tap-to-confirm.",
+  applicationName: "Audric",
+  openGraph: {
+    type: "website",
+    siteName: "Audric",
+    locale: "en_US",
+    url: "https://audric.ai",
+    title: "Audric — Your AI agent for money on Sui",
+    description:
+      "Audric is your AI agent for money on Sui. Save, send, swap, borrow — non-custodial, sponsored gas, tap-to-confirm.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Audric — Your AI agent for money on Sui",
+    description:
+      "Save, send, swap, borrow — non-custodial, sponsored gas, tap-to-confirm.",
+  },
 };
 
 export const viewport = {

@@ -1,12 +1,10 @@
 "use client";
 
 import { ChevronUp } from "lucide-react";
-import { useTheme } from "next-themes";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -19,9 +17,20 @@ import {
   signOutAudric as signOut,
   useAudricSession as useSession,
 } from "@/lib/audric-auth-client";
-import { guestRegex } from "@/lib/constants";
 import { LoaderIcon } from "./icons";
 import { toast } from "./toast";
+
+// [v0.7c Session 5.5] Removed the dropdown's dark/light theme toggle —
+// theme preference is owned by `/settings` (3-way dark/light/system,
+// system-aware). A 2-way dropdown toggle silently overrides the
+// "system" selection on first click, contradicting the settings UI.
+// Settings is the single source of truth (engineering-principles §2).
+//
+// [v0.7c Session 5.5] Removed the `guestRegex` / "Sign-in is wired in
+// Phase 2." dev fallback — Phase 2 shipped months ago (S.175+ wired
+// full zkLogin). The `isGuest` branch was reachable dev debris that
+// surfaced a developer-facing stale-phase error toast to any guest-
+// email user. Cleaned along with the regex itself in `lib/constants.ts`.
 
 function emailToHue(email: string): number {
   let hash = 0;
@@ -32,10 +41,7 @@ function emailToHue(email: string): number {
 }
 
 export function SidebarUserNav({ user }: { user: User }) {
-  const { data, status } = useSession();
-  const { setTheme, resolvedTheme } = useTheme();
-
-  const isGuest = guestRegex.test(data?.user?.email ?? "");
+  const { status } = useSession();
 
   return (
     <SidebarMenu>
@@ -66,7 +72,7 @@ export function SidebarUserNav({ user }: { user: User }) {
                   }}
                 />
                 <span className="truncate text-[13px]" data-testid="user-email">
-                  {isGuest ? "Guest" : user?.email}
+                  {user?.email}
                 </span>
                 <ChevronUp className="ml-auto size-3.5 text-sidebar-foreground/50" />
               </SidebarMenuButton>
@@ -77,16 +83,6 @@ export function SidebarUserNav({ user }: { user: User }) {
             data-testid="user-nav-menu"
             side="top"
           >
-            <DropdownMenuItem
-              className="cursor-pointer text-[13px]"
-              data-testid="user-nav-item-theme"
-              onSelect={() =>
-                setTheme(resolvedTheme === "dark" ? "light" : "dark")
-              }
-            >
-              {`Toggle ${resolvedTheme === "light" ? "dark" : "light"} mode`}
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
             <DropdownMenuItem asChild data-testid="user-nav-item-auth">
               <button
                 className="w-full cursor-pointer text-[13px]"
@@ -101,27 +97,13 @@ export function SidebarUserNav({ user }: { user: User }) {
                     return;
                   }
 
-                  if (isGuest) {
-                    // [v0.7c Day 1d audit] The template's `/login` and
-                    // `/register` pages were removed in Day 1c (Auth.js
-                    // eviction). Phase 2 wires the zkLogin Google
-                    // OAuth flow here via `@mysten/dapp-kit` + Enoki
-                    // (port from `apps/web/components/auth/useZkLogin.ts`).
-                    // Until then, surface intent honestly rather than
-                    // 404 the user.
-                    toast({
-                      type: "error",
-                      description: "Sign-in is wired in Phase 2.",
-                    });
-                  } else {
-                    signOut({
-                      redirectTo: "/",
-                    });
-                  }
+                  signOut({
+                    redirectTo: "/",
+                  });
                 }}
                 type="button"
               >
-                {isGuest ? "Login to your account" : "Sign out"}
+                Sign out
               </button>
             </DropdownMenuItem>
           </DropdownMenuContent>
