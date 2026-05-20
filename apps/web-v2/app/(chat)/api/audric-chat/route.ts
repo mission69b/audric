@@ -769,32 +769,52 @@ export async function POST(request: Request) {
   const stream = createUIMessageStream({
     execute: async ({ writer }) => {
       writer.write({ type: "start", messageId });
+
+      // [v0.7c Phase 6 cutover hotfix — 2026-05-20]
+      // Pre-fired read tool parts MUST emit in their OWN step boundary
+      // (start-step ... finish-step) BEFORE the agent's text-streaming
+      // step. Otherwise the assistant message ends up with parts
+      // [step-start, text, tool(output-available)] inside a SINGLE
+      // step, and AI SDK's `lastAssistantMessageIsCompleteWithToolCalls`
+      // predicate (used by `useChat({ sendAutomaticallyWhen })` in
+      // `audric-chat-client.tsx`) walks the LAST step, sees a complete
+      // tool invocation, returns true, and auto-fires a spurious second
+      // POST → user observes duplicate narration + card.
+      //
+      // The predicate keys on the last `step-start` index in the parts
+      // array (verified at
+      // `node_modules/.../ai/src/ui/last-assistant-message-is-complete-
+      // with-tool-calls.ts` L23-38). By emitting pre-fired tools in
+      // step 0 and the agent's text in step 1, the LAST step contains
+      // only the text part → predicate returns false → no auto-POST →
+      // user sees exactly one narration.
+      //
+      // Note: the synthetic assistant message injected into messages[]
+      // at step 9.5 above is what makes the LLM SEE the pre-fired
+      // results as already-done history (so it narrates around them
+      // without re-calling the tool). This step-boundary emission is
+      // the WIRE-side counterpart that prevents the client from
+      // misinterpreting the pre-fired tool as "needs narration".
+      if (dispatchedReadParts.length > 0) {
+        writer.write({ type: "start-step" });
+        for (const p of dispatchedReadParts) {
+          writer.write({
+            type: "tool-input-available",
+            toolCallId: p.toolCallId,
+            toolName: p.toolName,
+            input: p.input,
+          });
+          writer.write({
+            type: "tool-output-available",
+            toolCallId: p.toolCallId,
+            output: p.output,
+          });
+        }
+        writer.write({ type: "finish-step" });
+      }
+
       writer.write({ type: "start-step" });
       writer.write({ type: "text-start", id: messageId });
-
-      // [v0.7c Phase 6 prep] Replay pre-fired read tool parts to the
-      // client BEFORE the LLM stream starts. This is the AI SDK v6
-      // equivalent of the legacy chat route's synthetic SSE event
-      // emission. Each call produces a `tool-input-available` then
-      // a `tool-output-available` part — the client's
-      // `<ToolResultRouter>` renders the rich card immediately
-      // (without waiting for the LLM to narrate). The LLM still
-      // sees the pre-fired results in the messages array (via the
-      // synthetic assistant message injected at step 9.5 above)
-      // and narrates around them in the streaming text.
-      for (const p of dispatchedReadParts) {
-        writer.write({
-          type: "tool-input-available",
-          toolCallId: p.toolCallId,
-          toolName: p.toolName,
-          input: p.input,
-        });
-        writer.write({
-          type: "tool-output-available",
-          toolCallId: p.toolCallId,
-          output: p.output,
-        });
-      }
 
       // [Phase 5e] Step-boundary buffer for atomic bundle marker
       // emission. Captures confirm-tier `tool-call` +
