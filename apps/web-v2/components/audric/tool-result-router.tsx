@@ -80,12 +80,24 @@ function renderCard(
   toolCallId: string,
   onSendMessage?: (text: string) => void
 ): React.ReactNode | null {
-  // Canvas has a special shape `{template, title, data}` whose
-  // inner `data` field IS the payload (not an envelope), so it must
-  // be checked BEFORE `extractData` unwraps a `data` key.
+  // Canvas has a special wire-shape stamped by the engine's
+  // `render_canvas` tool (see `packages/engine/src/tools/canvas.ts`):
+  //   { __canvas: true, template: <id>, title: <string>, templateData: <payload> }
+  // The actual canvas payload lives in `templateData`, NOT `data` — the
+  // legacy `apps/web` reads `tool.result.templateData` and maps it to
+  // the card's `data` prop (see `apps/web/lib/timeline-builder.ts` line
+  // ~1045). Pre-S.206 web-v2 read `output.data` here, which was always
+  // `undefined` → S.205's defensive coercion painted the "Canvas data
+  // was not returned by the tool" fallback for every canvas render
+  // (surfaced during the post-S.205 production smoke).
   if (toolName === "render_canvas") {
     const canvasOutput = output as
-      | { template?: string; title?: string; data?: unknown }
+      | {
+          __canvas?: boolean;
+          template?: string;
+          title?: string;
+          templateData?: unknown;
+        }
       | undefined;
     if (
       !canvasOutput ||
@@ -94,19 +106,19 @@ function renderCard(
     ) {
       return null;
     }
-    // [S.205 — 2026-05-20] Canvas data MUST be a plain object so the
-    // canvas components' `"available" in data` discriminator doesn't
-    // crash on the `in` operator. The engine's `render_canvas` tool
-    // *usually* returns `{ available: true, address, ... }` or
-    // `{ available: false, message }`, but an upstream tool failure can
-    // surface `data: undefined`. Coerce to the safe `available: false`
-    // sentinel so the existing "not available" fallback paints instead
-    // of throwing the runtime "Cannot use 'in' operator on undefined".
+    // [S.205 — 2026-05-20] Defensive coercion: canvas data MUST be a
+    // plain object so the canvas components' `"available" in data`
+    // discriminator doesn't crash on the `in` operator. The engine's
+    // tool *usually* returns `{ available: true, address, ... }` or
+    // `{ available: false, message }`, but an upstream tool failure
+    // could still surface `templateData: undefined`. Coerce to the
+    // safe `available: false` sentinel so the existing "not available"
+    // fallback paints instead of crashing.
     const safeData: unknown =
-      canvasOutput.data &&
-      typeof canvasOutput.data === "object" &&
-      !Array.isArray(canvasOutput.data)
-        ? canvasOutput.data
+      canvasOutput.templateData &&
+      typeof canvasOutput.templateData === "object" &&
+      !Array.isArray(canvasOutput.templateData)
+        ? canvasOutput.templateData
         : {
             available: false as const,
             message: "Canvas data was not returned by the tool.",
