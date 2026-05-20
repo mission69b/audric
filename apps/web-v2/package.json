@@ -20,7 +20,8 @@
     "db:check": "drizzle-kit check",
     "db:up": "drizzle-kit up",
     "test:e2e": "export PLAYWRIGHT=True && pnpm exec playwright test",
-    "smoke:b1-b1a": "node --experimental-strip-types scripts/smoke-b1-b1a.mts"
+    "smoke:b1-b1a": "node --experimental-strip-types scripts/smoke-b1-b1a.mts",
+    "smoke:s213": "node --experimental-strip-types scripts/smoke-s213.mts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.78",
