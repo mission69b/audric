@@ -54,7 +54,13 @@
  * gracefully ("Your wallet: 0x...").
  */
 
-import { MAX_BUNDLE_OPS, READ_TOOLS, WRITE_TOOLS } from "@t2000/engine";
+import {
+  buildProfileContext,
+  MAX_BUNDLE_OPS,
+  READ_TOOLS,
+  type UserFinancialProfile,
+  WRITE_TOOLS,
+} from "@t2000/engine";
 
 // [v1.4 — legacy parity] Build-time interpolation: derive tool counts
 // from the engine's own tool exports so the system prompt cannot drift
@@ -474,6 +480,18 @@ function buildIdentityBlock(walletAddress: string): string {
 
 export interface BuildAudricSystemPromptInput {
   /**
+   * [Phase 6.5 / SPEC_V07C_PHASE_6_5_CHAT_PARITY B.1 / S.198 — 2026-05-20]
+   * Pre-built AdviceLog block from `buildAdviceContext(userId)`.
+   * Format: line-list prefixed by "Your recent advice to this user:".
+   * Empty string / undefined → omits the "## Recent Advice" section.
+   *
+   * Permanent intelligence layer — AdviceLog stores **what Audric SAID
+   * to the user**; MemWal (v0.7d) stores **what the user said / what
+   * facts about the user are true**. Different access patterns; stays
+   * permanent even after MemWal lands.
+   */
+  adviceContext?: string;
+  /**
    * Optional `<financial_context>` block from
    * `getFinancialContextBlock(walletAddress)`. Pass an empty string or
    * undefined when no snapshot is available (brand-new user, snapshot
@@ -481,6 +499,32 @@ export interface BuildAudricSystemPromptInput {
    * itself in the XML tags — pass the full string verbatim.
    */
   financialContext?: string;
+  /**
+   * [Phase 6.5 / SPEC_V07C_PHASE_6_5_CHAT_PARITY B.3 + B.4 / S.198 — 2026-05-20]
+   * Pre-built memory block from `buildMemoryContext(memories)` (incl.
+   * conversation-source + chain-source rows). Empty string / undefined
+   * → drops F-4 layer 3 cleanly.
+   *
+   * B.3 (UserMemory) is **interim** — gets deleted when MemWal
+   * stabilizes in v0.7d. B.4 (Chain Memory) is permanent because
+   * ChainFact rows are classified from on-chain data, not user
+   * statements — MemWal doesn't read the chain.
+   */
+  memoryBlock?: string;
+  /**
+   * [Phase 6.5 / SPEC_V07C_PHASE_6_5_CHAT_PARITY B.2 / S.198 — 2026-05-20]
+   * UserFinancialProfile row from `prisma.userFinancialProfile.findUnique`.
+   * Null / undefined → omits the "## User Profile" section.
+   *
+   * The engine's `buildProfileContext` helper renders this into a line
+   * block (risk appetite, financial literacy, currency framing, etc.).
+   * It silently skips fields with confidence below 0.5 — first-day
+   * users with no inferred profile yet produce an empty block, no
+   * section emitted. Permanent intelligence layer (MemWal's
+   * attribute-storage shape is undecided; profile stays until that
+   * lands and proves a clean superset).
+   */
+  profile?: UserFinancialProfile | null;
   /**
    * Optional skill recipe block from `McpPromptAdapter.buildPrepareStepSystemPrefix()`.
    *
@@ -496,16 +540,66 @@ export interface BuildAudricSystemPromptInput {
 export function buildAudricSystemPrompt(
   input: BuildAudricSystemPromptInput
 ): string {
-  const { walletAddress, financialContext, skillRecipeBlock } = input;
+  const {
+    walletAddress,
+    adviceContext,
+    financialContext,
+    memoryBlock,
+    profile,
+    skillRecipeBlock,
+  } = input;
+
+  // [Phase 6.5 / SPEC_V07C_PHASE_6_5_CHAT_PARITY B.1 + B.2 / S.198 — 2026-05-20]
+  // Layer 1 dynamic additions — profile + advice render UNDER the
+  // identity block as `## User Profile` / `## Recent Advice` sections.
+  //
+  // Why these sit in layer 1 (not as new top-level layers): they're
+  // "who is this user / what we've said before" context, semantically
+  // grouped with `<user_identity>`. Memory (layer 3) is "facts the
+  // user stated / chain classifier inferred" — a separate F-4 slot.
+  // Mirrors apps/web's `buildFullDynamicContext` structure (engine-
+  // context.ts L807-815) where profile + advice land in the same
+  // dynamic block, while memory gets its own `## Remembered Context`
+  // section.
+  const layer1Parts: string[] = [
+    STATIC_SYSTEM_PROMPT,
+    "\n\n## Session Context\n",
+    buildIdentityBlock(walletAddress),
+  ];
+
+  if (profile) {
+    const profileCtx = buildProfileContext(profile);
+    if (profileCtx) {
+      layer1Parts.push(`\n\n## User Profile\n${profileCtx}`);
+    }
+  }
+
+  if (adviceContext && adviceContext.length > 0) {
+    layer1Parts.push(`\n\n## Recent Advice\n${adviceContext}`);
+  }
+
+  const layer1 = layer1Parts.join("");
+
+  // [Phase 6.5 / SPEC_V07C_PHASE_6_5_CHAT_PARITY B.3 + B.4 / S.198 — 2026-05-20]
+  // Layer 3 — `## Remembered Context` from UserMemory rows (mixed
+  // conversation + chain source). Replaces the "intentionally empty"
+  // v0.7d gate that previously sat here. When MemWal lands in v0.7d
+  // the layer 3 source flips from this prebuilt `memoryBlock` string
+  // to engine's `MemoryStore.recall(latestUserMessage)` via
+  // `EngineConfig.memoryStore` — but the slot itself stays at this
+  // position in the F-4 assembly.
+  const layer3 =
+    memoryBlock && memoryBlock.length > 0
+      ? `## Remembered Context\n${memoryBlock}`
+      : "";
 
   const layers: string[] = [
-    // Layer 1 — base prompt + identity. The identity block lives at the
-    // top of layer 1 so the LLM sees "you're talking to wallet X" before
-    // any tool guidance fires.
-    `${STATIC_SYSTEM_PROMPT}\n\n## Session Context\n${buildIdentityBlock(walletAddress)}`,
+    // Layer 1 — base prompt + identity + profile + advice
+    layer1,
     // Layer 2 — silent intelligence snapshot
     financialContext ?? "",
-    // Layer 3 — memory (v0.7d gate — intentionally empty)
+    // Layer 3 — memory (UserMemory + ChainFact mixed via `source` discriminator)
+    layer3,
     // Layer 4 — skill recipe (v0.7d gate)
     skillRecipeBlock ?? "",
   ];

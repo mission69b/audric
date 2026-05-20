@@ -19,7 +19,6 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
-import type { AudricSessionUser as User } from "@/lib/audric-auth";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 
 // [v0.7c Session 5.5] AppSidebar trimmed to its essential chrome:
@@ -37,12 +36,18 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 //   - "Chatbot" tooltip + generic MessageSquareIcon brand mark — replaced
 //     with `<AudricMark />` (the 9-cell diamond brand identity).
 //
-// AppSidebar itself is dead code post-Session-6 chat-flip (Path A
-// retargets traffic to `/audric-chat`, which renders without this
-// sidebar). Trimmed nonetheless so the preview-deploy smoke window
-// presents Audric chrome — not template debris — at every URL.
+// [S.203 — 2026-05-20] Re-wired as the canonical sidebar for `/chat`
+// (the post-S.197b chat-flip surface). Dropped the `user: User | undefined`
+// prop in favor of `<SidebarUserNav />` reading `useZkLogin()` directly —
+// Audric uses zkLogin (localStorage-backed) where server-side
+// `getCurrentUser()` always returns null, so the prop was always
+// `undefined` and the footer never rendered in production. Single
+// consumer pattern + identity sourced from the canonical hook = no
+// duplication, no template-debris re-port. Used by both `/chat/layout.tsx`
+// (production) and `app/(chat)/layout.tsx` (legacy template route,
+// deletes in Session 9a).
 
-export function AppSidebar({ user }: { user: User | undefined }) {
+export function AppSidebar() {
   const router = useRouter();
   const { setOpenMobile, toggleSidebar } = useSidebar();
 
@@ -106,7 +111,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter className="border-t border-sidebar-border pt-2 pb-3">
-        {user && <SidebarUserNav user={user} />}
+        <SidebarUserNav />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

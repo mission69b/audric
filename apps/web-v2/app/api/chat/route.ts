@@ -87,20 +87,24 @@ import { createAnthropic } from "@ai-sdk/anthropic";
 import {
   type AddressPortfolio,
   applyToolFlags,
-  balanceCheckTool,
   buildInternalContext,
+  classifyEffort,
   composeBundleFromToolResults,
   DEFAULT_GUARD_CONFIG,
   DEFAULT_PERMISSION_CONFIG,
   getModifiableFields,
   getToolPolicy,
+  harnessShapeForEffort,
   isBundleableTool,
   type PendingAction,
   type PendingToolCall,
+  READ_TOOLS,
   type ServerPositionData,
   type Tool,
   type ToolContext,
   toAISDKTools,
+  type UserFinancialProfile,
+  type UserPermissionConfig,
   WRITE_TOOLS,
 } from "@t2000/engine";
 import {
@@ -122,6 +126,10 @@ import {
 } from "ai";
 import { z } from "zod";
 import {
+  applyAccountAgeGate,
+  computeAccountAgeDays,
+} from "@/lib/audric/account-age-gate";
+import {
   argsFingerprint,
   dispatchIntentsToParts,
   synthesizeAssistantToolMessage,
@@ -129,18 +137,28 @@ import {
 import { getFinancialContextBlock } from "@/lib/audric/financial-context";
 import { redactAddressesInText, redactPII } from "@/lib/audric/log-redact";
 import { audricObservabilityMiddleware } from "@/lib/audric/middleware/observability";
+import {
+  buildAdviceContext,
+  buildMemoryContext,
+} from "@/lib/audric/moat-context";
 import { ensureNaviMcpConnected } from "@/lib/audric/navi-mcp";
+import {
+  dispatchPostWriteRefresh,
+  extractWritesNeedingRefresh,
+} from "@/lib/audric/post-write-refresh";
 import {
   extractResumeOutcomes,
   type ResumeOutcome,
 } from "@/lib/audric/resume-outcome";
 import { selectResponseMessageId } from "@/lib/audric/select-response-message-id";
+import { sanitizeStreamErrorMessage } from "@/lib/audric/stream-errors";
 import { buildAudricSystemPrompt } from "@/lib/audric/system-prompt";
 import { TelemetryIntegration } from "@/lib/audric/telemetry-integration";
 import { getCurrentUser } from "@/lib/audric-auth";
 import { env } from "@/lib/env";
 import { getPortfolio, prewarmPortfolio } from "@/lib/portfolio";
 import { prisma } from "@/lib/prisma";
+import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { getSuiRpcUrl } from "@/lib/sui-rpc";
 import { Prisma } from "../../../../web/lib/generated/prisma/client";
 
@@ -279,6 +297,40 @@ export async function POST(request: Request) {
   }
   const walletAddress = session.user.id;
 
+  // 1.5. Rate limit — 20 requests per 60 seconds per IP.
+  //
+  // [Phase 6.5 / SPEC_V07C_PHASE_6_5_CHAT_PARITY A.2 / S.198 — 2026-05-20]
+  // Matches `audric/apps/web/app/api/engine/chat/route.ts:217` rate-limit
+  // exactly (same key prefix `engine:`, same limit 20 req per 60s, same
+  // sliding window). Pre-Phase-6.5 web-v2 had ZERO rate-limit on the
+  // chat endpoint — a malicious actor or buggy client could spray
+  // thousands of chat messages per second, burning Anthropic + Gateway
+  // spend until manual intervention.
+  //
+  // Why IP-keyed (not user-keyed): a single user can hit the route from
+  // multiple tabs concurrently (HITL resume from one tab while authoring
+  // a new turn in another) which is a legitimate use case; IP-keying
+  // captures bot-style burst patterns without false-positiving on real
+  // user behavior. The `engine:` prefix shares the in-memory map
+  // namespace with apps/web's chat — both routes burn against the same
+  // budget when running side-by-side during the v0.7c chat-flip transit.
+  //
+  // **Limitation:** `lib/rate-limit.ts` is an in-memory sliding-window
+  // limiter. Vercel serverless cold-starts wipe the counter — a fresh
+  // function instance accepts requests as if no recent traffic
+  // happened. Apps/web has shipped this same in-memory pattern in
+  // production for months without operational issues, so the practical
+  // risk is low. Phase 6.5 follow-up (D.1 wires Upstash for stream
+  // resume; rate-limit can reuse the same Upstash REST setup) upgrades
+  // this to a cross-instance limiter when bandwidth allows. Same
+  // `rateLimit(key, max, windowMs)` interface per the file comment.
+  const ip =
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const rl = rateLimit(`engine:${ip}`, 20, 60_000);
+  if (!rl.success) {
+    return rateLimitResponse(rl.retryAfterMs ?? 60_000);
+  }
+
   // [Bug fix 2026-05-20] Pre-warm the canonical portfolio fetch so the
   // engine's `balance_check` positionFetcher call below shares the
   // in-flight Promise instead of issuing a duplicate fan-out. Pattern
@@ -383,6 +435,56 @@ export async function POST(request: Request) {
   // doesn't wire one); the MCP path is what audric/web production uses.
   const mcpManager = await ensureNaviMcpConnected();
 
+  // [Phase 6.5 / SPEC_V07C_PHASE_6_5_CHAT_PARITY A.5 / S.198 — 2026-05-20]
+  // Permission config + account-age gate inputs.
+  //
+  // Mirrors `apps/web/lib/engine/engine-factory.ts` L376-379 + L532-544
+  // exactly. Two reads, both fail-open: if the user has no
+  // `UserPreferences` row yet we use `DEFAULT_PERMISSION_CONFIG`; if
+  // the `User` row is missing (shouldn't happen post-auth, but
+  // defensive) `applyAccountAgeGate` treats `null` ageDays as legacy
+  // fail-open. Both queries are short, parallel-safe, and only run
+  // once per turn (Phase 3.6's per-turn caching of read tools doesn't
+  // apply at this boundary — these are session-scoped, not turn-scoped,
+  // but the cost is two indexed point-lookups so we accept the
+  // duplicate work for now).
+  //
+  // `Promise.all` over `userPreferences.findUnique` +
+  // `user.findUnique`. Each `.catch(() => null)` so a DB blip on
+  // either lookup degrades to the safest config (gated + default
+  // limits) instead of failing the chat turn.
+  const [userPrefsRow, userRow] = await Promise.all([
+    prisma.userPreferences
+      .findUnique({
+        where: { address: walletAddress },
+        select: { limits: true },
+      })
+      .catch(() => null),
+    prisma.user
+      .findUnique({
+        where: { suiAddress: walletAddress },
+        // [Phase 6.5 / SPEC_V07C_PHASE_6_5_CHAT_PARITY B.1-B.4 / S.198 — 2026-05-20]
+        // `id` selection added: AdviceLog / UserFinancialProfile /
+        // UserMemory all FK on User.id, so we need it for the moat
+        // hydration Promise.all below. Cheap to add — `User.id` is the
+        // primary key column, already indexed, no extra cost.
+        select: { createdAt: true, id: true },
+      })
+      .catch(() => null),
+  ]);
+  const accountAgeDays = computeAccountAgeDays(userRow?.createdAt ?? null);
+  const userId = userRow?.id ?? null;
+  const rawPermissionConfig: UserPermissionConfig =
+    (userPrefsRow?.limits as UserPermissionConfig | null) ??
+    DEFAULT_PERMISSION_CONFIG;
+  // SPEC 30 D-13: < 7d accounts get every `autoBelow` zeroed → no
+  // auto-tier writes can fire. Closes takeover-while-onboarding drain
+  // class. After Day 7 the gate is a no-op (returns input unchanged).
+  const permissionConfigForTurn = applyAccountAgeGate(
+    rawPermissionConfig,
+    accountAgeDays
+  );
+
   // 4. Resolve the language model (gateway preferred; direct-Anthropic
   // fallback when AI_GATEWAY_API_KEY is absent).
   //
@@ -480,8 +582,48 @@ export async function POST(request: Request) {
   //     writes (save / withdraw / borrow / repay / send / swap /
   //     claim-rewards / harvest / volo-stake / volo-unstake)
   //   - POST /api/contacts/save for save_contact (Prisma-only)
+  //
+  // [Phase 6.5 / SPEC_V07C_PHASE_6_5_CHAT_PARITY A.1 / S.198 — 2026-05-20]
+  // Wire the full engine `READ_TOOLS` array (25 tools — render_canvas,
+  // balance_check, savings_info, health_check, rates_info,
+  // transaction_history, swap_quote, volo_stats, mpp_services, web_search,
+  // explain_tx, portfolio_analysis, protocol_deep_dive, token_prices,
+  // create/list/cancel_payment_link, create/list/cancel_invoice,
+  // spending_analytics, yield_summary, activity_summary, resolve_suins,
+  // pending_rewards). Pre-Phase-6.5 only `balance_check` was wired — the
+  // other 24 reads were intentionally limited at Phase 2 incremental
+  // wire-up. The S.198 parity audit (2026-05-20) found the limited set
+  // would have regressed ~24/60 common user questions post-chat-flip
+  // ("what's the APY?" → fail, "show portfolio breakdown" → only
+  // balance, "create a payment link" → fail despite Pay routes live).
+  //
+  // **Gateway interaction:** when `useGateway` is on (default), the
+  // AI Gateway-managed `perplexity_search` replaces the engine's
+  // `web_search` tool (Phase 2 D-19 / S.172 Batch 1 design). To avoid
+  // the LLM seeing BOTH tools and getting confused about which
+  // web-search to call, filter `web_search` out of the engine reads
+  // when `useGateway` is true. Off-gateway (legacy path) keeps the
+  // engine's `web_search` so the tool isn't silently dropped.
+  //
+  // **Tool overrides intentionally NOT yet ported (deferred to A.1b
+  // follow-up):** `audricMppServicesTool` (filters MPP catalog to 5
+  // services — engine returns full ~40), `audricSaveContactTool` +
+  // `audricListContactsTool` (Prisma-backed; engine's `save_contact`
+  // is a no-op stub), `lookupUserTool` (Audric handle directory),
+  // `audricPrepareBundleTool` (SPEC 14). Engine fallbacks work but
+  // are less polished — mpp_services card shows all 40 services
+  // instead of 5; save_contact returns ok without persisting. The
+  // A.1b commit ports these 4 files from `audric/apps/web/lib/engine/`
+  // to `audric/apps/web-v2/lib/audric/`. Each file is mostly pure
+  // engine + Prisma + Audric Postgres; minimal re-wiring.
   const writeToolsForWebV2 = WRITE_TOOLS.filter((t) => t.name !== "pay_api");
-  const engineTools = toAISDKTools([balanceCheckTool, ...writeToolsForWebV2]);
+  const readToolsForWebV2 = useGateway
+    ? READ_TOOLS.filter((t) => t.name !== "web_search")
+    : READ_TOOLS;
+  const engineTools = toAISDKTools([
+    ...readToolsForWebV2,
+    ...writeToolsForWebV2,
+  ]);
   const tools: ToolSet = useGateway
     ? ({
         perplexity_search: gateway.tools.perplexitySearch(),
@@ -495,10 +637,42 @@ export async function POST(request: Request) {
   // (no guards, no contacts, no callbacks); Phase 3+ writes pass
   // permission preset + onAutoExecuted + postWriteRefresh through this.
   const abortController = new AbortController();
+  // [Phase 6.5 / SPEC_V07C_PHASE_6_5_CHAT_PARITY A.1 / S.198 — 2026-05-20]
+  // Thread `AUDRIC_INTERNAL_API_URL` through `ToolContext.env` so the
+  // 7 engine read tools that hit Audric's canonical API surface resolve
+  // their internal base URL. The tools are:
+  //
+  //   - `portfolio_analysis` (calls `/api/portfolio` via getAudricApiBase
+  //     for the canonical priced portfolio so the LLM, dashboard, and
+  //     daily cron all see identical numbers)
+  //   - `spending_analytics` (calls `/api/analytics/spending`)
+  //   - `yield_summary` (calls `/api/analytics/yield`)
+  //   - `activity_summary` (calls `/api/analytics/activity`)
+  //   - `create_payment_link` / `list_payment_links` /
+  //     `cancel_payment_link` (call `/api/internal/payments`)
+  //   - `create_invoice` / `list_invoices` / `cancel_invoice`
+  //     (call `/api/internal/payments`)
+  //
+  // Pre-Phase-6.5 web-v2's chat route built `toolContext` without an
+  // `env:` field, so these tools silently returned empty/null when
+  // wired. The S.196 work added `AUDRIC_INTERNAL_API_URL` to web-v2's
+  // Zod schema but never threaded the value through — that's what
+  // this block closes.
+  //
+  // **Founder ops (Vercel project: `audric-web-v2`):** set
+  // `AUDRIC_INTERNAL_API_URL = https://audric-web-v2.vercel.app` so
+  // web-v2's engine calls itself directly (no hop through audric.ai
+  // rewrites). Optional — if unset, engine `getAudricApiBase` falls
+  // through to `process.env.NEXT_PUBLIC_APP_URL` → null → tools
+  // gracefully return empty/null with a "not available" `displayText`
+  // (see engine `audric-api.ts:38-53`).
   const toolContext: ToolContext = {
     walletAddress,
     suiRpcUrl: getSuiRpcUrl(),
     blockvisionApiKey: env.BLOCKVISION_API_KEY,
+    env: env.AUDRIC_INTERNAL_API_URL
+      ? { AUDRIC_INTERNAL_API_URL: env.AUDRIC_INTERNAL_API_URL }
+      : undefined,
     mcpManager,
     // Per-request portfolio cache so balance_check + future read tools
     // in the same turn share a single BlockVision response (avoids
@@ -567,7 +741,28 @@ export async function POST(request: Request) {
     // amounts that WOULD auto-execute (if agent were set) get rejected
     // by the L117 fallback that forces approval when priceCache is
     // empty. Conservative-by-construction.
-    permissionConfig: DEFAULT_PERMISSION_CONFIG,
+    // [Phase 6.5 / SPEC_V07C_PHASE_6_5_CHAT_PARITY A.5 / S.198 — 2026-05-20]
+    // USD-aware permission config from `UserPreferences.limits` +
+    // ≥7-day account-age gate. Pre-A.5 web-v2 hardcoded
+    // `DEFAULT_PERMISSION_CONFIG` for every user, which silently
+    // ignored the user's saved `conservative` / `balanced` /
+    // `aggressive` preset (set via settings → safety) AND skipped the
+    // SPEC 30 D-13 account-age gate. After the chat-flip that gap
+    // would have leaked the conservative-by-default behaviour for
+    // newly-signed-up users (Day-1 accounts must require tap-to-
+    // confirm for EVERY write, no matter how small, to close the
+    // takeover-while-onboarding drain class).
+    //
+    // Today the `permissionConfig` is forward-looking on this surface
+    // (see comment at L660-676 — `need-approval.ts` L113-115 forces
+    // `needsApproval = true` unconditionally when `toolContext.agent`
+    // is unset, which is the audric sponsored-flow case). Wiring it
+    // correctly now (a) matches `apps/web/lib/engine/engine-factory.ts`
+    // L532-544 byte-for-byte so cutover preserves behaviour, and (b)
+    // is load-bearing the moment audric adopts a sub-threshold
+    // auto-execute path (NOT v0.7c scope, but the wiring goes in
+    // before the flip).
+    permissionConfig: permissionConfigForTurn,
     priceCache: new Map<string, number>(),
     sessionSpendUsd: 0,
   };
@@ -620,6 +815,12 @@ export async function POST(request: Request) {
     // decorator-wrapped streamText; web-v2's fork sits on engine
     // helpers that already do the right thing.
     guards: DEFAULT_GUARD_CONFIG,
+    // [Phase 6.5 / SPEC_V07C_PHASE_6_5_CHAT_PARITY C.2 / S.198 — 2026-05-20]
+    // Stream guard fires into the telemetry collector so `TurnMetrics
+    // .guardsFired` is real (not the pre-C.2 hardcoded `[]`). The
+    // engine invokes this once per guard fire from
+    // `runGuardsForTool` (packages/engine/src/v2/guard-runner.ts L104).
+    onGuardFired: (g) => collector.onGuardFired(g),
     // Day 2e web-v2 has no contacts surface; pass empty.
     contacts: [],
     // `getMessages` lets guards inspect the latest history for the
@@ -647,28 +848,116 @@ export async function POST(request: Request) {
     },
   };
 
-  // 7.5 [v0.7c Phase 6 prep] Fetch the daily orientation snapshot for
-  // layer 2 of the F-4 5-layer system-prompt assembly. Returns "" when
-  // the snapshot is missing OR older than 48h — the prompt assembly
-  // drops layer 2 cleanly and the LLM falls back to fresh tool calls
-  // (which the intent-dispatcher at step 9.5 helps with). Never throws.
+  // 7.5 [v0.7c Phase 6 prep + Phase 6.5 B.1-B.4 — 2026-05-20] Parallel
+  // fetch of all four intelligence-moat inputs:
   //
-  // Pre-Phase-6-prep this layer was silently absent: web-v2 shipped
-  // through Day 2c++/2e/Phase 3/4/4b/5/5.5 with the Day 2b 5-line stub
-  // and no `<financial_context>` injection. Closing it before Session 5
-  // cutover avoids regressing silent intelligence at the same diff that
-  // retires apps/web.
-  const financialContextBlock = await getFinancialContextBlock(walletAddress);
+  //   - `financialContextBlock` (layer 2) — daily orientation snapshot.
+  //     "" when missing OR > 48h stale → drops layer 2 cleanly.
+  //   - `adviceContext` (layer 1 dynamic) — last 5 advice rows in
+  //     30-day window. AdviceLog stores what AUDRIC SAID; permanent
+  //     intelligence layer (MemWal in v0.7d stores what the USER said,
+  //     orthogonal access pattern).
+  //   - `profileRecord` (layer 1 dynamic) — UserFinancialProfile row
+  //     (risk appetite, literacy, currency framing, etc.). Confidence-
+  //     gated render — first-day users with no inferred profile
+  //     produce an empty block, no section emitted.
+  //   - `memoryRecords` (layer 3) — last 8 UserMemory rows (mixed
+  //     conversation-source + chain-source via the `source`
+  //     discriminator). B.3 (conversation memory) is **interim** —
+  //     gets deleted when MemWal stabilizes in v0.7d. B.4 (chain
+  //     memory) is permanent — ChainFact classifications are NOT
+  //     replaced by MemWal.
+  //
+  // All four are fail-OPEN: a DB blip on any returns the empty value
+  // and the chat turn proceeds without the missing moat layer. The
+  // intent-dispatcher at step 9.5 still helps the LLM call fresh
+  // tools when context is thin.
+  //
+  // **Why this is a Promise.all rather than four awaits:** moat reads
+  // amount to four indexed point-lookups (AdviceLog/UserFinancial
+  // Profile/UserMemory all FK on User.id; financial_context goes
+  // through Redis on warm hit, Prisma on miss). Fanning them out hides
+  // the per-query latency behind the single round-trip the financial
+  // context fetch already imposes.
+  //
+  // Pre-Phase-6 / Pre-Phase-6.5 these layers were silently absent:
+  // web-v2 shipped through Day 2c++/2e/Phase 3/4/4b/5/5.5 with the
+  // Day 2b 5-line stub and no `<financial_context>` injection
+  // (Phase 6 closed financial_context; Phase 6.5 closes the other
+  // three). Closing before chat-flip avoids regressing Audric
+  // Intelligence's moat at the same diff that retires apps/web.
+  const [financialContextBlock, adviceContext, profileRecord, memoryRecords] =
+    await Promise.all([
+      getFinancialContextBlock(walletAddress),
+      userId ? buildAdviceContext(userId) : Promise.resolve(""),
+      userId
+        ? prisma.userFinancialProfile
+            .findUnique({ where: { userId } })
+            .catch(() => null)
+        : Promise.resolve(null),
+      userId
+        ? prisma.userMemory
+            .findMany({
+              where: {
+                userId,
+                active: true,
+                OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+              },
+              orderBy: { extractedAt: "desc" },
+              take: 8,
+              select: {
+                content: true,
+                extractedAt: true,
+                id: true,
+                memoryType: true,
+                source: true,
+              },
+            })
+            .catch(() => [])
+        : Promise.resolve([]),
+    ]);
 
-  // 7.6 [v0.7c Phase 6 prep] Assemble the F-4 5-layer system prompt.
-  // Layer 5 (user message) is owned by AI SDK's `messages` argument —
-  // this function never touches it. Memory (layer 3) + skill recipe
-  // (layer 4) are v0.7d gates; `skillRecipeBlock: undefined` keeps
-  // them empty + drop-filtered cleanly.
+  // Map Prisma profile row → engine's `UserFinancialProfile` type. The
+  // Prisma row has a few string-typed enum columns (riskAppetite,
+  // financialLiteracy, currencyFraming) that need narrowing to the
+  // engine's literal union types. Mirrors apps/web's mapping at
+  // `engine-factory.ts:642-655`.
+  const profile: UserFinancialProfile | null = profileRecord
+    ? {
+        currencyFraming:
+          profileRecord.currencyFraming as UserFinancialProfile["currencyFraming"],
+        financialLiteracy:
+          profileRecord.financialLiteracy as UserFinancialProfile["financialLiteracy"],
+        knownPatterns: profileRecord.knownPatterns,
+        lastInferredAt: profileRecord.lastInferredAt,
+        literacyConfidence: profileRecord.literacyConfidence,
+        prefersBriefResponses: profileRecord.prefersBriefResponses,
+        prefersExplainers: profileRecord.prefersExplainers,
+        primaryGoals: profileRecord.primaryGoals,
+        riskAppetite:
+          profileRecord.riskAppetite as UserFinancialProfile["riskAppetite"],
+        riskConfidence: profileRecord.riskConfidence,
+        userId: profileRecord.userId,
+      }
+    : null;
+
+  // Render the memory block once on the host so the system-prompt
+  // assembly stays a pure string-concat (matches the financial_context
+  // pattern at L838).
+  const memoryBlock = buildMemoryContext(memoryRecords);
+
+  // 7.6 [v0.7c Phase 6 prep + Phase 6.5] Assemble the F-4 5-layer
+  // system prompt. Layer 5 (user message) is owned by AI SDK's
+  // `messages` argument — this function never touches it. Skill recipe
+  // (layer 4) stays a v0.7d gate. Layers 1 (dynamic moat additions)
+  // and 3 (memory) are now wired.
   const systemInstructions = buildAudricSystemPrompt({
-    walletAddress,
+    adviceContext,
     financialContext: financialContextBlock,
+    memoryBlock,
+    profile,
     skillRecipeBlock: undefined, // v0.7d gate — McpPromptAdapter not wired yet
+    walletAddress,
   });
 
   // 8. Compose the Agent. Per D-15: audric-side `Agent` for clean
@@ -784,17 +1073,53 @@ export async function POST(request: Request) {
   // route's `trimmedMessage` extraction pattern: empty string → no
   // intents matched → no dispatch (zero cost).
   //
-  // Web-v2 today only wires `balance_check` as a read tool. The registry
-  // lets the dispatcher gracefully skip intents whose tool isn't wired
-  // (logs + continues). When later slices wire `health_check`,
-  // `transaction_history`, `mpp_services`, `activity_summary`,
-  // `yield_summary` as read tools, just extend this registry — the
-  // dispatcher rules already cover all 8 intent patterns.
-  const readToolRegistry = new Map<string, Tool>([
-    [balanceCheckTool.name, balanceCheckTool],
-  ]);
+  // [Phase 6.5 / SPEC_V07C_PHASE_6_5_CHAT_PARITY A.1 / S.198 — 2026-05-20]
+  // Build the dispatcher registry from the full `READ_TOOLS` array (25
+  // tools as of Phase 6.5 wiring). Pre-Phase-6.5 only `balance_check`
+  // was registered; the intent dispatcher already has rules for
+  // `health_check`, `mpp_services`, `transaction_history` (3 rules),
+  // `activity_summary`, `yield_summary` — so wiring `READ_TOOLS` here
+  // activates 6 dispatcher rules that were previously dormant.
+  //
+  // The dispatcher pre-fires read tools matching deterministic regex
+  // intents BEFORE the LLM round-trip to dodge the ~30% lazy-answer
+  // skip-rate on direct read questions (D-14 lock per BENEFITS_SPEC
+  // S.173 — runbook §Day 2d). The 8 patterns themselves are
+  // byte-for-byte ports from `audric/apps/web/lib/engine/intent-
+  // dispatcher.ts`; only the registry-passed-in changes here.
+  //
+  // **Gateway interaction:** the registry includes `web_search` even
+  // when `useGateway` is on (so the dispatcher COULD fire it), but the
+  // dispatcher rules don't pre-fire `web_search` — only the LLM does,
+  // and the LLM sees `perplexity_search` instead (per the gateway
+  // filter above). The map entry is harmless.
+  const readToolRegistry = new Map<string, Tool>(
+    READ_TOOLS.map((t) => [t.name, t])
+  );
   const latestUserText = extractLatestUserText(normalized);
-  const dispatchedReadParts = latestUserText
+
+  // [Phase 6.5 / SPEC_V07C_PHASE_6_5_CHAT_PARITY C.2 / S.198 — 2026-05-20]
+  // Classify thinking effort for this turn. Matches `apps/web/lib/
+  // engine/engine-factory.ts` L745-748 (canonical apps/web pattern).
+  // `sessionWriteCount` is a session-history feature in the legacy
+  // path; web-v2 doesn't track it cross-turn yet — counting tool-parts
+  // in the current request body's message history covers the same
+  // "user has been making writes this session" signal cheaply.
+  //
+  // The classifier output drives `TurnMetrics.effortLevel` +
+  // `harnessShape`. The engine's `outputConfig.effort` (used by the
+  // AISDKEngine path to pass thinking budget to Anthropic) is NOT
+  // currently threaded through web-v2's `Agent.stream({...})` call —
+  // that's a v0.7c→v0.7d migration (D-7 in BENEFITS_SPEC_v07d). For
+  // now classification is dashboard-only; the model still runs at its
+  // default thinking budget.
+  const sessionWriteCount = countWriteToolsInHistory(body.messages);
+  const effortLevel = latestUserText
+    ? classifyEffort(DEFAULT_MODEL_USED, latestUserText, sessionWriteCount)
+    : ("medium" as const);
+  const harnessShape = harnessShapeForEffort(effortLevel);
+
+  const intentDispatchedParts = latestUserText
     ? await dispatchIntentsToParts({
         message: latestUserText,
         toolContext,
@@ -802,6 +1127,54 @@ export async function POST(request: Request) {
         turnIndex,
       })
     : [];
+
+  // [Phase 6.5 / SPEC_V07C_PHASE_6_5_CHAT_PARITY C.1 / S.198 — 2026-05-20]
+  // Post-write refresh — host-side equivalent of the engine's
+  // `EngineConfig.postWriteRefresh` mechanism (NOT reachable on the
+  // Experimental_Agent path per BENEFITS_SPEC_v07c §D-15).
+  //
+  // Scans the LAST assistant message's parts for confirm-tier writes
+  // that just succeeded on the client (sponsored-tx → addToolOutput).
+  // For each detected write, looks up POST_WRITE_REFRESH_MAP and
+  // pre-fires the refresh reads (deduped across writes) so the LLM
+  // sees fresh balances when it narrates the receipt.
+  //
+  // Without this, the LLM narrates post-write paragraphs using STALE
+  // pre-write balance numbers from the `<financial_context>` snapshot,
+  // re-opening the hallucination class. See
+  // `lib/audric/post-write-refresh.ts` for the full rationale + the
+  // ported POST_WRITE_REFRESH_MAP table.
+  //
+  // On a non-resume turn (fresh user query) `extractWritesNeedingRefresh`
+  // returns [] and this is a no-op. The only cost is one O(parts) scan
+  // of the last assistant message.
+  const completedWrites = extractWritesNeedingRefresh(body.messages);
+  const refreshDispatchedParts =
+    completedWrites.length > 0
+      ? await dispatchPostWriteRefresh({
+          completedWrites,
+          registry: readToolRegistry,
+          toolContext,
+          turnIndex,
+        })
+      : [];
+
+  // Merge: intent-pre-fires first (matches the user's latest question),
+  // then refresh-reads (matches the just-completed writes). The order
+  // matters because if a user asks "what's my balance?" right after a
+  // save, the intent dispatcher already pre-fires `balance_check` with
+  // the fresh result — the refresh dispatcher must NOT double-fire the
+  // same tool. Dedupe via tool-name fingerprint so the refresh path
+  // skips tools the intent path already handled.
+  const intentFingerprints = new Set(
+    intentDispatchedParts.map((p) => p.toolName)
+  );
+  const dispatchedReadParts = [
+    ...intentDispatchedParts,
+    ...refreshDispatchedParts.filter(
+      (p) => !intentFingerprints.has(p.toolName)
+    ),
+  ];
 
   // Inject the synthetic assistant message carrying pre-fired tool
   // results AT THE END of the normalized array. `convertToModelMessages`
@@ -990,10 +1363,19 @@ export async function POST(request: Request) {
         sessionId,
         userId: walletAddress,
         turnIndex,
-        effortLevel: "medium", // Day 2b hardcoded; Phase 4.5 wires classifier
+        // [Phase 6.5 C.2 — 2026-05-20] Real values via `classifyEffort()`
+        // + `harnessShapeForEffort()` (computed at turn start above).
+        // Pre-C.2 these were hardcoded to `"medium"` / `null`.
+        effortLevel,
+        harnessShape,
         modelUsed: DEFAULT_MODEL_USED,
         contextTokensStart,
-        sessionSpendUsd: 0, // Day 2b doesn't track session spend
+        // sessionSpendUsd: wired in E.2 (Redis-backed session-spend
+        // ledger). Until E.2 lands, daily-cap downgrade rule in
+        // `resolvePermissionTier` never triggers — acceptable since
+        // web-v2 has no auto-tier writes in production today (all
+        // confirm-tier; user always taps).
+        sessionSpendUsd: 0,
         synthetic: false,
         turnPhase: "initial",
       });
@@ -1023,6 +1405,62 @@ export async function POST(request: Request) {
           // back input fields including walletAddress.
           console.error(
             "[web-v2 audric-chat] TurnMetrics write failed (non-fatal):",
+            redactPII(err)
+          );
+        });
+
+      // [Phase 6.5 / SPEC_V07C_PHASE_6_5_CHAT_PARITY A.3 / S.198 — 2026-05-20]
+      // SessionUsage row per turn — fire-and-forget. Pre-Phase-6.5 web-v2
+      // never wrote this row, which silently broke a load-bearing
+      // downstream cron with a 30-day fuse:
+      //
+      //   `apps/web/app/api/internal/financial-context-snapshot/route.ts`
+      //   filters its daily user-list to `SessionUsage.createdAt >= 30d
+      //   ago` (lines 51-55). Users who only use web-v2 post-chat-flip
+      //   would age out of the snapshot population after 30 days →
+      //   `<financial_context>` block goes empty → silent intelligence
+      //   regression (Dimension 20 of the S.198 parity audit).
+      //
+      // The financial-context-snapshot cron itself stays on apps/web
+      // (KEEP-IN-WEB per runbook §1.1 audit-3) — only the input it
+      // reads from (SessionUsage) needs to keep getting populated
+      // from whichever host the user is hitting. apps/web writes its
+      // own SessionUsage rows via `lib/engine/log-session-usage.ts`;
+      // web-v2 mirrors that pattern here.
+      //
+      // **Field source:** `payload` is the TelemetryIntegration build
+      // output — inputTokens/outputTokens/cacheRead/cacheWrite are
+      // extracted from AI SDK's usage chunk (telemetry-integration.ts
+      // L182-185), `estimatedCostUsd` is computed from per-model rates
+      // (L211-214), tool names come from `payload.toolsCalled` (the
+      // 41-field TurnMetrics row's Json column). `model` mirrors
+      // TurnMetrics.modelUsed for cross-table consistency.
+      //
+      // **Why fire-and-forget:** the SessionUsage write is best-effort
+      // accounting; a single failure must NOT block the user's chat
+      // response. Same pattern as the TurnMetrics write above; both
+      // share the redactPII error path so wallet addresses aren't
+      // logged in Prisma error stack traces.
+      const sessionUsageToolNames = Array.from(
+        new Set(payload.toolsCalled.map((t) => t.name))
+      );
+      prisma.sessionUsage
+        .create({
+          data: {
+            address: walletAddress,
+            sessionId,
+            inputTokens: payload.inputTokens,
+            outputTokens: payload.outputTokens,
+            cacheReadTokens: payload.cacheReadTokens,
+            cacheWriteTokens: payload.cacheWriteTokens,
+            costUsd: payload.estimatedCostUsd,
+            toolNames: sessionUsageToolNames,
+            model: DEFAULT_MODEL_USED,
+          },
+        })
+        .catch((err: unknown) => {
+          console.error(
+            "[web-v2 audric-chat] SessionUsage write failed (non-fatal):",
             redactPII(err)
           );
         });
@@ -1444,14 +1882,19 @@ function translateChunk(
       break;
     }
     case "error": {
+      // [Phase 6.5 / SPEC_V07C_PHASE_6_5_CHAT_PARITY C.3 / S.198 — 2026-05-20]
+      // Sanitize + redact the engine-emitted error before writing to
+      // the wire. Without this, raw Anthropic JSON / Prisma stack
+      // traces / Sui addresses can land in the user's chat text.
+      // `safeErrorText` runs the full sanitize → redact pipeline.
+      console.error(
+        "[audric-chat] engine error chunk (raw, server-only):",
+        redactPII(chunk.error)
+      );
       writer.write({
         type: "text-delta",
         id: messageId,
-        delta: `\n\n[engine error] ${
-          chunk.error instanceof Error
-            ? chunk.error.message
-            : String(chunk.error)
-        }`,
+        delta: `\n\n[engine error] ${safeErrorText(chunk.error)}`,
       });
       break;
     }
@@ -1619,18 +2062,38 @@ function safeToolPolicy(
   }
 }
 
+/**
+ * [Phase 6.5 / SPEC_V07C_PHASE_6_5_CHAT_PARITY C.3 / S.198 — 2026-05-20]
+ * Extract a user-safe string from an arbitrary error value for emission
+ * on the wire. Pipeline:
+ *
+ *   1. Coerce to string (Error.message / String() / JSON.stringify).
+ *   2. `redactAddressesInText` — strip 32-byte Sui addresses (the only
+ *      PII that routinely shows up in tool/SDK error bodies; tx digests
+ *      are public on-chain and stay readable).
+ *   3. `sanitizeStreamErrorMessage` — map known provider error shapes
+ *      (Anthropic overloaded/rate-limit, Prisma errors, raw JSON
+ *      payloads, network failures) to clean user-facing strings.
+ *
+ * The RAW error should ALWAYS be logged server-side via
+ * `console.error('...', redactPII(err))` before reaching this function
+ * — this function is the wire sanitizer of last resort, not the
+ * primary observability path.
+ */
 function safeErrorText(error: unknown): string {
+  let raw: string;
   if (error instanceof Error) {
-    return error.message;
+    raw = error.message;
+  } else if (typeof error === "string") {
+    raw = error;
+  } else {
+    try {
+      raw = JSON.stringify(error) ?? "Tool error";
+    } catch {
+      raw = "Tool error";
+    }
   }
-  if (typeof error === "string") {
-    return error;
-  }
-  try {
-    return JSON.stringify(error);
-  } catch {
-    return "Tool error";
-  }
+  return sanitizeStreamErrorMessage(redactAddressesInText(raw));
 }
 
 // -----------------------------------------------------------------------------
@@ -1654,6 +2117,60 @@ function safeErrorText(error: unknown): string {
  * through to `classifyReadIntents("")` which returns `[]` (zero cost,
  * zero side effects).
  */
+/**
+ * [Phase 6.5 / SPEC_V07C_PHASE_6_5_CHAT_PARITY C.2 / S.198 — 2026-05-20]
+ * Count successful confirm-tier writes across the entire message
+ * history. Drives `classifyEffort`'s `sessionWriteCount` arg — the
+ * legacy `apps/web` path tracked this via session store; web-v2 has no
+ * cross-turn session-write counter yet, so we approximate by scanning
+ * the request body's message history for completed write tool parts.
+ *
+ * Same "is this a write?" detection as `extractWritesNeedingRefresh`
+ * (POST_WRITE_REFRESH_MAP membership) — keeps the two paths
+ * consistent. Denied / failed writes (`output-error` or
+ * `approval.approved !== true`) are excluded.
+ */
+function countWriteToolsInHistory(messages: unknown[]): number {
+  if (!Array.isArray(messages)) {
+    return 0;
+  }
+  const writeToolNames = new Set(WRITE_TOOLS.map((t) => t.name));
+  let count = 0;
+  for (const m of messages) {
+    const msg = m as { parts?: unknown[]; role?: string } | undefined;
+    if (msg?.role !== "assistant" || !Array.isArray(msg.parts)) {
+      continue;
+    }
+    for (const rawPart of msg.parts) {
+      const part = rawPart as
+        | {
+            approval?: { approved?: boolean };
+            state?: string;
+            type?: string;
+          }
+        | undefined;
+      if (!part || typeof part.type !== "string") {
+        continue;
+      }
+      if (!part.type.startsWith("tool-")) {
+        continue;
+      }
+      if (part.state !== "output-available") {
+        continue;
+      }
+      const toolName = part.type.slice("tool-".length);
+      if (!writeToolNames.has(toolName)) {
+        continue;
+      }
+      if (part.approval && part.approval.approved !== true) {
+        continue;
+      }
+      count++;
+    }
+  }
+  return count;
+}
+
 function extractLatestUserText(normalized: Omit<UIMessage, "id">[]): string {
   if (normalized.length === 0) {
     return "";

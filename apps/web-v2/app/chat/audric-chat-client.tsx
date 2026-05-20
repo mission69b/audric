@@ -8,7 +8,7 @@ import {
   type ToolUIPart,
 } from "ai";
 import { Loader2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   Conversation,
   ConversationContent,
@@ -31,14 +31,26 @@ import {
 } from "@/components/audric/permission-card";
 import { ToolResultRouter } from "@/components/audric/tool-result-router";
 import { useZkLogin } from "@/components/auth/use-zklogin";
+import { ChipBar } from "@/components/chat/chip-bar";
+import { EmptyState } from "@/components/chat/empty-state";
+import { UsernameClaimGate } from "@/components/settings/username-claim-gate";
 import { Button } from "@/components/ui/button";
+import { SidebarTrigger } from "@/components/ui/sidebar";
+import { useUserStatus } from "@/hooks/use-user-status";
+import { redactAddressesInText } from "@/lib/audric/log-redact";
 import {
   type SponsoredTxBundleStep,
   type SponsoredTxRequest,
   type SponsoredTxResult,
   sponsoredTx,
 } from "@/lib/audric/sponsored-tx";
+import { sanitizeStreamErrorMessage } from "@/lib/audric/stream-errors";
 import { authFetch } from "@/lib/auth-fetch";
+import {
+  isUsernameSkipped,
+  setUsernameSkipped as persistUsernameSkipped,
+} from "@/lib/identity/username-skip";
+import { decodeJwtClaim } from "@/lib/jwt-client";
 import type { ZkLoginSession } from "@/lib/zklogin";
 
 /**
@@ -108,7 +120,7 @@ interface AudricBundleMarkerData {
  *     next turn so the LLM gracefully narrates the rejection.
  */
 export function AudricChatClient() {
-  const { status, session, error, login, logout } = useZkLogin();
+  const { status, session, error, login } = useZkLogin();
 
   // Splash-B (v0.7c §4.7.E) — centered `audric.` wordmark + small
   // spinner during both initial localStorage hydration and the Google
@@ -146,12 +158,12 @@ export function AudricChatClient() {
           borrow — all by conversation. No seed phrase.
         </p>
         {status === "expired" && (
-          <div className="mb-6 rounded border border-amber-700 bg-amber-950 p-3 text-amber-200 text-sm">
+          <div className="mb-6 rounded border border-warning-border bg-warning-bg p-3 text-sm text-warning-fg">
             Your session has expired. Please sign in again to continue.
           </div>
         )}
         {error && (
-          <div className="mb-6 rounded border border-red-700 bg-red-950 p-3 text-red-200 text-sm">
+          <div className="mb-6 rounded border border-error-border bg-error-bg p-3 text-error-fg text-sm">
             {error}
           </div>
         )}
@@ -169,17 +181,127 @@ export function AudricChatClient() {
     );
   }
 
-  return (
-    <div className="mx-auto flex min-h-screen max-w-3xl flex-col gap-4 p-6 text-zinc-100">
-      <header className="flex items-center justify-between border-zinc-700 border-b pb-4">
-        <span className="font-mono text-xs text-zinc-400">
-          {session.address.slice(0, 8)}…{session.address.slice(-6)}
-        </span>
-        <Button onClick={logout} variant="outline">
-          Sign out
-        </Button>
-      </header>
+  return <AuthenticatedChat session={session} />;
+}
 
+/**
+ * Authenticated chat — sits behind the username-claim gate.
+ *
+ * [Phase 6.5 / SPEC_V07C_PHASE_6_5_CHAT_PARITY A.4 / S.198 — 2026-05-20]
+ *
+ * Pre-A.4 web-v2 dropped newly-signed-up users directly onto the chat
+ * composer without ever asking them to claim a handle. That's a P0
+ * onboarding gap — `/{username}` profile routing, contact lookup, and
+ * payment-link surfaces all assume a claimed username. The legacy
+ * surface (`apps/web/components/identity/UsernameClaimGate.tsx`)
+ * gates `<DashboardContent>`; we mirror the same state machine here
+ * for the audric-v2 chat surface.
+ *
+ * State machine (identical to legacy + `(chat)/layout.tsx`'s
+ * `<ChatGate>` mount):
+ *
+ *   userStatus.loading        → centered spinner (no flash)
+ *   username !== null         → render `<AudricChatPanel />`
+ *   skipped via localStorage  → render `<AudricChatPanel />`
+ *   optimisticallyClaimed     → render `<AudricChatPanel />` (covers
+ *                                the userStatus refetch round-trip)
+ *   otherwise                 → render the centered claim gate
+ *
+ * Skip is preserved (legacy behavior). The settings safety-valve
+ * (`<UsernameClaimModal>` in Passport settings) is the path back if
+ * the user changes their mind.
+ *
+ * Why this lives here and not in `<ChatGate>` from
+ * `components/chat/chat-gate.tsx`: that component wraps the
+ * template's `<ChatShell />` (mounted from `(chat)/layout.tsx`); this
+ * page lives OUTSIDE the `(chat)` route group (see `app/chat/page.tsx`
+ * comment header) so it never inherits that layout's gate. The
+ * `(chat)/` route group deletes in Session 9a; this inline gate is the
+ * cutover-safe home.
+ */
+function AuthenticatedChat({ session }: { session: ZkLoginSession }) {
+  const userStatus = useUserStatus(session.address, session.jwt);
+
+  // Lazy initializer reads from localStorage exactly once on mount.
+  // Subsequent renders use the in-memory `skipped` state (matches the
+  // dashboard-content.tsx + ChatGate pattern; avoids re-reading
+  // storage on every render).
+  const [skipped, setSkipped] = useState<boolean>(() =>
+    isUsernameSkipped(session.address)
+  );
+
+  // Optimistic flag — lets the gate disappear instantly on a
+  // successful Continue click before userStatus refetch lands. Once
+  // userStatus resolves with `username !== null` the structural check
+  // takes over, and the optimistic flag becomes harmless dead state.
+  const [optimisticallyClaimed, setOptimisticallyClaimed] = useState(false);
+
+  const handleClaimed = useCallback(() => {
+    setOptimisticallyClaimed(true);
+    userStatus.refetch().catch(() => {
+      // Refetch is best-effort; optimistic flag covers the UX. The
+      // next focused surface will trigger a fresh read.
+    });
+  }, [userStatus]);
+
+  const handleSkipped = useCallback(() => {
+    persistUsernameSkipped(session.address);
+    setSkipped(true);
+  }, [session.address]);
+
+  // Prevent the empty-state ↔ gate flash. Match the legacy pattern
+  // (centered spinner) so the chat surface materialises ONCE without
+  // a stale-state flash on first signed-in render.
+  if (userStatus.loading) {
+    return (
+      <div
+        className="flex h-dvh w-full flex-1 items-center justify-center bg-background"
+        data-testid="chat-claim-gate-loading"
+      >
+        <Loader2 className="size-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  const shouldShowGate =
+    userStatus.username === null && !(skipped || optimisticallyClaimed);
+
+  if (shouldShowGate) {
+    const googleName = decodeJwtClaim(session.jwt, "name") ?? null;
+    const googleEmail = decodeJwtClaim(session.jwt, "email") ?? null;
+    return (
+      <div
+        className="flex h-dvh w-full flex-1 flex-col items-center overflow-y-auto bg-background px-4 pt-12 pb-8 sm:px-6"
+        data-testid="chat-claim-gate"
+      >
+        <div className="mt-8 w-full max-w-md">
+          <UsernameClaimGate
+            address={session.address}
+            googleEmail={googleEmail}
+            googleName={googleName}
+            jwt={session.jwt}
+            onClaimed={handleClaimed}
+            onSkipped={handleSkipped}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // [Session 5.6 / S.202 — 2026-05-20] Outer wrapper now lives INSIDE
+  // SidebarInset (provided by `app/chat/layout.tsx`). The wallet
+  // address + Sign-out chrome moved to AudricSidebar's footer
+  // dropdown — no need to duplicate it in a top header strip. The
+  // SidebarTrigger at the top is mobile-only (collapsed sidebars on
+  // mobile need an explicit toggle button) and renders the same
+  // PanelLeftIcon the desktop trigger uses. Desktop users hover over
+  // the AudricMark in the sidebar header to reveal the collapse
+  // toggle (see `audric-sidebar.tsx` header lockup).
+  return (
+    <div className="flex h-dvh flex-col bg-background text-foreground">
+      <header className="flex h-12 items-center px-3 md:hidden">
+        <SidebarTrigger className="text-foreground/60 hover:text-foreground" />
+      </header>
       <AudricChatPanel key={session.address} session={session} />
     </div>
   );
@@ -228,144 +350,36 @@ function AudricChatPanel({ session }: { session: ZkLoginSession }) {
   // on the trailing message and stays settled on every prior one.
   const lastMessageId = messages.at(-1)?.id;
   const isTurnStreaming = status === "streaming";
+  const isEmpty = messages.length === 0;
 
-  return (
-    <>
-      <Conversation className="flex-1">
-        <ConversationContent className="gap-3 p-0">
-          {messages.length === 0 ? (
-            <p className="text-sm text-zinc-500">
-              Ask &quot;what&apos;s my balance?&quot; or try &quot;save 0.01
-              USDC&quot;.
-            </p>
-          ) : (
-            messages.map((m) => {
-              const isLast = m.id === lastMessageId;
+  // [Session 5.6 / S.202 — 2026-05-20] Chip tap handler. Mirrors the
+  // template ChatShell pattern from `components/chat/shell.tsx`: fill the
+  // composer with the canonical prompt, then defer focus until React has
+  // re-rendered with the new value (without the rAF, `.focus()` lands on
+  // the textarea BEFORE the controlled-input re-renders, so the caret
+  // jumps to the start of the OLD value and the user's first keystroke
+  // clobbers the chip prompt). The querySelector targets our plain
+  // `<input>` rather than the template's `[data-testid=multimodal-input]`
+  // textarea because audric-chat-client uses a simple input element.
+  const handleChipClick = useCallback((prompt: string) => {
+    setInput(prompt);
+    requestAnimationFrame(() => {
+      const inp = document.querySelector<HTMLInputElement>(
+        '[data-testid="audric-composer-input"]'
+      );
+      if (inp) {
+        inp.focus();
+        inp.setSelectionRange(inp.value.length, inp.value.length);
+      }
+    });
+  }, []);
 
-              // [Phase 5e] Scan parts for `data-audric-bundle` markers and
-              // build a Set of bundle-claimed toolCallIds. Bundle-claimed
-              // tool-* parts are folded into one BundlePermissionCard
-              // (rendered from the marker) instead of N individual cards.
-              const bundleClaimedIds = new Set<string>();
-              for (const part of m.parts) {
-                if (part.type === "data-audric-bundle") {
-                  const marker = parseAudricBundleMarker(
-                    (part as { data?: unknown }).data
-                  );
-                  if (marker) {
-                    for (const step of marker.steps) {
-                      bundleClaimedIds.add(step.toolCallId);
-                    }
-                  }
-                }
-              }
-
-              return (
-                <Message from={m.role} key={m.id}>
-                  <MessageContent>
-                    {m.parts.map((part, i) => {
-                      if (part.type === "text") {
-                        return (
-                          <MessageResponse
-                            // biome-ignore lint/suspicious/noArrayIndexKey: parts are positionally stable per message
-                            key={`${m.id}-${i}`}
-                          >
-                            {part.text}
-                          </MessageResponse>
-                        );
-                      }
-                      if (part.type === "reasoning") {
-                        const reasoningPart = part as ReasoningUIPart;
-                        // The part is streaming only when (a) the turn is in
-                        // flight, (b) it's on the trailing message, and (c)
-                        // the part itself hasn't been marked done.
-                        const partStreaming =
-                          isTurnStreaming &&
-                          isLast &&
-                          reasoningPart.state !== "done";
-                        return (
-                          <Reasoning
-                            isStreaming={partStreaming}
-                            // biome-ignore lint/suspicious/noArrayIndexKey: parts are positionally stable per message
-                            key={`${m.id}-${i}`}
-                          >
-                            <ReasoningTrigger />
-                            <ReasoningContent>
-                              {reasoningPart.text}
-                            </ReasoningContent>
-                          </Reasoning>
-                        );
-                      }
-                      // [Phase 5e] Bundle marker → ONE bundle card.
-                      if (part.type === "data-audric-bundle") {
-                        const marker = parseAudricBundleMarker(
-                          (part as { data?: unknown }).data
-                        );
-                        if (!marker || marker.steps.length < 2) {
-                          // Malformed marker — render nothing; the
-                          // individual `tool-*` parts will render
-                          // separately because they're NOT in
-                          // bundleClaimedIds (the set is empty when
-                          // parse fails for ALL markers).
-                          return null;
-                        }
-                        return (
-                          <BundleForMarker
-                            addToolApprovalResponse={addToolApprovalResponse}
-                            addToolOutput={addToolOutput}
-                            // biome-ignore lint/suspicious/noArrayIndexKey: parts are positionally stable per message
-                            key={`${m.id}-${i}`}
-                            marker={marker}
-                            session={session}
-                          />
-                        );
-                      }
-                      if (part.type.startsWith("tool-")) {
-                        const toolPart = part as ToolUIPart;
-                        // [Phase 5e] Skip tool parts that a bundle marker
-                        // claimed — the BundlePermissionCard handles
-                        // them. AI SDK's state machine still tracks
-                        // each part's approval-requested → output-*
-                        // lifecycle independently (the parent's
-                        // bundle approve handler fires N
-                        // `addToolApprovalResponse` + N `addToolOutput`
-                        // to keep each part's state in sync).
-                        if (bundleClaimedIds.has(toolPart.toolCallId)) {
-                          return null;
-                        }
-                        if (toolPart.state === "approval-requested") {
-                          return (
-                            <PermissionForToolPart
-                              addToolApprovalResponse={addToolApprovalResponse}
-                              addToolOutput={addToolOutput}
-                              // biome-ignore lint/suspicious/noArrayIndexKey: parts are positionally stable per message
-                              key={`${m.id}-${i}`}
-                              session={session}
-                              toolPart={toolPart}
-                            />
-                          );
-                        }
-                        return (
-                          <ToolResultRouter
-                            // biome-ignore lint/suspicious/noArrayIndexKey: parts are positionally stable per message
-                            key={`${m.id}-${i}`}
-                            onSendMessage={(text) => sendMessage({ text })}
-                            part={toolPart}
-                          />
-                        );
-                      }
-                      return null;
-                    })}
-                  </MessageContent>
-                </Message>
-              );
-            })
-          )}
-        </ConversationContent>
-      </Conversation>
-
+  // Composer + chip bar block — reused in both layouts (centered hero
+  // when empty, bottom-stick when messages exist).
+  const composerBlock = (
+    <div className="flex w-full flex-col gap-3">
       <form
-        className="flex gap-2 border-zinc-700 border-t pt-4"
+        className="flex w-full gap-2"
         onSubmit={(e) => {
           e.preventDefault();
           if (!canSend) {
@@ -376,25 +390,198 @@ function AudricChatPanel({ session }: { session: ZkLoginSession }) {
         }}
       >
         <input
-          className="flex-1 rounded border border-zinc-700 bg-zinc-900 p-2 text-sm"
+          className="flex-1 rounded-xl border border-border/60 bg-card px-4 py-3 text-sm shadow-[var(--shadow-float)] outline-none focus-visible:border-foreground/30 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          data-testid="audric-composer-input"
           onChange={(e) => setInput(e.target.value)}
-          placeholder="what's my balance? or 'save 0.01 USDC'"
+          placeholder="ask anything"
           value={input}
         />
         <button
-          className="rounded bg-zinc-100 px-4 py-2 font-medium text-sm text-zinc-900 hover:bg-zinc-200 disabled:opacity-40"
+          className="rounded-xl bg-foreground px-5 py-3 font-medium text-background text-sm transition hover:bg-foreground/90 disabled:opacity-40"
           disabled={!canSend}
           type="submit"
         >
           send
         </button>
       </form>
+      <ChipBar
+        hidden={status === "streaming" || status === "submitted"}
+        onChipClick={handleChipClick}
+      />
+    </div>
+  );
 
-      {error && (
-        <div className="rounded border border-red-700 bg-red-950 p-3 text-red-200 text-sm">
-          {error.message}
+  // Empty-state hero — perplexity-style center-anchored composition.
+  // BalanceHero + greeting from `<EmptyState />`, then the composer +
+  // chips directly below. Once the user sends the first message the
+  // layout swaps to the bottom-stick composer with the timeline above.
+  if (isEmpty) {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center gap-10 px-4 pb-8">
+        <EmptyState />
+        <div className="w-full max-w-2xl">{composerBlock}</div>
+        {error && (
+          <div className="w-full max-w-2xl rounded border border-error-border bg-error-bg p-3 text-error-fg text-sm">
+            {sanitizeStreamErrorMessage(redactAddressesInText(error.message))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <Conversation className="flex-1">
+        <ConversationContent className="mx-auto w-full max-w-3xl gap-3 px-4 py-6">
+          {messages.map((m) => {
+            const isLast = m.id === lastMessageId;
+
+            // [Phase 5e] Scan parts for `data-audric-bundle` markers and
+            // build a Set of bundle-claimed toolCallIds. Bundle-claimed
+            // tool-* parts are folded into one BundlePermissionCard
+            // (rendered from the marker) instead of N individual cards.
+            const bundleClaimedIds = new Set<string>();
+            for (const part of m.parts) {
+              if (part.type === "data-audric-bundle") {
+                const marker = parseAudricBundleMarker(
+                  (part as { data?: unknown }).data
+                );
+                if (marker) {
+                  for (const step of marker.steps) {
+                    bundleClaimedIds.add(step.toolCallId);
+                  }
+                }
+              }
+            }
+
+            return (
+              <Message from={m.role} key={m.id}>
+                <MessageContent>
+                  {m.parts.map((part, i) => {
+                    if (part.type === "text") {
+                      return (
+                        <MessageResponse
+                          // biome-ignore lint/suspicious/noArrayIndexKey: parts are positionally stable per message
+                          key={`${m.id}-${i}`}
+                        >
+                          {part.text}
+                        </MessageResponse>
+                      );
+                    }
+                    if (part.type === "reasoning") {
+                      const reasoningPart = part as ReasoningUIPart;
+                      // The part is streaming only when (a) the turn is in
+                      // flight, (b) it's on the trailing message, and (c)
+                      // the part itself hasn't been marked done.
+                      const partStreaming =
+                        isTurnStreaming &&
+                        isLast &&
+                        reasoningPart.state !== "done";
+                      return (
+                        <Reasoning
+                          isStreaming={partStreaming}
+                          // biome-ignore lint/suspicious/noArrayIndexKey: parts are positionally stable per message
+                          key={`${m.id}-${i}`}
+                        >
+                          <ReasoningTrigger />
+                          <ReasoningContent>
+                            {reasoningPart.text}
+                          </ReasoningContent>
+                        </Reasoning>
+                      );
+                    }
+                    // [Phase 5e] Bundle marker → ONE bundle card.
+                    if (part.type === "data-audric-bundle") {
+                      const marker = parseAudricBundleMarker(
+                        (part as { data?: unknown }).data
+                      );
+                      if (!marker || marker.steps.length < 2) {
+                        // Malformed marker — render nothing; the
+                        // individual `tool-*` parts will render
+                        // separately because they're NOT in
+                        // bundleClaimedIds (the set is empty when
+                        // parse fails for ALL markers).
+                        return null;
+                      }
+                      return (
+                        <BundleForMarker
+                          addToolApprovalResponse={addToolApprovalResponse}
+                          addToolOutput={addToolOutput}
+                          // biome-ignore lint/suspicious/noArrayIndexKey: parts are positionally stable per message
+                          key={`${m.id}-${i}`}
+                          marker={marker}
+                          session={session}
+                        />
+                      );
+                    }
+                    if (part.type.startsWith("tool-")) {
+                      const toolPart = part as ToolUIPart;
+                      // [Phase 5e] Skip tool parts that a bundle marker
+                      // claimed — the BundlePermissionCard handles
+                      // them. AI SDK's state machine still tracks
+                      // each part's approval-requested → output-*
+                      // lifecycle independently (the parent's
+                      // bundle approve handler fires N
+                      // `addToolApprovalResponse` + N `addToolOutput`
+                      // to keep each part's state in sync).
+                      if (bundleClaimedIds.has(toolPart.toolCallId)) {
+                        return null;
+                      }
+                      if (toolPart.state === "approval-requested") {
+                        return (
+                          <PermissionForToolPart
+                            addToolApprovalResponse={addToolApprovalResponse}
+                            addToolOutput={addToolOutput}
+                            // biome-ignore lint/suspicious/noArrayIndexKey: parts are positionally stable per message
+                            key={`${m.id}-${i}`}
+                            session={session}
+                            toolPart={toolPart}
+                          />
+                        );
+                      }
+                      return (
+                        <ToolResultRouter
+                          // biome-ignore lint/suspicious/noArrayIndexKey: parts are positionally stable per message
+                          key={`${m.id}-${i}`}
+                          onSendMessage={(text) => sendMessage({ text })}
+                          part={toolPart}
+                        />
+                      );
+                    }
+                    return null;
+                  })}
+                </MessageContent>
+              </Message>
+            );
+          })}
+        </ConversationContent>
+      </Conversation>
+
+      {/*
+       * Sticky-bottom composer block — sits below the timeline when at
+       * least one message has been sent. The empty-state hero uses the
+       * SAME `composerBlock` JSX above; the only delta is positioning
+       * (centered hero vs sticky-bottom strip).
+       *
+       * [Phase 6.5 C.3 / S.198] Error display moved inline below the
+       * composer (was a free-floating block in the old layout). Same
+       * defense-in-depth sanitization: server-side route sanitizes
+       * tool-output-error / error chunks before they cross the wire;
+       * client-side here covers client-thrown ChatbotErrors
+       * (rate-limit, network) that never touched the route.
+       */}
+      <div className="sticky bottom-0 z-10 border-border/40 border-t bg-background/95 backdrop-blur-sm">
+        <div className="mx-auto w-full max-w-2xl px-4 py-3">
+          {composerBlock}
         </div>
-      )}
+        {error && (
+          <div className="mx-auto w-full max-w-2xl px-4 pb-3">
+            <div className="rounded border border-error-border bg-error-bg p-3 text-error-fg text-sm">
+              {sanitizeStreamErrorMessage(redactAddressesInText(error.message))}
+            </div>
+          </div>
+        )}
+      </div>
     </>
   );
 }
@@ -428,7 +615,7 @@ function PermissionForToolPart(props: PermissionForToolPartProps) {
     // server route — but render a graceful fallback so the user can
     // still deny if metadata went missing for any reason.
     return (
-      <div className="my-3 rounded-lg border border-amber-700 bg-amber-950 p-4 text-amber-200 text-sm">
+      <div className="my-3 rounded-lg border border-warning-border bg-warning-bg p-4 text-sm text-warning-fg">
         Tool {toolName} requested approval but no metadata was attached.{" "}
         <Button
           onClick={() => {

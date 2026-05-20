@@ -7,7 +7,6 @@ import { DataStreamProvider } from "@/components/chat/data-stream-provider";
 import { UsernamePaletteRoot } from "@/components/chat/username-palette-root";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { ActiveChatProvider } from "@/hooks/use-active-chat";
-import { getCurrentUser } from "@/lib/audric-auth";
 
 // [v0.7c Session 5.5] Pyodide CDN <Script> removed — the template
 // loaded a 10MB+ Python-in-browser runtime from jsdelivr for its
@@ -25,15 +24,19 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 }
 
 async function SidebarShell({ children }: { children: React.ReactNode }) {
-  const [session, cookieStore] = await Promise.all([
-    getCurrentUser(),
-    cookies(),
-  ]);
+  // [S.203 — 2026-05-20] Dropped the `getCurrentUser()` round-trip:
+  // AppSidebar now sources identity from `useZkLogin()` (client-side
+  // localStorage) so the server-side session fetch is dead weight.
+  // The `getCurrentUser()` call always returned `null` here under
+  // zkLogin (no httpOnly cookie) — the footer never rendered in
+  // production. This entire `(chat)` route group + this layout
+  // delete in Session 9a.
+  const cookieStore = await cookies();
   const isCollapsed = cookieStore.get("sidebar_state")?.value !== "true";
 
   return (
     <SidebarProvider defaultOpen={!isCollapsed}>
-      <AppSidebar user={session?.user} />
+      <AppSidebar />
       <SidebarInset>
         <Toaster
           position="top-center"
