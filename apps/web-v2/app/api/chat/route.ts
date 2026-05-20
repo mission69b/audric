@@ -162,7 +162,14 @@ import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { getSuiRpcUrl } from "@/lib/sui-rpc";
 import { Prisma } from "../../../../web/lib/generated/prisma/client";
 
-export const maxDuration = 60;
+// [S.212 — 2026-05-21] Bumped from 60s to 300s to match the legacy
+// `apps/web/app/api/engine/chat/route.ts` ceiling. Pre-S.211 turns
+// rarely exceeded 60s because adaptive thinking wasn't actually
+// emitting (the `display: 'summarized'` knob was missing). Post-S.211
+// the model genuinely thinks on Tier 2 / Tier 3 prompts — observed
+// 57s + 44s thinking spans in production, both of which hit the 60s
+// Vercel Runtime Timeout. 300s matches the proven legacy ceiling.
+export const maxDuration = 300;
 
 // -----------------------------------------------------------------------------
 // Constants
@@ -2005,7 +2012,17 @@ function translateChunk(
       // client assembler folds the three streaming parts into a single
       // `reasoning` UIMessagePart with `text` + `state`, which is what
       // `<Reasoning>` reads.
-      writer.write({ type: "reasoning-start", id: chunk.id });
+      //
+      // [S.212 — 2026-05-21] Forward `providerMetadata` through —
+      // Anthropic doesn't currently emit it on `reasoning-start`, but
+      // future-proof against other providers / extensions.
+      writer.write({
+        type: "reasoning-start",
+        id: chunk.id,
+        ...(chunk.providerMetadata
+          ? { providerMetadata: chunk.providerMetadata }
+          : {}),
+      });
       break;
     }
     case "reasoning-delta": {
@@ -2013,13 +2030,35 @@ function translateChunk(
       // (previously log-only). Each delta increments the trailing
       // `reasoning` part's text by `chunk.text`. The client's <Reasoning>
       // collapsible auto-opens during streaming and auto-closes 1s after
-      // the matching `reasoning-end` lands. Empty deltas suppressed to
-      // avoid spurious wire frames.
-      if (typeof chunk.text === "string" && chunk.text.length > 0) {
+      // the matching `reasoning-end` lands.
+      //
+      // [S.212 — 2026-05-21] CRITICAL: Anthropic emits TWO shapes of
+      // `reasoning-delta` per the @ai-sdk/anthropic stream parser
+      // (`anthropic-messages-language-model.ts` L2102-2128):
+      //
+      //   (a) `thinking_delta`   → { text: "<thinking text>", id }
+      //   (b) `signature_delta`  → { text: "", id, providerMetadata: {
+      //                              anthropic: { signature: "<sig>" } } }
+      //
+      // The signature-carrying chunk has EMPTY text. Pre-S.212 we
+      // suppressed empty-text chunks "to avoid spurious wire frames"
+      // — which silently dropped the signature, which broke multi-step
+      // round-trips back to Anthropic ("unsupported reasoning metadata"
+      // warning observed in production logs 2026-05-21 06:33 UTC, twice
+      // per Tier 2 turn). Without the signature, prior thinking blocks
+      // can't be re-sent to Anthropic on continue-turns → multi-step
+      // reasoning quality silently degrades.
+      //
+      // Forward both shapes; drop only when BOTH text is empty AND no
+      // providerMetadata is attached.
+      const hasText = typeof chunk.text === "string" && chunk.text.length > 0;
+      const hasMetadata = chunk.providerMetadata != null;
+      if (hasText || hasMetadata) {
         writer.write({
           type: "reasoning-delta",
           id: chunk.id,
-          delta: chunk.text,
+          delta: chunk.text ?? "",
+          ...(hasMetadata ? { providerMetadata: chunk.providerMetadata } : {}),
         });
       }
       break;
@@ -2029,7 +2068,17 @@ function translateChunk(
       // the streaming reasoning part on the client — flips `state` to
       // 'done' so the <Reasoning> accordion knows to stop the shimmer
       // and start the auto-close countdown.
-      writer.write({ type: "reasoning-end", id: chunk.id });
+      //
+      // [S.212 — 2026-05-21] Forward `providerMetadata` through. Even
+      // when reasoning-end carries no Anthropic-specific fields today,
+      // preserving the shape keeps future provider extensions wire-safe.
+      writer.write({
+        type: "reasoning-end",
+        id: chunk.id,
+        ...(chunk.providerMetadata
+          ? { providerMetadata: chunk.providerMetadata }
+          : {}),
+      });
       break;
     }
     default:
