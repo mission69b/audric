@@ -1,82 +1,45 @@
 /**
- * `/chat` layout — Audric chat chrome (sidebar + inset).
+ * `/chat` layout — chrome-free pass-through (post-S.209).
  *
- * Wraps `app/chat/page.tsx` with the SidebarProvider + AppSidebar +
- * SidebarInset shell so the authenticated chat surface gets the
- * polished perplexity-style chrome (brand mark + new-chat nav + wallet
- * sign-out in sidebar; trigger + composer + chips in the inset).
+ * Pre-S.209 this layout wrapped children with `<SidebarProvider> +
+ * <AppSidebar /> + <SidebarInset>`. That meant the sidebar — and every
+ * client component inside it (SidebarHistory, SidebarUserNav, etc) —
+ * mounted on EVERY /chat visit, including unauth visits during the
+ * pre-auth splash. That caused two problems:
  *
- * Identity flow:
- *   - This layout is a SERVER component (Next.js App Router default).
- *     Audric uses zkLogin where the session blob lives in localStorage
- *     CLIENT-side, so there's no httpOnly cookie for the server to read.
- *   - We therefore DON'T fetch a server-side session here — it would
- *     always be null. Identity is sourced from `useZkLogin()` inside
- *     `<AppSidebar />`'s `<SidebarUserNav />` footer (client-only),
- *     which renders the wallet pill + sign-out dropdown once the
- *     localStorage session hydrates.
+ *   1. UX: the founder saw a sidebar + empty "Your conversations will
+ *      appear here..." text behind the pre-auth hero ("Your money,
+ *      handled."). The sidebar shouldn't render until the user is
+ *      signed in.
  *
- * Sidebar default-open state is persisted via the `sidebar_state` cookie
- * (set by the shadcn SidebarProvider on user toggle). We read it
- * server-side so the SSR + first-client renders agree on the open/
- * collapsed state — eliminates the layout-shift flash that the
- * client-only fallback would produce.
+ *   2. Console errors: SidebarUserNav fires `useUserStatus()` which
+ *      hits `/api/user/status?address=...` with the (possibly stale)
+ *      JWT from localStorage. On expired sessions this 401s. Same for
+ *      SidebarHistory → /api/history. Neither call should happen until
+ *      the JWT is verified-fresh.
  *
- * Toaster mounts inside the inset (not at the root layout) so toast
- * positioning anchors to the chat surface and respects the chat
- * theme tokens rather than the global app theme.
+ * Fix: layout becomes a pure Suspense wrapper. AudricChatClient
+ * controls its own chrome — wraps the authenticated branch with
+ * `<SidebarProvider> + <AppSidebar /> + <SidebarInset>`, leaves the
+ * loading / pre-auth / expired-session splash branches chrome-less.
  *
- * [S.203 — 2026-05-20] Refactored from AudricSidebar (a near-duplicate
- * of AppSidebar I added in S.202) to use AppSidebar directly. The
- * "don't reinvent the wheel" feedback re-routed identity sourcing into
- * the existing template primitive — `SidebarUserNav` is now wallet-
- * aware and AppSidebar is its single consumer. See S.203 entry in
- * `audric-build-tracker.md` for the deduplication rationale.
+ * Pre-S.209 sidebar_state cookie SSR read is dropped — the cookie still
+ * gets written/read on toggle (shadcn SidebarProvider does it
+ * client-side via document.cookie); we accept defaulting to "open" on
+ * cold load (one click to collapse, trivial UX cost) in exchange for
+ * solving the unauth-chrome bug structurally.
  */
 
-import { cookies } from "next/headers";
 import { Suspense } from "react";
-import { Toaster } from "sonner";
-import { AppSidebar } from "@/components/chat/app-sidebar";
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 
 export default function ChatLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  // Wrap the SidebarShell in Suspense so Next.js 16's Cache Components
-  // prerender can stream the dynamic `cookies()` read inside it without
-  // blocking the static prerender of the rest of the route. Mirrors the
-  // `(chat)/layout.tsx` pattern (server-component layout + Suspense-
-  // wrapped child that calls cookies()) from the template.
   return (
-    <Suspense fallback={<div className="flex h-dvh bg-sidebar" />}>
-      <SidebarShell>{children}</SidebarShell>
+    <Suspense fallback={<div className="flex h-dvh bg-background" />}>
+      {children}
     </Suspense>
-  );
-}
-
-async function SidebarShell({ children }: { children: React.ReactNode }) {
-  const cookieStore = await cookies();
-  const isCollapsed = cookieStore.get("sidebar_state")?.value !== "true";
-
-  return (
-    <SidebarProvider defaultOpen={!isCollapsed}>
-      <AppSidebar />
-      <SidebarInset>
-        <Toaster
-          position="top-center"
-          theme="system"
-          toastOptions={{
-            className:
-              "!bg-card !text-foreground !border-border/50 !shadow-[var(--shadow-float)]",
-          }}
-        />
-        <Suspense fallback={<div className="flex h-dvh" />}>
-          {children}
-        </Suspense>
-      </SidebarInset>
-    </SidebarProvider>
   );
 }

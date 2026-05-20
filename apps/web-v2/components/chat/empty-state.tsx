@@ -30,6 +30,7 @@ import { useEffect, useState } from "react";
 import { useZkLogin } from "@/components/auth/use-zklogin";
 import { BalanceHero } from "@/components/ui/balance-hero";
 import { usePortfolio } from "@/hooks/use-portfolio";
+import { useUserStatus } from "@/hooks/use-user-status";
 import { decodeJwtClaim } from "@/lib/jwt-client";
 
 /**
@@ -76,7 +77,14 @@ function fmtCompactUsd(n: number): string {
 export function EmptyState() {
   const { address, session } = useZkLogin();
   const { data: portfolio } = usePortfolio(address);
+  // [S.209 — 2026-05-20] Prefer the claimed Audric username for the
+  // greeting (`Good evening, funkii`), fall back to Google first name
+  // (`Good evening, Mike`), then to a name-less greeting. Matches the
+  // sidebar's identity-resolution priority (sidebar-user-nav.tsx
+  // surfaces `username@audric` first, falls back to truncated address).
+  const { username } = useUserStatus(address, session?.jwt);
   const firstName = getFirstName(session?.jwt ?? null);
+  const personalName = username ?? firstName ?? null;
 
   const [mountedDate, setMountedDate] = useState<Date | null>(null);
   useEffect(() => {
@@ -85,7 +93,9 @@ export function EmptyState() {
 
   const timeOfDay = mountedDate ? getTimeOfDay(mountedDate) : null;
   const greetingBase = timeOfDay ? `Good ${timeOfDay}` : "Hello";
-  const greeting = firstName ? `${greetingBase}, ${firstName}` : greetingBase;
+  const greeting = personalName
+    ? `${greetingBase}, ${personalName}`
+    : greetingBase;
 
   const subStats: string[] = [];
   if (portfolio?.estimatedDailyYield && portfolio.estimatedDailyYield > 0) {

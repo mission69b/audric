@@ -32,11 +32,16 @@ import {
 } from "@/components/audric/permission-card";
 import { ToolResultRouter } from "@/components/audric/tool-result-router";
 import { useZkLogin } from "@/components/auth/use-zklogin";
+import { AppSidebar } from "@/components/chat/app-sidebar";
 import { ChipBar } from "@/components/chat/chip-bar";
 import { EmptyState } from "@/components/chat/empty-state";
 import { UsernameClaimGate } from "@/components/settings/username-claim-gate";
 import { Button } from "@/components/ui/button";
-import { SidebarTrigger } from "@/components/ui/sidebar";
+import {
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
 import { useUserStatus } from "@/hooks/use-user-status";
 import { redactAddressesInText } from "@/lib/audric/log-redact";
 import { subscribeNewChat } from "@/lib/audric/new-chat-event";
@@ -300,25 +305,31 @@ function AuthenticatedChat({ session }: { session: ZkLoginSession }) {
     );
   }
 
-  // [Session 5.6 / S.202 — 2026-05-20] Outer wrapper now lives INSIDE
-  // SidebarInset (provided by `app/chat/layout.tsx`). The wallet
-  // address + Sign-out chrome moved to AudricSidebar's footer
-  // dropdown — no need to duplicate it in a top header strip. The
-  // SidebarTrigger at the top is mobile-only (collapsed sidebars on
-  // mobile need an explicit toggle button) and renders the same
-  // PanelLeftIcon the desktop trigger uses. Desktop users hover over
-  // the AudricMark in the sidebar header to reveal the collapse
-  // toggle (see `audric-sidebar.tsx` header lockup).
+  // [S.209 — 2026-05-20] Sidebar chrome moved into the authenticated
+  // branch only. Pre-S.209 the SidebarProvider + AppSidebar lived in
+  // `/chat/layout.tsx` and rendered for EVERY visitor — including
+  // pre-auth and expired-session users. That caused the founder-flagged
+  // bug where the splash hero showed alongside an empty sidebar + 401
+  // errors from SidebarUserNav's `useUserStatus()` hitting
+  // `/api/user/status` with a stale JWT. With chrome now gated on
+  // `authenticated`, unauth visitors see a chrome-less splash (the
+  // loading + pre-auth branches above) and no API calls fire until
+  // a verified-fresh session lands.
   return (
-    <div className="flex h-dvh flex-col bg-background text-foreground">
-      <header className="flex h-12 items-center px-3 md:hidden">
-        <SidebarTrigger className="text-foreground/60 hover:text-foreground" />
-      </header>
-      <AudricChatPanel
-        key={`${session.address}-${chatNonce}`}
-        session={session}
-      />
-    </div>
+    <SidebarProvider>
+      <AppSidebar />
+      <SidebarInset>
+        <div className="flex h-dvh flex-col bg-background text-foreground">
+          <header className="flex h-12 items-center px-3 md:hidden">
+            <SidebarTrigger className="text-foreground/60 hover:text-foreground" />
+          </header>
+          <AudricChatPanel
+            key={`${session.address}-${chatNonce}`}
+            session={session}
+          />
+        </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }
 
@@ -501,27 +512,35 @@ function AudricChatPanel({ session }: { session: ZkLoginSession }) {
 
             return (
               <Fragment key={m.id}>
-                <Message from={m.role}>
+                {/* [S.209 — 2026-05-20] `items-end` on user Message — the
+                    template's `<Message>` is a flex flex-col container.
+                    `ml-auto` on Message snaps the Message wrapper to the
+                    right edge, but the bubble (`<MessageContent>` with
+                    `w-fit`) defaults to flex-start INSIDE the column.
+                    Adding `items-end` flips the cross-axis alignment so
+                    the bubble actually sits at the right of the chat
+                    column — fixes the left-aligned user bubble bug. */}
+                <Message
+                  className={cn(m.role === "user" && "items-end")}
+                  from={m.role}
+                >
                   <MessageContent
-                    // [S.208 — 2026-05-20] User bubble — chatbot.ai-sdk.dev
-                    // template's gradient pill. `w-fit max-w-[min(80%,56ch)]`
-                    // sizes to content but caps width; `rounded-2xl
-                    // rounded-br-lg` keeps the standard 16px curve with a
-                    // smaller bottom-right corner pointing back at the user
-                    // (matches the template demo screenshot exactly).
-                    // Right-alignment comes from the parent `<Message
-                    // from="user">` (`ml-auto justify-end` in ai-elements/
-                    // message.tsx — no extra classes needed).
+                    // [S.209 — 2026-05-20] User bubble — reverted from the
+                    // S.208 gradient pill to a SOLID dark bubble per
+                    // founder feedback. Matches the chatbot.ai-sdk.dev
+                    // demo dark-mode screenshot: solid dark bg, white
+                    // text, asymmetric rounded corners (16/16/4/16) with
+                    // the small notch in the bottom-right pointing back
+                    // at the user.
                     //
-                    // Pre-S.208 used a solid dark `bg-bubble-user-bg` token
-                    // that fought the template's design language. Reverted
-                    // to the template's gradient + border + card shadow,
-                    // which integrates with the rest of the surface tokens
-                    // and works across both light + dark themes without
-                    // a custom token.
+                    // Uses semantic `bg-bubble-user-bg` / `text-bubble-
+                    // user-fg` tokens (defined in globals.css) — near-
+                    // black solid in dark mode, near-black solid in light
+                    // mode. The bubble pops against the page background
+                    // either way.
                     className={cn(
                       m.role === "user" &&
-                        "w-fit max-w-[min(80%,56ch)] overflow-hidden break-words rounded-2xl rounded-br-lg border border-border/30 bg-gradient-to-br from-secondary to-muted px-3.5 py-2 shadow-[var(--shadow-card)]"
+                        "w-fit max-w-[min(80%,56ch)] overflow-hidden break-words rounded-2xl rounded-br-[4px] bg-bubble-user-bg px-4 py-2.5 text-bubble-user-fg shadow-[var(--shadow-card)] [&_*]:text-bubble-user-fg"
                     )}
                   >
                     {m.parts.map((part, i) => {
