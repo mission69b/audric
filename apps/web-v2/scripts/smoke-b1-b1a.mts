@@ -1,11 +1,12 @@
 /**
- * Smoke test — B1 (toolMetadata wire) + B1a (extractMoveCallTargets shape).
+ * Smoke test — B1 (toolMetadata wire) + B1a (extractMoveCallTargets
+ * shape) + B6 (response messageId reuse on resume turns).
  *
- * Locks in the two load-bearing fixes shipped 2026-05-20 so they can't
- * silently regress when someone re-pins a dependency or refactors the
- * Enoki sponsor path.
+ * Locks in the three load-bearing fixes shipped 2026-05-20 so they
+ * can't silently regress when someone re-pins a dependency or refactors
+ * the Enoki sponsor / resume-turn paths.
  *
- * Run: `pnpm tsx scripts/smoke-b1-b1a.mts`
+ * Run: `pnpm smoke:b1-b1a`
  *
  * --- WHAT THIS TESTS ---
  *
@@ -28,6 +29,14 @@
  *    package.json `package.json` doesn't accidentally re-pin a lower
  *    version through a workspace override.
  *
+ * 4. **B6 — `selectResponseMessageId` reuses the tail assistant's id
+ *    on resume turns.** The bug was that the route always generated a
+ *    fresh `messageId`, which caused the client to `pushMessage` a
+ *    duplicate assistant message (carrying a CLONED `save_deposit`
+ *    output-available part plus the new narration) instead of
+ *    `replaceMessage`-ing in-place. Mirrors AI SDK's canonical
+ *    `getResponseUIMessageId`.
+ *
  * If any assertion fails the script exits non-zero. Intended for ad-hoc
  * verification + future CI gate.
  */
@@ -36,6 +45,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, resolve as resolvePath } from "node:path";
 import { fileURLToPath } from "node:url";
 import { extractMoveCallTargets } from "../lib/audric/extract-move-call-targets.ts";
+import { selectResponseMessageId } from "../lib/audric/select-response-message-id.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolvePath(here, "..");
@@ -212,6 +222,81 @@ assert(
   "Empty commands → []"
 );
 assert(extractMoveCallTargets(null).length === 0, "null → []");
+
+// ----------------------------------------------------------------------
+// Test 4: selectResponseMessageId reuses the tail assistant's id on
+// resume turns (the B6 fix that kills duplicate transaction receipts
+// after `addToolOutput` fires `sendAutomaticallyWhen`).
+// ----------------------------------------------------------------------
+
+console.log("\n[4] selectResponseMessageId reuses tail assistant id on resume");
+
+let factoryCalls = 0;
+const fresh = () => {
+  factoryCalls += 1;
+  return "fresh-id-generated";
+};
+
+// (a) Initial turn — tail is a user message → generate a fresh id.
+factoryCalls = 0;
+const initialId = selectResponseMessageId(
+  [{ id: "u-1", role: "user" }],
+  fresh
+);
+assert(
+  initialId === "fresh-id-generated" && factoryCalls === 1,
+  "initial turn (tail=user) → generates a fresh id"
+);
+
+// (b) Resume turn — tail is an assistant with a save_deposit
+// output-available part → reuse the tail's id (no generator call).
+factoryCalls = 0;
+const resumeId = selectResponseMessageId(
+  [
+    { id: "u-1", role: "user" },
+    { id: "asst-existing-1", role: "assistant" },
+  ],
+  fresh
+);
+assert(
+  resumeId === "asst-existing-1" && factoryCalls === 0,
+  "resume turn (tail=assistant) → reuses tail.id without invoking factory"
+);
+
+// (c) Tail-assistant-without-id (legacy `{role, content}` shape from a
+// non-useChat caller). Don't try to reuse — fall back to a fresh id.
+factoryCalls = 0;
+const noIdFallback = selectResponseMessageId(
+  [
+    { id: "u-1", role: "user" },
+    { role: "assistant" }, // no id
+  ],
+  fresh
+);
+assert(
+  noIdFallback === "fresh-id-generated" && factoryCalls === 1,
+  "resume turn with id-less assistant tail → generates a fresh id"
+);
+
+// (d) Empty messages — fall back to a fresh id.
+factoryCalls = 0;
+const emptyFallback = selectResponseMessageId([], fresh);
+assert(
+  emptyFallback === "fresh-id-generated" && factoryCalls === 1,
+  "empty messages → generates a fresh id"
+);
+
+// (e) System tail (defensive — system messages are filtered before this
+// helper runs in the route, but the helper itself MUST NOT reuse them).
+factoryCalls = 0;
+const systemTailFallback = selectResponseMessageId(
+  [{ id: "sys-1", role: "system" }],
+  fresh
+);
+assert(
+  systemTailFallback === "fresh-id-generated" && factoryCalls === 1,
+  "system-tail (defensive) → generates a fresh id"
+);
 
 // ----------------------------------------------------------------------
 // Exit

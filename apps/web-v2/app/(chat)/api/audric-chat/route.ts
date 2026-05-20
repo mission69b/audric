@@ -127,6 +127,7 @@ import {
   extractResumeOutcomes,
   type ResumeOutcome,
 } from "@/lib/audric/resume-outcome";
+import { selectResponseMessageId } from "@/lib/audric/select-response-message-id";
 import { buildAudricSystemPrompt } from "@/lib/audric/system-prompt";
 import { TelemetryIntegration } from "@/lib/audric/telemetry-integration";
 import { getCurrentUser } from "@/lib/audric-auth";
@@ -820,7 +821,15 @@ export async function POST(request: Request) {
 
   // 10. Stream the agent and translate AI SDK chunks → UIMessage parts.
   const result = await audricAgent.stream({ messages: aiSdkMessages });
-  const messageId = generateId();
+
+  // [v0.7c Phase 6 — B6 fix (2026-05-20)] Mirror AI SDK's canonical
+  // `getResponseUIMessageId` (ai@6.0.185 L5133-5142): on resume turns
+  // (tail message is an assistant), REUSE its id so the client's
+  // `processUIMessageStream` splices into the existing message in-place
+  // instead of pushing a duplicate. See
+  // `lib/audric/select-response-message-id.ts` for the full mechanism +
+  // why a NEW id duplicates a `save_deposit` receipt card after approve.
+  const messageId = selectResponseMessageId(body.messages, generateId);
   let turnCompleted = false;
 
   const stream = createUIMessageStream({
