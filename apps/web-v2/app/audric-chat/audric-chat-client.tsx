@@ -430,16 +430,18 @@ function PermissionForToolPart(props: PermissionForToolPartProps) {
     // they pinpoint where the metadata is dropping (server-side write
     // vs. wire vs. AI SDK assembler vs. parser).
     if (typeof window !== "undefined") {
-      console.log("[web-v2 audric-chat-client] no-metadata fallback fired:", {
+      console.error("[B1 DIAG] no-metadata fallback fired", {
         toolName,
         toolCallId: toolPart.toolCallId,
         state: toolPart.state,
         hasToolMetadata: toolPart.toolMetadata !== undefined,
+        toolMetadataType: typeof toolPart.toolMetadata,
         toolMetadataKeys:
           toolPart.toolMetadata && typeof toolPart.toolMetadata === "object"
             ? Object.keys(toolPart.toolMetadata)
             : null,
         toolMetadata: toolPart.toolMetadata,
+        toolPartFullDump: JSON.parse(JSON.stringify(toolPart)),
       });
     }
     // Shouldn't happen for any confirm-tier tool wired through the
