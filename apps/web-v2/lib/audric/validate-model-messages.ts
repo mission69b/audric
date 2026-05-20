@@ -187,6 +187,38 @@ function mergeSameRole(a: ModelMessage, b: ModelMessage): ModelMessage {
 }
 
 /**
+ * Counts the total number of `tool-call` and `tool-result` parts across
+ * an entire `ModelMessage[]`. Used to detect content-level cleanup that
+ * a simple message-count comparison would miss (e.g. an assistant
+ * message that had text + 3 orphan tool-calls — the message survives
+ * because text remains, but the tool-call parts were stripped).
+ */
+export function countToolParts(messages: readonly ModelMessage[]): {
+  toolCalls: number;
+  toolResults: number;
+} {
+  let toolCalls = 0;
+  let toolResults = 0;
+  for (const msg of messages) {
+    if (msg.role === "assistant" && Array.isArray(msg.content)) {
+      for (const part of msg.content) {
+        if (part.type === "tool-call" && part.providerExecuted !== true) {
+          toolCalls++;
+        }
+      }
+    }
+    if (msg.role === "tool") {
+      for (const part of msg.content) {
+        if (part.type === "tool-result") {
+          toolResults++;
+        }
+      }
+    }
+  }
+  return { toolCalls, toolResults };
+}
+
+/**
  * Walks a `ModelMessage[]` and strips Anthropic-invariant violations.
  *
  * Returns a new array (input is not mutated). Empty input returns `[]`.
