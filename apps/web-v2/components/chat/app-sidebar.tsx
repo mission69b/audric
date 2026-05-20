@@ -38,7 +38,6 @@ import { useZkLogin } from "@/components/auth/use-zklogin";
 import { SidebarHistory } from "@/components/chat/sidebar-history";
 import { SidebarUserNav } from "@/components/chat/sidebar-user-nav";
 import { AudricMark } from "@/components/ui/audric-mark";
-import { Badge } from "@/components/ui/badge";
 import {
   Sidebar,
   SidebarContent,
@@ -122,16 +121,14 @@ export function AppSidebar() {
                 </TooltipContent>
               </Tooltip>
             </div>
+            {/* [S.209 — 2026-05-20] BETA badge removed per founder feedback:
+                "keep it simple". The brand wordmark alone is enough chrome;
+                v0.7c is private beta by deployment context (audric-web-v2
+                preview), not by visible badge. */}
             <div className="flex items-center gap-2 group-data-[collapsible=icon]:hidden">
               <span className="font-medium text-[14px] text-sidebar-foreground tracking-[-0.01em]">
                 Audric
               </span>
-              <Badge
-                className="h-[18px] rounded-sm border border-sidebar-border bg-transparent px-1.5 font-mono text-[9px] text-sidebar-foreground/60 uppercase tracking-[0.1em] hover:bg-transparent"
-                variant="outline"
-              >
-                Beta
-              </Badge>
             </div>
             <div className="group-data-[collapsible=icon]:hidden">
               <SidebarTrigger className="text-sidebar-foreground/60 transition-colors duration-150 hover:text-sidebar-foreground" />

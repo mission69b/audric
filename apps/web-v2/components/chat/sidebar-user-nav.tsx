@@ -156,14 +156,10 @@ export function SidebarUserNav() {
               </DropdownMenuItem>
             )}
             <DropdownMenuSeparator />
-            <DropdownMenuItem asChild data-testid="user-nav-item-contacts">
-              <Link
-                className="w-full cursor-pointer text-[13px]"
-                href="/settings/contacts"
-              >
-                Contacts
-              </Link>
-            </DropdownMenuItem>
+            {/* [S.209 — 2026-05-20] Contacts removed from dropdown — it
+                lives inside /settings as a sub-nav section (Passport /
+                Safety / Memory / Contacts) so surfacing it twice was
+                redundant. Settings is the single entry point. */}
             <DropdownMenuItem asChild data-testid="user-nav-item-settings">
               <Link
                 className="w-full cursor-pointer text-[13px]"
