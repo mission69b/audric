@@ -23,14 +23,13 @@ import {
   ReasoningContent,
   ReasoningTrigger,
 } from "@/components/ai-elements/reasoning";
-import { ChatDivider } from "@/components/audric/chat-divider";
+import { Shimmer } from "@/components/ai-elements/shimmer";
 import {
   BundlePermissionCard,
   type BundlePermissionCardStep,
   PermissionCard,
   type PermissionCardModifiableField,
 } from "@/components/audric/permission-card";
-import { ThinkingState } from "@/components/audric/thinking-state";
 import { ToolResultRouter } from "@/components/audric/tool-result-router";
 import { useZkLogin } from "@/components/auth/use-zklogin";
 import { ChipBar } from "@/components/chat/chip-bar";
@@ -369,23 +368,28 @@ function AudricChatPanel({ session }: { session: ZkLoginSession }) {
   const isTurnStreaming = status === "streaming";
   const isEmpty = messages.length === 0;
 
-  // [S.204+ Phase 6.7] ThinkingState placement — derive everything from
-  // AI SDK's `status` field (pure Vercel AI pattern; no per-event tracking).
-  // Render the phantom AWAKENING/THINKING badge when:
-  //   - status === "submitted" (request out, no events yet), OR
-  //   - status === "streaming" AND the trailing assistant hasn't emitted
-  //     any text yet (still tool-calling or composing).
-  // Once text starts streaming, the indicator disappears — the streaming
-  // text itself becomes the liveness signal (matches v1's DELIVERING
-  // semantic, which the dark-on-dark text bubble doesn't need a badge
-  // for).
-  const lastAssistantHasText =
+  // [S.208 — 2026-05-20] Thinking indicator — switched from the custom
+  // AWAKENING/THINKING badge (deleted with `ThinkingState`) to the
+  // template's `<Shimmer>` text pulse. Same status-driven gate (pure
+  // Vercel AI pattern, no per-event tracking): render whenever
+  // `status === "submitted"` (request out, no events yet) OR
+  // `status === "streaming"` AND the trailing assistant hasn't emitted
+  // any visible content yet (still tool-calling or composing).
+  //
+  // Once text/reasoning starts streaming, the indicator unmounts — the
+  // streaming text/reasoning IS the liveness signal. This mirrors how
+  // the chatbot.ai-sdk.dev demo renders "Thinking..." as inline shimmer
+  // text inside the trailing assistant message.
+  const lastAssistantHasContent =
     lastMessage?.role === "assistant" &&
     lastMessage.parts.some(
-      (p) => p.type === "text" && p.text.trim().length > 0
+      (p) =>
+        (p.type === "text" && p.text.trim().length > 0) ||
+        (p.type === "reasoning" && "text" in p && p.text?.trim().length > 0) ||
+        p.type.startsWith("tool-")
     );
   const showThinking =
-    status === "submitted" || (isTurnStreaming && !lastAssistantHasText);
+    status === "submitted" || (isTurnStreaming && !lastAssistantHasContent);
 
   // [Session 5.6 / S.202 — 2026-05-20] Chip tap handler. Mirrors the
   // template ChatShell pattern from `components/chat/shell.tsx`: fill the
@@ -424,19 +428,25 @@ function AudricChatPanel({ session }: { session: ZkLoginSession }) {
           setInput("");
         }}
       >
+        {/* [S.208 — 2026-05-20] Composer styling brought in line with the
+            chatbot.ai-sdk.dev demo: rounded-2xl + border/30 + bg-card/70
+            + the dedicated `--shadow-composer` / `--shadow-composer-focus`
+            tokens (defined in globals.css). Pre-S.208 this used
+            `rounded-xl` + a generic `--shadow-float` which produced a
+            chunkier, more boxy composer that didn't match the demo. */}
         <input
-          className="flex-1 rounded-xl border border-border/60 bg-card px-4 py-3 text-sm shadow-[var(--shadow-float)] outline-none focus-visible:border-foreground/30 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          className="flex-1 rounded-2xl border border-border/30 bg-card/70 px-4 py-3 text-sm shadow-[var(--shadow-composer)] outline-none transition-shadow duration-300 focus-visible:shadow-[var(--shadow-composer-focus)]"
           data-testid="audric-composer-input"
           onChange={(e) => setInput(e.target.value)}
-          placeholder="ask anything"
+          placeholder="Ask anything…"
           value={input}
         />
         <button
-          className="rounded-xl bg-foreground px-5 py-3 font-medium text-background text-sm transition hover:bg-foreground/90 disabled:opacity-40"
+          className="rounded-2xl bg-foreground px-5 py-3 font-medium text-background text-sm transition hover:bg-foreground/90 disabled:opacity-40"
           disabled={!canSend}
           type="submit"
         >
-          send
+          Send
         </button>
       </form>
       <ChipBar
@@ -491,24 +501,27 @@ function AudricChatPanel({ session }: { session: ZkLoginSession }) {
 
             return (
               <Fragment key={m.id}>
-                {/* [S.204+ Phase 6.7] TASK INITIATED divider — visually
-                    delineates each user-initiated turn. Renders before
-                    every user message (including the first) so multi-turn
-                    sessions stay scannable. Matches v1's UnifiedTimeline
-                    pattern. */}
-                {m.role === "user" && <ChatDivider />}
                 <Message from={m.role}>
                   <MessageContent
-                    // [S.204+ Phase 6.7] Dark user bubble — asymmetric
-                    // border-radius (16/16/4/16) puts a small notch in
-                    // the bottom-right corner, matching the Figma chat
-                    // frame + v1's `--bubble-user-bg / --bubble-user-fg`
-                    // tokens (near-black/white in both themes). Assistant
-                    // messages stay un-bubbled (free-flow on the page
-                    // background) — only user messages get the pill.
+                    // [S.208 — 2026-05-20] User bubble — chatbot.ai-sdk.dev
+                    // template's gradient pill. `w-fit max-w-[min(80%,56ch)]`
+                    // sizes to content but caps width; `rounded-2xl
+                    // rounded-br-lg` keeps the standard 16px curve with a
+                    // smaller bottom-right corner pointing back at the user
+                    // (matches the template demo screenshot exactly).
+                    // Right-alignment comes from the parent `<Message
+                    // from="user">` (`ml-auto justify-end` in ai-elements/
+                    // message.tsx — no extra classes needed).
+                    //
+                    // Pre-S.208 used a solid dark `bg-bubble-user-bg` token
+                    // that fought the template's design language. Reverted
+                    // to the template's gradient + border + card shadow,
+                    // which integrates with the rest of the surface tokens
+                    // and works across both light + dark themes without
+                    // a custom token.
                     className={cn(
                       m.role === "user" &&
-                        "max-w-[80%] rounded-2xl rounded-br-[4px] bg-bubble-user-bg px-4 py-2.5 text-bubble-user-fg [&_*]:text-bubble-user-fg"
+                        "w-fit max-w-[min(80%,56ch)] overflow-hidden break-words rounded-2xl rounded-br-lg border border-border/30 bg-gradient-to-br from-secondary to-muted px-3.5 py-2 shadow-[var(--shadow-card)]"
                     )}
                   >
                     {m.parts.map((part, i) => {
@@ -609,15 +622,17 @@ function AudricChatPanel({ session }: { session: ZkLoginSession }) {
               </Fragment>
             );
           })}
-          {/* [S.204+ Phase 6.7] AWAKENING/THINKING badge — phantom
-              message rendered during the in-flight gap between user
-              send and first text-delta. Status-driven (no custom state
-              tracking), unmounts when text starts streaming so the
-              indicator never blocks the actual answer. */}
+          {/* [S.208 — 2026-05-20] Thinking shimmer — template-native
+              indicator. Phantom assistant message rendered during the
+              gap between user send and first event (text / reasoning /
+              tool-call). Status-driven (no per-event tracking),
+              unmounts as soon as the trailing message gets any visible
+              content. Same UX as chatbot.ai-sdk.dev's "Thinking..." in
+              the trailing assistant slot. */}
           {showThinking && (
             <Message from="assistant">
               <MessageContent>
-                <ThinkingState hasText={lastAssistantHasText} status={status} />
+                <Shimmer>Thinking…</Shimmer>
               </MessageContent>
             </Message>
           )}
