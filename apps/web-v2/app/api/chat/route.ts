@@ -154,7 +154,10 @@ import { selectResponseMessageId } from "@/lib/audric/select-response-message-id
 import { sanitizeStreamErrorMessage } from "@/lib/audric/stream-errors";
 import { buildAudricSystemPrompt } from "@/lib/audric/system-prompt";
 import { TelemetryIntegration } from "@/lib/audric/telemetry-integration";
-import { validateModelMessages } from "@/lib/audric/validate-model-messages";
+import {
+  countToolParts,
+  validateModelMessages,
+} from "@/lib/audric/validate-model-messages";
 import { getCurrentUser } from "@/lib/audric-auth";
 import { env } from "@/lib/env";
 import { getPortfolio, prewarmPortfolio } from "@/lib/portfolio";
@@ -1311,11 +1314,41 @@ export async function POST(request: Request) {
   //
   // Mirrors the legacy engine's `validateHistory` defense (engine
   // v2.0.5, audric session s_1778993279816_47a9814c835d incident).
-  const beforeCount = aiSdkMessages.length;
+  //
+  // [S.213a — 2026-05-21] Diagnostic upgrade: log BOTH message-count
+  // and tool-part-count deltas. A simple message-count comparison
+  // misses content-level cleanup (e.g. an assistant message with
+  // text + 3 orphan tool-calls — message survives because text
+  // remains, but the orphan parts were stripped). The tool-part
+  // counts are the canonical signal for "validateModelMessages
+  // actually did work" in production logs.
+  const beforeMsgCount = aiSdkMessages.length;
+  const beforeToolParts = countToolParts(aiSdkMessages);
   aiSdkMessages = validateModelMessages(aiSdkMessages);
-  if (aiSdkMessages.length !== beforeCount) {
+  const afterMsgCount = aiSdkMessages.length;
+  const afterToolParts = countToolParts(aiSdkMessages);
+
+  // Always log a single structured line on the first POST per stream
+  // so we have unambiguous evidence the function ran. Cheap (one log
+  // line per chat turn). Includes ALL counts so deltas are computable
+  // off the live log stream.
+  console.log(
+    `[audric-chat] validateModelMessages ran sessionId=${sessionId} turn=${turnIndex} ` +
+      `msgs=${beforeMsgCount}->${afterMsgCount} ` +
+      `toolCalls=${beforeToolParts.toolCalls}->${afterToolParts.toolCalls} ` +
+      `toolResults=${beforeToolParts.toolResults}->${afterToolParts.toolResults}`
+  );
+
+  if (
+    afterMsgCount !== beforeMsgCount ||
+    afterToolParts.toolCalls !== beforeToolParts.toolCalls ||
+    afterToolParts.toolResults !== beforeToolParts.toolResults
+  ) {
     console.warn(
-      `[audric-chat] validateModelMessages stripped ${beforeCount - aiSdkMessages.length} corrupt message(s) before agent.stream`
+      `[audric-chat] validateModelMessages STRIPPED corruption sessionId=${sessionId} turn=${turnIndex} ` +
+        `msgsDropped=${beforeMsgCount - afterMsgCount} ` +
+        `toolCallsDropped=${beforeToolParts.toolCalls - afterToolParts.toolCalls} ` +
+        `toolResultsDropped=${beforeToolParts.toolResults - afterToolParts.toolResults}`
     );
   }
 
