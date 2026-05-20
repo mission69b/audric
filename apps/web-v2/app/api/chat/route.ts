@@ -136,6 +136,8 @@ import {
 } from "@/lib/audric/dispatch-intents";
 import { getFinancialContextBlock } from "@/lib/audric/financial-context";
 import { redactAddressesInText, redactPII } from "@/lib/audric/log-redact";
+import { MemWalMemoryStore } from "@/lib/audric/memwal-memory-store";
+import { buildMemoryPrepareStep } from "@/lib/audric/memwal-prepare-step";
 import { audricObservabilityMiddleware } from "@/lib/audric/middleware/observability";
 import {
   buildAdviceContext,
@@ -161,6 +163,7 @@ import {
 } from "@/lib/audric/validate-model-messages";
 import { getCurrentUser } from "@/lib/audric-auth";
 import { env } from "@/lib/env";
+import { memwal } from "@/lib/memwal";
 import { getPortfolio, prewarmPortfolio } from "@/lib/portfolio";
 import { prisma } from "@/lib/prisma";
 import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
@@ -1103,6 +1106,44 @@ export async function POST(request: Request) {
   if (useGateway) {
     providerOptionsForAgent.gateway = { caching: "auto" as const };
   }
+
+  // [v0.7d Phase 1 Day 1b / S.215 — 2026-05-21] MemWal memory recall
+  // injection via `prepareStep`. The factory returns:
+  //   - undefined when `memwal` client is null (MEMWAL_* env vars unset
+  //     → no memory recall; engine takes the legacy-only path; same
+  //     posture as v0.7c). Vercel deploys without the env vars boot
+  //     cleanly + run cleanly; founder activates by setting the vars.
+  //   - a stateful callback otherwise. Callback owns its own
+  //     `memoryCache` closure (one per request) per the engine's
+  //     per-turn caching contract — recall fires ONCE at stepNumber===0,
+  //     subsequent steps re-inject from cache.
+  //
+  // Co-existence with legacy `memoryBlock` (per BENEFITS_SPEC_v07d
+  // §E-1 staging): the LLM sees BOTH the legacy `## Remembered Context`
+  // block (from `buildAudricSystemPrompt({ memoryBlock })` at L987) AND
+  // the new `<memory_recall>` block (injected here) during Phases 1-5.
+  // Phase 6 deletes the legacy. The smoke comparison window IS the
+  // staging discipline — founder reads chat outputs and compares
+  // quality before the deletion sweep.
+  //
+  // Per-user scoping: the namespace is `audric:user:<walletAddress>`.
+  // `walletAddress` is always defined here (it's session.user.id —
+  // checked at L310 before this code runs). Phase 1.5 / Phase 2 swaps
+  // this from "founder-owned singleton + per-user namespace strings"
+  // to "per-user MemWal accounts" (each user has their own delegate
+  // key + MemWalAccount on Sui — true crypto-isolation). The change is
+  // invisible at this call site; only `lib/memwal.ts` changes shape.
+  const memWalStore = memwal
+    ? new MemWalMemoryStore({
+        client: memwal,
+        defaultNamespace: `audric:user:${walletAddress}`,
+      })
+    : null;
+  const prepareStepCallback = buildMemoryPrepareStep({
+    memoryStore: memWalStore,
+    systemInstructions,
+  });
+
   const audricAgent = new Agent({
     model,
     tools,
@@ -1110,6 +1151,7 @@ export async function POST(request: Request) {
     stopWhen: stepCountIs(DEFAULT_MAX_TURNS),
     experimental_telemetry: experimentalTelemetry,
     experimental_context: internalContext,
+    prepareStep: prepareStepCallback,
     // ProviderOptions has a strict `JSONObject`-indexed shape in AI SDK
     // v6; our typed bag (with `as const` literals from `caching: 'auto'`
     // / `type: 'adaptive'`) is JSON-structurally identical but doesn't
