@@ -1,42 +1,24 @@
 /**
- * Moat hydration — AdviceLog + UserMemory (incl. chain-derived) builders.
+ * AdviceLog hydration — single surface.
  *
- * [Phase 6.5 / SPEC_V07C_PHASE_6_5_CHAT_PARITY B.1 + B.3 + B.4 / S.198 — 2026-05-20]
+ * [v0.7d Phase 6 Block A — 2026-05-21 / S.221] Reduced from two
+ * surfaces (advice + memory) to one. `buildMemoryContext` was deleted
+ * along with the UserMemory Prisma model; MemWal `<memory_recall>`
+ * (injected via `prepareStep` — see `lib/audric/memwal-prepare-step.ts`)
+ * is now the canonical cross-session memory surface.
  *
- * Two surfaces, one file:
+ * Why AdviceLog stays:
  *
- *   1. `buildAdviceContext(userId)` — last 5 AdviceLog rows in last 30
- *      days, rendered as a date-prefixed block. AdviceLog stores **what
- *      Audric SAID to the user**; MemWal (v0.7d) will store **what the
- *      user said / what facts about the user are true**. Different
- *      access patterns; AdviceLog stays permanent even after MemWal
- *      lands.
+ *   - AdviceLog stores **what Audric SAID to the user**; MemWal stores
+ *     **what the user said / facts about the user**. Orthogonal access
+ *     patterns; both survive.
+ *   - The `record_advice` write tool keeps its lifecycle here — Audric
+ *     proactively logs nontrivial recommendations so it doesn't
+ *     contradict itself across sessions.
  *
- *   2. `buildMemoryContext(memories)` — last 8 UserMemory rows rendered
- *      with `[memoryType]` prefix for conversation-derived rows and
- *      `[on-chain observation]` prefix for chain-classified rows
- *      (UserMemory.source === 'chain'). Same table, two prefix paths.
- *      This is the B.3 (UserMemory) + B.4 (Chain Memory) joint surface
- *      because apps/web does a single Prisma read across both via the
- *      `source` discriminator — porting that pattern verbatim.
- *
- * Both functions are direct ports from `apps/web/lib/engine/engine-context.ts`
- * (L66-100 + L716-764). Once v0.7c Phase 6 cuts audric/web over to
- * web-v2 the source module retires and this becomes the canonical
- * (per `engineering-principles.mdc` rule 6 — factor when LOGIC
- * duplicates, not just SHAPE). Today, both apps must produce
- * byte-equivalent context for the post-cutover moat-revival smoke
- * (same prompt asked to both surfaces should reference the same
- * advice/memory).
- *
- * Profile context is NOT in this module — `buildProfileContext` +
- * `UserFinancialProfile` are already exported from `@t2000/engine`
- * (B.2 reuses them directly).
- *
- * **Failure mode:** both functions fail-OPEN — a DB blip returns the
- * empty string, never throws. Moat hydration is best-effort context;
- * its absence degrades the agent's intelligence but never breaks the
- * chat turn.
+ * **Failure mode:** fail-OPEN — a DB blip returns the empty string,
+ * never throws. Moat hydration is best-effort context; its absence
+ * degrades the agent's intelligence but never breaks the chat turn.
  */
 
 import { prisma } from "@/lib/prisma";
@@ -100,70 +82,7 @@ export async function buildAdviceContext(userId: string): Promise<string> {
   }
 }
 
-// ---------------------------------------------------------------------------
-// B.3 + B.4 — UserMemory hydration (conversation + chain-derived)
-// ---------------------------------------------------------------------------
-
-/**
- * Single row shape consumed by `buildMemoryContext`. Mirrors the legacy
- * `MemoryEntry` interface in `apps/web/lib/engine/engine-context.ts`
- * (L716-722) — kept locally so this module doesn't have to import from
- * the apps/web cross-package path that the prisma client already takes.
- *
- * `source` discriminates conversation-derived rows ('conversation', the
- * default) from chain-classifier rows ('chain'). The renderer prefixes
- * each accordingly:
- *   - 'chain'    → `[on-chain observation]`
- *   - default    → `[<memoryType>]` (preference / fact / pattern / goal / concern)
- */
-export interface MemoryEntry {
-  content: string;
-  extractedAt: Date;
-  id: string;
-  memoryType: string;
-  source?: string;
-}
-
-function formatMemoryAge(extractedAt: Date): string {
-  const hoursAgo = (Date.now() - extractedAt.getTime()) / 3_600_000;
-  if (hoursAgo < 24) {
-    return "today";
-  }
-  if (hoursAgo < 48) {
-    return "yesterday";
-  }
-  const daysAgo = Math.floor(hoursAgo / 24);
-  return `${daysAgo}d ago`;
-}
-
-/**
- * Build the cross-session memory block for the system prompt.
- *
- * Caps at 8 rows (Claude's attention to long lists falls off above
- * that; legacy `apps/web` enforces the same `.slice(0, 8)`). Returns
- * the empty string for the no-memories path so the F-4 layer 3 slot
- * collapses cleanly via the `.filter(l => l.length > 0)` in
- * `buildAudricSystemPrompt`.
- *
- * Renders conversation-source and chain-source memories side-by-side
- * with different prefixes. This is intentional — the LLM benefits
- * from knowing whether a fact came from the user saying it ("I hate
- * gas fees") versus the classifier inferring it from chain activity
- * ("recurring 0xabc send every Friday").
- */
-export function buildMemoryContext(memories: MemoryEntry[]): string {
-  if (memories.length === 0) {
-    return "";
-  }
-
-  const lines: string[] = [
-    "What you know about this user (remembered across sessions):",
-  ];
-  for (const m of memories.slice(0, 8)) {
-    const age = formatMemoryAge(m.extractedAt);
-    const prefix =
-      m.source === "chain" ? "[on-chain observation]" : `[${m.memoryType}]`;
-    lines.push(`- ${prefix} ${m.content} (${age})`);
-  }
-  return lines.join("\n");
-}
+// [v0.7d Phase 6 Block A — 2026-05-21 / S.221] `MemoryEntry` interface +
+// `buildMemoryContext` function deleted alongside the UserMemory Prisma
+// model. MemWal `<memory_recall>` (injected via `prepareStep` —
+// see `lib/audric/memwal-prepare-step.ts`) replaces both.
