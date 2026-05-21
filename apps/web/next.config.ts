@@ -118,11 +118,13 @@ const nextConfig: NextConfig = {
       { source: '/pay/:slug', destination: `${WEB_V2}/pay/:slug` },
       { source: '/api/payments/:slug', destination: `${WEB_V2}/api/payments/:slug` },
       { source: '/api/payments/:slug/verify', destination: `${WEB_V2}/api/payments/:slug/verify` },
-      // Legacy invoice slug — redirect-equivalent via rewrite so the
-      // 10-LoC apps/web/app/invoice/[slug]/page.tsx can delete with the
-      // chat shell in Session 9d. Web-v2's /pay/[slug] renders the
-      // invoice union case (line items + due date) inline.
-      { source: '/invoice/:slug', destination: `${WEB_V2}/pay/:slug` },
+      // NOTE: /invoice/:slug rewrite REMOVED 2026-05-21 (S.239) — invoice
+      // is being deprecated as a distinct product (~95% overlap with
+      // payment links; only differentiator is dueDate which is
+      // unactioned). Legacy invoice URLs now 404 cleanly. Full invoice
+      // deprecation across web-v2 UI + engine tools + Prisma enum + DB
+      // migration tracked in spec/active/SPEC_INVOICE_DEPRECATION.md.
+      // Per S.190 founder framing — invoice deserves to die.
 
       // ── Settings (Session 2 ship) ───────────────────────────────────
       // Catch-all routes /settings, /settings/passport, /settings/safety,
@@ -156,7 +158,10 @@ const nextConfig: NextConfig = {
       //   • Apps/web KEEP-IN-WEB: admin (internal), auth, disclaimer,
       //     litepaper, privacy, security, terms
       //   • Apps/web sources that have their own rewrites above:
-      //     chat, invoice, new, pay, settings
+      //     chat, new, pay, settings
+      //   • Defensive (no live rewrite): invoice (kept in exclusion so
+      //     /invoice cannot squat as a username; rewrite was removed
+      //     2026-05-21 / S.239 per invoice deprecation)
       //
       // If you add a new top-level surface to apps/web, append its
       // segment here BEFORE shipping.
