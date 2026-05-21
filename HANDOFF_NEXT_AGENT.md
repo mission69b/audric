@@ -11,8 +11,10 @@
 **v0.7d MemWal — CLOSED (Phase 7 done per founder 2026-05-21 ~20:00 AEST)**
 [`t2000/spec/active/BENEFITS_SPEC_v07d.md`](../t2000/spec/active/BENEFITS_SPEC_v07d.md). The v0.7d SPEC retired the legacy SQL-backed memory pipeline (`UserMemory` + `UserFinancialProfile` + chain-classifier cron) and replaced it with `@mysten-incubation/memwal` vector memory. **All 7 phases shipped + closed.**
 
-**v0.7e Tier C Migration — Phase 1A SHIPPED (S.238, 2026-05-21 ~20:30 AEST)**
+**v0.7e Tier C Migration — Phase 1A SHIPPED (S.238, 2026-05-21 ~20:30 AEST)** + **Invoice deprecation kickoff (S.239, 2026-05-21 ~21:00 AEST)**
 [`t2000/spec/active/BENEFITS_SPEC_v07e.md`](../t2000/spec/active/BENEFITS_SPEC_v07e.md). v1.0 LOCKED-PENDING-FOUNDER per S.237; Phase 1A executed under "agent-assumed defaults" path immediately after Phase 7 closed (G1 → CLOSED). **4,233 net LoC deleted from apps/web across 22 files in 2 batches.** Slices 1A.2 (voice) + 1A.3 (build-id) DEFERRED to Phase 1B/2 due to chat-shell entanglement; will delete naturally when chat-shell migrates. **Major scope change per D-2 (unchanged from S.237):** Phase 5 (final apps/web archive) DEFERRED TO v0.7f; v0.7e ships Phases 2-4 (plus the shipped Phase 1A) only; apps/web survives as ~5,000 LoC MPP-only shim until Agentic Commerce SPEC ships pay_api in web-v2.
+
+**S.239 correction (founder reframe):** S.238 incorrectly preserved invoice via the `/invoice/:slug → web-v2/pay/:slug` rewrite (the apps/web `page.tsx` got deleted, but the rewrite kept invoice alive on web-v2's invoice-union-case render path). Founder pointed to S.190 (2026-05-20) framing: invoice deserves to die as a distinct product (~95% overlap with payment links). S.239 (1) DELETED the rewrite (5 min ship, commit `74acab5`, post-deploy smoke GREEN — `/invoice/test123` now 404s) + (2) DRAFTED `spec/active/V07E_INVOICE_DEPRECATION.md` v0.1 — 5-phase mini-SPEC for the living deprecation across engine tools + web-v2 UI + Prisma + DB. **Deeper insight from founder reframe:** apps/web is zombie code walking; surgical cleanup of dying surfaces is wasted work. The ONLY apps/web changes worth making are OUTBOUND interfaces (rewrites in `next.config.ts`). Internal cleanup (voice routes, etc.) waits for en-bloc delete in Phase 2.
 
 **8 companion docs in `spec/active/` (4 from Saturday's S.232 + 4 from tonight's S.237 prep block):**
 
@@ -70,7 +72,45 @@
 
 **Phase 1A audit-first lesson (added to S.238):** Phase 1A safe-today deletes are NON-chat-shell surfaces only. Slices touching apps/web chat-shell UI defer to Phase 1B/Phase 2 where chat-shell goes away anyway. Estimating slice complexity by file count alone underestimates entanglement risk — must audit consumer graph before classifying as "safe-today."
 
-**Next up: v0.7e Phase 2 (chat-shell cutover + 1A.2/1A.3 absorption + fn-injection refactor).** Requires founder D-2/D-5/D-7 RATIFY (~5 min) + Vitest infrastructure decision (R-1 risk surface from S.237). Estimated ~5-7d per revised SPEC §4 Phase 2.
+**S.239 lessons (added to running list):**
+- **Read prior session entries before assuming consensus** — S.190 invoice deprecation framing was 1 day old at S.238 ship; a single `rg "invoice.*remov|invoice.*deprecat"` would have caught it. Add to future Phase X.A pre-flight.
+- **Zombie code is not worth surgical cleanup** — apps/web is dying en bloc. Surgical removal of voice / dead components from a `rm -rf`'d-in-days surface is wasted work + test churn + risk to what's still served. ONLY apps/web changes worth making: OUTBOUND interfaces (rewrites). Everything else waits for en-bloc delete.
+- **Honest scope re-estimation when audits change** — quoted ~1h for voice cleanup pre-audit; audit revealed 2,739 LoC across 16 files. When audit reality contradicts estimate, surface BEFORE proceeding.
+- **Mini-SPECs for cross-cutting deprecations** — invoice touches engine + web-v2 + apps/web + Prisma + DB + system prompt + docs. Belongs in its own SPEC, not in Phase 1A. Audit-first → "this is a separate mini-SPEC" → keep slices clean.
+
+**Next up after S.242 (full open backlog snapshot):**
+
+| Priority | # | Task | Effort | Blocker |
+|---|---|---|---|---|
+| ✅ DONE | P1.1 | **SHIPPED 2026-05-22 — Stale fincontext write-refusal hotfix Phase 1** (S.242). Path 6 locked + shipped — `apps/web-v2/lib/audric/financial-context.ts` slimmed 10→4 fields; bug class eliminated by construction. Typecheck + lint + build all clean. Prod-deploy smoke pending (founder to retry "Save $5 USDC" with stale snapshot) | DONE | — |
+| 🟡 P1.2 | P1.2 | **NEW — Stale fincontext Phase 2 (cron + Prisma)** — per S.242 Q2 recommended Option C: drop the 6 dead columns (walletUsdc / walletUsdsui / savingsUsdc / savingsUsdsui / debtUsdc / healthFactor) + simplify `apps/web/lib/jobs/financial-context-snapshot.ts` to stop writing them + remove S.235 `fincontext-zero-bug-backlog` guard | ~30 min | (1) Founder Q2 lock; (2) ~24h Phase 1 soak to confirm no regression |
+| 🔴 HIGH | H1 | **v0.7e Phase 2** — chat-shell cutover + 1A.2/1A.3 absorption + fn-injection refactor | ~5-7d | Founder D-2/D-5/D-7 RATIFY (~5 min) + Vitest R-1 decision |
+| 🔴 HIGH | H2 | **v0.7e Persistent Chats** — `spec/active/BENEFITS_SPEC_v07e_persistent_chats.md` + LOCK-1 POC LOCKED Option B | ~13-19h / 2-3 days | Founder review 5 remaining locks (~10-15 min). R-7 clear (Phase 7 closed) |
+| 🔴 HIGH | H3 | **NEW — Contacts simplification** per `spec/active/V07E_CONTACTS_SIMPLIFICATION.md` (S.240) — 4 bugs from founder log, 3 candidate paths (A=delete entirely / B=simplify / C=patch), agent rec = Path A | Path A ~6-9h / Path B ~8-12h / Path C ~4-6h | Founder Q1-Q5 lock |
+| 🟡 MED | M1 | **SPEC 31 — CSP perimeter polish** per `spec/active/SPEC_31_SCOPING.md` | ~6-9h + 24-48h Report-Only soak | Founder triage |
+| 🟡 MED | M2 | **engine-fn-injection-refactor** (REBASELINED to AFTER v0.7e Tier C migration) | ~14-21h / 2-3 sessions | Blocked on v0.7e Tier C |
+| 🟡 MED | M3 | **engine-internal-key-final-delete** | ~30 min | Blocked on M2 |
+| 🟤 DEF | D1 | **V07E_INVOICE_DEPRECATION** — drafted S.239 + DEFERRED S.240. Mini-SPEC at `spec/active/V07E_INVOICE_DEPRECATION.md`; the OUTBOUND-interface fix (S.239) stands; deeper deprecation waits | ~4-5h / 5 phases | Founder priority restoration |
+| 🟤 DEF | D2 | **Phase 3.5 memory controls** — per-record delete + provenance in `/settings/memory` | TBD | MemWal SDK feature (`MemoryStore.forget()` etc.) |
+| 🟤 DEF | D3 | **V07F_FORWARD_MAP** — 4 streams (Agentic Commerce + apps/web pay_api delete + marketing/legal + archive ritual) | ~10-14 calendar days | D-1 lock + v0.7e Phase 4 close |
+| 🟤 DEF | D4 | **v0.7g Agentic Commerce Phase 2-4** — multi-vendor + delivery + creator + escrow | ~13-17d | Post-v0.7f |
+| 🟤 DEF | D5 | **Phase 5c PostWriteRefreshSurface** | TBD | SHELVED per S.237; re-open on user feedback signal |
+
+**Founder ops (waiting on you, not agent work):**
+- Retire ECS task defs + ECR repos + ALB (AWS console)
+- Drop indexer NeonDB tables: Position / Transaction / ProtocolFeeLedger / IndexerCursor / YieldSnapshot + `Agent.lastSeen` (Neon console)
+
+**Recommended sequencing (S.241 update — tomorrow's plan-of-attack):**
+1. **Open founder review (~30-45 min)**: Lock 4 SPECs in one sitting per V07E_STALE_FINCONTEXT_WRITE_REFUSAL §10:
+   - **P1.1** Stale fincontext Q1 (Path 1 / 5 / 6)
+   - **H3** Contacts simplification Q1-Q5
+   - **H2** Persistent chats 5 remaining architectural locks
+   - **H1** v0.7e Phase 2 D-2/D-5/D-7 RATIFY
+2. **Ship smallest first**: P1.1 Path 6 (~30 min) — quick win to start the day
+3. **Then by priority**: H3 contacts (per locked path) → H2 persistent chats Phase 1 schema → H1 v0.7e Phase 2 prep
+4. **Defer**: D1 invoice deprecation stays in backlog until founder restores priority
+
+**End-of-day-2026-05-21 stop point (founder going to bed):** 4 SPECs drafted and queued (V07E_INVOICE_DEPRECATION drafted-deferred + V07E_CONTACTS_SIMPLIFICATION drafted + V07E_STALE_FINCONTEXT_WRITE_REFUSAL drafted + V07E persistent chats drafted earlier S.233). 2 SPECs already locked-pending-founder (V07E_PHASE_1_EXECUTION_PLAN closed Phase 1A in S.238; BENEFITS_SPEC_v07e v1.0 LOCKED-PENDING-FOUNDER per S.237). All quick-win SPECs (P1.1 Path 6, H3 Path A or B Phase 1, H2 schema) can ship the morning after founder-lock review.
 
 ### v0.7e (persistent chats) SPEC drafted 2026-05-21 ~22:45 AEST / S.233
 

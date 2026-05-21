@@ -48,42 +48,48 @@
 import { prisma } from "@/lib/prisma";
 
 // ---------------------------------------------------------------------------
-// FinancialContextSnapshot — vendored from
-//   `audric/apps/web/lib/redis/user-financial-context.ts` L49-67.
+// FinancialContextSnapshot — slimmed to 4 stable fields per S.242
+//   (V07E_STALE_FINCONTEXT_WRITE_REFUSAL Path 6, 2026-05-22).
 //
-// Keep aligned with `prisma.userFinancialContext` columns minus the
-// dual-key (`userId` / `address`) and audit columns (`generatedAt` /
-// `updatedAt`).
+// Pre-S.242 this carried 10 fields including 6 VOLATILE balance/debt/HF
+// values that the daily cron baked in. The volatile fields caused a P1
+// bug: LLM trusted the snapshot (up to 24h stale) over fresh tool calls
+// and refused write actions like "Save $5 USDC" when the snapshot
+// showed $0 even though the real wallet had funds. The 6 volatile
+// fields are now READ ONLY via fresh tool calls (`balance_check`,
+// `savings_info`, `health_check`) — never via this block.
+//
+// The 4 retained fields are inherently stable at daily cadence:
+//   - currentApy:           pool rate changes are slow (hour+ scale)
+//   - daysSinceLastSession: naturally daily
+//   - pendingAdvice:        text narrative from AdviceLog, daily-ish churn
+//   - recentActivity:       text narrative summary, daily churn
+//
+// The 6 dropped fields (walletUsdc / walletUsdsui / savingsUsdc /
+// savingsUsdsui / debtUsdc / healthFactor) are still WRITTEN by the
+// 02:30 UTC `financial-context-snapshot` cron — the Prisma schema isn't
+// touched in Phase 1. Phase 2 (per Q2 lock) will simplify the cron +
+// drop the columns. See `spec/active/V07E_STALE_FINCONTEXT_WRITE_REFUSAL.md`.
 // ---------------------------------------------------------------------------
 export interface FinancialContextSnapshot {
   currentApy: number | null;
   daysSinceLastSession: number;
-  debtUsdc: number;
-  healthFactor: number | null;
   pendingAdvice: string | null;
   recentActivity: string;
-  savingsUsdc: number;
-  /**
-   * [Bug 1c / 2026-04-27] USDsui breakouts. Both fields are nullable in
-   * the DB for backfill compatibility; the cron writer populates them
-   * from the latest `PortfolioSnapshot.allocations` (wallet) and a
-   * fresh `fetchPositions` call (savings). The block builder renders
-   * them as separate "$X USDsui" lines when present.
-   */
-  savingsUsdsui: number | null;
-  walletUsdc: number;
-  walletUsdsui: number | null;
 }
 
 // ---------------------------------------------------------------------------
-// buildFinancialContextBlock — ported byte-for-byte from
-//   `audric/apps/web/lib/engine/engine-context.ts` L551-604
+// buildFinancialContextBlock — renders the 4-field stable snapshot
+// as an XML-tagged block. Returns empty string when no snapshot is
+// available — the caller drops layer 2 from the prompt entirely
+// (mirrors the layer `.filter(l => l.length > 0)` contract).
 //
-// Renders the cached daily orientation snapshot as an XML-tagged block
-// so the LLM can lean on it for greeting / "where did we leave off?"
-// continuity. Returns empty string when no snapshot is available — the
-// caller drops layer 2 from the prompt entirely (mirrors the layer
-// `.filter(l => l.length > 0)` contract).
+// Per S.242: this block intentionally does NOT carry wallet / savings /
+// debt / HF figures. Those are too volatile for a daily snapshot —
+// stale values would let the LLM refuse writes pre-tool (the bug
+// class this slimming eliminates by construction). The closing
+// instruction line now explicitly directs the LLM to fresh tools for
+// any balance-aware decision, including write-action gating.
 // ---------------------------------------------------------------------------
 export function buildFinancialContextBlock(
   snapshot: FinancialContextSnapshot | null | undefined
@@ -92,35 +98,7 @@ export function buildFinancialContextBlock(
     return "";
   }
 
-  // [Bug 1c / 2026-04-27] Render per-asset stable lines when USDsui
-  // breakouts are present. The pre-fix block hardcoded "USDC" labels and
-  // silently rolled USDsui into the USDC aggregate, which let the LLM
-  // answer "what are my assets" without ever mentioning USDsui.
-  const usdsuiSavings = snapshot.savingsUsdsui ?? 0;
-  const usdsuiWallet = snapshot.walletUsdsui ?? 0;
   const lines: string[] = ["<financial_context>"];
-  if (usdsuiSavings > 0) {
-    const totalSavings = snapshot.savingsUsdc + usdsuiSavings;
-    lines.push(
-      `Savings (NAVI): $${snapshot.savingsUsdc.toFixed(2)} USDC + $${usdsuiSavings.toFixed(2)} USDsui = $${totalSavings.toFixed(2)} total stables`
-    );
-  } else {
-    lines.push(`Savings: $${snapshot.savingsUsdc.toFixed(2)} USDC`);
-  }
-  if (usdsuiWallet > 0) {
-    const totalWalletStables = snapshot.walletUsdc + usdsuiWallet;
-    lines.push(
-      `Wallet stables (non-savings): $${snapshot.walletUsdc.toFixed(2)} USDC + $${usdsuiWallet.toFixed(2)} USDsui = $${totalWalletStables.toFixed(2)} total`
-    );
-  } else {
-    lines.push(
-      `Wallet (non-savings): $${snapshot.walletUsdc.toFixed(2)} USDC equiv`
-    );
-  }
-  lines.push(`Debt: $${snapshot.debtUsdc.toFixed(2)} USDC`);
-  if (snapshot.healthFactor !== null) {
-    lines.push(`Health factor: ${snapshot.healthFactor.toFixed(2)}`);
-  }
   if (snapshot.currentApy !== null) {
     lines.push(`Current savings APY: ${snapshot.currentApy.toFixed(2)}%`);
   }
@@ -137,7 +115,7 @@ export function buildFinancialContextBlock(
   lines.push(`Last session: ${sessionPhrase}`);
   lines.push("</financial_context>");
   lines.push(
-    'The block above is a daily orientation snapshot (at most 24h old) — use it for greetings and "where did we leave off?" continuity. It is NOT a substitute for tool calls when the user explicitly asks for balance / savings / net worth / health figures (see the "Rich-card rendering on direct read questions" rule above — those questions ALWAYS require the corresponding read tool so the rich card renders).'
+    "The block above is a daily orientation snapshot (at most 24h old) covering APY / advice / activity / session continuity ONLY. It intentionally does NOT carry live wallet, savings, debt, or health-factor figures. For ANY balance / savings / debt / health-factor question, AND for ANY write action (save / send / swap / borrow / repay / withdraw), ALWAYS call the corresponding read tool first (`balance_check`, `savings_info`, `health_check`) — never refuse or proceed with a write based on assumed balance values, because no balance values are present in this block."
   );
   return lines.join("\n");
 }
@@ -200,17 +178,15 @@ export async function getFinancialContextBlock(
     return "";
   }
 
+  // [S.242 Path 6, 2026-05-22] Only the 4 stable fields are read from the
+  // row. The 6 volatile columns (walletUsdc, walletUsdsui, savingsUsdc,
+  // savingsUsdsui, debtUsdc, healthFactor) are still written by the cron
+  // until Phase 2 simplification — they're ignored here.
   const snapshot: FinancialContextSnapshot = {
-    savingsUsdc: row.savingsUsdc,
-    savingsUsdsui: row.savingsUsdsui ?? null,
-    debtUsdc: row.debtUsdc,
-    walletUsdc: row.walletUsdc,
-    walletUsdsui: row.walletUsdsui ?? null,
-    healthFactor: row.healthFactor,
     currentApy: row.currentApy,
-    recentActivity: row.recentActivity,
-    pendingAdvice: row.pendingAdvice,
     daysSinceLastSession: row.daysSinceLastSession,
+    pendingAdvice: row.pendingAdvice,
+    recentActivity: row.recentActivity,
   };
 
   return buildFinancialContextBlock(snapshot);
