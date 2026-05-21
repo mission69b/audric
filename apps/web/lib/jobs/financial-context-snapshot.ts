@@ -1,11 +1,11 @@
 /**
  * [v0.7d Phase 6 Block B — 2026-05-21 / S.222] Financial context snapshot job.
  *
- * Extracted from `/api/internal/financial-context-snapshot/route.ts`
- * so both the legacy ECS cron path AND the new Vercel cron path
- * share one implementation. Block C deletes the legacy
- * /api/internal/* route alongside the t2000 indexer + AUDRIC_INTERNAL_KEY
- * retirement.
+ * Single Vercel cron path: POST /api/cron/financial-context-snapshot
+ * (with Authorization: Bearer ${CRON_SECRET}). Originally extracted
+ * from `/api/internal/financial-context-snapshot/route.ts` (legacy
+ * ECS cron) to share implementation across both paths; the legacy
+ * `/api/internal/*` route was deleted in Block C.3 (S.224, 2026-05-21).
  *
  * Behavior (preserved from the legacy route):
  *   - Snapshots `UserFinancialContext` for every user with a

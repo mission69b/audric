@@ -95,5 +95,5 @@ If a new layer pushes total > 6k, it's too much. Compact, summarize, or move to 
 
 - Implementation → `apps/web/lib/engine/engine-context.ts`
 - Spec → `t2000/AUDRIC_HARNESS_INTELLIGENCE_SPEC_v1.4.1.md` (local-only)
-- Snapshot cron → `apps/web/app/api/internal/financial-context-snapshot/route.ts`
+- Snapshot cron impl → `apps/web/lib/jobs/financial-context-snapshot.ts` (Vercel cron entrypoint at `apps/web/app/api/cron/financial-context-snapshot/route.ts`)
 - Prisma models that feed it → `prisma-models-overview.mdc`

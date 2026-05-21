@@ -1612,12 +1612,14 @@ export async function POST(request: Request) {
       // never wrote this row, which silently broke a load-bearing
       // downstream cron with a 30-day fuse:
       //
-      //   `apps/web/app/api/internal/financial-context-snapshot/route.ts`
+      //   `apps/web/lib/jobs/financial-context-snapshot.ts` (the Vercel
+      //   cron job impl; `/api/internal/financial-context-snapshot`
+      //   receiver route was deleted in S.224 Block C.3, 2026-05-21)
       //   filters its daily user-list to `SessionUsage.createdAt >= 30d
-      //   ago` (lines 51-55). Users who only use web-v2 post-chat-flip
-      //   would age out of the snapshot population after 30 days →
-      //   `<financial_context>` block goes empty → silent intelligence
-      //   regression (Dimension 20 of the S.198 parity audit).
+      //   ago`. Users who only use web-v2 post-chat-flip would age out
+      //   of the snapshot population after 30 days → `<financial_context>`
+      //   block goes empty → silent intelligence regression (Dimension 20
+      //   of the S.198 parity audit).
       //
       // The financial-context-snapshot cron itself stays on apps/web
       // (KEEP-IN-WEB per runbook §1.1 audit-3) — only the input it

@@ -103,10 +103,11 @@ The remaining candidates (videos, one-off script) are real cleanup opportunities
 - **Agent claim:** `@naviprotocol/lending` is never imported directly; patch is dead.
 - **Ground truth:** it's a transitive dep of `@t2000/sdk@0.40.4` (which audric does import directly). `pnpm-lock.yaml` confirms. The patch is applied at install time; deleting it would cause `pnpm install` to fail with a "referenced patch does not exist" error.
 
-### [FALSE-POSITIVE] `app/api/internal/notification-users/route.ts`
+### [FALSE-POSITIVE → CONFIRMED-AND-RESOLVED] `app/api/internal/notification-users/route.ts`
 
-- **Agent claim:** "single-purpose bridge" that could become orphaned.
-- **Ground truth:** actively called by t2000 cron jobs (profile-inference, memory-extraction, chain-memory, portfolio-snapshot). The agent correctly noted this in its own investigation. Deleting would break four t2000 crons.
+- **Agent claim (original):** "single-purpose bridge" that could become orphaned.
+- **Ground truth (at time of finding):** actively called by t2000 cron jobs (profile-inference, memory-extraction, chain-memory, portfolio-snapshot). Deleting would break four t2000 crons.
+- **Update 2026-05-21 (S.224 / v0.7d Phase 6 Block C):** all four caller crons were retired (memory crons in S.221 Block A, portfolio + financial-context in S.222 Block B, full t2000/apps/server delete in S.224 Block C.2). Route had zero remaining callers — DELETED in S.224 Block C.3 alongside `/api/internal/{health-factor,user-address,app-event,portfolio-snapshot,financial-context-snapshot}`. The original agent finding was correct in spirit; ground-truth context shifted six months later.
 
 ### [FALSE-POSITIVE] `engine-factory.ts` line 197 comment
 

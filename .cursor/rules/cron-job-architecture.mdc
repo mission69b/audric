@@ -1,96 +1,129 @@
 ---
-description: Cron architecture (audric side) — internal endpoints called by t2000 ECS cron. Auth, idempotency, sharding.
-globs: "apps/web/app/api/internal/**/*.ts,apps/web/lib/internal-auth.ts"
+description: Cron architecture (audric side, post-v0.7d Block C). Vercel-native cron + the surviving /api/internal/payments engine bridge. Auth, idempotency, sharding.
+globs: "apps/web/app/api/cron/**/*.ts,apps/web/app/api/internal/payments/**/*.ts,apps/web/lib/internal-auth.ts,apps/web/lib/jobs/**/*.ts"
 alwaysApply: false
 ---
 
-# Cron Architecture (audric side)
+# Cron Architecture (audric side, post-v0.7d Block C)
 
-> ⚠️ **In-flight migration (v0.7d Phase 6, 2026-05-21):** the cron architecture is moving FROM t2000 ECS (`node-cron`) TO Vercel cron (native). Block A (S.221) deleted the LLM-driven memory crons; Block B will migrate `portfolio-snapshot` + `financial-context-snapshot` to Vercel cron; Block C will delete the entire t2000 indexer + `apps/server` package. This rule will be rewritten when Block C closes.
+> ✅ **Migration complete (v0.7d Phase 6, 2026-05-21):** every t2000 ECS cron has been retired (Block A — S.221, Block B — S.222, Block C — S.224). Audric now owns its own scheduled work via Vercel native cron. The t2000 `apps/server` package + `infra/` Fargate stack were deleted in S.224 (t2000 commit `5e04154f`).
 
-t2000 server runs the cron schedule (ECS, `node-cron`) — for now. Audric exposes internal endpoints under `/api/internal/*` that the cron POSTs into. Each endpoint owns a domain and writes to one set of Prisma models.
+Audric's scheduled work lives in **two places**:
 
-## The endpoints (current state)
+1. **`/api/cron/*` routes** — Vercel native cron entrypoints. Schedule defined in `apps/web/vercel.json`. Authenticated by `Authorization: Bearer ${CRON_SECRET}` (Vercel injects this automatically when the env var is set).
+2. **`/api/internal/payments`** — the SOLE surviving internal route. Engine payment-link / invoice tools call it server-side via `x-internal-key: ${T2000_INTERNAL_KEY}` dual-auth.
+
+## The endpoints (post-Block-C reality)
 
 | Route | Writes | Triggered by |
 |---|---|---|
-| `POST /api/internal/financial-context-snapshot` | `UserFinancialContext` | 02:30 UTC (ECS) — Block B migrates to Vercel cron |
-| `POST /api/internal/portfolio-snapshot` | `PortfolioSnapshot` | 02:00 UTC (ECS) — Block B migrates to Vercel cron |
-| `POST /api/internal/payments` | `Payment` (status updates) | On chain event |
-| `GET /api/internal/health-factor` | reads HF for an address (used by tooling/cron) | On demand |
-| `POST /api/internal/notification-users` | (read-only) | t2000 cron lookup |
-| `POST /api/internal/user-address` + `app-event` | misc internal lookups | Various |
+| `GET /api/cron/portfolio-snapshot` | `PortfolioSnapshot` | Vercel cron — daily 07:00 UTC |
+| `POST /api/cron/financial-context-snapshot` | `UserFinancialContext` | Vercel cron — daily 02:30 UTC |
+| `POST /api/internal/payments` | `Payment` (CRUD for payment-link / invoice tools) | Engine server-side fetch |
 
-> **Deleted in v0.7d Phase 6 Block A (S.221, 2026-05-21):**
-> - `POST /api/internal/memory-extraction` (Claude-driven UserMemory writes)
-> - `POST /api/internal/profile-inference` (Claude-driven UserFinancialProfile writes)
-> - `POST /api/internal/chain-memory` (7-classifier ChainFact writes)
-> - `POST /api/cron/user-memory-retention` (UserMemory retention sweep)
+> **Deleted in v0.7d Phase 6 (S.221, S.222, S.224 — 2026-05-21):**
+> - `POST /api/internal/memory-extraction` (Claude-driven UserMemory writes — S.221)
+> - `POST /api/internal/profile-inference` (Claude-driven UserFinancialProfile writes — S.221)
+> - `POST /api/internal/chain-memory` (7-classifier ChainFact writes — S.221)
+> - `POST /api/cron/user-memory-retention` (UserMemory retention sweep — S.221)
+> - `POST /api/internal/portfolio-snapshot` (ECS receiver — S.224; Vercel cron at `/api/cron/portfolio-snapshot` is the replacement)
+> - `POST /api/internal/financial-context-snapshot` (ECS receiver — S.224; Vercel cron at `/api/cron/financial-context-snapshot` is the replacement)
+> - `GET /api/internal/health-factor` (ECS HF-alert cron — retired S.31 April 2026, route deleted S.224)
+> - `POST /api/internal/notification-users` (ECS cron user-list join — S.224; Vercel cron jobs read `prisma.user.findMany` directly)
+> - `GET /api/internal/user-address` (ECS cron user-lookup — S.224)
+> - `POST /api/internal/app-event` (ECS cron event sink — S.224)
 >
-> All replaced by MemWal SDK (web-v2 `Experimental_Agent` + `prepareStep` recall + `onFinish` `memwal.analyze()` write).
+> Memory writes replaced by MemWal SDK (web-v2 `Experimental_Agent` + `prepareStep` recall + `onFinish` `memwal.analyze()` write).
 
-## Auth — every internal endpoint MUST check `x-internal-key`
+## Auth — two distinct gates
+
+### Vercel cron routes (`/api/cron/*`)
+
+Validate `Authorization: Bearer ${CRON_SECRET}` first line:
 
 ```typescript
-// apps/web/lib/internal-auth.ts
 import { env } from '@/lib/env';
 
-export function assertInternal(req: Request) {
-  const key = req.headers.get('x-internal-key');
-  if (!key || key !== env.T2000_INTERNAL_KEY) {
-    throw new Response('Unauthorized', { status: 401 });
+export async function GET(req: NextRequest): Promise<NextResponse> {
+  const auth = req.headers.get('authorization');
+  if (auth !== `Bearer ${env.CRON_SECRET}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+  const result = await runPortfolioSnapshotJob();
+  return NextResponse.json(result);
 }
+```
 
-// apps/web/app/api/internal/financial-context-snapshot/route.ts
-export async function POST(req: Request) {
-  assertInternal(req);
+`CRON_SECRET` is required env (boot fails if missing). Vercel auto-injects the `Authorization: Bearer` header on scheduled invocations; manual triggers must supply it explicitly.
+
+### `/api/internal/payments` route (engine bridge)
+
+Validate `x-internal-key: ${T2000_INTERNAL_KEY}` via the shared helper:
+
+```typescript
+import { validateInternalKey } from '@/lib/internal-auth';
+
+export async function POST(req: NextRequest): Promise<NextResponse> {
+  const auth = validateInternalKey(req.headers.get('x-internal-key'));
+  if ('error' in auth) return auth.error;
   // ... do the work
 }
 ```
 
-**Never** assume "internal" means "no auth needed because it's only called by ECS." Vercel functions are public HTTPS endpoints; the auth gate is the only security boundary.
+**Never** assume "internal" means "no auth needed." Vercel functions are public HTTPS endpoints; the auth gate is the only security boundary.
 
-## Idempotency — every endpoint MUST be safe to re-call
+> **Why `T2000_INTERNAL_KEY` still exists after Block C:** the engine runs server-side (inside the audric Next.js process for `apps/web`, alongside `apps/web-v2` chat) and calls audric APIs via HTTP self-fetches. It cannot present a zkLogin JWT (server context has no browser session), so the dual-auth path in `authenticateAnalyticsRequest()` accepts `x-internal-key` as the trusted-server alternative. Slated for full elimination in v0.7e+ via the function-injection refactor — see `HANDOFF_NEXT_AGENT.md` backlog row `engine-fn-injection-refactor`.
 
-Cron WILL retry. Use upserts, not creates:
+## Idempotency — every cron job MUST be safe to re-run
+
+Vercel cron WILL retry on failure / timeout. Use upserts, not creates:
 
 ```typescript
 // ✅ Idempotent
-await prisma.userFinancialContext.upsert({
-  where: { userId },
-  create: { userId, snapshot, computedAt: new Date() },
-  update: { snapshot, computedAt: new Date() },
+await prisma.portfolioSnapshot.upsert({
+  where: { userId_date: { userId, date: today } },
+  create: { userId, date: today, ...metrics },
+  update: { ...metrics },
 });
 
 // ❌ Not idempotent — second call creates duplicate row
-await prisma.userFinancialContext.create({ data: { userId, snapshot } });
+await prisma.portfolioSnapshot.create({ data: { userId, date: today, ...metrics } });
 ```
 
-## Sharding — required at 1k+ DAU
+For the current Vercel crons:
+- `portfolio-snapshot`: skips users with an existing row for today (idempotent by `userId_date`).
+- `financial-context-snapshot`: `upsert` keyed on `userId` (idempotent).
 
-Single-endpoint fan-out (process all users in one POST) hits Vercel function timeout (10s pro / 60s pro+) at scale. Accept optional `{ shard, total }` body params:
+## Job implementation — extract to `lib/jobs/*`
+
+The route file is thin. Real work lives in `apps/web/lib/jobs/<name>.ts`. This pattern was set in Block B to share impls between legacy ECS-cron-receiver and new Vercel-cron paths; the receivers are gone, but the separation still helps:
+- Routes own auth + response shape.
+- Jobs own the work + are testable in isolation.
 
 ```typescript
-const body = await req.json().catch(() => ({}));
-const { shard, total } = body as { shard?: number; total?: number };
+// apps/web/lib/jobs/portfolio-snapshot.ts
+export async function runPortfolioSnapshotJob(): Promise<PortfolioSnapshotResult> {
+  // ... fetch users, snapshot each, return aggregate counts
+}
 
-const users = await prisma.user.findMany({
-  where: shard != null && total != null
-    ? {
-        // hash-based shard filter — id is cuid, hash to a number 0..total-1
-        id: { /* shard predicate */ },
-      }
-    : undefined,
-});
+// apps/web/app/api/cron/portfolio-snapshot/route.ts
+export async function GET(req: NextRequest) {
+  // auth check
+  const result = await runPortfolioSnapshotJob();
+  return NextResponse.json(result);
+}
 ```
 
-Default shard count is **8**. Driven by the t2000 cron — see `t2000/.cursor/rules/cron-job-architecture.mdc`.
+## Scale notes
 
-## Response shape — uniform across endpoints
+- **Current scale:** single-shard runs comfortably fit Vercel's 300s `maxDuration` cap.
+- **When sharding becomes necessary:** if active users grow past ~200 (where 200 × 1.5s = 300s starts to bite for fin-ctx-snapshot), the route can fan out via internal `fetch()` to itself with `{ shard, total }` params. `runFinancialContextSnapshotJob()` already accepts these; route just needs the fan-out logic.
+- **No EventBridge / no ECS:** zero AWS scheduler involvement post-Block-C. `vercel.json` is the single source of truth for cron schedules.
+
+## Response shape — uniform across cron routes
 
 ```typescript
-return Response.json({
+return NextResponse.json({
   created: 100,
   skipped: 50,
   errors: 2,
@@ -98,44 +131,48 @@ return Response.json({
 });
 ```
 
-t2000 cron logs the aggregate counts; deviation from this shape breaks cron observability.
+Vercel Logs UI surfaces these counts; deviation from this shape breaks cron observability.
 
 ## What MUST NOT happen
 
 ```typescript
-// ❌ Internal endpoint that hits Sui RPC per user
+// ❌ Cron route that hits Sui RPC per user (10k calls = rate limit)
 for (const user of users) {
-  await suiClient.getAllBalances({ owner: user.suiAddress });  // 10k calls = rate limit
+  await suiClient.getAllBalances({ owner: user.suiAddress });
 }
-// — batch via BlockVision OR go through the canonical getPortfolio (it caches).
+// — go through the canonical getPortfolio (it caches via the 60s in-process cache).
 
-// ❌ Internal endpoint that writes to multiple domains
+// ❌ Cron route that writes to multiple domains
 // — financial-context shouldn't also update UserMemory. One job, one domain.
 
-// ❌ Internal endpoint that responds with HTML / a redirect
+// ❌ Cron route that responds with HTML / a redirect
 return NextResponse.redirect('/some-page');
-// — internal endpoints are JSON-only.
+// — cron routes are JSON-only.
 
-// ❌ Skipping the auth check
-// — lib/internal-auth.ts is one line; use it.
+// ❌ Skipping the auth check (CRON_SECRET or x-internal-key)
+// — lib/internal-auth.ts + the bearer-check pattern are one-liners; use them.
 
-// ❌ Long-running synchronous work inside a route
-// — split the work into shards and let t2000 fan out.
+// ❌ Reintroducing an /api/internal/* receiver route for a "remote caller"
+// — there is no remote caller anymore (t2000 ECS retired). New scheduled work
+//   becomes a /api/cron/* Vercel route + a vercel.json entry. New
+//   engine-bridge routes that absolutely cannot be done via function injection
+//   need an explicit lock from the rule file owner.
 ```
 
-## Adding a new cron-triggered endpoint
+## Adding a new cron job
 
-1. Create `app/api/internal/<job>/route.ts`.
-2. `assertInternal(req)` first line.
-3. Accept optional `{ shard, total }`.
-4. Make it idempotent (upsert).
-5. Return `{ created, skipped, errors, total }`.
-6. Add the t2000 cron job (see `t2000/.cursor/rules/cron-job-architecture.mdc`).
-7. Update `prisma-models-overview.mdc` if it writes to a model not yet listed there.
+1. Create `apps/web/lib/jobs/<job>.ts` with the work + a `run...Job()` export returning `{ created, skipped, errors, total }`.
+2. Create `apps/web/app/api/cron/<job>/route.ts` — bearer auth first line, call the job impl, return JSON.
+3. Add the schedule to `apps/web/vercel.json` (`vercel project inspect` confirms Root Directory = `apps/web`; `vercel crons list` is the ground truth).
+4. Make the job idempotent (upsert).
+5. Verify locally: `curl -H "Authorization: Bearer $CRON_SECRET" https://<deploy>/api/cron/<job>` returns the expected counts.
+6. Update `prisma-models-overview.mdc` if it writes to a model not yet listed there.
 
 ## Cross-references
 
 - Auth helper → `apps/web/lib/internal-auth.ts`
-- t2000 cron jobs → `t2000/.cursor/rules/cron-job-architecture.mdc`
+- Vercel cron config → `apps/web/vercel.json` (Root Directory MUST be `apps/web`, NOT repo root)
+- Job impls → `apps/web/lib/jobs/*.ts`
 - Prisma models → `prisma-models-overview.mdc`
 - Env config → `env-validation-gate.mdc`
+- v0.7e+ HTTP-self-fetch removal → `HANDOFF_NEXT_AGENT.md` backlog `engine-fn-injection-refactor`

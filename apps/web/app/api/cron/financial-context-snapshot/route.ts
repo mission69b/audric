@@ -19,10 +19,11 @@
  * job helper already supports `{ shard, total }`). For now, simplicity
  * wins — no fan-out, no recursive HTTP calls.
  *
- * Companion (legacy, retires in Block C):
- *   POST /api/internal/financial-context-snapshot (x-internal-key, supports sharding)
- *
- * Both paths share `lib/jobs/financial-context-snapshot.ts`.
+ * [v0.7d Phase 6 Block C.3 — 2026-05-21 / S.224] The legacy
+ * `/api/internal/financial-context-snapshot` companion route was
+ * deleted in Block C.3 once the t2000 ECS cron retired. This Vercel
+ * route is now the sole entrypoint. Job implementation lives in
+ * `lib/jobs/financial-context-snapshot.ts`.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { env } from '@/lib/env';

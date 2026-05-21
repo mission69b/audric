@@ -7,12 +7,11 @@
  * standard `CRON_SECRET` bearer header so only Vercel's cron
  * infrastructure can invoke it.
  *
- * Companion (legacy, retires in Block C):
- *   POST /api/internal/portfolio-snapshot (x-internal-key)
- *
- * Both paths share `lib/jobs/portfolio-snapshot.ts` so the job
- * behavior is identical. Block C deletes the /api/internal/* route
- * + AUDRIC_INTERNAL_KEY after the t2000 ECS cron retires.
+ * [v0.7d Phase 6 Block C.3 — 2026-05-21 / S.224] The legacy
+ * `/api/internal/portfolio-snapshot` companion route was deleted in
+ * Block C.3 once the t2000 ECS cron retired. This Vercel route is
+ * now the sole entrypoint. Job implementation lives in
+ * `lib/jobs/portfolio-snapshot.ts`.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { env } from '@/lib/env';

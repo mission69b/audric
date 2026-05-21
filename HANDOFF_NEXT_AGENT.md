@@ -1,192 +1,256 @@
 # HANDOFF — Next Agent
 
 > Living handoff doc for any agent / engineer picking up audric mid-stream.
-> First written 2026-05-18 during **BENEFITS_SPEC v0.7c Phase 1 Day 1b** to pin the
-> `vercel/ai-chatbot` template SHA per the SPEC's Phase 1 acceptance gate (G3).
+> First written 2026-05-18 during v0.7c Phase 1; rewritten 2026-05-21 at v0.7d
+> Phase 6 Block B close to reflect the MemWal migration as the active SPEC.
 
 ---
 
-## Active SPEC
+## 🎯 Active SPEC — v0.7d MemWal
 
-[`spec/active/BENEFITS_SPEC_v07c.md`](../t2000/spec/active/BENEFITS_SPEC_v07c.md) — v1.0 LOCKED 2026-05-18. **Phase 0 + 1 + 2 FULLY CLOSED + Phase 3 STRUCTURALLY CLOSED + Phase 3 audit pass + Phase 4 SHIPPED 2026-05-19 ~08:15 AEST (S.176) + Phase 4b SHIPPED AS STRATEGIC DEFERRAL 2026-05-19 ~08:50 AEST (S.177) + Phase 5 FULLY SHIPPED 2026-05-19 ~14:30 AEST — Phase 5a.0–5a.4 SHIPPED ~10:15 AEST (S.178 + S.179 — LIGHT-CARD SWEEP COMPLETE) + Phase 5b SHIPPED ~10:50 AEST (S.180 — CANVAS + motion family DELETED from scope) + Phase 5c SHIPPED ~11:30 AEST (S.181 — TIMELINE via 99% SCOPE REDUCTION; `m.parts` IS the timeline; template AI Elements absorb legacy primitives) + Phase 5d SHIPPED ~13:00 AEST (S.182 — HEAVY SHELL via 82% SCOPE REDUCTION; single-write PermissionCard parity via canary extension + preview-bodies port) + Phase 5e SHIPPED ~14:30 AEST (S.183 — PAYMENT INTENTS via Approach A host-only chat-route bundle marker; preserves v1 success pattern verbatim, reuses canonical `composeBundleFromToolResults` engine helper as third call site; 5-layer ship at ~855 LoC across 5 files).** Phase 4 expanded the Phase 3 HITL pattern to 10 of the 11 remaining writes via a generalised `sponsoredTx` dispatcher + widened `/api/transactions/prepare` + new `/api/contacts/save` route. The outcome-update slice closes the G5 telemetry gap. **Phase 4b closes via deferral**: `pay_api` removed from web-v2's tool set; Agentic Commerce spec drafted at `t2000/spec/active/AUDRIC_AGENTIC_COMMERCE_SPEC_DRAFT.md` v0.1 — 7 D-questions + 4-phase roadmap. Legacy `apps/web` ships pay_api unchanged. **Phase 5 foundation slice**: Agentic Design System tokens ported to `apps/web-v2/app/globals.css` (~192 LoC CSS); renderer infrastructure ported (`components/audric/cards/{primitives.tsx,shared/*}` — ~875 LoC across 7 files); `ToolResultRouter` discriminated dispatcher created (~65 LoC); canary card `RatesCardV2` ported and wired into chat client. **Phase 5 cumulative FINAL: SPEC v0.2 estimated ~19.5-21.5d / ~55 files / ~10,298 LoC ➝ delivered ~2.25d / ~29 files / ~3,208 LoC (-89% effort / -47% files / -69% LoC)** with NO user-facing capability dropped. Chat surface now has FULL parity with audric/web for single-write + multi-write atomic flows: streaming text + reasoning + tool cards + canvas + HITL single-write approval + **HITL multi-write atomic bundles via Payment Intents** + sponsored-tx round-trip (single + bundle). All gates green. **G5 + G7 + G8 live smoke remains deferred to preview/prod deploy** (zkLogin OAuth localhost limitation; same gate as every v0.7c phase since Phase 3). **Next implementable: Phase 5.5 — Language Model Middleware adoption (per D-17 lock from S.162).** `wrapLanguageModel` + middleware for guards (14 from audric/web legacy) + preflight (12 from legacy) + redaction (PII scrub) + telemetry. Sizing TBD per founder triage with audit-first cadence recommended (same pattern that landed 5c+5d+5e structural wins). Agentic Commerce Phase 1 gated on founder D-question lock.
+[`t2000/spec/active/BENEFITS_SPEC_v07d.md`](../t2000/spec/active/BENEFITS_SPEC_v07d.md) — in flight; SHIPPED ahead of schedule.
 
-| Phase | Status | Notes |
+The v0.7d SPEC retires the legacy SQL-backed memory pipeline (`UserMemory` + `UserFinancialProfile` + chain-classifier cron) and replaces it with `@mysten-incubation/memwal` vector memory. Phase 6 Block A + B closed in two consecutive sessions on 2026-05-21; Block C is the last remaining code work.
+
+### Status snapshot (2026-05-21 ~16:30 AEST)
+
+| Phase | SPEC budget | Actual | Status | Where it landed |
+|---|---|---|---|---|
+| 0 — Baseline + D-lock | ~1d | ~1h | ✅ CLOSED | S.214 |
+| 1 — Adapter + engine wire | ~1d | ~1h 45m | ✅ G2 PASSED | S.215 + S.216 |
+| 2 — Recall non-empty | ~½d | ~40m | ✅ G3 PASSED | S.217 |
+| 3 LITE — Settings Memory UI | ~2d | ~35m | ✅ G4 PASSED | S.218 |
+| 4 — Classifier migration | ~2d | ~10m audit | ✅ FOLDED into Phase 6 | S.219 |
+| 5 — SPEC 40 HITL native | ~3d | ~25m audit | ✅ FOLDED into v0.7e | S.220 |
+| 6 Block A — Memory pipeline retirement | part of ~2d | ~1h 45m + ~30m post-ship review | ✅ G10 PARTIAL | S.221 |
+| 6 Block B — Vercel cron migration + structural vercel.json fix | part of ~2d | ~45m impl + ~15m smoke | ✅ G10 SMOKE GREEN (soak skipped per founder lock; subsumed by Block C wholesale delete) | S.222 |
+| 6 Block C.1 — `t2000.ai/api/stats` refactor (Prisma → static + Sui RPC) | part of ~2d | ~35m | ✅ SHIPPED | S.223 (t2000 `8aa394e4`) |
+| 6 Block C.2 — `apps/server` + `infra/` + Prisma stack wholesale delete | part of ~2d | ~50m | ✅ SHIPPED — **42 files deleted, −3,804 LoC net** | **S.224 (t2000 `5e04154f`)** |
+| 6 Block C.3 — Dead receiver routes + docs + v0.7e+ backlog stamps | part of ~2d | ~45m | ✅ SHIPPED — **6 dead `/api/internal/*` routes deleted, env doc consolidated, 2 new backlog rows** | **S.224 (this session, audric commit TBD)** |
+| 7 — Cutover + 7d soak | ~7d | TBD | ⏳ NEXT — audit-first | — |
+| 8 — v0.7e unblock | ~½d | TBD | ⏳ | — |
+| **Code time so far** | **~12d budget** | **~9h 30m actual** | **Ahead by ~10.5 days** | — |
+
+Three audit-saves in one day (Phases 4 + 5 + Block A revision) compressed the SPEC budget by ~7 days. The pattern: v0.7d was scoped before v0.7c chat-flip + S.173 intent-dispatcher lock + the chain-memory statistical refactor + the AI SDK v6 HITL migration closed. Each phase audit collapses 2-3 days of stale SPEC work into minutes-to-hours of focused deletion. **Continue audit-first cadence on Block C + Phase 7.**
+
+---
+
+## ⏭️ What's left — clear next tasks
+
+### 1. ✅ DONE — Block B + Block C (all 3 sub-blocks) shipped 2026-05-21
+
+Block B soak was **skipped** per founder lock (S.224, 2026-05-21 ~16:00 AEST). Justification: ECS cron deletion was subsumed by Block C.2 wholesale `apps/server` delete, so dual-write conflict risk became moot (only one writer remains: the Vercel cron). Block C audit-first confirmed all indexer-owned Prisma models had zero non-`apps/server` consumers + 6 of 7 `/api/internal/*` routes had zero callers.
+
+| Step | Status | Where |
 |---|---|---|
-| Phase 0 — Baseline + setup | ✅ CLOSED | G1 closed 2026-05-18 PM. F-12 (prompt cache) + F-13 (extended thinking) regressions found + shipped at engine v2.7.2; F-14 (classifier accuracy) shipped at engine v2.7.3. |
-| Phase 1 — Side-by-side stand-up + template fork + Auth eviction | ✅ CLOSED (Day 1a/1b/1c/1d CLOSED + post-Day-1d audit CLOSED, G2 + G3 CLOSED, baseline typecheck + lint + production build all at 0 errors) | Day 1a (blank scaffold) ✅. Day 1b (template fork, pinned SHA `107a43a`) ✅. Day 1c (Auth.js eviction + zkLogin stub) ✅. Day 1d (baseline cleanup: F-17 + F-18 fixed, 38 files auto-fixed) ✅. **Post-Day-1d audit**: added `pnpm build` as third standing gate (PASSES); closed 4 P0 residue gaps. See S.167. |
-| Phase 2 — First read-tool round-trip + AI Gateway + telemetry + matrix audit + Batch 1 simplifications + D-14 lock + Day 2e Agent migration | ✅ **FULLY CLOSED 2026-05-19** (ALL FIVE DAYS: 2a + 2b + 2c + 2c++ matrix + Batch 1 + Day 2d D-14 + Day 2e Agent migration SHIPPED) | **Day 2a–2c++ Batch 1** (S.168–S.172) + **Day 2d D-14** (S.173) + **Day 2e (S.174)**: full Path B Agent migration; engine v2.11.0 published. |
-| Phase 3 — First write-tool via Slice D (`save_deposit`) + sponsored-tx routes + full zkLogin signing port + post-ship audit pass | ✅ **STRUCTURALLY CLOSED 2026-05-19** (S.175 Day 3a/3b/3c all SHIPPED + S.175 addendum 4 bugs caught & fixed; G5 live smoke deferred to preview/prod deploy) | **Day 3a (S.175)**: engine route extended with `saveDepositTool` + `permissionConfig` + `priceCache` + `translateChunk` HITL chunk paths (`tool-call` toolMetadata stamp + `tool-approval-request` translation + `tool-output-denied` graceful narration). **Day 3b (S.175)**: ported `/api/transactions/{prepare,execute}` from legacy `apps/web` save-only; env extended with `ENOKI_SECRET_KEY`. **Day 3c (S.175 founder Path A)**: ported the full zkLogin client-side signing infrastructure — `lib/zklogin.ts` session machine + `useZkLogin` hook + `<ZkLoginProviders>` + `/auth/callback` page + `sponsoredSave` orchestrator + `PermissionCard` UI + rewritten `audric-chat-client.tsx`. **Audit pass (S.175 addendum 2026-05-19 ~07:35 AEST)**: critical self-review caught 4 bugs before any smoke attempt — (B1) Deny path UI hang (`addToolOutput` follow-up missing), (B2) `TurnMetrics.attemptId` always NULL (collector ignored `tool-approval-request`), (B3) resume turn 400 (body schema rejected tool-only messages; messages weren't converted via `convertToModelMessages`), (B4) wrong correlation id (`approvalId !== toolCallId`). All fixed in-session; all gates re-run green. |
-| Phase 4 — Mechanical 10-write expansion + outcome-update slice | ✅ **SHIPPED 2026-05-19 ~08:15 AEST (S.176)**; G5 + G7 live smoke deferred to preview/prod deploy | **Slice 4a (outcome-update)**: `lib/audric/resume-outcome.ts` + chat route fires `prisma.turnMetrics.updateMany({where: {attemptId}, data: {pendingActionOutcome, writeToolDurationMs}})` on every resume turn — closes harness Spec §Item 3 G5 gap. **Slice 4b (sponsoredTx)**: `lib/audric/sponsored-tx.ts` (replaces `sponsored-save.ts`) — discriminated-union dispatch for 9 sponsored writes. **Slice 4c (prepare widening)**: `/api/transactions/prepare` body schema `discriminatedUnion('type', [10])`; `feeHooks.{save_deposit, borrow}`; conditional `overlayFee` for swap + harvest; post-compose validation for empty-rewards. **Slice 4d (save_contact)**: NEW `/api/contacts/save/route.ts` with cross-imported unified Contact shape. **Slice 4e (chat client switch — Phase 4 form)**: Approve handler dispatches per tool via `buildSponsoredTxRequest`. Pre-existing `auth/callback/page.tsx` `void` lint regressions fixed in-pass. |
-| Phase 4b — `pay_api` strategic deferral + Agentic Commerce spec | ✅ **SHIPPED AS STRATEGIC DEFERRAL 2026-05-19 ~08:50 AEST (S.177)** | One-line filter (`WRITE_TOOLS.filter((t) => t.name !== "pay_api")`) removes `pay_api` from web-v2's tool set. Removed dead `case "pay_api":` in `describeAudricAction` + `else if (toolName === "pay_api")` fail-loud branch in Approve handler. Updated 4 doc comments. Wrote `t2000/spec/active/AUDRIC_AGENTIC_COMMERCE_SPEC_DRAFT.md` v0.1 (~430 lines) capturing the founder's 4 agentic commerce use cases + 7 D-questions + 4-phase roadmap. Legacy `apps/web` ships `pay_api` unchanged. Engine `WRITE_TOOLS` continues to export all 12 tools. Net diff: −22 LoC implementation / +430 LoC new spec. **Agentic Commerce Phase 1 (single-vendor pay_api revival in web-v2) is gated on founder D-question lock.** |
-| Phase 5 — Renderer migration sweep | ✅ **FULLY SHIPPED 2026-05-19** — Phase 5a.0–5a.4 SHIPPED ~10:15 AEST (S.178 + S.179 — **LIGHT-CARD SWEEP COMPLETE**) + Phase 5b SHIPPED ~10:50 AEST (S.180 — **CANVAS COMPLETE + motion family DELETED from scope**) + Phase 5c SHIPPED ~11:30 AEST (S.181 — **TIMELINE via 99% SCOPE REDUCTION**) + Phase 5d SHIPPED ~13:00 AEST (S.182 — **HEAVY SHELL via 82% SCOPE REDUCTION**) + Phase 5e SHIPPED ~14:30 AEST (S.183 — **PAYMENT INTENTS via Approach A host-only chat-route bundle marker**) | **Phase 5e headline (S.183):** founder-locked Approach A preserves the v1 success pattern verbatim — LLM emits N writes naturally → server bundles into ONE pending_action with steps[] via canonical `composeBundleFromToolResults` engine helper (third call site alongside v0.7a `orchestration.ts` + audric legacy `fast-path-bundle.ts`) → client renders ONE `BundlePermissionCard` + ONE Enoki signature → atomic PTB on-chain. 5-layer ship at ~855 LoC across 5 files: (1) `isBundleableTool` gate (9 of 12 writes bundleable; 3 fall through to individual rendering); (2) `BundleBuffer` class buffers `tool-call` + `tool-approval-request` chunks within AI SDK `start-step`→`finish-step`, on flush emits `data-audric-bundle` custom UIMessageStream part + replays individual chunks for state-machine consistency (defensive try/catch fallback to individual rendering); (3) prepare-route widened with `bundleSchema` discriminated union + `buildBundleSteps` + `composeTx({steps})` native multi-step PTB + per-step `feeHooks` (10bps save / 5bps borrow / conditional 10bps Cetus overlay); (4) `sponsored-tx.ts` extended with `type: 'bundle'` variant + `SponsoredTxBundleStep`; (5) `BundlePermissionCard` (sibling to single-write, same approve/deny + 60s timer model via `handleDenyRef`) + `BundleForMarker` bridge in chat client that scans `m.parts` for markers, builds `bundleClaimedIds: Set<string>`, skips claimed tool-* parts, fans out N `addToolApprovalResponse` → 1 `sponsoredTx({type:'bundle'})` → N `addToolOutput` with `partOfBundle:true`. 3 bundle-eligibility gates enforced at finish-step (N≥2 + all bundleable + every call has approval). Zero engine release, zero LLM training. Live smoke deferred to founder verification (same zkLogin OAuth localhost constraint). **Phase 5 cumulative FINAL: SPEC v0.2 ~19.5-21.5d / ~55 files / ~10,298 LoC ➝ delivered ~2.25d / ~29 files / ~3,208 LoC (-89% effort / -47% files / -69% LoC).** All gates green (Phase 5e: typecheck ✓ + lint ✓ + build ✓ 16.1s). Acceptance: G8 = "custom SSE code path removed from web-v2 runtime" ✅ achieved (web-v2 is end-to-end on AI SDK v6 native primitives). **Phase 5c headline (preserved for history):** SPEC v0.2 sized timeline migration at "~2-2.5d / 21 files / ~3,272 LoC" but actual delivery was **~½d / 1 file (`audric-chat-client.tsx`) / +50/-13 LoC**. Two structural facts: (a) AI SDK v6's `UIMessage.parts` IS the ordered timeline (replaces `BlockRouter` + 13 block types — `m.parts.map()` IS the router); (b) Vercel ai-chatbot template ships AI Elements that implement the legacy primitives. Four atomic changes: (1) wire `<Reasoning>` for `part.type === "reasoning"` (closes silent-drop bug); (2) swap raw `<div whitespace-pre-wrap>` for `<MessageResponse>` (Streamdown markdown — cjk + code + math + mermaid); (3) adopt `<Message from={role}>` + `<MessageContent>` for chat-bubble alignment; (4) adopt `<Conversation>` + `<ConversationContent>` for auto-stick-to-bottom scroll (use-stick-to-bottom). Reasoning streaming gate: `partStreaming = isTurnStreaming && isLast && reasoningPart.state !== "done"` — auto-open on start, duration tracked internally, 1s auto-close. **Founder LOCKED audit Option A (defer all the rest):** no `ParallelToolsGroup` (chrome — `m.parts.map` already renders parallel tools in dispatch order); no `TodoBlockView` (verified DEAD — `update_todo` not in web-v2 `WRITE_TOOLS.filter`, no AI SDK chunk for `todo_update`); no `RegeneratedBlockView` (verified DISCONNECTED — no `regenerated` EngineEvent, no quote-refresh trigger in `PermissionForToolPart`). ~4,217 legacy LoC across 17 timeline files NOT ported (replaced by AI SDK v6 native + AI Elements + founder skip). **Phase 5b**: 21 tool routes wired into ToolResultRouter (20 light cards + render_canvas). 8 canvas templates + 3-component shell. Canvas case placed BEFORE `extractData` because output shape `{template, title, data}` has inner `data` field as payload not envelope. Skeleton-state branch — `input-streaming` / `input-available` render `SkeletonCard` via `getSkeletonVariant`. `onSendMessage` threaded Router→Canvas via `useChat.sendMessage({text})`. New helpers: `lib/auth-fetch.ts`. **FOUNDER LOCK 2026-05-19:** motion family DELETED from scope (~700 LoC: MountAnimate + NumberTicker + TypingDots + WorkingState + ReceiptChoreography + tests). Only motion is Tailwind `animate-pulse` skeleton-pulse. `ReceiptChoreography` stub in `TransactionReceiptCard` is PERMANENT passthrough. **Phase 5 cumulative LoC: SPEC ~14,672 ➝ delivered ~8,930 (-39%)** without dropping user-facing capability. Phase 5a helpers persist: `lib/sui-address.ts` slim subset + `cards/shared/QrCode.tsx` + `cards/shared/ChunkedAddress.tsx`. New deps: `qrcode` + `@types/qrcode`. **Added DEFER (5a.4 audit):** ServiceCatalogCard (MPP-family) — ports with Agentic Commerce. All gates green (Phase 5c: typecheck 2.4s + biome 0 fixes + build 21 routes / 15.4s). **Phase 5d shipped headline (S.182):** SPEC v0.2 sized at "~9d / 5 files / ~4,011 LoC" but actual delivery was **~½d / 2 files / +703 LoC** because `ChatMessage` + `ReasoningTimeline` = 0 LoC port (already absorbed by 5c's `m.parts.map()` + `<Message>` + `<Reasoning>` wiring; legacy SPEC 23A-P0 comment itself says it's reduced to those 3 paths). Audit deep-dive surfaced that `toolMetadata` is the wire bridge in v0.7c (NOT engine's `PendingAction`), today's wire is intentionally narrow — `{description, modifiableFields, attemptId}` — so PermissionCard chrome depending on engine extension fields (Guard-injection display, SendAddressBlock, Quote-refresh, WorkingState) deferred to follow-on slices. Shipped: extended canary in place 189 → 472 LoC (Surgical Changes + V1/V2 consolidation lock) + verbatim `preview-bodies/index.tsx` port 475 → 420 LoC. Features: TOOL_LABELS map (12 writes), multi-field modifiable inputs, formatInput text fallback w/ COIN_TYPE_SYMBOLS, renderPreviewBody slot for 5 NAVI writes (save/withdraw/borrow/repay/harvest) w/ graceful degradation, 60s deny-timer w/ handleDenyRef pattern, Approve validation gate, a11y compliance. **Founder LOCKED Payment Intents → Phase 5e as dedicated 5-layer slice** (~715 LoC / ~2-3d) — bundles unlock compound Audric Finance ops (`swap + save`, `borrow + swap`) AND Agentic Commerce; touch 5 layers (renderer is only 1); too heavy to smuggle into 5d. **Next slice: Phase 5e (Payment Intents — multi-write atomic bundles). AUDIT-FIRST recommended.** After 5e closes, Phase 5 is fully done. Acceptance: G8 = "custom SSE code path removed from web-v2 runtime." |
-| Phase 5.5 — LMM middleware adoption | ✅ **SHIPPED 2026-05-19 ~16:00 AEST (S.184)** | **Audit-first architectural reframe surfaced that the SPEC's "convert guards to middleware + delete 400-600 LoC of decorator boilerplate" framing was sized against legacy `apps/web`'s `streamText` decorator wrappers; web-v2 fork inherits engine `toAISDKTools` which already runs guards/preflights INSIDE `tool.execute()` (architecturally correct: model middleware fires BEFORE tool dispatch and can't gate per-tool decisions).** Delete-side absorbed in v0.7a. The architecturally honest D-17 close: (a) **guards activation** — `guards: DEFAULT_GUARD_CONFIG` from `@t2000/engine` wired through `buildInternalContext` so the 14 Safety/Financial/UX-tier guards now fire (substrate was in place since Phase 3; only the config was missing); (b) **log-redact port** — `lib/audric/log-redact.ts` ported from legacy + adopted at 7 top-traffic console.* sites across chat/prepare/execute routes (closes the operational PII threat model — Vercel multi-week log retention); (c) **observability middleware** — `lib/audric/middleware/observability.ts` with `wrapLanguageModel`-compatible `LanguageModelV3Middleware` emits one PII-scrubbed grep-friendly console line per LLM call (`[audric-llm] generate start provider=X model=Y prompt~Ntok lastUser="..." dur=Nms`) as companion to OTel dashboard via `experimental_telemetry`. Net: +494 LoC across 5 files (2 new + 3 modified) / 0 LoC deleted (delete-side architecturally absorbed in v0.7a engine fork). G8.5 closed via S.184 evidence table per criterion. Safety smoke (guard block + warning + hint paths) deferred to founder-owned live test — same zkLogin OAuth localhost constraint as prior v0.7c phases. All gates green: typecheck ✓ + lint ✓ (1 pre-existing warning unrelated) + build ✓ 15.4s. **Cumulative Phase 5 + 5.5: SPEC ~22.5-26.5d / ~10,898 LoC ➝ delivered ~2.5d / ~34 files / ~3,702 LoC (-90% effort / -43% files / -66% LoC).** |
-| Phase 6 — Cutover | ⏳ NEXT IMPLEMENTABLE | Retire `apps/web` chat shell, point production traffic at web-v2, delete the legacy engine bridge (~-10,800 LoC). Unlocks v0.7d work (memory wiring per D-11; structured-output classifier migration per D-16; HITL `needsApproval` SDK-native migration per SPEC 40 batch 3). Audit-first cadence recommended (4-phase compound: 5c/5d/5e/5.5 each reduced effort 80-99% vs SPEC sizing). |
+| Block B step 4 — retire ECS cron job files | ✅ SUBSUMED by Block C.2 wholesale delete | S.224 t2000 `5e04154f` |
+| Block C.1 — `/api/stats` refactor | ✅ SHIPPED (Sui RPC + static marketing) | S.223 t2000 `8aa394e4` |
+| Block C.2 — `apps/server` + `infra/` + t2000 Prisma stack delete | ✅ SHIPPED (42 files, −3,804 LoC) | S.224 t2000 `5e04154f` |
+| Block C.3 — 6 dead `/api/internal/*` route deletes + docs + backlog stamps | ✅ SHIPPED | S.224 audric (commit TBD) |
+| Founder ops: retire ECS task defs + ECR repos + ALB | ⏳ founder action via AWS console | — |
+| Founder ops: drop indexer NeonDB tables (Position / Transaction / ProtocolFeeLedger / IndexerCursor / YieldSnapshot + Agent.lastSeen) | ⏳ founder action via Neon console | — |
+
+### 2. Phase 7 — cutover + 7d soak (NEXT IMPLEMENTABLE)
+
+Per BENEFITS_SPEC_v07d L530+. **Audit-first cadence required** — read the SPEC's Phase 7 section, then verify what's actually still in `apps/web` vs what the SPEC assumes. Phases 4 / 5 / Block A / Block C each compressed multi-day SPEC budgets into ~hours of audit-driven work; expect Phase 7 to follow the same pattern.
+
+### 3. Phase 8 — v0.7e unblock (~½d)
+
+Per BENEFITS_SPEC_v07d. Sets up the v0.7e SPEC which archives all of `audric/apps/web` (the legacy chat shell). Two new backlog rows landed in S.224 that should be SPEC'd into v0.7e+:
+- `engine-fn-injection-refactor` (~1-2d) — eliminate engine→audric HTTP self-fetches via function injection. Removes the v0.7d-load-bearing `T2000_INTERNAL_KEY` env var bridge.
+- `engine-internal-key-final-delete` (~30 min) — finalize env var retirement once function injection ships.
+
+See the backlog table below for full descriptions.
 
 ---
 
-## 🎯 Audit pass — 4 bugs caught & fixed (2026-05-19 ~07:35 AEST)
+## 🚨 Block B side-finding — backlog item to investigate
 
-Before any smoke attempt, a critical self-audit of the Phase 3 wiring found 4 blockers; all fixed in-session, all gates re-run green.
+**`fincontext-zero-bug-backlog` (P2, NOT urgent).** Pre-existing bug (predates Block B; ported from ECS as-is).
 
-| # | Bug | Where | Fix |
-|---|---|---|---|
-| 1 | Deny path UI hang. `lastAssistantMessageIsCompleteWithToolCalls` requires `output-available`/`output-error`. Deny only flipped state to `approval-responded` → predicate stayed false → resume turn never fired → LLM never narrated. | `apps/web-v2/app/audric-chat/audric-chat-client.tsx` `PermissionForToolPart.onDeny` + missing-metadata auto-deny | Deny path now ALSO calls `addToolOutput({state: 'output-error', errorText: 'User denied the action.'})` so the predicate fires. |
-| 2 | `TurnMetrics.attemptId` always NULL. Collector hardcoded `attemptId: null` + `pendingActionYielded: false`. G5 acceptance asks to verify those exact fields — they'd have been NULL regardless of run quality. | `apps/web-v2/lib/audric/telemetry-integration.ts` | Collector observes `tool-approval-request` chunks → stamps `pendingApprovalId` + `pendingActionYielded = true` → persists as `attemptId`. |
-| 3 | Resume turn 400 on Approve. Body schema's `.refine((m) => m.content.length > 0)` rejected assistant messages with tool-only parts (the exact shape `useChat` sends on the auto-fired resume turn). Worse: naive `{role, content}` mapping stripped tool calls/results from the LLM's view even when schema passed. | `apps/web-v2/app/(chat)/api/audric-chat/route.ts` body schema + message-normalisation block | Schema relaxed to keep raw `parts`; route uses `await convertToModelMessages(...)` to translate UI tool parts → canonical assistant/tool ModelMessages. |
-| 4 | Wrong correlation id. Route comment claimed `attemptId === toolCallId`; AI SDK actually generates a fresh `approvalId = generateId()` distinct from `toolCallId`. Persistence path was wrong. | `apps/web-v2/app/(chat)/api/audric-chat/route.ts` translateChunk comment + telemetry collector | Comment corrected; collector persists `chunk.approvalId` per harness Spec §Item 3a (`attemptId === approvalId` by construction in v0.7c). |
+**Symptom:** The financial-context-snapshot cron writes all-zero rows (`walletUsdc=0, walletUsdsui=0, savingsUsdc=0, savingsUsdsui=0, healthFactor=null`) for users whose `PortfolioSnapshot` row for the same day had real positive numbers.
 
-**Gates re-run after fixes:**
+**Root cause:** The fin-ctx job consumes different fields of the `Portfolio` shape than the portfolio-snapshot job:
+- portfolio-snapshot uses `walletValueUsd` + `positions.savings` (top-line aggregates — populated even on partial degradation)
+- fin-ctx uses `walletAllocations.USDC` + `positions.supplies.find(s => s.asset === 'USDC')` (detail breakdowns — empty when the source returns degraded)
 
-| Gate | Result |
-|---|---|
-| `pnpm --filter web-v2 typecheck` | ✅ 0 errors |
-| `pnpm --filter web-v2 build` (Next 16 + Turbopack) | ✅ Compiled in 7.3s, 20 routes |
-| Biome lint on the 3 modified files | ✅ 0 errors |
-| `pnpm --filter @t2000/engine test` | ✅ 1404 pass / 10 skipped / 0 regressions |
+If BlockVision degrades partway through the per-user loop, the detail side returns empty while the top-line side stays positive. The fin-ctx job writes zeros without checking degradation flags.
 
-## 🎯 G5 live smoke — DEFERRED to preview/prod deploy
+**Fix (when you get to it):** Gate the upsert on `portfolio.walletSource !== 'degraded'` AND `portfolio.defiSource !== 'degraded'`, OR adopt the sticky-positive cache pattern from `packages/engine/src/cache/defi.ts`. Code lives at `apps/web/lib/jobs/financial-context-snapshot.ts`.
 
-zkLogin OAuth fundamentally cannot run against `localhost:3001`. Google's `redirect_uri` check requires the URI in the OAuth request match a URI whitelisted in the Cloud Console OAuth client. Audric's client is registered for production redirect URIs + the legacy `localhost:3000` (used by `apps/web`'s dev server). Browser smoke against `localhost:3001` returns Google `Error 400: redirect_uri_mismatch`.
-
-**Decision (2026-05-19 ~07:45 AEST):** ship Phase 3 forward without local smoke. G5 still applies but is exercised against the first preview/prod deploy of web-v2. This is consistent with the original "founder-driven only" caveat — zkLogin smoke needs the founder regardless of where it runs.
-
-**When the smoke does happen (preview/prod):**
-
-1. Deploy web-v2 to a Vercel preview URL.
-2. Verify the OAuth client has that preview's `/auth/callback` URI whitelisted (or stage on a production-redirect preview).
-3. Sign in via Google → land back on `/audric-chat` signed in.
-4. Type **"save 0.01 USDC"** → `<PermissionCard>` renders inline.
-5. Tap Approve → sponsored-tx flow → on-chain commit → LLM narrates the receipt.
-6. NeonDB verification on Turn 1 row: `attemptId` is a non-null UUID, `pendingActionYielded = true`.
-   - `pendingActionOutcome` + `writeToolDurationMs` will remain NULL on Turn 1 until Phase 4 wires the cross-turn updateMany (known structural gap).
-7. Deny path on a separate intent → LLM narrates the denial gracefully.
-
-**Known structural gap (Phase 4 follow-up):** The cross-turn `updateMany({where: {attemptId}, data: {pendingActionOutcome, writeToolDurationMs}})` on Turn 1's row from Turn 2's handler is NOT yet wired — it requires a client-driven payload to thread the sponsored-tx latency back. Phase 3 ships the structural correlation (Turn 1 stamps the correct `attemptId`); Phase 4 wires outcome resolution.
-
-If anything misbehaves see "Known degradation modes" below. If G5 passes: mark Phase 3 G5-acceptance done in `audric-build-tracker.md` and proceed to Phase 4.
+**Not blocking v0.7d close.** Surfaces because Block B's smoke was the first end-to-end verification of the cron in ~7 days. Schedule as a separate hotfix after Block C.
 
 ---
 
-## Phases 4 + 4b — SHIPPED (historical reference)
+## 🚧 Block B structural fix — KNOW THIS BEFORE TOUCHING `vercel.json`
 
-**Phase 4 (S.176, 2026-05-19 ~08:15 AEST)** widened the Phase 3 Slice D HITL pattern to 10 of the 11 remaining writes per D-13 ordering — `withdraw`, `send_transfer`, `borrow`, `repay_debt`, `claim_rewards`, `harvest_rewards`, `swap_execute`, `volo_stake`, `volo_unstake`, `save_contact`. Generalised `lib/audric/sponsored-tx.ts` (replaces `sponsored-save.ts`) handles 9 sponsored writes via discriminated-union dispatch. `/api/transactions/prepare` widened to a 10-branch dispatcher with `feeHooks.{save_deposit, borrow}` + conditional `overlayFee` for swap + harvest. NEW `/api/contacts/save` handles the lone non-tx write. Outcome-update slice closes the G5 telemetry gap.
+**The Vercel project (`prj_YD47kPlh4PAH8YaaA02bXi1w4KkR`) has `Root Directory: apps/web` per project settings.**
 
-**Phase 4b (S.177, 2026-05-19 ~08:50 AEST)** closed the lone Phase 4 deferral via a strategic deferral, NOT an implementation. `pay_api` removed from web-v2's tool set (one-line `WRITE_TOOLS.filter`); spec drafted at `t2000/spec/active/AUDRIC_AGENTIC_COMMERCE_SPEC_DRAFT.md` v0.1 defining `pay_api`'s product home as **Audric Store + Agentic Commerce sub-capability** with 7 D-questions + 4-phase roadmap covering the 4 founder-validated use cases ("Make me a beat and sell it for $5" / "Buy everything for my house party" / "Order flowers for mom" / "Christmas shopping max $50 each"). Legacy `apps/web` ships `pay_api` unchanged. Engine `WRITE_TOOLS` continues to export all 12 tools.
+This means `vercel.json` MUST live at `apps/web/vercel.json`, NOT at the repo root. Adding a `vercel.json` at the repo root looks correct in git but Vercel silently ignores it.
 
-**Bundles** (multi-step `WriteStep[]` PTBs) remain deferred to Phase 5/6 when `compose_bundle` migrates to AI SDK orchestration.
+**How this bit us in Block B:** the pre-Block-B `vercel.json` had lived at `/audric/vercel.json` since the day it was created. ALL 5 cron entries (the 3 long-standing retention/sweep jobs + the 2 Block B snapshot crons) had been silently never registered with Vercel cron. The `stale-fincontext-backlog` item that had been open for ~7 days was the first visible symptom (a row that should have refreshed daily was 169h stale).
 
-**Agentic Commerce Phase 1** (single-vendor `pay_api` revival in web-v2) is gated on founder D-question lock. When founder unblocks: lock D-1..D-7, promote spec to SPEC 39 at `spec/active/shipping/`, cross-import `service-gateway.ts` (~516 LoC), port `prepare` + `complete` standard-MPP branches (~700 LoC subset of legacy 1,459), add `mppx@^0.4.9` + `@suimpp/mpp@^0.3.1` deps, add `lib/audric/pay-api.ts`, remove the `WRITE_TOOLS.filter` line, wire `pay_api` branch in Approve handler, smoke against Resend / PDFShift / OpenAI.
+**Validation commands (run any time you touch `vercel.json`):**
 
----
+```bash
+cd /Users/funkii/dev/audric
+vercel project inspect  # Confirms Root Directory == "apps/web"
+vercel crons list       # Ground-truth of what's actually registered
+```
 
-## Known degradation modes (if G5 smoke surfaces issues)
+If `vercel crons list` returns "No cron jobs found" but you have a `crons:` array in your config, the file is at the wrong layer.
 
-- **No on-chain effect after Approve.** Check `apps/web-v2/.env.local` has `ENOKI_SECRET_KEY` set + matches the Enoki workspace ID baked into `NEXT_PUBLIC_ENOKI_API_KEY`. Mismatch → Enoki sponsor returns 401.
-- **"Authentication required" 401 from `/api/transactions/prepare`.** Session JWT expired (zkLogin sessions are bound to JWT lifetime ~1h). Sign out → sign in fresh.
-- **`PermissionCard` doesn't render.** Confirm `translateChunk` is emitting BOTH a `tool-input-available` (with `toolMetadata`) AND a `tool-approval-request` for the same `toolCallId`. Network tab → SSE event stream.
-- **LLM doesn't narrate after Approve.** `sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls` should auto-fire the next turn. If it doesn't, ensure `addToolOutput` was actually called after `addToolApprovalResponse` (not just the approval response on its own). Console log inside `onApprove`.
-- **Sponsored-tx fails at sign step.** `ZkLoginSigner` requires the FULL `ZkLoginSession` (with `proof`, `maxEpoch`, `randomness`, `ephemeralKeyPair`). If `localStorage` still has the LEGACY JWT-only shape, clear it via DevTools → Application → Storage → Clear site data → sign in fresh.
-
----
-
-### Critical Phase 3 inheritance from Day 2e
-
-- ✅ **Agent composition baseline.** `save_deposit` builds on `agent.stream({...})`, NOT on `engine.submitMessage()`.
-- ✅ **`wrapLegacyTool` bridge already sets `needsApproval`** on write-tier tools — engine v2.11 ships this verbatim.
-- ✅ **Phase 5.5 LMM mount point exposed.** `const model: LanguageModel = useGateway ? gateway(...) : createAnthropic(...)(...)` in `apps/web-v2/app/(chat)/api/audric-chat/route.ts` — Phase 5.5 just wraps with `wrapLanguageModel(model, [...])`.
-- ✅ **SPEC 40 (Batch 3) inheritance.** Phase 3's Agent path means SPEC 40 collapses into "extend Phase 3's pattern to 11 more writes" instead of "migrate two parallel systems."
-
-### Downstream batches (queued behind Phase 3)
-
-After Phase 3 closes:
-- **Batch 2 (SPEC 39 MCP remote migration)** — needs a formal `spec/active/SPEC_39_MCP_REMOTE_MIGRATION.md` draft first. ~1 week.
-- **Phase 4 (mechanical write tool migration + `<financial_context>` + `intent-dispatcher.ts` port from D-14 S.173 directive)** — ports `STATIC_SYSTEM_PROMPT` byte-for-byte, wires `<financial_context>`, ports `intent-dispatcher.ts` byte-for-byte alongside. ~5 days.
-- **Phase 4.5 (D-16 `generateObject` classifiers + D-14 re-eval)** — migrate 8+ classifiers to `generateObject({ schema })`; decide whether to KEEP regex dispatcher + ADD `generateObject` secondary classifier (recommended) or REPLACE regex entirely (likely rejected — regex is deterministic). ~2 days.
-- **Phase 5.5 (D-17 LMM middleware)** — wrap `model` with `wrapLanguageModel(model, [audricGuardsMiddleware, preflightMiddleware, piiRedactionMiddleware, telemetryMiddleware])` at the mount point Day 2e already exposed. ~3 days.
-- **Batch 3 + 4** — see "Downstream batches" table below.
+The same root-directory rule applies to `next.config.js`, `tsconfig.json` overrides, env-file scoping, etc. Always confirm `Root Directory` in `vercel project inspect` before placing config files.
 
 ---
 
-## Downstream batches (queued behind Day 2c++ Batch 1)
+## 📋 v0.7d backlog items (carry forward to next session)
 
-| Batch | Scope | Effort | Trigger to start |
-|---|---|---|---|
-| **Batch 2 — SPEC 39 MCP remote migration** | Deploy `@t2000/mcp` as Vercel Function at `mcp.t2000.ai/api/mcp` via `mcp-handler` + OAuth via `withMcpAuth`. Keep npm package as stdio→HTTP shim for legacy clients. | ~1 week | After Day 2c++ Batch 1 closes; draft `spec/active/SPEC_39_MCP_REMOTE_MIGRATION.md` first |
-| **Batch 3 — SPEC 40 HITL `needsApproval` migration** | Replace `PendingAction` / `attemptId` / `/api/engine/resume` with AI SDK native `needsApproval` + `ToolApprovalResponse` + `addToolApprovalResponse`. Engine v3.0.0 candidate (breaking). | ~1–2 weeks | **AFTER Phase 6 cutover** (this touches the harness contract; needs dedicated AUDRIC_HARNESS_CORRECTNESS_SPEC v1.5 draft + 14-day canary plan) |
-| **Batch 4 — Phase 6 sunset cleanup** | Delete legacy `audric/apps/web` chat route + useEngine.ts + chat components + engine `bridge/` + `streaming.ts` + `stream-checkpoint.ts` + `early-dispatcher.ts` + `orchestration.ts` runTools half. **~-10,800 LoC.** | Already in v0.7c scope | Triggered by Phase 6 cutover (DNS flip `audric.ai` → web-v2) |
-
----
-
-## Pinned template SHA — `vercel/ai-chatbot`
-
-| Field | Value |
-|---|---|
-| Repo | [`github.com/vercel/ai-chatbot`](https://github.com/vercel/ai-chatbot) |
-| Pinned SHA | **`107a43a`** |
-| Tag context | Latest stable commit on `main` as of 2026-04-17 ("drop kimi-k2-0905, default to kimi-k2.5", #1487). Includes the v1 architectural marker (`f9652b4` from 2026-03-20: "feat: v1 — persistent shell, model gateway, artifact improvements"). |
-| Source URL (snapshot) | `https://github.com/vercel/ai-chatbot/tree/107a43a` |
-
-### Why this SHA
-
-| Reason | Detail |
-|---|---|
-| AI SDK v6 + tool approval is load-bearing for v0.7c U-1 | Landed in `4d3ba8d` (2025-12-19). v0.7c's Slice D win (U-1: native HITL via `useChat({ onToolCall, addToolResult })`) requires this. Any SHA before `4d3ba8d` is disqualified. |
-| Includes the v1 architectural marker | `f9652b4` (2026-03-20) shipped "v1 — persistent shell, model gateway, artifact improvements". Pinning post-v1 means we vendor the stable architecture, not an in-progress refactor. |
-| D-7 stays exactly as written | Template at `107a43a` is on `next-auth: 5.0.0-beta.25`. (An earlier commit `b4f595a` from 2026-03-13 was titled "migrate from next-auth to better-auth" but the change was reverted or never landed on `main` — verified by `rg 'better-auth' .` at `107a43a` returning zero hits. SPEC D-7's "delete `next-auth`" line is correct as written.) |
-| Latest stable on `main` at fork time | `107a43a` is the most recent commit on `main` as of 2026-04-17. Pinning to the tip gives us the most lint fixes + bug fixes + model-registry currency. No newer commits between `107a43a` and Phase 1 Day 1b (2026-05-18). |
-
-### Version compatibility audit (template vs audric)
-
-| Dep | Template at `107a43a` | audric/web (Next 15) | Decision in fork |
-|---|---|---|---|
-| `next` | `16.2.0` | `^15` | **web-v2 stays on Next 16.** Side-by-side per D-1(b) accommodates the version split until Phase 6 cutover. Audric-wide bump to Next 16 is a future SPEC decision (not v0.7c scope). |
-| `react` | `19.0.1` | `^19` | Compatible. |
-| `ai` | `6.0.116` | `^6.0.182` | Audric is on a newer minor — pin web-v2 to the same `^6.0.182` to stay aligned with the engine. |
-| `next-auth` | `5.0.0-beta.25` | — | **DELETE in Day 1c** per SPEC D-7 (b) — vendor-first, then strip in commit 2 of the fork. |
-| `drizzle-orm` | `^0.34.0` | (audric uses Prisma) | **Keep in fork initially; swap to Prisma in Phase 2** per **D-9 (a) lock**. ~½ day translation cost as the SPEC budgets. |
-| `@vercel/blob` | `^0.24.1` | `^2.3.3` | Audric is on a newer major — align web-v2 to `^2.3.3`. |
-| `tailwindcss` | `^4.1.13` | `^4` | Compatible. |
-| `typescript` | `^5.6.3` | `^5` | Compatible. |
-
-### How to refresh the SHA later (if needed)
-
-If a future SPEC bumps the template baseline:
-
-1. Re-run `gh api 'repos/vercel/ai-chatbot/commits?per_page=20'` to inspect new commits.
-2. Diff the new SHA against `107a43a` to identify breaking changes (esp. `app/(chat)`, `lib/db/`, `components/`).
-3. Update this section's "Pinned SHA" + "Why this SHA" rows.
-4. Update the SPEC's Phase 1 log entry.
-5. Re-vendor with `scripts/vendor-template.sh` (TBD; written if/when refresh is needed).
+| Item | State | Owner |
+|---|---|---|
+| `stale-fincontext-backlog` | ✅ CLOSED 2026-05-21 (S.222) via vercel.json fix | — |
+| `fincontext-zero-bug-backlog` | OPEN (P2, ~30 min hotfix) | Post-Block-C |
+| `ai-gateway-userid-backlog` | OPEN (P3, ~10 min) — wire userId tag into AI Gateway `gateway()` wrapper for per-user cost attribution | Post-v0.7d |
+| `v07e-backlog` | OPEN (~3-5d) — persistent chat sessions (save transcripts + sidebar history + click-to-resume + delete + visibility). **Drafted AFTER v0.7d Phase 8 G12 closes.** Storage decision (drizzle-migrate vs prisma-rewrite) deferred to v0.7e drafting. See also `engine-fn-injection-refactor` + `engine-internal-key-final-delete` below — both natural follow-ons that land alongside (or before) the v0.7e chat-session work. | v0.7e |
+| `engine-fn-injection-refactor` | **NEW** OPEN (P3, ~1-2d) — eliminate engine→audric HTTP self-fetches by injecting audric `lib/*` functions directly into the engine via `ToolContext`. Today the engine calls `fetch('${AUDRIC_INTERNAL_API_URL}/api/portfolio?…', { headers: { 'x-internal-key': … } })` for analytics SSOT; same Next.js process, same memory, full HTTP round-trip + auth dance. Function injection removes the HTTP boundary, the `x-internal-key` header, the `AUDRIC_INTERNAL_API_URL` env var, and the in-process self-fetch latency tax. Touchpoints: `packages/engine/src/audric-api.ts`, `packages/engine/src/tools/{spending,portfolio-analysis,yield-summary,activity-summary,receive}.ts`, engine `ToolContext` type, audric `engine-factory.ts` (replace `env: { AUDRIC_INTERNAL_KEY, AUDRIC_INTERNAL_API_URL }` with `audricApi: { getPortfolio, getHistory, … }` injection). Audit-first: confirm all 6 engine call sites + the 1 surviving `/api/internal/payments` route. Requires engine minor bump + audric `pnpm add` cycle. | v0.7e+ |
+| `engine-internal-key-final-delete` | **NEW** OPEN (P3, ~30 min) — finalize the `T2000_INTERNAL_KEY` env var retirement once `engine-fn-injection-refactor` ships. Remaining consumers after function injection: ONLY `/api/internal/payments` (engine payment-link / invoice tools). At that point, port `/api/internal/payments` engine consumers to function injection too (same pattern as analytics), then delete `T2000_INTERNAL_KEY` from audric env schema (`apps/web/lib/env.ts`, `apps/web-v2/lib/env.ts`, `.env.example`), drop `validateInternalKey` from `apps/web/lib/internal-auth.ts` + `apps/web-v2/lib/internal-auth.ts`, delete `/api/internal/payments` route, drop `x-internal-key` branch from `authenticateAnalyticsRequest`. Depends on `engine-fn-injection-refactor`. | v0.7e+ |
+| Phase 3.5 backlog | OPEN — full memory controls in `/settings/memory` (per-record delete via `MemoryStore.forget()`, "explain why this fact was recalled" provenance, recall-frequency ranking). Phase 3 LITE shipped a read-only top-K disclosure surface; controls deferred because MemWal SDK 0.0.4 doesn't expose the primitives | Post-v0.7d |
 
 ---
 
-## Open follow-ups
+## 🔧 Where the v0.7d code lives (web-v2 = production traffic surface)
 
-- **F-15** — Audric-wide Next 15 → 16 bump (separate SPEC; not v0.7c scope).
-- **F-16** — Vendor-template refresh script (write only if we ever rebase off a newer template SHA mid-fork).
-- ~~**F-17** — Template baseline TS errors~~ ✅ **CLOSED Day 1d.**
-- ~~**F-18** — Vendored `biome.jsonc` references unknown rule names~~ ✅ **CLOSED Day 1d.**
-- ~~**Day 1c eviction residue**~~ ✅ **CLOSED post-Day-1d audit (S.167).**
-- ~~**Phase 2 hardening of Day 1c stub** — full `verifyJwt` + Google JWKS + Enoki address~~ ✅ **CLOSED Day 2a (S.168).**
-- **Phase 2 SidebarUserNav sign-in wiring** — `components/chat/sidebar-user-nav.tsx` currently toasts "Sign-in is wired in Phase 2." for the guest path. Phase 3 wires the real zkLogin Google OAuth trigger.
-- **Phase 3 — ZkLoginProvider real wallet wiring** — `lib/audric-auth-client.ts` currently children-passthrough; Phase 3 swaps for full `@mysten/dapp-kit` `WalletProvider` + Enoki client tree.
-- **F-19** (P2 backlog) — wider env-gate sweep: refactor the ~25 template `process.env.X` reads through `env.X`. Not a Day 2c++/Day 2d blocker.
-- **F-3 deeper diagnosis** (Day 2c open) — signed-thinking `signature_len=0` through gateway. Needs a direct-Anthropic cross-check for the same prompt. Lower priority — single-turn flows don't need signatures.
-- **F-4 verification** (Day 2c open) — structured output passthrough waits on Phase 4.5 `generateObject` wire-up.
-- **Vercel AI Gateway dashboard founder verification** (Day 2c open) — look for spans tagged `functionId=audric-chat-day2c` after deploying web-v2 to Vercel. Dev-mode they're visible via the gateway's request log.
+| Concern | File | Notes |
+|---|---|---|
+| MemWal client singleton | `apps/web-v2/lib/memwal.ts` | Fail-open if env vars unset; `_testCreateMemWalClient` factory for tests |
+| Adapter (engine `MemoryStore` ↔ MemWal SDK) | `apps/web-v2/lib/audric/memwal-memory-store.ts` | ~60 LoC mechanical mapping |
+| Per-turn recall closure | `apps/web-v2/lib/audric/memwal-prepare-step.ts` | Wired into `Experimental_Agent({ prepareStep })`; injects `<memory_recall>` at F-4 layer 3 |
+| Per-turn write callback | `apps/web-v2/lib/audric/memwal-write-callback.ts` | Wired into `Experimental_Agent({ onFinish })`; fires `memwal.analyze` via Vercel `waitUntil()`; skips resume turns to avoid double-extraction |
+| Settings disclosure UI | `apps/web-v2/components/settings/memory-section.tsx` + `app/api/memory/list/route.ts` | Reads `memwal.recall(BROAD_LIST_QUERY, 20, namespace)`; auth via `x-zklogin-jwt` header (NOT cookies) |
+| System prompt assembly (post-Block-A) | `apps/web-v2/lib/audric/system-prompt.ts` | Now 4 layers, NOT 5. Layer 3 (memory) is injected by `prepareStep`, NOT this builder. Layers: 1 identity+advice → 2 financial context → 3 memory (via prepareStep) → 4 skill recipe gate |
+| Vercel cron — portfolio-snapshot | `apps/web/app/api/cron/portfolio-snapshot/route.ts` + `apps/web/lib/jobs/portfolio-snapshot.ts` | GET + `Authorization: Bearer ${env.CRON_SECRET}` |
+| Vercel cron — financial-context-snapshot | `apps/web/app/api/cron/financial-context-snapshot/route.ts` + `apps/web/lib/jobs/financial-context-snapshot.ts` | Same auth pattern; supports `?shard=N&total=M` for future fan-out |
+| Vercel cron schedule | `apps/web/vercel.json` | **MUST be at `apps/web/vercel.json`, NOT repo root — see structural fix section above** |
+
+**Tables permanently gone after Block A:**
+- `prisma.userMemory.*` (replaced by MemWal vector recall)
+- `prisma.userFinancialProfile.*` (replaced by MemWal `analyze` extraction)
+- `apps/web/lib/chain-memory/*` directory (chain memory LOCKED to MemWal-only per founder; not rebuilt)
+
+**Functions permanently gone:**
+- `buildMemoryContext` + `MemoryEntry` interface (was in `apps/web-v2/lib/audric/moat-context.ts`)
+- 3 `/api/internal/*` routes (profile-inference, memory-extraction, chain-memory)
+- 2 `/api/user/memories/*` routes (legacy CRUD)
+- 1 `/api/cron/user-memory-retention` route (no rows to retain)
 
 ---
 
-## Active SPEC drafts pending (started but not yet drafted)
+## 📜 Phase 6 Block A + B forensics (for any future agent who confuses "5 systems" vs "4 systems")
 
-- `spec/active/SPEC_39_MCP_REMOTE_MIGRATION.md` — Day 2c++ Batch 2 spec. Migrate `@t2000/mcp` to Vercel-hosted remote MCP at `mcp.t2000.ai/api/mcp` via `mcp-handler` + `withMcpAuth`. Founder approved 2026-05-18 PM (override of original "KEEP" audit verdict).
-- `spec/active/harness/AUDRIC_HARNESS_CORRECTNESS_SPEC_v1.5.md` — Day 2c++ Batch 3 spec. HITL redesign: `PendingAction`/`attemptId` → AI SDK `needsApproval` + `addToolApprovalResponse`. Engine v3.0.0 candidate.
+Pre-Block-A: Audric Intelligence had 5 named systems (Agent Harness + Reasoning Engine + Silent Profile + Chain Memory + AdviceLog). Per `t2000/CLAUDE.md` + every cursor rule.
+
+Post-Block-A (2026-05-21): **4 named systems.** MemWal absorbed both "Silent Profile" + "Chain Memory" into a single "Memory (MemWal)" system. The remaining 4 are:
+1. **Agent Harness** — 37 tools, runtime, parallel reads + serial writes under tx mutex
+2. **Reasoning Engine** — 14 safety guards + classifier + preflight + extended thinking
+3. **Memory (MemWal)** — `@mysten-incubation/memwal` long-term vector memory + daily `<financial_context>` snapshot for short-term orientation
+4. **AdviceLog** — `prisma.adviceLog.*` + `record_advice` audric-side tool
+
+**If you see a doc saying "5 systems," it's stale.** S.221 + S.222 update t2000/CLAUDE.md + audric/CLAUDE.md + 4 cursor rules + 2 docstrings to the 4-system framing. The cursor-rule sweep is on the t2000 side because audric's rules live in `audric/.cursor/rules/` and the CLAUDE.md on each repo's root.
+
+Block A code-only diff: ~−2200 LoC source + ~−4000 LoC Prisma client regen = ~−6200 LoC total.
+
+Block B code-only diff: +431 / −230 LoC (web-v2) + structural one-line `vercel.json` move (commit `3c02033`).
+
+---
+
+## 🧰 Recurring agent guidance
+
+### Header-based auth in web-v2 (NOT cookies)
+
+Every new authed fetch from a Client Component MUST forward `useZkLogin().session.jwt` via the `x-zklogin-jwt` header. Audric is header-based zkLogin, NOT cookie-based. Forgetting this is the most common P1 bug — surfaces as a 401 on every read against `/api/memory/list` or similar.
+
+Canonical pattern (used in `memory-section.tsx`):
+```tsx
+const { session } = useZkLogin();
+const res = await fetch("/api/memory/list", {
+  headers: session?.jwt ? { "x-zklogin-jwt": session.jwt } : {},
+});
+```
+
+### Audit-first slice discipline
+
+Pattern that landed v0.7d ~11 days ahead of schedule: BEFORE starting any phase, audit the SPEC's claims against the actual codebase. The SPEC was written before v0.7c chat-flip — many of its claims are stale. Phases 4 + 5 + Block A revision all collapsed multi-day SPEC work into minutes-to-hours of focused deletion because the audit caught "SPEC says do X" → "X is already done by Y" mismatches.
+
+Continue this cadence for Block C + Phase 7 + Phase 8.
+
+### Vercel CLI cheat sheet (for driving smoke without founder)
+
+```bash
+# Project linked? (.vercel/project.json at repo root)
+cat /Users/funkii/dev/audric/.vercel/project.json
+
+# Confirm Root Directory before placing config files
+vercel project inspect
+
+# List registered crons (ground truth — beats reading vercel.json)
+vercel crons list
+
+# Trigger a cron immediately (auth handled by Vercel internally)
+vercel crons run /api/cron/portfolio-snapshot
+
+# Get a fresh production env dump (encrypted vars come through as "")
+vercel env pull /tmp/.env.production --environment=production
+
+# Recent deploys + statuses
+vercel ls
+```
+
+Encrypted env vars (like `CRON_SECRET`, `ANTHROPIC_API_KEY`) come through `vercel env pull` as empty strings — Vercel intentionally masks them. Use `vercel crons run` (which triggers from inside Vercel's runtime where the env is fully decrypted) instead of curl-ing with the secret.
+
+`vercel logs` requires Vercel Pro for runtime logs and may return "Not authorized" via CLI even when logged in — verify via DB query instead.
+
+### Driving smoke via DB query (when you need ground truth)
+
+The `apps/web` codebase uses Prisma 7 + `@prisma/adapter-neon` for the Vercel runtime. To query the prod DB locally for verification:
+
+```typescript
+// Pull prod env first: vercel env pull /tmp/.env.production --environment=production
+// DATABASE_URL comes through unencrypted (Neon connection strings aren't masked)
+import { readFileSync } from "node:fs";
+import { PrismaClient } from "../lib/generated/prisma/client";
+import { PrismaNeon } from "@prisma/adapter-neon";
+
+const envFile = readFileSync("/tmp/.env.production", "utf8");
+const dbUrl = envFile.split("\n").find(l => l.startsWith("DATABASE_URL="))!
+  .replace(/^DATABASE_URL=/, "").replace(/^"(.*)"$/, "$1");
+
+const adapter = new PrismaNeon({ connectionString: dbUrl });
+const prisma = new PrismaClient({ adapter });
+// ...queries...
+await prisma.$disconnect();
+```
+
+Run via `pnpm --filter @audric/web exec tsx <script>.ts`. **Delete the script + env file after use** — don't leave secrets on disk.
+
+---
+
+## 📚 Historical: v0.7c (Phases 0–6 cutover) — ARCHIVED 2026-05-21
+
+v0.7c shipped 2026-05-19 to 2026-05-20. Phase 6 cutover migrated production traffic from `apps/web` chat shell to `apps/web-v2`. The original Phase 1–5 detail (template SHA, env wiring, `PermissionCard` extension, Payment Intents architecture, AI Elements adoption, etc.) is preserved in `audric-build-tracker.md` S.162-S.196 + the v0.7c-era version of this file at git tag `v0.7c-handoff` (if needed; otherwise reachable via `git log -- HANDOFF_NEXT_AGENT.md`).
+
+Key v0.7c facts that still apply:
+
+- **Template SHA pinned at `vercel/ai-chatbot@107a43a`** (2026-04-17 tip of main, includes AI SDK v6 + tool approval + v1 architectural marker).
+- **web-v2 is on Next 16 + Tailwind v4 + AI SDK v6 + Prisma 7 + Drizzle (for chat session tables — currently dormant; v0.7e brings them back).**
+- **zkLogin smoke requires preview/prod URL** (`localhost:3001` returns `redirect_uri_mismatch` from Google). The OAuth client is registered for `localhost:3000` (legacy apps/web) + production URIs only.
+- **`apps/web` is off-traffic but NOT yet archived.** v0.7c Phase 6 flipped DNS; v0.7e will delete the directory. Until then, `apps/web` exists for archival reference (and its memory pipeline was the deletion target in v0.7d Phase 6 Block A).
 
 ---
 
 ## Cross-references
 
-- `t2000/spec/active/BENEFITS_SPEC_v07c.md` — the active SPEC. **Read §"Phase 2 Day 2c++" for the full matrix + 4-batch execution plan.**
-- `apps/web-v2/README.md` — what lives in the fork, sequenced by Day.
-- `audric-build-tracker.md` row 7t (v0.7c phase tracker) + row 7y (Day 2c++ matrix commitment) + **S.171** (this session's audit + 4-batch approval).
-- `t2000/HANDOFF_NEXT_AGENT.md` — t2000-side handoff (engine releases + SPEC 37 v0.7a closure history).
+- `t2000/spec/active/BENEFITS_SPEC_v07d.md` — active SPEC
+- `t2000/audric-build-tracker.md` — entries S.214 (v0.7d kickoff) through **S.222 (this session — Block B + vercel.json structural fix)**
+- `t2000/.cursor/rules/agent-harness-spec.mdc` — Spec 1 + Spec 2 contracts (still binding under v0.7d)
+- `t2000/.cursor/rules/memory-injection-architecture.mdc` — F-4 layer 3 contract (memory injection happens in `prepareStep`, NOT system-prompt builder)
+- `t2000/spec/archive/v07c/` — v0.7c SPEC + slice drafts (historical reference)

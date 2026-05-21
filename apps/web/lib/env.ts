@@ -92,7 +92,25 @@ const serverSchema = z.object({
   /** Enoki sponsor API secret — signs sponsored transactions. */
   ENOKI_SECRET_KEY: requiredString,
 
-  /** Internal shared secret with t2000 cron for `/api/internal/notification-users` + `/api/internal/health-factor` reads. */
+  /** Internal shared secret. Two consumers post-v0.7d Phase 6 Block C
+   * (S.224, 2026-05-21):
+   *   1. Audric's surviving `/api/internal/payments` route (engine's
+   *      create_payment_link / list_payment_links / cancel_payment_link
+   *      / create_invoice / list_invoices / cancel_invoice tools).
+   *   2. Engine→audric SSOT dual-auth for analytics reads
+   *      (`/api/portfolio`, `/api/history`, `/api/analytics/*`) via
+   *      `authenticateAnalyticsRequest()` — the engine attaches
+   *      `x-internal-key` server-side to preserve SSOT vs falling back
+   *      to BlockVision direct.
+   * Required because BOTH consumers fail closed without it:
+   *   - payments route returns 401 → all payment-link tools break.
+   *   - Analytics dual-auth falls through to JWT-only → engine 401s
+   *     → tools return empty data → LLM narrates "no activity".
+   * Slated for full elimination in v0.7e+ via the engine
+   * function-injection refactor (skip HTTP self-fetches; call audric
+   * libs directly with the JWT context the route already has). See
+   * `HANDOFF_NEXT_AGENT.md` backlog row `engine-fn-injection-refactor`.
+   */
   T2000_INTERNAL_KEY: requiredString,
 
   /** Upstash Redis URL — session storage for the engine. */

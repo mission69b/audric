@@ -1,65 +1,43 @@
-# Internal API (`/api/internal/*`)
+# Internal API (`/api/internal/*`) — Post-v0.7d Phase 6 Block C
 
-Endpoints called server-to-server by t2000 ECS cron. Read alongside `.cursor/rules/cron-job-architecture.mdc`.
+> ✅ **Updated 2026-05-21 (S.224).** The t2000 ECS cron retired in Block A/B/C of v0.7d Phase 6 (S.221 / S.222 / S.224). Almost every receiver route under `/api/internal/*` was deleted alongside it. Read alongside `.cursor/rules/cron-job-architecture.mdc` for the full migration story.
+
+## What's left
+
+Only ONE route. `POST /api/internal/payments` — the engine bridge for payment-link / invoice tools (`create_payment_link`, `list_payment_links`, `cancel_payment_link`, `create_invoice`, `list_invoices`, `cancel_invoice`). Engine calls it server-side via `x-internal-key` because it has no zkLogin JWT (server context, not browser).
+
+Slated for elimination in v0.7e+ via function injection — see `HANDOFF_NEXT_AGENT.md` backlog `engine-fn-injection-refactor`. Until then, this is the canonical pattern for engine→audric server-to-server bridges.
 
 ## Auth — required
 
 ```typescript
-import { assertInternal } from '@/lib/internal-auth';
+import { validateInternalKey } from '@/lib/internal-auth';
 
 export async function POST(req: Request) {
-  assertInternal(req);  // 401 if x-internal-key header doesn't match T2000_INTERNAL_KEY
+  const auth = validateInternalKey(req.headers.get('x-internal-key'));
+  if ('error' in auth) return auth.error;
   // ... do the work
 }
 ```
 
 Never skip this. Internal endpoints are public HTTPS endpoints; the auth gate is the only security boundary.
 
-## Sharding contract
+## Endpoints (post-Block-C)
 
-Endpoints accept optional `{ shard, total }` body params. When present, filter users by hash:
-
-```typescript
-const body = await req.json().catch(() => ({}));
-const { shard, total } = body as { shard?: number; total?: number };
-
-const users = await prisma.user.findMany({
-  where: shard != null && total != null
-    ? { /* hash-based shard filter — id is cuid */ }
-    : undefined,
-});
-```
-
-Default shard count from t2000 cron is **8**.
-
-## Response shape — uniform
-
-```typescript
-return Response.json({ created, skipped, errors, total });
-```
-
-t2000 cron logs the aggregate counts. Don't deviate.
-
-## Idempotency
-
-Cron WILL retry. Use `prisma.X.upsert(...)`, never `create(...)`.
-
-## Endpoints (current state — post v0.7d Phase 6 Block A)
-
-| Route | Domain | Cron schedule (UTC) |
+| Route | Domain | Caller |
 |---|---|---|
-| `/api/internal/financial-context-snapshot` | UserFinancialContext | 02:30 (ECS) — Block B migrates to Vercel cron |
-| `/api/internal/portfolio-snapshot` | PortfolioSnapshot | 02:00 (ECS) — Block B migrates to Vercel cron |
-| `/api/internal/payments` | Payment status updates | On-event |
-| `/api/internal/health-factor` (GET) | Read HF for an address | On demand |
+| `/api/internal/payments` (POST/GET/PATCH) | `Payment` CRUD | Engine payment-link + invoice tools |
 
-> **Deleted in v0.7d Phase 6 Block A (S.221, 2026-05-21):** `memory-extraction` + `profile-inference` + `chain-memory` routes — all three replaced by MemWal `analyze()` in `apps/web-v2/lib/audric/memwal-write-callback.ts`.
+> **Deleted in v0.7d Phase 6 (S.221, S.222, S.224 — 2026-05-21):**
+> - `/api/internal/memory-extraction`, `/api/internal/profile-inference`, `/api/internal/chain-memory` (S.221) — replaced by MemWal `analyze()` in `apps/web-v2/lib/audric/memwal-write-callback.ts`.
+> - `/api/internal/portfolio-snapshot`, `/api/internal/financial-context-snapshot` (S.224) — replaced by Vercel cron at `/api/cron/*` with `CRON_SECRET` bearer auth.
+> - `/api/internal/health-factor`, `/api/internal/notification-users`, `/api/internal/user-address`, `/api/internal/app-event` (S.224) — receivers of the now-retired t2000 ECS cron. Zero callers post-Block-C.
 
-## Adding a new endpoint
+## Adding a new internal endpoint
 
-1. `assertInternal(req)` first line.
-2. Accept optional `{ shard, total }`.
-3. Make it idempotent (upsert).
-4. Return `{ created, skipped, errors, total }`.
-5. Add the t2000 cron job (see `t2000/.cursor/rules/cron-job-architecture.mdc`).
-6. Update `.cursor/rules/cron-job-architecture.mdc` AND `.cursor/rules/prisma-models-overview.mdc`.
+**Stop. Don't.** Almost every new server-to-server need should be a function call inside the same Next.js process (the v0.7e+ pattern). If you genuinely need an HTTP boundary:
+
+1. `validateInternalKey(req.headers.get('x-internal-key'))` first line.
+2. Make it idempotent (upsert).
+3. JSON-only response.
+4. Update `cron-job-architecture.mdc` AND this rule + add an audit-finding note explaining why function injection wasn't viable.

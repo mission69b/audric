@@ -129,12 +129,13 @@ export default async function ScalingDashboard({
               ]}
             />
             <Runbook
-              title="Cron shard failures (cron.fin_ctx_shard_duration_ms missing)"
+              title="Vercel cron failures (cron.fin_ctx_duration_ms missing)"
               steps={[
-                'Check ECS task logs for T2000_FIN_CTX_SHARD_COUNT and AUDRIC_INTERNAL_KEY',
-                'Verify /api/internal/financial-context-snapshot returns 200 for manual POST',
-                'Each shard is independent — one failure does not abort others',
-                'Run at T2000_FIN_CTX_SHARD_COUNT=1 to isolate the failing user slice',
+                'Check Vercel Logs UI filtered to /api/cron/financial-context-snapshot',
+                'Verify CRON_SECRET set in Vercel project env (Authorization Bearer)',
+                'Run `vercel crons list` (Root Directory = apps/web) for schedule ground truth',
+                'Manual trigger: POST to /api/cron/financial-context-snapshot with Authorization Bearer ${CRON_SECRET}',
+                'Per-user errors are caught + counted — one bad user does not abort the loop (see lib/jobs/financial-context-snapshot.ts)',
               ]}
             />
             <Runbook

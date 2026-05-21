@@ -1,12 +1,11 @@
 /**
  * [v0.7d Phase 6 Block B — 2026-05-21 / S.222] Portfolio snapshot job.
  *
- * Extracted from `/api/internal/portfolio-snapshot/route.ts` so both
- * the legacy ECS cron path (POST /api/internal/portfolio-snapshot
- * with x-internal-key) AND the new Vercel cron path (GET
- * /api/cron/portfolio-snapshot with CRON_SECRET) share one
- * implementation. Block C deletes the legacy /api/internal/* route
- * alongside the t2000 indexer + AUDRIC_INTERNAL_KEY retirement.
+ * Single Vercel cron path: GET /api/cron/portfolio-snapshot (with
+ * Authorization: Bearer ${CRON_SECRET}). Originally extracted from
+ * `/api/internal/portfolio-snapshot/route.ts` (legacy ECS cron) to
+ * share implementation across both paths; the legacy `/api/internal/*`
+ * route was deleted in Block C.3 (S.224, 2026-05-21).
  *
  * Behavior (preserved from the legacy route):
  *   - Snapshots `PortfolioSnapshot` for every user that doesn't yet
