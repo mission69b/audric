@@ -8,28 +8,34 @@
 
 ## 🎯 Active SPECs
 
-**v0.7d MemWal — IN FLIGHT (Phase 7 observation, founder-owned)**
-[`t2000/spec/active/BENEFITS_SPEC_v07d.md`](../t2000/spec/active/BENEFITS_SPEC_v07d.md). The v0.7d SPEC retires the legacy SQL-backed memory pipeline (`UserMemory` + `UserFinancialProfile` + chain-classifier cron) and replaces it with `@mysten-incubation/memwal` vector memory. Phase 6 SHIPPED. Phase 7 observation in progress (closes ~2026-05-23 ~17:00 AEST).
+**v0.7d MemWal — CLOSED (Phase 7 done per founder 2026-05-21 ~20:00 AEST)**
+[`t2000/spec/active/BENEFITS_SPEC_v07d.md`](../t2000/spec/active/BENEFITS_SPEC_v07d.md). The v0.7d SPEC retired the legacy SQL-backed memory pipeline (`UserMemory` + `UserFinancialProfile` + chain-classifier cron) and replaced it with `@mysten-incubation/memwal` vector memory. **All 7 phases shipped + closed.**
 
-**v0.7e Tier C Migration + apps/web Archive — SKELETON + ALL D-AUDITS COMPLETE (S.232, 2026-05-21 ~21:30 AEST)**
-[`t2000/spec/active/BENEFITS_SPEC_v07e.md`](../t2000/spec/active/BENEFITS_SPEC_v07e.md). v0.1 SKELETON (415 lines) + 4 companion docs drafted tonight in `spec/active/`:
+**v0.7e Tier C Migration — Phase 1A SHIPPED (S.238, 2026-05-21 ~20:30 AEST)**
+[`t2000/spec/active/BENEFITS_SPEC_v07e.md`](../t2000/spec/active/BENEFITS_SPEC_v07e.md). v1.0 LOCKED-PENDING-FOUNDER per S.237; Phase 1A executed under "agent-assumed defaults" path immediately after Phase 7 closed (G1 → CLOSED). **4,233 net LoC deleted from apps/web across 22 files in 2 batches.** Slices 1A.2 (voice) + 1A.3 (build-id) DEFERRED to Phase 1B/2 due to chat-shell entanglement; will delete naturally when chat-shell migrates. **Major scope change per D-2 (unchanged from S.237):** Phase 5 (final apps/web archive) DEFERRED TO v0.7f; v0.7e ships Phases 2-4 (plus the shipped Phase 1A) only; apps/web survives as ~5,000 LoC MPP-only shim until Agentic Commerce SPEC ships pay_api in web-v2.
 
-| Doc | What it covers |
-|---|---|
-| `V07E_PHASE_0_BASELINE.md` | LoC baseline (148,867 LoC apps/web today) + per-phase delete targets; G4 gate closed |
-| `V07E_D_QUESTION_AUDITS.md` | All 7 founder D-questions audited with evidence + revised recommendations; **D-2 finding forces v0.7e Phase 5 deferral to v0.7f** |
-| `V07E_PHASE_1_EXECUTION_PLAN.md` | Phase 1 SPLIT to 1A (5 slices safe today, ~3.5h) + 1B (chat-shell cutover, now part of Phase 2). Per-slice delete-and-smoke checklists |
-| `V07E_PHASE_2_SURFACE_MAP.md` | File-level inventory of Phase 2 migration (~45-68h, up from SPEC §4's 3-4 days). lib/engine 56 files / 10,277 LoC + chat-coupled lib/* ~30k LoC + components migration tail + fn-injection refactor 14-20h |
+**8 companion docs in `spec/active/` (4 from Saturday's S.232 + 4 from tonight's S.237 prep block):**
+
+| Doc | What it covers | Block |
+|---|---|---|
+| `V07E_PHASE_0_BASELINE.md` | LoC baseline + per-phase delete targets; G4 gate closed | S.232 |
+| `V07E_D_QUESTION_AUDITS.md` | 7 D-questions audited; D-2 finding shrinks v0.7e scope | S.232 |
+| `V07E_PHASE_1_EXECUTION_PLAN.md` | Phase 1A (5 slices, ~3.5h) + Phase 1B subsumed into Phase 2 | S.232 |
+| `V07E_PHASE_2_SURFACE_MAP.md` | Phase 2 migration file-level inventory (~5-7d revised) | S.232 |
+| `V07C_RETROSPECTIVE.md` | v0.7c phase-by-phase outcome + lessons + dead-rewritten code inventory | **S.237 Block 1** |
+| `V07E_PERSISTENT_CHATS_LOCK1_POC.md` | LOCK-1 ORM POC: Option B (prisma rewrite) wins 9/11 dimensions; cost delta is ~3-4h, not 1.5d | **S.237 Block 3** |
+| `V07F_FORWARD_MAP.md` | v0.7f scope: Stream A (Agentic Commerce Phase 1) + Stream B (apps/web archive) + Phase 5c PWR permanent shelf | **S.237 Block 4** |
+| `SPEC_31_SCOPING.md` | Audits SPEC 30 Phase 2-10 status; recommends SPEC 31 = CSP perimeter polish (agent-only, A+ securityheaders.com gate) | **S.237 Block 5** |
 
 **Phase 1 gate status:**
 
 | Gate | Status |
 |---|---|
-| G1 (Phase 7 closes) | IN PROGRESS — calendar ~2026-05-23 ~17:00 AEST |
+| **G1 (Phase 7 closes)** | ✅ CLOSED 2026-05-21 ~20:00 AEST per founder |
 | G2 (Phase 8 G12 decision) | RESOLVED — fn-injection lands inside v0.7e Phase 2 per L-2 |
-| **G3 (`/api/portfolio` cutover)** | ✅ CLOSED tonight — S.231/232 ship `729fd23` |
-| **G4 (Phase 0 baseline)** | ✅ CLOSED tonight — V07E_PHASE_0_BASELINE.md |
-| **Founder D-1..D-7 lock** | OPEN — ~10-15 min review of V07E_D_QUESTION_AUDITS.md §"SUMMARY" |
+| **G3 (`/api/portfolio` cutover)** | ✅ CLOSED — S.231/232 ship `729fd23` |
+| **G4 (Phase 0 baseline)** | ✅ CLOSED — V07E_PHASE_0_BASELINE.md |
+| **Founder D-1..D-7 lock** | RESOLVED for Phase 1A (agent assumed defaults D-1/D-3/D-4/D-6); D-2/D-5/D-7 RATIFY needed before Phase 2 (~5 min review) |
 
 **The 7 founder questions in 1-line each (all audited; defaults bolded):**
 
@@ -43,12 +49,28 @@
 | D-6 | `/api/build-id` post-v0.7e | **REVISED → DELETE in Phase 1A.3** (all chat-shell consumers; web-v2 has no version-check) |
 | D-7 | Keep `apps/web-legacy/`? | **RATIFY DELETE** (git history is SSOT; actual `rm` 24h post-Phase 5) |
 
-**Phase 1A ready to ship after founder D-lock + G1 closes (~2-3 days from now). 5 slices, ~3.5h total:**
-1. 1A.1 page directory sweep (~1h) — Store + Pay + Settings + slug pages
-2. 1A.2 voice + hooks (~30m) — 3 routes + 2 hooks
-3. 1A.3 build-id + version-check (~30m) — route + 4 chat-shell hooks
-4. 1A.4 Memory/Settings dead-code (~45m) — MemorySection + apps/web settings page
-5. 1A.5 Payments LIST + slug cutover (~45m) — 3 routes + PayPanel
+**Phase 1A SHIPPED 2026-05-21 ~20:30 AEST (S.238). 3 of 5 slices delivered (~3h total) — 4,233 LoC delete from apps/web:**
+1. ✅ 1A.4 Memory/Settings dead-code SHIPPED — MemorySection + 3 section components + apps/web settings page/loading (-1,160 LoC)
+2. ✅ 1A.5 Payments slug cutover SHIPPED — slug + verify routes deleted; R3 IDOR test block deleted per G3 (-752 LoC). **LIST route + PayPanel KEPT until chat-shell migrates** (still consumed by dashboard-content.tsx).
+3. ✅ 1A.1 Page directory sweep SHIPPED — pay/[slug], invoice/[slug], settings/contacts, [username] (+ 5 orphaned components: PayClient/PayButton/DigestForm/InvoiceHeader/ContactsPage) (-2,321 LoC)
+4. 🟡 1A.2 voice DEFERRED to Phase 1B/2 — entangled with chat-shell UI (InputBar, VoiceModeContext, ChatMessage, BlockRouter, TextBlockView, dashboard-content). Deletes naturally when chat-shell migrates.
+5. 🟡 1A.3 build-id + version-check DEFERRED to Phase 1B/2 — entangled with ChunkErrorReloader, AppProviders, middleware X-App-Version stamping, useVersionCheck, useExpirySoonToast (~15 file touches in dying chat-shell). Deletes naturally with chat-shell.
+
+**Commits:**
+- Batch 1 (1A.4 + 1A.5): `c0295e4` — 11 files, -1,912 LoC
+- Batch 2 (1A.1): `36abe6b` — 12 files, -2,321 LoC
+
+**Post-deploy smokes (both batches verified GREEN):**
+- `/settings` → web-v2 (multi-hop `syd1:syd1:syd1::7xl6t`)
+- `/api/payments/[slug]` → web-v2 (4-hop `syd1:syd1:syd1::iad1::mh9c2`)
+- `/pay/test123` → web-v2 (title "Pay — Audric · Audric")
+- `/invoice/test123` → web-v2 (rewrite to /pay/:slug)
+- `/settings/contacts` → web-v2 (app-shell title)
+- `/someTestUser` → web-v2 ([username] catch-all 404)
+
+**Phase 1A audit-first lesson (added to S.238):** Phase 1A safe-today deletes are NON-chat-shell surfaces only. Slices touching apps/web chat-shell UI defer to Phase 1B/Phase 2 where chat-shell goes away anyway. Estimating slice complexity by file count alone underestimates entanglement risk — must audit consumer graph before classifying as "safe-today."
+
+**Next up: v0.7e Phase 2 (chat-shell cutover + 1A.2/1A.3 absorption + fn-injection refactor).** Requires founder D-2/D-5/D-7 RATIFY (~5 min) + Vitest infrastructure decision (R-1 risk surface from S.237). Estimated ~5-7d per revised SPEC §4 Phase 2.
 
 ### v0.7e (persistent chats) SPEC drafted 2026-05-21 ~22:45 AEST / S.233
 
@@ -211,9 +233,9 @@ The same root-directory rule applies to `next.config.js`, `tsconfig.json` overri
 |---|---|---|
 | `stale-fincontext-backlog` | ✅ CLOSED 2026-05-21 (S.222) via vercel.json fix | — |
 | `fincontext-zero-bug-backlog` | ✅ CLOSED 2026-05-21 / S.235 — gated upsert on `portfolio.source !== 'sui-rpc-degraded'` AND `portfolio.defiSource !== 'degraded'` in `apps/web/lib/jobs/financial-context-snapshot.ts:113-122`. New `degradedSkipped` field on `FinancialContextSnapshotResult` + `cron.fin_ctx_degraded_skipped` telemetry counter for live observability. `partial` + `partial-stale` defi states still trusted (some data > no data; 48h reader stale gate catches multi-day failures). Brand-new users with no row + degraded BlockVision → reader returns "" cleanly, agent falls back to fresh tools. Typecheck PASSED. Phase 7-safe (cron job, not chat/memory surface). | Closed |
-| `phase-5c-post-write-refresh-surface` | **NEW OPEN backlog row 2026-05-21 / S.236 (audit-only).** Phase 5c PostWriteRefreshSurface (the "↻ AFTER YOUR APPROVAL · REFRESHING STATE" framing for post-write reads) was previously assumed to be a web-v2 UI-only port from `apps/web/components/engine/timeline/PostWriteRefreshSurface.tsx`. AUDIT 2026-05-21 ~01:00 AEST proves it's BLOCKED by missing engine work: AISDKEngine v2 does NOT emit `source: 'pwr'` anywhere (only `'llm'` and `'user'`). The Day 3b PWR injection from SPEC 37 v0.7a Phase 2 was explicitly deferred and never shipped — `packages/engine/src/v2/step-finish.ts:36-44` comment: *"postWriteRefresh injection — Deferred to Day 3b... plain invalidation gets us 90% of the way."* Full scope ~12-16h: (a) engine Day 3b PWR injection (~4-8h) + (b) `source` discriminator through AI SDK v6 wire format (~2-4h; architectural uncertainty — AI SDK doesn't natively carry our `source` field, needs `providerMetadata` or UI data parts mechanism) + (c) engine release + (d) web-v2 primitives port (~3h) + (e) surface component (~2h) + (f) `variant="post-write"` on V2 cards (~1-2h) + (g) wiring (~1h). **Current production behavior (v0.7c+):** cache invalidates on write → LLM re-fires reads in next step → cards render with fresh data → functional data correctness is identical to legacy; only the visual "after approval" framing is missing. **Engineering judgment:** this is the last 10% of UX polish, not blocking. Gate decision on whether Phase 5c is worth the engine work + Phase 7-class boundary crossing. Founder should decide AFTER Phase 7 close. Recommended deferral target: v0.7f (Agentic Commerce) — bundle with ServiceCatalogCard / MppReceiptGrid work since those also need engine output discriminators. Phase 7-RISKY (engine change + chat surface change). | Open (founder lock pending) |
+| `phase-5c-post-write-refresh-surface` | **🟢 SHELVED 2026-05-22 / S.237** — Block 4 of prep plan recommended permanent shelf to v0.7f or beyond. Reasoning (per `V07F_FORWARD_MAP.md` §4): (a) web-v2 behavior is functionally correct (cache invalidation + LLM re-firing) — only visual framing missing; (b) zero user feedback in Phase 7 observation requesting this; (c) PWR restoration crosses engine + UI work boundaries which doesn't fit v0.7f migration scope; (d) future restoration is reversible — if user feedback ever requests, it's a clean ~12-16h feature slice. Audit history: AISDKEngine v2 does NOT emit `source: 'pwr'` anywhere; the Day 3b PWR injection from SPEC 37 v0.7a Phase 2 was explicitly deferred per `packages/engine/src/v2/step-finish.ts:36-44`. Full scope still ~12-16h: engine Day 3b PWR injection (~4-8h) + `source` discriminator through AI SDK v6 wire format (~2-4h) + engine release + web-v2 primitives port (~3h) + surface component (~2h) + V2 card `variant="post-write"` (~1-2h) + wiring (~1h). If founder feedback signal arrives post-v0.7f, open as a fresh feature ticket, not as a backlog row. | Shelved — re-evaluate post-v0.7f per user feedback |
 | `ai-gateway-userid-backlog` | ✅ CLOSED 2026-05-21 / S.234 — wired `providerOptions.gateway.user = walletAddress` in `apps/web-v2/app/api/chat/route.ts:1041-1050`. Per-user cost attribution active in Vercel AI Gateway Custom Reporting dashboard. Same walletAddress already shipped on `experimental_telemetry.metadata.userId` (OTel parity). Typecheck passes. Cost: $0.075/1k unique user IDs/month (single-digit $/month at audric scale). | Closed |
-| `v07e-backlog` | **🟡 SPEC SKELETON DRAFTED 2026-05-21 / S.233.** Audit-first cadence reveals ~85% of surface already built (Vercel AI SDK chatbot template debris). 3-5d estimate corrected to **~1.5-2.5d (drizzle path) OR ~2-3d (prisma rewrite path)**. SPEC: `spec/active/BENEFITS_SPEC_v07e_persistent_chats.md` (564 lines). 6 architectural locks pending founder review: LOCK-0 sequencing vs v0.7e structural; LOCK-1 ORM (agent rec = prisma rewrite); LOCK-2 vote/artifact disposition; LOCK-3 `(chat)` route group; LOCK-4 stream registry (agent rec = engine StreamCheckpointStore); LOCK-5 title generation (agent rec = Haiku summarizer). 5-phase plan + 10-risk surface captured. **DO NOT SHIP before v0.7d Phase 7 closes** (R-7: schema change crosses observation boundary). Phase 1 starts post-Phase-7-close + post-founder-lock. Storage decision = LOCK-1 in SPEC. See also `engine-fn-injection-refactor` + `engine-internal-key-final-delete` below — both natural follow-ons that land alongside (or before) v0.7e structural Phase 2. | v0.7e (chats) — post-Phase-7 |
+| `v07e-backlog` | **🟡 SPEC v0.1 SKELETON + LOCK-1 POC DONE 2026-05-22 / S.237.** Persistent chats SPEC: `spec/active/BENEFITS_SPEC_v07e_persistent_chats.md`. LOCK-1 POC ran tonight (Block 3 of prep plan): **Option B (prisma rewrite) wins 9 of 11 audit dimensions; cost delta is ~3-4h not 1.5d** (drizzle has ~50% dead artifact code; only 11 active queries need porting). Audit evidence in `V07E_PERSISTENT_CHATS_LOCK1_POC.md`. Persistent chats total effort revised: **~12-16.5h (~1.5-2 days, Option B) OR ~10-13h (~1.5 days, Option A)** — close to each other; B preferred for codebase consistency. 6 architectural locks pending founder review: LOCK-0 sequencing vs v0.7e structural; **LOCK-1 ORM (POC LOCKED Option B);** LOCK-2 vote/artifact disposition; LOCK-3 `(chat)` route group; LOCK-4 stream registry (agent rec = engine StreamCheckpointStore); LOCK-5 title generation (agent rec = Haiku summarizer). 5-phase plan + 10-risk surface captured. **DO NOT SHIP before v0.7d Phase 7 closes** (R-7: schema change crosses observation boundary). Phase 1 starts post-Phase-7-close + post-founder-lock. | v0.7e (chats) — post-Phase-7 |
 | `stats-route-wallets-null-backlog` | ✅ CLOSED 2026-05-21 / S.226 (t2000 `e1feeeed`) — root cause was env-gate violation (empty-string env var overrode canonical via `??`); fixed via `isValidSuiAddress` validation + canonical fallback. Production probe confirms wallets populate (treasury 4.8 SUI / 5.41 USDC + MPP gateway 12.26 USDC). | Closed |
 | `t2000-web-env-gate` | ❌ CANCELLED 2026-05-21 / S.227 — founder pushback during attempted ship (correct call). t2000/apps/web is a static marketing site with **zero required env vars**; CLAUDE.md rule #8's bug-class motivation (S.25 BlockVision empty-string silent degradation) is a REQUIRED-var problem. T2000 has 3 OPTIONAL Sui-address overrides handled defensively inline by S.226's `resolveSuiAddress` workaround, which is the right-sized fix at this scale. Adding 200 LoC Zod + `zod` dep + `instrumentation.ts` + ESLint rule to a previously near-zero-dep marketing site fails the Simplicity First test ("No abstractions for single-use code"). **Carve-out:** rule #8 applies to apps with required env vars; static sites with only optional overrides may validate inline at the read site. If t2000/apps/web ever adds a required env var (e.g. analytics secret, paid API key), re-open this row and ship the gate. | Carve-out |
 | `engine-fn-injection-refactor` | OPEN (P3, ~14-21h / 2-3 sessions) — **SCOPE REBASELINED 2026-05-21 / S.228** post-audit. Original audit was 50% wrong — see `spec/active/AUDIT_ENGINE_FN_INJECTION_REFACTOR.md` postscript for 3 corrections. Key updates: (a) **execute AFTER v0.7e Tier C migration**, not before — engine-factory lives in apps/web today but the routes it self-fetches are rewritten to web-v2; doing fn-injection today would target dead code. Wait until engine-factory moves to web-v2 in v0.7e, then run fn-injection as a within-app refactor. (b) Actual fetch count is **13 fetch sites across 7 tool files**, not "6 engine call sites" — full inventory in audit doc. (c) `AudricApi` interface needs **12 methods**, not 11 — `getPortfolioHistory(addr, { days })` was missed (it's a separate route from `/api/portfolio`, called by portfolio-analysis.ts:176 for the week-change narration banner). (d) `activity-summary` is ALREADY factored as `fetchActivitySummary()` — saves ~1.5h. | v0.7e+ |
@@ -221,6 +243,8 @@ The same root-directory rule applies to `next.config.js`, `tsconfig.json` overri
 | `apps-web-portfolio-deletion-with-test-migration` | ✅ CLOSED 2026-05-21 / S.231 + S.232 G3 (audric `729fd23`) — shipped via simplified scope: founder lock authorized deleting the regression test alongside the route rather than porting to web-v2 (web-v2 lacks vitest infrastructure; regression risk mitigated by explicit `Cache-Control: private` already in web-v2's `/api/portfolio` route + auth gates + PR review). Net: -148 LoC route + -40 LoC test. Post-deploy smoke confirmed 4-hop x-vercel-id proxy chain (`syd1:syd1:syd1::iad1::`). apps/web dead-rewritten-route surface now empty. Web-v2 vitest infrastructure flagged as Phase 2 prerequisite in `V07E_PHASE_2_SURFACE_MAP.md` §R-1 if vitest-port becomes desired later. | Closed |
 | `engine-internal-key-final-delete` | **NEW** OPEN (P3, ~30 min) — finalize the `T2000_INTERNAL_KEY` env var retirement once `engine-fn-injection-refactor` ships. Remaining consumers after function injection: ONLY `/api/internal/payments` (engine payment-link / invoice tools). At that point, port `/api/internal/payments` engine consumers to function injection too (same pattern as analytics), then delete `T2000_INTERNAL_KEY` from audric env schema (`apps/web/lib/env.ts`, `apps/web-v2/lib/env.ts`, `.env.example`), drop `validateInternalKey` from `apps/web/lib/internal-auth.ts` + `apps/web-v2/lib/internal-auth.ts`, delete `/api/internal/payments` route, drop `x-internal-key` branch from `authenticateAnalyticsRequest`. Depends on `engine-fn-injection-refactor`. | v0.7e+ |
 | Phase 3.5 backlog | OPEN — full memory controls in `/settings/memory` (per-record delete via `MemoryStore.forget()`, "explain why this fact was recalled" provenance, recall-frequency ranking). Phase 3 LITE shipped a read-only top-K disclosure surface; controls deferred because MemWal SDK 0.0.4 doesn't expose the primitives | Post-v0.7d |
+| `spec-31-csp-perimeter-polish` | **NEW OPEN 2026-05-22 / S.237** (Block 5 of prep plan) — SPEC 31 candidate scope = CSP nonces + missing directives + `securityheaders.com` A+ rating + companion `/api/mpp/payments` admin gate inline fix. Audit-evidence-based: SPEC 30 Phase 2 (env-gate) implicitly closed by v0.7d Block C + D-14 + S.227; Phase 5 (indexer) closed by deletion; Phase 9 (CSP polish) is the highest-leverage agent-only ready-to-ship next slice. Scope details in `spec/active/SPEC_31_SCOPING.md`. Effort ~6-9h + 24-48h Report-Only soak. Independent of v0.7e/v0.7f. **NOT yet locked** — founder triage required to confirm SPEC numbering + lock scope. Companion candidates Phase 6 (engine account-age gate) + Phase 3 (GDPR delete + export) explicitly DEFERRED until post-v0.7e Phase 2 closes — cross-touch with engine migration and Prisma cascade-deletes is too risky during the observation window. | Open (founder triage) |
+| `v07f-forward-map` | **NEW DOCUMENTED 2026-05-22 / S.237** (Block 4 of prep plan) — v0.7f scope mapped end-to-end in `spec/active/V07F_FORWARD_MAP.md`. v0.7f composes 4 streams: Stream A (Agentic Commerce Phase 1: single-vendor pay_api revival in web-v2, ~3-5d, gated on D-1 lock = D-1b recommended); Stream B (delete pay_api from apps/web post-A, ~2-3h); Stream C (marketing + legal + admin migration, ~2-3d); Stream D (L-5 archive ritual + DNS cutover, ~1d + 24h). **Total v0.7f: ~6-9d agent + 24h passive → ~10-14 calendar days.** Critical path: A → B → C → D (serialized for safety). New v0.7g+ backlog rows mapped: `v07g-agentic-commerce-phase2-4` (multi-vendor + delivery tracking + creator flows + escrow, ~13-17d) + optional `v07g-phase-5c-pwr-restoration` (only if user feedback signal). Gate: founder lock D-1 in Agentic Commerce SPEC + v0.7e Phase 4 close. | Documented (forward-looking) |
 
 ---
 
