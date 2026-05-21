@@ -41,14 +41,15 @@ One row per session. Drives the billing gate (5 unverified / 20 verified turns p
 
 ## ConversationLog — full transcripts
 
-Every role + content + toolCalls + tokens + cost. Used for:
-- Future self-hosted model migration training data.
-- Memory extraction cron (`UserMemory`).
-- Profile inference cron (`UserFinancialProfile`).
+Every role + content + toolCalls + tokens + cost. Used for the future self-hosted model migration training data.
+
+> **Deleted in v0.7d Phase 6 Block A (S.221, 2026-05-21):** the memory-extraction cron (`UserMemory` writes) + profile-inference cron (`UserFinancialProfile` writes) that used to consume ConversationLog rows. Long-term memory is now extracted live in-turn by MemWal `analyze()` (see `apps/web-v2/lib/audric/memwal-write-callback.ts`).
 
 ## AppEvent — chip taps + sponsor failures + key flows
 
-Used by the chain memory classifiers. Don't write user-facing notification spam here.
+Used by the t2000 ECS indexer + various analytics surfaces.
+
+> **Deleted in v0.7d Phase 6 Block A (S.221):** the 7 chain-memory classifiers that consumed AppEvent → `ChainFact`. MemWal now absorbs chain signal organically from chat; LLM reads fresh chain state on demand via tools.
 
 ## What MUST NOT happen
 

@@ -1,12 +1,12 @@
 ---
-description: Prisma data model — what each of the 15 models is for, what owns it, when to read/write
+description: Prisma data model — what each of the 13 models is for, what owns it, when to read/write
 globs: "apps/web/prisma/**/*.prisma,apps/web/lib/prisma.ts,apps/web/app/api/**/*.ts,apps/web/lib/engine/**/*.ts"
 alwaysApply: false
 ---
 
 # Prisma Models Overview
 
-NeonDB Postgres with 15 Prisma models. Schema lives at `apps/web/prisma/schema.prisma`. Generated client output is `apps/web/lib/generated/prisma`.
+NeonDB Postgres with 13 Prisma models (post v0.7d Phase 6 Block A — `UserMemory` + `UserFinancialProfile` dropped 2026-05-21, S.221). Schema lives at `apps/web/prisma/schema.prisma`. Generated client output is `apps/web/lib/generated/prisma`.
 
 ## Model catalog
 
@@ -30,11 +30,15 @@ NeonDB Postgres with 15 Prisma models. Schema lives at `apps/web/prisma/schema.p
 
 | Model | What it stores | Owned by | Updated by |
 |---|---|---|---|
-| `UserFinancialProfile` | Risk tolerance, goals, income bracket, horizon (Claude-inferred) | Cron | Daily Claude inference job |
-| `UserMemory` | Up to 50 episodic facts (Jaccard dedup'd) | Cron | Per-conversation extraction |
-| `UserFinancialContext` | Daily on-chain snapshot — savings/wallet/debt/HF/APY/recent activity | Cron | 02:00 UTC `financial-context-snapshot` job |
+| `UserFinancialContext` | Daily on-chain snapshot — savings/wallet/debt/HF/APY/recent activity | Cron | 02:00 UTC `financial-context-snapshot` job (migrating to Vercel cron in v0.7d Phase 6 Block B) |
 | `AdviceLog` | Recommendations the agent gave (last 30d rehydrated each turn) | Engine tool | `record_advice` tool |
-| `PortfolioSnapshot` | Historical portfolio totals for timeline canvas | Cron | Daily snapshot job |
+| `PortfolioSnapshot` | Historical portfolio totals for timeline canvas | Cron | Daily snapshot job (migrating to Vercel cron in v0.7d Phase 6 Block B) |
+
+> **Long-term memory layer (web-v2 production):** lives in `@mysten-incubation/memwal` (Mysten vector memory) — NOT in Prisma. See `lib/audric/memwal-prepare-step.ts` + `lib/audric/memwal-write-callback.ts`.
+
+> **Deleted in v0.7d Phase 6 Block A (S.221, 2026-05-21):**
+> - `UserFinancialProfile` — Claude-inferred risk tolerance / goals / horizon. Replaced by MemWal `analyze()` which extracts these signals organically from chat.
+> - `UserMemory` — up to 50 episodic facts (Jaccard dedup'd) + `ChainFact` rows (source='chain'). Replaced by MemWal `recall()` + `analyze()`.
 
 ### Audric Pay + Audric Finance
 
@@ -74,8 +78,9 @@ If you find yourself reaching for `prisma.X.create` in a new place, ask whether 
 | Portfolio | `getPortfolio(address)` | See `audric-canonical-portfolio.mdc` |
 | Activity feed | `getActivity(...)` | `lib/activity-data.ts` |
 | Last 30d advice | `buildAdviceContext(userId)` | `lib/engine/engine-context.ts` |
-| Episodic memories | `buildMemoryContext(memories)` | `lib/engine/engine-context.ts` |
-| Financial profile | `buildProfileContext(profile)` | engine + Prisma `UserFinancialProfile` |
+| Long-term memory (web-v2) | `memwalClient.recall(query)` via `prepareStep` | `lib/audric/memwal-prepare-step.ts` |
+| ~~Episodic memories~~ | `buildMemoryContext(memories)` — DELETED in v0.7d Phase 6 Block A | replaced by MemWal recall |
+| ~~Financial profile~~ | `buildProfileContext(profile)` — `apps/web` only (no-op; passes null) | replaced by MemWal recall in web-v2 |
 
 Direct reads in route handlers are fine for one-offs. Pattern is: helpers when the read appears in 2+ places.
 

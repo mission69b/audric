@@ -8,9 +8,10 @@
  *   - Two-pane below on md+: 220px sub-nav left + scroll content area right
  *   - Mono eyebrow with active section name + bottom border above content
  *
- * v0.7c Phase 6 Session 2: Memory section appears in the nav but its
- * page is a v0.7d deferral signpost (see `/settings/memory/page.tsx`).
- * The actual UserMemory CRUD is rebuilt in v0.7d once MemWal stabilises.
+ * v0.7d Phase 3 LITE (2026-05-21, S.218): the Memory section now
+ * renders MemWal recall results via `MemorySection` — top-K records
+ * matching a broad-list query. Per-fact delete + provenance linking
+ * are deferred to Phase 3.5 backlog.
  */
 
 import { ChevronLeftIcon } from "lucide-react";

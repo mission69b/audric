@@ -37,22 +37,16 @@
  *     factory makes the lifecycle explicit at the call site (one
  *     factory call per request → one cache instance).
  *
- *   - When v0.7d Phase 6 deletes `apps/web-v2/lib/audric/moat-context.ts`'s
- *     legacy `buildMemoryContext` + the legacy `memoryBlock` field on
- *     `buildAudricSystemPrompt`, this file becomes the sole memory
- *     surface in the route. The eventual cleanup (Phase 6) just deletes
- *     the legacy pieces; this file stays.
+ *   - This file is now the SOLE memory surface in the route. The
+ *     legacy `buildMemoryContext` + `memoryBlock` field on
+ *     `buildAudricSystemPrompt` were deleted in v0.7d Phase 6 Block A
+ *     (S.221, 2026-05-21) alongside the `UserMemory` Prisma table.
  *
- * **Phase 1 co-existence with legacy `memoryBlock` (per
- * BENEFITS_SPEC_v07d §E-1 staging).** Phase 1 Day 1b adds MemWal
- * recall ALONGSIDE the legacy SQL-backed `UserMemory` pipeline (the
- * `buildMemoryContext(memoryRecords)` call in route.ts that feeds the
- * `## Remembered Context` section of `buildAudricSystemPrompt`).
- * BOTH inject into the system prompt during Phases 1-5; Phase 6
- * deletes the legacy. The LLM sees two memory sections (legacy
- * `## Remembered Context` + MemWal `<memory_recall>`) during the
- * comparison window — intentional, lets the founder smoke quality
- * before deletion.
+ * **Historical context (v0.7d Phase 1 staging — now retired).** Phase
+ * 1 Day 1b initially wired MemWal recall ALONGSIDE the SQL-backed
+ * `UserMemory` pipeline as a comparison window. Phase 6 Block A
+ * deleted the legacy pipeline + Prisma table; from 2026-05-21 onward
+ * MemWal is the only memory surface.
  *
  * **SSOT cross-references:**
  *   - Engine pattern this mirrors: `packages/engine/src/v2/engine.ts`

@@ -52,11 +52,12 @@ audric/
 
 | Feature | Description | Status |
 |---------|-------------|--------|
-| **Chain memory** | 7 on-chain classifiers (AppEvent + PortfolioSnapshot → `ChainFact`); fed silently into agent context, never surfaced | Live |
-| **Episodic memory** | `UserMemory` extracted from chat transcripts by Claude (50-cap, Jaccard dedup) | Live |
-| **Financial profile** | `UserFinancialProfile` (risk tolerance, goals, horizon) inferred by Claude — silent calibration | Live |
+| **Memory (MemWal)** | `@mysten-incubation/memwal` Mysten vector memory. `prepareStep` hook recalls top-K facts each turn → `<memory_recall>` system-prompt block; `onFinish` callback calls `memwal.analyze()` to extract new facts post-turn. **Absorbs both former "Chain memory" and "Episodic memory" + replaces "Financial profile" inference.** Web-v2 only. | Live (v0.7d Phase 1+2) |
 | **Advice log** | `record_advice` tool writes `AdviceLog`; `buildAdviceContext()` rehydrates last 30 days into every turn | Live |
 | **Conversation log** | Full transcripts logged for the future self-hosted model migration | Live |
+| ~~**Chain memory** (7 classifiers → `ChainFact`)~~ | Deleted in v0.7d Phase 6 Block A (S.221, 2026-05-21). `UserMemory.source='chain'` rows + 7 statistical classifiers + chain-memory cron all gone. MemWal absorbs chain signal organically from chat; LLM reads fresh chain state on demand via `transaction_history` / `activity_summary` / `spending_analytics`. | Removed |
+| ~~**Episodic memory** (`UserMemory`)~~ | Deleted in v0.7d Phase 6 Block A (S.221, 2026-05-21). `UserMemory` Prisma table dropped; daily Claude memory-extraction cron deleted. Replaced by MemWal `analyze()` write path. | Removed |
+| ~~**Financial profile** (`UserFinancialProfile`)~~ | Deleted in v0.7d Phase 6 Block A (S.221, 2026-05-21). `UserFinancialProfile` Prisma table dropped; daily Claude profile-inference cron deleted. MemWal absorbs preferences/risk signals as the user mentions them in chat. (Short-term daily `UserFinancialContext` snapshot — savings/wallet/debt/HF — is a DIFFERENT layer and is still live.) | Removed |
 | ~~**Critical HF email**~~ | Removed in S.31 (2026-04-29). Stablecoin-only collateral + zkLogin tap-to-confirm makes proactive HF email net-negative UX vs surfacing HF prominently in chat. Zero proactive surfaces now. | Removed |
 
 ---
@@ -162,7 +163,11 @@ import { AISDKEngine, getDefaultTools } from '@t2000/engine';
 import { serializeSSE, parseSSE, withStreamState } from '@t2000/engine';
 import { McpClientManager, NAVI_MCP_CONFIG } from '@t2000/engine';
 import { classifyEffort, ContextBudget } from '@t2000/engine';
-import { runGuards, applyToolFlags, buildProfileContext, buildMemoryContext } from '@t2000/engine';
+// [v0.7d Phase 6 Block A — 2026-05-21] `buildMemoryContext` was deleted
+// from web-v2 alongside the `UserMemory` Prisma table. `buildProfileContext`
+// is still exported by @t2000/engine but only consumed by apps/web (v0.7e
+// archive target); web-v2 uses MemWal `<memory_recall>` via prepareStep.
+import { runGuards, applyToolFlags } from '@t2000/engine';
 import type { PendingAction, EngineEvent, SSEEvent } from '@t2000/engine';
 ```
 
@@ -224,17 +229,20 @@ Always fetch through these modules — never query wallet/NAVI/events directly i
 
 ---
 
-## Silent intelligence layer (post-simplification)
+## Silent intelligence layer (post-v0.7d Phase 6 Block A)
 
-Assembled in `lib/engine/engine-context.ts` via `buildFullDynamicContext()` and injected into the engine system prompt each turn. Everything below is silent — no notifications, no surfaces, no proactive nudges.
+**web-v2 (production):** assembled in `app/api/chat/route.ts` (the `Experimental_Agent` setup) and injected into the engine system prompt each turn. Everything below is silent — no notifications, no surfaces, no proactive nudges.
 
 | Feature | What it does |
 |---------|-------------|
-| **Financial Profile** | `UserFinancialProfile` Prisma model: risk tolerance, goals, income bracket, investment horizon. Calibrates tone + recommendations |
-| **Episodic Memory** | `UserMemory` Prisma model: key facts, preferences, past decisions remembered across sessions |
+| **Memory (MemWal)** | `prepareStep` hook calls `memwal.recall(latestUserMessage)` and injects `<memory_recall>` block into the system prompt. `onFinish` callback calls `memwal.analyze()` to extract new facts. Replaces both former `UserFinancialProfile` and `UserMemory` Prisma reads. See `lib/audric/memwal-prepare-step.ts` + `lib/audric/memwal-write-callback.ts`. |
+| **Financial Context** | `UserFinancialContext` Prisma model: short-term daily orientation snapshot (savings/wallet/debt USD, health factor, current APY, recent activity). 02:00 UTC cron refresh (migrating to Vercel cron in v0.7d Phase 6 Block B). Injected as `<financial_context>` system-prompt block. **Different from the deleted `UserFinancialProfile` — this is fresh state, not inferred preferences.** |
 | **Conversation Log** | `ConversationLog` records full chat transcripts — fine-tuning dataset for the future self-hosted model migration |
 | **Advice Memory** | `record_advice` engine tool writes `AdviceLog` rows; `buildAdviceContext()` rehydrates last 30 days into every turn |
-| **Chain Facts** | `ChainFact` rows produced by 7 chain-memory classifiers, surfaced as `[on-chain observation]` lines in the system prompt |
+
+> **Deleted in v0.7d Phase 6 Block A (S.221, 2026-05-21):** `UserMemory` table + `UserFinancialProfile` table + `ChainFact` rows in UserMemory + the 7 statistical chain classifiers + `buildMemoryContext` + `buildProfileContext` consumers in web-v2. MemWal now owns the long-term memory layer end-to-end. See `t2000/audric-build-tracker.md` S.221.
+
+> **apps/web (legacy, v0.7e archive target):** `lib/engine/engine-context.ts` still imports `buildProfileContext` + `buildProactivenessInstructions` from `@t2000/engine` but `engine-factory.ts` passes `profile: null` so the calls are no-ops. Deletes alongside apps/web in v0.7e.
 
 > The "F2 — Proactive Awareness" / `OutcomeCheck` / follow-up-queue layer was deleted in S.5 — anything proactive was either a notification (gone) or a dashboard card (gone). The chat answers when asked.
 

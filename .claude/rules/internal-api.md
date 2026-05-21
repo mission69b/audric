@@ -44,17 +44,16 @@ t2000 cron logs the aggregate counts. Don't deviate.
 
 Cron WILL retry. Use `prisma.X.upsert(...)`, never `create(...)`.
 
-## Endpoints
+## Endpoints (current state — post v0.7d Phase 6 Block A)
 
 | Route | Domain | Cron schedule (UTC) |
 |---|---|---|
-| `/api/internal/financial-context-snapshot` | UserFinancialContext | 02:30 |
-| `/api/internal/portfolio-snapshot` | PortfolioSnapshot | 02:00 |
-| `/api/internal/memory-extraction` | UserMemory | 03:15 |
-| `/api/internal/profile-inference` | UserFinancialProfile | 03:00 |
-| `/api/internal/chain-memory` | ChainFact | 04:00 |
+| `/api/internal/financial-context-snapshot` | UserFinancialContext | 02:30 (ECS) — Block B migrates to Vercel cron |
+| `/api/internal/portfolio-snapshot` | PortfolioSnapshot | 02:00 (ECS) — Block B migrates to Vercel cron |
 | `/api/internal/payments` | Payment status updates | On-event |
 | `/api/internal/health-factor` (GET) | Read HF for an address | On demand |
+
+> **Deleted in v0.7d Phase 6 Block A (S.221, 2026-05-21):** `memory-extraction` + `profile-inference` + `chain-memory` routes — all three replaced by MemWal `analyze()` in `apps/web-v2/lib/audric/memwal-write-callback.ts`.
 
 ## Adding a new endpoint
 

@@ -6,6 +6,15 @@ alwaysApply: false
 
 # Engine Context Assembly (Silent Intelligence)
 
+> ⚠️ **This rule describes the LEGACY `apps/web` system-prompt assembly** (v0.7e archive target). For current production behavior, see **web-v2** which uses the AI SDK v6 `Experimental_Agent` + `prepareStep` hook + MemWal `<memory_recall>` block. The rest of this file describes the OLD path that's still wired in `apps/web/lib/engine/engine-context.ts` but no longer reads `UserMemory` or `UserFinancialProfile` (both dropped in v0.7d Phase 6 Block A, S.221 — 2026-05-21).
+>
+> **Active state per layer:**
+> - **F1 Profile** — `apps/web` passes `null` (no-op); `web-v2` doesn't use this layer (MemWal absorbs it).
+> - **F3 Episodic memory** — DELETED (`UserMemory` table dropped). `web-v2` uses MemWal `<memory_recall>` instead.
+> - **F-chain Chain memory** — DELETED (7 classifiers + `ChainFact` rows gone). MemWal absorbs chain signal organically; LLM reads fresh chain state on demand.
+> - **F-advice AdviceLog** — STILL LIVE in both apps.
+> - **F-financial `<financial_context>`** — STILL LIVE in both apps. Different layer from the deleted profile (fresh state, not inferred preferences).
+
 Every turn, audric calls `buildFullDynamicContext()` from `lib/engine/engine-context.ts` to assemble a multi-section system prompt that the engine sends to Claude. Everything in this prompt is **silent** — no notifications, no surfaces, no proactive nudges. The chat answers when asked.
 
 ## Section order (deterministic — don't reorder)

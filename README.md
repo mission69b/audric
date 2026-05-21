@@ -58,13 +58,11 @@ Your money lives in a non-custodial wallet. Audric executes transactions, but yo
 - **Preflight validation** — input validation on send, swap, pay, borrow, and save before execution
 - **Prompt caching** — static system prompt + tool definitions cached across turns for lower latency and cost
 
-### 🧠 Silent Profile — knows your finances
+### 🧠 Memory — knows your finances (MemWal-backed)
 
-`UserFinancialProfile` (risk tolerance, goals, investment horizon) inferred by Claude from your chat history, plus a daily on-chain orientation snapshot — `UserFinancialContext` (savings/wallet/debt USD, health factor, current APY, open goals, recent activity, last-session days) — refreshed at 02:00 UTC and injected as a `<financial_context>` block at every engine boot. Stored in Prisma, hydrated via `buildProfileContext()` + `buildFinancialContextBlock()`. Silently calibrates tone + recommendations — never surfaced as nudges.
+Long-term memory lives in `@mysten-incubation/memwal` (Mysten vector memory). Every turn, the `prepareStep` hook calls `memwal.recall(latestUserMessage)` to fetch top-K relevant facts → injected as a `<memory_recall>` system-prompt block. After the turn, the `onFinish` callback calls `memwal.analyze()` to extract new facts (preferences, risk tolerance, goals, on-chain patterns) from the conversation. Plus a short-term daily on-chain orientation snapshot — `UserFinancialContext` (savings/wallet/debt USD, health factor, current APY, recent activity) — refreshed at 02:00 UTC and injected as a `<financial_context>` block. Both used silently to calibrate tone + recommendations — never surfaced as nudges.
 
-### 🔗 Chain Memory — remembers what you do on-chain
-
-7 on-chain classifiers (deposit patterns, risk profile, yield behavior, borrow behavior, near-liquidation events, large transactions, compounding streaks) extract financial facts from `AppEvent` + `PortfolioSnapshot` history → `ChainFact` rows → `buildMemoryContext()` injects them into the engine system prompt. Silent context only.
+> **v0.7d Phase 6 Block A (2026-05-21):** the previous `UserFinancialProfile` (Claude-inferred preferences) + `UserMemory` (Jaccard-deduped facts) + `ChainFact` (7 classifier rows) Prisma tables were dropped. MemWal absorbs all three surfaces into a single vector store with organic fact extraction.
 
 ### 📓 AdviceLog — remembers what it told you
 
