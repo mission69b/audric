@@ -6,11 +6,13 @@
 
 ---
 
-## 🎯 Active SPEC — v0.7d MemWal
+## 🎯 Active SPECs
 
-[`t2000/spec/active/BENEFITS_SPEC_v07d.md`](../t2000/spec/active/BENEFITS_SPEC_v07d.md) — in flight; SHIPPED ahead of schedule.
+**v0.7d MemWal — IN FLIGHT (Phase 7 observation, founder-owned)**
+[`t2000/spec/active/BENEFITS_SPEC_v07d.md`](../t2000/spec/active/BENEFITS_SPEC_v07d.md). The v0.7d SPEC retires the legacy SQL-backed memory pipeline (`UserMemory` + `UserFinancialProfile` + chain-classifier cron) and replaces it with `@mysten-incubation/memwal` vector memory. Phase 6 SHIPPED. Phase 7 observation in progress (closes ~2026-05-23 ~17:00 AEST).
 
-The v0.7d SPEC retires the legacy SQL-backed memory pipeline (`UserMemory` + `UserFinancialProfile` + chain-classifier cron) and replaces it with `@mysten-incubation/memwal` vector memory. Phase 6 Block A + B closed in two consecutive sessions on 2026-05-21; Block C is the last remaining code work.
+**v0.7e Tier C Migration + apps/web Archive — SKELETON DRAFTED (S.230, 2026-05-21 ~19:30 AEST)**
+[`t2000/spec/active/BENEFITS_SPEC_v07e.md`](../t2000/spec/active/BENEFITS_SPEC_v07e.md). v0.1 SKELETON (415 lines). 6 architectural locks (L-1 through L-6) + 5-phase plan (Phase 1 deletion sweep → Phase 2 engine + chat-coupled backend + fn-injection → Phase 3 backend API copy-port → Phase 4 cron cutover → Phase 5 marketing + legal + admin + final archive ritual) + 6 risks + 7 open founder questions (D-1 through D-7) for lock before Phase 1 kickoff. Total budget: ~10-15 agent days (~4-6 calendar weeks). Gated on v0.7d Phase 7 + Phase 8 G12 closing + pre-v0.7e backlog cleanup slices. Promotion to v1.0 LOCKED happens after founder reviews + locks D-1 through D-7.
 
 ### Status snapshot (2026-05-21 ~16:50 AEST)
 
