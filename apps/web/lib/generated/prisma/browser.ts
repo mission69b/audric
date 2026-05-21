@@ -68,16 +68,6 @@ export type WatchAddress = Prisma.WatchAddressModel
  */
 export type PortfolioSnapshot = Prisma.PortfolioSnapshotModel
 /**
- * Model UserFinancialProfile
- * 
- */
-export type UserFinancialProfile = Prisma.UserFinancialProfileModel
-/**
- * Model UserMemory
- * 
- */
-export type UserMemory = Prisma.UserMemoryModel
-/**
  * Model LinkedWallet
  * 
  */

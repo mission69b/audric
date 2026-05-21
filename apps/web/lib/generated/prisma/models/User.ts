@@ -286,8 +286,6 @@ export type UserWhereInput = {
   payments?: Prisma.PaymentListRelationFilter
   watchAddresses?: Prisma.WatchAddressListRelationFilter
   portfolioSnapshots?: Prisma.PortfolioSnapshotListRelationFilter
-  financialProfile?: Prisma.XOR<Prisma.UserFinancialProfileNullableScalarRelationFilter, Prisma.UserFinancialProfileWhereInput> | null
-  memories?: Prisma.UserMemoryListRelationFilter
   linkedWallets?: Prisma.LinkedWalletListRelationFilter
 }
 
@@ -311,8 +309,6 @@ export type UserOrderByWithRelationInput = {
   payments?: Prisma.PaymentOrderByRelationAggregateInput
   watchAddresses?: Prisma.WatchAddressOrderByRelationAggregateInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotOrderByRelationAggregateInput
-  financialProfile?: Prisma.UserFinancialProfileOrderByWithRelationInput
-  memories?: Prisma.UserMemoryOrderByRelationAggregateInput
   linkedWallets?: Prisma.LinkedWalletOrderByRelationAggregateInput
 }
 
@@ -339,8 +335,6 @@ export type UserWhereUniqueInput = Prisma.AtLeast<{
   payments?: Prisma.PaymentListRelationFilter
   watchAddresses?: Prisma.WatchAddressListRelationFilter
   portfolioSnapshots?: Prisma.PortfolioSnapshotListRelationFilter
-  financialProfile?: Prisma.XOR<Prisma.UserFinancialProfileNullableScalarRelationFilter, Prisma.UserFinancialProfileWhereInput> | null
-  memories?: Prisma.UserMemoryListRelationFilter
   linkedWallets?: Prisma.LinkedWalletListRelationFilter
 }, "id" | "suiAddress" | "email" | "username">
 
@@ -404,8 +398,6 @@ export type UserCreateInput = {
   payments?: Prisma.PaymentCreateNestedManyWithoutUserInput
   watchAddresses?: Prisma.WatchAddressCreateNestedManyWithoutUserInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotCreateNestedManyWithoutUserInput
-  financialProfile?: Prisma.UserFinancialProfileCreateNestedOneWithoutUserInput
-  memories?: Prisma.UserMemoryCreateNestedManyWithoutUserInput
   linkedWallets?: Prisma.LinkedWalletCreateNestedManyWithoutUserInput
 }
 
@@ -429,8 +421,6 @@ export type UserUncheckedCreateInput = {
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutUserInput
   watchAddresses?: Prisma.WatchAddressUncheckedCreateNestedManyWithoutUserInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotUncheckedCreateNestedManyWithoutUserInput
-  financialProfile?: Prisma.UserFinancialProfileUncheckedCreateNestedOneWithoutUserInput
-  memories?: Prisma.UserMemoryUncheckedCreateNestedManyWithoutUserInput
   linkedWallets?: Prisma.LinkedWalletUncheckedCreateNestedManyWithoutUserInput
 }
 
@@ -454,8 +444,6 @@ export type UserUpdateInput = {
   payments?: Prisma.PaymentUpdateManyWithoutUserNestedInput
   watchAddresses?: Prisma.WatchAddressUpdateManyWithoutUserNestedInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotUpdateManyWithoutUserNestedInput
-  financialProfile?: Prisma.UserFinancialProfileUpdateOneWithoutUserNestedInput
-  memories?: Prisma.UserMemoryUpdateManyWithoutUserNestedInput
   linkedWallets?: Prisma.LinkedWalletUpdateManyWithoutUserNestedInput
 }
 
@@ -479,8 +467,6 @@ export type UserUncheckedUpdateInput = {
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutUserNestedInput
   watchAddresses?: Prisma.WatchAddressUncheckedUpdateManyWithoutUserNestedInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotUncheckedUpdateManyWithoutUserNestedInput
-  financialProfile?: Prisma.UserFinancialProfileUncheckedUpdateOneWithoutUserNestedInput
-  memories?: Prisma.UserMemoryUncheckedUpdateManyWithoutUserNestedInput
   linkedWallets?: Prisma.LinkedWalletUncheckedUpdateManyWithoutUserNestedInput
 }
 
@@ -712,34 +698,6 @@ export type UserUpdateOneRequiredWithoutPortfolioSnapshotsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutPortfolioSnapshotsInput, Prisma.UserUpdateWithoutPortfolioSnapshotsInput>, Prisma.UserUncheckedUpdateWithoutPortfolioSnapshotsInput>
 }
 
-export type UserCreateNestedOneWithoutFinancialProfileInput = {
-  create?: Prisma.XOR<Prisma.UserCreateWithoutFinancialProfileInput, Prisma.UserUncheckedCreateWithoutFinancialProfileInput>
-  connectOrCreate?: Prisma.UserCreateOrConnectWithoutFinancialProfileInput
-  connect?: Prisma.UserWhereUniqueInput
-}
-
-export type UserUpdateOneRequiredWithoutFinancialProfileNestedInput = {
-  create?: Prisma.XOR<Prisma.UserCreateWithoutFinancialProfileInput, Prisma.UserUncheckedCreateWithoutFinancialProfileInput>
-  connectOrCreate?: Prisma.UserCreateOrConnectWithoutFinancialProfileInput
-  upsert?: Prisma.UserUpsertWithoutFinancialProfileInput
-  connect?: Prisma.UserWhereUniqueInput
-  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutFinancialProfileInput, Prisma.UserUpdateWithoutFinancialProfileInput>, Prisma.UserUncheckedUpdateWithoutFinancialProfileInput>
-}
-
-export type UserCreateNestedOneWithoutMemoriesInput = {
-  create?: Prisma.XOR<Prisma.UserCreateWithoutMemoriesInput, Prisma.UserUncheckedCreateWithoutMemoriesInput>
-  connectOrCreate?: Prisma.UserCreateOrConnectWithoutMemoriesInput
-  connect?: Prisma.UserWhereUniqueInput
-}
-
-export type UserUpdateOneRequiredWithoutMemoriesNestedInput = {
-  create?: Prisma.XOR<Prisma.UserCreateWithoutMemoriesInput, Prisma.UserUncheckedCreateWithoutMemoriesInput>
-  connectOrCreate?: Prisma.UserCreateOrConnectWithoutMemoriesInput
-  upsert?: Prisma.UserUpsertWithoutMemoriesInput
-  connect?: Prisma.UserWhereUniqueInput
-  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutMemoriesInput, Prisma.UserUpdateWithoutMemoriesInput>, Prisma.UserUncheckedUpdateWithoutMemoriesInput>
-}
-
 export type UserCreateNestedOneWithoutLinkedWalletsInput = {
   create?: Prisma.XOR<Prisma.UserCreateWithoutLinkedWalletsInput, Prisma.UserUncheckedCreateWithoutLinkedWalletsInput>
   connectOrCreate?: Prisma.UserCreateOrConnectWithoutLinkedWalletsInput
@@ -773,8 +731,6 @@ export type UserCreateWithoutPreferencesInput = {
   payments?: Prisma.PaymentCreateNestedManyWithoutUserInput
   watchAddresses?: Prisma.WatchAddressCreateNestedManyWithoutUserInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotCreateNestedManyWithoutUserInput
-  financialProfile?: Prisma.UserFinancialProfileCreateNestedOneWithoutUserInput
-  memories?: Prisma.UserMemoryCreateNestedManyWithoutUserInput
   linkedWallets?: Prisma.LinkedWalletCreateNestedManyWithoutUserInput
 }
 
@@ -797,8 +753,6 @@ export type UserUncheckedCreateWithoutPreferencesInput = {
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutUserInput
   watchAddresses?: Prisma.WatchAddressUncheckedCreateNestedManyWithoutUserInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotUncheckedCreateNestedManyWithoutUserInput
-  financialProfile?: Prisma.UserFinancialProfileUncheckedCreateNestedOneWithoutUserInput
-  memories?: Prisma.UserMemoryUncheckedCreateNestedManyWithoutUserInput
   linkedWallets?: Prisma.LinkedWalletUncheckedCreateNestedManyWithoutUserInput
 }
 
@@ -837,8 +791,6 @@ export type UserUpdateWithoutPreferencesInput = {
   payments?: Prisma.PaymentUpdateManyWithoutUserNestedInput
   watchAddresses?: Prisma.WatchAddressUpdateManyWithoutUserNestedInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotUpdateManyWithoutUserNestedInput
-  financialProfile?: Prisma.UserFinancialProfileUpdateOneWithoutUserNestedInput
-  memories?: Prisma.UserMemoryUpdateManyWithoutUserNestedInput
   linkedWallets?: Prisma.LinkedWalletUpdateManyWithoutUserNestedInput
 }
 
@@ -861,8 +813,6 @@ export type UserUncheckedUpdateWithoutPreferencesInput = {
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutUserNestedInput
   watchAddresses?: Prisma.WatchAddressUncheckedUpdateManyWithoutUserNestedInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotUncheckedUpdateManyWithoutUserNestedInput
-  financialProfile?: Prisma.UserFinancialProfileUncheckedUpdateOneWithoutUserNestedInput
-  memories?: Prisma.UserMemoryUncheckedUpdateManyWithoutUserNestedInput
   linkedWallets?: Prisma.LinkedWalletUncheckedUpdateManyWithoutUserNestedInput
 }
 
@@ -885,8 +835,6 @@ export type UserCreateWithoutConversationLogsInput = {
   payments?: Prisma.PaymentCreateNestedManyWithoutUserInput
   watchAddresses?: Prisma.WatchAddressCreateNestedManyWithoutUserInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotCreateNestedManyWithoutUserInput
-  financialProfile?: Prisma.UserFinancialProfileCreateNestedOneWithoutUserInput
-  memories?: Prisma.UserMemoryCreateNestedManyWithoutUserInput
   linkedWallets?: Prisma.LinkedWalletCreateNestedManyWithoutUserInput
 }
 
@@ -909,8 +857,6 @@ export type UserUncheckedCreateWithoutConversationLogsInput = {
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutUserInput
   watchAddresses?: Prisma.WatchAddressUncheckedCreateNestedManyWithoutUserInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotUncheckedCreateNestedManyWithoutUserInput
-  financialProfile?: Prisma.UserFinancialProfileUncheckedCreateNestedOneWithoutUserInput
-  memories?: Prisma.UserMemoryUncheckedCreateNestedManyWithoutUserInput
   linkedWallets?: Prisma.LinkedWalletUncheckedCreateNestedManyWithoutUserInput
 }
 
@@ -949,8 +895,6 @@ export type UserUpdateWithoutConversationLogsInput = {
   payments?: Prisma.PaymentUpdateManyWithoutUserNestedInput
   watchAddresses?: Prisma.WatchAddressUpdateManyWithoutUserNestedInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotUpdateManyWithoutUserNestedInput
-  financialProfile?: Prisma.UserFinancialProfileUpdateOneWithoutUserNestedInput
-  memories?: Prisma.UserMemoryUpdateManyWithoutUserNestedInput
   linkedWallets?: Prisma.LinkedWalletUpdateManyWithoutUserNestedInput
 }
 
@@ -973,8 +917,6 @@ export type UserUncheckedUpdateWithoutConversationLogsInput = {
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutUserNestedInput
   watchAddresses?: Prisma.WatchAddressUncheckedUpdateManyWithoutUserNestedInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotUncheckedUpdateManyWithoutUserNestedInput
-  financialProfile?: Prisma.UserFinancialProfileUncheckedUpdateOneWithoutUserNestedInput
-  memories?: Prisma.UserMemoryUncheckedUpdateManyWithoutUserNestedInput
   linkedWallets?: Prisma.LinkedWalletUncheckedUpdateManyWithoutUserNestedInput
 }
 
@@ -997,8 +939,6 @@ export type UserCreateWithoutAdviceLogsInput = {
   payments?: Prisma.PaymentCreateNestedManyWithoutUserInput
   watchAddresses?: Prisma.WatchAddressCreateNestedManyWithoutUserInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotCreateNestedManyWithoutUserInput
-  financialProfile?: Prisma.UserFinancialProfileCreateNestedOneWithoutUserInput
-  memories?: Prisma.UserMemoryCreateNestedManyWithoutUserInput
   linkedWallets?: Prisma.LinkedWalletCreateNestedManyWithoutUserInput
 }
 
@@ -1021,8 +961,6 @@ export type UserUncheckedCreateWithoutAdviceLogsInput = {
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutUserInput
   watchAddresses?: Prisma.WatchAddressUncheckedCreateNestedManyWithoutUserInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotUncheckedCreateNestedManyWithoutUserInput
-  financialProfile?: Prisma.UserFinancialProfileUncheckedCreateNestedOneWithoutUserInput
-  memories?: Prisma.UserMemoryUncheckedCreateNestedManyWithoutUserInput
   linkedWallets?: Prisma.LinkedWalletUncheckedCreateNestedManyWithoutUserInput
 }
 
@@ -1061,8 +999,6 @@ export type UserUpdateWithoutAdviceLogsInput = {
   payments?: Prisma.PaymentUpdateManyWithoutUserNestedInput
   watchAddresses?: Prisma.WatchAddressUpdateManyWithoutUserNestedInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotUpdateManyWithoutUserNestedInput
-  financialProfile?: Prisma.UserFinancialProfileUpdateOneWithoutUserNestedInput
-  memories?: Prisma.UserMemoryUpdateManyWithoutUserNestedInput
   linkedWallets?: Prisma.LinkedWalletUpdateManyWithoutUserNestedInput
 }
 
@@ -1085,8 +1021,6 @@ export type UserUncheckedUpdateWithoutAdviceLogsInput = {
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutUserNestedInput
   watchAddresses?: Prisma.WatchAddressUncheckedUpdateManyWithoutUserNestedInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotUncheckedUpdateManyWithoutUserNestedInput
-  financialProfile?: Prisma.UserFinancialProfileUncheckedUpdateOneWithoutUserNestedInput
-  memories?: Prisma.UserMemoryUncheckedUpdateManyWithoutUserNestedInput
   linkedWallets?: Prisma.LinkedWalletUncheckedUpdateManyWithoutUserNestedInput
 }
 
@@ -1109,8 +1043,6 @@ export type UserCreateWithoutPaymentsInput = {
   adviceLogs?: Prisma.AdviceLogCreateNestedManyWithoutUserInput
   watchAddresses?: Prisma.WatchAddressCreateNestedManyWithoutUserInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotCreateNestedManyWithoutUserInput
-  financialProfile?: Prisma.UserFinancialProfileCreateNestedOneWithoutUserInput
-  memories?: Prisma.UserMemoryCreateNestedManyWithoutUserInput
   linkedWallets?: Prisma.LinkedWalletCreateNestedManyWithoutUserInput
 }
 
@@ -1133,8 +1065,6 @@ export type UserUncheckedCreateWithoutPaymentsInput = {
   adviceLogs?: Prisma.AdviceLogUncheckedCreateNestedManyWithoutUserInput
   watchAddresses?: Prisma.WatchAddressUncheckedCreateNestedManyWithoutUserInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotUncheckedCreateNestedManyWithoutUserInput
-  financialProfile?: Prisma.UserFinancialProfileUncheckedCreateNestedOneWithoutUserInput
-  memories?: Prisma.UserMemoryUncheckedCreateNestedManyWithoutUserInput
   linkedWallets?: Prisma.LinkedWalletUncheckedCreateNestedManyWithoutUserInput
 }
 
@@ -1173,8 +1103,6 @@ export type UserUpdateWithoutPaymentsInput = {
   adviceLogs?: Prisma.AdviceLogUpdateManyWithoutUserNestedInput
   watchAddresses?: Prisma.WatchAddressUpdateManyWithoutUserNestedInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotUpdateManyWithoutUserNestedInput
-  financialProfile?: Prisma.UserFinancialProfileUpdateOneWithoutUserNestedInput
-  memories?: Prisma.UserMemoryUpdateManyWithoutUserNestedInput
   linkedWallets?: Prisma.LinkedWalletUpdateManyWithoutUserNestedInput
 }
 
@@ -1197,8 +1125,6 @@ export type UserUncheckedUpdateWithoutPaymentsInput = {
   adviceLogs?: Prisma.AdviceLogUncheckedUpdateManyWithoutUserNestedInput
   watchAddresses?: Prisma.WatchAddressUncheckedUpdateManyWithoutUserNestedInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotUncheckedUpdateManyWithoutUserNestedInput
-  financialProfile?: Prisma.UserFinancialProfileUncheckedUpdateOneWithoutUserNestedInput
-  memories?: Prisma.UserMemoryUncheckedUpdateManyWithoutUserNestedInput
   linkedWallets?: Prisma.LinkedWalletUncheckedUpdateManyWithoutUserNestedInput
 }
 
@@ -1221,8 +1147,6 @@ export type UserCreateWithoutWatchAddressesInput = {
   adviceLogs?: Prisma.AdviceLogCreateNestedManyWithoutUserInput
   payments?: Prisma.PaymentCreateNestedManyWithoutUserInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotCreateNestedManyWithoutUserInput
-  financialProfile?: Prisma.UserFinancialProfileCreateNestedOneWithoutUserInput
-  memories?: Prisma.UserMemoryCreateNestedManyWithoutUserInput
   linkedWallets?: Prisma.LinkedWalletCreateNestedManyWithoutUserInput
 }
 
@@ -1245,8 +1169,6 @@ export type UserUncheckedCreateWithoutWatchAddressesInput = {
   adviceLogs?: Prisma.AdviceLogUncheckedCreateNestedManyWithoutUserInput
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutUserInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotUncheckedCreateNestedManyWithoutUserInput
-  financialProfile?: Prisma.UserFinancialProfileUncheckedCreateNestedOneWithoutUserInput
-  memories?: Prisma.UserMemoryUncheckedCreateNestedManyWithoutUserInput
   linkedWallets?: Prisma.LinkedWalletUncheckedCreateNestedManyWithoutUserInput
 }
 
@@ -1285,8 +1207,6 @@ export type UserUpdateWithoutWatchAddressesInput = {
   adviceLogs?: Prisma.AdviceLogUpdateManyWithoutUserNestedInput
   payments?: Prisma.PaymentUpdateManyWithoutUserNestedInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotUpdateManyWithoutUserNestedInput
-  financialProfile?: Prisma.UserFinancialProfileUpdateOneWithoutUserNestedInput
-  memories?: Prisma.UserMemoryUpdateManyWithoutUserNestedInput
   linkedWallets?: Prisma.LinkedWalletUpdateManyWithoutUserNestedInput
 }
 
@@ -1309,8 +1229,6 @@ export type UserUncheckedUpdateWithoutWatchAddressesInput = {
   adviceLogs?: Prisma.AdviceLogUncheckedUpdateManyWithoutUserNestedInput
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutUserNestedInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotUncheckedUpdateManyWithoutUserNestedInput
-  financialProfile?: Prisma.UserFinancialProfileUncheckedUpdateOneWithoutUserNestedInput
-  memories?: Prisma.UserMemoryUncheckedUpdateManyWithoutUserNestedInput
   linkedWallets?: Prisma.LinkedWalletUncheckedUpdateManyWithoutUserNestedInput
 }
 
@@ -1333,8 +1251,6 @@ export type UserCreateWithoutPortfolioSnapshotsInput = {
   adviceLogs?: Prisma.AdviceLogCreateNestedManyWithoutUserInput
   payments?: Prisma.PaymentCreateNestedManyWithoutUserInput
   watchAddresses?: Prisma.WatchAddressCreateNestedManyWithoutUserInput
-  financialProfile?: Prisma.UserFinancialProfileCreateNestedOneWithoutUserInput
-  memories?: Prisma.UserMemoryCreateNestedManyWithoutUserInput
   linkedWallets?: Prisma.LinkedWalletCreateNestedManyWithoutUserInput
 }
 
@@ -1357,8 +1273,6 @@ export type UserUncheckedCreateWithoutPortfolioSnapshotsInput = {
   adviceLogs?: Prisma.AdviceLogUncheckedCreateNestedManyWithoutUserInput
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutUserInput
   watchAddresses?: Prisma.WatchAddressUncheckedCreateNestedManyWithoutUserInput
-  financialProfile?: Prisma.UserFinancialProfileUncheckedCreateNestedOneWithoutUserInput
-  memories?: Prisma.UserMemoryUncheckedCreateNestedManyWithoutUserInput
   linkedWallets?: Prisma.LinkedWalletUncheckedCreateNestedManyWithoutUserInput
 }
 
@@ -1397,8 +1311,6 @@ export type UserUpdateWithoutPortfolioSnapshotsInput = {
   adviceLogs?: Prisma.AdviceLogUpdateManyWithoutUserNestedInput
   payments?: Prisma.PaymentUpdateManyWithoutUserNestedInput
   watchAddresses?: Prisma.WatchAddressUpdateManyWithoutUserNestedInput
-  financialProfile?: Prisma.UserFinancialProfileUpdateOneWithoutUserNestedInput
-  memories?: Prisma.UserMemoryUpdateManyWithoutUserNestedInput
   linkedWallets?: Prisma.LinkedWalletUpdateManyWithoutUserNestedInput
 }
 
@@ -1421,232 +1333,6 @@ export type UserUncheckedUpdateWithoutPortfolioSnapshotsInput = {
   adviceLogs?: Prisma.AdviceLogUncheckedUpdateManyWithoutUserNestedInput
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutUserNestedInput
   watchAddresses?: Prisma.WatchAddressUncheckedUpdateManyWithoutUserNestedInput
-  financialProfile?: Prisma.UserFinancialProfileUncheckedUpdateOneWithoutUserNestedInput
-  memories?: Prisma.UserMemoryUncheckedUpdateManyWithoutUserNestedInput
-  linkedWallets?: Prisma.LinkedWalletUncheckedUpdateManyWithoutUserNestedInput
-}
-
-export type UserCreateWithoutFinancialProfileInput = {
-  id?: string
-  suiAddress: string
-  email?: string | null
-  emailVerified?: boolean
-  displayName?: string | null
-  timezoneOffset?: number
-  tosAcceptedAt?: Date | string | null
-  createdAt?: Date | string
-  updatedAt?: Date | string
-  username?: string | null
-  usernameClaimedAt?: Date | string | null
-  usernameLastChangedAt?: Date | string | null
-  usernameMintTxDigest?: string | null
-  preferences?: Prisma.UserPreferencesCreateNestedOneWithoutUserInput
-  conversationLogs?: Prisma.ConversationLogCreateNestedManyWithoutUserInput
-  adviceLogs?: Prisma.AdviceLogCreateNestedManyWithoutUserInput
-  payments?: Prisma.PaymentCreateNestedManyWithoutUserInput
-  watchAddresses?: Prisma.WatchAddressCreateNestedManyWithoutUserInput
-  portfolioSnapshots?: Prisma.PortfolioSnapshotCreateNestedManyWithoutUserInput
-  memories?: Prisma.UserMemoryCreateNestedManyWithoutUserInput
-  linkedWallets?: Prisma.LinkedWalletCreateNestedManyWithoutUserInput
-}
-
-export type UserUncheckedCreateWithoutFinancialProfileInput = {
-  id?: string
-  suiAddress: string
-  email?: string | null
-  emailVerified?: boolean
-  displayName?: string | null
-  timezoneOffset?: number
-  tosAcceptedAt?: Date | string | null
-  createdAt?: Date | string
-  updatedAt?: Date | string
-  username?: string | null
-  usernameClaimedAt?: Date | string | null
-  usernameLastChangedAt?: Date | string | null
-  usernameMintTxDigest?: string | null
-  preferences?: Prisma.UserPreferencesUncheckedCreateNestedOneWithoutUserInput
-  conversationLogs?: Prisma.ConversationLogUncheckedCreateNestedManyWithoutUserInput
-  adviceLogs?: Prisma.AdviceLogUncheckedCreateNestedManyWithoutUserInput
-  payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutUserInput
-  watchAddresses?: Prisma.WatchAddressUncheckedCreateNestedManyWithoutUserInput
-  portfolioSnapshots?: Prisma.PortfolioSnapshotUncheckedCreateNestedManyWithoutUserInput
-  memories?: Prisma.UserMemoryUncheckedCreateNestedManyWithoutUserInput
-  linkedWallets?: Prisma.LinkedWalletUncheckedCreateNestedManyWithoutUserInput
-}
-
-export type UserCreateOrConnectWithoutFinancialProfileInput = {
-  where: Prisma.UserWhereUniqueInput
-  create: Prisma.XOR<Prisma.UserCreateWithoutFinancialProfileInput, Prisma.UserUncheckedCreateWithoutFinancialProfileInput>
-}
-
-export type UserUpsertWithoutFinancialProfileInput = {
-  update: Prisma.XOR<Prisma.UserUpdateWithoutFinancialProfileInput, Prisma.UserUncheckedUpdateWithoutFinancialProfileInput>
-  create: Prisma.XOR<Prisma.UserCreateWithoutFinancialProfileInput, Prisma.UserUncheckedCreateWithoutFinancialProfileInput>
-  where?: Prisma.UserWhereInput
-}
-
-export type UserUpdateToOneWithWhereWithoutFinancialProfileInput = {
-  where?: Prisma.UserWhereInput
-  data: Prisma.XOR<Prisma.UserUpdateWithoutFinancialProfileInput, Prisma.UserUncheckedUpdateWithoutFinancialProfileInput>
-}
-
-export type UserUpdateWithoutFinancialProfileInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
-  suiAddress?: Prisma.StringFieldUpdateOperationsInput | string
-  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  timezoneOffset?: Prisma.IntFieldUpdateOperationsInput | number
-  tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  usernameClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  usernameLastChangedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  usernameMintTxDigest?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  preferences?: Prisma.UserPreferencesUpdateOneWithoutUserNestedInput
-  conversationLogs?: Prisma.ConversationLogUpdateManyWithoutUserNestedInput
-  adviceLogs?: Prisma.AdviceLogUpdateManyWithoutUserNestedInput
-  payments?: Prisma.PaymentUpdateManyWithoutUserNestedInput
-  watchAddresses?: Prisma.WatchAddressUpdateManyWithoutUserNestedInput
-  portfolioSnapshots?: Prisma.PortfolioSnapshotUpdateManyWithoutUserNestedInput
-  memories?: Prisma.UserMemoryUpdateManyWithoutUserNestedInput
-  linkedWallets?: Prisma.LinkedWalletUpdateManyWithoutUserNestedInput
-}
-
-export type UserUncheckedUpdateWithoutFinancialProfileInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
-  suiAddress?: Prisma.StringFieldUpdateOperationsInput | string
-  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  timezoneOffset?: Prisma.IntFieldUpdateOperationsInput | number
-  tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  usernameClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  usernameLastChangedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  usernameMintTxDigest?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  preferences?: Prisma.UserPreferencesUncheckedUpdateOneWithoutUserNestedInput
-  conversationLogs?: Prisma.ConversationLogUncheckedUpdateManyWithoutUserNestedInput
-  adviceLogs?: Prisma.AdviceLogUncheckedUpdateManyWithoutUserNestedInput
-  payments?: Prisma.PaymentUncheckedUpdateManyWithoutUserNestedInput
-  watchAddresses?: Prisma.WatchAddressUncheckedUpdateManyWithoutUserNestedInput
-  portfolioSnapshots?: Prisma.PortfolioSnapshotUncheckedUpdateManyWithoutUserNestedInput
-  memories?: Prisma.UserMemoryUncheckedUpdateManyWithoutUserNestedInput
-  linkedWallets?: Prisma.LinkedWalletUncheckedUpdateManyWithoutUserNestedInput
-}
-
-export type UserCreateWithoutMemoriesInput = {
-  id?: string
-  suiAddress: string
-  email?: string | null
-  emailVerified?: boolean
-  displayName?: string | null
-  timezoneOffset?: number
-  tosAcceptedAt?: Date | string | null
-  createdAt?: Date | string
-  updatedAt?: Date | string
-  username?: string | null
-  usernameClaimedAt?: Date | string | null
-  usernameLastChangedAt?: Date | string | null
-  usernameMintTxDigest?: string | null
-  preferences?: Prisma.UserPreferencesCreateNestedOneWithoutUserInput
-  conversationLogs?: Prisma.ConversationLogCreateNestedManyWithoutUserInput
-  adviceLogs?: Prisma.AdviceLogCreateNestedManyWithoutUserInput
-  payments?: Prisma.PaymentCreateNestedManyWithoutUserInput
-  watchAddresses?: Prisma.WatchAddressCreateNestedManyWithoutUserInput
-  portfolioSnapshots?: Prisma.PortfolioSnapshotCreateNestedManyWithoutUserInput
-  financialProfile?: Prisma.UserFinancialProfileCreateNestedOneWithoutUserInput
-  linkedWallets?: Prisma.LinkedWalletCreateNestedManyWithoutUserInput
-}
-
-export type UserUncheckedCreateWithoutMemoriesInput = {
-  id?: string
-  suiAddress: string
-  email?: string | null
-  emailVerified?: boolean
-  displayName?: string | null
-  timezoneOffset?: number
-  tosAcceptedAt?: Date | string | null
-  createdAt?: Date | string
-  updatedAt?: Date | string
-  username?: string | null
-  usernameClaimedAt?: Date | string | null
-  usernameLastChangedAt?: Date | string | null
-  usernameMintTxDigest?: string | null
-  preferences?: Prisma.UserPreferencesUncheckedCreateNestedOneWithoutUserInput
-  conversationLogs?: Prisma.ConversationLogUncheckedCreateNestedManyWithoutUserInput
-  adviceLogs?: Prisma.AdviceLogUncheckedCreateNestedManyWithoutUserInput
-  payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutUserInput
-  watchAddresses?: Prisma.WatchAddressUncheckedCreateNestedManyWithoutUserInput
-  portfolioSnapshots?: Prisma.PortfolioSnapshotUncheckedCreateNestedManyWithoutUserInput
-  financialProfile?: Prisma.UserFinancialProfileUncheckedCreateNestedOneWithoutUserInput
-  linkedWallets?: Prisma.LinkedWalletUncheckedCreateNestedManyWithoutUserInput
-}
-
-export type UserCreateOrConnectWithoutMemoriesInput = {
-  where: Prisma.UserWhereUniqueInput
-  create: Prisma.XOR<Prisma.UserCreateWithoutMemoriesInput, Prisma.UserUncheckedCreateWithoutMemoriesInput>
-}
-
-export type UserUpsertWithoutMemoriesInput = {
-  update: Prisma.XOR<Prisma.UserUpdateWithoutMemoriesInput, Prisma.UserUncheckedUpdateWithoutMemoriesInput>
-  create: Prisma.XOR<Prisma.UserCreateWithoutMemoriesInput, Prisma.UserUncheckedCreateWithoutMemoriesInput>
-  where?: Prisma.UserWhereInput
-}
-
-export type UserUpdateToOneWithWhereWithoutMemoriesInput = {
-  where?: Prisma.UserWhereInput
-  data: Prisma.XOR<Prisma.UserUpdateWithoutMemoriesInput, Prisma.UserUncheckedUpdateWithoutMemoriesInput>
-}
-
-export type UserUpdateWithoutMemoriesInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
-  suiAddress?: Prisma.StringFieldUpdateOperationsInput | string
-  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  timezoneOffset?: Prisma.IntFieldUpdateOperationsInput | number
-  tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  usernameClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  usernameLastChangedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  usernameMintTxDigest?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  preferences?: Prisma.UserPreferencesUpdateOneWithoutUserNestedInput
-  conversationLogs?: Prisma.ConversationLogUpdateManyWithoutUserNestedInput
-  adviceLogs?: Prisma.AdviceLogUpdateManyWithoutUserNestedInput
-  payments?: Prisma.PaymentUpdateManyWithoutUserNestedInput
-  watchAddresses?: Prisma.WatchAddressUpdateManyWithoutUserNestedInput
-  portfolioSnapshots?: Prisma.PortfolioSnapshotUpdateManyWithoutUserNestedInput
-  financialProfile?: Prisma.UserFinancialProfileUpdateOneWithoutUserNestedInput
-  linkedWallets?: Prisma.LinkedWalletUpdateManyWithoutUserNestedInput
-}
-
-export type UserUncheckedUpdateWithoutMemoriesInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
-  suiAddress?: Prisma.StringFieldUpdateOperationsInput | string
-  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  timezoneOffset?: Prisma.IntFieldUpdateOperationsInput | number
-  tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  usernameClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  usernameLastChangedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  usernameMintTxDigest?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  preferences?: Prisma.UserPreferencesUncheckedUpdateOneWithoutUserNestedInput
-  conversationLogs?: Prisma.ConversationLogUncheckedUpdateManyWithoutUserNestedInput
-  adviceLogs?: Prisma.AdviceLogUncheckedUpdateManyWithoutUserNestedInput
-  payments?: Prisma.PaymentUncheckedUpdateManyWithoutUserNestedInput
-  watchAddresses?: Prisma.WatchAddressUncheckedUpdateManyWithoutUserNestedInput
-  portfolioSnapshots?: Prisma.PortfolioSnapshotUncheckedUpdateManyWithoutUserNestedInput
-  financialProfile?: Prisma.UserFinancialProfileUncheckedUpdateOneWithoutUserNestedInput
   linkedWallets?: Prisma.LinkedWalletUncheckedUpdateManyWithoutUserNestedInput
 }
 
@@ -1670,8 +1356,6 @@ export type UserCreateWithoutLinkedWalletsInput = {
   payments?: Prisma.PaymentCreateNestedManyWithoutUserInput
   watchAddresses?: Prisma.WatchAddressCreateNestedManyWithoutUserInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotCreateNestedManyWithoutUserInput
-  financialProfile?: Prisma.UserFinancialProfileCreateNestedOneWithoutUserInput
-  memories?: Prisma.UserMemoryCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutLinkedWalletsInput = {
@@ -1694,8 +1378,6 @@ export type UserUncheckedCreateWithoutLinkedWalletsInput = {
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutUserInput
   watchAddresses?: Prisma.WatchAddressUncheckedCreateNestedManyWithoutUserInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotUncheckedCreateNestedManyWithoutUserInput
-  financialProfile?: Prisma.UserFinancialProfileUncheckedCreateNestedOneWithoutUserInput
-  memories?: Prisma.UserMemoryUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutLinkedWalletsInput = {
@@ -1734,8 +1416,6 @@ export type UserUpdateWithoutLinkedWalletsInput = {
   payments?: Prisma.PaymentUpdateManyWithoutUserNestedInput
   watchAddresses?: Prisma.WatchAddressUpdateManyWithoutUserNestedInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotUpdateManyWithoutUserNestedInput
-  financialProfile?: Prisma.UserFinancialProfileUpdateOneWithoutUserNestedInput
-  memories?: Prisma.UserMemoryUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutLinkedWalletsInput = {
@@ -1758,8 +1438,6 @@ export type UserUncheckedUpdateWithoutLinkedWalletsInput = {
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutUserNestedInput
   watchAddresses?: Prisma.WatchAddressUncheckedUpdateManyWithoutUserNestedInput
   portfolioSnapshots?: Prisma.PortfolioSnapshotUncheckedUpdateManyWithoutUserNestedInput
-  financialProfile?: Prisma.UserFinancialProfileUncheckedUpdateOneWithoutUserNestedInput
-  memories?: Prisma.UserMemoryUncheckedUpdateManyWithoutUserNestedInput
 }
 
 
@@ -1773,7 +1451,6 @@ export type UserCountOutputType = {
   payments: number
   watchAddresses: number
   portfolioSnapshots: number
-  memories: number
   linkedWallets: number
 }
 
@@ -1783,7 +1460,6 @@ export type UserCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.I
   payments?: boolean | UserCountOutputTypeCountPaymentsArgs
   watchAddresses?: boolean | UserCountOutputTypeCountWatchAddressesArgs
   portfolioSnapshots?: boolean | UserCountOutputTypeCountPortfolioSnapshotsArgs
-  memories?: boolean | UserCountOutputTypeCountMemoriesArgs
   linkedWallets?: boolean | UserCountOutputTypeCountLinkedWalletsArgs
 }
 
@@ -1835,13 +1511,6 @@ export type UserCountOutputTypeCountPortfolioSnapshotsArgs<ExtArgs extends runti
 /**
  * UserCountOutputType without action
  */
-export type UserCountOutputTypeCountMemoriesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  where?: Prisma.UserMemoryWhereInput
-}
-
-/**
- * UserCountOutputType without action
- */
 export type UserCountOutputTypeCountLinkedWalletsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   where?: Prisma.LinkedWalletWhereInput
 }
@@ -1867,8 +1536,6 @@ export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   payments?: boolean | Prisma.User$paymentsArgs<ExtArgs>
   watchAddresses?: boolean | Prisma.User$watchAddressesArgs<ExtArgs>
   portfolioSnapshots?: boolean | Prisma.User$portfolioSnapshotsArgs<ExtArgs>
-  financialProfile?: boolean | Prisma.User$financialProfileArgs<ExtArgs>
-  memories?: boolean | Prisma.User$memoriesArgs<ExtArgs>
   linkedWallets?: boolean | Prisma.User$linkedWalletsArgs<ExtArgs>
   _count?: boolean | Prisma.UserCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["user"]>
@@ -1929,8 +1596,6 @@ export type UserInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   payments?: boolean | Prisma.User$paymentsArgs<ExtArgs>
   watchAddresses?: boolean | Prisma.User$watchAddressesArgs<ExtArgs>
   portfolioSnapshots?: boolean | Prisma.User$portfolioSnapshotsArgs<ExtArgs>
-  financialProfile?: boolean | Prisma.User$financialProfileArgs<ExtArgs>
-  memories?: boolean | Prisma.User$memoriesArgs<ExtArgs>
   linkedWallets?: boolean | Prisma.User$linkedWalletsArgs<ExtArgs>
   _count?: boolean | Prisma.UserCountOutputTypeDefaultArgs<ExtArgs>
 }
@@ -1946,8 +1611,6 @@ export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     payments: Prisma.$PaymentPayload<ExtArgs>[]
     watchAddresses: Prisma.$WatchAddressPayload<ExtArgs>[]
     portfolioSnapshots: Prisma.$PortfolioSnapshotPayload<ExtArgs>[]
-    financialProfile: Prisma.$UserFinancialProfilePayload<ExtArgs> | null
-    memories: Prisma.$UserMemoryPayload<ExtArgs>[]
     linkedWallets: Prisma.$LinkedWalletPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
@@ -2364,8 +2027,6 @@ export interface Prisma__UserClient<T, Null = never, ExtArgs extends runtime.Typ
   payments<T extends Prisma.User$paymentsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$paymentsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$PaymentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   watchAddresses<T extends Prisma.User$watchAddressesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$watchAddressesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$WatchAddressPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   portfolioSnapshots<T extends Prisma.User$portfolioSnapshotsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$portfolioSnapshotsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$PortfolioSnapshotPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
-  financialProfile<T extends Prisma.User$financialProfileArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$financialProfileArgs<ExtArgs>>): Prisma.Prisma__UserFinancialProfileClient<runtime.Types.Result.GetResult<Prisma.$UserFinancialProfilePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
-  memories<T extends Prisma.User$memoriesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$memoriesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$UserMemoryPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   linkedWallets<T extends Prisma.User$linkedWalletsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$linkedWalletsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$LinkedWalletPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
@@ -2938,49 +2599,6 @@ export type User$portfolioSnapshotsArgs<ExtArgs extends runtime.Types.Extensions
   take?: number
   skip?: number
   distinct?: Prisma.PortfolioSnapshotScalarFieldEnum | Prisma.PortfolioSnapshotScalarFieldEnum[]
-}
-
-/**
- * User.financialProfile
- */
-export type User$financialProfileArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  /**
-   * Select specific fields to fetch from the UserFinancialProfile
-   */
-  select?: Prisma.UserFinancialProfileSelect<ExtArgs> | null
-  /**
-   * Omit specific fields from the UserFinancialProfile
-   */
-  omit?: Prisma.UserFinancialProfileOmit<ExtArgs> | null
-  /**
-   * Choose, which related nodes to fetch as well
-   */
-  include?: Prisma.UserFinancialProfileInclude<ExtArgs> | null
-  where?: Prisma.UserFinancialProfileWhereInput
-}
-
-/**
- * User.memories
- */
-export type User$memoriesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  /**
-   * Select specific fields to fetch from the UserMemory
-   */
-  select?: Prisma.UserMemorySelect<ExtArgs> | null
-  /**
-   * Omit specific fields from the UserMemory
-   */
-  omit?: Prisma.UserMemoryOmit<ExtArgs> | null
-  /**
-   * Choose, which related nodes to fetch as well
-   */
-  include?: Prisma.UserMemoryInclude<ExtArgs> | null
-  where?: Prisma.UserMemoryWhereInput
-  orderBy?: Prisma.UserMemoryOrderByWithRelationInput | Prisma.UserMemoryOrderByWithRelationInput[]
-  cursor?: Prisma.UserMemoryWhereUniqueInput
-  take?: number
-  skip?: number
-  distinct?: Prisma.UserMemoryScalarFieldEnum | Prisma.UserMemoryScalarFieldEnum[]
 }
 
 /**

@@ -394,8 +394,6 @@ export const ModelName = {
   Payment: 'Payment',
   WatchAddress: 'WatchAddress',
   PortfolioSnapshot: 'PortfolioSnapshot',
-  UserFinancialProfile: 'UserFinancialProfile',
-  UserMemory: 'UserMemory',
   LinkedWallet: 'LinkedWallet',
   TurnMetrics: 'TurnMetrics',
   UserFinancialContext: 'UserFinancialContext'
@@ -414,7 +412,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "userPreferences" | "conversationLog" | "sessionUsage" | "servicePurchase" | "appEvent" | "adviceLog" | "payment" | "watchAddress" | "portfolioSnapshot" | "userFinancialProfile" | "userMemory" | "linkedWallet" | "turnMetrics" | "userFinancialContext"
+    modelProps: "user" | "userPreferences" | "conversationLog" | "sessionUsage" | "servicePurchase" | "appEvent" | "adviceLog" | "payment" | "watchAddress" | "portfolioSnapshot" | "linkedWallet" | "turnMetrics" | "userFinancialContext"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1158,154 +1156,6 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
-    UserFinancialProfile: {
-      payload: Prisma.$UserFinancialProfilePayload<ExtArgs>
-      fields: Prisma.UserFinancialProfileFieldRefs
-      operations: {
-        findUnique: {
-          args: Prisma.UserFinancialProfileFindUniqueArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserFinancialProfilePayload> | null
-        }
-        findUniqueOrThrow: {
-          args: Prisma.UserFinancialProfileFindUniqueOrThrowArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserFinancialProfilePayload>
-        }
-        findFirst: {
-          args: Prisma.UserFinancialProfileFindFirstArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserFinancialProfilePayload> | null
-        }
-        findFirstOrThrow: {
-          args: Prisma.UserFinancialProfileFindFirstOrThrowArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserFinancialProfilePayload>
-        }
-        findMany: {
-          args: Prisma.UserFinancialProfileFindManyArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserFinancialProfilePayload>[]
-        }
-        create: {
-          args: Prisma.UserFinancialProfileCreateArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserFinancialProfilePayload>
-        }
-        createMany: {
-          args: Prisma.UserFinancialProfileCreateManyArgs<ExtArgs>
-          result: BatchPayload
-        }
-        createManyAndReturn: {
-          args: Prisma.UserFinancialProfileCreateManyAndReturnArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserFinancialProfilePayload>[]
-        }
-        delete: {
-          args: Prisma.UserFinancialProfileDeleteArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserFinancialProfilePayload>
-        }
-        update: {
-          args: Prisma.UserFinancialProfileUpdateArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserFinancialProfilePayload>
-        }
-        deleteMany: {
-          args: Prisma.UserFinancialProfileDeleteManyArgs<ExtArgs>
-          result: BatchPayload
-        }
-        updateMany: {
-          args: Prisma.UserFinancialProfileUpdateManyArgs<ExtArgs>
-          result: BatchPayload
-        }
-        updateManyAndReturn: {
-          args: Prisma.UserFinancialProfileUpdateManyAndReturnArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserFinancialProfilePayload>[]
-        }
-        upsert: {
-          args: Prisma.UserFinancialProfileUpsertArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserFinancialProfilePayload>
-        }
-        aggregate: {
-          args: Prisma.UserFinancialProfileAggregateArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.AggregateUserFinancialProfile>
-        }
-        groupBy: {
-          args: Prisma.UserFinancialProfileGroupByArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.UserFinancialProfileGroupByOutputType>[]
-        }
-        count: {
-          args: Prisma.UserFinancialProfileCountArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.UserFinancialProfileCountAggregateOutputType> | number
-        }
-      }
-    }
-    UserMemory: {
-      payload: Prisma.$UserMemoryPayload<ExtArgs>
-      fields: Prisma.UserMemoryFieldRefs
-      operations: {
-        findUnique: {
-          args: Prisma.UserMemoryFindUniqueArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserMemoryPayload> | null
-        }
-        findUniqueOrThrow: {
-          args: Prisma.UserMemoryFindUniqueOrThrowArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserMemoryPayload>
-        }
-        findFirst: {
-          args: Prisma.UserMemoryFindFirstArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserMemoryPayload> | null
-        }
-        findFirstOrThrow: {
-          args: Prisma.UserMemoryFindFirstOrThrowArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserMemoryPayload>
-        }
-        findMany: {
-          args: Prisma.UserMemoryFindManyArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserMemoryPayload>[]
-        }
-        create: {
-          args: Prisma.UserMemoryCreateArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserMemoryPayload>
-        }
-        createMany: {
-          args: Prisma.UserMemoryCreateManyArgs<ExtArgs>
-          result: BatchPayload
-        }
-        createManyAndReturn: {
-          args: Prisma.UserMemoryCreateManyAndReturnArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserMemoryPayload>[]
-        }
-        delete: {
-          args: Prisma.UserMemoryDeleteArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserMemoryPayload>
-        }
-        update: {
-          args: Prisma.UserMemoryUpdateArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserMemoryPayload>
-        }
-        deleteMany: {
-          args: Prisma.UserMemoryDeleteManyArgs<ExtArgs>
-          result: BatchPayload
-        }
-        updateMany: {
-          args: Prisma.UserMemoryUpdateManyArgs<ExtArgs>
-          result: BatchPayload
-        }
-        updateManyAndReturn: {
-          args: Prisma.UserMemoryUpdateManyAndReturnArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserMemoryPayload>[]
-        }
-        upsert: {
-          args: Prisma.UserMemoryUpsertArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserMemoryPayload>
-        }
-        aggregate: {
-          args: Prisma.UserMemoryAggregateArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.AggregateUserMemory>
-        }
-        groupBy: {
-          args: Prisma.UserMemoryGroupByArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.UserMemoryGroupByOutputType>[]
-        }
-        count: {
-          args: Prisma.UserMemoryCountArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.UserMemoryCountAggregateOutputType> | number
-        }
-      }
-    }
     LinkedWallet: {
       payload: Prisma.$LinkedWalletPayload<ExtArgs>
       fields: Prisma.LinkedWalletFieldRefs
@@ -1734,45 +1584,6 @@ export const PortfolioSnapshotScalarFieldEnum = {
 export type PortfolioSnapshotScalarFieldEnum = (typeof PortfolioSnapshotScalarFieldEnum)[keyof typeof PortfolioSnapshotScalarFieldEnum]
 
 
-export const UserFinancialProfileScalarFieldEnum = {
-  id: 'id',
-  userId: 'userId',
-  riskAppetite: 'riskAppetite',
-  financialLiteracy: 'financialLiteracy',
-  prefersBriefResponses: 'prefersBriefResponses',
-  prefersExplainers: 'prefersExplainers',
-  currencyFraming: 'currencyFraming',
-  primaryGoals: 'primaryGoals',
-  knownPatterns: 'knownPatterns',
-  riskConfidence: 'riskConfidence',
-  literacyConfidence: 'literacyConfidence',
-  inferenceVersion: 'inferenceVersion',
-  lastInferredAt: 'lastInferredAt',
-  createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
-} as const
-
-export type UserFinancialProfileScalarFieldEnum = (typeof UserFinancialProfileScalarFieldEnum)[keyof typeof UserFinancialProfileScalarFieldEnum]
-
-
-export const UserMemoryScalarFieldEnum = {
-  id: 'id',
-  userId: 'userId',
-  memoryType: 'memoryType',
-  content: 'content',
-  originalQuote: 'originalQuote',
-  confidence: 'confidence',
-  expiresAt: 'expiresAt',
-  active: 'active',
-  sourceSessionId: 'sourceSessionId',
-  source: 'source',
-  extractedAt: 'extractedAt',
-  createdAt: 'createdAt'
-} as const
-
-export type UserMemoryScalarFieldEnum = (typeof UserMemoryScalarFieldEnum)[keyof typeof UserMemoryScalarFieldEnum]
-
-
 export const LinkedWalletScalarFieldEnum = {
   id: 'id',
   userId: 'userId',
@@ -2089,8 +1900,6 @@ export type GlobalOmitConfig = {
   payment?: Prisma.PaymentOmit
   watchAddress?: Prisma.WatchAddressOmit
   portfolioSnapshot?: Prisma.PortfolioSnapshotOmit
-  userFinancialProfile?: Prisma.UserFinancialProfileOmit
-  userMemory?: Prisma.UserMemoryOmit
   linkedWallet?: Prisma.LinkedWalletOmit
   turnMetrics?: Prisma.TurnMetricsOmit
   userFinancialContext?: Prisma.UserFinancialContextOmit

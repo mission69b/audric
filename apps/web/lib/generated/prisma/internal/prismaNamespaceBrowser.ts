@@ -61,8 +61,6 @@ export const ModelName = {
   Payment: 'Payment',
   WatchAddress: 'WatchAddress',
   PortfolioSnapshot: 'PortfolioSnapshot',
-  UserFinancialProfile: 'UserFinancialProfile',
-  UserMemory: 'UserMemory',
   LinkedWallet: 'LinkedWallet',
   TurnMetrics: 'TurnMetrics',
   UserFinancialContext: 'UserFinancialContext'
@@ -249,45 +247,6 @@ export const PortfolioSnapshotScalarFieldEnum = {
 } as const
 
 export type PortfolioSnapshotScalarFieldEnum = (typeof PortfolioSnapshotScalarFieldEnum)[keyof typeof PortfolioSnapshotScalarFieldEnum]
-
-
-export const UserFinancialProfileScalarFieldEnum = {
-  id: 'id',
-  userId: 'userId',
-  riskAppetite: 'riskAppetite',
-  financialLiteracy: 'financialLiteracy',
-  prefersBriefResponses: 'prefersBriefResponses',
-  prefersExplainers: 'prefersExplainers',
-  currencyFraming: 'currencyFraming',
-  primaryGoals: 'primaryGoals',
-  knownPatterns: 'knownPatterns',
-  riskConfidence: 'riskConfidence',
-  literacyConfidence: 'literacyConfidence',
-  inferenceVersion: 'inferenceVersion',
-  lastInferredAt: 'lastInferredAt',
-  createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
-} as const
-
-export type UserFinancialProfileScalarFieldEnum = (typeof UserFinancialProfileScalarFieldEnum)[keyof typeof UserFinancialProfileScalarFieldEnum]
-
-
-export const UserMemoryScalarFieldEnum = {
-  id: 'id',
-  userId: 'userId',
-  memoryType: 'memoryType',
-  content: 'content',
-  originalQuote: 'originalQuote',
-  confidence: 'confidence',
-  expiresAt: 'expiresAt',
-  active: 'active',
-  sourceSessionId: 'sourceSessionId',
-  source: 'source',
-  extractedAt: 'extractedAt',
-  createdAt: 'createdAt'
-} as const
-
-export type UserMemoryScalarFieldEnum = (typeof UserMemoryScalarFieldEnum)[keyof typeof UserMemoryScalarFieldEnum]
 
 
 export const LinkedWalletScalarFieldEnum = {

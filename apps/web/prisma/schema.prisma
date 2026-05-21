@@ -39,8 +39,6 @@ model User {
   payments           Payment[]
   watchAddresses     WatchAddress[]
   portfolioSnapshots PortfolioSnapshot[]
-  financialProfile   UserFinancialProfile?
-  memories           UserMemory[]
   linkedWallets      LinkedWallet[]
 
   @@index([email])
@@ -227,48 +225,13 @@ model PortfolioSnapshot {
   @@index([userId, date])
 }
 
-model UserFinancialProfile {
-  id                    String    @id @default(cuid())
-  userId                String    @unique
-  riskAppetite          String    @default("moderate") // conservative | moderate | aggressive
-  financialLiteracy     String    @default("intermediate") // novice | intermediate | advanced
-  prefersBriefResponses Boolean   @default(false)
-  prefersExplainers     Boolean   @default(true)
-  currencyFraming       String    @default("usdc") // usdc | fiat
-  primaryGoals          String[]  @default([])
-  knownPatterns         String[]  @default([])
-  riskConfidence        Float     @default(0)
-  literacyConfidence    Float     @default(0)
-  inferenceVersion      Int       @default(1)
-  lastInferredAt        DateTime?
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
-
-  user User @relation(fields: [userId], references: [id])
-
-  @@index([userId])
-}
-
-model UserMemory {
-  id              String    @id @default(cuid())
-  userId          String
-  memoryType      String // preference | fact | pattern | goal | concern
-  content         String
-  originalQuote   String?
-  confidence      Float     @default(0.8)
-  expiresAt       DateTime?
-  active          Boolean   @default(true)
-  sourceSessionId String?
-  source          String    @default("conversation") // 'conversation' | 'chain'
-  extractedAt     DateTime  @default(now())
-  createdAt       DateTime  @default(now())
-
-  user User @relation(fields: [userId], references: [id])
-
-  @@index([userId])
-  @@index([userId, active])
-  @@index([expiresAt])
-}
+// [v0.7d Phase 6 Block A — 2026-05-21 / S.221] UserFinancialProfile +
+// UserMemory models deleted alongside their feeder crons (profile-
+// inference, memory-extraction, chain-memory) and their consumer
+// routes. MemWal `<memory_recall>` (web-v2 `prepareStep`) is now the
+// canonical cross-session memory surface. Migration `20260521000000_
+// drop_user_memory_and_user_financial_profile/migration.sql` drops the
+// matching Postgres tables.
 
 model LinkedWallet {
   id         String    @id @default(cuid())
