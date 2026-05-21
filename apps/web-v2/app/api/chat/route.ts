@@ -138,6 +138,7 @@ import { getFinancialContextBlock } from "@/lib/audric/financial-context";
 import { redactAddressesInText, redactPII } from "@/lib/audric/log-redact";
 import { MemWalMemoryStore } from "@/lib/audric/memwal-memory-store";
 import { buildMemoryPrepareStep } from "@/lib/audric/memwal-prepare-step";
+import { buildMemoryWriteCallback } from "@/lib/audric/memwal-write-callback";
 import { audricObservabilityMiddleware } from "@/lib/audric/middleware/observability";
 import {
   buildAdviceContext,
@@ -1143,19 +1144,43 @@ export async function POST(request: Request) {
     memoryStore: memWalStore,
     systemInstructions,
   });
-  // [S.215 follow-on / 2026-05-21] G2 verification log. Always fires once
-  // per chat request — tells us in production whether the MEMWAL_* env
-  // vars are landing on this deployment AND whether the prepareStep
-  // closure was constructed. Pair with `[web-v2 memwal-prepare-step]`
-  // step logs (inside the closure) to assert the full chain:
-  //   - `client=true` + step logs appear → wiring fully live ✓
+
+  // [Phase 2 / 2026-05-21] MemWal WRITE side: fire-and-forget post-turn
+  // ingestion via `memwal.analyze(userMessageText, namespace)`. Per
+  // BENEFITS_SPEC_v07d D-3 lock — writes don't block the response. See
+  // `lib/audric/memwal-write-callback.ts` for the full design rationale
+  // (analyze vs remember, why waitUntil, what gets logged).
+  //
+  // Gate on resume turns: when `body.messages` contains a tool-approval-
+  // response (i.e. `extractResumeOutcomes` returned non-empty earlier
+  // in the function at L433), the user message was already ingested on
+  // the INITIAL turn. Skipping the resume re-ingest avoids duplicate
+  // fact extraction (MemWal's LLM would re-derive the same facts from
+  // the same input → MemWal-side cost + duplicate vector rows).
+  const writeCallback = buildMemoryWriteCallback({
+    memwal,
+    namespace: `audric:user:${walletAddress}`,
+    userMessageText: resumeOutcomes.length > 0 ? "" : latestUserTextForEffort,
+  });
+
+  // [S.215 follow-on / 2026-05-21] G2 + G3 verification log. Always fires
+  // once per chat request — tells us in production whether the MEMWAL_*
+  // env vars are landing on this deployment AND whether the prepareStep
+  // + onFinish closures were constructed. Pair with the per-step
+  // `[web-v2 memwal-prepare-step]` (recall) and per-turn
+  // `[web-v2 memwal-write]` (analyze) logs (inside the closures) to
+  // assert the full chain:
+  //   - `client=true` + `recall_cb=true` + step logs appear → recall ✓
+  //   - `client=true` + `write_cb=true` + analyze log appears → write ✓
   //   - `client=true` + NO step logs → callback constructed but AI SDK
   //     never called it (bug in Agent wire-up)
   //   - `client=false` → env vars not picked up by THIS deployment
   //     (Vercel didn't rebuild after env vars were added)
+  //   - `write_cb=false` with `client=true` → resume-turn skip (expected)
+  //     OR empty user message (also expected on tool-only resume).
   // Same diagnostic posture as S.213a's `validateModelMessages` line.
   console.info(
-    `[web-v2 memwal-init] client=${memwal !== null} callback=${prepareStepCallback !== undefined} namespace=audric:user:${walletAddress.slice(0, 10)}...`
+    `[web-v2 memwal-init] client=${memwal !== null} recall_cb=${prepareStepCallback !== undefined} write_cb=${writeCallback !== undefined} namespace=audric:user:${walletAddress.slice(0, 10)}...`
   );
 
   const audricAgent = new Agent({
@@ -1166,6 +1191,7 @@ export async function POST(request: Request) {
     experimental_telemetry: experimentalTelemetry,
     experimental_context: internalContext,
     prepareStep: prepareStepCallback,
+    onFinish: writeCallback,
     // ProviderOptions has a strict `JSONObject`-indexed shape in AI SDK
     // v6; our typed bag (with `as const` literals from `caching: 'auto'`
     // / `type: 'adaptive'`) is JSON-structurally identical but doesn't
