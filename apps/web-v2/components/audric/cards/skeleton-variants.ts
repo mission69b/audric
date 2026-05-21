@@ -50,7 +50,6 @@ const TOOL_TO_VARIANT: Record<string, SkeletonVariant | null> = {
   // Chip (single-line confirmations)
   cancel_payment_link: 'chip',
   cancel_invoice: 'chip',
-  save_contact: 'chip',
   resolve_suins: 'chip',
 
   // Tools with no card

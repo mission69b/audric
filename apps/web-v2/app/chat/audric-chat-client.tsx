@@ -52,7 +52,6 @@ import {
   sponsoredTx,
 } from "@/lib/audric/sponsored-tx";
 import { sanitizeStreamErrorMessage } from "@/lib/audric/stream-errors";
-import { authFetch } from "@/lib/auth-fetch";
 import {
   isUsernameSkipped,
   setUsernameSkipped as persistUsernameSkipped,
@@ -775,36 +774,22 @@ function PermissionForToolPart(props: PermissionForToolPartProps) {
         // G5 acceptance).
         const writeStartMs = Date.now();
         try {
-          if (toolName === "save_contact") {
-            // Server-only Prisma upsert (no on-chain tx).
-            const result = await dispatchSaveContact(modifiedInput);
-            await addToolOutput({
-              tool: toolName,
-              toolCallId: toolPart.toolCallId,
-              output: {
-                ...result,
-                writeToolDurationMs: Date.now() - writeStartMs,
-              },
-            });
-          } else {
-            // The 9 sponsored writes — all flow through sponsoredTx.
-            const request = buildSponsoredTxRequest(toolName, modifiedInput);
-            if (!request) {
-              throw new Error(
-                `Unknown write tool ${toolName} — dispatch missing.`
-              );
-            }
-            const result = await sponsoredTx({ ...request, session });
-            await addToolOutput({
-              tool: toolName,
-              toolCallId: toolPart.toolCallId,
-              output: buildToolOutput(
-                request,
-                result,
-                Date.now() - writeStartMs
-              ),
-            });
+          // [S.243 / V07E_CONTACTS_SIMPLIFICATION Path A — 2026-05-22]
+          // All 10 web-v2 writes are sponsored on-chain ops. The old
+          // save_contact dispatch branch (Prisma-only Postgres write)
+          // was removed alongside the contacts feature deletion.
+          const request = buildSponsoredTxRequest(toolName, modifiedInput);
+          if (!request) {
+            throw new Error(
+              `Unknown write tool ${toolName} — dispatch missing.`
+            );
           }
+          const result = await sponsoredTx({ ...request, session });
+          await addToolOutput({
+            tool: toolName,
+            toolCallId: toolPart.toolCallId,
+            output: buildToolOutput(request, result, Date.now() - writeStartMs),
+          });
         } catch (err) {
           await addToolOutput({
             tool: toolName,
@@ -1068,8 +1053,8 @@ function parseAudricMetadata(raw: unknown):
  * the field names from the engine tool's `inputSchema` (defined in
  * `packages/engine/src/tools/<tool>.ts`).
  *
- * Returns `undefined` for tools that DON'T go through the sponsored-tx
- * flow (save_contact). The caller routes those elsewhere.
+ * Returns `undefined` for tools that don't exist in the web-v2 set
+ * (e.g. `pay_api` — intentionally excluded from web-v2 tools).
  *
  * `pay_api` is intentionally excluded from web-v2's tool set
  * (see Phase 4b deferral in `app/(chat)/api/audric-chat/route.ts`).
@@ -1205,33 +1190,4 @@ function buildToolOutput(
       // balanceChanges array describes what actually moved.
       return base;
   }
-}
-
-/**
- * Dispatch save_contact through its server route. Returns a payload
- * shape the LLM can narrate ("Saved Alex (0x…) as a contact").
- *
- * Uses `authFetch` so the `x-zklogin-jwt` header lands on the request
- * — `/api/contacts/save` runs `getCurrentUser()` which reads the JWT
- * out of headers and 401s on miss. Pre-audit-pass this call used bare
- * `fetch`, which silently 401'd save_contact end-to-end (the
- * PermissionCard surfaced the error inline; the LLM never saw success).
- * Same JWT-bearing pattern the canvases use (see `lib/auth-fetch.ts`).
- */
-async function dispatchSaveContact(
-  input: Record<string, unknown>
-): Promise<Record<string, unknown>> {
-  const res = await authFetch("/api/contacts/save", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      name: String(input.name ?? ""),
-      address: String(input.address ?? ""),
-    }),
-  });
-  if (!res.ok) {
-    const err = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(err.error ?? `save_contact failed (${res.status})`);
-  }
-  return (await res.json()) as Record<string, unknown>;
 }

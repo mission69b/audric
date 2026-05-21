@@ -78,15 +78,18 @@
 - **Honest scope re-estimation when audits change** — quoted ~1h for voice cleanup pre-audit; audit revealed 2,739 LoC across 16 files. When audit reality contradicts estimate, surface BEFORE proceeding.
 - **Mini-SPECs for cross-cutting deprecations** — invoice touches engine + web-v2 + apps/web + Prisma + DB + system prompt + docs. Belongs in its own SPEC, not in Phase 1A. Audit-first → "this is a separate mini-SPEC" → keep slices clean.
 
-**Next up after S.242 (full open backlog snapshot):**
+**Next up after S.243 (full open backlog snapshot):**
 
 | Priority | # | Task | Effort | Blocker |
 |---|---|---|---|---|
 | ✅ DONE | P1.1 | **SHIPPED 2026-05-22 — Stale fincontext write-refusal hotfix Phase 1** (S.242). Path 6 locked + shipped — `apps/web-v2/lib/audric/financial-context.ts` slimmed 10→4 fields; bug class eliminated by construction. Typecheck + lint + build all clean. Prod-deploy smoke pending (founder to retry "Save $5 USDC" with stale snapshot) | DONE | — |
-| 🟡 P1.2 | P1.2 | **NEW — Stale fincontext Phase 2 (cron + Prisma)** — per S.242 Q2 recommended Option C: drop the 6 dead columns (walletUsdc / walletUsdsui / savingsUsdc / savingsUsdsui / debtUsdc / healthFactor) + simplify `apps/web/lib/jobs/financial-context-snapshot.ts` to stop writing them + remove S.235 `fincontext-zero-bug-backlog` guard | ~30 min | (1) Founder Q2 lock; (2) ~24h Phase 1 soak to confirm no regression |
+| ✅ DONE | H3.1A | **SHIPPED 2026-05-22 — Contacts simplification Phase 1A (web-v2)** (S.243). Path A locked (Q1-Q5 all founder-locked). -698 net LoC across 17 files; web-v2 contacts surface deleted entirely; system prompt updated with Q5 narration rule (no @audric fabrication). Typecheck + lint + build all clean. apps/web dies en bloc with v0.7e Phase 2 (auto); engine cleanup no-rush; Prisma drop after 24h soak | DONE | — |
+| 🟡 P1.2 | P1.2 | **Stale fincontext Phase 2 (cron + Prisma)** — per S.242 Q2 recommended Option C: drop the 6 dead columns + simplify cron + remove S.235 `fincontext-zero-bug-backlog` guard | ~30 min | (1) Founder Q2 lock; (2) ~24h Phase 1 soak |
+| 🟡 H3.2 | H3.2 | **Contacts Phase 2 (Prisma drop)** — per S.243 Q4 DROP DIRECTLY locked: Prisma migration to drop `UserPreferences.contacts` JSON column. No archive table, no 30d grace | ~30 min | ~24h Phase 1A soak (no production regression from contacts removal) |
+| 🟡 H3.4 | H3.4 | **Contacts Phase 4 (engine cleanup, NO RUSH)** — delete `packages/engine/src/tools/contacts.ts` + `add-recipient.ts` + remove from tool-flags + tool-policy + tools/index + tests + bump @t2000/engine minor + publish. apps/web side will be dead by then (Phase 3 auto) | ~30 min | Optional after web-v2 soak; can wait indefinitely. Engine tools become unused exports until deleted |
+| 🟡 H3.5 | H3.5 | **Contacts Phase 5 (Q2 reverse-lookup, AUDIT FIRST)** — Audit web-v2 send history rendering. IF it currently relies on contact-stored names for recipient display, add Q2 A-1 path: live reverse-lookup at render (Audric directory + SuiNS, session-cached). IF send history already shows raw short-form 0x or routes through resolve_suins live, this is $0 work | ~0-2h | None — audit-first ship |
 | 🔴 HIGH | H1 | **v0.7e Phase 2** — chat-shell cutover + 1A.2/1A.3 absorption + fn-injection refactor | ~5-7d | Founder D-2/D-5/D-7 RATIFY (~5 min) + Vitest R-1 decision |
 | 🔴 HIGH | H2 | **v0.7e Persistent Chats** — `spec/active/BENEFITS_SPEC_v07e_persistent_chats.md` + LOCK-1 POC LOCKED Option B | ~13-19h / 2-3 days | Founder review 5 remaining locks (~10-15 min). R-7 clear (Phase 7 closed) |
-| 🔴 HIGH | H3 | **NEW — Contacts simplification** per `spec/active/V07E_CONTACTS_SIMPLIFICATION.md` (S.240) — 4 bugs from founder log, 3 candidate paths (A=delete entirely / B=simplify / C=patch), agent rec = Path A | Path A ~6-9h / Path B ~8-12h / Path C ~4-6h | Founder Q1-Q5 lock |
 | 🟡 MED | M1 | **SPEC 31 — CSP perimeter polish** per `spec/active/SPEC_31_SCOPING.md` | ~6-9h + 24-48h Report-Only soak | Founder triage |
 | 🟡 MED | M2 | **engine-fn-injection-refactor** (REBASELINED to AFTER v0.7e Tier C migration) | ~14-21h / 2-3 sessions | Blocked on v0.7e Tier C |
 | 🟡 MED | M3 | **engine-internal-key-final-delete** | ~30 min | Blocked on M2 |

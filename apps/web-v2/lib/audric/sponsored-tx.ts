@@ -17,8 +17,10 @@
  *     Server forwards to Enoki for co-sign + chain submission and
  *     waits for checkpoint settlement.
  *
- * One write tool DOES NOT flow through this helper:
- *  - `save_contact` — server-only Prisma upsert (`/api/contacts/save`).
+ * [S.243 / V07E_CONTACTS_SIMPLIFICATION Path A — 2026-05-22]
+ * Pre-S.243, `save_contact` was the one non-on-chain write
+ * (Prisma-only upsert via `/api/contacts/save`). Contacts deleted
+ * entirely; web-v2 now has zero non-sponsored write paths.
  *
  * `pay_api` is intentionally EXCLUDED from web-v2's tool set
  * (Phase 4b deferral 2026-05-19). The legacy `/api/services/{prepare,
@@ -51,8 +53,9 @@ export type SponsoredTxBundleStep = {
   /**
    * Engine WRITE_TOOLS tool name. Mirrors the SDK's
    * `WriteStep.toolName` union exactly (single source of truth).
-   * `save_contact` and `pay_api` are NEVER bundleable (no on-chain
-   * leg + not `bundleable: true` in `tool-flags.ts`).
+   * `pay_api` is NEVER bundleable (no on-chain leg + not
+   * `bundleable: true` in `tool-flags.ts`). `save_contact` removed
+   * entirely from web-v2 per S.243.
    */
   toolName:
     | "save_deposit"

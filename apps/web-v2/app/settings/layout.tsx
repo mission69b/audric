@@ -21,8 +21,11 @@ import { AuthGuard } from "@/components/auth/auth-guard";
 import { AppSidebar } from "@/components/chat/app-sidebar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 
-type Section = "passport" | "safety" | "memory" | "contacts";
+type Section = "passport" | "safety" | "memory";
 
+// [S.243 / V07E_CONTACTS_SIMPLIFICATION Path A — 2026-05-22] Contacts
+// section removed. /settings/contacts page deleted; sub-nav now shows
+// 3 sections (Passport / Safety / Memory).
 const SECTIONS: Array<{
   id: Section;
   label: string;
@@ -31,7 +34,6 @@ const SECTIONS: Array<{
   { id: "passport", label: "Passport", href: "/settings/passport" },
   { id: "safety", label: "Safety", href: "/settings/safety" },
   { id: "memory", label: "Memory", href: "/settings/memory" },
-  { id: "contacts", label: "Contacts", href: "/settings/contacts" },
 ];
 
 export default function SettingsLayout({
@@ -55,8 +57,7 @@ export default function SettingsLayout({
   // made navigating from /chat → Settings feel like a different app
   // (the AppSidebar disappeared, replaced by Settings' own sub-nav).
   // Now the AppSidebar persists; the Settings sub-nav (Passport /
-  // Safety / Memory / Contacts) lives inside SidebarInset as a
-  // secondary nav.
+  // Safety / Memory) lives inside SidebarInset as a secondary nav.
   //
   // SidebarProvider's `defaultOpen` is read from the `sidebar_state`
   // cookie in `/chat/layout.tsx` — Settings is client-only here so we

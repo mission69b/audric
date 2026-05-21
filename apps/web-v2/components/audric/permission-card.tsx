@@ -105,7 +105,6 @@ const TOOL_LABELS: Record<string, string> = {
   claim_rewards: "Claim rewards",
   harvest_rewards: "Harvest rewards",
   repay_debt: "Repay debt",
-  save_contact: "Save contact",
   save_deposit: "Save deposit",
   send_transfer: "Send transfer",
   swap_execute: "Swap",

@@ -568,7 +568,13 @@ export async function POST(request: Request) {
   // Tools wrapped (via `WRITE_TOOLS` filter):
   //   save_deposit, withdraw, send_transfer, borrow, repay_debt,
   //   claim_rewards, harvest_rewards, swap_execute, volo_stake,
-  //   volo_unstake, save_contact.
+  //   volo_unstake.
+  //
+  // [S.243 / V07E_CONTACTS_SIMPLIFICATION Path A — 2026-05-22]
+  // `save_contact` removed from the write tool set (was the 11th).
+  // Contacts deleted entirely per H3 Path A; LLM can no longer
+  // propose / dispatch `save_contact` from web-v2. apps/web still
+  // ships it until it dies en bloc in v0.7e Phase 2.
   //
   // **`pay_api` is intentionally EXCLUDED from the web-v2 tool set
   // (Phase 4b deferral 2026-05-19).** The legacy 3-leg services flow
@@ -589,11 +595,9 @@ export async function POST(request: Request) {
   // Legacy `apps/web` continues to ship pay_api unchanged.
   //
   // Client-side dispatch (audric-chat-client.tsx) routes Approve
-  // taps to:
-  //   - sponsoredTx({type, params, session}) for the 9 sponsored
-  //     writes (save / withdraw / borrow / repay / send / swap /
-  //     claim-rewards / harvest / volo-stake / volo-unstake)
-  //   - POST /api/contacts/save for save_contact (Prisma-only)
+  // taps to sponsoredTx({type, params, session}) for the 10 sponsored
+  // writes (save / withdraw / borrow / repay / send / swap /
+  // claim-rewards / harvest / volo-stake / volo-unstake).
   //
   // [Phase 6.5 / SPEC_V07C_PHASE_6_5_CHAT_PARITY A.1 / S.198 — 2026-05-20]
   // Wire the full engine `READ_TOOLS` array (25 tools — render_canvas,
@@ -619,16 +623,25 @@ export async function POST(request: Request) {
   //
   // **Tool overrides intentionally NOT yet ported (deferred to A.1b
   // follow-up):** `audricMppServicesTool` (filters MPP catalog to 5
-  // services — engine returns full ~40), `audricSaveContactTool` +
-  // `audricListContactsTool` (Prisma-backed; engine's `save_contact`
-  // is a no-op stub), `lookupUserTool` (Audric handle directory),
-  // `audricPrepareBundleTool` (SPEC 14). Engine fallbacks work but
-  // are less polished — mpp_services card shows all 40 services
-  // instead of 5; save_contact returns ok without persisting. The
-  // A.1b commit ports these 4 files from `audric/apps/web/lib/engine/`
-  // to `audric/apps/web-v2/lib/audric/`. Each file is mostly pure
-  // engine + Prisma + Audric Postgres; minimal re-wiring.
-  const writeToolsForWebV2 = WRITE_TOOLS.filter((t) => t.name !== "pay_api");
+  // services — engine returns full ~40), `lookupUserTool` (Audric
+  // handle directory), `audricPrepareBundleTool` (SPEC 14). Engine
+  // fallbacks work but are less polished — mpp_services card shows
+  // all 40 services instead of 5. The A.1b commit ports these files
+  // from `audric/apps/web/lib/engine/` to `audric/apps/web-v2/lib/
+  // audric/`. Each file is mostly pure engine + Prisma + Audric
+  // Postgres; minimal re-wiring.
+  //
+  // [S.243 — 2026-05-22] `audricSaveContactTool` + `audricListContactsTool`
+  // are PERMANENTLY excluded (not deferred) per V07E_CONTACTS_SIMPLIFICATION
+  // Path A — contacts deleted entirely.
+  // [S.243 / V07E_CONTACTS_SIMPLIFICATION Path A — 2026-05-22] Filter
+  // out `save_contact` alongside `pay_api`. Contacts feature deleted
+  // from web-v2 entirely; LLM physically cannot dispatch the tool from
+  // this surface. Engine package still exports the tool until H3 Phase 4
+  // (no-rush cleanup post-soak).
+  const writeToolsForWebV2 = WRITE_TOOLS.filter(
+    (t) => t.name !== "pay_api" && t.name !== "save_contact"
+  );
   const readToolsForWebV2 = useGateway
     ? READ_TOOLS.filter((t) => t.name !== "web_search")
     : READ_TOOLS;
@@ -2332,14 +2345,6 @@ function describeAudricAction(
           ? "all vSUI"
           : `${raw} vSUI`;
       return `Unstake ${display} from Volo`;
-    }
-    case "save_contact": {
-      const name = (obj.name as string | undefined) ?? "contact";
-      const addr = obj.address as string | undefined;
-      const shortAddr = addr
-        ? `${addr.slice(0, 6)}…${addr.slice(-4)}`
-        : "address";
-      return `Save contact "${name}" (${shortAddr})`;
     }
     default:
       // [Phase 4b 2026-05-19] `pay_api` is intentionally EXCLUDED from

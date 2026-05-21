@@ -251,18 +251,6 @@ function renderCard(
           tone="neutral"
         />
       );
-    case "save_contact":
-      return (
-        <ConfirmationChip
-          detail={
-            (data as { name?: string; alias?: string }).name ??
-            (data as { alias?: string }).alias ??
-            undefined
-          }
-          label="CONTACT SAVED"
-        />
-      );
-
     default: {
       // ─── On-chain write receipts (default for write tools that
       //     emit a `tx` digest, per legacy CARD_RENDERERS fallback). ──

@@ -1,9 +1,11 @@
 'use client';
 
 // ConfirmationChip — quiet single-line surface for "no-tx-receipt" write
-// confirmations (cancel_payment_link, cancel_invoice, save_contact).
+// confirmations (cancel_payment_link, cancel_invoice).
 // Ported from `apps/web/components/engine/cards/ConfirmationChip.tsx` by
 // Phase 5a.4 (renderer migration sweep, 2026-05-19). Verbatim.
+// [S.243 — 2026-05-22] save_contact removed from consumer list per
+// V07E_CONTACTS_SIMPLIFICATION Path A. Component stays for cancel_*.
 
 interface ConfirmationChipProps {
   label: string;
