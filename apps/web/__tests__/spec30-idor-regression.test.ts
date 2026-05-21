@@ -572,12 +572,9 @@ describe('SPEC 30 Phase 1A.4 — IDOR regression smoke (additional routes)', () 
       url: 'http://localhost/api/user/preferences/contacts/backfill',
       body: { address: VICTIM_ADDR },
     },
-    {
-      name: 'GET /api/user/memories (Phase 1A.6)',
-      importPath: '../app/api/user/memories/route',
-      method: 'GET',
-      url: `http://localhost/api/user/memories?address=${VICTIM_ADDR}`,
-    },
+    // [v0.7d Phase 6 Block A — 2026-05-21 / S.221] /api/user/memories
+    // route deleted alongside the legacy memory pipeline. Its IDOR
+    // regression case retires with it.
     {
       name: 'POST /api/user/financial-profile (Phase 1A.6)',
       importPath: '../app/api/user/financial-profile/route',

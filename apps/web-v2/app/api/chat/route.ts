@@ -103,7 +103,6 @@ import {
   type Tool,
   type ToolContext,
   toAISDKTools,
-  type UserFinancialProfile,
   type UserPermissionConfig,
   WRITE_TOOLS,
 } from "@t2000/engine";
@@ -140,10 +139,7 @@ import { MemWalMemoryStore } from "@/lib/audric/memwal-memory-store";
 import { buildMemoryPrepareStep } from "@/lib/audric/memwal-prepare-step";
 import { buildMemoryWriteCallback } from "@/lib/audric/memwal-write-callback";
 import { audricObservabilityMiddleware } from "@/lib/audric/middleware/observability";
-import {
-  buildAdviceContext,
-  buildMemoryContext,
-} from "@/lib/audric/moat-context";
+import { buildAdviceContext } from "@/lib/audric/moat-context";
 import { ensureNaviMcpConnected } from "@/lib/audric/navi-mcp";
 import {
   dispatchPostWriteRefresh,
@@ -885,103 +881,42 @@ export async function POST(request: Request) {
     },
   };
 
-  // 7.5 [v0.7c Phase 6 prep + Phase 6.5 B.1-B.4 — 2026-05-20] Parallel
-  // fetch of all four intelligence-moat inputs:
+  // 7.5 [v0.7d Phase 6 Block A — 2026-05-21 / S.221] Moat fan-out.
+  //
+  // Two inputs (post-Block A; was four pre-Block A):
   //
   //   - `financialContextBlock` (layer 2) — daily orientation snapshot.
   //     "" when missing OR > 48h stale → drops layer 2 cleanly.
   //   - `adviceContext` (layer 1 dynamic) — last 5 advice rows in
   //     30-day window. AdviceLog stores what AUDRIC SAID; permanent
-  //     intelligence layer (MemWal in v0.7d stores what the USER said,
-  //     orthogonal access pattern).
-  //   - `profileRecord` (layer 1 dynamic) — UserFinancialProfile row
-  //     (risk appetite, literacy, currency framing, etc.). Confidence-
-  //     gated render — first-day users with no inferred profile
-  //     produce an empty block, no section emitted.
-  //   - `memoryRecords` (layer 3) — last 8 UserMemory rows (mixed
-  //     conversation-source + chain-source via the `source`
-  //     discriminator). B.3 (conversation memory) is **interim** —
-  //     gets deleted when MemWal stabilizes in v0.7d. B.4 (chain
-  //     memory) is permanent — ChainFact classifications are NOT
-  //     replaced by MemWal.
+  //     intelligence layer (MemWal stores what the USER said,
+  //     orthogonal access pattern — different table, different
+  //     lifecycle).
   //
-  // All four are fail-OPEN: a DB blip on any returns the empty value
-  // and the chat turn proceeds without the missing moat layer. The
-  // intent-dispatcher at step 9.5 still helps the LLM call fresh
-  // tools when context is thin.
+  // What was deleted in Block A:
   //
-  // **Why this is a Promise.all rather than four awaits:** moat reads
-  // amount to four indexed point-lookups (AdviceLog/UserFinancial
-  // Profile/UserMemory all FK on User.id; financial_context goes
-  // through Redis on warm hit, Prisma on miss). Fanning them out hides
-  // the per-query latency behind the single round-trip the financial
-  // context fetch already imposes.
+  //   - `profileRecord` reads + `buildProfileContext` block (Silent
+  //     Profile / Audric Intelligence System #3) — replaced by MemWal
+  //     `<memory_recall>` recall surface. `UserFinancialProfile` table
+  //     drops in the Block A schema migration.
+  //   - `memoryRecords` reads + `buildMemoryContext` block (B.3
+  //     conversation memory + B.4 chain memory) — replaced by MemWal
+  //     `<memory_recall>` recall surface. `UserMemory` table drops
+  //     in the Block A schema migration.
   //
-  // Pre-Phase-6 / Pre-Phase-6.5 these layers were silently absent:
-  // web-v2 shipped through Day 2c++/2e/Phase 3/4/4b/5/5.5 with the
-  // Day 2b 5-line stub and no `<financial_context>` injection
-  // (Phase 6 closed financial_context; Phase 6.5 closes the other
-  // three). Closing before chat-flip avoids regressing Audric
-  // Intelligence's moat at the same diff that retires apps/web.
-  const [financialContextBlock, adviceContext, profileRecord, memoryRecords] =
-    await Promise.all([
-      getFinancialContextBlock(walletAddress),
-      userId ? buildAdviceContext(userId) : Promise.resolve(""),
-      userId
-        ? prisma.userFinancialProfile
-            .findUnique({ where: { userId } })
-            .catch(() => null)
-        : Promise.resolve(null),
-      userId
-        ? prisma.userMemory
-            .findMany({
-              where: {
-                userId,
-                active: true,
-                OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
-              },
-              orderBy: { extractedAt: "desc" },
-              take: 8,
-              select: {
-                content: true,
-                extractedAt: true,
-                id: true,
-                memoryType: true,
-                source: true,
-              },
-            })
-            .catch(() => [])
-        : Promise.resolve([]),
-    ]);
-
-  // Map Prisma profile row → engine's `UserFinancialProfile` type. The
-  // Prisma row has a few string-typed enum columns (riskAppetite,
-  // financialLiteracy, currencyFraming) that need narrowing to the
-  // engine's literal union types. Mirrors apps/web's mapping at
-  // `engine-factory.ts:642-655`.
-  const profile: UserFinancialProfile | null = profileRecord
-    ? {
-        currencyFraming:
-          profileRecord.currencyFraming as UserFinancialProfile["currencyFraming"],
-        financialLiteracy:
-          profileRecord.financialLiteracy as UserFinancialProfile["financialLiteracy"],
-        knownPatterns: profileRecord.knownPatterns,
-        lastInferredAt: profileRecord.lastInferredAt,
-        literacyConfidence: profileRecord.literacyConfidence,
-        prefersBriefResponses: profileRecord.prefersBriefResponses,
-        prefersExplainers: profileRecord.prefersExplainers,
-        primaryGoals: profileRecord.primaryGoals,
-        riskAppetite:
-          profileRecord.riskAppetite as UserFinancialProfile["riskAppetite"],
-        riskConfidence: profileRecord.riskConfidence,
-        userId: profileRecord.userId,
-      }
-    : null;
-
-  // Render the memory block once on the host so the system-prompt
-  // assembly stays a pure string-concat (matches the financial_context
-  // pattern at L838).
-  const memoryBlock = buildMemoryContext(memoryRecords);
+  // Both replaced layers are now injected via `prepareStep`
+  // (see `lib/audric/memwal-prepare-step.ts`) which calls
+  // `memwal.recall(latestUserMessage)` per step-0 and reuses the
+  // result for any step-N follow-ups. Chain-memory writes are paused
+  // in Block A; the chain-classifier pipeline rebuilds against
+  // `memwal.store` in Block B alongside the cron migration.
+  //
+  // Both reads are fail-OPEN: a DB blip on either returns the empty
+  // value and the chat turn proceeds without the missing moat layer.
+  const [financialContextBlock, adviceContext] = await Promise.all([
+    getFinancialContextBlock(walletAddress),
+    userId ? buildAdviceContext(userId) : Promise.resolve(""),
+  ]);
 
   // 7.6 [v0.7c Phase 6 prep + Phase 6.5] Assemble the F-4 5-layer
   // system prompt. Layer 5 (user message) is owned by AI SDK's
@@ -991,8 +926,6 @@ export async function POST(request: Request) {
   const systemInstructions = buildAudricSystemPrompt({
     adviceContext,
     financialContext: financialContextBlock,
-    memoryBlock,
-    profile,
     skillRecipeBlock: undefined, // v0.7d gate — McpPromptAdapter not wired yet
     walletAddress,
   });
@@ -1119,13 +1052,14 @@ export async function POST(request: Request) {
   //     per-turn caching contract — recall fires ONCE at stepNumber===0,
   //     subsequent steps re-inject from cache.
   //
-  // Co-existence with legacy `memoryBlock` (per BENEFITS_SPEC_v07d
-  // §E-1 staging): the LLM sees BOTH the legacy `## Remembered Context`
-  // block (from `buildAudricSystemPrompt({ memoryBlock })` at L987) AND
-  // the new `<memory_recall>` block (injected here) during Phases 1-5.
-  // Phase 6 deletes the legacy. The smoke comparison window IS the
-  // staging discipline — founder reads chat outputs and compares
-  // quality before the deletion sweep.
+  // [v0.7d Phase 6 Block A — 2026-05-21 / S.221] The legacy
+  // `## Remembered Context` block (from `buildAudricSystemPrompt`
+  // `memoryBlock` param) was deleted in this same change. MemWal's
+  // `<memory_recall>` is now the sole cross-session memory surface
+  // — no parallel rendering, no staged co-existence. The Phase 1-5
+  // staging window IS the smoke discipline that earned the deletion:
+  // founder confirmed memory quality via G2 + G3 + G4 acceptance
+  // before this deletion sweep.
   //
   // Per-user scoping: the namespace is `audric:user:<walletAddress>`.
   // `walletAddress` is always defined here (it's session.user.id —

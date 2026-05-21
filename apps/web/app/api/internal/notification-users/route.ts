@@ -46,18 +46,13 @@ export async function GET(request: NextRequest) {
   const auth = validateInternalKey(request.headers.get('x-internal-key'));
   if ('error' in auth) return auth.error;
 
-  const source = request.nextUrl.searchParams.get('source');
-
-  switch (source) {
-    case 'profile-inference':
-      return NextResponse.json({ users: await pickProfileInferenceUsers() });
-    case 'memory-extraction':
-      return NextResponse.json({ users: await pickMemoryExtractionUsers() });
-    case 'chain-memory':
-      return NextResponse.json({ users: await pickChainMemoryUsers() });
-    default:
-      return NextResponse.json({ users: await pickAllUsers() });
-  }
+  // [v0.7d Phase 6 Block A — 2026-05-21 / S.221] `profile-inference`,
+  // `memory-extraction`, `chain-memory` source paths removed. Their
+  // crons (in t2000/apps/server) + their downstream routes (in this
+  // same `app/api/internal/*` tree) were deleted in the same change.
+  // The remaining caller is `portfolioSnapshots` (Block B Vercel
+  // migration target) which always uses the default branch.
+  return NextResponse.json({ users: await pickAllUsers() });
 }
 
 async function pickAllUsers(): Promise<CronUser[]> {
@@ -66,102 +61,4 @@ async function pickAllUsers(): Promise<CronUser[]> {
     select: { id: true, suiAddress: true },
   });
   return users.map((u) => ({ userId: u.id, walletAddress: u.suiAddress }));
-}
-
-// Profile inference is only worth running for users with enough conversation
-// history to extract meaningful signal, and skips anyone we already inferred
-// in the last 24h.
-async function pickProfileInferenceUsers(): Promise<CronUser[]> {
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000);
-  const oneDayAgo = new Date(Date.now() - 86_400_000);
-
-  const usersWithTurns = await prisma.conversationLog.groupBy({
-    by: ['userId'],
-    where: { role: 'user', createdAt: { gte: thirtyDaysAgo } },
-    _count: { id: true },
-    having: { id: { _count: { gte: 5 } } },
-  });
-
-  if (usersWithTurns.length === 0) return [];
-
-  const userIds = usersWithTurns.map((u) => u.userId);
-
-  const recent = await prisma.userFinancialProfile.findMany({
-    where: { userId: { in: userIds }, lastInferredAt: { gte: oneDayAgo } },
-    select: { userId: true },
-  });
-  const recentSet = new Set(recent.map((p) => p.userId));
-
-  const eligibleIds = userIds.filter((id) => !recentSet.has(id));
-  if (eligibleIds.length === 0) return [];
-
-  const users = await prisma.user.findMany({
-    where: { id: { in: eligibleIds } },
-    select: { id: true, suiAddress: true },
-  });
-  return users.map((u) => ({ userId: u.id, walletAddress: u.suiAddress }));
-}
-
-// Memory extraction runs only for users with new conversation activity since
-// the last extraction.
-async function pickMemoryExtractionUsers(): Promise<CronUser[]> {
-  const users = await prisma.user.findMany({
-    where: { conversationLogs: { some: { role: 'user' } } },
-    select: {
-      id: true,
-      suiAddress: true,
-      memories: {
-        orderBy: { extractedAt: 'desc' },
-        take: 1,
-        select: { extractedAt: true },
-      },
-      conversationLogs: {
-        where: { role: 'user' },
-        orderBy: { createdAt: 'desc' },
-        take: 1,
-        select: { createdAt: true },
-      },
-    },
-  });
-
-  return users
-    .filter((u) => {
-      const lastLog = u.conversationLogs[0]?.createdAt;
-      if (!lastLog) return false;
-      const lastExtraction = u.memories[0]?.extractedAt;
-      return !lastExtraction || lastLog > lastExtraction;
-    })
-    .map((u) => ({ userId: u.id, walletAddress: u.suiAddress }));
-}
-
-// Chain memory runs once a day per user with any activity (snapshot or chat).
-async function pickChainMemoryUsers(): Promise<CronUser[]> {
-  const oneDayAgo = new Date(Date.now() - 86_400_000);
-
-  const users = await prisma.user.findMany({
-    where: {
-      suiAddress: { not: '' },
-      OR: [
-        { portfolioSnapshots: { some: {} } },
-        { conversationLogs: { some: {} } },
-      ],
-    },
-    select: {
-      id: true,
-      suiAddress: true,
-      memories: {
-        where: { source: 'chain' },
-        orderBy: { extractedAt: 'desc' },
-        take: 1,
-        select: { extractedAt: true },
-      },
-    },
-  });
-
-  return users
-    .filter((u) => {
-      const last = u.memories[0]?.extractedAt;
-      return !last || last < oneDayAgo;
-    })
-    .map((u) => ({ userId: u.id, walletAddress: u.suiAddress }));
 }

@@ -389,8 +389,6 @@ export async function createEngine(
     portfolio,
     swapTokenNames,
     adviceContext,
-    profileRecord,
-    memoryRecords,
     financialContext,
   ] = await Promise.all([
     ensureMcpConnected(),
@@ -400,19 +398,13 @@ export async function createEngine(
     }),
     import('@t2000/sdk').then((m) => Object.keys(m.TOKEN_MAP)).catch(() => [] as string[]),
     userId ? buildAdviceContext(userId) : Promise.resolve(''),
-    userId ? prisma.userFinancialProfile.findUnique({
-      where: { userId },
-    }).catch(() => null) : Promise.resolve(null),
-    userId ? prisma.userMemory.findMany({
-      where: {
-        userId,
-        active: true,
-        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
-      },
-      orderBy: { extractedAt: 'desc' },
-      take: 8,
-      select: { id: true, memoryType: true, content: true, extractedAt: true, source: true },
-    }).catch(() => []) : Promise.resolve([]),
+    // [v0.7d Phase 6 Block A — 2026-05-21 / S.221] UserFinancialProfile
+    // + UserMemory reads removed. Apps/web is legacy / v0.7e archive
+    // target; MemWal `<memory_recall>` is the canonical memory surface
+    // in web-v2 production. apps/web's chat path now ships without
+    // profile/memory injection — acceptable because apps/web is
+    // off-traffic per S.220 (apps/web archive lock).
+    //
     // [v1.4.2 — Day 5 / Spec Item 6] Daily orientation snapshot read-
     // through cache. Joins the rest of the Promise.all so the engine-
     // boot critical path doesn't gain a serial round-trip; on a Redis
@@ -638,22 +630,12 @@ export async function createEngine(
 
   console.log(`[engine-factory] tools=${allTools.length}: ${allTools.map(t => t.name).join(', ')}`);
 
-  // Map Prisma profile record to engine type
-  const profile: UserFinancialProfile | null = profileRecord
-    ? {
-        userId: profileRecord.userId,
-        riskAppetite: profileRecord.riskAppetite as UserFinancialProfile['riskAppetite'],
-        financialLiteracy: profileRecord.financialLiteracy as UserFinancialProfile['financialLiteracy'],
-        prefersBriefResponses: profileRecord.prefersBriefResponses,
-        prefersExplainers: profileRecord.prefersExplainers,
-        currencyFraming: profileRecord.currencyFraming as UserFinancialProfile['currencyFraming'],
-        primaryGoals: profileRecord.primaryGoals,
-        knownPatterns: profileRecord.knownPatterns,
-        riskConfidence: profileRecord.riskConfidence,
-        literacyConfidence: profileRecord.literacyConfidence,
-        lastInferredAt: profileRecord.lastInferredAt,
-      }
-    : null;
+  // [v0.7d Phase 6 Block A — 2026-05-21 / S.221] Profile mapping deleted
+  // alongside the Promise.all read above. `profile` always-null here
+  // (apps/web is the v0.7e archive target; web-v2 production gets memory
+  // via MemWal `<memory_recall>` and no longer needs the legacy profile
+  // injection).
+  const profile: UserFinancialProfile | null = null;
 
   const isNewSession = !opts.session?.messages?.length;
 
@@ -684,7 +666,7 @@ export async function createEngine(
     intelligence: {
       profile,
       conversationState: opts.conversationState,
-      memories: memoryRecords.length > 0 ? memoryRecords : undefined,
+      memories: undefined, // [v0.7d Phase 6 Block A] legacy UserMemory drop
       pendingProposals: pendingProposals.length > 0
         ? pendingProposals.map((p) => ({
             id: p.id,
