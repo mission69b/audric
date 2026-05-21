@@ -12,7 +12,7 @@
 
 The v0.7d SPEC retires the legacy SQL-backed memory pipeline (`UserMemory` + `UserFinancialProfile` + chain-classifier cron) and replaces it with `@mysten-incubation/memwal` vector memory. Phase 6 Block A + B closed in two consecutive sessions on 2026-05-21; Block C is the last remaining code work.
 
-### Status snapshot (2026-05-21 ~16:30 AEST)
+### Status snapshot (2026-05-21 ~16:50 AEST)
 
 | Phase | SPEC budget | Actual | Status | Where it landed |
 |---|---|---|---|---|
@@ -22,16 +22,16 @@ The v0.7d SPEC retires the legacy SQL-backed memory pipeline (`UserMemory` + `Us
 | 3 LITE — Settings Memory UI | ~2d | ~35m | ✅ G4 PASSED | S.218 |
 | 4 — Classifier migration | ~2d | ~10m audit | ✅ FOLDED into Phase 6 | S.219 |
 | 5 — SPEC 40 HITL native | ~3d | ~25m audit | ✅ FOLDED into v0.7e | S.220 |
-| 6 Block A — Memory pipeline retirement | part of ~2d | ~1h 45m + ~30m post-ship review | ✅ G10 PARTIAL | S.221 |
+| 6 Block A — Memory pipeline retirement | part of ~2d | ~1h 45m + ~30m post-ship review | ✅ G5 + G10 PASSED | S.221 |
 | 6 Block B — Vercel cron migration + structural vercel.json fix | part of ~2d | ~45m impl + ~15m smoke | ✅ G10 SMOKE GREEN (soak skipped per founder lock; subsumed by Block C wholesale delete) | S.222 |
 | 6 Block C.1 — `t2000.ai/api/stats` refactor (Prisma → static + Sui RPC) | part of ~2d | ~35m | ✅ SHIPPED | S.223 (t2000 `8aa394e4`) |
-| 6 Block C.2 — `apps/server` + `infra/` + Prisma stack wholesale delete | part of ~2d | ~50m | ✅ SHIPPED — **42 files deleted, −3,804 LoC net** | **S.224 (t2000 `5e04154f`)** |
-| 6 Block C.3 — Dead receiver routes + docs + v0.7e+ backlog stamps | part of ~2d | ~45m | ✅ SHIPPED — **6 dead `/api/internal/*` routes deleted, env doc consolidated, 2 new backlog rows** | **S.224 (this session, audric commit TBD)** |
-| 7 — Cutover + 7d soak | ~7d | TBD | ⏳ NEXT — audit-first | — |
-| 8 — v0.7e unblock | ~½d | TBD | ⏳ | — |
-| **Code time so far** | **~12d budget** | **~9h 30m actual** | **Ahead by ~10.5 days** | — |
+| 6 Block C.2 — `apps/server` + `infra/` + Prisma stack wholesale delete | part of ~2d | ~50m | ✅ SHIPPED — **42 files deleted, −3,804 LoC net** | S.224 (t2000 `5e04154f`) |
+| 6 Block C.3 — Dead receiver routes + docs + v0.7e+ backlog stamps | part of ~2d | ~45m | ✅ SHIPPED — **6 dead `/api/internal/*` routes deleted, env doc consolidated, 2 new backlog rows** | S.224 (audric `a6a17e8` + t2000 `2d031d2b`) |
+| 7 — Cutover + compressed observation | SPEC: ~7d formal soak | TBD (48-72h compressed observation, founder-owned) | 🟡 IN PROGRESS — **banner DROPPED per founder simplification lock**; observation opens 2026-05-21 ~17:00 AEST | S.225 (this session, doc-only) |
+| 8 — v0.7e dep-map unblock | ~½d | ~5min audit | ✅ G12 CLOSED with caveat — dependency map CAPTURED + CATEGORIZED for v0.7e Tier B/C sweep | S.225 (this session) |
+| **Code time so far** | **~12d budget** | **~9h 35m actual** | **Ahead by ~10.5 days** | — |
 
-Three audit-saves in one day (Phases 4 + 5 + Block A revision) compressed the SPEC budget by ~7 days. The pattern: v0.7d was scoped before v0.7c chat-flip + S.173 intent-dispatcher lock + the chain-memory statistical refactor + the AI SDK v6 HITL migration closed. Each phase audit collapses 2-3 days of stale SPEC work into minutes-to-hours of focused deletion. **Continue audit-first cadence on Block C + Phase 7.**
+Three audit-saves in one day (Phases 4 + 5 + Block A revision) compressed the SPEC budget by ~7 days. Plus the S.225 Phase 7+8 compression: banner dropped (~30 LoC saved + ~½ hr saved) + soak compressed from 7d to 48-72h + Phase 8 G12 closed in 5min audit. The pattern: v0.7d was scoped before v0.7c chat-flip + S.173 intent-dispatcher lock + the chain-memory statistical refactor + the AI SDK v6 HITL migration closed. Each phase audit collapses 2-3 days of stale SPEC work into minutes-to-hours of focused deletion.
 
 ---
 
@@ -50,17 +50,42 @@ Block B soak was **skipped** per founder lock (S.224, 2026-05-21 ~16:00 AEST). J
 | Founder ops: retire ECS task defs + ECR repos + ALB | ⏳ founder action via AWS console | — |
 | Founder ops: drop indexer NeonDB tables (Position / Transaction / ProtocolFeeLedger / IndexerCursor / YieldSnapshot + Agent.lastSeen) | ⏳ founder action via Neon console | — |
 
-### 2. Phase 7 — cutover + 7d soak (NEXT IMPLEMENTABLE)
+### 2. 🟡 Phase 7 — compressed 48-72h passive observation (founder-owned, NO MORE AGENT CODE)
 
-Per BENEFITS_SPEC_v07d L530+. **Audit-first cadence required** — read the SPEC's Phase 7 section, then verify what's actually still in `apps/web` vs what the SPEC assumes. Phases 4 / 5 / Block A / Block C each compressed multi-day SPEC budgets into ~hours of audit-driven work; expect Phase 7 to follow the same pattern.
+**Banner DROPPED** per founder simplification lock (S.225, 2026-05-21 ~16:45 AEST). Three reasons it was never needed: (a) D-14 mitigation premise is stale — MemWal was wired in production at S.215 (~8h before banner concept solidified), so users have already been accumulating fresh memory; no jarring cold-start moment to apologize for. (b) Audric is pre-launch; "1057 users" SPEC figure is peak `UserMemory` row count, not active engaged users. (c) Legacy `UserMemory` had a 30d retention cliff already — users were periodically losing memory; not regression-grade.
 
-### 3. Phase 8 — v0.7e unblock (~½d)
+**Observation plan (founder-owned, calendar 48-72h from 2026-05-21 ~17:00 AEST):**
 
-Per BENEFITS_SPEC_v07d. Sets up the v0.7e SPEC which archives all of `audric/apps/web` (the legacy chat shell). Two new backlog rows landed in S.224 that should be SPEC'd into v0.7e+:
-- `engine-fn-injection-refactor` (~1-2d) — eliminate engine→audric HTTP self-fetches via function injection. Removes the v0.7d-load-bearing `T2000_INTERNAL_KEY` env var bridge.
-- `engine-internal-key-final-delete` (~30 min) — finalize env var retirement once function injection ships.
+| Day | Date | Checks (~5 min each) | Abort-to-rollback trigger |
+|---|---|---|---|
+| Day 1 | 2026-05-22 morning AEST | Vercel cron logs (`financial-context-snapshot` 02:30 UTC + `portfolio-snapshot` 07:00 UTC both fired) + TurnMetrics `memwal.recall` p95 ≤ 700ms single / ≤ 50ms cached + Anthropic usage shows ZERO `audric.cron.memory-extraction` invocations | Cron mis-fire OR p95 > 1500ms sustained OR Anthropic shows >0 memory-extraction calls |
+| Day 2 | 2026-05-23 morning AEST | Same + AdviceLog throughput matches pre-Block-A baseline + manual chat smoke (~5 turns; confirm `<memory_recall>` populates) | Manual chat shows no `<memory_recall>` after 5+ turns OR AdviceLog drops > 25% |
+| Day 3 (optional) | 2026-05-24 morning AEST | If Day 1 + 2 clean → stamp S.226 closing G11. If any anomaly → extend to full SPEC 7d | n/a |
 
-See the backlog table below for full descriptions.
+**Rollback procedure (if any trigger fires):** revert audric `a6a17e8` (auto-redeploys to `12rjxybu` pre-C.3 baseline) → re-enable t2000 ECS crons (cron-daily-intel task def preserved in git at SHA `pre-5e04154f`) → stamp S.226 with rollback trigger + RCA → v0.7e drafting paused.
+
+### 3. ✅ Phase 8 — v0.7e dep-map audit CLOSED (G12)
+
+Read-only grep of `apps/web/lib/` confirmed dependency map is captured + categorized:
+
+| Category | Files | LoC est. | v0.7e disposition |
+|---|---|---|---|
+| Chat-shell deps | `timeline-builder.ts`, `proactive-marker.ts`, `sse-heartbeat.ts`, `engine/{fast-path-bundle,strip-llm-directives,cost-rates,quote-refresh-metrics,confirm-detection,txn-metrics}.ts`, `engine/__tests__/*` | ~3,500 | **Tier B DELETE** with chat-shell sweep |
+| Memory-pipeline deps | `engine/engine-factory.ts`, `engine/engine-context.ts` (type imports; row reads dead per S.221) | ~800 | **Tier B DELETE** with tendril 6 decouple |
+| HITL-wire-format deps | overlaps chat-shell (PendingAction type + `pending_action` events) | n/a | **AUTO-DELETES** with chat-shell files |
+| Prisma generated client | `lib/generated/prisma/internal/*` | ~5,000 auto-gen | **DELETE** at apps/web archive |
+| Standalone canonical lib | `portfolio.ts`, `rates.ts`, `transaction-history.ts`, `contacts/*`, `identity/*`, `env.ts`, `auth.ts` | ~8,000 | **Tier C COPY-PORT** to web-v2 |
+
+**G12 verdict:** Pass with caveat. SPEC's "zero residue" target was structurally impossible without first doing the v0.7e archive sweep (Phase 6 deferred G9 tendril 6 to v0.7e per S.221). Re-interpreted as "dep map captured + scheduled" — closure means v0.7e knows what to delete vs copy-port. **v0.7e drafting is UNBLOCKED.**
+
+### 4. Forward — v0.7e SPEC drafting (POST-G11 close, ~next agent session)
+
+Per `t2000/spec/runbooks/RUNBOOK_v07c_phase_6_cutover.md` §11.2 the v0.7e scope is locked (Tier C surfaces + apps/web archive). Two prerequisite backlog rows landed in S.224 that should be in the v0.7e SPEC Phase 1:
+- `engine-fn-injection-refactor` (~1-2d) — eliminate engine→audric HTTP self-fetches; removes the load-bearing `T2000_INTERNAL_KEY` env var bridge. Lands BEFORE Tier C migration to simplify moved-routes' auth.
+- `engine-internal-key-final-delete` (~30 min) — final env var cleanup post-injection.
+
+Plus the C.1 side-finding logged this session:
+- `stats-route-wallets-null-backlog` (P3, ~20 min, t2000 repo) — `https://t2000.ai/api/stats` returns `wallets: null`; Sui-RPC sub-fetch throws + empty catch swallows. Anytime / pre-v0.7e cleanup.
 
 ---
 
