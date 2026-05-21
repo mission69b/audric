@@ -1143,6 +1143,20 @@ export async function POST(request: Request) {
     memoryStore: memWalStore,
     systemInstructions,
   });
+  // [S.215 follow-on / 2026-05-21] G2 verification log. Always fires once
+  // per chat request — tells us in production whether the MEMWAL_* env
+  // vars are landing on this deployment AND whether the prepareStep
+  // closure was constructed. Pair with `[web-v2 memwal-prepare-step]`
+  // step logs (inside the closure) to assert the full chain:
+  //   - `client=true` + step logs appear → wiring fully live ✓
+  //   - `client=true` + NO step logs → callback constructed but AI SDK
+  //     never called it (bug in Agent wire-up)
+  //   - `client=false` → env vars not picked up by THIS deployment
+  //     (Vercel didn't rebuild after env vars were added)
+  // Same diagnostic posture as S.213a's `validateModelMessages` line.
+  console.info(
+    `[web-v2 memwal-init] client=${memwal !== null} callback=${prepareStepCallback !== undefined} namespace=audric:user:${walletAddress.slice(0, 10)}...`
+  );
 
   const audricAgent = new Agent({
     model,

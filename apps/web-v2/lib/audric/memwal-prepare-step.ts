@@ -173,22 +173,65 @@ export function buildMemoryPrepareStep(
   const { memoryStore, systemInstructions } = opts;
 
   return async ({ stepNumber, messages }) => {
+    // [S.215 follow-on / 2026-05-21] Always-on diagnostic. Same lesson
+    // we learned from S.213a — a safety net that only logs on the
+    // unhappy path is unverifiable in production. Without this line we
+    // could not distinguish "memwal client null (env vars unset)" from
+    // "recall succeeded with empty results (cold start)" from "recall
+    // threw and we swallowed it." Now every prepareStep invocation
+    // emits one line; G2 acceptance is "this line appears in Vercel
+    // logs after a chat turn."
+    //
+    // What we log:
+    //   - `step=N` — which step of the AI SDK tool-loop fired (0 = first)
+    //   - `query_chars=N` — length of the recall query (NOT the content,
+    //     PII-safe). 0 means no user message extracted (turn 0 only).
+    //   - `outcome=fresh|cached|empty-query|recall-failed` — provenance
+    //     of the records the prompt got
+    //   - `record_count=N` — number of memory records in the cache after
+    //     this step's recall
+    //   - `block_chars=N` — character length of the rendered
+    //     `<memory_recall>` block (0 means no block was appended →
+    //     systemInstructions passed through bare)
+    //
+    // What we DO NOT log: query text, record text, system prompt
+    // content. Per env-validation-gate + general privacy hygiene —
+    // memory layer is high-PII surface; we observe SHAPE not CONTENT.
     if (stepNumber === 0) {
       const userMessage = extractLatestUserMessage(messages);
+      let outcome: "fresh" | "empty-query" | "recall-failed";
       if (userMessage.length === 0) {
         memoryCache = { results: [] };
+        outcome = "empty-query";
       } else {
         try {
           const records = await memoryStore.recall(userMessage, { topK });
           memoryCache = { results: records };
+          outcome = "fresh";
         } catch (err) {
           console.warn(
             "[web-v2 memwal-prepare-step] recall failed; continuing without memory:",
             err instanceof Error ? err.message : String(err)
           );
           memoryCache = { results: [] };
+          outcome = "recall-failed";
         }
       }
+      const records = memoryCache?.results ?? [];
+      const block = buildMemoryRecallBlock(records);
+      console.info(
+        `[web-v2 memwal-prepare-step] step=${stepNumber} query_chars=${userMessage.length} outcome=${outcome} record_count=${records.length} block_chars=${block.length}`
+      );
+    } else {
+      // Subsequent steps just re-inject from cache; logged at lower
+      // detail since the recall already happened. Still emit a line so
+      // the multi-step turn surfaces in logs (helps debug "did step 1
+      // get the same memory layer as step 0?").
+      const records = memoryCache?.results ?? [];
+      const block = buildMemoryRecallBlock(records);
+      console.info(
+        `[web-v2 memwal-prepare-step] step=${stepNumber} outcome=cached record_count=${records.length} block_chars=${block.length}`
+      );
     }
 
     const records = memoryCache?.results ?? [];
