@@ -129,6 +129,12 @@ import {
   computeAccountAgeDays,
 } from "@/lib/audric/account-age-gate";
 import {
+  getChatById as getChatRowById,
+  saveChat,
+  saveMessages,
+} from "@/lib/audric/chat-persistence";
+import { generateChatTitle } from "@/lib/audric/chat-title";
+import {
   argsFingerprint,
   dispatchIntentsToParts,
   synthesizeAssistantToolMessage,
@@ -396,6 +402,52 @@ export async function POST(request: Request) {
       }),
       { status: 500, headers: { "content-type": "application/json" } }
     );
+  }
+
+  // [v0.7e Persistent Chats (S.247)] Resolve chatId + ensure ownership.
+  //
+  // Three branches, per the persistent-chats SPEC §2.4:
+  //   (a) `body.id` present + chat exists + caller owns it       → resume turn
+  //   (b) `body.id` present + chat exists + caller does NOT own  → 403
+  //   (c) `body.id` present + chat does not exist                → create with that id
+  //   (d) `body.id` absent                                       → generate id + create
+  //
+  // The chatId then flows into:
+  //   • `originalMessages` on `createUIMessageStream` (AI SDK persistence mode)
+  //   • `saveMessages(...)` in the stream's `onFinish` callback
+  //   • The async title generator (LOCK-5) when `isNewChat`
+  //
+  // Failures here are non-fatal to the chat stream — we log + degrade to
+  // an ephemeral session if persistence is unavailable (e.g. Neon
+  // outage). This preserves the pre-S.247 UX as the worst-case path
+  // rather than blocking the user from chatting at all.
+  const chatId = body.id ?? generateId();
+  let isNewChat = false;
+  try {
+    const existing = await getChatRowById({ chatId });
+    if (existing) {
+      if (existing.userId !== walletAddress) {
+        return new Response(
+          JSON.stringify({ error: "Chat does not belong to caller" }),
+          { status: 403, headers: { "content-type": "application/json" } }
+        );
+      }
+    } else {
+      await saveChat({
+        chatId,
+        userSuiAddress: walletAddress,
+        visibility: "private",
+      });
+      isNewChat = true;
+    }
+  } catch (err) {
+    console.warn(
+      "[audric-chat] chat-persistence ensure failed (continuing ephemerally):",
+      err instanceof Error ? err.message : String(err)
+    );
+    // Degrade: keep `chatId` but treat as not persisted. saveMessages
+    // failures in onFinish will be logged + swallowed the same way.
+    isNewChat = false;
   }
 
   const sessionId = body.sessionId ?? `web-v2-${crypto.randomUUID()}`;
@@ -948,6 +1000,24 @@ export async function POST(request: Request) {
     }
     return "";
   })();
+
+  // [v0.7e Persistent Chats (S.247) — LOCK-5] Fire-and-forget Haiku-class
+  // title generator on the first turn of a freshly-created chat. The row
+  // already exists with `title: null`; this updates it ~300-600ms later.
+  // The sidebar renders a fallback while null, so a slow / failed title
+  // generation never blocks the user-perceived stream start.
+  if (isNewChat && latestUserTextForEffort.length > 0) {
+    generateChatTitle({
+      chatId,
+      firstUserMessageText: latestUserTextForEffort,
+    }).catch((err) => {
+      console.warn(
+        `[audric-chat] title gen kickoff failed for chatId=${chatId}:`,
+        err instanceof Error ? err.message : String(err)
+      );
+    });
+  }
+
   const sessionWriteCount = countWriteToolsInHistory(body.messages);
   const effortLevel = latestUserTextForEffort
     ? classifyEffort(
@@ -1517,7 +1587,22 @@ export async function POST(request: Request) {
       }
     },
     generateId,
-    onFinish: () => {
+    // [v0.7e Persistent Chats (S.247)] Persistence-mode trigger.
+    // Per AI SDK v6's `createUIMessageStream` contract: passing
+    // `originalMessages` flips the stream into persistence mode where
+    // `onFinish` receives the FULL updated `messages: UIMessage[]`
+    // array (originals + the freshly streamed assistant response).
+    // We dedup by message id via `saveMessages({ skipDuplicates: true })`,
+    // so re-saving prior turns on resume is a no-op.
+    originalMessages: body.messages.map((m) => {
+      const id = "id" in m && m.id ? m.id : generateId();
+      const parts =
+        "content" in m
+          ? [{ type: "text" as const, text: String(m.content) }]
+          : m.parts;
+      return { id, role: m.role, parts };
+    }) as UIMessage[],
+    onFinish: ({ messages: finalMessages }) => {
       // 11. Persist TurnMetrics row (fire-and-forget; never blocks the
       // response). Matches the production fire-and-forget pattern in
       // `audric/web/app/api/engine/chat/route.ts` ~L1390.
@@ -1638,10 +1723,86 @@ export async function POST(request: Request) {
             redactPII(err)
           );
         });
+
+      // [v0.7e Persistent Chats (S.247)] Persist the conversation.
+      // Fire-and-forget: a single failure must NEVER block the response.
+      // `skipDuplicates: true` in `saveMessages` makes re-save of prior
+      // turns on resume a no-op (message.id is the PK). The monotonic
+      // `createdAt` offset preserves intra-turn ordering even though we
+      // batch-write at the same wall-clock instant.
+      const persistenceTimestamp = Date.now();
+      saveMessages({
+        messages: finalMessages.map((m, i) => ({
+          id: m.id,
+          chatId,
+          role: m.role,
+          parts: m.parts as Prisma.InputJsonValue,
+          attachments: [],
+          createdAt: new Date(persistenceTimestamp + i),
+        })),
+      }).catch((err: unknown) => {
+        console.error(
+          `[web-v2 audric-chat] saveMessages failed for chatId=${chatId} (non-fatal):`,
+          redactPII(err)
+        );
+      });
     },
   });
 
   return createUIMessageStreamResponse({ stream });
+}
+
+// -----------------------------------------------------------------------------
+// DELETE — remove a chat (v0.7e Persistent Chats, S.247)
+// -----------------------------------------------------------------------------
+//
+// The sidebar's per-chat delete dialog fires `DELETE /api/chat?id=X`
+// (see `components/chat/sidebar-history.tsx:170`). The handler is
+// ownership-gated by the prisma helper's `where: { id, userSuiAddress }`
+// filter — a caller that doesn't own the chat sees `deletedCount: 0`
+// (treated as not-found rather than 403 so we don't leak chat existence).
+// FK cascade deletes the Chat's Messages + Votes in the same transaction.
+export async function DELETE(request: Request) {
+  const session = await getCurrentUser();
+  if (!session?.user) {
+    return new Response(JSON.stringify({ error: "Authentication required" }), {
+      status: 401,
+      headers: { "content-type": "application/json" },
+    });
+  }
+
+  const { searchParams } = new URL(request.url);
+  const chatIdParam = searchParams.get("id");
+  if (!chatIdParam) {
+    return new Response(
+      JSON.stringify({ error: "Missing required query param: id" }),
+      { status: 400, headers: { "content-type": "application/json" } }
+    );
+  }
+
+  try {
+    const { deleteChatById } = await import("@/lib/audric/chat-persistence");
+    const { deletedCount } = await deleteChatById({
+      chatId: chatIdParam,
+      userSuiAddress: session.user.id,
+    });
+    if (deletedCount === 0) {
+      return new Response(JSON.stringify({ error: "Chat not found" }), {
+        status: 404,
+        headers: { "content-type": "application/json" },
+      });
+    }
+    return Response.json({ ok: true, deletedCount }, { status: 200 });
+  } catch (err) {
+    console.error(
+      `[audric-chat] DELETE failed chatId=${chatIdParam}:`,
+      err instanceof Error ? err.message : String(err)
+    );
+    return new Response(JSON.stringify({ error: "Failed to delete chat" }), {
+      status: 500,
+      headers: { "content-type": "application/json" },
+    });
+  }
 }
 
 // -----------------------------------------------------------------------------

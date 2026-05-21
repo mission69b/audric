@@ -63,7 +63,10 @@ export const ModelName = {
   PortfolioSnapshot: 'PortfolioSnapshot',
   LinkedWallet: 'LinkedWallet',
   TurnMetrics: 'TurnMetrics',
-  UserFinancialContext: 'UserFinancialContext'
+  UserFinancialContext: 'UserFinancialContext',
+  Chat: 'Chat',
+  Message: 'Message',
+  Vote: 'Vote'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -328,6 +331,39 @@ export const UserFinancialContextScalarFieldEnum = {
 } as const
 
 export type UserFinancialContextScalarFieldEnum = (typeof UserFinancialContextScalarFieldEnum)[keyof typeof UserFinancialContextScalarFieldEnum]
+
+
+export const ChatScalarFieldEnum = {
+  id: 'id',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  title: 'title',
+  visibility: 'visibility',
+  userSuiAddress: 'userSuiAddress'
+} as const
+
+export type ChatScalarFieldEnum = (typeof ChatScalarFieldEnum)[keyof typeof ChatScalarFieldEnum]
+
+
+export const MessageScalarFieldEnum = {
+  id: 'id',
+  chatId: 'chatId',
+  role: 'role',
+  parts: 'parts',
+  attachments: 'attachments',
+  createdAt: 'createdAt'
+} as const
+
+export type MessageScalarFieldEnum = (typeof MessageScalarFieldEnum)[keyof typeof MessageScalarFieldEnum]
+
+
+export const VoteScalarFieldEnum = {
+  chatId: 'chatId',
+  messageId: 'messageId',
+  isUpvoted: 'isUpvoted'
+} as const
+
+export type VoteScalarFieldEnum = (typeof VoteScalarFieldEnum)[keyof typeof VoteScalarFieldEnum]
 
 
 export const SortOrder = {

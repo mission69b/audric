@@ -3,9 +3,11 @@
 import { useChat } from "@ai-sdk/react";
 import {
   DefaultChatTransport,
+  generateId,
   lastAssistantMessageIsCompleteWithToolCalls,
   type ReasoningUIPart,
   type ToolUIPart,
+  type UIMessage,
 } from "ai";
 import { Loader2 } from "lucide-react";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
@@ -35,6 +37,7 @@ import { useZkLogin } from "@/components/auth/use-zklogin";
 import { AppSidebar } from "@/components/chat/app-sidebar";
 import { ChipBar } from "@/components/chat/chip-bar";
 import { EmptyState } from "@/components/chat/empty-state";
+import { VisibilityToggle } from "@/components/chat/visibility-toggle";
 import { UsernameClaimGate } from "@/components/settings/username-claim-gate";
 import { Button } from "@/components/ui/button";
 import {
@@ -126,7 +129,33 @@ interface AudricBundleMarkerData {
  *     AI SDK surfaces a `tool-output-denied` chunk to the model on the
  *     next turn so the LLM gracefully narrates the rejection.
  */
-export function AudricChatClient() {
+/**
+ * [v0.7e Persistent Chats (S.247)] Hydration props.
+ *
+ * Pre-S.247 the chat surface was ephemeral — every `/chat` visit started a
+ * fresh session and no prior messages ever loaded. The new `/chat/[id]`
+ * route hydrates prior turns server-side and passes them in as
+ * `initialMessages` so `useChat({ id, messages })` resumes the conversation
+ * with the LLM holding full context. Both props are optional — the
+ * `/chat` (new chat) entry passes nothing and `useChat` generates a fresh
+ * id at mount time.
+ */
+export type AudricChatClientProps = {
+  chatId?: string;
+  initialMessages?: UIMessage[];
+  /**
+   * Initial visibility for the visibility toggle. Only consulted when
+   * `chatId` is defined (a new/unsaved chat has nothing to toggle).
+   * Defaults to `private` per `Chat.visibility` schema default.
+   */
+  initialVisibility?: "private" | "public";
+};
+
+export function AudricChatClient({
+  chatId,
+  initialMessages,
+  initialVisibility = "private",
+}: AudricChatClientProps = {}) {
   const { status, session, error, login } = useZkLogin();
 
   // Splash-B (v0.7c §4.7.E) — centered `audric.` wordmark + small
@@ -188,7 +217,14 @@ export function AudricChatClient() {
     );
   }
 
-  return <AuthenticatedChat session={session} />;
+  return (
+    <AuthenticatedChat
+      chatId={chatId}
+      initialMessages={initialMessages}
+      initialVisibility={initialVisibility}
+      session={session}
+    />
+  );
 }
 
 /**
@@ -226,7 +262,17 @@ export function AudricChatClient() {
  * `(chat)/` route group deletes in Session 9a; this inline gate is the
  * cutover-safe home.
  */
-function AuthenticatedChat({ session }: { session: ZkLoginSession }) {
+function AuthenticatedChat({
+  chatId,
+  initialMessages,
+  initialVisibility,
+  session,
+}: {
+  chatId?: string;
+  initialMessages?: UIMessage[];
+  initialVisibility: "private" | "public";
+  session: ZkLoginSession;
+}) {
   const userStatus = useUserStatus(session.address, session.jwt);
 
   // Lazy initializer reads from localStorage exactly once on mount.
@@ -319,11 +365,29 @@ function AuthenticatedChat({ session }: { session: ZkLoginSession }) {
       <AppSidebar />
       <SidebarInset>
         <div className="flex h-dvh flex-col bg-background text-foreground">
-          <header className="flex h-12 items-center px-3 md:hidden">
-            <SidebarTrigger className="text-foreground/60 hover:text-foreground" />
+          {/* [v0.7e Persistent Chats Phase 4 / S.247] Header is now
+              ALWAYS visible (mobile + desktop). Left: sidebar trigger
+              (mobile only — desktop sidebar is already pinned via
+              SidebarProvider). Right: visibility toggle + copy-link
+              (only when chatId is defined — new/unsaved chats have
+              nothing to toggle). The toggle uses optimistic SWR sync
+              so the icon flips immediately while the server action
+              propagates. */}
+          <header className="flex h-12 items-center justify-between px-3">
+            <SidebarTrigger className="text-foreground/60 hover:text-foreground md:hidden" />
+            <div className="ml-auto">
+              {chatId && (
+                <VisibilityToggle
+                  chatId={chatId}
+                  initialVisibility={initialVisibility}
+                />
+              )}
+            </div>
           </header>
           <AudricChatPanel
-            key={`${session.address}-${chatNonce}`}
+            chatId={chatId}
+            initialMessages={initialMessages}
+            key={`${session.address}-${chatId ?? "new"}-${chatNonce}`}
             session={session}
           />
         </div>
@@ -339,7 +403,15 @@ function AuthenticatedChat({ session }: { session: ZkLoginSession }) {
  * instance gets a clean slate per session (also sidesteps the v6
  * non-reactive-transport limitation we hit in Day 2c++).
  */
-function AudricChatPanel({ session }: { session: ZkLoginSession }) {
+function AudricChatPanel({
+  chatId,
+  initialMessages,
+  session,
+}: {
+  chatId?: string;
+  initialMessages?: UIMessage[];
+  session: ZkLoginSession;
+}) {
   const [input, setInput] = useState<string>("");
 
   const transport = useMemo(
@@ -351,6 +423,17 @@ function AudricChatPanel({ session }: { session: ZkLoginSession }) {
     [session.jwt]
   );
 
+  // [v0.7e Persistent Chats Phase 5 / S.247] Stable per-mount id. When
+  // the prop `chatId` is undefined (new-chat path at `/chat`), we
+  // generate one client-side so the server's `body.id ?? generateId()`
+  // ladder picks up OUR id (not a server-only one the client would
+  // never learn). When `chatId` IS defined (resume at `/chat/[id]`),
+  // we use it verbatim. `useMemo` keeps the value stable across
+  // re-renders within the same mount — re-mounting (via the parent's
+  // `key={chatId ?? "new"}-${chatNonce}`) is the only way to rotate
+  // to a fresh id.
+  const effectiveChatId = useMemo(() => chatId ?? generateId(), [chatId]);
+
   const {
     messages,
     sendMessage,
@@ -359,6 +442,13 @@ function AudricChatPanel({ session }: { session: ZkLoginSession }) {
     addToolApprovalResponse,
     addToolOutput,
   } = useChat({
+    // [v0.7e Persistent Chats (S.247)] Stable `id` per chat enables
+    // `useChat` to thread it through the request body — `/api/chat`
+    // reads `body.id` as `chatId` for persistence. Resume path
+    // (`/chat/[id]`) hydrates prior turns via `messages` so the
+    // assembled context exactly matches what the LLM saw last time.
+    id: effectiveChatId,
+    messages: initialMessages,
     transport,
     // Auto-fire the next turn once a tool-call has been answered
     // (output OR approval response). Without this the user would have
@@ -366,6 +456,28 @@ function AudricChatPanel({ session }: { session: ZkLoginSession }) {
     // save result. AI SDK ships the canonical predicate.
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
   });
+
+  // [v0.7e Persistent Chats Phase 5 / S.247] Promote a new chat to a
+  // permalink URL once the first message has landed. Uses
+  // `window.history.replaceState` (not `router.replace`) because
+  // Next 16's app-router segment change from `/chat` → `/chat/[id]`
+  // WOULD re-mount the page and blow away the in-flight `useChat`
+  // state — replaceState updates the address bar without notifying
+  // the router. The route group `/chat/[id]/page.tsx` exists for
+  // cold reload + click-from-sidebar, this effect is for the
+  // "started fresh and now want a refresh to land me back here" path.
+  // Guarded on `chatId === undefined` so we never re-promote a chat
+  // that was already opened via `/chat/[id]`.
+  useEffect(() => {
+    if (
+      chatId === undefined &&
+      messages.length > 0 &&
+      typeof window !== "undefined" &&
+      window.location.pathname === "/chat"
+    ) {
+      window.history.replaceState({}, "", `/chat/${effectiveChatId}`);
+    }
+  }, [chatId, effectiveChatId, messages.length]);
 
   const canSend = status === "ready" && input.trim().length > 0;
 

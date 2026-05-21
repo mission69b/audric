@@ -40,6 +40,9 @@ model User {
   watchAddresses     WatchAddress[]
   portfolioSnapshots PortfolioSnapshot[]
   linkedWallets      LinkedWallet[]
+  // v0.7e Persistent Chats (S.247) — back-relation; Chat FKs to `suiAddress`
+  // (canonical user identity post-zkLogin) rather than `id` (cuid).
+  chats              Chat[]
 
   @@index([email])
   @@index([emailVerified, timezoneOffset])
@@ -465,4 +468,59 @@ model UserFinancialContext {
   daysSinceLastSession Int
   generatedAt          DateTime @default(now())
   updatedAt            DateTime @updatedAt
+}
+
+// ===========================================================================
+// v0.7e Persistent Chats (S.247) — replaces the drizzle Chat/Message/Vote
+// stack at `apps/web-v2/lib/db/{schema,queries,migrations}` per LOCK-1
+// (prisma rewrite). Document / Suggestion / Stream tables from the template
+// are intentionally NOT ported (LOCK-2 strip; engine StreamCheckpointStore
+// owns resume-on-reload per LOCK-4).
+//
+// FK choice: Chat → User.suiAddress (not User.id) because session.user.id
+// post-zkLogin = canonical Sui address per `audric-auth.ts:289`. Routing
+// via suiAddress avoids a lookup hop on every chat-save.
+//
+// Title field is nullable on first insert: route persists with `null`
+// title, kicks off async Haiku summarizer (LOCK-5), updates the row when
+// title returns. Sidebar shows "Generating title…" or first-50-chars
+// fallback while null.
+// ===========================================================================
+
+model Chat {
+  id             String    @id @default(uuid())
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  title          String?
+  visibility     String    @default("private") // "private" | "public"
+  userSuiAddress String
+  user           User      @relation(fields: [userSuiAddress], references: [suiAddress], onDelete: Cascade)
+  messages       Message[]
+  votes          Vote[]
+
+  @@index([userSuiAddress, createdAt])
+  @@index([visibility])
+}
+
+model Message {
+  id          String   @id @default(uuid())
+  chatId      String
+  chat        Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  role        String // "user" | "assistant"
+  parts       Json
+  attachments Json     @default("[]")
+  createdAt   DateTime @default(now())
+  votes       Vote[]
+
+  @@index([chatId, createdAt])
+}
+
+model Vote {
+  chatId    String
+  messageId String
+  isUpvoted Boolean
+  chat      Chat    @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  message   Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@id([chatId, messageId])
 }

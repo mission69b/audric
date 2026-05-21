@@ -1,13 +1,9 @@
-import type {
-  UIMessage,
-  UIMessagePart,
-} from 'ai';
+import type { UIMessage } from 'ai';
 import { type ClassValue, clsx } from 'clsx';
 import { formatISO } from 'date-fns';
 import { twMerge } from 'tailwind-merge';
-import type { DBMessage, Document } from '@/lib/db/schema';
+import type { DBMessage } from '@/lib/audric/chat-persistence';
 import { ChatbotError, type ErrorCode } from './errors';
-import type { ChatMessage, ChatTools, CustomUIDataTypes } from './types';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -54,32 +50,33 @@ export function generateUUID(): string {
   });
 }
 
-export function getDocumentTimestampByIndex(
-  documents: Document[],
-  index: number,
-) {
-  if (!documents) { return new Date(); }
-  if (index > documents.length) { return new Date(); }
-
-  return documents[index].createdAt;
-}
-
 export function sanitizeText(text: string) {
   return text.replace('<has_function_call>', '');
 }
 
-export function convertToUIMessages(messages: DBMessage[]): ChatMessage[] {
+/**
+ * Convert prisma-persisted DBMessage[] (from `getMessagesByChatId`) into
+ * plain `UIMessage[]` consumable by `useChat({ initialMessages })`. Used
+ * by `/chat/[id]/page.tsx` (Phase 3 click-to-resume) and the public
+ * `/share/[id]/page.tsx` viewer.
+ *
+ * Pre-S.247 this returned the template's `ChatMessage` specialisation
+ * (`UIMessage<MessageMetadata, CustomUIDataTypes, ChatTools>`). Audric
+ * doesn't narrow on those slots — `ToolResultRouter` reads `part.type`
+ * + `part.state` directly — so we return the plain `UIMessage` instead.
+ */
+export function convertToUIMessages(messages: DBMessage[]): UIMessage[] {
   return messages.map((message) => ({
     id: message.id,
     role: message.role as 'user' | 'assistant' | 'system',
-    parts: message.parts as UIMessagePart<CustomUIDataTypes, ChatTools>[],
+    parts: message.parts as UIMessage['parts'],
     metadata: {
       createdAt: formatISO(message.createdAt),
     },
   }));
 }
 
-export function getTextFromMessage(message: ChatMessage | UIMessage): string {
+export function getTextFromMessage(message: UIMessage): string {
   return message.parts
     .filter((part) => part.type === 'text')
     .map((part) => (part as { type: 'text'; text: string}).text)

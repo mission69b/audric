@@ -110,3 +110,18 @@ export type TurnMetrics = Prisma.TurnMetricsModel
  * boot path then skips the `<financial_context>` section entirely).
  */
 export type UserFinancialContext = Prisma.UserFinancialContextModel
+/**
+ * Model Chat
+ * 
+ */
+export type Chat = Prisma.ChatModel
+/**
+ * Model Message
+ * 
+ */
+export type Message = Prisma.MessageModel
+/**
+ * Model Vote
+ * 
+ */
+export type Vote = Prisma.VoteModel

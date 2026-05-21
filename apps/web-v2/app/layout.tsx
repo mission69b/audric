@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import {
@@ -113,6 +114,12 @@ export default function RootLayout({
           <ZkLoginProviders>
             <TooltipProvider>{children}</TooltipProvider>
           </ZkLoginProviders>
+          {/* [v0.7e Persistent Chats Phase 5 / S.247] Sonner Toaster —
+              mounted at root so `toast.success(...)` from VisibilityToggle,
+              SidebarHistory delete, and any future surface actually
+              renders. Position bottom-right to stay clear of the chip
+              bar + composer. */}
+          <Toaster position="bottom-right" richColors />
         </ThemeProvider>
       </body>
     </html>

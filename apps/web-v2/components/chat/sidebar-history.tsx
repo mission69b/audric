@@ -23,9 +23,9 @@ import {
   SidebarMenu,
   useSidebar,
 } from "@/components/ui/sidebar";
+import type { ChatRow as Chat } from "@/lib/audric/chat-persistence";
 import type { AudricSessionUser as User } from "@/lib/audric-auth";
 import { authFetch } from "@/lib/auth-fetch";
-import type { Chat } from "@/lib/db/schema";
 import { ChatbotError, type ErrorCode } from "@/lib/errors";
 import { LoaderIcon } from "./icons";
 import { ChatItem } from "./sidebar-history-item";
