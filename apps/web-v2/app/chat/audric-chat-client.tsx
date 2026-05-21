@@ -37,6 +37,7 @@ import { useZkLogin } from "@/components/auth/use-zklogin";
 import { AppSidebar } from "@/components/chat/app-sidebar";
 import { ChipBar } from "@/components/chat/chip-bar";
 import { EmptyState } from "@/components/chat/empty-state";
+import { MessageVoteThumbs } from "@/components/chat/message-vote-thumbs";
 import { VisibilityToggle } from "@/components/chat/visibility-toggle";
 import { UsernameClaimGate } from "@/components/settings/username-claim-gate";
 import { Button } from "@/components/ui/button";
@@ -273,6 +274,45 @@ function AuthenticatedChat({
   initialVisibility: "private" | "public";
   session: ZkLoginSession;
 }) {
+  // [P1-C fix] Track the promoted chat id so the VisibilityToggle
+  // surfaces AFTER the URL flip too — pre-P1-C the toggle only
+  // rendered when the `chatId` prop was defined, which meant freshly-
+  // started chats had no share/visibility affordance until the user
+  // navigated via the sidebar (the URL flips via `replaceState` from
+  // inside the child panel, which doesn't re-mount the parent).
+  //
+  // The child calls `onChatPromoted(effectiveChatId)` from inside its
+  // URL-promote effect; the parent stores it and the toggle reads from
+  // either the prop (resume path) or the promoted id (fresh-chat path).
+  const [promotedChatId, setPromotedChatId] = useState<string | null>(null);
+  const toggleChatId = chatId ?? promotedChatId;
+  return (
+    <AuthenticatedChatInner
+      chatId={chatId}
+      initialMessages={initialMessages}
+      initialVisibility={initialVisibility}
+      onChatPromoted={chatId === undefined ? setPromotedChatId : undefined}
+      session={session}
+      toggleChatId={toggleChatId}
+    />
+  );
+}
+
+function AuthenticatedChatInner({
+  chatId,
+  initialMessages,
+  initialVisibility,
+  session,
+  toggleChatId,
+  onChatPromoted,
+}: {
+  chatId?: string;
+  initialMessages?: UIMessage[];
+  initialVisibility: "private" | "public";
+  session: ZkLoginSession;
+  toggleChatId: string | null;
+  onChatPromoted?: (id: string) => void;
+}) {
   const userStatus = useUserStatus(session.address, session.jwt);
 
   // Lazy initializer reads from localStorage exactly once on mount.
@@ -365,20 +405,20 @@ function AuthenticatedChat({
       <AppSidebar />
       <SidebarInset>
         <div className="flex h-dvh flex-col bg-background text-foreground">
-          {/* [v0.7e Persistent Chats Phase 4 / S.247] Header is now
+          {/* [v0.7e Persistent Chats Phase 4 / S.247 + P1-C] Header is
               ALWAYS visible (mobile + desktop). Left: sidebar trigger
               (mobile only — desktop sidebar is already pinned via
               SidebarProvider). Right: visibility toggle + copy-link
-              (only when chatId is defined — new/unsaved chats have
-              nothing to toggle). The toggle uses optimistic SWR sync
-              so the icon flips immediately while the server action
-              propagates. */}
+              when we have a committed chat to share. `toggleChatId`
+              resolves to (a) the `chatId` prop for the resume path
+              (/chat/[id]) OR (b) the parent-tracked `promotedChatId`
+              for the fresh-chat path after URL promote. */}
           <header className="flex h-12 items-center justify-between px-3">
             <SidebarTrigger className="text-foreground/60 hover:text-foreground md:hidden" />
             <div className="ml-auto">
-              {chatId && (
+              {toggleChatId && (
                 <VisibilityToggle
-                  chatId={chatId}
+                  chatId={toggleChatId}
                   initialVisibility={initialVisibility}
                 />
               )}
@@ -388,6 +428,7 @@ function AuthenticatedChat({
             chatId={chatId}
             initialMessages={initialMessages}
             key={`${session.address}-${chatId ?? "new"}-${chatNonce}`}
+            onChatPromoted={onChatPromoted}
             session={session}
           />
         </div>
@@ -406,10 +447,18 @@ function AuthenticatedChat({
 function AudricChatPanel({
   chatId,
   initialMessages,
+  onChatPromoted,
   session,
 }: {
   chatId?: string;
   initialMessages?: UIMessage[];
+  /**
+   * [P1-C] Callback fired ONCE when the panel promotes a fresh-chat
+   * URL (`/chat` → `/chat/[id]`). Lets the parent surface the
+   * VisibilityToggle for newly-committed chats without having to
+   * re-mount this panel (which would blow away `useChat` state).
+   */
+  onChatPromoted?: (id: string) => void;
   session: ZkLoginSession;
 }) {
   const [input, setInput] = useState<string>("");
@@ -476,8 +525,12 @@ function AudricChatPanel({
       window.location.pathname === "/chat"
     ) {
       window.history.replaceState({}, "", `/chat/${effectiveChatId}`);
+      // [P1-C] Notify parent so the VisibilityToggle can surface for
+      // the now-committed chat. Parent stores the id in state and
+      // passes it back via `toggleChatId` — no re-mount required.
+      onChatPromoted?.(effectiveChatId);
     }
-  }, [chatId, effectiveChatId, messages.length]);
+  }, [chatId, effectiveChatId, messages.length, onChatPromoted]);
 
   const canSend = status === "ready" && input.trim().length > 0;
 
@@ -632,7 +685,10 @@ function AudricChatPanel({
                     the bubble actually sits at the right of the chat
                     column — fixes the left-aligned user bubble bug. */}
                 <Message
-                  className={cn(m.role === "user" && "items-end")}
+                  className={cn(
+                    m.role === "user" && "items-end",
+                    m.role === "assistant" && "group"
+                  )}
                   from={m.role}
                 >
                   <MessageContent
@@ -749,6 +805,19 @@ function AudricChatPanel({
                     })}
                   </MessageContent>
                 </Message>
+                {/* [P1-B] Minimal LOCK-2 vote thumbs — only on
+                    completed assistant turns (not while streaming or
+                    while a pending action awaits approval), and only
+                    once the chat has a committed id. Hover-visible to
+                    keep the timeline clean. */}
+                {m.role === "assistant" &&
+                  !(isLast && isTurnStreaming) &&
+                  effectiveChatId && (
+                    <MessageVoteThumbs
+                      chatId={effectiveChatId}
+                      messageId={m.id}
+                    />
+                  )}
               </Fragment>
             );
           })}

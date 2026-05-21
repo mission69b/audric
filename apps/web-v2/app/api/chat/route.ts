@@ -72,13 +72,36 @@
  *  - `microcompact()` dedupe of identical tool calls across turn history
  *    (Phase 3+ re-adds via `experimental_transform` if multi-turn smokes
  *    show lazy-answering; current single-turn web-v2 doesn't need it)
- *  - StreamCheckpointStore / resume-on-reload (Day 2b never wired)
+ *  - StreamCheckpointStore / resume-on-reload (LOCK-4 in
+ *    BENEFITS_SPEC_v07e). DEFERRED — see "LOCK-4 deferral" note below.
  *  - `pending_action` EngineEvent emission (replaced by AI SDK's native
  *    `needsApproval` round-trip via experimental_providerMetadata per D-8;
  *    Phase 3 wires the first write tool through this path — SPEC 40 Batch 3
  *    is the canonical migration of all 12 writes)
  *  - `turn_complete` semantic event (replaced by AI SDK's `finish` chunk)
- *  - `stream_started` event (Day 2b never wired)
+ *  - `stream_started` event — paired with the LOCK-4 deferral below.
+ *
+ * **LOCK-4 deferral note (P1-A from 2026-05-22 H2 audit).**
+ *
+ * v0.7e SPEC LOCK-4 mandated wiring the engine's `StreamCheckpointStore`
+ * (Upstash-backed in production, prior art at
+ * `audric/apps/web/lib/engine/upstash-stream-checkpoint-store.ts`). The
+ * deferral reason: that store appends raw `EngineEvent` objects to
+ * Upstash, but web-v2's wire format is AI SDK v6's `UIMessage` stream
+ * chunks (via `useChat` + `DefaultChatTransport`). The two formats are
+ * not interchangeable — the engine no longer emits `EngineEvent`s in
+ * the v0.7c refactor that this file is the canonical home for.
+ *
+ * Two viable paths exist for restoring resume-on-reload:
+ *   (a) Build a parallel checkpoint mechanism for UIMessage stream
+ *       chunks. No prior art; requires its own SPEC.
+ *   (b) Restructure web-v2's chat client onto the legacy `useEngine`
+ *       hook. Would undo v0.7c's "use vanilla `useChat`" decision.
+ *
+ * Neither is a P1-fix-sized change. The DB-hydrate path
+ * (`/chat/[id]` → load persisted messages) covers the resume-on-reload
+ * value for completed turns; only LIVE mid-stream reload is unhandled,
+ * which is the lower-frequency case. Track as v0.7f follow-up.
  *
  * Traceability: BENEFITS_SPEC_v07c.md §"Phase 2 Day 2e" + tracker S.174.
  */
@@ -130,7 +153,6 @@ import {
 } from "@/lib/audric/account-age-gate";
 import {
   getChatById as getChatRowById,
-  saveChat,
   saveMessages,
 } from "@/lib/audric/chat-persistence";
 import { generateChatTitle } from "@/lib/audric/chat-title";
@@ -404,23 +426,26 @@ export async function POST(request: Request) {
     );
   }
 
-  // [v0.7e Persistent Chats (S.247)] Resolve chatId + ensure ownership.
+  // [v0.7e Persistent Chats (S.247) — P1-E lazy creation update]
+  // Resolve chatId + ensure ownership.
   //
-  // Three branches, per the persistent-chats SPEC §2.4:
+  // Three branches:
   //   (a) `body.id` present + chat exists + caller owns it       → resume turn
   //   (b) `body.id` present + chat exists + caller does NOT own  → 403
-  //   (c) `body.id` present + chat does not exist                → create with that id
-  //   (d) `body.id` absent                                       → generate id + create
+  //   (c) chat does not yet exist (either `body.id` present-but-fresh,
+  //       or `body.id` absent → server generates one)            → first turn
   //
-  // The chatId then flows into:
-  //   • `originalMessages` on `createUIMessageStream` (AI SDK persistence mode)
-  //   • `saveMessages(...)` in the stream's `onFinish` callback
-  //   • The async title generator (LOCK-5) when `isNewChat`
+  // **P1-E orphan-row fix.** Pre-P1-E this code ran `saveChat(...)` eagerly
+  // here — every POST to /api/chat created a Chat row, even if the user
+  // closed the tab before the first response landed. That left empty
+  // chats in the sidebar. Now: we DEFER chat-row creation to the first
+  // successful `saveMessages` call (via the new lazy-upsert path inside
+  // `saveMessages` itself). The ownership check still runs here so we
+  // 403 on the not-yours case before any LLM work happens; the
+  // `isNewChat` flag still drives the title-generation trigger below.
   //
-  // Failures here are non-fatal to the chat stream — we log + degrade to
-  // an ephemeral session if persistence is unavailable (e.g. Neon
-  // outage). This preserves the pre-S.247 UX as the worst-case path
-  // rather than blocking the user from chatting at all.
+  // Failures here are non-fatal — we log + degrade to ephemeral session
+  // if Neon is unavailable.
   const chatId = body.id ?? generateId();
   let isNewChat = false;
   try {
@@ -433,20 +458,13 @@ export async function POST(request: Request) {
         );
       }
     } else {
-      await saveChat({
-        chatId,
-        userSuiAddress: walletAddress,
-        visibility: "private",
-      });
       isNewChat = true;
     }
   } catch (err) {
     console.warn(
-      "[audric-chat] chat-persistence ensure failed (continuing ephemerally):",
+      "[audric-chat] chat-persistence ownership check failed (continuing ephemerally):",
       err instanceof Error ? err.message : String(err)
     );
-    // Degrade: keep `chatId` but treat as not persisted. saveMessages
-    // failures in onFinish will be logged + swallowed the same way.
     isNewChat = false;
   }
 
@@ -1724,12 +1742,24 @@ export async function POST(request: Request) {
           );
         });
 
-      // [v0.7e Persistent Chats (S.247)] Persist the conversation.
-      // Fire-and-forget: a single failure must NEVER block the response.
-      // `skipDuplicates: true` in `saveMessages` makes re-save of prior
-      // turns on resume a no-op (message.id is the PK). The monotonic
-      // `createdAt` offset preserves intra-turn ordering even though we
-      // batch-write at the same wall-clock instant.
+      // [v0.7e Persistent Chats (S.247) + P0-A + P1-E + P1-F]
+      // Persist the conversation. Fire-and-forget: a single failure must
+      // NEVER block the response.
+      //
+      // **P0-A:** `saveMessages` upserts per row so the assistant
+      // message's `approval-requested → output-available` state
+      // transition on continuation turns updates the DB row (previously
+      // `createMany skipDuplicates` no-op'd the existing row, leaving
+      // ghost permission cards on resume).
+      //
+      // **P1-E:** `saveMessages` lazy-upserts the Chat row using the
+      // `chatOwnerSuiAddress` field — orphan chats (tab close before
+      // first response) no longer pile up.
+      //
+      // **P1-F:** `saveMessages` bumps `Chat.updatedAt` so active chats
+      // float to the top of the sidebar.
+      //
+      // The monotonic `createdAt` offset preserves intra-turn ordering.
       const persistenceTimestamp = Date.now();
       saveMessages({
         messages: finalMessages.map((m, i) => ({
@@ -1740,6 +1770,8 @@ export async function POST(request: Request) {
           attachments: [],
           createdAt: new Date(persistenceTimestamp + i),
         })),
+        chatOwnerSuiAddress: walletAddress,
+        visibility: "private",
       }).catch((err: unknown) => {
         console.error(
           `[web-v2 audric-chat] saveMessages failed for chatId=${chatId} (non-fatal):`,

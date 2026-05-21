@@ -179,7 +179,7 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
       <SidebarGroup className="group-data-[collapsible=icon]:hidden">
         <SidebarGroupContent>
           <div className="flex w-full flex-row items-center justify-center gap-2 px-2 text-[13px] text-sidebar-foreground/60">
-            Login to save and revisit previous chats!
+            Sign in with Passport to save your chats.
           </div>
         </SidebarGroupContent>
       </SidebarGroup>

@@ -26,6 +26,28 @@ import {
   TrashIcon,
 } from "./icons";
 
+// [P1-L] Null-title fallback. Title generation is fire-and-forget after
+// the first message, so a fresh chat has `title === null` for ~300-600ms.
+// During that window we render "Generating title…". After 30s (well past
+// the model timeout) we fall back to "New chat" so a stuck title doesn't
+// leave the sidebar row empty forever.
+const TITLE_GENERATING_WINDOW_MS = 30_000;
+
+function deriveChatLabel(chat: Chat): string {
+  if (chat.title && chat.title.trim().length > 0) {
+    return chat.title;
+  }
+  // `createdAt` arrives as an ISO string after JSON serialisation
+  // through `/api/history` — wrap defensively (the `Chat` type says
+  // `Date`, but the wire shape is `string`).
+  const createdAt = new Date(chat.createdAt);
+  const ageMs = Date.now() - createdAt.getTime();
+  if (ageMs < TITLE_GENERATING_WINDOW_MS) {
+    return "Generating title…";
+  }
+  return "New chat";
+}
+
 const PureChatItem = ({
   chat,
   isActive,
@@ -50,7 +72,7 @@ const PureChatItem = ({
         isActive={isActive}
       >
         <Link href={`/chat/${chat.id}`} onClick={() => setOpenMobile(false)}>
-          <span className="truncate">{chat.title}</span>
+          <span className="truncate">{deriveChatLabel(chat)}</span>
         </Link>
       </SidebarMenuButton>
 

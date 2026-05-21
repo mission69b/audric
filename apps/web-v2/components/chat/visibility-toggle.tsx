@@ -27,19 +27,25 @@ export function VisibilityToggle({
   chatId: string;
   initialVisibility: "private" | "public";
 }) {
-  const { visibilityType, setVisibilityType } = useChatVisibility({
+  const { visibilityType, setVisibilityType, isPending } = useChatVisibility({
     chatId,
     initialVisibilityType: initialVisibility,
   });
   const [copied, setCopied] = useState(false);
   const isPublic = visibilityType === "public";
 
-  const handleToggle = () => {
+  // [P1-G] Awaited + optimistic-with-rollback. Pre-P1-G this called
+  // toast.success unconditionally even when the server write failed.
+  const handleToggle = async () => {
     const next = isPublic ? "private" : "public";
-    setVisibilityType(next);
-    toast.success(
-      next === "public" ? "Chat is now public" : "Chat is now private"
-    );
+    try {
+      await setVisibilityType(next);
+      toast.success(
+        next === "public" ? "Chat is now public" : "Chat is now private"
+      );
+    } catch {
+      toast.error("Couldn't update visibility. Please try again.");
+    }
   };
 
   const handleCopy = async () => {
@@ -58,7 +64,8 @@ export function VisibilityToggle({
     <div className="flex items-center gap-1">
       <Button
         aria-label={isPublic ? "Make chat private" : "Make chat public"}
-        className="h-8 px-2 text-foreground/70 hover:text-foreground"
+        className="h-8 px-2 text-foreground/70 hover:text-foreground disabled:opacity-50"
+        disabled={isPending}
         onClick={handleToggle}
         size="sm"
         title={isPublic ? "Public — anyone with the link can view" : "Private"}

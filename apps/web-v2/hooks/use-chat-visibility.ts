@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import useSWR, { useSWRConfig } from "swr";
 import { unstable_serialize } from "swr/infinite";
 import {
@@ -30,26 +30,51 @@ export function useChatVisibility({
     }
   );
 
+  // [P1-G] In-flight flag — lets consumers disable the toggle while
+  // the server action settles. Prevents rapid public→copy→private
+  // races from leaving the DB out of sync with the UI.
+  const [isPending, setIsPending] = useState(false);
+
   const visibilityType = useMemo(() => {
+    // [P1-H] When the chat row isn't in the SWR-paginated history
+    // (e.g., chat opened via direct link before the sidebar's first
+    // page loaded), fall back to the SWR `localVisibility` — which is
+    // itself seeded by `initialVisibilityType`. Pre-P1-H this
+    // hardcoded `"private"`, incorrectly showing the lock icon on
+    // first paint for newly-toggled public chats.
     if (!history) {
       return localVisibility;
     }
     const chat = history.chats.find((currentChat) => currentChat.id === chatId);
     if (!chat) {
-      return "private";
+      return localVisibility;
     }
     return chat.visibility;
   }, [history, chatId, localVisibility]);
 
-  const setVisibilityType = (updatedVisibilityType: VisibilityType) => {
+  // [P1-G] Optimistic local update + AWAITED server action so
+  // consumers can `await setVisibilityType(...)` and disable the UI
+  // mid-flight. On server failure we roll back the local cache and
+  // re-throw so callers can surface a toast.
+  const setVisibilityType = async (updatedVisibilityType: VisibilityType) => {
+    const prior = visibilityType;
+    setIsPending(true);
     setLocalVisibility(updatedVisibilityType);
     mutate(unstable_serialize(getChatHistoryPaginationKey));
 
-    updateChatVisibility({
-      chatId,
-      visibility: updatedVisibilityType,
-    });
+    try {
+      await updateChatVisibility({
+        chatId,
+        visibility: updatedVisibilityType,
+      });
+    } catch (err) {
+      setLocalVisibility(prior);
+      mutate(unstable_serialize(getChatHistoryPaginationKey));
+      throw err;
+    } finally {
+      setIsPending(false);
+    }
   };
 
-  return { visibilityType, setVisibilityType };
+  return { visibilityType, setVisibilityType, isPending };
 }

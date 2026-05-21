@@ -1,78 +1,162 @@
 /**
- * `/chat/[id]` — click-to-resume page (v0.7e Persistent Chats Phase 3).
+ * `/chat/[id]` — click-to-resume page (v0.7e Persistent Chats Phase 3,
+ * rewritten for P0-B fix).
  *
- * Server component that hydrates a saved chat row + its message history
- * server-side, then hands them to `<AudricChatClient>` so `useChat({ id,
- * messages })` mounts with full context. The sidebar's `<ChatItem>`
- * navigates here on click (`href={'/chat/' + chat.id}`); refreshing this
- * URL also drops the user back into the same conversation.
+ * **Why this is a CLIENT page, not a server component.**
  *
- * **Auth model:**
- *   - PRIVATE chat → only the owner can open it; non-owners see 404.
- *   - PUBLIC chat → anyone signed in can open it (no-auth viewers go
- *     through `/share/[id]` instead, which is the Phase 4 read-only
- *     surface). Returning 404 for unauthorised opens (rather than 403)
- *     prevents chat-existence enumeration.
+ * The original Phase 3 implementation was a server component that
+ * called `getCurrentUser()` to enforce private-chat ownership. That
+ * helper reads `x-zklogin-jwt` from request headers — but RSC document
+ * navigations (sidebar `<Link>` click, refresh of `/chat/[id]`) never
+ * send custom headers. zkLogin JWT lives in `localStorage` and only
+ * rides on `authFetch` `fetch()` calls. Result: every private-chat
+ * resume returned 404 for the actual owner.
  *
- * **Why the auth gate runs server-side:** keeps the unauthorised path
- * cheap (no client JS, no `useChat` mount, no Engine request), and the
- * 404 response is cacheable per Next 16.
+ * The fix moves hydration to a client component that fetches from
+ * `GET /api/chat/[id]` via `authFetch`, which DOES attach the JWT
+ * header. The API endpoint enforces the same ownership rules.
  *
- * **Next 16 cacheComponents compatibility:** all per-request DB reads
- * (chat row, message history, current user) live inside the
- * `<ChatHydrator>` child, which is wrapped in `<Suspense>`. This
- * satisfies the `cacheComponents` invariant that uncached data only
- * be accessed inside a Suspense boundary, and lets Next stream the
- * layout chrome while the chat data resolves.
+ * **Three branches once hydrated:**
+ *   - Private + owner          → render `<AudricChatClient>` with messages
+ *   - Public  + owner          → render `<AudricChatClient>` with messages
+ *   - Public  + non-owner      → redirect to `/share/[id]` (read-only)
+ *   - (Private + non-owner)    → API returned 404; the loading branch shows the branded 404
+ *   - (Unauthenticated)        → API returned 401; authFetch fires
+ *     `zklogin:expired` event so the global auth handler shows the sign-in
+ *     splash.
  */
 
-import { notFound } from "next/navigation";
-import { Suspense } from "react";
-import {
-  getChatById,
-  getMessagesByChatId,
-} from "@/lib/audric/chat-persistence";
-import { getCurrentUser } from "@/lib/audric-auth";
-import { convertToUIMessages } from "@/lib/utils";
+"use client";
+
+import type { UIMessage } from "ai";
+import { Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { use, useEffect, useState } from "react";
+import { useZkLogin } from "@/components/auth/use-zklogin";
+import { authFetch } from "@/lib/auth-fetch";
 import { AudricChatClient } from "../audric-chat-client";
+
+type HydrationResult =
+  | { state: "loading" }
+  | {
+      state: "ready";
+      chatId: string;
+      messages: UIMessage[];
+      visibility: "private" | "public";
+    }
+  | { state: "not-found" }
+  | { state: "redirect-share" };
 
 export default function ChatByIdPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  return (
-    <Suspense fallback={null}>
-      <ChatHydrator params={params} />
-    </Suspense>
-  );
-}
+  const { id } = use(params);
+  const router = useRouter();
+  const { address } = useZkLogin();
+  const [result, setResult] = useState<HydrationResult>({ state: "loading" });
 
-async function ChatHydrator({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+  useEffect(() => {
+    let cancelled = false;
 
-  const chat = await getChatById({ chatId: id });
-  if (!chat) {
-    notFound();
-  }
+    async function load() {
+      try {
+        const res = await authFetch(`/api/chat/${id}`);
+        if (cancelled) {
+          return;
+        }
+        if (res.status === 404) {
+          setResult({ state: "not-found" });
+          return;
+        }
+        if (!res.ok) {
+          // 401 → authFetch already fired zklogin:expired (handled
+          // globally). 500 → fall through to not-found UX.
+          setResult({ state: "not-found" });
+          return;
+        }
+        const body = (await res.json()) as {
+          chat: {
+            id: string;
+            visibility: "private" | "public";
+            userId: string;
+          };
+          messages: UIMessage[];
+        };
+        if (cancelled) {
+          return;
+        }
 
-  if (chat.visibility === "private") {
-    // Owner-only gate. Non-owners (and unauthenticated callers) get a
-    // 404 — never a 403 — so chat existence is not leaked.
-    const session = await getCurrentUser();
-    if (!session?.user || session.user.id !== chat.userId) {
-      notFound();
+        // [P1-D] Public chat + viewer is not the owner → redirect to
+        // the read-only share viewer. The live composer would render
+        // for them but every POST to /api/chat would 403, so the
+        // composer would be a dead end. /share/[id] is the right
+        // surface for non-owners.
+        if (body.chat.visibility === "public" && body.chat.userId !== address) {
+          setResult({ state: "redirect-share" });
+          router.replace(`/share/${id}`);
+          return;
+        }
+
+        setResult({
+          state: "ready",
+          chatId: body.chat.id,
+          messages: body.messages,
+          visibility: body.chat.visibility,
+        });
+      } catch {
+        if (!cancelled) {
+          setResult({ state: "not-found" });
+        }
+      }
     }
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [id, address, router]);
+
+  if (result.state === "loading" || result.state === "redirect-share") {
+    return (
+      <div className="flex h-dvh items-center justify-center bg-background">
+        <Loader2 className="size-6 animate-spin text-foreground/40" />
+      </div>
+    );
   }
 
-  const dbMessages = await getMessagesByChatId({ chatId: id });
-  const initialMessages = convertToUIMessages(dbMessages);
+  if (result.state === "not-found") {
+    // Trigger Next's not-found boundary via a thrown rerender. We
+    // intentionally don't call `notFound()` from `next/navigation`
+    // here (that's a server-only API); rendering the same JSX as
+    // `not-found.tsx` keeps the UX consistent.
+    return (
+      <div className="flex h-dvh flex-col items-center justify-center bg-background px-4 text-center text-foreground">
+        <h1 className="font-display font-medium text-4xl text-foreground tracking-tight">
+          Audric
+        </h1>
+        <p className="mt-6 text-foreground/70 text-lg">
+          We couldn&apos;t find that chat.
+        </p>
+        <p className="mt-2 text-foreground/50 text-sm">
+          It may have been deleted, made private, or never existed.
+        </p>
+        <a
+          className="mt-8 inline-flex h-11 items-center justify-center rounded-md bg-primary px-8 font-medium text-primary-foreground text-sm shadow-sm hover:bg-primary/90"
+          href="/chat"
+        >
+          Back to Audric
+        </a>
+      </div>
+    );
+  }
 
   return (
     <AudricChatClient
-      chatId={id}
-      initialMessages={initialMessages}
-      initialVisibility={chat.visibility as "private" | "public"}
+      chatId={result.chatId}
+      initialMessages={result.messages}
+      initialVisibility={result.visibility}
     />
   );
 }

@@ -125,25 +125,96 @@ export async function saveChat({
   return toChatRow(row);
 }
 
+/**
+ * Persist a batch of messages.
+ *
+ * **Why per-row upsert (not `createMany skipDuplicates`):** the AI SDK v6
+ * continuation pattern reuses the same `id` for an assistant message
+ * across state transitions (`approval-requested → output-available`).
+ * `createMany skipDuplicates` would no-op the existing row and the DB
+ * would keep the stale `approval-requested` parts forever — resume
+ * after any write tool shows ghost permission cards. Upsert handles
+ * BOTH the first-write case (insert) and the state-transition case
+ * (update) in one round-trip per message.
+ *
+ * **Why this also bumps `Chat.updatedAt`:** the sidebar orders chats by
+ * `updatedAt desc` so active chats float to the top. Without this bump
+ * a long-running conversation stays buried at its original `createdAt`.
+ * Setting `updatedAt` explicitly (rather than relying on Prisma's
+ * `@updatedAt` magic, which only fires when a Chat field changes)
+ * lifts the chat on every turn.
+ *
+ * **Why this lazy-upserts the Chat row:** P1-E. `saveChat` used to run
+ * eagerly in POST /api/chat before the stream started; tab close /
+ * stream abort left orphan Chat rows in the sidebar. Lazy upsert means
+ * a Chat row only exists once at least one message has been saved.
+ * The {@link DBMessageInput.chatOwnerSuiAddress} field carries the
+ * owner so the upsert can `create` a fresh row on first save.
+ */
 export async function saveMessages({
   messages,
+  chatOwnerSuiAddress,
+  visibility = "private",
 }: {
   messages: DBMessageInput[];
+  /**
+   * Owner Sui address — required for the lazy chat-row upsert when
+   * the chat doesn't yet exist. The caller (chat route) already knows
+   * this from the authenticated session, so threading it through avoids
+   * a separate `getChatById` lookup.
+   */
+  chatOwnerSuiAddress: string;
+  visibility?: VisibilityType;
 }): Promise<void> {
   if (messages.length === 0) {
     return;
   }
-  await prisma.message.createMany({
-    data: messages.map((m) => ({
-      id: m.id,
-      chatId: m.chatId,
-      role: m.role,
-      parts: m.parts,
-      attachments: m.attachments,
-      createdAt: m.createdAt,
-    })),
-    skipDuplicates: true,
+
+  const chatId = messages[0]?.chatId;
+  if (!chatId) {
+    return;
+  }
+
+  const now = new Date();
+
+  // Lazy chat-row creation (P1-E orphan fix). Upsert: insert if first
+  // turn, no-op if already exists (the update branch bumps updatedAt
+  // separately via the explicit Chat.update below — keeps the two
+  // concerns legible).
+  await prisma.chat.upsert({
+    where: { id: chatId },
+    create: {
+      id: chatId,
+      userSuiAddress: chatOwnerSuiAddress,
+      visibility,
+      title: null,
+    },
+    update: { updatedAt: now },
   });
+
+  // Per-row upsert (P0-A continuation fix). `Promise.all` keeps the
+  // round-trip count to 1+N rather than serialising — the assistant
+  // message and the user message in the same turn can land in parallel.
+  await Promise.all(
+    messages.map((m) =>
+      prisma.message.upsert({
+        where: { id: m.id },
+        create: {
+          id: m.id,
+          chatId: m.chatId,
+          role: m.role,
+          parts: m.parts,
+          attachments: m.attachments,
+          createdAt: m.createdAt,
+        },
+        update: {
+          role: m.role,
+          parts: m.parts,
+          attachments: m.attachments,
+        },
+      })
+    )
+  );
 }
 
 export async function updateChatTitle({
@@ -222,32 +293,37 @@ export async function getChatsBySuiAddress({
   const extendedLimit = limit + 1;
   let dateFilter: Prisma.DateTimeFilter | undefined;
 
+  // [P1-F] Sidebar orders by `updatedAt desc` so active chats float to
+  // the top. The cursor anchors track `updatedAt` too — using
+  // `createdAt` as the anchor (the pre-P1-F behavior) would yield an
+  // inconsistent pagination order on chats whose `updatedAt` drifted
+  // past a neighbour's `createdAt`.
   if (startingAfter) {
     const anchor = await prisma.chat.findUnique({
       where: { id: startingAfter },
-      select: { createdAt: true },
+      select: { updatedAt: true },
     });
     if (!anchor) {
       throw new Error(`Chat with id ${startingAfter} not found`);
     }
-    dateFilter = { gt: anchor.createdAt };
+    dateFilter = { gt: anchor.updatedAt };
   } else if (endingBefore) {
     const anchor = await prisma.chat.findUnique({
       where: { id: endingBefore },
-      select: { createdAt: true },
+      select: { updatedAt: true },
     });
     if (!anchor) {
       throw new Error(`Chat with id ${endingBefore} not found`);
     }
-    dateFilter = { lt: anchor.createdAt };
+    dateFilter = { lt: anchor.updatedAt };
   }
 
   const rows = await prisma.chat.findMany({
     where: {
       userSuiAddress,
-      ...(dateFilter ? { createdAt: dateFilter } : {}),
+      ...(dateFilter ? { updatedAt: dateFilter } : {}),
     },
-    orderBy: { createdAt: "desc" },
+    orderBy: { updatedAt: "desc" },
     take: extendedLimit,
   });
 
@@ -307,6 +383,18 @@ export async function voteMessage({
   messageId: string;
   type: "up" | "down";
 }): Promise<void> {
+  // [P1-J] Vote.messageId FKs to Message.id only — the schema can't
+  // enforce `messageId ∈ chatId` without a composite FK. Verify here so
+  // a chat owner can't pollute their own vote table with foreign
+  // message ids (e.g. via a hand-crafted /api/vote PATCH).
+  const message = await prisma.message.findFirst({
+    where: { id: messageId, chatId },
+    select: { id: true },
+  });
+  if (!message) {
+    throw new Error(`Message ${messageId} does not belong to chat ${chatId}`);
+  }
+
   await prisma.vote.upsert({
     where: { chatId_messageId: { chatId, messageId } },
     create: { chatId, messageId, isUpvoted: type === "up" },

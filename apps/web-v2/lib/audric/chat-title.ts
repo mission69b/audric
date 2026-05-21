@@ -26,6 +26,7 @@ import { titleModel } from "@/lib/ai/models";
 import { titlePrompt } from "@/lib/ai/prompts";
 import { getTitleModel } from "@/lib/ai/providers";
 import { updateChatTitle } from "./chat-persistence";
+import { redactAddressesInText } from "./log-redact";
 
 const TITLE_MAX_CHARS = 80;
 
@@ -54,11 +55,20 @@ export async function generateChatTitle({
     return;
   }
 
+  // [P1-I] Redact Sui addresses from the prompt before sending to the
+  // third-party model. The title prompt only needs the user's INTENT
+  // (verb + asset + rough amount), not the full address — addresses
+  // are profile-revealing PII when joined with on-chain history. We
+  // preserve everything else (amounts, asset tickers, verbs) since
+  // titles like "Save 5 USDC" are useful and amounts alone aren't
+  // identifying.
+  const redactedPrompt = redactAddressesInText(firstUserMessageText);
+
   try {
     const { text } = await generateText({
       model: getTitleModel(),
       system: titlePrompt,
-      prompt: firstUserMessageText,
+      prompt: redactedPrompt,
       providerOptions: {
         gateway: { order: titleModel.gatewayOrder },
       },

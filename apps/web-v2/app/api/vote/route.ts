@@ -7,8 +7,12 @@
  * Why we kept this (LOCK-2): vote rows are zero-cost free signal for the
  * eval loop — every thumbs gives us a labelled (chat-context → assistant-
  * turn → outcome) tuple we can sample from later for regression evals
- * without needing to instrument anything else. UI surface (thumbs in
- * `<MessageActions>`) is template-shipped and stays in place.
+ * without needing to instrument anything else.
+ *
+ * **UI surface:** the original template `<MessageActions>` thumbs UI
+ * was deleted as part of the v0.7e template debris strip. P1-B
+ * restores a minimal thumbs surface inline in `audric-chat-client.tsx`
+ * on each assistant message; that's the only consumer of this route.
  */
 
 import { z } from "zod";
