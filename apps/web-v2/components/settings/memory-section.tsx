@@ -34,6 +34,7 @@
  */
 
 import { useEffect, useState } from "react";
+import { useZkLogin } from "@/components/auth/use-zklogin";
 
 interface MemoryListRecord {
   text: string;
@@ -53,10 +54,22 @@ interface ApiResponse {
 
 export function MemorySection() {
   const [state, setState] = useState<FetchState>({ kind: "loading" });
+  // Audric is zkLogin (no cookie-based session) — every server-side
+  // auth check reads identity from the `x-zklogin-jwt` HEADER. We grab
+  // the JWT from the zkLogin session and forward it on the fetch.
+  // Same pattern as `hooks/use-user-status.ts` L57 + every other
+  // /api/* call in web-v2. Gate the fetch on JWT presence so we
+  // don't issue a guaranteed-401 request while the session is still
+  // hydrating from localStorage on first paint.
+  const { session } = useZkLogin();
+  const jwt = session?.jwt ?? null;
 
   useEffect(() => {
+    if (!jwt) {
+      return;
+    }
     let cancelled = false;
-    fetch("/api/memory/list", { credentials: "include" })
+    fetch("/api/memory/list", { headers: { "x-zklogin-jwt": jwt } })
       .then(async (res) => {
         if (cancelled) {
           return;
@@ -97,7 +110,7 @@ export function MemorySection() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [jwt]);
 
   return (
     <div className="flex flex-col gap-3.5">
