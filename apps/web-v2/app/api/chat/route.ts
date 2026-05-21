@@ -1038,7 +1038,19 @@ export async function POST(request: Request) {
     anthropic: thinkingProviderOption,
   };
   if (useGateway) {
-    providerOptionsForAgent.gateway = { caching: "auto" as const };
+    // [S.234 — 2026-05-21] `user` field enables per-user cost attribution
+    // in the Vercel AI Gateway Custom Reporting dashboard (added to AI SDK
+    // October 2025; docs at https://vercel.com/docs/ai-gateway/capabilities/custom-reporting).
+    // walletAddress is the canonical zkLogin-derived Sui address (same value
+    // used in experimental_telemetry.metadata.userId above for OTel parity).
+    // Gateway billing: $0.075 per 1k unique user IDs written — at audric scale
+    // (hundreds of MAU, single-digit dollars/month total). Tags omitted: the
+    // user attribution alone is the cost-attribution signal the founder asked
+    // for; adding tag taxonomies prematurely fragments the dashboard.
+    providerOptionsForAgent.gateway = {
+      caching: "auto" as const,
+      user: walletAddress,
+    };
   }
 
   // [v0.7d Phase 1 Day 1b / S.215 — 2026-05-21] MemWal memory recall
