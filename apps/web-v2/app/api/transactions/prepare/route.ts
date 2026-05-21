@@ -9,13 +9,13 @@
  *   save, withdraw, borrow, repay, send, swap, claim-rewards,
  *   harvest, volo-stake, volo-unstake
  *
- * `pay_api` is intentionally EXCLUDED from web-v2's tool set (Phase 4b
- * deferral 2026-05-19) — the legacy MPP services flow stays in
- * `apps/web` until the Agentic Commerce spec ships its first phase.
- *
  * [S.243 — 2026-05-22] `save_contact` removed entirely from web-v2 per
  * V07E_CONTACTS_SIMPLIFICATION Path A. Pre-S.243 it was a Prisma-only
  * write that flowed through `/api/contacts/save` (deleted).
+ *
+ * [S.245 — 2026-05-22] `pay_api` deleted from engine entirely per
+ * V07E_D_QUESTION_AUDITS D-2 reframe. apps/web dies en bloc in v0.7e
+ * Phase 5; pay_api returns as a Commerce primitive in Audric Store SPEC.
  *
  * The route's job per the legacy audric/web sponsored-tx contract:
  *

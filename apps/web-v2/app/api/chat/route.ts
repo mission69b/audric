@@ -572,75 +572,24 @@ export async function POST(request: Request) {
   //
   // [S.243 / V07E_CONTACTS_SIMPLIFICATION Path A — 2026-05-22]
   // `save_contact` removed from the write tool set (was the 11th).
-  // Contacts deleted entirely per H3 Path A; LLM can no longer
-  // propose / dispatch `save_contact` from web-v2. apps/web still
-  // ships it until it dies en bloc in v0.7e Phase 2.
+  // [S.243 — 2026-05-22] `save_contact` excluded — contacts feature
+  // deleted from web-v2 entirely per V07E_CONTACTS_SIMPLIFICATION
+  // Path A. Engine package still exports the tool until H3 Phase 4
+  // (no-rush cleanup post-soak).
   //
-  // **`pay_api` is intentionally EXCLUDED from the web-v2 tool set
-  // (Phase 4b deferral 2026-05-19).** The legacy 3-leg services flow
-  // (`/api/services/{prepare,complete,retry}` + `service-gateway.ts`)
-  // is ~1.5k LoC of MPP-gateway plumbing that doesn't yet have a
-  // product home in audric's 5-product taxonomy (Passport,
-  // Intelligence, Finance, Pay, Store). The Agentic Commerce spec
-  // (`spec/active/AGENTIC_COMMERCE_SPEC_DRAFT.md`, drafted alongside
-  // this deferral) defines the use cases that justify bringing
-  // pay_api back:
-  //   - "Make me a beat and sell it for $5" (Audric Store creator side)
-  //   - "Buy everything for my house party" (multi-vendor commerce)
-  //   - "Order flowers and a card for mom" (single-intent multi-leg)
-  // Until that spec ships its first phase, the LLM never sees
-  // `pay_api` in web-v2 → never proposes it → no fragile fail-loud
-  // surface for the user.
-  //
-  // Legacy `apps/web` continues to ship pay_api unchanged.
-  //
-  // Client-side dispatch (audric-chat-client.tsx) routes Approve
-  // taps to sponsoredTx({type, params, session}) for the 10 sponsored
-  // writes (save / withdraw / borrow / repay / send / swap /
-  // claim-rewards / harvest / volo-stake / volo-unstake).
-  //
-  // [Phase 6.5 / SPEC_V07C_PHASE_6_5_CHAT_PARITY A.1 / S.198 — 2026-05-20]
-  // Wire the full engine `READ_TOOLS` array (25 tools — render_canvas,
-  // balance_check, savings_info, health_check, rates_info,
-  // transaction_history, swap_quote, volo_stats, mpp_services, web_search,
-  // explain_tx, portfolio_analysis, protocol_deep_dive, token_prices,
-  // create/list/cancel_payment_link, create/list/cancel_invoice,
-  // spending_analytics, yield_summary, activity_summary, resolve_suins,
-  // pending_rewards). Pre-Phase-6.5 only `balance_check` was wired — the
-  // other 24 reads were intentionally limited at Phase 2 incremental
-  // wire-up. The S.198 parity audit (2026-05-20) found the limited set
-  // would have regressed ~24/60 common user questions post-chat-flip
-  // ("what's the APY?" → fail, "show portfolio breakdown" → only
-  // balance, "create a payment link" → fail despite Pay routes live).
+  // [S.245 — 2026-05-22] `pay_api` / `mpp_services` no longer in
+  // engine — deleted per V07E_D_QUESTION_AUDITS D-2 reframe. apps/web
+  // dies en bloc in v0.7e Phase 5; pay_api returns as a Commerce
+  // primitive in Audric Store SPEC (clean-slate, not a port). No
+  // filter needed — the tools no longer exist to filter out.
   //
   // **Gateway interaction:** when `useGateway` is on (default), the
   // AI Gateway-managed `perplexity_search` replaces the engine's
-  // `web_search` tool (Phase 2 D-19 / S.172 Batch 1 design). To avoid
-  // the LLM seeing BOTH tools and getting confused about which
-  // web-search to call, filter `web_search` out of the engine reads
-  // when `useGateway` is true. Off-gateway (legacy path) keeps the
-  // engine's `web_search` so the tool isn't silently dropped.
-  //
-  // **Tool overrides intentionally NOT yet ported (deferred to A.1b
-  // follow-up):** `audricMppServicesTool` (filters MPP catalog to 5
-  // services — engine returns full ~40), `lookupUserTool` (Audric
-  // handle directory), `audricPrepareBundleTool` (SPEC 14). Engine
-  // fallbacks work but are less polished — mpp_services card shows
-  // all 40 services instead of 5. The A.1b commit ports these files
-  // from `audric/apps/web/lib/engine/` to `audric/apps/web-v2/lib/
-  // audric/`. Each file is mostly pure engine + Prisma + Audric
-  // Postgres; minimal re-wiring.
-  //
-  // [S.243 — 2026-05-22] `audricSaveContactTool` + `audricListContactsTool`
-  // are PERMANENTLY excluded (not deferred) per V07E_CONTACTS_SIMPLIFICATION
-  // Path A — contacts deleted entirely.
-  // [S.243 / V07E_CONTACTS_SIMPLIFICATION Path A — 2026-05-22] Filter
-  // out `save_contact` alongside `pay_api`. Contacts feature deleted
-  // from web-v2 entirely; LLM physically cannot dispatch the tool from
-  // this surface. Engine package still exports the tool until H3 Phase 4
-  // (no-rush cleanup post-soak).
+  // `web_search` tool (Phase 2 D-19 / S.172 Batch 1 design). Filter
+  // `web_search` out of engine reads when `useGateway` is true to
+  // avoid the LLM seeing BOTH tools.
   const writeToolsForWebV2 = WRITE_TOOLS.filter(
-    (t) => t.name !== "pay_api" && t.name !== "save_contact"
+    (t) => t.name !== "save_contact"
   );
   const readToolsForWebV2 = useGateway
     ? READ_TOOLS.filter((t) => t.name !== "web_search")
@@ -1249,12 +1198,12 @@ export async function POST(request: Request) {
   // intents matched → no dispatch (zero cost).
   //
   // [Phase 6.5 / SPEC_V07C_PHASE_6_5_CHAT_PARITY A.1 / S.198 — 2026-05-20]
-  // Build the dispatcher registry from the full `READ_TOOLS` array (25
-  // tools as of Phase 6.5 wiring). Pre-Phase-6.5 only `balance_check`
-  // was registered; the intent dispatcher already has rules for
-  // `health_check`, `mpp_services`, `transaction_history` (3 rules),
+  // Build the dispatcher registry from the full `READ_TOOLS` array (24
+  // tools post-S.245 mpp_services deletion). Pre-Phase-6.5 only
+  // `balance_check` was registered; the intent dispatcher has rules
+  // for `health_check`, `transaction_history` (3 rules),
   // `activity_summary`, `yield_summary` — so wiring `READ_TOOLS` here
-  // activates 6 dispatcher rules that were previously dormant.
+  // activates 5 dispatcher rules that were previously dormant.
   //
   // The dispatcher pre-fires read tools matching deterministic regex
   // intents BEFORE the LLM round-trip to dodge the ~30% lazy-answer
@@ -2347,9 +2296,6 @@ function describeAudricAction(
       return `Unstake ${display} from Volo`;
     }
     default:
-      // [Phase 4b 2026-05-19] `pay_api` is intentionally EXCLUDED from
-      // web-v2's tool set (see comment near `writeToolsForWebV2`).
-      // No description case needed because the LLM never sees the tool.
       return;
   }
 }

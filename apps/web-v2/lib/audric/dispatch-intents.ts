@@ -54,8 +54,8 @@
  *
  * web-v2 today only wires `balance_check` as a read tool (Phase 4
  * scope is the 11 confirm-tier writes). The dispatcher module ports
- * all 8 rules byte-for-byte for forward-compatibility — when later
- * slices wire `health_check`, `transaction_history`, `mpp_services`,
+ * all rules byte-for-byte for forward-compatibility — when later
+ * slices wire `health_check`, `transaction_history`,
  * `activity_summary`, `yield_summary` as read tools, the dispatcher
  * already works. For the v0.7c slice the chat-route caller gracefully
  * skips any intent whose tool isn't in the registry it passes in.
@@ -233,15 +233,6 @@ const READ_INTENT_RULES: readonly IntentRule[] = [
     pattern:
       /\b(?:health\s*factor|liquidation(?:\s+risk)?|risk\s+of\s+liquidation|am\s+i\s+(?:safe|at\s+risk)|is\s+my\s+account\s+safe|borrow(?:ing)?\s+capacity|can\s+i\s+borrow(?:\s+more)?|how\s+much\s+can\s+i\s+borrow|max(?:imum)?\s+borrow|(?:full\s+)?health\s+check(?:\s+on\s+my\s+account)?|check\s+my\s+(?:account\s+)?health|run\s+a\s+health\s+check)\b/i,
     skipIfThirdParty: true,
-  },
-
-  // ────────────────────────── mpp_services ───────────────────────────
-  {
-    toolName: "mpp_services",
-    args: {},
-    label: "mpp services catalog",
-    pattern:
-      /\b(?:(?:show\s+(?:me\s+)?(?:all\s+)?(?:available\s+)?(?:mpp\s+)?services?(?:\s+(?:on\s+sui|catalog))?)|(?:list\s+(?:all\s+)?(?:available\s+)?(?:mpp\s+)?services?)|(?:available\s+(?:mpp\s+)?services?)|(?:what\s+(?:mpp\s+)?services?\s+(?:are\s+available|exist|do\s+(?:you|we)\s+have))|(?:mpp\s+services?)|(?:service\s+catalog))\b/i,
   },
 
   // ─────────────── transaction_history — last single tx ──────────────

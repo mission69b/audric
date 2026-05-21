@@ -106,7 +106,6 @@ export const POST_WRITE_REFRESH_MAP: Readonly<
   borrow: ["balance_check", "savings_info", "health_check"],
   repay_debt: ["balance_check", "savings_info", "health_check"],
   send_transfer: ["balance_check"],
-  pay_api: ["balance_check"],
   swap_execute: ["balance_check"],
   volo_stake: ["balance_check"],
   volo_unstake: ["balance_check"],

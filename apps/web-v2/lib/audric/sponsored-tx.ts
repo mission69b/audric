@@ -22,12 +22,10 @@
  * (Prisma-only upsert via `/api/contacts/save`). Contacts deleted
  * entirely; web-v2 now has zero non-sponsored write paths.
  *
- * `pay_api` is intentionally EXCLUDED from web-v2's tool set
- * (Phase 4b deferral 2026-05-19). The legacy `/api/services/{prepare,
- * complete,retry}` 3-leg flow stays in `apps/web` until the Agentic
- * Commerce spec ships its first phase. See the comment block in
- * `app/(chat)/api/audric-chat/route.ts` near `writeToolsForWebV2`
- * for the full framing.
+ * [S.245 / V07E_D_QUESTION_AUDITS D-2 reframe — 2026-05-22]
+ * `pay_api` deleted from engine entirely. apps/web dies en bloc in
+ * v0.7e Phase 5. pay_api returns as a Commerce primitive in Audric
+ * Store SPEC (clean-slate redesign, not a port).
  *
  * Traceability: BENEFITS_SPEC_v07c.md §"Phase 4 — Mechanical write
  * tool migration"; legacy reference: audric/apps/web/hooks/useAgent.ts
@@ -53,9 +51,8 @@ export type SponsoredTxBundleStep = {
   /**
    * Engine WRITE_TOOLS tool name. Mirrors the SDK's
    * `WriteStep.toolName` union exactly (single source of truth).
-   * `pay_api` is NEVER bundleable (no on-chain leg + not
-   * `bundleable: true` in `tool-flags.ts`). `save_contact` removed
-   * entirely from web-v2 per S.243.
+   * `save_contact` removed entirely from web-v2 per S.243.
+   * `pay_api` removed from engine entirely per S.245.
    */
   toolName:
     | "save_deposit"

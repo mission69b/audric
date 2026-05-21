@@ -78,7 +78,9 @@
 - **Honest scope re-estimation when audits change** — quoted ~1h for voice cleanup pre-audit; audit revealed 2,739 LoC across 16 files. When audit reality contradicts estimate, surface BEFORE proceeding.
 - **Mini-SPECs for cross-cutting deprecations** — invoice touches engine + web-v2 + apps/web + Prisma + DB + system prompt + docs. Belongs in its own SPEC, not in Phase 1A. Audit-first → "this is a separate mini-SPEC" → keep slices clean.
 
-**Next up after S.243 (full open backlog snapshot):**
+**S.245 SHIPPED 2026-05-22 ~07:50 AEST — `pay_api` + `mpp_services` engine deletion + web-v2 cleanup + docs sweep.** D-2 reframed from S.244's "DEFER services/* to v0.7f" to "DELETE entirely now + redesign in Audric Store SPEC" per founder. Engine v2.12.0 tag pushed, GitHub Release created, but **npm publish FAILED for all 4 packages (404 — NPM_TOKEN expired/revoked).** Founder must rotate `NPM_TOKEN` GitHub secret then re-run `gh workflow run publish.yml --ref v2.12.0`. Web-v2 unblocked structurally (already filters out the deleted tools), so this is not a P0 user-facing issue. See `t2000/audric-build-tracker.md` S.245.
+
+**Next up after S.245 (full open backlog snapshot):**
 
 | Priority | # | Task | Effort | Blocker |
 |---|---|---|---|---|
@@ -88,7 +90,7 @@
 | 🟡 H3.2 | H3.2 | **Contacts Phase 2 (Prisma drop)** — per S.243 Q4 DROP DIRECTLY locked: Prisma migration to drop `UserPreferences.contacts` JSON column. No archive table, no 30d grace | ~30 min | ~24h Phase 1A soak (no production regression from contacts removal) |
 | 🟡 H3.4 | H3.4 | **Contacts Phase 4 (engine cleanup, NO RUSH)** — delete `packages/engine/src/tools/contacts.ts` + `add-recipient.ts` + remove from tool-flags + tool-policy + tools/index + tests + bump @t2000/engine minor + publish. apps/web side will be dead by then (Phase 3 auto) | ~30 min | Optional after web-v2 soak; can wait indefinitely. Engine tools become unused exports until deleted |
 | 🟡 H3.5 | H3.5 | **Contacts Phase 5 (Q2 reverse-lookup, AUDIT FIRST)** — Audit web-v2 send history rendering. IF it currently relies on contact-stored names for recipient display, add Q2 A-1 path: live reverse-lookup at render (Audric directory + SuiNS, session-cached). IF send history already shows raw short-form 0x or routes through resolve_suins live, this is $0 work | ~0-2h | None — audit-first ship |
-| 🔴 HIGH | H1 | **v0.7e Phase 2** — chat-shell cutover + 1A.2/1A.3 absorption + fn-injection refactor. **D-2/D-5/D-7 LOCKED 2026-05-22 ~06:30 AEST (S.244):** D-2=A (DEFER services/* to v0.7f), D-5=L-4 (pure copy-port), D-7=DELETE with 24h grace. | ~5-7d | Vitest R-1 decision (test framework for migrated routes) |
+| 🔴 HIGH | H1 | **v0.7e Phase 2** — chat-shell cutover + 1A.2/1A.3 absorption + fn-injection refactor. **D-2/D-5/D-7 LOCKED 2026-05-22 ~06:30 AEST (S.244); D-2 RE-LOCKED 2026-05-22 ~07:50 AEST (S.245) → B+ DELETE entirely (engine tools deleted, Phase 5 RESTORED to v0.7e).** | ~5-7d | Vitest R-1 decision (test framework for migrated routes) |
 | 🔴 HIGH | H2 | **v0.7e Persistent Chats** — `spec/active/BENEFITS_SPEC_v07e_persistent_chats.md` **v1.0 LOCKED 2026-05-22 ~06:30 AEST (S.244):** all 5 architectural locks resolved. LOCK-0=B (sequenced after Phase 1A, before Phase 2), LOCK-1=B (prisma rewrite, POC-locked ~01:30 AEST), LOCK-2=Vote KEEP / Doc+Sugg STRIP, LOCK-3=Fold Session 9a, LOCK-4=Engine StreamCheckpointStore, LOCK-5=B (cheap LLM summarizer ~$0.10/1000 chats). Effort lock: ~6.5-8.5h (~1 day). | ~1 day (was 1.5-3d) | None — fully locked, ready to ship after H1 Phase 1A completes (per LOCK-0 sequencing) |
 | 🟡 MED | M1 | **SPEC 31 — CSP perimeter polish** per `spec/active/SPEC_31_SCOPING.md` | ~6-9h + 24-48h Report-Only soak | Founder triage |
 | 🟡 MED | M2 | **engine-fn-injection-refactor** (REBASELINED to AFTER v0.7e Tier C migration) | ~14-21h / 2-3 sessions | Blocked on v0.7e Tier C |

@@ -47,9 +47,11 @@ import { YieldEarningsCard } from "./cards/YieldEarningsCard";
  *
  * Coverage as of Phase 5b (2026-05-19): 20+ light cards + 8 canvas
  * templates wired. Deferred intentionally:
- *  - `mpp_services` / `pay_api` — Agentic Commerce
- *    (`spec/active/AGENTIC_COMMERCE_SPEC_DRAFT.md`)
  *  - `spending_analytics` — has no card (returns text-only)
+ *
+ * S.245 cleanup: `pay_api` / `mpp_services` references removed —
+ * tools deleted from engine entirely; redesigned cleanly in Audric
+ * Store SPEC.
  *
  * Motion family is intentionally NOT ported — founder-locked
  * 2026-05-19 to skeleton-pulse only (Tailwind `animate-pulse`). The
@@ -285,7 +287,7 @@ export function ToolResultRouter({
   // `null` in `skeleton-variants.ts` (e.g. `render_canvas`,
   // `spending_analytics`) fall through to the generic Tool view.
   if (part.state === "input-streaming" || part.state === "input-available") {
-    const variant = getSkeletonVariant(toolName, part.input);
+    const variant = getSkeletonVariant(toolName);
     if (variant !== null) {
       return <SkeletonCard variant={variant} />;
     }

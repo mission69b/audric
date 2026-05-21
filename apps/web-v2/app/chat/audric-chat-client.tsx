@@ -1053,11 +1053,8 @@ function parseAudricMetadata(raw: unknown):
  * the field names from the engine tool's `inputSchema` (defined in
  * `packages/engine/src/tools/<tool>.ts`).
  *
- * Returns `undefined` for tools that don't exist in the web-v2 set
- * (e.g. `pay_api` — intentionally excluded from web-v2 tools).
- *
- * `pay_api` is intentionally excluded from web-v2's tool set
- * (see Phase 4b deferral in `app/(chat)/api/audric-chat/route.ts`).
+ * Returns `undefined` for tools that don't have a sponsored-tx
+ * mapping (read-only tools, or tools the LLM cannot dispatch).
  */
 function buildSponsoredTxRequest(
   toolName: string,

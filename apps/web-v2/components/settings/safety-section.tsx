@@ -6,14 +6,13 @@
  * v0.7c Phase 6 Session 2 scope (per `s2-api-usage` lock):
  *   - Permission preset radio group (load-bearing: drives chat autonomy)
  *   - Per-operation USD threshold table (informational)
- *   - NO API usage card (pay_api verification deferred to v0.7d)
+ *   - NO API usage card (pay_api deleted from engine in S.245; capability returns
+ *     as Commerce primitive in Audric Store SPEC)
  *   - NO Daily API budget input (same reason)
  *
  * Reads + writes go through the shared `usePreferences` SWR cache slot
- * (Session 4.7.A) — same slot as `useContacts`, so navigating between
- * settings tabs only fires ONE network read. Writes post a PARTIAL
- * payload (`permissionPreset` only) and optimistically patch the cache;
- * a failure rolls back without touching the contacts field.
+ * (Session 4.7.A). Writes post a PARTIAL payload (`permissionPreset`
+ * only) and optimistically patch the cache; failures roll back cleanly.
  *
  * Permission constants come from `@t2000/engine/presets` — a client-safe
  * subpath export (added in engine v2.11.1, v0.7c Session 4.6 fix #3)
