@@ -20,6 +20,27 @@
  *
  * [SPEC 17 — 2026-05-07] `openGoals` field removed along with the
  * `SavingsGoal` table; the snapshot no longer queries goals.
+ *
+ * [S.235 — 2026-05-21] fincontext-zero-bug fix. The previous logic at
+ * L113-124 read per-asset detail fields (`walletAllocations.USDC`,
+ * `positions.supplies.find(s => s.asset === 'USDC')`) which BlockVision
+ * leaves EMPTY under degradation while top-line aggregates stay
+ * positive. Effect: when BlockVision degraded mid-loop, the upsert
+ * overwrote a previously-healthy `UserFinancialContext` row with
+ * `walletUsdc=0 / walletUsdsui=0 / savingsUsdc=0 / savingsUsdsui=0 /
+ * healthFactor=null` — feeding the LLM zeros for 24h until the next
+ * cron run. Downstream: `<financial_context>` block (Layer 2 of the
+ * F-4 5-layer system prompt) would render misleading "Savings: $0.00"
+ * etc., quietly degrading agent context. Fix: gate the upsert on
+ * `portfolio.source !== 'sui-rpc-degraded'` AND `portfolio.defiSource
+ * !== 'degraded'`. `partial` and `partial-stale` DeFi states are still
+ * trusted because we have at least some protocol data (and the
+ * reader's 48h stale gate catches multi-day cron failures). Skipped
+ * users retain their previous row — 24h-old positive data beats fresh
+ * zeros every time. Brand-new users with no row + degraded BlockVision
+ * → no row written, reader returns "" cleanly, agent falls back to
+ * fresh tool calls (correct: never inject false zeros into the
+ * system prompt).
  */
 
 import { prisma } from '@/lib/prisma';
@@ -29,6 +50,15 @@ import { getTelemetrySink } from '@t2000/engine';
 export interface FinancialContextSnapshotResult {
   created: number;
   skipped: number;
+  /**
+   * [S.235] Count of users skipped because their `getPortfolio()`
+   * read returned a degraded source flag (`source === 'sui-rpc-degraded'`
+   * or `defiSource === 'degraded'`). Distinct from `skipped` (which
+   * counts addresses without matching User rows). Their previous
+   * `UserFinancialContext` row stays untouched — degradation skips
+   * the upsert rather than overwriting with zeros.
+   */
+  degradedSkipped: number;
   errors: number;
   total: number;
 }
@@ -65,7 +95,7 @@ export async function runFinancialContextSnapshotJob(
       Date.now() - shardStart,
       { shard: String(shard), result: 'ok' },
     );
-    return { created: 0, skipped: 0, errors: 0, total: 0 };
+    return { created: 0, skipped: 0, degradedSkipped: 0, errors: 0, total: 0 };
   }
 
   const users = await prisma.user.findMany({
@@ -74,6 +104,7 @@ export async function runFinancialContextSnapshotJob(
   });
 
   let created = 0;
+  let degradedSkipped = 0;
   let errors = 0;
 
   for (const user of users) {
@@ -96,6 +127,25 @@ export async function runFinancialContextSnapshotJob(
           }),
           getPortfolio(user.suiAddress),
         ]);
+
+      // [S.235 — fincontext-zero-bug fix] Gate the upsert on BlockVision
+      // source flags. Per-asset detail fields below (`walletAllocations.X`,
+      // `positions.supplies.find(...)`) come back EMPTY under degradation
+      // while top-line aggregates stay positive — writing the upsert
+      // anyway overwrites yesterday's healthy row with zeros. Skipping
+      // preserves the prior row (24h old data beats fresh zeros) and lets
+      // the reader's own 48h stale gate handle multi-day cron failures.
+      // `partial` + `partial-stale` defi states are still trusted because
+      // we have at least some protocol data.
+      const walletDegraded = portfolio.source === 'sui-rpc-degraded';
+      const defiDegraded = portfolio.defiSource === 'degraded';
+      if (walletDegraded || defiDegraded) {
+        console.warn(
+          `[financial-context-snapshot] Skipping ${user.id} due to degraded portfolio: walletSource=${portfolio.source}, defiSource=${portfolio.defiSource}`,
+        );
+        degradedSkipped++;
+        continue;
+      }
 
       const latestSnapshot = previous[0] ?? null;
       const previousSnapshot = previous.length > 1 ? previous[1] : null;
@@ -165,10 +215,21 @@ export async function runFinancialContextSnapshotJob(
     { shard: String(shard) },
     addresses.length,
   );
+  // [S.235] Track degradation skip volume so we can spot prolonged
+  // BlockVision outages from cron telemetry (high + sustained skip
+  // counts suggest BV is degraded for hours, not minutes).
+  if (degradedSkipped > 0) {
+    sink.counter(
+      'cron.fin_ctx_degraded_skipped',
+      { shard: String(shard) },
+      degradedSkipped,
+    );
+  }
 
   return {
     created,
     skipped: addresses.length - users.length,
+    degradedSkipped,
     errors,
     total: addresses.length,
   };

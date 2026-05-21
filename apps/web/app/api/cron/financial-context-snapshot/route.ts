@@ -44,7 +44,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const duration = Date.now() - start;
 
   console.log(
-    `[cron financial-context-snapshot] ${result.created} created, ${result.skipped} skipped, ${result.errors} errors out of ${result.total} active users (${duration}ms)`,
+    `[cron financial-context-snapshot] ${result.created} created, ${result.skipped} skipped, ${result.degradedSkipped} degraded-skipped, ${result.errors} errors out of ${result.total} active users (${duration}ms)`,
   );
 
   return NextResponse.json({ ...result, durationMs: duration });
