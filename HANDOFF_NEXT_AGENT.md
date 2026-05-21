@@ -88,8 +88,8 @@
 | 🟡 H3.2 | H3.2 | **Contacts Phase 2 (Prisma drop)** — per S.243 Q4 DROP DIRECTLY locked: Prisma migration to drop `UserPreferences.contacts` JSON column. No archive table, no 30d grace | ~30 min | ~24h Phase 1A soak (no production regression from contacts removal) |
 | 🟡 H3.4 | H3.4 | **Contacts Phase 4 (engine cleanup, NO RUSH)** — delete `packages/engine/src/tools/contacts.ts` + `add-recipient.ts` + remove from tool-flags + tool-policy + tools/index + tests + bump @t2000/engine minor + publish. apps/web side will be dead by then (Phase 3 auto) | ~30 min | Optional after web-v2 soak; can wait indefinitely. Engine tools become unused exports until deleted |
 | 🟡 H3.5 | H3.5 | **Contacts Phase 5 (Q2 reverse-lookup, AUDIT FIRST)** — Audit web-v2 send history rendering. IF it currently relies on contact-stored names for recipient display, add Q2 A-1 path: live reverse-lookup at render (Audric directory + SuiNS, session-cached). IF send history already shows raw short-form 0x or routes through resolve_suins live, this is $0 work | ~0-2h | None — audit-first ship |
-| 🔴 HIGH | H1 | **v0.7e Phase 2** — chat-shell cutover + 1A.2/1A.3 absorption + fn-injection refactor | ~5-7d | Founder D-2/D-5/D-7 RATIFY (~5 min) + Vitest R-1 decision |
-| 🔴 HIGH | H2 | **v0.7e Persistent Chats** — `spec/active/BENEFITS_SPEC_v07e_persistent_chats.md` + LOCK-1 POC LOCKED Option B | ~13-19h / 2-3 days | Founder review 5 remaining locks (~10-15 min). R-7 clear (Phase 7 closed) |
+| 🔴 HIGH | H1 | **v0.7e Phase 2** — chat-shell cutover + 1A.2/1A.3 absorption + fn-injection refactor. **D-2/D-5/D-7 LOCKED 2026-05-22 ~06:30 AEST (S.244):** D-2=A (DEFER services/* to v0.7f), D-5=L-4 (pure copy-port), D-7=DELETE with 24h grace. | ~5-7d | Vitest R-1 decision (test framework for migrated routes) |
+| 🔴 HIGH | H2 | **v0.7e Persistent Chats** — `spec/active/BENEFITS_SPEC_v07e_persistent_chats.md` **v1.0 LOCKED 2026-05-22 ~06:30 AEST (S.244):** all 5 architectural locks resolved. LOCK-0=B (sequenced after Phase 1A, before Phase 2), LOCK-1=B (prisma rewrite, POC-locked ~01:30 AEST), LOCK-2=Vote KEEP / Doc+Sugg STRIP, LOCK-3=Fold Session 9a, LOCK-4=Engine StreamCheckpointStore, LOCK-5=B (cheap LLM summarizer ~$0.10/1000 chats). Effort lock: ~6.5-8.5h (~1 day). | ~1 day (was 1.5-3d) | None — fully locked, ready to ship after H1 Phase 1A completes (per LOCK-0 sequencing) |
 | 🟡 MED | M1 | **SPEC 31 — CSP perimeter polish** per `spec/active/SPEC_31_SCOPING.md` | ~6-9h + 24-48h Report-Only soak | Founder triage |
 | 🟡 MED | M2 | **engine-fn-injection-refactor** (REBASELINED to AFTER v0.7e Tier C migration) | ~14-21h / 2-3 sessions | Blocked on v0.7e Tier C |
 | 🟡 MED | M3 | **engine-internal-key-final-delete** | ~30 min | Blocked on M2 |
@@ -105,10 +105,10 @@
 
 **Recommended sequencing (S.241 update — tomorrow's plan-of-attack):**
 1. **Open founder review (~30-45 min)**: Lock 4 SPECs in one sitting per V07E_STALE_FINCONTEXT_WRITE_REFUSAL §10:
-   - **P1.1** Stale fincontext Q1 (Path 1 / 5 / 6)
-   - **H3** Contacts simplification Q1-Q5
-   - **H2** Persistent chats 5 remaining architectural locks
-   - **H1** v0.7e Phase 2 D-2/D-5/D-7 RATIFY
+   - ✅ **P1.1** Stale fincontext Q1 (Path 6) — LOCKED + SHIPPED S.242
+   - ✅ **H3** Contacts simplification Q1-Q5 — LOCKED + Phase 1A SHIPPED S.243
+   - ✅ **H2** Persistent chats 5 remaining architectural locks — LOCKED S.244
+   - ✅ **H1** v0.7e Phase 2 D-2/D-5/D-7 RATIFY — LOCKED S.244
 2. **Ship smallest first**: P1.1 Path 6 (~30 min) — quick win to start the day
 3. **Then by priority**: H3 contacts (per locked path) → H2 persistent chats Phase 1 schema → H1 v0.7e Phase 2 prep
 4. **Defer**: D1 invoice deprecation stays in backlog until founder restores priority
