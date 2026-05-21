@@ -11,8 +11,44 @@
 **v0.7d MemWal — IN FLIGHT (Phase 7 observation, founder-owned)**
 [`t2000/spec/active/BENEFITS_SPEC_v07d.md`](../t2000/spec/active/BENEFITS_SPEC_v07d.md). The v0.7d SPEC retires the legacy SQL-backed memory pipeline (`UserMemory` + `UserFinancialProfile` + chain-classifier cron) and replaces it with `@mysten-incubation/memwal` vector memory. Phase 6 SHIPPED. Phase 7 observation in progress (closes ~2026-05-23 ~17:00 AEST).
 
-**v0.7e Tier C Migration + apps/web Archive — SKELETON DRAFTED (S.230, 2026-05-21 ~19:30 AEST)**
-[`t2000/spec/active/BENEFITS_SPEC_v07e.md`](../t2000/spec/active/BENEFITS_SPEC_v07e.md). v0.1 SKELETON (415 lines). 6 architectural locks (L-1 through L-6) + 5-phase plan (Phase 1 deletion sweep → Phase 2 engine + chat-coupled backend + fn-injection → Phase 3 backend API copy-port → Phase 4 cron cutover → Phase 5 marketing + legal + admin + final archive ritual) + 6 risks + 7 open founder questions (D-1 through D-7) for lock before Phase 1 kickoff. Total budget: ~10-15 agent days (~4-6 calendar weeks). Gated on v0.7d Phase 7 + Phase 8 G12 closing + pre-v0.7e backlog cleanup slices. Promotion to v1.0 LOCKED happens after founder reviews + locks D-1 through D-7.
+**v0.7e Tier C Migration + apps/web Archive — SKELETON + ALL D-AUDITS COMPLETE (S.232, 2026-05-21 ~21:30 AEST)**
+[`t2000/spec/active/BENEFITS_SPEC_v07e.md`](../t2000/spec/active/BENEFITS_SPEC_v07e.md). v0.1 SKELETON (415 lines) + 4 companion docs drafted tonight in `spec/active/`:
+
+| Doc | What it covers |
+|---|---|
+| `V07E_PHASE_0_BASELINE.md` | LoC baseline (148,867 LoC apps/web today) + per-phase delete targets; G4 gate closed |
+| `V07E_D_QUESTION_AUDITS.md` | All 7 founder D-questions audited with evidence + revised recommendations; **D-2 finding forces v0.7e Phase 5 deferral to v0.7f** |
+| `V07E_PHASE_1_EXECUTION_PLAN.md` | Phase 1 SPLIT to 1A (5 slices safe today, ~3.5h) + 1B (chat-shell cutover, now part of Phase 2). Per-slice delete-and-smoke checklists |
+| `V07E_PHASE_2_SURFACE_MAP.md` | File-level inventory of Phase 2 migration (~45-68h, up from SPEC §4's 3-4 days). lib/engine 56 files / 10,277 LoC + chat-coupled lib/* ~30k LoC + components migration tail + fn-injection refactor 14-20h |
+
+**Phase 1 gate status:**
+
+| Gate | Status |
+|---|---|
+| G1 (Phase 7 closes) | IN PROGRESS — calendar ~2026-05-23 ~17:00 AEST |
+| G2 (Phase 8 G12 decision) | RESOLVED — fn-injection lands inside v0.7e Phase 2 per L-2 |
+| **G3 (`/api/portfolio` cutover)** | ✅ CLOSED tonight — S.231/232 ship `729fd23` |
+| **G4 (Phase 0 baseline)** | ✅ CLOSED tonight — V07E_PHASE_0_BASELINE.md |
+| **Founder D-1..D-7 lock** | OPEN — ~10-15 min review of V07E_D_QUESTION_AUDITS.md §"SUMMARY" |
+
+**The 7 founder questions in 1-line each (all audited; defaults bolded):**
+
+| # | Question | Recommendation |
+|---|---|---|
+| D-1 | `/api/user/memories` keep or delete? | **DELETE** — route already gone (v0.7d Block A); just dead UI cleanup in Phase 1A.4 |
+| D-2 | `services/*` migrate or delete? | **DEFER to v0.7f** — Agentic Commerce SPEC ships pay_api; v0.7e Phase 5 shrinks to "keep ~5k LoC MPP shim" |
+| D-3 | `voice/*` migrate or delete? | **DELETE in Phase 1A.2** — matches v0.7c audit-3 zero-usage; alternative defer-with-pay_api flagged as compounding-risk |
+| D-4 | `/api/payments` rewrite verify | **DELETE in Phase 1A.5** — PayPanel goes with chat-shell; slug routes cutover to web-v2 |
+| D-5 | Marketing landing scope | **RATIFY L-4** (pure copy-port; legal-vetted text — no redesign) |
+| D-6 | `/api/build-id` post-v0.7e | **REVISED → DELETE in Phase 1A.3** (all chat-shell consumers; web-v2 has no version-check) |
+| D-7 | Keep `apps/web-legacy/`? | **RATIFY DELETE** (git history is SSOT; actual `rm` 24h post-Phase 5) |
+
+**Phase 1A ready to ship after founder D-lock + G1 closes (~2-3 days from now). 5 slices, ~3.5h total:**
+1. 1A.1 page directory sweep (~1h) — Store + Pay + Settings + slug pages
+2. 1A.2 voice + hooks (~30m) — 3 routes + 2 hooks
+3. 1A.3 build-id + version-check (~30m) — route + 4 chat-shell hooks
+4. 1A.4 Memory/Settings dead-code (~45m) — MemorySection + apps/web settings page
+5. 1A.5 Payments LIST + slug cutover (~45m) — 3 routes + PayPanel
 
 ### Status snapshot (2026-05-21 ~16:50 AEST)
 
