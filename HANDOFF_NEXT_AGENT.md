@@ -78,7 +78,7 @@
 - **Honest scope re-estimation when audits change** — quoted ~1h for voice cleanup pre-audit; audit revealed 2,739 LoC across 16 files. When audit reality contradicts estimate, surface BEFORE proceeding.
 - **Mini-SPECs for cross-cutting deprecations** — invoice touches engine + web-v2 + apps/web + Prisma + DB + system prompt + docs. Belongs in its own SPEC, not in Phase 1A. Audit-first → "this is a separate mini-SPEC" → keep slices clean.
 
-**S.245 SHIPPED 2026-05-22 ~07:50 AEST — `pay_api` + `mpp_services` engine deletion + web-v2 cleanup + docs sweep.** D-2 reframed from S.244's "DEFER services/* to v0.7f" to "DELETE entirely now + redesign in Audric Store SPEC" per founder. Engine v2.12.0 tag pushed, GitHub Release created, but **npm publish FAILED for all 4 packages (404 — NPM_TOKEN expired/revoked).** Founder must rotate `NPM_TOKEN` GitHub secret then re-run `gh workflow run publish.yml --ref v2.12.0`. Web-v2 unblocked structurally (already filters out the deleted tools), so this is not a P0 user-facing issue. See `t2000/audric-build-tracker.md` S.245.
+**S.245 SHIPPED 2026-05-22 ~08:04 AEST (fully recovered) — `pay_api` + `mpp_services` engine deletion + web-v2 cleanup + docs sweep + engine 2.12.0 published + web-v2 bumped.** D-2 reframed from S.244's "DEFER services/* to v0.7f" to "DELETE entirely now + redesign in Audric Store SPEC" per founder. Initial npm publish failed (NPM_TOKEN expired); founder rotated token; republish succeeded — all 4 packages live at 2.12.0. web-v2 commit `ed3d59c` bumps `@t2000/sdk` + `@t2000/engine` to 2.12.0 (Vercel auto-deploys). Engine tool count: **37 → 35** (24 read + 11 write). See `t2000/audric-build-tracker.md` S.245.
 
 **Next up after S.245 (full open backlog snapshot):**
 
