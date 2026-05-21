@@ -11,6 +11,14 @@
     {
       "path": "/api/cron/conversation-log-retention",
       "schedule": "30 3 * * *"
+    },
+    {
+      "path": "/api/cron/portfolio-snapshot",
+      "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/cron/financial-context-snapshot",
+      "schedule": "30 2 * * *"
     }
   ]
 }
