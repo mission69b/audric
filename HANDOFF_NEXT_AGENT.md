@@ -50,6 +50,44 @@
 4. 1A.4 Memory/Settings dead-code (~45m) — MemorySection + apps/web settings page
 5. 1A.5 Payments LIST + slug cutover (~45m) — 3 routes + PayPanel
 
+### v0.7e (persistent chats) SPEC drafted 2026-05-21 ~22:45 AEST / S.233
+
+Parallel SPEC track to v0.7e structural — NOT a replacement. File: `spec/active/BENEFITS_SPEC_v07e_persistent_chats.md` (564 lines).
+
+**Headline finding:** Vercel AI SDK chatbot template bootstrapping web-v2 in v0.7c shipped ~85% of persistent-chats surface already. Backlog row 177's "3-5d" estimate corrected to **~1.5-2.5d (drizzle path)** or **~2-3d (prisma rewrite path)**. Audit-first cadence (engineering-principles.mdc §1) closed in ~90 min, saved ~3 days of work.
+
+**What's built (dormant in production):**
+- Drizzle schema + initial SQL migration (7 tables) — never run against prod
+- Queries layer (660 LoC, 25 functions: save/get/delete/visibility/vote/title/streams)
+- Sidebar history UI (date grouping, SWR Infinite, delete confirmation, audric-branded)
+- `/api/history` + `/api/vote` + `(chat)/actions.ts` (zkLogin-aware via `getCurrentUser`)
+- Auth model compatible — `session.user.id` IS the canonical Sui address
+
+**What's missing (the ship slice):**
+- Migration never run (S.226 silently swallows `relation "Chat" does not exist`)
+- `/api/chat` route has ZERO imports from `lib/db` — no `saveChat` / `saveMessages` wiring
+- Drizzle `User.id` is `uuid`, audric passes `0x...` Sui address — type mismatch
+
+**6 architectural locks pending founder review (~10-15 min):**
+
+| Lock | Question | Agent rec |
+|---|---|---|
+| LOCK-0 | Sequence vs v0.7e structural? | **Sequence**: structural Phase 1A → persistent chats → structural Phase 2 |
+| LOCK-1 | ORM (drizzle vs prisma)? | **Prisma rewrite** — aligns with queries.ts:53 comment direction; eliminates mixed-ORM debt |
+| LOCK-2 | Vote / artifact / suggestion? | **KEEP vote, STRIP artifact + suggestion** (no Audric artifact panel) |
+| LOCK-3 | `(chat)` route group? | **Fold Session 9a into this SPEC** — move 3 files, delete `(chat)/` |
+| LOCK-4 | Resume mechanism? | **Engine StreamCheckpointStore** (v2.2.0); delete template Stream registry |
+| LOCK-5 | Title generation? | **Haiku LLM summarizer** (~$0.0001/chat) |
+
+**Phase plan** (LOCK-1=prisma path): Phase 1 schema+writes (~4-6h) → Phase 2 route migrations + `(chat)/` deletion (~2-3h) → Phase 3 click-to-resume (~2-3h) → Phase 4 visibility/share (~3-4h) → Phase 5 polish (~1-2h). **TOTAL: ~13-19h (~2-3 days).**
+
+**Critical risk R-7: DO NOT ship before v0.7d Phase 7 observation closes** (~Friday/Saturday). Schema change crosses observation boundary; activation creates sidebar history rows that would muddy the Phase 7 "did anything regress?" signal.
+
+**Next agent picks up after:**
+1. Phase 7 closes (~2026-05-23 ~17:00 AEST)
+2. Founder reviews SPEC + locks 6 architectural decisions
+3. Founder decides LOCK-0 — does this ship before or after v0.7e structural Phase 1A?
+
 ### Status snapshot (2026-05-21 ~16:50 AEST)
 
 | Phase | SPEC budget | Actual | Status | Where it landed |
@@ -174,7 +212,7 @@ The same root-directory rule applies to `next.config.js`, `tsconfig.json` overri
 | `stale-fincontext-backlog` | ✅ CLOSED 2026-05-21 (S.222) via vercel.json fix | — |
 | `fincontext-zero-bug-backlog` | OPEN (P2, ~30 min hotfix) | Post-Block-C |
 | `ai-gateway-userid-backlog` | OPEN (P3, ~10 min) — wire userId tag into AI Gateway `gateway()` wrapper for per-user cost attribution | Post-v0.7d |
-| `v07e-backlog` | OPEN (~3-5d) — persistent chat sessions (save transcripts + sidebar history + click-to-resume + delete + visibility). **Drafted AFTER v0.7d Phase 8 G12 closes.** Storage decision (drizzle-migrate vs prisma-rewrite) deferred to v0.7e drafting. See also `engine-fn-injection-refactor` + `engine-internal-key-final-delete` below — both natural follow-ons that land alongside (or before) the v0.7e chat-session work. | v0.7e |
+| `v07e-backlog` | **🟡 SPEC SKELETON DRAFTED 2026-05-21 / S.233.** Audit-first cadence reveals ~85% of surface already built (Vercel AI SDK chatbot template debris). 3-5d estimate corrected to **~1.5-2.5d (drizzle path) OR ~2-3d (prisma rewrite path)**. SPEC: `spec/active/BENEFITS_SPEC_v07e_persistent_chats.md` (564 lines). 6 architectural locks pending founder review: LOCK-0 sequencing vs v0.7e structural; LOCK-1 ORM (agent rec = prisma rewrite); LOCK-2 vote/artifact disposition; LOCK-3 `(chat)` route group; LOCK-4 stream registry (agent rec = engine StreamCheckpointStore); LOCK-5 title generation (agent rec = Haiku summarizer). 5-phase plan + 10-risk surface captured. **DO NOT SHIP before v0.7d Phase 7 closes** (R-7: schema change crosses observation boundary). Phase 1 starts post-Phase-7-close + post-founder-lock. Storage decision = LOCK-1 in SPEC. See also `engine-fn-injection-refactor` + `engine-internal-key-final-delete` below — both natural follow-ons that land alongside (or before) v0.7e structural Phase 2. | v0.7e (chats) — post-Phase-7 |
 | `stats-route-wallets-null-backlog` | ✅ CLOSED 2026-05-21 / S.226 (t2000 `e1feeeed`) — root cause was env-gate violation (empty-string env var overrode canonical via `??`); fixed via `isValidSuiAddress` validation + canonical fallback. Production probe confirms wallets populate (treasury 4.8 SUI / 5.41 USDC + MPP gateway 12.26 USDC). | Closed |
 | `t2000-web-env-gate` | ❌ CANCELLED 2026-05-21 / S.227 — founder pushback during attempted ship (correct call). t2000/apps/web is a static marketing site with **zero required env vars**; CLAUDE.md rule #8's bug-class motivation (S.25 BlockVision empty-string silent degradation) is a REQUIRED-var problem. T2000 has 3 OPTIONAL Sui-address overrides handled defensively inline by S.226's `resolveSuiAddress` workaround, which is the right-sized fix at this scale. Adding 200 LoC Zod + `zod` dep + `instrumentation.ts` + ESLint rule to a previously near-zero-dep marketing site fails the Simplicity First test ("No abstractions for single-use code"). **Carve-out:** rule #8 applies to apps with required env vars; static sites with only optional overrides may validate inline at the read site. If t2000/apps/web ever adds a required env var (e.g. analytics secret, paid API key), re-open this row and ship the gate. | Carve-out |
 | `engine-fn-injection-refactor` | OPEN (P3, ~14-21h / 2-3 sessions) — **SCOPE REBASELINED 2026-05-21 / S.228** post-audit. Original audit was 50% wrong — see `spec/active/AUDIT_ENGINE_FN_INJECTION_REFACTOR.md` postscript for 3 corrections. Key updates: (a) **execute AFTER v0.7e Tier C migration**, not before — engine-factory lives in apps/web today but the routes it self-fetches are rewritten to web-v2; doing fn-injection today would target dead code. Wait until engine-factory moves to web-v2 in v0.7e, then run fn-injection as a within-app refactor. (b) Actual fetch count is **13 fetch sites across 7 tool files**, not "6 engine call sites" — full inventory in audit doc. (c) `AudricApi` interface needs **12 methods**, not 11 — `getPortfolioHistory(addr, { days })` was missed (it's a separate route from `/api/portfolio`, called by portfolio-analysis.ts:176 for the week-change narration banner). (d) `activity-summary` is ALREADY factored as `fetchActivitySummary()` — saves ~1.5h. | v0.7e+ |
