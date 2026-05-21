@@ -206,21 +206,15 @@ export async function getChatsByUserId({
       hasMore,
     };
   } catch (err) {
-    // [S.214 follow-on / 2026-05-21] Log the underlying error before
-    // re-wrapping into ChatbotError. Pre-fix the bare `catch {}` swallowed
-    // the postgres error completely; every `/api/history` 500 had the
-    // same generic message with no signal about WHAT failed. The wrapped
-    // `ChatbotError` shape is preserved for the route handler's response
-    // contract; the `console.error` makes the actual cause greppable in
-    // Vercel logs.
     const errMsg = err instanceof Error ? err.message : String(err);
-    console.error(
-      `[db.getChatsByUserId] userId=${id} limit=${limit}: ${errMsg}`,
-      err instanceof Error ? err.stack : undefined
-    );
 
-    // [S.216 / 2026-05-21] Graceful fallback for missing chatbot-template
-    // tables. The drizzle schema in `lib/db/schema.ts` expects `Chat`,
+    // [S.226 / 2026-05-21] Silent fallback for missing chatbot-template
+    // tables — the EXPECTED case in production today. Check this BEFORE
+    // logging the error: pre-S.226 the `console.error` on the next branch
+    // fired on EVERY `/api/history` GET (~once per chat-shell load),
+    // spamming Vercel logs with a known, tracked, harmless condition.
+    //
+    // Context: the drizzle schema in `lib/db/schema.ts` expects `Chat`,
     // `Message_v2`, `Stream`, `Vote_v2`, etc. — but audric's Neon DB is
     // prisma-managed and these template tables don't exist (no migration
     // was ever run; web-v2's chat route never wires `saveChat` /
@@ -228,29 +222,28 @@ export async function getChatsByUserId({
     //
     // Until the v0.7e "persistent chat sessions" spec ships (which will
     // either run the migration + wire writes via drizzle OR rewrite this
-    // surface via prisma — decision deferred to v0.7e), every
-    // `/api/history` call was 500ing with `relation "Chat" does not
-    // exist`. The 500s polluted production logs and rendered as broken
-    // network requests in the browser console.
+    // surface via prisma — decision deferred to v0.7e drafting per the
+    // `v07e-backlog` HANDOFF row), `/api/history` will keep hitting this
+    // path. The graceful return matches the SAME empty-state response a
+    // successful query against an empty `Chat` table would return —
+    // SidebarHistory already renders "no chats yet" correctly.
     //
-    // The graceful path here returns the SAME empty-state response that
-    // a successful query against an empty `Chat` table would return —
-    // the SidebarHistory UI already handles `chats: []` correctly
-    // (renders "no chats yet" empty state). When v0.7e wires the migration
-    // + write path, this branch becomes dead code and gets deleted along
-    // with the rest of the v0.7e scope.
-    //
-    // Postgres reports the error as `relation "X" does not exist` (SQLSTATE
-    // 42P01). We match the human-readable substring rather than the
-    // SQLSTATE code because the postgres-js client surfaces the message
-    // but not the code on this code path.
+    // Postgres reports the error as `relation "X" does not exist`
+    // (SQLSTATE 42P01). We match the human-readable substring rather
+    // than the SQLSTATE code because the postgres-js client surfaces the
+    // message but not the code on this code path. When v0.7e wires the
+    // migration + write path, this entire branch becomes dead code and
+    // gets deleted along with the rest of the v0.7e scope.
     if (errMsg.includes("does not exist")) {
-      console.warn(
-        "[db.getChatsByUserId] template-debris fallback: chat history tables not provisioned on this DB; returning empty list (tracked in v0.7e backlog)"
-      );
       return { chats: [], hasMore: false };
     }
 
+    // Real unexpected database error — log it (greppable in Vercel logs)
+    // and rewrap into the route handler's ChatbotError shape.
+    console.error(
+      `[db.getChatsByUserId] userId=${id} limit=${limit}: ${errMsg}`,
+      err instanceof Error ? err.stack : undefined
+    );
     throw new ChatbotError(
       "bad_request:database",
       "Failed to get chats by user id"
