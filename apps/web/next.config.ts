@@ -91,8 +91,9 @@ const securityHeaders = [
 // `spec/runbooks/RUNBOOK_v07c_phase_6_cutover.md` §8.2.
 //
 // Memory note: `/settings/memory` IS rewritten to web-v2 — web-v2
-// renders a v0.7d deferral signpost card (S.188). Legacy
-// `/api/user/memories` on apps/web stays operational for direct calls.
+// renders v0.7d MemWal-backed memory UI. Legacy `/api/user/memories`
+// route on apps/web was removed in v0.7d Block A (S.221); the dead
+// MemorySection.tsx UI was removed in v0.7e Phase 1A.4 (S.238).
 //
 // `/auth/callback` is INTENTIONALLY excluded from rewrites — both apps
 // host their own callback page. Sign-ins originating from apps/web

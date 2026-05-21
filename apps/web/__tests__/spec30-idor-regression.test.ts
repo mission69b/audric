@@ -213,77 +213,18 @@ describe('SPEC 30 Phase 1A.4 — IDOR regression: POST /api/transactions/prepare
 });
 
 // ─── R3: /api/payments/[slug] PATCH+DELETE ──────────────────────────
-
-describe('SPEC 30 Phase 1A.4 — IDOR regression: PATCH /api/payments/[slug]', () => {
-  let PATCH: (req: NextRequest, ctx: { params: Promise<{ slug: string }> }) => Promise<Response>;
-
-  beforeEach(async () => {
-    vi.resetModules();
-    const mod = await import('../app/api/payments/[slug]/route');
-    PATCH = mod.PATCH as unknown as typeof PATCH;
-  });
-
-  it('401 when JWT is missing', async () => {
-    const req = new NextRequest('http://localhost/api/payments/victim-payment', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: 'cancelled' }),
-    });
-    const res = await PATCH(req, { params: Promise.resolve({ slug: 'victim-payment' }) });
-    expect(res.status).toBe(401);
-  });
-
-  it("404 when JWT identity doesn't own the payment slug (cancel-victim blocked)", async () => {
-    // The route collapses "not found" + "not owned" → 404 to prevent
-    // slug enumeration (an attacker shouldn't be able to distinguish
-    // "this slug exists but is someone else's" from "this slug doesn't exist").
-    const req = new NextRequest('http://localhost/api/payments/victim-payment', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', 'x-zklogin-jwt': TEST_JWT },
-      body: JSON.stringify({ status: 'cancelled' }),
-    });
-    const res = await PATCH(req, { params: Promise.resolve({ slug: 'victim-payment' }) });
-    expect(res.status).toBe(404);
-  });
-
-  it('200 when JWT identity owns the payment slug', async () => {
-    const req = new NextRequest('http://localhost/api/payments/my-payment', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', 'x-zklogin-jwt': TEST_JWT },
-      body: JSON.stringify({ status: 'cancelled' }),
-    });
-    const res = await PATCH(req, { params: Promise.resolve({ slug: 'my-payment' }) });
-    expect(res.status).toBe(200);
-  });
-});
-
-describe('SPEC 30 Phase 1A.4 — IDOR regression: DELETE /api/payments/[slug]', () => {
-  let DELETE: (req: NextRequest, ctx: { params: Promise<{ slug: string }> }) => Promise<Response>;
-
-  beforeEach(async () => {
-    vi.resetModules();
-    const mod = await import('../app/api/payments/[slug]/route');
-    DELETE = mod.DELETE as unknown as typeof DELETE;
-  });
-
-  it('401 when JWT is missing', async () => {
-    const req = new NextRequest('http://localhost/api/payments/victim-payment', {
-      method: 'DELETE',
-    });
-    const res = await DELETE(req, { params: Promise.resolve({ slug: 'victim-payment' }) });
-    expect(res.status).toBe(401);
-  });
-
-  it("404 when JWT identity doesn't own the payment slug", async () => {
-    const req = new NextRequest('http://localhost/api/payments/victim-payment', {
-      method: 'DELETE',
-      headers: { 'x-zklogin-jwt': TEST_JWT },
-    });
-    const res = await DELETE(req, { params: Promise.resolve({ slug: 'victim-payment' }) });
-    expect(res.status).toBe(404);
-  });
-});
-
+//
+// [v0.7e Phase 1A.5 — 2026-05-21 / S.238] R3 block deleted alongside
+// the apps/web `/api/payments/[slug]` route (GET + PATCH + DELETE).
+// The route was cut over to web-v2 via the existing rewrite at
+// `next.config.ts:119`. Web-v2's slug route implements GET only —
+// PATCH/DELETE capability was already dormant since v0.7c chat-flip
+// (the `cancel_payment_link` engine tool routes to the DIFFERENT
+// `/api/internal/payments` PATCH endpoint, not this one). Per G3
+// "delete_test_with_route" policy, this regression block deletes with
+// its source. IDOR coverage of the surviving GET handler should be
+// added to web-v2's own test suite as part of v0.7e Phase 2.
+//
 // ─── R4: /api/payments POST+GET ─────────────────────────────────────
 
 describe('SPEC 30 Phase 1A.4 — IDOR regression: GET /api/payments', () => {
