@@ -14,7 +14,7 @@ NeonDB Postgres with **11 active Prisma models** (post v0.7e Phase 5 cleanup S.2
 
 | Model | What it stores | Owned by | Updated by |
 |---|---|---|---|
-| `User` | `id`, `suiAddress` (unique), `email` (unique, optional), `emailVerified` (mirrors Google OIDC `email_verified` claim — written on first sign-in via `/api/user/status`), `displayName`, `timezoneOffset`, `tosAcceptedAt`, `username` (Audric Passport SuiNS handle) | Auth/login flow | `/api/user/status` upsert |
+| `User` | `id`, `suiAddress` (unique), `displayName`, `username` (Audric Passport SuiNS handle), `usernameClaimedAt`, `usernameLastChangedAt`, `usernameMintTxDigest` | Auth/login flow | `/api/user/status` upsert (creates row), `/api/identity/{change,reserve}` (writes username fields) — `email` / `emailVerified` come from the zkLogin JWT at request time, not the DB (S.261 dropped both columns alongside `timezoneOffset` + `tosAcceptedAt`) |
 | `UserPreferences` | `limits` (JSON spend limits + permission preset + agent config) | User | `/api/user/preferences` |
 
 ### Engine / conversation (post v0.7e Persistent Chats — S.247)

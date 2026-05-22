@@ -11,10 +11,11 @@ import { prisma } from "@/lib/prisma";
 /**
  * GET /api/user/status?address=0x...
  *
- * Returns ToS state plus the current session-usage tier (rolling 24h
- * window, distinct sessions). Consumers can use `sessionsUsed`,
- * `sessionLimit`, and `emailVerified` to render a pre-emptive
- * "X of N sessions today" UI without waiting for the chat route to 429.
+ * Returns the current session-usage tier (rolling 24h window, distinct
+ * sessions) plus the user's claimed Audric handle. Consumers can use
+ * `sessionsUsed`, `sessionLimit`, and `emailVerified` to render a
+ * pre-emptive "X of N sessions today" UI without waiting for the chat
+ * route to 429.
  *
  * [SIMPLIFICATION DAY 5] `onboarded` removed from the response — the
  * `onboardedAt` column was dropped along with the /setup wizard. The hook
@@ -28,14 +29,20 @@ import { prisma } from "@/lib/prisma";
  * Vercel logs when this route runs before the user posts a chat message
  * or saves an email.
  *
- * [PR-B2] `emailVerified` now comes from the Google OIDC `email_verified`
- * claim on the zkLogin JWT. The Resend verify-link flow is gone. The DB
- * column stays for legacy / debugging but is no longer authoritative.
+ * `emailVerified` derives from the Google OIDC `email_verified` claim on
+ * the zkLogin JWT — the Resend verify-link flow is gone and the DB
+ * column was dropped in S.261 (it was never authoritative post-removal).
  *
  * [v0.7e Phase 2 / S.253 — 2026-05-22] Verbatim port from
  * apps/web/app/api/user/status/route.ts. Auth imports moved from
  * `@/lib/auth` → `@/lib/audric-auth` (web-v2's consolidated module);
  * `runtime` segment export dropped to satisfy `nextConfig.cacheComponents`.
+ *
+ * [S.261 — 2026-05-23] Dropped `tosAccepted` from the response + removed
+ * the `tosAcceptedAt` select from the Prisma query alongside the dead
+ * `User.tosAcceptedAt` column. The TOS modal that consumed the flag was
+ * retired with the apps/web archive; the `acceptTos()` callback in
+ * `useUserStatus` had zero callers.
  */
 export async function GET(request: NextRequest) {
   // [SPEC 30 Phase 1A.3] Bind the JWT identity to the requested
@@ -67,7 +74,6 @@ export async function GET(request: NextRequest) {
       create: { suiAddress: address },
       update: {},
       select: {
-        tosAcceptedAt: true,
         // [SPEC 10 B-wiring] `username` (and the timestamp it was claimed)
         // drive the signup-page username gate. The dashboard reads this to
         // decide whether to render `<UsernameClaimGate>` over the empty
@@ -96,7 +102,6 @@ export async function GET(request: NextRequest) {
   const sessionLimit = sessionLimitFor(emailVerified);
 
   return NextResponse.json({
-    tosAccepted: user.tosAcceptedAt !== null,
     emailVerified,
     sessionsUsed: sessionCount,
     sessionLimit,

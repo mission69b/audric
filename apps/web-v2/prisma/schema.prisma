@@ -8,15 +8,11 @@ datasource db {
 }
 
 model User {
-  id             String    @id @default(cuid())
-  suiAddress     String    @unique
-  email          String?   @unique
-  emailVerified  Boolean   @default(false)
-  displayName    String?
-  timezoneOffset Int       @default(0)
-  tosAcceptedAt  DateTime?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  id          String   @id @default(cuid())
+  suiAddress  String   @unique
+  displayName String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   // SPEC 10 (Audric Passport Identity) — 4 fields shipped in migration
   // 20260505200000_spec10_add_username_to_user. `username` is the bare
@@ -33,6 +29,16 @@ model User {
   usernameLastChangedAt DateTime?
   usernameMintTxDigest  String?
 
+  // [S.261 — 2026-05-23] Dropped: `email`, `emailVerified`, `timezoneOffset`,
+  // `tosAcceptedAt` + their two indexes. Email/emailVerified now derive
+  // from the zkLogin JWT at request time (`isJwtEmailVerified`,
+  // `decodeJwtClaim`); the DB columns were never authoritative post-
+  // Resend-verify removal. `timezoneOffset` was DOA — never written or
+  // read. `tosAcceptedAt` had a write route + status flag but its UI
+  // consumer (the TOS modal) was retired; the flag was fetched and
+  // ignored. See migration `20260523000000_s261_drop_dead_user_columns/
+  // migration.sql`.
+
   preferences        UserPreferences?
   adviceLogs         AdviceLog[]
   payments           Payment[]
@@ -40,9 +46,6 @@ model User {
   // v0.7e Persistent Chats (S.247) — back-relation; Chat FKs to `suiAddress`
   // (canonical user identity post-zkLogin) rather than `id` (cuid).
   chats              Chat[]
-
-  @@index([email])
-  @@index([emailVerified, timezoneOffset])
 }
 
 model UserPreferences {

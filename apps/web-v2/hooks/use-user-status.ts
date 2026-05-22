@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * `useUserStatus` — SWR-backed reader for `/api/user/status` on apps/web.
+ * `useUserStatus` — SWR-backed reader for `/api/user/status` on web-v2.
  *
  * Migrated from `@tanstack/react-query` to SWR in v0.7c Session 4.7.A as
  * part of the data-fetching standardization. `react-query` remains in the
@@ -9,18 +9,13 @@
  * state — no user-written code uses it directly anymore.
  *
  * Settings → Passport reads `userStatus.username` for the IDENTITY card.
- * The route stays on apps/web until v0.7e; uses `audricWebUrl()` to
- * resolve to either same-origin (post-cutover) or cross-origin
- * (pre-cutover preview testing via NEXT_PUBLIC_AUDRIC_WEB_URL).
  *
- * `acceptTos()` posts to `/api/user/tos-accept` and optimistically
- * patches the cache via SWR's `mutate(updater, { revalidate: false })`.
- * No revalidation needed — the server returns no body, the only change
- * is the boolean `tosAccepted` flag, and the optimistic patch is the
- * authoritative new state.
+ * [S.261 — 2026-05-23] Dropped `tosAccepted` flag + `acceptTos()` callback
+ * alongside the dead `User.tosAcceptedAt` column. The TOS modal that
+ * consumed the flag was retired with the apps/web archive; `acceptTos()`
+ * had zero callers. Hook surface is now strictly identity + session-tier.
  */
 
-import { useCallback } from "react";
 import useSWR from "swr";
 import { audricWebUrl } from "@/lib/audric-web-url";
 
@@ -29,7 +24,6 @@ interface UserStatus {
   sessionLimit: number;
   sessionsUsed: number;
   sessionWindowHours: number;
-  tosAccepted: boolean;
   /** Bare lowercased Audric username, or `null` when unclaimed. */
   username: string | null;
   /** ISO timestamp when the user claimed; `null` when unclaimed. */
@@ -41,7 +35,6 @@ const DEFAULT_STATUS: UserStatus = {
   sessionLimit: 5,
   sessionsUsed: 0,
   sessionWindowHours: 24,
-  tosAccepted: false,
   username: null,
   usernameClaimedAt: null,
 };
@@ -62,52 +55,23 @@ export function useUserStatus(address: string | null, jwt: string | undefined) {
       return res.json();
     },
     {
-      // 5min cache; user-status changes infrequently (TOS accept, username
-      // claim) and both update paths optimistically patch the cache.
+      // 5min cache; user-status changes infrequently (username claim,
+      // session-tier transitions) and the username-claim path optimistically
+      // patches the cache on success.
       dedupingInterval: 5 * 60 * 1000,
       revalidateOnFocus: false,
     }
   );
 
-  const acceptTos = useCallback(async () => {
-    if (!address || !jwt) {
-      return;
-    }
-    await mutate(
-      async (current) => {
-        await fetch(audricWebUrl("/api/user/tos-accept"), {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-zklogin-jwt": jwt,
-          },
-          body: JSON.stringify({ address }),
-        });
-        return current
-          ? { ...current, tosAccepted: true }
-          : { ...DEFAULT_STATUS, tosAccepted: true };
-      },
-      {
-        optimisticData: (current) =>
-          current
-            ? { ...current, tosAccepted: true }
-            : { ...DEFAULT_STATUS, tosAccepted: true },
-        rollbackOnError: true,
-        revalidate: false,
-      }
-    );
-  }, [address, jwt, mutate]);
-
   return {
     loading: isLoading,
-    tosAccepted: data?.tosAccepted ?? true,
-    emailVerified: data?.emailVerified ?? false,
-    sessionsUsed: data?.sessionsUsed ?? 0,
-    sessionLimit: data?.sessionLimit ?? 5,
-    sessionWindowHours: data?.sessionWindowHours ?? 24,
+    emailVerified: data?.emailVerified ?? DEFAULT_STATUS.emailVerified,
+    sessionsUsed: data?.sessionsUsed ?? DEFAULT_STATUS.sessionsUsed,
+    sessionLimit: data?.sessionLimit ?? DEFAULT_STATUS.sessionLimit,
+    sessionWindowHours:
+      data?.sessionWindowHours ?? DEFAULT_STATUS.sessionWindowHours,
     username: data?.username ?? null,
     usernameClaimedAt: data?.usernameClaimedAt ?? null,
-    acceptTos,
     refetch: mutate,
   };
 }
