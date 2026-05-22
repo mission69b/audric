@@ -28,11 +28,6 @@ export type User = Prisma.UserModel
  */
 export type UserPreferences = Prisma.UserPreferencesModel
 /**
- * Model ConversationLog
- * 
- */
-export type ConversationLog = Prisma.ConversationLogModel
-/**
  * Model SessionUsage
  * 
  */
@@ -58,20 +53,10 @@ export type AdviceLog = Prisma.AdviceLogModel
  */
 export type Payment = Prisma.PaymentModel
 /**
- * Model WatchAddress
- * 
- */
-export type WatchAddress = Prisma.WatchAddressModel
-/**
  * Model PortfolioSnapshot
  * 
  */
 export type PortfolioSnapshot = Prisma.PortfolioSnapshotModel
-/**
- * Model LinkedWallet
- * 
- */
-export type LinkedWallet = Prisma.LinkedWalletModel
 /**
  * Model TurnMetrics
  * [v1.4] HarnessMetrics — per-turn instrumentation row written by the

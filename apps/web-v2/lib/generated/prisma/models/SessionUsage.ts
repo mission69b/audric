@@ -511,6 +511,14 @@ export type SessionUsageCreatetoolNamesInput = {
   set: string[]
 }
 
+export type FloatFieldUpdateOperationsInput = {
+  set?: number
+  increment?: number
+  decrement?: number
+  multiply?: number
+  divide?: number
+}
+
 export type SessionUsageUpdatetoolNamesInput = {
   set?: string[]
   push?: string | string[]

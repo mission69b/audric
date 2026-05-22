@@ -53,15 +53,12 @@ export const AnyNull = runtime.AnyNull
 export const ModelName = {
   User: 'User',
   UserPreferences: 'UserPreferences',
-  ConversationLog: 'ConversationLog',
   SessionUsage: 'SessionUsage',
   ServicePurchase: 'ServicePurchase',
   AppEvent: 'AppEvent',
   AdviceLog: 'AdviceLog',
   Payment: 'Payment',
-  WatchAddress: 'WatchAddress',
   PortfolioSnapshot: 'PortfolioSnapshot',
-  LinkedWallet: 'LinkedWallet',
   TurnMetrics: 'TurnMetrics',
   UserFinancialContext: 'UserFinancialContext',
   Chat: 'Chat',
@@ -106,7 +103,6 @@ export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof User
 
 export const UserPreferencesScalarFieldEnum = {
   address: 'address',
-  contacts: 'contacts',
   limits: 'limits',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
@@ -114,21 +110,6 @@ export const UserPreferencesScalarFieldEnum = {
 } as const
 
 export type UserPreferencesScalarFieldEnum = (typeof UserPreferencesScalarFieldEnum)[keyof typeof UserPreferencesScalarFieldEnum]
-
-
-export const ConversationLogScalarFieldEnum = {
-  id: 'id',
-  userId: 'userId',
-  sessionId: 'sessionId',
-  role: 'role',
-  content: 'content',
-  toolCalls: 'toolCalls',
-  tokensUsed: 'tokensUsed',
-  costUsd: 'costUsd',
-  createdAt: 'createdAt'
-} as const
-
-export type ConversationLogScalarFieldEnum = (typeof ConversationLogScalarFieldEnum)[keyof typeof ConversationLogScalarFieldEnum]
 
 
 export const SessionUsageScalarFieldEnum = {
@@ -224,17 +205,6 @@ export const PaymentScalarFieldEnum = {
 export type PaymentScalarFieldEnum = (typeof PaymentScalarFieldEnum)[keyof typeof PaymentScalarFieldEnum]
 
 
-export const WatchAddressScalarFieldEnum = {
-  id: 'id',
-  userId: 'userId',
-  address: 'address',
-  label: 'label',
-  createdAt: 'createdAt'
-} as const
-
-export type WatchAddressScalarFieldEnum = (typeof WatchAddressScalarFieldEnum)[keyof typeof WatchAddressScalarFieldEnum]
-
-
 export const PortfolioSnapshotScalarFieldEnum = {
   id: 'id',
   userId: 'userId',
@@ -250,19 +220,6 @@ export const PortfolioSnapshotScalarFieldEnum = {
 } as const
 
 export type PortfolioSnapshotScalarFieldEnum = (typeof PortfolioSnapshotScalarFieldEnum)[keyof typeof PortfolioSnapshotScalarFieldEnum]
-
-
-export const LinkedWalletScalarFieldEnum = {
-  id: 'id',
-  userId: 'userId',
-  suiAddress: 'suiAddress',
-  label: 'label',
-  isPrimary: 'isPrimary',
-  verifiedAt: 'verifiedAt',
-  addedAt: 'addedAt'
-} as const
-
-export type LinkedWalletScalarFieldEnum = (typeof LinkedWalletScalarFieldEnum)[keyof typeof LinkedWalletScalarFieldEnum]
 
 
 export const TurnMetricsScalarFieldEnum = {
@@ -374,19 +331,19 @@ export const SortOrder = {
 export type SortOrder = (typeof SortOrder)[keyof typeof SortOrder]
 
 
-export const JsonNullValueInput = {
-  JsonNull: JsonNull
-} as const
-
-export type JsonNullValueInput = (typeof JsonNullValueInput)[keyof typeof JsonNullValueInput]
-
-
 export const NullableJsonNullValueInput = {
   DbNull: DbNull,
   JsonNull: JsonNull
 } as const
 
 export type NullableJsonNullValueInput = (typeof NullableJsonNullValueInput)[keyof typeof NullableJsonNullValueInput]
+
+
+export const JsonNullValueInput = {
+  JsonNull: JsonNull
+} as const
+
+export type JsonNullValueInput = (typeof JsonNullValueInput)[keyof typeof JsonNullValueInput]
 
 
 export const QueryMode = {

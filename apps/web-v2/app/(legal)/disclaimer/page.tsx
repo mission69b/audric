@@ -141,7 +141,7 @@ export default function DisclaimerPage() {
             the underlying t2000 infrastructure has been completed and is{" "}
             <a
               className="text-fg-primary underline underline-offset-2 hover:opacity-70"
-              href="https://github.com/mission69b/t2000/blob/main/SECURITY_AUDIT.md"
+              href="https://github.com/mission69b/t2000/blob/main/spec/archive/one-offs/SECURITY_AUDIT.md"
               rel="noopener noreferrer"
               target="_blank"
             >

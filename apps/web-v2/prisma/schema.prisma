@@ -34,12 +34,9 @@ model User {
   usernameMintTxDigest  String?
 
   preferences        UserPreferences?
-  conversationLogs   ConversationLog[]
   adviceLogs         AdviceLog[]
   payments           Payment[]
-  watchAddresses     WatchAddress[]
   portfolioSnapshots PortfolioSnapshot[]
-  linkedWallets      LinkedWallet[]
   // v0.7e Persistent Chats (S.247) — back-relation; Chat FKs to `suiAddress`
   // (canonical user identity post-zkLogin) rather than `id` (cuid).
   chats              Chat[]
@@ -50,7 +47,6 @@ model User {
 
 model UserPreferences {
   address   String   @id
-  contacts  Json     @default("[]")
   limits    Json?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -59,22 +55,12 @@ model UserPreferences {
   userId String? @unique
 }
 
-model ConversationLog {
-  id         String   @id @default(cuid())
-  userId     String
-  sessionId  String
-  role       String
-  content    String
-  toolCalls  Json?
-  tokensUsed Int      @default(0)
-  costUsd    Float    @default(0)
-  createdAt  DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id])
-
-  @@index([userId, createdAt])
-  @@index([sessionId])
-}
+// [v0.7e Phase 5 cleanup / S.254 — 2026-05-22] ConversationLog model +
+// table dropped. Zero writers anywhere; the only consumer was the
+// retention cron (DELETE-only). Superseded by AI SDK's native message
+// persistence (Chat + Message models in S.247) which already captures
+// everything we need. Migration `20260522120000_v07e_drop_dead_tables_
+// and_columns/migration.sql` drops the matching Postgres table.
 
 model SessionUsage {
   id               String   @id @default(cuid())
@@ -189,18 +175,11 @@ model Payment {
   @@index([dueDate, status])
 }
 
-model WatchAddress {
-  id        String   @id @default(cuid())
-  userId    String
-  address   String
-  label     String?
-  createdAt DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id])
-
-  @@unique([userId, address])
-  @@index([userId])
-}
+// [v0.7e Phase 5 cleanup / S.254 — 2026-05-22] WatchAddress model +
+// table dropped. Zero call sites; multi-wallet watch-only addresses
+// feature retired silently in early 2026. Migration `20260522120000_
+// v07e_drop_dead_tables_and_columns/migration.sql` drops the matching
+// Postgres table.
 
 model PortfolioSnapshot {
   id     String   @id @default(cuid())
@@ -236,20 +215,11 @@ model PortfolioSnapshot {
 // drop_user_memory_and_user_financial_profile/migration.sql` drops the
 // matching Postgres tables.
 
-model LinkedWallet {
-  id         String    @id @default(cuid())
-  userId     String
-  suiAddress String
-  label      String?
-  isPrimary  Boolean   @default(false)
-  verifiedAt DateTime?
-  addedAt    DateTime  @default(now())
-
-  user User @relation(fields: [userId], references: [id])
-
-  @@unique([userId, suiAddress])
-  @@index([userId])
-}
+// [v0.7e Phase 5 cleanup / S.254 — 2026-05-22] LinkedWallet model +
+// table dropped. Zero call sites; current zkLogin flow is single-
+// wallet-per-Google-account by construction. Migration `20260522120000_
+// v07e_drop_dead_tables_and_columns/migration.sql` drops the matching
+// Postgres table.
 
 /// [v1.4] HarnessMetrics — per-turn instrumentation row written by the
 /// chat route at turn close. Purely additive, fire-and-forget; failures

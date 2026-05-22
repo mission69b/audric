@@ -1,3 +1,4 @@
+import { Analytics } from "@vercel/analytics/next";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
@@ -121,6 +122,10 @@ export default function RootLayout({
               bar + composer. */}
           <Toaster position="bottom-right" richColors />
         </ThemeProvider>
+        {/* [v0.7e post-apps/web archive] Vercel Web Analytics — page views
+            + custom events. Free for the Hobby tier; <1KB script. Auto-
+            disabled in dev. No PII collected. */}
+        <Analytics />
       </body>
     </html>
   );

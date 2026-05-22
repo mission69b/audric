@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Audric — Agentic Finance on Sui",
     description:
-      "Manage and move money globally. One sentence. Sub-second settlement. 37 tools. 1,000+ users.",
+      "Manage and move money globally. One sentence. Sub-second settlement. 35 tools. 1,000+ users.",
     type: "article",
   },
 };
@@ -50,7 +50,7 @@ export default function LitepaperPage() {
           </h1>
           <p className={s.heroLede}>
             Manage and move money globally. One sentence. Sub-second settlement.
-            37 tools run silently behind every conversation — memory, advice
+            35 tools run silently behind every conversation — memory, advice
             log, chain facts, portfolio context, all assembled before you finish
             typing. 1,000+ users on Sui mainnet.
           </p>
@@ -173,7 +173,7 @@ export default function LitepaperPage() {
                 <div className={s.cellTitle}>t2000.ai</div>
                 <div className={s.cellBody}>
                   @t2000/sdk, @t2000/engine, @t2000/cli, @t2000/mcp — five npm
-                  packages. Wallet, DeFi, 37 tools, 14 skills, streaming,
+                  packages. Wallet, DeFi, 35 tools, 14 skills, streaming,
                   guards. Open-source. Fee-free by design.
                 </div>
               </div>
@@ -216,7 +216,7 @@ export default function LitepaperPage() {
               <div className={s.gridCell}>
                 <div className={s.cellTitle}>Intelligence</div>
                 <div className={s.cellBody}>
-                  37 tools, 14 guards. Knows your finances before you ask.
+                  35 tools, 14 guards. Knows your finances before you ask.
                 </div>
               </div>
               <div className={s.gridCell}>
@@ -443,7 +443,7 @@ export default function LitepaperPage() {
               <div className={s.gridCell}>
                 <div className={s.cellTitle}>Agent Harness</div>
                 <div className={s.cellBody}>
-                  37 tools. Reads fan out in parallel. Writes wait for Passport
+                  35 tools. Reads fan out in parallel. Writes wait for Passport
                   confirmation and execute atomically under a transaction mutex.
                 </div>
               </div>
@@ -456,10 +456,11 @@ export default function LitepaperPage() {
                 </div>
               </div>
               <div className={s.gridCell}>
-                <div className={s.cellTitle}>Silent Profile + Memory</div>
+                <div className={s.cellTitle}>Memory</div>
                 <div className={s.cellBody}>
-                  Risk profile inferred silently. Chain facts from transaction
-                  history. AdviceLog never contradicts itself across sessions.
+                  MemWal vector memory + daily financial-context snapshot +
+                  AdviceLog. Knows your money, remembers what matters, never
+                  contradicts itself across sessions.
                 </div>
               </div>
             </div>
@@ -630,7 +631,7 @@ export default function LitepaperPage() {
                 <tr>
                   <td>AI engine</td>
                   <td>
-                    <code>@t2000/engine</code> — 37 tools, reasoning, guards,
+                    <code>@t2000/engine</code> — 35 tools, reasoning, guards,
                     canvas (skills via @t2000/mcp)
                   </td>
                 </tr>

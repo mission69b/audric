@@ -10,10 +10,6 @@
       "schedule": "*/5 * * * *"
     },
     {
-      "path": "/api/cron/conversation-log-retention",
-      "schedule": "30 3 * * *"
-    },
-    {
       "path": "/api/cron/portfolio-snapshot",
       "schedule": "0 7 * * *"
     },

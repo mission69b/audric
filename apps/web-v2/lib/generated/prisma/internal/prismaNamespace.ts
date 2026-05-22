@@ -386,15 +386,12 @@ type FieldRefInputType<Model, FieldType> = Model extends never ? never : FieldRe
 export const ModelName = {
   User: 'User',
   UserPreferences: 'UserPreferences',
-  ConversationLog: 'ConversationLog',
   SessionUsage: 'SessionUsage',
   ServicePurchase: 'ServicePurchase',
   AppEvent: 'AppEvent',
   AdviceLog: 'AdviceLog',
   Payment: 'Payment',
-  WatchAddress: 'WatchAddress',
   PortfolioSnapshot: 'PortfolioSnapshot',
-  LinkedWallet: 'LinkedWallet',
   TurnMetrics: 'TurnMetrics',
   UserFinancialContext: 'UserFinancialContext',
   Chat: 'Chat',
@@ -415,7 +412,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "userPreferences" | "conversationLog" | "sessionUsage" | "servicePurchase" | "appEvent" | "adviceLog" | "payment" | "watchAddress" | "portfolioSnapshot" | "linkedWallet" | "turnMetrics" | "userFinancialContext" | "chat" | "message" | "vote"
+    modelProps: "user" | "userPreferences" | "sessionUsage" | "servicePurchase" | "appEvent" | "adviceLog" | "payment" | "portfolioSnapshot" | "turnMetrics" | "userFinancialContext" | "chat" | "message" | "vote"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -564,80 +561,6 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.UserPreferencesCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.UserPreferencesCountAggregateOutputType> | number
-        }
-      }
-    }
-    ConversationLog: {
-      payload: Prisma.$ConversationLogPayload<ExtArgs>
-      fields: Prisma.ConversationLogFieldRefs
-      operations: {
-        findUnique: {
-          args: Prisma.ConversationLogFindUniqueArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$ConversationLogPayload> | null
-        }
-        findUniqueOrThrow: {
-          args: Prisma.ConversationLogFindUniqueOrThrowArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$ConversationLogPayload>
-        }
-        findFirst: {
-          args: Prisma.ConversationLogFindFirstArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$ConversationLogPayload> | null
-        }
-        findFirstOrThrow: {
-          args: Prisma.ConversationLogFindFirstOrThrowArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$ConversationLogPayload>
-        }
-        findMany: {
-          args: Prisma.ConversationLogFindManyArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$ConversationLogPayload>[]
-        }
-        create: {
-          args: Prisma.ConversationLogCreateArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$ConversationLogPayload>
-        }
-        createMany: {
-          args: Prisma.ConversationLogCreateManyArgs<ExtArgs>
-          result: BatchPayload
-        }
-        createManyAndReturn: {
-          args: Prisma.ConversationLogCreateManyAndReturnArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$ConversationLogPayload>[]
-        }
-        delete: {
-          args: Prisma.ConversationLogDeleteArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$ConversationLogPayload>
-        }
-        update: {
-          args: Prisma.ConversationLogUpdateArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$ConversationLogPayload>
-        }
-        deleteMany: {
-          args: Prisma.ConversationLogDeleteManyArgs<ExtArgs>
-          result: BatchPayload
-        }
-        updateMany: {
-          args: Prisma.ConversationLogUpdateManyArgs<ExtArgs>
-          result: BatchPayload
-        }
-        updateManyAndReturn: {
-          args: Prisma.ConversationLogUpdateManyAndReturnArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$ConversationLogPayload>[]
-        }
-        upsert: {
-          args: Prisma.ConversationLogUpsertArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$ConversationLogPayload>
-        }
-        aggregate: {
-          args: Prisma.ConversationLogAggregateArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.AggregateConversationLog>
-        }
-        groupBy: {
-          args: Prisma.ConversationLogGroupByArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.ConversationLogGroupByOutputType>[]
-        }
-        count: {
-          args: Prisma.ConversationLogCountArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.ConversationLogCountAggregateOutputType> | number
         }
       }
     }
@@ -1011,80 +934,6 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
-    WatchAddress: {
-      payload: Prisma.$WatchAddressPayload<ExtArgs>
-      fields: Prisma.WatchAddressFieldRefs
-      operations: {
-        findUnique: {
-          args: Prisma.WatchAddressFindUniqueArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$WatchAddressPayload> | null
-        }
-        findUniqueOrThrow: {
-          args: Prisma.WatchAddressFindUniqueOrThrowArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$WatchAddressPayload>
-        }
-        findFirst: {
-          args: Prisma.WatchAddressFindFirstArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$WatchAddressPayload> | null
-        }
-        findFirstOrThrow: {
-          args: Prisma.WatchAddressFindFirstOrThrowArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$WatchAddressPayload>
-        }
-        findMany: {
-          args: Prisma.WatchAddressFindManyArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$WatchAddressPayload>[]
-        }
-        create: {
-          args: Prisma.WatchAddressCreateArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$WatchAddressPayload>
-        }
-        createMany: {
-          args: Prisma.WatchAddressCreateManyArgs<ExtArgs>
-          result: BatchPayload
-        }
-        createManyAndReturn: {
-          args: Prisma.WatchAddressCreateManyAndReturnArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$WatchAddressPayload>[]
-        }
-        delete: {
-          args: Prisma.WatchAddressDeleteArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$WatchAddressPayload>
-        }
-        update: {
-          args: Prisma.WatchAddressUpdateArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$WatchAddressPayload>
-        }
-        deleteMany: {
-          args: Prisma.WatchAddressDeleteManyArgs<ExtArgs>
-          result: BatchPayload
-        }
-        updateMany: {
-          args: Prisma.WatchAddressUpdateManyArgs<ExtArgs>
-          result: BatchPayload
-        }
-        updateManyAndReturn: {
-          args: Prisma.WatchAddressUpdateManyAndReturnArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$WatchAddressPayload>[]
-        }
-        upsert: {
-          args: Prisma.WatchAddressUpsertArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$WatchAddressPayload>
-        }
-        aggregate: {
-          args: Prisma.WatchAddressAggregateArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.AggregateWatchAddress>
-        }
-        groupBy: {
-          args: Prisma.WatchAddressGroupByArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.WatchAddressGroupByOutputType>[]
-        }
-        count: {
-          args: Prisma.WatchAddressCountArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.WatchAddressCountAggregateOutputType> | number
-        }
-      }
-    }
     PortfolioSnapshot: {
       payload: Prisma.$PortfolioSnapshotPayload<ExtArgs>
       fields: Prisma.PortfolioSnapshotFieldRefs
@@ -1156,80 +1005,6 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.PortfolioSnapshotCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.PortfolioSnapshotCountAggregateOutputType> | number
-        }
-      }
-    }
-    LinkedWallet: {
-      payload: Prisma.$LinkedWalletPayload<ExtArgs>
-      fields: Prisma.LinkedWalletFieldRefs
-      operations: {
-        findUnique: {
-          args: Prisma.LinkedWalletFindUniqueArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$LinkedWalletPayload> | null
-        }
-        findUniqueOrThrow: {
-          args: Prisma.LinkedWalletFindUniqueOrThrowArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$LinkedWalletPayload>
-        }
-        findFirst: {
-          args: Prisma.LinkedWalletFindFirstArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$LinkedWalletPayload> | null
-        }
-        findFirstOrThrow: {
-          args: Prisma.LinkedWalletFindFirstOrThrowArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$LinkedWalletPayload>
-        }
-        findMany: {
-          args: Prisma.LinkedWalletFindManyArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$LinkedWalletPayload>[]
-        }
-        create: {
-          args: Prisma.LinkedWalletCreateArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$LinkedWalletPayload>
-        }
-        createMany: {
-          args: Prisma.LinkedWalletCreateManyArgs<ExtArgs>
-          result: BatchPayload
-        }
-        createManyAndReturn: {
-          args: Prisma.LinkedWalletCreateManyAndReturnArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$LinkedWalletPayload>[]
-        }
-        delete: {
-          args: Prisma.LinkedWalletDeleteArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$LinkedWalletPayload>
-        }
-        update: {
-          args: Prisma.LinkedWalletUpdateArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$LinkedWalletPayload>
-        }
-        deleteMany: {
-          args: Prisma.LinkedWalletDeleteManyArgs<ExtArgs>
-          result: BatchPayload
-        }
-        updateMany: {
-          args: Prisma.LinkedWalletUpdateManyArgs<ExtArgs>
-          result: BatchPayload
-        }
-        updateManyAndReturn: {
-          args: Prisma.LinkedWalletUpdateManyAndReturnArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$LinkedWalletPayload>[]
-        }
-        upsert: {
-          args: Prisma.LinkedWalletUpsertArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$LinkedWalletPayload>
-        }
-        aggregate: {
-          args: Prisma.LinkedWalletAggregateArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.AggregateLinkedWallet>
-        }
-        groupBy: {
-          args: Prisma.LinkedWalletGroupByArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.LinkedWalletGroupByOutputType>[]
-        }
-        count: {
-          args: Prisma.LinkedWalletCountArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.LinkedWalletCountAggregateOutputType> | number
         }
       }
     }
@@ -1663,7 +1438,6 @@ export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof User
 
 export const UserPreferencesScalarFieldEnum = {
   address: 'address',
-  contacts: 'contacts',
   limits: 'limits',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
@@ -1671,21 +1445,6 @@ export const UserPreferencesScalarFieldEnum = {
 } as const
 
 export type UserPreferencesScalarFieldEnum = (typeof UserPreferencesScalarFieldEnum)[keyof typeof UserPreferencesScalarFieldEnum]
-
-
-export const ConversationLogScalarFieldEnum = {
-  id: 'id',
-  userId: 'userId',
-  sessionId: 'sessionId',
-  role: 'role',
-  content: 'content',
-  toolCalls: 'toolCalls',
-  tokensUsed: 'tokensUsed',
-  costUsd: 'costUsd',
-  createdAt: 'createdAt'
-} as const
-
-export type ConversationLogScalarFieldEnum = (typeof ConversationLogScalarFieldEnum)[keyof typeof ConversationLogScalarFieldEnum]
 
 
 export const SessionUsageScalarFieldEnum = {
@@ -1781,17 +1540,6 @@ export const PaymentScalarFieldEnum = {
 export type PaymentScalarFieldEnum = (typeof PaymentScalarFieldEnum)[keyof typeof PaymentScalarFieldEnum]
 
 
-export const WatchAddressScalarFieldEnum = {
-  id: 'id',
-  userId: 'userId',
-  address: 'address',
-  label: 'label',
-  createdAt: 'createdAt'
-} as const
-
-export type WatchAddressScalarFieldEnum = (typeof WatchAddressScalarFieldEnum)[keyof typeof WatchAddressScalarFieldEnum]
-
-
 export const PortfolioSnapshotScalarFieldEnum = {
   id: 'id',
   userId: 'userId',
@@ -1807,19 +1555,6 @@ export const PortfolioSnapshotScalarFieldEnum = {
 } as const
 
 export type PortfolioSnapshotScalarFieldEnum = (typeof PortfolioSnapshotScalarFieldEnum)[keyof typeof PortfolioSnapshotScalarFieldEnum]
-
-
-export const LinkedWalletScalarFieldEnum = {
-  id: 'id',
-  userId: 'userId',
-  suiAddress: 'suiAddress',
-  label: 'label',
-  isPrimary: 'isPrimary',
-  verifiedAt: 'verifiedAt',
-  addedAt: 'addedAt'
-} as const
-
-export type LinkedWalletScalarFieldEnum = (typeof LinkedWalletScalarFieldEnum)[keyof typeof LinkedWalletScalarFieldEnum]
 
 
 export const TurnMetricsScalarFieldEnum = {
@@ -1931,19 +1666,19 @@ export const SortOrder = {
 export type SortOrder = (typeof SortOrder)[keyof typeof SortOrder]
 
 
-export const JsonNullValueInput = {
-  JsonNull: JsonNull
-} as const
-
-export type JsonNullValueInput = (typeof JsonNullValueInput)[keyof typeof JsonNullValueInput]
-
-
 export const NullableJsonNullValueInput = {
   DbNull: DbNull,
   JsonNull: JsonNull
 } as const
 
 export type NullableJsonNullValueInput = (typeof NullableJsonNullValueInput)[keyof typeof NullableJsonNullValueInput]
+
+
+export const JsonNullValueInput = {
+  JsonNull: JsonNull
+} as const
+
+export type JsonNullValueInput = (typeof JsonNullValueInput)[keyof typeof JsonNullValueInput]
 
 
 export const QueryMode = {
@@ -2150,15 +1885,12 @@ export type PrismaClientOptions = ({
 export type GlobalOmitConfig = {
   user?: Prisma.UserOmit
   userPreferences?: Prisma.UserPreferencesOmit
-  conversationLog?: Prisma.ConversationLogOmit
   sessionUsage?: Prisma.SessionUsageOmit
   servicePurchase?: Prisma.ServicePurchaseOmit
   appEvent?: Prisma.AppEventOmit
   adviceLog?: Prisma.AdviceLogOmit
   payment?: Prisma.PaymentOmit
-  watchAddress?: Prisma.WatchAddressOmit
   portfolioSnapshot?: Prisma.PortfolioSnapshotOmit
-  linkedWallet?: Prisma.LinkedWalletOmit
   turnMetrics?: Prisma.TurnMetricsOmit
   userFinancialContext?: Prisma.UserFinancialContextOmit
   chat?: Prisma.ChatOmit

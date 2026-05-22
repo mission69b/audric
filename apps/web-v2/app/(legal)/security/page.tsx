@@ -145,7 +145,7 @@ export default function SecurityPage() {
           </p>
           <a
             className="inline-block text-sm text-fg-primary font-mono underline underline-offset-2 hover:opacity-70"
-            href={`${T2000_GITHUB}/blob/main/SECURITY_AUDIT.md`}
+            href={`${T2000_GITHUB}/blob/main/spec/archive/one-offs/SECURITY_AUDIT.md`}
             rel="noopener noreferrer"
             target="_blank"
           >
@@ -175,14 +175,11 @@ export default function SecurityPage() {
               Resolved
             </span>
           </div>
-          <a
-            className="inline-block text-sm text-fg-primary font-mono underline underline-offset-2 hover:opacity-70"
-            href={`${AUDRIC_GITHUB}/blob/main/apps/web/SECURITY_ADVISORY_2026-05-IDOR.md`}
-            rel="noopener noreferrer"
-            target="_blank"
-          >
-            Read full advisory &rarr;
-          </a>
+          <p className="text-xs text-fg-muted font-mono italic">
+            Full advisory archived alongside apps/web (2026-05-22). Summary
+            above is the canonical public record; reach out via responsible
+            disclosure below if you need the original report.
+          </p>
         </div>
       </section>
 

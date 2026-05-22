@@ -1,5 +1,8 @@
 // [PHASE 13] Marketing — "Not a chatbot. A financial agent." section.
-// 5-up bordered grid of intelligence pillars.
+// 4-up bordered grid of intelligence pillars. (Was 5-up pre-v0.7d
+// Block A; Silent Profile + Chain Memory collapsed into a single
+// MemWal-backed "Memory" pillar 2026-05-22 per CLAUDE.md 4-system
+// framing.)
 //
 // Glyphs are inline SVGs (each pillar has its own bespoke illustration).
 // The two color accents (#FFBD14 / #F155A0) are inline literal hex per
@@ -18,7 +21,7 @@ interface Pillar {
 const PILLARS: Pillar[] = [
   {
     title: "Agent Harness",
-    italic: "37 tools. One agent.",
+    italic: "35 tools. One agent.",
     body: "The runtime that manages your money: balances, DeFi, analytics, payments — all orchestrated by a single conversation.",
     glyph: (
       <svg
@@ -80,9 +83,9 @@ const PILLARS: Pillar[] = [
     ),
   },
   {
-    title: "Silent Profile",
-    italic: "Knows your finances.",
-    body: "Builds a private financial profile from your chat history and a daily on-chain snapshot of your savings, debt, and yield. Every chat starts oriented — no warm-up tool calls. Never surfaced as nudges.",
+    title: "Memory",
+    italic: "Knows you. Remembers what matters.",
+    body: "Builds a private model of your savings, debt, yield, preferences, and on-chain patterns. Every chat starts oriented — no warm-up tool calls. Never surfaced as nudges.",
     glyph: (
       <svg
         aria-hidden="true"
@@ -101,25 +104,6 @@ const PILLARS: Pillar[] = [
           strokeLinecap="round"
           strokeWidth="1.2"
         />
-      </svg>
-    ),
-  },
-  {
-    title: "Chain Memory",
-    italic: "Remembers what you do on-chain.",
-    body: "Reads your wallet history into structured facts the agent uses as context — recurring sends, idle balances, position changes.",
-    glyph: (
-      <svg
-        aria-hidden="true"
-        className="stroke-fg-primary"
-        fill="none"
-        height="30"
-        strokeLinecap="round"
-        strokeWidth="2"
-        viewBox="0 0 24 24"
-        width="30"
-      >
-        <path d="M10 14 7.5 16.5a3.54 3.54 0 0 1-5-5L5 9M14 10l2.5-2.5a3.54 3.54 0 0 1 5 5L19 15M9 15l6-6" />
       </svg>
     ),
   },
@@ -184,13 +168,13 @@ export function IntelligenceSection() {
           <br />A financial agent.
         </h2>
         <p className="text-[16px] text-fg-secondary leading-relaxed max-w-[580px] mx-auto mt-5 mb-10">
-          Five systems work together to understand your money, reason about
+          Four systems work together to understand your money, reason about
           decisions, and get smarter over time. Every action still waits on your
           confirmation.
         </p>
 
         <div className="text-left">
-          <BorderedGrid cols={5}>
+          <BorderedGrid cols={4}>
             {PILLARS.map((pillar) => (
               <div className="bg-surface-card p-6" key={pillar.title}>
                 <div className="w-9 h-9 mb-6 grid place-items-center">

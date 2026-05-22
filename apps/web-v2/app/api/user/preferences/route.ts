@@ -10,25 +10,16 @@ import { type Prisma, prisma } from "@/lib/prisma";
  *
  * [SIMPLIFICATION DAY 5] `allowanceId` and `dcaSchedules` were dropped from
  * UserPreferences along with the on-chain allowance billing flow and the
- * never-shipped DCA scheduler. The remaining surface is `contacts`, `limits`
- * (which still hosts the financial profile + permission preset + agent
- * config — see `lib/engine/engine-context.ts`), and the inferred
- * `permissionPreset` for client-side display.
+ * never-shipped DCA scheduler. The remaining surface is `limits` (which
+ * hosts the financial profile + permission preset + agent config) and the
+ * inferred `permissionPreset` for client-side display.
  *
- * [v0.7e Phase 2 / S.253 — 2026-05-22] Behavior-preserving port from
- * apps/web/app/api/user/preferences/route.ts, simplified for web-v2's
- * post-S.243 surface area:
- *   - Auth imports moved from `@/lib/auth` → `@/lib/audric-auth`.
- *   - `Prisma` type re-exported from `@/lib/prisma` (web-v2's adapter
- *     module already re-exports the Prisma namespace from the generated
- *     client; see `apps/web-v2/lib/prisma.ts`).
- *   - Contacts normalization DROPPED: `contact-schema.ts` was removed
- *     when contacts were retired in S.243. The legacy DB column is
- *     preserved on read (cast to an array, no schema parsing) and never
- *     written from this route, so users who set contacts via apps/web's
- *     UI keep their data; new web-v2 clients only write
- *     `limits`/`permissionPreset` and the read defensively coerces.
- *   - `runtime` segment export dropped to satisfy `nextConfig.cacheComponents`.
+ * [v0.7e Phase 5 / S.254 — 2026-05-22] `contacts` column dropped from
+ * UserPreferences (migration `20260522120000_v07e_drop_dead_tables_and_
+ * columns`). Feature was retired in S.243; column has been unused since.
+ * Response keeps `contacts: []` for one rotation so legacy clients don't
+ * crash on the missing key — safe to remove from the response shape in
+ * a follow-up.
  */
 export async function GET(request: NextRequest) {
   // [SPEC 30 Phase 1A.6 — 2026-05-14] Bind JWT to ?address. Pre-fix
@@ -100,15 +91,8 @@ export async function GET(request: NextRequest) {
       : null;
   const permissionPreset = limitsObj?.permissionPreset ?? "balanced";
 
-  // [v0.7e S.253] Contacts column passthrough — array shape is preserved
-  // for users who set them in apps/web; web-v2 clients ignore the field
-  // (it's not surfaced anywhere post-S.243 contacts retirement). Cast to
-  // `unknown[]` defensively so a legacy null/object can't blow up the
-  // client's `.map()`.
-  const contactsForClient = Array.isArray(prefs.contacts) ? prefs.contacts : [];
-
   return NextResponse.json({
-    contacts: contactsForClient,
+    contacts: [],
     limits: prefs.limits,
     permissionPreset,
     accountAgeDays,
@@ -125,11 +109,9 @@ export async function GET(request: NextRequest) {
  * update individual keys (financialProfile, permission preset, agent config)
  * without wiping others.
  *
- * [v0.7e S.253] `contacts` is NO LONGER accepted in the POST body — the
- * field is preserved verbatim on the DB row for users who set contacts via
- * apps/web's UI, but web-v2 cannot write new contact rows (the schema +
- * normalization layer was deleted in S.243). Any incoming `contacts` field
- * is silently ignored; the existing DB value is left untouched.
+ * [v0.7e Phase 5 / S.254 — 2026-05-22] `contacts` no longer accepted or
+ * stored — column was dropped from UserPreferences. Any incoming
+ * `contacts` body field is silently ignored.
  */
 export async function POST(request: NextRequest) {
   // [SPEC 30 Phase 1A.6 — 2026-05-14] Bind JWT to body.address.
@@ -208,16 +190,13 @@ export async function POST(request: NextRequest) {
     where: { address },
     create: {
       address,
-      contacts: [] as unknown as Prisma.InputJsonValue,
       limits: (mergedLimits ?? limits) as Prisma.InputJsonValue | undefined,
     },
     update,
   });
 
-  const contactsForClient = Array.isArray(prefs.contacts) ? prefs.contacts : [];
-
   return NextResponse.json({
-    contacts: contactsForClient,
+    contacts: [],
     limits: prefs.limits,
   });
 }

@@ -95,13 +95,10 @@ export default function PrivacyPage() {
               the chain on every turn.
             </li>
             <li>
-              <strong className="text-fg-primary">
-                Inferred profile + memory
-              </strong>{" "}
-              &mdash; Audric Intelligence builds a private profile from your
-              chat history (preferences, risk tolerance, what you&apos;ve told
-              the agent) and stores classified facts about your on-chain
-              activity (recurring sends, idle balances, position changes). Used
+              <strong className="text-fg-primary">Memory</strong> &mdash; Audric
+              Intelligence stores private facts about your preferences, goals,
+              risk tolerance, and on-chain patterns (recurring sends, idle
+              balances, position changes) in a vector memory layer. Used
               silently to make answers more relevant. Never surfaced as a
               notification, never shared, never sold.
             </li>
@@ -110,11 +107,6 @@ export default function PrivacyPage() {
               Recommendations Audric has made are stored so the agent
               doesn&apos;t contradict itself across sessions. Visible only to
               you and the agent.
-            </li>
-            <li>
-              <strong className="text-fg-primary">Saved contacts</strong>{" "}
-              &mdash; Contact names and Sui addresses you save are stored in our
-              database linked to your wallet address for convenience.
             </li>
             <li>
               <strong className="text-fg-primary">
@@ -152,10 +144,9 @@ export default function PrivacyPage() {
           </h2>
           <p>
             Audric Intelligence is the agent that powers your Passport. It uses
-            your stored data (chat history, financial context snapshot, inferred
-            profile, chain memory, advice log) silently &mdash; only ever as
-            context that shapes the agent&apos;s next reply or executes the next
-            action you confirm.
+            your stored data (chat history, financial context snapshot, memory,
+            advice log) silently &mdash; only ever as context that shapes the
+            agent&apos;s next reply or executes the next action you confirm.
           </p>
           <p className="mt-2">
             <strong className="text-fg-primary">It does not:</strong> sell your
@@ -164,8 +155,8 @@ export default function PrivacyPage() {
             action without your tap-to-confirm via Passport.
           </p>
           <p className="mt-2">
-            You can request deletion of your stored profile, memory, and advice
-            log at any time by emailing{" "}
+            You can request deletion of your stored memory and advice log at any
+            time by emailing{" "}
             <span className="text-fg-primary">security@t2000.ai</span>. Deleting
             your account removes all of it.
           </p>
@@ -243,11 +234,11 @@ export default function PrivacyPage() {
             Data Storage
           </h2>
           <p>
-            Profile data (username, wallet address, saved contacts, chat
-            history, inferred profile, chain memory, advice log, daily financial
-            context snapshots, transaction history) is stored in a PostgreSQL
-            database hosted on Neon. Session data and short-lived caches are
-            stored in Redis (Upstash) and expire automatically.
+            Profile data (username, wallet address, chat history, memory, advice
+            log, daily financial context snapshots, transaction history) is
+            stored in a PostgreSQL database hosted on Neon. Session data and
+            short-lived caches are stored in Redis (Upstash) and expire
+            automatically.
           </p>
         </section>
 
