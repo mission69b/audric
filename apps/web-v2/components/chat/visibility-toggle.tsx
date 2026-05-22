@@ -17,8 +17,26 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useChatVisibility } from "@/hooks/use-chat-visibility";
+import { env } from "@/lib/env";
 
 const COPY_FEEDBACK_MS = 1800;
+
+/**
+ * Resolve the canonical share-link origin.
+ *
+ * S.250 P2 #2 — prefers `env.NEXT_PUBLIC_AUDRIC_WEB_URL` (boot-validated)
+ * over `window.location.origin` so links copied from preview / staging
+ * deploys still point at the production audric.ai host. Falls back to
+ * `window.location.origin` when the env var is unset (local dev), and
+ * strips any trailing slash so `${origin}/share/${id}` doesn't double-up.
+ */
+function getShareOrigin(): string {
+  const canonical = env.NEXT_PUBLIC_AUDRIC_WEB_URL?.trim();
+  if (canonical) {
+    return canonical.replace(/\/$/, "");
+  }
+  return window.location.origin;
+}
 
 export function VisibilityToggle({
   chatId,
@@ -50,7 +68,7 @@ export function VisibilityToggle({
 
   const handleCopy = async () => {
     try {
-      const url = `${window.location.origin}/share/${chatId}`;
+      const url = `${getShareOrigin()}/share/${chatId}`;
       await navigator.clipboard.writeText(url);
       setCopied(true);
       toast.success("Share link copied");

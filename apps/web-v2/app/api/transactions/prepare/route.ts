@@ -93,8 +93,8 @@ import { extractMoveCallTargets } from "@/lib/audric/extract-move-call-targets";
 import { redactAddressesInText, redactPII } from "@/lib/audric/log-redact";
 import { getCurrentUser } from "@/lib/audric-auth";
 import { env } from "@/lib/env";
-import { resolveSuinsCached } from "@/lib/suins-cache";
 import { getSuiRpcUrl } from "@/lib/sui-rpc";
+import { resolveSuinsCached } from "@/lib/suins-cache";
 
 export const maxDuration = 30;
 
@@ -125,8 +125,18 @@ const addressField = z
 // gate and `buildWriteStep` so the SDK always receives canonical hex.
 const recipientField = z.union([
   addressField,
-  z.string().regex(/^[a-z0-9-]+(\.[a-z0-9-]+)*\.sui$/i, "must be a SuiNS name like alex.sui"),
-  z.string().regex(/^[a-z0-9-]+@audric$/i, "must be an Audric handle like alice@audric"),
+  z
+    .string()
+    .regex(
+      /^[a-z0-9-]+(\.[a-z0-9-]+)*\.sui$/i,
+      "must be a SuiNS name like alex.sui"
+    ),
+  z
+    .string()
+    .regex(
+      /^[a-z0-9-]+@audric$/i,
+      "must be an Audric handle like alice@audric"
+    ),
 ]);
 
 const stableAsset = z.enum(["USDC", "USDsui"]);

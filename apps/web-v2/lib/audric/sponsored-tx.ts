@@ -159,17 +159,17 @@ export interface HarvestPlanLite {
     amount: number;
     estimatedValueUsd?: number;
   }>;
-  swaps: Array<{
-    fromSymbol: string;
-    inputAmount: number;
-    expectedOutputUsdc: number;
-  }>;
+  expectedUsdcDeposited: number;
   skipped: Array<{
     symbol?: string;
     amount: number;
     reason: "untradeable" | "dust" | "no-route";
   }>;
-  expectedUsdcDeposited: number;
+  swaps: Array<{
+    fromSymbol: string;
+    inputAmount: number;
+    expectedOutputUsdc: number;
+  }>;
 }
 
 export interface SponsoredTxResult {
@@ -179,13 +179,13 @@ export interface SponsoredTxResult {
     owner?: unknown;
   }>;
   digest: string;
-  objectChanges?: unknown;
   /**
    * Set only for harvest_rewards. Threaded from prepare → execute →
    * client so the receipt card and the LLM narration both see the
    * per-leg breakdown. See `HarvestPlanLite` doc above.
    */
   harvestPlan?: HarvestPlanLite;
+  objectChanges?: unknown;
 }
 
 export class SponsoredTxError extends Error {
@@ -309,11 +309,7 @@ export async function sponsoredTx(
     );
   }
 
-  const {
-    bytes,
-    digest,
-    harvestPlan,
-  } = (await prepareRes.json()) as {
+  const { bytes, digest, harvestPlan } = (await prepareRes.json()) as {
     bytes: string;
     digest: string;
     harvestPlan?: HarvestPlanLite;

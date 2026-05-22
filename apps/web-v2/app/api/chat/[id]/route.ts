@@ -103,11 +103,11 @@ export async function GET(
                 ? trunc(part.toolCallId)
                 : "?";
             const state = part.state ?? "?";
-            const hasOut = part.output !== undefined ? "Y" : "N";
+            const hasOut = part.output === undefined ? "N" : "Y";
             const approval =
-              part.approval !== undefined
-                ? `,approval=${part.approval.approved === true ? "Y" : part.approval.approved === false ? "N" : "P"}`
-                : "";
+              part.approval === undefined
+                ? ""
+                : `,approval=${part.approval.approved === true ? "Y" : part.approval.approved === false ? "N" : "P"}`;
             return `${part.type}(${tool},id=${callId},state=${state},output=${hasOut}${approval})`;
           }
           return part.type;

@@ -27,6 +27,19 @@
  *     optional `onSendMessage`; we omit it so any "ask follow-up"
  *     callbacks inside cards no-op silently (signed-out viewers
  *     can't author messages anyway).
+ *
+ * **S.250 P2 #1 — intentionally NOT extracted.** The S.248 audit flagged
+ * that this viewer's `messages.map(...)` body overlaps `audric-chat-
+ * client.tsx`'s by ~20 LoC of branch logic (text / reasoning / tool-*).
+ * The audit framed extraction as proactive ("before a third consumer
+ * appears"). Per `coding-discipline.mdc` ("factor when LOGIC duplicates,
+ * not when SHAPE does") the case for extraction today is weak: the live
+ * viewer carries 5+ branches this viewer doesn't (data-audric-bundle
+ * marker, approval-requested state, onSendMessage callback, streaming-
+ * reasoning flag, vote thumbs) — a shared `<MessagePartRenderer>` would
+ * need ~7 optional props for ~20 LoC saved. Net negative on readability.
+ * Revisit if a third consumer lands (e.g. an embedded archive viewer for
+ * Audric Store, or a chat export-to-image renderer).
  */
 
 import type { ReasoningUIPart, ToolUIPart, UIMessage } from "ai";

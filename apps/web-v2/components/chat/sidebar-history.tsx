@@ -172,6 +172,17 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
     // V2 fix: optimistic mutate with `revalidate: false` so SWR doesn't
     // immediately refetch and clobber the local update. Then await the
     // DELETE. After it succeeds, mutate WITH revalidate to confirm the
+    //
+    // [S.250 P2 #5 — 2026-05-22] V2 closed the SWR race but left two UX
+    // gaps the S.248 audit flagged: (a) the success toast fired BEFORE
+    // the server confirmed, so failures showed "Chat deleted" anyway,
+    // and (b) failures only console.warn'd — no user-visible signal AND
+    // no UI rollback (the eventual finally-mutate would restore the chat
+    // but the user had already been told it was deleted). Fixed below by
+    // (1) deferring toast until DELETE returns, (2) emitting an error
+    // toast on non-OK / network failure, (3) forcing an immediate
+    // revalidate on failure so the optimistic delete is reversed in the
+    // sidebar (not just on next focus).
     // local state matches the server (cheap — server returns 20 chats).
     // If the DELETE fails we leave a console warning rather than
     // rolling back; the optimistic UX win is worth more than the
@@ -188,25 +199,38 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
       { revalidate: false }
     );
 
-    toast.success("Chat deleted");
-
+    let serverOk = false;
     try {
       const res = await authFetch(
         `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/chat?id=${chatToDelete}`,
         { method: "DELETE" }
       );
-      if (!res.ok) {
+      serverOk = res.ok;
+      if (!serverOk) {
         console.warn(
           `[sidebar-history] DELETE failed for chatId=${chatToDelete}: ${res.status}`
         );
       }
     } catch (err) {
+      serverOk = false;
       console.warn(
-        "[sidebar-history] DELETE network error (non-fatal):",
+        "[sidebar-history] DELETE network error:",
         err instanceof Error ? err.message : String(err)
       );
-    } finally {
+    }
+
+    if (serverOk) {
+      toast.success("Chat deleted");
+      // Background revalidate to confirm the optimistic delete matches
+      // the server state (cheap — server returns ≤20 chats).
       mutate();
+    } else {
+      toast.error("Couldn't delete chat — please try again");
+      // Force an immediate revalidate so the optimistically-removed chat
+      // returns to the sidebar (rolls back the local update). Without
+      // this the user sees the chat vanish, sees the error toast, but
+      // the chat doesn't come back until next focus / nav.
+      mutate(undefined, { revalidate: true });
     }
   };
 

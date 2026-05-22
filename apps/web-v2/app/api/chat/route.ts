@@ -107,7 +107,6 @@
  */
 
 import { createAnthropic } from "@ai-sdk/anthropic";
-import { waitUntil } from "@vercel/functions";
 import {
   type AddressPortfolio,
   applyToolFlags,
@@ -130,6 +129,7 @@ import {
   type UserPermissionConfig,
   WRITE_TOOLS,
 } from "@t2000/engine";
+import { waitUntil } from "@vercel/functions";
 import {
   Experimental_Agent as Agent,
   convertToModelMessages,
@@ -1255,7 +1255,13 @@ export async function POST(request: Request) {
   // the AI SDK stream-state merge is clobbering it.
   console.log(
     `[audric-chat] body-messages-states sessionId=${sessionId} turn=${turnIndex} ` +
-      summariseToolStates(body.messages as ReadonlyArray<{ id?: string; role: string; parts?: ReadonlyArray<unknown> }>)
+      summariseToolStates(
+        body.messages as ReadonlyArray<{
+          id?: string;
+          role: string;
+          parts?: readonly unknown[];
+        }>
+      )
   );
 
   // [Phase 5.5 / D-17; shape-fix 2026-05-19 review] Populate the
@@ -1948,7 +1954,11 @@ export async function POST(request: Request) {
         `[audric-chat] persist-states sessionId=${sessionId} turn=${turnIndex} ` +
           `turnCompleted=${turnCompleted} count=${messagesToPersist.length} ` +
           summariseToolStates(
-            messagesToPersist as unknown as ReadonlyArray<{ id?: string; role: string; parts?: ReadonlyArray<unknown> }>
+            messagesToPersist as unknown as ReadonlyArray<{
+              id?: string;
+              role: string;
+              parts?: readonly unknown[];
+            }>
           )
       );
       // [Smoke 2026-05-22 V3 fix] CRITICAL — wrap with `waitUntil`. The
@@ -2847,7 +2857,7 @@ function summariseToolStates(
   messages: ReadonlyArray<{
     id?: string;
     role: string;
-    parts?: ReadonlyArray<unknown>;
+    parts?: readonly unknown[];
   }>
 ): string {
   const trunc = (s: string) => s.slice(0, 8);
@@ -2867,15 +2877,20 @@ function summariseToolStates(
         if (!part || typeof part.type !== "string") {
           return "?";
         }
-        if (part.type.startsWith("tool-") && part.type !== "tool-approval-request" && part.type !== "tool-approval-response") {
+        if (
+          part.type.startsWith("tool-") &&
+          part.type !== "tool-approval-request" &&
+          part.type !== "tool-approval-response"
+        ) {
           const tool = part.type.slice("tool-".length);
-          const callId = typeof part.toolCallId === "string" ? trunc(part.toolCallId) : "?";
+          const callId =
+            typeof part.toolCallId === "string" ? trunc(part.toolCallId) : "?";
           const state = part.state ?? "?";
-          const hasOut = part.output !== undefined ? "Y" : "N";
+          const hasOut = part.output === undefined ? "N" : "Y";
           const approval =
-            part.approval !== undefined
-              ? `,approval=${part.approval.approved === true ? "Y" : part.approval.approved === false ? "N" : "P"}`
-              : "";
+            part.approval === undefined
+              ? ""
+              : `,approval=${part.approval.approved === true ? "Y" : part.approval.approved === false ? "N" : "P"}`;
           return `${part.type}(${tool},id=${callId},state=${state},output=${hasOut}${approval})`;
         }
         return part.type;
@@ -2950,26 +2965,26 @@ function persistResumeOutcome(outcome: ResumeOutcome): void {
   // pending=null defaults instead of confirmed / denied.
   waitUntil(
     prisma.turnMetrics
-    .updateMany({
-      where: { attemptId: outcome.attemptId },
-      data: {
-        pendingActionOutcome: outcome.outcome,
-        // Only confirmed outcomes carry a populated duration. The
-        // helper returns `null` for denied / failed; passing null to
-        // Prisma writes SQL NULL, matching the legacy resume route's
-        // contract (denied + failed rows show NULL ms in NeonDB).
-        writeToolDurationMs: outcome.writeToolDurationMs,
-      },
-    })
-    .catch((err: unknown) => {
-      // [Phase 5.5 / D-17] Scrub embedded addresses from Prisma error
-      // payloads. `attemptId.slice(0, 8)` is already pre-truncated;
-      // `redactPII` handles any wallet address Prisma echoes back in
-      // its `meta.target` or constraint violation envelope.
-      console.error(
-        `[web-v2 audric-chat] resume-outcome updateMany failed (non-fatal) attemptId=${outcome.attemptId.slice(0, 8)}:`,
-        redactPII(err)
-      );
-    })
+      .updateMany({
+        where: { attemptId: outcome.attemptId },
+        data: {
+          pendingActionOutcome: outcome.outcome,
+          // Only confirmed outcomes carry a populated duration. The
+          // helper returns `null` for denied / failed; passing null to
+          // Prisma writes SQL NULL, matching the legacy resume route's
+          // contract (denied + failed rows show NULL ms in NeonDB).
+          writeToolDurationMs: outcome.writeToolDurationMs,
+        },
+      })
+      .catch((err: unknown) => {
+        // [Phase 5.5 / D-17] Scrub embedded addresses from Prisma error
+        // payloads. `attemptId.slice(0, 8)` is already pre-truncated;
+        // `redactPII` handles any wallet address Prisma echoes back in
+        // its `meta.target` or constraint violation envelope.
+        console.error(
+          `[web-v2 audric-chat] resume-outcome updateMany failed (non-fatal) attemptId=${outcome.attemptId.slice(0, 8)}:`,
+          redactPII(err)
+        );
+      })
   );
 }

@@ -736,12 +736,18 @@ function AudricChatPanel({
             // `useState` and resets to false on every fresh mount.
             const bundleClaimedIds = new Set<string>();
             for (const part of m.parts) {
-              if (part.type !== "data-audric-bundle") continue;
+              if (part.type !== "data-audric-bundle") {
+                continue;
+              }
               const marker = parseAudricBundleMarker(
                 (part as { data?: unknown }).data
               );
-              if (!marker) continue;
-              if (isBundleSpent(marker, m.parts)) continue;
+              if (!marker) {
+                continue;
+              }
+              if (isBundleSpent(marker, m.parts)) {
+                continue;
+              }
               for (const step of marker.steps) {
                 bundleClaimedIds.add(step.toolCallId);
               }
@@ -1250,9 +1256,13 @@ function isBundleSpent(
   const stepIds = new Set(marker.steps.map((s) => s.toolCallId));
   let foundAny = false;
   for (const p of parts) {
-    if (!p.type.startsWith("tool-")) continue;
+    if (!p.type.startsWith("tool-")) {
+      continue;
+    }
     const toolPart = p as ToolUIPart;
-    if (!stepIds.has(toolPart.toolCallId)) continue;
+    if (!stepIds.has(toolPart.toolCallId)) {
+      continue;
+    }
     foundAny = true;
     if (toolPart.state === "approval-requested") {
       // At least one step is still awaiting user gesture → bundle

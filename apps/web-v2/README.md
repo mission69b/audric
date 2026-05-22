@@ -1,74 +1,73 @@
 # @audric/web-v2
 
-> **Status:** Phase 1 Day 1b — template vendored. Not deployed anywhere yet.
+> **Status:** Production. Serves `audric.ai` chat + Pay receipts + Store profile + Settings.
 
-Side-by-side fork target for [`spec/active/BENEFITS_SPEC_v07c.md`](../../../t2000/spec/active/BENEFITS_SPEC_v07c.md) per **D-1 (b)**. Replacing `apps/web` in-place would put the working main at risk during a 3–6 week migration. Standing up `apps/web-v2` in parallel keeps `audric.ai` shipping while the new chat shell takes shape; cutover at Phase 6 is a single DNS change.
+The v0.7c+ Next.js app powering [audric.ai](https://audric.ai) — AI agent for money on Sui. Forked from [`vercel/ai-chatbot`](https://github.com/vercel/ai-chatbot) at SHA `107a43a` and progressively re-shelled (auth, persistence, model routing, render surface) across v0.7c Phases 0–6. v0.7c FULLY SHIPPED; currently executing v0.7e (Tier C migration + `apps/web` archive).
 
-## What lives here today (Phase 1 Day 1b)
+## Routes (production surface)
 
-Vendored copy of [`vercel/ai-chatbot`](https://github.com/vercel/ai-chatbot) at SHA **`107a43a`** (2026-04-17), adapted for the audric monorepo. See [`HANDOFF_NEXT_AGENT.md`](../../HANDOFF_NEXT_AGENT.md) for the full pin rationale + version-compatibility audit.
+| Route | Purpose |
+|---|---|
+| `/chat` | Live chat composer (the home surface). zkLogin-gated. |
+| `/chat/[id]` | Persistent chat resume (private + public, ownership-gated 404). Shipped in v0.7e H2 (S.247). |
+| `/share/[id]` | Public read-only viewer for shared chats (visibility=public required). |
+| `/[username]` | Public Audric Store profile (`audric.ai/funkii`). |
+| `/pay/[slug]` | Public payment-link receipt. |
+| `/settings/*` | Passport (identity), Safety (HF + permissions), Memory (recall surface), Contacts (Path A: deleted in v0.7e H3). |
+| `/auth/*` | zkLogin sign-in (Google OAuth → Sui address derivation). |
+| `/api/chat`, `/api/chat/[id]`, `/api/history`, `/api/vote` | Chat persistence + history + RLHF vote (v0.7e H2). |
+| `/api/transactions/{prepare,execute}` | Sponsored-tx flow (Enoki gas + zkLogin signing). |
+| `/api/{portfolio,payments,analytics/*,internal/*}` | Canonical read surfaces (consumed by `@t2000/engine` tools — see v0.7c Phase 6 Session 4.5 / S.191). |
+| `/api/auth/*` | zkLogin session + JWT verify. |
 
-The template ships its own `README.template.md` (preserved alongside this file for credits + upstream docs).
+## Stack
 
-### What we adapted vs upstream `107a43a`
+- **Framework:** Next.js 16 (App Router, Turbopack, Cache Components, Partial Prerender for `/chat/[id]` + `/share/[id]`).
+- **Runtime:** Node + Vercel serverless (with `waitUntil` for fire-and-forget DB writes — see S.249 lesson).
+- **AI:** AI SDK v6 (`useChat` + `DefaultChatTransport`) + `@t2000/engine` agent (`Experimental_Agent.stream()`), routed through Vercel AI Gateway.
+- **Auth:** zkLogin via `@mysten/dapp-kit` (Google OAuth → Sui address). `x-zklogin-jwt` header rides on `authFetch` calls; RSCs read it via the JWT helper.
+- **DB:** Prisma 7 → Neon Postgres (shared schema with `apps/web` at `apps/web/prisma/schema.prisma`).
+- **Memory:** `@mysten-incubation/memwal` (vector recall + SEAL encryption + Walrus blob storage). See [`memory-injection-architecture.mdc`](../../../t2000/.cursor/rules/memory-injection-architecture.mdc).
+- **Wallet / chain:** `@mysten/sui` v2.x, `@mysten/payment-kit`, Enoki sponsorship.
+- **Styling:** Tailwind v4 + Agentic Design System tokens (white/black, New York Large + Geist + Departure Mono).
+- **Lint:** Biome via `ultracite` (template choice, retained per v0.7c Phase 5 D-17).
 
-| Surface | Upstream | web-v2 | Reason |
-|---|---|---|---|
-| `package.json` name | `chatbot` (v3.1.0) | `@audric/web-v2` (v0.1.0-phase1-day1b) | Monorepo convention; semver reset for the fork |
-| `package.json` `packageManager` | `pnpm@10.32.1` | _removed_ | Audric root pins `pnpm@10.6.2` |
-| `dev` / `start` | port 3000 | `--port 3001` | Side-by-side with `apps/web` on 3000 per D-1 |
-| `build` | `tsx lib/db/migrate && next build` | `next build` | Drizzle migrations stripped — D-9 (a) lock swaps to Prisma in Phase 2; until then we don't run migrations |
-| `ai` | `6.0.116` | `^6.0.182` | Matches `@t2000/engine` |
-| `@vercel/blob` | `^0.24.1` | `^2.3.3` | Matches `apps/web` |
-| `@vercel/analytics` | `^1.3.1` | `^1.6.1` | Matches `apps/web` |
-| `@types/react*` | `^18` | `^19` | Audric pattern; React 19 deps already pinned |
-| `tsx` | `^4.19.1` | `^4.21.0` | Matches `apps/web` |
-| `pnpm-lock.yaml` | per-package | _removed_ | Audric uses a root lockfile |
-| `vercel.json` | `{ framework: nextjs }` | _removed_ | Audric monorepo's root `vercel.json` covers all apps |
-| `vercel-template.json` | "Deploy to Vercel" button manifest | _removed_ | Not relevant inside a monorepo |
-| `README.md` | upstream | this file (upstream preserved as `README.template.md`) | Phase-aware status doc |
-
-### What we kept verbatim (vendored as-is)
-
-- `app/(auth)/` — to be deleted in Day 1c per D-7 (b) "vendor first, then strip"
-- `app/(chat)/` — the chat surface; gets rewired to `@t2000/engine` in Phase 2
-- `lib/db/` (Drizzle) — stays until Phase 2 Prisma swap per D-9
-- `lib/ai/` — the model-routing surface; gets replaced with `gateway('anthropic/...')` per D-6 in Phase 2
-- `components/` — UI primitives + chat components; renderer migration sweeps these in Phase 5
-- `hooks/` — `use-active-chat`, `use-messages`, etc. — kept as-is; integrate alongside audric hooks in Phase 2
-- `biome.jsonc` + Biome via `ultracite` — template's lint stack; staying for now. Aligning to audric's ESLint is a separate Phase 5 decision (low priority — Biome is fine).
-
-## What lands next
-
-### Day 1c (Auth eviction + zkLogin)
-
-1. Delete `app/(auth)/` (template's next-auth login/register flow).
-2. Remove `next-auth` + `bcrypt-ts` from `package.json`.
-3. Strip `<SessionProvider>` from `app/layout.tsx`; replace with audric's zkLogin provider (sourced from `apps/web/lib/zklogin/`).
-4. Strip `next-auth` imports from `app/(chat)/` callsites (chat actions, sidebar user nav, etc.).
-5. Replace template's `auth.config.ts` middleware with audric's existing `middleware.ts` (zkLogin gate).
-6. Smoke: sign-in flow round-trips end-to-end; chat page is reachable when signed-in; no `next-auth` import residue.
-
-Reference: [`MystenLabs/MemWal/apps/chatbot`](https://github.com/MystenLabs/MemWal/tree/dev/apps/chatbot) (sister project that did the same zkLogin + chatbot template integration per **S-2**).
-
-### Phase 2 (next phase, ~4 days)
-
-Replace template chat backend with `@t2000/engine.submitMessage()` + `streamText` + AI Gateway routing. See SPEC Phase 2.
-
-## Boot status (Phase 1 Day 1b)
-
-The template is freshly vendored and **not yet wired to env vars or a database** — booting it will likely throw at any route that touches `next-auth`'s `auth()` (needs `AUTH_SECRET`) or the database (needs `POSTGRES_URL`). For Day 1b acceptance we verify only that `pnpm install` resolves cleanly and `next dev` STARTS LISTENING on port 3001 (server boot, not route render). Day 1c addresses the auth env; Phase 2 addresses the chat backend.
+## Local dev
 
 ```bash
-pnpm install                                 # from audric repo root
-pnpm --filter @audric/web-v2 dev             # http://localhost:3001
+pnpm install                              # from audric repo root
+pnpm --filter @audric/web-v2 dev          # http://localhost:3001
 ```
 
-## Why "v0.7c"
+Env vars validated at boot via Zod schema in [`lib/env.ts`](./lib/env.ts) — see [`env-validation-gate.mdc`](../../../t2000/.cursor/rules/env-validation-gate.mdc). Server won't boot if any required var is missing/empty.
 
-The SPEC is the source of truth.
+zkLogin requires the OAuth redirect URI to be registered with Google for localhost — see `audric/HANDOFF_NEXT_AGENT.md` for the local-dev workaround (most founder smoke happens against preview/prod deploys, not localhost).
 
-- Status / D-locks → [`BENEFITS_SPEC_v07c.md`](../../../t2000/spec/active/BENEFITS_SPEC_v07c.md)
-- Template pin rationale → [`HANDOFF_NEXT_AGENT.md`](../../HANDOFF_NEXT_AGENT.md)
-- Build tracker row → `audric-build-tracker.md` row 7t
-- Engine side (completed, the predecessor) → `BENEFITS_SPEC_v07a.md`
+## Scripts
+
+| Script | What it does |
+|---|---|
+| `dev` | Next dev server on port 3001 (Turbopack) |
+| `build` | Production build |
+| `start` | Production server on port 3001 |
+| `lint` / `check` | `ultracite check` (Biome via wrapper) |
+| `fix` | `ultracite fix` (auto-fix Biome issues) |
+| `typecheck` | `tsc --noEmit` |
+| `test:e2e` | Playwright |
+| `smoke:b1-b1a`, `smoke:s213` | One-shot smoke scripts (history; see `scripts/`) |
+
+## Where to look next
+
+| Topic | File |
+|---|---|
+| What v0.7c shipped | [`spec/active/BENEFITS_SPEC_v07c.md`](../../../t2000/spec/active/BENEFITS_SPEC_v07c.md) — all 6 phases closed |
+| What v0.7e is shipping now | [`spec/active/BENEFITS_SPEC_v07e.md`](../../../t2000/spec/active/BENEFITS_SPEC_v07e.md) — Phase 1A SHIPPED, Phase 2 next |
+| What's open (operational) | [`audric/HANDOFF_NEXT_AGENT.md`](../../HANDOFF_NEXT_AGENT.md) — Open backlog table + sequencing |
+| Execution history | `audric-build-tracker.md` (founder-local) — S.249 is the latest entry |
+| Engine wiring | `@t2000/engine` package — see `packages/engine/src/v2/` |
+| Sponsored-tx flow | [`audric-transaction-flow.mdc`](../../.cursor/rules/audric-transaction-flow.mdc) |
+| Memory layer | [`memory-injection-architecture.mdc`](../../../t2000/.cursor/rules/memory-injection-architecture.mdc) |
+
+## Upstream attribution
+
+The chatbot template's original README is preserved alongside this file as [`README.template.md`](./README.template.md) for credits + upstream cross-references. The v0.7c fork rationale (why we vendored vs imported, why we kept Biome over ESLint, the chatbot template SHA pin) lives in `BENEFITS_SPEC_v07c.md` §"Phase 1 Day 1b".
