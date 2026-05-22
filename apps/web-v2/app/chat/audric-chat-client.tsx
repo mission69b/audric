@@ -808,6 +808,26 @@ function AudricChatPanel({
                       }
                       if (part.type === "reasoning") {
                         const reasoningPart = part as ReasoningUIPart;
+                        // [Smoke 2026-05-22 V4 follow-up] Strip leaked
+                        // `<eval_summary>` markers from reasoning text
+                        // too. The system prompt instructs the LLM to
+                        // emit the marker INSIDE its final thinking
+                        // burst (apps/web parses it server-side into a
+                        // structured "HOW I EVALUATED" trust card via
+                        // its anthropic provider's `thinking_done`
+                        // handler). web-v2 doesn't run that engine —
+                        // we render reasoning raw — so the marker
+                        // leaks into the Reasoning accordion verbatim.
+                        // V4 (first pass) only stripped text parts;
+                        // this catches the reasoning channel too.
+                        // Empty reasoning after strip → render nothing
+                        // (no phantom accordion).
+                        const sanitisedReasoning = stripEvalSummaryMarker(
+                          reasoningPart.text
+                        );
+                        if (sanitisedReasoning.length === 0) {
+                          return null;
+                        }
                         // The part is streaming only when (a) the turn is in
                         // flight, (b) it's on the trailing message, and (c)
                         // the part itself hasn't been marked done.
@@ -823,7 +843,7 @@ function AudricChatPanel({
                           >
                             <ReasoningTrigger />
                             <ReasoningContent>
-                              {reasoningPart.text}
+                              {sanitisedReasoning}
                             </ReasoningContent>
                           </Reasoning>
                         );
