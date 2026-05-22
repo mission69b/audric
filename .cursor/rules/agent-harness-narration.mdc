@@ -110,8 +110,8 @@ text
 
 - SPEC 21 spec doc → `t2000/spec/SPEC_21_AGENT_HARNESS_UX_POLISH.md`
 - SPEC 21 entry in build tracker → `audric-build-tracker.md` S.142 (closeout) + S.139 (lock)
-- System prompt → `apps/web/lib/engine/engine-context.ts`
-- Strip helpers → `apps/web/lib/sanitize-text.ts` + `packages/engine/src/strip-pseudo-thinking.ts`
-- Jaccard collapse → `apps/web/lib/thinking-similarity.ts`
-- Lint test → `apps/web/lib/__tests__/narration-contract.test.ts`
-- Token budget gate → `apps/web/lib/engine/__tests__/harness-metrics.test.ts`
+- System prompt → `apps/web-v2/lib/engine/engine-context.ts`
+- Strip helpers → `apps/web-v2/lib/sanitize-text.ts` + `packages/engine/src/strip-pseudo-thinking.ts`
+- Jaccard collapse → `apps/web-v2/lib/thinking-similarity.ts`
+- Lint test → `apps/web-v2/lib/__tests__/narration-contract.test.ts`
+- Token budget gate → `apps/web-v2/lib/engine/__tests__/harness-metrics.test.ts`

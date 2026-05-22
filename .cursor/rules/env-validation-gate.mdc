@@ -63,6 +63,6 @@ Read the error block — it lists every misconfigured var and the Vercel setting
 
 ## Cross-references
 
-- Canonical implementation → `apps/web/lib/env.ts`
-- Boot-time hook → `apps/web/instrumentation.ts`
+- Canonical implementation → `apps/web-v2/lib/env.ts`
+- Boot-time hook → `apps/web-v2/instrumentation.ts`
 - S.25 incident context → `audric-build-tracker.md` (S.25 — BlockVision empty-string degradation)

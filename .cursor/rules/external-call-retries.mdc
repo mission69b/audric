@@ -1,6 +1,6 @@
 ---
 description: External-call retry policy — what retries, how many times, with what backoff, why
-globs: "apps/web/lib/sui-retry.ts,apps/web/app/api/transactions/prepare/route.ts,apps/web/app/api/transactions/execute/route.ts,packages/engine/src/blockvision-prices.ts,packages/engine/src/providers/anthropic.ts"
+globs: "apps/web-v2/lib/sui-retry.ts,apps/web-v2/app/api/transactions/prepare/route.ts,apps/web-v2/app/api/transactions/execute/route.ts,packages/engine/src/blockvision-prices.ts,packages/engine/src/providers/anthropic.ts"
 alwaysApply: false
 ---
 
@@ -107,6 +107,6 @@ If any condition fails, don't add retry. Document why in the audit table above.
 
 - The audit + locks → SPEC 19 Phase F (S.135 in `audric-build-tracker.md`)
 - BlockVision resilience details (circuit breaker, jitter rationale) → `t2000/.cursor/rules/blockvision-resilience.mdc`
-- Sui RPC retry rationale → `apps/web/lib/sui-retry.ts` (header comment)
+- Sui RPC retry rationale → `apps/web-v2/lib/sui-retry.ts` (header comment)
 - Anthropic retry rationale → `packages/engine/src/providers/anthropic.ts` (lines 18–24)
 - Engine-side retry policy mirror → t2000 `engineering-principles.mdc` Principle 5 (which layer owns the retry)

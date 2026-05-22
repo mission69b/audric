@@ -1,19 +1,31 @@
 ---
-description: Engine context assembly — what goes into the system prompt each turn (silent context, financial_context block)
-globs: "apps/web/lib/engine/**/*.ts,apps/web/app/api/engine/**/*.ts"
+description: "[STALE — v0.7e Phase 5] Legacy apps/web engine context assembly. For current behavior see lib/audric/memwal-prepare-step.ts + system-prompt.ts in web-v2."
+globs: "apps/web-v2/lib/engine/**/*.ts"
 alwaysApply: false
 ---
 
-# Engine Context Assembly (Silent Intelligence)
+# Engine Context Assembly (Silent Intelligence) — [STALE]
 
-> ⚠️ **This rule describes the LEGACY `apps/web` system-prompt assembly** (v0.7e archive target). For current production behavior, see **web-v2** which uses the AI SDK v6 `Experimental_Agent` + `prepareStep` hook + MemWal `<memory_recall>` block. The rest of this file describes the OLD path that's still wired in `apps/web/lib/engine/engine-context.ts` but no longer reads `UserMemory` or `UserFinancialProfile` (both dropped in v0.7d Phase 6 Block A, S.221 — 2026-05-21).
+> ⚠️ **THIS RULE IS STALE.** It describes the LEGACY `apps/web` system-prompt assembly which was archived in v0.7e Phase 5 (S.253, 2026-05-22). The path it describes (`lib/engine/engine-context.ts buildFullDynamicContext()`) no longer exists.
 >
-> **Active state per layer:**
-> - **F1 Profile** — `apps/web` passes `null` (no-op); `web-v2` doesn't use this layer (MemWal absorbs it).
-> - **F3 Episodic memory** — DELETED (`UserMemory` table dropped). `web-v2` uses MemWal `<memory_recall>` instead.
-> - **F-chain Chain memory** — DELETED (7 classifiers + `ChainFact` rows gone). MemWal absorbs chain signal organically; LLM reads fresh chain state on demand.
-> - **F-advice AdviceLog** — STILL LIVE in both apps.
-> - **F-financial `<financial_context>`** — STILL LIVE in both apps. Different layer from the deleted profile (fresh state, not inferred preferences).
+> **Current production behavior (web-v2):**
+> - `apps/web-v2/lib/audric/system-prompt.ts` — builds the base system prompt + `<financial_context>` block.
+> - `apps/web-v2/lib/audric/memwal-prepare-step.ts` — AI SDK v6 `prepareStep` hook calls `memwalClient.recall()` and injects `<memory_recall>` block each turn.
+> - `apps/web-v2/lib/audric/moat-context.ts` — `buildAdviceContext()` (last 30d) + `buildMemoryContext()` legacy plumbing (slated for v0.7d Phase 6 deletion).
+> - 5-layer assembly order: base systemPrompt → financialContextBlock → `<memory_recall>` → skillRecipeBlock → messages[]. See `t2000/.cursor/rules/memory-injection-architecture.mdc` for the binding contract.
+>
+> **Status of legacy layers:**
+> - **F1 Profile** — DELETED v0.7d Phase 6 Block A (S.221, 2026-05-21). `UserFinancialProfile` table dropped.
+> - **F3 Episodic memory** — DELETED v0.7d Phase 6 Block A. `UserMemory` table dropped. MemWal `<memory_recall>` replaces.
+> - **F-chain Chain memory** — DELETED v0.7d Phase 6 Block A. 7 classifiers + `ChainFact` rows gone.
+> - **F-advice AdviceLog** — STILL LIVE. `lib/audric/moat-context.ts buildAdviceContext()`.
+> - **F-financial `<financial_context>`** — STILL LIVE. `lib/audric/system-prompt.ts buildFinancialContextBlock()`.
+>
+> **What to do with the rest of this file:** treat as historical reference for understanding why the current 5-layer assembly looks the way it does. Do NOT use it as a guide for new code — read `t2000/.cursor/rules/memory-injection-architecture.mdc` instead.
+
+---
+
+## [HISTORICAL — pre-v0.7e Phase 5 architecture below]
 
 Every turn, audric calls `buildFullDynamicContext()` from `lib/engine/engine-context.ts` to assemble a multi-section system prompt that the engine sends to Claude. Everything in this prompt is **silent** — no notifications, no surfaces, no proactive nudges. The chat answers when asked.
 
@@ -93,7 +105,7 @@ If a new layer pushes total > 6k, it's too much. Compact, summarize, or move to 
 
 ## Cross-references
 
-- Implementation → `apps/web/lib/engine/engine-context.ts`
+- Implementation → `apps/web-v2/lib/engine/engine-context.ts`
 - Spec → `t2000/AUDRIC_HARNESS_INTELLIGENCE_SPEC_v1.4.1.md` (local-only)
-- Snapshot cron impl → `apps/web/lib/jobs/financial-context-snapshot.ts` (Vercel cron entrypoint at `apps/web/app/api/cron/financial-context-snapshot/route.ts`)
+- Snapshot cron impl → `apps/web-v2/lib/jobs/financial-context-snapshot.ts` (Vercel cron entrypoint at `apps/web-v2/app/api/cron/financial-context-snapshot/route.ts`)
 - Prisma models that feed it → `prisma-models-overview.mdc`

@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Audric Design System
 
-Source of truth: `apps/web/app/globals.css` + `design_handoff_audric/design_files/colors_and_type.css`.
+Source of truth: `apps/web-v2/app/globals.css` + `design_handoff_audric/design_files/colors_and_type.css`.
 Prototype reference: `design_handoff_audric/design_files/audric-app-{light,dark}/`.
 
 ## Rule 1 — Semantic tokens only, no raw colors
@@ -85,7 +85,7 @@ const bg = theme === 'dark' ? 'bg-zinc-900' : 'bg-white';
 <div className="bg-surface-card text-fg-primary">
 ```
 
-Light-locked routes (marketing + legal) bypass theming via `apps/web/lib/theme/public-paths.ts`. Themed routes (app shell + utility surfaces like `/verify`, `/auth/callback`, `/pay/[slug]`) get the attribute. Don't add toggle UI outside Settings → Account → Appearance.
+Light-locked routes (marketing + legal) bypass theming via `apps/web-v2/lib/theme/public-paths.ts`. Themed routes (app shell + utility surfaces like `/verify`, `/auth/callback`, `/pay/[slug]`) get the attribute. Don't add toggle UI outside Settings → Account → Appearance.
 
 ## Rule 5 — New screens reference the prototype HTML
 

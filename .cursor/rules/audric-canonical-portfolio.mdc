@@ -25,7 +25,7 @@ In April 2026 we had **five different code paths** computing wallet USD: `useBal
 
 That's a structural bug class. The fix collapses every read into one canonical function backed by BlockVision (priced wallet) + the protocol registry (NAVI) + the engine's DeFi aggregator. Drift becomes impossible by construction.
 
-The S.18-era regression (Full Portfolio Overview undercounting DeFi vs balance_check on the same chat turn) was a SECOND instance of the same class, fixed by routing the engine through the same Upstash DeFi cache the audric `/api/portfolio` route uses (see `lib/engine/init-engine-stores.ts` and the side-effect import at the top of `lib/portfolio.ts`).
+The S.18-era regression (Full Portfolio Overview undercounting DeFi vs balance_check on the same chat turn) was a SECOND instance of the same class. **[STALE — v0.7e Phase 5]** In legacy `apps/web` it was fixed by routing the engine through the same Upstash DeFi cache via `lib/engine/init-engine-stores.ts`. `web-v2` does NOT wire this cache adapter — engine tools that read portfolio data either go through the in-engine BlockVision-backed flow (own per-request cache) or call audric API routes that ARE backed by the canonical `getPortfolio`. See the inline comment in `apps/web-v2/lib/portfolio.ts`.
 
 ## Forbidden patterns (ESLint enforces)
 
@@ -77,12 +77,12 @@ If you genuinely need to bypass (rare — e.g. a write-side balance check inside
 
 Engine tools (`balance_check`, `portfolio_analysis`, `health_check`) run inside `@t2000/engine` and call BlockVision directly via `fetchAddressPortfolio` / `fetchAddressDefiPortfolio`. That's fine — but the engine's DeFi cache MUST be wired to the SAME Upstash store audric's API routes use, otherwise SSOT regresses.
 
-`lib/engine/init-engine-stores.ts` (loaded by `instrumentation.ts` AND side-effect-imported from `lib/portfolio.ts` as belt-and-suspenders) injects `UpstashDefiCacheStore` into the engine. Don't disable that.
+**[STALE — v0.7e Phase 5]** `lib/engine/init-engine-stores.ts` was the legacy `apps/web` pattern that injected `UpstashDefiCacheStore` into the engine. `web-v2` does NOT ship this file — engine tools either use BlockVision-backed in-engine fetches (own per-request cache) or call the audric API which is backed by `getPortfolio`'s 60s in-process cache. If a multi-instance cache adapter becomes necessary again (e.g. multi-region Vercel functions sharing DeFi positions), reintroduce as `apps/web-v2/lib/engine/init-engine-stores.ts` + side-effect import from `lib/portfolio.ts`.
 
 ## Cross-references
 
-- Implementation → `apps/web/lib/portfolio.ts`, `apps/web/lib/portfolio-data.ts`
-- Engine cache injection → `apps/web/lib/engine/init-engine-stores.ts`
+- Implementation → `apps/web-v2/lib/portfolio.ts`, `apps/web-v2/lib/portfolio-data.ts`
+- Engine cache injection → **[STALE — v0.7e Phase 5]** legacy `apps/web/lib/engine/init-engine-stores.ts` pattern; `web-v2` does not wire a cache adapter (per-request BlockVision cache + canonical `getPortfolio` 60s in-process cache suffice).
 - t2000-side standard → `t2000/.cursor/rules/single-source-of-truth.mdc`
 - BlockVision resilience → `t2000/.cursor/rules/blockvision-resilience.mdc`
 - Manual verification → `PORTFOLIO_REGRESSION_MATRIX.md`

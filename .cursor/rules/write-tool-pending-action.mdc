@@ -1,6 +1,6 @@
 ---
 description: Write tool execution — pending_action → user confirm → resume protocol. attemptId is load-bearing.
-globs: "apps/web/app/page.tsx,apps/web/app/api/engine/**/*.ts,apps/web/app/api/transactions/**/*.ts,apps/web/components/engine/cards/**/*.tsx"
+globs: "apps/web-v2/app/page.tsx,apps/web-v2/app/api/engine/**/*.ts,apps/web-v2/app/api/transactions/**/*.ts,apps/web-v2/components/engine/cards/**/*.tsx"
 alwaysApply: false
 ---
 
@@ -65,7 +65,7 @@ Skipping `attemptId` here means the resume route can't find the row → outcome 
 ## Step 3 — Render the confirm card
 
 ```tsx
-// apps/web/app/page.tsx
+// apps/web-v2/app/page.tsx
 <TransactionConfirmCard
   action={pendingAction}
   modifiableFields={pendingAction.modifiableFields}
@@ -83,11 +83,11 @@ Confirm card MUST:
 
 ## Step 4 — User taps Confirm
 
-User edits flow back through `applyModifications(action, edits)` (see `apps/web/lib/engine/apply-modifications.ts`) which produces a new `input` object the engine will see on resume.
+User edits flow back through `applyModifications(action, edits)` (see `apps/web-v2/lib/engine/apply-modifications.ts`) which produces a new `input` object the engine will see on resume.
 
 ## Step 5 — Execute via sponsored tx
 
-`handleExecuteAction` in `apps/web/app/page.tsx`:
+`handleExecuteAction` in `apps/web-v2/app/page.tsx`:
 
 ```typescript
 async function handleExecuteAction(action, edits) {
@@ -126,7 +126,7 @@ async function handleExecuteAction(action, edits) {
 ## Step 6 — Resume the engine
 
 ```typescript
-// apps/web/app/api/engine/resume/route.ts
+// apps/web-v2/app/api/engine/resume/route.ts
 if (action.attemptId) {
   await prisma.turnMetrics.updateMany({
     where: { attemptId: action.attemptId },
@@ -191,6 +191,6 @@ const usdcDelta = Number(change?.amount ?? 0) / 1e6;
 - Spec → `t2000/AUDRIC_HARNESS_CORRECTNESS_SPEC_v1.3.md` (local-only)
 - Engine harness contract → `t2000/.cursor/rules/agent-harness-spec.mdc`
 - Sponsored tx implementation → `audric-transaction-flow.mdc`
-- Modifiable fields → `apps/web/lib/engine/apply-modifications.ts`
-- Resume route → `apps/web/app/api/engine/resume/route.ts`
+- Modifiable fields → `apps/web-v2/lib/engine/apply-modifications.ts`
+- Resume route → `apps/web-v2/app/api/engine/resume/route.ts`
 - TurnMetrics schema → `prisma-models-overview.mdc`

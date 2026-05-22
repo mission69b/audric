@@ -193,13 +193,7 @@ type EngineEvent =
 
 Signed-in users can link up to 10 Sui addresses (e.g. a hardware wallet alongside their zkLogin wallet) for aggregated portfolio views inside the chat canvas + settings.
 
-| Route | Runtime | Auth | Description |
-|-------|---------|------|-------------|
-| `/api/user/wallets` (GET / POST) | Node.js | x-zklogin-jwt | List + link wallets (max 10 per user) |
-| `/api/user/wallets/[id]` (DELETE) | Node.js | x-zklogin-jwt | Unlink a wallet |
-| `/api/analytics/portfolio-multi` | Node.js | x-sui-address | Aggregated multi-wallet portfolio data (consumed by `FullPortfolioCanvas`) |
-
-Backed by the `LinkedWallet` Prisma model (`userId`, `suiAddress`, `label`, `isPrimary`, `verifiedAt`).
+> **🗑️ REMOVED in v0.7e Phase 5 (S.254, 2026-05-22):** the entire multi-wallet aggregation feature (`/api/user/wallets`, `/api/user/wallets/[id]`, `/api/analytics/portfolio-multi`, `LinkedWallet` Prisma model + 3 indexes, `FullPortfolioCanvas` aggregated-portfolio surface) was retired. The current zkLogin flow is single-wallet-per-Google-account by construction — one zkLogin = one Sui address (deterministic from JWT `sub`); multi-wallet was a holdover from pre-zkLogin patterns that no production user exercised. If a future multi-account product surface is needed (e.g., personal + business separation), revisit as a fresh design that respects the zkLogin identity binding.
 
 > **Removed in S.22 (April 2026):** the public `/report/[address]` wallet report (and its `PublicReport` cache). The "Audric would do" suggestions there were promoting features deleted in S.0–S.12 (24/7 alerts, recurring transactions, savings-goal automation), and a second standalone product surface contradicted the chat-first thesis. Heuristic portfolio analysis lives inside chat now via `portfolio_overview` + `health_check`.
 >
@@ -237,12 +231,14 @@ Always fetch through these modules — never query wallet/NAVI/events directly i
 |---------|-------------|
 | **Memory (MemWal)** | `prepareStep` hook calls `memwal.recall(latestUserMessage)` and injects `<memory_recall>` block into the system prompt. `onFinish` callback calls `memwal.analyze()` to extract new facts. Replaces both former `UserFinancialProfile` and `UserMemory` Prisma reads. See `lib/audric/memwal-prepare-step.ts` + `lib/audric/memwal-write-callback.ts`. |
 | **Financial Context** | `UserFinancialContext` Prisma model: short-term daily orientation snapshot (savings/wallet/debt USD, health factor, current APY, recent activity). 02:00 UTC cron refresh (migrating to Vercel cron in v0.7d Phase 6 Block B). Injected as `<financial_context>` system-prompt block. **Different from the deleted `UserFinancialProfile` — this is fresh state, not inferred preferences.** |
-| **Conversation Log** | `ConversationLog` records full chat transcripts — fine-tuning dataset for the future self-hosted model migration |
+| **Chat Persistence** | `Chat` + `Message` + `Vote` Prisma triple (AI SDK v6 native, post-S.247). Per-message `UIMessage` JSON rows scoped to a parent thread; `Vote` carries per-message thumbs up/down. Used as the future fine-tune dataset (same purpose the deleted `ConversationLog` table served pre-S.254). |
 | **Advice Memory** | `record_advice` engine tool writes `AdviceLog` rows; `buildAdviceContext()` rehydrates last 30 days into every turn |
 
 > **Deleted in v0.7d Phase 6 Block A (S.221, 2026-05-21):** `UserMemory` table + `UserFinancialProfile` table + `ChainFact` rows in UserMemory + the 7 statistical chain classifiers + `buildMemoryContext` + `buildProfileContext` consumers in web-v2. MemWal now owns the long-term memory layer end-to-end. See `t2000/audric-build-tracker.md` S.221.
 
-> **apps/web (legacy, v0.7e archive target):** `lib/engine/engine-context.ts` still imports `buildProfileContext` + `buildProactivenessInstructions` from `@t2000/engine` but `engine-factory.ts` passes `profile: null` so the calls are no-ops. Deletes alongside apps/web in v0.7e.
+> **Deleted in v0.7e Phase 5 cleanup (S.254, 2026-05-22):** `ConversationLog` Prisma table (superseded by AI SDK v6 native `Chat`/`Message`/`Vote` per S.247) + its retention cron route. `LinkedWallet` + `WatchAddress` Prisma tables (multi-wallet aggregation + watch-only features retired). `UserPreferences.contacts` column (contacts feature retired in S.243). All migrations consolidated into `prisma/migrations/20260522120000_v07e_drop_dead_tables_and_columns/migration.sql`.
+
+> **apps/web ARCHIVED (S.253, 2026-05-22):** the entire `apps/web` directory was deleted from the monorepo after DNS cutover moved `audric.ai` to point at the `audric-web-v2` Vercel project. The marketing-site copy + legal pages + chat shell + cron routes were either copy-ported to `apps/web-v2` (during v0.7c Phase 6 cutover) or absorbed by web-v2's superior architecture (engine read tools are in-process; HITL flow is inline in `app/api/chat/route.ts`). Legacy `lib/engine/*` helpers (`engine-context.ts`, `apply-modifications.ts`, `harness-metrics.ts`, `log-session-usage.ts`, `cost-rates.ts`, `advice-tool.ts`, `goal-tools.ts`, `contact-tools.ts`, `init-engine-stores.ts`) are gone.
 
 > The "F2 — Proactive Awareness" / `OutcomeCheck` / follow-up-queue layer was deleted in S.5 — anything proactive was either a notification (gone) or a dashboard card (gone). The chat answers when asked.
 

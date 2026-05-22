@@ -121,13 +121,16 @@ export function AppSidebar() {
                 </TooltipContent>
               </Tooltip>
             </div>
-            {/* [S.209 — 2026-05-20] BETA badge removed per founder feedback:
-                "keep it simple". The brand wordmark alone is enough chrome;
-                v0.7c is private beta by deployment context (audric-web-v2
-                preview), not by visible badge. */}
+            {/* [S.255 — 2026-05-22] BETA badge restored per founder request
+                post-DNS-cutover. Now that audric.ai serves web-v2 directly,
+                deployment context alone doesn't signal beta to users — the
+                badge does. Matches the badge styling used on /security. */}
             <div className="flex items-center gap-2 group-data-[collapsible=icon]:hidden">
               <span className="font-medium text-[14px] text-sidebar-foreground tracking-[-0.01em]">
                 Audric
+              </span>
+              <span className="rounded-xs border border-sidebar-border bg-sidebar-accent/40 px-1.5 py-0.5 font-mono text-[9px] text-sidebar-foreground/60 leading-none tracking-[0.1em] uppercase">
+                beta
               </span>
             </div>
             <div className="group-data-[collapsible=icon]:hidden">

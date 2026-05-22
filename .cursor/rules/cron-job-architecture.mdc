@@ -1,6 +1,6 @@
 ---
 description: Cron architecture (audric side, post-v0.7d Block C). Vercel-native cron + the surviving /api/internal/payments engine bridge. Auth, idempotency, sharding.
-globs: "apps/web/app/api/cron/**/*.ts,apps/web/app/api/internal/payments/**/*.ts,apps/web/lib/internal-auth.ts,apps/web/lib/jobs/**/*.ts"
+globs: "apps/web-v2/app/api/cron/**/*.ts,apps/web-v2/app/api/internal/payments/**/*.ts,apps/web-v2/lib/internal-auth.ts,apps/web-v2/lib/jobs/**/*.ts"
 alwaysApply: false
 ---
 
@@ -10,7 +10,7 @@ alwaysApply: false
 
 Audric's scheduled work lives in **two places**:
 
-1. **`/api/cron/*` routes** — Vercel native cron entrypoints. Schedule defined in `apps/web/vercel.json`. Authenticated by `Authorization: Bearer ${CRON_SECRET}` (Vercel injects this automatically when the env var is set).
+1. **`/api/cron/*` routes** — Vercel native cron entrypoints. Schedule defined in `apps/web-v2/vercel.json`. Authenticated by `Authorization: Bearer ${CRON_SECRET}` (Vercel injects this automatically when the env var is set).
 2. **`/api/internal/payments`** — the SOLE surviving internal route. Engine payment-link / invoice tools call it server-side via `x-internal-key: ${T2000_INTERNAL_KEY}` dual-auth.
 
 ## The endpoints (post-Block-C reality)
@@ -19,7 +19,11 @@ Audric's scheduled work lives in **two places**:
 |---|---|---|
 | `GET /api/cron/portfolio-snapshot` | `PortfolioSnapshot` | Vercel cron — daily 07:00 UTC |
 | `POST /api/cron/financial-context-snapshot` | `UserFinancialContext` | Vercel cron — daily 02:30 UTC |
+| `GET /api/cron/turn-metrics-pending-sweep` | `TurnMetrics` (timeouts pending → timed_out) | Vercel cron — every 15 min |
 | `POST /api/internal/payments` | `Payment` (CRUD for payment-link / invoice tools) | Engine server-side fetch |
+
+> **Deleted in v0.7e Phase 5 cleanup (S.254, 2026-05-22):**
+> - `POST /api/cron/conversation-log-retention` — `ConversationLog` model was dropped alongside its retention cron when AI SDK v6 native `Chat`/`Message`/`Vote` persistence (S.247) superseded the legacy transcript table.
 
 > **Deleted in v0.7d Phase 6 (S.221, S.222, S.224 — 2026-05-21):**
 > - `POST /api/internal/memory-extraction` (Claude-driven UserMemory writes — S.221)
@@ -72,7 +76,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
 **Never** assume "internal" means "no auth needed." Vercel functions are public HTTPS endpoints; the auth gate is the only security boundary.
 
-> **Why `T2000_INTERNAL_KEY` still exists after Block C:** the engine runs server-side (inside the audric Next.js process for `apps/web`, alongside `apps/web-v2` chat) and calls audric APIs via HTTP self-fetches. It cannot present a zkLogin JWT (server context has no browser session), so the dual-auth path in `authenticateAnalyticsRequest()` accepts `x-internal-key` as the trusted-server alternative. Slated for full elimination in v0.7e+ via the function-injection refactor — see `HANDOFF_NEXT_AGENT.md` backlog row `engine-fn-injection-refactor`.
+> **Why `T2000_INTERNAL_KEY` still exists after Block C:** the engine runs server-side (inside the audric Next.js process for `apps/web-v2` chat) and calls audric APIs via HTTP self-fetches. It cannot present a zkLogin JWT (server context has no browser session), so the dual-auth path in `authenticateAnalyticsRequest()` accepts `x-internal-key` as the trusted-server alternative. Slated for full elimination in v0.7d+ via the function-injection refactor — partial migration completed in v0.7e Phase 5 (many engine read tools went in-process; the `/api/internal/payments` bridge survives for payment-link / invoice writes).
 
 ## Idempotency — every cron job MUST be safe to re-run
 
@@ -96,17 +100,17 @@ For the current Vercel crons:
 
 ## Job implementation — extract to `lib/jobs/*`
 
-The route file is thin. Real work lives in `apps/web/lib/jobs/<name>.ts`. This pattern was set in Block B to share impls between legacy ECS-cron-receiver and new Vercel-cron paths; the receivers are gone, but the separation still helps:
+The route file is thin. Real work lives in `apps/web-v2/lib/jobs/<name>.ts`. This pattern was set in Block B to share impls between legacy ECS-cron-receiver and new Vercel-cron paths; the receivers are gone, but the separation still helps:
 - Routes own auth + response shape.
 - Jobs own the work + are testable in isolation.
 
 ```typescript
-// apps/web/lib/jobs/portfolio-snapshot.ts
+// apps/web-v2/lib/jobs/portfolio-snapshot.ts
 export async function runPortfolioSnapshotJob(): Promise<PortfolioSnapshotResult> {
   // ... fetch users, snapshot each, return aggregate counts
 }
 
-// apps/web/app/api/cron/portfolio-snapshot/route.ts
+// apps/web-v2/app/api/cron/portfolio-snapshot/route.ts
 export async function GET(req: NextRequest) {
   // auth check
   const result = await runPortfolioSnapshotJob();
@@ -161,18 +165,18 @@ return NextResponse.redirect('/some-page');
 
 ## Adding a new cron job
 
-1. Create `apps/web/lib/jobs/<job>.ts` with the work + a `run...Job()` export returning `{ created, skipped, errors, total }`.
-2. Create `apps/web/app/api/cron/<job>/route.ts` — bearer auth first line, call the job impl, return JSON.
-3. Add the schedule to `apps/web/vercel.json` (`vercel project inspect` confirms Root Directory = `apps/web`; `vercel crons list` is the ground truth).
+1. Create `apps/web-v2/lib/jobs/<job>.ts` with the work + a `run...Job()` export returning `{ created, skipped, errors, total }`.
+2. Create `apps/web-v2/app/api/cron/<job>/route.ts` — bearer auth first line, call the job impl, return JSON.
+3. Add the schedule to `apps/web-v2/vercel.json` (`vercel project inspect` confirms Root Directory = `apps/web-v2`; `vercel crons list` is the ground truth).
 4. Make the job idempotent (upsert).
 5. Verify locally: `curl -H "Authorization: Bearer $CRON_SECRET" https://<deploy>/api/cron/<job>` returns the expected counts.
 6. Update `prisma-models-overview.mdc` if it writes to a model not yet listed there.
 
 ## Cross-references
 
-- Auth helper → `apps/web/lib/internal-auth.ts`
-- Vercel cron config → `apps/web/vercel.json` (Root Directory MUST be `apps/web`, NOT repo root)
-- Job impls → `apps/web/lib/jobs/*.ts`
+- Auth helper → `apps/web-v2/lib/internal-auth.ts`
+- Vercel cron config → `apps/web-v2/vercel.json` (Vercel project Root Directory MUST be `apps/web-v2`, NOT repo root — post-DNS-cutover the `audric-web-v2` Vercel project owns `audric.ai`; the legacy `audric-web` Vercel project is sunset)
+- Job impls → `apps/web-v2/lib/jobs/*.ts`
 - Prisma models → `prisma-models-overview.mdc`
 - Env config → `env-validation-gate.mdc`
 - v0.7e+ HTTP-self-fetch removal → `HANDOFF_NEXT_AGENT.md` backlog `engine-fn-injection-refactor`

@@ -1,6 +1,6 @@
 ---
 description: zkLogin (Audric Passport) — Google OAuth → ephemeral key → ZK proof → deterministic Sui address. Plus env parity + the EMAIL_LINKED_TO_DIFFERENT_WALLET trap.
-globs: "apps/web/lib/zklogin.ts,apps/web/app/auth/**/*.ts,apps/web/app/auth/**/*.tsx,apps/web/app/api/user/**/*.ts"
+globs: "apps/web-v2/lib/zklogin.ts,apps/web-v2/app/auth/**/*.ts,apps/web-v2/app/auth/**/*.tsx,apps/web-v2/app/api/user/**/*.ts"
 alwaysApply: false
 ---
 
@@ -109,7 +109,7 @@ prisma.user.update({ data: { ephemeralKey: ... } });
 const verified = decoded.email_verified;
 if (verified) grantHigherSessionTier();  // ← always check the boolean STRICTLY
 
-// ✅ Use the helper from lib/auth.ts — strict `=== true` comparison
+// ✅ Use the helper from lib/audric-auth.ts — strict `=== true` comparison
 import { isJwtEmailVerified } from '@/lib/auth';
 const verified = isJwtEmailVerified(jwt);  // false for null / malformed / missing claim
 ```
@@ -122,9 +122,9 @@ Signed-in users can link up to 10 Sui addresses (e.g. a hardware wallet alongsid
 
 The v0.7a engine drain (Vercel AI SDK + MemWal Path C migration of `@t2000/engine` internals) refactors hot paths across 8 phases. These Passport invariants MUST hold across every phase release. If any phase PR is suspected of touching one of these, run the 5-user smoke baseline (below) before merging.
 
-1. **Identity binding is non-negotiable.** Every route that scopes data or transactions by `address` pairs `authenticateRequest()` (full JWT verify + Enoki-derived `suiAddress`) with `assertOwns()` (writes / privileged ops) or `assertOwnsOrWatched()` (explicit read-only watchlist only). Both helpers live in `apps/web/lib/auth.ts`. Never trust `address` from the request body or query string alone — that's the IDOR class the May 2026 advisory was about.
+1. **Identity binding is non-negotiable.** Every route that scopes data or transactions by `address` pairs `authenticateRequest()` (full JWT verify + Enoki-derived `suiAddress`) with `assertOwns()` (writes / privileged ops) or `assertOwnsOrWatched()` (explicit read-only watchlist only). Both helpers live in `apps/web-v2/lib/audric-auth.ts`. **Note:** `assertOwnsOrWatched()` is now a thin alias of `assertOwns()` post-v0.7e Phase 5 (S.254) — `WatchAddress` table was dropped. Never trust `address` from the request body or query string alone — that's the IDOR class the May 2026 advisory was about.
 
-2. **`x-zklogin-jwt` header on every authenticated API.** Engine chat (`/api/engine/*`), `/api/transactions/prepare`, user routes, portfolio reads, and analytics all expect it. Prefer the canonical `authFetch` helper from `apps/web/lib/auth-fetch.ts` so the storage key (`t2000:zklogin:session`) and header name stay aligned with `lib/zklogin.ts`. v0.7a engine-side refactors must not change the header contract — clients send it, the route validates it.
+2. **`x-zklogin-jwt` header on every authenticated API.** Engine chat (`/api/engine/*`), `/api/transactions/prepare`, user routes, portfolio reads, and analytics all expect it. Prefer the canonical `authFetch` helper from `apps/web-v2/lib/auth-fetch.ts` so the storage key (`t2000:zklogin:session`) and header name stay aligned with `lib/zklogin.ts`. v0.7a engine-side refactors must not change the header contract — clients send it, the route validates it.
 
 3. **The engine never holds a key, never signs.** `@t2000/engine` orchestrates the LLM loop and emits `PendingAction` events. The client signs with the browser-resident `ZkLoginSigner` (`@t2000/sdk/browser`). The server NEVER receives or persists the ephemeral private key. v0.7a phases that touch the provider, tools, or streaming layers must not introduce any "for convenience" key-passing. If a phase PR adds a new field to `PendingAction` or `EngineEvent`, verify it doesn't accidentally surface key material.
 
@@ -134,11 +134,11 @@ The v0.7a engine drain (Vercel AI SDK + MemWal Path C migration of `@t2000/engin
 
 6. **Dual expiry — JWT `exp` (~1h) AND Sui `maxEpoch` (~48h).** Server routes enforce JWT validity via `jose` against Google JWKS. Client must not present a session that has a "valid epoch" but an expired OIDC JWT — `useZkLogin` + `isJwtExpired` already check both. v0.7a engine refactors don't touch this layer, but be aware: if a phase PR adds a "long-running session" feature, it must respect both clocks.
 
-7. **Middleware is permissive — route handlers are the gate.** `apps/web/middleware.ts` validates `x-zklogin-jwt` only when present and stamps `x-auth-verified-sub` for downstream consumption. JWT-absent requests still reach the route handler. **Do not rely on middleware alone for authorization.** Every privileged route handler must call `authenticateRequest()` itself. v0.7a engine refactors in audric/web are limited to `voice/transcribe/route.ts` (R3) — that route, like every other privileged route, calls `authenticateRequest()` directly.
+7. **No middleware — route handlers are the gate.** `apps/web-v2` does NOT ship a `middleware.ts` (the v0.7c chatbot template inherited an Auth.js middleware that was evicted in S.165 Day 1c). Every privileged route handler calls `authenticateRequest()` directly — the JWT verify + `assertOwns()` pair is the SINGLE authorization gate per route. If middleware ever lands again (e.g., for rate limiting or auth pre-checks), it MUST stay permissive — never trust middleware alone for authorization, always re-verify at the route handler.
 
 ## 5-user smoke baseline (founder action — runs per phase release)
 
-The audit found NO existing scripted multi-user zkLogin smoke test (the closest is `apps/web/scripts/loadtest/mint-load-test.ts` which uses synthetic JWTs / keypairs for identity-reserve load testing — useful, but doesn't exercise the Google OAuth + Enoki + ZkLoginSigner pipeline end-to-end).
+The audit found NO existing scripted multi-user zkLogin smoke test (the closest is `apps/web-v2/scripts/loadtest/mint-load-test.ts` which uses synthetic JWTs / keypairs for identity-reserve load testing — useful, but doesn't exercise the Google OAuth + Enoki + ZkLoginSigner pipeline end-to-end).
 
 **The procedure (manual, ~15 min per phase release):**
 
@@ -163,8 +163,8 @@ Each step's PASS/FAIL gets recorded in `audric-build-tracker.md` under the phase
 
 ## Cross-references
 
-- Implementation → `apps/web/lib/zklogin.ts`
-- Server-side auth → `apps/web/lib/auth.ts` (`authenticateRequest`, `assertOwns`, `assertOwnsOrWatched`, `isJwtEmailVerified`)
+- Implementation → `apps/web-v2/lib/zklogin.ts`
+- Server-side auth → `apps/web-v2/lib/audric-auth.ts` (`authenticateRequest`, `assertOwns`, `assertOwnsOrWatched` — alias of `assertOwns` post-S.254, `isJwtEmailVerified`)
 - Sponsored tx flow → `audric-transaction-flow.mdc`
 - Constants (CLIENT_ID etc.) → ALWAYS via `env.X` from `lib/env.ts`. See `env-validation-gate.mdc`.
 - Engine harness contract (`attemptId`, `modifiableFields`, `onAutoExecuted`) → `agent-harness-spec.mdc` (in t2000 repo)

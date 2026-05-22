@@ -19,9 +19,9 @@ Cursor IDE rules, auto-applied by Cursor via its MDC convention (`description`, 
 
 | File | Scope |
 |------|---------|
-| `audric-transaction-flow.mdc` | `apps/web/**/*.{ts,tsx}` — sponsored tx vs SDK direct, attemptId resume |
-| `write-tool-pending-action.mdc` | `apps/web/app/page.tsx`, `app/api/engine/**`, `app/api/transactions/**`, `components/engine/cards/**` — pending_action protocol |
-| `engine-context-assembly.mdc` | `apps/web/lib/engine/**`, `app/api/engine/**` — silent context layers |
+| `audric-transaction-flow.mdc` | `apps/web-v2/**/*.{ts,tsx}` — sponsored tx vs SDK direct, attemptId resume |
+| `write-tool-pending-action.mdc` | `apps/web-v2/app/page.tsx`, `app/api/engine/**`, `app/api/transactions/**`, `components/engine/cards/**` — pending_action protocol |
+| `engine-context-assembly.mdc` | `apps/web-v2/lib/engine/**`, `app/api/engine/**` — silent context layers |
 | `zklogin-passport-flow.mdc` | `lib/zklogin.ts`, `app/auth/**`, `app/api/user/**` — Passport flow + ephemeral keys |
 | `prisma-models-overview.mdc` | `prisma/**`, `lib/prisma.ts`, `app/api/**`, `lib/engine/**` — 16 models, write sites |
 | `audric-pay-flow.mdc` | `app/api/payments/**`, `app/pay/**`, `components/**Pay*.tsx`, `components/**Receive*.tsx` — Audric Pay |

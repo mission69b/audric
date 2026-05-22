@@ -1,12 +1,12 @@
 ---
-description: Prisma data model — what each of the 13 models is for, what owns it, when to read/write
-globs: "apps/web/prisma/**/*.prisma,apps/web/lib/prisma.ts,apps/web/app/api/**/*.ts,apps/web/lib/engine/**/*.ts"
+description: Prisma data model — what each of the 11 active models is for, what owns it, when to read/write
+globs: "apps/web-v2/prisma/**/*.prisma,apps/web-v2/lib/prisma.ts,apps/web-v2/app/api/**/*.ts,apps/web-v2/lib/audric/**/*.ts"
 alwaysApply: false
 ---
 
 # Prisma Models Overview
 
-NeonDB Postgres with 13 Prisma models (post v0.7d Phase 6 Block A — `UserMemory` + `UserFinancialProfile` dropped 2026-05-21, S.221). Schema lives at `apps/web/prisma/schema.prisma`. Generated client output is `apps/web/lib/generated/prisma`.
+NeonDB Postgres with **11 active Prisma models** (post v0.7e Phase 5 cleanup S.254 — `LinkedWallet` + `WatchAddress` + `ConversationLog` dropped 2026-05-22; plus `UserPreferences.contacts` column dropped same migration; plus prior v0.7d Phase 6 Block A drops of `UserMemory` + `UserFinancialProfile` 2026-05-21 S.221). Schema lives at `apps/web-v2/prisma/schema.prisma`. Generated client output is `apps/web-v2/lib/generated/prisma`.
 
 ## Model catalog
 
@@ -14,31 +14,38 @@ NeonDB Postgres with 13 Prisma models (post v0.7d Phase 6 Block A — `UserMemor
 
 | Model | What it stores | Owned by | Updated by |
 |---|---|---|---|
-| `User` | `id`, `suiAddress` (unique), `email` (unique, optional), `emailVerified` (mirrors Google OIDC `email_verified` claim — written on first sign-in via `/api/user/status`), `displayName`, `timezoneOffset`, `tosAcceptedAt` | Auth/login flow | `/api/user/status` upsert (PR-B2 retired the dedicated email-link routes) |
-| `UserPreferences` | `contacts` (JSON address book), `limits` (JSON spend limits) | User | `/api/user/preferences`, `save_contact` tool |
-| `LinkedWallet` | Up to 10 secondary Sui addresses for aggregated portfolio views | User | `/api/user/wallets` |
+| `User` | `id`, `suiAddress` (unique), `email` (unique, optional), `emailVerified` (mirrors Google OIDC `email_verified` claim — written on first sign-in via `/api/user/status`), `displayName`, `timezoneOffset`, `tosAcceptedAt`, `username` (Audric Passport SuiNS handle) | Auth/login flow | `/api/user/status` upsert |
+| `UserPreferences` | `limits` (JSON spend limits + permission preset + agent config) | User | `/api/user/preferences` |
 
-### Engine / conversation
+### Engine / conversation (post v0.7e Persistent Chats — S.247)
 
 | Model | What it stores | Owned by | Updated by |
 |---|---|---|---|
-| `ConversationLog` | Full chat transcripts (every role + content + toolCalls + tokensUsed + costUsd) | Engine | `/api/engine/chat` per turn |
-| `SessionUsage` | Per-session token + cost rollup (drives billing gate) | Engine | `/api/engine/chat` end-of-session |
-| `TurnMetrics` | Per-turn metrics (Spec 1) — latency, attemptId, modifiableFieldsTouched, pendingActionOutcome, writeToolDurationMs | Engine harness | `/api/engine/chat` (chat-time row), `/api/engine/resume` (updateMany on attemptId) |
+| `Chat` | Persistent chat threads (id, suiAddress FK, title, visibility, createdAt) | Chat persistence | `lib/audric/chat-persistence.ts` |
+| `Message` | AI SDK v6 native `UIMessage` rows (chat-scoped); replaces the legacy `ConversationLog` chat-transcript role | Chat persistence | `lib/audric/chat-persistence.ts` |
+| `Vote` | Per-message thumbs up/down (rating layer for fine-tune dataset) | Chat persistence | `lib/audric/chat-persistence.ts` |
+| `SessionUsage` | Per-session token + cost rollup (drives session-cap billing gate) | Engine | `/api/chat` end-of-session |
+| `TurnMetrics` | Per-turn metrics (Spec 1) — latency, attemptId, modifiableFieldsTouched, pendingActionOutcome, writeToolDurationMs | Engine harness | `/api/chat` (chat-time row), inline resume flow (updateMany on attemptId) |
 
 ### Silent intelligence (`<financial_context>` + context layers)
 
 | Model | What it stores | Owned by | Updated by |
 |---|---|---|---|
-| `UserFinancialContext` | Daily on-chain snapshot — savings/wallet/debt/HF/APY/recent activity | Cron | 02:00 UTC `financial-context-snapshot` job (migrating to Vercel cron in v0.7d Phase 6 Block B) |
-| `AdviceLog` | Recommendations the agent gave (last 30d rehydrated each turn) | Engine tool | `record_advice` tool |
-| `PortfolioSnapshot` | Historical portfolio totals for timeline canvas | Cron | Daily snapshot job (migrating to Vercel cron in v0.7d Phase 6 Block B) |
+| `UserFinancialContext` | Daily on-chain snapshot — savings/wallet/debt/HF/APY/recent activity | Cron | 02:30 UTC `financial-context-snapshot` Vercel cron |
+| `AdviceLog` | Recommendations the agent gave (last 30d rehydrated each turn) | Engine tool | `record_advice` tool (via `lib/audric/moat-context.ts`) |
+| `PortfolioSnapshot` | Historical portfolio totals for timeline canvas | Cron | Daily `portfolio-snapshot` Vercel cron |
 
 > **Long-term memory layer (web-v2 production):** lives in `@mysten-incubation/memwal` (Mysten vector memory) — NOT in Prisma. See `lib/audric/memwal-prepare-step.ts` + `lib/audric/memwal-write-callback.ts`.
 
 > **Deleted in v0.7d Phase 6 Block A (S.221, 2026-05-21):**
 > - `UserFinancialProfile` — Claude-inferred risk tolerance / goals / horizon. Replaced by MemWal `analyze()` which extracts these signals organically from chat.
 > - `UserMemory` — up to 50 episodic facts (Jaccard dedup'd) + `ChainFact` rows (source='chain'). Replaced by MemWal `recall()` + `analyze()`.
+
+> **Deleted in v0.7e Phase 5 cleanup (S.254, 2026-05-22):**
+> - `LinkedWallet` — multi-wallet aggregated portfolio feature retired. Current zkLogin flow is single-wallet-per-Google-account by construction.
+> - `WatchAddress` — watch-only addresses feature retired (was tied to `assertOwnsOrWatched` auth helper which now collapses to `assertOwns`).
+> - `ConversationLog` — superseded by `Chat`/`Message`/`Vote` triple (S.247 AI SDK v6 native persistence). The legacy retention cron was deleted alongside the model.
+> - `UserPreferences.contacts` column — feature retired in S.243 (contacts no longer rendered or accepted).
 
 ### Audric Pay + Audric Finance
 
@@ -48,13 +55,12 @@ NeonDB Postgres with 13 Prisma models (post v0.7d Phase 6 Block A — `UserMemor
 
 > **Removed in SPEC 17 (S.103, May 2026):** `SavingsGoal` model + 4 `savings_goal_*` engine tools + `/api/user/goals` routes + `GoalsPanel` UI + `openGoals` field on `UserFinancialContext`. The savings-goal layer wasn't producing observable agent behavior change. Track savings progress via `health_check` + `portfolio_overview` + `yield_summary`.
 
-### Indexer / chain memory
+### Indexer / analytics
 
 | Model | What it stores | Owned by | Updated by |
 |---|---|---|---|
-| `WatchAddress` | Addresses the user has asked Audric to track | User | `/api/user/wallets` |
 | `AppEvent` | App-side events the chain classifiers ingest (chip taps, sponsor failures, key flows) | App | Various event emitters |
-| `ServicePurchase` | MPP service purchases via `pay_api` tool | Engine tool | `pay_api` execution |
+| `ServicePurchase` | MPP service purchases via `pay_api` tool. **Note:** `pay_api` engine tool was deleted in S.245 (2026-05-22) per V07E_D_QUESTION_AUDITS D-2 reframe; no new rows written. Existing rows retained for the upcoming Audric Store SPEC which will reuse this table shape. | Engine tool (historical) | None currently — `pay_api` removed |
 
 ## Where to write — only here, never in a route
 
@@ -62,12 +68,12 @@ Database writes are concentrated by domain to make audits + migrations sane:
 
 | Domain | Write site |
 |---|---|
-| User identity | `apps/web/app/api/user/*` |
-| Conversation | `apps/web/app/api/engine/chat/route.ts`, `apps/web/app/api/engine/resume/route.ts` |
-| Telemetry | `apps/web/lib/engine/harness-metrics.ts` |
-| Cron snapshots | `apps/web/app/api/internal/*` (called by t2000 cron with `x-internal-key`) |
-| Pay flows | `apps/web/app/api/payments/*` |
-| Engine tools that write Prisma | `apps/web/lib/engine/{advice-tool,goal-tools,contact-tools}.ts` |
+| User identity | `apps/web-v2/app/api/user/*` |
+| Conversation (Chat/Message/Vote) | `apps/web-v2/lib/audric/chat-persistence.ts` |
+| Telemetry (TurnMetrics) | Inline in `apps/web-v2/app/api/chat/route.ts` (post-v0.7e Phase 5: `harness-metrics.ts` helper was archived with apps/web; writes are inline now) |
+| Cron snapshots | `apps/web-v2/lib/jobs/*.ts` + `apps/web-v2/app/api/cron/*` + `apps/web-v2/app/api/internal/*` |
+| Pay flows | `apps/web-v2/app/api/payments/*` |
+| Advice + memory hooks (engine-side) | `apps/web-v2/lib/audric/moat-context.ts` (`record_advice` consumer) + `lib/audric/memwal-write-callback.ts` (MemWal `analyze` post-turn) |
 
 If you find yourself reaching for `prisma.X.create` in a new place, ask whether the existing write site can absorb it. Drift in write sites → drift in invariants.
 
@@ -77,24 +83,25 @@ If you find yourself reaching for `prisma.X.create` in a new place, ask whether 
 |---|---|---|
 | Portfolio | `getPortfolio(address)` | See `audric-canonical-portfolio.mdc` |
 | Activity feed | `getActivity(...)` | `lib/activity-data.ts` |
-| Last 30d advice | `buildAdviceContext(userId)` | `lib/engine/engine-context.ts` |
-| Long-term memory (web-v2) | `memwalClient.recall(query)` via `prepareStep` | `lib/audric/memwal-prepare-step.ts` |
+| Last 30d advice | `buildAdviceContext(userId)` | `lib/audric/moat-context.ts` |
+| Long-term memory | `memwalClient.recall(query)` via `prepareStep` | `lib/audric/memwal-prepare-step.ts` |
 | ~~Episodic memories~~ | `buildMemoryContext(memories)` — DELETED in v0.7d Phase 6 Block A | replaced by MemWal recall |
-| ~~Financial profile~~ | `buildProfileContext(profile)` — `apps/web` only (no-op; passes null) | replaced by MemWal recall in web-v2 |
+| ~~Financial profile~~ | `buildProfileContext(profile)` — DELETED | replaced by MemWal recall |
 
 Direct reads in route handlers are fine for one-offs. Pattern is: helpers when the read appears in 2+ places.
 
 ## Migrations
 
 ```bash
-pnpm --filter audric-web prisma migrate dev --name <descriptive-name>
-pnpm --filter audric-web prisma generate
+pnpm --filter @audric/web-v2 prisma migrate dev --name <descriptive-name>
+pnpm --filter @audric/web-v2 prisma generate
 ```
 
 After migration:
 - Update this rule's catalog if a new model landed.
 - If the model is read by the engine, update `engine-context-assembly.mdc` too.
 - Add a `@@index` for any column you'll filter on. Postgres without indexes scales badly.
+- Production deploy runs `prisma migrate deploy` via the `postinstall` + `migrate` scripts in `apps/web-v2/package.json`.
 
 ## What's banned
 
@@ -116,8 +123,8 @@ prisma.user.upsert({ where: { suiAddress }, ... });
 
 ## Cross-references
 
-- Schema → `apps/web/prisma/schema.prisma`
-- Generated client → `apps/web/lib/generated/prisma`
-- Prisma singleton → `apps/web/lib/prisma.ts`
+- Schema → `apps/web-v2/prisma/schema.prisma`
+- Generated client → `apps/web-v2/lib/generated/prisma`
+- Prisma singleton → `apps/web-v2/lib/prisma.ts`
 - Engine context that reads these → `engine-context-assembly.mdc`
 - Cron jobs that write these → `cron-job-architecture.mdc`

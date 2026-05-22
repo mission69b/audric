@@ -1,6 +1,6 @@
 ---
 description: Audric Finance — save / withdraw / borrow / repay / swap / charts. Manage money on Sui.
-globs: "apps/web/components/engine/cards/Savings*.tsx,apps/web/components/engine/cards/Borrow*.tsx,apps/web/components/engine/cards/Health*.tsx,apps/web/components/engine/cards/Yield*.tsx,apps/web/components/engine/cards/Swap*.tsx,apps/web/components/engine/cards/canvas/**/*.tsx,apps/web/lib/portfolio.ts,apps/web/lib/rates.ts"
+globs: "apps/web-v2/components/engine/cards/Savings*.tsx,apps/web-v2/components/engine/cards/Borrow*.tsx,apps/web-v2/components/engine/cards/Health*.tsx,apps/web-v2/components/engine/cards/Yield*.tsx,apps/web-v2/components/engine/cards/Swap*.tsx,apps/web-v2/components/engine/cards/canvas/**/*.tsx,apps/web-v2/lib/portfolio.ts,apps/web-v2/lib/rates.ts"
 alwaysApply: false
 ---
 
@@ -80,7 +80,7 @@ Engine canvas templates render inline in chat:
 - **Health factor over time** — HF series with liquidation threshold band
 - **Spending breakdown** — categorized outflow from `Payment` table
 
-Canvas rendering: engine emits `{ type: 'canvas', html: '...' }` SSE event → audric renders `<iframe srcDoc={html} />`. Templates live in `apps/web/components/engine/cards/canvas/`.
+Canvas rendering: engine emits `{ type: 'canvas', html: '...' }` SSE event → audric renders `<iframe srcDoc={html} />`. Templates live in `apps/web-v2/components/engine/cards/canvas/`.
 
 **Don't fetch on the canvas critical path.** Pre-compute via cron and read from Prisma. The canvas is a render of pre-aggregated data, not a query layer.
 

@@ -1,6 +1,6 @@
 ---
 description: Audric Pay — send / payment-link / invoice / QR end-to-end. Free, global, instant on Sui.
-globs: "apps/web/app/api/payments/**/*.ts,apps/web/app/pay/**/*.tsx,apps/web/components/**/*Pay*.tsx,apps/web/components/**/Receive*.tsx,apps/web/lib/payment-kit.ts"
+globs: "apps/web-v2/app/api/payments/**/*.ts,apps/web-v2/app/pay/**/*.tsx,apps/web-v2/components/**/*Pay*.tsx,apps/web-v2/components/**/Receive*.tsx,apps/web-v2/lib/payment-kit.ts"
 alwaysApply: false
 ---
 
@@ -131,5 +131,5 @@ See `audric-transaction-flow.mdc` for the full sponsored-tx contract.
 - Pending action protocol → `write-tool-pending-action.mdc`
 - Financial amount safety → `financial-amounts.mdc`
 - Defense layers → `safeguards-defense-in-depth.mdc`
-- Payment kit → `apps/web/lib/payment-kit.ts`
-- Pay page → `apps/web/app/pay/[slug]/page.tsx`
+- Payment kit → `apps/web-v2/lib/payment-kit.ts`
+- Pay page → `apps/web-v2/app/pay/[slug]/page.tsx`

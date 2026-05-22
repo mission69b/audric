@@ -1,6 +1,6 @@
 ---
 description: Metrics + monitoring (audric side) — TurnMetrics, SessionUsage, Vercel/CloudWatch, what to instrument
-globs: "apps/web/lib/engine/harness-metrics.ts,apps/web/lib/engine/log-session-usage.ts,apps/web/app/api/engine/**/*.ts"
+globs: "apps/web-v2/lib/engine/harness-metrics.ts,apps/web-v2/lib/engine/log-session-usage.ts,apps/web-v2/app/api/engine/**/*.ts"
 alwaysApply: false
 ---
 
@@ -10,10 +10,10 @@ The audric web app is the producer for every metric the agent generates. The spl
 
 | Goes to | Who reads it |
 |---|---|
-| Prisma (`TurnMetrics`, `SessionUsage`, `ConversationLog`, `AppEvent`, `AdviceLog`) | Q5/Q6 dashboards, harness regression analysis, billing |
+| Prisma (`TurnMetrics`, `SessionUsage`, `Chat` + `Message` + `Vote` — AI SDK v6 persistence post-S.247, `AppEvent`, `AdviceLog`) | Q5/Q6 dashboards, harness regression analysis, billing |
 | Vercel Observability | On-call alerting, perf regressions |
 | Vercel Speed Insights | LCP/FCP/TTI for chat UI |
-| CloudWatch | t2000 ECS task health (cron, indexer) |
+| ~~CloudWatch~~ | ~~t2000 ECS task health~~ — RETIRED v0.7d Phase 6 (S.224, 2026-05-21); audric crons now run on Vercel native cron with logs in Vercel Observability |
 
 ## TurnMetrics — the harness telemetry table (Spec 1)
 
@@ -31,19 +31,18 @@ Schema highlights (see `prisma-models-overview.mdc` for full list):
 - `toolNames`, `toolDurationMs` (per-tool)
 
 Where it's written:
-- `apps/web/app/api/engine/chat/route.ts` — chat-time row
-- `apps/web/app/api/engine/resume/route.ts` — outcome update + resume turn row
-- `apps/web/lib/engine/harness-metrics.ts` — the helper functions
+- `apps/web-v2/app/api/chat/route.ts` — chat-time row + inline resume outcome update (post-v0.7e Phase 5: `harness-metrics.ts` helper module was archived with `apps/web`; writes are inline now)
+- `apps/web-v2/app/api/cron/turn-metrics-pending-sweep/route.ts` — 15-min cron sweeps `pending` → `timed_out` for orphaned attempts
 
 ## SessionUsage — billing + cost tracking
 
-One row per session. Drives the billing gate (5 unverified / 20 verified turns per rolling 24h). Written at session end by `lib/engine/log-session-usage.ts`.
+One row per session. Drives the billing gate (5 unverified / 20 verified turns per rolling 24h). Written at session end inline in `apps/web-v2/app/api/chat/route.ts` (post-v0.7e Phase 5: `log-session-usage.ts` helper module was archived with `apps/web`).
 
-## ConversationLog — full transcripts
+## Chat / Message / Vote — AI SDK v6 native persistence (post-S.247)
 
-Every role + content + toolCalls + tokens + cost. Used for the future self-hosted model migration training data.
+Replaces the legacy `ConversationLog` table (dropped 2026-05-22, S.254). Persists user/assistant message pairs as `UIMessage` JSON rows scoped to a parent `Chat` thread; `Vote` rows carry per-message thumbs up/down. Used as the future fine-tune dataset (same purpose ConversationLog served).
 
-> **Deleted in v0.7d Phase 6 Block A (S.221, 2026-05-21):** the memory-extraction cron (`UserMemory` writes) + profile-inference cron (`UserFinancialProfile` writes) that used to consume ConversationLog rows. Long-term memory is now extracted live in-turn by MemWal `analyze()` (see `apps/web-v2/lib/audric/memwal-write-callback.ts`).
+> **Deleted in v0.7d Phase 6 Block A (S.221, 2026-05-21):** the memory-extraction cron (`UserMemory` writes) + profile-inference cron (`UserFinancialProfile` writes) that used to consume the chat transcript table. Long-term memory is now extracted live in-turn by MemWal `analyze()` (see `apps/web-v2/lib/audric/memwal-write-callback.ts`).
 
 ## AppEvent — chip taps + sponsor failures + key flows
 
@@ -151,5 +150,5 @@ These are the v1.24.13 baselines + targets for the agent's hot path. The targets
 - External-call retry policy (defines `external.retry_count` outcomes) → `external-call-retries.mdc`
 - t2000-side metrics rule → `t2000/.cursor/rules/metrics-and-monitoring.mdc`
 - Prisma models → `prisma-models-overview.mdc`
-- Cost rates → `apps/web/lib/engine/cost-rates.ts`
+- Cost rates → `packages/engine/src/cost.ts` (post-v0.7e Phase 5 — moved into engine; audric no longer maintains a separate copy)
 - Scaling spec → `t2000/audric-scaling-spec.md` (local-only)

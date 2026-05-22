@@ -107,9 +107,9 @@ The rule's include-list is the SINGLE source of truth for "where the contract ap
 **Include-list:**
 
 ```
-apps/web/app/api/**/*.ts            // every API route under apps/web (including app/api/identity/**)
-apps/web/components/**/*.tsx        // every React component (PayButton lives here)
-apps/web/lib/**/*.ts                // every library helper
+apps/web-v2/app/api/**/*.ts            // every API route under apps/web-v2 (including app/api/identity/**)
+apps/web-v2/components/**/*.tsx        // every React component (PayButton lives here)
+apps/web-v2/lib/**/*.ts                // every library helper
 ```
 
 **Exclude-list** (silent, no enforcement):
