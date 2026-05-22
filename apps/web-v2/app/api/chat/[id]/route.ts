@@ -67,6 +67,65 @@ export async function GET(
   const dbMessages = await getMessagesByChatId({ chatId: id });
   const messages = convertToUIMessages(dbMessages);
 
+  // [Smoke 2026-05-22 V3 diagnostic] Fingerprint per-part state on
+  // chat-load. Pairs with `body-messages-states` (POST entry) +
+  // `persist-states` (onFinish) in /api/chat/route.ts to triangulate
+  // whether the "ghost permission card after refresh" bug is a persist
+  // bug (DB has approval-requested) vs a load bug (DB has output-
+  // available but load path corrupts it). Cheap; one log line per
+  // chat-load (only sidebar-click + page-reload).
+  try {
+    const trunc = (s: string) => s.slice(0, 8);
+    const summary = messages
+      .map((msg, idx) => {
+        const parts = Array.isArray(msg.parts) ? msg.parts : [];
+        const partSummaries = parts.map((rawPart) => {
+          const part = rawPart as
+            | {
+                type?: string;
+                toolCallId?: string;
+                state?: string;
+                output?: unknown;
+                approval?: { id?: string; approved?: boolean };
+              }
+            | undefined;
+          if (!part || typeof part.type !== "string") {
+            return "?";
+          }
+          if (
+            part.type.startsWith("tool-") &&
+            part.type !== "tool-approval-request" &&
+            part.type !== "tool-approval-response"
+          ) {
+            const tool = part.type.slice("tool-".length);
+            const callId =
+              typeof part.toolCallId === "string"
+                ? trunc(part.toolCallId)
+                : "?";
+            const state = part.state ?? "?";
+            const hasOut = part.output !== undefined ? "Y" : "N";
+            const approval =
+              part.approval !== undefined
+                ? `,approval=${part.approval.approved === true ? "Y" : part.approval.approved === false ? "N" : "P"}`
+                : "";
+            return `${part.type}(${tool},id=${callId},state=${state},output=${hasOut}${approval})`;
+          }
+          return part.type;
+        });
+        const msgId = msg.id ? trunc(msg.id) : "noid";
+        return `[${idx}] ${msg.role}(${msgId}): ${partSummaries.join("|") || "(empty)"}`;
+      })
+      .join(" || ");
+    console.log(
+      `[audric-chat] load-states chatId=${id} msgs=${messages.length} ${summary}`
+    );
+  } catch (logErr) {
+    console.warn(
+      "[audric-chat] load-states logging threw (non-fatal):",
+      logErr instanceof Error ? logErr.message : String(logErr)
+    );
+  }
+
   return NextResponse.json({
     chat: {
       id: chat.id,

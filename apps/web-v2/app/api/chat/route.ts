@@ -1237,6 +1237,19 @@ export async function POST(request: Request) {
       } as Omit<UIMessage, "id">;
     });
 
+  // [Smoke 2026-05-22 V3 diagnostic] Fingerprint per-part state of
+  // body.messages on POST entry — pinpoints whether the client sent
+  // tool-call parts in the expected `output-available` state after
+  // user-confirm + sponsoredTx + addToolOutput. If body.messages already
+  // has `state=approval-requested` on resume turns, the client failed to
+  // transition (e.g. addToolOutput didn't fire). If it's
+  // `output-available` but the DB ends up with `approval-requested`,
+  // the AI SDK stream-state merge is clobbering it.
+  console.log(
+    `[audric-chat] body-messages-states sessionId=${sessionId} turn=${turnIndex} ` +
+      summariseToolStates(body.messages as ReadonlyArray<{ id?: string; role: string; parts?: ReadonlyArray<unknown> }>)
+  );
+
   // [Phase 5.5 / D-17; shape-fix 2026-05-19 review] Populate the
   // guard-pipeline message ref. Guards read this via the `getMessages`
   // closure passed to `buildInternalContext` above so
@@ -1872,6 +1885,21 @@ export async function POST(request: Request) {
             `loop. chatId=${chatId} sessionId=${sessionId} turn=${turnIndex}`
         );
       }
+      // [Smoke 2026-05-22 V3 diagnostic] Fingerprint per-part state of
+      // what we're about to persist. The pair body-messages-states (POST
+      // entry) + persist-states (this site) reveals whether onFinish's
+      // `finalMessages` preserves the client's post-approval
+      // `output-available` tool-call state, or whether AI SDK's
+      // stream-state clone is collapsing it back to
+      // `approval-requested` (the suspected cause of the ghost
+      // permission card on refresh).
+      console.log(
+        `[audric-chat] persist-states sessionId=${sessionId} turn=${turnIndex} ` +
+          `turnCompleted=${turnCompleted} count=${messagesToPersist.length} ` +
+          summariseToolStates(
+            messagesToPersist as unknown as ReadonlyArray<{ id?: string; role: string; parts?: ReadonlyArray<unknown> }>
+          )
+      );
       saveMessages({
         messages: messagesToPersist.map((m, i) => ({
           id: m.id,
@@ -2724,6 +2752,70 @@ function countWriteToolsInHistory(messages: unknown[]): number {
     }
   }
   return count;
+}
+
+/**
+ * [Smoke 2026-05-22 V3 diagnostic] Summarise UIMessage tool-call states
+ * for the "ghost permission card after refresh" investigation.
+ *
+ * The structural log (`llm-message-structure-v2`) is built off
+ * `aiSdkMessages` — the OUTPUT of `convertToModelMessages`. By the time
+ * we get a ModelMessage, tool-call state has been COLLAPSED into
+ * `tool-call` (with input) + `tool-result` (with output) blocks, losing
+ * the UIMessage `state` field that drives the client render
+ * (`approval-requested` → card, `output-available` → receipt).
+ *
+ * This helper formats UIMessage[] directly so we can SEE the per-part
+ * state at every save site:
+ *
+ *   [1] assistant: text|reasoning|tool-call(balance,state=output-available,output=Y)|tool-call(save,state=output-available,output=Y,approval=Y)
+ *
+ * Use at POST entry to fingerprint what the client sent, and at
+ * onFinish to fingerprint what we're about to persist. A divergence
+ * between those two pinpoints whether AI SDK's stream-state merge is
+ * clobbering the client's post-approval state.
+ */
+function summariseToolStates(
+  messages: ReadonlyArray<{
+    id?: string;
+    role: string;
+    parts?: ReadonlyArray<unknown>;
+  }>
+): string {
+  const trunc = (s: string) => s.slice(0, 8);
+  return messages
+    .map((msg, idx) => {
+      const parts = Array.isArray(msg.parts) ? msg.parts : [];
+      const partSummaries = parts.map((rawPart) => {
+        const part = rawPart as
+          | {
+              type?: string;
+              toolCallId?: string;
+              state?: string;
+              output?: unknown;
+              approval?: { id?: string; approved?: boolean };
+            }
+          | undefined;
+        if (!part || typeof part.type !== "string") {
+          return "?";
+        }
+        if (part.type.startsWith("tool-") && part.type !== "tool-approval-request" && part.type !== "tool-approval-response") {
+          const tool = part.type.slice("tool-".length);
+          const callId = typeof part.toolCallId === "string" ? trunc(part.toolCallId) : "?";
+          const state = part.state ?? "?";
+          const hasOut = part.output !== undefined ? "Y" : "N";
+          const approval =
+            part.approval !== undefined
+              ? `,approval=${part.approval.approved === true ? "Y" : part.approval.approved === false ? "N" : "P"}`
+              : "";
+          return `${part.type}(${tool},id=${callId},state=${state},output=${hasOut}${approval})`;
+        }
+        return part.type;
+      });
+      const id = msg.id ? trunc(msg.id) : "noid";
+      return `[${idx}] ${msg.role}(${id}): ${partSummaries.join("|") || "(empty)"}`;
+    })
+    .join(" || ");
 }
 
 function extractLatestUserText(normalized: Omit<UIMessage, "id">[]): string {
