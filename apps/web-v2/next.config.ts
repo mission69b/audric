@@ -3,28 +3,20 @@ import type { NextConfig } from "next";
 
 const basePath = process.env.IS_DEMO === "1" ? "/demo" : "";
 
-// [v0.7c Session 5.5d / S.197d] Audric-branded landing redirect.
+// Demo deployment basePath. When `IS_DEMO=1` is set, the whole app is
+// served under `/demo` so the marketing landing at `/` redirects there.
+// Production (basePath === "") serves the marketing landing directly at
+// `/` — that file is `app/page.tsx` (ported from apps/web at v0.7e
+// Phase 2 / S.253).
 //
-// web-v2/ (the bare Vercel project URL) is internal infrastructure;
-// users always reach Audric via audric.ai (apps/web marketing → OAuth
-// → audric.ai/new which rewrites to web-v2/chat in production).
-// Anyone hitting audric-web-v2.vercel.app/ directly (fat-finger,
-// crawler, debugger, social-share with stripped subdomain) lands on
-// the (chat) route group's page.tsx — which today just returns
-// `null` inside the template chat layout, exposing template chrome
-// at a public URL.
-//
-// The redirect below routes web-v2/ to web-v2/chat (the canonical
-// Audric entry). `/chat`'s existing pre-auth Splash-B (see
-// `app/chat/audric-chat-client.tsx` lines 128-169) handles
-// unauthenticated visitors — same hero lockup as apps/web's
-// `components/landing/HeroSection.tsx` so users see brand
-// continuity. Authenticated users see their chat directly.
-//
-// Doesn't fight the demo basePath (IS_DEMO=1), which owns `/` →
-// `/demo`. The conditional below preserves that behavior verbatim
-// and only adds the `/` → `/chat` redirect when basePath is empty
-// (production, preview, and local dev).
+// [v0.7e Phase 2 / S.253 — 2026-05-22] DROPPED the production `/` →
+// `/chat` edge redirect that S.197d added. At S.197d web-v2's root was
+// bare template chrome with no marketing page; the redirect was the
+// "branded landing" stopgap. Now that `app/page.tsx` IS the marketing
+// landing (verbatim port of apps/web's), the edge redirect blocked it
+// from rendering. The auth-redirect lives client-side in `page.tsx`:
+// authenticated users get `router.replace("/chat")` after hydration;
+// unauthenticated users see the full marketing landing.
 const nextConfig: NextConfig = {
   ...(basePath
     ? {
@@ -39,15 +31,7 @@ const nextConfig: NextConfig = {
           },
         ],
       }
-    : {
-        redirects: async () => [
-          {
-            source: "/",
-            destination: "/chat",
-            permanent: false,
-          },
-        ],
-      }),
+    : {}),
   env: {
     NEXT_PUBLIC_BASE_PATH: basePath,
   },
