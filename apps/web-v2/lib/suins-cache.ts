@@ -281,12 +281,3 @@ export async function invalidateRevokedSuins(handle: string): Promise<void> {
     );
   }
 }
-
-/**
- * Test-only: clear the in-memory cache by resetting the active store. The
- * Upstash store has no parallel reset because production code never wants
- * to nuke shared state.
- */
-export function _resetSuinsCacheForTests(): void {
-  resetSuinsCacheStore();
-}

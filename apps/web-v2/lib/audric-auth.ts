@@ -457,12 +457,15 @@ export async function assertOwnsOrWatched(
 // -----------------------------------------------------------------------------
 
 /**
- * @deprecated Decodes a JWT payload WITHOUT verifying the signature.
- * Use `verifyJwt` for any code that makes authorization decisions. Survives
- * only for read-only inspection (e.g. session-tier resolver wants the
- * `email_verified` claim from a JWT that was already verified upstream).
+ * Decodes a JWT payload WITHOUT verifying the signature. Module-private —
+ * `isJwtEmailVerified` is the only legitimate consumer (it reads the
+ * `email_verified` claim from a JWT already verified upstream by
+ * `authenticateRequest`). Any external caller needing payload inspection
+ * should either (a) use `decodeJwtClaim` from `lib/jwt-client.ts` for
+ * client-side single-claim reads or (b) go through `verifyJwt` for
+ * authorization decisions.
  */
-export function decodeJwt(jwt: string): JwtPayload | null {
+function decodeJwt(jwt: string): JwtPayload | null {
   try {
     const parts = jwt.split(".");
     if (parts.length !== 3) {

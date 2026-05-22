@@ -180,17 +180,3 @@ export function admissionRejectedResponse(retryAfterSec: number): Response {
     }
   );
 }
-
-/**
- * Test-only: reset the in-flight counter. Production code MUST NOT call this.
- */
-export async function _resetAdmissionForTests(): Promise<void> {
-  if (!upstash) {
-    return;
-  }
-  try {
-    await upstash.del(COUNTER_KEY);
-  } catch {
-    // Best-effort in tests.
-  }
-}
