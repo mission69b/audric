@@ -19,6 +19,15 @@
       "!components/elements",
       "!components/ui",
       "!components/audric/cards",
+      // [v0.7c Phase 6.5 / S.253 — 2026-05-22] Marketing landing
+      // components are a verbatim port from apps/web (PascalCase
+      // filenames; intentional dangerouslySetInnerHTML for hard-coded
+      // marketing copy; static demo-flow arrays). Excluded from lint
+      // per the same precedent as `components/audric/cards` — "ported
+      // code awaiting shadcn redesign." When the marketing site gets
+      // its v2 design pass, the redesigned components migrate to
+      // kebab-case + drop this exclude.
+      "!components/landing",
       "!lib/utils.ts",
       "!hooks/use-mobile.ts"
     ]
