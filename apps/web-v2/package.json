@@ -12,6 +12,8 @@
     "lint": "ultracite check",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf .next",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "test:e2e": "export PLAYWRIGHT=True && pnpm exec playwright test",
     "smoke:b1-b1a": "node --experimental-strip-types scripts/smoke-b1-b1a.mts",
     "smoke:s213": "node --experimental-strip-types scripts/smoke-s213.mts"
@@ -106,10 +108,12 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "babel-plugin-react-compiler": "^1.0.0",
+    "jsdom": "^29",
     "postcss": "^8",
     "tailwindcss": "^4.1.13",
     "tsx": "^4.21.0",
     "typescript": "^5.6.3",
-    "ultracite": "^7.0.11"
+    "ultracite": "^7.0.11",
+    "vitest": "^3"
   }
 }
