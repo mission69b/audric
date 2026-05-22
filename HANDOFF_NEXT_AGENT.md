@@ -40,8 +40,8 @@
 
 | Rank | # | Title | Effort | Gate | Notes |
 |---|---|---|---|---|---|
-| 1 | **MCP-1** | **Reinstate `pay_api` in `@t2000/mcp`** (founder ask 2026-05-22) | ~½d | None — ship anytime | New `t2000_pay_api` MCP tool that wraps `T2000.pay()` from `@t2000/sdk` (CLI parity). Optional `t2000_list_mpp_services` read tool. NOT a re-export from engine — direct SDK wrap, so external LLMs (Claude Desktop / Cursor / Codex) can pay for MPP services on behalf of the user. **Why now:** S.245's engine-side removal was correct for Audric chat (user shouldn't be silently charged mid-conversation) but inverted the value prop for non-Audric MCP consumers. See S.255 §5 for full scoping. **Lives in:** `packages/mcp/src/tools/write.ts` + new read tool. **Ship:** patch bump `@t2000/mcp`, update MCP README + skill docs. |
-| 2 | **MPP-1** | **suimpp / MPP / t2000-gateway founder work** | TBD | Founder-owned scope | Founder has work queued here ("And i have some suimpp / mpp t2000 gateway work todo" — 2026-05-22). No agent-side scope until founder defines it. Likely candidates: SPEC 16 atomic-batching Phase 1 ship, MPP_SETTLE_ON_SUCCESS Phase 2 refinements, MCP-1 ↔ gateway service catalog wiring. **Pair with MCP-1** since both touch the MPP surface area. |
+| 1 | ~~**MCP-1**~~ | ~~Reinstate `pay_api` in `@t2000/mcp`~~ — **✅ ALREADY SHIPPED** (closed S.256 / 2026-05-22) | — | — | **The S.255 §5 scoping was based on a faulty premise.** It assumed S.245's engine-side `pay_api` removal cascaded to `@t2000/mcp` via auto-flow through `buildMcpTools` / `registerEngineTools`. **No such auto-flow exists.** `@t2000/mcp` has its own standalone `registerReadTools` / `registerWriteTools` in `packages/mcp/src/tools/{read,write}.ts` that wrap `T2000.<method>()` from `@t2000/sdk` directly. `t2000_pay` (write tool wrapping `agent.pay()`) + `t2000_services` (read tool hitting gateway directly) have always been alive in the MCP package — they ship in `@t2000/mcp@2.12.0` today, are documented in `packages/mcp/README.md`, and are covered by tests in `tools/{read,write}.test.ts`. There's also a dedicated `t2000-skills/skills/t2000-pay/SKILL.md` skill. **Action:** none. The pay surface is fully wired across SDK + CLI + MCP + Skills. See S.256 for the audit. |
+| 2 | **MPP-1** | **suimpp / MPP / t2000-gateway founder work** | TBD | Founder-owned scope | Founder has work queued here ("And i have some suimpp / mpp t2000 gateway work todo" — 2026-05-22). No agent-side scope until founder defines it. Likely candidates: SPEC 16 atomic-batching Phase 1 ship, MPP_SETTLE_ON_SUCCESS Phase 2 refinements, gateway service-catalog evolution. |
 | 3 | **H3.2** | **Contacts Phase 2 — Prisma `UserPreferences.contacts` drop** | ~30 min | ~24h soak from S.243 ✅ now complete (~30h since 2026-05-22 ~12:00 AEST) | ✅ Already shipped as part of S.254 Prisma migration (the column went with `LinkedWallet` + `WatchAddress` + `ConversationLog`). **Verify:** `prisma db pull` against prod Neon should show the column gone. If it's still there, run the migration. Likely just close as DONE. |
 | 4 | **H3.4** | **Contacts Phase 4 — engine cleanup** | ~30 min | None | Delete `packages/engine/src/tools/contacts.ts` + `add-recipient.ts` from `@t2000/engine`, remove from `tool-flags` + `tool-policy` + `tools/index`, delete tests, bump minor + publish. Unused exports today — no functional impact, just dead code drag. |
 | 5 | **H3.5** | **Contacts Phase 5 — send-history reverse-lookup audit** | ~0-2h | None | Audit web-v2 send-history rendering. IF it currently relies on contact-stored names → add live reverse-lookup at render (Audric directory + SuiNS, session-cached). IF send history already shows raw 0x or routes through `resolve_suins` live → $0 work. Audit-first ship. |
@@ -52,7 +52,7 @@
 | 10 | **M3** | **engine-internal-key-final-delete** (`T2000_INTERNAL_KEY` env var retirement) | ~30 min | Blocked on M2 | Final cleanup. Drop `validateInternalKey` + `/api/internal/payments` route + env var schema entries. |
 | 11 | **B1** | **Marketing landing — shadcn redesign** | ~6-10h | Post-DNS-flip (✅ now done — gated open) | The 15 components ported at S.253 (`apps/web-v2/components/landing/`) are excluded from Biome lint. Verbatim port carries 3 patterns to fix: PascalCase → kebab-case filenames; `dangerouslySetInnerHTML` → JSX fragments in `HeroChatWidget`; array-index keys → stable string keys. L-4 lock still applies (copy is legal-vetted, only UI changes). Drop `!components/landing` from `biome.jsonc` once done. Could also fold in: swap `useStats` SWR → @tanstack/react-query; proper `<Image>` for assets. |
 | 12 | **D1** | **V07E_INVOICE_DEPRECATION** | ~4-5h / 5 phases | Founder priority restoration | Mini-SPEC at `spec/active/V07E_INVOICE_DEPRECATION.md` — drafted S.239, OUTBOUND-interface fix shipped (rewrite deleted), deeper deprecation waits. Drops invoice as a distinct product (~95% overlap with payment links). |
-| 13 | **D3** | **V07F_FORWARD_MAP (Agentic Commerce Phase 1)** | ~10-14 calendar days | D-1 lock + post-v0.7e Phase 4 close | 4 streams in `spec/active/V07F_FORWARD_MAP.md`: Stream A (single-vendor `pay_api` revival in web-v2 — note this is DIFFERENT from MCP-1, which is external-LLM-via-MCP; Stream A is Audric-chat-internal MPP buying), Stream B (delete old `pay_api`), Stream C (marketing/legal/admin migration — substantially DONE post-S.253), Stream D (archive ritual — DONE post-S.253). Stream A is the remaining unsolved piece. |
+| 13 | **D3** | **V07F_FORWARD_MAP (Agentic Commerce Phase 1)** | ~10-14 calendar days | D-1 lock + post-v0.7e Phase 4 close | 4 streams in `spec/active/V07F_FORWARD_MAP.md`: Stream A (single-vendor `pay_api` revival in web-v2 — Audric-chat-internal MPP buying; DIFFERENT from the MCP-side pay surface, which has always been live via `t2000_pay` in `@t2000/mcp` per S.256), Stream B (delete old `pay_api` engine code — DONE in S.245), Stream C (marketing/legal/admin migration — substantially DONE post-S.253), Stream D (archive ritual — DONE post-S.253). Stream A is the remaining unsolved piece. |
 | 14 | **D4** | **v0.7g Agentic Commerce Phase 2-4** (multi-vendor + delivery + creator + escrow) | ~13-17d | Post-v0.7f | Audric Store launch dependency. |
 
 ---
@@ -63,8 +63,8 @@
 |---|---|---|
 | **v0.7c Chat Shell Fork** | ✅ CLOSED — production-stable since 2026-05-20 (chat-flip + DNS-cutover both complete) | `t2000/spec/active/BENEFITS_SPEC_v07c.md` |
 | **v0.7d MemWal** | ✅ CLOSED — Phase 7 done 2026-05-21 ~20:00 AEST per founder | `t2000/spec/active/BENEFITS_SPEC_v07d.md` (now has S.255 scope-compression note at top — E-1 deletion targets mostly closed-by-deletion via S.253/S.254) |
-| **v0.7e Tier C Migration** | ✅ Phase 5 CLOSED S.253 (`apps/web` deleted) — D-1 ratify still pending for any future `pay_api` revival (now handled via MCP-1 + V07F Stream A) | `t2000/spec/active/BENEFITS_SPEC_v07e.md` |
-| **v0.7f Forward Map** | 📋 DOCUMENTED — Stream C + D substantially shipped via S.253; Streams A + B remain (MCP-1 + V07F-A) | `t2000/spec/active/V07F_FORWARD_MAP.md` |
+| **v0.7e Tier C Migration** | ✅ Phase 5 CLOSED S.253 (`apps/web` deleted) — D-1 ratify still pending for any future Audric-chat-side `pay_api` revival (handled via V07F Stream A; MCP-side pay was never lost — see S.256) | `t2000/spec/active/BENEFITS_SPEC_v07e.md` |
+| **v0.7f Forward Map** | 📋 DOCUMENTED — Stream B done (S.245), Stream C + D substantially shipped via S.253; Stream A remains. (MCP-side pay was never an open stream — see S.256.) | `t2000/spec/active/V07F_FORWARD_MAP.md` |
 | **SPEC 30 Cross-Repo Security** | Phase 1A + 1B SHIPPED; Phase 2-10 partially closed via v0.7d Block C + S.227 carve-out + S.253 archive; remaining = SPEC 31 candidate (CSP polish) | `t2000/spec/active/shipping/SPEC_30_CROSS_REPO_SECURITY_REVIEW.md` |
 | **SPEC 31 CSP Polish** | 📋 SCOPED — agent-only ready-to-ship; founder triage required to lock | `t2000/spec/active/SPEC_31_SCOPING.md` |
 | **V07E_INVOICE_DEPRECATION** | 📋 DRAFTED — DEFERRED S.240; outbound fix shipped S.239; deeper work waits on founder priority | `t2000/spec/active/V07E_INVOICE_DEPRECATION.md` |
@@ -98,7 +98,7 @@
 
 **Tables permanently gone (v0.7d Block A — S.221):** `UserMemory`, `UserFinancialProfile`. Replaced by MemWal vector recall + MemWal `analyze` extraction.
 
-**Engine tools permanently gone (v2.12.0 — S.245):** `pay_api`, `mpp_services`. Returns via MCP-1 + V07F Stream A (see backlog above).
+**Engine tools permanently gone (v2.12.0 — S.245):** `pay_api`, `mpp_services`. The MCP package retains its own standalone `t2000_pay` + `t2000_services` (always did — see S.256); for Audric-chat-internal MPP buying, V07F Stream A is the remaining work.
 
 ---
 
@@ -130,7 +130,7 @@ Concrete examples of what's gone (so you don't try to "fix" them):
 - `UserMemory` / `UserFinancialProfile` Prisma models — DELETED S.221. Don't query them.
 - `LinkedWallet` / `WatchAddress` / `ConversationLog` Prisma models — DELETED S.254. Don't query them.
 - `UserPreferences.contacts` column — DELETED S.254. Contact persistence is gone end-to-end (web-v2 contacts UI deleted S.243).
-- `pay_api` / `mpp_services` engine tools — DELETED S.245. To re-add for external LLM use → MCP-1 (NOT the engine).
+- `pay_api` / `mpp_services` engine tools — DELETED S.245. External-LLM use (Claude Desktop / Cursor / Codex CLI) is already covered by `t2000_pay` + `t2000_services` in `@t2000/mcp` (always was — see S.256); Audric-chat-internal use needs V07F Stream A.
 - `harness-metrics.ts` / `engine-context.ts` helper modules — DELETED with apps/web. TurnMetrics + SessionUsage now write inline in `apps/web-v2/app/api/chat/route.ts`.
 - `init-engine-stores.ts` cache-injection pattern — DELETED with apps/web. Web-v2 uses per-request BlockVision cache (`portfolioCache: new Map()`) + canonical `getPortfolio()` 60s in-process cache. The DefiCacheStore / WalletCacheStore / NaviCacheStore injection pattern is dormant.
 - `/api/internal/*` routes (profile-inference, memory-extraction, chain-memory, payments) — DELETED across S.221 + S.229. No internal-key routing.
@@ -143,7 +143,7 @@ If you add `no-restricted-syntax` / `no-restricted-imports` / `no-restricted-pro
 
 S.255 swept all 16 rules to fix `apps/web/` → `apps/web-v2/` paths and marked obsolete-architecture rules `[STALE]`. Specifically:
 
-- `engine-context-assembly.mdc` is `[STALE]` — current canonical is t2000's `memory-injection-architecture.mdc`.
+- `engine-context-assembly.mdc` was deleted in S.256 follow-up and replaced with `audric-context-assembly.mdc` (audric-side content builders, ~100 lines, points to t2000's `memory-injection-architecture.mdc` for the engine-side wiring contract). New companion rule `web-v2-chat-route-architecture.mdc` (~191 lines) maps the 2,989-line chat route + AI SDK v6 conventions + AI Gateway usage.
 - `audric-canonical-portfolio.mdc` — the cache-injection example block is `[STALE]`; the canonical-fetcher principle still binds.
 - `prisma-models-overview.mdc` — fully rewritten for the 11-model post-S.254 schema.
 
@@ -217,7 +217,7 @@ If you see a doc saying "5 systems," it's stale. S.221 + S.222 + S.254 swept t20
 ## ⏭️ TL;DR for next agent
 
 1. **Read this file** + **read S.255 in `t2000/audric-build-tracker.md`**. Together they're the current state.
-2. **Ask the founder what's next.** Most likely: (a) ship MCP-1 (`pay_api` MCP reinstatement) — ~½d, lowest gate; (b) advance MPP-1 (founder-owned suimpp/MPP/gateway work); (c) lock SPEC 31 (CSP polish); (d) close H3.2/H3.4/H3.5 contact-cleanup loose ends.
+2. **Ask the founder what's next.** Most likely: (a) advance MPP-1 (founder-owned suimpp/MPP/gateway work); (b) lock SPEC 31 (CSP polish, agent-only ready-to-ship pending founder triage); (c) close H3.2/H3.4/H3.5 contact-cleanup loose ends. **MCP-1 is closed (see S.256) — `t2000_pay` + `t2000_services` were never removed from `@t2000/mcp`; the S.255 audit framing was wrong.**
 3. **Before ANY code touch:** verify the surface still exists. S.253 + S.254 deleted a lot. The pattern is `rg "<file-or-table>" apps/web-v2/` (NOT `apps/web/` — that directory is gone).
 4. **OPS-1 is urgent.** The old Vercel project is still firing crons against prod Neon. 5-minute dashboard click. Nudge the founder if they haven't done it.
 5. **Don't trust SPEC docs that pre-date S.253 without an audit.** Many reference deleted paths. The HANDOFF here is the freshest narrative.

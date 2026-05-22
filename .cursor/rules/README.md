@@ -20,14 +20,15 @@ Cursor IDE rules, auto-applied by Cursor via its MDC convention (`description`, 
 | File | Scope |
 |------|---------|
 | `audric-transaction-flow.mdc` | `apps/web-v2/**/*.{ts,tsx}` — sponsored tx vs SDK direct, attemptId resume |
-| `write-tool-pending-action.mdc` | `apps/web-v2/app/page.tsx`, `app/api/engine/**`, `app/api/transactions/**`, `components/engine/cards/**` — pending_action protocol |
-| `engine-context-assembly.mdc` | `apps/web-v2/lib/engine/**`, `app/api/engine/**` — silent context layers |
+| `write-tool-pending-action.mdc` | `apps/web-v2/app/page.tsx`, `app/api/chat/route.ts`, `app/api/transactions/**`, `components/engine/cards/**` — pending_action protocol |
+| `web-v2-chat-route-architecture.mdc` | `app/api/chat/route.ts`, `lib/audric/**` — chat route phase map + AI SDK v6 conventions + HITL resume protocol + Vercel AI Gateway |
+| `audric-context-assembly.mdc` | `lib/audric/system-prompt.ts`, `lib/audric/financial-context.ts`, `lib/audric/memwal-*.ts`, `lib/audric/moat-context.ts` — content builders that feed each system-prompt layer (companion to `t2000/memory-injection-architecture.mdc`) |
 | `zklogin-passport-flow.mdc` | `lib/zklogin.ts`, `app/auth/**`, `app/api/user/**` — Passport flow + ephemeral keys |
-| `prisma-models-overview.mdc` | `prisma/**`, `lib/prisma.ts`, `app/api/**`, `lib/engine/**` — 16 models, write sites |
+| `prisma-models-overview.mdc` | `prisma/**`, `lib/prisma.ts`, `app/api/**` — 11 models post-S.254, write sites |
 | `audric-pay-flow.mdc` | `app/api/payments/**`, `app/pay/**`, `components/**Pay*.tsx`, `components/**Receive*.tsx` — Audric Pay |
 | `audric-finance-flow.mdc` | `components/engine/cards/**`, `lib/portfolio.ts`, `lib/rates.ts` — save/borrow/swap/charts |
-| `cron-job-architecture.mdc` | `app/api/internal/**`, `lib/internal-auth.ts` — t2000 cron contract |
-| `metrics-and-monitoring.mdc` | `lib/engine/harness-metrics.ts`, `lib/engine/log-session-usage.ts`, `app/api/engine/**` |
+| `cron-job-architecture.mdc` | `app/api/cron/**`, `lib/jobs/**` — 5 web-v2 crons + auth contract |
+| `metrics-and-monitoring.mdc` | `app/api/chat/route.ts`, `lib/audric/telemetry-integration.ts` — TurnMetrics + SessionUsage write sites (inline post-S.255) |
 
 ## Relationship to `CLAUDE.md` and `.claude/rules/`
 

@@ -106,9 +106,10 @@ audric/
 | `.cursor/rules/env-validation-gate.mdc` | The S.25 lesson — env via Zod, never raw `process.env` | Wiring a new env var |
 | `.cursor/rules/zklogin-passport-flow.mdc` | The four pillars + ephemeral key lifecycle + MaxEpoch math | zkLogin / Passport changes |
 | `.cursor/rules/safeguards-defense-in-depth.mdc` | Six layers of safety between user intent and on-chain action | Any change to a safety check |
-| `.cursor/rules/prisma-models-overview.mdc` | What each of the 16 models is for, what owns it | Schema migrations / new tables |
+| `.cursor/rules/prisma-models-overview.mdc` | What each of the 11 models is for (post-S.254), what owns it | Schema migrations / new tables |
 | `.cursor/rules/write-tool-pending-action.mdc` | The pending_action → confirm → resume protocol | New write tool / receipt bug |
-| `.cursor/rules/engine-context-assembly.mdc` | What goes into the system prompt each turn (silent context) | Adding/changing context layers |
+| `.cursor/rules/web-v2-chat-route-architecture.mdc` | Phase map of `apps/web-v2/app/api/chat/route.ts` (the 2,989-line nervous system) + AI SDK v6 conventions + Vercel AI Gateway + HITL inline resume | Touching the chat route or any `lib/audric/*` helper |
+| `.cursor/rules/audric-context-assembly.mdc` | The audric-side content builders that feed each system-prompt layer (companion to t2000's `memory-injection-architecture.mdc`) | Adding/changing context layers |
 | `.cursor/rules/audric-pay-flow.mdc` | send / payment-link / invoice / QR end-to-end | Any Audric Pay change |
 | `.cursor/rules/audric-finance-flow.mdc` | save / borrow / withdraw / swap / charts end-to-end | Any Audric Finance change |
 | `.cursor/rules/cron-job-architecture.mdc` | t2000 cron → audric internal API contract + sharding | Cron / batch processing |
