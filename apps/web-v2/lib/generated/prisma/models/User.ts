@@ -20,28 +20,14 @@ export type UserModel = runtime.Types.Result.DefaultSelection<Prisma.$UserPayloa
 
 export type AggregateUser = {
   _count: UserCountAggregateOutputType | null
-  _avg: UserAvgAggregateOutputType | null
-  _sum: UserSumAggregateOutputType | null
   _min: UserMinAggregateOutputType | null
   _max: UserMaxAggregateOutputType | null
-}
-
-export type UserAvgAggregateOutputType = {
-  timezoneOffset: number | null
-}
-
-export type UserSumAggregateOutputType = {
-  timezoneOffset: number | null
 }
 
 export type UserMinAggregateOutputType = {
   id: string | null
   suiAddress: string | null
-  email: string | null
-  emailVerified: boolean | null
   displayName: string | null
-  timezoneOffset: number | null
-  tosAcceptedAt: Date | null
   createdAt: Date | null
   updatedAt: Date | null
   username: string | null
@@ -53,11 +39,7 @@ export type UserMinAggregateOutputType = {
 export type UserMaxAggregateOutputType = {
   id: string | null
   suiAddress: string | null
-  email: string | null
-  emailVerified: boolean | null
   displayName: string | null
-  timezoneOffset: number | null
-  tosAcceptedAt: Date | null
   createdAt: Date | null
   updatedAt: Date | null
   username: string | null
@@ -69,11 +51,7 @@ export type UserMaxAggregateOutputType = {
 export type UserCountAggregateOutputType = {
   id: number
   suiAddress: number
-  email: number
-  emailVerified: number
   displayName: number
-  timezoneOffset: number
-  tosAcceptedAt: number
   createdAt: number
   updatedAt: number
   username: number
@@ -84,22 +62,10 @@ export type UserCountAggregateOutputType = {
 }
 
 
-export type UserAvgAggregateInputType = {
-  timezoneOffset?: true
-}
-
-export type UserSumAggregateInputType = {
-  timezoneOffset?: true
-}
-
 export type UserMinAggregateInputType = {
   id?: true
   suiAddress?: true
-  email?: true
-  emailVerified?: true
   displayName?: true
-  timezoneOffset?: true
-  tosAcceptedAt?: true
   createdAt?: true
   updatedAt?: true
   username?: true
@@ -111,11 +77,7 @@ export type UserMinAggregateInputType = {
 export type UserMaxAggregateInputType = {
   id?: true
   suiAddress?: true
-  email?: true
-  emailVerified?: true
   displayName?: true
-  timezoneOffset?: true
-  tosAcceptedAt?: true
   createdAt?: true
   updatedAt?: true
   username?: true
@@ -127,11 +89,7 @@ export type UserMaxAggregateInputType = {
 export type UserCountAggregateInputType = {
   id?: true
   suiAddress?: true
-  email?: true
-  emailVerified?: true
   displayName?: true
-  timezoneOffset?: true
-  tosAcceptedAt?: true
   createdAt?: true
   updatedAt?: true
   username?: true
@@ -179,18 +137,6 @@ export type UserAggregateArgs<ExtArgs extends runtime.Types.Extensions.InternalA
   /**
    * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
    * 
-   * Select which fields to average
-  **/
-  _avg?: UserAvgAggregateInputType
-  /**
-   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-   * 
-   * Select which fields to sum
-  **/
-  _sum?: UserSumAggregateInputType
-  /**
-   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-   * 
    * Select which fields to find the minimum value
   **/
   _min?: UserMinAggregateInputType
@@ -221,8 +167,6 @@ export type UserGroupByArgs<ExtArgs extends runtime.Types.Extensions.InternalArg
   take?: number
   skip?: number
   _count?: UserCountAggregateInputType | true
-  _avg?: UserAvgAggregateInputType
-  _sum?: UserSumAggregateInputType
   _min?: UserMinAggregateInputType
   _max?: UserMaxAggregateInputType
 }
@@ -230,11 +174,7 @@ export type UserGroupByArgs<ExtArgs extends runtime.Types.Extensions.InternalArg
 export type UserGroupByOutputType = {
   id: string
   suiAddress: string
-  email: string | null
-  emailVerified: boolean
   displayName: string | null
-  timezoneOffset: number
-  tosAcceptedAt: Date | null
   createdAt: Date
   updatedAt: Date
   username: string | null
@@ -242,8 +182,6 @@ export type UserGroupByOutputType = {
   usernameLastChangedAt: Date | null
   usernameMintTxDigest: string | null
   _count: UserCountAggregateOutputType | null
-  _avg: UserAvgAggregateOutputType | null
-  _sum: UserSumAggregateOutputType | null
   _min: UserMinAggregateOutputType | null
   _max: UserMaxAggregateOutputType | null
 }
@@ -269,11 +207,7 @@ export type UserWhereInput = {
   NOT?: Prisma.UserWhereInput | Prisma.UserWhereInput[]
   id?: Prisma.StringFilter<"User"> | string
   suiAddress?: Prisma.StringFilter<"User"> | string
-  email?: Prisma.StringNullableFilter<"User"> | string | null
-  emailVerified?: Prisma.BoolFilter<"User"> | boolean
   displayName?: Prisma.StringNullableFilter<"User"> | string | null
-  timezoneOffset?: Prisma.IntFilter<"User"> | number
-  tosAcceptedAt?: Prisma.DateTimeNullableFilter<"User"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"User"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"User"> | Date | string
   username?: Prisma.StringNullableFilter<"User"> | string | null
@@ -290,11 +224,7 @@ export type UserWhereInput = {
 export type UserOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   suiAddress?: Prisma.SortOrder
-  email?: Prisma.SortOrderInput | Prisma.SortOrder
-  emailVerified?: Prisma.SortOrder
   displayName?: Prisma.SortOrderInput | Prisma.SortOrder
-  timezoneOffset?: Prisma.SortOrder
-  tosAcceptedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   username?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -311,15 +241,11 @@ export type UserOrderByWithRelationInput = {
 export type UserWhereUniqueInput = Prisma.AtLeast<{
   id?: string
   suiAddress?: string
-  email?: string
   username?: string
   AND?: Prisma.UserWhereInput | Prisma.UserWhereInput[]
   OR?: Prisma.UserWhereInput[]
   NOT?: Prisma.UserWhereInput | Prisma.UserWhereInput[]
-  emailVerified?: Prisma.BoolFilter<"User"> | boolean
   displayName?: Prisma.StringNullableFilter<"User"> | string | null
-  timezoneOffset?: Prisma.IntFilter<"User"> | number
-  tosAcceptedAt?: Prisma.DateTimeNullableFilter<"User"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"User"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"User"> | Date | string
   usernameClaimedAt?: Prisma.DateTimeNullableFilter<"User"> | Date | string | null
@@ -330,16 +256,12 @@ export type UserWhereUniqueInput = Prisma.AtLeast<{
   payments?: Prisma.PaymentListRelationFilter
   portfolioSnapshots?: Prisma.PortfolioSnapshotListRelationFilter
   chats?: Prisma.ChatListRelationFilter
-}, "id" | "suiAddress" | "email" | "username">
+}, "id" | "suiAddress" | "username">
 
 export type UserOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   suiAddress?: Prisma.SortOrder
-  email?: Prisma.SortOrderInput | Prisma.SortOrder
-  emailVerified?: Prisma.SortOrder
   displayName?: Prisma.SortOrderInput | Prisma.SortOrder
-  timezoneOffset?: Prisma.SortOrder
-  tosAcceptedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   username?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -347,10 +269,8 @@ export type UserOrderByWithAggregationInput = {
   usernameLastChangedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   usernameMintTxDigest?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.UserCountOrderByAggregateInput
-  _avg?: Prisma.UserAvgOrderByAggregateInput
   _max?: Prisma.UserMaxOrderByAggregateInput
   _min?: Prisma.UserMinOrderByAggregateInput
-  _sum?: Prisma.UserSumOrderByAggregateInput
 }
 
 export type UserScalarWhereWithAggregatesInput = {
@@ -359,11 +279,7 @@ export type UserScalarWhereWithAggregatesInput = {
   NOT?: Prisma.UserScalarWhereWithAggregatesInput | Prisma.UserScalarWhereWithAggregatesInput[]
   id?: Prisma.StringWithAggregatesFilter<"User"> | string
   suiAddress?: Prisma.StringWithAggregatesFilter<"User"> | string
-  email?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
-  emailVerified?: Prisma.BoolWithAggregatesFilter<"User"> | boolean
   displayName?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
-  timezoneOffset?: Prisma.IntWithAggregatesFilter<"User"> | number
-  tosAcceptedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"User"> | Date | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"User"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"User"> | Date | string
   username?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
@@ -375,11 +291,7 @@ export type UserScalarWhereWithAggregatesInput = {
 export type UserCreateInput = {
   id?: string
   suiAddress: string
-  email?: string | null
-  emailVerified?: boolean
   displayName?: string | null
-  timezoneOffset?: number
-  tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   username?: string | null
@@ -396,11 +308,7 @@ export type UserCreateInput = {
 export type UserUncheckedCreateInput = {
   id?: string
   suiAddress: string
-  email?: string | null
-  emailVerified?: boolean
   displayName?: string | null
-  timezoneOffset?: number
-  tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   username?: string | null
@@ -417,11 +325,7 @@ export type UserUncheckedCreateInput = {
 export type UserUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   suiAddress?: Prisma.StringFieldUpdateOperationsInput | string
-  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  timezoneOffset?: Prisma.IntFieldUpdateOperationsInput | number
-  tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -438,11 +342,7 @@ export type UserUpdateInput = {
 export type UserUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   suiAddress?: Prisma.StringFieldUpdateOperationsInput | string
-  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  timezoneOffset?: Prisma.IntFieldUpdateOperationsInput | number
-  tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -459,11 +359,7 @@ export type UserUncheckedUpdateInput = {
 export type UserCreateManyInput = {
   id?: string
   suiAddress: string
-  email?: string | null
-  emailVerified?: boolean
   displayName?: string | null
-  timezoneOffset?: number
-  tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   username?: string | null
@@ -475,11 +371,7 @@ export type UserCreateManyInput = {
 export type UserUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   suiAddress?: Prisma.StringFieldUpdateOperationsInput | string
-  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  timezoneOffset?: Prisma.IntFieldUpdateOperationsInput | number
-  tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -491,11 +383,7 @@ export type UserUpdateManyMutationInput = {
 export type UserUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   suiAddress?: Prisma.StringFieldUpdateOperationsInput | string
-  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  timezoneOffset?: Prisma.IntFieldUpdateOperationsInput | number
-  tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -507,11 +395,7 @@ export type UserUncheckedUpdateManyInput = {
 export type UserCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   suiAddress?: Prisma.SortOrder
-  email?: Prisma.SortOrder
-  emailVerified?: Prisma.SortOrder
   displayName?: Prisma.SortOrder
-  timezoneOffset?: Prisma.SortOrder
-  tosAcceptedAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   username?: Prisma.SortOrder
@@ -520,18 +404,10 @@ export type UserCountOrderByAggregateInput = {
   usernameMintTxDigest?: Prisma.SortOrder
 }
 
-export type UserAvgOrderByAggregateInput = {
-  timezoneOffset?: Prisma.SortOrder
-}
-
 export type UserMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   suiAddress?: Prisma.SortOrder
-  email?: Prisma.SortOrder
-  emailVerified?: Prisma.SortOrder
   displayName?: Prisma.SortOrder
-  timezoneOffset?: Prisma.SortOrder
-  tosAcceptedAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   username?: Prisma.SortOrder
@@ -543,21 +419,13 @@ export type UserMaxOrderByAggregateInput = {
 export type UserMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
   suiAddress?: Prisma.SortOrder
-  email?: Prisma.SortOrder
-  emailVerified?: Prisma.SortOrder
   displayName?: Prisma.SortOrder
-  timezoneOffset?: Prisma.SortOrder
-  tosAcceptedAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   username?: Prisma.SortOrder
   usernameClaimedAt?: Prisma.SortOrder
   usernameLastChangedAt?: Prisma.SortOrder
   usernameMintTxDigest?: Prisma.SortOrder
-}
-
-export type UserSumOrderByAggregateInput = {
-  timezoneOffset?: Prisma.SortOrder
 }
 
 export type UserNullableScalarRelationFilter = {
@@ -578,24 +446,12 @@ export type NullableStringFieldUpdateOperationsInput = {
   set?: string | null
 }
 
-export type BoolFieldUpdateOperationsInput = {
-  set?: boolean
-}
-
-export type IntFieldUpdateOperationsInput = {
-  set?: number
-  increment?: number
-  decrement?: number
-  multiply?: number
-  divide?: number
+export type DateTimeFieldUpdateOperationsInput = {
+  set?: Date | string
 }
 
 export type NullableDateTimeFieldUpdateOperationsInput = {
   set?: Date | string | null
-}
-
-export type DateTimeFieldUpdateOperationsInput = {
-  set?: Date | string
 }
 
 export type UserCreateNestedOneWithoutPreferencesInput = {
@@ -673,11 +529,7 @@ export type UserUpdateOneRequiredWithoutChatsNestedInput = {
 export type UserCreateWithoutPreferencesInput = {
   id?: string
   suiAddress: string
-  email?: string | null
-  emailVerified?: boolean
   displayName?: string | null
-  timezoneOffset?: number
-  tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   username?: string | null
@@ -693,11 +545,7 @@ export type UserCreateWithoutPreferencesInput = {
 export type UserUncheckedCreateWithoutPreferencesInput = {
   id?: string
   suiAddress: string
-  email?: string | null
-  emailVerified?: boolean
   displayName?: string | null
-  timezoneOffset?: number
-  tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   username?: string | null
@@ -729,11 +577,7 @@ export type UserUpdateToOneWithWhereWithoutPreferencesInput = {
 export type UserUpdateWithoutPreferencesInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   suiAddress?: Prisma.StringFieldUpdateOperationsInput | string
-  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  timezoneOffset?: Prisma.IntFieldUpdateOperationsInput | number
-  tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -749,11 +593,7 @@ export type UserUpdateWithoutPreferencesInput = {
 export type UserUncheckedUpdateWithoutPreferencesInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   suiAddress?: Prisma.StringFieldUpdateOperationsInput | string
-  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  timezoneOffset?: Prisma.IntFieldUpdateOperationsInput | number
-  tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -769,11 +609,7 @@ export type UserUncheckedUpdateWithoutPreferencesInput = {
 export type UserCreateWithoutAdviceLogsInput = {
   id?: string
   suiAddress: string
-  email?: string | null
-  emailVerified?: boolean
   displayName?: string | null
-  timezoneOffset?: number
-  tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   username?: string | null
@@ -789,11 +625,7 @@ export type UserCreateWithoutAdviceLogsInput = {
 export type UserUncheckedCreateWithoutAdviceLogsInput = {
   id?: string
   suiAddress: string
-  email?: string | null
-  emailVerified?: boolean
   displayName?: string | null
-  timezoneOffset?: number
-  tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   username?: string | null
@@ -825,11 +657,7 @@ export type UserUpdateToOneWithWhereWithoutAdviceLogsInput = {
 export type UserUpdateWithoutAdviceLogsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   suiAddress?: Prisma.StringFieldUpdateOperationsInput | string
-  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  timezoneOffset?: Prisma.IntFieldUpdateOperationsInput | number
-  tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -845,11 +673,7 @@ export type UserUpdateWithoutAdviceLogsInput = {
 export type UserUncheckedUpdateWithoutAdviceLogsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   suiAddress?: Prisma.StringFieldUpdateOperationsInput | string
-  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  timezoneOffset?: Prisma.IntFieldUpdateOperationsInput | number
-  tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -865,11 +689,7 @@ export type UserUncheckedUpdateWithoutAdviceLogsInput = {
 export type UserCreateWithoutPaymentsInput = {
   id?: string
   suiAddress: string
-  email?: string | null
-  emailVerified?: boolean
   displayName?: string | null
-  timezoneOffset?: number
-  tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   username?: string | null
@@ -885,11 +705,7 @@ export type UserCreateWithoutPaymentsInput = {
 export type UserUncheckedCreateWithoutPaymentsInput = {
   id?: string
   suiAddress: string
-  email?: string | null
-  emailVerified?: boolean
   displayName?: string | null
-  timezoneOffset?: number
-  tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   username?: string | null
@@ -921,11 +737,7 @@ export type UserUpdateToOneWithWhereWithoutPaymentsInput = {
 export type UserUpdateWithoutPaymentsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   suiAddress?: Prisma.StringFieldUpdateOperationsInput | string
-  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  timezoneOffset?: Prisma.IntFieldUpdateOperationsInput | number
-  tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -941,11 +753,7 @@ export type UserUpdateWithoutPaymentsInput = {
 export type UserUncheckedUpdateWithoutPaymentsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   suiAddress?: Prisma.StringFieldUpdateOperationsInput | string
-  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  timezoneOffset?: Prisma.IntFieldUpdateOperationsInput | number
-  tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -961,11 +769,7 @@ export type UserUncheckedUpdateWithoutPaymentsInput = {
 export type UserCreateWithoutPortfolioSnapshotsInput = {
   id?: string
   suiAddress: string
-  email?: string | null
-  emailVerified?: boolean
   displayName?: string | null
-  timezoneOffset?: number
-  tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   username?: string | null
@@ -981,11 +785,7 @@ export type UserCreateWithoutPortfolioSnapshotsInput = {
 export type UserUncheckedCreateWithoutPortfolioSnapshotsInput = {
   id?: string
   suiAddress: string
-  email?: string | null
-  emailVerified?: boolean
   displayName?: string | null
-  timezoneOffset?: number
-  tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   username?: string | null
@@ -1017,11 +817,7 @@ export type UserUpdateToOneWithWhereWithoutPortfolioSnapshotsInput = {
 export type UserUpdateWithoutPortfolioSnapshotsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   suiAddress?: Prisma.StringFieldUpdateOperationsInput | string
-  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  timezoneOffset?: Prisma.IntFieldUpdateOperationsInput | number
-  tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1037,11 +833,7 @@ export type UserUpdateWithoutPortfolioSnapshotsInput = {
 export type UserUncheckedUpdateWithoutPortfolioSnapshotsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   suiAddress?: Prisma.StringFieldUpdateOperationsInput | string
-  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  timezoneOffset?: Prisma.IntFieldUpdateOperationsInput | number
-  tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1057,11 +849,7 @@ export type UserUncheckedUpdateWithoutPortfolioSnapshotsInput = {
 export type UserCreateWithoutChatsInput = {
   id?: string
   suiAddress: string
-  email?: string | null
-  emailVerified?: boolean
   displayName?: string | null
-  timezoneOffset?: number
-  tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   username?: string | null
@@ -1077,11 +865,7 @@ export type UserCreateWithoutChatsInput = {
 export type UserUncheckedCreateWithoutChatsInput = {
   id?: string
   suiAddress: string
-  email?: string | null
-  emailVerified?: boolean
   displayName?: string | null
-  timezoneOffset?: number
-  tosAcceptedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   username?: string | null
@@ -1113,11 +897,7 @@ export type UserUpdateToOneWithWhereWithoutChatsInput = {
 export type UserUpdateWithoutChatsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   suiAddress?: Prisma.StringFieldUpdateOperationsInput | string
-  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  timezoneOffset?: Prisma.IntFieldUpdateOperationsInput | number
-  tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1133,11 +913,7 @@ export type UserUpdateWithoutChatsInput = {
 export type UserUncheckedUpdateWithoutChatsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   suiAddress?: Prisma.StringFieldUpdateOperationsInput | string
-  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  timezoneOffset?: Prisma.IntFieldUpdateOperationsInput | number
-  tosAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1211,11 +987,7 @@ export type UserCountOutputTypeCountChatsArgs<ExtArgs extends runtime.Types.Exte
 export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   suiAddress?: boolean
-  email?: boolean
-  emailVerified?: boolean
   displayName?: boolean
-  timezoneOffset?: boolean
-  tosAcceptedAt?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   username?: boolean
@@ -1233,11 +1005,7 @@ export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
 export type UserSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   suiAddress?: boolean
-  email?: boolean
-  emailVerified?: boolean
   displayName?: boolean
-  timezoneOffset?: boolean
-  tosAcceptedAt?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   username?: boolean
@@ -1249,11 +1017,7 @@ export type UserSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensio
 export type UserSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   suiAddress?: boolean
-  email?: boolean
-  emailVerified?: boolean
   displayName?: boolean
-  timezoneOffset?: boolean
-  tosAcceptedAt?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   username?: boolean
@@ -1265,11 +1029,7 @@ export type UserSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensio
 export type UserSelectScalar = {
   id?: boolean
   suiAddress?: boolean
-  email?: boolean
-  emailVerified?: boolean
   displayName?: boolean
-  timezoneOffset?: boolean
-  tosAcceptedAt?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   username?: boolean
@@ -1278,7 +1038,7 @@ export type UserSelectScalar = {
   usernameMintTxDigest?: boolean
 }
 
-export type UserOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "suiAddress" | "email" | "emailVerified" | "displayName" | "timezoneOffset" | "tosAcceptedAt" | "createdAt" | "updatedAt" | "username" | "usernameClaimedAt" | "usernameLastChangedAt" | "usernameMintTxDigest", ExtArgs["result"]["user"]>
+export type UserOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "suiAddress" | "displayName" | "createdAt" | "updatedAt" | "username" | "usernameClaimedAt" | "usernameLastChangedAt" | "usernameMintTxDigest", ExtArgs["result"]["user"]>
 export type UserInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   preferences?: boolean | Prisma.User$preferencesArgs<ExtArgs>
   adviceLogs?: boolean | Prisma.User$adviceLogsArgs<ExtArgs>
@@ -1302,11 +1062,7 @@ export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
     suiAddress: string
-    email: string | null
-    emailVerified: boolean
     displayName: string | null
-    timezoneOffset: number
-    tosAcceptedAt: Date | null
     createdAt: Date
     updatedAt: Date
     username: string | null
@@ -1743,11 +1499,7 @@ export interface Prisma__UserClient<T, Null = never, ExtArgs extends runtime.Typ
 export interface UserFieldRefs {
   readonly id: Prisma.FieldRef<"User", 'String'>
   readonly suiAddress: Prisma.FieldRef<"User", 'String'>
-  readonly email: Prisma.FieldRef<"User", 'String'>
-  readonly emailVerified: Prisma.FieldRef<"User", 'Boolean'>
   readonly displayName: Prisma.FieldRef<"User", 'String'>
-  readonly timezoneOffset: Prisma.FieldRef<"User", 'Int'>
-  readonly tosAcceptedAt: Prisma.FieldRef<"User", 'DateTime'>
   readonly createdAt: Prisma.FieldRef<"User", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"User", 'DateTime'>
   readonly username: Prisma.FieldRef<"User", 'String'>
