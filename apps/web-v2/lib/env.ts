@@ -201,6 +201,26 @@ const serverSchema = z.object({
    * for testing against a non-production MemWal deploy (e.g. local Rust
    * server during dev, or Mysten-hosted staging). */
   MEMWAL_SERVER_URL: optionalString,
+
+  /** Bearer token Vercel injects into the `Authorization` header when
+   * invoking cron paths (`/api/cron/*`). Mirrors apps/web's `CRON_SECRET`
+   * — same Upstash-managed value across both Vercel projects so a single
+   * rotation covers both apps during the v0.7c soak window.
+   *
+   * **Why OPTIONAL (not required):** the only consumer today is the
+   * `financial-context-snapshot` route (S.253 cron port, 2026-05-22).
+   * Local dev / preview builds without crons configured must still boot;
+   * the route's auth check returns 401 when the value is absent which
+   * matches "no Vercel cron has invoked it" semantics. Production deploys
+   * MUST set it — Vercel won't schedule the cron without a matching
+   * env var anyway.
+   *
+   * **Founder ops (Vercel project: `audric-web-v2`):** copy `CRON_SECRET`
+   * verbatim from the `audric-web` project's Vercel env (Production +
+   * Preview). Same value across both projects — both crons race on the
+   * same upserts, idempotent by `userId`, harmless when both run. When
+   * apps/web is archived the web-v2 cron becomes the sole writer. */
+  CRON_SECRET: optionalString,
 });
 
 // ─── Client schema ────────────────────────────────────────────────────
@@ -249,6 +269,7 @@ const runtimeEnv = {
   MEMWAL_PRIVATE_KEY: process.env.MEMWAL_PRIVATE_KEY,
   MEMWAL_ACCOUNT_ID: process.env.MEMWAL_ACCOUNT_ID,
   MEMWAL_SERVER_URL: process.env.MEMWAL_SERVER_URL,
+  CRON_SECRET: process.env.CRON_SECRET,
   NEXT_PUBLIC_GOOGLE_CLIENT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
   NEXT_PUBLIC_ENOKI_API_KEY: process.env.NEXT_PUBLIC_ENOKI_API_KEY,
   NEXT_PUBLIC_SUI_NETWORK: process.env.NEXT_PUBLIC_SUI_NETWORK,

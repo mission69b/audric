@@ -9,5 +9,11 @@
       "source": "/api/user/:path*",
       "destination": "https://audric.ai/api/user/:path*"
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/financial-context-snapshot",
+      "schedule": "30 2 * * *"
+    }
   ]
 }
