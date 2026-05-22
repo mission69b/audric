@@ -107,6 +107,7 @@
  */
 
 import { createAnthropic } from "@ai-sdk/anthropic";
+import { waitUntil } from "@vercel/functions";
 import {
   type AddressPortfolio,
   applyToolFlags,
@@ -1026,20 +1027,27 @@ export async function POST(request: Request) {
   // The sidebar renders a fallback while null, so a slow / failed title
   // generation never blocks the user-perceived stream start.
   if (isNewChat && latestUserTextForEffort.length > 0) {
-    generateChatTitle({
-      chatId,
-      firstUserMessageText: latestUserTextForEffort,
-      // [S.248-followup] Thread owner address so updateChatTitle can
-      // lazy-upsert the Chat row if title gen wins the race against
-      // saveMessages (P1-E moved chat-row creation into saveMessages,
-      // so the row may not exist when title gen finishes).
-      chatOwnerSuiAddress: walletAddress,
-    }).catch((err) => {
-      console.warn(
-        `[audric-chat] title gen kickoff failed for chatId=${chatId}:`,
-        err instanceof Error ? err.message : String(err)
-      );
-    });
+    // [Smoke 2026-05-22 V3 fix] Wrap with `waitUntil` — same Vercel
+    // serverless teardown race as the onFinish writes. Without it the
+    // sidebar shows "New chat" indefinitely (title upsert never lands)
+    // for fast users who refresh before generateChatTitle's ~300-600ms
+    // Anthropic round-trip completes.
+    waitUntil(
+      generateChatTitle({
+        chatId,
+        firstUserMessageText: latestUserTextForEffort,
+        // [S.248-followup] Thread owner address so updateChatTitle can
+        // lazy-upsert the Chat row if title gen wins the race against
+        // saveMessages (P1-E moved chat-row creation into saveMessages,
+        // so the row may not exist when title gen finishes).
+        chatOwnerSuiAddress: walletAddress,
+      }).catch((err) => {
+        console.warn(
+          `[audric-chat] title gen kickoff failed for chatId=${chatId}:`,
+          err instanceof Error ? err.message : String(err)
+        );
+      })
+    );
   }
 
   const sessionWriteCount = countWriteToolsInHistory(body.messages);
@@ -1764,18 +1772,26 @@ export async function POST(request: Request) {
           JSON.stringify(payload.guardsFired)
         ) as Prisma.InputJsonValue,
       };
-      prisma.turnMetrics
-        .create({ data: dataForCreate })
-        .catch((err: unknown) => {
-          // [Phase 5.5 / D-17] Scrub embedded addresses from Prisma error
-          // payloads. Prisma errors generally don't contain row values
-          // but `meta.target` / unique-constraint violations can echo
-          // back input fields including walletAddress.
-          console.error(
-            "[web-v2 audric-chat] TurnMetrics write failed (non-fatal):",
-            redactPII(err)
-          );
-        });
+      // [Smoke 2026-05-22 V3 fix] Wrap with `waitUntil` so Vercel keeps
+      // the function instance alive until the Prisma write commits.
+      // Without it, the serverless instance tears down when the response
+      // stream closes, killing the pending DB promise. Symptom:
+      // intermittent TurnMetrics gaps in NeonDB; co-occurs with the
+      // saveMessages teardown bug fixed below (both share onFinish).
+      waitUntil(
+        prisma.turnMetrics
+          .create({ data: dataForCreate })
+          .catch((err: unknown) => {
+            // [Phase 5.5 / D-17] Scrub embedded addresses from Prisma error
+            // payloads. Prisma errors generally don't contain row values
+            // but `meta.target` / unique-constraint violations can echo
+            // back input fields including walletAddress.
+            console.error(
+              "[web-v2 audric-chat] TurnMetrics write failed (non-fatal):",
+              redactPII(err)
+            );
+          })
+      );
 
       // [Phase 6.5 / SPEC_V07C_PHASE_6_5_CHAT_PARITY A.3 / S.198 — 2026-05-20]
       // SessionUsage row per turn — fire-and-forget. Pre-Phase-6.5 web-v2
@@ -1814,26 +1830,34 @@ export async function POST(request: Request) {
       const sessionUsageToolNames = Array.from(
         new Set(payload.toolsCalled.map((t) => t.name))
       );
-      prisma.sessionUsage
-        .create({
-          data: {
-            address: walletAddress,
-            sessionId,
-            inputTokens: payload.inputTokens,
-            outputTokens: payload.outputTokens,
-            cacheReadTokens: payload.cacheReadTokens,
-            cacheWriteTokens: payload.cacheWriteTokens,
-            costUsd: payload.estimatedCostUsd,
-            toolNames: sessionUsageToolNames,
-            model: DEFAULT_MODEL_USED,
-          },
-        })
-        .catch((err: unknown) => {
-          console.error(
-            "[web-v2 audric-chat] SessionUsage write failed (non-fatal):",
-            redactPII(err)
-          );
-        });
+      // [Smoke 2026-05-22 V3 fix] Wrap with `waitUntil` for the same
+      // reason as TurnMetrics above. Without it the 30-day
+      // financial-context-snapshot cron silently ages out web-v2-only
+      // users (SessionUsage row never lands → cron's
+      // `createdAt >= 30d` filter drops them → `<financial_context>`
+      // block goes empty).
+      waitUntil(
+        prisma.sessionUsage
+          .create({
+            data: {
+              address: walletAddress,
+              sessionId,
+              inputTokens: payload.inputTokens,
+              outputTokens: payload.outputTokens,
+              cacheReadTokens: payload.cacheReadTokens,
+              cacheWriteTokens: payload.cacheWriteTokens,
+              costUsd: payload.estimatedCostUsd,
+              toolNames: sessionUsageToolNames,
+              model: DEFAULT_MODEL_USED,
+            },
+          })
+          .catch((err: unknown) => {
+            console.error(
+              "[web-v2 audric-chat] SessionUsage write failed (non-fatal):",
+              redactPII(err)
+            );
+          })
+      );
 
       // [v0.7e Persistent Chats (S.247) + P0-A + P1-E + P1-F]
       // Persist the conversation. Fire-and-forget: a single failure must
@@ -1900,23 +1924,40 @@ export async function POST(request: Request) {
             messagesToPersist as unknown as ReadonlyArray<{ id?: string; role: string; parts?: ReadonlyArray<unknown> }>
           )
       );
-      saveMessages({
-        messages: messagesToPersist.map((m, i) => ({
-          id: m.id,
-          chatId,
-          role: m.role,
-          parts: m.parts as Prisma.InputJsonValue,
-          attachments: [],
-          createdAt: new Date(persistenceTimestamp + i),
-        })),
-        chatOwnerSuiAddress: walletAddress,
-        visibility: "private",
-      }).catch((err: unknown) => {
-        console.error(
-          `[web-v2 audric-chat] saveMessages failed for chatId=${chatId} (non-fatal):`,
-          redactPII(err)
-        );
-      });
+      // [Smoke 2026-05-22 V3 fix] CRITICAL — wrap with `waitUntil`. The
+      // ghost-permission-card-after-refresh bug (S.248-followup smoke
+      // test #4) was caused by Vercel's serverless function tearing down
+      // the moment the UIMessageStream response closed, killing this
+      // Prisma upsert before it committed. Symptom verified end-to-end:
+      //   - persist-states log fired with state=output-available
+      //   - 24s later load-states returned state=approval-requested
+      //   - identical to turn 0's persist-states snapshot → turn 1's
+      //     upsert never ran.
+      // `waitUntil` is Vercel's canonical pattern for "extend execution
+      // past the response so the side-effect lands." Same pattern used
+      // by the MemWal write callback (`memwal-write-callback.ts` L89-126).
+      // Net effect: user sees the response stream close at normal
+      // latency, but the function instance stays alive until
+      // saveMessages commits.
+      waitUntil(
+        saveMessages({
+          messages: messagesToPersist.map((m, i) => ({
+            id: m.id,
+            chatId,
+            role: m.role,
+            parts: m.parts as Prisma.InputJsonValue,
+            attachments: [],
+            createdAt: new Date(persistenceTimestamp + i),
+          })),
+          chatOwnerSuiAddress: walletAddress,
+          visibility: "private",
+        }).catch((err: unknown) => {
+          console.error(
+            `[web-v2 audric-chat] saveMessages failed for chatId=${chatId} (non-fatal):`,
+            redactPII(err)
+          );
+        })
+      );
     },
   });
 
@@ -2876,7 +2917,12 @@ function estimateContextTokens(
  * same updateMany; Prisma treats it as a noop overwrite.
  */
 function persistResumeOutcome(outcome: ResumeOutcome): void {
-  prisma.turnMetrics
+  // [Smoke 2026-05-22 V3 fix] Wrap with `waitUntil` — same teardown
+  // race as the saveMessages / TurnMetrics writes in onFinish. Without
+  // it, resume-outcome rows in NeonDB intermittently keep their
+  // pending=null defaults instead of confirmed / denied.
+  waitUntil(
+    prisma.turnMetrics
     .updateMany({
       where: { attemptId: outcome.attemptId },
       data: {
@@ -2897,5 +2943,6 @@ function persistResumeOutcome(outcome: ResumeOutcome): void {
         `[web-v2 audric-chat] resume-outcome updateMany failed (non-fatal) attemptId=${outcome.attemptId.slice(0, 8)}:`,
         redactPII(err)
       );
-    });
+    })
+  );
 }
