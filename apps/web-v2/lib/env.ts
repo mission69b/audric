@@ -221,6 +221,34 @@ const serverSchema = z.object({
    * same upserts, idempotent by `userId`, harmless when both run. When
    * apps/web is archived the web-v2 cron becomes the sole writer. */
   CRON_SECRET: optionalString,
+
+  /** Bech32 (`suiprivkey1…`) Ed25519 secret key for the Audric parent NFT
+   * custody address that signs `<label>.audric.sui` leaf-mint and revoke
+   * transactions. Backs `/api/identity/reserve` (mint) and
+   * `/api/identity/change` (revoke + mint). Server-only.
+   *
+   * **Why OPTIONAL (not required):** v0.7e Phase 2 / S.253 ports the two
+   * identity write routes into web-v2 alongside the env contract. Until
+   * the founder copies the secret from the audric-web Vercel project
+   * into audric-web-v2 (Production + Preview), the routes degrade
+   * cleanly — `loadCustodyKeypair()` returns `null` and the route
+   * surfaces a 503 instead of crashing the boot. Mirrors the same
+   * "feature degrades, app boots" pattern used for `UPSTASH_REDIS_REST_URL`
+   * and the MemWal vars. Flip the switch by setting this var; no code
+   * deploy needed.
+   *
+   * **Founder ops (Vercel project: `audric-web-v2`):** copy the secret
+   * verbatim from the audric-web project — same custody address is
+   * shared across both apps during the soak window; post-cutover the
+   * audric-web project archives and the secret lives only in web-v2. */
+  AUDRIC_PARENT_NFT_PRIVATE_KEY: optionalString,
+
+  /** Cap on concurrent in-flight identity-reserve mints (Upstash counter).
+   * Defaults to 5 — the empirical sweet spot from the May 2026 burst-50
+   * load test (25 concurrent → 4% success; 5 concurrent → ~80% success).
+   * Tunable without redeploy via Vercel env. See
+   * `lib/identity/admission-control.ts` for the full rationale. */
+  AUDRIC_MINT_CONCURRENCY_LIMIT: optionalString,
 });
 
 // ─── Client schema ────────────────────────────────────────────────────
@@ -270,6 +298,8 @@ const runtimeEnv = {
   MEMWAL_ACCOUNT_ID: process.env.MEMWAL_ACCOUNT_ID,
   MEMWAL_SERVER_URL: process.env.MEMWAL_SERVER_URL,
   CRON_SECRET: process.env.CRON_SECRET,
+  AUDRIC_PARENT_NFT_PRIVATE_KEY: process.env.AUDRIC_PARENT_NFT_PRIVATE_KEY,
+  AUDRIC_MINT_CONCURRENCY_LIMIT: process.env.AUDRIC_MINT_CONCURRENCY_LIMIT,
   NEXT_PUBLIC_GOOGLE_CLIENT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
   NEXT_PUBLIC_ENOKI_API_KEY: process.env.NEXT_PUBLIC_ENOKI_API_KEY,
   NEXT_PUBLIC_SUI_NETWORK: process.env.NEXT_PUBLIC_SUI_NETWORK,

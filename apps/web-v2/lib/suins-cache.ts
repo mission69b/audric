@@ -1,22 +1,26 @@
-import { resolveSuinsViaRpc } from "@t2000/engine";
+import { getTelemetrySink, resolveSuinsViaRpc } from "@t2000/engine";
+import { upstash } from "@/lib/upstash";
 
 export { SuinsRpcError } from "@t2000/engine";
 
 /**
- * Per-process cache for SuiNS handle → address resolution.
+ * Cross-Lambda cache for SuiNS handle → address resolution.
  *
- * ## v0.7c Session 3 lean port
+ * ## Two-tier port lineage
  *
- * Ported from `audric/apps/web/lib/suins-cache.ts` (309 LoC) for the Phase 6
- * Audric Store rebuild. The in-memory store is sufficient for web-v2's
- * Session 3 surface (the public profile page reads SuiNS; it never mints
- * or revokes). The Upstash store + `invalidateAndWarmSuins` /
- * `invalidateRevokedSuins` write-through helpers stay in apps/web — the
- * `/api/identity/*` routes that mutate SuiNS state live there until v0.7e.
+ * - v0.7c Session 3 (initial port): in-memory store only, for the public
+ *   profile-page read path that never mints / revokes.
+ * - v0.7e Phase 2 / S.253 (this revision, 2026-05-22): Upstash store +
+ *   write-through helpers lifted across with `/api/identity/reserve` and
+ *   `/api/identity/change`. Web-v2 is now the canonical writer.
  *
- * If a later session ports the identity write routes into web-v2, lift the
- * Upstash branch from apps/web with the `@upstash/redis` dep at the same
- * time.
+ * The Upstash store is opt-in by env: `lib/upstash.ts` exports `null`
+ * when Upstash REST vars are absent, in which case `getDefaultSuinsCacheStore`
+ * falls back to the in-memory store. Local dev / preview deploys boot
+ * without Upstash and degrade to per-Lambda caching (same behaviour as
+ * the original Session 3 port). Production audric-web-v2 has the same
+ * Upstash creds as audric-web, so the store is identical to apps/web
+ * post-S.253.
  *
  * ## Cache policy (unchanged from apps/web)
  *
@@ -32,6 +36,7 @@ export { SuinsRpcError } from "@t2000/engine";
 
 const POSITIVE_TTL_SEC = 5 * 60;
 const NEGATIVE_TTL_SEC = 10;
+const PREFIX = "suins:";
 
 interface CacheEntry {
   cachedAt: number;
@@ -43,6 +48,77 @@ export interface SuinsCacheStore {
   delete(handle: string): Promise<void>;
   get(handle: string): Promise<CacheEntry | null>;
   set(handle: string, entry: CacheEntry, ttlSec: number): Promise<void>;
+}
+
+/**
+ * Production store backed by Upstash Redis. Shared across every Lambda in
+ * the fleet so cold-start instances hit a warm cache instead of paying the
+ * full SuiNS RPC round-trip.
+ *
+ * [S.253] Lifted verbatim from apps/web/lib/suins-cache.ts during the
+ * v0.7e Phase 2 cutover. Tagged with `getTelemetrySink` so audric ops
+ * dashboards see consistent `upstash.requests` counters across both apps
+ * during the soak window.
+ */
+export class UpstashSuinsCacheStore implements SuinsCacheStore {
+  private readonly redis: NonNullable<typeof upstash>;
+  private readonly prefix: string;
+
+  constructor(opts: { redis: NonNullable<typeof upstash>; prefix?: string }) {
+    this.redis = opts.redis;
+    this.prefix = opts.prefix ?? PREFIX;
+  }
+
+  private k(handle: string): string {
+    return `${this.prefix}${handle}`;
+  }
+
+  async get(handle: string): Promise<CacheEntry | null> {
+    getTelemetrySink().counter("upstash.requests", {
+      op: "get",
+      prefix: PREFIX,
+    });
+    const value = await this.redis.get<CacheEntry>(this.k(handle));
+    return value ?? null;
+  }
+
+  async set(handle: string, entry: CacheEntry, ttlSec: number): Promise<void> {
+    getTelemetrySink().counter("upstash.requests", {
+      op: "set",
+      prefix: PREFIX,
+    });
+    await this.redis.set(this.k(handle), entry, { ex: ttlSec });
+  }
+
+  async delete(handle: string): Promise<void> {
+    getTelemetrySink().counter("upstash.requests", {
+      op: "del",
+      prefix: PREFIX,
+    });
+    await this.redis.del(this.k(handle));
+  }
+
+  async clear(): Promise<void> {
+    let cursor: string | number = 0;
+    do {
+      getTelemetrySink().counter("upstash.requests", {
+        op: "scan",
+        prefix: PREFIX,
+      });
+      const result: [string | number, string[]] = await this.redis.scan(
+        cursor,
+        {
+          match: `${this.prefix}*`,
+          count: 100,
+        }
+      );
+      const [next, keys] = result;
+      if (keys.length > 0) {
+        await this.redis.del(...keys);
+      }
+      cursor = next;
+    } while (cursor !== 0 && cursor !== "0");
+  }
 }
 
 class InMemorySuinsCacheStore implements SuinsCacheStore {
@@ -80,7 +156,14 @@ class InMemorySuinsCacheStore implements SuinsCacheStore {
   }
 }
 
-let activeStore: SuinsCacheStore = new InMemorySuinsCacheStore();
+function getDefaultSuinsCacheStore(): SuinsCacheStore {
+  if (upstash) {
+    return new UpstashSuinsCacheStore({ redis: upstash });
+  }
+  return new InMemorySuinsCacheStore();
+}
+
+let activeStore: SuinsCacheStore = getDefaultSuinsCacheStore();
 
 export function setSuinsCacheStore(store: SuinsCacheStore): void {
   activeStore = store;
@@ -91,7 +174,7 @@ export function getSuinsCacheStore(): SuinsCacheStore {
 }
 
 export function resetSuinsCacheStore(): void {
-  activeStore = new InMemorySuinsCacheStore();
+  activeStore = getDefaultSuinsCacheStore();
 }
 
 /**
@@ -141,4 +224,69 @@ export async function resolveSuinsCached(
   }
 
   return result;
+}
+
+/**
+ * Write-through cache update for the freshly-minted positive resolution.
+ *
+ * Call this from any route that just MUTATED on-chain SuiNS state for a
+ * given handle (currently /api/identity/reserve and /api/identity/change).
+ *
+ * Pure delete-on-mint would force the next reader to hit live RPC.
+ * Write-through covers (a) eliminating false-AVAILABLE picker reads from
+ * a stale negative entry, (b) warming the /<username> page render, and
+ * (c) speeding up the next picker check for the same name — all at the
+ * cost of one extra Upstash SET (~10ms).
+ *
+ * Failure mode: best-effort. A failed write-through means the next reader
+ * pays for one live RPC call. Never throws.
+ */
+export async function invalidateAndWarmSuins(
+  handle: string,
+  newAddress: string
+): Promise<void> {
+  try {
+    await getSuinsCacheStore().set(
+      handle,
+      { result: newAddress, cachedAt: Date.now() },
+      POSITIVE_TTL_SEC
+    );
+  } catch (err) {
+    console.warn(
+      `[suins-cache] write-through warm-up failed for "${handle}":`,
+      err instanceof Error ? err.message : err
+    );
+  }
+}
+
+/**
+ * Write-through cache invalidation for a handle whose chain leaf was
+ * REVOKED. Used by /api/identity/change after the atomic PTB lands —
+ * the OLD handle is now unclaimed on-chain, so the cache should reflect
+ * that as a fresh negative entry instead of holding a stale positive.
+ *
+ * Same best-effort policy as invalidateAndWarmSuins.
+ */
+export async function invalidateRevokedSuins(handle: string): Promise<void> {
+  try {
+    await getSuinsCacheStore().set(
+      handle,
+      { result: null, cachedAt: Date.now() },
+      NEGATIVE_TTL_SEC
+    );
+  } catch (err) {
+    console.warn(
+      `[suins-cache] revoke-invalidation failed for "${handle}":`,
+      err instanceof Error ? err.message : err
+    );
+  }
+}
+
+/**
+ * Test-only: clear the in-memory cache by resetting the active store. The
+ * Upstash store has no parallel reset because production code never wants
+ * to nuke shared state.
+ */
+export function _resetSuinsCacheForTests(): void {
+  resetSuinsCacheStore();
 }

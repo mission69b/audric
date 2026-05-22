@@ -446,6 +446,54 @@ export async function assertOwnsOrWatched(
 }
 
 // -----------------------------------------------------------------------------
+// Legacy / read-only helpers — ported from apps/web/lib/auth.ts for routes
+// that need the email_verified claim without a full signature re-verify.
+//
+// [v0.7e Phase 2 / S.253 — 2026-05-22] Ported during the apps/web → web-v2
+// API-route consolidation (Path B). `isJwtEmailVerified` is consumed by
+// `/api/user/status` to tier the chat session cap; the JWT it inspects
+// has already been verified by `authenticateRequest` upstream, so this is
+// strictly a payload read of a trust-anchored token.
+// -----------------------------------------------------------------------------
+
+/**
+ * @deprecated Decodes a JWT payload WITHOUT verifying the signature.
+ * Use `verifyJwt` for any code that makes authorization decisions. Survives
+ * only for read-only inspection (e.g. session-tier resolver wants the
+ * `email_verified` claim from a JWT that was already verified upstream).
+ */
+export function decodeJwt(jwt: string): JwtPayload | null {
+  try {
+    const parts = jwt.split(".");
+    if (parts.length !== 3) {
+      return null;
+    }
+    const payload = JSON.parse(
+      Buffer.from(
+        parts[1].replace(/-/g, "+").replace(/_/g, "/"),
+        "base64"
+      ).toString()
+    );
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Read the Google OIDC `email_verified` claim off a zkLogin JWT. Returns
+ * `false` for any null / malformed / missing-claim input. The session-tier
+ * resolver (`sessionLimitFor`) treats `false` as unverified → 5 sessions/day.
+ */
+export function isJwtEmailVerified(jwt: string | null | undefined): boolean {
+  if (!jwt) {
+    return false;
+  }
+  const payload = decodeJwt(jwt);
+  return payload?.email_verified === true;
+}
+
+// -----------------------------------------------------------------------------
 // Test seam — Vitest tests can override the address cache or pre-seed it.
 // -----------------------------------------------------------------------------
 

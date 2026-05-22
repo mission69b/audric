@@ -1,0 +1,107 @@
+import { type NextRequest, NextResponse } from "next/server";
+import {
+  assertOwns,
+  authenticateRequest,
+  isJwtEmailVerified,
+  isValidSuiAddress,
+} from "@/lib/audric-auth";
+import { SESSION_WINDOW_MS, sessionLimitFor } from "@/lib/billing";
+import { prisma } from "@/lib/prisma";
+
+/**
+ * GET /api/user/status?address=0x...
+ *
+ * Returns ToS state plus the current session-usage tier (rolling 24h
+ * window, distinct sessions). Consumers can use `sessionsUsed`,
+ * `sessionLimit`, and `emailVerified` to render a pre-emptive
+ * "X of N sessions today" UI without waiting for the chat route to 429.
+ *
+ * [SIMPLIFICATION DAY 5] `onboarded` removed from the response — the
+ * `onboardedAt` column was dropped along with the /setup wizard. The hook
+ * keeps an `onboarded: true` default for any consumers reading it during
+ * the deprecation window (chat-first means everyone is "onboarded" the
+ * moment they sign in).
+ *
+ * [SIMPLIFICATION DAY 10] Use `upsert` instead of `findUnique` so the
+ * first call after sign-in materialises the User row. Replaces the role
+ * the deleted /setup wizard used to play and eliminates the 404 spam in
+ * Vercel logs when this route runs before the user posts a chat message
+ * or saves an email.
+ *
+ * [PR-B2] `emailVerified` now comes from the Google OIDC `email_verified`
+ * claim on the zkLogin JWT. The Resend verify-link flow is gone. The DB
+ * column stays for legacy / debugging but is no longer authoritative.
+ *
+ * [v0.7e Phase 2 / S.253 — 2026-05-22] Verbatim port from
+ * apps/web/app/api/user/status/route.ts. Auth imports moved from
+ * `@/lib/auth` → `@/lib/audric-auth` (web-v2's consolidated module);
+ * `runtime` segment export dropped to satisfy `nextConfig.cacheComponents`.
+ */
+export async function GET(request: NextRequest) {
+  // [SPEC 30 Phase 1A.3] Bind the JWT identity to the requested
+  // address. Pre-Phase-1A this route accepted any (valid JWT, arbitrary
+  // address) pair → an attacker could swap `?address=0x<victim>` and
+  // upsert a User row for the victim. authenticateRequest verifies the
+  // JWT signature against Google's JWKS + derives the canonical zkLogin
+  // address; assertOwns rejects when the address doesn't match.
+  const auth = await authenticateRequest(request);
+  if ("error" in auth) {
+    return auth.error;
+  }
+
+  const address = request.nextUrl.searchParams.get("address");
+  if (!address || !isValidSuiAddress(address)) {
+    return NextResponse.json({ error: "Invalid address" }, { status: 400 });
+  }
+
+  const ownership = assertOwns(auth.verified, address);
+  if (ownership) {
+    return ownership;
+  }
+
+  const jwt = request.headers.get("x-zklogin-jwt");
+
+  const [user, sessionCount] = await Promise.all([
+    prisma.user.upsert({
+      where: { suiAddress: address },
+      create: { suiAddress: address },
+      update: {},
+      select: {
+        tosAcceptedAt: true,
+        // [SPEC 10 B-wiring] `username` (and the timestamp it was claimed)
+        // drive the signup-page username gate. The dashboard reads this to
+        // decide whether to render `<UsernameClaimGate>` over the empty
+        // state — `null` → user hasn't claimed → show picker; non-null →
+        // user already has a handle → render normal dashboard. The full
+        // `<label>.audric.sui` is reconstructed client-side because the
+        // `.audric.sui` suffix is a brand constant (no need to round-trip
+        // it on every status poll).
+        username: true,
+        usernameClaimedAt: true,
+      },
+    }),
+    prisma.sessionUsage
+      .groupBy({
+        by: ["sessionId"],
+        where: {
+          address,
+          createdAt: { gte: new Date(Date.now() - SESSION_WINDOW_MS) },
+        },
+      })
+      .then((rows) => rows.length)
+      .catch(() => 0),
+  ]);
+
+  const emailVerified = isJwtEmailVerified(jwt);
+  const sessionLimit = sessionLimitFor(emailVerified);
+
+  return NextResponse.json({
+    tosAccepted: user.tosAcceptedAt !== null,
+    emailVerified,
+    sessionsUsed: sessionCount,
+    sessionLimit,
+    sessionWindowHours: 24,
+    username: user.username,
+    usernameClaimedAt: user.usernameClaimedAt?.toISOString() ?? null,
+  });
+}

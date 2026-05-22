@@ -99,18 +99,53 @@
 4. `c544412` — handoff doc capture of commits 1-3.
 5. `06682b8` — **MARKETING LANDING PORT.** 15 components + lib/marketing/use-stats.ts + /api/stats route + app/page.tsx. Pure copy-port per L-4 lock. `useZkLogin` hook export name + return interface identical between apps/web (`useZkLogin.ts`) and web-v2 (`use-zklogin.ts`) — only import-path string changes (6 files). Root `/` registered as static prerendered route post-build. `components/landing/` added to `biome.jsonc` excludes (matches existing `components/audric/cards` precedent for "ported code awaiting shadcn redesign"). Authenticated-user redirect target adjusted `/new` → `/chat` (apps/web's legacy chat-shell URL doesn't exist in web-v2).
 
+**SHIPPED 2026-05-22 (continued, late session) — Path B identity/user route port (DNS-flip unblocker):**
+Founder explicitly chose **Path B** over Path A transitional rewrite ("Yea Path B, Stop over complicating things no user will care"). Web-v2 `vercel.json` previously had rewrites for `/api/identity/:path*` + `/api/user/:path*` pointing back to `https://audric.ai` — once DNS flips, those rewrites would create an infinite loop. Path B ports the 6 routes web-v2 actually calls directly into web-v2 + deletes the rewrites entirely. Web-v2 is now apex-ready with ZERO dependency on apps/web's API surface for the chat / settings / username flows.
+
+**Audit findings (load-bearing — the user requested honest scope):**
+- 12 routes in apps/web's `/api/identity` + `/api/user` namespace; web-v2 ACTUALLY consumes only 6 (verified via `rg "/api/(identity|user)/" apps/web-v2`).
+- The 6 NOT consumed: `identity/search`, `user/watch-addresses`, `user/wallets`, `user/wallets/[id]`, `user/financial-profile` (dead per v0.7d MemWal — `UserFinancialProfile` retired), `user/preferences/contacts/backfill` (dead per S.243 contacts deletion). All 6 die with apps/web at Phase 5; no port needed.
+- 4 simple routes (Prisma + auth): `user/status`, `user/tos-accept`, `user/preferences`, `identity/search` — port adjusts auth imports `@/lib/auth → @/lib/audric-auth` only.
+- 2 hard routes (server-side Sui signing): `identity/reserve` + `identity/change` — require porting `lib/sui-retry.ts` + `lib/identity/admission-control.ts` + extending `lib/suins-cache.ts` with `UpstashSuinsCacheStore` + `invalidateAndWarmSuins` + `invalidateRevokedSuins` + adding `@mysten/suins` dep + `AUDRIC_PARENT_NFT_PRIVATE_KEY` env var.
+
+**Files shipped (1 commit pending push):**
+- `apps/web-v2/app/api/user/status/route.ts` (~100 LoC) — verbatim port, auth imports rewired.
+- `apps/web-v2/app/api/user/tos-accept/route.ts` (~52 LoC) — verbatim port.
+- `apps/web-v2/app/api/user/preferences/route.ts` (~210 LoC) — **behavior-preserving simplification:** drops contacts normalization (web-v2 has no `contact-schema.ts` post-S.243). Contacts column passes through raw on read; writes never touch it (preserves data set via apps/web for users mid-migration). Web-v2 client (safety-section) only writes `permissionPreset`, so this is a no-op for the live consumer.
+- `apps/web-v2/app/api/identity/check/route.ts` (~250 LoC) — verbatim port, `SuinsRpcError` re-imported via `@/lib/suins-cache` (matches web-v2's existing re-export).
+- `apps/web-v2/app/api/identity/reserve/route.ts` (~440 LoC) — verbatim port. `runtime` segment + ESLint `no-restricted-syntax` CANONICAL-BYPASS comments dropped (biome doesn't ship the rule).
+- `apps/web-v2/app/api/identity/change/route.ts` (~430 LoC) — verbatim port. Same adjustments as reserve.
+- `apps/web-v2/lib/billing.ts` (NEW) — verbatim port (28 LoC) of apps/web's billing constants (`SESSION_WINDOW_MS`, `sessionLimitFor`).
+- `apps/web-v2/lib/sui-retry.ts` (NEW) — verbatim port (~190 LoC) of `withSuiRetry` + transient-error matcher.
+- `apps/web-v2/lib/identity/admission-control.ts` (NEW) — port of apps/web's mint admission control (~190 LoC), **adapted to web-v2's nullable `upstash` client** (apps/web uses always-set `redis` from `lib/redis.ts`; web-v2's `lib/upstash.ts` exports `null` when Upstash env vars are absent — admission control fails open uniformly in that case).
+- `apps/web-v2/lib/suins-cache.ts` (MODIFIED) — extended with `UpstashSuinsCacheStore` (production cache, Upstash-backed) + `invalidateAndWarmSuins` (write-through positive) + `invalidateRevokedSuins` (write-through negative) + `_resetSuinsCacheForTests`. Default store now selects Upstash if env-configured, falls back to in-memory store. Identical behavior to apps/web's suins-cache post-S.253.
+- `apps/web-v2/lib/audric-auth.ts` (MODIFIED) — added `decodeJwt` + `isJwtEmailVerified` (legacy helpers for `/api/user/status` email-verified session-tier path). Earlier doc-block explicitly said "port-as-needed" — needed now.
+- `apps/web-v2/lib/env.ts` (MODIFIED) — added `AUDRIC_PARENT_NFT_PRIVATE_KEY` + `AUDRIC_MINT_CONCURRENCY_LIMIT` as `optionalString`. Both routes degrade to clean 503 ("Username minting temporarily unavailable") when secret unset — feature-degrades, app-boots pattern (mirrors UPSTASH_REDIS_REST_URL + MEMWAL_PRIVATE_KEY).
+- `apps/web-v2/package.json` + `pnpm-lock.yaml` (MODIFIED) — added `@mysten/suins@^1.1.1` (matches apps/web's pinned version).
+- `apps/web-v2/vercel.json` (MODIFIED) — **DELETED both `/api/identity/:path*` and `/api/user/:path*` rewrites.** DNS-flip loop blocker cleared.
+
+**Build/lint/typecheck:**
+- `pnpm --filter @audric/web-v2 typecheck` — GREEN (0 errors).
+- `pnpm --filter @audric/web-v2 lint` — GREEN (auto-fixed 10 files via `pnpm fix`; 2 manual fixes for empty block in `$executeRaw.catch` + optional-chain in preferences route).
+- `pnpm --filter @audric/web-v2 build` — GREEN. All 6 new routes register in Next manifest as dynamic (ƒ) routes: `/api/identity/change`, `/api/identity/check`, `/api/identity/reserve`, `/api/user/preferences`, `/api/user/status`, `/api/user/tos-accept`.
+
+**Founder ops (required before username-flow works in web-v2 prod):**
+- Copy `AUDRIC_PARENT_NFT_PRIVATE_KEY` from `audric-web` Vercel project → `audric-web-v2` (Production + Preview). Same custody key shared across both apps during soak; post-cutover the audric-web project archives and the secret lives only in web-v2. Until then `identity/reserve` + `identity/change` return 503 in web-v2 (apps/web's still works — no production gap on the legacy URL).
+- Optionally also `AUDRIC_MINT_CONCURRENCY_LIMIT` (defaults to 5; only set if you want to tune the admission cap).
+
 **Live production findings (from WebFetch this session — ground truth, not spec-derived):**
 - `audric.ai/api/build-id` returns `{"id":"dpl_7yvjtwtLETQHeRdbbRau7vmvpsDk"}` → **apps/web is DEFINITIVELY serving APIs at audric.ai today.** web-v2 has no `/api/build-id` route (deleted per Q2 lock; Vercel deploymentId is the modern replacement).
 - `audric.ai/chat` returns **404** (apps/web has only `/chat/[sessionId]`, no top-level `/chat`). The chat-shell URL on audric.ai is `/new`, not `/chat`. web-v2's chat lives at `/chat` (and `/chat/[id]` for persistent chats per H2).
 - `audric.ai/new` timed out on WebFetch (likely the chat page rendering — confirmed live).
 - `apps/web/next.config.ts` rewrites `/pay`, `/settings`, `/api/portfolio`, `/api/analytics`, `/[username]`, `/api/internal/payments` to web-v2 BUT NOT `/new`, `/chat/:path*`, `/api/chat`, `/api/transactions/:path*`. **Chat-flip rewrites have NOT shipped** — runbook v3 line 86 ("flip in Session 6 as founder-owned ops step") still applies.
 
-**Remaining work on the compressed trajectory (refined post-marketing-port):**
-1. **Chat-shell rewrites to `apps/web/next.config.ts`** — add 4 rewrites (`/new` → web-v2/chat, `/chat/:path*` → web-v2/chat/:path*, `/api/chat` → web-v2/api/chat, `/api/transactions/:path*` → web-v2/api/transactions/:path*). **Effort: ~30 min code + post-deploy smoke.** **PRODUCTION ROUTING IMPACT** — runbook says founder-owned. Smoke each path after deploy; rollback is per-rewrite (comment 1 line).
-2. **Founder ops gates** — (a) copy `CRON_SECRET` from `audric-web` to `audric-web-v2` Vercel project env (until then web-v2's 5 new crons return 401 — apps/web's still run; no production gap, just dual-write inactive on web-v2 side). (b) DNS flip — point audric.ai apex at audric-web-v2 Vercel project (web-v2 is now substantially feature-complete for the apex: marketing landing + (legal) + litepaper + /chat + /chat/[id] + /share/[id] + /pay/[slug] + /settings/* + /[username] + 5 crons + all required APIs). (c) `git rm -rf apps/web`.
-3. **Backlog (DEFERRED, post-DNS-flip)** — marketing landing shadcn redesign. The 15 components ported at `06682b8` are excluded from lint per `components/audric/cards` precedent — explicit signal to redesign with shadcn primitives + kebab-case filenames + drop the dangerouslySetInnerHTML pattern + replace static demo-flow arrays with stable-key data. See backlog row B1 below for details.
+**Remaining work on the compressed trajectory (refined post-Path-B-identity-port):**
+1. **DNS flip — DIRECT VERCEL DOMAIN DETACH/ATTACH** (founder's preferred path per "why are we confusing things ideally we de attach the domain from audric vercel project and add it to web-v2 vercel project"). In Vercel dashboard: (a) remove `audric.ai` from `audric-web` project's domains, (b) add `audric.ai` to `audric-web-v2` project's domains, (c) confirm DNS propagation. **No chat-shell rewrites needed** — the domain swap moves all traffic at once. Web-v2 is now substantially feature-complete for the apex: marketing landing + (legal) + litepaper + /chat + /chat/[id] + /share/[id] + /pay/[slug] + /settings/* + /[username] + 5 crons + all required APIs **including the freshly-ported `/api/identity/*` + `/api/user/*` surfaces with their rewrites deleted (Path B complete).**
+2. **Founder ops gates BEFORE domain swap:** (a) copy `CRON_SECRET` from `audric-web` → `audric-web-v2` Vercel project env (status: founder confirmed copied + redeployed earlier this session). (b) copy `AUDRIC_PARENT_NFT_PRIVATE_KEY` from `audric-web` → `audric-web-v2` (Production + Preview) — required for username claim/change flows to work in web-v2; until then those return 503 (read-only flows work fine). (c) Verify `BLOCKVISION_API_KEY`, `ANTHROPIC_API_KEY`, `ENOKI_SECRET_KEY`, `UPSTASH_REDIS_REST_URL/TOKEN`, `DATABASE_URL`, `NEXT_PUBLIC_*` are all set in audric-web-v2 Vercel project (smoke a preview deploy hitting `/chat` end-to-end before the domain swap).
+3. **Post-swap (within 24h soak):** `git rm -rf apps/web && rm apps/web` — both the directory and its Vercel project. Vercel project deletion may want to wait 7d for rollback insurance but the git rm + deploy pruning can ship immediately. Engine tools `pay_api` + `mpp_services` already deleted in v2.12.0 per S.245 Audric Store reframe.
+4. **Backlog (DEFERRED, post-DNS-flip)** — marketing landing shadcn redesign per backlog row B1.
 
-**Revised end-to-end (post-tonight): ~30 min code (chat-shell rewrites) + founder ops + 48h soak. Cron + legal + litepaper + MARKETING gaps all closed. Down from ~3-5d at session start; down from 25-36d at original framing.**
+**Revised end-to-end (post-tonight): ZERO code remaining. Founder ops only (env copy + domain swap + smoke + `git rm`). Down from ~3-5d at session start; down from 25-36d at original framing. Path B closed the last code-side blocker — DNS flip is now a pure Vercel-dashboard operation.**
 
 ----
 
