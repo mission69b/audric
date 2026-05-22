@@ -46,9 +46,16 @@ function sanitiseTitle(raw: string): string {
 export async function generateChatTitle({
   chatId,
   firstUserMessageText,
+  chatOwnerSuiAddress,
 }: {
   chatId: string;
   firstUserMessageText: string;
+  /**
+   * Required so `updateChatTitle` can lazy-upsert the Chat row if it
+   * doesn't exist yet (race: title gen vs. `saveMessages` lazy-create).
+   * Caller threads from the authenticated session in the chat route.
+   */
+  chatOwnerSuiAddress: string;
 }): Promise<void> {
   if (firstUserMessageText.trim().length === 0) {
     // Nothing to summarise — leave title null; sidebar renders a fallback.
@@ -77,7 +84,7 @@ export async function generateChatTitle({
     if (title.length === 0) {
       return;
     }
-    await updateChatTitle({ chatId, title });
+    await updateChatTitle({ chatId, title, chatOwnerSuiAddress });
   } catch (err) {
     console.warn(
       `[chat-title] generation failed for chatId=${chatId} (non-fatal):`,

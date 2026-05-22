@@ -217,16 +217,39 @@ export async function saveMessages({
   );
 }
 
+/**
+ * Set or update the chat title.
+ *
+ * **Why this is an upsert, not an update.** Title generation runs in
+ * parallel with the LLM stream (so the sidebar can show a real title
+ * ASAP). It can land BEFORE `saveMessages` has had a chance to
+ * lazy-upsert the Chat row (S.248 P1-E moved chat-row creation out
+ * of POST and into `saveMessages` to kill orphan rows). If title gen
+ * wins the race, a plain `update` would fail with "No record was
+ * found for an update" (verified in prod logs 2026-05-22).
+ *
+ * The owner address is required for the `create` branch — same
+ * contract as `saveMessages`. Title gen callers thread the wallet
+ * address from the route's authenticated session.
+ */
 export async function updateChatTitle({
   chatId,
   title,
+  chatOwnerSuiAddress,
 }: {
   chatId: string;
   title: string;
+  chatOwnerSuiAddress: string;
 }): Promise<void> {
-  await prisma.chat.update({
+  await prisma.chat.upsert({
     where: { id: chatId },
-    data: { title },
+    create: {
+      id: chatId,
+      userSuiAddress: chatOwnerSuiAddress,
+      visibility: "private",
+      title,
+    },
+    update: { title },
   });
 }
 

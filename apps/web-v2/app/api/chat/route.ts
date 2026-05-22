@@ -1028,6 +1028,11 @@ export async function POST(request: Request) {
     generateChatTitle({
       chatId,
       firstUserMessageText: latestUserTextForEffort,
+      // [S.248-followup] Thread owner address so updateChatTitle can
+      // lazy-upsert the Chat row if title gen wins the race against
+      // saveMessages (P1-E moved chat-row creation into saveMessages,
+      // so the row may not exist when title gen finishes).
+      chatOwnerSuiAddress: walletAddress,
     }).catch((err) => {
       console.warn(
         `[audric-chat] title gen kickoff failed for chatId=${chatId}:`,
@@ -1452,6 +1457,58 @@ export async function POST(request: Request) {
     );
   }
 
+  // [S.248-followup / Smoke #3 diagnostic] Log per-message structure
+  // immediately before the LLM call so we can pinpoint orphan tool_use
+  // blocks the count-based validateModelMessages misses. Each entry
+  // shows: role, count of tool-call ids, count of tool-result ids,
+  // and the first 8 chars of every id (truncated to keep logs cheap).
+  //
+  // The recurring "messages.N: tool_use ids were found without
+  // tool_result blocks immediately after: toolu_…" error survives
+  // validateModelMessages (counts match) but Anthropic rejects on
+  // positional/id pairing. This log makes that mismatch visible.
+  try {
+    const structureSummary = aiSdkMessages.map((msg, idx) => {
+      const callIds: string[] = [];
+      const resultIds: string[] = [];
+      if (msg.role === "assistant" && Array.isArray(msg.content)) {
+        for (const part of msg.content) {
+          if (
+            part.type === "tool-call" &&
+            typeof part.toolCallId === "string"
+          ) {
+            callIds.push(part.toolCallId);
+          }
+        }
+      }
+      if (msg.role === "tool" && Array.isArray(msg.content)) {
+        for (const part of msg.content) {
+          if (
+            part.type === "tool-result" &&
+            typeof part.toolCallId === "string"
+          ) {
+            resultIds.push(part.toolCallId);
+          }
+        }
+      }
+      const trunc = (id: string) => id.slice(0, 12);
+      return `[${idx}] ${msg.role}${
+        callIds.length > 0 ? ` calls=${callIds.map(trunc).join(",")}` : ""
+      }${
+        resultIds.length > 0 ? ` results=${resultIds.map(trunc).join(",")}` : ""
+      }`;
+    });
+    console.log(
+      `[audric-chat] llm-message-structure sessionId=${sessionId} turn=${turnIndex} ` +
+        structureSummary.join(" | ")
+    );
+  } catch (logErr) {
+    console.warn(
+      "[audric-chat] llm-message-structure logging failed (non-fatal):",
+      logErr instanceof Error ? logErr.message : String(logErr)
+    );
+  }
+
   // 10. Stream the agent and translate AI SDK chunks → UIMessage parts.
   const result = await audricAgent.stream({ messages: aiSdkMessages });
 
@@ -1759,10 +1816,41 @@ export async function POST(request: Request) {
       // **P1-F:** `saveMessages` bumps `Chat.updatedAt` so active chats
       // float to the top of the sidebar.
       //
+      // **[S.248-followup / Smoke #3] Skip-on-abort guard.** If the
+      // stream errored (e.g. Anthropic 400 on a malformed continuation),
+      // `turnCompleted` is false. In that case `finalMessages` may
+      // contain the corrupt mid-turn snapshot (post-write-refresh
+      // synthetic messages + a partial assistant response). Persisting
+      // it creates a permanent corruption loop:
+      //
+      //   1. User confirms `save_deposit` → resume turn begins
+      //   2. Post-write-refresh injects synthetic balance_check/savings_info
+      //   3. Some pre-existing converter quirk produces an orphan
+      //      `tool_use` block → Anthropic rejects with 400
+      //   4. Without this guard: corrupt snapshot persists → reload
+      //      replays the same orphan → same 400 → forever
+      //
+      // The safe fallback is to persist `body.messages` (the INPUT
+      // state we received from the client) instead. That captures the
+      // user's confirmation (assistant tool-use in `output-available`)
+      // without the synthetic refresh artifacts, so the receipt card
+      // survives the failed narration turn AND the next reload starts
+      // from a clean slate the LLM can actually continue.
+      //
       // The monotonic `createdAt` offset preserves intra-turn ordering.
       const persistenceTimestamp = Date.now();
+      const messagesToPersist = turnCompleted
+        ? finalMessages
+        : (body.messages as unknown as typeof finalMessages);
+      if (!turnCompleted) {
+        console.warn(
+          "[web-v2 audric-chat] stream aborted — persisting INPUT messages " +
+            `only (${messagesToPersist.length} msgs) to avoid corruption ` +
+            `loop. chatId=${chatId} sessionId=${sessionId} turn=${turnIndex}`
+        );
+      }
       saveMessages({
-        messages: finalMessages.map((m, i) => ({
+        messages: messagesToPersist.map((m, i) => ({
           id: m.id,
           chatId,
           role: m.role,

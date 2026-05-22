@@ -11,6 +11,8 @@ import {
 } from "ai";
 import { Loader2 } from "lucide-react";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { useSWRConfig } from "swr";
+import { unstable_serialize } from "swr/infinite";
 import {
   Conversation,
   ConversationContent,
@@ -38,6 +40,7 @@ import { AppSidebar } from "@/components/chat/app-sidebar";
 import { ChipBar } from "@/components/chat/chip-bar";
 import { EmptyState } from "@/components/chat/empty-state";
 import { MessageVoteThumbs } from "@/components/chat/message-vote-thumbs";
+import { getChatHistoryPaginationKey } from "@/components/chat/sidebar-history";
 import { VisibilityToggle } from "@/components/chat/visibility-toggle";
 import { UsernameClaimGate } from "@/components/settings/username-claim-gate";
 import { Button } from "@/components/ui/button";
@@ -531,6 +534,53 @@ function AudricChatPanel({
       onChatPromoted?.(effectiveChatId);
     }
   }, [chatId, effectiveChatId, messages.length, onChatPromoted]);
+
+  // [S.248-followup / Smoke #1] Sidebar history SWR cache invalidation.
+  //
+  // Symptom: founder smoke 2026-05-22 — "as soon as i type it creates a
+  // new session url, but sidebar doesnt show the history. i press new
+  // chat, i dont see the previous session save in sidebar, i refresh
+  // and i see it."
+  //
+  // Root cause: `sidebar-history.tsx` uses `useSWRInfinite` keyed on
+  // `getChatHistoryPaginationKey`. The Chat row is created lazily in
+  // `saveMessages` (P1-E), which fires in the server's `onFinish`
+  // callback AFTER the stream completes. The SWR cache for
+  // `/api/history` has no way to know a new chat just landed — the
+  // sidebar only refetches on user-triggered events (focus, etc.) or
+  // explicit `mutate()` calls. Net result: founder sees the URL update
+  // but the sidebar stays stale until next manual reload.
+  //
+  // Fix: mutate the paginated key when `status` transitions FROM
+  // 'streaming' TO 'ready' — that's the client-side signal that the
+  // server's `onFinish` (and therefore `saveMessages` lazy-upsert) has
+  // either just fired or is firing in the next tick. We use a brief
+  // 250ms delay to win the typical race against `onFinish`'s async DB
+  // write. The mutate forces SWR to revalidate and pull the freshly-
+  // created chat row.
+  //
+  // Why not mutate on URL-promote (the earlier `replaceState` line):
+  // at that moment, `saveMessages` hasn't fired yet (stream is still
+  // running), so a mutate would refetch and still get the stale list.
+  // We could mutate at BOTH moments — once on promote (cheap optimistic
+  // first try) and once on `ready` transition (the canonical signal).
+  // The optimistic first try is wasted bandwidth on most chats, so we
+  // skip it and only mutate on ready.
+  const { mutate: swrMutate } = useSWRConfig();
+  const [prevStatus, setPrevStatus] = useState(status);
+  useEffect(() => {
+    if (prevStatus === "streaming" && status === "ready" && effectiveChatId) {
+      const handle = setTimeout(() => {
+        swrMutate(unstable_serialize(getChatHistoryPaginationKey));
+      }, 250);
+      setPrevStatus(status);
+      return () => clearTimeout(handle);
+    }
+    if (prevStatus !== status) {
+      setPrevStatus(status);
+    }
+    return;
+  }, [status, prevStatus, swrMutate, effectiveChatId]);
 
   const canSend = status === "ready" && input.trim().length > 0;
 
