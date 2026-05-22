@@ -1475,19 +1475,46 @@ export async function POST(request: Request) {
       `reasoning=${beforeReasoningParts}->${afterReasoningParts}`
   );
 
+  // [Smoke 2026-05-22 V4 fix] Log-level discrimination. Pass 5
+  // (`stripPostToolReasoning`) fires on EVERY resume turn after a
+  // confirm-tier write — the assistant message has [text, reasoning,
+  // tool-call, reasoning, tool-call, approval-request] and Anthropic's
+  // extended-thinking contract requires all reasoning blocks to precede
+  // all tool_use blocks within an assistant message. Pass 5 strips the
+  // middle reasoning block by design. Logging this as `warn` makes the
+  // happy path look like an incident every time it runs.
+  //
+  // Reserve `warn` for the GENUINELY surprising case: tool blocks
+  // dropped (orphan tool-use without a tool-result, or vice versa) or
+  // whole messages dropped. Reasoning-only deltas with no tool damage
+  // are normal flow — log at `info` so we still have the data for
+  // analytics without polluting the warning channel.
+  const onlyReasoningStripped =
+    afterMsgCount === beforeMsgCount &&
+    afterToolParts.toolCalls === beforeToolParts.toolCalls &&
+    afterToolParts.toolResults === beforeToolParts.toolResults &&
+    afterReasoningParts !== beforeReasoningParts;
   if (
     afterMsgCount !== beforeMsgCount ||
     afterToolParts.toolCalls !== beforeToolParts.toolCalls ||
     afterToolParts.toolResults !== beforeToolParts.toolResults ||
     afterReasoningParts !== beforeReasoningParts
   ) {
-    console.warn(
-      `[audric-chat] validateModelMessages STRIPPED corruption sessionId=${sessionId} turn=${turnIndex} ` +
-        `msgsDropped=${beforeMsgCount - afterMsgCount} ` +
-        `toolCallsDropped=${beforeToolParts.toolCalls - afterToolParts.toolCalls} ` +
-        `toolResultsDropped=${beforeToolParts.toolResults - afterToolParts.toolResults} ` +
-        `reasoningDropped=${beforeReasoningParts - afterReasoningParts}`
-    );
+    const summary =
+      `sessionId=${sessionId} turn=${turnIndex} ` +
+      `msgsDropped=${beforeMsgCount - afterMsgCount} ` +
+      `toolCallsDropped=${beforeToolParts.toolCalls - afterToolParts.toolCalls} ` +
+      `toolResultsDropped=${beforeToolParts.toolResults - afterToolParts.toolResults} ` +
+      `reasoningDropped=${beforeReasoningParts - afterReasoningParts}`;
+    if (onlyReasoningStripped) {
+      console.info(
+        `[audric-chat] validateModelMessages normalised reasoning ${summary}`
+      );
+    } else {
+      console.warn(
+        `[audric-chat] validateModelMessages STRIPPED corruption ${summary}`
+      );
+    }
   }
 
   // [S.248-followup / Smoke #3 V2 diagnostic] Full part-type sequence

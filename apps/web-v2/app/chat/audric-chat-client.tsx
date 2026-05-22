@@ -52,6 +52,7 @@ import {
 import { useUserStatus } from "@/hooks/use-user-status";
 import { redactAddressesInText } from "@/lib/audric/log-redact";
 import { subscribeNewChat } from "@/lib/audric/new-chat-event";
+import { stripEvalSummaryMarker } from "@/lib/audric/sanitize-text";
 import {
   type SponsoredTxBundleStep,
   type SponsoredTxRequest,
@@ -774,12 +775,34 @@ function AudricChatPanel({
                   >
                     {m.parts.map((part, i) => {
                       if (part.type === "text") {
+                        // [Smoke 2026-05-22 V4 fix] Strip leaked
+                        // `<eval_summary>` markers before render. The
+                        // system prompt instructs the LLM to emit
+                        // these inside its FINAL THINKING burst (where
+                        // the Reasoning accordion swallows them) but
+                        // Sonnet 4.6 with extended thinking
+                        // occasionally puts them in assistant text
+                        // instead — observed ~1/3 of confirm-tier
+                        // writes. Defense-in-depth client-render
+                        // sanitiser (mirrors apps/web's canonical
+                        // implementation at lib/sanitize-text.ts).
+                        const sanitisedText = stripEvalSummaryMarker(
+                          part.text
+                        );
+                        // Suppress empty bubbles for text parts whose
+                        // entire content was an eval_summary marker —
+                        // otherwise an empty <MessageResponse> renders
+                        // with no body, leaving a phantom assistant
+                        // turn.
+                        if (sanitisedText.length === 0) {
+                          return null;
+                        }
                         return (
                           <MessageResponse
                             // biome-ignore lint/suspicious/noArrayIndexKey: parts are positionally stable per message
                             key={`${m.id}-${i}`}
                           >
-                            {part.text}
+                            {sanitisedText}
                           </MessageResponse>
                         );
                       }
