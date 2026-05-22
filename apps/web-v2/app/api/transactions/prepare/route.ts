@@ -93,6 +93,7 @@ import { extractMoveCallTargets } from "@/lib/audric/extract-move-call-targets";
 import { redactAddressesInText, redactPII } from "@/lib/audric/log-redact";
 import { getCurrentUser } from "@/lib/audric-auth";
 import { env } from "@/lib/env";
+import { resolveSuinsCached } from "@/lib/suins-cache";
 import { getSuiRpcUrl } from "@/lib/sui-rpc";
 
 export const maxDuration = 30;
@@ -107,6 +108,26 @@ const ENOKI_BASE = "https://api.enoki.mystenlabs.com/v1";
 const addressField = z
   .string()
   .regex(/^0x[a-fA-F0-9]{64}$/, "address must be a 0x-prefixed 32-byte hex");
+
+// [Smoke 2026-05-22 send-with-suins] The system prompt promises
+// "the SDK resolves handles / SuiNS to canonical addresses" (see
+// `lib/audric/system-prompt.ts` L322), but pre-fix the recipient
+// field demanded strict 0x hex — passing `to: "funkii.sui"` got
+// rejected at this Zod gate as "Invalid request body" before any
+// resolver ran. The LLM then burned 2 failed permission cards before
+// learning to pre-resolve with `resolve_suins`. This polymorphic
+// field accepts the three forms the prompt promises:
+//   - 0x hex (no resolution needed, passes through)
+//   - `.sui` SuiNS name (`funkii.sui`, `team.alex.sui`)
+//   - `@audric` Audric handle (`alice@audric`) — narration form,
+//     converted to `alice.audric.sui` before SuiNS RPC lookup
+// The POST handler runs the actual resolution between this validation
+// gate and `buildWriteStep` so the SDK always receives canonical hex.
+const recipientField = z.union([
+  addressField,
+  z.string().regex(/^[a-z0-9-]+(\.[a-z0-9-]+)*\.sui$/i, "must be a SuiNS name like alex.sui"),
+  z.string().regex(/^[a-z0-9-]+@audric$/i, "must be an Audric handle like alice@audric"),
+]);
 
 const stableAsset = z.enum(["USDC", "USDsui"]);
 const positiveAmount = z.number().positive("amount must be > 0").finite();
@@ -140,7 +161,7 @@ const sendSchema = z.object({
   type: z.literal("send"),
   address: addressField,
   amount: positiveAmount,
-  recipient: addressField,
+  recipient: recipientField,
   asset: z.enum(["USDC"]).optional(),
 });
 const swapSchema = z.object({
@@ -233,6 +254,48 @@ type BundleBody = z.infer<typeof bundleSchema>;
 // ---------------------------------------------------------------------------
 // Dispatch helpers
 // ---------------------------------------------------------------------------
+
+const SUI_ADDRESS_STRICT_REGEX = /^0x[a-fA-F0-9]{64}$/;
+const AUDRIC_HANDLE_REGEX = /^([a-z0-9-]+)@audric$/i;
+
+/**
+ * Resolve a recipient input (hex / `.sui` / `@audric`) to canonical hex.
+ *
+ * **Why this exists.** The system prompt at `lib/audric/system-prompt.ts`
+ * L322 promises the LLM: *"The SDK resolves handles / SuiNS to canonical
+ * addresses. Do NOT manually look up and re-type the underlying 0x
+ * address."* Pre-fix, the recipient field's Zod schema rejected anything
+ * non-hex with `400 Invalid request body`, so the LLM's natural call
+ * `send_transfer({ to: "funkii.sui" })` failed twice before it learned to
+ * pre-resolve via `resolve_suins`. The user saw two failed permission
+ * cards for one send. This helper closes the contract gap by actually
+ * doing the resolution the prompt promised.
+ *
+ * **Cache-aware:** uses `resolveSuinsCached` (5min positive / 10sec
+ * negative TTL) so repeat sends to the same recipient are RPC-free.
+ *
+ * **Audric handle normalization:** `alice@audric` is the user-facing
+ * narration form; the on-chain SuiNS leaf is `alice.audric.sui`. The
+ * convention is documented in `lib/audric/system-prompt.ts` L370.
+ */
+async function resolveRecipient(raw: string): Promise<string> {
+  if (SUI_ADDRESS_STRICT_REGEX.test(raw)) {
+    return raw.toLowerCase();
+  }
+  const audricMatch = raw.match(AUDRIC_HANDLE_REGEX);
+  const suinsName = audricMatch
+    ? `${audricMatch[1]?.toLowerCase()}.audric.sui`
+    : raw.toLowerCase();
+  const resolved = await resolveSuinsCached(suinsName, {
+    suiRpcUrl: getSuiRpcUrl(),
+  });
+  if (!resolved) {
+    throw new Error(
+      `"${raw}" isn't a registered SuiNS name or Audric handle — double-check the spelling, or paste the full 0x address.`
+    );
+  }
+  return resolved.toLowerCase();
+}
 
 /**
  * Mirror of legacy `buildStepFromRequest` (prepare/route.ts L185-264).
@@ -394,6 +457,26 @@ export async function POST(request: NextRequest) {
       { error: "address does not match authenticated session" },
       { status: 403 }
     );
+  }
+
+  // 3.5. [Smoke 2026-05-22 send-with-suins] Resolve `send` recipients
+  // that arrived as SuiNS names / `@audric` handles to canonical hex
+  // BEFORE buildWriteStep hands the step to the SDK. The Zod gate
+  // above accepts these polymorphic forms; the SDK below always
+  // wants a 0x address. See `resolveRecipient` doc for the contract.
+  // Bundles pass through verbatim — engine-side bundle composition
+  // already resolves before stamping `steps[]` on `pending_action`.
+  if (body.type === "send") {
+    try {
+      body = { ...body, recipient: await resolveRecipient(body.recipient) };
+    } catch (err) {
+      return NextResponse.json(
+        {
+          error: err instanceof Error ? err.message : String(err),
+        },
+        { status: 400 }
+      );
+    }
   }
 
   // 4. Build the SDK WriteStep[] — single-write or bundle.
