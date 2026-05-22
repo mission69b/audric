@@ -16,7 +16,9 @@
     "test:watch": "vitest",
     "test:e2e": "export PLAYWRIGHT=True && pnpm exec playwright test",
     "smoke:b1-b1a": "node --experimental-strip-types scripts/smoke-b1-b1a.mts",
-    "smoke:s213": "node --experimental-strip-types scripts/smoke-s213.mts"
+    "smoke:s213": "node --experimental-strip-types scripts/smoke-s213.mts",
+    "migrate": "prisma migrate deploy",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.78",
@@ -111,6 +113,7 @@
     "babel-plugin-react-compiler": "^1.0.0",
     "jsdom": "^29",
     "postcss": "^8",
+    "prisma": "^7.5.0",
     "tailwindcss": "^4.1.13",
     "tsx": "^4.21.0",
     "typescript": "^5.6.3",

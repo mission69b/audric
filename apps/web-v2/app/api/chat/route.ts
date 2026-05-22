@@ -192,10 +192,9 @@ import { getCurrentUser } from "@/lib/audric-auth";
 import { env } from "@/lib/env";
 import { memwal } from "@/lib/memwal";
 import { getPortfolio, prewarmPortfolio } from "@/lib/portfolio";
-import { prisma } from "@/lib/prisma";
+import { Prisma, prisma } from "@/lib/prisma";
 import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { getSuiRpcUrl } from "@/lib/sui-rpc";
-import { Prisma } from "../../../../web/lib/generated/prisma/client";
 
 // [S.212 — 2026-05-21] Bumped from 60s to 300s to match the legacy
 // `apps/web/app/api/engine/chat/route.ts` ceiling. Pre-S.211 turns

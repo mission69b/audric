@@ -1,50 +1,44 @@
 /**
- * Prisma client (web-v2) — bridges the chat shell to audric's NeonDB.
+ * Prisma client (web-v2) — talks to audric's NeonDB.
  *
- * --- WHY THIS FILE EXISTS (v0.7c Phase 2 P2.0c) ---
+ * --- SCHEMA OWNERSHIP (post-v0.7e Phase 5 cutover, 2026-05-22) ---
  *
- * Per D-9 lock ("stay on Prisma; translate template Drizzle queries"),
- * web-v2 reads/writes the SAME NeonDB as audric/web. The schema +
- * generated client are owned by audric/web (`apps/web/prisma/schema.prisma`
- * + `apps/web/lib/generated/prisma/`). Both schema and generated client
- * are committed to git, so web-v2 imports the generated client directly
- * via a relative cross-package reference.
+ * web-v2 is the canonical app. The prisma schema, migrations, and
+ * generated client all live here:
+ *  - schema:     `apps/web-v2/prisma/schema.prisma`
+ *  - migrations: `apps/web-v2/prisma/migrations/`
+ *  - client:     `apps/web-v2/lib/generated/prisma/`
  *
- * **Why no symlink, no postinstall, no `prisma` devDep:**
- * audric/web owns the schema lifecycle (migrations, generate). web-v2
- * is a transient migration target — it CONSUMES the generated client,
- * it does not regenerate. This avoids:
- *  - schema drift (web-v2 can't accidentally generate a different shape)
- *  - migration ownership confusion (one app owns it; the other reads)
- *  - postinstall failures during web-v2 ci runs
+ * Lifecycle:
+ *  - `pnpm install` runs `prisma generate` (postinstall) — regenerates
+ *    the client from schema.prisma. The committed client in git is the
+ *    fallback for any consumer that runs without postinstall.
+ *  - `pnpm migrate` runs `prisma migrate deploy` — applies pending
+ *    migrations to the connected DB (used by CI / production deploys).
  *
- * The cross-package import (`../../web/lib/generated/prisma/client`) is
- * an intentional + temporary coupling. v0.7c Phase 6 cuts audric/web
- * over to web-v2; when web-v2 becomes the canonical app, the prisma
- * schema + generated client move into web-v2 in the same diff. Until
- * then, the relative import is correct.
+ * Earlier (v0.7c → v0.7e Phase 4) web-v2 imported the generated client
+ * from apps/web via a relative cross-package reference. That coupling
+ * is gone — schema + client moved into web-v2 atomically when apps/web
+ * was archived in v0.7e Phase 5 (S.253).
  *
  * --- NEON SERVERLESS ADAPTER ---
  *
- * Mirrors audric/web's pattern (see `apps/web/lib/prisma.ts` for the
- * full incident write-up). Vercel + Neon: use the WebSocket driver
- * instead of pooled `pg` because the pool's TCP connections die quietly
- * between Vercel's lambda freeze/thaw cycles. The Neon adapter opens a
- * fresh stateless WebSocket per query — no pool, no dead connections.
+ * Vercel + Neon: use the WebSocket driver instead of pooled `pg`
+ * because the pool's TCP connections die quietly between Vercel's
+ * lambda freeze/thaw cycles. The Neon adapter opens a fresh stateless
+ * WebSocket per query — no pool, no dead connections.
  */
 
 import { PrismaNeon } from "@prisma/adapter-neon";
-import { PrismaClient } from "../../web/lib/generated/prisma/client";
 import { env } from "./env";
+import { PrismaClient } from "./generated/prisma/client";
 
 /**
  * Re-export the Prisma namespace so consumers can access type helpers
  * (e.g. `Prisma.InputJsonValue`) without reaching into the generated
- * client directly. Same "intentional + temporary cross-package coupling"
- * rationale as the `PrismaClient` import above — v0.7c Phase 6 cutover
- * collapses the schema + generated client into web-v2.
+ * client directly.
  */
-export { Prisma } from "../../web/lib/generated/prisma/client";
+export { Prisma } from "./generated/prisma/client";
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
