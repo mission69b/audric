@@ -474,11 +474,57 @@ export async function POST(request: NextRequest) {
   // BEFORE buildWriteStep hands the step to the SDK. The Zod gate
   // above accepts these polymorphic forms; the SDK below always
   // wants a 0x address. See `resolveRecipient` doc for the contract.
-  // Bundles pass through verbatim — engine-side bundle composition
-  // already resolves before stamping `steps[]` on `pending_action`.
+  //
+  // [S.263 — 2026-05-23] Bundle steps containing send_transfer get the
+  // SAME treatment. Pre-S.263 the comment here claimed "engine-side
+  // bundle composition already resolves before stamping steps[]" — that
+  // was wrong. The engine's `compose-bundle.ts` packages the LLM's tool
+  // calls into a bundle marker but never resolves SuiNS in the recipient
+  // field. Result: `swap → send to alice@audric` bundles failed at
+  // `composeTx.send_transfer` (`packages/sdk/src/composeTx.ts:578` calls
+  // `validateAddress(input.to)` which is strict-hex). The LLM was forced
+  // to retry with progressively-stripped names until it threaded the raw
+  // 0x — exactly the multi-card UX the single-send path was patched to
+  // avoid. This block extends the existing single-send pattern across
+  // both paths so symmetry holds.
+  //
+  // Architectural rationale (over an SDK-side fix): keeping SuiNS
+  // resolution at the application layer preserves the SDK's "thin
+  // transaction builder over Sui primitives" contract — composeTx
+  // doesn't gain a new failure mode (SuiNS RPC down → can't build), and
+  // Audric's brand-specific `@audric` translation stays out of `@t2000/
+  // sdk`. CLI's contacts.json legacy path is a separate cleanup tracked
+  // in the backlog (S.264 candidate).
   if (body.type === "send") {
     try {
       body = { ...body, recipient: await resolveRecipient(body.recipient) };
+    } catch (err) {
+      return NextResponse.json(
+        {
+          error: err instanceof Error ? err.message : String(err),
+        },
+        { status: 400 }
+      );
+    }
+  } else if (body.type === "bundle") {
+    try {
+      const resolvedSteps = await Promise.all(
+        body.steps.map(async (step) => {
+          if (step.toolName !== "send_transfer") {
+            return step;
+          }
+          const stepInput = step.input as {
+            to?: unknown;
+            [k: string]: unknown;
+          };
+          if (typeof stepInput.to !== "string") {
+            return step;
+          }
+          const resolved = await resolveRecipient(stepInput.to);
+          return { ...step, input: { ...stepInput, to: resolved } };
+        })
+      );
+      body = { ...body, steps: resolvedSteps };
     } catch (err) {
       return NextResponse.json(
         {
