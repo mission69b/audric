@@ -1425,8 +1425,29 @@ function buildToolOutput(
     case "volo-stake":
     case "volo-unstake":
       return { ...base, amount: request.amount };
+    case "harvest":
+      // [Smoke 2026-05-22 harvest-plan-threading] Merge the per-leg
+      // breakdown computed at prepare time (claimed/swaps/skipped/
+      // expectedUsdcDeposited). The plan flows: composeTx →
+      // perStepPreviews[0] → prepare response `harvestPlan` →
+      // SponsoredTxResult.harvestPlan → tool output. Without this merge
+      // the receipt card has no data to render and the LLM has nothing
+      // to narrate, leaving the user looking at "Harvested: No rewards
+      // available" alongside an actual savings increase. Mirrors
+      // `apps/web/hooks/executeToolAction.ts` L307-321.
+      return {
+        ...base,
+        ...(result.harvestPlan
+          ? {
+              claimed: result.harvestPlan.claimed,
+              swaps: result.harvestPlan.swaps,
+              skipped: result.harvestPlan.skipped,
+              expectedUsdcDeposited: result.harvestPlan.expectedUsdcDeposited,
+            }
+          : {}),
+      };
     default:
-      // claim-rewards + harvest carry no amount in the request — the
+      // claim-rewards carries no amount in the request — the
       // balanceChanges array describes what actually moved.
       return base;
   }

@@ -138,6 +138,40 @@ export type SponsoredTxRequest =
       steps: SponsoredTxBundleStep[];
     };
 
+/**
+ * [Smoke 2026-05-22 harvest-plan-threading] Mirror of apps/web's
+ * `HarvestPlanLite` (hooks/useAgent.ts L124-129). Only harvest_rewards
+ * populates this — it's the per-leg breakdown computed by `composeTx`
+ * at sponsor time (claimed[] / swaps[] / skipped[] /
+ * expectedUsdcDeposited). The audric chat client merges it into the
+ * resume tool_result so:
+ *   - The TransactionReceiptCard renders the actual harvest breakdown
+ *     ("Claimed 0.0077 vSUI → swap → ~$0.009 USDC deposited") instead
+ *     of falling into the "No rewards available" empty state.
+ *   - The LLM has truthful per-leg data to narrate, not session-context
+ *     guesses about dust floors that may not apply (priceCache might
+ *     not know vSUI's USD value, in which case the dust filter doesn't
+ *     fire and the swap proceeds regardless of the $0.01 default).
+ */
+export interface HarvestPlanLite {
+  claimed: Array<{
+    symbol?: string;
+    amount: number;
+    estimatedValueUsd?: number;
+  }>;
+  swaps: Array<{
+    fromSymbol: string;
+    inputAmount: number;
+    expectedOutputUsdc: number;
+  }>;
+  skipped: Array<{
+    symbol?: string;
+    amount: number;
+    reason: "untradeable" | "dust" | "no-route";
+  }>;
+  expectedUsdcDeposited: number;
+}
+
 export interface SponsoredTxResult {
   balanceChanges: Array<{
     coinType: string;
@@ -146,6 +180,12 @@ export interface SponsoredTxResult {
   }>;
   digest: string;
   objectChanges?: unknown;
+  /**
+   * Set only for harvest_rewards. Threaded from prepare → execute →
+   * client so the receipt card and the LLM narration both see the
+   * per-leg breakdown. See `HarvestPlanLite` doc above.
+   */
+  harvestPlan?: HarvestPlanLite;
 }
 
 export class SponsoredTxError extends Error {
@@ -269,9 +309,14 @@ export async function sponsoredTx(
     );
   }
 
-  const { bytes, digest } = (await prepareRes.json()) as {
+  const {
+    bytes,
+    digest,
+    harvestPlan,
+  } = (await prepareRes.json()) as {
     bytes: string;
     digest: string;
+    harvestPlan?: HarvestPlanLite;
   };
 
   // --- 2. Sign locally with zkLogin ephemeral key + ZK proof ---
@@ -334,5 +379,14 @@ export async function sponsoredTx(
     );
   }
 
-  return (await executeRes.json()) as SponsoredTxResult;
+  const executeResult = (await executeRes.json()) as SponsoredTxResult;
+  // Merge the prepare-side harvestPlan onto the execute result. The
+  // execute route only knows about the on-chain digest + balanceChanges;
+  // the per-leg plan was computed by composeTx at prepare time and lives
+  // there. The merge happens here so callers always see the full result
+  // shape regardless of which type was requested.
+  return {
+    ...executeResult,
+    ...(harvestPlan ? { harvestPlan } : {}),
+  };
 }

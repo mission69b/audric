@@ -593,16 +593,41 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-  } else if (body.type === "harvest") {
+  }
+
+  // [Smoke 2026-05-22 harvest-plan-threading] Capture the harvest plan
+  // computed by composeTx (claimed/swaps/skipped/expectedUsdcDeposited)
+  // so the response can carry it back to the client. Without this, the
+  // tx executes fine but the receipt card sees an empty plan and falls
+  // into the "No rewards available" empty state — and the LLM sees only
+  // `{tx, balanceChanges}` and hallucinates dust-floor behavior from
+  // session context (see smoke trace: model said "below $0.01 floor,
+  // transferred to wallet" while savings ticked up ~$0.009 because the
+  // swap+deposit ACTUALLY ran). Mirrors `apps/web/app/api/transactions/
+  // prepare/route.ts` L638-663 — the canonical pattern.
+  let harvestPlan:
+    | {
+        claimed: unknown;
+        swaps: unknown;
+        skipped: unknown;
+        expectedUsdcDeposited: number;
+      }
+    | undefined;
+  if (body.type === "harvest") {
     const preview = composed.perStepPreviews[0];
-    if (
-      preview?.toolName === "harvest_rewards" &&
-      preview.claimed.length === 0
-    ) {
-      return NextResponse.json(
-        { error: "No rewards available to harvest" },
-        { status: 400 }
-      );
+    if (preview?.toolName === "harvest_rewards") {
+      if (preview.claimed.length === 0) {
+        return NextResponse.json(
+          { error: "No rewards available to harvest" },
+          { status: 400 }
+        );
+      }
+      harvestPlan = {
+        claimed: preview.claimed,
+        swaps: preview.swaps,
+        skipped: preview.skipped,
+        expectedUsdcDeposited: preview.expectedUsdcDeposited,
+      };
     }
   }
 
@@ -653,7 +678,11 @@ export async function POST(request: NextRequest) {
   const { data } = (await sponsorRes.json()) as {
     data: { bytes: string; digest: string };
   };
-  return NextResponse.json({ bytes: data.bytes, digest: data.digest });
+  return NextResponse.json({
+    bytes: data.bytes,
+    digest: data.digest,
+    ...(harvestPlan ? { harvestPlan } : {}),
+  });
 }
 
 // ---------------------------------------------------------------------------
