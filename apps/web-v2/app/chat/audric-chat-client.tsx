@@ -722,17 +722,28 @@ function AudricChatPanel({
             // build a Set of bundle-claimed toolCallIds. Bundle-claimed
             // tool-* parts are folded into one BundlePermissionCard
             // (rendered from the marker) instead of N individual cards.
+            //
+            // [Smoke 2026-05-22 bundle-refresh-fix] A bundle is "spent"
+            // once every constituent tool part has moved past
+            // approval-requested (output-available / output-error). For
+            // spent bundles we DON'T claim the IDs and DON'T render a
+            // permission card — the individual tool parts render their
+            // own receipts via the normal tool-* branch below. This
+            // matches the single-write path (L845-865) which is
+            // state-aware. The previous unconditional claim caused the
+            // approval card to re-appear on session refresh because
+            // `BundlePermissionCard`'s `resolved` flag lives in
+            // `useState` and resets to false on every fresh mount.
             const bundleClaimedIds = new Set<string>();
             for (const part of m.parts) {
-              if (part.type === "data-audric-bundle") {
-                const marker = parseAudricBundleMarker(
-                  (part as { data?: unknown }).data
-                );
-                if (marker) {
-                  for (const step of marker.steps) {
-                    bundleClaimedIds.add(step.toolCallId);
-                  }
-                }
+              if (part.type !== "data-audric-bundle") continue;
+              const marker = parseAudricBundleMarker(
+                (part as { data?: unknown }).data
+              );
+              if (!marker) continue;
+              if (isBundleSpent(marker, m.parts)) continue;
+              for (const step of marker.steps) {
+                bundleClaimedIds.add(step.toolCallId);
               }
             }
 
@@ -816,6 +827,17 @@ function AudricChatPanel({
                           // separately because they're NOT in
                           // bundleClaimedIds (the set is empty when
                           // parse fails for ALL markers).
+                          return null;
+                        }
+                        // [Smoke 2026-05-22 bundle-refresh-fix] Spent
+                        // bundle (all steps past approval) → render
+                        // nothing here. The constituent tool-* parts
+                        // are NOT in bundleClaimedIds (see the matching
+                        // skip above) so they fall through to the
+                        // tool-* branch and render receipts/errors
+                        // individually — same shape as a freshly
+                        // approved single-write turn.
+                        if (isBundleSpent(marker, m.parts)) {
                           return null;
                         }
                         return (
@@ -1194,6 +1216,55 @@ function BundleForMarker(props: BundleForMarkerProps) {
       steps={steps}
     />
   );
+}
+
+/**
+ * [Smoke 2026-05-22 bundle-refresh-fix] A bundle is "spent" once every
+ * one of its constituent tool parts has moved past `approval-requested`
+ * (i.e. either `output-available` or `output-error`). Pre-approval
+ * bundles render as `BundlePermissionCard`; spent bundles render as
+ * nothing — their constituent tool parts then render their own
+ * receipts via the normal tool-* branch.
+ *
+ * **Why this exists.** `BundlePermissionCard` keeps its `resolved`
+ * flag in `useState`, which resets to `false` on every fresh mount.
+ * On session refresh, the hydrated message still contains the
+ * `data-audric-bundle` marker, so without this gate the marker would
+ * unconditionally re-render the permission card — even though the
+ * persisted tool parts say `state: "output-available"` and
+ * `approval=Y`. The fix is to teach the render decision to look at
+ * the constituent tool parts' states, matching the single-write path
+ * (which already checks `toolPart.state === "approval-requested"`).
+ *
+ * **Edge case (rare race):** a turn that's mid-flight when the user
+ * refreshes — tool parts may still be in `approval-requested` because
+ * the post-confirm `addToolOutput` hasn't fired yet. In that case we
+ * correctly re-render the permission card and the user re-confirms.
+ * This is the same fallback the single-write path uses and is no
+ * worse than today's behavior for that narrow case.
+ */
+function isBundleSpent(
+  marker: AudricBundleMarkerData,
+  parts: readonly UIMessage["parts"][number][]
+): boolean {
+  const stepIds = new Set(marker.steps.map((s) => s.toolCallId));
+  let foundAny = false;
+  for (const p of parts) {
+    if (!p.type.startsWith("tool-")) continue;
+    const toolPart = p as ToolUIPart;
+    if (!stepIds.has(toolPart.toolCallId)) continue;
+    foundAny = true;
+    if (toolPart.state === "approval-requested") {
+      // At least one step is still awaiting user gesture → bundle
+      // is NOT spent; render the permission card.
+      return false;
+    }
+  }
+  // Spent iff we matched every step AND none of them were
+  // `approval-requested`. If we matched zero (stale marker pointing
+  // at nonexistent steps), treat as NOT spent so the malformed-
+  // marker fallback in the render branch above kicks in.
+  return foundAny;
 }
 
 /**

@@ -235,11 +235,11 @@ Atomic Payment Intents cap at ${MAX_BUNDLE_OPS} ops. **DAG-aware**: chained pair
 
 **Whitelisted chain pairs** (auto-thread via \`inputCoinFromStep\`): \`swap_execute → send_transfer\` · \`swap_execute → save_deposit\` · \`swap_execute → repay_debt\` · \`withdraw → swap_execute\` · \`withdraw → send_transfer\` · \`borrow → send_transfer\` · \`borrow → repay_debt\` (same asset). Zero-chain Payment Intents (e.g. multiple independent sends) are also valid — atomicity holds.
 
-**Compile path (2 to ${MAX_BUNDLE_OPS} ops) — TURN BUDGET ≤ 3 (S.126 Tier 2a):** Latency-critical. (1) Reads + \`swap_quote\` × N parallel. (2) Plan text FIRST then \`prepare_bundle({steps})\` SECOND **same response** (saves ~3s vs separate turns). ASK confirm. No writes turn 1. After confirm, dispatches as ONE atomic Payment Intent — narrate "Compiling into one Payment Intent — atomic, if any leg fails nothing executes."
+**Compile path (2 to ${MAX_BUNDLE_OPS} ops) — TURN BUDGET ≤ 3 (S.126 Tier 2a):** Latency-critical. (1) Reads + \`swap_quote\` × N parallel. (2) Plan text FIRST then emit ALL \`${MAX_BUNDLE_OPS}\`-or-fewer write tool_use blocks **in the same assistant response** (the host auto-bundles them into one atomic Payment Intent — no special wrapper tool, just N tool_use blocks back-to-back). Narrate "Compiling into one Payment Intent — atomic, if any leg fails nothing executes." The host's permission card lists every step and asks ONE confirm.
 
 **Examples:** 3-op chain: \`withdraw 5 USDC → swap to SUI → send 1 SUI\`. 4-op DAG: \`swap 200 USDC→SUI, swap 900 USDC→USDsui, save 900 USDsui (chained), send 100 USDC to Mom\` — only step 3 chains; others wallet-mode.
 
-**Sequential path (${MAX_BUNDLE_OPS + 1}+ ops):** Turn 1 = reads + plan + ASK confirm. Do NOT call prepare_bundle. After confirm, emit ONLY the first write. After it lands, emit the next.
+**Sequential path (${MAX_BUNDLE_OPS + 1}+ ops):** Turn 1 = reads + plan + ASK confirm. After confirm, emit ONLY the first write tool_use. After it lands, emit the next. Never emit more than ${MAX_BUNDLE_OPS} writes in one response — the host caps bundles at ${MAX_BUNDLE_OPS}.
 
 Reads run in a PRIOR turn; swap_quote remains mandatory before swap_execute.
 
