@@ -219,6 +219,67 @@ export function countToolParts(messages: readonly ModelMessage[]): {
 }
 
 /**
+ * [S.248-followup / Smoke 2026-05-22 V2 root-cause fix] Strip
+ * `reasoning` parts that appear AFTER any `tool-call` part in the
+ * same assistant message.
+ *
+ * **Why this exists.** AI SDK persists multi-step assistant messages
+ * verbatim — when the LLM does balance_check → save_deposit in one
+ * turn, the resulting assistant UIMessage has parts like
+ * `[text, reasoning, tool-call(balance_check), text, reasoning,
+ * tool-call(save_deposit)]`. On a resume turn this round-trips back
+ * through `convertToModelMessages` → @ai-sdk/anthropic's converter
+ * (`convert-to-anthropic-messages-prompt.ts` L503-557 verified against
+ * 3.0.78) → Anthropic's API.
+ *
+ * The converter blindly emits reasoning → `thinking` content blocks
+ * in source order. Anthropic's extended-thinking contract REQUIRES
+ * all `thinking` blocks to come BEFORE any `tool_use` in an assistant
+ * message. `[thinking, tool_use, thinking, tool_use]` is rejected
+ * with the generic-looking "tool_use ids were found without
+ * tool_result blocks immediately after: …" error — Anthropic returns
+ * this message for several classes of malformed assistant content,
+ * not just orphan tool_uses, which is why the count-based orphan
+ * stripper above doesn't catch this case.
+ *
+ * **The fix.** Keep reasoning blocks ONLY if they appear before the
+ * first tool-call in the assistant content. Strip any reasoning
+ * blocks that come after a tool-call. Text blocks are left alone
+ * (Anthropic accepts text between tool_uses fine).
+ *
+ * Signature loss is acceptable: the post-tool-call reasoning is the
+ * model's chain-of-thought BEFORE its second tool decision — replaying
+ * it gives Anthropic no useful resume context (the tool decision is
+ * already encoded in the tool_use that followed it). Extended-thinking
+ * cache only needs the LEADING reasoning blocks to match the original
+ * generation.
+ */
+function stripPostToolReasoning(message: ModelMessage): ModelMessage {
+  if (message.role !== "assistant") {
+    return message;
+  }
+  const content = message.content;
+  if (typeof content === "string" || !Array.isArray(content)) {
+    return message;
+  }
+  let seenToolCall = false;
+  const cleaned = content.filter((part) => {
+    if (part.type === "tool-call") {
+      seenToolCall = true;
+      return true;
+    }
+    if (part.type === "reasoning" && seenToolCall) {
+      return false;
+    }
+    return true;
+  });
+  if (cleaned.length === content.length) {
+    return message;
+  }
+  return { ...message, content: cleaned };
+}
+
+/**
  * Walks a `ModelMessage[]` and strips Anthropic-invariant violations.
  *
  * Returns a new array (input is not mutated). Empty input returns `[]`.
@@ -325,5 +386,29 @@ export function validateModelMessages(
     break;
   }
 
-  return merged;
+  // ── Pass 5: [Smoke 2026-05-22 V2 root-cause fix] Strip reasoning
+  // blocks that appear after any tool-call in an assistant message.
+  // See `stripPostToolReasoning` header for the full Anthropic
+  // extended-thinking contract violation this addresses.
+  return merged.map(stripPostToolReasoning);
+}
+
+/**
+ * Returns the count of `reasoning` parts across an entire
+ * `ModelMessage[]`. Used by the route's diagnostic logging to verify
+ * Pass 5 stripped what it should have (deltas between pre- and
+ * post-validateModelMessages are the canonical signal).
+ */
+export function countReasoningParts(messages: readonly ModelMessage[]): number {
+  let count = 0;
+  for (const msg of messages) {
+    if (msg.role === "assistant" && Array.isArray(msg.content)) {
+      for (const part of msg.content) {
+        if (part.type === "reasoning") {
+          count++;
+        }
+      }
+    }
+  }
+  return count;
 }

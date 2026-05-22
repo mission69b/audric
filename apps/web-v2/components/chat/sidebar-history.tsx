@@ -147,7 +147,7 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
     ? paginatedChatHistories.every((page) => page.chats.length === 0)
     : false;
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     const chatToDelete = deleteId;
     const isCurrentChat = pathname === `/chat/${chatToDelete}`;
 
@@ -157,21 +157,57 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
       router.replace("/");
     }
 
-    mutate((chatHistories) => {
-      if (chatHistories) {
-        return chatHistories.map((chatHistory) => ({
-          ...chatHistory,
-          chats: chatHistory.chats.filter((chat) => chat.id !== chatToDelete),
-        }));
-      }
-    });
-
-    authFetch(
-      `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/chat?id=${chatToDelete}`,
-      { method: "DELETE" }
+    // [S.248-followup / Smoke 2026-05-22 V2] The original handler was
+    // racing SWR's automatic revalidation against the fire-and-forget
+    // DELETE request. Pre-fix sequence:
+    //
+    //   1. mutate(fn) — optimistic update (chat removed locally)
+    //   2. SWR auto-revalidates `/api/history` (default behavior)
+    //   3. revalidate completes BEFORE the DELETE lands → server still
+    //      returns the chat → SWR overwrites the optimistic update
+    //      with stale data → chat reappears in sidebar
+    //   4. DELETE finally lands server-side
+    //   5. User refreshes → SWR refetches → NOW the chat is gone
+    //
+    // V2 fix: optimistic mutate with `revalidate: false` so SWR doesn't
+    // immediately refetch and clobber the local update. Then await the
+    // DELETE. After it succeeds, mutate WITH revalidate to confirm the
+    // local state matches the server (cheap — server returns 20 chats).
+    // If the DELETE fails we leave a console warning rather than
+    // rolling back; the optimistic UX win is worth more than the
+    // edge-case consistency (next focus / nav will resync anyway).
+    await mutate(
+      (chatHistories) => {
+        if (chatHistories) {
+          return chatHistories.map((chatHistory) => ({
+            ...chatHistory,
+            chats: chatHistory.chats.filter((chat) => chat.id !== chatToDelete),
+          }));
+        }
+      },
+      { revalidate: false }
     );
 
     toast.success("Chat deleted");
+
+    try {
+      const res = await authFetch(
+        `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/chat?id=${chatToDelete}`,
+        { method: "DELETE" }
+      );
+      if (!res.ok) {
+        console.warn(
+          `[sidebar-history] DELETE failed for chatId=${chatToDelete}: ${res.status}`
+        );
+      }
+    } catch (err) {
+      console.warn(
+        "[sidebar-history] DELETE network error (non-fatal):",
+        err instanceof Error ? err.message : String(err)
+      );
+    } finally {
+      mutate();
+    }
   };
 
   if (!user) {

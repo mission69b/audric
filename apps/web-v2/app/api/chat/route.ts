@@ -183,6 +183,7 @@ import { sanitizeStreamErrorMessage } from "@/lib/audric/stream-errors";
 import { buildAudricSystemPrompt } from "@/lib/audric/system-prompt";
 import { TelemetryIntegration } from "@/lib/audric/telemetry-integration";
 import {
+  countReasoningParts,
   countToolParts,
   validateModelMessages,
 } from "@/lib/audric/validate-model-messages";
@@ -1429,78 +1430,100 @@ export async function POST(request: Request) {
   // actually did work" in production logs.
   const beforeMsgCount = aiSdkMessages.length;
   const beforeToolParts = countToolParts(aiSdkMessages);
+  const beforeReasoningParts = countReasoningParts(aiSdkMessages);
   aiSdkMessages = validateModelMessages(aiSdkMessages);
   const afterMsgCount = aiSdkMessages.length;
   const afterToolParts = countToolParts(aiSdkMessages);
+  const afterReasoningParts = countReasoningParts(aiSdkMessages);
 
   // Always log a single structured line on the first POST per stream
   // so we have unambiguous evidence the function ran. Cheap (one log
   // line per chat turn). Includes ALL counts so deltas are computable
   // off the live log stream.
+  //
+  // [Smoke 2026-05-22 V2 root-cause fix] Added `reasoning` count to
+  // surface Pass 5 (strip post-tool-call reasoning). A non-zero
+  // reasoning delta on resume turns is the canonical signal Pass 5
+  // is doing its job — that's the Anthropic
+  // extended-thinking-block-after-tool_use bug being defused.
   console.log(
     `[audric-chat] validateModelMessages ran sessionId=${sessionId} turn=${turnIndex} ` +
       `msgs=${beforeMsgCount}->${afterMsgCount} ` +
       `toolCalls=${beforeToolParts.toolCalls}->${afterToolParts.toolCalls} ` +
-      `toolResults=${beforeToolParts.toolResults}->${afterToolParts.toolResults}`
+      `toolResults=${beforeToolParts.toolResults}->${afterToolParts.toolResults} ` +
+      `reasoning=${beforeReasoningParts}->${afterReasoningParts}`
   );
 
   if (
     afterMsgCount !== beforeMsgCount ||
     afterToolParts.toolCalls !== beforeToolParts.toolCalls ||
-    afterToolParts.toolResults !== beforeToolParts.toolResults
+    afterToolParts.toolResults !== beforeToolParts.toolResults ||
+    afterReasoningParts !== beforeReasoningParts
   ) {
     console.warn(
       `[audric-chat] validateModelMessages STRIPPED corruption sessionId=${sessionId} turn=${turnIndex} ` +
         `msgsDropped=${beforeMsgCount - afterMsgCount} ` +
         `toolCallsDropped=${beforeToolParts.toolCalls - afterToolParts.toolCalls} ` +
-        `toolResultsDropped=${beforeToolParts.toolResults - afterToolParts.toolResults}`
+        `toolResultsDropped=${beforeToolParts.toolResults - afterToolParts.toolResults} ` +
+        `reasoningDropped=${beforeReasoningParts - afterReasoningParts}`
     );
   }
 
-  // [S.248-followup / Smoke #3 diagnostic] Log per-message structure
-  // immediately before the LLM call so we can pinpoint orphan tool_use
-  // blocks the count-based validateModelMessages misses. Each entry
-  // shows: role, count of tool-call ids, count of tool-result ids,
-  // and the first 8 chars of every id (truncated to keep logs cheap).
+  // [S.248-followup / Smoke #3 V2 diagnostic] Full part-type sequence
+  // per message. V1 only logged tool-call/tool-result IDs — useful for
+  // confirming counts match, but missed the actual smoking gun: the
+  // FULL part order within each ModelMessage. The Anthropic adapter
+  // serializes our ModelMessage[] verbatim, and Anthropic's extended-
+  // thinking + multi-step contract has subtle ordering rules
+  // (thinking blocks before tool_use, no text between tool_use blocks
+  // in the same step, etc.) that may be violated by our persisted
+  // multi-step assistant messages.
   //
-  // The recurring "messages.N: tool_use ids were found without
-  // tool_result blocks immediately after: toolu_…" error survives
-  // validateModelMessages (counts match) but Anthropic rejects on
-  // positional/id pairing. This log makes that mismatch visible.
+  // For each message, dump ordered part types with optional tool-id
+  // suffix. e.g.:
+  //
+  //   [1] assistant: text|reasoning|tool-call(toolu_013kCh)|text|reasoning|tool-call(toolu_0195h6)
+  //
+  // This reveals whether the assistant message has structural patterns
+  // the @ai-sdk/anthropic adapter chokes on (e.g. interleaved
+  // text/reasoning between tool_uses) versus a clean
+  // [text, reasoning, tool-call, tool-call] sequence.
   try {
     const structureSummary = aiSdkMessages.map((msg, idx) => {
-      const callIds: string[] = [];
-      const resultIds: string[] = [];
-      if (msg.role === "assistant" && Array.isArray(msg.content)) {
-        for (const part of msg.content) {
-          if (
-            part.type === "tool-call" &&
-            typeof part.toolCallId === "string"
-          ) {
-            callIds.push(part.toolCallId);
-          }
-        }
+      if (typeof msg.content === "string") {
+        const preview = msg.content.slice(0, 40).replace(/\s+/g, " ");
+        return `[${idx}] ${msg.role}: string(${preview.length}c)`;
       }
-      if (msg.role === "tool" && Array.isArray(msg.content)) {
-        for (const part of msg.content) {
-          if (
-            part.type === "tool-result" &&
-            typeof part.toolCallId === "string"
-          ) {
-            resultIds.push(part.toolCallId);
-          }
-        }
+      if (!Array.isArray(msg.content)) {
+        return `[${idx}] ${msg.role}: <unknown>`;
       }
       const trunc = (id: string) => id.slice(0, 12);
-      return `[${idx}] ${msg.role}${
-        callIds.length > 0 ? ` calls=${callIds.map(trunc).join(",")}` : ""
-      }${
-        resultIds.length > 0 ? ` results=${resultIds.map(trunc).join(",")}` : ""
-      }`;
+      const parts = msg.content.map((part) => {
+        if (
+          part.type === "tool-call" &&
+          typeof (part as { toolCallId?: string }).toolCallId === "string"
+        ) {
+          return `tool-call(${trunc(
+            (part as { toolCallId: string }).toolCallId
+          )})`;
+        }
+        if (
+          part.type === "tool-result" &&
+          typeof (part as { toolCallId?: string }).toolCallId === "string"
+        ) {
+          return `tool-result(${trunc(
+            (part as { toolCallId: string }).toolCallId
+          )})`;
+        }
+        // Surface providerExecuted flag for tool-call/result parts so
+        // we can spot provider-executed tools that pair inline.
+        return part.type;
+      });
+      return `[${idx}] ${msg.role}: ${parts.join("|")}`;
     });
     console.log(
-      `[audric-chat] llm-message-structure sessionId=${sessionId} turn=${turnIndex} ` +
-        structureSummary.join(" | ")
+      `[audric-chat] llm-message-structure-v2 sessionId=${sessionId} turn=${turnIndex} ` +
+        structureSummary.join(" || ")
     );
   } catch (logErr) {
     console.warn(
