@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Audric — Agentic Finance on Sui",
     description:
-      "Manage and move money globally. One sentence. Sub-second settlement. 35 tools. 1,000+ users.",
+      "Manage and move money globally. One sentence. Sub-second settlement. 26 tools. 1,000+ users.",
     type: "article",
   },
 };
@@ -50,7 +50,7 @@ export default function LitepaperPage() {
           </h1>
           <p className={s.heroLede}>
             Manage and move money globally. One sentence. Sub-second settlement.
-            35 tools run silently behind every conversation — memory, advice
+            26 tools run silently behind every conversation — memory, advice
             log, chain facts, portfolio context, all assembled before you finish
             typing. 1,000+ users on Sui mainnet.
           </p>
@@ -173,7 +173,7 @@ export default function LitepaperPage() {
                 <div className={s.cellTitle}>t2000.ai</div>
                 <div className={s.cellBody}>
                   @t2000/sdk, @t2000/engine, @t2000/cli, @t2000/mcp — five npm
-                  packages. Wallet, DeFi, 35 tools, 14 skills, streaming,
+                  packages. Wallet, DeFi, 26 tools, 14 skills, streaming,
                   guards. Open-source. Fee-free by design.
                 </div>
               </div>
@@ -216,7 +216,7 @@ export default function LitepaperPage() {
               <div className={s.gridCell}>
                 <div className={s.cellTitle}>Intelligence</div>
                 <div className={s.cellBody}>
-                  35 tools, 14 guards. Knows your finances before you ask.
+                  26 tools, 12 guards. Knows your finances before you ask.
                 </div>
               </div>
               <div className={s.gridCell}>
@@ -443,14 +443,14 @@ export default function LitepaperPage() {
               <div className={s.gridCell}>
                 <div className={s.cellTitle}>Agent Harness</div>
                 <div className={s.cellBody}>
-                  35 tools. Reads fan out in parallel. Writes wait for Passport
+                  26 tools. Reads fan out in parallel. Writes wait for Passport
                   confirmation and execute atomically under a transaction mutex.
                 </div>
               </div>
               <div className={s.gridCell}>
                 <div className={s.cellTitle}>Reasoning Engine</div>
                 <div className={s.cellBody}>
-                  14 guards across 3 priority tiers. 14 skills (markdown
+                  12 guards across 3 priority tiers. 14 skills (markdown
                   playbooks) for multi-step flows. Adaptive model routing — fast
                   for simple, extended thinking for complex.
                 </div>
@@ -631,7 +631,7 @@ export default function LitepaperPage() {
                 <tr>
                   <td>AI engine</td>
                   <td>
-                    <code>@t2000/engine</code> — 35 tools, reasoning, guards,
+                    <code>@t2000/engine</code> — 26 tools, reasoning, guards,
                     canvas (skills via @t2000/mcp)
                   </td>
                 </tr>

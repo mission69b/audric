@@ -223,8 +223,8 @@ Pre-Block-A: 5 systems (Agent Harness + Reasoning Engine + Silent Profile + Chai
 
 Post-Block-A (2026-05-21): **4 systems.** MemWal absorbed Silent Profile + Chain Memory into a single Memory system.
 
-1. **Agent Harness** — 35 tools (24 read + 11 write per S.245), runtime, parallel reads + serial writes under tx mutex.
-2. **Reasoning Engine** — 14 safety guards + complexity classifier + preflight + always-on extended thinking.
+1. **Agent Harness** — 26 tools (18 read + 8 write per S.277, engine 2.18.0), runtime, parallel reads + serial writes structurally serialized via AI SDK step model + `needsApproval` round-trip.
+2. **Reasoning Engine** — 12 safety guards + complexity classifier + preflight + always-on extended thinking. (Pre-S.277 had 14 guards; `costWarning` + `artifactPreview` deleted as dead code.)
 3. **Memory (MemWal)** — `@mysten-incubation/memwal` long-term vector memory (`prepareStep` recall + `onFinish` extraction) + daily `<financial_context>` snapshot for short-term orientation.
 4. **AdviceLog** — `prisma.adviceLog.*` + `record_advice` audric-side tool + `buildAdviceContext()` (last 30 days hydrated each turn).
 
