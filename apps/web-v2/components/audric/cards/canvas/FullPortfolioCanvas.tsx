@@ -76,7 +76,15 @@ export function FullPortfolioCanvas({ data, onAction }: Props) {
     portfolio: null,
   });
   const [loading, setLoading] = useState(false);
-  const [multiData, setMultiData] = useState<MultiWalletData | null>(null);
+  // [S.264 — 2026-05-23] `setMultiData` deleted alongside the dead
+  // `/api/analytics/portfolio-multi` fetch — that route was archived
+  // with apps/web in S.253 and the LinkedWallet table it queried was
+  // dropped in S.254, so the response will always be null. We keep the
+  // multi-wallet UI scaffolding (~30 references, conditional renders
+  // gated on `hasMultiWallet`) inert rather than ripping it out, since
+  // the canvas may host genuine multi-wallet data again post-Audric
+  // Passport (linked Sui-native wallet flows, not the retired model).
+  const [multiData] = useState<MultiWalletData | null>(null);
   const [activeTab, setActiveTab] = useState<WalletTab>("primary");
 
   const address =
@@ -121,15 +129,16 @@ export function FullPortfolioCanvas({ data, onAction }: Props) {
             : null
         )
         .catch(() => null),
-      authFetch(`/api/analytics/portfolio-multi`)
-        .then((r) => (r.ok ? r.json() : null))
-        .catch(() => null),
+      // [S.264 — 2026-05-23] `/api/analytics/portfolio-multi` removed.
+      // The route was archived with apps/web in S.253 and the
+      // LinkedWallet table it queried was dropped in S.254 — there's
+      // no data source to revive. Multi-wallet UI scaffolding stays
+      // inert (gated on `hasMultiWallet` which is now permanently
+      // false) until linked-wallet support returns post-Audric
+      // Passport.
     ])
-      .then(([heatmap, spending, portfolio, multi]) => {
+      .then(([heatmap, spending, portfolio]) => {
         setPanelData({ heatmap, spending, portfolio });
-        if (multi?.wallets?.length > 1) {
-          setMultiData(multi);
-        }
       })
       .finally(() => setLoading(false));
   }, [address]);
