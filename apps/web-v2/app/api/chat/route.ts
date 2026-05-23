@@ -642,11 +642,14 @@ export async function POST(request: Request) {
   //   volo_unstake.
   //
   // [S.243 / V07E_CONTACTS_SIMPLIFICATION Path A — 2026-05-22]
-  // `save_contact` removed from the write tool set (was the 11th).
-  // [S.243 — 2026-05-22] `save_contact` excluded — contacts feature
-  // deleted from web-v2 entirely per V07E_CONTACTS_SIMPLIFICATION
-  // Path A. Engine package still exports the tool until H3 Phase 4
-  // (no-rush cleanup post-soak).
+  // `save_contact` was removed from web-v2's tool set; the filter
+  // below was kept as a transitional safety while the engine package
+  // still exported the tool (H3 Phase 4 was queued as a no-rush
+  // cleanup).
+  //
+  // [S.269 item 6 — 2026-05-23] Engine 2.16.0 deleted `save_contact`
+  // from the package entirely; the filter is now a no-op (the tool
+  // doesn't exist to filter out). Removed.
   //
   // [S.245 — 2026-05-22] `pay_api` / `mpp_services` no longer in
   // engine — deleted per V07E_D_QUESTION_AUDITS D-2 reframe. apps/web
@@ -659,16 +662,10 @@ export async function POST(request: Request) {
   // `web_search` tool (Phase 2 D-19 / S.172 Batch 1 design). Filter
   // `web_search` out of engine reads when `useGateway` is true to
   // avoid the LLM seeing BOTH tools.
-  const writeToolsForWebV2 = WRITE_TOOLS.filter(
-    (t) => t.name !== "save_contact"
-  );
   const readToolsForWebV2 = useGateway
     ? READ_TOOLS.filter((t) => t.name !== "web_search")
     : READ_TOOLS;
-  const engineTools = toAISDKTools([
-    ...readToolsForWebV2,
-    ...writeToolsForWebV2,
-  ]);
+  const engineTools = toAISDKTools([...readToolsForWebV2, ...WRITE_TOOLS]);
   const tools: ToolSet = useGateway
     ? ({
         perplexity_search: gateway.tools.perplexitySearch(),
