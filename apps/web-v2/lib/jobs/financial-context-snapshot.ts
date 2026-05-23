@@ -47,9 +47,21 @@
  * → no row written, reader returns "" cleanly, agent falls back to
  * fresh tool calls (correct: never inject false zeros into the
  * system prompt).
+ *
+ * [S.278 / SPEC 272 Lever 1 — 2026-05-23] Bounded-batch fan-out. The
+ * previous strict `for (const user of users)` sequential loop took
+ * ~165 users × ~2s = ~330s — over Vercel's 300s `maxDuration` cap.
+ * Tail users got truncated, ~6 UFC rows skipped per run. Replaced with
+ * `runInBatches` (N=10 users in parallel, M=500ms intra-batch delay).
+ * Worst-case wall time: 17 batches × ~3s ≈ ~51s. Per-batch BV pressure
+ * stays bounded (10 users × 9 protocols at engine concurrency=3 = ~30
+ * in-flight BV req at peak, well below the ~30 QPS/key soft cap that
+ * trips the engine's 10-in-5s circuit breaker). Existing per-user
+ * try/catch + S.235 degraded-skip gate are preserved verbatim.
  */
 
 import { getTelemetrySink } from "@t2000/engine";
+import { runInBatches } from "@/lib/jobs/batch-runner";
 import { getPortfolio } from "@/lib/portfolio";
 import { prisma } from "@/lib/prisma";
 
@@ -70,9 +82,16 @@ export interface FinancialContextSnapshotResult {
 }
 
 export interface FinancialContextSnapshotOptions {
+  /** [S.278] Override the default batch size (10). Used in tests. */
+  batchSize?: number;
+  /** [S.278] Override the default intra-batch delay (500ms). Used in tests. */
+  intraBatchDelayMs?: number;
   shard?: number;
   total?: number;
 }
+
+type UserRow = { id: string; suiAddress: string };
+type UserOutcome = "created" | "degraded-skipped" | "error";
 
 export async function runFinancialContextSnapshotJob(
   options: FinancialContextSnapshotOptions = {}
@@ -101,103 +120,51 @@ export async function runFinancialContextSnapshotJob(
     return { created: 0, skipped: 0, degradedSkipped: 0, errors: 0, total: 0 };
   }
 
-  const users = await prisma.user.findMany({
+  const users: UserRow[] = await prisma.user.findMany({
     where: { suiAddress: { in: addresses } },
     select: { id: true, suiAddress: true },
+  });
+
+  const sink = getTelemetrySink();
+
+  const { results } = await runInBatches<UserRow, UserOutcome>({
+    items: users,
+    batchSize: options.batchSize,
+    intraBatchDelayMs: options.intraBatchDelayMs,
+    process: (user) => processOneUser(user),
+    onBatchComplete: ({ batchIndex, batchSize, durationMs }) => {
+      sink.histogram("cron.fin_ctx_batch_duration_ms", durationMs, {
+        shard: String(shard),
+        batch: String(batchIndex),
+        size: String(batchSize),
+      });
+    },
   });
 
   let created = 0;
   let degradedSkipped = 0;
   let errors = 0;
-
-  for (const user of users) {
-    try {
-      const [previous, pendingAdvice, lastSession, portfolio] =
-        await Promise.all([
-          prisma.portfolioSnapshot.findMany({
-            where: { userId: user.id },
-            orderBy: { date: "desc" },
-            take: 2,
-          }),
-          prisma.adviceLog.findFirst({
-            where: { userId: user.id, actedOn: false },
-            orderBy: { createdAt: "desc" },
-          }),
-          prisma.sessionUsage.findFirst({
-            where: { address: user.suiAddress },
-            orderBy: { createdAt: "desc" },
-            select: { createdAt: true },
-          }),
-          getPortfolio(user.suiAddress),
-        ]);
-
-      const walletDegraded = portfolio.source === "sui-rpc-degraded";
-      const defiDegraded = portfolio.defiSource === "degraded";
-      if (walletDegraded || defiDegraded) {
-        console.warn(
-          `[financial-context-snapshot] Skipping ${user.id} due to degraded portfolio: walletSource=${portfolio.source}, defiSource=${portfolio.defiSource}`
-        );
-        degradedSkipped++;
-        continue;
-      }
-
-      const latestSnapshot = previous[0] ?? null;
-      const previousSnapshot = previous.length > 1 ? previous[1] : null;
-      const recentActivity = buildActivityFromSnapshots(
-        latestSnapshot,
-        previousSnapshot
-      );
-
-      const daysSinceLastSession = lastSession
-        ? Math.floor(
-            (Date.now() - lastSession.createdAt.getTime()) / 86_400_000
-          )
-        : 0;
-
-      const walletUsdc = portfolio.walletAllocations.USDC ?? 0;
-      const walletUsdsui = portfolio.walletAllocations.USDsui ?? 0;
-
-      const usdsuiSupply = portfolio.positions.supplies.find(
-        (s) => s.asset.toUpperCase() === "USDSUI"
-      );
-      const usdcSupply = portfolio.positions.supplies.find(
-        (s) => s.asset.toUpperCase() === "USDC"
-      );
-      const savingsUsdsui = usdsuiSupply?.amountUsd ?? 0;
-      const savingsUsdc = usdcSupply?.amountUsd ?? 0;
-
-      const data = {
-        userId: user.id,
-        address: user.suiAddress,
-        savingsUsdc,
-        savingsUsdsui,
-        debtUsdc: portfolio.positions.borrows,
-        walletUsdc,
-        walletUsdsui,
-        healthFactor: portfolio.positions.healthFactor,
-        currentApy: portfolio.positions.savingsRate || null,
-        recentActivity,
-        pendingAdvice: pendingAdvice?.adviceText ?? null,
-        daysSinceLastSession,
-      };
-
-      await prisma.userFinancialContext.upsert({
-        where: { userId: user.id },
-        create: data,
-        update: data,
-      });
-      created++;
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
+  for (const r of results) {
+    if (r.status === "rejected") {
+      // Defense in depth — should never fire because `processOneUser`
+      // catches its own errors. If it does, log and count.
       console.error(
-        `[financial-context-snapshot] Failed for ${user.id}: ${msg}`
+        "[financial-context-snapshot] unexpected unhandled rejection:",
+        r.reason instanceof Error ? r.reason.message : r.reason
       );
+      errors++;
+      continue;
+    }
+    if (r.value === "created") {
+      created++;
+    } else if (r.value === "degraded-skipped") {
+      degradedSkipped++;
+    } else {
       errors++;
     }
   }
 
   const shardResult = errors === 0 ? "ok" : "partial";
-  const sink = getTelemetrySink();
   sink.histogram("cron.fin_ctx_shard_duration_ms", Date.now() - shardStart, {
     shard: String(shard),
     result: shardResult,
@@ -222,6 +189,88 @@ export async function runFinancialContextSnapshotJob(
     errors,
     total: addresses.length,
   };
+}
+
+async function processOneUser(user: UserRow): Promise<UserOutcome> {
+  try {
+    const [previous, pendingAdvice, lastSession, portfolio] = await Promise.all(
+      [
+        prisma.portfolioSnapshot.findMany({
+          where: { userId: user.id },
+          orderBy: { date: "desc" },
+          take: 2,
+        }),
+        prisma.adviceLog.findFirst({
+          where: { userId: user.id, actedOn: false },
+          orderBy: { createdAt: "desc" },
+        }),
+        prisma.sessionUsage.findFirst({
+          where: { address: user.suiAddress },
+          orderBy: { createdAt: "desc" },
+          select: { createdAt: true },
+        }),
+        getPortfolio(user.suiAddress),
+      ]
+    );
+
+    const walletDegraded = portfolio.source === "sui-rpc-degraded";
+    const defiDegraded = portfolio.defiSource === "degraded";
+    if (walletDegraded || defiDegraded) {
+      console.warn(
+        `[financial-context-snapshot] Skipping ${user.id} due to degraded portfolio: walletSource=${portfolio.source}, defiSource=${portfolio.defiSource}`
+      );
+      return "degraded-skipped";
+    }
+
+    const latestSnapshot = previous[0] ?? null;
+    const previousSnapshot = previous.length > 1 ? previous[1] : null;
+    const recentActivity = buildActivityFromSnapshots(
+      latestSnapshot,
+      previousSnapshot
+    );
+
+    const daysSinceLastSession = lastSession
+      ? Math.floor((Date.now() - lastSession.createdAt.getTime()) / 86_400_000)
+      : 0;
+
+    const walletUsdc = portfolio.walletAllocations.USDC ?? 0;
+    const walletUsdsui = portfolio.walletAllocations.USDsui ?? 0;
+
+    const usdsuiSupply = portfolio.positions.supplies.find(
+      (s) => s.asset.toUpperCase() === "USDSUI"
+    );
+    const usdcSupply = portfolio.positions.supplies.find(
+      (s) => s.asset.toUpperCase() === "USDC"
+    );
+    const savingsUsdsui = usdsuiSupply?.amountUsd ?? 0;
+    const savingsUsdc = usdcSupply?.amountUsd ?? 0;
+
+    const data = {
+      userId: user.id,
+      address: user.suiAddress,
+      savingsUsdc,
+      savingsUsdsui,
+      debtUsdc: portfolio.positions.borrows,
+      walletUsdc,
+      walletUsdsui,
+      healthFactor: portfolio.positions.healthFactor,
+      currentApy: portfolio.positions.savingsRate || null,
+      recentActivity,
+      pendingAdvice: pendingAdvice?.adviceText ?? null,
+      daysSinceLastSession,
+    };
+
+    await prisma.userFinancialContext.upsert({
+      where: { userId: user.id },
+      create: data,
+      update: data,
+    });
+    return "created";
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[financial-context-snapshot] Failed for ${user.id}: ${msg}`);
+    return "error";
+  }
 }
 
 function buildActivityFromSnapshots(
