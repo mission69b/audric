@@ -1,25 +1,37 @@
 import "dotenv/config";
 
-import { defineConfig, env } from "prisma/config";
+import { defineConfig } from "prisma/config";
 
 /**
- * Prisma 7 config — required for `prisma migrate deploy` because the
- * `datasource.url` property is no longer allowed in `schema.prisma`.
+ * Prisma 7 config — required because `datasource.url` is no longer
+ * allowed in `schema.prisma`.
  *
- * For Neon: prefer `DIRECT_URL` (non-pooled) for migrations and fall
- * back to `DATABASE_URL` if it's not set. The pooled URL works for
- * one-off migrations but Neon's docs recommend a direct connection for
- * schema operations to avoid pgBouncer prepared-statement issues.
+ * Why we read `process.env` directly instead of prisma's `env()` helper:
+ * the `env()` helper THROWS at config-load time if the variable is
+ * missing, but `prisma generate` (which runs as `postinstall` in CI)
+ * doesn't actually need a DB connection — it only generates the client
+ * from the schema. Forcing every CI environment to set `DATABASE_URL`
+ * just so `generate` can succeed adds a foot-gun for no benefit.
  *
- * Runtime client (`lib/prisma.ts`) keeps using `DATABASE_URL` via the
- * `@prisma/adapter-neon` WebSocket driver — this config only affects
- * the Prisma CLI (`prisma migrate ...`, `prisma db ...`).
+ * The placeholder URL is intentionally invalid so any accidental
+ * `prisma migrate ...` / `prisma db ...` invocation without a real
+ * `DATABASE_URL` set fails with a clear connection error rather than
+ * silently using a wrong DB.
+ *
+ * For Neon: prefer `DIRECT_URL` (non-pooled) for migrations. The
+ * runtime client (`lib/prisma.ts`) uses `DATABASE_URL` (pooled) via
+ * `@prisma/adapter-neon`'s WebSocket driver — this config only affects
+ * the Prisma CLI.
  */
-const migrateUrlVar = process.env.DIRECT_URL ? "DIRECT_URL" : "DATABASE_URL";
+const PLACEHOLDER_URL =
+  "postgresql://placeholder:placeholder@placeholder.invalid:5432/placeholder";
+
+const migrateUrl =
+  process.env.DIRECT_URL ?? process.env.DATABASE_URL ?? PLACEHOLDER_URL;
 
 export default defineConfig({
   schema: "prisma/schema.prisma",
   datasource: {
-    url: env(migrateUrlVar),
+    url: migrateUrl,
   },
 });
