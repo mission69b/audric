@@ -140,6 +140,20 @@ const recipientField = z.union([
 ]);
 
 const stableAsset = z.enum(["USDC", "USDsui"]);
+// [S.264 — 2026-05-23] `send` accepts every SDK-supported asset, not
+// just USDC. Pre-fix this gate was `z.enum(["USDC"])` which would have
+// caught the bug if Layer 1 (audric-chat-client.tsx) hadn't already
+// silently coerced the LLM's `asset: "SUI"` to `"USDC"`. We derive
+// from `SUPPORTED_ASSETS` keys (single source of truth) so this stays
+// in sync if the SDK ever adds a 10th asset — same pattern the engine
+// uses for `ALL_NAVI_ASSETS = Object.keys(SUPPORTED_ASSETS)`. The
+// runtime check matches `OPERATION_ASSETS.send: '*'` in SDK constants
+// (the SDK's own allow-list); type stays strict via the cast.
+const SUPPORTED_ASSET_KEYS = Object.keys(SUPPORTED_ASSETS) as [
+  SupportedAsset,
+  ...SupportedAsset[],
+];
+const anySupportedAsset = z.enum(SUPPORTED_ASSET_KEYS);
 const positiveAmount = z.number().positive("amount must be > 0").finite();
 const nonNegativeAmount = z.number().min(0).finite();
 
@@ -172,7 +186,7 @@ const sendSchema = z.object({
   address: addressField,
   amount: positiveAmount,
   recipient: recipientField,
-  asset: z.enum(["USDC"]).optional(),
+  asset: anySupportedAsset.optional(),
 });
 const swapSchema = z.object({
   type: z.literal("swap"),

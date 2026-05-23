@@ -1,6 +1,7 @@
 "use client";
 
 import { useChat } from "@ai-sdk/react";
+import type { SupportedAsset } from "@t2000/sdk";
 import {
   DefaultChatTransport,
   generateId,
@@ -1410,11 +1411,20 @@ function buildSponsoredTxRequest(
         asset: (input.asset as "USDC" | "USDsui" | undefined) ?? "USDC",
       };
     case "send_transfer":
+      // [S.264 — 2026-05-23] Thread `input.asset` through. Pre-fix this
+      // hardcoded `asset: "USDC"`, so a `send_transfer({ asset: "SUI" })`
+      // emitted by the LLM (correctly per the engine tool's "send ANY
+      // supported token" contract) was silently coerced to USDC and a
+      // user asking to send 0.5 SUI lost 0.5 USDC instead. The SDK's
+      // `composeTx.send_transfer` already supports all 9 SUPPORTED_ASSETS
+      // (USDC, USDsui, SUI, USDT, USDe, WAL, ETH, NAVX, GOLD); the
+      // `OPERATION_ASSETS.send: '*'` rule in SDK constants is the
+      // authoritative allow-list.
       return {
         type: "send",
         amount: Number(input.amount),
         recipient: String(input.to ?? ""),
-        asset: "USDC",
+        asset: (input.asset as SupportedAsset | undefined) ?? "USDC",
       };
     case "swap_execute":
       return {

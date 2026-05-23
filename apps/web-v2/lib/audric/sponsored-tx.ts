@@ -33,6 +33,7 @@
  * prepare/route.ts` L185-264 dispatcher.
  */
 
+import type { SupportedAsset } from "@t2000/sdk";
 import { deserializeKeypair, type ZkLoginSession } from "@/lib/zklogin";
 
 /**
@@ -94,10 +95,18 @@ export type SponsoredTxRequest =
       asset?: "USDC" | "USDsui";
     }
   | {
+      // [S.264 — 2026-05-23] `asset` widened from "USDC"-only to every
+      // SDK-supported asset. Pre-fix the chat client hardcoded
+      // `asset: "USDC"` here regardless of LLM intent, so a
+      // `send_transfer({ asset: "SUI" })` silently shipped USDC. The
+      // SDK's `composeTx.send_transfer` already handles all 9 assets
+      // (USDC, USDsui, SUI, USDT, USDe, WAL, ETH, NAVX, GOLD) via
+      // `OPERATION_ASSETS.send: '*'`; widening the type here closes
+      // the audric-side leak.
       type: "send";
       amount: number;
       recipient: string;
-      asset?: "USDC";
+      asset?: SupportedAsset;
     }
   | {
       type: "swap";
