@@ -230,7 +230,7 @@ export default function LitepaperPage() {
               <div className={s.gridCell}>
                 <div className={s.cellTitle}>Pay</div>
                 <div className={s.cellBody}>
-                  Send USDC free in 0.4s. Payment links, QR, invoices.
+                  Send USDC free in 0.4s. Payment links, QR.
                 </div>
               </div>
               <div className={s.gridCell}>

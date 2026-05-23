@@ -27,7 +27,6 @@ const TOOL_TO_VARIANT: Record<string, SkeletonVariant | null> = {
   explain_tx: 'wide',
   protocol_deep_dive: 'wide',
   create_payment_link: 'wide',
-  create_invoice: 'wide',
   save_deposit: 'wide',
   withdraw: 'wide',
   send_transfer: 'wide',
@@ -43,11 +42,9 @@ const TOOL_TO_VARIANT: Record<string, SkeletonVariant | null> = {
   transaction_history: 'list',
   web_search: 'list',
   list_payment_links: 'list',
-  list_invoices: 'list',
 
   // Chip (single-line confirmations)
   cancel_payment_link: 'chip',
-  cancel_invoice: 'chip',
   resolve_suins: 'chip',
 
   // Tools with no card

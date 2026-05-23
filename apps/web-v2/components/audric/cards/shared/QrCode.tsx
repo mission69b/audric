@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
 import { Skeleton } from '@/components/ui/skeleton';
 
-// QrCode — shared primitive for InvoiceCard + PaymentLinkCard. Ported
+// QrCode — shared primitive for PaymentLinkCard (and pre-V07E_INVOICE_DEPRECATION
+// the deleted InvoiceCard too). Ported
 // from `apps/web/components/dashboard/QrCode.tsx` by Phase 5a.4
 // (renderer migration sweep, 2026-05-19). API verbatim; the Skeleton
 // fallback uses web-v2's shadcn Skeleton (no variant prop) sized via

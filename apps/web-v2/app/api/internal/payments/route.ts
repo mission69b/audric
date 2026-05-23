@@ -7,10 +7,22 @@ import { generateSlug } from "@/lib/slug";
 
 /**
  * POST /api/internal/payments
- * Called by the engine's create_payment_link and create_invoice tools.
+ * Called by the engine's create_payment_link tool.
  * Auth: x-internal-key + x-sui-address
  *
- * Body must include { type: 'link' | 'invoice' }.
+ * [V07E_INVOICE_DEPRECATION / S.269 item 7 — 2026-05-23] Pre-deprecation
+ * the body discriminated on `{ type: 'link' | 'invoice' }` and the engine
+ * had matching `create_invoice` / `create_payment_link` tools. Phase 1
+ * deleted the invoice tools; Phase 4 (this layer) makes the rejection
+ * structural — `type='invoice'` returns 410 Gone with a hint that
+ * payment links cover the use case. Pre-existing invoice rows in DB
+ * keep resolving via GET /api/payments/[slug] until Phase 5 drops them.
+ *
+ * Body shape post-deprecation: `{ amount, label?, memo?, expiresInHours? }`.
+ * The `type` field is no longer accepted; if present and not "link", we
+ * reject. The 6 invoice-only fields (`recipientName`, `recipientEmail`,
+ * `dueDays`, `items`) are also rejected — defensive against any
+ * un-updated caller.
  */
 export async function POST(request: NextRequest) {
   const auth = validateInternalKey(request.headers.get("x-internal-key"));
@@ -53,10 +65,21 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const type = body.type ?? "link";
-  if (type !== "link" && type !== "invoice") {
+  // [V07E_INVOICE_DEPRECATION Phase 4] Reject invoice intents at the
+  // API layer. Payment links cover the use case — encode invoice
+  // context in label/memo.
+  if (body.type === "invoice") {
     return NextResponse.json(
-      { error: 'type must be "link" or "invoice"' },
+      {
+        error:
+          "Invoices have been deprecated — use payment links instead. Encode invoice context in the label and memo (e.g. label='Web design — March 2026', memo='Net 30').",
+      },
+      { status: 410 }
+    );
+  }
+  if (body.type !== undefined && body.type !== "link") {
+    return NextResponse.json(
+      { error: 'type must be "link" (the only supported type)' },
       { status: 400 }
     );
   }
@@ -84,55 +107,12 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   }
-  if (body.recipientName && body.recipientName.length > 100) {
-    return NextResponse.json(
-      { error: "Recipient name must be 100 characters or fewer" },
-      { status: 400 }
-    );
-  }
-  if (body.recipientEmail && body.recipientEmail.length > 254) {
-    return NextResponse.json(
-      { error: "Recipient email must be 254 characters or fewer" },
-      { status: 400 }
-    );
-  }
-  if (body.items) {
-    if (body.items.length > 20) {
-      return NextResponse.json(
-        { error: "Maximum 20 line items" },
-        { status: 400 }
-      );
-    }
-    for (const item of body.items) {
-      if (item.description && item.description.length > 200) {
-        return NextResponse.json(
-          { error: "Line item description must be 200 characters or fewer" },
-          { status: 400 }
-        );
-      }
-    }
-  }
 
-  if (
-    type === "invoice" &&
-    (!body.label || typeof body.label !== "string" || !body.label.trim())
-  ) {
-    return NextResponse.json(
-      { error: "Invoice label is required" },
-      { status: 400 }
-    );
-  }
-
-  const slug = generateSlug(type === "invoice" ? 10 : 8);
+  const slug = generateSlug(8);
 
   const expiresAt =
     body.expiresInHours && body.expiresInHours > 0
       ? new Date(Date.now() + body.expiresInHours * 3_600_000)
-      : null;
-
-  const dueDate =
-    type === "invoice" && body.dueDays && body.dueDays > 0
-      ? new Date(Date.now() + body.dueDays * 86_400_000)
       : null;
 
   const payment = await prisma.payment.create({
@@ -140,28 +120,20 @@ export async function POST(request: NextRequest) {
       slug,
       userId: user.id,
       suiAddress,
-      type,
+      type: "link",
       amount: body.amount,
       currency: body.currency ?? "USDC",
       label: body.label?.trim() ?? null,
       memo: body.memo ?? null,
       expiresAt,
-      ...(type === "invoice" && {
-        lineItems: body.items ? JSON.parse(JSON.stringify(body.items)) : null,
-        dueDate,
-        recipientName: body.recipientName ?? null,
-        recipientEmail: body.recipientEmail ?? null,
-      }),
     },
     select: {
       slug: true,
       nonce: true,
-      type: true,
       amount: true,
       currency: true,
       label: true,
       memo: true,
-      dueDate: true,
       expiresAt: true,
       createdAt: true,
     },
@@ -174,17 +146,11 @@ export async function POST(request: NextRequest) {
       slug: payment.slug,
       nonce: payment.nonce,
       url,
-      type: payment.type,
       amount: payment.amount,
       currency: payment.currency,
       label: payment.label,
       memo: payment.memo,
-      ...(type === "invoice" && {
-        dueDate: payment.dueDate?.toISOString() ?? null,
-      }),
-      ...(type === "link" && {
-        expiresAt: payment.expiresAt?.toISOString() ?? null,
-      }),
+      expiresAt: payment.expiresAt?.toISOString() ?? null,
     },
     { status: 201 }
   );
@@ -253,7 +219,12 @@ export async function PATCH(request: NextRequest) {
 /**
  * GET /api/internal/payments
  * Returns the user's payments (most recent 20).
- * Optional query param: ?type=link|invoice
+ *
+ * [V07E_INVOICE_DEPRECATION Phase 4] `?type=invoice` is rejected with 410
+ * Gone. `?type=link` is accepted (still the canonical filter the engine
+ * tool sends). No filter (or any other value) returns all rows of the
+ * user — defensive: pre-Phase-5 invoice rows still exist in DB and the
+ * agent shouldn't have to learn a different filter to surface them.
  */
 export async function GET(request: NextRequest) {
   const auth = validateInternalKey(request.headers.get("x-internal-key"));
@@ -278,8 +249,18 @@ export async function GET(request: NextRequest) {
   }
 
   const typeFilter = request.nextUrl.searchParams.get("type");
+  if (typeFilter === "invoice") {
+    return NextResponse.json(
+      {
+        error:
+          "Invoices have been deprecated — list payment links instead (filter ?type=link or omit type).",
+      },
+      { status: 410 }
+    );
+  }
+
   const where: Record<string, unknown> = { userId: user.id };
-  if (typeFilter === "link" || typeFilter === "invoice") {
+  if (typeFilter === "link") {
     where.type = typeFilter;
   }
 
@@ -290,13 +271,11 @@ export async function GET(request: NextRequest) {
     select: {
       slug: true,
       nonce: true,
-      type: true,
       amount: true,
       currency: true,
       label: true,
       status: true,
       paymentMethod: true,
-      dueDate: true,
       expiresAt: true,
       paidAt: true,
       createdAt: true,
@@ -309,28 +288,17 @@ export async function GET(request: NextRequest) {
     payments: payments.map((p) => {
       const isExpired =
         p.expiresAt && p.expiresAt < now && p.status === "active";
-      const isOverdue =
-        p.type === "invoice" &&
-        p.dueDate &&
-        p.dueDate < now &&
-        p.status === "active";
 
       return {
         slug: p.slug,
         url: audricWebUrl(`/pay/${p.slug}`),
-        type: p.type,
         amount: p.amount,
         currency: p.currency,
         label: p.label,
-        status: isExpired ? "expired" : isOverdue ? "overdue" : p.status,
+        status: isExpired ? "expired" : p.status,
         paymentMethod: p.paymentMethod,
         paidAt: p.paidAt?.toISOString() ?? null,
-        ...(p.type === "invoice" && {
-          dueDate: p.dueDate?.toISOString() ?? null,
-        }),
-        ...(p.type === "link" && {
-          expiresAt: p.expiresAt?.toISOString() ?? null,
-        }),
+        expiresAt: p.expiresAt?.toISOString() ?? null,
         createdAt: p.createdAt.toISOString(),
       };
     }),

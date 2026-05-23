@@ -6,12 +6,14 @@
  *
  * Session 3 ported only open-receive mode (public profile page is a pure
  * receiver — no invoice on that surface). Session 4 ports `/pay/[slug]`,
- * which needs the invoice / fixed-payment URI shape. Amount mode is now
+ * which needs the fixed-payment URI shape (pre-V07E_INVOICE_DEPRECATION
+ * this also covered the standalone invoice product; payment links now
+ * absorb the invoicing use case). Amount mode is now
  * back, routing through `@mysten/payment-kit`'s `createPaymentTransactionUri`
  * exactly like the original `apps/web` implementation.
  *
  * Two modes:
- *   - **Amount mode** (invoice / fixed payment) — routes through
+ *   - **Amount mode** (fixed-amount payment link) — routes through
  *     `createPaymentTransactionUri` which produces a fully-formed
  *     transaction URI with nonce, label, message.
  *   - **Open-receive mode** (bare `sui:pay?recipient=…&coinType=…`) — used
@@ -41,7 +43,7 @@ export interface BuildSuiPayUriOpts {
   label?: string | null;
   /** Optional message shown in wallet UI. */
   memo?: string | null;
-  /** Optional nonce (uniqueness per invoice). Required for amount mode. */
+  /** Optional nonce (uniqueness per receivable). Required for amount mode. */
   nonce?: string;
   recipient: string;
 }

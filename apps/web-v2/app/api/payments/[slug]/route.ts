@@ -8,18 +8,20 @@ import { prisma } from "@/lib/prisma";
  * hydrate the receipt screen, and by the page's `generateMetadata` to
  * build the OG/Twitter tags.
  *
- * Ported from `apps/web/app/api/payments/[slug]/route.ts` GET handler
- * for Session 4 (v0.7c Phase 6). Behaviour preservation:
- *   - Same status-derivation logic (expired vs overdue vs raw status).
- *   - Same response shape (slug / nonce / type / recipient / amount /
- *     currency / label / memo / status / paymentMethod / paidAt / paidBy
- *     / txDigest / invoice-fields / link-fields / createdAt).
- *   - Same null-on-missing pattern for optional fields.
+ * [V07E_INVOICE_DEPRECATION / S.269 item 7 — 2026-05-23] Phase 3 collapses
+ * the response shape to the link path. Pre-deprecation the handler split
+ * the response on `payment.type` to spread invoice-specific fields
+ * (`lineItems`, `dueDate`, `billToName`, `billToEmail`, `senderName`) for
+ * `type='invoice'` rows. Phase 5 drops those columns from the schema,
+ * so the spread is removed now in service of column drop. Existing
+ * `type='invoice'` rows still resolve via this handler (the row exists
+ * until Phase 5 migration deletes it) but only the link-shape fields
+ * surface. PayClient renders them as plain payment links — graceful
+ * degradation; their slug URLs still resolve to a payable amount.
  *
- * PATCH (cancel) + DELETE handlers from the legacy route are intentionally
- * NOT ported. Per Session 4 audit, the only legacy consumer was
- * `components/panels/PayPanel.tsx` which dies with `/new` in v0.7e
- * Tier B sweep. If a v2 surface ever needs cancel/delete, port them then.
+ * `overdue` derivation is also dropped — invoice-only signal whose
+ * column source (`dueDate`) is gone in Phase 5. Status remains the raw
+ * payment.status; `expired` derivation stays (link-applicable).
  *
  * Runtime: nodejs (the Next.js 16 Cache Components default — the legacy
  * `export const runtime = 'nodejs'` is rejected at build time).
@@ -38,16 +40,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
   const now = new Date();
   const isExpired =
     payment.expiresAt && payment.expiresAt < now && payment.status === "active";
-  const isOverdue =
-    payment.type === "invoice" &&
-    payment.dueDate &&
-    payment.dueDate < now &&
-    payment.status === "active";
-  const effectiveStatus = isExpired
-    ? "expired"
-    : isOverdue
-      ? "overdue"
-      : payment.status;
+  const effectiveStatus = isExpired ? "expired" : payment.status;
 
   const user = await prisma.user.findUnique({
     where: { id: payment.userId },
@@ -57,7 +50,6 @@ export async function GET(_request: NextRequest, { params }: Params) {
   return NextResponse.json({
     slug: payment.slug,
     nonce: payment.nonce,
-    type: payment.type,
     recipientAddress: payment.suiAddress,
     recipientName: user?.displayName ?? null,
     amount: payment.amount,
@@ -69,16 +61,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
     paidAt: payment.paidAt?.toISOString() ?? null,
     paidBy: payment.paidBy,
     txDigest: payment.txDigest,
-    ...(payment.type === "invoice" && {
-      lineItems: payment.lineItems,
-      dueDate: payment.dueDate?.toISOString() ?? null,
-      billToName: payment.recipientName,
-      billToEmail: payment.recipientEmail,
-      senderName: payment.senderName,
-    }),
-    ...(payment.type === "link" && {
-      expiresAt: payment.expiresAt?.toISOString() ?? null,
-    }),
+    expiresAt: payment.expiresAt?.toISOString() ?? null,
     createdAt: payment.createdAt.toISOString(),
   });
 }

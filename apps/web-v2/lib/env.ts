@@ -103,8 +103,8 @@ const serverSchema = z.object({
    * `optionalString` with a "pre-cutover preview deploy" rationale that
    * went stale when `apps/web` was deleted in S.253 (DNS swap landed,
    * web-v2 IS production). The optional posture meant a typo / unset
-   * var in Vercel UI silently 401'd every payment-link / invoice
-   * creation forever — exactly the smoke-test bug found post-S.267
+   * var in Vercel UI silently 401'd every payment-link creation
+   * forever — exactly the smoke-test bug found post-S.267
    * deploy. Boot-time validation now surfaces the misconfig as a
    * deploy failure instead of a silent product death.
    *
@@ -116,7 +116,7 @@ const serverSchema = z.object({
    * helpers (`audric-api.ts:getAudricApiBase`) resolve canonical
    * `/api/portfolio` + `/api/history` + `/api/analytics/*` + the
    * `/api/internal/payments` POST endpoint that creates payment links
-   * and invoices.
+   * (covers invoicing post-V07E_INVOICE_DEPRECATION / S.269 item 7).
    *
    * **REQUIRED post-S.269 item 0a (2026-05-23).** Pre-S.269 this was
    * `optionalString` because the engine had a fallback chain to

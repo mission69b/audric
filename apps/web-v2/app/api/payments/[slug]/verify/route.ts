@@ -94,15 +94,19 @@ export async function POST(request: NextRequest, { params }: Params) {
     }
     return await verifyByRegistry(payment);
   } catch {
-    const effectiveStatus = getEffectiveStatus(payment);
-    return NextResponse.json({ status: effectiveStatus, paidAt: null });
+    return NextResponse.json({ status: payment.status, paidAt: null });
   }
 }
 
+// [V07E_INVOICE_DEPRECATION / S.269 item 7 — 2026-05-23] PaymentDbRecord
+// shape pre-deprecation also tracked `type` and `dueDate` so the
+// verify route could surface "overdue" for unpaid invoices past
+// due date. Phase 5 drops both columns; the helper that derived
+// "overdue" is gone with them — `getEffectiveStatus` collapses to
+// `payment.status` raw, so we inline `payment.status` everywhere.
 interface PaymentDbRecord {
   amount: number | null;
   createdAt: Date;
-  dueDate: Date | null;
   expiresAt: Date | null;
   id: string;
   label: string | null;
@@ -110,18 +114,6 @@ interface PaymentDbRecord {
   slug: string;
   status: string;
   suiAddress: string;
-  type: string;
-}
-
-function getEffectiveStatus(payment: PaymentDbRecord): string {
-  if (
-    payment.type === "invoice" &&
-    payment.dueDate &&
-    payment.dueDate < new Date()
-  ) {
-    return "overdue";
-  }
-  return payment.status;
 }
 
 /**
@@ -131,8 +123,7 @@ function getEffectiveStatus(payment: PaymentDbRecord): string {
  */
 async function verifyByRegistry(payment: PaymentDbRecord) {
   if (payment.amount === null || payment.amount <= 0) {
-    const effectiveStatus = getEffectiveStatus(payment);
-    return NextResponse.json({ status: effectiveStatus, paidAt: null });
+    return NextResponse.json({ status: payment.status, paidAt: null });
   }
 
   const rawAmount = String(Math.floor(payment.amount * 10 ** USDC_DECIMALS));
@@ -146,8 +137,7 @@ async function verifyByRegistry(payment: PaymentDbRecord) {
     });
     events = page.data;
   } catch {
-    const effectiveStatus = getEffectiveStatus(payment);
-    return NextResponse.json({ status: effectiveStatus, paidAt: null });
+    return NextResponse.json({ status: payment.status, paidAt: null });
   }
 
   const match = events.find((e) => {
@@ -162,13 +152,11 @@ async function verifyByRegistry(payment: PaymentDbRecord) {
   });
 
   if (!match) {
-    const effectiveStatus = getEffectiveStatus(payment);
-    return NextResponse.json({ status: effectiveStatus, paidAt: null });
+    return NextResponse.json({ status: payment.status, paidAt: null });
   }
 
   if (payment.amount === null) {
-    const effectiveStatus = getEffectiveStatus(payment);
-    return NextResponse.json({ status: effectiveStatus, paidAt: null });
+    return NextResponse.json({ status: payment.status, paidAt: null });
   }
 
   return markPaid(
@@ -380,7 +368,6 @@ async function markPaid(
         details: {
           slug: payment.slug,
           nonce: payment.nonce,
-          paymentType: payment.type,
           amount: amountReceived,
           paymentMethod,
           sender,

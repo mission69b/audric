@@ -47,11 +47,6 @@ export type PaymentMinAggregateOutputType = {
   label: string | null
   memo: string | null
   senderName: string | null
-  dueDate: Date | null
-  recipientName: string | null
-  recipientEmail: string | null
-  sentAt: Date | null
-  reminderSentAt: Date | null
   paymentMethod: string | null
   paidAt: Date | null
   paidBy: string | null
@@ -74,11 +69,6 @@ export type PaymentMaxAggregateOutputType = {
   label: string | null
   memo: string | null
   senderName: string | null
-  dueDate: Date | null
-  recipientName: string | null
-  recipientEmail: string | null
-  sentAt: Date | null
-  reminderSentAt: Date | null
   paymentMethod: string | null
   paidAt: Date | null
   paidBy: string | null
@@ -101,12 +91,6 @@ export type PaymentCountAggregateOutputType = {
   label: number
   memo: number
   senderName: number
-  lineItems: number
-  dueDate: number
-  recipientName: number
-  recipientEmail: number
-  sentAt: number
-  reminderSentAt: number
   paymentMethod: number
   paidAt: number
   paidBy: number
@@ -139,11 +123,6 @@ export type PaymentMinAggregateInputType = {
   label?: true
   memo?: true
   senderName?: true
-  dueDate?: true
-  recipientName?: true
-  recipientEmail?: true
-  sentAt?: true
-  reminderSentAt?: true
   paymentMethod?: true
   paidAt?: true
   paidBy?: true
@@ -166,11 +145,6 @@ export type PaymentMaxAggregateInputType = {
   label?: true
   memo?: true
   senderName?: true
-  dueDate?: true
-  recipientName?: true
-  recipientEmail?: true
-  sentAt?: true
-  reminderSentAt?: true
   paymentMethod?: true
   paidAt?: true
   paidBy?: true
@@ -193,12 +167,6 @@ export type PaymentCountAggregateInputType = {
   label?: true
   memo?: true
   senderName?: true
-  lineItems?: true
-  dueDate?: true
-  recipientName?: true
-  recipientEmail?: true
-  sentAt?: true
-  reminderSentAt?: true
   paymentMethod?: true
   paidAt?: true
   paidBy?: true
@@ -308,12 +276,6 @@ export type PaymentGroupByOutputType = {
   label: string | null
   memo: string | null
   senderName: string | null
-  lineItems: runtime.JsonValue | null
-  dueDate: Date | null
-  recipientName: string | null
-  recipientEmail: string | null
-  sentAt: Date | null
-  reminderSentAt: Date | null
   paymentMethod: string | null
   paidAt: Date | null
   paidBy: string | null
@@ -359,12 +321,6 @@ export type PaymentWhereInput = {
   label?: Prisma.StringNullableFilter<"Payment"> | string | null
   memo?: Prisma.StringNullableFilter<"Payment"> | string | null
   senderName?: Prisma.StringNullableFilter<"Payment"> | string | null
-  lineItems?: Prisma.JsonNullableFilter<"Payment">
-  dueDate?: Prisma.DateTimeNullableFilter<"Payment"> | Date | string | null
-  recipientName?: Prisma.StringNullableFilter<"Payment"> | string | null
-  recipientEmail?: Prisma.StringNullableFilter<"Payment"> | string | null
-  sentAt?: Prisma.DateTimeNullableFilter<"Payment"> | Date | string | null
-  reminderSentAt?: Prisma.DateTimeNullableFilter<"Payment"> | Date | string | null
   paymentMethod?: Prisma.StringNullableFilter<"Payment"> | string | null
   paidAt?: Prisma.DateTimeNullableFilter<"Payment"> | Date | string | null
   paidBy?: Prisma.StringNullableFilter<"Payment"> | string | null
@@ -388,12 +344,6 @@ export type PaymentOrderByWithRelationInput = {
   label?: Prisma.SortOrderInput | Prisma.SortOrder
   memo?: Prisma.SortOrderInput | Prisma.SortOrder
   senderName?: Prisma.SortOrderInput | Prisma.SortOrder
-  lineItems?: Prisma.SortOrderInput | Prisma.SortOrder
-  dueDate?: Prisma.SortOrderInput | Prisma.SortOrder
-  recipientName?: Prisma.SortOrderInput | Prisma.SortOrder
-  recipientEmail?: Prisma.SortOrderInput | Prisma.SortOrder
-  sentAt?: Prisma.SortOrderInput | Prisma.SortOrder
-  reminderSentAt?: Prisma.SortOrderInput | Prisma.SortOrder
   paymentMethod?: Prisma.SortOrderInput | Prisma.SortOrder
   paidAt?: Prisma.SortOrderInput | Prisma.SortOrder
   paidBy?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -421,12 +371,6 @@ export type PaymentWhereUniqueInput = Prisma.AtLeast<{
   label?: Prisma.StringNullableFilter<"Payment"> | string | null
   memo?: Prisma.StringNullableFilter<"Payment"> | string | null
   senderName?: Prisma.StringNullableFilter<"Payment"> | string | null
-  lineItems?: Prisma.JsonNullableFilter<"Payment">
-  dueDate?: Prisma.DateTimeNullableFilter<"Payment"> | Date | string | null
-  recipientName?: Prisma.StringNullableFilter<"Payment"> | string | null
-  recipientEmail?: Prisma.StringNullableFilter<"Payment"> | string | null
-  sentAt?: Prisma.DateTimeNullableFilter<"Payment"> | Date | string | null
-  reminderSentAt?: Prisma.DateTimeNullableFilter<"Payment"> | Date | string | null
   paymentMethod?: Prisma.StringNullableFilter<"Payment"> | string | null
   paidAt?: Prisma.DateTimeNullableFilter<"Payment"> | Date | string | null
   paidBy?: Prisma.StringNullableFilter<"Payment"> | string | null
@@ -449,12 +393,6 @@ export type PaymentOrderByWithAggregationInput = {
   label?: Prisma.SortOrderInput | Prisma.SortOrder
   memo?: Prisma.SortOrderInput | Prisma.SortOrder
   senderName?: Prisma.SortOrderInput | Prisma.SortOrder
-  lineItems?: Prisma.SortOrderInput | Prisma.SortOrder
-  dueDate?: Prisma.SortOrderInput | Prisma.SortOrder
-  recipientName?: Prisma.SortOrderInput | Prisma.SortOrder
-  recipientEmail?: Prisma.SortOrderInput | Prisma.SortOrder
-  sentAt?: Prisma.SortOrderInput | Prisma.SortOrder
-  reminderSentAt?: Prisma.SortOrderInput | Prisma.SortOrder
   paymentMethod?: Prisma.SortOrderInput | Prisma.SortOrder
   paidAt?: Prisma.SortOrderInput | Prisma.SortOrder
   paidBy?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -485,12 +423,6 @@ export type PaymentScalarWhereWithAggregatesInput = {
   label?: Prisma.StringNullableWithAggregatesFilter<"Payment"> | string | null
   memo?: Prisma.StringNullableWithAggregatesFilter<"Payment"> | string | null
   senderName?: Prisma.StringNullableWithAggregatesFilter<"Payment"> | string | null
-  lineItems?: Prisma.JsonNullableWithAggregatesFilter<"Payment">
-  dueDate?: Prisma.DateTimeNullableWithAggregatesFilter<"Payment"> | Date | string | null
-  recipientName?: Prisma.StringNullableWithAggregatesFilter<"Payment"> | string | null
-  recipientEmail?: Prisma.StringNullableWithAggregatesFilter<"Payment"> | string | null
-  sentAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Payment"> | Date | string | null
-  reminderSentAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Payment"> | Date | string | null
   paymentMethod?: Prisma.StringNullableWithAggregatesFilter<"Payment"> | string | null
   paidAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Payment"> | Date | string | null
   paidBy?: Prisma.StringNullableWithAggregatesFilter<"Payment"> | string | null
@@ -512,12 +444,6 @@ export type PaymentCreateInput = {
   label?: string | null
   memo?: string | null
   senderName?: string | null
-  lineItems?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
-  dueDate?: Date | string | null
-  recipientName?: string | null
-  recipientEmail?: string | null
-  sentAt?: Date | string | null
-  reminderSentAt?: Date | string | null
   paymentMethod?: string | null
   paidAt?: Date | string | null
   paidBy?: string | null
@@ -541,12 +467,6 @@ export type PaymentUncheckedCreateInput = {
   label?: string | null
   memo?: string | null
   senderName?: string | null
-  lineItems?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
-  dueDate?: Date | string | null
-  recipientName?: string | null
-  recipientEmail?: string | null
-  sentAt?: Date | string | null
-  reminderSentAt?: Date | string | null
   paymentMethod?: string | null
   paidAt?: Date | string | null
   paidBy?: string | null
@@ -568,12 +488,6 @@ export type PaymentUpdateInput = {
   label?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   memo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   senderName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  lineItems?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
-  dueDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  recipientName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  recipientEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  sentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  reminderSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   paymentMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   paidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   paidBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -597,12 +511,6 @@ export type PaymentUncheckedUpdateInput = {
   label?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   memo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   senderName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  lineItems?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
-  dueDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  recipientName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  recipientEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  sentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  reminderSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   paymentMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   paidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   paidBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -625,12 +533,6 @@ export type PaymentCreateManyInput = {
   label?: string | null
   memo?: string | null
   senderName?: string | null
-  lineItems?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
-  dueDate?: Date | string | null
-  recipientName?: string | null
-  recipientEmail?: string | null
-  sentAt?: Date | string | null
-  reminderSentAt?: Date | string | null
   paymentMethod?: string | null
   paidAt?: Date | string | null
   paidBy?: string | null
@@ -652,12 +554,6 @@ export type PaymentUpdateManyMutationInput = {
   label?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   memo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   senderName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  lineItems?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
-  dueDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  recipientName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  recipientEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  sentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  reminderSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   paymentMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   paidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   paidBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -680,12 +576,6 @@ export type PaymentUncheckedUpdateManyInput = {
   label?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   memo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   senderName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  lineItems?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
-  dueDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  recipientName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  recipientEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  sentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  reminderSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   paymentMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   paidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   paidBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -718,12 +608,6 @@ export type PaymentCountOrderByAggregateInput = {
   label?: Prisma.SortOrder
   memo?: Prisma.SortOrder
   senderName?: Prisma.SortOrder
-  lineItems?: Prisma.SortOrder
-  dueDate?: Prisma.SortOrder
-  recipientName?: Prisma.SortOrder
-  recipientEmail?: Prisma.SortOrder
-  sentAt?: Prisma.SortOrder
-  reminderSentAt?: Prisma.SortOrder
   paymentMethod?: Prisma.SortOrder
   paidAt?: Prisma.SortOrder
   paidBy?: Prisma.SortOrder
@@ -750,11 +634,6 @@ export type PaymentMaxOrderByAggregateInput = {
   label?: Prisma.SortOrder
   memo?: Prisma.SortOrder
   senderName?: Prisma.SortOrder
-  dueDate?: Prisma.SortOrder
-  recipientName?: Prisma.SortOrder
-  recipientEmail?: Prisma.SortOrder
-  sentAt?: Prisma.SortOrder
-  reminderSentAt?: Prisma.SortOrder
   paymentMethod?: Prisma.SortOrder
   paidAt?: Prisma.SortOrder
   paidBy?: Prisma.SortOrder
@@ -777,11 +656,6 @@ export type PaymentMinOrderByAggregateInput = {
   label?: Prisma.SortOrder
   memo?: Prisma.SortOrder
   senderName?: Prisma.SortOrder
-  dueDate?: Prisma.SortOrder
-  recipientName?: Prisma.SortOrder
-  recipientEmail?: Prisma.SortOrder
-  sentAt?: Prisma.SortOrder
-  reminderSentAt?: Prisma.SortOrder
   paymentMethod?: Prisma.SortOrder
   paidAt?: Prisma.SortOrder
   paidBy?: Prisma.SortOrder
@@ -849,12 +723,6 @@ export type PaymentCreateWithoutUserInput = {
   label?: string | null
   memo?: string | null
   senderName?: string | null
-  lineItems?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
-  dueDate?: Date | string | null
-  recipientName?: string | null
-  recipientEmail?: string | null
-  sentAt?: Date | string | null
-  reminderSentAt?: Date | string | null
   paymentMethod?: string | null
   paidAt?: Date | string | null
   paidBy?: string | null
@@ -876,12 +744,6 @@ export type PaymentUncheckedCreateWithoutUserInput = {
   label?: string | null
   memo?: string | null
   senderName?: string | null
-  lineItems?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
-  dueDate?: Date | string | null
-  recipientName?: string | null
-  recipientEmail?: string | null
-  sentAt?: Date | string | null
-  reminderSentAt?: Date | string | null
   paymentMethod?: string | null
   paidAt?: Date | string | null
   paidBy?: string | null
@@ -933,12 +795,6 @@ export type PaymentScalarWhereInput = {
   label?: Prisma.StringNullableFilter<"Payment"> | string | null
   memo?: Prisma.StringNullableFilter<"Payment"> | string | null
   senderName?: Prisma.StringNullableFilter<"Payment"> | string | null
-  lineItems?: Prisma.JsonNullableFilter<"Payment">
-  dueDate?: Prisma.DateTimeNullableFilter<"Payment"> | Date | string | null
-  recipientName?: Prisma.StringNullableFilter<"Payment"> | string | null
-  recipientEmail?: Prisma.StringNullableFilter<"Payment"> | string | null
-  sentAt?: Prisma.DateTimeNullableFilter<"Payment"> | Date | string | null
-  reminderSentAt?: Prisma.DateTimeNullableFilter<"Payment"> | Date | string | null
   paymentMethod?: Prisma.StringNullableFilter<"Payment"> | string | null
   paidAt?: Prisma.DateTimeNullableFilter<"Payment"> | Date | string | null
   paidBy?: Prisma.StringNullableFilter<"Payment"> | string | null
@@ -960,12 +816,6 @@ export type PaymentCreateManyUserInput = {
   label?: string | null
   memo?: string | null
   senderName?: string | null
-  lineItems?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
-  dueDate?: Date | string | null
-  recipientName?: string | null
-  recipientEmail?: string | null
-  sentAt?: Date | string | null
-  reminderSentAt?: Date | string | null
   paymentMethod?: string | null
   paidAt?: Date | string | null
   paidBy?: string | null
@@ -987,12 +837,6 @@ export type PaymentUpdateWithoutUserInput = {
   label?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   memo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   senderName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  lineItems?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
-  dueDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  recipientName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  recipientEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  sentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  reminderSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   paymentMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   paidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   paidBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1014,12 +858,6 @@ export type PaymentUncheckedUpdateWithoutUserInput = {
   label?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   memo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   senderName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  lineItems?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
-  dueDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  recipientName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  recipientEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  sentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  reminderSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   paymentMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   paidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   paidBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1041,12 +879,6 @@ export type PaymentUncheckedUpdateManyWithoutUserInput = {
   label?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   memo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   senderName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  lineItems?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
-  dueDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  recipientName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  recipientEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  sentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  reminderSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   paymentMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   paidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   paidBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1071,12 +903,6 @@ export type PaymentSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   label?: boolean
   memo?: boolean
   senderName?: boolean
-  lineItems?: boolean
-  dueDate?: boolean
-  recipientName?: boolean
-  recipientEmail?: boolean
-  sentAt?: boolean
-  reminderSentAt?: boolean
   paymentMethod?: boolean
   paidAt?: boolean
   paidBy?: boolean
@@ -1100,12 +926,6 @@ export type PaymentSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exten
   label?: boolean
   memo?: boolean
   senderName?: boolean
-  lineItems?: boolean
-  dueDate?: boolean
-  recipientName?: boolean
-  recipientEmail?: boolean
-  sentAt?: boolean
-  reminderSentAt?: boolean
   paymentMethod?: boolean
   paidAt?: boolean
   paidBy?: boolean
@@ -1129,12 +949,6 @@ export type PaymentSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exten
   label?: boolean
   memo?: boolean
   senderName?: boolean
-  lineItems?: boolean
-  dueDate?: boolean
-  recipientName?: boolean
-  recipientEmail?: boolean
-  sentAt?: boolean
-  reminderSentAt?: boolean
   paymentMethod?: boolean
   paidAt?: boolean
   paidBy?: boolean
@@ -1158,12 +972,6 @@ export type PaymentSelectScalar = {
   label?: boolean
   memo?: boolean
   senderName?: boolean
-  lineItems?: boolean
-  dueDate?: boolean
-  recipientName?: boolean
-  recipientEmail?: boolean
-  sentAt?: boolean
-  reminderSentAt?: boolean
   paymentMethod?: boolean
   paidAt?: boolean
   paidBy?: boolean
@@ -1173,7 +981,7 @@ export type PaymentSelectScalar = {
   updatedAt?: boolean
 }
 
-export type PaymentOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "slug" | "nonce" | "userId" | "suiAddress" | "type" | "status" | "amount" | "currency" | "label" | "memo" | "senderName" | "lineItems" | "dueDate" | "recipientName" | "recipientEmail" | "sentAt" | "reminderSentAt" | "paymentMethod" | "paidAt" | "paidBy" | "txDigest" | "expiresAt" | "createdAt" | "updatedAt", ExtArgs["result"]["payment"]>
+export type PaymentOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "slug" | "nonce" | "userId" | "suiAddress" | "type" | "status" | "amount" | "currency" | "label" | "memo" | "senderName" | "paymentMethod" | "paidAt" | "paidBy" | "txDigest" | "expiresAt" | "createdAt" | "updatedAt", ExtArgs["result"]["payment"]>
 export type PaymentInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
 }
@@ -1202,12 +1010,6 @@ export type $PaymentPayload<ExtArgs extends runtime.Types.Extensions.InternalArg
     label: string | null
     memo: string | null
     senderName: string | null
-    lineItems: runtime.JsonValue | null
-    dueDate: Date | null
-    recipientName: string | null
-    recipientEmail: string | null
-    sentAt: Date | null
-    reminderSentAt: Date | null
     paymentMethod: string | null
     paidAt: Date | null
     paidBy: string | null
@@ -1651,12 +1453,6 @@ export interface PaymentFieldRefs {
   readonly label: Prisma.FieldRef<"Payment", 'String'>
   readonly memo: Prisma.FieldRef<"Payment", 'String'>
   readonly senderName: Prisma.FieldRef<"Payment", 'String'>
-  readonly lineItems: Prisma.FieldRef<"Payment", 'Json'>
-  readonly dueDate: Prisma.FieldRef<"Payment", 'DateTime'>
-  readonly recipientName: Prisma.FieldRef<"Payment", 'String'>
-  readonly recipientEmail: Prisma.FieldRef<"Payment", 'String'>
-  readonly sentAt: Prisma.FieldRef<"Payment", 'DateTime'>
-  readonly reminderSentAt: Prisma.FieldRef<"Payment", 'DateTime'>
   readonly paymentMethod: Prisma.FieldRef<"Payment", 'String'>
   readonly paidAt: Prisma.FieldRef<"Payment", 'DateTime'>
   readonly paidBy: Prisma.FieldRef<"Payment", 'String'>

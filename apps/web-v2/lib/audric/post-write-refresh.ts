@@ -92,9 +92,10 @@ import {
 // must produce identical refresh sets so the moat-revival smoke
 // (same prompt → same post-write narration) compares cleanly.
 //
-// Read-only and internal writes (payment-link create, invoice create,
-// contact save) are intentionally excluded — they don't change
-// balances until paid / sent, so refresh would just surface unchanged
+// Read-only and internal writes (payment-link create — covers invoicing
+// post-V07E_INVOICE_DEPRECATION) are intentionally excluded — they
+// don't change balances until paid / sent, so refresh would just
+// surface unchanged
 // data.
 // ---------------------------------------------------------------------------
 

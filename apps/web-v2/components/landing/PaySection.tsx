@@ -111,7 +111,7 @@ function PayChat() {
 
       <div className="flex gap-2.5 flex-wrap mt-2">
         {[
-          "Invoices · Settle on-chain",
+          "Settle on-chain",
           "$0 fees · <1s",
           "No account required",
         ].map((label) => (

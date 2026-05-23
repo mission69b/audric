@@ -137,6 +137,15 @@ model AdviceLog {
   @@index([createdAt])
 }
 
+// [V07E_INVOICE_DEPRECATION / S.269 item 7 — 2026-05-23] Phase 5 dropped
+// the 6 invoice-only columns (lineItems, dueDate, recipientName,
+// recipientEmail, sentAt, reminderSentAt) and the dueDate-status
+// composite index. Founder Q2 = C: invoice rows deleted directly (no
+// archive); 50 rows total — only 3 actually paid for $7.99 across small
+// test transactions, $1.02M of "active" invoices was a test row with a
+// huge amount entered. The `type` field stays at default "link" with a
+// CHECK constraint enforcing the only legal value, so the next line of
+// defense against a typo'd insert is the DB itself.
 model Payment {
   id         String @id @default(cuid())
   slug       String @unique
@@ -151,14 +160,6 @@ model Payment {
   label      String?
   memo       String?
   senderName String?
-
-  // Invoice-specific (optional, ignored for type=link)
-  lineItems      Json?
-  dueDate        DateTime?
-  recipientName  String?
-  recipientEmail String?
-  sentAt         DateTime?
-  reminderSentAt DateTime?
 
   // Payment tracking
   paymentMethod String?
@@ -175,7 +176,6 @@ model Payment {
   @@index([userId, status])
   @@index([suiAddress])
   @@index([status])
-  @@index([dueDate, status])
 }
 
 // [v0.7e Phase 5 cleanup / S.254 — 2026-05-22] WatchAddress model +

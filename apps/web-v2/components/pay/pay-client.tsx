@@ -18,26 +18,25 @@
 import { useCallback, useEffect, useState } from "react";
 import { AudricMark } from "@/components/ui/audric-mark";
 import { DigestForm } from "./digest-form";
-import { InvoiceHeader } from "./invoice-header";
 import { PayButton } from "./pay-button";
 import { SuiPayQr } from "./sui-pay-qr";
 
-interface LineItem {
-  amount: number;
-  description: string;
-  quantity?: number;
-}
-
+// [V07E_INVOICE_DEPRECATION / S.269 item 7 — 2026-05-23] Pre-deprecation
+// the data shape included `lineItems`, `dueDate`, `billToEmail`,
+// `billToName`, `senderName`, and a `type: "link" | "invoice"` discriminator
+// that branched the render between PaymentLink and InvoiceHeader. Phase
+// 3 of the deprecation collapses both branches into the payment-link
+// render path — invoices in the DB pre-Phase-5 (until the migration drops
+// them) render as payment links with no line items / no due date
+// (graceful degradation; their slug URLs keep working). The `type` field
+// is preserved on the wire for one transition cycle so /api/payments
+// keeps shipping it; UI ignores it and always renders the link path.
 interface PaymentData {
   amount: number | null;
-  billToEmail?: string | null;
-  billToName?: string | null;
   createdAt: string;
   currency: string;
-  dueDate?: string | null;
   expiresAt?: string | null;
   label: string | null;
-  lineItems?: LineItem[] | null;
   memo: string | null;
   nonce: string;
   paidAt: string | null;
@@ -45,11 +44,9 @@ interface PaymentData {
   paymentMethod: string | null;
   recipientAddress: string;
   recipientName: string | null;
-  senderName?: string | null;
   slug: string;
   status: string;
   txDigest: string | null;
-  type: "link" | "invoice";
 }
 
 type PageState =
@@ -251,16 +248,13 @@ export function PayClient({ slug }: { slug: string }) {
     setError(null);
   }, []);
 
-  const isInvoice = data?.type === "invoice";
-  const headerLabel = isInvoice ? "Invoice" : "Audric Pay";
-
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-surface-page px-4 py-8 text-fg-primary">
-      <div className={`w-full ${isInvoice ? "max-w-md" : "max-w-sm"}`}>
+      <div className="w-full max-w-sm">
         <div className="mb-8 flex items-center justify-center gap-2">
           <AudricMark size={20} />
           <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-fg-muted">
-            {headerLabel}
+            Audric Pay
           </span>
         </div>
 
@@ -276,13 +270,12 @@ export function PayClient({ slug }: { slug: string }) {
             onDigestSuccess={handleDigestSuccess}
             onError={setError}
             onWalletSuccess={handleWalletSuccess}
-            overdue={state === "overdue"}
           />
         )}
 
         {state === "paid" && data && <PaidState data={data} />}
         {state === "expired" && <ExpiredState />}
-        {state === "cancelled" && <CancelledState isInvoice={isInvoice} />}
+        {state === "cancelled" && <CancelledState />}
         {state === "not_found" && <NotFoundState />}
 
         <div className="mt-8 text-center">
@@ -309,12 +302,10 @@ interface ActivePaymentProps {
   onDigestSuccess: (digest: string) => void;
   onError: (error: string) => void;
   onWalletSuccess: (digest: string, sender: string) => void;
-  overdue: boolean;
 }
 
 function ActivePayment({
   data,
-  overdue,
   copied,
   onCopy,
   detecting,
@@ -323,46 +314,24 @@ function ActivePayment({
   onDigestSuccess,
   onError,
 }: ActivePaymentProps) {
-  const isInvoice = data.type === "invoice";
   const shortAddr = `${data.recipientAddress.slice(0, 8)}...${data.recipientAddress.slice(-6)}`;
 
   return (
     <div className="overflow-hidden rounded-md border border-border-subtle bg-surface-card shadow-[var(--shadow-flat)]">
       <div className="px-6 pt-6 pb-4">
-        {isInvoice ? (
-          <InvoiceHeader
-            amount={data.amount ?? 0}
-            createdAt={data.createdAt}
-            currency={data.currency}
-            dueDate={data.dueDate ?? null}
-            label={data.label ?? "Invoice"}
-            lineItems={
-              (data.lineItems ?? []) as {
-                description: string;
-                amount: number;
-                quantity?: number;
-              }[]
-            }
-            overdue={overdue}
-            recipientEmail={data.billToEmail ?? null}
-            recipientName={data.billToName ?? null}
-            senderName={data.recipientName}
-          />
-        ) : (
-          <div className="text-center">
-            {data.label && (
-              <div className="mb-1 text-[13px] text-fg-secondary">
-                {data.label}
-              </div>
-            )}
-            <div className="font-serif text-[40px] leading-none tracking-[-0.02em] text-fg-primary">
-              ${fmtUsd(data.amount ?? 0)}
+        <div className="text-center">
+          {data.label && (
+            <div className="mb-1 text-[13px] text-fg-secondary">
+              {data.label}
             </div>
-            <div className="mt-2 font-mono text-[10px] uppercase tracking-[0.12em] text-fg-muted">
-              {data.currency}
-            </div>
+          )}
+          <div className="font-serif text-[40px] leading-none tracking-[-0.02em] text-fg-primary">
+            ${fmtUsd(data.amount ?? 0)}
           </div>
-        )}
+          <div className="mt-2 font-mono text-[10px] uppercase tracking-[0.12em] text-fg-muted">
+            {data.currency}
+          </div>
+        </div>
       </div>
 
       <div className="flex justify-center py-4">
@@ -372,34 +341,25 @@ function ActivePayment({
           memo={data.memo}
           nonce={data.nonce}
           recipientAddress={data.recipientAddress}
-          size={isInvoice ? 140 : 180}
+          size={180}
         />
       </div>
 
       <div className="space-y-2 px-6 py-3">
-        {!isInvoice && (
-          <>
-            <DetailRow label="To" value={data.recipientName ?? shortAddr} />
-            {data.recipientName && (
-              <DetailRow label="Address" value={shortAddr} />
-            )}
-            {data.memo && <DetailRow label="Memo" value={data.memo} />}
-            {data.expiresAt && (
-              <DetailRow
-                label="Expires"
-                value={new Date(data.expiresAt).toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                  hour: "numeric",
-                  minute: "2-digit",
-                })}
-              />
-            )}
-          </>
+        <DetailRow label="To" value={data.recipientName ?? shortAddr} />
+        {data.recipientName && <DetailRow label="Address" value={shortAddr} />}
+        {data.memo && <DetailRow label="Memo" value={data.memo} />}
+        {data.expiresAt && (
+          <DetailRow
+            label="Expires"
+            value={new Date(data.expiresAt).toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+              hour: "numeric",
+              minute: "2-digit",
+            })}
+          />
         )}
-
-        {isInvoice && <DetailRow label="Pay to" value={shortAddr} />}
-        {data.memo && isInvoice && <DetailRow label="Note" value={data.memo} />}
       </div>
 
       {error && (
@@ -477,7 +437,6 @@ function PaidState({ data }: { data: PaymentData }) {
   const shortDigest = data.txDigest
     ? `${data.txDigest.slice(0, 8)}...${data.txDigest.slice(-6)}`
     : null;
-  const isInvoice = data.type === "invoice";
 
   return (
     <div className="rounded-md border border-border-subtle bg-surface-card p-8 text-center shadow-[var(--shadow-flat)]">
@@ -501,14 +460,14 @@ function PaidState({ data }: { data: PaymentData }) {
         </svg>
       </div>
       <h2 className="mb-1 font-serif text-[20px] tracking-[-0.01em] text-fg-primary">
-        {isInvoice ? "Invoice Paid" : "Payment Complete"}
+        Payment Complete
       </h2>
       {data.amount != null && (
         <div className="mb-1 font-serif text-[28px] leading-tight tracking-[-0.02em] text-fg-primary">
           ${fmtUsd(data.amount)}
         </div>
       )}
-      {isInvoice && data.label && (
+      {data.label && (
         <p className="mb-2 font-mono text-[10px] text-fg-muted">{data.label}</p>
       )}
       {data.paymentMethod && (
@@ -578,7 +537,7 @@ function ExpiredState() {
   );
 }
 
-function CancelledState({ isInvoice }: { isInvoice: boolean }) {
+function CancelledState() {
   return (
     <div className="rounded-md border border-border-subtle bg-surface-card p-8 text-center">
       <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-border-subtle bg-surface-sunken">
@@ -600,12 +559,11 @@ function CancelledState({ isInvoice }: { isInvoice: boolean }) {
         </svg>
       </div>
       <h2 className="mb-1 font-serif text-[20px] tracking-[-0.01em] text-fg-primary">
-        {isInvoice ? "Invoice Cancelled" : "Link Cancelled"}
+        Link Cancelled
       </h2>
       <p className="text-[13px] text-fg-secondary">
-        {isInvoice
-          ? "This invoice has been cancelled by the sender."
-          : "This payment link has been cancelled by the recipient. Please request a new one."}
+        This payment link has been cancelled by the recipient. Please request a
+        new one.
       </p>
     </div>
   );

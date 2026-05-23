@@ -33,7 +33,9 @@ export { BalanceCardV2 } from './BalanceCardV2';
 export { ConfirmationChip } from './ConfirmationChip';
 export { ExplainTxCard } from './ExplainTxCard';
 export { HealthCardV2 } from './HealthCardV2';
-export { InvoiceCard } from './InvoiceCard';
+// [V07E_INVOICE_DEPRECATION / S.269 item 7 — 2026-05-23] InvoiceCard
+// deleted. Payment links absorb the invoicing use case; PaymentLinkCard
+// renders both link and (formerly) invoice intents.
 export { PaymentLinkCard } from './PaymentLinkCard';
 export { PendingRewardsCardV2 } from './PendingRewardsCardV2';
 export { PortfolioCardV2 } from './PortfolioCardV2';

@@ -6,7 +6,8 @@ import { buildSuiPayUri } from "@/lib/sui-pay-uri";
 
 /**
  * SuiPayQr — payment QR primitive with two modes:
- *   - **amount mode** (invoice / fixed payment): renders a wallet-recognised
+ *   - **amount mode** (fixed payment link — covers invoicing too post
+ *     V07E_INVOICE_DEPRECATION): renders a wallet-recognised
  *     transaction URI built from `createPaymentTransactionUri` (nonce, label,
  *     message all encoded). Wallets show a pre-filled send screen.
  *   - **open-receive mode** (`amount` is null): renders a bare
@@ -14,7 +15,9 @@ import { buildSuiPayUri } from "@/lib/sui-pay-uri";
  *     amount.
  *
  * Session 3 introduced the open-receive build; Session 4 lifted the amount
- * branch back from `apps/web` so `/pay/[slug]` can encode invoices.
+ * branch back from `apps/web` so `/pay/[slug]` can encode any receivable
+ * (payment link or — pre-deprecation — invoice; payment links cover
+ * both use cases now).
  */
 
 interface SuiPayQrProps {
@@ -25,7 +28,7 @@ interface SuiPayQrProps {
   amount: number | null;
   label?: string | null;
   memo?: string | null;
-  /** Required when `amount` is set (each invoice gets a unique nonce). */
+  /** Required when `amount` is set (each receivable gets a unique nonce). */
   nonce?: string;
   recipientAddress: string;
   size?: number;

@@ -30,7 +30,6 @@ interface PaymentMetadata {
   amount?: number;
   label?: string;
   recipientName?: string;
-  type?: "link" | "invoice";
 }
 
 export async function generateMetadata({
@@ -43,10 +42,12 @@ export async function generateMetadata({
   let ogTitle = "Audric Pay";
 
   try {
-    // `audricWebUrl()` returns same-origin when NEXT_PUBLIC_AUDRIC_WEB_URL
-    // is unset and the cross-app URL when set. Pre-cutover this points at
-    // apps/web; post Session 5 rewrite flip same-origin returns to web-v2
-    // itself. Survives both phases without a code change.
+    // [V07E_INVOICE_DEPRECATION / S.269 item 7 — 2026-05-23] Pre-deprecation
+    // this branched on `data.type === "invoice"` to emit "Invoice: <label>"
+    // metadata. Phase 3 collapses to the link path; legacy invoice rows
+    // (until the Phase 5 migration drops them) render with payment-link
+    // metadata. The label still surfaces, so a row labelled "Invoice #42"
+    // produces "Pay: Invoice #42" — the user sees their invoice context.
     const res = await fetch(
       audricWebUrl(`/api/payments/${encodeURIComponent(slug)}`),
       {
@@ -55,22 +56,15 @@ export async function generateMetadata({
     );
     if (res.ok) {
       const data = (await res.json()) as PaymentMetadata;
-      const isInvoice = data.type === "invoice";
       const amountStr = data.amount
         ? `$${data.amount.toFixed(2)} USDC`
         : "USDC";
 
-      if (isInvoice) {
-        ogTitle = data.label ? `Invoice: ${data.label}` : "Invoice";
-        title = `${ogTitle} — Audric`;
-        description = `Pay ${amountStr} for ${data.label ?? "invoice"} via Audric.`;
-      } else {
-        ogTitle = data.label ? `Pay: ${data.label}` : `Pay ${amountStr}`;
-        title = `${ogTitle} — Audric`;
-        description = data.amount
-          ? `Send ${amountStr} to ${data.recipientName ?? "recipient"} via Audric.`
-          : "Complete a USDC payment via Audric.";
-      }
+      ogTitle = data.label ? `Pay: ${data.label}` : `Pay ${amountStr}`;
+      title = `${ogTitle} — Audric`;
+      description = data.amount
+        ? `Send ${amountStr} to ${data.recipientName ?? "recipient"} via Audric.`
+        : "Complete a USDC payment via Audric.";
     }
   } catch {
     // fall through to defaults

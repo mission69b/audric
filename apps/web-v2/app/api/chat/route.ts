@@ -691,9 +691,11 @@ export async function POST(request: Request) {
   //   - `yield_summary` (calls `/api/analytics/yield`)
   //   - `activity_summary` (calls `/api/analytics/activity`)
   //   - `create_payment_link` / `list_payment_links` /
-  //     `cancel_payment_link` (call `/api/internal/payments`)
-  //   - `create_invoice` / `list_invoices` / `cancel_invoice`
-  //     (call `/api/internal/payments`)
+  //     `cancel_payment_link` (call `/api/internal/payments`).
+  //     Payment links also cover invoicing post-V07E_INVOICE_DEPRECATION
+  //     (S.269 item 7 — engine 2.17.0 deleted create_invoice /
+  //     list_invoices / cancel_invoice; payment-link tool descriptions
+  //     route invoice intents into them).
   //
   // Pre-Phase-6.5 web-v2's chat route built `toolContext` without an
   // `env:` field, so these tools silently returned empty/null when

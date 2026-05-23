@@ -14,7 +14,6 @@ import { ConfirmationChip } from "./cards/ConfirmationChip";
 import { CanvasCard, type CanvasData } from "./cards/canvas";
 import { ExplainTxCard } from "./cards/ExplainTxCard";
 import { HealthCardV2 } from "./cards/HealthCardV2";
-import { InvoiceCard } from "./cards/InvoiceCard";
 import { PaymentLinkCard } from "./cards/PaymentLinkCard";
 import { PendingRewardsCardV2 } from "./cards/PendingRewardsCardV2";
 import { PortfolioCardV2 } from "./cards/PortfolioCardV2";
@@ -228,13 +227,13 @@ function renderCard(
         />
       );
 
-    // ─── Payment links + invoices ─────────────────────────────────────
+    // ─── Payment links (invoicing folded in — V07E_INVOICE_DEPRECATION
+    //     / S.269 item 7, 2026-05-23). create_invoice / list_invoices /
+    //     cancel_invoice are gone from the engine; payment-link cards
+    //     render every receivable.
     case "create_payment_link":
     case "list_payment_links":
       return <PaymentLinkCard data={data} />;
-    case "create_invoice":
-    case "list_invoices":
-      return <InvoiceCard data={data} />;
 
     // ─── No-tx-receipt write confirmations ───────────────────────────
     case "cancel_payment_link":
@@ -242,14 +241,6 @@ function renderCard(
         <ConfirmationChip
           detail={(data as { slug?: string }).slug ?? undefined}
           label="PAYMENT LINK CANCELLED"
-          tone="neutral"
-        />
-      );
-    case "cancel_invoice":
-      return (
-        <ConfirmationChip
-          detail={(data as { slug?: string }).slug ?? undefined}
-          label="INVOICE CANCELLED"
           tone="neutral"
         />
       );
