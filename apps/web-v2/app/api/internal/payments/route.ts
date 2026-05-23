@@ -1,9 +1,31 @@
 import { isValidSuiAddress } from "@mysten/sui/utils";
 import { type NextRequest, NextResponse } from "next/server";
-import { audricWebUrl } from "@/lib/audric-web-url";
 import { validateInternalKey } from "@/lib/internal-auth";
 import { prisma } from "@/lib/prisma";
 import { generateSlug } from "@/lib/slug";
+
+/**
+ * Build a fully-qualified `/pay/<slug>` URL from the inbound request.
+ *
+ * Why we derive from `request.nextUrl.origin` instead of the
+ * `audricWebUrl()` helper:
+ *
+ * The helper falls back to a RELATIVE path (`/pay/<slug>`) when
+ * `NEXT_PUBLIC_AUDRIC_WEB_URL` is unset. That fallback is correct for
+ * SWR / same-origin internal fetchers, but WRONG for shareable URLs
+ * sent back to the engine. The engine puts `link.url` into chat
+ * narration where there is no DOM context to resolve a relative path
+ * — the user sees `/pay/jW7dwEun` instead of `audric.ai/pay/jW7dwEun`
+ * (smoke caught 2026-05-23 post-S.269 deploy).
+ *
+ * `request.nextUrl.origin` is automatically correct on every
+ * environment (production = `https://audric.ai`, preview = the
+ * preview hostname, localhost = `http://localhost:3000`). Zero env
+ * configuration. Same-origin invariant by construction.
+ */
+function shareablePayUrl(request: NextRequest, slug: string): string {
+  return `${request.nextUrl.origin}/pay/${slug}`;
+}
 
 /**
  * POST /api/internal/payments
@@ -139,13 +161,11 @@ export async function POST(request: NextRequest) {
     },
   });
 
-  const url = audricWebUrl(`/pay/${payment.slug}`);
-
   return NextResponse.json(
     {
       slug: payment.slug,
       nonce: payment.nonce,
-      url,
+      url: shareablePayUrl(request, payment.slug),
       amount: payment.amount,
       currency: payment.currency,
       label: payment.label,
@@ -291,7 +311,7 @@ export async function GET(request: NextRequest) {
 
       return {
         slug: p.slug,
-        url: audricWebUrl(`/pay/${p.slug}`),
+        url: shareablePayUrl(request, p.slug),
         amount: p.amount,
         currency: p.currency,
         label: p.label,
