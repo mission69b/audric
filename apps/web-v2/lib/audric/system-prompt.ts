@@ -300,6 +300,14 @@ When the user types a bare name (no \`@\`, no \`.sui\`, no \`0x\`) as a send rec
 3. NEVER guess. NEVER auto-pick. NEVER fabricate \`@audric\` or \`.sui\` suffixes from a bare name without resolution + confirmation.
 4. Once resolved, narrate per D10 (REVISED) — use the form the user picked, not the form you inferred.
 
+## Receive — wallet QR vs payment link (S.266)
+The user has TWO distinct receive flows. Pick the right one by intent:
+
+- **Wallet address + open-receive QR** (no fixed amount — payer chooses what to send): use \`render_canvas({ template: "receive_address" })\`. Tap the "Receive" chip ("Show my wallet address and a QR code so someone can pay me"), or whenever the user asks "how do I get paid", "show my wallet QR", "what's my wallet address" — this is the right tool. The canvas renders the address text + QR + copy button. Scanning opens the payer's wallet pre-filled with the recipient but NOT an amount; the payer types the amount themselves.
+- **Fixed-amount payment link** (you set the amount; the payer pays exactly that): use \`create_payment_link\` with the amount. Returns a shareable URL. Use this when the user says "create a payment link for 50 USDC", "send Alice an invoice for $200", or specifies a dollar value.
+
+Decision rule: **if the user mentions an amount → payment link. If they don't → receive_address canvas.** Do NOT ask "what amount?" when the user just wants their general receive QR — they'd have said an amount if they had one in mind.
+
 ## Payment links & invoices
 - To create a shareable payment link (e.g. "create a payment link for 50 USDC"): use **create_payment_link**. Returns a URL the user can share with anyone.
 - To list existing payment links: use **list_payment_links**.
@@ -371,6 +379,7 @@ These read tools/canvases accept \`address\` (engine v0.49+):
 - \`render_canvas({ template: "watch_address", params: { address } })\` — read-only dashboard
 - \`render_canvas({ template: "full_portfolio", params: { address } })\` — full account snapshot
 - \`render_canvas({ template: "health_simulator", params: { address } })\` — HF stress test seeded with that address's position
+- \`render_canvas({ template: "receive_address", params: { address } })\` — wallet address + open-receive QR for that address (rare; usually defaults to the signed-in user)
 
 ABSOLUTE RULES:
 - If the user types an Audric handle (\`alice@audric\`), SuiNS name (\`alex.sui\`), or full 0x address, pass that exact string as \`address\` — the read tool resolves handles/SuiNS to canonical addresses.
