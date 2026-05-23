@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { authFetch } from "@/lib/auth-fetch";
+import { useMemo } from "react";
+import { usePortfolio } from "@/hooks/use-portfolio";
 import { fmtUsd } from "../primitives";
 
 interface WatchAddressData {
@@ -28,19 +28,14 @@ function truncAddr(addr: string): string {
 }
 
 /**
- * Reads from canonical `/api/portfolio?address=...` (matches legacy fix
- * from Apr 2026 — sums full priced wallet + NAVI savings, not just
- * USDC + USDT). Phase 6 will port the `/api/portfolio` route handler;
- * until then a 401 / 404 surfaces the empty state.
+ * Reads from canonical `/api/portfolio?address=...` via the `usePortfolio`
+ * SWR hook (S.282 / PIPELINE-AUDIT-PHASE-2 S3 — 2026-05-23). The hook is
+ * keyed on `portfolio:${address}` so this canvas shares its cache entry
+ * with `BalanceHero` and `FullPortfolioCanvas` — opening this canvas for
+ * an address you've already seen renders instantly from cache instead of
+ * spinning for ~600ms while BV is re-hit.
  */
 export function WatchAddressCanvas({ data, onAction }: Props) {
-  const [coins, setCoins] = useState<CoinRow[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [netWorthUsd, setNetWorthUsd] = useState(0);
-  const [walletValueUsd, setWalletValueUsd] = useState(0);
-  const [savingsUsd, setSavingsUsd] = useState(0);
-  const [debtUsd, setDebtUsd] = useState(0);
-
   const address =
     data && typeof data === "object" && "available" in data && data.available
       ? data.address
@@ -48,71 +43,34 @@ export function WatchAddressCanvas({ data, onAction }: Props) {
   const label =
     data && typeof data === "object" && "label" in data ? data.label : undefined;
 
-  useEffect(() => {
-    if (!address) {
-      return;
+  const { data: portfolio, isLoading } = usePortfolio(address);
+
+  const coins = useMemo<CoinRow[]>(() => {
+    if (!portfolio || !Array.isArray(portfolio.wallet)) {
+      return [];
     }
-    setCoins([]);
-    setNetWorthUsd(0);
-    setWalletValueUsd(0);
-    setSavingsUsd(0);
-    setDebtUsd(0);
-    setLoading(true);
-    authFetch(`/api/portfolio?address=${address}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (!d) {
-          return;
+    const next: CoinRow[] = portfolio.wallet
+      .map((c) => {
+        const decimals = c.decimals ?? 0;
+        const amount = c.balance ? Number(c.balance) / 10 ** decimals : 0;
+        if (!Number.isFinite(amount) || amount <= 0) {
+          return null;
         }
-        const next: CoinRow[] = Array.isArray(d.wallet)
-          ? d.wallet
-              .map(
-                (c: {
-                  symbol?: string;
-                  balance?: string;
-                  decimals?: number;
-                  usdValue?: number | null;
-                }) => {
-                  const decimals = c.decimals ?? 0;
-                  const amount = c.balance
-                    ? Number(c.balance) / 10 ** decimals
-                    : 0;
-                  if (!Number.isFinite(amount) || amount <= 0) {
-                    return null;
-                  }
-                  return {
-                    symbol: c.symbol ?? "",
-                    amount,
-                    usdValue: c.usdValue ?? null,
-                  };
-                }
-              )
-              .filter(
-                (row: CoinRow | null): row is CoinRow =>
-                  !!row && row.symbol.length > 0
-              )
-          : [];
-        next.sort(
-          (a: CoinRow, b: CoinRow) => (b.usdValue ?? 0) - (a.usdValue ?? 0)
-        );
-        setCoins(next);
-        setNetWorthUsd(typeof d.netWorthUsd === "number" ? d.netWorthUsd : 0);
-        setWalletValueUsd(
-          typeof d.walletValueUsd === "number" ? d.walletValueUsd : 0
-        );
-        setSavingsUsd(
-          typeof d.positions?.savings === "number" ? d.positions.savings : 0
-        );
-        setDebtUsd(
-          typeof d.positions?.borrows === "number" ? d.positions.borrows : 0
-        );
+        return {
+          symbol: c.symbol ?? "",
+          amount,
+          usdValue: c.usdValue ?? null,
+        };
       })
-      .catch(() => {
-        // Silently swallow — Phase 6 ports the route, until then we
-        // render the empty state instead of crashing.
-      })
-      .finally(() => setLoading(false));
-  }, [address]);
+      .filter((row): row is CoinRow => !!row && row.symbol.length > 0);
+    next.sort((a, b) => (b.usdValue ?? 0) - (a.usdValue ?? 0));
+    return next;
+  }, [portfolio]);
+
+  const netWorthUsd = portfolio?.netWorthUsd ?? 0;
+  const walletValueUsd = portfolio?.walletValueUsd ?? 0;
+  const savingsUsd = portfolio?.positions.savings ?? 0;
+  const debtUsd = portfolio?.positions.borrows ?? 0;
 
   if (
     !data ||
@@ -138,7 +96,7 @@ export function WatchAddressCanvas({ data, onAction }: Props) {
 
   const addr = address ?? "";
 
-  if (loading) {
+  if (isLoading && !portfolio) {
     return (
       <div className="flex items-center justify-center py-10">
         <div className="animate-pulse font-mono text-fg-muted text-xs">

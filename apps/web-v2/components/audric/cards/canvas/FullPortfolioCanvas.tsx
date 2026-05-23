@@ -1,8 +1,9 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { authFetch } from "@/lib/auth-fetch";
+import { usePortfolio } from "@/hooks/use-portfolio";
 import { fmtUsd } from "../primitives";
 
 interface FullPortfolioData {
@@ -40,7 +41,6 @@ interface PanelData {
     requestCount: number;
     serviceCount: number;
   } | null;
-  portfolio: CanonicalPortfolio | null;
 }
 
 interface MultiWalletData {
@@ -73,9 +73,8 @@ export function FullPortfolioCanvas({ data, onAction }: Props) {
   const [panelData, setPanelData] = useState<PanelData>({
     heatmap: null,
     spending: null,
-    portfolio: null,
   });
-  const [loading, setLoading] = useState(false);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
   // [S.264 — 2026-05-23] `setMultiData` deleted alongside the dead
   // `/api/analytics/portfolio-multi` fetch — that route was archived
   // with apps/web in S.253 and the LinkedWallet table it queried was
@@ -93,11 +92,43 @@ export function FullPortfolioCanvas({ data, onAction }: Props) {
       : null;
   const hasMultiWallet = !!multiData && multiData.wallets.length > 1;
 
+  // [S.282 — 2026-05-23] Portfolio fetch moved off the local Promise.all
+  // onto the canonical `usePortfolio` SWR cache (keyed on
+  // `portfolio:${address}`). Same cache entry as BalanceHero +
+  // WatchAddressCanvas — opening this canvas for an address that's
+  // already been fetched in this session renders instantly. The heatmap
+  // and spending fetches stay local (separate concerns, separate
+  // endpoints, separate audit follow-ups).
+  const { data: portfolioPayload } = usePortfolio(address);
+  const livePortfolio = useMemo<CanonicalPortfolio | null>(() => {
+    if (!portfolioPayload || typeof portfolioPayload.netWorthUsd !== "number") {
+      return null;
+    }
+    return {
+      netWorthUsd: portfolioPayload.netWorthUsd,
+      walletValueUsd: portfolioPayload.walletValueUsd ?? 0,
+      defiValueUsd: portfolioPayload.defiValueUsd ?? 0,
+      defiSource:
+        (portfolioPayload.defiSource as CanonicalPortfolio["defiSource"]) ??
+        "degraded",
+      defiPricedAt:
+        typeof portfolioPayload.defiPricedAt === "number"
+          ? portfolioPayload.defiPricedAt
+          : undefined,
+      positions: {
+        savings: portfolioPayload.positions?.savings ?? 0,
+        borrows: portfolioPayload.positions?.borrows ?? 0,
+        savingsRate: portfolioPayload.positions?.savingsRate ?? 0,
+        healthFactor: portfolioPayload.positions?.healthFactor ?? null,
+      },
+    };
+  }, [portfolioPayload]);
+
   useEffect(() => {
     if (!address) {
       return;
     }
-    setLoading(true);
+    setAnalyticsLoading(true);
     Promise.all([
       authFetch(`/api/analytics/activity-heatmap?days=30&address=${address}`)
         .then((r) => r.json())
@@ -105,29 +136,6 @@ export function FullPortfolioCanvas({ data, onAction }: Props) {
         .catch(() => null),
       authFetch(`/api/analytics/spending?period=month&address=${address}`)
         .then((r) => r.json())
-        .catch(() => null),
-      authFetch(`/api/portfolio?address=${address}`)
-        .then((r) => (r.ok ? r.json() : null))
-        .then((d): CanonicalPortfolio | null =>
-          d && typeof d.netWorthUsd === "number"
-            ? {
-                netWorthUsd: d.netWorthUsd,
-                walletValueUsd: d.walletValueUsd ?? 0,
-                defiValueUsd: d.defiValueUsd ?? 0,
-                defiSource: d.defiSource ?? "degraded",
-                defiPricedAt:
-                  typeof d.defiPricedAt === "number"
-                    ? d.defiPricedAt
-                    : undefined,
-                positions: {
-                  savings: d.positions?.savings ?? 0,
-                  borrows: d.positions?.borrows ?? 0,
-                  savingsRate: d.positions?.savingsRate ?? 0,
-                  healthFactor: d.positions?.healthFactor ?? null,
-                },
-              }
-            : null
-        )
         .catch(() => null),
       // [S.264 — 2026-05-23] `/api/analytics/portfolio-multi` removed.
       // The route was archived with apps/web in S.253 and the
@@ -137,10 +145,10 @@ export function FullPortfolioCanvas({ data, onAction }: Props) {
       // false) until linked-wallet support returns post-Audric
       // Passport.
     ])
-      .then(([heatmap, spending, portfolio]) => {
-        setPanelData({ heatmap, spending, portfolio });
+      .then(([heatmap, spending]) => {
+        setPanelData({ heatmap, spending });
       })
-      .finally(() => setLoading(false));
+      .finally(() => setAnalyticsLoading(false));
   }, [address]);
 
   if (
@@ -174,7 +182,6 @@ export function FullPortfolioCanvas({ data, onAction }: Props) {
       ? (multiData.wallets.find((w) => w.address === activeTab) ?? null)
       : null;
 
-  const livePortfolio = panelData.portfolio;
   const savings =
     isAllTab && multiData
       ? multiData.aggregated.savingsUsd
@@ -323,7 +330,7 @@ export function FullPortfolioCanvas({ data, onAction }: Props) {
           onClick={() => onAction?.("Show my activity heatmap")}
           title="Activity (30d)"
         >
-          {loading ? (
+          {analyticsLoading ? (
             <div className="animate-pulse font-mono text-fg-muted text-xs">
               ...
             </div>
@@ -345,7 +352,7 @@ export function FullPortfolioCanvas({ data, onAction }: Props) {
           onClick={() => onAction?.("Show my spending breakdown")}
           title="API Spend"
         >
-          {loading ? (
+          {analyticsLoading ? (
             <div className="animate-pulse font-mono text-fg-muted text-xs">
               ...
             </div>

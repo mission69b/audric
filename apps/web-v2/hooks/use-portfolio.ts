@@ -24,7 +24,14 @@ import useSWR from "swr";
 import { authFetch } from "@/lib/auth-fetch";
 
 export interface PortfolioWalletCoin {
-  balance: number;
+  // `balance` is the raw on-chain balance in smallest units, serialized as
+  // a string (BlockVision returns BigInt-as-string). Consumers convert to a
+  // float via `Number(balance) / 10 ** decimals`. Was incorrectly typed as
+  // `number` pre-S.282 — empty-state didn't read it so the bug was silent;
+  // S.282 (PIPELINE-AUDIT-PHASE-2 S3) migrated WatchAddressCanvas onto this
+  // hook which DOES parse balance, exposing the drift. Fixed by aligning to
+  // the actual wire shape.
+  balance: string;
   decimals: number;
   price: number | null;
   symbol: string;
