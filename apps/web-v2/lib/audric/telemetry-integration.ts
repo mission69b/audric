@@ -1,5 +1,24 @@
 /**
- * TelemetryIntegration — AI-SDK-native turn telemetry for web-v2.
+ * TelemetryIntegration — AI-SDK-aware turn telemetry for web-v2.
+ *
+ * **Naming note ([P2.4 / S.287 — 2026-05-24]):** This class shares its
+ * name with AI SDK v6's native `TelemetryIntegration` interface
+ * (declared in `node_modules/ai/dist/index.d.ts` L3290 — interface with
+ * `onStart` / `onStepStart` / `onToolCallStart` / `onToolCallFinish` /
+ * `onStepFinish` / `onFinish` lifecycle event handlers, wired via
+ * `bindTelemetryIntegration()` / `registerTelemetryIntegration()`).
+ * The collision is intentional but the contract is DIFFERENT — this
+ * class consumes stream chunks directly via `observeChunk()`, not
+ * lifecycle callbacks. We evaluated porting to the native interface
+ * and rejected it for ONE reason: AI SDK's lifecycle doesn't have
+ * `onToolApprovalRequest`. The HITL `tool-approval-request` chunk is
+ * stream-only. Porting most paths to lifecycle events while keeping
+ * chunk observation for approvalId correlation would give us
+ * TWO-pronged collection (lifecycle events + chunk observer) — worse
+ * than today's uniform single-method ingest. The AI SDK doc
+ * (`docs/ai-sdk-core/telemetry`) is the source for the native pattern;
+ * audit it on every major AI SDK upgrade in case the native interface
+ * gains an `onToolApprovalRequest` event (it would unlock the port).
  *
  * [Day 2e / D-15] Refactored to consume AI SDK `TextStreamPart` chunks
  * directly (instead of legacy `EngineEvent` shape). Day 2c++ Batch 1

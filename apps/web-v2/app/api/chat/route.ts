@@ -136,6 +136,7 @@ import {
   convertToModelMessages,
   createUIMessageStream,
   createUIMessageStreamResponse,
+  defaultSettingsMiddleware,
   gateway,
   generateId,
   type LanguageModel,
@@ -191,10 +192,11 @@ import {
 } from "@/lib/audric/validate-model-messages";
 import { getCurrentUser } from "@/lib/audric-auth";
 import { env } from "@/lib/env";
+import { ChatbotError } from "@/lib/errors";
 import { memwal } from "@/lib/memwal";
 import { getPortfolio, prewarmPortfolio } from "@/lib/portfolio";
 import { Prisma, prisma } from "@/lib/prisma";
-import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
+import { checkIpRateLimit } from "@/lib/ratelimit";
 import { getSuiRpcUrl } from "@/lib/sui-rpc";
 
 // [S.212 — 2026-05-21] Bumped from 60s to 300s to match the legacy
@@ -339,38 +341,46 @@ export async function POST(request: Request) {
   }
   const walletAddress = session.user.id;
 
-  // 1.5. Rate limit — 20 requests per 60 seconds per IP.
+  // 1.5. Rate limit — 30 requests per 60 seconds per IP (Redis-backed).
   //
-  // [Phase 6.5 / SPEC_V07C_PHASE_6_5_CHAT_PARITY A.2 / S.198 — 2026-05-20]
-  // Matches `audric/apps/web/app/api/engine/chat/route.ts:217` rate-limit
-  // exactly (same key prefix `engine:`, same limit 20 req per 60s, same
-  // sliding window). Pre-Phase-6.5 web-v2 had ZERO rate-limit on the
-  // chat endpoint — a malicious actor or buggy client could spray
-  // thousands of chat messages per second, burning Anthropic + Gateway
-  // spend until manual intervention.
+  // [P2.5 / S.285 — 2026-05-24] Replaced the in-memory `rateLimit()`
+  // helper with `checkIpRateLimit` (`lib/ratelimit.ts`). The previous
+  // in-memory limiter was per-instance; Vercel cold-starts wiped the
+  // counter, so a bot could pace requests across cold instances to
+  // dodge the limit indefinitely. The Redis-backed limiter is
+  // cross-instance correct.
   //
-  // Why IP-keyed (not user-keyed): a single user can hit the route from
-  // multiple tabs concurrently (HITL resume from one tab while authoring
-  // a new turn in another) which is a legitimate use case; IP-keying
-  // captures bot-style burst patterns without false-positiving on real
-  // user behavior. The `engine:` prefix shares the in-memory map
-  // namespace with apps/web's chat — both routes burn against the same
-  // budget when running side-by-side during the v0.7c chat-flip transit.
+  // Policy: 30 messages / 60s / IP — widened from the in-memory
+  // limiter's 20/60s for headroom on legitimate fast-typers (the HITL
+  // resume pattern means one user can legitimately hit the route from
+  // multiple tabs concurrently — see Phase 6.5 comment retained
+  // below).
   //
-  // **Limitation:** `lib/rate-limit.ts` is an in-memory sliding-window
-  // limiter. Vercel serverless cold-starts wipe the counter — a fresh
-  // function instance accepts requests as if no recent traffic
-  // happened. Apps/web has shipped this same in-memory pattern in
-  // production for months without operational issues, so the practical
-  // risk is low. Phase 6.5 follow-up (D.1 wires Upstash for stream
-  // resume; rate-limit can reuse the same Upstash REST setup) upgrades
-  // this to a cross-instance limiter when bandwidth allows. Same
-  // `rateLimit(key, max, windowMs)` interface per the file comment.
+  // Why IP-keyed (not user-keyed): a single user can hit the route
+  // from multiple tabs concurrently (HITL resume from one tab while
+  // authoring a new turn in another) which is a legitimate use case;
+  // IP-keying captures bot-style burst patterns without
+  // false-positiving on real user behavior.
+  //
+  // Degrades open: in dev / preview / Redis-unavailable scenarios the
+  // limiter no-ops. Anthropic's own per-key rate limit is the
+  // secondary safety net. See `lib/ratelimit.ts` for the full
+  // degrade-open conditions and `Retry-After` semantics.
   const ip =
     request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
-  const rl = rateLimit(`engine:${ip}`, 20, 60_000);
+  const rl = await checkIpRateLimit(ip);
   if (!rl.success) {
-    return rateLimitResponse(rl.retryAfterMs ?? 60_000);
+    // Build the canonical ChatbotError response (single source of
+    // truth for the user-facing message lives in `lib/errors.ts`),
+    // then layer on the `Retry-After` header for HTTP-semantic
+    // correctness (curl, monitoring, browser-fetch retry hints).
+    const baseResponse = new ChatbotError("rate_limit:chat").toResponse();
+    const headers = new Headers(baseResponse.headers);
+    headers.set("Retry-After", String(rl.retryAfterSec));
+    return new Response(baseResponse.body, {
+      status: baseResponse.status,
+      headers,
+    });
   }
 
   // [Bug fix 2026-05-20] Pre-warm the canonical portfolio fetch so the
@@ -605,9 +615,35 @@ export async function POST(request: Request) {
     : createAnthropic({ apiKey: env.ANTHROPIC_API_KEY ?? "" })(
         DEFAULT_MODEL_USED
       );
+  // [P2.3 / S.286 — 2026-05-24] Two-layer middleware chain:
+  //   1. `audricObservabilityMiddleware` (outer) — per-call console
+  //      telemetry line with PII-redacted last user text, prompt-token
+  //      estimate, and first-byte latency. See observability.ts.
+  //   2. `defaultSettingsMiddleware` (inner) — locks in
+  //      `temperature: 0.3` (mostly deterministic tool routing + light
+  //      narration variation; safer for Anthropic models than greedy
+  //      decoding per their training-distribution guidance) and
+  //      `maxOutputTokens: 8192` (doubled from Claude's 4096 default to
+  //      eliminate the rare mid-receipt-narration cut-off observed in
+  //      multi-step bundle responses). Settings apply BEFORE the real
+  //      model executes; observability sees the params as the user sent
+  //      them, while the model sees them with the defaults applied.
+  //
+  // Why both: observability is pure-observation (never short-circuits,
+  // never transforms); defaults are pure-transform (never logs, never
+  // observes). Composable: future middleware (e.g., per-tool gating)
+  // can be appended without disturbing either concern.
   const model: LanguageModel = wrapLanguageModel({
     model: rawModel,
-    middleware: audricObservabilityMiddleware,
+    middleware: [
+      audricObservabilityMiddleware,
+      defaultSettingsMiddleware({
+        settings: {
+          temperature: 0.3,
+          maxOutputTokens: 8192,
+        },
+      }),
+    ],
   });
   // [Phase 5.5 / D-17] Redact sessionId before logging. Today the client
   // passes a non-PII session UUID, but defense-in-depth: if a future
