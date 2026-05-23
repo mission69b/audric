@@ -21,7 +21,7 @@ Operational runbooks. Read before acting on the corresponding incident class.
 **File:** `PORTFOLIO_REGRESSION_MATRIX.md`
 
 **Run when:**
-- Changing `lib/portfolio.ts` or `lib/portfolio-data.ts`.
+- Changing `lib/portfolio.ts` or `lib/navi-positions.ts`.
 - Bumping `@t2000/engine` to a new version that touches BlockVision or DeFi aggregation.
 - Investigating an SSOT regression (different surfaces showing different numbers for the same wallet).
 

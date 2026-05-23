@@ -776,7 +776,7 @@ export async function POST(request: Request) {
     // pools; NAVI MCP's behaviour has since drifted, and the
     // workaround now over-counts USDsui savings by 1000× on production
     // smoke (a $9.19 USDsui supply renders as $9194.66). The canonical
-    // `fetchPositions()` reader (in `lib/portfolio-data.ts`) reads from
+    // `fetchPositions()` reader (in `lib/navi-positions.ts`) reads from
     // the SDK's protocol-registry NAVI adapter directly — no factor,
     // no drift — which is the SSOT every audric surface already uses.
     //

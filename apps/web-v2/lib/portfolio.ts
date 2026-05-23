@@ -31,7 +31,7 @@ import {
 import { redactAddress } from "@/lib/audric/log-redact";
 import { env } from "@/lib/env";
 import { sanitizeForLog } from "@/lib/log-sanitize";
-import { fetchPositions, type PositionSummary } from "@/lib/portfolio-data";
+import { fetchPositions, type PositionSummary } from "@/lib/navi-positions";
 import { getSuiRpcUrl } from "@/lib/sui-rpc";
 
 const BLOCKVISION_API_KEY = env.BLOCKVISION_API_KEY;
@@ -397,4 +397,4 @@ export type {
   BorrowEntry,
   PositionSummary,
   SupplyEntry,
-} from "@/lib/portfolio-data";
+} from "@/lib/navi-positions";

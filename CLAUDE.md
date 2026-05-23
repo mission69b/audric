@@ -26,7 +26,8 @@ audric/
 │   ├── lib/                    ← Utilities, types, constants
 │   │   ├── engine/             ← engine-factory.ts, engine-context.ts (silent context assembly)
 │   │   ├── chain-memory/       ← Chain classifiers (silent context only — proposal pipeline removed S.5)
-│   │   ├── portfolio-data.ts   ← Unified portfolio data (wallet + positions + snapshots)
+│   │   ├── portfolio.ts        ← Canonical portfolio fetcher (SSOT for wallet + positions + DeFi)
+│   │   ├── navi-positions.ts   ← INTERNAL helper used by portfolio.ts (NAVI lending state)
 │   │   └── activity-data.ts    ← Unified activity data (app events + chain txs)
 │   ├── prisma/                 ← 16 models (users, profiles, memories, financial context, advice log, conversation log, session usage, goals, contacts, payments, watch addresses, linked wallets, portfolio snapshots, turn metrics, app events, service purchases)
 │   └── types/                  ← TypeScript type definitions
@@ -71,7 +72,7 @@ audric/
 5. **Check t2000 PRODUCT_FACTS.md** before writing documentation or marketing copy.
 6. **Never read `process.env.X` directly.** Every server-side env access must go through the typed `env` proxy from `apps/web/lib/env.ts`. The Zod schema runs at boot via `instrumentation.ts` and fails fast on misconfiguration. Direct reads bypass the gate that catches the empty-string-in-Vercel bug class (S.25 incident). New env var: add to schema first, then read via `env.X`. See `.cursor/rules/env-validation-gate.mdc`.
 7. **Never break the resume contract.** When the engine yields `pending_action`, persist `attemptId` on `TurnMetrics`, then on execute success call `/api/agent/resume` with `{ attemptId, txDigest, balanceChanges }`. Skipping `attemptId` orphans the action and the agent will offer to retry. See `.cursor/rules/audric-transaction-flow.mdc` + t2000's `agent-harness-spec.mdc`.
-8. **Single source of truth for portfolio data.** Never re-implement balance / position / pricing fetches in route handlers — always go through `lib/portfolio-data.ts` (`getCanonicalPortfolio`) and `lib/activity-data.ts`. ESLint enforces this. See `.cursor/rules/audric-canonical-portfolio.mdc`.
+8. **Single source of truth for portfolio data.** Never re-implement balance / position / pricing fetches in route handlers — always go through `lib/portfolio.ts` (`getPortfolio`) and `lib/activity-data.ts`. Enforced today by convention + code review (the legacy `audric/canonical-portfolio` ESLint rule lived in archived `apps/web`; web-v2 uses Biome with no equivalent rule shipped yet — adding one is a worthwhile follow-up). See `.cursor/rules/audric-canonical-portfolio.mdc`.
 9. **All writes are `permissionLevel: 'confirm'`.** No write tool ever auto-executes server-side under zkLogin. If you find yourself wanting `auto` for a write, you've broken the user-consent contract.
 
 ---
@@ -217,7 +218,7 @@ Two centralized modules that aggregate all financial data. Used by API routes, c
 
 | Module | Location | What it provides |
 |--------|----------|------------------|
-| `portfolio-data.ts` | `lib/portfolio-data.ts` | Wallet balances, NAVI positions (savings + borrows), total portfolio value, historical snapshots |
+| `portfolio.ts` | `lib/portfolio.ts` | Wallet balances, NAVI positions (savings + borrows), DeFi positions, total portfolio value, historical snapshots. `getPortfolio(address)` is the canonical fetcher. Delegates NAVI lending state to the internal `lib/navi-positions.ts` helper. |
 | `activity-data.ts` | `lib/activity-data.ts` | App events (Prisma), on-chain transactions (Sui JSON-RPC), merged + sorted timeline |
 
 Always fetch through these modules — never query wallet/NAVI/events directly in route handlers.

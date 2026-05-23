@@ -1,20 +1,28 @@
 // ---------------------------------------------------------------------------
-// portfolio-data.ts — INTERNAL helper for the canonical `lib/portfolio.ts`.
+// navi-positions.ts — INTERNAL helper for the canonical `lib/portfolio.ts`.
 //
-// This file used to expose three public fetchers (`fetchWalletBalances`,
-// `fetchPortfolio`, `fetchPositions`) directly to API routes, hooks, the
-// engine, and the daily cron. That fan-out is the single-source-of-truth
-// violation we removed in April 2026 (see
-// `.cursor/rules/single-source-of-truth.mdc` and the fix doc in the
-// repo root). All wallet + portfolio reads MUST now go through
-// `lib/portfolio.ts`'s `getPortfolio()` / `getWalletSnapshot()`.
+// [S.281 / PIPELINE-AUDIT-PHASE-2 S2 — 2026-05-23] Renamed from
+// `portfolio-data.ts`. The old name was the cognitive trap the on-chain
+// pipeline audit flagged — it sounded like a parallel portfolio fetcher
+// next to `portfolio.ts` when in fact the file is single-purpose: pull
+// NAVI lending state from the SDK protocol registry, aggregate
+// supplies/borrows, and return `PositionSummary`. The rename makes that
+// self-evident from the filename.
+//
+// History: this file used to expose three public fetchers
+// (`fetchWalletBalances`, `fetchPortfolio`, `fetchPositions`) directly
+// to API routes, hooks, the engine, and the daily cron. That fan-out
+// is the single-source-of-truth violation removed in April 2026 (see
+// `.cursor/rules/single-source-of-truth.mdc`). All wallet + portfolio
+// reads MUST now go through `lib/portfolio.ts`'s `getPortfolio()` /
+// `getWalletSnapshot()`.
 //
 // Only `fetchPositions` survives, and ONLY because it's an
-// implementation detail of `getPortfolio()` — it pulls NAVI lending
-// state from the protocol registry and aggregates supplies/borrows.
-// New callers MUST NOT import `fetchPositions` directly; import
-// `getPortfolio` from `@/lib/portfolio` instead. The ESLint rule in
-// Phase 5 enforces this.
+// implementation detail of `getPortfolio()`. New callers MUST NOT
+// import `fetchPositions` directly; import `getPortfolio` from
+// `@/lib/portfolio` instead. Enforced today by convention + code
+// review (no automated Biome rule — adding one is a worthwhile but
+// non-blocking follow-up).
 // ---------------------------------------------------------------------------
 
 import { getRegistry } from "@/lib/protocol-registry";

@@ -17,7 +17,7 @@ Every API route, React hook, engine context call, canvas adapter, and cron job t
 | Lending rates (NAVI) | `getRates()` | `lib/rates.ts` |
 | Activity feed (app events + chain txs) | `getActivity(...)` | `lib/activity-data.ts` |
 
-`portfolio-data.ts` is **internal** — only `lib/portfolio.ts` imports it. The legacy public fetchers (`fetchWalletBalances`, `fetchPortfolio`, `fetchPositions`) were collapsed into `getPortfolio` in April 2026.
+`navi-positions.ts` (renamed from `portfolio-data.ts` in S.281 / PIPELINE-AUDIT-PHASE-2 S2, 2026-05-23) is **internal** — only `lib/portfolio.ts` imports it. The legacy public fetchers (`fetchWalletBalances`, `fetchPortfolio`, `fetchPositions`) were collapsed into `getPortfolio` in April 2026.
 
 ## Why this is non-negotiable
 
@@ -81,7 +81,7 @@ Engine tools (`balance_check`, `portfolio_analysis`, `health_check`) run inside 
 
 ## Cross-references
 
-- Implementation → `apps/web-v2/lib/portfolio.ts`, `apps/web-v2/lib/portfolio-data.ts`
+- Implementation → `apps/web-v2/lib/portfolio.ts`, `apps/web-v2/lib/navi-positions.ts`
 - Engine cache injection → **[STALE — v0.7e Phase 5]** legacy `apps/web/lib/engine/init-engine-stores.ts` pattern; `web-v2` does not wire a cache adapter (per-request BlockVision cache + canonical `getPortfolio` 60s in-process cache suffice).
 - t2000-side standard → `t2000/.cursor/rules/single-source-of-truth.mdc`
 - BlockVision resilience → `t2000/.cursor/rules/blockvision-resilience.mdc`
