@@ -119,6 +119,7 @@ import {
   getToolPolicy,
   harnessShapeForEffort,
   isBundleableTool,
+  MAX_BUNDLE_OPS,
   type PendingAction,
   type PendingToolCall,
   READ_TOOLS,
@@ -2109,12 +2110,23 @@ export async function DELETE(request: Request) {
 //     user sees the failure.
 //   - `reasoning-*` → log only (thinking visualization is Phase 4+).
 //
+//   - `tool-input-start` → write `tool-input-start` UIMessage part so
+//     the UI tool-part enters `input-streaming` state. Source chunk
+//     field is `id`; UIMessage field is `toolCallId`. [P1.2 / 2026-05-24]
+//   - `tool-input-delta` → write `tool-input-delta` UIMessage part so
+//     the client's `useChat` assembler accumulates `part.input` as the
+//     LLM streams it. Field rename: source `delta` → UIMessage
+//     `inputTextDelta`. [P1.2 / 2026-05-24]
+//   - `tool-input-end` → intentional no-op (AI SDK v6 has no
+//     `tool-input-end` UIMessage part; state transitions when the
+//     subsequent `tool-call` chunk writes `tool-input-available`).
+//
 // Chunks NOT translated (silently ignored — collector consumes them):
 //   - `start`, `start-step`, `finish-step` (lifecycle markers we wrap
 //     our own UIMessageStream framing around).
 //   - `finish` (terminal — `turnCompleted` flag is set in the loop).
-//   - `text-start`/`text-end`, `tool-input-start/end/delta` (chunk-level
-//     framing the UIMessage assembler doesn't need at Day 2e granularity).
+//   - `text-start`/`text-end` (chunk-level framing the UIMessage
+//     assembler doesn't need at Day 2e granularity).
 //   - `source`/`file`/`raw`/`abort` — wired through in later phases as
 //     specific features land.
 
@@ -2226,13 +2238,59 @@ class BundleBuffer {
    * regardless of bundling.
    */
   flush(writer: UIMessageStreamWriter, messageId: string): void {
-    const N = this.toolCalls.length;
-    if (N === 0) {
+    if (this.toolCalls.length === 0) {
       // Nothing to flush. Approval requests can't arrive without a
       // prior tool-call, so this branch covers turns with no writes.
       this.reset();
       return;
     }
+
+    // [P7.1 / 2026-05-24] Defensive cap enforcement (Option A).
+    //
+    // `MAX_BUNDLE_OPS` (currently 4) was set by historical Phase 0
+    // wallet-race correctness bugs at cap=5 (see
+    // `packages/engine/src/compose-bundle.ts` lines 52-95). It's
+    // soft-enforced via the system prompt + hard-enforced at the
+    // Zod schema in `app/api/transactions/prepare/route.ts`
+    // (`.max(4)` on bundle steps). Pre-fix, an LLM emission of 5+
+    // bundleable writes would surface a 5-step BundlePermissionCard,
+    // the user would tap Approve, and the prepare route would return
+    // 400 Invalid request body — opaque failure.
+    //
+    // Fix: when N > MAX_BUNDLE_OPS, only include the first
+    // MAX_BUNDLE_OPS legs in the bundle. For overrun legs (5+),
+    // emit `tool-input-available` + `tool-output-error` directly,
+    // SKIPPING their `tool-approval-request` chunks so no user
+    // gesture is required. The LLM sees a structured rejection on
+    // resume and re-plans (e.g., issues the remaining writes as a
+    // second bundle).
+    //
+    // Option B (post-P3.2): route the overrun through
+    // `experimental_repairToolCall` so the LLM repairs the call BEFORE
+    // any per-tool state exists. Cleaner recovery — swap here once
+    // P3.2 lands.
+    let overrunCalls: BufferedToolCall[] = [];
+    if (this.toolCalls.length > MAX_BUNDLE_OPS) {
+      overrunCalls = this.toolCalls.slice(MAX_BUNDLE_OPS);
+      this.toolCalls = this.toolCalls.slice(0, MAX_BUNDLE_OPS);
+      // Drop approval requests that belong to overrun legs — the
+      // user never sees them; the LLM gets a synthetic tool-error
+      // instead.
+      const keptToolCallIds = new Set(this.toolCalls.map((c) => c.toolCallId));
+      this.approvalRequests = this.approvalRequests.filter((a) =>
+        keptToolCallIds.has(a.toolCallId)
+      );
+      console.warn(
+        "[audric-chat] Bundle overrun: LLM emitted",
+        overrunCalls.length + MAX_BUNDLE_OPS,
+        "bundleable writes;",
+        MAX_BUNDLE_OPS,
+        "included in bundle, rest rejected with structured tool-error. Overrun tools:",
+        overrunCalls.map((c) => c.toolName).join(", ")
+      );
+    }
+
+    const N = this.toolCalls.length;
 
     // Decide bundle eligibility. Three gates:
     //   1. N ≥ 2 confirm-tier writes
@@ -2280,6 +2338,21 @@ class BundleBuffer {
     }
     for (const a of this.approvalRequests) {
       translateChunk(a.chunk, writer, messageId);
+    }
+
+    // [P7.1] Emit synthetic input-available + output-error for
+    // overrun legs. Order is important: the input-available MUST be
+    // written before the output-error so AI SDK's part state machine
+    // can transition `nothing → input-available → output-error`.
+    // Skipping `tool-approval-request` keeps these parts out of the
+    // user-gesture path (terminal error state, no client action).
+    for (const c of overrunCalls) {
+      translateChunk(c.chunk, writer, messageId);
+      writer.write({
+        type: "tool-output-error",
+        toolCallId: c.toolCallId,
+        errorText: `Bundle exceeds capacity (max ${MAX_BUNDLE_OPS} ops per bundle). This leg was not included in the atomic Payment Intent — please retry it as a separate bundle.`,
+      });
     }
 
     this.reset();
@@ -2599,10 +2672,56 @@ function translateChunk(
       });
       break;
     }
+    case "tool-input-start": {
+      // [P1.2 / 2026-05-24] Forward `tool-input-start` so the UIMessage
+      // tool part enters state='input-streaming'. Without this the
+      // client only sees the eventual `tool-input-available` (state
+      // jumps directly to 'input-available'), which means
+      // `ToolResultRouter`'s input-streaming branch was unreachable
+      // for confirm-tier writes — partial-input deltas were dropped.
+      //
+      // The source chunk field is `id`; the UIMessage part field is
+      // `toolCallId`. Optional metadata fields pass through unchanged.
+      writer.write({
+        type: "tool-input-start",
+        toolCallId: chunk.id,
+        toolName: chunk.toolName,
+        ...(chunk.providerExecuted === undefined
+          ? {}
+          : { providerExecuted: chunk.providerExecuted }),
+        ...(chunk.providerMetadata === undefined
+          ? {}
+          : { providerMetadata: chunk.providerMetadata }),
+        ...(chunk.dynamic === undefined ? {} : { dynamic: chunk.dynamic }),
+        ...(chunk.title === undefined ? {} : { title: chunk.title }),
+      });
+      break;
+    }
+    case "tool-input-delta": {
+      // [P1.2 / 2026-05-24] Forward each partial-input fragment so the
+      // client's `useChat` assembler can accumulate `part.input` as
+      // the LLM streams it. Field rename: source `delta` → UIMessage
+      // `inputTextDelta`.
+      writer.write({
+        type: "tool-input-delta",
+        toolCallId: chunk.id,
+        inputTextDelta: chunk.delta,
+      });
+      break;
+    }
+    case "tool-input-end": {
+      // [P1.2 / 2026-05-24] Intentional no-op. AI SDK v6's UIMessage
+      // chunk format has no `tool-input-end` part — state transitions
+      // from 'input-streaming' to 'input-available' when the
+      // subsequent `tool-call` chunk writes `tool-input-available`.
+      // Listed explicitly here (instead of falling into default)
+      // to make the lifecycle intent visible to future readers.
+      break;
+    }
     default:
       // Other chunks (`start`, `start-step`, `finish-step`, `finish`,
-      // `text-start`, `text-end`, `tool-input-*`, `source`, `file`,
-      // `raw`, `abort`) are not translated.
+      // `text-start`, `text-end`, `source`, `file`, `raw`, `abort`)
+      // are not translated.
       break;
   }
 }

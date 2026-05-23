@@ -241,10 +241,19 @@ const bundleStepSchema = z.object({
 const bundleSchema = z.object({
   type: z.literal("bundle"),
   address: addressField,
-  // [SPEC 7 v0.4 Layer 2] Bundles cap at 4 ops (MAX_BUNDLE_OPS in engine
-  // `compose-bundle.ts`). The engine helper enforces the cap before
-  // emitting `steps[]`; we re-enforce here as defense-in-depth against a
-  // malformed client request that bypasses the chat route's marker path.
+  // Bundles cap at 4 ops (MAX_BUNDLE_OPS in engine `compose-bundle.ts`).
+  // Layered defense:
+  //   1. System prompt — tells the LLM to emit ≤4 writes per response
+  //      (`apps/web-v2/lib/audric/system-prompt.ts:230-238`).
+  //   2. [P7.1] `BundleBuffer.flush()` in the chat route — defensive
+  //      runtime cap; trims overrun legs to a synthetic tool-output-error
+  //      so the user never sees a 5+ step BundlePermissionCard
+  //      (`apps/web-v2/app/api/chat/route.ts:2248-2360`).
+  //   3. This Zod `.max(4)` — wire-level guard against a malformed
+  //      client POST that bypasses the chat route's marker path entirely.
+  // The literal `4` is intentional: any change to the cap is a
+  // follow-up SPEC (`SPEC_BUNDLE_CAP_REMOVAL.md`) that will retouch this
+  // schema with fresh wallet-race + consent-UX analysis.
   steps: z.array(bundleStepSchema).min(2).max(4),
 });
 

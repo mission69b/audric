@@ -259,16 +259,47 @@ export function ToolResultRouter({
     ? part.type.slice("tool-".length)
     : part.type;
 
-  // Skeleton state — the input is still streaming from the model, or
-  // it's been dispatched and we're awaiting the tool result. Renders
-  // an animate-pulse placeholder shaped like the eventual output so
-  // the page doesn't jump when the real card lands. Tools mapped to
-  // `null` in `skeleton-variants.ts` (e.g. `render_canvas`,
-  // `spending_analytics`) fall through to the generic Tool view.
-  if (part.state === "input-streaming" || part.state === "input-available") {
+  // Skeleton state — the input is still streaming from the model, the
+  // tool has been dispatched and we're awaiting the result, OR the
+  // user just approved a write and the sponsored-tx execution is in
+  // flight (~1s "approval-responded" limbo between Approve tap and
+  // `addToolOutput`). Renders an animate-pulse placeholder shaped
+  // like the eventual output so the page doesn't jump when the real
+  // card lands. Tools mapped to `null` in `skeleton-variants.ts`
+  // (e.g. `render_canvas`, `spending_analytics`) fall through to the
+  // generic Tool view.
+  //
+  // [P1.1 / 2026-05-24] Added `approval-responded` to close the
+  // user-visible JSON-flash bug: pre-fix this state fell through to
+  // the generic <Tool> renderer, which dumped raw `part.input` as
+  // JSON for ~1s before the receipt card landed. Differentiated
+  // ariaLabel ("Submitting") signals to screen readers that the user
+  // gesture has been accepted.
+  //
+  // NOTE on `output-denied`: NOT added here despite the plan's
+  // suggestion — the host's translateChunk (route.ts:2485-2499)
+  // already maps `tool-output-denied` chunks → `tool-output-error`
+  // UIMessage parts with errorText "User denied the action." before
+  // they reach this router, so an `output-denied` branch here would
+  // be dead code. Denial UX today: generic <Tool> with the errorText
+  // surfaced (acceptable). If we want a richer denial card in the
+  // future, the cleaner change is at the translateChunk site, not
+  // here.
+  if (
+    part.state === "input-streaming" ||
+    part.state === "input-available" ||
+    part.state === "approval-responded"
+  ) {
     const variant = getSkeletonVariant(toolName);
     if (variant !== null) {
-      return <SkeletonCard variant={variant} />;
+      return (
+        <SkeletonCard
+          ariaLabel={
+            part.state === "approval-responded" ? "Submitting" : "Loading"
+          }
+          variant={variant}
+        />
+      );
     }
   }
 
