@@ -51,10 +51,11 @@ S.247 persistent chats, S.253 DNS swap to web-v2, S.254 cross-repo cleanup + Ver
 
 | # | Action | Cost | Urgency | Notes |
 |---|---|---|---|---|
-| OPS-1 | **Delete `audric-web` Vercel project** (dashboard) | 5 min | 🔴 NOW | Domainless since 2026-05-22 ~21:30; still firing 5 crons against Neon (wasted compute + log noise + dual-write race). DNS cutover already proven stable. The 7-day insurance window was overcautious — kill it. |
 | OPS-2 | Retire ECS task defs + ECR repos + ALB (AWS console) | ~15 min | 🟡 anytime | All Vercel cutovers complete since S.224; the infra is dark but still billable. |
 | OPS-3 | Drop indexer NeonDB tables (Neon console): `Position`, `Transaction`, `ProtocolFeeLedger`, `IndexerCursor`, `YieldSnapshot`, `Agent.lastSeen` column | ~10 min | 🟡 anytime | Indexer was deleted in S.224 — these tables have no writer left. |
 | OPS-4 | (Optional) Re-port Tier B regression-swap CI to web-v2 | ~2-3h founder + agent collab | 🟢 def | The 2 workflows deleted in S.253 (`regression-swaps.yml` + `regression-swaps-execute.yml`) were path-scoped to `apps/web/**`. Tier A regressions (no on-chain mutation) port in ~1-2h if you want quote-scenario monitoring back; Tier B (live swap) needs `REGRESSION_TEST_WALLET_PRIVKEY` secret review. |
+
+> **OPS-1 (delete `audric-web` Vercel project) ✅ DONE 2026-05-23.** Old project removed by founder; crons no longer firing against Neon. Removed from the active table on the same date.
 
 ---
 
@@ -282,5 +283,4 @@ If you see a doc saying "5 systems," it's stale. S.221 + S.222 + S.254 swept t20
    - Phase 8 (post-soak deletion sweep + v0.7e unblock) → ✅ done via S.253 archive.
 4. **The v0.7c 7d soak closes 2026-05-28.** That gate (combined with the 2026-05-29 MemWal stability checkpoint) is now mostly cosmetic — most v0.7d work shipped or got audited away. Once both gates fire, v0.7d formally closes; v0.7e Tier C cleanup is already substantially done via S.253.
 5. **Before ANY code touch:** verify the surface still exists. S.253 + S.254 deleted a lot. The pattern is `rg "<file-or-table>" apps/web-v2/` (NOT `apps/web/` — that directory is gone).
-6. **OPS-1 is still urgent.** The old `audric-web` Vercel project is still firing crons against prod Neon. 5-minute dashboard click. Nudge the founder if they haven't done it.
-7. **Don't trust SPEC docs that pre-date S.253 without an audit.** Many reference deleted paths. The HANDOFF here is the freshest narrative. **MCP-1 is closed (see S.256) — `t2000_pay` + `t2000_services` were never removed from `@t2000/mcp`; the S.255 audit framing was wrong.**
+6. **Don't trust SPEC docs that pre-date S.253 without an audit.** Many reference deleted paths. The HANDOFF here is the freshest narrative. **MCP-1 is closed (see S.256) — `t2000_pay` + `t2000_services` were never removed from `@t2000/mcp`; the S.255 audit framing was wrong.**
