@@ -339,19 +339,45 @@ export function ActivityHeatmapCanvas({ data, onAction }: Props) {
           </div>
         </div>
 
-        {hoveredCell && (
-          <div
-            className="pointer-events-none fixed z-50 whitespace-nowrap rounded bg-fg-primary px-2 py-1 font-mono text-[10px] text-fg-inverse"
-            style={{ left: hoveredCell.x, top: hoveredCell.y - 28 }}
-          >
-            {hoveredCell.count} transaction
-            {hoveredCell.count !== 1 ? "s" : ""} on{" "}
-            {new Date(`${hoveredCell.date}T00:00:00`).toLocaleDateString(
-              "en-US",
-              { month: "short", day: "numeric" }
-            )}
-          </div>
-        )}
+        {hoveredCell && (() => {
+          // [S.265 — 2026-05-23] Pre-fix the tooltip was anchored to the
+          // cell's left edge with `position: fixed` + `whitespace-nowrap`,
+          // so cells in the right-most ~6 columns of the 365-day grid
+          // overflowed the viewport (founder-reported 2026-05-23). Center
+          // on the cell midpoint via `translateX(-50%)`, then clamp the
+          // centerpoint so the full tooltip stays within an 8px-padded
+          // viewport. `TOOLTIP_HALF_WIDTH` is an estimate sized for the
+          // worst-case label ("1,234 transactions on May 23" ≈ 220px).
+          const TOOLTIP_HALF_WIDTH = 110;
+          const VIEWPORT_PADDING = 8;
+          const viewportWidth =
+            typeof window === "undefined" ? 1024 : window.innerWidth;
+          const cellMidpoint = hoveredCell.x + CELL / 2;
+          const clampedLeft = Math.max(
+            TOOLTIP_HALF_WIDTH + VIEWPORT_PADDING,
+            Math.min(
+              cellMidpoint,
+              viewportWidth - TOOLTIP_HALF_WIDTH - VIEWPORT_PADDING
+            )
+          );
+          return (
+            <div
+              className="pointer-events-none fixed z-50 whitespace-nowrap rounded bg-fg-primary px-2 py-1 font-mono text-[10px] text-fg-inverse"
+              style={{
+                left: clampedLeft,
+                top: hoveredCell.y - 28,
+                transform: "translateX(-50%)",
+              }}
+            >
+              {hoveredCell.count} transaction
+              {hoveredCell.count !== 1 ? "s" : ""} on{" "}
+              {new Date(`${hoveredCell.date}T00:00:00`).toLocaleDateString(
+                "en-US",
+                { month: "short", day: "numeric" }
+              )}
+            </div>
+          );
+        })()}
       </div>
 
       <div className="flex items-center gap-1.5 font-mono text-[9px] text-fg-muted">
