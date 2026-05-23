@@ -638,8 +638,9 @@ export async function POST(request: Request) {
   //
   // Tools wrapped (via `WRITE_TOOLS` filter):
   //   save_deposit, withdraw, send_transfer, borrow, repay_debt,
-  //   claim_rewards, harvest_rewards, swap_execute, volo_stake,
-  //   volo_unstake.
+  //   claim_rewards, harvest_rewards, swap_execute.
+  // [S.277] volo_stake / volo_unstake removed from WRITE_TOOLS in
+  // engine 2.18.0 ("Earns Its Keep" audit).
   //
   // [S.243 / V07E_CONTACTS_SIMPLIFICATION Path A — 2026-05-22]
   // `save_contact` was removed from web-v2's tool set; the filter
@@ -657,15 +658,16 @@ export async function POST(request: Request) {
   // primitive in Audric Store SPEC (clean-slate, not a port). No
   // filter needed — the tools no longer exist to filter out.
   //
-  // **Gateway interaction:** when `useGateway` is on (default), the
-  // AI Gateway-managed `perplexity_search` replaces the engine's
-  // `web_search` tool (Phase 2 D-19 / S.172 Batch 1 design). Filter
-  // `web_search` out of engine reads when `useGateway` is true to
-  // avoid the LLM seeing BOTH tools.
-  const readToolsForWebV2 = useGateway
-    ? READ_TOOLS.filter((t) => t.name !== "web_search")
-    : READ_TOOLS;
-  const engineTools = toAISDKTools([...readToolsForWebV2, ...WRITE_TOOLS]);
+  // [S.277 — 2026-05-23] Engine 2.18.0 cut `web_search` outright
+  // ("Earns Its Keep" audit). The Phase 2 D-19 dual-write was already
+  // dead in prod (gateway path filtered web_search out, non-gateway
+  // path was an unused fallback); now the engine tool's gone, so the
+  // filter step is unnecessary. Gateway-managed `perplexity_search`
+  // still surfaces when `useGateway` is on — that's our search path.
+  // Non-gateway path no longer offers any search tool; LLM degrades
+  // to training knowledge for protocol questions. Acceptable per
+  // audit (BRAVE_API_KEY also dropped).
+  const engineTools = toAISDKTools([...READ_TOOLS, ...WRITE_TOOLS]);
   const tools: ToolSet = useGateway
     ? ({
         perplexity_search: gateway.tools.perplexitySearch(),
@@ -749,11 +751,10 @@ export async function POST(request: Request) {
     env: {
       AUDRIC_INTERNAL_API_URL: env.AUDRIC_INTERNAL_API_URL,
       AUDRIC_INTERNAL_KEY: env.T2000_INTERNAL_KEY,
-      // [S.269 item 4 — 2026-05-23] Thread BRAVE_API_KEY so web_search
-      // tool fires when the env is set. Pre-fix web_search was a dead
-      // tool in production (engine read `context.env?.BRAVE_API_KEY`,
-      // audric never threaded it). Optional → spread only when set.
-      ...(env.BRAVE_API_KEY && { BRAVE_API_KEY: env.BRAVE_API_KEY }),
+      // [S.277 — 2026-05-23] BRAVE_API_KEY spread dropped — engine
+      // `web_search` tool cut in 2.18.0 ("Earns Its Keep" audit).
+      // Gateway-managed `perplexity_search` covers the search use
+      // case when `useGateway` is on.
     },
     mcpManager,
     // Per-request portfolio cache so balance_check + future read tools
@@ -1348,11 +1349,9 @@ export async function POST(request: Request) {
   // byte-for-byte ports from `audric/apps/web/lib/engine/intent-
   // dispatcher.ts`; only the registry-passed-in changes here.
   //
-  // **Gateway interaction:** the registry includes `web_search` even
-  // when `useGateway` is on (so the dispatcher COULD fire it), but the
-  // dispatcher rules don't pre-fire `web_search` — only the LLM does,
-  // and the LLM sees `perplexity_search` instead (per the gateway
-  // filter above). The map entry is harmless.
+  // [S.277 — 2026-05-23] `web_search` no longer in READ_TOOLS (engine
+  // 2.18.0 cut). The pre-cut dispatcher comment about the gateway-
+  // path harmlessly including it is now moot.
   const readToolRegistry = new Map<string, Tool>(
     READ_TOOLS.map((t) => [t.name, t])
   );
@@ -2708,18 +2707,8 @@ function describeAudricAction(
       return "Claim NAVI rewards";
     case "harvest_rewards":
       return "Harvest rewards (claim → swap to USDC → save)";
-    case "volo_stake": {
-      const amount = obj.amountSui ?? obj.amount;
-      return `Stake ${amount} SUI on Volo`;
-    }
-    case "volo_unstake": {
-      const raw = obj.amountVSui ?? obj.amount;
-      const display =
-        raw === "all" || raw === 0 || raw === undefined
-          ? "all vSUI"
-          : `${raw} vSUI`;
-      return `Unstake ${display} from Volo`;
-    }
+    // [S.277] volo_stake / volo_unstake narration cases removed —
+    // engine tools cut in 2.18.0 ("Earns Its Keep" audit).
     default:
       return;
   }

@@ -7,7 +7,8 @@
  * Phase 4 widens the dispatcher to cover every sponsored-tx write:
  *
  *   save, withdraw, borrow, repay, send, swap, claim-rewards,
- *   harvest, volo-stake, volo-unstake
+ *   harvest. [S.277 — 2026-05-23] Volo stake / unstake removed from
+ *   the dispatcher when engine 2.18.0 cut the tools.
  *
  * [S.243 — 2026-05-22] `save_contact` removed entirely from web-v2 per
  * V07E_CONTACTS_SIMPLIFICATION Path A. Pre-S.243 it was a Prisma-only
@@ -211,17 +212,8 @@ const harvestSchema = z.object({
   slippage: z.number().positive().max(0.5).optional(),
   minRewardUsd: nonNegativeAmount.optional(),
 });
-const voloStakeSchema = z.object({
-  type: z.literal("volo-stake"),
-  address: addressField,
-  amount: positiveAmount,
-});
-const voloUnstakeSchema = z.object({
-  type: z.literal("volo-unstake"),
-  address: addressField,
-  // `amount === 0` means unstake-all (legacy convention preserved).
-  amount: nonNegativeAmount,
-});
+// [S.277] voloStakeSchema / voloUnstakeSchema removed — engine tools
+// cut in 2.18.0 ("Earns Its Keep" audit).
 
 // ─── Phase 5e: multi-write atomic Payment Intent ─────────────────────────
 //
@@ -243,8 +235,6 @@ const bundleStepSchema = z.object({
     "swap_execute",
     "claim_rewards",
     "harvest_rewards",
-    "volo_stake",
-    "volo_unstake",
   ]),
   input: z.record(z.unknown()),
 });
@@ -267,8 +257,6 @@ const prepareBodySchema = z.discriminatedUnion("type", [
   swapSchema,
   claimRewardsSchema,
   harvestSchema,
-  voloStakeSchema,
-  voloUnstakeSchema,
   bundleSchema,
 ]);
 
@@ -386,16 +374,8 @@ function buildWriteStep(body: PrepareBody): WriteStep {
             : { minRewardUsd: body.minRewardUsd }),
         },
       };
-    case "volo-stake":
-      return {
-        toolName: "volo_stake",
-        input: { amountSui: body.amount },
-      };
-    case "volo-unstake":
-      return {
-        toolName: "volo_unstake",
-        input: { amountVSui: body.amount > 0 ? body.amount : "all" },
-      };
+    // [S.277] volo-stake / volo-unstake cases removed — engine tools
+    // cut in 2.18.0 ("Earns Its Keep" audit).
     default:
       throw new Error(
         `Unhandled prepare type: ${(body as { type: string }).type}`

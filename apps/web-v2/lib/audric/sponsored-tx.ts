@@ -3,8 +3,9 @@
  *
  * Phase 4 generalization of Phase 3's `sponsoredSave`. One function
  * dispatches every sponsored write type (save, withdraw, borrow,
- * repay, send, swap, claim-rewards, harvest, volo-stake,
- * volo-unstake) through the same prepare → sign → execute round-trip:
+ * repay, send, swap, claim-rewards, harvest) through the same
+ * prepare → sign → execute round-trip. [S.277 — 2026-05-23] Volo
+ * stake / unstake removed (engine 2.18.0 "Earns Its Keep" cut):
  *
  *  1. POST `/api/transactions/prepare` with `{ type, address, ...params }`
  *     + the user's JWT in the `x-zklogin-jwt` header. Server builds
@@ -63,9 +64,7 @@ export type SponsoredTxBundleStep = {
     | "send_transfer"
     | "swap_execute"
     | "claim_rewards"
-    | "harvest_rewards"
-    | "volo_stake"
-    | "volo_unstake";
+    | "harvest_rewards";
   /**
    * Tool input as the engine tool's input schema expects (matches
    * `WriteStep.input` shape). Passed verbatim to the prepare-route.
@@ -123,18 +122,6 @@ export type SponsoredTxRequest =
       type: "harvest";
       slippage?: number;
       minRewardUsd?: number;
-    }
-  | {
-      type: "volo-stake";
-      amount: number;
-    }
-  | {
-      type: "volo-unstake";
-      /**
-       * `amount > 0` unstakes that exact amount; `amount === 0`
-       * unstakes ALL (legacy convention preserved).
-       */
-      amount: number;
     }
   | {
       type: "bundle";
@@ -264,9 +251,6 @@ function buildPrepareBody(
           ? {}
           : { minRewardUsd: req.minRewardUsd }),
       };
-    case "volo-stake":
-    case "volo-unstake":
-      return { ...base, amount: req.amount };
     case "bundle":
       // [Phase 5e] Pass `steps[]` verbatim — prepare-route validates the
       // structure via `bundleSchema` and forwards to `composeTx({steps})`.

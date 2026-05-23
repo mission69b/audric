@@ -40,14 +40,15 @@ export { PaymentLinkCard } from './PaymentLinkCard';
 export { PendingRewardsCardV2 } from './PendingRewardsCardV2';
 export { PortfolioCardV2 } from './PortfolioCardV2';
 export { PriceCard } from './PriceCard';
-export { ProtocolCard } from './ProtocolCard';
+// [S.277 — 2026-05-23] ProtocolCard / SearchResultsCard / StakingCard
+// deleted. Their engine tools (`protocol_deep_dive`, `web_search`,
+// `volo_stats` / `volo_stake` / `volo_unstake`) were cut in the
+// "Earns Its Keep" audit (engine 2.18.0).
 export { RatesCardV2 } from './RatesCardV2';
 export { SavingsCard } from './SavingsCard';
-export { SearchResultsCard } from './SearchResultsCard';
 export type { SkeletonVariant } from './SkeletonCard';
 export { SkeletonCard } from './SkeletonCard';
 export { getSkeletonVariant } from './skeleton-variants';
-export { StakingCard } from './StakingCard';
 export { SuinsResolution } from './SuinsResolution';
 export { SwapQuoteCardV2 } from './SwapQuoteCardV2';
 export { TransactionHistoryCard } from './TransactionHistoryCard';

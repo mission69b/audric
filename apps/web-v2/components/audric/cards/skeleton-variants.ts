@@ -6,6 +6,9 @@
 // removed per V07E_D_QUESTION_AUDITS D-2 reframe. Tools deleted
 // from engine entirely; pay_api returns as a Commerce primitive in
 // Audric Store SPEC (clean-slate redesign).
+// [S.277 — 2026-05-23] `volo_stats` / `volo_stake` / `volo_unstake` /
+// `web_search` / `protocol_deep_dive` skeleton entries removed per
+// AUDIT_V07E_EARNS_ITS_KEEP_2026-05-23 (engine 2.18.0 cut).
 
 import type { SkeletonVariant } from './SkeletonCard';
 
@@ -15,7 +18,6 @@ const TOOL_TO_VARIANT: Record<string, SkeletonVariant | null> = {
   swap_quote: 'compact',
   health_check: 'compact',
   token_prices: 'compact',
-  volo_stats: 'compact',
   pending_rewards: 'compact',
 
   // Wide (multi-row analytics + receipts)
@@ -25,14 +27,11 @@ const TOOL_TO_VARIANT: Record<string, SkeletonVariant | null> = {
   activity_summary: 'wide',
   yield_summary: 'wide',
   explain_tx: 'wide',
-  protocol_deep_dive: 'wide',
   create_payment_link: 'wide',
   save_deposit: 'wide',
   withdraw: 'wide',
   send_transfer: 'wide',
   swap_execute: 'wide',
-  volo_stake: 'wide',
-  volo_unstake: 'wide',
   borrow: 'wide',
   repay_debt: 'wide',
   claim_rewards: 'wide',
@@ -40,7 +39,6 @@ const TOOL_TO_VARIANT: Record<string, SkeletonVariant | null> = {
 
   // List (multi-row catalog/history)
   transaction_history: 'list',
-  web_search: 'list',
   list_payment_links: 'list',
 
   // Chip (single-line confirmations)

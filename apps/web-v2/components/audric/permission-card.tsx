@@ -108,8 +108,6 @@ const TOOL_LABELS: Record<string, string> = {
   save_deposit: "Save deposit",
   send_transfer: "Send transfer",
   swap_execute: "Swap",
-  volo_stake: "Stake",
-  volo_unstake: "Unstake",
   withdraw: "Withdraw",
 };
 
@@ -164,14 +162,6 @@ function formatInput(
     const to = resolveSymbol(input.to);
     const amt = input.amount ?? "?";
     return `${amt} ${from} → ${to}`;
-  }
-  if (toolName === "volo_stake") {
-    return `${input.amount ?? "?"} SUI → vSUI`;
-  }
-  if (toolName === "volo_unstake") {
-    return input.amount === "all"
-      ? "All vSUI → SUI"
-      : `${input.amount ?? "?"} vSUI → SUI`;
   }
 
   const parts: string[] = [];
@@ -581,14 +571,8 @@ function bundleStepSummary(step: BundlePermissionCardStep): string {
     const asset = typeof input.asset === "string" ? input.asset : "USDC";
     return `Send ${amt} ${asset}`;
   }
-  if (toolName === "volo_stake") {
-    return `Stake ${input.amount ?? "?"} SUI`;
-  }
-  if (toolName === "volo_unstake") {
-    return input.amount === "all"
-      ? "Unstake all vSUI"
-      : `Unstake ${input.amount ?? "?"} vSUI`;
-  }
+  // [S.277] volo_stake / volo_unstake branches removed — engine tools
+  // cut in 2.18.0 ("Earns Its Keep" audit).
   // Default: "<Label> <amount> <asset>". Covers save / borrow / repay /
   // withdraw / claim / harvest naturally.
   const amt = input.amount;

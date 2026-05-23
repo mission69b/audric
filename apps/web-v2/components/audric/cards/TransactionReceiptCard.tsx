@@ -287,35 +287,8 @@ function getHeroLines(data: TxReceiptData, toolName: string): HeroLine[] {
     return lines;
   }
 
-  if (toolName === 'volo_stake') {
-    const stakeAmt = data.amountSui ?? data.amount ?? 0;
-    lines.push({ label: 'Staked', value: `${fmtAmt(stakeAmt)} SUI` });
-    if (data.vSuiReceived != null)
-      lines.push({
-        label: 'Received',
-        value: `${fmtAmt(data.vSuiReceived, 4)} vSUI`,
-        emphasis: 'positive',
-      });
-    if (data.apy != null)
-      lines.push({
-        label: 'APY',
-        value: `${(data.apy * 100).toFixed(2)}%`,
-        emphasis: 'positive',
-      });
-    return lines;
-  }
-
-  if (toolName === 'volo_unstake') {
-    const unstakeAmt = data.vSuiAmount ?? data.amount ?? 0;
-    lines.push({ label: 'Unstaked', value: `${fmtAmt(unstakeAmt, 4)} vSUI` });
-    if (data.suiReceived != null)
-      lines.push({
-        label: 'Received',
-        value: `${fmtAmt(data.suiReceived, 4)} SUI`,
-        emphasis: 'positive',
-      });
-    return lines;
-  }
+  // [S.277] volo_stake / volo_unstake branches removed — engine tools
+  // cut in 2.18.0 ("Earns Its Keep" audit).
 
   if (data.amount != null) {
     lines.push({
@@ -333,7 +306,11 @@ const emphasisClass: Record<string, string> = {
   neutral: '',
 };
 
-const USE_GRID_HERO_TOOLS = new Set(['volo_stake', 'volo_unstake']);
+// [S.277] Grid-hero tool set was Volo-only (the only writes whose
+// receipt benefited from a 2-column grid layout). Now empty; kept as
+// `new Set<string>()` so the call sites continue to no-op gracefully
+// without conditional-import gymnastics.
+const USE_GRID_HERO_TOOLS = new Set<string>();
 
 export function TransactionReceiptCard({
   data,

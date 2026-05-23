@@ -108,8 +108,8 @@ export const POST_WRITE_REFRESH_MAP: Readonly<
   repay_debt: ["balance_check", "savings_info", "health_check"],
   send_transfer: ["balance_check"],
   swap_execute: ["balance_check"],
-  volo_stake: ["balance_check"],
-  volo_unstake: ["balance_check"],
+  // [S.277] volo_stake / volo_unstake entries removed — engine tools
+  // cut in 2.18.0 ("Earns Its Keep" audit).
   claim_rewards: ["balance_check", "savings_info"],
   // Compound — claims clear rewards (savings_info), swap leg moves
   // wallet balances (balance_check), final deposit adds to NAVI USDC

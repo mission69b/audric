@@ -18,13 +18,13 @@ import { PaymentLinkCard } from "./cards/PaymentLinkCard";
 import { PendingRewardsCardV2 } from "./cards/PendingRewardsCardV2";
 import { PortfolioCardV2 } from "./cards/PortfolioCardV2";
 import { PriceCard } from "./cards/PriceCard";
-import { ProtocolCard } from "./cards/ProtocolCard";
+// [S.277] ProtocolCard / SearchResultsCard / StakingCard imports removed
+// — engine tools `protocol_deep_dive`, `web_search`, `volo_*` cut in
+// engine 2.18.0 ("Earns Its Keep" audit).
 import { extractData } from "./cards/primitives";
 import { RatesCardV2 } from "./cards/RatesCardV2";
 import { SavingsCard } from "./cards/SavingsCard";
-import { SearchResultsCard } from "./cards/SearchResultsCard";
 import { SkeletonCard } from "./cards/SkeletonCard";
-import { StakingCard } from "./cards/StakingCard";
 import { SuinsResolution } from "./cards/SuinsResolution";
 import { SwapQuoteCardV2 } from "./cards/SwapQuoteCardV2";
 import { getSkeletonVariant } from "./cards/skeleton-variants";
@@ -69,8 +69,8 @@ const WRITE_TOOLS_WITH_RECEIPT = new Set([
   "borrow",
   "repay_debt",
   "swap_execute",
-  "volo_stake",
-  "volo_unstake",
+  // [S.277] volo_stake / volo_unstake removed — engine tools cut in
+  // 2.18.0 ("Earns Its Keep" audit).
   "claim_rewards",
   "harvest_rewards",
 ]);
@@ -204,22 +204,10 @@ function renderCard(
       return (
         <PriceCard data={data as Parameters<typeof PriceCard>[0]["data"]} />
       );
-    case "protocol_deep_dive":
-      return (
-        <ProtocolCard
-          data={data as Parameters<typeof ProtocolCard>[0]["data"]}
-        />
-      );
-    case "volo_stats":
-      return (
-        <StakingCard data={data as Parameters<typeof StakingCard>[0]["data"]} />
-      );
-    case "web_search":
-      return (
-        <SearchResultsCard
-          data={data as Parameters<typeof SearchResultsCard>[0]["data"]}
-        />
-      );
+    // [S.277] `protocol_deep_dive`, `volo_stats`, `web_search` case
+    // branches removed — engine tools cut in 2.18.0 ("Earns Its Keep"
+    // audit). Gateway-managed `perplexity_search` (when enabled) still
+    // renders via AI Elements' default tool-part UI.
     case "pending_rewards":
       return (
         <PendingRewardsCardV2

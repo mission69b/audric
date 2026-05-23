@@ -1451,21 +1451,8 @@ function buildSponsoredTxRequest(
           ? {}
           : { minRewardUsd: Number(input.minRewardUsd) }),
       };
-    case "volo_stake":
-      // Engine tool's input field is `amountSui`; modifiable-fields
-      // exposes it as `amount`. Accept either for forward-compat.
-      return {
-        type: "volo-stake",
-        amount: Number(input.amountSui ?? input.amount),
-      };
-    case "volo_unstake": {
-      // `amountVSui` can be the string `"all"` (engine tool's union
-      // type). The client-side widget sends a number for editable
-      // amounts; `0` means "all" by legacy convention.
-      const raw = input.amountVSui ?? input.amount;
-      const amount = raw === "all" ? 0 : Number(raw ?? 0);
-      return { type: "volo-unstake", amount };
-    }
+    // [S.277] volo_stake / volo_unstake cases removed — engine tools
+    // cut in 2.18.0 ("Earns Its Keep" audit).
     default:
       return;
   }
@@ -1513,9 +1500,8 @@ function buildToolOutput(
         from: request.from,
         to: request.to,
       };
-    case "volo-stake":
-    case "volo-unstake":
-      return { ...base, amount: request.amount };
+    // [S.277] volo-stake / volo-unstake cases removed — engine tools
+    // cut in 2.18.0 ("Earns Its Keep" audit).
     case "harvest":
       // [Smoke 2026-05-22 harvest-plan-threading] Merge the per-leg
       // breakdown computed at prepare time (claimed/swaps/skipped/

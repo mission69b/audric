@@ -127,21 +127,12 @@ const serverSchema = z.object({
    * BlockVision incident pattern). */
   AUDRIC_INTERNAL_API_URL: requiredString,
 
-  /** Brave Search API key — backs the `web_search` engine tool.
-   * Threaded into `ToolContext.env.BRAVE_API_KEY`; absent → tool
-   * returns "Web search is not available right now."
-   *
-   * **OPTIONAL by design.** web_search is a non-financial helper tool;
-   * its absence is degraded-but-safe (LLM falls back to its training
-   * knowledge for protocol/concept questions). Production deploys
-   * SHOULD set this; preview / local dev MAY skip.
-   *
-   * Added 2026-05-23 (S.269 item 4) when audit caught web-v2 not
-   * threading the var even though `engine/tools/web-search.ts:39`
-   * reads `context.env?.BRAVE_API_KEY`. Pre-fix: web_search was a
-   * dead tool in production. Wired in `app/api/chat/route.ts`'s
-   * `ToolContext.env` block. */
-  BRAVE_API_KEY: optionalString,
+  // [S.277 — 2026-05-23] BRAVE_API_KEY removed. Backed the engine's
+  // `web_search` tool, which was cut in engine 2.18.0 ("Earns Its
+  // Keep" audit) — Brave-backed search was already filtered out in
+  // production (gateway path uses Vercel AI Gateway's
+  // `perplexity_search`). Operators can safely delete the Vercel env
+  // var; nothing reads it anymore.
 
   /** Standard Redis URL (TCP protocol via the `redis` npm package) —
    * backs the per-IP rate limiter at `lib/ratelimit.ts`. Distinct from
@@ -333,7 +324,6 @@ const runtimeEnv = {
   ENOKI_SECRET_KEY: process.env.ENOKI_SECRET_KEY,
   T2000_INTERNAL_KEY: process.env.T2000_INTERNAL_KEY,
   AUDRIC_INTERNAL_API_URL: process.env.AUDRIC_INTERNAL_API_URL,
-  BRAVE_API_KEY: process.env.BRAVE_API_KEY,
   REDIS_URL: process.env.REDIS_URL,
   UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
   UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
