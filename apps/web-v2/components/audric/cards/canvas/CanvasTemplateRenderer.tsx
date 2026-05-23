@@ -6,6 +6,7 @@ import {
   FullPortfolioCanvas,
   HealthSimulatorCanvas,
   PortfolioTimelineCanvas,
+  ReceiveAddressCanvas,
   SpendingBreakdownCanvas,
   WatchAddressCanvas,
   YieldProjectorCanvas,
@@ -77,6 +78,12 @@ export function CanvasTemplateRenderer({ template, data, onAction }: Props) {
         <FullPortfolioCanvas
           data={data as Parameters<typeof FullPortfolioCanvas>[0]["data"]}
           onAction={onAction}
+        />
+      );
+    case "receive_address":
+      return (
+        <ReceiveAddressCanvas
+          data={data as Parameters<typeof ReceiveAddressCanvas>[0]["data"]}
         />
       );
     default:

@@ -6,6 +6,7 @@ export { DCAPlanner } from "./DCAPlanner";
 export { FullPortfolioCanvas } from "./FullPortfolioCanvas";
 export { HealthSimulatorCanvas } from "./HealthSimulatorCanvas";
 export { PortfolioTimelineCanvas } from "./PortfolioTimelineCanvas";
+export { ReceiveAddressCanvas } from "./ReceiveAddressCanvas";
 export { SpendingBreakdownCanvas } from "./SpendingBreakdownCanvas";
 export { WatchAddressCanvas } from "./WatchAddressCanvas";
 export { YieldProjectorCanvas } from "./YieldProjectorCanvas";
