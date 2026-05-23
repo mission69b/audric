@@ -732,13 +732,37 @@ export async function POST(request: Request) {
   // `translateChunk` → `tool-result` case (see TODO marker there).
   const sessionSpendUsdAtStart = await getSessionSpend(sessionId);
 
+  // [S.267 — 2026-05-23] Thread `AUDRIC_INTERNAL_KEY` (mapped from
+  // `env.T2000_INTERNAL_KEY` — the legacy alias name in audric's env
+  // schema; engine reads `AUDRIC_INTERNAL_KEY`) alongside the URL.
+  // Pre-S.267 every payment-link / invoice tool call from web-v2 hit
+  // `/api/internal/payments` with no `x-internal-key` header → 401
+  // (`validateInternalKey` is fail-closed) → engine returned `data: null`
+  // → tool-result-router rendered nothing → LLM rephrased the silent
+  // failure as "unexpected result." The matching analytics tools
+  // (`portfolio_analysis`, `spending_analytics`, `yield_summary`,
+  // `activity_summary`) silently fell back to BlockVision direct paths
+  // — same numbers in the happy case but a structural SSOT bypass.
+  // Closing the gap re-enables the canonical audric API path for
+  // every internal-key-gated tool. S.267 also adds failure-path
+  // observability in `engine/tools/receive.ts` so the next regression
+  // of this class surfaces in logs as
+  // `[receive] tool=… status=401 url=…` instead of silent.
   const toolContext: ToolContext = {
     walletAddress,
     suiRpcUrl: getSuiRpcUrl(),
     blockvisionApiKey: env.BLOCKVISION_API_KEY,
-    env: env.AUDRIC_INTERNAL_API_URL
-      ? { AUDRIC_INTERNAL_API_URL: env.AUDRIC_INTERNAL_API_URL }
-      : undefined,
+    env:
+      env.AUDRIC_INTERNAL_API_URL || env.T2000_INTERNAL_KEY
+        ? {
+            ...(env.AUDRIC_INTERNAL_API_URL && {
+              AUDRIC_INTERNAL_API_URL: env.AUDRIC_INTERNAL_API_URL,
+            }),
+            ...(env.T2000_INTERNAL_KEY && {
+              AUDRIC_INTERNAL_KEY: env.T2000_INTERNAL_KEY,
+            }),
+          }
+        : undefined,
     mcpManager,
     // Per-request portfolio cache so balance_check + future read tools
     // in the same turn share a single BlockVision response (avoids
