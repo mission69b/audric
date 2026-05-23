@@ -22,6 +22,8 @@ import { TrashIcon } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useSWRConfig } from "swr";
+import { unstable_serialize } from "swr/infinite";
+import { getChatHistoryPaginationKey } from "@/components/chat/sidebar-history";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -48,14 +50,20 @@ export function DeleteAllChatsButton() {
         toast.error(`Couldn't delete chats (${res.status})`);
         return;
       }
-      // Invalidate every `/api/history*` SWR key so any mounted sidebar
-      // (this tab post-nav back to /chat, other tabs on next focus)
-      // refetches and shows the empty state.
-      await mutate(
-        (key) => typeof key === "string" && key.includes("/api/history"),
-        undefined,
-        { revalidate: true }
-      );
+      // [S.269 item 1 — 2026-05-23 / S.271 fix] Invalidate the
+      // sidebar's `useSWRInfinite` cache. Pre-fix this used a
+      // string-predicate `(key) => typeof key === "string" &&
+      // key.includes("/api/history")` which matched ZERO keys —
+      // `useSWRInfinite` namespaces its keys as serialized arrays
+      // under `$inf$/api/history?...`, never plain strings. Result:
+      // delete-all-chats succeeded server-side but the sidebar still
+      // showed the deleted chats until manual refresh. Canonical
+      // pattern (mirrors `hooks/use-chat-visibility.ts:63`) is
+      // `mutate(unstable_serialize(getChatHistoryPaginationKey))`,
+      // which targets the exact infinite-key namespace.
+      await mutate(unstable_serialize(getChatHistoryPaginationKey), undefined, {
+        revalidate: true,
+      });
       toast.success("All chats deleted");
       setOpen(false);
     } catch (err) {

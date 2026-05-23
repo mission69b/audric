@@ -8,21 +8,22 @@ import { env } from "@/lib/env";
 
 /**
  * Validate the x-internal-key header against T2000_INTERNAL_KEY.
- * Used by internal API routes called by the t2000 ECS cron/indexer.
+ * Used by internal API routes called by the engine's server-to-self
+ * tool path (e.g. `/api/internal/payments` for payment-link creation
+ * + listing + cancellation, gated cross-app reads for analytics).
  *
- * `env.T2000_INTERNAL_KEY` is optional in web-v2's schema (web-v2
- * Vercel project may not yet have it configured during pre-cutover
- * preview testing). When unset, `validateInternalKey` rejects every
- * caller — same fail-closed posture as apps/web. Once Session 4.5's
- * env flip lands and `T2000_INTERNAL_KEY` is set in web-v2's Vercel
- * project, the gate works identically to apps/web.
+ * Post-S.269 item 0a (2026-05-23) `env.T2000_INTERNAL_KEY` is
+ * `requiredString` — the env schema fails the deploy at boot if it's
+ * absent. Pre-S.269 it was optional (see commit history); the
+ * optional posture silently 401'd every internal-API call when the
+ * Vercel UI value was unset — exactly what S.267's smoke surfaced.
+ * The fail-closed posture below stays as defense-in-depth (header
+ * mismatch / replay protection).
  */
 export function validateInternalKey(
   headerValue: string | null
 ): { valid: true } | { error: NextResponse } {
-  const expected = env.T2000_INTERNAL_KEY;
-
-  if (!expected || !headerValue || headerValue !== expected) {
+  if (!headerValue || headerValue !== env.T2000_INTERNAL_KEY) {
     return {
       error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
     };
@@ -99,11 +100,7 @@ export async function authenticateAnalyticsRequest(
   | { error: NextResponse }
 > {
   const internalKey = request.headers.get("x-internal-key");
-  if (
-    internalKey &&
-    env.T2000_INTERNAL_KEY &&
-    internalKey === env.T2000_INTERNAL_KEY
-  ) {
+  if (internalKey && internalKey === env.T2000_INTERNAL_KEY) {
     const queryAddr = request.nextUrl.searchParams.get("address");
     if (!queryAddr?.startsWith("0x")) {
       return {

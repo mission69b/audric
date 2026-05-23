@@ -28,6 +28,8 @@ import { type NextRequest, NextResponse } from "next/server";
 import {
   getChatById,
   getMessagesByChatId,
+  updateChatVisibility,
+  type VisibilityType,
 } from "@/lib/audric/chat-persistence";
 import { getCurrentUser } from "@/lib/audric-auth";
 import { convertToUIMessages } from "@/lib/utils";
@@ -137,4 +139,62 @@ export async function GET(
     },
     messages,
   });
+}
+
+/**
+ * `PATCH /api/chat/[id]` — toggle chat visibility (private ↔ public).
+ *
+ * **Why this exists (S.269 item 2 — 2026-05-23 / S.270 fix).**
+ *
+ * Pre-S.269 visibility toggling routed through a Next.js Server Action
+ * (`lib/actions/chat-visibility.ts`). Server Actions are a foot-gun in
+ * this codebase: they're called via the React server-action RPC channel,
+ * which doesn't forward custom request headers from the client. Audric's
+ * auth attaches the zkLogin JWT as `x-zklogin-jwt` (set by `authFetch`),
+ * so `getCurrentUser()` inside the Server Action saw no header and threw
+ * "Unauthorized" on every toggle.
+ *
+ * The fix routes through the standard `authFetch → API route` path used
+ * everywhere else in the app. The Biome rule in `biome.jsonc` now bans
+ * `"use server"` to prevent this class of bug from recurring.
+ *
+ * Body: `{ visibility: 'private' | 'public' }`.
+ * Auth: `x-zklogin-jwt` (via `authFetch`); 401 on missing/invalid JWT;
+ * the underlying `updateMany({ where: { id, userSuiAddress } })`
+ * ownership clause makes non-owner toggles a silent no-op (200 with no
+ * row updated — the optimistic UI rollback in `useChatVisibility`
+ * handles the post-condition check).
+ */
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+
+  const session = await getCurrentUser();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  let body: { visibility?: VisibilityType };
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
+  if (body.visibility !== "private" && body.visibility !== "public") {
+    return NextResponse.json(
+      { error: 'visibility must be "private" or "public"' },
+      { status: 400 }
+    );
+  }
+
+  await updateChatVisibility({
+    chatId: id,
+    visibility: body.visibility,
+    userSuiAddress: session.user.id,
+  });
+
+  return NextResponse.json({ ok: true });
 }

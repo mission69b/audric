@@ -93,32 +93,73 @@ const serverSchema = z.object({
    * publishable equivalent). */
   ENOKI_SECRET_KEY: requiredString,
 
-  /** Shared cross-app internal-key for trusted server-side reads against
-   * apps/web. Session 3 (Phase 6) uses it to fetch the public-profile
-   * portfolio panel via apps/web's `/api/portfolio` endpoint
-   * (`authenticateAnalyticsRequest` dual-auth path). Same value as
-   * apps/web's `T2000_INTERNAL_KEY` — Vercel env vars are shared across
-   * deploys in the same project. Optional because pre-cutover preview
-   * deploys may not have it set yet; when absent the profile page
-   * degrades silently (portfolio panel hidden). */
-  T2000_INTERNAL_KEY: optionalString,
+  /** Shared internal-key for trusted server-to-self reads against
+   * web-v2's own `/api/internal/*` routes (e.g. `/api/internal/payments`).
+   * The engine's `receive.ts` + analytics tools attach this as the
+   * `x-internal-key` header; `validateInternalKey` is fail-closed
+   * (returns 401 if absent or mismatched).
+   *
+   * **REQUIRED post-S.269 item 0a (2026-05-23).** Pre-S.269 this was
+   * `optionalString` with a "pre-cutover preview deploy" rationale that
+   * went stale when `apps/web` was deleted in S.253 (DNS swap landed,
+   * web-v2 IS production). The optional posture meant a typo / unset
+   * var in Vercel UI silently 401'd every payment-link / invoice
+   * creation forever — exactly the smoke-test bug found post-S.267
+   * deploy. Boot-time validation now surfaces the misconfig as a
+   * deploy failure instead of a silent product death.
+   *
+   * NEVER expose to clients. */
+  T2000_INTERNAL_KEY: requiredString,
 
   /** Internal-API base URL for engine tools' cross-app fetches. Threaded
    * through `ToolContext.env.AUDRIC_INTERNAL_API_URL` so engine
    * helpers (`audric-api.ts:getAudricApiBase`) resolve canonical
-   * `/api/portfolio` + `/api/history` + `/api/analytics/*` URLs.
+   * `/api/portfolio` + `/api/history` + `/api/analytics/*` + the
+   * `/api/internal/payments` POST endpoint that creates payment links
+   * and invoices.
    *
-   * v0.7c Phase 6 Session 5 flip (founder-owned, Vercel UI):
-   *   pre-cutover: `https://audric.ai` (engine routes to apps/web)
-   *   post-flip:   `https://audric-web-v2.vercel.app` (engine routes to web-v2)
+   * **REQUIRED post-S.269 item 0a (2026-05-23).** Pre-S.269 this was
+   * `optionalString` because the engine had a fallback chain to
+   * `NEXT_PUBLIC_APP_URL` → `null`. Post-`apps/web` deletion (S.253)
+   * the fallback chain is moot — web-v2 is the only consumer and the
+   * URL must always resolve to web-v2 itself. Boot-time validation
+   * catches the empty-string-in-Vercel-UI bug class (S.20 / Apr 2026
+   * BlockVision incident pattern). */
+  AUDRIC_INTERNAL_API_URL: requiredString,
+
+  /** Brave Search API key — backs the `web_search` engine tool.
+   * Threaded into `ToolContext.env.BRAVE_API_KEY`; absent → tool
+   * returns "Web search is not available right now."
    *
-   * Optional because the engine itself falls back to
-   * `process.env.AUDRIC_INTERNAL_API_URL` → `process.env.NEXT_PUBLIC_APP_URL`
-   * → `null` when this is absent. Validating here catches the
-   * empty-string-in-Vercel-UI bug class (S.20 / Apr 2026
-   * BlockVision incident) BEFORE the engine fails over to a stale
-   * fallback. */
-  AUDRIC_INTERNAL_API_URL: optionalString,
+   * **OPTIONAL by design.** web_search is a non-financial helper tool;
+   * its absence is degraded-but-safe (LLM falls back to its training
+   * knowledge for protocol/concept questions). Production deploys
+   * SHOULD set this; preview / local dev MAY skip.
+   *
+   * Added 2026-05-23 (S.269 item 4) when audit caught web-v2 not
+   * threading the var even though `engine/tools/web-search.ts:39`
+   * reads `context.env?.BRAVE_API_KEY`. Pre-fix: web_search was a
+   * dead tool in production. Wired in `app/api/chat/route.ts`'s
+   * `ToolContext.env` block. */
+  BRAVE_API_KEY: optionalString,
+
+  /** Standard Redis URL (TCP protocol via the `redis` npm package) —
+   * backs the per-IP rate limiter at `lib/ratelimit.ts`. Distinct from
+   * `UPSTASH_REDIS_REST_URL` below: this is `redis://...` for the
+   * `node-redis` client; Upstash uses an HTTP API for the per-session
+   * spend ledger.
+   *
+   * **OPTIONAL by design.** The rate limiter degrades open when
+   * absent — `getClient()` returns `null` → `checkIpRateLimit` no-ops.
+   * That's intentional for local dev / preview without Redis;
+   * production deploys MUST set this for the limit to enforce.
+   *
+   * Added 2026-05-23 (S.269 item 5) when audit caught `ratelimit.ts:12`
+   * reading `process.env.REDIS_URL` directly, bypassing the env-gate
+   * pattern. Routing through the gate normalizes empty strings to
+   * `undefined` (S.20 BV-incident bug class) and keeps the
+   * `no-restricted-syntax` ban on raw `process.env` reads honest. */
+  REDIS_URL: optionalString,
 
   /** Upstash Redis REST URL — backs the per-session spend ledger that
    * feeds `resolvePermissionTier`'s daily-cap downgrade rule (engine
@@ -292,6 +333,8 @@ const runtimeEnv = {
   ENOKI_SECRET_KEY: process.env.ENOKI_SECRET_KEY,
   T2000_INTERNAL_KEY: process.env.T2000_INTERNAL_KEY,
   AUDRIC_INTERNAL_API_URL: process.env.AUDRIC_INTERNAL_API_URL,
+  BRAVE_API_KEY: process.env.BRAVE_API_KEY,
+  REDIS_URL: process.env.REDIS_URL,
   UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
   UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
   MEMWAL_PRIVATE_KEY: process.env.MEMWAL_PRIVATE_KEY,

@@ -7,8 +7,8 @@ import {
   type ChatHistory,
   getChatHistoryPaginationKey,
 } from "@/components/chat/sidebar-history";
-import { updateChatVisibility } from "@/lib/actions/chat-visibility";
 import type { VisibilityType } from "@/lib/audric/chat-persistence";
+import { authFetch } from "@/lib/auth-fetch";
 
 export function useChatVisibility({
   chatId,
@@ -63,10 +63,23 @@ export function useChatVisibility({
     mutate(unstable_serialize(getChatHistoryPaginationKey));
 
     try {
-      await updateChatVisibility({
-        chatId,
-        visibility: updatedVisibilityType,
+      // [S.269 item 2 — 2026-05-23 / S.270 fix] Replaced the
+      // `updateChatVisibility` Server Action with a `PATCH /api/chat/[id]`
+      // call routed through `authFetch` so the `x-zklogin-jwt` header
+      // lands. Server Actions strip custom headers; this surface
+      // 401-ed on every toggle pre-fix.
+      const res = await authFetch(`/api/chat/${chatId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ visibility: updatedVisibilityType }),
       });
+      if (!res.ok) {
+        const detail = await res.json().catch(() => ({}));
+        throw new Error(
+          (detail as { error?: string }).error ??
+            `Visibility update failed (${res.status})`
+        );
+      }
     } catch (err) {
       setLocalVisibility(prior);
       mutate(unstable_serialize(getChatHistoryPaginationKey));

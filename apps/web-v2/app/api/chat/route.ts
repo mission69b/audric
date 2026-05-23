@@ -732,37 +732,30 @@ export async function POST(request: Request) {
   // `translateChunk` → `tool-result` case (see TODO marker there).
   const sessionSpendUsdAtStart = await getSessionSpend(sessionId);
 
-  // [S.267 — 2026-05-23] Thread `AUDRIC_INTERNAL_KEY` (mapped from
-  // `env.T2000_INTERNAL_KEY` — the legacy alias name in audric's env
-  // schema; engine reads `AUDRIC_INTERNAL_KEY`) alongside the URL.
-  // Pre-S.267 every payment-link / invoice tool call from web-v2 hit
-  // `/api/internal/payments` with no `x-internal-key` header → 401
-  // (`validateInternalKey` is fail-closed) → engine returned `data: null`
-  // → tool-result-router rendered nothing → LLM rephrased the silent
-  // failure as "unexpected result." The matching analytics tools
-  // (`portfolio_analysis`, `spending_analytics`, `yield_summary`,
-  // `activity_summary`) silently fell back to BlockVision direct paths
-  // — same numbers in the happy case but a structural SSOT bypass.
-  // Closing the gap re-enables the canonical audric API path for
-  // every internal-key-gated tool. S.267 also adds failure-path
-  // observability in `engine/tools/receive.ts` so the next regression
-  // of this class surfaces in logs as
-  // `[receive] tool=… status=401 url=…` instead of silent.
+  // [S.269 item 0a — 2026-05-23] Both `AUDRIC_INTERNAL_API_URL` and
+  // `T2000_INTERNAL_KEY` are now `requiredString` in `lib/env.ts` (no
+  // longer optional). Pre-S.269 the optional posture meant a typo /
+  // unset var in Vercel UI silently 401'd every internal-API tool call
+  // (S.267 trace: receive.ts → no x-internal-key header → 401 →
+  // data:null → no card → LLM rephrased as "unexpected result"). The
+  // env validation now fails the deploy at boot if either is absent,
+  // surfacing the misconfig instead of a silent product death. Engine
+  // reads `AUDRIC_INTERNAL_KEY` (its canonical name); web-v2's schema
+  // calls the matching value `T2000_INTERNAL_KEY` for historical reasons
+  // (apps/web shared name; tracked as a follow-up rename in §M3).
   const toolContext: ToolContext = {
     walletAddress,
     suiRpcUrl: getSuiRpcUrl(),
     blockvisionApiKey: env.BLOCKVISION_API_KEY,
-    env:
-      env.AUDRIC_INTERNAL_API_URL || env.T2000_INTERNAL_KEY
-        ? {
-            ...(env.AUDRIC_INTERNAL_API_URL && {
-              AUDRIC_INTERNAL_API_URL: env.AUDRIC_INTERNAL_API_URL,
-            }),
-            ...(env.T2000_INTERNAL_KEY && {
-              AUDRIC_INTERNAL_KEY: env.T2000_INTERNAL_KEY,
-            }),
-          }
-        : undefined,
+    env: {
+      AUDRIC_INTERNAL_API_URL: env.AUDRIC_INTERNAL_API_URL,
+      AUDRIC_INTERNAL_KEY: env.T2000_INTERNAL_KEY,
+      // [S.269 item 4 — 2026-05-23] Thread BRAVE_API_KEY so web_search
+      // tool fires when the env is set. Pre-fix web_search was a dead
+      // tool in production (engine read `context.env?.BRAVE_API_KEY`,
+      // audric never threaded it). Optional → spread only when set.
+      ...(env.BRAVE_API_KEY && { BRAVE_API_KEY: env.BRAVE_API_KEY }),
+    },
     mcpManager,
     // Per-request portfolio cache so balance_check + future read tools
     // in the same turn share a single BlockVision response (avoids
