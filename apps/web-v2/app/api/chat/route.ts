@@ -111,6 +111,7 @@ import {
   type AddressPortfolio,
   applyToolFlags,
   buildInternalContext,
+  buildStepFinishHandler,
   classifyEffort,
   composeBundleFromToolResults,
   DEFAULT_GUARD_CONFIG,
@@ -124,6 +125,7 @@ import {
   type PendingToolCall,
   READ_TOOLS,
   type ServerPositionData,
+  type StepFinishMutableState,
   type Tool,
   type ToolContext,
   toAISDKTools,
@@ -189,7 +191,10 @@ import {
   type ResumeOutcome,
 } from "@/lib/audric/resume-outcome";
 import { selectResponseMessageId } from "@/lib/audric/select-response-message-id";
-import { getSessionSpend } from "@/lib/audric/session-spend";
+import {
+  getSessionSpend,
+  incrementSessionSpend,
+} from "@/lib/audric/session-spend";
 import {
   classifyStreamError,
   sanitizeStreamErrorMessage,
@@ -1047,6 +1052,30 @@ export async function POST(request: Request) {
     // cleanly at construction time but still surfaces the latest
     // history at guard-dispatch time.
     getMessages: () => guardMessagesRef.current,
+    // [SPEC_AI_SDK_HARDENING P3.4 — 2026-05-24] onAutoExecuted hook
+    // wired to the Upstash daily-spend ledger. Fires from
+    // `buildStepFinishHandler` for every successful WRITE tool result
+    // (HITL-confirmed AND auto-tier — both contribute to the daily cap).
+    // The cumulative total feeds `resolvePermissionTier`'s safety net
+    // that downgrades any `auto` to `confirm` once
+    // `autonomousDailyLimit` is exceeded.
+    //
+    // Pre-P3.4 web-v2 had no INCREMENT side wired (apps/web routed via
+    // `EngineConfig.onAutoExecuted` but web-v2 uses `Experimental_Agent`
+    // directly — see `session-spend.ts` head comment + the dead TODO
+    // marker at `translateChunk` → `tool-result` case). P3.4's engine
+    // export of `buildStepFinishHandler` is what unlocks wiring this
+    // here.
+    onAutoExecuted: ({ usdValue }) =>
+      incrementSessionSpend(sessionId, usdValue),
+    // [SPEC_AI_SDK_HARDENING P3.4 — 2026-05-24] Pass the SAME
+    // priceCache + permissionConfig references the `toolContext` holds
+    // so step-finish's `resolveUsdValue` sees the up-to-date prices
+    // populated by mid-turn read tools (token_prices,
+    // portfolio_analysis) when it accumulates sessionSpend after a
+    // write.
+    permissionConfig: permissionConfigForTurn,
+    priceCache: toolContext.priceCache,
   });
 
   // 7. OTel telemetry settings (D-18). functionId groups spans in the
@@ -1344,6 +1373,19 @@ export async function POST(request: Request) {
     `[web-v2 memwal-init] client=${memwal !== null} recall_cb=${prepareStepCallback !== undefined} write_cb=${writeCallback !== undefined} namespace=audric:user:${walletAddress.slice(0, 10)}...`
   );
 
+  // [SPEC_AI_SDK_HARDENING P3.4 — 2026-05-24] Local sessionSpend
+  // mirror that `buildStepFinishHandler` accumulates into. Seeded from
+  // the cross-instance Upstash read (`getSessionSpend` at chat-start)
+  // so the daily-cap downgrade rule sees the full running total even
+  // on serverless cold starts. Mutated in-place by the step-finish
+  // handler on every successful write; the same value is also
+  // mirrored onto `internalContext.toolContext.sessionSpendUsd` so
+  // subsequent `needsApproval` calls in the same turn see the latest
+  // total without a Upstash round-trip.
+  const stepFinishMutable: StepFinishMutableState = {
+    sessionSpendUsdLocal: sessionSpendUsdAtStart,
+  };
+
   const audricAgent = new Agent({
     model,
     tools,
@@ -1364,6 +1406,48 @@ export async function POST(request: Request) {
     // `lib/audric/tool-call-repair.ts` for the full contract +
     // observability log shape.
     experimental_repairToolCall: buildToolCallRepair({ model }),
+    // [SPEC_AI_SDK_HARDENING P3.4 — 2026-05-24] onStepFinish handler.
+    // Bundles four post-step concerns that the legacy
+    // `AISDKEngine.submitMessage` path runs automatically but
+    // `Experimental_Agent` does not:
+    //
+    //   1. updateGuardStateAfterToolResult — keep guard trackers
+    //      (swap_quote pairing, balance freshness, retry counts,
+    //      lastHealthFactor) consistent across the turn so the next
+    //      guard dispatch sees post-execution state.
+    //   2. extractTrustedAddressesFromResult — capture 0x addresses
+    //      that `lookup_user` / `resolve_suins` returned and add them
+    //      to `guardState.trustedAddresses` so the model can pass the
+    //      resolved address to `send_transfer` without the user
+    //      having to paste it themselves (legacy S.121 behaviour).
+    //   3. SessionSpend USD accumulation + onAutoExecuted — bump the
+    //      cross-instance Upstash daily-spend ledger after every
+    //      successful write. Feeds `resolvePermissionTier`'s
+    //      autonomous-cap downgrade rule.
+    //   4. clearPortfolioCacheFor + clearDefiCacheFor — invalidate
+    //      the BlockVision 60s wallet + DeFi caches after every
+    //      successful write so the next `balance_check` /
+    //      `portfolio_analysis` call refetches fresh on-chain state.
+    //
+    // Pre-P3.4 none of these ran on the `Experimental_Agent` path;
+    // engine 2.20.0 exports `buildStepFinishHandler` so the host can
+    // wire the same internal handler the legacy engine class uses.
+    // See `packages/engine/src/v2/step-finish.ts` for the canonical
+    // implementation; this site is the only call.
+    //
+    // The host-side `post-write-refresh.ts` (PWR) module stays — it
+    // does a DIFFERENT thing (pre-runs balance_check + savings_info +
+    // health_check at the START of the resume turn so the
+    // post-write narration sees fresh tool results without the LLM
+    // having to re-call). The cache invalidation in step-finish (item
+    // 4 above) ensures PWR's pre-fired reads actually hit fresh state
+    // — without invalidation, PWR would replay 60s-cached pre-write
+    // numbers.
+    onStepFinish: buildStepFinishHandler(
+      [...READ_TOOLS, ...WRITE_TOOLS],
+      internalContext,
+      stepFinishMutable
+    ),
     onFinish: writeCallback,
     // ProviderOptions has a strict `JSONObject`-indexed shape in AI SDK
     // v6; our typed bag (with `as const` literals from `caching: 'auto'`
@@ -2859,25 +2943,17 @@ function translateChunk(
       break;
     }
     case "tool-result": {
-      // [Group E INCREMENT-side TODO — 2026-05-21 / S.214 follow-on]
-      // When v0.7d Phase 1+ activates auto-tier writes (today every
-      // write is confirm-tier; user always taps), call
-      // `incrementSessionSpend(sessionId, usdValue)` here for tool
-      // calls that were resolved to auto-tier. Apps/web's engine
-      // factory wires this via `EngineConfig.onAutoExecuted`; web-v2
-      // uses `Experimental_Agent` directly so the equivalent post-
-      // write hook needs to land here. Inputs needed: (a) the
-      // resolved tier from `resolvePermissionTier` for `chunk.toolName`
-      // + the call's input — we'd need to thread that state from
-      // `needsApproval` callback OR re-resolve it here against the
-      // turn's `ToolContext.priceCache`. (b) the USD value from
-      // `resolveUsdValue` against the same priceCache.
-      //
-      // Deferring because: web-v2 has zero auto-tier writes in
-      // production today, so the increment never fires. The READ side
-      // (`getSessionSpend` at chat-start, ~L680) feeds the daily-cap
-      // downgrade rule and is what actually unblocks the safety net
-      // when auto-tier flips on.
+      // [Group E INCREMENT-side — wired via P3.4 — 2026-05-24]
+      // Pre-P3.4 this case carried a TODO for wiring
+      // `incrementSessionSpend(sessionId, usdValue)` once auto-tier
+      // writes activate. P3.4 moves the increment to engine
+      // `buildStepFinishHandler` via the `onAutoExecuted` hook (wired
+      // on `buildInternalContext` ~L1080) — fires for HITL-confirmed
+      // and auto-tier writes alike, using the engine's canonical
+      // `resolveUsdValue` against the turn's `priceCache`. Same effect
+      // the dead apps/web `EngineConfig.onAutoExecuted` path had,
+      // structurally consistent for web-v2's `Experimental_Agent`
+      // composition. No host-side wiring needed in `translateChunk`.
       writer.write({
         type: "tool-output-available",
         toolCallId: chunk.toolCallId,
