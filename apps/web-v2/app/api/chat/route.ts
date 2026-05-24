@@ -196,6 +196,7 @@ import {
 } from "@/lib/audric/stream-errors";
 import { buildAudricSystemPrompt } from "@/lib/audric/system-prompt";
 import { TelemetryIntegration } from "@/lib/audric/telemetry-integration";
+import { buildToolCallRepair } from "@/lib/audric/tool-call-repair";
 import {
   countReasoningParts,
   countToolParts,
@@ -1351,6 +1352,18 @@ export async function POST(request: Request) {
     experimental_telemetry: experimentalTelemetry,
     experimental_context: internalContext,
     prepareStep: prepareStepCallback,
+    // [SPEC_AI_SDK_HARDENING P3.2 — 2026-05-24] Tool-call repair seam.
+    // Fires when the model emits a malformed tool call. For
+    // NoSuchToolError the callback returns null and lets the agent
+    // re-plan on the next step. For InvalidToolInputError it does a
+    // single structured-output `generateText` call with the tool's
+    // JSON Schema + the validation error, asking the model to emit
+    // corrected input. Saves a "tool error → re-plan from scratch"
+    // round-trip when the model just got a field name wrong; safe
+    // null-fallback whenever the secondary call itself fails. See
+    // `lib/audric/tool-call-repair.ts` for the full contract +
+    // observability log shape.
+    experimental_repairToolCall: buildToolCallRepair({ model }),
     onFinish: writeCallback,
     // ProviderOptions has a strict `JSONObject`-indexed shape in AI SDK
     // v6; our typed bag (with `as const` literals from `caching: 'auto'`
@@ -2580,10 +2593,14 @@ class BundleBuffer {
     // resume and re-plans (e.g., issues the remaining writes as a
     // second bundle).
     //
-    // Option B (post-P3.2): route the overrun through
-    // `experimental_repairToolCall` so the LLM repairs the call BEFORE
-    // any per-tool state exists. Cleaner recovery — swap here once
-    // P3.2 lands.
+    // Option B (post-P3.2 / S.300 — 2026-05-24): route the overrun
+    // through `experimental_repairToolCall` so the LLM repairs the call
+    // BEFORE any per-tool state exists. Cleaner recovery — the seam is
+    // wired on the Agent config above (`buildToolCallRepair`). The
+    // BundleBuffer swap A→B is its own change (the repair callback
+    // would need to understand bundle context, not just schema
+    // validation) and is tracked as the next P7.1 follow-up. Option A
+    // here is still load-bearing until that swap ships.
     let overrunCalls: BufferedToolCall[] = [];
     if (this.toolCalls.length > MAX_BUNDLE_OPS) {
       overrunCalls = this.toolCalls.slice(MAX_BUNDLE_OPS);
