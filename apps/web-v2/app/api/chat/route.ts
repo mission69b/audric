@@ -862,17 +862,20 @@ export async function POST(request: Request) {
   // auto-tier write downgrades to confirm-tier).
   //
   // Failure mode: fail-OPEN (returns 0 if Upstash is down). Acceptable
-  // because (a) web-v2 has zero auto-tier writes today (all
-  // confirm-tier), (b) per-call tier checks remain in effect even with
-  // a 0 reading, and (c) the alternative (failing the chat turn for an
-  // infra blip) is strictly worse UX.
+  // because (a) web-v2 has zero auto-tier writes by design (Round 3 /
+  // P4.7 decision — Passport's tap-to-confirm is the consent surface,
+  // auto-execute is structurally disabled under zkLogin per
+  // `need-approval.ts:113-115`), (b) per-call tier checks remain in
+  // effect even with a 0 reading, and (c) the alternative (failing
+  // the chat turn for an infra blip) is strictly worse UX.
   //
-  // The INCREMENT side (`incrementSessionSpend` after a successful
-  // auto-executed write) is wired in apps/web's engine factory via
-  // `EngineConfig.onAutoExecuted`; web-v2 uses `Experimental_Agent`
-  // directly so that hook path doesn't apply. When v0.7d Phase 1+
-  // activates auto-tier writes, wire the increment in the
-  // `translateChunk` → `tool-result` case (see TODO marker there).
+  // The INCREMENT side is wired in this file via the engine's
+  // `buildStepFinishHandler` → `onAutoExecuted` hook (~L1071 below,
+  // landed in P3.4 / S.301). The hook fires for every successful
+  // write — confirm-tier today, would also cover auto-tier if a
+  // future host variant injects a server-signing agent. Ledger
+  // increments today are real (analytics + audit) even though
+  // auto-execute is intentionally dormant.
   const sessionSpendUsdAtStart = await getSessionSpend(sessionId);
 
   // [S.269 item 0a — 2026-05-23] Both `AUDRIC_INTERNAL_API_URL` and
