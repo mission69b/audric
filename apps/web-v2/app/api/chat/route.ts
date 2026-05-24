@@ -156,6 +156,7 @@ import {
   applyAccountAgeGate,
   computeAccountAgeDays,
 } from "@/lib/audric/account-age-gate";
+import { buildActiveToolsPrepareStep } from "@/lib/audric/active-tools-prepare-step";
 import {
   countMessagesByChatId,
   getChatById as getChatRowById,
@@ -164,6 +165,7 @@ import {
   truncateMessagesAfter,
 } from "@/lib/audric/chat-persistence";
 import { generateChatTitle } from "@/lib/audric/chat-title";
+import { composePrepareSteps } from "@/lib/audric/compose-prepare-steps";
 import {
   argsFingerprint,
   dispatchIntentsToParts,
@@ -1330,10 +1332,52 @@ export async function POST(request: Request) {
         defaultNamespace: `audric:user:${walletAddress}`,
       })
     : null;
-  const prepareStepCallback = buildMemoryPrepareStep({
+  const memoryPrepareStep = buildMemoryPrepareStep({
     memoryStore: memWalStore,
     systemInstructions,
   });
+
+  // [SPEC_AI_SDK_HARDENING P3.1 — 2026-05-24] Intent classifier +
+  // activeTools narrowing. Heuristic regex classifier maps the latest
+  // user message to one of nine finance intents (save, borrow, send,
+  // swap, rewards, history, portfolio, paymentLinks, rates) plus a
+  // `general` fallback; each intent maps to a 4-7 tool subset the LLM
+  // actually needs for that turn. Output flows into AI SDK's
+  // `prepareStep.activeTools` so the model only sees the narrowed
+  // schema set per step (~5-12 tools instead of all 26), cutting:
+  //
+  //   1. Per-step prompt tokens (~150-300 tokens per excluded tool
+  //      schema → ~3K-5K tokens saved on typical turns).
+  //   2. Prompt cache thrash — smaller + more stable active subset
+  //      across similar-intent turns improves Anthropic prompt cache
+  //      hit rates.
+  //   3. LLM cognitive load — fewer choices = less "did I pick the
+  //      right one" reasoning steps.
+  //
+  // Gateway tools: when `useGateway === true`, `perplexity_search` is
+  // passed via `alwaysInclude` so the LLM can still call it
+  // regardless of classified intent (web search is intent-orthogonal).
+  // When `useGateway === false`, the registered tool set doesn't
+  // include perplexity_search and the alwaysInclude filter drops it.
+  //
+  // See `lib/audric/intent-classifier.ts` for the regex catalogue +
+  // tool selection table; `lib/audric/active-tools-prepare-step.ts`
+  // for the step-0 classification → step-N+ cache lifecycle.
+  const activeToolsPrepareStep = buildActiveToolsPrepareStep({
+    registeredToolNames: Object.keys(tools),
+    alwaysInclude: useGateway ? ["perplexity_search"] : [],
+  });
+
+  // [SPEC_AI_SDK_HARDENING P3.1 — 2026-05-24] AI SDK only accepts one
+  // `prepareStep` callback; we compose memwal (`<memory_recall>` →
+  // `system`) and active-tools (`activeTools`) into one. The composer
+  // runs the inner callbacks in parallel; no serial latency penalty.
+  // Returns undefined when both are undefined → AI SDK passes through
+  // the agent's outer instructions unchanged.
+  const prepareStepCallback = composePrepareSteps(
+    memoryPrepareStep,
+    activeToolsPrepareStep
+  );
 
   // [Phase 2 / 2026-05-21] MemWal WRITE side: fire-and-forget post-turn
   // ingestion via `memwal.analyze(userMessageText, namespace)`. Per
@@ -1370,7 +1414,7 @@ export async function POST(request: Request) {
   //     OR empty user message (also expected on tool-only resume).
   // Same diagnostic posture as S.213a's `validateModelMessages` line.
   console.info(
-    `[web-v2 memwal-init] client=${memwal !== null} recall_cb=${prepareStepCallback !== undefined} write_cb=${writeCallback !== undefined} namespace=audric:user:${walletAddress.slice(0, 10)}...`
+    `[web-v2 memwal-init] client=${memwal !== null} recall_cb=${memoryPrepareStep !== undefined} write_cb=${writeCallback !== undefined} active_tools_cb=${activeToolsPrepareStep !== undefined} namespace=audric:user:${walletAddress.slice(0, 10)}...`
   );
 
   // [SPEC_AI_SDK_HARDENING P3.4 — 2026-05-24] Local sessionSpend
