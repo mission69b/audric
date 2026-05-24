@@ -513,6 +513,25 @@ function AudricChatPanel({
     // to type a follow-up message to get the LLM's narration of the
     // save result. AI SDK ships the canonical predicate.
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
+    // [SPEC_AI_SDK_HARDENING P6.2 — 2026-05-24] Observability hook for
+    // stream-level errors. The banner UX is unchanged (rendered via
+    // `useChat.error` further down) — this callback is purely a
+    // structured logging seam so we can swap in Sentry/captureError
+    // without touching the component. Logged shape mirrors other
+    // client-side non-fatal error handlers in this file (vote
+    // hydration, stop API call).
+    //
+    // Why banner-only (no toast): finance app — errors must be seen,
+    // not auto-dismissed. P5.1 (Edit) + P5.4 (Regenerate) provide the
+    // recovery paths, so the error surface doesn't need to be loud.
+    // Revisit if telemetry shows users missing the banner (S.296-style
+    // "is the surface noticed?" question — answer with data).
+    onError: (error: Error) => {
+      console.error(
+        "[audric-chat] useChat error (non-fatal — banner shown):",
+        error.message
+      );
+    },
   });
 
   // [SPEC_AUDRIC_STREAM_RESUME Phase 2 — 2026-05-24] Explicit-stop

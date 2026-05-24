@@ -190,7 +190,10 @@ import {
 } from "@/lib/audric/resume-outcome";
 import { selectResponseMessageId } from "@/lib/audric/select-response-message-id";
 import { getSessionSpend } from "@/lib/audric/session-spend";
-import { sanitizeStreamErrorMessage } from "@/lib/audric/stream-errors";
+import {
+  classifyStreamError,
+  sanitizeStreamErrorMessage,
+} from "@/lib/audric/stream-errors";
 import { buildAudricSystemPrompt } from "@/lib/audric/system-prompt";
 import { TelemetryIntegration } from "@/lib/audric/telemetry-integration";
 import {
@@ -1764,6 +1767,37 @@ export async function POST(request: Request) {
   const liveData = await buildAudricLiveData(walletAddress);
 
   const stream = createUIMessageStream({
+    // [SPEC_AI_SDK_HARDENING P6.1 — 2026-05-24] Top-level error seam.
+    // Errors that ESCAPE the `execute` body (thrown exceptions not
+    // caught by translateChunk's per-chunk handlers, AI SDK validation
+    // errors like NoSuchToolError / InvalidToolInputError, top-level
+    // tool-execution failures) bubble up to this callback. Without
+    // it, AI SDK substitutes a generic "An error occurred." — users
+    // get zero signal about what actually failed.
+    //
+    // `classifyStreamError` does typed-class checks first
+    // (`APICallError.isInstance`, `NoSuchToolError.isInstance`, etc. —
+    // stable contract that survives vendor wording changes) and falls
+    // back to the heuristic sanitizer for raw-string errors (the
+    // engine pre-stringifies via `friendlyErrorMessage` before
+    // throwing, so heuristics remain load-bearing).
+    //
+    // Engine `error` CHUNKS (yielded mid-stream as `EngineEvent`s) go
+    // through `safeErrorText` in `translateChunk` — a different
+    // surface that already runs the same heuristic sanitizer. Both
+    // paths emit equivalent user-facing strings; the wire UX is
+    // consistent whether the error came from inside or outside the
+    // engine's per-chunk handlers.
+    //
+    // Log RAW server-side for observability BEFORE sanitizing — the
+    // sanitizer strips information we need for debugging.
+    onError: (error: unknown): string => {
+      console.error(
+        "[audric-chat] stream-level error (raw, server-only):",
+        redactPII(error)
+      );
+      return classifyStreamError(error).message;
+    },
     execute: async ({ writer }) => {
       writer.write({ type: "start", messageId });
 
