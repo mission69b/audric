@@ -1137,12 +1137,14 @@ export async function POST(request: Request) {
   // 7.6 [v0.7c Phase 6 prep + Phase 6.5] Assemble the F-4 5-layer
   // system prompt. Layer 5 (user message) is owned by AI SDK's
   // `messages` argument — this function never touches it. Skill recipe
-  // (layer 4) stays a v0.7d gate. Layers 1 (dynamic moat additions)
-  // and 3 (memory) are now wired.
+  // (layer 4) is intentionally dormant — see
+  // `t2000/spec/reference/MCP_PROMPTS_INTEGRATION_DECISION.md` for the
+  // strategic seam rationale + activation criteria. Layers 1 (dynamic
+  // moat additions) and 3 (memory) are wired.
   const systemInstructions = buildAudricSystemPrompt({
     adviceContext,
     financialContext: financialContextBlock,
-    skillRecipeBlock: undefined, // v0.7d gate — McpPromptAdapter not wired yet
+    skillRecipeBlock: undefined, // Dormant strategic seam — see MCP_PROMPTS_INTEGRATION_DECISION.md
     walletAddress,
   });
 

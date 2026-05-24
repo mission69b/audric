@@ -527,11 +527,22 @@ export interface BuildAudricSystemPromptInput {
    */
   financialContext?: string;
   /**
-   * Optional skill recipe block from `McpPromptAdapter.buildPrepareStepSystemPrefix()`.
+   * Optional skill recipe block — intentionally DORMANT strategic seam.
    *
-   * v0.7d GATE: skills come from `@t2000/mcp` prompts via the adapter,
-   * which web-v2 wires in v0.7d alongside the memory layer. For the
-   * v0.7c slice this is always undefined.
+   * Web-v2 always passes `undefined` here. The slot exists so the
+   * engine's F-4 5-layer system prompt assembly has a Layer 4 hook for
+   * future MCP-prompt content (per WHY_v07a §3 — "speak any Sui
+   * protocol's MCP" — when a partner MCP exposes prompts, audric
+   * absorbs via one config entry, zero engine changes). The
+   * `McpClientManager` TOOLS counterpart is already production-wired
+   * against NAVI MCP in `lib/audric/navi-mcp.ts`; this is the
+   * symmetric PROMPTS extension point.
+   *
+   * Why not wired today: t2000-skills/ are CLI-flavored (`t2000 save
+   * 80`, suiscan URLs) and would duplicate operational guidance
+   * already in this file. Activation criteria + full rationale:
+   * `t2000/spec/reference/MCP_PROMPTS_INTEGRATION_DECISION.md`
+   * (closes `SPEC_AI_SDK_HARDENING.md` P3.3 — S.303, 2026-05-24).
    */
   skillRecipeBlock?: string;
   /** Signed-in user's Sui wallet address. */
