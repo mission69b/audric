@@ -26,12 +26,17 @@
  *
  * ## Resume turn handling
  *
- * After HITL confirm, the resume turn's latest message is a tool-result
- * (no user text). The classifier returns `general` for empty input, but
- * we cache the previous classification in a closure so the resume turn
- * uses the SAME tool set as the original turn. This matches the user's
- * still-active intent ("save 10 USDC" → resume narration still wants
- * save's read tools, not the general fallback).
+ * After HITL confirm, AI SDK's `convertToModelMessages` emits tool-result
+ * blocks as `role: 'tool'` messages (NOT `role: 'user'`). The resume
+ * turn's message array therefore looks like:
+ *
+ *   [..., user: "save 10 USDC", assistant: tool-call, tool: tool-result]
+ *
+ * `extractLatestUserMessage` walks BACKWARDS skipping non-user roles, so
+ * it finds the ORIGINAL user prompt ("save 10 USDC") and re-classifies
+ * the intent. Result: resume turn gets the SAME activeTools subset as
+ * the original turn — `save_deposit`, `savings_info`, etc. stay
+ * available for the LLM's post-confirm narration.
  *
  * ## Composition with other prepareStep callbacks
  *
@@ -74,13 +79,16 @@ import {
 /**
  * Pull the latest USER message text from an AI SDK `ModelMessage[]`.
  *
- * Returns `''` if no user message exists OR the latest user message has
- * no text part (e.g., resume turn carrying only tool-result parts).
+ * Returns `''` if no user message exists OR the latest user message
+ * has no text content. Mirrors `memwal-prepare-step.ts:extractLatest
+ * UserMessage` exactly. When the engine eventually exports an
+ * `extractLatestUserMessage` helper, both sites consolidate in the
+ * same diff.
  *
- * Mirrors `memwal-prepare-step.ts:extractLatestUserMessage` exactly —
- * duplicated locally to keep modules independently testable. When the
- * engine eventually exports an `extractLatestUserMessage` helper, both
- * sites consolidate in the same diff.
+ * Resume turn behaviour: AI SDK puts tool-results in `role: 'tool'`
+ * messages (not `role: 'user'`), so this loop correctly skips past
+ * them and finds the original user text prompt further back in the
+ * history.
  */
 function extractLatestUserMessage(messages: ModelMessage[]): string {
   for (let i = messages.length - 1; i >= 0; i--) {

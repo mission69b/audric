@@ -228,6 +228,50 @@ describe("buildActiveToolsPrepareStep", () => {
     expect(result?.activeTools).toContain("repay_debt");
   });
 
+  it("handles HITL resume turn (tool role messages don't break classification)", async () => {
+    // Replicates the actual ModelMessage shape produced by
+    // `convertToModelMessages` on a resume turn:
+    //   1. user: "save 10 USDC" (original text prompt)
+    //   2. assistant: [tool-call(save_deposit, ...)]
+    //   3. tool:      [tool-result(...)]
+    // AI SDK puts tool-results in `role: 'tool'` (not `role: 'user'`),
+    // so the extractLatestUserMessage loop walks past it and finds the
+    // ORIGINAL "save 10 USDC" prompt. Result: same intent + same tool
+    // subset as the original turn.
+    const fn = buildActiveToolsPrepareStep({
+      registeredToolNames: ALL_TOOLS,
+    });
+    const messages: ModelMessage[] = [
+      userMessage("save 10 USDC"),
+      {
+        role: "assistant",
+        content: [
+          {
+            type: "tool-call",
+            toolCallId: "abc",
+            toolName: "save_deposit",
+            input: { amount: 10 },
+          },
+        ],
+      },
+      {
+        role: "tool",
+        content: [
+          {
+            type: "tool-result",
+            toolCallId: "abc",
+            toolName: "save_deposit",
+            output: { type: "json", value: { ok: true } },
+          },
+        ],
+      },
+    ];
+    const result = await fn?.({ stepNumber: 0, messages });
+    expect(result?.activeTools).toContain("save_deposit");
+    expect(result?.activeTools).toContain("savings_info");
+    expect(result?.activeTools).toContain("withdraw");
+  });
+
   it("emits structured log line on every step", async () => {
     const logSpy = vi.spyOn(console, "info").mockImplementation(() => {
       // silence — only the spy assertions matter
