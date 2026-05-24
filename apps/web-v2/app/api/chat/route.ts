@@ -157,6 +157,7 @@ import {
 import {
   getChatById as getChatRowById,
   saveMessages,
+  setActiveStreamId,
 } from "@/lib/audric/chat-persistence";
 import { generateChatTitle } from "@/lib/audric/chat-title";
 import {
@@ -197,6 +198,7 @@ import { memwal } from "@/lib/memwal";
 import { getPortfolio, prewarmPortfolio } from "@/lib/portfolio";
 import { Prisma, prisma } from "@/lib/prisma";
 import { checkIpRateLimit } from "@/lib/ratelimit";
+import { getResumableStreamContext } from "@/lib/resumable-stream";
 import { getSuiRpcUrl } from "@/lib/sui-rpc";
 
 // [S.212 — 2026-05-21] Bumped from 60s to 300s to match the legacy
@@ -2046,10 +2048,93 @@ export async function POST(request: Request) {
           );
         })
       );
+
+      // [SPEC_AUDRIC_STREAM_RESUME Phase 1] Clear the activeStreamId on
+      // natural turn completion. After this fires, the next GET to
+      // /api/chat/[id]/stream returns 204 (no active stream) — the
+      // client's mount-time resume probe gets nothing back, so reload
+      // post-completion just shows the persisted messages without an
+      // erroneous reconnect attempt. Wrapped in waitUntil for the same
+      // post-response-survival reason as saveMessages above.
+      waitUntil(
+        setActiveStreamId({
+          chatId,
+          activeStreamId: null,
+          userSuiAddress: walletAddress,
+        }).catch((err: unknown) => {
+          console.error(
+            `[web-v2 audric-chat] setActiveStreamId(null) failed for chatId=${chatId} (non-fatal):`,
+            redactPII(err)
+          );
+        })
+      );
     },
   });
 
-  return createUIMessageStreamResponse({ stream });
+  // [SPEC_AUDRIC_STREAM_RESUME Phase 1] Wire `consumeSseStream` when the
+  // feature flag + Redis are configured. `consumeSseStream` receives a
+  // COPY of the outgoing SSE byte stream (independent of the client's
+  // consumption — AI SDK tees internally) and lets us push it into the
+  // `resumable-stream` producer keyed on a fresh streamId. The producer
+  // keeps running via Next.js `after()` even after the original client
+  // disconnects, so a reconnecting tab on /api/chat/[id]/stream picks
+  // up live via Redis pub/sub.
+  //
+  // When the flag is off OR Redis is unavailable, `getResumableStreamContext()`
+  // returns null and we omit the callback entirely — chat behaves
+  // identically to pre-SPEC (no resume, no regression).
+  const streamContext = getResumableStreamContext();
+  if (!streamContext) {
+    return createUIMessageStreamResponse({ stream });
+  }
+
+  return createUIMessageStreamResponse({
+    stream,
+    // Per AI SDK contract (`ai/dist/index.d.ts` line 2234): "The
+    // callback receives a tee'd copy of the stream and does not block
+    // the response." So awaiting inside consumeSseStream does NOT
+    // delay the client response — the AI SDK runs the callback in
+    // parallel with the primary response stream. Awaiting is what
+    // eliminates three races vs fire-and-forget:
+    //
+    //   1. GET /api/chat/[id]/stream race — tab reload between
+    //      consumeSseStream start and the DB write would return 204
+    //      even though a stream was live, surfacing as "resume didn't
+    //      work" for the user.
+    //   2. onFinish race — a fast LLM turn could fire onFinish's
+    //      setActiveStreamId(null) before consumeSseStream's
+    //      setActiveStreamId(streamId) lands, leaving a phantom
+    //      streamId pointing at a finished producer.
+    //   3. Stop-route race — user clicks stop before the DB write
+    //      lands; compare-and-set finds null → can't clear → late
+    //      write lands → user sees post-stop bytes on reload.
+    //
+    // Order matters: createNewResumableStream FIRST (sets the Redis
+    // sentinel that resumeExistingStream checks), setActiveStreamId
+    // SECOND (exposes the streamId to GET /stream). After both awaits
+    // resolve, a GET /stream finds an active sentinel for any
+    // streamId it reads from the DB.
+    async consumeSseStream({ stream: sseStream }) {
+      const streamId = generateId();
+      try {
+        await streamContext.createNewResumableStream(streamId, () => sseStream);
+        await setActiveStreamId({
+          chatId,
+          activeStreamId: streamId,
+          userSuiAddress: walletAddress,
+        });
+      } catch (err) {
+        // Either write failing means the user can't resume (degraded
+        // to v0.7e baseline behavior); the chat itself still works for
+        // the original client. consumeSseStream errors don't propagate
+        // to the response per the AI SDK contract.
+        console.error(
+          `[web-v2 audric-chat] resumable-stream wiring failed for streamId=${streamId} chatId=${chatId} (non-fatal):`,
+          redactPII(err)
+        );
+      }
+    },
+  });
 }
 
 // -----------------------------------------------------------------------------

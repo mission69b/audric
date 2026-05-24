@@ -467,6 +467,15 @@ model Chat {
   title          String?
   visibility     String    @default("private") // "private" | "public"
   userSuiAddress String
+  // [SPEC_AUDRIC_STREAM_RESUME Phase 1, 2026-05-24] Tracks the
+  // currently-active resumable-stream id for this chat. Set by the
+  // POST /api/chat handler's `consumeSseStream` callback when a new
+  // stream starts; cleared by `onFinish` on natural completion OR
+  // by POST /api/chat/[id]/stop on explicit cancel. GET
+  // /api/chat/[id]/stream reads this to decide between 204 (no
+  // active stream) and resumeExistingStream(). Nullable — most
+  // chats have no in-flight stream at rest.
+  activeStreamId String?
   user           User      @relation(fields: [userSuiAddress], references: [suiAddress], onDelete: Cascade)
   messages       Message[]
   votes          Vote[]

@@ -253,6 +253,64 @@ export async function updateChatTitle({
   });
 }
 
+/**
+ * Set the active resumable-stream id for a chat (SPEC_AUDRIC_STREAM_RESUME
+ * Phase 1, 2026-05-24). Called by POST /api/chat when a new stream starts
+ * (`consumeSseStream` callback) and by POST /api/chat/[id]/stop with
+ * `null` to clear the active stream after explicit cancel.
+ *
+ * Ownership-gated via `userSuiAddress` in the where clause — `updateMany`
+ * returns `{ count: 0 }` on miss. Callers that don't bother passing the
+ * owner address (e.g. internal callbacks that ran inside the auth-gated
+ * POST handler) can omit it; the column is set anyway because we already
+ * resolved the chat by id. We thread the owner everywhere the call site
+ * has it available as belt-and-suspenders.
+ *
+ * Idempotent: setting to the same value twice is fine.
+ */
+export async function setActiveStreamId({
+  chatId,
+  activeStreamId,
+  userSuiAddress,
+}: {
+  chatId: string;
+  activeStreamId: string | null;
+  userSuiAddress?: string;
+}): Promise<void> {
+  await prisma.chat.updateMany({
+    where: userSuiAddress ? { id: chatId, userSuiAddress } : { id: chatId },
+    data: { activeStreamId },
+  });
+}
+
+/**
+ * Read the active resumable-stream id for a chat. Used by GET
+ * /api/chat/[id]/stream to decide between 204 (no active stream) and
+ * `resumeExistingStream(activeStreamId)`. Always ownership-gated.
+ *
+ * Returns `null` when:
+ *  - chat doesn't exist (treated identically to "no active stream" so we
+ *    don't leak chat existence to non-owners)
+ *  - caller doesn't own the chat
+ *  - chat exists + caller owns it BUT `activeStreamId` is null (no
+ *    in-flight stream)
+ *
+ * Returns the string id when an active stream exists for an owned chat.
+ */
+export async function getActiveStreamId({
+  chatId,
+  userSuiAddress,
+}: {
+  chatId: string;
+  userSuiAddress: string;
+}): Promise<string | null> {
+  const row = await prisma.chat.findFirst({
+    where: { id: chatId, userSuiAddress },
+    select: { activeStreamId: true },
+  });
+  return row?.activeStreamId ?? null;
+}
+
 export async function updateChatVisibility({
   chatId,
   visibility,

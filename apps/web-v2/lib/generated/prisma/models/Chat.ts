@@ -31,6 +31,7 @@ export type ChatMinAggregateOutputType = {
   title: string | null
   visibility: string | null
   userSuiAddress: string | null
+  activeStreamId: string | null
 }
 
 export type ChatMaxAggregateOutputType = {
@@ -40,6 +41,7 @@ export type ChatMaxAggregateOutputType = {
   title: string | null
   visibility: string | null
   userSuiAddress: string | null
+  activeStreamId: string | null
 }
 
 export type ChatCountAggregateOutputType = {
@@ -49,6 +51,7 @@ export type ChatCountAggregateOutputType = {
   title: number
   visibility: number
   userSuiAddress: number
+  activeStreamId: number
   _all: number
 }
 
@@ -60,6 +63,7 @@ export type ChatMinAggregateInputType = {
   title?: true
   visibility?: true
   userSuiAddress?: true
+  activeStreamId?: true
 }
 
 export type ChatMaxAggregateInputType = {
@@ -69,6 +73,7 @@ export type ChatMaxAggregateInputType = {
   title?: true
   visibility?: true
   userSuiAddress?: true
+  activeStreamId?: true
 }
 
 export type ChatCountAggregateInputType = {
@@ -78,6 +83,7 @@ export type ChatCountAggregateInputType = {
   title?: true
   visibility?: true
   userSuiAddress?: true
+  activeStreamId?: true
   _all?: true
 }
 
@@ -160,6 +166,7 @@ export type ChatGroupByOutputType = {
   title: string | null
   visibility: string
   userSuiAddress: string
+  activeStreamId: string | null
   _count: ChatCountAggregateOutputType | null
   _min: ChatMinAggregateOutputType | null
   _max: ChatMaxAggregateOutputType | null
@@ -190,6 +197,7 @@ export type ChatWhereInput = {
   title?: Prisma.StringNullableFilter<"Chat"> | string | null
   visibility?: Prisma.StringFilter<"Chat"> | string
   userSuiAddress?: Prisma.StringFilter<"Chat"> | string
+  activeStreamId?: Prisma.StringNullableFilter<"Chat"> | string | null
   user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
   messages?: Prisma.MessageListRelationFilter
   votes?: Prisma.VoteListRelationFilter
@@ -202,6 +210,7 @@ export type ChatOrderByWithRelationInput = {
   title?: Prisma.SortOrderInput | Prisma.SortOrder
   visibility?: Prisma.SortOrder
   userSuiAddress?: Prisma.SortOrder
+  activeStreamId?: Prisma.SortOrderInput | Prisma.SortOrder
   user?: Prisma.UserOrderByWithRelationInput
   messages?: Prisma.MessageOrderByRelationAggregateInput
   votes?: Prisma.VoteOrderByRelationAggregateInput
@@ -217,6 +226,7 @@ export type ChatWhereUniqueInput = Prisma.AtLeast<{
   title?: Prisma.StringNullableFilter<"Chat"> | string | null
   visibility?: Prisma.StringFilter<"Chat"> | string
   userSuiAddress?: Prisma.StringFilter<"Chat"> | string
+  activeStreamId?: Prisma.StringNullableFilter<"Chat"> | string | null
   user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
   messages?: Prisma.MessageListRelationFilter
   votes?: Prisma.VoteListRelationFilter
@@ -229,6 +239,7 @@ export type ChatOrderByWithAggregationInput = {
   title?: Prisma.SortOrderInput | Prisma.SortOrder
   visibility?: Prisma.SortOrder
   userSuiAddress?: Prisma.SortOrder
+  activeStreamId?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.ChatCountOrderByAggregateInput
   _max?: Prisma.ChatMaxOrderByAggregateInput
   _min?: Prisma.ChatMinOrderByAggregateInput
@@ -244,6 +255,7 @@ export type ChatScalarWhereWithAggregatesInput = {
   title?: Prisma.StringNullableWithAggregatesFilter<"Chat"> | string | null
   visibility?: Prisma.StringWithAggregatesFilter<"Chat"> | string
   userSuiAddress?: Prisma.StringWithAggregatesFilter<"Chat"> | string
+  activeStreamId?: Prisma.StringNullableWithAggregatesFilter<"Chat"> | string | null
 }
 
 export type ChatCreateInput = {
@@ -252,6 +264,7 @@ export type ChatCreateInput = {
   updatedAt?: Date | string
   title?: string | null
   visibility?: string
+  activeStreamId?: string | null
   user: Prisma.UserCreateNestedOneWithoutChatsInput
   messages?: Prisma.MessageCreateNestedManyWithoutChatInput
   votes?: Prisma.VoteCreateNestedManyWithoutChatInput
@@ -264,6 +277,7 @@ export type ChatUncheckedCreateInput = {
   title?: string | null
   visibility?: string
   userSuiAddress: string
+  activeStreamId?: string | null
   messages?: Prisma.MessageUncheckedCreateNestedManyWithoutChatInput
   votes?: Prisma.VoteUncheckedCreateNestedManyWithoutChatInput
 }
@@ -274,6 +288,7 @@ export type ChatUpdateInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   title?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   visibility?: Prisma.StringFieldUpdateOperationsInput | string
+  activeStreamId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   user?: Prisma.UserUpdateOneRequiredWithoutChatsNestedInput
   messages?: Prisma.MessageUpdateManyWithoutChatNestedInput
   votes?: Prisma.VoteUpdateManyWithoutChatNestedInput
@@ -286,6 +301,7 @@ export type ChatUncheckedUpdateInput = {
   title?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   visibility?: Prisma.StringFieldUpdateOperationsInput | string
   userSuiAddress?: Prisma.StringFieldUpdateOperationsInput | string
+  activeStreamId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   messages?: Prisma.MessageUncheckedUpdateManyWithoutChatNestedInput
   votes?: Prisma.VoteUncheckedUpdateManyWithoutChatNestedInput
 }
@@ -297,6 +313,7 @@ export type ChatCreateManyInput = {
   title?: string | null
   visibility?: string
   userSuiAddress: string
+  activeStreamId?: string | null
 }
 
 export type ChatUpdateManyMutationInput = {
@@ -305,6 +322,7 @@ export type ChatUpdateManyMutationInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   title?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   visibility?: Prisma.StringFieldUpdateOperationsInput | string
+  activeStreamId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type ChatUncheckedUpdateManyInput = {
@@ -314,6 +332,7 @@ export type ChatUncheckedUpdateManyInput = {
   title?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   visibility?: Prisma.StringFieldUpdateOperationsInput | string
   userSuiAddress?: Prisma.StringFieldUpdateOperationsInput | string
+  activeStreamId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type ChatListRelationFilter = {
@@ -333,6 +352,7 @@ export type ChatCountOrderByAggregateInput = {
   title?: Prisma.SortOrder
   visibility?: Prisma.SortOrder
   userSuiAddress?: Prisma.SortOrder
+  activeStreamId?: Prisma.SortOrder
 }
 
 export type ChatMaxOrderByAggregateInput = {
@@ -342,6 +362,7 @@ export type ChatMaxOrderByAggregateInput = {
   title?: Prisma.SortOrder
   visibility?: Prisma.SortOrder
   userSuiAddress?: Prisma.SortOrder
+  activeStreamId?: Prisma.SortOrder
 }
 
 export type ChatMinOrderByAggregateInput = {
@@ -351,6 +372,7 @@ export type ChatMinOrderByAggregateInput = {
   title?: Prisma.SortOrder
   visibility?: Prisma.SortOrder
   userSuiAddress?: Prisma.SortOrder
+  activeStreamId?: Prisma.SortOrder
 }
 
 export type ChatScalarRelationFilter = {
@@ -434,6 +456,7 @@ export type ChatCreateWithoutUserInput = {
   updatedAt?: Date | string
   title?: string | null
   visibility?: string
+  activeStreamId?: string | null
   messages?: Prisma.MessageCreateNestedManyWithoutChatInput
   votes?: Prisma.VoteCreateNestedManyWithoutChatInput
 }
@@ -444,6 +467,7 @@ export type ChatUncheckedCreateWithoutUserInput = {
   updatedAt?: Date | string
   title?: string | null
   visibility?: string
+  activeStreamId?: string | null
   messages?: Prisma.MessageUncheckedCreateNestedManyWithoutChatInput
   votes?: Prisma.VoteUncheckedCreateNestedManyWithoutChatInput
 }
@@ -484,6 +508,7 @@ export type ChatScalarWhereInput = {
   title?: Prisma.StringNullableFilter<"Chat"> | string | null
   visibility?: Prisma.StringFilter<"Chat"> | string
   userSuiAddress?: Prisma.StringFilter<"Chat"> | string
+  activeStreamId?: Prisma.StringNullableFilter<"Chat"> | string | null
 }
 
 export type ChatCreateWithoutMessagesInput = {
@@ -492,6 +517,7 @@ export type ChatCreateWithoutMessagesInput = {
   updatedAt?: Date | string
   title?: string | null
   visibility?: string
+  activeStreamId?: string | null
   user: Prisma.UserCreateNestedOneWithoutChatsInput
   votes?: Prisma.VoteCreateNestedManyWithoutChatInput
 }
@@ -503,6 +529,7 @@ export type ChatUncheckedCreateWithoutMessagesInput = {
   title?: string | null
   visibility?: string
   userSuiAddress: string
+  activeStreamId?: string | null
   votes?: Prisma.VoteUncheckedCreateNestedManyWithoutChatInput
 }
 
@@ -528,6 +555,7 @@ export type ChatUpdateWithoutMessagesInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   title?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   visibility?: Prisma.StringFieldUpdateOperationsInput | string
+  activeStreamId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   user?: Prisma.UserUpdateOneRequiredWithoutChatsNestedInput
   votes?: Prisma.VoteUpdateManyWithoutChatNestedInput
 }
@@ -539,6 +567,7 @@ export type ChatUncheckedUpdateWithoutMessagesInput = {
   title?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   visibility?: Prisma.StringFieldUpdateOperationsInput | string
   userSuiAddress?: Prisma.StringFieldUpdateOperationsInput | string
+  activeStreamId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   votes?: Prisma.VoteUncheckedUpdateManyWithoutChatNestedInput
 }
 
@@ -548,6 +577,7 @@ export type ChatCreateWithoutVotesInput = {
   updatedAt?: Date | string
   title?: string | null
   visibility?: string
+  activeStreamId?: string | null
   user: Prisma.UserCreateNestedOneWithoutChatsInput
   messages?: Prisma.MessageCreateNestedManyWithoutChatInput
 }
@@ -559,6 +589,7 @@ export type ChatUncheckedCreateWithoutVotesInput = {
   title?: string | null
   visibility?: string
   userSuiAddress: string
+  activeStreamId?: string | null
   messages?: Prisma.MessageUncheckedCreateNestedManyWithoutChatInput
 }
 
@@ -584,6 +615,7 @@ export type ChatUpdateWithoutVotesInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   title?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   visibility?: Prisma.StringFieldUpdateOperationsInput | string
+  activeStreamId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   user?: Prisma.UserUpdateOneRequiredWithoutChatsNestedInput
   messages?: Prisma.MessageUpdateManyWithoutChatNestedInput
 }
@@ -595,6 +627,7 @@ export type ChatUncheckedUpdateWithoutVotesInput = {
   title?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   visibility?: Prisma.StringFieldUpdateOperationsInput | string
   userSuiAddress?: Prisma.StringFieldUpdateOperationsInput | string
+  activeStreamId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   messages?: Prisma.MessageUncheckedUpdateManyWithoutChatNestedInput
 }
 
@@ -604,6 +637,7 @@ export type ChatCreateManyUserInput = {
   updatedAt?: Date | string
   title?: string | null
   visibility?: string
+  activeStreamId?: string | null
 }
 
 export type ChatUpdateWithoutUserInput = {
@@ -612,6 +646,7 @@ export type ChatUpdateWithoutUserInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   title?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   visibility?: Prisma.StringFieldUpdateOperationsInput | string
+  activeStreamId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   messages?: Prisma.MessageUpdateManyWithoutChatNestedInput
   votes?: Prisma.VoteUpdateManyWithoutChatNestedInput
 }
@@ -622,6 +657,7 @@ export type ChatUncheckedUpdateWithoutUserInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   title?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   visibility?: Prisma.StringFieldUpdateOperationsInput | string
+  activeStreamId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   messages?: Prisma.MessageUncheckedUpdateManyWithoutChatNestedInput
   votes?: Prisma.VoteUncheckedUpdateManyWithoutChatNestedInput
 }
@@ -632,6 +668,7 @@ export type ChatUncheckedUpdateManyWithoutUserInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   title?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   visibility?: Prisma.StringFieldUpdateOperationsInput | string
+  activeStreamId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 
@@ -681,6 +718,7 @@ export type ChatSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   title?: boolean
   visibility?: boolean
   userSuiAddress?: boolean
+  activeStreamId?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   messages?: boolean | Prisma.Chat$messagesArgs<ExtArgs>
   votes?: boolean | Prisma.Chat$votesArgs<ExtArgs>
@@ -694,6 +732,7 @@ export type ChatSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   title?: boolean
   visibility?: boolean
   userSuiAddress?: boolean
+  activeStreamId?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["chat"]>
 
@@ -704,6 +743,7 @@ export type ChatSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   title?: boolean
   visibility?: boolean
   userSuiAddress?: boolean
+  activeStreamId?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["chat"]>
 
@@ -714,9 +754,10 @@ export type ChatSelectScalar = {
   title?: boolean
   visibility?: boolean
   userSuiAddress?: boolean
+  activeStreamId?: boolean
 }
 
-export type ChatOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "createdAt" | "updatedAt" | "title" | "visibility" | "userSuiAddress", ExtArgs["result"]["chat"]>
+export type ChatOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "createdAt" | "updatedAt" | "title" | "visibility" | "userSuiAddress" | "activeStreamId", ExtArgs["result"]["chat"]>
 export type ChatInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   messages?: boolean | Prisma.Chat$messagesArgs<ExtArgs>
@@ -744,6 +785,7 @@ export type $ChatPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     title: string | null
     visibility: string
     userSuiAddress: string
+    activeStreamId: string | null
   }, ExtArgs["result"]["chat"]>
   composites: {}
 }
@@ -1176,6 +1218,7 @@ export interface ChatFieldRefs {
   readonly title: Prisma.FieldRef<"Chat", 'String'>
   readonly visibility: Prisma.FieldRef<"Chat", 'String'>
   readonly userSuiAddress: Prisma.FieldRef<"Chat", 'String'>
+  readonly activeStreamId: Prisma.FieldRef<"Chat", 'String'>
 }
     
 

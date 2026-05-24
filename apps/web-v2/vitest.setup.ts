@@ -15,6 +15,8 @@ const TEST_ENV: Record<string, string> = {
   DATABASE_URL: "postgres://test@localhost/audric_test",
   BLOCKVISION_API_KEY: "bv-test-vitest-setup",
   ENOKI_SECRET_KEY: "enoki-test-vitest-setup",
+  T2000_INTERNAL_KEY: "internal-test-vitest-setup",
+  AUDRIC_INTERNAL_API_URL: "http://localhost:3000",
   // Client-required (NEXT_PUBLIC_* — used via literal in runtimeEnv)
   NEXT_PUBLIC_GOOGLE_CLIENT_ID: "google-test-vitest-setup",
   NEXT_PUBLIC_ENOKI_API_KEY: "enoki-pub-test-vitest-setup",
