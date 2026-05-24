@@ -33,9 +33,21 @@
  *   - Easy to extend (add a pattern, no model retraining)
  *
  * Accuracy budget: ~85-90% on typical finance phrasings. The 10-15% miss
- * rate falls into the `general` fallback (still gives the LLM the most
- * common read tools) so misclassifications degrade to "slightly bloated
- * activeTools" not "tool not available." Conservative-by-construction.
+ * rate falls into the `general` fallback (now widened in the 2026-05-24
+ * hotfix to include the 6 most common writes alongside read tools) so
+ * misclassifications degrade to "slightly bloated activeTools" not
+ * "tool not available." Conservative-by-construction.
+ *
+ * The `general` widening is paired with conversational carryover in
+ * `active-tools-prepare-step.ts` — together they handle the two failure
+ * modes the production smoke exposed:
+ *
+ *   1. Typo'd keywords ("yeild" → /yield/i miss) on follow-up turns
+ *      → carryover inherits the previous turn's intent
+ *   2. Genuinely ambiguous queries that match no intent ("what should
+ *      i do with my crypto") → widened general fallback still gives
+ *      the LLM access to common writes so it doesn't hallucinate
+ *      that `save_deposit` etc. don't exist
  *
  * ## Output shape
  *
@@ -240,13 +252,38 @@ const TOOLS_BY_INTENT: Record<Intent, readonly string[]> = {
     "borrow",
     "repay_debt",
   ],
+  // [HOTFIX 2026-05-24] General fallback now includes the 6 most common
+  // write tools (save_deposit, withdraw, send_transfer, borrow,
+  // repay_debt, swap_execute) alongside the 6 read tools. Pre-hotfix
+  // the fallback was reads-only, so misclassifications stripped writes
+  // from activeTools and caused the model to hallucinate that tools
+  // didn't exist (production smoke: "I don't have a save_deposit tool").
+  //
+  // Token cost: +~900 tokens of schema on misclassified turns (10-15%
+  // of traffic per the accuracy budget). On HIGH-confidence intent turns
+  // (the 85-90% case) the narrow per-intent subset is still used —
+  // general is the fallback, not the floor.
+  //
+  // The post-write refresh reads (savings_info, health_check) stay
+  // included so the LLM can verify state after any write executes.
+  // Niche writes (claim_rewards, harvest_rewards) deliberately omitted:
+  // they're rewards-intent-only operations the LLM should never pick
+  // without a clear keyword cue.
   general: [
+    // Reads
     "balance_check",
     "savings_info",
     "health_check",
     "transaction_history",
     "portfolio_analysis",
     "rates_info",
+    // Writes (degrade-open per docstring's conservative-by-construction claim)
+    "save_deposit",
+    "withdraw",
+    "send_transfer",
+    "borrow",
+    "repay_debt",
+    "swap_execute",
   ],
   history: [
     "transaction_history",

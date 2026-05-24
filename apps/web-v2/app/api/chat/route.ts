@@ -710,31 +710,44 @@ export async function POST(request: Request) {
     : createAnthropic({ apiKey: env.ANTHROPIC_API_KEY ?? "" })(
         DEFAULT_MODEL_USED
       );
-  // [P2.3 / S.286 — 2026-05-24] Two-layer middleware chain:
+  // [P2.3 / S.286 — 2026-05-24; S.309 — 2026-05-24] Two-layer middleware
+  // chain:
   //   1. `audricObservabilityMiddleware` (outer) — per-call console
   //      telemetry line with PII-redacted last user text, prompt-token
   //      estimate, and first-byte latency. See observability.ts.
   //   2. `defaultSettingsMiddleware` (inner) — locks in
-  //      `temperature: 0.3` (mostly deterministic tool routing + light
-  //      narration variation; safer for Anthropic models than greedy
-  //      decoding per their training-distribution guidance) and
   //      `maxOutputTokens: 8192` (doubled from Claude's 4096 default to
   //      eliminate the rare mid-receipt-narration cut-off observed in
-  //      multi-step bundle responses). Settings apply BEFORE the real
-  //      model executes; observability sees the params as the user sent
-  //      them, while the model sees them with the defaults applied.
+  //      multi-step bundle responses).
   //
-  // Why both: observability is pure-observation (never short-circuits,
-  // never transforms); defaults are pure-transform (never logs, never
-  // observes). Composable: future middleware (e.g., per-tool gating)
-  // can be appended without disturbing either concern.
+  // [HOTFIX 2026-05-24 / S.309] `temperature: 0.3` was REMOVED.
+  // Anthropic's extended thinking mode (always-on for audric via the
+  // `thinking: { type: 'adaptive' }` provider option set ~150 lines
+  // down — see S.210 / S.211) is provider-incompatible with the
+  // `temperature` parameter — every turn was emitting the warning
+  //
+  //   AI SDK Warning (gateway / anthropic/claude-sonnet-4-6):
+  //   The feature "temperature" is not supported. temperature is not
+  //   supported when thinking is enabled
+  //
+  // Production behavior since S.211 (~2 weeks) has been thinking-driven
+  // sampling — the `temperature: 0.3` setting was silently ignored by
+  // Anthropic. Removing it is zero behavior change + cleans up the
+  // log noise. If audric ever ships a non-thinking model variant
+  // (e.g., a small/cheap model for snapshot summaries), reintroduce
+  // `temperature` BEHIND a thinking-disabled branch, not at the
+  // middleware level.
+  //
+  // Why both layers: observability is pure-observation (never
+  // short-circuits, never transforms); defaults are pure-transform
+  // (never logs, never observes). Composable: future middleware (e.g.,
+  // per-tool gating) can be appended without disturbing either concern.
   const model: LanguageModel = wrapLanguageModel({
     model: rawModel,
     middleware: [
       audricObservabilityMiddleware,
       defaultSettingsMiddleware({
         settings: {
-          temperature: 0.3,
           maxOutputTokens: 8192,
         },
       }),

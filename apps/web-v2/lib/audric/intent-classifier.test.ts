@@ -291,15 +291,15 @@ describe("selectActiveTools", () => {
     expect(balanceCount).toBe(1);
   });
 
-  it("returns general fallback (6 tools) for empty input", () => {
+  it("returns hardened general fallback for empty input", () => {
     const tools = selectActiveTools(classifyIntent(""));
-    // general (6) + render_canvas (1) = 7
-    expect(tools).toHaveLength(7);
+    // Post-hotfix general: 6 reads + 6 writes + render_canvas = 13
+    expect(tools).toHaveLength(13);
     expect(tools).toContain("balance_check");
     expect(tools).toContain("portfolio_analysis");
   });
 
-  it("includes write tools only for intents that need them", () => {
+  it("includes write tools only for narrow intents (portfolio stays read-only)", () => {
     const portfolio = selectActiveTools({
       intents: ["portfolio"],
       confidence: "high",
@@ -310,7 +310,7 @@ describe("selectActiveTools", () => {
     expect(portfolio).not.toContain("borrow");
   });
 
-  it("includes save_deposit + withdraw ONLY for save intent", () => {
+  it("includes save_deposit + withdraw ONLY for save intent (NOT portfolio)", () => {
     const portfolio = selectActiveTools({
       intents: ["portfolio"],
       confidence: "high",
@@ -324,5 +324,56 @@ describe("selectActiveTools", () => {
     });
     expect(save).toContain("save_deposit");
     expect(save).toContain("withdraw");
+  });
+
+  // -------------------------------------------------------------------------
+  // Hardened general fallback (HOTFIX 2026-05-24)
+  // -------------------------------------------------------------------------
+  //
+  // Pre-hotfix the general fallback was reads-only, which stripped
+  // writes from activeTools on misclassified turns and caused the model
+  // to hallucinate "I don't have save_deposit". Post-hotfix general
+  // includes the 6 most common writes as a degrade-open floor.
+  // -------------------------------------------------------------------------
+
+  it("hardened general includes the 6 common writes for degrade-open safety", () => {
+    const tools = selectActiveTools({
+      intents: ["general"],
+      confidence: "low",
+    });
+    expect(tools).toContain("save_deposit");
+    expect(tools).toContain("withdraw");
+    expect(tools).toContain("send_transfer");
+    expect(tools).toContain("borrow");
+    expect(tools).toContain("repay_debt");
+    expect(tools).toContain("swap_execute");
+  });
+
+  it("hardened general DOES NOT include niche writes (claim/harvest_rewards)", () => {
+    // The hardened set deliberately omits niche writes the LLM should
+    // never select without a clear keyword cue. Those stay in their
+    // respective intent subsets (rewards).
+    const tools = selectActiveTools({
+      intents: ["general"],
+      confidence: "low",
+    });
+    expect(tools).not.toContain("claim_rewards");
+    expect(tools).not.toContain("harvest_rewards");
+  });
+
+  it("hardened general still includes the read tools (additive change, not replacement)", () => {
+    const tools = selectActiveTools({
+      intents: ["general"],
+      confidence: "low",
+    });
+    // The pre-hotfix reads stay — this was an ADDITION to general,
+    // not a swap-in. The 6 reads are required for post-write refresh
+    // observation even when the model misclassifies.
+    expect(tools).toContain("balance_check");
+    expect(tools).toContain("savings_info");
+    expect(tools).toContain("health_check");
+    expect(tools).toContain("transaction_history");
+    expect(tools).toContain("portfolio_analysis");
+    expect(tools).toContain("rates_info");
   });
 });

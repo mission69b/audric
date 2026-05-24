@@ -127,7 +127,9 @@ describe("buildActiveToolsPrepareStep", () => {
       messages: [{ role: "user", content: "" }],
     });
     expect(result?.activeTools).toBeDefined();
-    // general fallback (6 tools) + render_canvas = 7
+    // Post-hotfix general fallback: 6 reads + 6 common writes +
+    // render_canvas = 13. Test stays on `toContain` only so future
+    // count changes don't break this case unnecessarily.
     expect(result?.activeTools).toContain("balance_check");
     expect(result?.activeTools).toContain("portfolio_analysis");
     expect(result?.activeTools).toContain("render_canvas");
@@ -270,6 +272,138 @@ describe("buildActiveToolsPrepareStep", () => {
     expect(result?.activeTools).toContain("save_deposit");
     expect(result?.activeTools).toContain("savings_info");
     expect(result?.activeTools).toContain("withdraw");
+  });
+
+  // -------------------------------------------------------------------------
+  // Conversational carryover (HOTFIX 2026-05-24)
+  // -------------------------------------------------------------------------
+  //
+  // When the current user message classifies as `low` confidence (no
+  // keyword matches), the closure looks back ONE user-message earlier
+  // and inherits THAT message's intent if it was high/medium confidence.
+  // This handles common follow-up phrasings + typo'd continuations
+  // that don't carry any save/borrow/swap keywords on their own.
+  // -------------------------------------------------------------------------
+
+  it("carryover: inherits previous turn's save intent on low-confidence follow-up", async () => {
+    const fn = buildActiveToolsPrepareStep({
+      registeredToolNames: ALL_TOOLS,
+    });
+    // Replicates the production smoke: turn 1 was a save question,
+    // turn 2 is a typo'd follow-up ("yeild" defeats /yield/i) with
+    // no other save keywords.
+    const result = await fn?.({
+      stepNumber: 0,
+      messages: [
+        userMessage("what's the most i can save this week"),
+        { role: "assistant", content: "you can save up to $20.66" },
+        userMessage(
+          "yea lets go with the usdsui option and let me know how much weekly yeild i get from it"
+        ),
+      ],
+    });
+    // Should inherit `save` intent → save_deposit must be active.
+    expect(result?.activeTools).toContain("save_deposit");
+    expect(result?.activeTools).toContain("withdraw");
+    expect(result?.activeTools).toContain("savings_info");
+  });
+
+  it("carryover: inherits previous turn's borrow intent on bare confirmation", async () => {
+    const fn = buildActiveToolsPrepareStep({
+      registeredToolNames: ALL_TOOLS,
+    });
+    const result = await fn?.({
+      stepNumber: 0,
+      messages: [
+        userMessage("can i borrow 100 against my collateral"),
+        { role: "assistant", content: "yes at 4.2% APY" },
+        userMessage("yes do it"),
+      ],
+    });
+    expect(result?.activeTools).toContain("borrow");
+    expect(result?.activeTools).toContain("repay_debt");
+    expect(result?.activeTools).toContain("health_check");
+  });
+
+  it("carryover: does NOT inherit when previous turn was also low-confidence", async () => {
+    const fn = buildActiveToolsPrepareStep({
+      registeredToolNames: ALL_TOOLS,
+    });
+    // Both turns are low-confidence generic phrasings. Carryover should
+    // NOT loop — fall through to the (hardened) general fallback.
+    const result = await fn?.({
+      stepNumber: 0,
+      messages: [
+        userMessage("hi there"),
+        { role: "assistant", content: "hello!" },
+        userMessage("ok thanks"),
+      ],
+    });
+    // Hardened `general` fallback (post-hotfix) includes common
+    // writes so the LLM never hallucinates a missing write tool.
+    expect(result?.activeTools).toContain("save_deposit");
+    expect(result?.activeTools).toContain("send_transfer");
+  });
+
+  it("carryover: does NOT trigger when current turn ITSELF is high-confidence", async () => {
+    const fn = buildActiveToolsPrepareStep({
+      registeredToolNames: ALL_TOOLS,
+    });
+    // Current turn matches `borrow` → no carryover, just normal
+    // classification. The previous turn's `save` intent should NOT
+    // pollute this turn's tool set.
+    const result = await fn?.({
+      stepNumber: 0,
+      messages: [
+        userMessage("save 10 USDC"),
+        { role: "assistant", content: "ok" },
+        userMessage("how much can i borrow"),
+      ],
+    });
+    expect(result?.activeTools).toContain("borrow");
+    expect(result?.activeTools).toContain("repay_debt");
+    // The borrow intent's tool set doesn't include `withdraw`, so if
+    // carryover had over-inherited from `save` we'd see it.
+    expect(result?.activeTools).not.toContain("withdraw");
+  });
+
+  it("carryover: no previous user message → falls through to general fallback", async () => {
+    const fn = buildActiveToolsPrepareStep({
+      registeredToolNames: ALL_TOOLS,
+    });
+    // First turn of a conversation — current message classifies as low
+    // (no keywords) and there's no previous user message to inherit from.
+    const result = await fn?.({
+      stepNumber: 0,
+      messages: [userMessage("hi audric")],
+    });
+    // Hardened general fallback. No hallucinated tool absence.
+    expect(result?.activeTools).toContain("save_deposit");
+    expect(result?.activeTools).toContain("balance_check");
+  });
+
+  it("carryover: emits outcome=carried-over in observability log", async () => {
+    const logSpy = vi.spyOn(console, "info").mockImplementation(() => {
+      // silence
+    });
+    const fn = buildActiveToolsPrepareStep({
+      registeredToolNames: ALL_TOOLS,
+    });
+    await fn?.({
+      stepNumber: 0,
+      messages: [
+        userMessage("save 10 USDC"),
+        { role: "assistant", content: "ok" },
+        userMessage("yea go ahead"),
+      ],
+    });
+    expect(logSpy).toHaveBeenCalledWith(
+      expect.stringContaining("outcome=carried-over")
+    );
+    expect(logSpy).toHaveBeenCalledWith(
+      expect.stringContaining("intents=save")
+    );
+    logSpy.mockRestore();
   });
 
   it("emits structured log line on every step", async () => {

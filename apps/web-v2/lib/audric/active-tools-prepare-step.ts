@@ -38,6 +38,33 @@
  * the original turn — `save_deposit`, `savings_info`, etc. stay
  * available for the LLM's post-confirm narration.
  *
+ * ## Conversational carryover [HOTFIX 2026-05-24]
+ *
+ * When the current user message classifies as `low` confidence (no
+ * keyword matches → general fallback), the closure looks back ONE
+ * user-message earlier and inherits THAT message's intent if it
+ * classified as `high` or `medium`. This handles the very common
+ * follow-up case where the user typed an established intent's
+ * continuation phrase ("yea lets go", "yes do it", "use USDsui
+ * instead") OR typo'd a keyword ("yeild" → /yield/i miss).
+ *
+ * Implementation: pure-functional — `extractPreviousUserMessage` walks
+ * back past the latest user message and reads the prior one's text.
+ * Adds at most one extra `classifyIntent` call per low-confidence
+ * turn. Always preserves safety: if the previous turn was ALSO low
+ * confidence, we fall through to the `general` fallback (which now
+ * includes the common writes — see `intent-classifier.ts`
+ * `TOOLS_BY_INTENT.general`, hardened in the same 2026-05-24 hotfix).
+ *
+ * The smoke that motivated this change: turn 1 was "what's the most
+ * I can save this week..." (correctly classified `save`). Turn 2 was
+ * "yea lets go with the usdsui option and let me know how much weekly
+ * yeild i get from it" — typo'd `yeild` defeated /yield/i, and no
+ * other save keywords matched ("lets go", "usdsui" are noise). Result:
+ * `save_deposit` got stripped from activeTools and the model said
+ * "I don't have a save_deposit tool". With carryover, turn 2 inherits
+ * turn 1's `save` classification and `save_deposit` stays available.
+ *
  * ## Composition with other prepareStep callbacks
  *
  * Web-v2's chat route already wires `buildMemoryPrepareStep` for the
@@ -63,7 +90,9 @@
  *   - `intents=...` — comma-separated intent names
  *   - `confidence=high|medium|low`
  *   - `tool_count=N` — final size of activeTools array
- *   - `outcome=fresh|cached|empty-query-fallback` — provenance
+ *   - `outcome=fresh|cached|carried-over|empty-query-fallback` — provenance
+ *     (`carried-over` = current turn was low confidence, inherited the
+ *     previous user message's intent — see "Conversational carryover")
  *
  * Same posture as memwal-prepare-step: SHAPE not CONTENT (no query
  * text, no tool names beyond the intent label).
@@ -97,6 +126,34 @@ function extractLatestUserMessage(messages: ModelMessage[]): string {
       continue;
     }
     return userContentToText(msg.content);
+  }
+  return "";
+}
+
+/**
+ * Pull the user message text immediately preceding the latest user
+ * message. Used for low-confidence carryover (see §"Conversational
+ * carryover" in the file header).
+ *
+ * Walks back from end:
+ *   1. Skip non-user roles
+ *   2. Skip the FIRST user message found (the "latest")
+ *   3. Return the SECOND user message's text content
+ *
+ * Returns `''` when fewer than two user messages exist (typically:
+ * first turn of a conversation).
+ */
+function extractPreviousUserMessage(messages: ModelMessage[]): string {
+  let userMessagesSeen = 0;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const msg = messages[i];
+    if (msg.role !== "user") {
+      continue;
+    }
+    userMessagesSeen += 1;
+    if (userMessagesSeen === 2) {
+      return userContentToText(msg.content);
+    }
   }
   return "";
 }
@@ -181,21 +238,50 @@ export function buildActiveToolsPrepareStep(
     }
 
     const userMessage = extractLatestUserMessage(messages);
-    let outcome: "empty-query-fallback" | "fresh";
+    let outcome: "carried-over" | "empty-query-fallback" | "fresh";
     let intent: IntentResult;
 
     if (userMessage.length === 0) {
       // Resume turn (tool-result only) OR malformed message list.
       // Fall back to `general` — gives the LLM the most common read
       // tools so it can still narrate the resume turn without missing
-      // a critical capability. The previous turn's intent isn't
-      // available across requests (web-v2 is serverless), so we don't
-      // try to carry it.
+      // a critical capability.
       intent = { intents: ["general"], confidence: "low" };
       outcome = "empty-query-fallback";
     } else {
       intent = classifyIntent(userMessage);
       outcome = "fresh";
+
+      // [HOTFIX 2026-05-24 — smoke caught "yea lets go with the usdsui
+      // option and let me know how much weekly yeild i get from it"
+      // classifying as general/low because the user typo'd "yeild" so
+      // /yield/i didn't match. Result: `save_deposit` got stripped from
+      // activeTools and the model said "I don't have save_deposit".]
+      //
+      // When the CURRENT user message classifies as `low` confidence
+      // (no keyword match → general fallback), look back at the PREVIOUS
+      // user message and inherit ITS intent if that was high/medium.
+      // This catches the very common conversational follow-up cases:
+      //   - "yea lets go" / "yes" / "do it" / "go ahead"
+      //   - "use USDsui instead" / "actually no, do USDC"
+      //   - typo'd continuations of an established intent
+      //
+      // Cost: one extra `classifyIntent` call (sub-millisecond, pure
+      // function, no I/O) per low-confidence turn. Always preserves
+      // safety: if the previous message ALSO classified as low/general,
+      // we fall through to the same fallback we'd use today (now
+      // backed by `general` containing common writes — see
+      // intent-classifier.ts `TOOLS_BY_INTENT.general`).
+      if (intent.confidence === "low") {
+        const previousUserMessage = extractPreviousUserMessage(messages);
+        if (previousUserMessage.length > 0) {
+          const previousIntent = classifyIntent(previousUserMessage);
+          if (previousIntent.confidence !== "low") {
+            intent = previousIntent;
+            outcome = "carried-over";
+          }
+        }
+      }
     }
 
     // Selector union + always-include + filter to registered tools.
