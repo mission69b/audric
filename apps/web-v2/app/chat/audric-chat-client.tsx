@@ -10,8 +10,9 @@ import {
   type ToolUIPart,
   type UIMessage,
 } from "ai";
-import { Loader2 } from "lucide-react";
+import { Copy, Loader2, RotateCw } from "lucide-react";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import { useSWRConfig } from "swr";
 import { unstable_serialize } from "swr/infinite";
 import {
@@ -20,6 +21,7 @@ import {
 } from "@/components/ai-elements/conversation";
 import {
   Message,
+  MessageAction,
   MessageContent,
   MessageResponse,
 } from "@/components/ai-elements/message";
@@ -40,7 +42,10 @@ import { useZkLogin } from "@/components/auth/use-zklogin";
 import { AppSidebar } from "@/components/chat/app-sidebar";
 import { ChipBar } from "@/components/chat/chip-bar";
 import { EmptyState } from "@/components/chat/empty-state";
-import { MessageVoteThumbs } from "@/components/chat/message-vote-thumbs";
+import {
+  MessageVoteThumbs,
+  type VoteState,
+} from "@/components/chat/message-vote-thumbs";
 import { getChatHistoryPaginationKey } from "@/components/chat/sidebar-history";
 import { VisibilityToggle } from "@/components/chat/visibility-toggle";
 import { UsernameClaimGate } from "@/components/settings/username-claim-gate";
@@ -52,6 +57,7 @@ import {
 } from "@/components/ui/sidebar";
 import { useUserStatus } from "@/hooks/use-user-status";
 import { redactAddressesInText } from "@/lib/audric/log-redact";
+import { getMessageText } from "@/lib/audric/message-text";
 import { subscribeNewChat } from "@/lib/audric/new-chat-event";
 import {
   type SponsoredTxBundleStep,
@@ -60,6 +66,7 @@ import {
   sponsoredTx,
 } from "@/lib/audric/sponsored-tx";
 import { sanitizeStreamErrorMessage } from "@/lib/audric/stream-errors";
+import { authFetch } from "@/lib/auth-fetch";
 import {
   isUsernameSkipped,
   setUsernameSkipped as persistUsernameSkipped,
@@ -493,6 +500,7 @@ function AudricChatPanel({
     status,
     error,
     stop,
+    regenerate,
     addToolApprovalResponse,
     addToolOutput,
   } = useChat({
@@ -554,6 +562,92 @@ function AudricChatPanel({
       );
     });
   }, [stop, effectiveChatId, session.jwt]);
+
+  // [SPEC_AI_SDK_HARDENING P5.3 — 2026-05-24] Hydrate prior votes on
+  // chat load. Pre-P5.3 every reload lost the thumbs-up/down state
+  // because `MessageVoteThumbs` only kept a local `useState`. We
+  // fetch the persisted `Vote` rows from `GET /api/vote` ONCE per
+  // chat mount and pass each row down as `initialVote`. Single
+  // batch fetch (one network call per chat) avoids N+1 per-message
+  // fetches. Degrades open — failure leaves all thumbs as null
+  // (same behavior as pre-P5.3).
+  //
+  // Triggered when `chatId` is committed (skips the unsaved new-chat
+  // path because there's no chat row to query yet). Refetch on
+  // chatId change covers the click-from-sidebar case.
+  const [votesByMessageId, setVotesByMessageId] = useState<
+    Map<string, VoteState>
+  >(new Map());
+  useEffect(() => {
+    if (!chatId) {
+      setVotesByMessageId(new Map());
+      return;
+    }
+    let cancelled = false;
+    authFetch(`/api/vote?chatId=${encodeURIComponent(chatId)}`)
+      .then(async (res) => {
+        if (!res.ok) {
+          return null;
+        }
+        return (await res.json()) as Array<{
+          chatId: string;
+          messageId: string;
+          isUpvoted: boolean;
+        }>;
+      })
+      .then((votes) => {
+        if (!votes || cancelled) {
+          return;
+        }
+        const next = new Map<string, VoteState>();
+        for (const v of votes) {
+          next.set(v.messageId, v.isUpvoted ? "up" : "down");
+        }
+        setVotesByMessageId(next);
+      })
+      .catch((err) => {
+        console.error(
+          "[audric-chat] vote hydration failed (non-fatal):",
+          err instanceof Error ? err.message : String(err)
+        );
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [chatId]);
+
+  // [SPEC_AI_SDK_HARDENING P5.2 — 2026-05-24] Copy a message's text
+  // to clipboard. Skips reasoning / tool / bundle parts (see
+  // `getMessageText` JSDoc for why).
+  const handleCopy = useCallback(async (message: UIMessage) => {
+    const text = getMessageText(message);
+    if (!text) {
+      toast.error("Nothing to copy yet");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success("Copied to clipboard");
+    } catch {
+      toast.error("Couldn't copy. Try selecting the text manually.");
+    }
+  }, []);
+
+  // [SPEC_AI_SDK_HARDENING P5.4 — 2026-05-24] Regenerate the LAST
+  // assistant message. `useChat.regenerate()` without a `messageId`
+  // arg regenerates the trailing assistant turn — which is the only
+  // turn we expose a regen button on (older assistant rows would
+  // require `regenerate({ messageId })` and truncation semantics,
+  // which is Phase 5.1 / Edit territory).
+  const handleRegenerate = useCallback(() => {
+    regenerate().catch((err) => {
+      console.error(
+        "[audric-chat] regenerate failed:",
+        err instanceof Error ? err.message : String(err)
+      );
+      toast.error("Couldn't regenerate. Please try again.");
+    });
+  }, [regenerate]);
 
   // [v0.7e Persistent Chats Phase 5 / S.247] Promote a new chat to a
   // permalink URL once the first message has landed. Uses
@@ -963,19 +1057,42 @@ function AudricChatPanel({
                     })}
                   </MessageContent>
                 </Message>
-                {/* [P1-B] Minimal LOCK-2 vote thumbs — only on
-                    completed assistant turns (not while streaming or
-                    while a pending action awaits approval), and only
-                    once the chat has a committed id. Hover-visible to
-                    keep the timeline clean. */}
-                {m.role === "assistant" &&
-                  !(isLast && isTurnStreaming) &&
-                  effectiveChatId && (
-                    <MessageVoteThumbs
-                      chatId={effectiveChatId}
-                      messageId={m.id}
-                    />
-                  )}
+                {/* [P1-B + SPEC_AI_SDK_HARDENING P5.2/P5.3/P5.4]
+                    Row actions: Copy (both roles) + Regenerate
+                    (last assistant only) + Vote thumbs (assistant
+                    only, with vote-state hydrated from GET /api/vote
+                    on chat mount).
+                    Hidden during streaming on the trailing assistant
+                    so we don't show actions for an in-flight reply.
+                    Hover-visible to keep the timeline clean. */}
+                {!(isLast && isTurnStreaming) && (
+                  <div className="mt-1 flex items-center gap-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+                    <MessageAction
+                      label="Copy"
+                      onClick={() => handleCopy(m)}
+                      tooltip="Copy"
+                    >
+                      <Copy className="size-3.5" />
+                    </MessageAction>
+                    {m.role === "assistant" && isLast && (
+                      <MessageAction
+                        disabled={isTurnStreaming}
+                        label="Regenerate"
+                        onClick={handleRegenerate}
+                        tooltip="Regenerate"
+                      >
+                        <RotateCw className="size-3.5" />
+                      </MessageAction>
+                    )}
+                    {m.role === "assistant" && effectiveChatId && (
+                      <MessageVoteThumbs
+                        chatId={effectiveChatId}
+                        initialVote={votesByMessageId.get(m.id) ?? null}
+                        messageId={m.id}
+                      />
+                    )}
+                  </div>
+                )}
               </Fragment>
             );
           })}

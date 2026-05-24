@@ -24,16 +24,24 @@ import { Button } from "@/components/ui/button";
 import { authFetch } from "@/lib/auth-fetch";
 import { cn } from "@/lib/utils";
 
-type VoteState = "up" | "down" | null;
+export type VoteState = "up" | "down" | null;
 
 export function MessageVoteThumbs({
   chatId,
   messageId,
+  initialVote = null,
 }: {
   chatId: string;
   messageId: string;
+  /**
+   * Seed value for the vote state on mount. Used by audric-chat-client
+   * to hydrate prior votes from GET /api/vote on chat load — pre-P5.3
+   * this defaulted to null and every reload lost the prior thumbs.
+   * See SPEC_AI_SDK_HARDENING P5.3.
+   */
+  initialVote?: VoteState;
 }) {
-  const [vote, setVote] = useState<VoteState>(null);
+  const [vote, setVote] = useState<VoteState>(initialVote);
   const [isPending, setIsPending] = useState(false);
 
   const handleVote = async (type: "up" | "down") => {
@@ -61,8 +69,12 @@ export function MessageVoteThumbs({
     }
   };
 
+  // P5.2/P5.3/P5.4 (2026-05-24): the outer hover-reveal row now lives
+  // in `audric-chat-client.tsx` so Copy + Regenerate + Vote sit in a
+  // single row that fades in together. This component renders just the
+  // two thumb buttons; the parent owns the wrapper styling.
   return (
-    <div className="mt-1 flex items-center gap-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+    <>
       <Button
         aria-label="Upvote response"
         className={cn(
@@ -89,6 +101,6 @@ export function MessageVoteThumbs({
       >
         <ThumbsDown className="size-3.5" />
       </Button>
-    </div>
+    </>
   );
 }
