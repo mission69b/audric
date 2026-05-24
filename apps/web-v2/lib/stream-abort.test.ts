@@ -136,4 +136,27 @@ describe("lib/stream-abort", () => {
 
     expect(handler).not.toHaveBeenCalled();
   });
+
+  it("publishAbort is idempotent — second call does not re-fire handler", async () => {
+    // Guards the delete-before-fire invariant in `publishAbort` that
+    // prevents the same-instance Redis-fanout double-fire (the bug
+    // that landed in the Phase 3 self-audit). After the first publish
+    // fires the handler, the entry is removed from the dispatch table
+    // → any further publishes (including the Redis fanout looping back
+    // into pSubscribe) are no-ops.
+    const mod = await loadFreshModule();
+    const handler = vi.fn();
+    const cleanup = await mod.subscribeToAbort("stream-1", handler);
+
+    const first = await mod.publishAbort("stream-1");
+    const second = await mod.publishAbort("stream-1");
+    const third = await mod.publishAbort("stream-1");
+
+    expect(handler).toHaveBeenCalledTimes(1);
+    expect(first).toBe(1);
+    expect(second).toBe(0);
+    expect(third).toBe(0);
+
+    cleanup();
+  });
 });

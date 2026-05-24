@@ -136,8 +136,15 @@ function ensurePatternSubscribed(): Promise<boolean> {
           return;
         }
         const streamId = channel.slice(ABORT_CHANNEL_PREFIX.length);
+        // One-shot dispatch: delete before firing. Prevents same-instance
+        // double-fire when publishAbort already fired locally and then
+        // published to Redis (whose fanout loops back to this instance's
+        // pSubscribe). AbortController.abort() is idempotent so functional
+        // correctness held without the delete, but log noise + duplicate
+        // handler invocations are avoided here.
         const handler = localHandlers.get(streamId);
         if (handler) {
+          localHandlers.delete(streamId);
           try {
             handler();
           } catch (err) {
@@ -201,11 +208,16 @@ export async function subscribeToAbort(
 export async function publishAbort(streamId: string): Promise<number> {
   // Local short-circuit: if the producer is on this same instance,
   // fire the local handler immediately. Same-instance abort latency
-  // drops from ~Redis-RTT to zero. The publish below STILL fires for
-  // cross-instance correctness (in case the same controller is somehow
-  // referenced elsewhere — defensive).
+  // drops from ~Redis-RTT to zero. Delete BEFORE firing so the Redis
+  // fanout (which loops back to this instance's pSubscribe) doesn't
+  // re-fire the handler. One-shot dispatch semantics.
+  //
+  // The publish below STILL fires for cross-instance correctness —
+  // there's no harm in publishing even when we already fired locally
+  // (the pSubscribe handler finds nothing in the map → no-op).
   const local = localHandlers.get(streamId);
   if (local) {
+    localHandlers.delete(streamId);
     try {
       local();
     } catch (err) {

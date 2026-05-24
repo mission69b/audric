@@ -162,23 +162,25 @@ export async function POST(
   // we're racing the onFinish handler; harmless). Logged for the
   // `stop_explicit_count` telemetry slot in the SPEC.
   //
-  // Fire-and-forget — the response can return before the publish
-  // round-trips. The DB clear above is the source of truth for "stop
-  // happened"; the abort signal is best-effort cost optimisation
-  // (LLM token spend stops faster on success but the chat is
-  // already in a correct end state without it).
-  publishAbort(currentActiveStreamId)
-    .then((receivers) => {
-      console.info(
-        `[stream-abort] stop_explicit chatId=${chatId} streamId=${currentActiveStreamId} receivers=${receivers}`
-      );
-    })
-    .catch((err: unknown) => {
-      console.error(
-        `[stream-abort] publishAbort failed chatId=${chatId} (non-fatal):`,
-        err instanceof Error ? err.message : String(err)
-      );
-    });
+  // We AWAIT the publish here rather than fire-and-forget because
+  // Vercel may terminate the function after `Response.json` returns,
+  // killing an in-flight publish before it reaches Redis. For same-
+  // instance abort that doesn't matter (the local handler fires
+  // synchronously inside publishAbort), but for cross-instance abort
+  // a killed publish means the LLM keeps running on the other
+  // instance until natural completion — defeating the Phase 3 cost-
+  // optimisation purpose. ~50ms added to response is acceptable.
+  try {
+    const receivers = await publishAbort(currentActiveStreamId);
+    console.info(
+      `[stream-abort] stop_explicit chatId=${chatId} streamId=${currentActiveStreamId} receivers=${receivers}`
+    );
+  } catch (err: unknown) {
+    console.error(
+      `[stream-abort] publishAbort failed chatId=${chatId} (non-fatal):`,
+      err instanceof Error ? err.message : String(err)
+    );
+  }
 
   return Response.json({ success: true });
 }
