@@ -357,6 +357,72 @@ export async function getMessagesByChatId({
 }
 
 /**
+ * Count messages for a chat. Drives the edit-detection gate in the
+ * chat route: if the incoming `messages` list has fewer rows than
+ * the DB, the user edited an earlier message client-side and the
+ * orphan rows beyond the edit point need to be cleaned up.
+ *
+ * Indexed via `@@index([chatId, createdAt])` on the Message model
+ * — cheap (~5ms on Postgres). Called once per turn.
+ */
+export async function countMessagesByChatId({
+  chatId,
+}: {
+  chatId: string;
+}): Promise<number> {
+  return await prisma.message.count({ where: { chatId } });
+}
+
+/**
+ * Delete all messages in a chat whose `createdAt` is strictly
+ * greater than the anchor message's `createdAt`. Used by the chat
+ * route when the client sliced its history (edit + re-send) to
+ * keep the DB in sync with the new history.
+ *
+ * Pass `messageId: null` to delete EVERY message in the chat
+ * (the "edit the first message" case — the anchor would be
+ * `undefined` because there's no message before the new one).
+ * Vote rows cascade-delete via the FK in `prisma/schema.prisma`.
+ *
+ * Returns the number of rows deleted so the caller can log telemetry
+ * (verifies whether the gate fired correctly).
+ *
+ * Idempotent: returns 0 if the anchor doesn't exist (already
+ * deleted in a prior race) or if there are no orphan rows.
+ *
+ * See SPEC_AI_SDK_HARDENING P5.1 for the full edit-flow rationale.
+ */
+export async function truncateMessagesAfter({
+  chatId,
+  messageId,
+}: {
+  chatId: string;
+  /** Anchor — delete strictly AFTER this message. `null` deletes all messages in the chat. */
+  messageId: string | null;
+}): Promise<number> {
+  if (messageId === null) {
+    const { count } = await prisma.message.deleteMany({
+      where: { chatId },
+    });
+    return count;
+  }
+  const anchor = await prisma.message.findFirst({
+    where: { id: messageId, chatId },
+    select: { createdAt: true },
+  });
+  if (!anchor) {
+    return 0;
+  }
+  const { count } = await prisma.message.deleteMany({
+    where: {
+      chatId,
+      createdAt: { gt: anchor.createdAt },
+    },
+  });
+  return count;
+}
+
+/**
  * Cursor-paginated sidebar feed. Mirrors the drizzle helper's API —
  * extendedLimit = limit + 1 sentinel for "has more" detection.
  */

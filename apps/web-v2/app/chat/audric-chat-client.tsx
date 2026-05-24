@@ -10,7 +10,7 @@ import {
   type ToolUIPart,
   type UIMessage,
 } from "ai";
-import { Copy, Loader2, RotateCw } from "lucide-react";
+import { Copy, Loader2, Pencil, RotateCw } from "lucide-react";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useSWRConfig } from "swr";
@@ -55,7 +55,12 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import { Textarea } from "@/components/ui/textarea";
 import { useUserStatus } from "@/hooks/use-user-status";
+import {
+  type AudricBundleMarkerData,
+  isBundleSpent,
+} from "@/lib/audric/bundle-status";
 import { redactAddressesInText } from "@/lib/audric/log-redact";
 import { getMessageText } from "@/lib/audric/message-text";
 import { subscribeNewChat } from "@/lib/audric/new-chat-event";
@@ -75,28 +80,10 @@ import { decodeJwtClaim } from "@/lib/jwt-client";
 import { cn } from "@/lib/utils";
 import type { ZkLoginSession } from "@/lib/zklogin";
 
-/**
- * [Phase 5e] `data-audric-bundle` marker payload — the chat route emits
- * one per multi-write atomic Payment Intent. The shape MUST mirror
- * `AudricBundleMarker` exported from `app/(chat)/api/audric-chat/route.ts`
- * (same project, same module graph) — we re-declare here so the client
- * file doesn't import a server module. Drift caught at typecheck time
- * via the type bridge in `parseAudricBundleMarker`.
- */
-interface AudricBundleMarkerData {
-  steps: Array<{
-    toolCallId: string;
-    approvalId: string;
-    toolName: string;
-    input: Record<string, unknown>;
-    description: string;
-    modifiableFields: Array<{
-      name: string;
-      kind: string;
-      asset?: string;
-    }>;
-  }>;
-}
+// Bundle marker shape + `isBundleSpent` extracted to
+// `lib/audric/bundle-status.ts` 2026-05-24 (SPEC_AI_SDK_HARDENING P5.1)
+// so the spent-check can be unit-tested in isolation. Re-exported as
+// a named import below.
 
 /**
  * Audric chat — client component.
@@ -497,6 +484,7 @@ function AudricChatPanel({
   const {
     messages,
     sendMessage,
+    setMessages,
     status,
     error,
     stop,
@@ -648,6 +636,62 @@ function AudricChatPanel({
       toast.error("Couldn't regenerate. Please try again.");
     });
   }, [regenerate]);
+
+  // [SPEC_AI_SDK_HARDENING P5.1 — 2026-05-24] Edit + re-send user
+  // messages. Click Edit on a past user bubble → swap it for an
+  // inline textarea pre-filled with the original text → Save:
+  //   1. `setMessages(messages.slice(0, idx))` trims the local
+  //      conversation to the messages BEFORE the edit point. AI
+  //      SDK clears the trailing state (any in-flight pending
+  //      approval, the original message itself, every subsequent
+  //      turn).
+  //   2. `sendMessage({ text: newText })` appends the new user
+  //      message and fires `/api/chat`.
+  //   3. Server detects `incoming.length - 1 < dbCount` →
+  //      `truncateMessagesAfter(chatId, anchorId)` deletes the
+  //      orphan rows from before the edit (route handler at
+  //      `/api/chat/route.ts` lines 488+).
+  //   4. The new assistant response replaces the truncated branch.
+  // Vote rows cascade-delete with their parent Message via the
+  // Prisma `onDelete: Cascade` FK in `prisma/schema.prisma`.
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editingDraft, setEditingDraft] = useState("");
+
+  const beginEdit = useCallback((message: UIMessage) => {
+    setEditingMessageId(message.id);
+    setEditingDraft(getMessageText(message));
+  }, []);
+
+  const cancelEdit = useCallback(() => {
+    setEditingMessageId(null);
+    setEditingDraft("");
+  }, []);
+
+  const saveEdit = useCallback(
+    (messageId: string) => {
+      const text = editingDraft.trim();
+      if (!text) {
+        toast.error("Message can't be empty");
+        return;
+      }
+      const idx = messages.findIndex((m) => m.id === messageId);
+      if (idx < 0) {
+        toast.error("Couldn't find that message");
+        return;
+      }
+      setMessages(messages.slice(0, idx));
+      sendMessage({ text }).catch((err) => {
+        console.error(
+          "[audric-chat] edit + re-send failed:",
+          err instanceof Error ? err.message : String(err)
+        );
+        toast.error("Couldn't send the edit. Please try again.");
+      });
+      setEditingMessageId(null);
+      setEditingDraft("");
+    },
+    [editingDraft, messages, sendMessage, setMessages]
+  );
 
   // [v0.7e Persistent Chats Phase 5 / S.247] Promote a new chat to a
   // permalink URL once the first message has landed. Uses
@@ -915,157 +959,209 @@ function AudricChatPanel({
               }
             }
 
+            const isEditing = editingMessageId === m.id && m.role === "user";
+
             return (
               <Fragment key={m.id}>
-                {/* [S.209 — 2026-05-20] `items-end` on user Message — the
-                    template's `<Message>` is a flex flex-col container.
-                    `ml-auto` on Message snaps the Message wrapper to the
-                    right edge, but the bubble (`<MessageContent>` with
-                    `w-fit`) defaults to flex-start INSIDE the column.
-                    Adding `items-end` flips the cross-axis alignment so
-                    the bubble actually sits at the right of the chat
-                    column — fixes the left-aligned user bubble bug. */}
-                <Message
-                  className={cn(
-                    m.role === "user" && "items-end",
-                    m.role === "assistant" && "group"
-                  )}
-                  from={m.role}
-                >
-                  <MessageContent
-                    // [S.209 — 2026-05-20] User bubble — reverted from the
-                    // S.208 gradient pill to a SOLID dark bubble per
-                    // founder feedback. Matches the chatbot.ai-sdk.dev
-                    // demo dark-mode screenshot: solid dark bg, white
-                    // text, asymmetric rounded corners (16/16/4/16) with
-                    // the small notch in the bottom-right pointing back
-                    // at the user.
-                    //
-                    // Uses semantic `bg-bubble-user-bg` / `text-bubble-
-                    // user-fg` tokens (defined in globals.css) — near-
-                    // black solid in dark mode, near-black solid in light
-                    // mode. The bubble pops against the page background
-                    // either way.
+                {/* [SPEC_AI_SDK_HARDENING P5.1 — 2026-05-24]
+                    Edit mode: swap the bubble for an inline textarea
+                    + Save/Cancel buttons. Same dark bubble surface so
+                    it reads as edit-in-place. Enter saves (without
+                    shift), Escape cancels. */}
+                {isEditing ? (
+                  <Message className="items-end" from="user">
+                    <div className="flex w-full max-w-[min(80%,56ch)] flex-col gap-2">
+                      <Textarea
+                        autoFocus
+                        className="border-bubble-user-bg bg-bubble-user-bg text-bubble-user-fg shadow-[var(--shadow-card)] placeholder:text-bubble-user-fg/60 focus-visible:border-ring focus-visible:ring-ring/40"
+                        onChange={(e) => setEditingDraft(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.shiftKey) {
+                            e.preventDefault();
+                            saveEdit(m.id);
+                          } else if (e.key === "Escape") {
+                            e.preventDefault();
+                            cancelEdit();
+                          }
+                        }}
+                        value={editingDraft}
+                      />
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          onClick={cancelEdit}
+                          size="sm"
+                          type="button"
+                          variant="ghost"
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          disabled={!editingDraft.trim() || isTurnStreaming}
+                          onClick={() => saveEdit(m.id)}
+                          size="sm"
+                          type="button"
+                          variant="default"
+                        >
+                          Send
+                        </Button>
+                      </div>
+                    </div>
+                  </Message>
+                ) : (
+                  /* [S.209 — 2026-05-20] `items-end` on user Message — the
+                      template's `<Message>` is a flex flex-col container.
+                      `ml-auto` on Message snaps the Message wrapper to the
+                      right edge, but the bubble (`<MessageContent>` with
+                      `w-fit`) defaults to flex-start INSIDE the column.
+                      Adding `items-end` flips the cross-axis alignment so
+                      the bubble actually sits at the right of the chat
+                      column — fixes the left-aligned user bubble bug. */
+                  <Message
                     className={cn(
-                      m.role === "user" &&
-                        "w-fit max-w-[min(80%,56ch)] overflow-hidden break-words rounded-2xl rounded-br-[4px] bg-bubble-user-bg px-4 py-2.5 text-bubble-user-fg shadow-[var(--shadow-card)] [&_*]:text-bubble-user-fg"
+                      m.role === "user" && "items-end",
+                      m.role === "assistant" && "group"
                     )}
+                    from={m.role}
                   >
-                    {m.parts.map((part, i) => {
-                      if (part.type === "text") {
-                        return (
-                          <MessageResponse
-                            // biome-ignore lint/suspicious/noArrayIndexKey: parts are positionally stable per message
-                            key={`${m.id}-${i}`}
-                          >
-                            {part.text}
-                          </MessageResponse>
-                        );
-                      }
-                      if (part.type === "reasoning") {
-                        const reasoningPart = part as ReasoningUIPart;
-                        // The part is streaming only when (a) the turn is in
-                        // flight, (b) it's on the trailing message, and (c)
-                        // the part itself hasn't been marked done.
-                        const partStreaming =
-                          isTurnStreaming &&
-                          isLast &&
-                          reasoningPart.state !== "done";
-                        return (
-                          <Reasoning
-                            isStreaming={partStreaming}
-                            // biome-ignore lint/suspicious/noArrayIndexKey: parts are positionally stable per message
-                            key={`${m.id}-${i}`}
-                          >
-                            <ReasoningTrigger />
-                            <ReasoningContent>
-                              {reasoningPart.text}
-                            </ReasoningContent>
-                          </Reasoning>
-                        );
-                      }
-                      // [Phase 5e] Bundle marker → ONE bundle card.
-                      if (part.type === "data-audric-bundle") {
-                        const marker = parseAudricBundleMarker(
-                          (part as { data?: unknown }).data
-                        );
-                        if (!marker || marker.steps.length < 2) {
-                          // Malformed marker — render nothing; the
-                          // individual `tool-*` parts will render
-                          // separately because they're NOT in
-                          // bundleClaimedIds (the set is empty when
-                          // parse fails for ALL markers).
-                          return null;
-                        }
-                        // [Smoke 2026-05-22 bundle-refresh-fix] Spent
-                        // bundle (all steps past approval) → render
-                        // nothing here. The constituent tool-* parts
-                        // are NOT in bundleClaimedIds (see the matching
-                        // skip above) so they fall through to the
-                        // tool-* branch and render receipts/errors
-                        // individually — same shape as a freshly
-                        // approved single-write turn.
-                        if (isBundleSpent(marker, m.parts)) {
-                          return null;
-                        }
-                        return (
-                          <BundleForMarker
-                            addToolApprovalResponse={addToolApprovalResponse}
-                            addToolOutput={addToolOutput}
-                            // biome-ignore lint/suspicious/noArrayIndexKey: parts are positionally stable per message
-                            key={`${m.id}-${i}`}
-                            marker={marker}
-                            session={session}
-                          />
-                        );
-                      }
-                      if (part.type.startsWith("tool-")) {
-                        const toolPart = part as ToolUIPart;
-                        // [Phase 5e] Skip tool parts that a bundle marker
-                        // claimed — the BundlePermissionCard handles
-                        // them. AI SDK's state machine still tracks
-                        // each part's approval-requested → output-*
-                        // lifecycle independently (the parent's
-                        // bundle approve handler fires N
-                        // `addToolApprovalResponse` + N `addToolOutput`
-                        // to keep each part's state in sync).
-                        if (bundleClaimedIds.has(toolPart.toolCallId)) {
-                          return null;
-                        }
-                        if (toolPart.state === "approval-requested") {
+                    <MessageContent
+                      // [S.209 — 2026-05-20] User bubble — reverted from the
+                      // S.208 gradient pill to a SOLID dark bubble per
+                      // founder feedback. Matches the chatbot.ai-sdk.dev
+                      // demo dark-mode screenshot: solid dark bg, white
+                      // text, asymmetric rounded corners (16/16/4/16) with
+                      // the small notch in the bottom-right pointing back
+                      // at the user.
+                      //
+                      // Uses semantic `bg-bubble-user-bg` / `text-bubble-
+                      // user-fg` tokens (defined in globals.css) — near-
+                      // black solid in dark mode, near-black solid in light
+                      // mode. The bubble pops against the page background
+                      // either way.
+                      className={cn(
+                        m.role === "user" &&
+                          "w-fit max-w-[min(80%,56ch)] overflow-hidden break-words rounded-2xl rounded-br-[4px] bg-bubble-user-bg px-4 py-2.5 text-bubble-user-fg shadow-[var(--shadow-card)] [&_*]:text-bubble-user-fg"
+                      )}
+                    >
+                      {m.parts.map((part, i) => {
+                        if (part.type === "text") {
                           return (
-                            <PermissionForToolPart
+                            <MessageResponse
+                              // biome-ignore lint/suspicious/noArrayIndexKey: parts are positionally stable per message
+                              key={`${m.id}-${i}`}
+                            >
+                              {part.text}
+                            </MessageResponse>
+                          );
+                        }
+                        if (part.type === "reasoning") {
+                          const reasoningPart = part as ReasoningUIPart;
+                          // The part is streaming only when (a) the turn is in
+                          // flight, (b) it's on the trailing message, and (c)
+                          // the part itself hasn't been marked done.
+                          const partStreaming =
+                            isTurnStreaming &&
+                            isLast &&
+                            reasoningPart.state !== "done";
+                          return (
+                            <Reasoning
+                              isStreaming={partStreaming}
+                              // biome-ignore lint/suspicious/noArrayIndexKey: parts are positionally stable per message
+                              key={`${m.id}-${i}`}
+                            >
+                              <ReasoningTrigger />
+                              <ReasoningContent>
+                                {reasoningPart.text}
+                              </ReasoningContent>
+                            </Reasoning>
+                          );
+                        }
+                        // [Phase 5e] Bundle marker → ONE bundle card.
+                        if (part.type === "data-audric-bundle") {
+                          const marker = parseAudricBundleMarker(
+                            (part as { data?: unknown }).data
+                          );
+                          if (!marker || marker.steps.length < 2) {
+                            // Malformed marker — render nothing; the
+                            // individual `tool-*` parts will render
+                            // separately because they're NOT in
+                            // bundleClaimedIds (the set is empty when
+                            // parse fails for ALL markers).
+                            return null;
+                          }
+                          // [Smoke 2026-05-22 bundle-refresh-fix] Spent
+                          // bundle (all steps past approval) → render
+                          // nothing here. The constituent tool-* parts
+                          // are NOT in bundleClaimedIds (see the matching
+                          // skip above) so they fall through to the
+                          // tool-* branch and render receipts/errors
+                          // individually — same shape as a freshly
+                          // approved single-write turn.
+                          if (isBundleSpent(marker, m.parts)) {
+                            return null;
+                          }
+                          return (
+                            <BundleForMarker
                               addToolApprovalResponse={addToolApprovalResponse}
                               addToolOutput={addToolOutput}
                               // biome-ignore lint/suspicious/noArrayIndexKey: parts are positionally stable per message
                               key={`${m.id}-${i}`}
+                              marker={marker}
                               session={session}
-                              toolPart={toolPart}
                             />
                           );
                         }
-                        return (
-                          <ToolResultRouter
-                            // biome-ignore lint/suspicious/noArrayIndexKey: parts are positionally stable per message
-                            key={`${m.id}-${i}`}
-                            onSendMessage={(text) => sendMessage({ text })}
-                            part={toolPart}
-                          />
-                        );
-                      }
-                      return null;
-                    })}
-                  </MessageContent>
-                </Message>
-                {/* [P1-B + SPEC_AI_SDK_HARDENING P5.2/P5.3/P5.4]
-                    Row actions: Copy (both roles) + Regenerate
-                    (last assistant only) + Vote thumbs (assistant
-                    only, with vote-state hydrated from GET /api/vote
-                    on chat mount).
+                        if (part.type.startsWith("tool-")) {
+                          const toolPart = part as ToolUIPart;
+                          // [Phase 5e] Skip tool parts that a bundle marker
+                          // claimed — the BundlePermissionCard handles
+                          // them. AI SDK's state machine still tracks
+                          // each part's approval-requested → output-*
+                          // lifecycle independently (the parent's
+                          // bundle approve handler fires N
+                          // `addToolApprovalResponse` + N `addToolOutput`
+                          // to keep each part's state in sync).
+                          if (bundleClaimedIds.has(toolPart.toolCallId)) {
+                            return null;
+                          }
+                          if (toolPart.state === "approval-requested") {
+                            return (
+                              <PermissionForToolPart
+                                addToolApprovalResponse={
+                                  addToolApprovalResponse
+                                }
+                                addToolOutput={addToolOutput}
+                                // biome-ignore lint/suspicious/noArrayIndexKey: parts are positionally stable per message
+                                key={`${m.id}-${i}`}
+                                session={session}
+                                toolPart={toolPart}
+                              />
+                            );
+                          }
+                          return (
+                            <ToolResultRouter
+                              // biome-ignore lint/suspicious/noArrayIndexKey: parts are positionally stable per message
+                              key={`${m.id}-${i}`}
+                              onSendMessage={(text) => sendMessage({ text })}
+                              part={toolPart}
+                            />
+                          );
+                        }
+                        return null;
+                      })}
+                    </MessageContent>
+                  </Message>
+                )}
+                {/* [P1-B + SPEC_AI_SDK_HARDENING P5.1/P5.2/P5.3/P5.4]
+                    Row actions: Copy (both roles) + Edit (user rows
+                    only) + Regenerate (last assistant only) + Vote
+                    thumbs (assistant only, with vote-state hydrated
+                    from GET /api/vote on chat mount).
                     Hidden during streaming on the trailing assistant
-                    so we don't show actions for an in-flight reply.
-                    Hover-visible to keep the timeline clean. */}
-                {!(isLast && isTurnStreaming) && (
+                    so we don't show actions for an in-flight reply,
+                    and during edit mode for this message so the
+                    textarea has clean focus. Hover-visible to keep
+                    the timeline clean. */}
+                {!isEditing && !(isLast && isTurnStreaming) && (
                   <div className="mt-1 flex items-center gap-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
                     <MessageAction
                       label="Copy"
@@ -1074,6 +1170,16 @@ function AudricChatPanel({
                     >
                       <Copy className="size-3.5" />
                     </MessageAction>
+                    {m.role === "user" && (
+                      <MessageAction
+                        disabled={isTurnStreaming}
+                        label="Edit"
+                        onClick={() => beginEdit(m)}
+                        tooltip="Edit"
+                      >
+                        <Pencil className="size-3.5" />
+                      </MessageAction>
+                    )}
                     {m.role === "assistant" && isLast && (
                       <MessageAction
                         disabled={isTurnStreaming}
@@ -1409,58 +1515,9 @@ function BundleForMarker(props: BundleForMarkerProps) {
   );
 }
 
-/**
- * [Smoke 2026-05-22 bundle-refresh-fix] A bundle is "spent" once every
- * one of its constituent tool parts has moved past `approval-requested`
- * (i.e. either `output-available` or `output-error`). Pre-approval
- * bundles render as `BundlePermissionCard`; spent bundles render as
- * nothing — their constituent tool parts then render their own
- * receipts via the normal tool-* branch.
- *
- * **Why this exists.** `BundlePermissionCard` keeps its `resolved`
- * flag in `useState`, which resets to `false` on every fresh mount.
- * On session refresh, the hydrated message still contains the
- * `data-audric-bundle` marker, so without this gate the marker would
- * unconditionally re-render the permission card — even though the
- * persisted tool parts say `state: "output-available"` and
- * `approval=Y`. The fix is to teach the render decision to look at
- * the constituent tool parts' states, matching the single-write path
- * (which already checks `toolPart.state === "approval-requested"`).
- *
- * **Edge case (rare race):** a turn that's mid-flight when the user
- * refreshes — tool parts may still be in `approval-requested` because
- * the post-confirm `addToolOutput` hasn't fired yet. In that case we
- * correctly re-render the permission card and the user re-confirms.
- * This is the same fallback the single-write path uses and is no
- * worse than today's behavior for that narrow case.
- */
-function isBundleSpent(
-  marker: AudricBundleMarkerData,
-  parts: readonly UIMessage["parts"][number][]
-): boolean {
-  const stepIds = new Set(marker.steps.map((s) => s.toolCallId));
-  let foundAny = false;
-  for (const p of parts) {
-    if (!p.type.startsWith("tool-")) {
-      continue;
-    }
-    const toolPart = p as ToolUIPart;
-    if (!stepIds.has(toolPart.toolCallId)) {
-      continue;
-    }
-    foundAny = true;
-    if (toolPart.state === "approval-requested") {
-      // At least one step is still awaiting user gesture → bundle
-      // is NOT spent; render the permission card.
-      return false;
-    }
-  }
-  // Spent iff we matched every step AND none of them were
-  // `approval-requested`. If we matched zero (stale marker pointing
-  // at nonexistent steps), treat as NOT spent so the malformed-
-  // marker fallback in the render branch above kicks in.
-  return foundAny;
-}
+// `isBundleSpent` + `AudricBundleMarkerData` moved to
+// `lib/audric/bundle-status.ts` 2026-05-24 (SPEC_AI_SDK_HARDENING P5.1).
+// See that file for the full bundle-refresh-fix rationale.
 
 /**
  * [Phase 5e] Parse + validate a `data-audric-bundle` part's payload.

@@ -155,9 +155,11 @@ import {
   computeAccountAgeDays,
 } from "@/lib/audric/account-age-gate";
 import {
+  countMessagesByChatId,
   getChatById as getChatRowById,
   saveMessages,
   setActiveStreamId,
+  truncateMessagesAfter,
 } from "@/lib/audric/chat-persistence";
 import { generateChatTitle } from "@/lib/audric/chat-title";
 import {
@@ -481,6 +483,80 @@ export async function POST(request: Request) {
       err instanceof Error ? err.message : String(err)
     );
     isNewChat = false;
+  }
+
+  // [SPEC_AI_SDK_HARDENING P5.1 — 2026-05-24] Edit-flow orphan-row
+  // cleanup. When the user edits a past user message via the chat
+  // UI, the client calls `setMessages(slice)` then `sendMessage(...)`
+  // — the server then receives an incoming list that's SHORTER than
+  // what's persisted in the DB (orphan rows from before the edit).
+  // Without cleanup those orphans re-surface on next history hydration.
+  //
+  // Detection gate: last incoming message is a USER message AND
+  // `incoming.length - 1 < dbCount` (the `- 1` accounts for the
+  // brand-new edited message that doesn't exist in the DB yet).
+  // Resume turns (last message is `assistant` with HITL tool parts)
+  // skip the gate. Normal first-of-its-kind sends also skip
+  // (length - 1 === dbCount). Anchor is the second-to-last incoming
+  // message (the unchanged predecessor of the edit); `null` anchor
+  // when editing the very first message → wipes the whole chat.
+  //
+  // Non-fatal — if the count or delete fails we log + continue with
+  // the LLM call. The next successful turn will retry the cleanup.
+  // Skip the entire block for chat-less / ephemeral requests
+  // (`body.id` absent + ownership check already created `chatId` from
+  // generateId; DB has no rows yet because no save has run).
+  if (body.id && !isNewChat) {
+    try {
+      const lastIncoming = body.messages.at(-1);
+      if (lastIncoming?.role === "user") {
+        const dbCount = await countMessagesByChatId({ chatId });
+        if (body.messages.length - 1 < dbCount) {
+          // Three cases for the anchor:
+          //   (a) `penultimate === undefined` (editing the very first
+          //       message, incoming.length === 1) → `null` anchor →
+          //       `truncateMessagesAfter` wipes the entire chat.
+          //   (b) `penultimate` is UIMessage with an `id` → anchor on
+          //       it → strict-greater-than `createdAt` delete.
+          //   (c) `penultimate` is legacy `{role, content}` (no id)
+          //       → CANNOT safely anchor. Skip rather than risk a
+          //       full-chat wipe. Edit flow is useChat-only in
+          //       practice (always UIMessage shape), so this branch
+          //       guards a curl-shaped edge case.
+          const penultimate = body.messages.at(-2);
+          let anchorId: string | null | undefined;
+          if (penultimate === undefined) {
+            anchorId = null;
+          } else if (
+            "id" in penultimate &&
+            typeof penultimate.id === "string" &&
+            penultimate.id.length > 0
+          ) {
+            anchorId = penultimate.id;
+          } else {
+            anchorId = undefined;
+          }
+          if (anchorId === undefined) {
+            console.warn(
+              `[audric-chat] edit-detected chatId=${chatId} but penultimate has no id (legacy schema?); skipping truncation`
+            );
+          } else {
+            const deleted = await truncateMessagesAfter({
+              chatId,
+              messageId: anchorId,
+            });
+            console.info(
+              `[audric-chat] edit-detected chatId=${chatId} anchorId=${anchorId ?? "null"} deleted=${deleted}`
+            );
+          }
+        }
+      }
+    } catch (err) {
+      console.warn(
+        "[audric-chat] edit-flow truncation failed (continuing):",
+        err instanceof Error ? err.message : String(err)
+      );
+    }
   }
 
   const sessionId = body.sessionId ?? `web-v2-${crypto.randomUUID()}`;
