@@ -75,6 +75,32 @@ const WRITE_TOOLS_WITH_RECEIPT = new Set([
   "harvest_rewards",
 ]);
 
+// [S.296 — 2026-05-24] Denial pill labels per write tool. Replaces
+// the generic `<Tool>` JSON dump that fired after Deny tap pre-fix
+// (founder smoke catch — "i see the json after pressing deny instead
+// of any card"). Pill is quiet + neutral by design: the user already
+// saw what they denied on the PermissionCard above, the pill just
+// confirms it's gone. Falls back to a derived label for any write
+// tool not in the map.
+const DENIAL_LABELS: Record<string, string> = {
+  borrow: "BORROW CANCELLED",
+  save_deposit: "DEPOSIT CANCELLED",
+  withdraw: "WITHDRAW CANCELLED",
+  send_transfer: "TRANSFER CANCELLED",
+  swap_execute: "SWAP CANCELLED",
+  repay_debt: "REPAY CANCELLED",
+  claim_rewards: "CLAIM CANCELLED",
+  harvest_rewards: "HARVEST CANCELLED",
+};
+
+// Exact string written by BOTH deny paths:
+//   - audric-chat-client.tsx PermissionCard `onDeny` (client click)
+//   - route.ts translateChunk `tool-output-denied` mapper (server-side
+//     denial event from engine-level guard rejections post-approval)
+// Keep this match string-exact — any other `errorText` is a real error
+// and should still hit the generic <Tool> fallback so the user sees it.
+const USER_DENIAL_ERROR_TEXT = "User denied the action.";
+
 function renderCard(
   toolName: string,
   output: unknown,
@@ -276,15 +302,31 @@ export function ToolResultRouter({
   // ariaLabel ("Submitting") signals to screen readers that the user
   // gesture has been accepted.
   //
-  // NOTE on `output-denied`: NOT added here despite the plan's
-  // suggestion — the host's translateChunk (route.ts:2485-2499)
-  // already maps `tool-output-denied` chunks → `tool-output-error`
-  // UIMessage parts with errorText "User denied the action." before
-  // they reach this router, so an `output-denied` branch here would
-  // be dead code. Denial UX today: generic <Tool> with the errorText
-  // surfaced (acceptable). If we want a richer denial card in the
-  // future, the cleaner change is at the translateChunk site, not
-  // here.
+  // [S.296 — 2026-05-24] Both deny paths (PermissionCard onDeny click
+  // in audric-chat-client.tsx + translateChunk `tool-output-denied`
+  // mapper in route.ts) emit `state: 'output-error'` with the exact
+  // errorText `USER_DENIAL_ERROR_TEXT`. Pre-fix this fell through to
+  // the generic <Tool> renderer below, which dumped `part.input` as
+  // raw JSON ("Parameters { amount: 5, asset: 'USDC' }") + "Error
+  // User denied the action." — confusing because the user just denied
+  // the same parameters they'd already seen on the PermissionCard.
+  // Quiet pill replaces the dump: the user saw the card, tapped Deny,
+  // and the pill just confirms the action is gone.
+  //
+  // Why string-exact (`===`) not `startsWith`: any other errorText is
+  // a real error (preflight rejection, runtime exception, etc.) and
+  // must still hit the generic fallback so the user sees the actual
+  // message.
+  if (
+    part.state === "output-error" &&
+    part.errorText === USER_DENIAL_ERROR_TEXT
+  ) {
+    const label =
+      DENIAL_LABELS[toolName] ??
+      `${toolName.toUpperCase().replace(/_/g, " ")} CANCELLED`;
+    return <ConfirmationChip glyph="×" label={label} tone="neutral" />;
+  }
+
   if (
     part.state === "input-streaming" ||
     part.state === "input-available" ||
