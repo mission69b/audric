@@ -281,25 +281,6 @@ const serverSchema = z.object({
    * Tunable without redeploy via Vercel env. See
    * `lib/identity/admission-control.ts` for the full rationale. */
   AUDRIC_MINT_CONCURRENCY_LIMIT: optionalString,
-
-  /** Feature flag for the stream-resume integration (SPEC_AUDRIC_STREAM_RESUME
-   * Phase 1, 2026-05-24). When `"true"`, POST `/api/chat` wires
-   * `consumeSseStream` to push the outgoing SSE stream into a
-   * `resumable-stream` producer keyed on `Chat.activeStreamId`, GET
-   * `/api/chat/[id]/stream` resumes any in-flight stream, and POST
-   * `/api/chat/[id]/stop` cancels an active stream.
-   *
-   * **Why OPTIONAL + flagged:** the feature requires `REDIS_URL` to be
-   * set + the `Chat.activeStreamId` Prisma column to be migrated. Local
-   * dev / preview deploys without Redis configured fall back to the
-   * v0.7e behavior (chat keeps working, no resume). Flip to `"true"` in
-   * production AFTER the Prisma migration ships and 24h preview soak
-   * is clean. Absence (or anything other than the exact string `"true"`)
-   * means the route ships unchanged.
-   *
-   * Removed once Phase 3 closes (production soak clean, flag becomes
-   * dead). */
-  AUDRIC_STREAM_RESUME_ENABLED: optionalString,
 });
 
 // ─── Client schema ────────────────────────────────────────────────────
@@ -352,7 +333,6 @@ const runtimeEnv = {
   CRON_SECRET: process.env.CRON_SECRET,
   AUDRIC_PARENT_NFT_PRIVATE_KEY: process.env.AUDRIC_PARENT_NFT_PRIVATE_KEY,
   AUDRIC_MINT_CONCURRENCY_LIMIT: process.env.AUDRIC_MINT_CONCURRENCY_LIMIT,
-  AUDRIC_STREAM_RESUME_ENABLED: process.env.AUDRIC_STREAM_RESUME_ENABLED,
   NEXT_PUBLIC_GOOGLE_CLIENT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
   NEXT_PUBLIC_ENOKI_API_KEY: process.env.NEXT_PUBLIC_ENOKI_API_KEY,
   NEXT_PUBLIC_SUI_NETWORK: process.env.NEXT_PUBLIC_SUI_NETWORK,

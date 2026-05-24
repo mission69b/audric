@@ -5,7 +5,7 @@
   "description": "Audric — web app for audric.ai. AI agent for money on Sui (chat + Pay receipt + Store profile + Settings).",
   "scripts": {
     "dev": "next dev --turbo --port 3001",
-    "build": "next build",
+    "build": "prisma migrate deploy && next build",
     "start": "next start --port 3001",
     "check": "ultracite check",
     "fix": "ultracite fix",

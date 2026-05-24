@@ -492,6 +492,7 @@ function AudricChatPanel({
     sendMessage,
     status,
     error,
+    stop,
     addToolApprovalResponse,
     addToolOutput,
   } = useChat({
@@ -503,12 +504,56 @@ function AudricChatPanel({
     id: effectiveChatId,
     messages: initialMessages,
     transport,
+    // [SPEC_AUDRIC_STREAM_RESUME Phase 2 — 2026-05-24] Enable stream
+    // resume on mount. The hook fires GET to
+    // `${api}/${id}/stream` (default `/api/chat/[id]/stream` — matches
+    // our route) and, if the server returns 200 SSE, reconnects to a
+    // live in-flight stream. 204 means no active stream → no-op. Safe
+    // for new-chat mounts too: the route's ownership-gated query
+    // returns 204 for chats that don't exist yet.
+    resume: true,
     // Auto-fire the next turn once a tool-call has been answered
     // (output OR approval response). Without this the user would have
     // to type a follow-up message to get the LLM's narration of the
     // save result. AI SDK ships the canonical predicate.
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
   });
+
+  // [SPEC_AUDRIC_STREAM_RESUME Phase 2 — 2026-05-24] Explicit-stop
+  // handler. In a resumable-stream setup, `useChat.stop()` alone is a
+  // DISCONNECT signal — it closes the local SSE but leaves the
+  // server-side producer running until natural completion. To
+  // actually stop the conversation, we also fire POST
+  // `/api/chat/[id]/stop` which clears `Chat.activeStreamId` so the
+  // next mount's resume probe returns 204 (no reconnect attempted)
+  // per the AI SDK doc's "no auto-reconnect after explicit stop"
+  // guidance. The server-side producer still runs to natural
+  // completion in Phase 2 (no AbortController plumbing yet); the
+  // natural-completion `saveMessages` persists the full message.
+  // User-visible behavior: stop visually halts the tab's streaming
+  // immediately and reload doesn't auto-resume — Phase 3 will close
+  // the producer-keeps-running gap once we wire the AbortController.
+  const handleStop = useCallback(() => {
+    stop();
+    // Fire-and-forget — failure is non-fatal (the stop button's main
+    // job is `stop()` above, which always succeeds locally).
+    fetch(`/api/chat/${effectiveChatId}/stop`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-zklogin-jwt": session.jwt,
+      },
+      // No body needed — server reads current activeStreamId from DB.
+      // Without `body.activeStreamId` the stale-stop guard is skipped,
+      // which is the conservative default per the route's JSDoc.
+      body: JSON.stringify({}),
+    }).catch((err) => {
+      console.error(
+        "[audric-chat] stop API call failed (non-fatal):",
+        err instanceof Error ? err.message : String(err)
+      );
+    });
+  }, [stop, effectiveChatId, session.jwt]);
 
   // [v0.7e Persistent Chats Phase 5 / S.247] Promote a new chat to a
   // permalink URL once the first message has landed. Uses
@@ -596,6 +641,7 @@ function AudricChatPanel({
   }, [status, prevStatus, refreshHistory, effectiveChatId]);
 
   const canSend = status === "ready" && input.trim().length > 0;
+  const isStreaming = status === "streaming" || status === "submitted";
 
   // [Phase 5c] AI SDK v6 status === 'streaming' marks the in-flight turn.
   // Streaming reasoning parts ONLY appear in the last assistant message,
@@ -675,17 +721,38 @@ function AudricChatPanel({
         <input
           className="flex-1 rounded-2xl border border-border/30 bg-card/70 px-4 py-3 text-sm shadow-[var(--shadow-composer)] outline-none transition-shadow duration-300 focus-visible:shadow-[var(--shadow-composer-focus)]"
           data-testid="audric-composer-input"
+          disabled={isStreaming}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Ask anything…"
           value={input}
         />
-        <button
-          className="rounded-2xl bg-foreground px-5 py-3 font-medium text-background text-sm transition hover:bg-foreground/90 disabled:opacity-40"
-          disabled={!canSend}
-          type="submit"
-        >
-          Send
-        </button>
+        {/* [SPEC_AUDRIC_STREAM_RESUME Phase 2 — 2026-05-24] Button
+            toggles between Send (when idle, `type="submit"` fires the
+            form's sendMessage path) and Stop (when streaming,
+            `type="button"` fires `handleStop` which calls
+            `useChat.stop()` + POST /api/chat/[id]/stop). Pre-Phase 2
+            this was a pure `disabled={!canSend}` submit button with no
+            stop affordance — clicking during streaming did nothing. */}
+        {isStreaming ? (
+          <button
+            aria-label="Stop"
+            className="rounded-2xl bg-foreground px-5 py-3 font-medium text-background text-sm transition hover:bg-foreground/90"
+            data-testid="audric-composer-stop"
+            onClick={handleStop}
+            type="button"
+          >
+            Stop
+          </button>
+        ) : (
+          <button
+            className="rounded-2xl bg-foreground px-5 py-3 font-medium text-background text-sm transition hover:bg-foreground/90 disabled:opacity-40"
+            data-testid="audric-composer-send"
+            disabled={!canSend}
+            type="submit"
+          >
+            Send
+          </button>
+        )}
       </form>
       <ChipBar
         hidden={status === "streaming" || status === "submitted"}

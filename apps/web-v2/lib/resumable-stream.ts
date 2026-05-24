@@ -1,5 +1,5 @@
 /**
- * # Resumable-stream context — SPEC_AUDRIC_STREAM_RESUME Phase 1
+ * # Resumable-stream context — SPEC_AUDRIC_STREAM_RESUME
  *
  * Singleton `ResumableStreamContext` backed by the `resumable-stream`
  * package (https://www.npmjs.com/package/resumable-stream) and the same
@@ -8,15 +8,11 @@
  * ## Why a dedicated module
  *
  * Three call sites consume the context:
- *   - POST `/api/chat`     — `createNewResumableStream` inside `consumeSseStream`
+ *   - POST `/api/chat`             — `createNewResumableStream` inside `consumeSseStream`
  *   - GET  `/api/chat/[id]/stream` — `resumeExistingStream`
- *   - POST `/api/chat/[id]/stop`   — close stream (via the underlying
- *                                    client; library has no explicit cancel,
- *                                    so we set the chat's activeStreamId to
- *                                    null and the producer self-completes
- *                                    when the LLM stream naturally finishes
- *                                    or the abort signal we keep on hand
- *                                    fires)
+ *   - POST `/api/chat/[id]/stop`   — clears `Chat.activeStreamId`; producer
+ *                                    self-completes when the LLM stream
+ *                                    naturally finishes
  *
  * Centralising the factory keeps the env-gate convention honest (no raw
  * `process.env.REDIS_URL` reads — the package's default reads
@@ -31,17 +27,23 @@
  * The `resumable-stream` library's default factory creates two clients
  * already; we mirror that, just routed through the env gate.
  *
- * Both clients lazy-connect on first use and degrade open: if connection
- * fails or `env.REDIS_URL` is absent, `getResumableStreamContext()`
- * returns `null` and callers fall back to the v0.7e behavior (chat keeps
- * working, no resume). This matches the same posture as `lib/ratelimit.ts`.
+ * ## Degrade-open posture (no feature flag needed)
  *
- * ## Feature flag
+ * Both clients lazy-connect on first use. If `env.REDIS_URL` is unset OR
+ * init throws, `getResumableStreamContext()` returns `null` and the
+ * chat route falls back to the v0.7e behavior (chat keeps working, no
+ * resume). This matches `lib/ratelimit.ts`'s posture and means the
+ * feature gracefully self-disables in any environment without Redis
+ * (local dev without docker, preview deploys without Upstash, etc.)
+ * without needing a separate kill-switch env var. Earlier drafts had a
+ * dedicated `AUDRIC_STREAM_RESUME_ENABLED` flag; dropped because the
+ * `REDIS_URL` presence + `Chat.activeStreamId` migration are already
+ * the natural gates and a third gate added complexity without
+ * preventing any failure mode.
  *
- * `env.AUDRIC_STREAM_RESUME_ENABLED === "true"` is required for any of
- * this to wire — when absent, `getResumableStreamContext()` returns
- * `null` even if Redis is configured. Lets us ship the code in production
- * without enabling the feature until the migration has soaked.
+ * The `Chat.activeStreamId` Prisma column is the second natural gate:
+ * the `prisma migrate deploy` step in the build script ensures the
+ * column exists in every environment before this code runs against it.
  */
 
 import "server-only";
@@ -59,8 +61,8 @@ let context: ResumableStreamContext | null = null;
 let initAttempted = false;
 
 /**
- * Returns the singleton resumable-stream context, or `null` if the
- * feature is disabled (flag off, REDIS_URL absent, or init failed).
+ * Returns the singleton resumable-stream context, or `null` if Redis is
+ * unconfigured or init failed.
  *
  * Callers MUST handle the null case — when null, the chat route should
  * skip the `consumeSseStream` wiring entirely, and the GET / stop
@@ -71,10 +73,6 @@ export function getResumableStreamContext(): ResumableStreamContext | null {
     return context;
   }
   initAttempted = true;
-
-  if (env.AUDRIC_STREAM_RESUME_ENABLED !== "true") {
-    return null;
-  }
 
   if (!env.REDIS_URL) {
     return null;
@@ -91,11 +89,10 @@ export function getResumableStreamContext(): ResumableStreamContext | null {
       console.error("[resumable-stream] subscriber error:", err);
     });
 
-    // Lazy connect — both clients fire-and-forget; if either fails the
-    // first operation rejects and the caller surfaces it. The
-    // resumable-stream library calls `.connect()` itself when it needs
-    // either client (see node_modules/resumable-stream/dist/runtime.js),
-    // so we don't need to await here.
+    // Lazy connect — the resumable-stream library calls `.connect()`
+    // itself when it needs either client (see
+    // node_modules/resumable-stream/dist/runtime.js), so we don't need
+    // to await here.
     context = createResumableStreamContext({
       waitUntil: after,
       publisher,
