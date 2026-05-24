@@ -1,5 +1,5 @@
 /**
- * # POST /api/chat/[id]/stop — SPEC_AUDRIC_STREAM_RESUME Phase 1
+ * # POST /api/chat/[id]/stop — SPEC_AUDRIC_STREAM_RESUME Phase 1 + 3
  *
  * Explicit-stop endpoint for the chat shell's stop button.
  *
@@ -16,22 +16,19 @@
  *      started — the AI SDK doc emphasises this race).
  *   2. Clears `Chat.activeStreamId` so subsequent reconnect attempts
  *      get 204 instead of replaying a stopped stream.
+ *   3. **Phase 3:** signals the producer instance to abort the in-flight
+ *      `audricAgent.stream({ abortSignal })` call via cross-instance
+ *      Redis pub/sub (see `lib/stream-abort.ts`). The producer's
+ *      `AbortController.abort()` halts the LLM call AND any chained
+ *      tool execution, stopping Anthropic token spend mid-turn.
  *
- * ## What this DOES NOT do (Phase 1 honest scope)
+ * ## What this DOES NOT do (still — Phase 3 honest scope)
  *
- * - **Doesn't kill the underlying LLM call.** `resumable-stream` doesn't
- *   expose a producer-side cancel API; the AI SDK `Experimental_Agent`
- *   call would need an `AbortController.abort()` to actually stop. That
- *   requires a host-side `Map<streamId, AbortController>` plumbed
- *   through `streamText`, plus cross-Vercel-instance signaling (Redis
- *   pub/sub for distributed abort) — Phase 2 / Phase 3 work, not
- *   Phase 1. Practical impact today: the LLM call runs to natural
- *   completion (~1-300s depending on tool chain). User-visible
- *   behavior: stop visually halts the tab's local SSE consumption
- *   (Phase 2 client-side wiring), and `activeStreamId` clears so a
- *   reload doesn't auto-resume, but `Chat.messages` ends up with the
- *   FULL natural-completion message after `onFinish` fires its
- *   `saveMessages(...)` call.
+ * - **Doesn't kill an `Experimental_Agent` call that's already past
+ *   the final step.** If the LLM has already streamed its last token
+ *   before stop arrives, the abort is a no-op (the natural completion
+ *   already fired). User-visible: tap stop after the message visibly
+ *   completes → nothing to cancel. Correct behavior.
  * - **Doesn't persist a partial assistant snapshot.** Earlier draft
  *   accepted a `body.assistantMessage` snapshot; removed in self-audit
  *   because (a) `Message.id` is globally unique with no compound FK
@@ -73,6 +70,7 @@
 
 import { getCurrentUser } from "@/lib/audric-auth";
 import { prisma } from "@/lib/prisma";
+import { publishAbort } from "@/lib/stream-abort";
 
 type StopRequest = {
   activeStreamId?: string | null;
@@ -156,6 +154,31 @@ export async function POST(
   // exists for the POST /api/chat onFinish path where the race isn't
   // possible (only one writer per chatId during the natural completion
   // window).
+
+  // [SPEC_AUDRIC_STREAM_RESUME Phase 3 — 2026-05-24] Fan out the abort
+  // signal to whichever Vercel instance is running the producer.
+  // `publishAbort` returns the receiver count (0 if no producer is
+  // subscribed — common case when the stream already completed and
+  // we're racing the onFinish handler; harmless). Logged for the
+  // `stop_explicit_count` telemetry slot in the SPEC.
+  //
+  // Fire-and-forget — the response can return before the publish
+  // round-trips. The DB clear above is the source of truth for "stop
+  // happened"; the abort signal is best-effort cost optimisation
+  // (LLM token spend stops faster on success but the chat is
+  // already in a correct end state without it).
+  publishAbort(currentActiveStreamId)
+    .then((receivers) => {
+      console.info(
+        `[stream-abort] stop_explicit chatId=${chatId} streamId=${currentActiveStreamId} receivers=${receivers}`
+      );
+    })
+    .catch((err: unknown) => {
+      console.error(
+        `[stream-abort] publishAbort failed chatId=${chatId} (non-fatal):`,
+        err instanceof Error ? err.message : String(err)
+      );
+    });
 
   return Response.json({ success: true });
 }

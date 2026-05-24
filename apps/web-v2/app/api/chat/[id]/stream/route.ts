@@ -64,6 +64,17 @@ export async function GET(
     return new Response(null, { status: 204 });
   }
 
+  // [SPEC_AUDRIC_STREAM_RESUME Phase 3 telemetry — 2026-05-24] Every
+  // call to this route is a `resume_attempt`. We log it before the
+  // DB read so the count includes lookups that fall through to 204
+  // (the bulk of traffic — mount on a chat with no active stream).
+  // Production log aggregation can count these to derive
+  // `resume_attempt_count` without per-line parsing of the success log
+  // (which has more context but is rarer).
+  console.info(
+    `[stream-resume] resume_attempt chatId=${chatId} userSuiAddress=${session.user.id}`
+  );
+
   const activeStreamId = await getActiveStreamId({
     chatId,
     userSuiAddress: session.user.id,
@@ -81,6 +92,14 @@ export async function GET(
       // renders the persisted messages.
       return new Response(null, { status: 204 });
     }
+    // [SPEC_AUDRIC_STREAM_RESUME Phase 3 telemetry] Successful resume
+    // — producer was alive AND the stream is reconnected. This is the
+    // load-bearing metric for the SPEC: every emission of this log
+    // proves the feature did its job for that user (page reload
+    // mid-stream → live continuation).
+    console.info(
+      `[stream-resume] resume_success chatId=${chatId} streamId=${activeStreamId}`
+    );
     return new Response(stream, { headers: UI_MESSAGE_STREAM_HEADERS });
   } catch (err) {
     console.error(

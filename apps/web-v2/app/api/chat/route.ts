@@ -199,6 +199,7 @@ import { getPortfolio, prewarmPortfolio } from "@/lib/portfolio";
 import { Prisma, prisma } from "@/lib/prisma";
 import { checkIpRateLimit } from "@/lib/ratelimit";
 import { getResumableStreamContext } from "@/lib/resumable-stream";
+import { subscribeToAbort } from "@/lib/stream-abort";
 import { getSuiRpcUrl } from "@/lib/sui-rpc";
 
 // [S.212 — 2026-05-21] Bumped from 60s to 300s to match the legacy
@@ -720,6 +721,16 @@ export async function POST(request: Request) {
   // (no guards, no contacts, no callbacks); Phase 3+ writes pass
   // permission preset + onAutoExecuted + postWriteRefresh through this.
   const abortController = new AbortController();
+
+  // [SPEC_AUDRIC_STREAM_RESUME Phase 3 — 2026-05-24] Holds the
+  // cross-instance abort subscription cleanup function once
+  // `consumeSseStream` registers it. `onFinish` invokes it on natural
+  // completion so the dispatch table in `lib/stream-abort.ts` doesn't
+  // hold a stale reference to a freed `AbortController`. Shared across
+  // the `createUIMessageStream` (onFinish) + `createUIMessageStreamResponse`
+  // (consumeSseStream) closure boundaries by virtue of being declared
+  // in the POST handler scope that contains both.
+  let activeAbortCleanup: (() => void) | null = null;
   // [Phase 6.5 / SPEC_V07C_PHASE_6_5_CHAT_PARITY A.1 / S.198 — 2026-05-20]
   // Thread `AUDRIC_INTERNAL_API_URL` through `ToolContext.env` so the
   // 7 engine read tools that hit Audric's canonical API surface resolve
@@ -1640,7 +1651,19 @@ export async function POST(request: Request) {
   }
 
   // 10. Stream the agent and translate AI SDK chunks → UIMessage parts.
-  const result = await audricAgent.stream({ messages: aiSdkMessages });
+  // [SPEC_AUDRIC_STREAM_RESUME Phase 3 — 2026-05-24] Thread the existing
+  // `abortController.signal` (created at line 722 for ToolContext, never
+  // fired pre-Phase 3) into `agent.stream`. When the stop route fires
+  // `abortController.abort()` (via `lib/stream-abort.ts` cross-instance
+  // pub/sub), this cancels the in-flight LLM call + any chained
+  // step-N calls, stopping Anthropic token spend mid-turn. Pre-Phase 3
+  // the controller existed but was never aborted; this single new
+  // option turns Stop from "client-only disconnect" into "genuine
+  // cancel" end-to-end.
+  const result = await audricAgent.stream({
+    messages: aiSdkMessages,
+    abortSignal: abortController.signal,
+  });
 
   // [v0.7c Phase 6 — B6 fix (2026-05-20)] Mirror AI SDK's canonical
   // `getResponseUIMessageId` (ai@6.0.185 L5133-5142): on resume turns
@@ -2068,6 +2091,27 @@ export async function POST(request: Request) {
           );
         })
       );
+
+      // [SPEC_AUDRIC_STREAM_RESUME Phase 3 — 2026-05-24] Tear down the
+      // cross-instance abort subscription. If the stream completed
+      // naturally (the common case), the handler in `lib/stream-abort.ts`
+      // would never fire — but leaving it in the dispatch table is a
+      // slow memory leak (handler holds a reference to the freed
+      // `AbortController`). Cleanup is synchronous (Map.delete), so no
+      // waitUntil needed.
+      //
+      // Also fires `producer_completed_after_disconnect` telemetry:
+      // if the abort subscription was registered (cleanup is non-null)
+      // AND we got here, the producer completed naturally — that's
+      // the SPEC's "win metric" (proves resume infrastructure is
+      // doing its job of keeping the producer alive).
+      if (activeAbortCleanup) {
+        activeAbortCleanup();
+        activeAbortCleanup = null;
+        console.info(
+          `[stream-resume] producer_completed_after_disconnect=ok chatId=${chatId}`
+        );
+      }
     },
   });
 
@@ -2123,6 +2167,30 @@ export async function POST(request: Request) {
           activeStreamId: streamId,
           userSuiAddress: walletAddress,
         });
+
+        // [SPEC_AUDRIC_STREAM_RESUME Phase 3 — 2026-05-24] Register the
+        // abort handler AFTER the resumable-stream sentinel + DB write
+        // both land. Order matters: by the time a stop request can
+        // resolve `activeStreamId` from the DB, both the Redis sentinel
+        // and this dispatch-table entry exist on this instance. If the
+        // stop request lands on a DIFFERENT instance, the publish via
+        // Redis still fans out to this instance's pattern subscription
+        // (see `lib/stream-abort.ts` for the full pSubscribe model).
+        activeAbortCleanup = await subscribeToAbort(streamId, () => {
+          console.info(
+            `[stream-abort] aborting streamId=${streamId} chatId=${chatId}`
+          );
+          abortController.abort();
+        });
+
+        // [SPEC_AUDRIC_STREAM_RESUME Phase 3 telemetry] Definitive
+        // proof that consumeSseStream fires + the streamId is committed.
+        // Without this log we can't distinguish "resume route returns
+        // 204 because turn completed" from "consumeSseStream never
+        // fired so activeStreamId was never set" in production logs.
+        console.info(
+          `[consumeSseStream] streamId=${streamId} chatId=${chatId}`
+        );
       } catch (err) {
         // Either write failing means the user can't resume (degraded
         // to v0.7e baseline behavior); the chat itself still works for
