@@ -22,11 +22,14 @@
  *    PositionSummary; `null` means ∞ / no debt).
  *  - `supplied` / `borrowed` — total savings + borrows in USD.
  *  - `liquidationThreshold` — back-derived from
- *    `(maxBorrow × MIN_HF_DIVISOR) / supplied`. The audric
- *    `fetchPositions` adapter applies a 1.5 safety divisor on
- *    `maxBorrow` (matches the chip-flow + engine's
- *    `maxBorrowAmount`), so multiplying back recovers the raw LT.
- *    Skipped when `supplied === 0` (no LT to derive).
+ *    `(maxBorrow × MIN_HF_DIVISOR + borrowed) / supplied`. The audric
+ *    `fetchPositions` adapter computes
+ *    `maxBorrow = (supplied × LT − borrowed) / 1.5`, so inverting
+ *    gives `LT = (1.5 × maxBorrow + borrowed) / supplied`. The
+ *    `+ borrowed` term is load-bearing: when the user already has
+ *    debt, dropping it produces an LT that's `borrowed/supplied`
+ *    too low, making projected HF read worse than reality. Skipped
+ *    when `supplied === 0` (no LT to derive).
  *  - `borrowApyByAsset` — per-asset borrow APY in basis points
  *    sourced from `positions.borrowsDetail`. **Only populated for
  *    assets the user currently borrows.** Fresh "borrow USDC for the
@@ -81,6 +84,47 @@ export interface AudricLiveData {
 }
 
 /**
+ * Back-derive the supply-weighted liquidation threshold from the
+ * audric `fetchPositions` adapter's reported `maxBorrow`.
+ *
+ * The audric adapter computes (lib/navi-positions.ts L151-153):
+ *
+ *   maxBorrow_returned = (Σ_i s_i × LT_i − Σ_i b_i) / 1.5
+ *
+ * Solving for the supply-weighted LT:
+ *
+ *   weighted_LT = (1.5 × maxBorrow_returned + Σ_i b_i) / Σ_i s_i
+ *
+ * The `+ borrowed` term is **load-bearing**. Without it, an
+ * already-borrowing user sees a derived LT that is `borrowed /
+ * supplied` LOWER than reality, and projected HF reads proportionally
+ * worse — making safe writes look like near-liquidation in the
+ * PermissionCard preview.
+ *
+ * Returns `undefined` when `supplied === 0` (no collateral → no LT
+ * to derive → HF projection isn't meaningful).
+ *
+ * Exported for unit testing — `buildAudricLiveData` is the only
+ * runtime caller.
+ */
+export function deriveLiquidationThreshold(input: {
+  /** From `pos.maxBorrow` — already divided by 1.5 by the adapter. */
+  maxBorrow: number;
+  /** From `pos.savings` — total supplied USD across NAVI positions. */
+  supplied: number;
+  /** From `pos.borrows` — total borrowed USD across NAVI positions. */
+  borrowed: number;
+}): number | undefined {
+  if (!(input.supplied > 0)) {
+    return;
+  }
+  return (
+    (input.maxBorrow * MIN_HEALTH_FACTOR_DIVISOR + input.borrowed) /
+    input.supplied
+  );
+}
+
+/**
  * Build the per-turn live-data snapshot. Reads from the canonical
  * `getPortfolio(walletAddress)` cache — guaranteed warm because
  * `route.ts` `prewarmPortfolio()` fires before this is called.
@@ -97,10 +141,11 @@ export async function buildAudricLiveData(
     const p = await getPortfolio(walletAddress);
     const pos = p.positions;
 
-    const liquidationThreshold =
-      pos.savings > 0
-        ? (pos.maxBorrow * MIN_HEALTH_FACTOR_DIVISOR) / pos.savings
-        : undefined;
+    const liquidationThreshold = deriveLiquidationThreshold({
+      maxBorrow: pos.maxBorrow,
+      supplied: pos.savings,
+      borrowed: pos.borrows,
+    });
 
     const borrowApyByAsset = new Map<string, number>();
     for (const b of pos.borrowsDetail) {

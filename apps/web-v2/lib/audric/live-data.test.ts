@@ -21,6 +21,7 @@ import { describe, expect, it } from "vitest";
 import {
   type AudricLiveData,
   computeMetadataEnrichment,
+  deriveLiquidationThreshold,
   projectHF,
 } from "./live-data";
 
@@ -36,6 +37,84 @@ const baseLiveData: AudricLiveData = {
     ["USDSUI", 612],
   ]),
 };
+
+describe("deriveLiquidationThreshold (self-audit regression)", () => {
+  // The audric adapter computes:
+  //   maxBorrow_returned = (supplied × LT − borrowed) / 1.5
+  // We back-derive:
+  //   LT = (1.5 × maxBorrow + borrowed) / supplied
+  //
+  // The original P5.6 implementation DROPPED the `+ borrowed` term,
+  // producing a derived LT that was `borrowed / supplied` too LOW.
+  // This regression suite locks in the fix.
+
+  it("no debt → matches the simpler form (sanity check)", () => {
+    // supplied=$1000, borrowed=$0, real LT=0.75
+    //   adapter maxBorrow = (1000 × 0.75 − 0) / 1.5 = 500
+    //   derived LT = (1.5 × 500 + 0) / 1000 = 0.75 ✓
+    expect(
+      deriveLiquidationThreshold({
+        maxBorrow: 500,
+        supplied: 1000,
+        borrowed: 0,
+      })
+    ).toBeCloseTo(0.75);
+  });
+
+  it("with debt → recovers real LT (the bug case)", () => {
+    // supplied=$1000, borrowed=$300, real LT=0.75
+    //   adapter maxBorrow = (1000 × 0.75 − 300) / 1.5 = 300
+    //   PRE-FIX derived LT = (1.5 × 300) / 1000 = 0.45 ❌
+    //   POST-FIX derived LT = (1.5 × 300 + 300) / 1000 = 0.75 ✓
+    expect(
+      deriveLiquidationThreshold({
+        maxBorrow: 300,
+        supplied: 1000,
+        borrowed: 300,
+      })
+    ).toBeCloseTo(0.75);
+  });
+
+  it("partially borrowed → recovers real LT", () => {
+    // supplied=$1000, borrowed=$500, real LT=0.80
+    //   adapter maxBorrow = (1000 × 0.80 − 500) / 1.5 = 200
+    //   derived LT = (1.5 × 200 + 500) / 1000 = 0.80 ✓
+    expect(
+      deriveLiquidationThreshold({
+        maxBorrow: 200,
+        supplied: 1000,
+        borrowed: 500,
+      })
+    ).toBeCloseTo(0.8);
+  });
+
+  it("supplied === 0 → undefined (no LT to derive)", () => {
+    expect(
+      deriveLiquidationThreshold({ maxBorrow: 0, supplied: 0, borrowed: 0 })
+    ).toBeUndefined();
+  });
+
+  it("composes cleanly with projectHF — full pipeline produces correct projection", () => {
+    // Sanity check: end-to-end from adapter output → projected HF.
+    // supplied=$1000, borrowed=$300, real LT=0.75, real current HF=2.5.
+    // User wants to borrow $100.
+    //   real projected HF = (1000 × 0.75) / 400 = 1.875
+    //
+    // PRE-FIX (buggy LT=0.45): projected HF = (1000 × 0.45) / 400 = 1.125
+    //   → card would show 2.50 → 1.13 (looks scary, hits warning tier)
+    // POST-FIX (correct LT=0.75): projected HF = 1.875
+    //   → card shows 2.50 → 1.88 (correctly in safe tier)
+    const adapterMaxBorrow = 300; // adapter's reported maxBorrow
+    const lt = deriveLiquidationThreshold({
+      maxBorrow: adapterMaxBorrow,
+      supplied: 1000,
+      borrowed: 300,
+    });
+    expect(lt).toBeDefined();
+    const projected = projectHF("borrow", 100, 1000, 300, lt);
+    expect(projected).toBeCloseTo(1.875);
+  });
+});
 
 describe("projectHF", () => {
   it("borrow: increases borrowed → lowers HF", () => {
