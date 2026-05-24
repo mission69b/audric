@@ -37,6 +37,7 @@ import {
   RetryError,
   ToolCallNotFoundForApprovalError,
 } from "ai";
+import { redactAddressesInText } from "./log-redact";
 
 /**
  * Stable identifiers for classified errors. Used for telemetry +
@@ -192,7 +193,18 @@ export function classifyStreamError(error: unknown): ClassifiedStreamError {
   }
 
   // ─── Heuristic fallback (raw strings / engine error chunks) ─────
-  const raw = coerceToString(error);
+  // [P6.3 self-audit fix — 2026-05-24] Redact full 32-byte Sui
+  // addresses BEFORE running the heuristic match. The matched
+  // branches return hardcoded English so PII can't leak through them,
+  // but the `unknown` classification returns `raw` verbatim — without
+  // this redact step, an error message like "Save failed for
+  // 0x<64-hex>" would emit the full wallet address to the wire
+  // (banner-visible, screenshot-able). The engine-chunk path through
+  // `safeErrorText` already redacts before calling the sanitizer
+  // (translateChunk case "error" → safeErrorText →
+  // redactAddressesInText → sanitizeStreamErrorMessage); this brings
+  // the new typed-class seam into parity.
+  const raw = redactAddressesInText(coerceToString(error));
   return classifyByHeuristic(raw);
 }
 

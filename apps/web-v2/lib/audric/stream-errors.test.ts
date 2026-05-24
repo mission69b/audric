@@ -262,8 +262,129 @@ describe("classifyByHeuristic — exported directly for engine-chunk path", () =
   it("returns both message + classification (full ClassifiedStreamError shape)", () => {
     const result = classifyByHeuristic("ECONNRESET");
     expect(result).toEqual({
-      message: expect.stringMatching(/couldn't reach/i),
       classification: "provider-network",
+      message: expect.stringMatching(/couldn't reach/i),
     });
+  });
+});
+
+describe("classifyStreamError — PII redaction (self-audit regression)", () => {
+  // [P6.3 self-audit fix — 2026-05-24] These tests pin the
+  // address-redaction behavior on the new typed-class seam. Pre-fix,
+  // the unknown-classification branch returned `raw` verbatim — a
+  // production error like `"Save failed for 0x<64-hex>"` would have
+  // emitted the full wallet address to the wire (banner-visible,
+  // screenshot-able). Matches the same protection the existing
+  // engine-chunk path (`safeErrorText`) provides via
+  // `redactAddressesInText`.
+  const FULL_ADDRESS =
+    "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
+
+  it("redacts a full 32-byte Sui address in an unknown-classification error message", () => {
+    const err = new Error(`Save failed for sender ${FULL_ADDRESS}`);
+    const result = classifyStreamError(err);
+    expect(result.classification).toBe("unknown");
+    expect(result.message).not.toContain(FULL_ADDRESS);
+    // Truncated form (e.g. "0x1234567890ab…7890abcdef") should appear instead.
+    expect(result.message).toMatch(/0x[a-f0-9]+…[a-f0-9]+/);
+  });
+
+  it("redacts addresses even when the error string starts with JSON-like braces", () => {
+    // Would normally trip the `provider-payload` heuristic; redaction
+    // happens BEFORE the heuristic match so even hardcoded-message
+    // paths don't get a chance to leak.
+    const err = new Error(`{"detail":"failed for ${FULL_ADDRESS}"}`);
+    const result = classifyStreamError(err);
+    expect(result.classification).toBe("provider-payload");
+    expect(result.message).not.toContain(FULL_ADDRESS);
+  });
+
+  it("does NOT redact short 0x prefixes (tx digests / package IDs stay readable)", () => {
+    // `redactAddressesInText` only matches full 64-hex addresses;
+    // shorter hex strings (tx digests, function selectors, package
+    // IDs in some contexts) stay readable for operational debugging.
+    const err = new Error("Tx digest 0xabcdef1234 failed");
+    const result = classifyStreamError(err);
+    expect(result.classification).toBe("unknown");
+    expect(result.message).toContain("0xabcdef1234");
+  });
+
+  it("preserves the existing wire UX for non-PII unknown errors", () => {
+    const err = new Error("Some plain unknown error");
+    const result = classifyStreamError(err);
+    expect(result.classification).toBe("unknown");
+    expect(result.message).toBe("Some plain unknown error");
+  });
+});
+
+describe("classifyStreamError — ToolExecutionError-like recursion", () => {
+  // [P6.3 self-audit fix — 2026-05-24] AI SDK doesn't publicly export
+  // `ToolExecutionError` in the version we depend on, so we use a
+  // structural marker (`error.name === "AI_ToolExecutionError"`) and
+  // recurse on `.cause`. These tests pin the recursion so a future
+  // refactor that breaks the unwrap is caught at CI time.
+
+  it("recurses on .cause when the wrapper has AI_ToolExecutionError name + cause", () => {
+    const cause = new APICallError({
+      message: "Too Many Requests",
+      url: "https://api.anthropic.com",
+      requestBodyValues: {},
+      statusCode: 429,
+    });
+    const wrapper = new Error("Tool execution failed");
+    wrapper.name = "AI_ToolExecutionError";
+    (wrapper as Error & { cause?: unknown }).cause = cause;
+    // The wrapper itself wouldn't classify as api-rate-limit; only
+    // recursing on cause exposes the typed-class signal.
+    expect(classifyStreamError(wrapper).classification).toBe("api-rate-limit");
+  });
+
+  it("recurses to heuristic when cause has no typed-class provenance", () => {
+    const wrapper = new Error("Tool execution failed");
+    wrapper.name = "AI_ToolExecutionError";
+    (wrapper as Error & { cause?: unknown }).cause = new Error(
+      "fetch failed: ECONNRESET"
+    );
+    expect(classifyStreamError(wrapper).classification).toBe(
+      "provider-network"
+    );
+  });
+
+  it("does NOT recurse when name doesn't match (avoids over-eager unwrap)", () => {
+    const cause = new APICallError({
+      message: "Too Many Requests",
+      url: "https://api.anthropic.com",
+      requestBodyValues: {},
+      statusCode: 429,
+    });
+    const wrapper = new Error("Generic wrapper, NOT a tool exec error");
+    // wrapper.name stays "Error" — recursion should NOT fire.
+    (wrapper as Error & { cause?: unknown }).cause = cause;
+    expect(classifyStreamError(wrapper).classification).toBe("unknown");
+  });
+});
+
+describe("classifyStreamError — null / undefined / non-Error edge cases", () => {
+  // [P6.3 self-audit fix — 2026-05-24] Pin the behavior for
+  // unusual input values so a future change to coerceToString or the
+  // typed-class checks doesn't silently change wire output.
+
+  it("classifies null as unknown with the literal 'null' message", () => {
+    const result = classifyStreamError(null);
+    expect(result.classification).toBe("unknown");
+    expect(result.message).toBe("null");
+  });
+
+  it("classifies undefined as unknown", () => {
+    const result = classifyStreamError(undefined);
+    expect(result.classification).toBe("unknown");
+    // JSON.stringify(undefined) === undefined → falls to "Unknown error"
+    expect(result.message).toBe("Unknown error");
+  });
+
+  it("classifies a number as unknown via JSON.stringify", () => {
+    const result = classifyStreamError(42);
+    expect(result.classification).toBe("unknown");
+    expect(result.message).toBe("42");
   });
 });
