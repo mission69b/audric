@@ -79,6 +79,20 @@ export interface PermissionCardModifiableField {
 }
 
 export interface PermissionCardProps {
+  /**
+   * [P5.6] Live borrow APY in basis points (e.g. `467` = 4.67%) sourced
+   * from `toolMetadata.borrowApyBps`. Lights up the APY row in the
+   * `borrow` / `repay_debt` preview bodies; `undefined` falls back to
+   * the "Variable rate — locked at execute time" disclaimer.
+   */
+  borrowApyBps?: number;
+  /**
+   * [P5.6] Current health factor BEFORE the pending write executes
+   * sourced from `toolMetadata.currentHF`. `number` = finite HF, `null`
+   * = ∞ (no debt), `undefined` = data unavailable (row hides entirely
+   * in preview bodies).
+   */
+  currentHF?: number | null;
   /** Free-form description sourced from `toolMetadata.description`. */
   description: string;
   /** Caller-controlled disable (e.g. "Approve" is in-flight). */
@@ -95,6 +109,13 @@ export interface PermissionCardProps {
   onApprove: (modifiedInput: Record<string, unknown>) => Promise<void> | void;
   /** Callback invoked when the user taps "Deny" or the deny-timer expires. */
   onDeny: () => Promise<void> | void;
+  /**
+   * [P5.6] Projected HF AFTER the pending write executes sourced from
+   * `toolMetadata.projectedHF`. Same semantics as `currentHF`. When
+   * paired with `currentHF`, the preview body renders "current →
+   * projected" so the user sees the HF impact before approving.
+   */
+  projectedHF?: number | null;
   toolName: string;
 }
 
@@ -254,6 +275,9 @@ export function PermissionCard(props: PermissionCardProps) {
     onApprove,
     onDeny,
     disabled,
+    borrowApyBps,
+    currentHF,
+    projectedHF,
   } = props;
 
   const label = TOOL_LABELS[toolName] ?? toolName.replace(/_/g, " ");
@@ -391,7 +415,15 @@ export function PermissionCard(props: PermissionCardProps) {
   // single-line `formatInput` summary otherwise. The body re-renders
   // when `modifiedInput` changes so the user sees their edits reflected
   // before approving (e.g. amount updates flow into the USD value).
-  const previewBody = renderPreviewBody(toolName, modifiedInput);
+  //
+  // [P5.6] HF/APY threaded into the preview-body options so the rich
+  // rows (HFRow current→projected, APYRow) light up automatically when
+  // metadata is available. Unavailable fields degrade row-by-row.
+  const previewBody = renderPreviewBody(toolName, modifiedInput, {
+    borrowApyBps,
+    currentHF,
+    projectedHF,
+  });
   const inputSummary =
     previewBody === null ? formatInput(modifiedInput, toolName) : null;
 

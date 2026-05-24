@@ -168,6 +168,11 @@ import {
   synthesizeAssistantToolMessage,
 } from "@/lib/audric/dispatch-intents";
 import { getFinancialContextBlock } from "@/lib/audric/financial-context";
+import {
+  type AudricLiveData,
+  buildAudricLiveData,
+  computeMetadataEnrichment,
+} from "@/lib/audric/live-data";
 import { redactAddressesInText, redactPII } from "@/lib/audric/log-redact";
 import { MemWalMemoryStore } from "@/lib/audric/memwal-memory-store";
 import { buildMemoryPrepareStep } from "@/lib/audric/memwal-prepare-step";
@@ -1751,6 +1756,13 @@ export async function POST(request: Request) {
   const messageId = selectResponseMessageId(body.messages, generateId);
   let turnCompleted = false;
 
+  // [SPEC_AI_SDK_HARDENING P5.6 — 2026-05-24] Live-data snapshot per
+  // turn — drives HF/APY enrichment on `tool-input-available` chunks
+  // for confirm-tier writes. Reads from the canonical `getPortfolio()`
+  // (already pre-warmed at L399); fail-soft via the helper's internal
+  // try/catch → returns `undefined` and consumers degrade.
+  const liveData = await buildAudricLiveData(walletAddress);
+
   const stream = createUIMessageStream({
     execute: async ({ writer }) => {
       writer.write({ type: "start", messageId });
@@ -1844,7 +1856,7 @@ export async function POST(request: Request) {
             continue;
           }
           if (chunk.type === "finish-step") {
-            bundleBuffer.flush(writer, messageId);
+            bundleBuffer.flush(writer, messageId, liveData);
             continue;
           }
 
@@ -1875,7 +1887,7 @@ export async function POST(request: Request) {
             continue;
           }
 
-          translateChunk(chunk, writer, messageId);
+          translateChunk(chunk, writer, messageId, liveData);
           if (chunk.type === "finish") {
             turnCompleted = true;
           }
@@ -1884,7 +1896,7 @@ export async function POST(request: Request) {
         // Defensive: flush any chunks still buffered if the stream
         // exits mid-step (error / abort). Without this, a partial
         // bundle would be lost from the UI.
-        bundleBuffer.flush(writer, messageId);
+        bundleBuffer.flush(writer, messageId, liveData);
         writer.write({ type: "text-end", id: messageId });
         writer.write({ type: "finish-step" });
         writer.write({ type: "finish" });
@@ -2502,7 +2514,11 @@ class BundleBuffer {
    * via `translateChunk` so the part state machine stays consistent
    * regardless of bundling.
    */
-  flush(writer: UIMessageStreamWriter, messageId: string): void {
+  flush(
+    writer: UIMessageStreamWriter,
+    messageId: string,
+    liveData?: AudricLiveData
+  ): void {
     if (this.toolCalls.length === 0) {
       // Nothing to flush. Approval requests can't arrive without a
       // prior tool-call, so this branch covers turns with no writes.
@@ -2599,10 +2615,10 @@ class BundleBuffer {
     // The state machine sees each part — only the client render
     // layer hides claimed parts via the marker's toolCallIds set.
     for (const c of this.toolCalls) {
-      translateChunk(c.chunk, writer, messageId);
+      translateChunk(c.chunk, writer, messageId, liveData);
     }
     for (const a of this.approvalRequests) {
-      translateChunk(a.chunk, writer, messageId);
+      translateChunk(a.chunk, writer, messageId, liveData);
     }
 
     // [P7.1] Emit synthetic input-available + output-error for
@@ -2612,7 +2628,7 @@ class BundleBuffer {
     // Skipping `tool-approval-request` keeps these parts out of the
     // user-gesture path (terminal error state, no client action).
     for (const c of overrunCalls) {
-      translateChunk(c.chunk, writer, messageId);
+      translateChunk(c.chunk, writer, messageId, liveData);
       writer.write({
         type: "tool-output-error",
         toolCallId: c.toolCallId,
@@ -2715,7 +2731,8 @@ function buildBundleMarker(
 function translateChunk(
   chunk: TextStreamPart<ToolSet>,
   writer: UIMessageStreamWriter,
-  messageId: string
+  messageId: string,
+  liveData?: AudricLiveData
 ): void {
   switch (chunk.type) {
     case "text-delta": {
@@ -2748,7 +2765,12 @@ function translateChunk(
       const policy = safeToolPolicy(chunk.toolName);
       const isConfirmTier = policy?.permissionLevel === "confirm";
       const audricMetadata = isConfirmTier
-        ? buildAudricToolMetadata(chunk.toolName, chunk.input, chunk.toolCallId)
+        ? buildAudricToolMetadata(
+            chunk.toolName,
+            chunk.input,
+            chunk.toolCallId,
+            liveData
+          )
         : undefined;
       writer.write({
         type: "tool-input-available",
@@ -3020,12 +3042,35 @@ type AudricToolMetadata = {
     asset?: string;
   }>;
   attemptId: string;
+  /**
+   * [SPEC_AI_SDK_HARDENING P5.6 — 2026-05-24] Live borrow APY in basis
+   * points (e.g. `467` = 4.67%). Populated for `borrow` / `repay_debt`
+   * when the user has an existing position in the targeted asset (so
+   * the rate is available from `getPortfolio().positions.borrowsDetail`).
+   * First-time borrowers see the "Variable rate" disclaimer instead.
+   */
+  borrowApyBps?: number;
+  /**
+   * [P5.6] Current health factor BEFORE the pending write executes.
+   * `number` = finite HF, `null` = ∞ (no debt = infinitely safe),
+   * undefined = data unavailable. Populated for `borrow` / `withdraw`
+   * / `save_deposit` / `repay_debt`.
+   */
+  currentHF?: number | null;
+  /**
+   * [P5.6] Projected HF AFTER the pending write executes. Same
+   * semantics as `currentHF`. `undefined` when projection isn't
+   * computable (input amount missing or `liquidationThreshold` can't
+   * be back-derived from `maxBorrow / supplied`).
+   */
+  projectedHF?: number | null;
 };
 
 function buildAudricToolMetadata(
   toolName: string,
   input: unknown,
-  toolCallId: string
+  toolCallId: string,
+  liveData?: AudricLiveData
 ): AudricToolMetadata | undefined {
   const description = describeAudricAction(toolName, input);
   if (!description) {
@@ -3039,10 +3084,14 @@ function buildAudricToolMetadata(
     kind: f.kind,
     ...(f.asset ? { asset: f.asset } : {}),
   }));
+  // [P5.6] HF + APY enrichment — degrades gracefully when liveData is
+  // absent (failed portfolio fetch) or the tool doesn't benefit.
+  const enrichment = computeMetadataEnrichment(toolName, input, liveData);
   return {
     description,
     modifiableFields,
     attemptId: toolCallId,
+    ...enrichment,
   };
 }
 

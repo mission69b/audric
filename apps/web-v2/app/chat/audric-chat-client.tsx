@@ -1315,6 +1315,8 @@ function PermissionForToolPart(props: PermissionForToolPartProps) {
 
   return (
     <PermissionCard
+      borrowApyBps={metadata.borrowApyBps}
+      currentHF={metadata.currentHF}
       description={metadata.description}
       input={(toolPart.input ?? {}) as Record<string, unknown>}
       modifiableFields={metadata.modifiableFields}
@@ -1375,6 +1377,7 @@ function PermissionForToolPart(props: PermissionForToolPartProps) {
           errorText: "User denied the action.",
         });
       }}
+      projectedHF={metadata.projectedHF}
       toolName={toolName}
     />
   );
@@ -1584,6 +1587,14 @@ function parseAudricMetadata(raw: unknown):
   | {
       description: string;
       modifiableFields: readonly PermissionCardModifiableField[];
+      // [SPEC_AI_SDK_HARDENING P5.6 — 2026-05-24] HF/APY enrichment
+      // fields stamped by the server's `buildAudricToolMetadata`. All
+      // three are independently optional so partial population (e.g.
+      // HF unavailable due to a degraded portfolio fetch) doesn't
+      // break consumers — preview bodies degrade row-by-row.
+      borrowApyBps?: number;
+      currentHF?: number | null;
+      projectedHF?: number | null;
     }
   | undefined {
   if (raw === null || typeof raw !== "object") {
@@ -1602,10 +1613,36 @@ function parseAudricMetadata(raw: unknown):
           typeof (f as Record<string, unknown>).kind === "string"
       )
     : [];
+  const borrowApyBps =
+    typeof obj.borrowApyBps === "number" && Number.isFinite(obj.borrowApyBps)
+      ? obj.borrowApyBps
+      : undefined;
+  const currentHF = parseHFField(obj.currentHF);
+  const projectedHF = parseHFField(obj.projectedHF);
   return {
     description: obj.description,
     modifiableFields: fields,
+    ...(borrowApyBps === undefined ? {} : { borrowApyBps }),
+    ...(currentHF === undefined ? {} : { currentHF }),
+    ...(projectedHF === undefined ? {} : { projectedHF }),
   };
+}
+
+/**
+ * HF semantics on the wire: `number` = finite HF, `null` = ∞ (no
+ * debt), absent = data unavailable. We distinguish "absent" from
+ * "null on the wire" so the preview body can render "→ ∞" when the
+ * projection lands at no-debt vs hiding the row entirely when the
+ * server couldn't compute.
+ */
+function parseHFField(raw: unknown): number | null | undefined {
+  if (raw === null) {
+    return null;
+  }
+  if (typeof raw === "number" && Number.isFinite(raw)) {
+    return raw;
+  }
+  return;
 }
 
 // ---------------------------------------------------------------------------
