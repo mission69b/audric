@@ -11,7 +11,7 @@ import {
   type UIMessage,
 } from "ai";
 import { Copy, Loader2, Pencil, RotateCw } from "lucide-react";
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useSWRConfig } from "swr";
 import { unstable_serialize } from "swr/infinite";
@@ -962,7 +962,17 @@ function AudricChatPanel({
             const isEditing = editingMessageId === m.id && m.role === "user";
 
             return (
-              <Fragment key={m.id}>
+              // [SPEC_AI_SDK_HARDENING P5.1-P5.4 hotfix — 2026-05-24]
+              // `group` MUST live on an ANCESTOR of the actions div for
+              // Tailwind's `group-hover:opacity-100` to fire. Prior to
+              // this hotfix the class was on the `<Message>` element
+              // (assistant only) — but the actions div is a SIBLING of
+              // Message, not a descendant, so the hover scope never
+              // resolved. Net: Copy / Edit / Vote / Regenerate were
+              // permanently `opacity-0` in prod. Wrapping the whole row
+              // (bubble + actions) in a `group` div fixes hover for
+              // BOTH user and assistant rows in one shot.
+              <div className="group flex flex-col" key={m.id}>
                 {/* [SPEC_AI_SDK_HARDENING P5.1 — 2026-05-24]
                     Edit mode: swap the bubble for an inline textarea
                     + Save/Cancel buttons. Same dark bubble surface so
@@ -1017,10 +1027,7 @@ function AudricChatPanel({
                       the bubble actually sits at the right of the chat
                       column — fixes the left-aligned user bubble bug. */
                   <Message
-                    className={cn(
-                      m.role === "user" && "items-end",
-                      m.role === "assistant" && "group"
-                    )}
+                    className={cn(m.role === "user" && "items-end")}
                     from={m.role}
                   >
                     <MessageContent
@@ -1162,7 +1169,18 @@ function AudricChatPanel({
                     textarea has clean focus. Hover-visible to keep
                     the timeline clean. */}
                 {!isEditing && !(isLast && isTurnStreaming) && (
-                  <div className="mt-1 flex items-center gap-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+                  // [P5.1-P5.4 hotfix] `justify-end` for user rows so the
+                  // action icons sit under the right-aligned bubble;
+                  // assistant rows default to left-aligned (under their
+                  // left-aligned bubble). Without this, user-row actions
+                  // floated to the left, visually disconnected from the
+                  // bubble they belong to.
+                  <div
+                    className={cn(
+                      "mt-1 flex items-center gap-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100",
+                      m.role === "user" && "justify-end"
+                    )}
+                  >
                     <MessageAction
                       label="Copy"
                       onClick={() => handleCopy(m)}
@@ -1199,7 +1217,7 @@ function AudricChatPanel({
                     )}
                   </div>
                 )}
-              </Fragment>
+              </div>
             );
           })}
           {/* [S.208 — 2026-05-20] Thinking shimmer — template-native
