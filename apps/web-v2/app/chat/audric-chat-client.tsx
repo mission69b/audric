@@ -1474,10 +1474,25 @@ function BundleForMarker(props: BundleForMarkerProps) {
         // 2. Build the SponsoredTxBundleStep[] payload for one
         // sponsored-tx round-trip. Bundle MVP uses LLM-emitted input
         // verbatim — per-step modifiable editing is deferred.
-        const bundleSteps: SponsoredTxBundleStep[] = steps.map((step) => ({
-          toolName: step.toolName as SponsoredTxBundleStep["toolName"],
-          input: step.input,
-        }));
+        //
+        // [P7.2 — 2026-05-25] Forward each step's `inputCoinFromStep`
+        // to the sponsored-tx layer. The marker carries it (mapped by
+        // `BundleForMarker.steps` below from `marker.steps[i]`).
+        // Without this passthrough the prepare-route would compose
+        // the bundle in wallet-mode, defeating chain-mode handoff for
+        // whitelisted pairs.
+        const bundleSteps: SponsoredTxBundleStep[] = steps.map((step, idx) => {
+          const chainRef = marker.steps[idx]?.inputCoinFromStep;
+          const cetusRoute = marker.steps[idx]?.cetusRoute;
+          return {
+            toolName: step.toolName as SponsoredTxBundleStep["toolName"],
+            input: step.input,
+            ...(typeof chainRef === "number"
+              ? { inputCoinFromStep: chainRef }
+              : {}),
+            ...(cetusRoute === undefined ? {} : { cetusRoute }),
+          };
+        });
 
         const writeStartMs = Date.now();
         let result: SponsoredTxResult;
@@ -1598,6 +1613,28 @@ function parseAudricBundleMarker(
         typeof (f as Record<string, unknown>).name === "string" &&
         typeof (f as Record<string, unknown>).kind === "string"
     );
+    // [P7.2 — 2026-05-25] Parse `inputCoinFromStep` defensively. Must be a
+    // non-negative integer; anything else is dropped (stale frame / future-
+    // schema marker). The downstream SDK re-validates with `CHAIN_MODE_INVALID`
+    // (forward-only `< i`) so a bad value here can't reach on-chain.
+    const inputCoinFromStep =
+      typeof step.inputCoinFromStep === "number" &&
+      Number.isInteger(step.inputCoinFromStep) &&
+      step.inputCoinFromStep >= 0
+        ? step.inputCoinFromStep
+        : undefined;
+    // [P7.3 — 2026-05-25] Pass `cetusRoute` through as opaque payload.
+    // The prepare-route Zod schema does the structural check, and the
+    // SDK's `deserializeCetusRoute` does the type-safe rehydration.
+    // Client just forwards it verbatim; bad payloads can't reach
+    // on-chain because the prepare-route rejects them or the SDK falls
+    // back to fresh `findSwapRoute()` on shape mismatch.
+    const cetusRoute =
+      step.cetusRoute !== null &&
+      typeof step.cetusRoute === "object" &&
+      "routerData" in (step.cetusRoute as Record<string, unknown>)
+        ? step.cetusRoute
+        : undefined;
     steps.push({
       toolCallId: step.toolCallId,
       approvalId: step.approvalId,
@@ -1605,6 +1642,8 @@ function parseAudricBundleMarker(
       input: step.input as Record<string, unknown>,
       description: step.description,
       modifiableFields,
+      ...(inputCoinFromStep === undefined ? {} : { inputCoinFromStep }),
+      ...(cetusRoute === undefined ? {} : { cetusRoute }),
     });
   }
   if (steps.length === 0) {

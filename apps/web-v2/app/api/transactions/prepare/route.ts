@@ -81,8 +81,10 @@ import {
   assertAllowedAsset,
   BORROW_FEE_BPS,
   composeTx,
+  deserializeCetusRoute,
   OVERLAY_FEE_RATE,
   SAVE_FEE_BPS,
+  type SerializedCetusRoute,
   SUPPORTED_ASSETS,
   type SupportedAsset,
   T2000_OVERLAY_FEE_WALLET,
@@ -225,6 +227,24 @@ const harvestSchema = z.object({
 // emitted the tool call, and `composeTx` itself throws on malformed inputs
 // (e.g. invalid recipient address, unknown asset). Mirroring single-write
 // schemas per-step would duplicate ~80 LoC of validation that fires nowhere.
+// [P7.3 — 2026-05-25] Serialized Cetus route shape. Loose structural
+// check — the SDK's `deserializeCetusRoute` does the type-safe
+// rehydration (BN amounts, Map packages). Anything that passes here
+// AND deserializes successfully gets threaded; anything that fails
+// either layer falls back to fresh `findSwapRoute()` (same correctness
+// as pre-P7.3, just +150-200ms per swap leg).
+const serializedCetusRouteSchema = z
+  .object({
+    routerData: z.unknown(),
+    amountIn: z.string(),
+    amountOut: z.string(),
+    byAmountIn: z.boolean(),
+    priceImpact: z.number(),
+    insufficientLiquidity: z.boolean(),
+    discoveredAt: z.number(),
+  })
+  .passthrough();
+
 const bundleStepSchema = z.object({
   toolName: z.enum([
     "save_deposit",
@@ -237,6 +257,18 @@ const bundleStepSchema = z.object({
     "harvest_rewards",
   ]),
   input: z.record(z.unknown()),
+  // [SPEC_AI_SDK_HARDENING P7.2 — 2026-05-25] Chain-mode coin-handoff
+  // index. Forward-only (`< stepIndex`). `composeTx` re-validates via
+  // `CHAIN_MODE_INVALID` so a bad value here can't reach on-chain;
+  // this schema accepts any non-negative integer and lets the SDK
+  // reject out-of-range references at compose time.
+  inputCoinFromStep: z.number().int().nonnegative().optional(),
+  // [SPEC_AI_SDK_HARDENING P7.3 — 2026-05-25] Serialized Cetus route
+  // for `swap_execute` steps. Deserialized + spread into
+  // `step.input.precomputedRoute` in `buildBundleSteps`. Other
+  // toolNames carrying this field is harmless — `buildBundleSteps`
+  // only spreads it for `swap_execute`.
+  cetusRoute: serializedCetusRouteSchema.optional(),
 });
 const bundleSchema = z.object({
   type: z.literal("bundle"),
@@ -427,10 +459,46 @@ function bundleNeedsOverlayFee(body: BundleBody): boolean {
  * `composeTx` step typing take over from here.
  */
 function buildBundleSteps(body: BundleBody): WriteStep[] {
-  return body.steps.map((s) => ({
-    toolName: s.toolName,
-    input: s.input,
-  })) as WriteStep[];
+  // [P7.2 — 2026-05-25] Forward `inputCoinFromStep` to the SDK's
+  // `WriteStep` so `composeTx`'s orchestration loop can thread the
+  // producer's output coin into the consumer's input. Without this
+  // passthrough, chained-asset bundles fall back to wallet-mode
+  // pre-fetches that fail for assets not yet in the wallet (e.g.
+  // a `swap_execute(USDC → USDsui) → save_deposit(USDsui)` pair).
+  //
+  // [P7.3 — 2026-05-25] Spread `deserializeCetusRoute(cetusRoute)` into
+  // `swap_execute` step inputs as `precomputedRoute`. The SDK's
+  // `addSwapToTx` uses precomputedRoute to skip `findSwapRoute()`'s
+  // ~150-200ms discovery latency per leg. Per-leg shape check + try/
+  // catch keeps a malformed route safe: the SDK falls back to fresh
+  // discovery on any deserialization failure (same correctness as
+  // pre-P7.3). Non-swap steps with a stray `cetusRoute` field
+  // (defensive coding from the client) are passed through ignoring
+  // the field.
+  return body.steps.map((s) => {
+    const baseInput = s.input as Record<string, unknown>;
+    let input = baseInput;
+    if (s.toolName === "swap_execute" && s.cetusRoute) {
+      try {
+        const hydrated = deserializeCetusRoute(
+          s.cetusRoute as unknown as SerializedCetusRoute
+        );
+        input = { ...baseInput, precomputedRoute: hydrated };
+      } catch (err) {
+        console.warn(
+          "[prepare] deserializeCetusRoute failed; falling back to findSwapRoute:",
+          err instanceof Error ? err.message : String(err)
+        );
+      }
+    }
+    return {
+      toolName: s.toolName,
+      input,
+      ...(typeof s.inputCoinFromStep === "number"
+        ? { inputCoinFromStep: s.inputCoinFromStep }
+        : {}),
+    };
+  }) as WriteStep[];
 }
 
 // ---------------------------------------------------------------------------

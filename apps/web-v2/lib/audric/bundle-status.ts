@@ -51,6 +51,28 @@ export interface AudricBundleMarkerData {
       kind: string;
       asset?: string;
     }>;
+    /**
+     * [SPEC_AI_SDK_HARDENING P7.2 — 2026-05-25] Chain-mode coin handoff
+     * index. When set, the consumer step funds itself from step
+     * `inputCoinFromStep`'s output coin instead of pre-fetching from
+     * the wallet. Forward-only reference (`< stepIndex`). Set by the
+     * engine's `composeBundleFromToolResults` for whitelisted adjacent
+     * pairs whose assets align. Mirrors `AudricBundleMarker` in
+     * `app/api/chat/route.ts`.
+     */
+    inputCoinFromStep?: number;
+    /**
+     * [SPEC_AI_SDK_HARDENING P7.3 — 2026-05-25] Serialized Cetus route
+     * captured at same-turn `swap_quote` time. Engine stamps this on
+     * matching `swap_execute` steps; the prepare-route deserializes
+     * and threads into `composeTx`'s `SwapExecuteInput.precomputedRoute`
+     * to skip the ~150-200ms `findSwapRoute()` discovery latency.
+     *
+     * Kept as `unknown` on the wire so client modules don't need to
+     * import the SDK's `SerializedCetusRoute` type. The prepare-route
+     * does the structural check + deserialize.
+     */
+    cetusRoute?: unknown;
   }>;
 }
 

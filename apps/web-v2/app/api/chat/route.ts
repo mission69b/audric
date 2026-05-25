@@ -125,6 +125,7 @@ import {
   READ_TOOL_SET,
   type ServerPositionData,
   type StepFinishMutableState,
+  type SwapQuoteReadEntry,
   type ToolContext,
   type UserPermissionConfig,
   WRITE_TOOL_NAMES,
@@ -265,6 +266,20 @@ export interface AudricBundleMarker {
    * Per-step rendering payload. Carries everything the bundle
    * PermissionCard needs to display the steps list + dispatch back
    * to AI SDK on Approve/Deny without re-resolving anything.
+   *
+   * [SPEC_AI_SDK_HARDENING P7.2 — 2026-05-25] `inputCoinFromStep`
+   * threads chain-mode coin-handoff metadata from the engine's
+   * `composeBundleFromToolResults` through the marker → client →
+   * sponsored-tx → prepare-route → SDK `composeTx` pipeline. The
+   * engine populates the field for whitelisted (producer, consumer)
+   * pairs (see `compose-bundle.ts:VALID_PAIRS`). Pre-P7.2 the marker
+   * dropped it, so the SDK fell back to wallet-mode pre-fetches —
+   * which fail for chained-asset bundles (e.g. `swap_execute(USDC →
+   * USDsui) → save_deposit(USDsui)` reverts at PREPARE when USDsui
+   * isn't already in the wallet). With this wiring the SDK's
+   * `composeTx` orchestration loop threads the producer's
+   * `outputCoin` into the consumer's `inputCoin` directly, zero
+   * wallet round-trips. Forward-only (`< i`); step 0 never has it.
    */
   steps: Array<{
     toolCallId: string;
@@ -277,6 +292,24 @@ export interface AudricBundleMarker {
       kind: string;
       asset?: string;
     }>;
+    inputCoinFromStep?: number;
+    /**
+     * [SPEC_AI_SDK_HARDENING P7.3 — 2026-05-25] Serialized Cetus route
+     * captured at same-turn `swap_quote` time. The engine's
+     * `composeBundleFromToolResults` populates this for `swap_execute`
+     * steps whose input matches a recorded `swap_quote` read (see
+     * `findMatchingCetusRoute`). The prepare-route consumes it via
+     * `deserializeCetusRoute()` and spreads into `step.input
+     * .precomputedRoute` — bypasses `findSwapRoute()`'s 150-200ms
+     * discovery latency per swap leg.
+     *
+     * Serialized shape (`SerializedCetusRoute`) is JSON-friendly:
+     * BN/Map fields round-trip via decimal-string + Record form. The
+     * field is `unknown` here so the chat-route doesn't import the
+     * SDK type; the prepare-route Zod schema does a structural shape
+     * check before deserialization.
+     */
+    cetusRoute?: unknown;
   }>;
 }
 // AI SDK doesn't expose a token estimator publicly; this is a coarse
@@ -2031,6 +2064,34 @@ export async function POST(request: Request) {
       // `data-audric-bundle` marker if ≥2 writes are bundleable.
       const bundleBuffer = new BundleBuffer();
 
+      // [P7.3 — 2026-05-25] Turn-wide accumulator for `swap_quote`
+      // reads. The engine's `findMatchingCetusRoute` pairs each
+      // bundle `swap_execute` step against an earlier same-turn
+      // quote with matching (from, to, amount, byAmountIn?) and
+      // forwards `step.cetusRoute` on a hit.
+      //
+      // Scope is the ENTIRE stream (across all steps), not per-step:
+      // the LLM's typical "Compile path" emits `swap_quote` reads in
+      // step 0 and the bundle writes in step 1+, so the BundleBuffer's
+      // per-step reset can't be the right lifecycle for these.
+      //
+      // Capture order:
+      //   1. At `tool-call` for `swap_quote` — record input + toolCallId
+      //   2. At `tool-result` for that toolCallId — combine into a
+      //      SwapQuoteReadEntry (with timestamp) and push to the array
+      const swapQuoteInputsByToolCallId = new Map<
+        string,
+        {
+          input: {
+            from: string;
+            to: string;
+            amount: number;
+            byAmountIn?: boolean;
+          };
+        }
+      >();
+      const turnSwapQuoteReads: SwapQuoteReadEntry[] = [];
+
       // [v0.7c Phase 6 — B2 fix (2026-05-20)] Server-side microcompact
       // equivalent for the AI SDK Agent path. When the LLM re-issues a
       // read tool whose (name + input fingerprint) matches a pre-fired
@@ -2067,8 +2128,75 @@ export async function POST(request: Request) {
             continue;
           }
           if (chunk.type === "finish-step") {
-            bundleBuffer.flush(writer, messageId, liveData);
+            bundleBuffer.flush(writer, messageId, liveData, turnSwapQuoteReads);
             continue;
+          }
+
+          // [P7.3 — 2026-05-25] Capture same-turn `swap_quote` reads
+          // for cetusRoute fast-path threading. Records the call's
+          // input on `tool-call` and pairs it with the result's
+          // `serializedRoute` on `tool-result`. Defensive shape checks
+          // — a malformed swap_quote chunk just gets skipped so the
+          // SDK falls back to fresh route discovery (same as pre-P7.3).
+          if (chunk.type === "tool-call" && chunk.toolName === "swap_quote") {
+            const callInput = (chunk.input ?? {}) as Record<string, unknown>;
+            const from = callInput.from;
+            const to = callInput.to;
+            const amount = callInput.amount;
+            if (
+              typeof from === "string" &&
+              typeof to === "string" &&
+              typeof amount === "number" &&
+              Number.isFinite(amount)
+            ) {
+              const byAmountIn =
+                typeof callInput.byAmountIn === "boolean"
+                  ? callInput.byAmountIn
+                  : undefined;
+              swapQuoteInputsByToolCallId.set(chunk.toolCallId, {
+                input: {
+                  from,
+                  to,
+                  amount,
+                  ...(byAmountIn === undefined ? {} : { byAmountIn }),
+                },
+              });
+            }
+          }
+          if (
+            chunk.type === "tool-result" &&
+            swapQuoteInputsByToolCallId.has(chunk.toolCallId)
+          ) {
+            const recorded = swapQuoteInputsByToolCallId.get(chunk.toolCallId);
+            const output = (chunk as { output?: unknown }).output;
+            // The engine swap_quote tool's result includes a
+            // `serializedRoute: SerializedCetusRoute` — keep it as
+            // `unknown` here so the chat-route doesn't import the SDK
+            // type; `findMatchingCetusRoute` does its own structural
+            // checks on the payload.
+            if (
+              recorded &&
+              output !== null &&
+              typeof output === "object" &&
+              "serializedRoute" in (output as Record<string, unknown>)
+            ) {
+              const serializedRoute = (output as Record<string, unknown>)
+                .serializedRoute;
+              if (
+                serializedRoute !== null &&
+                typeof serializedRoute === "object"
+              ) {
+                turnSwapQuoteReads.push({
+                  toolUseId: chunk.toolCallId,
+                  input: recorded.input,
+                  result: {
+                    serializedRoute:
+                      serializedRoute as SwapQuoteReadEntry["result"]["serializedRoute"],
+                  },
+                  timestamp: Date.now(),
+                });
+              }
+            }
           }
 
           // [B2 fix] Suppress LLM-issued duplicates of pre-fired reads.
@@ -2107,7 +2235,7 @@ export async function POST(request: Request) {
         // Defensive: flush any chunks still buffered if the stream
         // exits mid-step (error / abort). Without this, a partial
         // bundle would be lost from the UI.
-        bundleBuffer.flush(writer, messageId, liveData);
+        bundleBuffer.flush(writer, messageId, liveData, turnSwapQuoteReads);
         writer.write({ type: "text-end", id: messageId });
         writer.write({ type: "finish-step" });
         writer.write({ type: "finish" });
@@ -2731,7 +2859,8 @@ class BundleBuffer {
   flush(
     writer: UIMessageStreamWriter,
     messageId: string,
-    liveData?: AudricLiveData
+    liveData?: AudricLiveData,
+    swapQuoteReads?: SwapQuoteReadEntry[]
   ): void {
     if (this.toolCalls.length === 0) {
       // Nothing to flush. Approval requests can't arrive without a
@@ -2809,7 +2938,11 @@ class BundleBuffer {
 
     if (isBundle) {
       try {
-        const marker = buildBundleMarker(this.toolCalls, approvalsByToolCallId);
+        const marker = buildBundleMarker(
+          this.toolCalls,
+          approvalsByToolCallId,
+          swapQuoteReads
+        );
         writer.write({
           type: BUNDLE_MARKER_TYPE,
           // AI SDK requires data parts carry a `data` field. The marker
@@ -2870,7 +3003,8 @@ class BundleBuffer {
  */
 function buildBundleMarker(
   buffered: BufferedToolCall[],
-  approvalsByToolCallId: Map<string, string>
+  approvalsByToolCallId: Map<string, string>,
+  swapQuoteReads?: SwapQuoteReadEntry[]
 ): AudricBundleMarker {
   // [P4.1 Phase C — 2026-05-25] `PendingToolCall` is now `{id, name,
   // input}` — no per-call `tool` reference. The bundle composer
@@ -2894,17 +3028,20 @@ function buildBundleMarker(
 
   const composed: PendingAction = composeBundleFromToolResults({
     pendingWrites,
-    // [Phase 5e MVP] Read-result tracking + swap-quote matching are
-    // Phase 5d-deferred features (PermissionCard's quote-refresh +
-    // guard-injection chrome aren't wired through `toolMetadata` in
-    // v0.7c yet). Empty inputs here mean: no `canRegenerate`, no
-    // `regenerateInput`, no per-step `cetusRoute`. The bundle still
-    // composes correctly + renders correctly; the per-step swap
-    // appender falls back to fresh `findSwapRoute()` at execute time
-    // (+150-200ms per swap leg vs the v1 fast path — acceptable for
-    // MVP and recoverable in Phase 6+).
+    // [Phase 5e MVP] `readResults` (PermissionCard quote-refresh /
+    // guard-injection chrome) stays empty — `toolMetadata` doesn't
+    // surface those yet.
     readResults: [],
-    swapQuoteReads: undefined,
+    // [P7.3 — 2026-05-25] Same-turn `swap_quote` reads, captured by
+    // the stream-handler loop and passed through here. The engine's
+    // `findMatchingCetusRoute` matches each `swap_execute` step's
+    // input against these by (from, to, amount, byAmountIn?) and
+    // stamps `step.cetusRoute` on a hit — which the prepare-route
+    // consumes via `deserializeCetusRoute()` to skip the ~150-200ms
+    // `findSwapRoute()` discovery latency per swap leg. Empty array
+    // (no swap_quotes this turn) means cetusRoute stays undefined +
+    // the SDK does fresh discovery, identical correctness.
+    swapQuoteReads: swapQuoteReads ?? [],
     assistantContent: [],
     completedResults: [],
     turnIndex: 0,
@@ -2933,6 +3070,13 @@ function buildBundleMarker(
         `Bundle step ${s.toolUseId} has no matching approval request`
       );
     }
+    // [P7.2 — 2026-05-25] Forward `inputCoinFromStep` when the engine
+    // populated it. The engine's `composeBundleFromToolResults` sets
+    // this for whitelisted adjacent pairs whose producer-output asset
+    // aligns with consumer-input asset (`shouldChainCoin`). Carrying
+    // it here is what unlocks the SDK's chain-mode orchestration —
+    // without it the SDK falls back to wallet-mode pre-fetches which
+    // fail for chained-asset bundles.
     return {
       toolCallId: s.toolUseId,
       approvalId,
@@ -2944,6 +3088,15 @@ function buildBundleMarker(
         kind: f.kind,
         ...(f.asset ? { asset: f.asset } : {}),
       })),
+      ...(typeof s.inputCoinFromStep === "number"
+        ? { inputCoinFromStep: s.inputCoinFromStep }
+        : {}),
+      // [P7.3 — 2026-05-25] Forward serialized Cetus route on
+      // swap_execute steps when same-turn `swap_quote` matched.
+      // Prepare-route deserializes + spreads into the SDK
+      // `swap_execute` input's `precomputedRoute` to skip
+      // findSwapRoute discovery (~150-200ms per leg).
+      ...(s.cetusRoute ? { cetusRoute: s.cetusRoute } : {}),
     };
   });
 

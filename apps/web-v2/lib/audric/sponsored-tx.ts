@@ -70,6 +70,38 @@ export type SponsoredTxBundleStep = {
    * `WriteStep.input` shape). Passed verbatim to the prepare-route.
    */
   input: Record<string, unknown>;
+  /**
+   * [SPEC_AI_SDK_HARDENING P7.2 — 2026-05-25] Chain-mode coin-handoff
+   * index. When set, the SDK's `composeTx` orchestration loop threads
+   * the producer's output coin into this step's input coin instead of
+   * pre-fetching from the wallet. Forward-only (`< stepIndex`).
+   *
+   * Populated by the engine's `composeBundleFromToolResults` for
+   * whitelisted (producer, consumer) pairs whose assets align (see
+   * `@t2000/engine` `compose-bundle.ts:VALID_PAIRS`). The chat-client
+   * reads it off the bundle marker and forwards it here; the
+   * prepare-route forwards it to `composeTx({steps})` which the SDK's
+   * `WriteStep.inputCoinFromStep` field consumes.
+   *
+   * Pre-P7.2 this was dropped at the marker layer, so chained-asset
+   * bundles (e.g. `swap_execute(USDC→USDsui) → save_deposit(USDsui)`)
+   * reverted at PREPARE because the wallet pre-fetch couldn't find
+   * USDsui that hadn't been swapped yet.
+   */
+  inputCoinFromStep?: number;
+  /**
+   * [SPEC_AI_SDK_HARDENING P7.3 — 2026-05-25] Serialized Cetus route
+   * captured at same-turn `swap_quote` time. Only meaningful on
+   * `swap_execute` steps; the prepare-route deserializes via
+   * `deserializeCetusRoute()` and spreads into the SDK's
+   * `SwapExecuteInput.precomputedRoute` to skip `findSwapRoute()`'s
+   * 150-200ms discovery latency per swap leg.
+   *
+   * Carried as `unknown` (`SerializedCetusRoute` shape) — the SDK type
+   * isn't imported into the client; the prepare-route Zod schema does
+   * structural validation.
+   */
+  cetusRoute?: unknown;
 };
 
 export type SponsoredTxRequest =
