@@ -1578,7 +1578,6 @@ export const TurnMetricsScalarFieldEnum = {
   turnPhase: 'turnPhase',
   harnessShape: 'harnessShape',
   thinkingBlockCount: 'thinkingBlockCount',
-  todoUpdateCount: 'todoUpdateCount',
   ttfvpMs: 'ttfvpMs',
   finalTextTokens: 'finalTextTokens',
   evalSummaryEmittedCount: 'evalSummaryEmittedCount',

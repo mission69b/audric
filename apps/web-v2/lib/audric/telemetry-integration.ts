@@ -330,7 +330,6 @@ export class TelemetryIntegration {
       turnPhase: context.turnPhase ?? "initial",
       harnessShape: context.harnessShape ?? null,
       thinkingBlockCount: 0,
-      todoUpdateCount: 0,
       ttfvpMs,
       finalTextTokens: Math.ceil(
         this.finalTextChars / FINAL_TEXT_CHARS_PER_TOKEN

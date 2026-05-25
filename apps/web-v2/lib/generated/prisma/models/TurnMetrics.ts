@@ -44,7 +44,6 @@ export type TurnMetricsAvgAggregateOutputType = {
   writeToolDurationMs: number | null
   cacheSavingsUsd: number | null
   thinkingBlockCount: number | null
-  todoUpdateCount: number | null
   ttfvpMs: number | null
   finalTextTokens: number | null
   evalSummaryEmittedCount: number | null
@@ -69,7 +68,6 @@ export type TurnMetricsSumAggregateOutputType = {
   writeToolDurationMs: number | null
   cacheSavingsUsd: number | null
   thinkingBlockCount: number | null
-  todoUpdateCount: number | null
   ttfvpMs: number | null
   finalTextTokens: number | null
   evalSummaryEmittedCount: number | null
@@ -107,7 +105,6 @@ export type TurnMetricsMinAggregateOutputType = {
   turnPhase: string | null
   harnessShape: string | null
   thinkingBlockCount: number | null
-  todoUpdateCount: number | null
   ttfvpMs: number | null
   finalTextTokens: number | null
   evalSummaryEmittedCount: number | null
@@ -147,7 +144,6 @@ export type TurnMetricsMaxAggregateOutputType = {
   turnPhase: string | null
   harnessShape: string | null
   thinkingBlockCount: number | null
-  todoUpdateCount: number | null
   ttfvpMs: number | null
   finalTextTokens: number | null
   evalSummaryEmittedCount: number | null
@@ -189,7 +185,6 @@ export type TurnMetricsCountAggregateOutputType = {
   turnPhase: number
   harnessShape: number
   thinkingBlockCount: number
-  todoUpdateCount: number
   ttfvpMs: number
   finalTextTokens: number
   evalSummaryEmittedCount: number
@@ -220,7 +215,6 @@ export type TurnMetricsAvgAggregateInputType = {
   writeToolDurationMs?: true
   cacheSavingsUsd?: true
   thinkingBlockCount?: true
-  todoUpdateCount?: true
   ttfvpMs?: true
   finalTextTokens?: true
   evalSummaryEmittedCount?: true
@@ -245,7 +239,6 @@ export type TurnMetricsSumAggregateInputType = {
   writeToolDurationMs?: true
   cacheSavingsUsd?: true
   thinkingBlockCount?: true
-  todoUpdateCount?: true
   ttfvpMs?: true
   finalTextTokens?: true
   evalSummaryEmittedCount?: true
@@ -283,7 +276,6 @@ export type TurnMetricsMinAggregateInputType = {
   turnPhase?: true
   harnessShape?: true
   thinkingBlockCount?: true
-  todoUpdateCount?: true
   ttfvpMs?: true
   finalTextTokens?: true
   evalSummaryEmittedCount?: true
@@ -323,7 +315,6 @@ export type TurnMetricsMaxAggregateInputType = {
   turnPhase?: true
   harnessShape?: true
   thinkingBlockCount?: true
-  todoUpdateCount?: true
   ttfvpMs?: true
   finalTextTokens?: true
   evalSummaryEmittedCount?: true
@@ -365,7 +356,6 @@ export type TurnMetricsCountAggregateInputType = {
   turnPhase?: true
   harnessShape?: true
   thinkingBlockCount?: true
-  todoUpdateCount?: true
   ttfvpMs?: true
   finalTextTokens?: true
   evalSummaryEmittedCount?: true
@@ -496,7 +486,6 @@ export type TurnMetricsGroupByOutputType = {
   turnPhase: string
   harnessShape: string | null
   thinkingBlockCount: number
-  todoUpdateCount: number
   ttfvpMs: number | null
   finalTextTokens: number
   evalSummaryEmittedCount: number
@@ -563,7 +552,6 @@ export type TurnMetricsWhereInput = {
   turnPhase?: Prisma.StringFilter<"TurnMetrics"> | string
   harnessShape?: Prisma.StringNullableFilter<"TurnMetrics"> | string | null
   thinkingBlockCount?: Prisma.IntFilter<"TurnMetrics"> | number
-  todoUpdateCount?: Prisma.IntFilter<"TurnMetrics"> | number
   ttfvpMs?: Prisma.IntNullableFilter<"TurnMetrics"> | number | null
   finalTextTokens?: Prisma.IntFilter<"TurnMetrics"> | number
   evalSummaryEmittedCount?: Prisma.IntFilter<"TurnMetrics"> | number
@@ -607,7 +595,6 @@ export type TurnMetricsOrderByWithRelationInput = {
   turnPhase?: Prisma.SortOrder
   harnessShape?: Prisma.SortOrderInput | Prisma.SortOrder
   thinkingBlockCount?: Prisma.SortOrder
-  todoUpdateCount?: Prisma.SortOrder
   ttfvpMs?: Prisma.SortOrderInput | Prisma.SortOrder
   finalTextTokens?: Prisma.SortOrder
   evalSummaryEmittedCount?: Prisma.SortOrder
@@ -654,7 +641,6 @@ export type TurnMetricsWhereUniqueInput = Prisma.AtLeast<{
   turnPhase?: Prisma.StringFilter<"TurnMetrics"> | string
   harnessShape?: Prisma.StringNullableFilter<"TurnMetrics"> | string | null
   thinkingBlockCount?: Prisma.IntFilter<"TurnMetrics"> | number
-  todoUpdateCount?: Prisma.IntFilter<"TurnMetrics"> | number
   ttfvpMs?: Prisma.IntNullableFilter<"TurnMetrics"> | number | null
   finalTextTokens?: Prisma.IntFilter<"TurnMetrics"> | number
   evalSummaryEmittedCount?: Prisma.IntFilter<"TurnMetrics"> | number
@@ -698,7 +684,6 @@ export type TurnMetricsOrderByWithAggregationInput = {
   turnPhase?: Prisma.SortOrder
   harnessShape?: Prisma.SortOrderInput | Prisma.SortOrder
   thinkingBlockCount?: Prisma.SortOrder
-  todoUpdateCount?: Prisma.SortOrder
   ttfvpMs?: Prisma.SortOrderInput | Prisma.SortOrder
   finalTextTokens?: Prisma.SortOrder
   evalSummaryEmittedCount?: Prisma.SortOrder
@@ -750,7 +735,6 @@ export type TurnMetricsScalarWhereWithAggregatesInput = {
   turnPhase?: Prisma.StringWithAggregatesFilter<"TurnMetrics"> | string
   harnessShape?: Prisma.StringNullableWithAggregatesFilter<"TurnMetrics"> | string | null
   thinkingBlockCount?: Prisma.IntWithAggregatesFilter<"TurnMetrics"> | number
-  todoUpdateCount?: Prisma.IntWithAggregatesFilter<"TurnMetrics"> | number
   ttfvpMs?: Prisma.IntNullableWithAggregatesFilter<"TurnMetrics"> | number | null
   finalTextTokens?: Prisma.IntWithAggregatesFilter<"TurnMetrics"> | number
   evalSummaryEmittedCount?: Prisma.IntWithAggregatesFilter<"TurnMetrics"> | number
@@ -794,7 +778,6 @@ export type TurnMetricsCreateInput = {
   turnPhase?: string
   harnessShape?: string | null
   thinkingBlockCount?: number
-  todoUpdateCount?: number
   ttfvpMs?: number | null
   finalTextTokens?: number
   evalSummaryEmittedCount?: number
@@ -838,7 +821,6 @@ export type TurnMetricsUncheckedCreateInput = {
   turnPhase?: string
   harnessShape?: string | null
   thinkingBlockCount?: number
-  todoUpdateCount?: number
   ttfvpMs?: number | null
   finalTextTokens?: number
   evalSummaryEmittedCount?: number
@@ -882,7 +864,6 @@ export type TurnMetricsUpdateInput = {
   turnPhase?: Prisma.StringFieldUpdateOperationsInput | string
   harnessShape?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   thinkingBlockCount?: Prisma.IntFieldUpdateOperationsInput | number
-  todoUpdateCount?: Prisma.IntFieldUpdateOperationsInput | number
   ttfvpMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   finalTextTokens?: Prisma.IntFieldUpdateOperationsInput | number
   evalSummaryEmittedCount?: Prisma.IntFieldUpdateOperationsInput | number
@@ -926,7 +907,6 @@ export type TurnMetricsUncheckedUpdateInput = {
   turnPhase?: Prisma.StringFieldUpdateOperationsInput | string
   harnessShape?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   thinkingBlockCount?: Prisma.IntFieldUpdateOperationsInput | number
-  todoUpdateCount?: Prisma.IntFieldUpdateOperationsInput | number
   ttfvpMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   finalTextTokens?: Prisma.IntFieldUpdateOperationsInput | number
   evalSummaryEmittedCount?: Prisma.IntFieldUpdateOperationsInput | number
@@ -970,7 +950,6 @@ export type TurnMetricsCreateManyInput = {
   turnPhase?: string
   harnessShape?: string | null
   thinkingBlockCount?: number
-  todoUpdateCount?: number
   ttfvpMs?: number | null
   finalTextTokens?: number
   evalSummaryEmittedCount?: number
@@ -1014,7 +993,6 @@ export type TurnMetricsUpdateManyMutationInput = {
   turnPhase?: Prisma.StringFieldUpdateOperationsInput | string
   harnessShape?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   thinkingBlockCount?: Prisma.IntFieldUpdateOperationsInput | number
-  todoUpdateCount?: Prisma.IntFieldUpdateOperationsInput | number
   ttfvpMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   finalTextTokens?: Prisma.IntFieldUpdateOperationsInput | number
   evalSummaryEmittedCount?: Prisma.IntFieldUpdateOperationsInput | number
@@ -1058,7 +1036,6 @@ export type TurnMetricsUncheckedUpdateManyInput = {
   turnPhase?: Prisma.StringFieldUpdateOperationsInput | string
   harnessShape?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   thinkingBlockCount?: Prisma.IntFieldUpdateOperationsInput | number
-  todoUpdateCount?: Prisma.IntFieldUpdateOperationsInput | number
   ttfvpMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   finalTextTokens?: Prisma.IntFieldUpdateOperationsInput | number
   evalSummaryEmittedCount?: Prisma.IntFieldUpdateOperationsInput | number
@@ -1102,7 +1079,6 @@ export type TurnMetricsCountOrderByAggregateInput = {
   turnPhase?: Prisma.SortOrder
   harnessShape?: Prisma.SortOrder
   thinkingBlockCount?: Prisma.SortOrder
-  todoUpdateCount?: Prisma.SortOrder
   ttfvpMs?: Prisma.SortOrder
   finalTextTokens?: Prisma.SortOrder
   evalSummaryEmittedCount?: Prisma.SortOrder
@@ -1131,7 +1107,6 @@ export type TurnMetricsAvgOrderByAggregateInput = {
   writeToolDurationMs?: Prisma.SortOrder
   cacheSavingsUsd?: Prisma.SortOrder
   thinkingBlockCount?: Prisma.SortOrder
-  todoUpdateCount?: Prisma.SortOrder
   ttfvpMs?: Prisma.SortOrder
   finalTextTokens?: Prisma.SortOrder
   evalSummaryEmittedCount?: Prisma.SortOrder
@@ -1169,7 +1144,6 @@ export type TurnMetricsMaxOrderByAggregateInput = {
   turnPhase?: Prisma.SortOrder
   harnessShape?: Prisma.SortOrder
   thinkingBlockCount?: Prisma.SortOrder
-  todoUpdateCount?: Prisma.SortOrder
   ttfvpMs?: Prisma.SortOrder
   finalTextTokens?: Prisma.SortOrder
   evalSummaryEmittedCount?: Prisma.SortOrder
@@ -1209,7 +1183,6 @@ export type TurnMetricsMinOrderByAggregateInput = {
   turnPhase?: Prisma.SortOrder
   harnessShape?: Prisma.SortOrder
   thinkingBlockCount?: Prisma.SortOrder
-  todoUpdateCount?: Prisma.SortOrder
   ttfvpMs?: Prisma.SortOrder
   finalTextTokens?: Prisma.SortOrder
   evalSummaryEmittedCount?: Prisma.SortOrder
@@ -1236,7 +1209,6 @@ export type TurnMetricsSumOrderByAggregateInput = {
   writeToolDurationMs?: Prisma.SortOrder
   cacheSavingsUsd?: Prisma.SortOrder
   thinkingBlockCount?: Prisma.SortOrder
-  todoUpdateCount?: Prisma.SortOrder
   ttfvpMs?: Prisma.SortOrder
   finalTextTokens?: Prisma.SortOrder
   evalSummaryEmittedCount?: Prisma.SortOrder
@@ -1286,7 +1258,6 @@ export type TurnMetricsSelect<ExtArgs extends runtime.Types.Extensions.InternalA
   turnPhase?: boolean
   harnessShape?: boolean
   thinkingBlockCount?: boolean
-  todoUpdateCount?: boolean
   ttfvpMs?: boolean
   finalTextTokens?: boolean
   evalSummaryEmittedCount?: boolean
@@ -1330,7 +1301,6 @@ export type TurnMetricsSelectCreateManyAndReturn<ExtArgs extends runtime.Types.E
   turnPhase?: boolean
   harnessShape?: boolean
   thinkingBlockCount?: boolean
-  todoUpdateCount?: boolean
   ttfvpMs?: boolean
   finalTextTokens?: boolean
   evalSummaryEmittedCount?: boolean
@@ -1374,7 +1344,6 @@ export type TurnMetricsSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.E
   turnPhase?: boolean
   harnessShape?: boolean
   thinkingBlockCount?: boolean
-  todoUpdateCount?: boolean
   ttfvpMs?: boolean
   finalTextTokens?: boolean
   evalSummaryEmittedCount?: boolean
@@ -1418,7 +1387,6 @@ export type TurnMetricsSelectScalar = {
   turnPhase?: boolean
   harnessShape?: boolean
   thinkingBlockCount?: boolean
-  todoUpdateCount?: boolean
   ttfvpMs?: boolean
   finalTextTokens?: boolean
   evalSummaryEmittedCount?: boolean
@@ -1431,7 +1399,7 @@ export type TurnMetricsSelectScalar = {
   createdAt?: boolean
 }
 
-export type TurnMetricsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "sessionId" | "userId" | "turnIndex" | "effortLevel" | "modelUsed" | "wallTimeMs" | "firstTokenMs" | "toolsCalled" | "guardsFired" | "compactionTriggered" | "contextTokensStart" | "cacheHit" | "cacheReadTokens" | "cacheWriteTokens" | "inputTokens" | "outputTokens" | "estimatedCostUsd" | "pendingActionYielded" | "pendingActionOutcome" | "aciRefinements" | "sessionSpendUsd" | "mutableToolDedupes" | "attemptId" | "synthetic" | "writeToolDurationMs" | "cacheSavingsUsd" | "turnPhase" | "harnessShape" | "thinkingBlockCount" | "todoUpdateCount" | "ttfvpMs" | "finalTextTokens" | "evalSummaryEmittedCount" | "evalSummaryViolationsCount" | "pendingInputSeenOnLegacy" | "toolProgressEventCount" | "interruptedMessageCount" | "cetusRoute" | "streamResumeOutcome" | "createdAt", ExtArgs["result"]["turnMetrics"]>
+export type TurnMetricsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "sessionId" | "userId" | "turnIndex" | "effortLevel" | "modelUsed" | "wallTimeMs" | "firstTokenMs" | "toolsCalled" | "guardsFired" | "compactionTriggered" | "contextTokensStart" | "cacheHit" | "cacheReadTokens" | "cacheWriteTokens" | "inputTokens" | "outputTokens" | "estimatedCostUsd" | "pendingActionYielded" | "pendingActionOutcome" | "aciRefinements" | "sessionSpendUsd" | "mutableToolDedupes" | "attemptId" | "synthetic" | "writeToolDurationMs" | "cacheSavingsUsd" | "turnPhase" | "harnessShape" | "thinkingBlockCount" | "ttfvpMs" | "finalTextTokens" | "evalSummaryEmittedCount" | "evalSummaryViolationsCount" | "pendingInputSeenOnLegacy" | "toolProgressEventCount" | "interruptedMessageCount" | "cetusRoute" | "streamResumeOutcome" | "createdAt", ExtArgs["result"]["turnMetrics"]>
 
 export type $TurnMetricsPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "TurnMetrics"
@@ -1516,9 +1484,14 @@ export type $TurnMetricsPayload<ExtArgs extends runtime.Types.Extensions.Interna
      * the engine `harness_shape` event: `'lean' | 'standard' | 'rich' |
      * 'max'`. Null on rows that pre-date the engine event (engines
      * older than v1.5.0). Drives the dashboard segmentation that
-     * catches LEAN-turn regressions (any non-zero `todoUpdateCount`
-     * or `thinkingBlockCount > 0` on a `harnessShape='lean'` row is a
-     * shape-contract violation worth investigating).
+     * catches LEAN-turn regressions (any `thinkingBlockCount > 0` on a
+     * `harnessShape='lean'` row is a shape-contract violation worth
+     * investigating).
+     * 
+     * [P4.1 follow-up — 2026-05-25] `todoUpdateCount` companion field
+     * dropped — `update_todo` tool deleted in engine v3.0.0; the column
+     * was always 0 post-migration and no longer informs the lean
+     * regression signal.
      */
     harnessShape: string | null
     /**
@@ -1527,15 +1500,9 @@ export type $TurnMetricsPayload<ExtArgs extends runtime.Types.Extensions.Interna
      */
     thinkingBlockCount: number
     /**
-     * [SPEC 8 v0.5.1 B3.6] Count of `update_todo` tool calls this turn
-     * (one increment per `todo_update` engine event). Forbidden on
-     * `lean` shape; non-zero on `lean` rows is a regression signal.
-     */
-    todoUpdateCount: number
-    /**
      * [SPEC 8 v0.5.1 B3.6] Time To First Visible Progress — ms from
      * turn start to the first host-renderable event (`thinking_delta`,
-     * `tool_start`, `todo_update`, or `text_delta`, whichever first).
+     * `tool_start`, or `text_delta`, whichever first).
      * Null when the turn produced no renderable events (rare error
      * path). p50 ≤ 1500ms is the SPEC 8 v0.5.1 B3.7 rollout gate.
      */
@@ -2080,7 +2047,6 @@ export interface TurnMetricsFieldRefs {
   readonly turnPhase: Prisma.FieldRef<"TurnMetrics", 'String'>
   readonly harnessShape: Prisma.FieldRef<"TurnMetrics", 'String'>
   readonly thinkingBlockCount: Prisma.FieldRef<"TurnMetrics", 'Int'>
-  readonly todoUpdateCount: Prisma.FieldRef<"TurnMetrics", 'Int'>
   readonly ttfvpMs: Prisma.FieldRef<"TurnMetrics", 'Int'>
   readonly finalTextTokens: Prisma.FieldRef<"TurnMetrics", 'Int'>
   readonly evalSummaryEmittedCount: Prisma.FieldRef<"TurnMetrics", 'Int'>

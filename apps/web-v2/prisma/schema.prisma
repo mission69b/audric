@@ -294,20 +294,21 @@ model TurnMetrics {
   /// the engine `harness_shape` event: `'lean' | 'standard' | 'rich' |
   /// 'max'`. Null on rows that pre-date the engine event (engines
   /// older than v1.5.0). Drives the dashboard segmentation that
-  /// catches LEAN-turn regressions (any non-zero `todoUpdateCount`
-  /// or `thinkingBlockCount > 0` on a `harnessShape='lean'` row is a
-  /// shape-contract violation worth investigating).
+  /// catches LEAN-turn regressions (any `thinkingBlockCount > 0` on a
+  /// `harnessShape='lean'` row is a shape-contract violation worth
+  /// investigating).
+  ///
+  /// [P4.1 follow-up — 2026-05-25] `todoUpdateCount` companion field
+  /// dropped — `update_todo` tool deleted in engine v3.0.0; the column
+  /// was always 0 post-migration and no longer informs the lean
+  /// regression signal.
   harnessShape               String?
   /// [SPEC 8 v0.5.1 B3.6] Count of `thinking_done` events emitted this
   /// turn. Soft-capped per shape (lean=0, standard=3, rich=5, max=8).
   thinkingBlockCount         Int      @default(0)
-  /// [SPEC 8 v0.5.1 B3.6] Count of `update_todo` tool calls this turn
-  /// (one increment per `todo_update` engine event). Forbidden on
-  /// `lean` shape; non-zero on `lean` rows is a regression signal.
-  todoUpdateCount            Int      @default(0)
   /// [SPEC 8 v0.5.1 B3.6] Time To First Visible Progress — ms from
   /// turn start to the first host-renderable event (`thinking_delta`,
-  /// `tool_start`, `todo_update`, or `text_delta`, whichever first).
+  /// `tool_start`, or `text_delta`, whichever first).
   /// Null when the turn produced no renderable events (rare error
   /// path). p50 ≤ 1500ms is the SPEC 8 v0.5.1 B3.7 rollout gate.
   ttfvpMs                    Int?
