@@ -1,12 +1,12 @@
 ---
-description: Audric Pay — send / payment-link / invoice / QR end-to-end. Free, global, instant on Sui.
+description: Audric Pay — send / payment-link / QR end-to-end. Free, global, instant on Sui.
 globs: "apps/web-v2/app/api/payments/**/*.ts,apps/web-v2/app/pay/**/*.tsx,apps/web-v2/components/**/*Pay*.tsx,apps/web-v2/components/**/Receive*.tsx,apps/web-v2/lib/payment-kit.ts"
 alwaysApply: false
 ---
 
 # Audric Pay Flow
 
-Move money. Free, global, instant on Sui. The Audric product that owns send, receive, payment-link, invoice, and QR.
+Move money. Free, global, instant on Sui. The Audric product that owns send, receive, payment-link, and QR.
 
 ## Operations under Audric Pay
 
@@ -14,8 +14,9 @@ Move money. Free, global, instant on Sui. The Audric product that owns send, rec
 |---|---|---|---|
 | Send USDC (or any Tier 2 asset) | Send chip + chat → confirm card | `send_transfer` | `Payment` (status: `sent`) |
 | Receive (payment link) | Receive chip → `/pay/[slug]` | `create_payment_link` | `Payment` (status: `pending` → `paid`) |
-| Receive (invoice) | Invoice flow → email | `create_invoice` | `Payment` (type: `invoice`) |
 | Receive (QR) | Receive chip → QR card | `create_payment_link` (QR-rendered) | `Payment` |
+
+> **S.269 / V07E_INVOICE_DEPRECATION (2026-05-23):** Invoice as a distinct surface was retired — the 3 `create_invoice` / `list_invoices` / `cancel_invoice` tools were deleted from the engine and payment links now absorb the invoicing use case. Set `label` / `memo` on the link to encode invoice context.
 
 > **Receive is not a separate product.** It's the receive-half of Audric Pay. See CLAUDE.md taxonomy rule.
 

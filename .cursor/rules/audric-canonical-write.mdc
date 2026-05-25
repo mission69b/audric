@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Canonical Write Architecture (audric/web)
 
-> **Status:** Specced in SPEC 7 v0.4 (2026-05-01). **Lands when SPEC 7 Layer 0 ships.** Until then, this rule documents the target architecture and the bypass conventions that will be enforced at CI time.
+> **Status:** SHIPPED. SPEC 7 v0.4 (2026-05-01) lands the canonical-write contract; v0.7e Phase 5 (2026-05-22) deleted `apps/web` and the canonical path now lives in `apps/web-v2/app/api/transactions/prepare/route.ts`. The current write tool surface is 8 tools (post-S.245 + S.269 + S.277): `save_deposit`, `withdraw`, `borrow`, `repay_debt`, `send_transfer`, `claim_rewards`, `harvest_rewards`, `swap_execute`. References below to `pay_api`, `volo_stake`, `volo_unstake`, `save_contact`, `create_invoice`, and `apps/web/__tests__/` paths are historical (pre-deletion); the canonical-write principle they teach still holds.
 
 ## The contract
 

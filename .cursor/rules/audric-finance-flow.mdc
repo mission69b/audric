@@ -21,10 +21,10 @@ Manage your money on Sui. The product that owns save / credit / swap / charts. E
 | Harvest NAVI rewards into savings | "HARVEST ALL" chip after pending_rewards + Harvest dashboard chip | `harvest_rewards` (compound: claim → swap each non-USDC reward to USDC → deposit merged USDC into NAVI savings, single PTB) | NAVI + Cetus aggregator |
 | Swap (any Tier 2 → any Tier 2) | Swap chip + chat | `swap_execute` | Cetus aggregator |
 | Charts (yield, health, portfolio viz) | Inline canvas in chat | `render_canvas` | Engine canvas templates |
-| Stake SUI → vSUI | Save chip → SUI option | `volo_stake` | Volo (LST) |
-| Unstake vSUI → SUI | Withdraw chip → vSUI | `volo_unstake` | Volo |
 
 > **No Invest product.** Savings (USDC at NAVI, 3–8% APY) covers yield. Don't propose Invest as a separate product — see CLAUDE.md taxonomy rule.
+>
+> **S.277 (May 2026 — "Earns Its Keep" audit):** The Volo trio (`volo_stake` / `volo_unstake` / `volo_stats`) was removed from the engine surface. No Audric chip or product slot existed for liquid staking, and `harvest_rewards` already routes vSUI rewards via Cetus (not Volo). Volo support remains in `@t2000/sdk` + `@t2000/cli` + `@t2000/mcp` for non-Audric consumers.
 
 ## Save flow (USDC only)
 

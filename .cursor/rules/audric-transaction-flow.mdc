@@ -39,8 +39,10 @@ LLM → pending_action (engine yields) → user taps Confirm
 
 All write tools have `permissionLevel: 'confirm'` and therefore flow through Path 2:
 
-`swap_execute`, `save_deposit`, `withdraw`, `send_transfer`, `borrow`, `repay_debt`, `claim_rewards`, `harvest_rewards`, `pay_api`, `volo_stake`, `volo_unstake`, `save_contact`.
+`swap_execute`, `save_deposit`, `withdraw`, `send_transfer`, `borrow`, `repay_debt`, `claim_rewards`, `harvest_rewards`.
 
+> **Post-S.245 + S.269 + S.277 (May 2026):** `pay_api`, `volo_stake`, `volo_unstake`, and `save_contact` were removed from the engine. The current 8-tool surface is what's listed above.
+>
 > If you ever change one of these to `permissionLevel: 'auto'`, you've broken the user-consent contract. Don't.
 
 > **`harvest_rewards` is a compound write (S.119 / S.120).** Single PTB packs claim → swap → save. Per-leg fees: 10 bps Cetus overlay per non-USDC reward swap (forwarded via `composeTx` `ctx.overlayFee`) + 10 bps NAVI save fee on the deposit (invoked via `ctx.feeHooks.save_deposit`). The compound macro is responsible for forwarding both into the underlying SDK appender (`addHarvestToTx`) — the macro does NOT skip fees the way single-op `claim_rewards` does. See `apps/web-v2/app/api/transactions/prepare/route.ts → needsOverlayFee` predicate.

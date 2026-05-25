@@ -6,7 +6,9 @@ alwaysApply: false
 
 # Write Tool Execution — Pending Action Protocol
 
-Every Audric write (save, send, swap, borrow, repay, claim, pay_api, volo_stake, volo_unstake, save_contact) goes through the same protocol. Get any step wrong and either (a) the user double-confirms, (b) the agent forgets the action happened, or (c) the wrong row's outcome is overwritten in `TurnMetrics`.
+Every Audric write (save, send, swap, borrow, repay, claim, harvest) goes through the same protocol. Get any step wrong and either (a) the user double-confirms, (b) the agent forgets the action happened, or (c) the wrong row's outcome is overwritten in `TurnMetrics`.
+
+> **Post-S.245 + S.269 + S.277:** `pay_api`, `volo_stake`, `volo_unstake`, and `save_contact` were removed from the engine surface. Same protocol still applies to the remaining 8 write tools (`save_deposit`, `withdraw`, `borrow`, `repay_debt`, `send_transfer`, `claim_rewards`, `harvest_rewards`, `swap_execute`).
 
 ## The 6-step protocol
 
