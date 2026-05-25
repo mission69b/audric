@@ -17,6 +17,15 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+# 2026-05-25: filters fixed from `--filter web` (the deleted v0.7e apps/web
+# package) to `--filter @audric/web-v2`. Pre-fix, every job exited 0 with
+# "No projects matched the filters" — CI was silently green-but-empty for
+# ~3 days after v0.7e Phase 5 (S.253, 2026-05-22) archived apps/web. The
+# dead spec-consistency runner step was also dropped; the runtime check
+# lived at `apps/web/lib/engine/spec-consistency.ts` and went with the
+# archive. Vercel handles the production build (with real secrets); CI
+# focuses on lint + typecheck + test, matching the vercel/chatbot template
+# pattern (lint.yml + playwright.yml).
 jobs:
   check:
     name: Lint & Typecheck
@@ -29,16 +38,8 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter web lint
-      - run: pnpm --filter web typecheck
-      # [v1.4 Item 5] Spec consistency assertions. Runs the dedicated
-      # vitest file because the script imports `@t2000/engine` (ESM-only),
-      # which the bare `tsx` CJS register can't resolve from the workspace
-      # root. Vitest pipes through the same Next.js module resolver that
-      # `pnpm --filter web test` uses, so the assertions execute in the
-      # same module graph as the runtime check in `engine-factory.ts`.
-      - name: Spec consistency check
-        run: pnpm --filter web exec vitest run lib/engine/spec-consistency.test.ts
+      - run: pnpm --filter @audric/web-v2 lint
+      - run: pnpm --filter @audric/web-v2 typecheck
 
   test:
     name: Unit Tests
@@ -51,40 +52,4 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter web test
-
-  build:
-    name: Build
-    runs-on: ubuntu-latest
-    # Supply placeholder values for every required env var so the
-    # boot-time validation in `lib/env.ts` (added in S.25 / commit
-    # 9ab2c28) doesn't reject the CI build. Vercel rebuilds the app
-    # independently with the real secrets set in the dashboard, so
-    # these placeholders never reach production. They exist purely so
-    # `next build`'s "Collecting page data" phase (which loads every
-    # API route module) can construct module graphs without crashing.
-    # If you add a new required key to `lib/env.ts`, add a placeholder
-    # here too — otherwise every PR will turn red.
-    env:
-      ANTHROPIC_API_KEY: ci-placeholder-anthropic
-      BLOCKVISION_API_KEY: ci-placeholder-blockvision
-      DATABASE_URL: postgres://ci@localhost/ci
-      ENOKI_SECRET_KEY: ci-placeholder-enoki
-      T2000_INTERNAL_KEY: ci-placeholder-t2000
-      UPSTASH_REDIS_REST_URL: https://ci.upstash.io
-      UPSTASH_REDIS_REST_TOKEN: ci-placeholder-redis
-      # SPEC 10 B.2 — required as of S.69 follow-up. Placeholder doesn't
-      # need to decode as a real Bech32 key; env-gate only enforces
-      # non-empty-string. Format-validation lives at the route boundary.
-      AUDRIC_PARENT_NFT_PRIVATE_KEY: ci-placeholder-suiprivkey
-      NEXT_PUBLIC_GOOGLE_CLIENT_ID: ci-placeholder-google
-      NEXT_PUBLIC_ENOKI_API_KEY: ci-placeholder-enoki-pub
-    steps:
-      - uses: actions/checkout@v6
-      - uses: pnpm/action-setup@v5
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter web build
+      - run: pnpm --filter @audric/web-v2 test
