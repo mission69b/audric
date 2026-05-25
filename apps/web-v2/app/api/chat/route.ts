@@ -109,7 +109,6 @@
 import { createAnthropic } from "@ai-sdk/anthropic";
 import {
   type AddressPortfolio,
-  applyToolFlags,
   buildInternalContext,
   buildStepFinishHandler,
   classifyEffort,
@@ -123,14 +122,13 @@ import {
   MAX_BUNDLE_OPS,
   type PendingAction,
   type PendingToolCall,
-  READ_TOOLS,
+  READ_TOOL_SET,
   type ServerPositionData,
   type StepFinishMutableState,
-  type Tool,
   type ToolContext,
-  toAISDKTools,
   type UserPermissionConfig,
-  WRITE_TOOLS,
+  WRITE_TOOL_NAMES,
+  WRITE_TOOL_SET,
 } from "@t2000/engine";
 import { waitUntil } from "@vercel/functions";
 import {
@@ -812,13 +810,20 @@ export async function POST(request: Request) {
   // Non-gateway path no longer offers any search tool; LLM degrades
   // to training knowledge for protocol questions. Acceptable per
   // audit (BRAVE_API_KEY also dropped).
-  const engineTools = toAISDKTools([...READ_TOOLS, ...WRITE_TOOLS]);
+  // [P4.1 Phase C — 2026-05-25] Engine 3.0.0 ships every tool in
+  // native AI SDK `tool()` shape and exposes them via `READ_TOOL_SET`
+  // / `WRITE_TOOL_SET` (object-keyed `ToolSet`, not arrays). The
+  // legacy `toAISDKTools([Tool[]])` wrapper is gone — hosts merge the
+  // two ToolSets directly. `getDefaultTools()` returns the same
+  // merged set but we spread here so the gateway path can inject
+  // `perplexity_search` into the same object.
+  const engineTools: ToolSet = { ...READ_TOOL_SET, ...WRITE_TOOL_SET };
   const tools: ToolSet = useGateway
-    ? ({
+    ? {
         perplexity_search: gateway.tools.perplexitySearch(),
         ...engineTools,
-      } as ToolSet)
-    : (engineTools as ToolSet);
+      }
+    : engineTools;
 
   // 6. Build the InternalContext envelope threaded through every
   // tool.execute() + needsApproval + step-finish callback via
@@ -1506,7 +1511,18 @@ export async function POST(request: Request) {
     // — without invalidation, PWR would replay 60s-cached pre-write
     // numbers.
     onStepFinish: buildStepFinishHandler(
-      [...READ_TOOLS, ...WRITE_TOOLS],
+      // [P4.1 Phase C — 2026-05-25] `buildStepFinishHandler` now takes
+      // a `ToolSet` (native AI SDK shape) instead of `Tool[]`. Pass the
+      // exact set the agent was constructed with so the handler's
+      // toolName-presence check (`tools[name] !== undefined`) sees
+      // EVERY tool the agent could have dispatched — including the
+      // optional `perplexity_search` from the gateway path. Pre-P4.1
+      // this site passed only the engine defaults, which excluded the
+      // gateway tool from post-step processing (sessionSpend +
+      // onAutoExecuted hooks, cache invalidation). Tracked as a latent
+      // bug that this refactor incidentally fixes; `perplexity_search`
+      // is auto-tier so the cumulative-USD path was a no-op anyway.
+      tools,
       internalContext,
       stepFinishMutable
     ),
@@ -1642,12 +1658,14 @@ export async function POST(request: Request) {
   // byte-for-byte ports from `audric/apps/web/lib/engine/intent-
   // dispatcher.ts`; only the registry-passed-in changes here.
   //
-  // [S.277 — 2026-05-23] `web_search` no longer in READ_TOOLS (engine
-  // 2.18.0 cut). The pre-cut dispatcher comment about the gateway-
-  // path harmlessly including it is now moot.
-  const readToolRegistry = new Map<string, Tool>(
-    READ_TOOLS.map((t) => [t.name, t])
-  );
+  // [S.277 — 2026-05-23] `web_search` no longer in READ_TOOL_NAMES
+  // (engine 2.18.0 cut). The pre-cut dispatcher comment about the
+  // gateway-path harmlessly including it is now moot.
+  //
+  // [P4.1 Phase C — 2026-05-25] `READ_TOOL_SET` is already the keyed
+  // ToolSet the dispatcher consumes — no Map construction needed.
+  // Engine 3.0.0 dropped the legacy `READ_TOOLS: Tool[]` array.
+  const readToolRegistry = READ_TOOL_SET;
   const latestUserText = extractLatestUserText(normalized);
 
   // [S.210 — 2026-05-21] `effortLevel` is now computed BEFORE the
@@ -1665,7 +1683,7 @@ export async function POST(request: Request) {
   const intentDispatchedParts = latestUserText
     ? await dispatchIntentsToParts({
         message: latestUserText,
-        toolContext,
+        internalContext,
         registry: readToolRegistry,
         turnIndex,
       })
@@ -1697,7 +1715,7 @@ export async function POST(request: Request) {
       ? await dispatchPostWriteRefresh({
           completedWrites,
           registry: readToolRegistry,
-          toolContext,
+          internalContext,
           turnIndex,
         })
       : [];
@@ -2629,11 +2647,14 @@ export async function DELETE(request: Request) {
 // preserved; only the confirm-tier writes get held back briefly until
 // the step boundary.
 //
-// The helper requires `tool.flags?.bundleable === true` on each tool
-// to pass the defensive check; we apply `applyToolFlags(WRITE_TOOLS)`
-// once and cache the result. This is the same flag set
-// `getDefaultTools()` produces.
-const FLAGGED_WRITE_TOOLS: Tool[] = applyToolFlags(WRITE_TOOLS);
+// [P4.1 Phase C — 2026-05-25] The `composeBundleFromToolResults` helper
+// now resolves bundleability by NAME through the engine's central
+// `tool-flags.ts` registry (`isBundleableTool(name)` lookup). No
+// per-tool flag mutation is needed on the host side anymore — the
+// legacy `applyToolFlags(WRITE_TOOLS)` + cached `Tool[]` constant are
+// gone. We retain the WRITE_TOOL_NAMES Set below for the
+// bundle-marker assembly's "is this a known write?" check.
+const WRITE_TOOL_NAME_SET: ReadonlySet<string> = new Set(WRITE_TOOL_NAMES);
 
 interface BufferedToolCall {
   /**
@@ -2851,24 +2872,28 @@ function buildBundleMarker(
   buffered: BufferedToolCall[],
   approvalsByToolCallId: Map<string, string>
 ): AudricBundleMarker {
+  // [P4.1 Phase C — 2026-05-25] `PendingToolCall` is now `{id, name,
+  // input}` — no per-call `tool` reference. The bundle composer
+  // resolves bundleability + modifiableFields + descriptions by NAME
+  // through the engine's central registries (`isBundleableTool`,
+  // `getModifiableFields`, `describeAction`). The defensive
+  // "is this a known WRITE tool?" guard moves to a name-set check so
+  // unknown toolNames still fail fast at marker-assembly time.
   const pendingWrites: PendingToolCall[] = buffered.map((c) => {
-    const tool = FLAGGED_WRITE_TOOLS.find((t) => t.name === c.toolName);
-    if (!tool) {
+    if (!WRITE_TOOL_NAME_SET.has(c.toolName)) {
       throw new Error(
-        `Unknown tool '${c.toolName}' in bundle marker assembly (not in WRITE_TOOLS)`
+        `Unknown tool '${c.toolName}' in bundle marker assembly (not in WRITE_TOOL_NAMES)`
       );
     }
     return {
       name: c.toolName,
       input: c.input,
       id: c.toolCallId,
-      tool,
     };
   });
 
   const composed: PendingAction = composeBundleFromToolResults({
     pendingWrites,
-    tools: FLAGGED_WRITE_TOOLS,
     // [Phase 5e MVP] Read-result tracking + swap-quote matching are
     // Phase 5d-deferred features (PermissionCard's quote-refresh +
     // guard-injection chrome aren't wired through `toolMetadata` in
@@ -3421,7 +3446,7 @@ function countWriteToolsInHistory(messages: unknown[]): number {
   if (!Array.isArray(messages)) {
     return 0;
   }
-  const writeToolNames = new Set(WRITE_TOOLS.map((t) => t.name));
+  const writeToolNames = new Set<string>(WRITE_TOOL_NAMES);
   let count = 0;
   for (const m of messages) {
     const msg = m as { parts?: unknown[]; role?: string } | undefined;

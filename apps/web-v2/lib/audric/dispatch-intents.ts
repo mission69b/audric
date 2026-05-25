@@ -76,8 +76,8 @@
  *     equivalent AI SDK v6 UIMessage-parts shape.
  */
 
-import type { Tool, ToolContext } from "@t2000/engine";
-import type { UIMessage } from "ai";
+import type { InternalContext } from "@t2000/engine";
+import type { Tool as AISDKTool, ToolSet, UIMessage } from "ai";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -446,18 +446,39 @@ export interface DispatchedReadPart {
 }
 
 export interface DispatchIntentsToPartsInput {
+  /**
+   * Engine `InternalContext` envelope — what AI SDK passes through
+   * `experimental_context` on every `tool.execute()` call. The
+   * dispatcher needs this so `wrapEngineExecute` sees the same
+   * `toolContext` + guard state the LLM-path tools see; otherwise
+   * `tryGetInternalContext` throws and the pre-fire blows up.
+   *
+   * [P4.1 Phase C — 2026-05-25] Pre-engine-3.0.0 the dispatcher took
+   * `toolContext: ToolContext` and the engine's legacy `tool.call`
+   * adapter accepted `ToolContext` as the second arg directly. Native
+   * AI SDK tools take `experimental_context` instead — and the engine
+   * unwraps `InternalContext.toolContext` inside `wrapEngineExecute`.
+   * Threading `internalContext` here matches that path 1:1.
+   */
+  internalContext: InternalContext;
   /** Optional log prefix for the dispatcher's structured log lines. */
   logPrefix?: string;
   /** The user's latest message text (the dispatcher target). */
   message: string;
   /**
-   * Map of tool-name → engine `Tool` instance. The dispatcher only
-   * executes intents whose tool is in this map; unwired tools are
-   * skipped with a warn.
+   * Tool-name → native AI SDK `Tool` registry (the `ToolSet` shape the
+   * engine + Audric agent constructor consume). The dispatcher only
+   * executes intents whose tool is present in this map; unwired tools
+   * are skipped with a warn.
+   *
+   * [P4.1 Phase C — 2026-05-25] Pre-engine-3.0.0 this was `Map<string,
+   * EngineTool>` and the dispatcher invoked `tool.call(input, ctx)`.
+   * Post-3.0.0 every tool ships in native AI SDK `tool()` shape — we
+   * accept a plain `ToolSet` and invoke `tool.execute()` with the
+   * `experimental_context` envelope (same path the LLM round-trip
+   * uses, no special-case branch).
    */
-  registry: Map<string, Tool>;
-  /** Server-side tool context used to invoke each tool's `.call()`. */
-  toolContext: ToolContext;
+  registry: ToolSet;
   /** Turn index — used to build stable synthetic call IDs. */
   turnIndex: number;
 }
@@ -475,7 +496,7 @@ export interface DispatchIntentsToPartsInput {
 export async function dispatchIntentsToParts(
   input: DispatchIntentsToPartsInput
 ): Promise<DispatchedReadPart[]> {
-  const { message, toolContext, registry, turnIndex, logPrefix } = input;
+  const { message, internalContext, registry, turnIndex, logPrefix } = input;
   const prefix = logPrefix ?? "[web-v2 intent-dispatch]";
 
   const intents = buildDispatchIntents({
@@ -502,8 +523,8 @@ export async function dispatchIntentsToParts(
   const dispatched: DispatchedReadPart[] = [];
 
   for (const intent of intents) {
-    const tool = registry.get(intent.toolName);
-    if (!tool) {
+    const tool = registry[intent.toolName] as AISDKTool | undefined;
+    if (!tool || typeof tool.execute !== "function") {
       // Intent matched a tool that isn't wired in this host. Today
       // this is the common case for web-v2 (only balance_check is
       // exposed). Log + skip — matches legacy behavior when a tool
@@ -522,18 +543,28 @@ export async function dispatchIntentsToParts(
     );
 
     try {
-      const result = await tool.call(intent.args, toolContext);
-      // `tool.call` returns `{data, displayText?}`. AI SDK consumes
-      // the unwrapped `data` for tool-result parts — matches the
-      // engine's `toAISDKTools` wrapper at
-      // `packages/engine/src/v2/tool-wrapper.ts:148` which returns
-      // `result.data`. The displayText is host-UI metadata that
-      // doesn't go on the wire.
+      // [P4.1 Phase C — 2026-05-25] Native AI SDK invocation. The engine's
+      // `wrapEngineExecute` unwraps the second arg into the host's
+      // `ToolContext` via `tryGetInternalContext(experimental_context)`
+      // and returns `result.data` directly — same path the LLM-driven
+      // round-trip uses. Empty `messages: []` is intentional: the
+      // dispatcher runs BEFORE the LLM call, so no model messages exist
+      // yet for the tool to see.
+      //
+      // We pass `internalContext` (not just `toolContext`) so the guard
+      // pipeline + sessionSpend tracking + sticky-cache hooks see the
+      // pre-fired read as a normal turn step. Behaviour is identical to
+      // a same-turn LLM-issued tool-call.
+      const output = await tool.execute(intent.args, {
+        toolCallId: callId,
+        messages: [],
+        experimental_context: internalContext,
+      });
       dispatched.push({
         toolCallId: callId,
         toolName: intent.toolName,
         input: intent.args,
-        output: result.data,
+        output,
         label: intent.label,
       });
       console.info(`${prefix} dispatched`, {
@@ -543,7 +574,7 @@ export async function dispatchIntentsToParts(
         label: intent.label,
       });
     } catch (dispatchErr) {
-      console.warn(`${prefix} tool.call threw — falling back to LLM flow`, {
+      console.warn(`${prefix} tool.execute threw — falling back to LLM flow`, {
         toolName: intent.toolName,
         label: intent.label,
         error:

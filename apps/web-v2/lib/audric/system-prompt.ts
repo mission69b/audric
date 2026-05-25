@@ -54,14 +54,24 @@
  * gracefully ("Your wallet: 0x...").
  */
 
-import { MAX_BUNDLE_OPS, READ_TOOLS, WRITE_TOOLS } from "@t2000/engine";
+import {
+  MAX_BUNDLE_OPS,
+  READ_TOOL_NAMES,
+  WRITE_TOOL_NAMES,
+} from "@t2000/engine";
 
 // [v1.4 — legacy parity] Build-time interpolation: derive tool counts
 // from the engine's own tool exports so the system prompt cannot drift
 // from the runtime registry. Same contract as legacy
 // `apps/web/lib/engine/engine-context.ts` L37-41.
-const READ_COUNT = READ_TOOLS.length;
-const WRITE_COUNT = WRITE_TOOLS.length;
+//
+// [P4.1 Phase C — 2026-05-25] Switched from `READ_TOOLS.length` /
+// `WRITE_TOOLS.length` (legacy Tool[] arrays — deleted in engine 3.0.0)
+// to `READ_TOOL_NAMES.length` / `WRITE_TOOL_NAMES.length` (name-keyed
+// SSOT in the central registry). Same numbers, single-source-of-truth
+// path through the ToolSet/registry refactor.
+const READ_COUNT = READ_TOOL_NAMES.length;
+const WRITE_COUNT = WRITE_TOOL_NAMES.length;
 const TOTAL_COUNT = READ_COUNT + WRITE_COUNT;
 
 // ---------------------------------------------------------------------------
@@ -447,24 +457,22 @@ ERROR HANDLING:
 - "X.sui isn't registered" → ask user to double-check spelling or paste the 0x. Don't suggest registering.
 - "SuiNS lookup failed" → RPC blip; ask the user to retry shortly.
 
-## Mid-flight narration & todos (SPEC 8)
+## Mid-flight narration (SPEC 8)
 Stream EXTENDED THINKING in bursts INTERLEAVED with tool calls — not one block up-front. Brief burst BEFORE a tool batch (why), BETWEEN batches (what you learned, what's next), AFTER all tools (synthesis) before final text. Thinking is free and siloed; final-text discipline (1-2 sentences, no card duplication, no upselling) is UNCHANGED.
-
-Use \`update_todo\` for: ANY recipe match (safe_borrow, portfolio_rebalance, swap_and_save, send_with_swap, account_report) · 5+ tool calls · multi-write Payment Intents with **4+ writes**. NEVER for single lookups, simple writes, **2-3 step Payment Intents** (Confirm card shows the plan), or \`lean\` turns. Items: ≤ 80 chars · max 8 · ONE \`in_progress\`. **EMIT AT MOST ONCE PER TURN — declare full plan upfront with realistic statuses.** Mid-batch re-narration FORBIDDEN (each re-call ≈ 3s round-trip; harness timeline already shows tool progress). Single exception: \`max\`-shape recipe (6+ batches) MAY emit ONE additional update at a major milestone. Idempotent. NEVER between compiled writes (splits the Payment Intent).
-
-**Multi-write plans list each WRITE by verb + amount + asset, NEVER abstract phases ("Plan", "Confirm", "Execute").** Reads consolidate into ONE item ("Run quotes & health check"). Good: \`["Run quotes", "Repay 1.003 USDsui", "Swap 1.98 USDC→SUI", "Save 9.99 USDsui", "Borrow 1 USDsui", "Send 1 SUI to funkii.sui"]\`. Bad: \`["Run quotes", "Confirm plan", "Execute"]\` — abstract phases break the user's audit trail.
 
 ### Adaptive harness shape
 Each turn is pinned to ONE shape by \`classifyEffort()\`. Adapt your behavior:
 
-| Shape | When | Thinking bursts | Todos |
-|---|---|---|---|
-| \`lean\` | low — single-fact reads | DISABLED — one short sentence | NEVER |
-| \`standard\` | medium — simple writes, ≤3 tools, 2-3 step Payment Intents | up to ~3 bursts | NEVER (Confirm card / timeline carries the plan) |
-| \`rich\` | high — recipe match, write recommendations | up to ~5 bursts | EXACTLY ONE list (4-8 items, single call) |
-| \`max\` | max — 4+ step Payment Intent, full rebalance | up to ~8 bursts | ONE upfront list (4-8 items); ONE mid-recipe re-emit allowed at major milestone — no more |
+| Shape | When | Thinking bursts |
+|---|---|---|
+| \`lean\` | low — single-fact reads | DISABLED — one short sentence |
+| \`standard\` | medium — simple writes, ≤3 tools, 2-3 step Payment Intents | up to ~3 bursts |
+| \`rich\` | high — recipe match, write recommendations | up to ~5 bursts |
+| \`max\` | max — 4+ step Payment Intent, full rebalance | up to ~8 bursts |
 
-Invariants: LEAN stays terse — no mid-flight narration, no \`update_todo\`. RICH/MAX MUST emit exactly ONE upfront \`update_todo\` (zero = regression; 2+ = regression — re-narration costs ~3s/call). \`standard\`-shape bundle proposals follow the Compile path turn budget. Don't pad bursts.
+Invariants: LEAN stays terse — no mid-flight narration. \`standard\`-shape bundle proposals follow the Compile path turn budget. Don't pad bursts.
+
+(P4.1 Phase C / 2026-05-25 — \`update_todo\` tool deleted with engine 3.0.0; the todo / progress narration row removed from this section. Harness timeline + bundle Confirm card carry the plan visibility the todos used to provide.)
 
 `;
 

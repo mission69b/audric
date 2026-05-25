@@ -78,7 +78,8 @@
  *   part per write — no double-fire risk.
  */
 
-import type { Tool, ToolContext } from "@t2000/engine";
+import type { InternalContext } from "@t2000/engine";
+import type { Tool as AISDKTool, ToolSet } from "ai";
 import {
   type DispatchedReadPart,
   makeAutoDispatchId,
@@ -224,16 +225,27 @@ export function extractWritesNeedingRefresh(
 export interface DispatchPostWriteRefreshInput {
   /** The write tools detected by `extractWritesNeedingRefresh`. */
   completedWrites: Array<{ toolName: string }>;
+  /**
+   * Engine `InternalContext` envelope passed to each `tool.execute()`
+   * via `experimental_context`. See `dispatch-intents.ts`'s
+   * matching field for the full rationale; semantics are identical.
+   */
+  internalContext: InternalContext;
   /** Optional log prefix. */
   logPrefix?: string;
   /**
-   * Map of tool-name → engine `Tool` instance. Only refresh reads
-   * present in the registry are dispatched; unwired tools are skipped
+   * Tool-name → native AI SDK `Tool` registry (`ToolSet`). Only refresh
+   * reads present in this map are dispatched; unwired tools are skipped
    * with a warn (matches the intent-dispatcher contract).
+   *
+   * [P4.1 Phase C — 2026-05-25] Pre-engine-3.0.0 this was `Map<string,
+   * EngineTool>` and the refresh path invoked `tool.call(args, ctx)`.
+   * Post-3.0.0 every tool ships in native AI SDK `tool()` shape — we
+   * accept a `ToolSet` and invoke `tool.execute()` with the
+   * `experimental_context` envelope (single path with the LLM-driven
+   * round-trip).
    */
-  registry: Map<string, Tool>;
-  /** Server-side tool context used to invoke each tool's `.call()`. */
-  toolContext: ToolContext;
+  registry: ToolSet;
   /** Turn index — used to build stable synthetic call IDs. */
   turnIndex: number;
 }
@@ -251,7 +263,7 @@ export interface DispatchPostWriteRefreshInput {
 export async function dispatchPostWriteRefresh(
   input: DispatchPostWriteRefreshInput
 ): Promise<DispatchedReadPart[]> {
-  const { completedWrites, registry, toolContext, turnIndex, logPrefix } =
+  const { completedWrites, registry, internalContext, turnIndex, logPrefix } =
     input;
   const prefix = logPrefix ?? "[web-v2 post-write-refresh]";
 
@@ -280,8 +292,8 @@ export async function dispatchPostWriteRefresh(
   const dispatched: DispatchedReadPart[] = [];
 
   for (const refreshToolName of refreshSet) {
-    const tool = registry.get(refreshToolName);
-    if (!tool) {
+    const tool = registry[refreshToolName] as AISDKTool | undefined;
+    if (!tool || typeof tool.execute !== "function") {
       console.warn(`${prefix} skipped — refresh tool not in registry`, {
         toolName: refreshToolName,
       });
@@ -292,17 +304,23 @@ export async function dispatchPostWriteRefresh(
 
     // Empty input: every refresh tool (balance_check / savings_info /
     // health_check) accepts an optional `address` that defaults to the
-    // signed-in wallet from `toolContext`. Same shape the engine's
-    // internal `postWriteRefresh` injector uses.
+    // signed-in wallet from `internalContext.toolContext`. Same shape
+    // the engine's internal `postWriteRefresh` injector uses.
     const args: Record<string, unknown> = {};
 
     try {
-      const result = await tool.call(args, toolContext);
+      // [P4.1 Phase C — 2026-05-25] Native AI SDK invocation. See
+      // `dispatch-intents.ts` for the full rationale; semantics identical.
+      const output = await tool.execute(args, {
+        toolCallId: callId,
+        messages: [],
+        experimental_context: internalContext,
+      });
       dispatched.push({
         toolCallId: callId,
         toolName: refreshToolName,
         input: args,
-        output: result.data,
+        output,
         label: `post-write-refresh:${refreshToolName}`,
       });
       console.info(`${prefix} dispatched`, {
@@ -311,7 +329,7 @@ export async function dispatchPostWriteRefresh(
         tool: refreshToolName,
       });
     } catch (err) {
-      console.warn(`${prefix} tool.call threw — skipping refresh`, {
+      console.warn(`${prefix} tool.execute threw — skipping refresh`, {
         toolName: refreshToolName,
         error: err instanceof Error ? err.message : String(err),
       });
