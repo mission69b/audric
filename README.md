@@ -45,9 +45,11 @@ Your money lives in a non-custodial wallet. Audric executes transactions, but yo
 
 > **Not a chatbot. A financial agent.** Five systems work together to understand your money, reason about decisions, and get smarter over time. Every action still waits on Audric Passport's tap-to-confirm.
 
-### 🎛️ Agent Harness — 37 tools, one agent
+### 🎛️ Agent Harness — 26 tools, one agent
 
-25 read tools + 12 write tools covering balance checks, savings (`save_deposit`, `withdraw`), lending (`borrow`, `repay_debt`), swaps (`swap_quote`, `swap_execute`), liquid staking (`volo_stake`, `volo_unstake`), payments (`send_transfer`, `pay_api`), payment links / invoices, on-chain analytics, BlockVision-backed pricing (`token_prices`), reward compounding (`pending_rewards` + `harvest_rewards`), and SuiNS resolution (`resolve_suins`). Read tools execute in parallel; write tools require user Passport confirmation and execute sequentially under a transaction mutex (`TxMutex`).
+18 read tools + 8 write tools covering balance checks, savings (`save_deposit`, `withdraw`), lending (`borrow`, `repay_debt`), swaps (`swap_quote`, `swap_execute`), payments (`send_transfer`), payment links, on-chain analytics, BlockVision-backed pricing (`token_prices`), reward compounding (`pending_rewards` + `harvest_rewards`), and SuiNS resolution (`resolve_suins`). Read tools execute in parallel; write tools require user Passport confirmation and execute sequentially under a transaction mutex (`TxMutex`).
+
+> **Post-S.245 + S.269 + S.277 (May 2026):** Down from 37 tools. `pay_api` + `mpp_services` (S.245), `save_contact` + the 3 invoice tools (S.269), and the Volo trio + `web_search` + `protocol_deep_dive` (S.277 "Earns Its Keep" audit) were cut from the engine surface — paid-API commerce returns as Audric Store, invoicing collapses into payment links (label/memo encode invoice context), and Volo liquid staking remains available in `@t2000/sdk` + `@t2000/cli` + `@t2000/mcp` for non-Audric consumers.
 
 ### ⚡ Reasoning Engine — thinks before it acts
 
@@ -77,7 +79,7 @@ Two harness upgrades on top of the 5-system base:
 | Spec | Versions | What it added |
 |---|---|---|
 | **Spec 1 — Correctness** | `@t2000/engine` v0.41.0 → v0.50.3 | `attemptId` UUID v4 stamped on every `pending_action` (stable join key from action → on-chain receipt → `TurnMetrics.pendingActionOutcome` row). `modifiableFields` registry — fields the user can edit on a confirm card without losing the LLM's reasoning. `EngineConfig.onAutoExecuted` hook so `auto`-permission writes (currently none in Audric) participate in the same telemetry as confirm-gated ones. |
-| **Spec 2 — Intelligence** | `@t2000/engine` v0.47.0 → v0.54.1 | BlockVision swap — replaced 7 `defillama_*` tools with one `token_prices` tool; `balance_check` + `portfolio_analysis` rewired to BlockVision Indexer REST. Sticky-positive cache + retry/circuit breaker for graceful 429 handling. `<financial_context>` orientation block injected at every engine boot from the daily 02:00 UTC `UserFinancialContext` snapshot — every chat starts oriented, no warm-up tool calls. `attemptId`-keyed resume so two pending actions in the same turn never clobber each other's outcome. `protocol_deep_dive` retained on DefiLlama as the lone exception. |
+| **Spec 2 — Intelligence** | `@t2000/engine` v0.47.0 → v0.54.1 | BlockVision swap — replaced 7 `defillama_*` tools with one `token_prices` tool; `balance_check` + `portfolio_analysis` rewired to BlockVision Indexer REST. Sticky-positive cache + retry/circuit breaker for graceful 429 handling. `<financial_context>` orientation block injected at every engine boot from the daily 02:00 UTC `UserFinancialContext` snapshot — every chat starts oriented, no warm-up tool calls. `attemptId`-keyed resume so two pending actions in the same turn never clobber each other's outcome. **S.277 (May 2026):** `protocol_deep_dive` retired — engine no longer talks to DefiLlama; `rates_info` covers the in-product safety lens. |
 
 > Specs are local working documents (`AUDRIC_HARNESS_CORRECTNESS_SPEC_v1.3.md`, `AUDRIC_HARNESS_INTELLIGENCE_SPEC_v1.4.1.md`). Cross-repo contracts live in `audric/.cursor/rules/audric-transaction-flow.mdc`, `audric/.cursor/rules/write-tool-pending-action.mdc`, and `t2000/.cursor/rules/agent-harness-spec.mdc`.
 

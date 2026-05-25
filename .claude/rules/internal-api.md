@@ -4,7 +4,9 @@
 
 ## What's left
 
-Only ONE route. `POST /api/internal/payments` — the engine bridge for payment-link / invoice tools (`create_payment_link`, `list_payment_links`, `cancel_payment_link`, `create_invoice`, `list_invoices`, `cancel_invoice`). Engine calls it server-side via `x-internal-key` because it has no zkLogin JWT (server context, not browser).
+Only ONE route. `POST /api/internal/payments` — the engine bridge for payment-link tools (`create_payment_link`, `list_payment_links`, `cancel_payment_link`). Engine calls it server-side via `x-internal-key` because it has no zkLogin JWT (server context, not browser).
+
+> **S.269 (V07E_INVOICE_DEPRECATION, 2026-05-23):** The 3 invoice tools (`create_invoice`, `list_invoices`, `cancel_invoice`) were deleted from the engine. Payment links absorb the invoicing use case — set `label` / `memo` to encode invoice context.
 
 Slated for elimination in v0.7e+ via function injection — see `HANDOFF_NEXT_AGENT.md` backlog `engine-fn-injection-refactor`. Until then, this is the canonical pattern for engine→audric server-to-server bridges.
 
