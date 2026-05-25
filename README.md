@@ -15,9 +15,9 @@ Audric is exactly five products. Everything you can do is one of them. (S.18 rev
 | Product | Description |
 |---------|-------------|
 | 🪪 **Audric Passport** | Trust layer — sign in with Google, non-custodial Sui wallet in 3 seconds, every write taps to confirm, sponsored gas. Wraps every other product. |
-| 🧠 **Audric Intelligence** | The brain (the moat) — 5 systems: Agent Harness (37 tools), Reasoning Engine (14 guards), Silent Profile, Chain Memory, AdviceLog. Multi-step orchestration ships as **14 skills** (markdown playbooks in `@t2000/mcp` baked into the published bundle, exposed to Cursor / Claude Desktop as MCP prompts). Engineering-facing brand; users experience it as "Audric just understood me." |
+| 🧠 **Audric Intelligence** | The brain (the moat) — 4 systems: Agent Harness (26 tools), Reasoning Engine (12 guards), Memory (MemWal vector store), AdviceLog. Multi-step orchestration ships as **14 skills** (markdown playbooks in `@t2000/mcp` baked into the published bundle, exposed to Cursor / Claude Desktop as MCP prompts). Engineering-facing brand; users experience it as "Audric just understood me." |
 | 💰 **Audric Finance** | Manage your money on Sui — Save (NAVI lend, 3–8% APY on USDC or USDsui — strategic exception added in v0.51.0), Credit (NAVI borrow USDC or USDsui against your savings, health factor visible — repay must use the same asset as the borrow), Swap (Cetus aggregator across 20+ DEXs, 0.1% fee), Charts (interactive yield/health/portfolio viz from chat). Every write taps to confirm via Passport. |
-| 💸 **Audric Pay** | Money primitive — send USDC to anyone, receive via payment links / invoices / QR. Free, global, instant on Sui. No bank, no borders, no fees. |
+| 💸 **Audric Pay** | Money primitive — send USDC to anyone, receive via payment links / QR. Free, global, instant on Sui. No bank, no borders, no fees. |
 | 🛒 **Audric Store** | Creator marketplace at `audric.ai/username`. Sell AI-generated music, art, ebooks in USDC. **Coming soon (Phase 5).** |
 
 ## How it works
@@ -35,15 +35,15 @@ Your money lives in a non-custodial wallet. Audric executes transactions, but yo
 | Framework | Next.js 15 (App Router) |
 | Auth | zkLogin via Enoki (Google OAuth → Sui wallet) |
 | Gas | Enoki sponsored transactions (zero gas for users) |
-| AI | `@t2000/engine` — 37 tools (25 read + 12 write), reasoning engine, extended thinking, canvas. Skills (multi-step playbooks) ship from `@t2000/mcp`. |
+| AI | `@t2000/engine` — 26 tools (18 read + 8 write), reasoning engine, extended thinking, canvas. Skills (multi-step playbooks) ship from `@t2000/mcp`. |
 | Database | NeonDB (Prisma) — 15 models (users, user preferences, profiles, memories, financial context, advice log, conversation log, session usage, payments, watch addresses, linked wallets, portfolio snapshots, turn metrics, app events, service purchases) |
 | Sessions | Upstash Redis (KV) |
 | Styling | Tailwind CSS v4, Agentic Design System |
 | Hosting | Vercel |
 
-## Audric Intelligence — the 5-system moat
+## Audric Intelligence — the 4-system moat
 
-> **Not a chatbot. A financial agent.** Five systems work together to understand your money, reason about decisions, and get smarter over time. Every action still waits on Audric Passport's tap-to-confirm.
+> **Not a chatbot. A financial agent.** Four systems work together to understand your money, reason about decisions, and get smarter over time. Every action still waits on Audric Passport's tap-to-confirm.
 
 ### 🎛️ Agent Harness — 26 tools, one agent
 
@@ -55,7 +55,7 @@ Your money lives in a non-custodial wallet. Audric executes transactions, but yo
 
 - **Extended thinking** — always-on for Sonnet/Opus (adaptive mode). Haiku for low-effort queries
 - **Adaptive effort** — classifies each turn as `low`/`medium`/`high`/`max` and adjusts model + thinking depth
-- **Guard runner** — 14 guards (12 pre-execution + 2 post-execution hints) across 3 priority tiers (Safety > Financial > UX) enforce balance freshness, health factor limits, slippage thresholds, irreversibility warnings, address-source / address-scope / asset-intent gates, swap preview confirmation, retry protection, and cost warnings
+- **Guard runner** — 12 guards (10 pre-execution + 2 post-execution hints) across 3 priority tiers (Safety > Financial > UX) enforce balance freshness, health factor limits, slippage thresholds, irreversibility warnings, address-source / address-scope / asset-intent gates, swap preview confirmation, and retry protection
 - **Skills (multi-step playbooks)** — 14 markdown playbooks shipped from `@t2000/mcp`, baked into the published npm bundle at build time and exposed to MCP clients (Cursor, Claude Desktop, claude-code CLI) as `skill-<name>` prompts. The 6 multi-step playbooks (`t2000-rebalance`, `t2000-account-report`, `t2000-borrow` with safe-borrow logic, `t2000-withdraw` with emergency-close logic, `t2000-save` with swap-and-save, `t2000-send` with contact-resolution) absorbed the orchestration that pre-Phase 6 lived in a YAML recipe runtime in `@t2000/engine` (deleted v0.7a Phase 6, May 2026). Skill content guides the LLM through multi-step intents; the engine just runs the tools the LLM picks.
 - **Preflight validation** — input validation on send, swap, pay, borrow, and save before execution
 - **Prompt caching** — static system prompt + tool definitions cached across turns for lower latency and cost
@@ -74,7 +74,7 @@ Long-term memory lives in `@mysten-incubation/memwal` (Mysten vector memory). Ev
 
 ### What shipped recently — Spec 1 + Spec 2
 
-Two harness upgrades on top of the 5-system base:
+Two harness upgrades on top of the 4-system base:
 
 | Spec | Versions | What it added |
 |---|---|---|
@@ -105,7 +105,7 @@ Structured card types for tool results: balance, savings, health, staking, proto
 
 ```
 audric.ai (this repo)
-├── @t2000/engine    ← Agent engine (37 tools, reasoning, MCP, streaming, skills via @t2000/mcp)
+├── @t2000/engine    ← Agent engine (26 tools, reasoning, MCP, streaming, skills via @t2000/mcp)
 ├── @t2000/sdk       ← Core SDK (wallet, balance, transactions)
 ├── @suimpp/mpp      ← MPP payment client (Sui USDC)
 └── @mysten/sui      ← Sui blockchain client
