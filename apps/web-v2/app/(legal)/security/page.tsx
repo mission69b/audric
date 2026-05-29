@@ -106,10 +106,7 @@ export default function SecurityPage() {
         </h2>
         <div className="grid gap-4">
           {SECURITY_MEASURES.map((m) => (
-            <div
-              className="border border-border rounded-lg p-4"
-              key={m.title}
-            >
+            <div className="border border-border rounded-lg p-4" key={m.title}>
               <h3 className="font-sans text-[14px] font-medium text-foreground mb-1.5">
                 {m.title}
               </h3>
@@ -198,7 +195,9 @@ export default function SecurityPage() {
           </p>
           <div className="space-y-2">
             <div className="flex items-center gap-3">
-              <span className="text-muted-foreground w-24 shrink-0">Report</span>
+              <span className="text-muted-foreground w-24 shrink-0">
+                Report
+              </span>
               <a
                 className="text-foreground underline underline-offset-2 hover:opacity-70"
                 href={`${AUDRIC_GITHUB}/security/advisories/new`}
@@ -209,7 +208,9 @@ export default function SecurityPage() {
               </a>
             </div>
             <div className="flex items-center gap-3">
-              <span className="text-muted-foreground w-24 shrink-0">Response</span>
+              <span className="text-muted-foreground w-24 shrink-0">
+                Response
+              </span>
               <span className="text-foreground">
                 Acknowledgment within 48 hours
               </span>

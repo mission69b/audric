@@ -39,6 +39,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @audric/web-v2 lint
+      - run: pnpm --filter @audric/web-v2 check:ads
       - run: pnpm --filter @audric/web-v2 typecheck
 
   test:

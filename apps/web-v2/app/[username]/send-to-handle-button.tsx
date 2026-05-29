@@ -222,7 +222,9 @@ export function SendToHandleButton({
           {buttonLabel}
         </button>
         {phase.kind === "idle" && phase.error && (
-          <p className="text-center text-[11px] text-destructive">{phase.error}</p>
+          <p className="text-center text-[11px] text-destructive">
+            {phase.error}
+          </p>
         )}
         {account && (
           <button

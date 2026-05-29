@@ -426,9 +426,7 @@ function SuggestionRow({
       className={`flex w-full items-center justify-between px-3.5 py-3 text-left transition ${
         divider ? "border-b border-border" : ""
       } ${active ? "bg-muted" : "bg-transparent"} ${
-        clickable
-          ? "cursor-pointer hover:bg-muted"
-          : "cursor-not-allowed"
+        clickable ? "cursor-pointer hover:bg-muted" : "cursor-not-allowed"
       } focus-visible:bg-muted focus-visible:outline-none`}
       data-status={status}
       data-testid={`username-picker-chip-${label}`}

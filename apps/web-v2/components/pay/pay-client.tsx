@@ -468,7 +468,9 @@ function PaidState({ data }: { data: PaymentData }) {
         </div>
       )}
       {data.label && (
-        <p className="mb-2 font-mono text-[10px] text-muted-foreground">{data.label}</p>
+        <p className="mb-2 font-mono text-[10px] text-muted-foreground">
+          {data.label}
+        </p>
       )}
       {data.paymentMethod && (
         <span className="mb-3 inline-block rounded-xs border border-success/30 bg-success/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.12em] text-success">

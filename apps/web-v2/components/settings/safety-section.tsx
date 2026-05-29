@@ -181,7 +181,9 @@ export function SafetySection({ address }: SafetySectionProps) {
               ].join(" ");
               return (
                 <div className="contents" key={key}>
-                  <span className={`${rowClass} text-[12px] text-muted-foreground`}>
+                  <span
+                    className={`${rowClass} text-[12px] text-muted-foreground`}
+                  >
                     {label}
                   </span>
                   <span

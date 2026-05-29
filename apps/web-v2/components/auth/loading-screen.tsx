@@ -140,10 +140,10 @@ export function LoadingScreen({ step, error, onRetry }: LoadingScreenProps) {
   }
 
   return (
-      <main className="flex min-h-dvh flex-col items-center justify-center bg-background px-6">
-        <div className="w-full max-w-sm space-y-7">
-          <h2 className="text-center font-serif text-[28px] text-foreground leading-[1.15] tracking-[-0.01em]">
-            Signing you in…
+    <main className="flex min-h-dvh flex-col items-center justify-center bg-background px-6">
+      <div className="w-full max-w-sm space-y-7">
+        <h2 className="text-center font-serif text-[28px] text-foreground leading-[1.15] tracking-[-0.01em]">
+          Signing you in…
         </h2>
 
         <div className="space-y-3.5">

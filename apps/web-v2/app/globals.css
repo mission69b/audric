@@ -54,51 +54,6 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
-  /* ----------------------------------------------------------
-     Audric Design System utility mapping (Phase 5a.0).
-     Generates tailwind utilities like `bg-surface-card`,
-     `text-fg-muted`, `border-border-subtle`,
-     `text-success-solid`, etc. for the renderer port.
-     ---------------------------------------------------------- */
-
-  /* Surface */
-  --color-surface-page: var(--surface-page);
-  --color-surface-card: var(--surface-card);
-  --color-surface-sunken: var(--surface-sunken);
-  --color-surface-elevated: var(--surface-elevated);
-  --color-surface-inverse: var(--surface-inverse);
-
-  /* Foreground */
-  --color-fg-primary: var(--fg-primary);
-  --color-fg-secondary: var(--fg-secondary);
-  --color-fg-muted: var(--fg-muted);
-  --color-fg-disabled: var(--fg-disabled);
-  --color-fg-inverse: var(--fg-inverse);
-
-  /* Border */
-  --color-border-default: var(--border-default);
-  --color-border-subtle: var(--border-subtle);
-  --color-border-strong: var(--border-strong);
-  --color-border-focus: var(--border-focus);
-
-  /* Status (success / warning / error / info × fg / bg / border / solid) */
-  --color-success-fg: var(--success-fg);
-  --color-success-bg: var(--success-bg);
-  --color-success-border: var(--success-border);
-  --color-success-solid: var(--success-solid);
-  --color-warning-fg: var(--warning-fg);
-  --color-warning-bg: var(--warning-bg);
-  --color-warning-border: var(--warning-border);
-  --color-warning-solid: var(--warning-solid);
-  --color-error-fg: var(--error-fg);
-  --color-error-bg: var(--error-bg);
-  --color-error-border: var(--error-border);
-  --color-error-solid: var(--error-solid);
-  --color-info-fg: var(--info-fg);
-  --color-info-bg: var(--info-bg);
-  --color-info-border: var(--info-border);
-  --color-info-solid: var(--info-solid);
-
   /* [S.204+ P1] Bubble tokens — used by user/assistant chat message
      surfaces. Composed from --fg-primary / --fg-inverse so they flip
      correctly per theme without per-component dark variants. */
@@ -141,7 +96,7 @@
   --secondary: var(--ds-gray-100);
   --secondary-foreground: var(--fg);
   --muted: var(--ds-gray-100);
-  --muted-foreground: var(--fg-muted);
+  --muted-foreground: var(--ds-gray-700);
   --accent: var(--ds-gray-200);
   --accent-foreground: var(--fg);
   --destructive: var(--ds-red-700);
@@ -149,8 +104,8 @@
      shadcn template ships only `destructive`. These give read + receipt
      cards `text-success` / `bg-warning` / `text-info` utilities that map
      to Geist's hue ramps (static across themes, same as the spec's
-     `var(--success)` / `var(--warning)`). The ADS `*-solid` / `*-fg`
-     family below is superseded by these and deleted in R6.9. */
+     `var(--success)` / `var(--warning)`). These superseded the ADS
+     `*-solid` / `*-fg` family, removed in R6.9. */
   --success: var(--ds-green-700);
   --warning: var(--ds-amber-700);
   --info: var(--ds-blue-700);
@@ -162,7 +117,7 @@
   --chart-4: var(--ds-gray-500);
   --chart-5: var(--ds-gray-400);
   --sidebar: var(--bg);
-  --sidebar-foreground: var(--fg-muted);
+  --sidebar-foreground: var(--ds-gray-700);
   --sidebar-primary: var(--fg);
   --sidebar-primary-foreground: var(--bg);
   --sidebar-accent: var(--ds-gray-100);
@@ -185,137 +140,25 @@
 }
 
 /* ============================================================
-   AUDRIC DESIGN SYSTEM v1.2 — light-theme tokens
-   Ported into web-v2 by Phase 5a.0 (renderer migration sweep,
-   2026-05-19) per D-10 lock. Cards / canvas / timeline renderers
-   under `components/audric/*` consume these. Coexists with the
-   shadcn / ai-chatbot tokens above (no name collisions except
-   chart-1..4 — see comment below).
+   AUDRIC — app-specific tokens layered on Geist DS.
+   Signal (cyan accent), chat-bubble surfaces, and typography
+   stacks — the bits that aren't part of the Geist-rooted shadcn
+   semantic set above.
 
-   Traceability:
-     - Legacy source: apps/web/app/globals.css lines 1-220
-     - Phase 5 SPEC: BENEFITS_SPEC_v07c.md §"Phase 5 — Renderer
-       migration sweep" + D-10 (theme re-port).
-     - Pink / teal / purple / orange hue scales NOT ported —
-       cards don't reference them. Add piecemeal if a future
-       card needs them.
+   [R6.9 — 2026-05-30] Decommissioned the legacy Agentic Design
+   System: the raw --n/--r/--g/--y/--o/--b colour ramps and the
+   --surface-* / --fg-* / --border-default|subtle|focus /
+   --*-fg|bg|border|solid semantic aliases are GONE. Every
+   consumer now reads the Geist-rooted shadcn tokens above
+   (--background, --foreground, --card, --muted, --border,
+   --success, --warning, --info, --destructive). The litepaper
+   module was migrated in the same rock. Do NOT reintroduce ADS
+   tokens — the regression guard (scripts/check-ads-tokens.mts)
+   fails CI on any ramp / surface- / fg- / status-suffix
+   reintroduction.
    ============================================================ */
 
 :root {
-  /* Neutrals (9 steps) — semantic aliases compose from these. */
-  --n100: #ffffff;
-  --n200: #f7f7f7;
-  --n300: #e5e5e5;
-  --n400: #cccccc;
-  --n500: #8f8f8f;
-  --n600: #707070;
-  --n700: #363636;
-  --n800: #191919;
-  --n900: #000000;
-
-  /* Status hue scales (red / green / yellow / blue) — status semantic
-     tokens compose from these. Keeping all 8 steps because dark theme
-     promotes solids one step up. */
-  --r100: #fff5f5;
-  --r200: #ffeded;
-  --r300: #ffa0a0;
-  --r400: #ff5c5c;
-  --r500: #f02d2d;
-  --r600: #d50b0b;
-  --r700: #570303;
-  --r800: #2a0303;
-
-  --g100: #f6fef6;
-  --g200: #e0fae0;
-  --g300: #a6f0a5;
-  --g400: #4ce160;
-  --g500: #3cc14e;
-  --g600: #288034;
-  --g700: #1b561a;
-  --g800: #0c310d;
-
-  --y100: #fffff5;
-  --y200: #fff8d5;
-  --y300: #ffe58a;
-  --y400: #ffbd14;
-  --y500: #eebb04;
-  --y600: #855f00;
-  --y700: #553606;
-  --y800: #312102;
-
-  --o400: #ff8806;
-  --o500: #ec7303;
-
-  --b100: #f5f9ff;
-  --b200: #d4e5fe;
-  --b300: #84b4fb;
-  --b400: #4d93fc;
-  --b500: #0968f6;
-  --b600: #0049b8;
-  --b700: #002a69;
-  --b800: #19133a;
-
-  /* ----------------------------------------------------------
-     [R6.0] Audric semantic layer, re-rooted onto Geist DS.
-     Surfaces / foreground / borders alias --ds-* directly and
-     flip per theme automatically (Geist flips grayscale +
-     backgrounds via [data-theme]) — no .dark overrides needed.
-     The raw ADS ramps above (the --n / --r / --g / --y / --o / --b
-     families) are retained ONLY as a bridge for the litepaper module
-     (app/litepaper/litepaper.module.css); deleted in R6.9 once the
-     litepaper is converted.
-     ---------------------------------------------------------- */
-
-  /* Surface */
-  --surface-page: var(--ds-background-100);
-  --surface-card: var(--ds-gray-100);
-  --surface-sunken: var(--ds-background-200);
-  --surface-elevated: var(--ds-gray-200);
-  --surface-inverse: var(--ds-gray-1000);
-
-  /* Foreground */
-  --fg-primary: var(--fg);
-  --fg-secondary: var(--ds-gray-900);
-  --fg-muted: var(--ds-gray-700);
-  --fg-disabled: var(--ds-gray-600);
-  --fg-inverse: var(--ds-background-100);
-
-  /* Border (ADS-specific names; --border-strong inherits Geist's) */
-  --border-default: var(--ds-gray-alpha-400);
-  --border-subtle: var(--ds-gray-alpha-300);
-  --border-focus: var(--ds-blue-700);
-
-  /* ----------------------------------------------------------
-     Status — Geist ships only grayscale + blue flipping per
-     theme; its hue ramps (red/green/amber) are dark-tuned and
-     static. So Audric derives status tints with color-mix:
-       *-solid : the Geist hue mid-step (reads on both themes)
-       *-fg    : solid mixed toward --fg (auto dark-in-light /
-                 light-in-dark for legible label text)
-       *-bg    : ~12% solid over transparent (auto-tints per bg)
-       *-border: ~30% solid over transparent
-     One definition, theme-correct in both modes.
-     ---------------------------------------------------------- */
-  --success-solid: var(--ds-green-700);
-  --success-fg: color-mix(in srgb, var(--ds-green-700) 70%, var(--fg));
-  --success-bg: color-mix(in srgb, var(--ds-green-700) 12%, transparent);
-  --success-border: color-mix(in srgb, var(--ds-green-700) 30%, transparent);
-
-  --warning-solid: var(--ds-amber-700);
-  --warning-fg: color-mix(in srgb, var(--ds-amber-700) 70%, var(--fg));
-  --warning-bg: color-mix(in srgb, var(--ds-amber-700) 14%, transparent);
-  --warning-border: color-mix(in srgb, var(--ds-amber-700) 32%, transparent);
-
-  --error-solid: var(--ds-red-700);
-  --error-fg: color-mix(in srgb, var(--ds-red-700) 72%, var(--fg));
-  --error-bg: color-mix(in srgb, var(--ds-red-700) 12%, transparent);
-  --error-border: color-mix(in srgb, var(--ds-red-700) 30%, transparent);
-
-  --info-solid: var(--ds-blue-700);
-  --info-fg: color-mix(in srgb, var(--ds-blue-700) 72%, var(--fg));
-  --info-bg: color-mix(in srgb, var(--ds-blue-700) 12%, transparent);
-  --info-border: color-mix(in srgb, var(--ds-blue-700) 30%, transparent);
-
   /* Signal — Audric's one accent (cyan). Geist's teal ramp is static,
      so flip explicitly in .dark below: teal-700 (light) → teal-900
      (dark, brighter). Signal-only per design: live indicator,
@@ -323,13 +166,6 @@
      focus rings. */
   --signal: var(--ds-teal-700);
   --signal-bg: color-mix(in srgb, var(--signal) 12%, transparent);
-
-  /* Chart segments — monochrome grey spread (Geist grays flip per
-     theme automatically). */
-  --chart-1: var(--ds-gray-1000);
-  --chart-2: var(--ds-gray-800);
-  --chart-3: var(--ds-gray-600);
-  --chart-4: var(--ds-gray-500);
 
   /* Chat bubble — user message = inverted surface (fg-on-bg). Flips
      automatically via Geist: near-black bubble / white text in light,
