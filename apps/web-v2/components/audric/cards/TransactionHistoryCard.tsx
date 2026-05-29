@@ -152,12 +152,12 @@ export function TransactionHistoryCard({ data }: { data: HistoryData }) {
   const badge = isWatched ? (
     <span className="inline-flex items-center gap-2">
       <AddressBadge address={data.address!} suinsName={data.suinsName} />
-      <span className="text-[10px] font-mono text-fg-muted">
+      <span className="text-[10px] font-mono text-muted-foreground">
         {data.count} total
       </span>
     </span>
   ) : (
-    <span className="text-[10px] font-mono text-fg-muted">
+    <span className="text-[10px] font-mono text-muted-foreground">
       {data.count} total
     </span>
   );
@@ -167,7 +167,7 @@ export function TransactionHistoryCard({ data }: { data: HistoryData }) {
       <div className="space-y-2">
         {Array.from(groups.entries()).map(([label, items]) => (
           <div key={label}>
-            <span className="text-[10px] font-mono uppercase tracking-wider text-fg-muted">
+            <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
               {label}
             </span>
             <div className="mt-1 space-y-0.5">
@@ -183,15 +183,15 @@ export function TransactionHistoryCard({ data }: { data: HistoryData }) {
                 return (
                   <div
                     key={tx.digest}
-                    className="flex items-center justify-between py-1 border-t border-border-subtle/30 font-mono text-[11px]"
+                    className="flex items-center justify-between py-1 border-t border-border/30 font-mono text-[11px]"
                   >
                     <div className="flex items-center gap-1.5 min-w-0">
-                      <span className="text-fg-muted">{getIcon(rawLabel)}</span>
-                      <span className="text-fg-primary font-medium capitalize truncate">
+                      <span className="text-muted-foreground">{getIcon(rawLabel)}</span>
+                      <span className="text-foreground font-medium capitalize truncate">
                         {display}
                       </span>
                       {tx.recipient && (
-                        <span className="text-fg-muted truncate max-w-[60px]">
+                        <span className="text-muted-foreground truncate max-w-[60px]">
                           →{' '}
                           {tx.recipient.length > 10
                             ? `${tx.recipient.slice(0, 6)}...`
@@ -203,21 +203,21 @@ export function TransactionHistoryCard({ data }: { data: HistoryData }) {
                       {tx.amount != null && tx.amount > 0 && (
                         <span
                           className={
-                            outflow ? 'text-fg-primary' : 'text-success-solid'
+                            outflow ? 'text-foreground' : 'text-success'
                           }
                         >
                           {outflow ? '−' : '+'}
                           {fmtTxAmount(tx.amount)} {tx.asset ?? 'USDC'}
                         </span>
                       )}
-                      <span className="text-fg-muted text-[9px]">
+                      <span className="text-muted-foreground text-[9px]">
                         {fmtRelativeTime(toIso(tx.timestamp))}
                       </span>
                       <a
                         href={`${SUISCAN_TX_URL}/${tx.digest}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-info-solid hover:opacity-70"
+                        className="text-info hover:opacity-70"
                       >
                         {SUISCAN_ICON}
                       </a>
@@ -230,7 +230,7 @@ export function TransactionHistoryCard({ data }: { data: HistoryData }) {
         ))}
       </div>
       {data.count > VISIBLE_LIMIT && (
-        <div className="mt-1.5 pt-1.5 border-t border-border-subtle/50 text-[10px] font-mono text-fg-muted text-center">
+        <div className="mt-1.5 pt-1.5 border-t border-border/50 text-[10px] font-mono text-muted-foreground text-center">
           Showing {txs.length} of {data.count}
         </div>
       )}

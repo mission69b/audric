@@ -114,15 +114,15 @@ export function SafetySection({ address }: SafetySectionProps) {
 
   return (
     <div className="flex flex-col gap-3.5">
-      <p className="mb-1.5 text-[13px] text-fg-secondary">
+      <p className="mb-1.5 text-[13px] text-muted-foreground">
         Control spending limits and transaction safety settings.
       </p>
 
-      <div className="rounded-md border border-border-subtle bg-surface-sunken p-4">
-        <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-fg-muted">
+      <div className="rounded-md border border-border bg-muted p-4">
+        <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
           Auto-approve permissions
         </p>
-        <p className="mt-1 mb-3.5 text-[12px] text-fg-secondary">
+        <p className="mt-1 mb-3.5 text-[12px] text-muted-foreground">
           Per-operation USD thresholds that decide when Audric acts on its own,
           asks for a one-tap confirm, or requires an explicit instruction.
         </p>
@@ -142,8 +142,8 @@ export function SafetySection({ address }: SafetySectionProps) {
                   "focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none",
                   "disabled:cursor-not-allowed disabled:opacity-50",
                   active
-                    ? "border-fg-primary bg-fg-primary text-fg-inverse"
-                    : "border-border-strong bg-surface-card text-fg-secondary hover:border-fg-primary hover:text-fg-primary",
+                    ? "border-foreground bg-foreground text-background"
+                    : "border-border bg-card text-muted-foreground hover:border-foreground hover:text-foreground",
                 ].join(" ")}
                 disabled={!address || isValidating}
                 key={p}
@@ -157,16 +157,16 @@ export function SafetySection({ address }: SafetySectionProps) {
           })}
         </fieldset>
 
-        <div className="mt-4 border-t border-border-subtle pt-3.5">
-          <div className="grid grid-cols-[minmax(0,1fr)_repeat(3,minmax(72px,auto))] items-center gap-x-5 border-b border-border-subtle pb-1.5">
+        <div className="mt-4 border-t border-border pt-3.5">
+          <div className="grid grid-cols-[minmax(0,1fr)_repeat(3,minmax(72px,auto))] items-center gap-x-5 border-b border-border pb-1.5">
             <span aria-hidden="true" />
-            <span className="text-right font-mono text-[9px] uppercase tracking-[0.12em] text-fg-muted">
+            <span className="text-right font-mono text-[9px] uppercase tracking-[0.12em] text-muted-foreground">
               Auto
             </span>
-            <span className="text-right font-mono text-[9px] uppercase tracking-[0.12em] text-fg-muted">
+            <span className="text-right font-mono text-[9px] uppercase tracking-[0.12em] text-muted-foreground">
               Confirm
             </span>
-            <span className="text-right font-mono text-[9px] uppercase tracking-[0.12em] text-fg-muted">
+            <span className="text-right font-mono text-[9px] uppercase tracking-[0.12em] text-muted-foreground">
               Explicit
             </span>
           </div>
@@ -177,25 +177,25 @@ export function SafetySection({ address }: SafetySectionProps) {
               const last = idx === OPERATIONS.length - 1;
               const rowClass = [
                 "py-2",
-                last ? "" : "border-b border-border-subtle",
+                last ? "" : "border-b border-border",
               ].join(" ");
               return (
                 <div className="contents" key={key}>
-                  <span className={`${rowClass} text-[12px] text-fg-secondary`}>
+                  <span className={`${rowClass} text-[12px] text-muted-foreground`}>
                     {label}
                   </span>
                   <span
-                    className={`${rowClass} text-right font-mono text-[11px] tabular-nums text-fg-primary`}
+                    className={`${rowClass} text-right font-mono text-[11px] tabular-nums text-foreground`}
                   >
                     {fmtCell("auto", autoBelow, confirmBetween)}
                   </span>
                   <span
-                    className={`${rowClass} text-right font-mono text-[11px] tabular-nums text-fg-primary`}
+                    className={`${rowClass} text-right font-mono text-[11px] tabular-nums text-foreground`}
                   >
                     {fmtCell("confirm", autoBelow, confirmBetween)}
                   </span>
                   <span
-                    className={`${rowClass} text-right font-mono text-[11px] tabular-nums text-fg-primary`}
+                    className={`${rowClass} text-right font-mono text-[11px] tabular-nums text-foreground`}
                   >
                     {fmtCell("explicit", autoBelow, confirmBetween)}
                   </span>
@@ -204,10 +204,10 @@ export function SafetySection({ address }: SafetySectionProps) {
             })}
           </div>
 
-          <p className="mt-3.5 text-[11px] leading-[1.5] text-fg-muted">
+          <p className="mt-3.5 text-[11px] leading-[1.5] text-muted-foreground">
             Above the confirm threshold, Audric always asks before signing.
             Daily ceiling for auto-approved actions:{" "}
-            <span className="font-mono text-fg-secondary">
+            <span className="font-mono text-muted-foreground">
               {fmtUsd(PERMISSION_PRESETS[preset].autonomousDailyLimit)}
             </span>
             .

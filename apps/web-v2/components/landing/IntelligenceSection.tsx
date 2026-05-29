@@ -32,7 +32,7 @@ const PILLARS: Pillar[] = [
         width="30"
       >
         <rect
-          className="fill-fg-primary"
+          className="fill-foreground"
           height="10"
           rx="1"
           width="10"
@@ -40,7 +40,7 @@ const PILLARS: Pillar[] = [
           y="3"
         />
         <rect
-          className="fill-fg-primary"
+          className="fill-foreground"
           height="10"
           rx="1"
           width="10"
@@ -48,7 +48,7 @@ const PILLARS: Pillar[] = [
           y="3"
         />
         <rect
-          className="fill-fg-primary"
+          className="fill-foreground"
           height="10"
           rx="1"
           width="10"
@@ -56,7 +56,7 @@ const PILLARS: Pillar[] = [
           y="17"
         />
         <rect
-          className="fill-fg-primary"
+          className="fill-foreground"
           height="10"
           rx="1"
           width="10"
@@ -120,7 +120,7 @@ const PILLARS: Pillar[] = [
         width="30"
       >
         <rect
-          className="fill-fg-primary"
+          className="fill-foreground"
           height="18"
           rx="1"
           width="14"
@@ -128,21 +128,21 @@ const PILLARS: Pillar[] = [
           y="3"
         />
         <rect
-          className="fill-surface-card"
+          className="fill-card"
           height="1.2"
           width="8"
           x="8"
           y="6"
         />
         <rect
-          className="fill-surface-card"
+          className="fill-card"
           height="1.2"
           width="6"
           x="8"
           y="9"
         />
         <rect
-          className="fill-surface-card"
+          className="fill-card"
           height="1.2"
           width="7"
           x="8"
@@ -156,18 +156,18 @@ const PILLARS: Pillar[] = [
 export function IntelligenceSection() {
   return (
     <section
-      className="px-8 py-20 border-t border-border-subtle"
+      className="px-8 py-20 border-t border-border"
       id="intelligence"
     >
       <div className="mx-auto max-w-[1120px] text-center">
-        <p className="font-mono text-[11px] tracking-[0.1em] uppercase text-fg-secondary mb-4">
+        <p className="font-mono text-[11px] tracking-[0.1em] uppercase text-muted-foreground mb-4">
           Audric Intelligence
         </p>
-        <h2 className="font-serif font-medium text-[40px] sm:text-[48px] leading-[1.02] tracking-[-0.03em] text-fg-primary mx-auto max-w-[760px]">
+        <h2 className="font-serif font-medium text-[40px] sm:text-[48px] leading-[1.02] tracking-[-0.03em] text-foreground mx-auto max-w-[760px]">
           Not a chatbot.
           <br />A financial agent.
         </h2>
-        <p className="text-[16px] text-fg-secondary leading-relaxed max-w-[580px] mx-auto mt-5 mb-10">
+        <p className="text-[16px] text-muted-foreground leading-relaxed max-w-[580px] mx-auto mt-5 mb-10">
           Four systems work together to understand your money, reason about
           decisions, and get smarter over time. Every action still waits on your
           confirmation.
@@ -176,17 +176,17 @@ export function IntelligenceSection() {
         <div className="text-left">
           <BorderedGrid cols={4}>
             {PILLARS.map((pillar) => (
-              <div className="bg-surface-card p-6" key={pillar.title}>
+              <div className="bg-card p-6" key={pillar.title}>
                 <div className="w-9 h-9 mb-6 grid place-items-center">
                   {pillar.glyph}
                 </div>
-                <div className="text-[15px] font-semibold text-fg-primary mb-0.5">
+                <div className="text-[15px] font-semibold text-foreground mb-0.5">
                   {pillar.title}
                 </div>
-                <div className="font-serif italic text-[13px] text-fg-secondary mb-3">
+                <div className="font-serif italic text-[13px] text-muted-foreground mb-3">
                   {pillar.italic}
                 </div>
-                <p className="text-[13px] text-fg-secondary leading-relaxed">
+                <p className="text-[13px] text-muted-foreground leading-relaxed">
                   {pillar.body}
                 </p>
               </div>

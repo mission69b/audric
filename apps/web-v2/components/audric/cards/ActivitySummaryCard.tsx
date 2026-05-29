@@ -50,10 +50,10 @@ export function ActivitySummaryCard({ data }: { data: ActivityData }) {
   return (
     <CardShell title={`${periodLabel(data.period)} Activity`}>
       <div className="text-center mb-2">
-        <span className="text-2xl font-semibold font-mono text-fg-primary">
+        <span className="text-2xl font-semibold font-mono text-foreground">
           {data.totalTransactions}
         </span>
-        <p className="text-[10px] font-mono uppercase tracking-widest text-fg-muted mt-0.5">
+        <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground mt-0.5">
           transactions
         </p>
       </div>
@@ -72,7 +72,7 @@ export function ActivitySummaryCard({ data }: { data: ActivityData }) {
         ))}
       </div>
 
-      <div className="mt-2 pt-2 border-t border-border-subtle/50 space-y-1 font-mono text-[11px]">
+      <div className="mt-2 pt-2 border-t border-border/50 space-y-1 font-mono text-[11px]">
         <DetailRow label="Total Moved">${fmtUsd(data.totalMovedUsd)}</DetailRow>
         <DetailRow label="Net Savings">${fmtUsd(data.netSavingsUsd)}</DetailRow>
         {data.yieldEarnedUsd > 0 && (

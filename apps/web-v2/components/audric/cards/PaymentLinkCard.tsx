@@ -36,24 +36,24 @@ function StatusPill({ status }: { status: string }) {
   const map: Record<string, { label: string; cls: string }> = {
     active: {
       label: 'Active',
-      cls: 'bg-success-bg text-success-fg border border-success-border',
+      cls: 'bg-success/10 text-success border border-success/30',
     },
     paid: {
       label: 'Paid',
-      cls: 'bg-info-bg text-info-fg border border-info-border',
+      cls: 'bg-info/10 text-info border border-info/30',
     },
     expired: {
       label: 'Expired',
-      cls: 'bg-surface-sunken text-fg-muted border border-border-subtle',
+      cls: 'bg-muted text-muted-foreground border border-border',
     },
     cancelled: {
       label: 'Cancelled',
-      cls: 'bg-error-bg text-error-fg border border-error-border',
+      cls: 'bg-destructive/10 text-destructive border border-destructive/30',
     },
   };
   const s = map[status] ?? {
     label: status,
-    cls: 'bg-surface-sunken text-fg-muted border border-border-subtle',
+    cls: 'bg-muted text-muted-foreground border border-border',
   };
   return (
     <span
@@ -85,8 +85,8 @@ function CopyButton({ text }: { text: string }) {
       onClick={handleCopy}
       className={`text-[11px] font-mono transition-colors border rounded px-2 py-0.5 ${
         copied
-          ? 'text-success-solid border-success-border'
-          : 'text-fg-secondary hover:text-fg-primary border-border-subtle hover:border-border-strong'
+          ? 'text-success border-success/30'
+          : 'text-muted-foreground hover:text-foreground border-border hover:border-foreground/30'
       }`}
     >
       {copied ? 'Copied!' : 'Copy link'}
@@ -101,7 +101,7 @@ export function PaymentLinkCard({ data }: { data: unknown }) {
     if (!d.links.length) {
       return (
         <CardShell title="Payment Links">
-          <p className="text-sm text-fg-muted">No payment links yet.</p>
+          <p className="text-sm text-muted-foreground">No payment links yet.</p>
         </CardShell>
       );
     }
@@ -111,14 +111,14 @@ export function PaymentLinkCard({ data }: { data: unknown }) {
           {d.links.map((l) => (
             <div
               key={l.slug}
-              className="py-1.5 border-b border-border-subtle last:border-0"
+              className="py-1.5 border-b border-border last:border-0"
             >
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-sm text-fg-primary truncate">
+                  <p className="text-sm text-foreground truncate">
                     {l.label ?? 'Payment Link'}
                   </p>
-                  <span className="font-mono text-[11px] text-fg-muted">
+                  <span className="font-mono text-[11px] text-muted-foreground">
                     {l.amount != null ? fmtUsd(l.amount) : 'Open amount'} ·{' '}
                     {new Date(l.createdAt).toLocaleDateString()}
                   </span>
@@ -128,7 +128,7 @@ export function PaymentLinkCard({ data }: { data: unknown }) {
                   {l.status === 'active' && <CopyButton text={l.url} />}
                 </div>
               </div>
-              <span className="font-mono text-[10px] text-fg-muted mt-0.5 block">
+              <span className="font-mono text-[10px] text-muted-foreground mt-0.5 block">
                 {l.slug}
               </span>
             </div>
@@ -144,35 +144,35 @@ export function PaymentLinkCard({ data }: { data: unknown }) {
   return (
     <CardShell title="Payment Link Created">
       <div className="space-y-3">
-        {link.label && <p className="text-sm text-fg-primary">{link.label}</p>}
+        {link.label && <p className="text-sm text-foreground">{link.label}</p>}
         <div className="flex items-center justify-between">
           <MonoLabel>Amount</MonoLabel>
-          <span className="text-sm font-semibold text-fg-primary font-mono">
+          <span className="text-sm font-semibold text-foreground font-mono">
             {amountStr} {link.currency}
           </span>
         </div>
         {link.memo && (
           <div className="flex items-center justify-between">
             <MonoLabel>Memo</MonoLabel>
-            <span className="text-sm text-fg-secondary">{link.memo}</span>
+            <span className="text-sm text-muted-foreground">{link.memo}</span>
           </div>
         )}
         {link.expiresAt && (
           <div className="flex items-center justify-between">
             <MonoLabel>Expires</MonoLabel>
-            <span className="text-sm text-fg-secondary">
+            <span className="text-sm text-muted-foreground">
               {new Date(link.expiresAt).toLocaleDateString()}
             </span>
           </div>
         )}
         <div className="pt-1 space-y-2">
-          <div className="bg-surface-sunken border border-border-subtle rounded-md px-3 py-2 font-mono text-xs text-fg-secondary break-all">
+          <div className="bg-muted border border-border rounded-md px-3 py-2 font-mono text-xs text-muted-foreground break-all">
             {link.url}
           </div>
           <CopyButton text={link.url} />
         </div>
-        <div className="flex flex-col items-center gap-2 pt-2 border-t border-border-subtle">
-          <div className="bg-surface-card p-2 rounded-md border border-border-subtle">
+        <div className="flex flex-col items-center gap-2 pt-2 border-t border-border">
+          <div className="bg-card p-2 rounded-md border border-border">
             <QrCode value={link.url} size={96} />
           </div>
           <MonoLabel>Scan to pay</MonoLabel>

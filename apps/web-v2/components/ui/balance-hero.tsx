@@ -7,7 +7,7 @@
  *
  * Two diffs from legacy:
  *   - Token classes use Tailwind utility classes that resolve through
- *     web-v2's globals.css (`text-fg-primary`, `text-fg-muted` etc.)
+ *     web-v2's globals.css (`text-foreground`, `text-muted-foreground` etc.)
  *     — these design tokens were ported in Session 2.
  *   - No `num-display` / `num-tabular` / `label-mono` typography
  *     classes — web-v2's globals.css doesn't ship those. We use plain
@@ -42,12 +42,12 @@ const SIZE_CLASSES: Record<
   { total: string; eyebrow: string; gap: string }
 > = {
   lg: {
-    total: "text-[52px] leading-none",
-    eyebrow: "text-[10px] tracking-[0.1em]",
-    gap: "gap-2",
+    total: "text-[64px] font-medium leading-none tracking-[-0.045em]",
+    eyebrow: "text-[11px] tracking-[0.08em]",
+    gap: "gap-3",
   },
   md: {
-    total: "text-[32px] leading-[1.1]",
+    total: "text-[32px] font-normal leading-[1.1] tracking-[-0.015em]",
     eyebrow: "text-[9px] tracking-[0.1em]",
     gap: "gap-1.5",
   },
@@ -73,9 +73,7 @@ export function BalanceHero({
         .filter(Boolean)
         .join(" ")}
     >
-      <p
-        className={`font-normal tabular-nums tracking-[-0.015em] text-foreground ${sz.total}`}
-      >
+      <p className={`tabular-nums text-foreground ${sz.total}`}>
         {currencySymbol}
         {fmtUsd(total)}
       </p>
@@ -83,7 +81,7 @@ export function BalanceHero({
         className={`font-mono uppercase text-muted-foreground ${sz.eyebrow}`}
       >
         AVAILABLE{" "}
-        <span className="tabular-nums tracking-normal">
+        <span className="font-medium tabular-nums tracking-normal text-foreground">
           {currencySymbol}
           {fmtUsdInt(available)}
         </span>
@@ -91,7 +89,7 @@ export function BalanceHero({
           ·
         </span>
         EARNING{" "}
-        <span className="tabular-nums tracking-normal">
+        <span className="font-medium tabular-nums tracking-normal text-foreground">
           {currencySymbol}
           {fmtUsdInt(earning)}
         </span>

@@ -40,7 +40,7 @@ interface PortfolioDataV2 {
 }
 
 const SECTION_LABEL =
-  'text-[9px] font-mono uppercase tracking-[0.14em] text-fg-muted';
+  'text-[9px] font-mono uppercase tracking-[0.14em] text-muted-foreground';
 
 const DUST_USD = 0.01;
 const TOP_WALLET_ALLOCATIONS = 5;
@@ -87,13 +87,13 @@ export function PortfolioCardV2({ data }: { data: PortfolioDataV2 }) {
       <div className="space-y-4">
         {/* HERO — total value + week trend */}
         <div className="text-center">
-          <span className="text-2xl font-semibold font-mono text-fg-primary tabular-nums">
+          <span className="text-2xl font-semibold font-mono text-foreground tabular-nums">
             ${fmtUsd(data.totalValue)}
           </span>
           {data.weekChange && data.weekChange.absoluteUsd !== 0 && (
             <div className="mt-0.5">
               <TrendIndicator value={data.weekChange.percentChange} />
-              <span className="text-fg-muted text-[10px] ml-1">this week</span>
+              <span className="text-muted-foreground text-[10px] ml-1">this week</span>
             </div>
           )}
         </div>
@@ -103,7 +103,7 @@ export function PortfolioCardV2({ data }: { data: PortfolioDataV2 }) {
 
         {/* WALLET SECTION */}
         {walletAllocations.length > 0 && (
-          <div className="pt-3 border-t border-border-subtle">
+          <div className="pt-3 border-t border-border">
             <div className={`${SECTION_LABEL} mb-2`}>Wallet</div>
             <div className="space-y-2">
               {walletAllocations.map((a) => (
@@ -115,9 +115,9 @@ export function PortfolioCardV2({ data }: { data: PortfolioDataV2 }) {
                 />
               ))}
             </div>
-            <div className="flex justify-between items-baseline mt-2 pt-2 border-t border-border-subtle">
+            <div className="flex justify-between items-baseline mt-2 pt-2 border-t border-border">
               <span className={SECTION_LABEL}>Wallet total</span>
-              <span className="text-fg-primary font-mono text-sm tabular-nums">
+              <span className="text-foreground font-mono text-sm tabular-nums">
                 ${fmtUsd(data.walletValue)}
               </span>
             </div>
@@ -126,7 +126,7 @@ export function PortfolioCardV2({ data }: { data: PortfolioDataV2 }) {
 
         {/* SAVINGS SECTION */}
         {data.savingsValue > 0 && (
-          <div className="pt-3 border-t border-border-subtle">
+          <div className="pt-3 border-t border-border">
             <div className={`${SECTION_LABEL} mb-2`}>Savings</div>
             <AssetAmountBlock
               asset="USDC"
@@ -142,7 +142,7 @@ export function PortfolioCardV2({ data }: { data: PortfolioDataV2 }) {
             {showDailyYield && (
               <div className="flex justify-between items-baseline mt-1">
                 <span className={SECTION_LABEL}>Daily yield</span>
-                <span className="text-fg-primary font-mono text-[11px] tabular-nums">
+                <span className="text-foreground font-mono text-[11px] tabular-nums">
                   {fmtYield(data.dailyEarning!)}/day
                 </span>
               </div>
@@ -152,17 +152,17 @@ export function PortfolioCardV2({ data }: { data: PortfolioDataV2 }) {
 
         {/* DEFI SECTION */}
         {showDefi && (
-          <div className="pt-3 border-t border-border-subtle flex justify-between items-baseline">
+          <div className="pt-3 border-t border-border flex justify-between items-baseline">
             <span className={SECTION_LABEL}>DeFi</span>
-            <span className="text-fg-primary font-mono text-sm tabular-nums">
+            <span className="text-foreground font-mono text-sm tabular-nums">
               ${fmtUsd(data.defiValue!)}
               {data.defiSource === 'partial' && (
-                <span className="text-warning-solid ml-1 text-[10px]">
+                <span className="text-warning ml-1 text-[10px]">
                   (partial)
                 </span>
               )}
               {data.defiSource === 'partial-stale' && (
-                <span className="text-warning-solid ml-1 text-[10px]">
+                <span className="text-warning ml-1 text-[10px]">
                   (cached)
                 </span>
               )}
@@ -172,10 +172,10 @@ export function PortfolioCardV2({ data }: { data: PortfolioDataV2 }) {
 
         {/* DEBT + HEALTH FACTOR */}
         {hasDebt && (
-          <div className="pt-3 border-t border-border-subtle space-y-3">
+          <div className="pt-3 border-t border-border space-y-3">
             <div className="flex justify-between items-baseline">
               <span className={SECTION_LABEL}>Debt</span>
-              <span className="text-warning-solid font-mono text-sm tabular-nums">
+              <span className="text-warning font-mono text-sm tabular-nums">
                 -${fmtUsd(data.debtValue)}
               </span>
             </div>
@@ -189,21 +189,21 @@ export function PortfolioCardV2({ data }: { data: PortfolioDataV2 }) {
         )}
 
         {/* NET WORTH FOOTER */}
-        <div className="pt-3 border-t border-border-subtle flex justify-between items-baseline">
+        <div className="pt-3 border-t border-border flex justify-between items-baseline">
           <span className={SECTION_LABEL}>Net worth</span>
-          <span className="text-fg-primary font-mono text-sm font-medium tabular-nums">
+          <span className="text-foreground font-mono text-sm font-medium tabular-nums">
             ${fmtUsd(data.totalValue)}
           </span>
         </div>
 
         {/* INSIGHTS */}
         {data.insights.length > 0 && (
-          <div className="pt-3 border-t border-border-subtle space-y-1 text-[11px]">
+          <div className="pt-3 border-t border-border space-y-1 text-[11px]">
             {data.insights.map((i, idx) => (
               <div
                 key={idx}
                 className={
-                  i.type === 'warning' ? 'text-warning-solid' : 'text-fg-muted'
+                  i.type === 'warning' ? 'text-warning' : 'text-muted-foreground'
                 }
               >
                 {i.type === 'warning' ? '⚠ ' : '→ '}

@@ -81,8 +81,8 @@ export function WatchAddressCanvas({ data, onAction }: Props) {
     return (
       <div className="flex flex-col items-center justify-center space-y-2 py-10 text-center">
         <span className="text-3xl">👁</span>
-        <p className="font-medium text-fg-primary text-sm">Watch Address</p>
-        <p className="max-w-xs text-fg-secondary text-xs leading-relaxed">
+        <p className="font-medium text-foreground text-sm">Watch Address</p>
+        <p className="max-w-xs text-muted-foreground text-xs leading-relaxed">
           {data &&
           typeof data === "object" &&
           "message" in data &&
@@ -99,7 +99,7 @@ export function WatchAddressCanvas({ data, onAction }: Props) {
   if (isLoading && !portfolio) {
     return (
       <div className="flex items-center justify-center py-10">
-        <div className="animate-pulse font-mono text-fg-muted text-xs">
+        <div className="animate-pulse font-mono text-muted-foreground text-xs">
           Fetching balances...
         </div>
       </div>
@@ -110,11 +110,11 @@ export function WatchAddressCanvas({ data, onAction }: Props) {
     <div className="space-y-4">
       <div className="space-y-1">
         <div className="flex items-center justify-between">
-          <span className="font-mono text-[10px] text-fg-muted uppercase tracking-wider">
+          <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
             {label ?? "Watched Address"}
           </span>
           <a
-            className="font-mono text-[10px] text-fg-muted transition hover:text-fg-primary"
+            className="font-mono text-[10px] text-muted-foreground transition hover:text-foreground"
             href={`https://suiscan.xyz/mainnet/account/${addr}`}
             rel="noopener noreferrer"
             target="_blank"
@@ -122,44 +122,44 @@ export function WatchAddressCanvas({ data, onAction }: Props) {
             {truncAddr(addr)}↗
           </a>
         </div>
-        <div className="font-medium font-mono text-fg-primary text-lg">
+        <div className="font-medium font-mono text-foreground text-lg">
           ${fmtUsd(netWorthUsd)}
         </div>
       </div>
 
       <div className="space-y-1 font-mono text-xs">
         <div className="flex justify-between">
-          <span className="text-fg-muted">Wallet</span>
-          <span className="text-fg-primary">${fmtUsd(walletValueUsd)}</span>
+          <span className="text-muted-foreground">Wallet</span>
+          <span className="text-foreground">${fmtUsd(walletValueUsd)}</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-fg-muted">Savings</span>
-          <span className="text-success-solid">${fmtUsd(savingsUsd)}</span>
+          <span className="text-muted-foreground">Savings</span>
+          <span className="text-success">${fmtUsd(savingsUsd)}</span>
         </div>
         {debtUsd > 0 && (
           <div className="flex justify-between">
-            <span className="text-fg-muted">Debt</span>
-            <span className="text-error-solid">-${fmtUsd(debtUsd)}</span>
+            <span className="text-muted-foreground">Debt</span>
+            <span className="text-destructive">-${fmtUsd(debtUsd)}</span>
           </div>
         )}
       </div>
 
       {coins.length > 0 ? (
-        <div className="space-y-1.5 border-border-subtle border-t pt-1">
+        <div className="space-y-1.5 border-border border-t pt-1">
           {coins.map((coin) => (
             <div
               className="flex items-center justify-between font-mono text-xs"
               key={coin.symbol}
             >
-              <span className="text-fg-primary">{coin.symbol}</span>
-              <span className="text-fg-muted">
+              <span className="text-foreground">{coin.symbol}</span>
+              <span className="text-muted-foreground">
                 {coin.amount < 0.01
                   ? "<0.01"
                   : coin.amount.toLocaleString(undefined, {
                       maximumFractionDigits: 4,
                     })}
                 {coin.usdValue != null && (
-                  <span className="ml-2 text-fg-primary">
+                  <span className="ml-2 text-foreground">
                     ${fmtUsd(coin.usdValue)}
                   </span>
                 )}
@@ -169,7 +169,7 @@ export function WatchAddressCanvas({ data, onAction }: Props) {
         </div>
       ) : (
         <div className="py-4 text-center">
-          <p className="font-mono text-fg-muted text-xs">
+          <p className="font-mono text-muted-foreground text-xs">
             No token balances found
           </p>
         </div>
@@ -178,14 +178,14 @@ export function WatchAddressCanvas({ data, onAction }: Props) {
       {onAction && (
         <div className="flex gap-2">
           <button
-            className="flex-1 rounded-md border border-border-subtle py-1.5 font-mono text-[10px] text-fg-secondary uppercase tracking-wider transition hover:border-fg-primary/30 hover:text-fg-primary"
+            className="flex-1 rounded-md border border-border py-1.5 font-mono text-[10px] text-muted-foreground uppercase tracking-wider transition hover:border-foreground/30 hover:text-foreground"
             onClick={() => onAction(`Show me the activity heatmap for ${addr}`)}
             type="button"
           >
             Activity →
           </button>
           <button
-            className="flex-1 rounded-md bg-fg-primary py-1.5 font-mono text-[10px] text-fg-inverse uppercase tracking-wider transition hover:opacity-90"
+            className="flex-1 rounded-md bg-foreground py-1.5 font-mono text-[10px] text-background uppercase tracking-wider transition hover:opacity-90"
             onClick={() => onAction(`Send USDC to ${addr}`)}
             type="button"
           >

@@ -10,9 +10,9 @@ import { HFGauge } from "./HFGauge";
  * (save_deposit / withdraw / borrow / repay_debt).
  *
  * Ported from `apps/web/components/engine/cards/shared/PreviewCard.tsx`
- * by Phase 5a.1 (renderer migration sweep, 2026-05-19). Verbatim except
- * the `cn` import path. NOTE: the `bg-fg-primary text-bg-primary` button
- * uses an Audric-only token combo — see CardShell-style note in legacy.
+ * by Phase 5a.1 (renderer migration sweep, 2026-05-19). Migrated to Geist
+ * DS tokens in R6.3 — the confirm button is the inverted primary
+ * (`bg-foreground text-background`).
  */
 
 export interface HFImpact {
@@ -57,7 +57,7 @@ export function PreviewCard({
           <div>{body}</div>
 
           {healthFactorImpact && (
-            <div className="border-border-subtle border-t pt-2">
+            <div className="border-border border-t pt-2">
               <HFGauge
                 healthFactor={healthFactorImpact.current}
                 liquidationThreshold={healthFactorImpact.liquidationThreshold}
@@ -70,22 +70,22 @@ export function PreviewCard({
           )}
 
           {feeBreakdown && (
-            <div className="flex items-baseline justify-between border-border-subtle border-t pt-2 text-xs">
-              <span className="text-fg-muted">{feeBreakdown.label}</span>
+            <div className="flex items-baseline justify-between border-border border-t pt-2 text-xs">
+              <span className="text-muted-foreground">{feeBreakdown.label}</span>
               {feeBreakdown.usdValue != null && (
-                <span className="font-mono text-fg-muted tabular-nums">
+                <span className="font-mono text-muted-foreground tabular-nums">
                   ${feeBreakdown.usdValue.toFixed(2)}
                 </span>
               )}
             </div>
           )}
 
-          <div className="flex justify-end gap-2 border-border-subtle border-t pt-2">
+          <div className="flex justify-end gap-2 border-border border-t pt-2">
             {onCancel && (
               <button
                 className={cn(
-                  "rounded-md border border-border-subtle px-3 py-1.5 text-fg-muted text-xs",
-                  "transition hover:bg-surface-sunken disabled:opacity-50",
+                  "rounded-md border border-border px-3 py-1.5 text-muted-foreground text-xs",
+                  "transition hover:bg-muted disabled:opacity-50",
                 )}
                 disabled={busy}
                 onClick={onCancel}
@@ -98,7 +98,7 @@ export function PreviewCard({
               <button
                 className={cn(
                   "rounded-md px-3 py-1.5 font-medium text-xs",
-                  "bg-fg-primary text-fg-inverse",
+                  "bg-foreground text-background",
                   "transition hover:opacity-80 disabled:opacity-50",
                 )}
                 disabled={busy}

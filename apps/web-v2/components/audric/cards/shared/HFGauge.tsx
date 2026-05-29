@@ -42,12 +42,12 @@ function projectionDirection(current: number, projected: number): "↑" | "↓" 
 
 function projectionColor(hf: number): string {
   if (hf < 1.1) {
-    return "text-error-solid";
+    return "text-destructive";
   }
   if (hf < 1.5) {
-    return "text-warning-solid";
+    return "text-warning";
   }
-  return "text-success-solid";
+  return "text-success";
 }
 
 export function HFGauge({
@@ -64,10 +64,10 @@ export function HFGauge({
   return (
     <div className={cn("space-y-2", className)}>
       <div className="flex items-baseline justify-between">
-        <span className="font-mono text-[10px] text-fg-muted uppercase tracking-widest">
+        <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest">
           Health factor
         </span>
-        <span className="font-medium text-base text-fg-primary tabular-nums">
+        <span className="font-medium text-base text-foreground tabular-nums">
           {formatHF(healthFactor)}
         </span>
       </div>
@@ -79,8 +79,8 @@ export function HFGauge({
         value={healthFactor}
       />
       {projection && (
-        <div className="flex items-baseline justify-between border-border-subtle border-t pt-1 text-xs">
-          <span className="text-fg-muted">{projection.label}</span>
+        <div className="flex items-baseline justify-between border-border border-t pt-1 text-xs">
+          <span className="text-muted-foreground">{projection.label}</span>
           <span className={cn("font-mono tabular-nums", color)}>
             {arrow} {formatHF(projection.healthFactor)}
           </span>

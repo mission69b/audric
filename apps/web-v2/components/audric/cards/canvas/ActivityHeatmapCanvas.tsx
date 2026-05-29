@@ -54,21 +54,23 @@ const DAYS = ["Mon", "", "Wed", "", "Fri", "", ""];
 const CELL = 11;
 const GAP = 2;
 
+// [R6.4] Cyan `--signal` intensity ramp per the phase2-canvases C7 spec
+// (the heatmap is the canonical "activity" surface — cyan, not green).
 function intensityClass(count: number, max: number): string {
   if (count === 0) {
-    return "bg-border-subtle/40";
+    return "bg-border/40";
   }
   const ratio = count / Math.max(max, 1);
   if (ratio <= 0.25) {
-    return "bg-success-solid/30";
+    return "bg-signal/30";
   }
   if (ratio <= 0.5) {
-    return "bg-success-solid/50";
+    return "bg-signal/50";
   }
   if (ratio <= 0.75) {
-    return "bg-success-solid/70";
+    return "bg-signal/70";
   }
-  return "bg-success-solid";
+  return "bg-signal";
 }
 
 function buildGrid(buckets: DayBucket[]) {
@@ -213,8 +215,8 @@ export function ActivityHeatmapCanvas({ data, onAction }: Props) {
     return (
       <div className="flex flex-col items-center justify-center space-y-2 py-10 text-center">
         <span className="text-3xl">📊</span>
-        <p className="font-medium text-fg-primary text-sm">Coming Soon</p>
-        <p className="max-w-xs text-fg-secondary text-xs leading-relaxed">
+        <p className="font-medium text-foreground text-sm">Coming Soon</p>
+        <p className="max-w-xs text-muted-foreground text-xs leading-relaxed">
           {data &&
           typeof data === "object" &&
           "message" in data &&
@@ -229,7 +231,7 @@ export function ActivityHeatmapCanvas({ data, onAction }: Props) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-10">
-        <div className="animate-pulse font-mono text-fg-muted text-xs">
+        <div className="animate-pulse font-mono text-muted-foreground text-xs">
           Loading activity data...
         </div>
       </div>
@@ -240,25 +242,25 @@ export function ActivityHeatmapCanvas({ data, onAction }: Props) {
     <div className="space-y-3">
       <div className="flex items-center gap-4 font-mono text-xs">
         <div>
-          <span className="text-fg-muted">Transactions</span>{" "}
-          <span className="font-medium text-fg-primary">
+          <span className="text-muted-foreground">Transactions</span>{" "}
+          <span className="font-medium text-foreground">
             {response?.summary.totalEvents ?? 0}
           </span>
         </div>
         <div>
-          <span className="text-fg-muted">Active days</span>{" "}
-          <span className="font-medium text-fg-primary">
+          <span className="text-muted-foreground">Active days</span>{" "}
+          <span className="font-medium text-foreground">
             {response?.summary.activeDays ?? 0}
           </span>
         </div>
         <div>
-          <span className="text-fg-muted">Peak</span>{" "}
-          <span className="font-medium text-fg-primary">{maxCount}/day</span>
+          <span className="text-muted-foreground">Peak</span>{" "}
+          <span className="font-medium text-foreground">{maxCount}/day</span>
         </div>
         {!isSelfRender && shortAddr && (
           <div>
-            <span className="text-fg-muted">Address</span>{" "}
-            <span className="font-medium text-fg-primary">{shortAddr}</span>
+            <span className="text-muted-foreground">Address</span>{" "}
+            <span className="font-medium text-foreground">{shortAddr}</span>
           </div>
         )}
       </div>
@@ -270,7 +272,7 @@ export function ActivityHeatmapCanvas({ data, onAction }: Props) {
         <div className="mb-1 flex" style={{ paddingLeft: 24 }}>
           {monthLabels.map((m, i) => (
             <span
-              className="absolute font-mono text-[9px] text-fg-muted"
+              className="absolute font-mono text-[9px] text-muted-foreground"
               key={`${m.label}-${i.toString()}`}
               style={{ left: 24 + m.weekIdx * (CELL + GAP) }}
             >
@@ -286,7 +288,7 @@ export function ActivityHeatmapCanvas({ data, onAction }: Props) {
           >
             {DAYS.map((d, i) => (
               <div
-                className="flex items-center font-mono text-[9px] text-fg-muted"
+                className="flex items-center font-mono text-[9px] text-muted-foreground"
                 key={`day-${i.toString()}`}
                 style={{ height: CELL }}
               >
@@ -312,7 +314,7 @@ export function ActivityHeatmapCanvas({ data, onAction }: Props) {
                     className={`rounded-[2px] transition-colors ${
                       cell.count < 0
                         ? "bg-transparent"
-                        : `${intensityClass(cell.count, maxCount)} ${cell.date ? "cursor-pointer hover:ring-1 hover:ring-fg-primary/30" : ""}`
+                        : `${intensityClass(cell.count, maxCount)} ${cell.date ? "cursor-pointer hover:ring-1 hover:ring-foreground/30" : ""}`
                     }`}
                     disabled={!cell.date}
                     key={`${wi}-${di.toString()}`}
@@ -362,7 +364,7 @@ export function ActivityHeatmapCanvas({ data, onAction }: Props) {
           );
           return (
             <div
-              className="pointer-events-none fixed z-50 whitespace-nowrap rounded bg-fg-primary px-2 py-1 font-mono text-[10px] text-fg-inverse"
+              className="pointer-events-none fixed z-50 whitespace-nowrap rounded bg-foreground px-2 py-1 font-mono text-[10px] text-background"
               style={{
                 left: clampedLeft,
                 top: hoveredCell.y - 28,
@@ -380,13 +382,13 @@ export function ActivityHeatmapCanvas({ data, onAction }: Props) {
         })()}
       </div>
 
-      <div className="flex items-center gap-1.5 font-mono text-[9px] text-fg-muted">
+      <div className="flex items-center gap-1.5 font-mono text-[9px] text-muted-foreground">
         <span>Less</span>
-        <div className="h-[11px] w-[11px] rounded-[2px] bg-border-subtle/40" />
-        <div className="h-[11px] w-[11px] rounded-[2px] bg-success-solid/30" />
-        <div className="h-[11px] w-[11px] rounded-[2px] bg-success-solid/50" />
-        <div className="h-[11px] w-[11px] rounded-[2px] bg-success-solid/70" />
-        <div className="h-[11px] w-[11px] rounded-[2px] bg-success-solid" />
+        <div className="h-[11px] w-[11px] rounded-[2px] bg-border/40" />
+        <div className="h-[11px] w-[11px] rounded-[2px] bg-signal/30" />
+        <div className="h-[11px] w-[11px] rounded-[2px] bg-signal/50" />
+        <div className="h-[11px] w-[11px] rounded-[2px] bg-signal/70" />
+        <div className="h-[11px] w-[11px] rounded-[2px] bg-signal" />
         <span>More</span>
       </div>
     </div>

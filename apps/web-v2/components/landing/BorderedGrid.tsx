@@ -30,7 +30,7 @@ export function BorderedGrid({ cols, children, className }: BorderedGridProps) {
   return (
     <div
       className={[
-        "grid gap-px rounded-xs border border-border-subtle bg-border-subtle overflow-hidden",
+        "grid gap-px rounded-xs border border-border bg-border overflow-hidden",
         COL_CLASSES[cols],
         className ?? "",
       ]
@@ -55,7 +55,7 @@ export function BorderedCell({
   surface?: "card" | "page";
 }) {
   const surfaceClass =
-    surface === "card" ? "bg-surface-card" : "bg-surface-page";
+    surface === "card" ? "bg-card" : "bg-background";
   return (
     <div
       className={["p-6", surfaceClass, className ?? ""]

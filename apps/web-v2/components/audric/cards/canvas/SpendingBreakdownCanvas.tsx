@@ -162,10 +162,10 @@ export function SpendingBreakdownCanvas({ data, onAction }: Props) {
     return (
       <div className="flex flex-col items-center justify-center space-y-2 py-10 text-center">
         <span className="text-3xl">💸</span>
-        <p className="font-medium text-fg-primary text-sm">
+        <p className="font-medium text-foreground text-sm">
           Spending Breakdown
         </p>
-        <p className="max-w-xs text-fg-secondary text-xs leading-relaxed">
+        <p className="max-w-xs text-muted-foreground text-xs leading-relaxed">
           {data &&
           typeof data === "object" &&
           "message" in data &&
@@ -180,7 +180,7 @@ export function SpendingBreakdownCanvas({ data, onAction }: Props) {
   if (loading && !response) {
     return (
       <div className="flex items-center justify-center py-10">
-        <div className="animate-pulse font-mono text-fg-muted text-xs">
+        <div className="animate-pulse font-mono text-muted-foreground text-xs">
           Loading spending data...
         </div>
       </div>
@@ -197,8 +197,8 @@ export function SpendingBreakdownCanvas({ data, onAction }: Props) {
           <button
             className={`flex-1 rounded py-1 font-mono text-[10px] uppercase tracking-wider transition ${
               periodIdx === i
-                ? "bg-fg-primary text-fg-inverse"
-                : "border border-border-subtle text-fg-secondary hover:border-fg-primary/30 hover:text-fg-primary"
+                ? "bg-foreground text-background"
+                : "border border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground"
             }`}
             key={p.value}
             onClick={() => setPeriodIdx(i)}
@@ -231,7 +231,7 @@ export function SpendingBreakdownCanvas({ data, onAction }: Props) {
               ))
             ) : (
               <circle
-                className="text-fg-disabled/40"
+                className="text-muted-foreground/40"
                 cx="50"
                 cy="50"
                 fill="none"
@@ -241,7 +241,7 @@ export function SpendingBreakdownCanvas({ data, onAction }: Props) {
               />
             )}
             <text
-              className="fill-fg-primary font-medium font-mono text-[11px]"
+              className="fill-foreground font-medium font-mono text-[11px]"
               textAnchor="middle"
               x="50"
               y="46"
@@ -249,7 +249,7 @@ export function SpendingBreakdownCanvas({ data, onAction }: Props) {
               ${total < 1000 ? total.toFixed(2) : fmtUsd(total)}
             </text>
             <text
-              className="fill-fg-muted font-mono text-[8px]"
+              className="fill-muted-foreground font-mono text-[8px]"
               textAnchor="middle"
               x="50"
               y="58"
@@ -269,14 +269,14 @@ export function SpendingBreakdownCanvas({ data, onAction }: Props) {
                 className="h-2 w-2 shrink-0 rounded-full"
                 style={{ backgroundColor: seg.color }}
               />
-              <span className="truncate text-fg-primary">{seg.category}</span>
-              <span className="ml-auto shrink-0 text-fg-muted">
+              <span className="truncate text-foreground">{seg.category}</span>
+              <span className="ml-auto shrink-0 text-muted-foreground">
                 {seg.percent.toFixed(0)}%
               </span>
             </div>
           ))}
           {segments.length === 0 && (
-            <p className="font-mono text-fg-muted text-xs">
+            <p className="font-mono text-muted-foreground text-xs">
               No spending recorded
             </p>
           )}
@@ -287,14 +287,14 @@ export function SpendingBreakdownCanvas({ data, onAction }: Props) {
         <div className="space-y-1 font-mono text-xs">
           {response.byService.slice(0, 5).map((s) => (
             <div className="flex justify-between" key={s.endpoint}>
-              <span className="mr-2 truncate text-fg-muted">{s.service}</span>
-              <span className="shrink-0 text-fg-primary">
+              <span className="mr-2 truncate text-muted-foreground">{s.service}</span>
+              <span className="shrink-0 text-foreground">
                 ${s.totalSpent.toFixed(2)} ({s.requestCount}x)
               </span>
             </div>
           ))}
           {response.byService.length > 5 && (
-            <p className="pt-0.5 text-center text-fg-muted">
+            <p className="pt-0.5 text-center text-muted-foreground">
               + {response.byService.length - 5} more
             </p>
           )}
@@ -302,9 +302,9 @@ export function SpendingBreakdownCanvas({ data, onAction }: Props) {
       )}
 
       {requests > 0 && (
-        <div className="flex justify-between border-border-subtle/50 border-t pt-0.5 font-mono text-xs">
-          <span className="text-fg-muted">Avg. per request</span>
-          <span className="text-fg-primary">
+        <div className="flex justify-between border-border/50 border-t pt-0.5 font-mono text-xs">
+          <span className="text-muted-foreground">Avg. per request</span>
+          <span className="text-foreground">
             ${(total / requests).toFixed(3)}
           </span>
         </div>
@@ -312,7 +312,7 @@ export function SpendingBreakdownCanvas({ data, onAction }: Props) {
 
       {onAction && total > 0 && (
         <button
-          className="w-full rounded-md border border-border-subtle py-1.5 font-mono text-[10px] text-fg-secondary uppercase tracking-wider transition hover:border-fg-primary/30 hover:text-fg-primary"
+          className="w-full rounded-md border border-border py-1.5 font-mono text-[10px] text-muted-foreground uppercase tracking-wider transition hover:border-foreground/30 hover:text-foreground"
           onClick={() =>
             onAction("What APIs have I used and how much did each cost?")
           }

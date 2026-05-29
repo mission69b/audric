@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react';
 import { isSuiAddress } from '@/lib/sui-address';
-import { CardShell, SuiscanLink, fmtAmt } from './primitives';
+import { SUISCAN_TX_URL, SUISCAN_ICON, fmtAmt } from './primitives';
 import { ChunkedAddress } from './shared/ChunkedAddress';
 
 // TransactionReceiptCard — write-tool receipt renderer. Ported from
@@ -301,16 +301,65 @@ function getHeroLines(data: TxReceiptData, toolName: string): HeroLine[] {
 }
 
 const emphasisClass: Record<string, string> = {
-  positive: 'text-success-solid',
-  negative: 'text-warning-solid',
+  positive: 'text-success',
+  negative: 'text-warning',
   neutral: '',
 };
 
-// [S.277] Grid-hero tool set was Volo-only (the only writes whose
-// receipt benefited from a 2-column grid layout). Now empty; kept as
-// `new Set<string>()` so the call sites continue to no-op gracefully
-// without conditional-import gymnastics.
-const USE_GRID_HERO_TOOLS = new Set<string>();
+// [R6.3] Per-tool receipt header (title + settlement sub) per the
+// phase2-receipts-denials spec. The body rrows still come from
+// `getHeroLines`; this just supplies the calm green-header headline.
+function getReceiptHeader(
+  data: TxReceiptData,
+  toolName: string,
+): { title: string; sub: string } {
+  const sub = 'Settled on Sui';
+  switch (toolName) {
+    case 'save_deposit':
+      return { title: 'Saved to NAVI', sub };
+    case 'withdraw':
+      return { title: 'Withdrawn from NAVI', sub };
+    case 'send_transfer': {
+      const name = data.contactName ?? data.suinsName;
+      return { title: name ? `Sent to ${name}` : 'Sent', sub };
+    }
+    case 'borrow':
+      return { title: 'Borrowed against savings', sub };
+    case 'repay_debt':
+      return { title: 'Repaid NAVI debt', sub };
+    case 'claim_rewards':
+      return { title: 'Claimed rewards', sub };
+    case 'harvest_rewards':
+      return { title: 'Compounded rewards', sub };
+    case 'swap_execute': {
+      const from = data.fromToken ?? data.from;
+      const to = data.toToken ?? data.to;
+      return {
+        title: from && to ? `Swapped ${from} → ${to}` : 'Swap settled',
+        sub,
+      };
+    }
+    default:
+      return { title: 'Transaction settled', sub };
+  }
+}
+
+function ReceiptCheck() {
+  return (
+    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-success text-background">
+      <svg aria-hidden="true" fill="none" height="13" viewBox="0 0 16 16" width="13">
+        <title>Settled</title>
+        <path
+          d="M3.5 8.5L6.5 11.5L13 4.5"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="1.8"
+        />
+      </svg>
+    </span>
+  );
+}
 
 export function TransactionReceiptCard({
   data,
@@ -322,131 +371,101 @@ export function TransactionReceiptCard({
   if (!data.tx) return null;
 
   const lines = getHeroLines(data, toolName);
-  const useGridHero = USE_GRID_HERO_TOOLS.has(toolName) && lines.length > 0;
+  const { title, sub } = getReceiptHeader(data, toolName);
+  const shortDigest = `${data.tx.slice(0, 4)}…${data.tx.slice(-3)}`;
 
-  if (useGridHero) {
-    return (
-      <ReceiptChoreography tone="success">
-        <CardShell title="Transaction" noPadding>
-          <div
-            className="grid"
-            style={{
-              gridTemplateColumns: `repeat(${lines.length}, 1fr)`,
-            }}
-          >
-            {lines.map((line, idx) => (
-              <div
-                key={`${line.label}-${idx}`}
-                className="px-2.5 py-1.5"
-                style={
-                  idx < lines.length - 1
-                    ? { borderRight: '0.5px solid var(--border-subtle)' }
-                    : undefined
-                }
-              >
-                <div className="text-fg-muted mb-1 text-[10px] uppercase tracking-wider">
-                  {line.label}
+  return (
+    <ReceiptChoreography tone="success">
+      <div
+        className="my-1.5 overflow-hidden rounded-lg border bg-card"
+        style={{
+          borderColor: 'color-mix(in srgb, var(--success) 18%, transparent)',
+        }}
+      >
+        <div
+          className="flex items-center gap-3 border-border border-b px-[18px] py-[14px]"
+          style={{
+            background: 'color-mix(in srgb, var(--success) 5%, transparent)',
+          }}
+        >
+          <ReceiptCheck />
+          <div>
+            <h3 className="font-medium text-[14px] text-foreground tracking-[-0.011em]">
+              {title}
+            </h3>
+            <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">
+              {sub}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-1 px-[18px] py-[14px]">
+          {lines.map((line, idx) => {
+            if (line.variant === 'address') {
+              const addrToShow = line.rawAddress ?? line.value;
+              const showName =
+                line.rawAddress && line.value !== line.rawAddress;
+              return (
+                <div className="py-[3px] text-[13px]" key={`${line.label}-${idx}`}>
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-muted-foreground">{line.label}</span>
+                    {showName && (
+                      <span className="font-mono font-medium text-foreground">
+                        {line.value}
+                      </span>
+                    )}
+                  </div>
+                  {isSuiAddress(addrToShow) && (
+                    <ChunkedAddress
+                      address={addrToShow}
+                      className="mt-1 text-[11px] text-muted-foreground"
+                    />
+                  )}
                 </div>
-                <div
-                  className={`font-mono font-medium text-[13px] ${
-                    line.emphasis
-                      ? emphasisClass[line.emphasis]
-                      : 'text-fg-primary'
+              );
+            }
+            return (
+              <div
+                className="flex items-baseline justify-between py-[3px] text-[13px]"
+                key={`${line.label}-${idx}`}
+              >
+                <span className="text-muted-foreground">{line.label}</span>
+                <span
+                  className={`font-mono font-medium tabular-nums ${
+                    line.emphasis ? emphasisClass[line.emphasis] : 'text-foreground'
                   }`}
                 >
                   {line.value}
-                </div>
+                </span>
               </div>
-            ))}
-          </div>
+            );
+          })}
 
           {data.gasCost != null && data.gasCost > 0 && (
-            <div
-              className="flex items-center justify-between px-3 py-2 text-[13px]"
-              style={{ borderTop: '0.5px solid var(--border-subtle)' }}
-            >
-              <span className="text-fg-secondary">Gas</span>
-              <span className="font-mono text-fg-primary">
+            <div className="flex items-baseline justify-between py-[3px] text-[13px]">
+              <span className="text-muted-foreground">Gas</span>
+              <span className="font-mono font-medium tabular-nums text-foreground">
                 {data.gasCost.toFixed(4)} SUI
               </span>
             </div>
           )}
-
-          <div className="px-3 py-2">
-            <SuiscanLink digest={data.tx} />
-          </div>
-        </CardShell>
-      </ReceiptChoreography>
-    );
-  }
-
-  return (
-    <ReceiptChoreography tone="success">
-      <CardShell title="Transaction" noPadding>
-        {lines.map((line, idx) => {
-          if (line.variant === 'address') {
-            const addrToShow = line.rawAddress ?? line.value;
-            const showName =
-              line.rawAddress && line.value !== line.rawAddress;
-            return (
-              <div
-                key={`${line.label}-${idx}`}
-                className="px-3 py-2 text-[13px]"
-                style={{
-                  borderBottom: '0.5px solid var(--border-subtle)',
-                }}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-fg-secondary">{line.label}</span>
-                  {showName && (
-                    <span className="font-mono text-fg-primary">
-                      {line.value}
-                    </span>
-                  )}
-                </div>
-                {isSuiAddress(addrToShow) && (
-                  <ChunkedAddress
-                    address={addrToShow}
-                    className="mt-1 text-[11px] text-fg-secondary"
-                  />
-                )}
-              </div>
-            );
-          }
-          return (
-            <div
-              key={`${line.label}-${idx}`}
-              className="flex items-center justify-between px-3 py-2 text-[13px]"
-              style={{ borderBottom: '0.5px solid var(--border-subtle)' }}
-            >
-              <span className="text-fg-secondary">{line.label}</span>
-              <span
-                className={`font-mono text-fg-primary ${
-                  line.emphasis ? emphasisClass[line.emphasis] : ''
-                }`}
-              >
-                {line.value}
-              </span>
-            </div>
-          );
-        })}
-
-        {data.gasCost != null && data.gasCost > 0 && (
-          <div
-            className="flex items-center justify-between px-3 py-2 text-[13px]"
-            style={{ borderBottom: '0.5px solid var(--border-subtle)' }}
-          >
-            <span className="text-fg-secondary">Gas</span>
-            <span className="font-mono text-fg-primary">
-              {data.gasCost.toFixed(4)} SUI
-            </span>
-          </div>
-        )}
-
-        <div className="px-3 py-2">
-          <SuiscanLink digest={data.tx} />
         </div>
-      </CardShell>
+
+        <div className="flex items-center justify-between border-border border-t border-dashed px-[18px] py-[11px]">
+          <span className="font-mono text-[11px] text-muted-foreground">
+            {shortDigest}
+          </span>
+          <a
+            className="inline-flex items-center gap-1 border-foreground/30 border-b font-mono text-[11px] text-foreground transition hover:border-foreground"
+            href={`${SUISCAN_TX_URL}/${data.tx}`}
+            rel="noopener noreferrer"
+            target="_blank"
+          >
+            View on Sui
+            {SUISCAN_ICON}
+          </a>
+        </div>
+      </div>
     </ReceiptChoreography>
   );
 }

@@ -123,7 +123,7 @@ export function PayButton({
         trigger={<span hidden />}
       />
       <button
-        className="h-12 w-full rounded-pill bg-fg-primary font-mono text-[12px] uppercase tracking-[0.06em] text-fg-inverse transition-opacity hover:opacity-90 active:opacity-80 focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40"
+        className="h-12 w-full rounded-pill bg-foreground font-mono text-[12px] uppercase tracking-[0.06em] text-background transition-opacity hover:opacity-90 active:opacity-80 focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40"
         data-slug={slug}
         disabled={disabled || isPending}
         onClick={handlePay}

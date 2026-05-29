@@ -14,7 +14,7 @@
  *     to X link references. Settings claim keeps Copy + Share, which
  *     covers the "tell my friends" intent without the QR weight.
  *
- * UX parity: hero band with success-bg + serif handle, action row,
+ * UX parity: hero band with success tint + serif handle, action row,
  * "Continue to Audric →" CTA below.
  */
 
@@ -54,27 +54,27 @@ export function UsernameClaimSuccess({
 
   return (
     <div
-      className="overflow-hidden rounded-lg border border-border-subtle bg-surface-card shadow-[var(--shadow-flat)]"
+      className="overflow-hidden rounded-lg border border-border bg-card shadow-[var(--shadow-flat)]"
       data-testid="username-claim-success"
     >
-      <div className="flex items-center justify-between border-b border-success-border bg-success-bg px-[18px] py-3">
-        <span className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-success-fg">
+      <div className="flex items-center justify-between border-b border-success/30 bg-success/10 px-[18px] py-3">
+        <span className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-success">
           <CheckIcon aria-hidden="true" size={11} />
           HANDLE CLAIMED
         </span>
       </div>
 
-      <div className="border-b border-success-border bg-success-bg px-8 pt-10 pb-7 text-center">
-        <div className="mb-[18px] font-mono text-[11px] uppercase tracking-[0.12em] text-success-fg">
+      <div className="border-b border-success/30 bg-success/10 px-8 pt-10 pb-7 text-center">
+        <div className="mb-[18px] font-mono text-[11px] uppercase tracking-[0.12em] text-success">
           ▓▒░&nbsp;&nbsp;YOUR PASSPORT&nbsp;&nbsp;░▒▓
         </div>
         <div
-          className="break-all font-serif text-[30px] leading-[1.15] tracking-[-0.005em] text-fg-primary"
+          className="break-all font-serif text-[30px] leading-[1.15] tracking-[-0.005em] text-foreground"
           data-testid="username-claim-success-handle"
         >
           {fullHandle}
         </div>
-        <p className="mt-3 text-[14px] leading-[20px] text-fg-secondary">
+        <p className="mt-3 text-[14px] leading-[20px] text-muted-foreground">
           yours on Sui — recognized everywhere
         </p>
       </div>
@@ -83,7 +83,7 @@ export function UsernameClaimSuccess({
         <button
           aria-label={copied ? "Copied to clipboard" : `Copy ${fullHandle}`}
           aria-live="polite"
-          className="flex flex-1 items-center justify-center gap-2 rounded-sm border border-border-subtle bg-surface-card px-3 py-2.5 text-[13px] font-medium text-fg-primary transition hover:border-border-strong focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none"
+          className="flex flex-1 items-center justify-center gap-2 rounded-sm border border-border bg-card px-3 py-2.5 text-[13px] font-medium text-foreground transition hover:border-foreground/30 focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none"
           data-testid="username-claim-success-copy"
           onClick={handleCopy}
           type="button"
@@ -92,10 +92,10 @@ export function UsernameClaimSuccess({
             <>
               <CheckIcon
                 aria-hidden="true"
-                className="text-success-solid"
+                className="text-success"
                 size={13}
               />
-              <span className="text-success-solid">Copied</span>
+              <span className="text-success">Copied</span>
             </>
           ) : (
             <>
@@ -107,7 +107,7 @@ export function UsernameClaimSuccess({
 
         <a
           aria-label={`Share ${fullHandle} on X`}
-          className="flex flex-1 items-center justify-center gap-2 rounded-sm border border-border-subtle bg-surface-card px-3 py-2.5 text-[13px] font-medium text-fg-primary transition hover:border-border-strong focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none"
+          className="flex flex-1 items-center justify-center gap-2 rounded-sm border border-border bg-card px-3 py-2.5 text-[13px] font-medium text-foreground transition hover:border-foreground/30 focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none"
           data-testid="username-claim-success-share-x"
           href={shareUrl}
           rel="noreferrer noopener"
@@ -121,7 +121,7 @@ export function UsernameClaimSuccess({
       {onContinue && (
         <div className="px-6 py-6">
           <button
-            className="w-full rounded-sm border border-fg-primary bg-fg-primary px-[18px] py-3 text-[14px] font-medium text-fg-inverse transition hover:opacity-90 focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none"
+            className="w-full rounded-sm border border-foreground bg-foreground px-[18px] py-3 text-[14px] font-medium text-background transition hover:opacity-90 focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none"
             data-testid="username-claim-success-continue"
             onClick={onContinue}
             type="button"

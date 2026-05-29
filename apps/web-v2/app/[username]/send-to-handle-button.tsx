@@ -147,12 +147,12 @@ export function SendToHandleButton({
 
   if (phase.kind === "sent") {
     return (
-      <div className="space-y-2 rounded-md border border-success-border bg-success-bg p-3 text-center">
-        <div className="font-medium text-[12px] text-success-fg">
+      <div className="space-y-2 rounded-md border border-success/30 bg-success/10 p-3 text-center">
+        <div className="font-medium text-[12px] text-success">
           ✓ Sent to {handle}
         </div>
         <a
-          className="block font-mono text-[10px] text-fg-secondary underline-offset-2 hover:underline"
+          className="block font-mono text-[10px] text-muted-foreground underline-offset-2 hover:underline"
           href={`https://suivision.xyz/txblock/${phase.digest}`}
           rel="noreferrer noopener"
           target="_blank"
@@ -160,7 +160,7 @@ export function SendToHandleButton({
           {`${phase.digest.slice(0, 10)}…${phase.digest.slice(-6)}`} ↗
         </a>
         <button
-          className="text-[11px] text-fg-secondary hover:text-fg-primary"
+          className="text-[11px] text-muted-foreground hover:text-foreground"
           onClick={() => setPhase({ kind: "idle", error: null })}
           type="button"
         >
@@ -195,11 +195,11 @@ export function SendToHandleButton({
       />
       <div className="space-y-2">
         <div className="relative">
-          <span className="-translate-y-1/2 pointer-events-none absolute top-1/2 left-3 text-[12px] text-fg-secondary">
+          <span className="-translate-y-1/2 pointer-events-none absolute top-1/2 left-3 text-[12px] text-muted-foreground">
             $
           </span>
           <input
-            className="w-full rounded-md border border-border-subtle bg-surface-page px-7 py-2 text-[12px] text-fg-primary placeholder:text-fg-muted focus:border-border-strong focus:outline-none disabled:opacity-50"
+            className="w-full rounded-md border border-border bg-background px-7 py-2 text-[12px] text-foreground placeholder:text-muted-foreground focus:border-foreground/30 focus:outline-none disabled:opacity-50"
             disabled={submitting}
             inputMode="decimal"
             min="0"
@@ -209,12 +209,12 @@ export function SendToHandleButton({
             type="number"
             value={amount}
           />
-          <span className="-translate-y-1/2 pointer-events-none absolute top-1/2 right-3 font-mono text-[10px] text-fg-muted uppercase tracking-[0.06em]">
+          <span className="-translate-y-1/2 pointer-events-none absolute top-1/2 right-3 font-mono text-[10px] text-muted-foreground uppercase tracking-[0.06em]">
             USDC
           </span>
         </div>
         <button
-          className="block w-full rounded-md border border-border-strong bg-fg-primary px-4 py-2.5 text-center font-medium text-[12px] text-fg-inverse transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+          className="block w-full rounded-md border border-border bg-foreground px-4 py-2.5 text-center font-medium text-[12px] text-background transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
           disabled={submitting || (!!account && !isValidAmount)}
           onClick={handleSend}
           type="button"
@@ -222,11 +222,11 @@ export function SendToHandleButton({
           {buttonLabel}
         </button>
         {phase.kind === "idle" && phase.error && (
-          <p className="text-center text-[11px] text-error-fg">{phase.error}</p>
+          <p className="text-center text-[11px] text-destructive">{phase.error}</p>
         )}
         {account && (
           <button
-            className="block w-full text-center text-[10px] text-fg-secondary hover:text-fg-primary"
+            className="block w-full text-center text-[10px] text-muted-foreground hover:text-foreground"
             onClick={() => disconnect()}
             type="button"
           >

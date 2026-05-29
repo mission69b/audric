@@ -73,24 +73,24 @@ export function HealthSimulatorCanvas({ data, onAction }: Props) {
     danger: "Danger",
   };
   const statusColor: Record<typeof status, string> = {
-    healthy: "text-success-solid",
-    warning: "text-warning-solid",
-    danger: "text-error-solid",
+    healthy: "text-success",
+    warning: "text-warning",
+    danger: "text-destructive",
   };
 
   return (
     <div className="space-y-4">
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
-          <label className="font-mono text-[10px] text-fg-muted uppercase tracking-wider">
+          <label className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
             Collateral
           </label>
-          <span className="font-mono text-fg-primary text-sm">
+          <span className="font-mono text-foreground text-sm">
             ${collateral.toLocaleString()} USDC
           </span>
         </div>
         <input
-          className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-border-subtle accent-foreground"
+          className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-border accent-foreground"
           max={50_000}
           min={100}
           onChange={(e) => setCollateral(Number(e.target.value))}
@@ -102,15 +102,15 @@ export function HealthSimulatorCanvas({ data, onAction }: Props) {
 
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
-          <label className="font-mono text-[10px] text-fg-muted uppercase tracking-wider">
+          <label className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
             Debt
           </label>
-          <span className="font-mono text-fg-primary text-sm">
+          <span className="font-mono text-foreground text-sm">
             ${debt.toLocaleString()} USDC
           </span>
         </div>
         <input
-          className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-border-subtle accent-foreground"
+          className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-border accent-foreground"
           max={Math.min(collateral * 0.75, 40_000)}
           min={0}
           onChange={(e) => setDebt(Number(e.target.value))}
@@ -120,14 +120,14 @@ export function HealthSimulatorCanvas({ data, onAction }: Props) {
         />
       </div>
 
-      <div className="space-y-2 rounded-lg border border-border-subtle bg-surface-page p-3">
+      <div className="space-y-2 rounded-lg border border-border bg-background p-3">
         <div className="flex items-center justify-between">
-          <span className="font-mono text-[10px] text-fg-muted uppercase tracking-wider">
+          <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
             Health Factor
           </span>
           <span
             className={`font-medium font-mono text-sm ${
-              hf !== null ? statusColor[status] : "text-fg-muted"
+              hf !== null ? statusColor[status] : "text-muted-foreground"
             }`}
           >
             {hf !== null ? hf.toFixed(2) : "∞"}
@@ -145,12 +145,12 @@ export function HealthSimulatorCanvas({ data, onAction }: Props) {
 
       <div className="space-y-1 font-mono text-xs">
         <div className="flex justify-between">
-          <span className="text-fg-muted">Price drops 20%</span>
+          <span className="text-muted-foreground">Price drops 20%</span>
           <span
             className={
               drop20hf !== null && drop20hf < 1.5
-                ? "text-warning-solid"
-                : "text-fg-primary"
+                ? "text-warning"
+                : "text-foreground"
             }
           >
             HF → {drop20hf !== null ? drop20hf.toFixed(2) : "∞"}
@@ -158,12 +158,12 @@ export function HealthSimulatorCanvas({ data, onAction }: Props) {
           </span>
         </div>
         <div className="flex justify-between">
-          <span className="text-fg-muted">Price drops 40%</span>
+          <span className="text-muted-foreground">Price drops 40%</span>
           <span
             className={
               drop40hf !== null && drop40hf < 1.5
-                ? "text-error-solid"
-                : "text-fg-primary"
+                ? "text-destructive"
+                : "text-foreground"
             }
           >
             HF → {drop40hf !== null ? drop40hf.toFixed(2) : "∞"}
@@ -176,23 +176,23 @@ export function HealthSimulatorCanvas({ data, onAction }: Props) {
         </div>
         {liqCollateral !== null && debt > 0 && (
           <div className="flex justify-between">
-            <span className="text-fg-muted">Liquidation at</span>
-            <span className="text-fg-primary">
+            <span className="text-muted-foreground">Liquidation at</span>
+            <span className="text-foreground">
               ${fmtUsd(liqCollateral)} collateral
             </span>
           </div>
         )}
         {safeRepay > 1 && (
-          <div className="flex justify-between border-border-subtle/50 border-t pt-0.5">
-            <span className="text-fg-muted">Repay for HF 3.0</span>
-            <span className="text-success-solid">${fmtUsd(safeRepay)}</span>
+          <div className="flex justify-between border-border/50 border-t pt-0.5">
+            <span className="text-muted-foreground">Repay for HF 3.0</span>
+            <span className="text-success">${fmtUsd(safeRepay)}</span>
           </div>
         )}
       </div>
 
       {onAction && safeRepay > 1 && (
         <button
-          className="w-full rounded-md bg-fg-primary py-2 font-mono text-[10px] text-fg-inverse uppercase tracking-wider transition hover:opacity-90"
+          className="w-full rounded-md bg-foreground py-2 font-mono text-[10px] text-background uppercase tracking-wider transition hover:opacity-90"
           onClick={() =>
             onAction(`Repay $${Math.ceil(safeRepay)} USDC debt`)
           }

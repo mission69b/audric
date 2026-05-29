@@ -34,7 +34,7 @@ export function AssetAmountBlock({
   return (
     <div className={cn("flex flex-col gap-0.5", className)}>
       {label && (
-        <span className="font-mono text-[9px] text-fg-muted uppercase tracking-[0.12em]">
+        <span className="font-mono text-[9px] text-muted-foreground uppercase tracking-[0.12em]">
           {label}
         </span>
       )}
@@ -47,16 +47,16 @@ export function AssetAmountBlock({
             src={logo}
           />
         )}
-        <span className="font-medium text-fg-primary text-sm">
+        <span className="font-medium text-foreground text-sm">
           {fmtAmt(amount)}
-          <span className="ml-1 font-mono text-fg-muted text-xs uppercase tracking-wider">
+          <span className="ml-1 font-mono text-muted-foreground text-xs uppercase tracking-wider">
             {asset}
           </span>
         </span>
-        <span className="ml-auto text-fg-muted text-xs">
+        <span className="ml-auto text-muted-foreground text-xs">
           {usdText}
           {suffix && (
-            <span className="ml-1 font-mono text-[10px] text-fg-muted">
+            <span className="ml-1 font-mono text-[10px] text-muted-foreground">
               {suffix}
             </span>
           )}

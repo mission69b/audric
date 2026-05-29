@@ -24,22 +24,22 @@ export function MetricsSection() {
   ];
 
   return (
-    <section className="px-8 py-20 border-t border-border-subtle bg-surface-card">
+    <section className="px-8 py-20 border-t border-border bg-card">
       <div className="mx-auto max-w-[1120px]">
-        <p className="font-mono text-[11px] tracking-[0.1em] uppercase text-fg-secondary text-center mb-5">
+        <p className="font-mono text-[11px] tracking-[0.1em] uppercase text-muted-foreground text-center mb-5">
           Alpha · Early access
         </p>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-px rounded-xs border border-border-subtle bg-border-subtle max-w-[820px] mx-auto overflow-hidden">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-px rounded-xs border border-border bg-border max-w-[820px] mx-auto overflow-hidden">
           {metrics.map((metric) => (
             <div
-              className="bg-surface-page px-5 py-6 text-center"
+              className="bg-background px-5 py-6 text-center"
               key={metric.label}
             >
-              <div className="font-serif font-medium text-[38px] leading-none tracking-[-0.03em] text-fg-primary tabular-nums">
+              <div className="font-serif font-medium text-[38px] leading-none tracking-[-0.03em] text-foreground tabular-nums">
                 {metric.value}
               </div>
-              <div className="font-mono text-[10px] tracking-[0.08em] uppercase text-fg-secondary mt-2">
+              <div className="font-mono text-[10px] tracking-[0.08em] uppercase text-muted-foreground mt-2">
                 {metric.label}
               </div>
             </div>
@@ -49,7 +49,7 @@ export function MetricsSection() {
         <div className="flex justify-center gap-2 mt-6 flex-wrap">
           {TAGS.map((tag) => (
             <span
-              className="border border-border-subtle px-3 py-1.5 rounded-xs font-mono text-[10px] tracking-[0.08em] uppercase text-fg-secondary bg-surface-page"
+              className="border border-border px-3 py-1.5 rounded-xs font-mono text-[10px] tracking-[0.08em] uppercase text-muted-foreground bg-background"
               key={tag}
             >
               {tag}
@@ -59,13 +59,13 @@ export function MetricsSection() {
 
         <div className="text-center mt-8">
           <button
-            className="inline-flex items-center gap-2 bg-fg-primary text-fg-inverse px-6 py-3.5 rounded-xs font-mono text-[12px] tracking-[0.08em] uppercase transition hover:opacity-80 active:scale-[0.98] cursor-pointer"
+            className="inline-flex items-center gap-2 bg-foreground text-background px-6 py-3.5 rounded-xs font-mono text-[12px] tracking-[0.08em] uppercase transition hover:opacity-80 active:scale-[0.98] cursor-pointer"
             onClick={login}
             type="button"
           >
             Sign in with Google →
           </button>
-          <p className="text-[13px] text-fg-secondary mt-2.5">
+          <p className="text-[13px] text-muted-foreground mt-2.5">
             Free to start. No credit card.
           </p>
         </div>

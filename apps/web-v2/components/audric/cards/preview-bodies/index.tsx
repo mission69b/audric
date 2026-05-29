@@ -61,7 +61,7 @@ const SAVE_FEE_BPS_NUM = Number(SAVE_FEE_BPS);
 const BORROW_FEE_BPS_NUM = Number(BORROW_FEE_BPS);
 
 const SECTION_LABEL =
-  "font-mono text-[9px] text-fg-muted tracking-[0.14em] uppercase";
+  "font-mono text-[9px] text-muted-foreground tracking-[0.14em] uppercase";
 
 interface BasePreviewInput {
   amount?: number;
@@ -93,10 +93,10 @@ interface FeeRowProps {
 
 function FeeRow({ label, usdValue }: FeeRowProps) {
   return (
-    <div className="flex items-baseline justify-between border-border-subtle border-t pt-2 text-[11px]">
+    <div className="flex items-baseline justify-between border-border border-t pt-2 text-[11px]">
       <span className={SECTION_LABEL}>{label}</span>
       {usdValue != null && (
-        <span className="font-mono text-fg-muted tabular-nums">
+        <span className="font-mono text-muted-foreground tabular-nums">
           ${usdValue.toFixed(2)}
         </span>
       )}
@@ -136,15 +136,15 @@ function formatHF(hf: number | null): string {
 
 function hfColor(hf: number | null): string {
   if (hf === null) {
-    return "text-success-solid";
+    return "text-success";
   }
   if (hf < 1.1) {
-    return "text-error-solid";
+    return "text-destructive";
   }
   if (hf < 1.5) {
-    return "text-warning-solid";
+    return "text-warning";
   }
-  return "text-success-solid";
+  return "text-success";
 }
 
 function HFRow({
@@ -164,8 +164,8 @@ function HFRow({
       <span className={cn("font-mono text-[12px] tabular-nums", color)}>
         {hasProjection ? (
           <>
-            <span className="text-fg-muted">{formatHF(healthFactor)}</span>
-            <span className="px-1 text-fg-muted">→</span>
+            <span className="text-muted-foreground">{formatHF(healthFactor)}</span>
+            <span className="px-1 text-muted-foreground">→</span>
             <span>{formatHF(projected ?? null)}</span>
           </>
         ) : (
@@ -267,7 +267,7 @@ export function BorrowPreviewBody({
         usdValue={amount}
       />
       {borrowApyBps === undefined ? (
-        <div className="pt-1 text-[10px] text-fg-muted italic">
+        <div className="pt-1 text-[10px] text-muted-foreground italic">
           Variable rate — locked at execute time.
         </div>
       ) : (
@@ -299,7 +299,7 @@ export function RepayPreviewBody({
         usdValue={amount}
       />
       {borrowApyBps === undefined ? (
-        <div className="pt-1 text-[10px] text-fg-muted italic">
+        <div className="pt-1 text-[10px] text-muted-foreground italic">
           Clears principal at the current variable borrow rate.
         </div>
       ) : (
@@ -336,33 +336,33 @@ export function HarvestRewardsPreviewBody({
 
   return (
     <div className="space-y-3">
-      <div className="text-[11px] text-fg-secondary">
+      <div className="text-[11px] text-muted-foreground">
         Compound all pending rewards in one transaction —
-        <span className="font-medium text-fg-primary">
+        <span className="font-medium text-foreground">
           {" "}
           claim → swap each non-USDC reward to USDC → deposit merged USDC into
           savings
         </span>
         .
       </div>
-      <div className="space-y-1.5 border-border-subtle border-t pt-2">
+      <div className="space-y-1.5 border-border border-t pt-2">
         <div className="flex items-baseline justify-between text-[11px]">
           <span className={SECTION_LABEL}>Per-swap slippage</span>
-          <span className="font-mono text-fg-primary tabular-nums">
+          <span className="font-mono text-foreground tabular-nums">
             {slipPct}%
           </span>
         </div>
         {minRewardLabel && (
           <div className="flex items-baseline justify-between text-[11px]">
             <span className={SECTION_LABEL}>Threshold</span>
-            <span className="font-mono text-fg-primary tabular-nums">
+            <span className="font-mono text-foreground tabular-nums">
               {minRewardLabel}
             </span>
           </div>
         )}
         <div className="flex items-baseline justify-between text-[11px]">
           <span className={SECTION_LABEL}>Per-leg fee</span>
-          <span className="font-mono text-fg-muted tabular-nums">
+          <span className="font-mono text-muted-foreground tabular-nums">
             0.10% Cetus + 0.10% NAVI
           </span>
         </div>

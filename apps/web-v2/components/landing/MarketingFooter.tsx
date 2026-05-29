@@ -13,7 +13,7 @@ import type { ReactNode } from "react";
 import { useZkLogin } from "@/components/auth/use-zklogin";
 
 const FOOTER_LINK_CLASS =
-  "block text-[13px] text-fg-secondary py-1 hover:text-fg-primary transition-colors";
+  "block text-[13px] text-muted-foreground py-1 hover:text-foreground transition-colors";
 
 const PRODUCT_LINKS = [
   { href: "#passport", label: "Passport" },
@@ -41,17 +41,17 @@ export function MarketingFooter() {
   const { login } = useZkLogin();
 
   return (
-    <footer className="bg-surface-card border-t border-border-subtle">
+    <footer className="bg-card border-t border-border">
       <div className="grid grid-cols-2 lg:grid-cols-[1.6fr_1fr_1fr] gap-10 lg:gap-12 px-10 pt-16 pb-10 max-w-[1200px] mx-auto">
         <div className="flex flex-col items-start col-span-2 lg:col-span-1">
-          <div className="text-[17px] font-medium text-fg-primary mb-1">
+          <div className="text-[17px] font-medium text-foreground mb-1">
             Audric
           </div>
-          <div className="text-[13px] text-fg-secondary leading-snug mb-5">
+          <div className="text-[13px] text-muted-foreground leading-snug mb-5">
             Your money, handled.
           </div>
           <button
-            className="inline-flex items-center gap-2 border border-border-subtle px-4 py-2.5 rounded-xs font-mono text-[11px] tracking-[0.08em] uppercase text-fg-primary bg-surface-page hover:border-border-strong transition cursor-pointer"
+            className="inline-flex items-center gap-2 border border-border px-4 py-2.5 rounded-xs font-mono text-[11px] tracking-[0.08em] uppercase text-foreground bg-background hover:border-foreground/30 transition cursor-pointer"
             onClick={login}
             type="button"
           >
@@ -81,7 +81,7 @@ export function MarketingFooter() {
               </a>
             ) : (
               <span
-                className={`${FOOTER_LINK_CLASS} cursor-default text-fg-muted`}
+                className={`${FOOTER_LINK_CLASS} cursor-default text-muted-foreground`}
                 key={link.label}
               >
                 {link.label}
@@ -90,12 +90,12 @@ export function MarketingFooter() {
           )}
         </FooterCol>
 
-        <div className="col-span-2 lg:col-span-3 border-t border-border-subtle pt-5 mt-3 flex flex-col sm:flex-row justify-between gap-3 font-mono text-[10px] tracking-[0.08em] uppercase text-fg-muted">
+        <div className="col-span-2 lg:col-span-3 border-t border-border pt-5 mt-3 flex flex-col sm:flex-row justify-between gap-3 font-mono text-[10px] tracking-[0.08em] uppercase text-muted-foreground">
           <div>© 2026 Audric · Built on Sui · Non-custodial</div>
           <div className="flex gap-4 sm:gap-5 flex-wrap">
             {LEGAL_LINKS.map((link) => (
               <Link
-                className="hover:text-fg-secondary transition"
+                className="hover:text-muted-foreground transition"
                 href={link.href}
                 key={link.href}
               >
@@ -118,7 +118,7 @@ function FooterCol({
 }) {
   return (
     <div>
-      <h4 className="font-mono text-[10px] tracking-[0.12em] uppercase text-fg-muted mb-3.5">
+      <h4 className="font-mono text-[10px] tracking-[0.12em] uppercase text-muted-foreground mb-3.5">
         {heading}
       </h4>
       <div>{children}</div>

@@ -11,22 +11,22 @@ export default function TermsPage() {
     <>
       <header className="mb-12">
         <Link
-          className="inline-block text-fg-secondary hover:text-fg-primary font-mono text-[10px] tracking-[0.12em] uppercase mb-8 transition-colors"
+          className="inline-block text-muted-foreground hover:text-foreground font-mono text-[10px] tracking-[0.12em] uppercase mb-8 transition-colors"
           href="/"
         >
           &larr; audric.ai
         </Link>
-        <h1 className="font-serif text-[36px] sm:text-[44px] leading-[1.1] tracking-[-0.01em] text-fg-primary mb-3">
+        <h1 className="font-serif text-[36px] sm:text-[44px] leading-[1.1] tracking-[-0.01em] text-foreground mb-3">
           Terms of Service
         </h1>
-        <p className="font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted">
+        <p className="font-mono text-[10px] tracking-[0.1em] uppercase text-muted-foreground">
           Last updated · April 2026 (v2)
         </p>
       </header>
 
-      <div className="space-y-10 text-fg-secondary leading-[1.7] text-[14px]">
+      <div className="space-y-10 text-muted-foreground leading-[1.7] text-[14px]">
         <section>
-          <h2 className="text-fg-primary font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
+          <h2 className="text-foreground font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
             1. Acceptance
           </h2>
           <p>
@@ -37,7 +37,7 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2 className="text-fg-primary font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
+          <h2 className="text-foreground font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
             2. Description of Service
           </h2>
           <p>
@@ -47,7 +47,7 @@ export default function TermsPage() {
             collateral, and interact with on-chain services through natural
             conversation. Audric is built on{" "}
             <a
-              className="text-fg-primary underline underline-offset-2 hover:opacity-70"
+              className="text-foreground underline underline-offset-2 hover:opacity-70"
               href="https://t2000.ai"
               rel="noopener noreferrer"
               target="_blank"
@@ -55,12 +55,12 @@ export default function TermsPage() {
               t2000
             </a>{" "}
             infrastructure. The Service is provided as-is and is currently in{" "}
-            <strong className="text-fg-primary">beta</strong>.
+            <strong className="text-foreground">beta</strong>.
           </p>
         </section>
 
         <section>
-          <h2 className="text-fg-primary font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
+          <h2 className="text-foreground font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
             3. Authentication and Wallet
           </h2>
           <p>
@@ -77,7 +77,7 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2 className="text-fg-primary font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
+          <h2 className="text-foreground font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
             4. No Financial Advice
           </h2>
           <p>
@@ -93,21 +93,21 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2 className="text-fg-primary font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
+          <h2 className="text-foreground font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
             5. Third-Party Protocols and Services
           </h2>
           <p>Audric integrates with third-party services including:</p>
           <ul className="list-disc pl-5 space-y-1.5 mt-2">
             <li>
-              <strong className="text-fg-primary">DeFi protocols</strong> (NAVI,
+              <strong className="text-foreground">DeFi protocols</strong> (NAVI,
               Cetus, VOLO) &mdash; via on-chain smart contracts
             </li>
             <li>
-              <strong className="text-fg-primary">AI</strong> (Anthropic)
+              <strong className="text-foreground">AI</strong> (Anthropic)
               &mdash; for the conversational assistant
             </li>
             <li>
-              <strong className="text-fg-primary">Authentication</strong>{" "}
+              <strong className="text-foreground">Authentication</strong>{" "}
               (Google, Mysten Labs Enoki) &mdash; for zkLogin and gas
               sponsorship
             </li>
@@ -120,7 +120,7 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2 className="text-fg-primary font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
+          <h2 className="text-foreground font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
             6. Transaction Approval
           </h2>
           <p>
@@ -135,18 +135,18 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2 className="text-fg-primary font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
+          <h2 className="text-foreground font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
             7. Fees and Charges
           </h2>
           <p>Audric charges the following fees:</p>
           <ul className="list-disc pl-5 space-y-1.5 mt-2">
             <li>
-              <strong className="text-fg-primary">Swap overlay fee</strong>{" "}
+              <strong className="text-foreground">Swap overlay fee</strong>{" "}
               &mdash; 0.1% on every token swap, collected as part of the
               transaction
             </li>
             <li>
-              <strong className="text-fg-primary">Yield spread</strong> &mdash;
+              <strong className="text-foreground">Yield spread</strong> &mdash;
               Audric displays net APY after a small spread on savings yield. The
               exact spread varies by market conditions
             </li>
@@ -160,7 +160,7 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2 className="text-fg-primary font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
+          <h2 className="text-foreground font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
             8. Daily Free Sessions
           </h2>
           <p>
@@ -186,7 +186,7 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2 className="text-fg-primary font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
+          <h2 className="text-foreground font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
             9. Gas Sponsorship
           </h2>
           <p>
@@ -197,7 +197,7 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2 className="text-fg-primary font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
+          <h2 className="text-foreground font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
             10. AI Assistant
           </h2>
           <p>
@@ -208,7 +208,7 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2 className="text-fg-primary font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
+          <h2 className="text-foreground font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
             11. Tax Responsibility
           </h2>
           <p>
@@ -221,7 +221,7 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2 className="text-fg-primary font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
+          <h2 className="text-foreground font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
             12. Beta Software
           </h2>
           <p>
@@ -233,7 +233,7 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2 className="text-fg-primary font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
+          <h2 className="text-foreground font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
             13. Limitation of Liability
           </h2>
           <p className="uppercase text-xs leading-relaxed">
@@ -248,13 +248,13 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2 className="text-fg-primary font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
+          <h2 className="text-foreground font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
             14. Open Source
           </h2>
           <p>
             Audric is open-source software. The source code is available at{" "}
             <a
-              className="text-fg-primary underline underline-offset-2 hover:opacity-70"
+              className="text-foreground underline underline-offset-2 hover:opacity-70"
               href="https://github.com/mission69b/audric"
               rel="noopener noreferrer"
               target="_blank"
@@ -263,7 +263,7 @@ export default function TermsPage() {
             </a>
             . Infrastructure code is available at{" "}
             <a
-              className="text-fg-primary underline underline-offset-2 hover:opacity-70"
+              className="text-foreground underline underline-offset-2 hover:opacity-70"
               href="https://github.com/mission69b/t2000"
               rel="noopener noreferrer"
               target="_blank"
@@ -275,7 +275,7 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2 className="text-fg-primary font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
+          <h2 className="text-foreground font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
             15. Changes
           </h2>
           <p>

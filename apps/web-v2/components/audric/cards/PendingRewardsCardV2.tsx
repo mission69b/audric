@@ -26,7 +26,7 @@ export interface PendingRewardsCardV2Data {
 }
 
 const SECTION_LABEL =
-  'text-[9px] font-mono uppercase tracking-[0.14em] text-fg-muted';
+  'text-[9px] font-mono uppercase tracking-[0.14em] text-muted-foreground';
 
 function degradedHeadline(reason: string | null): string {
   switch (reason) {
@@ -53,16 +53,16 @@ export function PendingRewardsCardV2({
       <CardShell title="Pending rewards">
         <div className="flex items-start gap-2 py-1">
           <span
-            className="text-warning-solid text-[12px] leading-none mt-0.5"
+            className="text-warning text-[12px] leading-none mt-0.5"
             aria-hidden="true"
           >
             ⚠
           </span>
           <div className="flex-1 min-w-0">
-            <p className="text-sm text-fg-primary">
+            <p className="text-sm text-foreground">
               {degradedHeadline(data.degradationReason)}
             </p>
-            <p className="text-[11px] text-fg-muted mt-0.5">
+            <p className="text-[11px] text-muted-foreground mt-0.5">
               Try again in a moment — your unclaimed rewards aren&apos;t lost,
               just temporarily unreadable.
             </p>
@@ -75,7 +75,7 @@ export function PendingRewardsCardV2({
   if (data.rewards.length === 0) {
     return (
       <CardShell title="Pending rewards">
-        <p className="text-sm text-fg-muted">No claimable rewards yet.</p>
+        <p className="text-sm text-muted-foreground">No claimable rewards yet.</p>
       </CardShell>
     );
   }
@@ -101,9 +101,9 @@ export function PendingRewardsCardV2({
         </div>
 
         {data.totalValueUsd > 0 && (
-          <div className="pt-2 border-t border-border-subtle flex items-baseline justify-between">
+          <div className="pt-2 border-t border-border flex items-baseline justify-between">
             <span className={SECTION_LABEL}>Total claimable</span>
-            <span className="text-fg-primary font-mono text-sm tabular-nums">
+            <span className="text-foreground font-mono text-sm tabular-nums">
               ${fmtUsd(data.totalValueUsd)}
             </span>
           </div>

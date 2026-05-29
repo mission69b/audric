@@ -305,15 +305,15 @@ export function UsernameChangeModal({
     availability === "taken" || availability === "error";
   const inputBorderClass = (() => {
     if (isLocalError || isAvailabilityError) {
-      return "border-error-border";
+      return "border-destructive/30";
     }
     if (availability === "available") {
-      return "border-success-border";
+      return "border-success/30";
     }
     if (focused) {
-      return "border-border-focus";
+      return "border-ring";
     }
-    return "border-border-subtle";
+    return "border-border";
   })();
   const inputShadow = focused
     ? isLocalError || isAvailabilityError
@@ -333,7 +333,7 @@ export function UsernameChangeModal({
       open={open}
     >
       <DialogContent
-        className="overflow-hidden bg-surface-card p-0 ring-1 ring-border-subtle sm:max-w-[520px]"
+        className="overflow-hidden bg-card p-0 ring-1 ring-border sm:max-w-[520px]"
         data-testid="username-change-modal"
         onOpenAutoFocus={(e) => {
           // Pre-focus the input field so the user can start typing
@@ -347,13 +347,13 @@ export function UsernameChangeModal({
           <SuccessCard fullHandle={successHandle} onDone={onClose} />
         ) : (
           <>
-            <div className="flex items-center justify-between border-b border-border-subtle px-[18px] py-3.5">
-              <DialogTitle className="font-mono text-[11px] text-fg-primary uppercase tracking-[0.1em]">
+            <div className="flex items-center justify-between border-b border-border px-[18px] py-3.5">
+              <DialogTitle className="font-mono text-[11px] text-foreground uppercase tracking-[0.1em]">
                 {"// CHANGE HANDLE"}
               </DialogTitle>
               <button
                 aria-label="Close"
-                className="inline-flex h-6 w-6 items-center justify-center rounded-sm text-fg-muted transition hover:bg-surface-sunken hover:text-fg-primary focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none disabled:opacity-50"
+                className="inline-flex h-6 w-6 items-center justify-center rounded-sm text-muted-foreground transition hover:bg-muted hover:text-foreground focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none disabled:opacity-50"
                 disabled={isSubmitting}
                 onClick={onClose}
                 type="button"
@@ -364,24 +364,24 @@ export function UsernameChangeModal({
 
             <form className="px-6 pt-5 pb-6" onSubmit={handleSubmit}>
               <div className="mb-[18px]">
-                <div className="mb-1.5 font-mono text-[10px] text-fg-muted uppercase tracking-[0.1em]">
+                <div className="mb-1.5 font-mono text-[10px] text-muted-foreground uppercase tracking-[0.1em]">
                   CURRENT
                 </div>
-                <div className="rounded-sm border border-border-subtle bg-surface-sunken px-3 py-2.5 font-mono text-[14px] text-fg-secondary">
+                <div className="rounded-sm border border-border bg-muted px-3 py-2.5 font-mono text-[14px] text-muted-foreground">
                   {currentLabel}
-                  <span className="text-fg-muted">{PARENT_SUFFIX}</span>
+                  <span className="text-muted-foreground">{PARENT_SUFFIX}</span>
                 </div>
               </div>
 
               <div>
                 <label
-                  className="mb-1.5 block font-mono text-[10px] text-fg-muted uppercase tracking-[0.1em]"
+                  className="mb-1.5 block font-mono text-[10px] text-muted-foreground uppercase tracking-[0.1em]"
                   htmlFor={inputId}
                 >
                   NEW HANDLE
                 </label>
                 <div
-                  className={`flex items-center rounded-xs bg-surface-card transition border ${inputBorderClass} ${inputShadow} px-3 py-0.5`}
+                  className={`flex items-center rounded-xs bg-card transition border ${inputBorderClass} ${inputShadow} px-3 py-0.5`}
                 >
                   <input
                     aria-describedby={helpId}
@@ -393,7 +393,7 @@ export function UsernameChangeModal({
                     autoCapitalize="off"
                     autoComplete="off"
                     autoCorrect="off"
-                    className="min-w-0 flex-1 border-none bg-transparent px-1 py-2.5 font-mono text-[14px] text-fg-primary outline-none placeholder:text-fg-muted disabled:opacity-50"
+                    className="min-w-0 flex-1 border-none bg-transparent px-1 py-2.5 font-mono text-[14px] text-foreground outline-none placeholder:text-muted-foreground disabled:opacity-50"
                     disabled={isSubmitting}
                     id={inputId}
                     maxLength={20}
@@ -409,7 +409,7 @@ export function UsernameChangeModal({
                     type="text"
                     value={value}
                   />
-                  <span className="pr-1 font-mono text-[14px] text-fg-muted">
+                  <span className="pr-1 font-mono text-[14px] text-muted-foreground">
                     {PARENT_SUFFIX}
                   </span>
                 </div>
@@ -426,12 +426,12 @@ export function UsernameChangeModal({
                 />
               </div>
 
-              <div className="mt-[18px] flex items-start gap-2 rounded-sm border border-warning-border bg-warning-bg px-3 py-2.5">
+              <div className="mt-[18px] flex items-start gap-2 rounded-sm border border-warning/30 bg-warning/10 px-3 py-2.5">
                 <span
                   aria-hidden="true"
-                  className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-warning-solid"
+                  className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-warning"
                 />
-                <p className="text-[12.5px] text-warning-fg leading-[1.5]">
+                <p className="text-[12.5px] text-warning leading-[1.5]">
                   Changing your handle releases{" "}
                   <span className="font-mono">{currentFull}</span> on Sui.
                   Anyone can claim it after — including someone else.{" "}
@@ -443,7 +443,7 @@ export function UsernameChangeModal({
 
               <div className="mt-[22px] flex items-center justify-end gap-2">
                 <button
-                  className="rounded-sm border border-border-subtle bg-surface-card px-4 py-2.5 font-mono text-[11px] text-fg-primary uppercase tracking-[0.08em] transition hover:border-border-strong focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none disabled:opacity-50"
+                  className="rounded-sm border border-border bg-card px-4 py-2.5 font-mono text-[11px] text-foreground uppercase tracking-[0.08em] transition hover:border-foreground/30 focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none disabled:opacity-50"
                   disabled={isSubmitting}
                   onClick={onClose}
                   type="button"
@@ -451,7 +451,7 @@ export function UsernameChangeModal({
                   Cancel
                 </button>
                 <button
-                  className="rounded-sm border border-fg-primary bg-fg-primary px-4 py-2.5 font-mono text-[11px] text-fg-inverse uppercase tracking-[0.1em] transition hover:opacity-90 focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-45"
+                  className="rounded-sm border border-foreground bg-foreground px-4 py-2.5 font-mono text-[11px] text-background uppercase tracking-[0.1em] transition hover:opacity-90 focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-45"
                   data-testid="username-change-modal-submit"
                   disabled={
                     !validation.ok ||
@@ -487,22 +487,22 @@ function SuccessCard({ fullHandle, onDone }: SuccessCardProps) {
     >
       <div
         aria-hidden="true"
-        className="mx-auto mb-[18px] flex h-11 w-11 items-center justify-center rounded-full border border-success-border bg-success-bg text-success-fg"
+        className="mx-auto mb-[18px] flex h-11 w-11 items-center justify-center rounded-full border border-success/30 bg-success/10 text-success"
       >
         <CheckIcon size={20} />
       </div>
-      <DialogTitle className="mb-3.5 font-mono text-[11px] text-fg-secondary uppercase tracking-[0.14em]">
+      <DialogTitle className="mb-3.5 font-mono text-[11px] text-muted-foreground uppercase tracking-[0.14em]">
         HANDLE CHANGED
       </DialogTitle>
-      <div className="break-all font-medium font-serif text-[22px] text-fg-primary leading-[1.15] tracking-[-0.005em]">
+      <div className="break-all font-medium font-serif text-[22px] text-foreground leading-[1.15] tracking-[-0.005em]">
         {fullHandle}
       </div>
-      <p className="mx-auto mt-3.5 max-w-[320px] text-[13px] text-fg-secondary leading-[1.55]">
+      <p className="mx-auto mt-3.5 max-w-[320px] text-[13px] text-muted-foreground leading-[1.55]">
         It can take a few seconds to propagate everywhere.
       </p>
-      <div className="mt-7 border-t border-border-subtle pt-3.5">
+      <div className="mt-7 border-t border-border pt-3.5">
         <button
-          className="rounded-sm border border-fg-primary bg-fg-primary px-4 py-2.5 font-mono text-[11px] text-fg-inverse uppercase tracking-[0.1em] transition hover:opacity-90 focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none"
+          className="rounded-sm border border-foreground bg-foreground px-4 py-2.5 font-mono text-[11px] text-background uppercase tracking-[0.1em] transition hover:opacity-90 focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none"
           data-testid="username-change-modal-done"
           onClick={onDone}
           type="button"
@@ -537,10 +537,10 @@ function StatusLine({
 }: StatusLineProps) {
   const tone =
     submitError || isLocalError || isAvailabilityError
-      ? "text-error-fg"
+      ? "text-destructive"
       : availability === "available"
-        ? "text-success-fg"
-        : "text-fg-muted";
+        ? "text-success"
+        : "text-muted-foreground";
   const role =
     submitError || validationHint || isAvailabilityError ? "alert" : "status";
   const content = (() => {

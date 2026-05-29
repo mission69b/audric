@@ -218,15 +218,15 @@ export function UsernamePicker({
       status === "too-long" ||
       status === "reserved"
     ) {
-      return "border-error-border";
+      return "border-destructive/30";
     }
     if (status === "available") {
-      return "border-success-border";
+      return "border-success/30";
     }
     if (focused) {
-      return "border-border-focus";
+      return "border-ring";
     }
-    return "border-border-subtle";
+    return "border-border";
   })();
   const inputShadow = focused
     ? status === "taken" ||
@@ -241,22 +241,22 @@ export function UsernamePicker({
 
   return (
     <div
-      className="rounded-lg border border-border-subtle bg-surface-card px-7 pt-6 pb-6"
+      className="rounded-lg border border-border bg-card px-7 pt-6 pb-6"
       data-testid="username-picker"
     >
-      <div className="flex items-center justify-between border-b border-border-subtle pb-3">
-        <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-fg-primary">
+      <div className="flex items-center justify-between border-b border-border pb-3">
+        <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-foreground">
           {"// PASSPORT / HANDLE"}
         </span>
       </div>
 
       <div className="mt-[22px] mb-[22px]">
-        <h2 className="m-0 font-serif text-[36px] font-medium leading-[42px] tracking-[-0.01em] text-fg-primary">
+        <h2 className="m-0 font-serif text-[36px] font-medium leading-[42px] tracking-[-0.01em] text-foreground">
           Pick your handle
         </h2>
-        <p className="mt-[10px] mb-0 max-w-[460px] text-[14px] leading-[20px] text-fg-secondary">
+        <p className="mt-[10px] mb-0 max-w-[460px] text-[14px] leading-[20px] text-muted-foreground">
           This is your forever Audric Passport — friends send you USDC by typing{" "}
-          <code className="rounded-xs border border-border-subtle bg-surface-sunken px-[5px] py-[1px] font-mono text-[13px] text-fg-primary">
+          <code className="rounded-xs border border-border bg-muted px-[5px] py-[1px] font-mono text-[13px] text-foreground">
             @yourhandle
           </code>
           .
@@ -266,12 +266,12 @@ export function UsernamePicker({
       {suggestions.length > 0 && (
         <>
           <div className="mb-1.5 flex items-center justify-between">
-            <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-fg-muted">
+            <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
               {"// SUGGESTED"}
             </span>
             <button
               aria-label="Regenerate suggestions"
-              className="inline-flex items-center gap-1.5 px-1.5 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-fg-secondary transition hover:text-fg-primary focus-visible:underline focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-1.5 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground transition hover:text-foreground focus-visible:underline focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
               data-testid="username-picker-regenerate"
               disabled={disabled}
               onClick={handleRegenerate}
@@ -284,7 +284,7 @@ export function UsernamePicker({
 
           <fieldset
             aria-label="Username suggestions"
-            className="m-0 mb-[22px] flex flex-col overflow-hidden rounded-sm border border-border-subtle p-0"
+            className="m-0 mb-[22px] flex flex-col overflow-hidden rounded-sm border border-border p-0"
           >
             {suggestions.map((label, i) => (
               <SuggestionRow
@@ -302,23 +302,23 @@ export function UsernamePicker({
       )}
 
       <div className="mb-1.5">
-        <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-fg-muted">
+        <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
           {"// CUSTOM"}
         </span>
       </div>
 
       <form onSubmit={handleSubmit}>
         <div
-          className={`flex items-center gap-0 rounded-xs bg-surface-card transition border ${inputBorderClass} ${inputShadow} px-3 py-0.5`}
+          className={`flex items-center gap-0 rounded-xs bg-card transition border ${inputBorderClass} ${inputShadow} px-3 py-0.5`}
         >
-          <span className="font-mono text-[13px] text-fg-muted">@</span>
+          <span className="font-mono text-[13px] text-muted-foreground">@</span>
           <input
             aria-describedby="username-picker-status"
             aria-invalid={isErrorStatus(status) || undefined}
             autoCapitalize="off"
             autoComplete="off"
             autoCorrect="off"
-            className="flex-1 border-none bg-transparent px-1 py-2.5 font-mono text-[13px] text-fg-primary outline-none disabled:opacity-50"
+            className="flex-1 border-none bg-transparent px-1 py-2.5 font-mono text-[13px] text-foreground outline-none disabled:opacity-50"
             data-testid="username-picker-input"
             disabled={disabled}
             id="username-picker-input"
@@ -331,7 +331,7 @@ export function UsernamePicker({
             type="text"
             value={input}
           />
-          <span className="pr-2 font-mono text-[13px] text-fg-muted">
+          <span className="pr-2 font-mono text-[13px] text-muted-foreground">
             {PARENT_SUFFIX}
           </span>
         </div>
@@ -342,7 +342,7 @@ export function UsernamePicker({
 
         <div
           aria-hidden="true"
-          className="mt-[22px] mb-3.5 select-none overflow-hidden whitespace-nowrap font-mono text-[12px] tracking-[0.05em] text-border-subtle"
+          className="mt-[22px] mb-3.5 select-none overflow-hidden whitespace-nowrap font-mono text-[12px] tracking-[0.05em] text-border"
         >
           {DITHER_PATTERN}
         </div>
@@ -350,7 +350,7 @@ export function UsernamePicker({
         <div className="flex items-center justify-between">
           {onSkip ? (
             <button
-              className="py-1.5 font-mono text-[11px] uppercase tracking-[0.08em] text-fg-secondary underline-offset-[3px] transition hover:text-fg-primary focus-visible:underline focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+              className="py-1.5 font-mono text-[11px] uppercase tracking-[0.08em] text-muted-foreground underline-offset-[3px] transition hover:text-foreground focus-visible:underline focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
               data-testid="username-picker-skip"
               disabled={disabled}
               onClick={onSkip}
@@ -362,7 +362,7 @@ export function UsernamePicker({
             <span />
           )}
           <button
-            className="inline-flex items-center justify-center rounded-xs border border-fg-primary bg-fg-primary px-[18px] py-3 font-mono text-[11px] uppercase tracking-[0.1em] text-fg-inverse transition hover:opacity-90 focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-45"
+            className="inline-flex items-center justify-center rounded-xs border border-foreground bg-foreground px-[18px] py-3 font-mono text-[11px] uppercase tracking-[0.1em] text-background transition hover:opacity-90 focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-45"
             data-testid="username-picker-submit"
             disabled={!canSubmit}
             type="submit"
@@ -403,10 +403,10 @@ function SuggestionRow({
   const clickable = ok && !disabled;
 
   const tagTone = ok
-    ? "bg-success-bg text-success-fg"
+    ? "bg-success/10 text-success"
     : taken || errored
-      ? "bg-error-bg text-error-fg"
-      : "bg-surface-sunken text-fg-muted";
+      ? "bg-destructive/10 text-destructive"
+      : "bg-muted text-muted-foreground";
   const tagText = ok
     ? "AVAILABLE"
     : taken
@@ -417,19 +417,19 @@ function SuggestionRow({
   const TagIcon = ok ? CheckIcon : checking ? LoaderIcon : XIcon;
 
   const handleTextClass = taken
-    ? "text-fg-muted line-through"
-    : "text-fg-primary";
+    ? "text-muted-foreground line-through"
+    : "text-foreground";
 
   return (
     <button
       aria-label={`${label}@audric — ${humanStatus(status)}`}
       className={`flex w-full items-center justify-between px-3.5 py-3 text-left transition ${
-        divider ? "border-b border-border-subtle" : ""
-      } ${active ? "bg-surface-sunken" : "bg-transparent"} ${
+        divider ? "border-b border-border" : ""
+      } ${active ? "bg-muted" : "bg-transparent"} ${
         clickable
-          ? "cursor-pointer hover:bg-surface-sunken"
+          ? "cursor-pointer hover:bg-muted"
           : "cursor-not-allowed"
-      } focus-visible:bg-surface-sunken focus-visible:outline-none`}
+      } focus-visible:bg-muted focus-visible:outline-none`}
       data-status={status}
       data-testid={`username-picker-chip-${label}`}
       disabled={!clickable}
@@ -438,7 +438,7 @@ function SuggestionRow({
     >
       <span className={`font-mono text-[13px] ${handleTextClass}`}>
         {label}
-        <span className="text-fg-muted">{PARENT_SUFFIX}</span>
+        <span className="text-muted-foreground">{PARENT_SUFFIX}</span>
       </span>
       <span
         className={`inline-flex items-center gap-1 rounded-xs px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] ${tagTone}`}
@@ -459,7 +459,7 @@ function StatusLine({ status, input }: StatusLineProps) {
   if (status === "idle" || input === "") {
     return (
       <div
-        className="font-mono text-[11px] tracking-[0.04em] text-fg-muted"
+        className="font-mono text-[11px] tracking-[0.04em] text-muted-foreground"
         data-status="idle"
         data-testid="username-picker-status"
         id="username-picker-status"
@@ -471,10 +471,10 @@ function StatusLine({ status, input }: StatusLineProps) {
 
   const message = humanStatusForInput(status, input);
   const tone = isErrorStatus(status)
-    ? "text-error-fg"
+    ? "text-destructive"
     : status === "available"
-      ? "text-success-fg"
-      : "text-fg-muted";
+      ? "text-success"
+      : "text-muted-foreground";
   const prefix = humanStatusPrefix(status);
   const StatusIcon =
     status === "available"

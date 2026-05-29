@@ -13,14 +13,14 @@ export default function LegalLayout({
   children: React.ReactNode;
 }) {
   return (
-    <main className="min-h-screen bg-surface-page text-fg-primary">
+    <main className="min-h-screen bg-background text-foreground">
       <div className="max-w-2xl mx-auto px-5 sm:px-6 py-14 sm:py-20">
         {children}
 
-        <footer className="mt-20 pt-8 border-t border-border-subtle flex flex-wrap gap-x-6 gap-y-2 font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted">
+        <footer className="mt-20 pt-8 border-t border-border flex flex-wrap gap-x-6 gap-y-2 font-mono text-[10px] tracking-[0.1em] uppercase text-muted-foreground">
           {LEGAL_LINKS.map((link) => (
             <Link
-              className="hover:text-fg-primary transition-colors"
+              className="hover:text-foreground transition-colors"
               href={link.href}
               key={link.href}
             >

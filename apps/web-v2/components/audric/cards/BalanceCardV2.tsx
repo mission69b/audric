@@ -59,7 +59,7 @@ interface BalanceCardV2Props {
 }
 
 const SECTION_LABEL =
-  'text-[9px] font-mono uppercase tracking-[0.14em] text-fg-muted';
+  'text-[9px] font-mono uppercase tracking-[0.14em] text-muted-foreground';
 
 function pickHoldings(data: BalanceCardV2Data): Holding[] {
   if (!data.holdings || data.holdings.length === 0) return [];
@@ -104,7 +104,7 @@ export function BalanceCardV2({
         <div>
           <div className="flex items-baseline justify-between mb-2">
             <span className={SECTION_LABEL}>Wallet</span>
-            <span className="text-fg-primary text-xs font-mono tabular-nums">
+            <span className="text-foreground text-xs font-mono tabular-nums">
               ${fmtUsd(walletUsd)}
             </span>
           </div>
@@ -120,17 +120,17 @@ export function BalanceCardV2({
               ))}
             </div>
           ) : (
-            <div className="text-fg-muted text-xs italic">No holdings</div>
+            <div className="text-muted-foreground text-xs italic">No holdings</div>
           )}
         </div>
 
         {/* SAVINGS SECTION */}
         {(hasSavings || showAnyApyHint) && (
-          <div className="pt-3 border-t border-border-subtle">
+          <div className="pt-3 border-t border-border">
             <div className="flex items-baseline justify-between mb-2">
               <span className={SECTION_LABEL}>NAVI savings</span>
               {hasSavings && (
-                <span className="text-fg-primary text-xs font-mono tabular-nums">
+                <span className="text-foreground text-xs font-mono tabular-nums">
                   ${fmtUsd(savingsUsd)}
                 </span>
               )}
@@ -147,7 +147,7 @@ export function BalanceCardV2({
               <div className="space-y-1 pt-2">
                 {showUsdcApyHint && (
                   <div className="flex items-baseline justify-between">
-                    <span className="text-fg-muted text-[10px] font-mono uppercase tracking-wider">
+                    <span className="text-muted-foreground text-[10px] font-mono uppercase tracking-wider">
                       Saveable
                     </span>
                     <APYBlock asset="USDC" apyBps={defaultUsdcApyBps} />
@@ -155,7 +155,7 @@ export function BalanceCardV2({
                 )}
                 {showUsdsuiApyHint && (
                   <div className="flex items-baseline justify-between">
-                    <span className="text-fg-muted text-[10px] font-mono uppercase tracking-wider">
+                    <span className="text-muted-foreground text-[10px] font-mono uppercase tracking-wider">
                       Saveable
                     </span>
                     <APYBlock asset="USDsui" apyBps={defaultUsdsuiApyBps} />
@@ -168,18 +168,18 @@ export function BalanceCardV2({
 
         {/* DEBT — only when present */}
         {debtUsd > 0 && (
-          <div className="pt-3 border-t border-border-subtle flex items-baseline justify-between">
+          <div className="pt-3 border-t border-border flex items-baseline justify-between">
             <span className={SECTION_LABEL}>Debt</span>
-            <span className="text-warning-solid text-xs font-mono tabular-nums">
+            <span className="text-warning text-xs font-mono tabular-nums">
               ${fmtUsd(debtUsd)}
             </span>
           </div>
         )}
 
         {/* FOOTER CHIP — total */}
-        <div className="pt-3 border-t border-border-subtle flex items-baseline justify-between">
+        <div className="pt-3 border-t border-border flex items-baseline justify-between">
           <span className={SECTION_LABEL}>Total</span>
-          <span className="text-fg-primary text-sm font-mono font-medium tabular-nums">
+          <span className="text-foreground text-sm font-mono font-medium tabular-nums">
             ${fmtUsd(totalUsd)}
           </span>
         </div>

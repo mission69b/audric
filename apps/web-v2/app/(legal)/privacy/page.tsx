@@ -11,22 +11,22 @@ export default function PrivacyPage() {
     <>
       <header className="mb-12">
         <Link
-          className="inline-block text-fg-secondary hover:text-fg-primary font-mono text-[10px] tracking-[0.12em] uppercase mb-8 transition-colors"
+          className="inline-block text-muted-foreground hover:text-foreground font-mono text-[10px] tracking-[0.12em] uppercase mb-8 transition-colors"
           href="/"
         >
           &larr; audric.ai
         </Link>
-        <h1 className="font-serif text-[36px] sm:text-[44px] leading-[1.1] tracking-[-0.01em] text-fg-primary mb-3">
+        <h1 className="font-serif text-[36px] sm:text-[44px] leading-[1.1] tracking-[-0.01em] text-foreground mb-3">
           Privacy Policy
         </h1>
-        <p className="font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted">
+        <p className="font-mono text-[10px] tracking-[0.1em] uppercase text-muted-foreground">
           Last updated · May 2026
         </p>
       </header>
 
-      <div className="space-y-10 text-fg-secondary leading-[1.7] text-[14px]">
+      <div className="space-y-10 text-muted-foreground leading-[1.7] text-[14px]">
         <section>
-          <h2 className="text-fg-primary font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
+          <h2 className="text-foreground font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
             Overview
           </h2>
           <p>
@@ -41,36 +41,36 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2 className="text-fg-primary font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
+          <h2 className="text-foreground font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
             What We Collect
           </h2>
           <ul className="list-disc pl-5 space-y-1.5">
             <li>
-              <strong className="text-fg-primary">Email address</strong> &mdash;
+              <strong className="text-foreground">Email address</strong> &mdash;
               Collected via Google sign-in (zkLogin) for authentication. Used to
               derive your wallet address.
             </li>
             <li>
-              <strong className="text-fg-primary">Sui wallet address</strong>{" "}
+              <strong className="text-foreground">Sui wallet address</strong>{" "}
               &mdash; Generated via zkLogin (Mysten Labs Enoki). This is a
               public blockchain address derived from your Google session.
             </li>
             <li>
-              <strong className="text-fg-primary">Audric username</strong>{" "}
+              <strong className="text-foreground">Audric username</strong>{" "}
               &mdash; The handle you claim during onboarding (e.g.{" "}
-              <code className="font-mono text-[12px] text-fg-primary">
+              <code className="font-mono text-[12px] text-foreground">
                 you@audric
               </code>
               ). Stored in our database, linked to your wallet address. Used as
               the public-facing identity layer of your Passport.
             </li>
             <li>
-              <strong className="text-fg-primary">Chat messages</strong> &mdash;
+              <strong className="text-foreground">Chat messages</strong> &mdash;
               Sent to Anthropic&apos;s API for AI processing during your
               session, and stored in our database to power conversation history
               and context across turns. Subject to{" "}
               <a
-                className="text-fg-primary underline underline-offset-2 hover:opacity-70"
+                className="text-foreground underline underline-offset-2 hover:opacity-70"
                 href="https://www.anthropic.com/privacy"
                 rel="noopener noreferrer"
                 target="_blank"
@@ -80,13 +80,13 @@ export default function PrivacyPage() {
               .
             </li>
             <li>
-              <strong className="text-fg-primary">Transaction digests</strong>{" "}
+              <strong className="text-foreground">Transaction digests</strong>{" "}
               &mdash; On-chain transaction IDs for the actions you confirm
               (saves, sends, swaps, borrows, repayments). Recorded for receipt
               tracking and history. These are public blockchain data.
             </li>
             <li>
-              <strong className="text-fg-primary">
+              <strong className="text-foreground">
                 Financial context snapshots
               </strong>{" "}
               &mdash; Once a day we read your on-chain wallet, savings, borrows,
@@ -95,7 +95,7 @@ export default function PrivacyPage() {
               the chain on every turn.
             </li>
             <li>
-              <strong className="text-fg-primary">Memory</strong> &mdash; Audric
+              <strong className="text-foreground">Memory</strong> &mdash; Audric
               Intelligence stores private facts about your preferences, goals,
               risk tolerance, and on-chain patterns (recurring sends, idle
               balances, position changes) in a vector memory layer. Used
@@ -103,30 +103,30 @@ export default function PrivacyPage() {
               notification, never shared, never sold.
             </li>
             <li>
-              <strong className="text-fg-primary">Advice log</strong> &mdash;
+              <strong className="text-foreground">Advice log</strong> &mdash;
               Recommendations Audric has made are stored so the agent
               doesn&apos;t contradict itself across sessions. Visible only to
               you and the agent.
             </li>
             <li>
-              <strong className="text-fg-primary">
+              <strong className="text-foreground">
                 Timezone and browser locale
               </strong>{" "}
               &mdash; Used to format dates, times, and currency for your region.
               Not stored permanently.
             </li>
             <li>
-              <strong className="text-fg-primary">
+              <strong className="text-foreground">
                 Aggregate usage metrics
               </strong>{" "}
               &mdash; Anonymous counters of operations (saves, swaps, sends) for
               the public stats dashboard. No individual user data is exposed.
             </li>
             <li>
-              <strong className="text-fg-primary">Website analytics</strong>{" "}
+              <strong className="text-foreground">Website analytics</strong>{" "}
               &mdash; We use{" "}
               <a
-                className="text-fg-primary underline underline-offset-2 hover:opacity-70"
+                className="text-foreground underline underline-offset-2 hover:opacity-70"
                 href="https://vercel.com/analytics"
                 rel="noopener noreferrer"
                 target="_blank"
@@ -139,7 +139,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2 className="text-fg-primary font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
+          <h2 className="text-foreground font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
             How Audric Intelligence Uses Your Data
           </h2>
           <p>
@@ -149,7 +149,7 @@ export default function PrivacyPage() {
             agent&apos;s next reply or executes the next action you confirm.
           </p>
           <p className="mt-2">
-            <strong className="text-fg-primary">It does not:</strong> sell your
+            <strong className="text-foreground">It does not:</strong> sell your
             data, share it with advertisers, build a profile for any third
             party, surface unsolicited notifications based on it, or execute any
             action without your tap-to-confirm via Passport.
@@ -157,13 +157,13 @@ export default function PrivacyPage() {
           <p className="mt-2">
             You can request deletion of your stored memory and advice log at any
             time by emailing{" "}
-            <span className="text-fg-primary">security@t2000.ai</span>. Deleting
+            <span className="text-foreground">security@t2000.ai</span>. Deleting
             your account removes all of it.
           </p>
         </section>
 
         <section>
-          <h2 className="text-fg-primary font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
+          <h2 className="text-foreground font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
             What We Do Not Collect
           </h2>
           <ul className="list-disc pl-5 space-y-1.5">
@@ -179,7 +179,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2 className="text-fg-primary font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
+          <h2 className="text-foreground font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
             Data Shared with Third Parties
           </h2>
           <p>
@@ -189,48 +189,48 @@ export default function PrivacyPage() {
           </p>
           <ul className="list-disc pl-5 space-y-1.5 mt-2">
             <li>
-              <strong className="text-fg-primary">Anthropic</strong> &mdash;
+              <strong className="text-foreground">Anthropic</strong> &mdash;
               Chat messages for AI processing
             </li>
             <li>
-              <strong className="text-fg-primary">Mysten Labs (Enoki)</strong>{" "}
+              <strong className="text-foreground">Mysten Labs (Enoki)</strong>{" "}
               &mdash; Authentication and gas sponsorship
             </li>
             <li>
-              <strong className="text-fg-primary">Google</strong> &mdash; OAuth
+              <strong className="text-foreground">Google</strong> &mdash; OAuth
               sign-in via zkLogin
             </li>
             <li>
-              <strong className="text-fg-primary">BlockVision</strong> &mdash;
+              <strong className="text-foreground">BlockVision</strong> &mdash;
               Read-only wallet + portfolio queries (Indexer REST API + token
               prices)
             </li>
             <li>
-              <strong className="text-fg-primary">DeFi protocols</strong> (NAVI,
+              <strong className="text-foreground">DeFi protocols</strong> (NAVI,
               Cetus, VOLO) &mdash; Via on-chain smart contracts (public
               blockchain data only)
             </li>
             <li>
-              <strong className="text-fg-primary">Sui RPC nodes</strong> &mdash;
+              <strong className="text-foreground">Sui RPC nodes</strong> &mdash;
               For blockchain interaction
             </li>
             <li>
-              <strong className="text-fg-primary">Vercel</strong> &mdash; App
+              <strong className="text-foreground">Vercel</strong> &mdash; App
               hosting and analytics
             </li>
             <li>
-              <strong className="text-fg-primary">Neon</strong> &mdash;
+              <strong className="text-foreground">Neon</strong> &mdash;
               PostgreSQL database hosting
             </li>
             <li>
-              <strong className="text-fg-primary">Upstash</strong> &mdash; Redis
+              <strong className="text-foreground">Upstash</strong> &mdash; Redis
               session and cache hosting
             </li>
           </ul>
         </section>
 
         <section>
-          <h2 className="text-fg-primary font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
+          <h2 className="text-foreground font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
             Data Storage
           </h2>
           <p>
@@ -243,7 +243,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2 className="text-fg-primary font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
+          <h2 className="text-foreground font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
             Blockchain Data
           </h2>
           <p>
@@ -256,14 +256,14 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2 className="text-fg-primary font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
+          <h2 className="text-foreground font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
             Open Source
           </h2>
           <p>
             Audric is open source. You can verify exactly what data is collected
             and how it is used by reviewing the{" "}
             <a
-              className="text-fg-primary underline underline-offset-2 hover:opacity-70"
+              className="text-foreground underline underline-offset-2 hover:opacity-70"
               href="https://github.com/mission69b/audric"
               rel="noopener noreferrer"
               target="_blank"
@@ -275,12 +275,12 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2 className="text-fg-primary font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
+          <h2 className="text-foreground font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
             Contact
           </h2>
           <p>
             For privacy-related questions, reach out at{" "}
-            <span className="text-fg-primary">security@t2000.ai</span>.
+            <span className="text-foreground">security@t2000.ai</span>.
           </p>
         </section>
       </div>

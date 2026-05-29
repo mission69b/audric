@@ -42,7 +42,7 @@ export default function LandingPage() {
   }, [status, router]);
 
   return (
-    <div className="min-h-dvh bg-surface-page text-fg-primary">
+    <div className="min-h-dvh bg-background text-foreground">
       <MarketingNav />
       <HeroSection />
       <HowItWorksSection />

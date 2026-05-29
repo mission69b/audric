@@ -45,7 +45,7 @@ interface HealthCardV2Props {
 }
 
 const SECTION_LABEL =
-  'text-[9px] font-mono uppercase tracking-[0.14em] text-fg-muted';
+  'text-[9px] font-mono uppercase tracking-[0.14em] text-muted-foreground';
 
 function resolveHFForGauge(
   hf: number | null | undefined,
@@ -88,10 +88,10 @@ export function HealthCardV2({ data }: HealthCardV2Props) {
         />
 
         {/* COLLATERAL / DEBT 2-COL */}
-        <div className="grid grid-cols-2 pt-2 border-t border-border-subtle">
+        <div className="grid grid-cols-2 pt-2 border-t border-border">
           <div className="pr-3">
             <div className={`${SECTION_LABEL} mb-1`}>Collateral</div>
-            <div className="text-fg-primary font-mono text-sm tabular-nums">
+            <div className="text-foreground font-mono text-sm tabular-nums">
               ${fmtUsd(data.supplied)}
             </div>
             {data.suppliedAssets && data.suppliedAssets.length > 0 && (
@@ -99,7 +99,7 @@ export function HealthCardV2({ data }: HealthCardV2Props) {
                 {data.suppliedAssets.map((row) => (
                   <div
                     key={`supply-${row.symbol}`}
-                    className="font-mono text-[10px] tabular-nums text-fg-muted flex items-baseline justify-between"
+                    className="font-mono text-[10px] tabular-nums text-muted-foreground flex items-baseline justify-between"
                   >
                     <span>{row.symbol}</span>
                     <span>${fmtUsd(row.valueUsd)}</span>
@@ -108,11 +108,11 @@ export function HealthCardV2({ data }: HealthCardV2Props) {
               </div>
             )}
           </div>
-          <div className="pl-3 border-l border-border-subtle">
+          <div className="pl-3 border-l border-border">
             <div className={`${SECTION_LABEL} mb-1`}>Debt</div>
             <div
               className={`font-mono text-sm tabular-nums ${
-                hasDebt ? 'text-warning-solid' : 'text-fg-primary'
+                hasDebt ? 'text-warning' : 'text-foreground'
               }`}
             >
               ${fmtUsd(data.borrowed)}
@@ -122,7 +122,7 @@ export function HealthCardV2({ data }: HealthCardV2Props) {
                 {data.borrowedAssets.map((row) => (
                   <div
                     key={`borrow-${row.symbol}`}
-                    className="font-mono text-[10px] tabular-nums text-fg-muted flex items-baseline justify-between"
+                    className="font-mono text-[10px] tabular-nums text-muted-foreground flex items-baseline justify-between"
                   >
                     <span>{row.symbol}</span>
                     <span>${fmtUsd(row.valueUsd)}</span>
@@ -135,9 +135,9 @@ export function HealthCardV2({ data }: HealthCardV2Props) {
 
         {/* BORROWING CAPACITY — only when maxBorrow > 0 */}
         {remainingCapacity != null && (
-          <div className="pt-2 border-t border-border-subtle flex items-baseline justify-between">
+          <div className="pt-2 border-t border-border flex items-baseline justify-between">
             <span className={SECTION_LABEL}>Borrowing capacity remaining</span>
-            <span className="text-fg-primary font-mono text-xs tabular-nums">
+            <span className="text-foreground font-mono text-xs tabular-nums">
               ${fmtUsd(remainingCapacity)}
             </span>
           </div>
@@ -147,7 +147,7 @@ export function HealthCardV2({ data }: HealthCardV2Props) {
         {liqThreshold != null && liqThreshold !== 1.0 && (
           <div className="flex items-baseline justify-between text-[11px]">
             <span className={SECTION_LABEL}>Liquidation threshold</span>
-            <span className="text-fg-muted font-mono tabular-nums">
+            <span className="text-muted-foreground font-mono tabular-nums">
               {liqThreshold.toFixed(2)}
             </span>
           </div>

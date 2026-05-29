@@ -56,7 +56,7 @@ export function ChunkedAddress({
           <button
             type="button"
             onClick={copy}
-            className="shrink-0 rounded-md border border-border-subtle bg-surface-card px-2 py-0.5 text-[10px] font-medium text-fg-secondary hover:text-fg-primary hover:border-border-strong transition"
+            className="shrink-0 rounded-md border border-border bg-card px-2 py-0.5 text-[10px] font-medium text-muted-foreground hover:text-foreground hover:border-foreground/30 transition"
             aria-label="Copy address to clipboard"
           >
             {copied ? 'Copied' : 'Copy'}

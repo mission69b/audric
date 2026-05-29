@@ -27,7 +27,7 @@ interface RateEntry {
 }
 
 const SECTION_LABEL =
-  "font-mono text-[9px] text-fg-muted uppercase tracking-[0.14em]";
+  "font-mono text-[9px] text-muted-foreground uppercase tracking-[0.14em]";
 
 function apyToBps(rate: number): number {
   if (!Number.isFinite(rate) || rate <= 0) {
@@ -48,7 +48,7 @@ export function RatesCardV2({ data }: { data: Record<string, RateEntry> }) {
   return (
     <CardShell title="Lending rates">
       <div className="space-y-2">
-        <div className="grid grid-cols-2 gap-2 border-border-subtle border-b pb-1">
+        <div className="grid grid-cols-2 gap-2 border-border border-b pb-1">
           <span className={SECTION_LABEL}>Supply</span>
           <span className={SECTION_LABEL}>Borrow</span>
         </div>

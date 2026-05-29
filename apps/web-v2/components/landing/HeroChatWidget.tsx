@@ -33,7 +33,7 @@ interface FlowDef {
 }
 
 const tool = (label: string) =>
-  `<span class="font-mono text-[10px] uppercase tracking-[0.1em] text-success-fg">▸ ${label}</span><br/>`;
+  `<span class="font-mono text-[10px] uppercase tracking-[0.1em] text-success">▸ ${label}</span><br/>`;
 
 const FLOWS: FlowDef[] = [
   {
@@ -188,16 +188,16 @@ export function HeroChatWidget() {
   const stillTyping = visible < messages.length;
 
   return (
-    <div className="w-full max-w-md rounded-md border border-border-subtle bg-surface-card overflow-hidden shadow-[0_1px_0_var(--surface-sunken),0_12px_40px_-20px_rgba(0,0,0,0.12)]">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border-subtle">
+    <div className="w-full max-w-md rounded-md border border-border bg-card overflow-hidden shadow-[0_1px_0_var(--muted),0_12px_40px_-20px_rgba(0,0,0,0.12)]">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
         <div className="flex items-center gap-2">
           <span
             aria-hidden="true"
-            className="w-1.5 h-1.5 rounded-full bg-success-solid"
+            className="w-1.5 h-1.5 rounded-full bg-success"
           />
-          <span className="text-sm font-medium text-fg-primary">Audric</span>
+          <span className="text-sm font-medium text-foreground">Audric</span>
         </div>
-        <span className="font-mono text-[10px] tracking-[0.08em] uppercase text-fg-secondary">
+        <span className="font-mono text-[10px] tracking-[0.08em] uppercase text-muted-foreground">
           Online
         </span>
       </div>
@@ -210,8 +210,8 @@ export function HeroChatWidget() {
           <div
             className={
               msg.who === "user"
-                ? "self-end max-w-[74%] px-3.5 py-2.5 text-[13px] leading-snug rounded-2xl rounded-br-sm bg-fg-primary text-fg-inverse animate-[fadeSlideIn_0.3s_ease-out_both]"
-                : "self-start max-w-[74%] px-3.5 py-2.5 text-[13px] leading-snug rounded-2xl rounded-bl-sm bg-surface-sunken text-fg-secondary animate-[fadeSlideIn_0.3s_ease-out_both]"
+                ? "self-end max-w-[74%] px-3.5 py-2.5 text-[13px] leading-snug rounded-2xl rounded-br-sm bg-foreground text-background animate-[fadeSlideIn_0.3s_ease-out_both]"
+                : "self-start max-w-[74%] px-3.5 py-2.5 text-[13px] leading-snug rounded-2xl rounded-bl-sm bg-muted text-muted-foreground animate-[fadeSlideIn_0.3s_ease-out_both]"
             }
             // The hard-coded marketing copy embeds `<b>` / `<br>` tags so the
             // bot bubbles can read like real tool-call results. No user data
@@ -223,33 +223,33 @@ export function HeroChatWidget() {
         {stillTyping && (
           <div
             aria-label="Audric is typing"
-            className="self-start inline-flex gap-1 px-3.5 py-2.5 bg-surface-sunken rounded-2xl rounded-bl-sm"
+            className="self-start inline-flex gap-1 px-3.5 py-2.5 bg-muted rounded-2xl rounded-bl-sm"
           >
             <span
-              className="w-1.5 h-1.5 rounded-full bg-fg-muted animate-bounce"
+              className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce"
               style={{ animationDelay: "0s" }}
             />
             <span
-              className="w-1.5 h-1.5 rounded-full bg-fg-muted animate-bounce"
+              className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce"
               style={{ animationDelay: "0.15s" }}
             />
             <span
-              className="w-1.5 h-1.5 rounded-full bg-fg-muted animate-bounce"
+              className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce"
               style={{ animationDelay: "0.3s" }}
             />
           </div>
         )}
       </div>
 
-      <div className="flex gap-1.5 px-4 py-3 border-t border-border-subtle overflow-x-auto scrollbar-none">
+      <div className="flex gap-1.5 px-4 py-3 border-t border-border overflow-x-auto scrollbar-none">
         {FLOWS.map((f) => {
           const active = f.key === activeKey;
           return (
             <button
               className={
                 active
-                  ? "shrink-0 rounded-pill px-3 py-1.5 font-mono text-[10px] tracking-[0.08em] uppercase bg-fg-primary text-fg-inverse border border-fg-primary cursor-pointer"
-                  : "shrink-0 rounded-pill px-3 py-1.5 font-mono text-[10px] tracking-[0.08em] uppercase bg-surface-card text-fg-secondary border border-border-subtle cursor-pointer hover:text-fg-primary hover:border-border-strong transition"
+                  ? "shrink-0 rounded-pill px-3 py-1.5 font-mono text-[10px] tracking-[0.08em] uppercase bg-foreground text-background border border-foreground cursor-pointer"
+                  : "shrink-0 rounded-pill px-3 py-1.5 font-mono text-[10px] tracking-[0.08em] uppercase bg-card text-muted-foreground border border-border cursor-pointer hover:text-foreground hover:border-foreground/30 transition"
               }
               key={f.key}
               onClick={() => playFlow(f.key)}
@@ -261,13 +261,13 @@ export function HeroChatWidget() {
         })}
       </div>
 
-      <div className="text-center font-mono text-[10px] tracking-[0.08em] text-fg-muted px-4 py-1 uppercase">
+      <div className="text-center font-mono text-[10px] tracking-[0.08em] text-muted-foreground px-4 py-1 uppercase">
         Sign in with Google to start
       </div>
 
-      <div className="flex items-center gap-2 px-3 py-2.5 border-t border-border-subtle">
+      <div className="flex items-center gap-2 px-3 py-2.5 border-t border-border">
         <button
-          className="flex-1 text-left text-[14px] text-fg-muted px-2 py-1.5 cursor-pointer hover:text-fg-secondary transition"
+          className="flex-1 text-left text-[14px] text-muted-foreground px-2 py-1.5 cursor-pointer hover:text-muted-foreground transition"
           onClick={login}
           type="button"
         >
@@ -275,7 +275,7 @@ export function HeroChatWidget() {
         </button>
         <button
           aria-label="Sign in to chat with Audric"
-          className="w-8 h-8 rounded-md bg-fg-primary text-fg-inverse grid place-items-center cursor-pointer hover:opacity-80 transition"
+          className="w-8 h-8 rounded-md bg-foreground text-background grid place-items-center cursor-pointer hover:opacity-80 transition"
           onClick={login}
           type="button"
         >

@@ -159,7 +159,7 @@ export function UsernameClaimGate({
     >
       {errorMessage && (
         <div
-          className="rounded-sm border border-error-border bg-error-bg px-3 py-2 text-[12px] leading-[1.5] text-error-fg"
+          className="rounded-sm border border-destructive/30 bg-destructive/10 px-3 py-2 text-[12px] leading-[1.5] text-destructive"
           data-testid="username-claim-gate-error"
           role="alert"
         >

@@ -28,19 +28,19 @@ export function CanvasCard({ canvas, onSendMessage }: CanvasCardProps) {
 
   return (
     <>
-      <div className="my-2 overflow-hidden rounded-lg border border-border-subtle bg-surface-card/50">
-        <div className="flex items-center justify-between border-border-subtle border-b px-3 py-2">
+      <div className="my-2 overflow-hidden rounded-xl border border-border bg-card/50">
+        <div className="flex items-center justify-between border-border border-b px-3 py-2">
           <div className="flex items-center gap-2">
-            <span className="font-mono text-[10px] text-fg-muted uppercase tracking-widest">
+            <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest">
               {getTemplateLabel(canvas.template)}
             </span>
-            <span className="font-medium font-mono text-[10px] text-fg-primary tracking-wider">
+            <span className="font-medium font-mono text-[10px] text-foreground tracking-wider">
               {canvas.title}
             </span>
           </div>
           <button
             aria-label="Expand canvas"
-            className="rounded p-0.5 text-fg-muted transition hover:text-fg-primary"
+            className="rounded p-0.5 text-muted-foreground transition hover:text-foreground"
             onClick={() => setModalOpen(true)}
             title="Expand to fullscreen"
             type="button"

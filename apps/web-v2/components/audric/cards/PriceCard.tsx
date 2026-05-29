@@ -48,9 +48,9 @@ function PriceRow({
 }) {
   return (
     <div className="flex items-center justify-between py-0.5">
-      <span className="font-mono text-fg-primary font-medium">{symbol}</span>
+      <span className="font-mono text-foreground font-medium">{symbol}</span>
       <div className="flex items-center gap-2">
-        <span className="font-mono text-fg-primary">
+        <span className="font-mono text-foreground">
           {price != null ? fmtPrice(price) : '—'}
         </span>
         {change != null && (
@@ -59,7 +59,7 @@ function PriceRow({
           </span>
         )}
         {change != null && period && (
-          <span className="text-fg-muted text-[9px] font-mono">({period})</span>
+          <span className="text-muted-foreground text-[9px] font-mono">({period})</span>
         )}
       </div>
     </div>
@@ -75,7 +75,7 @@ export function PriceCard({ data }: { data: PriceData }) {
       <CardShell
         title="Token Prices"
         badge={
-          <span className="text-[9px] font-mono text-fg-muted">
+          <span className="text-[9px] font-mono text-muted-foreground">
             {valid.length} tokens
           </span>
         }
@@ -94,10 +94,10 @@ export function PriceCard({ data }: { data: PriceData }) {
   return (
     <CardShell title="Price Change">
       <div className="text-center mb-2">
-        <span className="text-2xl font-semibold font-mono text-fg-primary">
+        <span className="text-2xl font-semibold font-mono text-foreground">
           {fmtPrice(data.currentPrice)}
         </span>
-        <div className="text-[10px] font-mono text-fg-muted uppercase tracking-wider mt-0.5">
+        <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider mt-0.5">
           {data.symbol}
         </div>
       </div>
@@ -105,7 +105,7 @@ export function PriceCard({ data }: { data: PriceData }) {
         <div className="text-center text-sm">
           <TrendIndicator value={data.change} />
           {data.period && (
-            <span className="text-fg-muted text-[10px] font-mono ml-1">
+            <span className="text-muted-foreground text-[10px] font-mono ml-1">
               ({data.period})
             </span>
           )}

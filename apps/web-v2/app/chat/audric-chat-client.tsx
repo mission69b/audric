@@ -49,6 +49,7 @@ import {
 import { getChatHistoryPaginationKey } from "@/components/chat/sidebar-history";
 import { VisibilityToggle } from "@/components/chat/visibility-toggle";
 import { UsernameClaimGate } from "@/components/settings/username-claim-gate";
+import { AudricMark } from "@/components/ui/audric-mark";
 import { Button } from "@/components/ui/button";
 import {
   SidebarInset,
@@ -193,12 +194,12 @@ export function AudricChatClient({
           borrow — all by conversation. No seed phrase.
         </p>
         {status === "expired" && (
-          <div className="mb-6 rounded border border-warning-border bg-warning-bg p-3 text-sm text-warning-fg">
+          <div className="mb-6 rounded border border-warning/30 bg-warning/10 p-3 text-sm text-warning">
             Your session has expired. Please sign in again to continue.
           </div>
         )}
         {error && (
-          <div className="mb-6 rounded border border-error-border bg-error-bg p-3 text-error-fg text-sm">
+          <div className="mb-6 rounded border border-destructive/30 bg-destructive/10 p-3 text-destructive text-sm">
             {error}
           </div>
         )}
@@ -432,6 +433,37 @@ function AuthenticatedChatInner({
         </div>
       </SidebarInset>
     </SidebarProvider>
+  );
+}
+
+/**
+ * [R6.2] Agent message gutter — leads each assistant turn with the
+ * 22px AudricMark in a fixed left column (`chat-shell.html` `.msg-agent`
+ * grid: 22px + 1fr). Transparent for user rows (returns children as-is).
+ * The mark animates while the trailing turn is streaming (delta 5 — the
+ * single "live agent" signal), static once settled.
+ */
+function AgentGutter({
+  from,
+  streaming,
+  children,
+}: {
+  from: UIMessage["role"];
+  streaming: boolean;
+  children: React.ReactNode;
+}) {
+  if (from !== "assistant") {
+    return <>{children}</>;
+  }
+  return (
+    <div className="grid w-full grid-cols-[22px_1fr] gap-2.5">
+      <AudricMark
+        animate={streaming}
+        className="mt-1 shrink-0 text-foreground"
+        size={22}
+      />
+      {children}
+    </div>
   );
 }
 
@@ -928,7 +960,7 @@ function AudricChatPanel({
         <EmptyState />
         <div className="w-full max-w-2xl">{composerBlock}</div>
         {error && (
-          <div className="w-full max-w-2xl rounded border border-error-border bg-error-bg p-3 text-error-fg text-sm">
+          <div className="w-full max-w-2xl rounded border border-destructive/30 bg-destructive/10 p-3 text-destructive text-sm">
             {sanitizeStreamErrorMessage(redactAddressesInText(error.message))}
           </div>
         )}
@@ -1049,132 +1081,139 @@ function AudricChatPanel({
                     className={cn(m.role === "user" && "items-end")}
                     from={m.role}
                   >
-                    <MessageContent
-                      // [S.209 — 2026-05-20] User bubble — reverted from the
-                      // S.208 gradient pill to a SOLID dark bubble per
-                      // founder feedback. Matches the chatbot.ai-sdk.dev
-                      // demo dark-mode screenshot: solid dark bg, white
-                      // text, asymmetric rounded corners (16/16/4/16) with
-                      // the small notch in the bottom-right pointing back
-                      // at the user.
-                      //
-                      // Uses semantic `bg-bubble-user-bg` / `text-bubble-
-                      // user-fg` tokens (defined in globals.css) — near-
-                      // black solid in dark mode, near-black solid in light
-                      // mode. The bubble pops against the page background
-                      // either way.
-                      className={cn(
-                        m.role === "user" &&
-                          "w-fit max-w-[min(80%,56ch)] overflow-hidden break-words rounded-2xl rounded-br-[4px] bg-bubble-user-bg px-4 py-2.5 text-bubble-user-fg shadow-[var(--shadow-card)] [&_*]:text-bubble-user-fg"
-                      )}
+                    <AgentGutter
+                      from={m.role}
+                      streaming={isLast && isTurnStreaming}
                     >
-                      {m.parts.map((part, i) => {
-                        if (part.type === "text") {
-                          return (
-                            <MessageResponse
-                              // biome-ignore lint/suspicious/noArrayIndexKey: parts are positionally stable per message
-                              key={`${m.id}-${i}`}
-                            >
-                              {part.text}
-                            </MessageResponse>
-                          );
-                        }
-                        if (part.type === "reasoning") {
-                          const reasoningPart = part as ReasoningUIPart;
-                          // The part is streaming only when (a) the turn is in
-                          // flight, (b) it's on the trailing message, and (c)
-                          // the part itself hasn't been marked done.
-                          const partStreaming =
-                            isTurnStreaming &&
-                            isLast &&
-                            reasoningPart.state !== "done";
-                          return (
-                            <Reasoning
-                              isStreaming={partStreaming}
-                              // biome-ignore lint/suspicious/noArrayIndexKey: parts are positionally stable per message
-                              key={`${m.id}-${i}`}
-                            >
-                              <ReasoningTrigger />
-                              <ReasoningContent>
-                                {reasoningPart.text}
-                              </ReasoningContent>
-                            </Reasoning>
-                          );
-                        }
-                        // [Phase 5e] Bundle marker → ONE bundle card.
-                        if (part.type === "data-audric-bundle") {
-                          const marker = parseAudricBundleMarker(
-                            (part as { data?: unknown }).data
-                          );
-                          if (!marker || marker.steps.length < 2) {
-                            // Malformed marker — render nothing; the
-                            // individual `tool-*` parts will render
-                            // separately because they're NOT in
-                            // bundleClaimedIds (the set is empty when
-                            // parse fails for ALL markers).
-                            return null;
-                          }
-                          // [Smoke 2026-05-22 bundle-refresh-fix] Spent
-                          // bundle (all steps past approval) → render
-                          // nothing here. The constituent tool-* parts
-                          // are NOT in bundleClaimedIds (see the matching
-                          // skip above) so they fall through to the
-                          // tool-* branch and render receipts/errors
-                          // individually — same shape as a freshly
-                          // approved single-write turn.
-                          if (isBundleSpent(marker, m.parts)) {
-                            return null;
-                          }
-                          return (
-                            <BundleForMarker
-                              addToolApprovalResponse={addToolApprovalResponse}
-                              addToolOutput={addToolOutput}
-                              // biome-ignore lint/suspicious/noArrayIndexKey: parts are positionally stable per message
-                              key={`${m.id}-${i}`}
-                              marker={marker}
-                              session={session}
-                            />
-                          );
-                        }
-                        if (part.type.startsWith("tool-")) {
-                          const toolPart = part as ToolUIPart;
-                          // [Phase 5e] Skip tool parts that a bundle marker
-                          // claimed — the BundlePermissionCard handles
-                          // them. AI SDK's state machine still tracks
-                          // each part's approval-requested → output-*
-                          // lifecycle independently (the parent's
-                          // bundle approve handler fires N
-                          // `addToolApprovalResponse` + N `addToolOutput`
-                          // to keep each part's state in sync).
-                          if (bundleClaimedIds.has(toolPart.toolCallId)) {
-                            return null;
-                          }
-                          if (toolPart.state === "approval-requested") {
+                      <MessageContent
+                        // [S.209 — 2026-05-20] User bubble — reverted from the
+                        // S.208 gradient pill to a SOLID dark bubble per
+                        // founder feedback. Matches the chatbot.ai-sdk.dev
+                        // demo dark-mode screenshot: solid dark bg, white
+                        // text, asymmetric rounded corners (16/16/4/16) with
+                        // the small notch in the bottom-right pointing back
+                        // at the user.
+                        //
+                        // Uses semantic `bg-bubble-user-bg` / `text-bubble-
+                        // user-fg` tokens (defined in globals.css) — near-
+                        // black solid in dark mode, near-black solid in light
+                        // mode. The bubble pops against the page background
+                        // either way.
+                        className={cn(
+                          m.role === "user" &&
+                            "w-fit max-w-[min(80%,56ch)] overflow-hidden break-words rounded-2xl rounded-br-[4px] bg-bubble-user-bg px-4 py-2.5 text-bubble-user-fg shadow-[var(--shadow-card)] [&_*]:text-bubble-user-fg"
+                        )}
+                      >
+                        {m.parts.map((part, i) => {
+                          if (part.type === "text") {
                             return (
-                              <PermissionForToolPart
+                              <MessageResponse
+                                // biome-ignore lint/suspicious/noArrayIndexKey: parts are positionally stable per message
+                                key={`${m.id}-${i}`}
+                              >
+                                {part.text}
+                              </MessageResponse>
+                            );
+                          }
+                          if (part.type === "reasoning") {
+                            const reasoningPart = part as ReasoningUIPart;
+                            // The part is streaming only when (a) the turn is in
+                            // flight, (b) it's on the trailing message, and (c)
+                            // the part itself hasn't been marked done.
+                            const partStreaming =
+                              isTurnStreaming &&
+                              isLast &&
+                              reasoningPart.state !== "done";
+                            return (
+                              <Reasoning
+                                isStreaming={partStreaming}
+                                // biome-ignore lint/suspicious/noArrayIndexKey: parts are positionally stable per message
+                                key={`${m.id}-${i}`}
+                              >
+                                <ReasoningTrigger />
+                                <ReasoningContent>
+                                  {reasoningPart.text}
+                                </ReasoningContent>
+                              </Reasoning>
+                            );
+                          }
+                          // [Phase 5e] Bundle marker → ONE bundle card.
+                          if (part.type === "data-audric-bundle") {
+                            const marker = parseAudricBundleMarker(
+                              (part as { data?: unknown }).data
+                            );
+                            if (!marker || marker.steps.length < 2) {
+                              // Malformed marker — render nothing; the
+                              // individual `tool-*` parts will render
+                              // separately because they're NOT in
+                              // bundleClaimedIds (the set is empty when
+                              // parse fails for ALL markers).
+                              return null;
+                            }
+                            // [Smoke 2026-05-22 bundle-refresh-fix] Spent
+                            // bundle (all steps past approval) → render
+                            // nothing here. The constituent tool-* parts
+                            // are NOT in bundleClaimedIds (see the matching
+                            // skip above) so they fall through to the
+                            // tool-* branch and render receipts/errors
+                            // individually — same shape as a freshly
+                            // approved single-write turn.
+                            if (isBundleSpent(marker, m.parts)) {
+                              return null;
+                            }
+                            return (
+                              <BundleForMarker
                                 addToolApprovalResponse={
                                   addToolApprovalResponse
                                 }
                                 addToolOutput={addToolOutput}
                                 // biome-ignore lint/suspicious/noArrayIndexKey: parts are positionally stable per message
                                 key={`${m.id}-${i}`}
+                                marker={marker}
                                 session={session}
-                                toolPart={toolPart}
                               />
                             );
                           }
-                          return (
-                            <ToolResultRouter
-                              // biome-ignore lint/suspicious/noArrayIndexKey: parts are positionally stable per message
-                              key={`${m.id}-${i}`}
-                              onSendMessage={(text) => sendMessage({ text })}
-                              part={toolPart}
-                            />
-                          );
-                        }
-                        return null;
-                      })}
-                    </MessageContent>
+                          if (part.type.startsWith("tool-")) {
+                            const toolPart = part as ToolUIPart;
+                            // [Phase 5e] Skip tool parts that a bundle marker
+                            // claimed — the BundlePermissionCard handles
+                            // them. AI SDK's state machine still tracks
+                            // each part's approval-requested → output-*
+                            // lifecycle independently (the parent's
+                            // bundle approve handler fires N
+                            // `addToolApprovalResponse` + N `addToolOutput`
+                            // to keep each part's state in sync).
+                            if (bundleClaimedIds.has(toolPart.toolCallId)) {
+                              return null;
+                            }
+                            if (toolPart.state === "approval-requested") {
+                              return (
+                                <PermissionForToolPart
+                                  addToolApprovalResponse={
+                                    addToolApprovalResponse
+                                  }
+                                  addToolOutput={addToolOutput}
+                                  // biome-ignore lint/suspicious/noArrayIndexKey: parts are positionally stable per message
+                                  key={`${m.id}-${i}`}
+                                  session={session}
+                                  toolPart={toolPart}
+                                />
+                              );
+                            }
+                            return (
+                              <ToolResultRouter
+                                // biome-ignore lint/suspicious/noArrayIndexKey: parts are positionally stable per message
+                                key={`${m.id}-${i}`}
+                                onSendMessage={(text) => sendMessage({ text })}
+                                part={toolPart}
+                              />
+                            );
+                          }
+                          return null;
+                        })}
+                      </MessageContent>
+                    </AgentGutter>
                   </Message>
                 )}
                 {/* [P1-B + SPEC_AI_SDK_HARDENING P5.1/P5.2/P5.3/P5.4]
@@ -1248,9 +1287,11 @@ function AudricChatPanel({
               the trailing assistant slot. */}
           {showThinking && (
             <Message from="assistant">
-              <MessageContent>
-                <Shimmer>Thinking…</Shimmer>
-              </MessageContent>
+              <AgentGutter from="assistant" streaming>
+                <MessageContent>
+                  <Shimmer>Thinking…</Shimmer>
+                </MessageContent>
+              </AgentGutter>
             </Message>
           )}
         </ConversationContent>
@@ -1275,7 +1316,7 @@ function AudricChatPanel({
         </div>
         {error && (
           <div className="mx-auto w-full max-w-2xl px-4 pb-3">
-            <div className="rounded border border-error-border bg-error-bg p-3 text-error-fg text-sm">
+            <div className="rounded border border-destructive/30 bg-destructive/10 p-3 text-destructive text-sm">
               {sanitizeStreamErrorMessage(redactAddressesInText(error.message))}
             </div>
           </div>
@@ -1314,7 +1355,7 @@ function PermissionForToolPart(props: PermissionForToolPartProps) {
     // server route — but render a graceful fallback so the user can
     // still deny if metadata went missing for any reason.
     return (
-      <div className="my-3 rounded-lg border border-warning-border bg-warning-bg p-4 text-sm text-warning-fg">
+      <div className="my-3 rounded-lg border border-warning/30 bg-warning/10 p-4 text-sm text-warning">
         Tool {toolName} requested approval but no metadata was attached.{" "}
         <Button
           onClick={() => {

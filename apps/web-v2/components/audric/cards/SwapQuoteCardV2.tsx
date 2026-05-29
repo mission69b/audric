@@ -34,7 +34,7 @@ interface SwapQuoteCardV2Props {
 }
 
 const SECTION_LABEL =
-  'text-[9px] font-mono uppercase tracking-[0.14em] text-fg-muted';
+  'text-[9px] font-mono uppercase tracking-[0.14em] text-muted-foreground';
 
 function formatPct(v: number, dp = 2): string {
   if (!Number.isFinite(v)) return '—';
@@ -42,10 +42,10 @@ function formatPct(v: number, dp = 2): string {
 }
 
 function impactColor(impactPct: number): string {
-  if (!Number.isFinite(impactPct)) return 'text-fg-primary';
-  if (impactPct > 3) return 'text-error-solid';
-  if (impactPct > 1) return 'text-warning-solid';
-  return 'text-fg-primary';
+  if (!Number.isFinite(impactPct)) return 'text-foreground';
+  if (impactPct > 3) return 'text-destructive';
+  if (impactPct > 1) return 'text-warning';
+  return 'text-foreground';
 }
 
 function priceImpactToPct(rawImpact: unknown): number {
@@ -78,7 +78,7 @@ export function SwapQuoteCardV2({ data }: SwapQuoteCardV2Props) {
             <RouteDiagram steps={data.routeSteps} totalFeeBps={totalFeeBps} />
           </div>
         ) : data.route ? (
-          <div className="text-center text-[11px] font-mono text-fg-muted py-1">
+          <div className="text-center text-[11px] font-mono text-muted-foreground py-1">
             via {data.route}
           </div>
         ) : null}
@@ -92,10 +92,10 @@ export function SwapQuoteCardV2({ data }: SwapQuoteCardV2Props) {
         />
 
         {/* DETAILS */}
-        <div className="pt-2 border-t border-border-subtle space-y-1">
+        <div className="pt-2 border-t border-border space-y-1">
           <div className="flex justify-between items-baseline text-[11px]">
             <span className={SECTION_LABEL}>Rate</span>
-            <span className="text-fg-primary font-mono tabular-nums">
+            <span className="text-foreground font-mono tabular-nums">
               1 {data.fromToken} = {rate.toFixed(4)} {data.toToken}
             </span>
           </div>
@@ -110,20 +110,20 @@ export function SwapQuoteCardV2({ data }: SwapQuoteCardV2Props) {
           {slippagePct != null && (
             <div className="flex justify-between items-baseline text-[11px]">
               <span className={SECTION_LABEL}>Slippage</span>
-              <span className="text-fg-primary font-mono tabular-nums">
+              <span className="text-foreground font-mono tabular-nums">
                 {formatPct(slippagePct, 1)}
               </span>
             </div>
           )}
           <div className="flex justify-between items-baseline text-[11px]">
             <span className={SECTION_LABEL}>Fee</span>
-            <span className="text-fg-primary font-mono tabular-nums">
+            <span className="text-foreground font-mono tabular-nums">
               {(totalFeeBps / 100).toFixed(2)}% overlay
             </span>
           </div>
         </div>
 
-        <div className="pt-1 text-[10px] font-mono text-fg-muted text-center">
+        <div className="pt-1 text-[10px] font-mono text-muted-foreground text-center">
           ⓘ Quote valid for ~30 seconds
         </div>
       </div>

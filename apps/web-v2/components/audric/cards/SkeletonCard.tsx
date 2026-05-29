@@ -17,7 +17,7 @@ interface SkeletonCardProps {
 }
 
 const PULSE_BAR =
-  'rounded bg-border-subtle/60 motion-reduce:animate-none animate-pulse';
+  'rounded bg-border/60 motion-reduce:animate-none animate-pulse';
 
 export function SkeletonCard({
   variant,
@@ -30,7 +30,7 @@ export function SkeletonCard({
       aria-live="polite"
       aria-busy="true"
       data-skeleton={variant}
-      className="my-1.5 rounded-lg border border-border-subtle bg-surface-card overflow-hidden"
+      className="my-1.5 rounded-lg border border-border bg-card overflow-hidden"
     >
       {variant === 'compact' && <CompactSkeleton />}
       {variant === 'wide' && <WideSkeleton />}

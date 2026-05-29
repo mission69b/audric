@@ -5,8 +5,8 @@
  *
  * Ported from `apps/web/components/ui/Spinner.tsx` (S.204+ Phase 2
  * splash port). Replaces the chatbot template's Loader2Icon wrapper
- * with v1's monochrome arc-stroke (border-t-fg-primary spinning
- * over a border-border-subtle ring). Uses the `spin-arc` keyframe
+ * with v1's monochrome arc-stroke (border-t-foreground spinning
+ * over a border-border ring). Uses the `spin-arc` keyframe
  * (defined in `app/globals.css`) so timing matches v1 (0.8s linear
  * infinite) — slightly faster than Tailwind's default `animate-spin`
  * (1s).
@@ -39,7 +39,7 @@ export function Spinner({ size = "sm", className = "" }: SpinnerProps) {
   return (
     <span
       aria-label="Loading"
-      className={`inline-block rounded-full border-border-subtle border-t-fg-primary motion-reduce:animate-none animate-[spin-arc_0.8s_linear_infinite] ${SIZES[size]} ${className}`}
+      className={`inline-block rounded-full border-border border-t-foreground motion-reduce:animate-none animate-[spin-arc_0.8s_linear_infinite] ${SIZES[size]} ${className}`}
       role="status"
     />
   );

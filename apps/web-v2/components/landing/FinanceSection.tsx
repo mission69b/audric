@@ -17,7 +17,7 @@ const FEATURES: Feature[] = [
     glyph: (
       <svg
         aria-hidden="true"
-        className="stroke-fg-primary"
+        className="stroke-foreground"
         fill="none"
         height="30"
         strokeWidth="1.6"
@@ -35,7 +35,7 @@ const FEATURES: Feature[] = [
     glyph: (
       <svg
         aria-hidden="true"
-        className="stroke-fg-primary"
+        className="stroke-foreground"
         fill="none"
         height="30"
         strokeWidth="1.6"
@@ -45,7 +45,7 @@ const FEATURES: Feature[] = [
         <rect height="13" rx="1.5" width="20" x="5" y="9" />
         <path d="M5 14h20" />
         <rect
-          className="fill-fg-primary stroke-none"
+          className="fill-foreground stroke-none"
           height="2"
           width="5"
           x="8"
@@ -60,7 +60,7 @@ const FEATURES: Feature[] = [
     glyph: (
       <svg
         aria-hidden="true"
-        className="stroke-fg-primary"
+        className="stroke-foreground"
         fill="none"
         height="30"
         strokeLinecap="round"
@@ -84,9 +84,9 @@ const FEATURES: Feature[] = [
         viewBox="0 0 30 30"
         width="30"
       >
-        <rect className="fill-fg-primary" height="8" width="4" x="5" y="18" />
-        <rect className="fill-fg-primary" height="14" width="4" x="13" y="12" />
-        <rect className="fill-fg-primary" height="20" width="4" x="21" y="6" />
+        <rect className="fill-foreground" height="8" width="4" x="5" y="18" />
+        <rect className="fill-foreground" height="14" width="4" x="13" y="12" />
+        <rect className="fill-foreground" height="20" width="4" x="21" y="6" />
       </svg>
     ),
   },
@@ -95,17 +95,17 @@ const FEATURES: Feature[] = [
 export function FinanceSection() {
   return (
     <section
-      className="px-8 py-20 border-t border-border-subtle bg-surface-card"
+      className="px-8 py-20 border-t border-border bg-card"
       id="finance"
     >
       <div className="mx-auto max-w-[1120px]">
-        <p className="font-mono text-[11px] tracking-[0.1em] uppercase text-fg-secondary mb-4">
+        <p className="font-mono text-[11px] tracking-[0.1em] uppercase text-muted-foreground mb-4">
           Audric finance
         </p>
-        <h2 className="font-serif font-medium text-[40px] sm:text-[48px] leading-[1.02] tracking-[-0.03em] text-fg-primary max-w-[760px] mb-5">
+        <h2 className="font-serif font-medium text-[40px] sm:text-[48px] leading-[1.02] tracking-[-0.03em] text-foreground max-w-[760px] mb-5">
           Your money, working on Sui.
         </h2>
-        <p className="text-[16px] text-fg-secondary leading-relaxed max-w-[580px] mb-10">
+        <p className="text-[16px] text-muted-foreground leading-relaxed max-w-[580px] mb-10">
           Save, borrow, swap, see your positions — every DeFi op a user can do,
           all by asking in chat. The Agent Harness picks the right tool, the
           Reasoning Engine clears the guards, and your Passport taps to confirm.
@@ -113,12 +113,12 @@ export function FinanceSection() {
 
         <BorderedGrid cols={4}>
           {FEATURES.map((feat) => (
-            <div className="bg-surface-page p-6" key={feat.title}>
+            <div className="bg-background p-6" key={feat.title}>
               <div className="w-8 h-8 mb-5">{feat.glyph}</div>
-              <div className="text-[15px] font-semibold text-fg-primary mb-2">
+              <div className="text-[15px] font-semibold text-foreground mb-2">
                 {feat.title}
               </div>
-              <p className="text-[13px] text-fg-secondary leading-relaxed">
+              <p className="text-[13px] text-muted-foreground leading-relaxed">
                 {feat.body}
               </p>
             </div>

@@ -277,9 +277,9 @@ export default function UsernamePage({ params }: UsernamePageProps) {
 
 function UsernameSkeleton() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-surface-page px-4 py-12">
+    <main className="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-12">
       <div className="w-full max-w-md">
-        <div className="h-[480px] animate-pulse rounded-lg border border-border-subtle bg-surface-card" />
+        <div className="h-[480px] animate-pulse rounded-lg border border-border bg-card" />
       </div>
     </main>
   );
@@ -296,13 +296,13 @@ async function UsernameContent({ params }: UsernamePageProps) {
   const portfolioCardData = await fetchPortfolioCard(address, handle);
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-surface-page px-4 py-12">
+    <main className="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-12">
       <div className="w-full max-w-md">
-        <div className="space-y-6 rounded-lg border border-border-subtle bg-surface-card p-6 shadow-[var(--shadow-flat)]">
+        <div className="space-y-6 rounded-lg border border-border bg-card p-6 shadow-[var(--shadow-flat)]">
           <div className="flex flex-col items-center gap-3 text-center">
             <Link
               aria-label="Audric"
-              className="text-fg-primary opacity-70 transition-opacity hover:opacity-100"
+              className="text-foreground opacity-70 transition-opacity hover:opacity-100"
               href="/"
             >
               <AudricMark size={28} />
@@ -311,10 +311,10 @@ async function UsernameContent({ params }: UsernamePageProps) {
               <div aria-hidden="true" className="text-2xl">
                 🪪
               </div>
-              <h1 className="break-all font-medium font-mono text-fg-primary text-lg">
+              <h1 className="break-all font-medium font-mono text-foreground text-lg">
                 {displayHandle}
               </h1>
-              <p className="text-[12px] text-fg-secondary">
+              <p className="text-[12px] text-muted-foreground">
                 yours on Sui — recognized everywhere
               </p>
             </div>
@@ -322,7 +322,7 @@ async function UsernameContent({ params }: UsernamePageProps) {
 
           <div className="flex flex-col items-center gap-3">
             <SuiPayQr amount={null} recipientAddress={address} size={180} />
-            <div className="font-mono text-[10px] text-fg-secondary">
+            <div className="font-mono text-[10px] text-muted-foreground">
               {truncateAddress(address)}
             </div>
           </div>
@@ -332,12 +332,12 @@ async function UsernameContent({ params }: UsernamePageProps) {
             recipientAddress={address}
           />
 
-          <div className="space-y-2 border-border-subtle border-t pt-4">
-            <p className="text-center text-[10px] text-fg-muted uppercase tracking-[0.08em]">
+          <div className="space-y-2 border-border border-t pt-4">
+            <p className="text-center text-[10px] text-muted-foreground uppercase tracking-[0.08em]">
               or send from another wallet
             </p>
             <AddressCopyButton address={address} />
-            <p className="text-center text-[11px] text-fg-secondary">
+            <p className="text-center text-[11px] text-muted-foreground">
               Scan the QR with your phone wallet, or paste this address into any
               Sui wallet or exchange withdrawal form.
             </p>
@@ -350,9 +350,9 @@ async function UsernameContent({ params }: UsernamePageProps) {
           </div>
         ) : null}
 
-        <div className="mt-4 overflow-hidden rounded-md border border-border-subtle bg-surface-card">
-          <div className="flex items-center justify-between border-border-subtle border-b bg-surface-sunken px-3.5 py-2">
-            <span className="font-mono text-[10px] text-fg-muted uppercase tracking-[0.12em]">
+        <div className="mt-4 overflow-hidden rounded-md border border-border bg-card">
+          <div className="flex items-center justify-between border-border border-b bg-muted px-3.5 py-2">
+            <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-[0.12em]">
               Store
             </span>
           </div>
@@ -360,27 +360,27 @@ async function UsernameContent({ params }: UsernamePageProps) {
             <div aria-hidden="true" className="mb-1.5 text-2xl">
               🛒
             </div>
-            <p className="text-[12px] text-fg-secondary">
+            <p className="text-[12px] text-muted-foreground">
               {label} hasn&rsquo;t set up their store yet.
             </p>
-            <p className="mt-1 text-[10px] text-fg-muted">
+            <p className="mt-1 text-[10px] text-muted-foreground">
               Coming soon — Audric Store
             </p>
           </div>
         </div>
 
         <div className="mt-6 text-center">
-          <p className="text-[11px] text-fg-secondary">
+          <p className="text-[11px] text-muted-foreground">
             Powered by{" "}
             <Link
-              className="text-fg-primary underline-offset-2 hover:underline"
+              className="text-foreground underline-offset-2 hover:underline"
               href="/"
             >
               Audric Passport
             </Link>{" "}
             —{" "}
             <Link
-              className="text-fg-primary underline-offset-2 hover:underline"
+              className="text-foreground underline-offset-2 hover:underline"
               href="/chat"
             >
               claim your handle

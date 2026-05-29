@@ -1,4 +1,10 @@
 @import "tailwindcss";
+/* [R6.0] @t2000/ui Geist DS token primitives (--ds-*, --fg, --bg, ramps).
+   Imported into layer(base) so Geist's own unlayered base rules (h1-h6,
+   body, code, ::selection) are demoted into the base layer, where Audric's
+   own base rules below override them — only the token VALUES are consumed.
+   Geist flips grayscale + blue + backgrounds per theme via [data-theme]. */
+@import "@t2000/ui/tokens" layer(base);
 @import "katex/dist/katex.min.css";
 
 @source "../node_modules/streamdown/dist/index.js";
@@ -28,6 +34,9 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -96,6 +105,11 @@
   --color-bubble-user-bg: var(--bubble-user-bg);
   --color-bubble-user-fg: var(--bubble-user-fg);
 
+  /* [R6.0] Signal — Audric's single cyan accent (signal-only usage).
+     Generates `text-signal`, `bg-signal`, `border-signal`, `bg-signal-bg`. */
+  --color-signal: var(--signal);
+  --color-signal-bg: var(--signal-bg);
+
   /* [S.204+ P1] Typography stacks — semantic Tailwind utilities
      (font-serif / font-sans / font-mono) resolve to NewYork +
      Geist + DepartureMono. Matches `apps/web/app/globals.css`
@@ -108,37 +122,53 @@
 
 :root {
   --radius: 0.625rem;
-  --background: oklch(0.985 0 0);
-  --foreground: oklch(0.12 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.12 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.12 0 0);
-  --primary: oklch(0.12 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.965 0 0);
-  --secondary-foreground: oklch(0.38 0 0);
-  --muted: oklch(0.94 0 0);
-  --muted-foreground: oklch(0.58 0 0);
-  --accent: oklch(0.965 0 0);
-  --accent-foreground: oklch(0.12 0 0);
-  --destructive: oklch(0.55 0.15 25);
-  --border: oklch(0.9 0 0);
-  --input: oklch(0.9 0 0);
-  --ring: oklch(0.5 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.97 0 0);
-  --sidebar-foreground: oklch(0.38 0 0);
-  --sidebar-primary: oklch(0.12 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.12 0 0 / 0.06);
-  --sidebar-accent-foreground: oklch(0.12 0 0);
-  --sidebar-border: oklch(0.88 0 0);
-  --sidebar-ring: oklch(0.5 0 0);
+
+  /* [R6.0] shadcn / ai-chatbot template tokens, re-rooted onto Geist DS.
+     Geist flips grayscale + blue + backgrounds per theme automatically
+     (via [data-theme]), so these need NO .dark color overrides.
+     NOTE: --border + --border-strong are intentionally omitted here —
+     they collide with Geist's own --border / --border-strong tokens, and
+     `--border: var(--border)` would be a self-referential CSS cycle. The
+     Geist values (gray-alpha hairlines, theme-flipping) are inherited. */
+  --background: var(--bg);
+  --foreground: var(--fg);
+  --card: var(--bg-elevated);
+  --card-foreground: var(--fg);
+  --popover: var(--bg-elevated);
+  --popover-foreground: var(--fg);
+  --primary: var(--fg);
+  --primary-foreground: var(--bg);
+  --secondary: var(--ds-gray-100);
+  --secondary-foreground: var(--fg);
+  --muted: var(--ds-gray-100);
+  --muted-foreground: var(--fg-muted);
+  --accent: var(--ds-gray-200);
+  --accent-foreground: var(--fg);
+  --destructive: var(--ds-red-700);
+  /* [R6.3] Geist-native status colors (success/warning/info) — the
+     shadcn template ships only `destructive`. These give read + receipt
+     cards `text-success` / `bg-warning` / `text-info` utilities that map
+     to Geist's hue ramps (static across themes, same as the spec's
+     `var(--success)` / `var(--warning)`). The ADS `*-solid` / `*-fg`
+     family below is superseded by these and deleted in R6.9. */
+  --success: var(--ds-green-700);
+  --warning: var(--ds-amber-700);
+  --info: var(--ds-blue-700);
+  --input: var(--border);
+  --ring: var(--ds-blue-700);
+  --chart-1: var(--ds-gray-1000);
+  --chart-2: var(--ds-gray-800);
+  --chart-3: var(--ds-gray-600);
+  --chart-4: var(--ds-gray-500);
+  --chart-5: var(--ds-gray-400);
+  --sidebar: var(--bg);
+  --sidebar-foreground: var(--fg-muted);
+  --sidebar-primary: var(--fg);
+  --sidebar-primary-foreground: var(--bg);
+  --sidebar-accent: var(--ds-gray-100);
+  --sidebar-accent-foreground: var(--fg);
+  --sidebar-border: var(--ds-gray-alpha-300);
+  --sidebar-ring: var(--ds-blue-700);
 
   --shadow-card: 0 1px 3px oklch(0 0 0 / 0.05), 0 1px 1px oklch(0 0 0 / 0.03);
   --shadow-float:
@@ -225,67 +255,87 @@
   --b700: #002a69;
   --b800: #19133a;
 
+  /* ----------------------------------------------------------
+     [R6.0] Audric semantic layer, re-rooted onto Geist DS.
+     Surfaces / foreground / borders alias --ds-* directly and
+     flip per theme automatically (Geist flips grayscale +
+     backgrounds via [data-theme]) — no .dark overrides needed.
+     The raw ADS ramps above (the --n / --r / --g / --y / --o / --b
+     families) are retained ONLY as a bridge for the litepaper module
+     (app/litepaper/litepaper.module.css); deleted in R6.9 once the
+     litepaper is converted.
+     ---------------------------------------------------------- */
+
   /* Surface */
-  --surface-page: var(--n200);
-  --surface-card: var(--n100);
-  --surface-sunken: var(--n200);
-  --surface-elevated: var(--n300);
-  --surface-inverse: var(--n800);
+  --surface-page: var(--ds-background-100);
+  --surface-card: var(--ds-gray-100);
+  --surface-sunken: var(--ds-background-200);
+  --surface-elevated: var(--ds-gray-200);
+  --surface-inverse: var(--ds-gray-1000);
 
   /* Foreground */
-  --fg-primary: var(--n800);
-  --fg-secondary: var(--n600);
-  --fg-muted: var(--n500);
-  --fg-disabled: var(--n400);
-  --fg-inverse: var(--n100);
+  --fg-primary: var(--fg);
+  --fg-secondary: var(--ds-gray-900);
+  --fg-muted: var(--ds-gray-700);
+  --fg-disabled: var(--ds-gray-600);
+  --fg-inverse: var(--ds-background-100);
 
-  /* Border */
-  --border-default: var(--n300);
-  --border-subtle: #e0e0e0;
-  --border-strong: var(--n400);
-  --border-focus: var(--b500);
+  /* Border (ADS-specific names; --border-strong inherits Geist's) */
+  --border-default: var(--ds-gray-alpha-400);
+  --border-subtle: var(--ds-gray-alpha-300);
+  --border-focus: var(--ds-blue-700);
 
-  /* Status — success / warning / error / info (full set of fg / bg / border / solid) */
-  --success-fg: var(--g700);
-  --success-bg: var(--g200);
-  --success-border: var(--g400);
-  --success-solid: var(--g600);
+  /* ----------------------------------------------------------
+     Status — Geist ships only grayscale + blue flipping per
+     theme; its hue ramps (red/green/amber) are dark-tuned and
+     static. So Audric derives status tints with color-mix:
+       *-solid : the Geist hue mid-step (reads on both themes)
+       *-fg    : solid mixed toward --fg (auto dark-in-light /
+                 light-in-dark for legible label text)
+       *-bg    : ~12% solid over transparent (auto-tints per bg)
+       *-border: ~30% solid over transparent
+     One definition, theme-correct in both modes.
+     ---------------------------------------------------------- */
+  --success-solid: var(--ds-green-700);
+  --success-fg: color-mix(in srgb, var(--ds-green-700) 70%, var(--fg));
+  --success-bg: color-mix(in srgb, var(--ds-green-700) 12%, transparent);
+  --success-border: color-mix(in srgb, var(--ds-green-700) 30%, transparent);
 
-  --warning-fg: var(--y700);
-  --warning-bg: var(--y200);
-  --warning-border: var(--y400);
-  --warning-solid: var(--o500);
+  --warning-solid: var(--ds-amber-700);
+  --warning-fg: color-mix(in srgb, var(--ds-amber-700) 70%, var(--fg));
+  --warning-bg: color-mix(in srgb, var(--ds-amber-700) 14%, transparent);
+  --warning-border: color-mix(in srgb, var(--ds-amber-700) 32%, transparent);
 
-  --error-fg: var(--r700);
-  --error-bg: var(--r200);
-  --error-border: var(--r400);
-  --error-solid: var(--r600);
+  --error-solid: var(--ds-red-700);
+  --error-fg: color-mix(in srgb, var(--ds-red-700) 72%, var(--fg));
+  --error-bg: color-mix(in srgb, var(--ds-red-700) 12%, transparent);
+  --error-border: color-mix(in srgb, var(--ds-red-700) 30%, transparent);
 
-  --info-fg: var(--b700);
-  --info-bg: var(--b200);
-  --info-border: var(--b400);
-  --info-solid: var(--b500);
+  --info-solid: var(--ds-blue-700);
+  --info-fg: color-mix(in srgb, var(--ds-blue-700) 72%, var(--fg));
+  --info-bg: color-mix(in srgb, var(--ds-blue-700) 12%, transparent);
+  --info-border: color-mix(in srgb, var(--ds-blue-700) 30%, transparent);
 
-  /* Chart segments — sequential greys (light: dark→light reversed).
-     COLLIDES intentionally with the ai-chatbot template's --chart-1..5;
-     cards expect Audric's monochrome grey scale. --chart-5 falls through
-     to the template's default (preserves any non-card consumer). */
-  --chart-1: var(--n400);
-  --chart-2: var(--n500);
-  --chart-3: var(--n600);
-  --chart-4: var(--n700);
+  /* Signal — Audric's one accent (cyan). Geist's teal ramp is static,
+     so flip explicitly in .dark below: teal-700 (light) → teal-900
+     (dark, brighter). Signal-only per design: live indicator,
+     AudricMark thinking, settled-tx check. Never on CTAs / links /
+     focus rings. */
+  --signal: var(--ds-teal-700);
+  --signal-bg: color-mix(in srgb, var(--signal) 12%, transparent);
 
-  /* ========================================================
-     [S.204+ P1] Chat bubble — user message surface.
-     ========================================================
-     Composes from --fg-primary / --fg-inverse so it stays
-     near-black with white text in BOTH themes (matches Figma
-     chat frame). Lives at this layer because a single Tailwind
-     utility couldn't express the cross-theme flip via the
-     canonical surface tokens — see apps/web/app/globals.css
-     comment block for the original rationale. */
-  --bubble-user-bg: var(--fg-primary);
-  --bubble-user-fg: var(--fg-inverse);
+  /* Chart segments — monochrome grey spread (Geist grays flip per
+     theme automatically). */
+  --chart-1: var(--ds-gray-1000);
+  --chart-2: var(--ds-gray-800);
+  --chart-3: var(--ds-gray-600);
+  --chart-4: var(--ds-gray-500);
+
+  /* Chat bubble — user message = inverted surface (fg-on-bg). Flips
+     automatically via Geist: near-black bubble / white text in light,
+     near-white bubble / black text in dark. Refined in R6.2 if needed. */
+  --bubble-user-bg: var(--fg);
+  --bubble-user-fg: var(--bg);
 
   /* ========================================================
      [S.204+ P1] Typography stacks.
@@ -311,37 +361,11 @@
 }
 
 .dark {
-  --background: oklch(0.195 0 0);
-  --foreground: oklch(0.94 0 0);
-  --card: oklch(0.225 0 0);
-  --card-foreground: oklch(0.94 0 0);
-  --popover: oklch(0.225 0 0);
-  --popover-foreground: oklch(0.94 0 0);
-  --primary: oklch(0.94 0 0);
-  --primary-foreground: oklch(0.195 0 0);
-  --secondary: oklch(0.26 0 0);
-  --secondary-foreground: oklch(0.75 0 0);
-  --muted: oklch(0.165 0 0);
-  --muted-foreground: oklch(0.6 0 0);
-  --accent: oklch(0.26 0 0);
-  --accent-foreground: oklch(0.94 0 0);
-  --destructive: oklch(0.7 0.15 25);
-  --border: oklch(0.27 0 0);
-  --input: oklch(0.27 0 0);
-  --ring: oklch(0.45 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.175 0 0);
-  --sidebar-foreground: oklch(0.78 0 0);
-  --sidebar-primary: oklch(0.94 0 0);
-  --sidebar-primary-foreground: oklch(0.195 0 0);
-  --sidebar-accent: oklch(0.94 0 0 / 0.06);
-  --sidebar-accent-foreground: oklch(0.94 0 0);
-  --sidebar-border: oklch(0.25 0 0);
-  --sidebar-ring: oklch(0.45 0 0);
+  /* [R6.0] Geist flips all colors via [data-theme]; only shadows + the
+     static teal signal need a dark override here. Surfaces / foreground /
+     borders / status / bubble / charts all flip automatically because
+     they alias --ds-* (or color-mix off --fg) in :root above. */
+  --signal: var(--ds-teal-900);
 
   --shadow-card:
     inset 0 1px 0 oklch(1 0 0 / 0.04), 0 1px 2px oklch(0 0 0 / 0.2),
@@ -354,71 +378,6 @@
   --shadow-composer-focus:
     0 0 0 1px oklch(1 0 0 / 0.1), 0 4px 16px -4px oklch(0 0 0 / 0.3),
     inset 0 1px 0 oklch(1 0 0 / 0.04);
-}
-
-/* ============================================================
-   AUDRIC DESIGN SYSTEM v1.2 — dark-theme overrides
-   Ported alongside the light tokens (Phase 5a.0, 2026-05-19).
-   Mirrors the legacy `[data-theme="dark"]` block but uses `.dark`
-   to match web-v2's existing class-based dark-mode toggle.
-   ============================================================ */
-
-.dark {
-  /* Surface — flipped per dark spec (panel-2 inverts vs light) */
-  --surface-page: #141414;
-  --surface-card: #1f1f1f;
-  --surface-sunken: #0a0a0a;
-  --surface-elevated: #2a2a2a;
-  --surface-inverse: var(--n100);
-
-  /* Foreground */
-  --fg-primary: #f5f5f5;
-  --fg-secondary: #b0b0b0;
-  --fg-muted: #808080;
-  --fg-disabled: #5a5a5a;
-  --fg-inverse: #0a0a0a;
-
-  /* Border */
-  --border-default: #2a2a2a;
-  --border-subtle: #2a2a2a;
-  --border-strong: #3d3d3d;
-  --border-focus: var(--b400);
-
-  /* Status — solids promoted to 400 step for dark-bg legibility;
-     -bg becomes alpha tint of the 400 solid */
-  --success-fg: var(--g400);
-  --success-bg: rgba(76, 225, 96, 0.14);
-  --success-border: var(--g500);
-  --success-solid: var(--g400);
-
-  --warning-fg: var(--y400);
-  --warning-bg: rgba(255, 189, 20, 0.18);
-  --warning-border: var(--y500);
-  --warning-solid: var(--y400);
-
-  --error-fg: var(--r400);
-  --error-bg: rgba(255, 92, 92, 0.14);
-  --error-border: var(--r500);
-  --error-solid: var(--r400);
-
-  --info-fg: var(--b400);
-  --info-bg: rgba(77, 147, 252, 0.14);
-  --info-border: var(--b500);
-  --info-solid: var(--b400);
-
-  /* Chart segments — reversed for dark (medium→light) */
-  --chart-1: var(--n600);
-  --chart-2: var(--n500);
-  --chart-3: var(--n400);
-  --chart-4: var(--n300);
-
-  /* [S.204+ P1] Bubble tokens — dark.
-     Per v1 dark spec: user bubble sits at --surface-sunken (#0A0A0A),
-     text uses --fg-primary (near-white). Same near-black/white visual
-     as light theme — the surface is unchanged, only the source token
-     re-aliases for the dark-theme value graph. */
-  --bubble-user-bg: var(--surface-sunken);
-  --bubble-user-fg: var(--fg-primary);
 }
 
 @layer base {

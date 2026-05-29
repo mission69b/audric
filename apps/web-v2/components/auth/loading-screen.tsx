@@ -7,7 +7,7 @@
  *
  * Ported from `apps/web/components/auth/LoadingScreen.tsx` (S.204+
  * Phase 2). Visual parity with v1 is the goal — NewYork serif
- * heading, DepartureMono step labels, fg-primary progress fill.
+ * heading, DepartureMono step labels, foreground progress fill.
  * The v1 file uses `<Icon name="check">`; we inline an SVG instead
  * to avoid pulling in v1's full Icon component tree.
  *
@@ -101,16 +101,16 @@ export function LoadingScreen({ step, error, onRetry }: LoadingScreenProps) {
 
   if (error) {
     return (
-      <main className="flex min-h-dvh flex-col items-center justify-center bg-surface-page px-6">
+      <main className="flex min-h-dvh flex-col items-center justify-center bg-background px-6">
         <div className="w-full max-w-sm space-y-6 text-center">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-error-bg text-error-solid">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-destructive/10 text-destructive">
             <ErrorIcon />
           </div>
           <div className="space-y-2">
-            <h2 className="font-serif text-[28px] text-fg-primary leading-[1.15] tracking-[-0.01em]">
+            <h2 className="font-serif text-[28px] text-foreground leading-[1.15] tracking-[-0.01em]">
               Something went wrong
             </h2>
-            <p className="text-[13px] text-fg-secondary leading-relaxed">
+            <p className="text-[13px] text-muted-foreground leading-relaxed">
               {error}
             </p>
           </div>
@@ -126,12 +126,12 @@ export function LoadingScreen({ step, error, onRetry }: LoadingScreenProps) {
 
   if (showDone) {
     return (
-      <main className="flex min-h-dvh flex-col items-center justify-center bg-surface-page px-6">
+      <main className="flex min-h-dvh flex-col items-center justify-center bg-background px-6">
         <div className="space-y-3 text-center">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-success-bg text-success-solid">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-success/10 text-success">
             <CheckIcon size={28} />
           </div>
-          <h2 className="font-serif text-[28px] text-fg-primary leading-[1.15] tracking-[-0.01em]">
+          <h2 className="font-serif text-[28px] text-foreground leading-[1.15] tracking-[-0.01em]">
             You&apos;re all set
           </h2>
         </div>
@@ -140,10 +140,10 @@ export function LoadingScreen({ step, error, onRetry }: LoadingScreenProps) {
   }
 
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center bg-surface-page px-6">
-      <div className="w-full max-w-sm space-y-7">
-        <h2 className="text-center font-serif text-[28px] text-fg-primary leading-[1.15] tracking-[-0.01em]">
-          Signing you in…
+      <main className="flex min-h-dvh flex-col items-center justify-center bg-background px-6">
+        <div className="w-full max-w-sm space-y-7">
+          <h2 className="text-center font-serif text-[28px] text-foreground leading-[1.15] tracking-[-0.01em]">
+            Signing you in…
         </h2>
 
         <div className="space-y-3.5">
@@ -153,7 +153,7 @@ export function LoadingScreen({ step, error, onRetry }: LoadingScreenProps) {
             let indicator: React.ReactNode;
             if (isComplete) {
               indicator = (
-                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-success-bg text-success-solid">
+                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-success/10 text-success">
                   <CheckIcon />
                 </div>
               );
@@ -166,7 +166,7 @@ export function LoadingScreen({ step, error, onRetry }: LoadingScreenProps) {
             } else {
               indicator = (
                 <div className="flex h-6 w-6 shrink-0 items-center justify-center">
-                  <span className="h-1.5 w-1.5 rounded-full bg-fg-disabled" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground" />
                 </div>
               );
             }
@@ -177,8 +177,8 @@ export function LoadingScreen({ step, error, onRetry }: LoadingScreenProps) {
                   className={[
                     "font-mono text-[11px] uppercase tracking-[0.08em]",
                     isComplete || isActive
-                      ? "text-fg-primary"
-                      : "text-fg-muted",
+                      ? "text-foreground"
+                      : "text-muted-foreground",
                   ].join(" ")}
                 >
                   {s.label}
@@ -189,9 +189,9 @@ export function LoadingScreen({ step, error, onRetry }: LoadingScreenProps) {
           })}
         </div>
 
-        <div className="h-1 w-full overflow-hidden rounded-pill bg-border-subtle">
+        <div className="h-1 w-full overflow-hidden rounded-pill bg-border">
           <div
-            className="h-full rounded-pill bg-fg-primary transition-all duration-500 ease-out"
+            className="h-full rounded-pill bg-foreground transition-all duration-500 ease-out"
             style={{ width: `${progress}%` }}
           />
         </div>

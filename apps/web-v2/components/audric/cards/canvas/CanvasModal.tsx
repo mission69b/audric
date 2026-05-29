@@ -34,21 +34,21 @@ export function CanvasModal({
     >
       <button
         aria-label="Close canvas backdrop"
-        className="absolute inset-0 bg-surface-page/80 backdrop-blur-sm"
+        className="absolute inset-0 bg-background/80 backdrop-blur-sm"
         onClick={onClose}
         type="button"
       />
 
-      <div className="relative max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-xl border border-border-subtle bg-surface-card shadow-[var(--shadow-modal)]">
-        <div className="sticky top-0 z-10 flex items-center justify-between border-border-subtle border-b bg-surface-card px-4 py-3">
+      <div className="relative max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-xl border border-border bg-card shadow-[var(--shadow-float)]">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-border border-b bg-card px-4 py-3">
           <div className="flex items-center gap-2">
-            <span className="font-medium font-mono text-[10px] text-fg-primary tracking-wider">
+            <span className="font-medium font-mono text-[10px] text-foreground tracking-wider">
               {canvas.title}
             </span>
           </div>
           <button
             aria-label="Close canvas"
-            className="rounded p-1 text-fg-muted transition hover:text-fg-primary"
+            className="rounded p-1 text-muted-foreground transition hover:text-foreground"
             onClick={onClose}
             type="button"
           >

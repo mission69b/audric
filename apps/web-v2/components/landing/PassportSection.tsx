@@ -28,7 +28,7 @@ const PILLARS: Pillar[] = [
         width="30"
       >
         <rect
-          className="fill-fg-primary"
+          className="fill-foreground"
           height="18"
           rx="2"
           width="24"
@@ -36,7 +36,7 @@ const PILLARS: Pillar[] = [
           y="6"
         />
         <rect
-          className="fill-surface-card"
+          className="fill-card"
           height="7"
           rx="3.5"
           width="7"
@@ -44,21 +44,21 @@ const PILLARS: Pillar[] = [
           y="10"
         />
         <rect
-          className="fill-surface-card"
+          className="fill-card"
           height="1.2"
           width="8"
           x="16"
           y="11"
         />
         <rect
-          className="fill-surface-card"
+          className="fill-card"
           height="1.2"
           width="6"
           x="16"
           y="14"
         />
         <rect
-          className="fill-surface-card"
+          className="fill-card"
           height="1.2"
           width="16"
           x="7"
@@ -73,7 +73,7 @@ const PILLARS: Pillar[] = [
     glyph: (
       <svg
         aria-hidden="true"
-        className="stroke-fg-primary"
+        className="stroke-foreground"
         fill="none"
         height="30"
         strokeLinecap="round"
@@ -99,7 +99,7 @@ const PILLARS: Pillar[] = [
         width="30"
       >
         <rect
-          className="fill-fg-primary"
+          className="fill-foreground"
           height="13"
           rx="1.5"
           width="18"
@@ -107,12 +107,12 @@ const PILLARS: Pillar[] = [
           y="13"
         />
         <path
-          className="stroke-fg-primary"
+          className="stroke-foreground"
           d="M10 13v-3a5 5 0 0 1 10 0v3"
           fill="none"
           strokeWidth="1.8"
         />
-        <circle className="fill-surface-card" cx="15" cy="19" r="1.8" />
+        <circle className="fill-card" cx="15" cy="19" r="1.8" />
       </svg>
     ),
   },
@@ -122,7 +122,7 @@ const PILLARS: Pillar[] = [
     glyph: (
       <svg
         aria-hidden="true"
-        className="stroke-fg-primary"
+        className="stroke-foreground"
         fill="none"
         height="30"
         strokeLinecap="round"
@@ -142,25 +142,25 @@ export function PassportSection() {
 
   return (
     <section
-      className="px-8 py-20 border-t border-border-subtle bg-surface-card"
+      className="px-8 py-20 border-t border-border bg-card"
       id="passport"
     >
       <div className="mx-auto max-w-[1120px]">
-        <p className="font-mono text-[11px] tracking-[0.1em] uppercase text-fg-secondary mb-4">
+        <p className="font-mono text-[11px] tracking-[0.1em] uppercase text-muted-foreground mb-4">
           Audric Passport
         </p>
-        <h2 className="font-serif font-medium text-[40px] sm:text-[48px] leading-[1.02] tracking-[-0.03em] text-fg-primary max-w-[760px] mb-10">
+        <h2 className="font-serif font-medium text-[40px] sm:text-[48px] leading-[1.02] tracking-[-0.03em] text-foreground max-w-[760px] mb-10">
           Your passport to a new kind of finance.
         </h2>
 
         <BorderedGrid cols={4}>
           {PILLARS.map((pillar) => (
-            <div className="bg-surface-page p-6" key={pillar.title}>
+            <div className="bg-background p-6" key={pillar.title}>
               <div className="w-8 h-8 mb-5">{pillar.glyph}</div>
-              <div className="text-[15px] font-semibold text-fg-primary mb-2">
+              <div className="text-[15px] font-semibold text-foreground mb-2">
                 {pillar.title}
               </div>
-              <p className="text-[13px] text-fg-secondary leading-relaxed">
+              <p className="text-[13px] text-muted-foreground leading-relaxed">
                 {pillar.body}
               </p>
             </div>
@@ -169,7 +169,7 @@ export function PassportSection() {
 
         <div className="text-center mt-10">
           <button
-            className="inline-flex items-center gap-2 bg-fg-primary text-fg-inverse px-6 py-3.5 rounded-xs font-mono text-[11px] tracking-[0.08em] uppercase transition hover:opacity-80 active:scale-[0.98] cursor-pointer"
+            className="inline-flex items-center gap-2 bg-foreground text-background px-6 py-3.5 rounded-xs font-mono text-[11px] tracking-[0.08em] uppercase transition hover:opacity-80 active:scale-[0.98] cursor-pointer"
             onClick={login}
             type="button"
           >

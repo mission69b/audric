@@ -24,28 +24,27 @@ export function ConfirmationChip({
   glyph = '✓',
   tone = 'success',
 }: ConfirmationChipProps) {
-  const glyphColor =
-    tone === 'success' ? 'text-success-solid' : 'text-fg-muted';
+  const glyphColor = tone === 'success' ? 'text-success' : 'text-muted-foreground';
 
   return (
     <div
-      className="my-1.5 flex items-center gap-2 rounded-md border border-border-subtle bg-surface-card px-3 py-2"
+      className="my-1.5 inline-flex max-w-full items-center gap-2 rounded-full border border-border bg-muted px-[13px] py-[7px]"
       role="status"
       aria-label={detail ? `${label}: ${detail}` : label}
     >
       {glyph !== null && glyph !== undefined && (
         <span
-          className={`text-[12px] leading-none ${glyphColor}`}
+          className={`text-[12px] font-semibold leading-none ${glyphColor}`}
           aria-hidden="true"
         >
           {glyph}
         </span>
       )}
-      <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-fg-secondary">
+      <span className="font-mono text-[10.5px] uppercase tracking-[0.06em] text-muted-foreground">
         {label}
       </span>
       {detail && (
-        <span className="ml-auto font-mono text-[11px] text-fg-primary truncate max-w-[60%]">
+        <span className="ml-1 max-w-[60%] truncate border-border border-l pl-2 font-mono text-[11px] text-foreground">
           {detail}
         </span>
       )}

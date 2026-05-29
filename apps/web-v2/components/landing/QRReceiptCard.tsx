@@ -23,62 +23,62 @@ export function QRReceiptCard({
   payLabel,
 }: QRReceiptCardProps) {
   return (
-    <div className="lg:sticky lg:top-24 rounded-md border border-border-subtle bg-surface-card p-7 flex flex-col items-center gap-3.5 shadow-[0_1px_0_rgba(0,0,0,0.02),0_20px_40px_-20px_rgba(0,0,0,0.10)]">
-      <div className="flex items-center gap-2 font-mono text-[10px] tracking-[0.12em] uppercase text-fg-secondary">
+    <div className="lg:sticky lg:top-24 rounded-md border border-border bg-card p-7 flex flex-col items-center gap-3.5 shadow-[0_1px_0_rgba(0,0,0,0.02),0_20px_40px_-20px_rgba(0,0,0,0.10)]">
+      <div className="flex items-center gap-2 font-mono text-[10px] tracking-[0.12em] uppercase text-muted-foreground">
         <span
           aria-hidden="true"
-          className="w-2 h-2 bg-fg-primary rounded-xs rotate-45"
+          className="w-2 h-2 bg-foreground rounded-xs rotate-45"
         />
         Audric Pay
       </div>
 
-      <div className="bg-surface-sunken border border-border-subtle rounded-md p-6 w-full flex flex-col items-center gap-3.5">
+      <div className="bg-muted border border-border rounded-md p-6 w-full flex flex-col items-center gap-3.5">
         <div className="text-center">
-          <div className="font-serif text-[42px] leading-none tracking-[-0.02em] text-fg-primary tabular-nums">
+          <div className="font-serif text-[42px] leading-none tracking-[-0.02em] text-foreground tabular-nums">
             {amount}
           </div>
-          <div className="font-mono text-[10px] tracking-[0.14em] uppercase text-fg-secondary mt-1.5">
+          <div className="font-mono text-[10px] tracking-[0.14em] uppercase text-muted-foreground mt-1.5">
             {currency}
           </div>
         </div>
 
-        <div className="bg-surface-card p-2.5 rounded-xs border border-border-subtle relative">
+        <div className="bg-card p-2.5 rounded-xs border border-border relative">
           <FauxQr />
           <div className="absolute inset-0 grid place-items-center pointer-events-none">
-            <div className="w-6 h-6 bg-fg-primary text-fg-inverse rounded-xs grid place-items-center text-[11px]">
+            <div className="w-6 h-6 bg-foreground text-background rounded-xs grid place-items-center text-[11px]">
               ◈
             </div>
           </div>
         </div>
 
-        <div className="w-full flex items-center justify-between font-mono text-[11px] tracking-[0.06em] text-fg-secondary pt-0.5">
+        <div className="w-full flex items-center justify-between font-mono text-[11px] tracking-[0.06em] text-muted-foreground pt-0.5">
           <span>To</span>
-          <b className="text-fg-primary font-medium">{recipientShort}</b>
+          <b className="text-foreground font-medium">{recipientShort}</b>
         </div>
 
         <button
-          className="w-full h-12 rounded-pill bg-fg-primary text-fg-inverse font-mono text-[11px] tracking-[0.12em] uppercase hover:opacity-90 transition focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
+          className="w-full h-12 rounded-pill bg-foreground text-background font-mono text-[11px] tracking-[0.12em] uppercase hover:opacity-90 transition focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
           type="button"
         >
           {payLabel}
         </button>
         <button
-          className="w-full h-12 rounded-pill border border-border-subtle bg-transparent text-fg-primary font-mono text-[11px] tracking-[0.12em] uppercase hover:bg-surface-sunken transition focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
+          className="w-full h-12 rounded-pill border border-border bg-transparent text-foreground font-mono text-[11px] tracking-[0.12em] uppercase hover:bg-muted transition focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus-ring)]"
           type="button"
         >
           Copy address
         </button>
 
-        <div className="font-mono text-[10px] tracking-[0.1em] uppercase text-fg-secondary">
+        <div className="font-mono text-[10px] tracking-[0.1em] uppercase text-muted-foreground">
           I already sent payment →
         </div>
-        <div className="flex items-center gap-2 font-mono text-[10px] tracking-[0.1em] uppercase text-success-fg">
-          <span className="w-2 h-2 rounded-full bg-success-solid animate-pulse" />
+        <div className="flex items-center gap-2 font-mono text-[10px] tracking-[0.1em] uppercase text-success">
+          <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
           Checking for payment&hellip;
         </div>
       </div>
 
-      <div className="font-mono text-[9px] tracking-[0.14em] uppercase text-fg-muted text-center mt-0.5">
+      <div className="font-mono text-[9px] tracking-[0.14em] uppercase text-muted-foreground text-center mt-0.5">
         Powered by Audric — Your money, handled.
       </div>
     </div>
@@ -97,8 +97,8 @@ function FauxQr() {
       viewBox="0 0 29 29"
       width="180"
     >
-      <rect className="fill-surface-card" height="29" width="29" />
-      <g className="fill-fg-primary">
+      <rect className="fill-card" height="29" width="29" />
+      <g className="fill-foreground">
         {/* Finder squares: TL / TR / BL */}
         <rect height="1" width="7" x="0" y="0" />
         <rect height="1" width="7" x="0" y="6" />

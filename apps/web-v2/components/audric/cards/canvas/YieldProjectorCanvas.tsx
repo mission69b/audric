@@ -83,15 +83,15 @@ export function YieldProjectorCanvas({ data, onAction }: Props) {
     <div className="space-y-4">
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
-          <label className="font-mono text-[10px] text-fg-muted uppercase tracking-wider">
+          <label className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
             Amount
           </label>
-          <span className="font-mono text-fg-primary text-sm">
+          <span className="font-mono text-foreground text-sm">
             ${amount.toLocaleString()} USDC
           </span>
         </div>
         <input
-          className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-border-subtle accent-foreground"
+          className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-border accent-foreground"
           max={50_000}
           min={100}
           onChange={(e) => setAmount(Number(e.target.value))}
@@ -99,7 +99,7 @@ export function YieldProjectorCanvas({ data, onAction }: Props) {
           type="range"
           value={amount}
         />
-        <div className="flex justify-between font-mono text-[9px] text-fg-muted">
+        <div className="flex justify-between font-mono text-[9px] text-muted-foreground">
           <span>$100</span>
           <span>$50,000</span>
         </div>
@@ -107,15 +107,15 @@ export function YieldProjectorCanvas({ data, onAction }: Props) {
 
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
-          <label className="font-mono text-[10px] text-fg-muted uppercase tracking-wider">
+          <label className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
             APY
           </label>
-          <span className="font-mono text-fg-primary text-sm">
+          <span className="font-mono text-foreground text-sm">
             {apy.toFixed(2)}%
           </span>
         </div>
         <input
-          className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-border-subtle accent-foreground"
+          className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-border accent-foreground"
           max={20}
           min={0.5}
           onChange={(e) => setApy(Number(e.target.value))}
@@ -123,7 +123,7 @@ export function YieldProjectorCanvas({ data, onAction }: Props) {
           type="range"
           value={apy}
         />
-        <div className="flex justify-between font-mono text-[9px] text-fg-muted">
+        <div className="flex justify-between font-mono text-[9px] text-muted-foreground">
           <span>0.5%</span>
           <span>20%</span>
         </div>
@@ -134,8 +134,8 @@ export function YieldProjectorCanvas({ data, onAction }: Props) {
           <button
             className={`flex-1 rounded py-1 font-mono text-[10px] uppercase tracking-wider transition ${
               periodIdx === i
-                ? "bg-fg-primary text-fg-inverse"
-                : "border border-border-subtle text-fg-secondary hover:border-fg-primary/30 hover:text-fg-primary"
+                ? "bg-foreground text-background"
+                : "border border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground"
             }`}
             key={p.label}
             onClick={() => setPeriodIdx(i)}
@@ -146,7 +146,7 @@ export function YieldProjectorCanvas({ data, onAction }: Props) {
         ))}
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-border-subtle bg-surface-page">
+      <div className="overflow-hidden rounded-lg border border-border bg-background">
         <svg
           aria-label="Yield projection curve"
           className="h-20"
@@ -162,12 +162,12 @@ export function YieldProjectorCanvas({ data, onAction }: Props) {
             </linearGradient>
           </defs>
           <polygon
-            className="text-fg-primary"
+            className="text-foreground"
             fill="url(#yp-grad)"
             points={`0,${H} ${curvePoints} ${W},${H}`}
           />
           <polyline
-            className="text-fg-primary"
+            className="text-foreground"
             fill="none"
             points={curvePoints}
             stroke="currentColor"
@@ -180,25 +180,25 @@ export function YieldProjectorCanvas({ data, onAction }: Props) {
 
       <div className="space-y-1 font-mono text-xs">
         <div className="flex justify-between">
-          <span className="text-fg-muted">After {period.label}</span>
-          <span className="text-success-solid">+${fmtUsd(earned)} earned</span>
+          <span className="text-muted-foreground">After {period.label}</span>
+          <span className="text-success">+${fmtUsd(earned)} earned</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-fg-muted">Total value</span>
-          <span className="text-fg-primary">${fmtUsd(total)}</span>
+          <span className="text-muted-foreground">Total value</span>
+          <span className="text-foreground">${fmtUsd(total)}</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-fg-muted">After 5Y (compound)</span>
-          <span className="text-fg-primary">+${fmtUsd(fiveYearEarned)}</span>
+          <span className="text-muted-foreground">After 5Y (compound)</span>
+          <span className="text-foreground">+${fmtUsd(fiveYearEarned)}</span>
         </div>
         {breakEvenNote && (
-          <p className="pt-0.5 text-[10px] text-fg-muted">{breakEvenNote}</p>
+          <p className="pt-0.5 text-[10px] text-muted-foreground">{breakEvenNote}</p>
         )}
       </div>
 
       {onAction && (
         <button
-          className="w-full rounded-md bg-fg-primary py-2 font-mono text-[10px] text-fg-inverse uppercase tracking-wider transition hover:opacity-90"
+          className="w-full rounded-md bg-foreground py-2 font-mono text-[10px] text-background uppercase tracking-wider transition hover:opacity-90"
           onClick={() =>
             onAction(`Save $${amount.toLocaleString()} USDC into NAVI`)
           }

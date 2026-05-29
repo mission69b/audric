@@ -24,27 +24,27 @@ const STEPS = [
 export function HowItWorksSection() {
   return (
     <section
-      className="px-8 py-20 border-t border-border-subtle bg-surface-card"
+      className="px-8 py-20 border-t border-border bg-card"
       id="how"
     >
       <div className="mx-auto max-w-[1120px]">
-        <p className="font-mono text-[11px] tracking-[0.1em] uppercase text-fg-secondary mb-4">
+        <p className="font-mono text-[11px] tracking-[0.1em] uppercase text-muted-foreground mb-4">
           How it works
         </p>
-        <h2 className="font-serif font-medium text-[40px] sm:text-[48px] leading-[1.02] tracking-[-0.03em] text-fg-primary max-w-[760px] mb-10">
+        <h2 className="font-serif font-medium text-[40px] sm:text-[48px] leading-[1.02] tracking-[-0.03em] text-foreground max-w-[760px] mb-10">
           Three steps to your money.
         </h2>
 
         <BorderedGrid cols={3}>
           {STEPS.map((step) => (
-            <div className="bg-surface-page p-7" key={step.num}>
-              <div className="font-serif font-medium text-[22px] text-fg-muted mb-16 tracking-[-0.02em]">
+            <div className="bg-background p-7" key={step.num}>
+              <div className="font-serif font-medium text-[22px] text-muted-foreground mb-16 tracking-[-0.02em]">
                 {step.num}
               </div>
-              <div className="text-[17px] font-semibold text-fg-primary mb-2">
+              <div className="text-[17px] font-semibold text-foreground mb-2">
                 {step.title}
               </div>
-              <p className="text-[14px] text-fg-secondary leading-relaxed">
+              <p className="text-[14px] text-muted-foreground leading-relaxed">
                 {step.body}
               </p>
             </div>

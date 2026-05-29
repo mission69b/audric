@@ -26,13 +26,7 @@ interface RouteDiagramProps {
 
 function AssetPill({ symbol }: { symbol: string }) {
   return (
-    <span
-      className="inline-flex items-center rounded-full px-2 py-0.5 font-mono text-[11px] text-fg-primary uppercase tracking-wider"
-      style={{
-        background: "var(--surface-sunken)",
-        border: "0.5px solid var(--border-subtle)",
-      }}
-    >
+    <span className="inline-flex items-center rounded-full border border-border bg-muted px-2 py-0.5 font-mono text-[11px] text-foreground uppercase tracking-wider">
       {symbol}
     </span>
   );
@@ -41,10 +35,13 @@ function AssetPill({ symbol }: { symbol: string }) {
 function StepArrow({ pool, fee }: { fee: string; pool: string }) {
   return (
     <span className="mx-1 inline-flex flex-col items-center">
-      <span className="font-mono text-[9px] text-fg-muted uppercase tracking-[0.12em]">
+      <span className="font-mono text-[9px] text-muted-foreground uppercase tracking-[0.12em]">
         {pool} · {fee}
       </span>
-      <span aria-hidden="true" className="text-fg-muted text-xs leading-none">
+      <span
+        aria-hidden="true"
+        className="text-muted-foreground text-xs leading-none"
+      >
         →
       </span>
     </span>
@@ -82,7 +79,7 @@ export function RouteDiagram({
         ))}
       </div>
       <div className="flex justify-end">
-        <span className="font-mono text-[9px] text-fg-muted uppercase tracking-[0.12em]">
+        <span className="font-mono text-[9px] text-muted-foreground uppercase tracking-[0.12em]">
           Total route fee · {totalFeePct}%
         </span>
       </div>

@@ -58,7 +58,7 @@ export function ReceiveAddressCanvas({ data }: Props) {
     return (
       <div className="flex flex-col items-center justify-center space-y-2 py-10 text-center">
         <span className="text-3xl">📭</span>
-        <p className="text-fg-secondary text-sm">
+        <p className="text-muted-foreground text-sm">
           {data.message ?? "Receive address unavailable."}
         </p>
       </div>
@@ -81,10 +81,10 @@ export function ReceiveAddressCanvas({ data }: Props) {
       <SuiPayQr amount={null} recipientAddress={address} size={180} />
 
       <div className="text-center">
-        <div className="font-mono text-[14px] text-fg-primary">
+        <div className="font-mono text-[14px] text-foreground">
           {displayLabel}
         </div>
-        <div className="mt-1 break-all font-mono text-[10px] text-fg-secondary">
+        <div className="mt-1 break-all font-mono text-[10px] text-muted-foreground">
           {address}
         </div>
       </div>
@@ -94,14 +94,14 @@ export function ReceiveAddressCanvas({ data }: Props) {
           copied ? "Copied to clipboard" : `Copy address ${address}`
         }
         aria-live="polite"
-        className="w-full max-w-xs rounded-md border border-border-subtle bg-surface-page px-3 py-2 text-center text-[12px] text-fg-primary transition-colors hover:border-border-strong"
+        className="w-full max-w-xs rounded-md border border-border bg-background px-3 py-2 text-center text-[12px] text-foreground transition-colors hover:border-foreground/30"
         onClick={handleCopy}
         type="button"
       >
         {copied ? "✓ Copied address" : "📋 Copy address"}
       </button>
 
-      <p className="max-w-xs text-center text-[11px] text-fg-secondary">
+      <p className="max-w-xs text-center text-[11px] text-muted-foreground">
         Scan with a Sui wallet, or paste this address into any wallet or
         exchange withdrawal form. The payer chooses the amount.
       </p>

@@ -44,7 +44,7 @@ export function SavingsCard({ data }: { data: SavingsData }) {
       {supplies.length > 0 && (
         <table className="w-full mb-1">
           <thead>
-            <tr className="text-fg-muted text-[10px]">
+            <tr className="text-muted-foreground text-[10px]">
               <th className="text-left font-medium pb-1">Supply</th>
               <th className="text-right font-medium pb-1">Amount</th>
               <th className="text-right font-medium pb-1">APY</th>
@@ -52,15 +52,15 @@ export function SavingsCard({ data }: { data: SavingsData }) {
           </thead>
           <tbody className="font-mono">
             {supplies.map((p, i) => (
-              <tr key={i} className="border-t border-border-subtle/50">
-                <td className="py-1 text-fg-primary font-medium">{p.symbol}</td>
-                <td className="py-1 text-right text-fg-muted">
+              <tr key={i} className="border-t border-border/50">
+                <td className="py-1 text-foreground font-medium">{p.symbol}</td>
+                <td className="py-1 text-right text-muted-foreground">
                   {p.amount.toLocaleString('en-US', {
                     maximumFractionDigits: 4,
                   })}
                   {p.valueUsd > 0 ? ` · $${fmtUsd(p.valueUsd)}` : ''}
                 </td>
-                <td className="py-1 text-right text-success-solid">
+                <td className="py-1 text-right text-success">
                   {(p.apy * 100).toFixed(2)}%
                 </td>
               </tr>
@@ -69,7 +69,7 @@ export function SavingsCard({ data }: { data: SavingsData }) {
         </table>
       )}
       {!supplies.length && hasEarnings && (
-        <div className="text-center py-2 text-fg-muted text-[11px]">
+        <div className="text-center py-2 text-muted-foreground text-[11px]">
           <span className="font-mono">${fmtUsd(data.earnings!.supplied)}</span>{' '}
           deposited
         </div>
@@ -77,7 +77,7 @@ export function SavingsCard({ data }: { data: SavingsData }) {
       {borrows.length > 0 && (
         <table className="w-full">
           <thead>
-            <tr className="text-fg-muted text-[10px]">
+            <tr className="text-muted-foreground text-[10px]">
               <th className="text-left font-medium pb-1">Borrow</th>
               <th className="text-right font-medium pb-1">Amount</th>
               <th className="text-right font-medium pb-1">APY</th>
@@ -85,12 +85,12 @@ export function SavingsCard({ data }: { data: SavingsData }) {
           </thead>
           <tbody className="font-mono">
             {borrows.map((p, i) => (
-              <tr key={i} className="border-t border-border-subtle/50">
-                <td className="py-1 text-fg-primary font-medium">{p.symbol}</td>
-                <td className="py-1 text-right text-fg-muted">
+              <tr key={i} className="border-t border-border/50">
+                <td className="py-1 text-foreground font-medium">{p.symbol}</td>
+                <td className="py-1 text-right text-muted-foreground">
                   ${fmtUsd(p.valueUsd)}
                 </td>
-                <td className="py-1 text-right text-warning-solid">
+                <td className="py-1 text-right text-warning">
                   {(p.apy * 100).toFixed(2)}%
                 </td>
               </tr>
@@ -99,16 +99,16 @@ export function SavingsCard({ data }: { data: SavingsData }) {
         </table>
       )}
       {data.earnings && (
-        <div className="flex gap-4 mt-2 pt-2 border-t border-border-subtle font-mono text-[11px]">
+        <div className="flex gap-4 mt-2 pt-2 border-t border-border font-mono text-[11px]">
           <div>
-            <span className="text-fg-muted block text-[10px]">Blended APY</span>
-            <span className="text-success-solid">
+            <span className="text-muted-foreground block text-[10px]">Blended APY</span>
+            <span className="text-success">
               {(data.earnings.currentApy * 100).toFixed(2)}%
             </span>
           </div>
           <div>
-            <span className="text-fg-muted block text-[10px]">Daily</span>
-            <span className="text-fg-primary">
+            <span className="text-muted-foreground block text-[10px]">Daily</span>
+            <span className="text-foreground">
               {fmtYield(data.earnings.dailyEarning)}
             </span>
           </div>

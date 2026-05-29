@@ -108,7 +108,7 @@ export function EmptyState() {
   }
 
   return (
-    <div className="flex flex-col items-center gap-10 px-4 pt-12">
+    <div className="flex flex-col items-center gap-7 px-4 pt-12">
       {portfolio && (
         <motion.div
           animate={{ opacity: 1, y: 0 }}
@@ -130,11 +130,11 @@ export function EmptyState() {
         initial={{ opacity: 0, y: 8 }}
         transition={{ delay: 0.25, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
       >
-        <p className="mb-1.5 font-medium text-[22px] text-foreground tracking-[-0.005em]">
+        <p className="mb-2 font-medium text-[18px] text-foreground tracking-[-0.022em]">
           {greeting}
         </p>
         {subStats.length > 0 && (
-          <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-[0.1em]">
+          <p className="font-mono text-[11px] text-muted-foreground uppercase tracking-[0.08em]">
             {subStats.join(" · ")}
           </p>
         )}

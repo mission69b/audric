@@ -44,11 +44,11 @@ function trendArrow(t: TrendDirection): string {
 function trendColor(t: TrendDirection): string {
   switch (t) {
     case "7d_up":
-      return "text-success-solid";
+      return "text-success";
     case "7d_down":
-      return "text-error-solid";
+      return "text-destructive";
     case "flat":
-      return "text-fg-muted";
+      return "text-muted-foreground";
     default:
       return "";
   }
@@ -62,11 +62,11 @@ export function APYBlock({ asset, apyBps, trend, className }: APYBlockProps) {
         className,
       )}
     >
-      <span className="text-[10px] text-fg-muted uppercase tracking-wider">
+      <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
         {asset}
       </span>
-      <span className="text-fg-primary text-sm">{formatAPY(apyBps)}</span>
-      <span className="text-[9px] text-fg-muted uppercase tracking-widest">
+      <span className="text-foreground text-sm">{formatAPY(apyBps)}</span>
+      <span className="text-[9px] text-muted-foreground uppercase tracking-widest">
         APY
       </span>
       {trend && (

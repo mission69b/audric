@@ -11,28 +11,28 @@ export default function DisclaimerPage() {
     <>
       <header className="mb-12">
         <Link
-          className="inline-block text-fg-secondary hover:text-fg-primary font-mono text-[10px] tracking-[0.12em] uppercase mb-8 transition-colors"
+          className="inline-block text-muted-foreground hover:text-foreground font-mono text-[10px] tracking-[0.12em] uppercase mb-8 transition-colors"
           href="/"
         >
           &larr; audric.ai
         </Link>
-        <h1 className="font-serif text-[36px] sm:text-[44px] leading-[1.1] tracking-[-0.01em] text-fg-primary mb-3">
+        <h1 className="font-serif text-[36px] sm:text-[44px] leading-[1.1] tracking-[-0.01em] text-foreground mb-3">
           Disclaimer
         </h1>
-        <p className="font-mono text-[10px] tracking-[0.1em] uppercase text-fg-muted">
+        <p className="font-mono text-[10px] tracking-[0.1em] uppercase text-muted-foreground">
           Last updated · April 2026
         </p>
       </header>
 
-      <div className="space-y-10 text-fg-secondary leading-[1.7] text-[14px]">
-        <div className="bg-fg-primary/5 border border-border-subtle rounded-lg p-4 text-fg-primary/80">
-          <strong className="text-fg-primary">Audric is beta software.</strong>{" "}
+      <div className="space-y-10 text-muted-foreground leading-[1.7] text-[14px]">
+        <div className="bg-foreground/5 border border-border rounded-lg p-4 text-foreground/80">
+          <strong className="text-foreground">Audric is beta software.</strong>{" "}
           This software is provided &quot;as is&quot; without warranty of any
           kind. Use at your own risk.
         </div>
 
         <section>
-          <h2 className="text-fg-primary font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
+          <h2 className="text-foreground font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
             Risk of Loss
           </h2>
           <p>
@@ -44,7 +44,7 @@ export default function DisclaimerPage() {
         </section>
 
         <section>
-          <h2 className="text-fg-primary font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
+          <h2 className="text-foreground font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
             Smart Contract Risk
           </h2>
           <p>
@@ -57,7 +57,7 @@ export default function DisclaimerPage() {
         </section>
 
         <section>
-          <h2 className="text-fg-primary font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
+          <h2 className="text-foreground font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
             No Guarantee of Returns
           </h2>
           <p>
@@ -68,7 +68,7 @@ export default function DisclaimerPage() {
         </section>
 
         <section>
-          <h2 className="text-fg-primary font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
+          <h2 className="text-foreground font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
             AI Assistant Accuracy
           </h2>
           <p>
@@ -90,7 +90,7 @@ export default function DisclaimerPage() {
         </section>
 
         <section>
-          <h2 className="text-fg-primary font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
+          <h2 className="text-foreground font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
             Authentication and Key Management
           </h2>
           <p>
@@ -102,7 +102,7 @@ export default function DisclaimerPage() {
         </section>
 
         <section>
-          <h2 className="text-fg-primary font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
+          <h2 className="text-foreground font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
             Tax Implications
           </h2>
           <p>
@@ -116,7 +116,7 @@ export default function DisclaimerPage() {
         </section>
 
         <section>
-          <h2 className="text-fg-primary font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
+          <h2 className="text-foreground font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
             Regulatory
           </h2>
           <p>
@@ -131,7 +131,7 @@ export default function DisclaimerPage() {
         </section>
 
         <section>
-          <h2 className="text-fg-primary font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
+          <h2 className="text-foreground font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
             Beta Software
           </h2>
           <p>
@@ -140,7 +140,7 @@ export default function DisclaimerPage() {
             a formal third-party security audit. An internal security review of
             the underlying t2000 infrastructure has been completed and is{" "}
             <a
-              className="text-fg-primary underline underline-offset-2 hover:opacity-70"
+              className="text-foreground underline underline-offset-2 hover:opacity-70"
               href="https://github.com/mission69b/t2000/blob/main/spec/archive/one-offs/SECURITY_AUDIT.md"
               rel="noopener noreferrer"
               target="_blank"

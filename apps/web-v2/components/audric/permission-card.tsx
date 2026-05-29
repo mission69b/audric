@@ -247,13 +247,13 @@ function ModifiableFieldInput({
   }
 
   return (
-    <label className="flex flex-col gap-1 text-muted-foreground text-xs">
-      <span className="uppercase tracking-wide">
+    <label className="flex items-center gap-2.5 rounded-lg border border-border bg-muted px-3.5 py-2.5">
+      <span className="w-20 shrink-0 text-[13px] text-muted-foreground">
         {field.name}
         {field.asset ? ` (${field.asset})` : ""}
       </span>
       <input
-        className="rounded-md border border-input bg-background px-3 py-2 text-foreground text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+        className="min-w-0 flex-1 appearance-none border-0 bg-transparent font-mono text-[13.5px] text-foreground tabular-nums outline-none disabled:opacity-50"
         disabled={disabled}
         inputMode={isAmount ? "decimal" : "text"}
         min={isAmount ? 0 : undefined}
@@ -262,6 +262,9 @@ function ModifiableFieldInput({
         type={isAmount ? "number" : "text"}
         value={value}
       />
+      <span className="shrink-0 rounded-sm border border-border px-1.5 py-0.5 font-mono text-[9.5px] text-muted-foreground uppercase tracking-[0.06em]">
+        Edit
+      </span>
     </label>
   );
 }
@@ -281,6 +284,11 @@ export function PermissionCard(props: PermissionCardProps) {
   } = props;
 
   const label = TOOL_LABELS[toolName] ?? toolName.replace(/_/g, " ");
+  const eyebrowAsset =
+    typeof input.asset === "string" ? input.asset.toUpperCase() : null;
+  const eyebrow = eyebrowAsset
+    ? `${label.toUpperCase()} · ${eyebrowAsset}`
+    : label.toUpperCase();
 
   // Snapshot of the LLM-emitted input — used to seed `modifiedInput` and
   // to render the read-only preview body when no field is modified.
@@ -428,62 +436,87 @@ export function PermissionCard(props: PermissionCardProps) {
     previewBody === null ? formatInput(modifiedInput, toolName) : null;
 
   return (
-    <div className="my-3 space-y-2.5 rounded-lg border border-border bg-card p-4 text-card-foreground shadow-sm">
-      <div className="flex items-center justify-between">
-        <div className="font-medium text-sm">{label}</div>
+    <div className="my-3 overflow-hidden rounded-lg border border-border bg-card text-card-foreground">
+      <div className="px-5 pt-4">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h3 className="font-medium text-[15.5px] text-foreground tracking-[-0.014em]">
+              {label}
+            </h3>
+            <span className="mt-1.5 block font-mono text-[10.5px] text-muted-foreground uppercase tracking-[0.08em]">
+              {eyebrow}
+            </span>
+          </div>
+          {!resolved && (
+            <span
+              aria-label={`${secondsLeft} seconds remaining`}
+              className={`whitespace-nowrap rounded border px-[9px] py-[3px] font-mono text-[11px] tabular-nums ${
+                secondsLeft <= 10
+                  ? "border-destructive/30 bg-destructive/[0.08] text-destructive"
+                  : "border-border bg-muted text-muted-foreground"
+              }`}
+              role="timer"
+            >
+              {secondsLeft}s
+            </span>
+          )}
+        </div>
+
         {!resolved && (
-          <span
-            aria-label={`${secondsLeft} seconds remaining`}
-            className={`font-mono text-[10px] tabular-nums ${
-              secondsLeft <= 10 ? "text-error-solid" : "text-muted-foreground"
-            }`}
-            role="timer"
-          >
-            {secondsLeft}s
-          </span>
+          <div className="mt-4 h-0.5 w-full overflow-hidden bg-border">
+            <div
+              className={`h-full transition-all duration-1000 ease-linear ${
+                secondsLeft <= 10 ? "bg-destructive" : "bg-foreground"
+              }`}
+              style={{ width: `${progress * 100}%` }}
+            />
+          </div>
         )}
       </div>
 
+      <div className="space-y-3 px-5 pt-[18px] pb-3">
+        {description && (
+          <p className="text-[13.5px] text-muted-foreground leading-[1.55]">
+            {description}
+          </p>
+        )}
+
+        {previewBody}
+        {inputSummary && (
+          <p className="font-mono text-foreground text-sm">{inputSummary}</p>
+        )}
+
+        {!resolved && modifiableFields.length > 0 && (
+          <div className="space-y-1.5">
+            {modifiableFields.map((field) => (
+              <ModifiableFieldInput
+                disabled={disabled === true || inFlight}
+                field={field}
+                initialValue={initialInput[field.name]}
+                key={field.name}
+                onChange={handleFieldChange}
+              />
+            ))}
+          </div>
+        )}
+
+        {errorMessage && (
+          <div className="rounded-md border border-destructive/40 bg-destructive/5 p-2 text-destructive text-xs">
+            {errorMessage}
+          </div>
+        )}
+      </div>
+
+      <div className="flex items-center justify-between border-border border-t px-5 py-3 font-mono text-[10.5px] text-muted-foreground uppercase tracking-[0.06em]">
+        <span className="inline-flex items-center gap-1.5">
+          <span aria-hidden="true">⚡</span>
+          Gas · Sponsored
+        </span>
+        <span>You decide</span>
+      </div>
+
       {!resolved && (
-        <div className="h-0.5 w-full overflow-hidden rounded-full bg-border">
-          <div
-            className="h-full rounded-full bg-foreground transition-all duration-1000 ease-linear"
-            style={{ width: `${progress * 100}%` }}
-          />
-        </div>
-      )}
-
-      {description && (
-        <p className="text-muted-foreground text-xs">{description}</p>
-      )}
-
-      {previewBody}
-      {inputSummary && (
-        <p className="font-mono text-foreground text-sm">{inputSummary}</p>
-      )}
-
-      {!resolved && modifiableFields.length > 0 && (
-        <div className="space-y-2 rounded-md border border-border bg-background p-2">
-          {modifiableFields.map((field) => (
-            <ModifiableFieldInput
-              disabled={disabled === true || inFlight}
-              field={field}
-              initialValue={initialInput[field.name]}
-              key={field.name}
-              onChange={handleFieldChange}
-            />
-          ))}
-        </div>
-      )}
-
-      {errorMessage && (
-        <div className="rounded-md border border-destructive/40 bg-destructive/5 p-2 text-destructive text-xs">
-          {errorMessage}
-        </div>
-      )}
-
-      {!resolved && (
-        <div className="flex items-center justify-end gap-2">
+        <div className="flex items-center justify-end gap-2 px-5 pt-3.5 pb-[18px]">
           <Button
             disabled={disabled === true || inFlight}
             onClick={() => {
@@ -491,7 +524,7 @@ export function PermissionCard(props: PermissionCardProps) {
                 console.error("[permission-card] deny failed:", err);
               });
             }}
-            variant="outline"
+            variant="ghost"
           >
             Deny
           </Button>
@@ -714,7 +747,7 @@ export function BundlePermissionCard(props: BundlePermissionCardProps) {
             {stepCount} operations · 1 Payment Intent · Atomic
           </span>
           {bundleAsset && (
-            <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-[0.12em]">
+            <span className="font-mono text-[10.5px] text-muted-foreground uppercase tracking-[0.08em]">
               ATOMIC · {bundleAsset}
             </span>
           )}
@@ -722,8 +755,10 @@ export function BundlePermissionCard(props: BundlePermissionCardProps) {
         {!resolved && (
           <span
             aria-label={`${secondsLeft} seconds remaining`}
-            className={`font-mono text-[10px] tabular-nums ${
-              secondsLeft <= 10 ? "text-error-solid" : "text-muted-foreground"
+            className={`whitespace-nowrap rounded border px-[9px] py-[3px] font-mono text-[11px] tabular-nums ${
+              secondsLeft <= 10
+                ? "border-destructive/30 bg-destructive/[0.08] text-destructive"
+                : "border-border bg-muted text-muted-foreground"
             }`}
             role="timer"
           >

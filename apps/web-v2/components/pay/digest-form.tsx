@@ -71,7 +71,7 @@ export function DigestForm({ slug, onSuccess, onError }: DigestFormProps) {
   if (!expanded) {
     return (
       <button
-        className="w-full py-1 text-center font-mono text-[10px] tracking-[0.06em] text-fg-muted transition hover:text-fg-primary"
+        className="w-full py-1 text-center font-mono text-[10px] tracking-[0.06em] text-muted-foreground transition hover:text-foreground"
         onClick={() => setExpanded(true)}
         type="button"
       >
@@ -83,14 +83,14 @@ export function DigestForm({ slug, onSuccess, onError }: DigestFormProps) {
   return (
     <form className="space-y-2" onSubmit={handleSubmit}>
       <label
-        className="block font-mono text-[10px] uppercase tracking-[0.1em] text-fg-muted"
+        className="block font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground"
         htmlFor={`digest-input-${slug}`}
       >
         Transaction digest
       </label>
       <input
         autoFocus
-        className="h-10 w-full rounded-xs border border-border-subtle bg-surface-page px-3 font-mono text-[11px] text-fg-primary placeholder:text-fg-muted focus:border-border-focus focus:outline-none"
+        className="h-10 w-full rounded-xs border border-border bg-background px-3 font-mono text-[11px] text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none"
         disabled={verifying}
         id={`digest-input-${slug}`}
         onChange={(e) => setDigest(e.target.value)}
@@ -100,14 +100,14 @@ export function DigestForm({ slug, onSuccess, onError }: DigestFormProps) {
       />
       <div className="flex gap-2">
         <button
-          className="h-10 flex-1 rounded-pill border border-border-strong bg-transparent font-mono text-[11px] uppercase tracking-[0.06em] text-fg-primary transition hover:bg-surface-sunken focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40"
+          className="h-10 flex-1 rounded-pill border border-border bg-transparent font-mono text-[11px] uppercase tracking-[0.06em] text-foreground transition hover:bg-muted focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40"
           disabled={!digest.trim() || verifying}
           type="submit"
         >
           {verifying ? "Verifying..." : "Verify"}
         </button>
         <button
-          className="h-10 rounded-pill border border-border-subtle bg-transparent px-4 font-mono text-[11px] uppercase tracking-[0.06em] text-fg-secondary transition hover:bg-surface-sunken hover:text-fg-primary focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none"
+          className="h-10 rounded-pill border border-border bg-transparent px-4 font-mono text-[11px] uppercase tracking-[0.06em] text-muted-foreground transition hover:bg-muted hover:text-foreground focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none"
           onClick={() => {
             setExpanded(false);
             setDigest("");

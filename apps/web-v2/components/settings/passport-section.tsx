@@ -92,14 +92,14 @@ export function PassportSection({
 
   return (
     <div className="flex flex-col">
-      <div className="mb-5 rounded-md border border-border-subtle bg-surface-sunken p-4">
+      <div className="mb-5 rounded-md border border-border bg-muted p-4">
         <div className="mb-2 flex items-center gap-2.5">
           <Tag tone="green">zkLogin</Tag>
-          <span className="text-[13px] text-fg-primary">
+          <span className="text-[13px] text-foreground">
             No seed phrase, ever
           </span>
         </div>
-        <p className="text-[12px] leading-[1.55] text-fg-secondary">
+        <p className="text-[12px] leading-[1.55] text-muted-foreground">
           Your wallet is controlled by your Google login via Sui zkLogin. There
           is no seed phrase to lose. Sign out and sign back in any time &mdash;
           your wallet and funds remain.
@@ -107,7 +107,7 @@ export function PassportSection({
       </div>
 
       <div
-        className="mb-5 rounded-md border border-border-subtle bg-surface-sunken p-4"
+        className="mb-5 rounded-md border border-border bg-muted p-4"
         data-testid="passport-handle-card"
       >
         {fullHandle ? (
@@ -115,38 +115,38 @@ export function PassportSection({
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <span aria-hidden="true">🪪</span>
-                <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-fg-muted">
+                <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
                   IDENTITY
                 </p>
               </div>
               <p
-                className="mt-2 break-all font-mono text-[18px] leading-[1.2] text-fg-primary"
+                className="mt-2 break-all font-mono text-[18px] leading-[1.2] text-foreground"
                 data-testid="passport-handle-value"
               >
                 {fullHandle}
               </p>
-              <p className="mt-1 text-[12px] leading-[1.5] text-fg-secondary">
+              <p className="mt-1 text-[12px] leading-[1.5] text-muted-foreground">
                 Your handle on the Sui network.
               </p>
             </div>
 
             <div className="flex shrink-0 items-center gap-1.5 pt-0.5">
               <Link
-                className="px-2 py-1 font-mono text-[10px] uppercase tracking-[0.1em] text-fg-muted transition hover:text-fg-primary focus-visible:underline focus-visible:outline-none"
+                className="px-2 py-1 font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground transition hover:text-foreground focus-visible:underline focus-visible:outline-none"
                 href={`/${username}`}
               >
                 VIEW PROFILE →
               </Link>
               <button
                 aria-label="Copy Audric handle"
-                className="rounded-xs border border-border-subtle px-2 py-1 font-mono text-[10px] uppercase tracking-[0.1em] text-fg-secondary transition hover:border-border-strong hover:text-fg-primary focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none"
+                className="rounded-xs border border-border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground transition hover:border-foreground/30 hover:text-foreground focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none"
                 onClick={handleHandleCopy}
                 type="button"
               >
                 {handleCopied ? "\u2713 COPIED" : "COPY"}
               </button>
               <button
-                className="rounded-xs border border-fg-primary bg-fg-primary px-2 py-1 font-mono text-[10px] uppercase tracking-[0.1em] text-fg-inverse transition hover:opacity-90 focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-xs border border-foreground bg-foreground px-2 py-1 font-mono text-[10px] uppercase tracking-[0.1em] text-background transition hover:opacity-90 focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
                 data-testid="passport-handle-change"
                 disabled={!jwt || !address}
                 onClick={() => setChangeOpen(true)}
@@ -161,18 +161,18 @@ export function PassportSection({
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <span aria-hidden="true">🪪</span>
-                <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-fg-muted">
+                <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
                   IDENTITY
                 </p>
               </div>
-              <p className="mt-2 text-[12px] leading-[1.55] text-fg-secondary">
+              <p className="mt-2 text-[12px] leading-[1.55] text-muted-foreground">
                 You haven&rsquo;t claimed your Audric handle yet &mdash; friends
                 send you USDC by typing{" "}
-                <span className="font-mono text-fg-primary">@yourhandle</span>.
+                <span className="font-mono text-foreground">@yourhandle</span>.
               </p>
             </div>
             <button
-              className="shrink-0 rounded-sm border border-fg-primary bg-fg-primary px-3 py-2 font-mono text-[10px] uppercase tracking-[0.1em] text-fg-inverse transition hover:opacity-90 focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+              className="shrink-0 rounded-sm border border-foreground bg-foreground px-3 py-2 font-mono text-[10px] uppercase tracking-[0.1em] text-background transition hover:opacity-90 focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
               data-testid="passport-handle-claim"
               disabled={!jwt || !address}
               onClick={() => setClaimOpen(true)}
@@ -184,18 +184,18 @@ export function PassportSection({
         )}
       </div>
 
-      <div className="mb-5 rounded-md border border-border-subtle bg-surface-sunken p-4">
-        <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-fg-muted">
+      <div className="mb-5 rounded-md border border-border bg-muted p-4">
+        <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
           Account
         </p>
         <PassportRow label="Wallet address">
           <div className="flex items-center gap-2">
-            <span className="font-mono text-[13px] text-fg-primary">
+            <span className="font-mono text-[13px] text-foreground">
               {address ? truncateAddress(address) : "\u2014"}
             </span>
             <button
               aria-label="Copy wallet address"
-              className="rounded-xs border border-border-subtle px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.12em] text-fg-muted transition hover:border-border-strong hover:text-fg-primary focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-xs border border-border px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.12em] text-muted-foreground transition hover:border-foreground/30 hover:text-foreground focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
               disabled={!address}
               onClick={handleCopy}
               type="button"
@@ -206,29 +206,29 @@ export function PassportSection({
         </PassportRow>
 
         <PassportRow label="Network">
-          <span className="text-[13px] capitalize text-fg-primary">
+          <span className="text-[13px] capitalize text-foreground">
             {network}
           </span>
         </PassportRow>
 
         <PassportRow label="Sign-in email">
-          <span className="max-w-[280px] truncate text-[13px] text-fg-primary">
+          <span className="max-w-[280px] truncate text-[13px] text-foreground">
             {signInEmail ?? "\u2014"}
           </span>
         </PassportRow>
 
         <PassportRow label="Sign-in session" last>
           <div className="flex flex-col items-end gap-0.5">
-            <span className="text-[13px] text-fg-primary">
+            <span className="text-[13px] text-foreground">
               {expiryDate
                 ? `Expires ${expiryDate.toLocaleDateString()} (${daysLeft}d)`
                 : "\u2014"}
             </span>
             {expiringSoon && (
-              <span className="flex items-center gap-1 text-[11px] text-warning-fg">
+              <span className="flex items-center gap-1 text-[11px] text-warning">
                 <span
                   aria-hidden="true"
-                  className="h-1.5 w-1.5 rounded-full bg-warning-solid"
+                  className="h-1.5 w-1.5 rounded-full bg-warning"
                 />
                 Expiring soon
               </span>
@@ -237,13 +237,13 @@ export function PassportSection({
         </PassportRow>
       </div>
 
-      <div className="mt-5 rounded-md border border-border-subtle bg-surface-sunken p-4">
-        <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-fg-muted">
+      <div className="mt-5 rounded-md border border-border bg-muted p-4">
+        <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
           Appearance
         </p>
-        <p className="mt-1 mb-3.5 text-[12px] text-fg-secondary">
+        <p className="mt-1 mb-3.5 text-[12px] text-muted-foreground">
           Choose how Audric looks.{" "}
-          <span className="font-mono text-fg-primary">System</span> follows your
+          <span className="font-mono text-foreground">System</span> follows your
           operating system.
         </p>
         <fieldset
@@ -260,8 +260,8 @@ export function PassportSection({
                   "rounded-sm border px-3 py-2 font-mono text-[10px] uppercase tracking-[0.12em] transition",
                   "focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none",
                   active
-                    ? "border-fg-primary bg-fg-primary text-fg-inverse"
-                    : "border-border-strong bg-surface-card text-fg-secondary hover:border-fg-primary hover:text-fg-primary",
+                    ? "border-foreground bg-foreground text-background"
+                    : "border-border bg-card text-muted-foreground hover:border-foreground hover:text-foreground",
                 ].join(" ")}
                 key={t}
                 onClick={() => setTheme(t as Theme)}
@@ -277,14 +277,14 @@ export function PassportSection({
 
       <div className="mt-6 flex gap-2">
         <button
-          className="rounded-sm border border-border-strong px-4 py-2.5 font-mono text-[10px] uppercase tracking-[0.1em] text-fg-primary transition hover:bg-surface-sunken focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none"
+          className="rounded-sm border border-border px-4 py-2.5 font-mono text-[10px] uppercase tracking-[0.1em] text-foreground transition hover:bg-muted focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none"
           onClick={onRefresh}
           type="button"
         >
           Refresh session
         </button>
         <button
-          className="rounded-sm border border-border-strong px-4 py-2.5 font-mono text-[10px] uppercase tracking-[0.1em] text-fg-primary transition hover:bg-surface-sunken focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none"
+          className="rounded-sm border border-border px-4 py-2.5 font-mono text-[10px] uppercase tracking-[0.1em] text-foreground transition hover:bg-muted focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none"
           onClick={onLogout}
           type="button"
         >
@@ -334,10 +334,10 @@ function PassportRow({
     <div
       className={[
         "flex items-center justify-between py-4",
-        last ? "" : "border-b border-border-subtle",
+        last ? "" : "border-b border-border",
       ].join(" ")}
     >
-      <span className="text-[13px] text-fg-secondary">{label}</span>
+      <span className="text-[13px] text-muted-foreground">{label}</span>
       <div className="flex items-center">{children}</div>
     </div>
   );

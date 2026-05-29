@@ -24,9 +24,9 @@ export function MarketingNav() {
   const isLoading = status === "redirecting" || status === "loading";
 
   return (
-    <header className="sticky top-0 z-50 flex items-center justify-between px-5 sm:px-8 py-5 border-b border-border-subtle bg-surface-page/95 backdrop-blur-sm">
+    <header className="sticky top-0 z-50 flex items-center justify-between px-5 sm:px-8 py-5 border-b border-border bg-background/95 backdrop-blur-sm">
       <button
-        className="text-[18px] font-medium tracking-[-0.01em] text-fg-primary cursor-pointer hover:opacity-70 transition"
+        className="text-[18px] font-medium tracking-[-0.01em] text-foreground cursor-pointer hover:opacity-70 transition"
         onClick={() => {
           window.location.href = "/";
         }}
@@ -38,7 +38,7 @@ export function MarketingNav() {
       <nav aria-label="Marketing" className="hidden sm:flex items-center gap-6">
         {NAV_LINKS.map((link) => (
           <a
-            className="font-mono text-[11px] tracking-[0.08em] uppercase text-fg-secondary hover:text-fg-primary transition"
+            className="font-mono text-[11px] tracking-[0.08em] uppercase text-muted-foreground hover:text-foreground transition"
             href={link.href}
             key={link.href}
           >
@@ -48,7 +48,7 @@ export function MarketingNav() {
       </nav>
 
       <button
-        className="inline-flex items-center gap-2 bg-fg-primary text-fg-inverse px-4 py-2.5 rounded-xs font-mono text-[11px] tracking-[0.08em] uppercase transition hover:opacity-80 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+        className="inline-flex items-center gap-2 bg-foreground text-background px-4 py-2.5 rounded-xs font-mono text-[11px] tracking-[0.08em] uppercase transition hover:opacity-80 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
         disabled={isLoading}
         onClick={login}
         type="button"

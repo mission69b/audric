@@ -61,11 +61,11 @@ export function SuinsResolution(props: SuinsResolutionProps) {
     ? `SuiNS resolution: ${source} ${isForward ? 'resolves to' : 'has SuiNS name'} ${target}`
     : `SuiNS resolution: ${source} ${fallbackText}`;
 
-  const dotColor = isResolved ? 'bg-success-solid' : 'bg-fg-muted';
+  const dotColor = isResolved ? 'bg-success' : 'bg-muted-foreground';
 
   return (
     <div
-      className="my-1.5 flex items-center gap-2 rounded-md border border-border-subtle bg-surface-card px-3 py-2"
+      className="my-1.5 flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2"
       role="status"
       aria-label={ariaLabel}
       title={title}
@@ -74,36 +74,36 @@ export function SuinsResolution(props: SuinsResolutionProps) {
         className={`inline-block w-1.5 h-1.5 rounded-full ${dotColor}`}
         aria-hidden="true"
       />
-      <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-fg-muted">
+      <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
         {isForward ? 'SUINS' : 'ADDRESS'}
       </span>
       <span className="ml-auto flex items-center gap-2 min-w-0">
-        <span className="font-mono text-[11px] text-fg-primary truncate">
+        <span className="font-mono text-[11px] text-foreground truncate">
           {source}
         </span>
         {target ? (
           <>
             <span
-              className="font-mono text-[11px] text-fg-muted"
+              className="font-mono text-[11px] text-muted-foreground"
               aria-hidden="true"
             >
               →
             </span>
-            <span className="font-mono text-[11px] text-fg-primary truncate">
+            <span className="font-mono text-[11px] text-foreground truncate">
               {target}
             </span>
           </>
         ) : (
-          <span className="font-mono text-[11px] text-fg-muted truncate">
+          <span className="font-mono text-[11px] text-muted-foreground truncate">
             {fallbackText}
           </span>
         )}
         {pillText && (
           <span
-            className="font-mono text-[9px] uppercase tracking-[0.08em] text-fg-muted rounded-full px-2 py-0.5"
+            className="font-mono text-[9px] uppercase tracking-[0.08em] text-muted-foreground rounded-full px-2 py-0.5"
             style={{
-              border: '0.5px solid var(--border-subtle)',
-              background: 'var(--surface-sunken)',
+              border: '0.5px solid var(--border)',
+              background: 'var(--muted)',
             }}
           >
             {pillText}

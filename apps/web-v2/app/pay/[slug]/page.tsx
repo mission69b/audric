@@ -105,13 +105,13 @@ export default function PayPage({ params }: PageProps) {
 
 function PaySkeleton() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-surface-page px-4 py-8">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-8">
       <div className="w-full max-w-sm">
-        <div className="rounded-md border border-border-subtle bg-surface-card p-8 text-center">
+        <div className="rounded-md border border-border bg-card p-8 text-center">
           <div className="animate-pulse space-y-4">
-            <div className="mx-auto h-40 w-40 rounded-md bg-surface-sunken" />
-            <div className="mx-auto h-4 w-3/4 rounded bg-surface-sunken" />
-            <div className="mx-auto h-4 w-1/2 rounded bg-surface-sunken" />
+            <div className="mx-auto h-40 w-40 rounded-md bg-muted" />
+            <div className="mx-auto h-4 w-3/4 rounded bg-muted" />
+            <div className="mx-auto h-4 w-1/2 rounded bg-muted" />
           </div>
         </div>
       </div>

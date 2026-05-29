@@ -107,10 +107,16 @@ export default function RootLayout({
       </head>
       <body className="antialiased">
         <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
+          // [R6.0] Dual attribute: `.dark` class drives Audric's `dark:`
+          // utilities + shadow overrides; `data-theme` drives Geist DS
+          // ([data-theme="light"] fires the Geist light ramp). next-themes
+          // ^0.4 supports the attribute array. Light is the canonical
+          // first impression for the consumer product (D-theme: option B);
+          // the in-app/homepage switcher lets users opt into dark.
+          attribute={["class", "data-theme"]}
+          defaultTheme="light"
           disableTransitionOnChange
-          enableSystem
+          enableSystem={false}
         >
           <ZkLoginProviders>
             <TooltipProvider>{children}</TooltipProvider>

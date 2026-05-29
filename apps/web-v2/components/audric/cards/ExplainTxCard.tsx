@@ -22,28 +22,28 @@ export function ExplainTxCard({ data }: { data: TxExplanation }) {
     <CardShell title="Transaction">
       <div className="space-y-1 font-mono text-[11px]">
         <div className="flex justify-between">
-          <span className="text-fg-muted">Status</span>
+          <span className="text-muted-foreground">Status</span>
           <span
-            className={isSuccess ? 'text-success-solid' : 'text-warning-solid'}
+            className={isSuccess ? 'text-success' : 'text-warning'}
           >
             {data.status}
           </span>
         </div>
         <div className="flex justify-between">
-          <span className="text-fg-muted">Gas</span>
-          <span className="text-fg-primary">{data.gasUsed}</span>
+          <span className="text-muted-foreground">Gas</span>
+          <span className="text-foreground">{data.gasUsed}</span>
         </div>
         {data.timestamp && (
           <div className="flex justify-between">
-            <span className="text-fg-muted">Time</span>
-            <span className="text-fg-primary">
+            <span className="text-muted-foreground">Time</span>
+            <span className="text-foreground">
               {fmtRelativeTime(data.timestamp)}
             </span>
           </div>
         )}
       </div>
       {data.effects.length > 0 && (
-        <div className="mt-2 pt-2 border-t border-border-subtle/50 space-y-1 text-[11px]">
+        <div className="mt-2 pt-2 border-t border-border/50 space-y-1 text-[11px]">
           {data.effects
             .filter((e) => e.type !== 'event')
             .map((e, i) => {
@@ -61,15 +61,15 @@ export function ExplainTxCard({ data }: { data: TxExplanation }) {
                   <span
                     className={
                       e.type === 'send'
-                        ? 'text-warning-solid'
-                        : 'text-success-solid'
+                        ? 'text-warning'
+                        : 'text-success'
                     }
                   >
                     {prefix}
                     {amount}
                   </span>
                   {addr && (
-                    <span className="text-fg-muted text-[10px]">{addr}</span>
+                    <span className="text-muted-foreground text-[10px]">{addr}</span>
                   )}
                 </div>
               );

@@ -29,7 +29,7 @@ export function AddressCopyButton({ address }: { address: string }) {
     <button
       aria-label={copied ? "Copied to clipboard" : `Copy address ${address}`}
       aria-live="polite"
-      className="block w-full rounded-md border border-border-subtle bg-surface-page px-3 py-2 text-center text-[12px] text-fg-primary transition-colors hover:border-border-strong"
+      className="block w-full rounded-md border border-border bg-background px-3 py-2 text-center text-[12px] text-foreground transition-colors hover:border-foreground/30"
       onClick={handleCopy}
       type="button"
     >

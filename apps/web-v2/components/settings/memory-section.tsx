@@ -114,7 +114,7 @@ export function MemorySection() {
 
   return (
     <div className="flex flex-col gap-3.5">
-      <p className="mb-1.5 text-[13px] text-fg-secondary">
+      <p className="mb-1.5 text-[13px] text-muted-foreground">
         Audric remembers context from your conversations to give better answers
         over time. The facts below are extracted by MemWal — Audric&rsquo;s
         privacy-preserving memory layer.
@@ -135,11 +135,11 @@ export function MemorySection() {
 
 function LoadingCard() {
   return (
-    <div className="rounded-md border border-border-subtle bg-surface-sunken p-5">
-      <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-fg-muted">
+    <div className="rounded-md border border-border bg-muted p-5">
+      <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
         Loading
       </p>
-      <p className="mt-3 text-[13px] leading-[1.55] text-fg-secondary">
+      <p className="mt-3 text-[13px] leading-[1.55] text-muted-foreground">
         Asking MemWal what Audric currently remembers about you&hellip;
       </p>
     </div>
@@ -148,11 +148,11 @@ function LoadingCard() {
 
 function EmptyCard() {
   return (
-    <div className="rounded-md border border-border-subtle bg-surface-sunken p-5">
-      <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-fg-muted">
+    <div className="rounded-md border border-border bg-muted p-5">
+      <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
         Nothing remembered yet
       </p>
-      <p className="mt-3 text-[13px] leading-[1.55] text-fg-secondary">
+      <p className="mt-3 text-[13px] leading-[1.55] text-muted-foreground">
         Audric hasn&rsquo;t learned anything about you yet. Start chatting —
         your agent learns about your preferences, holdings, and strategies from
         new conversations. Over the next ~30 days the list will fill in.
@@ -163,11 +163,11 @@ function EmptyCard() {
 
 function UnconfiguredCard() {
   return (
-    <div className="rounded-md border border-border-subtle bg-surface-sunken p-5">
-      <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-fg-muted">
+    <div className="rounded-md border border-border bg-muted p-5">
+      <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
         Memory layer not configured
       </p>
-      <p className="mt-3 text-[13px] leading-[1.55] text-fg-secondary">
+      <p className="mt-3 text-[13px] leading-[1.55] text-muted-foreground">
         MemWal credentials aren&rsquo;t set on this deployment. Audric is still
         functional — it just can&rsquo;t recall facts across sessions. Contact
         your team admin if this looks wrong.
@@ -178,16 +178,16 @@ function UnconfiguredCard() {
 
 function ErrorCard({ message }: { message: string }) {
   return (
-    <div className="rounded-md border border-border-subtle bg-surface-sunken p-5">
-      <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-fg-muted">
+    <div className="rounded-md border border-border bg-muted p-5">
+      <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
         Couldn&rsquo;t reach memory layer
       </p>
-      <p className="mt-3 text-[13px] leading-[1.55] text-fg-secondary">
+      <p className="mt-3 text-[13px] leading-[1.55] text-muted-foreground">
         We couldn&rsquo;t fetch your remembered facts just now. Chat still
         works, and Audric will resume recalling on the next session once the
         memory layer is reachable. Try again in a moment.
       </p>
-      <p className="mt-3 font-mono text-[10px] text-fg-muted">
+      <p className="mt-3 font-mono text-[10px] text-muted-foreground">
         Details: {message}
       </p>
     </div>
@@ -197,7 +197,7 @@ function ErrorCard({ message }: { message: string }) {
 function RecordList({ records }: { records: MemoryListRecord[] }) {
   return (
     <div className="flex flex-col gap-2">
-      <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-fg-muted">
+      <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
         {records.length} {records.length === 1 ? "fact" : "facts"} remembered
       </p>
       <ul className="flex flex-col gap-2">
@@ -208,16 +208,16 @@ function RecordList({ records }: { records: MemoryListRecord[] }) {
           // Phase 3.5 swaps this for the real id once MemWal exposes
           // it (or once a host-side provenance table ships).
           <li
-            className="rounded-md border border-border-subtle bg-surface-sunken px-4 py-3"
+            className="rounded-md border border-border bg-muted px-4 py-3"
             key={record.text}
           >
-            <p className="text-[13px] leading-[1.55] text-fg-primary">
+            <p className="text-[13px] leading-[1.55] text-foreground">
               {record.text}
             </p>
           </li>
         ))}
       </ul>
-      <p className="mt-2 font-mono text-[10px] text-fg-muted">
+      <p className="mt-2 font-mono text-[10px] text-muted-foreground">
         The list above is approximate — pulled by similarity to a broad query.
         Some facts may not appear here but still inform chat. Per-fact controls
         (delete, source link) ship in a future release.
@@ -228,13 +228,13 @@ function RecordList({ records }: { records: MemoryListRecord[] }) {
 
 function ForgetHintCard() {
   return (
-    <div className="rounded-md border border-border-subtle bg-surface-sunken p-5">
-      <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-fg-muted">
+    <div className="rounded-md border border-border bg-muted p-5">
+      <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
         Want Audric to forget something?
       </p>
-      <p className="mt-3 text-[13px] leading-[1.55] text-fg-secondary">
+      <p className="mt-3 text-[13px] leading-[1.55] text-muted-foreground">
         Tell Audric in chat:{" "}
-        <span className="font-mono text-fg-primary">
+        <span className="font-mono text-foreground">
           &ldquo;forget what you know about &lt;topic&gt;&rdquo;
         </span>
         . Per-fact delete from this page ships in a future update.

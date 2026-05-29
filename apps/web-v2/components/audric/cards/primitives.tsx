@@ -36,24 +36,42 @@ export function CardShell({
   children,
   noPadding,
   noHeader,
+  live,
+  footer,
 }: {
   badge?: ReactNode;
   children: ReactNode;
+  /** [R6.3] Renders the eyebrow status dot in cyan `--signal` (live feed). */
+  live?: boolean;
+  /** [R6.3] Optional dashed-top footer slot (spec `.card-f`). */
+  footer?: ReactNode;
   noHeader?: boolean;
   noPadding?: boolean;
   title: string;
 }) {
   return (
-    <div className="my-1.5 overflow-hidden rounded-md border border-border-subtle bg-surface-card">
+    <div className="my-1.5 overflow-hidden rounded-lg border border-border bg-card">
       {!noHeader && (
-        <div className="flex items-center justify-between border-border-subtle border-b bg-surface-sunken px-3.5 py-2">
-          <span className="font-mono text-[10px] text-fg-muted uppercase tracking-[0.12em]">
+        <div className="flex items-center justify-between border-border border-b px-[18px] py-[13px]">
+          <span className="inline-flex items-center gap-2 font-mono text-[10.5px] text-muted-foreground uppercase tracking-[0.08em]">
+            <span
+              className={
+                live
+                  ? "h-1 w-1 rounded-full bg-signal shadow-[0_0_0_3px_var(--signal-bg)]"
+                  : "h-1 w-1 rounded-full bg-muted-foreground"
+              }
+            />
             {title}
           </span>
           {badge}
         </div>
       )}
-      {noPadding ? children : <div className="px-3.5 py-2.5 text-xs">{children}</div>}
+      {noPadding ? children : <div className="px-[18px] py-4 text-xs">{children}</div>}
+      {footer && (
+        <div className="flex items-center justify-between border-border border-t border-dashed px-[18px] py-[11px] font-mono text-[11px] text-muted-foreground">
+          {footer}
+        </div>
+      )}
     </div>
   );
 }
@@ -67,8 +85,8 @@ export function DetailRow({
 }) {
   return (
     <div className="flex items-baseline justify-between">
-      <span className="text-fg-muted">{label}</span>
-      <span className="text-right text-fg-primary">{children}</span>
+      <span className="text-muted-foreground">{label}</span>
+      <span className="text-right text-foreground">{children}</span>
     </div>
   );
 }
@@ -82,7 +100,7 @@ export function MonoLabel({
 }) {
   return (
     <span
-      className={`font-mono text-[10px] text-fg-muted uppercase tracking-widest${className ? ` ${className}` : ""}`}
+      className={`font-mono text-[10px] text-muted-foreground uppercase tracking-widest${className ? ` ${className}` : ""}`}
     >
       {children}
     </span>
@@ -105,14 +123,14 @@ export function AddressBadge({
   const label = suinsName ?? truncated;
   return (
     <span
-      className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-mono text-[9px] text-fg-muted uppercase tracking-[0.08em]"
+      className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-mono text-[9px] text-muted-foreground uppercase tracking-[0.08em]"
       style={{
-        background: "var(--surface-sunken)",
-        border: "0.5px solid var(--border-subtle)",
+        background: "var(--muted)",
+        border: "0.5px solid var(--border)",
       }}
       title={suinsName ? `${suinsName} · ${address}` : address}
     >
-      <span className="inline-block h-1 w-1 rounded-full bg-warning-solid" />
+      <span className="inline-block h-1 w-1 rounded-full bg-warning" />
       {label}
     </span>
   );
@@ -126,11 +144,11 @@ export function TrendIndicator({
   value: number;
 }) {
   if (value === 0) {
-    return <span className="text-fg-muted">0{suffix}</span>;
+    return <span className="text-muted-foreground">0{suffix}</span>;
   }
   const isPositive = value > 0;
   return (
-    <span className={isPositive ? "text-success-solid" : "text-error-solid"}>
+    <span className={isPositive ? "text-success" : "text-destructive"}>
       {isPositive ? "▲" : "▼"} {isPositive ? "+" : ""}
       {value.toFixed(1)}
       {suffix}
@@ -153,7 +171,7 @@ export function MiniBar({ segments }: { segments: MiniBarSegment[] }) {
 
   return (
     <div className="space-y-1.5">
-      <div className="flex h-2 overflow-hidden rounded-full bg-border-subtle">
+      <div className="flex h-2 overflow-hidden rounded-full bg-border">
         {segments.map((s, i) => (
           <div
             className={`${colors[i % colors.length]} transition-all`}
@@ -162,7 +180,7 @@ export function MiniBar({ segments }: { segments: MiniBarSegment[] }) {
           />
         ))}
       </div>
-      <div className="flex gap-3 font-mono text-[10px] text-fg-muted">
+      <div className="flex gap-3 font-mono text-[10px] text-muted-foreground">
         {segments.slice(0, 4).map((s, i) => (
           <span className="flex items-center gap-1" key={s.label}>
             <span
@@ -180,25 +198,25 @@ type GaugeColorFn = (value: number) => string;
 
 const GAUGE_COLOR_HF: GaugeColorFn = (v) => {
   if (v < 1.1) {
-    return "var(--error-solid)";
+    return "var(--destructive)";
   }
   if (v < 1.5) {
-    return "var(--warning-solid)";
+    return "var(--warning)";
   }
   if (v < 2.0) {
-    return "var(--warning-solid)";
+    return "var(--warning)";
   }
-  return "var(--success-solid)";
+  return "var(--success)";
 };
 
 const GAUGE_COLOR_USAGE: GaugeColorFn = (v) => {
   if (v > 0.9) {
-    return "var(--error-solid)";
+    return "var(--destructive)";
   }
   if (v > 0.7) {
-    return "var(--warning-solid)";
+    return "var(--warning)";
   }
-  return "var(--success-solid)";
+  return "var(--success)";
 };
 
 interface GaugeProps {
@@ -221,7 +239,7 @@ export function Gauge({
 
   return (
     <div className="space-y-1">
-      <div className="relative h-2 overflow-hidden rounded-full bg-border-subtle">
+      <div className="relative h-2 overflow-hidden rounded-full bg-border">
         <div
           className="h-full rounded-full transition-all"
           style={{
@@ -233,7 +251,7 @@ export function Gauge({
           const tPct = Math.min(Math.max((t.value - min) / (max - min), 0), 1) * 100;
           return (
             <div
-              className="absolute top-0 h-full w-px bg-border-strong"
+              className="absolute top-0 h-full w-px bg-foreground/40"
               key={t.label}
               style={{ left: `${tPct}%` }}
               title={t.label}
@@ -243,7 +261,7 @@ export function Gauge({
       </div>
       {thresholds && thresholds.length > 0 && (
         <div
-          className={`flex ${thresholds.length === 1 ? "justify-end" : "justify-between"} font-mono text-[9px] text-fg-muted`}
+          className={`flex ${thresholds.length === 1 ? "justify-end" : "justify-between"} font-mono text-[9px] text-muted-foreground`}
         >
           {thresholds.map((t) => (
             <span key={t.label}>{t.label}</span>
@@ -261,24 +279,24 @@ export function StatusBadge({
 }) {
   const config = {
     critical: {
-      color: "bg-error-solid animate-pulse",
+      color: "bg-destructive animate-pulse",
       label: "Critical",
-      text: "text-error-solid",
+      text: "text-destructive",
     },
     danger: {
-      color: "bg-error-solid",
+      color: "bg-destructive",
       label: "Danger",
-      text: "text-error-solid",
+      text: "text-destructive",
     },
     healthy: {
-      color: "bg-success-solid",
+      color: "bg-success",
       label: "Healthy",
-      text: "text-success-solid",
+      text: "text-success",
     },
     warning: {
-      color: "bg-warning-solid",
+      color: "bg-warning",
       label: "Warning",
-      text: "text-warning-solid",
+      text: "text-warning",
     },
   };
   const c = config[status];
@@ -325,10 +343,10 @@ export function SuiscanLink({ digest }: { digest: string }) {
   const txUrl = `${SUISCAN_TX_URL}/${digest}`;
   const shortTx = `${digest.slice(0, 8)}...${digest.slice(-6)}`;
   return (
-    <div className="mt-1.5 flex items-center justify-between border-border-subtle border-t pt-1.5 font-mono text-[11px]">
-      <span className="text-fg-muted">{shortTx}</span>
+    <div className="mt-1.5 flex items-center justify-between border-border border-t pt-1.5 font-mono text-[11px]">
+      <span className="text-muted-foreground">{shortTx}</span>
       <a
-        className="flex items-center gap-1 text-[10px] text-info-solid transition hover:opacity-70"
+        className="flex items-center gap-1 text-[10px] text-foreground transition hover:opacity-70"
         href={txUrl}
         rel="noopener noreferrer"
         target="_blank"

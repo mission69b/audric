@@ -79,7 +79,7 @@ export function MessageVoteThumbs({
         aria-label="Upvote response"
         className={cn(
           "size-7 text-foreground/40 hover:text-foreground",
-          vote === "up" && "text-success-fg"
+          vote === "up" && "text-success"
         )}
         disabled={isPending}
         onClick={() => handleVote("up")}
@@ -92,7 +92,7 @@ export function MessageVoteThumbs({
         aria-label="Downvote response"
         className={cn(
           "size-7 text-foreground/40 hover:text-foreground",
-          vote === "down" && "text-error-fg"
+          vote === "down" && "text-destructive"
         )}
         disabled={isPending}
         onClick={() => handleVote("down")}
