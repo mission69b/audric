@@ -11,9 +11,9 @@ import type { ReactNode } from "react";
  * Verbatim copy except:
  *  - `import React from 'react'` → typed-only `import type {ReactNode}`
  *    (web-v2 uses React 19 automatic JSX runtime).
- *  - No engineering changes to behaviour; the Agentic Design System
- *    tokens these classes reference are ported alongside (see
- *    `app/globals.css` Phase 5a.0 block).
+ *  - No engineering changes to behaviour. (R6.3 — 2026-05-30 — the
+ *    Agentic Design System tokens these classes referenced were
+ *    migrated to Geist DS shadcn tokens; see `app/globals.css`.)
  *
  * Traceability: BENEFITS_SPEC_v07c.md §"Phase 5 — Renderer migration sweep".
  */

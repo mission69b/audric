@@ -38,7 +38,7 @@ Your money lives in a non-custodial wallet. Audric executes transactions, but yo
 | AI | `@t2000/engine` — 26 tools (18 read + 8 write), reasoning engine, extended thinking, canvas. Skills (multi-step playbooks) ship from `@t2000/mcp`. |
 | Database | NeonDB (Prisma) — 15 models (users, user preferences, profiles, memories, financial context, advice log, conversation log, session usage, payments, watch addresses, linked wallets, portfolio snapshots, turn metrics, app events, service purchases) |
 | Sessions | Upstash Redis (KV) |
-| Styling | Tailwind CSS v4, Agentic Design System |
+| Styling | Tailwind CSS v4, Geist Design System (via `@t2000/ui`) |
 | Hosting | Vercel |
 
 ## Audric Intelligence — the 4-system moat
