@@ -55,7 +55,7 @@ export const MessageContent = ({
 }: MessageContentProps) => (
   <div
     className={cn(
-      "flex min-w-0 max-w-full flex-col gap-2 overflow-hidden text-sm text-foreground",
+      "flex min-w-0 max-w-full flex-col gap-2 overflow-hidden text-[15px] text-foreground sm:text-sm",
       className
     )}
     {...props}

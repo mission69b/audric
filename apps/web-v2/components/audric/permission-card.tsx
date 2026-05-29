@@ -516,8 +516,9 @@ export function PermissionCard(props: PermissionCardProps) {
       </div>
 
       {!resolved && (
-        <div className="flex items-center justify-end gap-2 px-5 pt-3.5 pb-[18px]">
+        <div className="flex flex-col gap-2 px-5 pt-3.5 pb-[18px] sm:flex-row sm:items-center sm:justify-end">
           <Button
+            className="h-[46px] w-full sm:h-9 sm:w-auto"
             disabled={disabled === true || inFlight}
             onClick={() => {
               handleDeny().catch((err) => {
@@ -529,6 +530,7 @@ export function PermissionCard(props: PermissionCardProps) {
             Deny
           </Button>
           <Button
+            className="h-[46px] w-full sm:h-9 sm:w-auto"
             disabled={isApproveDisabled}
             onClick={() => {
               handleApprove().catch((err) => {
@@ -819,8 +821,9 @@ export function BundlePermissionCard(props: BundlePermissionCardProps) {
       )}
 
       {!resolved && (
-        <div className="flex items-center justify-end gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
           <Button
+            className="h-[46px] w-full sm:h-9 sm:w-auto"
             disabled={disabled === true || inFlight}
             onClick={() => {
               handleDeny().catch((err) => {
@@ -832,6 +835,7 @@ export function BundlePermissionCard(props: BundlePermissionCardProps) {
             Deny
           </Button>
           <Button
+            className="h-[46px] w-full sm:h-9 sm:w-auto"
             disabled={disabled === true || inFlight || resolved}
             onClick={() => {
               handleApprove().catch((err) => {
