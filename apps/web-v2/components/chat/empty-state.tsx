@@ -26,8 +26,10 @@
  */
 
 import { motion } from "framer-motion";
+import { PlusIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useZkLogin } from "@/components/auth/use-zklogin";
+import { AddFundsModal } from "@/components/chat/add-funds-modal";
 import { BalanceHero } from "@/components/ui/balance-hero";
 import { usePortfolio } from "@/hooks/use-portfolio";
 import { useUserStatus } from "@/hooks/use-user-status";
@@ -87,6 +89,7 @@ export function EmptyState() {
   const personalName = username ?? firstName ?? null;
 
   const [mountedDate, setMountedDate] = useState<Date | null>(null);
+  const [addFundsOpen, setAddFundsOpen] = useState(false);
   useEffect(() => {
     setMountedDate(new Date());
   }, []);
@@ -139,6 +142,29 @@ export function EmptyState() {
           </p>
         )}
       </motion.div>
+
+      {address && (
+        <motion.button
+          animate={{ opacity: 1, y: 0 }}
+          className="inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-transparent px-4 font-medium font-sans text-[13px] text-foreground transition hover:bg-accent focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none"
+          initial={{ opacity: 0, y: 8 }}
+          onClick={() => setAddFundsOpen(true)}
+          transition={{ delay: 0.35, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+          type="button"
+        >
+          <PlusIcon size={14} />
+          Add funds
+        </motion.button>
+      )}
+
+      {address && (
+        <AddFundsModal
+          address={address}
+          onClose={() => setAddFundsOpen(false)}
+          open={addFundsOpen}
+          username={username}
+        />
+      )}
     </div>
   );
 }

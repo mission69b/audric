@@ -1,21 +1,22 @@
 "use client";
 
 /**
- * Username picker — port from `apps/web/components/identity/UsernamePicker.tsx`.
+ * Username picker — Geist rebuild to `phase2-username-states.html` (AU6–AU9).
  *
- * Two diffs from legacy:
- *   - Icon usage swapped for lucide-react equivalents (check / close /
- *     spinner / sparkle → CheckIcon / XIcon / LoaderIcon / SparklesIcon)
- *   - lib helpers (validateAudricLabel, suggestUsernames) cross-app-imported
- *     from `apps/web/lib/identity/*`
+ * The claim logic is unchanged from the legacy port (debounced live
+ * availability via `fetchIdentityCheck`, `validateAudricLabel` preflight,
+ * `suggestUsernames` near-matches). Only the presentation moved to the
+ * prototype: a `bg-card` panel, sans "Pick your handle." title, a single
+ * `bg-muted` field (input + `@audric` suffix + inline spinner while
+ * checking), a dot statusline (Available · free / Taken · try another /
+ * Min 3 characters…), one-tap suggestion pills shown when the typed handle
+ * is taken, and a full-width primary "Claim {handle}@audric" button with an
+ * optional "Skip for now" ghost.
  *
- * UX parity: 540px sunken card, mono `// PASSPORT / HANDLE` header strip,
- * serif "Pick your handle" hero, suggestion table with debounced live
- * availability, free-text input with `@`-prefix + `@audric` suffix,
- * dither rule, skip/claim footer.
+ * lib helpers (validateAudricLabel, suggestUsernames, fetchIdentityCheck)
+ * are imported from `@/lib/identity/*`.
  */
 
-import { CheckIcon, LoaderIcon, SparklesIcon, XIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { fetchIdentityCheck } from "@/lib/identity/check-fetcher";
 import { suggestUsernames } from "@/lib/identity/suggest-usernames";
@@ -26,8 +27,6 @@ import {
 
 const PARENT_SUFFIX = "@audric";
 const DEBOUNCE_MS = 300;
-const DITHER_PATTERN =
-  "░▒▓▒░░▒▓▒░░▒▓▒░░▒▓▒░░▒▓▒░░▒▓▒░░▒▓▒░░▒▓▒░░▒▓▒░░▒▓▒░░▒▓▒░░▒▓▒░░▒▓▒░░▒▓▒░░▒▓▒░░▒▓▒░░▒▓▒░░▒▓▒░░▒▓▒░░▒▓▒░░";
 
 export type UsernameCheckStatus =
   | "idle"
@@ -75,7 +74,6 @@ export function UsernamePicker({
   disabled = false,
   checkFetcher = defaultCheckFetcher,
 }: UsernamePickerProps) {
-  const [seed, setSeed] = useState(0);
   const [input, setInput] = useState("");
   const [status, setStatus] = useState<UsernameCheckStatus>("idle");
   const [rowStatus, setRowStatus] = useState<
@@ -84,8 +82,8 @@ export function UsernamePicker({
   const [focused, setFocused] = useState(false);
 
   const suggestions = useMemo(
-    () => suggestUsernames({ googleName, googleEmail, seed, count: 3 }),
-    [googleName, googleEmail, seed]
+    () => suggestUsernames({ googleName, googleEmail, seed: 0, count: 3 }),
+    [googleName, googleEmail]
   );
 
   useEffect(() => {
@@ -189,10 +187,6 @@ export function UsernamePicker({
     [rowStatus]
   );
 
-  const handleRegenerate = useCallback(() => {
-    setSeed((prev) => prev + 1);
-  }, []);
-
   const handleSubmit = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault();
@@ -208,117 +202,65 @@ export function UsernamePicker({
     [input, status, onSubmit]
   );
 
-  const submitLabel = disabled ? "Claiming…" : "CLAIM HANDLE →";
   const canSubmit = status === "available" && !disabled;
+  const submitLabel = (() => {
+    if (disabled) {
+      return "Claiming…";
+    }
+    if (status === "available" && input) {
+      return `Claim ${input}${PARENT_SUFFIX}`;
+    }
+    return "Claim handle";
+  })();
 
-  const inputBorderClass = (() => {
-    if (
-      status === "taken" ||
-      status === "invalid" ||
-      status === "too-long" ||
-      status === "reserved"
-    ) {
-      return "border-destructive/30";
+  // Field border tone: available → signal, error → destructive, focus →
+  // blue ring, else neutral. Matches phase2-username-states.html.
+  const fieldTone = (() => {
+    if (isErrorStatus(status)) {
+      return "border-destructive/40";
     }
     if (status === "available") {
-      return "border-success/30";
+      return "border-signal/40";
     }
     if (focused) {
-      return "border-ring";
+      return "border-ring shadow-[0_0_0_4px_color-mix(in_srgb,var(--ring)_22%,transparent)]";
     }
     return "border-border";
   })();
-  const inputShadow = focused
-    ? status === "taken" ||
-      status === "invalid" ||
-      status === "too-long" ||
-      status === "reserved"
-      ? "shadow-[0_0_0_3px_rgba(213,11,11,0.18)]"
-      : status === "available"
-        ? "shadow-[0_0_0_3px_rgba(60,193,78,0.18)]"
-        : "shadow-[var(--shadow-focus-ring)]"
-    : "";
+
+  // Suggestion pills surface when the typed handle is unavailable —
+  // offer the available near-matches as one-tap chips (AU9).
+  const showSuggestions =
+    (status === "taken" || status === "reserved") &&
+    suggestions.some((s) => rowStatus[s] === "available");
 
   return (
     <div
-      className="rounded-lg border border-border bg-card px-7 pt-6 pb-6"
+      className="flex flex-col gap-4 rounded-xl border border-border bg-card p-6"
       data-testid="username-picker"
     >
-      <div className="flex items-center justify-between border-b border-border pb-3">
-        <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-foreground">
-          {"// PASSPORT / HANDLE"}
-        </span>
-      </div>
-
-      <div className="mt-[22px] mb-[22px]">
-        <h2 className="m-0 font-serif text-[36px] font-medium leading-[42px] tracking-[-0.01em] text-foreground">
-          Pick your handle
+      <div className="flex flex-col gap-1.5">
+        <h2 className="m-0 font-medium font-sans text-[20px] text-foreground tracking-[-0.025em]">
+          Pick your handle.
         </h2>
-        <p className="mt-[10px] mb-0 max-w-[460px] text-[14px] leading-[20px] text-muted-foreground">
-          This is your forever Audric Passport — friends send you USDC by typing{" "}
-          <code className="rounded-xs border border-border bg-muted px-[5px] py-[1px] font-mono text-[13px] text-foreground">
-            @yourhandle
-          </code>
-          .
+        <p className="m-0 text-[13px] text-muted-foreground leading-[1.5]">
+          Your Audric Passport and on-chain identity. People send to{" "}
+          <code className="font-mono text-foreground">@yourhandle</code> instead
+          of an address.
         </p>
       </div>
 
-      {suggestions.length > 0 && (
-        <>
-          <div className="mb-1.5 flex items-center justify-between">
-            <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
-              {"// SUGGESTED"}
-            </span>
-            <button
-              aria-label="Regenerate suggestions"
-              className="inline-flex items-center gap-1.5 px-1.5 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground transition hover:text-foreground focus-visible:underline focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-              data-testid="username-picker-regenerate"
-              disabled={disabled}
-              onClick={handleRegenerate}
-              type="button"
-            >
-              <SparklesIcon size={11} />
-              Regenerate
-            </button>
-          </div>
-
-          <fieldset
-            aria-label="Username suggestions"
-            className="m-0 mb-[22px] flex flex-col overflow-hidden rounded-sm border border-border p-0"
-          >
-            {suggestions.map((label, i) => (
-              <SuggestionRow
-                active={input === label && status === "available"}
-                disabled={disabled}
-                divider={i < suggestions.length - 1}
-                key={label}
-                label={label}
-                onClick={() => handleRowClick(label)}
-                status={rowStatus[label] ?? "checking"}
-              />
-            ))}
-          </fieldset>
-        </>
-      )}
-
-      <div className="mb-1.5">
-        <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
-          {"// CUSTOM"}
-        </span>
-      </div>
-
-      <form onSubmit={handleSubmit}>
+      <form className="flex flex-col gap-3" onSubmit={handleSubmit}>
         <div
-          className={`flex items-center gap-0 rounded-xs bg-card transition border ${inputBorderClass} ${inputShadow} px-3 py-0.5`}
+          className={`flex items-center rounded-lg border bg-muted px-3.5 py-1 transition ${fieldTone}`}
         >
-          <span className="font-mono text-[13px] text-muted-foreground">@</span>
           <input
             aria-describedby="username-picker-status"
             aria-invalid={isErrorStatus(status) || undefined}
             autoCapitalize="off"
             autoComplete="off"
             autoCorrect="off"
-            className="flex-1 border-none bg-transparent px-1 py-2.5 font-mono text-[13px] text-foreground outline-none disabled:opacity-50"
+            className="min-w-0 flex-1 border-none bg-transparent py-2.5 font-mono text-[16px] text-foreground outline-none placeholder:text-muted-foreground disabled:opacity-50"
             data-testid="username-picker-input"
             disabled={disabled}
             id="username-picker-input"
@@ -331,120 +273,66 @@ export function UsernamePicker({
             type="text"
             value={input}
           />
-          <span className="pr-2 font-mono text-[13px] text-muted-foreground">
+          <span className="font-mono text-[14px] text-muted-foreground">
             {PARENT_SUFFIX}
           </span>
+          {status === "checking" && (
+            <span
+              aria-hidden="true"
+              className="ml-2 size-3.5 animate-spin rounded-full border-[1.5px] border-muted-foreground border-t-transparent"
+            />
+          )}
         </div>
 
-        <div className="mt-2 h-[18px]">
+        <div className="min-h-4">
           <StatusLine input={input} status={status} />
         </div>
 
-        <div
-          aria-hidden="true"
-          className="mt-[22px] mb-3.5 select-none overflow-hidden whitespace-nowrap font-mono text-[12px] tracking-[0.05em] text-border"
-        >
-          {DITHER_PATTERN}
-        </div>
-
-        <div className="flex items-center justify-between">
-          {onSkip ? (
-            <button
-              className="py-1.5 font-mono text-[11px] uppercase tracking-[0.08em] text-muted-foreground underline-offset-[3px] transition hover:text-foreground focus-visible:underline focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-              data-testid="username-picker-skip"
-              disabled={disabled}
-              onClick={onSkip}
-              type="button"
-            >
-              ← SKIP FOR NOW
-            </button>
-          ) : (
-            <span />
-          )}
-          <button
-            className="inline-flex items-center justify-center rounded-xs border border-foreground bg-foreground px-[18px] py-3 font-mono text-[11px] uppercase tracking-[0.1em] text-background transition hover:opacity-90 focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-45"
-            data-testid="username-picker-submit"
-            disabled={!canSubmit}
-            type="submit"
+        {showSuggestions && (
+          <div
+            className="flex flex-wrap gap-1.5"
+            data-testid="username-suggestions"
           >
-            {submitLabel}
+            {suggestions
+              .filter((s) => rowStatus[s] === "available")
+              .map((label) => (
+                <button
+                  className="inline-flex h-7 items-center rounded-full border border-border bg-transparent px-3 font-mono text-[12px] text-foreground transition hover:border-[var(--border-strong)] hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+                  data-testid={`username-picker-chip-${label}`}
+                  disabled={disabled}
+                  key={label}
+                  onClick={() => handleRowClick(label)}
+                  type="button"
+                >
+                  {label}
+                  <span className="text-muted-foreground">{PARENT_SUFFIX}</span>
+                </button>
+              ))}
+          </div>
+        )}
+
+        <button
+          className="inline-flex h-10 w-full items-center justify-center rounded-lg bg-primary px-4 font-medium font-sans text-[14px] text-primary-foreground tracking-[-0.011em] transition hover:opacity-90 focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+          data-testid="username-picker-submit"
+          disabled={!canSubmit}
+          type="submit"
+        >
+          {submitLabel}
+        </button>
+
+        {onSkip && (
+          <button
+            className="font-sans text-[12.5px] text-muted-foreground transition hover:text-foreground focus-visible:underline focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+            data-testid="username-picker-skip"
+            disabled={disabled}
+            onClick={onSkip}
+            type="button"
+          >
+            Skip for now
           </button>
-        </div>
+        )}
       </form>
     </div>
-  );
-}
-
-interface SuggestionRowProps {
-  active: boolean;
-  disabled: boolean;
-  divider: boolean;
-  label: string;
-  onClick: () => void;
-  status: UsernameCheckStatus;
-}
-
-function SuggestionRow({
-  label,
-  status,
-  divider,
-  disabled,
-  active,
-  onClick,
-}: SuggestionRowProps) {
-  if (status === "invalid" || status === "too-short" || status === "too-long") {
-    return null;
-  }
-
-  const ok = status === "available";
-  const taken = status === "taken" || status === "reserved";
-  const checking = status === "checking";
-  const errored = status === "error" || status === "verifier-down";
-  const clickable = ok && !disabled;
-
-  const tagTone = ok
-    ? "bg-success/10 text-success"
-    : taken || errored
-      ? "bg-destructive/10 text-destructive"
-      : "bg-muted text-muted-foreground";
-  const tagText = ok
-    ? "AVAILABLE"
-    : taken
-      ? "TAKEN"
-      : errored
-        ? "CHECK FAILED"
-        : "CHECKING…";
-  const TagIcon = ok ? CheckIcon : checking ? LoaderIcon : XIcon;
-
-  const handleTextClass = taken
-    ? "text-muted-foreground line-through"
-    : "text-foreground";
-
-  return (
-    <button
-      aria-label={`${label}@audric — ${humanStatus(status)}`}
-      className={`flex w-full items-center justify-between px-3.5 py-3 text-left transition ${
-        divider ? "border-b border-border" : ""
-      } ${active ? "bg-muted" : "bg-transparent"} ${
-        clickable ? "cursor-pointer hover:bg-muted" : "cursor-not-allowed"
-      } focus-visible:bg-muted focus-visible:outline-none`}
-      data-status={status}
-      data-testid={`username-picker-chip-${label}`}
-      disabled={!clickable}
-      onClick={clickable ? onClick : undefined}
-      type="button"
-    >
-      <span className={`font-mono text-[13px] ${handleTextClass}`}>
-        {label}
-        <span className="text-muted-foreground">{PARENT_SUFFIX}</span>
-      </span>
-      <span
-        className={`inline-flex items-center gap-1 rounded-xs px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] ${tagTone}`}
-      >
-        <TagIcon className={checking ? "animate-spin" : undefined} size={10} />
-        {tagText}
-      </span>
-    </button>
   );
 }
 
@@ -456,53 +344,60 @@ interface StatusLineProps {
 function StatusLine({ status, input }: StatusLineProps) {
   if (status === "idle" || input === "") {
     return (
-      <div
-        className="font-mono text-[11px] tracking-[0.04em] text-muted-foreground"
+      <p
+        className="m-0 font-mono text-[11px] text-muted-foreground tracking-[0.04em]"
         data-status="idle"
         data-testid="username-picker-status"
         id="username-picker-status"
       >
-        {"// 3–20 CHARS · A-Z, 0-9, HYPHEN"}
-      </div>
+        3–20 characters · letters, numbers, hyphens
+      </p>
     );
   }
 
-  const message = humanStatusForInput(status, input);
   const tone = isErrorStatus(status)
     ? "text-destructive"
     : status === "available"
-      ? "text-success"
+      ? "text-signal"
       : "text-muted-foreground";
-  const prefix = humanStatusPrefix(status);
-  const StatusIcon =
-    status === "available"
-      ? CheckIcon
-      : isErrorStatus(status)
-        ? XIcon
-        : LoaderIcon;
+  const showDot = status === "available" || isErrorStatus(status);
 
   return (
-    <div
-      className={`inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.04em] ${tone}`}
+    <p
+      className={`m-0 inline-flex items-center gap-1.5 font-mono text-[11px] tracking-[0.04em] ${tone}`}
       data-status={status}
       data-testid="username-picker-status"
       id="username-picker-status"
       role={isErrorStatus(status) ? "alert" : "status"}
     >
-      <StatusIcon
-        className={
-          StatusIcon === LoaderIcon && status === "checking"
-            ? "animate-spin"
-            : undefined
-        }
-        size={10}
-      />
-      <span>
-        {prefix}
-        {message ? ` — ${message}` : ""}
-      </span>
-    </div>
+      {showDot && <span className="size-[5px] rounded-full bg-current" />}
+      {statusCopy(status)}
+    </p>
   );
+}
+
+function statusCopy(status: UsernameCheckStatus): string {
+  switch (status) {
+    case "checking":
+      return "Checking availability…";
+    case "available":
+      return "Available · free";
+    case "taken":
+      return "Taken · try another";
+    case "reserved":
+      return "Reserved · try another";
+    case "too-short":
+      return "Min 3 characters · letters, numbers, hyphens";
+    case "too-long":
+      return "Max 20 characters";
+    case "invalid":
+      return "Letters, numbers, and hyphens only";
+    case "verifier-down":
+    case "error":
+      return "Couldn't check — try again in a moment";
+    default:
+      return "";
+  }
 }
 
 function resultToStatus(r: UsernameCheckResult): UsernameCheckStatus {
@@ -537,87 +432,4 @@ function isErrorStatus(s: UsernameCheckStatus): boolean {
     s === "verifier-down" ||
     s === "error"
   );
-}
-
-function humanStatus(s: UsernameCheckStatus): string {
-  switch (s) {
-    case "idle":
-      return "";
-    case "checking":
-      return "checking…";
-    case "available":
-      return "available";
-    case "taken":
-      return "taken";
-    case "reserved":
-      return "reserved";
-    case "invalid":
-      return "invalid characters";
-    case "too-short":
-      return "too short (3 minimum)";
-    case "too-long":
-      return "too long (20 maximum)";
-    case "verifier-down":
-      return "verifier unavailable";
-    case "error":
-      return "check failed";
-    default:
-      return "";
-  }
-}
-
-function humanStatusPrefix(s: UsernameCheckStatus): string {
-  switch (s) {
-    case "available":
-      return "// AVAILABLE";
-    case "checking":
-      return "// CHECKING";
-    case "taken":
-      return "// TAKEN";
-    case "reserved":
-      return "// RESERVED";
-    case "invalid":
-      return "// INVALID";
-    case "too-short":
-      return "// TOO SHORT";
-    case "too-long":
-      return "// TOO LONG";
-    case "verifier-down":
-      return "// VERIFIER DOWN";
-    case "error":
-      return "// CHECK FAILED";
-    default:
-      return "";
-  }
-}
-
-function humanStatusForInput(s: UsernameCheckStatus, input: string): string {
-  if (s === "idle" || input === "") {
-    return "";
-  }
-  if (s === "checking") {
-    return "one moment";
-  }
-  if (s === "available") {
-    return `${input}@audric is yours to claim`;
-  }
-  if (s === "taken") {
-    return `${input}@audric is taken — try another`;
-  }
-  if (s === "reserved") {
-    return `${input} is reserved`;
-  }
-  if (s === "too-short") {
-    return "handles need 3 characters minimum";
-  }
-  if (s === "too-long") {
-    return "handles can be 20 characters maximum";
-  }
-  if (s === "invalid") {
-    return "use lowercase letters, numbers, hyphens";
-  }
-  if (s === "verifier-down") {
-    return "can't verify availability right now — try again in a moment";
-  }
-  return "check failed — try again";
 }

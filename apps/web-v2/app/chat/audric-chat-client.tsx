@@ -11,6 +11,7 @@ import {
   type UIMessage,
 } from "ai";
 import { Copy, Loader2, Pencil, RotateCw } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useSWRConfig } from "swr";
@@ -164,63 +165,33 @@ export function AudricChatClient({
   initialMessages,
   initialVisibility = "private",
 }: AudricChatClientProps = {}) {
-  const { status, session, error, login } = useZkLogin();
+  const { status, session } = useZkLogin();
+  const router = useRouter();
 
-  // Splash-B (v0.7c §4.7.E) — centered `audric.` wordmark + small
-  // spinner during both initial localStorage hydration and the Google
-  // OAuth redirect. Replaces the bare gray "Loading…" / "Redirecting
-  // to Google…" text that shipped with the Phase 3 canary.
-  if (status === "loading" || status === "redirecting") {
+  // Unauthenticated / expired visitors get bounced to the marketing
+  // homepage, which owns the sign-in entry point. The old inline
+  // "Splash-B" marketing hero on /chat was the wrong UX — it duplicated
+  // the homepage hero on a route that should be authed-only. Mirrors
+  // `auth-guard.tsx` (used by /settings). The homepage redirects the
+  // reverse case (authenticated → /chat), so the two never loop.
+  const isUnauth = status === "unauthenticated" || status === "expired";
+  useEffect(() => {
+    if (isUnauth) {
+      router.replace("/");
+    }
+  }, [isUnauth, router]);
+
+  // Any non-authenticated state — initial localStorage hydration, the
+  // Google OAuth redirect, or the brief moment while an unauth/expired
+  // visitor is bounced home — shows the centered `audric.` wordmark +
+  // spinner. No marketing copy, no sign-in button: sign-in lives on `/`.
+  if (status !== "authenticated" || !session) {
     return (
       <div className="flex min-h-screen items-center justify-center gap-3">
         <p className="font-medium font-serif text-[36px] text-foreground tracking-[-0.02em]">
           audric.
         </p>
         <Loader2 className="size-5 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  // Splash-B pre-auth — mirror of the marketing hero lockup
-  // (`apps/web/components/landing/HeroSection.tsx`). Replaces the
-  // Phase 3 canary header + bare "Sign in with Google to start
-  // chatting" text. Same copy, button, eyebrow as the marketing site
-  // so users arriving from the landing page see continuity.
-  if (status !== "authenticated" || !session) {
-    return (
-      <div className="mx-auto flex min-h-screen max-w-4xl flex-col items-center justify-center px-6 text-center">
-        <p className="mb-5 font-mono text-[11px] text-muted-foreground uppercase tracking-[0.08em]">
-          Conversational finance
-        </p>
-        <h1 className="mb-6 font-medium font-serif text-[56px] text-foreground leading-[1] tracking-[-0.035em] sm:text-[64px]">
-          Your money,
-          <br />
-          <em className="font-medium italic">handled.</em>
-        </h1>
-        <p className="mb-9 max-w-[420px] text-[17px] text-muted-foreground leading-relaxed">
-          Sign in with Google. Chat with your money. Earn yield, send USDC,
-          borrow — all by conversation. No seed phrase.
-        </p>
-        {status === "expired" && (
-          <div className="mb-6 rounded border border-warning/30 bg-warning/10 p-3 text-sm text-warning">
-            Your session has expired. Please sign in again to continue.
-          </div>
-        )}
-        {error && (
-          <div className="mb-6 rounded border border-destructive/30 bg-destructive/10 p-3 text-destructive text-sm">
-            {error}
-          </div>
-        )}
-        <Button
-          onClick={() => {
-            login().catch((err) => {
-              console.error("[audric-chat] login failed:", err);
-            });
-          }}
-          size="lg"
-        >
-          Continue with Google →
-        </Button>
       </div>
     );
   }

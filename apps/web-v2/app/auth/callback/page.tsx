@@ -11,12 +11,11 @@
  *  4. Persist the full session blob to localStorage
  *
  * On success → redirects to `/chat`.
- * On failure → renders the error inline with a retry button.
+ * On failure → renders the AU3 error variant (Back / Try again).
  *
- * Ported from `apps/web/app/auth/callback/page.tsx`. v0.7c Phase 2-stub
- * had a minimal inline progress UI; S.204+ Phase 6.7 polish replaces it
- * with the full v1 LoadingScreen (3-step monospace progress + bottom bar
- * + NewYork serif heading) so the splash matches v1 visually.
+ * [R6.5 5c — 2026-05-31] The screen is now the calm AU3 holding screen
+ * (pulsing `AudricMark`), rebuilt from the v1-ported 3-step progress list
+ * to match `phase2-auth-callback.html`. See `loading-screen.tsx`.
  */
 
 import { useRouter } from "next/navigation";
@@ -51,6 +50,7 @@ export default function AuthCallbackPage() {
   return (
     <LoadingScreen
       error={error}
+      onBack={() => router.replace("/")}
       onRetry={() => {
         login().catch((err) => {
           console.error("[auth/callback] retry login failed:", err);

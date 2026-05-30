@@ -1,199 +1,121 @@
 "use client";
 
 /**
- * LoadingScreen — splash UI for the OAuth callback while zkLogin
- * is computing the ZK proof (~3-8s). Three steps with monospace
- * labels + bottom progress bar.
+ * LoadingScreen — the `/auth/callback` holding screen (R6.5 5c · AU3).
  *
- * Ported from `apps/web/components/auth/LoadingScreen.tsx` (S.204+
- * Phase 2). Visual parity with v1 is the goal — NewYork serif
- * heading, DepartureMono step labels, foreground progress fill.
- * The v1 file uses `<Icon name="check">`; we inline an SVG instead
- * to avoid pulling in v1's full Icon component tree.
+ * [R6.5 5c — 2026-05-31] Rebuilt from the v1-ported 3-step progress list
+ * to the calm AU3 holding screen (`t2000-AFI/audric/phase2-auth-callback.html`):
+ * a large pulsing `AudricMark`, a title, and a monospace sub-line. The
+ * OAuth roundtrip + zkLogin proof gen takes 1–3s — a blank redirect reads
+ * as broken, so we show a branded holding frame immediately and never
+ * strand the user on a bare spinner.
  *
- * Status flow (driven by `useZkLogin().provingStep`):
- *   null  → "Reading callback data…"
- *   jwt   → [✓ Authenticated] [⋯ Resolving address…] [   Verifying]
- *   salt  → [✓] [✓] [⋯ Verifying identity…]
- *   proof → [✓] [✓] [✓]
- *   done  → showDone view ("You're all set")
+ * The title spans both phases of the wait so it stays honest without the
+ * noisy step list:
+ *   null | jwt  → "Signing you in…"      · VERIFYING WITH GOOGLE
+ *   salt        → "Setting up your Passport" · RESOLVING YOUR ADDRESS
+ *   proof       → "Setting up your Passport" · VERIFYING IDENTITY
+ *   done        → "You're all set"
  *
- * Error renders inline with a retry button.
+ * On failure → the AU3 error variant (red glyph + reassurance + Back /
+ * Try again). The proof never half-creates anything, so "Nothing was
+ * created" is literally true.
  */
 
-import { useEffect, useState } from "react";
+import { AudricMark } from "@/components/ui/audric-mark";
 import { Button } from "@/components/ui/button";
-import { Spinner } from "@/components/ui/spinner";
 import type { ZkLoginStep } from "@/lib/zklogin";
 
 interface LoadingScreenProps {
   error: string | null;
+  onBack?: () => void;
   onRetry?: () => void;
   step: ZkLoginStep | null;
 }
 
-const STEPS: { key: ZkLoginStep; label: string }[] = [
-  { key: "jwt", label: "Authenticated" },
-  { key: "salt", label: "Resolving address" },
-  { key: "proof", label: "Verifying identity" },
-];
-
-function stepIndex(step: ZkLoginStep | null): number {
-  if (!step) {
-    return -1;
+function holdingCopy(step: ZkLoginStep | null): { title: string; sub: string } {
+  if (step === "salt") {
+    return { title: "Setting up your Passport", sub: "Resolving your address" };
   }
-  if (step === "done") {
-    return STEPS.length;
+  if (step === "proof") {
+    return { title: "Setting up your Passport", sub: "Verifying identity" };
   }
-  return STEPS.findIndex((s) => s.key === step);
+  return { title: "Signing you in…", sub: "Verifying with Google" };
 }
 
-function CheckIcon({ size = 14 }: { size?: number }) {
-  return (
-    <svg
-      aria-hidden="true"
-      fill="none"
-      height={size}
-      stroke="currentColor"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2.5"
-      viewBox="0 0 24 24"
-      width={size}
-    >
-      <polyline points="20 6 9 17 4 12" />
-    </svg>
-  );
-}
-
-function ErrorIcon({ size = 28 }: { size?: number }) {
-  return (
-    <svg
-      aria-hidden="true"
-      fill="none"
-      height={size}
-      stroke="currentColor"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="1.5"
-      viewBox="0 0 24 24"
-      width={size}
-    >
-      <circle cx="12" cy="12" r="9" />
-      <path d="M12 8v4M12 16h.01" />
-    </svg>
-  );
-}
-
-export function LoadingScreen({ step, error, onRetry }: LoadingScreenProps) {
-  const currentIdx = stepIndex(step);
-  const isDone = step === "done";
-  const [showDone, setShowDone] = useState(false);
-
-  useEffect(() => {
-    if (isDone) {
-      const timer = setTimeout(() => setShowDone(true), 300);
-      return () => clearTimeout(timer);
-    }
-  }, [isDone]);
-
-  const progress = Math.min(((currentIdx + 1) / STEPS.length) * 100, 100);
-
+export function LoadingScreen({
+  step,
+  error,
+  onRetry,
+  onBack,
+}: LoadingScreenProps) {
   if (error) {
     return (
-      <main className="flex min-h-dvh flex-col items-center justify-center bg-background px-6">
-        <div className="w-full max-w-sm space-y-6 text-center">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-destructive/10 text-destructive">
-            <ErrorIcon />
-          </div>
+      <main className="flex min-h-dvh items-center justify-center bg-background px-6">
+        <div className="flex max-w-[320px] flex-col items-center gap-5 text-center">
+          <span className="flex size-11 items-center justify-center rounded-full border border-destructive/30 bg-destructive/10 text-destructive">
+            <svg
+              aria-hidden="true"
+              fill="none"
+              height="20"
+              viewBox="0 0 16 16"
+              width="20"
+            >
+              <path
+                d="M8 4.5V9M8 11v.5"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeWidth="1.8"
+              />
+            </svg>
+          </span>
           <div className="space-y-2">
-            <h2 className="font-serif text-[28px] text-foreground leading-[1.15] tracking-[-0.01em]">
-              Something went wrong
-            </h2>
-            <p className="text-[13px] text-muted-foreground leading-relaxed">
-              {error}
+            <p className="font-medium font-sans text-[18px] text-foreground tracking-[-0.018em]">
+              Sign-in didn&apos;t complete
+            </p>
+            <p className="text-[13px] text-muted-foreground leading-[1.6] tracking-[-0.011em]">
+              The Google sign-in was cancelled or timed out. Nothing was
+              created.
             </p>
           </div>
-          {onRetry && (
-            <Button onClick={onRetry} size="lg">
-              Try again
-            </Button>
-          )}
-        </div>
-      </main>
-    );
-  }
-
-  if (showDone) {
-    return (
-      <main className="flex min-h-dvh flex-col items-center justify-center bg-background px-6">
-        <div className="space-y-3 text-center">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-success/10 text-success">
-            <CheckIcon size={28} />
+          <div className="flex gap-2">
+            {onBack && (
+              <Button onClick={onBack} variant="outline">
+                Back
+              </Button>
+            )}
+            {onRetry && <Button onClick={onRetry}>Try again</Button>}
           </div>
-          <h2 className="font-serif text-[28px] text-foreground leading-[1.15] tracking-[-0.01em]">
-            You&apos;re all set
-          </h2>
         </div>
       </main>
     );
   }
 
-  return (
-    <main className="flex min-h-dvh flex-col items-center justify-center bg-background px-6">
-      <div className="w-full max-w-sm space-y-7">
-        <h2 className="text-center font-serif text-[28px] text-foreground leading-[1.15] tracking-[-0.01em]">
-          Signing you in…
-        </h2>
-
-        <div className="space-y-3.5">
-          {STEPS.map((s, i) => {
-            const isComplete = currentIdx > i;
-            const isActive = currentIdx === i;
-            let indicator: React.ReactNode;
-            if (isComplete) {
-              indicator = (
-                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-success/10 text-success">
-                  <CheckIcon />
-                </div>
-              );
-            } else if (isActive) {
-              indicator = (
-                <div className="flex h-6 w-6 shrink-0 items-center justify-center">
-                  <Spinner size="md" />
-                </div>
-              );
-            } else {
-              indicator = (
-                <div className="flex h-6 w-6 shrink-0 items-center justify-center">
-                  <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground" />
-                </div>
-              );
-            }
-            return (
-              <div className="flex items-center gap-3" key={s.key}>
-                {indicator}
-                <span
-                  className={[
-                    "font-mono text-[11px] uppercase tracking-[0.08em]",
-                    isComplete || isActive
-                      ? "text-foreground"
-                      : "text-muted-foreground",
-                  ].join(" ")}
-                >
-                  {s.label}
-                  {isActive ? "…" : ""}
-                </span>
-              </div>
-            );
-          })}
+  if (step === "done") {
+    return (
+      <main className="flex min-h-dvh items-center justify-center bg-background px-6">
+        <div className="flex flex-col items-center gap-5 text-center">
+          <AudricMark size={56} />
+          <p className="font-medium font-sans text-[18px] text-foreground tracking-[-0.018em]">
+            You&apos;re all set
+          </p>
         </div>
+      </main>
+    );
+  }
 
-        <div className="h-1 w-full overflow-hidden rounded-pill bg-border">
-          <div
-            className="h-full rounded-pill bg-foreground transition-all duration-500 ease-out"
-            style={{ width: `${progress}%` }}
-          />
+  const { title, sub } = holdingCopy(step);
+  return (
+    <main className="flex min-h-dvh items-center justify-center bg-background px-6">
+      <div className="flex max-w-[320px] flex-col items-center gap-5 text-center">
+        <AudricMark animate size={56} />
+        <div className="space-y-2">
+          <p className="font-medium font-sans text-[18px] text-foreground tracking-[-0.018em]">
+            {title}
+          </p>
+          <p className="font-mono text-[11px] text-muted-foreground uppercase tracking-[0.04em]">
+            {sub}
+          </p>
         </div>
       </div>
     </main>

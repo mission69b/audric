@@ -21,9 +21,9 @@
  *   - Public  + owner          → render `<AudricChatClient>` with messages
  *   - Public  + non-owner      → redirect to `/share/[id]` (read-only)
  *   - (Private + non-owner)    → API returned 404; the loading branch shows the branded 404
- *   - (Unauthenticated)        → API returned 401; authFetch fires
- *     `zklogin:expired` event so the global auth handler shows the sign-in
- *     splash.
+ *   - (Unauthenticated)        → bounced to the marketing homepage `/`
+ *     (which owns sign-in), same as a direct `/chat` visit. We skip the
+ *     fetch entirely while unauth so the user never sees a 401→404 flash.
  */
 
 "use client";
@@ -54,13 +54,28 @@ export default function ChatByIdPage({
 }) {
   const { id } = use(params);
   const router = useRouter();
-  const { address } = useZkLogin();
+  const { address, status } = useZkLogin();
   const [result, setResult] = useState<HydrationResult>({ state: "loading" });
+
+  // Unauthenticated / expired → bounce home (sign-in lives on `/`),
+  // matching a direct `/chat` visit. The loading spinner shows until
+  // the navigation lands.
+  const isUnauth = status === "unauthenticated" || status === "expired";
+  useEffect(() => {
+    if (isUnauth) {
+      router.replace("/");
+    }
+  }, [isUnauth, router]);
 
   useEffect(() => {
     let cancelled = false;
 
     async function load() {
+      // Wait for auth to resolve; unauth users are redirected home by
+      // the effect above, so we never fetch (avoids a 401 → 404 flash).
+      if (status !== "authenticated") {
+        return;
+      }
       try {
         const res = await authFetch(`/api/chat/${id}`);
         if (cancelled) {
@@ -116,7 +131,7 @@ export default function ChatByIdPage({
     return () => {
       cancelled = true;
     };
-  }, [id, address, router]);
+  }, [id, address, router, status]);
 
   if (result.state === "loading" || result.state === "redirect-share") {
     return (

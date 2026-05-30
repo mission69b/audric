@@ -31,7 +31,15 @@
  *     additions are reverted in this SPEC.
  */
 
-import { PanelLeftIcon, PenSquareIcon } from "lucide-react";
+import {
+  BrainIcon,
+  ChevronLeftIcon,
+  type LucideIcon,
+  PanelLeftIcon,
+  PenSquareIcon,
+  ShieldIcon,
+  UserIcon,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useZkLogin } from "@/components/auth/use-zklogin";
@@ -56,6 +64,16 @@ import { dispatchNewChat } from "@/lib/audric/new-chat-event";
 import { decodeJwtClaim } from "@/lib/jwt-client";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 
+// [R6.5 5e] Settings tabs. When the user is in /settings the sidebar
+// content swaps from chat (New chat + History) to this nav — a single
+// nav, not a secondary sub-rail beside the chat sidebar.
+const SETTINGS_TABS: Array<{ href: string; label: string; icon: LucideIcon }> =
+  [
+    { href: "/settings/passport", label: "Passport", icon: UserIcon },
+    { href: "/settings/safety", label: "Safety", icon: ShieldIcon },
+    { href: "/settings/memory", label: "Memory", icon: BrainIcon },
+  ];
+
 export function AppSidebar() {
   const router = useRouter();
   const pathname = usePathname();
@@ -73,6 +91,8 @@ export function AppSidebar() {
       router.push("/chat");
     }
   };
+
+  const inSettings = pathname.startsWith("/settings");
 
   // [S.208] Adapt the zkLogin session into the template's
   // AudricSessionUser shape so SidebarHistory's `useSWRInfinite` fires
@@ -141,29 +161,83 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
-        {/* New chat — only nav item the chat-first surface keeps. */}
-        <SidebarGroup className="pt-1">
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  className="h-8 rounded-lg border border-sidebar-border text-[13px] text-sidebar-foreground/70 transition-colors duration-150 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-                  onClick={handleNewChat}
-                  tooltip="New chat"
-                >
-                  <PenSquareIcon className="size-4" />
-                  <span className="font-medium">New chat</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {inSettings ? (
+          <SidebarGroup className="pt-1">
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {/* Back to chat — the single way out of Settings. */}
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    className="h-8 rounded-lg text-[13px] text-sidebar-foreground/60 transition-colors duration-150 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                    tooltip="Back to chat"
+                  >
+                    <Link href="/chat" onClick={() => setOpenMobile(false)}>
+                      <ChevronLeftIcon className="size-4" />
+                      <span className="font-medium">Back to chat</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
 
-        {/* HISTORY — template-native; ships with skeleton loader +
-            date-grouped (Today / Yesterday / Last 7d / Last 30d /
-            Older) + per-item delete via AlertDialog. Empty until
-            v0.7d MemWal writes session persistence into /api/chat. */}
-        <SidebarHistory user={user} />
+              <div className="px-2 pt-4 pb-1.5 font-mono text-[10px] text-sidebar-foreground/50 uppercase tracking-[0.1em]">
+                Settings
+              </div>
+              <SidebarMenu>
+                {SETTINGS_TABS.map((tab) => {
+                  const isActive =
+                    pathname === tab.href ||
+                    pathname.startsWith(`${tab.href}/`);
+                  const Icon = tab.icon;
+                  return (
+                    <SidebarMenuItem key={tab.href}>
+                      <SidebarMenuButton
+                        asChild
+                        className="h-8 rounded-lg text-[13px] text-sidebar-foreground/70 transition-colors duration-150 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-foreground"
+                        isActive={isActive}
+                        tooltip={tab.label}
+                      >
+                        <Link
+                          href={tab.href}
+                          onClick={() => setOpenMobile(false)}
+                        >
+                          <Icon className="size-4" />
+                          <span className="font-medium">{tab.label}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ) : (
+          <>
+            {/* New chat — only nav item the chat-first surface keeps. */}
+            <SidebarGroup className="pt-1">
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      className="h-8 rounded-lg border border-sidebar-border text-[13px] text-sidebar-foreground/70 transition-colors duration-150 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                      onClick={handleNewChat}
+                      tooltip="New chat"
+                    >
+                      <PenSquareIcon className="size-4" />
+                      <span className="font-medium">New chat</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+
+            {/* HISTORY — template-native; ships with skeleton loader +
+                date-grouped (Today / Yesterday / Last 7d / Last 30d /
+                Older) + per-item delete via AlertDialog. Empty until
+                v0.7d MemWal writes session persistence into /api/chat. */}
+            <SidebarHistory user={user} />
+          </>
+        )}
       </SidebarContent>
 
       <SidebarFooter className="border-sidebar-border border-t pt-2 pb-3">

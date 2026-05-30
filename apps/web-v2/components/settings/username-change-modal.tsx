@@ -1,31 +1,23 @@
 "use client";
 
 /**
- * Username change modal — Session 4.7.C rebuild.
+ * Username change modal — Geist rebuild to `phase2-username-states.html`
+ * (AU12). Reached from the Passport settings section's CHANGE affordance.
  *
- * UX/behavior parity with the Session 2 port:
- *   - Live availability check (300ms debounce, 503/429 → verifier-down)
- *   - Warning callout on "this action is final"
- *   - Success card with serif new-handle + DONE dismissal
+ * Behavior is unchanged from the Session 4.7.C port (live 300ms-debounced
+ * availability check, 503/429 → verifier-down, release warning, success →
+ * DONE). The presentation moved to the prototype: a sans "Change handle"
+ * header with the current handle as a "Current:" sub, a single `bg-muted`
+ * field (input + `@audric` suffix + inline checking spinner), a dot
+ * statusline, an amber warn-note about releasing the old handle, and a
+ * Cancel / "Change to {new}@audric" footer. Success collapses to the calm
+ * AU11 confirmation (signal check-circle + mono handle + Done).
  *
- * Diffs from Session 2:
- *   - Bespoke scrim + manual ESC keydown listener REPLACED by shadcn
- *     `<Dialog>` + `<DialogContent>`. Brings free focus trap, proper
- *     ARIA dialog semantics, portal rendering, animated overlay, and
- *     correct focus restoration on close.
- *   - LoC is roughly unchanged — the win here is plumbing modernity +
- *     accessibility, not size. The form logic, status messaging,
- *     warning callout, and success card layout stay verbatim because
- *     they're the brand-aligned UX (serif lockup, mono captions, error
- *     and success color tokens) that's the deliverable of the Audric
- *     Passport surface. See PRAGMATIC scope decision in
- *     RUNBOOK_v07c_phase_6_cutover.md §4.7.C.
- *
- * Traceability: BENEFITS_SPEC_v07c.md §"Phase 6 Session 4.7.B-C";
- * legacy reference: apps/web/components/identity/UsernameChangeModal.tsx.
+ * shadcn `<Dialog>` provides the focus trap, ARIA dialog semantics, portal
+ * rendering, and focus restoration on close.
  */
 
-import { CheckIcon, LoaderIcon, XIcon } from "lucide-react";
+import { CheckIcon, XIcon } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -303,25 +295,18 @@ export function UsernameChangeModal({
     validation.status === "unchanged";
   const isAvailabilityError =
     availability === "taken" || availability === "error";
-  const inputBorderClass = (() => {
+  const fieldTone = (() => {
     if (isLocalError || isAvailabilityError) {
-      return "border-destructive/30";
+      return "border-destructive/40";
     }
     if (availability === "available") {
-      return "border-success/30";
+      return "border-signal/40";
     }
     if (focused) {
-      return "border-ring";
+      return "border-ring shadow-[0_0_0_4px_color-mix(in_srgb,var(--ring)_22%,transparent)]";
     }
     return "border-border";
   })();
-  const inputShadow = focused
-    ? isLocalError || isAvailabilityError
-      ? "shadow-[0_0_0_3px_rgba(213,11,11,0.18)]"
-      : availability === "available"
-        ? "shadow-[0_0_0_3px_rgba(60,193,78,0.18)]"
-        : "shadow-[var(--shadow-focus-ring)]"
-    : "";
 
   return (
     <Dialog
@@ -333,7 +318,7 @@ export function UsernameChangeModal({
       open={open}
     >
       <DialogContent
-        className="overflow-hidden bg-card p-0 ring-1 ring-border sm:max-w-[520px]"
+        className="overflow-hidden bg-card p-0 ring-1 ring-border sm:max-w-[400px]"
         data-testid="username-change-modal"
         onOpenAutoFocus={(e) => {
           // Pre-focus the input field so the user can start typing
@@ -347,103 +332,92 @@ export function UsernameChangeModal({
           <SuccessCard fullHandle={successHandle} onDone={onClose} />
         ) : (
           <>
-            <div className="flex items-center justify-between border-b border-border px-[18px] py-3.5">
-              <DialogTitle className="font-mono text-[11px] text-foreground uppercase tracking-[0.1em]">
-                {"// CHANGE HANDLE"}
-              </DialogTitle>
+            <div className="flex items-start justify-between gap-4 px-5 pt-[18px] pb-3">
+              <div className="min-w-0">
+                <DialogTitle className="m-0 font-medium font-sans text-[16px] text-foreground tracking-[-0.014em]">
+                  Change handle
+                </DialogTitle>
+                <p className="mt-1 m-0 truncate font-mono text-[13px] text-muted-foreground">
+                  Current: {currentFull}
+                </p>
+              </div>
               <button
                 aria-label="Close"
-                className="inline-flex h-6 w-6 items-center justify-center rounded-sm text-muted-foreground transition hover:bg-muted hover:text-foreground focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none disabled:opacity-50"
+                className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition hover:bg-accent hover:text-foreground focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none disabled:opacity-50"
                 disabled={isSubmitting}
                 onClick={onClose}
                 type="button"
               >
-                <XIcon size={12} />
+                <XIcon size={14} />
               </button>
             </div>
 
-            <form className="px-6 pt-5 pb-6" onSubmit={handleSubmit}>
-              <div className="mb-[18px]">
-                <div className="mb-1.5 font-mono text-[10px] text-muted-foreground uppercase tracking-[0.1em]">
-                  CURRENT
-                </div>
-                <div className="rounded-sm border border-border bg-muted px-3 py-2.5 font-mono text-[14px] text-muted-foreground">
-                  {currentLabel}
-                  <span className="text-muted-foreground">{PARENT_SUFFIX}</span>
-                </div>
-              </div>
-
-              <div>
-                <label
-                  className="mb-1.5 block font-mono text-[10px] text-muted-foreground uppercase tracking-[0.1em]"
-                  htmlFor={inputId}
-                >
-                  NEW HANDLE
-                </label>
-                <div
-                  className={`flex items-center rounded-xs bg-card transition border ${inputBorderClass} ${inputShadow} px-3 py-0.5`}
-                >
-                  <input
-                    aria-describedby={helpId}
-                    aria-invalid={
-                      (validation.status !== "idle" &&
-                        validation.status !== "ok") ||
-                      undefined
-                    }
-                    autoCapitalize="off"
-                    autoComplete="off"
-                    autoCorrect="off"
-                    className="min-w-0 flex-1 border-none bg-transparent px-1 py-2.5 font-mono text-[14px] text-foreground outline-none placeholder:text-muted-foreground disabled:opacity-50"
-                    disabled={isSubmitting}
-                    id={inputId}
-                    maxLength={20}
-                    onBlur={() => setFocused(false)}
-                    onChange={(e) => {
-                      setValue(e.target.value);
-                      setSubmitError(null);
-                    }}
-                    onFocus={() => setFocused(true)}
-                    placeholder="alice"
-                    ref={inputRef}
-                    spellCheck={false}
-                    type="text"
-                    value={value}
+            <form
+              className="flex flex-col gap-3 px-5 pt-1 pb-4"
+              onSubmit={handleSubmit}
+            >
+              <div
+                className={`flex items-center rounded-lg border bg-muted px-3.5 py-1 transition ${fieldTone}`}
+              >
+                <input
+                  aria-describedby={helpId}
+                  aria-invalid={
+                    (validation.status !== "idle" &&
+                      validation.status !== "ok") ||
+                    undefined
+                  }
+                  autoCapitalize="off"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  className="min-w-0 flex-1 border-none bg-transparent py-2.5 font-mono text-[16px] text-foreground outline-none placeholder:text-muted-foreground disabled:opacity-50"
+                  disabled={isSubmitting}
+                  id={inputId}
+                  maxLength={20}
+                  onBlur={() => setFocused(false)}
+                  onChange={(e) => {
+                    setValue(e.target.value);
+                    setSubmitError(null);
+                  }}
+                  onFocus={() => setFocused(true)}
+                  placeholder="newhandle"
+                  ref={inputRef}
+                  spellCheck={false}
+                  type="text"
+                  value={value}
+                />
+                <span className="font-mono text-[14px] text-muted-foreground">
+                  {PARENT_SUFFIX}
+                </span>
+                {availability === "checking" && (
+                  <span
+                    aria-hidden="true"
+                    className="ml-2 size-3.5 animate-spin rounded-full border-[1.5px] border-muted-foreground border-t-transparent"
                   />
-                  <span className="pr-1 font-mono text-[14px] text-muted-foreground">
-                    {PARENT_SUFFIX}
-                  </span>
-                </div>
-
-                <StatusLine
-                  availability={availability}
-                  helpId={helpId}
-                  isAvailabilityError={isAvailabilityError}
-                  isLocalError={isLocalError}
-                  label={validation.label}
-                  status={validation.status}
-                  submitError={submitError}
-                  validationHint={validation.hint}
-                />
+                )}
               </div>
 
-              <div className="mt-[18px] flex items-start gap-2 rounded-sm border border-warning/30 bg-warning/10 px-3 py-2.5">
-                <span
-                  aria-hidden="true"
-                  className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-warning"
-                />
-                <p className="text-[12.5px] text-warning leading-[1.5]">
-                  Changing your handle releases{" "}
-                  <span className="font-mono">{currentFull}</span> on Sui.
-                  Anyone can claim it after — including someone else.{" "}
-                  <strong className="font-semibold">
-                    This action is final.
-                  </strong>
-                </p>
+              <StatusLine
+                availability={availability}
+                helpId={helpId}
+                isAvailabilityError={isAvailabilityError}
+                isLocalError={isLocalError}
+                label={validation.label}
+                status={validation.status}
+                submitError={submitError}
+                validationHint={validation.hint}
+              />
+
+              <div className="flex items-start gap-2 font-mono text-[11px] text-warning tracking-[0.02em]">
+                <span aria-hidden="true">!</span>
+                <span className="leading-[1.5]">
+                  {currentFull} is released and someone else can claim it.
+                  Update anyone who pays you.
+                </span>
               </div>
 
-              <div className="mt-[22px] flex items-center justify-end gap-2">
+              <div className="mt-1 flex gap-2 border-t border-border pt-3">
                 <button
-                  className="rounded-sm border border-border bg-card px-4 py-2.5 font-mono text-[11px] text-foreground uppercase tracking-[0.08em] transition hover:border-foreground/30 focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none disabled:opacity-50"
+                  className="inline-flex h-9 flex-1 items-center justify-center rounded-lg border border-border bg-card font-medium font-sans text-[13px] text-foreground transition hover:bg-accent focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none disabled:opacity-50"
                   disabled={isSubmitting}
                   onClick={onClose}
                   type="button"
@@ -451,7 +425,7 @@ export function UsernameChangeModal({
                   Cancel
                 </button>
                 <button
-                  className="rounded-sm border border-foreground bg-foreground px-4 py-2.5 font-mono text-[11px] text-background uppercase tracking-[0.1em] transition hover:opacity-90 focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-45"
+                  className="inline-flex h-9 flex-1 items-center justify-center rounded-lg bg-primary px-3 font-medium font-sans text-[13px] text-primary-foreground transition hover:opacity-90 focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
                   data-testid="username-change-modal-submit"
                   disabled={
                     !validation.ok ||
@@ -463,7 +437,9 @@ export function UsernameChangeModal({
                   }
                   type="submit"
                 >
-                  {isSubmitting ? "Changing…" : "CHANGE HANDLE"}
+                  {isSubmitting
+                    ? "Changing…"
+                    : `Change to ${validation.label || "…"}${PARENT_SUFFIX}`}
                 </button>
               </div>
             </form>
@@ -482,34 +458,28 @@ interface SuccessCardProps {
 function SuccessCard({ fullHandle, onDone }: SuccessCardProps) {
   return (
     <div
-      className="px-8 pt-9 pb-3.5 text-center"
+      className="flex flex-col items-center gap-[18px] p-6 text-center"
       data-testid="username-change-modal-success"
     >
-      <div
-        aria-hidden="true"
-        className="mx-auto mb-[18px] flex h-11 w-11 items-center justify-center rounded-full border border-success/30 bg-success/10 text-success"
+      <span className="inline-flex size-11 items-center justify-center rounded-full bg-signal text-background">
+        <CheckIcon aria-hidden="true" size={20} strokeWidth={1.8} />
+      </span>
+      <div className="flex flex-col gap-2">
+        <DialogTitle className="break-all font-medium font-mono text-[22px] text-foreground tracking-[-0.018em]">
+          {fullHandle}
+        </DialogTitle>
+        <p className="m-0 text-[13px] text-muted-foreground leading-[1.5]">
+          Handle changed. It can take a few seconds to propagate everywhere.
+        </p>
+      </div>
+      <button
+        className="inline-flex h-10 w-full items-center justify-center rounded-lg bg-primary px-4 font-medium font-sans text-[14px] text-primary-foreground tracking-[-0.011em] transition hover:opacity-90 focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none"
+        data-testid="username-change-modal-done"
+        onClick={onDone}
+        type="button"
       >
-        <CheckIcon size={20} />
-      </div>
-      <DialogTitle className="mb-3.5 font-mono text-[11px] text-muted-foreground uppercase tracking-[0.14em]">
-        HANDLE CHANGED
-      </DialogTitle>
-      <div className="break-all font-medium font-serif text-[22px] text-foreground leading-[1.15] tracking-[-0.005em]">
-        {fullHandle}
-      </div>
-      <p className="mx-auto mt-3.5 max-w-[320px] text-[13px] text-muted-foreground leading-[1.55]">
-        It can take a few seconds to propagate everywhere.
-      </p>
-      <div className="mt-7 border-t border-border pt-3.5">
-        <button
-          className="rounded-sm border border-foreground bg-foreground px-4 py-2.5 font-mono text-[11px] text-background uppercase tracking-[0.1em] transition hover:opacity-90 focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none"
-          data-testid="username-change-modal-done"
-          onClick={onDone}
-          type="button"
-        >
-          DONE
-        </button>
-      </div>
+        Done
+      </button>
     </div>
   );
 }
@@ -535,84 +505,53 @@ function StatusLine({
   submitError,
   validationHint,
 }: StatusLineProps) {
-  const tone =
-    submitError || isLocalError || isAvailabilityError
-      ? "text-destructive"
-      : availability === "available"
-        ? "text-success"
-        : "text-muted-foreground";
+  const isError = Boolean(submitError) || isLocalError || isAvailabilityError;
+  const tone = isError
+    ? "text-destructive"
+    : availability === "available"
+      ? "text-signal"
+      : "text-muted-foreground";
   const role =
     submitError || validationHint || isAvailabilityError ? "alert" : "status";
-  const content = (() => {
+
+  const message = (() => {
     if (submitError) {
-      return (
-        <>
-          <XIcon aria-hidden="true" size={10} />
-          <span>{submitError}</span>
-        </>
-      );
+      return submitError;
     }
     if (isLocalError && validationHint) {
-      return (
-        <>
-          <XIcon aria-hidden="true" size={10} />
-          <span>{validationHint}</span>
-        </>
-      );
+      return validationHint;
     }
     if (status === "idle") {
-      return <span>{"// 3–20 CHARS · LOWERCASE, DIGITS, HYPHEN"}</span>;
+      return "3–20 characters · letters, numbers, hyphens";
     }
     if (availability === "checking") {
-      return (
-        <>
-          <LoaderIcon aria-hidden="true" className="animate-spin" size={10} />
-          <span>{"// CHECKING"}</span>
-        </>
-      );
+      return "Checking availability…";
     }
     if (availability === "available") {
-      return (
-        <>
-          <CheckIcon aria-hidden="true" size={10} />
-          <span>{"// AVAILABLE"}</span>
-        </>
-      );
+      return "Available · free";
     }
     if (availability === "taken") {
-      return (
-        <>
-          <XIcon aria-hidden="true" size={10} />
-          <span>{`// TAKEN — ${label}${PARENT_SUFFIX} is already claimed`}</span>
-        </>
-      );
+      return `${label}${PARENT_SUFFIX} is already claimed`;
     }
     if (availability === "verifier-down") {
-      return (
-        <>
-          <XIcon aria-hidden="true" size={10} />
-          <span>{"// VERIFIER DOWN — can't check right now, try again"}</span>
-        </>
-      );
+      return "Couldn't check right now — try again";
     }
     if (availability === "error") {
-      return (
-        <>
-          <XIcon aria-hidden="true" size={10} />
-          <span>{"// CHECK FAILED — try again"}</span>
-        </>
-      );
+      return "Check failed — try again";
     }
-    return <span>{"// 3–20 CHARS · LOWERCASE, DIGITS, HYPHEN"}</span>;
+    return "3–20 characters · letters, numbers, hyphens";
   })();
+
+  const showDot = availability === "available" || isError;
 
   return (
     <p
-      className={`mt-2 inline-flex items-start gap-1.5 font-mono text-[11px] uppercase tracking-[0.04em] ${tone}`}
+      className={`m-0 inline-flex items-center gap-1.5 font-mono text-[11px] tracking-[0.04em] ${tone}`}
       id={helpId}
       role={role}
     >
-      {content}
+      {showDot && <span className="size-[5px] rounded-full bg-current" />}
+      {message}
     </p>
   );
 }
