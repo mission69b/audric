@@ -49,10 +49,10 @@ export default function DisclaimerPage() {
           </h2>
           <p>
             Audric interacts with third-party smart contracts on the Sui
-            blockchain (NAVI Protocol, Cetus, VOLO, and others). These contracts
-            have been audited by their respective teams but are not guaranteed
-            to be free of vulnerabilities. Audric does not audit or guarantee
-            the safety of any third-party protocol.
+            blockchain (NAVI Protocol, Cetus, and others). These contracts have
+            been audited by their respective teams but are not guaranteed to be
+            free of vulnerabilities. Audric does not audit or guarantee the
+            safety of any third-party protocol.
           </p>
         </section>
 

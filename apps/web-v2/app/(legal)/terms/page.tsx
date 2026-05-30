@@ -100,7 +100,7 @@ export default function TermsPage() {
           <ul className="list-disc pl-5 space-y-1.5 mt-2">
             <li>
               <strong className="text-foreground">DeFi protocols</strong> (NAVI,
-              Cetus, VOLO) &mdash; via on-chain smart contracts
+              Cetus) &mdash; via on-chain smart contracts
             </li>
             <li>
               <strong className="text-foreground">AI</strong> (Anthropic)

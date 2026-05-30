@@ -28,7 +28,7 @@ export function CanvasCard({ canvas, onSendMessage }: CanvasCardProps) {
 
   return (
     <>
-      <div className="my-2 overflow-hidden rounded-xl border border-border bg-card/50">
+      <div className="my-2 shrink-0 overflow-hidden rounded-xl border border-border bg-card/50">
         <div className="flex items-center justify-between border-border border-b px-3 py-2">
           <div className="flex items-center gap-2">
             <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest">

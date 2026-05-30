@@ -207,8 +207,8 @@ export default function PrivacyPage() {
             </li>
             <li>
               <strong className="text-foreground">DeFi protocols</strong> (NAVI,
-              Cetus, VOLO) &mdash; Via on-chain smart contracts (public
-              blockchain data only)
+              Cetus) &mdash; Via on-chain smart contracts (public blockchain
+              data only)
             </li>
             <li>
               <strong className="text-foreground">Sui RPC nodes</strong> &mdash;
