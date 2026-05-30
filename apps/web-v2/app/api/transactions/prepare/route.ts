@@ -74,7 +74,6 @@
  * + L545-630 (`buildAndSponsor`).
  */
 
-import { SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
 import {
   addFeeTransfer,
   assertAllowedAsset,
@@ -101,7 +100,7 @@ import {
 } from "@/lib/audric/sponsor";
 import { getCurrentUser } from "@/lib/audric-auth";
 import { env } from "@/lib/env";
-import { getSuiRpcUrl } from "@/lib/sui-rpc";
+import { createSuiRpcClient, getSuiRpcUrl } from "@/lib/sui-rpc";
 import { resolveSuinsCached } from "@/lib/suins-cache";
 
 export const maxDuration = 30;
@@ -621,15 +620,9 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // 5. Compose the Sui tx.
-  const suiClient = new SuiJsonRpcClient({
-    url: getSuiRpcUrl(),
-    network: env.NEXT_PUBLIC_SUI_NETWORK as
-      | "mainnet"
-      | "testnet"
-      | "devnet"
-      | "localnet",
-  });
+  // 5. Compose the Sui tx. Retrying client absorbs transient BlockVision
+  // 429s during tx.build's move-function resolution (swap-429 incident).
+  const suiClient = createSuiRpcClient();
 
   const wantOverlayFee =
     body.type === "bundle"

@@ -36,7 +36,6 @@
  * Traceability: BENEFITS_SPEC_v07c.md §"Phase 3 Day 3b" + S.175.
  */
 
-import { getJsonRpcFullnodeUrl, SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { redactPII } from "@/lib/audric/log-redact";
@@ -46,6 +45,7 @@ import {
   SponsorSettlementError,
 } from "@/lib/audric/sponsor";
 import { env } from "@/lib/env";
+import { createSuiRpcClient } from "@/lib/sui-rpc";
 
 export const maxDuration = 60;
 
@@ -85,15 +85,9 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const network = env.NEXT_PUBLIC_SUI_NETWORK as
-    | "mainnet"
-    | "testnet"
-    | "devnet"
-    | "localnet";
-  const suiClient = new SuiJsonRpcClient({
-    url: getJsonRpcFullnodeUrl(network),
-    network,
-  });
+  // Retrying BlockVision-routed client — the previous public-fullnode
+  // client 429'd under load on settlement + self-sponsor submit.
+  const suiClient = createSuiRpcClient();
 
   // Dispatch to the strategy `/prepare` selected. `enoki` co-signs +
   // submits via Enoki's REST endpoint; `self` submits both signatures
