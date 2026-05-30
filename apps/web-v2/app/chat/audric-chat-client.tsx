@@ -891,6 +891,12 @@ function AudricChatPanel({
       >
         <PromptInputBody>
           <PromptInputTextarea
+            // [2026-05-30] Trim the empty-state height: the AI Elements
+            // default min-h-16 (64px) + the submit footer row reads tall
+            // for Audric (no model picker / attachments fill the toolbar).
+            // min-h-11 keeps a comfortable single line that still
+            // auto-grows up to max-h-48.
+            className="min-h-11"
             data-testid="multimodal-input"
             disabled={isStreaming}
             onChange={(e) => setInput(e.target.value)}

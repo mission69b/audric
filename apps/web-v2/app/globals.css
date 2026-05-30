@@ -110,7 +110,12 @@
   --chart-3: var(--ds-gray-600);
   --chart-4: var(--ds-gray-500);
   --chart-5: var(--ds-gray-400);
-  --sidebar: var(--bg);
+  /* [2026-05-30] Sidebar is a subtly distinct shade from the main canvas
+     (--bg), matching the chatbot.ai-sdk.dev demo where the sidebar reads
+     a touch off the content area. --ds-background-200 flips per theme:
+     dark rgb(0,0,0) (a hair darker than the rgb(10,10,10) canvas) and
+     light rgb(250,250,250) (a hair off the white canvas). */
+  --sidebar: var(--ds-background-200);
   --sidebar-foreground: var(--ds-gray-700);
   --sidebar-primary: var(--fg);
   --sidebar-primary-foreground: var(--bg);
