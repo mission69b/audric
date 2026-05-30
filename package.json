@@ -17,7 +17,6 @@
   "packageManager": "pnpm@10.6.2",
   "pnpm": {
     "overrides": {
-      "@mppsui/mpp": "npm:@suimpp/mpp@0.3.1",
       "@mysten/sui": "^2.17.0"
     },
     "patchedDependencies": {
