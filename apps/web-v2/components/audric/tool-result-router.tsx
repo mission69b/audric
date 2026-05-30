@@ -24,10 +24,8 @@ import { PriceCard } from "./cards/PriceCard";
 import { extractData } from "./cards/primitives";
 import { RatesCardV2 } from "./cards/RatesCardV2";
 import { SavingsCard } from "./cards/SavingsCard";
-import { SkeletonCard } from "./cards/SkeletonCard";
 import { SuinsResolution } from "./cards/SuinsResolution";
 import { SwapQuoteCardV2 } from "./cards/SwapQuoteCardV2";
-import { getSkeletonVariant } from "./cards/skeleton-variants";
 import { TransactionHistoryCard } from "./cards/TransactionHistoryCard";
 import { TransactionReceiptCard } from "./cards/TransactionReceiptCard";
 import { YieldEarningsCard } from "./cards/YieldEarningsCard";
@@ -40,8 +38,12 @@ import { YieldEarningsCard } from "./cards/YieldEarningsCard";
  * instead of the legacy `useEngine` `ToolExecution` shape.
  *
  * Renders:
- *  - `SkeletonCard` while the tool input is streaming / dispatched.
- *  - A rich Audric card for tools in the switch below once output lands.
+ *  - AI Elements `<Tool>` accordion while the tool input is streaming /
+ *    dispatched (a compact "name · Running" row the user can watch) —
+ *    matches vercel/chatbot's `tool-getWeather` running state.
+ *  - A rich Audric card for tools in the switch below once output lands
+ *    (the bare card replaces the running accordion, like the demo's
+ *    `<Weather>` on `output-available`).
  *  - Generic AI Elements `<Tool>` JSON dump otherwise.
  *
  * Coverage as of Phase 5b (2026-05-19): 20+ light cards + 8 canvas
@@ -327,22 +329,26 @@ export function ToolResultRouter({
     return <ConfirmationChip glyph="×" label={label} tone="neutral" />;
   }
 
+  // [B2 / vercel parity — 2026-05-30] While a tool is executing (or a
+  // confirmed write is submitting after the PermissionCard tap), show the
+  // vendored `<Tool>` accordion — a compact "name · Running" row the user
+  // can watch and expand to see params — exactly like vercel/chatbot's
+  // `tool-getWeather` running branch. On `output-available` (below) it
+  // resolves into the bare rich finance card. This replaces the former
+  // Phase-5 `SkeletonCard` pulse.
   if (
     part.state === "input-streaming" ||
     part.state === "input-available" ||
     part.state === "approval-responded"
   ) {
-    const variant = getSkeletonVariant(toolName);
-    if (variant !== null) {
-      return (
-        <SkeletonCard
-          ariaLabel={
-            part.state === "approval-responded" ? "Submitting" : "Loading"
-          }
-          variant={variant}
-        />
-      );
-    }
+    return (
+      <Tool className="w-full">
+        <ToolHeader state={part.state} type={part.type} />
+        <ToolContent>
+          {part.input !== undefined && <ToolInput input={part.input} />}
+        </ToolContent>
+      </Tool>
+    );
   }
 
   if (part.state === "output-available") {

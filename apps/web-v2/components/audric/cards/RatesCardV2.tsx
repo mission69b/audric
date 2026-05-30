@@ -1,22 +1,19 @@
 "use client";
 
-import { APYBlock } from "./shared";
 import { CardShell } from "./primitives";
+import { AssetRow } from "./shared";
 
 /**
- * RatesCardV2 — renders `rates_info` tool output (NAVI supply + borrow
- * APYs per asset). Canary card for Phase 5a — proves the wire-format
- * pattern (port from legacy → `tool-call.output` shape → Agentic
- * Design System tokens) before the rest of the cards follow.
+ * RatesCardV2 — `rates_info` tool renderer (NAVI supply + borrow APYs).
  *
- * Ported from `apps/web/components/engine/cards/RatesCardV2.tsx` by
- * Phase 5a.2 (renderer migration sweep, 2026-05-19). Verbatim except
- * import paths.
+ * [R6.4 / A4 — 2026-05-30] Rebuilt to the phase2 read-card spec
+ * (`t2000-AFI/audric/phase2-read-cards.html` R3): a live eyebrow and a
+ * compact AssetRow list — one green supply row + one amber borrow row
+ * per asset. Input shape + `apyToBps`/decimal handling preserved from
+ * the prior `apps/web` port.
  *
  * Input shape: `{ [asset: string]: { saveApy, borrowApy, ... } }`.
- * Engine emits `saveApy` / `borrowApy` as DECIMALS (e.g. 0.0462 for
- * 4.62%) per `packages/engine/src/navi/transforms.ts`. The `apyToBps`
- * helper defensively handles both decimal and raw-percentage inputs.
+ * Engine emits `saveApy` / `borrowApy` as DECIMALS (e.g. 0.0462).
  */
 
 interface RateEntry {
@@ -26,14 +23,12 @@ interface RateEntry {
   saveApy: number;
 }
 
-const SECTION_LABEL =
-  "font-mono text-[9px] text-muted-foreground uppercase tracking-[0.14em]";
-
-function apyToBps(rate: number): number {
+function fmtApy(rate: number): string {
   if (!Number.isFinite(rate) || rate <= 0) {
-    return 0;
+    return "—";
   }
-  return rate < 1 ? Math.round(rate * 10_000) : Math.round(rate * 100);
+  const pct = rate < 1 ? rate * 100 : rate;
+  return `${pct.toFixed(2)}%`;
 }
 
 export function RatesCardV2({ data }: { data: Record<string, RateEntry> }) {
@@ -46,20 +41,25 @@ export function RatesCardV2({ data }: { data: Record<string, RateEntry> }) {
   }
 
   return (
-    <CardShell title="Lending rates">
-      <div className="space-y-2">
-        <div className="grid grid-cols-2 gap-2 border-border border-b pb-1">
-          <span className={SECTION_LABEL}>Supply</span>
-          <span className={SECTION_LABEL}>Borrow</span>
-        </div>
+    <CardShell badge={<span className="font-mono text-[11px] text-muted-foreground">live</span>} live title="Lending rates">
+      <div>
         {entries.map(([symbol, rate]) => (
-          <div
-            className="grid grid-cols-2 items-baseline gap-2"
-            key={symbol}
-          >
-            <APYBlock apyBps={apyToBps(rate.saveApy)} asset={symbol} />
-            <APYBlock apyBps={apyToBps(rate.borrowApy)} asset={symbol} />
-          </div>
+          <AssetRow
+            amount="supply"
+            key={`${symbol}-supply`}
+            symbol={symbol}
+            tone="success"
+            value={fmtApy(rate.saveApy)}
+          />
+        ))}
+        {entries.map(([symbol, rate]) => (
+          <AssetRow
+            amount="borrow"
+            key={`${symbol}-borrow`}
+            symbol={symbol}
+            tone="warning"
+            value={fmtApy(rate.borrowApy)}
+          />
         ))}
       </div>
     </CardShell>

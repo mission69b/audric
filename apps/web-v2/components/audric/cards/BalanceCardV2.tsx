@@ -1,23 +1,28 @@
 'use client';
 
+import { useState } from 'react';
 import { AddressBadge, CardShell, fmtUsd } from './primitives';
-import { AssetAmountBlock, APYBlock } from './shared';
+import { APYBlock, AssetRow } from './shared';
 
 // ───────────────────────────────────────────────────────────────────────────
-// BalanceCardV2 — `balance_check` tool renderer (design-baseline shape).
+// BalanceCardV2 — `balance_check` tool renderer.
 //
-// Ported from `apps/web/components/engine/cards/BalanceCardV2.tsx` by
-// Phase 5a.3 (renderer migration sweep, 2026-05-19). Verbatim except
-// import paths.
+// [R6.4 / A3 — 2026-05-30] Rebuilt to the phase2 wallet-card spec
+// (`t2000-AFI/audric/phase2-wallet-card.html`): a sectioned card —
+// Wallet (AssetRows + a collapsible dust expander for sub-$1 tokens),
+// NAVI savings (live dot + APY callout), and a Debt section that only
+// appears when debt > 0 (and picks up amber). Total/Net lands in the
+// dashed footer. Read-only per the phase2 read-card contract — no
+// mutating action buttons (those live on the canvas). Data shape +
+// derivations preserved from the prior `apps/web` port.
 //
-// V1/V2 absorption note (founder lock 2026-05-19, see S.178): this card
-// owns the `variant?: 'default' | 'post-write'` API; the `post-write`
-// branch is deferred to Phase 5c when the `<PostWriteRefreshSurface>`
-// timeline view + `motion/NumberTicker` land alongside it. Until then,
-// `variant === 'post-write'` falls through to the V2 default layout —
-// the prop is accepted for API forward-compatibility, never invoked in
-// web-v2's wiring today.
+// The `variant?: 'default' | 'post-write'` prop is accepted for API
+// forward-compatibility; the post-write surface is deferred. Until then
+// it is a no-op.
 // ───────────────────────────────────────────────────────────────────────────
+
+const DUST_FLOOR_USD = 0.01;
+const DUST_CEILING_USD = 1;
 
 interface Holding {
   symbol: string;
@@ -44,29 +49,52 @@ export interface BalanceCardV2Data {
 
 interface BalanceCardV2Props {
   data: BalanceCardV2Data;
-  /**
-   * Default APY in basis points for the USDC NAVI pool (~462 bps / 4.62%).
-   */
+  /** Default APY (bps) for the USDC NAVI pool (~462 bps / 4.62%). */
   defaultUsdcApyBps?: number;
-  /**
-   * Default APY in basis points for the USDsui NAVI pool (~520 bps / 5.20%).
-   */
+  /** Default APY (bps) for the USDsui NAVI pool (~520 bps / 5.20%). */
   defaultUsdsuiApyBps?: number;
-  /**
-   * Reserved for Phase 5c when PostWriteRefreshSurface lands. No-op today.
-   */
+  /** Reserved for the post-write refresh surface. No-op today. */
   variant?: 'default' | 'post-write';
 }
 
-const SECTION_LABEL =
-  'text-[9px] font-mono uppercase tracking-[0.14em] text-muted-foreground';
+const SECTION_TAG =
+  'inline-flex items-center gap-2 font-mono text-[10.5px] uppercase tracking-[0.08em] text-muted-foreground';
+const SECTION_SUB =
+  'font-mono text-[10.5px] tracking-[0.04em] text-muted-foreground';
 
-function pickHoldings(data: BalanceCardV2Data): Holding[] {
-  if (!data.holdings || data.holdings.length === 0) return [];
-  return data.holdings
-    .filter((h) => h.usdValue >= 0.01)
-    .sort((a, b) => b.usdValue - a.usdValue)
-    .slice(0, 6);
+function SectionHeader({
+  label,
+  sub,
+  live,
+  tone,
+}: {
+  label: string;
+  sub?: string;
+  live?: boolean;
+  tone?: 'default' | 'warning';
+}) {
+  const isWarn = tone === 'warning';
+  return (
+    <div className="mb-1 flex items-center justify-between">
+      <span className={`${SECTION_TAG} ${isWarn ? 'text-warning' : ''}`}>
+        <span
+          className={
+            isWarn
+              ? 'h-1 w-1 rounded-full bg-warning'
+              : live
+                ? 'h-1 w-1 rounded-full bg-signal'
+                : 'h-1 w-1 rounded-full bg-muted-foreground'
+          }
+        />
+        {label}
+      </span>
+      {sub && (
+        <span className={`${SECTION_SUB} ${isWarn ? 'text-warning' : ''}`}>
+          {sub}
+        </span>
+      )}
+    </div>
+  );
 }
 
 export function BalanceCardV2({
@@ -74,9 +102,16 @@ export function BalanceCardV2({
   defaultUsdcApyBps = 462,
   defaultUsdsuiApyBps = 520,
 }: BalanceCardV2Props) {
-  const holdings = pickHoldings(data);
+  const [dustOpen, setDustOpen] = useState(false);
 
-  const holdingsSumUsd = holdings.reduce((sum, h) => sum + h.usdValue, 0);
+  const allHoldings = (data.holdings ?? [])
+    .filter((h) => h.usdValue >= DUST_FLOOR_USD)
+    .sort((a, b) => b.usdValue - a.usdValue);
+  const mainHoldings = allHoldings.filter((h) => h.usdValue >= DUST_CEILING_USD);
+  const dustHoldings = allHoldings.filter((h) => h.usdValue < DUST_CEILING_USD);
+  const dustSum = dustHoldings.reduce((sum, h) => sum + h.usdValue, 0);
+
+  const holdingsSumUsd = allHoldings.reduce((sum, h) => sum + h.usdValue, 0);
   const walletUsd =
     data.available != null && data.available > 0
       ? data.available
@@ -96,58 +131,94 @@ export function BalanceCardV2({
   const showUsdcApyHint = !hasSavings && (data.saveableUsdc ?? 0) > 0;
   const showUsdsuiApyHint = !hasSavings && (data.saveableUsdsui ?? 0) > 0;
   const showAnyApyHint = showUsdcApyHint || showUsdsuiApyHint;
+  const hasDebt = debtUsd > 0;
 
   return (
-    <CardShell title="Wallet & savings" badge={badge}>
+    <CardShell
+      title="Wallet & savings"
+      badge={badge}
+      footer={
+        <>
+          <span>{hasDebt ? 'Net' : 'Total'}</span>
+          <span className="font-medium text-foreground text-sm">
+            ${fmtUsd(totalUsd)}
+          </span>
+        </>
+      }
+    >
       <div className="space-y-4">
         {/* WALLET SECTION */}
         <div>
-          <div className="flex items-baseline justify-between mb-2">
-            <span className={SECTION_LABEL}>Wallet</span>
-            <span className="text-foreground text-xs font-mono tabular-nums">
-              ${fmtUsd(walletUsd)}
-            </span>
-          </div>
-          {holdings.length > 0 ? (
-            <div className="space-y-1.5">
-              {holdings.map((h) => (
-                <AssetAmountBlock
+          <SectionHeader label="Wallet" sub={`$${fmtUsd(walletUsd)}`} />
+          {mainHoldings.length > 0 ? (
+            <div>
+              {mainHoldings.map((h) => (
+                <AssetRow
                   key={h.symbol}
-                  asset={h.symbol}
-                  amount={h.balance}
-                  usdValue={h.usdValue}
+                  symbol={h.symbol}
+                  amount={h.balance.toLocaleString('en-US', {
+                    maximumFractionDigits: 4,
+                  })}
+                  value={`$${fmtUsd(h.usdValue)}`}
                 />
               ))}
+              {dustOpen &&
+                dustHoldings.map((h) => (
+                  <AssetRow
+                    dim
+                    key={h.symbol}
+                    symbol={h.symbol}
+                    amount={h.balance.toLocaleString('en-US', {
+                      maximumFractionDigits: 4,
+                    })}
+                    value={`$${fmtUsd(h.usdValue)}`}
+                  />
+                ))}
             </div>
           ) : (
-            <div className="text-muted-foreground text-xs italic">No holdings</div>
+            <div className="text-muted-foreground text-xs italic">
+              No holdings
+            </div>
+          )}
+
+          {/* DUST EXPANDER */}
+          {!dustOpen && dustHoldings.length > 0 && (
+            <button
+              className="mt-2 flex w-full items-center justify-between rounded-md border border-border border-dashed bg-muted px-3 py-2 transition-colors hover:border-border-strong"
+              onClick={() => setDustOpen(true)}
+              type="button"
+            >
+              <span className="font-mono text-[11px] text-muted-foreground tracking-[0.04em]">
+                + {dustHoldings.length} more · dust under $1
+              </span>
+              <span className="font-mono text-[12px] text-muted-foreground tabular-nums">
+                ${fmtUsd(dustSum)}
+              </span>
+            </button>
           )}
         </div>
 
         {/* SAVINGS SECTION */}
         {(hasSavings || showAnyApyHint) && (
-          <div className="pt-3 border-t border-border">
-            <div className="flex items-baseline justify-between mb-2">
-              <span className={SECTION_LABEL}>NAVI savings</span>
-              {hasSavings && (
-                <span className="text-foreground text-xs font-mono tabular-nums">
-                  ${fmtUsd(savingsUsd)}
-                </span>
-              )}
-            </div>
+          <div className="border-border border-t pt-3">
+            <SectionHeader
+              label="NAVI savings"
+              live
+              sub={hasSavings ? `$${fmtUsd(savingsUsd)}` : undefined}
+            />
             {hasSavings && (
-              <AssetAmountBlock
-                asset="USDC"
-                amount={savingsUsd}
-                usdValue={savingsUsd}
-                label="Total deposited"
+              <AssetRow
+                symbol="USDC"
+                sub="deposited"
+                amount={fmtUsd(savingsUsd)}
+                value={`$${fmtUsd(savingsUsd)}`}
               />
             )}
             {showAnyApyHint && (
               <div className="space-y-1 pt-2">
                 {showUsdcApyHint && (
                   <div className="flex items-baseline justify-between">
-                    <span className="text-muted-foreground text-[10px] font-mono uppercase tracking-wider">
+                    <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
                       Saveable
                     </span>
                     <APYBlock asset="USDC" apyBps={defaultUsdcApyBps} />
@@ -155,7 +226,7 @@ export function BalanceCardV2({
                 )}
                 {showUsdsuiApyHint && (
                   <div className="flex items-baseline justify-between">
-                    <span className="text-muted-foreground text-[10px] font-mono uppercase tracking-wider">
+                    <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
                       Saveable
                     </span>
                     <APYBlock asset="USDsui" apyBps={defaultUsdsuiApyBps} />
@@ -167,22 +238,22 @@ export function BalanceCardV2({
         )}
 
         {/* DEBT — only when present */}
-        {debtUsd > 0 && (
-          <div className="pt-3 border-t border-border flex items-baseline justify-between">
-            <span className={SECTION_LABEL}>Debt</span>
-            <span className="text-warning text-xs font-mono tabular-nums">
-              ${fmtUsd(debtUsd)}
-            </span>
+        {hasDebt && (
+          <div className="border-border border-t pt-3">
+            <SectionHeader
+              label="NAVI debt"
+              sub={`−$${fmtUsd(debtUsd)}`}
+              tone="warning"
+            />
+            <AssetRow
+              symbol="USDC"
+              sub="borrowed"
+              amount={fmtUsd(debtUsd)}
+              tone="warning"
+              value={`−$${fmtUsd(debtUsd)}`}
+            />
           </div>
         )}
-
-        {/* FOOTER CHIP — total */}
-        <div className="pt-3 border-t border-border flex items-baseline justify-between">
-          <span className={SECTION_LABEL}>Total</span>
-          <span className="text-foreground text-sm font-mono font-medium tabular-nums">
-            ${fmtUsd(totalUsd)}
-          </span>
-        </div>
       </div>
     </CardShell>
   );

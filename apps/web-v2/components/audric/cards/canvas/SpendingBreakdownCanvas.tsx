@@ -3,6 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { authFetch } from "@/lib/auth-fetch";
 import { fmtUsd } from "../primitives";
+import {
+  CanvasButton,
+  CanvasFooterMeta,
+  CanvasShell,
+  RangeTabs,
+} from "./canvas-shell";
 
 interface SpendingData {
   available: true;
@@ -153,6 +159,8 @@ export function SpendingBreakdownCanvas({ data, onAction }: Props) {
     [response]
   );
 
+  const periodLabel = PERIOD_TABS[periodIdx].label;
+
   if (
     !data ||
     typeof data !== "object" ||
@@ -160,30 +168,31 @@ export function SpendingBreakdownCanvas({ data, onAction }: Props) {
     !data.available
   ) {
     return (
-      <div className="flex flex-col items-center justify-center space-y-2 py-10 text-center">
-        <span className="text-3xl">💸</span>
-        <p className="font-medium text-foreground text-sm">
-          Spending Breakdown
-        </p>
-        <p className="max-w-xs text-muted-foreground text-xs leading-relaxed">
-          {data &&
-          typeof data === "object" &&
-          "message" in data &&
-          data.message
-            ? data.message
-            : "Spending breakdown requires wallet data."}
-        </p>
-      </div>
+      <CanvasShell eyebrow="Spending" name="Breakdown">
+        <div className="flex flex-col items-center justify-center space-y-2 py-6 text-center">
+          <span className="text-3xl">💸</span>
+          <p className="max-w-xs text-muted-foreground text-xs leading-relaxed">
+            {data &&
+            typeof data === "object" &&
+            "message" in data &&
+            data.message
+              ? data.message
+              : "Spending breakdown requires wallet data."}
+          </p>
+        </div>
+      </CanvasShell>
     );
   }
 
   if (loading && !response) {
     return (
-      <div className="flex items-center justify-center py-10">
-        <div className="animate-pulse font-mono text-muted-foreground text-xs">
-          Loading spending data...
+      <CanvasShell eyebrow="Spending" name="Breakdown">
+        <div className="flex items-center justify-center py-8">
+          <div className="animate-pulse font-mono text-muted-foreground text-xs">
+            Loading spending data...
+          </div>
         </div>
-      </div>
+      </CanvasShell>
     );
   }
 
@@ -191,86 +200,99 @@ export function SpendingBreakdownCanvas({ data, onAction }: Props) {
   const requests = response?.requestCount ?? 0;
 
   return (
-    <div className="space-y-4">
-      <div className="flex gap-1">
-        {PERIOD_TABS.map((p, i) => (
-          <button
-            className={`flex-1 rounded py-1 font-mono text-[10px] uppercase tracking-wider transition ${
-              periodIdx === i
-                ? "bg-foreground text-background"
-                : "border border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground"
-            }`}
-            key={p.value}
-            onClick={() => setPeriodIdx(i)}
-            type="button"
-          >
-            {p.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="flex items-center gap-4">
-        <div className="shrink-0">
-          <svg
-            aria-label="Spending breakdown donut"
-            height="100"
-            role="img"
-            viewBox="0 0 100 100"
-            width="100"
-          >
-            {segments.length > 0 ? (
-              segments.map((seg) => (
-                <path
-                  d={arcPath(50, 50, 38, seg.startAngle, seg.endAngle - 0.5)}
-                  fill="none"
-                  key={seg.category}
-                  stroke={seg.color}
-                  strokeLinecap="round"
-                  strokeWidth="10"
-                />
-              ))
-            ) : (
-              <circle
-                className="text-muted-foreground/40"
-                cx="50"
-                cy="50"
+    <CanvasShell
+      controls={
+        <RangeTabs
+          onChange={(v) =>
+            setPeriodIdx(PERIOD_TABS.findIndex((p) => p.label === v))
+          }
+          options={PERIOD_TABS.map((p) => p.label)}
+          value={periodLabel}
+        />
+      }
+      eyebrow="Spending"
+      footer={
+        onAction && total > 0 ? (
+          <>
+            <CanvasFooterMeta>
+              {requests > 0
+                ? `Avg $${(total / requests).toFixed(3)} / request`
+                : "API usage"}
+            </CanvasFooterMeta>
+            <CanvasButton
+              onClick={() =>
+                onAction("What APIs have I used and how much did each cost?")
+              }
+              variant="secondary"
+            >
+              Detailed breakdown →
+            </CanvasButton>
+          </>
+        ) : undefined
+      }
+      name={`${periodLabel} · $${total < 1000 ? total.toFixed(2) : fmtUsd(total)} out`}
+    >
+      <div className="flex items-center gap-7">
+        <svg
+          aria-label="Spending breakdown donut"
+          className="h-[130px] w-[130px] shrink-0"
+          role="img"
+          viewBox="0 0 100 100"
+        >
+          {segments.length > 0 ? (
+            segments.map((seg) => (
+              <path
+                d={arcPath(50, 50, 38, seg.startAngle, seg.endAngle - 0.5)}
                 fill="none"
-                r="38"
-                stroke="currentColor"
-                strokeWidth="10"
+                key={seg.category}
+                stroke={seg.color}
+                strokeLinecap="round"
+                strokeWidth="9"
               />
-            )}
-            <text
-              className="fill-foreground font-medium font-mono text-[11px]"
-              textAnchor="middle"
-              x="50"
-              y="46"
-            >
-              ${total < 1000 ? total.toFixed(2) : fmtUsd(total)}
-            </text>
-            <text
-              className="fill-muted-foreground font-mono text-[8px]"
-              textAnchor="middle"
-              x="50"
-              y="58"
-            >
-              {requests} req{requests !== 1 ? "s" : ""}
-            </text>
-          </svg>
-        </div>
+            ))
+          ) : (
+            <circle
+              className="text-muted"
+              cx="50"
+              cy="50"
+              fill="none"
+              r="38"
+              stroke="currentColor"
+              strokeWidth="9"
+            />
+          )}
+          <text
+            className="fill-foreground font-medium font-mono text-[11px]"
+            textAnchor="middle"
+            x="50"
+            y="47"
+          >
+            ${total < 1000 ? total.toFixed(2) : fmtUsd(total)}
+          </text>
+          <text
+            className="fill-muted-foreground font-mono text-[7px]"
+            textAnchor="middle"
+            x="50"
+            y="58"
+          >
+            {requests} req{requests !== 1 ? "s" : ""}
+          </text>
+        </svg>
 
-        <div className="min-w-0 flex-1 space-y-1.5">
+        <div className="flex min-w-0 flex-1 flex-col gap-2.5">
           {segments.map((seg) => (
             <div
-              className="flex items-center gap-2 font-mono text-xs"
+              className="grid grid-cols-[12px_1fr_auto] items-center gap-3"
               key={seg.category}
             >
-              <div
-                className="h-2 w-2 shrink-0 rounded-full"
+              <span
+                className="h-3 w-3 rounded-[3px]"
                 style={{ backgroundColor: seg.color }}
               />
-              <span className="truncate text-foreground">{seg.category}</span>
-              <span className="ml-auto shrink-0 text-muted-foreground">
+              <span className="truncate font-medium text-[13px] tracking-[-0.011em]">
+                {seg.category}
+              </span>
+              <span className="font-mono text-[13px] text-muted-foreground tabular-nums">
                 {seg.percent.toFixed(0)}%
               </span>
             </div>
@@ -283,11 +305,13 @@ export function SpendingBreakdownCanvas({ data, onAction }: Props) {
         </div>
       </div>
 
-      {response && response.byService.length > 0 && (
-        <div className="space-y-1 font-mono text-xs">
+      {response?.byService && response.byService.length > 0 && (
+        <div className="mt-4 flex flex-col gap-1 border-border border-t pt-3 font-mono text-[11px]">
           {response.byService.slice(0, 5).map((s) => (
             <div className="flex justify-between" key={s.endpoint}>
-              <span className="mr-2 truncate text-muted-foreground">{s.service}</span>
+              <span className="mr-2 truncate text-muted-foreground">
+                {s.service}
+              </span>
               <span className="shrink-0 text-foreground">
                 ${s.totalSpent.toFixed(2)} ({s.requestCount}x)
               </span>
@@ -300,27 +324,6 @@ export function SpendingBreakdownCanvas({ data, onAction }: Props) {
           )}
         </div>
       )}
-
-      {requests > 0 && (
-        <div className="flex justify-between border-border/50 border-t pt-0.5 font-mono text-xs">
-          <span className="text-muted-foreground">Avg. per request</span>
-          <span className="text-foreground">
-            ${(total / requests).toFixed(3)}
-          </span>
-        </div>
-      )}
-
-      {onAction && total > 0 && (
-        <button
-          className="w-full rounded-md border border-border py-1.5 font-mono text-[10px] text-muted-foreground uppercase tracking-wider transition hover:border-foreground/30 hover:text-foreground"
-          onClick={() =>
-            onAction("What APIs have I used and how much did each cost?")
-          }
-          type="button"
-        >
-          Detailed breakdown →
-        </button>
-      )}
-    </div>
+    </CanvasShell>
   );
 }

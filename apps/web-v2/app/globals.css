@@ -174,24 +174,27 @@
   /* ========================================================
      [S.204+ P1] Typography stacks.
      ========================================================
-     The font-loader vars (--font-ny-display, --font-ny-large,
-     --font-ny-medium, --font-departure-mono, --font-geist,
-     --font-geist-mono) are injected by next/font on <html> in
-     app/layout.tsx. Compose into three semantic stacks here
-     so Tailwind utilities resolve to design-system fonts.
+     The font-loader vars (--font-geist, --font-geist-mono,
+     --font-departure-mono) are injected by next/font on <html> in
+     app/layout.tsx. Compose into semantic stacks here so Tailwind
+     utilities resolve to design-system fonts.
 
-     Note: v2's Geist loader uses --font-geist (the template's
-     name). v1's stack references --font-geist-sans. We expose
-     the alias in the stack itself so both names resolve. */
+     [R6.4 — 2026-05-30] Geist DS = Geist + Geist Mono only (per
+     `t2000-AFI/assets/colors_and_type.css`, the file the phase2
+     prototypes link). New York + Departure Mono were v1 Agentic-DS
+     leftovers and have been stripped from the app UI: `--font-serif`
+     now resolves to Geist (DS display = Geist), `--font-mono` leads
+     with Geist Mono. DepartureMono stays loaded for back-compat only;
+     nothing in the UI renders it. */
   --font-serif:
-    var(--font-ny-display), var(--font-ny-large), var(--font-ny-medium),
-    "PT Serif", "Times New Roman", ui-serif, Georgia, serif;
+    var(--font-geist), -apple-system, BlinkMacSystemFont, "SF Pro Display",
+    Helvetica, Arial, sans-serif;
   --font-sans:
     var(--font-geist), -apple-system, BlinkMacSystemFont, "SF Pro Display",
     Helvetica, Arial, sans-serif;
   --font-mono:
-    var(--font-departure-mono), var(--font-geist-mono), "IBM Plex Mono",
-    ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Consolas,
+    monospace;
 }
 
 .dark {

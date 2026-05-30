@@ -983,6 +983,29 @@ function AudricChatPanel({
 
             const isEditing = editingMessageId === m.id && m.role === "user";
 
+            // [B1 / vercel parity — 2026-05-30] Mirror vercel/chatbot's
+            // `components/chat/message.tsx` `mergedReasoning`: a turn can
+            // emit several `reasoning` parts (one per model step). The demo
+            // joins them into a SINGLE accordion instead of stacking one
+            // accordion per part. We render the merged accordion at the
+            // position of the FIRST reasoning part and skip the rest.
+            const firstReasoningIndex = m.parts.findIndex(
+              (p) => p.type === "reasoning"
+            );
+            const mergedReasoningText = m.parts
+              .filter((p) => p.type === "reasoning")
+              .map((p) => (p as ReasoningUIPart).text)
+              .filter((t) => t && t.trim().length > 0)
+              .join("\n\n");
+            const mergedReasoningStreaming =
+              isTurnStreaming &&
+              isLast &&
+              m.parts.some(
+                (p) =>
+                  p.type === "reasoning" &&
+                  (p as ReasoningUIPart).state !== "done"
+              );
+
             return (
               // [SPEC_AI_SDK_HARDENING P5.1-P5.4 hotfix — 2026-05-24]
               // `group` MUST live on an ANCESTOR of the actions div for
@@ -1076,23 +1099,23 @@ function AudricChatPanel({
                           );
                         }
                         if (part.type === "reasoning") {
-                          const reasoningPart = part as ReasoningUIPart;
-                          // The part is streaming only when (a) the turn is in
-                          // flight, (b) it's on the trailing message, and (c)
-                          // the part itself hasn't been marked done.
-                          const partStreaming =
-                            isTurnStreaming &&
-                            isLast &&
-                            reasoningPart.state !== "done";
+                          // [B1] Render ONE merged accordion at the first
+                          // reasoning part; later reasoning parts collapse
+                          // into it (vercel `mergedReasoning` parity).
+                          if (
+                            i !== firstReasoningIndex ||
+                            !mergedReasoningText
+                          ) {
+                            return null;
+                          }
                           return (
                             <Reasoning
-                              isStreaming={partStreaming}
-                              // biome-ignore lint/suspicious/noArrayIndexKey: parts are positionally stable per message
-                              key={`${m.id}-${i}`}
+                              isStreaming={mergedReasoningStreaming}
+                              key={`${m.id}-reasoning`}
                             >
                               <ReasoningTrigger />
                               <ReasoningContent>
-                                {reasoningPart.text}
+                                {mergedReasoningText}
                               </ReasoningContent>
                             </Reasoning>
                           );

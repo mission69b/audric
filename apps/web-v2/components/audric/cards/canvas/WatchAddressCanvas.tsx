@@ -3,6 +3,11 @@
 import { useMemo } from "react";
 import { usePortfolio } from "@/hooks/use-portfolio";
 import { fmtUsd } from "../primitives";
+import {
+  CanvasButton,
+  CanvasFooterMeta,
+  CanvasShell,
+} from "./canvas-shell";
 
 interface WatchAddressData {
   available: true;
@@ -69,8 +74,8 @@ export function WatchAddressCanvas({ data, onAction }: Props) {
 
   const netWorthUsd = portfolio?.netWorthUsd ?? 0;
   const walletValueUsd = portfolio?.walletValueUsd ?? 0;
-  const savingsUsd = portfolio?.positions.savings ?? 0;
-  const debtUsd = portfolio?.positions.borrows ?? 0;
+  const savingsUsd = portfolio?.positions?.savings ?? 0;
+  const debtUsd = portfolio?.positions?.borrows ?? 0;
 
   if (
     !data ||
@@ -79,18 +84,19 @@ export function WatchAddressCanvas({ data, onAction }: Props) {
     !data.available
   ) {
     return (
-      <div className="flex flex-col items-center justify-center space-y-2 py-10 text-center">
-        <span className="text-3xl">👁</span>
-        <p className="font-medium text-foreground text-sm">Watch Address</p>
-        <p className="max-w-xs text-muted-foreground text-xs leading-relaxed">
-          {data &&
-          typeof data === "object" &&
-          "message" in data &&
-          data.message
-            ? data.message
-            : "Provide a Sui address to watch."}
-        </p>
-      </div>
+      <CanvasShell eyebrow="Watching" name="Address">
+        <div className="flex flex-col items-center justify-center space-y-2 py-6 text-center">
+          <span className="text-3xl">👁</span>
+          <p className="max-w-xs text-muted-foreground text-xs leading-relaxed">
+            {data &&
+            typeof data === "object" &&
+            "message" in data &&
+            data.message
+              ? data.message
+              : "Provide a Sui address to watch."}
+          </p>
+        </div>
+      </CanvasShell>
     );
   }
 
@@ -98,36 +104,82 @@ export function WatchAddressCanvas({ data, onAction }: Props) {
 
   if (isLoading && !portfolio) {
     return (
-      <div className="flex items-center justify-center py-10">
-        <div className="animate-pulse font-mono text-muted-foreground text-xs">
-          Fetching balances...
+      <CanvasShell eyebrow="Watching" live name={label ?? truncAddr(addr)}>
+        <div className="flex items-center justify-center py-8">
+          <div className="animate-pulse font-mono text-muted-foreground text-xs">
+            Fetching balances...
+          </div>
         </div>
-      </div>
+      </CanvasShell>
     );
   }
 
   return (
-    <div className="space-y-4">
-      <div className="space-y-1">
-        <div className="flex items-center justify-between">
-          <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
-            {label ?? "Watched Address"}
-          </span>
-          <a
-            className="font-mono text-[10px] text-muted-foreground transition hover:text-foreground"
-            href={`https://suiscan.xyz/mainnet/account/${addr}`}
-            rel="noopener noreferrer"
-            target="_blank"
-          >
-            {truncAddr(addr)}↗
-          </a>
-        </div>
-        <div className="font-medium font-mono text-foreground text-lg">
-          ${fmtUsd(netWorthUsd)}
-        </div>
+    <CanvasShell
+      eyebrow="Watching"
+      footer={
+        onAction ? (
+          <>
+            <CanvasFooterMeta>
+              Read-only · Audric flags big moves in chat
+            </CanvasFooterMeta>
+            <CanvasButton
+              onClick={() => onAction(`Show me the activity heatmap for ${addr}`)}
+              variant="secondary"
+            >
+              Activity →
+            </CanvasButton>
+            <CanvasButton
+              onClick={() => onAction(`Send USDC to ${addr}`)}
+              variant="primary"
+            >
+              Send →
+            </CanvasButton>
+          </>
+        ) : undefined
+      }
+      live
+      name={label ?? truncAddr(addr)}
+      summary={{ value: `$${fmtUsd(netWorthUsd)}`, label: "balance" }}
+    >
+      <div className="mb-4 flex items-center gap-2.5 rounded-lg border border-border bg-muted px-3.5 py-2.5">
+        <svg
+          aria-hidden="true"
+          className="shrink-0 text-muted-foreground"
+          fill="none"
+          height="14"
+          viewBox="0 0 16 16"
+          width="14"
+        >
+          <circle
+            cx="7"
+            cy="7"
+            fill="none"
+            r="5"
+            stroke="currentColor"
+            strokeWidth="1.5"
+          />
+          <path
+            d="M11 11 L14 14"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeWidth="1.5"
+          />
+        </svg>
+        <span className="min-w-0 flex-1 truncate font-mono text-[13px] text-foreground tracking-[-0.011em]">
+          {addr}
+        </span>
+        <a
+          className="shrink-0 font-mono text-[11px] text-muted-foreground transition hover:text-foreground"
+          href={`https://suiscan.xyz/mainnet/account/${addr}`}
+          rel="noopener noreferrer"
+          target="_blank"
+        >
+          SuiScan ↗
+        </a>
       </div>
 
-      <div className="space-y-1 font-mono text-xs">
+      <div className="flex flex-col gap-1 font-mono text-xs">
         <div className="flex justify-between">
           <span className="text-muted-foreground">Wallet</span>
           <span className="text-foreground">${fmtUsd(walletValueUsd)}</span>
@@ -145,14 +197,14 @@ export function WatchAddressCanvas({ data, onAction }: Props) {
       </div>
 
       {coins.length > 0 ? (
-        <div className="space-y-1.5 border-border border-t pt-1">
+        <div className="mt-3 flex flex-col border-border border-t pt-1">
           {coins.map((coin) => (
             <div
-              className="flex items-center justify-between font-mono text-xs"
+              className="flex items-center justify-between border-border border-b border-dotted py-2.5 font-mono text-[13px] last:border-b-0"
               key={coin.symbol}
             >
-              <span className="text-foreground">{coin.symbol}</span>
-              <span className="text-muted-foreground">
+              <span className="font-medium text-foreground">{coin.symbol}</span>
+              <span className="text-muted-foreground tabular-nums">
                 {coin.amount < 0.01
                   ? "<0.01"
                   : coin.amount.toLocaleString(undefined, {
@@ -174,25 +226,6 @@ export function WatchAddressCanvas({ data, onAction }: Props) {
           </p>
         </div>
       )}
-
-      {onAction && (
-        <div className="flex gap-2">
-          <button
-            className="flex-1 rounded-md border border-border py-1.5 font-mono text-[10px] text-muted-foreground uppercase tracking-wider transition hover:border-foreground/30 hover:text-foreground"
-            onClick={() => onAction(`Show me the activity heatmap for ${addr}`)}
-            type="button"
-          >
-            Activity →
-          </button>
-          <button
-            className="flex-1 rounded-md bg-foreground py-1.5 font-mono text-[10px] text-background uppercase tracking-wider transition hover:opacity-90"
-            onClick={() => onAction(`Send USDC to ${addr}`)}
-            type="button"
-          >
-            Send →
-          </button>
-        </div>
-      )}
-    </div>
+    </CanvasShell>
   );
 }

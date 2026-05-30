@@ -1,11 +1,13 @@
-'use client';
+"use client";
 
-import { CardShell, TrendIndicator, fmtAmt } from './primitives';
+import { CardShell, fmtAmt } from "./primitives";
+import { AssetRow, MetricBlock } from "./shared";
 
-// PriceCard — `token_prices` tool renderer. Handles both the
-// price-array shape and the single-token change shape. Ported from
-// `apps/web/components/engine/cards/PriceCard.tsx` by Phase 5a.4
-// (renderer migration sweep, 2026-05-19). Verbatim.
+// PriceCard — `token_prices` tool renderer. Handles both the price-array
+// shape and the single-token change shape.
+// [R6.4 / A4 — 2026-05-30] Rebuilt to the phase2 read-card spec
+// (`phase2-read-cards.html` R10): array → AssetRow rows; single-token →
+// hero MetricBlock + signed delta pill. Data shapes preserved.
 
 interface TokenPrice {
   coinType?: string;
@@ -28,89 +30,68 @@ function isPriceArray(data: PriceData): data is TokenPrice[] {
 }
 
 function fmtPrice(n: number): string {
-  if (n >= 1000)
-    return `$${n.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-  if (n >= 1) return `$${fmtAmt(n, 2)}`;
-  if (n >= 0.01) return `$${fmtAmt(n, 4)}`;
+  if (n >= 1000) {
+    return `$${n.toLocaleString("en-US", { maximumFractionDigits: 0, minimumFractionDigits: 0 })}`;
+  }
+  if (n >= 1) {
+    return `$${fmtAmt(n, 2)}`;
+  }
+  if (n >= 0.01) {
+    return `$${fmtAmt(n, 4)}`;
+  }
   return `$${fmtAmt(n, 6)}`;
-}
-
-function PriceRow({
-  symbol,
-  price,
-  change,
-  period,
-}: {
-  symbol: string;
-  price: number | null;
-  change?: number | null;
-  period?: string;
-}) {
-  return (
-    <div className="flex items-center justify-between py-0.5">
-      <span className="font-mono text-foreground font-medium">{symbol}</span>
-      <div className="flex items-center gap-2">
-        <span className="font-mono text-foreground">
-          {price != null ? fmtPrice(price) : '—'}
-        </span>
-        {change != null && (
-          <span className="min-w-[60px] text-right">
-            <TrendIndicator value={change} />
-          </span>
-        )}
-        {change != null && period && (
-          <span className="text-muted-foreground text-[9px] font-mono">({period})</span>
-        )}
-      </div>
-    </div>
-  );
 }
 
 export function PriceCard({ data }: { data: PriceData }) {
   if (isPriceArray(data)) {
     const valid = data.filter((t) => t.price != null);
-    if (valid.length === 0) return null;
+    if (valid.length === 0) {
+      return null;
+    }
 
     return (
       <CardShell
-        title="Token Prices"
         badge={
-          <span className="text-[9px] font-mono text-muted-foreground">
+          <span className="font-mono text-[11px] text-muted-foreground">
             {valid.length} tokens
           </span>
         }
+        live
+        title="Token prices"
       >
-        <div className="space-y-0.5 text-[11px]">
+        <div>
           {valid.map((t) => (
-            <PriceRow key={t.symbol} symbol={t.symbol} price={t.price} />
+            <AssetRow
+              key={t.symbol}
+              symbol={t.symbol}
+              value={t.price == null ? "—" : fmtPrice(t.price)}
+            />
           ))}
         </div>
       </CardShell>
     );
   }
 
-  if (data.currentPrice === 0 && data.change == null) return null;
+  if (data.currentPrice === 0 && data.change == null) {
+    return null;
+  }
+
+  const delta =
+    data.change == null
+      ? undefined
+      : ({
+          direction: data.change >= 0 ? "up" : "down",
+          value: `${data.change >= 0 ? "+" : ""}${data.change.toFixed(1)}%`,
+        } as const);
 
   return (
-    <CardShell title="Price Change">
-      <div className="text-center mb-2">
-        <span className="text-2xl font-semibold font-mono text-foreground">
-          {fmtPrice(data.currentPrice)}
-        </span>
-        <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider mt-0.5">
-          {data.symbol}
-        </div>
-      </div>
-      {data.change != null && (
-        <div className="text-center text-sm">
-          <TrendIndicator value={data.change} />
-          {data.period && (
-            <span className="text-muted-foreground text-[10px] font-mono ml-1">
-              ({data.period})
-            </span>
-          )}
-        </div>
-      )}
+    <CardShell live title="Price">
+      <MetricBlock
+        delta={delta}
+        label={`${data.symbol} / USD`}
+        sub={data.period ? `over ${data.period}` : undefined}
+        value={fmtPrice(data.currentPrice)}
+      />
     </CardShell>
   );
 }

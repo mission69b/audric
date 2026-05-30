@@ -1,10 +1,16 @@
 'use client';
 
-import { AddressBadge, CardShell, fmtUsd, fmtYield } from './primitives';
+import { AddressBadge, CardShell, fmtUsd, fmtYield, QRow } from './primitives';
+import { AssetRow, MetricBlock } from './shared';
 
-// SavingsCard — `savings_info` tool renderer. Ported from
-// `apps/web/components/engine/cards/SavingsCard.tsx` by Phase 5a.3
-// (renderer migration sweep, 2026-05-19). Verbatim except import paths.
+// SavingsCard — `savings_info` tool renderer.
+//
+// [R6.4 / A3 — 2026-05-30] Rebuilt to the phase2 read-card spec
+// (`t2000-AFI/audric/phase2-read-cards.html` R5): a live NAVI eyebrow
+// with a blended-APY meta badge, a "Deposited" hero MetricBlock, the
+// supply (and any borrow) positions as compact AssetRows, an earnings
+// projection in dotted QRows, and a dashed footer. Data shape +
+// derivations preserved from the prior `apps/web` port.
 
 interface SavingsPosition {
   symbol: string;
@@ -23,6 +29,12 @@ interface SavingsData {
   suinsName?: string | null;
 }
 
+function fmtApy(apy: number): string {
+  // Engine APYs arrive either as a fraction (0.0524) or a percent (5.24).
+  const pct = apy < 1 ? apy * 100 : apy;
+  return `${pct.toFixed(2)}%`;
+}
+
 export function SavingsCard({ data }: { data: SavingsData }) {
   const supplies =
     data.positions?.filter((p) => p.type === 'supply' && p.valueUsd >= 0.01) ??
@@ -30,90 +42,87 @@ export function SavingsCard({ data }: { data: SavingsData }) {
   const borrows =
     data.positions?.filter((p) => p.type === 'borrow' && p.valueUsd >= 0.01) ??
     [];
-  const hasEarnings = data.earnings && data.earnings.supplied > 0;
+  const hasEarnings = !!data.earnings && data.earnings.supplied > 0;
 
   if (!supplies.length && !borrows.length && !hasEarnings) return null;
+
+  const depositedUsd =
+    data.earnings?.supplied ??
+    supplies.reduce((sum, p) => sum + p.valueUsd, 0);
+  const dailyEarning = data.earnings?.dailyEarning ?? 0;
+  const yearlyEarning = dailyEarning * 365;
 
   const isWatched = data.isSelfQuery === false && !!data.address;
   const badge = isWatched ? (
     <AddressBadge address={data.address!} suinsName={data.suinsName} />
+  ) : data.earnings ? (
+    <span className="font-mono text-[11px] text-muted-foreground tracking-[0.02em]">
+      {fmtApy(data.earnings.currentApy)} APY
+    </span>
   ) : undefined;
 
   return (
-    <CardShell title="Savings Positions" badge={badge}>
-      {supplies.length > 0 && (
-        <table className="w-full mb-1">
-          <thead>
-            <tr className="text-muted-foreground text-[10px]">
-              <th className="text-left font-medium pb-1">Supply</th>
-              <th className="text-right font-medium pb-1">Amount</th>
-              <th className="text-right font-medium pb-1">APY</th>
-            </tr>
-          </thead>
-          <tbody className="font-mono">
-            {supplies.map((p, i) => (
-              <tr key={i} className="border-t border-border/50">
-                <td className="py-1 text-foreground font-medium">{p.symbol}</td>
-                <td className="py-1 text-right text-muted-foreground">
-                  {p.amount.toLocaleString('en-US', {
-                    maximumFractionDigits: 4,
-                  })}
-                  {p.valueUsd > 0 ? ` · $${fmtUsd(p.valueUsd)}` : ''}
-                </td>
-                <td className="py-1 text-right text-success">
-                  {(p.apy * 100).toFixed(2)}%
-                </td>
-              </tr>
+    <CardShell
+      title="NAVI savings"
+      live
+      badge={badge}
+      footer={
+        <>
+          <span>Compounded daily</span>
+          <span>Withdraw any time</span>
+        </>
+      }
+    >
+      <div className="space-y-3.5">
+        <MetricBlock
+          label="Deposited"
+          value={`$${fmtUsd(depositedUsd)}`}
+          sub={supplies.length === 1 ? `${supplies[0]!.symbol} · NAVI` : 'NAVI'}
+        />
+
+        {supplies.length > 0 && (
+          <div className="border-border border-t pt-1.5">
+            {supplies.map((p) => (
+              <AssetRow
+                key={`supply-${p.symbol}`}
+                symbol={p.symbol}
+                sub="deposited"
+                amount={p.amount.toLocaleString('en-US', {
+                  maximumFractionDigits: 4,
+                })}
+                value={fmtApy(p.apy)}
+                tone="success"
+              />
             ))}
-          </tbody>
-        </table>
-      )}
-      {!supplies.length && hasEarnings && (
-        <div className="text-center py-2 text-muted-foreground text-[11px]">
-          <span className="font-mono">${fmtUsd(data.earnings!.supplied)}</span>{' '}
-          deposited
-        </div>
-      )}
-      {borrows.length > 0 && (
-        <table className="w-full">
-          <thead>
-            <tr className="text-muted-foreground text-[10px]">
-              <th className="text-left font-medium pb-1">Borrow</th>
-              <th className="text-right font-medium pb-1">Amount</th>
-              <th className="text-right font-medium pb-1">APY</th>
-            </tr>
-          </thead>
-          <tbody className="font-mono">
-            {borrows.map((p, i) => (
-              <tr key={i} className="border-t border-border/50">
-                <td className="py-1 text-foreground font-medium">{p.symbol}</td>
-                <td className="py-1 text-right text-muted-foreground">
-                  ${fmtUsd(p.valueUsd)}
-                </td>
-                <td className="py-1 text-right text-warning">
-                  {(p.apy * 100).toFixed(2)}%
-                </td>
-              </tr>
+          </div>
+        )}
+
+        {borrows.length > 0 && (
+          <div className="border-border border-t pt-1.5">
+            {borrows.map((p) => (
+              <AssetRow
+                key={`borrow-${p.symbol}`}
+                symbol={p.symbol}
+                sub="borrowed"
+                amount={`$${fmtUsd(p.valueUsd)}`}
+                value={fmtApy(p.apy)}
+                tone="warning"
+              />
             ))}
-          </tbody>
-        </table>
-      )}
-      {data.earnings && (
-        <div className="flex gap-4 mt-2 pt-2 border-t border-border font-mono text-[11px]">
-          <div>
-            <span className="text-muted-foreground block text-[10px]">Blended APY</span>
-            <span className="text-success">
-              {(data.earnings.currentApy * 100).toFixed(2)}%
-            </span>
           </div>
-          <div>
-            <span className="text-muted-foreground block text-[10px]">Daily</span>
-            <span className="text-foreground">
-              {fmtYield(data.earnings.dailyEarning)}
-            </span>
+        )}
+
+        {hasEarnings && dailyEarning > 0 && (
+          <div className="border-border border-t pt-1">
+            <QRow label="Per year" tone="up">
+              +{fmtYield(yearlyEarning)}
+            </QRow>
+            <QRow label="Per day" tone="up">
+              +{fmtYield(dailyEarning)}
+            </QRow>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </CardShell>
   );
 }

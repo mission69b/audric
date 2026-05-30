@@ -33,31 +33,32 @@ interface PaymentLinkList {
 }
 
 function StatusPill({ status }: { status: string }) {
+  // [R6.4 / A4] Outline badges per phase2-payment-link.html `.badge`.
   const map: Record<string, { label: string; cls: string }> = {
     active: {
       label: 'Active',
-      cls: 'bg-success/10 text-success border border-success/30',
+      cls: 'text-success border-success',
     },
     paid: {
       label: 'Paid',
-      cls: 'bg-info/10 text-info border border-info/30',
+      cls: 'text-info border-info',
     },
     expired: {
       label: 'Expired',
-      cls: 'bg-muted text-muted-foreground border border-border',
+      cls: 'text-muted-foreground border-border',
     },
     cancelled: {
       label: 'Cancelled',
-      cls: 'bg-destructive/10 text-destructive border border-destructive/30',
+      cls: 'text-destructive border-destructive',
     },
   };
   const s = map[status] ?? {
     label: status,
-    cls: 'bg-muted text-muted-foreground border border-border',
+    cls: 'text-muted-foreground border-border',
   };
   return (
     <span
-      className={`text-[10px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded-xs ${s.cls}`}
+      className={`rounded-[3px] border px-2 py-[3px] font-mono text-[10.5px] uppercase tracking-[0.08em] ${s.cls}`}
     >
       {s.label}
     </span>

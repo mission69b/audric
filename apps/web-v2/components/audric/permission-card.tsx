@@ -78,6 +78,24 @@ export interface PermissionCardModifiableField {
   name: string;
 }
 
+/**
+ * [R6.4 A2] Pre-approval guard surfaced on the card (phase2-permission-
+ * card.html states 04 HINT / 05 BLOCK). `hint` = amber, non-blocking
+ * (the user can still approve); `block` = red, disables Approve. Mirrors
+ * the engine `guards.ts` outcomes (`{pass:true,warning}` → hint,
+ * `{pass:false,reason}` → block).
+ *
+ * OPTIONAL + dormant: the chat route does NOT yet thread
+ * `guardInjections` into `toolMetadata` (deferred backend slice — see
+ * `parseAudricMetadata`). The card renders nothing when the prop is
+ * absent/empty, so wiring the strip now is zero-regression and ready
+ * for the day guards are plumbed.
+ */
+export interface PermissionCardGuard {
+  kind: "hint" | "block";
+  message: string;
+}
+
 export interface PermissionCardProps {
   /**
    * [P5.6] Live borrow APY in basis points (e.g. `467` = 4.67%) sourced
@@ -93,10 +111,23 @@ export interface PermissionCardProps {
    * in preview bodies).
    */
   currentHF?: number | null;
+  /**
+   * [R6.4 A2] Deny-timer length in seconds (default 60). Parameterises
+   * the legacy magic constant; the dev harness passes a large value to
+   * hold the card in its await-state for screenshot-diffing. Production
+   * omits it.
+   */
+  denyTimeoutSec?: number;
   /** Free-form description sourced from `toolMetadata.description`. */
   description: string;
   /** Caller-controlled disable (e.g. "Approve" is in-flight). */
   disabled?: boolean;
+  /**
+   * [R6.4 A2] Pre-approval guard strips (phase2 states 04 HINT / 05
+   * BLOCK). Any `block` guard disables Approve. Optional + dormant
+   * until `guardInjections` is plumbed through the chat route.
+   */
+  guards?: readonly PermissionCardGuard[];
   /** Tool input as emitted by the LLM (e.g. `{ amount: 0.01, asset: 'USDC' }`). */
   input: Record<string, unknown>;
   /** From `toolMetadata.modifiableFields` — drives which inputs are editable. */
@@ -120,6 +151,19 @@ export interface PermissionCardProps {
 }
 
 const TIMEOUT_SEC = 60;
+
+// [R6.4 A2] 3-tier freshness chrome (phase2-permission-card.html):
+// ok (white) → warn (amber, ≤20s) → err (red, ≤10s).
+const TIER_PILL_CLASS = {
+  ok: "border-border bg-muted text-muted-foreground",
+  warn: "border-warning/30 bg-warning/[0.08] text-warning",
+  err: "border-destructive/30 bg-destructive/[0.08] text-destructive",
+} as const;
+const TIER_BAR_CLASS = {
+  ok: "bg-foreground",
+  warn: "bg-warning",
+  err: "bg-destructive",
+} as const;
 
 const TOOL_LABELS: Record<string, string> = {
   borrow: "Borrow",
@@ -269,6 +313,28 @@ function ModifiableFieldInput({
   );
 }
 
+// [R6.4 A2] Guard strip — phase2 states 04 HINT (amber) / 05 BLOCK (red).
+function GuardBanner({ guard }: { guard: PermissionCardGuard }) {
+  const isBlock = guard.kind === "block";
+  return (
+    <div
+      className={`flex items-start gap-2.5 rounded-lg border px-3.5 py-[11px] text-[13px] leading-[1.5] ${
+        isBlock
+          ? "border-destructive/30 bg-destructive/[0.06] text-destructive"
+          : "border-warning/30 bg-warning/[0.06] text-warning"
+      }`}
+    >
+      <span
+        aria-hidden="true"
+        className="mt-px shrink-0 font-mono font-semibold text-sm"
+      >
+        {isBlock ? "✕" : "!"}
+      </span>
+      <span>{guard.message}</span>
+    </div>
+  );
+}
+
 export function PermissionCard(props: PermissionCardProps) {
   const {
     toolName,
@@ -278,10 +344,14 @@ export function PermissionCard(props: PermissionCardProps) {
     onApprove,
     onDeny,
     disabled,
+    guards,
+    denyTimeoutSec,
     borrowApyBps,
     currentHF,
     projectedHF,
   } = props;
+
+  const timeoutSec = denyTimeoutSec ?? TIMEOUT_SEC;
 
   const label = TOOL_LABELS[toolName] ?? toolName.replace(/_/g, " ");
   const eyebrowAsset =
@@ -299,7 +369,7 @@ export function PermissionCard(props: PermissionCardProps) {
 
   const [modifiedInput, setModifiedInput] =
     useState<Record<string, unknown>>(initialInput);
-  const [secondsLeft, setSecondsLeft] = useState(TIMEOUT_SEC);
+  const [secondsLeft, setSecondsLeft] = useState(timeoutSec);
   const [inFlight, setInFlight] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [resolved, setResolved] = useState(false);
@@ -390,10 +460,16 @@ export function PermissionCard(props: PermissionCardProps) {
     };
   }, [resolved]);
 
+  // [R6.4 A2] A `block`-tier guard hard-disables Approve (phase2 state 05).
+  const hasBlockingGuard = useMemo(
+    () => (guards ?? []).some((g) => g.kind === "block"),
+    [guards]
+  );
+
   // Amount-field validation gate — Approve is disabled when any
   // amount-kind modifiable field is empty / NaN / non-positive.
   const isApproveDisabled = useMemo(() => {
-    if (disabled === true || inFlight || resolved) {
+    if (disabled === true || inFlight || resolved || hasBlockingGuard) {
       return true;
     }
     for (const field of modifiableFields) {
@@ -415,9 +491,22 @@ export function PermissionCard(props: PermissionCardProps) {
       }
     }
     return false;
-  }, [disabled, inFlight, resolved, modifiableFields, modifiedInput]);
+  }, [
+    disabled,
+    inFlight,
+    resolved,
+    hasBlockingGuard,
+    modifiableFields,
+    modifiedInput,
+  ]);
 
-  const progress = secondsLeft / TIMEOUT_SEC;
+  const progress = secondsLeft / timeoutSec;
+  let timerTier: "ok" | "warn" | "err" = "ok";
+  if (secondsLeft <= 10) {
+    timerTier = "err";
+  } else if (secondsLeft <= 20) {
+    timerTier = "warn";
+  }
 
   // Pick the rich preview body for known write tools; fall back to the
   // single-line `formatInput` summary otherwise. The body re-renders
@@ -450,11 +539,7 @@ export function PermissionCard(props: PermissionCardProps) {
           {!resolved && (
             <span
               aria-label={`${secondsLeft} seconds remaining`}
-              className={`whitespace-nowrap rounded border px-[9px] py-[3px] font-mono text-[11px] tabular-nums ${
-                secondsLeft <= 10
-                  ? "border-destructive/30 bg-destructive/[0.08] text-destructive"
-                  : "border-border bg-muted text-muted-foreground"
-              }`}
+              className={`whitespace-nowrap rounded border px-[9px] py-[3px] font-mono text-[11px] tabular-nums ${TIER_PILL_CLASS[timerTier]}`}
               role="timer"
             >
               {secondsLeft}s
@@ -465,9 +550,7 @@ export function PermissionCard(props: PermissionCardProps) {
         {!resolved && (
           <div className="mt-4 h-0.5 w-full overflow-hidden bg-border">
             <div
-              className={`h-full transition-all duration-1000 ease-linear ${
-                secondsLeft <= 10 ? "bg-destructive" : "bg-foreground"
-              }`}
+              className={`h-full transition-all duration-1000 ease-linear ${TIER_BAR_CLASS[timerTier]}`}
               style={{ width: `${progress * 100}%` }}
             />
           </div>
@@ -475,16 +558,29 @@ export function PermissionCard(props: PermissionCardProps) {
       </div>
 
       <div className="space-y-3 px-5 pt-[18px] pb-3">
-        {description && (
+        {description && !inFlight && (
           <p className="text-[13.5px] text-muted-foreground leading-[1.55]">
             {description}
           </p>
         )}
 
-        {previewBody}
-        {inputSummary && (
-          <p className="font-mono text-foreground text-sm">{inputSummary}</p>
+        {/* [R6.4 A2] SIGNING (phase2 state 06) — spinner + Passport copy. */}
+        {inFlight && (
+          <p className="flex items-center gap-2.5 text-[13.5px] text-foreground leading-[1.55]">
+            <span
+              aria-hidden="true"
+              className="size-3.5 shrink-0 animate-spin rounded-full border-[1.5px] border-current border-t-transparent"
+            />
+            Confirming with your Passport…
+          </p>
         )}
+
+        <div className={inFlight ? "opacity-70" : undefined}>
+          {previewBody}
+          {inputSummary && (
+            <p className="font-mono text-foreground text-sm">{inputSummary}</p>
+          )}
+        </div>
 
         {!resolved && modifiableFields.length > 0 && (
           <div className="space-y-1.5">
@@ -495,6 +591,18 @@ export function PermissionCard(props: PermissionCardProps) {
                 initialValue={initialInput[field.name]}
                 key={field.name}
                 onChange={handleFieldChange}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* [R6.4 A2] Guard strips — phase2 states 04 HINT / 05 BLOCK. */}
+        {guards && guards.length > 0 && (
+          <div className="space-y-1.5">
+            {guards.map((guard) => (
+              <GuardBanner
+                guard={guard}
+                key={`${guard.kind}-${guard.message.slice(0, 24)}`}
               />
             ))}
           </div>

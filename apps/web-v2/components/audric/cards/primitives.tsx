@@ -91,6 +91,69 @@ export function DetailRow({
   );
 }
 
+/**
+ * QRow — key/value detail row (phase2 `.qrow` in
+ * `t2000-AFI/audric/phase2-read-cards.html`): a sans label on the left,
+ * a mono medium tabular value on the right, dotted bottom separator.
+ * `tone="up"` greens the value (positive deltas / favorable rates).
+ * Used by Swap (rate/impact/min), Savings (earnings projection), and
+ * Portfolio detail rows.
+ */
+export function QRow({
+  label,
+  children,
+  tone = "default",
+}: {
+  children: ReactNode;
+  label: ReactNode;
+  tone?: "default" | "up";
+}) {
+  return (
+    <div className="flex items-baseline justify-between border-border border-b border-dotted py-[7px] text-[13px] text-muted-foreground tracking-[-0.011em] last:border-b-0">
+      <span>{label}</span>
+      <span
+        className={`font-medium font-mono tabular-nums ${tone === "up" ? "text-success" : "text-foreground"}`}
+      >
+        {children}
+      </span>
+    </div>
+  );
+}
+
+/**
+ * StaleNote — inline footnote for stale / partial read states (phase2
+ * `.stale-note` in `phase2-read-failures.html`). `warn` = amber clock,
+ * last-known value shown while auto-retrying. `muted` = neutral, for a
+ * "— means unavailable, not zero" partial-data caveat.
+ */
+export function StaleNote({
+  children,
+  tone = "warn",
+}: {
+  children: ReactNode;
+  tone?: "warn" | "muted";
+}) {
+  return (
+    <div
+      className={`mt-3 flex items-center gap-2 font-mono text-[11px] tracking-[0.02em] ${tone === "warn" ? "text-warning" : "text-muted-foreground"}`}
+    >
+      <svg aria-hidden="true" fill="none" height="12" viewBox="0 0 16 16" width="12">
+        <title>{tone === "warn" ? "Refreshing" : "Note"}</title>
+        <circle cx="8" cy="8" r="5.5" stroke="currentColor" strokeWidth="1.4" />
+        {tone === "warn" && (
+          <path
+            d="M8 5.5V8l1.5 1.5"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeWidth="1.4"
+          />
+        )}
+      </svg>
+      {children}
+    </div>
+  );
+}
+
 export function MonoLabel({
   children,
   className,

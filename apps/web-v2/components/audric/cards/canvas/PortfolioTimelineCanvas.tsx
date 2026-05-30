@@ -3,6 +3,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { authFetch } from "@/lib/auth-fetch";
 import { fmtUsd } from "../primitives";
+import {
+  CanvasButton,
+  CanvasFooterMeta,
+  CanvasMetric,
+  CanvasMetricGrid,
+  CanvasShell,
+  RangeTabs,
+} from "./canvas-shell";
 
 interface TimelineData {
   available: true;
@@ -155,6 +163,8 @@ export function PortfolioTimelineCanvas({ data, onAction }: Props) {
   const latest =
     snapshots.length > 0 ? snapshots[snapshots.length - 1] : null;
 
+  const started = snapshots.length > 0 ? snapshots[0].netWorthUsd : 0;
+
   if (
     !data ||
     typeof data !== "object" ||
@@ -162,162 +172,128 @@ export function PortfolioTimelineCanvas({ data, onAction }: Props) {
     !data.available
   ) {
     return (
-      <div className="flex flex-col items-center justify-center space-y-2 py-10 text-center">
-        <span className="text-3xl">📈</span>
-        <p className="font-medium text-foreground text-sm">
-          Portfolio Timeline
-        </p>
-        <p className="max-w-xs text-muted-foreground text-xs leading-relaxed">
-          {data &&
-          typeof data === "object" &&
-          "message" in data &&
-          data.message
-            ? data.message
-            : "Portfolio timeline will be available once portfolio snapshot history is collected."}
-        </p>
-      </div>
+      <CanvasShell eyebrow="Timeline" name="Net worth">
+        <div className="flex flex-col items-center justify-center space-y-2 py-6 text-center">
+          <span className="text-3xl">📈</span>
+          <p className="max-w-xs text-muted-foreground text-xs leading-relaxed">
+            {data &&
+            typeof data === "object" &&
+            "message" in data &&
+            data.message
+              ? data.message
+              : "Portfolio timeline will be available once portfolio snapshot history is collected."}
+          </p>
+        </div>
+      </CanvasShell>
     );
   }
 
   if (loading && !response) {
     return (
-      <div className="flex items-center justify-center py-10">
-        <div className="animate-pulse font-mono text-muted-foreground text-xs">
-          Loading portfolio history...
+      <CanvasShell eyebrow="Timeline" name="Net worth">
+        <div className="flex items-center justify-center py-8">
+          <div className="animate-pulse font-mono text-muted-foreground text-xs">
+            Loading portfolio history...
+          </div>
         </div>
-      </div>
+      </CanvasShell>
     );
   }
 
   if (snapshots.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center space-y-2 py-10 text-center">
-        <span className="text-3xl">📈</span>
-        <p className="font-medium text-foreground text-sm">No Data Yet</p>
-        <p className="max-w-xs text-muted-foreground text-xs leading-relaxed">
-          {isSelfRender
-            ? "Portfolio snapshots are collected daily. Check back tomorrow for your first data point."
-            : "No portfolio history is tracked for this address yet."}
-        </p>
-      </div>
+      <CanvasShell eyebrow="Timeline" name="Net worth">
+        <div className="flex flex-col items-center justify-center space-y-2 py-6 text-center">
+          <span className="text-3xl">📈</span>
+          <p className="font-medium text-foreground text-sm">No data yet</p>
+          <p className="max-w-xs text-muted-foreground text-xs leading-relaxed">
+            {isSelfRender
+              ? "Portfolio snapshots are collected daily. Check back tomorrow for your first data point."
+              : "No portfolio history is tracked for this address yet."}
+          </p>
+        </div>
+      </CanvasShell>
     );
   }
 
   if (snapshots.length < 2) {
     return (
-      <div className="space-y-4">
-        <div className="space-y-0.5">
-          <div className="font-medium font-mono text-foreground text-lg">
-            ${fmtUsd(latest?.netWorthUsd ?? 0)}
-          </div>
-          <div className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
-            Current snapshot
-          </div>
-        </div>
-
-        <div className="rounded-lg border border-border bg-background px-3 py-6 text-center">
-          <p className="mx-auto max-w-xs font-mono text-[10px] text-muted-foreground leading-relaxed">
+      <CanvasShell
+        eyebrow="Timeline"
+        footer={
+          onAction ? (
+            <>
+              <CanvasFooterMeta>Single snapshot</CanvasFooterMeta>
+              <CanvasButton
+                onClick={() =>
+                  onAction(
+                    isSelfRender
+                      ? "Give me a full financial report"
+                      : `Give me a full portfolio overview of ${address}`
+                  )
+                }
+                variant="secondary"
+              >
+                Full report →
+              </CanvasButton>
+            </>
+          ) : undefined
+        }
+        name={`$${fmtUsd(latest?.netWorthUsd ?? 0)}`}
+        summary={{ value: "1", label: "snapshot" }}
+      >
+        <div className="rounded-lg border border-border bg-muted px-3 py-6 text-center">
+          <p className="mx-auto max-w-sm font-mono text-[11px] text-muted-foreground leading-relaxed">
             {isSelfRender
               ? "Your first snapshot is in. Check back tomorrow once we've collected a second data point and we'll start drawing the trend."
               : "We don't track historical snapshots for this wallet yet — only Audric users get a daily trendline. Showing the live snapshot only."}
           </p>
         </div>
-
-        {latest && (
-          <div className="space-y-1 font-mono text-xs">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Wallet</span>
-              <span className="text-foreground">
-                ${fmtUsd(latest.walletValueUsd)}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Savings</span>
-              <span className="text-success">
-                ${fmtUsd(latest.savingsValueUsd)}
-              </span>
-            </div>
-            {(latest.defiValueUsd ?? 0) > 0 && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">DeFi</span>
-                <span className="text-foreground">
-                  ${fmtUsd(latest.defiValueUsd ?? 0)}
-                </span>
-              </div>
-            )}
-            {latest.debtValueUsd > 0 && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Debt</span>
-                <span className="text-destructive">
-                  -${fmtUsd(latest.debtValueUsd)}
-                </span>
-              </div>
-            )}
-          </div>
-        )}
-
-        {onAction && (
-          <button
-            className="w-full rounded-md border border-border py-1.5 font-mono text-[10px] text-muted-foreground uppercase tracking-wider transition hover:border-foreground/30 hover:text-foreground"
-            onClick={() =>
-              onAction(
-                isSelfRender
-                  ? "Give me a full financial report"
-                  : `Give me a full portfolio overview of ${address}`
-              )
-            }
-            type="button"
-          >
-            Full report →
-          </button>
-        )}
-      </div>
+      </CanvasShell>
     );
   }
 
   return (
-    <div className="space-y-4">
-      <div className="space-y-0.5">
-        <div className="font-medium font-mono text-foreground text-lg">
-          ${fmtUsd(latest?.netWorthUsd ?? 0)}
-        </div>
-        {change && change.absoluteUsd !== 0 && (
-          <div
-            className={`font-mono text-xs ${change.absoluteUsd >= 0 ? "text-success" : "text-destructive"}`}
-          >
-            {change.absoluteUsd >= 0 ? "+" : ""}
-            {fmtUsd(change.absoluteUsd)} (
-            {change.percentChange >= 0 ? "+" : ""}
-            {change.percentChange.toFixed(1)}%)
-          </div>
-        )}
-      </div>
-
-      <div className="flex gap-1">
-        {PERIODS.map((p, i) => (
-          <button
-            className={`flex-1 rounded py-1 font-mono text-[10px] uppercase tracking-wider transition ${
-              periodIdx === i
-                ? "bg-foreground text-background"
-                : "border border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground"
-            }`}
-            key={p.label}
-            onClick={() => setPeriodIdx(i)}
-            type="button"
-          >
-            {p.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="overflow-hidden rounded-lg border border-border bg-background">
+    <CanvasShell
+      controls={
+        <RangeTabs
+          onChange={(v) =>
+            setPeriodIdx(PERIODS.findIndex((p) => p.label === v))
+          }
+          options={PERIODS.map((p) => p.label)}
+          value={period.label}
+        />
+      }
+      eyebrow="Timeline"
+      footer={
+        onAction ? (
+          <>
+            <CanvasFooterMeta>
+              {change && change.absoluteUsd !== 0
+                ? `${change.absoluteUsd >= 0 ? "+" : ""}$${fmtUsd(change.absoluteUsd)} (${change.percentChange >= 0 ? "+" : ""}${change.percentChange.toFixed(1)}%) over ${period.label}`
+                : `Net worth · ${period.label}`}
+            </CanvasFooterMeta>
+            <CanvasButton
+              onClick={() => onAction("Give me a full financial report")}
+              variant="secondary"
+            >
+              Full report →
+            </CanvasButton>
+          </>
+        ) : undefined
+      }
+      name={`Net worth · ${period.label}`}
+    >
+      <div className="relative rounded-[10px] border border-border bg-muted p-4">
+        <span className="absolute top-3 left-4 font-mono text-[10px] text-muted-foreground uppercase tracking-[0.06em]">
+          Net worth
+        </span>
         <svg
           aria-label="Portfolio timeline chart"
-          className="h-20"
+          className="h-[150px] w-full"
           preserveAspectRatio="none"
           role="img"
           viewBox={`0 0 ${W} ${H}`}
-          width="100%"
         >
           {lines.map((line) => (
             <polyline
@@ -333,75 +309,52 @@ export function PortfolioTimelineCanvas({ data, onAction }: Props) {
             />
           ))}
         </svg>
-      </div>
-
-      <div className="flex gap-3 font-mono text-[9px]">
-        {SERIES.map((s) => (
-          <div className="flex items-center gap-1" key={s.key}>
-            <div
-              className={`h-0.5 w-2 rounded-full ${
-                s.color === "text-foreground"
-                  ? "bg-foreground"
-                  : s.color === "text-success"
-                    ? "bg-success"
-                    : "bg-destructive"
-              }`}
-            />
-            <span className="text-muted-foreground">{s.label}</span>
-          </div>
-        ))}
-      </div>
-
-      {latest && (
-        <div className="space-y-1 font-mono text-xs">
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Wallet</span>
-            <span className="text-foreground">
-              ${fmtUsd(latest.walletValueUsd)}
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Savings</span>
-            <span className="text-success">
-              ${fmtUsd(latest.savingsValueUsd)}
-            </span>
-          </div>
-          {(latest.defiValueUsd ?? 0) > 0 && (
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">DeFi</span>
-              <span className="text-foreground">
-                ${fmtUsd(latest.defiValueUsd ?? 0)}
-              </span>
+        <div className="mt-2 flex gap-3 font-mono text-[9px]">
+          {SERIES.map((s) => (
+            <div className="flex items-center gap-1" key={s.key}>
+              <div
+                className={`h-0.5 w-2 rounded-full ${
+                  s.color === "text-foreground"
+                    ? "bg-foreground"
+                    : s.color === "text-success"
+                      ? "bg-success"
+                      : "bg-destructive"
+                }`}
+              />
+              <span className="text-muted-foreground">{s.label}</span>
             </div>
-          )}
-          {latest.debtValueUsd > 0 && (
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Debt</span>
-              <span className="text-destructive">
-                -${fmtUsd(latest.debtValueUsd)}
-              </span>
-            </div>
-          )}
-          {latest.yieldEarnedUsd > 0 && (
-            <div className="flex justify-between border-border/50 border-t pt-0.5">
-              <span className="text-muted-foreground">Yield earned</span>
-              <span className="text-success">
-                +${fmtUsd(latest.yieldEarnedUsd)}
-              </span>
-            </div>
-          )}
+          ))}
         </div>
-      )}
+      </div>
 
-      {onAction && (
-        <button
-          className="w-full rounded-md border border-border py-1.5 font-mono text-[10px] text-muted-foreground uppercase tracking-wider transition hover:border-foreground/30 hover:text-foreground"
-          onClick={() => onAction("Give me a full financial report")}
-          type="button"
-        >
-          Full report →
-        </button>
-      )}
-    </div>
+      <div className="mt-5">
+        <CanvasMetricGrid cols={4}>
+          <CanvasMetric label="Started" value={`$${fmtUsd(started)}`} />
+          <CanvasMetric
+            label="Now"
+            value={`$${fmtUsd(latest?.netWorthUsd ?? 0)}`}
+          />
+          <CanvasMetric
+            label="Change"
+            tone={
+              change && change.percentChange >= 0
+                ? "up"
+                : change
+                  ? "down"
+                  : "default"
+            }
+            value={
+              change
+                ? `${change.percentChange >= 0 ? "+" : ""}${change.percentChange.toFixed(1)}%`
+                : "—"
+            }
+          />
+          <CanvasMetric
+            label="From yield"
+            value={`$${fmtUsd(latest?.yieldEarnedUsd ?? 0)}`}
+          />
+        </CanvasMetricGrid>
+      </div>
+    </CanvasShell>
   );
 }

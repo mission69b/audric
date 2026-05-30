@@ -1,10 +1,17 @@
 "use client";
 
-import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { authFetch } from "@/lib/auth-fetch";
 import { usePortfolio } from "@/hooks/use-portfolio";
 import { fmtUsd } from "../primitives";
+import {
+  AllocBar,
+  CanvasButton,
+  CanvasFooterMeta,
+  CanvasMetric,
+  CanvasMetricGrid,
+  CanvasShell,
+} from "./canvas-shell";
 
 interface FullPortfolioData {
   available: true;
@@ -255,10 +262,44 @@ export function FullPortfolioCanvas({ data, onAction }: Props) {
         ? livePortfolio.positions.savingsRate
         : (data.savingsRate ?? 0);
 
+  const positiveTotal = walletUsd + savings + (defiKnown ? defi : 0);
+  const pctOf = (v: number) =>
+    positiveTotal > 0 ? (v / positiveTotal) * 100 : 0;
+  const allocLabel = (v: number) =>
+    `$${fmtUsd(v)} · ${Math.round(pctOf(v))}%`;
+
+  const healthTone: "default" | "up" | "down" =
+    debt <= 0 ? "up" : hf != null && hf < 1.5 ? "down" : "default";
+
   return (
-    <div className="space-y-4">
+    <CanvasShell
+      eyebrow={isAllTab ? "Portfolio · all" : "Portfolio"}
+      footer={
+        onAction ? (
+          <>
+            <CanvasFooterMeta>
+              {apy > 0 ? `Avg APY ${(apy * 100).toFixed(2)}%` : "Net worth + allocation"}
+            </CanvasFooterMeta>
+            <CanvasButton
+              onClick={() => onAction("Show my portfolio timeline")}
+              variant="secondary"
+            >
+              Timeline →
+            </CanvasButton>
+            <CanvasButton
+              onClick={() => onAction("Give me a full financial report")}
+              variant="primary"
+            >
+              Full report →
+            </CanvasButton>
+          </>
+        ) : undefined
+      }
+      live
+      name={`$${fmtUsd(netWorth)}`}
+    >
       {hasMultiWallet && multiData && (
-        <div className="flex gap-1 overflow-x-auto pb-1">
+        <div className="-mt-1 mb-4 flex gap-1 overflow-x-auto pb-1">
           <TabButton
             active={activeTab === "all"}
             label="All Wallets"
@@ -269,220 +310,116 @@ export function FullPortfolioCanvas({ data, onAction }: Props) {
               active={activeTab === (w.isPrimary ? "primary" : w.address)}
               key={w.address}
               label={w.label ?? `${w.address.slice(0, 6)}...`}
-              onClick={() =>
-                setActiveTab(w.isPrimary ? "primary" : w.address)
-              }
+              onClick={() => setActiveTab(w.isPrimary ? "primary" : w.address)}
             />
           ))}
         </div>
       )}
 
-      <div className="space-y-0.5">
-        <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
-          {isAllTab ? "Total Net Worth" : "Net Worth"}
-        </span>
-        <div className="font-medium font-mono text-foreground text-xl">
-          ${fmtUsd(netWorth)}
-        </div>
-      </div>
+      <CanvasMetricGrid cols={4}>
+        <CanvasMetric label="Savings" value={`$${fmtUsd(savings)}`} />
+        <CanvasMetric
+          label="Health"
+          tone={healthTone}
+          value={debt > 0 ? (hf != null ? hf.toFixed(2) : "∞") : "None"}
+        />
+        <CanvasMetric
+          label="Activity 30d"
+          value={
+            analyticsLoading ? "…" : (panelData.heatmap?.totalEvents ?? 0)
+          }
+        />
+        <CanvasMetric
+          label="API spend"
+          value={
+            analyticsLoading
+              ? "…"
+              : `$${fmtUsd(panelData.spending?.totalSpent ?? 0)}`
+          }
+        />
+      </CanvasMetricGrid>
 
-      <div className="grid grid-cols-2 gap-2">
-        <PanelCard
-          onClick={() => onAction?.("Show me the yield projector")}
-          title="Savings"
-        >
-          <div className="font-medium font-mono text-foreground text-sm">
-            ${fmtUsd(savings)}
-          </div>
-          {apy > 0 && (
-            <div className="font-mono text-[10px] text-success">
-              {(apy * 100).toFixed(2)}% APY
-            </div>
-          )}
-        </PanelCard>
-
-        <PanelCard
-          onClick={() => onAction?.("Open the health factor simulator")}
-          title="Health"
-        >
-          {debt > 0 ? (
-            <>
-              <div
-                className={`font-medium font-mono text-sm ${hfColor(hf)}`}
-              >
-                {hf != null ? hf.toFixed(2) : "∞"}
-              </div>
-              <div className="font-mono text-[10px] text-muted-foreground">
-                ${fmtUsd(debt)} debt
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="font-medium font-mono text-success text-sm">
-                No debt
-              </div>
-              <div className="font-mono text-[10px] text-muted-foreground">Safe</div>
-            </>
-          )}
-        </PanelCard>
-
-        <PanelCard
-          onClick={() => onAction?.("Show my activity heatmap")}
-          title="Activity (30d)"
-        >
-          {analyticsLoading ? (
-            <div className="animate-pulse font-mono text-muted-foreground text-xs">
-              ...
-            </div>
-          ) : panelData.heatmap ? (
-            <>
-              <div className="font-medium font-mono text-foreground text-sm">
-                {panelData.heatmap.totalEvents}
-              </div>
-              <div className="font-mono text-[10px] text-muted-foreground">
-                {panelData.heatmap.activeDays} active days
-              </div>
-            </>
-          ) : (
-            <div className="font-mono text-muted-foreground text-xs">No data</div>
-          )}
-        </PanelCard>
-
-        <PanelCard
-          onClick={() => onAction?.("Show my spending breakdown")}
-          title="API Spend"
-        >
-          {analyticsLoading ? (
-            <div className="animate-pulse font-mono text-muted-foreground text-xs">
-              ...
-            </div>
-          ) : panelData.spending && panelData.spending.totalSpent > 0 ? (
-            <>
-              <div className="font-medium font-mono text-foreground text-sm">
-                ${fmtUsd(panelData.spending.totalSpent)}
-              </div>
-              <div className="font-mono text-[10px] text-muted-foreground">
-                {panelData.spending.requestCount} requests
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="font-medium font-mono text-foreground text-sm">
-                $0.00
-              </div>
-              <div className="font-mono text-[10px] text-muted-foreground">
-                no MPP services this month
-              </div>
-            </>
-          )}
-        </PanelCard>
-      </div>
-
-      <div className="space-y-1 font-mono text-xs">
-        <div className="flex justify-between">
-          <span className="text-muted-foreground">Wallet</span>
-          <span className="text-foreground">${fmtUsd(walletUsd)}</span>
-        </div>
-        <div className="flex justify-between">
-          <span className="text-muted-foreground">Savings</span>
-          <span className="text-success">${fmtUsd(savings)}</span>
-        </div>
+      <div className="mt-[22px] flex flex-col gap-2.5">
+        <AllocBar
+          name="Wallet"
+          pct={pctOf(walletUsd)}
+          tier={1}
+          valueLabel={allocLabel(walletUsd)}
+        />
+        <AllocBar
+          name="Savings"
+          pct={pctOf(savings)}
+          tier={2}
+          valueLabel={allocLabel(savings)}
+        />
         {defiKnown && defi > 0 && (
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">DeFi</span>
-            {defiIsStale && defiPricedAt ? (
-              <span className="text-warning">
-                ${fmtUsd(defi)} ·{" "}
-                {Math.max(
-                  0,
-                  Math.round((Date.now() - defiPricedAt) / 60_000)
-                )}
-                m
-              </span>
-            ) : defiIsPartial ? (
-              <span className="text-warning">
-                ${fmtUsd(defi)} (partial)
-              </span>
-            ) : (
-              <span className="text-foreground">${fmtUsd(defi)}</span>
-            )}
-          </div>
-        )}
-        {!defiKnown && !(isAllTab || selectedWallet) && (
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">DeFi</span>
-            <span className="text-muted-foreground">—</span>
-          </div>
-        )}
-        {debt > 0 && (
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Debt</span>
-            <span className="text-destructive">-${fmtUsd(debt)}</span>
-          </div>
-        )}
-        {!(isAllTab || selectedWallet) && defiIsStale && defiPricedAt && (
-          <div className="pt-1 text-[10px] text-warning leading-snug">
-            DeFi cached{" "}
-            {Math.max(0, Math.round((Date.now() - defiPricedAt) / 60_000))}m
-            ago — live fetch failed, showing last known value.
-          </div>
-        )}
-        {!(isAllTab || selectedWallet) && defiIsPartial && (
-          <div className="pt-1 text-[10px] text-muted-foreground leading-snug">
-            DeFi partial — at least one protocol failed; figure is a lower
-            bound.
-          </div>
-        )}
-        {!defiKnown && !(isAllTab || selectedWallet) && (
-          <div className="pt-1 text-[10px] text-muted-foreground leading-snug">
-            DeFi unreachable — net worth may under-count.
-          </div>
+          <AllocBar
+            name="DeFi"
+            pct={pctOf(defi)}
+            tier={3}
+            valueLabel={
+              defiIsStale && defiPricedAt
+                ? `$${fmtUsd(defi)} · ${Math.max(0, Math.round((Date.now() - defiPricedAt) / 60_000))}m`
+                : defiIsPartial
+                  ? `$${fmtUsd(defi)} · partial`
+                  : allocLabel(defi)
+            }
+          />
         )}
       </div>
+
+      {(debt > 0 ||
+        (!(isAllTab || selectedWallet) &&
+          (defiIsStale || defiIsPartial || !defiKnown))) && (
+        <div className="mt-4 flex flex-col gap-1 border-border border-t pt-3 font-mono text-[11px]">
+          {debt > 0 && (
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Debt</span>
+              <span className="text-destructive">-${fmtUsd(debt)}</span>
+            </div>
+          )}
+          {!(isAllTab || selectedWallet) && defiIsStale && defiPricedAt && (
+            <div className="text-warning leading-snug">
+              DeFi cached{" "}
+              {Math.max(0, Math.round((Date.now() - defiPricedAt) / 60_000))}m
+              ago — live fetch failed, showing last known value.
+            </div>
+          )}
+          {!(isAllTab || selectedWallet) && defiIsPartial && (
+            <div className="text-muted-foreground leading-snug">
+              DeFi partial — at least one protocol failed; figure is a lower
+              bound.
+            </div>
+          )}
+          {!defiKnown && !(isAllTab || selectedWallet) && (
+            <div className="text-muted-foreground leading-snug">
+              DeFi unreachable — net worth may under-count.
+            </div>
+          )}
+        </div>
+      )}
 
       {isAllTab && multiData && (
-        <div className="space-y-1.5 border-border border-t pt-2">
+        <div className="mt-4 flex flex-col gap-1.5 border-border border-t pt-3">
           <span className="font-mono text-[9px] text-muted-foreground uppercase tracking-wider">
             Per Wallet
           </span>
           {multiData.wallets.map((w) => (
             <button
-              className="flex w-full items-center justify-between rounded px-1 py-1 text-left font-mono text-xs transition hover:bg-card"
+              className="flex w-full items-center justify-between rounded px-1 py-1 text-left font-mono text-xs transition hover:bg-accent"
               key={w.address}
-              onClick={() =>
-                setActiveTab(w.isPrimary ? "primary" : w.address)
-              }
+              onClick={() => setActiveTab(w.isPrimary ? "primary" : w.address)}
               type="button"
             >
               <span className="truncate text-muted-foreground">
-                {w.label ??
-                  `${w.address.slice(0, 6)}...${w.address.slice(-4)}`}
+                {w.label ?? `${w.address.slice(0, 6)}...${w.address.slice(-4)}`}
               </span>
               <span className="text-foreground">${fmtUsd(w.netWorth)}</span>
             </button>
           ))}
         </div>
       )}
-
-      {onAction && (
-        <div className="flex gap-2">
-          <button
-            className="flex-1 rounded-md border border-border py-1.5 font-mono text-[10px] text-muted-foreground uppercase tracking-wider transition hover:border-foreground/30 hover:text-foreground"
-            onClick={() => onAction("Show my portfolio timeline")}
-            type="button"
-          >
-            Timeline →
-          </button>
-          <button
-            className="flex-1 rounded-md bg-foreground py-1.5 font-mono text-[10px] text-background uppercase tracking-wider transition hover:opacity-90"
-            onClick={() => onAction("Give me a full financial report")}
-            type="button"
-          >
-            Full report →
-          </button>
-        </div>
-      )}
-    </div>
+    </CanvasShell>
   );
 }
 
@@ -508,43 +445,4 @@ function TabButton({
       {label}
     </button>
   );
-}
-
-function PanelCard({
-  title,
-  children,
-  onClick,
-}: {
-  title: string;
-  children: ReactNode;
-  onClick?: () => void;
-}) {
-  return (
-    <button
-      className="group space-y-1 rounded-lg border border-border bg-background p-3 text-left transition hover:border-foreground/20"
-      onClick={onClick}
-      type="button"
-    >
-      <span className="font-mono text-[9px] text-muted-foreground uppercase tracking-wider transition group-hover:text-muted-foreground">
-        {title} →
-      </span>
-      {children}
-    </button>
-  );
-}
-
-function hfColor(hf: number | null | undefined): string {
-  if (hf == null) {
-    return "text-success";
-  }
-  if (hf < 1.2) {
-    return "text-destructive";
-  }
-  if (hf < 1.5) {
-    return "text-warning";
-  }
-  if (hf < 2.0) {
-    return "text-foreground";
-  }
-  return "text-success";
 }

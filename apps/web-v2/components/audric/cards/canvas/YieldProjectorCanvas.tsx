@@ -2,6 +2,14 @@
 
 import { useMemo, useState } from "react";
 import { fmtUsd } from "../primitives";
+import {
+  CanvasButton,
+  CanvasFooterMeta,
+  CanvasMetric,
+  CanvasMetricGrid,
+  CanvasShell,
+  RangeTabs,
+} from "./canvas-shell";
 
 interface YieldProjectorData {
   available: true;
@@ -80,80 +88,68 @@ export function YieldProjectorCanvas({ data, onAction }: Props) {
   );
 
   return (
-    <div className="space-y-4">
-      <div className="space-y-1.5">
-        <div className="flex items-center justify-between">
-          <label className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
-            Amount
-          </label>
-          <span className="font-mono text-foreground text-sm">
-            ${amount.toLocaleString()} USDC
-          </span>
-        </div>
-        <input
-          className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-border accent-foreground"
+    <CanvasShell
+      controls={
+        <RangeTabs
+          onChange={(v) => setPeriodIdx(PERIODS.findIndex((p) => p.label === v))}
+          options={PERIODS.map((p) => p.label)}
+          value={period.label}
+        />
+      }
+      eyebrow="Simulator · Yield"
+      footer={
+        onAction ? (
+          <>
+            <CanvasFooterMeta>
+              {breakEvenNote ?? `Projected at ${apy.toFixed(2)}% APY`}
+            </CanvasFooterMeta>
+            <CanvasButton
+              onClick={() =>
+                onAction(`Save $${amount.toLocaleString()} USDC into NAVI`)
+              }
+              variant="primary"
+            >
+              Save ${amount.toLocaleString()} now →
+            </CanvasButton>
+          </>
+        ) : undefined
+      }
+      name={`$${fmtUsd(total)}`}
+      summary={{ value: `+$${fmtUsd(earned)}`, label: `after ${period.label}` }}
+    >
+      <div className="flex flex-col gap-4">
+        <SimSlider
+          label="Amount"
           max={50_000}
           min={100}
-          onChange={(e) => setAmount(Number(e.target.value))}
+          onChange={setAmount}
+          rangeLabels={["$100", "$50,000"]}
+          readout={`$${amount.toLocaleString()} USDC`}
           step={100}
-          type="range"
           value={amount}
         />
-        <div className="flex justify-between font-mono text-[9px] text-muted-foreground">
-          <span>$100</span>
-          <span>$50,000</span>
-        </div>
-      </div>
-
-      <div className="space-y-1.5">
-        <div className="flex items-center justify-between">
-          <label className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
-            APY
-          </label>
-          <span className="font-mono text-foreground text-sm">
-            {apy.toFixed(2)}%
-          </span>
-        </div>
-        <input
-          className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-border accent-foreground"
+        <SimSlider
+          label="APY"
           max={20}
           min={0.5}
-          onChange={(e) => setApy(Number(e.target.value))}
+          onChange={setApy}
+          rangeLabels={["0.5%", "20%"]}
+          readout={`${apy.toFixed(2)}%`}
           step={0.1}
-          type="range"
           value={apy}
         />
-        <div className="flex justify-between font-mono text-[9px] text-muted-foreground">
-          <span>0.5%</span>
-          <span>20%</span>
-        </div>
       </div>
 
-      <div className="flex gap-1">
-        {PERIODS.map((p, i) => (
-          <button
-            className={`flex-1 rounded py-1 font-mono text-[10px] uppercase tracking-wider transition ${
-              periodIdx === i
-                ? "bg-foreground text-background"
-                : "border border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground"
-            }`}
-            key={p.label}
-            onClick={() => setPeriodIdx(i)}
-            type="button"
-          >
-            {p.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="overflow-hidden rounded-lg border border-border bg-background">
+      <div className="mt-4 rounded-[10px] border border-border bg-muted p-4">
+        <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-[0.06em]">
+          Growth · {period.label}
+        </span>
         <svg
           aria-label="Yield projection curve"
-          className="h-20"
+          className="mt-2 h-[110px] w-full"
           preserveAspectRatio="none"
           role="img"
           viewBox={`0 0 ${W} ${H}`}
-          width="100%"
         >
           <defs>
             <linearGradient id="yp-grad" x1="0" x2="0" y1="0" y2="1">
@@ -162,12 +158,12 @@ export function YieldProjectorCanvas({ data, onAction }: Props) {
             </linearGradient>
           </defs>
           <polygon
-            className="text-foreground"
+            className="text-success"
             fill="url(#yp-grad)"
             points={`0,${H} ${curvePoints} ${W},${H}`}
           />
           <polyline
-            className="text-foreground"
+            className="text-success"
             fill="none"
             points={curvePoints}
             stroke="currentColor"
@@ -178,35 +174,67 @@ export function YieldProjectorCanvas({ data, onAction }: Props) {
         </svg>
       </div>
 
-      <div className="space-y-1 font-mono text-xs">
-        <div className="flex justify-between">
-          <span className="text-muted-foreground">After {period.label}</span>
-          <span className="text-success">+${fmtUsd(earned)} earned</span>
-        </div>
-        <div className="flex justify-between">
-          <span className="text-muted-foreground">Total value</span>
-          <span className="text-foreground">${fmtUsd(total)}</span>
-        </div>
-        <div className="flex justify-between">
-          <span className="text-muted-foreground">After 5Y (compound)</span>
-          <span className="text-foreground">+${fmtUsd(fiveYearEarned)}</span>
-        </div>
-        {breakEvenNote && (
-          <p className="pt-0.5 text-[10px] text-muted-foreground">{breakEvenNote}</p>
-        )}
+      <div className="mt-5">
+        <CanvasMetricGrid cols={3}>
+          <CanvasMetric
+            label={`Earned · ${period.label}`}
+            tone="up"
+            value={`+$${fmtUsd(earned)}`}
+          />
+          <CanvasMetric label="Total value" value={`$${fmtUsd(total)}`} />
+          <CanvasMetric
+            label="Earned · 5Y"
+            tone="up"
+            value={`+$${fmtUsd(fiveYearEarned)}`}
+          />
+        </CanvasMetricGrid>
       </div>
+    </CanvasShell>
+  );
+}
 
-      {onAction && (
-        <button
-          className="w-full rounded-md bg-foreground py-2 font-mono text-[10px] text-background uppercase tracking-wider transition hover:opacity-90"
-          onClick={() =>
-            onAction(`Save $${amount.toLocaleString()} USDC into NAVI`)
-          }
-          type="button"
-        >
-          Save ${amount.toLocaleString()} now →
-        </button>
-      )}
+function SimSlider({
+  label,
+  value,
+  min,
+  max,
+  step,
+  readout,
+  rangeLabels,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  readout: string;
+  rangeLabels: [string, string];
+  onChange: (v: number) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-center justify-between">
+        <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-[0.08em]">
+          {label}
+        </span>
+        <span className="font-mono text-[13px] text-foreground tabular-nums">
+          {readout}
+        </span>
+      </div>
+      <input
+        className="h-1.5 w-full cursor-pointer accent-foreground"
+        max={max}
+        min={min}
+        onChange={(e) => onChange(Number(e.target.value))}
+        step={step}
+        type="range"
+        value={value}
+      />
+      <div className="flex justify-between font-mono text-[9px] text-muted-foreground">
+        <span>{rangeLabels[0]}</span>
+        <span>{rangeLabels[1]}</span>
+      </div>
     </div>
   );
 }

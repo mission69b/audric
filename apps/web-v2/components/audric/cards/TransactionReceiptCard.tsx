@@ -306,6 +306,75 @@ const emphasisClass: Record<string, string> = {
   neutral: '',
 };
 
+type ReceiptLeg = { name: string; chain: string; value: string };
+
+// [R6.4 / A5] Numbered multi-leg body for the harvest receipt (phase2
+// P7 `.leg`): claim → swap → save (+ any skipped/sent-to-wallet legs),
+// each a numbered circle + name + chain tag + value. Derived from the
+// same `claimed[] / swaps[] / expectedUsdcDeposited / skipped[]` shape
+// `getHeroLines` reads for the flat-line tools.
+function getHarvestLegs(data: TxReceiptData): ReceiptLeg[] {
+  const legs: ReceiptLeg[] = [];
+  const claimed = (data.claimed ?? []).filter(
+    (r) => Number.isFinite(r.amount) && r.amount > 0,
+  );
+  const swaps = (data.swaps ?? []).filter((s) =>
+    Number.isFinite(s.expectedOutputUsdc),
+  );
+  const deposited = data.expectedUsdcDeposited ?? 0;
+  const skipped = data.skipped ?? [];
+
+  const claimedUsd = claimed.reduce(
+    (sum, c) => sum + (c.estimatedValueUsd ?? 0),
+    0,
+  );
+  if (claimed.length > 0) {
+    legs.push({
+      name: 'Claimed rewards',
+      chain: 'NAVI',
+      value: claimedUsd > 0 ? `$${fmtAmt(claimedUsd)}` : `${claimed.length}×`,
+    });
+  }
+  if (swaps.length > 0) {
+    legs.push({ name: 'Swapped to USDC', chain: 'CETUS', value: 'merged' });
+  }
+  if (deposited > 0) {
+    legs.push({
+      name: 'Saved to NAVI',
+      chain: 'NAVI',
+      value: `$${fmtAmt(deposited)}`,
+    });
+  }
+  for (const sk of skipped) {
+    const symbol = sk.symbol ?? 'token';
+    legs.push({
+      name: 'Sent to wallet',
+      chain: sk.reason === 'dust' ? 'DUST' : 'NO ROUTE',
+      value: `${fmtAmt(sk.amount, 4)} ${symbol}`,
+    });
+  }
+  return legs;
+}
+
+function ReceiptLegRow({ index, leg }: { index: number; leg: ReceiptLeg }) {
+  return (
+    <div className="grid grid-cols-[18px_1fr_auto] items-center gap-2.5 py-1.5">
+      <span className="flex h-[18px] w-[18px] items-center justify-center rounded-full bg-accent font-medium font-mono text-[10px] text-foreground">
+        {index}
+      </span>
+      <span className="text-[13px] text-foreground tracking-[-0.011em]">
+        {leg.name}
+        <span className="ml-1.5 font-mono text-[9.5px] text-muted-foreground uppercase tracking-[0.06em]">
+          {leg.chain}
+        </span>
+      </span>
+      <span className="font-mono text-[12px] text-muted-foreground tabular-nums">
+        {leg.value}
+      </span>
+    </div>
+  );
+}
+
 // [R6.3] Per-tool receipt header (title + settlement sub) per the
 // phase2-receipts-denials spec. The body rrows still come from
 // `getHeroLines`; this just supplies the calm green-header headline.
@@ -370,8 +439,25 @@ export function TransactionReceiptCard({
 }) {
   if (!data.tx) return null;
 
-  const lines = getHeroLines(data, toolName);
-  const { title, sub } = getReceiptHeader(data, toolName);
+  const isHarvest = toolName === 'harvest_rewards';
+  const legs = isHarvest ? getHarvestLegs(data) : [];
+  const lines = isHarvest ? [] : getHeroLines(data, toolName);
+  const { title, sub: baseSub } = getReceiptHeader(data, toolName);
+
+  // [R6.4 / A5] Enrich the settlement sub per-tool (phase2 P7/P8 subs).
+  let sub = baseSub;
+  if (isHarvest && legs.length > 0) {
+    sub = `${legs.length} legs · 1 transaction`;
+  } else if (toolName === 'swap_execute') {
+    const route = data.route ?? 'Cetus';
+    const impact =
+      data.priceImpact == null ? null : Number(data.priceImpact);
+    sub =
+      impact != null && Number.isFinite(impact) && impact > 0.01
+        ? `${route} · ${impact.toFixed(2)}% impact`
+        : route;
+  }
+
   const shortDigest = `${data.tx.slice(0, 4)}…${data.tx.slice(-3)}`;
 
   return (
@@ -400,6 +486,10 @@ export function TransactionReceiptCard({
         </div>
 
         <div className="flex flex-col gap-1 px-[18px] py-[14px]">
+          {isHarvest &&
+            legs.map((leg, idx) => (
+              <ReceiptLegRow index={idx + 1} key={`${leg.name}-${idx}`} leg={leg} />
+            ))}
           {lines.map((line, idx) => {
             if (line.variant === 'address') {
               const addrToShow = line.rawAddress ?? line.value;

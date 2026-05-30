@@ -3,17 +3,21 @@
 import {
   AddressBadge,
   CardShell,
-  MiniBar,
-  TrendIndicator,
   fmtUsd,
   fmtYield,
+  MiniBar,
+  QRow,
 } from './primitives';
-import { AssetAmountBlock, APYBlock, HFGauge } from './shared';
+import { APYBlock, AssetRow, HFGauge, MetricBlock } from './shared';
 
-// PortfolioCardV2 — `portfolio_analysis` tool renderer (TOOL_UX_DESIGN
-// baseline shape). Ported from
-// `apps/web/components/engine/cards/PortfolioCardV2.tsx` by Phase 5a.3
-// (renderer migration sweep, 2026-05-19). Verbatim except import paths.
+// PortfolioCardV2 — `portfolio_analysis` tool renderer.
+//
+// [R6.4 / A3 — 2026-05-30] Rebuilt to the phase2 read-card spec
+// (`t2000-AFI/audric/phase2-read-cards.html` R4): a "Total value" hero
+// MetricBlock with a 24h/week delta pill, the allocation MiniBar,
+// compact allocation AssetRows (% + USD), and the savings / DeFi /
+// debt+HF sections in dotted rows, closing on a "Net worth" footer.
+// Data shape + derivations preserved from the prior `apps/web` port.
 
 interface PortfolioDataV2 {
   totalValue: number;
@@ -40,7 +44,7 @@ interface PortfolioDataV2 {
 }
 
 const SECTION_LABEL =
-  'text-[9px] font-mono uppercase tracking-[0.14em] text-muted-foreground';
+  'text-[10px] font-mono uppercase tracking-[0.08em] text-muted-foreground';
 
 const DUST_USD = 0.01;
 const TOP_WALLET_ALLOCATIONS = 5;
@@ -74,109 +78,116 @@ export function PortfolioCardV2({ data }: { data: PortfolioDataV2 }) {
   const savingsApyBps = apyToBps(data.savingsApy);
   const showSavingsApy = data.savingsValue > 0 && savingsApyBps > 0;
   const showDailyYield =
-    data.dailyEarning != null &&
-    data.dailyEarning > 0 &&
-    data.savingsValue > 0;
+    data.dailyEarning != null && data.dailyEarning > 0 && data.savingsValue > 0;
   const showDefi = (data.defiValue ?? 0) > 0;
   const hasDebt = data.debtValue > 0;
   const hasHealthFactor =
     hasDebt && data.healthFactor != null && Number.isFinite(data.healthFactor);
 
+  const week = data.weekChange;
+  const weekDelta =
+    week && week.absoluteUsd !== 0
+      ? ({
+          direction: week.absoluteUsd >= 0 ? 'up' : 'down',
+          value: `${week.absoluteUsd >= 0 ? '+' : '−'}$${fmtUsd(Math.abs(week.absoluteUsd))}`,
+        } as const)
+      : undefined;
+
   return (
-    <CardShell title={title} badge={badge}>
-      <div className="space-y-4">
-        {/* HERO — total value + week trend */}
-        <div className="text-center">
-          <span className="text-2xl font-semibold font-mono text-foreground tabular-nums">
+    <CardShell
+      title={title}
+      badge={badge}
+      footer={
+        <>
+          <span>Net worth</span>
+          <span className="font-medium text-foreground">
             ${fmtUsd(data.totalValue)}
           </span>
-          {data.weekChange && data.weekChange.absoluteUsd !== 0 && (
-            <div className="mt-0.5">
-              <TrendIndicator value={data.weekChange.percentChange} />
-              <span className="text-muted-foreground text-[10px] ml-1">this week</span>
-            </div>
-          )}
-        </div>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        {/* HERO — total value + week trend */}
+        <MetricBlock
+          label="Total value"
+          value={`$${fmtUsd(data.totalValue)}`}
+          delta={weekDelta}
+          sub={
+            week && week.percentChange !== 0 ? (
+              <span
+                className={week.percentChange >= 0 ? 'text-success' : 'text-destructive'}
+              >
+                {week.percentChange >= 0 ? '+' : ''}
+                {week.percentChange.toFixed(2)}% this week
+              </span>
+            ) : undefined
+          }
+        />
 
         {/* ALLOCATION BAR */}
         {segments.length > 0 && <MiniBar segments={segments} />}
 
         {/* WALLET SECTION */}
         {walletAllocations.length > 0 && (
-          <div className="pt-3 border-t border-border">
-            <div className={`${SECTION_LABEL} mb-2`}>Wallet</div>
-            <div className="space-y-2">
-              {walletAllocations.map((a) => (
-                <AssetAmountBlock
-                  key={a.symbol}
-                  asset={a.symbol}
-                  amount={a.amount}
-                  usdValue={a.usdValue}
-                />
-              ))}
-            </div>
-            <div className="flex justify-between items-baseline mt-2 pt-2 border-t border-border">
-              <span className={SECTION_LABEL}>Wallet total</span>
-              <span className="text-foreground font-mono text-sm tabular-nums">
-                ${fmtUsd(data.walletValue)}
-              </span>
-            </div>
+          <div className="border-border border-t pt-3">
+            <div className={`${SECTION_LABEL} mb-1`}>Wallet</div>
+            {walletAllocations.map((a) => (
+              <AssetRow
+                key={a.symbol}
+                symbol={a.symbol}
+                amount={`${a.percentage.toFixed(0)}%`}
+                value={`$${fmtUsd(a.usdValue)}`}
+              />
+            ))}
           </div>
         )}
 
         {/* SAVINGS SECTION */}
         {data.savingsValue > 0 && (
-          <div className="pt-3 border-t border-border">
-            <div className={`${SECTION_LABEL} mb-2`}>Savings</div>
-            <AssetAmountBlock
-              asset="USDC"
-              amount={data.savingsValue}
-              usdValue={data.savingsValue}
+          <div className="border-border border-t pt-3">
+            <div className={`${SECTION_LABEL} mb-1`}>Savings</div>
+            <AssetRow
+              symbol="USDC"
+              sub="deposited"
+              value={`$${fmtUsd(data.savingsValue)}`}
+              tone="success"
             />
             {showSavingsApy && (
-              <div className="flex justify-between items-baseline mt-2">
+              <div className="mt-2 flex items-baseline justify-between">
                 <span className={SECTION_LABEL}>Pool APY</span>
                 <APYBlock asset="USDC" apyBps={savingsApyBps} />
               </div>
             )}
             {showDailyYield && (
-              <div className="flex justify-between items-baseline mt-1">
-                <span className={SECTION_LABEL}>Daily yield</span>
-                <span className="text-foreground font-mono text-[11px] tabular-nums">
-                  {fmtYield(data.dailyEarning!)}/day
-                </span>
-              </div>
+              <QRow label="Daily yield" tone="up">
+                {fmtYield(data.dailyEarning!)}/day
+              </QRow>
             )}
           </div>
         )}
 
         {/* DEFI SECTION */}
         {showDefi && (
-          <div className="pt-3 border-t border-border flex justify-between items-baseline">
-            <span className={SECTION_LABEL}>DeFi</span>
-            <span className="text-foreground font-mono text-sm tabular-nums">
+          <div className="border-border border-t pt-3">
+            <QRow label="DeFi">
               ${fmtUsd(data.defiValue!)}
               {data.defiSource === 'partial' && (
-                <span className="text-warning ml-1 text-[10px]">
-                  (partial)
-                </span>
+                <span className="ml-1 text-[10px] text-warning">(partial)</span>
               )}
               {data.defiSource === 'partial-stale' && (
-                <span className="text-warning ml-1 text-[10px]">
-                  (cached)
-                </span>
+                <span className="ml-1 text-[10px] text-warning">(cached)</span>
               )}
-            </span>
+            </QRow>
           </div>
         )}
 
         {/* DEBT + HEALTH FACTOR */}
         {hasDebt && (
-          <div className="pt-3 border-t border-border space-y-3">
-            <div className="flex justify-between items-baseline">
+          <div className="space-y-3 border-border border-t pt-3">
+            <div className="flex items-baseline justify-between">
               <span className={SECTION_LABEL}>Debt</span>
-              <span className="text-warning font-mono text-sm tabular-nums">
-                -${fmtUsd(data.debtValue)}
+              <span className="font-medium font-mono text-sm text-warning tabular-nums">
+                −${fmtUsd(data.debtValue)}
               </span>
             </div>
             {hasHealthFactor && (
@@ -188,26 +199,20 @@ export function PortfolioCardV2({ data }: { data: PortfolioDataV2 }) {
           </div>
         )}
 
-        {/* NET WORTH FOOTER */}
-        <div className="pt-3 border-t border-border flex justify-between items-baseline">
-          <span className={SECTION_LABEL}>Net worth</span>
-          <span className="text-foreground font-mono text-sm font-medium tabular-nums">
-            ${fmtUsd(data.totalValue)}
-          </span>
-        </div>
-
         {/* INSIGHTS */}
         {data.insights.length > 0 && (
-          <div className="pt-3 border-t border-border space-y-1 text-[11px]">
-            {data.insights.map((i, idx) => (
+          <div className="space-y-1 border-border border-t pt-3 text-[11px]">
+            {data.insights.map((insight) => (
               <div
-                key={idx}
                 className={
-                  i.type === 'warning' ? 'text-warning' : 'text-muted-foreground'
+                  insight.type === 'warning'
+                    ? 'text-warning'
+                    : 'text-muted-foreground'
                 }
+                key={insight.message}
               >
-                {i.type === 'warning' ? '⚠ ' : '→ '}
-                {i.message}
+                {insight.type === 'warning' ? '⚠ ' : '→ '}
+                {insight.message}
               </div>
             ))}
           </div>

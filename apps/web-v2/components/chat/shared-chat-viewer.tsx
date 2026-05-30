@@ -112,16 +112,32 @@ export function SharedChatViewer({
                       );
                     }
                     if (part.type === "reasoning") {
-                      const reasoningPart = part as ReasoningUIPart;
+                      // [B1 / vercel parity — 2026-05-30] Merge multiple
+                      // reasoning parts into ONE accordion (mirrors the
+                      // live chat client + vercel/chatbot message.tsx).
+                      // Read-only viewer → never streaming.
+                      const firstReasoningIndex = m.parts.findIndex(
+                        (p) => p.type === "reasoning"
+                      );
+                      if (i !== firstReasoningIndex) {
+                        return null;
+                      }
+                      const mergedReasoningText = m.parts
+                        .filter((p) => p.type === "reasoning")
+                        .map((p) => (p as ReasoningUIPart).text)
+                        .filter((t) => t && t.trim().length > 0)
+                        .join("\n\n");
+                      if (!mergedReasoningText) {
+                        return null;
+                      }
                       return (
                         <Reasoning
                           isStreaming={false}
-                          // biome-ignore lint/suspicious/noArrayIndexKey: parts are positionally stable per message
-                          key={`${m.id}-${i}`}
+                          key={`${m.id}-reasoning`}
                         >
                           <ReasoningTrigger />
                           <ReasoningContent>
-                            {reasoningPart.text}
+                            {mergedReasoningText}
                           </ReasoningContent>
                         </Reasoning>
                       );

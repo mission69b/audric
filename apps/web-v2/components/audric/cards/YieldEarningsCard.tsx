@@ -1,10 +1,13 @@
-'use client';
+"use client";
 
-import { CardShell, DetailRow, fmtYield } from './primitives';
+import { CardShell, fmtYield, QRow } from "./primitives";
+import { MetricBlock } from "./shared";
 
-// YieldEarningsCard — `yield_summary` tool renderer. Ported from
-// `apps/web/components/engine/cards/YieldEarningsCard.tsx` by Phase 5a.4
-// (renderer migration sweep, 2026-05-19). Verbatim.
+// YieldEarningsCard — `yield_summary` tool renderer.
+// [R6.4 / A4 — 2026-05-30] Rebuilt to the phase2 read-card spec
+// (`phase2-read-cards.html` R6): hero MetricBlock (all-time, green) +
+// sparkline + a 2-up metric grid (Avg APY / Deposited) + QRow detail
+// rows. Data shape preserved from the prior `apps/web` port.
 
 interface YieldData {
   today: number;
@@ -18,7 +21,9 @@ interface YieldData {
 }
 
 function Sparkline({ data }: { data: number[] }) {
-  if (data.length < 2) return null;
+  if (data.length < 2) {
+    return null;
+  }
 
   const max = Math.max(...data, 0.01);
   const w = 200;
@@ -27,27 +32,26 @@ function Sparkline({ data }: { data: number[] }) {
 
   const points = data
     .map((v, i) => `${i * step},${h - (v / max) * h * 0.9}`)
-    .join(' ');
+    .join(" ");
   const fillPoints = `0,${h} ${points} ${w},${h}`;
 
   return (
     <svg
-      viewBox={`0 0 ${w} ${h}`}
-      className="w-full h-10 mt-1 mb-2"
-      preserveAspectRatio="none"
       aria-hidden="true"
+      className="mt-1 mb-3 h-10 w-full text-success"
+      preserveAspectRatio="none"
+      viewBox={`0 0 ${w} ${h}`}
     >
       <polygon
-        points={fillPoints}
+        className="text-success/10"
         fill="currentColor"
-        className="text-chart-1/10"
+        points={fillPoints}
       />
       <polyline
-        points={points}
         fill="none"
+        points={points}
         stroke="currentColor"
         strokeWidth="1.5"
-        className="text-chart-1"
       />
     </svg>
   );
@@ -60,33 +64,30 @@ function fmtApy(rate: number): string {
 
 export function YieldEarningsCard({ data }: { data: YieldData }) {
   return (
-    <CardShell title="Yield Earnings">
-      <div className="text-center mb-1">
-        <span className="text-2xl font-semibold font-mono text-foreground">
-          {fmtYield(data.allTime)}
-        </span>
-        <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground mt-0.5">
-          All-time earnings
-        </p>
-      </div>
+    <CardShell live title="Yield earnings">
+      <MetricBlock
+        label="All-time earnings"
+        sub={<span className="text-success">+{fmtApy(data.currentApy)} APY</span>}
+        value={<span className="text-success">{fmtYield(data.allTime)}</span>}
+      />
 
       {data.sparkline && data.sparkline.length > 1 && (
         <Sparkline data={data.sparkline} />
       )}
 
-      <div className="space-y-1 font-mono text-[11px]">
-        <DetailRow label="Today">{fmtYield(data.today)}</DetailRow>
-        <DetailRow label="This Week">{fmtYield(data.thisWeek)}</DetailRow>
-        <DetailRow label="This Month">{fmtYield(data.thisMonth)}</DetailRow>
-        <DetailRow label="All Time">{fmtYield(data.allTime)}</DetailRow>
+      <div className="mt-3 grid grid-cols-2 gap-4 border-border border-t pt-3">
+        <MetricBlock label="Deposited" size="sm" value={fmtYield(data.deposited)} />
+        <MetricBlock
+          label="Projected / yr"
+          size="sm"
+          value={fmtYield(data.projectedYear)}
+        />
       </div>
 
-      <div className="mt-2 pt-2 border-t border-border/50 space-y-1 font-mono text-[11px]">
-        <DetailRow label="Current APY">{fmtApy(data.currentApy)}</DetailRow>
-        <DetailRow label="Deposited">{fmtYield(data.deposited)}</DetailRow>
-        <DetailRow label="Projected / Year">
-          {fmtYield(data.projectedYear)}
-        </DetailRow>
+      <div className="mt-3">
+        <QRow label="Today">{fmtYield(data.today)}</QRow>
+        <QRow label="This week">{fmtYield(data.thisWeek)}</QRow>
+        <QRow label="This month">{fmtYield(data.thisMonth)}</QRow>
       </div>
     </CardShell>
   );

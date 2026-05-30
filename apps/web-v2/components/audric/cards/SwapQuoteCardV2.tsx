@@ -1,12 +1,16 @@
 'use client';
 
-import { CardShell } from './primitives';
-import { AssetAmountBlock, RouteDiagram } from './shared';
+import { CardShell, fmtAmt, QRow } from './primitives';
+import { RouteDiagram } from './shared';
 
-// SwapQuoteCardV2 — `swap_quote` tool renderer (TOOL_UX_DESIGN baseline
-// shape). Ported from `apps/web/components/engine/cards/SwapQuoteCardV2.tsx`
-// by Phase 5a.4 (renderer migration sweep, 2026-05-19). Verbatim except
-// import paths.
+// SwapQuoteCardV2 — `swap_quote` tool renderer.
+//
+// [R6.4 / A3 — 2026-05-30] Rebuilt to the phase2 read-card spec
+// (`t2000-AFI/audric/phase2-read-cards.html` R9): a header `via {route}`
+// meta, an amount-pill route row (from → to, with a DIRECT / multi-hop
+// tag), and a dotted `QRow` detail stack (rate / impact / min received /
+// network fee). Read-only quote summary — distinct from the interactive
+// swap canvas. Data shape + derivations preserved from the prior port.
 
 export interface SwapQuoteV2RouteStep {
   pool: string;
@@ -33,9 +37,6 @@ interface SwapQuoteCardV2Props {
   data: SwapQuoteV2Data;
 }
 
-const SECTION_LABEL =
-  'text-[9px] font-mono uppercase tracking-[0.14em] text-muted-foreground';
-
 function formatPct(v: number, dp = 2): string {
   if (!Number.isFinite(v)) return '—';
   return `${v.toFixed(dp)}%`;
@@ -45,7 +46,7 @@ function impactColor(impactPct: number): string {
   if (!Number.isFinite(impactPct)) return 'text-foreground';
   if (impactPct > 3) return 'text-destructive';
   if (impactPct > 1) return 'text-warning';
-  return 'text-foreground';
+  return 'text-success';
 }
 
 function priceImpactToPct(rawImpact: unknown): number {
@@ -54,78 +55,83 @@ function priceImpactToPct(rawImpact: unknown): number {
   return v < 1 ? v * 100 : v;
 }
 
+function AmountPill({ amount, asset }: { amount: number; asset: string }) {
+  return (
+    <span className="inline-flex h-6 items-center gap-1.5 rounded-full border border-border bg-muted px-2.5 font-medium font-mono text-[11.5px] text-foreground">
+      <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-accent font-semibold text-[8px]">
+        {asset.charAt(0).toUpperCase()}
+      </span>
+      {fmtAmt(amount)} {asset}
+    </span>
+  );
+}
+
 export function SwapQuoteCardV2({ data }: SwapQuoteCardV2Props) {
   const rate = data.fromAmount > 0 ? data.toAmount / data.fromAmount : 0;
   const safeImpact = priceImpactToPct(data.priceImpact);
   const slippagePct =
     typeof data.slippage === 'number' ? data.slippage * 100 : null;
   const totalFeeBps = data.totalFeeBps ?? 10;
+  const hasMultiHop = !!data.routeSteps && data.routeSteps.length > 1;
+  const viaTag = hasMultiHop
+    ? (data.route ?? `${data.routeSteps!.length} hops`).toUpperCase()
+    : 'DIRECT';
+  const minReceived =
+    slippagePct != null ? data.toAmount * (1 - slippagePct / 100) : null;
 
   return (
-    <CardShell title={`Trade ${data.fromToken} → ${data.toToken}`}>
-      <div className="space-y-3">
-        {/* PAY (from leg) */}
-        <AssetAmountBlock
-          asset={data.fromToken}
-          amount={data.fromAmount}
-          usdValue={data.fromUsdValue ?? null}
-          label="Pay"
-        />
+    <CardShell
+      title="Swap quote"
+      badge={
+        <span className="font-mono text-[11px] text-muted-foreground tracking-[0.02em]">
+          via {data.route ?? 'Cetus'}
+        </span>
+      }
+    >
+      <div className="space-y-3.5">
+        {/* ROUTE — amount pills */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <AmountPill amount={data.fromAmount} asset={data.fromToken} />
+          <span className="font-mono text-muted-foreground">→</span>
+          <AmountPill amount={data.toAmount} asset={data.toToken} />
+          <span className="ml-auto rounded-[3px] border border-border-strong px-1.5 py-0.5 font-mono text-[9.5px] text-muted-foreground uppercase tracking-[0.08em]">
+            {viaTag}
+          </span>
+        </div>
 
-        {/* ROUTE */}
-        {data.routeSteps && data.routeSteps.length > 0 ? (
-          <div className="pt-1">
-            <RouteDiagram steps={data.routeSteps} totalFeeBps={totalFeeBps} />
-          </div>
-        ) : data.route ? (
-          <div className="text-center text-[11px] font-mono text-muted-foreground py-1">
-            via {data.route}
-          </div>
-        ) : null}
-
-        {/* RECEIVE (to leg) */}
-        <AssetAmountBlock
-          asset={data.toToken}
-          amount={data.toAmount}
-          usdValue={data.toUsdValue ?? null}
-          label="Receive"
-        />
+        {/* MULTI-HOP DETAIL — only when the route has > 1 leg */}
+        {hasMultiHop && (
+          <RouteDiagram steps={data.routeSteps!} totalFeeBps={totalFeeBps} />
+        )}
 
         {/* DETAILS */}
-        <div className="pt-2 border-t border-border space-y-1">
-          <div className="flex justify-between items-baseline text-[11px]">
-            <span className={SECTION_LABEL}>Rate</span>
-            <span className="text-foreground font-mono tabular-nums">
-              1 {data.fromToken} = {rate.toFixed(4)} {data.toToken}
-            </span>
-          </div>
-          <div className="flex justify-between items-baseline text-[11px]">
-            <span className={SECTION_LABEL}>Impact</span>
+        <div>
+          <QRow label="Rate">
+            1 {data.fromToken} = {rate.toFixed(4)} {data.toToken}
+          </QRow>
+          <div className="flex items-baseline justify-between border-border border-b border-dotted py-[7px] text-[13px] text-muted-foreground tracking-[-0.011em]">
+            <span>Price impact</span>
             <span
-              className={`font-mono tabular-nums ${impactColor(safeImpact)}`}
+              className={`font-medium font-mono tabular-nums ${impactColor(safeImpact)}`}
             >
               {formatPct(safeImpact)}
             </span>
           </div>
-          {slippagePct != null && (
-            <div className="flex justify-between items-baseline text-[11px]">
-              <span className={SECTION_LABEL}>Slippage</span>
-              <span className="text-foreground font-mono tabular-nums">
-                {formatPct(slippagePct, 1)}
-              </span>
-            </div>
+          {minReceived != null && (
+            <QRow label="Min received">
+              {fmtAmt(minReceived)} {data.toToken}
+            </QRow>
           )}
-          <div className="flex justify-between items-baseline text-[11px]">
-            <span className={SECTION_LABEL}>Fee</span>
-            <span className="text-foreground font-mono tabular-nums">
-              {(totalFeeBps / 100).toFixed(2)}% overlay
-            </span>
-          </div>
+          {slippagePct != null && (
+            <QRow label="Slippage">{formatPct(slippagePct, 1)}</QRow>
+          )}
+          <QRow label="Network fee">$0.00 · sponsored</QRow>
+          <QRow label="Overlay fee">{(totalFeeBps / 100).toFixed(2)}%</QRow>
         </div>
 
-        <div className="pt-1 text-[10px] font-mono text-muted-foreground text-center">
-          ⓘ Quote valid for ~30 seconds
-        </div>
+        <p className="text-center font-mono text-[10px] text-muted-foreground">
+          Quote valid for ~30 seconds
+        </p>
       </div>
     </CardShell>
   );

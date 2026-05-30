@@ -1,21 +1,15 @@
 'use client';
 
 import { AddressBadge, CardShell, fmtUsd } from './primitives';
-import { HFGauge } from './shared';
+import { HFGauge, MetricBlock } from './shared';
 
-// ───────────────────────────────────────────────────────────────────────────
-// HealthCardV2 — `health_check` tool renderer (design-baseline shape).
+// HealthCardV2 — `health_check` tool renderer.
 //
-// Ported from `apps/web/components/engine/cards/HealthCardV2.tsx` by
-// Phase 5a.3 (renderer migration sweep, 2026-05-19). Verbatim except
-// import paths.
-//
-// V1/V2 absorption note (founder lock 2026-05-19, see S.178): the
-// `variant?: 'default' | 'post-write'` prop is accepted for API
-// forward-compatibility; the `post-write` branch is deferred to Phase
-// 5c when PostWriteRefreshSurface lands. Until then `variant` is a
-// no-op.
-// ───────────────────────────────────────────────────────────────────────────
+// [R6.4 / A3 — 2026-05-30] Rebuilt to the phase2 read-card spec
+// (`t2000-AFI/audric/phase2-read-cards.html` R2): the compact HFGauge
+// dial beside a 2-up MetricBlock grid (collateral / debt / borrow
+// capacity / liq. threshold), with a zone-status footer. Data shape +
+// HF-resolution logic preserved from the prior `apps/web` port.
 
 const DEBT_DUST_USD = 0.01;
 
@@ -44,25 +38,48 @@ interface HealthCardV2Props {
   variant?: 'default' | 'post-write';
 }
 
-const SECTION_LABEL =
-  'text-[9px] font-mono uppercase tracking-[0.14em] text-muted-foreground';
-
 function resolveHFForGauge(
   hf: number | null | undefined,
-  borrowed: number,
+  borrowed: number
 ): number {
   if (borrowed <= DEBT_DUST_USD) return Number.POSITIVE_INFINITY;
   if (hf == null || !Number.isFinite(hf)) return Number.POSITIVE_INFINITY;
   return hf;
 }
 
+type Zone = 'safe' | 'warn' | 'danger';
+
+function zoneFor(hf: number): Zone {
+  if (!Number.isFinite(hf) || hf > 2) return 'safe';
+  if (hf >= 1.3) return 'warn';
+  return 'danger';
+}
+
+const ZONE_DOT: Record<Zone, string> = {
+  danger: 'bg-destructive',
+  safe: 'bg-success',
+  warn: 'bg-warning',
+};
+
+const ZONE_TEXT: Record<Zone, string> = {
+  danger: 'text-destructive',
+  safe: 'text-success',
+  warn: 'text-warning',
+};
+
+const ZONE_LABEL: Record<Zone, string> = {
+  danger: 'At risk',
+  safe: 'Safe',
+  warn: 'Watch',
+};
+
 export function HealthCardV2({ data }: HealthCardV2Props) {
   const hfForGauge = resolveHFForGauge(data.healthFactor, data.borrowed);
+  const zone = zoneFor(hfForGauge);
   const liqThreshold =
     data.liquidationThreshold != null && data.liquidationThreshold > 0
       ? data.liquidationThreshold
       : null;
-  const liqThresholdForGauge = liqThreshold ?? 1.0;
   const isWatched = data.isSelfQuery === false && !!data.address;
   const badge = isWatched ? (
     <AddressBadge address={data.address!} suinsName={data.suinsName} />
@@ -76,82 +93,53 @@ export function HealthCardV2({ data }: HealthCardV2Props) {
   const remainingCapacity = hasBorrowingCapacity
     ? Math.max(0, data.maxBorrow! - data.borrowed)
     : null;
+  const showLiqThreshold = liqThreshold != null && liqThreshold !== 1.0;
 
   return (
-    <CardShell title="Health factor" noHeader>
-      <div className="space-y-3">
-        {badge && <div className="flex justify-end">{badge}</div>}
-        {/* HERO — HFGauge */}
+    <CardShell
+      title="NAVI · health"
+      live={hasDebt}
+      badge={badge}
+      footer={
+        <span className={`inline-flex items-center gap-2 ${ZONE_TEXT[zone]}`}>
+          <span className={`h-[7px] w-[7px] rounded-full ${ZONE_DOT[zone]}`} />
+          {ZONE_LABEL[zone]}
+        </span>
+      }
+    >
+      <div className="flex items-center gap-[18px]">
         <HFGauge
           healthFactor={hfForGauge}
-          liquidationThreshold={liqThresholdForGauge}
+          liquidationThreshold={liqThreshold ?? 1.0}
+          className="shrink-0"
         />
-
-        {/* COLLATERAL / DEBT 2-COL */}
-        <div className="grid grid-cols-2 pt-2 border-t border-border">
-          <div className="pr-3">
-            <div className={`${SECTION_LABEL} mb-1`}>Collateral</div>
-            <div className="text-foreground font-mono text-sm tabular-nums">
-              ${fmtUsd(data.supplied)}
-            </div>
-            {data.suppliedAssets && data.suppliedAssets.length > 0 && (
-              <div className="mt-1 space-y-0.5">
-                {data.suppliedAssets.map((row) => (
-                  <div
-                    key={`supply-${row.symbol}`}
-                    className="font-mono text-[10px] tabular-nums text-muted-foreground flex items-baseline justify-between"
-                  >
-                    <span>{row.symbol}</span>
-                    <span>${fmtUsd(row.valueUsd)}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-          <div className="pl-3 border-l border-border">
-            <div className={`${SECTION_LABEL} mb-1`}>Debt</div>
-            <div
-              className={`font-mono text-sm tabular-nums ${
-                hasDebt ? 'text-warning' : 'text-foreground'
-              }`}
-            >
-              ${fmtUsd(data.borrowed)}
-            </div>
-            {data.borrowedAssets && data.borrowedAssets.length > 0 && (
-              <div className="mt-1 space-y-0.5">
-                {data.borrowedAssets.map((row) => (
-                  <div
-                    key={`borrow-${row.symbol}`}
-                    className="font-mono text-[10px] tabular-nums text-muted-foreground flex items-baseline justify-between"
-                  >
-                    <span>{row.symbol}</span>
-                    <span>${fmtUsd(row.valueUsd)}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+        <div className="grid flex-1 grid-cols-2 gap-x-3.5 gap-y-3.5">
+          <MetricBlock
+            label="Collateral"
+            value={`$${fmtUsd(data.supplied)}`}
+            size="sm"
+          />
+          <MetricBlock
+            label="Borrowed"
+            value={`$${fmtUsd(data.borrowed)}`}
+            size="sm"
+            className={hasDebt ? '[&_span:nth-child(2)]:text-warning' : ''}
+          />
+          {remainingCapacity != null && (
+            <MetricBlock
+              label="Borrowable"
+              value={`$${fmtUsd(remainingCapacity)}`}
+              size="sm"
+            />
+          )}
+          {showLiqThreshold && (
+            <MetricBlock
+              label="Liq. threshold"
+              value={liqThreshold!.toFixed(2)}
+              size="sm"
+            />
+          )}
         </div>
-
-        {/* BORROWING CAPACITY — only when maxBorrow > 0 */}
-        {remainingCapacity != null && (
-          <div className="pt-2 border-t border-border flex items-baseline justify-between">
-            <span className={SECTION_LABEL}>Borrowing capacity remaining</span>
-            <span className="text-foreground font-mono text-xs tabular-nums">
-              ${fmtUsd(remainingCapacity)}
-            </span>
-          </div>
-        )}
-
-        {/* LIQUIDATION THRESHOLD — only when known + not NAVI default 1.0 */}
-        {liqThreshold != null && liqThreshold !== 1.0 && (
-          <div className="flex items-baseline justify-between text-[11px]">
-            <span className={SECTION_LABEL}>Liquidation threshold</span>
-            <span className="text-muted-foreground font-mono tabular-nums">
-              {liqThreshold.toFixed(2)}
-            </span>
-          </div>
-        )}
       </div>
     </CardShell>
   );

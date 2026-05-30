@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import { authFetch } from "@/lib/auth-fetch";
+import { CanvasShell } from "./canvas-shell";
 
 interface HeatmapData {
   available: true;
@@ -176,7 +177,7 @@ export function ActivityHeatmapCanvas({ data, onAction }: Props) {
     [response?.buckets]
   );
 
-  const maxCount = response?.summary.maxCount ?? 1;
+  const maxCount = response?.summary?.maxCount ?? 1;
 
   useEffect(() => {
     if (scrollRef.current && response) {
@@ -213,56 +214,55 @@ export function ActivityHeatmapCanvas({ data, onAction }: Props) {
     !data.available
   ) {
     return (
-      <div className="flex flex-col items-center justify-center space-y-2 py-10 text-center">
-        <span className="text-3xl">📊</span>
-        <p className="font-medium text-foreground text-sm">Coming Soon</p>
-        <p className="max-w-xs text-muted-foreground text-xs leading-relaxed">
-          {data &&
-          typeof data === "object" &&
-          "message" in data &&
-          data.message
-            ? data.message
-            : "Activity heatmap requires an address."}
-        </p>
-      </div>
+      <CanvasShell eyebrow="Activity" name="Last year">
+        <div className="flex flex-col items-center justify-center space-y-2 py-6 text-center">
+          <span className="text-3xl">📊</span>
+          <p className="max-w-xs text-muted-foreground text-xs leading-relaxed">
+            {data &&
+            typeof data === "object" &&
+            "message" in data &&
+            data.message
+              ? data.message
+              : "Activity heatmap requires an address."}
+          </p>
+        </div>
+      </CanvasShell>
     );
   }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-10">
-        <div className="animate-pulse font-mono text-muted-foreground text-xs">
-          Loading activity data...
+      <CanvasShell eyebrow="Activity" name="Last year">
+        <div className="flex items-center justify-center py-8">
+          <div className="animate-pulse font-mono text-muted-foreground text-xs">
+            Loading activity data...
+          </div>
         </div>
-      </div>
+      </CanvasShell>
     );
   }
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-4 font-mono text-xs">
-        <div>
-          <span className="text-muted-foreground">Transactions</span>{" "}
-          <span className="font-medium text-foreground">
-            {response?.summary.totalEvents ?? 0}
-          </span>
-        </div>
+    <CanvasShell
+      eyebrow="Activity"
+      live
+      name={isSelfRender || !shortAddr ? "Last year" : shortAddr}
+      summary={{
+        value: response?.summary?.totalEvents ?? 0,
+        label: "total ops",
+      }}
+    >
+      <div className="mb-3 flex items-center gap-4 font-mono text-[11px]">
         <div>
           <span className="text-muted-foreground">Active days</span>{" "}
           <span className="font-medium text-foreground">
-            {response?.summary.activeDays ?? 0}
+            {response?.summary?.activeDays ?? 0}
           </span>
         </div>
         <div>
           <span className="text-muted-foreground">Peak</span>{" "}
           <span className="font-medium text-foreground">{maxCount}/day</span>
         </div>
-        {!isSelfRender && shortAddr && (
-          <div>
-            <span className="text-muted-foreground">Address</span>{" "}
-            <span className="font-medium text-foreground">{shortAddr}</span>
-          </div>
-        )}
       </div>
 
       <div
@@ -382,7 +382,7 @@ export function ActivityHeatmapCanvas({ data, onAction }: Props) {
         })()}
       </div>
 
-      <div className="flex items-center gap-1.5 font-mono text-[9px] text-muted-foreground">
+      <div className="mt-3 flex items-center gap-1.5 font-mono text-[9px] text-muted-foreground">
         <span>Less</span>
         <div className="h-[11px] w-[11px] rounded-[2px] bg-border/40" />
         <div className="h-[11px] w-[11px] rounded-[2px] bg-signal/30" />
@@ -391,6 +391,6 @@ export function ActivityHeatmapCanvas({ data, onAction }: Props) {
         <div className="h-[11px] w-[11px] rounded-[2px] bg-signal" />
         <span>More</span>
       </div>
-    </div>
+    </CanvasShell>
   );
 }
