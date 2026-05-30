@@ -17,7 +17,7 @@
  *     text-destructive (only the -fg/-bg/-border/-solid SUFFIXED ADS
  *     variants are banned)
  *   - border-strong (Geist token), --fg / --bg / --fg-muted (Geist),
- *     --signal / --signal-bg, --bubble-user-*, --chart-*, --ds-*
+ *     --signal / --signal-bg, --chart-*, --ds-*
  */
 
 import { readdirSync, readFileSync, statSync } from "node:fs";

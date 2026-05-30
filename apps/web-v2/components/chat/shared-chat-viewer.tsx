@@ -87,7 +87,7 @@ export function SharedChatViewer({
         </Link>
       </header>
       <Conversation className="flex-1">
-        <ConversationContent className="mx-auto w-full max-w-3xl gap-3 px-4 py-6">
+        <ConversationContent className="mx-auto w-full max-w-3xl">
           {messages.map((m) => (
             <Fragment key={m.id}>
               <Message
@@ -97,7 +97,7 @@ export function SharedChatViewer({
                 <MessageContent
                   className={cn(
                     m.role === "user" &&
-                      "w-fit max-w-[min(80%,56ch)] overflow-hidden break-words rounded-2xl rounded-br-[4px] bg-bubble-user-bg px-4 py-2.5 text-bubble-user-fg shadow-[var(--shadow-card)] [&_*]:text-bubble-user-fg"
+                      "w-fit max-w-[min(80%,56ch)] overflow-hidden break-words rounded-xl bg-muted px-4 py-2.5 text-foreground"
                   )}
                 >
                   {m.parts.map((part, i) => {

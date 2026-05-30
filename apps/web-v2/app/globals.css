@@ -54,12 +54,6 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
-  /* [S.204+ P1] Bubble tokens — used by user/assistant chat message
-     surfaces. Composed from --fg / --bg (see :root below) so they flip
-     correctly per theme without per-component dark variants. */
-  --color-bubble-user-bg: var(--bubble-user-bg);
-  --color-bubble-user-fg: var(--bubble-user-fg);
-
   /* [R6.0] Signal — Audric's single cyan accent (signal-only usage).
      Generates `text-signal`, `bg-signal`, `border-signal`, `bg-signal-bg`. */
   --color-signal: var(--signal);
@@ -128,9 +122,6 @@
   --shadow-card: 0 1px 3px oklch(0 0 0 / 0.05), 0 1px 1px oklch(0 0 0 / 0.03);
   --shadow-float:
     0 8px 24px -6px oklch(0 0 0 / 0.1), 0 2px 8px -2px oklch(0 0 0 / 0.04);
-  --shadow-composer: 0 1px 2px oklch(0 0 0 / 0.04);
-  --shadow-composer-focus:
-    0 0 0 1px oklch(0 0 0 / 0.06), 0 2px 8px -2px oklch(0 0 0 / 0.06);
   --shadow-inset: inset 0 1px 1px oklch(0 0 0 / 0.03);
   --shadow-glow: 0 0 20px oklch(0 0 0 / 0.08);
   /* [R6 audit] Ported ADS tokens referenced by Pay / settings / profile /
@@ -175,12 +166,6 @@
   --signal: var(--ds-teal-700);
   --signal-bg: color-mix(in srgb, var(--signal) 12%, transparent);
 
-  /* Chat bubble — user message = inverted surface (fg-on-bg). Flips
-     automatically via Geist: near-black bubble / white text in light,
-     near-white bubble / black text in dark. Refined in R6.2 if needed. */
-  --bubble-user-bg: var(--fg);
-  --bubble-user-fg: var(--bg);
-
   /* ========================================================
      [S.204+ P1] Typography stacks.
      ========================================================
@@ -217,11 +202,6 @@
   --shadow-float:
     0 0 0 1px oklch(1 0 0 / 0.06), 0 16px 48px -6px oklch(0 0 0 / 0.35),
     0 6px 12px -2px oklch(0 0 0 / 0.2);
-  --shadow-composer:
-    0 1px 3px oklch(0 0 0 / 0.2), inset 0 1px 0 oklch(1 0 0 / 0.03);
-  --shadow-composer-focus:
-    0 0 0 1px oklch(1 0 0 / 0.1), 0 4px 16px -4px oklch(0 0 0 / 0.3),
-    inset 0 1px 0 oklch(1 0 0 / 0.04);
 }
 
 @layer base {

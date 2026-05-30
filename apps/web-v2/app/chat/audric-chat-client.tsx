@@ -18,6 +18,7 @@ import { unstable_serialize } from "swr/infinite";
 import {
   Conversation,
   ConversationContent,
+  ConversationScrollButton,
 } from "@/components/ai-elements/conversation";
 import {
   Message,
@@ -25,6 +26,14 @@ import {
   MessageContent,
   MessageResponse,
 } from "@/components/ai-elements/message";
+import {
+  PromptInput,
+  PromptInputBody,
+  PromptInputFooter,
+  PromptInputSubmit,
+  PromptInputTextarea,
+  PromptInputTools,
+} from "@/components/ai-elements/prompt-input";
 import {
   Reasoning,
   ReasoningContent,
@@ -49,7 +58,6 @@ import {
 import { getChatHistoryPaginationKey } from "@/components/chat/sidebar-history";
 import { VisibilityToggle } from "@/components/chat/visibility-toggle";
 import { UsernameClaimGate } from "@/components/settings/username-claim-gate";
-import { AudricMark } from "@/components/ui/audric-mark";
 import { Button } from "@/components/ui/button";
 import {
   SidebarInset,
@@ -433,37 +441,6 @@ function AuthenticatedChatInner({
         </div>
       </SidebarInset>
     </SidebarProvider>
-  );
-}
-
-/**
- * [R6.2] Agent message gutter — leads each assistant turn with the
- * 22px AudricMark in a fixed left column (`chat-shell.html` `.msg-agent`
- * grid: 22px + 1fr). Transparent for user rows (returns children as-is).
- * The mark animates while the trailing turn is streaming (delta 5 — the
- * single "live agent" signal), static once settled.
- */
-function AgentGutter({
-  from,
-  streaming,
-  children,
-}: {
-  from: UIMessage["role"];
-  streaming: boolean;
-  children: React.ReactNode;
-}) {
-  if (from !== "assistant") {
-    return <>{children}</>;
-  }
-  return (
-    <div className="grid w-full grid-cols-[22px_1fr] gap-2.5">
-      <AudricMark
-        animate={streaming}
-        className="mt-1 shrink-0 text-foreground"
-        size={22}
-      />
-      {children}
-    </div>
   );
 }
 
@@ -876,8 +853,8 @@ function AudricChatPanel({
   const handleChipClick = useCallback((prompt: string) => {
     setInput(prompt);
     requestAnimationFrame(() => {
-      const inp = document.querySelector<HTMLInputElement>(
-        '[data-testid="audric-composer-input"]'
+      const inp = document.querySelector<HTMLTextAreaElement>(
+        '[data-testid="multimodal-input"]'
       );
       if (inp) {
         inp.focus();
@@ -888,61 +865,49 @@ function AudricChatPanel({
 
   // Composer + chip bar block — reused in both layouts (centered hero
   // when empty, bottom-stick when messages exist).
+  //
+  // [Shell→demo chrome — 2026-05-30] Reverted the bespoke single-line
+  // `<input>` + Send/Stop buttons to the vanilla AI Elements
+  // `PromptInput` (multiline auto-grow textarea + status-aware submit)
+  // to match the chatbot.ai-sdk.dev demo. Kept controlled via the
+  // existing `input` state so the finance `ChipBar` can fill it. No
+  // attachments menu (Audric has no file upload). `PromptInputSubmit`
+  // maps Send→Stop off the chat `status` and fires the existing
+  // `handleStop` (useChat.stop() + POST /api/chat/[id]/stop).
   const composerBlock = (
     <div className="flex w-full flex-col gap-3">
-      <form
-        className="flex w-full gap-2"
-        onSubmit={(e) => {
-          e.preventDefault();
+      <PromptInput
+        onSubmit={(message) => {
           if (!canSend) {
             return;
           }
-          sendMessage({ text: input.trim() });
+          const text = message.text.trim();
+          if (text.length === 0) {
+            return;
+          }
+          sendMessage({ text });
           setInput("");
         }}
       >
-        {/* [S.208 — 2026-05-20] Composer styling brought in line with the
-            chatbot.ai-sdk.dev demo: rounded-2xl + border/30 + bg-card/70
-            + the dedicated `--shadow-composer` / `--shadow-composer-focus`
-            tokens (defined in globals.css). Pre-S.208 this used
-            `rounded-xl` + a generic `--shadow-float` which produced a
-            chunkier, more boxy composer that didn't match the demo. */}
-        <input
-          className="flex-1 rounded-2xl border border-border/30 bg-card/70 px-4 py-3 text-sm shadow-[var(--shadow-composer)] outline-none transition-shadow duration-300 focus-visible:shadow-[var(--shadow-composer-focus)]"
-          data-testid="audric-composer-input"
-          disabled={isStreaming}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask anything…"
-          value={input}
-        />
-        {/* [SPEC_AUDRIC_STREAM_RESUME Phase 2 — 2026-05-24] Button
-            toggles between Send (when idle, `type="submit"` fires the
-            form's sendMessage path) and Stop (when streaming,
-            `type="button"` fires `handleStop` which calls
-            `useChat.stop()` + POST /api/chat/[id]/stop). Pre-Phase 2
-            this was a pure `disabled={!canSend}` submit button with no
-            stop affordance — clicking during streaming did nothing. */}
-        {isStreaming ? (
-          <button
-            aria-label="Stop"
-            className="rounded-2xl bg-foreground px-5 py-3 font-medium text-background text-sm transition hover:bg-foreground/90"
-            data-testid="audric-composer-stop"
-            onClick={handleStop}
-            type="button"
-          >
-            Stop
-          </button>
-        ) : (
-          <button
-            className="rounded-2xl bg-foreground px-5 py-3 font-medium text-background text-sm transition hover:bg-foreground/90 disabled:opacity-40"
-            data-testid="audric-composer-send"
-            disabled={!canSend}
-            type="submit"
-          >
-            Send
-          </button>
-        )}
-      </form>
+        <PromptInputBody>
+          <PromptInputTextarea
+            data-testid="multimodal-input"
+            disabled={isStreaming}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Ask anything…"
+            value={input}
+          />
+        </PromptInputBody>
+        <PromptInputFooter>
+          <PromptInputTools />
+          <PromptInputSubmit
+            data-testid={isStreaming ? "stop-button" : "send-button"}
+            disabled={!(isStreaming || canSend)}
+            onStop={handleStop}
+            status={status}
+          />
+        </PromptInputFooter>
+      </PromptInput>
       <ChipBar
         hidden={status === "streaming" || status === "submitted"}
         onChipClick={handleChipClick}
@@ -971,7 +936,7 @@ function AudricChatPanel({
   return (
     <>
       <Conversation className="flex-1">
-        <ConversationContent className="mx-auto w-full max-w-3xl gap-3 px-4 py-6">
+        <ConversationContent className="mx-auto w-full max-w-3xl">
           {messages.map((m) => {
             const isLast = m.id === lastMessageId;
 
@@ -1034,7 +999,7 @@ function AudricChatPanel({
                     <div className="flex w-full max-w-[min(80%,56ch)] flex-col gap-2">
                       <Textarea
                         autoFocus
-                        className="border-bubble-user-bg bg-bubble-user-bg text-bubble-user-fg shadow-[var(--shadow-card)] placeholder:text-bubble-user-fg/60 focus-visible:border-ring focus-visible:ring-ring/40"
+                        className="border-input bg-muted text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/40"
                         onChange={(e) => setEditingDraft(e.target.value)}
                         onKeyDown={(e) => {
                           if (e.key === "Enter" && !e.shiftKey) {
@@ -1081,29 +1046,18 @@ function AudricChatPanel({
                     className={cn(m.role === "user" && "items-end")}
                     from={m.role}
                   >
-                    <AgentGutter
-                      from={m.role}
-                      streaming={isLast && isTurnStreaming}
+                    <MessageContent
+                      // [Shell→demo chrome — 2026-05-30] User bubble
+                      // reverted to the AI Elements / chatbot.ai-sdk.dev
+                      // stock look: a symmetric muted pill (no near-black
+                      // fill, no bottom-right notch). Assistant turns now
+                      // render plain (no 22px AudricMark gutter), matching
+                      // the demo. `bg-muted` flips per theme automatically.
+                      className={cn(
+                        m.role === "user" &&
+                          "w-fit max-w-[min(80%,56ch)] overflow-hidden break-words rounded-xl bg-muted px-4 py-2.5 text-foreground"
+                      )}
                     >
-                      <MessageContent
-                        // [S.209 — 2026-05-20] User bubble — reverted from the
-                        // S.208 gradient pill to a SOLID dark bubble per
-                        // founder feedback. Matches the chatbot.ai-sdk.dev
-                        // demo dark-mode screenshot: solid dark bg, white
-                        // text, asymmetric rounded corners (16/16/4/16) with
-                        // the small notch in the bottom-right pointing back
-                        // at the user.
-                        //
-                        // Uses semantic `bg-bubble-user-bg` / `text-bubble-
-                        // user-fg` tokens (defined in globals.css) — near-
-                        // black solid in dark mode, near-black solid in light
-                        // mode. The bubble pops against the page background
-                        // either way.
-                        className={cn(
-                          m.role === "user" &&
-                            "w-fit max-w-[min(80%,56ch)] overflow-hidden break-words rounded-2xl rounded-br-[4px] bg-bubble-user-bg px-4 py-2.5 text-bubble-user-fg shadow-[var(--shadow-card)] [&_*]:text-bubble-user-fg"
-                        )}
-                      >
                         {m.parts.map((part, i) => {
                           if (part.type === "text") {
                             return (
@@ -1213,7 +1167,6 @@ function AudricChatPanel({
                           return null;
                         })}
                       </MessageContent>
-                    </AgentGutter>
                   </Message>
                 )}
                 {/* [P1-B + SPEC_AI_SDK_HARDENING P5.1/P5.2/P5.3/P5.4]
@@ -1287,14 +1240,13 @@ function AudricChatPanel({
               the trailing assistant slot. */}
           {showThinking && (
             <Message from="assistant">
-              <AgentGutter from="assistant" streaming>
-                <MessageContent>
-                  <Shimmer>Thinking…</Shimmer>
-                </MessageContent>
-              </AgentGutter>
+              <MessageContent>
+                <Shimmer>Thinking…</Shimmer>
+              </MessageContent>
             </Message>
           )}
         </ConversationContent>
+        <ConversationScrollButton />
       </Conversation>
 
       {/*
