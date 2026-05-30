@@ -1058,115 +1058,113 @@ function AudricChatPanel({
                           "w-fit max-w-[min(80%,56ch)] overflow-hidden break-words rounded-xl bg-muted px-4 py-2.5 text-foreground"
                       )}
                     >
-                        {m.parts.map((part, i) => {
-                          if (part.type === "text") {
-                            return (
-                              <MessageResponse
-                                // biome-ignore lint/suspicious/noArrayIndexKey: parts are positionally stable per message
-                                key={`${m.id}-${i}`}
-                              >
-                                {part.text}
-                              </MessageResponse>
-                            );
+                      {m.parts.map((part, i) => {
+                        if (part.type === "text") {
+                          return (
+                            <MessageResponse
+                              // biome-ignore lint/suspicious/noArrayIndexKey: parts are positionally stable per message
+                              key={`${m.id}-${i}`}
+                            >
+                              {part.text}
+                            </MessageResponse>
+                          );
+                        }
+                        if (part.type === "reasoning") {
+                          const reasoningPart = part as ReasoningUIPart;
+                          // The part is streaming only when (a) the turn is in
+                          // flight, (b) it's on the trailing message, and (c)
+                          // the part itself hasn't been marked done.
+                          const partStreaming =
+                            isTurnStreaming &&
+                            isLast &&
+                            reasoningPart.state !== "done";
+                          return (
+                            <Reasoning
+                              isStreaming={partStreaming}
+                              // biome-ignore lint/suspicious/noArrayIndexKey: parts are positionally stable per message
+                              key={`${m.id}-${i}`}
+                            >
+                              <ReasoningTrigger />
+                              <ReasoningContent>
+                                {reasoningPart.text}
+                              </ReasoningContent>
+                            </Reasoning>
+                          );
+                        }
+                        // [Phase 5e] Bundle marker → ONE bundle card.
+                        if (part.type === "data-audric-bundle") {
+                          const marker = parseAudricBundleMarker(
+                            (part as { data?: unknown }).data
+                          );
+                          if (!marker || marker.steps.length < 2) {
+                            // Malformed marker — render nothing; the
+                            // individual `tool-*` parts will render
+                            // separately because they're NOT in
+                            // bundleClaimedIds (the set is empty when
+                            // parse fails for ALL markers).
+                            return null;
                           }
-                          if (part.type === "reasoning") {
-                            const reasoningPart = part as ReasoningUIPart;
-                            // The part is streaming only when (a) the turn is in
-                            // flight, (b) it's on the trailing message, and (c)
-                            // the part itself hasn't been marked done.
-                            const partStreaming =
-                              isTurnStreaming &&
-                              isLast &&
-                              reasoningPart.state !== "done";
-                            return (
-                              <Reasoning
-                                isStreaming={partStreaming}
-                                // biome-ignore lint/suspicious/noArrayIndexKey: parts are positionally stable per message
-                                key={`${m.id}-${i}`}
-                              >
-                                <ReasoningTrigger />
-                                <ReasoningContent>
-                                  {reasoningPart.text}
-                                </ReasoningContent>
-                              </Reasoning>
-                            );
+                          // [Smoke 2026-05-22 bundle-refresh-fix] Spent
+                          // bundle (all steps past approval) → render
+                          // nothing here. The constituent tool-* parts
+                          // are NOT in bundleClaimedIds (see the matching
+                          // skip above) so they fall through to the
+                          // tool-* branch and render receipts/errors
+                          // individually — same shape as a freshly
+                          // approved single-write turn.
+                          if (isBundleSpent(marker, m.parts)) {
+                            return null;
                           }
-                          // [Phase 5e] Bundle marker → ONE bundle card.
-                          if (part.type === "data-audric-bundle") {
-                            const marker = parseAudricBundleMarker(
-                              (part as { data?: unknown }).data
-                            );
-                            if (!marker || marker.steps.length < 2) {
-                              // Malformed marker — render nothing; the
-                              // individual `tool-*` parts will render
-                              // separately because they're NOT in
-                              // bundleClaimedIds (the set is empty when
-                              // parse fails for ALL markers).
-                              return null;
-                            }
-                            // [Smoke 2026-05-22 bundle-refresh-fix] Spent
-                            // bundle (all steps past approval) → render
-                            // nothing here. The constituent tool-* parts
-                            // are NOT in bundleClaimedIds (see the matching
-                            // skip above) so they fall through to the
-                            // tool-* branch and render receipts/errors
-                            // individually — same shape as a freshly
-                            // approved single-write turn.
-                            if (isBundleSpent(marker, m.parts)) {
-                              return null;
-                            }
+                          return (
+                            <BundleForMarker
+                              addToolApprovalResponse={addToolApprovalResponse}
+                              addToolOutput={addToolOutput}
+                              // biome-ignore lint/suspicious/noArrayIndexKey: parts are positionally stable per message
+                              key={`${m.id}-${i}`}
+                              marker={marker}
+                              session={session}
+                            />
+                          );
+                        }
+                        if (part.type.startsWith("tool-")) {
+                          const toolPart = part as ToolUIPart;
+                          // [Phase 5e] Skip tool parts that a bundle marker
+                          // claimed — the BundlePermissionCard handles
+                          // them. AI SDK's state machine still tracks
+                          // each part's approval-requested → output-*
+                          // lifecycle independently (the parent's
+                          // bundle approve handler fires N
+                          // `addToolApprovalResponse` + N `addToolOutput`
+                          // to keep each part's state in sync).
+                          if (bundleClaimedIds.has(toolPart.toolCallId)) {
+                            return null;
+                          }
+                          if (toolPart.state === "approval-requested") {
                             return (
-                              <BundleForMarker
+                              <PermissionForToolPart
                                 addToolApprovalResponse={
                                   addToolApprovalResponse
                                 }
                                 addToolOutput={addToolOutput}
                                 // biome-ignore lint/suspicious/noArrayIndexKey: parts are positionally stable per message
                                 key={`${m.id}-${i}`}
-                                marker={marker}
                                 session={session}
+                                toolPart={toolPart}
                               />
                             );
                           }
-                          if (part.type.startsWith("tool-")) {
-                            const toolPart = part as ToolUIPart;
-                            // [Phase 5e] Skip tool parts that a bundle marker
-                            // claimed — the BundlePermissionCard handles
-                            // them. AI SDK's state machine still tracks
-                            // each part's approval-requested → output-*
-                            // lifecycle independently (the parent's
-                            // bundle approve handler fires N
-                            // `addToolApprovalResponse` + N `addToolOutput`
-                            // to keep each part's state in sync).
-                            if (bundleClaimedIds.has(toolPart.toolCallId)) {
-                              return null;
-                            }
-                            if (toolPart.state === "approval-requested") {
-                              return (
-                                <PermissionForToolPart
-                                  addToolApprovalResponse={
-                                    addToolApprovalResponse
-                                  }
-                                  addToolOutput={addToolOutput}
-                                  // biome-ignore lint/suspicious/noArrayIndexKey: parts are positionally stable per message
-                                  key={`${m.id}-${i}`}
-                                  session={session}
-                                  toolPart={toolPart}
-                                />
-                              );
-                            }
-                            return (
-                              <ToolResultRouter
-                                // biome-ignore lint/suspicious/noArrayIndexKey: parts are positionally stable per message
-                                key={`${m.id}-${i}`}
-                                onSendMessage={(text) => sendMessage({ text })}
-                                part={toolPart}
-                              />
-                            );
-                          }
-                          return null;
-                        })}
-                      </MessageContent>
+                          return (
+                            <ToolResultRouter
+                              // biome-ignore lint/suspicious/noArrayIndexKey: parts are positionally stable per message
+                              key={`${m.id}-${i}`}
+                              onSendMessage={(text) => sendMessage({ text })}
+                              part={toolPart}
+                            />
+                          );
+                        }
+                        return null;
+                      })}
+                    </MessageContent>
                   </Message>
                 )}
                 {/* [P1-B + SPEC_AI_SDK_HARDENING P5.1/P5.2/P5.3/P5.4]
