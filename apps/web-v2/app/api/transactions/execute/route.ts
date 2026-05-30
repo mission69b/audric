@@ -39,16 +39,28 @@
 import { getJsonRpcFullnodeUrl, SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { redactAddressesInText, redactPII } from "@/lib/audric/log-redact";
+import { redactPII } from "@/lib/audric/log-redact";
+import {
+  EnokiSponsorError,
+  getSponsor,
+  SponsorSettlementError,
+} from "@/lib/audric/sponsor";
 import { env } from "@/lib/env";
 
 export const maxDuration = 60;
 
-const ENOKI_BASE = "https://api.enoki.mystenlabs.com/v1";
-
 const executeBodySchema = z.object({
   digest: z.string().min(1, "digest must be a non-empty string"),
   signature: z.string().min(1, "signature must be a non-empty string"),
+  // Which sponsorship strategy `/prepare` used. Defaults to `enoki` for
+  // backward compatibility with any in-flight client that predates the
+  // self-sponsor router.
+  mode: z.enum(["enoki", "self"]).default("enoki"),
+  // Self mode only — the full tx bytes + sponsor's gas signature that
+  // `/prepare` returned. Round-tripped through the client (neither is
+  // secret) so this route stays stateless.
+  bytes: z.string().optional(),
+  sponsorSignature: z.string().optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -73,7 +85,6 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { digest, signature } = body;
   const network = env.NEXT_PUBLIC_SUI_NETWORK as
     | "mainnet"
     | "testnet"
@@ -84,89 +95,39 @@ export async function POST(request: NextRequest) {
     network,
   });
 
-  // 1. Forward to Enoki's execute endpoint. Enoki co-signs with the
-  // gas sponsor and submits the joined signature to Sui. The response
-  // carries the confirmed digest (same as the input digest when the
-  // sponsor sig was correctly stored at prepare time).
-  const enokiRes = await fetch(
-    `${ENOKI_BASE}/transaction-blocks/sponsor/${encodeURIComponent(digest)}`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${env.ENOKI_SECRET_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ signature }),
+  // Dispatch to the strategy `/prepare` selected. `enoki` co-signs +
+  // submits via Enoki's REST endpoint; `self` submits both signatures
+  // (user + our gas sponsor) straight to the fullnode. Both settle the
+  // digest and return balance/object changes for the LLM narration.
+  const sponsor = getSponsor(body.mode);
+  try {
+    const result = await sponsor.execute({
+      client: suiClient,
+      digest: body.digest,
+      signature: body.signature,
+      bytes: body.bytes,
+      sponsorSignature: body.sponsorSignature,
+    });
+    return NextResponse.json(result);
+  } catch (err) {
+    if (err instanceof EnokiSponsorError) {
+      return NextResponse.json({ error: err.message }, { status: err.status });
     }
-  );
-
-  if (!enokiRes.ok) {
-    const errorBody = await enokiRes.text().catch(() => "");
-    // [Phase 5.5 / D-17] Scrub embedded addresses from Enoki error
-    // bodies. Enoki's failure responses commonly echo the sender or
-    // sponsor addresses in plain text.
-    console.error(
-      `[execute] Enoki execute error (${enokiRes.status}):`,
-      redactAddressesInText(errorBody)
-    );
-
-    if (enokiRes.status === 404) {
+    if (err instanceof SponsorSettlementError) {
+      // [Phase 5.5 / D-17] settlement errors can carry the submitter or
+      // recipient address inside the JSON-RPC error envelope.
+      console.error("[execute] settlement failed:", redactPII(err));
+      // Surface the digest so the client can poll independently or pass
+      // it back to the LLM ("your tx is pending, digest: X").
       return NextResponse.json(
-        { error: "Sponsored transaction expired or not found" },
-        { status: 404 }
+        { error: err.message, digest: err.digest },
+        { status: 504 }
       );
     }
-
-    let parsed: { message?: string } = {};
-    try {
-      parsed = JSON.parse(errorBody) as { message?: string };
-    } catch {
-      // ignore — parsed stays empty
-    }
+    console.error(`[execute] ${body.mode} execute failed:`, redactPII(err));
     return NextResponse.json(
-      { error: parsed.message ?? `Execution failed (${enokiRes.status})` },
-      { status: enokiRes.status >= 500 ? 502 : enokiRes.status }
+      { error: err instanceof Error ? err.message : "Execution failed" },
+      { status: 502 }
     );
   }
-
-  const enokiPayload = (await enokiRes.json()) as { data: { digest: string } };
-  const confirmedDigest = enokiPayload.data.digest;
-
-  // 2. Wait for Sui to settle the digest in a confirmed checkpoint.
-  // Returns balance/object changes for the LLM tool-result narration
-  // (e.g. "Saved 0.01 USDC at 4.62% APY" derives from the savings-
-  // position object change).
-  let txResult: Awaited<ReturnType<typeof suiClient.waitForTransaction>>;
-  try {
-    txResult = await suiClient.waitForTransaction({
-      digest: confirmedDigest,
-      options: {
-        showEffects: true,
-        showBalanceChanges: true,
-        showObjectChanges: true,
-      },
-    });
-  } catch (err) {
-    // [Phase 5.5 / D-17] waitForTransaction errors can carry the
-    // submitter or recipient address inside the JSON-RPC error envelope.
-    console.error("[execute] waitForTransaction failed:", redactPII(err));
-    return NextResponse.json(
-      {
-        error:
-          err instanceof Error
-            ? err.message
-            : "Transaction submitted but settlement timed out",
-        // Surface the digest so the client can poll independently or
-        // pass it back to the LLM ("your tx is pending, digest: X").
-        digest: confirmedDigest,
-      },
-      { status: 504 }
-    );
-  }
-
-  return NextResponse.json({
-    digest: confirmedDigest,
-    balanceChanges: txResult.balanceChanges ?? [],
-    objectChanges: txResult.objectChanges ?? [],
-  });
 }

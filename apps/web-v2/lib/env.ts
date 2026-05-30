@@ -281,6 +281,31 @@ const serverSchema = z.object({
    * Tunable without redeploy via Vercel env. See
    * `lib/identity/admission-control.ts` for the full rationale. */
   AUDRIC_MINT_CONCURRENCY_LIMIT: optionalString,
+
+  /** Bech32 (`suiprivkey1…`) Ed25519 secret key for the self-sponsor gas
+   * wallet. Pays the SUI network fee for writes whose funds live in the
+   * user's *address balance* — which Enoki's gas station can't sponsor
+   * yet (it can't deserialize the address-balance withdrawal command;
+   * see MystenLabs/sui#22306). For those writes `/api/transactions/prepare`
+   * builds the tx with `coinWithBalance` (address-balance aware), this
+   * wallet signs the gas, and `/api/transactions/execute` submits both
+   * signatures straight to the fullnode — bypassing Enoki only for that
+   * case. Coin-object writes still go through Enoki unchanged.
+   *
+   * **Why OPTIONAL (not required):** when unset, the self-sponsor path
+   * degrades cleanly — address-balance writes surface the existing
+   * `ADDRESS_BALANCE_UNSPONSORABLE` error (same as today) while every
+   * coin-object write keeps working via Enoki. Setting it activates the
+   * fallback; absence is the pre-fix status quo. Same "feature degrades,
+   * app boots" posture as `AUDRIC_PARENT_NFT_PRIVATE_KEY` / the MemWal
+   * vars.
+   *
+   * **Founder ops (Vercel project: `audric-web-v2`):** generate a
+   * dedicated keypair, fund the address with a few SUI (each tx costs
+   * ~0.001–0.005 SUI), and set this var (Production + Preview). Keep the
+   * balance small — it's a hot key; top up as it drains. NEVER expose to
+   * clients. */
+  SPONSOR_PRIVATE_KEY: optionalString,
 });
 
 // ─── Client schema ────────────────────────────────────────────────────
@@ -333,6 +358,7 @@ const runtimeEnv = {
   CRON_SECRET: process.env.CRON_SECRET,
   AUDRIC_PARENT_NFT_PRIVATE_KEY: process.env.AUDRIC_PARENT_NFT_PRIVATE_KEY,
   AUDRIC_MINT_CONCURRENCY_LIMIT: process.env.AUDRIC_MINT_CONCURRENCY_LIMIT,
+  SPONSOR_PRIVATE_KEY: process.env.SPONSOR_PRIVATE_KEY,
   NEXT_PUBLIC_GOOGLE_CLIENT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
   NEXT_PUBLIC_ENOKI_API_KEY: process.env.NEXT_PUBLIC_ENOKI_API_KEY,
   NEXT_PUBLIC_SUI_NETWORK: process.env.NEXT_PUBLIC_SUI_NETWORK,

@@ -75,7 +75,6 @@
  */
 
 import { SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
-import { toBase64 } from "@mysten/sui/utils";
 import {
   addFeeTransfer,
   assertAllowedAsset,
@@ -92,16 +91,20 @@ import {
 } from "@t2000/sdk";
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { extractMoveCallTargets } from "@/lib/audric/extract-move-call-targets";
-import { redactAddressesInText, redactPII } from "@/lib/audric/log-redact";
+import { redactPII } from "@/lib/audric/log-redact";
+import {
+  EnokiSponsorError,
+  getSponsor,
+  getSponsorKeypair,
+  type SponsorMode,
+  type SponsorPrepareResult,
+} from "@/lib/audric/sponsor";
 import { getCurrentUser } from "@/lib/audric-auth";
 import { env } from "@/lib/env";
 import { getSuiRpcUrl } from "@/lib/sui-rpc";
 import { resolveSuinsCached } from "@/lib/suins-cache";
 
 export const maxDuration = 30;
-
-const ENOKI_BASE = "https://api.enoki.mystenlabs.com/v1";
 
 // ---------------------------------------------------------------------------
 // Body schema — discriminated union per `type`. Each branch validates only
@@ -633,12 +636,18 @@ export async function POST(request: NextRequest) {
       ? bundleNeedsOverlayFee(body)
       : needsOverlayFee(body.type);
 
-  let composed: Awaited<ReturnType<typeof composeTx>>;
-  try {
-    composed = await composeTx({
+  // composeTx options factory — identical except for `sponsoredContext`,
+  // which controls coin sourcing:
+  //   - `true`  → coin objects only (Enoki can sponsor the result).
+  //   - `false` → `coinWithBalance` (address-balance aware; needs
+  //               self-sponsorship because Enoki can't deserialize the
+  //               withdrawal command — MystenLabs/sui#22306).
+  // Fee hooks + overlay fee are shared so neither path forks fee logic.
+  const composeWith = (sponsoredContext: boolean) =>
+    composeTx({
       sender: body.address,
       client: suiClient,
-      sponsoredContext: true,
+      sponsoredContext,
       steps,
       ...(wantOverlayFee
         ? {
@@ -681,22 +690,58 @@ export async function POST(request: NextRequest) {
         },
       },
     });
+
+  let composed: Awaited<ReturnType<typeof composeTx>>;
+  let sponsorMode: SponsorMode = "enoki";
+  try {
+    // Primary path: source coin objects only → Enoki sponsors it.
+    composed = await composeWith(true);
   } catch (err) {
-    // [Phase 5.5 / D-17] Redact embedded addresses from SDK error
-    // payloads. composeTx errors can mention sender / recipient
-    // addresses in the message (e.g. "no coins for type X owned by
-    // 0x…"); pass-through scan keeps non-address detail readable.
-    console.error(
-      `[prepare] composeTx failed for type=${body.type}:`,
-      redactPII(err)
-    );
-    return NextResponse.json(
-      {
-        error:
-          err instanceof Error ? err.message : "Failed to assemble transaction",
-      },
-      { status: 500 }
-    );
+    const isAddressBalance =
+      (err as { code?: string })?.code === "ADDRESS_BALANCE_UNSPONSORABLE";
+    // Fallback: the user's funds live in their address balance, which
+    // Enoki can't sponsor. If a self-sponsor wallet is configured,
+    // rebuild address-balance aware and pay the gas ourselves. Without a
+    // sponsor wallet, fall through and surface the original error (today's
+    // degraded-but-clean behavior).
+    if (isAddressBalance && getSponsorKeypair()) {
+      try {
+        composed = await composeWith(false);
+        sponsorMode = "self";
+      } catch (fallbackErr) {
+        console.error(
+          `[prepare] self-sponsor compose failed for type=${body.type}:`,
+          redactPII(fallbackErr)
+        );
+        return NextResponse.json(
+          {
+            error:
+              fallbackErr instanceof Error
+                ? fallbackErr.message
+                : "Failed to assemble transaction",
+          },
+          { status: 500 }
+        );
+      }
+    } else {
+      // [Phase 5.5 / D-17] Redact embedded addresses from SDK error
+      // payloads. composeTx errors can mention sender / recipient
+      // addresses in the message (e.g. "no coins for type X owned by
+      // 0x…"); pass-through scan keeps non-address detail readable.
+      console.error(
+        `[prepare] composeTx failed for type=${body.type}:`,
+        redactPII(err)
+      );
+      return NextResponse.json(
+        {
+          error:
+            err instanceof Error
+              ? err.message
+              : "Failed to assemble transaction",
+        },
+        { status: 500 }
+      );
+    }
   }
 
   // 6. Post-compose validation for amount-less write types where the
@@ -758,76 +803,41 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // 7. Forward to Enoki for sponsorship.
-  const sponsorHeaders: Record<string, string> = {
-    Authorization: `Bearer ${env.ENOKI_SECRET_KEY}`,
-    "Content-Type": "application/json",
-  };
-  if (jwt) {
-    sponsorHeaders["zklogin-jwt"] = jwt;
-  }
-
-  const moveCallTargets = extractMoveCallTargets(composed.tx);
-  const allowedAddresses = Array.from(
-    new Set([...composed.derivedAllowedAddresses, body.address])
-  );
-  const sponsorBody: Record<string, unknown> = {
-    network: env.NEXT_PUBLIC_SUI_NETWORK,
-    transactionBlockKindBytes: toBase64(composed.txKindBytes),
-    sender: body.address,
-    allowedAddresses,
-  };
-  if (moveCallTargets.length > 0) {
-    sponsorBody.allowedMoveCallTargets = moveCallTargets;
-  }
-
-  const sponsorRes = await fetch(`${ENOKI_BASE}/transaction-blocks/sponsor`, {
-    method: "POST",
-    headers: sponsorHeaders,
-    body: JSON.stringify(sponsorBody),
-  });
-
-  if (!sponsorRes.ok) {
-    const errorBody = await sponsorRes.text().catch(() => "");
-    // [Phase 5.5 / D-17] Enoki rejection bodies frequently echo the
-    // submitter address ("sender X is not allowed" / "address Y has no
-    // gas budget"); scrub before logging.
+  // 7. Sponsor the transaction. The router picked `sponsorMode` above:
+  //    - `enoki` → Enoki REST sponsor (coin-object funds; unchanged).
+  //    - `self`  → our sponsor wallet signs the gas (address-balance
+  //                funds; Enoki can't deserialize the withdrawal).
+  // Both strategies implement the same `Sponsor` interface, so there's
+  // no duplicated orchestration here — pick one and call `prepare`.
+  const sponsor = getSponsor(sponsorMode);
+  let sponsored: SponsorPrepareResult;
+  try {
+    sponsored = await sponsor.prepare({
+      composed,
+      sender: body.address,
+      client: suiClient,
+      network: env.NEXT_PUBLIC_SUI_NETWORK,
+      jwt,
+    });
+  } catch (err) {
+    const status = err instanceof EnokiSponsorError ? err.status : 500;
     console.error(
-      `[prepare] Enoki sponsor error (${sponsorRes.status}) type=${body.type}:`,
-      redactAddressesInText(errorBody)
+      `[prepare] ${sponsorMode} sponsor error type=${body.type}:`,
+      redactPII(err)
     );
     return NextResponse.json(
-      { error: parseEnokiError(errorBody, sponsorRes.status) },
-      { status: sponsorRes.status }
+      { error: err instanceof Error ? err.message : "Sponsorship failed" },
+      { status }
     );
   }
 
-  const { data } = (await sponsorRes.json()) as {
-    data: { bytes: string; digest: string };
-  };
   return NextResponse.json({
-    bytes: data.bytes,
-    digest: data.digest,
+    bytes: sponsored.bytes,
+    digest: sponsored.digest,
+    mode: sponsored.mode,
+    ...(sponsored.sponsorSignature
+      ? { sponsorSignature: sponsored.sponsorSignature }
+      : {}),
     ...(harvestPlan ? { harvestPlan } : {}),
   });
-}
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function parseEnokiError(body: string, status: number): string {
-  try {
-    const parsed = JSON.parse(body) as {
-      errors?: Array<{ message?: string }>;
-      message?: string;
-    };
-    const first =
-      parsed.errors?.[0]?.message ??
-      parsed.message ??
-      `Sponsorship failed (${status})`;
-    return first;
-  } catch {
-    return `Sponsorship failed (${status})`;
-  }
 }

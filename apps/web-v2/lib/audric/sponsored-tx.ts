@@ -334,10 +334,21 @@ export async function sponsoredTx(
     );
   }
 
-  const { bytes, digest, harvestPlan } = (await prepareRes.json()) as {
+  const {
+    bytes,
+    digest,
+    harvestPlan,
+    mode = "enoki",
+    sponsorSignature,
+  } = (await prepareRes.json()) as {
     bytes: string;
     digest: string;
     harvestPlan?: HarvestPlanLite;
+    // [self-sponsor] Which strategy the server used. `self` means our
+    // gas wallet co-signed; the execute call must round-trip the bytes +
+    // sponsor signature back so the server can submit both sigs to Sui.
+    mode?: "enoki" | "self";
+    sponsorSignature?: string;
   };
 
   // --- 2. Sign locally with zkLogin ephemeral key + ZK proof ---
@@ -374,13 +385,21 @@ export async function sponsoredTx(
     );
   }
 
-  // --- 3. Execute: server forwards to Enoki + waits for checkpoint ---
+  // --- 3. Execute: server submits (Enoki co-sign, or self-sponsor
+  // straight to the fullnode) + waits for checkpoint ---
   let executeRes: Response;
   try {
     executeRes = await fetch("/api/transactions/execute", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ digest, signature }),
+      body: JSON.stringify({
+        digest,
+        signature,
+        mode,
+        // Self mode needs the bytes + sponsor sig round-tripped so the
+        // stateless execute route can submit both signatures.
+        ...(mode === "self" ? { bytes, sponsorSignature } : {}),
+      }),
     });
   } catch (err) {
     throw new SponsoredTxError(
