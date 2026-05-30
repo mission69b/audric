@@ -1,35 +1,29 @@
-// Marketing landing page. Ported from apps/web/app/page.tsx (originally
-// PHASE 13 decomposition). 15 self-contained section components in
-// `@/components/landing/*` mounted in document order.
+// Marketing landing page for audric.ai.
 //
-// Auth-redirect: if the user is already authenticated, they're sent
-// directly to `/chat` (web-v2's chat URL — apps/web used `/new` which
-// is the legacy chat-shell that disappears with v0.7e Phase 5).
+// [R6.7 full port — 2026-05-30] Rebuilt onto the canonical Audric homepage
+// design (`t2000-AFI/audric/Audric*.jsx` + `audric.css`), ported to Next.js
+// on web-v2's Geist DS substrate. Supersedes the earlier R6.7 token-sweep
+// that left the old apps/web landing layout in place. 8 sections in document
+// order; all marketing classes live in `./landing.css`, scoped under
+// `.au-landing`.
 //
-// All CTAs invoke `useZkLogin().login` from inside their section
-// components — identical behavior to apps/web's marketing landing.
-//
-// [v0.7c Phase 6.5 / S.253 — 2026-05-22] Verbatim port; only diffs vs
-// apps/web original: (1) `useZkLogin` import path is web-v2's
-// kebab-case `use-zklogin` (hook export name + return shape identical);
-// (2) authenticated redirect target is `/chat` not `/new`.
+// Auth-redirect: authenticated users go straight to `/chat`. Every "Open
+// Audric" CTA invokes `useZkLogin().login` from inside its section.
 
 "use client";
 
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useZkLogin } from "@/components/auth/use-zklogin";
-import { FinanceSection } from "@/components/landing/FinanceSection";
-import { HeroSection } from "@/components/landing/HeroSection";
-import { HowItWorksSection } from "@/components/landing/HowItWorksSection";
-import { IntelligenceSection } from "@/components/landing/IntelligenceSection";
-import { MarketingFooter } from "@/components/landing/MarketingFooter";
-import { MarketingNav } from "@/components/landing/MarketingNav";
-import { MetricsSection } from "@/components/landing/MetricsSection";
-import { PassportSection } from "@/components/landing/PassportSection";
-import { PaySection } from "@/components/landing/PaySection";
-import { ProductScreenshotSection } from "@/components/landing/ProductScreenshotSection";
-import { StoreSection } from "@/components/landing/StoreSection";
+import { AudricCloser } from "@/components/landing/AudricCloser";
+import { AudricDemos } from "@/components/landing/AudricDemos";
+import { AudricFooter } from "@/components/landing/AudricFooter";
+import { AudricHero } from "@/components/landing/AudricHero";
+import { AudricNav } from "@/components/landing/AudricNav";
+import { AudricProducts } from "@/components/landing/AudricProducts";
+import { AudricShowcase } from "@/components/landing/AudricShowcase";
+import { AudricStack } from "@/components/landing/AudricStack";
+import "./landing.css";
 
 export default function LandingPage() {
   const router = useRouter();
@@ -42,18 +36,15 @@ export default function LandingPage() {
   }, [status, router]);
 
   return (
-    <div className="min-h-dvh bg-background text-foreground">
-      <MarketingNav />
-      <HeroSection />
-      <HowItWorksSection />
-      <IntelligenceSection />
-      <PassportSection />
-      <PaySection />
-      <FinanceSection />
-      <StoreSection />
-      <ProductScreenshotSection />
-      <MetricsSection />
-      <MarketingFooter />
+    <div className="au-landing">
+      <AudricNav />
+      <AudricHero />
+      <AudricShowcase />
+      <AudricDemos />
+      <AudricProducts />
+      <AudricStack />
+      <AudricCloser />
+      <AudricFooter />
     </div>
   );
 }
