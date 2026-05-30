@@ -32,12 +32,12 @@
  * caller churn.
  */
 
-import type { ComposeTxResult } from "@t2000/sdk";
 import { decodeSuiPrivateKey } from "@mysten/sui/cryptography";
 import type { SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { Transaction } from "@mysten/sui/transactions";
 import { fromBase64, SUI_TYPE_ARG, toBase64 } from "@mysten/sui/utils";
+import type { ComposeTxResult } from "@t2000/sdk";
 import { extractMoveCallTargets } from "@/lib/audric/extract-move-call-targets";
 import { redactAddressesInText } from "@/lib/audric/log-redact";
 import { env } from "@/lib/env";
@@ -55,12 +55,12 @@ const SELF_SPONSOR_GAS_BUDGET = 100_000_000n;
 export type SponsorMode = "enoki" | "self";
 
 export interface SponsorPrepareInput {
-  composed: ComposeTxResult;
-  sender: string;
   client: SuiJsonRpcClient;
-  network: string;
+  composed: ComposeTxResult;
   /** zkLogin JWT — Enoki binds the sponsored tx to the user's session. */
   jwt?: string | null;
+  network: string;
+  sender: string;
 }
 
 export interface SponsorPrepareResult {
@@ -75,25 +75,25 @@ export interface SponsorPrepareResult {
 }
 
 export interface SponsorExecuteInput {
+  /** Self mode only. */
+  bytes?: string;
   client: SuiJsonRpcClient;
   digest: string;
   /** User's zkLogin signature over the prepared bytes. */
   signature: string;
-  /** Self mode only. */
-  bytes?: string;
   sponsorSignature?: string;
 }
 
 export interface SponsorExecuteResult {
-  digest: string;
   balanceChanges: unknown[];
+  digest: string;
   objectChanges: unknown[];
 }
 
 export interface Sponsor {
+  execute(input: SponsorExecuteInput): Promise<SponsorExecuteResult>;
   readonly mode: SponsorMode;
   prepare(input: SponsorPrepareInput): Promise<SponsorPrepareResult>;
-  execute(input: SponsorExecuteInput): Promise<SponsorExecuteResult>;
 }
 
 // ─── Enoki strategy (coin-object writes) ──────────────────────────────
@@ -287,9 +287,7 @@ export const selfSponsor: Sponsor = {
 
   async execute({ client, bytes, signature, sponsorSignature }) {
     if (!(bytes && sponsorSignature)) {
-      throw new Error(
-        "Self-sponsor execute requires bytes + sponsorSignature"
-      );
+      throw new Error("Self-sponsor execute requires bytes + sponsorSignature");
     }
     const res = await client.executeTransactionBlock({
       transactionBlock: fromBase64(bytes),
