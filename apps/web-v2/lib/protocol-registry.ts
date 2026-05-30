@@ -1,17 +1,6 @@
-import { getJsonRpcFullnodeUrl, SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
+import type { SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
 import { NaviAdapter, ProtocolRegistry } from "@t2000/sdk/adapters";
-import { env } from "@/lib/env";
-
-// `getJsonRpcFullnodeUrl` requires the strict 4-value union. web-v2's env
-// schema currently types `NEXT_PUBLIC_SUI_NETWORK` as `string` (apps/web
-// uses `z.enum(['mainnet', 'testnet'])`); cast at the boundary rather than
-// touch the env schema in this session. If a future env-cleanup pass
-// tightens the schema, the cast can be removed.
-const SUI_NETWORK = env.NEXT_PUBLIC_SUI_NETWORK as
-  | "mainnet"
-  | "testnet"
-  | "devnet"
-  | "localnet";
+import { createSuiRpcClient } from "@/lib/sui-rpc";
 
 type RegistryInstance = InstanceType<typeof ProtocolRegistry>;
 type ClientInstance = InstanceType<typeof SuiJsonRpcClient>;
@@ -34,10 +23,9 @@ function createRegistry(): RegistryInstance {
 
 export function getClient(): ClientInstance {
   if (!globalForRegistry._suiRpcClient) {
-    globalForRegistry._suiRpcClient = new SuiJsonRpcClient({
-      url: getJsonRpcFullnodeUrl(SUI_NETWORK),
-      network: SUI_NETWORK,
-    });
+    // Was the public fullnode (heavy rate limits → NAVI getPositions 429s
+    // under load). Canonical client routes through BlockVision + 429 retry.
+    globalForRegistry._suiRpcClient = createSuiRpcClient();
   }
   return globalForRegistry._suiRpcClient;
 }

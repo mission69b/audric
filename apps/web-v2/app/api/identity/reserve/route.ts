@@ -1,5 +1,4 @@
 import { decodeSuiPrivateKey } from "@mysten/sui/cryptography";
-import { SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import { SuinsClient } from "@mysten/suins";
@@ -17,7 +16,7 @@ import { validateAudricLabel } from "@/lib/identity/validate-label";
 import { Prisma, prisma } from "@/lib/prisma";
 import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { withSuiRetry } from "@/lib/sui-retry";
-import { getSuiRpcUrl } from "@/lib/sui-rpc";
+import { createSuiRpcClient, getSuiRpcUrl } from "@/lib/sui-rpc";
 import { invalidateAndWarmSuins } from "@/lib/suins-cache";
 
 /**
@@ -283,10 +282,7 @@ async function reserveAfterAdmission({
     return errorResponse("Username already claimed", 409, "taken");
   }
 
-  const suiClient = new SuiJsonRpcClient({
-    url: suiRpcUrl,
-    network: SUI_NETWORK,
-  });
+  const suiClient = createSuiRpcClient();
   const suinsClient = new SuinsClient({
     client: suiClient,
     network: SUI_NETWORK,

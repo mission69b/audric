@@ -1,10 +1,8 @@
-import { SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
 import { type NextRequest, NextResponse } from "next/server";
-import { env } from "@/lib/env";
 import { type Prisma, prisma } from "@/lib/prisma";
 import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { USDC_DECIMALS, USDC_TYPE } from "@/lib/sui-pay-uri";
-import { getSuiRpcUrl } from "@/lib/sui-rpc";
+import { createSuiRpcClient } from "@/lib/sui-rpc";
 
 /**
  * POST /api/payments/[slug]/verify
@@ -30,14 +28,7 @@ import { getSuiRpcUrl } from "@/lib/sui-rpc";
  * `export const runtime = 'nodejs'` is rejected at build time).
  */
 
-const suiClient = new SuiJsonRpcClient({
-  url: getSuiRpcUrl(),
-  network: env.NEXT_PUBLIC_SUI_NETWORK as
-    | "mainnet"
-    | "testnet"
-    | "devnet"
-    | "localnet",
-});
+const suiClient = createSuiRpcClient();
 
 const PAYMENT_RECEIPT_TYPE =
   "0xbc126f1535fba7d641cb9150ad9eae93b104972586ba20f3c60bfe0e53b69bc6::payment_kit::PaymentReceipt";
