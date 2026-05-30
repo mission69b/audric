@@ -94,7 +94,7 @@ export function SwapQuoteCardV2({ data }: SwapQuoteCardV2Props) {
           <AmountPill amount={data.fromAmount} asset={data.fromToken} />
           <span className="font-mono text-muted-foreground">→</span>
           <AmountPill amount={data.toAmount} asset={data.toToken} />
-          <span className="ml-auto rounded-[3px] border border-border-strong px-1.5 py-0.5 font-mono text-[9.5px] text-muted-foreground uppercase tracking-[0.08em]">
+          <span className="ml-auto rounded-[3px] border border-[var(--border-strong)] px-1.5 py-0.5 font-mono text-[9.5px] text-muted-foreground uppercase tracking-[0.08em]">
             {viaTag}
           </span>
         </div>

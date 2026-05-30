@@ -181,15 +181,18 @@ export function BalanceCardV2({
             </div>
           )}
 
-          {/* DUST EXPANDER */}
-          {!dustOpen && dustHoldings.length > 0 && (
+          {/* DUST EXPANDER — toggles open/closed (collapsible both ways) */}
+          {dustHoldings.length > 0 && (
             <button
-              className="mt-2 flex w-full items-center justify-between rounded-md border border-border border-dashed bg-muted px-3 py-2 transition-colors hover:border-border-strong"
-              onClick={() => setDustOpen(true)}
+              aria-expanded={dustOpen}
+              className="mt-2 flex w-full items-center justify-between rounded-md border border-border border-dashed bg-muted px-3 py-2 transition-colors hover:border-[var(--border-strong)]"
+              onClick={() => setDustOpen((open) => !open)}
               type="button"
             >
               <span className="font-mono text-[11px] text-muted-foreground tracking-[0.04em]">
-                + {dustHoldings.length} more · dust under $1
+                {dustOpen
+                  ? "− show less"
+                  : `+ ${dustHoldings.length} more · dust under $1`}
               </span>
               <span className="font-mono text-[12px] text-muted-foreground tabular-nums">
                 ${fmtUsd(dustSum)}

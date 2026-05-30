@@ -78,8 +78,6 @@ export function YieldProjectorCanvas({ data, onAction }: Props) {
     () => compoundYield(amount, apy, 60),
     [amount, apy]
   );
-  const breakEvenNote = apy > 0 ? "Yield exceeds cost from day one." : null;
-
   const W = 320;
   const H = 80;
   const curvePoints = useMemo(
@@ -101,7 +99,7 @@ export function YieldProjectorCanvas({ data, onAction }: Props) {
         onAction ? (
           <>
             <CanvasFooterMeta>
-              {breakEvenNote ?? `Projected at ${apy.toFixed(2)}% APY`}
+              {`Projected at ${apy.toFixed(2)}% APY`}
             </CanvasFooterMeta>
             <CanvasButton
               onClick={() =>

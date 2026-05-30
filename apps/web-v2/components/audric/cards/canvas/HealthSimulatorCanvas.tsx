@@ -298,12 +298,12 @@ export function HealthSimulatorCanvas({ data, onAction }: Props) {
         <SliderRow
           accent="accent-foreground"
           label="Borrowed"
-          max={Math.max(1800, collateral * 0.75)}
+          max={Math.max(1800, collateral * 0.75, debt)}
           min={0}
           onChange={setDebt}
           readout={`$${debt.toLocaleString()}`}
           step={50}
-          value={Math.min(debt, collateral * 0.75)}
+          value={debt}
         />
       </div>
     </CanvasShell>
