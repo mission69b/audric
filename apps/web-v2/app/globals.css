@@ -55,7 +55,7 @@
   --color-sidebar-ring: var(--sidebar-ring);
 
   /* [S.204+ P1] Bubble tokens — used by user/assistant chat message
-     surfaces. Composed from --fg-primary / --fg-inverse so they flip
+     surfaces. Composed from --fg / --bg (see :root below) so they flip
      correctly per theme without per-component dark variants. */
   --color-bubble-user-bg: var(--bubble-user-bg);
   --color-bubble-user-fg: var(--bubble-user-fg);
@@ -133,6 +133,14 @@
     0 0 0 1px oklch(0 0 0 / 0.06), 0 2px 8px -2px oklch(0 0 0 / 0.06);
   --shadow-inset: inset 0 1px 1px oklch(0 0 0 / 0.03);
   --shadow-glow: 0 0 20px oklch(0 0 0 / 0.08);
+  /* [R6 audit] Ported ADS tokens referenced by Pay / settings / profile /
+     landing surfaces that web-v2's globals never carried over (focus ring
+     + flat hairline shadow). --shadow-focus-ring uses the Geist blue ramp
+     so it flips per theme; --shadow-flat is a static 8% hairline that
+     complements the existing `border-border` edge. */
+  --shadow-flat: 0 0 0 1px oklch(0 0 0 / 0.08);
+  --shadow-focus-ring: 0 0 0 3px
+    color-mix(in oklch, var(--ds-blue-700) 50%, transparent);
 
   --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
