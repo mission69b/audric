@@ -226,12 +226,16 @@ export async function generateMetadata({
   const { username } = await params;
   const resolved = await resolveHandle(username);
   if (!resolved) {
-    return { title: "Not found · Audric", robots: { index: false } };
+    // [F4 — 2026-05-31] Bare title — the root layout's `%s · Audric`
+    // template appends the suffix. Previously this hardcoded "· Audric"
+    // too, yielding the doubled "Not found · Audric · Audric".
+    return { title: "Not found", robots: { index: false } };
   }
   const { displayHandle } = resolved;
   const description = `Send USDC, SUI, or any token to ${displayHandle} on Sui via Audric.`;
   return {
-    title: `${displayHandle} · Audric`,
+    // [F4 — 2026-05-31] Bare title; the layout template adds "· Audric".
+    title: displayHandle,
     description,
     openGraph: {
       title: displayHandle,

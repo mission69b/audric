@@ -442,17 +442,14 @@ export function PermissionCard(props: PermissionCardProps) {
       return;
     }
     timerRef.current = setInterval(() => {
-      setSecondsLeft((prev) => {
-        if (prev <= 1) {
-          // Fire async deny without awaiting in the interval callback —
-          // the deny handler owns its own in-flight state.
-          handleDenyRef.current().catch((err) => {
-            console.error("[permission-card] timeout deny failed:", err);
-          });
-          return 0;
-        }
-        return prev - 1;
-      });
+      // [F1 — 2026-05-31] The updater MUST stay pure — only decrement.
+      // Previously this fired `handleDenyRef.current()` from inside the
+      // `setSecondsLeft` updater, which calls the parent's
+      // `addToolApprovalResponse`/`addToolOutput` (setState on
+      // AudricChatPanel) DURING this component's render phase → React
+      // "Cannot update a component while rendering a different component"
+      // warning. Expiry is now handled in the effect below, post-commit.
+      setSecondsLeft((prev) => (prev <= 1 ? 0 : prev - 1));
     }, 1000);
     return () => {
       if (timerRef.current) {
@@ -461,6 +458,16 @@ export function PermissionCard(props: PermissionCardProps) {
       }
     };
   }, [resolved]);
+
+  // [F1 — 2026-05-31] Fire the auto-deny in a post-commit effect once the
+  // countdown reaches 0 (not inside the render-phase state updater above).
+  useEffect(() => {
+    if (secondsLeft === 0 && !resolvedRef.current) {
+      handleDenyRef.current().catch((err) => {
+        console.error("[permission-card] timeout deny failed:", err);
+      });
+    }
+  }, [secondsLeft]);
 
   // [R6.4 A2] A `block`-tier guard hard-disables Approve (phase2 state 05).
   const hasBlockingGuard = useMemo(
@@ -827,15 +834,9 @@ export function BundlePermissionCard(props: BundlePermissionCardProps) {
       return;
     }
     timerRef.current = setInterval(() => {
-      setSecondsLeft((prev) => {
-        if (prev <= 1) {
-          handleDenyRef.current().catch((err) => {
-            console.error("[bundle-permission-card] timeout deny failed:", err);
-          });
-          return 0;
-        }
-        return prev - 1;
-      });
+      // [F1 — 2026-05-31] Pure updater — expiry side effect lives in the
+      // post-commit effect below (see single-write card for rationale).
+      setSecondsLeft((prev) => (prev <= 1 ? 0 : prev - 1));
     }, 1000);
     return () => {
       if (timerRef.current) {
@@ -844,6 +845,15 @@ export function BundlePermissionCard(props: BundlePermissionCardProps) {
       }
     };
   }, [resolved]);
+
+  // [F1 — 2026-05-31] Auto-deny on expiry, post-commit.
+  useEffect(() => {
+    if (secondsLeft === 0 && !resolvedRef.current) {
+      handleDenyRef.current().catch((err) => {
+        console.error("[bundle-permission-card] timeout deny failed:", err);
+      });
+    }
+  }, [secondsLeft]);
 
   const progress = secondsLeft / TIMEOUT_SEC;
 

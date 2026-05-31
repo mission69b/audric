@@ -25,13 +25,15 @@ export const OG_SIZE = { width: 1200, height: 630 } as const;
 export const OG_CONTENT_TYPE = "image/png";
 
 // AudricMark 9-cell diamond (mirrors components/ui/audric-mark.tsx +
-// og-audric.svg). 9px cells on an 11px pitch; center cell is the signal.
-const CELLS: { x: number; y: number; accent?: boolean }[] = [
+// og-audric.svg). 9px cells on an 11px pitch. Monochrome — no cyan
+// center (the brand mark is pure ink; teal stays only on the status
+// pill + glow as a functional accent).
+const CELLS: { x: number; y: number }[] = [
   { x: 22, y: 0 },
   { x: 11, y: 11 },
   { x: 33, y: 11 },
   { x: 0, y: 22 },
-  { x: 22, y: 22, accent: true },
+  { x: 22, y: 22 },
   { x: 44, y: 22 },
   { x: 11, y: 33 },
   { x: 33, y: 33 },
@@ -140,7 +142,7 @@ export async function renderAudricCard({
         <svg height="53" viewBox="0 0 53 53" width="53">
           {CELLS.map((c) => (
             <rect
-              fill={c.accent ? ACCENT : INK}
+              fill={INK}
               height={9}
               key={`${c.x}-${c.y}`}
               rx={2}

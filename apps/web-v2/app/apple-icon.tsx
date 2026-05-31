@@ -1,8 +1,7 @@
 /**
  * Apple touch icon — 180×180 AudricMark on an opaque dark tile (iOS
  * composites on the home screen; transparent → black, and rounds the
- * corners itself). Canonical design: `t2000-AFI/audric/app-apple-icon.tsx`
- * — full cyan (#0AC7B4) mark on #0A0A0A. No PNG is checked in.
+ * corners itself). Monochrome white mark on #0A0A0A. No PNG is checked in.
  */
 
 import { ImageResponse } from "next/og";
@@ -22,7 +21,7 @@ export default function AppleIcon() {
         justifyContent: "center",
       }}
     >
-      <svg fill="#0ac7b4" height="120" viewBox="0 0 100 100" width="120">
+      <svg fill="#ffffff" height="120" viewBox="0 0 100 100" width="120">
         <rect height="14" rx="2.8" width="14" x="42" y="14" />
         <rect height="14" rx="2.8" width="14" x="24" y="32" />
         <rect height="14" rx="2.8" width="14" x="60" y="32" />

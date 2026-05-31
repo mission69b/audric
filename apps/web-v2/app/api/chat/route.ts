@@ -3443,7 +3443,11 @@ function buildAudricToolMetadata(
   if (!description) {
     return;
   }
-  const fields = getModifiableFields(toolName) ?? [];
+  // [F3 — 2026-05-31] Pass `input` so the engine rewrites the amount
+  // field's `asset` from the actual tx asset (USDC | USDsui) instead of
+  // the registry default 'USDC'. Without this, a USDsui save_deposit
+  // rendered the editable field as "amount (USDC)" on the confirm card.
+  const fields = getModifiableFields(toolName, input) ?? [];
   // Strip `readonly` + spread to a plain object so AI SDK's structural
   // `JSONObject` check passes (readonly arrays don't satisfy `JSONValue`).
   const modifiableFields = fields.map((f) => ({

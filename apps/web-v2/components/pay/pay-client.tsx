@@ -256,9 +256,13 @@ export function PayClient({ slug }: { slug: string }) {
     <div className="flex min-h-screen flex-col bg-background text-foreground">
       {/* page-nav — standalone public chrome (brand + canonical url) */}
       <header className="flex h-[52px] items-center gap-2 border-border border-b px-[18px]">
+        {/* [B3 — 2026-05-31] `text-foreground` is explicit: the AudricMark
+            renders `currentColor` (post-B1 monochrome) and this is an
+            anchor — without it the mark + wordmark inherit the global link
+            color (blue), the "blue logo + icon mark" flagged on /pay/[slug]. */}
         <a
           aria-label="Audric"
-          className="inline-flex items-center gap-2 transition-opacity hover:opacity-80"
+          className="inline-flex items-center gap-2 text-foreground transition-opacity hover:opacity-80"
           href="https://audric.ai"
           rel="noopener noreferrer"
           target="_blank"

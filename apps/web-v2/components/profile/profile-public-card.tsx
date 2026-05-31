@@ -67,9 +67,14 @@ export function ProfilePublicCard({
     <div className="overflow-hidden rounded-xl border border-border bg-card">
       {/* page-nav — brand + canonical url */}
       <div className="flex h-12 items-center gap-2 border-border border-b px-[18px]">
+        {/* [B2 — 2026-05-31] `text-foreground` is explicit: the AudricMark
+            renders `currentColor` (post-B1 monochrome), and this is a
+            `<Link>` — without it the mark + wordmark inherit the global
+            anchor link color (blue), which is the "blue logo + icon mark"
+            the founder flagged on the public profile. */}
         <Link
           aria-label="Audric"
-          className="inline-flex items-center gap-2 transition-opacity hover:opacity-80"
+          className="inline-flex items-center gap-2 text-foreground transition-opacity hover:opacity-80"
           href="/"
         >
           <AudricMark size={18} />

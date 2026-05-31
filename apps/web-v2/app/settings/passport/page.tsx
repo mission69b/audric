@@ -10,7 +10,6 @@
  */
 
 import { useZkLogin } from "@/components/auth/use-zklogin";
-import { DeleteAllChatsButton } from "@/components/settings/delete-all-chats-button";
 import { PassportSection } from "@/components/settings/passport-section";
 import { useUserStatus } from "@/hooks/use-user-status";
 import { decodeJwtClaim } from "@/lib/jwt-client";
@@ -43,23 +42,9 @@ export default function PassportPage() {
         }}
         username={userStatus.username}
       />
-
-      {/* [S.250 P2 #6] Data section — bulk delete of chat history. Lives
-       * here (Passport / "my data") rather than its own section because
-       * it's a single one-off control; a dedicated /settings/chats route
-       * would add navigation surface for one button. */}
-      {address && (
-        <section className="border-border/40 border-t pt-7">
-          <header className="mb-4">
-            <h2 className="text-[15px] font-semibold text-foreground">Data</h2>
-            <p className="mt-1 text-[13px] text-muted-foreground">
-              Manage the data Audric stores for your Passport. Deleting your
-              chat history is permanent and cannot be undone.
-            </p>
-          </header>
-          <DeleteAllChatsButton />
-        </section>
-      )}
+      {/* [L3 — 2026-05-31] The bulk "Delete all chats" control moved to the
+          chat sidebar (below New chat). It's a chat-management action, not
+          an identity setting — see components/chat/app-sidebar.tsx. */}
     </div>
   );
 }

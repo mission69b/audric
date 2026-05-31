@@ -230,18 +230,16 @@ export function AccountMenuContent({
               {email}
             </div>
           )}
-          <span
-            className={`mt-1.5 inline-flex items-center gap-1.5 rounded-full border px-2 py-[3px] font-mono text-[9.5px] uppercase tracking-[0.08em] ${
-              isOffline
-                ? "border-warning/25 bg-warning/10 text-warning"
-                : "border-signal/25 bg-signal/10 text-signal"
-            }`}
-          >
-            <span
-              className={`size-[5px] rounded-full ${isOffline ? "bg-warning" : "bg-signal"}`}
-            />
-            {isOffline ? "Reconnecting" : "t2000 connected"}
-          </span>
+          {/* [B4 — 2026-05-31] Online "t2000 connected" pill removed
+              (off-brand wording + the only cyan text in the dropdown).
+              The offline "Reconnecting" warning + Retry action stay —
+              they're load-bearing for the degraded-network UX. */}
+          {isOffline && (
+            <span className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border border-warning/25 bg-warning/10 px-2 py-[3px] font-mono text-[9.5px] text-warning uppercase tracking-[0.08em]">
+              <span className="size-[5px] rounded-full bg-warning" />
+              Reconnecting
+            </span>
+          )}
         </div>
       </div>
 
@@ -272,9 +270,14 @@ export function AccountMenuContent({
           Retry connection
         </DropdownMenuItem>
       )}
+      {/* [B4 — 2026-05-31] `text-foreground` is explicit because these
+          items are `<Link>` (asChild) — without it the anchor inherits
+          the global link color (teal), which is the "blue text in the
+          dropdown" the founder flagged. The non-link items (Retry, Sign
+          out) already render the correct menu foreground. */}
       <DropdownMenuItem asChild data-testid="user-nav-item-passport">
         <Link
-          className="w-full cursor-pointer gap-2.5 text-[13px]"
+          className="w-full cursor-pointer gap-2.5 text-[13px] text-foreground"
           href="/settings/passport"
         >
           <User className="size-3.5 text-muted-foreground" />
@@ -285,7 +288,7 @@ export function AccountMenuContent({
           Passport / Safety / Memory sub-nav. */}
       <DropdownMenuItem asChild data-testid="user-nav-item-settings">
         <Link
-          className="w-full cursor-pointer gap-2.5 text-[13px]"
+          className="w-full cursor-pointer gap-2.5 text-[13px] text-foreground"
           href="/settings"
         >
           <Settings className="size-3.5 text-muted-foreground" />

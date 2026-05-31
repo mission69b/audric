@@ -168,6 +168,15 @@ export function AudricChatClient({
   const { status, session } = useZkLogin();
   const router = useRouter();
 
+  // [F2 — 2026-05-31] Mount gate. zkLogin session lives in localStorage
+  // and `useZkLogin` resolves it client-side only, so SSR (no session)
+  // and the first client render (session present) would otherwise emit
+  // different HTML → React hydration mismatch on the `audric.` splash.
+  // Forcing the splash until `mounted` makes the first client render
+  // match the server; the authed branch evaluates post-mount.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   // Unauthenticated / expired visitors get bounced to the marketing
   // homepage, which owns the sign-in entry point. The old inline
   // "Splash-B" marketing hero on /chat was the wrong UX — it duplicated
@@ -185,7 +194,7 @@ export function AudricChatClient({
   // Google OAuth redirect, or the brief moment while an unauth/expired
   // visitor is bounced home — shows the centered `audric.` wordmark +
   // spinner. No marketing copy, no sign-in button: sign-in lives on `/`.
-  if (status !== "authenticated" || !session) {
+  if (!mounted || status !== "authenticated" || !session) {
     return (
       <div className="flex min-h-screen items-center justify-center gap-3">
         <p className="font-medium font-serif text-[36px] text-foreground tracking-[-0.02em]">
@@ -480,6 +489,13 @@ function AudricChatPanel({
     id: effectiveChatId,
     messages: initialMessages,
     transport,
+    // [U1 — 2026-05-31] Throttle render updates to ~100ms (vercel/chatbot
+    // parity). Without this every streamed token re-renders the whole
+    // messages list + re-parses every markdown block, which (combined
+    // with the former reasoning-hoist bug) produced the jerky, jumping
+    // timeline the founder reported. 100ms is imperceptible for text yet
+    // collapses the per-token render storm.
+    experimental_throttle: 100,
     // [SPEC_AUDRIC_STREAM_RESUME Phase 2 — 2026-05-24] Enable stream
     // resume on mount. The hook fires GET to
     // `${api}/${id}/stream` (default `/api/chat/[id]/stream` — matches
@@ -954,29 +970,6 @@ function AudricChatPanel({
 
             const isEditing = editingMessageId === m.id && m.role === "user";
 
-            // [B1 / vercel parity — 2026-05-30] Mirror vercel/chatbot's
-            // `components/chat/message.tsx` `mergedReasoning`: a turn can
-            // emit several `reasoning` parts (one per model step). The demo
-            // joins them into a SINGLE accordion instead of stacking one
-            // accordion per part. We render the merged accordion at the
-            // position of the FIRST reasoning part and skip the rest.
-            const firstReasoningIndex = m.parts.findIndex(
-              (p) => p.type === "reasoning"
-            );
-            const mergedReasoningText = m.parts
-              .filter((p) => p.type === "reasoning")
-              .map((p) => (p as ReasoningUIPart).text)
-              .filter((t) => t && t.trim().length > 0)
-              .join("\n\n");
-            const mergedReasoningStreaming =
-              isTurnStreaming &&
-              isLast &&
-              m.parts.some(
-                (p) =>
-                  p.type === "reasoning" &&
-                  (p as ReasoningUIPart).state !== "done"
-              );
-
             return (
               // [SPEC_AI_SDK_HARDENING P5.1-P5.4 hotfix — 2026-05-24]
               // `group` MUST live on an ANCESTOR of the actions div for
@@ -1070,24 +1063,49 @@ function AudricChatPanel({
                           );
                         }
                         if (part.type === "reasoning") {
-                          // [B1] Render ONE merged accordion at the first
-                          // reasoning part; later reasoning parts collapse
-                          // into it (vercel `mergedReasoning` parity).
-                          if (
-                            i !== firstReasoningIndex ||
-                            !mergedReasoningText
-                          ) {
+                          // [U1 — 2026-05-31] Render reasoning IN POSITION,
+                          // merging only CONSECUTIVE reasoning parts into a
+                          // single accordion (true vercel/chatbot parity).
+                          // The prior impl hoisted ALL reasoning to the
+                          // first reasoning index and concatenated it — so
+                          // thinking that happened AFTER a tool call got
+                          // yanked ABOVE the tool, producing the "jumping
+                          // around" timeline the founder reported. A run is
+                          // a maximal block of adjacent reasoning parts;
+                          // we open one accordion at the run's start and
+                          // skip the rest of the run.
+                          const prev = m.parts[i - 1];
+                          if (prev && prev.type === "reasoning") {
+                            // Folded into the accordion opened at run start.
                             return null;
                           }
+                          const runParts: ReasoningUIPart[] = [];
+                          for (let j = i; j < m.parts.length; j++) {
+                            const p = m.parts[j];
+                            if (p.type !== "reasoning") {
+                              break;
+                            }
+                            runParts.push(p as ReasoningUIPart);
+                          }
+                          const runText = runParts
+                            .map((p) => p.text)
+                            .filter((t) => t && t.trim().length > 0)
+                            .join("\n\n");
+                          if (!runText) {
+                            return null;
+                          }
+                          const runStreaming =
+                            isTurnStreaming &&
+                            isLast &&
+                            runParts.some((p) => p.state !== "done");
                           return (
                             <Reasoning
-                              isStreaming={mergedReasoningStreaming}
-                              key={`${m.id}-reasoning`}
+                              isStreaming={runStreaming}
+                              // biome-ignore lint/suspicious/noArrayIndexKey: reasoning-run start index is positionally stable per message
+                              key={`${m.id}-reasoning-${i}`}
                             >
                               <ReasoningTrigger />
-                              <ReasoningContent>
-                                {mergedReasoningText}
-                              </ReasoningContent>
+                              <ReasoningContent>{runText}</ReasoningContent>
                             </Reasoning>
                           );
                         }

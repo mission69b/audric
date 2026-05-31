@@ -168,6 +168,15 @@ const INTENT_KEYWORDS: Record<Exclude<Intent, "general">, RegExp[]> = {
     /\bholdings?\b/i,
     /\ballocations?\b/i,
     /\bwallet\b/i,
+    // [F6 — 2026-05-31] SuiNS name-resolution cues. `portfolio` already
+    // carries `resolve_suins` in TOOLS_BY_INTENT, so routing bare
+    // "resolve alice.sui" / "what's the address for suins.sui" here
+    // hands the model the tool instead of falling to `general` (which
+    // omitted it → the agent hallucinated "I don't have resolve_suins").
+    /\bresolve\b/i,
+    /\bsuins\b/i,
+    /\.sui\b/i,
+    /\bwhat('?s| is)\s+the\s+address\b/i,
   ],
   rates: [
     /\brates?\b/i,
@@ -277,6 +286,11 @@ const TOOLS_BY_INTENT: Record<Intent, readonly string[]> = {
     "transaction_history",
     "portfolio_analysis",
     "rates_info",
+    // [F6 — 2026-05-31] resolve_suins is degrade-open in the fallback:
+    // a cheap, side-effect-free read so a misclassified name-resolution
+    // turn still hands the model the tool (pre-fix the agent claimed it
+    // didn't exist on bare "resolve X.sui" queries).
+    "resolve_suins",
     // Writes (degrade-open per docstring's conservative-by-construction claim)
     "save_deposit",
     "withdraw",

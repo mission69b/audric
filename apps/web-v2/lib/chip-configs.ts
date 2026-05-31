@@ -1,5 +1,5 @@
 /**
- * Chip configurations — Audric's seven quick-prompt entry points.
+ * Chip configurations — Audric's six quick-prompt entry points.
  *
  * Architectural correction locked in CHIP_REVIEW_3 (2026-05-19): chips
  * are INJECTION-ONLY. A chip tap fills the composer with a canonical
@@ -32,10 +32,13 @@ export interface ChipConfig {
 }
 
 /**
- * Seven chips, visible at all times below the composer. Order matches
- * the runbook: Audric Finance verbs first (Save / Send / Swap /
- * Credit), then Audric Pay (Receive), then orchestration (Harvest),
- * then read-only (Charts).
+ * Six chips, visible at all times below the composer. Order matches the
+ * runbook: Audric Finance verbs first (Save / Send / Swap / Credit),
+ * then orchestration (Harvest), then read-only (Charts).
+ *
+ * [L4 — 2026-05-31] The "Receive" chip was removed — the Add-funds
+ * button in the chat shell now owns the receive / show-my-address flow,
+ * so a Receive chip duplicated it.
  *
  * Each `prompt` is the literal sentence the agent receives if the user
  * hits Enter without editing — written as a natural request so the
@@ -49,11 +52,6 @@ export const CHIP_CONFIGS: readonly ChipConfig[] = [
   { id: "send", label: "Send", prompt: "Send USDC to someone" },
   { id: "swap", label: "Swap", prompt: "Swap one token for another" },
   { id: "credit", label: "Credit", prompt: "Borrow USDC against my savings" },
-  {
-    id: "receive",
-    label: "Receive",
-    prompt: "Show my wallet address and a QR code so someone can pay me",
-  },
   {
     id: "harvest",
     label: "Harvest",

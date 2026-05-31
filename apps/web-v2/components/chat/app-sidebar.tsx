@@ -45,6 +45,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useZkLogin } from "@/components/auth/use-zklogin";
 import { SidebarHistory } from "@/components/chat/sidebar-history";
 import { SidebarUserNav } from "@/components/chat/sidebar-user-nav";
+import { DeleteAllChatsButton } from "@/components/settings/delete-all-chats-button";
 import { AudricMark } from "@/components/ui/audric-mark";
 import {
   Sidebar,
@@ -114,44 +115,49 @@ export function AppSidebar() {
       <SidebarHeader className="pb-0 pt-3">
         <SidebarMenu>
           <SidebarMenuItem className="flex flex-row items-center justify-between">
-            <div className="group/logo relative flex items-center justify-center">
-              <SidebarMenuButton
-                asChild
-                className="size-8 items-center justify-center !px-0 group-data-[collapsible=icon]:group-hover/logo:opacity-0"
-                tooltip="Audric"
-              >
-                <Link href="/chat" onClick={() => setOpenMobile(false)}>
-                  <AudricMark
-                    className="text-sidebar-foreground/70"
-                    size={16}
-                  />
-                </Link>
-              </SidebarMenuButton>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <SidebarMenuButton
-                    className="pointer-events-none absolute inset-0 size-8 opacity-0 group-data-[collapsible=icon]:pointer-events-auto group-data-[collapsible=icon]:group-hover/logo:opacity-100"
-                    onClick={() => toggleSidebar()}
-                  >
-                    <PanelLeftIcon className="size-4" />
-                  </SidebarMenuButton>
-                </TooltipTrigger>
-                <TooltipContent className="hidden md:block" side="right">
-                  Open sidebar
-                </TooltipContent>
-              </Tooltip>
-            </div>
-            {/* [S.255 — 2026-05-22] BETA badge restored per founder request
-                post-DNS-cutover. Now that audric.ai serves web-v2 directly,
-                deployment context alone doesn't signal beta to users — the
-                badge does. Matches the badge styling used on /security. */}
-            <div className="flex items-center gap-2 group-data-[collapsible=icon]:hidden">
-              <span className="font-medium text-[14px] text-sidebar-foreground tracking-[-0.01em]">
-                Audric
-              </span>
-              <span className="rounded-xs border border-sidebar-border bg-sidebar-accent/40 px-1.5 py-0.5 font-mono text-[9px] text-sidebar-foreground/60 leading-none tracking-[0.1em] uppercase">
-                beta
-              </span>
+            {/* [L2 — 2026-05-31] Logo + "Audric beta" lockup grouped on
+                the LEFT (was spread by justify-between, floating the
+                wordmark toward center). Trigger stays pushed right. */}
+            <div className="flex items-center gap-2">
+              <div className="group/logo relative flex items-center justify-center">
+                <SidebarMenuButton
+                  asChild
+                  className="size-8 items-center justify-center !px-0 group-data-[collapsible=icon]:group-hover/logo:opacity-0"
+                  tooltip="Audric"
+                >
+                  <Link href="/chat" onClick={() => setOpenMobile(false)}>
+                    <AudricMark
+                      className="text-sidebar-foreground/70"
+                      size={16}
+                    />
+                  </Link>
+                </SidebarMenuButton>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <SidebarMenuButton
+                      className="pointer-events-none absolute inset-0 size-8 opacity-0 group-data-[collapsible=icon]:pointer-events-auto group-data-[collapsible=icon]:group-hover/logo:opacity-100"
+                      onClick={() => toggleSidebar()}
+                    >
+                      <PanelLeftIcon className="size-4" />
+                    </SidebarMenuButton>
+                  </TooltipTrigger>
+                  <TooltipContent className="hidden md:block" side="right">
+                    Open sidebar
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+              {/* [S.255 — 2026-05-22] BETA badge restored per founder request
+                  post-DNS-cutover. Now that audric.ai serves web-v2 directly,
+                  deployment context alone doesn't signal beta to users — the
+                  badge does. Matches the badge styling used on /security. */}
+              <div className="flex items-center gap-2 group-data-[collapsible=icon]:hidden">
+                <span className="font-medium text-[14px] text-sidebar-foreground tracking-[-0.01em]">
+                  Audric
+                </span>
+                <span className="rounded-xs border border-sidebar-border bg-sidebar-accent/40 px-1.5 py-0.5 font-mono text-[9px] text-sidebar-foreground/60 leading-none tracking-[0.1em] uppercase">
+                  beta
+                </span>
+              </div>
             </div>
             <div className="group-data-[collapsible=icon]:hidden">
               <SidebarTrigger className="text-sidebar-foreground/60 transition-colors duration-150 hover:text-sidebar-foreground" />
@@ -213,7 +219,9 @@ export function AppSidebar() {
           </SidebarGroup>
         ) : (
           <>
-            {/* New chat — only nav item the chat-first surface keeps. */}
+            {/* New chat + Delete all — the two chat-management actions
+                (vercel/chatbot parity). [L3 — 2026-05-31] "Delete all"
+                moved here from /settings/passport. */}
             <SidebarGroup className="pt-1">
               <SidebarGroupContent>
                 <SidebarMenu>
@@ -227,6 +235,7 @@ export function AppSidebar() {
                       <span className="font-medium">New chat</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
+                  <DeleteAllChatsButton />
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>

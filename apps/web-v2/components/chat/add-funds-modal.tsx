@@ -73,7 +73,13 @@ export function AddFundsModal({
       open={open}
     >
       <DialogContent
-        className="overflow-hidden bg-card p-0 sm:max-w-[460px]"
+        // [F5 — 2026-05-31] Override the base `grid` layout with
+        // `flex flex-col`. The base DialogContent is `grid w-full`, and
+        // grid items default to `min-width: auto` — so the wide address
+        // row / handle hero blew the implicit column past the 460px cap
+        // and `overflow-hidden` clipped them on the right at desktop
+        // width. Column-flex stretches children to the constrained box.
+        className="flex max-h-[90dvh] flex-col overflow-hidden bg-card p-0 sm:max-w-[460px]"
         data-testid="add-funds-modal"
         showCloseButton={false}
       >

@@ -66,8 +66,12 @@ export default function SettingsLayout({
         <SidebarInset>
           <main className="flex h-dvh flex-col overflow-hidden bg-background">
             <header className="flex items-center justify-between border-b border-border/40 px-6 py-[18px] sm:px-8">
-              <SidebarTrigger className="text-muted-foreground transition-colors hover:text-foreground" />
-              <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+              {/* [L1 — 2026-05-31] Mobile-only (`md:hidden`) to match the
+                  chat surface. On desktop the AppSidebar's own trigger is
+                  the single drawer toggle; without this the settings
+                  header rendered a SECOND always-visible trigger. */}
+              <SidebarTrigger className="text-muted-foreground transition-colors hover:text-foreground md:hidden" />
+              <span className="ml-auto font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                 Settings
               </span>
             </header>

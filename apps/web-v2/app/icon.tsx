@@ -1,8 +1,7 @@
 /**
  * Dynamic favicon — the AudricMark diamond rendered as a 32×32 PNG at
- * build time (Next.js metadata route). Canonical design:
- * `t2000-AFI/audric/app-icon.tsx` — full cyan (#0AC7B4) mark on a dark
- * rounded tile. Fixed cyan-on-dark; a browser tab has no theme context.
+ * build time (Next.js metadata route). Monochrome white mark on a dark
+ * rounded tile (fixed white-on-dark; a browser tab has no theme context).
  *
  * To change the mark, edit the rects here (mirrors the 9-cell GRID in
  * `components/ui/audric-mark.tsx`). No PNG is checked in.
@@ -26,7 +25,7 @@ export default function Icon() {
         justifyContent: "center",
       }}
     >
-      <svg fill="#0ac7b4" height="24" viewBox="0 0 100 100" width="24">
+      <svg fill="#ffffff" height="24" viewBox="0 0 100 100" width="24">
         <rect height="14" rx="2.8" width="14" x="42" y="14" />
         <rect height="14" rx="2.8" width="14" x="24" y="32" />
         <rect height="14" rx="2.8" width="14" x="60" y="32" />

@@ -4,10 +4,11 @@
  * Delete-all-chats button — wires the `DELETE /api/history` endpoint that
  * v0.7e Persistent Chats (S.247) shipped without a UI caller.
  *
- * S.250 P2 #6 — adds the first caller. Lives in `/settings/passport` under
- * a "Data" section so it sits next to identity controls (the user's
- * Passport address + claimed handle); chat history is "my data," same
- * mental model.
+ * [L3 — 2026-05-31] Moved from `/settings/passport` to the chat sidebar,
+ * directly below "New chat" (mirrors the vercel/chatbot template's
+ * "New chat" + "Delete all" stack). Renders as a `SidebarMenuItem` so it
+ * matches the New-chat button; collapses to an icon with the rest of the
+ * sidebar.
  *
  * Pattern mirrors `sidebar-history.tsx`'s per-chat delete confirmation
  * (AlertDialog + authFetch + SWR cache invalidation) so the surface feels
@@ -34,7 +35,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
+import { SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
 import { authFetch } from "@/lib/auth-fetch";
 
 export function DeleteAllChatsButton() {
@@ -79,15 +80,16 @@ export function DeleteAllChatsButton() {
 
   return (
     <>
-      <Button
-        className="gap-2"
-        onClick={() => setOpen(true)}
-        size="sm"
-        variant="outline"
-      >
-        <TrashIcon className="size-3.5" />
-        Delete all chats
-      </Button>
+      <SidebarMenuItem>
+        <SidebarMenuButton
+          className="h-8 rounded-lg text-[13px] text-sidebar-foreground/60 transition-colors duration-150 hover:bg-destructive/10 hover:text-destructive"
+          onClick={() => setOpen(true)}
+          tooltip="Delete all chats"
+        >
+          <TrashIcon className="size-4" />
+          <span className="font-medium">Delete all</span>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
 
       <AlertDialog onOpenChange={setOpen} open={open}>
         <AlertDialogContent>

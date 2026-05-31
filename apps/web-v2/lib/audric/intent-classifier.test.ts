@@ -293,10 +293,27 @@ describe("selectActiveTools", () => {
 
   it("returns hardened general fallback for empty input", () => {
     const tools = selectActiveTools(classifyIntent(""));
-    // Post-hotfix general: 6 reads + 6 writes + render_canvas = 13
-    expect(tools).toHaveLength(13);
+    // Post-hotfix general: 6 reads + resolve_suins (F6) + 6 writes +
+    // render_canvas = 14
+    expect(tools).toHaveLength(14);
     expect(tools).toContain("balance_check");
     expect(tools).toContain("portfolio_analysis");
+    expect(tools).toContain("resolve_suins");
+  });
+
+  it("exposes resolve_suins for a bare SuiNS name-resolution query (F6)", () => {
+    // Pre-F6 "resolve suins.sui" matched no intent → general fallback,
+    // which omitted resolve_suins → the agent claimed the tool didn't
+    // exist. Now SuiNS cues route to `portfolio` (which carries it) AND
+    // it's in the general fallback as a safety net.
+    for (const q of [
+      "resolve suins.sui",
+      "what's the address for alice.sui",
+      "resolve this suins name",
+    ]) {
+      const tools = selectActiveTools(classifyIntent(q));
+      expect(tools).toContain("resolve_suins");
+    }
   });
 
   it("includes write tools only for narrow intents (portfolio stays read-only)", () => {

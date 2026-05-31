@@ -12,12 +12,6 @@ interface AudricMarkProps {
   size?: number;
   animate?: boolean;
   className?: string;
-  /**
-   * [R6.2] Render the center cell in the cyan `--signal` accent — the
-   * single brand signal per the Geist DS spec (`chat-shell.html`). On by
-   * default; pass `signal={false}` for pure-monochrome contexts.
-   */
-  signal?: boolean;
 }
 
 const GRID: [number, number][] = [
@@ -32,14 +26,10 @@ const GRID: [number, number][] = [
   [4, 2],
 ];
 
-// The center cell ([2,2]) carries the cyan signal accent.
-const CENTER_INDEX = Math.floor(GRID.length / 2);
-
 export function AudricMark({
   size = 24,
   animate = false,
   className = "",
-  signal = true,
 }: AudricMarkProps) {
   const rectsRef = useRef<(SVGRectElement | null)[]>([]);
   const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -93,7 +83,7 @@ export function AudricMark({
       <title>Audric</title>
       {GRID.map(([row, col], i) => (
         <rect
-          fill={signal && i === CENTER_INDEX ? "var(--signal)" : "currentColor"}
+          fill="currentColor"
           height={cellSize}
           key={`${row}-${col}`}
           ref={(el) => {
