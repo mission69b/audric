@@ -1,32 +1,28 @@
 /**
- * Dynamic favicon — the AudricMark diamond rendered as a 32×32 PNG at
- * build time (Next.js metadata route). Canonical design:
- * `t2000-AFI/audric/app-icon.tsx` — full cyan (#0AC7B4) mark on a dark
- * rounded tile. Fixed cyan-on-dark; a browser tab has no theme context.
- *
- * To change the mark, edit the rects here (mirrors the 9-cell GRID in
- * `components/ui/audric-mark.tsx`). No PNG is checked in.
+ * Apple touch icon — 180×180 AudricMark on an opaque dark tile (iOS
+ * composites on the home screen; transparent → black, and rounds the
+ * corners itself). Canonical design: `t2000-AFI/audric/app-apple-icon.tsx`
+ * — full cyan (#0AC7B4) mark on #0A0A0A. No PNG is checked in.
  */
 
 import { ImageResponse } from "next/og";
 
-export const size = { width: 32, height: 32 };
+export const size = { width: 180, height: 180 };
 export const contentType = "image/png";
 
-export default function Icon() {
+export default function AppleIcon() {
   return new ImageResponse(
     <div
       style={{
         width: "100%",
         height: "100%",
         background: "#0a0a0a",
-        borderRadius: 7,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
       }}
     >
-      <svg fill="#0ac7b4" height="24" viewBox="0 0 100 100" width="24">
+      <svg fill="#0ac7b4" height="120" viewBox="0 0 100 100" width="120">
         <rect height="14" rx="2.8" width="14" x="42" y="14" />
         <rect height="14" rx="2.8" width="14" x="24" y="32" />
         <rect height="14" rx="2.8" width="14" x="60" y="32" />
