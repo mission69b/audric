@@ -1,12 +1,12 @@
 ---
-description: Prisma data model — what each of the 11 active models is for, what owns it, when to read/write
+description: Prisma data model — what each of the 13 active models is for, what owns it, when to read/write
 globs: "apps/web-v2/prisma/**/*.prisma,apps/web-v2/lib/prisma.ts,apps/web-v2/app/api/**/*.ts,apps/web-v2/lib/audric/**/*.ts"
 alwaysApply: false
 ---
 
 # Prisma Models Overview
 
-NeonDB Postgres with **11 active Prisma models** (post v0.7e Phase 5 cleanup S.254 — `LinkedWallet` + `WatchAddress` + `ConversationLog` dropped 2026-05-22; plus `UserPreferences.contacts` column dropped same migration; plus prior v0.7d Phase 6 Block A drops of `UserMemory` + `UserFinancialProfile` 2026-05-21 S.221). Schema lives at `apps/web-v2/prisma/schema.prisma`. Generated client output is `apps/web-v2/lib/generated/prisma`.
+NeonDB Postgres with **13 active Prisma models** (`User`, `UserPreferences`, `SessionUsage`, `ServicePurchase`, `AppEvent`, `AdviceLog`, `Payment`, `PortfolioSnapshot`, `TurnMetrics`, `UserFinancialContext`, `Chat`, `Message`, `Vote`). Post v0.7e Phase 5 cleanup S.254 dropped `LinkedWallet` + `WatchAddress` + `ConversationLog` 2026-05-22; plus `UserPreferences.contacts` column dropped same migration; plus prior v0.7d Phase 6 Block A drops of `UserMemory` + `UserFinancialProfile` 2026-05-21 S.221. Schema lives at `apps/web-v2/prisma/schema.prisma`. Generated client output is `apps/web-v2/lib/generated/prisma`.
 
 ## Model catalog
 
@@ -51,9 +51,9 @@ NeonDB Postgres with **11 active Prisma models** (post v0.7e Phase 5 cleanup S.2
 
 | Model | What it stores | Owned by | Updated by |
 |---|---|---|---|
-| `Payment` | Sent payments, payment links, invoices (status, amount, recipient) | Pay flows | `/api/payments/*` |
+| `Payment` | Payment links (status, amount, recipient; `type` fixed at `"link"`). Legacy `type='invoice'` rows resolve read-only — invoicing retired S.269. | Pay flows | `/api/payments/*` |
 
-> **Removed in SPEC 17 (S.103, May 2026):** `SavingsGoal` model + 4 `savings_goal_*` engine tools + `/api/user/goals` routes + `GoalsPanel` UI + `openGoals` field on `UserFinancialContext`. The savings-goal layer wasn't producing observable agent behavior change. Track savings progress via `health_check` + `portfolio_overview` + `yield_summary`.
+> **Removed in SPEC 17 (S.103, May 2026):** `SavingsGoal` model + 4 `savings_goal_*` engine tools + `/api/user/goals` routes + `GoalsPanel` UI + `openGoals` field on `UserFinancialContext`. The savings-goal layer wasn't producing observable agent behavior change. Track savings progress via `health_check` + `portfolio_analysis` + `yield_summary`.
 
 ### Indexer / analytics
 

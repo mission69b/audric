@@ -27,11 +27,11 @@ If preflight fails, the LLM is told "tool input invalid" and re-asks the user in
 
 ### Layer 3 — Engine guards (`runGuards()`)
 
-12 guards across 3 priority tiers (Safety > Financial > UX) run around every write — 10 pre-execution gates + 2 post-execution hints (post-S.277 "Earns Its Keep" audit, May 2026, which dropped 2 dead guards: `guardCostWarning` and `guardArtifactPreview`). Examples:
-- **Health Factor guard** — refuses borrow if HF would drop below 1.5 post-action.
-- **Insufficient balance guard** — verifies wallet balance covers amount + gas.
-- **Recipient validation guard** — refuses send to known-malicious addresses (TODO list maintained per ecosystem reports).
-- **USD threshold guard** — large amounts get extra warning copy in the confirm card.
+Guards run around every write via `runGuards()` — 10 pre-execution gate functions + 1 post-execution hint (`guardStaleData`) in `@t2000/engine`'s `guards.ts`. (The S.277 "Earns Its Keep" audit, May 2026, dropped the dead `guardCostWarning` + `guardArtifactPreview`.) Examples:
+- **Health Factor guard** (`guardHealthFactor`) — refuses borrow if HF would drop too low post-action.
+- **Balance validation guard** (`guardBalanceValidation`) — verifies wallet balance covers amount + gas.
+- **Address source / scope guards** (`guardAddressSource`, `guardAddressScope`) — validate the recipient and its provenance.
+- **Large transfer guard** (`guardLargeTransfer`) — large amounts get extra warning copy in the confirm card.
 
 Guards either:
 - **Block** (refuse to proceed, agent narrates why)

@@ -1,6 +1,6 @@
 ---
 description: Audric Finance — save / withdraw / borrow / repay / swap / charts. Manage money on Sui.
-globs: "apps/web-v2/components/engine/cards/Savings*.tsx,apps/web-v2/components/engine/cards/Borrow*.tsx,apps/web-v2/components/engine/cards/Health*.tsx,apps/web-v2/components/engine/cards/Yield*.tsx,apps/web-v2/components/engine/cards/Swap*.tsx,apps/web-v2/components/engine/cards/canvas/**/*.tsx,apps/web-v2/lib/portfolio.ts,apps/web-v2/lib/rates.ts"
+globs: "apps/web-v2/components/audric/cards/Savings*.tsx,apps/web-v2/components/audric/cards/Health*.tsx,apps/web-v2/components/audric/cards/Rates*.tsx,apps/web-v2/components/audric/cards/Yield*.tsx,apps/web-v2/components/audric/cards/Swap*.tsx,apps/web-v2/components/audric/cards/canvas/**/*.tsx,apps/web-v2/lib/portfolio.ts"
 alwaysApply: false
 ---
 
@@ -24,7 +24,7 @@ Manage your money on Sui. The product that owns save / credit / swap / charts. E
 
 > **No Invest product.** Savings (USDC at NAVI, 3–8% APY) covers yield. Don't propose Invest as a separate product — see CLAUDE.md taxonomy rule.
 >
-> **S.277 (May 2026 — "Earns Its Keep" audit):** The Volo trio (`volo_stake` / `volo_unstake` / `volo_stats`) was removed from the engine surface. No Audric chip or product slot existed for liquid staking, and `harvest_rewards` already routes vSUI rewards via Cetus (not Volo). Volo support remains in `@t2000/sdk` + `@t2000/cli` + `@t2000/mcp` for non-Audric consumers.
+> **S.277 (May 2026 — "Earns Its Keep" audit):** The Volo trio (`volo_stake` / `volo_unstake` / `volo_stats`) was removed from the engine surface. No Audric chip or product slot existed for liquid staking, and `harvest_rewards` already routes vSUI rewards via Cetus (not Volo). **S.323 (May 2026) then removed Volo entirely from `@t2000/sdk` + `@t2000/cli` + `@t2000/mcp` too** — there are no non-Audric consumers, so those surfaces were dead code. vSUI survives only as a passive token (NAVI reward type + Cetus swap target); there is no `stake`/`unstake` anywhere in the stack.
 
 ## Save flow (USDC only)
 
@@ -47,7 +47,7 @@ Manage your money on Sui. The product that owns save / credit / swap / charts. E
    - Show: "+ 10 USDC at NAVI (3.2% APY)"
    - record_advice writes AdviceLog so Audric remembers across sessions
    - Trigger PortfolioSnapshot refresh
-   - POST /api/engine/resume with attemptId
+   - addToolResult → next /api/chat turn carries attemptId → inline resume
 ```
 
 ## Borrow flow — health factor first
@@ -76,11 +76,11 @@ Manage your money on Sui. The product that owns save / credit / swap / charts. E
 
 Engine canvas templates render inline in chat:
 - **Portfolio timeline** — historical net worth from `PortfolioSnapshot` (90/180/365 day windows)
-- **Yield comparison** — current/historical APYs across NAVI/Volo/Walrus
+- **Yield projector** — current/projected APYs on NAVI savings positions
 - **Health factor over time** — HF series with liquidation threshold band
 - **Spending breakdown** — categorized outflow from `Payment` table
 
-Canvas rendering: engine emits `{ type: 'canvas', html: '...' }` SSE event → audric renders `<iframe srcDoc={html} />`. Templates live in `apps/web-v2/components/engine/cards/canvas/`.
+Canvas rendering: the engine emits a structured canvas tool-result that `ToolResultRouter` dispatches to a React `CanvasTemplateRenderer` (NOT `<iframe srcDoc>`). Templates live in `apps/web-v2/components/audric/cards/canvas/`.
 
 **Don't fetch on the canvas critical path.** Pre-compute via cron and read from Prisma. The canvas is a render of pre-aggregated data, not a query layer.
 

@@ -2,7 +2,7 @@
 
 **Your money, handled.**
 
-Conversational finance on [Sui](https://sui.io). Save, pay, send, borrow — all by talking to your AI financial agent. Built on [t2000](https://t2000.ai) infrastructure.
+Conversational finance on [Sui](https://sui.io). Save, pay, send, swap, borrow — all by talking to your AI financial agent. Non-custodial, gas sponsored, every action confirmed by a tap. Built on [t2000](https://t2000.ai) infrastructure.
 
 **Live at [audric.ai](https://audric.ai)**
 
@@ -10,132 +10,83 @@ Conversational finance on [Sui](https://sui.io). Save, pay, send, borrow — all
 
 ## The five products
 
-Audric is exactly five products. Everything you can do is one of them. (S.18 reverted S.17's Finance retirement — Intelligence was carrying both "the moat" and "the home for every financial verb," and Send/Receive overlapped Pay. Finance now owns save/credit/swap/charts; Pay owns send/receive.)
+Audric is exactly five products — everything you can do is one of them.
 
 | Product | Description |
 |---------|-------------|
-| 🪪 **Audric Passport** | Trust layer — sign in with Google, non-custodial Sui wallet in 3 seconds, every write taps to confirm, sponsored gas. Wraps every other product. |
-| 🧠 **Audric Intelligence** | The brain (the moat) — 4 systems: Agent Harness (26 tools), Reasoning Engine (12 guards), Memory (MemWal vector store), AdviceLog. Multi-step orchestration ships as **14 skills** (markdown playbooks in `@t2000/mcp` baked into the published bundle, exposed to Cursor / Claude Desktop as MCP prompts). Engineering-facing brand; users experience it as "Audric just understood me." |
-| 💰 **Audric Finance** | Manage your money on Sui — Save (NAVI lend, 3–8% APY on USDC or USDsui — strategic exception added in v0.51.0), Credit (NAVI borrow USDC or USDsui against your savings, health factor visible — repay must use the same asset as the borrow), Swap (Cetus aggregator across 20+ DEXs, 0.1% fee), Charts (interactive yield/health/portfolio viz from chat). Every write taps to confirm via Passport. |
-| 💸 **Audric Pay** | Money primitive — send USDC to anyone, receive via payment links / QR. Free, global, instant on Sui. No bank, no borders, no fees. |
-| 🛒 **Audric Store** | Creator marketplace at `audric.ai/username`. Sell AI-generated music, art, ebooks in USDC. **Coming soon (Phase 5).** |
+| 🪪 **Passport** | Trust layer — sign in with Google, non-custodial Sui wallet in seconds, every write taps to confirm, gas sponsored. Wraps every other product. |
+| 🧠 **Intelligence** | The brain (the moat) — an agent that understands your finances, reasons about each decision behind safety guards, and remembers context across sessions. |
+| 💰 **Finance** | Manage your money on Sui — Save (NAVI lending, USDC/USDsui), Credit (borrow against savings with the health factor always visible), Swap (Cetus best-route across 20+ DEXs), and interactive charts — from chat. |
+| 💸 **Pay** | Send USDC to anyone, receive via payment links + QR. Free, global, instant. No bank, no borders, no fees. |
+| 🛒 **Store** | Creator marketplace at `audric.ai/username`. Sell AI-generated music, art, and ebooks in USDC. **Coming soon.** |
 
 ## How it works
 
-1. **Sign in with Google** — no seed phrase, no keys, no downloads (zkLogin)
-2. **Fund your wallet** — deposit USDC to your Sui address
-3. **Talk** — tell Audric what you need
+1. **Sign in with Google** — no seed phrase, no keys, no downloads (zkLogin).
+2. **Fund your wallet** — deposit USDC to your Sui address.
+3. **Talk** — tell Audric what you need.
 
-Your money lives in a non-custodial wallet. Audric executes transactions, but you approve every one. Zero gas fees.
+Your money lives in a non-custodial wallet. Audric proposes transactions; you approve every one with a tap. Gas is sponsored, so you never need SUI to transact.
+
+## Audric Intelligence — the moat
+
+> **Not a chatbot. A financial agent.** Four systems work together to understand your money, reason about decisions, and get smarter over time. Every action still waits on your Passport tap-to-confirm.
+
+- **🎛️ Agent Harness** — 26 tools (18 read + 8 write) for balances, savings, lending, swaps, payments, payment links, on-chain analytics, and pricing. Read tools run in parallel; writes require your confirmation and execute sequentially.
+- **⚡ Reasoning Engine** — adaptive thinking effort per turn, 12 safety guards across three tiers (Safety > Financial > UX), preflight input validation, and prompt caching. Multi-step intents are guided by skills (markdown playbooks shipped from `@t2000/mcp`).
+- **🧠 Memory** — long-term facts (preferences, goals, risk tolerance, on-chain patterns) in `@mysten-incubation/memwal`, recalled each turn; plus a daily on-chain orientation snapshot. Used silently to calibrate answers — never surfaced as nudges.
+- **📓 AdviceLog** — every recommendation is logged so the agent doesn't contradict itself across sessions.
+
+Tool results render as **rich cards** (per-asset balance, savings, health, rates, swap quotes with route diagrams, receipts, payment links, analytics) and **interactive canvases** (portfolio timeline, yield projector, health simulator, and more) delivered in-chat.
 
 ## Stack
 
 | Layer | Technology |
 |-------|------------|
-| Framework | Next.js 15 (App Router) |
-| Auth | zkLogin via Enoki (Google OAuth → Sui wallet) |
-| Gas | Enoki sponsored transactions (zero gas for users) |
-| AI | `@t2000/engine` — 26 tools (18 read + 8 write), reasoning engine, extended thinking, canvas. Skills (multi-step playbooks) ship from `@t2000/mcp`. |
-| Database | NeonDB (Prisma) — 15 models (users, user preferences, profiles, memories, financial context, advice log, conversation log, session usage, payments, watch addresses, linked wallets, portfolio snapshots, turn metrics, app events, service purchases) |
-| Sessions | Upstash Redis (KV) |
-| Styling | Tailwind CSS v4, Geist Design System (via `@t2000/ui`) |
+| Framework | Next.js 16 (App Router, Turbopack), React 19 |
+| AI | AI SDK v6 (`useChat`) driving `@t2000/engine`, via Vercel AI Gateway |
+| Auth | zkLogin via Enoki (Google OAuth → Sui wallet), sponsored gas |
+| Chain | `@mysten/sui` v2.x + `@mysten/payment-kit` |
+| Data | Neon Postgres (Prisma, 13 models); Upstash Redis for sessions; `@mysten-incubation/memwal` for agent memory |
+| Styling | Tailwind v4 + Geist Design System. Token primitives from `@t2000/ui/tokens`; the shadcn layer + Audric's signal accent in `app/globals.css` (guarded by `pnpm check:ads`) |
 | Hosting | Vercel |
-
-## Audric Intelligence — the 4-system moat
-
-> **Not a chatbot. A financial agent.** Four systems work together to understand your money, reason about decisions, and get smarter over time. Every action still waits on Audric Passport's tap-to-confirm.
-
-### 🎛️ Agent Harness — 26 tools, one agent
-
-18 read tools + 8 write tools covering balance checks, savings (`save_deposit`, `withdraw`), lending (`borrow`, `repay_debt`), swaps (`swap_quote`, `swap_execute`), payments (`send_transfer`), payment links, on-chain analytics, BlockVision-backed pricing (`token_prices`), reward compounding (`pending_rewards` + `harvest_rewards`), and SuiNS resolution (`resolve_suins`). Read tools execute in parallel; write tools require user Passport confirmation and execute sequentially under a transaction mutex (`TxMutex`).
-
-> **Post-S.245 + S.269 + S.277 (May 2026):** Down from 37 tools. `pay_api` + `mpp_services` (S.245), `save_contact` + the 3 invoice tools (S.269), and the Volo trio + `web_search` + `protocol_deep_dive` (S.277 "Earns Its Keep" audit) were cut from the engine surface — paid-API commerce returns as Audric Store, invoicing collapses into payment links (label/memo encode invoice context), and Volo liquid staking remains available in `@t2000/sdk` + `@t2000/cli` + `@t2000/mcp` for non-Audric consumers.
-
-### ⚡ Reasoning Engine — thinks before it acts
-
-- **Extended thinking** — always-on for Sonnet/Opus (adaptive mode). Haiku for low-effort queries
-- **Adaptive effort** — classifies each turn as `low`/`medium`/`high`/`max` and adjusts model + thinking depth
-- **Guard runner** — 12 guards (10 pre-execution + 2 post-execution hints) across 3 priority tiers (Safety > Financial > UX) enforce balance freshness, health factor limits, slippage thresholds, irreversibility warnings, address-source / address-scope / asset-intent gates, swap preview confirmation, and retry protection
-- **Skills (multi-step playbooks)** — 14 markdown playbooks shipped from `@t2000/mcp`, baked into the published npm bundle at build time and exposed to MCP clients (Cursor, Claude Desktop, claude-code CLI) as `skill-<name>` prompts. The 6 multi-step playbooks (`t2000-rebalance`, `t2000-account-report`, `t2000-borrow` with safe-borrow logic, `t2000-withdraw` with emergency-close logic, `t2000-save` with swap-and-save, `t2000-send` with contact-resolution) absorbed the orchestration that pre-Phase 6 lived in a YAML recipe runtime in `@t2000/engine` (deleted v0.7a Phase 6, May 2026). Skill content guides the LLM through multi-step intents; the engine just runs the tools the LLM picks.
-- **Preflight validation** — input validation on send, swap, pay, borrow, and save before execution
-- **Prompt caching** — static system prompt + tool definitions cached across turns for lower latency and cost
-
-### 🧠 Memory — knows your finances (MemWal-backed)
-
-Long-term memory lives in `@mysten-incubation/memwal` (Mysten vector memory). Every turn, the `prepareStep` hook calls `memwal.recall(latestUserMessage)` to fetch top-K relevant facts → injected as a `<memory_recall>` system-prompt block. After the turn, the `onFinish` callback calls `memwal.analyze()` to extract new facts (preferences, risk tolerance, goals, on-chain patterns) from the conversation. Plus a short-term daily on-chain orientation snapshot — `UserFinancialContext` (savings/wallet/debt USD, health factor, current APY, recent activity) — refreshed at 02:00 UTC and injected as a `<financial_context>` block. Both used silently to calibrate tone + recommendations — never surfaced as nudges.
-
-> **v0.7d Phase 6 Block A (2026-05-21):** the previous `UserFinancialProfile` (Claude-inferred preferences) + `UserMemory` (Jaccard-deduped facts) + `ChainFact` (7 classifier rows) Prisma tables were dropped. MemWal absorbs all three surfaces into a single vector store with organic fact extraction.
-
-### 📓 AdviceLog — remembers what it told you
-
-`record_advice` tool writes `AdviceLog` rows; `buildAdviceContext()` hydrates last 30 days into every turn so the chat doesn't contradict itself across sessions. Episodic memory (`UserMemory`) and the full conversation log run alongside it for the future self-hosted model migration.
-
-> **What was deleted in the April 2026 simplification:** Copilot suggestions, scheduled actions / DCA, morning briefings, rate alerts, auto-compound, the features-budget allowance, the proactive-nudges pipeline, savings-goal milestone celebrations, follow-up queues, and the proposal pipeline behind `BehavioralPattern`. zkLogin can't sign without user presence — "autonomous" was reminders dressed up as agency. **Update (S.103, May 2026):** the broader **savings-goal layer was fully retired in SPEC 17** — `SavingsGoal` Prisma table, 4 `savings_goal_*` engine tools, GoalsPanel UI, settings tab, and `openGoals` snapshot field all dropped. The "track my savings progress" job is now served by `health_check` + `portfolio_overview` + `yield_summary`. See the S.0–S.19 + S.103 entries in [`audric-build-tracker.md`](https://github.com/mission69b/t2000/blob/main/audric-build-tracker.md) for the locked decisions on what we will not bring back.
-
-### What shipped recently — Spec 1 + Spec 2
-
-Two harness upgrades on top of the 4-system base:
-
-| Spec | Versions | What it added |
-|---|---|---|
-| **Spec 1 — Correctness** | `@t2000/engine` v0.41.0 → v0.50.3 | `attemptId` UUID v4 stamped on every `pending_action` (stable join key from action → on-chain receipt → `TurnMetrics.pendingActionOutcome` row). `modifiableFields` registry — fields the user can edit on a confirm card without losing the LLM's reasoning. `EngineConfig.onAutoExecuted` hook so `auto`-permission writes (currently none in Audric) participate in the same telemetry as confirm-gated ones. |
-| **Spec 2 — Intelligence** | `@t2000/engine` v0.47.0 → v0.54.1 | BlockVision swap — replaced 7 `defillama_*` tools with one `token_prices` tool; `balance_check` + `portfolio_analysis` rewired to BlockVision Indexer REST. Sticky-positive cache + retry/circuit breaker for graceful 429 handling. `<financial_context>` orientation block injected at every engine boot from the daily 02:00 UTC `UserFinancialContext` snapshot — every chat starts oriented, no warm-up tool calls. `attemptId`-keyed resume so two pending actions in the same turn never clobber each other's outcome. **S.277 (May 2026):** `protocol_deep_dive` retired — engine no longer talks to DefiLlama; `rates_info` covers the in-product safety lens. |
-
-> Specs are local working documents (`AUDRIC_HARNESS_CORRECTNESS_SPEC_v1.3.md`, `AUDRIC_HARNESS_INTELLIGENCE_SPEC_v1.4.1.md`). Cross-repo contracts live in `audric/.cursor/rules/audric-transaction-flow.mdc`, `audric/.cursor/rules/write-tool-pending-action.mdc`, and `t2000/.cursor/rules/agent-harness-spec.mdc`.
-
-### Canvas Visualizations
-
-Interactive HTML canvases rendered in-chat: portfolio timeline, activity heatmap, spending breakdown, yield projector, health simulator, watch list, and full portfolio dashboard. Generated via the `render_canvas` tool and delivered as `canvas` SSE events.
-
-### Rich Cards
-
-Structured card types for tool results: balance, savings, health, staking, protocol deep dive, price, swap quote, transaction history, receipts, spending, yield, activity summary, payment links, and invoices.
-
-### Additional Features
-
-- **Health Factor in chat** — surfaced prominently in `health_check` and `balance_check` cards. As of S.31 (2026-04-29) there are zero proactive surfaces; HF is shown when the user asks (and chat naturally surfaces it whenever they touch credit)
-- **Session pre-fetch** — balance + savings data injected at turn 0 for faster first responses
-- **Streaming tool dispatch** — read-only tools fire mid-stream before the LLM finishes
-- **Tool result budgeting** — large results auto-truncated with re-call hints
-- **Microcompact** — deduplicates identical tool calls in conversation history
-- **Daily-free billing** — 5 sessions per rolling 24h for unverified users, 20 for verified. No paywall, no allowance setup
-- **Unified data layer** — centralized portfolio + activity modules consumed by all API routes, canvases, and engine context
 
 ## Architecture
 
 ```
-audric.ai (this repo)
-├── @t2000/engine    ← Agent engine (26 tools, reasoning, MCP, streaming, skills via @t2000/mcp)
-├── @t2000/sdk       ← Core SDK (wallet, balance, transactions)
-├── @suimpp/mpp      ← MPP payment client (Sui USDC)
-└── @mysten/sui      ← Sui blockchain client
+audric.ai (this repo, apps/web-v2)
+├── @t2000/engine        ← Agent engine (tools, reasoning, MCP, streaming)
+├── @t2000/sdk           ← Core SDK (wallet, balance, transactions)
+├── @t2000/ui            ← Geist DS token primitives
+├── @mysten/payment-kit  ← Sui payment links / pay-URI client (USDC)
+└── @mysten/sui          ← Sui blockchain client
 
 t2000.ai (separate repo)
-├── CLI, SDK, MCP server, gateway, contracts
-└── Infrastructure that powers Audric
+└── CLI, SDK, MCP server, gateway, contracts — the infrastructure that powers Audric
 ```
+
+See [`apps/web-v2/README.md`](./apps/web-v2/README.md) for app-level docs (routes, scripts, environment).
 
 ## Development
 
 ```bash
 pnpm install
-pnpm dev              # Start dev server (Turbo + Next.js)
-pnpm build            # Production build
-pnpm typecheck        # TypeScript check
-pnpm lint             # ESLint
-pnpm test             # Vitest
+pnpm dev          # Start dev server (Turbo + Next.js, port 3001)
+pnpm build        # Production build
+pnpm typecheck    # TypeScript check (tsc --noEmit)
+pnpm lint         # Biome via ultracite
+pnpm check:ads    # Guard against legacy ADS-token reintroduction
+pnpm test         # Vitest
 ```
 
-### Environment
-
-Copy `.env.example` to `.env.local` and fill in the required values. See `CLAUDE.md` for the full list.
+Copy `.env.example` to `.env.local` and fill in the required values — they're validated at boot by the Zod schema in `apps/web-v2/lib/env.ts`. See `CLAUDE.md` for the full list.
 
 ## Brand
 
-- **Audric** is the consumer product — what users see
-- **t2000** is the infrastructure — what developers build with
-- **suimpp** is the protocol — the open payment standard
+- **Audric** is the consumer product — what users see.
+- **t2000** is the infrastructure — what developers build with.
+- **suimpp** is the protocol — the open payment standard.
 
 ## License
 
-MIT
+[AGPL-3.0](./LICENSE). Audric is open source, but its network-use copyleft means anyone who runs a modified version as a hosted service must release their changes under the same license. (The t2000 infrastructure packages are MIT.)

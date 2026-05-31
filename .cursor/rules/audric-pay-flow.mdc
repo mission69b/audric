@@ -50,7 +50,7 @@ Move money. Free, global, instant on Sui. The Audric product that owns send, rec
    - Parse balanceChanges client-side (negative = sent)
    - Show: amount, recipient, txDigest (link to Sui Vision)
    - Save to Payment table
-   - POST /api/engine/resume with attemptId + balanceChanges
+   - addToolResult → next /api/chat turn carries attemptId + balanceChanges → inline resume
 ```
 
 ## Payment link flow
@@ -75,12 +75,9 @@ Move money. Free, global, instant on Sui. The Audric product that owns send, rec
 5. Recipient sees the paid status in their activity feed (lib/activity-data.ts)
 ```
 
-## Invoice flow
+## Invoice flow — RETIRED (S.269 / V07E_INVOICE_DEPRECATION, 2026-05-23)
 
-Same as payment-link but:
-- The `Payment` row carries `type: 'invoice'` and a `dueDate`.
-- Email sent to the payer via Resend.
-- Reminder cron (TODO — not currently active) would re-send before due date.
+Invoice as a distinct surface no longer exists. The `create_invoice` / `list_invoices` / `cancel_invoice` engine tools are deleted, and Phase 5 dropped the invoice-only `Payment` columns (`lineItems`, `dueDate`, `recipientName`, `recipientEmail`, `sentAt`, `reminderSentAt`). `Payment.type` is now fixed at `"link"` (CHECK-constrained). Invoicing collapsed into payment links: set `label` / `memo` on the link to encode invoice context. Legacy `type='invoice'` rows still resolve read-only via `/api/payments/[slug]`; `/api/internal/payments` returns `410 Gone` for any `type: 'invoice'` write.
 
 ## QR flow
 
@@ -104,9 +101,6 @@ const display = Math.round(amount * 100) / 100;
 
 // ❌ Assume sponsored gas is unlimited
 // — server caps gas budget per request. Reject txs that simulate over budget.
-
-// ❌ Email a payment link without the recipient consenting
-// — invoice flow requires the payer's email up-front; consent is implicit by sharing.
 ```
 
 ## Cross-asset support

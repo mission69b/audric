@@ -84,7 +84,7 @@ Client builds intent (e.g. "save 10 USDC")
   → Client signs with ephemeral key (zkLogin signature)
   → POST /api/transactions/execute  (server) — submits sponsored tx with both sigs
   → Server returns { tx (digest), balanceChanges }
-  → Client renders receipt + calls /api/engine/resume with attemptId
+  → Client renders receipt + addToolResult → next /api/chat turn carries attemptId → inline resume
 ```
 
 Server-side (`/api/transactions/prepare`) MUST:
@@ -130,7 +130,7 @@ The v0.7a engine drain (Vercel AI SDK + MemWal Path C migration of `@t2000/engin
 
 4. **Sponsored tx pipeline shape is fixed.** Every Audric write uses the exact 3-leg pattern: client builds intent → POST `/api/transactions/prepare` (with `x-zklogin-jwt`, server validates + asks Enoki to sponsor + returns `{sponsoredTxBytes, sponsoredSig}`) → client signs with `ZkLoginSigner.signTransaction(txBytes)` → POST `/api/transactions/execute` (sig + digest only, NO `x-zklogin-jwt` — middleware excludes this path via `SEPARATE_AUTH_PREFIXES`) → server returns `{tx, balanceChanges}`. Engine refactors must NOT bypass this with direct SDK calls — the engine emits a `PendingAction`, the host (audric/web) drives the 3-leg sponsorship.
 
-5. **`attemptId` resume must survive every refactor.** After a confirmed write, the host calls `/api/engine/resume` with `{attemptId, txDigest, balanceChanges}` so engine `TurnMetrics` and `PendingAction` outcomes stay consistent. v0.7a Phase 1 (provider migration), Phase 3 (engine loop replacement), and Phase 5 (streaming wire-format) all touch the layer that emits `attemptId` — verify the UUID v4 round-trips byte-for-byte through whatever new translation layer lands. The bridge layer at `packages/engine/src/bridge/` already preserves `attemptId` through the AI SDK v6 `data-pending-action` UIMessageChunk part (verified by wire-byte equivalence test on 6 fixture turns).
+5. **`attemptId` resume must survive every refactor.** After a confirmed write, the host `addToolResult`s the outcome and the next `/api/chat` turn carries `{attemptId, txDigest, balanceChanges}` for the inline resume (no standalone `/api/engine/resume` route) so engine `TurnMetrics` and `PendingAction` outcomes stay consistent. v0.7a Phase 1 (provider migration), Phase 3 (engine loop replacement), and Phase 5 (streaming wire-format) all touch the layer that emits `attemptId` — verify the UUID v4 round-trips byte-for-byte through whatever new translation layer lands. The bridge layer at `packages/engine/src/bridge/` already preserves `attemptId` through the AI SDK v6 `data-pending-action` UIMessageChunk part (verified by wire-byte equivalence test on 6 fixture turns).
 
 6. **Dual expiry — JWT `exp` (~1h) AND Sui `maxEpoch` (~48h).** Server routes enforce JWT validity via `jose` against Google JWKS. Client must not present a session that has a "valid epoch" but an expired OIDC JWT — `useZkLogin` + `isJwtExpired` already check both. v0.7a engine refactors don't touch this layer, but be aware: if a phase PR adds a "long-running session" feature, it must respect both clocks.
 
@@ -149,7 +149,7 @@ For each phase 1–8 release, the founder runs this 5-user smoke against the aud
 | 1 | Sign in with **5 distinct Google accounts** (use 5 separate browser profiles or incognito sessions). For each: confirm the derived Sui address is the SAME as on the previous phase release (record addresses in a private notes file). | All 5 addresses unchanged. | Address drift = `aud` (`NEXT_PUBLIC_GOOGLE_CLIENT_ID`) regression. STOP — block merge. |
 | 2 | For each user, run a **read flow**: open the dashboard, ask the agent "what's my portfolio?". | Engine responds with portfolio breakdown via `portfolio_analysis` tool; values match BlockVision UI. | Wrong values = read-tool regression OR canonical fetcher regression. |
 | 3 | For each user, run a **write flow** (sub-threshold for auto-execute, ~$1 USDC): "save 1 USDC". | Auto-execute path fires; `attemptId` stamped in TurnMetrics; tx digest returned; receipt rendered. | Missing `attemptId` = engine S44 regression. Failed receipt = sponsored-tx 3-leg regression. |
-| 4 | For each user, run a **confirm-tier write** (~$50 USDC): "save 50 USDC". | PermissionCard renders; user taps confirm; sponsored-tx pipeline executes; receipt + `/api/engine/resume` POST observed in network tab. | Missing PermissionCard = pending_action C43 regression. Resume failure = `attemptId` round-trip regression. |
+| 4 | For each user, run a **confirm-tier write** (~$50 USDC): "save 50 USDC". | PermissionCard renders; user taps confirm; sponsored-tx pipeline executes; receipt renders + the follow-up `/api/chat` resume turn (carrying the tool result) observed in network tab. | Missing PermissionCard = pending_action C43 regression. Resume failure = `attemptId` round-trip regression. |
 | 5 | For 1 of the 5 users, run a **voice flow** (Phase 1+ only — voice/transcribe is R3 in v0.7a): use the mic input, ask the agent something, confirm voice-to-text round-trips and the agent responds. | Voice transcription returns text in <2s; agent responds normally. | Failure = R3 regression — block Phase 1 merge. |
 
 Each step's PASS/FAIL gets recorded in `audric-build-tracker.md` under the phase release entry. If any step fails, roll back the phase release before debugging.

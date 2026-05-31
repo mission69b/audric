@@ -18,19 +18,18 @@ suimpp (separate)    → Protocol: suimpp.dev, @suimpp/mpp, @suimpp/discovery
 
 ```
 audric/
-├── apps/web/                   ← audric.ai (Next.js, Vercel)
-│   ├── app/                    ← App Router pages + API routes (75+ routes, 20 internal)
-│   ├── components/             ← UI components (auth, dashboard, engine, settings, ui)
-│   │   └── engine/cards/       ← 21 rich card components + 8 canvas components
-│   ├── hooks/                  ← React hooks (useEngine, useBalance, useChipFlow, etc.)
+├── apps/web-v2/                ← audric.ai (Next.js 16, Vercel). The ONLY app (apps/web archived S.253).
+│   ├── app/                    ← App Router pages + API routes; chat at app/chat/, API at app/api/chat/
+│   ├── components/             ← UI components (auth, settings, pay, ui, audric)
+│   │   └── audric/cards/       ← 17 rich card components + canvas/ subdir
+│   ├── hooks/                  ← React hooks (use-user-status, etc.)
 │   ├── lib/                    ← Utilities, types, constants
-│   │   ├── engine/             ← engine-factory.ts, engine-context.ts (silent context assembly)
-│   │   ├── chain-memory/       ← Chain classifiers (silent context only — proposal pipeline removed S.5)
+│   │   ├── audric/             ← chat-route helpers (resume-outcome, memwal-*, system-prompt, …)
 │   │   ├── portfolio.ts        ← Canonical portfolio fetcher (SSOT for wallet + positions + DeFi)
 │   │   ├── navi-positions.ts   ← INTERNAL helper used by portfolio.ts (NAVI lending state)
-│   │   └── activity-data.ts    ← Unified activity data (app events + chain txs)
-│   ├── prisma/                 ← 16 models (users, profiles, memories, financial context, advice log, conversation log, session usage, goals, contacts, payments, watch addresses, linked wallets, portfolio snapshots, turn metrics, app events, service purchases)
-│   └── types/                  ← TypeScript type definitions
+│   │   └── env.ts              ← Zod env schema + typed proxy (the env gate)
+│   ├── prisma/                 ← 13 models (User, UserPreferences, SessionUsage, ServicePurchase, AppEvent, AdviceLog, Payment, PortfolioSnapshot, TurnMetrics, UserFinancialContext, Chat, Message, Vote)
+│   └── scripts/                ← check-ads-tokens.mts + smoke scripts
 ├── patches/                    ← pnpm patches (@naviprotocol/lending)
 └── pnpm-workspace.yaml
 ```
@@ -42,9 +41,9 @@ audric/
 | Product | What it is | Implementation | Status |
 |---------|-----------|----------------|--------|
 | 🪪 **Audric Passport** | Trust layer — zkLogin via Google, non-custodial Sui wallet, tap-to-confirm consent on every write, sponsored gas. Wraps every other product. | `@t2000/sdk` + Enoki + `@mysten/dapp-kit` | Live |
-| 🧠 **Audric Intelligence** | Brain (the moat) — 4 systems orchestrate every money decision (Agent Harness · Reasoning Engine · Memory · AdviceLog; pre-Block-A had 5, MemWal absorbed Silent Profile + Chain Memory in 2026-05-21). Engineering-facing brand; users experience it as "Audric just understood me." | `@t2000/engine` (26 tools, 12 guards post-S.277) + `@t2000/mcp` (14 skills as MCP prompts) + audric-side `record_advice` + silent context (`engine-context.ts`, `<financial_context>` daily snapshot from `UserFinancialContext`) | Live |
-| 💰 **Audric Finance** | Manage your money on Sui — Save (NAVI lend, 3–8% APY USDC), Credit (NAVI borrow, health factor), Swap (Cetus aggregator, 20+ DEXs, 0.1% fee), Charts (yield/health/portfolio viz). Every write taps to confirm via Passport. | `@t2000/sdk` NAVI builders + `cetus-swap.ts` + `@t2000/engine` chart canvas templates + audric `/api/internal/*` read endpoints | Live |
-| 💸 **Audric Pay** | Money primitive — send USDC, receive via payment links / invoices / QR. Free, global, instant on Sui. | `@t2000/sdk` direct Sui tx + payment-link contract + invoice flows | Live |
+| 🧠 **Audric Intelligence** | Brain (the moat) — 4 systems orchestrate every money decision (Agent Harness · Reasoning Engine · Memory · AdviceLog; pre-Block-A had 5, MemWal absorbed Silent Profile + Chain Memory in 2026-05-21). Engineering-facing brand; users experience it as "Audric just understood me." | `@t2000/engine` 4.1.0 (26 tools, 12 guards post-S.277) + `@t2000/mcp` (8 skills as MCP prompts) + audric-side `record_advice` + silent context (`lib/audric/system-prompt.ts`, `<financial_context>` daily snapshot from `UserFinancialContext`) | Live |
+| 💰 **Audric Finance** | Manage your money on Sui — Save (NAVI lend, 3–8% APY on USDC or USDsui — strategic exception per `savings-usdc-only`), Credit (NAVI borrow USDC or USDsui, health factor), Swap (Cetus aggregator, 20+ DEXs, 0.1% fee), Charts (yield/health/portfolio viz). Every write taps to confirm via Passport. | `@t2000/sdk` NAVI builders + `cetus-swap.ts` + `@t2000/engine` chart canvas templates | Live |
+| 💸 **Audric Pay** | Money primitive — send USDC, receive via payment links / QR. Free, global, instant on Sui. (Invoicing collapsed into payment links — S.269.) | `@t2000/sdk` direct Sui tx + `@mysten/payment-kit` payment links | Live |
 | 🛒 **Audric Store** | Creator marketplace at `audric.ai/username`. AI-generated music/art/ebooks sold in USDC. 92% to creator. | `@t2000/sdk` + Walrus + payment links | Coming soon (Phase 5) |
 
 ### Silent intelligence (Audric Intelligence's silent context layer)
@@ -65,13 +64,13 @@ audric/
 
 ## Critical Rules
 
-1. **USDC only for saves/borrows.** Send and swap support all Tier 2 assets. See `.cursor/rules/usdc-only-saves.mdc`.
+1. **Saves/borrows = USDC or USDsui only.** Send and swap support a wider asset set. See `.cursor/rules/usdc-only-saves.mdc`.
 2. **Never add Invest or Swap as products.** Savings covers yield.
 3. **Engine from npm.** Import `@t2000/engine` from npm — never copy engine code into this repo.
 4. **Server Components by default.** Only add `'use client'` when needed.
-5. **Check t2000 PRODUCT_FACTS.md** before writing documentation or marketing copy.
-6. **Never read `process.env.X` directly.** Every server-side env access must go through the typed `env` proxy from `apps/web/lib/env.ts`. The Zod schema runs at boot via `instrumentation.ts` and fails fast on misconfiguration. Direct reads bypass the gate that catches the empty-string-in-Vercel bug class (S.25 incident). New env var: add to schema first, then read via `env.X`. See `.cursor/rules/env-validation-gate.mdc`.
-7. **Never break the resume contract.** When the engine yields `pending_action`, persist `attemptId` on `TurnMetrics`, then on execute success call `/api/agent/resume` with `{ attemptId, txDigest, balanceChanges }`. Skipping `attemptId` orphans the action and the agent will offer to retry. See `.cursor/rules/audric-transaction-flow.mdc` + t2000's `agent-harness-spec.mdc`.
+5. **Check `developers.t2000.ai`** (Mintlify, the docs SSOT) before writing documentation or marketing copy. `PRODUCT_FACTS.md` was retired.
+6. **Never read `process.env.X` directly.** Every server-side env access must go through the typed `env` proxy from `apps/web-v2/lib/env.ts`. The Zod schema runs at boot via `instrumentation.ts` and fails fast on misconfiguration. Direct reads bypass the gate that catches the empty-string-in-Vercel bug class (S.25 incident). New env var: add to schema first, then read via `env.X`. See `.cursor/rules/env-validation-gate.mdc`.
+7. **Never break the resume contract.** When the engine yields `pending_action`, persist `attemptId` on `TurnMetrics` at chat-time. Resume is inline in `/api/chat` (the standalone `/api/engine/resume` route is gone): the client `addToolResult` round-trips the outcome on the next turn, and `/api/chat` runs `extractResumeOutcomes()` + `updateMany({ where: { attemptId } })`. Skipping `attemptId` orphans the action and the agent will offer to retry. See `.cursor/rules/write-tool-pending-action.mdc` + t2000's `agent-harness-spec.mdc`.
 8. **Single source of truth for portfolio data.** Never re-implement balance / position / pricing fetches in route handlers — always go through `lib/portfolio.ts` (`getPortfolio`) and `lib/activity-data.ts`. Enforced today by convention + code review (the legacy `audric/canonical-portfolio` ESLint rule lived in archived `apps/web`; web-v2 uses Biome with no equivalent rule shipped yet — adding one is a worthwhile follow-up). See `.cursor/rules/audric-canonical-portfolio.mdc`.
 9. **All writes are `permissionLevel: 'confirm'`.** No write tool ever auto-executes server-side under zkLogin. If you find yourself wanting `auto` for a write, you've broken the user-consent contract.
 
@@ -83,9 +82,11 @@ audric/
 |---------|---------|
 | `@t2000/engine` | Agent engine — AISDKEngine (wraps Vercel AI SDK v6 `streamText`), tools, streaming, MCP |
 | `@t2000/sdk` | Core SDK — wallet, balance, transactions, adapters |
-| `@suimpp/mpp` | MPP payment client (Sui USDC) |
+| `@mysten/payment-kit` | Sui payment links / pay-URI client (USDC) |
+| `@t2000/ui` | Geist DS token primitives (`@import "@t2000/ui/tokens"`) |
 | `@mysten/sui` | Sui blockchain client |
 | `@mysten/dapp-kit` | Wallet connection (zkLogin) |
+| `@mysten-incubation/memwal` | Vector memory (long-term facts) |
 | `@upstash/redis` | Session storage (Upstash KV) |
 
 ---
@@ -94,24 +95,17 @@ audric/
 
 | Document | What it covers | Read before |
 |----------|---------------|-------------|
-| `apps/web/lib/env.ts` | Zod env schema + typed proxy. Single gate for every `process.env` read | Adding/changing env vars |
-| `apps/web/docs/PORTFOLIO_REGRESSION_MATRIX.md` (local-only) | Manual SSOT verification checklist across surfaces | Post-merge SSOT verification |
-| `apps/web/docs/AUDIT_FINDINGS.md` | Reusable audit findings + post-mortem patterns | Reading audit history |
-| `apps/web/docs/POST_MORTEM_2026-05-IDOR.md` | SPEC 30 IDOR post-mortem | SPEC 30 context |
-| `apps/web/docs/SECURITY_ADVISORY_2026-05-IDOR.md` | Public-facing IDOR advisory | Linking from `/security` |
-| `apps/web/docs/runbooks/RUNBOOK_incident_response.md` | Incident response runbook (SPEC 30 Phase 1C) | Production incident |
-| `apps/web/docs/runbooks/RUNBOOK_scaling_alerts.md` | Scaling alert handling | Production scaling |
-| `apps/web/docs/runbooks/RUNBOOK_spec8_rollout.md` | SPEC 8 (interactive harness) rollout playbook | Reference for new rollouts |
+| `apps/web-v2/lib/env.ts` | Zod env schema + typed proxy. Single gate for every `process.env` read | Adding/changing env vars |
 | `.cursor/rules/audric-transaction-flow.mdc` | Sponsored tx vs SDK direct — which path runs when, attemptId resume contract | Any write/receipt bug |
 | `.cursor/rules/audric-canonical-portfolio.mdc` | Always go through `getCanonicalPortfolio` | Portfolio/wallet/positions read |
 | `.cursor/rules/env-validation-gate.mdc` | The S.25 lesson — env via Zod, never raw `process.env` | Wiring a new env var |
 | `.cursor/rules/zklogin-passport-flow.mdc` | The four pillars + ephemeral key lifecycle + MaxEpoch math | zkLogin / Passport changes |
 | `.cursor/rules/safeguards-defense-in-depth.mdc` | Six layers of safety between user intent and on-chain action | Any change to a safety check |
-| `.cursor/rules/prisma-models-overview.mdc` | What each of the 11 models is for (post-S.254), what owns it | Schema migrations / new tables |
+| `.cursor/rules/prisma-models-overview.mdc` | What each of the 13 models is for, what owns it | Schema migrations / new tables |
 | `.cursor/rules/write-tool-pending-action.mdc` | The pending_action → confirm → resume protocol | New write tool / receipt bug |
 | `.cursor/rules/web-v2-chat-route-architecture.mdc` | Phase map of `apps/web-v2/app/api/chat/route.ts` (the 2,989-line nervous system) + AI SDK v6 conventions + Vercel AI Gateway + HITL inline resume | Touching the chat route or any `lib/audric/*` helper |
 | `.cursor/rules/audric-context-assembly.mdc` | The audric-side content builders that feed each system-prompt layer (companion to t2000's `memory-injection-architecture.mdc`) | Adding/changing context layers |
-| `.cursor/rules/audric-pay-flow.mdc` | send / payment-link / invoice / QR end-to-end | Any Audric Pay change |
+| `.cursor/rules/audric-pay-flow.mdc` | send / payment-link / QR end-to-end (invoicing retired S.269) | Any Audric Pay change |
 | `.cursor/rules/audric-finance-flow.mdc` | save / borrow / withdraw / swap / charts end-to-end | Any Audric Finance change |
 | `.cursor/rules/cron-job-architecture.mdc` | t2000 cron → audric internal API contract + sharding | Cron / batch processing |
 | `.cursor/rules/metrics-and-monitoring.mdc` | What's measured, where it's stored, how to read it | Adding new telemetry |
@@ -126,32 +120,31 @@ audric/
 
 ```
 User types message
-  → POST /api/engine/chat (SSE stream) — daily-free billing gate (5 unverified / 20 verified per rolling 24h)
-  → engine-context.ts: buildFullDynamicContext() → injects profile, memory, advice log, chain facts (all silent)
-  → engine-factory.ts: AISDKEngine → Claude with 26 tools (18 read + 8 write post-S.277 / engine 2.18.0, BlockVision-backed pricing via `token_prices` / `balance_check` / `portfolio_analysis`)
+  → POST /api/chat (SSE stream) — daily-free billing gate (5 unverified / 20 verified per rolling 24h)
+  → system-prompt assembly: <memory_recall> (MemWal) + <financial_context> + advice context (all silent)
+  → Experimental_Agent (AI SDK v6) → Claude with 26 tools (18 read + 8 write, engine 4.1.0; BlockVision-backed pricing via `token_prices` / `balance_check` / `portfolio_analysis`)
   → Read tools (balance, savings, health, analytics) → auto-executed server-side
   → Write tools (save, withdraw, send) → pending_action event
-  → Client displays confirmation card
-  → Client executes transaction on-chain (zkLogin + Enoki gas)
-  → POST /api/engine/resume with execution result
+  → Client displays PermissionCard
+  → Client executes transaction on-chain (zkLogin + Enoki gas) → addToolResult
+  → Next /api/chat turn carries the outcome → inline resume (extractResumeOutcomes + updateMany)
   → Engine continues conversation with result
 ```
 
 ### Canvas delivery flow
 
 ```
-Engine emits render_canvas tool_result with HTML
-  → SSE: { type: 'canvas', html: '...' }
-  → Client renders inside <iframe srcDoc={html} />
-  → Canvas components in components/engine/cards/canvas/
+Engine emits render_canvas tool result (template id + data)
+  → arrives as a tool-result UIMessage part
+  → ToolResultRouter → CanvasCard → CanvasTemplateRenderer (React)
+  → Canvas components in components/audric/cards/canvas/
 ```
 
 ### Internal API routes
 
-20 routes under `/api/internal/` called by t2000 server cron jobs:
+`/api/internal/payments` is the SOLE surviving internal route (the scheduled-action / briefing / outcome-check / follow-up / anomaly-detect routes were all deleted in the April 2026 + v0.7d/v0.7e cleanups):
 - Authenticated via `x-internal-key` header matching `T2000_INTERNAL_KEY` env var
-- Examples: `execute-schedule`, `morning-briefing`, `outcome-check`, `follow-up`, `anomaly-detect`
-- Never called from browser — server-to-server only
+- Called server-side by the engine's payment-link tools (server-to-server only); rejects `type: 'invoice'` with 410 Gone
 
 ### Engine imports
 
@@ -191,15 +184,13 @@ type EngineEvent =
 
 ---
 
-## Multi-wallet linking
-
-Signed-in users can link up to 10 Sui addresses (e.g. a hardware wallet alongside their zkLogin wallet) for aggregated portfolio views inside the chat canvas + settings.
+## Multi-wallet linking — RETIRED
 
 > **🗑️ REMOVED in v0.7e Phase 5 (S.254, 2026-05-22):** the entire multi-wallet aggregation feature (`/api/user/wallets`, `/api/user/wallets/[id]`, `/api/analytics/portfolio-multi`, `LinkedWallet` Prisma model + 3 indexes, `FullPortfolioCanvas` aggregated-portfolio surface) was retired. The current zkLogin flow is single-wallet-per-Google-account by construction — one zkLogin = one Sui address (deterministic from JWT `sub`); multi-wallet was a holdover from pre-zkLogin patterns that no production user exercised. If a future multi-account product surface is needed (e.g., personal + business separation), revisit as a fresh design that respects the zkLogin identity binding.
 
-> **Removed in S.22 (April 2026):** the public `/report/[address]` wallet report (and its `PublicReport` cache). The "Audric would do" suggestions there were promoting features deleted in S.0–S.12 (24/7 alerts, recurring transactions, savings-goal automation), and a second standalone product surface contradicted the chat-first thesis. Heuristic portfolio analysis lives inside chat now via `portfolio_overview` + `health_check`.
+> **Removed in S.22 (April 2026):** the public `/report/[address]` wallet report (and its `PublicReport` cache). The "Audric would do" suggestions there were promoting features deleted in S.0–S.12 (24/7 alerts, recurring transactions, savings-goal automation), and a second standalone product surface contradicted the chat-first thesis. Heuristic portfolio analysis lives inside chat now via `portfolio_analysis` + `health_check`.
 >
-> **Update (S.103, SPEC 17, May 2026):** the broader savings-goal layer is now fully removed — `SavingsGoal` Prisma table, 4 `savings_goal_*` engine tools, `GoalsPanel` settings/dashboard surface, `openGoals` snapshot field, and the heuristic prompt line that nudged "your goal is off-track". Conversational goals ("I want to save $500 by May") are still observable by the agent via memory + `goal_progress` proactive markers, but there is no structured persistence layer. Track savings progress via `health_check` + `portfolio_overview` + `yield_summary`.
+> **Update (S.103, SPEC 17, May 2026):** the broader savings-goal layer is now fully removed — `SavingsGoal` Prisma table, 4 `savings_goal_*` engine tools, `GoalsPanel` settings/dashboard surface, `openGoals` snapshot field, and the heuristic prompt line that nudged "your goal is off-track". Conversational goals ("I want to save $500 by May") are still observable by the agent via memory + `goal_progress` proactive markers, but there is no structured persistence layer. Track savings progress via `health_check` + `portfolio_analysis` + `yield_summary`.
 
 ---
 
@@ -232,7 +223,7 @@ Always fetch through these modules — never query wallet/NAVI/events directly i
 | Feature | What it does |
 |---------|-------------|
 | **Memory (MemWal)** | `prepareStep` hook calls `memwal.recall(latestUserMessage)` and injects `<memory_recall>` block into the system prompt. `onFinish` callback calls `memwal.analyze()` to extract new facts. Replaces both former `UserFinancialProfile` and `UserMemory` Prisma reads. See `lib/audric/memwal-prepare-step.ts` + `lib/audric/memwal-write-callback.ts`. |
-| **Financial Context** | `UserFinancialContext` Prisma model: short-term daily orientation snapshot (savings/wallet/debt USD, health factor, current APY, recent activity). 02:00 UTC cron refresh (migrating to Vercel cron in v0.7d Phase 6 Block B). Injected as `<financial_context>` system-prompt block. **Different from the deleted `UserFinancialProfile` — this is fresh state, not inferred preferences.** |
+| **Financial Context** | `UserFinancialContext` Prisma model: short-term daily orientation snapshot (savings/wallet/debt USD, health factor, current APY, recent activity). 02:30 UTC Vercel cron refresh (`/api/cron/financial-context-snapshot`). Injected as `<financial_context>` system-prompt block. **Different from the deleted `UserFinancialProfile` — this is fresh state, not inferred preferences.** |
 | **Chat Persistence** | `Chat` + `Message` + `Vote` Prisma triple (AI SDK v6 native, post-S.247). Per-message `UIMessage` JSON rows scoped to a parent thread; `Vote` carries per-message thumbs up/down. Used as the future fine-tune dataset (same purpose the deleted `ConversationLog` table served pre-S.254). |
 | **Advice Memory** | `record_advice` engine tool writes `AdviceLog` rows; `buildAdviceContext()` rehydrates last 30 days into every turn |
 
@@ -248,17 +239,17 @@ Always fetch through these modules — never query wallet/NAVI/events directly i
 
 ## Rich Cards + Canvas
 
-### Rich cards (21 components)
+### Rich cards (17 components)
 
-Located in `components/engine/cards/`. Rendered client-side based on `toolName` in `tool_result` events. Registered in `cards/index.ts` via `CARD_RENDERERS` map.
+Located in `components/audric/cards/`. Rendered client-side based on `toolName` in `tool_result` events. Registered via `tool-result-router.tsx`.
 
-Examples: `SavingsCard`, `BalanceCard`, `StakingCard`, `ProtocolCard`, `PriceCard`, `HealthCard`, `TransactionReceiptCard`, `SpendingCard`, `YieldCard`
+Examples: `BalanceCardV2` (per-asset wallet + NAVI savings/debt), `SavingsCard`, `HealthCardV2`, `RatesCardV2`, `PriceCard`, `SwapQuoteCardV2`, `TransactionReceiptCard`, `TransactionHistoryCard`, `PendingRewardsCardV2`, `YieldEarningsCard`, `ActivitySummaryCard`, `PaymentLinkCard`, `ExplainTxCard`, `PortfolioCardV2`. (StakingCard / ProtocolCard retired with their engine tools — S.277.)
 
-### Canvas visualizations (8 components)
+### Canvas visualizations
 
-Located in `components/engine/cards/canvas/`. Rendered inside `<iframe srcDoc>` from `canvas` SSE events.
+Located in `components/audric/cards/canvas/`. Rendered as React via `CanvasTemplateRenderer` (routed through `ToolResultRouter` → `CanvasCard` from the `render_canvas` tool-result part).
 
-Examples: portfolio timeline, activity heatmap, spending breakdown, net worth chart, yield comparison, protocol overview
+Examples: portfolio timeline, activity heatmap, spending breakdown, yield projector, health simulator, watch list, full portfolio dashboard, receive address, DCA planner.
 
 ---
 
@@ -266,85 +257,42 @@ Examples: portfolio timeline, activity heatmap, spending breakdown, net worth ch
 
 - **Package manager:** pnpm (v10.6.2)
 - **Build:** Turbo
-- **Framework:** Next.js 15 (App Router)
-- **Styling:** Tailwind CSS v4 + shadcn/ui patterns
-- **State:** TanStack Query + custom hooks
-- **Database:** NeonDB (Prisma) — 15+ models (users, profiles, memories, goals, schedules, analytics, briefings, conversations, events)
+- **Framework:** Next.js 16 (App Router)
+- **Styling:** Tailwind CSS v4 + Geist Design System (shadcn primitives, Geist-rooted tokens — see `design-system.mdc`)
+- **State:** TanStack Query / SWR + custom hooks
+- **Database:** NeonDB (Prisma) — 13 models (see `prisma-models-overview.mdc`)
 - **Sessions:** Upstash Redis (KV)
-- **Testing:** Vitest + React Testing Library
+- **Lint/format:** Biome via ultracite
+- **Testing:** Vitest
 
 ### Commands
 
 ```bash
-pnpm dev          # Start dev server (Turbo)
-pnpm build        # Production build
-pnpm lint         # ESLint
-pnpm typecheck    # TypeScript check
+pnpm dev          # Start dev server (Turbo, port 3001)
+pnpm build        # Production build (prisma migrate deploy && next build)
+pnpm lint         # Biome via ultracite (`ultracite check`)
+pnpm check:ads    # Guard against legacy ADS-token reintroduction
+pnpm typecheck    # TypeScript check (tsc --noEmit)
 pnpm test         # Run tests (Vitest)
 ```
 
 ---
 
-## Styling — Audric Design System v1.2 (light + dark)
+## Styling — Geist Design System
 
-Source of truth: `apps/web/app/globals.css` + `design_handoff_audric/design_files/colors_and_type.css`.
-The full handoff lives in `design_handoff_audric/`. Implementation history:
-- `IMPLEMENTATION_PLAN.md` — dark-mode build plan (Phases 1–6 + post-launch revisions)
-- `IMPLEMENTATION_PLAN_PHASES_1_14_LIGHT_MARKETING.md` — light theme + marketing reskin (Phases 1–14)
+Source of truth: `apps/web-v2/app/globals.css`. Prototype reference: `t2000-AFI/audric/phase2-*.html` (founder-local). The legacy Agentic Design System (ADS) was decommissioned in R6.9 (2026-05-30) and the whole app rebuilt onto Geist DS (Rock 6 of `SPEC_MARKETING_SITE_REDESIGN.md`).
 
-See also: `.cursor/rules/design-system.mdc` for the day-to-day rules every new component must follow.
+**The canonical day-to-day rules live in `.cursor/rules/design-system.mdc`** (kept in sync with this section — read it before building any component). Summary:
 
-### Fonts
-
-Loaded via `next/font/local` in `apps/web/app/fonts.ts` and injected as CSS variables on `<html>` from `apps/web/app/layout.tsx`. Composed into three semantic stacks in `globals.css`:
-
-- **`font-serif`** — New York (Display / Large / Medium). Headlines, balances, hero numerals.
-- **`font-sans`** — Geist Sans. Default body text; set on `<body>`.
-- **`font-mono`** — Departure Mono (with Geist Mono fallback). Labels, eyebrows, badges, button text, all uppercase + tracking.
-- `apps/web/app/fonts/InstrumentSerif-Regular.ttf` is **only** loaded by `app/opengraph-image.tsx` for the OG image — never used in the running app.
-
-### Color tokens
-
-Every value resolves to a hue/neutral step; no raw hex values in components.
-
-- **Palette:** 9-step neutrals (`--n100` … `--n900`) + 8 hues × 8 steps (Pink `p`, Red `r`, Orange `o`, Yellow `y`, Blue `b`, Teal `t`, Purple `pu`, Green `g`).
-- **Surface:** `--surface-page` / `--surface-card` / `--surface-sunken` / `--surface-inverse`.
-- **Foreground:** `--fg-primary` / `--fg-secondary` / `--fg-muted` / `--fg-disabled` / `--fg-inverse`.
-- **Border:** `--border-default` / `--border-subtle` / `--border-strong` / `--border-focus`.
-- **Accent (cobalt blue, `--b500`):** `--accent-primary` / `--accent-primary-hover` / `--accent-primary-bg`.
-- **Status (each has `-fg` / `-bg` / `-border` / `-solid`):** `--success-*` / `--warning-*` / `--error-*` / `--info-*`.
-- **Charts:** `--chart-1` … `--chart-4` (sequential greys) + `--color-purple` / `--color-purple-bg` for Activity icons.
-
-### Tailwind utilities
-
-The `@theme inline` block in `globals.css` exposes every token as a Tailwind utility. Reach for these — never raw hex or `red-400`-style defaults:
-
-- `bg-surface-card`, `text-fg-primary`, `border-border-subtle`, `bg-accent-primary`
-- `text-success-fg`, `bg-error-bg`, `border-warning-border`, `bg-info-solid`
-- `bg-p400`, `text-pu500`, etc. (full hue palette, primarily for marketing illustrations)
-- `rounded-pill`, `rounded-xs`, `shadow-flat`, `shadow-modal`, `shadow-focus-ring`
-- `font-serif` / `font-sans` / `font-mono`
-
-### Typography ramp
-
-`globals.css` exposes semantic ramp classes that mirror the Typography handoff: `.ads-h1` / `.ads-h2` / `.ads-h3`, `.ads-body[-b/-sm/-sm-b/-xs/-xs-b]`, `.ads-label-md` / `.ads-label-sm`, `.ads-button-md` / `.ads-button-sm`, `.ads-code`, plus numeral helpers `.num-display` / `.num-tabular` / `.label-mono`.
-
-### Theming (light + dark, Phase 6 onward)
-
-- The authenticated app shell (`/new`, `/chat/[sessionId]`, `/settings`) and the utility/handoff surfaces (`/verify`, `/auth/callback`, `/pay/[slug]`) all theme via `data-theme="dark"` on `<html>`. Marketing (`/`, `/savings`, `/credit`, `/swap`, `/send`, `/receive`) and legal (`/privacy`, `/terms`, `/disclaimer`, `/security`) stay **light-locked**. Single source of truth: `apps/web/lib/theme/public-paths.ts`, consumed by both the inline anti-flash script (`lib/theme/script.ts`) and the runtime `ThemeProvider`.
-- Default user pref: `system` (follows `prefers-color-scheme`). Toggle lives in Settings → Account → Appearance — there is **no** sidebar toggle (removed post-Phase 6 — too much nav-rail noise).
-- All dark overrides live in the single `[data-theme="dark"] { ... }` block in `globals.css`. **Never** branch a component on theme. **Never** use `dark:` Tailwind variants. If a screen looks wrong in dark, the fix is either (a) tune a token in that block, or (b) replace a hardcoded color with the right semantic token.
-- **Theme-flipping semantic tokens** — for the handful of surfaces that sit at *different* positions in the surface hierarchy between light and dark per the dark prototype (where a single canonical `surface-{page|card|sunken}` token can't express the flip):
-  - `--surface-input` — composer/textarea bg (light: card; dark: deepest panel)
-  - `--surface-nav` — sidebar/nav rail bg (light: sunken; dark: lifted card)
-  - `--surface-nav-hover` — sidebar row hover (always one step lighter than nav)
-  - `--bubble-user-bg` / `--bubble-user-fg` — user chat bubble (near-black bg + white text in *both* themes)
+- **Tokens** — Geist-rooted shadcn semantic set: `bg-background` / `text-foreground`, `bg-card`, `bg-muted` / `text-muted-foreground`, `border-border`, `bg-primary`, `text-destructive`, `text-success` / `bg-warning` / `text-info`, `ring-ring`, `bg-sidebar*`. Plus Audric's single signal accent (`text-signal` / `bg-signal` / `bg-signal-bg`, cyan, signal-only). Geist ramps (`var(--ds-gray-*)`, `var(--ds-blue-700)`, …) when no shadcn token fits. **No raw hex, no Tailwind defaults, no removed ADS tokens** (`surface-*`, `fg-*`, `border-default|subtle|focus`, `*-fg|bg|border|solid`, `.ads-*`) — `pnpm check:ads` fails CI on reintroduction.
+- **Fonts** — Geist + Geist Mono only (New York + Departure Mono stripped in R6.4). `font-sans` + `font-serif` both resolve to Geist; `font-mono` → Geist Mono. Loaded via `next/font/google` in `app/layout.tsx`.
+- **Theming** — `next-themes` dual attribute (`["class", "data-theme"]`). Geist flips the ramp automatically via `data-theme`; the `.dark` class drives the `dark:` variant + shadow/signal overrides. **Prefer letting tokens flip automatically**; reach for `dark:` only when a token can't express a value. Default theme is `light`; toggle in Settings → Appearance.
 
 ### Conventions
 
 - Group utilities: layout → spacing → sizing → colors → effects.
 - `cn()` for conditional classes.
-- New marketing/landing components live under `components/landing/`; shared primitives (`BorderedGrid`, `BrowserFrame`, `QRReceiptCard`) sit alongside section components.
+- Marketing/landing components live under `components/landing/`.
 
 ---
 

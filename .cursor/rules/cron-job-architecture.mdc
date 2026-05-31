@@ -11,7 +11,7 @@ alwaysApply: false
 Audric's scheduled work lives in **two places**:
 
 1. **`/api/cron/*` routes** — Vercel native cron entrypoints. Schedule defined in `apps/web-v2/vercel.json`. Authenticated by `Authorization: Bearer ${CRON_SECRET}` (Vercel injects this automatically when the env var is set).
-2. **`/api/internal/payments`** — the SOLE surviving internal route. Engine payment-link / invoice tools call it server-side via `x-internal-key: ${T2000_INTERNAL_KEY}` dual-auth.
+2. **`/api/internal/payments`** — the SOLE surviving internal route. Engine payment-link tools call it server-side via `x-internal-key: ${T2000_INTERNAL_KEY}` dual-auth. (It rejects `type: 'invoice'` writes with `410 Gone` — invoicing was retired in S.269.)
 
 ## The endpoints (post-Block-C reality)
 
@@ -20,7 +20,7 @@ Audric's scheduled work lives in **two places**:
 | `GET /api/cron/portfolio-snapshot` | `PortfolioSnapshot` | Vercel cron — daily 07:00 UTC |
 | `POST /api/cron/financial-context-snapshot` | `UserFinancialContext` | Vercel cron — daily 02:30 UTC |
 | `GET /api/cron/turn-metrics-pending-sweep` | `TurnMetrics` (timeouts pending → timed_out) | Vercel cron — every 15 min |
-| `POST /api/internal/payments` | `Payment` (CRUD for payment-link / invoice tools) | Engine server-side fetch |
+| `POST /api/internal/payments` | `Payment` (CRUD for payment-link tools; `type: 'invoice'` → 410 Gone) | Engine server-side fetch |
 
 > **Deleted in v0.7e Phase 5 cleanup (S.254, 2026-05-22):**
 > - `POST /api/cron/conversation-log-retention` — `ConversationLog` model was dropped alongside its retention cron when AI SDK v6 native `Chat`/`Message`/`Vote` persistence (S.247) superseded the legacy transcript table.
@@ -76,7 +76,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
 **Never** assume "internal" means "no auth needed." Vercel functions are public HTTPS endpoints; the auth gate is the only security boundary.
 
-> **Why `T2000_INTERNAL_KEY` still exists after Block C:** the engine runs server-side (inside the audric Next.js process for `apps/web-v2` chat) and calls audric APIs via HTTP self-fetches. It cannot present a zkLogin JWT (server context has no browser session), so the dual-auth path in `authenticateAnalyticsRequest()` accepts `x-internal-key` as the trusted-server alternative. Slated for full elimination in v0.7d+ via the function-injection refactor — partial migration completed in v0.7e Phase 5 (many engine read tools went in-process; the `/api/internal/payments` bridge survives for payment-link / invoice writes).
+> **Why `T2000_INTERNAL_KEY` still exists after Block C:** the engine runs server-side (inside the audric Next.js process for `apps/web-v2` chat) and calls audric APIs via HTTP self-fetches. It cannot present a zkLogin JWT (server context has no browser session), so the dual-auth path in `authenticateAnalyticsRequest()` accepts `x-internal-key` as the trusted-server alternative. Slated for full elimination in v0.7d+ via the function-injection refactor — partial migration completed in v0.7e Phase 5 (many engine read tools went in-process; the `/api/internal/payments` bridge survives for payment-link writes).
 
 ## Idempotency — every cron job MUST be safe to re-run
 

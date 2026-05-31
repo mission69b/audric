@@ -40,20 +40,17 @@ pnpm-debug.log*
 .vercel
 .env.vercel-check
 
+# founder-local agent trackers (kept local, mirror t2000's convention — not committed)
+HANDOFF_NEXT_AGENT.md
+NEXT_AGENT_KICKOFF.md
+
 # local-only redesign artifacts (kept out of the repo on purpose)
 # Covers any design handoff bundle (handoff_audric, handoff_username_flow, future bundles).
 design_handoff_*/
 scripts/
-# but track tooling under apps/web/scripts (canonical scan, shadow check, etc.)
-!apps/web/scripts/
-!apps/web/scripts/**
-# and tooling under apps/web-v2/scripts (g6 smoke verifier, etc.)
+# but track tooling under apps/web-v2/scripts (g6 smoke verifier, etc.)
 !apps/web-v2/scripts/
 !apps/web-v2/scripts/**
-# ...except local-only one-offs (audit logs, baseline runners, stress tests)
-apps/web/scripts/.*-sent.json
-apps/web/scripts/run-turn-metrics-baseline.mjs
-apps/web/scripts/stress-test-prisma-*.mjs
 
 # pitch-deck iterations (marketing artifacts, not part of the app)
 pitch-deck.html

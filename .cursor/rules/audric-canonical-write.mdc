@@ -20,7 +20,7 @@ The intent: same drift-impossible-by-construction guarantee the read-side `getPo
 | Canonical write composer | `composeTx({ sender, steps, sponsoredContext? })` | `@t2000/sdk` → `packages/sdk/src/composeTx.ts` |
 | Fragment-appender registry | `WRITE_APPENDER_REGISTRY: Record<WriteToolName, AppenderFn>` | Same file |
 | Auto-derived allow-list | `deriveAllowedAddressesFromPtb(tx)` | Same file (helper) |
-| Per-protocol appenders | `addSaveToTx`, `addWithdrawToTx`, `addBorrowToTx`, `addRepayToTx`, `addSendToTx`, `addSwapToTx`, `addStakeVSuiToTx`, `addUnstakeVSuiToTx`, `addClaimRewardsToTx` | `@t2000/sdk` → `packages/sdk/src/protocols/*.ts` + `wallet/send.ts` |
+| Per-protocol appenders | `addSaveToTx`, `addWithdrawToTx`, `addBorrowToTx`, `addRepayToTx`, `addSendToTx`, `addSwapToTx`, `addClaimRewardsToTx` (Volo `addStakeVSuiToTx`/`addUnstakeVSuiToTx` removed in S.323) | `@t2000/sdk` → `packages/sdk/src/protocols/*.ts` + `wallet/send.ts` |
 | Shared Enoki sponsor wrapper | `sponsorViaEnoki({ txKindBytes, sender, allowedAddresses, jwt })` | `audric/apps/web/lib/sponsor.ts` (NEW in SPEC 7 v0.4) |
 
 ## Why this is non-negotiable

@@ -49,12 +49,12 @@ All write tools have `permissionLevel: 'confirm'` and therefore flow through Pat
 
 ## When fixing a transaction receipt or balance display
 
-1. The data lands in `handleExecuteAction` inside `apps/web-v2/app/page.tsx`. **Start there.**
+1. The data lands in `handleExecuteAction` inside `apps/web-v2/app/chat/audric-chat-client.tsx`. **Start there.**
 2. **NOT** from a typed SDK result — the API only returns `TxResult`.
 3. Parse `res.balanceChanges` for actual on-chain deltas (negative = sent, positive = received).
 4. Use `inp.*` (the original tool input the LLM emitted) for token names. Strip full coin types with `.split('::').pop()`.
 5. Floor display amounts using `Math.floor(value * 10000) / 10000` — never `Math.round` (see `financial-amounts.mdc`).
-6. After the receipt renders, the resume route MUST be called with `attemptId` (Spec 1 — `EngineConfig.onAutoExecuted` keys updateMany on `attemptId`).
+6. After the receipt renders, `addToolResult` MUST carry `attemptId` forward — the next `/api/chat` turn runs the inline resume keyed on `attemptId` (Spec 1). There is no standalone resume route.
 
 ## When fixing "engine doesn't see that I executed"
 
@@ -62,8 +62,8 @@ This is a Spec 1 bug. The flow:
 
 1. Engine yields `pending_action` with a UUID `attemptId`.
 2. Audric persists `attemptId` on `TurnMetrics` for this turn.
-3. After execute success, audric calls `/api/agent/resume` with `{ attemptId, txDigest, balanceChanges }`.
-4. Engine's `EngineConfig.onAutoExecuted` runs `updateMany({ where: { attemptId } })` to mark the action `EXECUTED` and inject the result into the next turn's context.
+3. After execute success, audric `addToolResult`s the outcome; `useChat` auto-fires the next `/api/chat` turn carrying it (no standalone resume route — folded inline per v0.7c).
+4. `/api/chat` runs `extractResumeOutcomes()` + `updateMany({ where: { attemptId } })` to mark the action's outcome, and the resolved tool result lands in the next turn's context so the engine knows the tx happened.
 
 **If you skip the `attemptId`** — the next turn won't know the tx happened, and the agent will offer to retry. **Always pass it through.**
 

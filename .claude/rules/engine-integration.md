@@ -1,37 +1,30 @@
-# Engine Integration (apps/web)
+# Engine Integration (apps/web-v2)
 
-How audric/web consumes `@t2000/engine`. Read alongside `.cursor/rules/engine-context-assembly.mdc` and `.cursor/rules/write-tool-pending-action.mdc`.
+How `apps/web-v2` consumes `@t2000/engine`. The detailed, current contract lives in
+`.cursor/rules/web-v2-chat-route-architecture.mdc` and `.cursor/rules/audric-context-assembly.mdc` —
+read those. This file is a short orientation pointer.
 
-## Where the engine is wired
+## The shape (post-v0.7e / web-v2)
 
-| File | Purpose |
-|---|---|
-| `lib/engine/engine-factory.ts` | `createEngine(opts)` — builds `AISDKEngine` per request with the right tools, model, context |
-| `lib/engine/engine-context.ts` | `buildFullDynamicContext(...)` — assembles silent context (profile, memory, advice, chain facts, financial_context) |
-| `lib/engine/init-engine-stores.ts` | Side-effect — injects Upstash DeFi cache store into the engine globals |
-| `lib/engine/harness-metrics.ts` | TurnMetrics writers (chat-time + resume) |
-| `lib/engine/log-session-usage.ts` | SessionUsage writer at session end |
-| `lib/engine/permission-tiers-client.ts` | Client-side preset (conservative/balanced/aggressive) — currently unused under zkLogin |
-| `lib/engine/recipes.ts` | Skill recipe registry |
-| `lib/engine/spec-consistency.ts` | Boot-time check that consumers route through canonical fetchers |
-
-## The two routes
-
-- `POST /api/engine/chat` — SSE stream. Builds engine, runs turn, emits `text_delta` / `thinking_delta` / `tool_start` / `tool_result` / `pending_action` / `canvas` / `turn_complete` / `usage` / `error`.
-- `POST /api/engine/resume` — non-streaming. Receives `{ attemptId, txDigest, balanceChanges, modifiedInput }`, marks `TurnMetrics.updateMany({ where: { attemptId } })`, writes a NEW resume-turn TurnMetrics row, continues the conversation.
+- There is **one** chat route: `POST /api/chat` (`app/api/chat/route.ts`). It uses the AI SDK v6
+  `Experimental_Agent` driving `@t2000/engine` tools. **HITL resume is inline** in this same route
+  (AI SDK `addToolResult` / tool-approval round-trip keyed on `attemptId`/`approvalId`) — there is NO
+  separate `/api/engine/chat` or `/api/engine/resume` route, and no `engine-factory.ts` /
+  `init-engine-stores.ts` (those were archived with `apps/web` in S.253).
+- Silent context is assembled per turn (system prompt + `<financial_context>` from `UserFinancialContext`
+  + MemWal `<memory_recall>` + AdviceLog) — see `audric-context-assembly.mdc`.
+- Telemetry (`TurnMetrics`, `SessionUsage`) is written inline from the chat route +
+  `lib/audric/resume-outcome.ts`.
 
 ## Critical invariants
 
-1. `init-engine-stores` MUST run before any engine read. Loaded by `instrumentation.ts` AND side-effect-imported by `lib/portfolio.ts` (belt-and-suspenders).
-2. Every `pending_action` event carries `attemptId` (Spec 1). Persist it on `TurnMetrics` immediately.
-3. Engine writes are `permissionLevel: 'confirm'` — never override to `'auto'` under zkLogin.
-4. `<financial_context>` block is sourced from `UserFinancialContext` (refreshed by 02:30 UTC cron). Don't fetch on the chat critical path.
-
-## Imports — copy from CLAUDE.md
-
-The full import surface is in `CLAUDE.md` under "Engine imports." Don't re-discover; copy from there.
+1. Every `pending_action` carries `attemptId` (Spec 1) — persist it on `TurnMetrics`, key resume on it.
+2. Engine writes are `permissionLevel: 'confirm'` under zkLogin — every write taps to confirm. Never
+   override to `'auto'`.
+3. The `<financial_context>` block comes from the daily `UserFinancialContext` snapshot (02:30 UTC cron) —
+   don't fetch it on the chat critical path.
 
 ## Tests
 
-- Engine harness tests live in `@t2000/engine` (run via `pnpm --filter @t2000/engine test`).
-- Audric integration tests live in `apps/web/lib/engine/__tests__/` (run via `pnpm --filter audric-web test`).
+- Engine harness tests live in `@t2000/engine` (`pnpm --filter @t2000/engine test`).
+- App tests: `pnpm --filter @audric/web-v2 test` (Vitest).
