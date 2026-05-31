@@ -940,6 +940,39 @@ export async function POST(request: Request) {
   // reads `AUDRIC_INTERNAL_KEY` (its canonical name); web-v2's schema
   // calls the matching value `T2000_INTERNAL_KEY` for historical reasons
   // (apps/web shared name; tracked as a follow-up rename in §M3).
+  // [De-burst post-write refresh / 2026-05-31] Request-scoped portfolio
+  // memo. `getPortfolio()` only dedups calls while a fetch is IN FLIGHT —
+  // once it resolves it clears its inflight entry, so SEQUENTIAL callers
+  // each start a fresh fetch. The post-write refresh fires three reads in
+  // sequence (balance_check → savings_info → health_check), all routing
+  // through `positionFetcher`, which means three back-to-back NAVI
+  // `fetchPositions` + DeFi fetches per resume turn (the BlockVision
+  // wallet read is 60s-cached, but NAVI/DeFi are not). Memoizing the
+  // Promise for THIS request's lifetime collapses every read in the turn
+  // to a single shared fetch — the NAVI analog of the `portfolioCache`
+  // Map the BlockVision wallet path already gets.
+  //
+  // Post-write freshness is preserved: `toolContext` (and this memo) is
+  // rebuilt per request, so the RESUME turn after a client-signed write
+  // gets an empty memo → a fresh `getPortfolio()` that reflects the new
+  // on-chain state. The memo only collapses duplicate reads WITHIN one
+  // turn, never across the write boundary.
+  const portfolioPromiseMemo = new Map<
+    string,
+    ReturnType<typeof getPortfolio>
+  >();
+  const getPortfolioForTurn = (
+    addr: string
+  ): ReturnType<typeof getPortfolio> => {
+    const cached = portfolioPromiseMemo.get(addr);
+    if (cached) {
+      return cached;
+    }
+    const promise = getPortfolio(addr);
+    portfolioPromiseMemo.set(addr, promise);
+    return promise;
+  };
+
   const toolContext: ToolContext = {
     walletAddress,
     suiRpcUrl: getSuiRpcUrl(),
@@ -989,7 +1022,11 @@ export async function POST(request: Request) {
     // (canonical reader) → `ServerPositionData.borrows_detail` (engine).
     // Same fields, just snake_case.
     positionFetcher: async (addr: string): Promise<ServerPositionData> => {
-      const portfolio = await getPortfolio(addr);
+      // Turn-scoped memo (see `getPortfolioForTurn` above): collapses the
+      // post-write refresh's sequential balance_check/savings_info/
+      // health_check reads — plus any reads the LLM fires mid-stream — to
+      // one shared NAVI/DeFi fetch per request. Fresh each turn.
+      const portfolio = await getPortfolioForTurn(addr);
       return {
         savings: portfolio.positions.savings,
         borrows: portfolio.positions.borrows,
