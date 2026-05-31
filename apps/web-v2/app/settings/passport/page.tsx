@@ -4,9 +4,12 @@
  * `/settings/passport` — wallet, identity, network, sign-in, appearance.
  *
  * Hooks together:
- *   - `useZkLogin()` for address/session/logout/refresh
+ *   - `useZkLogin()` for address/session
  *   - `useUserStatus(address, jwt)` for the claimed Audric handle
  *   - `decodeJwtClaim(jwt, 'name')` for the picker smart pre-fill
+ *
+ * Sign out lives in the account dropdown (single source) — this page is
+ * identity/info only, no session-action buttons. [2026-05-31]
  */
 
 import { useZkLogin } from "@/components/auth/use-zklogin";
@@ -20,7 +23,7 @@ import { decodeJwtClaim } from "@/lib/jwt-client";
 const SUI_NETWORK = "mainnet";
 
 export default function PassportPage() {
-  const { address, session, logout, refresh, expiringSoon } = useZkLogin();
+  const { address, session, expiringSoon } = useZkLogin();
   const jwt = session?.jwt ?? null;
   const userStatus = useUserStatus(address, jwt ?? undefined);
 
@@ -33,8 +36,6 @@ export default function PassportPage() {
         googleName={decodeJwtClaim(jwt, "name")}
         jwt={jwt}
         network={SUI_NETWORK}
-        onLogout={logout}
-        onRefresh={refresh}
         onUsernameChanged={() => {
           userStatus.refetch().catch(() => {
             // refetch failure is non-fatal — state will refresh next visit

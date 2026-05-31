@@ -11,6 +11,14 @@
  *   - [2026-05-31] Appearance/theme card dropped — the theme toggle now
  *     lives in the account dropdown (single source), so a duplicate picker
  *     here was redundant.
+ *   - [2026-05-31] Refresh-session + Sign-out buttons dropped — Sign out
+ *     lives in the account dropdown (single source) and "Refresh session"
+ *     was just logout+login (re-auth), reachable by signing out then back
+ *     in. This is an identity/info surface, not an action surface.
+ *   - [2026-05-31] Sign-in session expiry now reflects the JWT `exp` (the
+ *     ~1h Google-OIDC token the server re-verifies on every API call),
+ *     not the ~7d Sui-epoch ephemeral-key window. The old display claimed
+ *     "7 days" while the user was actually bounced within the hour.
  *
  * Layout (matches legacy D10 design):
  *   1. zkLogin intro card (sunken)
@@ -18,14 +26,13 @@
  *      (or empty-state with CLAIM HANDLE button when unclaimed)
  *   3. ACCOUNT card — wallet address / network / sign-in email /
  *      sign-in session expiry
- *   4. Action buttons — Refresh session / Sign out
  */
 
 import Link from "next/link";
 import { useState } from "react";
 import { Tag } from "@/components/ui/tag";
 import { truncateAddress } from "@/lib/format";
-import { decodeJwtClaim } from "@/lib/jwt-client";
+import { decodeJwtClaim, decodeJwtExp } from "@/lib/jwt-client";
 import { UsernameChangeModal } from "./username-change-modal";
 import { UsernameClaimModal } from "./username-claim-modal";
 
@@ -36,10 +43,26 @@ interface PassportSectionProps {
   googleName?: string | null;
   jwt: string | null;
   network: string;
-  onLogout: () => void;
-  onRefresh: () => void;
   onUsernameChanged?: () => void;
   username: string | null;
+}
+
+/** Terse, adaptive "expires in …" label — minutes < 1h, hours < 1d, else days. */
+function formatExpiresIn(ms: number): string {
+  const diff = ms - Date.now();
+  if (diff <= 0) {
+    return "Expired";
+  }
+  const mins = Math.round(diff / 60_000);
+  if (mins < 60) {
+    return `Expires in ${mins}m`;
+  }
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) {
+    const rem = mins % 60;
+    return rem > 0 ? `Expires in ${hours}h ${rem}m` : `Expires in ${hours}h`;
+  }
+  return `Expires in ${Math.round(hours / 24)}d`;
 }
 
 export function PassportSection({
@@ -47,8 +70,6 @@ export function PassportSection({
   network,
   expiresAt,
   expiringSoon,
-  onRefresh,
-  onLogout,
   username,
   jwt,
   onUsernameChanged,
@@ -59,10 +80,16 @@ export function PassportSection({
   const [changeOpen, setChangeOpen] = useState(false);
   const [claimOpen, setClaimOpen] = useState(false);
 
-  const expiryDate = expiresAt ? new Date(expiresAt) : null;
-  const daysLeft = expiresAt
-    ? Math.max(0, Math.ceil((expiresAt - Date.now()) / (24 * 60 * 60 * 1000)))
-    : 0;
+  // The real sign-in expiry is the SOONER of the Sui-epoch session (~7d,
+  // drives `expiresAt`) and the Google OIDC JWT `exp` (~1h) — the server
+  // re-verifies the raw JWT on every request, so the JWT is the binding
+  // constraint and the user is bounced when it lapses.
+  const jwtExpSec = decodeJwtExp(jwt);
+  const jwtExpMs = jwtExpSec == null ? null : jwtExpSec * 1000;
+  const effectiveExpiry =
+    expiresAt != null && jwtExpMs != null
+      ? Math.min(expiresAt, jwtExpMs)
+      : (jwtExpMs ?? expiresAt);
 
   const fullHandle = username ? `${username}@audric` : null;
   const signInEmail = decodeJwtClaim(jwt, "email");
@@ -215,9 +242,9 @@ export function PassportSection({
         <PassportRow label="Sign-in session" last>
           <div className="flex flex-col items-end gap-0.5">
             <span className="text-[13px] text-foreground">
-              {expiryDate
-                ? `Expires ${expiryDate.toLocaleDateString()} (${daysLeft}d)`
-                : "\u2014"}
+              {effectiveExpiry == null
+                ? "\u2014"
+                : formatExpiresIn(effectiveExpiry)}
             </span>
             {expiringSoon && (
               <span className="flex items-center gap-1 text-[11px] text-warning">
@@ -230,23 +257,6 @@ export function PassportSection({
             )}
           </div>
         </PassportRow>
-      </div>
-
-      <div className="mt-6 flex gap-2">
-        <button
-          className="rounded-sm border border-border px-4 py-2.5 font-mono text-[10px] uppercase tracking-[0.1em] text-foreground transition hover:bg-muted focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none"
-          onClick={onRefresh}
-          type="button"
-        >
-          Refresh session
-        </button>
-        <button
-          className="rounded-sm border border-border px-4 py-2.5 font-mono text-[10px] uppercase tracking-[0.1em] text-foreground transition hover:bg-muted focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none"
-          onClick={onLogout}
-          type="button"
-        >
-          Sign out
-        </button>
       </div>
 
       {username && jwt && address && (
