@@ -392,12 +392,12 @@ function AuthenticatedChatInner({
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset>
-        {/* [2026-05-31] vercel/chatbot chat-shell frame: the outer column is
-            the sidebar-coloured backdrop; the header lives on it, and the
-            conversation panel below is a lighter bg-background region with a
-            top+left border + rounded top-left corner that tucks under the
-            header (md+ only). Mirrors components/chat/shell.tsx. */}
-        <div className="flex h-dvh flex-col bg-sidebar text-foreground">
+        {/* [2026-05-31] chat-shell frame mirrors t2000-AFI/audric/chat-shell.html:
+            the shell is bordered by the sidebar's border-right (vertical) + the
+            header's border-bottom (horizontal); the conversation panel itself is
+            FLUSH (bg-background, no border / no rounded corner). The header keeps
+            the sidebar colour per the vercel/chatbot top-nav preference. */}
+        <div className="flex h-dvh flex-col bg-background text-foreground">
           {/* [v0.7e Persistent Chats Phase 4 / S.247 + P1-C] Header is
               ALWAYS visible (mobile + desktop). Left: sidebar trigger
               (mobile only — desktop sidebar is already pinned via
@@ -406,7 +406,7 @@ function AuthenticatedChatInner({
               resolves to (a) the `chatId` prop for the resume path
               (/chat/[id]) OR (b) the parent-tracked `promotedChatId`
               for the fresh-chat path after URL promote. */}
-          <header className="flex h-12 items-center justify-between bg-sidebar px-3">
+          <header className="flex h-12 items-center justify-between border-border border-b bg-sidebar px-3">
             <SidebarTrigger className="text-foreground/60 hover:text-foreground md:hidden" />
             <div className="ml-auto">
               {toggleChatId && (
@@ -417,7 +417,7 @@ function AuthenticatedChatInner({
               )}
             </div>
           </header>
-          <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-background md:rounded-tl-[12px] md:border-border/60 md:border-t md:border-l">
+          <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-background">
             <AudricChatPanel
               chatId={chatId}
               initialMessages={initialMessages}
