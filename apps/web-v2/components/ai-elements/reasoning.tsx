@@ -217,16 +217,15 @@ export const ReasoningContent = memo(
 
     if (!isOpen) return null;
 
-    // [2026-05-31] Matches the ai-sdk.dev chatbot demo's reasoning surface
-    // (the screenshot reference): boxless, flowing dim text indented under
-    // the leading sparkle, NOT a bordered/filled scroll box. The earlier
-    // boxless attempt washed out only because it ran on pure-black with
-    // over-dimmed `/70` text; on the charcoal ramp (bg ≈ oklch 0.195,
-    // muted-foreground ≈ oklch 0.6) full `text-muted-foreground` reads
-    // clearly while still receding behind the 15px answer. `ms-6` aligns
-    // the content under the trigger TEXT (past the sparkle gutter).
-    // `[&_*]` pins the dim colour so Streamdown's bold/headings don't jump
-    // to near-white and break the uniform thinking-text look.
+    // [2026-05-31] Matches vercel/chatbot's reasoning bubble (the screenshot
+    // reference): the thinking text lives in a faint rounded container
+    // (`rounded-lg border border-border/20 bg-muted/30`) — barely perceptible
+    // on the charcoal ramp but a defined region — capped at 200px with a
+    // hidden-scrollbar scroll. `text-[11px] text-muted-foreground/60` so it
+    // recedes behind the 15px answer. `ms-6` aligns the bubble under the
+    // trigger TEXT (past the AudricMark gutter). This is the canonical AI
+    // Elements surface; only the leading glyph (AudricMark vs sparkle) and
+    // the `ms-6` indent differ.
     //
     // [F-17a] `{...props}` forwards to the wrapper only — Streamdown is a
     // markdown renderer whose props don't intersect
@@ -234,14 +233,18 @@ export const ReasoningContent = memo(
     return (
       <div
         className={cn(
-          "mt-2 ms-6 animate-in fade-in-0 text-[11px] text-muted-foreground leading-relaxed duration-200 [overflow-anchor:none]",
-          "[&_*]:text-muted-foreground [&_li]:my-0.5 [&_ol]:my-1 [&_p]:my-0 [&_p]:text-[11px] [&_p:not(:last-child)]:mb-2 [&_ul]:my-1",
+          "mt-2 ms-6 animate-in fade-in-0 text-muted-foreground/60 duration-200 [overflow-anchor:none]",
           className
         )}
-        ref={scrollRef}
         {...props}
       >
-        <Streamdown plugins={streamdownPlugins}>{children}</Streamdown>
+        <div
+          className="max-h-[200px] overflow-y-auto rounded-lg border border-border/20 bg-muted/30 px-3 py-2 text-[11px] leading-relaxed"
+          ref={scrollRef}
+          style={{ msOverflowStyle: "none", scrollbarWidth: "none" }}
+        >
+          <Streamdown plugins={streamdownPlugins}>{children}</Streamdown>
+        </div>
       </div>
     );
   }
