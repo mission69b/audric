@@ -1,15 +1,16 @@
 "use client";
 
 /**
- * Passport settings — identity, account, appearance.
+ * Passport settings — identity + account.
  *
  * Ported from `apps/web/components/settings/PassportSection.tsx`.
  *
- * Three diffs from legacy:
- *   - `useTheme` from `next-themes` (web-v2 native) instead of the
- *     apps/web custom `ThemeProvider`. Same API shape, no behavior diff.
+ * Diffs from legacy:
  *   - Username modals come from sibling files in the same folder.
  *   - `next/link` instead of any custom Link wrapper.
+ *   - [2026-05-31] Appearance/theme card dropped — the theme toggle now
+ *     lives in the account dropdown (single source), so a duplicate picker
+ *     here was redundant.
  *
  * Layout (matches legacy D10 design):
  *   1. zkLogin intro card (sunken)
@@ -17,12 +18,10 @@
  *      (or empty-state with CLAIM HANDLE button when unclaimed)
  *   3. ACCOUNT card — wallet address / network / sign-in email /
  *      sign-in session expiry
- *   4. APPEARANCE card — light / dark / system theme picker
- *   5. Action buttons — Refresh session / Sign out
+ *   4. Action buttons — Refresh session / Sign out
  */
 
 import Link from "next/link";
-import { useTheme } from "next-themes";
 import { useState } from "react";
 import { Tag } from "@/components/ui/tag";
 import { truncateAddress } from "@/lib/format";
@@ -43,9 +42,6 @@ interface PassportSectionProps {
   username: string | null;
 }
 
-const THEME_ORDER = ["light", "dark", "system"] as const;
-type Theme = (typeof THEME_ORDER)[number];
-
 export function PassportSection({
   address,
   network,
@@ -62,7 +58,6 @@ export function PassportSection({
   const [handleCopied, setHandleCopied] = useState(false);
   const [changeOpen, setChangeOpen] = useState(false);
   const [claimOpen, setClaimOpen] = useState(false);
-  const { theme, setTheme } = useTheme();
 
   const expiryDate = expiresAt ? new Date(expiresAt) : null;
   const daysLeft = expiresAt
@@ -235,44 +230,6 @@ export function PassportSection({
             )}
           </div>
         </PassportRow>
-      </div>
-
-      <div className="mt-5 rounded-md border border-border bg-muted p-4">
-        <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
-          Appearance
-        </p>
-        <p className="mt-1 mb-3.5 text-[12px] text-muted-foreground">
-          Choose how Audric looks.{" "}
-          <span className="font-mono text-foreground">System</span> follows your
-          operating system.
-        </p>
-        <fieldset
-          aria-label="Theme"
-          className="m-0 grid grid-cols-3 gap-2 border-0 p-0"
-        >
-          {THEME_ORDER.map((t) => {
-            const active = t === theme;
-            return (
-              // biome-ignore lint/a11y/useSemanticElements: CSS-styled radio chip — native <input type="radio"> wouldn't support the mono uppercase chip styling
-              <button
-                aria-checked={active}
-                className={[
-                  "rounded-sm border px-3 py-2 font-mono text-[10px] uppercase tracking-[0.12em] transition",
-                  "focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none",
-                  active
-                    ? "border-foreground bg-foreground text-background"
-                    : "border-border bg-card text-muted-foreground hover:border-foreground hover:text-foreground",
-                ].join(" ")}
-                key={t}
-                onClick={() => setTheme(t as Theme)}
-                role="radio"
-                type="button"
-              >
-                {t}
-              </button>
-            );
-          })}
-        </fieldset>
       </div>
 
       <div className="mt-6 flex gap-2">

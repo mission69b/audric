@@ -2116,22 +2116,9 @@ export async function POST(request: Request) {
       );
       const suppressedToolCallIds = new Set<string>();
 
-      // [2026-05-31 reasoning diagnostic] Count reasoning lifecycle chunks
-      // arriving from the model this turn. If these are 0 on a medium/high
-      // effort prompt, the model/gateway is suppressing summarized thinking
-      // (the `<Reasoning>` accordion can only render what the model emits).
-      let reasoningChunkCount = 0;
-
       try {
         for await (const chunk of result.fullStream) {
           collector.observeChunk(chunk);
-          if (
-            chunk.type === "reasoning-start" ||
-            chunk.type === "reasoning-delta" ||
-            chunk.type === "reasoning-end"
-          ) {
-            reasoningChunkCount++;
-          }
 
           // Step lifecycle: reset buffer on start, flush on finish.
           // These chunks are intentionally NOT passed to translateChunk
@@ -2252,10 +2239,6 @@ export async function POST(request: Request) {
         writer.write({ type: "text-end", id: messageId });
         writer.write({ type: "finish-step" });
         writer.write({ type: "finish" });
-        // [2026-05-31 reasoning diagnostic] See declaration above.
-        console.log(
-          `[audric-chat] reasoning chunks this turn: ${reasoningChunkCount} (effort=${effortLevel}, model=${DEFAULT_MODEL_USED}, gateway=${useGateway})`
-        );
       }
     },
     generateId,
