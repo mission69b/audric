@@ -30,6 +30,16 @@ interface Holding {
   usdValue: number;
 }
 
+// [#5 — per-asset savings/debt] One NAVI position row (USDC vs USDsui).
+// Surfaced by `balance_check` (@t2000/engine ≥ 4.1.0). Optional so older
+// engine payloads (and the SDK-agent fallback path) degrade gracefully to
+// the aggregate-USD USDC row.
+interface PositionAsset {
+  symbol: string;
+  amount: number;
+  valueUsd: number;
+}
+
 export interface BalanceCardV2Data {
   available?: number;
   savings?: number;
@@ -42,6 +52,8 @@ export interface BalanceCardV2Data {
   holdings?: Holding[];
   saveableUsdc?: number;
   saveableUsdsui?: number;
+  savingsAssets?: PositionAsset[];
+  debtAssets?: PositionAsset[];
   address?: string;
   isSelfQuery?: boolean;
   suinsName?: string | null;
@@ -127,6 +139,12 @@ export function BalanceCardV2({
     <AddressBadge address={data.address!} suinsName={data.suinsName} />
   ) : undefined;
 
+  // [#5] Real per-asset rows when the engine provides them; otherwise the
+  // render falls back to a single aggregate USDC row (older engine / SDK
+  // fallback path that carries no per-asset breakdown).
+  const savingsRows = data.savingsAssets ?? [];
+  const debtRows = data.debtAssets ?? [];
+
   const hasSavings = savingsUsd > 0;
   const showUsdcApyHint = !hasSavings && (data.saveableUsdc ?? 0) > 0;
   const showUsdsuiApyHint = !hasSavings && (data.saveableUsdsui ?? 0) > 0;
@@ -209,14 +227,27 @@ export function BalanceCardV2({
               live
               sub={hasSavings ? `$${fmtUsd(savingsUsd)}` : undefined}
             />
-            {hasSavings && (
-              <AssetRow
-                symbol="USDC"
-                sub="deposited"
-                amount={fmtUsd(savingsUsd)}
-                value={`$${fmtUsd(savingsUsd)}`}
-              />
-            )}
+            {hasSavings &&
+              (savingsRows.length > 0 ? (
+                savingsRows.map((a) => (
+                  <AssetRow
+                    amount={a.amount.toLocaleString('en-US', {
+                      maximumFractionDigits: 4,
+                    })}
+                    key={a.symbol}
+                    sub="deposited"
+                    symbol={a.symbol}
+                    value={`$${fmtUsd(a.valueUsd)}`}
+                  />
+                ))
+              ) : (
+                <AssetRow
+                  amount={fmtUsd(savingsUsd)}
+                  sub="deposited"
+                  symbol="USDC"
+                  value={`$${fmtUsd(savingsUsd)}`}
+                />
+              ))}
             {showAnyApyHint && (
               <div className="space-y-1 pt-2">
                 {showUsdcApyHint && (
@@ -248,13 +279,28 @@ export function BalanceCardV2({
               sub={`−$${fmtUsd(debtUsd)}`}
               tone="warning"
             />
-            <AssetRow
-              symbol="USDC"
-              sub="borrowed"
-              amount={fmtUsd(debtUsd)}
-              tone="warning"
-              value={`−$${fmtUsd(debtUsd)}`}
-            />
+            {debtRows.length > 0 ? (
+              debtRows.map((a) => (
+                <AssetRow
+                  amount={a.amount.toLocaleString('en-US', {
+                    maximumFractionDigits: 4,
+                  })}
+                  key={a.symbol}
+                  sub="borrowed"
+                  symbol={a.symbol}
+                  tone="warning"
+                  value={`−$${fmtUsd(a.valueUsd)}`}
+                />
+              ))
+            ) : (
+              <AssetRow
+                amount={fmtUsd(debtUsd)}
+                sub="borrowed"
+                symbol="USDC"
+                tone="warning"
+                value={`−$${fmtUsd(debtUsd)}`}
+              />
+            )}
           </div>
         )}
       </div>

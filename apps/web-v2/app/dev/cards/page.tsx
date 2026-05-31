@@ -666,6 +666,11 @@ const MOCK_BALANCE = {
     { symbol: "Lofi", balance: 5.21, usdValue: 0.08 },
     { symbol: "Deep", balance: 0.04, usdValue: 0.03 },
   ],
+  // [#5] Mixed savings — exercises the per-asset render (USDC + USDsui rows).
+  savingsAssets: [
+    { symbol: "USDC", amount: 480.0, valueUsd: 480.0 },
+    { symbol: "USDsui", amount: 125.23, valueUsd: 125.23 },
+  ],
 };
 
 const MOCK_BALANCE_DEBT = {
@@ -677,6 +682,9 @@ const MOCK_BALANCE_DEBT = {
     { symbol: "USDC", balance: 547.2, usdValue: 547.2 },
     { symbol: "SUI", balance: 142.5, usdValue: 600.21 },
   ],
+  // [#5] USDsui debt — exercises the non-USDC debt row. Savings deliberately
+  // omits savingsAssets to confirm the aggregate-USDC fallback still renders.
+  debtAssets: [{ symbol: "USDsui", amount: 600.0, valueUsd: 600.0 }],
 };
 
 const MOCK_HEALTH_SAFE = {
