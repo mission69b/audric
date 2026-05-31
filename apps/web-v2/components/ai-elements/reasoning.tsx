@@ -234,8 +234,8 @@ export const ReasoningContent = memo(
     return (
       <div
         className={cn(
-          "mt-2 ms-6 animate-in fade-in-0 text-[13px] text-muted-foreground leading-relaxed duration-200 [overflow-anchor:none]",
-          "[&_*]:text-muted-foreground [&_li]:my-0.5 [&_ol]:my-1 [&_p]:my-0 [&_p]:text-[13px] [&_p:not(:last-child)]:mb-3 [&_ul]:my-1",
+          "mt-2 ms-6 animate-in fade-in-0 text-[11px] text-muted-foreground leading-relaxed duration-200 [overflow-anchor:none]",
+          "[&_*]:text-muted-foreground [&_li]:my-0.5 [&_ol]:my-1 [&_p]:my-0 [&_p]:text-[11px] [&_p:not(:last-child)]:mb-2 [&_ul]:my-1",
           className
         )}
         ref={scrollRef}
