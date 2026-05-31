@@ -135,7 +135,8 @@
      so it flips per theme; --shadow-flat is a static 8% hairline that
      complements the existing `border-border` edge. */
   --shadow-flat: 0 0 0 1px oklch(0 0 0 / 0.08);
-  --shadow-focus-ring: 0 0 0 3px
+  /* [R6.8 / 8a] 4px blue focus ring (phase2 mobile + a11y pass). */
+  --shadow-focus-ring: 0 0 0 4px
     color-mix(in oklch, var(--ds-blue-700) 50%, transparent);
 
   --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
@@ -606,27 +607,27 @@ textarea:focus-visible {
   font-family: var(--font-sans);
   font-size: 19px;
   font-weight: 600;
-  letter-spacing: -0.022em;
-  text-transform: none;
   color: var(--foreground);
+  text-transform: none;
+  letter-spacing: -0.022em;
 }
 .legal-prose h3 {
   margin: 18px 0 6px;
   font-family: var(--font-sans);
   font-size: 15px;
   font-weight: 600;
-  letter-spacing: -0.014em;
   color: var(--foreground);
+  letter-spacing: -0.014em;
 }
 .legal-prose p {
   margin: 0 0 12px;
   color: var(--muted-foreground);
 }
 .legal-prose ul {
-  margin: 0 0 12px;
   padding-left: 20px;
-  list-style: disc;
+  margin: 0 0 12px;
   color: var(--muted-foreground);
+  list-style: disc;
 }
 .legal-prose li {
   margin-bottom: 6px;
@@ -640,15 +641,31 @@ textarea:focus-visible {
   opacity: 0.7;
 }
 .legal-prose code {
+  padding: 1px 5px;
   font-family: var(--font-mono);
   font-size: 13px;
+  color: var(--foreground);
   background: var(--muted);
   border: 1px solid var(--border);
   border-radius: 3px;
-  padding: 1px 5px;
-  color: var(--foreground);
 }
 .legal-prose strong {
-  color: var(--foreground);
   font-weight: 500;
+  color: var(--foreground);
+}
+
+/* [R6.8 / 8a] Reduced-motion — honour the OS "reduce motion" setting
+   across every animated surface (AudricMark pulse, skeleton shimmer,
+   spinners, toast/dialog enter-exit, canvas gauge transitions, marquee).
+   Near-instant rather than fully 0s so state changes still register but
+   nothing sweeps or loops. Unlayered so it wins over component utilities. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

@@ -61,11 +61,23 @@ function DialogContent({
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-6 rounded-4xl bg-background p-6 text-sm ring-1 ring-foreground/5 duration-100 outline-none sm:max-w-md data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          // [R6.8 / 8a] Mobile-first: bottom sheet < 640px (anchored to
+          // the bottom edge, full-width, rounded top, grab handle,
+          // slide-up + safe-area inset). `sm:` restores the desktop
+          // centered modal (zoom-in). Phone-first per phase2-mobile.html.
+          "fixed inset-x-0 bottom-0 z-50 grid w-full gap-6 rounded-t-4xl bg-background p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-sm ring-1 ring-foreground/5 duration-100 outline-none data-open:animate-in data-open:slide-in-from-bottom-4 data-closed:animate-out data-closed:slide-out-to-bottom-4",
+          "sm:inset-x-auto sm:bottom-auto sm:top-1/2 sm:left-1/2 sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-4xl sm:pb-6 sm:data-open:zoom-in-95 sm:data-open:slide-in-from-bottom-0 sm:data-closed:zoom-out-95 sm:data-closed:slide-out-to-bottom-0",
           className
         )}
         {...props}
       >
+        {/* Grab handle — mobile bottom-sheet affordance only. Absolutely
+            positioned so it never perturbs the content padding (works for
+            both `p-6` and `p-0`-override dialogs like Add funds). */}
+        <span
+          aria-hidden="true"
+          className="absolute inset-x-0 top-2 mx-auto h-1 w-9 rounded-full bg-border sm:hidden"
+        />
         {children}
         {showCloseButton && (
           <DialogPrimitive.Close data-slot="dialog-close" asChild>
