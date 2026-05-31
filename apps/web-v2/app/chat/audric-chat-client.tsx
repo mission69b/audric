@@ -60,6 +60,7 @@ import { getChatHistoryPaginationKey } from "@/components/chat/sidebar-history";
 import { VisibilityToggle } from "@/components/chat/visibility-toggle";
 import { UsernameClaimGate } from "@/components/settings/username-claim-gate";
 import { Button } from "@/components/ui/button";
+import { InputGroupAddon } from "@/components/ui/input-group";
 import {
   SidebarInset,
   SidebarProvider,
@@ -391,7 +392,12 @@ function AuthenticatedChatInner({
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset>
-        <div className="flex h-dvh flex-col bg-background text-foreground">
+        {/* [2026-05-31] vercel/chatbot chat-shell frame: the outer column is
+            the sidebar-coloured backdrop; the header lives on it, and the
+            conversation panel below is a lighter bg-background region with a
+            top+left border + rounded top-left corner that tucks under the
+            header (md+ only). Mirrors components/chat/shell.tsx. */}
+        <div className="flex h-dvh flex-col bg-sidebar text-foreground">
           {/* [v0.7e Persistent Chats Phase 4 / S.247 + P1-C] Header is
               ALWAYS visible (mobile + desktop). Left: sidebar trigger
               (mobile only — desktop sidebar is already pinned via
@@ -400,7 +406,7 @@ function AuthenticatedChatInner({
               resolves to (a) the `chatId` prop for the resume path
               (/chat/[id]) OR (b) the parent-tracked `promotedChatId`
               for the fresh-chat path after URL promote. */}
-          <header className="flex h-12 items-center justify-between px-3">
+          <header className="flex h-12 items-center justify-between bg-sidebar px-3">
             <SidebarTrigger className="text-foreground/60 hover:text-foreground md:hidden" />
             <div className="ml-auto">
               {toggleChatId && (
@@ -411,13 +417,15 @@ function AuthenticatedChatInner({
               )}
             </div>
           </header>
-          <AudricChatPanel
-            chatId={chatId}
-            initialMessages={initialMessages}
-            key={`${session.address}-${chatId ?? "new"}-${chatNonce}`}
-            onChatPromoted={onChatPromoted}
-            session={session}
-          />
+          <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-background md:rounded-tl-[12px] md:border-border/40 md:border-t md:border-l">
+            <AudricChatPanel
+              chatId={chatId}
+              initialMessages={initialMessages}
+              key={`${session.address}-${chatId ?? "new"}-${chatNonce}`}
+              onChatPromoted={onChatPromoted}
+              session={session}
+            />
+          </div>
         </div>
       </SidebarInset>
     </SidebarProvider>
@@ -861,7 +869,15 @@ function AudricChatPanel({
   // attachments menu (Audric has no file upload). `PromptInputSubmit`
   // maps Send→Stop off the chat `status` and fires the existing
   // `handleStop` (useChat.stop() + POST /api/chat/[id]/stop).
-  const composerBlock = (
+  // [2026-05-31] Two composer layouts off the same controlled state:
+  //   • `compact = false` (empty-state hero) — the taller AI-Elements
+  //     layout with a block-end footer row. Founder confirmed this size
+  //     reads well on the new-chat screen.
+  //   • `compact = true` (bottom-docked) — a single-line input with an
+  //     inline send button (auto-grows to max-h-40), matching ChatGPT /
+  //     `t2000-AFI/audric/chat-shell.html`. Once a conversation starts
+  //     the tall box reads heavy; the single line "fits nicer".
+  const renderComposer = (compact: boolean) => (
     <div className="flex w-full flex-col gap-3">
       <PromptInput
         onSubmit={(message) => {
@@ -876,30 +892,54 @@ function AudricChatPanel({
           setInput("");
         }}
       >
-        <PromptInputBody>
-          <PromptInputTextarea
-            // [2026-05-30] Trim the empty-state height: the AI Elements
-            // default min-h-16 (64px) + the submit footer row reads tall
-            // for Audric (no model picker / attachments fill the toolbar).
-            // min-h-11 keeps a comfortable single line that still
-            // auto-grows up to max-h-48.
-            className="min-h-11"
-            data-testid="multimodal-input"
-            disabled={isStreaming}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask anything…"
-            value={input}
-          />
-        </PromptInputBody>
-        <PromptInputFooter>
-          <PromptInputTools />
-          <PromptInputSubmit
-            data-testid={isStreaming ? "stop-button" : "send-button"}
-            disabled={!(isStreaming || canSend)}
-            onStop={handleStop}
-            status={status}
-          />
-        </PromptInputFooter>
+        {compact ? (
+          <>
+            <PromptInputTextarea
+              // Single-line floor (min-h-9) that auto-grows to max-h-40.
+              className="min-h-9 max-h-40 py-2.5"
+              data-testid="multimodal-input"
+              disabled={isStreaming}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Ask anything…"
+              value={input}
+            />
+            <InputGroupAddon align="inline-end">
+              <PromptInputSubmit
+                data-testid={isStreaming ? "stop-button" : "send-button"}
+                disabled={!(isStreaming || canSend)}
+                onStop={handleStop}
+                status={status}
+              />
+            </InputGroupAddon>
+          </>
+        ) : (
+          <>
+            <PromptInputBody>
+              <PromptInputTextarea
+                // [2026-05-30] Trim the empty-state height: the AI Elements
+                // default min-h-16 (64px) + the submit footer row reads tall
+                // for Audric (no model picker / attachments fill the toolbar).
+                // min-h-11 keeps a comfortable single line that still
+                // auto-grows up to max-h-48.
+                className="min-h-11"
+                data-testid="multimodal-input"
+                disabled={isStreaming}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Ask anything…"
+                value={input}
+              />
+            </PromptInputBody>
+            <PromptInputFooter>
+              <PromptInputTools />
+              <PromptInputSubmit
+                data-testid={isStreaming ? "stop-button" : "send-button"}
+                disabled={!(isStreaming || canSend)}
+                onStop={handleStop}
+                status={status}
+              />
+            </PromptInputFooter>
+          </>
+        )}
       </PromptInput>
       <ChipBar
         hidden={status === "streaming" || status === "submitted"}
@@ -916,7 +956,7 @@ function AudricChatPanel({
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-10 px-4 pb-8">
         <EmptyState />
-        <div className="w-full max-w-2xl">{composerBlock}</div>
+        <div className="w-full max-w-2xl">{renderComposer(false)}</div>
         {error && (
           <div className="w-full max-w-2xl rounded border border-destructive/30 bg-destructive/10 p-3 text-destructive text-sm">
             {sanitizeStreamErrorMessage(redactAddressesInText(error.message))}
@@ -1280,7 +1320,7 @@ function AudricChatPanel({
        */}
       <div className="sticky bottom-0 z-10 border-border/40 border-t bg-background/95 backdrop-blur-sm">
         <div className="mx-auto w-full max-w-2xl px-4 py-3">
-          {composerBlock}
+          {renderComposer(true)}
         </div>
         {error && (
           <div className="mx-auto w-full max-w-2xl px-4 pb-3">

@@ -3,6 +3,7 @@
 import type { ComponentProps, HTMLAttributes, ReactNode } from "react";
 
 import { useControllableState } from "@radix-ui/react-use-controllable-state";
+import { AudricMark } from "@/components/ui/audric-mark";
 import {
   Collapsible,
   CollapsibleTrigger,
@@ -183,6 +184,7 @@ export const ReasoningTrigger = memo(
       >
         {children ?? (
           <>
+            <AudricMark className="shrink-0" size={14} />
             {getThinkingMessage(isStreaming, duration)}
             <ChevronDownIcon
               className={cn(
@@ -215,28 +217,25 @@ export const ReasoningContent = memo(
 
     if (!isOpen) return null;
 
-    // [v0.7c Day 1d F-17a] Streamdown is a markdown renderer, not a DOM
-    // element — its props don't intersect with `HTMLAttributes<HTMLDivElement>`
-    // (different `dir` narrowing + different event-handler signatures
-    // like `onAnimationStart`). Forward HTML attributes only to the
-    // outer wrapper `<div>`; Streamdown gets just its own typed props.
+    // [2026-05-31] Matches the ai-sdk.dev chatbot demo's reasoning surface
+    // (the screenshot reference): boxless, flowing dim text indented under
+    // the leading sparkle, NOT a bordered/filled scroll box. The earlier
+    // boxless attempt washed out only because it ran on pure-black with
+    // over-dimmed `/70` text; on the charcoal ramp (bg ≈ oklch 0.195,
+    // muted-foreground ≈ oklch 0.6) full `text-muted-foreground` reads
+    // clearly while still receding behind the 15px answer. `ms-6` aligns
+    // the content under the trigger TEXT (past the sparkle gutter).
+    // `[&_*]` pins the dim colour so Streamdown's bold/headings don't jump
+    // to near-white and break the uniform thinking-text look.
     //
-    // [polish 2026-05-31] Vercel-parity reasoning surface. The old style
-    // wrapped reasoning in a filled, bordered, scrolling box (`border
-    // bg-muted/30 max-h-[200px]`) which read heavier + brighter than the
-    // response and competed with it. vercel/chatbot renders reasoning as
-    // plain, dim, smaller flowing text that recedes behind the answer.
-    // We match that: no box, no fill, `text-muted-foreground/70`, 13px
-    // (the response body is 14–15px → clear hierarchy). The `[&_p]` /
-    // `[&_*]` selectors pin the size + dim colour onto Streamdown's
-    // rendered markdown (its own typography otherwise bumps `<p>` back up
-    // to the inherited 15px). `scrollRef` is kept for the streaming
-    // auto-scroll but there's no overflow box now — the page scrolls.
+    // [F-17a] `{...props}` forwards to the wrapper only — Streamdown is a
+    // markdown renderer whose props don't intersect
+    // `HTMLAttributes<HTMLDivElement>`.
     return (
       <div
         className={cn(
-          "mt-1.5 animate-in fade-in-0 text-[13px] text-muted-foreground/70 leading-[1.6] duration-200 [overflow-anchor:none]",
-          "[&_*]:text-muted-foreground/70 [&_p]:my-0 [&_p]:text-[13px] [&_p:not(:last-child)]:mb-2",
+          "mt-2 ms-6 animate-in fade-in-0 text-[13px] text-muted-foreground leading-relaxed duration-200 [overflow-anchor:none]",
+          "[&_*]:text-muted-foreground [&_li]:my-0.5 [&_ol]:my-1 [&_p]:my-0 [&_p]:text-[13px] [&_p:not(:last-child)]:mb-3 [&_ul]:my-1",
           className
         )}
         ref={scrollRef}
