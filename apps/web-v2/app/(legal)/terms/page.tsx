@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { LegalShell } from "@/components/legal/legal-shell";
 
 export const metadata: Metadata = {
   title: "Audric — Terms of Service",
@@ -8,23 +8,13 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <>
-      <header className="mb-12">
-        <Link
-          className="inline-block text-muted-foreground hover:text-foreground font-mono text-[10px] tracking-[0.12em] uppercase mb-8 transition-colors"
-          href="/"
-        >
-          &larr; audric.ai
-        </Link>
-        <h1 className="font-serif text-[36px] sm:text-[44px] leading-[1.1] tracking-[-0.01em] text-foreground mb-3">
-          Terms of Service
-        </h1>
-        <p className="font-mono text-[10px] tracking-[0.1em] uppercase text-muted-foreground">
-          Last updated · April 2026 (v2)
-        </p>
-      </header>
-
-      <div className="space-y-10 text-muted-foreground leading-[1.7] text-[14px]">
+    <LegalShell
+      slug="terms"
+      tag="L4 · Terms of Service"
+      title="Terms of Service"
+      updated="Last updated · April 2026 (v2)"
+    >
+      <div className="space-y-10">
         <section>
           <h2 className="text-foreground font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
             1. Acceptance
@@ -284,6 +274,6 @@ export default function TermsPage() {
           </p>
         </section>
       </div>
-    </>
+    </LegalShell>
   );
 }

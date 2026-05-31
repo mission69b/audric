@@ -1,12 +1,9 @@
-import Link from "next/link";
-
-const LEGAL_LINKS = [
-  { href: "/terms", label: "Terms" },
-  { href: "/privacy", label: "Privacy" },
-  { href: "/disclaimer", label: "Disclaimer" },
-  { href: "/security", label: "Security" },
-];
-
+/**
+ * Legal route-group layout (R6.6 6d). The per-doc `LegalShell` now provides
+ * the back link, doc-tabs nav, sticky-TOC frame, and prose scale, so this
+ * layout is just the page container (phase2 `main` max-width 1080px). The
+ * previous bottom footer-links row was folded into the doc-tabs pill nav.
+ */
 export default function LegalLayout({
   children,
 }: {
@@ -14,20 +11,8 @@ export default function LegalLayout({
 }) {
   return (
     <main className="min-h-screen bg-background text-foreground">
-      <div className="max-w-2xl mx-auto px-5 sm:px-6 py-14 sm:py-20">
+      <div className="mx-auto max-w-[1080px] px-5 py-14 sm:px-6 sm:py-20">
         {children}
-
-        <footer className="mt-20 pt-8 border-t border-border flex flex-wrap gap-x-6 gap-y-2 font-mono text-[10px] tracking-[0.1em] uppercase text-muted-foreground">
-          {LEGAL_LINKS.map((link) => (
-            <Link
-              className="hover:text-foreground transition-colors"
-              href={link.href}
-              key={link.href}
-            >
-              {link.label}
-            </Link>
-          ))}
-        </footer>
       </div>
     </main>
   );

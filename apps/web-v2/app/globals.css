@@ -583,3 +583,72 @@ textarea:focus-visible {
 [data-testid="artifact"] {
   isolation: isolate;
 }
+
+/* [R6.6 / 6d] Legal prose — phase2-profile-legal.html `.prose` type scale.
+   Unlayered on purpose: it deterministically wins over the Tailwind utility
+   classes already on the legal copy, so the three prose docs (privacy /
+   terms / disclaimer) pick up the phase2 scale without rewriting any legal
+   text. The title h1 / tag / updated line are rendered directly by
+   `LegalShell` (not styled here). Security opts out (`bare`) — it keeps its
+   bespoke card layout. The TOC offset keeps anchored headings clear of the
+   sticky page chrome. */
+[data-legal-content] :is(h2, h3) {
+  scroll-margin-top: 96px;
+}
+.legal-prose {
+  max-width: 640px;
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--foreground);
+}
+.legal-prose h2 {
+  margin: 28px 0 8px;
+  font-family: var(--font-sans);
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.022em;
+  text-transform: none;
+  color: var(--foreground);
+}
+.legal-prose h3 {
+  margin: 18px 0 6px;
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.014em;
+  color: var(--foreground);
+}
+.legal-prose p {
+  margin: 0 0 12px;
+  color: var(--muted-foreground);
+}
+.legal-prose ul {
+  margin: 0 0 12px;
+  padding-left: 20px;
+  list-style: disc;
+  color: var(--muted-foreground);
+}
+.legal-prose li {
+  margin-bottom: 6px;
+}
+.legal-prose a {
+  color: var(--foreground);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.legal-prose a:hover {
+  opacity: 0.7;
+}
+.legal-prose code {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  background: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 1px 5px;
+  color: var(--foreground);
+}
+.legal-prose strong {
+  color: var(--foreground);
+  font-weight: 500;
+}

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { LegalShell } from "@/components/legal/legal-shell";
 
 export const metadata: Metadata = {
   title: "Audric — Security",
@@ -39,27 +39,13 @@ const SECURITY_MEASURES = [
 
 export default function SecurityPage() {
   return (
-    <>
-      <header className="mb-12">
-        <Link
-          className="inline-block text-muted-foreground hover:text-foreground font-mono text-[10px] tracking-[0.12em] uppercase mb-8 transition-colors"
-          href="/"
-        >
-          &larr; audric.ai
-        </Link>
-        <div className="flex items-center gap-3 mb-3">
-          <h1 className="font-serif text-[36px] sm:text-[44px] leading-[1.1] tracking-[-0.01em] text-foreground">
-            Security
-          </h1>
-          <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-muted-foreground bg-muted border border-border rounded-xs px-1.5 py-0.5 leading-none">
-            beta
-          </span>
-        </div>
-        <p className="font-mono text-[10px] tracking-[0.1em] uppercase text-muted-foreground">
-          Security measures · responsible disclosure
-        </p>
-      </header>
-
+    <LegalShell
+      bare
+      slug="security"
+      tag="L3 · Security"
+      title="Security"
+      updated="Security measures · responsible disclosure"
+    >
       {/* CI Badges */}
       <section className="mb-12">
         <h2 className="text-foreground font-mono text-[10px] tracking-[0.12em] uppercase mb-4">
@@ -222,6 +208,6 @@ export default function SecurityPage() {
           </div>
         </div>
       </section>
-    </>
+    </LegalShell>
   );
 }

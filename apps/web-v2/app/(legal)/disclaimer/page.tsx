@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { LegalShell } from "@/components/legal/legal-shell";
 
 export const metadata: Metadata = {
   title: "Audric — Disclaimer",
@@ -8,23 +8,13 @@ export const metadata: Metadata = {
 
 export default function DisclaimerPage() {
   return (
-    <>
-      <header className="mb-12">
-        <Link
-          className="inline-block text-muted-foreground hover:text-foreground font-mono text-[10px] tracking-[0.12em] uppercase mb-8 transition-colors"
-          href="/"
-        >
-          &larr; audric.ai
-        </Link>
-        <h1 className="font-serif text-[36px] sm:text-[44px] leading-[1.1] tracking-[-0.01em] text-foreground mb-3">
-          Disclaimer
-        </h1>
-        <p className="font-mono text-[10px] tracking-[0.1em] uppercase text-muted-foreground">
-          Last updated · April 2026
-        </p>
-      </header>
-
-      <div className="space-y-10 text-muted-foreground leading-[1.7] text-[14px]">
+    <LegalShell
+      slug="disclaimer"
+      tag="L2 · Disclaimer"
+      title="Disclaimer"
+      updated="Last updated · April 2026"
+    >
+      <div className="space-y-10">
         <div className="bg-foreground/5 border border-border rounded-lg p-4 text-foreground/80">
           <strong className="text-foreground">Audric is beta software.</strong>{" "}
           This software is provided &quot;as is&quot; without warranty of any
@@ -151,6 +141,6 @@ export default function DisclaimerPage() {
           </p>
         </section>
       </div>
-    </>
+    </LegalShell>
   );
 }

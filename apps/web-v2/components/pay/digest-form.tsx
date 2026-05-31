@@ -71,43 +71,43 @@ export function DigestForm({ slug, onSuccess, onError }: DigestFormProps) {
   if (!expanded) {
     return (
       <button
-        className="w-full py-1 text-center font-mono text-[10px] tracking-[0.06em] text-muted-foreground transition hover:text-foreground"
+        className="w-full py-1 text-center font-mono text-[10.5px] tracking-[0.04em] text-muted-foreground transition hover:text-foreground"
         onClick={() => setExpanded(true)}
         type="button"
       >
-        I already sent payment →
+        Already paid manually? →
       </button>
     );
   }
 
   return (
-    <form className="space-y-2" onSubmit={handleSubmit}>
+    <form className="space-y-2 text-left" onSubmit={handleSubmit}>
       <label
-        className="block font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground"
+        className="block font-mono text-[10.5px] uppercase tracking-[0.06em] text-muted-foreground"
         htmlFor={`digest-input-${slug}`}
       >
         Transaction digest
       </label>
       <input
         autoFocus
-        className="h-10 w-full rounded-xs border border-border bg-background px-3 font-mono text-[11px] text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none"
+        className="h-[38px] w-full rounded-lg border border-border bg-muted px-3 font-mono text-[13px] text-foreground tracking-[0.02em] placeholder:text-muted-foreground focus:border-ring focus:outline-none"
         disabled={verifying}
         id={`digest-input-${slug}`}
         onChange={(e) => setDigest(e.target.value)}
-        placeholder="e.g. 5Kx9V3..."
+        placeholder="Hp4oHHs…"
         type="text"
         value={digest}
       />
       <div className="flex gap-2">
         <button
-          className="h-10 flex-1 rounded-pill border border-border bg-transparent font-mono text-[11px] uppercase tracking-[0.06em] text-foreground transition hover:bg-muted focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40"
+          className="inline-flex h-[38px] flex-1 items-center justify-center rounded-lg border border-border bg-transparent font-medium font-sans text-[13px] text-foreground tracking-[-0.011em] transition hover:bg-accent focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40"
           disabled={!digest.trim() || verifying}
           type="submit"
         >
-          {verifying ? "Verifying..." : "Verify"}
+          {verifying ? "Verifying…" : "Verify payment"}
         </button>
         <button
-          className="h-10 rounded-pill border border-border bg-transparent px-4 font-mono text-[11px] uppercase tracking-[0.06em] text-muted-foreground transition hover:bg-muted hover:text-foreground focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none"
+          className="inline-flex h-[38px] items-center justify-center rounded-lg border border-border bg-transparent px-4 font-medium font-sans text-[13px] text-muted-foreground tracking-[-0.011em] transition hover:bg-accent hover:text-foreground focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none"
           onClick={() => {
             setExpanded(false);
             setDigest("");

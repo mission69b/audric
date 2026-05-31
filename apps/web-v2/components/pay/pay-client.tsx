@@ -31,7 +31,7 @@ import { SuiPayQr } from "./sui-pay-qr";
 // (graceful degradation; their slug URLs keep working). The `type` field
 // is preserved on the wire for one transition cycle so /api/payments
 // keeps shipping it; UI ignores it and always renders the link path.
-interface PaymentData {
+export interface PaymentData {
   amount: number | null;
   createdAt: string;
   currency: string;
@@ -249,49 +249,55 @@ export function PayClient({ slug }: { slug: string }) {
   }, []);
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-8 text-foreground">
-      <div className="w-full max-w-sm">
-        <div className="mb-8 flex items-center justify-center gap-2">
-          <AudricMark size={20} />
-          <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-            Audric Pay
+    <div className="flex min-h-screen flex-col bg-background text-foreground">
+      {/* page-nav — standalone public chrome (brand + canonical url) */}
+      <header className="flex h-[52px] items-center gap-2 border-border border-b px-[18px]">
+        <a
+          aria-label="Audric"
+          className="inline-flex items-center gap-2 transition-opacity hover:opacity-80"
+          href="https://audric.ai"
+          rel="noopener noreferrer"
+          target="_blank"
+        >
+          <AudricMark size={18} />
+          <span className="font-sans font-semibold text-[14px] tracking-[-0.022em]">
+            audric
           </span>
+        </a>
+        <span className="ml-auto truncate font-mono text-[10.5px] text-muted-foreground tracking-[0.02em]">
+          audric.ai/pay/{slug}
+        </span>
+      </header>
+
+      <main className="flex flex-1 items-center justify-center px-6 py-12">
+        <div className="w-full max-w-[340px]">
+          {state === "loading" && <LoadingState />}
+
+          {(state === "active" || state === "overdue") && data && (
+            <ActivePayment
+              copied={copied}
+              data={data}
+              detecting={detecting}
+              error={error}
+              onCopy={copyAddress}
+              onDigestSuccess={handleDigestSuccess}
+              onError={setError}
+              onWalletSuccess={handleWalletSuccess}
+            />
+          )}
+
+          {state === "paid" && data && <PaidState data={data} />}
+          {state === "expired" && <ExpiredState />}
+          {state === "cancelled" && <CancelledState />}
+          {state === "not_found" && <NotFoundState />}
         </div>
-
-        {state === "loading" && <LoadingState />}
-
-        {(state === "active" || state === "overdue") && data && (
-          <ActivePayment
-            copied={copied}
-            data={data}
-            detecting={detecting}
-            error={error}
-            onCopy={copyAddress}
-            onDigestSuccess={handleDigestSuccess}
-            onError={setError}
-            onWalletSuccess={handleWalletSuccess}
-          />
-        )}
-
-        {state === "paid" && data && <PaidState data={data} />}
-        {state === "expired" && <ExpiredState />}
-        {state === "cancelled" && <CancelledState />}
-        {state === "not_found" && <NotFoundState />}
-
-        <div className="mt-8 text-center">
-          <a
-            className="font-mono text-[10px] tracking-[0.08em] text-muted-foreground transition hover:text-foreground"
-            href="https://audric.ai"
-            rel="noopener noreferrer"
-            target="_blank"
-          >
-            Powered by Audric — Your money, handled. →
-          </a>
-        </div>
-      </div>
+      </main>
     </div>
   );
 }
+
+const SECONDARY_BTN =
+  "inline-flex h-[38px] items-center justify-center gap-2 rounded-lg border border-border bg-transparent px-4 font-medium font-sans text-[13px] text-foreground tracking-[-0.011em] transition hover:bg-accent focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none";
 
 interface ActivePaymentProps {
   copied: boolean;
@@ -304,7 +310,7 @@ interface ActivePaymentProps {
   onWalletSuccess: (digest: string, sender: string) => void;
 }
 
-function ActivePayment({
+export function ActivePayment({
   data,
   copied,
   onCopy,
@@ -314,63 +320,38 @@ function ActivePayment({
   onDigestSuccess,
   onError,
 }: ActivePaymentProps) {
-  const shortAddr = `${data.recipientAddress.slice(0, 8)}...${data.recipientAddress.slice(-6)}`;
+  const shortAddr = `${data.recipientAddress.slice(0, 6)}…${data.recipientAddress.slice(-4)}`;
+  const requester = data.recipientName ?? shortAddr;
 
   return (
-    <div className="overflow-hidden rounded-md border border-border bg-card shadow-[var(--shadow-flat)]">
-      <div className="px-6 pt-6 pb-4">
-        <div className="text-center">
-          {data.label && (
-            <div className="mb-1 text-[13px] text-muted-foreground">
-              {data.label}
-            </div>
-          )}
-          <div className="font-serif text-[40px] leading-none tracking-[-0.02em] text-foreground">
-            ${fmtUsd(data.amount ?? 0)}
-          </div>
-          <div className="mt-2 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-            {data.currency}
-          </div>
-        </div>
+    <div className="flex flex-col items-center gap-[18px] text-center">
+      {/* PA1 — requester + amount hero */}
+      <div className="flex flex-col items-center gap-2">
+        <span className="size-11 rounded-full border border-border bg-gradient-to-br from-muted-foreground to-foreground" />
+        <span className="font-mono text-[11px] uppercase tracking-[0.06em] text-muted-foreground">
+          <strong className="font-medium text-foreground">{requester}</strong>{" "}
+          requests
+        </span>
       </div>
 
-      <div className="flex justify-center py-4">
-        <SuiPayQr
-          amount={data.amount}
-          label={data.label}
-          memo={data.memo}
-          nonce={data.nonce}
-          recipientAddress={data.recipientAddress}
-          size={180}
-        />
+      <div className="font-medium font-sans text-[48px] text-foreground leading-none tracking-[-0.04em] tabular-nums">
+        {fmtUsd(data.amount ?? 0)}
+        <span className="ml-1.5 font-medium text-[22px] text-muted-foreground">
+          {data.currency}
+        </span>
       </div>
 
-      <div className="space-y-2 px-6 py-3">
-        <DetailRow label="To" value={data.recipientName ?? shortAddr} />
-        {data.recipientName && <DetailRow label="Address" value={shortAddr} />}
-        {data.memo && <DetailRow label="Memo" value={data.memo} />}
-        {data.expiresAt && (
-          <DetailRow
-            label="Expires"
-            value={new Date(data.expiresAt).toLocaleDateString("en-US", {
-              month: "short",
-              day: "numeric",
-              hour: "numeric",
-              minute: "2-digit",
-            })}
-          />
-        )}
-      </div>
+      {data.label && (
+        <div className="text-[14px] text-muted-foreground">{data.label}</div>
+      )}
 
       {error && (
-        <div className="px-6 pb-2">
-          <div className="rounded-xs border border-destructive/30 bg-destructive/10 px-3 py-2 font-mono text-[10px] text-destructive">
-            {error}
-          </div>
+        <div className="w-full rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-left font-mono text-[10px] text-destructive">
+          {error}
         </div>
       )}
 
-      <div className="space-y-2 px-6 pb-6">
+      <div className="w-full">
         <PayButton
           amount={data.amount}
           nonce={data.nonce}
@@ -379,225 +360,189 @@ function ActivePayment({
           recipientAddress={data.recipientAddress}
           slug={data.slug}
         />
+      </div>
 
+      {/* PA6 — scan-to-pay QR */}
+      <div className="flex w-full flex-col items-center gap-2 border-border border-t pt-[18px]">
+        <SuiPayQr
+          amount={data.amount}
+          label={data.label}
+          memo={data.memo}
+          nonce={data.nonce}
+          recipientAddress={data.recipientAddress}
+          size={144}
+        />
+        <span className="font-mono text-[10.5px] uppercase tracking-[0.08em] text-muted-foreground">
+          Scan with any Sui wallet to pay
+        </span>
+      </div>
+
+      {/* secondary affordances — copy address + PA5 digest fallback */}
+      <div className="flex w-full flex-col gap-2">
         <button
-          className="h-10 w-full rounded-pill border border-border bg-transparent font-mono text-[11px] uppercase tracking-[0.06em] text-foreground transition hover:bg-muted focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none"
+          className={`w-full ${SECONDARY_BTN}`}
           onClick={onCopy}
           type="button"
         >
-          {copied ? "Copied!" : "Copy Address"}
+          {copied ? "Copied!" : "Copy address"}
         </button>
-
         <DigestForm
           onError={onError}
           onSuccess={onDigestSuccess}
           slug={data.slug}
         />
-
-        <div className="flex items-center justify-center gap-1.5 pt-1">
-          <span
-            className={`h-1.5 w-1.5 rounded-full ${
-              detecting ? "animate-pulse bg-success" : "bg-border"
-            }`}
-          />
-          <span className="font-mono text-[10px] tracking-[0.06em] text-muted-foreground">
-            {detecting ? "Checking for payment..." : "Listening for payment"}
-          </span>
-        </div>
       </div>
-    </div>
-  );
-}
 
-function DetailRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between font-mono text-[11px]">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="text-foreground">{value}</span>
+      {/* footer — gasless reassurance + live listening dot */}
+      <div className="flex items-center gap-1.5 font-mono text-[10px] text-muted-foreground tracking-[0.04em]">
+        <span
+          className={`size-1 rounded-full bg-signal ${detecting ? "animate-pulse" : ""}`}
+        />
+        {detecting
+          ? "Checking for payment…"
+          : "Gasless · settles in ~0.4s on Sui"}
+      </div>
     </div>
   );
 }
 
 function LoadingState() {
   return (
-    <div className="rounded-md border border-border bg-card p-8 text-center">
-      <div className="animate-pulse space-y-4">
-        <div className="mx-auto h-40 w-40 rounded-md bg-muted" />
-        <div className="mx-auto h-4 w-3/4 rounded bg-muted" />
-        <div className="mx-auto h-4 w-1/2 rounded bg-muted" />
-      </div>
+    <div className="flex animate-pulse flex-col items-center gap-[18px]">
+      <div className="size-11 rounded-full bg-muted" />
+      <div className="h-10 w-40 rounded bg-muted" />
+      <div className="h-[46px] w-full rounded-lg bg-muted" />
+      <div className="size-[144px] rounded-lg bg-muted" />
     </div>
   );
 }
 
-function PaidState({ data }: { data: PaymentData }) {
+export function PaidState({ data }: { data: PaymentData }) {
   const txUrl = data.txDigest
     ? `https://suiscan.xyz/mainnet/tx/${data.txDigest}`
     : null;
   const shortDigest = data.txDigest
-    ? `${data.txDigest.slice(0, 8)}...${data.txDigest.slice(-6)}`
+    ? `${data.txDigest.slice(0, 6)}…${data.txDigest.slice(-3)}`
     : null;
+  const shortAddr = `${data.recipientAddress.slice(0, 6)}…${data.recipientAddress.slice(-4)}`;
+  const requester = data.recipientName ?? shortAddr;
 
   return (
-    <div className="rounded-md border border-border bg-card p-8 text-center shadow-[var(--shadow-flat)]">
-      <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-success/30 bg-success/10">
+    <div className="flex flex-col items-center gap-[18px] text-center">
+      <span className="flex size-12 items-center justify-center rounded-full bg-signal text-background">
         <svg
           aria-hidden="true"
-          className="text-success"
           fill="none"
-          height="24"
-          viewBox="0 0 24 24"
-          width="24"
+          height="22"
+          viewBox="0 0 16 16"
+          width="22"
         >
           <title>Paid</title>
           <path
-            d="M20 6L9 17L4 12"
+            d="M3.5 8.5L6.5 11.5L13 4.5"
             stroke="currentColor"
             strokeLinecap="round"
             strokeLinejoin="round"
-            strokeWidth="2"
+            strokeWidth="1.8"
           />
         </svg>
+      </span>
+      <div>
+        <div className="font-medium font-sans text-[18px] text-foreground tracking-[-0.018em]">
+          Paid {data.amount == null ? "" : `${fmtUsd(data.amount)} `}
+          {data.currency}
+        </div>
+        <p className="mt-1.5 text-[14px] text-muted-foreground">
+          to {requester}
+          {data.label ? ` · ${data.label}` : ""}
+        </p>
       </div>
-      <h2 className="mb-1 font-serif text-[20px] tracking-[-0.01em] text-foreground">
-        Payment Complete
-      </h2>
-      {data.amount != null && (
-        <div className="mb-1 font-serif text-[28px] leading-tight tracking-[-0.02em] text-foreground">
-          ${fmtUsd(data.amount)}
+      {data.paidAt && (
+        <div className="font-mono text-[11px] text-muted-foreground tracking-[0.02em]">
+          {`Paid ${new Date(data.paidAt).toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+          })}`}
+          {shortDigest ? ` · ${shortDigest}` : ""}
         </div>
       )}
-      {data.label && (
-        <p className="mb-2 font-mono text-[10px] text-muted-foreground">
-          {data.label}
-        </p>
-      )}
-      {data.paymentMethod && (
-        <span className="mb-3 inline-block rounded-xs border border-success/30 bg-success/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.12em] text-success">
-          {data.paymentMethod === "wallet_connect"
-            ? "Wallet"
-            : data.paymentMethod === "manual"
-              ? "Manual"
-              : data.paymentMethod}
-        </span>
-      )}
-      <p className="mb-4 text-[13px] text-muted-foreground">
-        {data.paidAt
-          ? `Paid ${new Date(data.paidAt).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`
-          : "This payment has been completed."}
-      </p>
-      {txUrl && shortDigest && (
+      {txUrl && (
         <a
-          className="font-mono text-[11px] text-info transition hover:opacity-70"
+          className={SECONDARY_BTN}
           href={txUrl}
           rel="noopener noreferrer"
           target="_blank"
         >
-          {shortDigest} ↗
+          View on Sui ↗
         </a>
       )}
+      <div className="flex items-center gap-1.5 font-mono text-[10px] text-muted-foreground tracking-[0.04em]">
+        <span className="size-1 rounded-full bg-signal" />
+        Receipt sent to your wallet
+      </div>
     </div>
   );
 }
 
-function ExpiredState() {
+export function ExpiredState() {
   return (
-    <div className="rounded-md border border-border bg-card p-8 text-center">
-      <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-warning/30 bg-warning/10">
-        <svg
-          aria-hidden="true"
-          className="text-warning"
-          fill="none"
-          height="24"
-          viewBox="0 0 24 24"
-          width="24"
-        >
-          <title>Expired</title>
-          <circle
-            cx="12"
-            cy="12"
-            r="10"
-            stroke="currentColor"
-            strokeWidth="2"
-          />
-          <path
-            d="M12 8V12L14 14"
-            stroke="currentColor"
-            strokeLinecap="round"
-            strokeWidth="2"
-          />
-        </svg>
-      </div>
-      <h2 className="mb-1 font-serif text-[20px] tracking-[-0.01em] text-foreground">
-        Expired
-      </h2>
-      <p className="text-[13px] text-muted-foreground">
-        This payment link is no longer active. Please request a new one from the
-        recipient.
+    <EndState
+      subtitle="This payment link is no longer active. Please request a new one from the recipient."
+      title="Payment link expired"
+    />
+  );
+}
+
+export function CancelledState() {
+  return (
+    <EndState
+      subtitle="This payment link was cancelled by the recipient. Please request a new one."
+      title="Payment link cancelled"
+    />
+  );
+}
+
+function EndState({ title, subtitle }: { title: string; subtitle: string }) {
+  return (
+    <div className="flex flex-col items-center gap-3 text-center">
+      <div className="font-medium text-[16px] tracking-[-0.014em]">{title}</div>
+      <p className="max-w-[280px] text-[13px] text-muted-foreground">
+        {subtitle}
       </p>
+      <a
+        className={`mt-1 ${SECONDARY_BTN}`}
+        href="https://audric.ai"
+        rel="noopener noreferrer"
+        target="_blank"
+      >
+        Go to audric.ai
+      </a>
     </div>
   );
 }
 
-function CancelledState() {
+export function NotFoundState() {
   return (
-    <div className="rounded-md border border-border bg-card p-8 text-center">
-      <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-border bg-muted">
-        <svg
-          aria-hidden="true"
-          className="text-muted-foreground"
-          fill="none"
-          height="24"
-          viewBox="0 0 24 24"
-          width="24"
-        >
-          <title>Cancelled</title>
-          <path
-            d="M18 6L6 18M6 6L18 18"
-            stroke="currentColor"
-            strokeLinecap="round"
-            strokeWidth="2"
-          />
-        </svg>
+    <div className="flex flex-col items-center gap-3 text-center">
+      <div className="font-sans font-semibold text-[64px] leading-none tracking-[-0.04em]">
+        4<span className="text-muted-foreground">0</span>4
       </div>
-      <h2 className="mb-1 font-serif text-[20px] tracking-[-0.01em] text-foreground">
-        Link Cancelled
-      </h2>
-      <p className="text-[13px] text-muted-foreground">
-        This payment link has been cancelled by the recipient. Please request a
-        new one.
-      </p>
-    </div>
-  );
-}
-
-function NotFoundState() {
-  return (
-    <div className="rounded-md border border-border bg-card p-8 text-center">
-      <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-border bg-muted">
-        <svg
-          aria-hidden="true"
-          className="text-muted-foreground"
-          fill="none"
-          height="24"
-          viewBox="0 0 24 24"
-          width="24"
-        >
-          <title>Not found</title>
-          <path
-            d="M12 9V13M12 17H12.01M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z"
-            stroke="currentColor"
-            strokeLinecap="round"
-            strokeWidth="2"
-          />
-        </svg>
+      <div className="font-medium text-[16px] tracking-[-0.014em]">
+        Payment link not found
       </div>
-      <h2 className="mb-1 font-serif text-[20px] tracking-[-0.01em] text-foreground">
-        Not Found
-      </h2>
-      <p className="text-[13px] text-muted-foreground">
-        This payment doesn&apos;t exist or has been removed.
+      <p className="max-w-[280px] text-[13px] text-muted-foreground">
+        This link expired, was cancelled, or never existed.
       </p>
+      <a
+        className={`mt-1 ${SECONDARY_BTN}`}
+        href="https://audric.ai"
+        rel="noopener noreferrer"
+        target="_blank"
+      >
+        Go to audric.ai
+      </a>
     </div>
   );
 }

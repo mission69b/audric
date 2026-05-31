@@ -109,11 +109,11 @@ export function PayButton({
     }
   };
 
-  const label = isPending
-    ? "Confirming..."
-    : account
-      ? `Pay${amount ? ` $${amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}` : ""} with Wallet`
-      : "Connect Wallet to Pay";
+  // [R6.6 / 6a] phase2-pay-public PA1/PA3 — primary CTA reads "Pay with
+  // wallet" at rest and swaps to a spinner + "Approve in your wallet…" while
+  // the wallet popup is open (PA3 SIGNING). Connect happens on click when
+  // there's no account, so the label stays "Pay with wallet" pre-connect.
+  const label = isPending ? "Approve in your wallet…" : "Pay with wallet";
 
   return (
     <>
@@ -123,12 +123,18 @@ export function PayButton({
         trigger={<span hidden />}
       />
       <button
-        className="h-12 w-full rounded-pill bg-foreground font-mono text-[12px] uppercase tracking-[0.06em] text-background transition-opacity hover:opacity-90 active:opacity-80 focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40"
+        className="inline-flex h-[46px] w-full items-center justify-center gap-2 rounded-lg bg-foreground font-medium font-sans text-[15px] text-background tracking-[-0.011em] transition-opacity hover:opacity-90 active:opacity-80 focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none disabled:cursor-progress disabled:opacity-60"
         data-slug={slug}
         disabled={disabled || isPending}
         onClick={handlePay}
         type="button"
       >
+        {isPending && (
+          <span
+            aria-hidden="true"
+            className="size-4 animate-spin rounded-full border-2 border-current border-t-transparent"
+          />
+        )}
         {label}
       </button>
     </>
