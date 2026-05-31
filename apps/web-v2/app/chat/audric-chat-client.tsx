@@ -417,7 +417,7 @@ function AuthenticatedChatInner({
               )}
             </div>
           </header>
-          <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-background md:rounded-tl-[12px] md:border-border/40 md:border-t md:border-l">
+          <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-background md:rounded-tl-[12px] md:border-border/60 md:border-t md:border-l">
             <AudricChatPanel
               chatId={chatId}
               initialMessages={initialMessages}
