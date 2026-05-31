@@ -5,7 +5,8 @@ alwaysApply: true
 
 # Audric Design System (Geist DS)
 
-Source of truth: `apps/web-v2/app/globals.css`.
+**Two layers.** The Geist *primitives* (`--ds-*` ramps, `--fg`, `--bg`) come from **`@t2000/ui`** — the cross-brand single source of truth (`globals.css` does `@import "@t2000/ui/tokens" layer(base)`). Audric's *brand-semantic mapping* (the shadcn tokens + the cyan `--signal`) lives in `apps/web-v2/app/globals.css`. Edit Audric's look here in `globals.css`; never edit `@t2000/ui` primitives (that moves every t2000 brand). See `t2000/.cursor/rules/geist-ds.mdc` for the package-level contract.
+
 Prototype reference: `t2000-AFI/audric/phase2-*.html` (founder-local, gitignored — the canonical phase2 spec the R6.x Geist migration was rebuilt against).
 
 > **R6.9 (2026-05-30) — the legacy Agentic Design System (ADS) was decommissioned.** The raw colour ramps (`--n/--r/--g/--y/--o/--b` families), the `surface-*` / `fg-*` / `border-default|subtle|focus` semantic aliases, the `*-fg|bg|border|solid` status family, and the `.ads-*` typography ramp classes are **GONE**. Every surface now reads the Geist-rooted shadcn tokens. `pnpm check:ads` (`scripts/check-ads-tokens.mts`) fails CI on any reintroduction. **Do not write ADS tokens** — they will not resolve and will break the build gate.
