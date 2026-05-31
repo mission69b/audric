@@ -22,6 +22,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { LoadingScreen } from "@/components/auth/loading-screen";
 import { useZkLogin } from "@/components/auth/use-zklogin";
+import { isJwtExpired, loadSession } from "@/lib/zklogin";
 
 export default function AuthCallbackPage() {
   const router = useRouter();
@@ -33,10 +34,18 @@ export default function AuthCallbackPage() {
       return;
     }
     started.current = true;
+    // Already signed in (e.g. a bookmarked /auth/callback with no OAuth
+    // hash) → skip `completeLogin` (which would throw "No JWT found" and
+    // show the error screen) and go straight to chat.
+    const existing = loadSession();
+    if (existing && !isJwtExpired(existing)) {
+      router.replace("/chat");
+      return;
+    }
     handleCallback().catch((err) => {
       console.error("[auth/callback] handleCallback failed:", err);
     });
-  }, [handleCallback]);
+  }, [handleCallback, router]);
 
   useEffect(() => {
     if (status === "authenticated") {

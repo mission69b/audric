@@ -1347,6 +1347,11 @@ function PermissionForToolPart(props: PermissionForToolPartProps) {
       currentHF={metadata.currentHF}
       description={metadata.description}
       input={(toolPart.input ?? {}) as Record<string, unknown>}
+      // Re-yield (user edits a modifiable field → engine re-asks) stamps a
+      // fresh approvalId per the harness spec. Keying on it remounts the
+      // card so the 60s deny-timer + edited-input state rebase instead of
+      // carrying a stale countdown/value.
+      key={approvalId}
       modifiableFields={metadata.modifiableFields}
       onApprove={async (modifiedInput) => {
         // 1. Tell AI SDK the user approved. Reason field is optional;
@@ -1449,6 +1454,9 @@ function BundleForMarker(props: BundleForMarkerProps) {
 
   return (
     <BundlePermissionCard
+      // Same re-yield remount as the single card — a fresh set of step
+      // approvalIds rebases the bundle's timer/state.
+      key={steps.map((s) => s.approvalId).join("-")}
       onApprove={async () => {
         // 1. Tell AI SDK every step is approved. We fan out first so
         // the server doesn't block waiting on individual responses

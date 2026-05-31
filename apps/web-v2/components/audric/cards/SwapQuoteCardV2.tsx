@@ -76,8 +76,18 @@ export function SwapQuoteCardV2({ data }: SwapQuoteCardV2Props) {
   const viaTag = hasMultiHop
     ? (data.route ?? `${data.routeSteps!.length} hops`).toUpperCase()
     : 'DIRECT';
-  const minReceived =
+  const rawMinReceived =
     slippagePct != null ? data.toAmount * (1 - slippagePct / 100) : null;
+  // "Min received" is the GUARANTEED floor — never round it up (the
+  // financial-amounts rule). Floor at the precision `fmtAmt` renders
+  // (6dp under 1, 2dp at/above 1) so the formatter can't nudge it above
+  // the true minimum.
+  const minReceived =
+    rawMinReceived == null
+      ? null
+      : rawMinReceived < 1
+        ? Math.floor(rawMinReceived * 1e6) / 1e6
+        : Math.floor(rawMinReceived * 100) / 100;
 
   return (
     <CardShell

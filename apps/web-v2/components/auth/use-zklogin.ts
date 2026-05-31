@@ -26,7 +26,8 @@
  */
 
 import { useSuiClient } from "@mysten/dapp-kit";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ZKLOGIN_EXPIRED_EVENT } from "@/lib/auth-fetch";
 import {
   clearSession,
   completeLogin,
@@ -137,6 +138,29 @@ export function useZkLogin(): UseZkLoginReturn {
     const id = window.setInterval(check, 60_000);
     return () => window.clearInterval(id);
   }, [session, currentEpoch]);
+
+  // A server-side 401 (JWT revoked / clock-skew / crossed the 1h OIDC TTL
+  // between 60s polls) is broadcast by `authFetch` as a window event.
+  // Without this listener a mid-session 401 left the user on a dead chat
+  // screen ("Reconnecting") with no redirect. Flip to `expired` + clear
+  // the stale session so the chat routes bounce to `/` and `loadSession`
+  // can't re-hydrate the dead session on the next mount (no redirect loop).
+  // Guarded on `authenticated` so a 401 mid-login (`proving`) is ignored.
+  const statusRef = useRef(status);
+  statusRef.current = status;
+  useEffect(() => {
+    const onExpired = () => {
+      if (statusRef.current !== "authenticated") {
+        return;
+      }
+      clearSession();
+      setSession(null);
+      setCurrentEpoch(0);
+      setStatus("expired");
+    };
+    window.addEventListener(ZKLOGIN_EXPIRED_EVENT, onExpired);
+    return () => window.removeEventListener(ZKLOGIN_EXPIRED_EVENT, onExpired);
+  }, []);
 
   const expiringSoon = useMemo(() => {
     if (!session || currentEpoch === 0) {

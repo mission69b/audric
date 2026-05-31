@@ -20,9 +20,11 @@
  *     `harvest_rewards` get the AssetAmountBlock + APYBlock + FeeRow +
  *     HFRow ledger view; everything else falls back to
  *     `formatInput()` single-line summary.
- *   - Timer reset on `attemptId` change (legacy SPEC 7 P2.4b audit fix
- *     — when a re-yield ships a fresh attemptId without unmount, rebase
- *     the countdown).
+ *   - Timer reset on re-yield: the host keys this card on the
+ *     pending-action `approvalId` (`audric-chat-client.tsx`), so a fresh
+ *     yield remounts the card and rebases the countdown + edited-input
+ *     state. (The card itself holds no `approvalId` prop — the reset is
+ *     structural via the React key, not an in-component effect.)
  *
  * Phase 5d intentionally DEFERS (each requires upstream chat-route
  * plumbing that isn't gated by this slice):
