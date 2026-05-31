@@ -65,12 +65,24 @@ function fmtUsd(n: number): string {
   });
 }
 
+// [N1 — 2026-05-31] Poll cadence + cap. The 6s interval is unchanged
+// (fast enough to feel live); the 10-minute cap stops the page from
+// polling `/verify` forever on a link nobody pays — saves server quota
+// + the visitor's battery, and lets automation / Lighthouse reach
+// network-idle. Past the cap we surface a manual "refresh" affordance
+// rather than silently giving up.
+const POLL_INTERVAL_MS = 6000;
+const MAX_POLL_DURATION_MS = 10 * 60 * 1000;
+
 export function PayClient({ slug }: { slug: string }) {
   const [state, setState] = useState<PageState>("loading");
   const [data, setData] = useState<PaymentData | null>(null);
   const [copied, setCopied] = useState(false);
   const [detecting, setDetecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // [N1] Set once the poll hits its time cap → ActivePayment swaps the
+  // "Checking…" footer for a "Still waiting? Refresh" affordance.
+  const [pollExhausted, setPollExhausted] = useState(false);
 
   const applyStatus = useCallback((payment: PaymentData) => {
     const s = payment.status;
@@ -110,9 +122,13 @@ export function PayClient({ slug }: { slug: string }) {
       return;
     }
     let stopped = false;
+    const startedAt = Date.now();
 
     const poll = async () => {
-      if (stopped) {
+      // [N1] Skip the network round-trip while the tab is backgrounded —
+      // the visibilitychange handler fires an immediate catch-up poll the
+      // moment the visitor returns, so we lose no responsiveness.
+      if (stopped || (typeof document !== "undefined" && document.hidden)) {
         return;
       }
       setDetecting(true);
@@ -151,13 +167,33 @@ export function PayClient({ slug }: { slug: string }) {
     };
 
     const interval = setInterval(() => {
+      // [N1] Hard stop after the cap; surface the manual-refresh CTA.
+      if (Date.now() - startedAt >= MAX_POLL_DURATION_MS) {
+        stopped = true;
+        clearInterval(interval);
+        setPollExhausted(true);
+        return;
+      }
       poll().catch(() => {
         /* silent */
       });
-    }, 6000);
+    }, POLL_INTERVAL_MS);
+
+    // [N1] Catch-up poll when the tab regains focus (cheap, and makes the
+    // status feel instant for someone who paid in another tab/app).
+    const onVisible = () => {
+      if (!stopped && typeof document !== "undefined" && !document.hidden) {
+        poll().catch(() => {
+          /* silent */
+        });
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+
     return () => {
       stopped = true;
       clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
     };
   }, [state, slug]);
 
@@ -291,6 +327,7 @@ export function PayClient({ slug }: { slug: string }) {
               onDigestSuccess={handleDigestSuccess}
               onError={setError}
               onWalletSuccess={handleWalletSuccess}
+              pollExhausted={pollExhausted}
             />
           )}
 
@@ -316,6 +353,7 @@ interface ActivePaymentProps {
   onDigestSuccess: (digest: string) => void;
   onError: (error: string) => void;
   onWalletSuccess: (digest: string, sender: string) => void;
+  pollExhausted?: boolean;
 }
 
 export function ActivePayment({
@@ -327,6 +365,7 @@ export function ActivePayment({
   onWalletSuccess,
   onDigestSuccess,
   onError,
+  pollExhausted = false,
 }: ActivePaymentProps) {
   const shortAddr = `${data.recipientAddress.slice(0, 6)}…${data.recipientAddress.slice(-4)}`;
   const requester = data.recipientName ?? shortAddr;
@@ -401,15 +440,26 @@ export function ActivePayment({
         />
       </div>
 
-      {/* footer — gasless reassurance + live listening dot */}
-      <div className="flex items-center gap-1.5 font-mono text-[10px] text-muted-foreground tracking-[0.04em]">
-        <span
-          className={`size-1 rounded-full bg-signal ${detecting ? "animate-pulse" : ""}`}
-        />
-        {detecting
-          ? "Checking for payment…"
-          : "Gasless · settles in ~0.4s on Sui"}
-      </div>
+      {/* footer — gasless reassurance + live listening dot, OR the
+          [N1] refresh affordance once the poll has hit its time cap */}
+      {pollExhausted ? (
+        <button
+          className="font-mono text-[10px] text-muted-foreground tracking-[0.04em] underline-offset-2 transition hover:text-foreground hover:underline"
+          onClick={() => window.location.reload()}
+          type="button"
+        >
+          Still waiting? Tap to refresh
+        </button>
+      ) : (
+        <div className="flex items-center gap-1.5 font-mono text-[10px] text-muted-foreground tracking-[0.04em]">
+          <span
+            className={`size-1 rounded-full bg-signal ${detecting ? "animate-pulse" : ""}`}
+          />
+          {detecting
+            ? "Checking for payment…"
+            : "Gasless · settles in ~0.4s on Sui"}
+        </div>
+      )}
     </div>
   );
 }
