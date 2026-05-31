@@ -1,8 +1,8 @@
 import { Analytics } from "@vercel/analytics/next";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/theme-provider";
+import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { departureMono } from "./fonts";
 
@@ -122,9 +122,10 @@ export default function RootLayout({
           {/* [v0.7e Persistent Chats Phase 5 / S.247] Sonner Toaster —
               mounted at root so `toast.success(...)` from VisibilityToggle,
               SidebarHistory delete, and any future surface actually
-              renders. Position bottom-right to stay clear of the chip
-              bar + composer. */}
-          <Toaster position="bottom-right" richColors />
+              renders. [R6.11 Batch A] Restyled to the phase2 calm-card +
+              signal-glyph aesthetic via `@/components/ui/sonner` (position,
+              max-3, theme handled inside the wrapper). */}
+          <Toaster />
         </ThemeProvider>
         {/* [v0.7e post-apps/web archive] Vercel Web Analytics — page views
             + custom events. Free for the Hobby tier; <1KB script. Auto-
