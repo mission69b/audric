@@ -302,10 +302,10 @@ function SidebarRail({ className, ...props }: React.ComponentProps<"button">) {
           isCollapsed ? "top-0" : "top-[calc(3.5rem-6px)] cursor-w-resize"
         )}
       />
-      <div className={cn(
-        "pointer-events-none absolute bottom-0 left-0 w-[100vw] rounded-tl-[12px] border-t border-l border-sidebar-border opacity-0 transition-opacity duration-150 group-hover/rail:opacity-100",
-        isCollapsed ? "top-0" : "top-14"
-      )} />
+      {/* [2026-05-31] The decorative hover-reveal rounded frame was removed —
+          the chat-shell rounded border is now always-on, owned by the
+          conversation panel in audric-chat-client.tsx. Keeping it here too
+          drew a second offset border (the double-line bug). */}
     </div>
   )
 }

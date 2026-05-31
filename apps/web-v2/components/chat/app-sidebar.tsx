@@ -111,7 +111,7 @@ export function AppSidebar() {
       : undefined;
 
   return (
-    <Sidebar className="border-border border-r" collapsible="icon">
+    <Sidebar collapsible="icon">
       <SidebarHeader className="pb-0 pt-3">
         <SidebarMenu>
           <SidebarMenuItem className="flex flex-row items-center justify-between">
