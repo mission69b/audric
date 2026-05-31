@@ -36,6 +36,11 @@ const baseLiveData: AudricLiveData = {
     ["USDC", 467],
     ["USDSUI", 612],
   ]),
+  // [F3-APY] Live supply APY: USDC 4.62%, USDsui 8.66%.
+  supplyApyByAsset: new Map([
+    ["USDC", 462],
+    ["USDSUI", 866],
+  ]),
 };
 
 describe("deriveLiquidationThreshold (self-audit regression)", () => {
@@ -182,6 +187,67 @@ describe("computeMetadataEnrichment", () => {
     expect(result.currentHF).toBe(2.0);
     expect(result.projectedHF).toBeCloseTo(3.0);
     expect(result.borrowApyBps).toBeUndefined();
+  });
+
+  it("save_deposit threads live ratesOverride (both pool rates) (F3-APY)", () => {
+    const result = computeMetadataEnrichment(
+      "save_deposit",
+      { amount: 10, asset: "USDsui" },
+      baseLiveData
+    );
+    // The body picks usdsuiApyBps for a USDsui deposit (8.66%), but we
+    // thread both so the card is correct regardless of asset.
+    expect(result.ratesOverride).toEqual({
+      usdcApyBps: 462,
+      usdsuiApyBps: 866,
+    });
+  });
+
+  it("withdraw threads live ratesOverride (yield foregone) (F3-APY)", () => {
+    const result = computeMetadataEnrichment(
+      "withdraw",
+      { amount: 5, asset: "USDsui" },
+      baseLiveData
+    );
+    expect(result.ratesOverride?.usdsuiApyBps).toBe(866);
+  });
+
+  it("ratesOverride omits assets with no live supply position (degrade-open)", () => {
+    // User supplies only USDC → USDsui rate falls back to the body's
+    // DEFAULT_USDSUI_APY_BPS constant (key absent from the override).
+    const usdcOnly: AudricLiveData = {
+      ...baseLiveData,
+      supplyApyByAsset: new Map([["USDC", 462]]),
+    };
+    const result = computeMetadataEnrichment(
+      "save_deposit",
+      { amount: 10, asset: "USDsui" },
+      usdcOnly
+    );
+    expect(result.ratesOverride).toEqual({ usdcApyBps: 462 });
+    expect(result.ratesOverride?.usdsuiApyBps).toBeUndefined();
+  });
+
+  it("save_deposit with no live supply data → no ratesOverride", () => {
+    const noSupply: AudricLiveData = {
+      ...baseLiveData,
+      supplyApyByAsset: new Map(),
+    };
+    const result = computeMetadataEnrichment(
+      "save_deposit",
+      { amount: 10, asset: "USDC" },
+      noSupply
+    );
+    expect(result.ratesOverride).toBeUndefined();
+  });
+
+  it("borrow does NOT thread ratesOverride (save-only)", () => {
+    const result = computeMetadataEnrichment(
+      "borrow",
+      { amount: 100, asset: "USDC" },
+      baseLiveData
+    );
+    expect(result.ratesOverride).toBeUndefined();
   });
 
   it("repay_debt with USDsui asset uses USDsui APY", () => {

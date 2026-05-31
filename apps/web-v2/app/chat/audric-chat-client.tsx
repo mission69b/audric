@@ -1429,6 +1429,7 @@ function PermissionForToolPart(props: PermissionForToolPartProps) {
         });
       }}
       projectedHF={metadata.projectedHF}
+      ratesOverride={metadata.ratesOverride}
       toolName={toolName}
     />
   );
@@ -1688,6 +1689,8 @@ function parseAudricMetadata(raw: unknown):
       borrowApyBps?: number;
       currentHF?: number | null;
       projectedHF?: number | null;
+      // [F3-APY — 2026-05-31] Live save-pool supply APY per asset.
+      ratesOverride?: { usdcApyBps?: number; usdsuiApyBps?: number };
     }
   | undefined {
   if (raw === null || typeof raw !== "object") {
@@ -1712,13 +1715,42 @@ function parseAudricMetadata(raw: unknown):
       : undefined;
   const currentHF = parseHFField(obj.currentHF);
   const projectedHF = parseHFField(obj.projectedHF);
+  const ratesOverride = parseRatesOverride(obj.ratesOverride);
   return {
     description: obj.description,
     modifiableFields: fields,
     ...(borrowApyBps === undefined ? {} : { borrowApyBps }),
     ...(currentHF === undefined ? {} : { currentHF }),
     ...(projectedHF === undefined ? {} : { projectedHF }),
+    ...(ratesOverride === undefined ? {} : { ratesOverride }),
   };
+}
+
+/**
+ * [F3-APY — 2026-05-31] Parse the optional live save-pool rates blob.
+ * Returns `undefined` (→ preview body uses the DEFAULT_*_APY_BPS
+ * fallback) unless at least one finite bps value is present.
+ */
+function parseRatesOverride(
+  raw: unknown
+): { usdcApyBps?: number; usdsuiApyBps?: number } | undefined {
+  if (raw === null || typeof raw !== "object") {
+    return;
+  }
+  const obj = raw as Record<string, unknown>;
+  const result: { usdcApyBps?: number; usdsuiApyBps?: number } = {};
+  if (typeof obj.usdcApyBps === "number" && Number.isFinite(obj.usdcApyBps)) {
+    result.usdcApyBps = obj.usdcApyBps;
+  }
+  if (
+    typeof obj.usdsuiApyBps === "number" &&
+    Number.isFinite(obj.usdsuiApyBps)
+  ) {
+    result.usdsuiApyBps = obj.usdsuiApyBps;
+  }
+  return result.usdcApyBps === undefined && result.usdsuiApyBps === undefined
+    ? undefined
+    : result;
 }
 
 /**

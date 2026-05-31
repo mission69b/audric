@@ -66,6 +66,12 @@ const HF_TOOLS = new Set(["borrow", "withdraw", "save_deposit", "repay_debt"]);
 
 const BORROW_APY_TOOLS = new Set(["borrow", "repay_debt"]);
 
+// [F3-APY — 2026-05-31] Tools whose preview body renders a save-pool
+// supply APY ("Pool APY" / "Yield foregone"). For these we thread the
+// live per-asset supply rate so a USDsui deposit shows the USDsui pool
+// rate, not the hardcoded USDC fallback (`DEFAULT_USDSUI_APY_BPS`).
+const SAVE_APY_TOOLS = new Set(["save_deposit", "withdraw"]);
+
 export interface AudricLiveData {
   /** Asset symbol (uppercased) → live borrow APY in basis points. */
   borrowApyByAsset: Map<string, number>;
@@ -81,6 +87,16 @@ export interface AudricLiveData {
   liquidationThreshold: number | undefined;
   /** Total supplied USD across NAVI lending positions. */
   supplied: number;
+  /**
+   * Asset symbol (uppercased) → live NAVI SUPPLY APY in basis points,
+   * sourced from `positions.supplies[].apy`. NAVI supply APY is the
+   * same pool rate for everyone, so the user's own supplied position
+   * IS the live pool rate. **Only populated for assets the user
+   * currently supplies** — a first-ever deposit of an unheld stable
+   * falls back to the `DEFAULT_*_APY_BPS` constant in the preview body
+   * (same degrade-open contract as `borrowApyByAsset`).
+   */
+  supplyApyByAsset: Map<string, number>;
 }
 
 /**
@@ -154,12 +170,23 @@ export async function buildAudricLiveData(
       }
     }
 
+    // [F3-APY] Per-asset live supply APY from the user's own NAVI
+    // positions — the supply rate is pool-wide, so this is the live
+    // pool rate for any asset the user already supplies.
+    const supplyApyByAsset = new Map<string, number>();
+    for (const s of pos.supplies) {
+      if (Number.isFinite(s.apy) && s.apy > 0) {
+        supplyApyByAsset.set(s.asset.toUpperCase(), Math.round(s.apy * 10_000));
+      }
+    }
+
     return {
       healthFactor: pos.healthFactor,
       supplied: pos.savings,
       borrowed: pos.borrows,
       liquidationThreshold,
       borrowApyByAsset,
+      supplyApyByAsset,
     };
   } catch (err) {
     console.warn(
@@ -240,6 +267,7 @@ export function computeMetadataEnrichment(
   borrowApyBps?: number;
   currentHF?: number | null;
   projectedHF?: number | null;
+  ratesOverride?: { usdcApyBps?: number; usdsuiApyBps?: number };
 } {
   if (!liveData) {
     return {};
@@ -250,6 +278,7 @@ export function computeMetadataEnrichment(
     borrowApyBps?: number;
     currentHF?: number | null;
     projectedHF?: number | null;
+    ratesOverride?: { usdcApyBps?: number; usdsuiApyBps?: number };
   } = {};
 
   if (HF_TOOLS.has(toolName)) {
@@ -280,6 +309,27 @@ export function computeMetadataEnrichment(
     const apy = liveData.borrowApyByAsset.get(asset.toUpperCase());
     if (apy !== undefined) {
       result.borrowApyBps = apy;
+    }
+  }
+
+  // [F3-APY] Thread the live save-pool supply rate(s) so the preview
+  // body renders the actual pool APY for the deposited/withdrawn asset
+  // (e.g. USDsui's ~8.6% instead of the hardcoded USDC fallback). Only
+  // the keys we have live data for are set; the body's
+  // `resolveApyBpsForAsset` falls back to the DEFAULT_*_APY_BPS
+  // constant for any unset key (degrade-open).
+  if (SAVE_APY_TOOLS.has(toolName)) {
+    const usdcApyBps = liveData.supplyApyByAsset.get("USDC");
+    const usdsuiApyBps = liveData.supplyApyByAsset.get("USDSUI");
+    const override: { usdcApyBps?: number; usdsuiApyBps?: number } = {};
+    if (usdcApyBps !== undefined) {
+      override.usdcApyBps = usdcApyBps;
+    }
+    if (usdsuiApyBps !== undefined) {
+      override.usdsuiApyBps = usdsuiApyBps;
+    }
+    if (usdcApyBps !== undefined || usdsuiApyBps !== undefined) {
+      result.ratesOverride = override;
     }
   }
 

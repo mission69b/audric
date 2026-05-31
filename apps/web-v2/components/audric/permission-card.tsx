@@ -149,6 +149,14 @@ export interface PermissionCardProps {
    * projected" so the user sees the HF impact before approving.
    */
   projectedHF?: number | null;
+  /**
+   * [F3-APY — 2026-05-31] Live NAVI save-pool supply APY (bps) per
+   * saveable asset, from `toolMetadata.ratesOverride`. Threads into the
+   * save_deposit / withdraw preview body so the "Pool APY" /
+   * "Yield foregone" row shows the real per-asset rate. Absent keys
+   * fall back to the body's `DEFAULT_*_APY_BPS` constant.
+   */
+  ratesOverride?: { usdcApyBps?: number; usdsuiApyBps?: number };
   toolName: string;
 }
 
@@ -351,6 +359,7 @@ export function PermissionCard(props: PermissionCardProps) {
     borrowApyBps,
     currentHF,
     projectedHF,
+    ratesOverride,
   } = props;
 
   const timeoutSec = denyTimeoutSec ?? TIMEOUT_SEC;
@@ -529,6 +538,7 @@ export function PermissionCard(props: PermissionCardProps) {
     borrowApyBps,
     currentHF,
     projectedHF,
+    ratesOverride,
   });
   const inputSummary =
     previewBody === null ? formatInput(modifiedInput, toolName) : null;

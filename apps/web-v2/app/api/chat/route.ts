@@ -3431,6 +3431,15 @@ type AudricToolMetadata = {
    * be back-derived from `maxBorrow / supplied`).
    */
   projectedHF?: number | null;
+  /**
+   * [F3-APY — 2026-05-31] Live NAVI save-pool supply APY (basis points)
+   * per saveable asset, sourced from the user's own positions. Threads
+   * into the save_deposit / withdraw preview body so the "Pool APY" /
+   * "Yield foregone" row shows the real per-asset rate instead of the
+   * hardcoded `DEFAULT_*_APY_BPS` fallback. Keys are only set when live
+   * data is available; the body degrades to the constant otherwise.
+   */
+  ratesOverride?: { usdcApyBps?: number; usdsuiApyBps?: number };
 };
 
 function buildAudricToolMetadata(
