@@ -162,12 +162,15 @@ function ReceiveBody({
   const fullHandle = username ? `${username}@audric` : null;
   const profileUrl = username ? `${PROFILE_BASE}/${username}` : null;
 
-  const copy = (text: string, setFlag: (v: boolean) => void) => {
-    navigator.clipboard.writeText(text).catch(() => {
-      // best-effort; clipboard can fail in insecure contexts
-    });
-    setFlag(true);
-    setTimeout(() => setFlag(false), COPIED_FEEDBACK_MS);
+  const copy = async (text: string, setFlag: (v: boolean) => void) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setFlag(true);
+      setTimeout(() => setFlag(false), COPIED_FEEDBACK_MS);
+    } catch {
+      // clipboard unavailable (insecure context / denied) — skip the
+      // "Copied" confirmation rather than show false success.
+    }
   };
 
   const handleShare = () => {

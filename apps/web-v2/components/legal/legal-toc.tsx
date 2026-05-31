@@ -28,17 +28,27 @@ export function LegalToc() {
       return;
     }
     const headings = Array.from(root.querySelectorAll("h2"));
+    const seen = new Set<string>();
     const next = headings.map((h, i) => {
       const label = h.textContent?.trim() ?? `Section ${i + 1}`;
       let id = h.id;
       if (!id) {
-        id =
+        const base =
           label
             .toLowerCase()
             .replace(/[^a-z0-9]+/g, "-")
             .replace(/^-+|-+$/g, "") || `section-${i}`;
+        // De-dupe: two headings with identical text would otherwise share
+        // an id (invalid HTML + the anchor jumps to the first only).
+        id = base;
+        let n = 2;
+        while (seen.has(id)) {
+          id = `${base}-${n}`;
+          n += 1;
+        }
         h.id = id;
       }
+      seen.add(id);
       return { id, label };
     });
     setItems(next);

@@ -165,11 +165,15 @@ export function PayClient({ slug }: { slug: string }) {
     if (!data) {
       return;
     }
-    navigator.clipboard.writeText(data.recipientAddress).catch(() => {
-      /* clipboard not available — silent */
-    });
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    navigator.clipboard
+      .writeText(data.recipientAddress)
+      .then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      })
+      .catch(() => {
+        /* clipboard unavailable — no false "Copied" feedback */
+      });
   }, [data]);
 
   const handleWalletSuccess = useCallback(
