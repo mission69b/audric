@@ -9,6 +9,23 @@ import { ImageResponse } from "next/og";
 export const size = { width: 180, height: 180 };
 export const contentType = "image/png";
 
+// Mirrors AudricMark (viewBox 512, offset 92, gap 68, cell 56) so the
+// touch icon is pixel-identical to the in-app mark and stays centered.
+const GRID: [number, number][] = [
+  [0, 2],
+  [1, 1],
+  [1, 3],
+  [2, 0],
+  [2, 2],
+  [2, 4],
+  [3, 1],
+  [3, 3],
+  [4, 2],
+];
+const OFFSET = 92;
+const GAP = 68;
+const CELL = 56;
+
 export default function AppleIcon() {
   return new ImageResponse(
     <div
@@ -21,16 +38,18 @@ export default function AppleIcon() {
         justifyContent: "center",
       }}
     >
-      <svg fill="#ffffff" height="120" viewBox="0 0 100 100" width="120">
-        <rect height="14" rx="2.8" width="14" x="42" y="14" />
-        <rect height="14" rx="2.8" width="14" x="24" y="32" />
-        <rect height="14" rx="2.8" width="14" x="60" y="32" />
-        <rect height="14" rx="2.8" width="14" x="6" y="50" />
-        <rect height="14" rx="2.8" width="14" x="42" y="50" />
-        <rect height="14" rx="2.8" width="14" x="78" y="50" />
-        <rect height="14" rx="2.8" width="14" x="24" y="68" />
-        <rect height="14" rx="2.8" width="14" x="60" y="68" />
-        <rect height="14" rx="2.8" width="14" x="42" y="86" />
+      <svg fill="#ffffff" height="120" viewBox="0 0 512 512" width="120">
+        {GRID.map(([row, col]) => (
+          <rect
+            height={CELL}
+            key={`${row}-${col}`}
+            rx={8}
+            ry={8}
+            width={CELL}
+            x={OFFSET + col * GAP}
+            y={OFFSET + row * GAP}
+          />
+        ))}
       </svg>
     </div>,
     { ...size }

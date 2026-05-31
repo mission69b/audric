@@ -219,22 +219,30 @@ export const ReasoningContent = memo(
     // element — its props don't intersect with `HTMLAttributes<HTMLDivElement>`
     // (different `dir` narrowing + different event-handler signatures
     // like `onAnimationStart`). Forward HTML attributes only to the
-    // outer wrapper `<div>`s; Streamdown gets just its own typed props.
+    // outer wrapper `<div>`; Streamdown gets just its own typed props.
+    //
+    // [polish 2026-05-31] Vercel-parity reasoning surface. The old style
+    // wrapped reasoning in a filled, bordered, scrolling box (`border
+    // bg-muted/30 max-h-[200px]`) which read heavier + brighter than the
+    // response and competed with it. vercel/chatbot renders reasoning as
+    // plain, dim, smaller flowing text that recedes behind the answer.
+    // We match that: no box, no fill, `text-muted-foreground/70`, 13px
+    // (the response body is 14–15px → clear hierarchy). The `[&_p]` /
+    // `[&_*]` selectors pin the size + dim colour onto Streamdown's
+    // rendered markdown (its own typography otherwise bumps `<p>` back up
+    // to the inherited 15px). `scrollRef` is kept for the streaming
+    // auto-scroll but there's no overflow box now — the page scrolls.
     return (
       <div
         className={cn(
-          "mt-2 animate-in fade-in-0 duration-200 text-muted-foreground/60 [overflow-anchor:none]",
+          "mt-1.5 animate-in fade-in-0 text-[13px] text-muted-foreground/70 leading-[1.6] duration-200 [overflow-anchor:none]",
+          "[&_*]:text-muted-foreground/70 [&_p]:my-0 [&_p]:text-[13px] [&_p:not(:last-child)]:mb-2",
           className
         )}
+        ref={scrollRef}
         {...props}
       >
-        <div
-          className="max-h-[200px] overflow-y-auto rounded-lg border border-border/20 bg-muted/30 px-3 py-2 text-[11px] leading-relaxed"
-          ref={scrollRef}
-          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
-        >
-          <Streamdown plugins={streamdownPlugins}>{children}</Streamdown>
-        </div>
+        <Streamdown plugins={streamdownPlugins}>{children}</Streamdown>
       </div>
     );
   }
