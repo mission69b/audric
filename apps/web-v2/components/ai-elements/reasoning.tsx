@@ -239,7 +239,13 @@ export const ReasoningContent = memo(
         {...props}
       >
         <div
-          className="max-h-[200px] overflow-y-auto rounded-lg border border-border/20 bg-muted/30 px-3 py-2 text-[11px] leading-relaxed"
+          className={cn(
+            "max-h-[200px] overflow-y-auto rounded-lg border border-border/20 bg-muted/30 px-3 py-2 text-[11px] leading-relaxed text-muted-foreground/60",
+            // Streamdown renders its own markdown elements with their own
+            // font-size/color. Force descendants to the dim 11px so the thinking
+            // text actually reads smaller + dimmer than the answer (vercel parity).
+            "[&_*]:text-muted-foreground/60 [&_li]:my-0.5 [&_li]:text-[11px] [&_ol]:my-1 [&_p]:my-0 [&_p]:text-[11px] [&_p:not(:last-child)]:mb-2 [&_strong]:font-medium [&_strong]:text-muted-foreground/70 [&_ul]:my-1"
+          )}
           ref={scrollRef}
           style={{ msOverflowStyle: "none", scrollbarWidth: "none" }}
         >
