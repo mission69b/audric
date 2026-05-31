@@ -2092,7 +2092,18 @@ export async function POST(request: Request) {
       }
 
       writer.write({ type: "start-step" });
-      writer.write({ type: "text-start", id: messageId });
+      // [U2 — 2026-05-31] `text-start` is now emitted LAZILY — on the
+      // first non-empty `text-delta` (or `error`) chunk, in the loop
+      // below — instead of eagerly here. Eagerly opening the `text`
+      // UIMessage part BEFORE the model streamed anything meant
+      // extended-thinking parts landed AFTER text in `parts[]`, so the
+      // <Reasoning> accordion rendered BELOW the answer. Anthropic always
+      // streams thinking before prose, so emitting `text-start` lazily
+      // puts the reasoning part(s) first — the accordion sits at the top,
+      // right under the prompt (vercel/chatbot parity). `textState.started`
+      // also gates the `text-end` in the finally so a tool-only turn
+      // doesn't emit a dangling empty text part.
+      const textState = { started: false };
 
       // [Phase 5e] Step-boundary buffer for atomic bundle marker
       // emission. Captures confirm-tier `tool-call` +
@@ -2263,6 +2274,23 @@ export async function POST(request: Request) {
             continue;
           }
 
+          // [U2 — 2026-05-31] Lazy `text-start`: open the text part only
+          // when real prose (or an error) first arrives. Any reasoning
+          // chunks streamed before this point therefore occupy the
+          // earlier `parts[]` slots, so the <Reasoning> accordion renders
+          // above the answer. Mirrors translateChunk's own empty-text
+          // skip so a zero-length delta can't prematurely open the part.
+          if (
+            !textState.started &&
+            ((chunk.type === "text-delta" &&
+              typeof chunk.text === "string" &&
+              chunk.text.length > 0) ||
+              chunk.type === "error")
+          ) {
+            writer.write({ type: "text-start", id: messageId });
+            textState.started = true;
+          }
+
           translateChunk(chunk, writer, messageId, liveData);
           if (chunk.type === "finish") {
             turnCompleted = true;
@@ -2273,7 +2301,13 @@ export async function POST(request: Request) {
         // exits mid-step (error / abort). Without this, a partial
         // bundle would be lost from the UI.
         bundleBuffer.flush(writer, messageId, liveData, turnSwapQuoteReads);
-        writer.write({ type: "text-end", id: messageId });
+        // [U2 — 2026-05-31] Only close the text part if it was ever
+        // opened (lazy `text-start` above). A tool-only / reasoning-only
+        // turn never opens it, so emitting `text-end` unconditionally
+        // would write a dangling close for a part that doesn't exist.
+        if (textState.started) {
+          writer.write({ type: "text-end", id: messageId });
+        }
         writer.write({ type: "finish-step" });
         writer.write({ type: "finish" });
       }
