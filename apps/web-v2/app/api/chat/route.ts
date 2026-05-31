@@ -200,6 +200,7 @@ import {
   classifyStreamError,
   sanitizeStreamErrorMessage,
 } from "@/lib/audric/stream-errors";
+import { shouldEmitTextStart } from "@/lib/audric/stream-text-framing";
 import { buildAudricSystemPrompt } from "@/lib/audric/system-prompt";
 import { TelemetryIntegration } from "@/lib/audric/telemetry-integration";
 import { buildToolCallRepair } from "@/lib/audric/tool-call-repair";
@@ -2278,15 +2279,10 @@ export async function POST(request: Request) {
           // when real prose (or an error) first arrives. Any reasoning
           // chunks streamed before this point therefore occupy the
           // earlier `parts[]` slots, so the <Reasoning> accordion renders
-          // above the answer. Mirrors translateChunk's own empty-text
-          // skip so a zero-length delta can't prematurely open the part.
-          if (
-            !textState.started &&
-            ((chunk.type === "text-delta" &&
-              typeof chunk.text === "string" &&
-              chunk.text.length > 0) ||
-              chunk.type === "error")
-          ) {
+          // above the answer. Decision extracted to `shouldEmitTextStart`
+          // (unit-tested in `lib/audric/stream-text-framing.test.ts`) so
+          // the ordering invariant can't silently regress.
+          if (shouldEmitTextStart(chunk, textState.started)) {
             writer.write({ type: "text-start", id: messageId });
             textState.started = true;
           }
