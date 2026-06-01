@@ -75,13 +75,13 @@ export function AudricNav() {
 
         <span style={{ flex: 1 }} />
 
-        <span className="au-signal-pill">
+        <span className="au-signal-pill au-nav-pill">
           <span className="dot" />
           <span>Live · Sui</span>
         </span>
 
         <a
-          className="au-nav-link"
+          className="au-nav-link au-nav-secondary"
           href="https://t2000.ai"
           style={{
             fontFamily: "var(--font-mono)",

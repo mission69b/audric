@@ -329,7 +329,9 @@
 }
 
 @media (max-width: 820px) {
-  .au-nav-products {
+  .au-nav-products,
+  .au-nav-pill,
+  .au-nav-secondary {
     display: none !important;
   }
 }
