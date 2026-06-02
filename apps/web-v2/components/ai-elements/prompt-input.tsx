@@ -1106,7 +1106,10 @@ export const PromptInputSubmit = ({
   let Icon = <CornerDownLeftIcon className="size-4" />;
 
   if (status === "submitted") {
-    Icon = <Spinner />;
+    // inheritColor: the submit button is a filled variant (white-on-black),
+    // so the spinner must track the button foreground like SquareIcon does —
+    // the default near-black stripe would be invisible on the dark fill.
+    Icon = <Spinner inheritColor />;
   } else if (status === "streaming") {
     Icon = <SquareIcon className="size-4" />;
   } else if (status === "error") {

@@ -33,13 +33,28 @@ const SIZES = {
 interface SpinnerProps {
   size?: keyof typeof SIZES;
   className?: string;
+  /**
+   * Derive the arc colors from `currentColor` instead of the neutral
+   * `border` / `foreground` theme tokens. Use on colored surfaces (e.g.
+   * inside a filled primary button) where the default near-black stripe
+   * would vanish against a dark background — the arc then matches the
+   * surrounding text/icon color, like the sibling icons do.
+   */
+  inheritColor?: boolean;
 }
 
-export function Spinner({ size = "sm", className = "" }: SpinnerProps) {
+export function Spinner({
+  size = "sm",
+  className = "",
+  inheritColor = false,
+}: SpinnerProps) {
+  const colors = inheritColor
+    ? "border-current/25 border-t-current"
+    : "border-border border-t-foreground";
   return (
     <span
       aria-label="Loading"
-      className={`inline-block rounded-full border-border border-t-foreground motion-reduce:animate-none animate-[spin-arc_0.8s_linear_infinite] ${SIZES[size]} ${className}`}
+      className={`inline-block rounded-full ${colors} motion-reduce:animate-none animate-[spin-arc_0.8s_linear_infinite] ${SIZES[size]} ${className}`}
       role="status"
     />
   );
