@@ -6,8 +6,11 @@
  * Two tabs:
  *   - **Receive** (built fully) — the open-receive QR (`SuiPayQr`, amount-less
  *     `sui:pay` deep-link), the user's `@audric` handle hero, a copyable Sui
- *     address row, the Sui-mainnet-only warning strip, and Share-link / Copy
- *     actions. This is the real, wired surface.
+ *     address row, the Sui-mainnet-only warning strip, Share-link / Copy
+ *     actions, and a connect-wallet path (reuses `SendToHandleButton`) so the
+ *     user can fund their Audric address straight from an external Sui wallet
+ *     (Slush / Phantom / Suiet) via dapp-kit — same flow as the public
+ *     `/<username>` profile. This is the real, wired surface.
  *   - **Buy with bank** — a "coming soon" placeholder. No onramp provider is
  *     wired yet, so the three partner cards (bank transfer, card, Apple/Google
  *     Pay) are disabled with a Q2 badge.
@@ -28,6 +31,7 @@ import {
   XIcon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { SendToHandleButton } from "@/app/[username]/send-to-handle-button";
 import { SuiPayQr } from "@/components/pay/sui-pay-qr";
 import {
   Dialog,
@@ -83,7 +87,7 @@ export function AddFundsModal({
         data-testid="add-funds-modal"
         showCloseButton={false}
       >
-        <div className="flex items-start justify-between gap-4 px-5 pt-[18px] pb-1.5">
+        <div className="flex shrink-0 items-start justify-between gap-4 px-5 pt-[18px] pb-1.5">
           <div className="min-w-0">
             <DialogTitle className="m-0 font-medium font-sans text-[16px] text-foreground tracking-[-0.014em]">
               Add funds
@@ -104,7 +108,7 @@ export function AddFundsModal({
           </button>
         </div>
 
-        <div className="flex gap-0 border-border border-b px-5 pt-3">
+        <div className="flex shrink-0 gap-0 border-border border-b px-5 pt-3">
           <TabButton
             active={tab === "receive"}
             onClick={() => setTab("receive")}
@@ -191,7 +195,7 @@ function ReceiveBody({
   };
 
   return (
-    <div className="flex flex-col items-center gap-4 p-5">
+    <div className="flex min-h-0 flex-col items-center gap-4 overflow-y-auto p-5">
       <SuiPayQr amount={null} recipientAddress={address} size={180} />
 
       {fullHandle && (
@@ -252,6 +256,21 @@ function ReceiveBody({
           })()}
         </button>
       </div>
+
+      <div className="flex w-full items-center gap-3">
+        <span className="h-px flex-1 bg-border" />
+        <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-[0.08em]">
+          or connect a wallet
+        </span>
+        <span className="h-px flex-1 bg-border" />
+      </div>
+
+      <div className="w-full">
+        <SendToHandleButton
+          handle={fullHandle ?? "your Audric wallet"}
+          recipientAddress={address}
+        />
+      </div>
     </div>
   );
 }
@@ -292,7 +311,7 @@ const ONRAMPS: {
 
 function BuyBody() {
   return (
-    <div className="flex flex-col gap-2.5 p-5">
+    <div className="flex min-h-0 flex-col gap-2.5 overflow-y-auto p-5">
       {ONRAMPS.map((o) => (
         <div
           aria-disabled="true"
