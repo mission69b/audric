@@ -684,45 +684,29 @@ export async function POST(request: NextRequest) {
       },
     });
 
+  // [Gasless stable send → self-sponsor] USDC/USDsui sends compose to a
+  // `0x2::balance::send_funds` Move call that draws from the sender's
+  // address balance. Enoki's gas station can't deserialize that command
+  // (MystenLabs/sui#22306 — fails with "Invalid bcs bytes for
+  // TransactionData"). Unlike the NAVI withdraw path, the gasless send
+  // bypasses `selectAndSplitCoin`, so it never throws
+  // ADDRESS_BALANCE_UNSPONSORABLE — the Enoki-first probe below would
+  // compose cleanly then fail at execute. Route stable sends straight to
+  // the self-sponsor wallet, which signs the gas and submits to the
+  // fullnode (no Enoki). SUI sends stay coin-object based → Enoki is fine.
+  const isGaslessStableSend =
+    body.type === "send" &&
+    (body.asset === "USDC" || body.asset === "USDsui");
+
   let composed: Awaited<ReturnType<typeof composeTx>>;
   let sponsorMode: SponsorMode = "enoki";
-  try {
-    // Primary path: source coin objects only → Enoki sponsors it.
-    composed = await composeWith(true);
-  } catch (err) {
-    const isAddressBalance =
-      (err as { code?: string })?.code === "ADDRESS_BALANCE_UNSPONSORABLE";
-    // Fallback: the user's funds live in their address balance, which
-    // Enoki can't sponsor. If a self-sponsor wallet is configured,
-    // rebuild address-balance aware and pay the gas ourselves. Without a
-    // sponsor wallet, fall through and surface the original error (today's
-    // degraded-but-clean behavior).
-    if (isAddressBalance && getSponsorKeypair()) {
-      try {
-        composed = await composeWith(false);
-        sponsorMode = "self";
-      } catch (fallbackErr) {
-        console.error(
-          `[prepare] self-sponsor compose failed for type=${body.type}:`,
-          redactPII(fallbackErr)
-        );
-        return NextResponse.json(
-          {
-            error:
-              fallbackErr instanceof Error
-                ? fallbackErr.message
-                : "Failed to assemble transaction",
-          },
-          { status: 500 }
-        );
-      }
-    } else {
-      // [Phase 5.5 / D-17] Redact embedded addresses from SDK error
-      // payloads. composeTx errors can mention sender / recipient
-      // addresses in the message (e.g. "no coins for type X owned by
-      // 0x…"); pass-through scan keeps non-address detail readable.
+  if (isGaslessStableSend && getSponsorKeypair()) {
+    try {
+      composed = await composeWith(false);
+      sponsorMode = "self";
+    } catch (err) {
       console.error(
-        `[prepare] composeTx failed for type=${body.type}:`,
+        `[prepare] self-sponsor compose failed for type=${body.type}:`,
         redactPII(err)
       );
       return NextResponse.json(
@@ -734,6 +718,57 @@ export async function POST(request: NextRequest) {
         },
         { status: 500 }
       );
+    }
+  } else {
+    try {
+      // Primary path: source coin objects only → Enoki sponsors it.
+      composed = await composeWith(true);
+    } catch (err) {
+      const isAddressBalance =
+        (err as { code?: string })?.code === "ADDRESS_BALANCE_UNSPONSORABLE";
+      // Fallback: the user's funds live in their address balance, which
+      // Enoki can't sponsor. If a self-sponsor wallet is configured,
+      // rebuild address-balance aware and pay the gas ourselves. Without a
+      // sponsor wallet, fall through and surface the original error (today's
+      // degraded-but-clean behavior).
+      if (isAddressBalance && getSponsorKeypair()) {
+        try {
+          composed = await composeWith(false);
+          sponsorMode = "self";
+        } catch (fallbackErr) {
+          console.error(
+            `[prepare] self-sponsor compose failed for type=${body.type}:`,
+            redactPII(fallbackErr)
+          );
+          return NextResponse.json(
+            {
+              error:
+                fallbackErr instanceof Error
+                  ? fallbackErr.message
+                  : "Failed to assemble transaction",
+            },
+            { status: 500 }
+          );
+        }
+      } else {
+        // [Phase 5.5 / D-17] Redact embedded addresses from SDK error
+        // payloads. composeTx errors can mention sender / recipient
+        // addresses in the message (e.g. "no coins for type X owned by
+        // 0x…"); pass-through scan keeps non-address detail readable.
+        console.error(
+          `[prepare] composeTx failed for type=${body.type}:`,
+          redactPII(err)
+        );
+        return NextResponse.json(
+          {
+            error:
+              err instanceof Error
+                ? err.message
+                : "Failed to assemble transaction",
+          },
+          { status: 500 }
+        );
+      }
     }
   }
 
