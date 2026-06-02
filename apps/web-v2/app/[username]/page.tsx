@@ -309,7 +309,7 @@ async function UsernameContent({ params }: UsernamePageProps) {
             Don&rsquo;t have a handle yet?{" "}
             <Link
               className="text-foreground underline-offset-2 hover:underline"
-              href="/chat"
+              href="/"
             >
               Claim yours on Audric
             </Link>

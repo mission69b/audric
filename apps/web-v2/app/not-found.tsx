@@ -28,7 +28,7 @@ export default function NotFound() {
       <p className="mt-4 max-w-sm text-foreground/60 text-base leading-relaxed">
         This page may have been moved, deleted, made private, or never existed.
       </p>
-      <Link className="mt-8" href="/chat">
+      <Link className="mt-8" href="/">
         <Button size="lg" variant="default">
           Back to Audric
         </Button>
