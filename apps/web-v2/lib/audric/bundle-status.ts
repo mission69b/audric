@@ -86,6 +86,39 @@ export interface AudricBundleMarkerData {
  *     zero steps matched (stale marker → let the malformed-marker
  *     fallback handle rendering).
  */
+/**
+ * The shared on-chain digest of a SETTLED bundle, or `undefined` when no
+ * constituent step reached `output-available` with a digest (i.e. the
+ * bundle is still pending, or it failed/was denied — every step is
+ * `output-error`). Every successful step carries the SAME digest (one
+ * atomic PTB), so the first hit wins. Drives the render switch: a
+ * settled bundle folds into one `BundleReceiptCard`; a failed/denied
+ * bundle does NOT fold, letting each step render its own error state.
+ */
+export function findBundleDigest(
+  marker: AudricBundleMarkerData,
+  parts: readonly UIMessage["parts"][number][]
+): string | undefined {
+  const stepIds = new Set(marker.steps.map((s) => s.toolCallId));
+  for (const p of parts) {
+    if (!p.type.startsWith("tool-")) {
+      continue;
+    }
+    const toolPart = p as ToolUIPart;
+    if (
+      toolPart.state !== "output-available" ||
+      !stepIds.has(toolPart.toolCallId)
+    ) {
+      continue;
+    }
+    const output = toolPart.output as { digest?: unknown } | undefined;
+    if (typeof output?.digest === "string") {
+      return output.digest;
+    }
+  }
+  return undefined;
+}
+
 export function isBundleSpent(
   marker: AudricBundleMarkerData,
   parts: readonly UIMessage["parts"][number][]

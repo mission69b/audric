@@ -71,6 +71,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useUserStatus } from "@/hooks/use-user-status";
 import {
   type AudricBundleMarkerData,
+  findBundleDigest,
   isBundleSpent,
 } from "@/lib/audric/bundle-status";
 import { redactAddressesInText } from "@/lib/audric/log-redact";
@@ -1005,6 +1006,19 @@ function AudricChatPanel({
               if (!marker || marker.steps.length < 2) {
                 continue;
               }
+              // Fold (claim → marker renders the permission/receipt card)
+              // ONLY while pending OR after a successful settle. A
+              // failed/denied bundle (spent, no digest) is NOT folded so
+              // each step renders its own error/denial state — matching
+              // the single-write failure path. Without this, a failed
+              // bundle would render nothing (the receipt card needs a
+              // digest) and the user would only see the LLM narration.
+              const folds =
+                !isBundleSpent(marker, m.parts) ||
+                findBundleDigest(marker, m.parts) !== undefined;
+              if (!folds) {
+                continue;
+              }
               for (const step of marker.steps) {
                 bundleClaimedIds.add(step.toolCallId);
               }
@@ -1655,23 +1669,7 @@ function BundleReceiptForMarker({
   marker: AudricBundleMarkerData;
   parts: readonly UIMessage["parts"][number][];
 }) {
-  const stepIds = new Set(marker.steps.map((s) => s.toolCallId));
-  let digest: string | undefined;
-  for (const p of parts) {
-    if (!p.type.startsWith("tool-")) {
-      continue;
-    }
-    const toolPart = p as ToolUIPart;
-    if (toolPart.state !== "output-available" || !stepIds.has(toolPart.toolCallId)) {
-      continue;
-    }
-    const output = toolPart.output as { digest?: unknown } | undefined;
-    if (typeof output?.digest === "string") {
-      digest = output.digest;
-      break;
-    }
-  }
-
+  const digest = findBundleDigest(marker, parts);
   if (!digest) {
     return null;
   }
