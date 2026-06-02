@@ -50,6 +50,7 @@ export type { SkeletonVariant } from './SkeletonCard';
 export { SkeletonCard } from './SkeletonCard';
 export { getSkeletonVariant } from './skeleton-variants';
 export { SuinsResolution } from './SuinsResolution';
+export { BundleReceiptCard } from './BundleReceiptCard';
 export { SwapQuoteCardV2 } from './SwapQuoteCardV2';
 export { TransactionHistoryCard } from './TransactionHistoryCard';
 export { TransactionReceiptCard } from './TransactionReceiptCard';

@@ -777,6 +777,47 @@ function bundleStepSummary(step: BundlePermissionCardStep): string {
   return label;
 }
 
+/**
+ * [bundle-receipt] Two-column receipt row per step — a short action
+ * label + the bold amount that moved. Mirrors `bundleStepSummary`'s
+ * symbol/asset resolution so the settlement receipt
+ * (`BundleReceiptCard`) reads identically to the confirm card. Amounts
+ * are the INPUT side (exact, from `step.input.amount`) — the combined
+ * PTB balance-change array can't be split per-leg for output amounts.
+ */
+export function bundleStepReceiptRow(step: {
+  toolName: string;
+  input: Record<string, unknown>;
+}): { label: string; value: string } {
+  const { toolName, input } = step;
+  const asset = typeof input.asset === "string" ? input.asset : "USDC";
+  const amt =
+    input.amount === undefined || input.amount === null
+      ? ""
+      : String(input.amount);
+  switch (toolName) {
+    case "swap_execute": {
+      const from = resolveSymbol(input.from);
+      const to = resolveSymbol(input.to);
+      return { label: `Swapped ${from} → ${to}`, value: amt ? `${amt} ${from}` : "" };
+    }
+    case "send_transfer":
+      return { label: "Sent", value: amt ? `${amt} ${asset}` : "" };
+    case "save_deposit":
+      return { label: "Saved into NAVI", value: amt ? `${amt} ${asset}` : "" };
+    case "withdraw":
+      return { label: "Withdrew from NAVI", value: amt ? `${amt} ${asset}` : "" };
+    case "borrow":
+      return { label: "Borrowed", value: amt ? `${amt} ${asset}` : "" };
+    case "repay_debt":
+      return { label: "Repaid", value: amt ? `${amt} ${asset}` : "" };
+    default: {
+      const label = TOOL_LABELS[toolName] ?? toolName.replace(/_/g, " ");
+      return { label, value: amt ? `${amt} ${asset}` : "" };
+    }
+  }
+}
+
 export function BundlePermissionCard(props: BundlePermissionCardProps) {
   const { steps, onApprove, onDeny, disabled } = props;
 

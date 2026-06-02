@@ -47,6 +47,7 @@ import {
   PermissionCard,
   type PermissionCardModifiableField,
 } from "@/components/audric/permission-card";
+import { BundleReceiptCard } from "@/components/audric/cards/BundleReceiptCard";
 import { ToolResultRouter } from "@/components/audric/tool-result-router";
 import { useZkLogin } from "@/components/auth/use-zklogin";
 import { AppSidebar } from "@/components/chat/app-sidebar";
@@ -979,17 +980,17 @@ function AudricChatPanel({
             // tool-* parts are folded into one BundlePermissionCard
             // (rendered from the marker) instead of N individual cards.
             //
-            // [Smoke 2026-05-22 bundle-refresh-fix] A bundle is "spent"
-            // once every constituent tool part has moved past
-            // approval-requested (output-available / output-error). For
-            // spent bundles we DON'T claim the IDs and DON'T render a
-            // permission card — the individual tool parts render their
-            // own receipts via the normal tool-* branch below. This
-            // matches the single-write path (L845-865) which is
-            // state-aware. The previous unconditional claim caused the
-            // approval card to re-appear on session refresh because
-            // `BundlePermissionCard`'s `resolved` flag lives in
-            // `useState` and resets to false on every fresh mount.
+            // [Phase 5e + bundle-receipt] A bundle's constituent tool-*
+            // parts are ALWAYS folded into the marker render — never
+            // rendered individually. While pending → the marker renders
+            // one BundlePermissionCard; once spent → one consolidated
+            // BundleReceiptCard (see the marker branch below). Both read
+            // `isBundleSpent` (cold-reload safe — it derives from the
+            // parts' own state, not local `useState`). The bundle-refresh
+            // fix that the spent-skip previously addressed is preserved by
+            // the marker branch's own `isBundleSpent` switch, so claiming
+            // unconditionally here is correct and keeps the per-step
+            // receipts (which render `null` for bundles anyway) suppressed.
             const bundleClaimedIds = new Set<string>();
             for (const part of m.parts) {
               if (part.type !== "data-audric-bundle") {
@@ -998,10 +999,10 @@ function AudricChatPanel({
               const marker = parseAudricBundleMarker(
                 (part as { data?: unknown }).data
               );
-              if (!marker) {
-                continue;
-              }
-              if (isBundleSpent(marker, m.parts)) {
+              // Malformed markers (< 2 steps) fall through to the
+              // per-part renderers via the marker branch's own guard —
+              // don't claim their ids.
+              if (!marker || marker.steps.length < 2) {
                 continue;
               }
               for (const step of marker.steps) {
@@ -1163,16 +1164,26 @@ function AudricChatPanel({
                             // parse fails for ALL markers).
                             return null;
                           }
-                          // [Smoke 2026-05-22 bundle-refresh-fix] Spent
-                          // bundle (all steps past approval) → render
-                          // nothing here. The constituent tool-* parts
-                          // are NOT in bundleClaimedIds (see the matching
-                          // skip above) so they fall through to the
-                          // tool-* branch and render receipts/errors
-                          // individually — same shape as a freshly
-                          // approved single-write turn.
+                          // Spent bundle (all steps past approval) → one
+                          // consolidated settlement receipt. A bundle is
+                          // a single atomic PTB (one digest, one combined
+                          // balance-change array), so N per-step receipts
+                          // would be N near-identical cards. The bundle's
+                          // step toolCallIds stay claimed (see the loop
+                          // above) so the individual tool-* parts never
+                          // render — this card is the single source of the
+                          // "settled" signal. Denied / failed bundles
+                          // (no digest in any step output) render nothing
+                          // here; the LLM narrates the abort.
                           if (isBundleSpent(marker, m.parts)) {
-                            return null;
+                            return (
+                              <BundleReceiptForMarker
+                                // biome-ignore lint/suspicious/noArrayIndexKey: parts are positionally stable per message
+                                key={`${m.id}-${i}`}
+                                marker={marker}
+                                parts={m.parts}
+                              />
+                            );
                           }
                           return (
                             <BundleForMarker
@@ -1625,6 +1636,53 @@ function BundleForMarker(props: BundleForMarkerProps) {
         }
       }}
       steps={steps}
+    />
+  );
+}
+
+/**
+ * [bundle-receipt] Consolidated settlement card for a spent bundle.
+ * Reads the shared digest from any constituent step's `output-available`
+ * payload (every step carries the SAME digest — one atomic PTB) and
+ * renders one BundleReceiptCard listing each leg's engine `description`.
+ * Denied / failed bundles (every step `output-error`, no digest) render
+ * nothing — the LLM narrates the abort.
+ */
+function BundleReceiptForMarker({
+  marker,
+  parts,
+}: {
+  marker: AudricBundleMarkerData;
+  parts: readonly UIMessage["parts"][number][];
+}) {
+  const stepIds = new Set(marker.steps.map((s) => s.toolCallId));
+  let digest: string | undefined;
+  for (const p of parts) {
+    if (!p.type.startsWith("tool-")) {
+      continue;
+    }
+    const toolPart = p as ToolUIPart;
+    if (toolPart.state !== "output-available" || !stepIds.has(toolPart.toolCallId)) {
+      continue;
+    }
+    const output = toolPart.output as { digest?: unknown } | undefined;
+    if (typeof output?.digest === "string") {
+      digest = output.digest;
+      break;
+    }
+  }
+
+  if (!digest) {
+    return null;
+  }
+
+  return (
+    <BundleReceiptCard
+      digest={digest}
+      steps={marker.steps.map((s) => ({
+        toolName: s.toolName,
+        input: s.input,
+      }))}
     />
   );
 }
