@@ -48,6 +48,7 @@ import {
   type PermissionCardModifiableField,
 } from "@/components/audric/permission-card";
 import { BundleReceiptCard } from "@/components/audric/cards/BundleReceiptCard";
+import { ConfirmationChip } from "@/components/audric/cards/ConfirmationChip";
 import {
   ToolResultRouter,
   USER_DENIAL_ERROR_TEXT,
@@ -1009,16 +1010,17 @@ function AudricChatPanel({
               if (!marker || marker.steps.length < 2) {
                 continue;
               }
-              // Fold (claim → marker renders the permission/receipt card)
-              // ONLY while pending OR after a successful settle. A
-              // failed/denied bundle (spent, no digest) is NOT folded so
-              // each step renders its own error/denial state — matching
-              // the single-write failure path. Without this, a failed
-              // bundle would render nothing (the receipt card needs a
-              // digest) and the user would only see the LLM narration.
+              // Fold (claim → marker renders the consolidated card) for
+              // every state EXCEPT a genuine failure: pending (permission
+              // card), settled (receipt card), and user-denied (one
+              // cancelled chip, symmetric with the single success receipt).
+              // A real failure (spent, no digest, not a clean denial) is
+              // left unfolded so each step renders its own error and the
+              // user sees the actual message.
               const folds =
                 !isBundleSpent(marker, m.parts) ||
-                findBundleDigest(marker, m.parts) !== undefined;
+                findBundleDigest(marker, m.parts) !== undefined ||
+                isBundleDenied(marker, m.parts);
               if (!folds) {
                 continue;
               }
@@ -1193,6 +1195,23 @@ function AudricChatPanel({
                           // (no digest in any step output) render nothing
                           // here; the LLM narrates the abort.
                           if (isBundleSpent(marker, m.parts)) {
+                            // User denied the whole bundle → one consolidated
+                            // cancelled chip (the steps are claimed/folded),
+                            // symmetric with the single success receipt and
+                            // the single-write deny chip. Real failures fall
+                            // through BundleReceiptForMarker → null and each
+                            // step renders its own error (not folded).
+                            if (isBundleDenied(marker, m.parts)) {
+                              return (
+                                <ConfirmationChip
+                                  glyph="×"
+                                  // biome-ignore lint/suspicious/noArrayIndexKey: parts are positionally stable per message
+                                  key={`${m.id}-${i}`}
+                                  label="PAYMENT INTENT CANCELLED"
+                                  tone="neutral"
+                                />
+                              );
+                            }
                             return (
                               <BundleReceiptForMarker
                                 // biome-ignore lint/suspicious/noArrayIndexKey: parts are positionally stable per message
@@ -1668,6 +1687,36 @@ function BundleForMarker(props: BundleForMarkerProps) {
  * Denied / failed bundles (every step `output-error`, no digest) render
  * nothing — the LLM narrates the abort.
  */
+/**
+ * True when EVERY step of a spent bundle is an `output-error` carrying the
+ * canonical user-denial text (i.e. the user tapped Deny on the bundle
+ * permission card). Distinguishes a clean user abort — which folds into a
+ * single consolidated "cancelled" chip, symmetric with the single
+ * consolidated success receipt — from a real failure (preflight / runtime
+ * error), which stays unfolded so each step's actual error is visible.
+ */
+function isBundleDenied(
+  marker: AudricBundleMarkerData,
+  parts: readonly UIMessage["parts"][number][]
+): boolean {
+  const stepIds = new Set(marker.steps.map((s) => s.toolCallId));
+  let matched = 0;
+  for (const p of parts) {
+    if (!p.type.startsWith("tool-")) {
+      continue;
+    }
+    const tp = p as ToolUIPart;
+    if (!stepIds.has(tp.toolCallId)) {
+      continue;
+    }
+    matched++;
+    if (tp.state !== "output-error" || tp.errorText !== USER_DENIAL_ERROR_TEXT) {
+      return false;
+    }
+  }
+  return matched > 0 && matched === marker.steps.length;
+}
+
 function BundleReceiptForMarker({
   marker,
   parts,
