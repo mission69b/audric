@@ -48,7 +48,10 @@ import {
   type PermissionCardModifiableField,
 } from "@/components/audric/permission-card";
 import { BundleReceiptCard } from "@/components/audric/cards/BundleReceiptCard";
-import { ToolResultRouter } from "@/components/audric/tool-result-router";
+import {
+  ToolResultRouter,
+  USER_DENIAL_ERROR_TEXT,
+} from "@/components/audric/tool-result-router";
 import { useZkLogin } from "@/components/auth/use-zklogin";
 import { AppSidebar } from "@/components/chat/app-sidebar";
 import { ChipBar } from "@/components/chat/chip-bar";
@@ -1491,7 +1494,7 @@ function PermissionForToolPart(props: PermissionForToolPartProps) {
           tool: toolName,
           toolCallId: toolPart.toolCallId,
           state: "output-error",
-          errorText: "User denied the action.",
+          errorText: USER_DENIAL_ERROR_TEXT,
         });
       }}
       projectedHF={metadata.projectedHF}
@@ -1645,7 +1648,10 @@ function BundleForMarker(props: BundleForMarkerProps) {
             tool: step.toolName,
             toolCallId: step.toolCallId,
             state: "output-error",
-            errorText: "User denied the bundle.",
+            // Canonical denial text so each unfolded step renders the
+            // router's clean per-tool CANCELLED chip instead of a raw
+            // JSON dump. Must stay === the router's match string.
+            errorText: USER_DENIAL_ERROR_TEXT,
           });
         }
       }}

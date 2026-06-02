@@ -101,7 +101,7 @@ const DENIAL_LABELS: Record<string, string> = {
 //     denial event from engine-level guard rejections post-approval)
 // Keep this match string-exact — any other `errorText` is a real error
 // and should still hit the generic <Tool> fallback so the user sees it.
-const USER_DENIAL_ERROR_TEXT = "User denied the action.";
+export const USER_DENIAL_ERROR_TEXT = "User denied the action.";
 
 function renderCard(
   toolName: string,
