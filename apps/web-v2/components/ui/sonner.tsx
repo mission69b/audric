@@ -130,16 +130,22 @@ export function Toaster(props: ToasterProps) {
       theme={(resolvedTheme as ToasterProps["theme"]) ?? "system"}
       toastOptions={{
         classNames: {
+          // `!pr-9` reserves room for the top-right close button so the
+          // title/description never slide under it.
           toast:
-            "group/toast !rounded-[10px] !border !border-border !bg-card !text-foreground !shadow-lg !gap-2.5 !px-3.5 !py-3",
+            "group/toast !rounded-[10px] !border !border-border !bg-card !text-foreground !shadow-lg !gap-2.5 !py-3 !pl-3.5 !pr-9",
           title:
             "!font-sans !text-[13px] !font-normal !leading-snug !tracking-[-0.011em] !text-foreground",
           description:
             "!font-mono !text-[11px] !text-muted-foreground !tracking-[0.02em]",
           actionButton:
             "!font-mono !text-[11px] !tracking-[0.02em] !bg-transparent !text-foreground !border-b !border-foreground/30 !rounded-none !px-0 !pt-1",
+          // Sonner pins the close button to a corner with an outward
+          // `transform: translate(35%, -35%)`, so the X visibly overflowed
+          // the card. Cancel that transform and place it inside, top-right,
+          // border-less — matching phase2-batch-a §3.
           closeButton:
-            "!bg-transparent !border-border !text-muted-foreground hover:!bg-accent hover:!text-foreground",
+            "!left-auto !right-2.5 !top-2.5 ![transform:none] !size-5 !rounded !border-0 !bg-transparent !text-muted-foreground hover:!bg-accent hover:!text-foreground",
           icon: "!mr-0",
         },
       }}
