@@ -41,14 +41,14 @@ import {
   ReasoningTrigger,
 } from "@/components/ai-elements/reasoning";
 import { Shimmer } from "@/components/ai-elements/shimmer";
+import { BundleReceiptCard } from "@/components/audric/cards/BundleReceiptCard";
+import { ConfirmationChip } from "@/components/audric/cards/ConfirmationChip";
 import {
   BundlePermissionCard,
   type BundlePermissionCardStep,
   PermissionCard,
   type PermissionCardModifiableField,
 } from "@/components/audric/permission-card";
-import { BundleReceiptCard } from "@/components/audric/cards/BundleReceiptCard";
-import { ConfirmationChip } from "@/components/audric/cards/ConfirmationChip";
 import {
   ToolResultRouter,
   USER_DENIAL_ERROR_TEXT,
@@ -1710,7 +1710,10 @@ function isBundleDenied(
       continue;
     }
     matched++;
-    if (tp.state !== "output-error" || tp.errorText !== USER_DENIAL_ERROR_TEXT) {
+    if (
+      tp.state !== "output-error" ||
+      tp.errorText !== USER_DENIAL_ERROR_TEXT
+    ) {
       return false;
     }
   }

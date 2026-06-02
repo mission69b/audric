@@ -799,14 +799,20 @@ export function bundleStepReceiptRow(step: {
     case "swap_execute": {
       const from = resolveSymbol(input.from);
       const to = resolveSymbol(input.to);
-      return { label: `Swapped ${from} → ${to}`, value: amt ? `${amt} ${from}` : "" };
+      return {
+        label: `Swapped ${from} → ${to}`,
+        value: amt ? `${amt} ${from}` : "",
+      };
     }
     case "send_transfer":
       return { label: "Sent", value: amt ? `${amt} ${asset}` : "" };
     case "save_deposit":
       return { label: "Saved into NAVI", value: amt ? `${amt} ${asset}` : "" };
     case "withdraw":
-      return { label: "Withdrew from NAVI", value: amt ? `${amt} ${asset}` : "" };
+      return {
+        label: "Withdrew from NAVI",
+        value: amt ? `${amt} ${asset}` : "",
+      };
     case "borrow":
       return { label: "Borrowed", value: amt ? `${amt} ${asset}` : "" };
     case "repay_debt":

@@ -6,6 +6,7 @@ import { type ReactNode, useState } from "react";
 
 import { ActivitySummaryCard } from "@/components/audric/cards/ActivitySummaryCard";
 import { BalanceCardV2 } from "@/components/audric/cards/BalanceCardV2";
+import { BundleReceiptCard } from "@/components/audric/cards/BundleReceiptCard";
 import { ConfirmationChip } from "@/components/audric/cards/ConfirmationChip";
 import { ExplainTxCard } from "@/components/audric/cards/ExplainTxCard";
 import { HealthCardV2 } from "@/components/audric/cards/HealthCardV2";
@@ -33,7 +34,6 @@ import {
   StatusBlock,
 } from "@/components/audric/cards/shared";
 import { TransactionHistoryCard } from "@/components/audric/cards/TransactionHistoryCard";
-import { BundleReceiptCard } from "@/components/audric/cards/BundleReceiptCard";
 import { TransactionReceiptCard } from "@/components/audric/cards/TransactionReceiptCard";
 import { YieldEarningsCard } from "@/components/audric/cards/YieldEarningsCard";
 import { PermissionCard } from "@/components/audric/permission-card";
@@ -452,10 +452,22 @@ function Harness() {
               <BundleReceiptCard
                 digest="0x97pH4o2c9d1e8b7a6f5e4d3c2b1a0f9e8d7c6b5a4f3e2d1c0b9a8f7e6d5c4M3Y"
                 steps={[
-                  { toolName: "swap_execute", input: { from: "WAL", to: "SUI", amount: 12.34 } },
-                  { toolName: "swap_execute", input: { from: "vSUI", to: "SUI", amount: 0.44 } },
-                  { toolName: "swap_execute", input: { from: "NAVX", to: "SUI", amount: 10.26 } },
-                  { toolName: "swap_execute", input: { from: "USDT", to: "SUI", amount: 0.01 } },
+                  {
+                    toolName: "swap_execute",
+                    input: { from: "WAL", to: "SUI", amount: 12.34 },
+                  },
+                  {
+                    toolName: "swap_execute",
+                    input: { from: "vSUI", to: "SUI", amount: 0.44 },
+                  },
+                  {
+                    toolName: "swap_execute",
+                    input: { from: "NAVX", to: "SUI", amount: 10.26 },
+                  },
+                  {
+                    toolName: "swap_execute",
+                    input: { from: "USDT", to: "SUI", amount: 0.01 },
+                  },
                 ]}
               />
             </ReadCard>

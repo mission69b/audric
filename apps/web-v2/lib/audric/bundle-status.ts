@@ -116,7 +116,7 @@ export function findBundleDigest(
       return output.digest;
     }
   }
-  return undefined;
+  return;
 }
 
 export function isBundleSpent(

@@ -695,8 +695,7 @@ export async function POST(request: NextRequest) {
   // the self-sponsor wallet, which signs the gas and submits to the
   // fullnode (no Enoki). SUI sends stay coin-object based → Enoki is fine.
   const isGaslessStableSend =
-    body.type === "send" &&
-    (body.asset === "USDC" || body.asset === "USDsui");
+    body.type === "send" && (body.asset === "USDC" || body.asset === "USDsui");
 
   let composed: Awaited<ReturnType<typeof composeTx>>;
   let sponsorMode: SponsorMode = "enoki";
