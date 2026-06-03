@@ -14,22 +14,22 @@ const LIVE: Product[] = [
   {
     tag: "AUDRIC PASSPORT",
     title: "Sign in. Skip the seed phrase.",
-    desc: "Google sign-in creates a non-custodial wallet in 3 seconds. On-chain identity. No gas. No backups to lose.",
+    desc: "One Google tap mints a non-custodial wallet in 3 seconds. On-chain identity, no gas, nothing to back up.",
   },
   {
     tag: "AUDRIC INTELLIGENCE",
-    title: "Knows your finances before you ask.",
-    desc: "26 tools. 14 guards. Reads your balances, watches your spend, suggests the move before you have to think.",
+    title: "Knows your money before you ask.",
+    desc: "26 tools, 14 guards. It reads your balances, watches your spend, and calls the move before you do.",
   },
   {
     tag: "AUDRIC FINANCE",
     title: "Save, borrow, swap, compound.",
-    desc: "3–8% APY on USDC and USDsui. Sui DeFi without the dashboards — all of it from chat.",
+    desc: "3–8% APY on USDC and USDsui. All of Sui DeFi — none of the dashboards. Just chat.",
   },
   {
     tag: "AUDRIC PAY",
     title: "Money in. Money out.",
-    desc: "Send USDC + USDsui free in 0.4s. Payment links, QR, invoices. Bank offramp to 70+ countries lands in Q2.",
+    desc: "Send USDC and USDsui free, in 0.4s. Links, QR, invoices. Bank offramp to 70+ countries lands Q2.",
   },
 ];
 
@@ -37,7 +37,7 @@ const SOON: Product[] = [
   {
     tag: "AUDRIC STORE",
     title: "Sell anything. Keep 92%.",
-    desc: "AI creates, Walrus stores, Seal gates. 92% to the creator, no platform fees, on-chain receipts.",
+    desc: "AI creates, Walrus stores, Seal gates. 92% to the creator, on-chain receipts.",
     soon: true,
   },
 ];
@@ -49,7 +49,7 @@ export function AudricProducts() {
         <header style={{ marginBottom: 48, maxWidth: 720 }}>
           <span className="t2k-eyebrow">// THE STACK</span>
           <h2 className="t2k-section-title" style={{ marginTop: 12 }}>
-            One app. Five products.
+            Audric Products.
           </h2>
           <p className="t2k-section-sub">
             Identity, intelligence, finance, payments, store — all in one chat.
