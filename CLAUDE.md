@@ -93,6 +93,8 @@ audric/
 
 ## Key Documents — read these before touching the corresponding area
 
+> Internal-only docs — this repo's `HANDOFF_NEXT_AGENT.md`, plus `PRODUCT_ROADMAP.md`, `audric-build-tracker.md`, and the `spec/` trees (referenced here as `t2000/...`) — are **not in any public repo.** They live in the private `mission69b/t2000-internal` repo, mounted at `t2000/spec/` (setup: `team-docs/ONBOARDING.md` §2.1). The usual paths resolve via gitignored symlinks once it's cloned.
+
 | Document | What it covers | Read before |
 |----------|---------------|-------------|
 | `apps/web-v2/lib/env.ts` | Zod env schema + typed proxy. Single gate for every `process.env` read | Adding/changing env vars |
