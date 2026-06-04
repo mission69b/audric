@@ -65,6 +65,21 @@ import { runInBatches } from "@/lib/jobs/batch-runner";
 import { getPortfolio } from "@/lib/portfolio";
 import { prisma } from "@/lib/prisma";
 
+/**
+ * [S.359 — 2026-06-04] Production batch config — same fix as
+ * `portfolio-snapshot.ts`. The S.278 comment above assumed N=10 stayed
+ * under the breaker ("10 users × 9 protocols at engine concurrency=3"),
+ * but the live 07:00 UTC `portfolio-snapshot` burst proved the per-user
+ * fan-out (3 BV logical calls + ~9-way per-protocol DeFi sweep + Sui RPC)
+ * trips BlockVision's "10 429s in 5000ms" circuit breaker at N=10. This
+ * cron shares the same `getPortfolio()` fan-out, so it gets the same cure:
+ * N=3 keeps per-batch BV logical calls (~9) under the breaker threshold,
+ * with 1000ms inter-batch pacing. Runner defaults (10/500) unchanged;
+ * tests still pass explicit values.
+ */
+const PRODUCTION_BATCH_SIZE = 3;
+const PRODUCTION_INTRA_BATCH_DELAY_MS = 1000;
+
 export interface FinancialContextSnapshotResult {
   created: number;
   /**
@@ -82,9 +97,9 @@ export interface FinancialContextSnapshotResult {
 }
 
 export interface FinancialContextSnapshotOptions {
-  /** [S.278] Override the default batch size (10). Used in tests. */
+  /** [S.278/S.359] Override the production batch size (3). Used in tests. */
   batchSize?: number;
-  /** [S.278] Override the default intra-batch delay (500ms). Used in tests. */
+  /** [S.278/S.359] Override the production intra-batch delay (1000ms). Used in tests. */
   intraBatchDelayMs?: number;
   shard?: number;
   total?: number;
@@ -129,8 +144,9 @@ export async function runFinancialContextSnapshotJob(
 
   const { results } = await runInBatches<UserRow, UserOutcome>({
     items: users,
-    batchSize: options.batchSize,
-    intraBatchDelayMs: options.intraBatchDelayMs,
+    batchSize: options.batchSize ?? PRODUCTION_BATCH_SIZE,
+    intraBatchDelayMs:
+      options.intraBatchDelayMs ?? PRODUCTION_INTRA_BATCH_DELAY_MS,
     process: (user) => processOneUser(user),
     onBatchComplete: ({ batchIndex, batchSize, durationMs }) => {
       sink.histogram("cron.fin_ctx_batch_duration_ms", durationMs, {

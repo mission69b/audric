@@ -33,6 +33,25 @@ import { runInBatches } from "@/lib/jobs/batch-runner";
 import { getPortfolio } from "@/lib/portfolio";
 import { prisma } from "@/lib/prisma";
 
+/**
+ * [S.359 — 2026-06-04] Production batch config (tames the 07:00 UTC 429
+ * storm). SPEC 272 Lever 1 (S.278) bounded USER-level concurrency to 10,
+ * but each `getPortfolio()` itself fans out to ~3 BlockVision logical
+ * calls (wallet + DeFi + prices) plus a ~9-way per-protocol DeFi sweep
+ * and a Sui RPC read. At N=10 the per-batch peak was ~120 concurrent
+ * upstream requests — enough to trip BlockVision's "10 429s in 5000ms"
+ * circuit breaker every morning + degrade prices mid-snapshot. N=3 keeps
+ * per-batch BV logical calls (~9) structurally UNDER the breaker
+ * threshold; the 1000ms inter-batch pacing lets any transient pressure
+ * clear. Wall-time @ ~165 users ≈ 136s, comfortably under the 300s
+ * `maxDuration` cap (the regression SPEC 272 originally fixed). The
+ * runner's own defaults (10/500) are intentionally left unchanged —
+ * these are the production overrides, and tests still pass explicit
+ * values to `runInBatches`.
+ */
+const PRODUCTION_BATCH_SIZE = 3;
+const PRODUCTION_INTRA_BATCH_DELAY_MS = 1000;
+
 export interface PortfolioSnapshotResult {
   created: number;
   errors: number;
@@ -41,9 +60,9 @@ export interface PortfolioSnapshotResult {
 }
 
 export interface PortfolioSnapshotOptions {
-  /** [S.278] Override the default batch size (10). Used in tests. */
+  /** [S.278/S.359] Override the production batch size (3). Used in tests. */
   batchSize?: number;
-  /** [S.278] Override the default intra-batch delay (500ms). Used in tests. */
+  /** [S.278/S.359] Override the production intra-batch delay (1000ms). Used in tests. */
   intraBatchDelayMs?: number;
 }
 
@@ -65,8 +84,9 @@ export async function runPortfolioSnapshotJob(
 
   const { results } = await runInBatches<UserRow, UserOutcome>({
     items: users,
-    batchSize: options.batchSize,
-    intraBatchDelayMs: options.intraBatchDelayMs,
+    batchSize: options.batchSize ?? PRODUCTION_BATCH_SIZE,
+    intraBatchDelayMs:
+      options.intraBatchDelayMs ?? PRODUCTION_INTRA_BATCH_DELAY_MS,
     process: (user) => processOneUser(user, today),
     onBatchComplete: ({ batchIndex, batchSize, durationMs }) => {
       sink.histogram("cron.portfolio_snapshot_batch_duration_ms", durationMs, {
