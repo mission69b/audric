@@ -93,7 +93,7 @@ audric/
 
 ## Key Documents — read these before touching the corresponding area
 
-> Internal-only docs — this repo's `HANDOFF_NEXT_AGENT.md`, plus `PRODUCT_ROADMAP.md`, `audric-build-tracker.md`, and the `spec/` trees (referenced here as `t2000/...`) — are **not in any public repo.** They live in the private `mission69b/t2000-internal` repo, mounted at `t2000/spec/` (setup: `team-docs/ONBOARDING.md` §2.1). The usual paths resolve via gitignored symlinks once it's cloned.
+> Internal-only docs — this repo's `HANDOFF_NEXT_AGENT.md`, plus `PRODUCT_ROADMAP.md`, `audric-build-tracker.md`, the `spec/` trees (referenced here as `t2000/...`), and engineer onboarding — are **not in any public repo.** They live in the private `mission69b/t2000-internal` repo, mounted at `t2000/spec/` (clone steps are in the founder's quick-start message; full onboarding at `t2000/spec/team-docs/ONBOARDING.md`). The usual paths resolve via gitignored symlinks once it's cloned.
 
 | Document | What it covers | Read before |
 |----------|---------------|-------------|
