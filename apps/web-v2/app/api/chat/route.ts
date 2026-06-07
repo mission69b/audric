@@ -170,7 +170,6 @@ import {
   dispatchIntentsToParts,
   synthesizeAssistantToolMessage,
 } from "@/lib/audric/dispatch-intents";
-import { getFinancialContextBlock } from "@/lib/audric/financial-context";
 import {
   type AudricLiveData,
   buildAudricLiveData,
@@ -1191,15 +1190,23 @@ export async function POST(request: Request) {
 
   // 7.5 [v0.7d Phase 6 Block A — 2026-05-21 / S.221] Moat fan-out.
   //
-  // Two inputs (post-Block A; was four pre-Block A):
+  // One input (post-S.375; was four pre-Block A, two pre-S.375):
   //
-  //   - `financialContextBlock` (layer 2) — daily orientation snapshot.
-  //     "" when missing OR > 48h stale → drops layer 2 cleanly.
   //   - `adviceContext` (layer 1 dynamic) — last 5 advice rows in
   //     30-day window. AdviceLog stores what AUDRIC SAID; permanent
   //     intelligence layer (MemWal stores what the USER said,
   //     orthogonal access pattern — different table, different
   //     lifecycle).
+  //
+  // [S.375 — 2026-06-07] The `<financial_context>` daily snapshot (layer
+  // 2) was killed entirely. Post-S.373 it carried only 4 stable fields
+  // (currentApy / pendingAdvice / recentActivity / daysSinceLastSession);
+  // pendingAdvice duplicated AdviceLog, recentActivity + currentApy are
+  // tool-covered (transaction_history / activity_summary / rates_info /
+  // savings_info), and daysSinceLastSession is trivially inline. The
+  // marginal value (saving 1-2 orientation tool calls on greeting turns)
+  // didn't justify the daily `getPortfolio()` BlockVision-fan-out cron +
+  // the `UserFinancialContext` table. The LLM now orients via tools.
   //
   // What was deleted in Block A:
   //
@@ -1219,12 +1226,9 @@ export async function POST(request: Request) {
   // in Block A; the chain-classifier pipeline rebuilds against
   // `memwal.store` in Block B alongside the cron migration.
   //
-  // Both reads are fail-OPEN: a DB blip on either returns the empty
-  // value and the chat turn proceeds without the missing moat layer.
-  const [financialContextBlock, adviceContext] = await Promise.all([
-    getFinancialContextBlock(walletAddress),
-    userId ? buildAdviceContext(userId) : Promise.resolve(""),
-  ]);
+  // Fail-OPEN: a DB blip returns the empty value and the chat turn
+  // proceeds without the missing moat layer.
+  const adviceContext = userId ? await buildAdviceContext(userId) : "";
 
   // 7.6 [v0.7c Phase 6 prep + Phase 6.5] Assemble the F-4 5-layer
   // system prompt. Layer 5 (user message) is owned by AI SDK's
@@ -1235,7 +1239,6 @@ export async function POST(request: Request) {
   // moat additions) and 3 (memory) are wired.
   const systemInstructions = buildAudricSystemPrompt({
     adviceContext,
-    financialContext: financialContextBlock,
     skillRecipeBlock: undefined, // Dormant strategic seam — see MCP_PROMPTS_INTEGRATION_DECISION.md
     walletAddress,
   });

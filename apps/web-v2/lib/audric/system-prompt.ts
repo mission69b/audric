@@ -18,8 +18,8 @@
  * mandated by `.cursor/rules/memory-injection-architecture.mdc`:
  *
  *   1. base STATIC_SYSTEM_PROMPT             (always present)
- *   2. <financial_context> block             (silent-intelligence snapshot)
- *   3. <memory_recall> block                 (v0.7d gate — not wired here)
+ *   2. [S.375] <financial_context> block     (KILLED — daily snapshot retired)
+ *   3. <memory_recall> block                 (injected via prepareStep, not here)
  *   4. skill recipe block                    (v0.7d gate — not wired here)
  *   5. user message                          (consumed by Agent.stream messages[])
  *
@@ -176,12 +176,12 @@ If asked, quote above. NEVER say "no fees" or "all your value stays with you" �
 
 ## Before acting — BALANCE VALIDATION (MANDATORY, NEVER SKIP)
 
-🚨 **\`<financial_context>\` is NEVER authoritative for amounts.** The financial_context block (when present at the top of your context) is a daily snapshot for orientation only — current APY, recent activity summary, last session timing, pending advice. It contains NO wallet balance, NO savings figure, NO debt figure, NO health factor. NEVER refuse a write because the financial_context "shows $0" — it never showed amounts at all. ALWAYS call \`balance_check\` / \`savings_info\` / \`health_check\` (or trust the prefetched \`## Session Context\`) for fresh figures before any write decision.
+🚨 **Balances come ONLY from fresh tools, never from memory or assumption.** You do NOT have a standing balance figure in your context. ALWAYS call \`balance_check\` / \`savings_info\` / \`health_check\` (or trust the prefetched \`## Session Context\`) for fresh figures before any write decision. NEVER refuse or size a write based on an assumed or remembered balance.
 
 - For the FIRST action in a session, use the initial balance data (from the prefetched balance_check result or ## Session Context).
-- After ANY write action completes, the engine auto-injects a fresh balance_check (and savings_info / health_check when relevant) into your context BEFORE your next turn. Cite those auto-injected fresh results — do NOT call balance_check yourself, do NOT use the stale snapshot.
+- After ANY write action completes, the engine auto-injects a fresh balance_check (and savings_info / health_check when relevant) into your context BEFORE your next turn. Cite those auto-injected fresh results — do NOT call balance_check yourself, do NOT reuse a stale figure.
 - BEFORE calling ANY write tool (save_deposit, withdraw, send_transfer, swap_execute, borrow, repay_debt, claim_rewards, harvest_rewards):
-  1. ALWAYS check the snapshot (or call balance_check if stale) to verify the user has enough. For save/send/swap: check wallet balance of that token. For withdraw: check savings positions. For repay: check wallet USDC.
+  1. ALWAYS verify via the prefetched ## Session Context (or call balance_check if it's absent or stale) that the user has enough. For save/send/swap: check wallet balance of that token. For withdraw: check savings positions. For repay: check wallet USDC.
   2. If the requested amount EXCEEDS the available balance, REFUSE immediately — do NOT call the write tool. State the exact available balance and ask the user to confirm a lower amount. Example: "You only have 0.97 USDC. Want me to send all 0.97?"
   3. NEVER pass an amount larger than the available balance to a write tool. This applies equally to send_transfer, save_deposit, swap_execute, and all other write tools. Violating this rule causes silent failures or incorrect receipts.
 - For swap estimates, ALWAYS read the actual price from the "Token prices (USD…)" line in ## Session Context (or the "prices" field on the prefetched balance_check result). NEVER guess from training memory — token prices change daily and your training data is months stale. The "$3.50/SUI" or "$0.30/SUI" you remember is wrong.
@@ -487,8 +487,8 @@ Invariants: LEAN stays terse — no mid-flight narration. \`standard\`-shape bun
 // wallet line; the static prompt's D10 narration rule handles the
 // "no-username" branch gracefully ("Your wallet: 0x...").
 //
-// Format mirrors `<financial_context>` so the LLM treats it as
-// structured context rather than free-text narration.
+// Format uses an XML-tagged block so the LLM treats it as structured
+// context rather than free-text narration.
 // ---------------------------------------------------------------------------
 function buildIdentityBlock(walletAddress: string): string {
   return [
@@ -505,8 +505,8 @@ function buildIdentityBlock(walletAddress: string): string {
 // `.cursor/rules/memory-injection-architecture.mdc`:
 //
 //   1. base STATIC_SYSTEM_PROMPT + mini identity block
-//   2. <financial_context> block (optional — empty when snapshot missing/stale)
-//   3. <memory_recall> block (v0.7d gate — not wired here)
+//   2. [S.375] <financial_context> block KILLED — orient via tools instead
+//   3. <memory_recall> block (injected via prepareStep, not here)
 //   4. skill recipe block (v0.7d gate — not wired here)
 //   5. user message (owned by AI SDK; this function never touches it)
 //
@@ -527,14 +527,6 @@ export interface BuildAudricSystemPromptInput {
    * permanent even after MemWal lands.
    */
   adviceContext?: string;
-  /**
-   * Optional `<financial_context>` block from
-   * `getFinancialContextBlock(walletAddress)`. Pass an empty string or
-   * undefined when no snapshot is available (brand-new user, snapshot
-   * older than 48h, Prisma failure). The block builder already wraps
-   * itself in the XML tags — pass the full string verbatim.
-   */
-  financialContext?: string;
   /**
    * Optional skill recipe block — intentionally DORMANT strategic seam.
    *
@@ -561,8 +553,7 @@ export interface BuildAudricSystemPromptInput {
 export function buildAudricSystemPrompt(
   input: BuildAudricSystemPromptInput
 ): string {
-  const { walletAddress, adviceContext, financialContext, skillRecipeBlock } =
-    input;
+  const { walletAddress, adviceContext, skillRecipeBlock } = input;
 
   // [v0.7d Phase 6 Block A — 2026-05-21 / S.221] Layer 1 dynamic
   // additions reduced to advice only — the Silent Profile section
@@ -591,8 +582,9 @@ export function buildAudricSystemPrompt(
   const layers: string[] = [
     // Layer 1 — base prompt + identity + advice
     layer1,
-    // Layer 2 — silent intelligence snapshot
-    financialContext ?? "",
+    // Layer 2 — [S.375] `<financial_context>` daily snapshot KILLED. The
+    // LLM orients via tools (balance_check / savings_info / rates_info /
+    // transaction_history) instead of a daily denormalized cache.
     // Layer 3 — memory now injected via `prepareStep`, not via this
     // builder (see `lib/audric/memwal-prepare-step.ts`)
     // Layer 4 — skill recipe (v0.7d gate)

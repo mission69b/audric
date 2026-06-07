@@ -53,8 +53,8 @@ importers:
         specifier: ^6.35.3
         version: 6.43.0
       '@mysten-incubation/memwal':
-        specifier: 0.0.4
-        version: 0.0.4(@mysten/seal@1.1.3(@mysten/sui@2.17.0(typescript@5.9.3)))(@mysten/sui@2.17.0(typescript@5.9.3))(ai@6.0.182(zod@3.25.76))(zod@3.25.76)
+        specifier: 0.0.7
+        version: 0.0.7(@mysten/seal@1.1.3(@mysten/sui@2.17.0(typescript@5.9.3)))(@mysten/sui@2.17.0(typescript@5.9.3))(ai@6.0.182(zod@3.25.76))(zod@3.25.76)
       '@mysten/dapp-kit':
         specifier: ^1.0.6
         version: 1.0.6(@mysten/sui@2.17.0(typescript@5.9.3))(@tanstack/react-query@5.100.11(react@19.0.1))(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.0.1(react@19.0.1))(react@19.0.1)(typescript@5.9.3)(use-sync-external-store@1.6.0(react@19.0.1))
@@ -1006,8 +1006,8 @@ packages:
       '@cfworker/json-schema':
         optional: true
 
-  '@mysten-incubation/memwal@0.0.4':
-    resolution: {integrity: sha512-HBvq2ipq/gJoAWrn7oNHVCaMypTE7/9AtFwk8YSqd9njwpYqssGZ/18B3S8orzZdDsQmRSbgRDcnEZ8xwozaKg==}
+  '@mysten-incubation/memwal@0.0.7':
+    resolution: {integrity: sha512-jZycnsstVX/aP33OyJM3bTciwFiiOEcZV4XfhHGbqh8e9pMV/pbOAfD5m9gxrD3V8en29QGAISBsiMIdP3CIyg==}
     peerDependencies:
       '@mysten/seal': '>=1.1.0'
       '@mysten/sui': ^2.17.0
@@ -6045,7 +6045,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@mysten-incubation/memwal@0.0.4(@mysten/seal@1.1.3(@mysten/sui@2.17.0(typescript@5.9.3)))(@mysten/sui@2.17.0(typescript@5.9.3))(ai@6.0.182(zod@3.25.76))(zod@3.25.76)':
+  '@mysten-incubation/memwal@0.0.7(@mysten/seal@1.1.3(@mysten/sui@2.17.0(typescript@5.9.3)))(@mysten/sui@2.17.0(typescript@5.9.3))(ai@6.0.182(zod@3.25.76))(zod@3.25.76)':
     dependencies:
       '@mysten/seal': 1.1.3(@mysten/sui@2.17.0(typescript@5.9.3))
       '@mysten/sui': 2.17.0(typescript@5.9.3)

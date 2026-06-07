@@ -12,10 +12,6 @@
     {
       "path": "/api/cron/portfolio-snapshot",
       "schedule": "0 7 * * *"
-    },
-    {
-      "path": "/api/cron/financial-context-snapshot",
-      "schedule": "30 2 * * *"
     }
   ]
 }

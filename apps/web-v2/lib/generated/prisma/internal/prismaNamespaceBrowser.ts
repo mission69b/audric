@@ -60,7 +60,6 @@ export const ModelName = {
   Payment: 'Payment',
   PortfolioSnapshot: 'PortfolioSnapshot',
   TurnMetrics: 'TurnMetrics',
-  UserFinancialContext: 'UserFinancialContext',
   Chat: 'Chat',
   Message: 'Message',
   Vote: 'Vote'
@@ -256,21 +255,6 @@ export const TurnMetricsScalarFieldEnum = {
 } as const
 
 export type TurnMetricsScalarFieldEnum = (typeof TurnMetricsScalarFieldEnum)[keyof typeof TurnMetricsScalarFieldEnum]
-
-
-export const UserFinancialContextScalarFieldEnum = {
-  id: 'id',
-  userId: 'userId',
-  address: 'address',
-  currentApy: 'currentApy',
-  recentActivity: 'recentActivity',
-  pendingAdvice: 'pendingAdvice',
-  daysSinceLastSession: 'daysSinceLastSession',
-  generatedAt: 'generatedAt',
-  updatedAt: 'updatedAt'
-} as const
-
-export type UserFinancialContextScalarFieldEnum = (typeof UserFinancialContextScalarFieldEnum)[keyof typeof UserFinancialContextScalarFieldEnum]
 
 
 export const ChatScalarFieldEnum = {

@@ -393,7 +393,6 @@ export const ModelName = {
   Payment: 'Payment',
   PortfolioSnapshot: 'PortfolioSnapshot',
   TurnMetrics: 'TurnMetrics',
-  UserFinancialContext: 'UserFinancialContext',
   Chat: 'Chat',
   Message: 'Message',
   Vote: 'Vote'
@@ -412,7 +411,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "userPreferences" | "sessionUsage" | "servicePurchase" | "appEvent" | "adviceLog" | "payment" | "portfolioSnapshot" | "turnMetrics" | "userFinancialContext" | "chat" | "message" | "vote"
+    modelProps: "user" | "userPreferences" | "sessionUsage" | "servicePurchase" | "appEvent" | "adviceLog" | "payment" | "portfolioSnapshot" | "turnMetrics" | "chat" | "message" | "vote"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1082,80 +1081,6 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
-    UserFinancialContext: {
-      payload: Prisma.$UserFinancialContextPayload<ExtArgs>
-      fields: Prisma.UserFinancialContextFieldRefs
-      operations: {
-        findUnique: {
-          args: Prisma.UserFinancialContextFindUniqueArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserFinancialContextPayload> | null
-        }
-        findUniqueOrThrow: {
-          args: Prisma.UserFinancialContextFindUniqueOrThrowArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserFinancialContextPayload>
-        }
-        findFirst: {
-          args: Prisma.UserFinancialContextFindFirstArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserFinancialContextPayload> | null
-        }
-        findFirstOrThrow: {
-          args: Prisma.UserFinancialContextFindFirstOrThrowArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserFinancialContextPayload>
-        }
-        findMany: {
-          args: Prisma.UserFinancialContextFindManyArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserFinancialContextPayload>[]
-        }
-        create: {
-          args: Prisma.UserFinancialContextCreateArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserFinancialContextPayload>
-        }
-        createMany: {
-          args: Prisma.UserFinancialContextCreateManyArgs<ExtArgs>
-          result: BatchPayload
-        }
-        createManyAndReturn: {
-          args: Prisma.UserFinancialContextCreateManyAndReturnArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserFinancialContextPayload>[]
-        }
-        delete: {
-          args: Prisma.UserFinancialContextDeleteArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserFinancialContextPayload>
-        }
-        update: {
-          args: Prisma.UserFinancialContextUpdateArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserFinancialContextPayload>
-        }
-        deleteMany: {
-          args: Prisma.UserFinancialContextDeleteManyArgs<ExtArgs>
-          result: BatchPayload
-        }
-        updateMany: {
-          args: Prisma.UserFinancialContextUpdateManyArgs<ExtArgs>
-          result: BatchPayload
-        }
-        updateManyAndReturn: {
-          args: Prisma.UserFinancialContextUpdateManyAndReturnArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserFinancialContextPayload>[]
-        }
-        upsert: {
-          args: Prisma.UserFinancialContextUpsertArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserFinancialContextPayload>
-        }
-        aggregate: {
-          args: Prisma.UserFinancialContextAggregateArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.AggregateUserFinancialContext>
-        }
-        groupBy: {
-          args: Prisma.UserFinancialContextGroupByArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.UserFinancialContextGroupByOutputType>[]
-        }
-        count: {
-          args: Prisma.UserFinancialContextCountArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.UserFinancialContextCountAggregateOutputType> | number
-        }
-      }
-    }
     Chat: {
       payload: Prisma.$ChatPayload<ExtArgs>
       fields: Prisma.ChatFieldRefs
@@ -1593,21 +1518,6 @@ export const TurnMetricsScalarFieldEnum = {
 export type TurnMetricsScalarFieldEnum = (typeof TurnMetricsScalarFieldEnum)[keyof typeof TurnMetricsScalarFieldEnum]
 
 
-export const UserFinancialContextScalarFieldEnum = {
-  id: 'id',
-  userId: 'userId',
-  address: 'address',
-  currentApy: 'currentApy',
-  recentActivity: 'recentActivity',
-  pendingAdvice: 'pendingAdvice',
-  daysSinceLastSession: 'daysSinceLastSession',
-  generatedAt: 'generatedAt',
-  updatedAt: 'updatedAt'
-} as const
-
-export type UserFinancialContextScalarFieldEnum = (typeof UserFinancialContextScalarFieldEnum)[keyof typeof UserFinancialContextScalarFieldEnum]
-
-
 export const ChatScalarFieldEnum = {
   id: 'id',
   createdAt: 'createdAt',
@@ -1876,7 +1786,6 @@ export type GlobalOmitConfig = {
   payment?: Prisma.PaymentOmit
   portfolioSnapshot?: Prisma.PortfolioSnapshotOmit
   turnMetrics?: Prisma.TurnMetricsOmit
-  userFinancialContext?: Prisma.UserFinancialContextOmit
   chat?: Prisma.ChatOmit
   message?: Prisma.MessageOmit
   vote?: Prisma.VoteOmit

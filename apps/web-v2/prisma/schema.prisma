@@ -392,49 +392,14 @@ model TurnMetrics {
   @@index([harnessShape])
 }
 
-/// [v1.4.2 — Day 5 / Spec Item 6] Daily snapshot of every active user's
-/// orientation block — savings / debt / wallet totals, health factor,
-/// last unactioned advice, and a one-line "recent activity" summary.
-/// Read by `engine-context.ts:buildDynamicBlock` at engine boot to seed
-/// the `<financial_context>` system-prompt section so a returning user
-/// gets a contextual greeting WITHOUT spending tool calls (and tokens)
-/// re-deriving state every session.
-///
-/// Dual-key by design [v1.4 — B2]: callers in the engine path only know
-/// the wallet `address` (no Prisma `User.id` cuid), but joins to
-/// `AdviceLog` / `PortfolioSnapshot` need the cuid. The cron writer
-/// populates BOTH on upsert so either lookup works.
-///
-/// [SPEC 17 — 2026-05-07] `openGoals` Json column dropped — the
-/// SavingsGoal table + 4 engine tools + UI panel were retired in
-/// SPEC 17 (savings-goal layer wasn't producing observable agent
-/// behavior change). The `health_check` + `portfolio_overview` +
-/// `yield_summary` tools cover "track my savings progress" already.
-///
-/// Cached at `fin_ctx:${address}` in Upstash Redis with a 24h TTL that
-/// matches the cron cadence. Invalidated synchronously after every
-/// auto-tier (`engine-factory.ts:onAutoExecuted`) and confirm-tier
-/// (`resume/route.ts`) write so a user who saves / sends / swaps and
-/// reopens chat 5 minutes later sees the updated snapshot — not a
-/// stale 23-hour-old block. Reading is fail-open: a Redis miss falls
-/// through to Prisma, and a Prisma miss returns `null` (the engine
-/// boot path then skips the `<financial_context>` section entirely).
-model UserFinancialContext {
-  id                   String   @id @default(cuid())
-  userId               String   @unique
-  address              String   @unique
-  // [S.373 / V07E_STALE_FINCONTEXT Phase 2, 2026-06-07] Dropped 6 volatile
-  // columns (savingsUsdc, debtUsdc, healthFactor, walletUsdc, walletUsdsui,
-  // savingsUsdsui). Phase 1 (S.242) stopped reading them; they let the LLM
-  // refuse writes off ≤24h-stale balances. Balance/savings/debt/HF now come
-  // ONLY from fresh tool calls (balance_check / savings_info / health_check).
-  currentApy           Float?
-  recentActivity       String
-  pendingAdvice        String?
-  daysSinceLastSession Int
-  generatedAt          DateTime @default(now())
-  updatedAt            DateTime @updatedAt
-}
+// [S.375 — 2026-06-07] `UserFinancialContext` model REMOVED. It backed the
+// daily `<financial_context>` orientation snapshot, killed in S.375. Post-
+// S.373 the row held only 4 stable fields (currentApy / pendingAdvice /
+// recentActivity / daysSinceLastSession); pendingAdvice duplicated AdviceLog,
+// recentActivity + currentApy were tool-covered, and daysSinceLastSession is
+// trivially inline — the daily `getPortfolio()` BlockVision-fan-out cron +
+// table didn't earn their keep. The LLM now orients via tools. Table dropped
+// via migration `20260607010000_s375_drop_user_financial_context`.
 
 // ===========================================================================
 // v0.7e Persistent Chats (S.247) — replaces the drizzle Chat/Message/Vote

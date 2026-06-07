@@ -108,11 +108,14 @@ export class MemWalMemoryStore implements MemoryStore {
     query: string,
     opts?: { topK?: number; namespace?: string }
   ): Promise<MemoryRecord[]> {
-    const result = await this.client.recall(
+    // [S.375 — 2026-06-07] MemWal 0.0.7: object-form `recall({ query, limit,
+    // namespace })`. Positional `recall(query, limit, namespace)` is
+    // `@deprecated` in 0.0.7 (slated for removal in a future major).
+    const result = await this.client.recall({
       query,
-      opts?.topK ?? 5,
-      opts?.namespace ?? this.defaultNamespace
-    );
+      limit: opts?.topK ?? 5,
+      namespace: opts?.namespace ?? this.defaultNamespace,
+    });
     return result.results.map((r) => ({
       text: r.text,
       distance: r.distance,
