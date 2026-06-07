@@ -65,11 +65,10 @@ import { prisma } from "@/lib/prisma";
 //   - pendingAdvice:        text narrative from AdviceLog, daily-ish churn
 //   - recentActivity:       text narrative summary, daily churn
 //
-// The 6 dropped fields (walletUsdc / walletUsdsui / savingsUsdc /
-// savingsUsdsui / debtUsdc / healthFactor) are still WRITTEN by the
-// 02:30 UTC `financial-context-snapshot` cron — the Prisma schema isn't
-// touched in Phase 1. Phase 2 (per Q2 lock) will simplify the cron +
-// drop the columns. See `spec/active/V07E_STALE_FINCONTEXT_WRITE_REFUSAL.md`.
+// The 6 volatile fields (walletUsdc / walletUsdsui / savingsUsdc /
+// savingsUsdsui / debtUsdc / healthFactor) were DROPPED from the schema +
+// cron in Phase 2 (S.373, 2026-06-07) — they no longer exist on the row.
+// See `spec/active/V07E_STALE_FINCONTEXT_WRITE_REFUSAL.md`.
 // ---------------------------------------------------------------------------
 export interface FinancialContextSnapshot {
   currentApy: number | null;
@@ -178,10 +177,9 @@ export async function getFinancialContextBlock(
     return "";
   }
 
-  // [S.242 Path 6, 2026-05-22] Only the 4 stable fields are read from the
-  // row. The 6 volatile columns (walletUsdc, walletUsdsui, savingsUsdc,
-  // savingsUsdsui, debtUsdc, healthFactor) are still written by the cron
-  // until Phase 2 simplification — they're ignored here.
+  // [S.242 Path 6, 2026-05-22] Only the 4 stable fields exist on the row.
+  // The 6 volatile columns (walletUsdc, walletUsdsui, savingsUsdc,
+  // savingsUsdsui, debtUsdc, healthFactor) were dropped in Phase 2 (S.373).
   const snapshot: FinancialContextSnapshot = {
     currentApy: row.currentApy,
     daysSinceLastSession: row.daysSinceLastSession,

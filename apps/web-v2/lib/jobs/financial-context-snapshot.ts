@@ -249,27 +249,19 @@ async function processOneUser(user: UserRow): Promise<UserOutcome> {
       ? Math.floor((Date.now() - lastSession.createdAt.getTime()) / 86_400_000)
       : 0;
 
-    const walletUsdc = portfolio.walletAllocations.USDC ?? 0;
-    const walletUsdsui = portfolio.walletAllocations.USDsui ?? 0;
-
-    const usdsuiSupply = portfolio.positions.supplies.find(
-      (s) => s.asset.toUpperCase() === "USDSUI"
-    );
-    const usdcSupply = portfolio.positions.supplies.find(
-      (s) => s.asset.toUpperCase() === "USDC"
-    );
-    const savingsUsdsui = usdsuiSupply?.amountUsd ?? 0;
-    const savingsUsdc = usdcSupply?.amountUsd ?? 0;
-
+    // [S.373 / V07E_STALE_FINCONTEXT Phase 2, 2026-06-07] The 6 volatile
+    // balance/debt/HF columns were dropped from `UserFinancialContext`
+    // (Phase 1 already stopped READING them — they let the LLM refuse
+    // writes off ≤24h-stale balances). This writer now persists only the
+    // 4 stable fields. `currentApy` is still derived from the live
+    // `getPortfolio()` fetch, so the S.235 degraded-skip guard above stays
+    // load-bearing (a degraded run would write a misleading APY).
+    // FOLLOW-UP: only `currentApy` needs the heavy 3-way portfolio fan-out
+    // now — decoupling it from `getPortfolio()` would retire the guard AND
+    // cut this cron's BlockVision load (see the doc's Phase 3 note).
     const data = {
       userId: user.id,
       address: user.suiAddress,
-      savingsUsdc,
-      savingsUsdsui,
-      debtUsdc: portfolio.positions.borrows,
-      walletUsdc,
-      walletUsdsui,
-      healthFactor: portfolio.positions.healthFactor,
       currentApy: portfolio.positions.savingsRate || null,
       recentActivity,
       pendingAdvice: pendingAdvice?.adviceText ?? null,

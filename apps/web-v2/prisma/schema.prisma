@@ -423,19 +423,11 @@ model UserFinancialContext {
   id                   String   @id @default(cuid())
   userId               String   @unique
   address              String   @unique
-  savingsUsdc          Float
-  debtUsdc             Float
-  healthFactor         Float?
-  walletUsdc           Float
-  /// [Bug 1c / 2026-04-27] USDsui breakouts. NAVI's USDsui pool launched
-  /// after this table was created, so both columns are nullable for
-  /// backfill (older rows return `null`, which the prompt builder treats
-  /// as "no USDsui line"). Both values are USD-equivalent (USDsui is
-  /// $1-pegged) and live alongside the existing USDC fields rather than
-  /// replacing them — pre-fix the LLM was answering balance questions
-  /// from a USDC-labeled aggregate that silently dropped USDsui.
-  walletUsdsui         Float?
-  savingsUsdsui        Float?
+  // [S.373 / V07E_STALE_FINCONTEXT Phase 2, 2026-06-07] Dropped 6 volatile
+  // columns (savingsUsdc, debtUsdc, healthFactor, walletUsdc, walletUsdsui,
+  // savingsUsdsui). Phase 1 (S.242) stopped reading them; they let the LLM
+  // refuse writes off ≤24h-stale balances. Balance/savings/debt/HF now come
+  // ONLY from fresh tool calls (balance_check / savings_info / health_check).
   currentApy           Float?
   recentActivity       String
   pendingAdvice        String?
