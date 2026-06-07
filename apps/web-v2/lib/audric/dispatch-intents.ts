@@ -12,8 +12,8 @@
  * already does that for concurrent calls). It is to **force the LLM
  * to call read tools it would otherwise skip**. v0.46.7 baseline
  * observed a ~30% skip rate on direct read questions ("what's my net
- * worth?") because the LLM lazy-answers from cached `<financial_context>`
- * data instead of calling fresh tools. The dispatcher's deterministic
+ * worth?") because the LLM lazy-answers from in-context balances it saw
+ * earlier in the turn instead of calling fresh tools. The dispatcher's deterministic
  * regex match + pre-fire + tool-result injection sidesteps that
  * probability cliff.
  *

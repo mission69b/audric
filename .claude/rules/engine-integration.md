@@ -11,8 +11,8 @@ read those. This file is a short orientation pointer.
   (AI SDK `addToolResult` / tool-approval round-trip keyed on `attemptId`/`approvalId`) — there is NO
   separate `/api/engine/chat` or `/api/engine/resume` route, and no `engine-factory.ts` /
   `init-engine-stores.ts` (those were archived with `apps/web` in S.253).
-- Silent context is assembled per turn (system prompt + `<financial_context>` from `UserFinancialContext`
-  + MemWal `<memory_recall>` + AdviceLog) — see `audric-context-assembly.mdc`.
+- Silent context is assembled per turn (system prompt + MemWal `<memory_recall>` + AdviceLog) —
+  see `audric-context-assembly.mdc`.
 - Telemetry (`TurnMetrics`, `SessionUsage`) is written inline from the chat route +
   `lib/audric/resume-outcome.ts`.
 
@@ -21,8 +21,8 @@ read those. This file is a short orientation pointer.
 1. Every `pending_action` carries `attemptId` (Spec 1) — persist it on `TurnMetrics`, key resume on it.
 2. Engine writes are `permissionLevel: 'confirm'` under zkLogin — every write taps to confirm. Never
    override to `'auto'`.
-3. The `<financial_context>` block comes from the daily `UserFinancialContext` snapshot (02:30 UTC cron) —
-   don't fetch it on the chat critical path.
+3. There is no pre-injected `<financial_context>` block (daily snapshot retired in S.375) — the agent
+   orients via fresh read tools (`balance_check` / `savings_info` / `rates_info`), never a cached snapshot.
 
 ## Tests
 

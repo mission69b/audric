@@ -14,12 +14,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
   return [
     { url: base, lastModified: now, changeFrequency: "weekly", priority: 1 },
     {
-      url: `${base}/litepaper`,
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.8,
-    },
-    {
       url: `${base}/disclaimer`,
       lastModified: now,
       changeFrequency: "yearly",

@@ -18,9 +18,11 @@ Audric's scheduled work lives in **two places**:
 | Route | Writes | Triggered by |
 |---|---|---|
 | `GET /api/cron/portfolio-snapshot` | `PortfolioSnapshot` | Vercel cron — daily 07:00 UTC |
-| `POST /api/cron/financial-context-snapshot` | `UserFinancialContext` | Vercel cron — daily 02:30 UTC |
 | `GET /api/cron/turn-metrics-pending-sweep` | `TurnMetrics` (timeouts pending → timed_out) | Vercel cron — every 15 min |
 | `POST /api/internal/payments` | `Payment` (CRUD for payment-link tools; `type: 'invoice'` → 410 Gone) | Engine server-side fetch |
+
+> **Deleted in S.375 (2026-06-07):**
+> - `POST /api/cron/financial-context-snapshot` — daily `UserFinancialContext` snapshot retired; its fields were redundant with fresh tool reads (`balance_check` / `rates_info` / `transaction_history`) and the daily BlockVision fan-out didn't earn its keep. Prisma model + table dropped.
 
 > **Deleted in v0.7e Phase 5 cleanup (S.254, 2026-05-22):**
 > - `POST /api/cron/conversation-log-retention` — `ConversationLog` model was dropped alongside its retention cron when AI SDK v6 native `Chat`/`Message`/`Vote` persistence (S.247) superseded the legacy transcript table.
@@ -31,7 +33,7 @@ Audric's scheduled work lives in **two places**:
 > - `POST /api/internal/chain-memory` (7-classifier ChainFact writes — S.221)
 > - `POST /api/cron/user-memory-retention` (UserMemory retention sweep — S.221)
 > - `POST /api/internal/portfolio-snapshot` (ECS receiver — S.224; Vercel cron at `/api/cron/portfolio-snapshot` is the replacement)
-> - `POST /api/internal/financial-context-snapshot` (ECS receiver — S.224; Vercel cron at `/api/cron/financial-context-snapshot` is the replacement)
+> - `POST /api/internal/financial-context-snapshot` (ECS receiver — S.224; its Vercel cron replacement was later retired in S.375)
 > - `GET /api/internal/health-factor` (ECS HF-alert cron — retired S.31 April 2026, route deleted S.224)
 > - `POST /api/internal/notification-users` (ECS cron user-list join — S.224; Vercel cron jobs read `prisma.user.findMany` directly)
 > - `GET /api/internal/user-address` (ECS cron user-lookup — S.224)
@@ -96,7 +98,6 @@ await prisma.portfolioSnapshot.create({ data: { userId, date: today, ...metrics 
 
 For the current Vercel crons:
 - `portfolio-snapshot`: skips users with an existing row for today (idempotent by `userId_date`).
-- `financial-context-snapshot`: `upsert` keyed on `userId` (idempotent).
 
 ## Job implementation — extract to `lib/jobs/*`
 
@@ -121,7 +122,7 @@ export async function GET(req: NextRequest) {
 ## Scale notes
 
 - **Current scale:** single-shard runs comfortably fit Vercel's 300s `maxDuration` cap.
-- **When sharding becomes necessary:** if active users grow past ~200 (where 200 × 1.5s = 300s starts to bite for fin-ctx-snapshot), the route can fan out via internal `fetch()` to itself with `{ shard, total }` params. `runFinancialContextSnapshotJob()` already accepts these; route just needs the fan-out logic.
+- **When sharding becomes necessary:** if active users grow past ~200 (where 200 × 1.5s = 300s starts to bite for `portfolio-snapshot`), the route can fan out via internal `fetch()` to itself with `{ shard, total }` params — `runInBatches` (`lib/jobs/batch-runner.ts`) already bounds per-batch parallelism; the route just needs the fan-out logic.
 - **No EventBridge / no ECS:** zero AWS scheduler involvement post-Block-C. `vercel.json` is the single source of truth for cron schedules.
 
 ## Response shape — uniform across cron routes
@@ -147,7 +148,7 @@ for (const user of users) {
 // — go through the canonical getPortfolio (it caches via the 60s in-process cache).
 
 // ❌ Cron route that writes to multiple domains
-// — financial-context shouldn't also update UserMemory. One job, one domain.
+// — portfolio-snapshot shouldn't also sweep TurnMetrics. One job, one domain.
 
 // ❌ Cron route that responds with HTML / a redirect
 return NextResponse.redirect('/some-page');

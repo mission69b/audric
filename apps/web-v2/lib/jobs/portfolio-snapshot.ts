@@ -4,10 +4,10 @@
  * (originally landed v0.7d Phase 6 Block B / S.222). Mirrored here so
  * web-v2 owns the cron during the v0.7c chat-flip + DNS-flip window.
  *
- * Critical because the daily 07:00 UTC `PortfolioSnapshot` row feeds
- * the 02:30 UTC UFC snapshot's `recentActivity` field — if this cron
- * stops, UFC `recentActivity` goes stale and the agent reads "No
- * changes since last snapshot" forever.
+ * Feeds the historical portfolio-totals timeline canvas. (Pre-S.375 it
+ * also fed the `UserFinancialContext` snapshot's `recentActivity` field;
+ * that daily snapshot was retired, so this cron now serves the timeline
+ * only.)
  *
  * Behavior (preserved verbatim):
  *   - Snapshots `PortfolioSnapshot` for every user that doesn't yet
@@ -20,7 +20,7 @@
  *     aborts the loop.
  *
  * [S.278 / SPEC 272 Lever 1 — 2026-05-23] Bounded-batch fan-out. Same
- * failure mode as `financial-context-snapshot.ts`: sequential per-user
+ * failure mode the retired `financial-context-snapshot.ts` hit: sequential per-user
  * loop fanning out to BlockVision was exceeding Vercel's 300s
  * `maxDuration` cap on bad days. Replaced with `runInBatches` (N=10
  * users in parallel, M=500ms intra-batch delay). Per-batch BV pressure

@@ -27,7 +27,7 @@ POST `/api/chat` runs these phases in order. Line numbers are approximate (drift
 | 6 | Resume extraction | Pulls outcomes from prior `tool-approval-response` parts in `body.messages` for `attemptId` round-trip | `extractResumeOutcomes(body.messages)` |
 | 7 | Telemetry init | Single `TelemetryIntegration` instance per request — owns TurnMetrics + SessionUsage writes | `new TelemetryIntegration()` |
 | 8 | Model edge | Vercel AI Gateway via `gateway('anthropic/<model>')`; wrapped with `wrapLanguageModel` for observability | `gateway('anthropic/claude-sonnet-4-6')` |
-| 9 | Context blocks | Financial context + advice context; both fold into the static `instructions` (NOT prepareStep) | `getFinancialContextBlock(walletAddress)` + `buildAudricSystemPrompt({...})` |
+| 9 | Context blocks | Advice context folds into the static `instructions` (NOT prepareStep). The `<financial_context>` block was retired in S.375 — the agent orients via read tools. | `buildAdviceContext(...)` + `buildAudricSystemPrompt({...})` |
 | 10 | Memory wiring | `prepareStep` callback for per-turn `<memory_recall>` injection; `onFinish` callback for post-turn MemWal write | `buildMemoryPrepareStep({...})` + `buildMemoryWriteCallback({...})` |
 | 11 | Title generation | Background `generateChatTitle({...})` for new chats — fire-and-forget, races `saveMessages` teardown but is upsert-safe | `generateChatTitle({...})` |
 | 12 | Agent construction | AI SDK v6 `Experimental_Agent` with engine tools (via `toAISDKTools`), system instructions, `prepareStep`, `onFinish`, `experimental_telemetry`, `experimental_context` | `new Agent({ model, tools, instructions, prepareStep, onFinish, ... })` |
@@ -157,7 +157,7 @@ const instructions = `${baseSystem}\n\n${memoryBlock}`; // memory MUST come from
 
 // ✅ Per-turn memory injection
 const audricAgent = new Agent({
-  instructions: buildAudricSystemPrompt({ ... }), // static (includes financial_context + advice)
+  instructions: buildAudricSystemPrompt({ ... }), // static (includes advice; no financial_context post-S.375)
   prepareStep: buildMemoryPrepareStep({ ... }),   // dynamic (memory recall per turn)
   onFinish: buildMemoryWriteCallback({ ... }),    // dynamic (memory write post-turn)
 });

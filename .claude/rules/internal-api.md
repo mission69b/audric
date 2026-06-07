@@ -32,7 +32,7 @@ Never skip this. Internal endpoints are public HTTPS endpoints; the auth gate is
 
 > **Deleted in v0.7d Phase 6 (S.221, S.222, S.224 — 2026-05-21):**
 > - `/api/internal/memory-extraction`, `/api/internal/profile-inference`, `/api/internal/chain-memory` (S.221) — replaced by MemWal `analyze()` in `apps/web-v2/lib/audric/memwal-write-callback.ts`.
-> - `/api/internal/portfolio-snapshot`, `/api/internal/financial-context-snapshot` (S.224) — replaced by Vercel cron at `/api/cron/*` with `CRON_SECRET` bearer auth.
+> - `/api/internal/portfolio-snapshot`, `/api/internal/financial-context-snapshot` (S.224) — replaced by Vercel cron at `/api/cron/*` with `CRON_SECRET` bearer auth. (The `financial-context-snapshot` Vercel cron was itself retired in S.375; only `portfolio-snapshot` remains.)
 > - `/api/internal/health-factor`, `/api/internal/notification-users`, `/api/internal/user-address`, `/api/internal/app-event` (S.224) — receivers of the now-retired t2000 ECS cron. Zero callers post-Block-C.
 
 ## Adding a new internal endpoint

@@ -6,7 +6,7 @@ alwaysApply: false
 
 # Prisma Models Overview
 
-NeonDB Postgres with **13 active Prisma models** (`User`, `UserPreferences`, `SessionUsage`, `ServicePurchase`, `AppEvent`, `AdviceLog`, `Payment`, `PortfolioSnapshot`, `TurnMetrics`, `UserFinancialContext`, `Chat`, `Message`, `Vote`). Post v0.7e Phase 5 cleanup S.254 dropped `LinkedWallet` + `WatchAddress` + `ConversationLog` 2026-05-22; plus `UserPreferences.contacts` column dropped same migration; plus prior v0.7d Phase 6 Block A drops of `UserMemory` + `UserFinancialProfile` 2026-05-21 S.221. Schema lives at `apps/web-v2/prisma/schema.prisma`. Generated client output is `apps/web-v2/lib/generated/prisma`.
+NeonDB Postgres with **12 active Prisma models** (`User`, `UserPreferences`, `SessionUsage`, `ServicePurchase`, `AppEvent`, `AdviceLog`, `Payment`, `PortfolioSnapshot`, `TurnMetrics`, `Chat`, `Message`, `Vote`). Post v0.7e Phase 5 cleanup S.254 dropped `LinkedWallet` + `WatchAddress` + `ConversationLog` 2026-05-22; plus `UserPreferences.contacts` column dropped same migration; plus prior v0.7d Phase 6 Block A drops of `UserMemory` + `UserFinancialProfile` 2026-05-21 S.221; plus `UserFinancialContext` dropped 2026-06-07 S.375 (daily snapshot retired). Schema lives at `apps/web-v2/prisma/schema.prisma`. Generated client output is `apps/web-v2/lib/generated/prisma`.
 
 ## Model catalog
 
@@ -27,11 +27,10 @@ NeonDB Postgres with **13 active Prisma models** (`User`, `UserPreferences`, `Se
 | `SessionUsage` | Per-session token + cost rollup (drives session-cap billing gate) | Engine | `/api/chat` end-of-session |
 | `TurnMetrics` | Per-turn metrics (Spec 1) — latency, attemptId, modifiableFieldsTouched, pendingActionOutcome, writeToolDurationMs | Engine harness | `/api/chat` (chat-time row), inline resume flow (updateMany on attemptId) |
 
-### Silent intelligence (`<financial_context>` + context layers)
+### Silent intelligence (context layers)
 
 | Model | What it stores | Owned by | Updated by |
 |---|---|---|---|
-| `UserFinancialContext` | Daily on-chain snapshot — savings/wallet/debt/HF/APY/recent activity | Cron | 02:30 UTC `financial-context-snapshot` Vercel cron |
 | `AdviceLog` | Recommendations the agent gave (last 30d rehydrated each turn) | Engine tool | `record_advice` tool (via `lib/audric/moat-context.ts`) |
 | `PortfolioSnapshot` | Historical portfolio totals for timeline canvas | Cron | Daily `portfolio-snapshot` Vercel cron |
 

@@ -1704,12 +1704,15 @@ export async function POST(request: Request) {
   // 9.5 [v0.7c Phase 6 prep] Run the intent-dispatcher on the latest
   // user message text. Per D-14 lock: deterministic regex pre-fire of
   // direct-read questions ("what's my balance?") to counter the ~30%
-  // skip-rate pathology where the LLM lazy-answers from cached
-  // `<financial_context>` instead of calling fresh tools.
+  // skip-rate pathology where the LLM lazy-answers from balances already
+  // in context instead of calling fresh tools.
   //
-  // The dispatcher only earns its cost AFTER `<financial_context>` is
-  // wired (otherwise the skip-rate pathology doesn't exist) — which is
-  // why these three artifacts ship as one coupled slice.
+  // [S.375 — 2026-06-07] The original justification was the daily
+  // `<financial_context>` snapshot (the LLM would answer from that stale
+  // block). That snapshot is retired; the dispatcher still pre-fires the
+  // read so a fresh "what's my balance?" turn doesn't depend on the LLM
+  // electing to call the tool. TODO: re-confirm the dispatcher still earns
+  // its cost now the snapshot is gone (S.375 follow-up).
   //
   // We only dispatch when the LAST message in `normalized` is a fresh
   // user turn (skip on HITL resume turns where the tail is an assistant
@@ -1775,7 +1778,7 @@ export async function POST(request: Request) {
   // sees fresh balances when it narrates the receipt.
   //
   // Without this, the LLM narrates post-write paragraphs using STALE
-  // pre-write balance numbers from the `<financial_context>` snapshot,
+  // pre-write balance numbers from earlier-in-turn tool reads,
   // re-opening the hallucination class. See
   // `lib/audric/post-write-refresh.ts` for the full rationale + the
   // ported POST_WRITE_REFRESH_MAP table.
@@ -2400,25 +2403,15 @@ export async function POST(request: Request) {
       );
 
       // [Phase 6.5 / SPEC_V07C_PHASE_6_5_CHAT_PARITY A.3 / S.198 — 2026-05-20]
-      // SessionUsage row per turn — fire-and-forget. Pre-Phase-6.5 web-v2
-      // never wrote this row, which silently broke a load-bearing
-      // downstream cron with a 30-day fuse:
+      // SessionUsage row per turn — fire-and-forget usage/cost accounting.
       //
-      //   `apps/web/lib/jobs/financial-context-snapshot.ts` (the Vercel
-      //   cron job impl; `/api/internal/financial-context-snapshot`
-      //   receiver route was deleted in S.224 Block C.3, 2026-05-21)
-      //   filters its daily user-list to `SessionUsage.createdAt >= 30d
-      //   ago`. Users who only use web-v2 post-chat-flip would age out
-      //   of the snapshot population after 30 days → `<financial_context>`
-      //   block goes empty → silent intelligence regression (Dimension 20
-      //   of the S.198 parity audit).
-      //
-      // The financial-context-snapshot cron itself stays on apps/web
-      // (KEEP-IN-WEB per runbook §1.1 audit-3) — only the input it
-      // reads from (SessionUsage) needs to keep getting populated
-      // from whichever host the user is hitting. apps/web writes its
-      // own SessionUsage rows via `lib/engine/log-session-usage.ts`;
-      // web-v2 mirrors that pattern here.
+      // [S.375 — 2026-06-07] Historically this row was load-bearing for the
+      // daily `financial-context-snapshot` cron, which filtered its user
+      // list to `SessionUsage.createdAt >= 30d`. That cron is retired, so
+      // that specific consumer is gone. The row is still written for usage
+      // accounting / the daily-free billing gate. TODO: confirm no other
+      // SessionUsage consumer needs the per-turn write at this volume
+      // (S.375 follow-up).
       //
       // **Field source:** `payload` is the TelemetryIntegration build
       // output — inputTokens/outputTokens/cacheRead/cacheWrite are
@@ -2437,11 +2430,10 @@ export async function POST(request: Request) {
         new Set(payload.toolsCalled.map((t) => t.name))
       );
       // [Smoke 2026-05-22 V3 fix] Wrap with `waitUntil` for the same
-      // reason as TurnMetrics above. Without it the 30-day
-      // financial-context-snapshot cron silently ages out web-v2-only
-      // users (SessionUsage row never lands → cron's
-      // `createdAt >= 30d` filter drops them → `<financial_context>`
-      // block goes empty).
+      // reason as TurnMetrics above — guarantee the fire-and-forget write
+      // lands before the serverless function suspends. (The 30-day
+      // financial-context-snapshot consumer that originally motivated this
+      // was retired in S.375; waitUntil still matters for accounting.)
       waitUntil(
         prisma.sessionUsage
           .create({

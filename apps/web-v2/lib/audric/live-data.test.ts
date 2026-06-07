@@ -11,7 +11,7 @@
  * Why these matter:
  *  - `projectHF` mirrors engine's `projectHF()` 1:1; drift between
  *    host + engine would lead to PermissionCard previews disagreeing
- *    with the post-approval `<financial_context>` block on the
+ *    with the post-approval balances the agent reads on the
  *    follow-up turn.
  *  - `computeMetadataEnrichment` is the dispatcher — wrong tool-name
  *    routing means save_deposit cards lose their HF row.

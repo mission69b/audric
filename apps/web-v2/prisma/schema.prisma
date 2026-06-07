@@ -196,11 +196,10 @@ model PortfolioSnapshot {
   yieldEarnedUsd  Float
   healthFactor    Float?
   // Weighted average APY across all savings positions, expressed as a
-  // decimal (e.g. 0.0421 = 4.21%). Persisted so the daily
-  // financial-context-snapshot cron can wire `currentApy` into the
-  // <financial_context> agent prompt block without re-fetching positions
-  // per user. Nullable for backfill compatibility on rows written before
-  // this column existed.
+  // decimal (e.g. 0.0421 = 4.21%). Originally persisted to feed the daily
+  // financial-context-snapshot cron (retired S.375); now retained as part
+  // of the historical PortfolioSnapshot timeline row. Nullable for backfill
+  // compatibility on rows written before this column existed.
   savingsRate     Float?
   allocations     Json
 

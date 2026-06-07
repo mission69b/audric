@@ -76,15 +76,6 @@ export default function PrivacyPage() {
               tracking and history. These are public blockchain data.
             </li>
             <li>
-              <strong className="text-foreground">
-                Financial context snapshots
-              </strong>{" "}
-              &mdash; Once a day we read your on-chain wallet, savings, borrows,
-              health factor, and recent activity, and store a snapshot. This
-              lets Audric answer questions about your money without re-querying
-              the chain on every turn.
-            </li>
-            <li>
               <strong className="text-foreground">Memory</strong> &mdash; Audric
               Intelligence stores private facts about your preferences, goals,
               risk tolerance, and on-chain patterns (recurring sends, idle
@@ -134,8 +125,8 @@ export default function PrivacyPage() {
           </h2>
           <p>
             Audric Intelligence is the agent that powers your Passport. It uses
-            your stored data (chat history, financial context snapshot, memory,
-            advice log) silently &mdash; only ever as context that shapes the
+            your stored data (chat history, memory, advice log) silently
+            &mdash; only ever as context that shapes the
             agent&apos;s next reply or executes the next action you confirm.
           </p>
           <p className="mt-2">
@@ -225,7 +216,7 @@ export default function PrivacyPage() {
           </h2>
           <p>
             Profile data (username, wallet address, chat history, memory, advice
-            log, daily financial context snapshots, transaction history) is
+            log, transaction history) is
             stored in a PostgreSQL database hosted on Neon. Session data and
             short-lived caches are stored in Redis (Upstash) and expire
             automatically.

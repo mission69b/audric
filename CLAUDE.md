@@ -28,7 +28,7 @@ audric/
 │   │   ├── portfolio.ts        ← Canonical portfolio fetcher (SSOT for wallet + positions + DeFi)
 │   │   ├── navi-positions.ts   ← INTERNAL helper used by portfolio.ts (NAVI lending state)
 │   │   └── env.ts              ← Zod env schema + typed proxy (the env gate)
-│   ├── prisma/                 ← 13 models (User, UserPreferences, SessionUsage, ServicePurchase, AppEvent, AdviceLog, Payment, PortfolioSnapshot, TurnMetrics, UserFinancialContext, Chat, Message, Vote)
+│   ├── prisma/                 ← 12 models (User, UserPreferences, SessionUsage, ServicePurchase, AppEvent, AdviceLog, Payment, PortfolioSnapshot, TurnMetrics, Chat, Message, Vote)
 │   └── scripts/                ← check-ads-tokens.mts + smoke scripts
 ├── patches/                    ← pnpm patches (@naviprotocol/lending)
 └── pnpm-workspace.yaml
@@ -41,7 +41,7 @@ audric/
 | Product | What it is | Implementation | Status |
 |---------|-----------|----------------|--------|
 | 🪪 **Audric Passport** | Trust layer — zkLogin via Google, non-custodial Sui wallet, tap-to-confirm consent on every write, sponsored gas. Wraps every other product. | `@t2000/sdk` + Enoki + `@mysten/dapp-kit` | Live |
-| 🧠 **Audric Intelligence** | Brain (the moat) — 4 systems orchestrate every money decision (Agent Harness · Reasoning Engine · Memory · AdviceLog; pre-Block-A had 5, MemWal absorbed Silent Profile + Chain Memory in 2026-05-21). Engineering-facing brand; users experience it as "Audric just understood me." | `@t2000/engine` 4.1.0 (26 tools, 12 guards post-S.277) + `@t2000/mcp` (8 skills as MCP prompts) + audric-side `record_advice` + silent context (`lib/audric/system-prompt.ts`, `<financial_context>` daily snapshot from `UserFinancialContext`) | Live |
+| 🧠 **Audric Intelligence** | Brain (the moat) — 4 systems orchestrate every money decision (Agent Harness · Reasoning Engine · Memory · AdviceLog; pre-Block-A had 5, MemWal absorbed Silent Profile + Chain Memory in 2026-05-21). Engineering-facing brand; users experience it as "Audric just understood me." | `@t2000/engine` 4.1.0 (26 tools, 12 guards post-S.277) + `@t2000/mcp` (8 skills as MCP prompts) + audric-side `record_advice` + silent context (`lib/audric/system-prompt.ts` + MemWal `<memory_recall>`) | Live |
 | 💰 **Audric Finance** | Manage your money on Sui — Save (NAVI lend, 3–8% APY on USDC or USDsui — strategic exception per `savings-usdc-only`), Credit (NAVI borrow USDC or USDsui, health factor), Swap (Cetus aggregator, 20+ DEXs, 0.1% fee), Charts (yield/health/portfolio viz). Every write taps to confirm via Passport. | `@t2000/sdk` NAVI builders + `cetus-swap.ts` + `@t2000/engine` chart canvas templates | Live |
 | 💸 **Audric Pay** | Money primitive — send USDC, receive via payment links / QR. Free, global, instant on Sui. (Invoicing collapsed into payment links — S.269.) | `@t2000/sdk` direct Sui tx + `@mysten/payment-kit` payment links | Live |
 | 🛒 **Audric Store** | Creator marketplace at `audric.ai/username`. AI-generated music/art/ebooks sold in USDC. 92% to creator. | `@t2000/sdk` + Walrus + payment links | Coming soon (Phase 5) |
@@ -57,7 +57,7 @@ audric/
 | **Conversation log** | Full transcripts logged for the future self-hosted model migration | Live |
 | ~~**Chain memory** (7 classifiers → `ChainFact`)~~ | Deleted in v0.7d Phase 6 Block A (S.221, 2026-05-21). `UserMemory.source='chain'` rows + 7 statistical classifiers + chain-memory cron all gone. MemWal absorbs chain signal organically from chat; LLM reads fresh chain state on demand via `transaction_history` / `activity_summary` / `spending_analytics`. | Removed |
 | ~~**Episodic memory** (`UserMemory`)~~ | Deleted in v0.7d Phase 6 Block A (S.221, 2026-05-21). `UserMemory` Prisma table dropped; daily Claude memory-extraction cron deleted. Replaced by MemWal `analyze()` write path. | Removed |
-| ~~**Financial profile** (`UserFinancialProfile`)~~ | Deleted in v0.7d Phase 6 Block A (S.221, 2026-05-21). `UserFinancialProfile` Prisma table dropped; daily Claude profile-inference cron deleted. MemWal absorbs preferences/risk signals as the user mentions them in chat. (Short-term daily `UserFinancialContext` snapshot — savings/wallet/debt/HF — is a DIFFERENT layer and is still live.) | Removed |
+| ~~**Financial profile** (`UserFinancialProfile`)~~ | Deleted in v0.7d Phase 6 Block A (S.221, 2026-05-21). `UserFinancialProfile` Prisma table dropped; daily Claude profile-inference cron deleted. MemWal absorbs preferences/risk signals as the user mentions them in chat. (The short-term daily `UserFinancialContext` snapshot was a separate layer; it too was retired in S.375 — 2026-06-07.) | Removed |
 | ~~**Critical HF email**~~ | Removed in S.31 (2026-04-29). Stablecoin-only collateral + zkLogin tap-to-confirm makes proactive HF email net-negative UX vs surfacing HF prominently in chat. Zero proactive surfaces now. | Removed |
 
 ---
@@ -103,7 +103,7 @@ audric/
 | `.cursor/rules/env-validation-gate.mdc` | The S.25 lesson — env via Zod, never raw `process.env` | Wiring a new env var |
 | `.cursor/rules/zklogin-passport-flow.mdc` | The four pillars + ephemeral key lifecycle + MaxEpoch math | zkLogin / Passport changes |
 | `.cursor/rules/safeguards-defense-in-depth.mdc` | Six layers of safety between user intent and on-chain action | Any change to a safety check |
-| `.cursor/rules/prisma-models-overview.mdc` | What each of the 13 models is for, what owns it | Schema migrations / new tables |
+| `.cursor/rules/prisma-models-overview.mdc` | What each of the 12 models is for, what owns it | Schema migrations / new tables |
 | `.cursor/rules/write-tool-pending-action.mdc` | The pending_action → confirm → resume protocol | New write tool / receipt bug |
 | `.cursor/rules/web-v2-chat-route-architecture.mdc` | Phase map of `apps/web-v2/app/api/chat/route.ts` (the 2,989-line nervous system) + AI SDK v6 conventions + Vercel AI Gateway + HITL inline resume | Touching the chat route or any `lib/audric/*` helper |
 | `.cursor/rules/audric-context-assembly.mdc` | The audric-side content builders that feed each system-prompt layer (companion to t2000's `memory-injection-architecture.mdc`) | Adding/changing context layers |
@@ -123,7 +123,7 @@ audric/
 ```
 User types message
   → POST /api/chat (SSE stream) — daily-free billing gate (5 unverified / 20 verified per rolling 24h)
-  → system-prompt assembly: <memory_recall> (MemWal) + <financial_context> + advice context (all silent)
+  → system-prompt assembly: <memory_recall> (MemWal) + advice context (all silent)
   → Experimental_Agent (AI SDK v6) → Claude with 26 tools (18 read + 8 write, engine 4.1.0; BlockVision-backed pricing via `token_prices` / `balance_check` / `portfolio_analysis`)
   → Read tools (balance, savings, health, analytics) → auto-executed server-side
   → Write tools (save, withdraw, send) → pending_action event
@@ -225,7 +225,7 @@ Always fetch through these modules — never query wallet/NAVI/events directly i
 | Feature | What it does |
 |---------|-------------|
 | **Memory (MemWal)** | `prepareStep` hook calls `memwal.recall(latestUserMessage)` and injects `<memory_recall>` block into the system prompt. `onFinish` callback calls `memwal.analyze()` to extract new facts. Replaces both former `UserFinancialProfile` and `UserMemory` Prisma reads. See `lib/audric/memwal-prepare-step.ts` + `lib/audric/memwal-write-callback.ts`. |
-| **Financial Context** | `UserFinancialContext` Prisma model: short-term daily orientation snapshot (savings/wallet/debt USD, health factor, current APY, recent activity). 02:30 UTC Vercel cron refresh (`/api/cron/financial-context-snapshot`). Injected as `<financial_context>` system-prompt block. **Different from the deleted `UserFinancialProfile` — this is fresh state, not inferred preferences.** |
+| ~~**Financial Context** (`UserFinancialContext`)~~ | **Retired in S.375 (2026-06-07).** Was a daily orientation snapshot injected as `<financial_context>`. Post-S.373 it held only redundant fields (savings/wallet covered by `balance_check`, APY by `rates_info`, activity by `transaction_history`); the daily BlockVision fan-out cron + table didn't earn their keep. Prisma model dropped, cron deleted — the agent now orients via fresh tool calls. |
 | **Chat Persistence** | `Chat` + `Message` + `Vote` Prisma triple (AI SDK v6 native, post-S.247). Per-message `UIMessage` JSON rows scoped to a parent thread; `Vote` carries per-message thumbs up/down. Used as the future fine-tune dataset (same purpose the deleted `ConversationLog` table served pre-S.254). |
 | **Advice Memory** | `record_advice` engine tool writes `AdviceLog` rows; `buildAdviceContext()` rehydrates last 30 days into every turn |
 
@@ -262,7 +262,7 @@ Examples: portfolio timeline, activity heatmap, spending breakdown, yield projec
 - **Framework:** Next.js 16 (App Router)
 - **Styling:** Tailwind CSS v4 + Geist Design System (shadcn primitives, Geist-rooted tokens — see `design-system.mdc`)
 - **State:** TanStack Query / SWR + custom hooks
-- **Database:** NeonDB (Prisma) — 13 models (see `prisma-models-overview.mdc`)
+- **Database:** NeonDB (Prisma) — 12 models (see `prisma-models-overview.mdc`)
 - **Sessions:** Upstash Redis (KV)
 - **Lint/format:** Biome via ultracite
 - **Testing:** Vitest

@@ -18,8 +18,10 @@
  *
  * Design choices (per `coding-discipline.mdc` simplicity-first)
  * --------------
- *   - One helper, two consumers. Not an abstraction layer — a literal
- *     30-LoC for-loop with batching semantics that both jobs share.
+ *   - One helper. Originally two consumers; `financial-context-snapshot`
+ *     was retired in S.375, so `portfolio-snapshot` is the sole consumer
+ *     today. Not an abstraction layer — a literal 30-LoC for-loop with
+ *     batching semantics.
  *   - `Promise.allSettled` per batch — defense in depth. The per-user
  *     `processOneUser` body already catches its own errors and updates
  *     counters; `allSettled` ensures that a NEW kind of escape (e.g. an

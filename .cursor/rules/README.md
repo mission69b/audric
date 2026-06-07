@@ -22,7 +22,7 @@ Cursor IDE rules, auto-applied by Cursor via its MDC convention (`description`, 
 | `audric-transaction-flow.mdc` | `apps/web-v2/**/*.{ts,tsx}` — sponsored tx vs SDK direct, attemptId resume |
 | `write-tool-pending-action.mdc` | `apps/web-v2/app/chat/audric-chat-client.tsx`, `app/api/chat/**`, `app/api/transactions/**`, `components/audric/**` — pending_action protocol |
 | `web-v2-chat-route-architecture.mdc` | `app/api/chat/route.ts`, `lib/audric/**` — chat route phase map + AI SDK v6 conventions + HITL resume protocol + Vercel AI Gateway |
-| `audric-context-assembly.mdc` | `lib/audric/system-prompt.ts`, `lib/audric/financial-context.ts`, `lib/audric/memwal-*.ts`, `lib/audric/moat-context.ts` — content builders that feed each system-prompt layer (companion to `t2000/memory-injection-architecture.mdc`) |
+| `audric-context-assembly.mdc` | `lib/audric/system-prompt.ts`, `lib/audric/memwal-*.ts`, `lib/audric/moat-context.ts` — content builders that feed each system-prompt layer (companion to `t2000/memory-injection-architecture.mdc`) |
 | `zklogin-passport-flow.mdc` | `lib/zklogin.ts`, `app/auth/**`, `app/api/user/**` — Passport flow + ephemeral keys |
 | `prisma-models-overview.mdc` | `prisma/**`, `lib/prisma.ts`, `app/api/**` — 13 models, write sites |
 | `audric-pay-flow.mdc` | `app/api/payments/**`, `app/pay/**`, `components/**Pay*.tsx`, `components/**Receive*.tsx` — Audric Pay |

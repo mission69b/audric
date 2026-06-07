@@ -1,6 +1,6 @@
 ---
 description: Audric-side context assembly — the content builders that feed each layer of the system prompt + per-turn memory injection in apps/web-v2/app/api/chat/route.ts
-globs: apps/web-v2/lib/audric/system-prompt.ts,apps/web-v2/lib/audric/financial-context.ts,apps/web-v2/lib/audric/memwal-*.ts,apps/web-v2/lib/audric/moat-context.ts
+globs: apps/web-v2/lib/audric/system-prompt.ts,apps/web-v2/lib/audric/memwal-*.ts,apps/web-v2/lib/audric/moat-context.ts
 ---
 
 # Audric-Side Context Assembly
@@ -11,7 +11,7 @@ Companion to `t2000/.cursor/rules/memory-injection-architecture.mdc`. That rule 
 
 | Surface on `Agent` | Audric content | Engine-rule mapping |
 |---|---|---|
-| `instructions` (static) | `buildAudricSystemPrompt({ ... })` | Layers 1 (base) + 2 (financial_context) + AdviceLog block — folded together at construction time. |
+| `instructions` (static) | `buildAudricSystemPrompt({ ... })` | Layer 1 (base) + AdviceLog block — folded together at construction time. (Engine layer 2 `<financial_context>` was retired in S.375; Audric supplies no block.) |
 | `prepareStep` (dynamic per turn) | `buildMemoryPrepareStep({ ... })` | Layer 3 (`<memory_recall>`). MemWal `recall(latestUserMessage)` returns top-K records → injected into `system` for that step. |
 | `onFinish` (dynamic post-turn) | `buildMemoryWriteCallback({ ... })` | Layer 3 write side. MemWal `analyze()` extracts new facts from the completed turn and persists. |
 
@@ -23,8 +23,7 @@ Every layer's content comes from one canonical helper. Don't fork.
 
 | Helper | File | What it produces | When it runs |
 |---|---|---|---|
-| `buildAudricSystemPrompt` | `apps/web-v2/lib/audric/system-prompt.ts` | The static `instructions` string fed to `new Agent({ instructions })`. Composes base prompt + `<financial_context>` + `<advice_log>` (last 30 days) + recipe / persona content. | Once per request, in chat route phase 9. |
-| `getFinancialContextBlock` | `apps/web-v2/lib/audric/financial-context.ts` | The `<financial_context>` XML block from the daily `UserFinancialContext` Prisma snapshot (savings, wallet, debt, HF, APY, recent activity). Empty string when no snapshot yet. | Once per request. Result feeds `buildAudricSystemPrompt`. |
+| `buildAudricSystemPrompt` | `apps/web-v2/lib/audric/system-prompt.ts` | The static `instructions` string fed to `new Agent({ instructions })`. Composes base prompt + `<advice_log>` (last 30 days) + recipe / persona content. | Once per request, in chat route phase 9. |
 | `buildAdviceContext` | `apps/web-v2/lib/audric/moat-context.ts` | Last 30 days of `AdviceLog` rows hydrated as a context block; lets the agent stay consistent with prior recommendations. | Inside `buildAudricSystemPrompt` (folded into `instructions`). |
 | `MemWalMemoryStore` | `apps/web-v2/lib/audric/memwal-memory-store.ts` | The adapter that bridges the engine's `MemoryStore` interface to the founder-owned `@mysten-incubation/memwal` SDK. Exposes `recall(query)` + `analyze(turn)` + `forget(id)` per the SDK contract. | Constructed once per request. Used by `prepareStep` + `onFinish`. |
 | `buildMemoryPrepareStep` | `apps/web-v2/lib/audric/memwal-prepare-step.ts` | Returns the `prepareStep` callback. Per turn: calls `memoryStore.recall(latestUserMessage)`, formats top-K hits into `<memory_recall>`, returns `{ system: prependedSystem }`. Falls back gracefully (empty layer) when recall throws or returns 0 records. | Once per turn (AI SDK calls `prepareStep` before each step). |
@@ -56,15 +55,16 @@ const instructions = `${baseSystem}\n\n${memoryBlock}`;
 // Memory recall is per-turn — must come from prepareStep, not the static instructions.
 
 // ❌ Reaching for deleted Prisma models
-import { UserFinancialProfile, UserMemory, ChainFact } from '@/lib/prisma';
-// All three were dropped in S.221 + S.254. MemWal is the long-term memory store.
-// `UserFinancialContext` (still alive) is the short-term daily snapshot.
+import { UserFinancialProfile, UserMemory, ChainFact, UserFinancialContext } from '@/lib/prisma';
+// UserFinancialProfile / UserMemory / ChainFact dropped in S.221 + S.254;
+// UserFinancialContext dropped in S.375. MemWal is the long-term memory store;
+// fresh financial state comes from read tools, not a snapshot.
 
-// ❌ Re-implementing financial-context fetching
+// ❌ Re-introducing a pre-injected financial-context block
 const wallet = await getPortfolio(...);
 const block = `<financial_context>...${wallet}...</financial_context>`;
-// getFinancialContextBlock() already does this and uses the daily snapshot —
-// a per-request live fetch defeats the snapshot's purpose and adds latency.
+// The daily snapshot was retired in S.375. Don't pre-inject balances —
+// let the LLM call balance_check / savings_info / rates_info for fresh state.
 
 // ❌ Mixing static `system` and per-turn `prepareStep` content for the same layer
 const agent = new Agent({
@@ -85,7 +85,7 @@ Most "I need the LLM to know X" concerns fold into existing layers. Decide:
 
 - **Static fact about the user** (preferences, persona, account-age policy) → fold into `buildAudricSystemPrompt` (the `instructions` builder).
 - **Dynamic fact derived from the turn's user message** (relevant memory, similar past turns) → extend `buildMemoryPrepareStep`. MemWal handles vector retrieval.
-- **Fact known at chat-time but expensive to compute** (portfolio snapshot, advice log) → pre-build offline or in a cron, store in Prisma, hydrate via a helper called from `buildAudricSystemPrompt` (matches `UserFinancialContext` + `AdviceLog` patterns).
+- **Fact known at chat-time but expensive to compute** (advice log, portfolio totals) → pre-build offline or in a cron, store in Prisma, hydrate via a helper called from `buildAudricSystemPrompt` (matches the `AdviceLog` + `PortfolioSnapshot` patterns).
 - **Tool-driven fact** (the result of a read tool the LLM should call) → don't pre-inject. Let the LLM call the tool. The agent harness is designed for this.
 
 If none of those apply, you probably don't need a context layer — push back on the requirement.
@@ -95,6 +95,5 @@ If none of those apply, you probably don't need a context layer — push back on
 - Engine-side wiring contract (the 5-layer ordering) → `t2000/.cursor/rules/memory-injection-architecture.mdc`
 - Web-v2 chat route phase map (where each builder runs) → `audric/.cursor/rules/web-v2-chat-route-architecture.mdc`
 - AdviceLog schema + `record_advice` audric-side tool → `audric/.cursor/rules/prisma-models-overview.mdc`
-- Daily financial-context snapshot cron → `audric/.cursor/rules/cron-job-architecture.mdc`
 - MemWal SDK contract → inline doc-blocks in `apps/web-v2/lib/memwal.ts` + `lib/audric/memwal-memory-store.ts`
 - v0.7d MemWal SPEC (Phase 7 closed) → `t2000/spec/active/BENEFITS_SPEC_v07d.md`

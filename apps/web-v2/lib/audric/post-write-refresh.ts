@@ -25,9 +25,8 @@
  *
  * Without this module the static system prompt is **lying** about the
  * refresh contract — the LLM narrates the post-write paragraph using
- * STALE pre-write balance numbers from the `<financial_context>`
- * snapshot, re-opening the hallucination class that the daily
- * orientation cron specifically tries to close.
+ * STALE pre-write balance numbers from earlier-in-turn tool reads,
+ * re-opening the balance-hallucination class on the resume turn.
  *
  * --- IMPLEMENTATION ---
  *

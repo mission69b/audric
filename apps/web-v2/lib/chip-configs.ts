@@ -43,7 +43,7 @@ export interface ChipConfig {
  * Each `prompt` is the literal sentence the agent receives if the user
  * hits Enter without editing — written as a natural request so the
  * agent's tool-selection logic does the rest. The agent picks USDC vs
- * USDsui via balance context (the `<financial_context>` block), asks
+ * USDsui via a fresh `balance_check` tool call, asks
  * for the amount when ambiguous, and surfaces a confirm card for any
  * write above the user's permission threshold.
  */
