@@ -92,10 +92,8 @@ import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { redactPII } from "@/lib/audric/log-redact";
 import {
+  enokiSponsor,
   EnokiSponsorError,
-  getSponsor,
-  getSponsorKeypair,
-  type SponsorMode,
   type SponsorPrepareResult,
 } from "@/lib/audric/sponsor";
 import { getCurrentUser } from "@/lib/audric-auth";
@@ -684,28 +682,34 @@ export async function POST(request: NextRequest) {
       },
     });
 
-  // [Gasless stable send → self-sponsor] USDC/USDsui sends compose to a
-  // `0x2::balance::send_funds` Move call that draws from the sender's
-  // address balance. Enoki's gas station can't deserialize that command
-  // (MystenLabs/sui#22306 — fails with "Invalid bcs bytes for
-  // TransactionData"). Unlike the NAVI withdraw path, the gasless send
-  // bypasses `selectAndSplitCoin`, so it never throws
-  // ADDRESS_BALANCE_UNSPONSORABLE — the Enoki-first probe below would
-  // compose cleanly then fail at execute. Route stable sends straight to
-  // the self-sponsor wallet, which signs the gas and submits to the
-  // fullnode (no Enoki). SUI sends stay coin-object based → Enoki is fine.
+  // [S.375 — 2026-06-07] Single Enoki path. Mysten fixed the gas station's
+  // `FundsWithdrawal` deserialization (MystenLabs/sui#26852, closed
+  // 2026-06-03), so address-balance writes go back through Enoki and the
+  // self-sponsor wallet is gone.
+  //
+  // Compose strategy is unchanged in shape:
+  //   - Gasless stable sends (USDC/USDsui) compose to
+  //     `0x2::balance::send_funds`, which is inherently address-balance →
+  //     `composeWith(false)` (coinWithBalance).
+  //   - Everything else tries coin-objects first (`composeWith(true)`);
+  //     if the user's funds live only in their address balance, the SDK
+  //     throws `ADDRESS_BALANCE_UNSPONSORABLE` → rebuild address-balance
+  //     aware (`composeWith(false)`).
+  // Both shapes now sponsor via Enoki. Known thin edge: a SUI-only
+  // address-balance send hits Enoki's separate GasCoin constraint (S.260)
+  // and fails with a clean Enoki error — stables (the gasless-receive
+  // scenario) are unaffected. Full fix = SDK `sponsoredContext` collapse
+  // (deferred).
   const isGaslessStableSend =
     body.type === "send" && (body.asset === "USDC" || body.asset === "USDsui");
 
   let composed: Awaited<ReturnType<typeof composeTx>>;
-  let sponsorMode: SponsorMode = "enoki";
-  if (isGaslessStableSend && getSponsorKeypair()) {
+  if (isGaslessStableSend) {
     try {
       composed = await composeWith(false);
-      sponsorMode = "self";
     } catch (err) {
       console.error(
-        `[prepare] self-sponsor compose failed for type=${body.type}:`,
+        `[prepare] composeTx failed for type=${body.type}:`,
         redactPII(err)
       );
       return NextResponse.json(
@@ -720,23 +724,19 @@ export async function POST(request: NextRequest) {
     }
   } else {
     try {
-      // Primary path: source coin objects only → Enoki sponsors it.
+      // Primary path: source coin objects only.
       composed = await composeWith(true);
     } catch (err) {
       const isAddressBalance =
         (err as { code?: string })?.code === "ADDRESS_BALANCE_UNSPONSORABLE";
-      // Fallback: the user's funds live in their address balance, which
-      // Enoki can't sponsor. If a self-sponsor wallet is configured,
-      // rebuild address-balance aware and pay the gas ourselves. Without a
-      // sponsor wallet, fall through and surface the original error (today's
-      // degraded-but-clean behavior).
-      if (isAddressBalance && getSponsorKeypair()) {
+      // Fallback: the user's funds live in their address balance. Rebuild
+      // address-balance aware (coinWithBalance) — Enoki now sponsors it.
+      if (isAddressBalance) {
         try {
           composed = await composeWith(false);
-          sponsorMode = "self";
         } catch (fallbackErr) {
           console.error(
-            `[prepare] self-sponsor compose failed for type=${body.type}:`,
+            `[prepare] address-balance composeTx failed for type=${body.type}:`,
             redactPII(fallbackErr)
           );
           return NextResponse.json(
@@ -830,16 +830,10 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // 7. Sponsor the transaction. The router picked `sponsorMode` above:
-  //    - `enoki` → Enoki REST sponsor (coin-object funds; unchanged).
-  //    - `self`  → our sponsor wallet signs the gas (address-balance
-  //                funds; Enoki can't deserialize the withdrawal).
-  // Both strategies implement the same `Sponsor` interface, so there's
-  // no duplicated orchestration here — pick one and call `prepare`.
-  const sponsor = getSponsor(sponsorMode);
+  // 7. Sponsor the transaction via Enoki (the single path).
   let sponsored: SponsorPrepareResult;
   try {
-    sponsored = await sponsor.prepare({
+    sponsored = await enokiSponsor.prepare({
       composed,
       sender: body.address,
       client: suiClient,
@@ -849,7 +843,7 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     const status = err instanceof EnokiSponsorError ? err.status : 500;
     console.error(
-      `[prepare] ${sponsorMode} sponsor error type=${body.type}:`,
+      `[prepare] enoki sponsor error type=${body.type}:`,
       redactPII(err)
     );
     return NextResponse.json(
@@ -861,10 +855,6 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({
     bytes: sponsored.bytes,
     digest: sponsored.digest,
-    mode: sponsored.mode,
-    ...(sponsored.sponsorSignature
-      ? { sponsorSignature: sponsored.sponsorSignature }
-      : {}),
     ...(harvestPlan ? { harvestPlan } : {}),
   });
 }

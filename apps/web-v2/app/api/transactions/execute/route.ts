@@ -40,8 +40,8 @@ import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { redactPII } from "@/lib/audric/log-redact";
 import {
+  enokiSponsor,
   EnokiSponsorError,
-  getSponsor,
   SponsorSettlementError,
 } from "@/lib/audric/sponsor";
 import { env } from "@/lib/env";
@@ -52,15 +52,6 @@ export const maxDuration = 60;
 const executeBodySchema = z.object({
   digest: z.string().min(1, "digest must be a non-empty string"),
   signature: z.string().min(1, "signature must be a non-empty string"),
-  // Which sponsorship strategy `/prepare` used. Defaults to `enoki` for
-  // backward compatibility with any in-flight client that predates the
-  // self-sponsor router.
-  mode: z.enum(["enoki", "self"]).default("enoki"),
-  // Self mode only — the full tx bytes + sponsor's gas signature that
-  // `/prepare` returned. Round-tripped through the client (neither is
-  // secret) so this route stays stateless.
-  bytes: z.string().optional(),
-  sponsorSignature: z.string().optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -89,18 +80,13 @@ export async function POST(request: NextRequest) {
   // client 429'd under load on settlement + self-sponsor submit.
   const suiClient = createSuiRpcClient();
 
-  // Dispatch to the strategy `/prepare` selected. `enoki` co-signs +
-  // submits via Enoki's REST endpoint; `self` submits both signatures
-  // (user + our gas sponsor) straight to the fullnode. Both settle the
-  // digest and return balance/object changes for the LLM narration.
-  const sponsor = getSponsor(body.mode);
+  // [S.375] Single Enoki path: co-sign + submit via Enoki's REST endpoint,
+  // settle the digest, return balance/object changes for the LLM narration.
   try {
-    const result = await sponsor.execute({
+    const result = await enokiSponsor.execute({
       client: suiClient,
       digest: body.digest,
       signature: body.signature,
-      bytes: body.bytes,
-      sponsorSignature: body.sponsorSignature,
     });
     return NextResponse.json(result);
   } catch (err) {
@@ -118,7 +104,7 @@ export async function POST(request: NextRequest) {
         { status: 504 }
       );
     }
-    console.error(`[execute] ${body.mode} execute failed:`, redactPII(err));
+    console.error("[execute] enoki execute failed:", redactPII(err));
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Execution failed" },
       { status: 502 }
