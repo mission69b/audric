@@ -125,9 +125,9 @@ export default function PrivacyPage() {
           </h2>
           <p>
             Audric Intelligence is the agent that powers your Passport. It uses
-            your stored data (chat history, memory, advice log) silently
-            &mdash; only ever as context that shapes the
-            agent&apos;s next reply or executes the next action you confirm.
+            your stored data (chat history, memory, advice log) silently &mdash;
+            only ever as context that shapes the agent&apos;s next reply or
+            executes the next action you confirm.
           </p>
           <p className="mt-2">
             <strong className="text-foreground">It does not:</strong> sell your
@@ -216,10 +216,9 @@ export default function PrivacyPage() {
           </h2>
           <p>
             Profile data (username, wallet address, chat history, memory, advice
-            log, transaction history) is
-            stored in a PostgreSQL database hosted on Neon. Session data and
-            short-lived caches are stored in Redis (Upstash) and expire
-            automatically.
+            log, transaction history) is stored in a PostgreSQL database hosted
+            on Neon. Session data and short-lived caches are stored in Redis
+            (Upstash) and expire automatically.
           </p>
         </section>
 

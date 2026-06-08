@@ -92,8 +92,8 @@ import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { redactPII } from "@/lib/audric/log-redact";
 import {
-  enokiSponsor,
   EnokiSponsorError,
+  enokiSponsor,
   type SponsorPrepareResult,
 } from "@/lib/audric/sponsor";
 import { getCurrentUser } from "@/lib/audric-auth";
