@@ -637,7 +637,9 @@ export function PermissionCard(props: PermissionCardProps) {
       <div className="flex items-center justify-between border-border border-t px-5 py-3 font-mono text-[10.5px] text-muted-foreground uppercase tracking-[0.06em]">
         <span className="inline-flex items-center gap-1.5">
           <span aria-hidden="true">⚡</span>
-          Gas · Sponsored
+          {/* mpp_call is a gasless USDC transfer ($0 gas, no sponsor); every
+              other write rides the Enoki-sponsored PTB rail. */}
+          {toolName === "mpp_call" ? "Gasless" : "Gas · Sponsored"}
         </span>
         <span>You decide</span>
       </div>
@@ -1227,7 +1229,8 @@ export function MppBatchPermissionCard(props: MppBatchPermissionCardProps) {
       <div className="flex items-center justify-between pt-1 font-mono text-[10px] text-muted-foreground uppercase tracking-wide">
         <span className="flex items-center gap-1">
           <span aria-hidden="true">⚡</span>
-          GAS · SPONSORED
+          {/* MPP calls are gasless USDC transfers ($0 gas, no sponsor). */}
+          GASLESS
         </span>
         <span>YOU DECIDE</span>
       </div>
