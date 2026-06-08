@@ -97,6 +97,7 @@ import {
 } from "@/lib/identity/username-skip";
 import { decodeJwtClaim } from "@/lib/jwt-client";
 import { cn } from "@/lib/utils";
+import { enqueueWalletWrite } from "@/lib/wallet-write-queue";
 import type { ZkLoginSession } from "@/lib/zklogin";
 import { deserializeKeypair } from "@/lib/zklogin";
 
@@ -1509,30 +1510,38 @@ function PermissionForToolPart(props: PermissionForToolPartProps) {
               | "mainnet"
               | "testnet"
               | "devnet";
-            const payResult = await payWithMpp({
-              signer,
-              client: new SuiJsonRpcClient({
-                url: `https://fullnode.${suiNetwork}.sui.io:443`,
-                network: suiNetwork,
-              }),
-              options: {
-                url: String(modifiedInput.url ?? ""),
-                // Every MPP gateway endpoint is POST; default to it when the
-                // model omits a method (mirrors the engine server path in
-                // @t2000/engine tools/mpp.ts). payWithMpp otherwise defaults
-                // to GET, which the POST-only gateway routes 405 before the
-                // pay loop can run.
-                method:
-                  typeof modifiedInput.method === "string"
-                    ? modifiedInput.method
-                    : "POST",
-                body:
-                  typeof modifiedInput.body === "string"
-                    ? modifiedInput.body
-                    : undefined,
-                maxPrice: Number(modifiedInput.maxPriceUsd),
-              },
-            });
+            // Serialize through the per-wallet write queue. The model can
+            // emit several mpp_call writes in one step and the user can
+            // approve them back-to-back; running the gasless pay loops
+            // concurrently makes them fight over the same USDC coin and
+            // equivocate on-chain. The queue runs them one at a time so each
+            // builds against the prior call's settled coin state.
+            const payResult = await enqueueWalletWrite(() =>
+              payWithMpp({
+                signer,
+                client: new SuiJsonRpcClient({
+                  url: `https://fullnode.${suiNetwork}.sui.io:443`,
+                  network: suiNetwork,
+                }),
+                options: {
+                  url: String(modifiedInput.url ?? ""),
+                  // Every MPP gateway endpoint is POST; default to it when the
+                  // model omits a method (mirrors the engine server path in
+                  // @t2000/engine tools/mpp.ts). payWithMpp otherwise defaults
+                  // to GET, which the POST-only gateway routes 405 before the
+                  // pay loop can run.
+                  method:
+                    typeof modifiedInput.method === "string"
+                      ? modifiedInput.method
+                      : "POST",
+                  body:
+                    typeof modifiedInput.body === "string"
+                      ? modifiedInput.body
+                      : undefined,
+                  maxPrice: Number(modifiedInput.maxPriceUsd),
+                },
+              })
+            );
             await addToolOutput({
               tool: toolName,
               toolCallId: toolPart.toolCallId,
