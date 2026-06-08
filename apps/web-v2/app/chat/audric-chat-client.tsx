@@ -1,6 +1,7 @@
 "use client";
 
 import { useChat } from "@ai-sdk/react";
+import { SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
 import type { SupportedAsset } from "@t2000/sdk";
 import {
   DefaultChatTransport,
@@ -89,12 +90,12 @@ import {
 } from "@/lib/audric/sponsored-tx";
 import { sanitizeStreamErrorMessage } from "@/lib/audric/stream-errors";
 import { authFetch } from "@/lib/auth-fetch";
+import { env } from "@/lib/env";
 import {
   isUsernameSkipped,
   setUsernameSkipped as persistUsernameSkipped,
 } from "@/lib/identity/username-skip";
 import { decodeJwtClaim } from "@/lib/jwt-client";
-import { createSuiRpcClient } from "@/lib/sui-rpc";
 import { cn } from "@/lib/utils";
 import type { ZkLoginSession } from "@/lib/zklogin";
 import { deserializeKeypair } from "@/lib/zklogin";
@@ -1498,9 +1499,22 @@ function PermissionForToolPart(props: PermissionForToolPartProps) {
               session.address,
               session.maxEpoch
             );
+            // Client-safe Sui RPC client. The server-only createSuiRpcClient()
+            // (BlockVision key + SUI_RPC_URL) can't run in the browser — the
+            // env proxy throws. payWithMpp only uses this client for .network
+            // + tx submission (it builds its own SuiGrpcClient internally for
+            // the gasless-eligibility resolver), so the public fullnode is
+            // sufficient. NEXT_PUBLIC_SUI_NETWORK is client-safe.
+            const suiNetwork = env.NEXT_PUBLIC_SUI_NETWORK as
+              | "mainnet"
+              | "testnet"
+              | "devnet";
             const payResult = await payWithMpp({
               signer,
-              client: createSuiRpcClient(),
+              client: new SuiJsonRpcClient({
+                url: `https://fullnode.${suiNetwork}.sui.io:443`,
+                network: suiNetwork,
+              }),
               options: {
                 url: String(modifiedInput.url ?? ""),
                 method:
