@@ -1517,10 +1517,15 @@ function PermissionForToolPart(props: PermissionForToolPartProps) {
               }),
               options: {
                 url: String(modifiedInput.url ?? ""),
+                // Every MPP gateway endpoint is POST; default to it when the
+                // model omits a method (mirrors the engine server path in
+                // @t2000/engine tools/mpp.ts). payWithMpp otherwise defaults
+                // to GET, which the POST-only gateway routes 405 before the
+                // pay loop can run.
                 method:
                   typeof modifiedInput.method === "string"
                     ? modifiedInput.method
-                    : undefined,
+                    : "POST",
                 body:
                   typeof modifiedInput.body === "string"
                     ? modifiedInput.body
