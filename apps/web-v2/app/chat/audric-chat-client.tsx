@@ -13,7 +13,7 @@ import {
 } from "ai";
 import { Copy, Loader2, Pencil, RotateCw } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useSWRConfig } from "swr";
 import { unstable_serialize } from "swr/infinite";
@@ -1450,53 +1450,47 @@ function AudricChatPanel({
  * See SPEC_AUDRIC_MPP_REENABLE.md "Write-path unification" + §Gap B4.
  */
 /**
- * [B-cap — 2026-06-08] Server-enforced daily MPP spend ceiling.
+ * [S.388 — tap-free decision] Ask the server whether this metered Service
+ * spend runs TAP-FREE. The single shipped Settings → Services daily cap
+ * (default $10) is the only control: a call runs tap-free when the user has
+ * a cap set (NOT `Off`) AND today's spend + this amount fits under it.
  *
- * `assertMppBudget` is called BEFORE every gasless mpp_call payment: it
- * asks the server whether `amountUsd` fits under the user's daily cap
- * (sum of today's ServicePurchase rows vs `UserPreferences.limits
- * .mppDailyCapUsd`, default $10). If not, it throws — the caller maps the
- * throw to an `output-error` so the agent narrates the limit instead of
- * spending. `recordMppSpend` writes the durable ledger row after a
- * successful payment so the next check sees the new spend.
+ *   cap set + fits        → tap-free (client auto-confirms, no card)
+ *   cap = Off (null)      → NOT tap-free → render the card (tap each call)
+ *   would cross the cap   → NOT tap-free → render the card (tap to go over)
  *
- * Both run inside the per-wallet write queue (via runMppCallPayment), so
- * a multi-call batch checks → pays → records serially and naturally stops
- * at the call that would tip over the ceiling. Fail-open on a check
- * network error (availability over a hard stop for a pennies-scale cap),
- * matching the session-spend ledger's stance.
+ * Resolved at the approval site BEFORE the card renders. The cap is the
+ * tap-free LINE, not a hard wall — above it the user simply taps. Server
+ * source of truth: `/api/mpp/budget` action `check` ({ allowed, capUsd }).
+ *
+ * Fail-CLOSED: on any budget-service error we return false (render the
+ * card), so a transient blip never silently auto-spends without a tap.
+ * (The post-payment `recordMppSpend` ledger write stays fail-open.)
  */
-async function assertMppBudget(
+async function isMppTapFree(
   address: string,
   amountUsd: number
-): Promise<void> {
-  let res: Response;
+): Promise<boolean> {
+  if (!(Number.isFinite(amountUsd) && amountUsd >= 0)) {
+    return false;
+  }
   try {
-    res = await authFetch("/api/mpp/budget", {
+    const res = await authFetch("/api/mpp/budget", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "check", address, amountUsd }),
     });
+    if (!res.ok) {
+      return false;
+    }
+    const data = (await res.json()) as {
+      allowed?: boolean;
+      capUsd?: number | null;
+    };
+    // tap-free ⟺ a cap is set (not Off) AND the spend fits under it.
+    return typeof data.capUsd === "number" && data.allowed === true;
   } catch {
-    return; // fail-open on transient network error
-  }
-  if (!res.ok) {
-    return; // fail-open — don't block the user on a budget-service blip
-  }
-  const data = (await res.json()) as {
-    allowed?: boolean;
-    capUsd?: number | null;
-    spentUsd?: number;
-  };
-  if (data.allowed === false) {
-    const cap = typeof data.capUsd === "number" ? `$${data.capUsd}` : "your";
-    const spent =
-      typeof data.spentUsd === "number"
-        ? ` ($${data.spentUsd.toFixed(2)} spent today)`
-        : "";
-    throw new Error(
-      `Daily Services spending limit reached — ${cap}/day${spent}. Raise it in Settings → Services spending to continue.`
-    );
+    return false;
   }
 }
 
@@ -1555,10 +1549,11 @@ async function runMppCallPayment(
   const url = String(input.url ?? "");
   const amountUsd = Number(input.maxPriceUsd);
   return enqueueWalletWrite(async () => {
-    // B-cap: server-enforced daily ceiling check BEFORE moving money.
-    // Throws (→ output-error) if this call would exceed the user's cap.
-    await assertMppBudget(session.address, amountUsd);
-
+    // [S.388] No pre-check here. The daily cap is a tap-free LINE resolved at
+    // the approval site (isMppTapFree): sub-cap calls auto-confirm tap-free,
+    // above-cap calls render a card the user taps to go over. By the time we
+    // run, the spend is authorized either way — so we just pay + record (the
+    // ledger row keeps the next tap-free decision accurate).
     const result = await payWithMpp({
       signer,
       client: new SuiJsonRpcClient({
@@ -1610,6 +1605,137 @@ function PermissionForToolPart(props: PermissionForToolPartProps) {
     : toolPart.type;
 
   const metadata = parseAudricMetadata(toolPart.toolMetadata);
+  const approvalId = toolPart.approval?.id;
+  const isMpp = toolName === "mpp_call";
+
+  // [S.388] The single approve→execute→output sequence, shared by the user's
+  // card tap (onApprove) and the tap-free auto-confirm effect below.
+  const executeApproval = useCallback(
+    async (modifiedInput: Record<string, unknown>) => {
+      // 1. Tell AI SDK the user approved. Reason field is optional;
+      // we omit it for the happy path.
+      await addToolApprovalResponse({
+        id: approvalId ?? "",
+        approved: true,
+      });
+
+      // 2. Run the per-tool execution.
+      //
+      // [Phase 3 outcome-update slice / Phase 4 widening] Measure
+      // the client-side execution wall time (Approve tap → result
+      // returns) and stash it in `output.writeToolDurationMs`.
+      // `/api/audric-chat` reads it off the resume turn's message
+      // history and runs the cross-turn
+      // `prisma.turnMetrics.updateMany({where: {attemptId}})` to
+      // populate the row's `pendingActionOutcome` +
+      // `writeToolDurationMs` fields (closes harness Spec §Item 3
+      // G5 acceptance).
+      const writeStartMs = Date.now();
+      try {
+        // [Channel A / unified gasless write path — 2026-06-08] mpp_call
+        // is NOT a sponsored on-chain op. It runs the canonical gasless
+        // MPP pay loop CLIENT-SIDE on the zkLogin session key (no
+        // /api/transactions sponsored round-trip — payment hits Sui's
+        // gasless stablecoin allowlist, $0 gas). See
+        // SPEC_AUDRIC_MPP_REENABLE.md "Write-path unification".
+        if (toolName === "mpp_call") {
+          const payResult = await runMppCallPayment(modifiedInput, session);
+          await addToolOutput({
+            tool: toolName,
+            toolCallId: toolPart.toolCallId,
+            output: {
+              success: true,
+              status: payResult.status,
+              paid: payResult.paid,
+              cost: payResult.cost,
+              body: payResult.body,
+              writeToolDurationMs: Date.now() - writeStartMs,
+            },
+          });
+          return;
+        }
+
+        // [S.243 / V07E_CONTACTS_SIMPLIFICATION Path A — 2026-05-22]
+        // All remaining web-v2 writes are sponsored on-chain ops. The old
+        // save_contact dispatch branch (Prisma-only Postgres write)
+        // was removed alongside the contacts feature deletion.
+        const request = buildSponsoredTxRequest(toolName, modifiedInput);
+        if (!request) {
+          throw new Error(`Unknown write tool ${toolName} — dispatch missing.`);
+        }
+        const result = await sponsoredTx({ ...request, session });
+        await addToolOutput({
+          tool: toolName,
+          toolCallId: toolPart.toolCallId,
+          output: buildToolOutput(request, result, Date.now() - writeStartMs),
+        });
+      } catch (err) {
+        await addToolOutput({
+          tool: toolName,
+          toolCallId: toolPart.toolCallId,
+          state: "output-error",
+          errorText: err instanceof Error ? err.message : "Write tool failed",
+        });
+        throw err;
+      }
+    },
+    [
+      addToolApprovalResponse,
+      addToolOutput,
+      approvalId,
+      session,
+      toolName,
+      toolPart.toolCallId,
+    ]
+  );
+
+  // [S.388 — tap-free] For a single mpp_call, resolve the daily-cap tap-free
+  // decision BEFORE rendering the card. Sub-cap → auto-confirm (no card);
+  // Off or above-cap → fall through to the card. `checking` renders nothing
+  // (sub-second) so a tap-free call never flashes a card it would dismiss.
+  const [mppDecision, setMppDecision] = useState<"checking" | "card">(
+    isMpp ? "checking" : "card"
+  );
+  const tapFreeStartedRef = useRef(false);
+
+  useEffect(() => {
+    if (!(isMpp && metadata && approvalId) || tapFreeStartedRef.current) {
+      return;
+    }
+    const amountUsd = Number(
+      (toolPart.input as Record<string, unknown> | undefined)?.maxPriceUsd
+    );
+    let cancelled = false;
+    (async () => {
+      const tapFree = await isMppTapFree(session.address, amountUsd);
+      if (cancelled) {
+        return;
+      }
+      if (tapFree) {
+        tapFreeStartedRef.current = true;
+        try {
+          await executeApproval(
+            (toolPart.input ?? {}) as Record<string, unknown>
+          );
+        } catch (err) {
+          console.error("[audric-chat] tap-free mpp_call failed:", err);
+        }
+      } else {
+        setMppDecision("card");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    isMpp,
+    metadata,
+    approvalId,
+    session.address,
+    toolPart.input,
+    executeApproval,
+  ]);
+
   if (!metadata) {
     // Shouldn't happen for any confirm-tier tool wired through the
     // server route — but render a graceful fallback so the user can
@@ -1646,8 +1772,13 @@ function PermissionForToolPart(props: PermissionForToolPartProps) {
     );
   }
 
-  const approvalId = toolPart.approval?.id;
   if (!approvalId) {
+    return null;
+  }
+
+  // [S.388 — tap-free] While the daily-cap decision is in flight (mpp_call
+  // only), render nothing — sub-second, and never flash a card we'd dismiss.
+  if (isMpp && mppDecision === "checking") {
     return null;
   }
 
@@ -1663,73 +1794,7 @@ function PermissionForToolPart(props: PermissionForToolPartProps) {
       // carrying a stale countdown/value.
       key={approvalId}
       modifiableFields={metadata.modifiableFields}
-      onApprove={async (modifiedInput) => {
-        // 1. Tell AI SDK the user approved. Reason field is optional;
-        // we omit it for the happy path.
-        await addToolApprovalResponse({ id: approvalId, approved: true });
-
-        // 2. Run the per-tool execution.
-        //
-        // [Phase 3 outcome-update slice / Phase 4 widening] Measure
-        // the client-side execution wall time (Approve tap → result
-        // returns) and stash it in `output.writeToolDurationMs`.
-        // `/api/audric-chat` reads it off the resume turn's message
-        // history and runs the cross-turn
-        // `prisma.turnMetrics.updateMany({where: {attemptId}})` to
-        // populate the row's `pendingActionOutcome` +
-        // `writeToolDurationMs` fields (closes harness Spec §Item 3
-        // G5 acceptance).
-        const writeStartMs = Date.now();
-        try {
-          // [Channel A / unified gasless write path — 2026-06-08] mpp_call
-          // is NOT a sponsored on-chain op. It runs the canonical gasless
-          // MPP pay loop CLIENT-SIDE on the zkLogin session key (no
-          // /api/transactions sponsored round-trip — payment hits Sui's
-          // gasless stablecoin allowlist, $0 gas). See
-          // SPEC_AUDRIC_MPP_REENABLE.md "Write-path unification".
-          if (toolName === "mpp_call") {
-            const payResult = await runMppCallPayment(modifiedInput, session);
-            await addToolOutput({
-              tool: toolName,
-              toolCallId: toolPart.toolCallId,
-              output: {
-                success: true,
-                status: payResult.status,
-                paid: payResult.paid,
-                cost: payResult.cost,
-                body: payResult.body,
-                writeToolDurationMs: Date.now() - writeStartMs,
-              },
-            });
-            return;
-          }
-
-          // [S.243 / V07E_CONTACTS_SIMPLIFICATION Path A — 2026-05-22]
-          // All remaining web-v2 writes are sponsored on-chain ops. The old
-          // save_contact dispatch branch (Prisma-only Postgres write)
-          // was removed alongside the contacts feature deletion.
-          const request = buildSponsoredTxRequest(toolName, modifiedInput);
-          if (!request) {
-            throw new Error(
-              `Unknown write tool ${toolName} — dispatch missing.`
-            );
-          }
-          const result = await sponsoredTx({ ...request, session });
-          await addToolOutput({
-            tool: toolName,
-            toolCallId: toolPart.toolCallId,
-            output: buildToolOutput(request, result, Date.now() - writeStartMs),
-          });
-        } catch (err) {
-          await addToolOutput({
-            tool: toolName,
-            toolCallId: toolPart.toolCallId,
-            state: "output-error",
-            errorText: err instanceof Error ? err.message : "Write tool failed",
-          });
-          throw err;
-        }
-      }}
+      onApprove={executeApproval}
       onDeny={async () => {
         await addToolApprovalResponse({
           id: approvalId,
@@ -1774,66 +1839,121 @@ interface MppBatchForPartsProps {
 function MppBatchForParts(props: MppBatchForPartsProps) {
   const { parts, session, addToolApprovalResponse, addToolOutput } = props;
 
-  const calls: MppBatchCall[] = parts
-    .filter((p) => typeof p.approval?.id === "string")
-    .map((p) => {
-      const metadata = parseAudricMetadata(p.toolMetadata);
-      return {
-        approvalId: p.approval?.id ?? "",
-        toolCallId: p.toolCallId,
-        description: metadata?.description ?? "",
-        input: (p.input ?? {}) as Record<string, unknown>,
-      };
-    });
+  const calls: MppBatchCall[] = useMemo(
+    () =>
+      parts
+        .filter((p) => typeof p.approval?.id === "string")
+        .map((p) => {
+          const metadata = parseAudricMetadata(p.toolMetadata);
+          return {
+            approvalId: p.approval?.id ?? "",
+            toolCallId: p.toolCallId,
+            description: metadata?.description ?? "",
+            input: (p.input ?? {}) as Record<string, unknown>,
+          };
+        }),
+    [parts]
+  );
+
+  // [S.388 — tap-free] Approve all → run the gasless pays SERIALLY → emit each
+  // output. Shared by the user's batch-card tap and the tap-free auto-confirm
+  // effect below.
+  const runBatch = useCallback(
+    async (cs: readonly MppBatchCall[]) => {
+      // 1. Fan out EVERY approval first (mirrors BundleForMarker). AI SDK's
+      // assembler can get confused by a partial approved/output mix — a part
+      // marked output-available while a sibling is still approval-requested
+      // can trigger a premature resume. Approve all, then run.
+      for (const call of cs) {
+        await addToolApprovalResponse({
+          id: call.approvalId,
+          approved: true,
+        });
+      }
+      // 2. Run the gasless pays SERIALLY (each await + the per-wallet write
+      // queue guarantee one coin-spend at a time) and emit each output. A
+      // per-call failure is recorded but does NOT abort the batch — these
+      // are independent payments, not an all-or-nothing PTB.
+      for (const call of cs) {
+        const writeStartMs = Date.now();
+        try {
+          const payResult = await runMppCallPayment(call.input, session);
+          await addToolOutput({
+            tool: "mpp_call",
+            toolCallId: call.toolCallId,
+            output: {
+              success: true,
+              status: payResult.status,
+              paid: payResult.paid,
+              cost: payResult.cost,
+              body: payResult.body,
+              writeToolDurationMs: Date.now() - writeStartMs,
+            },
+          });
+        } catch (err) {
+          await addToolOutput({
+            tool: "mpp_call",
+            toolCallId: call.toolCallId,
+            state: "output-error",
+            errorText: err instanceof Error ? err.message : "MPP call failed",
+          });
+        }
+      }
+    },
+    [addToolApprovalResponse, addToolOutput, session]
+  );
+
+  // [S.388 — tap-free] Resolve the daily-cap decision for the WHOLE batch
+  // (sum of every call's maxPriceUsd) before rendering. Fits under the cap →
+  // auto-confirm the batch (no card); Off or would-cross → render the card.
+  const [mppDecision, setMppDecision] = useState<"checking" | "card">(
+    "checking"
+  );
+  const tapFreeStartedRef = useRef(false);
+
+  useEffect(() => {
+    if (calls.length === 0 || tapFreeStartedRef.current) {
+      return;
+    }
+    const totalUsd = calls.reduce(
+      (sum, c) => sum + Number(c.input.maxPriceUsd ?? 0),
+      0
+    );
+    let cancelled = false;
+    (async () => {
+      const tapFree = await isMppTapFree(session.address, totalUsd);
+      if (cancelled) {
+        return;
+      }
+      if (tapFree) {
+        tapFreeStartedRef.current = true;
+        try {
+          await runBatch(calls);
+        } catch (err) {
+          console.error("[audric-chat] tap-free mpp batch failed:", err);
+        }
+      } else {
+        setMppDecision("card");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [calls, session.address, runBatch]);
 
   if (calls.length === 0) {
+    return null;
+  }
+
+  // [S.388 — tap-free] Render nothing while deciding (sub-second).
+  if (mppDecision === "checking") {
     return null;
   }
 
   return (
     <MppBatchPermissionCard
       calls={calls}
-      onApprove={async (cs) => {
-        // 1. Fan out EVERY approval first (mirrors BundleForMarker). AI SDK's
-        // assembler can get confused by a partial approved/output mix — a part
-        // marked output-available while a sibling is still approval-requested
-        // can trigger a premature resume. Approve all, then run.
-        for (const call of cs) {
-          await addToolApprovalResponse({
-            id: call.approvalId,
-            approved: true,
-          });
-        }
-        // 2. Run the gasless pays SERIALLY (each await + the per-wallet write
-        // queue guarantee one coin-spend at a time) and emit each output. A
-        // per-call failure is recorded but does NOT abort the batch — these
-        // are independent payments, not an all-or-nothing PTB.
-        for (const call of cs) {
-          const writeStartMs = Date.now();
-          try {
-            const payResult = await runMppCallPayment(call.input, session);
-            await addToolOutput({
-              tool: "mpp_call",
-              toolCallId: call.toolCallId,
-              output: {
-                success: true,
-                status: payResult.status,
-                paid: payResult.paid,
-                cost: payResult.cost,
-                body: payResult.body,
-                writeToolDurationMs: Date.now() - writeStartMs,
-              },
-            });
-          } catch (err) {
-            await addToolOutput({
-              tool: "mpp_call",
-              toolCallId: call.toolCallId,
-              state: "output-error",
-              errorText: err instanceof Error ? err.message : "MPP call failed",
-            });
-          }
-        }
-      }}
+      onApprove={runBatch}
       onDeny={async (cs) => {
         for (const call of cs) {
           await addToolApprovalResponse({
