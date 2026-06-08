@@ -14,6 +14,7 @@ import { ConfirmationChip } from "./cards/ConfirmationChip";
 import { CanvasCard, type CanvasData } from "./cards/canvas";
 import { ExplainTxCard } from "./cards/ExplainTxCard";
 import { HealthCardV2 } from "./cards/HealthCardV2";
+import { MppResultCard } from "./cards/MppResultCard";
 import { PaymentLinkCard } from "./cards/PaymentLinkCard";
 import { PendingRewardsCardV2 } from "./cards/PendingRewardsCardV2";
 import { PortfolioCardV2 } from "./cards/PortfolioCardV2";
@@ -159,6 +160,14 @@ function renderCard(
       toolUseId: toolCallId,
     };
     return <CanvasCard canvas={canvas} onSendMessage={onSendMessage} />;
+  }
+
+  // mpp_call hits ANY Service — render its result by output modality
+  // (media chips + verbatim JSON), not a per-Service card. Handled before
+  // the `extractData` unwrap because the payload lives in `output.body`,
+  // not `output.data`.
+  if (toolName === "mpp_call") {
+    return <MppResultCard output={output} />;
   }
 
   const data = extractData(output);
