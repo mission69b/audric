@@ -3585,6 +3585,23 @@ function describeAudricAction(
       return "Claim NAVI rewards";
     case "harvest_rewards":
       return "Harvest rewards (claim → swap to USDC → save)";
+    case "mpp_call": {
+      // Mirrors engine `describe-action.ts` mpp_call case (v4.3.1). Host
+      // forks this switch (the undefined-default gates which confirm-tier
+      // tools get a PermissionCard), so the engine fix doesn't reach here
+      // — the case must be added in both. See SPEC_AUDRIC_MPP_REENABLE.md.
+      const url = obj.url as string | undefined;
+      const max = obj.maxPriceUsd as number | undefined;
+      let host = "a Service";
+      try {
+        if (url) {
+          host = new URL(url).host;
+        }
+      } catch {
+        // keep the generic label
+      }
+      return `Call & pay for ${host}${max ? ` (up to $${max} USDC)` : ""}`;
+    }
     // [S.277] volo_stake / volo_unstake narration cases removed —
     // engine tools cut in 2.18.0 ("Earns Its Keep" audit).
     default:
