@@ -47,6 +47,8 @@ import { ConfirmationChip } from "@/components/audric/cards/ConfirmationChip";
 import {
   BundlePermissionCard,
   type BundlePermissionCardStep,
+  type MppBatchCall,
+  MppBatchPermissionCard,
   PermissionCard,
   type PermissionCardModifiableField,
 } from "@/components/audric/permission-card";
@@ -1033,6 +1035,30 @@ function AudricChatPanel({
               }
             }
 
+            // [Gap B4 — 2026-06-08] Group ≥2 mpp_call writes pending approval
+            // in this message into ONE batch consent card instead of N taps.
+            // Single mpp_call (count < 2) is untouched — it renders via
+            // PermissionForToolPart. Only the FIRST batched part renders the
+            // card; the rest are claimed (skipped). Once approved, no part is
+            // approval-requested → the claim set is empty → each result renders
+            // individually via ToolResultRouter. The engine emits N independent
+            // approvals (no bundle marker); the grouping is purely client-side
+            // and reuses the existing HITL fan-out machinery.
+            const mppBatchParts = m.parts.filter(
+              (p): p is ToolUIPart =>
+                p.type === "tool-mpp_call" &&
+                (p as ToolUIPart).state === "approval-requested" &&
+                typeof (p as ToolUIPart).approval?.id === "string" &&
+                !bundleClaimedIds.has((p as ToolUIPart).toolCallId)
+            );
+            const isMppBatch = mppBatchParts.length >= 2;
+            const mppBatchClaimedIds = new Set<string>(
+              isMppBatch ? mppBatchParts.map((p) => p.toolCallId) : []
+            );
+            const mppBatchFirstToolCallId = isMppBatch
+              ? mppBatchParts[0].toolCallId
+              : null;
+
             const isEditing = editingMessageId === m.id && m.role === "user";
 
             return (
@@ -1249,6 +1275,28 @@ function AudricChatPanel({
                           if (bundleClaimedIds.has(toolPart.toolCallId)) {
                             return null;
                           }
+                          // [Gap B4] ≥2 mpp_call approvals → one batch card
+                          // (rendered at the first claimed part); the rest are
+                          // folded. After approval the claim set empties and
+                          // each result renders individually below.
+                          if (mppBatchClaimedIds.has(toolPart.toolCallId)) {
+                            if (
+                              toolPart.toolCallId === mppBatchFirstToolCallId
+                            ) {
+                              return (
+                                <MppBatchForParts
+                                  addToolApprovalResponse={
+                                    addToolApprovalResponse
+                                  }
+                                  addToolOutput={addToolOutput}
+                                  key={`${m.id}-mpp-batch`}
+                                  parts={mppBatchParts}
+                                  session={session}
+                                />
+                              );
+                            }
+                            return null;
+                          }
                           if (toolPart.state === "approval-requested") {
                             return (
                               <PermissionForToolPart
@@ -1386,6 +1434,63 @@ function AudricChatPanel({
   );
 }
 
+/**
+ * Run ONE mpp_call gasless payment client-side on the zkLogin session key.
+ *
+ * [Channel A / unified gasless write path — 2026-06-08] mpp_call is NOT a
+ * sponsored on-chain op. It runs the canonical gasless MPP pay loop CLIENT-SIDE
+ * (no /api/transactions sponsored round-trip — payment hits Sui's gasless
+ * stablecoin allowlist, $0 gas). Serialized through the per-wallet write queue:
+ * the model can emit several mpp_call writes in one step and the user can
+ * approve them back-to-back (single card) or in one batch (Gap B4); running the
+ * gasless pay loops concurrently makes them fight over the same USDC coin and
+ * equivocate on-chain. The queue runs them one at a time so each builds against
+ * the prior call's settled coin state. Single source of truth for both the
+ * single-card (`PermissionForToolPart`) and batch (`MppBatchForParts`) paths.
+ * See SPEC_AUDRIC_MPP_REENABLE.md "Write-path unification" + §Gap B4.
+ */
+async function runMppCallPayment(
+  input: Record<string, unknown>,
+  session: ZkLoginSession
+) {
+  const { payWithMpp, ZkLoginSigner } = await import("@t2000/sdk/browser");
+  const ephemeralKeypair = deserializeKeypair(session.ephemeralKeyPair);
+  const signer = new ZkLoginSigner(
+    ephemeralKeypair,
+    session.proof,
+    session.address,
+    session.maxEpoch
+  );
+  // Client-safe Sui RPC client. The server-only createSuiRpcClient()
+  // (BlockVision key + SUI_RPC_URL) can't run in the browser — the env proxy
+  // throws. payWithMpp only uses this client for .network + tx submission (it
+  // builds its own SuiGrpcClient internally for the gasless-eligibility
+  // resolver), so the public fullnode is sufficient. NEXT_PUBLIC_SUI_NETWORK is
+  // client-safe.
+  const suiNetwork = env.NEXT_PUBLIC_SUI_NETWORK as
+    | "mainnet"
+    | "testnet"
+    | "devnet";
+  return enqueueWalletWrite(() =>
+    payWithMpp({
+      signer,
+      client: new SuiJsonRpcClient({
+        url: `https://fullnode.${suiNetwork}.sui.io:443`,
+        network: suiNetwork,
+      }),
+      options: {
+        url: String(input.url ?? ""),
+        // Every MPP gateway endpoint is POST; default to it when the model
+        // omits a method. payWithMpp otherwise defaults to GET, which the
+        // POST-only gateway routes 405 before the pay loop can run.
+        method: typeof input.method === "string" ? input.method : "POST",
+        body: typeof input.body === "string" ? input.body : undefined,
+        maxPrice: Number(input.maxPriceUsd),
+      },
+    })
+  );
+}
+
 interface PermissionForToolPartProps {
   addToolApprovalResponse: ReturnType<
     typeof useChat
@@ -1488,60 +1593,7 @@ function PermissionForToolPart(props: PermissionForToolPartProps) {
           // gasless stablecoin allowlist, $0 gas). See
           // SPEC_AUDRIC_MPP_REENABLE.md "Write-path unification".
           if (toolName === "mpp_call") {
-            const { payWithMpp, ZkLoginSigner } = await import(
-              "@t2000/sdk/browser"
-            );
-            const ephemeralKeypair = deserializeKeypair(
-              session.ephemeralKeyPair
-            );
-            const signer = new ZkLoginSigner(
-              ephemeralKeypair,
-              session.proof,
-              session.address,
-              session.maxEpoch
-            );
-            // Client-safe Sui RPC client. The server-only createSuiRpcClient()
-            // (BlockVision key + SUI_RPC_URL) can't run in the browser — the
-            // env proxy throws. payWithMpp only uses this client for .network
-            // + tx submission (it builds its own SuiGrpcClient internally for
-            // the gasless-eligibility resolver), so the public fullnode is
-            // sufficient. NEXT_PUBLIC_SUI_NETWORK is client-safe.
-            const suiNetwork = env.NEXT_PUBLIC_SUI_NETWORK as
-              | "mainnet"
-              | "testnet"
-              | "devnet";
-            // Serialize through the per-wallet write queue. The model can
-            // emit several mpp_call writes in one step and the user can
-            // approve them back-to-back; running the gasless pay loops
-            // concurrently makes them fight over the same USDC coin and
-            // equivocate on-chain. The queue runs them one at a time so each
-            // builds against the prior call's settled coin state.
-            const payResult = await enqueueWalletWrite(() =>
-              payWithMpp({
-                signer,
-                client: new SuiJsonRpcClient({
-                  url: `https://fullnode.${suiNetwork}.sui.io:443`,
-                  network: suiNetwork,
-                }),
-                options: {
-                  url: String(modifiedInput.url ?? ""),
-                  // Every MPP gateway endpoint is POST; default to it when the
-                  // model omits a method (mirrors the engine server path in
-                  // @t2000/engine tools/mpp.ts). payWithMpp otherwise defaults
-                  // to GET, which the POST-only gateway routes 405 before the
-                  // pay loop can run.
-                  method:
-                    typeof modifiedInput.method === "string"
-                      ? modifiedInput.method
-                      : "POST",
-                  body:
-                    typeof modifiedInput.body === "string"
-                      ? modifiedInput.body
-                      : undefined,
-                  maxPrice: Number(modifiedInput.maxPriceUsd),
-                },
-              })
-            );
+            const payResult = await runMppCallPayment(modifiedInput, session);
             await addToolOutput({
               tool: toolName,
               toolCallId: toolPart.toolCallId,
@@ -1599,6 +1651,111 @@ function PermissionForToolPart(props: PermissionForToolPartProps) {
       projectedHF={metadata.projectedHF}
       ratesOverride={metadata.ratesOverride}
       toolName={toolName}
+    />
+  );
+}
+
+// ---------------------------------------------------------------------------
+// [Gap B4 — 2026-06-08] MPP batch bridge — N independent paid calls, one tap.
+// Maps the grouped `tool-mpp_call` approval parts to a single
+// `MppBatchPermissionCard` render + fans the one approve gesture out to N
+// `addToolApprovalResponse` + N SERIAL client-side gasless pays
+// (`runMppCallPayment`, queue-serialized) + N `addToolOutput`. Unlike the
+// atomic-PTB bundle below, MPP calls are independent payments — a per-call
+// failure is recorded (output-error) and does NOT abort the rest of the batch
+// (each is its own 402 challenge; the prices call shouldn't fail because the
+// headlines call did).
+// ---------------------------------------------------------------------------
+
+interface MppBatchForPartsProps {
+  addToolApprovalResponse: ReturnType<
+    typeof useChat
+  >["addToolApprovalResponse"];
+  addToolOutput: ReturnType<typeof useChat>["addToolOutput"];
+  parts: readonly ToolUIPart[];
+  session: ZkLoginSession;
+}
+
+function MppBatchForParts(props: MppBatchForPartsProps) {
+  const { parts, session, addToolApprovalResponse, addToolOutput } = props;
+
+  const calls: MppBatchCall[] = parts
+    .filter((p) => typeof p.approval?.id === "string")
+    .map((p) => {
+      const metadata = parseAudricMetadata(p.toolMetadata);
+      return {
+        approvalId: p.approval?.id ?? "",
+        toolCallId: p.toolCallId,
+        description: metadata?.description ?? "",
+        input: (p.input ?? {}) as Record<string, unknown>,
+      };
+    });
+
+  if (calls.length === 0) {
+    return null;
+  }
+
+  return (
+    <MppBatchPermissionCard
+      calls={calls}
+      onApprove={async (cs) => {
+        // 1. Fan out EVERY approval first (mirrors BundleForMarker). AI SDK's
+        // assembler can get confused by a partial approved/output mix — a part
+        // marked output-available while a sibling is still approval-requested
+        // can trigger a premature resume. Approve all, then run.
+        for (const call of cs) {
+          await addToolApprovalResponse({
+            id: call.approvalId,
+            approved: true,
+          });
+        }
+        // 2. Run the gasless pays SERIALLY (each await + the per-wallet write
+        // queue guarantee one coin-spend at a time) and emit each output. A
+        // per-call failure is recorded but does NOT abort the batch — these
+        // are independent payments, not an all-or-nothing PTB.
+        for (const call of cs) {
+          const writeStartMs = Date.now();
+          try {
+            const payResult = await runMppCallPayment(call.input, session);
+            await addToolOutput({
+              tool: "mpp_call",
+              toolCallId: call.toolCallId,
+              output: {
+                success: true,
+                status: payResult.status,
+                paid: payResult.paid,
+                cost: payResult.cost,
+                body: payResult.body,
+                writeToolDurationMs: Date.now() - writeStartMs,
+              },
+            });
+          } catch (err) {
+            await addToolOutput({
+              tool: "mpp_call",
+              toolCallId: call.toolCallId,
+              state: "output-error",
+              errorText: err instanceof Error ? err.message : "MPP call failed",
+            });
+          }
+        }
+      }}
+      onDeny={async (cs) => {
+        for (const call of cs) {
+          await addToolApprovalResponse({
+            id: call.approvalId,
+            approved: false,
+            reason: "User declined",
+          });
+        }
+        for (const call of cs) {
+          await addToolOutput({
+            tool: "mpp_call",
+            toolCallId: call.toolCallId,
+            state: "output-error",
+            errorText: USER_DENIAL_ERROR_TEXT,
+          });
+        }
+      }}
     />
   );
 }

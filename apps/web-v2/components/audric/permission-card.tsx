@@ -1028,3 +1028,247 @@ export function BundlePermissionCard(props: BundlePermissionCardProps) {
     </div>
   );
 }
+
+// ---------------------------------------------------------------------------
+// MppBatchPermissionCard — Gap B4 (SPEC_AUDRIC_MPP_REENABLE §Gap B4).
+//
+// Multi-call MPP flows (e.g. "prices + headlines + brief") emit N mpp_call
+// writes in one step. Rather than N taps, the client groups them into ONE
+// batch consent: a single tap authorizes the whole batch (estimated total
+// from the per-call maxPriceUsd, which is the catalog price the agent set),
+// then the parent runs the gasless pay loops SERIALLY through the per-wallet
+// write queue. This is NOT the atomic-PTB BundlePermissionCard: MPP calls are
+// independent payments (each its own 402 challenge + proof), so the copy is
+// "N separate calls, run one after another", never "1 atomic transaction".
+// ---------------------------------------------------------------------------
+
+export interface MppBatchCall {
+  /** AI SDK approval id — parent fans out `addToolApprovalResponse`. */
+  approvalId: string;
+  /** Per-call summary from engine `describeAction` (host + price). */
+  description: string;
+  /** LLM-emitted input (url, body, method, maxPriceUsd). Read-only in v1. */
+  input: Record<string, unknown>;
+  /** AI SDK tool-call id — parent fans out `addToolOutput`. */
+  toolCallId: string;
+}
+
+export interface MppBatchPermissionCardProps {
+  calls: readonly MppBatchCall[];
+  disabled?: boolean;
+  /** Parent fans out N `addToolApprovalResponse(true)` + N serial pays + N `addToolOutput`. */
+  onApprove: (calls: readonly MppBatchCall[]) => Promise<void> | void;
+  /** Parent fans out N `addToolApprovalResponse(false)` + N `addToolOutput({state:'output-error'})`. */
+  onDeny: (calls: readonly MppBatchCall[]) => Promise<void> | void;
+}
+
+function mppCallLabel(input: Record<string, unknown>): string {
+  try {
+    const url = new URL(String(input.url ?? ""));
+    return `${url.host}${url.pathname}`;
+  } catch {
+    return "a Service";
+  }
+}
+
+export function MppBatchPermissionCard(props: MppBatchPermissionCardProps) {
+  const { calls, onApprove, onDeny, disabled } = props;
+
+  const callCount = calls.length;
+  const estimatedTotalUsd = calls.reduce(
+    (sum, c) => sum + (Number(c.input.maxPriceUsd) || 0),
+    0
+  );
+
+  const [secondsLeft, setSecondsLeft] = useState(TIMEOUT_SEC);
+  const [inFlight, setInFlight] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [resolved, setResolved] = useState(false);
+  const resolvedRef = useRef(false);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  function stopTimer() {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+  }
+
+  async function handleApprove() {
+    if (resolvedRef.current) {
+      return;
+    }
+    resolvedRef.current = true;
+    setResolved(true);
+    stopTimer();
+    setErrorMessage(null);
+    setInFlight(true);
+    try {
+      await onApprove(calls);
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : String(err));
+      resolvedRef.current = false;
+      setResolved(false);
+    } finally {
+      setInFlight(false);
+    }
+  }
+
+  async function handleDeny() {
+    if (resolvedRef.current) {
+      return;
+    }
+    resolvedRef.current = true;
+    setResolved(true);
+    stopTimer();
+    setErrorMessage(null);
+    setInFlight(true);
+    try {
+      await onDeny(calls);
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : String(err));
+    } finally {
+      setInFlight(false);
+    }
+  }
+
+  const handleDenyRef = useRef(handleDeny);
+  handleDenyRef.current = handleDeny;
+  useEffect(() => {
+    if (resolved) {
+      return;
+    }
+    timerRef.current = setInterval(() => {
+      setSecondsLeft((prev) => (prev <= 1 ? 0 : prev - 1));
+    }, 1000);
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, [resolved]);
+
+  useEffect(() => {
+    if (secondsLeft === 0 && !resolvedRef.current) {
+      handleDenyRef.current().catch((err) => {
+        console.error("[mpp-batch-permission-card] timeout deny failed:", err);
+      });
+    }
+  }, [secondsLeft]);
+
+  const progress = secondsLeft / TIMEOUT_SEC;
+
+  return (
+    <div
+      aria-label={`Confirm ${callCount} Service calls`}
+      className="my-3 space-y-2.5 rounded-lg border border-border bg-card p-4 text-card-foreground shadow-sm"
+      role="alertdialog"
+    >
+      <div className="flex items-start justify-between">
+        <div className="flex flex-col gap-0.5">
+          <span className="font-medium text-foreground text-sm">
+            {callCount} Service calls · ~${estimatedTotalUsd.toFixed(2)} USDC
+          </span>
+          <span className="font-mono text-[10.5px] text-muted-foreground uppercase tracking-[0.08em]">
+            PAY PER CALL · RUN IN ORDER
+          </span>
+        </div>
+        {!resolved && (
+          <span
+            aria-label={`${secondsLeft} seconds remaining`}
+            className={`whitespace-nowrap rounded border px-[9px] py-[3px] font-mono text-[11px] tabular-nums ${
+              secondsLeft <= 10
+                ? "border-destructive/30 bg-destructive/[0.08] text-destructive"
+                : "border-border bg-muted text-muted-foreground"
+            }`}
+            role="timer"
+          >
+            {secondsLeft}s
+          </span>
+        )}
+      </div>
+
+      {!resolved && (
+        <div className="h-0.5 w-full overflow-hidden rounded-full bg-border">
+          <div
+            className="h-full rounded-full bg-foreground transition-all duration-1000 ease-linear"
+            style={{ width: `${progress * 100}%` }}
+          />
+        </div>
+      )}
+
+      <p className="text-muted-foreground text-xs">
+        Approve {callCount} paid calls in one go. Each is billed in USDC and
+        runs after the last completes.
+      </p>
+
+      <div className="divide-y divide-border rounded-md border border-border bg-background">
+        {calls.map((call, idx) => (
+          <div
+            className="flex items-center gap-3 px-3 py-2.5"
+            key={call.toolCallId}
+          >
+            <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-foreground font-mono font-semibold text-[10px] text-background">
+              {idx + 1}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="truncate font-mono text-foreground text-[12px]">
+                {mppCallLabel(call.input)}
+              </div>
+              <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                up to ${(Number(call.input.maxPriceUsd) || 0).toFixed(2)} USDC
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex items-center justify-between pt-1 font-mono text-[10px] text-muted-foreground uppercase tracking-wide">
+        <span className="flex items-center gap-1">
+          <span aria-hidden="true">⚡</span>
+          GAS · SPONSORED
+        </span>
+        <span>YOU DECIDE</span>
+      </div>
+
+      {errorMessage && (
+        <div className="rounded-md border border-destructive/40 bg-destructive/5 p-2 text-destructive text-xs">
+          {errorMessage}
+        </div>
+      )}
+
+      {!resolved && (
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+          <Button
+            className="h-[46px] w-full sm:h-9 sm:w-auto"
+            disabled={disabled === true || inFlight}
+            onClick={() => {
+              handleDeny().catch((err) => {
+                console.error("[mpp-batch-permission-card] deny failed:", err);
+              });
+            }}
+            variant="outline"
+          >
+            Deny
+          </Button>
+          <Button
+            className="h-[46px] w-full sm:h-9 sm:w-auto"
+            disabled={disabled === true || inFlight || resolved}
+            onClick={() => {
+              handleApprove().catch((err) => {
+                console.error(
+                  "[mpp-batch-permission-card] approve failed:",
+                  err
+                );
+              });
+            }}
+            variant="default"
+          >
+            {inFlight ? "Paying…" : `Approve ${callCount} calls`}
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
