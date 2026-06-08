@@ -33,12 +33,28 @@ import { authFetch } from "@/lib/auth-fetch";
 export type PermissionPreset = "conservative" | "balanced" | "aggressive";
 
 export interface UserPreferences {
+  // B-cap: daily MPP Service-consumption ceiling (USD). `null` = the user
+  // turned the cap off; `undefined` = unset → server default ($10) applies.
+  mppDailyCapUsd?: number | null;
   permissionPreset: PermissionPreset;
 }
 
 const DEFAULT_PREFERENCES: UserPreferences = {
   permissionPreset: "balanced",
 };
+
+function readMppCap(limits: unknown): number | null | undefined {
+  if (limits && typeof limits === "object" && !Array.isArray(limits)) {
+    const raw = (limits as Record<string, unknown>).mppDailyCapUsd;
+    if (raw === null) {
+      return null;
+    }
+    if (typeof raw === "number" && Number.isFinite(raw) && raw > 0) {
+      return raw;
+    }
+  }
+  return;
+}
 
 const VALID_PRESETS: readonly PermissionPreset[] = [
   "conservative",
@@ -76,6 +92,7 @@ export function usePreferences(address: string | null) {
         permissionPreset: isValidPreset(data?.permissionPreset)
           ? data.permissionPreset
           : "balanced",
+        mppDailyCapUsd: readMppCap(data?.limits),
       };
     },
     {

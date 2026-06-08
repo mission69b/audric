@@ -1449,6 +1449,87 @@ function AudricChatPanel({
  * single-card (`PermissionForToolPart`) and batch (`MppBatchForParts`) paths.
  * See SPEC_AUDRIC_MPP_REENABLE.md "Write-path unification" + §Gap B4.
  */
+/**
+ * [B-cap — 2026-06-08] Server-enforced daily MPP spend ceiling.
+ *
+ * `assertMppBudget` is called BEFORE every gasless mpp_call payment: it
+ * asks the server whether `amountUsd` fits under the user's daily cap
+ * (sum of today's ServicePurchase rows vs `UserPreferences.limits
+ * .mppDailyCapUsd`, default $10). If not, it throws — the caller maps the
+ * throw to an `output-error` so the agent narrates the limit instead of
+ * spending. `recordMppSpend` writes the durable ledger row after a
+ * successful payment so the next check sees the new spend.
+ *
+ * Both run inside the per-wallet write queue (via runMppCallPayment), so
+ * a multi-call batch checks → pays → records serially and naturally stops
+ * at the call that would tip over the ceiling. Fail-open on a check
+ * network error (availability over a hard stop for a pennies-scale cap),
+ * matching the session-spend ledger's stance.
+ */
+async function assertMppBudget(
+  address: string,
+  amountUsd: number
+): Promise<void> {
+  let res: Response;
+  try {
+    res = await authFetch("/api/mpp/budget", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "check", address, amountUsd }),
+    });
+  } catch {
+    return; // fail-open on transient network error
+  }
+  if (!res.ok) {
+    return; // fail-open — don't block the user on a budget-service blip
+  }
+  const data = (await res.json()) as {
+    allowed?: boolean;
+    capUsd?: number | null;
+    spentUsd?: number;
+  };
+  if (data.allowed === false) {
+    const cap = typeof data.capUsd === "number" ? `$${data.capUsd}` : "your";
+    const spent =
+      typeof data.spentUsd === "number"
+        ? ` ($${data.spentUsd.toFixed(2)} spent today)`
+        : "";
+    throw new Error(
+      `Daily Services spending limit reached — ${cap}/day${spent}. Raise it in Settings → Services spending to continue.`
+    );
+  }
+}
+
+function serviceIdFromUrl(url: string): string {
+  try {
+    return new URL(url).pathname.split("/").filter(Boolean)[0] ?? "mpp";
+  } catch {
+    return "mpp";
+  }
+}
+
+async function recordMppSpend(
+  address: string,
+  url: string,
+  amountUsd: number
+): Promise<void> {
+  try {
+    await authFetch("/api/mpp/budget", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "record",
+        address,
+        amountUsd,
+        serviceId: serviceIdFromUrl(url),
+      }),
+    });
+  } catch {
+    // Best-effort ledger write; a lost increment slightly under-counts
+    // the day's spend (fail-open, same as session-spend).
+  }
+}
+
 async function runMppCallPayment(
   input: Record<string, unknown>,
   session: ZkLoginSession
@@ -1471,24 +1552,38 @@ async function runMppCallPayment(
     | "mainnet"
     | "testnet"
     | "devnet";
-  return enqueueWalletWrite(() =>
-    payWithMpp({
+  const url = String(input.url ?? "");
+  const amountUsd = Number(input.maxPriceUsd);
+  return enqueueWalletWrite(async () => {
+    // B-cap: server-enforced daily ceiling check BEFORE moving money.
+    // Throws (→ output-error) if this call would exceed the user's cap.
+    await assertMppBudget(session.address, amountUsd);
+
+    const result = await payWithMpp({
       signer,
       client: new SuiJsonRpcClient({
         url: `https://fullnode.${suiNetwork}.sui.io:443`,
         network: suiNetwork,
       }),
       options: {
-        url: String(input.url ?? ""),
+        url,
         // Every MPP gateway endpoint is POST; default to it when the model
         // omits a method. payWithMpp otherwise defaults to GET, which the
         // POST-only gateway routes 405 before the pay loop can run.
         method: typeof input.method === "string" ? input.method : "POST",
         body: typeof input.body === "string" ? input.body : undefined,
-        maxPrice: Number(input.maxPriceUsd),
+        maxPrice: amountUsd,
       },
-    })
-  );
+    });
+
+    // Record the actual charge to the durable daily ledger so the next
+    // check (this batch or a later turn) sums it.
+    if (result.paid) {
+      await recordMppSpend(session.address, url, result.cost ?? amountUsd);
+    }
+
+    return result;
+  });
 }
 
 interface PermissionForToolPartProps {

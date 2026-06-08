@@ -24,7 +24,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 
-type Section = "passport" | "safety" | "memory";
+type Section = "passport" | "safety" | "services" | "memory";
 
 const SECTION_META: Record<Section, { title: string; sub: string }> = {
   passport: {
@@ -35,6 +35,10 @@ const SECTION_META: Record<Section, { title: string; sub: string }> = {
     title: "Safety",
     sub: "Spending limits and transaction guards",
   },
+  services: {
+    title: "Services",
+    sub: "Daily limit for paid Service calls",
+  },
   memory: {
     title: "Memory",
     sub: "What Audric remembers about you",
@@ -44,6 +48,7 @@ const SECTION_META: Record<Section, { title: string; sub: string }> = {
 const SECTION_HREFS: Array<{ id: Section; href: string }> = [
   { id: "passport", href: "/settings/passport" },
   { id: "safety", href: "/settings/safety" },
+  { id: "services", href: "/settings/services" },
   { id: "memory", href: "/settings/memory" },
 ];
 
