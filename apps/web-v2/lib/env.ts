@@ -83,6 +83,12 @@ const serverSchema = z.object({
    * fullnode (testnet / devnet / self-hosted). */
   SUI_RPC_URL: optionalString,
 
+  /** MPP gateway base URL (Gap C) — the engine's `mpp_services` tool
+   * fetches `${MPP_GATEWAY_URL}/api/services` to discover paid Services.
+   * Optional: the engine tool defaults to `https://mpp.t2000.ai` when
+   * absent, so this is only an override (e.g. staging gateway). */
+  MPP_GATEWAY_URL: optionalString,
+
   /** Enoki secret key (server-only) — sponsors gas for every user
    * transaction. Used by `/api/transactions/prepare` to assemble the
    * sponsored tx block via Enoki's `transaction-blocks/sponsor` endpoint
@@ -322,6 +328,7 @@ const runtimeEnv = {
   AI_GATEWAY_API_KEY: process.env.AI_GATEWAY_API_KEY,
   BLOCKVISION_API_KEY: process.env.BLOCKVISION_API_KEY,
   SUI_RPC_URL: process.env.SUI_RPC_URL,
+  MPP_GATEWAY_URL: process.env.MPP_GATEWAY_URL,
   ENOKI_SECRET_KEY: process.env.ENOKI_SECRET_KEY,
   T2000_INTERNAL_KEY: process.env.T2000_INTERNAL_KEY,
   AUDRIC_INTERNAL_API_URL: process.env.AUDRIC_INTERNAL_API_URL,

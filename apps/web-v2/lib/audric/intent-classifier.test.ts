@@ -198,6 +198,35 @@ describe("classifyIntent — multi-intent matches", () => {
   });
 });
 
+describe("classifyIntent — services (Channel A / MPP)", () => {
+  it.each([
+    "generate an image of a cat",
+    "make me a logo",
+    "transcribe this audio",
+    "text-to-speech for this paragraph",
+    "use elevenlabs to narrate this",
+    "call a paid api for me",
+  ])("routes %j to the services intent", (q) => {
+    expect(classifyIntent(q).intents).toContain("services");
+  });
+
+  it("services intent surfaces both mpp_services and mpp_call together", () => {
+    const tools = selectActiveTools({
+      intents: ["services"],
+      confidence: "high",
+    });
+    expect(tools).toContain("mpp_services");
+    expect(tools).toContain("mpp_call");
+  });
+
+  it("does NOT misroute 'create a payment link' / 'generate a link' to services", () => {
+    expect(classifyIntent("create a payment link").intents).not.toContain(
+      "services"
+    );
+    expect(classifyIntent("generate a link").intents).not.toContain("services");
+  });
+});
+
 describe("classifyIntent — fallbacks", () => {
   it("returns general/low for empty input", () => {
     expect(classifyIntent("")).toEqual({
@@ -294,11 +323,13 @@ describe("selectActiveTools", () => {
   it("returns hardened general fallback for empty input", () => {
     const tools = selectActiveTools(classifyIntent(""));
     // Post-hotfix general: 6 reads + resolve_suins (F6) + 6 writes +
-    // render_canvas = 14
-    expect(tools).toHaveLength(14);
+    // mpp_services + mpp_call (Channel A) + render_canvas = 16
+    expect(tools).toHaveLength(16);
     expect(tools).toContain("balance_check");
     expect(tools).toContain("portfolio_analysis");
     expect(tools).toContain("resolve_suins");
+    expect(tools).toContain("mpp_services");
+    expect(tools).toContain("mpp_call");
   });
 
   it("exposes resolve_suins for a bare SuiNS name-resolution query (F6)", () => {

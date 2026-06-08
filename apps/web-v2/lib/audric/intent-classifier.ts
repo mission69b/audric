@@ -91,6 +91,7 @@ export type Intent =
   | "rewards"
   | "save"
   | "send"
+  | "services"
   | "swap";
 
 export interface IntentResult {
@@ -212,6 +213,26 @@ const INTENT_KEYWORDS: Record<Exclude<Intent, "general">, RegExp[]> = {
     /\bto\s+0x[a-f0-9]/i,
     /\bto\s+@/,
   ],
+  // Services: paid third-party APIs callable via MPP (image gen,
+  // transcription, TTS/voice, paid search, etc.). The headline Channel A
+  // capability — keep the cues broad; misses degrade to `general` which
+  // also carries the MPP tools (conservative-by-construction).
+  services: [
+    /\bgenerate\s+(?:an?\s+|some\s+)?(image|picture|logo|art|artwork|photo|avatar|audio|voice|speech|song|music)\b/i,
+    /\b(make|create|draw)\s+(?:me\s+)?(?:an?\s+|some\s+)?(image|picture|logo|artwork|avatar)\b/i,
+    /\b(image|picture|logo|art)\s+(gen|generation|generator)\b/i,
+    /\btranscribe\b/i,
+    /\btranscription\b/i,
+    /\btext[- ]to[- ]speech\b/i,
+    /\bTTS\b/,
+    /\bvoice\s*over\b/i,
+    /\bnarrate\b/i,
+    /\bdall[- ]?e\b/i,
+    /\bmidjourney\b/i,
+    /\beleven\s*labs\b/i,
+    /\bpaid\s+(?:api|service)\b/i,
+    /\bthird[- ]party\s+(?:api|service)\b/i,
+  ],
   swap: [
     /\bswap\b/i,
     /\bconvert\b/i,
@@ -298,6 +319,13 @@ const TOOLS_BY_INTENT: Record<Intent, readonly string[]> = {
     "borrow",
     "repay_debt",
     "swap_execute",
+    // [Channel A] MPP Services are the headline capability — keep both
+    // the discover (read) + call (pay) tools degrade-open in the fallback
+    // so an unanticipated phrasing ("can you make me a logo?") never hits
+    // "I don't have that tool". mpp_call is confirm-tier (user taps), so
+    // exposing it on ambiguous turns is safe.
+    "mpp_services",
+    "mpp_call",
   ],
   history: [
     "transaction_history",
@@ -344,6 +372,11 @@ const TOOLS_BY_INTENT: Record<Intent, readonly string[]> = {
     "transaction_history",
     "send_transfer",
   ],
+  // Discover (mpp_services) + pay (mpp_call) must be active together so
+  // the discover→call flow completes within a single turn (activeTools is
+  // cached for the whole turn after step 0). balance_check lets the LLM
+  // sanity-check funds before paying.
+  services: ["balance_check", "mpp_services", "mpp_call"],
   swap: ["balance_check", "swap_quote", "token_prices", "swap_execute"],
 };
 

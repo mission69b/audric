@@ -94,8 +94,10 @@ import {
   setUsernameSkipped as persistUsernameSkipped,
 } from "@/lib/identity/username-skip";
 import { decodeJwtClaim } from "@/lib/jwt-client";
+import { createSuiRpcClient } from "@/lib/sui-rpc";
 import { cn } from "@/lib/utils";
 import type { ZkLoginSession } from "@/lib/zklogin";
+import { deserializeKeypair } from "@/lib/zklogin";
 
 // Bundle marker shape + `isBundleSpent` extracted to
 // `lib/audric/bundle-status.ts` 2026-05-24 (SPEC_AI_SDK_HARDENING P5.1)
@@ -1477,8 +1479,58 @@ function PermissionForToolPart(props: PermissionForToolPartProps) {
         // G5 acceptance).
         const writeStartMs = Date.now();
         try {
+          // [Channel A / unified gasless write path — 2026-06-08] mpp_call
+          // is NOT a sponsored on-chain op. It runs the canonical gasless
+          // MPP pay loop CLIENT-SIDE on the zkLogin session key (no
+          // /api/transactions sponsored round-trip — payment hits Sui's
+          // gasless stablecoin allowlist, $0 gas). See
+          // SPEC_AUDRIC_MPP_REENABLE.md "Write-path unification".
+          if (toolName === "mpp_call") {
+            const { payWithMpp, ZkLoginSigner } = await import(
+              "@t2000/sdk/browser"
+            );
+            const ephemeralKeypair = deserializeKeypair(
+              session.ephemeralKeyPair
+            );
+            const signer = new ZkLoginSigner(
+              ephemeralKeypair,
+              session.proof,
+              session.address,
+              session.maxEpoch
+            );
+            const payResult = await payWithMpp({
+              signer,
+              client: createSuiRpcClient(),
+              options: {
+                url: String(modifiedInput.url ?? ""),
+                method:
+                  typeof modifiedInput.method === "string"
+                    ? modifiedInput.method
+                    : undefined,
+                body:
+                  typeof modifiedInput.body === "string"
+                    ? modifiedInput.body
+                    : undefined,
+                maxPrice: Number(modifiedInput.maxPriceUsd),
+              },
+            });
+            await addToolOutput({
+              tool: toolName,
+              toolCallId: toolPart.toolCallId,
+              output: {
+                success: true,
+                status: payResult.status,
+                paid: payResult.paid,
+                cost: payResult.cost,
+                body: payResult.body,
+                writeToolDurationMs: Date.now() - writeStartMs,
+              },
+            });
+            return;
+          }
+
           // [S.243 / V07E_CONTACTS_SIMPLIFICATION Path A — 2026-05-22]
-          // All 10 web-v2 writes are sponsored on-chain ops. The old
+          // All remaining web-v2 writes are sponsored on-chain ops. The old
           // save_contact dispatch branch (Prisma-only Postgres write)
           // was removed alongside the contacts feature deletion.
           const request = buildSponsoredTxRequest(toolName, modifiedInput);

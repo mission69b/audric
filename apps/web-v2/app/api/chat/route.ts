@@ -980,6 +980,9 @@ export async function POST(request: Request) {
     env: {
       AUDRIC_INTERNAL_API_URL: env.AUDRIC_INTERNAL_API_URL,
       AUDRIC_INTERNAL_KEY: env.T2000_INTERNAL_KEY,
+      // [Gap C] MPP gateway base URL for the `mpp_services` catalog
+      // fetch. Undefined → engine tool defaults to https://mpp.t2000.ai.
+      ...(env.MPP_GATEWAY_URL ? { MPP_GATEWAY_URL: env.MPP_GATEWAY_URL } : {}),
       // [S.277 — 2026-05-23] BRAVE_API_KEY spread dropped — engine
       // `web_search` tool cut in 2.18.0 ("Earns Its Keep" audit).
       // Gateway-managed `perplexity_search` covers the search use
