@@ -18,6 +18,7 @@
  * Safety section uses.
  */
 
+import { useState } from "react";
 import { authFetch } from "@/lib/auth-fetch";
 import { usePreferences } from "@/lib/swr/user-preferences";
 
@@ -41,10 +42,24 @@ export function ServicesSpendingSection({
   address,
 }: ServicesSpendingSectionProps) {
   const { data, isValidating, mutate } = usePreferences(address);
+  const [customDraft, setCustomDraft] = useState("");
 
   // undefined (unset) → server default; null → Off; number → that cap.
   const current =
     data?.mppDailyCapUsd === undefined ? DEFAULT_CAP_USD : data.mppDailyCapUsd;
+
+  const isPreset = PRESETS.some((p) => p.value === current);
+
+  const commitCustom = () => {
+    const parsed = Number.parseFloat(customDraft);
+    if (!(Number.isFinite(parsed) && parsed > 0)) {
+      return;
+    }
+    setCustomDraft("");
+    // Floor to whole cents — the cap is compared against per-call USDC
+    // amounts, which are 2dp.
+    return updateCap(Math.round(parsed * 100) / 100);
+  };
 
   const updateCap = async (next: number | null) => {
     if (!address || next === current || isValidating) {
@@ -121,10 +136,48 @@ export function ServicesSpendingSection({
           })}
         </fieldset>
 
+        <form
+          className="mt-2.5 flex items-center gap-2"
+          onSubmit={async (event) => {
+            event.preventDefault();
+            await commitCustom();
+          }}
+        >
+          <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-muted-foreground">
+            Custom
+          </span>
+          <div className="relative flex-1">
+            <span className="-translate-y-1/2 absolute top-1/2 left-2.5 font-mono text-[11px] text-muted-foreground">
+              $
+            </span>
+            <input
+              aria-label="Custom daily Services limit in USD per day"
+              className="w-full rounded-sm border border-border bg-card py-2 pr-3 pl-5 font-mono text-[11px] text-foreground tabular-nums focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={!address || isValidating}
+              inputMode="decimal"
+              min={0.01}
+              onChange={(event) => setCustomDraft(event.target.value)}
+              placeholder={
+                current !== null && !isPreset ? String(current) : "e.g. 0.50"
+              }
+              step={0.01}
+              type="number"
+              value={customDraft}
+            />
+          </div>
+          <button
+            className="rounded-sm border border-border bg-card px-3 py-2 font-mono text-[10px] text-muted-foreground uppercase tracking-[0.12em] transition hover:border-foreground hover:text-foreground focus-visible:shadow-[var(--shadow-focus-ring)] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={!address || isValidating || customDraft.trim() === ""}
+            type="submit"
+          >
+            Set
+          </button>
+        </form>
+
         <p className="mt-3.5 text-[11px] leading-[1.5] text-muted-foreground">
           {current === null
             ? "No daily limit — Audric still asks you to confirm each Service call."
-            : `Audric will pause Service spending after $${current} in a day.`}
+            : `Audric will pause Service spending after $${current} in a day. Each call still asks for your confirmation.`}
         </p>
       </div>
     </div>
