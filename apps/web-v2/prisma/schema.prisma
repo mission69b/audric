@@ -404,8 +404,16 @@ model TurnMetrics {
 // v0.7e Persistent Chats (S.247) — replaces the drizzle Chat/Message/Vote
 // stack at `apps/web-v2/lib/db/{schema,queries,migrations}` per LOCK-1
 // (prisma rewrite). Document / Suggestion / Stream tables from the template
-// are intentionally NOT ported (LOCK-2 strip; engine StreamCheckpointStore
-// owns resume-on-reload per LOCK-4).
+// are intentionally NOT ported (LOCK-2 strip).
+//
+// [Corrected 2026-06-09 / S.390 audit] Resume-on-reload is handled by the
+// Redis-backed `resumable-stream` package (`lib/resumable-stream.ts`) keyed
+// on the `Chat.activeStreamId` column — NOT a ported Stream table, and NOT
+// the engine's `StreamCheckpointStore`. The earlier "engine StreamCheckpointStore
+// owns resume-on-reload per LOCK-4" claim was false: that engine path was
+// DEFERRED and never wired (it appends raw `EngineEvent`s, but web-v2's wire
+// format is AI SDK `UIMessage` chunks — not interchangeable). The engine
+// checkpoint surface is dead across all consumers (audit §3).
 //
 // FK choice: Chat → User.suiAddress (not User.id) because session.user.id
 // post-zkLogin = canonical Sui address per `audric-auth.ts:289`. Routing
