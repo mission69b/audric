@@ -59,11 +59,11 @@ export function GraceBanner({
     <div className="mx-auto mb-2 flex w-full max-w-4xl items-center gap-3 rounded-lg border border-warning/30 bg-warning/[0.06] px-4 py-2.5">
       <p className="flex-1 text-[12px] text-foreground/80 leading-relaxed">
         <span className="font-medium text-foreground">
-          Savings &amp; DeFi are winding down.
+          Something new is coming.
         </span>{" "}
-        Withdraw, repay, and swap-to-USDC stay available through{" "}
-        <span className="font-medium text-foreground">June 19</span> — after
-        that, manage legacy positions at app.naviprotocol.io.
+        Savings &amp; DeFi close{" "}
+        <span className="font-medium text-foreground">June 19</span> — move
+        everything back to USDC in one tap.
       </p>
       <button
         className="shrink-0 rounded-full border border-foreground/20 px-3 py-1 font-mono text-[10px] text-foreground uppercase tracking-[0.1em] transition hover:border-foreground/50"
